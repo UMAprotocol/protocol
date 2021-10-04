@@ -1,11 +1,11 @@
+const { assert } = require("chai");
 const hre = require("hardhat");
+const { web3 } = hre;
 const { runDefaultFixture, ZERO_ADDRESS, didContractThrow } = require("@uma/common");
 const { getContract } = hre;
 const { utf8ToHex, toWei } = web3.utils;
 
 const { deployContractMock } = require("./helpers/SmockitHelper");
-
-const { assert } = require("chai");
 
 // Tested contracts
 const Optimism_Messenger = getContract("Optimism_Messenger");
