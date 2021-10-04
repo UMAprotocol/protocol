@@ -652,24 +652,15 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
         // the _request.reward could be any value and it would not impact this function's return value. Therefore, it
         // is the caller's responsibility to check that _request matches with the expected ID corresponding to
         // {requester, identifier, timestamp, ancillaryData} via _validateRequestHash().
-        if (address(_request.currency) == address(0)) {
-            return OptimisticOracleInterface.State.Invalid;
-        }
+        if (address(_request.currency) == address(0)) return OptimisticOracleInterface.State.Invalid;
 
-        if (_request.proposer == address(0)) {
-            return OptimisticOracleInterface.State.Requested;
-        }
+        if (_request.proposer == address(0)) return OptimisticOracleInterface.State.Requested;
 
-        if (_request.settled) {
-            return OptimisticOracleInterface.State.Settled;
-        }
+        if (_request.settled) return OptimisticOracleInterface.State.Settled;
 
-        if (_request.disputer == address(0)) {
-            return
-                _request.expirationTime <= getCurrentTime()
+        if (_request.disputer == address(0)) return _request.expirationTime <= getCurrentTime()
                     ? OptimisticOracleInterface.State.Expired
                     : OptimisticOracleInterface.State.Proposed;
-        }
 
         return
             _getOracle().hasPrice(_identifier, _timestamp, _stampAncillaryData(_ancillaryData, _requester))
