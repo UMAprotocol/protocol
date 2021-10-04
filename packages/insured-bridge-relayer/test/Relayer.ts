@@ -297,7 +297,7 @@ describe("Relayer.ts", function () {
 
       // Modifying any of the above 4 conditions should make the bot not instant relay.
 
-      // a) There  already exists an instant relayer for this relay.
+      // a) There already exists an instant relayer for this relay.
       assert.notEqual(
         await relayer.shouldRelay(deposit, clientRelayState, toBN(defaultRealizedLpFeePct), true),
         ShouldRelay.Instant
