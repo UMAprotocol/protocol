@@ -23,7 +23,7 @@ import "../../common/implementation/AddressWhitelist.sol";
 /**
  * @title Optimistic Requester.
  * @notice Optional interface that requesters can implement to receive callbacks.
- * @dev this contract does _not_ work with ERC777 collateral currencies or any others that call into the receiver on
+ * @dev This contract does _not_ work with ERC777 collateral currencies or any others that call into the receiver on
  * transfer(). Using an ERC777 token would allow a user to maliciously grief other participants (while also losing
  * money themselves).
  */
@@ -176,9 +176,7 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
         request.bond = _bond != 0 ? _bond : finalFee;
         request.customLiveness = _customLiveness;
 
-        if (_reward > 0) {
-            _currency.safeTransferFrom(msg.sender, address(this), _reward);
-        }
+        if (_reward > 0) _currency.safeTransferFrom(msg.sender, address(this), _reward);
 
         _storeRequestHash(requestId, request);
         emit RequestPrice(msg.sender, _identifier, _timestamp, _ancillaryData, request);
@@ -209,7 +207,7 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
         address _proposer,
         int256 _proposedPrice
     ) public override nonReentrant() returns (uint256 totalBond) {
-        require(_proposer != address(0), "proposer address must be non 0");
+        require(_proposer != address(0), "Proposer address must be non 0");
         require(
             _getState(_requester, _identifier, _timestamp, _ancillaryData, _request) ==
                 OptimisticOracleInterface.State.Requested,
@@ -330,14 +328,10 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
         request.expirationTime = getCurrentTime().add(_customLiveness != 0 ? _customLiveness : defaultLiveness);
 
         // Pull reward from requester, who is the caller.
-        if (_reward > 0) {
-            _currency.safeTransferFrom(msg.sender, address(this), _reward);
-        }
+        if (_reward > 0) _currency.safeTransferFrom(msg.sender, address(this), _reward);
         // Pull proposal bond from caller.
         totalBond = request.bond.add(request.finalFee);
-        if (totalBond > 0) {
-            _currency.safeTransferFrom(msg.sender, address(this), totalBond);
-        }
+        if (totalBond > 0) _currency.safeTransferFrom(msg.sender, address(this), totalBond);
 
         _storeRequestHash(requestId, request);
         emit RequestPrice(msg.sender, _identifier, _timestamp, _ancillaryData, request);
@@ -357,7 +351,8 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
      * @param _timestamp timestamp to identify the existing request.
      * @param _ancillaryData ancillary data of the price being requested.
      * @param _request price request parameters whose hash must match the request that the caller wants to
-     * dispute.
+     *              dispute.
+     
      * @param _disputer address to set as the disputer.
      * @param _requester sender of the initial price request.
      * @return totalBond the amount that's pulled from the caller's wallet as a bond. The bond will be returned to
@@ -399,9 +394,7 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
         uint256 finalFee = disputedRequest.finalFee;
         uint256 bond = disputedRequest.bond;
         totalBond = bond.add(finalFee);
-        if (totalBond > 0) {
-            disputedRequest.currency.safeTransferFrom(msg.sender, address(this), totalBond);
-        }
+        if (totalBond > 0) disputedRequest.currency.safeTransferFrom(msg.sender, address(this), totalBond);
 
         StoreInterface store = _getStore();
 
@@ -440,7 +433,7 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
      * @param _timestamp timestamp to identify the existing request.
      * @param _ancillaryData ancillary data of the price being requested.
      * @param _request price request parameters whose hash must match the request that the caller wants to
-     * dispute.
+     *             dispute.
      * @return totalBond the amount that's pulled from the caller's wallet as a bond. The bond will be returned to
      * the disputer once settled if the dispute was valid (the proposal was incorrect).
      */
@@ -538,7 +531,9 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
     {
         return _stampAncillaryData(_ancillaryData, _requester);
     }
-
+    /****************************************
+     *    PRIVATE AND INTERNAL FUNCTIONS    *
+     ****************************************/
     // Returns hash of unique request identifiers. This contract maps request ID hashes to hashes of the request's
     // parameters.
     function _getId(
