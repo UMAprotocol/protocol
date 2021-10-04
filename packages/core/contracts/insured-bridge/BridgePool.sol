@@ -79,7 +79,6 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         address slowRelayer;
         uint32 relayId;
         uint64 realizedLpFeePct;
-        address instantRelayer;
         uint256 priceRequestTime;
     }
 
@@ -394,7 +393,6 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         emit RelaySettled(depositHash, relayHash, msg.sender);
 
         delete relay.realizedLpFeePct;
-        delete relay.instantRelayer;
         delete relay.priceRequestTime;
     }
 
