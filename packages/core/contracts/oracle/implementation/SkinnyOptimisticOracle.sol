@@ -531,7 +531,9 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
     {
         return _stampAncillaryData(_ancillaryData, _requester);
     }
-
+    /****************************************
+     *    PRIVATE AND INTERNAL FUNCTIONS    *
+     ****************************************/
     // Returns hash of unique request identifiers. This contract maps request ID hashes to hashes of the request's
     // parameters.
     function _getId(
