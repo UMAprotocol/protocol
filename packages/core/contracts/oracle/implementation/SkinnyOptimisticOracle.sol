@@ -328,9 +328,7 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
         request.expirationTime = getCurrentTime().add(_customLiveness != 0 ? _customLiveness : defaultLiveness);
 
         // Pull reward from requester, who is the caller.
-        if (_reward > 0) {
-            _currency.safeTransferFrom(msg.sender, address(this), _reward);
-        }
+        if (_reward > 0) _currency.safeTransferFrom(msg.sender, address(this), _reward);
         // Pull proposal bond from caller.
         totalBond = request.bond.add(request.finalFee);
         if (totalBond > 0) {
