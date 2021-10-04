@@ -236,9 +236,7 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
         _storeRequestHash(requestId, proposedRequest);
 
         totalBond = _request.bond.add(_request.finalFee);
-        if (totalBond > 0) {
-            _request.currency.safeTransferFrom(msg.sender, address(this), totalBond);
-        }
+        if (totalBond > 0) _request.currency.safeTransferFrom(msg.sender, address(this), totalBond);
 
         emit ProposePrice(_requester, _identifier, _timestamp, _ancillaryData, proposedRequest);
 
