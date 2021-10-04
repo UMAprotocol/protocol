@@ -435,7 +435,7 @@ describe("InsuredBridgePriceFeed", function () {
         ),
         toWei("0")
       );
-      assert.isTrue(lastSpyLogIncludes(spy, "No deposit event found matching relay request ancillary data and time"));
+      assert.isTrue(lastSpyLogIncludes(spy, "No relay event found matching provided ancillary data"));
     });
     it("Pricefeed returns 0 if the relay realized fee % is invalid", async function () {
       const invalidRealizedLpFeePct = toWei("0.49");
