@@ -538,7 +538,11 @@ describe("BridgePool", () => {
         .send({ from: instantRelayer });
       const speedupTxn = await bridgePool.methods.speedUpRelay(depositData).send({ from: instantRelayer });
       await assertEventEmitted(speedupTxn, bridgePool, "RelaySpedUp", (ev) => {
-        return ev.instantRelayer === instantRelayer && ev.depositHash === depositHash;
+        return (
+          ev.instantRelayer === instantRelayer &&
+          ev.depositHash === depositHash &&
+          ev.realizedLpFeePct === relayData.realizedLpFeePct
+        );
       });
       const speedupRelayStatus = await bridgePool.methods.relays(depositHash).call();
       assert.equal(speedupRelayStatus.relayState, InsuredBridgeRelayStateEnum.PENDING);

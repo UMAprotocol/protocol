@@ -1,7 +1,7 @@
 import Web3 from "web3";
 const { toBN } = Web3.utils;
 
-import { ZERO_ADDRESS, findBlockNumberAtTimestamp } from "@uma/common";
+import { findBlockNumberAtTimestamp } from "@uma/common";
 import { getAbi } from "@uma/contracts-node";
 import { Deposit } from "./InsuredBridgeL2Client";
 import { RateModel, calculateRealizedLpFeePct } from "../helpers/acrossFeesCalculator";
@@ -12,7 +12,6 @@ import type { BN } from "@uma/common";
 
 enum RelayState {
   Pending,
-  SpedUp,
   Disputed,
   Finalized,
 }
@@ -30,7 +29,6 @@ export interface Relay {
   l2Sender: string;
   slowRelayer: string;
   disputedSlowRelayers: string[];
-  instantRelayer: string;
   l1Recipient: string;
   l1Token: string;
   amount: string;
@@ -42,13 +40,19 @@ export interface Relay {
   relayState: RelayState;
 }
 
+export interface InstantRelay {
+  instantRelayer: string;
+}
+
 export class InsuredBridgeL1Client {
   public readonly bridgeAdmin: BridgeAdminInterfaceWeb3;
   public bridgePools: { [key: string]: BridgePoolWeb3 }; // L1TokenAddress=>BridgePoolClient
 
   private relays: { [key: string]: { [key: string]: Relay } } = {}; // L1TokenAddress=>depositHash=>Relay.
+  private instantRelays: { [key: string]: { [key: string]: InstantRelay } } = {}; // L1TokenAddress=>{depositHash, realizedLpFeePct}=>InstantRelay.
 
   private firstBlockToSearch: number;
+  private web3: Web3;
 
   constructor(
     private readonly logger: Logger,
@@ -66,6 +70,7 @@ export class InsuredBridgeL1Client {
     this.bridgePools = {}; // Initialize the bridgePools with no pools yet. Will be populated in the _initialSetup.
 
     this.firstBlockToSearch = startingBlockNumber;
+    this.web3 = l1Web3;
   }
 
   // Return an array of all bridgePool addresses
@@ -91,6 +96,16 @@ export class InsuredBridgeL1Client {
   getRelayForDeposit(l1Token: string, deposit: Deposit): Relay | undefined {
     this._throwIfNotInitialized();
     return this.relays[l1Token][deposit.depositHash];
+  }
+
+  hasInstantRelayer(l1Token: string, depositHash: string, realizedLpFeePct: string): boolean {
+    this._throwIfNotInitialized();
+    const instantRelayDataHash = this._getInstantRelayHash(depositHash, realizedLpFeePct);
+    return (
+      instantRelayDataHash !== null &&
+      this.instantRelays[l1Token][instantRelayDataHash] !== undefined &&
+      this.instantRelays[l1Token][instantRelayDataHash].instantRelayer !== undefined
+    );
   }
 
   getPendingRelayedDeposits(): Relay[] {
@@ -155,6 +170,7 @@ export class InsuredBridgeL1Client {
         whitelistedTokenEvent.returnValues.bridgePool
       ) as unknown) as BridgePoolWeb3;
       this.relays[l1Token] = {};
+      this.instantRelays[l1Token] = {};
     }
 
     // Fetch event information
@@ -174,7 +190,6 @@ export class InsuredBridgeL1Client {
           l2Sender: depositRelayedEvent.returnValues.l2Sender,
           slowRelayer: depositRelayedEvent.returnValues.slowRelayer,
           disputedSlowRelayers: [],
-          instantRelayer: ZERO_ADDRESS,
           l1Recipient: depositRelayedEvent.returnValues.l1Recipient,
           l1Token: depositRelayedEvent.returnValues.l1Token,
           amount: depositRelayedEvent.returnValues.amount,
@@ -198,11 +213,17 @@ export class InsuredBridgeL1Client {
         else this.relays[l1Token][relayData.depositHash] = relayData;
       }
 
-      // For all RelaySpedUp, set the instant relayer and set the state to SpedUp.
+      // For all RelaySpedUp, set the instant relayer.
       for (const relaySpedUpEvent of relaySpedUpEvents) {
-        this.relays[l1Token][relaySpedUpEvent.returnValues.depositHash].instantRelayer =
-          relaySpedUpEvent.returnValues.instantRelayer;
-        this.relays[l1Token][relaySpedUpEvent.returnValues.depositHash].relayState = RelayState.SpedUp;
+        const instantRelayDataHash = this._getInstantRelayHash(
+          relaySpedUpEvent.returnValues.depositHash,
+          relaySpedUpEvent.returnValues.realizedLpFeePct
+        );
+        if (instantRelayDataHash !== null) {
+          this.instantRelays[l1Token][instantRelayDataHash] = {
+            instantRelayer: relaySpedUpEvent.returnValues.instantRelayer,
+          };
+        }
       }
 
       for (const relaySettledEvent of relaySettledEvents) {
@@ -212,6 +233,13 @@ export class InsuredBridgeL1Client {
     this.firstBlockToSearch = blockSearchConfig.toBlock + 1;
 
     this.logger.debug({ at: "InsuredBridgeL1Client", message: "Insured bridge l1 client updated" });
+  }
+
+  private _getInstantRelayHash(depositHash: string, realizedLpFeePct: string): string | null {
+    const instantRelayDataHash = this.web3.utils.soliditySha3(
+      this.web3.eth.abi.encodeParameters(["bytes32", "uint64"], [depositHash, realizedLpFeePct])
+    );
+    return instantRelayDataHash;
   }
 
   private _throwIfNotInitialized() {
