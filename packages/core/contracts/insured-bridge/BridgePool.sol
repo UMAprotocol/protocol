@@ -323,7 +323,6 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
 
         l1Token.safeTransferFrom(msg.sender, _depositData.l1Recipient, _depositData.amount - feesTotal);
 
-        // TODO: does this need more info?
         emit RelaySpedUp(depositHash, msg.sender, relay.realizedLpFeePct);
     }
 
