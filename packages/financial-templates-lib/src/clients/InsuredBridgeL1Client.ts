@@ -40,6 +40,7 @@ export interface Relay {
   realizedLpFeePct: string;
   depositHash: string;
   relayState: RelayState;
+  relayHash: string;
 }
 
 export class InsuredBridgeL1Client {
@@ -186,6 +187,7 @@ export class InsuredBridgeL1Client {
           realizedLpFeePct: depositRelayedEvent.returnValues.realizedLpFeePct,
           depositHash: depositRelayedEvent.returnValues.depositHash,
           relayState: RelayState.Pending,
+          relayHash: depositRelayedEvent.returnValues.relayHash,
         };
 
         // If the local data contains this deposit ID then this is a re-relay of a disputed relay. In this case, we need

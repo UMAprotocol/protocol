@@ -97,7 +97,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         address l1Token,
         uint64 realizedLpFeePct,
         bytes32 indexed depositHash,
-        bytes32 indexed ancillaryDataHash
+        bytes32 indexed relayHash
     );
     event RelaySpedUp(bytes32 indexed depositHash, address indexed instantRelayer);
     event RelaySettled(bytes32 indexed depositHash, bytes32 indexed relayHash, address indexed caller);
