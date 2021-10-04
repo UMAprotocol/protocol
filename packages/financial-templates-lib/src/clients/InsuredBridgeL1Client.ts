@@ -1,5 +1,5 @@
 import Web3 from "web3";
-const { toBN } = Web3.utils;
+const { toBN, soliditySha3 } = Web3.utils;
 
 import { findBlockNumberAtTimestamp } from "@uma/common";
 import { getAbi } from "@uma/contracts-node";
@@ -238,7 +238,7 @@ export class InsuredBridgeL1Client {
   }
 
   private _getInstantRelayHash(depositHash: string, realizedLpFeePct: string): string | null {
-    const instantRelayDataHash = this.web3.utils.soliditySha3(
+    const instantRelayDataHash = soliditySha3(
       this.web3.eth.abi.encodeParameters(["bytes32", "uint64"], [depositHash, realizedLpFeePct])
     );
     return instantRelayDataHash;
