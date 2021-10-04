@@ -394,9 +394,7 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
         uint256 finalFee = disputedRequest.finalFee;
         uint256 bond = disputedRequest.bond;
         totalBond = bond.add(finalFee);
-        if (totalBond > 0) {
-            disputedRequest.currency.safeTransferFrom(msg.sender, address(this), totalBond);
-        }
+        if (totalBond > 0) disputedRequest.currency.safeTransferFrom(msg.sender, address(this), totalBond);
 
         StoreInterface store = _getStore();
 
