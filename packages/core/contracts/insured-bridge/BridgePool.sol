@@ -439,15 +439,15 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
     /**
      * @notice Computes the liquidity utilization ratio post a relay of known size.
      * @dev Used in computing realizedLpFeePct off-chain.
-     * @param _relayedAmount Size of the relayed deposit to factor into the utilization calculation.
+     * @param relayedAmount Size of the relayed deposit to factor into the utilization calculation.
      */
-    function liquidityUtilizationPostRelay(uint256 _relayedAmount) public returns (uint256) {
+    function liquidityUtilizationPostRelay(uint256 relayedAmount) public returns (uint256) {
         sync(); // Fetch any balance changes due to token bridging finalization and factor them in.
 
-        // The liquidity utilization ratio is the ratio of utilized liquidity (pendingReserves + _relayedAmount
+        // The liquidity utilization ratio is the ratio of utilized liquidity (pendingReserves + relayedAmount
         // +utilizedReserves) divided by the liquid reserves.
         FixedPoint.Unsigned memory numerator =
-            FixedPoint.Unsigned(pendingReserves).add(FixedPoint.Unsigned(_relayedAmount));
+            FixedPoint.Unsigned(pendingReserves).add(FixedPoint.Unsigned(relayedAmount));
         if (utilizedReserves > 0) numerator = numerator.add(FixedPoint.Unsigned(uint256(utilizedReserves)));
         else numerator = numerator.sub(FixedPoint.Unsigned(uint256(utilizedReserves * -1)));
 
