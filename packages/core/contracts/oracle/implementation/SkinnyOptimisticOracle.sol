@@ -433,7 +433,7 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
      * @param _timestamp timestamp to identify the existing request.
      * @param _ancillaryData ancillary data of the price being requested.
      * @param _request price request parameters whose hash must match the request that the caller wants to
-     * dispute.
+     *             dispute.
      * @return totalBond the amount that's pulled from the caller's wallet as a bond. The bond will be returned to
      * the disputer once settled if the dispute was valid (the proposal was incorrect).
      */
