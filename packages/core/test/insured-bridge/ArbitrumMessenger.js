@@ -3,9 +3,9 @@ const { runDefaultFixture, ZERO_ADDRESS, didContractThrow } = require("@uma/comm
 const { getContract } = hre;
 const { utf8ToHex, toWei } = web3.utils;
 
-const { assert } = require("chai");
-
 const { deployContractMock } = require("./helpers/SmockitHelper");
+
+const { assert } = require("chai");
 
 // Tested contracts
 const Arbitrum_InboxMock = getContract("Arbitrum_InboxMock");
