@@ -23,7 +23,7 @@ import "../../common/implementation/AddressWhitelist.sol";
 /**
  * @title Optimistic Requester.
  * @notice Optional interface that requesters can implement to receive callbacks.
- * @dev this contract does _not_ work with ERC777 collateral currencies or any others that call into the receiver on
+ * @dev This contract does _not_ work with ERC777 collateral currencies or any others that call into the receiver on
  * transfer(). Using an ERC777 token would allow a user to maliciously grief other participants (while also losing
  * money themselves).
  */
