@@ -211,7 +211,7 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
         require(
             _getState(_requester, _identifier, _timestamp, _ancillaryData, _request) ==
                 OptimisticOracleInterface.State.Requested,
-            "proposePriceFor: Requested"
+            "Must be requested"
         );
         bytes32 requestId = _getId(_requester, _identifier, _timestamp, _ancillaryData);
         _validateRequestHash(requestId, _request);
@@ -369,7 +369,7 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
         require(
             _getState(_requester, _identifier, _timestamp, _ancillaryData, _request) ==
                 OptimisticOracleInterface.State.Proposed,
-            "disputePriceFor: Proposed"
+            "Must be proposed"
         );
         bytes32 requestId = _getId(_requester, _identifier, _timestamp, _ancillaryData);
         _validateRequestHash(requestId, _request);
@@ -607,7 +607,7 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
                 .add(_request.reward);
             _request.currency.safeTransfer(disputeSuccess ? _request.disputer : _request.proposer, payout);
         } else {
-            revert("_settle: not settleable");
+            revert("Already settled or not settleable");
         }
 
         _storeRequestHash(requestId, settledRequest);
