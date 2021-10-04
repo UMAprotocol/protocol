@@ -598,7 +598,7 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
             bool disputeSuccess = settledRequest.resolvedPrice != settledRequest.proposedPrice;
             uint256 bond = settledRequest.bond;
 
-            // Unburned portion of the loser's bond = 1 - burned bond.
+            // Unburned portion of the loser's bond = proposal bond (not including final fee) - burned bond.
             uint256 unburnedBond = bond.sub(_computeBurnedBond(settledRequest));
 
             // Winner gets:
