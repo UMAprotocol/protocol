@@ -385,6 +385,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
 
         emit RelaySettled(depositHash, _getRelayHash(_depositData, relay), msg.sender);
 
+        delete instantRelays[keccak256(abi.encode(depositHash, relay.realizedLpFeePct))];
         delete relay.realizedLpFeePct;
         delete relay.priceRequestTime;
     }
