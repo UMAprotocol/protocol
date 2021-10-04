@@ -179,7 +179,7 @@ export class Relayer {
     if (l1TokenBalance.gte(relayTokenRequirement.slow) && clientRelayState === ClientRelayState.Uninitialized)
       slowProfit = toBN(deposit.amount).mul(toBN(deposit.slowRelayFeePct)).div(fixedPointAdjustment);
 
-    // b) Balance is large enough to instant relay. Deposit is in any state except finalized (i.e can be slow relayed
+    // b) Balance is large enough to instant relay and the relay does not have an instant relayer. Deposit is in any state except finalized (i.e can be slow relayed
     // and sped up or only sped up.)
     if (
       !hasInstantRelayer &&
