@@ -101,6 +101,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
     );
     event RelaySpedUp(bytes32 indexed depositHash, address indexed instantRelayer);
     event RelaySettled(bytes32 indexed depositHash, bytes32 indexed relayHash, address indexed caller);
+    event BridgePoolAdminTransferred(address oldAdmin, address newAdmin);
 
     /**
      * @notice Construct the Bridge Pool
@@ -273,7 +274,6 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
 
         pendingReserves += amount; // Book off maximum liquidity used by this relay in the pending reserves.
 
-        // We use an internal method to emit this event to overcome Solidity's "stack too deep" error.
         emit DepositRelayed(
             relayId,
             depositData,
@@ -439,15 +439,15 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
     /**
      * @notice Computes the liquidity utilization ratio post a relay of known size.
      * @dev Used in computing realizedLpFeePct off-chain.
-     * @param relayedAmount Size of the relayed deposit to factor into the utilization calculation.
+     * @param _relayedAmount Size of the relayed deposit to factor into the utilization calculation.
      */
-    function liquidityUtilizationPostRelay(uint256 relayedAmount) public returns (uint256) {
+    function liquidityUtilizationPostRelay(uint256 _relayedAmount) public returns (uint256) {
         sync(); // Fetch any balance changes due to token bridging finalization and factor them in.
 
-        // The liquidity utilization ratio is the ratio of utilized liquidity (pendingReserves + relayedAmount
+        // The liquidity utilization ratio is the ratio of utilized liquidity (pendingReserves + _relayedAmount
         // +utilizedReserves) divided by the liquid reserves.
         FixedPoint.Unsigned memory numerator =
-            FixedPoint.Unsigned(pendingReserves).add(FixedPoint.Unsigned(relayedAmount));
+            FixedPoint.Unsigned(pendingReserves).add(FixedPoint.Unsigned(_relayedAmount));
         if (utilizedReserves > 0) numerator = numerator.add(FixedPoint.Unsigned(uint256(utilizedReserves)));
         else numerator = numerator.sub(FixedPoint.Unsigned(uint256(utilizedReserves * -1)));
 
@@ -463,7 +463,21 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
     }
 
     /************************************
-     *           View FUNCTIONS         *
+     *          ADMIN FUNCTIONS         *
+     ************************************/
+
+    /**
+     * @notice Enable the current bridge admin to transfer admin to to a new address.
+     * @param _newAdmin Admin address of the new admin.
+     */
+    function changeAdmin(address _newAdmin) public override nonReentrant() {
+        require(msg.sender == address(bridgeAdmin));
+        bridgeAdmin = BridgeAdminInterface(_newAdmin);
+        emit BridgePoolAdminTransferred(msg.sender, _newAdmin);
+    }
+
+    /************************************
+     *           VIEW FUNCTIONS         *
      ************************************/
 
     /**

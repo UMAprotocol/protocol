@@ -1,5 +1,6 @@
 const { assert } = require("chai");
 const hre = require("hardhat");
+const { web3 } = hre;
 const { didContractThrow, runDefaultFixture, ZERO_ADDRESS } = require("@uma/common");
 const { getContract, assertEventEmitted } = hre;
 const { hexToUtf8, utf8ToHex, toWei } = web3.utils;
@@ -433,6 +434,48 @@ describe("BridgeAdmin", () => {
               ev.message === expectedAbiData
             );
           });
+        });
+      });
+      describe("Transfer ownership of pool admins", () => {
+        it("Basic checks", async () => {
+          assert(
+            await didContractThrow(
+              bridgeAdmin.methods.transferBridgePoolAdmin([bridgePool.options.address], rando).send({ from: rando })
+            ),
+            "OnlyOwner modifier not enforced"
+          );
+        });
+        it("Sets new owner on multiple pools", async () => {
+          // Create a temp bridgePool.
+          const bridgePool2 = await BridgePool.new(
+            "LP Token2",
+            "LPT2",
+            bridgeAdmin.options.address,
+            l1Token,
+            lpFeeRatePerSecond,
+            timer.options.address
+          ).send({ from: owner });
+
+          assert.equal(await bridgePool.methods.bridgeAdmin().call(), bridgeAdmin.options.address);
+
+          const transferAdminTxn = await bridgeAdmin.methods
+            .transferBridgePoolAdmin([bridgePool.options.address, bridgePool2.options.address], owner)
+            .send({ from: owner });
+
+          // Check for L1 logs and state change
+
+          await assertEventEmitted(transferAdminTxn, bridgeAdmin, "BridgePoolsAdminTransferred", (ev) => {
+            return (
+              ev.bridgePools.length == 2 &&
+              ev.bridgePools[0] == bridgePool.options.address &&
+              ev.bridgePools[1] == bridgePool2.options.address &&
+              ev.newAdmin == owner
+            );
+          });
+
+          // Both bridge pools should now have the new owner.
+          assert.equal(await bridgePool.methods.bridgeAdmin().call(), owner);
+          assert.equal(await bridgePool2.methods.bridgeAdmin().call(), owner);
         });
       });
     });

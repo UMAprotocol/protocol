@@ -116,6 +116,19 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, Lockable {
         emit SetDepositContracts(_chainId, _depositContract, _messengerContract);
     }
 
+    /**
+     * @notice Enables the current owner to transfer ownership of all owned bridge pools to a new owner.
+     * @dev Only callable by the current owner.
+     * @param _bridgePools array of bridge pools to transfer ownership.
+     * @param _newAdmin new admin contract to set ownership to.
+     */
+    function transferBridgePoolAdmin(address[] memory _bridgePools, address _newAdmin) public onlyOwner nonReentrant() {
+        for (uint8 i = 0; i < _bridgePools.length; i++) {
+            BridgePoolInterface(_bridgePools[i]).changeAdmin(_newAdmin);
+        }
+        emit BridgePoolsAdminTransferred(_bridgePools, _newAdmin);
+    }
+
     /**************************************************
      *        CROSSDOMAIN ADMIN FUNCTIONS             *
      **************************************************/
