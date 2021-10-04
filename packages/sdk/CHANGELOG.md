@@ -3,6 +3,22 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.7.0](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.6.0...@uma/sdk@0.7.0) (2021-10-01)
+
+### Bug Fixes
+
+- **sdk:** edit prepare process for release ([#3419](https://github.com/UMAprotocol/protocol/issues/3419)) ([6470d4d](https://github.com/UMAprotocol/protocol/commit/6470d4d3137094fe2d0ba3b44820697438f0202e))
+
+### Features
+
+- **sdk:** add bridge deposit box client ([#3414](https://github.com/UMAprotocol/protocol/issues/3414)) ([b253e27](https://github.com/UMAprotocol/protocol/commit/b253e2793bacd65b19934a0fa6f2ee23cda8ff02))
+
+# [0.6.0](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.5.0...@uma/sdk@0.6.0) (2021-10-01)
+
+### Features
+
+- **sdk:** add direct port of fee calculators and add docs ([#3410](https://github.com/UMAprotocol/protocol/issues/3410)) ([7c21f75](https://github.com/UMAprotocol/protocol/commit/7c21f75d681f0e9a7dbcdc31dcfaa875d16cf9be))
+
 # [0.5.0](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.4.1...@uma/sdk@0.5.0) (2021-09-28)
 
 ### Bug Fixes

@@ -40,6 +40,7 @@ export interface Relay {
   realizedLpFeePct: string;
   depositHash: string;
   relayState: RelayState;
+  relayHash: string;
 }
 
 export class InsuredBridgeL1Client {
@@ -111,6 +112,7 @@ export class InsuredBridgeL1Client {
       bridgePool.methods.liquidityUtilizationCurrent().call(undefined, quoteBlockNumber),
       bridgePool.methods.liquidityUtilizationPostRelay(deposit.amount.toString()).call(undefined, quoteBlockNumber),
     ]);
+
     return calculateRealizedLpFeePct(
       this.rateModels[deposit.l1Token],
       toBN(liquidityUtilizationCurrent),
@@ -149,9 +151,6 @@ export class InsuredBridgeL1Client {
     const whitelistedTokenEvents = await this.bridgeAdmin.getPastEvents("WhitelistToken", blockSearchConfig);
     for (const whitelistedTokenEvent of whitelistedTokenEvents) {
       const l1Token = whitelistedTokenEvent.returnValues.l1Token;
-      // If the data structure already contains information on this l1Token( re-whitelist of an existing token) continue.
-      if (this.bridgePools[l1Token]) continue;
-      // Else, we set the bridge pool to be a contract instance at the address of the bridge pool.
       this.bridgePools[l1Token] = (new this.l1Web3.eth.Contract(
         getAbi("BridgePool"),
         whitelistedTokenEvent.returnValues.bridgePool
@@ -171,21 +170,22 @@ export class InsuredBridgeL1Client {
       for (const depositRelayedEvent of depositRelayedEvents) {
         const relayData: Relay = {
           relayId: Number(depositRelayedEvent.returnValues.relayId),
-          chainId: Number(depositRelayedEvent.returnValues.chainId),
-          depositId: Number(depositRelayedEvent.returnValues.depositId),
-          l2Sender: depositRelayedEvent.returnValues.l2Sender,
+          chainId: Number(depositRelayedEvent.returnValues.depositData.chainId),
+          depositId: Number(depositRelayedEvent.returnValues.depositData.depositId),
+          l2Sender: depositRelayedEvent.returnValues.depositData.l2Sender,
           slowRelayer: depositRelayedEvent.returnValues.slowRelayer,
           disputedSlowRelayers: [],
           instantRelayer: ZERO_ADDRESS,
-          l1Recipient: depositRelayedEvent.returnValues.l1Recipient,
+          l1Recipient: depositRelayedEvent.returnValues.depositData.l1Recipient,
           l1Token: depositRelayedEvent.returnValues.l1Token,
-          amount: depositRelayedEvent.returnValues.amount,
-          slowRelayFeePct: depositRelayedEvent.returnValues.slowRelayFeePct,
-          instantRelayFeePct: depositRelayedEvent.returnValues.instantRelayFeePct,
-          quoteTimestamp: Number(depositRelayedEvent.returnValues.quoteTimestamp),
+          amount: depositRelayedEvent.returnValues.depositData.amount,
+          slowRelayFeePct: depositRelayedEvent.returnValues.depositData.slowRelayFeePct,
+          instantRelayFeePct: depositRelayedEvent.returnValues.depositData.instantRelayFeePct,
+          quoteTimestamp: Number(depositRelayedEvent.returnValues.depositData.quoteTimestamp),
           realizedLpFeePct: depositRelayedEvent.returnValues.realizedLpFeePct,
           depositHash: depositRelayedEvent.returnValues.depositHash,
           relayState: RelayState.Pending,
+          relayHash: depositRelayedEvent.returnValues.relayHash,
         };
 
         // If the local data contains this deposit ID then this is a re-relay of a disputed relay. In this case, we need

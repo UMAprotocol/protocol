@@ -1,6 +1,6 @@
 const { assert } = require("chai");
 const hre = require("hardhat");
-const { web3 } = require("hardhat");
+const { web3 } = hre;
 const {
   didContractThrow,
   interfaceName,
@@ -101,7 +101,6 @@ let relayData;
 let depositData;
 let depositHash;
 let relayAncillaryData;
-let relayAncillaryDataHash;
 
 describe("BridgePool", () => {
   let accounts,
@@ -278,7 +277,6 @@ describe("BridgePool", () => {
     // Save other reused values.
     depositHash = generateDepositHash(depositData);
     relayAncillaryData = await bridgePool.methods.getRelayAncillaryData(depositData, relayData).call();
-    relayAncillaryDataHash = soliditySha3(relayAncillaryData);
   });
   it("Constructor validation", async function () {
     // LP Token symbol and name cannot be empty.
@@ -308,30 +306,26 @@ describe("BridgePool", () => {
     );
   });
   it("Constructs utf8-encoded ancillary data for relay", async function () {
-    let expectedAncillaryDataUtf8 = "";
-    Object.keys(depositData).forEach((key) => {
-      // Set addresses to lower case and strip leading "0x"'s in order to recreate how Solidity encodes addresses
-      // to utf8.
-      if (depositData[key].toString().startsWith("0x")) {
-        expectedAncillaryDataUtf8 += `${key}:${depositData[key].toString().substr(2).toLowerCase()},`;
-      } else {
-        expectedAncillaryDataUtf8 += `${key}:${depositData[key].toString()},`;
-      }
-    });
-    Object.keys(relayData).forEach((key) => {
-      // Skip relayData params that are not used by the contract to construct ancillary data,
-      if (key === "realizedLpFeePct" || key === "relayId") {
-        // Set addresses to lower case and strip leading "0x"'s in order to recreate how Solidity encodes addresses
-        // to utf8.
-        if (relayData[key].toString().startsWith("0x")) {
-          expectedAncillaryDataUtf8 += `${key}:${relayData[key].toString().substr(2).toLowerCase()},`;
-        } else {
-          expectedAncillaryDataUtf8 += `${key}:${relayData[key].toString()},`;
-        }
-      }
-    });
-    expectedAncillaryDataUtf8 += `l1Token:${l1Token.options.address.substr(2).toLowerCase()}`;
-    assert.equal(hexToUtf8(relayAncillaryData), expectedAncillaryDataUtf8);
+    const parameters = [
+      { t: "uint8", v: depositData.chainId },
+      { t: "uint64", v: depositData.depositId },
+      { t: "address", v: depositData.l1Recipient },
+      { t: "address", v: depositData.l2Sender },
+      { t: "uint256", v: depositData.amount },
+      { t: "uint64", v: depositData.slowRelayFeePct },
+      { t: "uint64", v: depositData.instantRelayFeePct },
+      { t: "uint64", v: depositData.quoteTimestamp },
+      { t: "uint32", v: relayData.relayId },
+      { t: "uint64", v: relayData.realizedLpFeePct },
+      { t: "address", v: l1Token.options.address },
+    ];
+    const hash = web3.utils.soliditySha3(
+      web3.eth.abi.encodeParameters(
+        parameters.map((elt) => elt.t),
+        parameters.map((elt) => elt.v)
+      )
+    );
+    assert.equal(hexToUtf8(relayAncillaryData), `relayHash:${hash.substring(2)}`);
   });
   describe("Relay deposit", () => {
     beforeEach(async function () {
@@ -418,16 +412,16 @@ describe("BridgePool", () => {
       await assertEventEmitted(txn, bridgePool, "DepositRelayed", (ev) => {
         return (
           ev.relayId.toString() === relayData.relayId.toString() &&
-          ev.chainId.toString() === depositData.chainId.toString() &&
-          ev.depositId.toString() === depositData.depositId.toString() &&
-          ev.l2Sender === depositData.l2Sender &&
+          ev.depositData.chainId.toString() === depositData.chainId.toString() &&
+          ev.depositData.depositId.toString() === depositData.depositId.toString() &&
+          ev.depositData.l2Sender === depositData.l2Sender &&
           ev.slowRelayer === relayer &&
-          ev.l1Recipient === depositData.l1Recipient &&
+          ev.depositData.l1Recipient === depositData.l1Recipient &&
           ev.l1Token === l1Token.options.address &&
-          ev.amount === depositData.amount &&
-          ev.slowRelayFeePct === depositData.slowRelayFeePct &&
-          ev.instantRelayFeePct === depositData.instantRelayFeePct &&
-          ev.quoteTimestamp === depositData.quoteTimestamp &&
+          ev.depositData.amount === depositData.amount &&
+          ev.depositData.slowRelayFeePct === depositData.slowRelayFeePct &&
+          ev.depositData.instantRelayFeePct === depositData.instantRelayFeePct &&
+          ev.depositData.quoteTimestamp === depositData.quoteTimestamp &&
           ev.realizedLpFeePct === relayData.realizedLpFeePct &&
           ev.depositHash === depositHash
         );
@@ -747,13 +741,14 @@ describe("BridgePool", () => {
         .send({ from: owner });
 
       // Settle relay and check event logs and post-settlement balances.
+      const relayHash =
+        "0x" +
+        web3.utils
+          .hexToUtf8(await bridgePool.methods.getRelayAncillaryData(depositData, relayData).call())
+          .split(":")[1];
       const settleTxn = await bridgePool.methods.settleRelay(depositData).send({ from: rando });
       await assertEventEmitted(settleTxn, bridgePool, "RelaySettled", (ev) => {
-        return (
-          ev.depositHash === depositHash &&
-          ev.priceRequestAncillaryDataHash === relayAncillaryDataHash &&
-          ev.caller === rando
-        );
+        return ev.depositHash === depositHash && ev.relayHash === relayHash && ev.caller === rando;
       });
 
       // Dispute was unsuccessful and proposer's original price of "1" was correct. Slow relayer should receive full
@@ -816,12 +811,13 @@ describe("BridgePool", () => {
 
       // Settle relay and check event logs.
       const settleTxn = await bridgePool.methods.settleRelay(depositData).send({ from: rando });
+      const relayHash =
+        "0x" +
+        web3.utils
+          .hexToUtf8(await bridgePool.methods.getRelayAncillaryData(depositData, relayData).call())
+          .split(":")[1];
       await assertEventEmitted(settleTxn, bridgePool, "RelaySettled", (ev) => {
-        return (
-          ev.depositHash === depositHash &&
-          ev.priceRequestAncillaryDataHash === relayAncillaryDataHash &&
-          ev.caller === rando
-        );
+        return ev.depositHash === depositHash && ev.relayHash === relayHash && ev.caller === rando;
       });
 
       // Cannot re-settle.
@@ -1372,7 +1368,6 @@ describe("BridgePool", () => {
 
     it("Rate updates as expected with multiple relays and instant relay", async () => {
       // Before any relays (nothing in flight and none finalized) the rate should be 0 (no utilization).
-
       assert.equal((await bridgePool.methods.liquidityUtilizationCurrent().call()).toString(), toWei("0"));
 
       // Next, relay the deposit and check the utilization updates.

@@ -82,5 +82,10 @@ const versionMap: VersionMap = {
     contractType: "Perpetual",
     contractVersion: "2.0.1",
   },
+  "0x1f209d74f9e4362680ce83d1837c07f9c6a385a3a94ef3b554d1f09947dc9f78": {
+    // contracts-node 0.1.0 Perpetual.
+    contractType: "Perpetual",
+    contractVersion: "2.0.1",
+  },
   ...latestVersionMap, // latest versions built from hard hat. This makes this utility work out of the box with "latest".
 };

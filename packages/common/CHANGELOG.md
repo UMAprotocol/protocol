@@ -3,6 +3,23 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.9.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.8.0...@uma/common@2.9.0) (2021-10-01)
+
+### Features
+
+- **insured-bridge:** War games 1 ([#3399](https://github.com/UMAprotocol/protocol/issues/3399)) ([8773494](https://github.com/UMAprotocol/protocol/commit/8773494d29cf0428ca6d65f0272b135ba3dafcbf))
+
+# [2.8.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.7.0...@uma/common@2.8.0) (2021-10-01)
+
+### Bug Fixes
+
+- **price-identifier-utils:** Blacklist stablespread identifier ([#3416](https://github.com/UMAprotocol/protocol/issues/3416)) ([4031ca5](https://github.com/UMAprotocol/protocol/commit/4031ca5153bd91b0003ad526ddd83621ce48c455))
+- **price-identifier-utils:** Blacklist uPunks identifiers from OO ([#3411](https://github.com/UMAprotocol/protocol/issues/3411)) ([f99813b](https://github.com/UMAprotocol/protocol/commit/f99813b4b1a76d46ff1eecd7f0c1d5352bff07a2))
+
+### Features
+
+- **core:** move all active scripts out of core and deprecate rest ([#3397](https://github.com/UMAprotocol/protocol/issues/3397)) ([f96b8c9](https://github.com/UMAprotocol/protocol/commit/f96b8c90b01002594bf44ac44f03f6d021bee460))
+
 # [2.7.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.6.0...@uma/common@2.7.0) (2021-09-28)
 
 ### Bug Fixes

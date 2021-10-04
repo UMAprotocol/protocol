@@ -686,6 +686,10 @@ describe("OptimisticOracle: proposer.js", function () {
     // Update the bot to read the new OO state.
     await proposer.update();
 
+    // No allowances should be set for blacklisted identifier
+    assert.equal(lastSpyLogLevel(spy), "debug");
+    assert.isTrue(spyLogIncludes(spy, -1, "Identifier is blacklisted"));
+
     // Client should still see the unproposed price request:
     objectsInArrayInclude(client.getUnproposedPriceRequests(), [
       {

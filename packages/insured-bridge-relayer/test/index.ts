@@ -3,12 +3,20 @@ import winston from "winston";
 import sinon from "sinon";
 import hre from "hardhat";
 const { assert } = require("chai");
+const Web3 = require("web3");
+const ganache = require("ganache-core");
 
 import { interfaceName, TokenRolesEnum, HRE } from "@uma/common";
 
 const { web3, getContract } = hre as HRE;
 const { toWei, toBN, utf8ToHex } = web3.utils;
 const toBNWei = (number: string | number) => toBN(toWei(number.toString()).toString());
+
+const startGanacheServer = (chainId: number, port: number) => {
+  const node = ganache.server({ _chainIdRpc: chainId });
+  node.listen(port);
+  return new Web3("http://127.0.0.1:" + port);
+};
 
 // Helper contracts
 const chainId = 10;
@@ -151,6 +159,8 @@ describe("index.js", function () {
       level: "debug",
       transports: [new SpyTransport({ level: "debug" }, { spy: spy })],
     });
+
+    await startGanacheServer(69, 7777);
   });
 
   it("Runs with no errors and correctly sets approvals for whitelisted L1 tokens", async function () {
@@ -164,6 +174,8 @@ describe("index.js", function () {
         R2: toBNWei("1.00"),
       },
     });
+    process.env.CHAIN_IDS = JSON.stringify([69]);
+    process.env.NODE_URL_69 = "http://localhost:7777";
 
     // Must not throw.
     await run(spyLogger, web3);
