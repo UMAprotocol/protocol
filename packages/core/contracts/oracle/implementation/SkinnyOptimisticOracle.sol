@@ -176,9 +176,7 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
         request.bond = _bond != 0 ? _bond : finalFee;
         request.customLiveness = _customLiveness;
 
-        if (_reward > 0) {
-            _currency.safeTransferFrom(msg.sender, address(this), _reward);
-        }
+        if (_reward > 0) _currency.safeTransferFrom(msg.sender, address(this), _reward);
 
         _storeRequestHash(requestId, request);
         emit RequestPrice(msg.sender, _identifier, _timestamp, _ancillaryData, request);
