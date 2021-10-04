@@ -368,8 +368,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
                 _getAmountFromPct(relay.realizedLpFeePct + _depositData.slowRelayFeePct, _depositData.amount);
 
         // Refund the instant relayer iff the instant relay params match the approved relay.
-        bytes32 instantRelayHash = keccak256(abi.encode(depositHash, relay.realizedLpFeePct));
-        address instantRelayer = instantRelays[instantRelayHash];
+        address instantRelayer = instantRelays[keccak256(abi.encode(depositHash, relay.realizedLpFeePct))];
 
         l1Token.safeTransfer(
             instantRelayer != address(0) ? instantRelayer : _depositData.l1Recipient,
