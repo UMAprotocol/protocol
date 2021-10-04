@@ -175,13 +175,13 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
         request.finalFee = finalFee;
         request.bond = _bond != 0 ? _bond : finalFee;
         request.customLiveness = _customLiveness;
+        _storeRequestHash(requestId, request);
 
         if (_reward > 0) _currency.safeTransferFrom(msg.sender, address(this), _reward);
 
-        _storeRequestHash(requestId, request);
         emit RequestPrice(msg.sender, _identifier, _timestamp, _ancillaryData, request);
 
-        return request.bond.add(request.finalFee);
+        return request.bond.add(finalFee);
     }
 
     /**
@@ -233,13 +233,13 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
                 bond: _request.bond,
                 customLiveness: _request.customLiveness
             });
+        _storeRequestHash(requestId, proposedRequest);
 
-        totalBond = proposedRequest.bond.add(proposedRequest.finalFee);
+        totalBond = _request.bond.add(_request.finalFee);
         if (totalBond > 0) {
-            proposedRequest.currency.safeTransferFrom(msg.sender, address(this), totalBond);
+            _request.currency.safeTransferFrom(msg.sender, address(this), totalBond);
         }
 
-        _storeRequestHash(requestId, proposedRequest);
         emit ProposePrice(_requester, _identifier, _timestamp, _ancillaryData, proposedRequest);
 
         // Callback.
@@ -326,6 +326,7 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
         request.proposer = _proposer;
         request.proposedPrice = _proposedPrice;
         request.expirationTime = getCurrentTime().add(_customLiveness != 0 ? _customLiveness : defaultLiveness);
+        _storeRequestHash(requestId, request);
 
         // Pull reward from requester, who is the caller.
         if (_reward > 0) _currency.safeTransferFrom(msg.sender, address(this), _reward);
@@ -333,7 +334,6 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
         totalBond = request.bond.add(request.finalFee);
         if (totalBond > 0) _currency.safeTransferFrom(msg.sender, address(this), totalBond);
 
-        _storeRequestHash(requestId, request);
         emit RequestPrice(msg.sender, _identifier, _timestamp, _ancillaryData, request);
         emit ProposePrice(msg.sender, _identifier, _timestamp, _ancillaryData, request);
 
@@ -389,11 +389,10 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
                 bond: _request.bond,
                 customLiveness: _request.customLiveness
             });
+        _storeRequestHash(requestId, disputedRequest);
 
-        uint256 finalFee = disputedRequest.finalFee;
-        uint256 bond = disputedRequest.bond;
-        totalBond = bond.add(finalFee);
-        if (totalBond > 0) disputedRequest.currency.safeTransferFrom(msg.sender, address(this), totalBond);
+        totalBond = _request.bond.add(_request.finalFee);
+        if (totalBond > 0) _request.currency.safeTransferFrom(msg.sender, address(this), totalBond);
 
         StoreInterface store = _getStore();
 
@@ -405,17 +404,16 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
             uint256 burnedBond = _computeBurnedBond(disputedRequest);
 
             // The total fee is the burned bond and the final fee added together.
-            uint256 totalFee = finalFee.add(burnedBond);
+            uint256 totalFee = _request.finalFee.add(burnedBond);
 
             if (totalFee > 0) {
-                disputedRequest.currency.safeIncreaseAllowance(address(store), totalFee);
-                _getStore().payOracleFeesErc20(address(disputedRequest.currency), FixedPoint.Unsigned(totalFee));
+                _request.currency.safeIncreaseAllowance(address(store), totalFee);
+                _getStore().payOracleFeesErc20(address(_request.currency), FixedPoint.Unsigned(totalFee));
             }
         }
 
         _getOracle().requestPrice(_identifier, _timestamp, _stampAncillaryData(_ancillaryData, _requester));
 
-        _storeRequestHash(requestId, disputedRequest);
         emit DisputePrice(_requester, _identifier, _timestamp, _ancillaryData, disputedRequest);
 
         // Callback.
@@ -583,10 +581,10 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
             _getState(_requester, _identifier, _timestamp, _ancillaryData, _request);
         if (state == OptimisticOracleInterface.State.Expired) {
             // In the expiry case, just pay back the proposer's bond and final fee along with the reward.
-            resolvedPrice = settledRequest.proposedPrice;
+            resolvedPrice = _request.proposedPrice;
             settledRequest.resolvedPrice = resolvedPrice;
-            payout = settledRequest.bond.add(settledRequest.finalFee).add(settledRequest.reward);
-            settledRequest.currency.safeTransfer(settledRequest.proposer, payout);
+            payout = _request.bond.add(_request.finalFee).add(_request.reward);
+            _request.currency.safeTransfer(_request.proposer, payout);
         } else if (state == OptimisticOracleInterface.State.Resolved) {
             // In the Resolved case, pay either the disputer or the proposer the entire payout (+ bond and reward).
             resolvedPrice = _getOracle().getPrice(
@@ -595,22 +593,19 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
                 _stampAncillaryData(_ancillaryData, _requester)
             );
             settledRequest.resolvedPrice = resolvedPrice;
-            bool disputeSuccess = settledRequest.resolvedPrice != settledRequest.proposedPrice;
-            uint256 bond = settledRequest.bond;
-
-            // Unburned portion of the loser's bond = proposal bond (not including final fee) - burned bond.
-            uint256 unburnedBond = bond.sub(_computeBurnedBond(settledRequest));
+            bool disputeSuccess = settledRequest.resolvedPrice != _request.proposedPrice;
 
             // Winner gets:
             // - Their bond back.
-            // - The unburned portion of the loser's bond.
+            // - The unburned portion of the loser's bond: proposal bond (not including final fee) - burned bond.
             // - Their final fee back.
             // - The request reward (if not already refunded -- if refunded, it will be set to 0).
-            payout = bond.add(unburnedBond).add(settledRequest.finalFee).add(settledRequest.reward);
-            settledRequest.currency.safeTransfer(
-                disputeSuccess ? settledRequest.disputer : settledRequest.proposer,
-                payout
-            );
+            payout = _request
+                .bond
+                .add(_request.bond.sub(_computeBurnedBond(settledRequest)))
+                .add(_request.finalFee)
+                .add(_request.reward);
+            _request.currency.safeTransfer(disputeSuccess ? _request.disputer : _request.proposer, payout);
         } else {
             revert("_settle: not settleable");
         }
@@ -636,14 +631,14 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
     }
 
     function _validateRequestHash(bytes32 _requestId, Request memory _request) private view {
-        bytes32 requestHash = requests[_requestId];
-        bytes32 requestHashToValidate = _getRequestHash(_request);
-        require(requestHash == requestHashToValidate, "Hashed request params do not match existing request hash");
+        require(
+            requests[_requestId] == _getRequestHash(_request),
+            "Hashed request params do not match existing request hash"
+        );
     }
 
     function _storeRequestHash(bytes32 _requestId, Request memory _request) internal {
-        bytes32 requestHash = _getRequestHash(_request);
-        requests[_requestId] = requestHash;
+        requests[_requestId] = _getRequestHash(_request);
     }
 
     function _getState(
