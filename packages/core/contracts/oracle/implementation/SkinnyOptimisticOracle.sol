@@ -658,7 +658,9 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
 
         if (_request.settled) return OptimisticOracleInterface.State.Settled;
 
-        if (_request.disputer == address(0)) return _request.expirationTime <= getCurrentTime()
+        if (_request.disputer == address(0))
+            return
+                _request.expirationTime <= getCurrentTime()
                     ? OptimisticOracleInterface.State.Expired
                     : OptimisticOracleInterface.State.Proposed;
 
