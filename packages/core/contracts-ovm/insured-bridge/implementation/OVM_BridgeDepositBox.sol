@@ -52,22 +52,19 @@ contract OVM_BridgeDepositBox is BridgeDepositBox, OVM_CrossDomainEnabled {
      * @dev This should be set to the address of the L1 contract that ultimately relays a cross-domain message, which
      * is expected to be the OptimismMessenger.
      * @dev Only callable by the existing admin via the Optimism cross domain messenger.
-     * @param newCrossDomainAdmin address of the new L1 admin contract.
+     * @param _crossDomainAdmin address of the new L1 admin contract.
      */
-    function setCrossDomainAdmin(address newCrossDomainAdmin) public onlyFromCrossDomainAccount(crossDomainAdmin) {
-        _setCrossDomainAdmin(newCrossDomainAdmin);
+    function setCrossDomainAdmin(address _crossDomainAdmin) public onlyFromCrossDomainAccount(crossDomainAdmin) {
+        _setCrossDomainAdmin(_crossDomainAdmin);
     }
 
     /**
      * @notice Changes the minimum time in seconds that must elapse between withdraws from L2->L1.
      * @dev Only callable by the existing crossDomainAdmin via the optimism cross domain messenger.
-     * @param newMinimumBridgingDelay the new minimum delay.
+     * @param _minimumBridgingDelay the new minimum delay.
      */
-    function setMinimumBridgingDelay(uint64 newMinimumBridgingDelay)
-        public
-        onlyFromCrossDomainAccount(crossDomainAdmin)
-    {
-        _setMinimumBridgingDelay(newMinimumBridgingDelay);
+    function setMinimumBridgingDelay(uint64 _minimumBridgingDelay) public onlyFromCrossDomainAccount(crossDomainAdmin) {
+        _setMinimumBridgingDelay(_minimumBridgingDelay);
     }
 
     /**
@@ -88,14 +85,14 @@ contract OVM_BridgeDepositBox is BridgeDepositBox, OVM_CrossDomainEnabled {
     /**
      * @notice L1 owner can enable/disable deposits for a whitelisted tokens.
      * @dev Only callable by the existing crossDomainAdmin via the optimism cross domain messenger.
-     * @param l2Token address of L2 token to enable/disable deposits for.
-     * @param depositsEnabled bool to set if the deposit box should accept/reject deposits.
+     * @param _l2Token address of L2 token to enable/disable deposits for.
+     * @param _depositsEnabled bool to set if the deposit box should accept/reject deposits.
      */
-    function setEnableDeposits(address l2Token, bool depositsEnabled)
+    function setEnableDeposits(address _l2Token, bool _depositsEnabled)
         public
         onlyFromCrossDomainAccount(crossDomainAdmin)
     {
-        _setEnableDeposits(l2Token, depositsEnabled);
+        _setEnableDeposits(_l2Token, _depositsEnabled);
     }
 
     /**************************************
@@ -133,9 +130,9 @@ contract OVM_BridgeDepositBox is BridgeDepositBox, OVM_CrossDomainEnabled {
      *         INTERNAL FUNCTIONS         *
      **************************************/
 
-    function _setCrossDomainAdmin(address newCrossDomainAdmin) internal {
-        require(newCrossDomainAdmin != address(0), "Bad bridge router address");
-        crossDomainAdmin = newCrossDomainAdmin;
+    function _setCrossDomainAdmin(address _crossDomainAdmin) internal {
+        require(_crossDomainAdmin != address(0), "Bad bridge router address");
+        crossDomainAdmin = _crossDomainAdmin;
         emit SetXDomainAdmin(crossDomainAdmin);
     }
 }
