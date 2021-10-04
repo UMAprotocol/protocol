@@ -207,7 +207,7 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
         address _proposer,
         int256 _proposedPrice
     ) public override nonReentrant() returns (uint256 totalBond) {
-        require(_proposer != address(0), "proposer address must be non 0");
+        require(_proposer != address(0), "Proposer address must be non 0");
         require(
             _getState(_requester, _identifier, _timestamp, _ancillaryData, _request) ==
                 OptimisticOracleInterface.State.Requested,
