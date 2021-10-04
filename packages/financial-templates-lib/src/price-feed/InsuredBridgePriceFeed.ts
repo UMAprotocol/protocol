@@ -63,7 +63,14 @@ export class InsuredBridgePriceFeed extends PriceFeedInterface {
       return relay.relayHash === relayHash;
     });
 
-    if (!relay) return toBNWei(isRelayValid.No);
+    if (!relay) {
+      this.logger.debug({
+        at: "InsuredBridgePriceFeed",
+        message: "No relay event found matching provided ancillary data",
+        parsedAncillaryData,
+      });
+      return toBNWei(isRelayValid.No);
+    }
 
     const deposit = this.deposits.find((deposit) => {
       return deposit.depositHash === relay.depositHash;
