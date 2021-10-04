@@ -1043,7 +1043,7 @@ describe("BridgePool", () => {
   });
   describe("Virtual balance accounting", () => {
     beforeEach(async function () {
-      // For the next two tests, add liquidity, relay and finalize the relay as the initial state.
+      // For the next few tests, add liquidity, relay and finalize the relay as the initial state.
 
       // Approve funds and add to liquidity.
       await l1Token.methods.mint(liquidityProvider, initialPoolLiquidity).send({ from: owner });
@@ -1312,8 +1312,6 @@ describe("BridgePool", () => {
   });
   describe("Liquidity utilization rato", () => {
     beforeEach(async function () {
-      // For the next two tests, add liquidity, relay and finalize the relay as the initial state.
-
       // Approve funds and add to liquidity.
       await l1Token.methods.mint(liquidityProvider, initialPoolLiquidity).send({ from: owner });
       await l1Token.methods.approve(bridgePool.options.address, MAX_UINT_VAL).send({ from: liquidityProvider });
@@ -1424,6 +1422,102 @@ describe("BridgePool", () => {
         (await bridgePool.methods.liquidityUtilizationCurrent().call()).toString(),
         toWei("0.148514851485148514")
       );
+    });
+  });
+  describe("Canonical bridge finalizing before insured bridge settlement edge cases", () => {
+    beforeEach(async function () {
+      await l1Token.methods.mint(liquidityProvider, initialPoolLiquidity).send({ from: owner });
+      await l1Token.methods.approve(bridgePool.options.address, MAX_UINT_VAL).send({ from: liquidityProvider });
+      await bridgePool.methods.addLiquidity(initialPoolLiquidity).send({ from: liquidityProvider });
+      await l1Token.methods.mint(relayer, totalRelayBond.muln(100)).send({ from: owner });
+      await l1Token.methods.approve(bridgePool.options.address, totalRelayBond.muln(100)).send({ from: relayer });
+    });
+    it("Exchange rate correctly handles the canonical bridge finalizing before insured relayer begins", async () => {
+      // Consider the edge case where a user deposits on L2 and no actions happen on L1. This might be due to their
+      // deposit fees being under priced (not picked up by a relayer). After a week their funds arrive on L1 via the
+      // canonical bridge. At this point, the transfer is relayed. The exchange rate should correctly deal with this
+      // without introducing a step in the rate at any point.
+
+      // Advance time by 1 week past the end of the of the L2->L1 liveness period.
+      await advanceTime(604800);
+      assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1"));
+
+      // Now, simulate the finalization of of the bridge action by the canonical bridge by minting tokens to the pool.
+      await l1Token.methods.mint(bridgePool.options.address, toWei("100")).send({ from: owner });
+
+      // The exchange rate should not have updated.
+      assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1"));
+
+      // Only now that the bridging action has concluded through the canonical bridge does a relayer pick up the
+      // transfer. This could also have been the depositor self relaying.
+      const requestTimestamp = (await bridgePool.methods.getCurrentTime().call()).toString();
+      const expectedExpirationTimestamp = (Number(requestTimestamp) + defaultLiveness).toString();
+      await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: relayer });
+
+      // Expire and settle proposal on the OptimisticOracle.
+      await timer.methods.setCurrentTime(expectedExpirationTimestamp).send({ from: owner });
+      await bridgePool.methods.settleRelay(depositData).send({ from: rando });
+      assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1"));
+
+      // Going forward, the rate should increment as normal, starting from the settlement of the relay. EG advancing time
+      // by 2 days(172800s) which should increase the rate accordingly (910+90+10-(10-0.0000015*172800*10))/1000=1.002592.
+      await advanceTime(172800);
+      assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1.002592"));
+    });
+    it("Exchange rate correctly handles the canonical bridge finalizing before insured relayer finalizes(slow)", async () => {
+      // Similar to the previous edge case test, consider a case where a user deposit on L2 and the L1 action is only
+      // half completed (not finalized). This test validates this in the slow case.
+      await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: relayer });
+
+      // The exchange rate should still be 0 as no funds are actually "used" until the relay concludes.
+      assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1"));
+
+      // Advance time by 1 week past the end of the of the L2->L1 liveness period.
+      await advanceTime(604800);
+      assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1"));
+
+      // Now, simulate the finalization of of the bridge action by the canonical bridge by minting tokens to the pool.
+      await l1Token.methods.mint(bridgePool.options.address, toWei("100")).send({ from: owner });
+
+      // The exchange rate should not have updated.
+      assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1"));
+
+      // Only now that the bridging action has concluded do we finalize the relay action.
+      await bridgePool.methods.settleRelay(depositData).send({ from: rando });
+      assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1"));
+
+      // Going forward, the rate should increment as normal, starting from the settlement of the relay. EG advancing time
+      // by 2 days(172800s) which should increase the rate accordingly (910+90+10-(10-0.0000015*172800*10))/1000=1.002592.
+      await advanceTime(172800);
+      assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1.002592"));
+    });
+    it("Exchange rate correctly handles the canonical bridge finalizing before insured relayer finalizes(instant)", async () => {
+      // Finally, consider the same case as before except speed up the relay. The behaviour should be the same as the
+      // previous test (no rate change until the settlement of the relay and ignore tokens sent "early").
+      await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: relayer });
+      await bridgePool.methods.speedUpRelay(depositData).call({ from: relayer });
+
+      // The exchange rate should still be 0 as no funds are actually "used" until the relay concludes.
+      assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1"));
+
+      // Advance time by 1 week past the end of the of the L2->L1 liveness period.
+      await advanceTime(604800);
+      assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1"));
+
+      // Now, simulate the finalization of of the bridge action by the canonical bridge by minting tokens to the pool.
+      await l1Token.methods.mint(bridgePool.options.address, toWei("100")).send({ from: owner });
+
+      // The exchange rate should not have updated.
+      assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1"));
+
+      // Only now that the bridging action has concluded do we finalize the relay action.
+      await bridgePool.methods.settleRelay(depositData).send({ from: rando });
+      assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1"));
+
+      // Going forward, the rate should increment as normal, starting from the settlement of the relay. EG advancing time
+      // by 2 days(172800s) which should increase the rate accordingly (910+90+10-(10-0.0000015*172800*10))/1000=1.002592.
+      await advanceTime(172800);
+      assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1.002592"));
     });
   });
 });

@@ -418,7 +418,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         updateAccumulatedLpFees(); // Accumulate all allocated fees from the last time this method was called.
         sync(); // Fetch any balance changes due to token bridging finalization and factor them in.
 
-        // ExchangeRate := (liquidReserves+utilizedReserves-undistributedLpFees)/lpTokenSupply
+        // ExchangeRate := (liquidReserves + utilizedReserves - undistributedLpFees) / lpTokenSupply
         // Note to accommodate negative utilizedReserves without using FixedPoint.Signed we need to do a bit of
         // branching logic. This is a gas optimization so we don't need to import this extra library logic.
         FixedPoint.Unsigned memory numerator =
