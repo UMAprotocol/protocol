@@ -331,9 +331,7 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
         if (_reward > 0) _currency.safeTransferFrom(msg.sender, address(this), _reward);
         // Pull proposal bond from caller.
         totalBond = request.bond.add(request.finalFee);
-        if (totalBond > 0) {
-            _currency.safeTransferFrom(msg.sender, address(this), totalBond);
-        }
+        if (totalBond > 0) _currency.safeTransferFrom(msg.sender, address(this), totalBond);
 
         _storeRequestHash(requestId, request);
         emit RequestPrice(msg.sender, _identifier, _timestamp, _ancillaryData, request);
