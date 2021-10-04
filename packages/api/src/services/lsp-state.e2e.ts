@@ -3,7 +3,7 @@ import * as uma from "@uma/sdk";
 import assert from "assert";
 import { ethers } from "ethers";
 import Service from "./lsp-state";
-import type { AppState } from "../";
+import type { AppState } from "../types";
 import { Multicall2 } from "@uma/sdk";
 import { lsps } from "../tables";
 // this fixes usage of "this" as any

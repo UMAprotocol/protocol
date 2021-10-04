@@ -1,7 +1,7 @@
 import bluebird from "bluebird";
 import assert from "assert";
 import lodash from "lodash";
-import { AppState, BaseConfig } from "..";
+import { AppState, BaseConfig } from "../types";
 import { parseUnits, nowS, Profile } from "../libs/utils";
 
 type Config = BaseConfig;

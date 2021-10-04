@@ -1,5 +1,5 @@
 import assert from "assert";
-import { Json, Actions, AppState, CurrencySymbol, AllContractStates } from "../..";
+import { Json, Actions, AppState, CurrencySymbol, AllContractStates } from "../../types";
 import bluebird from "bluebird";
 import { BigNumber } from "ethers";
 import { nowS } from "../../libs/utils";

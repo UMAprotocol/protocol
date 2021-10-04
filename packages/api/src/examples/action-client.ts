@@ -1,5 +1,5 @@
 import fetch from "isomorphic-fetch";
-import type { Json } from "..";
+import type { Json } from "../types";
 import assert from "assert";
 import join from "url-join";
 
