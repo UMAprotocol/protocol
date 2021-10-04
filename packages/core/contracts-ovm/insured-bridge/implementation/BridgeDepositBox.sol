@@ -80,8 +80,8 @@ abstract contract BridgeDepositBox is Legacy_Testable, Legacy_Lockable {
      *               MODIFIERS              *
      ****************************************/
 
-    modifier onlyIfDepositsEnabled(address l2Token) {
-        require(whitelistedTokens[l2Token].depositsEnabled, "Contract is disabled");
+    modifier onlyIfDepositsEnabled(address _l2Token) {
+        require(whitelistedTokens[_l2Token].depositsEnabled, "Contract is disabled");
         _;
     }
 
@@ -106,10 +106,10 @@ abstract contract BridgeDepositBox is Legacy_Testable, Legacy_Lockable {
 
     /**
      * @notice Changes the minimum time in seconds that must elapse between withdraws from L2->L1.
-     * @param newMinimumBridgingDelay the new minimum delay.
+     * @param _minimumBridgingDelay the new minimum delay.
      */
-    function _setMinimumBridgingDelay(uint64 newMinimumBridgingDelay) internal {
-        minimumBridgingDelay = newMinimumBridgingDelay;
+    function _setMinimumBridgingDelay(uint64 _minimumBridgingDelay) internal {
+        minimumBridgingDelay = _minimumBridgingDelay;
         emit SetMinimumBridgingDelay(minimumBridgingDelay);
     }
 
@@ -136,12 +136,12 @@ abstract contract BridgeDepositBox is Legacy_Testable, Legacy_Lockable {
 
     /**
      * @notice L1 owner can enable/disable deposits for a whitelisted tokens.
-     * @param l2Token address of L2 token to enable/disable deposits for.
-     * @param depositsEnabled bool to set if the deposit box should accept/reject deposits.
+     * @param _l2Token address of L2 token to enable/disable deposits for.
+     * @param _depositsEnabled bool to set if the deposit box should accept/reject deposits.
      */
-    function _setEnableDeposits(address l2Token, bool depositsEnabled) internal {
-        whitelistedTokens[l2Token].depositsEnabled = depositsEnabled;
-        emit DepositsEnabled(l2Token, depositsEnabled);
+    function _setEnableDeposits(address _l2Token, bool _depositsEnabled) internal {
+        whitelistedTokens[_l2Token].depositsEnabled = _depositsEnabled;
+        emit DepositsEnabled(_l2Token, _depositsEnabled);
     }
 
     /**************************************
