@@ -56,7 +56,7 @@ abstract contract SkinnyOptimisticOracleInterface {
      */
     function requestPrice(
         bytes32 _identifier,
-        uint256 _timestamp,
+        uint32 _timestamp,
         bytes memory _ancillaryData,
         IERC20 _currency,
         uint256 _reward,
@@ -81,7 +81,7 @@ abstract contract SkinnyOptimisticOracleInterface {
     function proposePriceFor(
         address _requester,
         bytes32 _identifier,
-        uint256 _timestamp,
+        uint32 _timestamp,
         bytes memory _ancillaryData,
         Request memory _request,
         address _proposer,
@@ -103,7 +103,7 @@ abstract contract SkinnyOptimisticOracleInterface {
     function proposePrice(
         address _requester,
         bytes32 _identifier,
-        uint256 _timestamp,
+        uint32 _timestamp,
         bytes memory _ancillaryData,
         Request memory _request,
         int256 _proposedPrice
@@ -130,7 +130,7 @@ abstract contract SkinnyOptimisticOracleInterface {
      */
     function requestAndProposePriceFor(
         bytes32 _identifier,
-        uint256 _timestamp,
+        uint32 _timestamp,
         bytes memory _ancillaryData,
         IERC20 _currency,
         uint256 _reward,
@@ -155,7 +155,7 @@ abstract contract SkinnyOptimisticOracleInterface {
      */
     function disputePriceFor(
         bytes32 _identifier,
-        uint256 _timestamp,
+        uint32 _timestamp,
         bytes memory _ancillaryData,
         Request memory _request,
         address _disputer,
@@ -176,7 +176,7 @@ abstract contract SkinnyOptimisticOracleInterface {
     function disputePrice(
         address _requester,
         bytes32 _identifier,
-        uint256 _timestamp,
+        uint32 _timestamp,
         bytes memory _ancillaryData,
         Request memory _request
     ) external virtual returns (uint256 totalBond);
@@ -196,7 +196,7 @@ abstract contract SkinnyOptimisticOracleInterface {
     function settle(
         address _requester,
         bytes32 _identifier,
-        uint256 _timestamp,
+        uint32 _timestamp,
         bytes memory _ancillaryData,
         Request memory _request
     ) external virtual returns (uint256 payout, int256 resolvedPrice);
@@ -213,7 +213,7 @@ abstract contract SkinnyOptimisticOracleInterface {
     function getState(
         address _requester,
         bytes32 _identifier,
-        uint256 _timestamp,
+        uint32 _timestamp,
         bytes memory _ancillaryData,
         Request memory _request
     ) external virtual returns (OptimisticOracleInterface.State);
@@ -232,7 +232,7 @@ abstract contract SkinnyOptimisticOracleInterface {
     function hasPrice(
         address _requester,
         bytes32 _identifier,
-        uint256 _timestamp,
+        uint32 _timestamp,
         bytes memory _ancillaryData,
         Request memory _request
     ) public virtual returns (bool);

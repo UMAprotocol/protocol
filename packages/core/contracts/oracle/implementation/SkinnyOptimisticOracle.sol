@@ -37,7 +37,7 @@ interface OptimisticRequester {
      */
     function priceProposed(
         bytes32 _identifier,
-        uint256 _timestamp,
+        uint32 _timestamp,
         bytes memory _ancillaryData,
         SkinnyOptimisticOracleInterface.Request memory _request
     ) external;
@@ -51,7 +51,7 @@ interface OptimisticRequester {
      */
     function priceDisputed(
         bytes32 _identifier,
-        uint256 _timestamp,
+        uint32 _timestamp,
         bytes memory _ancillaryData,
         SkinnyOptimisticOracleInterface.Request memory _request
     ) external;
@@ -65,7 +65,7 @@ interface OptimisticRequester {
      */
     function priceSettled(
         bytes32 _identifier,
-        uint256 _timestamp,
+        uint32 _timestamp,
         bytes memory _ancillaryData,
         SkinnyOptimisticOracleInterface.Request memory _request
     ) external;
@@ -83,28 +83,28 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
     event RequestPrice(
         address indexed requester,
         bytes32 indexed identifier,
-        uint256 timestamp,
+        uint32 timestamp,
         bytes ancillaryData,
         Request request
     );
     event ProposePrice(
         address indexed requester,
         bytes32 indexed identifier,
-        uint256 timestamp,
+        uint32 timestamp,
         bytes ancillaryData,
         Request request
     );
     event DisputePrice(
         address indexed requester,
         bytes32 indexed identifier,
-        uint256 timestamp,
+        uint32 timestamp,
         bytes ancillaryData,
         Request request
     );
     event Settle(
         address indexed requester,
         bytes32 indexed identifier,
-        uint256 timestamp,
+        uint32 timestamp,
         bytes ancillaryData,
         Request request
     );
@@ -150,7 +150,7 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
      */
     function requestPrice(
         bytes32 _identifier,
-        uint256 _timestamp,
+        uint32 _timestamp,
         bytes memory _ancillaryData,
         IERC20 _currency,
         uint256 _reward,
@@ -201,7 +201,7 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
     function proposePriceFor(
         address _requester,
         bytes32 _identifier,
-        uint256 _timestamp,
+        uint32 _timestamp,
         bytes memory _ancillaryData,
         Request memory _request,
         address _proposer,
@@ -264,7 +264,7 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
     function proposePrice(
         address _requester,
         bytes32 _identifier,
-        uint256 _timestamp,
+        uint32 _timestamp,
         bytes memory _ancillaryData,
         Request memory _request,
         int256 _proposedPrice
@@ -295,7 +295,7 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
      */
     function requestAndProposePriceFor(
         bytes32 _identifier,
-        uint256 _timestamp,
+        uint32 _timestamp,
         bytes memory _ancillaryData,
         IERC20 _currency,
         uint256 _reward,
@@ -359,7 +359,7 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
      */
     function disputePriceFor(
         bytes32 _identifier,
-        uint256 _timestamp,
+        uint32 _timestamp,
         bytes memory _ancillaryData,
         Request memory _request,
         address _disputer,
@@ -437,7 +437,7 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
     function disputePrice(
         address _requester,
         bytes32 _identifier,
-        uint256 _timestamp,
+        uint32 _timestamp,
         bytes memory _ancillaryData,
         Request memory _request
     ) external override returns (uint256 totalBond) {
@@ -460,7 +460,7 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
     function settle(
         address _requester,
         bytes32 _identifier,
-        uint256 _timestamp,
+        uint32 _timestamp,
         bytes memory _ancillaryData,
         Request memory _request
     ) external override nonReentrant() returns (uint256 payout, int256 resolvedPrice) {
@@ -479,7 +479,7 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
     function getState(
         address _requester,
         bytes32 _identifier,
-        uint256 _timestamp,
+        uint32 _timestamp,
         bytes memory _ancillaryData,
         Request memory _request
     ) external override nonReentrant() returns (OptimisticOracleInterface.State) {
@@ -500,7 +500,7 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
     function hasPrice(
         address _requester,
         bytes32 _identifier,
-        uint256 _timestamp,
+        uint32 _timestamp,
         bytes memory _ancillaryData,
         Request memory _request
     ) public override nonReentrant() returns (bool) {
@@ -537,7 +537,7 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
     function _getId(
         address _requester,
         bytes32 _identifier,
-        uint256 _timestamp,
+        uint32 _timestamp,
         bytes memory _ancillaryData
     ) private pure returns (bytes32) {
         return keccak256(abi.encode(_requester, _identifier, _timestamp, _ancillaryData));
@@ -554,7 +554,7 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
     function _settle(
         address _requester,
         bytes32 _identifier,
-        uint256 _timestamp,
+        uint32 _timestamp,
         bytes memory _ancillaryData,
         Request memory _request
     ) private returns (uint256 payout, int256 resolvedPrice) {
@@ -644,7 +644,7 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
     function _getState(
         address _requester,
         bytes32 _identifier,
-        uint256 _timestamp,
+        uint32 _timestamp,
         bytes memory _ancillaryData,
         Request memory _request
     ) internal view returns (OptimisticOracleInterface.State) {
