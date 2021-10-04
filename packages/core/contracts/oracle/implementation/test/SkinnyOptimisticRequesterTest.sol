@@ -21,12 +21,9 @@ contract SkinnyOptimisticRequesterTest {
 
     // State variables to track incoming calls.
     bytes32 public identifier;
-    uint256 public timestamp;
+    uint32 public timestamp;
     bytes public ancillaryData;
     SkinnyOptimisticOracle.Request public request;
-
-    // Manually set an expiration timestamp to simulate expiry price requests
-    uint256 public expirationTimestamp;
 
     constructor(SkinnyOptimisticOracle _optimisticOracle, FinderInterface _finderAddress) {
         optimisticOracle = _optimisticOracle;
@@ -35,7 +32,7 @@ contract SkinnyOptimisticRequesterTest {
 
     function requestAndProposePriceFor(
         bytes32 _identifier,
-        uint256 _timestamp,
+        uint32 _timestamp,
         bytes memory _ancillaryData,
         IERC20 _currency,
         uint256 _reward,
@@ -66,7 +63,7 @@ contract SkinnyOptimisticRequesterTest {
 
     function priceProposed(
         bytes32 _identifier,
-        uint256 _timestamp,
+        uint32 _timestamp,
         bytes memory _ancillaryData,
         SkinnyOptimisticOracle.Request memory _request
     ) external {
@@ -79,7 +76,7 @@ contract SkinnyOptimisticRequesterTest {
 
     function priceDisputed(
         bytes32 _identifier,
-        uint256 _timestamp,
+        uint32 _timestamp,
         bytes memory _ancillaryData,
         SkinnyOptimisticOracle.Request memory _request
     ) external {
@@ -92,7 +89,7 @@ contract SkinnyOptimisticRequesterTest {
 
     function priceSettled(
         bytes32 _identifier,
-        uint256 _timestamp,
+        uint32 _timestamp,
         bytes memory _ancillaryData,
         SkinnyOptimisticOracle.Request memory _request
     ) external {

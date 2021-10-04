@@ -6,6 +6,17 @@ import "../interfaces/OptimisticOracleInterface.sol";
 
 /**
  * @title Interface for the gas-cost-reduced version of the OptimisticOracle.
+ * @notice Differences from normal OptimisticOracle:
+ * - refundOnDispute: flag is removed, by default there are no refunds on disputes.
+ * - customizing request parameters: In the OptimisticOracle, parameters like `bond` and `customLiveness` can be reset
+ *   after a request is already made via `requestPrice`. In the SkinnyOptimisticOracle, these parameters can only be
+ *   set in `requestPrice`, which has an expanded input set.
+ * - settleAndGetPrice: Replaced by `settle`, which can only be called once per settleable request. The resolved price
+ *   can be fetched via the `Settle` event or the return value of `settle`.
+ * - general changes to interface: Functions that interact with existing requests all require the parameters of the
+ *   request to modify to be passed as input. These parameters must match with the existing request parameters or the
+ *   function will revert. This change reflects the internal refactor to store hashed request parameters instead of the
+ *   full request struct.
  * @dev Interface used by financial contracts to interact with the Oracle. Voters will use a different interface.
  */
 abstract contract SkinnyOptimisticOracleInterface {
@@ -45,7 +56,7 @@ abstract contract SkinnyOptimisticOracleInterface {
      */
     function requestPrice(
         bytes32 _identifier,
-        uint256 _timestamp,
+        uint32 _timestamp,
         bytes memory _ancillaryData,
         IERC20 _currency,
         uint256 _reward,
@@ -70,7 +81,7 @@ abstract contract SkinnyOptimisticOracleInterface {
     function proposePriceFor(
         address _requester,
         bytes32 _identifier,
-        uint256 _timestamp,
+        uint32 _timestamp,
         bytes memory _ancillaryData,
         Request memory _request,
         address _proposer,
@@ -92,7 +103,7 @@ abstract contract SkinnyOptimisticOracleInterface {
     function proposePrice(
         address _requester,
         bytes32 _identifier,
-        uint256 _timestamp,
+        uint32 _timestamp,
         bytes memory _ancillaryData,
         Request memory _request,
         int256 _proposedPrice
@@ -119,7 +130,7 @@ abstract contract SkinnyOptimisticOracleInterface {
      */
     function requestAndProposePriceFor(
         bytes32 _identifier,
-        uint256 _timestamp,
+        uint32 _timestamp,
         bytes memory _ancillaryData,
         IERC20 _currency,
         uint256 _reward,
@@ -144,7 +155,7 @@ abstract contract SkinnyOptimisticOracleInterface {
      */
     function disputePriceFor(
         bytes32 _identifier,
-        uint256 _timestamp,
+        uint32 _timestamp,
         bytes memory _ancillaryData,
         Request memory _request,
         address _disputer,
@@ -165,7 +176,7 @@ abstract contract SkinnyOptimisticOracleInterface {
     function disputePrice(
         address _requester,
         bytes32 _identifier,
-        uint256 _timestamp,
+        uint32 _timestamp,
         bytes memory _ancillaryData,
         Request memory _request
     ) external virtual returns (uint256 totalBond);
@@ -185,7 +196,7 @@ abstract contract SkinnyOptimisticOracleInterface {
     function settle(
         address _requester,
         bytes32 _identifier,
-        uint256 _timestamp,
+        uint32 _timestamp,
         bytes memory _ancillaryData,
         Request memory _request
     ) external virtual returns (uint256 payout, int256 resolvedPrice);
@@ -202,7 +213,7 @@ abstract contract SkinnyOptimisticOracleInterface {
     function getState(
         address _requester,
         bytes32 _identifier,
-        uint256 _timestamp,
+        uint32 _timestamp,
         bytes memory _ancillaryData,
         Request memory _request
     ) external virtual returns (OptimisticOracleInterface.State);
@@ -221,7 +232,7 @@ abstract contract SkinnyOptimisticOracleInterface {
     function hasPrice(
         address _requester,
         bytes32 _identifier,
-        uint256 _timestamp,
+        uint32 _timestamp,
         bytes memory _ancillaryData,
         Request memory _request
     ) public virtual returns (bool);

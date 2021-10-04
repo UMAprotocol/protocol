@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.3.0](https://github.com/UMAprotocol/protocol/compare/@uma/insured-bridge-relayer@1.2.0...@uma/insured-bridge-relayer@1.3.0) (2021-10-01)
+
+### Features
+
+- **insured-bridge:** War games 1 ([#3399](https://github.com/UMAprotocol/protocol/issues/3399)) ([8773494](https://github.com/UMAprotocol/protocol/commit/8773494d29cf0428ca6d65f0272b135ba3dafcbf))
+
+# [1.2.0](https://github.com/UMAprotocol/protocol/compare/@uma/insured-bridge-relayer@1.1.0...@uma/insured-bridge-relayer@1.2.0) (2021-10-01)
+
+### Features
+
+- **insured-bridge:** Remove deposit contract from relay params ([#3401](https://github.com/UMAprotocol/protocol/issues/3401)) ([c607211](https://github.com/UMAprotocol/protocol/commit/c607211b0cf0653ad5bb128042515b27efa492a3))
+
 # [1.1.0](https://github.com/UMAprotocol/protocol/compare/@uma/insured-bridge-relayer@1.0.0...@uma/insured-bridge-relayer@1.1.0) (2021-09-28)
 
 ### Features

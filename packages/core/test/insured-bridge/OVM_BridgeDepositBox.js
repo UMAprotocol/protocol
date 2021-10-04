@@ -2,7 +2,7 @@
 // use of the OVM token bridge. Bridge Deposit logic is not directly tested. For this see the BridgeDepositBox.js tests.
 
 const hre = require("hardhat");
-const { web3 } = require("hardhat");
+const { web3 } = hre;
 const { predeploys } = require("@eth-optimism/contracts");
 const { didContractThrow } = require("@uma/common");
 const { getContract, assertEventEmitted } = hre;

@@ -5,7 +5,7 @@ import Web3 from "web3";
 const { toChecksumAddress } = Web3.utils;
 
 import { getWeb3 } from "@uma/common";
-import { getAbi } from "@uma/core";
+import { getAbi } from "@uma/contracts-node";
 
 import nodeFetch from "node-fetch";
 import assert from "assert";

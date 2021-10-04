@@ -7,8 +7,6 @@ const packageWkdir = path.dirname(require.resolve("@uma/core/package.json"));
 let typechain = undefined;
 if (process.env.TYPECHAIN === "web3") {
   typechain = { outDir: "contract-types/web3", target: "web3-v1", alwaysGenerateOverloads: false };
-} else if (process.env.TYPECHAIN === "truffle") {
-  typechain = { outDir: "contract-types/truffle", target: "truffle-v5", alwaysGenerateOverloads: false };
 } else if (process.env.TYPECHAIN === "ethers") {
   typechain = { outDir: "contract-types/ethers", target: "ethers-v5", alwaysGenerateOverloads: false };
 }

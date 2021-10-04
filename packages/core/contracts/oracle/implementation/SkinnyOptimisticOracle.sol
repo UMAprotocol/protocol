@@ -23,7 +23,7 @@ import "../../common/implementation/AddressWhitelist.sol";
 /**
  * @title Optimistic Requester.
  * @notice Optional interface that requesters can implement to receive callbacks.
- * @dev this contract does _not_ work with ERC777 collateral currencies or any others that call into the receiver on
+ * @dev This contract does _not_ work with ERC777 collateral currencies or any others that call into the receiver on
  * transfer(). Using an ERC777 token would allow a user to maliciously grief other participants (while also losing
  * money themselves).
  */
@@ -37,7 +37,7 @@ interface OptimisticRequester {
      */
     function priceProposed(
         bytes32 _identifier,
-        uint256 _timestamp,
+        uint32 _timestamp,
         bytes memory _ancillaryData,
         SkinnyOptimisticOracleInterface.Request memory _request
     ) external;
@@ -51,7 +51,7 @@ interface OptimisticRequester {
      */
     function priceDisputed(
         bytes32 _identifier,
-        uint256 _timestamp,
+        uint32 _timestamp,
         bytes memory _ancillaryData,
         SkinnyOptimisticOracleInterface.Request memory _request
     ) external;
@@ -65,7 +65,7 @@ interface OptimisticRequester {
      */
     function priceSettled(
         bytes32 _identifier,
-        uint256 _timestamp,
+        uint32 _timestamp,
         bytes memory _ancillaryData,
         SkinnyOptimisticOracleInterface.Request memory _request
     ) external;
@@ -83,28 +83,28 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
     event RequestPrice(
         address indexed requester,
         bytes32 indexed identifier,
-        uint256 timestamp,
+        uint32 timestamp,
         bytes ancillaryData,
         Request request
     );
     event ProposePrice(
         address indexed requester,
         bytes32 indexed identifier,
-        uint256 timestamp,
+        uint32 timestamp,
         bytes ancillaryData,
         Request request
     );
     event DisputePrice(
         address indexed requester,
         bytes32 indexed identifier,
-        uint256 timestamp,
+        uint32 timestamp,
         bytes ancillaryData,
         Request request
     );
     event Settle(
         address indexed requester,
         bytes32 indexed identifier,
-        uint256 timestamp,
+        uint32 timestamp,
         bytes ancillaryData,
         Request request
     );
@@ -150,7 +150,7 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
      */
     function requestPrice(
         bytes32 _identifier,
-        uint256 _timestamp,
+        uint32 _timestamp,
         bytes memory _ancillaryData,
         IERC20 _currency,
         uint256 _reward,
@@ -175,15 +175,13 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
         request.finalFee = finalFee;
         request.bond = _bond != 0 ? _bond : finalFee;
         request.customLiveness = _customLiveness;
-
-        if (_reward > 0) {
-            _currency.safeTransferFrom(msg.sender, address(this), _reward);
-        }
-
         _storeRequestHash(requestId, request);
+
+        if (_reward > 0) _currency.safeTransferFrom(msg.sender, address(this), _reward);
+
         emit RequestPrice(msg.sender, _identifier, _timestamp, _ancillaryData, request);
 
-        return request.bond.add(request.finalFee);
+        return request.bond.add(finalFee);
     }
 
     /**
@@ -203,17 +201,17 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
     function proposePriceFor(
         address _requester,
         bytes32 _identifier,
-        uint256 _timestamp,
+        uint32 _timestamp,
         bytes memory _ancillaryData,
         Request memory _request,
         address _proposer,
         int256 _proposedPrice
     ) public override nonReentrant() returns (uint256 totalBond) {
-        require(_proposer != address(0), "proposer address must be non 0");
+        require(_proposer != address(0), "Proposer address must be non 0");
         require(
             _getState(_requester, _identifier, _timestamp, _ancillaryData, _request) ==
                 OptimisticOracleInterface.State.Requested,
-            "proposePriceFor: Requested"
+            "Must be requested"
         );
         bytes32 requestId = _getId(_requester, _identifier, _timestamp, _ancillaryData);
         _validateRequestHash(requestId, _request);
@@ -235,13 +233,11 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
                 bond: _request.bond,
                 customLiveness: _request.customLiveness
             });
-
-        totalBond = proposedRequest.bond.add(proposedRequest.finalFee);
-        if (totalBond > 0) {
-            proposedRequest.currency.safeTransferFrom(msg.sender, address(this), totalBond);
-        }
-
         _storeRequestHash(requestId, proposedRequest);
+
+        totalBond = _request.bond.add(_request.finalFee);
+        if (totalBond > 0) _request.currency.safeTransferFrom(msg.sender, address(this), totalBond);
+
         emit ProposePrice(_requester, _identifier, _timestamp, _ancillaryData, proposedRequest);
 
         // Callback.
@@ -266,7 +262,7 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
     function proposePrice(
         address _requester,
         bytes32 _identifier,
-        uint256 _timestamp,
+        uint32 _timestamp,
         bytes memory _ancillaryData,
         Request memory _request,
         int256 _proposedPrice
@@ -297,7 +293,7 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
      */
     function requestAndProposePriceFor(
         bytes32 _identifier,
-        uint256 _timestamp,
+        uint32 _timestamp,
         bytes memory _ancillaryData,
         IERC20 _currency,
         uint256 _reward,
@@ -328,18 +324,14 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
         request.proposer = _proposer;
         request.proposedPrice = _proposedPrice;
         request.expirationTime = getCurrentTime().add(_customLiveness != 0 ? _customLiveness : defaultLiveness);
+        _storeRequestHash(requestId, request);
 
         // Pull reward from requester, who is the caller.
-        if (_reward > 0) {
-            _currency.safeTransferFrom(msg.sender, address(this), _reward);
-        }
+        if (_reward > 0) _currency.safeTransferFrom(msg.sender, address(this), _reward);
         // Pull proposal bond from caller.
         totalBond = request.bond.add(request.finalFee);
-        if (totalBond > 0) {
-            _currency.safeTransferFrom(msg.sender, address(this), totalBond);
-        }
+        if (totalBond > 0) _currency.safeTransferFrom(msg.sender, address(this), totalBond);
 
-        _storeRequestHash(requestId, request);
         emit RequestPrice(msg.sender, _identifier, _timestamp, _ancillaryData, request);
         emit ProposePrice(msg.sender, _identifier, _timestamp, _ancillaryData, request);
 
@@ -357,7 +349,7 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
      * @param _timestamp timestamp to identify the existing request.
      * @param _ancillaryData ancillary data of the price being requested.
      * @param _request price request parameters whose hash must match the request that the caller wants to
-     * dispute.
+     *              dispute.
      * @param _disputer address to set as the disputer.
      * @param _requester sender of the initial price request.
      * @return totalBond the amount that's pulled from the caller's wallet as a bond. The bond will be returned to
@@ -365,7 +357,7 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
      */
     function disputePriceFor(
         bytes32 _identifier,
-        uint256 _timestamp,
+        uint32 _timestamp,
         bytes memory _ancillaryData,
         Request memory _request,
         address _disputer,
@@ -375,7 +367,7 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
         require(
             _getState(_requester, _identifier, _timestamp, _ancillaryData, _request) ==
                 OptimisticOracleInterface.State.Proposed,
-            "disputePriceFor: Proposed"
+            "Must be proposed"
         );
         bytes32 requestId = _getId(_requester, _identifier, _timestamp, _ancillaryData);
         _validateRequestHash(requestId, _request);
@@ -395,13 +387,10 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
                 bond: _request.bond,
                 customLiveness: _request.customLiveness
             });
+        _storeRequestHash(requestId, disputedRequest);
 
-        uint256 finalFee = disputedRequest.finalFee;
-        uint256 bond = disputedRequest.bond;
-        totalBond = bond.add(finalFee);
-        if (totalBond > 0) {
-            disputedRequest.currency.safeTransferFrom(msg.sender, address(this), totalBond);
-        }
+        totalBond = _request.bond.add(_request.finalFee);
+        if (totalBond > 0) _request.currency.safeTransferFrom(msg.sender, address(this), totalBond);
 
         StoreInterface store = _getStore();
 
@@ -413,17 +402,16 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
             uint256 burnedBond = _computeBurnedBond(disputedRequest);
 
             // The total fee is the burned bond and the final fee added together.
-            uint256 totalFee = finalFee.add(burnedBond);
+            uint256 totalFee = _request.finalFee.add(burnedBond);
 
             if (totalFee > 0) {
-                disputedRequest.currency.safeIncreaseAllowance(address(store), totalFee);
-                _getStore().payOracleFeesErc20(address(disputedRequest.currency), FixedPoint.Unsigned(totalFee));
+                _request.currency.safeIncreaseAllowance(address(store), totalFee);
+                _getStore().payOracleFeesErc20(address(_request.currency), FixedPoint.Unsigned(totalFee));
             }
         }
 
         _getOracle().requestPrice(_identifier, _timestamp, _stampAncillaryData(_ancillaryData, _requester));
 
-        _storeRequestHash(requestId, disputedRequest);
         emit DisputePrice(_requester, _identifier, _timestamp, _ancillaryData, disputedRequest);
 
         // Callback.
@@ -440,14 +428,14 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
      * @param _timestamp timestamp to identify the existing request.
      * @param _ancillaryData ancillary data of the price being requested.
      * @param _request price request parameters whose hash must match the request that the caller wants to
-     * dispute.
+     *             dispute.
      * @return totalBond the amount that's pulled from the caller's wallet as a bond. The bond will be returned to
      * the disputer once settled if the dispute was valid (the proposal was incorrect).
      */
     function disputePrice(
         address _requester,
         bytes32 _identifier,
-        uint256 _timestamp,
+        uint32 _timestamp,
         bytes memory _ancillaryData,
         Request memory _request
     ) external override returns (uint256 totalBond) {
@@ -462,7 +450,7 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
      * @param _timestamp timestamp to identify the existing request.
      * @param _ancillaryData ancillary data of the price being requested.
      * @param _request price request parameters whose hash must match the request that the caller wants to
-     * settle.
+     *              settle.
      * @return payout the amount that the "winner" (proposer or disputer) receives on settlement. This amount includes
      * the returned bonds as well as additional rewards.
      * @return resolvedPrice the price that the request settled to.
@@ -470,7 +458,7 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
     function settle(
         address _requester,
         bytes32 _identifier,
-        uint256 _timestamp,
+        uint32 _timestamp,
         bytes memory _ancillaryData,
         Request memory _request
     ) external override nonReentrant() returns (uint256 payout, int256 resolvedPrice) {
@@ -489,7 +477,7 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
     function getState(
         address _requester,
         bytes32 _identifier,
-        uint256 _timestamp,
+        uint32 _timestamp,
         bytes memory _ancillaryData,
         Request memory _request
     ) external override nonReentrant() returns (OptimisticOracleInterface.State) {
@@ -510,7 +498,7 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
     function hasPrice(
         address _requester,
         bytes32 _identifier,
-        uint256 _timestamp,
+        uint32 _timestamp,
         bytes memory _ancillaryData,
         Request memory _request
     ) public override nonReentrant() returns (bool) {
@@ -539,12 +527,15 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
         return _stampAncillaryData(_ancillaryData, _requester);
     }
 
+    /****************************************
+     *    PRIVATE AND INTERNAL FUNCTIONS    *
+     ****************************************/
     // Returns hash of unique request identifiers. This contract maps request ID hashes to hashes of the request's
     // parameters.
     function _getId(
         address _requester,
         bytes32 _identifier,
-        uint256 _timestamp,
+        uint32 _timestamp,
         bytes memory _ancillaryData
     ) private pure returns (bytes32) {
         return keccak256(abi.encode(_requester, _identifier, _timestamp, _ancillaryData));
@@ -561,7 +552,7 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
     function _settle(
         address _requester,
         bytes32 _identifier,
-        uint256 _timestamp,
+        uint32 _timestamp,
         bytes memory _ancillaryData,
         Request memory _request
     ) private returns (uint256 payout, int256 resolvedPrice) {
@@ -588,10 +579,10 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
             _getState(_requester, _identifier, _timestamp, _ancillaryData, _request);
         if (state == OptimisticOracleInterface.State.Expired) {
             // In the expiry case, just pay back the proposer's bond and final fee along with the reward.
-            resolvedPrice = settledRequest.proposedPrice;
+            resolvedPrice = _request.proposedPrice;
             settledRequest.resolvedPrice = resolvedPrice;
-            payout = settledRequest.bond.add(settledRequest.finalFee).add(settledRequest.reward);
-            settledRequest.currency.safeTransfer(settledRequest.proposer, payout);
+            payout = _request.bond.add(_request.finalFee).add(_request.reward);
+            _request.currency.safeTransfer(_request.proposer, payout);
         } else if (state == OptimisticOracleInterface.State.Resolved) {
             // In the Resolved case, pay either the disputer or the proposer the entire payout (+ bond and reward).
             resolvedPrice = _getOracle().getPrice(
@@ -600,24 +591,21 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
                 _stampAncillaryData(_ancillaryData, _requester)
             );
             settledRequest.resolvedPrice = resolvedPrice;
-            bool disputeSuccess = settledRequest.resolvedPrice != settledRequest.proposedPrice;
-            uint256 bond = settledRequest.bond;
-
-            // Unburned portion of the loser's bond = 1 - burned bond.
-            uint256 unburnedBond = bond.sub(_computeBurnedBond(settledRequest));
+            bool disputeSuccess = settledRequest.resolvedPrice != _request.proposedPrice;
 
             // Winner gets:
             // - Their bond back.
-            // - The unburned portion of the loser's bond.
+            // - The unburned portion of the loser's bond: proposal bond (not including final fee) - burned bond.
             // - Their final fee back.
             // - The request reward (if not already refunded -- if refunded, it will be set to 0).
-            payout = bond.add(unburnedBond).add(settledRequest.finalFee).add(settledRequest.reward);
-            settledRequest.currency.safeTransfer(
-                disputeSuccess ? settledRequest.disputer : settledRequest.proposer,
-                payout
-            );
+            payout = _request
+                .bond
+                .add(_request.bond.sub(_computeBurnedBond(settledRequest)))
+                .add(_request.finalFee)
+                .add(_request.reward);
+            _request.currency.safeTransfer(disputeSuccess ? _request.disputer : _request.proposer, payout);
         } else {
-            revert("_settle: not settleable");
+            revert("Already settled or not settleable");
         }
 
         _storeRequestHash(requestId, settledRequest);
@@ -641,20 +629,20 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
     }
 
     function _validateRequestHash(bytes32 _requestId, Request memory _request) private view {
-        bytes32 requestHash = requests[_requestId];
-        bytes32 requestHashToValidate = _getRequestHash(_request);
-        require(requestHash == requestHashToValidate, "Hashed request params do not match existing request hash");
+        require(
+            requests[_requestId] == _getRequestHash(_request),
+            "Hashed request params do not match existing request hash"
+        );
     }
 
     function _storeRequestHash(bytes32 _requestId, Request memory _request) internal {
-        bytes32 requestHash = _getRequestHash(_request);
-        requests[_requestId] = requestHash;
+        requests[_requestId] = _getRequestHash(_request);
     }
 
     function _getState(
         address _requester,
         bytes32 _identifier,
-        uint256 _timestamp,
+        uint32 _timestamp,
         bytes memory _ancillaryData,
         Request memory _request
     ) internal view returns (OptimisticOracleInterface.State) {
@@ -662,24 +650,17 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
         // the _request.reward could be any value and it would not impact this function's return value. Therefore, it
         // is the caller's responsibility to check that _request matches with the expected ID corresponding to
         // {requester, identifier, timestamp, ancillaryData} via _validateRequestHash().
-        if (address(_request.currency) == address(0)) {
-            return OptimisticOracleInterface.State.Invalid;
-        }
+        if (address(_request.currency) == address(0)) return OptimisticOracleInterface.State.Invalid;
 
-        if (_request.proposer == address(0)) {
-            return OptimisticOracleInterface.State.Requested;
-        }
+        if (_request.proposer == address(0)) return OptimisticOracleInterface.State.Requested;
 
-        if (_request.settled) {
-            return OptimisticOracleInterface.State.Settled;
-        }
+        if (_request.settled) return OptimisticOracleInterface.State.Settled;
 
-        if (_request.disputer == address(0)) {
+        if (_request.disputer == address(0))
             return
                 _request.expirationTime <= getCurrentTime()
                     ? OptimisticOracleInterface.State.Expired
                     : OptimisticOracleInterface.State.Proposed;
-        }
 
         return
             _getOracle().hasPrice(_identifier, _timestamp, _stampAncillaryData(_ancillaryData, _requester))

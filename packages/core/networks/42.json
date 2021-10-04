@@ -98,5 +98,9 @@
   {
     "contractName": "RangeBondLongShortPairFinancialProductLibrary",
     "address": "0x09381C827438605B5ea3e760A27666Be3497602C"
+  },
+  {
+    "contractName": "BridgeAdmin",
+    "address": "0xC2cd5064Bbe7173E095a2d410CBc95fB6e5E3321"
   }
 ]
