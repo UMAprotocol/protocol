@@ -117,7 +117,7 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, Lockable {
     }
 
     /**
-     * @notice Enables the current owner to transfer ownership of all owned bridge pools to a new owner.
+     * @notice Enables the current owner to transfer ownership of a set of owned bridge pools to a new owner.
      * @dev Only callable by the current owner.
      * @param _bridgePools array of bridge pools to transfer ownership.
      * @param _newAdmin new admin contract to set ownership to.
