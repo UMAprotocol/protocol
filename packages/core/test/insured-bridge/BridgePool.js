@@ -1750,6 +1750,16 @@ describe("BridgePool", () => {
 
       // Expire and settle proposal on the OptimisticOracle.
       await timer.methods.setCurrentTime(expectedExpirationTimestamp).send({ from: owner });
+      const proposeEvent = (await optimisticOracle.getPastEvents("ProposePrice", { fromBlock: 0 }))[0];
+      await optimisticOracle.methods
+        .settle(
+          bridgePool.options.address,
+          defaultIdentifier,
+          proposeEvent.returnValues.timestamp,
+          proposeEvent.returnValues.ancillaryData,
+          proposeEvent.returnValues.request
+        )
+        .send({ from: accounts[0] });
       await bridgePool.methods.settleRelay(depositData).send({ from: rando });
       assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1"));
 
@@ -1768,6 +1778,16 @@ describe("BridgePool", () => {
 
       // Advance time by 1 week past the end of the of the L2->L1 liveness period.
       await advanceTime(604800);
+      const proposeEvent = (await optimisticOracle.getPastEvents("ProposePrice", { fromBlock: 0 }))[0];
+      await optimisticOracle.methods
+        .settle(
+          bridgePool.options.address,
+          defaultIdentifier,
+          proposeEvent.returnValues.timestamp,
+          proposeEvent.returnValues.ancillaryData,
+          proposeEvent.returnValues.request
+        )
+        .send({ from: accounts[0] });
       assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1"));
 
       // Now, simulate the finalization of of the bridge action by the canonical bridge by minting tokens to the pool.
@@ -1796,6 +1816,16 @@ describe("BridgePool", () => {
 
       // Advance time by 1 week past the end of the of the L2->L1 liveness period.
       await advanceTime(604800);
+      const proposeEvent = (await optimisticOracle.getPastEvents("ProposePrice", { fromBlock: 0 }))[0];
+      await optimisticOracle.methods
+        .settle(
+          bridgePool.options.address,
+          defaultIdentifier,
+          proposeEvent.returnValues.timestamp,
+          proposeEvent.returnValues.ancillaryData,
+          proposeEvent.returnValues.request
+        )
+        .send({ from: accounts[0] });
       assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1"));
 
       // Now, simulate the finalization of of the bridge action by the canonical bridge by minting tokens to the pool.

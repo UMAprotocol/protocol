@@ -107,6 +107,11 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
     event RelaySpedUp(bytes32 indexed depositHash, address indexed instantRelayer);
     event RelaySettled(bytes32 indexed depositHash, bytes32 indexed relayHash, address indexed caller);
 
+    modifier onlyFromOptimisticOracle() {
+        require(msg.sender == address(_getOptimisticOracle()), "Caller must be OptimisticOracle");
+        _;
+    }
+
     /**
      * @notice Construct the Bridge Pool
      * @param _lpTokenName Name of the LP token to be deployed by this contract.
@@ -281,7 +286,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
             address(l1Token),
             realizedLpFeePct,
             depositHash,
-            relayHash
+            _getRelayHash(depositData, relayData)
         );
     }
 
@@ -374,7 +379,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         updateAccumulatedLpFees();
         allocateLpFees(_getAmountFromPct(relay.realizedLpFeePct, _depositData.amount));
 
-        emit RelaySettled(depositHash, relayHash, msg.sender);
+        emit RelaySettled(depositHash, _getRelayHash(_depositData, relay), msg.sender);
 
         delete relay.realizedLpFeePct;
         delete relay.instantRelayer;
@@ -393,7 +398,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
      */
     function priceDisputed(
         bytes32 _identifier,
-        uint256 _timestamp,
+        uint32 _timestamp,
         bytes memory _ancillaryData,
         SkinnyOptimisticOracleInterface.Request memory _request
     ) external onlyFromOptimisticOracle {
@@ -415,7 +420,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
      */
     function priceSettled(
         bytes32 _identifier,
-        uint256 _timestamp,
+        uint32 _timestamp,
         bytes memory _ancillaryData,
         SkinnyOptimisticOracleInterface.Request memory _request
     ) external onlyFromOptimisticOracle {
@@ -672,7 +677,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
 
         optimisticOracle.requestAndProposePriceFor(
             bridgeAdmin.identifier(),
-            requestTimestamp,
+            uint32(requestTimestamp),
             customAncillaryData,
             IERC20(l1Token),
             // Set reward to 0, since we'll settle proposer reward payouts directly from this contract after a relay
