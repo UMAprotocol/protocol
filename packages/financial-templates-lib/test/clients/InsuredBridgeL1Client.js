@@ -1,5 +1,5 @@
 const hre = require("hardhat");
-const { web3 } = require("hardhat");
+const { web3 } = hre;
 const { interfaceName, TokenRolesEnum, InsuredBridgeRelayStateEnum } = require("@uma/common");
 const { getContract } = hre;
 const { utf8ToHex, toWei, toBN, soliditySha3 } = web3.utils;
@@ -105,6 +105,25 @@ describe("InsuredBridgeL1Client", function () {
   };
 
   const syncExpectedRelayedDepositInformation = (_l1TokenAddress = l1Token.options.address) => {
+    const parameters = [
+      { t: "uint8", v: depositData.chainId },
+      { t: "uint64", v: depositData.depositId },
+      { t: "address", v: depositData.l1Recipient },
+      { t: "address", v: depositData.l2Sender },
+      { t: "uint256", v: depositData.amount },
+      { t: "uint64", v: depositData.slowRelayFeePct },
+      { t: "uint64", v: depositData.instantRelayFeePct },
+      { t: "uint64", v: depositData.quoteTimestamp },
+      { t: "uint32", v: relayData.relayId },
+      { t: "uint64", v: relayData.realizedLpFeePct },
+      { t: "address", v: _l1TokenAddress },
+    ];
+    const relayHash = web3.utils.soliditySha3(
+      web3.eth.abi.encodeParameters(
+        parameters.map((elt) => elt.t),
+        parameters.map((elt) => elt.v)
+      )
+    );
     expectedRelayedDepositInformation = {
       relayId: relayData.relayId,
       chainId: depositData.chainId,
@@ -121,6 +140,7 @@ describe("InsuredBridgeL1Client", function () {
       realizedLpFeePct: relayData.realizedLpFeePct,
       depositHash: depositHash,
       relayState: 0, // pending
+      relayHash,
     };
   };
 

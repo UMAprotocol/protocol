@@ -5,7 +5,7 @@
 const hre = require("hardhat");
 const { getContract, assertEventEmitted } = hre;
 const { assert } = require("chai");
-const { web3 } = require("hardhat");
+const { web3 } = hre;
 const { toWei } = web3.utils;
 const { didContractThrow } = require("@uma/common");
 

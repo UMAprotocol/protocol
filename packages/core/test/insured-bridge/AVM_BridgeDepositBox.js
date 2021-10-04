@@ -2,7 +2,7 @@
 // use of the AVM token bridge. Bridge Deposit logic is not directly tested. For this see the BridgeDepositBox.js tests.
 
 const hre = require("hardhat");
-const { web3 } = require("hardhat");
+const { web3 } = hre;
 const { toWei } = web3.utils;
 const { getContract, assertEventEmitted } = hre;
 

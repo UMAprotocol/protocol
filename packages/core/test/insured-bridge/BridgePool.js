@@ -1,6 +1,6 @@
 const { assert } = require("chai");
 const hre = require("hardhat");
-const { web3 } = require("hardhat");
+const { web3 } = hre;
 const {
   didContractThrow,
   interfaceName,
@@ -101,7 +101,6 @@ let relayData;
 let depositData;
 let depositHash;
 let relayAncillaryData;
-let relayAncillaryDataHash;
 
 describe("BridgePool", () => {
   let accounts,
@@ -285,7 +284,6 @@ describe("BridgePool", () => {
     // Save other reused values.
     depositHash = generateDepositHash(depositData);
     relayAncillaryData = await bridgePool.methods.getRelayAncillaryData(depositData, relayData).call();
-    relayAncillaryDataHash = soliditySha3(relayAncillaryData);
   });
   it("Constructor validation", async function () {
     // LP Token symbol and name cannot be empty.
@@ -315,30 +313,26 @@ describe("BridgePool", () => {
     );
   });
   it("Constructs utf8-encoded ancillary data for relay", async function () {
-    let expectedAncillaryDataUtf8 = "";
-    Object.keys(depositData).forEach((key) => {
-      // Set addresses to lower case and strip leading "0x"'s in order to recreate how Solidity encodes addresses
-      // to utf8.
-      if (depositData[key].toString().startsWith("0x")) {
-        expectedAncillaryDataUtf8 += `${key}:${depositData[key].toString().substr(2).toLowerCase()},`;
-      } else {
-        expectedAncillaryDataUtf8 += `${key}:${depositData[key].toString()},`;
-      }
-    });
-    Object.keys(relayData).forEach((key) => {
-      // Skip relayData params that are not used by the contract to construct ancillary data,
-      if (key === "realizedLpFeePct" || key === "relayId") {
-        // Set addresses to lower case and strip leading "0x"'s in order to recreate how Solidity encodes addresses
-        // to utf8.
-        if (relayData[key].toString().startsWith("0x")) {
-          expectedAncillaryDataUtf8 += `${key}:${relayData[key].toString().substr(2).toLowerCase()},`;
-        } else {
-          expectedAncillaryDataUtf8 += `${key}:${relayData[key].toString()},`;
-        }
-      }
-    });
-    expectedAncillaryDataUtf8 += `l1Token:${l1Token.options.address.substr(2).toLowerCase()}`;
-    assert.equal(hexToUtf8(relayAncillaryData), expectedAncillaryDataUtf8);
+    const parameters = [
+      { t: "uint8", v: depositData.chainId },
+      { t: "uint64", v: depositData.depositId },
+      { t: "address", v: depositData.l1Recipient },
+      { t: "address", v: depositData.l2Sender },
+      { t: "uint256", v: depositData.amount },
+      { t: "uint64", v: depositData.slowRelayFeePct },
+      { t: "uint64", v: depositData.instantRelayFeePct },
+      { t: "uint64", v: depositData.quoteTimestamp },
+      { t: "uint32", v: relayData.relayId },
+      { t: "uint64", v: relayData.realizedLpFeePct },
+      { t: "address", v: l1Token.options.address },
+    ];
+    const hash = web3.utils.soliditySha3(
+      web3.eth.abi.encodeParameters(
+        parameters.map((elt) => elt.t),
+        parameters.map((elt) => elt.v)
+      )
+    );
+    assert.equal(hexToUtf8(relayAncillaryData), `relayHash:${hash.substring(2)}`);
   });
   describe("Relay deposit", () => {
     beforeEach(async function () {
@@ -428,16 +422,16 @@ describe("BridgePool", () => {
       await assertEventEmitted(txn, bridgePool, "DepositRelayed", (ev) => {
         return (
           ev.relayId.toString() === relayData.relayId.toString() &&
-          ev.chainId.toString() === depositData.chainId.toString() &&
-          ev.depositId.toString() === depositData.depositId.toString() &&
-          ev.l2Sender === depositData.l2Sender &&
+          ev.depositData.chainId.toString() === depositData.chainId.toString() &&
+          ev.depositData.depositId.toString() === depositData.depositId.toString() &&
+          ev.depositData.l2Sender === depositData.l2Sender &&
           ev.slowRelayer === relayer &&
-          ev.l1Recipient === depositData.l1Recipient &&
+          ev.depositData.l1Recipient === depositData.l1Recipient &&
           ev.l1Token === l1Token.options.address &&
-          ev.amount === depositData.amount &&
-          ev.slowRelayFeePct === depositData.slowRelayFeePct &&
-          ev.instantRelayFeePct === depositData.instantRelayFeePct &&
-          ev.quoteTimestamp === depositData.quoteTimestamp &&
+          ev.depositData.amount === depositData.amount &&
+          ev.depositData.slowRelayFeePct === depositData.slowRelayFeePct &&
+          ev.depositData.instantRelayFeePct === depositData.instantRelayFeePct &&
+          ev.depositData.quoteTimestamp === depositData.quoteTimestamp &&
           ev.realizedLpFeePct === relayData.realizedLpFeePct &&
           ev.depositHash === depositHash
         );
@@ -914,13 +908,14 @@ describe("BridgePool", () => {
         .send({ from: owner });
 
       // Settle relay and check event logs and post-settlement balances.
+      const relayHash =
+        "0x" +
+        web3.utils
+          .hexToUtf8(await bridgePool.methods.getRelayAncillaryData(depositData, relayData).call())
+          .split(":")[1];
       const settleTxn = await bridgePool.methods.settleRelay(depositData).send({ from: rando });
       await assertEventEmitted(settleTxn, bridgePool, "RelaySettled", (ev) => {
-        return (
-          ev.depositHash === depositHash &&
-          ev.priceRequestAncillaryDataHash === relayAncillaryDataHash &&
-          ev.caller === rando
-        );
+        return ev.depositHash === depositHash && ev.relayHash === relayHash && ev.caller === rando;
       });
 
       // Dispute was unsuccessful and proposer's original price of "1" was correct. Slow relayer should receive full
@@ -983,12 +978,13 @@ describe("BridgePool", () => {
 
       // Settle relay and check event logs.
       const settleTxn = await bridgePool.methods.settleRelay(depositData).send({ from: rando });
+      const relayHash =
+        "0x" +
+        web3.utils
+          .hexToUtf8(await bridgePool.methods.getRelayAncillaryData(depositData, relayData).call())
+          .split(":")[1];
       await assertEventEmitted(settleTxn, bridgePool, "RelaySettled", (ev) => {
-        return (
-          ev.depositHash === depositHash &&
-          ev.priceRequestAncillaryDataHash === relayAncillaryDataHash &&
-          ev.caller === rando
-        );
+        return ev.depositHash === depositHash && ev.relayHash === relayHash && ev.caller === rando;
       });
 
       // Cannot re-settle.
@@ -1214,7 +1210,7 @@ describe("BridgePool", () => {
   });
   describe("Virtual balance accounting", () => {
     beforeEach(async function () {
-      // For the next two tests, add liquidity, relay and finalize the relay as the initial state.
+      // For the next few tests, add liquidity, relay and finalize the relay as the initial state.
 
       // Approve funds and add to liquidity.
       await l1Token.methods.mint(liquidityProvider, initialPoolLiquidity).send({ from: owner });
@@ -1483,8 +1479,6 @@ describe("BridgePool", () => {
   });
   describe("Liquidity utilization rato", () => {
     beforeEach(async function () {
-      // For the next two tests, add liquidity, relay and finalize the relay as the initial state.
-
       // Approve funds and add to liquidity.
       await l1Token.methods.mint(liquidityProvider, initialPoolLiquidity).send({ from: owner });
       await l1Token.methods.approve(bridgePool.options.address, MAX_UINT_VAL).send({ from: liquidityProvider });
@@ -1595,6 +1589,102 @@ describe("BridgePool", () => {
         (await bridgePool.methods.liquidityUtilizationCurrent().call()).toString(),
         toWei("0.148514851485148514")
       );
+    });
+  });
+  describe("Canonical bridge finalizing before insured bridge settlement edge cases", () => {
+    beforeEach(async function () {
+      await l1Token.methods.mint(liquidityProvider, initialPoolLiquidity).send({ from: owner });
+      await l1Token.methods.approve(bridgePool.options.address, MAX_UINT_VAL).send({ from: liquidityProvider });
+      await bridgePool.methods.addLiquidity(initialPoolLiquidity).send({ from: liquidityProvider });
+      await l1Token.methods.mint(relayer, totalRelayBond.muln(100)).send({ from: owner });
+      await l1Token.methods.approve(bridgePool.options.address, totalRelayBond.muln(100)).send({ from: relayer });
+    });
+    it("Exchange rate correctly handles the canonical bridge finalizing before insured relayer begins", async () => {
+      // Consider the edge case where a user deposits on L2 and no actions happen on L1. This might be due to their
+      // deposit fees being under priced (not picked up by a relayer). After a week their funds arrive on L1 via the
+      // canonical bridge. At this point, the transfer is relayed. The exchange rate should correctly deal with this
+      // without introducing a step in the rate at any point.
+
+      // Advance time by 1 week past the end of the of the L2->L1 liveness period.
+      await advanceTime(604800);
+      assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1"));
+
+      // Now, simulate the finalization of of the bridge action by the canonical bridge by minting tokens to the pool.
+      await l1Token.methods.mint(bridgePool.options.address, toWei("100")).send({ from: owner });
+
+      // The exchange rate should not have updated.
+      assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1"));
+
+      // Only now that the bridging action has concluded through the canonical bridge does a relayer pick up the
+      // transfer. This could also have been the depositor self relaying.
+      const requestTimestamp = (await bridgePool.methods.getCurrentTime().call()).toString();
+      const expectedExpirationTimestamp = (Number(requestTimestamp) + defaultLiveness).toString();
+      await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: relayer });
+
+      // Expire and settle proposal on the OptimisticOracle.
+      await timer.methods.setCurrentTime(expectedExpirationTimestamp).send({ from: owner });
+      await bridgePool.methods.settleRelay(depositData).send({ from: rando });
+      assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1"));
+
+      // Going forward, the rate should increment as normal, starting from the settlement of the relay. EG advancing time
+      // by 2 days(172800s) which should increase the rate accordingly (910+90+10-(10-0.0000015*172800*10))/1000=1.002592.
+      await advanceTime(172800);
+      assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1.002592"));
+    });
+    it("Exchange rate correctly handles the canonical bridge finalizing before insured relayer finalizes(slow)", async () => {
+      // Similar to the previous edge case test, consider a case where a user deposit on L2 and the L1 action is only
+      // half completed (not finalized). This test validates this in the slow case.
+      await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: relayer });
+
+      // The exchange rate should still be 0 as no funds are actually "used" until the relay concludes.
+      assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1"));
+
+      // Advance time by 1 week past the end of the of the L2->L1 liveness period.
+      await advanceTime(604800);
+      assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1"));
+
+      // Now, simulate the finalization of of the bridge action by the canonical bridge by minting tokens to the pool.
+      await l1Token.methods.mint(bridgePool.options.address, toWei("100")).send({ from: owner });
+
+      // The exchange rate should not have updated.
+      assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1"));
+
+      // Only now that the bridging action has concluded do we finalize the relay action.
+      await bridgePool.methods.settleRelay(depositData).send({ from: rando });
+      assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1"));
+
+      // Going forward, the rate should increment as normal, starting from the settlement of the relay. EG advancing time
+      // by 2 days(172800s) which should increase the rate accordingly (910+90+10-(10-0.0000015*172800*10))/1000=1.002592.
+      await advanceTime(172800);
+      assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1.002592"));
+    });
+    it("Exchange rate correctly handles the canonical bridge finalizing before insured relayer finalizes(instant)", async () => {
+      // Finally, consider the same case as before except speed up the relay. The behaviour should be the same as the
+      // previous test (no rate change until the settlement of the relay and ignore tokens sent "early").
+      await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: relayer });
+      await bridgePool.methods.speedUpRelay(depositData).call({ from: relayer });
+
+      // The exchange rate should still be 0 as no funds are actually "used" until the relay concludes.
+      assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1"));
+
+      // Advance time by 1 week past the end of the of the L2->L1 liveness period.
+      await advanceTime(604800);
+      assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1"));
+
+      // Now, simulate the finalization of of the bridge action by the canonical bridge by minting tokens to the pool.
+      await l1Token.methods.mint(bridgePool.options.address, toWei("100")).send({ from: owner });
+
+      // The exchange rate should not have updated.
+      assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1"));
+
+      // Only now that the bridging action has concluded do we finalize the relay action.
+      await bridgePool.methods.settleRelay(depositData).send({ from: rando });
+      assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1"));
+
+      // Going forward, the rate should increment as normal, starting from the settlement of the relay. EG advancing time
+      // by 2 days(172800s) which should increase the rate accordingly (910+90+10-(10-0.0000015*172800*10))/1000=1.002592.
+      await advanceTime(172800);
+      assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1.002592"));
     });
   });
 });
