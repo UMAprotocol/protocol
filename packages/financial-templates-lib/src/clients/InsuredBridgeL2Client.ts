@@ -2,7 +2,7 @@
 // from the respective chains and return it to client implementors.
 
 import { getAbi } from "@uma/contracts-node";
-import type { OVMBridgeDepositBoxWeb3 } from "@uma/contracts-node";
+import type { BridgeDepositBoxWeb3 } from "@uma/contracts-node";
 import Web3 from "web3";
 import type { Logger } from "winston";
 
@@ -21,7 +21,7 @@ export interface Deposit {
 }
 
 export class InsuredBridgeL2Client {
-  public bridgeDepositBox: OVMBridgeDepositBoxWeb3;
+  public bridgeDepositBox: BridgeDepositBoxWeb3;
 
   private deposits: { [key: string]: Deposit } = {}; // DepositId=>Deposit
 
@@ -36,9 +36,9 @@ export class InsuredBridgeL2Client {
     readonly endingBlockNumber: number | null = null
   ) {
     this.bridgeDepositBox = (new l2Web3.eth.Contract(
-      getAbi("OVM_BridgeDepositBox"),
+      getAbi("BridgeDepositBox"),
       bridgeDepositAddress
-    ) as unknown) as OVMBridgeDepositBoxWeb3;
+    ) as unknown) as BridgeDepositBoxWeb3;
 
     this.firstBlockToSearch = startingBlockNumber;
   }
