@@ -672,7 +672,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
 
         uint256 totalBond =
             FixedPoint
-                .Unsigned(_proposerBondPc)
+                .Unsigned(_proposerBondPct)
                 .mul(FixedPoint.Unsigned(amount))
                 .add(FixedPoint.Unsigned(finalFee))
                 .rawValue;
