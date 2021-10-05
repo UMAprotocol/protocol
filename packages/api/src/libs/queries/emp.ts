@@ -4,7 +4,7 @@ import * as uma from "@uma/sdk";
 import { calcGcr } from "../utils";
 import bluebird from "bluebird";
 import { BigNumber, utils } from "ethers";
-import type { AppState, CurrencySymbol, PriceSample } from "../..";
+import type { AppState, CurrencySymbol, PriceSample } from "../../types";
 
 const { exists } = uma.utils;
 type Dependencies = Pick<
