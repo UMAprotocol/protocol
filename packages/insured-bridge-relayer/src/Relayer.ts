@@ -88,7 +88,17 @@ export class Relayer {
         }
         // If relay is valid, then account for profitability and bot token balance when deciding how to relay.
         const realizedLpFeePct = await this.l1Client.calculateRealizedLpFeePctForDeposit(relayableDeposit.deposit);
-        const shouldRelay = await this.shouldRelay(relayableDeposit.deposit, relayableDeposit.status, realizedLpFeePct);
+        const hasInstantRelayer = this.l1Client.hasInstantRelayer(
+          relayableDeposit.deposit.l1Token,
+          relayableDeposit.deposit.depositHash,
+          realizedLpFeePct.toString()
+        );
+        const shouldRelay = await this.shouldRelay(
+          relayableDeposit.deposit,
+          relayableDeposit.status,
+          realizedLpFeePct,
+          hasInstantRelayer
+        );
         switch (shouldRelay) {
           case ShouldRelay.Ignore:
             this.logger.warn({
@@ -150,7 +160,8 @@ export class Relayer {
   private async shouldRelay(
     deposit: Deposit,
     clientRelayState: ClientRelayState,
-    realizedLpFeePct: BN
+    realizedLpFeePct: BN,
+    hasInstantRelayer: boolean
   ): Promise<ShouldRelay> {
     const [l1TokenBalance, proposerBondPct] = await Promise.all([
       getTokenBalance(this.l1Client.l1Web3, deposit.l1Token, this.account),
@@ -168,9 +179,13 @@ export class Relayer {
     if (l1TokenBalance.gte(relayTokenRequirement.slow) && clientRelayState === ClientRelayState.Uninitialized)
       slowProfit = toBN(deposit.amount).mul(toBN(deposit.slowRelayFeePct)).div(fixedPointAdjustment);
 
-    // b) Balance is large enough to instant relay. Deposit is in any state except finalized (i.e can be slow relayed
+    // b) Balance is large enough to instant relay and the relay does not have an instant relayer. Deposit is in any state except finalized (i.e can be slow relayed
     // and sped up or only sped up.)
-    if (l1TokenBalance.gte(relayTokenRequirement.instant) && clientRelayState !== ClientRelayState.Finalized)
+    if (
+      !hasInstantRelayer &&
+      l1TokenBalance.gte(relayTokenRequirement.instant) &&
+      clientRelayState !== ClientRelayState.Finalized
+    )
       speedUpProfit = toBN(deposit.amount).mul(toBN(deposit.instantRelayFeePct)).div(fixedPointAdjustment);
 
     // c) Balance is large enough to slow relay and then speed up. Only considered if no L1 action has happened yet as
