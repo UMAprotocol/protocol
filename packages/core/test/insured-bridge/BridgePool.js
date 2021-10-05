@@ -43,6 +43,7 @@ let lpToken;
 let mockOracle;
 
 // Hard-coded test params:
+const defaultRelayHash = "0x0000000000000000000000000000000000000000000000000000000000000000"
 const chainId = "10";
 const defaultGasLimit = 1_000_000;
 const defaultGasPrice = toWei("1", "gwei");
@@ -125,6 +126,7 @@ describe("BridgePool", () => {
   const generateRelayParams = (depositDataOverride = {}, relayDataOverride = {}) => {
     const _depositData = { ...depositData, ...depositDataOverride };
     const _relayData = { ...relayData, ...relayDataOverride };
+    console.log(_relayData)
     // Remove the l1Token. This is part of the deposit data (hash) but is not part of the params for relayDeposit.
     // eslint-disable-next-line no-unused-vars
     const { l1Token, ...params } = _depositData;
@@ -158,6 +160,14 @@ describe("BridgePool", () => {
     );
     return soliditySha3(instantRelayDataAbiEncoded);
   };
+
+  const generateRelayHash = (relayData) => {
+    console.log(relayData)
+    return soliditySha3(web3.eth.abi.encodeParameters(
+      ["address", "uint32", "uint64", "uint256"],
+      [relayData.slowRelayer, relayData.relayId, relayData.realizedLpFeePct, relayData.priceRequestTime]
+    ));
+  }
 
   before(async function () {
     accounts = await web3.eth.getAccounts();
@@ -275,7 +285,6 @@ describe("BridgePool", () => {
     };
     relayData = {
       relayId: 0,
-      relayState: InsuredBridgeRelayStateEnum.UNINITIALIZED,
       priceRequestTime: 0,
       realizedLpFeePct: defaultRealizedLpFee,
       slowRelayer: relayer,
@@ -381,8 +390,13 @@ describe("BridgePool", () => {
       );
 
       assert.equal(await bridgePool.methods.numberOfRelays().call(), "0"); // Relay index should start at 0.
+      
+      // Deposit with no relay attempt should have correct state and empty relay hash.
+      const relayStatus = await bridgePool.methods.relays(depositHash).call();
+      assert.equal(relayStatus.relayHash, defaultRelayHash);
+      assert.equal(relayStatus.relayState, InsuredBridgeRelayStateEnum.UNINITIALIZED);
     });
-    it("Requests and proposes optimistic price request", async () => {
+    it.only("Requests and proposes optimistic price request", async () => {
       // Cache price request timestamp.
       const requestTimestamp = (await bridgePool.methods.getCurrentTime().call()).toString();
       const expectedExpirationTimestamp = (Number(requestTimestamp) + defaultLiveness).toString();
@@ -408,11 +422,11 @@ describe("BridgePool", () => {
 
       // Check RelayData struct is stored correctly and mapped to the deposit hash.
       const relayStatus = await bridgePool.methods.relays(depositHash).call();
-      assert.equal(relayStatus.relayId.toString(), relayData.relayId.toString());
+      console.log(relayData, relayStatus)
+      const relayHash = generateRelayHash(relayData);
+      assert.equal(relayStatus.relayHash, relayHash);
       assert.equal(relayStatus.relayState, InsuredBridgeRelayStateEnum.PENDING);
-      assert.equal(relayStatus.priceRequestTime.toString(), requestTimestamp);
-      assert.equal(relayStatus.slowRelayer, relayer);
-      assert.equal(relayStatus.realizedLpFeePct.toString(), defaultRealizedLpFee);
+      return;
 
       // Instant relayer for this relay should be uninitialized.
       const instantRelayHash = generateInstantRelayHash(depositHash, relayData);
