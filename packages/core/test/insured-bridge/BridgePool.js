@@ -886,13 +886,11 @@ describe("BridgePool", () => {
 
       // Proposer approves pool to withdraw total bond.
       await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: relayer });
-      let tx1 = await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: relayer });
-      console.log("relayDeposit gas\t", tx1.gasUsed);
+      await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: relayer });
 
       // Speed up relay.
       await l1Token.methods.approve(bridgePool.options.address, slowRelayAmountSubFee).send({ from: instantRelayer });
-      let tx2 = await bridgePool.methods.speedUpRelay(depositData).send({ from: instantRelayer });
-      console.log("speedUpRelay gas\t", tx2.gasUsed);
+      await bridgePool.methods.speedUpRelay(depositData).send({ from: instantRelayer });
 
       // Set time such that optimistic price request is settleable.
       await timer.methods.setCurrentTime(expectedExpirationTimestamp).send({ from: owner });
@@ -900,8 +898,7 @@ describe("BridgePool", () => {
       const relayerBalanceBefore = await l1Token.methods.balanceOf(relayer).call();
       const instantRelayerBalanceBefore = await l1Token.methods.balanceOf(instantRelayer).call();
       // Settle relay.
-      let tx3 = await bridgePool.methods.settleRelay(depositData).send({ from: rando });
-      console.log("settleRelay gas\t\t", tx3.gasUsed);
+      await bridgePool.methods.settleRelay(depositData).send({ from: rando });
 
       // Check token balances.
       // - Slow relayer should get back their proposal bond from OO and reward from BridgePool.
