@@ -28,11 +28,11 @@ interface BridgeAdminInterface {
     function depositContracts(uint256) external view returns (DepositUtilityContracts memory);
 
     struct L1TokenRelationships {
-        address l2Token;
+        mapping(uint256 => address) l2Token;
         address bridgePool;
     }
 
-    function whitelistedTokens(address) external view returns (L1TokenRelationships memory);
+    function whitelistedTokens(address, uint256) external view returns (address, address);
 
     function optimisticOracleLiveness() external view returns (uint64);
 
