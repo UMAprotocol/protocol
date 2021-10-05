@@ -1,9 +1,9 @@
 {
   "name": "@uma/api",
-  "private": true,
   "version": "0.5.2",
   "author": "David Adams",
   "license": "AGPL-3.0-or-later",
+  "main": "build/index.js",
   "devDependencies": {
     "@types/cors": "^2.8.12",
     "@types/isomorphic-fetch": "^0.0.35",

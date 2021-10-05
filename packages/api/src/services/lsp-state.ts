@@ -1,6 +1,6 @@
 import * as uma from "@uma/sdk";
 import { BatchRead, toString, toNumber, parseBytes, nowS, Profile } from "../libs/utils";
-import { AppState, BaseConfig } from "..";
+import { AppState, BaseConfig } from "../types";
 import { lsps } from "../tables";
 import { BigNumber } from "ethers";
 

@@ -35,6 +35,7 @@ const depositAmount = toWei("50");
 const slowRelayFeePct = toWei("0.005");
 const instantRelayFeePct = toWei("0.005");
 const quoteTimestampOffset = 60; // 60 seconds into the past.
+const chainId = 42161; // Arbitrum mainnet chain ID.
 
 describe("AVM_BridgeDepositBox", () => {
   // Account objects
@@ -67,6 +68,7 @@ describe("AVM_BridgeDepositBox", () => {
       l2GatewayRouterMock.options.address,
       bridgeAdmin,
       minimumBridgingDelay,
+      chainId,
       timer.options.address
     ).send({ from: deployer });
   });

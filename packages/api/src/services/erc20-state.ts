@@ -1,5 +1,5 @@
 import { clients } from "@uma/sdk";
-import { AppState, BaseConfig } from "..";
+import { AppState, BaseConfig } from "../types";
 import { asyncValues } from "../libs/utils";
 
 type Config = BaseConfig;

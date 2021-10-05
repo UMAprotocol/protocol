@@ -1,4 +1,4 @@
-import { AppState } from "..";
+import { AppState } from "../types";
 
 type Config = undefined;
 type Dependencies = Pick<AppState, "blocks" | "provider">;
