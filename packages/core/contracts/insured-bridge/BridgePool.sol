@@ -428,6 +428,8 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         SkinnyOptimisticOracleInterface.Request memory request
     ) external onlyFromOptimisticOracle {
         bytes32 depositHash = relayRequestAncillaryData[keccak256(ancillaryData)];
+        // We can delete the pending relay hash because we will still store data that must be carried over to a follow
+        // up relay, namely the `instantRelayer` address which is stored in a separate mappign from the relay hashes.
         delete relays[depositHash];
     }
 
