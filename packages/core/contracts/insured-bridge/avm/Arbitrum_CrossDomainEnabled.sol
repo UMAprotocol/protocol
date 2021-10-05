@@ -1,3 +1,5 @@
+// Copied logic from https://github.com/makerdao/arbitrum-dai-bridge/blob/34acc39bc6f3a2da0a837ea3c5dbc634ec61c7de/contracts/l1/L1CrossDomainEnabled.sol
+// with a change to the solidity version.
 pragma solidity ^0.8.0;
 
 import "../../external/avm/interfaces/iArbitrum_Inbox.sol";
