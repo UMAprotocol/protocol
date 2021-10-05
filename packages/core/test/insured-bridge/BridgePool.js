@@ -327,6 +327,33 @@ describe("BridgePool", () => {
     );
     assert.equal(hexToUtf8(relayAncillaryData), `relayHash:${hash.substring(2)}`);
   });
+  it("Sync with Finder addresses", async function () {
+    // Check the sync with finder correctly updates the local instance of important contracts to that in the finder.
+    assert.equal(await bridgePool.methods.optimisticOracle().call(), optimisticOracle.options.address);
+
+    // Change the address of the OO in the finder to any random address.
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.OptimisticOracle), rando)
+      .send({ from: owner });
+
+    await bridgePool.methods.syncWithFinderAddresses().send({ from: rando });
+
+    // Check it's been updated accordingly
+    assert.equal(await bridgePool.methods.optimisticOracle().call(), rando);
+  });
+  it("Sync with BridgeAdmin params", async function () {
+    // Check the sync with bridgeAdmin params correctly updates the local params.
+    assert.equal(await bridgePool.methods.proposerBondPct().call(), await bridgeAdmin.methods.proposerBondPct().call());
+
+    // Change the address of the OO in the finder to any random address.
+    await bridgeAdmin.methods.setProposerBondPct(toWei("0.06")).send({ from: owner });
+    assert.equal(await bridgeAdmin.methods.proposerBondPct().call(), toWei("0.06"));
+
+    await bridgePool.methods.syncWithBridgeAdminParams().send({ from: rando });
+
+    // Check it's been updated accordingly
+    assert.equal(await bridgePool.methods.proposerBondPct().call(), toWei("0.06"));
+  });
   describe("Relay deposit", () => {
     beforeEach(async function () {
       // Add liquidity to the pool
@@ -859,11 +886,13 @@ describe("BridgePool", () => {
 
       // Proposer approves pool to withdraw total bond.
       await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: relayer });
-      await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: relayer });
+      let tx1 = await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: relayer });
+      console.log("relayDeposit gas\t", tx1.gasUsed);
 
       // Speed up relay.
       await l1Token.methods.approve(bridgePool.options.address, slowRelayAmountSubFee).send({ from: instantRelayer });
-      await bridgePool.methods.speedUpRelay(depositData).send({ from: instantRelayer });
+      let tx2 = await bridgePool.methods.speedUpRelay(depositData).send({ from: instantRelayer });
+      console.log("speedUpRelay gas\t", tx2.gasUsed);
 
       // Set time such that optimistic price request is settleable.
       await timer.methods.setCurrentTime(expectedExpirationTimestamp).send({ from: owner });
@@ -871,7 +900,8 @@ describe("BridgePool", () => {
       const relayerBalanceBefore = await l1Token.methods.balanceOf(relayer).call();
       const instantRelayerBalanceBefore = await l1Token.methods.balanceOf(instantRelayer).call();
       // Settle relay.
-      await bridgePool.methods.settleRelay(depositData).send({ from: rando });
+      let tx3 = await bridgePool.methods.settleRelay(depositData).send({ from: rando });
+      console.log("settleRelay gas\t\t", tx3.gasUsed);
 
       // Check token balances.
       // - Slow relayer should get back their proposal bond from OO and reward from BridgePool.
