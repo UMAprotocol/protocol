@@ -222,7 +222,7 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, Lockable {
         require(address(BridgePoolInterface(_bridgePool).l1Token()) == _l1Token, "Bridge pool has different L1 token");
 
         L1TokenRelationships storage l1TokenRelationships = _whitelistedTokens[_l1Token];
-        l1TokenRelationships.l2Token[_chainId] = _l2Token; // Set the L2Token at the index of the chainId.
+        l1TokenRelationships.l2Tokens[_chainId] = _l2Token; // Set the L2Token at the index of the chainId.
         l1TokenRelationships.bridgePool = _bridgePool;
 
         MessengerInterface(_depositContracts[_chainId].messengerContract).relayMessage(
@@ -247,7 +247,7 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, Lockable {
         override
         returns (address l2Token, address bridgePool)
     {
-        return (_whitelistedTokens[_l1Token].l2Token[chainId], _whitelistedTokens[_l1Token].bridgePool);
+        return (_whitelistedTokens[_l1Token].l2Tokens[chainId], _whitelistedTokens[_l1Token].bridgePool);
     }
 
     /**************************************

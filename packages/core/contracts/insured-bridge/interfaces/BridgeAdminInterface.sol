@@ -28,7 +28,7 @@ interface BridgeAdminInterface {
     function depositContracts(uint256) external view returns (DepositUtilityContracts memory);
 
     struct L1TokenRelationships {
-        mapping(uint256 => address) l2Token;
+        mapping(uint256 => address) l2Tokens; // L2 Chain Id to l2Token address.
         address bridgePool;
     }
 
