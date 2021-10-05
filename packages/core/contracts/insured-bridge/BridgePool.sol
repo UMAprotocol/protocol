@@ -666,13 +666,13 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         uint256 requestTimestamp,
         bytes memory customAncillaryData
     ) private {
-        uint256 proposerBondPct_ =
+        uint256 _proposerBondPct =
             FixedPoint.Unsigned(uint256(proposerBondPct)).div(FixedPoint.fromUnscaledUint(1)).rawValue;
         uint256 finalFee = store.computeFinalFee(address(l1Token)).rawValue;
 
         uint256 totalBond =
             FixedPoint
-                .Unsigned(proposerBondPct_)
+                .Unsigned(_proposerBondPc_)
                 .mul(FixedPoint.Unsigned(amount))
                 .add(FixedPoint.Unsigned(finalFee))
                 .rawValue;
