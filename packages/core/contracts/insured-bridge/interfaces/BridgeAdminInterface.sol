@@ -32,7 +32,7 @@ interface BridgeAdminInterface {
         address bridgePool;
     }
 
-    function whitelistedTokens(address, uint256) external view returns (address, address);
+    function whitelistedTokens(address, uint256) external view returns (address l2Token, address bridgePool);
 
     function optimisticOracleLiveness() external view returns (uint64);
 
