@@ -138,6 +138,7 @@ describe("InsuredBridgeL1Client", function () {
       instantRelayFeePct: depositData.instantRelayFeePct,
       quoteTimestamp: Number(depositData.quoteTimestamp),
       realizedLpFeePct: relayData.realizedLpFeePct,
+      priceRequestTime: relayData.priceRequestTime,
       depositHash: depositHash,
       relayState: ClientRelayState.Pending,
       relayHash,
@@ -308,6 +309,7 @@ describe("InsuredBridgeL1Client", function () {
         priceRequestTime: (await bridgePool.methods.getCurrentTime().call()).toString(),
         relayState: InsuredBridgeRelayStateEnum.PENDING,
       };
+      expectedRelayedDepositInformation.priceRequestTime = Number(relayAttemptData.priceRequestTime);
       await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: relayer });
 
       await client.update();
@@ -400,6 +402,7 @@ describe("InsuredBridgeL1Client", function () {
         priceRequestTime: (await bridgePool.methods.getCurrentTime().call()).toString(),
         relayState: InsuredBridgeRelayStateEnum.PENDING,
       };
+      expectedRelayedDepositInformation.priceRequestTime = Number(relayAttemptData.priceRequestTime);
       await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: relayer });
 
       await client.update();
@@ -469,10 +472,14 @@ describe("InsuredBridgeL1Client", function () {
       // Can re-relay the deposit.
       await l1Token.methods.mint(rando, totalRelayBond).send({ from: owner });
       await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: rando });
+      expectedRelayedDepositInformation.priceRequestTime = Number(
+        (await bridgePool.methods.getCurrentTime().call()).toString()
+      );
+      expectedRelayedDepositInformation.relayId = Number((await bridgePool.methods.numberOfRelays().call()).toString());
       await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: rando });
 
-      // Check the client updated accordingly. Importantly there should be a new slow relayer, the disputed slow relayers
-      // should contain the previous relayer.
+      // Check the client updated accordingly. Importantly there should be new relay params, and the disputed slow
+      // relayers should contain the previous relayer.
       await client.update();
       expectedRelayedDepositInformation.slowRelayer = rando; // The re-relayer was the rando account.
       expectedRelayedDepositInformation.disputedSlowRelayers.push(relayer); // disputed
@@ -538,6 +545,7 @@ describe("InsuredBridgeL1Client", function () {
         priceRequestTime: (await bridgePool.methods.getCurrentTime().call()).toString(),
         relayState: InsuredBridgeRelayStateEnum.PENDING,
       };
+      expectedRelayedDepositInformation.priceRequestTime = Number(relayAttemptData.priceRequestTime);
       await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: relayer });
 
       // Next, advance time and settle the relay. State should update accordingly.
@@ -566,6 +574,7 @@ describe("InsuredBridgeL1Client", function () {
       relayData.realizedLpFeePct = toWei("0.11");
       relayData.slowRelayer = rando;
       relayData.relayId = 1;
+      relayData.priceRequestTime = Number((await bridgePool.methods.getCurrentTime().call()).toString());
       await l1Token.methods.mint(rando, totalRelayBond).send({ from: owner });
       await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: rando });
       await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: rando });
@@ -590,6 +599,7 @@ describe("InsuredBridgeL1Client", function () {
       relayData.slowRelayer = relayer;
       relayData.realizedLpFeePct = toWei("0.13");
       relayData.relayId = 0; // First relay on new Bridge
+      relayData.priceRequestTime = Number((await bridgePool2.methods.getCurrentTime().call()).toString());
       await l1Token2.methods.mint(liquidityProvider, initialPoolLiquidity).send({ from: owner });
       await l1Token2.methods
         .approve(bridgePool2.options.address, initialPoolLiquidity)

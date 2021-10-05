@@ -30,6 +30,7 @@ export interface Relay {
   instantRelayFeePct: string;
   quoteTimestamp: number;
   realizedLpFeePct: string;
+  priceRequestTime: number;
   depositHash: string;
   relayState: ClientRelayState;
   relayHash: string;
@@ -194,6 +195,7 @@ export class InsuredBridgeL1Client {
           instantRelayFeePct: depositRelayedEvent.returnValues.depositData.instantRelayFeePct,
           quoteTimestamp: Number(depositRelayedEvent.returnValues.depositData.quoteTimestamp),
           realizedLpFeePct: depositRelayedEvent.returnValues.relay.realizedLpFeePct,
+          priceRequestTime: Number(depositRelayedEvent.returnValues.relay.priceRequestTime),
           depositHash: depositRelayedEvent.returnValues.depositHash,
           relayState: ClientRelayState.Pending, // Should be equal to depositRelayedEvent.returnValues.relay.relayState
           relayHash: depositRelayedEvent.returnValues.relayAncillaryDataHash,
@@ -206,6 +208,10 @@ export class InsuredBridgeL1Client {
           const previousSlowRelayer = this.relays[l1Token][relayData.depositHash].slowRelayer;
           this.relays[l1Token][relayData.depositHash].disputedSlowRelayers.push(previousSlowRelayer);
           this.relays[l1Token][relayData.depositHash].slowRelayer = relayData.slowRelayer;
+          this.relays[l1Token][relayData.depositHash].relayId = relayData.relayId;
+          this.relays[l1Token][relayData.depositHash].realizedLpFeePct = relayData.realizedLpFeePct;
+          this.relays[l1Token][relayData.depositHash].priceRequestTime = relayData.priceRequestTime;
+          // relayState should be the same.
         }
         // Else, if this if this is the first time we see this deposit hash, then store it.
         else this.relays[l1Token][relayData.depositHash] = relayData;
