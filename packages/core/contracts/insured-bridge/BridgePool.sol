@@ -90,7 +90,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
     // Associates a relay request's ancillary data with the deposit hash that the relay request was linked with. This
     // mapping is used by the OptimisticOracle callback functions (i.e. priceDisputed, priceSettled) to identify the
     // relay request that was disputed or settled.
-    mapping(bytes => bytes32) public relayRequestAncillaryData;
+    mapping(bytes32 => bytes32) public relayRequestAncillaryData;
 
     // Map hash of deposit and realized-relay fee to instant relayers. This mapping is checked at settlement time
     // to determine if there was a valid instant relayer.
@@ -261,7 +261,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
 
         bytes32 relayHash = _getRelayHash(depositData, relayData);
         bytes memory ancillaryData = _getRelayAncillaryData(relayHash);
-        relayRequestAncillaryData[ancillaryData] = depositHash;
+        relayRequestAncillaryData[keccak256(ancillaryData)] = depositHash;
 
         // Sanity check that pool has enough balance to cover relay amount + proposer reward. Reward amount will be
         // paid on settlement after the OptimisticOracle price request has passed the challenge period.
@@ -406,7 +406,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         bytes memory _ancillaryData,
         SkinnyOptimisticOracleInterface.Request memory _request
     ) external onlyFromOptimisticOracle {
-        bytes32 depositHash = relayRequestAncillaryData[_ancillaryData];
+        bytes32 depositHash = relayRequestAncillaryData[keccak256(_ancillaryData)];
         RelayData storage relay = relays[depositHash];
         relay.relayState = RelayState.Disputed;
     }
@@ -415,7 +415,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
      * @notice Callback for settlements, marks relay as ready for finalization if the relay was resolved as valid.
      * @dev Reverts if relay is uninitialized or already settled.
      * @dev _timestamp and _identifier are unused because _ancillaryData contains a relay nonce and uniquely
-     * identifies a relay request.
+     *     identifies a relay request.
      * @param _identifier price identifier for relay request.
      * @param _timestamp timestamp for relay request.
      * @param _ancillaryData ancillary data for relay request.
@@ -427,7 +427,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         bytes memory _ancillaryData,
         SkinnyOptimisticOracleInterface.Request memory _request
     ) external onlyFromOptimisticOracle {
-        bytes32 depositHash = relayRequestAncillaryData[_ancillaryData];
+        bytes32 depositHash = relayRequestAncillaryData[keccak256(_ancillaryData)];
         RelayData storage relay = relays[depositHash];
         require(relay.relayState == RelayState.Pending || relay.relayState == RelayState.Disputed);
         // 1e18 = Canonical value representing "True"; i.e. the proposed relay is valid.
@@ -693,7 +693,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
             // Caller is proposer.
             msg.sender,
             // Canonical value representing "True"; i.e. the proposed relay is valid.
-            1e18
+            int256(1e18)
         );
     }
 }
