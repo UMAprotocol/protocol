@@ -964,6 +964,18 @@ export const defaultConfigs: { [name: string]: { type: string; [key: string]: an
     twapLength: 7200,
     invertPrice: true,
   },
+  "PUNKETH-1221": {
+    type: "uniswap",
+    uniswapAddress: "0x9469313a1702dC275015775249883cFc35Aa94d8",
+    twapLength: 7200,
+    invertPrice: false,
+  },
+  "GASETH-1221": {
+    type: "uniswap",
+    uniswapAddress: "0xF6E15Cdf292D36A589276C835cC576F0DF0Fe53A",
+    twapLength: 7200,
+    invertPrice: true,
+  },
 };
 
 // Pull in the number of decimals for each identifier from the common getPrecisionForIdentifier. This is used within the
