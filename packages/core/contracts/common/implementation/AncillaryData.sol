@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import "hardhat/console.sol";
-
 /**
  * @title Library for encoding and decoding ancillary data for DVM price requests.
  * @notice  We assume that on-chain ancillary data can be formatted directly from bytes to utf8 encoding via
