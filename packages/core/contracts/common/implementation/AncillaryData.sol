@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
+import "hardhat/console.sol";
+
 /**
  * @title Library for encoding and decoding ancillary data for DVM price requests.
  * @notice  We assume that on-chain ancillary data can be formatted directly from bytes to utf8 encoding via
@@ -12,23 +14,50 @@ pragma solidity ^0.8.0;
 library AncillaryData {
     /**
      * @notice Returns utf8-encoded bytes32 string that can be read via web3.utils.hexToUtf8.
-     * Source: https://ethereum.stackexchange.com/questions/8346/convert-address-to-string/8447#8447
+     * Source: brilliant implementation at https://gitter.im/ethereum/solidity?at=5840d23416207f7b0ed08c9b.
      * @dev Will return bytes32 in all lower case hex characters and without the leading 0x.
      * This has minor changes from the toUtf8BytesAddress to control for the size of the input.
-     * @param x bytes32 to encode.
+     * @param bytesIn bytes32 to encode.
      * @return utf8 encoded bytes32.
      */
-    function toUtf8Bytes(bytes32 x) internal pure returns (bytes memory) {
-        bytes memory s = new bytes(64);
+    function toUtf8Bytes(bytes32 bytesIn) internal pure returns (bytes memory) {
+        unchecked {
+            uint256 x = uint256(bytesIn) / 2**128;
 
-        for (uint256 i = 0; i < 32; i++) {
-            bytes1 b = bytes1(uint8(uint256(x) / (2**(8 * (31 - i)))));
-            bytes1 hi = bytes1(uint8(b) / 16);
-            bytes1 lo = bytes1(uint8(b) - 16 * uint8(hi));
-            s[2 * i] = char(hi);
-            s[2 * i + 1] = char(lo);
+            // Nibble interleave
+            x = x & 0x00000000000000000000000000000000ffffffffffffffffffffffffffffffff;
+            x = (x | (x * 2**64)) & 0x0000000000000000ffffffffffffffff0000000000000000ffffffffffffffff;
+            x = (x | (x * 2**32)) & 0x00000000ffffffff00000000ffffffff00000000ffffffff00000000ffffffff;
+            x = (x | (x * 2**16)) & 0x0000ffff0000ffff0000ffff0000ffff0000ffff0000ffff0000ffff0000ffff;
+            x = (x | (x * 2**8)) & 0x00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff;
+            x = (x | (x * 2**4)) & 0x0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f;
+
+            // Hex encode
+            uint256 h = (x & 0x0808080808080808080808080808080808080808080808080808080808080808) / 8;
+            uint256 i = (x & 0x0404040404040404040404040404040404040404040404040404040404040404) / 4;
+            uint256 j = (x & 0x0202020202020202020202020202020202020202020202020202020202020202) / 2;
+            x = x + (h & (i | j)) * 0x27 + 0x3030303030303030303030303030303030303030303030303030303030303030;
+
+            // Store and load next batch
+            bytes32 first = bytes32(x);
+            x = uint256(bytesIn);
+
+            // Nibble interleave
+            x = x & 0x00000000000000000000000000000000ffffffffffffffffffffffffffffffff;
+            x = (x | (x * 2**64)) & 0x0000000000000000ffffffffffffffff0000000000000000ffffffffffffffff;
+            x = (x | (x * 2**32)) & 0x00000000ffffffff00000000ffffffff00000000ffffffff00000000ffffffff;
+            x = (x | (x * 2**16)) & 0x0000ffff0000ffff0000ffff0000ffff0000ffff0000ffff0000ffff0000ffff;
+            x = (x | (x * 2**8)) & 0x00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff;
+            x = (x | (x * 2**4)) & 0x0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f;
+
+            // Hex encode
+            h = (x & 0x0808080808080808080808080808080808080808080808080808080808080808) / 8;
+            i = (x & 0x0404040404040404040404040404040404040404040404040404040404040404) / 4;
+            j = (x & 0x0202020202020202020202020202020202020202020202020202020202020202) / 2;
+            x = x + (h & (i | j)) * 0x27 + 0x3030303030303030303030303030303030303030303030303030303030303030;
+
+            return abi.encodePacked(first, x);
         }
-        return s;
     }
 
     /**
