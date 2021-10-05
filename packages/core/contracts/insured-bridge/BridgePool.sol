@@ -62,7 +62,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
     StoreInterface public store;
     OptimisticOracleInterface public optimisticOracle;
 
-    // Store local instances of contract params to save gas relaying. Can be sync with the BridgeAdmin at any time.
+    // Store local instances of contract params to save gas relaying. Can be synced with the BridgeAdmin at any time.
     uint64 public proposerBondPct;
     uint64 public optimisticOracleLiveness;
     bytes32 public identifier;
