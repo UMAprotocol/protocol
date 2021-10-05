@@ -98,7 +98,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
     // Associates a relay request's ancillary data with the deposit hash that the relay request was linked with. This
     // mapping is used by the OptimisticOracle callback functions (i.e. priceDisputed) to identify the
     // relay request that was disputed or settled.
-    mapping(bytes => bytes32) public relayRequestAncillaryData;
+    mapping(bytes32 => bytes32) public relayRequestAncillaryData;
 
     // Map hash of deposit and realized-relay fee to instant relayers. This mapping is checked at settlement time
     // to determine if there was a valid instant relayer.
@@ -235,6 +235,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
             });
         bytes32 depositHash = _getDepositHash(depositData);
 
+        // Note: A disputed relay deletes the stored relay hash and enables this require statement to pass.
         require(relays[depositHash] == bytes32(0), "Pending relay exists");
 
         // If no pending relay for this deposit, then associate the caller's relay attempt with it.
@@ -251,8 +252,9 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
             });
         relays[depositHash] = _getRelayDataHash(relayData);
 
-        bytes memory ancillaryData = getRelayAncillaryData(depositData, relayData);
-        relayRequestAncillaryData[ancillaryData] = depositHash;
+        bytes32 relayHash = _getRelayHash(depositData, relayData);
+        bytes memory ancillaryData = _getRelayAncillaryData(relayHash);
+        relayRequestAncillaryData[keccak256(ancillaryData)] = depositHash;
 
         // Sanity check that pool has enough balance to cover relay amount + proposer reward. Reward amount will be
         // paid on settlement after the OptimisticOracle price request has passed the challenge period.
@@ -271,7 +273,6 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
 
         pendingReserves += amount; // Book off maximum liquidity used by this relay in the pending reserves.
 
-        // We use an internal method to emit this event to overcome Solidity's "stack too deep" error.
         emit DepositRelayed(depositHash, depositData, address(l1Token), relayData);
     }
 
@@ -288,15 +289,17 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
      * responsibility as the disputer in validating the relay data.
      * @dev Caller must have approved this contract to spend the deposit amount of L1 tokens to relay. There can only
      * be one instant relayer per relay attempt.
-     * @param _depositData Unique set of L2 deposit data that caller is trying to instantly relay.
+     * @param depositData Unique set of L2 deposit data that caller is trying to instantly relay.
+     * @param relayData Parameters of Relay that caller is attempting to speedup. Must hash to the stored relay hash
+     * for this deposit.
      */
-    function speedUpRelay(DepositData memory _depositData, RelayData memory _relayData) public nonReentrant() {
-        bytes32 depositHash = _getDepositHash(_depositData);
-        _validateRelayDataHash(depositHash, _relayData);
+    function speedUpRelay(DepositData memory depositData, RelayData memory relayData) public nonReentrant() {
+        bytes32 depositHash = _getDepositHash(depositData);
+        _validateRelayDataHash(depositHash, relayData);
 
-        bytes32 instantRelayHash = _getInstantRelayHash(depositHash, _relayData);
+        bytes32 instantRelayHash = _getInstantRelayHash(depositHash, relayData);
         require(
-            _relayData.relayState == RelayState.Pending && instantRelays[instantRelayHash] == address(0),
+            relayData.relayState == RelayState.Pending && instantRelays[instantRelayHash] == address(0),
             "Relay cannot be sped up"
         );
         instantRelays[instantRelayHash] = msg.sender;
@@ -305,33 +308,33 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         // of the LP fees, the relayer fees and the instant relay fee.
         uint256 feesTotal =
             _getAmountFromPct(
-                _relayData.realizedLpFeePct + _depositData.slowRelayFeePct + _depositData.instantRelayFeePct,
-                _depositData.amount
+                relayData.realizedLpFeePct + depositData.slowRelayFeePct + depositData.instantRelayFeePct,
+                depositData.amount
             );
 
-        l1Token.safeTransferFrom(msg.sender, _depositData.l1Recipient, _depositData.amount - feesTotal);
+        l1Token.safeTransferFrom(msg.sender, depositData.l1Recipient, depositData.amount - feesTotal);
 
-        emit RelaySpedUp(depositHash, msg.sender, _relayData);
+        emit RelaySpedUp(depositHash, msg.sender, relayData);
     }
 
     /**
      * @notice Reward relayers if a pending relay price request has a price available on the OptimisticOracle. Mark
      * the relay as complete.
-     * @param _depositData Unique set of L2 deposit data that caller is trying to settle a relay for.
-     * @param _relayData Parameters of Relay that caller is attempting to settle. Must hash to the stored relay hash
+     * @param depositData Unique set of L2 deposit data that caller is trying to settle a relay for.
+     * @param relayData Parameters of Relay that caller is attempting to settle. Must hash to the stored relay hash
      * for this deposit.
-     * @param _ancillaryData Relay price request's ancillary data. Used to check status of relay price request.
-     * @param _request Relay price request struct. Used to check status of relay price request.
+     * @param ancillaryData Relay price request's ancillary data. Used to check status of relay price request.
+     * @param request Relay price request struct. Used to check status of relay price request.
      */
     function settleRelay(
-        DepositData memory _depositData,
-        RelayData memory _relayData,
-        bytes memory _ancillaryData,
-        SkinnyOptimisticOracleInterface.Request memory _request
+        DepositData memory depositData,
+        RelayData memory relayData,
+        bytes memory ancillaryData,
+        SkinnyOptimisticOracleInterface.Request memory request
     ) public nonReentrant() {
-        bytes32 depositHash = _getDepositHash(_depositData);
-        _validateRelayDataHash(depositHash, _relayData);
-        require(_relayData.relayState == RelayState.Pending, "Already settled");
+        bytes32 depositHash = _getDepositHash(depositData);
+        _validateRelayDataHash(depositHash, relayData);
+        require(relayData.relayState == RelayState.Pending, "Already settled");
 
         // Optimistically try to settle relay. If this transaction settles the relay, then check the newly resolved
         // price. Otherwise grab the already resolved price.
@@ -339,22 +342,22 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
             _getOptimisticOracle().settle(
                 address(this),
                 bridgeAdmin.identifier(),
-                uint32(_relayData.priceRequestTime),
-                _ancillaryData,
-                _request
+                uint32(relayData.priceRequestTime),
+                ancillaryData,
+                request
             )
         returns (uint256 payout, int256 resolvedPrice) {
-            require(resolvedPrice == int256(1e18), "Can only settle relay if price resolved True on OptimisticOracle");
+            require(resolvedPrice == int256(1e18), "Settle relay iff price is True");
         } catch {
             require(
                 _getOptimisticOracle().hasPrice(
                     address(this),
                     bridgeAdmin.identifier(),
-                    uint32(_relayData.priceRequestTime),
-                    _ancillaryData,
-                    _request
-                ) && _request.resolvedPrice == int256(1e18),
-                "Can only settle relay if price resolved True on OptimisticOracle"
+                    uint32(relayData.priceRequestTime),
+                    ancillaryData,
+                    request
+                ) && request.resolvedPrice == int256(1e18),
+                "Settle relay iff price is True"
             );
         }
 
@@ -362,10 +365,10 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         relays[depositHash] = _getRelayDataHash(
             RelayData({
                 relayState: RelayState.Finalized,
-                slowRelayer: _relayData.slowRelayer,
-                relayId: _relayData.relayId,
-                realizedLpFeePct: _relayData.realizedLpFeePct,
-                priceRequestTime: _relayData.priceRequestTime
+                slowRelayer: relayData.slowRelayer,
+                relayId: relayData.relayId,
+                realizedLpFeePct: relayData.realizedLpFeePct,
+                priceRequestTime: relayData.priceRequestTime
             })
         );
 
@@ -379,52 +382,52 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         //      result, they are effectively paid what they spent when speeding up the relay + the instantRelayFee.
 
         uint256 instantRelayerOrRecipientAmount =
-            _depositData.amount -
-                _getAmountFromPct(_relayData.realizedLpFeePct + _depositData.slowRelayFeePct, _depositData.amount);
+            depositData.amount -
+                _getAmountFromPct(relayData.realizedLpFeePct + depositData.slowRelayFeePct, depositData.amount);
 
         // Refund the instant relayer iff the instant relay params match the approved relay.
-        bytes32 instantRelayHash = _getInstantRelayHash(depositHash, _relayData);
+        bytes32 instantRelayHash = _getInstantRelayHash(depositHash, relayData);
         address instantRelayer = instantRelays[instantRelayHash];
 
         l1Token.safeTransfer(
-            instantRelayer != address(0) ? instantRelayer : _depositData.l1Recipient,
+            instantRelayer != address(0) ? instantRelayer : depositData.l1Recipient,
             instantRelayerOrRecipientAmount
         );
 
         // The slow relayer gets paid the slow relay fee. This is the same irrespective if the relay was sped up or not.
-        uint256 slowRelayerAmount = _getAmountFromPct(_depositData.slowRelayFeePct, _depositData.amount);
-        l1Token.safeTransfer(_relayData.slowRelayer, slowRelayerAmount);
+        uint256 slowRelayerAmount = _getAmountFromPct(depositData.slowRelayFeePct, depositData.amount);
+        l1Token.safeTransfer(relayData.slowRelayer, slowRelayerAmount);
 
         uint256 totalAmountSent = instantRelayerOrRecipientAmount + slowRelayerAmount;
 
         // Update reserves by amounts changed and allocated LP fees.
-        pendingReserves -= _depositData.amount;
+        pendingReserves -= depositData.amount;
         liquidReserves -= totalAmountSent;
         utilizedReserves += int256(totalAmountSent);
         updateAccumulatedLpFees();
-        allocateLpFees(_getAmountFromPct(_relayData.realizedLpFeePct, _depositData.amount));
+        allocateLpFees(_getAmountFromPct(relayData.realizedLpFeePct, depositData.amount));
 
-        emit RelaySettled(depositHash, msg.sender, _relayData);
+        emit RelaySettled(depositHash, msg.sender, relayData);
 
         delete instantRelays[instantRelayHash];
     }
 
     /**
      * @notice Callback for disputes, deletes disputed relay allowing a follow-up relay.
-     * @dev _timestamp and _identifier are unused because _ancillaryData contains a relay nonce and uniquely
+     * @dev timestamp and identifier are unused because ancillaryData contains a relay nonce and uniquely
      * identifies a relay request.
-     * @param _identifier price identifier for relay request.
-     * @param _timestamp timestamp for relay request.
-     * @param _ancillaryData ancillary data for relay request.
-     * @param _request disputed relay request params.
+     * @param identifier price identifier for relay request.
+     * @param timestamp timestamp for relay request.
+     * @param ancillaryData ancillary data for relay request.
+     * @param request disputed relay request params.
      */
     function priceDisputed(
-        bytes32 _identifier,
-        uint32 _timestamp,
-        bytes memory _ancillaryData,
-        SkinnyOptimisticOracleInterface.Request memory _request
+        bytes32 identifier,
+        uint32 timestamp,
+        bytes memory ancillaryData,
+        SkinnyOptimisticOracleInterface.Request memory request
     ) external onlyFromOptimisticOracle {
-        bytes32 depositHash = relayRequestAncillaryData[_ancillaryData];
+        bytes32 depositHash = relayRequestAncillaryData[keccak256(ancillaryData)];
         delete relays[depositHash];
     }
 
@@ -522,11 +525,11 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
     /**
      * @notice Returns ancillary data containing all relevant Relay data that voters can format into UTF8 and use to
      * determine if the relay is valid.
-     * @param _depositData Contains L2 deposit information used by off-chain validators to validate relay.
-     * @param _relayData Contains relay information used by off-chain validators to validate relay.
+     * @param depositData Contains L2 deposit information used by off-chain validators to validate relay.
+     * @param relayData Contains relay information used by off-chain validators to validate relay.
      * @return bytes New ancillary data that can be decoded into UTF8.
      */
-    function getRelayAncillaryData(DepositData memory _depositData, RelayData memory _relayData)
+    function getRelayAncillaryData(DepositData memory depositData, RelayData memory relayData)
         public
         view
         returns (bytes memory)
@@ -537,16 +540,16 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
                 "relayHash",
                 keccak256(
                     abi.encode(
-                        _depositData.chainId,
-                        _depositData.depositId,
-                        _depositData.l1Recipient,
-                        _depositData.l2Sender,
-                        _depositData.amount,
-                        _depositData.slowRelayFeePct,
-                        _depositData.instantRelayFeePct,
-                        _depositData.quoteTimestamp,
-                        _relayData.relayId,
-                        _relayData.realizedLpFeePct,
+                        depositData.chainId,
+                        depositData.depositId,
+                        depositData.l1Recipient,
+                        depositData.l2Sender,
+                        depositData.amount,
+                        depositData.slowRelayFeePct,
+                        depositData.instantRelayFeePct,
+                        depositData.quoteTimestamp,
+                        relayData.relayId,
+                        relayData.realizedLpFeePct,
                         address(l1Token)
                     )
                 )
@@ -560,24 +563,20 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         return AncillaryData.appendKeyValueBytes32("", "relayHash", relayHash);
     }
 
-    function _getRelayHash(DepositData memory _depositData, RelayData storage _relayData)
-        private
-        view
-        returns (bytes32)
-    {
+    function _getRelayHash(DepositData memory depositData, RelayData memory relayData) private view returns (bytes32) {
         return
             keccak256(
                 abi.encode(
-                    _depositData.chainId,
-                    _depositData.depositId,
-                    _depositData.l1Recipient,
-                    _depositData.l2Sender,
-                    _depositData.amount,
-                    _depositData.slowRelayFeePct,
-                    _depositData.instantRelayFeePct,
-                    _depositData.quoteTimestamp,
-                    _relayData.relayId,
-                    _relayData.realizedLpFeePct,
+                    depositData.chainId,
+                    depositData.depositId,
+                    depositData.l1Recipient,
+                    depositData.l2Sender,
+                    depositData.amount,
+                    depositData.slowRelayFeePct,
+                    depositData.instantRelayFeePct,
+                    depositData.quoteTimestamp,
+                    relayData.relayId,
+                    relayData.realizedLpFeePct,
                     address(l1Token)
                 )
             );
@@ -650,19 +649,19 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         return _getAmountFromPct(bridgeAdmin.proposerBondPct(), amount);
     }
 
-    function _getDepositHash(DepositData memory _depositData) private view returns (bytes32) {
+    function _getDepositHash(DepositData memory depositData) private view returns (bytes32) {
         return
             keccak256(
                 abi.encode(
-                    _depositData.chainId,
-                    _depositData.depositId,
-                    _depositData.l1Recipient,
-                    _depositData.l2Sender,
+                    depositData.chainId,
+                    depositData.depositId,
+                    depositData.l1Recipient,
+                    depositData.l2Sender,
                     address(l1Token),
-                    _depositData.amount,
-                    _depositData.slowRelayFeePct,
-                    _depositData.instantRelayFeePct,
-                    _depositData.quoteTimestamp
+                    depositData.amount,
+                    depositData.slowRelayFeePct,
+                    depositData.instantRelayFeePct,
+                    depositData.quoteTimestamp
                 )
             );
     }
