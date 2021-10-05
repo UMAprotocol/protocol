@@ -139,7 +139,7 @@ describe("InsuredBridgeL1Client", function () {
       quoteTimestamp: Number(depositData.quoteTimestamp),
       realizedLpFeePct: relayData.realizedLpFeePct,
       depositHash: depositHash,
-      relayState: 0, // pending
+      relayState: ClientRelayState.Pending,
       relayHash,
     };
   };
@@ -303,6 +303,11 @@ describe("InsuredBridgeL1Client", function () {
 
       await l1Token.methods.mint(relayer, totalRelayBond).send({ from: owner });
       await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: relayer });
+      const relayAttemptData = {
+        ...relayData,
+        priceRequestTime: (await bridgePool.methods.getCurrentTime().call()).toString(),
+        relayState: InsuredBridgeRelayStateEnum.PENDING,
+      };
       await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: relayer });
 
       await client.update();
@@ -348,7 +353,7 @@ describe("InsuredBridgeL1Client", function () {
       await l1Token.methods
         .approve(bridgePool.options.address, instantRelayAmountSubFee)
         .send({ from: instantRelayer });
-      await bridgePool.methods.speedUpRelay(depositData).send({ from: instantRelayer });
+      await bridgePool.methods.speedUpRelay(depositData, relayAttemptData).send({ from: instantRelayer });
 
       await client.update();
 
@@ -365,18 +370,16 @@ describe("InsuredBridgeL1Client", function () {
         .setCurrentTime(Number(await timer.methods.getCurrentTime().call()) + defaultLiveness)
         .send({ from: owner });
       const proposeEvent = (await optimisticOracle.getPastEvents("ProposePrice", { fromBlock: 0 }))[0];
-      await optimisticOracle.methods
-        .settle(
-          bridgePool.options.address,
-          defaultIdentifier,
-          proposeEvent.returnValues.timestamp,
-          proposeEvent.returnValues.ancillaryData,
-          { ...proposeEvent.returnValues.request, instantRelayer }
-        )
-        .send({ from: relayer });
 
       // Settle relay.
-      await bridgePool.methods.settleRelay(depositData).send({ from: rando });
+      await bridgePool.methods
+        .settleRelay(
+          depositData,
+          relayAttemptData,
+          proposeEvent.returnValues.ancillaryData,
+          proposeEvent.returnValues.request
+        )
+        .send({ from: rando });
 
       await client.update();
       expectedRelayedDepositInformation.relayState = ClientRelayState.Finalized;
@@ -392,6 +395,11 @@ describe("InsuredBridgeL1Client", function () {
 
       await l1Token.methods.mint(relayer, totalRelayBond).send({ from: owner });
       await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: relayer });
+      let relayAttemptData = {
+        ...relayData,
+        priceRequestTime: (await bridgePool.methods.getCurrentTime().call()).toString(),
+        relayState: InsuredBridgeRelayStateEnum.PENDING,
+      };
       await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: relayer });
 
       await client.update();
@@ -431,7 +439,7 @@ describe("InsuredBridgeL1Client", function () {
       await l1Token.methods
         .approve(bridgePool.options.address, instantRelayAmountSubFee)
         .send({ from: instantRelayer });
-      await bridgePool.methods.speedUpRelay(depositData).send({ from: instantRelayer });
+      await bridgePool.methods.speedUpRelay(depositData, relayAttemptData).send({ from: instantRelayer });
 
       await client.update();
 
@@ -461,8 +469,6 @@ describe("InsuredBridgeL1Client", function () {
       // Can re-relay the deposit.
       await l1Token.methods.mint(rando, totalRelayBond).send({ from: owner });
       await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: rando });
-      // Cache price request timestamp.
-
       await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: rando });
 
       // Check the client updated accordingly. Importantly there should be a new slow relayer, the disputed slow relayers
@@ -527,6 +533,11 @@ describe("InsuredBridgeL1Client", function () {
       const totalRelayBond = toBN(relayAmount).mul(toBN(defaultProposerBondPct));
       await l1Token.methods.mint(relayer, totalRelayBond).send({ from: owner });
       await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: relayer });
+      let relayAttemptData = {
+        ...relayData,
+        priceRequestTime: (await bridgePool.methods.getCurrentTime().call()).toString(),
+        relayState: InsuredBridgeRelayStateEnum.PENDING,
+      };
       await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: relayer });
 
       // Next, advance time and settle the relay. State should update accordingly.
@@ -534,21 +545,17 @@ describe("InsuredBridgeL1Client", function () {
         .setCurrentTime(Number(await timer.methods.getCurrentTime().call()) + defaultLiveness)
         .send({ from: owner });
       const proposeEvent = (await optimisticOracle.getPastEvents("ProposePrice", { fromBlock: 0 }))[0];
-      await optimisticOracle.methods
-        .settle(
-          bridgePool.options.address,
-          defaultIdentifier,
-          proposeEvent.returnValues.timestamp,
+      await bridgePool.methods
+        .settleRelay(
+          depositData,
+          relayAttemptData,
           proposeEvent.returnValues.ancillaryData,
           proposeEvent.returnValues.request
         )
-        .send({ from: relayer });
-
-      // Settle relay.
-      await bridgePool.methods.settleRelay(depositData).send({ from: rando });
+        .send({ from: rando });
 
       // Construct the expected relay data that the client should return.
-      expectedRelayedDepositInformation.relayState = ClientRelayState.Finalized; // settled
+      expectedRelayedDepositInformation.relayState = ClientRelayState.Finalized;
       let expectedBridgePool1Relays = [JSON.parse(JSON.stringify(expectedRelayedDepositInformation))]; // deep copy
 
       // Change some of the variables and and re-relay.
@@ -571,7 +578,7 @@ describe("InsuredBridgeL1Client", function () {
         relayData,
         bridgePool
       ));
-      expectedRelayedDepositInformation.relayState = 0; // Pending
+      expectedRelayedDepositInformation.relayState = ClientRelayState.Pending;
       expectedRelayedDepositInformation.depositHash = depositHash;
       expectedBridgePool1Relays.push(JSON.parse(JSON.stringify(expectedRelayedDepositInformation)));
 

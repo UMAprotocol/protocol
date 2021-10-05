@@ -10,12 +10,6 @@ import type { BridgeAdminInterfaceWeb3, BridgePoolWeb3 } from "@uma/contracts-no
 import type { Logger } from "winston";
 import type { BN } from "@uma/common";
 
-enum RelayState {
-  Pending,
-  Disputed,
-  Finalized,
-}
-
 export enum ClientRelayState {
   Uninitialized, // Deposit on L2, nothing yet on L1. Can be slow relayed and can be sped up to instantly relay.
   Pending, // Deposit on L2 and has been slow relayed on L1. Can be sped up to instantly relay.
@@ -37,7 +31,7 @@ export interface Relay {
   quoteTimestamp: number;
   realizedLpFeePct: string;
   depositHash: string;
-  relayState: RelayState;
+  relayState: ClientRelayState;
   relayHash: string;
 }
 
@@ -110,11 +104,13 @@ export class InsuredBridgeL1Client {
   }
 
   getPendingRelayedDeposits(): Relay[] {
-    return this.getAllRelayedDeposits().filter((relay: Relay) => relay.relayState === RelayState.Pending);
+    return this.getAllRelayedDeposits().filter((relay: Relay) => relay.relayState === ClientRelayState.Pending);
   }
 
   getPendingRelayedDepositsForL1Token(l1Token: string): Relay[] {
-    return this.getRelayedDepositsForL1Token(l1Token).filter((relay: Relay) => relay.relayState === RelayState.Pending);
+    return this.getRelayedDepositsForL1Token(l1Token).filter(
+      (relay: Relay) => relay.relayState === ClientRelayState.Pending
+    );
   }
 
   async calculateRealizedLpFeePctForDeposit(deposit: Deposit): Promise<BN> {
@@ -140,7 +136,7 @@ export class InsuredBridgeL1Client {
     // If the relay is undefined then the deposit has not yet been sent on L1 and can be relayed.
     if (relay === undefined) return ClientRelayState.Uninitialized;
     // Else, if the relatable state is "Pending" then the deposit can be sped up to an instant relay.
-    else if (relay.relayState === RelayState.Pending) return ClientRelayState.Pending;
+    else if (relay.relayState === ClientRelayState.Pending) return ClientRelayState.Pending;
     // If neither condition is met then the relay is finalized.
     return ClientRelayState.Finalized;
   }
@@ -185,11 +181,11 @@ export class InsuredBridgeL1Client {
 
       for (const depositRelayedEvent of depositRelayedEvents) {
         const relayData: Relay = {
-          relayId: Number(depositRelayedEvent.returnValues.relayId),
+          relayId: Number(depositRelayedEvent.returnValues.relay.relayId),
           chainId: Number(depositRelayedEvent.returnValues.depositData.chainId),
           depositId: Number(depositRelayedEvent.returnValues.depositData.depositId),
           l2Sender: depositRelayedEvent.returnValues.depositData.l2Sender,
-          slowRelayer: depositRelayedEvent.returnValues.slowRelayer,
+          slowRelayer: depositRelayedEvent.returnValues.relay.slowRelayer,
           disputedSlowRelayers: [],
           l1Recipient: depositRelayedEvent.returnValues.depositData.l1Recipient,
           l1Token: depositRelayedEvent.returnValues.l1Token,
@@ -197,10 +193,10 @@ export class InsuredBridgeL1Client {
           slowRelayFeePct: depositRelayedEvent.returnValues.depositData.slowRelayFeePct,
           instantRelayFeePct: depositRelayedEvent.returnValues.depositData.instantRelayFeePct,
           quoteTimestamp: Number(depositRelayedEvent.returnValues.depositData.quoteTimestamp),
-          realizedLpFeePct: depositRelayedEvent.returnValues.realizedLpFeePct,
+          realizedLpFeePct: depositRelayedEvent.returnValues.relay.realizedLpFeePct,
           depositHash: depositRelayedEvent.returnValues.depositHash,
-          relayState: RelayState.Pending,
-          relayHash: depositRelayedEvent.returnValues.relayHash,
+          relayState: ClientRelayState.Pending, // Should be equal to depositRelayedEvent.returnValues.relay.relayState
+          relayHash: depositRelayedEvent.returnValues.relayAncillaryDataHash,
         };
 
         // If the local data contains this deposit ID then this is a re-relay of a disputed relay. In this case, we need
@@ -219,7 +215,7 @@ export class InsuredBridgeL1Client {
       for (const relaySpedUpEvent of relaySpedUpEvents) {
         const instantRelayDataHash = this._getInstantRelayHash(
           relaySpedUpEvent.returnValues.depositHash,
-          relaySpedUpEvent.returnValues.realizedLpFeePct
+          relaySpedUpEvent.returnValues.relay.realizedLpFeePct
         );
         if (instantRelayDataHash !== null) {
           this.instantRelays[l1Token][instantRelayDataHash] = {
@@ -229,7 +225,7 @@ export class InsuredBridgeL1Client {
       }
 
       for (const relaySettledEvent of relaySettledEvents) {
-        this.relays[l1Token][relaySettledEvent.returnValues.depositHash].relayState = RelayState.Finalized;
+        this.relays[l1Token][relaySettledEvent.returnValues.depositHash].relayState = ClientRelayState.Finalized;
       }
     }
     this.firstBlockToSearch = blockSearchConfig.toBlock + 1;
