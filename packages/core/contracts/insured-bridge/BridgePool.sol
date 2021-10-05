@@ -59,6 +59,14 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
     BridgeAdminInterface public bridgeAdmin;
 
     // A Relay represents an attempt to finalize a cross-chain transfer that originated on an L2 DepositBox contract.
+    // The flow chart between states is as follows:
+    // - Begin at Uninitialized.
+    // - When relayDeposit() is called, a new relay is created with state Pending and mapped to the L2 deposit hash.
+    // - If the relay is disputed, the relay gets deleted and the L2 deposit hash has no relay mapped to it anymore.
+    // - When settleRelay() is successfully called, the relay state gets set to Finalized and cannot change from there.
+    // - It is impossible for a relay to be deleted when in Finalized state (and have its state set to Uninitialized)
+    //   because the only way for settleRelay() to succeed is if the price has resolved on the OptimisticOracle.
+    // - You cannot dispute an already resolved request on the OptimisticOracle.
     enum RelayState { Uninitialized, Pending, Finalized }
 
     // Data from L2 deposit transaction.
@@ -402,8 +410,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
     }
 
     /**
-     * @notice Callback for disputes, marks relay as disputed.
-     * @dev Reverts if relay is not pending.
+     * @notice Callback for disputes, deletes disputed relay allowing a follow-up relay.
      * @dev _timestamp and _identifier are unused because _ancillaryData contains a relay nonce and uniquely
      * identifies a relay request.
      * @param _identifier price identifier for relay request.
