@@ -259,7 +259,8 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         relayData.realizedLpFeePct = realizedLpFeePct;
         relayData.slowRelayer = msg.sender;
 
-        bytes memory ancillaryData = getRelayAncillaryData(depositData, relayData);
+        bytes32 relayHash = _getRelayHash(depositData, relayData);
+        bytes memory ancillaryData = _getRelayAncillaryData(relayHash);
         relayRequestAncillaryData[ancillaryData] = depositHash;
 
         // Sanity check that pool has enough balance to cover relay amount + proposer reward. Reward amount will be
@@ -287,7 +288,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
             address(l1Token),
             realizedLpFeePct,
             depositHash,
-            _getRelayHash(depositData, relayData)
+            relayHash
         );
     }
 
@@ -392,7 +393,6 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
 
     /**
      * @notice Callback for disputes, marks relay as disputed.
-     * @dev Reverts if relay is not pending.
      * @dev _timestamp and _identifier are unused because _ancillaryData contains a relay nonce and uniquely
      * identifies a relay request.
      * @param _identifier price identifier for relay request.
@@ -408,7 +408,6 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
     ) external onlyFromOptimisticOracle {
         bytes32 depositHash = relayRequestAncillaryData[_ancillaryData];
         RelayData storage relay = relays[depositHash];
-        require(relay.relayState == RelayState.Pending);
         relay.relayState = RelayState.Disputed;
     }
 

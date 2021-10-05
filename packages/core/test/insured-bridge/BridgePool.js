@@ -836,10 +836,10 @@ describe("BridgePool", () => {
         )
         .send({ from: disputer });
 
-      // Mint relayer new bond to relay again:
-      await l1Token.methods.mint(relayer, totalRelayBond).send({ from: owner });
-      await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: relayer });
-      await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: relayer });
+      // Mint mew relayer bond to relay again:
+      await l1Token.methods.mint(rando, totalRelayBond).send({ from: owner });
+      await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: rando });
+      await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: rando });
       const proposalEvent2 = (await optimisticOracle.getPastEvents("ProposePrice", { fromBlock: 0 }))[1];
 
       // Resolve re-relay.
@@ -878,6 +878,29 @@ describe("BridgePool", () => {
 
       // Should not be able to settle relay again.
       assert(await didContractThrow(bridgePool.methods.settleRelay(depositData).send({ from: rando })));
+
+      assert.equal(
+        (await l1Token.methods.balanceOf(rando).call()).toString(),
+        toBN(totalRelayBond).add(realizedSlowRelayFeeAmount).toString(),
+        "Follow-up relayer should receive proposal bond + slow relay reward"
+      );
+      assert.equal(
+        (await l1Token.methods.balanceOf(relayer).call()).toString(),
+        totalDisputeRefund.toString(),
+        "Original relayer should receive entire bond back + 1/2 of loser's bond"
+      );
+      assert.equal(
+        (await l1Token.methods.balanceOf(bridgePool.options.address).call()).toString(),
+        toBN(initialPoolLiquidity).sub(
+          toBN(instantRelayAmountSubFee).add(realizedInstantRelayFeeAmount).add(realizedSlowRelayFeeAmount)
+        ),
+        "Pool should have initial liquidity amount minus relay amount sub LP fee"
+      );
+      assert.equal(
+        (await l1Token.methods.balanceOf(l1Recipient).call()).toString(),
+        toBN(instantRelayAmountSubFee).add(realizedInstantRelayFeeAmount).toString(),
+        "Recipient should receive total relay amount + instant relay fee"
+      );
     });
     it("Relay request is disputed, re-relay request expires after dispute resolves", async function () {
       // Cache price request timestamp.
@@ -902,10 +925,10 @@ describe("BridgePool", () => {
         )
         .send({ from: disputer });
 
-      // Mint relayer new bond to relay again:
-      await l1Token.methods.mint(relayer, totalRelayBond).send({ from: owner });
-      await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: relayer });
-      await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: relayer });
+      // Mint new relayer bond to relay again:
+      await l1Token.methods.mint(rando, totalRelayBond).send({ from: owner });
+      await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: rando });
+      await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: rando });
 
       // Resolve dispute.
       const price = toWei("1");
@@ -944,6 +967,29 @@ describe("BridgePool", () => {
 
       // Should not be able to settle relay again.
       assert(await didContractThrow(bridgePool.methods.settleRelay(depositData).send({ from: rando })));
+
+      assert.equal(
+        (await l1Token.methods.balanceOf(rando).call()).toString(),
+        toBN(totalRelayBond).add(realizedSlowRelayFeeAmount).toString(),
+        "Follow-up relayer should receive proposal bond + slow relay reward"
+      );
+      assert.equal(
+        (await l1Token.methods.balanceOf(relayer).call()).toString(),
+        totalDisputeRefund.toString(),
+        "Original relayer should receive entire bond back + 1/2 of loser's bond"
+      );
+      assert.equal(
+        (await l1Token.methods.balanceOf(bridgePool.options.address).call()).toString(),
+        toBN(initialPoolLiquidity).sub(
+          toBN(instantRelayAmountSubFee).add(realizedInstantRelayFeeAmount).add(realizedSlowRelayFeeAmount)
+        ),
+        "Pool should have initial liquidity amount minus relay amount sub LP fee"
+      );
+      assert.equal(
+        (await l1Token.methods.balanceOf(l1Recipient).call()).toString(),
+        toBN(instantRelayAmountSubFee).add(realizedInstantRelayFeeAmount).toString(),
+        "Recipient should receive total relay amount + instant relay fee"
+      );
     });
     it("Instant relayer address persists for subsequent relays when a pending relay is disputed", async () => {
       // Proposer approves pool to withdraw total bond.
