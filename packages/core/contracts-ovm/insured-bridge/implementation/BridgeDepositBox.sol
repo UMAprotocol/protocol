@@ -36,6 +36,7 @@ abstract contract BridgeDepositBox is Legacy_Testable, Legacy_Lockable {
      *  OVM DEPOSIT BOX DATA STRUCTURES  *
      *************************************/
 
+    // ChainID of the L2 this deposit box is deployed on.
     uint256 chainId;
 
     // Track the total number of deposits. Used as a unique identifier for bridged transfers.

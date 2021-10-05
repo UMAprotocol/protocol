@@ -151,6 +151,14 @@ describe("BridgePool", () => {
     return depositHash;
   };
 
+  const generateInstantRelayHash = (depositHash, relayData) => {
+    const instantRelayDataAbiEncoded = web3.eth.abi.encodeParameters(
+      ["bytes32", "uint64"],
+      [depositHash, relayData.realizedLpFeePct]
+    );
+    return soliditySha3(instantRelayDataAbiEncoded);
+  };
+
   before(async function () {
     accounts = await web3.eth.getAccounts();
     [
@@ -271,7 +279,6 @@ describe("BridgePool", () => {
       priceRequestTime: 0,
       realizedLpFeePct: defaultRealizedLpFee,
       slowRelayer: relayer,
-      instantRelayer: ZERO_ADDRESS,
     };
 
     // Save other reused values.
@@ -425,9 +432,12 @@ describe("BridgePool", () => {
       assert.equal(relayStatus.relayId.toString(), relayData.relayId.toString());
       assert.equal(relayStatus.relayState, InsuredBridgeRelayStateEnum.PENDING);
       assert.equal(relayStatus.priceRequestTime.toString(), requestTimestamp);
-      assert.equal(relayStatus.instantRelayer, ZERO_ADDRESS);
       assert.equal(relayStatus.slowRelayer, relayer);
       assert.equal(relayStatus.realizedLpFeePct.toString(), defaultRealizedLpFee);
+
+      // Instant relayer for this relay should be uninitialized.
+      const instantRelayHash = generateInstantRelayHash(depositHash, relayData);
+      assert.equal(await bridgePool.methods.instantRelays(instantRelayHash).call(), ZERO_ADDRESS);
 
       // Check event is logged correctly and emits all information needed to recreate the relay and associated deposit.
       await assertEventEmitted(txn, bridgePool, "DepositRelayed", (ev) => {
@@ -502,7 +512,7 @@ describe("BridgePool", () => {
       await l1Token.methods.approve(bridgePool.options.address, initialPoolLiquidity).send({ from: liquidityProvider });
       await bridgePool.methods.addLiquidity(initialPoolLiquidity).send({ from: liquidityProvider });
     });
-    it("Can add instant relayer to pending relay, even if disputed", async () => {
+    it("Valid instant relay, disputed, instant relayer should receive refund following subsequent valid relay", async () => {
       // Propose new relay:
       await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: relayer });
       await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: relayer });
@@ -543,14 +553,22 @@ describe("BridgePool", () => {
         .send({ from: instantRelayer });
       const speedupTxn = await bridgePool.methods.speedUpRelay(depositData).send({ from: instantRelayer });
       await assertEventEmitted(speedupTxn, bridgePool, "RelaySpedUp", (ev) => {
-        return ev.instantRelayer === instantRelayer && ev.depositHash === depositHash;
+        return (
+          ev.instantRelayer === instantRelayer &&
+          ev.depositHash === depositHash &&
+          ev.realizedLpFeePct === relayData.realizedLpFeePct
+        );
       });
       const speedupRelayStatus = await bridgePool.methods.relays(depositHash).call();
       assert.equal(speedupRelayStatus.relayState, InsuredBridgeRelayStateEnum.PENDING);
       assert.equal(speedupRelayStatus.priceRequestTime.toString(), requestTimestamp);
-      assert.equal(speedupRelayStatus.instantRelayer, instantRelayer);
       assert.equal(speedupRelayStatus.slowRelayer, rando);
       assert.equal(speedupRelayStatus.realizedLpFeePct.toString(), defaultRealizedLpFee);
+      const instantRelayHash = generateInstantRelayHash(
+        depositHash,
+        relayData // Note: the relay data should be the same as the original relay that was disputed.
+      );
+      assert.equal(await bridgePool.methods.instantRelays(instantRelayHash).call(), instantRelayer);
 
       // Check that contract pulled relay amount from instant relayer.
       assert.equal(
@@ -566,8 +584,156 @@ describe("BridgePool", () => {
 
       // Cannot repeatedly speed relay up.
       await l1Token.methods.mint(instantRelayer, instantRelayAmountSubFee).send({ from: owner });
-      await l1Token.methods.approve(bridgePool.options.address, slowRelayAmountSubFee).send({ from: instantRelayer });
+      await l1Token.methods
+        .approve(bridgePool.options.address, instantRelayAmountSubFee)
+        .send({ from: instantRelayer });
       assert(await didContractThrow(bridgePool.methods.speedUpRelay(depositData).call({ from: instantRelayer })));
+
+      // Burn newly minted tokens to make accounting simpler.
+      await l1Token.methods.transfer(owner, instantRelayAmountSubFee).send({ from: instantRelayer });
+
+      // Expire relay. Since instant relayed amount was correct, instant relayer should be refunded and user should
+      // still just have the instant relay amount.
+      const expectedExpirationTimestamp = (Number(requestTimestamp) + defaultLiveness).toString();
+      await timer.methods.setCurrentTime(expectedExpirationTimestamp).send({ from: owner });
+      await bridgePool.methods.settleRelay(depositData).send({ from: rando });
+
+      // Check token balances.
+      // - Slow relayer should get back their proposal bond from OO and reward from BridgePool.
+      // - Fast relayer should get reward from BridgePool and the relayed amount, minus LP and slow relay fee. This
+      // is equivalent to what the l1Recipient received + the instant relayer fee.
+      // - Recipient already got paid by fast relayer and should receive no further tokens.
+      assert.equal(
+        (await l1Token.methods.balanceOf(rando).call()).toString(),
+        toBN(totalRelayBond).add(realizedSlowRelayFeeAmount).toString(),
+        "Slow relayer should receive proposal bond + slow relay reward"
+      );
+      assert.equal(
+        (await l1Token.methods.balanceOf(instantRelayer).call()).toString(),
+        toBN(instantRelayAmountSubFee).add(realizedInstantRelayFeeAmount).toString(),
+        "Instant relayer should receive instant relay reward + the instant relay amount sub fees"
+      );
+      assert.equal(
+        (await l1Token.methods.balanceOf(depositData.l1Recipient).call()).toString(),
+        instantRelayAmountSubFee,
+        "Recipient should still have the full amount, minus slow & instant fees"
+      );
+      assert.equal(
+        (await l1Token.methods.balanceOf(optimisticOracle.options.address).call()).toString(),
+        totalDisputeRefund.toString(),
+        "OptimisticOracle should still hold dispute refund since dispute has not resolved yet"
+      );
+      assert.equal(
+        (await l1Token.methods.balanceOf(bridgePool.options.address).call()).toString(),
+        toBN(initialPoolLiquidity)
+          .sub(toBN(instantRelayAmountSubFee).add(realizedInstantRelayFeeAmount).add(realizedSlowRelayFeeAmount))
+          .toString(),
+        "BridgePool should have balance reduced by relayed amount to l1Recipient"
+      );
+    });
+    it("Invalid instant relay, disputed, instant relayer receives no refund following subsequent valid relay", async function () {
+      // Propose new invalid relay where realizedFee is too large.
+      const invalidRealizedLpFee = toWei("0.4");
+      const invalidRelayData = { ...relayData, realizedLpFeePct: invalidRealizedLpFee };
+      await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: relayer });
+      await bridgePool.methods.relayDeposit(...generateRelayParams({}, invalidRelayData)).send({ from: relayer });
+
+      // Grab OO price request information from Relay struct.
+      const relayStatus = await bridgePool.methods.relays(depositHash).call();
+
+      // Invalid instant relay with incorrect fee sends incorrect amount to user
+      const invalidRealizedLpFeeAmount = toBN(invalidRealizedLpFee)
+        .mul(toBN(relayAmount))
+        .div(toBN(toWei("1")));
+      const invalidInstantRelayAmountSubFee = toBN(relayAmount)
+        .sub(invalidRealizedLpFeeAmount)
+        .sub(realizedSlowRelayFeeAmount)
+        .sub(realizedInstantRelayFeeAmount)
+        .toString();
+      await l1Token.methods
+        .approve(bridgePool.options.address, invalidInstantRelayAmountSubFee)
+        .send({ from: instantRelayer });
+      await bridgePool.methods.speedUpRelay(depositData).send({ from: instantRelayer });
+      const startingInstantRelayerAmount = (await l1Token.methods.balanceOf(instantRelayer).call()).toString();
+
+      // User receives invalid instant relay amount.
+      assert.equal(
+        (await l1Token.methods.balanceOf(depositData.l1Recipient).call()).toString(),
+        invalidInstantRelayAmountSubFee
+      );
+
+      // Before slow relay expires, it is disputed.
+      const _relayAncillaryData = await bridgePool.methods
+        .getRelayAncillaryData(depositData, { ...relayData, realizedLpFeePct: invalidRealizedLpFee })
+        .call();
+      await l1Token.methods.approve(optimisticOracle.options.address, totalRelayBond).send({ from: disputer });
+      await optimisticOracle.methods
+        .disputePrice(
+          bridgePool.options.address,
+          defaultIdentifier,
+          relayStatus.priceRequestTime.toString(),
+          _relayAncillaryData
+        )
+        .send({ from: disputer });
+
+      // While dispute is pending resolution, a valid relay is resubmitted. Advance time so that
+      // price request data is different.
+      await l1Token.methods.mint(rando, totalRelayBond).send({ from: owner });
+      await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: rando });
+      await advanceTime(1);
+      const requestTimestamp = (await bridgePool.methods.getCurrentTime().call()).toString();
+      await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: rando });
+
+      // Instant relayer address should be empty for most recent relay with valid params.
+      const instantRelayHash = generateInstantRelayHash(depositHash, relayData);
+      assert.equal(await bridgePool.methods.instantRelays(instantRelayHash).call(), ZERO_ADDRESS);
+
+      // Can speed up relay with new (valid) params.
+      await l1Token.methods.mint(instantRelayer, instantRelayAmountSubFee).send({ from: owner });
+      await l1Token.methods
+        .approve(bridgePool.options.address, instantRelayAmountSubFee)
+        .send({ from: instantRelayer });
+      await bridgePool.methods.speedUpRelay(depositData).send({ from: instantRelayer });
+
+      // Expire this valid relay and check payouts.
+      const expectedExpirationTimestamp = (Number(requestTimestamp) + defaultLiveness).toString();
+      await timer.methods.setCurrentTime(expectedExpirationTimestamp).send({ from: owner });
+      await bridgePool.methods.settleRelay(depositData).send({ from: rando });
+
+      // User should receive correct instant relay amount + the amount they received from invalid instant relay.
+      assert.equal(
+        (await l1Token.methods.balanceOf(depositData.l1Recipient).call()).toString(),
+        toBN(instantRelayAmountSubFee).add(toBN(invalidInstantRelayAmountSubFee)).toString()
+      );
+
+      // Invalid instant relayer receives a refund from their correct instant relay, but nothing from their first
+      // invalid relay that they sped up.
+      assert.equal(
+        (await l1Token.methods.balanceOf(instantRelayer).call()).toString(),
+        toBN(startingInstantRelayerAmount)
+          .add(toBN(instantRelayAmountSubFee).add(realizedInstantRelayFeeAmount))
+          .toString()
+      );
+
+      // Slow relayer gets slow relay reward
+      assert.equal(
+        (await l1Token.methods.balanceOf(rando).call()).toString(),
+        toBN(totalRelayBond).add(realizedSlowRelayFeeAmount).toString()
+      );
+
+      // OptimisticOracle should still hold dispute refund since dispute has not resolved yet
+      assert.equal(
+        (await l1Token.methods.balanceOf(optimisticOracle.options.address).call()).toString(),
+        totalDisputeRefund.toString()
+      );
+
+      // BridgePool should have balance reduced by full amount sent to to l1Recipient.
+      assert.equal(
+        (await l1Token.methods.balanceOf(bridgePool.options.address).call()).toString(),
+        toBN(initialPoolLiquidity)
+          .sub(toBN(instantRelayAmountSubFee).add(realizedInstantRelayFeeAmount).add(realizedSlowRelayFeeAmount))
+          .toString()
+      );
     });
   });
   describe("Dispute pending relay", () => {
@@ -648,13 +814,14 @@ describe("BridgePool", () => {
       const requestTimestamp = (await bridgePool.methods.getCurrentTime().call()).toString();
       await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: rando });
 
-      // Check that the instant relayer address is copied over.
+      // Check that the instant relayer address persists for the original relay params.
       const newRelayStatus = await bridgePool.methods.relays(depositHash).call();
       assert.equal(newRelayStatus.relayState, InsuredBridgeRelayStateEnum.PENDING);
       assert.equal(newRelayStatus.priceRequestTime.toString(), requestTimestamp);
-      assert.equal(newRelayStatus.instantRelayer, instantRelayer);
       assert.equal(newRelayStatus.slowRelayer, rando);
       assert.equal(newRelayStatus.realizedLpFeePct.toString(), defaultRealizedLpFee);
+      const instantRelayHash = generateInstantRelayHash(depositHash, relayData);
+      assert.equal(await bridgePool.methods.instantRelays(instantRelayHash).call(), instantRelayer);
     });
   });
   describe("Settle finalized relay", () => {
@@ -782,7 +949,7 @@ describe("BridgePool", () => {
       );
       assert.equal(
         (await l1Token.methods.balanceOf(instantRelayer).call()).toString(),
-        toBN(instantRelayAmountSubFee).add(realizedInstantRelayFeeAmount),
+        toBN(instantRelayAmountSubFee).add(realizedInstantRelayFeeAmount).toString(),
         "Instant relayer should receive instant relayer fee + relay amount - LP fee"
       );
       assert.equal(
@@ -1064,7 +1231,7 @@ describe("BridgePool", () => {
   });
   describe("Virtual balance accounting", () => {
     beforeEach(async function () {
-      // For the next two tests, add liquidity, relay and finalize the relay as the initial state.
+      // For the next few tests, add liquidity, relay and finalize the relay as the initial state.
 
       // Approve funds and add to liquidity.
       await l1Token.methods.mint(liquidityProvider, initialPoolLiquidity).send({ from: owner });
@@ -1333,8 +1500,6 @@ describe("BridgePool", () => {
   });
   describe("Liquidity utilization rato", () => {
     beforeEach(async function () {
-      // For the next two tests, add liquidity, relay and finalize the relay as the initial state.
-
       // Approve funds and add to liquidity.
       await l1Token.methods.mint(liquidityProvider, initialPoolLiquidity).send({ from: owner });
       await l1Token.methods.approve(bridgePool.options.address, MAX_UINT_VAL).send({ from: liquidityProvider });
@@ -1445,6 +1610,102 @@ describe("BridgePool", () => {
         (await bridgePool.methods.liquidityUtilizationCurrent().call()).toString(),
         toWei("0.148514851485148514")
       );
+    });
+  });
+  describe("Canonical bridge finalizing before insured bridge settlement edge cases", () => {
+    beforeEach(async function () {
+      await l1Token.methods.mint(liquidityProvider, initialPoolLiquidity).send({ from: owner });
+      await l1Token.methods.approve(bridgePool.options.address, MAX_UINT_VAL).send({ from: liquidityProvider });
+      await bridgePool.methods.addLiquidity(initialPoolLiquidity).send({ from: liquidityProvider });
+      await l1Token.methods.mint(relayer, totalRelayBond.muln(100)).send({ from: owner });
+      await l1Token.methods.approve(bridgePool.options.address, totalRelayBond.muln(100)).send({ from: relayer });
+    });
+    it("Exchange rate correctly handles the canonical bridge finalizing before insured relayer begins", async () => {
+      // Consider the edge case where a user deposits on L2 and no actions happen on L1. This might be due to their
+      // deposit fees being under priced (not picked up by a relayer). After a week their funds arrive on L1 via the
+      // canonical bridge. At this point, the transfer is relayed. The exchange rate should correctly deal with this
+      // without introducing a step in the rate at any point.
+
+      // Advance time by 1 week past the end of the of the L2->L1 liveness period.
+      await advanceTime(604800);
+      assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1"));
+
+      // Now, simulate the finalization of of the bridge action by the canonical bridge by minting tokens to the pool.
+      await l1Token.methods.mint(bridgePool.options.address, toWei("100")).send({ from: owner });
+
+      // The exchange rate should not have updated.
+      assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1"));
+
+      // Only now that the bridging action has concluded through the canonical bridge does a relayer pick up the
+      // transfer. This could also have been the depositor self relaying.
+      const requestTimestamp = (await bridgePool.methods.getCurrentTime().call()).toString();
+      const expectedExpirationTimestamp = (Number(requestTimestamp) + defaultLiveness).toString();
+      await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: relayer });
+
+      // Expire and settle proposal on the OptimisticOracle.
+      await timer.methods.setCurrentTime(expectedExpirationTimestamp).send({ from: owner });
+      await bridgePool.methods.settleRelay(depositData).send({ from: rando });
+      assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1"));
+
+      // Going forward, the rate should increment as normal, starting from the settlement of the relay. EG advancing time
+      // by 2 days(172800s) which should increase the rate accordingly (910+90+10-(10-0.0000015*172800*10))/1000=1.002592.
+      await advanceTime(172800);
+      assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1.002592"));
+    });
+    it("Exchange rate correctly handles the canonical bridge finalizing before insured relayer finalizes(slow)", async () => {
+      // Similar to the previous edge case test, consider a case where a user deposit on L2 and the L1 action is only
+      // half completed (not finalized). This test validates this in the slow case.
+      await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: relayer });
+
+      // The exchange rate should still be 0 as no funds are actually "used" until the relay concludes.
+      assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1"));
+
+      // Advance time by 1 week past the end of the of the L2->L1 liveness period.
+      await advanceTime(604800);
+      assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1"));
+
+      // Now, simulate the finalization of of the bridge action by the canonical bridge by minting tokens to the pool.
+      await l1Token.methods.mint(bridgePool.options.address, toWei("100")).send({ from: owner });
+
+      // The exchange rate should not have updated.
+      assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1"));
+
+      // Only now that the bridging action has concluded do we finalize the relay action.
+      await bridgePool.methods.settleRelay(depositData).send({ from: rando });
+      assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1"));
+
+      // Going forward, the rate should increment as normal, starting from the settlement of the relay. EG advancing time
+      // by 2 days(172800s) which should increase the rate accordingly (910+90+10-(10-0.0000015*172800*10))/1000=1.002592.
+      await advanceTime(172800);
+      assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1.002592"));
+    });
+    it("Exchange rate correctly handles the canonical bridge finalizing before insured relayer finalizes(instant)", async () => {
+      // Finally, consider the same case as before except speed up the relay. The behaviour should be the same as the
+      // previous test (no rate change until the settlement of the relay and ignore tokens sent "early").
+      await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: relayer });
+      await bridgePool.methods.speedUpRelay(depositData).call({ from: relayer });
+
+      // The exchange rate should still be 0 as no funds are actually "used" until the relay concludes.
+      assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1"));
+
+      // Advance time by 1 week past the end of the of the L2->L1 liveness period.
+      await advanceTime(604800);
+      assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1"));
+
+      // Now, simulate the finalization of of the bridge action by the canonical bridge by minting tokens to the pool.
+      await l1Token.methods.mint(bridgePool.options.address, toWei("100")).send({ from: owner });
+
+      // The exchange rate should not have updated.
+      assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1"));
+
+      // Only now that the bridging action has concluded do we finalize the relay action.
+      await bridgePool.methods.settleRelay(depositData).send({ from: rando });
+      assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1"));
+
+      // Going forward, the rate should increment as normal, starting from the settlement of the relay. EG advancing time
+      // by 2 days(172800s) which should increase the rate accordingly (910+90+10-(10-0.0000015*172800*10))/1000=1.002592.
+      await advanceTime(172800);
+      assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1.002592"));
     });
   });
 });
