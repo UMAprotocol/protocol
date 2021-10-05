@@ -24,7 +24,7 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, Lockable {
 
     // This contract can relay messages to any number of L2 DepositBoxes, one per L2 network, each identified by a
     // unique network ID. To relay a message, both the deposit box contract address and a messenger contract address
-    // need to be stored. The messenger implementation differs for each L2 beacuse L1 --> L2 messaging is non-standard.
+    // need to be stored. The messenger implementation differs for each L2 because L1 --> L2 messaging is non-standard.
     // The deposit box contract originate the deposits that can be fulfilled by BridgePool contracts on L1.
     mapping(uint256 => DepositUtilityContracts) private _depositContracts;
 

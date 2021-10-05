@@ -30,15 +30,17 @@ contract OVM_BridgeDepositBox is BridgeDepositBox, OVM_CrossDomainEnabled {
      * @notice Construct the Optimism Bridge Deposit Box
      * @param _crossDomainAdmin Address of the L1 contract that can call admin functions on this contract from L1.
      * @param _minimumBridgingDelay Minimum second that must elapse between L2->L1 token transfer to prevent dos.
+     * @param _chainId L2 Chain identifier this deposit box is deployed on.
      * @param timerAddress Timer used to synchronize contract time in testing. Set to 0x000... in production.
      */
     constructor(
         address _crossDomainAdmin,
         uint64 _minimumBridgingDelay,
+        uint256 _chainId,
         address timerAddress
     )
         OVM_CrossDomainEnabled(Lib_PredeployAddresses.L2_CROSS_DOMAIN_MESSENGER)
-        BridgeDepositBox(_minimumBridgingDelay, 10, timerAddress)
+        BridgeDepositBox(_minimumBridgingDelay, _chainId, timerAddress)
     {
         _setCrossDomainAdmin(_crossDomainAdmin);
     }
