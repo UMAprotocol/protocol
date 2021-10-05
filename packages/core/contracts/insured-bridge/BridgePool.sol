@@ -299,6 +299,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
 
         bytes32 instantRelayHash = _getInstantRelayHash(depositHash, relayData);
         require(
+            // Can only speed up a pending relay without an existing instant relay associated with it.
             relayData.relayState == RelayState.Pending && instantRelays[instantRelayHash] == address(0),
             "Relay cannot be sped up"
         );
@@ -349,6 +350,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         returns (uint256 payout, int256 resolvedPrice) {
             require(resolvedPrice == int256(1e18), "Settle relay iff price is True");
         } catch {
+            // We could not settle the request, therefore check if its already been resolved.
             require(
                 _getOptimisticOracle().hasPrice(
                     address(this),
