@@ -316,7 +316,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         require(
             (relays[depositHash].relayState != RelayState.Uninitialized ||
                 relays[depositHash].relayState != RelayState.Finalized) &&
-                instantRelays[instantRelayHash] == address(0),
+                instantRelays[instantRelayHash] == address(0), // Cannot have an existing instant relay
             "Relay cannot be sped up"
         );
         instantRelays[instantRelayHash] = msg.sender;
@@ -342,10 +342,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
     function settleRelay(DepositData memory _depositData) public nonReentrant() {
         bytes32 depositHash = _getDepositHash(_depositData);
         RelayData storage relay = relays[depositHash];
-        require(
-            relays[depositHash].relayState == RelayState.PendingFinalization,
-            "Can only settle relay if price is resolved True on OptimisticOracle"
-        );
+        require(relays[depositHash].relayState == RelayState.PendingFinalization, "Settle iff price resolved True");
 
         // Update the relay state to Finalized. This prevents any re-settling of a relay.
         relay.relayState = RelayState.Finalized;
