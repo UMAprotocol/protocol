@@ -106,7 +106,13 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
 
     event LiquidityAdded(address indexed token, uint256 amount, uint256 lpTokensMinted, address liquidityProvider);
     event LiquidityRemoved(address indexed token, uint256 amount, uint256 lpTokensBurnt, address liquidityProvider);
-    event DepositRelayed(bytes32 indexed depositHash, DepositData depositData, address l1Token, RelayData relay);
+    event DepositRelayed(
+        bytes32 indexed depositHash,
+        DepositData depositData,
+        address l1Token,
+        RelayData relay,
+        bytes32 relayAncillaryDataHash
+    );
     event RelaySpedUp(bytes32 indexed depositHash, address indexed instantRelayer, RelayData relay);
     event RelaySettled(bytes32 indexed depositHash, address indexed caller, RelayData relay);
 
@@ -252,9 +258,9 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
             });
         relays[depositHash] = _getRelayDataHash(relayData);
 
-        bytes32 relayHash = _getRelayHash(depositData, relayData);
-        bytes memory ancillaryData = _getRelayAncillaryData(relayHash);
-        relayRequestAncillaryData[keccak256(ancillaryData)] = depositHash;
+        bytes memory ancillaryData = _getRelayAncillaryData(_getRelayHash(depositData, relayData));
+        bytes32 relayAncillaryDataHash = keccak256(ancillaryData);
+        relayRequestAncillaryData[relayAncillaryDataHash] = depositHash;
 
         // Sanity check that pool has enough balance to cover relay amount + proposer reward. Reward amount will be
         // paid on settlement after the OptimisticOracle price request has passed the challenge period.
@@ -273,7 +279,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
 
         pendingReserves += amount; // Book off maximum liquidity used by this relay in the pending reserves.
 
-        emit DepositRelayed(depositHash, depositData, address(l1Token), relayData);
+        emit DepositRelayed(depositHash, depositData, address(l1Token), relayData, relayAncillaryDataHash);
     }
 
     /**

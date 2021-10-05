@@ -441,6 +441,9 @@ describe("BridgePool", () => {
       assert.equal(await bridgePool.methods.instantRelays(instantRelayHash).call(), ZERO_ADDRESS);
 
       // Check event is logged correctly and emits all information needed to recreate the relay and associated deposit.
+      const relayAncillaryDataHash = web3.utils.soliditySha3(
+        await bridgePool.methods.getRelayAncillaryData(depositData, relayAttemptData).call()
+      );
       await assertEventEmitted(txn, bridgePool, "DepositRelayed", (ev) => {
         return (
           ev.depositHash === depositHash &&
@@ -457,7 +460,8 @@ describe("BridgePool", () => {
           ev.relay.relayId.toString() === relayAttemptData.relayId.toString() &&
           ev.relay.realizedLpFeePct === relayAttemptData.realizedLpFeePct &&
           ev.relay.priceRequestTime === relayAttemptData.priceRequestTime &&
-          ev.relay.relayState === relayAttemptData.relayState
+          ev.relay.relayState === relayAttemptData.relayState &&
+          ev.relayAncillaryDataHash === relayAncillaryDataHash
         );
       });
 
