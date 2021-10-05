@@ -59,7 +59,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
     BridgeAdminInterface public bridgeAdmin;
 
     // A Relay represents an attempt to finalize a cross-chain transfer that originated on an L2 DepositBox contract.
-    enum RelayState { Uninitialized, Pending, Disputed, PendingFinalization, Finalized }
+    enum RelayState { Uninitialized, Pending, PendingFinalization, Finalized }
 
     // Data from L2 deposit transaction.
     struct DepositData {
@@ -231,15 +231,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
             });
         bytes32 depositHash = _getDepositHash(depositData);
 
-        // If relay exists for deposit, check if it is disputed. If its disputed, then we can relay again, otherwise
-        // the relay is pending valid and we cannot re-relay.
-        // Note: everything after the || gets called _only_ in the case that this relay comes after a previously
-        // disputed relay. Because of this, the getState call doesn't impact the gas usage in the happy path.
-        require(
-            relays[depositHash].relayState == RelayState.Uninitialized ||
-                relays[depositHash].relayState == RelayState.Disputed,
-            "Pending relay exists"
-        );
+        require(relays[depositHash].relayState == RelayState.Uninitialized, "Pending relay exists");
 
         // If no pending relay for this deposit, then associate the caller's relay attempt with it.
         uint256 priceRequestTime = getCurrentTime();
@@ -247,9 +239,8 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         // Save hash of new relay attempt parameters.
         RelayData memory relayData =
             RelayData({
-                slowRelayer: msg.sender,
-                relayId: // Note: This increments the storage variable at the same time as setting relayId.
-                numberOfRelays++,
+                slowRelayer: msg.sender, // Note: This increments the storage variable at the same time as setting relayId.
+                relayId: numberOfRelays++,
                 realizedLpFeePct: realizedLpFeePct,
                 priceRequestTime: priceRequestTime
             });
@@ -303,9 +294,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
 
         bytes32 instantRelayHash = _getInstantRelayHash(depositHash, _relayData);
         require(
-            (relays[depositHash].relayState != RelayState.Uninitialized ||
-                relays[depositHash].relayState != RelayState.Finalized) &&
-                instantRelays[instantRelayHash] == address(0),
+            relays[depositHash].relayState == RelayState.Pending && instantRelays[instantRelayHash] == address(0),
             "Relay cannot be sped up"
         );
         instantRelays[instantRelayHash] = msg.sender;
@@ -399,13 +388,12 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         SkinnyOptimisticOracleInterface.Request memory _request
     ) external onlyFromOptimisticOracle {
         bytes32 depositHash = relayRequestAncillaryData[_ancillaryData];
-        require(relays[depositHash].relayState == RelayState.Pending);
-        relays[depositHash].relayState = RelayState.Disputed;
+        relays[depositHash].relayState = RelayState.Uninitialized;
     }
 
     /**
      * @notice Callback for settlements, marks relay as ready for finalization if the relay was resolved as valid.
-     * @dev Reverts if relay is uninitialized or already settled.
+     * @dev Reverts if relay is already settled.
      * @dev _timestamp and _identifier are unused because _ancillaryData contains a relay nonce and uniquely
      * identifies a relay request.
      * @param _identifier price identifier for relay request.
@@ -420,10 +408,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         SkinnyOptimisticOracleInterface.Request memory _request
     ) external onlyFromOptimisticOracle {
         bytes32 depositHash = relayRequestAncillaryData[_ancillaryData];
-        require(
-            relays[depositHash].relayState == RelayState.Pending ||
-                relays[depositHash].relayState == RelayState.Disputed
-        );
+        require(relays[depositHash].relayState != RelayState.Finalized);
         // 1e18 = Canonical value representing "True"; i.e. the proposed relay is valid.
         if (_request.resolvedPrice == int256(1e18)) {
             relays[depositHash].relayState = RelayState.PendingFinalization;
