@@ -175,6 +175,28 @@ describe("BridgePool", () => {
     );
   };
 
+  const generateRelayAncillaryDataHash = (_depositData, _relayData) => {
+    const parameters = [
+      { t: "uint8", v: _depositData.chainId },
+      { t: "uint64", v: _depositData.depositId },
+      { t: "address", v: _depositData.l1Recipient },
+      { t: "address", v: _depositData.l2Sender },
+      { t: "uint256", v: _depositData.amount },
+      { t: "uint64", v: _depositData.slowRelayFeePct },
+      { t: "uint64", v: _depositData.instantRelayFeePct },
+      { t: "uint64", v: _depositData.quoteTimestamp },
+      { t: "uint32", v: _relayData.relayId },
+      { t: "uint64", v: _relayData.realizedLpFeePct },
+      { t: "address", v: l1Token.options.address },
+    ];
+    return web3.utils.soliditySha3(
+      web3.eth.abi.encodeParameters(
+        parameters.map((elt) => elt.t),
+        parameters.map((elt) => elt.v)
+      )
+    );
+  };
+
   before(async function () {
     accounts = await web3.eth.getAccounts();
     [
@@ -329,26 +351,10 @@ describe("BridgePool", () => {
     );
   });
   it("Constructs utf8-encoded ancillary data for relay", async function () {
-    const parameters = [
-      { t: "uint8", v: depositData.chainId },
-      { t: "uint64", v: depositData.depositId },
-      { t: "address", v: depositData.l1Recipient },
-      { t: "address", v: depositData.l2Sender },
-      { t: "uint256", v: depositData.amount },
-      { t: "uint64", v: depositData.slowRelayFeePct },
-      { t: "uint64", v: depositData.instantRelayFeePct },
-      { t: "uint64", v: depositData.quoteTimestamp },
-      { t: "uint32", v: relayData.relayId },
-      { t: "uint64", v: relayData.realizedLpFeePct },
-      { t: "address", v: l1Token.options.address },
-    ];
-    const hash = web3.utils.soliditySha3(
-      web3.eth.abi.encodeParameters(
-        parameters.map((elt) => elt.t),
-        parameters.map((elt) => elt.v)
-      )
+    assert.equal(
+      hexToUtf8(relayAncillaryData),
+      `relayHash:${generateRelayAncillaryDataHash(depositData, relayData).substring(2)}`
     );
-    assert.equal(hexToUtf8(relayAncillaryData), `relayHash:${hash.substring(2)}`);
   });
   describe("Relay deposit", () => {
     beforeEach(async function () {
@@ -441,9 +447,6 @@ describe("BridgePool", () => {
       assert.equal(await bridgePool.methods.instantRelays(instantRelayHash).call(), ZERO_ADDRESS);
 
       // Check event is logged correctly and emits all information needed to recreate the relay and associated deposit.
-      const relayAncillaryDataHash = web3.utils.soliditySha3(
-        await bridgePool.methods.getRelayAncillaryData(depositData, relayAttemptData).call()
-      );
       await assertEventEmitted(txn, bridgePool, "DepositRelayed", (ev) => {
         return (
           ev.depositHash === depositHash &&
@@ -461,7 +464,7 @@ describe("BridgePool", () => {
           ev.relay.realizedLpFeePct === relayAttemptData.realizedLpFeePct &&
           ev.relay.priceRequestTime === relayAttemptData.priceRequestTime &&
           ev.relay.relayState === relayAttemptData.relayState &&
-          ev.relayAncillaryDataHash === relayAncillaryDataHash
+          ev.relayAncillaryDataHash === generateRelayAncillaryDataHash(depositData, relayData)
         );
       });
 

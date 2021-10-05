@@ -258,9 +258,9 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
             });
         relays[depositHash] = _getRelayDataHash(relayData);
 
-        bytes memory ancillaryData = _getRelayAncillaryData(_getRelayHash(depositData, relayData));
-        bytes32 relayAncillaryDataHash = keccak256(ancillaryData);
-        relayRequestAncillaryData[relayAncillaryDataHash] = depositHash;
+        bytes32 relayHash = _getRelayHash(depositData, relayData);
+        bytes memory ancillaryData = _getRelayAncillaryData(relayHash);
+        relayRequestAncillaryData[keccak256(ancillaryData)] = depositHash;
 
         // Sanity check that pool has enough balance to cover relay amount + proposer reward. Reward amount will be
         // paid on settlement after the OptimisticOracle price request has passed the challenge period.
@@ -279,7 +279,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
 
         pendingReserves += amount; // Book off maximum liquidity used by this relay in the pending reserves.
 
-        emit DepositRelayed(depositHash, depositData, address(l1Token), relayData, relayAncillaryDataHash);
+        emit DepositRelayed(depositHash, depositData, address(l1Token), relayData, relayHash);
     }
 
     /**
