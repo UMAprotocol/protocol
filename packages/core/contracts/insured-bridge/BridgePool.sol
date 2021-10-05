@@ -323,18 +323,32 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
     ) public nonReentrant() {
         bytes32 depositHash = _getDepositHash(_depositData);
         _validateRelayDataHash(depositHash, _relayData);
+        require(_relayData.relayState == RelayState.Pending, "Already settled");
 
-        // TODO: Optimistically try to settle relay here.
-        require(
-            _getOptimisticOracle().hasPrice(
+        // Optimistically try to settle relay. If this transaction settles the relay, then check the newly resolved
+        // price. Otherwise grab the already resolved price.
+        try
+            _getOptimisticOracle().settle(
                 address(this),
                 bridgeAdmin.identifier(),
                 uint32(_relayData.priceRequestTime),
                 _ancillaryData,
                 _request
-            ) && _request.resolvedPrice == int256(1e18),
-            "Can only settle relay if price resolved True on OptimisticOracle"
-        );
+            )
+        returns (uint256 payout, int256 resolvedPrice) {
+            require(resolvedPrice == int256(1e18), "Can only settle relay if price resolved True on OptimisticOracle");
+        } catch {
+            require(
+                _getOptimisticOracle().hasPrice(
+                    address(this),
+                    bridgeAdmin.identifier(),
+                    uint32(_relayData.priceRequestTime),
+                    _ancillaryData,
+                    _request
+                ) && _request.resolvedPrice == int256(1e18),
+                "Can only settle relay if price resolved True on OptimisticOracle"
+            );
+        }
 
         // Update the relay state to Finalized. This prevents any re-settling of a relay.
         relays[depositHash] = _getRelayDataHash(
@@ -385,8 +399,6 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         emit RelaySettled(depositHash, msg.sender, _relayData);
 
         delete instantRelays[instantRelayHash];
-        delete _relayData.realizedLpFeePct;
-        delete _relayData.priceRequestTime;
     }
 
     /**

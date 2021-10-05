@@ -635,25 +635,15 @@ describe("BridgePool", () => {
       // Resolve and settle relay.
       const secondProposalEvent = (await optimisticOracle.getPastEvents("ProposePrice", { fromBlock: 0 }))[1];
       await timer.methods.setCurrentTime(expectedExpirationTimestamp).send({ from: owner });
-      await optimisticOracle.methods
-        .settle(
-          bridgePool.options.address,
-          defaultIdentifier,
-          secondProposalEvent.returnValues.timestamp,
-          secondProposalEvent.returnValues.ancillaryData,
-          secondProposalEvent.returnValues.request
-        )
-        .send({ from: accounts[0] });
 
       // Expire relay. Since instant relayed amount was correct, instant relayer should be refunded and user should
       // still just have the instant relay amount.
-      const settleEvent = (await optimisticOracle.getPastEvents("Settle", { fromBlock: 0 }))[0];
       await bridgePool.methods
         .settleRelay(
           depositData,
           relayAttemptData,
-          settleEvent.returnValues.ancillaryData,
-          settleEvent.returnValues.request
+          secondProposalEvent.returnValues.ancillaryData,
+          secondProposalEvent.returnValues.request
         )
         .send({ from: rando });
 
@@ -766,22 +756,12 @@ describe("BridgePool", () => {
       const expectedExpirationTimestamp = (Number(requestTimestamp) + defaultLiveness).toString();
       await timer.methods.setCurrentTime(expectedExpirationTimestamp).send({ from: owner });
       const secondProposalEvent = (await optimisticOracle.getPastEvents("ProposePrice", { fromBlock: 0 }))[1];
-      await optimisticOracle.methods
-        .settle(
-          bridgePool.options.address,
-          defaultIdentifier,
-          secondProposalEvent.returnValues.timestamp,
-          secondProposalEvent.returnValues.ancillaryData,
-          { ...secondProposalEvent.returnValues.request, instantRelayer }
-        )
-        .send({ from: rando });
-      const settleEvent = (await optimisticOracle.getPastEvents("Settle", { fromBlock: 0 }))[0];
       await bridgePool.methods
         .settleRelay(
           depositData,
           relayAttemptData,
-          settleEvent.returnValues.ancillaryData,
-          settleEvent.returnValues.request
+          secondProposalEvent.returnValues.ancillaryData,
+          secondProposalEvent.returnValues.request
         )
         .send({ from: rando });
 
@@ -917,26 +897,28 @@ describe("BridgePool", () => {
 
       // Resolve re-relay.
       await timer.methods.setCurrentTime(expectedExpirationTimestamp).send({ from: owner });
-      await optimisticOracle.methods
-        .settle(
-          bridgePool.options.address,
-          defaultIdentifier,
-          proposalEvent2.returnValues.timestamp,
-          proposalEvent2.returnValues.ancillaryData,
-          proposalEvent2.returnValues.request
-        )
-        .send({ from: accounts[0] });
-
-      // Settle relay.
-      const settleEvent = (await optimisticOracle.getPastEvents("Settle", { fromBlock: 0 }))[0];
       await bridgePool.methods
         .settleRelay(
           depositData,
           relayAttemptData,
-          settleEvent.returnValues.ancillaryData,
-          settleEvent.returnValues.request
+          proposalEvent2.returnValues.ancillaryData,
+          proposalEvent2.returnValues.request
         )
         .send({ from: rando });
+
+      // Should not be able to settle relay again even if the OO has a resolved price.
+      assert(
+        await didContractThrow(
+          bridgePool.methods
+            .settleRelay(
+              depositData,
+              { ...relayAttemptData, relayState: InsuredBridgeRelayStateEnum.FINALIZED },
+              proposalEvent2.returnValues.ancillaryData,
+              { ...proposalEvent2.returnValues.request, settled: true, resolvedPrice: toWei("1") }
+            )
+            .send({ from: rando })
+        )
+      );
 
       // Now resolve dispute.
       const price = toWei("1");
@@ -956,20 +938,6 @@ describe("BridgePool", () => {
           disputeEvent.returnValues.request
         )
         .send({ from: accounts[0] });
-
-      // Should not be able to settle relay again.
-      assert(
-        await didContractThrow(
-          bridgePool.methods
-            .settleRelay(
-              depositData,
-              relayAttemptData,
-              settleEvent.returnValues.ancillaryData,
-              settleEvent.returnValues.request
-            )
-            .send({ from: rando })
-        )
-      );
     });
     it("Relay request is disputed, re-relay request expires after dispute resolves", async function () {
       // Cache price request timestamp.
@@ -1024,29 +992,17 @@ describe("BridgePool", () => {
         )
         .send({ from: accounts[0] });
 
-      // Settle relay. Note that you need to use the relay data for the latest attempt to settle.
-      const settleEvent = (await optimisticOracle.getPastEvents("Settle", { fromBlock: 0 }))[0];
+      // Resolve re-relay.
+      await timer.methods.setCurrentTime(expectedExpirationTimestamp).send({ from: owner });
+      const proposalEvent2 = (await optimisticOracle.getPastEvents("ProposePrice", { fromBlock: 0 }))[1];
       await bridgePool.methods
         .settleRelay(
           depositData,
           relayAttemptData,
-          settleEvent.returnValues.ancillaryData,
-          settleEvent.returnValues.request
-        )
-        .send({ from: rando });
-
-      // Resolve re-relay.
-      await timer.methods.setCurrentTime(expectedExpirationTimestamp).send({ from: owner });
-      const proposalEvent2 = (await optimisticOracle.getPastEvents("ProposePrice", { fromBlock: 0 }))[1];
-      await optimisticOracle.methods
-        .settle(
-          bridgePool.options.address,
-          defaultIdentifier,
-          proposalEvent2.returnValues.timestamp,
           proposalEvent2.returnValues.ancillaryData,
           proposalEvent2.returnValues.request
         )
-        .send({ from: accounts[0] });
+        .send({ from: rando });
 
       // Should not be able to settle relay again.
       assert(
@@ -1054,9 +1010,9 @@ describe("BridgePool", () => {
           bridgePool.methods
             .settleRelay(
               depositData,
-              relayAttemptData,
-              settleEvent.returnValues.ancillaryData,
-              settleEvent.returnValues.request
+              { ...relayAttemptData, relayState: InsuredBridgeRelayStateEnum.FINALIZED },
+              proposalEvent2.returnValues.ancillaryData,
+              { ...proposalEvent2.returnValues.request, settled: true, resolvedPrice: toWei("1") }
             )
             .send({ from: rando })
         )
@@ -1161,7 +1117,7 @@ describe("BridgePool", () => {
         )
         .send({ from: disputer });
 
-      // Resolve OO request.
+      // Can resolve OO request.
       const price = toWei("0");
       const stampedDisputeAncillaryData = await optimisticOracle.methods
         .stampAncillaryData(relayAncillaryData, bridgePool.options.address)
@@ -1170,16 +1126,17 @@ describe("BridgePool", () => {
         .pushPrice(defaultIdentifier, proposalEvent.returnValues.timestamp, stampedDisputeAncillaryData, price)
         .send({ from: owner });
       const disputeEvent = (await optimisticOracle.getPastEvents("DisputePrice", { fromBlock: 0 }))[0];
-      await optimisticOracle.methods
-        .settle(
-          bridgePool.options.address,
-          defaultIdentifier,
-          disputeEvent.returnValues.timestamp,
-          disputeEvent.returnValues.ancillaryData,
-          disputeEvent.returnValues.request
-        )
-        .send({ from: accounts[0] });
-      const settleEvent = (await optimisticOracle.getPastEvents("Settle", { fromBlock: 0 }))[0];
+      assert.ok(
+        await optimisticOracle.methods
+          .settle(
+            bridgePool.options.address,
+            defaultIdentifier,
+            disputeEvent.returnValues.timestamp,
+            disputeEvent.returnValues.ancillaryData,
+            disputeEvent.returnValues.request
+          )
+          .call({ from: relayer })
+      );
 
       // The dispute callback should delete the relay hash making it impossible to settle until a follow-up relay
       // is submitted.
@@ -1189,21 +1146,35 @@ describe("BridgePool", () => {
             .settleRelay(
               depositData,
               relayAttemptData,
-              settleEvent.returnValues.ancillaryData,
-              settleEvent.returnValues.request
+              disputeEvent.returnValues.ancillaryData,
+              disputeEvent.returnValues.request
             )
             .send({ from: relayer })
         )
       );
 
-      // Cannot settle by changing resolved price to 1.
+      // Resolve OO request.
+      await optimisticOracle.methods
+        .settle(
+          bridgePool.options.address,
+          defaultIdentifier,
+          disputeEvent.returnValues.timestamp,
+          disputeEvent.returnValues.ancillaryData,
+          disputeEvent.returnValues.request
+        )
+        .send({ from: relayer });
+      const settleEvent = (await optimisticOracle.getPastEvents("Settle", { fromBlock: 0 }))[0];
+
+      // Still cannot settle relay even with correct request params because the relay was disputed.
       assert(
         await didContractThrow(
           bridgePool.methods
-            .settleRelay(depositData, relayAttemptData, settleEvent.returnValues.ancillaryData, {
-              ...settleEvent.returnValues.request,
-              resolvedPrice: toWei("1"),
-            })
+            .settleRelay(
+              depositData,
+              { ...relayAttemptData, relayState: InsuredBridgeRelayStateEnum.FINALIZED },
+              settleEvent.returnValues.ancillaryData,
+              { ...settleEvent.returnValues.request, settled: true, resolvedPrice: price }
+            )
             .send({ from: relayer })
         )
       );
@@ -1231,7 +1202,7 @@ describe("BridgePool", () => {
         "Pool should have initial liquidity amount"
       );
     });
-    it("Can settle pending relays that passed challenge period", async () => {
+    it("Can settle pending relays that passed challenge period directly with OO or via BridgePool", async () => {
       // Cache price request timestamp.
       const requestTimestamp = (await bridgePool.methods.getCurrentTime().call()).toString();
       const relayAttemptData = {
@@ -1263,7 +1234,7 @@ describe("BridgePool", () => {
       // Set time such that optimistic price request is settleable.
       await timer.methods.setCurrentTime(expectedExpirationTimestamp).send({ from: owner });
 
-      // Cannot settle relay until OO resolves a request.
+      // Can now settle relay since OO resolved request.
       assert.equal(
         await optimisticOracle.methods
           .hasPrice(
@@ -1276,20 +1247,18 @@ describe("BridgePool", () => {
           .call(),
         true
       );
-      assert(
-        await didContractThrow(
-          bridgePool.methods
-            .settleRelay(
-              depositData,
-              relayAttemptData,
-              proposeEvent.returnValues.ancillaryData,
-              proposeEvent.returnValues.request
-            )
-            .send({ from: relayer })
-        )
+      assert.ok(
+        await bridgePool.methods
+          .settleRelay(
+            depositData,
+            relayAttemptData,
+            proposeEvent.returnValues.ancillaryData,
+            proposeEvent.returnValues.request
+          )
+          .call({ from: rando })
       );
 
-      // Resolve OO request.
+      // Can also settle relay after settling directly with OO
       await optimisticOracle.methods
         .settle(
           bridgePool.options.address,
@@ -1328,11 +1297,11 @@ describe("BridgePool", () => {
           bridgePool.methods
             .settleRelay(
               depositData,
-              relayAttemptData,
+              { ...relayAttemptData, relayState: InsuredBridgeRelayStateEnum.FINALIZED },
               settleEvent.returnValues.ancillaryData,
-              settleEvent.returnValues.request
+              { ...settleEvent.returnValues.request, settled: true, resolvedPrice: toWei("1") }
             )
-            .send({ from: rando })
+            .send({ from: relayer })
         )
       );
 
@@ -1389,26 +1358,14 @@ describe("BridgePool", () => {
       const relayerBalanceBefore = await l1Token.methods.balanceOf(relayer).call();
       const instantRelayerBalanceBefore = await l1Token.methods.balanceOf(instantRelayer).call();
 
-      // Settle OO request.
-      const proposeEvent = (await optimisticOracle.getPastEvents("ProposePrice", { fromBlock: 0 }))[0];
-      await optimisticOracle.methods
-        .settle(
-          bridgePool.options.address,
-          defaultIdentifier,
-          proposeEvent.returnValues.timestamp,
-          proposeEvent.returnValues.ancillaryData,
-          proposeEvent.returnValues.request
-        )
-        .send({ from: accounts[0] });
-      const settleEvent = (await optimisticOracle.getPastEvents("Settle", { fromBlock: 0 }))[0];
-
       // Settle relay.
+      const proposeEvent = (await optimisticOracle.getPastEvents("ProposePrice", { fromBlock: 0 }))[0];
       await bridgePool.methods
         .settleRelay(
           depositData,
           relayAttemptData,
-          settleEvent.returnValues.ancillaryData,
-          settleEvent.returnValues.request
+          proposeEvent.returnValues.ancillaryData,
+          proposeEvent.returnValues.request
         )
         .send({ from: rando });
 
@@ -1540,22 +1497,12 @@ describe("BridgePool", () => {
         .setCurrentTime(Number(await bridgePool.methods.getCurrentTime().call()) + defaultLiveness)
         .send({ from: owner });
       const proposeEvent = (await optimisticOracle.getPastEvents("ProposePrice", { fromBlock: 0 }))[0];
-      await optimisticOracle.methods
-        .settle(
-          bridgePool.options.address,
-          defaultIdentifier,
-          proposeEvent.returnValues.timestamp,
-          proposeEvent.returnValues.ancillaryData,
-          proposeEvent.returnValues.request
-        )
-        .send({ from: accounts[0] });
-      const settleEvent = (await optimisticOracle.getPastEvents("Settle", { fromBlock: 0 }))[0];
       await bridgePool.methods
         .settleRelay(
           depositData,
           relayAttemptData,
-          settleEvent.returnValues.ancillaryData,
-          settleEvent.returnValues.request
+          proposeEvent.returnValues.ancillaryData,
+          proposeEvent.returnValues.request
         )
         .send({ from: rando });
 
@@ -1606,22 +1553,12 @@ describe("BridgePool", () => {
       await timer.methods.setCurrentTime(expectedExpirationTimestamp).send({ from: owner });
 
       const proposeEvent = (await optimisticOracle.getPastEvents("ProposePrice", { fromBlock: 0 }))[0];
-      await optimisticOracle.methods
-        .settle(
-          bridgePool.options.address,
-          defaultIdentifier,
-          proposeEvent.returnValues.timestamp,
-          proposeEvent.returnValues.ancillaryData,
-          proposeEvent.returnValues.request
-        )
-        .send({ from: accounts[0] });
-      const settleEvent = (await optimisticOracle.getPastEvents("Settle", { fromBlock: 0 }))[0];
       await bridgePool.methods
         .settleRelay(
           depositData,
           relayAttemptData,
-          settleEvent.returnValues.ancillaryData,
-          settleEvent.returnValues.request
+          proposeEvent.returnValues.ancillaryData,
+          proposeEvent.returnValues.request
         )
         .send({ from: rando });
     });
@@ -1735,22 +1672,12 @@ describe("BridgePool", () => {
 
       // Settle the relay action.
       const proposeEvent = (await optimisticOracle.getPastEvents("ProposePrice", { fromBlock: 0 }))[1];
-      await optimisticOracle.methods
-        .settle(
-          bridgePool.options.address,
-          defaultIdentifier,
-          proposeEvent.returnValues.timestamp,
-          proposeEvent.returnValues.ancillaryData,
-          proposeEvent.returnValues.request
-        )
-        .send({ from: accounts[0] });
-      const settleEvent = (await optimisticOracle.getPastEvents("Settle", { fromBlock: 0 }))[1];
       await bridgePool.methods
         .settleRelay(
           depositData,
           newRelayAttemptData,
-          settleEvent.returnValues.ancillaryData,
-          settleEvent.returnValues.request
+          proposeEvent.returnValues.ancillaryData,
+          proposeEvent.returnValues.request
         )
         .send({ from: rando });
 
@@ -1938,22 +1865,12 @@ describe("BridgePool", () => {
       // Settle the relay action.
       await advanceTime(defaultLiveness);
       const proposeEvent = (await optimisticOracle.getPastEvents("ProposePrice", { fromBlock: 0 }))[0];
-      await optimisticOracle.methods
-        .settle(
-          bridgePool.options.address,
-          defaultIdentifier,
-          proposeEvent.returnValues.timestamp,
-          proposeEvent.returnValues.ancillaryData,
-          proposeEvent.returnValues.request
-        )
-        .send({ from: accounts[0] });
-      const settleEvent = (await optimisticOracle.getPastEvents("Settle", { fromBlock: 0 }))[0];
       await bridgePool.methods
         .settleRelay(
           depositData,
           relayAttemptData,
-          settleEvent.returnValues.ancillaryData,
-          settleEvent.returnValues.request
+          proposeEvent.returnValues.ancillaryData,
+          proposeEvent.returnValues.request
         )
         .send({ from: rando });
 
@@ -2017,22 +1934,12 @@ describe("BridgePool", () => {
       // The utilization ratio should, therefore, be: (150+100)/910=0.274725274725274725
       await advanceTime(defaultLiveness);
       const proposeEvent = (await optimisticOracle.getPastEvents("ProposePrice", { fromBlock: 0 }))[0];
-      await optimisticOracle.methods
-        .settle(
-          bridgePool.options.address,
-          defaultIdentifier,
-          proposeEvent.returnValues.timestamp,
-          proposeEvent.returnValues.ancillaryData,
-          proposeEvent.returnValues.request
-        )
-        .send({ from: accounts[0] });
-      const settleEvent = (await optimisticOracle.getPastEvents("Settle", { fromBlock: 0 }))[0];
       await bridgePool.methods
         .settleRelay(
           depositData,
           relayAttemptData,
-          settleEvent.returnValues.ancillaryData,
-          settleEvent.returnValues.request
+          proposeEvent.returnValues.ancillaryData,
+          proposeEvent.returnValues.request
         )
         .send({ from: rando });
 
@@ -2093,22 +2000,12 @@ describe("BridgePool", () => {
       // Expire and settle proposal on the OptimisticOracle.
       await timer.methods.setCurrentTime(expectedExpirationTimestamp).send({ from: owner });
       const proposeEvent = (await optimisticOracle.getPastEvents("ProposePrice", { fromBlock: 0 }))[0];
-      await optimisticOracle.methods
-        .settle(
-          bridgePool.options.address,
-          defaultIdentifier,
-          proposeEvent.returnValues.timestamp,
-          proposeEvent.returnValues.ancillaryData,
-          proposeEvent.returnValues.request
-        )
-        .send({ from: accounts[0] });
-      const settleEvent = (await optimisticOracle.getPastEvents("Settle", { fromBlock: 0 }))[0];
       await bridgePool.methods
         .settleRelay(
           depositData,
           relayAttemptData,
-          settleEvent.returnValues.ancillaryData,
-          settleEvent.returnValues.request
+          proposeEvent.returnValues.ancillaryData,
+          proposeEvent.returnValues.request
         )
         .send({ from: rando });
       assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1"));
@@ -2133,17 +2030,6 @@ describe("BridgePool", () => {
 
       // Advance time by 1 week past the end of the of the L2->L1 liveness period.
       await advanceTime(604800);
-      const proposeEvent = (await optimisticOracle.getPastEvents("ProposePrice", { fromBlock: 0 }))[0];
-      await optimisticOracle.methods
-        .settle(
-          bridgePool.options.address,
-          defaultIdentifier,
-          proposeEvent.returnValues.timestamp,
-          proposeEvent.returnValues.ancillaryData,
-          proposeEvent.returnValues.request
-        )
-        .send({ from: accounts[0] });
-      const settleEvent = (await optimisticOracle.getPastEvents("Settle", { fromBlock: 0 }))[0];
 
       assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1"));
 
@@ -2154,12 +2040,13 @@ describe("BridgePool", () => {
       assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1"));
 
       // Only now that the bridging action has concluded do we finalize the relay action.
+      const proposeEvent = (await optimisticOracle.getPastEvents("ProposePrice", { fromBlock: 0 }))[0];
       await bridgePool.methods
         .settleRelay(
           depositData,
           relayAttemptData,
-          settleEvent.returnValues.ancillaryData,
-          settleEvent.returnValues.request
+          proposeEvent.returnValues.ancillaryData,
+          proposeEvent.returnValues.request
         )
         .send({ from: rando });
       assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1"));
@@ -2185,17 +2072,6 @@ describe("BridgePool", () => {
 
       // Advance time by 1 week past the end of the of the L2->L1 liveness period.
       await advanceTime(604800);
-      const proposeEvent = (await optimisticOracle.getPastEvents("ProposePrice", { fromBlock: 0 }))[0];
-      await optimisticOracle.methods
-        .settle(
-          bridgePool.options.address,
-          defaultIdentifier,
-          proposeEvent.returnValues.timestamp,
-          proposeEvent.returnValues.ancillaryData,
-          proposeEvent.returnValues.request
-        )
-        .send({ from: accounts[0] });
-      const settleEvent = (await optimisticOracle.getPastEvents("Settle", { fromBlock: 0 }))[0];
       assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1"));
 
       // Now, simulate the finalization of of the bridge action by the canonical bridge by minting tokens to the pool.
@@ -2205,12 +2081,13 @@ describe("BridgePool", () => {
       assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1"));
 
       // Only now that the bridging action has concluded do we finalize the relay action.
+      const proposeEvent = (await optimisticOracle.getPastEvents("ProposePrice", { fromBlock: 0 }))[0];
       await bridgePool.methods
         .settleRelay(
           depositData,
           relayAttemptData,
-          settleEvent.returnValues.ancillaryData,
-          settleEvent.returnValues.request
+          proposeEvent.returnValues.ancillaryData,
+          proposeEvent.returnValues.request
         )
         .send({ from: rando });
       assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1"));
