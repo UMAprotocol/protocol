@@ -123,7 +123,7 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, Lockable {
      * @param _newAdmin new admin contract to set ownership to.
      */
     function transferBridgePoolAdmin(address[] memory _bridgePools, address _newAdmin) public onlyOwner nonReentrant() {
-        for (uint16 i = 0; i < _bridgePools.length; i++) {
+        for (uint8 i = 0; i < _bridgePools.length; i++) {
             BridgePoolInterface(_bridgePools[i]).changeAdmin(_newAdmin);
         }
         emit BridgePoolsAdminTransferred(_bridgePools, _newAdmin);
