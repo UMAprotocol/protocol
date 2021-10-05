@@ -32,7 +32,7 @@ library AncillaryData {
             uint256 j = (x & 0x0202020202020202020202020202020202020202020202020202020202020202) / 2;
             x = x + (h & (i | j)) * 0x27 + 0x3030303030303030303030303030303030303030303030303030303030303030;
 
-            // Store and load next batch
+            // Return the result.
             return bytes32(x);
         }
     }
