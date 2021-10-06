@@ -696,5 +696,6 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         );
     }
 
+    // Added to enable the BridgePool to receive ETH. used when unwrapping Weth.
     receive() external payable {}
 }

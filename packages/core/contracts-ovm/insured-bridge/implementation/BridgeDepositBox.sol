@@ -37,10 +37,10 @@ abstract contract BridgeDepositBox is Legacy_Testable, Legacy_Lockable {
      *************************************/
 
     // ChainID of the L2 this deposit box is deployed on.
-    uint256 chainId;
+    uint256 public chainId;
 
     // Address of WETH on L1. If the deposited token maps to this L1 token then wrap ETH to WETH on the users behalf.
-    address l1Weth;
+    address public l1Weth;
 
     // Track the total number of deposits. Used as a unique identifier for bridged transfers.
     uint256 public numberOfDeposits;
