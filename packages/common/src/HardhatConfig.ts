@@ -77,10 +77,6 @@ export function getHardhatConfig(
       rinkeby: { chainId: 4, url: getNodeUrl("rinkeby", true), accounts: { mnemonic } },
       goerli: { chainId: 5, url: getNodeUrl("goerli", true), accounts: { mnemonic } },
       kovan: { chainId: 42, url: getNodeUrl("kovan", true), accounts: { mnemonic } },
-      arbitrumRinkeby: {
-        chainId: 421611,
-        url: "https://rinkeby.arbitrum.io/rpc",
-      },
       optimism: {
         ovm: true,
         chainId: 10,
