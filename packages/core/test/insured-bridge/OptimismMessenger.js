@@ -62,6 +62,13 @@ describe("OptimismMessenger integration with BridgeAdmin", () => {
       .changeImplementationAddress(utf8ToHex(interfaceName.IdentifierWhitelist), identifierWhitelist.options.address)
       .send({ from: owner });
     await identifierWhitelist.methods.addSupportedIdentifier(defaultIdentifier).send({ from: owner });
+
+    // The initialization of the bridge pool requires there to be an address of both the store and the SkinnyOptimisticOracle
+    // set in the finder. These tests dont use these contracts but there are never the less needed for deployment.
+    await finder.methods.changeImplementationAddress(utf8ToHex(interfaceName.Store), rando).send({ from: owner });
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.SkinnyOptimisticOracle), rando)
+      .send({ from: owner });
   });
   beforeEach(async function () {
     l1CrossDomainMessengerMock = await deployContractMock("OVM_L1CrossDomainMessenger");
