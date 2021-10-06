@@ -154,8 +154,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
     function addLiquidity(uint256 l1TokenAmount) public {
         l1Token.safeTransferFrom(msg.sender, address(this), l1TokenAmount);
 
-        uint256 lpTokensToMint =
-            FixedPoint.Unsigned(l1TokenAmount).div(FixedPoint.Unsigned(exchangeRateCurrent())).rawValue;
+        uint256 lpTokensToMint = (l1TokenAmount * 1e18) / exchangeRateCurrent();
 
         _mint(msg.sender, lpTokensToMint);
 
@@ -172,8 +171,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
      * @param lpTokenAmount Number of lpTokens to redeem for underlying.
      */
     function removeLiquidity(uint256 lpTokenAmount) public {
-        uint256 l1TokensToReturn =
-            FixedPoint.Unsigned(lpTokenAmount).mul(FixedPoint.Unsigned(exchangeRateCurrent())).rawValue;
+        uint256 l1TokensToReturn = (lpTokenAmount * exchangeRateCurrent()) / 1e18;
 
         // Check that there is enough liquid reserves to withdraw the requested amount.
         require(liquidReserves >= (pendingReserves + l1TokensToReturn), "Utilization too high to remove");
@@ -461,13 +459,10 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         sync(); // Fetch any balance changes due to token bridging finalization and factor them in.
 
         // ExchangeRate := (liquidReserves + utilizedReserves - undistributedLpFees) / lpTokenSupply
-        // Note to accommodate negative utilizedReserves without using FixedPoint.Signed we need to do a bit of
-        // branching logic. This is a gas optimization so we don't need to import this extra library logic.
-        FixedPoint.Unsigned memory numerator =
-            FixedPoint.Unsigned(liquidReserves).sub(FixedPoint.Unsigned(undistributedLpFees));
-        if (utilizedReserves > 0) numerator = numerator.add(FixedPoint.Unsigned(uint256(utilizedReserves)));
-        else numerator = numerator.sub(FixedPoint.Unsigned(uint256(utilizedReserves * -1)));
-        return numerator.div(FixedPoint.Unsigned(totalSupply())).rawValue;
+        uint256 numerator = liquidReserves - undistributedLpFees;
+        if (utilizedReserves > 0) numerator += uint256(utilizedReserves);
+        else numerator -= uint256(utilizedReserves * -1);
+        return (numerator * 1e18) / totalSupply();
     }
 
     /**
@@ -488,20 +483,19 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
 
         // The liquidity utilization ratio is the ratio of utilized liquidity (pendingReserves + relayedAmount
         // +utilizedReserves) divided by the liquid reserves.
-        FixedPoint.Unsigned memory numerator =
-            FixedPoint.Unsigned(pendingReserves).add(FixedPoint.Unsigned(relayedAmount));
-        if (utilizedReserves > 0) numerator = numerator.add(FixedPoint.Unsigned(uint256(utilizedReserves)));
-        else numerator = numerator.sub(FixedPoint.Unsigned(uint256(utilizedReserves * -1)));
+        uint256 numerator = pendingReserves + relayedAmount;
+        if (utilizedReserves > 0) numerator += uint256(utilizedReserves);
+        else numerator -= uint256(utilizedReserves * -1);
 
         // There are two cases where liquid reserves could be zero. Handle accordingly to avoid division by zero:
         // a) the pool is new and there no funds in it nor any bridging actions have happened. In this case the
         // numerator is 0 and liquid reserves are 0. The utilization is therefore 0.
-        if (numerator.isEqual(0) && liquidReserves == 0) return 0;
+        if (numerator == 0 && liquidReserves == 0) return 0;
         // b) the numerator is more than 0 and the liquid reserves are 0. in this case, The pool is at 100% utilization.
-        if (numerator.isGreaterThan(0) && liquidReserves == 0) return 1e18;
+        if (numerator > 0 && liquidReserves == 0) return 1e18;
 
         // In all other cases, return the utilization ratio.
-        return numerator.div(FixedPoint.Unsigned(liquidReserves)).rawValue;
+        return (numerator * 1e18) / liquidReserves;
     }
 
     /************************************
@@ -515,13 +509,9 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
     function getAccumulatedFees() public view returns (uint256) {
         // UnallocatedLpFees := min(undistributedLpFees*lpFeeRatePerSecond*timeFromLastInteraction,undistributedLpFees)
         // The min acts to pay out all fees in the case the equation returns more than the remaining a fees.
-        return
-            FixedPoint
-                .Unsigned(undistributedLpFees)
-                .mul(FixedPoint.Unsigned(lpFeeRatePerSecond))
-                .mul(FixedPoint.fromUnscaledUint(getCurrentTime() - lastLpFeeUpdate))
-                .min(FixedPoint.Unsigned(undistributedLpFees))
-                .rawValue;
+        uint256 possibleUnpaidFees =
+            (undistributedLpFees * lpFeeRatePerSecond * (getCurrentTime() - lastLpFeeUpdate)) / (1e18);
+        return possibleUnpaidFees < undistributedLpFees ? possibleUnpaidFees : undistributedLpFees;
     }
 
     /**
@@ -558,9 +548,9 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
             );
     }
 
-    // Note: this method is identical to the one above, but it allows storage to be passed in, which saves some gas (3-4k)
-    // when called internally due to solidity not needing to copy the entire data structure and just lazily read data
-    // when requested.
+    // Note: this method is identical to the one above, but it allows storage to be passed in, which saves some gas
+    // (3-4k) when called internally due to solidity not needing to copy the entire data structure and just lazily read
+    //  data when requested.
     function _getRelayAncillaryData(bytes32 relayHash) private pure returns (bytes memory) {
         return AncillaryData.appendKeyValueBytes32("", "relayHash", relayHash);
     }
@@ -621,12 +611,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
     }
 
     function _getAmountFromPct(uint64 percent, uint256 amount) private pure returns (uint256) {
-        return
-            FixedPoint
-                .Unsigned(uint256(percent))
-                .div(FixedPoint.fromUnscaledUint(1))
-                .mul(FixedPoint.Unsigned(amount))
-                .rawValue;
+        return (percent * amount) / 1e18;
     }
 
     function _getProposerBond(uint256 amount) private view returns (uint256) {
@@ -657,17 +642,14 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
     ) private {
         SkinnyOptimisticOracleInterface optimisticOracle = _getOptimisticOracle();
 
-        // Compute total proposal bond and pull from caller so that the OptimisticOracle can subsequently pull it from
-        // here.
-        uint256 proposerBondPct =
-            FixedPoint.Unsigned(uint256(bridgeAdmin.proposerBondPct())).div(FixedPoint.fromUnscaledUint(1)).rawValue;
+        // Compute total proposal bond and pull from caller so that the OptimisticOracle can pull it from here.
+        uint256 proposerBond = _getProposerBond(amount);
         uint256 finalFee = _getStore().computeFinalFee(address(l1Token)).rawValue;
         uint256 totalBond =
-            FixedPoint
-                .Unsigned(proposerBondPct)
-                .mul(FixedPoint.Unsigned(amount))
-                .add(FixedPoint.Unsigned(finalFee))
-                .rawValue;
+            (uint256(bridgeAdmin.proposerBondPct()) * amount) /
+                1e18 +
+                _getStore().computeFinalFee(address(l1Token)).rawValue;
+
         l1Token.safeTransferFrom(msg.sender, address(this), totalBond);
         l1Token.safeApprove(address(optimisticOracle), totalBond);
 
