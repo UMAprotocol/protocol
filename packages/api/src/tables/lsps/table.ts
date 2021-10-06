@@ -3,8 +3,7 @@ import { Data, makeId } from "./utils";
 const Base = uma.tables.base;
 const { JsMap } = uma.stores;
 
-export const Table = (type = "LSP") => {
-  const store = JsMap<string, Data>();
+export const Table = (type = "LSP", store = JsMap<string, Data>()) => {
   const table = Base<string, Data, uma.stores.Store<string, Data>>({ type, makeId }, store);
 
   async function addSponsors(id: string, sponsors: string[]) {

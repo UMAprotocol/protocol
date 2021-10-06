@@ -4,8 +4,7 @@ const BaseTable = uma.tables.base;
 const { SortedJsMap } = uma.stores;
 const globalId = "global";
 
-export const Table = (type = "Emp Stat History") => {
-  const store = SortedJsMap<string, Data>();
+export const Table = (type = "Emp Stat History", store = SortedJsMap<string, Data>()) => {
   const table = BaseTable<string, Data, uma.stores.SortedStore<string, Data>>({ type, makeId }, store);
 
   function hasByAddress(address: string, timestamp: number) {
