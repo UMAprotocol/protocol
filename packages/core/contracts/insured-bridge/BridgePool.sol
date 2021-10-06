@@ -359,7 +359,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         // Optimistically try to settle relay. If this transaction settles the relay, then check the newly resolved
         // price. Otherwise grab the already resolved price.
         try
-            _getOptimisticOracle().settle(
+            optimisticOracle.settle(
                 address(this),
                 bridgeAdmin.identifier(),
                 uint32(relayData.priceRequestTime),
@@ -374,7 +374,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         } catch {
             // We could not settle the request, therefore check if its already been resolved.
             require(
-                _getOptimisticOracle().hasPrice(
+                optimisticOracle.hasPrice(
                     address(this),
                     bridgeAdmin.identifier(),
                     uint32(relayData.priceRequestTime),
