@@ -139,6 +139,7 @@ describe("index.js", function () {
       bridgeAdmin.options.address,
       l1Token.options.address,
       lpFeeRatePerSecond,
+      false,
       timer.options.address
     ).send({ from: owner });
 
