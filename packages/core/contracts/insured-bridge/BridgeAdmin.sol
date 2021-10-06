@@ -301,7 +301,7 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, Lockable {
         emit SetProposerBondPct(proposerBondPct);
     }
 
-    function _validateDepositContracts(address depositContract, address messengerContract) private {
+    function _validateDepositContracts(address depositContract, address messengerContract) private pure {
         require(
             (depositContract != address(0)) && (messengerContract != address(0)),
             "Invalid deposit or messenger contract"
