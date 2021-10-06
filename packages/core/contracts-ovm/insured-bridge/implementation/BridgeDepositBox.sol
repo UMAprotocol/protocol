@@ -39,6 +39,9 @@ abstract contract BridgeDepositBox is Legacy_Testable, Legacy_Lockable {
     // ChainID of the L2 this deposit box is deployed on.
     uint256 chainId;
 
+    // Address of WETH on L1. If the deposited token maps to this L1 token then wrap ETH to WETH on the users behalf.
+    address l1Weth;
+
     // Track the total number of deposits. Used as a unique identifier for bridged transfers.
     uint256 public numberOfDeposits;
 
@@ -70,6 +73,7 @@ abstract contract BridgeDepositBox is Legacy_Testable, Legacy_Lockable {
         address l1Recipient,
         address l2Sender,
         address l1Token,
+        address l2Token,
         uint256 amount,
         uint64 slowRelayFeePct,
         uint64 instantRelayFeePct,
@@ -95,10 +99,12 @@ abstract contract BridgeDepositBox is Legacy_Testable, Legacy_Lockable {
     constructor(
         uint64 _minimumBridgingDelay,
         uint256 _chainId,
+        address _l1Weth,
         address timerAddress
     ) Legacy_Testable(timerAddress) {
         _setMinimumBridgingDelay(_minimumBridgingDelay);
         chainId = _chainId;
+        l1Weth = _l1Weth;
     }
 
     /**************************************
@@ -168,12 +174,12 @@ abstract contract BridgeDepositBox is Legacy_Testable, Legacy_Lockable {
         uint64 slowRelayFeePct,
         uint64 instantRelayFeePct,
         uint64 quoteTimestamp
-    ) public onlyIfDepositsEnabled(l2Token) nonReentrant() {
+    ) public payable onlyIfDepositsEnabled(l2Token) nonReentrant() {
         require(isWhitelistToken(l2Token), "deposit token not whitelisted");
         // We limit the sum of slow and instant relay fees to 50% to prevent the user spending all their funds on fees.
         // The realizedLPFeePct on L1 is limited to 50% so the total spent on fees does not ever exceed 100%.
-        require(slowRelayFeePct <= 0.25e18, "slowRelayFeePct can not exceed 25%");
-        require(instantRelayFeePct <= 0.25e18, "instantRelayFeePct can not exceed 25%");
+        require(slowRelayFeePct <= 0.25e18, "slowRelayFeePct must be <= 25%");
+        require(instantRelayFeePct <= 0.25e18, "instantRelayFeePct must be <= 25%");
 
         // Note that the OVM's notion of `block.timestamp` is different to the main ethereum L1 EVM. The OVM timestamp
         // corresponds to the L1 timestamp of the last confirmed L1 ⇒ L2 transaction. The quoteTime must be within 10
@@ -182,6 +188,16 @@ abstract contract BridgeDepositBox is Legacy_Testable, Legacy_Lockable {
             getCurrentTime() >= quoteTimestamp - 10 minutes && getCurrentTime() <= quoteTimestamp + 10 minutes,
             "deposit mined after deadline"
         );
+        // If the address of the L1 token is the l1Weth and there is a msg.value with the transaction then the user
+        // is sending ETH. In this case, the ETH should be deposited to WETH, which is then bridged to L1.
+        if (whitelistedTokens[l2Token].l1Token == l1Weth && msg.value > 0) {
+            require(msg.value == amount, "msg.value must match amount");
+            l2Token.call{ value: msg.value }(abi.encodeWithSignature("deposit()"));
+        }
+        // Else, it is a normal ERC20. In this case pull the token from the users wallet as per normal.
+        // Note: this includes the case where the L2 user has WETH (already wrapped ETH) and wants to bridge them. In
+        // this case the msg.value will be set to 0, indicating a "normal" ERC20 bridging action.
+        else TokenHelper.safeTransferFrom(l2Token, msg.sender, address(this), amount);
 
         emit FundsDeposited(
             chainId,
@@ -189,6 +205,7 @@ abstract contract BridgeDepositBox is Legacy_Testable, Legacy_Lockable {
             l1Recipient,
             msg.sender,
             whitelistedTokens[l2Token].l1Token,
+            l2Token,
             amount,
             slowRelayFeePct,
             instantRelayFeePct,
@@ -196,8 +213,6 @@ abstract contract BridgeDepositBox is Legacy_Testable, Legacy_Lockable {
         );
 
         numberOfDeposits += 1;
-
-        TokenHelper.safeTransferFrom(l2Token, msg.sender, address(this), amount);
     }
 
     /**************************************
@@ -209,7 +224,7 @@ abstract contract BridgeDepositBox is Legacy_Testable, Legacy_Lockable {
      * @param l2Token L2 token to check against the whitelist.
      */
     function isWhitelistToken(address l2Token) public view returns (bool) {
-        return whitelistedTokens[l2Token].l1Token != address(0);
+        return whitelistedTokens[l2Token].lastBridgeTime != 0;
     }
 
     /**

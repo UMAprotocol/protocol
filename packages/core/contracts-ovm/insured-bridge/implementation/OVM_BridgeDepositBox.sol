@@ -37,10 +37,11 @@ contract OVM_BridgeDepositBox is BridgeDepositBox, OVM_CrossDomainEnabled {
         address _crossDomainAdmin,
         uint64 _minimumBridgingDelay,
         uint256 _chainId,
+        address _l1Weth,
         address timerAddress
     )
         OVM_CrossDomainEnabled(Lib_PredeployAddresses.L2_CROSS_DOMAIN_MESSENGER)
-        BridgeDepositBox(_minimumBridgingDelay, _chainId, timerAddress)
+        BridgeDepositBox(_minimumBridgingDelay, _chainId, _l1Weth, timerAddress)
     {
         _setCrossDomainAdmin(_crossDomainAdmin);
     }
