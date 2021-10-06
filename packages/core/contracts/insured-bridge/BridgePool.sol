@@ -367,7 +367,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
                 request
             )
         returns (
-            uint256 payout, // Unused parameter, as we only care to check whether the price resolved to True or False.
+            uint256, // Unused payout amount, as we only care to check whether the price resolved to True or False.
             int256 resolvedPrice
         ) {
             require(resolvedPrice == int256(1e18), "Settle relay iff price is True");
@@ -443,20 +443,17 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
      * @notice Callback for disputes, deletes disputed relay allowing a follow-up relay.
      * @dev timestamp and identifier are unused because ancillaryData contains a relay nonce and uniquely
      * identifies a relay request.
-     * @param identifier price identifier for relay request.
-     * @param timestamp timestamp for relay request.
      * @param ancillaryData ancillary data for relay request.
-     * @param request disputed relay request params.
      */
     function priceDisputed(
         // Unused, but the identifier should be same as bridgeAdmin.identifier()
-        bytes32 identifier,
+        bytes32,
         // Unused, but timestamp should be same as the hashed relay.priceRequestTime included in relays[depositHash]
-        uint32 timestamp,
+        uint32,
         bytes memory ancillaryData,
         // Unused as all of the relay data is hashed and stored in relays[depositHash], and we can lookup depositHash
         // using the ancillaryData
-        SkinnyOptimisticOracleInterface.Request memory request
+        SkinnyOptimisticOracleInterface.Request memory
     ) external onlyFromOptimisticOracle {
         bytes32 depositHash = relayRequestAncillaryData[keccak256(ancillaryData)];
         // We can delete the pending relay hash because we will still store data that must be carried over to a follow
@@ -637,7 +634,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
     }
 
     // Return hash of relay data, which is stored in state and mapped to a deposit hash.
-    function _getRelayDataHash(RelayData memory _relayData) private view returns (bytes32) {
+    function _getRelayDataHash(RelayData memory _relayData) private pure returns (bytes32) {
         return keccak256(abi.encode(_relayData));
     }
 
@@ -650,7 +647,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
     }
 
     // Return hash of unique instant relay and deposit event. This is stored in state and mapped to a deposit hash.
-    function _getInstantRelayHash(bytes32 depositHash, RelayData memory _relayData) private view returns (bytes32) {
+    function _getInstantRelayHash(bytes32 depositHash, RelayData memory _relayData) private pure returns (bytes32) {
         // Only include parameters that affect the "correctness" of an instant relay. For example, the realized LP fee
         // % directly affects how many tokens the instant relayer needs to send to the user, whereas the address of the
         // instant relayer does not matter for determing whether an instant relay is "correct".
@@ -711,8 +708,6 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         bytes memory customAncillaryData
     ) private {
         // Compute total proposal bond and pull from caller so that the OptimisticOracle can pull it from here.
-        uint256 proposerBond = _getProposerBond(amount);
-        uint256 finalFee = store.computeFinalFee(address(l1Token)).rawValue;
         uint256 totalBond =
             (uint256(bridgeAdmin.proposerBondPct()) * amount) / 1e18 + store.computeFinalFee(address(l1Token)).rawValue;
 

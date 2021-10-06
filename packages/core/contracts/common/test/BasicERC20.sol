@@ -38,11 +38,11 @@ contract BasicERC20 is IERC20 {
         address _to,
         uint256 _value
     ) public override returns (bool success) {
-        uint256 allowance = allowed[_from][msg.sender];
-        require(balances[_from] >= _value && allowance >= _value);
+        uint256 _allowance = allowed[_from][msg.sender];
+        require(balances[_from] >= _value && _allowance >= _value);
         balances[_to] += _value;
         balances[_from] -= _value;
-        if (allowance < MAX_UINT256) {
+        if (_allowance < MAX_UINT256) {
             allowed[_from][msg.sender] -= _value;
         }
         emit Transfer(_from, _to, _value); //solhint-disable-line indent, no-unused-vars

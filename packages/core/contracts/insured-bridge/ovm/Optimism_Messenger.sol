@@ -17,14 +17,13 @@ contract Optimism_Messenger is Ownable, Optimism_CrossDomainEnabled, MessengerIn
      * @notice Sends a message to an account on L2.
      * @param target The intended recipient on L2.
      * @param gasLimit The gasLimit for the receipt of the message on L2.
-     * @param gasPrice Unused for sending messages to Optimism.
      * @param message The data to send to the target (usually calldata to a function with
      *  `onlyFromCrossDomainAccount()`)
      */
     function relayMessage(
         address target,
         uint256 gasLimit,
-        uint256 gasPrice,
+        uint256,
         bytes memory message
     ) external override onlyOwner {
         sendCrossDomainMessage(target, uint32(gasLimit), message);

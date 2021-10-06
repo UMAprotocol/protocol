@@ -85,14 +85,15 @@ contract CoveredCallFinancialProductLibrary is FinancialProductLibrary, Lockable
 
     /**
      * @notice Returns a transformed collateral requirement by applying the covered call payout structure.
-     * @param oraclePrice price from the oracle to transform the collateral requirement.
-     * @param collateralRequirement financial products collateral requirement to be scaled according to price and strike.
      * @return transformedCollateralRequirement the input collateral requirement with the transformation logic applied to it.
      */
-    function transformCollateralRequirement(
-        FixedPoint.Unsigned memory oraclePrice,
-        FixedPoint.Unsigned memory collateralRequirement
-    ) public view override nonReentrantView() returns (FixedPoint.Unsigned memory) {
+    function transformCollateralRequirement(FixedPoint.Unsigned memory, FixedPoint.Unsigned memory)
+        public
+        view
+        override
+        nonReentrantView()
+        returns (FixedPoint.Unsigned memory)
+    {
         FixedPoint.Unsigned memory strike = financialProductStrikes[msg.sender];
         require(strike.isGreaterThan(0), "Caller has no strike");
 
