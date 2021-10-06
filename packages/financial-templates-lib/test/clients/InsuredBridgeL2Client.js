@@ -7,6 +7,7 @@ const { toWei } = web3.utils;
 
 // Client to test
 const { InsuredBridgeL2Client } = require("../../dist/clients/InsuredBridgeL2Client");
+const { ZERO_ADDRESS } = require("@uma/common");
 
 // Helper contracts
 const chainId = 10;
@@ -57,9 +58,12 @@ describe("InsuredBridgeL2Client", () => {
   });
 
   beforeEach(async function () {
-    depositBox = await BridgeDepositBox.new(bridgeAdmin, minimumBridgingDelay, timer.options.address).send({
-      from: deployer,
-    });
+    depositBox = await BridgeDepositBox.new(
+      bridgeAdmin,
+      minimumBridgingDelay,
+      ZERO_ADDRESS, // Weth contract. not used in this set of tests.
+      timer.options.address
+    ).send({ from: deployer });
 
     l2Token = await Token.new("L2 Wrapped Ether", "WETH", 18).send({ from: deployer });
     await l2Token.methods.addMember(1, deployer).send({ from: deployer });
