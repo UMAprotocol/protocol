@@ -1,5 +1,5 @@
 import lodash from "lodash";
-import { Obj } from "..";
+import { Obj } from "../types";
 import * as uma from "@uma/sdk";
 import { utils, BigNumber, Contract } from "ethers";
 import assert from "assert";

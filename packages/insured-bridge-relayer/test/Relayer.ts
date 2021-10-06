@@ -29,7 +29,7 @@ const BridgeDepositBox = getContract("BridgeDepositBoxMock");
 const Finder = getContract("Finder");
 const IdentifierWhitelist = getContract("IdentifierWhitelist");
 const AddressWhitelist = getContract("AddressWhitelist");
-const OptimisticOracle = getContract("OptimisticOracle");
+const OptimisticOracle = getContract("SkinnyOptimisticOracle");
 const Store = getContract("Store");
 const ERC20 = getContract("ExpandedERC20");
 const Timer = getContract("Timer");
@@ -129,7 +129,7 @@ describe("Relayer.ts", function () {
       l1Timer.options.address
     ).send({ from: l1Owner });
     await finder.methods
-      .changeImplementationAddress(utf8ToHex(interfaceName.OptimisticOracle), optimisticOracle.options.address)
+      .changeImplementationAddress(utf8ToHex(interfaceName.SkinnyOptimisticOracle), optimisticOracle.options.address)
       .send({ from: l1Owner });
 
     // Deploy new MockOracle so that OptimisticOracle disputes can make price requests to it:

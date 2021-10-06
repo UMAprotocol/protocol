@@ -12,6 +12,7 @@ export const interfaceName = {
   GenericHandler: "GenericHandler",
   MockOracleAncillary: "Oracle",
   SinkOracle: "Oracle",
+  SkinnyOptimisticOracle: "SkinnyOptimisticOracle",
 };
 
 // These enforce the maximum number of transactions that can fit within one batch-commit and batch-reveal.

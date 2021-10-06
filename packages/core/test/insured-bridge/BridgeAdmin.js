@@ -1,7 +1,7 @@
 const { assert } = require("chai");
 const hre = require("hardhat");
 const { web3 } = hre;
-const { didContractThrow, ZERO_ADDRESS, interfaceName } = require("@uma/common");
+const { didContractThrow, interfaceName, ZERO_ADDRESS } = require("@uma/common");
 const { getContract, assertEventEmitted } = hre;
 const { hexToUtf8, utf8ToHex, toWei } = web3.utils;
 
@@ -57,6 +57,13 @@ describe("BridgeAdmin", () => {
       .send({ from: owner });
     timer = await Timer.new().send({ from: owner });
     await identifierWhitelist.methods.addSupportedIdentifier(defaultIdentifier).send({ from: owner });
+
+    // The initialization of the bridge pool requires there to be an address of both the store and the SkinnyOptimisticOracle
+    // set in the finder. These tests dont use these contracts but there are never the less needed for deployment.
+    await finder.methods.changeImplementationAddress(utf8ToHex(interfaceName.Store), rando).send({ from: owner });
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.SkinnyOptimisticOracle), rando)
+      .send({ from: owner });
   });
   beforeEach(async function () {
     messenger = await MessengerMock.new().send({ from: owner });
@@ -239,6 +246,12 @@ describe("BridgeAdmin", () => {
           await bridgeAdmin.methods
             .whitelistToken(chainId, l1Token, l2Token, bridgePool.options.address, defaultGasLimit, defaultGasPrice)
             .send({ from: owner });
+
+          const tokenMapping = await bridgeAdmin.methods.whitelistedTokens(l1Token, chainId).call();
+          assert.isTrue(
+            tokenMapping.l2Token === l2Token && tokenMapping.bridgePool === bridgePool.options.address,
+            "Token mapping not created correctly"
+          );
         });
         it("Add token mapping on L1 and sends xchain message", async () => {
           await bridgeAdmin.methods
@@ -258,7 +271,7 @@ describe("BridgeAdmin", () => {
               ev.bridgePool === bridgePool.options.address
             );
           });
-          const tokenMapping = await bridgeAdmin.methods.whitelistedTokens(l1Token).call();
+          const tokenMapping = await bridgeAdmin.methods.whitelistedTokens(l1Token, chainId).call();
           assert.isTrue(
             tokenMapping.l2Token === l2Token && tokenMapping.bridgePool === bridgePool.options.address,
             "Token mapping not created correctly"
@@ -267,6 +280,91 @@ describe("BridgeAdmin", () => {
           // Validate xchain message
           const expectedAbiData = depositBox.methods
             .whitelistToken(l1Token, l2Token, bridgePool.options.address)
+            .encodeABI();
+          await assertEventEmitted(whitelistTxn, messenger, "RelayedMessage", (ev) => {
+            return (
+              ev.target === depositBoxImpersonator &&
+              ev.gasLimit === defaultGasLimit.toString() &&
+              ev.gasPrice === defaultGasPrice &&
+              ev.message === expectedAbiData
+            );
+          });
+        });
+        it("Can whitelist multiple L2 tokens for one L1 token and bridgePool pair", async () => {
+          await bridgeAdmin.methods
+            .setDepositContract(chainId, depositBoxImpersonator, messenger.options.address)
+            .send({ from: owner });
+          await collateralWhitelist.methods.addToWhitelist(l1Token).send({ from: owner });
+
+          // Whitelist multiple L2 tokens for the one L1 tokens and bridge pool.
+          await bridgeAdmin.methods
+            .whitelistToken(chainId, l1Token, l2Token, bridgePool.options.address, defaultGasLimit, defaultGasPrice)
+            .send({ from: owner });
+          // Create a new L2 token address to mock being having this pool serve multiple L2s. EG USDC on Arbitrum and
+          // Optimism. This will have the same L1 bridge pool, multiple L2Tokens and bridge deposit boxes (for each L2).
+          // use a fake address to pretend to be the depositBoxImpersonator for the second chainId
+          const l2Token2 = web3.utils.toChecksumAddress(web3.utils.randomHex(20));
+          const chainId2 = chainId + 1;
+          const depositBoxImpersonator2 = web3.utils.toChecksumAddress(web3.utils.randomHex(20));
+
+          await bridgeAdmin.methods
+            .setDepositContract(chainId2, depositBoxImpersonator2, messenger.options.address)
+            .send({ from: owner });
+
+          await bridgeAdmin.methods
+            .whitelistToken(chainId2, l1Token, l2Token2, bridgePool.options.address, defaultGasLimit, defaultGasPrice)
+            .send({ from: owner });
+          const tokenMapping1 = await bridgeAdmin.methods.whitelistedTokens(l1Token, chainId).call();
+          assert.isTrue(
+            tokenMapping1.l2Token === l2Token && tokenMapping1.bridgePool === bridgePool.options.address,
+            "Token mapping not created correctly"
+          );
+
+          const tokenMapping2 = await bridgeAdmin.methods.whitelistedTokens(l1Token, chainId2).call();
+          assert.isTrue(
+            tokenMapping2.l2Token === l2Token2 && tokenMapping2.bridgePool === bridgePool.options.address,
+            "Token mapping not created correctly"
+          );
+        });
+        it("Can use whitelist to update the address of the bridge pool on L2 for a given deposit box", async () => {
+          // The whitelistToken method has a secondary function in providing the ability to update the address of the
+          // bridge pool for a given L2 chain by re-whitelisting the same L2 token with a new bridge pool address.
+          await bridgeAdmin.methods
+            .setDepositContract(chainId, depositBoxImpersonator, messenger.options.address)
+            .send({ from: owner });
+          await collateralWhitelist.methods.addToWhitelist(l1Token).send({ from: owner });
+
+          // Whitelist multiple L2 tokens for the one L1 tokens and bridge pool.
+          await bridgeAdmin.methods
+            .whitelistToken(chainId, l1Token, l2Token, bridgePool.options.address, defaultGasLimit, defaultGasPrice)
+            .send({ from: owner });
+
+          // Now consider the case where we have change the address of the bridge pool on L1 due to an upgrade. We now
+          // need to send messages to each L2 deposit box to update this address. Create a new fake bridgePool and re
+          // whitelist the same l1Token/l2Token pair on the new pool address.
+          const bridgePool2 = await BridgePool.new(
+            "LP Token2",
+            "LPT2",
+            bridgeAdmin.options.address,
+            l1Token,
+            lpFeeRatePerSecond,
+            timer.options.address
+          ).send({ from: owner });
+          const whitelistTxn = await bridgeAdmin.methods
+            .whitelistToken(chainId, l1Token, l2Token, bridgePool2.options.address, defaultGasLimit, defaultGasPrice)
+            .send({ from: owner });
+
+          // After this whitelist call the address in the bridge admin should have been updated as expected and the
+          // messenger should have sent the call to update the latest bridgePool.
+          const tokenMapping = await bridgeAdmin.methods.whitelistedTokens(l1Token, chainId).call();
+          assert.isTrue(
+            tokenMapping.l2Token === l2Token && tokenMapping.bridgePool === bridgePool2.options.address,
+            "Token mapping not created correctly"
+          );
+
+          // Validate xchain message correctly updates to the new bridgePool2 address
+          const expectedAbiData = depositBox.methods
+            .whitelistToken(l1Token, l2Token, bridgePool2.options.address)
             .encodeABI();
           await assertEventEmitted(whitelistTxn, messenger, "RelayedMessage", (ev) => {
             return (
@@ -444,6 +542,48 @@ describe("BridgeAdmin", () => {
               ev.message === expectedAbiData
             );
           });
+        });
+      });
+      describe("Transfer ownership of pool admins", () => {
+        it("Basic checks", async () => {
+          assert(
+            await didContractThrow(
+              bridgeAdmin.methods.transferBridgePoolAdmin([bridgePool.options.address], rando).send({ from: rando })
+            ),
+            "OnlyOwner modifier not enforced"
+          );
+        });
+        it("Sets new owner on multiple pools", async () => {
+          // Create a temp bridgePool.
+          const bridgePool2 = await BridgePool.new(
+            "LP Token2",
+            "LPT2",
+            bridgeAdmin.options.address,
+            l1Token,
+            lpFeeRatePerSecond,
+            timer.options.address
+          ).send({ from: owner });
+
+          assert.equal(await bridgePool.methods.bridgeAdmin().call(), bridgeAdmin.options.address);
+
+          const transferAdminTxn = await bridgeAdmin.methods
+            .transferBridgePoolAdmin([bridgePool.options.address, bridgePool2.options.address], owner)
+            .send({ from: owner });
+
+          // Check for L1 logs and state change
+
+          await assertEventEmitted(transferAdminTxn, bridgeAdmin, "BridgePoolsAdminTransferred", (ev) => {
+            return (
+              ev.bridgePools.length == 2 &&
+              ev.bridgePools[0] == bridgePool.options.address &&
+              ev.bridgePools[1] == bridgePool2.options.address &&
+              ev.newAdmin == owner
+            );
+          });
+
+          // Both bridge pools should now have the new owner.
+          assert.equal(await bridgePool.methods.bridgeAdmin().call(), owner);
+          assert.equal(await bridgePool2.methods.bridgeAdmin().call(), owner);
         });
       });
     });

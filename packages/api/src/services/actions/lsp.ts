@@ -1,5 +1,5 @@
 import assert from "assert";
-import { Json, Actions, AppState, CurrencySymbol } from "../..";
+import { Json, Actions, AppState, CurrencySymbol } from "../../types";
 import lodash from "lodash";
 import * as Queries from "../../libs/queries";
 import { nowS } from "../../libs/utils";

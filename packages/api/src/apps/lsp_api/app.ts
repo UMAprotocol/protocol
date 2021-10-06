@@ -7,7 +7,7 @@ import { tables, Coingecko, utils, Multicall2 } from "@uma/sdk";
 import * as Services from "../../services";
 import Express from "../../services/express-channels";
 import * as Actions from "../../services/actions";
-import { ProcessEnv, AppState, Channels } from "../..";
+import { ProcessEnv, AppState, Channels } from "../../types";
 import { empStats, empStatsHistory, lsps } from "../../tables";
 import Zrx from "../../libs/zrx";
 import { Profile, parseEnvArray, getWeb3, BlockInterval, expirePromise } from "../../libs/utils";
