@@ -63,10 +63,12 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
     // - Begin at Uninitialized.
     // - When relayDeposit() is called, a new relay is created with state Pending and mapped to the L2 deposit hash.
     // - If the relay is disputed, the relay gets deleted and the L2 deposit hash has no relay mapped to it anymore.
+    // - The above statements enable state to transfer between the Uninitialized and Pending states.
     // - When settleRelay() is successfully called, the relay state gets set to Finalized and cannot change from there.
     // - It is impossible for a relay to be deleted when in Finalized state (and have its state set to Uninitialized)
     //   because the only way for settleRelay() to succeed is if the price has resolved on the OptimisticOracle.
-    // - You cannot dispute an already resolved request on the OptimisticOracle.
+    // - You cannot dispute an already resolved request on the OptimisticOracle. Moreover, the mapping from
+    //   a relay's ancillary data hash to its deposit hash is deleted after a successful settleRelay() call.
     enum RelayState { Uninitialized, Pending, Finalized }
 
     // Data from L2 deposit transaction.
@@ -417,7 +419,10 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
 
         emit RelaySettled(depositHash, msg.sender, relayData);
 
+        // Clean up state storage and receive gas refund. This also prevents `priceDisputed()` from being able to reset
+        // this newly Finalized relay state.
         delete instantRelays[instantRelayHash];
+        delete relayRequestAncillaryData[keccak256(ancillaryData)];
     }
 
     /**
