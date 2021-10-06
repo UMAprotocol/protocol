@@ -71,7 +71,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
     // The flow chart between states is as follows:
     // - Begin at Uninitialized.
     // - When relayDeposit() is called, a new relay is created with state Pending and mapped to the L2 deposit hash.
-    // - If the relay is disputed, the relay gets deleted and the L2 deposit hash has no relay mapped to it anymore.
+    // - If the relay is disputed, the RelayData gets deleted and the L2 deposit hash has no relay mapped to it anymore.
     // - The above statements enable state to transfer between the Uninitialized and Pending states.
     // - When settleRelay() is successfully called, the relay state gets set to Finalized and cannot change from there.
     // - It is impossible for a relay to be deleted when in Finalized state (and have its state set to Uninitialized)
