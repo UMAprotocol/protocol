@@ -2,7 +2,7 @@ import * as uma from "@uma/sdk";
 import Promise from "bluebird";
 const { emp } = uma.clients;
 import { BatchReadWithErrors, nowS, parseBytes, Profile, toNumber, toString } from "../libs/utils";
-import { AppState, BaseConfig } from "..";
+import { AppState, BaseConfig } from "../types";
 
 type Instance = uma.clients.emp.Instance;
 type Config = BaseConfig;

@@ -1,7 +1,7 @@
 import assert from "assert";
 import * as uma from "@uma/sdk";
 import { BigNumber } from "ethers";
-import { Currencies, AppState, PriceSample, BaseConfig } from "../..";
+import { Currencies, AppState, PriceSample, BaseConfig } from "../../types";
 import { calcTvl, calcTvm, nowS } from "../../libs/utils";
 import * as Queries from "../../libs/queries";
 

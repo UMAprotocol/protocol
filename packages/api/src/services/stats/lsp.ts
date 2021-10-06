@@ -1,6 +1,6 @@
 import assert from "assert";
 import * as uma from "@uma/sdk";
-import { Currencies, AppState, PriceSample, BaseConfig } from "../..";
+import { Currencies, AppState, PriceSample, BaseConfig } from "../../types";
 import { calcTvl, nowS } from "../../libs/utils";
 import * as Queries from "../../libs/queries";
 import * as tables from "../../tables";

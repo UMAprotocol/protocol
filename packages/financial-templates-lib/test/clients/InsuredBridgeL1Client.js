@@ -1,6 +1,6 @@
 const hre = require("hardhat");
 const { web3 } = hre;
-const { interfaceName, TokenRolesEnum, InsuredBridgeRelayStateEnum, ZERO_ADDRESS } = require("@uma/common");
+const { interfaceName, TokenRolesEnum, InsuredBridgeRelayStateEnum } = require("@uma/common");
 const { getContract } = hre;
 const { utf8ToHex, toWei, toBN, soliditySha3 } = web3.utils;
 const toBNWei = (number) => toBN(toWei(number.toString()).toString());
@@ -14,14 +14,14 @@ const BridgePool = getContract("BridgePool");
 const Finder = getContract("Finder");
 const IdentifierWhitelist = getContract("IdentifierWhitelist");
 const AddressWhitelist = getContract("AddressWhitelist");
-const OptimisticOracle = getContract("OptimisticOracle");
+const OptimisticOracle = getContract("SkinnyOptimisticOracle");
 const Store = getContract("Store");
 const ERC20 = getContract("ExpandedERC20");
 const Timer = getContract("Timer");
 const MockOracle = getContract("MockOracleAncillary");
 
 // Client to test
-const { InsuredBridgeL1Client } = require("../../dist/clients/InsuredBridgeL1Client");
+const { InsuredBridgeL1Client, ClientRelayState } = require("../../dist/clients/InsuredBridgeL1Client");
 
 // tested client
 let client;
@@ -131,7 +131,6 @@ describe("InsuredBridgeL1Client", function () {
       l2Sender: depositData.l2Sender,
       slowRelayer: relayData.slowRelayer,
       disputedSlowRelayers: [],
-      instantRelayer: relayData.instantRelayer, // not sped up so should be 0x000...
       l1Recipient: depositData.l1Recipient,
       l1Token: _l1TokenAddress,
       amount: depositData.amount,
@@ -196,7 +195,7 @@ describe("InsuredBridgeL1Client", function () {
       timer.options.address
     ).send({ from: owner });
     await finder.methods
-      .changeImplementationAddress(utf8ToHex(interfaceName.OptimisticOracle), optimisticOracle.options.address)
+      .changeImplementationAddress(utf8ToHex(interfaceName.SkinnyOptimisticOracle), optimisticOracle.options.address)
       .send({ from: owner });
 
     // Deploy new MockOracle so that OptimisticOracle disputes can make price requests to it:
@@ -276,7 +275,6 @@ describe("InsuredBridgeL1Client", function () {
       priceRequestTime: 0,
       realizedLpFeePct: defaultRealizedLpFee,
       slowRelayer: relayer,
-      instantRelayer: ZERO_ADDRESS,
     };
 
     ({ depositHash, relayAncillaryData, relayAncillaryDataHash } = await generateRelayData(
@@ -306,8 +304,6 @@ describe("InsuredBridgeL1Client", function () {
       await l1Token.methods.mint(relayer, totalRelayBond).send({ from: owner });
       await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: relayer });
       await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: relayer });
-
-      const relayStatus = await bridgePool.methods.relays(depositHash).call();
 
       await client.update();
 
@@ -356,23 +352,26 @@ describe("InsuredBridgeL1Client", function () {
 
       await client.update();
 
-      // After the fast relay, there should be an instant relayer set and the relayState should be updated.
-      expectedRelayedDepositInformation.instantRelayer = instantRelayer;
-      expectedRelayedDepositInformation.relayState = 1; // sped up
-
+      // After the fast relay, there should be an instant relayer set. Relay data should be the same.
+      assert.isTrue(client.hasInstantRelayer(l1Token.options.address, depositHash, relayData.realizedLpFeePct));
       assert.equal(JSON.stringify(client.getAllRelayedDeposits()), JSON.stringify([expectedRelayedDepositInformation]));
-      assert.equal(JSON.stringify(client.getPendingRelayedDeposits()), JSON.stringify([])); // Not pending anymore
+      assert.equal(
+        JSON.stringify(client.getPendingRelayedDeposits()),
+        JSON.stringify([expectedRelayedDepositInformation])
+      ); // Not pending anymore
 
       // Next, advance time and settle the relay. State should update accordingly.
       await timer.methods
         .setCurrentTime(Number(await timer.methods.getCurrentTime().call()) + defaultLiveness)
         .send({ from: owner });
+      const proposeEvent = (await optimisticOracle.getPastEvents("ProposePrice", { fromBlock: 0 }))[0];
       await optimisticOracle.methods
         .settle(
           bridgePool.options.address,
           defaultIdentifier,
-          relayStatus.priceRequestTime.toString(),
-          relayAncillaryData
+          proposeEvent.returnValues.timestamp,
+          proposeEvent.returnValues.ancillaryData,
+          { ...proposeEvent.returnValues.request, instantRelayer }
         )
         .send({ from: relayer });
 
@@ -380,7 +379,7 @@ describe("InsuredBridgeL1Client", function () {
       await bridgePool.methods.settleRelay(depositData).send({ from: rando });
 
       await client.update();
-      expectedRelayedDepositInformation.relayState = 3; // settled
+      expectedRelayedDepositInformation.relayState = ClientRelayState.Finalized;
       assert.equal(JSON.stringify(client.getAllRelayedDeposits()), JSON.stringify([expectedRelayedDepositInformation]));
       assert.equal(JSON.stringify(client.getPendingRelayedDeposits()), JSON.stringify([])); // Not pending anymore
     });
@@ -394,8 +393,6 @@ describe("InsuredBridgeL1Client", function () {
       await l1Token.methods.mint(relayer, totalRelayBond).send({ from: owner });
       await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: relayer });
       await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: relayer });
-
-      const relayStatus = await bridgePool.methods.relays(depositHash).call();
 
       await client.update();
 
@@ -438,23 +435,26 @@ describe("InsuredBridgeL1Client", function () {
 
       await client.update();
 
-      // After the fast relay, there should be an instant relayer set and the relayState should be updated.
-      expectedRelayedDepositInformation.instantRelayer = instantRelayer;
-      expectedRelayedDepositInformation.relayState = 1; // sped up
-
+      // After the fast relay, there should be an instant relayer set. Relay data should be the same.
+      assert.isTrue(client.hasInstantRelayer(l1Token.options.address, depositHash, relayData.realizedLpFeePct));
       assert.equal(JSON.stringify(client.getAllRelayedDeposits()), JSON.stringify([expectedRelayedDepositInformation]));
-      assert.equal(JSON.stringify(client.getPendingRelayedDeposits()), JSON.stringify([]));
+      assert.equal(
+        JSON.stringify(client.getPendingRelayedDeposits()),
+        JSON.stringify([expectedRelayedDepositInformation])
+      ); // Not pending anymore
 
       // Next, dispute the relay.
       await timer.methods.setCurrentTime(Number(await timer.methods.getCurrentTime().call()) + 1).send({ from: owner });
       await l1Token.methods.mint(disputer, totalRelayBond).send({ from: owner });
       await l1Token.methods.approve(optimisticOracle.options.address, totalRelayBond).send({ from: disputer });
+      const proposeEvent = (await optimisticOracle.getPastEvents("ProposePrice", { fromBlock: 0 }))[0];
       await optimisticOracle.methods
         .disputePrice(
           bridgePool.options.address,
           defaultIdentifier,
-          relayStatus.priceRequestTime.toString(),
-          relayAncillaryData
+          proposeEvent.returnValues.timestamp,
+          proposeEvent.returnValues.ancillaryData,
+          { ...proposeEvent.returnValues.request, instantRelayer }
         )
         .send({ from: disputer });
 
@@ -471,7 +471,10 @@ describe("InsuredBridgeL1Client", function () {
       expectedRelayedDepositInformation.slowRelayer = rando; // The re-relayer was the rando account.
       expectedRelayedDepositInformation.disputedSlowRelayers.push(relayer); // disputed
       assert.equal(JSON.stringify(client.getAllRelayedDeposits()), JSON.stringify([expectedRelayedDepositInformation]));
-      assert.equal(JSON.stringify(client.getPendingRelayedDeposits()), JSON.stringify([]));
+      assert.equal(
+        JSON.stringify(client.getPendingRelayedDeposits()),
+        JSON.stringify([expectedRelayedDepositInformation])
+      );
     });
   });
   describe("Multi-relay, multi pool tests", function () {
@@ -530,13 +533,14 @@ describe("InsuredBridgeL1Client", function () {
       await timer.methods
         .setCurrentTime(Number(await timer.methods.getCurrentTime().call()) + defaultLiveness)
         .send({ from: owner });
-      const relayStatus = await bridgePool.methods.relays(depositHash).call();
+      const proposeEvent = (await optimisticOracle.getPastEvents("ProposePrice", { fromBlock: 0 }))[0];
       await optimisticOracle.methods
         .settle(
           bridgePool.options.address,
           defaultIdentifier,
-          relayStatus.priceRequestTime.toString(),
-          relayAncillaryData
+          proposeEvent.returnValues.timestamp,
+          proposeEvent.returnValues.ancillaryData,
+          proposeEvent.returnValues.request
         )
         .send({ from: relayer });
 
@@ -544,7 +548,7 @@ describe("InsuredBridgeL1Client", function () {
       await bridgePool.methods.settleRelay(depositData).send({ from: rando });
 
       // Construct the expected relay data that the client should return.
-      expectedRelayedDepositInformation.relayState = 3; // settled
+      expectedRelayedDepositInformation.relayState = ClientRelayState.Finalized; // settled
       let expectedBridgePool1Relays = [JSON.parse(JSON.stringify(expectedRelayedDepositInformation))]; // deep copy
 
       // Change some of the variables and and re-relay.

@@ -3,7 +3,7 @@ import bluebird from "bluebird";
 import { BigNumber } from "ethers";
 
 import * as tables from "../../tables";
-import type { AppState, CurrencySymbol } from "../..";
+import type { AppState, CurrencySymbol } from "../../types";
 
 type Dependencies = Pick<AppState, "erc20s" | "stats" | "lsps" | "registeredLsps">;
 
