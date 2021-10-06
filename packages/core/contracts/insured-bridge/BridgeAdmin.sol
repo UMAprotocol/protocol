@@ -172,15 +172,15 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, Lockable {
      * @dev Only callable by Owner of this contract. Will set the same setting in the L2 Deposit contract via the cross
      * domain messenger.
      * @param chainId L2 network ID where Deposit contract is deployed.
-     * @param _l2Token address of L2 token to enable/disable deposits for.
-     * @param _depositsEnabled bool to set if the deposit box should accept/reject deposits.
+     * @param l2Token address of L2 token to enable/disable deposits for.
+     * @param depositsEnabled bool to set if the deposit box should accept/reject deposits.
      * @param l2Gas Gas limit to set for relayed message on L2.
      * @param l2GasPrice Gas price bid to set for relayed message on L2.
      */
     function setEnableDeposits(
         uint256 chainId,
-        address _l2Token,
-        bool _depositsEnabled,
+        address l2Token,
+        bool depositsEnabled,
         uint32 l2Gas,
         uint256 l2GasPrice
     ) public onlyOwner canRelay(chainId) nonReentrant() {
@@ -188,57 +188,66 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, Lockable {
             _depositContracts[chainId].depositContract,
             l2Gas,
             l2GasPrice,
-            abi.encodeWithSignature("setEnableDeposits(address,bool)", _l2Token, _depositsEnabled)
+            abi.encodeWithSignature("setEnableDeposits(address,bool)", l2Token, depositsEnabled)
         );
-        emit DepositsEnabled(chainId, _l2Token, _depositsEnabled);
+        emit DepositsEnabled(chainId, l2Token, depositsEnabled);
     }
 
     /**
      * @notice Privileged account can associate a whitelisted token with its linked token address on L2. The linked L2
      * token can thereafter be deposited into the Deposit contract on L2 and relayed via the BridgePool contract.
+     * @dev This method is also used to to update the address of the bridgePool within a BridgeDepositBox through the
+     * re-whitelisting of a previously whitelisted token to update the address of the bridge pool in the deposit box.
      * @dev Only callable by Owner of this contract. Also initiates a cross-chain call to the L2 Deposit contract to
      * whitelist the token mapping.
      * @param chainId L2 network ID where Deposit contract is deployed.
-     * @param _l1Token Address of L1 token that can be used to relay L2 token deposits.
-     * @param _l2Token Address of L2 token whose deposits are fulfilled by `_l1Token`.
-     * @param _bridgePool Address of BridgePool which manages liquidity to fulfill L2-->L1 relays.
+     * @param l1Token Address of L1 token that can be used to relay L2 token deposits.
+     * @param l2Token Address of L2 token whose deposits are fulfilled by `l1Token`.
+     * @param bridgePool Address of BridgePool which manages liquidity to fulfill L2-->L1 relays.
      * @param l2Gas Gas limit to set for relayed message on L2.
      * @param l2GasPrice Gas price bid to set for relayed message on L2.
      */
     function whitelistToken(
         uint256 chainId,
-        address _l1Token,
-        address _l2Token,
-        address _bridgePool,
+        address l1Token,
+        address l2Token,
+        address bridgePool,
         uint32 l2Gas,
         uint256 l2GasPrice
     ) public onlyOwner canRelay(chainId) nonReentrant() {
-        require(_bridgePool != address(0), "BridgePool cannot be zero address");
-        require(_l2Token != address(0), "L2 token cannot be zero address");
-        require(_getCollateralWhitelist().isOnWhitelist(address(_l1Token)), "Payment token not whitelisted");
+        require(bridgePool != address(0), "BridgePool cannot be zero address");
+        require(l2Token != address(0), "L2 token cannot be zero address");
+        require(_getCollateralWhitelist().isOnWhitelist(address(l1Token)), "L1Token token not whitelisted");
 
-        require(address(BridgePoolInterface(_bridgePool).l1Token()) == _l1Token, "Bridge pool has different L1 token");
+        require(address(BridgePoolInterface(bridgePool).l1Token()) == l1Token, "Bridge pool has different L1 token");
 
-        _whitelistedTokens[_l1Token] = L1TokenRelationships({ l2Token: _l2Token, bridgePool: _bridgePool });
+        L1TokenRelationships storage l1TokenRelationships = _whitelistedTokens[l1Token];
+        l1TokenRelationships.l2Tokens[chainId] = l2Token; // Set the L2Token at the index of the chainId.
+        l1TokenRelationships.bridgePool = bridgePool;
 
         MessengerInterface(_depositContracts[chainId].messengerContract).relayMessage(
             _depositContracts[chainId].depositContract,
             l2Gas,
             l2GasPrice,
-            abi.encodeWithSignature("whitelistToken(address,address,address)", _l1Token, _l2Token, _bridgePool)
+            abi.encodeWithSignature("whitelistToken(address,address,address)", l1Token, l2Token, bridgePool)
         );
-        emit WhitelistToken(chainId, _l1Token, _l2Token, _bridgePool);
+        emit WhitelistToken(chainId, l1Token, l2Token, bridgePool);
     }
 
     /**************************************
-     *        VIEW FUNCTIONS              *
+     *           VIEW FUNCTIONS           *
      **************************************/
     function depositContracts(uint256 chainId) external view override returns (DepositUtilityContracts memory) {
         return _depositContracts[chainId];
     }
 
-    function whitelistedTokens(address _l1Token) external view override returns (L1TokenRelationships memory) {
-        return _whitelistedTokens[_l1Token];
+    function whitelistedTokens(address l1Token, uint256 chainId)
+        external
+        view
+        override
+        returns (address l2Token, address bridgePool)
+    {
+        return (_whitelistedTokens[l1Token].l2Tokens[chainId], _whitelistedTokens[l1Token].bridgePool);
     }
 
     /**************************************

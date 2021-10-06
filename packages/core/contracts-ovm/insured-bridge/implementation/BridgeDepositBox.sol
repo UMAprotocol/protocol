@@ -50,7 +50,7 @@ abstract contract BridgeDepositBox is Legacy_Testable, Legacy_Lockable {
     }
 
     // Mapping of whitelisted L2Token to L2TokenRelationships. Contains L1 TokenAddress and the last time this token
-    // type was bridged. Used to rate limit bridging actions to prevent DOS on L1.
+    // type was bridged. Used to rate limit bridging actions to rate limit withdraws to L1.
     mapping(address => L2TokenRelationships) public whitelistedTokens;
 
     // Minimum time that must elapse between bridging actions for a given token. Used to rate limit bridging back to L1.
