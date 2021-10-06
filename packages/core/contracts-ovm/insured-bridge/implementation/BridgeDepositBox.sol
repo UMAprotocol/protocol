@@ -224,7 +224,7 @@ abstract contract BridgeDepositBox is Legacy_Testable, Legacy_Lockable {
      * @param l2Token L2 token to check against the whitelist.
      */
     function isWhitelistToken(address l2Token) public view returns (bool) {
-        return whitelistedTokens[l2Token].lastBridgeTime != 0;
+        return whitelistedTokens[l2Token].l1Token != address(0);
     }
 
     /**
