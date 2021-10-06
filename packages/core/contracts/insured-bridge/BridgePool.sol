@@ -264,9 +264,8 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         RelayData memory relayData =
             RelayData({
                 relayState: RelayState.Pending,
-                slowRelayer: msg.sender,
-                relayId: // Note: Increment numberOfRelays at the same time as setting relayId to its current value.
-                numberOfRelays++,
+                slowRelayer: msg.sender, // Note: Increment numberOfRelays at the same time as setting relayId to its current value.
+                relayId: numberOfRelays++,
                 realizedLpFeePct: realizedLpFeePct,
                 priceRequestTime: priceRequestTime
             });
