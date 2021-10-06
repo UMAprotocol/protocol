@@ -1,11 +1,12 @@
 const hre = require("hardhat");
-const { runDefaultFixture, ZERO_ADDRESS, didContractThrow } = require("@uma/common");
+const { web3 } = hre;
+const { runDefaultFixture, ZERO_ADDRESS, didContractThrow, interfaceName } = require("@uma/common");
 const { getContract } = hre;
 const { utf8ToHex, toWei } = web3.utils;
 
-const { deployContractMock } = require("./helpers/SmockitHelper");
-
 const { assert } = require("chai");
+
+const { deployContractMock } = require("./helpers/SmockitHelper");
 
 // Tested contracts
 const Arbitrum_InboxMock = getContract("Arbitrum_InboxMock");
@@ -50,10 +51,18 @@ describe("ArbitrumMessenger integration with BridgeAdmin", () => {
     l1Token = rando;
     l2Token = rando2;
     await runDefaultFixture(hre);
-    timer = await Timer.deployed();
-    finder = await Finder.deployed();
-    identifierWhitelist = await IdentifierWhitelist.deployed();
-    collateralWhitelist = await AddressWhitelist.deployed();
+    timer = await Timer.new().send({ from: owner });
+    finder = await Finder.new().send({ from: owner });
+    collateralWhitelist = await AddressWhitelist.new().send({ from: owner });
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.CollateralWhitelist), collateralWhitelist.options.address)
+      .send({ from: owner });
+
+    identifierWhitelist = await IdentifierWhitelist.new().send({ from: owner });
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.IdentifierWhitelist), identifierWhitelist.options.address)
+      .send({ from: owner });
+    await identifierWhitelist.methods.addSupportedIdentifier(defaultIdentifier).send({ from: owner });
     await identifierWhitelist.methods.addSupportedIdentifier(defaultIdentifier).send({ from: owner });
   });
   beforeEach(async function () {

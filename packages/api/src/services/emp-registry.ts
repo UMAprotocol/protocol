@@ -1,6 +1,6 @@
 import { clients } from "@uma/sdk";
 import bluebird from "bluebird";
-import { AppState, BaseConfig } from "..";
+import { AppState, BaseConfig } from "../types";
 
 const { registry } = clients;
 

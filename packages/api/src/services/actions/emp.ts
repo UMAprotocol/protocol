@@ -1,6 +1,6 @@
 import assert from "assert";
 import * as uma from "@uma/sdk";
-import { Json, Actions, AppState, CurrencySymbol, PriceSample } from "../..";
+import { Json, Actions, AppState, CurrencySymbol, PriceSample } from "../../types";
 import * as Queries from "../../libs/queries";
 import { nowS } from "../../libs/utils";
 import lodash from "lodash";

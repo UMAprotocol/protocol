@@ -27,14 +27,16 @@ contract AVM_BridgeDepositBox is BridgeDepositBox, AVM_CrossDomainEnabled {
      * @param _l2GatewayRouter Address of the Arbitrum L2 token gateway router for sending tokens from L2->L1.
      * @param _crossDomainAdmin Address of the L1 contract that can call admin functions on this contract from L1.
      * @param _minimumBridgingDelay Minimum second that must elapse between L2->L1 token transfer to prevent dos.
+     * @param _chainId L2 Chain identifier this deposit box is deployed on.
      * @param timerAddress Timer used to synchronize contract time in testing. Set to 0x000... in production.
      */
     constructor(
         address _l2GatewayRouter,
         address _crossDomainAdmin,
         uint64 _minimumBridgingDelay,
+        uint256 _chainId,
         address timerAddress
-    ) BridgeDepositBox(_minimumBridgingDelay, 42161, timerAddress) {
+    ) BridgeDepositBox(_minimumBridgingDelay, _chainId, timerAddress) {
         l2GatewayRouter = _l2GatewayRouter;
         _setCrossDomainAdmin(_crossDomainAdmin);
     }
@@ -48,19 +50,22 @@ contract AVM_BridgeDepositBox is BridgeDepositBox, AVM_CrossDomainEnabled {
      * @dev This should be set to the address of the L1 contract that ultimately relays a cross-domain message, which
      * is expected to be the ArbitrumMessenger.
      * @dev Only callable by the existing crossDomainAdmin via the Arbitrum cross domain messenger.
-     * @param _crossDomainAdmin address of the new L1 admin contract.
+     * @param newCrossDomainAdmin address of the new L1 admin contract.
      */
-    function setCrossDomainAdmin(address _crossDomainAdmin) public onlyFromCrossDomainAccount(crossDomainAdmin) {
-        _setCrossDomainAdmin(_crossDomainAdmin);
+    function setCrossDomainAdmin(address newCrossDomainAdmin) public onlyFromCrossDomainAccount(crossDomainAdmin) {
+        _setCrossDomainAdmin(newCrossDomainAdmin);
     }
 
     /**
      * @notice Changes the minimum time in seconds that must elapse between withdraws from L2->L1.
      * @dev Only callable by the existing crossDomainAdmin via the Arbitrum cross domain messenger.
-     * @param _minimumBridgingDelay the new minimum delay.
+     * @param newMinimumBridgingDelay the new minimum delay.
      */
-    function setMinimumBridgingDelay(uint64 _minimumBridgingDelay) public onlyFromCrossDomainAccount(crossDomainAdmin) {
-        _setMinimumBridgingDelay(_minimumBridgingDelay);
+    function setMinimumBridgingDelay(uint64 newMinimumBridgingDelay)
+        public
+        onlyFromCrossDomainAccount(crossDomainAdmin)
+    {
+        _setMinimumBridgingDelay(newMinimumBridgingDelay);
     }
 
     /**
@@ -81,14 +86,14 @@ contract AVM_BridgeDepositBox is BridgeDepositBox, AVM_CrossDomainEnabled {
     /**
      * @notice L1 owner can enable/disable deposits for a whitelisted tokens.
      * @dev Only callable by the existing crossDomainAdmin via the Arbitrum cross domain messenger.
-     * @param _l2Token address of L2 token to enable/disable deposits for.
-     * @param _depositsEnabled bool to set if the deposit box should accept/reject deposits.
+     * @param l2Token address of L2 token to enable/disable deposits for.
+     * @param depositsEnabled bool to set if the deposit box should accept/reject deposits.
      */
-    function setEnableDeposits(address _l2Token, bool _depositsEnabled)
+    function setEnableDeposits(address l2Token, bool depositsEnabled)
         public
         onlyFromCrossDomainAccount(crossDomainAdmin)
     {
-        _setEnableDeposits(_l2Token, _depositsEnabled);
+        _setEnableDeposits(l2Token, depositsEnabled);
     }
 
     /**************************************
@@ -125,9 +130,9 @@ contract AVM_BridgeDepositBox is BridgeDepositBox, AVM_CrossDomainEnabled {
      *         INTERNAL FUNCTIONS         *
      **************************************/
 
-    function _setCrossDomainAdmin(address _crossDomainAdmin) internal {
-        require(_crossDomainAdmin != address(0), "Empty address");
-        crossDomainAdmin = _crossDomainAdmin;
+    function _setCrossDomainAdmin(address newCrossDomainAdmin) internal {
+        require(newCrossDomainAdmin != address(0), "Empty address");
+        crossDomainAdmin = newCrossDomainAdmin;
         emit SetXDomainAdmin(crossDomainAdmin);
     }
 }

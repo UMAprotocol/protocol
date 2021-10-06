@@ -77,6 +77,11 @@ const versionMap: VersionMap = {
     contractType: "ExpiringMultiParty",
     contractVersion: "2.0.1",
   },
+  "0x186e908698f17a6b07c9e196d1a918b330296f19dc2a7da163f304d626c94b51": {
+    // contracts-node 0.1.0 ExpiringMultiParty.
+    contractType: "ExpiringMultiParty",
+    contractVersion: "2.0.1",
+  },
   "0x238569485842107d2e938ff59c78841860b4dcd00d37be9859699f2c4ddbb3a0": {
     // Latest Mainnet Perpetual contract.
     contractType: "Perpetual",

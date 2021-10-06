@@ -1,7 +1,7 @@
 import * as uma from "@uma/sdk";
 import bluebird from "bluebird";
 import assert from "assert";
-import { AppState, CurrencySymbol, BaseConfig } from "..";
+import { AppState, CurrencySymbol, BaseConfig } from "../types";
 interface Config extends BaseConfig {
   currency?: CurrencySymbol;
 }

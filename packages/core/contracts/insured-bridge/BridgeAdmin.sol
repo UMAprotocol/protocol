@@ -24,7 +24,7 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, Lockable {
 
     // This contract can relay messages to any number of L2 DepositBoxes, one per L2 network, each identified by a
     // unique network ID. To relay a message, both the deposit box contract address and a messenger contract address
-    // need to be stored. The messenger implementation differs for each L2 beacuse L1 --> L2 messaging is non-standard.
+    // need to be stored. The messenger implementation differs for each L2 because L1 --> L2 messaging is non-standard.
     // The deposit box contract originate the deposits that can be fulfilled by BridgePool contracts on L1.
     mapping(uint256 => DepositUtilityContracts) private _depositContracts;
 
@@ -39,10 +39,10 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, Lockable {
 
     // Add this modifier to methods that are expected to bridge messages to a L2 Deposit contract, which
     // will cause unexpected behavior if the deposit or messenger helper contract isn't set and valid.
-    modifier canRelay(uint256 _chainId) {
+    modifier canRelay(uint256 chainId) {
         _validateDepositContracts(
-            _depositContracts[_chainId].depositContract,
-            _depositContracts[_chainId].messengerContract
+            _depositContracts[chainId].depositContract,
+            _depositContracts[chainId].messengerContract
         );
         _;
     }
@@ -101,19 +101,19 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, Lockable {
     /**
      * @notice Associates the L2 deposit and L1 messenger helper addresses with an L2 network ID.
      * @dev Only callable by the current owner.
-     * @param _chainId L2 network ID to set addresses for.
-     * @param _depositContract Address of L2 deposit contract.
-     * @param _messengerContract Address of L1 helper contract that relays messages to L2.
+     * @param chainId L2 network ID to set addresses for.
+     * @param depositContract Address of L2 deposit contract.
+     * @param messengerContract Address of L1 helper contract that relays messages to L2.
      */
     function setDepositContract(
-        uint256 _chainId,
-        address _depositContract,
-        address _messengerContract
+        uint256 chainId,
+        address depositContract,
+        address messengerContract
     ) public onlyOwner nonReentrant() {
-        _validateDepositContracts(_depositContract, _messengerContract);
-        _depositContracts[_chainId].depositContract = _depositContract;
-        _depositContracts[_chainId].messengerContract = _messengerContract;
-        emit SetDepositContracts(_chainId, _depositContract, _messengerContract);
+        _validateDepositContracts(depositContract, messengerContract);
+        _depositContracts[chainId].depositContract = depositContract;
+        _depositContracts[chainId].messengerContract = messengerContract;
+        emit SetDepositContracts(chainId, depositContract, messengerContract);
     }
 
     /**************************************************
@@ -123,122 +123,131 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, Lockable {
     /**
      * @notice Set new contract as the admin address in the L2 Deposit contract.
      * @dev Only callable by the current owner.
-     * @param _chainId L2 network ID where Deposit contract is deployed.
-     * @param _admin New admin address to set on L2.
-     * @param _l2Gas Gas limit to set for relayed message on L2.
-     * @param _l2GasPrice Gas price bid to set for relayed message on L2.
+     * @param chainId L2 network ID where Deposit contract is deployed.
+     * @param admin New admin address to set on L2.
+     * @param l2Gas Gas limit to set for relayed message on L2.
+     * @param l2GasPrice Gas price bid to set for relayed message on L2.
      */
     function setBridgeAdmin(
-        uint256 _chainId,
-        address _admin,
-        uint32 _l2Gas,
-        uint256 _l2GasPrice
-    ) public onlyOwner canRelay(_chainId) nonReentrant() {
-        require(_admin != address(0), "Admin cannot be zero address");
-        MessengerInterface(_depositContracts[_chainId].messengerContract).relayMessage(
-            _depositContracts[_chainId].depositContract,
-            _l2Gas,
-            _l2GasPrice,
-            abi.encodeWithSignature("setBridgeAdmin(address)", _admin)
+        uint256 chainId,
+        address admin,
+        uint32 l2Gas,
+        uint256 l2GasPrice
+    ) public onlyOwner canRelay(chainId) nonReentrant() {
+        require(admin != address(0), "Admin cannot be zero address");
+        MessengerInterface(_depositContracts[chainId].messengerContract).relayMessage(
+            _depositContracts[chainId].depositContract,
+            l2Gas,
+            l2GasPrice,
+            abi.encodeWithSignature("setBridgeAdmin(address)", admin)
         );
-        emit SetBridgeAdmin(_chainId, _admin);
+        emit SetBridgeAdmin(chainId, admin);
     }
 
     /**
      * @notice Sets the minimum time between L2-->L1 token withdrawals in the L2 Deposit contract.
      * @dev Only callable by the current owner.
-     * @param _chainId L2 network ID where Deposit contract is deployed.
+     * @param chainId L2 network ID where Deposit contract is deployed.
      * @param _minimumBridgingDelay the new minimum delay.
-     * @param _l2Gas Gas limit to set for relayed message on L2.
-     * @param _l2GasPrice Gas price bid to set for relayed message on L2.
+     * @param l2Gas Gas limit to set for relayed message on L2.
+     * @param l2GasPrice Gas price bid to set for relayed message on L2.
      */
     function setMinimumBridgingDelay(
-        uint256 _chainId,
+        uint256 chainId,
         uint64 _minimumBridgingDelay,
-        uint32 _l2Gas,
-        uint256 _l2GasPrice
-    ) public onlyOwner canRelay(_chainId) nonReentrant() {
-        MessengerInterface(_depositContracts[_chainId].messengerContract).relayMessage(
-            _depositContracts[_chainId].depositContract,
-            _l2Gas,
-            _l2GasPrice,
+        uint32 l2Gas,
+        uint256 l2GasPrice
+    ) public onlyOwner canRelay(chainId) nonReentrant() {
+        MessengerInterface(_depositContracts[chainId].messengerContract).relayMessage(
+            _depositContracts[chainId].depositContract,
+            l2Gas,
+            l2GasPrice,
             abi.encodeWithSignature("setMinimumBridgingDelay(uint64)", _minimumBridgingDelay)
         );
-        emit SetMinimumBridgingDelay(_chainId, _minimumBridgingDelay);
+        emit SetMinimumBridgingDelay(chainId, _minimumBridgingDelay);
     }
 
     /**
      * @notice Owner can pause/unpause L2 deposits for a tokens.
      * @dev Only callable by Owner of this contract. Will set the same setting in the L2 Deposit contract via the cross
      * domain messenger.
-     * @param _chainId L2 network ID where Deposit contract is deployed.
-     * @param _l2Token address of L2 token to enable/disable deposits for.
-     * @param _depositsEnabled bool to set if the deposit box should accept/reject deposits.
-     * @param _l2Gas Gas limit to set for relayed message on L2.
-     * @param _l2GasPrice Gas price bid to set for relayed message on L2.
+     * @param chainId L2 network ID where Deposit contract is deployed.
+     * @param l2Token address of L2 token to enable/disable deposits for.
+     * @param depositsEnabled bool to set if the deposit box should accept/reject deposits.
+     * @param l2Gas Gas limit to set for relayed message on L2.
+     * @param l2GasPrice Gas price bid to set for relayed message on L2.
      */
     function setEnableDeposits(
-        uint256 _chainId,
-        address _l2Token,
-        bool _depositsEnabled,
-        uint32 _l2Gas,
-        uint256 _l2GasPrice
-    ) public onlyOwner canRelay(_chainId) nonReentrant() {
-        MessengerInterface(_depositContracts[_chainId].messengerContract).relayMessage(
-            _depositContracts[_chainId].depositContract,
-            _l2Gas,
-            _l2GasPrice,
-            abi.encodeWithSignature("setEnableDeposits(address,bool)", _l2Token, _depositsEnabled)
+        uint256 chainId,
+        address l2Token,
+        bool depositsEnabled,
+        uint32 l2Gas,
+        uint256 l2GasPrice
+    ) public onlyOwner canRelay(chainId) nonReentrant() {
+        MessengerInterface(_depositContracts[chainId].messengerContract).relayMessage(
+            _depositContracts[chainId].depositContract,
+            l2Gas,
+            l2GasPrice,
+            abi.encodeWithSignature("setEnableDeposits(address,bool)", l2Token, depositsEnabled)
         );
-        emit DepositsEnabled(_chainId, _l2Token, _depositsEnabled);
+        emit DepositsEnabled(chainId, l2Token, depositsEnabled);
     }
 
     /**
      * @notice Privileged account can associate a whitelisted token with its linked token address on L2. The linked L2
      * token can thereafter be deposited into the Deposit contract on L2 and relayed via the BridgePool contract.
+     * @dev This method is also used to to update the address of the bridgePool within a BridgeDepositBox through the
+     * re-whitelisting of a previously whitelisted token to update the address of the bridge pool in the deposit box.
      * @dev Only callable by Owner of this contract. Also initiates a cross-chain call to the L2 Deposit contract to
      * whitelist the token mapping.
-     * @param _chainId L2 network ID where Deposit contract is deployed.
-     * @param _l1Token Address of L1 token that can be used to relay L2 token deposits.
-     * @param _l2Token Address of L2 token whose deposits are fulfilled by `_l1Token`.
-     * @param _bridgePool Address of BridgePool which manages liquidity to fulfill L2-->L1 relays.
-     * @param _l2Gas Gas limit to set for relayed message on L2.
-     * @param _l2GasPrice Gas price bid to set for relayed message on L2.
+     * @param chainId L2 network ID where Deposit contract is deployed.
+     * @param l1Token Address of L1 token that can be used to relay L2 token deposits.
+     * @param l2Token Address of L2 token whose deposits are fulfilled by `l1Token`.
+     * @param bridgePool Address of BridgePool which manages liquidity to fulfill L2-->L1 relays.
+     * @param l2Gas Gas limit to set for relayed message on L2.
+     * @param l2GasPrice Gas price bid to set for relayed message on L2.
      */
     function whitelistToken(
-        uint256 _chainId,
-        address _l1Token,
-        address _l2Token,
-        address _bridgePool,
-        uint32 _l2Gas,
-        uint256 _l2GasPrice
-    ) public onlyOwner canRelay(_chainId) nonReentrant() {
-        require(_bridgePool != address(0), "BridgePool cannot be zero address");
-        require(_l2Token != address(0), "L2 token cannot be zero address");
-        require(_getCollateralWhitelist().isOnWhitelist(address(_l1Token)), "Payment token not whitelisted");
+        uint256 chainId,
+        address l1Token,
+        address l2Token,
+        address bridgePool,
+        uint32 l2Gas,
+        uint256 l2GasPrice
+    ) public onlyOwner canRelay(chainId) nonReentrant() {
+        require(bridgePool != address(0), "BridgePool cannot be zero address");
+        require(l2Token != address(0), "L2 token cannot be zero address");
+        require(_getCollateralWhitelist().isOnWhitelist(address(l1Token)), "L1Token token not whitelisted");
 
-        require(address(BridgePoolInterface(_bridgePool).l1Token()) == _l1Token, "Bridge pool has different L1 token");
+        require(address(BridgePoolInterface(bridgePool).l1Token()) == l1Token, "Bridge pool has different L1 token");
 
-        _whitelistedTokens[_l1Token] = L1TokenRelationships({ l2Token: _l2Token, bridgePool: _bridgePool });
+        L1TokenRelationships storage l1TokenRelationships = _whitelistedTokens[l1Token];
+        l1TokenRelationships.l2Tokens[chainId] = l2Token; // Set the L2Token at the index of the chainId.
+        l1TokenRelationships.bridgePool = bridgePool;
 
-        MessengerInterface(_depositContracts[_chainId].messengerContract).relayMessage(
-            _depositContracts[_chainId].depositContract,
-            _l2Gas,
-            _l2GasPrice,
-            abi.encodeWithSignature("whitelistToken(address,address,address)", _l1Token, _l2Token, _bridgePool)
+        MessengerInterface(_depositContracts[chainId].messengerContract).relayMessage(
+            _depositContracts[chainId].depositContract,
+            l2Gas,
+            l2GasPrice,
+            abi.encodeWithSignature("whitelistToken(address,address,address)", l1Token, l2Token, bridgePool)
         );
-        emit WhitelistToken(_chainId, _l1Token, _l2Token, _bridgePool);
+        emit WhitelistToken(chainId, l1Token, l2Token, bridgePool);
     }
 
     /**************************************
-     *        VIEW FUNCTIONS              *
+     *           VIEW FUNCTIONS           *
      **************************************/
-    function depositContracts(uint256 _chainId) external view override returns (DepositUtilityContracts memory) {
-        return _depositContracts[_chainId];
+    function depositContracts(uint256 chainId) external view override returns (DepositUtilityContracts memory) {
+        return _depositContracts[chainId];
     }
 
-    function whitelistedTokens(address _l1Token) external view override returns (L1TokenRelationships memory) {
-        return _whitelistedTokens[_l1Token];
+    function whitelistedTokens(address l1Token, uint256 chainId)
+        external
+        view
+        override
+        returns (address l2Token, address bridgePool)
+    {
+        return (_whitelistedTokens[l1Token].l2Tokens[chainId], _whitelistedTokens[l1Token].bridgePool);
     }
 
     /**************************************
@@ -279,9 +288,9 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, Lockable {
         emit SetProposerBondPct(proposerBondPct);
     }
 
-    function _validateDepositContracts(address _depositContract, address _messengerContract) private {
+    function _validateDepositContracts(address depositContract, address messengerContract) private {
         require(
-            (_depositContract != address(0)) && (_messengerContract != address(0)),
+            (depositContract != address(0)) && (messengerContract != address(0)),
             "Invalid deposit or messenger contract"
         );
     }

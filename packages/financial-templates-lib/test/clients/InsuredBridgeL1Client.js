@@ -14,7 +14,7 @@ const BridgePool = getContract("BridgePool");
 const Finder = getContract("Finder");
 const IdentifierWhitelist = getContract("IdentifierWhitelist");
 const AddressWhitelist = getContract("AddressWhitelist");
-const OptimisticOracle = getContract("OptimisticOracle");
+const OptimisticOracle = getContract("SkinnyOptimisticOracle");
 const Store = getContract("Store");
 const ERC20 = getContract("ExpandedERC20");
 const Timer = getContract("Timer");
@@ -195,7 +195,7 @@ describe("InsuredBridgeL1Client", function () {
       timer.options.address
     ).send({ from: owner });
     await finder.methods
-      .changeImplementationAddress(utf8ToHex(interfaceName.OptimisticOracle), optimisticOracle.options.address)
+      .changeImplementationAddress(utf8ToHex(interfaceName.SkinnyOptimisticOracle), optimisticOracle.options.address)
       .send({ from: owner });
 
     // Deploy new MockOracle so that OptimisticOracle disputes can make price requests to it:
@@ -305,8 +305,6 @@ describe("InsuredBridgeL1Client", function () {
       await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: relayer });
       await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: relayer });
 
-      const relayStatus = await bridgePool.methods.relays(depositHash).call();
-
       await client.update();
 
       // As there is only one L1Token that has been set up with the bridge, getAllRelayedDeposits and getRelayedDepositsForL1Token
@@ -366,12 +364,14 @@ describe("InsuredBridgeL1Client", function () {
       await timer.methods
         .setCurrentTime(Number(await timer.methods.getCurrentTime().call()) + defaultLiveness)
         .send({ from: owner });
+      const proposeEvent = (await optimisticOracle.getPastEvents("ProposePrice", { fromBlock: 0 }))[0];
       await optimisticOracle.methods
         .settle(
           bridgePool.options.address,
           defaultIdentifier,
-          relayStatus.priceRequestTime.toString(),
-          relayAncillaryData
+          proposeEvent.returnValues.timestamp,
+          proposeEvent.returnValues.ancillaryData,
+          { ...proposeEvent.returnValues.request, instantRelayer }
         )
         .send({ from: relayer });
 
@@ -393,8 +393,6 @@ describe("InsuredBridgeL1Client", function () {
       await l1Token.methods.mint(relayer, totalRelayBond).send({ from: owner });
       await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: relayer });
       await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: relayer });
-
-      const relayStatus = await bridgePool.methods.relays(depositHash).call();
 
       await client.update();
 
@@ -449,12 +447,14 @@ describe("InsuredBridgeL1Client", function () {
       await timer.methods.setCurrentTime(Number(await timer.methods.getCurrentTime().call()) + 1).send({ from: owner });
       await l1Token.methods.mint(disputer, totalRelayBond).send({ from: owner });
       await l1Token.methods.approve(optimisticOracle.options.address, totalRelayBond).send({ from: disputer });
+      const proposeEvent = (await optimisticOracle.getPastEvents("ProposePrice", { fromBlock: 0 }))[0];
       await optimisticOracle.methods
         .disputePrice(
           bridgePool.options.address,
           defaultIdentifier,
-          relayStatus.priceRequestTime.toString(),
-          relayAncillaryData
+          proposeEvent.returnValues.timestamp,
+          proposeEvent.returnValues.ancillaryData,
+          { ...proposeEvent.returnValues.request, instantRelayer }
         )
         .send({ from: disputer });
 
@@ -533,13 +533,14 @@ describe("InsuredBridgeL1Client", function () {
       await timer.methods
         .setCurrentTime(Number(await timer.methods.getCurrentTime().call()) + defaultLiveness)
         .send({ from: owner });
-      const relayStatus = await bridgePool.methods.relays(depositHash).call();
+      const proposeEvent = (await optimisticOracle.getPastEvents("ProposePrice", { fromBlock: 0 }))[0];
       await optimisticOracle.methods
         .settle(
           bridgePool.options.address,
           defaultIdentifier,
-          relayStatus.priceRequestTime.toString(),
-          relayAncillaryData
+          proposeEvent.returnValues.timestamp,
+          proposeEvent.returnValues.ancillaryData,
+          proposeEvent.returnValues.request
         )
         .send({ from: relayer });
 
