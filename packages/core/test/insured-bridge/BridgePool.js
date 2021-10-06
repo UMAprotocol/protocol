@@ -2164,6 +2164,18 @@ describe("BridgePool", () => {
         )
         .send({ from: owner });
 
+      // Settle OO request.
+      const proposeEvent = (await optimisticOracle.getPastEvents("ProposePrice", { fromBlock: 0 }))[0];
+      await optimisticOracle.methods
+        .settle(
+          bridgePool.options.address,
+          defaultIdentifier,
+          proposeEvent.returnValues.timestamp,
+          proposeEvent.returnValues.ancillaryData,
+          proposeEvent.returnValues.request
+        )
+        .send({ from: accounts[0] });
+
       await bridgePool.methods.settleRelay(depositData).send({ from: rando });
 
       // Recipient eth balance should increment by the amount withdrawn.
@@ -2212,6 +2224,18 @@ describe("BridgePool", () => {
           (Number((await bridgePool.methods.getCurrentTime().call()).toString()) + defaultLiveness).toString()
         )
         .send({ from: owner });
+
+      // Settle OO request.
+      const proposeEvent = (await optimisticOracle.getPastEvents("ProposePrice", { fromBlock: 0 }))[0];
+      await optimisticOracle.methods
+        .settle(
+          bridgePool.options.address,
+          defaultIdentifier,
+          proposeEvent.returnValues.timestamp,
+          proposeEvent.returnValues.ancillaryData,
+          proposeEvent.returnValues.request
+        )
+        .send({ from: accounts[0] });
 
       await bridgePool.methods.settleRelay(depositData).send({ from: rando });
 
