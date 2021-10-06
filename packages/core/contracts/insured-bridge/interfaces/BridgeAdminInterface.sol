@@ -17,6 +17,7 @@ interface BridgeAdminInterface {
     event WhitelistToken(uint256 chainId, address indexed l1Token, address indexed l2Token, address indexed bridgePool);
     event SetMinimumBridgingDelay(uint256 indexed chainId, uint64 newMinimumBridgingDelay);
     event DepositsEnabled(uint256 indexed chainId, address indexed l2Token, bool depositsEnabled);
+    event BridgePoolsAdminTransferred(address[] bridgePools, address newAdmin);
 
     function finder() external view returns (address);
 
@@ -28,11 +29,11 @@ interface BridgeAdminInterface {
     function depositContracts(uint256) external view returns (DepositUtilityContracts memory);
 
     struct L1TokenRelationships {
-        address l2Token;
+        mapping(uint256 => address) l2Tokens; // L2 Chain Id to l2Token address.
         address bridgePool;
     }
 
-    function whitelistedTokens(address) external view returns (L1TokenRelationships memory);
+    function whitelistedTokens(address, uint256) external view returns (address l2Token, address bridgePool);
 
     function optimisticOracleLiveness() external view returns (uint64);
 

@@ -355,6 +355,27 @@ describe("BridgePool", () => {
       )
     );
   });
+  it("Bridge Admin functionality", async function () {
+    // Admin can only be transferred by current admin.
+    assert.equal(await bridgePool.methods.bridgeAdmin().call(), bridgeAdmin.options.address);
+
+    assert(
+      await didContractThrow(
+        bridgeAdmin.methods.transferBridgePoolAdmin([bridgePool.options.address], rando).send({ from: rando })
+      )
+    );
+
+    // Calling from the correct address can transfer ownership.
+    const tx = await bridgeAdmin.methods
+      .transferBridgePoolAdmin([bridgePool.options.address], owner)
+      .send({ from: owner });
+
+    assert.equal(await bridgePool.methods.bridgeAdmin().call(), owner);
+
+    await assertEventEmitted(tx, bridgePool, "BridgePoolAdminTransferred", (ev) => {
+      return ev.oldAdmin === bridgeAdmin.options.address && ev.newAdmin === owner;
+    });
+  });
   it("Constructs utf8-encoded ancillary data for relay", async function () {
     assert.equal(
       hexToUtf8(defaultRelayAncillaryData),

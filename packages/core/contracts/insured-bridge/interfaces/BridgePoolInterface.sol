@@ -5,4 +5,6 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 interface BridgePoolInterface {
     function l1Token() external view returns (IERC20);
+
+    function changeAdmin(address newAdmin) external;
 }

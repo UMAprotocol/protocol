@@ -117,6 +117,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
     );
     event RelaySpedUp(bytes32 indexed depositHash, address indexed instantRelayer, RelayData relay);
     event RelaySettled(bytes32 indexed depositHash, address indexed caller, RelayData relay);
+    event BridgePoolAdminTransferred(address oldAdmin, address newAdmin);
 
     modifier onlyFromOptimisticOracle() {
         require(msg.sender == address(_getOptimisticOracle()), "Caller must be OptimisticOracle");
@@ -162,8 +163,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
     function addLiquidity(uint256 l1TokenAmount) public {
         l1Token.safeTransferFrom(msg.sender, address(this), l1TokenAmount);
 
-        uint256 lpTokensToMint =
-            FixedPoint.Unsigned(l1TokenAmount).div(FixedPoint.Unsigned(exchangeRateCurrent())).rawValue;
+        uint256 lpTokensToMint = (l1TokenAmount * 1e18) / exchangeRateCurrent();
 
         _mint(msg.sender, lpTokensToMint);
 
@@ -180,8 +180,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
      * @param lpTokenAmount Number of lpTokens to redeem for underlying.
      */
     function removeLiquidity(uint256 lpTokenAmount) public {
-        uint256 l1TokensToReturn =
-            FixedPoint.Unsigned(lpTokenAmount).mul(FixedPoint.Unsigned(exchangeRateCurrent())).rawValue;
+        uint256 l1TokensToReturn = (lpTokenAmount * exchangeRateCurrent()) / 1e18;
 
         // Check that there is enough liquid reserves to withdraw the requested amount.
         require(liquidReserves >= (pendingReserves + l1TokensToReturn), "Utilization too high to remove");
@@ -355,7 +354,10 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
                 ancillaryData,
                 request
             )
-        returns (uint256 payout, int256 resolvedPrice) {
+        returns (
+            uint256 payout, // Unused parameter, as we only care to check whether the price resolved to True or False.
+            int256 resolvedPrice
+        ) {
             require(resolvedPrice == int256(1e18), "Settle relay iff price is True");
         } catch {
             // We could not settle the request, therefore check if its already been resolved.
@@ -435,9 +437,13 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
      * @param request disputed relay request params.
      */
     function priceDisputed(
+        // Unused, but the identifier should be same as bridgeAdmin.identifier()
         bytes32 identifier,
+        // Unused, but timestamp should be same as the hashed relay.priceRequestTime included in relays[depositHash]
         uint32 timestamp,
         bytes memory ancillaryData,
+        // Unused as all of the relay data is hashed and stored in relays[depositHash], and we can lookup depositHash
+        // using the ancillaryData
         SkinnyOptimisticOracleInterface.Request memory request
     ) external onlyFromOptimisticOracle {
         bytes32 depositHash = relayRequestAncillaryData[keccak256(ancillaryData)];
@@ -474,13 +480,10 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         sync(); // Fetch any balance changes due to token bridging finalization and factor them in.
 
         // ExchangeRate := (liquidReserves + utilizedReserves - undistributedLpFees) / lpTokenSupply
-        // Note to accommodate negative utilizedReserves without using FixedPoint.Signed we need to do a bit of
-        // branching logic. This is a gas optimization so we don't need to import this extra library logic.
-        FixedPoint.Unsigned memory numerator =
-            FixedPoint.Unsigned(liquidReserves).sub(FixedPoint.Unsigned(undistributedLpFees));
-        if (utilizedReserves > 0) numerator = numerator.add(FixedPoint.Unsigned(uint256(utilizedReserves)));
-        else numerator = numerator.sub(FixedPoint.Unsigned(uint256(utilizedReserves * -1)));
-        return numerator.div(FixedPoint.Unsigned(totalSupply())).rawValue;
+        uint256 numerator = liquidReserves - undistributedLpFees;
+        if (utilizedReserves > 0) numerator += uint256(utilizedReserves);
+        else numerator -= uint256(utilizedReserves * -1);
+        return (numerator * 1e18) / totalSupply();
     }
 
     /**
@@ -501,24 +504,37 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
 
         // The liquidity utilization ratio is the ratio of utilized liquidity (pendingReserves + relayedAmount
         // +utilizedReserves) divided by the liquid reserves.
-        FixedPoint.Unsigned memory numerator =
-            FixedPoint.Unsigned(pendingReserves).add(FixedPoint.Unsigned(relayedAmount));
-        if (utilizedReserves > 0) numerator = numerator.add(FixedPoint.Unsigned(uint256(utilizedReserves)));
-        else numerator = numerator.sub(FixedPoint.Unsigned(uint256(utilizedReserves * -1)));
+        uint256 numerator = pendingReserves + relayedAmount;
+        if (utilizedReserves > 0) numerator += uint256(utilizedReserves);
+        else numerator -= uint256(utilizedReserves * -1);
 
         // There are two cases where liquid reserves could be zero. Handle accordingly to avoid division by zero:
         // a) the pool is new and there no funds in it nor any bridging actions have happened. In this case the
         // numerator is 0 and liquid reserves are 0. The utilization is therefore 0.
-        if (numerator.isEqual(0) && liquidReserves == 0) return 0;
+        if (numerator == 0 && liquidReserves == 0) return 0;
         // b) the numerator is more than 0 and the liquid reserves are 0. in this case, The pool is at 100% utilization.
-        if (numerator.isGreaterThan(0) && liquidReserves == 0) return 1e18;
+        if (numerator > 0 && liquidReserves == 0) return 1e18;
 
         // In all other cases, return the utilization ratio.
-        return numerator.div(FixedPoint.Unsigned(liquidReserves)).rawValue;
+        return (numerator * 1e18) / liquidReserves;
     }
 
     /************************************
-     *           View FUNCTIONS         *
+     *          ADMIN FUNCTIONS         *
+     ************************************/
+
+    /**
+     * @notice Enable the current bridge admin to transfer admin to to a new address.
+     * @param _newAdmin Admin address of the new admin.
+     */
+    function changeAdmin(address _newAdmin) public override nonReentrant() {
+        require(msg.sender == address(bridgeAdmin));
+        bridgeAdmin = BridgeAdminInterface(_newAdmin);
+        emit BridgePoolAdminTransferred(msg.sender, _newAdmin);
+    }
+
+    /************************************
+     *           VIEW FUNCTIONS         *
      ************************************/
 
     /**
@@ -528,18 +544,16 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
     function getAccumulatedFees() public view returns (uint256) {
         // UnallocatedLpFees := min(undistributedLpFees*lpFeeRatePerSecond*timeFromLastInteraction,undistributedLpFees)
         // The min acts to pay out all fees in the case the equation returns more than the remaining a fees.
-        return
-            FixedPoint
-                .Unsigned(undistributedLpFees)
-                .mul(FixedPoint.Unsigned(lpFeeRatePerSecond))
-                .mul(FixedPoint.fromUnscaledUint(getCurrentTime() - lastLpFeeUpdate))
-                .min(FixedPoint.Unsigned(undistributedLpFees))
-                .rawValue;
+        uint256 possibleUnpaidFees =
+            (undistributedLpFees * lpFeeRatePerSecond * (getCurrentTime() - lastLpFeeUpdate)) / (1e18);
+        return possibleUnpaidFees < undistributedLpFees ? possibleUnpaidFees : undistributedLpFees;
     }
 
     /**
      * @notice Returns ancillary data containing all relevant Relay data that voters can format into UTF8 and use to
      * determine if the relay is valid.
+     * @dev Helpful method to test that ancillary data is constructed properly. We should consider removing if we don't
+     * anticipate off-chain bots or users to call this method.
      * @param depositData Contains L2 deposit information used by off-chain validators to validate relay.
      * @param relayData Contains relay information used by off-chain validators to validate relay.
      * @return bytes New ancillary data that can be decoded into UTF8.
@@ -549,35 +563,21 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         view
         returns (bytes memory)
     {
-        return
-            AncillaryData.appendKeyValueBytes32(
-                "",
-                "relayHash",
-                keccak256(
-                    abi.encode(
-                        depositData.chainId,
-                        depositData.depositId,
-                        depositData.l1Recipient,
-                        depositData.l2Sender,
-                        depositData.amount,
-                        depositData.slowRelayFeePct,
-                        depositData.instantRelayFeePct,
-                        depositData.quoteTimestamp,
-                        relayData.relayId,
-                        relayData.realizedLpFeePct,
-                        address(l1Token)
-                    )
-                )
-            );
+        return AncillaryData.appendKeyValueBytes32("", "relayHash", _getRelayHash(depositData, relayData));
     }
 
-    // Note: this method is identical to the one above, but it allows storage to be passed in, which saves some gas (3-4k)
-    // when called internally due to solidity not needing to copy the entire data structure and just lazily read data
-    // when requested.
+    /**************************************
+     *    INTERNAL & PRIVATE FUNCTIONS    *
+     **************************************/
+
+    // Note: this method is identical to `getRelayAncillaryData`, but it allows storage to be passed in, which saves
+    // some gas (~3-4k) when called internally due to solidity not needing to copy the entire data structure and just
+    // lazily read data when requested.
     function _getRelayAncillaryData(bytes32 relayHash) private pure returns (bytes memory) {
         return AncillaryData.appendKeyValueBytes32("", "relayHash", relayHash);
     }
 
+    // Returns hash of unique relay and deposit event. This is added to the relay request's ancillary data.
     function _getRelayHash(DepositData memory depositData, RelayData memory relayData) private view returns (bytes32) {
         return
             keccak256(
@@ -597,10 +597,12 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
             );
     }
 
+    // Return hash of relay data, which is stored in state and mapped to a deposit hash.
     function _getRelayDataHash(RelayData memory _relayData) private view returns (bytes32) {
         return keccak256(abi.encode(_relayData));
     }
 
+    // Reverts if the stored relay data hash for `depositHash` does not match `_relayData`.
     function _validateRelayDataHash(bytes32 depositHash, RelayData memory _relayData) private view {
         require(
             relays[depositHash] == _getRelayDataHash(_relayData),
@@ -608,16 +610,13 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         );
     }
 
+    // Return hash of unique instant relay and deposit event. This is stored in state and mapped to a deposit hash.
     function _getInstantRelayHash(bytes32 depositHash, RelayData memory _relayData) private view returns (bytes32) {
         // Only include parameters that affect the "correctness" of an instant relay. For example, the realized LP fee
         // % directly affects how many tokens the instant relayer needs to send to the user, whereas the address of the
         // instant relayer does not matter for determing whether an instant relay is "correct".
         return keccak256(abi.encode(depositHash, _relayData.realizedLpFeePct));
     }
-
-    /**************************************
-     *    INTERNAL & PRIVATE FUNCTIONS    *
-     **************************************/
 
     // Update internal fee counters by adding in any accumulated fees from the last time this logic was called.
     function updateAccumulatedLpFees() internal {
@@ -652,12 +651,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
     }
 
     function _getAmountFromPct(uint64 percent, uint256 amount) private pure returns (uint256) {
-        return
-            FixedPoint
-                .Unsigned(uint256(percent))
-                .div(FixedPoint.fromUnscaledUint(1))
-                .mul(FixedPoint.Unsigned(amount))
-                .rawValue;
+        return (percent * amount) / 1e18;
     }
 
     function _getProposerBond(uint256 amount) private view returns (uint256) {
@@ -681,6 +675,8 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
             );
     }
 
+    // Proposes new price of True for relay event associated with `customAncillaryData` to optimistic oracle. If anyone
+    // disagrees with the relay parameters and whether they map to an L2 deposit, they can dispute with the oracle.
     function _requestAndProposeOraclePriceRelay(
         uint256 amount,
         uint256 requestTimestamp,
@@ -688,17 +684,14 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
     ) private {
         SkinnyOptimisticOracleInterface optimisticOracle = _getOptimisticOracle();
 
-        // Compute total proposal bond and pull from caller so that the OptimisticOracle can subsequently pull it from
-        // here.
-        uint256 proposerBondPct =
-            FixedPoint.Unsigned(uint256(bridgeAdmin.proposerBondPct())).div(FixedPoint.fromUnscaledUint(1)).rawValue;
+        // Compute total proposal bond and pull from caller so that the OptimisticOracle can pull it from here.
+        uint256 proposerBond = _getProposerBond(amount);
         uint256 finalFee = _getStore().computeFinalFee(address(l1Token)).rawValue;
         uint256 totalBond =
-            FixedPoint
-                .Unsigned(proposerBondPct)
-                .mul(FixedPoint.Unsigned(amount))
-                .add(FixedPoint.Unsigned(finalFee))
-                .rawValue;
+            (uint256(bridgeAdmin.proposerBondPct()) * amount) /
+                1e18 +
+                _getStore().computeFinalFee(address(l1Token)).rawValue;
+
         l1Token.safeTransferFrom(msg.sender, address(this), totalBond);
         l1Token.safeApprove(address(optimisticOracle), totalBond);
 
