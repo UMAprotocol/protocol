@@ -126,6 +126,8 @@ export class Relayer {
               relayableDeposit,
             });
             if (pendingRelay === undefined)
+              // The `pendingRelay` should never be undefined if shouldRelay returns SpeedUp, but we have to catch the
+              // undefined type that is returned by the L1 client method.
               this.logger.error({ at: "InsuredBridgeRelayer#Relayer", type: "speedUpRelay: undefined relay" });
             else await this.speedUpRelay(relayableDeposit.deposit, pendingRelay);
             break;
