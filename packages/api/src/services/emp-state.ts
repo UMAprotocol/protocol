@@ -39,9 +39,9 @@ export default (config: Config, appState: Dependencies) => {
     ["minSponsorTokens", toString],
     ["liquidationLiveness", toNumber],
     ["collateralRequirement", toString],
-    ["disputeBondPercentage", toNumber],
-    ["sponsorDisputeRewardPercentage", toNumber],
-    ["disputerDisputeRewardPercentage", toNumber],
+    ["disputeBondPercentage", toString],
+    ["sponsorDisputeRewardPercentage", toString],
+    ["disputerDisputeRewardPercentage", toString],
     ["cumulativeFeeMultiplier", toString],
   ];
 
