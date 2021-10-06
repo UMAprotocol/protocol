@@ -109,6 +109,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
     );
     event RelaySpedUp(bytes32 indexed depositHash, address indexed instantRelayer, uint64 realizedLpFeePct);
     event RelaySettled(bytes32 indexed depositHash, bytes32 indexed relayHash, address indexed caller);
+    event BridgePoolAdminTransferred(address oldAdmin, address newAdmin);
 
     modifier onlyFromOptimisticOracle() {
         require(msg.sender == address(_getOptimisticOracle()), "Caller must be OptimisticOracle");
@@ -278,7 +279,6 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
 
         pendingReserves += amount; // Book off maximum liquidity used by this relay in the pending reserves.
 
-        // We use an internal method to emit this event to overcome Solidity's "stack too deep" error.
         emit DepositRelayed(
             relayId,
             depositData,
@@ -499,7 +499,21 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
     }
 
     /************************************
-     *           View FUNCTIONS         *
+     *          ADMIN FUNCTIONS         *
+     ************************************/
+
+    /**
+     * @notice Enable the current bridge admin to transfer admin to to a new address.
+     * @param _newAdmin Admin address of the new admin.
+     */
+    function changeAdmin(address _newAdmin) public override nonReentrant() {
+        require(msg.sender == address(bridgeAdmin));
+        bridgeAdmin = BridgeAdminInterface(_newAdmin);
+        emit BridgePoolAdminTransferred(msg.sender, _newAdmin);
+    }
+
+    /************************************
+     *           VIEW FUNCTIONS         *
      ************************************/
 
     /**
