@@ -40,9 +40,15 @@ export interface InstantRelay {
   instantRelayer: string;
 }
 
+export interface BridgePoolData {
+  contract: BridgePoolWeb3;
+  currentTime: number;
+  relayNonce: number;
+}
+
 export class InsuredBridgeL1Client {
   public readonly bridgeAdmin: BridgeAdminInterfaceWeb3;
-  public bridgePools: { [key: string]: BridgePoolWeb3 }; // L1TokenAddress=>BridgePoolClient
+  public bridgePools: { [key: string]: BridgePoolData }; // L1TokenAddress=>BridgePoolData
 
   private relays: { [key: string]: { [key: string]: Relay } } = {}; // L1TokenAddress=>depositHash=>Relay.
   private instantRelays: { [key: string]: { [key: string]: InstantRelay } } = {}; // L1TokenAddress=>{depositHash, realizedLpFeePct}=>InstantRelay.
@@ -72,7 +78,7 @@ export class InsuredBridgeL1Client {
   // Return an array of all bridgePool addresses
   getBridgePoolsAddresses(): string[] {
     this._throwIfNotInitialized();
-    return Object.values(this.bridgePools).map((bridgePool: BridgePoolWeb3) => bridgePool.options.address);
+    return Object.values(this.bridgePools).map((bridgePool: BridgePoolData) => bridgePool.contract.options.address);
   }
 
   getAllRelayedDeposits(): Relay[] {
@@ -119,7 +125,7 @@ export class InsuredBridgeL1Client {
       throw new Error("No rate model for l1Token");
 
     const quoteBlockNumber = (await findBlockNumberAtTimestamp(this.l1Web3, deposit.quoteTimestamp)).blockNumber;
-    const bridgePool = this.getBridgePoolForDeposit(deposit);
+    const bridgePool = this.getBridgePoolForDeposit(deposit).contract;
     const [liquidityUtilizationCurrent, liquidityUtilizationPostRelay] = await Promise.all([
       bridgePool.methods.liquidityUtilizationCurrent().call(undefined, quoteBlockNumber),
       bridgePool.methods.liquidityUtilizationPostRelay(deposit.amount.toString()).call(undefined, quoteBlockNumber),
@@ -142,7 +148,7 @@ export class InsuredBridgeL1Client {
     return ClientRelayState.Finalized;
   }
 
-  getBridgePoolForDeposit(l2Deposit: Deposit): BridgePoolWeb3 {
+  getBridgePoolForDeposit(l2Deposit: Deposit): BridgePoolData {
     if (!this.bridgePools[l2Deposit.l1Token]) throw new Error(`No bridge pool initialized for ${l2Deposit.l1Token}`);
     return this.bridgePools[l2Deposit.l1Token];
   }
@@ -163,10 +169,15 @@ export class InsuredBridgeL1Client {
     const whitelistedTokenEvents = await this.bridgeAdmin.getPastEvents("WhitelistToken", blockSearchConfig);
     for (const whitelistedTokenEvent of whitelistedTokenEvents) {
       const l1Token = whitelistedTokenEvent.returnValues.l1Token;
-      this.bridgePools[l1Token] = (new this.l1Web3.eth.Contract(
-        getAbi("BridgePool"),
-        whitelistedTokenEvent.returnValues.bridgePool
-      ) as unknown) as BridgePoolWeb3;
+      this.bridgePools[l1Token] = {
+        contract: (new this.l1Web3.eth.Contract(
+          getAbi("BridgePool"),
+          whitelistedTokenEvent.returnValues.bridgePool
+        ) as unknown) as BridgePoolWeb3,
+        // We'll set the following params when fetching bridge pool state in parallel.
+        currentTime: 0,
+        relayNonce: 0,
+      };
       this.relays[l1Token] = {};
       this.instantRelays[l1Token] = {};
     }
@@ -174,11 +185,24 @@ export class InsuredBridgeL1Client {
     // Fetch event information
     // TODO: consider optimizing this further. Right now it will make a series of sequential BlueBird calls for each pool.
     for (const [l1Token, bridgePool] of Object.entries(this.bridgePools)) {
-      const [depositRelayedEvents, relaySpedUpEvents, relaySettledEvents] = await Promise.all([
-        bridgePool.getPastEvents("DepositRelayed", blockSearchConfig),
-        bridgePool.getPastEvents("RelaySpedUp", blockSearchConfig),
-        bridgePool.getPastEvents("RelaySettled", blockSearchConfig),
+      const [
+        depositRelayedEvents,
+        relaySpedUpEvents,
+        relaySettledEvents,
+        contractTime,
+        relayNonce,
+      ] = await Promise.all([
+        bridgePool.contract.getPastEvents("DepositRelayed", blockSearchConfig),
+        bridgePool.contract.getPastEvents("RelaySpedUp", blockSearchConfig),
+        bridgePool.contract.getPastEvents("RelaySettled", blockSearchConfig),
+        bridgePool.contract.methods.getCurrentTime().call(),
+        bridgePool.contract.methods.numberOfRelays().call(),
       ]);
+
+      // Store current contract time and relay nonce that user can use to send instant relays (where there is no
+      // pending relay) for a deposit.
+      bridgePool.currentTime = Number(contractTime);
+      bridgePool.relayNonce = Number(relayNonce);
 
       for (const depositRelayedEvent of depositRelayedEvents) {
         const relayData: Relay = {
