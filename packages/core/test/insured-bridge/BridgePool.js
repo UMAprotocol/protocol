@@ -382,6 +382,33 @@ describe("BridgePool", () => {
       `relayHash:${generateRelayAncillaryDataHash(defaultDepositData, defaultRelayData).substring(2)}`
     );
   });
+  it("Sync with Finder addresses", async function () {
+    // Check the sync with finder correctly updates the local instance of important contracts to that in the finder.
+    assert.equal(await bridgePool.methods.optimisticOracle().call(), optimisticOracle.options.address);
+
+    // Change the address of the OO in the finder to any random address.
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.SkinnyOptimisticOracle), rando)
+      .send({ from: owner });
+
+    await bridgePool.methods.syncWithFinderAddresses().send({ from: rando });
+
+    // Check it's been updated accordingly
+    assert.equal(await bridgePool.methods.optimisticOracle().call(), rando);
+  });
+  it("Sync with BridgeAdmin params", async function () {
+    // Check the sync with bridgeAdmin params correctly updates the local params.
+    assert.equal(await bridgePool.methods.proposerBondPct().call(), await bridgeAdmin.methods.proposerBondPct().call());
+
+    // Change the address of the OO in the finder to any random address.
+    await bridgeAdmin.methods.setProposerBondPct(toWei("0.06")).send({ from: owner });
+    assert.equal(await bridgeAdmin.methods.proposerBondPct().call(), toWei("0.06"));
+
+    await bridgePool.methods.syncWithBridgeAdminParams().send({ from: rando });
+
+    // Check it's been updated accordingly
+    assert.equal(await bridgePool.methods.proposerBondPct().call(), toWei("0.06"));
+  });
   describe("Relay deposit", () => {
     beforeEach(async function () {
       // Add liquidity to the pool
