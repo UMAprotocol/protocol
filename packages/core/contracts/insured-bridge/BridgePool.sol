@@ -311,7 +311,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
      * be one instant relayer per relay attempt.
      * @param depositData Unique set of L2 deposit data that caller is trying to instantly relay.
      * @param relayData Parameters of Relay that caller is attempting to speedup. Must hash to the stored relay hash
-     * for this deposit.
+     * for this deposit or this method will revert.
      */
     function speedUpRelay(DepositData memory depositData, RelayData memory relayData) public nonReentrant() {
         bytes32 depositHash = _getDepositHash(depositData);
