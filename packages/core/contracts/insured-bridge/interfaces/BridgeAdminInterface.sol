@@ -12,7 +12,7 @@ interface BridgeAdminInterface {
     );
     event SetBridgeAdmin(uint256 indexed chainId, address indexed bridgeAdmin);
     event SetRelayIdentifier(bytes32 indexed identifier);
-    event SetOptimisticOracleLiveness(uint64 indexed liveness);
+    event SetOptimisticOracleLiveness(uint32 indexed liveness);
     event SetProposerBondPct(uint64 indexed proposerBondPct);
     event WhitelistToken(uint256 chainId, address indexed l1Token, address indexed l2Token, address indexed bridgePool);
     event SetMinimumBridgingDelay(uint256 indexed chainId, uint64 newMinimumBridgingDelay);
@@ -35,7 +35,7 @@ interface BridgeAdminInterface {
 
     function whitelistedTokens(address, uint256) external view returns (address l2Token, address bridgePool);
 
-    function optimisticOracleLiveness() external view returns (uint64);
+    function optimisticOracleLiveness() external view returns (uint32);
 
     function proposerBondPct() external view returns (uint64);
 

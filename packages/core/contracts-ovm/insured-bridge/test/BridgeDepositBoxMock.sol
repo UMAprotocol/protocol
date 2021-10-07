@@ -21,8 +21,9 @@ contract BridgeDepositBoxMock is BridgeDepositBox {
     constructor(
         address _bridgeAdmin,
         uint64 _minimumBridgingDelay,
+        address _l1Weth,
         address timerAddress
-    ) BridgeDepositBox(_minimumBridgingDelay, 10, timerAddress) {
+    ) BridgeDepositBox(_minimumBridgingDelay, 10, _l1Weth, timerAddress) {
         _setBridgeAdmin(_bridgeAdmin);
     }
 

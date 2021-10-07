@@ -33,7 +33,7 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, Lockable {
     mapping(address => L1TokenRelationships) private _whitelistedTokens;
 
     // Set upon construction and can be reset by Owner.
-    uint64 public override optimisticOracleLiveness;
+    uint32 public override optimisticOracleLiveness;
     uint64 public override proposerBondPct;
     bytes32 public override identifier;
 
@@ -56,7 +56,7 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, Lockable {
      */
     constructor(
         address _finder,
-        uint64 _optimisticOracleLiveness,
+        uint32 _optimisticOracleLiveness,
         uint64 _proposerBondPct,
         bytes32 _identifier
     ) {
@@ -85,7 +85,7 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, Lockable {
      * @dev Can only be called by the current owner.
      * @param _liveness New OptimisticOracle liveness period to set for relay price requests.
      */
-    function setOptimisticOracleLiveness(uint64 _liveness) public onlyOwner nonReentrant() {
+    function setOptimisticOracleLiveness(uint32 _liveness) public onlyOwner nonReentrant() {
         _setOptimisticOracleLiveness(_liveness);
     }
 
@@ -287,7 +287,7 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, Lockable {
         emit SetRelayIdentifier(identifier);
     }
 
-    function _setOptimisticOracleLiveness(uint64 _liveness) private {
+    function _setOptimisticOracleLiveness(uint32 _liveness) private {
         // The following constraints are copied from a similar function in the OptimisticOracle contract:
         // - https://github.com/UMAprotocol/protocol/blob/dd211c4e3825fe007d1161025a34e9901b26031a/packages/core/contracts/oracle/implementation/OptimisticOracle.sol#L621
         require(_liveness < 5200 weeks, "Liveness too large");

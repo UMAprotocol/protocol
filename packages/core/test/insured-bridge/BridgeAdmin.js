@@ -81,12 +81,16 @@ describe("BridgeAdmin", () => {
       bridgeAdmin.options.address,
       l1Token,
       lpFeeRatePerSecond,
+      false,
       timer.options.address
     ).send({ from: owner });
 
-    depositBox = await BridgeDepositBox.new(bridgeAdmin.options.address, defaultBridgingDelay, ZERO_ADDRESS).send({
-      from: owner,
-    });
+    depositBox = await BridgeDepositBox.new(
+      bridgeAdmin.options.address,
+      defaultBridgingDelay,
+      ZERO_ADDRESS, // weth address. Weth mode not used in these tests
+      ZERO_ADDRESS // timer address
+    ).send({ from: owner });
   });
   describe("Admin functions", () => {
     it("Set deposit contracts", async () => {
@@ -150,10 +154,14 @@ describe("BridgeAdmin", () => {
         "OnlyOwner modifier not enforced"
       );
 
-      // Liveness too large.
-      assert(await didContractThrow(bridgeAdmin.methods.setOptimisticOracleLiveness(toWei("1")).send({ from: owner })));
+      // Liveness too large, must be less than a 5200 weeks.
+      assert(
+        await didContractThrow(
+          bridgeAdmin.methods.setOptimisticOracleLiveness(5200 * 7 * 24 * 60 * 60).send({ from: owner })
+        )
+      );
 
-      // Liveness too small.
+      // Liveness too small, must be positive.
       assert(await didContractThrow(bridgeAdmin.methods.setOptimisticOracleLiveness("0").send({ from: owner })));
 
       const txn = await bridgeAdmin.methods.setOptimisticOracleLiveness(newLiveness).send({ from: owner });
@@ -344,6 +352,7 @@ describe("BridgeAdmin", () => {
             bridgeAdmin.options.address,
             l1Token,
             lpFeeRatePerSecond,
+            false,
             timer.options.address
           ).send({ from: owner });
           const whitelistTxn = await bridgeAdmin.methods
@@ -557,6 +566,7 @@ describe("BridgeAdmin", () => {
             bridgeAdmin.options.address,
             l1Token,
             lpFeeRatePerSecond,
+            false,
             timer.options.address
           ).send({ from: owner });
 
