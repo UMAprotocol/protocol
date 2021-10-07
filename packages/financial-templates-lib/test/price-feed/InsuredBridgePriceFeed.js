@@ -122,7 +122,6 @@ describe("InsuredBridgePriceFeed", function () {
         toBNWei("0.1")
       ).toString(),
       slowRelayer: relayer,
-      instantRelayer: ZERO_ADDRESS,
       ...relayDataOverride,
     };
 

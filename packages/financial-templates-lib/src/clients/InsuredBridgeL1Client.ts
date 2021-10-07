@@ -10,12 +10,6 @@ import type { BridgeAdminInterfaceWeb3, BridgePoolWeb3 } from "@uma/contracts-no
 import type { Logger } from "winston";
 import type { BN } from "@uma/common";
 
-enum RelayState {
-  Pending,
-  Disputed,
-  Finalized,
-}
-
 export enum ClientRelayState {
   Uninitialized, // Deposit on L2, nothing yet on L1. Can be slow relayed and can be sped up to instantly relay.
   Pending, // Deposit on L2 and has been slow relayed on L1. Can be sped up to instantly relay.
@@ -36,8 +30,9 @@ export interface Relay {
   instantRelayFeePct: string;
   quoteTimestamp: number;
   realizedLpFeePct: string;
+  priceRequestTime: number;
   depositHash: string;
-  relayState: RelayState;
+  relayState: ClientRelayState;
   relayHash: string;
 }
 
@@ -45,9 +40,15 @@ export interface InstantRelay {
   instantRelayer: string;
 }
 
+export interface BridgePoolData {
+  contract: BridgePoolWeb3;
+  currentTime: number;
+  relayNonce: number;
+}
+
 export class InsuredBridgeL1Client {
   public readonly bridgeAdmin: BridgeAdminInterfaceWeb3;
-  public bridgePools: { [key: string]: BridgePoolWeb3 }; // L1TokenAddress=>BridgePoolClient
+  public bridgePools: { [key: string]: BridgePoolData }; // L1TokenAddress=>BridgePoolData
 
   private relays: { [key: string]: { [key: string]: Relay } } = {}; // L1TokenAddress=>depositHash=>Relay.
   private instantRelays: { [key: string]: { [key: string]: InstantRelay } } = {}; // L1TokenAddress=>{depositHash, realizedLpFeePct}=>InstantRelay.
@@ -77,7 +78,7 @@ export class InsuredBridgeL1Client {
   // Return an array of all bridgePool addresses
   getBridgePoolsAddresses(): string[] {
     this._throwIfNotInitialized();
-    return Object.values(this.bridgePools).map((bridgePool: BridgePoolWeb3) => bridgePool.options.address);
+    return Object.values(this.bridgePools).map((bridgePool: BridgePoolData) => bridgePool.contract.options.address);
   }
 
   getAllRelayedDeposits(): Relay[] {
@@ -110,11 +111,13 @@ export class InsuredBridgeL1Client {
   }
 
   getPendingRelayedDeposits(): Relay[] {
-    return this.getAllRelayedDeposits().filter((relay: Relay) => relay.relayState === RelayState.Pending);
+    return this.getAllRelayedDeposits().filter((relay: Relay) => relay.relayState === ClientRelayState.Pending);
   }
 
   getPendingRelayedDepositsForL1Token(l1Token: string): Relay[] {
-    return this.getRelayedDepositsForL1Token(l1Token).filter((relay: Relay) => relay.relayState === RelayState.Pending);
+    return this.getRelayedDepositsForL1Token(l1Token).filter(
+      (relay: Relay) => relay.relayState === ClientRelayState.Pending
+    );
   }
 
   async calculateRealizedLpFeePctForDeposit(deposit: Deposit): Promise<BN> {
@@ -122,7 +125,7 @@ export class InsuredBridgeL1Client {
       throw new Error("No rate model for l1Token");
 
     const quoteBlockNumber = (await findBlockNumberAtTimestamp(this.l1Web3, deposit.quoteTimestamp)).blockNumber;
-    const bridgePool = this.getBridgePoolForDeposit(deposit);
+    const bridgePool = this.getBridgePoolForDeposit(deposit).contract;
     const [liquidityUtilizationCurrent, liquidityUtilizationPostRelay] = await Promise.all([
       bridgePool.methods.liquidityUtilizationCurrent().call(undefined, quoteBlockNumber),
       bridgePool.methods.liquidityUtilizationPostRelay(deposit.amount.toString()).call(undefined, quoteBlockNumber),
@@ -140,12 +143,12 @@ export class InsuredBridgeL1Client {
     // If the relay is undefined then the deposit has not yet been sent on L1 and can be relayed.
     if (relay === undefined) return ClientRelayState.Uninitialized;
     // Else, if the relatable state is "Pending" then the deposit can be sped up to an instant relay.
-    else if (relay.relayState === RelayState.Pending) return ClientRelayState.Pending;
+    else if (relay.relayState === ClientRelayState.Pending) return ClientRelayState.Pending;
     // If neither condition is met then the relay is finalized.
     return ClientRelayState.Finalized;
   }
 
-  getBridgePoolForDeposit(l2Deposit: Deposit): BridgePoolWeb3 {
+  getBridgePoolForDeposit(l2Deposit: Deposit): BridgePoolData {
     if (!this.bridgePools[l2Deposit.l1Token]) throw new Error(`No bridge pool initialized for ${l2Deposit.l1Token}`);
     return this.bridgePools[l2Deposit.l1Token];
   }
@@ -166,10 +169,15 @@ export class InsuredBridgeL1Client {
     const whitelistedTokenEvents = await this.bridgeAdmin.getPastEvents("WhitelistToken", blockSearchConfig);
     for (const whitelistedTokenEvent of whitelistedTokenEvents) {
       const l1Token = whitelistedTokenEvent.returnValues.l1Token;
-      this.bridgePools[l1Token] = (new this.l1Web3.eth.Contract(
-        getAbi("BridgePool"),
-        whitelistedTokenEvent.returnValues.bridgePool
-      ) as unknown) as BridgePoolWeb3;
+      this.bridgePools[l1Token] = {
+        contract: (new this.l1Web3.eth.Contract(
+          getAbi("BridgePool"),
+          whitelistedTokenEvent.returnValues.bridgePool
+        ) as unknown) as BridgePoolWeb3,
+        // We'll set the following params when fetching bridge pool state in parallel.
+        currentTime: 0,
+        relayNonce: 0,
+      };
       this.relays[l1Token] = {};
       this.instantRelays[l1Token] = {};
     }
@@ -177,19 +185,32 @@ export class InsuredBridgeL1Client {
     // Fetch event information
     // TODO: consider optimizing this further. Right now it will make a series of sequential BlueBird calls for each pool.
     for (const [l1Token, bridgePool] of Object.entries(this.bridgePools)) {
-      const [depositRelayedEvents, relaySpedUpEvents, relaySettledEvents] = await Promise.all([
-        bridgePool.getPastEvents("DepositRelayed", blockSearchConfig),
-        bridgePool.getPastEvents("RelaySpedUp", blockSearchConfig),
-        bridgePool.getPastEvents("RelaySettled", blockSearchConfig),
+      const [
+        depositRelayedEvents,
+        relaySpedUpEvents,
+        relaySettledEvents,
+        contractTime,
+        relayNonce,
+      ] = await Promise.all([
+        bridgePool.contract.getPastEvents("DepositRelayed", blockSearchConfig),
+        bridgePool.contract.getPastEvents("RelaySpedUp", blockSearchConfig),
+        bridgePool.contract.getPastEvents("RelaySettled", blockSearchConfig),
+        bridgePool.contract.methods.getCurrentTime().call(),
+        bridgePool.contract.methods.numberOfRelays().call(),
       ]);
+
+      // Store current contract time and relay nonce that user can use to send instant relays (where there is no
+      // pending relay) for a deposit.
+      bridgePool.currentTime = Number(contractTime);
+      bridgePool.relayNonce = Number(relayNonce);
 
       for (const depositRelayedEvent of depositRelayedEvents) {
         const relayData: Relay = {
-          relayId: Number(depositRelayedEvent.returnValues.relayId),
+          relayId: Number(depositRelayedEvent.returnValues.relay.relayId),
           chainId: Number(depositRelayedEvent.returnValues.depositData.chainId),
           depositId: Number(depositRelayedEvent.returnValues.depositData.depositId),
           l2Sender: depositRelayedEvent.returnValues.depositData.l2Sender,
-          slowRelayer: depositRelayedEvent.returnValues.slowRelayer,
+          slowRelayer: depositRelayedEvent.returnValues.relay.slowRelayer,
           disputedSlowRelayers: [],
           l1Recipient: depositRelayedEvent.returnValues.depositData.l1Recipient,
           l1Token: depositRelayedEvent.returnValues.l1Token,
@@ -197,10 +218,11 @@ export class InsuredBridgeL1Client {
           slowRelayFeePct: depositRelayedEvent.returnValues.depositData.slowRelayFeePct,
           instantRelayFeePct: depositRelayedEvent.returnValues.depositData.instantRelayFeePct,
           quoteTimestamp: Number(depositRelayedEvent.returnValues.depositData.quoteTimestamp),
-          realizedLpFeePct: depositRelayedEvent.returnValues.realizedLpFeePct,
+          realizedLpFeePct: depositRelayedEvent.returnValues.relay.realizedLpFeePct,
+          priceRequestTime: Number(depositRelayedEvent.returnValues.relay.priceRequestTime),
           depositHash: depositRelayedEvent.returnValues.depositHash,
-          relayState: RelayState.Pending,
-          relayHash: depositRelayedEvent.returnValues.relayHash,
+          relayState: ClientRelayState.Pending, // Should be equal to depositRelayedEvent.returnValues.relay.relayState
+          relayHash: depositRelayedEvent.returnValues.relayAncillaryDataHash,
         };
 
         // If the local data contains this deposit ID then this is a re-relay of a disputed relay. In this case, we need
@@ -210,6 +232,10 @@ export class InsuredBridgeL1Client {
           const previousSlowRelayer = this.relays[l1Token][relayData.depositHash].slowRelayer;
           this.relays[l1Token][relayData.depositHash].disputedSlowRelayers.push(previousSlowRelayer);
           this.relays[l1Token][relayData.depositHash].slowRelayer = relayData.slowRelayer;
+          this.relays[l1Token][relayData.depositHash].relayId = relayData.relayId;
+          this.relays[l1Token][relayData.depositHash].realizedLpFeePct = relayData.realizedLpFeePct;
+          this.relays[l1Token][relayData.depositHash].priceRequestTime = relayData.priceRequestTime;
+          // relayState should be the same.
         }
         // Else, if this if this is the first time we see this deposit hash, then store it.
         else this.relays[l1Token][relayData.depositHash] = relayData;
@@ -219,7 +245,7 @@ export class InsuredBridgeL1Client {
       for (const relaySpedUpEvent of relaySpedUpEvents) {
         const instantRelayDataHash = this._getInstantRelayHash(
           relaySpedUpEvent.returnValues.depositHash,
-          relaySpedUpEvent.returnValues.realizedLpFeePct
+          relaySpedUpEvent.returnValues.relay.realizedLpFeePct
         );
         if (instantRelayDataHash !== null) {
           this.instantRelays[l1Token][instantRelayDataHash] = {
@@ -229,7 +255,7 @@ export class InsuredBridgeL1Client {
       }
 
       for (const relaySettledEvent of relaySettledEvents) {
-        this.relays[l1Token][relaySettledEvent.returnValues.depositHash].relayState = RelayState.Finalized;
+        this.relays[l1Token][relaySettledEvent.returnValues.depositHash].relayState = ClientRelayState.Finalized;
       }
     }
     this.firstBlockToSearch = blockSearchConfig.toBlock + 1;

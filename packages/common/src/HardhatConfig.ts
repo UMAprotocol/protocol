@@ -76,7 +76,6 @@ export function getHardhatConfig(
       mainnet: { chainId: 1, url: getNodeUrl("mainnet", true), accounts: { mnemonic } },
       rinkeby: { chainId: 4, url: getNodeUrl("rinkeby", true), accounts: { mnemonic } },
       goerli: { chainId: 5, url: getNodeUrl("goerli", true), accounts: { mnemonic } },
-
       kovan: { chainId: 42, url: getNodeUrl("kovan", true), accounts: { mnemonic } },
       optimism: {
         ovm: true,
