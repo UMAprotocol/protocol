@@ -789,7 +789,7 @@ describe("LongShortPair", function () {
     });
   });
   describe("Early contract expiration", () => {
-    let requestedEarlyExpirationTimestamp, earlyExpirationAncillaryData;
+    let earlyExpirationTimestamp, earlyExpirationAncillaryData;
     beforeEach(async () => {
       // Set the collateral per pair to some small number to try induce rounding on mint/redeem settings.
       constructorParams = {
@@ -817,7 +817,7 @@ describe("LongShortPair", function () {
         .send({ from: deployer });
 
       // Some time in the past before expiration.
-      requestedEarlyExpirationTimestamp = Number(await timer.methods.getCurrentTime().call()) - 10;
+      earlyExpirationTimestamp = Number(await timer.methods.getCurrentTime().call()) - 10;
 
       earlyExpirationAncillaryData = await longShortPair.methods.getEarlyExpirationAncillaryData().call();
     });
@@ -825,16 +825,16 @@ describe("LongShortPair", function () {
       assert.isTrue(await longShortPair.methods.enableEarlyExpiration().call());
 
       const earlyExpireTx = await longShortPair.methods
-        .requestEarlyExpiration(requestedEarlyExpirationTimestamp)
+        .requestEarlyExpiration(earlyExpirationTimestamp)
         .send({ from: rando });
 
       // Associated early expiration variables are set correctly.
-      assert.equal(await longShortPair.methods.earlyExpirationTimestamp().call(), requestedEarlyExpirationTimestamp);
+      assert.equal(await longShortPair.methods.earlyExpirationTimestamp().call(), earlyExpirationTimestamp);
 
       const ooPriceRequestedEvent = (await optimisticOracle.getPastEvents("RequestPrice", { fromBock: 0 }))[0];
 
       await assertEventEmitted(earlyExpireTx, longShortPair, "EarlyExpirationRequested", (ev) => {
-        return ev.caller === rando && ev.earlyExpirationTimeStamp === requestedEarlyExpirationTimestamp.toString();
+        return ev.caller === rando && ev.earlyExpirationTimeStamp === earlyExpirationTimestamp.toString();
       });
 
       assert.equal(earlyExpirationAncillaryData, ooPriceRequestedEvent.returnValues.ancillaryData);
@@ -848,9 +848,10 @@ describe("LongShortPair", function () {
       // Propose a price to the OO for the early settlement.
       await proposeAndSettleOptimisticOraclePrice(
         toWei("0.75"),
-        requestedEarlyExpirationTimestamp,
-        ooPriceRequestedEvent.returnValues.ancillaryData
+        earlyExpirationTimestamp,
+        earlyExpirationAncillaryData
       );
+      await longShortPairTestLibrary.methods.setValueToReturn(toWei("0.75")).send({ from: deployer });
 
       // We should still be before the expiration timestamp.
       assert.isTrue(
@@ -874,7 +875,7 @@ describe("LongShortPair", function () {
       });
       // Settle the short tokens. should get back 25 units of collateral at the settlement price.
       const settleTx2 = await longShortPair.methods.settle(toWei("0"), toWei("100")).send({ from: sponsor });
-      assert.equal(await collateralToken.methods.balanceOf(sponsor).call(), toWei("100")); // 1000-100+75+25
+      assert.equal(await collateralToken.methods.balanceOf(sponsor).call(), toWei("1000")); // 1000-100+75+25
       await assertEventEmitted(settleTx2, longShortPair, "PositionSettled", (ev) => {
         return (
           ev.sponsor == sponsor &&
@@ -883,22 +884,24 @@ describe("LongShortPair", function () {
           ev.shortTokens == toWei("100")
         );
       });
+
+      // todo: check settlement price set correctrly.
     });
 
     it("Can not attempt early expiration post expiration", async function () {
-      const requestedEarlyExpirationTimestamp = Number(await timer.methods.getCurrentTime().call()) - 10;
-      await longShortPair.methods.requestEarlyExpiration(requestedEarlyExpirationTimestamp).send({ from: rando });
+      const earlyExpirationTimestamp = Number(await timer.methods.getCurrentTime().call()) - 10;
+      await longShortPair.methods.requestEarlyExpiration(earlyExpirationTimestamp).send({ from: rando });
     });
     it("Optimistic oracle returning 'do nothing' number blocks early expiration", async function () {
       // In the event that someone tried to incorrectly settle the contract early, the OO will return type(int256).min.
       // This indicates that the contract should "do nothing" (i.e keep running).
 
-      await longShortPair.methods.requestEarlyExpiration(requestedEarlyExpirationTimestamp).send({ from: rando });
+      await longShortPair.methods.requestEarlyExpiration(earlyExpirationTimestamp).send({ from: rando });
 
       // Propose a to the OO that indicates the contract should not settle. price to the OO for the early settlement.
       await proposeAndSettleOptimisticOraclePrice(
         toBN(MIN_INT_VALUE), // Magic number the LPS uses to ignore early expiration settlement actions.
-        requestedEarlyExpirationTimestamp,
+        earlyExpirationTimestamp,
         earlyExpirationAncillaryData
       );
 
@@ -909,19 +912,19 @@ describe("LongShortPair", function () {
       // In the event that someone tried to early expire the LPS, the LPS should not alow someone else to re-request
       // early expiration until the first request is done.
 
-      await longShortPair.methods.requestEarlyExpiration(requestedEarlyExpirationTimestamp).send({ from: rando });
+      await longShortPair.methods.requestEarlyExpiration(earlyExpirationTimestamp).send({ from: rando });
 
       // Requesting again with the same timestamp should fail.
       assert(
         await didContractThrow(
-          longShortPair.methods.requestEarlyExpiration(requestedEarlyExpirationTimestamp).send({ from: rando })
+          longShortPair.methods.requestEarlyExpiration(earlyExpirationTimestamp).send({ from: rando })
         )
       );
 
       // Requesting with a different timestamp (1 second later) should also fail.
       assert(
         await didContractThrow(
-          longShortPair.methods.requestEarlyExpiration(requestedEarlyExpirationTimestamp + 1).send({ from: rando })
+          longShortPair.methods.requestEarlyExpiration(earlyExpirationTimestamp + 1).send({ from: rando })
         )
       );
     });
@@ -929,25 +932,25 @@ describe("LongShortPair", function () {
       // In the event that someone tries to early expire the LPS, which is successful (returns a number other than
       // type(int256).min) future attempts to early expire should be blocked.
 
-      await longShortPair.methods.requestEarlyExpiration(requestedEarlyExpirationTimestamp).send({ from: rando });
+      await longShortPair.methods.requestEarlyExpiration(earlyExpirationTimestamp).send({ from: rando });
 
       // Propose a valid early expiration price.
       // Propose a to the OO that indicates the contract should not settle. price to the OO for the early settlement.
       await proposeAndSettleOptimisticOraclePrice(
         toWei("10"), // Use a number other than the magic number.
-        requestedEarlyExpirationTimestamp,
+        earlyExpirationTimestamp,
         earlyExpirationAncillaryData
       );
 
       // Requesting again should fail as the contract already has a price for early expiration that is valid.
       assert(
         await didContractThrow(
-          longShortPair.methods.requestEarlyExpiration(requestedEarlyExpirationTimestamp).send({ from: rando })
+          longShortPair.methods.requestEarlyExpiration(earlyExpirationTimestamp).send({ from: rando })
         )
       );
       assert(
         await didContractThrow(
-          longShortPair.methods.requestEarlyExpiration(requestedEarlyExpirationTimestamp + 10).send({ from: rando })
+          longShortPair.methods.requestEarlyExpiration(earlyExpirationTimestamp + 10).send({ from: rando })
         )
       );
     });
@@ -956,32 +959,32 @@ describe("LongShortPair", function () {
       // type(int256).min number) future attempts to early expire should be valid, assuming the request timestamp is
       // different to the original request timestamp.
 
-      await longShortPair.methods.requestEarlyExpiration(requestedEarlyExpirationTimestamp).send({ from: rando });
+      await longShortPair.methods.requestEarlyExpiration(earlyExpirationTimestamp).send({ from: rando });
 
       // Propose a to the OO that indicates the contract should not settle.
       await proposeAndSettleOptimisticOraclePrice(
         toBN(MIN_INT_VALUE), // Magic number the LPS uses to ignore early expiration settlement actions.
-        requestedEarlyExpirationTimestamp,
+        earlyExpirationTimestamp,
         earlyExpirationAncillaryData
       );
 
       // Requesting again on the same timestamp should fail.
       assert(
         await didContractThrow(
-          longShortPair.methods.requestEarlyExpiration(requestedEarlyExpirationTimestamp).send({ from: rando })
+          longShortPair.methods.requestEarlyExpiration(earlyExpirationTimestamp).send({ from: rando })
         )
       );
 
       // Requesting on a new timestamp should be permitted. on the same timestamp should fail.
-      const newRequestedEarlyExpirationTimestamp = requestedEarlyExpirationTimestamp + 10;
-      await longShortPair.methods.requestEarlyExpiration(newRequestedEarlyExpirationTimestamp).send({ from: rando });
-      assert.equal(await longShortPair.methods.earlyExpirationTimestamp().call(), newRequestedEarlyExpirationTimestamp);
+      const newearlyExpirationTimestamp = earlyExpirationTimestamp + 10;
+      await longShortPair.methods.requestEarlyExpiration(newearlyExpirationTimestamp).send({ from: rando });
+      assert.equal(await longShortPair.methods.earlyExpirationTimestamp().call(), newearlyExpirationTimestamp);
     });
     it("Can not call expire (normal expiration) if an early expiration is pending or correctly passed", async function () {
       // If the LSP is currently pending early expiration(request has been sent but no price returned yet) the normal
       // expire method should revert.
 
-      await longShortPair.methods.requestEarlyExpiration(requestedEarlyExpirationTimestamp).send({ from: rando });
+      await longShortPair.methods.requestEarlyExpiration(earlyExpirationTimestamp).send({ from: rando });
 
       // Try call the expire method, which should fail.
       assert(await didContractThrow(longShortPair.methods.expire().send({ from: rando })));
@@ -991,7 +994,7 @@ describe("LongShortPair", function () {
         .proposePrice(
           longShortPair.options.address,
           priceIdentifier,
-          requestedEarlyExpirationTimestamp,
+          earlyExpirationTimestamp,
           earlyExpirationAncillaryData,
           toWei("5")
         )
@@ -1003,12 +1006,7 @@ describe("LongShortPair", function () {
         .setCurrentTime(parseInt(await optimisticOracle.methods.getCurrentTime().call()) + optimisticOracleLivenessTime)
         .send({ from: deployer });
       await optimisticOracle.methods
-        .settle(
-          longShortPair.options.address,
-          priceIdentifier,
-          requestedEarlyExpirationTimestamp,
-          earlyExpirationAncillaryData
-        )
+        .settle(longShortPair.options.address, priceIdentifier, earlyExpirationTimestamp, earlyExpirationAncillaryData)
         .send({ from: deployer });
       assert(await didContractThrow(longShortPair.methods.expire().send({ from: rando })));
 
@@ -1021,12 +1019,12 @@ describe("LongShortPair", function () {
       // If the LSP is attempted to be early expired, which fails (OO returns a price of type(int256).min) then the
       // normal expire call should work as per usual after the end of the liveness period.
 
-      await longShortPair.methods.requestEarlyExpiration(requestedEarlyExpirationTimestamp).send({ from: rando });
+      await longShortPair.methods.requestEarlyExpiration(earlyExpirationTimestamp).send({ from: rando });
 
       // Propose a to the OO that indicates the contract should not settle.
       await proposeAndSettleOptimisticOraclePrice(
         toBN(MIN_INT_VALUE), // Magic number the LPS uses to ignore early expiration settlement actions.
-        requestedEarlyExpirationTimestamp,
+        earlyExpirationTimestamp,
         earlyExpirationAncillaryData
       );
 

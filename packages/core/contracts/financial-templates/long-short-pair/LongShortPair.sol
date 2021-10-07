@@ -63,7 +63,7 @@ contract LongShortPair is Testable, Lockable {
     uint256 public collateralPerPair; // Amount of collateral a pair of tokens is always redeemable for.
 
     // Number between 0 and 1e18 to allocate collateral between long & short tokens at redemption. 0 entitles each short
-    // to collateralPerPair and long worth 0. 1e18 makes each long worth collateralPerPair and short 0.
+    // to collateralPerPair and each long to 0. 1e18 makes each long worth collateralPerPair and short 0.
     uint256 public expiryPercentLong;
     bytes32 public priceIdentifier;
     bool public enableEarlyExpiration; // If set, the LPS contract can request to be settled early by calling the OO.
