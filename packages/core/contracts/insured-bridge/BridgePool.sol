@@ -340,16 +340,19 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
     /**
      * @notice Reward relayers if a pending relay price request has a price available on the OptimisticOracle. Mark
      * the relay as complete.
+     * @dev We use the relayData and depositData to compute the ancillary data that the relay price request is uniquely
+     * associated with on the OptimisticOracle. If the price request passed in does not match the pending relay price
+     * request, then this will revert.
      * @param depositData Unique set of L2 deposit data that caller is trying to settle a relay for.
      * @param relayData Parameters of Relay that caller is attempting to settle. Must hash to the stored relay hash
      * for this deposit.
-     * @param ancillaryData Relay price request's ancillary data. Used to check status of relay price request.
      * @param request Relay price request struct. Used to check status of relay price request.
      */
     function settleRelay(
         DepositData memory depositData,
         RelayData memory relayData,
-        bytes memory ancillaryData,
+        // TODO: Can we infer `request` using just the information stored in this contract and passed into this
+        // method?
         SkinnyOptimisticOracleInterface.Request memory request
     ) public nonReentrant() {
         bytes32 depositHash = _getDepositHash(depositData);
@@ -358,6 +361,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
 
         // Optimistically try to settle relay. If this transaction settles the relay, then check the newly resolved
         // price. Otherwise grab the already resolved price.
+        bytes memory ancillaryData = _getRelayAncillaryData(_getRelayHash(depositData, relayData));
         try
             optimisticOracle.settle(
                 address(this),
@@ -367,7 +371,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
                 request
             )
         returns (
-            uint256 payout, // Unused parameter, as we only care to check whether the price resolved to True or False.
+            uint256, // Unused payout value, as we only care to check whether the price resolved to True or False.
             int256 resolvedPrice
         ) {
             require(resolvedPrice == int256(1e18), "Settle relay iff price is True");
@@ -602,16 +606,14 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         view
         returns (bytes memory)
     {
-        return AncillaryData.appendKeyValueBytes32("", "relayHash", _getRelayHash(depositData, relayData));
+        return _getRelayAncillaryData(_getRelayHash(depositData, relayData));
     }
 
     /**************************************
      *    INTERNAL & PRIVATE FUNCTIONS    *
      **************************************/
 
-    // Note: this method is identical to `getRelayAncillaryData`, but it allows storage to be passed in, which saves
-    // some gas (~3-4k) when called internally due to solidity not needing to copy the entire data structure and just
-    // lazily read data when requested.
+    // Return UTF8-decodable ancillary data for relay price request associated with relay hash.
     function _getRelayAncillaryData(bytes32 relayHash) private pure returns (bytes memory) {
         return AncillaryData.appendKeyValueBytes32("", "relayHash", relayHash);
     }
@@ -637,7 +639,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
     }
 
     // Return hash of relay data, which is stored in state and mapped to a deposit hash.
-    function _getRelayDataHash(RelayData memory _relayData) private view returns (bytes32) {
+    function _getRelayDataHash(RelayData memory _relayData) private pure returns (bytes32) {
         return keccak256(abi.encode(_relayData));
     }
 
@@ -650,7 +652,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
     }
 
     // Return hash of unique instant relay and deposit event. This is stored in state and mapped to a deposit hash.
-    function _getInstantRelayHash(bytes32 depositHash, RelayData memory _relayData) private view returns (bytes32) {
+    function _getInstantRelayHash(bytes32 depositHash, RelayData memory _relayData) private pure returns (bytes32) {
         // Only include parameters that affect the "correctness" of an instant relay. For example, the realized LP fee
         // % directly affects how many tokens the instant relayer needs to send to the user, whereas the address of the
         // instant relayer does not matter for determing whether an instant relay is "correct".
