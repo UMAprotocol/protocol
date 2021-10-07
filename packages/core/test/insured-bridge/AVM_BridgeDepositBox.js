@@ -6,7 +6,7 @@ const { web3 } = hre;
 const { toWei } = web3.utils;
 const { getContract, assertEventEmitted } = hre;
 
-const { didContractThrow } = require("@uma/common");
+const { didContractThrow, ZERO_ADDRESS } = require("@uma/common");
 
 const { applyL1ToL2Alias } = require("./helpers/ArbitrumHelper");
 
@@ -69,6 +69,7 @@ describe("AVM_BridgeDepositBox", () => {
       bridgeAdmin,
       minimumBridgingDelay,
       chainId,
+      ZERO_ADDRESS, // weth address. Weth mode not used in these tests
       timer.options.address
     ).send({ from: deployer });
   });

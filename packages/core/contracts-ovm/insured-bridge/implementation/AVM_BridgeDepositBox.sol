@@ -35,8 +35,9 @@ contract AVM_BridgeDepositBox is BridgeDepositBox, AVM_CrossDomainEnabled {
         address _crossDomainAdmin,
         uint64 _minimumBridgingDelay,
         uint256 _chainId,
+        address _l1Weth,
         address timerAddress
-    ) BridgeDepositBox(_minimumBridgingDelay, _chainId, timerAddress) {
+    ) BridgeDepositBox(_minimumBridgingDelay, _chainId, _l1Weth, timerAddress) {
         l2GatewayRouter = _l2GatewayRouter;
         _setCrossDomainAdmin(_crossDomainAdmin);
     }

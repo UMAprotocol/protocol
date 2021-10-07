@@ -19,6 +19,10 @@ import "../common/implementation/ExpandedERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
+interface WETH9Like {
+    function withdraw(uint256 wad) external;
+}
+
 /**
  * @notice Contract deployed on L1 that provides methods for "Relayers" to fulfill deposit orders that originated on L2.
  * The Relayers can either post capital to fulfill the deposit (instant relay), or request that the funds are taken out
@@ -58,6 +62,9 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
     // Administrative contract that deployed this contract and also houses all state variables needed to relay deposits.
     BridgeAdminInterface public bridgeAdmin;
 
+    // If this pool contains WETH. If the withdrawn token is WETH then unwrap and send ETH  when finalizing withdrawal.
+    bool public isWethPool;
+
     // Store local instances of the contract instances to save gas relaying. Can be sync with the Finder at any time.
     StoreInterface public store;
     SkinnyOptimisticOracleInterface public optimisticOracle;
@@ -84,7 +91,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
     struct DepositData {
         uint8 chainId;
         uint64 depositId;
-        address l1Recipient;
+        address payable l1Recipient;
         address l2Sender;
         uint256 amount;
         uint64 slowRelayFeePct;
@@ -148,14 +155,15 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         address _bridgeAdmin,
         address _l1Token,
         uint64 _lpFeeRatePerSecond,
+        bool _isWethPool,
         address _timer
     ) Testable(_timer) ExpandedERC20(_lpTokenName, _lpTokenSymbol, 18) {
         require(bytes(_lpTokenName).length != 0 && bytes(_lpTokenSymbol).length != 0, "Bad LP token name or symbol");
         bridgeAdmin = BridgeAdminInterface(_bridgeAdmin);
-
         l1Token = IERC20(_l1Token);
         lastLpFeeUpdate = uint32(getCurrentTime());
         lpFeeRatePerSecond = _lpFeeRatePerSecond;
+        isWethPool = _isWethPool;
 
         syncWithFinderAddresses(); // Fetch OptimisticOracle and Store addresses from the Finder.
         syncWithBridgeAdminParams(); // Fetch ProposerBondPct OptimisticOracleLiveness, Identifier from the BridgeAdmin.
@@ -228,7 +236,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
     function relayDeposit(
         uint8 chainId,
         uint64 depositId,
-        address l1Recipient,
+        address payable l1Recipient,
         address l2Sender,
         uint256 amount,
         uint64 slowRelayFeePct,
@@ -331,8 +339,15 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
                 relayData.realizedLpFeePct + depositData.slowRelayFeePct + depositData.instantRelayFeePct,
                 depositData.amount
             );
-
-        l1Token.safeTransferFrom(msg.sender, depositData.l1Recipient, depositData.amount - feesTotal);
+        // If the L1 token is WETH then: a) pull WETH from instant relayer b) unwrap WETH c) send ETH to recipient.
+        uint256 recipientAmount = depositData.amount - feesTotal;
+        if (isWethPool) {
+            l1Token.safeTransferFrom(msg.sender, address(this), recipientAmount);
+            WETH9Like(address(l1Token)).withdraw(recipientAmount);
+            depositData.l1Recipient.transfer(recipientAmount);
+        }
+        // Else, this is a normal ERC20 token. Send to recipient.
+        else l1Token.safeTransferFrom(msg.sender, depositData.l1Recipient, recipientAmount);
 
         emit RelaySpedUp(depositHash, msg.sender, relayData);
     }
@@ -413,10 +428,18 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         bytes32 instantRelayHash = _getInstantRelayHash(depositHash, relayData);
         address instantRelayer = instantRelays[instantRelayHash];
 
-        l1Token.safeTransfer(
-            instantRelayer != address(0) ? instantRelayer : depositData.l1Recipient,
-            instantRelayerOrRecipientAmount
-        );
+        // If this is the WETH pool and the instant relayer is is address 0x0 (i.e the relay was not sped up) then:
+        // a) withdraw WETH to ETH and b) send the ETH to the recipient.
+        if (isWethPool && instantRelayer == address(0)) {
+            WETH9Like(address(l1Token)).withdraw(instantRelayerOrRecipientAmount);
+            depositData.l1Recipient.transfer(instantRelayerOrRecipientAmount);
+            // Else, this is a normal slow relay being finalizes where the contract sends ERC20 to the recipient OR this
+            // is the finalization of an instant relay where we need to reimburse the instant relayer in WETH.
+        } else
+            l1Token.safeTransfer(
+                instantRelayer != address(0) ? instantRelayer : depositData.l1Recipient,
+                instantRelayerOrRecipientAmount
+            );
 
         // The slow relayer gets paid the slow relay fee. This is the same irrespective if the relay was sped up or not.
         uint256 slowRelayerAmount = _getAmountFromPct(depositData.slowRelayFeePct, depositData.amount);
@@ -730,4 +753,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
             int256(1e18)
         );
     }
+
+    // Added to enable the BridgePool to receive ETH. used when unwrapping Weth.
+    receive() external payable {}
 }

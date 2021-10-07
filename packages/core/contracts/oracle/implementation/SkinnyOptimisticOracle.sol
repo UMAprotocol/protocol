@@ -30,44 +30,44 @@ import "../../common/implementation/AddressWhitelist.sol";
 interface OptimisticRequester {
     /**
      * @notice Callback for proposals.
-     * @param _identifier price identifier being requested.
-     * @param _timestamp timestamp of the price being requested.
-     * @param _ancillaryData ancillary data of the price being requested.
-     * @param _request request params after proposal.
+     * @param identifier price identifier being requested.
+     * @param timestamp timestamp of the price being requested.
+     * @param ancillaryData ancillary data of the price being requested.
+     * @param request request params after proposal.
      */
     function priceProposed(
-        bytes32 _identifier,
-        uint32 _timestamp,
-        bytes memory _ancillaryData,
-        SkinnyOptimisticOracleInterface.Request memory _request
+        bytes32 identifier,
+        uint32 timestamp,
+        bytes memory ancillaryData,
+        SkinnyOptimisticOracleInterface.Request memory request
     ) external;
 
     /**
      * @notice Callback for disputes.
-     * @param _identifier price identifier being requested.
-     * @param _timestamp timestamp of the price being requested.
-     * @param _ancillaryData ancillary data of the price being requested.
-     * @param _request request params after dispute.
+     * @param identifier price identifier being requested.
+     * @param timestamp timestamp of the price being requested.
+     * @param ancillaryData ancillary data of the price being requested.
+     * @param request request params after dispute.
      */
     function priceDisputed(
-        bytes32 _identifier,
-        uint32 _timestamp,
-        bytes memory _ancillaryData,
-        SkinnyOptimisticOracleInterface.Request memory _request
+        bytes32 identifier,
+        uint32 timestamp,
+        bytes memory ancillaryData,
+        SkinnyOptimisticOracleInterface.Request memory request
     ) external;
 
     /**
      * @notice Callback for settlement.
-     * @param _identifier price identifier being requested.
-     * @param _timestamp timestamp of the price being requested.
-     * @param _ancillaryData ancillary data of the price being requested.
-     * @param _request request params after settlement.
+     * @param identifier price identifier being requested.
+     * @param timestamp timestamp of the price being requested.
+     * @param ancillaryData ancillary data of the price being requested.
+     * @param request request params after settlement.
      */
     function priceSettled(
-        bytes32 _identifier,
-        uint32 _timestamp,
-        bytes memory _ancillaryData,
-        SkinnyOptimisticOracleInterface.Request memory _request
+        bytes32 identifier,
+        uint32 timestamp,
+        bytes memory ancillaryData,
+        SkinnyOptimisticOracleInterface.Request memory request
     ) external;
 }
 
@@ -137,49 +137,49 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
 
     /**
      * @notice Requests a new price.
-     * @param _identifier price identifier being requested.
-     * @param _timestamp timestamp of the price being requested.
-     * @param _ancillaryData ancillary data representing additional args being passed with the price request.
-     * @param _currency ERC20 token used for payment of rewards and fees. Must be approved for use with the DVM.
-     * @param _reward reward offered to a successful proposer. Will be pulled from the caller. Note: this can be 0,
+     * @param identifier price identifier being requested.
+     * @param timestamp timestamp of the price being requested.
+     * @param ancillaryData ancillary data representing additional args being passed with the price request.
+     * @param currency ERC20 token used for payment of rewards and fees. Must be approved for use with the DVM.
+     * @param reward reward offered to a successful proposer. Will be pulled from the caller. Note: this can be 0,
      *               which could make sense if the contract requests and proposes the value in the same call or
      *               provides its own reward system.
-     * @param _bond custom proposal bond to set for request. If set to 0, defaults to the final fee.
-     * @param _customLiveness custom proposal liveness to set for request.
+     * @param bond custom proposal bond to set for request. If set to 0, defaults to the final fee.
+     * @param customLiveness custom proposal liveness to set for request.
      * @return totalBond default bond + final fee that the proposer and disputer will be required to pay.
      */
     function requestPrice(
-        bytes32 _identifier,
-        uint32 _timestamp,
-        bytes memory _ancillaryData,
-        IERC20 _currency,
-        uint256 _reward,
-        uint256 _bond,
-        uint256 _customLiveness
+        bytes32 identifier,
+        uint32 timestamp,
+        bytes memory ancillaryData,
+        IERC20 currency,
+        uint256 reward,
+        uint256 bond,
+        uint256 customLiveness
     ) external override nonReentrant() returns (uint256 totalBond) {
-        bytes32 requestId = _getId(msg.sender, _identifier, _timestamp, _ancillaryData);
+        bytes32 requestId = _getId(msg.sender, identifier, timestamp, ancillaryData);
         require(requests[requestId] == bytes32(0), "Request already initialized");
-        require(_getIdentifierWhitelist().isIdentifierSupported(_identifier), "Unsupported identifier");
-        require(_getCollateralWhitelist().isOnWhitelist(address(_currency)), "Unsupported currency");
-        require(_timestamp <= getCurrentTime(), "Timestamp in future");
+        require(_getIdentifierWhitelist().isIdentifierSupported(identifier), "Unsupported identifier");
+        require(_getCollateralWhitelist().isOnWhitelist(address(currency)), "Unsupported currency");
+        require(timestamp <= getCurrentTime(), "Timestamp in future");
         require(
-            _stampAncillaryData(_ancillaryData, msg.sender).length <= ancillaryBytesLimit,
+            _stampAncillaryData(ancillaryData, msg.sender).length <= ancillaryBytesLimit,
             "Ancillary Data too long"
         );
-        uint256 finalFee = _getStore().computeFinalFee(address(_currency)).rawValue;
+        uint256 finalFee = _getStore().computeFinalFee(address(currency)).rawValue;
 
         // Associate new request with ID
         Request memory request;
-        request.currency = _currency;
-        request.reward = _reward;
+        request.currency = currency;
+        request.reward = reward;
         request.finalFee = finalFee;
-        request.bond = _bond != 0 ? _bond : finalFee;
-        request.customLiveness = _customLiveness;
+        request.bond = bond != 0 ? bond : finalFee;
+        request.customLiveness = customLiveness;
         _storeRequestHash(requestId, request);
 
-        if (_reward > 0) _currency.safeTransferFrom(msg.sender, address(this), _reward);
+        if (reward > 0) currency.safeTransferFrom(msg.sender, address(this), reward);
 
-        emit RequestPrice(msg.sender, _identifier, _timestamp, _ancillaryData, request);
+        emit RequestPrice(msg.sender, identifier, timestamp, ancillaryData, request);
 
         return request.bond.add(finalFee);
     }
@@ -187,89 +187,88 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
     /**
      * @notice Proposes a price value on another address' behalf. Note: this address will receive any rewards that come
      * from this proposal. However, any bonds are pulled from the caller.
-     * @param _requester sender of the initial price request.
-     * @param _identifier price identifier to identify the existing request.
-     * @param _timestamp timestamp to identify the existing request.
-     * @param _ancillaryData ancillary data of the price being requested.
-     * @param _request price request parameters whose hash must match the request that the caller wants to
+     * @param requester sender of the initial price request.
+     * @param identifier price identifier to identify the existing request.
+     * @param timestamp timestamp to identify the existing request.
+     * @param ancillaryData ancillary data of the price being requested.
+     * @param request price request parameters whose hash must match the request that the caller wants to
      * propose a price for.
-     * @param _proposer address to set as the proposer.
-     * @param _proposedPrice price being proposed.
+     * @param proposer address to set as the proposer.
+     * @param proposedPrice price being proposed.
      * @return totalBond the amount that's pulled from the caller's wallet as a bond. The bond will be returned to
      * the proposer once settled if the proposal is correct.
      */
     function proposePriceFor(
-        address _requester,
-        bytes32 _identifier,
-        uint32 _timestamp,
-        bytes memory _ancillaryData,
-        Request memory _request,
-        address _proposer,
-        int256 _proposedPrice
+        address requester,
+        bytes32 identifier,
+        uint32 timestamp,
+        bytes memory ancillaryData,
+        Request memory request,
+        address proposer,
+        int256 proposedPrice
     ) public override nonReentrant() returns (uint256 totalBond) {
-        require(_proposer != address(0), "Proposer address must be non 0");
+        require(proposer != address(0), "Proposer address must be non 0");
         require(
-            _getState(_requester, _identifier, _timestamp, _ancillaryData, _request) ==
+            _getState(requester, identifier, timestamp, ancillaryData, request) ==
                 OptimisticOracleInterface.State.Requested,
             "Must be requested"
         );
-        bytes32 requestId = _getId(_requester, _identifier, _timestamp, _ancillaryData);
-        _validateRequestHash(requestId, _request);
+        bytes32 requestId = _getId(requester, identifier, timestamp, ancillaryData);
+        _validateRequestHash(requestId, request);
 
         // Associate newly proposed request params with ID
         Request memory proposedRequest =
             Request({
-                proposer: _proposer, // Modified
-                disputer: _request.disputer,
-                currency: _request.currency,
-                settled: _request.settled,
-                proposedPrice: _proposedPrice, // Modified
-                resolvedPrice: _request.resolvedPrice,
+                proposer: proposer, // Modified
+                disputer: request.disputer,
+                currency: request.currency,
+                settled: request.settled,
+                proposedPrice: proposedPrice, // Modified
+                resolvedPrice: request.resolvedPrice,
                 expirationTime: getCurrentTime().add(
-                    _request.customLiveness != 0 ? _request.customLiveness : defaultLiveness
+                    request.customLiveness != 0 ? request.customLiveness : defaultLiveness
                 ), // Modified
-                reward: _request.reward,
-                finalFee: _request.finalFee,
-                bond: _request.bond,
-                customLiveness: _request.customLiveness
+                reward: request.reward,
+                finalFee: request.finalFee,
+                bond: request.bond,
+                customLiveness: request.customLiveness
             });
         _storeRequestHash(requestId, proposedRequest);
 
-        totalBond = _request.bond.add(_request.finalFee);
-        if (totalBond > 0) _request.currency.safeTransferFrom(msg.sender, address(this), totalBond);
+        totalBond = request.bond.add(request.finalFee);
+        if (totalBond > 0) request.currency.safeTransferFrom(msg.sender, address(this), totalBond);
 
-        emit ProposePrice(_requester, _identifier, _timestamp, _ancillaryData, proposedRequest);
+        emit ProposePrice(requester, identifier, timestamp, ancillaryData, proposedRequest);
 
         // Callback.
         if (address(msg.sender).isContract())
             try
-                OptimisticRequester(msg.sender).priceProposed(_identifier, _timestamp, _ancillaryData, proposedRequest)
+                OptimisticRequester(msg.sender).priceProposed(identifier, timestamp, ancillaryData, proposedRequest)
             {} catch {}
     }
 
     /**
      * @notice Proposes a price value where caller is the proposer.
-     * @param _requester sender of the initial price request.
-     * @param _identifier price identifier to identify the existing request.
-     * @param _timestamp timestamp to identify the existing request.
-     * @param _ancillaryData ancillary data of the price being requested.
-     * @param _request price request parameters whose hash must match the request that the caller wants to
+     * @param requester sender of the initial price request.
+     * @param identifier price identifier to identify the existing request.
+     * @param timestamp timestamp to identify the existing request.
+     * @param ancillaryData ancillary data of the price being requested.
+     * @param request price request parameters whose hash must match the request that the caller wants to
      * propose a price for.
-     * @param _proposedPrice price being proposed.
+     * @param proposedPrice price being proposed.
      * @return totalBond the amount that's pulled from the caller's wallet as a bond. The bond will be returned to
      * the proposer once settled if the proposal is correct.
      */
     function proposePrice(
-        address _requester,
-        bytes32 _identifier,
-        uint32 _timestamp,
-        bytes memory _ancillaryData,
-        Request memory _request,
-        int256 _proposedPrice
+        address requester,
+        bytes32 identifier,
+        uint32 timestamp,
+        bytes memory ancillaryData,
+        Request memory request,
+        int256 proposedPrice
     ) external override returns (uint256 totalBond) {
         // Note: re-entrancy guard is done in the inner call.
-        return
-            proposePriceFor(_requester, _identifier, _timestamp, _ancillaryData, _request, msg.sender, _proposedPrice);
+        return proposePriceFor(requester, identifier, timestamp, ancillaryData, request, msg.sender, proposedPrice);
     }
 
     /**
@@ -277,120 +276,118 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
      * overwrite Request params that a normal requestPrice() => proposePrice() flow would entail. Note: The proposer
      * will receive any rewards that come from this proposal. However, any bonds are pulled from the caller.
      * @dev The caller is the requester, but the proposer can be customized.
-     * @param _identifier price identifier to identify the existing request.
-     * @param _timestamp timestamp to identify the existing request.
-     * @param _ancillaryData ancillary data of the price being requested.
-     * @param _currency ERC20 token used for payment of rewards and fees. Must be approved for use with the DVM.
-     * @param _reward reward offered to a successful proposer. Will be pulled from the caller. Note: this can be 0,
+     * @param identifier price identifier to identify the existing request.
+     * @param timestamp timestamp to identify the existing request.
+     * @param ancillaryData ancillary data of the price being requested.
+     * @param currency ERC20 token used for payment of rewards and fees. Must be approved for use with the DVM.
+     * @param reward reward offered to a successful proposer. Will be pulled from the caller. Note: this can be 0,
      *               which could make sense if the contract requests and proposes the value in the same call or
      *               provides its own reward system.
-     * @param _bond custom proposal bond to set for request. If set to 0, defaults to the final fee.
-     * @param _customLiveness custom proposal liveness to set for request.
-     * @param _proposer address to set as the proposer.
-     * @param _proposedPrice price being proposed.
+     * @param bond custom proposal bond to set for request. If set to 0, defaults to the final fee.
+     * @param customLiveness custom proposal liveness to set for request.
+     * @param proposer address to set as the proposer.
+     * @param proposedPrice price being proposed.
      * @return totalBond the amount that's pulled from the caller's wallet as a bond. The bond will be returned to
      * the proposer once settled if the proposal is correct.
      */
     function requestAndProposePriceFor(
-        bytes32 _identifier,
-        uint32 _timestamp,
-        bytes memory _ancillaryData,
-        IERC20 _currency,
-        uint256 _reward,
-        uint256 _bond,
-        uint256 _customLiveness,
-        address _proposer,
-        int256 _proposedPrice
+        bytes32 identifier,
+        uint32 timestamp,
+        bytes memory ancillaryData,
+        IERC20 currency,
+        uint256 reward,
+        uint256 bond,
+        uint256 customLiveness,
+        address proposer,
+        int256 proposedPrice
     ) external override returns (uint256 totalBond) {
-        bytes32 requestId = _getId(msg.sender, _identifier, _timestamp, _ancillaryData);
+        bytes32 requestId = _getId(msg.sender, identifier, timestamp, ancillaryData);
         require(requests[requestId] == bytes32(0), "Request already initialized");
-        require(_proposer != address(0), "proposer address must be non 0");
-        require(_getIdentifierWhitelist().isIdentifierSupported(_identifier), "Unsupported identifier");
-        require(_getCollateralWhitelist().isOnWhitelist(address(_currency)), "Unsupported currency");
-        require(_timestamp <= getCurrentTime(), "Timestamp in future");
+        require(proposer != address(0), "proposer address must be non 0");
+        require(_getIdentifierWhitelist().isIdentifierSupported(identifier), "Unsupported identifier");
+        require(_getCollateralWhitelist().isOnWhitelist(address(currency)), "Unsupported currency");
+        require(timestamp <= getCurrentTime(), "Timestamp in future");
         require(
-            _stampAncillaryData(_ancillaryData, msg.sender).length <= ancillaryBytesLimit,
+            _stampAncillaryData(ancillaryData, msg.sender).length <= ancillaryBytesLimit,
             "Ancillary Data too long"
         );
-        uint256 finalFee = _getStore().computeFinalFee(address(_currency)).rawValue;
+        uint256 finalFee = _getStore().computeFinalFee(address(currency)).rawValue;
 
         // Associate new request with ID
         Request memory request;
-        request.currency = _currency;
-        request.reward = _reward;
+        request.currency = currency;
+        request.reward = reward;
         request.finalFee = finalFee;
-        request.bond = _bond;
-        request.customLiveness = _customLiveness;
-        request.proposer = _proposer;
-        request.proposedPrice = _proposedPrice;
-        request.expirationTime = getCurrentTime().add(_customLiveness != 0 ? _customLiveness : defaultLiveness);
+        request.bond = bond;
+        request.customLiveness = customLiveness;
+        request.proposer = proposer;
+        request.proposedPrice = proposedPrice;
+        request.expirationTime = getCurrentTime().add(customLiveness != 0 ? customLiveness : defaultLiveness);
         _storeRequestHash(requestId, request);
 
         // Pull reward from requester, who is the caller.
-        if (_reward > 0) _currency.safeTransferFrom(msg.sender, address(this), _reward);
+        if (reward > 0) currency.safeTransferFrom(msg.sender, address(this), reward);
         // Pull proposal bond from caller.
         totalBond = request.bond.add(request.finalFee);
-        if (totalBond > 0) _currency.safeTransferFrom(msg.sender, address(this), totalBond);
+        if (totalBond > 0) currency.safeTransferFrom(msg.sender, address(this), totalBond);
 
-        emit RequestPrice(msg.sender, _identifier, _timestamp, _ancillaryData, request);
-        emit ProposePrice(msg.sender, _identifier, _timestamp, _ancillaryData, request);
+        emit RequestPrice(msg.sender, identifier, timestamp, ancillaryData, request);
+        emit ProposePrice(msg.sender, identifier, timestamp, ancillaryData, request);
 
         // Callback.
         if (address(msg.sender).isContract())
-            try
-                OptimisticRequester(msg.sender).priceProposed(_identifier, _timestamp, _ancillaryData, request)
-            {} catch {}
+            try OptimisticRequester(msg.sender).priceProposed(identifier, timestamp, ancillaryData, request) {} catch {}
     }
 
     /**
      * @notice Disputes a price request with an active proposal on another address' behalf. Note: this address will
      * receive any rewards that come from this dispute. However, any bonds are pulled from the caller.
-     * @param _identifier price identifier to identify the existing request.
-     * @param _timestamp timestamp to identify the existing request.
-     * @param _ancillaryData ancillary data of the price being requested.
-     * @param _request price request parameters whose hash must match the request that the caller wants to
+     * @param identifier price identifier to identify the existing request.
+     * @param timestamp timestamp to identify the existing request.
+     * @param ancillaryData ancillary data of the price being requested.
+     * @param request price request parameters whose hash must match the request that the caller wants to
      *              dispute.
-     * @param _disputer address to set as the disputer.
-     * @param _requester sender of the initial price request.
+     * @param disputer address to set as the disputer.
+     * @param requester sender of the initial price request.
      * @return totalBond the amount that's pulled from the caller's wallet as a bond. The bond will be returned to
      * the disputer once settled if the dispute was valid (the proposal was incorrect).
      */
     function disputePriceFor(
-        bytes32 _identifier,
-        uint32 _timestamp,
-        bytes memory _ancillaryData,
-        Request memory _request,
-        address _disputer,
-        address _requester
+        bytes32 identifier,
+        uint32 timestamp,
+        bytes memory ancillaryData,
+        Request memory request,
+        address disputer,
+        address requester
     ) public override nonReentrant() returns (uint256 totalBond) {
-        require(_disputer != address(0), "disputer address must be non 0");
+        require(disputer != address(0), "disputer address must be non 0");
         require(
-            _getState(_requester, _identifier, _timestamp, _ancillaryData, _request) ==
+            _getState(requester, identifier, timestamp, ancillaryData, request) ==
                 OptimisticOracleInterface.State.Proposed,
             "Must be proposed"
         );
-        bytes32 requestId = _getId(_requester, _identifier, _timestamp, _ancillaryData);
-        _validateRequestHash(requestId, _request);
+        bytes32 requestId = _getId(requester, identifier, timestamp, ancillaryData);
+        _validateRequestHash(requestId, request);
 
         // Associate newly disputed request params with ID
         Request memory disputedRequest =
             Request({
-                proposer: _request.proposer,
-                disputer: _disputer, // Modified
-                currency: _request.currency,
-                settled: _request.settled,
-                proposedPrice: _request.proposedPrice,
-                resolvedPrice: _request.resolvedPrice,
-                expirationTime: _request.expirationTime,
-                reward: _request.reward,
-                finalFee: _request.finalFee,
-                bond: _request.bond,
-                customLiveness: _request.customLiveness
+                proposer: request.proposer,
+                disputer: disputer, // Modified
+                currency: request.currency,
+                settled: request.settled,
+                proposedPrice: request.proposedPrice,
+                resolvedPrice: request.resolvedPrice,
+                expirationTime: request.expirationTime,
+                reward: request.reward,
+                finalFee: request.finalFee,
+                bond: request.bond,
+                customLiveness: request.customLiveness
             });
         _storeRequestHash(requestId, disputedRequest);
 
-        totalBond = _request.bond.add(_request.finalFee);
-        if (totalBond > 0) _request.currency.safeTransferFrom(msg.sender, address(this), totalBond);
+        totalBond = request.bond.add(request.finalFee);
+        if (totalBond > 0) request.currency.safeTransferFrom(msg.sender, address(this), totalBond);
 
         StoreInterface store = _getStore();
 
@@ -402,110 +399,109 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
             uint256 burnedBond = _computeBurnedBond(disputedRequest);
 
             // The total fee is the burned bond and the final fee added together.
-            uint256 totalFee = _request.finalFee.add(burnedBond);
+            uint256 totalFee = request.finalFee.add(burnedBond);
 
             if (totalFee > 0) {
-                _request.currency.safeIncreaseAllowance(address(store), totalFee);
-                _getStore().payOracleFeesErc20(address(_request.currency), FixedPoint.Unsigned(totalFee));
+                request.currency.safeIncreaseAllowance(address(store), totalFee);
+                _getStore().payOracleFeesErc20(address(request.currency), FixedPoint.Unsigned(totalFee));
             }
         }
 
-        _getOracle().requestPrice(_identifier, _timestamp, _stampAncillaryData(_ancillaryData, _requester));
+        _getOracle().requestPrice(identifier, timestamp, _stampAncillaryData(ancillaryData, requester));
 
-        emit DisputePrice(_requester, _identifier, _timestamp, _ancillaryData, disputedRequest);
+        emit DisputePrice(requester, identifier, timestamp, ancillaryData, disputedRequest);
 
         // Callback.
-        if (address(_requester).isContract())
+        if (address(requester).isContract())
             try
-                OptimisticRequester(_requester).priceDisputed(_identifier, _timestamp, _ancillaryData, disputedRequest)
+                OptimisticRequester(requester).priceDisputed(identifier, timestamp, ancillaryData, disputedRequest)
             {} catch {}
     }
 
     /**
      * @notice Disputes a price request with an active proposal where caller is the disputer.
-     * @param _requester sender of the initial price request.
-     * @param _identifier price identifier to identify the existing request.
-     * @param _timestamp timestamp to identify the existing request.
-     * @param _ancillaryData ancillary data of the price being requested.
-     * @param _request price request parameters whose hash must match the request that the caller wants to
+     * @param requester sender of the initial price request.
+     * @param identifier price identifier to identify the existing request.
+     * @param timestamp timestamp to identify the existing request.
+     * @param ancillaryData ancillary data of the price being requested.
+     * @param request price request parameters whose hash must match the request that the caller wants to
      *             dispute.
      * @return totalBond the amount that's pulled from the caller's wallet as a bond. The bond will be returned to
      * the disputer once settled if the dispute was valid (the proposal was incorrect).
      */
     function disputePrice(
-        address _requester,
-        bytes32 _identifier,
-        uint32 _timestamp,
-        bytes memory _ancillaryData,
-        Request memory _request
+        address requester,
+        bytes32 identifier,
+        uint32 timestamp,
+        bytes memory ancillaryData,
+        Request memory request
     ) external override returns (uint256 totalBond) {
         // Note: re-entrancy guard is done in the inner call.
-        return disputePriceFor(_identifier, _timestamp, _ancillaryData, _request, msg.sender, _requester);
+        return disputePriceFor(identifier, timestamp, ancillaryData, request, msg.sender, requester);
     }
 
     /**
      * @notice Attempts to settle an outstanding price request. Will revert if it isn't settleable.
-     * @param _requester sender of the initial price request.
-     * @param _identifier price identifier to identify the existing request.
-     * @param _timestamp timestamp to identify the existing request.
-     * @param _ancillaryData ancillary data of the price being requested.
-     * @param _request price request parameters whose hash must match the request that the caller wants to
+     * @param requester sender of the initial price request.
+     * @param identifier price identifier to identify the existing request.
+     * @param timestamp timestamp to identify the existing request.
+     * @param ancillaryData ancillary data of the price being requested.
+     * @param request price request parameters whose hash must match the request that the caller wants to
      *              settle.
      * @return payout the amount that the "winner" (proposer or disputer) receives on settlement. This amount includes
      * the returned bonds as well as additional rewards.
      * @return resolvedPrice the price that the request settled to.
      */
     function settle(
-        address _requester,
-        bytes32 _identifier,
-        uint32 _timestamp,
-        bytes memory _ancillaryData,
-        Request memory _request
+        address requester,
+        bytes32 identifier,
+        uint32 timestamp,
+        bytes memory ancillaryData,
+        Request memory request
     ) external override nonReentrant() returns (uint256 payout, int256 resolvedPrice) {
-        return _settle(_requester, _identifier, _timestamp, _ancillaryData, _request);
+        return _settle(requester, identifier, timestamp, ancillaryData, request);
     }
 
     /**
      * @notice Computes the current state of a price request. See the State enum for more details.
-     * @param _requester sender of the initial price request.
-     * @param _identifier price identifier to identify the existing request.
-     * @param _timestamp timestamp to identify the existing request.
-     * @param _ancillaryData ancillary data of the price being requested.
-     * @param _request price request parameters.
+     * @param requester sender of the initial price request.
+     * @param identifier price identifier to identify the existing request.
+     * @param timestamp timestamp to identify the existing request.
+     * @param ancillaryData ancillary data of the price being requested.
+     * @param request price request parameters.
      * @return the State.
      */
     function getState(
-        address _requester,
-        bytes32 _identifier,
-        uint32 _timestamp,
-        bytes memory _ancillaryData,
-        Request memory _request
+        address requester,
+        bytes32 identifier,
+        uint32 timestamp,
+        bytes memory ancillaryData,
+        Request memory request
     ) external override nonReentrant() returns (OptimisticOracleInterface.State) {
-        return _getState(_requester, _identifier, _timestamp, _ancillaryData, _request);
+        return _getState(requester, identifier, timestamp, ancillaryData, request);
     }
 
     /**
      * @notice Checks if a given request has resolved, expired or been settled (i.e the optimistic oracle has a price).
-     * @param _requester sender of the initial price request.
-     * @param _identifier price identifier to identify the existing request.
-     * @param _timestamp timestamp to identify the existing request.
-     * @param _ancillaryData ancillary data of the price being requested.
-     * @param _request price request parameters. The hash of these parameters must match with the request hash that is
+     * @param requester sender of the initial price request.
+     * @param identifier price identifier to identify the existing request.
+     * @param timestamp timestamp to identify the existing request.
+     * @param ancillaryData ancillary data of the price being requested.
+     * @param request price request parameters. The hash of these parameters must match with the request hash that is
      * associated with the price request unique ID {requester, identifier, timestamp, ancillaryData}, or this method
      * will revert.
      * @return boolean indicating true if price exists and false if not.
      */
     function hasPrice(
-        address _requester,
-        bytes32 _identifier,
-        uint32 _timestamp,
-        bytes memory _ancillaryData,
-        Request memory _request
+        address requester,
+        bytes32 identifier,
+        uint32 timestamp,
+        bytes memory ancillaryData,
+        Request memory request
     ) public override nonReentrant() returns (bool) {
-        bytes32 requestId = _getId(_requester, _identifier, _timestamp, _ancillaryData);
-        _validateRequestHash(requestId, _request);
-        OptimisticOracleInterface.State state =
-            _getState(_requester, _identifier, _timestamp, _ancillaryData, _request);
+        bytes32 requestId = _getId(requester, identifier, timestamp, ancillaryData);
+        _validateRequestHash(requestId, request);
+        OptimisticOracleInterface.State state = _getState(requester, identifier, timestamp, ancillaryData, request);
         return
             state == OptimisticOracleInterface.State.Settled ||
             state == OptimisticOracleInterface.State.Resolved ||
@@ -514,17 +510,17 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
 
     /**
      * @notice Generates stamped ancillary data in the format that it would be used in the case of a price dispute.
-     * @param _ancillaryData ancillary data of the price being requested.
-     * @param _requester sender of the initial price request.
+     * @param ancillaryData ancillary data of the price being requested.
+     * @param requester sender of the initial price request.
      * @return the stamped ancillary bytes.
      */
-    function stampAncillaryData(bytes memory _ancillaryData, address _requester)
+    function stampAncillaryData(bytes memory ancillaryData, address requester)
         public
         pure
         override
         returns (bytes memory)
     {
-        return _stampAncillaryData(_ancillaryData, _requester);
+        return _stampAncillaryData(ancillaryData, requester);
     }
 
     /****************************************
@@ -533,137 +529,130 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
     // Returns hash of unique request identifiers. This contract maps request ID hashes to hashes of the request's
     // parameters.
     function _getId(
-        address _requester,
-        bytes32 _identifier,
-        uint32 _timestamp,
-        bytes memory _ancillaryData
+        address requester,
+        bytes32 identifier,
+        uint32 timestamp,
+        bytes memory ancillaryData
     ) private pure returns (bytes32) {
-        return keccak256(abi.encode(_requester, _identifier, _timestamp, _ancillaryData));
+        return keccak256(abi.encode(requester, identifier, timestamp, ancillaryData));
     }
 
     // Returns hash of request parameters. These are mapped to the unique request ID to track a request's lifecycle.
-    function _getRequestHash(Request memory _request) private pure returns (bytes32) {
-        return keccak256(abi.encode(_request));
+    function _getRequestHash(Request memory request) private pure returns (bytes32) {
+        return keccak256(abi.encode(request));
     }
 
     // Resolves a price request that has expired or been disputed and a price is available from the DVM. This will
     // revert if the unique request ID does not match the hashed request parameters. This also marks the request
     // as settled, therefore this method can only be triggered once per eligible request.
     function _settle(
-        address _requester,
-        bytes32 _identifier,
-        uint32 _timestamp,
-        bytes memory _ancillaryData,
-        Request memory _request
+        address requester,
+        bytes32 identifier,
+        uint32 timestamp,
+        bytes memory ancillaryData,
+        Request memory request
     ) private returns (uint256 payout, int256 resolvedPrice) {
-        bytes32 requestId = _getId(_requester, _identifier, _timestamp, _ancillaryData);
-        _validateRequestHash(requestId, _request);
+        bytes32 requestId = _getId(requester, identifier, timestamp, ancillaryData);
+        _validateRequestHash(requestId, request);
 
         // Associate settled request params with ID.
         Request memory settledRequest =
             Request({
-                proposer: _request.proposer,
-                disputer: _request.disputer,
-                currency: _request.currency,
+                proposer: request.proposer,
+                disputer: request.disputer,
+                currency: request.currency,
                 settled: true, // Modified
-                proposedPrice: _request.proposedPrice,
-                resolvedPrice: _request.resolvedPrice,
-                expirationTime: _request.expirationTime,
-                reward: _request.reward,
-                finalFee: _request.finalFee,
-                bond: _request.bond,
-                customLiveness: _request.customLiveness
+                proposedPrice: request.proposedPrice,
+                resolvedPrice: request.resolvedPrice,
+                expirationTime: request.expirationTime,
+                reward: request.reward,
+                finalFee: request.finalFee,
+                bond: request.bond,
+                customLiveness: request.customLiveness
             });
 
-        OptimisticOracleInterface.State state =
-            _getState(_requester, _identifier, _timestamp, _ancillaryData, _request);
+        OptimisticOracleInterface.State state = _getState(requester, identifier, timestamp, ancillaryData, request);
         if (state == OptimisticOracleInterface.State.Expired) {
             // In the expiry case, just pay back the proposer's bond and final fee along with the reward.
-            resolvedPrice = _request.proposedPrice;
+            resolvedPrice = request.proposedPrice;
             settledRequest.resolvedPrice = resolvedPrice;
-            payout = _request.bond.add(_request.finalFee).add(_request.reward);
-            _request.currency.safeTransfer(_request.proposer, payout);
+            payout = request.bond.add(request.finalFee).add(request.reward);
+            request.currency.safeTransfer(request.proposer, payout);
         } else if (state == OptimisticOracleInterface.State.Resolved) {
             // In the Resolved case, pay either the disputer or the proposer the entire payout (+ bond and reward).
-            resolvedPrice = _getOracle().getPrice(
-                _identifier,
-                _timestamp,
-                _stampAncillaryData(_ancillaryData, _requester)
-            );
+            resolvedPrice = _getOracle().getPrice(identifier, timestamp, _stampAncillaryData(ancillaryData, requester));
             settledRequest.resolvedPrice = resolvedPrice;
-            bool disputeSuccess = settledRequest.resolvedPrice != _request.proposedPrice;
+            bool disputeSuccess = settledRequest.resolvedPrice != request.proposedPrice;
 
             // Winner gets:
             // - Their bond back.
             // - The unburned portion of the loser's bond: proposal bond (not including final fee) - burned bond.
             // - Their final fee back.
             // - The request reward (if not already refunded -- if refunded, it will be set to 0).
-            payout = _request
-                .bond
-                .add(_request.bond.sub(_computeBurnedBond(settledRequest)))
-                .add(_request.finalFee)
-                .add(_request.reward);
-            _request.currency.safeTransfer(disputeSuccess ? _request.disputer : _request.proposer, payout);
+            payout = request.bond.add(request.bond.sub(_computeBurnedBond(settledRequest))).add(request.finalFee).add(
+                request.reward
+            );
+            request.currency.safeTransfer(disputeSuccess ? request.disputer : request.proposer, payout);
         } else {
             revert("Already settled or not settleable");
         }
 
         _storeRequestHash(requestId, settledRequest);
-        emit Settle(_requester, _identifier, _timestamp, _ancillaryData, settledRequest);
+        emit Settle(requester, identifier, timestamp, ancillaryData, settledRequest);
 
         // Callback.
-        if (address(_requester).isContract())
+        if (address(requester).isContract())
             try
-                OptimisticRequester(_requester).priceSettled(_identifier, _timestamp, _ancillaryData, settledRequest)
+                OptimisticRequester(requester).priceSettled(identifier, timestamp, ancillaryData, settledRequest)
             {} catch {}
     }
 
-    function _computeBurnedBond(Request memory _request) private pure returns (uint256) {
+    function _computeBurnedBond(Request memory request) private pure returns (uint256) {
         // burnedBond = floor(bond / 2)
-        return _request.bond.div(2);
+        return request.bond.div(2);
     }
 
-    function _validateLiveness(uint256 _liveness) private pure {
-        require(_liveness < 5200 weeks, "Liveness too large");
-        require(_liveness > 0, "Liveness cannot be 0");
+    function _validateLiveness(uint256 liveness) private pure {
+        require(liveness < 5200 weeks, "Liveness too large");
+        require(liveness > 0, "Liveness cannot be 0");
     }
 
-    function _validateRequestHash(bytes32 _requestId, Request memory _request) private view {
+    function _validateRequestHash(bytes32 requestId, Request memory request) private view {
         require(
-            requests[_requestId] == _getRequestHash(_request),
+            requests[requestId] == _getRequestHash(request),
             "Hashed request params do not match existing request hash"
         );
     }
 
-    function _storeRequestHash(bytes32 _requestId, Request memory _request) internal {
-        requests[_requestId] = _getRequestHash(_request);
+    function _storeRequestHash(bytes32 requestId, Request memory request) internal {
+        requests[requestId] = _getRequestHash(request);
     }
 
     function _getState(
-        address _requester,
-        bytes32 _identifier,
-        uint32 _timestamp,
-        bytes memory _ancillaryData,
-        Request memory _request
+        address requester,
+        bytes32 identifier,
+        uint32 timestamp,
+        bytes memory ancillaryData,
+        Request memory request
     ) internal view returns (OptimisticOracleInterface.State) {
         // Note: This function does not check whether all of the _request parameter values are correct. For example,
-        // the _request.reward could be any value and it would not impact this function's return value. Therefore, it
+        // the request.reward could be any value and it would not impact this function's return value. Therefore, it
         // is the caller's responsibility to check that _request matches with the expected ID corresponding to
         // {requester, identifier, timestamp, ancillaryData} via _validateRequestHash().
-        if (address(_request.currency) == address(0)) return OptimisticOracleInterface.State.Invalid;
+        if (address(request.currency) == address(0)) return OptimisticOracleInterface.State.Invalid;
 
-        if (_request.proposer == address(0)) return OptimisticOracleInterface.State.Requested;
+        if (request.proposer == address(0)) return OptimisticOracleInterface.State.Requested;
 
-        if (_request.settled) return OptimisticOracleInterface.State.Settled;
+        if (request.settled) return OptimisticOracleInterface.State.Settled;
 
-        if (_request.disputer == address(0))
+        if (request.disputer == address(0))
             return
-                _request.expirationTime <= getCurrentTime()
+                request.expirationTime <= getCurrentTime()
                     ? OptimisticOracleInterface.State.Expired
                     : OptimisticOracleInterface.State.Proposed;
 
         return
-            _getOracle().hasPrice(_identifier, _timestamp, _stampAncillaryData(_ancillaryData, _requester))
+            _getOracle().hasPrice(identifier, timestamp, _stampAncillaryData(ancillaryData, requester))
                 ? OptimisticOracleInterface.State.Resolved
                 : OptimisticOracleInterface.State.Disputed;
     }
@@ -689,9 +678,9 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
      * For those cases, we assume that the client will be able to strip out the utf8-translateable part of the
      * ancillary data that this contract stamps.
      */
-    function _stampAncillaryData(bytes memory _ancillaryData, address _requester) internal pure returns (bytes memory) {
+    function _stampAncillaryData(bytes memory ancillaryData, address requester) internal pure returns (bytes memory) {
         // Since this contract will be the one to formally submit DVM price requests, its useful for voters to know who
         // the original requester was.
-        return AncillaryData.appendKeyValueAddress(_ancillaryData, "ooRequester", _requester);
+        return AncillaryData.appendKeyValueAddress(ancillaryData, "ooRequester", requester);
     }
 }

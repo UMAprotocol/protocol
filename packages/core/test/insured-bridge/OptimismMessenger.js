@@ -93,12 +93,16 @@ describe("OptimismMessenger integration with BridgeAdmin", () => {
       bridgeAdmin.options.address,
       l1Token,
       lpFeeRatePerSecond,
+      false, // not set to weth pool
       timer.options.address
     ).send({ from: owner });
 
-    depositBox = await BridgeDepositBox.new(bridgeAdmin.options.address, defaultBridgingDelay, ZERO_ADDRESS).send({
-      from: owner,
-    });
+    depositBox = await BridgeDepositBox.new(
+      bridgeAdmin.options.address,
+      defaultBridgingDelay,
+      ZERO_ADDRESS, // weth address. Weth mode not used in these tests
+      ZERO_ADDRESS // timer address
+    ).send({ from: owner });
   });
   it("relayMessage only callable by owner", async function () {
     const relayMessageTxn = optimismMessenger.methods.relayMessage(

@@ -92,6 +92,7 @@ describe("ArbitrumMessenger integration with BridgeAdmin", () => {
       bridgeAdmin.options.address,
       l1Token,
       lpFeeRatePerSecond,
+      false, // not set to weth pool
       timer.options.address
     ).send({ from: owner });
 
@@ -101,7 +102,8 @@ describe("ArbitrumMessenger integration with BridgeAdmin", () => {
     depositBox = await BridgeDepositBox.new(
       arbitrumMessenger.options.address,
       defaultBridgingDelay,
-      ZERO_ADDRESS
+      ZERO_ADDRESS, // weth address. Weth mode not used in these tests
+      ZERO_ADDRESS // timer address
     ).send({ from: owner });
   });
   it("relayMessage basic checks", async function () {
