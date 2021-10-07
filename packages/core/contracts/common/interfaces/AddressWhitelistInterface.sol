@@ -4,9 +4,9 @@ pragma solidity ^0.8.0;
 interface AddressWhitelistInterface {
     function addToWhitelist(address newElement) external;
 
-    function removeFromWhitelist(address newElement) external virtual;
+    function removeFromWhitelist(address newElement) external;
 
-    function isOnWhitelist(address newElement) external view virtual returns (bool);
+    function isOnWhitelist(address newElement) external view returns (bool);
 
-    function getWhitelist() external view virtual returns (address[] memory);
+    function getWhitelist() external view returns (address[] memory);
 }

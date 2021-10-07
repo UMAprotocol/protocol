@@ -29,7 +29,7 @@ export function getHardhatConfig(
   require("./hardhat/plugins/ExtendedWeb3");
 
   // Solc version defined here so etherscan-verification has access to it.
-  const solcVersion = "0.8.4";
+  const solcVersion = "0.8.9";
 
   // Compilation settings are overridden for large contracts to allow them to compile without going over the bytecode
   // limit.

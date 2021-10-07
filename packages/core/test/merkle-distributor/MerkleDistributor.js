@@ -762,7 +762,7 @@ describe("MerkleDistributor.js", function () {
         }
         const sortedClaims = await sortClaimsByAccountAndToken(batchedClaims);
         const tx = await merkleDistributor.methods.claimMulti(sortedClaims).send({ from: accounts[0] });
-        assertApproximate(36560, Math.floor(tx.gasUsed / sortedClaims.length));
+        assertApproximate(36153, Math.floor(tx.gasUsed / sortedClaims.length));
       });
       it("many trees, many reward tokens, many accounts: gas amortized", async function () {
         // This is a realistic scenario where the caller is making their claims for various

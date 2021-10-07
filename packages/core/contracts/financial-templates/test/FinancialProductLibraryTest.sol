@@ -27,7 +27,7 @@ contract FinancialProductLibraryTest is FinancialProductLibrary {
     }
 
     // Create a simple price transformation function that scales the input price by the scalar for testing.
-    function transformPrice(FixedPoint.Unsigned memory oraclePrice, uint256 requestTime)
+    function transformPrice(FixedPoint.Unsigned memory oraclePrice, uint256)
         public
         view
         override
@@ -39,7 +39,7 @@ contract FinancialProductLibraryTest is FinancialProductLibrary {
 
     // Create a simple collateral requirement transformation that doubles the input collateralRequirement.
     function transformCollateralRequirement(
-        FixedPoint.Unsigned memory price,
+        FixedPoint.Unsigned memory,
         FixedPoint.Unsigned memory collateralRequirement
     ) public view override returns (FixedPoint.Unsigned memory) {
         require(!shouldRevert, "set to always reverts");
@@ -47,12 +47,7 @@ contract FinancialProductLibraryTest is FinancialProductLibrary {
     }
 
     // Create a simple transformPriceIdentifier function that returns the transformed price identifier.
-    function transformPriceIdentifier(bytes32 priceIdentifier, uint256 requestTime)
-        public
-        view
-        override
-        returns (bytes32)
-    {
+    function transformPriceIdentifier(bytes32, uint256) public view override returns (bytes32) {
         require(!shouldRevert, "set to always reverts");
         return transformedPriceIdentifier;
     }

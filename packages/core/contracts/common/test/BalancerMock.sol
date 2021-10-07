@@ -10,13 +10,7 @@ contract BalancerMock is Balancer {
     uint256 price = 0;
 
     // these params arent used in the mock, but this is to maintain compatibility with balancer API
-    function getSpotPriceSansFee(address tokenIn, address tokenOut)
-        external
-        view
-        virtual
-        override
-        returns (uint256 spotPrice)
-    {
+    function getSpotPriceSansFee(address, address) external view virtual override returns (uint256 spotPrice) {
         return price;
     }
 
