@@ -1,5 +1,4 @@
 const hre = require("hardhat");
-const { web3 } = hre;
 const { runDefaultFixture } = require("@uma/common");
 const { getContract, assertEventEmitted } = hre;
 const { toWei, utf8ToHex, hexToUtf8, padRight } = web3.utils;
