@@ -58,6 +58,15 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
     // Administrative contract that deployed this contract and also houses all state variables needed to relay deposits.
     BridgeAdminInterface public bridgeAdmin;
 
+    // Store local instances of the contract instances to save gas relaying. Can be sync with the Finder at any time.
+    StoreInterface public store;
+    SkinnyOptimisticOracleInterface public optimisticOracle;
+
+    // Store local instances of contract params to save gas relaying. Can be synced with the BridgeAdmin at any time.
+    uint64 public proposerBondPct;
+    uint64 public optimisticOracleLiveness;
+    bytes32 public identifier;
+
     // A Relay represents an attempt to finalize a cross-chain transfer that originated on an L2 DepositBox contract.
     enum RelayState { Uninitialized, Pending, Disputed, PendingFinalization, Finalized }
 
@@ -112,7 +121,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
     event BridgePoolAdminTransferred(address oldAdmin, address newAdmin);
 
     modifier onlyFromOptimisticOracle() {
-        require(msg.sender == address(_getOptimisticOracle()), "Caller must be OptimisticOracle");
+        require(msg.sender == address(optimisticOracle), "Caller must be OptimisticOracle");
         _;
     }
 
@@ -139,6 +148,9 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         l1Token = IERC20(_l1Token);
         lastLpFeeUpdate = getCurrentTime();
         lpFeeRatePerSecond = _lpFeeRatePerSecond;
+
+        syncWithFinderAddresses(); // Fetch OptimisticOracle and Store addresses from the Finder.
+        syncWithBridgeAdminParams(); // Fetch ProposerBondPct OptimisticOracleLiveness, Identifier from the BridgeAdmin.
     }
 
     /*************************************************
@@ -340,6 +352,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
     function settleRelay(DepositData memory depositData) public nonReentrant() {
         bytes32 depositHash = _getDepositHash(depositData);
         RelayData storage relay = relays[depositHash];
+
         require(relays[depositHash].relayState == RelayState.PendingFinalization, "Settle iff price resolved True");
 
         // Update the relay state to Finalized. This prevents any re-settling of a relay.
@@ -498,6 +511,33 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         return (numerator * 1e18) / liquidReserves;
     }
 
+    /**
+     * @notice Updates the address stored in this contract for the OptimisticOracle and the Store to the latest versions
+     * set in the the Finder. We store these as local addresses to make relay methods more gas efficient.
+     * @dev there is no risk of leaving this function public for anyone to call as in all cases we want the addresses
+     * in this contract to map to the latest version in the Finder.
+     */
+    function syncWithFinderAddresses() public {
+        FinderInterface finder = FinderInterface(bridgeAdmin.finder());
+
+        optimisticOracle = SkinnyOptimisticOracleInterface(
+            finder.getImplementationAddress(OracleInterfaces.SkinnyOptimisticOracle)
+        );
+        store = StoreInterface(finder.getImplementationAddress(OracleInterfaces.Store));
+    }
+
+    /**
+     * @notice Updates the values of stored constants for the proposerBondPct, optimisticOracleLiveness and identifier
+     * to that set in the bridge Admin. We store these as local variables to make the relay methods more gas efficient.
+     * @dev there is no risk of leaving this function public for anyone to call as in all cases we want these values
+     * in this contract to map to the latest version set in the BridgeAdmin.
+     */
+    function syncWithBridgeAdminParams() public {
+        proposerBondPct = bridgeAdmin.proposerBondPct();
+        optimisticOracleLiveness = bridgeAdmin.optimisticOracleLiveness();
+        identifier = bridgeAdmin.identifier();
+    }
+
     /************************************
      *          ADMIN FUNCTIONS         *
      ************************************/
@@ -613,23 +653,12 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         }
     }
 
-    function _getOptimisticOracle() private view returns (SkinnyOptimisticOracleInterface) {
-        return
-            SkinnyOptimisticOracleInterface(
-                FinderInterface(bridgeAdmin.finder()).getImplementationAddress(OracleInterfaces.SkinnyOptimisticOracle)
-            );
-    }
-
-    function _getStore() private view returns (StoreInterface) {
-        return StoreInterface(FinderInterface(bridgeAdmin.finder()).getImplementationAddress(OracleInterfaces.Store));
-    }
-
     function _getAmountFromPct(uint64 percent, uint256 amount) private pure returns (uint256) {
         return (percent * amount) / 1e18;
     }
 
     function _getProposerBond(uint256 amount) private view returns (uint256) {
-        return _getAmountFromPct(bridgeAdmin.proposerBondPct(), amount);
+        return _getAmountFromPct(proposerBondPct, amount);
     }
 
     function _getDepositHash(DepositData memory depositData) private view returns (bytes32) {
@@ -654,15 +683,11 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         uint256 requestTimestamp,
         bytes memory customAncillaryData
     ) private {
-        SkinnyOptimisticOracleInterface optimisticOracle = _getOptimisticOracle();
-
         // Compute total proposal bond and pull from caller so that the OptimisticOracle can pull it from here.
         uint256 proposerBond = _getProposerBond(amount);
-        uint256 finalFee = _getStore().computeFinalFee(address(l1Token)).rawValue;
+        uint256 finalFee = store.computeFinalFee(address(l1Token)).rawValue;
         uint256 totalBond =
-            (uint256(bridgeAdmin.proposerBondPct()) * amount) /
-                1e18 +
-                _getStore().computeFinalFee(address(l1Token)).rawValue;
+            (uint256(bridgeAdmin.proposerBondPct()) * amount) / 1e18 + store.computeFinalFee(address(l1Token)).rawValue;
 
         l1Token.safeTransferFrom(msg.sender, address(this), totalBond);
         l1Token.safeApprove(address(optimisticOracle), totalBond);
