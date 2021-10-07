@@ -200,6 +200,7 @@ describe("BridgeAdmin", () => {
         bridgeAdmin.options.address,
         l1Token,
         lpFeeRatePerSecond,
+        false,
         timer.options.address
       ).send({ from: owner });
 
