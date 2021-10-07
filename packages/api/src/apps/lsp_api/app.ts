@@ -1,6 +1,7 @@
 import assert from "assert";
 import { ethers } from "ethers";
 import Events from "events";
+import Web3 from "web3";
 
 import { tables, Coingecko, utils, Multicall2 } from "@uma/sdk";
 
@@ -10,7 +11,7 @@ import * as Actions from "../../services/actions";
 import { ProcessEnv, AppState, Channels } from "../../types";
 import { empStats, empStatsHistory, lsps } from "../../tables";
 import Zrx from "../../libs/zrx";
-import { Profile, parseEnvArray, getWeb3, BlockInterval, expirePromise } from "../../libs/utils";
+import { Profile, parseEnvArray, BlockInterval, expirePromise } from "../../libs/utils";
 
 // This is almost identical to api app, but removes some key services from starting up. Maintains ability to use
 // api for LSP calls only. Express API maintains compatibility with original API but will not populate EMP data.
@@ -29,9 +30,6 @@ export default async (env: ProcessEnv) => {
 
   const provider = new ethers.providers.WebSocketProvider(env.CUSTOM_NODE_URL);
 
-  // we need web3 for syth price feeds
-  const web3 = getWeb3(env.CUSTOM_NODE_URL);
-
   // how often to run expensive state updates, defaults to 1 minutes since EMP updates are gone
   const updateRateS = Number(env.UPDATE_RATE_S || 60);
   // Defaults to 60 seconds, since this is i think a pretty cheap call, and we want to see new contracts quickly
@@ -49,7 +47,8 @@ export default async (env: ProcessEnv) => {
   // state shared between services
   const appState: AppState = {
     provider,
-    web3,
+    // This isnt needed for the lsp app to run, but the type needs to conform to app state
+    web3: {} as Web3,
     coingecko: new Coingecko(),
     zrx: new Zrx(env.zrxBaseUrl),
     blocks: tables.blocks.Table(),
@@ -135,16 +134,6 @@ export default async (env: ProcessEnv) => {
       serviceEvents.emit("empRegistry", event, data)
     ),
     collateralPrices: Services.CollateralPrices({ debug }, appState),
-    syntheticPrices: Services.SyntheticPrices(
-      {
-        debug,
-        cryptowatchApiKey: env.cryptowatchApiKey,
-        tradermadeApiKey: env.tradermadeApiKey,
-        quandlApiKey: env.quandlApiKey,
-        defipulseApiKey: env.defipulseApiKey,
-      },
-      appState
-    ),
     erc20s: Services.Erc20s({ debug }, appState),
     empStats: Services.stats.Emp({ debug }, appState),
     marketPrices: Services.MarketPrices({ debug }, appState),
@@ -220,75 +209,77 @@ export default async (env: ProcessEnv) => {
   }
 
   // wait update rate before running loops, since all state was just updated on init
-  await new Promise((res) => setTimeout(res, updateRateS * 1000));
+  new Promise((res) => setTimeout(res, updateRateS * 1000)).then(initLoops);
 
-  console.log("Starting LSP API update loops");
+  async function initLoops() {
+    console.log("Starting LSP API update loops");
 
-  // listen for new lsp contracts since after we have started api, and make sure they get state updated asap
-  // These events should only be bound after startup, since initialization above takes care of updating all contracts on startup
-  // Because there is now a event driven dependency, the lsp creator and lsp state updater must be in same process
-  serviceEvents.on("multiLspCreator", (event, data) => {
-    // handle created events
-    if (event === "created") {
-      console.log("LspCreator found a new contract", JSON.stringify(data));
-      services.lsps.updateLsps([data.address], data.startBlock, data.endBlock).catch(console.error);
+    // listen for new lsp contracts since after we have started api, and make sure they get state updated asap
+    // These events should only be bound after startup, since initialization above takes care of updating all contracts on startup
+    // Because there is now a event driven dependency, the lsp creator and lsp state updater must be in same process
+    serviceEvents.on("multiLspCreator", (event, data) => {
+      // handle created events
+      if (event === "created") {
+        console.log("LspCreator found a new contract", JSON.stringify(data));
+        services.lsps.updateLsps([data.address], data.startBlock, data.endBlock).catch(console.error);
+      }
+    });
+
+    // listen for new emp contracts since after we start api, make sure they get state updates asap
+    serviceEvents.on("empRegistry", (event, data) => {
+      // handle created events
+      if (event === "created") {
+        console.log("EmpRegistry found a new contract", JSON.stringify(data));
+        services.emps.updateAll([data.address], data.startBlock, data.endBlock).catch(console.error);
+      }
+    });
+
+    async function getLatestBlockNumber() {
+      const block = await provider.getBlock("latest");
+      return block.number;
     }
-  });
 
-  // listen for new emp contracts since after we start api, make sure they get state updates asap
-  serviceEvents.on("empRegistry", (event, data) => {
-    // handle created events
-    if (event === "created") {
-      console.log("EmpRegistry found a new contract", JSON.stringify(data));
-      services.emps.updateAll([data.address], data.startBlock, data.endBlock).catch(console.error);
-    }
-  });
+    const newContractBlockTick = BlockInterval(detectNewContracts, initBlock.number);
+    const updateContractStateTick = BlockInterval(updateContractState, initBlock.number);
 
-  async function getLatestBlockNumber() {
-    const block = await provider.getBlock("latest");
-    return block.number;
+    // detect contract loop
+    utils.loop(async () => {
+      const end = profile("Detecting New Contracts");
+      // adding in a timeout rejection if the update takes too long
+      await expirePromise(
+        async () => {
+          const { startBlock, endBlock } = await newContractBlockTick(await getLatestBlockNumber());
+          console.log("Checked for new contracts between blocks", startBlock, endBlock);
+          // error out if this fails to complete in 5 minutes
+        },
+        5 * 60 * 1000,
+        "Detecting new contracts timed out"
+      )
+        .catch(console.error)
+        .finally(end);
+    }, detectContractsUpdateRateS * 1000);
+
+    // main update loop for all state, executes immediately and waits for updateRateS
+    utils.loop(async () => {
+      const end = profile("Running contract state updates");
+      // adding in a timeout rejection if the update takes too long
+      await expirePromise(
+        async () => {
+          const { startBlock, endBlock } = await updateContractStateTick(await getLatestBlockNumber());
+          console.log("Updated Contract state between blocks", startBlock, endBlock);
+          // throw an error if this fails to process in 15 minutes
+        },
+        15 * 60 * 1000,
+        "Contract state updates timed out"
+      )
+        .catch(console.error)
+        .finally(end);
+    }, updateRateS * 1000);
+
+    // coingeckos prices don't update very fast, so set it on an interval every few minutes
+    utils.loop(async () => {
+      const end = profile("Update all prices");
+      await updatePrices().catch(console.error).finally(end);
+    }, priceUpdateRateS * 1000);
   }
-
-  const newContractBlockTick = BlockInterval(detectNewContracts, initBlock.number);
-  const updateContractStateTick = BlockInterval(updateContractState, initBlock.number);
-
-  // detect contract loop
-  utils.loop(async () => {
-    const end = profile("Detecting New Contracts");
-    // adding in a timeout rejection if the update takes too long
-    await expirePromise(
-      async () => {
-        const { startBlock, endBlock } = await newContractBlockTick(await getLatestBlockNumber());
-        console.log("Checked for new contracts between blocks", startBlock, endBlock);
-        // error out if this fails to complete in 5 minutes
-      },
-      5 * 60 * 1000,
-      "Detecting new contracts timed out"
-    )
-      .catch(console.error)
-      .finally(end);
-  }, detectContractsUpdateRateS * 1000);
-
-  // main update loop for all state, executes immediately and waits for updateRateS
-  utils.loop(async () => {
-    const end = profile("Running contract state updates");
-    // adding in a timeout rejection if the update takes too long
-    await expirePromise(
-      async () => {
-        const { startBlock, endBlock } = await updateContractStateTick(await getLatestBlockNumber());
-        console.log("Updated Contract state between blocks", startBlock, endBlock);
-        // throw an error if this fails to process in 15 minutes
-      },
-      15 * 60 * 1000,
-      "Contract state updates timed out"
-    )
-      .catch(console.error)
-      .finally(end);
-  }, updateRateS * 1000);
-
-  // coingeckos prices don't update very fast, so set it on an interval every few minutes
-  utils.loop(async () => {
-    const end = profile("Update all prices");
-    await updatePrices().catch(console.error).finally(end);
-  }, priceUpdateRateS * 1000);
 };
