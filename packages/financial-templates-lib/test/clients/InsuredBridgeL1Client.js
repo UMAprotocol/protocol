@@ -393,12 +393,7 @@ describe("InsuredBridgeL1Client", function () {
 
       // Settle relay.
       await bridgePool.methods
-        .settleRelay(
-          depositData,
-          relayAttemptData,
-          proposeEvent.returnValues.ancillaryData,
-          proposeEvent.returnValues.request
-        )
+        .settleRelay(depositData, relayAttemptData, proposeEvent.returnValues.request)
         .send({ from: rando });
 
       await client.update();
@@ -584,12 +579,7 @@ describe("InsuredBridgeL1Client", function () {
         .send({ from: owner });
       const proposeEvent = (await optimisticOracle.getPastEvents("ProposePrice", { fromBlock: 0 }))[0];
       await bridgePool.methods
-        .settleRelay(
-          depositData,
-          relayAttemptData,
-          proposeEvent.returnValues.ancillaryData,
-          proposeEvent.returnValues.request
-        )
+        .settleRelay(depositData, relayAttemptData, proposeEvent.returnValues.request)
         .send({ from: rando });
 
       // Construct the expected relay data that the client should return.
