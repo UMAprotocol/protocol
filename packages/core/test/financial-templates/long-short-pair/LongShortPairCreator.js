@@ -1,4 +1,5 @@
 const hre = require("hardhat");
+const { web3 } = hre;
 const { runDefaultFixture } = require("@uma/common");
 const { getContract, assertEventEmitted } = hre;
 const { toWei, utf8ToHex, hexToUtf8, padRight } = web3.utils;
@@ -35,6 +36,7 @@ const startTimestamp = Math.floor(Date.now() / 1000);
 const expirationTimestamp = startTimestamp + 10000;
 const optimisticOracleLiveness = 7200;
 const priceIdentifier = padRight(utf8ToHex("TEST_IDENTIFIER"), 64);
+const enableEarlyExpiration = true;
 const collateralPerPair = toWei("1"); // each pair of long and short tokens need 1 unit of collateral to mint.
 const longSynthName = "Long Test LSP";
 const longSynthSymbol = "LtCFD";
@@ -95,6 +97,7 @@ describe("LongShortPairCreator", function () {
       expirationTimestamp,
       collateralPerPair,
       priceIdentifier,
+      enableEarlyExpiration,
       longSynthName,
       longSynthSymbol,
       shortSynthName,
@@ -127,6 +130,7 @@ describe("LongShortPairCreator", function () {
     assert.equal(await lsp.methods.expirationTimestamp().call(), expirationTimestamp);
     assert.equal((await lsp.methods.collateralPerPair().call()).toString(), collateralPerPair.toString());
     assert.equal(hexToUtf8(await lsp.methods.priceIdentifier().call()), hexToUtf8(priceIdentifier));
+    assert.equal(await lsp.methods.enableEarlyExpiration().call(), enableEarlyExpiration);
     assert.equal(await lsp.methods.collateralToken().call(), collateralToken.options.address);
     assert.equal(await lsp.methods.customAncillaryData().call(), customAncillaryData);
     assert.equal(await lsp.methods.optimisticOracleLivenessTime().call(), optimisticOracleLivenessTime);

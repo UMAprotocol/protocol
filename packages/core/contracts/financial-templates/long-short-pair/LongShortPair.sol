@@ -41,7 +41,7 @@ contract LongShortPair is Testable, Lockable {
         uint64 expirationTimestamp; // Unix timestamp of when the contract will expire.
         uint256 collateralPerPair; // How many units of collateral are required to mint one pair of synthetic tokens.
         bytes32 priceIdentifier; // Price identifier, registered in the DVM for the long short pair.
-        bool enableEarlyExpiration; // Enables the LPS contract to be settled early if the OO request is not disputed.
+        bool enableEarlyExpiration; // Enables the LPS contract to be settled early.
         ExpandedIERC20 longToken; // Token used as long in the LSP. Mint and burn rights needed by this contract.
         ExpandedIERC20 shortToken; // Token used as short in the LSP. Mint and burn rights needed by this contract.
         IERC20 collateralToken; // Collateral token used to back LSP synthetics.

@@ -26,6 +26,7 @@ contract LongShortPairCreator is Testable, Lockable {
         uint64 expirationTimestamp;
         uint256 collateralPerPair;
         bytes32 priceIdentifier;
+        bool enableEarlyExpiration;
         string longSynthName;
         string longSynthSymbol;
         string shortSynthName;
@@ -70,9 +71,10 @@ contract LongShortPairCreator is Testable, Lockable {
      * @dev The caller must approve this contract to transfer `prepaidProposerReward` amount of collateral.
      * @param params Constructor params used to initialize the LSP. Key-valued object with the following structure:
      *     - `pairName`: Name of the long short pair contract.
-     *     - `expirationTimestamp`: unix timestamp of when the contract will expire.
-     *     - `collateralPerPair`: how many units of collateral are required to mint one pair of synthetic tokens.
-     *     - `priceIdentifier`: registered in the DVM for the synthetic.
+     *     - `expirationTimestamp`: Unix timestamp of when the contract will expire.
+     *     - `collateralPerPair`: How many units of collateral are required to mint one pair of synthetic tokens.
+     *     - `priceIdentifier`: Registered in the DVM for the synthetic.
+     *     - `enableEarlyExpiration`: Enables the LPS contract to be settled early.
      *     - `longSynthName`: Name of the long synthetic tokens to be created.
      *     - `longSynthSymbol`: Symbol of the long synthetic tokens to be created.
      *     - `shortSynthName`: Name of the short synthetic tokens to be created.
@@ -83,7 +85,7 @@ contract LongShortPairCreator is Testable, Lockable {
      *                              should be left as a 0-length bytes array.
      *     - `prepaidProposerReward`: Proposal reward forwarded to the created LSP to incentivize price proposals.
      *     - `optimisticOracleLivenessTime`: Optimistic oracle liveness time for price requests.
-     *     - `optimisticOracleProposerBond`: optimistic oracle proposer bond for price requests.
+     *     - `optimisticOracleProposerBond`: Optimistic oracle proposer bond for price requests.
      * @return lspAddress the deployed address of the new long short pair contract.
      * @notice Created LSP is not registered within the registry as the LSP uses the Optimistic Oracle for settlement.
      * @notice The LSP constructor does a number of validations on input params. These are not repeated here.
@@ -137,6 +139,7 @@ contract LongShortPairCreator is Testable, Lockable {
         constructorParams.expirationTimestamp = creatorParams.expirationTimestamp;
         constructorParams.collateralPerPair = creatorParams.collateralPerPair;
         constructorParams.priceIdentifier = creatorParams.priceIdentifier;
+        constructorParams.enableEarlyExpiration = creatorParams.enableEarlyExpiration;
         constructorParams.collateralToken = creatorParams.collateralToken;
         constructorParams.financialProductLibrary = creatorParams.financialProductLibrary;
         constructorParams.customAncillaryData = creatorParams.customAncillaryData;
