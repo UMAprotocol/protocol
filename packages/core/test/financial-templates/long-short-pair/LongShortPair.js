@@ -1,5 +1,5 @@
 const hre = require("hardhat");
-const { runDefaultFixture } = require("@uma/common");
+const { web3 } = hre;
 const { getContract, assertEventEmitted } = hre;
 const { toWei, utf8ToHex, toBN, padRight } = web3.utils;
 const { assert } = require("chai");
@@ -15,6 +15,7 @@ const LongShortPairFinancialProjectLibraryTest = getContract("LongShortPairFinan
 const AddressWhitelist = getContract("AddressWhitelist");
 const IdentifierWhitelist = getContract("IdentifierWhitelist");
 const Finder = getContract("Finder");
+const Store = getContract("Store");
 const Timer = getContract("Timer");
 const OptimisticOracle = getContract("OptimisticOracle");
 const Token = getContract("ExpandedERC20");
@@ -32,6 +33,7 @@ let finder;
 let customAncillaryData = web3.utils.utf8ToHex("some-address-field:0x1234");
 let timer;
 let constructorParams;
+let store;
 
 let optimisticOracleLivenessTime = 7200;
 let optimisticOracleProposerBond = "0";
@@ -50,38 +52,55 @@ describe("LongShortPair", function () {
   let holder;
   let rando;
 
-  const proposeAndSettleOptimisticOraclePrice = async (priceIdentifier, requestTime, price) => {
+  const proposeAndSettleOptimisticOraclePrice = async (
+    price,
+    requestTime,
+    ancillaryData = customAncillaryData,
+    identifier = priceIdentifier
+  ) => {
     await optimisticOracle.methods
-      .proposePrice(longShortPair.options.address, priceIdentifier, requestTime, customAncillaryData, price)
-      .send({ from: accounts[0] });
+      .proposePrice(longShortPair.options.address, identifier, requestTime, ancillaryData, price)
+      .send({ from: deployer });
     await optimisticOracle.methods
       .setCurrentTime(parseInt(await optimisticOracle.methods.getCurrentTime().call()) + optimisticOracleLivenessTime)
-      .send({ from: accounts[0] });
+      .send({ from: deployer });
     await optimisticOracle.methods
-      .settle(longShortPair.options.address, priceIdentifier, requestTime, customAncillaryData)
-      .send({ from: accounts[0] });
+      .settle(longShortPair.options.address, identifier, requestTime, ancillaryData)
+      .send({ from: deployer });
   };
 
   before(async function () {
     accounts = await web3.eth.getAccounts();
     [deployer, sponsor, holder, rando] = accounts;
-    await runDefaultFixture(hre);
-    finder = await Finder.deployed();
-    timer = await Timer.deployed();
-    collateralWhitelist = await AddressWhitelist.deployed();
-    identifierWhitelist = await IdentifierWhitelist.deployed();
+    timer = await Timer.new().send({ from: deployer });
+    finder = await Finder.new().send({ from: deployer });
+    collateralWhitelist = await AddressWhitelist.new().send({ from: deployer });
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.CollateralWhitelist), collateralWhitelist.options.address)
+      .send({ from: deployer });
+
+    identifierWhitelist = await IdentifierWhitelist.new().send({ from: deployer });
     await identifierWhitelist.methods.addSupportedIdentifier(priceIdentifier).send({ from: deployer });
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.IdentifierWhitelist), identifierWhitelist.options.address)
+      .send({ from: deployer });
+
+    store = await Store.new({ rawValue: "0" }, { rawValue: "0" }, timer.options.address).send({ from: deployer });
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.Store), store.options.address)
+      .send({ from: deployer });
   });
 
   beforeEach(async function () {
     // Force each test to start with a simulated time that's synced to the startTimestamp.
-    await timer.methods.setCurrentTime(startTimestamp).send({ from: accounts[0] });
+    await timer.methods.setCurrentTime(startTimestamp).send({ from: deployer });
 
     collateralToken = await Token.new("Wrapped Ether", "WETH", 18).send({ from: deployer });
     await collateralToken.methods.addMember(1, deployer).send({ from: deployer });
     await collateralToken.methods.mint(sponsor, toWei("1000")).send({ from: deployer });
 
-    await collateralWhitelist.methods.addToWhitelist(collateralToken.options.address).send({ from: accounts[0] });
+    await collateralWhitelist.methods.addToWhitelist(collateralToken.options.address).send({ from: deployer });
+    await store.methods.setFinalFee(collateralToken.options.address, { rawValue: toWei("0") }).send({ from: deployer });
 
     longToken = await Token.new("Long Token", "lTKN", 18).send({ from: deployer });
     shortToken = await Token.new("Short Token", "sTKN", 18).send({ from: deployer });
@@ -90,19 +109,20 @@ describe("LongShortPair", function () {
       optimisticOracleLivenessTime,
       finder.options.address,
       timer.options.address
-    ).send({ from: accounts[0] });
+    ).send({ from: deployer });
     await finder.methods
       .changeImplementationAddress(utf8ToHex(interfaceName.OptimisticOracle), optimisticOracle.options.address)
       .send({ from: deployer });
 
     // Create LSP library and LSP contract.
-    longShortPairTestLibrary = await LongShortPairFinancialProjectLibraryTest.new().send({ from: accounts[0] });
+    longShortPairTestLibrary = await LongShortPairFinancialProjectLibraryTest.new().send({ from: deployer });
 
     constructorParams = {
       pairName,
       expirationTimestamp,
       collateralPerPair,
       priceIdentifier,
+      enableEarlyExpiration: false,
       longToken: longToken.options.address,
       shortToken: shortToken.options.address,
       collateralToken: collateralToken.options.address,
@@ -115,8 +135,8 @@ describe("LongShortPair", function () {
       timerAddress: timer.options.address,
     };
 
-    longShortPair = await LongShortPair.new(constructorParams).send({ from: accounts[0] });
-    await collateralToken.methods.mint(longShortPair.options.address, toWei("100")).send({ from: accounts[0] });
+    longShortPair = await LongShortPair.new(constructorParams).send({ from: deployer });
+    await collateralToken.methods.mint(longShortPair.options.address, toWei("100")).send({ from: deployer });
 
     // Add mint and burn roles for the long and short tokens to the long short pair.
     await longToken.methods.addMember(1, longShortPair.options.address).send({ from: deployer });
@@ -142,6 +162,7 @@ describe("LongShortPair", function () {
       assert.equal(await longShortPair.methods.prepaidProposerReward().call(), prepaidProposerReward);
       assert.equal(await longShortPair.methods.optimisticOracleLivenessTime().call(), optimisticOracleLivenessTime);
       assert.equal(await longShortPair.methods.optimisticOracleProposerBond().call(), optimisticOracleProposerBond);
+      assert.equal(await longShortPair.methods.enableEarlyExpiration().call(), false);
     });
     it("Rejects invalid constructor parameters", async function () {
       // Invalid expiration time.
@@ -150,14 +171,14 @@ describe("LongShortPair", function () {
           LongShortPair.new({
             ...constructorParams,
             expirationTimestamp: parseInt(await timer.methods.getCurrentTime().call()) - 1,
-          }).send({ from: accounts[0] })
+          }).send({ from: deployer })
         )
       );
 
       // Invalid collateral per pair.
       assert(
         await didContractThrow(
-          LongShortPair.new({ ...constructorParams, collateralPerPair: "0" }).send({ from: accounts[0] })
+          LongShortPair.new({ ...constructorParams, collateralPerPair: "0" }).send({ from: deployer })
         )
       );
 
@@ -165,21 +186,21 @@ describe("LongShortPair", function () {
       assert(
         await didContractThrow(
           LongShortPair.new({ ...constructorParams, priceIdentifier: padRight(utf8ToHex("BAD-IDENTIFIER"), 64) }).send({
-            from: accounts[0],
+            from: deployer,
           })
         )
       );
       // Invalid LSP library address.
       assert(
         await didContractThrow(
-          LongShortPair.new({ ...constructorParams, financialProductLibrary: ZERO_ADDRESS }).send({ from: accounts[0] })
+          LongShortPair.new({ ...constructorParams, financialProductLibrary: ZERO_ADDRESS }).send({ from: deployer })
         )
       );
 
       // Invalid Finder address.
       assert(
         await didContractThrow(
-          LongShortPair.new({ ...constructorParams, finder: ZERO_ADDRESS }).send({ from: accounts[0] })
+          LongShortPair.new({ ...constructorParams, finder: ZERO_ADDRESS }).send({ from: deployer })
         )
       );
 
@@ -195,7 +216,7 @@ describe("LongShortPair", function () {
           LongShortPair.new({
             ...constructorParams,
             customAncillaryData: web3.utils.randomHex(remainingLength + 1),
-          }).send({ from: accounts[0] })
+          }).send({ from: deployer })
         )
       );
     });
@@ -228,19 +249,19 @@ describe("LongShortPair", function () {
       assert(await didContractThrow(longShortPair.methods.redeem(toWei("25")).send({ from: holder })));
 
       // Advance past the expiry timestamp and settle the contract.
-      await timer.methods.setCurrentTime(expirationTimestamp + 1).send({ from: accounts[0] });
+      await timer.methods.setCurrentTime(expirationTimestamp + 1).send({ from: deployer });
 
-      assert.equal(await longShortPair.methods.contractState().call(), 0); // state should be Open before.
-      await longShortPair.methods.expire().send({ from: accounts[0] });
-      assert.equal(await longShortPair.methods.contractState().call(), 1); // state should be ExpiredPriceRequested before.
+      await longShortPair.methods.expire().send({ from: deployer });
 
-      await proposeAndSettleOptimisticOraclePrice(priceIdentifier, expirationTimestamp, toWei("0.5"));
+      await proposeAndSettleOptimisticOraclePrice(toWei("0.5"), expirationTimestamp);
 
       // Redemption value scaled between 0 and 1, indicating how much of the collateralPerPair is split between the long and
       // short tokens. Setting to 0.5 makes each long token worth 0.5 collateral and each short token worth 0.5 collateral.
-      await longShortPairTestLibrary.methods.setValueToReturn(toWei("0.5")).send({ from: accounts[0] });
+      await longShortPairTestLibrary.methods.setValueToReturn(toWei("0.5")).send({ from: deployer });
 
+      assert.isFalse(await longShortPair.methods.receivedSettlementPrice().call());
       await longShortPair.methods.settle(toWei("50"), toWei("0")).send({ from: holder }); // holder redeem their 50 long tokens.
+      assert.isTrue(await longShortPair.methods.receivedSettlementPrice().call());
       assert.equal(await longToken.methods.balanceOf(holder).call(), toWei("0")); // they should have no long tokens left.
       assert.equal((await collateralToken.methods.balanceOf(holder).call()).toString(), toWei("25")); // they should have gotten 0.5 collateral per synthetic.
 
@@ -272,17 +293,17 @@ describe("LongShortPair", function () {
       });
 
       // Advance past the expiry timestamp and settle the contract.
-      await timer.methods.setCurrentTime(expirationTimestamp + 1).send({ from: accounts[0] });
+      await timer.methods.setCurrentTime(expirationTimestamp + 1).send({ from: deployer });
 
-      const expireTx = await longShortPair.methods.expire().send({ from: accounts[0] });
+      const expireTx = await longShortPair.methods.expire().send({ from: deployer });
 
       await assertEventEmitted(expireTx, longShortPair, "ContractExpired", (ev) => {
         return ev.caller == deployer;
       });
 
-      await proposeAndSettleOptimisticOraclePrice(priceIdentifier, expirationTimestamp, toWei("0.5"));
+      await proposeAndSettleOptimisticOraclePrice(toWei("0.5"), expirationTimestamp);
 
-      await longShortPairTestLibrary.methods.setValueToReturn(toWei("0.5")).send({ from: accounts[0] });
+      await longShortPairTestLibrary.methods.setValueToReturn(toWei("0.5")).send({ from: deployer });
 
       const settleTx = await longShortPair.methods.settle(toWei("75"), toWei("75")).send({ from: sponsor });
 
@@ -296,8 +317,8 @@ describe("LongShortPair", function () {
       });
     });
     it("Ancillary data is correctly set in the OO", async function () {
-      await timer.methods.setCurrentTime(expirationTimestamp + 1).send({ from: accounts[0] });
-      await longShortPair.methods.expire().send({ from: accounts[0] });
+      await timer.methods.setCurrentTime(expirationTimestamp + 1).send({ from: deployer });
+      await longShortPair.methods.expire().send({ from: deployer });
       const request = await optimisticOracle.methods
         .getRequest(longShortPair.options.address, priceIdentifier, expirationTimestamp, customAncillaryData)
         .call();
@@ -312,13 +333,13 @@ describe("LongShortPair", function () {
     beforeEach(async () => {
       await collateralToken.methods.approve(longShortPair.options.address, MAX_UINT_VAL).send({ from: sponsor });
       await longShortPair.methods.create(toWei("100")).send({ from: sponsor });
-      await timer.methods.setCurrentTime(expirationTimestamp + 1).send({ from: accounts[0] });
-      await longShortPair.methods.expire().send({ from: accounts[0] });
-      await proposeAndSettleOptimisticOraclePrice(priceIdentifier, expirationTimestamp, toWei("0.5"));
+      await timer.methods.setCurrentTime(expirationTimestamp + 1).send({ from: deployer });
+      await longShortPair.methods.expire().send({ from: deployer });
+      await proposeAndSettleOptimisticOraclePrice(toWei("0.5"), expirationTimestamp);
       sponsorCollateralBefore = toBN(await collateralToken.methods.balanceOf(sponsor).call());
     });
     it("expiryPercentLong = 1 should give all collateral to long tokens", async function () {
-      await longShortPairTestLibrary.methods.setValueToReturn(toWei("1")).send({ from: accounts[0] });
+      await longShortPairTestLibrary.methods.setValueToReturn(toWei("1")).send({ from: deployer });
 
       // Redeeming only short tokens should send 0 collateral as the short tokens are worthless.
       await longShortPair.methods.settle(toWei("0"), toWei("100")).send({ from: sponsor });
@@ -335,7 +356,7 @@ describe("LongShortPair", function () {
       );
     });
     it("expiryPercentLong = 0 should give all collateral to short tokens", async function () {
-      await longShortPairTestLibrary.methods.setValueToReturn(toWei("0")).send({ from: accounts[0] });
+      await longShortPairTestLibrary.methods.setValueToReturn(toWei("0")).send({ from: deployer });
       // Redeeming only long tokens should send 0 collateral as the long tokens are worthless.
       await longShortPair.methods.settle(toWei("100"), toWei("0")).send({ from: sponsor });
       assert.equal(
@@ -352,7 +373,7 @@ describe("LongShortPair", function () {
     });
     it("expiryTokensForCollateral > 1 should ceil to 1", async function () {
       // anything above 1 for the expiryPercentLong is nonsensical and the LSP should act as if it's set to 1.
-      await longShortPairTestLibrary.methods.setValueToReturn(toWei("1.5")).send({ from: accounts[0] });
+      await longShortPairTestLibrary.methods.setValueToReturn(toWei("1.5")).send({ from: deployer });
 
       // Redeeming long short tokens should send no collateral.
       await longShortPair.methods.settle(toWei("0"), toWei("100")).send({ from: sponsor });
@@ -369,7 +390,7 @@ describe("LongShortPair", function () {
       );
     });
     it("expiryPercentLong = 0.25 should give 25% to long and 75% to short", async function () {
-      await longShortPairTestLibrary.methods.setValueToReturn(toWei("0.25")).send({ from: accounts[0] });
+      await longShortPairTestLibrary.methods.setValueToReturn(toWei("0.25")).send({ from: deployer });
 
       // Redeeming long tokens should send 25% of the collateral.
       await longShortPair.methods.settle(toWei("100"), toWei("0")).send({ from: sponsor });
@@ -409,18 +430,25 @@ describe("LongShortPair", function () {
       await collateralToken.methods.approve(longShortPair.options.address, MAX_UINT_VAL).send({ from: sponsor });
       await longShortPair.methods.create(toWei("100")).send({ from: sponsor });
     });
+    it("Can not call requestEarlyExpiration if disabled", async function () {
+      assert(
+        await didContractThrow(
+          longShortPair.methods.requestEarlyExpiration(expirationTimestamp - 10).send({ from: deployer })
+        )
+      );
+    });
     it("Can not expire pre expirationTimestamp", async function () {
-      assert(await didContractThrow(longShortPair.methods.expire().send({ from: accounts[0] })));
+      assert(await didContractThrow(longShortPair.methods.expire().send({ from: deployer })));
       assert(await didContractThrow(longShortPair.methods.settle(toWei("100"), toWei("100")).send({ from: sponsor })));
     });
     it("Can not create post expiry", async function () {
-      await timer.methods.setCurrentTime(expirationTimestamp + 1).send({ from: accounts[0] });
+      await timer.methods.setCurrentTime(expirationTimestamp + 1).send({ from: deployer });
       assert(await didContractThrow(longShortPair.methods.create(toWei("100")).send({ from: sponsor })));
     });
     it("Can not settle before price returned from OO", async function () {
       // Set time after expiration, add a price to OO but dont pass OO liveness.
-      await timer.methods.setCurrentTime(expirationTimestamp + 1).send({ from: accounts[0] });
-      await longShortPair.methods.expire().send({ from: accounts[0] });
+      await timer.methods.setCurrentTime(expirationTimestamp + 1).send({ from: deployer });
+      await longShortPair.methods.expire().send({ from: deployer });
       await optimisticOracle.methods
         .proposePrice(
           longShortPair.options.address,
@@ -429,7 +457,7 @@ describe("LongShortPair", function () {
           customAncillaryData,
           toWei("0.5")
         )
-        .send({ from: accounts[0] });
+        .send({ from: deployer });
       assert(await didContractThrow(longShortPair.methods.settle(toWei("100"), toWei("100")).send({ from: sponsor })));
     });
   });
@@ -440,7 +468,7 @@ describe("LongShortPair", function () {
       await collateralToken.methods.addMember(1, deployer).send({ from: deployer });
       await collateralToken.methods.mint(sponsor, convertDecimals("1000")).send({ from: deployer });
 
-      await collateralWhitelist.methods.addToWhitelist(collateralToken.options.address).send({ from: accounts[0] });
+      await collateralWhitelist.methods.addToWhitelist(collateralToken.options.address).send({ from: deployer });
 
       longToken = await Token.new("Long Token", "lTKN", 6).send({ from: deployer });
       shortToken = await Token.new("Short Token", "sTKN", 6).send({ from: deployer });
@@ -453,10 +481,10 @@ describe("LongShortPair", function () {
         prepaidProposerReward: convertDecimals("100").toString(),
       };
 
-      longShortPair = await LongShortPair.new(constructorParams).send({ from: accounts[0] });
+      longShortPair = await LongShortPair.new(constructorParams).send({ from: deployer });
       await collateralToken.methods
         .mint(longShortPair.options.address, convertDecimals("100"))
-        .send({ from: accounts[0] });
+        .send({ from: deployer });
 
       // Add mint and burn roles for the long and short tokens to the long short pair.
       await longToken.methods.addMember(1, longShortPair.options.address).send({ from: deployer });
@@ -502,19 +530,17 @@ describe("LongShortPair", function () {
       assert(await didContractThrow(longShortPair.methods.redeem(convertDecimals("25")).send({ from: holder })));
 
       // Advance past the expiry timestamp and settle the contract.
-      await timer.methods.setCurrentTime(expirationTimestamp + 1).send({ from: accounts[0] });
+      await timer.methods.setCurrentTime(expirationTimestamp + 1).send({ from: deployer });
 
-      assert.equal(await longShortPair.methods.contractState().call(), 0); // state should be Open before.
-      await longShortPair.methods.expire().send({ from: accounts[0] });
-      assert.equal(await longShortPair.methods.contractState().call(), 1); // state should be ExpiredPriceRequested before.
+      await longShortPair.methods.expire().send({ from: deployer });
 
       // Note that this proposal is scaled by 1e18. Prices returned from the DVM are scaled independently of the contract decimals.
-      await proposeAndSettleOptimisticOraclePrice(priceIdentifier, expirationTimestamp, toWei("0.5"));
+      await proposeAndSettleOptimisticOraclePrice(toWei("0.5"), expirationTimestamp);
 
       // Redemption value scaled between 0 and 1, indicating how much of the collateralPerPair is split between the long and
       // short tokens. Setting to 0.5 makes each long token worth 0.5 collateral and each short token worth 0.5 collateral.
       // Note that this value is still scaled by 1e18 as this lib is independent of decimals.
-      await longShortPairTestLibrary.methods.setValueToReturn(toWei("0.5")).send({ from: accounts[0] });
+      await longShortPairTestLibrary.methods.setValueToReturn(toWei("0.5")).send({ from: deployer });
 
       await longShortPair.methods.settle(convertDecimals("50"), convertDecimals("0")).send({ from: holder }); // holder redeem their 50 long tokens.
       assert.equal((await longToken.methods.balanceOf(holder).call()).toString(), convertDecimals("0")); // they should have no long tokens left.
@@ -544,8 +570,8 @@ describe("LongShortPair", function () {
 
       constructorParams = { ...constructorParams, optimisticOracleLivenessTime, optimisticOracleProposerBond };
 
-      longShortPair = await LongShortPair.new(constructorParams).send({ from: accounts[0] });
-      await collateralToken.methods.mint(longShortPair.options.address, toWei("100")).send({ from: accounts[0] });
+      longShortPair = await LongShortPair.new(constructorParams).send({ from: deployer });
+      await collateralToken.methods.mint(longShortPair.options.address, toWei("100")).send({ from: deployer });
 
       // Add mint and burn roles for the long and short tokens to the long short pair.
       await longToken.methods.addMember(1, longShortPair.options.address).send({ from: deployer });
@@ -562,11 +588,9 @@ describe("LongShortPair", function () {
       await longShortPair.methods.create(toWei("100")).send({ from: sponsor });
 
       // Advance past the expiry timestamp and settle the contract.
-      await timer.methods.setCurrentTime(expirationTimestamp + 1).send({ from: accounts[0] });
+      await timer.methods.setCurrentTime(expirationTimestamp + 1).send({ from: deployer });
 
-      assert.equal(await longShortPair.methods.contractState().call(), 0); // state should be Open before.
-      await longShortPair.methods.expire().send({ from: accounts[0] });
-      assert.equal(await longShortPair.methods.contractState().call(), 1); // state should be ExpiredPriceRequested before.
+      await longShortPair.methods.expire().send({ from: deployer });
 
       // Ensure the price request was enqueued correctly and the liveness time and bond was set.
       const request = await optimisticOracle.methods
@@ -623,21 +647,21 @@ describe("LongShortPair", function () {
         await didContractThrow(
           optimisticOracle.methods
             .settle(longShortPair.options.address, priceIdentifier, expirationTimestamp, customAncillaryData)
-            .send({ from: accounts[0] })
+            .send({ from: deployer })
         )
       );
 
       await optimisticOracle.methods
         .setCurrentTime(parseInt(await optimisticOracle.methods.getCurrentTime().call()) + optimisticOracleLivenessTime)
-        .send({ from: accounts[0] });
+        .send({ from: deployer });
 
       const sponsorBalanceBefore = toBN(await collateralToken.methods.balanceOf(sponsor).call());
       const deployerBalanceBeforeSettlement = toBN(await collateralToken.methods.balanceOf(deployer).call());
       await optimisticOracle.methods
         .settle(longShortPair.options.address, priceIdentifier, expirationTimestamp, customAncillaryData)
-        .send({ from: accounts[0] });
+        .send({ from: deployer });
 
-      await longShortPairTestLibrary.methods.setValueToReturn(toWei("0.5")).send({ from: accounts[0] });
+      await longShortPairTestLibrary.methods.setValueToReturn(toWei("0.5")).send({ from: deployer });
 
       // settle all tokens.
       await longShortPair.methods.settle(toWei("100"), toWei("100")).send({ from: sponsor }); // sponsor redeem their 100 long tokens.
@@ -668,8 +692,8 @@ describe("LongShortPair", function () {
         collateralPerPair: toWei("0.0000001"),
       };
 
-      longShortPair = await LongShortPair.new(constructorParams).send({ from: accounts[0] });
-      await collateralToken.methods.mint(longShortPair.options.address, toWei("100")).send({ from: accounts[0] });
+      longShortPair = await LongShortPair.new(constructorParams).send({ from: deployer });
+      await collateralToken.methods.mint(longShortPair.options.address, toWei("100")).send({ from: deployer });
 
       // Add mint and burn roles for the long and short tokens to the long short pair.
       await longToken.methods.addMember(1, longShortPair.options.address).send({ from: deployer });
@@ -710,11 +734,11 @@ describe("LongShortPair", function () {
       await collateralToken.methods.approve(longShortPair.options.address, MAX_UINT_VAL).send({ from: sponsor });
       await longShortPair.methods.create(tokensToCreate).send({ from: sponsor });
 
-      await timer.methods.setCurrentTime(expirationTimestamp + 1).send({ from: accounts[0] });
-      await longShortPair.methods.expire().send({ from: accounts[0] });
-      await proposeAndSettleOptimisticOraclePrice(priceIdentifier, expirationTimestamp, toWei("0.5"));
+      await timer.methods.setCurrentTime(expirationTimestamp + 1).send({ from: deployer });
+      await longShortPair.methods.expire().send({ from: deployer });
+      await proposeAndSettleOptimisticOraclePrice(toWei("0.5"), expirationTimestamp);
 
-      await longShortPairTestLibrary.methods.setValueToReturn(expiryPercentLong).send({ from: accounts[0] });
+      await longShortPairTestLibrary.methods.setValueToReturn(expiryPercentLong).send({ from: deployer });
     };
     it("Settling dust long tokens should round to 0 with collateral 0 expiryPercentLong", async function () {
       await approveCreateExpireLsp(toWei("100"), toWei("0"));
@@ -755,6 +779,161 @@ describe("LongShortPair", function () {
         (await collateralToken.methods.balanceOf(sponsor).call()).toString(),
         sponsorCollateralBefore.toString()
       );
+    });
+  });
+  describe("Early contract expiration", () => {
+    beforeEach(async () => {
+      // Set the collateral per pair to some small number to try induce rounding on mint/redeem settings.
+      constructorParams = {
+        ...constructorParams,
+        optimisticOracleProposerBond: "0",
+        prepaidProposerReward: "0",
+        enableEarlyExpiration: true,
+      };
+
+      longShortPair = await LongShortPair.new(constructorParams).send({ from: deployer });
+
+      // Add mint and burn roles for the long and short tokens to the long short pair.
+      await longToken.methods.addMember(1, longShortPair.options.address).send({ from: deployer });
+      await shortToken.methods.addMember(1, longShortPair.options.address).send({ from: deployer });
+      await longToken.methods.addMember(2, longShortPair.options.address).send({ from: deployer });
+      await shortToken.methods.addMember(2, longShortPair.options.address).send({ from: deployer });
+
+      // Create some tokens from the sponsors wallet
+      await collateralToken.methods.approve(longShortPair.options.address, MAX_UINT_VAL).send({ from: sponsor });
+      await longShortPair.methods.create(toWei("100")).send({ from: sponsor });
+    });
+    it("Can propose an early expiration price and settle", async function () {
+      assert.isTrue(await longShortPair.methods.enableEarlyExpiration().call());
+
+      // Advance time but before expiration timestamp.
+      const currentTime = await timer.methods.getCurrentTime().call();
+      await timer.methods.setCurrentTime(Number(currentTime) + 500).send({ from: deployer });
+      const requestedEarlyExpirationTimestamp = Number(currentTime) - 10; // Some time in the past before expiration.
+
+      const earlyExpireTx = await longShortPair.methods
+        .requestEarlyExpiration(requestedEarlyExpirationTimestamp)
+        .send({ from: rando });
+
+      // Associated early expiration variables are set correctly.
+      assert.equal(await longShortPair.methods.earlyExpirationTimestamp().call(), requestedEarlyExpirationTimestamp);
+
+      const ooPriceRequestedEvent = (await optimisticOracle.getPastEvents("RequestPrice", { fromBock: 0 }))[0];
+
+      await assertEventEmitted(earlyExpireTx, longShortPair, "EarlyExpirationRequested", (ev) => {
+        return (
+          ev.caller === rando &&
+          ev.earlyExpirationTimeStamp === requestedEarlyExpirationTimestamp.toString() &&
+          ev.earlyExpirationAncillaryData === ooPriceRequestedEvent.returnValues.ancillaryData
+        );
+      });
+
+      assert.equal(
+        await longShortPair.methods.getEarlyExpirationAncillaryData().call(),
+        ooPriceRequestedEvent.returnValues.ancillaryData
+      );
+
+      // Double check that we are actually before the expiration timestamp.
+
+      assert.isTrue(
+        Number(await timer.methods.getCurrentTime().call()) <
+          Number(await longShortPair.methods.expirationTimestamp().call())
+      );
+
+      // Propose a price to the OO for the early settlement.
+
+      await proposeAndSettleOptimisticOraclePrice(
+        toWei("0.5"),
+        requestedEarlyExpirationTimestamp,
+        ooPriceRequestedEvent.returnValues.ancillaryData
+      );
+
+      assert.isTrue(
+        Number(await timer.methods.getCurrentTime().call()) <
+          Number(await longShortPair.methods.expirationTimestamp().call())
+      );
+
+      // Now that there is a price in the OO we should be able to settle a position.
+      assert.equal(await collateralToken.methods.balanceOf(sponsor).call(), toWei("900")); // 1000 starting balance - 100 for mint.
+
+      const settleTx = await longShortPair.methods.settle(toWei("100"), toWei("100")).send({ from: sponsor });
+
+      assert.equal(await collateralToken.methods.balanceOf(sponsor).call(), toWei("1000")); // full amount after settlement
+
+      await assertEventEmitted(settleTx, longShortPair, "PositionSettled", (ev) => {
+        return (
+          ev.sponsor == sponsor &&
+          ev.collateralReturned == toWei("100") &&
+          ev.longTokens == toWei("100") &&
+          ev.shortTokens == toWei("100")
+        );
+      });
+    });
+    it("Can propose an early expiration price and settle", async function () {
+      assert.isTrue(await longShortPair.methods.enableEarlyExpiration().call());
+
+      // Advance time but before expiration timestamp.
+      const currentTime = await timer.methods.getCurrentTime().call();
+      await timer.methods.setCurrentTime(Number(currentTime) + 500).send({ from: deployer });
+      const requestedEarlyExpirationTimestamp = Number(currentTime) - 10; // Some time in the past before expiration.
+
+      const earlyExpireTx = await longShortPair.methods
+        .requestEarlyExpiration(requestedEarlyExpirationTimestamp)
+        .send({ from: rando });
+
+      // Associated early expiration variables are set correctly.
+      assert.equal(await longShortPair.methods.earlyExpirationTimestamp().call(), requestedEarlyExpirationTimestamp);
+
+      const ooPriceRequestedEvent = (await optimisticOracle.getPastEvents("RequestPrice", { fromBock: 0 }))[0];
+
+      await assertEventEmitted(earlyExpireTx, longShortPair, "EarlyExpirationRequested", (ev) => {
+        return (
+          ev.caller === rando &&
+          ev.earlyExpirationTimeStamp === requestedEarlyExpirationTimestamp.toString() &&
+          ev.earlyExpirationAncillaryData === ooPriceRequestedEvent.returnValues.ancillaryData
+        );
+      });
+
+      assert.equal(
+        await longShortPair.methods.getEarlyExpirationAncillaryData().call(),
+        ooPriceRequestedEvent.returnValues.ancillaryData
+      );
+
+      // Double check that we are actually before the expiration timestamp.
+
+      assert.isTrue(
+        Number(await timer.methods.getCurrentTime().call()) <
+          Number(await longShortPair.methods.expirationTimestamp().call())
+      );
+
+      // Propose a price to the OO for the early settlement.
+
+      await proposeAndSettleOptimisticOraclePrice(
+        toWei("0.5"),
+        requestedEarlyExpirationTimestamp,
+        ooPriceRequestedEvent.returnValues.ancillaryData
+      );
+
+      assert.isTrue(
+        Number(await timer.methods.getCurrentTime().call()) <
+          Number(await longShortPair.methods.expirationTimestamp().call())
+      );
+
+      // Now that there is a price in the OO we should be able to settle a position.
+      assert.equal(await collateralToken.methods.balanceOf(sponsor).call(), toWei("900")); // 1000 starting balance - 100 for mint.
+
+      const settleTx = await longShortPair.methods.settle(toWei("100"), toWei("100")).send({ from: sponsor });
+
+      assert.equal(await collateralToken.methods.balanceOf(sponsor).call(), toWei("1000")); // full amount after settlement
+
+      await assertEventEmitted(settleTx, longShortPair, "PositionSettled", (ev) => {
+        return (
+          ev.sponsor == sponsor &&
+          ev.collateralReturned == toWei("100") &&
+          ev.longTokens == toWei("100") &&
+          ev.shortTokens == toWei("100")
+        );
+      });
     });
   });
 });
