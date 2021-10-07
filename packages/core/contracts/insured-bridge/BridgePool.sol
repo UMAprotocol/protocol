@@ -636,22 +636,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
 
     // Returns hash of unique relay and deposit event. This is added to the relay request's ancillary data.
     function _getRelayHash(DepositData memory depositData, RelayData memory relayData) private view returns (bytes32) {
-        return
-            keccak256(
-                abi.encode(
-                    depositData.chainId,
-                    depositData.depositId,
-                    depositData.l1Recipient,
-                    depositData.l2Sender,
-                    depositData.amount,
-                    depositData.slowRelayFeePct,
-                    depositData.instantRelayFeePct,
-                    depositData.quoteTimestamp,
-                    relayData.relayId,
-                    relayData.realizedLpFeePct,
-                    address(l1Token)
-                )
-            );
+        return keccak256(abi.encode(depositData, relayData.relayId, relayData.realizedLpFeePct, address(l1Token)));
     }
 
     // Return hash of relay data, which is stored in state and mapped to a deposit hash.
