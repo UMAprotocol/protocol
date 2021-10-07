@@ -36,8 +36,6 @@ export default async (env: ProcessEnv) => {
   const detectContractsUpdateRateS = Number(env.DETECT_CONTRACTS_UPDATE_RATE_S || 60);
   // Defaults to 15 minutes, prices dont update in coingecko or other calls very fast
   const priceUpdateRateS = Number(env.PRICE_UPDATE_RATE_S || 15 * 60);
-  // default to 10 days worth of blocks
-  const oldestBlock = Number(env.OLDEST_BLOCK_MS || 10 * 60 * 60 * 24 * 1000);
 
   assert(updateRateS >= 1, "UPDATE_RATE_S must be 1 or higher");
   assert(detectContractsUpdateRateS >= 1, "DETECT_CONTRACTS_UPDATE_RATE_S must be 1 or higher");
