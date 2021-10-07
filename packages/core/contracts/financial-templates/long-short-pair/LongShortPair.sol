@@ -108,6 +108,11 @@ contract LongShortPair is Testable, Lockable {
         _;
     }
 
+    modifier notEarlyExpired() {
+        require(!isContractEarlyExpired(), "Contract already early expire");
+        _;
+    }
+
     /**
      * @notice Construct the LongShortPair
      * @param params Constructor params used to initialize the LSP. Key-valued object with the following structure:
@@ -260,29 +265,38 @@ contract LongShortPair is Testable, Lockable {
      ****************************************/
 
     /**
-     * @notice TODO
-     * note on re guard
+     * @notice Enables the LPS to request to early expiration. This initiates a price request to the optimistic oracle
+     * at the provided timestamp with a modified version of the ancillary data that includes the key "earlyExpiration:1"
+     * which signals to the OO that this is an early expiration request, rather than standard settlement.
+     * @dev will revert if: a) the contract is already early expire, b) it is after the expiration timestamp, c)
+     * early expiration is disabled for this contract or d) the proposed expiration timestamp is in the future.
+     * @param _earlyExpirationTimestamp timestamp at which the early expiration is proposed.
      */
-    function requestEarlyExpiration(uint64 _earlyExpirationTimestamp) public nonReentrant() preExpiration() {
+    function requestEarlyExpiration(uint64 _earlyExpirationTimestamp)
+        public
+        nonReentrant()
+        notEarlyExpired()
+        preExpiration()
+    {
         require(enableEarlyExpiration, "Early expiration disabled");
         require(_earlyExpirationTimestamp <= getCurrentTime(), "Only propose expire in the past");
-        require(!_isContractAlreadyEarlyExpired(), "Contract already early expire");
 
         earlyExpirationTimestamp = _earlyExpirationTimestamp;
 
-        _requestOraclePriceExpiration(earlyExpirationTimestamp, getEarlyExpirationAncillaryData());
+        // Request a price from the optimistic oracle for a given request timestamp and ancillary data combo. Set the bonds
+        // accordingly to the deployers paramaters.
+        _requestOraclePrice(earlyExpirationTimestamp, getEarlyExpirationAncillaryData());
 
         emit EarlyExpirationRequested(msg.sender, _earlyExpirationTimestamp);
     }
 
     /**
-     * @notice TODO
-        // Note this method cant be called multiple times as the OO will revert if a price request is made multiple
-        // times on the same identifier, timestamp & ancillary data combination.
+     * @notice Request a price from the optimistic oracle for a given request timestamp and ancillary data combo. Sets
+     * the bonds, rewards and liveness accordingly to the deployer's parameters.
+     * @dev will revert if: a) the contract is already early expire or b) it is before the expiration timestamp.
      */
-    function expire() public postExpiration() nonReentrant() {
-        require(!_isContractAlreadyEarlyExpired(), "Contract already early expire");
-        _requestOraclePriceExpiration(expirationTimestamp, customAncillaryData);
+    function expire() public nonReentrant() notEarlyExpired() postExpiration() {
+        _requestOraclePrice(expirationTimestamp, customAncillaryData);
 
         emit ContractExpired(msg.sender);
     }
@@ -306,32 +320,44 @@ contract LongShortPair is Testable, Lockable {
         return (longToken.balanceOf(sponsor), shortToken.balanceOf(sponsor));
     }
 
+    /**
+     * @notice Generates a modified ancillary data that indicates the contract is being expired early.
+     */
     function getEarlyExpirationAncillaryData() public view returns (bytes memory) {
         return AncillaryData.appendKeyValueUint(customAncillaryData, "earlyExpiration", 1);
     }
 
+    /**
+     * @notice Defines a special number that, if returned during an attempted early expiration, will cause the contract
+     * to do nothing and not expire. This enables the OO (and DVM voters in the case of a dispute) to choose to keep
+     * the contract running, thereby denying with the early settlement request.
+     */
     function oracleIgnoreEarlyExpirationPrice() public pure returns (int256) {
         return type(int256).min;
+    }
+
+    // If the earlyExpirationTimestamp is != 0 then a previous early expiration OO request might still be in the
+    // pending state. Check if the OO contains the ignore early price. If it does not contain this then the contract
+    // was early expired correctly. Note that _getOraclePrice call will revert if the price request is still pending,
+    // thereby reverting all upstream calls pre-settlement of the early expiration price request.
+    function isContractEarlyExpired() public returns (bool) {
+        return (earlyExpirationTimestamp != 0 &&
+            _getOraclePrice(earlyExpirationTimestamp, getEarlyExpirationAncillaryData()) !=
+            oracleIgnoreEarlyExpirationPrice());
     }
 
     /****************************************
      *          INTERNAL FUNCTIONS          *
      ****************************************/
 
-    // If the earlyExpirationTimestamp is != 0 then a previous early expiration OO request might still be in the
-    // pending state. Check if the OO contains the ignore early price. If it does not contain this then the contract
-    // was early expired correctly. Note that the _getOraclePrice call will revert if the price request is still pending.
-    function _isContractAlreadyEarlyExpired() internal returns (bool) {
-        return (earlyExpirationTimestamp != 0 &&
-            _getOraclePrice(earlyExpirationTimestamp, getEarlyExpirationAncillaryData()) !=
-            oracleIgnoreEarlyExpirationPrice());
-    }
-
+    // Return the oracle price for a given request timestamp and ancillary data combo.
     function _getOraclePrice(uint64 requestTimestamp, bytes memory requestAncillaryData) internal returns (int256) {
         return _getOptimisticOracle().settleAndGetPrice(priceIdentifier, requestTimestamp, requestAncillaryData);
     }
 
-    function _requestOraclePriceExpiration(uint256 requestTimestamp, bytes memory requestAncillaryData) internal {
+    // Request a price in the optimistic oracle for a given request timestamp and ancillary data combo. Set the bonds
+    // accordingly to the deployer's parameters.
+    function _requestOraclePrice(uint256 requestTimestamp, bytes memory requestAncillaryData) internal {
         OptimisticOracleInterface optimisticOracle = _getOptimisticOracle();
 
         // Use the prepaidProposerReward as the proposer reward.
@@ -356,18 +382,23 @@ contract LongShortPair is Testable, Lockable {
         optimisticOracle.setBond(priceIdentifier, requestTimestamp, requestAncillaryData, optimisticOracleProposerBond);
     }
 
+    // Fetch the price in the oracle at expiration timestamp. If the timestamp is before expiration tries to fetch the
+    // early expiration timestamp and ancillary data. Else, fetch the price for the provided expiration timestamp and
+    // ancillary data. If the time is before the expiration timestamp(i.e early expiration) and the price is the ignore
+    // early expiration price then revert. This acts to block settlement on bad early expiration attempts.
     function getExpirationPrice() internal {
         if (getCurrentTime() < expirationTimestamp) {
             expiryPrice = _getOraclePrice(earlyExpirationTimestamp, getEarlyExpirationAncillaryData());
             require(expiryPrice != oracleIgnoreEarlyExpirationPrice(), "Oracle prevents early expiration");
-        } else {
-            expiryPrice = _getOraclePrice(expirationTimestamp, customAncillaryData);
-            // Cap the return value at 1.
-            expiryPercentLong = Math.min(
-                financialProductLibrary.percentageLongCollateralAtExpiry(expiryPrice),
-                FixedPoint.fromUnscaledUint(1).rawValue
-            );
-        }
+        } else expiryPrice = _getOraclePrice(expirationTimestamp, customAncillaryData);
+
+        // Finally, compute the value of expiryPercentLong based on the expiryPrice. Cap the return value at 1e18 as
+        // this should, by definition, between 0 and 1e18.
+        expiryPercentLong = Math.min(
+            financialProductLibrary.percentageLongCollateralAtExpiry(expiryPrice),
+            FixedPoint.fromUnscaledUint(1).rawValue
+        );
+
         receivedSettlementPrice = true;
     }
 
