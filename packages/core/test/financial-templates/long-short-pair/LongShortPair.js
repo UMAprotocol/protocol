@@ -260,7 +260,13 @@ describe("LongShortPair", function () {
 
       await longShortPair.methods.expire().send({ from: deployer });
 
+      // subsequent calls to expire should revert
+      assert(await didContractThrow(longShortPair.methods.expire().send({ from: deployer })));
+
       await proposeAndSettleOptimisticOraclePrice(toWei("0.5"), expirationTimestamp);
+
+      // Equally, after there is a settlement price calling settle again should revert
+      assert(await didContractThrow(longShortPair.methods.expire().send({ from: deployer })));
 
       // Redemption value scaled between 0 and 1, indicating how much of the collateralPerPair is split between the long and
       // short tokens. Setting to 0.5 makes each long token worth 0.5 collateral and each short token worth 0.5 collateral.
@@ -885,7 +891,9 @@ describe("LongShortPair", function () {
         );
       });
 
-      // todo: check settlement price set correctrly.
+      // Finally, ensure the settlement price in the LSP was set correctly.
+      assert.equal(await longShortPair.methods.expiryPrice().call(), toWei("0.75"));
+      assert.isTrue(await longShortPair.methods.receivedSettlementPrice().call());
     });
 
     it("Can not attempt early expiration post expiration", async function () {
