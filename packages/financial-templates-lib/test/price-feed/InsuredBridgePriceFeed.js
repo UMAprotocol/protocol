@@ -191,13 +191,17 @@ describe("InsuredBridgePriceFeed", function () {
       bridgeAdmin.options.address,
       l1Token.options.address,
       lpFeeRatePerSecond,
+      false,
       timer.options.address
     ).send({ from: owner });
 
     // Deploy L2 deposit contract:
-    depositBox = await BridgeDepositBox.new(bridgeAdminImpersonator, minimumBridgingDelay, timer.options.address).send({
-      from: owner,
-    });
+    depositBox = await BridgeDepositBox.new(
+      bridgeAdminImpersonator,
+      minimumBridgingDelay,
+      ZERO_ADDRESS, // Weth contract. not used in this set of tests.
+      timer.options.address
+    ).send({ from: owner });
 
     l2Token = await ERC20.new("L2 Wrapped Ether", "WETH", 18).send({ from: owner });
     await l2Token.methods.addMember(TokenRolesEnum.MINTER, owner).send({ from: owner });

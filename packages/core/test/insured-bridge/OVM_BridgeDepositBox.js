@@ -4,7 +4,7 @@
 const hre = require("hardhat");
 const { web3 } = hre;
 const { predeploys } = require("@eth-optimism/contracts");
-const { didContractThrow } = require("@uma/common");
+const { didContractThrow, ZERO_ADDRESS } = require("@uma/common");
 const { getContract, assertEventEmitted } = hre;
 
 const { toWei } = web3.utils;
@@ -53,9 +53,13 @@ describe("OVM_BridgeDepositBox", () => {
     });
     await web3.eth.sendTransaction({ from: deployer, to: predeploys.OVM_L2CrossDomainMessenger, value: toWei("1") });
 
-    depositBox = await BridgeDepositBox.new(bridgeAdmin, minimumBridgingDelay, chainId, timer.options.address).send({
-      from: deployer,
-    });
+    depositBox = await BridgeDepositBox.new(
+      bridgeAdmin,
+      minimumBridgingDelay,
+      chainId,
+      ZERO_ADDRESS, // weth address. Weth mode not used in these tests
+      timer.options.address
+    ).send({ from: deployer });
 
     l2Token = await Token.new("L2 Wrapped Ether", "WETH", 18).send({ from: deployer });
     await l2Token.methods.addMember(1, deployer).send({ from: deployer });
