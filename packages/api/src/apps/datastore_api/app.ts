@@ -3,12 +3,13 @@ import { ethers } from "ethers";
 import moment from "moment";
 import Events from "events";
 import { tables, Coingecko, utils, Multicall2 } from "@uma/sdk";
+import { Datastore } from "@google-cloud/datastore";
 
 import * as Services from "../../services";
 import Express from "../../services/express-channels";
 import * as Actions from "../../services/actions";
 import { ProcessEnv, AppState, Channels } from "../../types";
-import { empStats, empStatsHistory, lsps, storesFactory } from "../../tables";
+import { empStats, empStatsHistory, lsps, StoresFactory } from "../../tables";
 import Zrx from "../../libs/zrx";
 import { Profile, parseEnvArray, getWeb3, BlockInterval, expirePromise } from "../../libs/utils";
 
@@ -44,7 +45,9 @@ export default async (env: ProcessEnv) => {
 
   // services can emit events when necessary, though for now any services that depend on events must be in same process
   const serviceEvents = new Events();
-  const { datastores } = storesFactory;
+
+  const datastoreClient = new Datastore();
+  const datastores = StoresFactory(datastoreClient);
   // state shared between services
   const appState: AppState = {
     provider,
@@ -53,8 +56,8 @@ export default async (env: ProcessEnv) => {
     zrx: new Zrx(env.zrxBaseUrl),
     blocks: tables.blocks.Table("Block", datastores.blockStore),
     emps: {
-      active: tables.emps.Table("Active Emp", datastores.empsActiveStore),
-      expired: tables.emps.Table("Expired Emp", datastores.empsExpiredStore),
+      active: tables.emps.Table("Active Emp", datastores.empsActive),
+      expired: tables.emps.Table("Expired Emp", datastores.empsExpired),
     },
     prices: {
       usd: {
@@ -69,31 +72,31 @@ export default async (env: ProcessEnv) => {
     marketPrices: {
       usdc: {
         latest: {},
-        history: empStatsHistory.Table("Market Price", datastores.empStatsHistoryStore),
+        history: empStatsHistory.Table("Market Price", datastores.empStatsHistory),
       },
     },
-    erc20s: tables.erc20s.Table("Erc20", datastores.erc20Store),
+    erc20s: tables.erc20s.Table("Erc20", datastores.erc20),
     stats: {
       emp: {
         usd: {
           latest: {
-            tvm: empStats.Table("Latest Tvm", datastores.empStatsTvmStore),
-            tvl: empStats.Table("Latest Tvl", datastores.empStatsTvlStore),
+            tvm: empStats.Table("Latest Tvm", datastores.empStatsTvm),
+            tvl: empStats.Table("Latest Tvl", datastores.empStatsTvl),
           },
           history: {
-            tvm: empStatsHistory.Table("Tvm History", datastores.empStatsTvlHistoryStore),
-            tvl: empStatsHistory.Table("Tvl History", datastores.empStatsTvmHistoryStore),
+            tvm: empStatsHistory.Table("Tvm History", datastores.empStatsTvlHistory),
+            tvl: empStatsHistory.Table("Tvl History", datastores.empStatsTvmHistory),
           },
         },
       },
       lsp: {
         usd: {
           latest: {
-            tvl: empStats.Table("Latest Tvl", datastores.lspStatsTvlStore),
-            tvm: empStats.Table("Latest Tvm", datastores.lspStatsTvmStore),
+            tvl: empStats.Table("Latest Tvl", datastores.lspStatsTvl),
+            tvm: empStats.Table("Latest Tvm", datastores.lspStatsTvm),
           },
           history: {
-            tvl: empStatsHistory.Table("Tvl History", datastores.lspStatsTvlHistoryStore),
+            tvl: empStatsHistory.Table("Tvl History", datastores.lspStatsTvlHistory),
           },
         },
       },
@@ -120,8 +123,8 @@ export default async (env: ProcessEnv) => {
     shortAddresses: new Set<string>(),
     multicall2: new Multicall2(env.MULTI_CALL_2_ADDRESS, provider),
     lsps: {
-      active: lsps.Table("Active LSP", datastores.lspsActiveStore),
-      expired: lsps.Table("Expired LSP", datastores.lspsExpiredStore),
+      active: lsps.Table("Active LSP", datastores.lspsActive),
+      expired: lsps.Table("Expired LSP", datastores.lspsExpired),
     },
   };
 
