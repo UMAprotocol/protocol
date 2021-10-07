@@ -3,7 +3,6 @@ import type { SortedStore } from "..";
 import { Datastore, Key } from "@google-cloud/datastore";
 import highland from "highland";
 
-// TODO: this is a work in progress which will be completed during datastore integration.
 export default function <I extends string | number, D>(kind: string, store: Datastore): SortedStore<I, D> {
   function makeKey(id: I): Key {
     return store.key([kind, id]);
@@ -20,7 +19,6 @@ export default function <I extends string | number, D>(kind: string, store: Data
   async function set(id: I, data: D) {
     await store.save({
       key: makeKey(id),
-      // method: "insert",
       data,
     });
   }
