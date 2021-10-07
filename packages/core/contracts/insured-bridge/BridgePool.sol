@@ -98,7 +98,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         address slowRelayer;
         uint32 relayId;
         uint64 realizedLpFeePct;
-        uint256 priceRequestTime;
+        uint64 priceRequestTime;
     }
 
     // Associate deposits with pending relay data. When the mapped relay hash is empty, new relay attempts can be made
@@ -258,7 +258,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         require(relays[depositHash] == bytes32(0), "Pending relay exists");
 
         // If no pending relay for this deposit, then associate the caller's relay attempt with it.
-        uint256 priceRequestTime = getCurrentTime();
+        uint64 priceRequestTime = uint64(getCurrentTime());
 
         // Save hash of new relay attempt parameters.
         RelayData memory relayData =
@@ -352,35 +352,38 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         DepositData memory depositData,
         RelayData memory relayData,
         // TODO: Can we infer `request` using just the information stored in this contract and passed into this
-        // method?
+        // method? The tricky part is that some of the params such as `finalFee`, `expirationTime`, `customLiveness`,
+        // and `bond` all rely on contract state variables that might have changed since the relay was originally sent.
         SkinnyOptimisticOracleInterface.Request memory request
     ) public nonReentrant() {
         bytes32 depositHash = _getDepositHash(depositData);
         _validateRelayDataHash(depositHash, relayData);
         require(relayData.relayState == RelayState.Pending, "Already settled");
 
-        // Optimistically try to settle relay. If this transaction settles the relay, then check the newly resolved
-        // price. Otherwise grab the already resolved price.
+        // Resolve request if it is not settled or grab its resolved price if it is. If the request.settled param does
+        // not match the one stored in the relay price request on the OptimisticOracle, then this will revert. The
+        // relay price request must be linked to ancillary data that is derived from the `depositData` and `relayData`,
+        // so there is no way for the caller to modify the request params.
         bytes memory ancillaryData = _getRelayAncillaryData(_getRelayHash(depositData, relayData));
-        try
-            optimisticOracle.settle(
-                address(this),
-                bridgeAdmin.identifier(),
-                uint32(relayData.priceRequestTime),
-                ancillaryData,
-                request
-            )
-        returns (
-            uint256, // Unused payout value, as we only care to check whether the price resolved to True or False.
-            int256 resolvedPrice
-        ) {
+        if (!request.settled) {
+            (
+                ,
+                // Unused payout value, as we only care to check whether the price resolved to True or False.
+                int256 resolvedPrice
+            ) =
+                optimisticOracle.settle(
+                    address(this),
+                    identifier,
+                    uint32(relayData.priceRequestTime),
+                    ancillaryData,
+                    request
+                );
             require(resolvedPrice == int256(1e18), "Settle relay iff price is True");
-        } catch {
-            // We could not settle the request, therefore check if its already been resolved.
+        } else {
             require(
                 optimisticOracle.hasPrice(
                     address(this),
-                    bridgeAdmin.identifier(),
+                    identifier,
                     uint32(relayData.priceRequestTime),
                     ancillaryData,
                     request
@@ -715,14 +718,13 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         // Compute total proposal bond and pull from caller so that the OptimisticOracle can pull it from here.
         uint256 proposerBond = _getProposerBond(amount);
         uint256 finalFee = store.computeFinalFee(address(l1Token)).rawValue;
-        uint256 totalBond =
-            (uint256(bridgeAdmin.proposerBondPct()) * amount) / 1e18 + store.computeFinalFee(address(l1Token)).rawValue;
+        uint256 totalBond = (uint256(proposerBondPct) * amount) / 1e18 + finalFee;
 
         l1Token.safeTransferFrom(msg.sender, address(this), totalBond);
         l1Token.safeApprove(address(optimisticOracle), totalBond);
 
         optimisticOracle.requestAndProposePriceFor(
-            bridgeAdmin.identifier(),
+            identifier,
             uint32(requestTimestamp),
             customAncillaryData,
             IERC20(l1Token),
@@ -732,7 +734,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
             // Set the Optimistic oracle proposer bond for the price request.
             _getProposerBond(amount),
             // Set the Optimistic oracle liveness for the price request.
-            uint256(bridgeAdmin.optimisticOracleLiveness()),
+            uint256(optimisticOracleLiveness),
             // Caller is proposer.
             msg.sender,
             // Canonical value representing "True"; i.e. the proposed relay is valid.
