@@ -91,11 +91,7 @@ contract LongShortPair is Testable, Lockable {
     event TokensCreated(address indexed sponsor, uint256 indexed collateralUsed, uint256 indexed tokensMinted);
     event TokensRedeemed(address indexed sponsor, uint256 indexed collateralReturned, uint256 indexed tokensRedeemed);
     event ContractExpired(address indexed caller);
-    event EarlyExpirationRequested(
-        address indexed caller,
-        uint64 earlyExpirationTimeStamp,
-        bytes earlyExpirationAncillaryData
-    );
+    event EarlyExpirationRequested(address indexed caller, uint64 earlyExpirationTimeStamp);
     event PositionSettled(address indexed sponsor, uint256 collateralReturned, uint256 longTokens, uint256 shortTokens);
 
     /****************************************
@@ -267,28 +263,16 @@ contract LongShortPair is Testable, Lockable {
      * @notice TODO
      * note on re guard
      */
-    function requestEarlyExpiration(uint64 _earlyExpirationTimestamp) public preExpiration() {
+    function requestEarlyExpiration(uint64 _earlyExpirationTimestamp) public nonReentrant() preExpiration() {
         require(enableEarlyExpiration, "Early expiration disabled");
         require(_earlyExpirationTimestamp <= getCurrentTime(), "Only propose expire in the past");
-
-        bytes memory earlyExpirationAncillaryData = getEarlyExpirationAncillaryData();
-
-        // If the earlyExpirationTimestamp is != zero then a previous early expiration OO request might still be in the
-        // pending state. If this is the case then this method must block until that request has finalize before
-        // enabling another early expiration proposal. I.e only one early expiration proposal can be pending at a time.
-        // If there was a previous early expiration request that returned a price other than type(int256).max then the
-        // previous proposal to expire early was valid. In this case revert and block subsequent early expire proposals.
-        if (earlyExpirationTimestamp != 0)
-            require(
-                _getOraclePriceExpiration(earlyExpirationTimestamp, earlyExpirationAncillaryData) == type(int256).max,
-                "Contract previous early expired"
-            );
+        require(!_isContractAlreadyEarlyExpired(), "Contract already early expire");
 
         earlyExpirationTimestamp = _earlyExpirationTimestamp;
 
-        _requestOraclePriceExpiration(earlyExpirationTimestamp, earlyExpirationAncillaryData);
+        _requestOraclePriceExpiration(earlyExpirationTimestamp, getEarlyExpirationAncillaryData());
 
-        emit EarlyExpirationRequested(msg.sender, _earlyExpirationTimestamp, earlyExpirationAncillaryData);
+        emit EarlyExpirationRequested(msg.sender, _earlyExpirationTimestamp);
     }
 
     /**
@@ -297,6 +281,7 @@ contract LongShortPair is Testable, Lockable {
         // times on the same identifier, timestamp & ancillary data combination.
      */
     function expire() public postExpiration() nonReentrant() {
+        require(!_isContractAlreadyEarlyExpired(), "Contract already early expire");
         _requestOraclePriceExpiration(expirationTimestamp, customAncillaryData);
 
         emit ContractExpired(msg.sender);
@@ -325,16 +310,25 @@ contract LongShortPair is Testable, Lockable {
         return AncillaryData.appendKeyValueUint(customAncillaryData, "earlyExpiration", 1);
     }
 
+    function oracleIgnoreEarlyExpirationPrice() public pure returns (int256) {
+        return type(int256).min;
+    }
+
     /****************************************
      *          INTERNAL FUNCTIONS          *
      ****************************************/
 
-    function _getOraclePriceExpiration(uint64 requestTimestamp, bytes memory requestAncillaryData)
-        internal
-        returns (int256)
-    {
-        return
-            _getOptimisticOracle().settleAndGetPrice(priceIdentifier, uint256(requestTimestamp), requestAncillaryData);
+    // If the earlyExpirationTimestamp is != 0 then a previous early expiration OO request might still be in the
+    // pending state. Check if the OO contains the ignore early price. If it does not contain this then the contract
+    // was early expired correctly. Note that the _getOraclePrice call will revert if the price request is still pending.
+    function _isContractAlreadyEarlyExpired() internal returns (bool) {
+        return (earlyExpirationTimestamp != 0 &&
+            _getOraclePrice(earlyExpirationTimestamp, getEarlyExpirationAncillaryData()) !=
+            oracleIgnoreEarlyExpirationPrice());
+    }
+
+    function _getOraclePrice(uint64 requestTimestamp, bytes memory requestAncillaryData) internal returns (int256) {
+        return _getOptimisticOracle().settleAndGetPrice(priceIdentifier, requestTimestamp, requestAncillaryData);
     }
 
     function _requestOraclePriceExpiration(uint256 requestTimestamp, bytes memory requestAncillaryData) internal {
@@ -364,10 +358,10 @@ contract LongShortPair is Testable, Lockable {
 
     function getExpirationPrice() internal {
         if (getCurrentTime() < expirationTimestamp) {
-            expiryPrice = _getOraclePriceExpiration(earlyExpirationTimestamp, getEarlyExpirationAncillaryData());
-            require(expiryPrice != type(int256).max, "Oracle prevents early expiration");
+            expiryPrice = _getOraclePrice(earlyExpirationTimestamp, getEarlyExpirationAncillaryData());
+            require(expiryPrice != oracleIgnoreEarlyExpirationPrice(), "Oracle prevents early expiration");
         } else {
-            expiryPrice = _getOraclePriceExpiration(expirationTimestamp, customAncillaryData);
+            expiryPrice = _getOraclePrice(expirationTimestamp, customAncillaryData);
             // Cap the return value at 1.
             expiryPercentLong = Math.min(
                 financialProductLibrary.percentageLongCollateralAtExpiry(expiryPrice),
