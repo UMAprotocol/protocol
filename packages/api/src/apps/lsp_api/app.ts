@@ -52,7 +52,6 @@ export default async (env: ProcessEnv) => {
     web3,
     coingecko: new Coingecko(),
     zrx: new Zrx(env.zrxBaseUrl),
-    blocks: tables.blocks.Table(),
     emps: {
       active: tables.emps.Table("Active Emp"),
       expired: tables.emps.Table("Expired Emp"),
@@ -129,7 +128,6 @@ export default async (env: ProcessEnv) => {
   // services for ingesting data
   const services = {
     // these services can optionally be configured with a config object, but currently they are undefined or have defaults
-    blocks: Services.Blocks(undefined, appState),
     emps: Services.EmpState({ debug }, appState),
     registry: await Services.Registry({ debug }, appState, (event, data) =>
       serviceEvents.emit("empRegistry", event, data)

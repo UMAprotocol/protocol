@@ -54,7 +54,6 @@ export default async (env: ProcessEnv) => {
     web3,
     coingecko: new Coingecko(),
     zrx: new Zrx(env.zrxBaseUrl),
-    blocks: tables.blocks.Table("Block", datastores.blockStore),
     emps: {
       active: tables.emps.Table("Active Emp", datastores.empsActive),
       expired: tables.emps.Table("Expired Emp", datastores.empsExpired),
@@ -131,7 +130,6 @@ export default async (env: ProcessEnv) => {
   // services for ingesting data
   const services = {
     // these services can optionally be configured with a config object, but currently they are undefined or have defaults
-    blocks: Services.Blocks(undefined, appState),
     emps: Services.EmpState({ debug }, appState),
     registry: await Services.Registry({ debug }, appState, (event, data) =>
       serviceEvents.emit("empRegistry", event, data)
@@ -236,12 +234,10 @@ export default async (env: ProcessEnv) => {
     // ignore case when startblock == endblock, this can happen when loop is run before a new block has changed
     if (startBlock === endBlock) return;
     assert(startBlock < endBlock, "Startblock must be lower than endBlock");
-    await services.blocks.handleNewBlock(endBlock);
     // update everyting
     await services.emps.update(startBlock, endBlock);
     await services.lsps.update(startBlock, endBlock);
     await services.erc20s.update();
-    await services.blocks.cleanBlocks(oldestBlock);
     appState.lastBlockUpdate = endBlock;
   }
 
