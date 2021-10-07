@@ -37,7 +37,8 @@ let collateralWhitelist;
 let identifierWhitelist;
 let optimisticOracle;
 let finder;
-let customAncillaryData = web3.utils.utf8ToHex("some-address-field:0x1234");
+let rawUnencodedAncillaryData = "some-address-field:0x1234";
+let customAncillaryData = web3.utils.utf8ToHex(rawUnencodedAncillaryData);
 let timer;
 let constructorParams;
 let store;
@@ -826,6 +827,11 @@ describe("LongShortPair", function () {
       earlyExpirationTimestamp = Number(await timer.methods.getCurrentTime().call()) - 10;
 
       earlyExpirationAncillaryData = await longShortPair.methods.getEarlyExpirationAncillaryData().call();
+    });
+    it("Correctly appends early expiration flag to ancillary data", async function () {
+      // Check the generated ancillary data for early expiration maps to what is expected. Take the raw ancillary data
+      // and append the early expiration key to it.
+      assert.equal(earlyExpirationAncillaryData, utf8ToHex(rawUnencodedAncillaryData + ",earlyExpiration:1"));
     });
     it("Can propose an early expiration price and settle", async function () {
       assert.isTrue(await longShortPair.methods.enableEarlyExpiration().call());
