@@ -1782,7 +1782,7 @@ describe("BridgePool", () => {
         depositId: defaultDepositData.depositId + 1,
         amount: toWei("50"),
         l1Recipient: rando,
-        quoteTimestamp: defaultDepositData.quoteTimestamp + 172800,
+        quoteTimestamp: Number(defaultDepositData.quoteTimestamp) + 172800,
       };
 
       await l1Token.methods.mint(relayer, totalRelayBond).send({ from: owner });

@@ -47,10 +47,10 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
     uint256 public pendingReserves;
 
     // Exponential decay exchange rate to accumulate fees to LPs over time.
-    uint256 public lpFeeRatePerSecond;
+    uint64 public lpFeeRatePerSecond;
 
     // Last timestamp that LP fees were updated.
-    uint256 public lastLpFeeUpdate;
+    uint32 public lastLpFeeUpdate;
 
     // Cumulative undistributed LP fees. As fees accumulate, they are subtracted from this number.
     uint256 public undistributedLpFees;
@@ -64,7 +64,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
 
     // Store local instances of contract params to save gas relaying. Can be synced with the BridgeAdmin at any time.
     uint64 public proposerBondPct;
-    uint64 public optimisticOracleLiveness;
+    uint32 public optimisticOracleLiveness;
     bytes32 public identifier;
 
     // A Relay represents an attempt to finalize a cross-chain transfer that originated on an L2 DepositBox contract.
@@ -89,7 +89,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         uint256 amount;
         uint64 slowRelayFeePct;
         uint64 instantRelayFeePct;
-        uint64 quoteTimestamp;
+        uint32 quoteTimestamp;
     }
 
     // Each L2 Deposit can have one Relay attempt at any one time. A Relay attempt is characterized by its RelayData.
@@ -98,7 +98,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         address slowRelayer;
         uint32 relayId;
         uint64 realizedLpFeePct;
-        uint64 priceRequestTime;
+        uint32 priceRequestTime;
     }
 
     // Associate deposits with pending relay data. When the mapped relay hash is empty, new relay attempts can be made
@@ -147,14 +147,14 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         string memory _lpTokenSymbol,
         address _bridgeAdmin,
         address _l1Token,
-        uint256 _lpFeeRatePerSecond,
+        uint64 _lpFeeRatePerSecond,
         address _timer
     ) Testable(_timer) ExpandedERC20(_lpTokenName, _lpTokenSymbol, 18) {
         require(bytes(_lpTokenName).length != 0 && bytes(_lpTokenSymbol).length != 0, "Bad LP token name or symbol");
         bridgeAdmin = BridgeAdminInterface(_bridgeAdmin);
 
         l1Token = IERC20(_l1Token);
-        lastLpFeeUpdate = getCurrentTime();
+        lastLpFeeUpdate = uint32(getCurrentTime());
         lpFeeRatePerSecond = _lpFeeRatePerSecond;
 
         syncWithFinderAddresses(); // Fetch OptimisticOracle and Store addresses from the Finder.
@@ -233,7 +233,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         uint256 amount,
         uint64 slowRelayFeePct,
         uint64 instantRelayFeePct,
-        uint64 quoteTimestamp,
+        uint32 quoteTimestamp,
         uint64 realizedLpFeePct
     ) public nonReentrant() {
         // The realizedLPFeePct should never be greater than 0.5e18 and the slow and instant relay fees should never be
@@ -258,7 +258,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         require(relays[depositHash] == bytes32(0), "Pending relay exists");
 
         // If no pending relay for this deposit, then associate the caller's relay attempt with it.
-        uint64 priceRequestTime = uint64(getCurrentTime());
+        uint32 priceRequestTime = uint32(getCurrentTime());
 
         // Save hash of new relay attempt parameters.
         RelayData memory relayData =
@@ -370,21 +370,14 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
                 ,
                 // Unused payout value, as we only care to check whether the price resolved to True or False.
                 int256 resolvedPrice
-            ) =
-                optimisticOracle.settle(
-                    address(this),
-                    identifier,
-                    uint32(relayData.priceRequestTime),
-                    ancillaryData,
-                    request
-                );
+            ) = optimisticOracle.settle(address(this), identifier, relayData.priceRequestTime, ancillaryData, request);
             require(resolvedPrice == int256(1e18), "Settle relay iff price is True");
         } else {
             require(
                 optimisticOracle.hasPrice(
                     address(this),
                     identifier,
-                    uint32(relayData.priceRequestTime),
+                    relayData.priceRequestTime,
                     ancillaryData,
                     request
                 ) && request.resolvedPrice == int256(1e18),
@@ -450,20 +443,17 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
      * @notice Callback for disputes, deletes disputed relay allowing a follow-up relay.
      * @dev timestamp and identifier are unused because ancillaryData contains a relay nonce and uniquely
      * identifies a relay request.
-     * @param identifier price identifier for relay request.
-     * @param timestamp timestamp for relay request.
      * @param ancillaryData ancillary data for relay request.
-     * @param request disputed relay request params.
      */
     function priceDisputed(
         // Unused, but the identifier should be same as bridgeAdmin.identifier()
-        bytes32 identifier,
+        bytes32,
         // Unused, but timestamp should be same as the hashed relay.priceRequestTime included in relays[depositHash]
-        uint32 timestamp,
+        uint32,
         bytes memory ancillaryData,
         // Unused as all of the relay data is hashed and stored in relays[depositHash], and we can lookup depositHash
         // using the ancillaryData
-        SkinnyOptimisticOracleInterface.Request memory request
+        SkinnyOptimisticOracleInterface.Request memory
     ) external onlyFromOptimisticOracle {
         bytes32 depositHash = relayRequestAncillaryData[keccak256(ancillaryData)];
         // We can delete the pending relay hash because we will still store data that must be carried over to a follow
@@ -670,7 +660,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         // Decrement the undistributedLpFees by the amount of accumulated fees.
         undistributedLpFees = undistributedLpFees - unallocatedAccumulatedFees;
 
-        lastLpFeeUpdate = getCurrentTime();
+        lastLpFeeUpdate = uint32(getCurrentTime());
     }
 
     // Allocate fees to the LPs by incrementing counters.
@@ -712,11 +702,10 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
     // disagrees with the relay parameters and whether they map to an L2 deposit, they can dispute with the oracle.
     function _requestAndProposeOraclePriceRelay(
         uint256 amount,
-        uint256 requestTimestamp,
+        uint32 requestTimestamp,
         bytes memory customAncillaryData
     ) private {
         // Compute total proposal bond and pull from caller so that the OptimisticOracle can pull it from here.
-        uint256 proposerBond = _getProposerBond(amount);
         uint256 finalFee = store.computeFinalFee(address(l1Token)).rawValue;
         uint256 totalBond = (uint256(proposerBondPct) * amount) / 1e18 + finalFee;
 
@@ -725,7 +714,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
 
         optimisticOracle.requestAndProposePriceFor(
             identifier,
-            uint32(requestTimestamp),
+            requestTimestamp,
             customAncillaryData,
             IERC20(l1Token),
             // Set reward to 0, since we'll settle proposer reward payouts directly from this contract after a relay
