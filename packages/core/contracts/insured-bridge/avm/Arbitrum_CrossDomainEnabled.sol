@@ -16,11 +16,15 @@ abstract contract Arbitrum_CrossDomainEnabled {
 
     // More details about retryable ticket parameters here: https://developer.offchainlabs.com/docs/l1_l2_messages#parameters
     // This function will not apply aliassing to the `user` address on L2.
+    // Note: If `l1CallValue > 0`, then this contract must contain at least that much ETH to send as msg.value to the
+    // inbox.
     function sendTxToL2NoAliassing(
         address target, // Address where transaction will initiate on L2.
         address user, // Address where excess gas is credited on L2.
+        uint256 l1CallValue, // msg.value deposited to `user` on L2.
         uint256 maxSubmissionCost, // Amount of ETH allocated to pay for base submission fee. The user is charged this
-        // fee to cover the storage costs of keeping their retryable ticket's calldata in the retry buffer.
+        // fee to cover the storage costs of keeping their retryable ticket's calldata in the retry buffer. This should
+        // also cover the `l2CallValue`, but we set that to 0.
         uint256 maxGas, // Gas limit for immediate L2 execution attempt.
         uint256 gasPriceBid, // L2 gas price bid for immediate L2 execution attempt.
         bytes memory data // ABI encoded data to send to target.
@@ -35,7 +39,7 @@ abstract contract Arbitrum_CrossDomainEnabled {
         // - uint256 gasPriceBid: price bid for L2 execution
         // - bytes data: ABI encoded data of L2 message
         uint256 seqNum =
-            inbox.createRetryableTicketNoRefundAliasRewrite(
+            inbox.createRetryableTicketNoRefundAliasRewrite{ value: l1CallValue }(
                 target,
                 0, // we always assume that l2CallValue = 0
                 maxSubmissionCost,

@@ -19,22 +19,28 @@ contract Arbitrum_Messenger is Ownable, Arbitrum_CrossDomainEnabled, MessengerIn
     /**
      * @notice Sends a message to an account on L2.
      * @param target The intended recipient on L2.
+     * @param l1CallValue Amount of ETH deposited to `target` contract on L2. Used to pay for L2 submission fee and
+     * l2CallValue.
      * @param gasLimit The gasLimit for the receipt of the message on L2.
      * @param gasPrice Gas price bid for L2 execution.
+     * @param maxSubmissionCost: Max gas deducted from user's L2 balance to cover base submission fee.
      * @param message The data to send to the target (usually calldata to a function with
      *  `onlyFromCrossDomainAccount()`)
      */
     function relayMessage(
         address target,
+        uint256 l1CallValue,
         uint256 gasLimit,
         uint256 gasPrice,
+        uint256 maxSubmissionCost,
         bytes memory message
-    ) external override onlyOwner {
+    ) external payable override onlyOwner {
         // Since we know the L2 target's address in advance, we don't need to alias an L1 address.
         sendTxToL2NoAliassing(
             target,
             target, // send any excess ether to the L2 deposit box.
-            0, // TODO: Determine the max submission cost. From the docs: "current base submission fee is queryable via ArbRetryableTx.getSubmissionPrice"
+            l1CallValue,
+            maxSubmissionCost, // TODO: Determine the max submission cost. From the docs: "current base submission fee is queryable via ArbRetryableTx.getSubmissionPrice"
             gasLimit,
             gasPrice,
             message

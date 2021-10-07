@@ -179,8 +179,10 @@ describe("Relayer.ts", function () {
         l1Token.options.address,
         l2Token.options.address,
         bridgePool.options.address,
+        0,
         defaultGasLimit,
-        defaultGasPrice
+        defaultGasPrice,
+        0
       )
       .send({ from: l1Owner });
 

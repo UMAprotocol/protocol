@@ -8,8 +8,10 @@ pragma solidity ^0.8.0;
 interface MessengerInterface {
     function relayMessage(
         address target,
+        uint256 l1CallValue,
         uint256 gasLimit,
         uint256 gasPrice,
+        uint256 maxSubmissionCost,
         bytes memory message
-    ) external;
+    ) external payable;
 }
