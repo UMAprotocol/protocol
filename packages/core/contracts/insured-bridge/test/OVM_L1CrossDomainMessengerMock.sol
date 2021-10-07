@@ -3,7 +3,7 @@ import "../ovm/iOptimism_CrossDomainMessenger.sol";
 
 contract OVM_L1CrossDomainMessengerMock is iOptimism_CrossDomainMessenger {
     function xDomainMessageSender() external view override returns (address) {
-        // Triviall return this contract's address.
+        // Trivial return this contract's address.
         return address(this);
     }
 
