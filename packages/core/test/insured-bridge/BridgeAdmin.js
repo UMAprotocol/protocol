@@ -81,12 +81,16 @@ describe("BridgeAdmin", () => {
       bridgeAdmin.options.address,
       l1Token,
       lpFeeRatePerSecond,
+      false,
       timer.options.address
     ).send({ from: owner });
 
-    depositBox = await BridgeDepositBox.new(bridgeAdmin.options.address, defaultBridgingDelay, ZERO_ADDRESS).send({
-      from: owner,
-    });
+    depositBox = await BridgeDepositBox.new(
+      bridgeAdmin.options.address,
+      defaultBridgingDelay,
+      ZERO_ADDRESS, // weth address. Weth mode not used in these tests
+      ZERO_ADDRESS // timer address
+    ).send({ from: owner });
   });
   describe("Admin functions", () => {
     it("Set deposit contracts", async () => {
@@ -348,6 +352,7 @@ describe("BridgeAdmin", () => {
             bridgeAdmin.options.address,
             l1Token,
             lpFeeRatePerSecond,
+            false,
             timer.options.address
           ).send({ from: owner });
           const whitelistTxn = await bridgeAdmin.methods
@@ -561,6 +566,7 @@ describe("BridgeAdmin", () => {
             bridgeAdmin.options.address,
             l1Token,
             lpFeeRatePerSecond,
+            false,
             timer.options.address
           ).send({ from: owner });
 

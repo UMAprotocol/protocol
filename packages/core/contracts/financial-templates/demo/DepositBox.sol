@@ -19,7 +19,7 @@ import "../../oracle/implementation/ContractCreator.sol";
  * This contract should be thought of as a "Deposit Box" into which the user deposits some ERC20 collateral.
  * The main feature of this box is that the user can withdraw their ERC20 corresponding to a desired USD amount.
  * When the user wants to make a withdrawal, a price request is enqueued with the UMA DVM.
- * For simplicty, the user is constrained to have one outstanding withdrawal request at any given time.
+ * For simplicity, the user is constrained to have one outstanding withdrawal request at any given time.
  * Regular fees are charged on the collateral in the deposit box throughout the lifetime of the deposit box,
  * and final fees are charged on each price request.
  *

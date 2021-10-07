@@ -14,7 +14,7 @@ import sinon from "sinon";
 import hre from "hardhat";
 const { assert } = require("chai");
 
-import { interfaceName, TokenRolesEnum, HRE } from "@uma/common";
+import { interfaceName, TokenRolesEnum, HRE, ZERO_ADDRESS } from "@uma/common";
 
 const { web3, getContract } = hre as HRE;
 const { toWei, toBN, utf8ToHex } = web3.utils;
@@ -153,6 +153,7 @@ describe("Relayer.ts", function () {
     bridgeDepositBox = await BridgeDepositBox.new(
       l2BridgeAdminImpersonator,
       minimumBridgingDelay,
+      ZERO_ADDRESS,
       l2Timer.options.address
     ).send({ from: l2Owner });
 
@@ -169,6 +170,7 @@ describe("Relayer.ts", function () {
       bridgeAdmin.options.address,
       l1Token.options.address,
       lpFeeRatePerSecond,
+      false,
       l1Timer.options.address
     ).send({ from: l1Owner });
 

@@ -34,26 +34,26 @@ contract SkinnyOptimisticRequesterTest {
         bytes32 _identifier,
         uint32 _timestamp,
         bytes memory _ancillaryData,
-        IERC20 _currency,
-        uint256 _reward,
-        uint256 _bond,
-        uint256 _customLiveness,
-        address _proposer,
-        int256 _proposedPrice
+        IERC20 currency,
+        uint256 reward,
+        uint256 bond,
+        uint256 customLiveness,
+        address proposer,
+        int256 proposedPrice
     ) external {
-        uint256 finalFee = _getStore().computeFinalFee(address(_currency)).rawValue;
+        uint256 finalFee = _getStore().computeFinalFee(address(currency)).rawValue;
 
-        _currency.approve(address(optimisticOracle), _reward.add(_bond).add(finalFee));
+        currency.approve(address(optimisticOracle), reward.add(bond).add(finalFee));
         optimisticOracle.requestAndProposePriceFor(
             _identifier,
             _timestamp,
             _ancillaryData,
-            _currency,
-            _reward,
-            _bond,
-            _customLiveness,
-            _proposer,
-            _proposedPrice
+            currency,
+            reward,
+            bond,
+            customLiveness,
+            proposer,
+            proposedPrice
         );
     }
 

@@ -227,6 +227,7 @@ describe("InsuredBridgeL1Client", function () {
       bridgeAdmin.options.address,
       l1Token.options.address,
       lpFeeRatePerSecond,
+      false,
       timer.options.address
     ).send({ from: owner });
 
@@ -524,6 +525,7 @@ describe("InsuredBridgeL1Client", function () {
         bridgeAdmin.options.address,
         l1Token2.options.address,
         lpFeeRatePerSecond,
+        false,
         timer.options.address
       ).send({ from: owner });
 

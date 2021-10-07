@@ -24,6 +24,7 @@ const AddressWhitelist = getContract("AddressWhitelist");
 const OptimisticOracle = getContract("SkinnyOptimisticOracle");
 const Store = getContract("Store");
 const ERC20 = getContract("ExpandedERC20");
+const WETH9 = getContract("WETH9");
 const Timer = getContract("Timer");
 const MockOracle = getContract("MockOracleAncillary");
 
@@ -41,6 +42,7 @@ let l1Token;
 let l2Token;
 let lpToken;
 let mockOracle;
+let weth;
 
 // Hard-coded test params:
 const defaultRelayHash = "0x0000000000000000000000000000000000000000000000000000000000000000";
@@ -279,6 +281,7 @@ describe("BridgePool", () => {
       bridgeAdmin.options.address,
       l1Token.options.address,
       lpFeeRatePerSecond,
+      false, // this is not a weth pool (contains normal ERC20)
       timer.options.address
     ).send({ from: owner });
 
@@ -338,6 +341,7 @@ describe("BridgePool", () => {
           bridgeAdmin.options.address,
           l1Token.options.address,
           lpFeeRatePerSecond,
+          false, // this is not a weth pool (contains normal ERC20)
           timer.options.address
         ).send({ from: owner })
       )
@@ -350,6 +354,7 @@ describe("BridgePool", () => {
           bridgeAdmin.options.address,
           l1Token.options.address,
           lpFeeRatePerSecond,
+          false, // this is not a weth pool (contains normal ERC20)
           timer.options.address
         ).send({ from: owner })
       )
@@ -2195,6 +2200,133 @@ describe("BridgePool", () => {
       // by 2 days(172800s) which should increase the rate accordingly (910+90+10-(10-0.0000015*172800*10))/1000=1.002592.
       await advanceTime(172800);
       assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1.002592"));
+    });
+  });
+  describe("Weth withdraws", () => {
+    beforeEach(async function () {
+      // Deploy weth contract
+      weth = await WETH9.new().send({ from: owner });
+
+      await collateralWhitelist.methods.addToWhitelist(weth.options.address).send({ from: owner });
+      await store.methods.setFinalFee(weth.options.address, { rawValue: finalFee }).send({ from: owner });
+
+      // Create a new bridge pool, where the L1 Token is weth.
+      bridgePool = await BridgePool.new(
+        "Weth LP Token",
+        "wLPT",
+        bridgeAdmin.options.address,
+        weth.options.address,
+        lpFeeRatePerSecond,
+        true, // this is a weth pool
+        timer.options.address
+      ).send({ from: owner });
+
+      await bridgeAdmin.methods
+        .whitelistToken(
+          chainId,
+          weth.options.address,
+          l2Token,
+          bridgePool.options.address,
+          defaultGasLimit,
+          defaultGasPrice
+        )
+        .send({ from: owner });
+
+      // deposit funds into weth to get tokens to mint.
+
+      await weth.methods.deposit().send({ from: liquidityProvider, value: initialPoolLiquidity });
+      await weth.methods.approve(bridgePool.options.address, MAX_UINT_VAL).send({ from: liquidityProvider });
+      await bridgePool.methods.addLiquidity(initialPoolLiquidity).send({ from: liquidityProvider });
+
+      // Mint relayer bond.
+      await weth.methods.deposit().send({ from: relayer, value: totalRelayBond });
+      await weth.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: relayer });
+
+      await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: relayer });
+    });
+    it("Correctly sends Eth at the conclusion of a slow relay", async () => {
+      const relayAttemptData = {
+        ...defaultRelayData,
+        priceRequestTime: (await bridgePool.methods.getCurrentTime().call()).toString(),
+        relayState: InsuredBridgeRelayStateEnum.PENDING,
+      };
+      const recipientEthBalanceBefore = await web3.eth.getBalance(l1Recipient);
+      await timer.methods
+        .setCurrentTime(
+          (Number((await bridgePool.methods.getCurrentTime().call()).toString()) + defaultLiveness).toString()
+        )
+        .send({ from: owner });
+
+      // Settle OO request.
+      const proposeEvent = (await optimisticOracle.getPastEvents("ProposePrice", { fromBlock: 0 }))[0];
+      await bridgePool.methods
+        .settleRelay(defaultDepositData, relayAttemptData, proposeEvent.returnValues.request)
+        .send({ from: rando });
+
+      // Recipient eth balance should increment by the amount withdrawn.
+      assert.equal(
+        toBN(await web3.eth.getBalance(l1Recipient))
+          .sub(toBN(recipientEthBalanceBefore))
+          .toString(),
+        slowRelayAmountSubFee.toString()
+      );
+
+      // Bridge Pool Weth balance should decrement by the amount sent to the recipient.
+      assert.equal(
+        toBN(initialPoolLiquidity)
+          .sub(toBN((await weth.methods.balanceOf(bridgePool.options.address).call()).toString()))
+          .sub(realizedSlowRelayFeeAmount)
+          .toString(),
+        slowRelayAmountSubFee.toString()
+      );
+    });
+    it("Correctly sends Eth when speeding up a relay and refunds the instant relayer with Weth at the conclusion of an instant", async () => {
+      const relayAttemptData = {
+        ...defaultRelayData,
+        priceRequestTime: (await bridgePool.methods.getCurrentTime().call()).toString(),
+        relayState: InsuredBridgeRelayStateEnum.PENDING,
+      };
+      await weth.methods.deposit().send({ from: instantRelayer, value: initialPoolLiquidity });
+      await weth.methods.approve(bridgePool.options.address, MAX_UINT_VAL).send({ from: instantRelayer });
+
+      const recipientEthBalanceBefore = await web3.eth.getBalance(l1Recipient);
+      const instantRelayerWethBalanceBefore = await weth.methods.balanceOf(instantRelayer).call();
+      await bridgePool.methods.speedUpRelay(defaultDepositData, relayAttemptData).send({ from: instantRelayer });
+      const recipientEthBalanceAfter = await web3.eth.getBalance(l1Recipient);
+      // Recipient eth balance should increment by the amount withdrawn.
+      assert.equal(
+        toBN(recipientEthBalanceAfter).sub(toBN(recipientEthBalanceBefore)).toString(),
+        instantRelayAmountSubFee.toString()
+      );
+
+      const instantRelayerBalancePostSpeedUp = toBN(await weth.methods.balanceOf(instantRelayer).call());
+
+      // Instant relayer weth balance should decrement by the amount sent to the recipient.
+      assert.equal(
+        toBN(instantRelayerWethBalanceBefore).sub(instantRelayerBalancePostSpeedUp).toString(),
+        instantRelayAmountSubFee.toString()
+      );
+
+      // Next, advance time and settle the relay. At this point the instant relayer should be reimbursed the
+      // instantRelayAmountSubFee + the realizedInstantRelayFeeAmount in Weth.
+      await timer.methods
+        .setCurrentTime(
+          (Number((await bridgePool.methods.getCurrentTime().call()).toString()) + defaultLiveness).toString()
+        )
+        .send({ from: owner });
+
+      // Settle OO request.
+      const proposeEvent = (await optimisticOracle.getPastEvents("ProposePrice", { fromBlock: 0 }))[0];
+      await bridgePool.methods
+        .settleRelay(defaultDepositData, relayAttemptData, proposeEvent.returnValues.request)
+        .send({ from: rando });
+
+      assert.equal(
+        toBN(await weth.methods.balanceOf(instantRelayer).call())
+          .sub(instantRelayerBalancePostSpeedUp)
+          .toString(),
+        toBN(instantRelayAmountSubFee).add(realizedInstantRelayFeeAmount).toString()
+      );
     });
   });
 });

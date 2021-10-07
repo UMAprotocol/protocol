@@ -1,9 +1,5 @@
 [
   {
-    "contractName": "Migrations",
-    "address": "0xB851449bC030F08E0f1Aa57A0a7cAEFE73030De0"
-  },
-  {
     "contractName": "Finder",
     "address": "0xeD0169a88d267063184b0853BaAAAe66c3c154B2"
   },
