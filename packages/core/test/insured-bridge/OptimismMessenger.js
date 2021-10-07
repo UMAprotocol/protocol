@@ -9,6 +9,7 @@ const { assert } = require("chai");
 const { deployContractMock } = require("./helpers/SmockitHelper");
 
 // Tested contracts
+const OVM_L1CrossDomainMessengerMock = getContract("OVM_L1CrossDomainMessengerMock");
 const Optimism_Messenger = getContract("Optimism_Messenger");
 const BridgeAdmin = getContract("BridgeAdmin");
 const BridgePool = getContract("BridgePool");
@@ -71,7 +72,11 @@ describe("OptimismMessenger integration with BridgeAdmin", () => {
       .send({ from: owner });
   });
   beforeEach(async function () {
-    l1CrossDomainMessengerMock = await deployContractMock("OVM_L1CrossDomainMessenger");
+    l1CrossDomainMessengerMock = await deployContractMock(
+      "OVM_L1CrossDomainMessengerMock",
+      {},
+      OVM_L1CrossDomainMessengerMock
+    );
 
     optimismMessenger = await Optimism_Messenger.new(l1CrossDomainMessengerMock.options.address).send({ from: owner });
 
