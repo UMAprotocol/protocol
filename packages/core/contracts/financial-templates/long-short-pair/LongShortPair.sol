@@ -56,6 +56,7 @@ contract LongShortPair is Testable, Lockable {
 
     bool public receivedSettlementPrice;
 
+    bool public enableEarlyExpiration; // If set, the LSP contract can request to be settled early by calling the OO.
     uint64 public expirationTimestamp;
     uint64 public earlyExpirationTimestamp; // Set in the case the contract is expired early.
     string public pairName;
@@ -65,7 +66,6 @@ contract LongShortPair is Testable, Lockable {
     // to collateralPerPair and each long to 0. 1e18 makes each long worth collateralPerPair and short 0.
     uint256 public expiryPercentLong;
     bytes32 public priceIdentifier;
-    bool public enableEarlyExpiration; // If set, the LSP contract can request to be settled early by calling the OO.
 
     // Price returned from the Optimistic oracle at settlement time.
     int256 public expiryPrice;
@@ -387,27 +387,15 @@ contract LongShortPair is Testable, Lockable {
         optimisticOracle.setBond(priceIdentifier, requestTimestamp, requestAncillaryData, optimisticOracleProposerBond);
     }
 
-    // Fetch the optimistic oracle expiration price. If the timestamp is before expiration then this must be an early
-    // expiration settlement. Else, this could be be either an early expiration settlement OR a standard settlement.
-    // Check if the Optimistic oracle contains a price for the standard settlement. If it does, then set the expiryPrice
-    // to this value. Else, try fetching the early expiration price. If both of these prices are not available this will
-    // revert. This logic flow is to accommodate the case where a valid early expiration price request happens right
-    // the normal contract expiration. In this case, once optimistic oracle liveness has passes, the time will be
-    // greater than the expiration timestamp  but the correct price is the early expiration price.
+    // Fetch the optimistic oracle expiration price. If the oracle has the price for the provided expiration timestamp
+    // and customData combo then return this. Else, try fetch the price on the early expiration ancillary data. If
+    // there is no price for either, revert. If the early expiration price is the ignore price will also revert.
     function getExpirationPrice() internal {
-        if (getCurrentTime() < expirationTimestamp) {
+        if (_getOptimisticOracle().hasPrice(address(this), priceIdentifier, expirationTimestamp, customAncillaryData))
+            expiryPrice = _getOraclePrice(expirationTimestamp, customAncillaryData);
+        else {
             expiryPrice = _getOraclePrice(earlyExpirationTimestamp, getEarlyExpirationAncillaryData());
             require(expiryPrice != ignoreEarlyExpirationPrice(), "Oracle prevents early expiration");
-        } else {
-            if (
-                _getOptimisticOracle().hasPrice(
-                    address(this),
-                    priceIdentifier,
-                    expirationTimestamp,
-                    customAncillaryData
-                )
-            ) expiryPrice = _getOraclePrice(expirationTimestamp, customAncillaryData);
-            else expiryPrice = _getOraclePrice(earlyExpirationTimestamp, getEarlyExpirationAncillaryData());
         }
 
         // Finally, compute the value of expiryPercentLong based on the expiryPrice. Cap the return value at 1e18 as
