@@ -217,6 +217,8 @@ contract LongShortPair is Testable, Lockable {
      * @dev This contract must have the `Burner` role for the `longToken` and `shortToken` in order to call `burnFrom`.
      * @dev The caller does not need to approve this contract to transfer any amount of `tokensToRedeem` since long
      * and short tokens are burned, rather than transferred, from the caller.
+     * @dev This function can be called before or after expiration method to facilitate early expiration. If a price has
+     * not yet been resolved for either normal or early expiration yet then it will revert.
      * @param longTokensToRedeem number of long tokens to settle.
      * @param shortTokensToRedeem number of short tokens to settle.
      * @return collateralReturned total collateral returned in exchange for the pair of synthetics.
@@ -226,16 +228,16 @@ contract LongShortPair is Testable, Lockable {
         nonReentrant()
         returns (uint256 collateralReturned)
     {
-        // Either time must have passed the expirationTimestamp (normal expiration) or it is before expirationTimestamp
-        // and early expiration is enabled enabled.
+        // Either early expiration is enabled and its before the expiration timestamp or it is after the expiration time.
         require(
-            getCurrentTime() > expirationTimestamp || (getCurrentTime() < expirationTimestamp && enableEarlyExpiration),
+            (enableEarlyExpiration && getCurrentTime() < expirationTimestamp) || getCurrentTime() > expirationTimestamp,
             "Can not settle"
         );
 
         // Get the settlement price and store it. Also sets expiryPercentLong to inform settlement. Reverts if either:
         // a) the price request has not resolved (either a normal expiration call or early expiration call) or b) If the
         // the contract was attempted to be settled early but the price returned is the ignore oracle price.
+        // Note that we use the bool receivedSettlementPrice over checking for price != 0 as 0 is a valid price.
         if (!receivedSettlementPrice) getExpirationPrice();
 
         require(longToken.burnFrom(msg.sender, longTokensToRedeem));
