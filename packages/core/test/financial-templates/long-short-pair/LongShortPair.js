@@ -1049,5 +1049,121 @@ describe("LongShortPair", function () {
       await timer.methods.setCurrentTime(expirationTimestamp + 1).send({ from: deployer });
       await longShortPair.methods.expire().send({ from: rando });
     });
+    it("Calling early expire incorrectly right before expiration behaves correctly", async function () {
+      // Consider trying to incorrectly early expire the LSP right before the normal expiration time. Doing this should
+      // block the call to expire until such time that the early expiration has passed liveness and returned a price.
+      // As the early expiration was invalid, the standard expire call should work as per usual.
+      await timer.methods.setCurrentTime(expirationTimestamp - 10).send({ from: deployer });
+
+      await longShortPair.methods.requestEarlyExpiration(earlyExpirationTimestamp).send({ from: rando });
+      // const ooPriceRequestedEvent1 = await optimisticOracle.getPastEvents("RequestPrice", { fromBock: 0 });
+
+      // Propose a price to the OO to flag this early expiration was invalid.
+      await optimisticOracle.methods
+        .proposePrice(
+          longShortPair.options.address,
+          priceIdentifier,
+          earlyExpirationTimestamp,
+          earlyExpirationAncillaryData,
+          toBN(MIN_INT_VALUE)
+        )
+        .send({ from: deployer });
+
+      // As before expiration timestamp expire should revert.
+      assert(await didContractThrow(longShortPair.methods.expire().send({ from: rando })));
+
+      // Advance time to be past the contract expiration but before the OO liveness. This means the contract does not
+      // yet have a settlement price. This should block expire calls.
+      await optimisticOracle.methods
+        .setCurrentTime(
+          parseInt(await optimisticOracle.methods.getCurrentTime().call()) + optimisticOracleLivenessTime - 10
+        )
+        .send({ from: deployer });
+
+      // Check we are indeed past expiration timestamp.
+      assert.isTrue(
+        Number(await timer.methods.getCurrentTime().call()) >
+          Number(await longShortPair.methods.expirationTimestamp().call())
+      );
+
+      // As no OO price should not be able to expire.
+      assert(await didContractThrow(longShortPair.methods.expire().send({ from: rando })));
+
+      // If we advance time past the OO liveness (another 10 seconds) we should now be able to call expire. Note that
+      // we did not need to settle the price request as this happened in the `expire` call calling the
+      // `isContractEarlyExpired` which calls the `settleAndGetPrice` method on the OO.
+      await optimisticOracle.methods
+        .setCurrentTime(parseInt(await optimisticOracle.methods.getCurrentTime().call()) + 10)
+        .send({ from: deployer });
+      const expireTx = await longShortPair.methods.expire().send({ from: rando });
+
+      // To validate this, we should be able to see the event data emitted from the OO. This should contain normal
+      // expiration timestamp, ancillary data on the request (not early expiration).
+      await assertEventEmitted(expireTx, optimisticOracle, "RequestPrice", (ev) => {
+        return ev.timestamp == expirationTimestamp && ev.ancillaryData == customAncillaryData;
+      });
+
+      // Finally, proposing settlement price to OO and settling it should enable settlement.
+      await proposeAndSettleOptimisticOraclePrice(toWei("0.75"), expirationTimestamp, customAncillaryData);
+
+      await longShortPair.methods.settle(toWei("100"), toWei("100")).send({ from: sponsor });
+      assert.equal(await collateralToken.methods.balanceOf(sponsor).call(), toWei("1000")); // 1000-100+100
+      assert.equal(await longShortPair.methods.expiryPrice().call(), toWei("0.75"));
+      assert.isTrue(await longShortPair.methods.receivedSettlementPrice().call());
+    });
+    it("Calling early expire correctly right before expiration behaves correctly", async function () {
+      // Consider trying to correctly early expire the LSP right before the normal expiration time. Doing this should
+      // block the call to expire in totality and the resultant settlement price should be the early expiration price.
+      // As the early expiration was invalid, the standard expire call should work as per usual.
+      await timer.methods.setCurrentTime(expirationTimestamp - 10).send({ from: deployer });
+
+      await longShortPair.methods.requestEarlyExpiration(earlyExpirationTimestamp).send({ from: rando });
+      // const ooPriceRequestedEvent1 = await optimisticOracle.getPastEvents("RequestPrice", { fromBock: 0 });
+      // console.log("ooPriceRequestedEvent1", ooPriceRequestedEvent1);
+
+      // Propose a price to the OO to flag this early expiration was invalid.
+      await optimisticOracle.methods
+        .proposePrice(
+          longShortPair.options.address,
+          priceIdentifier,
+          earlyExpirationTimestamp,
+          earlyExpirationAncillaryData,
+          toWei("0.5") // some valid expiration price
+        )
+        .send({ from: deployer });
+
+      // As before expiration timestamp expire should revert.
+      assert(await didContractThrow(longShortPair.methods.expire().send({ from: rando })));
+
+      // Advance time to be past the contract expiration but before the OO liveness. This means the contract does not
+      // yet have a settlement price. This should block expire calls.
+      await optimisticOracle.methods
+        .setCurrentTime(
+          parseInt(await optimisticOracle.methods.getCurrentTime().call()) + optimisticOracleLivenessTime - 10
+        )
+        .send({ from: deployer });
+
+      // Check we are indeed past expiration timestamp.
+      assert.isTrue(
+        Number(await timer.methods.getCurrentTime().call()) >
+          Number(await longShortPair.methods.expirationTimestamp().call())
+      );
+
+      // As no OO price should not be able to expire.
+      assert(await didContractThrow(longShortPair.methods.expire().send({ from: rando })));
+
+      // If we advance time past the OO liveness (another 10 seconds) we should still not be able to call expire as
+      // the provided early expiration price was valid and calling expire is now not ever possible.
+      await optimisticOracle.methods
+        .setCurrentTime(parseInt(await optimisticOracle.methods.getCurrentTime().call()) + 20)
+        .send({ from: deployer });
+      assert(await didContractThrow(longShortPair.methods.expire().send({ from: rando })));
+
+      // Settlement should occur at the early expiration price.
+      await longShortPair.methods.settle(toWei("100"), toWei("100")).send({ from: sponsor });
+      assert.equal(await collateralToken.methods.balanceOf(sponsor).call(), toWei("1000")); // 1000-100+100
+      assert.equal(await longShortPair.methods.expiryPrice().call(), toWei("0.5"));
+      assert.isTrue(await longShortPair.methods.receivedSettlementPrice().call());
+    });
   });
 });

@@ -41,7 +41,7 @@ contract LongShortPair is Testable, Lockable {
         uint64 expirationTimestamp; // Unix timestamp of when the contract will expire.
         uint256 collateralPerPair; // How many units of collateral are required to mint one pair of synthetic tokens.
         bytes32 priceIdentifier; // Price identifier, registered in the DVM for the long short pair.
-        bool enableEarlyExpiration; // Enables the LPS contract to be settled early.
+        bool enableEarlyExpiration; // Enables the LSP contract to be settled early.
         ExpandedIERC20 longToken; // Token used as long in the LSP. Mint and burn rights needed by this contract.
         ExpandedIERC20 shortToken; // Token used as short in the LSP. Mint and burn rights needed by this contract.
         IERC20 collateralToken; // Collateral token used to back LSP synthetics.
@@ -56,7 +56,6 @@ contract LongShortPair is Testable, Lockable {
 
     bool public receivedSettlementPrice;
 
-    // Contract parametrization.
     uint64 public expirationTimestamp;
     uint64 public earlyExpirationTimestamp; // Set in the case the contract is expired early.
     string public pairName;
@@ -66,7 +65,7 @@ contract LongShortPair is Testable, Lockable {
     // to collateralPerPair and each long to 0. 1e18 makes each long worth collateralPerPair and short 0.
     uint256 public expiryPercentLong;
     bytes32 public priceIdentifier;
-    bool public enableEarlyExpiration; // If set, the LPS contract can request to be settled early by calling the OO.
+    bool public enableEarlyExpiration; // If set, the LSP contract can request to be settled early by calling the OO.
 
     // Price returned from the Optimistic oracle at settlement time.
     int256 public expiryPrice;
@@ -109,7 +108,7 @@ contract LongShortPair is Testable, Lockable {
     }
 
     modifier notEarlyExpired() {
-        require(!isContractEarlyExpired(), "Contract already early expire");
+        require(!isContractEarlyExpired(), "Contract already early expired");
         _;
     }
 
@@ -268,7 +267,7 @@ contract LongShortPair is Testable, Lockable {
      ****************************************/
 
     /**
-     * @notice Enables the LPS to request early expiration. This initiates a price request to the optimistic oracle at
+     * @notice Enables the LSP to request early expiration. This initiates a price request to the optimistic oracle at
      * the provided timestamp with a modified version of the ancillary data that includes the key "earlyExpiration:1"
      * which signals to the OO that this is an early expiration request, rather than standard settlement.
      * @dev Will revert if: a) the contract is already early expire, b) it is after the expiration timestamp, c)
@@ -386,15 +385,28 @@ contract LongShortPair is Testable, Lockable {
         optimisticOracle.setBond(priceIdentifier, requestTimestamp, requestAncillaryData, optimisticOracleProposerBond);
     }
 
-    // Fetch the optimistic oracle expiration price. If the timestamp is before expiration tries to fetch the
-    // early expiration timestamp and ancillary data. Else, fetch the price for the provided expiration timestamp and
-    // ancillary data. If the time is before the expiration timestamp (i.e early expiration) and the price is the ignore
-    // early expiration price then revert. This acts to block settlement on bad early expiration attempts.
+    // Fetch the optimistic oracle expiration price. If the timestamp is before expiration then this must be an early
+    // expiration settlement. Else, this could be be either an early expiration settlement OR a standard settlement.
+    // Check if the Optimistic oracle contains a price for the standard settlement. If it does, then set the expiryPrice
+    // to this value. Else, try fetching the early expiration price. If both of these prices are not available this will
+    // revert. This logic flow is to accommodate the case where a valid early expiration price request happens right
+    // the normal contract expiration. In this case, once optimistic oracle liveness has passes, the time will be
+    // greater than the expiration timestamp  but the correct price is the early expiration price.
     function getExpirationPrice() internal {
         if (getCurrentTime() < expirationTimestamp) {
             expiryPrice = _getOraclePrice(earlyExpirationTimestamp, getEarlyExpirationAncillaryData());
             require(expiryPrice != ignoreEarlyExpirationPrice(), "Oracle prevents early expiration");
-        } else expiryPrice = _getOraclePrice(expirationTimestamp, customAncillaryData);
+        } else {
+            if (
+                _getOptimisticOracle().hasPrice(
+                    address(this),
+                    priceIdentifier,
+                    expirationTimestamp,
+                    customAncillaryData
+                )
+            ) expiryPrice = _getOraclePrice(expirationTimestamp, customAncillaryData);
+            else expiryPrice = _getOraclePrice(earlyExpirationTimestamp, getEarlyExpirationAncillaryData());
+        }
 
         // Finally, compute the value of expiryPercentLong based on the expiryPrice. Cap the return value at 1e18 as
         // this should, by definition, between 0 and 1e18.
