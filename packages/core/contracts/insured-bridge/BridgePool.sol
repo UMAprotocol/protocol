@@ -376,7 +376,8 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         require(relayData.relayState == RelayState.Pending, "Already settled");
         require(
             msg.sender == relayData.slowRelayer ||
-                getCurrentTime() > relayData.priceRequestTime + optimisticOracleLiveness + 15 minutes
+                getCurrentTime() > relayData.priceRequestTime + optimisticOracleLiveness + 15 minutes,
+            "Not slow relayer"
         );
 
         // Resolve request if it is not settled or grab its resolved price if it is. If the request.settled param does
