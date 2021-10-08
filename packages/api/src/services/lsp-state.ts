@@ -41,7 +41,7 @@ export default (config: Config, appState: Dependencies) => {
     ["finder", toString],
     ["financialProductLibrary", toString],
     ["customAncillaryData", toString],
-    ["prepaidProposerReward", toString],
+    ["proposerReward", toString],
     ["expirationTimestamp", toNumber],
   ];
 
