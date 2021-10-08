@@ -374,9 +374,11 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         bytes32 depositHash = _getDepositHash(depositData);
         _validateRelayDataHash(depositHash, relayData);
         require(relayData.relayState == RelayState.Pending, "Already settled");
+
+        // Note: this check is to give the relayer a small, but reasonable amount of time to complete the relay before
+        // before it can be "stolen" by someone else. This is to ensure there is an incentive to settle relays quickly.
         require(
-            msg.sender == relayData.slowRelayer ||
-                getCurrentTime() > relayData.priceRequestTime + optimisticOracleLiveness + 15 minutes,
+            msg.sender == relayData.slowRelayer || getCurrentTime() > request.expirationTime + 15 minutes,
             "Not slow relayer"
         );
 
