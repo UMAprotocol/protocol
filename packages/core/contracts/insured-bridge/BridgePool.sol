@@ -256,10 +256,10 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
                 priceRequestTime: priceRequestTime
             });
         bytes32 relayHash = _getRelayHash(depositData, relayData);
-        bytes memory ancillaryData = _getRelayAncillaryData(relayHash);
+        // bytes memory ancillaryData = _getRelayAncillaryData(relayHash);
 
         relays[depositHash] = _getRelayDataHash(relayData);
-        relayRequestAncillaryData[keccak256(ancillaryData)] = depositHash;
+        // relayRequestAncillaryData[keccak256(ancillaryData)] = depositHash;
 
         // Sanity check that pool has enough balance to cover relay amount + proposer reward. Reward amount will be
         // paid on settlement after the OptimisticOracle price request has passed the challenge period.
@@ -283,7 +283,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         // instead of default setting to equal to the `depositTimestamp`, which is dependent on the L2 VM on which the
         // DepositContract is deployed. Imagine if the timestamps on the L2 have an offset that are always "in the
         // future" relative to L1 blocks, then the OptimisticOracle would always reject requests.
-        _requestAndProposeOraclePriceRelay(proposerBond, priceRequestTime, ancillaryData);
+        // _requestAndProposeOraclePriceRelay(proposerBond, priceRequestTime, ancillaryData);
 
         pendingReserves += depositData.amount; // Book off maximum liquidity used by this relay in the pending reserves.
 
@@ -483,26 +483,26 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         // not match the one stored in the relay price request on the OptimisticOracle, then this will revert. The
         // relay price request must be linked to ancillary data that is derived from the `depositData` and `relayData`,
         // so there is no way for the caller to modify the request params.
-        bytes memory ancillaryData = _getRelayAncillaryData(_getRelayHash(depositData, relayData));
-        if (!request.settled) {
-            (
-                ,
-                // Unused payout value, as we only care to check whether the price resolved to True or False.
-                int256 resolvedPrice
-            ) = optimisticOracle.settle(address(this), identifier, relayData.priceRequestTime, ancillaryData, request);
-            require(resolvedPrice == int256(1e18), "Settle relay iff price is True");
-        } else {
-            require(
-                optimisticOracle.hasPrice(
-                    address(this),
-                    identifier,
-                    relayData.priceRequestTime,
-                    ancillaryData,
-                    request
-                ) && request.resolvedPrice == int256(1e18),
-                "Settle relay iff price is True"
-            );
-        }
+        // bytes memory ancillaryData = _getRelayAncillaryData(_getRelayHash(depositData, relayData));
+        // if (!request.settled) {
+        //     (
+        //         ,
+        //         // Unused payout value, as we only care to check whether the price resolved to True or False.
+        //         int256 resolvedPrice
+        //     ) = optimisticOracle.settle(address(this), identifier, relayData.priceRequestTime, ancillaryData, request);
+        //     require(resolvedPrice == int256(1e18), "Settle relay iff price is True");
+        // } else {
+        //     require(
+        //         optimisticOracle.hasPrice(
+        //             address(this),
+        //             identifier,
+        //             relayData.priceRequestTime,
+        //             ancillaryData,
+        //             request
+        //         ) && request.resolvedPrice == int256(1e18),
+        //         "Settle relay iff price is True"
+        //     );
+        // }
 
         // Update the relay state to Finalized. This prevents any re-settling of a relay.
         relays[depositHash] = _getRelayDataHash(
@@ -563,7 +563,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         // Clean up state storage and receive gas refund. This also prevents `priceDisputed()` from being able to reset
         // this newly Finalized relay state.
         delete instantRelays[instantRelayHash];
-        delete relayRequestAncillaryData[keccak256(ancillaryData)];
+        // delete relayRequestAncillaryData[keccak256(ancillaryData)];
     }
 
     /**
