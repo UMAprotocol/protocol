@@ -238,8 +238,10 @@ describe("InsuredBridgeL1Client", function () {
         l1Token.options.address,
         l2Token,
         bridgePool.options.address,
+        0,
         defaultGasLimit,
-        defaultGasPrice
+        defaultGasPrice,
+        0
       )
       .send({ from: owner });
 
@@ -537,8 +539,10 @@ describe("InsuredBridgeL1Client", function () {
           l1Token2.options.address,
           l2Token2Address,
           bridgePool2.options.address,
+          0,
           defaultGasLimit,
-          defaultGasPrice
+          defaultGasPrice,
+          0
         )
         .send({ from: owner });
 

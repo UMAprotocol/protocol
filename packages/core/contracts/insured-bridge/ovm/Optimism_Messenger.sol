@@ -22,10 +22,13 @@ contract Optimism_Messenger is Ownable, Optimism_CrossDomainEnabled, MessengerIn
      */
     function relayMessage(
         address target,
+        address,
+        uint256,
         uint256 gasLimit,
         uint256,
+        uint256,
         bytes memory message
-    ) external override onlyOwner {
+    ) external payable override onlyOwner {
         sendCrossDomainMessage(target, uint32(gasLimit), message);
     }
 }
