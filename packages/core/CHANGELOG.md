@@ -3,6 +3,32 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.11.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.10.0...@uma/core@2.11.0) (2021-10-08)
+
+### Bug Fixes
+
+- **across:** small commenting and styling nits ([#3451](https://github.com/UMAprotocol/protocol/issues/3451)) ([9635357](https://github.com/UMAprotocol/protocol/commit/9635357a89a5c60aa95be4bbf7fc77e1a253abde))
+- **core:** remove migrations contract ([#3441](https://github.com/UMAprotocol/protocol/issues/3441)) ([dc3afa5](https://github.com/UMAprotocol/protocol/commit/dc3afa5f2f0e1084b15e536b89af153bea201050))
+- **hardhat:** update HRE syntax ([#3418](https://github.com/UMAprotocol/protocol/issues/3418)) ([359849a](https://github.com/UMAprotocol/protocol/commit/359849a814505d456f8109039747b7106786142c))
+- **insured-bridge:** fix whitelist to work with multiple L2 chains ([#3436](https://github.com/UMAprotocol/protocol/issues/3436)) ([58f727e](https://github.com/UMAprotocol/protocol/commit/58f727e2cb96fa828385835e562f691d7c4fd6e3))
+- **insured-bridge:** Instant relayer should only receive refund iff they sped up valid relay ([#3425](https://github.com/UMAprotocol/protocol/issues/3425)) ([27d3634](https://github.com/UMAprotocol/protocol/commit/27d3634c6fbe9cf1eb8419641d0dbddf9cb56569))
+- **insured-bridge:** remove fixedpoint from InsuredBridge math to save gas ([#3433](https://github.com/UMAprotocol/protocol/issues/3433)) ([34f9cc9](https://github.com/UMAprotocol/protocol/commit/34f9cc9993c7ed102a04aed5025af146e454ba2c))
+- **insured-bridge:** standardize variable styling with the rest of the repo ([#3427](https://github.com/UMAprotocol/protocol/issues/3427)) ([8b030a5](https://github.com/UMAprotocol/protocol/commit/8b030a5117af2bd8840618f36dd8ebb615f3cd33))
+
+### Features
+
+- **across:** Update the bridge pool to deal with the scenario where tokens are not relayed before they come through the canonical bridge ([#3412](https://github.com/UMAprotocol/protocol/issues/3412)) ([66d1391](https://github.com/UMAprotocol/protocol/commit/66d13914ea68fb60b56c2c2196976a6da391dbb1))
+- **contracts:** optimize address -> utf8 conversion ([#3439](https://github.com/UMAprotocol/protocol/issues/3439)) ([610df3e](https://github.com/UMAprotocol/protocol/commit/610df3e8de408aeb824d044fc45c52b21582decf))
+- **insured-bridge:** Add additional ChainId props ([#3400](https://github.com/UMAprotocol/protocol/issues/3400)) ([95cf12e](https://github.com/UMAprotocol/protocol/commit/95cf12e30d82ec5b2876fc6188a37210ca287733))
+- **insured-bridge:** add caching of addresses and common params to save gas in relaying ([#3432](https://github.com/UMAprotocol/protocol/issues/3432)) ([61e8cc5](https://github.com/UMAprotocol/protocol/commit/61e8cc5357e975362fb259ca9b490455c6b30033))
+- **insured-bridge:** add Eth->Weth support on deposits and withdraws ([#3440](https://github.com/UMAprotocol/protocol/issues/3440)) ([33d01d4](https://github.com/UMAprotocol/protocol/commit/33d01d471437e1ab6861e4545ea4bb3895fd4d74))
+- **insured-bridge:** Add the ability to transfer bridgeAdmin in the bridgePool to enable upgradability ([#3426](https://github.com/UMAprotocol/protocol/issues/3426)) ([9a4dd75](https://github.com/UMAprotocol/protocol/commit/9a4dd75bd00b4e58da553e8b386c54cb227b740f))
+- **insured-bridge:** gas optimizations in bridge pool ([#3406](https://github.com/UMAprotocol/protocol/issues/3406)) ([c8cf31a](https://github.com/UMAprotocol/protocol/commit/c8cf31a7729b1791f70a92ec29238d18f757100f))
+- **insured-bridge:** Integrate SkinnyOptimisticOracle with BridgePool ([#3430](https://github.com/UMAprotocol/protocol/issues/3430)) ([554641c](https://github.com/UMAprotocol/protocol/commit/554641c25d79c4331e08a757f000621d55fe2675))
+- **insured-bridge:** optimize bytes32 encode function ([#3431](https://github.com/UMAprotocol/protocol/issues/3431)) ([9967e70](https://github.com/UMAprotocol/protocol/commit/9967e70e7db3f262fde0dc9d89ea04d4cd11ed97))
+- **insured-bridge:** Reduce function gas costs by storing hash of Relay params instead of full struct ([#3438](https://github.com/UMAprotocol/protocol/issues/3438)) ([ff231b4](https://github.com/UMAprotocol/protocol/commit/ff231b4df83ede216c0cb431d32e6920b36aec7d))
+- **optimistic-oracle:** Introduce gas-lite version of OptimisticOracle ([#3409](https://github.com/UMAprotocol/protocol/issues/3409)) ([42f26de](https://github.com/UMAprotocol/protocol/commit/42f26deb8af3fed37272130b20418d9f93f12339))
+
 # [2.10.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.9.0...@uma/core@2.10.0) (2021-10-01)
 
 ### Features
