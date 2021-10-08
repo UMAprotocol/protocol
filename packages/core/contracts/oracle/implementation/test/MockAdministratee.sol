@@ -16,7 +16,7 @@ contract MockAdministratee is AdministrateeInterface {
         timesEmergencyShutdown++;
     }
 
-    function pfc() external view override returns (FixedPoint.Unsigned memory) {
+    function pfc() external pure override returns (FixedPoint.Unsigned memory) {
         return FixedPoint.fromUnscaledUint(0);
     }
 }

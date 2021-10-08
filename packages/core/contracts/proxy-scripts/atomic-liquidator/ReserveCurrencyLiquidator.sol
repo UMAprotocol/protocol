@@ -135,17 +135,17 @@ contract ReserveCurrencyLiquidator {
     }
 
     // Helper method to return the current final fee for a given financial contract instance.
-    function getFinalFee(IFinancialContract fc) internal returns (FixedPoint.Unsigned memory) {
+    function getFinalFee(IFinancialContract fc) internal view returns (FixedPoint.Unsigned memory) {
         return IStore(IFinder(fc.finder()).getImplementationAddress("Store")).computeFinalFee(fc.collateralCurrency());
     }
 
     // Helper method to return the collateral balance of this contract.
-    function getCollateralBalance(IFinancialContract fc) internal returns (FixedPoint.Unsigned memory) {
+    function getCollateralBalance(IFinancialContract fc) internal view returns (FixedPoint.Unsigned memory) {
         return FixedPoint.Unsigned(IERC20(fc.collateralCurrency()).balanceOf(address(this)));
     }
 
     // Helper method to return the synthetic balance of this contract.
-    function getSyntheticBalance(IFinancialContract fc) internal returns (FixedPoint.Unsigned memory) {
+    function getSyntheticBalance(IFinancialContract fc) internal view returns (FixedPoint.Unsigned memory) {
         return FixedPoint.Unsigned(IERC20(fc.tokenCurrency()).balanceOf(address(this)));
     }
 }

@@ -180,18 +180,18 @@ contract LspUniswapV2Broker {
     }
 
     // Syntactical sugar to calculate square root of a number.
-    function sqrt(FixedPoint.Signed memory num) private pure returns (FixedPoint.Signed memory) {
-        return FixedPoint.Signed(int256(Babylonian.sqrt(uint256(num.rawValue))));
+    function sqrt(FixedPoint.Signed memory _num) private pure returns (FixedPoint.Signed memory) {
+        return FixedPoint.Signed(int256(Babylonian.sqrt(uint256(_num.rawValue))));
     }
 
     // Syntactical sugar to convert a int256 to a Fixedpoint.Signed.
-    function num(int256 num) private pure returns (FixedPoint.Signed memory) {
-        return FixedPoint.fromUnscaledInt(num);
+    function num(int256 _num) private pure returns (FixedPoint.Signed memory) {
+        return FixedPoint.fromUnscaledInt(_num);
     }
 
     // Takes an input fixedPoint.Signed num and returns the num scaled by 0.997. 0.3% swap fee as in uniswap.
-    function applySwapFee(FixedPoint.Signed memory num) private pure returns (FixedPoint.Signed memory) {
-        return num.mul(997).div(1000);
+    function applySwapFee(FixedPoint.Signed memory _num) private pure returns (FixedPoint.Signed memory) {
+        return _num.mul(997).div(1000);
     }
 
     // 1 with 0.3% fees applied.
