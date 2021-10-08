@@ -41,14 +41,11 @@ export function getHardhatConfig(
   // Some tests should not be tested using hardhat. Define all tests that end with *e2e.js to be ignored.
   const testBlacklist = [".e2e.js"];
 
-  const optimismCompileWhitelist = ["OVM_BridgeDepositBox"];
+  const optimismCompileWhitelist = ["OVM_BridgeDepositBox", "Testable", "Lockable"];
 
   const defaultConfig = ({
     solidity: {
-      compilers: [
-        { version: solcVersion, settings: { optimizer: { enabled: true, runs: 1000000 } } },
-        { version: "0.7.6", settings: { optimizer: { enabled: true, runs: 1000000 } } },
-      ],
+      compilers: [{ version: solcVersion, settings: { optimizer: { enabled: true, runs: 1000000 } } }],
       overrides: {
         "contracts/financial-templates/expiring-multiparty/ExpiringMultiParty.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
         "contracts/financial-templates/expiring-multiparty/ExpiringMultiPartyLib.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
@@ -61,7 +58,6 @@ export function getHardhatConfig(
         "contracts/insured-bridge/BridgePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       },
     },
-    ovm: { solcVersion: "0.7.6" },
     networks: {
       hardhat: {
         hardfork: "london",
@@ -78,7 +74,6 @@ export function getHardhatConfig(
       goerli: { chainId: 5, url: getNodeUrl("goerli", true), accounts: { mnemonic } },
       kovan: { chainId: 42, url: getNodeUrl("kovan", true), accounts: { mnemonic } },
       optimism: {
-        ovm: true,
         chainId: 10,
         url: getNodeUrl("optimism", true),
         accounts: { mnemonic },
