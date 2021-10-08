@@ -15,7 +15,7 @@ const BridgeDepositBox = getContract("BridgeDepositBoxMock");
 // Helper contracts
 const Weth9 = getContract("WETH9");
 const Token = getContract("ExpandedERC20");
-const Timer = getContract("Legacy_Timer");
+const Timer = getContract("Timer");
 
 // Contract objects
 let depositBox, l2Token, timer;
