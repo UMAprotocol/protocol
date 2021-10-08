@@ -331,7 +331,7 @@ contract LongShortPair is Testable, Lockable {
     /**
      * @notice Defines a special number that, if returned during an attempted early expiration, will cause the contract
      * to do nothing and not expire. This enables the OO (and DVM voters in the case of a dispute) to choose to keep
-     * the contract running, thereby denying with the early settlement request.
+     * the contract running, thereby denying the early settlement request.
      */
     function ignoreEarlyExpirationPrice() public pure returns (int256) {
         return type(int256).min;
