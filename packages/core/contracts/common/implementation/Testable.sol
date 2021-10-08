@@ -42,7 +42,7 @@ abstract contract Testable {
      * Otherwise, it will return the block timestamp.
      * @return uint for the current Testable timestamp.
      */
-    function getCurrentTime() public view returns (uint256) {
+    function getCurrentTime() public view virtual returns (uint256) {
         if (timerAddress != address(0x0)) {
             return Timer(timerAddress).getCurrentTime();
         } else {
