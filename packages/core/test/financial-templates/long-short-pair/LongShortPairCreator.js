@@ -42,7 +42,7 @@ const longSynthSymbol = "LtCFD";
 const shortSynthName = "Short Test LSP";
 const shortSynthSymbol = "StCFD";
 const customAncillaryData = web3.utils.utf8ToHex("some-address-field:0x1234");
-const prepaidProposerReward = "0";
+const proposerReward = "0";
 const pairName = "Long Short Pair Test";
 const optimisticOracleLivenessTime = 7200;
 const optimisticOracleProposerBond = "0";
@@ -104,7 +104,7 @@ describe("LongShortPairCreator", function () {
       collateralToken: collateralToken.options.address,
       financialProductLibrary: longShortPairLibrary.options.address,
       customAncillaryData,
-      prepaidProposerReward,
+      proposerReward,
       optimisticOracleLivenessTime,
       optimisticOracleProposerBond,
     };
@@ -181,19 +181,19 @@ describe("LongShortPairCreator", function () {
     assert.equal(await (await Token.at(await lsp.methods.shortToken().call())).methods.decimals().call(), "6");
   });
 
-  it("Transfers prepaidProposerReward", async function () {
-    const customPrepaidProposerReward = toWei("100");
-    await collateralToken.methods.mint(deployer, customPrepaidProposerReward).send({ from: accounts[0] });
+  it("Transfers proposerReward", async function () {
+    const customProposerReward = toWei("100");
+    await collateralToken.methods.mint(deployer, customProposerReward).send({ from: accounts[0] });
     await collateralToken.methods
-      .approve(longShortPairCreator.options.address, customPrepaidProposerReward)
+      .approve(longShortPairCreator.options.address, customProposerReward)
       .send({ from: accounts[0] });
     await longShortPairCreator.methods
-      .createLongShortPair({ ...constructorParams, prepaidProposerReward: customPrepaidProposerReward })
+      .createLongShortPair({ ...constructorParams, proposerReward: customProposerReward })
       .send({ from: accounts[0] });
 
     const lspAddress = (await longShortPairCreator.getPastEvents("CreatedLongShortPair"))[0].returnValues.longShortPair;
 
-    assert.equal((await collateralToken.methods.balanceOf(lspAddress).call()).toString(), customPrepaidProposerReward);
+    assert.equal((await collateralToken.methods.balanceOf(lspAddress).call()).toString(), customProposerReward);
   });
 
   it("Rejects on past expirationTimestamp", async function () {

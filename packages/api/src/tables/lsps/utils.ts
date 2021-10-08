@@ -25,7 +25,7 @@ export type Data = {
   collateralPerPair?: string | null;
   financialProductLibraryAddress?: string | null;
   finder?: string | null;
-  prepaidProposerReward?: string | null;
+  proposerReward?: string | null;
   sponsors?: string[] | null;
   // these are not on the contract but queried from erc20
   totalPositionCollateral?: string | null;

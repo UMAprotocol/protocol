@@ -64,7 +64,7 @@ const expirationTimestamp = startTimestamp + 10000;
 const optimisticOracleLiveness = 7200;
 const priceIdentifier = padRight(utf8ToHex("TEST_IDENTIFIER"), 64);
 const collateralPerPair = toWei("1"); // each pair of long and short tokens need 1 unit of collateral to mint.
-const prepaidProposerReward = toWei("0");
+const proposerReward = toWei("0");
 const pairName = "Long Short Pair Test";
 
 // Returns the current spot price of a uniswap pool, scaled to `precision` # decimal points.
@@ -173,7 +173,7 @@ describe("LspUniswapV2Broker", function () {
       collateralToken: collateralToken.options.address,
       financialProductLibrary: longShortPairLibrary.options.address,
       customAncillaryData: ancillaryData,
-      prepaidProposerReward,
+      proposerReward,
       optimisticOracleLivenessTime: 7200,
       optimisticOracleProposerBond: toWei("0"),
       finder: finder.options.address,

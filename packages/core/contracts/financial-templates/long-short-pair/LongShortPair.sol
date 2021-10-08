@@ -47,7 +47,7 @@ contract LongShortPair is Testable, Lockable {
         IERC20 collateralToken; // Collateral token used to back LSP synthetics.
         LongShortPairFinancialProductLibrary financialProductLibrary; // Contract providing settlement payout logic.
         bytes customAncillaryData; // Custom ancillary data to be passed along with the price request to the OO.
-        uint256 prepaidProposerReward; // Preloaded reward to incentivize settlement price proposals.
+        uint256 proposerReward; // Optimistic oracle reward amount, pulled from the caller of the expire function.
         uint256 optimisticOracleLivenessTime; // OO liveness time for price requests.
         uint256 optimisticOracleProposerBond; // OO proposer bond for price requests.
         FinderInterface finder; // DVM finder to find other UMA ecosystem contracts.
@@ -79,7 +79,7 @@ contract LongShortPair is Testable, Lockable {
 
     // Optimistic oracle customization parameters.
     bytes public customAncillaryData;
-    uint256 public prepaidProposerReward;
+    uint256 public proposerReward;
     uint256 public optimisticOracleLivenessTime;
     uint256 public optimisticOracleProposerBond;
 
@@ -124,7 +124,7 @@ contract LongShortPair is Testable, Lockable {
      *    - `collateralToken`: Collateral token used to back LSP synthetics.
      *    - `financialProductLibrary`: Contract providing settlement payout logic.
      *    - `customAncillaryData`: Custom ancillary data to be passed along with the price request to the OO.
-     *    - `prepaidProposerReward`: Preloaded reward to incentivize settlement price proposals.
+     *    - `proposerReward`: Preloaded reward to incentivize settlement price proposals.
      *    - `optimisticOracleLivenessTime`: OO liveness time for price requests.
      *    - `optimisticOracleProposerBond`: OO proposer bond for price requests.
      *    - `finder`: DVM finder to find other UMA ecosystem contracts.
@@ -161,7 +161,7 @@ contract LongShortPair is Testable, Lockable {
         );
 
         customAncillaryData = params.customAncillaryData;
-        prepaidProposerReward = params.prepaidProposerReward;
+        proposerReward = params.proposerReward;
         optimisticOracleLivenessTime = params.optimisticOracleLivenessTime;
         optimisticOracleProposerBond = params.optimisticOracleProposerBond;
     }
@@ -365,14 +365,17 @@ contract LongShortPair is Testable, Lockable {
     function _requestOraclePrice(uint256 requestTimestamp, bytes memory requestAncillaryData) internal {
         OptimisticOracleInterface optimisticOracle = _getOptimisticOracle();
 
-        // Use the prepaidProposerReward as the proposer reward.
-        if (prepaidProposerReward > 0) collateralToken.safeApprove(address(optimisticOracle), prepaidProposerReward);
+        // If the proposer reward was set then pull it from the caller of the function.
+        if (proposerReward > 0) {
+            collateralToken.safeTransferFrom(msg.sender, address(this), proposerReward);
+            collateralToken.safeApprove(address(optimisticOracle), proposerReward);
+        }
         optimisticOracle.requestPrice(
             priceIdentifier,
             requestTimestamp,
             requestAncillaryData,
             collateralToken,
-            prepaidProposerReward
+            proposerReward
         );
 
         // Set the Optimistic oracle liveness for the price request.
