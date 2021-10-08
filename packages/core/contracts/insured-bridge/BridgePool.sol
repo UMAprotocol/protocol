@@ -218,6 +218,16 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
      *          RELAYER FUNCTIONS         *
      **************************************/
 
+    /**
+     * @notice Called by Relayer to execute a slow + fast relay from L2 to L1, fulfilling a corresponding deposit order.
+     * @dev There can only be one pending relay for a deposit. This method is effectively the relayDeposit and
+     * speedUpRelay methods concatenated. This could potentially be refactored to just call each method, but there
+     * are some gas savings in combining the transfers and hash computations.
+     * @dev Caller must have approved this contract to spend the total bond + amount - fees for `l1Token`.
+     * @param depositData the deposit data struct containing all the user's deposit information.
+     * @param realizedLpFeePct LP fee calculated off-chain considering the L1 pool liquidity at deposit time, before
+     *      quoteTimestamp. The OO acts to verify the correctness of this realized fee. Can not exceed 50%.
+     */
     function relayAndSpeedUp(DepositData memory depositData, uint64 realizedLpFeePct) public nonReentrant() {
         // If no pending relay for this deposit, then associate the caller's relay attempt with it.
         uint32 priceRequestTime = uint32(getCurrentTime());
@@ -831,6 +841,11 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
     receive() external payable {}
 }
 
+/**
+ * @notice This is the BridgePool contract that should be deployed on live networks. It is exactly the same as the
+ * regular BridgePool contract, but it overrides getCurrentTime to make the call a simply return block.timestamp with
+ * no branching or storage queries.
+ */
 contract BridgePoolProd is BridgePool {
     constructor(
         string memory _lpTokenName,
