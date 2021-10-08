@@ -3,13 +3,12 @@ import type { SortedStore } from "..";
 import { Datastore, Key } from "@google-cloud/datastore";
 import highland from "highland";
 
-// TODO: this is a work in progress which will be completed during datastore integration.
-export default function <D>(kind: string, store: Datastore): SortedStore<string, D> {
-  function makeKey(id: string): Key {
+export default function <I extends string | number, D>(kind: string, store: Datastore): SortedStore<I, D> {
+  function makeKey(id: I): Key {
     return store.key([kind, id]);
   }
   // return value or undefined if it doesnt exist
-  async function get(id: string) {
+  async function get(id: I) {
     try {
       const [result] = await store.get(makeKey(id));
       return result;
@@ -17,25 +16,24 @@ export default function <D>(kind: string, store: Datastore): SortedStore<string,
       return;
     }
   }
-  async function set(id: string, data: D) {
+  async function set(id: I, data: D) {
     await store.save({
       key: makeKey(id),
-      method: "insert",
       data,
     });
   }
-  async function has(id: string) {
+  async function has(id: I) {
     // horribly ineficient to actually query data to see if it exists, but cannot find a better way
     return exists(await get(id));
   }
-  async function del(id: string) {
+  async function del(id: I) {
     await store.delete(makeKey(id));
   }
   async function entries() {
     const [results] = await store.createQuery(kind).run();
     return results.map((result) => {
       return [result[store.KEY].name, result];
-    }) as [string, D][];
+    }) as [I, D][];
   }
   async function values() {
     const [results] = await store.createQuery(kind).run();
@@ -46,7 +44,7 @@ export default function <D>(kind: string, store: Datastore): SortedStore<string,
     const [results] = await store.createQuery(kind).select("__key__").run();
     return results.map((result) => {
       return result[store.KEY].name;
-    }) as string[];
+    }) as I[];
   }
   // theres no way to really do built into the store client. Google recommends managing a size entry yourself.
   async function size(): Promise<number> {
@@ -67,11 +65,11 @@ export default function <D>(kind: string, store: Datastore): SortedStore<string,
       .collect()
       .toPromise(Promise);
   }
-  async function slice(id: string, length: number) {
+  async function slice(id: I, length: number) {
     const [result] = await store.createQuery(kind).filter("__key__", ">=", makeKey(id)).limit(length).run();
     return result;
   }
-  async function between(a: string, b: string) {
+  async function between(a: I, b: I) {
     const [result] = await store
       .createQuery(kind)
       .filter("__key__", ">=", makeKey(a))

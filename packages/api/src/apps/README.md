@@ -6,6 +6,7 @@ This package is meant to ingest and expose data about the UMA ecosystem through 
 
 - [api](./apps/api): entry point to run all the api logic
 - [lsp_api](./apps/lsp_api): entry point to run all the api logic
+- [datastore_api](./apps/datastore_api): entry point to run all the api logic
 
 ## Libraries
 

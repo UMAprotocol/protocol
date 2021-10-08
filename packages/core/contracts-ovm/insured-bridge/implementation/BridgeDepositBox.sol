@@ -66,7 +66,6 @@ abstract contract BridgeDepositBox is Legacy_Testable, Legacy_Lockable {
     event SetMinimumBridgingDelay(uint64 newMinimumBridgingDelay);
     event WhitelistToken(address l1Token, address l2Token, uint64 lastBridgeTime, address bridgePool);
     event DepositsEnabled(address l2Token, bool depositsEnabled);
-    // TODO: change the order of these to match the way they are used in the bridge pool.
     event FundsDeposited(
         uint256 chainId,
         uint256 depositId,
@@ -92,7 +91,7 @@ abstract contract BridgeDepositBox is Legacy_Testable, Legacy_Lockable {
 
     /**
      * @notice Construct the Bridge Deposit Box
-     * @param _minimumBridgingDelay Minimum second that must elapse between L2->L1 token transfer to prevent dos.
+     * @param _minimumBridgingDelay Minimum second that must elapse between L2 -> L1 token transfer to prevent dos.
      * @param _chainId Chain identifier for the Bridge deposit box.
      * @param timerAddress Timer used to synchronize contract time in testing. Set to 0x000... in production.
      */
@@ -112,7 +111,7 @@ abstract contract BridgeDepositBox is Legacy_Testable, Legacy_Lockable {
      **************************************/
 
     /**
-     * @notice Changes the minimum time in seconds that must elapse between withdraws from L2->L1.
+     * @notice Changes the minimum time in seconds that must elapse between withdraws from L2 -> L1.
      * @param newMinimumBridgingDelay the new minimum delay.
      */
     function _setMinimumBridgingDelay(uint64 newMinimumBridgingDelay) internal {

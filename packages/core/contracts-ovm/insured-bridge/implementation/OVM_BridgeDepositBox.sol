@@ -17,7 +17,8 @@ interface StandardBridgeLike {
 }
 
 /**
- * @notice OVM specific bridge deposit box. Uses OVM cross-domain-enabled logic for access control.
+ * @notice OVM specific bridge deposit box.
+ * @dev Uses OVM cross-domain-enabled logic for access control.
  */
 
 contract OVM_BridgeDepositBox is BridgeDepositBox, OVM_CrossDomainEnabled {

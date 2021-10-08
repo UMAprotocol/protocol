@@ -141,7 +141,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
     }
 
     /**
-     * @notice Construct the Bridge Pool
+     * @notice Construct the Bridge Pool.
      * @param _lpTokenName Name of the LP token to be deployed by this contract.
      * @param _lpTokenSymbol Symbol of the LP token to be deployed by this contract.
      * @param _bridgeAdmin Admin contract deployed alongside on L1. Stores global variables and has owner control.
@@ -307,13 +307,13 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
      * @notice Instantly relay a deposit amount minus fees to the l1Recipient. Instant relayer earns a reward following
      * the pending relay challenge period.
      * @dev We assume that the caller has performed an off-chain check that the deposit data they are attempting to
-     * relay is valid. If the deposit data is invalid, then the instant relayer has no recourse
-     * to receive their funds back after the invalid deposit data is disputed. Moreover, no one will be able to
-     * resubmit a relay for the invalid deposit data because they know it will get disputed again. On the other hand,
-     * if the deposit data is valid, then even if it is falsely disputed, the instant relayer will eventually get
-     * reimbursed because someone else will be incentivized to resubmit the relay to earn slow relayer rewards. Once the
-     * valid relay is finalized, the instant relayer will be reimbursed. Therefore, the caller has the same
-     * responsibility as the disputer in validating the relay data.
+     * relay is valid. If the deposit data is invalid, then the instant relayer has no recourse to receive their funds
+     * back after the invalid deposit data is disputed. Moreover, no one will be able to resubmit a relay for the
+     * invalid deposit data because they know it will get disputed again. On the other hand, if the deposit data is
+     * valid, then even if it is falsely disputed, the instant relayer will eventually get reimbursed because someone
+     * else will be incentivized to resubmit the relay to earn slow relayer rewards. Once the valid relay is finalized,
+     * the instant relayer will be reimbursed. Therefore, the caller has the same responsibility as the disputer in
+     * validating the relay data.
      * @dev Caller must have approved this contract to spend the deposit amount of L1 tokens to relay. There can only
      * be one instant relayer per relay attempt.
      * @param depositData Unique set of L2 deposit data that caller is trying to instantly relay.
@@ -486,11 +486,11 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
 
     /**
      * @notice Synchronize any balance changes in this contract with the utilized & liquid reserves. This would be done
-     * at the conclusion of an L2->L1 token transfer via the canonical token bridge.
+     * at the conclusion of an L2 -> L1 token transfer via the canonical token bridge.
      */
     function sync() public nonReentrant() {
         // Check if the l1Token balance of the contract is greater than the liquidReserves. If it is then the bridging
-        // action from L2->L1 has concluded and the local accounting can be updated.
+        // action from L2 -> L1 has concluded and the local accounting can be updated.
         uint256 l1TokenBalance = l1Token.balanceOf(address(this));
         if (l1TokenBalance > liquidReserves) {
             // utilizedReserves can go to less than zero. This will happen if the accumulated fees exceeds the current
@@ -505,9 +505,9 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
      * @notice Computes the exchange rate between LP tokens and L1Tokens. Used when adding/removing liquidity.
      */
     function exchangeRateCurrent() public returns (uint256) {
-        if (totalSupply() == 0) return 1e18; //initial rate is 1 pre any mint action.
+        if (totalSupply() == 0) return 1e18; // initial rate is 1 pre any mint action.
 
-        // First, update fee counters and local accounting of finalized transfers from L2->L1.
+        // First, update fee counters and local accounting of finalized transfers from L2 -> L1.
         updateAccumulatedLpFees(); // Accumulate all allocated fees from the last time this method was called.
         sync(); // Fetch any balance changes due to token bridging finalization and factor them in.
 
@@ -554,7 +554,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
     /**
      * @notice Updates the address stored in this contract for the OptimisticOracle and the Store to the latest versions
      * set in the the Finder. We store these as local addresses to make relay methods more gas efficient.
-     * @dev there is no risk of leaving this function public for anyone to call as in all cases we want the addresses
+     * @dev There is no risk of leaving this function public for anyone to call as in all cases we want the addresses
      * in this contract to map to the latest version in the Finder.
      */
     function syncWithFinderAddresses() public {
@@ -569,7 +569,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
     /**
      * @notice Updates the values of stored constants for the proposerBondPct, optimisticOracleLiveness and identifier
      * to that set in the bridge Admin. We store these as local variables to make the relay methods more gas efficient.
-     * @dev there is no risk of leaving this function public for anyone to call as in all cases we want these values
+     * @dev There is no risk of leaving this function public for anyone to call as in all cases we want these values
      * in this contract to map to the latest version set in the BridgeAdmin.
      */
     function syncWithBridgeAdminParams() public {
@@ -655,24 +655,24 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
     }
 
     // Return hash of relay data, which is stored in state and mapped to a deposit hash.
-    function _getRelayDataHash(RelayData memory _relayData) private pure returns (bytes32) {
-        return keccak256(abi.encode(_relayData));
+    function _getRelayDataHash(RelayData memory relayData) private pure returns (bytes32) {
+        return keccak256(abi.encode(relayData));
     }
 
     // Reverts if the stored relay data hash for `depositHash` does not match `_relayData`.
-    function _validateRelayDataHash(bytes32 depositHash, RelayData memory _relayData) private view {
+    function _validateRelayDataHash(bytes32 depositHash, RelayData memory relayData) private view {
         require(
-            relays[depositHash] == _getRelayDataHash(_relayData),
+            relays[depositHash] == _getRelayDataHash(relayData),
             "Hashed relay params do not match existing relay hash for deposit"
         );
     }
 
     // Return hash of unique instant relay and deposit event. This is stored in state and mapped to a deposit hash.
-    function _getInstantRelayHash(bytes32 depositHash, RelayData memory _relayData) private pure returns (bytes32) {
+    function _getInstantRelayHash(bytes32 depositHash, RelayData memory relayData) private pure returns (bytes32) {
         // Only include parameters that affect the "correctness" of an instant relay. For example, the realized LP fee
         // % directly affects how many tokens the instant relayer needs to send to the user, whereas the address of the
-        // instant relayer does not matter for determing whether an instant relay is "correct".
-        return keccak256(abi.encode(depositHash, _relayData.realizedLpFeePct));
+        // instant relayer does not matter for determining whether an instant relay is "correct".
+        return keccak256(abi.encode(depositHash, relayData.realizedLpFeePct));
     }
 
     // Update internal fee counters by adding in any accumulated fees from the last time this logic was called.

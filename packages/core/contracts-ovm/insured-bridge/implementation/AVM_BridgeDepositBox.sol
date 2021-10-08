@@ -13,6 +13,11 @@ interface StandardBridgeLike {
     ) external payable returns (bytes memory);
 }
 
+/**
+ * @notice AVM specific bridge deposit box.
+ * @dev Uses AVM cross-domain-enabled logic for access control.
+ */
+
 contract AVM_BridgeDepositBox is BridgeDepositBox, AVM_CrossDomainEnabled {
     // Address of the L1 contract that acts as the owner of this Bridge deposit box.
     address public crossDomainAdmin;
@@ -121,7 +126,7 @@ contract AVM_BridgeDepositBox is BridgeDepositBox, AVM_CrossDomainEnabled {
             whitelistedTokens[l2Token].l1Token, // _l1Token. Address of the L1 token to bridge over.
             whitelistedTokens[l2Token].l1BridgePool, // _to. Withdraw, over the bridge, to the l1 withdraw contract.
             bridgeDepositBoxBalance, // _amount. Send the full balance of the deposit box to bridge.
-            "" // _data. We dont need to send any data for the bridging action.
+            "" // _data. We don't need to send any data for the bridging action.
         );
 
         emit TokensBridged(l2Token, bridgeDepositBoxBalance, l1Gas, msg.sender);

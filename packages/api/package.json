@@ -43,7 +43,8 @@
     "prettier": "prettier './**/*.md' './src/**/*.ts'",
     "lint": "yarn prettier --write && yarn eslint --fix",
     "api": "node build/start api",
-    "lsp_api": "node build/start lsp_api"
+    "lsp_api": "node build/start lsp_api",
+    "datastore_api": "node build/start datastore_api"
   },
   "publishConfig": {
     "registry": "https://registry.npmjs.com/",

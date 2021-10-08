@@ -13,7 +13,8 @@ import "../common/implementation/Lockable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 /**
- * @notice Administrative contract deployed on L1 that has implicit references to all L2 DepositBoxes. This contract is
+ * @notice Administrative contract deployed on L1 that has implicit references to all L2 DepositBoxes.
+ * @dev This contract is
  * responsible for making global variables accessible to BridgePool contracts, which house passive liquidity and
  * enable relaying of L2 deposits.
  * @dev The owner of this contract can also call permissioned functions on registered L2 DepositBoxes.
