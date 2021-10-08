@@ -32,7 +32,6 @@ export type CurrencySymbol = "usd";
 export type PriceSample = [timestamp: number, price: string];
 // These are library dependencies to all services
 export type AppState = {
-  blocks: uma.tables.blocks.Table;
   coingecko: uma.Coingecko;
   zrx: Zrx;
   emps: {
