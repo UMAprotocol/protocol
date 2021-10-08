@@ -271,11 +271,19 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
             "Insufficient pool balance"
         );
 
+        // Pull relay amount minus fees from caller and send to the deposit l1Recipient. The total fees paid is the sum
+        // of the LP fees, the relayer fees and the instant relay fee.
+        uint256 feesTotal =
+            _getAmountFromPct(
+                relayData.realizedLpFeePct + depositData.slowRelayFeePct + depositData.instantRelayFeePct,
+                depositData.amount
+            );
+
         // Compute total proposal bond and pull from caller so that the OptimisticOracle can pull it from here.
         l1Token.safeTransferFrom(
             msg.sender,
             address(this),
-            depositData.amount + proposerBond + store.computeFinalFee(address(l1Token)).rawValue
+            depositData.amount + proposerBond + store.computeFinalFee(address(l1Token)).rawValue - feesTotal
         );
 
         // Request a price for the relay identifier and propose "true" optimistically. This method will pull the
@@ -295,13 +303,6 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         );
         instantRelays[instantRelayHash] = msg.sender;
 
-        // Pull relay amount minus fees from caller and send to the deposit l1Recipient. The total fees paid is the sum
-        // of the LP fees, the relayer fees and the instant relay fee.
-        uint256 feesTotal =
-            _getAmountFromPct(
-                relayData.realizedLpFeePct + depositData.slowRelayFeePct + depositData.instantRelayFeePct,
-                depositData.amount
-            );
         // If the L1 token is WETH then: a) pull WETH from instant relayer b) unwrap WETH c) send ETH to recipient.
         uint256 recipientAmount = depositData.amount - feesTotal;
         if (isWethPool) {
