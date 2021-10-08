@@ -10,7 +10,7 @@ interface BridgeAdminInterface {
         address indexed l2DepositContract,
         address indexed l2MessengerContract
     );
-    event SetBridgeAdmin(uint256 indexed chainId, address indexed bridgeAdmin);
+    event SetCrossDomainAdmin(uint256 indexed chainId, address indexed newAdmin);
     event SetRelayIdentifier(bytes32 indexed identifier);
     event SetOptimisticOracleLiveness(uint32 indexed liveness);
     event SetProposerBondPct(uint64 indexed proposerBondPct);

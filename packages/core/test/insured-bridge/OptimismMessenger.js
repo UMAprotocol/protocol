@@ -107,6 +107,7 @@ describe("OptimismMessenger integration with BridgeAdmin", () => {
   it("relayMessage only callable by owner", async function () {
     const relayMessageTxn = optimismMessenger.methods.relayMessage(
       depositBox.options.address,
+      owner,
       0,
       defaultGasLimit,
       defaultGasPrice,
@@ -147,7 +148,7 @@ describe("OptimismMessenger integration with BridgeAdmin", () => {
         .setDepositContract(chainId, depositBoxImpersonator, optimismMessenger.options.address)
         .send({ from: owner });
       await bridgeAdmin.methods
-        .setBridgeAdmin(chainId, rando, 0, defaultGasLimit, defaultGasPrice, 0)
+        .setCrossDomainAdmin(chainId, rando, 0, defaultGasLimit, defaultGasPrice, 0)
         .send({ from: owner });
       const setAdminCallToMessengerCall = l1CrossDomainMessengerMock.smocked.sendMessage.calls[0];
 
@@ -157,7 +158,7 @@ describe("OptimismMessenger integration with BridgeAdmin", () => {
         depositBoxImpersonator,
         "xchain target should be deposit contract"
       );
-      const expectedAbiData = depositBox.methods.setBridgeAdmin(rando).encodeABI();
+      const expectedAbiData = depositBox.methods.setCrossDomainAdmin(rando).encodeABI();
       assert.equal(setAdminCallToMessengerCall._message, expectedAbiData, "xchain message bytes unexpected");
       assert.equal(setAdminCallToMessengerCall._gasLimit, defaultGasLimit, "xchain gas limit unexpected");
     });

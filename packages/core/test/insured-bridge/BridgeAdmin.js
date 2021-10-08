@@ -558,7 +558,14 @@ describe("BridgeAdmin", () => {
           assert(
             await didContractThrow(
               bridgeAdmin.methods
-                .setBridgeAdmin(chainId, rando, defaultL1CallValue, defaultGasLimit, defaultGasPrice, maxSubmissionCost)
+                .setCrossDomainAdmin(
+                  chainId,
+                  rando,
+                  defaultL1CallValue,
+                  defaultGasLimit,
+                  defaultGasPrice,
+                  maxSubmissionCost
+                )
                 .send({ from: rando, value: defaultL1CallValue })
             ),
             "OnlyOwner modifier not enforced"
@@ -568,7 +575,14 @@ describe("BridgeAdmin", () => {
           assert(
             await didContractThrow(
               bridgeAdmin.methods
-                .setBridgeAdmin(chainId, rando, defaultL1CallValue, defaultGasLimit, defaultGasPrice, maxSubmissionCost)
+                .setCrossDomainAdmin(
+                  chainId,
+                  rando,
+                  defaultL1CallValue,
+                  defaultGasLimit,
+                  defaultGasPrice,
+                  maxSubmissionCost
+                )
                 .send({ from: owner, value: defaultL1CallValue })
             ),
             "Deposit contract not set"
@@ -581,7 +595,7 @@ describe("BridgeAdmin", () => {
           assert(
             await didContractThrow(
               bridgeAdmin.methods
-                .setBridgeAdmin(
+                .setCrossDomainAdmin(
                   chainId,
                   ZERO_ADDRESS,
                   defaultL1CallValue,
@@ -598,7 +612,14 @@ describe("BridgeAdmin", () => {
           assert(
             await didContractThrow(
               bridgeAdmin.methods
-                .setBridgeAdmin(chainId, rando, defaultL1CallValue, defaultGasLimit, defaultGasPrice, maxSubmissionCost)
+                .setCrossDomainAdmin(
+                  chainId,
+                  rando,
+                  defaultL1CallValue,
+                  defaultGasLimit,
+                  defaultGasPrice,
+                  maxSubmissionCost
+                )
                 .send({ from: owner })
             ),
             "msg.value != defaultL1CallValue"
@@ -607,13 +628,20 @@ describe("BridgeAdmin", () => {
           // Works if msg.value = 0 and defaultL1CallValue = 0
           assert.ok(
             await bridgeAdmin.methods
-              .setBridgeAdmin(chainId, rando, 0, defaultGasLimit, defaultGasPrice, maxSubmissionCost)
+              .setCrossDomainAdmin(chainId, rando, 0, defaultGasLimit, defaultGasPrice, maxSubmissionCost)
               .call({ from: owner })
           );
 
           // Successful call
           await bridgeAdmin.methods
-            .setBridgeAdmin(chainId, rando, defaultL1CallValue, defaultGasLimit, defaultGasPrice, maxSubmissionCost)
+            .setCrossDomainAdmin(
+              chainId,
+              rando,
+              defaultL1CallValue,
+              defaultGasLimit,
+              defaultGasPrice,
+              maxSubmissionCost
+            )
             .send({ from: owner, value: defaultL1CallValue });
 
           // Messenger should receive msg.value.
@@ -624,16 +652,23 @@ describe("BridgeAdmin", () => {
             .setDepositContract(chainId, depositBoxImpersonator, messenger.options.address)
             .send({ from: owner });
           const setAdminTxn = await bridgeAdmin.methods
-            .setBridgeAdmin(chainId, rando, defaultL1CallValue, defaultGasLimit, defaultGasPrice, maxSubmissionCost)
+            .setCrossDomainAdmin(
+              chainId,
+              rando,
+              defaultL1CallValue,
+              defaultGasLimit,
+              defaultGasPrice,
+              maxSubmissionCost
+            )
             .send({ from: owner, value: defaultL1CallValue });
 
           // Check for L1 logs and state change
-          await assertEventEmitted(setAdminTxn, bridgeAdmin, "SetBridgeAdmin", (ev) => {
-            return ev.bridgeAdmin === rando && ev.chainId === chainId;
+          await assertEventEmitted(setAdminTxn, bridgeAdmin, "SetCrossDomainAdmin", (ev) => {
+            return ev.newAdmin === rando && ev.chainId === chainId;
           });
 
           // Validate xchain message
-          const expectedAbiData = depositBox.methods.setBridgeAdmin(rando).encodeABI();
+          const expectedAbiData = depositBox.methods.setCrossDomainAdmin(rando).encodeABI();
           await assertEventEmitted(setAdminTxn, messenger, "RelayedMessage", (ev) => {
             return (
               ev.target === depositBoxImpersonator &&

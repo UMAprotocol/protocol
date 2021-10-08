@@ -146,7 +146,7 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, Lockable {
      * @param l2GasPrice Gas price bid to set for relayed message on L2.
      * @param maxSubmissionCost: Arbitrum only: fee deducted from L2 sender's balance to pay for L2 gas.
      */
-    function setBridgeAdmin(
+    function setCrossDomainAdmin(
         uint256 chainId,
         address admin,
         uint256 l1CallValue,
@@ -155,16 +155,17 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, Lockable {
         uint256 maxSubmissionCost
     ) public payable onlyOwner canRelay(chainId) nonReentrant() {
         require(admin != address(0), "Admin cannot be zero address");
-        // Send msg.value to Messenger contract, which can then use it in any way to execute cross domain message.
-        MessengerInterface(_depositContracts[chainId].messengerContract).relayMessage{ value: l1CallValue }(
-            _depositContracts[chainId].depositContract,
+        _relayMessage(
+            _depositContracts[chainId].messengerContract,
             l1CallValue,
+            _depositContracts[chainId].depositContract,
+            msg.sender,
             l2Gas,
             l2GasPrice,
             maxSubmissionCost,
-            abi.encodeWithSignature("setBridgeAdmin(address)", admin)
+            abi.encodeWithSignature("setCrossDomainAdmin(address)", admin)
         );
-        emit SetBridgeAdmin(chainId, admin);
+        emit SetCrossDomainAdmin(chainId, admin);
     }
 
     /**
@@ -187,10 +188,11 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, Lockable {
         uint256 l2GasPrice,
         uint256 maxSubmissionCost
     ) public payable onlyOwner canRelay(chainId) nonReentrant() {
-        // Send msg.value to Messenger contract, which can then use it in any way to execute cross domain message.
-        MessengerInterface(_depositContracts[chainId].messengerContract).relayMessage{ value: l1CallValue }(
-            _depositContracts[chainId].depositContract,
+        _relayMessage(
+            _depositContracts[chainId].messengerContract,
             l1CallValue,
+            _depositContracts[chainId].depositContract,
+            msg.sender,
             l2Gas,
             l2GasPrice,
             maxSubmissionCost,
@@ -222,10 +224,11 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, Lockable {
         uint256 l2GasPrice,
         uint256 maxSubmissionCost
     ) public payable onlyOwner canRelay(chainId) nonReentrant() {
-        // Send msg.value to Messenger contract, which can then use it in any way to execute cross domain message.
-        MessengerInterface(_depositContracts[chainId].messengerContract).relayMessage{ value: l1CallValue }(
-            _depositContracts[chainId].depositContract,
+        _relayMessage(
+            _depositContracts[chainId].messengerContract,
             l1CallValue,
+            _depositContracts[chainId].depositContract,
+            msg.sender,
             l2Gas,
             l2GasPrice,
             maxSubmissionCost,
@@ -268,17 +271,18 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, Lockable {
 
         require(address(BridgePoolInterface(bridgePool).l1Token()) == l1Token, "Bridge pool has different L1 token");
 
+        // Braces to resolve Stack too deep compile error
         {
-            // Braces to resolve Stack too deep compile error
             L1TokenRelationships storage l1TokenRelationships = _whitelistedTokens[l1Token];
             l1TokenRelationships.l2Tokens[chainId] = l2Token; // Set the L2Token at the index of the chainId.
             l1TokenRelationships.bridgePool = bridgePool;
         }
 
-        // Send msg.value to Messenger contract, which can then use it in any way to execute cross domain message.
-        MessengerInterface(_depositContracts[chainId].messengerContract).relayMessage{ value: l1CallValue }(
-            _depositContracts[chainId].depositContract,
+        _relayMessage(
+            _depositContracts[chainId].messengerContract,
             l1CallValue,
+            _depositContracts[chainId].depositContract,
+            msg.sender,
             l2Gas,
             l2GasPrice,
             maxSubmissionCost,
@@ -345,6 +349,29 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, Lockable {
         require(
             (depositContract != address(0)) && (messengerContract != address(0)),
             "Invalid deposit or messenger contract"
+        );
+    }
+
+    function _relayMessage(
+        address messengerContract,
+        uint256 l1CallValue,
+        address target,
+        address user,
+        uint256 l2Gas,
+        uint256 l2GasPrice,
+        uint256 maxSubmissionCost,
+        bytes memory message
+    ) private {
+        // Send msg.value == l1CallValue to Messenger contract, which can then use it in any way to execute cross
+        // domain message.
+        MessengerInterface(messengerContract).relayMessage{ value: l1CallValue }(
+            target,
+            user,
+            l1CallValue,
+            l2Gas,
+            l2GasPrice,
+            maxSubmissionCost,
+            message
         );
     }
 }

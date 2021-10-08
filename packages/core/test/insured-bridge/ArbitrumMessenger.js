@@ -109,6 +109,7 @@ describe("ArbitrumMessenger integration with BridgeAdmin", () => {
   it("relayMessage basic checks", async function () {
     const relayMessageTxn = arbitrumMessenger.methods.relayMessage(
       depositBox.options.address,
+      owner,
       defaultL1CallValue,
       defaultGasLimit,
       defaultGasPrice,
@@ -154,8 +155,8 @@ describe("ArbitrumMessenger integration with BridgeAdmin", () => {
       assert.equal(whitelistCallToMessengerCall.destAddr, depositBoxImpersonator);
       assert.equal(whitelistCallToMessengerCall.l2CallValue, "0");
       assert.equal(whitelistCallToMessengerCall.maxSubmissionCost, maxSubmissionCost);
-      assert.equal(whitelistCallToMessengerCall.excessFeeRefundAddress, depositBoxImpersonator);
-      assert.equal(whitelistCallToMessengerCall.callValueRefundAddress, depositBoxImpersonator);
+      assert.equal(whitelistCallToMessengerCall.excessFeeRefundAddress, owner);
+      assert.equal(whitelistCallToMessengerCall.callValueRefundAddress, owner);
       assert.equal(whitelistCallToMessengerCall.maxGas, defaultGasLimit);
       assert.equal(whitelistCallToMessengerCall.gasPriceBid, defaultGasPrice);
       const expectedAbiData = depositBox.methods
@@ -168,7 +169,7 @@ describe("ArbitrumMessenger integration with BridgeAdmin", () => {
         .setDepositContract(chainId, depositBoxImpersonator, arbitrumMessenger.options.address)
         .send({ from: owner });
       await bridgeAdmin.methods
-        .setBridgeAdmin(chainId, rando, defaultL1CallValue, defaultGasLimit, defaultGasPrice, maxSubmissionCost)
+        .setCrossDomainAdmin(chainId, rando, defaultL1CallValue, defaultGasLimit, defaultGasPrice, maxSubmissionCost)
         .send({ from: owner, value: defaultL1CallValue });
       const setAdminCallToMessengerCall = l1InboxMock.smocked.createRetryableTicketNoRefundAliasRewrite.calls[0];
 
@@ -179,11 +180,11 @@ describe("ArbitrumMessenger integration with BridgeAdmin", () => {
       assert.equal(setAdminCallToMessengerCall.destAddr, depositBoxImpersonator);
       assert.equal(setAdminCallToMessengerCall.l2CallValue, "0");
       assert.equal(setAdminCallToMessengerCall.maxSubmissionCost, maxSubmissionCost);
-      assert.equal(setAdminCallToMessengerCall.excessFeeRefundAddress, depositBoxImpersonator);
-      assert.equal(setAdminCallToMessengerCall.callValueRefundAddress, depositBoxImpersonator);
+      assert.equal(setAdminCallToMessengerCall.excessFeeRefundAddress, owner);
+      assert.equal(setAdminCallToMessengerCall.callValueRefundAddress, owner);
       assert.equal(setAdminCallToMessengerCall.maxGas, defaultGasLimit);
       assert.equal(setAdminCallToMessengerCall.gasPriceBid, defaultGasPrice);
-      const expectedAbiData = depositBox.methods.setBridgeAdmin(rando).encodeABI();
+      const expectedAbiData = depositBox.methods.setCrossDomainAdmin(rando).encodeABI();
       assert.equal(setAdminCallToMessengerCall.data, expectedAbiData, "xchain message bytes unexpected");
     });
     it("Set minimum bridge delay", async () => {
@@ -209,8 +210,8 @@ describe("ArbitrumMessenger integration with BridgeAdmin", () => {
       assert.equal(setDelayCallToMessengerCall.destAddr, depositBoxImpersonator);
       assert.equal(setDelayCallToMessengerCall.l2CallValue, "0");
       assert.equal(setDelayCallToMessengerCall.maxSubmissionCost, maxSubmissionCost);
-      assert.equal(setDelayCallToMessengerCall.excessFeeRefundAddress, depositBoxImpersonator);
-      assert.equal(setDelayCallToMessengerCall.callValueRefundAddress, depositBoxImpersonator);
+      assert.equal(setDelayCallToMessengerCall.excessFeeRefundAddress, owner);
+      assert.equal(setDelayCallToMessengerCall.callValueRefundAddress, owner);
       assert.equal(setDelayCallToMessengerCall.maxGas, defaultGasLimit);
       assert.equal(setDelayCallToMessengerCall.gasPriceBid, defaultGasPrice);
       const expectedAbiData = depositBox.methods.setMinimumBridgingDelay(defaultBridgingDelay).encodeABI();
@@ -240,8 +241,8 @@ describe("ArbitrumMessenger integration with BridgeAdmin", () => {
       assert.equal(setPauseCallToMessengerCall.destAddr, depositBoxImpersonator);
       assert.equal(setPauseCallToMessengerCall.l2CallValue, "0");
       assert.equal(setPauseCallToMessengerCall.maxSubmissionCost, maxSubmissionCost);
-      assert.equal(setPauseCallToMessengerCall.excessFeeRefundAddress, depositBoxImpersonator);
-      assert.equal(setPauseCallToMessengerCall.callValueRefundAddress, depositBoxImpersonator);
+      assert.equal(setPauseCallToMessengerCall.excessFeeRefundAddress, owner);
+      assert.equal(setPauseCallToMessengerCall.callValueRefundAddress, owner);
       assert.equal(setPauseCallToMessengerCall.maxGas, defaultGasLimit);
       assert.equal(setPauseCallToMessengerCall.gasPriceBid, defaultGasPrice);
       const expectedAbiData = depositBox.methods.setEnableDeposits(l2Token, false).encodeABI();

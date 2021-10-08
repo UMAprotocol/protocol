@@ -8,6 +8,7 @@ pragma solidity ^0.8.0;
 interface MessengerInterface {
     function relayMessage(
         address target,
+        address userToRefund,
         uint256 l1CallValue,
         uint256 gasLimit,
         uint256 gasPrice,
