@@ -136,15 +136,14 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, Lockable {
     /**
      * @notice Set new contract as the admin address in the L2 Deposit contract.
      * @dev Only callable by the current owner.
-     * @dev msg.value must equal to l1CallValue, which is sent to L2 deposit contract address to pay for retryable
-     * ticket.
+     * @dev msg.value must equal to l1CallValue.
      * @param chainId L2 network ID where Deposit contract is deployed.
      * @param admin New admin address to set on L2.
-     * @param l1CallValue Amount of ETH deposited to `target` contract on L2. Used to pay for L2 submission fee and
-     * l2CallValue.
+     * @param l1CallValue Amount of ETH to include in msg.value. Used to pay for L2 fees, but its exact usage varies
+     * depending on the L2 network that this contract sends a message to.
      * @param l2Gas Gas limit to set for relayed message on L2.
      * @param l2GasPrice Gas price bid to set for relayed message on L2.
-     * @param maxSubmissionCost: Max gas deducted from user's L2 balance to cover base submission fee.
+     * @param maxSubmissionCost: Arbitrum only: fee deducted from L2 sender's balance to pay for L2 gas.
      */
     function setBridgeAdmin(
         uint256 chainId,
@@ -155,8 +154,7 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, Lockable {
         uint256 maxSubmissionCost
     ) public payable onlyOwner canRelay(chainId) nonReentrant() {
         require(admin != address(0), "Admin cannot be zero address");
-        // Send msg.value to Messenger contract which will forward it to the Inbox and ultimately cross-chain to
-        // the deposit contract.
+        // Send msg.value to Messenger contract, which can then use it in any way to execute cross domain message.
         MessengerInterface(_depositContracts[chainId].messengerContract).relayMessage{ value: l1CallValue }(
             _depositContracts[chainId].depositContract,
             l1CallValue,
@@ -171,15 +169,14 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, Lockable {
     /**
      * @notice Sets the minimum time between L2-->L1 token withdrawals in the L2 Deposit contract.
      * @dev Only callable by the current owner.
-     * @dev msg.value must equal to l1CallValue, which is sent to L2 deposit contract address to pay for retryable
-     * ticket.
+     * @dev msg.value must equal to l1CallValue.
      * @param chainId L2 network ID where Deposit contract is deployed.
      * @param _minimumBridgingDelay the new minimum delay.
-     * @param l1CallValue Amount of ETH deposited to `target` contract on L2. Used to pay for L2 submission fee and
-     * l2CallValue.
+     * @param l1CallValue Amount of ETH to include in msg.value. Used to pay for L2 fees, but its exact usage varies
+     * depending on the L2 network that this contract sends a message to.
      * @param l2Gas Gas limit to set for relayed message on L2.
      * @param l2GasPrice Gas price bid to set for relayed message on L2.
-     * @param maxSubmissionCost: Max gas deducted from user's L2 balance to cover base submission fee.
+     * @param maxSubmissionCost: Arbitrum only: fee deducted from L2 sender's balance to pay for L2 gas.
      */
     function setMinimumBridgingDelay(
         uint256 chainId,
@@ -189,8 +186,7 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, Lockable {
         uint256 l2GasPrice,
         uint256 maxSubmissionCost
     ) public payable onlyOwner canRelay(chainId) nonReentrant() {
-        // Send msg.value to Messenger contract which will forward it to the Inbox and ultimately cross-chain to
-        // the deposit contract.
+        // Send msg.value to Messenger contract, which can then use it in any way to execute cross domain message.
         MessengerInterface(_depositContracts[chainId].messengerContract).relayMessage{ value: l1CallValue }(
             _depositContracts[chainId].depositContract,
             l1CallValue,
@@ -206,16 +202,15 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, Lockable {
      * @notice Owner can pause/unpause L2 deposits for a tokens.
      * @dev Only callable by Owner of this contract. Will set the same setting in the L2 Deposit contract via the cross
      * domain messenger.
-     * @dev msg.value must equal to l1CallValue, which is sent to L2 deposit contract address to pay for retryable
-     * ticket.
+     * @dev msg.value must equal to l1CallValue.
      * @param chainId L2 network ID where Deposit contract is deployed.
      * @param l2Token address of L2 token to enable/disable deposits for.
      * @param depositsEnabled bool to set if the deposit box should accept/reject deposits.
-     * @param l1CallValue Amount of ETH deposited to `target` contract on L2. Used to pay for L2 submission fee and
-     * l2CallValue.
+     * @param l1CallValue Amount of ETH to include in msg.value. Used to pay for L2 fees, but its exact usage varies
+     * depending on the L2 network that this contract sends a message to.
      * @param l2Gas Gas limit to set for relayed message on L2.
      * @param l2GasPrice Gas price bid to set for relayed message on L2.
-     * @param maxSubmissionCost: Max gas deducted from user's L2 balance to cover base submission fee.
+     * @param maxSubmissionCost: Arbitrum only: fee deducted from L2 sender's balance to pay for L2 gas.
      */
     function setEnableDeposits(
         uint256 chainId,
@@ -226,8 +221,7 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, Lockable {
         uint256 l2GasPrice,
         uint256 maxSubmissionCost
     ) public payable onlyOwner canRelay(chainId) nonReentrant() {
-        // Send msg.value to Messenger contract which will forward it to the Inbox and ultimately cross-chain to
-        // the deposit contract.
+        // Send msg.value to Messenger contract, which can then use it in any way to execute cross domain message.
         MessengerInterface(_depositContracts[chainId].messengerContract).relayMessage{ value: l1CallValue }(
             _depositContracts[chainId].depositContract,
             l1CallValue,
@@ -242,8 +236,7 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, Lockable {
     /**
      * @notice Privileged account can associate a whitelisted token with its linked token address on L2. The linked L2
      * token can thereafter be deposited into the Deposit contract on L2 and relayed via the BridgePool contract.
-     * @dev msg.value must equal to l1CallValue, which is sent to L2 deposit contract address to pay for retryable
-     * ticket.
+     * @dev msg.value must equal to l1CallValue.
      * @dev This method is also used to to update the address of the bridgePool within a BridgeDepositBox through the
      * re-whitelisting of a previously whitelisted token to update the address of the bridge pool in the deposit box.
      * @dev Only callable by Owner of this contract. Also initiates a cross-chain call to the L2 Deposit contract to
@@ -252,11 +245,11 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, Lockable {
      * @param l1Token Address of L1 token that can be used to relay L2 token deposits.
      * @param l2Token Address of L2 token whose deposits are fulfilled by `l1Token`.
      * @param bridgePool Address of BridgePool which manages liquidity to fulfill L2-->L1 relays.
-     * @param l1CallValue Amount of ETH deposited to `target` contract on L2. Used to pay for L2 submission fee and
-     * l2CallValue.
+     * @param l1CallValue Amount of ETH to include in msg.value. Used to pay for L2 fees, but its exact usage varies
+     * depending on the L2 network that this contract sends a message to.
      * @param l2Gas Gas limit to set for relayed message on L2.
      * @param l2GasPrice Gas price bid to set for relayed message on L2.
-     * @param maxSubmissionCost: Max gas deducted from user's L2 balance to cover base submission fee.
+     * @param maxSubmissionCost: Arbitrum only: fee deducted from L2 sender's balance to pay for L2 gas.
      */
     function whitelistToken(
         uint256 chainId,
@@ -281,8 +274,7 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, Lockable {
             l1TokenRelationships.bridgePool = bridgePool;
         }
 
-        // Send msg.value to Messenger contract which will forward it to the Inbox and ultimately cross-chain to
-        // the deposit contract.
+        // Send msg.value to Messenger contract, which can then use it in any way to execute cross domain message.
         MessengerInterface(_depositContracts[chainId].messengerContract).relayMessage{ value: l1CallValue }(
             _depositContracts[chainId].depositContract,
             l1CallValue,

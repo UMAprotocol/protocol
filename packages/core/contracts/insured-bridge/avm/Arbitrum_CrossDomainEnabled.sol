@@ -24,7 +24,7 @@ abstract contract Arbitrum_CrossDomainEnabled {
         uint256 l1CallValue, // msg.value deposited to `user` on L2.
         uint256 maxSubmissionCost, // Amount of ETH allocated to pay for base submission fee. The user is charged this
         // fee to cover the storage costs of keeping their retryable ticket's calldata in the retry buffer. This should
-        // also cover the `l2CallValue`, but we set that to 0.
+        // also cover the `l2CallValue`, but we set that to 0. This amount is proportional to the size of `data`.
         uint256 maxGas, // Gas limit for immediate L2 execution attempt.
         uint256 gasPriceBid, // L2 gas price bid for immediate L2 execution attempt.
         bytes memory data // ABI encoded data to send to target.
