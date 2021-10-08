@@ -665,14 +665,14 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         FinderInterface finder = FinderInterface(bridgeAdmin.finder());
 
         // Remove approval for old OO.
-        if (!isWethPool) l1Token.safeApprove(address(optimisticOracle), 0);
+        if (address(optimisticOracle) != address(0)) l1Token.safeApprove(address(optimisticOracle), 0);
 
         optimisticOracle = SkinnyOptimisticOracleInterface(
             finder.getImplementationAddress(OracleInterfaces.SkinnyOptimisticOracle)
         );
 
         // MAX approve the new OO so no approvals need to be done.
-        if (!isWethPool) l1Token.safeApprove(address(optimisticOracle), type(uint256).max);
+        if (address(optimisticOracle) != address(0)) l1Token.safeApprove(address(optimisticOracle), type(uint256).max);
 
         store = StoreInterface(finder.getImplementationAddress(OracleInterfaces.Store));
     }
