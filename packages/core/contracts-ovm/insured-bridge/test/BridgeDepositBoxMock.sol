@@ -36,7 +36,7 @@ contract BridgeDepositBoxMock is BridgeDepositBox {
      * @dev Only callable by the existing bridgeAdmin via the optimism cross domain messenger.
      * @param _bridgeAdmin address of the new L1 admin contract.
      */
-    function setBridgeAdmin(address _bridgeAdmin) public onlyBridgeAdmin() {
+    function setCrossDomainAdmin(address _bridgeAdmin) public onlyBridgeAdmin() {
         _setBridgeAdmin(_bridgeAdmin);
     }
 

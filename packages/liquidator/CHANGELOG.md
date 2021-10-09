@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.6.3](https://github.com/UMAprotocol/protocol/compare/@uma/liquidator@2.6.2...@uma/liquidator@2.6.3) (2021-10-08)
+
+### Bug Fixes
+
+- revert wait for logs, increase log wait in spoke ([#3424](https://github.com/UMAprotocol/protocol/issues/3424)) ([752a4de](https://github.com/UMAprotocol/protocol/commit/752a4de296ffddf6fd662b0e46ba9b34c1ed0b6f))
+- **bots:** add log waiting for happy bot paths ([#3423](https://github.com/UMAprotocol/protocol/issues/3423)) ([0dbdb5d](https://github.com/UMAprotocol/protocol/commit/0dbdb5dbf10987fa51d8f4f4704b70ce48c6a531))
+
 ## [2.6.2](https://github.com/UMAprotocol/protocol/compare/@uma/liquidator@2.6.1...@uma/liquidator@2.6.2) (2021-10-01)
 
 **Note:** Version bump only for package @uma/liquidator

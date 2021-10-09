@@ -527,7 +527,7 @@ contract PerpetualPositionManager is FundingRateApplier {
      * @dev This is supposed to be implemented by any contract that inherits `AdministrateeInterface` and callable
      * only by the Governor contract. This method is therefore minimally implemented in this contract and does nothing.
      */
-    function remargin() external override {
+    function remargin() external pure override {
         return;
     }
 

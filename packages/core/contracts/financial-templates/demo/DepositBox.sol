@@ -14,7 +14,7 @@ import "../../oracle/interfaces/OracleInterface.sol";
 import "../../oracle/implementation/ContractCreator.sol";
 
 /**
- * @title Token Deposit Box
+ * @title Token Deposit Box.
  * @notice This is a minimal example of a financial template that depends on price requests from the DVM.
  * This contract should be thought of as a "Deposit Box" into which the user deposits some ERC20 collateral.
  * The main feature of this box is that the user can withdraw their ERC20 corresponding to a desired USD amount.

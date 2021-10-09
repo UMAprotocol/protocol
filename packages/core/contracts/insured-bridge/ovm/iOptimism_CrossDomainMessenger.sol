@@ -36,6 +36,6 @@ interface iOptimism_CrossDomainMessenger {
     function sendMessage(
         address _target,
         bytes calldata _message,
-        uint32 _gasLimit
+        uint256 _gasLimit
     ) external;
 }

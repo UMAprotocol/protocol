@@ -20,10 +20,13 @@ contract MessengerMock is MessengerInterface {
      */
     function relayMessage(
         address target,
+        address,
+        uint256,
         uint256 gasLimit,
         uint256 gasPrice,
+        uint256,
         bytes memory message
-    ) external override {
+    ) external payable override {
         emit RelayedMessage(target, gasLimit, gasPrice, message);
     }
 }

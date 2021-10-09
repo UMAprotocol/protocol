@@ -7,6 +7,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import "../common/financial-product-libraries/long-short-pair-libraries/LongShortPairFinancialProductLibrary.sol";
 
+import "../../common/implementation/AncillaryData.sol";
 import "../../common/implementation/Testable.sol";
 import "../../common/implementation/Lockable.sol";
 import "../../common/implementation/FixedPoint.sol";
@@ -40,49 +41,45 @@ contract LongShortPair is Testable, Lockable {
         uint64 expirationTimestamp; // Unix timestamp of when the contract will expire.
         uint256 collateralPerPair; // How many units of collateral are required to mint one pair of synthetic tokens.
         bytes32 priceIdentifier; // Price identifier, registered in the DVM for the long short pair.
+        bool enableEarlyExpiration; // Enables the LSP contract to be settled early.
         ExpandedIERC20 longToken; // Token used as long in the LSP. Mint and burn rights needed by this contract.
         ExpandedIERC20 shortToken; // Token used as short in the LSP. Mint and burn rights needed by this contract.
         IERC20 collateralToken; // Collateral token used to back LSP synthetics.
         LongShortPairFinancialProductLibrary financialProductLibrary; // Contract providing settlement payout logic.
         bytes customAncillaryData; // Custom ancillary data to be passed along with the price request to the OO.
-        uint256 prepaidProposerReward; // Preloaded reward to incentivize settlement price proposals.
+        uint256 proposerReward; // Optimistic oracle reward amount, pulled from the caller of the expire function.
         uint256 optimisticOracleLivenessTime; // OO liveness time for price requests.
         uint256 optimisticOracleProposerBond; // OO proposer bond for price requests.
         FinderInterface finder; // DVM finder to find other UMA ecosystem contracts.
         address timerAddress; // Timer used to synchronize contract time in testing. Set to 0x000... in production.
     }
 
-    enum ContractState { Open, ExpiredPriceRequested, ExpiredPriceReceived }
-    // @dev note contractState and expirationTimestamp are declared in this order so they use the same storage slot.
-    ContractState public contractState;
+    bool public receivedSettlementPrice;
 
+    bool public enableEarlyExpiration; // If set, the LSP contract can request to be settled early by calling the OO.
     uint64 public expirationTimestamp;
-
+    uint64 public earlyExpirationTimestamp; // Set in the case the contract is expired early.
     string public pairName;
+    uint256 public collateralPerPair; // Amount of collateral a pair of tokens is always redeemable for.
 
-    // Amount of collateral a pair of tokens is always redeemable for.
-    uint256 public collateralPerPair;
+    // Number between 0 and 1e18 to allocate collateral between long & short tokens at redemption. 0 entitles each short
+    // to collateralPerPair and each long to 0. 1e18 makes each long worth collateralPerPair and short 0.
+    uint256 public expiryPercentLong;
+    bytes32 public priceIdentifier;
 
     // Price returned from the Optimistic oracle at settlement time.
     int256 public expiryPrice;
 
-    // Number between 0 and 1e18 to allocate collateral between long & short tokens at redemption. 0 entitles each short
-    // to collateralPerPair and long worth 0. 1e18 makes each long worth collateralPerPair and short 0.
-    uint256 public expiryPercentLong;
-
-    bytes32 public priceIdentifier;
-
+    // External contract interfaces.
     IERC20 public collateralToken;
     ExpandedIERC20 public longToken;
     ExpandedIERC20 public shortToken;
-
     FinderInterface public finder;
-
     LongShortPairFinancialProductLibrary public financialProductLibrary;
 
     // Optimistic oracle customization parameters.
     bytes public customAncillaryData;
-    uint256 public prepaidProposerReward;
+    uint256 public proposerReward;
     uint256 public optimisticOracleLivenessTime;
     uint256 public optimisticOracleProposerBond;
 
@@ -93,6 +90,7 @@ contract LongShortPair is Testable, Lockable {
     event TokensCreated(address indexed sponsor, uint256 indexed collateralUsed, uint256 indexed tokensMinted);
     event TokensRedeemed(address indexed sponsor, uint256 indexed collateralReturned, uint256 indexed tokensRedeemed);
     event ContractExpired(address indexed caller);
+    event EarlyExpirationRequested(address indexed caller, uint64 earlyExpirationTimeStamp);
     event PositionSettled(address indexed sponsor, uint256 collateralReturned, uint256 longTokens, uint256 shortTokens);
 
     /****************************************
@@ -109,8 +107,8 @@ contract LongShortPair is Testable, Lockable {
         _;
     }
 
-    modifier onlyOpenState() {
-        require(contractState == ContractState.Open, "Contract state is not Open");
+    modifier notEarlyExpired() {
+        require(!isContractEarlyExpired(), "Contract already early expired");
         _;
     }
 
@@ -126,7 +124,7 @@ contract LongShortPair is Testable, Lockable {
      *    - `collateralToken`: Collateral token used to back LSP synthetics.
      *    - `financialProductLibrary`: Contract providing settlement payout logic.
      *    - `customAncillaryData`: Custom ancillary data to be passed along with the price request to the OO.
-     *    - `prepaidProposerReward`: Preloaded reward to incentivize settlement price proposals.
+     *    - `proposerReward`: Preloaded reward to incentivize settlement price proposals.
      *    - `optimisticOracleLivenessTime`: OO liveness time for price requests.
      *    - `optimisticOracleProposerBond`: OO proposer bond for price requests.
      *    - `finder`: DVM finder to find other UMA ecosystem contracts.
@@ -148,6 +146,7 @@ contract LongShortPair is Testable, Lockable {
         expirationTimestamp = params.expirationTimestamp;
         collateralPerPair = params.collateralPerPair;
         priceIdentifier = params.priceIdentifier;
+        enableEarlyExpiration = params.enableEarlyExpiration;
 
         longToken = params.longToken;
         shortToken = params.shortToken;
@@ -162,7 +161,7 @@ contract LongShortPair is Testable, Lockable {
         );
 
         customAncillaryData = params.customAncillaryData;
-        prepaidProposerReward = params.prepaidProposerReward;
+        proposerReward = params.proposerReward;
         optimisticOracleLivenessTime = params.optimisticOracleLivenessTime;
         optimisticOracleProposerBond = params.optimisticOracleProposerBond;
     }
@@ -197,6 +196,7 @@ contract LongShortPair is Testable, Lockable {
      * @dev This contract must have the `Burner` role for the `longToken` and `shortToken` in order to call `burnFrom`.
      * @dev The caller does not need to approve this contract to transfer any amount of `tokensToRedeem` since long
      * and short tokens are burned, rather than transferred, from the caller.
+     * @dev This method can be called either pre or post expiration.
      * @param tokensToRedeem number of long and short synthetic tokens to redeem.
      * @return collateralReturned total collateral returned in exchange for the pair of synthetics.
      */
@@ -217,29 +217,28 @@ contract LongShortPair is Testable, Lockable {
      * @dev This contract must have the `Burner` role for the `longToken` and `shortToken` in order to call `burnFrom`.
      * @dev The caller does not need to approve this contract to transfer any amount of `tokensToRedeem` since long
      * and short tokens are burned, rather than transferred, from the caller.
+     * @dev This function can be called before or after expiration method to facilitate early expiration. If a price has
+     * not yet been resolved for either normal or early expiration yet then it will revert.
      * @param longTokensToRedeem number of long tokens to settle.
      * @param shortTokensToRedeem number of short tokens to settle.
      * @return collateralReturned total collateral returned in exchange for the pair of synthetics.
      */
     function settle(uint256 longTokensToRedeem, uint256 shortTokensToRedeem)
         public
-        postExpiration()
         nonReentrant()
         returns (uint256 collateralReturned)
     {
-        // If the contract state is open and postExpiration passed then `expire()` has not yet been called.
-        require(contractState != ContractState.Open, "Unexpired contract");
+        // Either early expiration is enabled and its before the expiration timestamp or it is after the expiration time.
+        require(
+            (enableEarlyExpiration && getCurrentTime() < expirationTimestamp) || getCurrentTime() > expirationTimestamp,
+            "Can not settle"
+        );
 
-        // Get the current settlement price and store it. If it is not resolved, will revert.
-        if (contractState != ContractState.ExpiredPriceReceived) {
-            expiryPrice = _getOraclePriceExpiration(expirationTimestamp);
-            // Cap the return value at 1.
-            expiryPercentLong = Math.min(
-                financialProductLibrary.percentageLongCollateralAtExpiry(expiryPrice),
-                FixedPoint.fromUnscaledUint(1).rawValue
-            );
-            contractState = ContractState.ExpiredPriceReceived;
-        }
+        // Get the settlement price and store it. Also sets expiryPercentLong to inform settlement. Reverts if either:
+        // a) the price request has not resolved (either a normal expiration call or early expiration call) or b) If the
+        // the contract was attempted to be settled early but the price returned is the ignore oracle price.
+        // Note that we use the bool receivedSettlementPrice over checking for price != 0 as 0 is a valid price.
+        if (!receivedSettlementPrice) getExpirationPrice();
 
         require(longToken.burnFrom(msg.sender, longTokensToRedeem));
         require(shortToken.burnFrom(msg.sender, shortTokensToRedeem));
@@ -269,66 +268,147 @@ contract LongShortPair is Testable, Lockable {
      *        GLOBAL STATE FUNCTIONS        *
      ****************************************/
 
-    function expire() public postExpiration() onlyOpenState() nonReentrant() {
-        _requestOraclePriceExpiration();
-        contractState = ContractState.ExpiredPriceRequested;
+    /**
+     * @notice Enables the LSP to request early expiration. This initiates a price request to the optimistic oracle at
+     * the provided timestamp with a modified version of the ancillary data that includes the key "earlyExpiration:1"
+     * which signals to the OO that this is an early expiration request, rather than standard settlement.
+     * @dev Will revert if: a) the contract is already early expire, b) it is after the expiration timestamp, c)
+     * early expiration is disabled for this contract, d) the proposed expiration timestamp is in the future.
+     * e) an early expiration attempt has already been made (in pending state).
+     * @param _earlyExpirationTimestamp timestamp at which the early expiration is proposed.
+     */
+    function requestEarlyExpiration(uint64 _earlyExpirationTimestamp)
+        public
+        nonReentrant()
+        notEarlyExpired()
+        preExpiration()
+    {
+        require(enableEarlyExpiration, "Early expiration disabled");
+        require(_earlyExpirationTimestamp <= getCurrentTime(), "Only propose expire in the past");
+
+        earlyExpirationTimestamp = _earlyExpirationTimestamp;
+
+        _requestOraclePrice(earlyExpirationTimestamp, getEarlyExpirationAncillaryData());
+
+        emit EarlyExpirationRequested(msg.sender, _earlyExpirationTimestamp);
+    }
+
+    /**
+     * @notice Expire the LSP contract. Makes a request to the optimistic oracle to inform the settlement price.
+     * @dev Will revert if: a) the contract is already early expire, b) it is before the expiration timestamp or c)
+     * an expire call has already been made.
+     */
+    function expire() public nonReentrant() notEarlyExpired() postExpiration() {
+        _requestOraclePrice(expirationTimestamp, customAncillaryData);
 
         emit ContractExpired(msg.sender);
     }
 
-    /****************************************
-     *      GLOBAL ACCESSORS FUNCTIONS      *
-     ****************************************/
+    /***********************************
+     *      GLOBAL VIEW FUNCTIONS      *
+     ***********************************/
+
     /**
      * @notice Returns the number of long and short tokens a sponsor wallet holds.
      * @param sponsor address of the sponsor to query.
-     * @return [uint256, uint256]. First is long tokens held by sponsor and second is short tokens held by sponsor.
+     * @return longTokens the number of long tokens held by the sponsor.
+     * @return shortTokens the number of short tokens held by the sponsor.
      */
-    function getPositionTokens(address sponsor) public view nonReentrantView() returns (uint256, uint256) {
+    function getPositionTokens(address sponsor)
+        public
+        view
+        nonReentrantView()
+        returns (uint256 longTokens, uint256 shortTokens)
+    {
         return (longToken.balanceOf(sponsor), shortToken.balanceOf(sponsor));
+    }
+
+    /**
+     * @notice Generates a modified ancillary data that indicates the contract is being expired early.
+     */
+    function getEarlyExpirationAncillaryData() public view returns (bytes memory) {
+        return AncillaryData.appendKeyValueUint(customAncillaryData, "earlyExpiration", 1);
+    }
+
+    /**
+     * @notice Defines a special number that, if returned during an attempted early expiration, will cause the contract
+     * to do nothing and not expire. This enables the OO (and DVM voters in the case of a dispute) to choose to keep
+     * the contract running, thereby denying the early settlement request.
+     */
+    function ignoreEarlyExpirationPrice() public pure returns (int256) {
+        return type(int256).min;
+    }
+
+    /**
+     * @notice If the earlyExpirationTimestamp is != 0 then a previous early expiration OO request might still be in the
+     * pending state. Check if the OO contains the ignore early price. If it does not contain this then the contract
+     * was early expired correctly. Note that _getOraclePrice call will revert if the price request is still pending,
+     * thereby reverting all upstream calls pre-settlement of the early expiration price request.
+     */
+    function isContractEarlyExpired() public returns (bool) {
+        return (earlyExpirationTimestamp != 0 &&
+            _getOraclePrice(earlyExpirationTimestamp, getEarlyExpirationAncillaryData()) !=
+            ignoreEarlyExpirationPrice());
     }
 
     /****************************************
      *          INTERNAL FUNCTIONS          *
      ****************************************/
 
-    function _getOraclePriceExpiration(uint256 requestedTime) internal returns (int256) {
-        // Create an instance of the oracle and get the price. If the price is not resolved revert.
-        OptimisticOracleInterface optimisticOracle = _getOptimisticOracle();
-        require(optimisticOracle.hasPrice(address(this), priceIdentifier, requestedTime, customAncillaryData));
-        int256 oraclePrice = optimisticOracle.settleAndGetPrice(priceIdentifier, requestedTime, customAncillaryData);
-
-        return oraclePrice;
+    // Return the oracle price for a given request timestamp and ancillary data combo.
+    function _getOraclePrice(uint64 requestTimestamp, bytes memory requestAncillaryData) internal returns (int256) {
+        return _getOptimisticOracle().settleAndGetPrice(priceIdentifier, requestTimestamp, requestAncillaryData);
     }
 
-    function _requestOraclePriceExpiration() internal {
+    // Request a price in the optimistic oracle for a given request timestamp and ancillary data combo. Set the bonds
+    // accordingly to the deployer's parameters. Will revert if re-requesting for a previously requested combo.
+    function _requestOraclePrice(uint256 requestTimestamp, bytes memory requestAncillaryData) internal {
         OptimisticOracleInterface optimisticOracle = _getOptimisticOracle();
 
-        // Use the prepaidProposerReward as the proposer reward.
-        if (prepaidProposerReward > 0) collateralToken.safeApprove(address(optimisticOracle), prepaidProposerReward);
+        // If the proposer reward was set then pull it from the caller of the function.
+        if (proposerReward > 0) {
+            collateralToken.safeTransferFrom(msg.sender, address(this), proposerReward);
+            collateralToken.safeApprove(address(optimisticOracle), proposerReward);
+        }
         optimisticOracle.requestPrice(
             priceIdentifier,
-            expirationTimestamp,
-            customAncillaryData,
+            requestTimestamp,
+            requestAncillaryData,
             collateralToken,
-            prepaidProposerReward
+            proposerReward
         );
 
         // Set the Optimistic oracle liveness for the price request.
         optimisticOracle.setCustomLiveness(
             priceIdentifier,
-            expirationTimestamp,
-            customAncillaryData,
+            requestTimestamp,
+            requestAncillaryData,
             optimisticOracleLivenessTime
         );
 
         // Set the Optimistic oracle proposer bond for the price request.
-        optimisticOracle.setBond(
-            priceIdentifier,
-            expirationTimestamp,
-            customAncillaryData,
-            optimisticOracleProposerBond
+        optimisticOracle.setBond(priceIdentifier, requestTimestamp, requestAncillaryData, optimisticOracleProposerBond);
+    }
+
+    // Fetch the optimistic oracle expiration price. If the oracle has the price for the provided expiration timestamp
+    // and customData combo then return this. Else, try fetch the price on the early expiration ancillary data. If
+    // there is no price for either, revert. If the early expiration price is the ignore price will also revert.
+    function getExpirationPrice() internal {
+        if (_getOptimisticOracle().hasPrice(address(this), priceIdentifier, expirationTimestamp, customAncillaryData))
+            expiryPrice = _getOraclePrice(expirationTimestamp, customAncillaryData);
+        else {
+            expiryPrice = _getOraclePrice(earlyExpirationTimestamp, getEarlyExpirationAncillaryData());
+            require(expiryPrice != ignoreEarlyExpirationPrice(), "Oracle prevents early expiration");
+        }
+
+        // Finally, compute the value of expiryPercentLong based on the expiryPrice. Cap the return value at 1e18 as
+        // this should, by definition, between 0 and 1e18.
+        expiryPercentLong = Math.min(
+            financialProductLibrary.percentageLongCollateralAtExpiry(expiryPrice),
+            FixedPoint.fromUnscaledUint(1).rawValue
         );
+
+        receivedSettlementPrice = true;
     }
 
     function _getIdentifierWhitelist() internal view returns (IdentifierWhitelistInterface) {

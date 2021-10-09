@@ -99,7 +99,7 @@ describe("lsp-state service", function () {
     assert.equal(result.financialProductLibrary, "0x5a116B8bAb914513F710085cAd0f4628Dcc7eeca");
     assert.equal(result.customAncillaryData, "0x747761704c656e6774683a33363030");
     assert.equal(result.expirationTimestamp, "1722441600");
-    assert.equal(result.prepaidProposerReward, "0");
+    assert.equal(result.proposerReward, "0");
   });
   it("update", async function () {
     this.timeout(60000);
