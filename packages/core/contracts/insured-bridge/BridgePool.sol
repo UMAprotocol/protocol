@@ -375,6 +375,13 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         _validateRelayDataHash(depositHash, relayData);
         require(relayData.relayState == RelayState.Pending, "Already settled");
 
+        // Note: this check is to give the relayer a small, but reasonable amount of time to complete the relay before
+        // before it can be "stolen" by someone else. This is to ensure there is an incentive to settle relays quickly.
+        require(
+            msg.sender == relayData.slowRelayer || getCurrentTime() > request.expirationTime + 15 minutes,
+            "Not slow relayer"
+        );
+
         // Resolve request if it is not settled or grab its resolved price if it is. If the request.settled param does
         // not match the one stored in the relay price request on the OptimisticOracle, then this will revert. The
         // relay price request must be linked to ancillary data that is derived from the `depositData` and `relayData`,
@@ -443,7 +450,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
 
         // The slow relayer gets paid the slow relay fee. This is the same irrespective if the relay was sped up or not.
         uint256 slowRelayerAmount = _getAmountFromPct(depositData.slowRelayFeePct, depositData.amount);
-        l1Token.safeTransfer(relayData.slowRelayer, slowRelayerAmount);
+        l1Token.safeTransfer(msg.sender, slowRelayerAmount);
 
         uint256 totalAmountSent = instantRelayerOrRecipientAmount + slowRelayerAmount;
 
