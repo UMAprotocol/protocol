@@ -258,6 +258,13 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         bytes32 relayHash = _getRelayHash(depositData, relayData);
         bytes memory ancillaryData = _getRelayAncillaryData(relayHash);
 
+        bytes32 instantRelayHash = _getInstantRelayHash(depositHash, relayData);
+        require(
+            // Can only speed up a pending relay without an existing instant relay associated with it.
+            instantRelays[instantRelayHash] == address(0),
+            "Relay cannot be sped up"
+        );
+
         relays[depositHash] = _getRelayDataHash(relayData);
         relayRequestAncillaryData[keccak256(ancillaryData)] = depositHash;
 
@@ -295,19 +302,12 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
 
         pendingReserves += depositData.amount; // Book off maximum liquidity used by this relay in the pending reserves.
 
-        bytes32 instantRelayHash = _getInstantRelayHash(depositHash, relayData);
-        require(
-            // Can only speed up a pending relay without an existing instant relay associated with it.
-            instantRelays[instantRelayHash] == address(0),
-            "Relay cannot be sped up"
-        );
         instantRelays[instantRelayHash] = msg.sender;
 
         // If the L1 token is WETH then: a) pull WETH from instant relayer b) unwrap WETH c) send ETH to recipient.
         uint256 recipientAmount = depositData.amount - feesTotal;
         if (isWethPool) {
-            WETH9Like(address(l1Token)).withdraw(recipientAmount);
-            depositData.l1Recipient.transfer(recipientAmount);
+            _unwrapWETHTo(depositData.l1Recipient, recipientAmount);
         }
         // Else, this is a normal ERC20 token. Send to recipient.
         else l1Token.safeTransfer(depositData.l1Recipient, recipientAmount);
@@ -448,8 +448,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         uint256 recipientAmount = depositData.amount - feesTotal;
         if (isWethPool) {
             l1Token.safeTransferFrom(msg.sender, address(this), recipientAmount);
-            WETH9Like(address(l1Token)).withdraw(recipientAmount);
-            depositData.l1Recipient.transfer(recipientAmount);
+            _unwrapWETHTo(depositData.l1Recipient, recipientAmount);
         }
         // Else, this is a normal ERC20 token. Send to recipient.
         else l1Token.safeTransferFrom(msg.sender, depositData.l1Recipient, recipientAmount);
@@ -842,6 +841,11 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
             // Canonical value representing "True"; i.e. the proposed relay is valid.
             int256(1e18)
         );
+    }
+
+    function _unwrapWETHTo(address payable to, uint256 amount) internal {
+        WETH9Like(address(l1Token)).withdraw(amount);
+        to.transfer(amount);
     }
 
     // Added to enable the BridgePool to receive ETH. used when unwrapping Weth.

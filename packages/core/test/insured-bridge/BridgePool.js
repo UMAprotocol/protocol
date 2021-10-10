@@ -833,7 +833,7 @@ describe("BridgePool", () => {
       await l1Token.methods.transfer(instantRelayer, instantRelayAmountSubFee).send({ from: rando });
       await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: rando });
 
-      await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: rando });
+      await bridgePool.methods.relayDeposit(...generateRelayParams({}, relayAttemptData)).send({ from: rando });
 
       // Cannot repeatedly speed relay up.
       await l1Token.methods
