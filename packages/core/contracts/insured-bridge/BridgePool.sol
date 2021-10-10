@@ -12,7 +12,6 @@ import "../oracle/implementation/Constants.sol";
 import "../common/implementation/AncillaryData.sol";
 import "../common/implementation/Testable.sol";
 import "../common/implementation/FixedPoint.sol";
-import "../common/implementation/MultiCaller.sol";
 import "../common/implementation/Lockable.sol";
 import "../common/implementation/ExpandedERC20.sol";
 
@@ -31,7 +30,7 @@ interface WETH9Like {
  * to post collateral by earning a fee per fulfilled deposit order.
  * @dev A "Deposit" is an order to send capital from L2 to L1, and a "Relay" is a fulfillment attempt of that order.
  */
-contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller, Lockable {
+contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
     using SafeERC20 for IERC20;
     using FixedPoint for FixedPoint.Unsigned;
 
@@ -67,7 +66,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
     uint256 public undistributedLpFees;
 
     // Total bonds held.
-    uint256 bonds;
+    uint256 public bonds;
 
     // Administrative contract that deployed this contract and also houses all state variables needed to relay deposits.
     BridgeAdminInterface public bridgeAdmin;
@@ -255,8 +254,8 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         RelayData memory relayData =
             RelayData({
                 relayState: RelayState.Pending,
-                slowRelayer: msg.sender, // Note: Increment numberOfRelays at the same time as setting relayId to its current value.
-                relayId: numberOfRelays++,
+                slowRelayer: msg.sender,
+                relayId: numberOfRelays++, // Note: Increment numberOfRelays at the same time as setting relayId to its current value.
                 realizedLpFeePct: realizedLpFeePct,
                 priceRequestTime: priceRequestTime,
                 proposerBond: proposerBond,
@@ -264,6 +263,13 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
             });
         bytes32 relayHash = _getRelayHash(depositData, relayData);
         relays[depositHash] = _getRelayDataHash(relayData);
+
+        bytes32 instantRelayHash = _getInstantRelayHash(depositHash, relayData);
+        require(
+            // Can only speed up a pending relay without an existing instant relay associated with it.
+            instantRelays[instantRelayHash] == address(0),
+            "Relay cannot be sped up"
+        );
 
         // Sanity check that pool has enough balance to cover relay amount + proposer reward. Reward amount will be
         // paid on settlement after the OptimisticOracle price request has passed the challenge period.
@@ -278,21 +284,8 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         l1Token.safeTransferFrom(msg.sender, address(this), depositData.amount + totalBond);
         bonds += totalBond;
 
-        // Request a price for the relay identifier and propose "true" optimistically. This method will pull the
-        // (proposer reward + proposer bond + final fee) from the caller. We need to set a new price request timestamp
-        // instead of default setting to equal to the `depositTimestamp`, which is dependent on the L2 VM on which the
-        // DepositContract is deployed. Imagine if the timestamps on the L2 have an offset that are always "in the
-        // future" relative to L1 blocks, then the OptimisticOracle would always reject requests.
-        // _requestAndProposeOraclePriceRelay(proposerBond, priceRequestTime, ancillaryData);
-
         pendingReserves += depositData.amount; // Book off maximum liquidity used by this relay in the pending reserves.
 
-        bytes32 instantRelayHash = _getInstantRelayHash(depositHash, relayData);
-        require(
-            // Can only speed up a pending relay without an existing instant relay associated with it.
-            instantRelays[instantRelayHash] == address(0),
-            "Relay cannot be sped up"
-        );
         instantRelays[instantRelayHash] = msg.sender;
 
         // Pull relay amount minus fees from caller and send to the deposit l1Recipient. The total fees paid is the sum
@@ -407,8 +400,8 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         RelayData memory relayData =
             RelayData({
                 relayState: RelayState.Pending,
-                slowRelayer: msg.sender, // Note: Increment numberOfRelays at the same time as setting relayId to its current value.
-                relayId: numberOfRelays++,
+                slowRelayer: msg.sender,
+                relayId: numberOfRelays++, // Note: Increment numberOfRelays at the same time as setting relayId to its current value.
                 realizedLpFeePct: realizedLpFeePct,
                 priceRequestTime: priceRequestTime,
                 proposerBond: proposerBond,
@@ -870,7 +863,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
 /**
  * @notice This is the BridgePool contract that should be deployed on live networks. It is exactly the same as the
  * regular BridgePool contract, but it overrides getCurrentTime to make the call a simply return block.timestamp with
- * no branching or storage queries. This is done to save gas. 
+ * no branching or storage queries. This is done to save gas.
  */
 contract BridgePoolProd is BridgePool {
     constructor(
