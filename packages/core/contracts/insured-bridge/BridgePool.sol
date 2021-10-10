@@ -49,7 +49,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
     // Reserves that are not yet utilized but are pre-allocated for a pending relay.
     uint256 public pendingReserves;
 
-    // If this pool contains WETH. If the withdrawn token is WETH then unwrap and send ETH  when finalizing withdrawal.
+    // If this pool contains WETH. If the withdrawn token is WETH then unwrap and send ETH when finalizing withdrawal.
     bool public isWethPool;
 
     // Exponential decay exchange rate to accumulate fees to LPs over time.
