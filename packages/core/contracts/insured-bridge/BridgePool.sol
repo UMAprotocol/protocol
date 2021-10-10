@@ -132,7 +132,12 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
         bytes32 relayAncillaryDataHash
     );
     event RelaySpedUp(bytes32 indexed depositHash, address indexed instantRelayer, RelayData relay);
+
+    // Note: the difference between a dispute and a cancellation is that a cancellation happens in the case where
+    // something changes in the OO between request and dispute that causes calls to it to fail. The most common
+    // case would be an increase in final fee. However, things like whitelisting can also cause problems.
     event RelayDisputed(bytes32 indexed depositHash, bytes32 indexed relayHash, address indexed disputer);
+    event RelayCanceled(bytes32 indexed depositHash, bytes32 indexed relayHash, address indexed disputer);
     event RelaySettled(bytes32 indexed depositHash, address indexed caller, RelayData relay);
     event BridgePoolAdminTransferred(address oldAdmin, address newAdmin);
 
@@ -328,19 +333,21 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
         bytes32 relayHash = _getRelayHash(depositData, relayData);
 
         // Note: in some cases this will fail due to changes in the OO and the method will refund the relayer.
-        _requestProposeDispute(
-            relayData.slowRelayer,
-            msg.sender,
-            relayData.proposerBond,
-            relayData.finalFee,
-            relayData.priceRequestTime,
-            _getRelayAncillaryData(relayHash)
-        );
+        bool success =
+            _requestProposeDispute(
+                relayData.slowRelayer,
+                msg.sender,
+                relayData.proposerBond,
+                relayData.finalFee,
+                // relayData.priceRequestTime,
+                _getRelayAncillaryData(relayHash)
+            );
 
         // Drop the relay and remove the bond from the tracked bonds.
         bonds -= relayData.finalFee + relayData.proposerBond;
         delete relays[depositHash];
-        emit RelayDisputed(depositHash, relayHash, msg.sender);
+        if (success) emit RelayDisputed(depositHash, _getRelayDataHash(relayData), msg.sender);
+        else emit RelayCanceled(depositHash, _getRelayDataHash(relayData), msg.sender);
     }
 
     /**
@@ -537,18 +544,17 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
             );
 
         // The slow relayer gets paid the slow relay fee. This is the same irrespective if the relay was sped up or not.
-        uint256 slowRelayerAmount =
-            _getAmountFromPct(depositData.slowRelayFeePct, depositData.amount) +
-                relayData.proposerBond +
-                relayData.finalFee;
-        l1Token.safeTransfer(relayData.slowRelayer, slowRelayerAmount);
+        uint256 slowRelayerReward = _getAmountFromPct(depositData.slowRelayFeePct, depositData.amount);
+        uint256 totalBond = relayData.finalFee + relayData.proposerBond;
+        l1Token.safeTransfer(relayData.slowRelayer, slowRelayerReward + totalBond);
 
-        uint256 totalAmountSent = instantRelayerOrRecipientAmount + slowRelayerAmount;
+        uint256 totalReservesSent = instantRelayerOrRecipientAmount + slowRelayerReward;
 
         // Update reserves by amounts changed and allocated LP fees.
         pendingReserves -= depositData.amount;
-        liquidReserves -= totalAmountSent;
-        utilizedReserves += int256(totalAmountSent);
+        liquidReserves -= totalReservesSent;
+        utilizedReserves += int256(totalReservesSent);
+        bonds -= totalBond;
         updateAccumulatedLpFees();
         allocateLpFees(_getAmountFromPct(relayData.realizedLpFeePct, depositData.amount));
 
@@ -787,15 +793,14 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
         address disputer,
         uint256 proposerBond,
         uint256 finalFee,
-        uint32 requestTimestamp,
         bytes memory customAncillaryData
-    ) private {
+    ) private returns (bool) {
         uint256 totalBond = finalFee + proposerBond;
         l1Token.safeApprove(address(optimisticOracle), totalBond);
         try
             optimisticOracle.requestAndProposePriceFor(
                 identifier,
-                requestTimestamp,
+                uint32(getCurrentTime()),
                 customAncillaryData,
                 IERC20(l1Token),
                 // Set reward to 0, since we'll settle proposer reward payouts directly from this contract after a relay
@@ -815,6 +820,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
                 uint256 refund = totalBond - bondSpent;
                 l1Token.safeTransfer(proposer, refund);
                 l1Token.safeApprove(address(optimisticOracle), 0);
+                totalBond = bondSpent;
             }
         } catch {
             // If there's an error in the OO, this means something has changed to make this request undisputable.
@@ -823,8 +829,8 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
             l1Token.safeTransfer(proposer, totalBond);
             l1Token.safeApprove(address(optimisticOracle), 0);
 
-            // Return early.
-            return;
+            // Return early noting that the attempt at a proposal + dispute did not succeed.
+            return false;
         }
 
         SkinnyOptimisticOracleInterface.Request memory request =
@@ -848,12 +854,15 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
         // Dispute the request that we just sent.
         optimisticOracle.disputePriceFor(
             identifier,
-            requestTimestamp,
+            uint32(getCurrentTime()),
             customAncillaryData,
             request,
             disputer,
             address(this)
         );
+
+        // Return true to denote that the proposal + dispute calls succeeded.
+        return true;
     }
 
     // Added to enable the BridgePool to receive ETH. used when unwrapping Weth.
