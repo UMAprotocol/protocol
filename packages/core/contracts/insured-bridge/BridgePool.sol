@@ -847,8 +847,10 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
                 customLiveness: uint256(optimisticOracleLiveness)
             });
 
-        // Dispute the request that we just sent.
+        // Note: don't pull funds until here to avoid any transfers that aren't needed.
+        l1Token.safeTransferFrom(msg.sender, address(this), totalBond);
         l1Token.safeApprove(address(optimisticOracle), totalBond);
+        // Dispute the request that we just sent.
         optimisticOracle.disputePriceFor(
             identifier,
             requestTimestamp,
