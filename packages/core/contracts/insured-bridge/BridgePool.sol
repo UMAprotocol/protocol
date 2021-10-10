@@ -133,6 +133,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         bytes32 relayAncillaryDataHash
     );
     event RelaySpedUp(bytes32 indexed depositHash, address indexed instantRelayer, RelayData relay);
+    event RelayDisputed(bytes32 indexed depositHash, bytes32 indexed relayHash, address indexed disputer);
     event RelaySettled(bytes32 indexed depositHash, address indexed caller, RelayData relay);
     event BridgePoolAdminTransferred(address oldAdmin, address newAdmin);
 
@@ -346,6 +347,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         // Drop the relay and remove the bond from the tracked bonds.
         bonds -= relayData.finalFee + relayData.proposerBond;
         delete relays[depositHash];
+        emit RelayDisputed(depositHash, relayHash, msg.sender);
     }
 
     /**
@@ -809,7 +811,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
                 // Set the Optimistic oracle proposer bond for the price request.
                 proposerBond,
                 // Set the Optimistic oracle liveness for the price request.
-                uint256(optimisticOracleLiveness),
+                optimisticOracleLiveness,
                 proposer,
                 // Canonical value representing "True"; i.e. the proposed relay is valid.
                 int256(1e18)
@@ -840,9 +842,9 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
                 settled: false,
                 proposedPrice: int256(1e18),
                 resolvedPrice: 0,
-                expirationTime: getCurrentTime() + requestTimestamp,
+                expirationTime: getCurrentTime() + optimisticOracleLiveness,
                 reward: 0,
-                finalFee: store.computeFinalFee(address(l1Token)).rawValue,
+                finalFee: totalBond - proposerBond,
                 bond: proposerBond,
                 customLiveness: uint256(optimisticOracleLiveness)
             });
