@@ -848,6 +848,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
             });
 
         // Dispute the request that we just sent.
+        l1Token.safeApprove(address(optimisticOracle), totalBond);
         optimisticOracle.disputePriceFor(
             identifier,
             requestTimestamp,
