@@ -868,7 +868,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
 /**
  * @notice This is the BridgePool contract that should be deployed on live networks. It is exactly the same as the
  * regular BridgePool contract, but it overrides getCurrentTime to make the call a simply return block.timestamp with
- * no branching or storage queries.
+ * no branching or storage queries. This is done to save gas. 
  */
 contract BridgePoolProd is BridgePool {
     constructor(
