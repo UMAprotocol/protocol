@@ -18,6 +18,7 @@ const Finder = getContract("Finder");
 const BridgeDepositBox = getContract("BridgeDepositBoxMock");
 const IdentifierWhitelist = getContract("IdentifierWhitelist");
 const AddressWhitelist = getContract("AddressWhitelist");
+const ERC20 = getContract("ERC20");
 
 // Contract objects
 let optimismMessenger;
@@ -48,7 +49,7 @@ describe("OptimismMessenger integration with BridgeAdmin", () => {
   before(async function () {
     accounts = await web3.eth.getAccounts();
     [owner, rando, rando2, depositBoxImpersonator] = accounts;
-    l1Token = rando;
+    l1Token = (await ERC20.new("", "").send({ from: owner })).options.address;
     l2Token = rando2;
 
     timer = await Timer.new().send({ from: owner });
