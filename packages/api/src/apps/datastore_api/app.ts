@@ -239,7 +239,7 @@ export default async (env: ProcessEnv) => {
     return block.number;
   }
 
-  const lastBlockUpdate = await appState.appStats?.getLastBlockUpdate();
+  const lastBlockUpdate = await appState.appStats.getLastBlockUpdate();
   const newContractBlockTick = BlockInterval(detectNewContracts, lastBlockUpdate);
   const updateContractStateTick = BlockInterval(updateContractState, lastBlockUpdate);
 
