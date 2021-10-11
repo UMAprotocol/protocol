@@ -41,14 +41,16 @@ export default (config: Config, appState: Dependencies) => {
     ["finder", toString],
     ["financialProductLibrary", toString],
     ["customAncillaryData", toString],
-    ["proposerReward", toString],
+    // removing this for now due to mismatching abis
+    // ["proposerReward", toString],
     ["expirationTimestamp", toNumber],
   ];
 
   const dynamicProps: [string, (x: any) => any][] = [
     ["expiryPrice", toString],
     ["expiryPercentLong", toString],
-    ["contractState", toNumber],
+    // removing this for now due to mismatching abi
+    // ["contractState", toNumber],
   ];
 
   async function batchRead(calls: [string, (x: any) => any][], instance: Instance, address: string) {
