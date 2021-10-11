@@ -146,6 +146,8 @@ describe("InsuredBridgeL1Client", function () {
       depositHash: depositHash,
       relayState: ClientRelayState.Pending,
       relayHash,
+      proposerBond,
+      finalFee,
     };
   };
 
@@ -598,6 +600,7 @@ describe("InsuredBridgeL1Client", function () {
       relayData.slowRelayer = rando;
       relayData.relayId = 1;
       relayData.priceRequestTime = Number((await bridgePool.methods.getCurrentTime().call()).toString());
+
       await l1Token.methods.mint(rando, totalRelayBond).send({ from: owner });
       await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: rando });
       await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: rando });
@@ -612,6 +615,7 @@ describe("InsuredBridgeL1Client", function () {
       ));
       expectedRelayedDepositInformation.relayState = ClientRelayState.Pending;
       expectedRelayedDepositInformation.depositHash = depositHash;
+      expectedRelayedDepositInformation.proposerBond = toWei("0.21");
       expectedBridgePool1Relays.push(JSON.parse(JSON.stringify(expectedRelayedDepositInformation)));
 
       // Again, change some more variable and relay something on the second bridgePool
@@ -641,6 +645,7 @@ describe("InsuredBridgeL1Client", function () {
         l1Token2.options.address
       ));
       expectedRelayedDepositInformation.depositHash = depositHash;
+      expectedRelayedDepositInformation.proposerBond = toWei("0.2105");
       let expectedBridgePool2Relays = [expectedRelayedDepositInformation];
 
       await client.update();
