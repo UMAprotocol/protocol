@@ -1387,8 +1387,21 @@ describe("BridgePool", () => {
       const settleTxn = bridgePool.methods.settleRelay(defaultDepositData, relayAttemptData);
       await didContractThrow(settleTxn.send({ from: relayer }));
 
+      // Can optionally speed up pending relay.
+      await l1Token.methods.approve(bridgePool.options.address, slowRelayAmountSubFee).send({ from: instantRelayer });
+      assert.ok(
+        await bridgePool.methods.speedUpRelay(defaultDepositData, relayAttemptData).call({ from: instantRelayer })
+      );
+
       // Set time such that optimistic price request is settleable.
       await timer.methods.setCurrentTime(expectedExpirationTimestamp).send({ from: owner });
+
+      // Cannot speed up relay now that contract time has passed relay expiry.
+      assert(
+        await didContractThrow(
+          bridgePool.methods.speedUpRelay(defaultDepositData, relayAttemptData).call({ from: instantRelayer })
+        )
+      );
 
       // Can now settle relay since OO resolved request.
       assert.ok(await settleTxn.send({ from: relayer }));

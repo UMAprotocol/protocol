@@ -433,11 +433,12 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
     function speedUpRelay(DepositData memory depositData, RelayData memory relayData) public nonReentrant() {
         bytes32 depositHash = _getDepositHash(depositData);
         _validateRelayDataHash(depositHash, relayData);
-
         bytes32 instantRelayHash = _getInstantRelayHash(depositHash, relayData);
         require(
             // Can only speed up a pending relay without an existing instant relay associated with it.
-            relayData.relayState == RelayState.Pending && instantRelays[instantRelayHash] == address(0),
+            getCurrentTime() < relayData.priceRequestTime + relayData.liveness &&
+                relayData.relayState == RelayState.Pending &&
+                instantRelays[instantRelayHash] == address(0),
             "Relay cannot be sped up"
         );
         instantRelays[instantRelayHash] = msg.sender;
@@ -819,7 +820,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
             }
         } catch {
             // If there's an error in the OO, this means something has changed to make this request undisputable.
-            // To ensure the request does not go through by default, refund the prposer and return early, allowing
+            // To ensure the request does not go through by default, refund the proposer and return early, allowing
             // the calling method to delete the request, but with no additional recourse by the OO.
             l1Token.safeTransfer(relayData.slowRelayer, totalBond);
             l1Token.safeApprove(address(optimisticOracle), 0);
