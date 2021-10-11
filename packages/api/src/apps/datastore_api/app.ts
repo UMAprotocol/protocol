@@ -8,10 +8,11 @@ import { Datastore } from "@google-cloud/datastore";
 import * as Services from "../../services";
 import Express from "../../services/express-channels";
 import * as Actions from "../../services/actions";
-import { ProcessEnv, AppState, Channels } from "../../types";
-import { empStats, empStatsHistory, lsps, StoresFactory } from "../../tables";
+import { appStats, empStats, empStatsHistory, lsps, StoresFactory } from "../../tables";
 import Zrx from "../../libs/zrx";
 import { Profile, parseEnvArray, getWeb3, BlockInterval, expirePromise } from "../../libs/utils";
+
+import type { ProcessEnv, Channels, DatastoreAppState } from "../../types";
 
 export default async (env: ProcessEnv) => {
   assert(env.CUSTOM_NODE_URL, "requires CUSTOM_NODE_URL");
@@ -47,7 +48,7 @@ export default async (env: ProcessEnv) => {
   const datastoreClient = new Datastore();
   const datastores = StoresFactory(datastoreClient);
   // state shared between services
-  const appState: AppState = {
+  const appState: DatastoreAppState = {
     provider,
     web3,
     coingecko: new Coingecko(),
@@ -123,6 +124,7 @@ export default async (env: ProcessEnv) => {
       active: lsps.Table("Active LSP", datastores.lspsActive),
       expired: lsps.Table("Expired LSP", datastores.lspsExpired),
     },
+    appStats: appStats.Table("App Stats", datastores.appStats),
   };
 
   // services for ingesting data
@@ -154,27 +156,6 @@ export default async (env: ProcessEnv) => {
     globalStats: Services.stats.Global({ debug }, appState),
   };
 
-  const initBlock = await provider.getBlock("latest");
-
-  // warm caches
-  await services.registry(appState.lastBlockUpdate, initBlock.number);
-  console.log("Got all EMP addresses");
-
-  await services.lspCreator.update(appState.lastBlockUpdate, initBlock.number);
-  console.log("Got all LSP addresses");
-
-  await services.emps.update(appState.lastBlockUpdate, initBlock.number);
-  console.log("Updated EMP state");
-
-  await services.lsps.update(appState.lastBlockUpdate, initBlock.number);
-  console.log("Updated LSP state");
-
-  // we've update our state based on latest block we queried
-  appState.lastBlockUpdate = initBlock.number;
-
-  await services.erc20s.update();
-  console.log("Updated tokens");
-
   // backfill price histories, disable if not specified in env
   if (env.backfillDays) {
     console.log(`Backfilling price history from ${env.backfillDays} days ago`);
@@ -186,24 +167,6 @@ export default async (env: ProcessEnv) => {
     await services.lspStats.backfill();
     console.log("Updated LSP Backfill");
   }
-
-  await services.collateralPrices.update();
-  console.log("Updated Collateral Prices");
-
-  await services.syntheticPrices.update();
-  console.log("Updated Synthetic Prices");
-
-  await services.empStats.update();
-  console.log("Updated EMP Stats");
-
-  await services.lspStats.update();
-  console.log("Updated LSP Stats");
-
-  await services.globalStats.update();
-  console.log("Updated Global Stats");
-
-  await services.marketPrices.update();
-  console.log("Updated Market Prices");
 
   // services consuming data
   const channels: Channels = [
@@ -236,7 +199,7 @@ export default async (env: ProcessEnv) => {
     await services.emps.update(startBlock, endBlock);
     await services.lsps.update(startBlock, endBlock);
     await services.erc20s.update();
-    appState.lastBlockUpdate = endBlock;
+    await appState.appStats?.setLastBlockUpdate(endBlock);
   }
 
   // separate out price updates into a different loop to query every few minutes
@@ -248,9 +211,6 @@ export default async (env: ProcessEnv) => {
     await services.lspStats.update();
     await services.globalStats.update();
   }
-
-  // wait update rate before running loops, since all state was just updated on init
-  await new Promise((res) => setTimeout(res, updateRateS * 1000));
 
   console.log("Starting API update loops");
 
@@ -279,8 +239,9 @@ export default async (env: ProcessEnv) => {
     return block.number;
   }
 
-  const newContractBlockTick = BlockInterval(detectNewContracts, initBlock.number);
-  const updateContractStateTick = BlockInterval(updateContractState, initBlock.number);
+  const lastBlockUpdate = await appState.appStats?.getLastBlockUpdate();
+  const newContractBlockTick = BlockInterval(detectNewContracts, lastBlockUpdate);
+  const updateContractStateTick = BlockInterval(updateContractState, lastBlockUpdate);
 
   // detect contract loop
   utils.loop(async () => {
