@@ -12,12 +12,12 @@ import "../oracle/implementation/Constants.sol";
 import "../common/implementation/AncillaryData.sol";
 import "../common/implementation/Testable.sol";
 import "../common/implementation/FixedPoint.sol";
-import "../common/implementation/MultiCaller.sol";
 import "../common/implementation/Lockable.sol";
 import "../common/implementation/ExpandedERC20.sol";
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "hardhat/console.sol";
 
 interface WETH9Like {
     function withdraw(uint256 wad) external;
@@ -31,7 +31,7 @@ interface WETH9Like {
  * to post collateral by earning a fee per fulfilled deposit order.
  * @dev A "Deposit" is an order to send capital from L2 to L1, and a "Relay" is a fulfillment attempt of that order.
  */
-contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller, Lockable {
+contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
     using SafeERC20 for IERC20;
     using FixedPoint for FixedPoint.Unsigned;
 
@@ -50,28 +50,32 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
     // Reserves that are not yet utilized but are pre-allocated for a pending relay.
     uint256 public pendingReserves;
 
+    // If this pool contains WETH. If the withdrawn token is WETH then unwrap and send ETH when finalizing withdrawal.
+    bool public isWethPool;
+
     // Exponential decay exchange rate to accumulate fees to LPs over time.
     uint64 public lpFeeRatePerSecond;
 
     // Last timestamp that LP fees were updated.
     uint32 public lastLpFeeUpdate;
 
+    // Store local instances of contract params to save gas relaying. Can be synced with the BridgeAdmin at any time.
+    uint64 public proposerBondPct;
+    uint32 public optimisticOracleLiveness;
+
     // Cumulative undistributed LP fees. As fees accumulate, they are subtracted from this number.
     uint256 public undistributedLpFees;
 
+    // Total bonds held.
+    uint256 public bonds;
+
     // Administrative contract that deployed this contract and also houses all state variables needed to relay deposits.
     BridgeAdminInterface public bridgeAdmin;
-
-    // If this pool contains WETH. If the withdrawn token is WETH then unwrap and send ETH  when finalizing withdrawal.
-    bool public isWethPool;
 
     // Store local instances of the contract instances to save gas relaying. Can be sync with the Finder at any time.
     StoreInterface public store;
     SkinnyOptimisticOracleInterface public optimisticOracle;
 
-    // Store local instances of contract params to save gas relaying. Can be synced with the BridgeAdmin at any time.
-    uint64 public proposerBondPct;
-    uint32 public optimisticOracleLiveness;
     bytes32 public identifier;
 
     // A Relay represents an attempt to finalize a cross-chain transfer that originated on an L2 DepositBox contract.
@@ -106,17 +110,14 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         uint32 relayId;
         uint64 realizedLpFeePct;
         uint32 priceRequestTime;
+        uint256 proposerBond;
+        uint256 finalFee;
     }
 
     // Associate deposits with pending relay data. When the mapped relay hash is empty, new relay attempts can be made
     // for this deposit. The relay data contains information necessary to pay out relayers on successful relay.
     // Relay hashes are deleted when they are disputed on the OptimisticOracle.
     mapping(bytes32 => bytes32) public relays;
-
-    // Associates a relay request's ancillary data with the deposit hash that the relay request was linked with. This
-    // mapping is used by the OptimisticOracle callback functions (i.e. priceDisputed) to identify the
-    // relay request that was disputed or settled.
-    mapping(bytes32 => bytes32) public relayRequestAncillaryData;
 
     // Map hash of deposit and realized-relay fee to instant relayers. This mapping is checked at settlement time
     // to determine if there was a valid instant relayer.
@@ -132,6 +133,12 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         bytes32 relayAncillaryDataHash
     );
     event RelaySpedUp(bytes32 indexed depositHash, address indexed instantRelayer, RelayData relay);
+
+    // Note: the difference between a dispute and a cancellation is that a cancellation happens in the case where
+    // something changes in the OO between request and dispute that causes calls to it to fail. The most common
+    // case would be an increase in final fee. However, things like whitelisting can also cause problems.
+    event RelayDisputed(bytes32 indexed depositHash, bytes32 indexed relayHash, address indexed disputer);
+    event RelayCanceled(bytes32 indexed depositHash, bytes32 indexed relayHash, address indexed disputer);
     event RelaySettled(bytes32 indexed depositHash, address indexed caller, RelayData relay);
     event BridgePoolAdminTransferred(address oldAdmin, address newAdmin);
 
@@ -221,7 +228,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
     /**
      * @notice Called by Relayer to execute a slow + fast relay from L2 to L1, fulfilling a corresponding deposit order.
      * @dev There can only be one pending relay for a deposit. This method is effectively the relayDeposit and
-     * speedUpRelay methods concatenated. This could potentially be refactored to just call each method, but there
+     * speedUpRelay methods concatenated. This could be refactored to just call each method, but there
      * are some gas savings in combining the transfers and hash computations.
      * @dev Caller must have approved this contract to spend the total bond + amount - fees for `l1Token`.
      * @param depositData the deposit data struct containing all the user's deposit information.
@@ -246,17 +253,22 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         // Note: A disputed relay deletes the stored relay hash and enables this require statement to pass.
         require(relays[depositHash] == bytes32(0), "Pending relay exists");
 
+        uint256 proposerBond = _getProposerBond(depositData.amount);
+        uint256 finalFee = store.computeFinalFee(address(l1Token)).rawValue;
+
         // Save hash of new relay attempt parameters.
         RelayData memory relayData =
             RelayData({
                 relayState: RelayState.Pending,
-                slowRelayer: msg.sender, // Note: Increment numberOfRelays at the same time as setting relayId to its current value.
-                relayId: numberOfRelays++,
+                slowRelayer: msg.sender,
+                relayId: numberOfRelays++, // Note: Increment numberOfRelays at the same time as setting relayId to its current value.
                 realizedLpFeePct: realizedLpFeePct,
-                priceRequestTime: priceRequestTime
+                priceRequestTime: priceRequestTime,
+                proposerBond: proposerBond,
+                finalFee: finalFee
             });
         bytes32 relayHash = _getRelayHash(depositData, relayData);
-        bytes memory ancillaryData = _getRelayAncillaryData(relayHash);
+        relays[depositHash] = _getRelayDataHash(relayData);
 
         bytes32 instantRelayHash = _getInstantRelayHash(depositHash, relayData);
         require(
@@ -265,18 +277,16 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
             "Relay cannot be sped up"
         );
 
-        relays[depositHash] = _getRelayDataHash(relayData);
-        relayRequestAncillaryData[keccak256(ancillaryData)] = depositHash;
-
         // Sanity check that pool has enough balance to cover relay amount + proposer reward. Reward amount will be
         // paid on settlement after the OptimisticOracle price request has passed the challenge period.
-        uint256 proposerBond = _getProposerBond(depositData.amount);
-
         require(
             l1Token.balanceOf(address(this)) >= depositData.amount + proposerBond &&
                 liquidReserves >= depositData.amount + proposerBond,
             "Insufficient pool balance"
         );
+
+        // Compute total proposal bond and pull from caller so that the OptimisticOracle can pull it from here.
+        uint256 totalBond = proposerBond + finalFee;
 
         // Pull relay amount minus fees from caller and send to the deposit l1Recipient. The total fees paid is the sum
         // of the LP fees, the relayer fees and the instant relay fee.
@@ -285,27 +295,16 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
                 relayData.realizedLpFeePct + depositData.slowRelayFeePct + depositData.instantRelayFeePct,
                 depositData.amount
             );
+        // If the L1 token is WETH then: a) pull WETH from instant relayer b) unwrap WETH c) send ETH to recipient.
+        uint256 recipientAmount = depositData.amount - feesTotal;
 
-        // Compute total proposal bond and pull from caller so that the OptimisticOracle can pull it from here.
-        l1Token.safeTransferFrom(
-            msg.sender,
-            address(this),
-            depositData.amount + proposerBond + store.computeFinalFee(address(l1Token)).rawValue - feesTotal
-        );
-
-        // Request a price for the relay identifier and propose "true" optimistically. This method will pull the
-        // (proposer reward + proposer bond + final fee) from the caller. We need to set a new price request timestamp
-        // instead of default setting to equal to the `depositTimestamp`, which is dependent on the L2 VM on which the
-        // DepositContract is deployed. Imagine if the timestamps on the L2 have an offset that are always "in the
-        // future" relative to L1 blocks, then the OptimisticOracle would always reject requests.
-        _requestAndProposeOraclePriceRelay(proposerBond, priceRequestTime, ancillaryData);
+        l1Token.safeTransferFrom(msg.sender, address(this), recipientAmount + totalBond);
+        bonds += totalBond;
 
         pendingReserves += depositData.amount; // Book off maximum liquidity used by this relay in the pending reserves.
 
         instantRelays[instantRelayHash] = msg.sender;
 
-        // If the L1 token is WETH then: a) pull WETH from instant relayer b) unwrap WETH c) send ETH to recipient.
-        uint256 recipientAmount = depositData.amount - feesTotal;
         if (isWethPool) {
             _unwrapWETHTo(depositData.l1Recipient, recipientAmount);
         }
@@ -314,6 +313,43 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
 
         emit DepositRelayed(depositHash, depositData, address(l1Token), relayData, relayHash);
         emit RelaySpedUp(depositHash, msg.sender, relayData);
+    }
+
+    /**
+     * @notice Called by Disiputer to dispute an ongoing relay.
+     * @dev The result of this method is to always throw out the relay, providing an opportunity for another relay for
+     * the same deposit. Between the disputer and proposer, whoever is incorrect loses their bond. Whoever is correct
+     * gets it back + a payout.
+     * @dev Caller must have approved this contract to spend the total bond + amount - fees for `l1Token`.
+     * @param depositData the deposit data struct containing all the user's deposit information.
+     * @param relayData RelayData logged in the disputed relay.
+     */
+    function disputeRelay(DepositData memory depositData, RelayData memory relayData) public nonReentrant() {
+        require(relayData.priceRequestTime + optimisticOracleLiveness > getCurrentTime(), "Past liveness");
+        require(relayData.relayState == RelayState.Pending, "Not disputable");
+        // Validate the input data.
+        bytes32 depositHash = _getDepositHash(depositData);
+        _validateRelayDataHash(depositHash, relayData);
+
+        // Submit the proposal and dispute to the OO.
+        bytes32 relayHash = _getRelayHash(depositData, relayData);
+
+        // Note: in some cases this will fail due to changes in the OO and the method will refund the relayer.
+        bool success =
+            _requestProposeDispute(
+                relayData.slowRelayer,
+                msg.sender,
+                relayData.proposerBond,
+                relayData.finalFee,
+                // relayData.priceRequestTime,
+                _getRelayAncillaryData(relayHash)
+            );
+
+        // Drop the relay and remove the bond from the tracked bonds.
+        bonds -= relayData.finalFee + relayData.proposerBond;
+        delete relays[depositHash];
+        if (success) emit RelayDisputed(depositHash, _getRelayDataHash(relayData), msg.sender);
+        else emit RelayCanceled(depositHash, _getRelayDataHash(relayData), msg.sender);
     }
 
     /**
@@ -366,44 +402,37 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         // If no pending relay for this deposit, then associate the caller's relay attempt with it.
         uint32 priceRequestTime = uint32(getCurrentTime());
 
+        uint256 proposerBond = _getProposerBond(amount);
+        uint256 finalFee = store.computeFinalFee(address(l1Token)).rawValue;
+
         // Save hash of new relay attempt parameters.
         RelayData memory relayData =
             RelayData({
                 relayState: RelayState.Pending,
-                slowRelayer: msg.sender, // Note: Increment numberOfRelays at the same time as setting relayId to its current value.
-                relayId: numberOfRelays++,
+                slowRelayer: msg.sender,
+                relayId: numberOfRelays++, // Note: Increment numberOfRelays at the same time as setting relayId to its current value.
                 realizedLpFeePct: realizedLpFeePct,
-                priceRequestTime: priceRequestTime
+                priceRequestTime: priceRequestTime,
+                proposerBond: proposerBond,
+                finalFee: finalFee
             });
         relays[depositHash] = _getRelayDataHash(relayData);
 
         bytes32 relayHash = _getRelayHash(depositData, relayData);
-        bytes memory ancillaryData = _getRelayAncillaryData(relayHash);
-        relayRequestAncillaryData[keccak256(ancillaryData)] = depositHash;
 
         // Sanity check that pool has enough balance to cover relay amount + proposer reward. Reward amount will be
         // paid on settlement after the OptimisticOracle price request has passed the challenge period.
-        uint256 proposerBond = _getProposerBond(amount);
         require(
             l1Token.balanceOf(address(this)) >= amount + proposerBond && liquidReserves >= amount + proposerBond,
             "Insufficient pool balance"
         );
 
         // Compute total proposal bond and pull from caller so that the OptimisticOracle can pull it from here.
-        l1Token.safeTransferFrom(
-            msg.sender,
-            address(this),
-            proposerBond + store.computeFinalFee(address(l1Token)).rawValue
-        );
-
-        // Request a price for the relay identifier and propose "true" optimistically. This method will pull the
-        // (proposer reward + proposer bond + final fee) from the caller. We need to set a new price request timestamp
-        // instead of default setting to equal to the `depositTimestamp`, which is dependent on the L2 VM on which the
-        // DepositContract is deployed. Imagine if the timestamps on the L2 have an offset that are always "in the
-        // future" relative to L1 blocks, then the OptimisticOracle would always reject requests.
-        _requestAndProposeOraclePriceRelay(proposerBond, priceRequestTime, ancillaryData);
+        uint256 totalBond = proposerBond + finalFee;
+        l1Token.safeTransferFrom(msg.sender, address(this), totalBond);
 
         pendingReserves += amount; // Book off maximum liquidity used by this relay in the pending reserves.
+        bonds += totalBond;
 
         emit DepositRelayed(depositHash, depositData, address(l1Token), relayData, relayHash);
     }
@@ -465,51 +494,20 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
      * @param depositData Unique set of L2 deposit data that caller is trying to settle a relay for.
      * @param relayData Parameters of Relay that caller is attempting to settle. Must hash to the stored relay hash
      * for this deposit.
-     * @param request Relay price request struct. Used to check status of relay price request.
      */
-    function settleRelay(
-        DepositData memory depositData,
-        RelayData memory relayData,
-        // TODO: Can we infer `request` using just the information stored in this contract and passed into this
-        // method? The tricky part is that some of the params such as `finalFee`, `expirationTime`, `customLiveness`,
-        // and `bond` all rely on contract state variables that might have changed since the relay was originally sent.
-        SkinnyOptimisticOracleInterface.Request memory request
-    ) public nonReentrant() {
+    function settleRelay(DepositData memory depositData, RelayData memory relayData) public nonReentrant() {
         bytes32 depositHash = _getDepositHash(depositData);
         _validateRelayDataHash(depositHash, relayData);
         require(relayData.relayState == RelayState.Pending, "Already settled");
+        uint32 expirationTime = relayData.priceRequestTime + optimisticOracleLiveness;
+        require(expirationTime <= getCurrentTime(), "Not settleable yet");
 
         // Note: this check is to give the relayer a small, but reasonable amount of time to complete the relay before
         // before it can be "stolen" by someone else. This is to ensure there is an incentive to settle relays quickly.
         require(
-            msg.sender == relayData.slowRelayer || getCurrentTime() > request.expirationTime + 15 minutes,
+            msg.sender == relayData.slowRelayer || getCurrentTime() > expirationTime + 15 minutes,
             "Not slow relayer"
         );
-
-        // Resolve request if it is not settled or grab its resolved price if it is. If the request.settled param does
-        // not match the one stored in the relay price request on the OptimisticOracle, then this will revert. The
-        // relay price request must be linked to ancillary data that is derived from the `depositData` and `relayData`,
-        // so there is no way for the caller to modify the request params.
-        bytes memory ancillaryData = _getRelayAncillaryData(_getRelayHash(depositData, relayData));
-        if (!request.settled) {
-            (
-                ,
-                // Unused payout value, as we only care to check whether the price resolved to True or False.
-                int256 resolvedPrice
-            ) = optimisticOracle.settle(address(this), identifier, relayData.priceRequestTime, ancillaryData, request);
-            require(resolvedPrice == int256(1e18), "Settle relay iff price is True");
-        } else {
-            require(
-                optimisticOracle.hasPrice(
-                    address(this),
-                    identifier,
-                    relayData.priceRequestTime,
-                    ancillaryData,
-                    request
-                ) && request.resolvedPrice == int256(1e18),
-                "Settle relay iff price is True"
-            );
-        }
 
         // Update the relay state to Finalized. This prevents any re-settling of a relay.
         relays[depositHash] = _getRelayDataHash(
@@ -518,7 +516,9 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
                 slowRelayer: relayData.slowRelayer,
                 relayId: relayData.relayId,
                 realizedLpFeePct: relayData.realizedLpFeePct,
-                priceRequestTime: relayData.priceRequestTime
+                priceRequestTime: relayData.priceRequestTime,
+                proposerBond: relayData.proposerBond,
+                finalFee: relayData.finalFee
             })
         );
 
@@ -542,8 +542,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         // If this is the WETH pool and the instant relayer is is address 0x0 (i.e the relay was not sped up) then:
         // a) withdraw WETH to ETH and b) send the ETH to the recipient.
         if (isWethPool && instantRelayer == address(0)) {
-            WETH9Like(address(l1Token)).withdraw(instantRelayerOrRecipientAmount);
-            depositData.l1Recipient.transfer(instantRelayerOrRecipientAmount);
+            _unwrapWETHTo(depositData.l1Recipient, instantRelayerOrRecipientAmount);
             // Else, this is a normal slow relay being finalizes where the contract sends ERC20 to the recipient OR this
             // is the finalization of an instant relay where we need to reimburse the instant relayer in WETH.
         } else
@@ -552,16 +551,26 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
                 instantRelayerOrRecipientAmount
             );
 
-        // The slow relayer gets paid the slow relay fee. This is the same irrespective if the relay was sped up or not.
-        uint256 slowRelayerAmount = _getAmountFromPct(depositData.slowRelayFeePct, depositData.amount);
-        l1Token.safeTransfer(msg.sender, slowRelayerAmount);
+        // There is a fee and a bond to pay out. The fee goes to whoever settles. The bond always goes back to the
+        // slow relayer.
+        // Note: for gas efficiency, we use an if so we can combine these transfers in the event that they are the same
+        // address.
+        uint256 slowRelayerReward = _getAmountFromPct(depositData.slowRelayFeePct, depositData.amount);
+        uint256 totalBond = relayData.finalFee + relayData.proposerBond;
+        if (relayData.slowRelayer == msg.sender)
+            l1Token.safeTransfer(relayData.slowRelayer, slowRelayerReward + totalBond);
+        else {
+            l1Token.safeTransfer(relayData.slowRelayer, totalBond);
+            l1Token.safeTransfer(msg.sender, slowRelayerReward);
+        }
 
-        uint256 totalAmountSent = instantRelayerOrRecipientAmount + slowRelayerAmount;
+        uint256 totalReservesSent = instantRelayerOrRecipientAmount + slowRelayerReward;
 
         // Update reserves by amounts changed and allocated LP fees.
         pendingReserves -= depositData.amount;
-        liquidReserves -= totalAmountSent;
-        utilizedReserves += int256(totalAmountSent);
+        liquidReserves -= totalReservesSent;
+        utilizedReserves += int256(totalReservesSent);
+        bonds -= totalBond;
         updateAccumulatedLpFees();
         allocateLpFees(_getAmountFromPct(relayData.realizedLpFeePct, depositData.amount));
 
@@ -570,29 +579,6 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         // Clean up state storage and receive gas refund. This also prevents `priceDisputed()` from being able to reset
         // this newly Finalized relay state.
         delete instantRelays[instantRelayHash];
-        delete relayRequestAncillaryData[keccak256(ancillaryData)];
-    }
-
-    /**
-     * @notice Callback for disputes, deletes disputed relay allowing a follow-up relay.
-     * @dev timestamp and identifier are unused because ancillaryData contains a relay nonce and uniquely
-     * identifies a relay request.
-     * @param ancillaryData ancillary data for relay request.
-     */
-    function priceDisputed(
-        // Unused, but the identifier should be same as bridgeAdmin.identifier()
-        bytes32,
-        // Unused, but timestamp should be same as the hashed relay.priceRequestTime included in relays[depositHash]
-        uint32,
-        bytes memory ancillaryData,
-        // Unused as all of the relay data is hashed and stored in relays[depositHash], and we can lookup depositHash
-        // using the ancillaryData
-        SkinnyOptimisticOracleInterface.Request memory
-    ) external onlyFromOptimisticOracle {
-        bytes32 depositHash = relayRequestAncillaryData[keccak256(ancillaryData)];
-        // We can delete the pending relay hash because we will still store data that must be carried over to a follow
-        // up relay, namely the `instantRelayer` address which is stored in a separate mappign from the relay hashes.
-        delete relays[depositHash];
     }
 
     /**
@@ -602,7 +588,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
     function sync() public nonReentrant() {
         // Check if the l1Token balance of the contract is greater than the liquidReserves. If it is then the bridging
         // action from L2 -> L1 has concluded and the local accounting can be updated.
-        uint256 l1TokenBalance = l1Token.balanceOf(address(this));
+        uint256 l1TokenBalance = l1Token.balanceOf(address(this)) - bonds;
         if (l1TokenBalance > liquidReserves) {
             // utilizedReserves can go to less than zero. This will happen if the accumulated fees exceeds the current
             // outstanding utilization. In other words, if outstanding bridging transfers are 0 then utilizedReserves
@@ -670,16 +656,9 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
      */
     function syncWithFinderAddresses() public {
         FinderInterface finder = FinderInterface(bridgeAdmin.finder());
-
-        // Remove approval for old OO.
-        if (address(optimisticOracle) != address(0)) l1Token.safeApprove(address(optimisticOracle), 0);
-
         optimisticOracle = SkinnyOptimisticOracleInterface(
             finder.getImplementationAddress(OracleInterfaces.SkinnyOptimisticOracle)
         );
-
-        // MAX approve the new OO so no approvals need to be done.
-        if (address(optimisticOracle) != address(0)) l1Token.safeApprove(address(optimisticOracle), type(uint256).max);
 
         store = StoreInterface(finder.getImplementationAddress(OracleInterfaces.Store));
     }
@@ -826,28 +805,81 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
 
     // Proposes new price of True for relay event associated with `customAncillaryData` to optimistic oracle. If anyone
     // disagrees with the relay parameters and whether they map to an L2 deposit, they can dispute with the oracle.
-    function _requestAndProposeOraclePriceRelay(
-        uint256 bond,
-        uint32 requestTimestamp,
+    function _requestProposeDispute(
+        address proposer,
+        address disputer,
+        uint256 proposerBond,
+        uint256 finalFee,
         bytes memory customAncillaryData
-    ) private {
-        optimisticOracle.requestAndProposePriceFor(
+    ) private returns (bool) {
+        uint256 totalBond = finalFee + proposerBond;
+        l1Token.safeApprove(address(optimisticOracle), totalBond);
+        try
+            optimisticOracle.requestAndProposePriceFor(
+                identifier,
+                uint32(getCurrentTime()),
+                customAncillaryData,
+                IERC20(l1Token),
+                // Set reward to 0, since we'll settle proposer reward payouts directly from this contract after a relay
+                // proposal has passed the challenge period.
+                0,
+                // Set the Optimistic oracle proposer bond for the price request.
+                proposerBond,
+                // Set the Optimistic oracle liveness for the price request.
+                optimisticOracleLiveness,
+                proposer,
+                // Canonical value representing "True"; i.e. the proposed relay is valid.
+                int256(1e18)
+            )
+        returns (uint256 bondSpent) {
+            if (bondSpent < totalBond) {
+                // If the OO pulls less (due to a change in final fee), refund the proposer.
+                uint256 refund = totalBond - bondSpent;
+                l1Token.safeTransfer(proposer, refund);
+                l1Token.safeApprove(address(optimisticOracle), 0);
+                totalBond = bondSpent;
+            }
+        } catch {
+            // If there's an error in the OO, this means something has changed to make this request undisputable.
+            // To ensure the request does not go through by default, refund the prposer and return early, allowing
+            // the calling method to delete the request, but with no additional recourse by the OO.
+            l1Token.safeTransfer(proposer, totalBond);
+            l1Token.safeApprove(address(optimisticOracle), 0);
+
+            // Return early noting that the attempt at a proposal + dispute did not succeed.
+            return false;
+        }
+
+        SkinnyOptimisticOracleInterface.Request memory request =
+            SkinnyOptimisticOracleInterface.Request({
+                proposer: proposer,
+                disputer: address(0),
+                currency: IERC20(l1Token),
+                settled: false,
+                proposedPrice: int256(1e18),
+                resolvedPrice: 0,
+                expirationTime: getCurrentTime() + optimisticOracleLiveness,
+                reward: 0,
+                finalFee: totalBond - proposerBond,
+                bond: proposerBond,
+                customLiveness: uint256(optimisticOracleLiveness)
+            });
+
+        // Note: don't pull funds until here to avoid any transfers that aren't needed.
+        l1Token.safeTransferFrom(msg.sender, address(this), totalBond);
+        l1Token.safeApprove(address(optimisticOracle), totalBond);
+        // Dispute the request that we just sent.
+        optimisticOracle.disputePriceFor(
             identifier,
-            requestTimestamp,
+            uint32(getCurrentTime()),
             customAncillaryData,
-            IERC20(l1Token),
-            // Set reward to 0, since we'll settle proposer reward payouts directly from this contract after a relay
-            // proposal has passed the challenge period.
-            0,
-            // Set the Optimistic oracle proposer bond for the price request.
-            bond,
-            // Set the Optimistic oracle liveness for the price request.
-            uint256(optimisticOracleLiveness),
-            // Caller is proposer.
-            msg.sender,
-            // Canonical value representing "True"; i.e. the proposed relay is valid.
-            int256(1e18)
+            request,
+            disputer,
+            address(this)
         );
+
+        // Return true to denote that the proposal + dispute calls succeeded.
+        return true;
     }
 
     function _unwrapWETHTo(address payable to, uint256 amount) internal {
@@ -862,7 +894,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
 /**
  * @notice This is the BridgePool contract that should be deployed on live networks. It is exactly the same as the
  * regular BridgePool contract, but it overrides getCurrentTime to make the call a simply return block.timestamp with
- * no branching or storage queries.
+ * no branching or storage queries. This is done to save gas.
  */
 contract BridgePoolProd is BridgePool {
     constructor(
