@@ -80,10 +80,7 @@ describe("InsuredBridgeL1Client", function () {
   const generateRelayParams = (depositDataOverride = {}, relayDataOverride = {}) => {
     const _depositData = { ...depositData, ...depositDataOverride };
     const _relayData = { ...relayData, ...relayDataOverride };
-    // Remove the l1Token. This is part of the deposit data (hash) but is not part of the params for relayDeposit.
-    // eslint-disable-next-line no-unused-vars
-    const { l1Token, ...params } = _depositData;
-    return [...Object.values(params), _relayData.realizedLpFeePct];
+    return [_depositData, _relayData.realizedLpFeePct];
   };
 
   const generateRelayData = async (depositData, relayData, bridgePool, l1TokenAddress = l1Token.options.address) => {
@@ -143,6 +140,7 @@ describe("InsuredBridgeL1Client", function () {
       quoteTimestamp: Number(depositData.quoteTimestamp),
       realizedLpFeePct: relayData.realizedLpFeePct,
       priceRequestTime: relayData.priceRequestTime,
+      liveness: defaultLiveness,
       depositHash: depositHash,
       relayState: ClientRelayState.Pending,
       relayHash,
@@ -287,6 +285,7 @@ describe("InsuredBridgeL1Client", function () {
       slowRelayer: relayer,
       proposerBond: proposerBond,
       finalFee: finalFee,
+      liveness: defaultLiveness,
     };
 
     ({ depositHash, relayAncillaryData, relayAncillaryDataHash } = await generateRelayData(
@@ -337,6 +336,7 @@ describe("InsuredBridgeL1Client", function () {
         relayId: client.getBridgePoolForDeposit(depositData).relayNonce,
         realizedLpFeePct: defaultRealizedLpFee,
         priceRequestTime: client.getBridgePoolForDeposit(depositData).currentTime,
+        liveness: defaultLiveness,
         proposerBond,
         finalFee,
       };
@@ -430,6 +430,7 @@ describe("InsuredBridgeL1Client", function () {
         relayId: client.getBridgePoolForDeposit(depositData).relayNonce,
         realizedLpFeePct: defaultRealizedLpFee,
         priceRequestTime: client.getBridgePoolForDeposit(depositData).currentTime,
+        liveness: defaultLiveness,
         proposerBond,
         finalFee,
       };
@@ -575,6 +576,7 @@ describe("InsuredBridgeL1Client", function () {
         relayId: client.getBridgePoolForDeposit(depositData).relayNonce,
         realizedLpFeePct: defaultRealizedLpFee,
         priceRequestTime: client.getBridgePoolForDeposit(depositData).currentTime,
+        liveness: defaultLiveness,
         proposerBond,
         finalFee,
       };

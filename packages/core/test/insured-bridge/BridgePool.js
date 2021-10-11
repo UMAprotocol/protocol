@@ -128,10 +128,7 @@ describe("BridgePool", () => {
   const generateRelayParams = (depositDataOverride = {}, relayDataOverride = {}) => {
     const _depositData = { ...defaultDepositData, ...depositDataOverride };
     const _relayData = { ...defaultRelayData, ...relayDataOverride };
-    // Remove the l1Token. This is part of the deposit data (hash) but is not part of the params for relayDeposit.
-    // eslint-disable-next-line no-unused-vars
-    const { l1Token, ...params } = _depositData;
-    return [...Object.values(params), _relayData.realizedLpFeePct];
+    return [_depositData, _relayData.realizedLpFeePct];
   };
 
   // Generate ABI encoded deposit data and deposit data hash.
@@ -167,7 +164,7 @@ describe("BridgePool", () => {
   const generateRelayHash = (_relayData) => {
     return soliditySha3(
       web3.eth.abi.encodeParameters(
-        ["uint256", "address", "uint32", "uint64", "uint256", "uint256", "uint256"],
+        ["uint256", "address", "uint32", "uint64", "uint256", "uint256", "uint256", "uint32"],
         [
           _relayData.relayState,
           _relayData.slowRelayer,
@@ -176,6 +173,7 @@ describe("BridgePool", () => {
           _relayData.priceRequestTime,
           _relayData.proposerBond,
           _relayData.finalFee,
+          _relayData.liveness,
         ]
       )
     );
@@ -329,6 +327,7 @@ describe("BridgePool", () => {
       slowRelayer: relayer,
       finalFee: finalFee,
       proposerBond: proposalBond.toString(),
+      liveness: defaultLiveness.toString(),
     };
 
     // Save other reused values.
@@ -457,7 +456,8 @@ describe("BridgePool", () => {
                 {
                   amount: toBN(initialPoolLiquidity)
                     .mul(toBN(toWei("0.99")))
-                    .div(toBN(toWei("1"))),
+                    .div(toBN(toWei("1")))
+                    .toString(),
                 },
                 { realizedLpFeePct: toWei("1.15") }
               )
@@ -524,6 +524,7 @@ describe("BridgePool", () => {
           ev.l1Token === l1Token.options.address &&
           ev.relay.slowRelayer === relayer &&
           ev.relay.relayId.toString() === relayAttemptData.relayId.toString() &&
+          ev.relay.liveness === relayAttemptData.liveness &&
           ev.relay.realizedLpFeePct === relayAttemptData.realizedLpFeePct &&
           ev.relay.priceRequestTime === relayAttemptData.priceRequestTime &&
           ev.relay.relayState === relayAttemptData.relayState &&
@@ -537,19 +538,7 @@ describe("BridgePool", () => {
       let duplicateRelayData = { realizedLpFeePct: toBN(defaultRealizedLpFee).mul(toBN("2")) };
       assert(
         await didContractThrow(
-          bridgePool.methods
-            .relayDeposit(
-              defaultDepositData.chainId,
-              defaultDepositData.depositId,
-              defaultDepositData.l1Recipient,
-              defaultDepositData.l2Sender,
-              defaultDepositData.amount,
-              defaultDepositData.slowRelayFeePct,
-              defaultDepositData.instantRelayFeePct,
-              defaultDepositData.quoteTimestamp,
-              duplicateRelayData.realizedLpFeePct
-            )
-            .send({ from: rando })
+          bridgePool.methods.relayDeposit(defaultDepositData, duplicateRelayData.realizedLpFeePct).send({ from: rando })
         )
       );
     });
@@ -599,6 +588,7 @@ describe("BridgePool", () => {
           ev.relay.relayId === relayAttemptData.relayId.toString() &&
           ev.relay.realizedLpFeePct === relayAttemptData.realizedLpFeePct &&
           ev.relay.priceRequestTime === relayAttemptData.priceRequestTime &&
+          ev.relay.liveness === relayAttemptData.liveness &&
           ev.relay.relayState === relayAttemptData.relayState
         );
       });
@@ -726,6 +716,7 @@ describe("BridgePool", () => {
           ev.relay.relayId === relayAttemptData.relayId.toString() &&
           ev.relay.realizedLpFeePct === relayAttemptData.realizedLpFeePct &&
           ev.relay.priceRequestTime === relayAttemptData.priceRequestTime &&
+          ev.relay.liveness === relayAttemptData.liveness &&
           ev.relay.relayState === relayAttemptData.relayState
         );
       });
@@ -1409,6 +1400,7 @@ describe("BridgePool", () => {
           ev.relay.relayId === relayAttemptData.relayId.toString() &&
           ev.relay.realizedLpFeePct === relayAttemptData.realizedLpFeePct &&
           ev.relay.priceRequestTime === relayAttemptData.priceRequestTime &&
+          ev.relay.liveness === relayAttemptData.liveness &&
           ev.relay.relayState === relayAttemptData.relayState
         );
       });

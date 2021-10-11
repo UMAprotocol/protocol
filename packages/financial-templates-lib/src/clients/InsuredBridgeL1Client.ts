@@ -31,6 +31,7 @@ export interface Relay {
   quoteTimestamp: number;
   realizedLpFeePct: string;
   priceRequestTime: number;
+  liveness: number;
   depositHash: string;
   relayState: ClientRelayState;
   relayHash: string;
@@ -222,6 +223,7 @@ export class InsuredBridgeL1Client {
           quoteTimestamp: Number(depositRelayedEvent.returnValues.depositData.quoteTimestamp),
           realizedLpFeePct: depositRelayedEvent.returnValues.relay.realizedLpFeePct,
           priceRequestTime: Number(depositRelayedEvent.returnValues.relay.priceRequestTime),
+          liveness: Number(depositRelayedEvent.returnValues.relay.liveness),
           depositHash: depositRelayedEvent.returnValues.depositHash,
           relayState: ClientRelayState.Pending, // Should be equal to depositRelayedEvent.returnValues.relay.relayState
           relayHash: depositRelayedEvent.returnValues.relayAncillaryDataHash,
@@ -239,6 +241,7 @@ export class InsuredBridgeL1Client {
           this.relays[l1Token][relayData.depositHash].relayId = relayData.relayId;
           this.relays[l1Token][relayData.depositHash].realizedLpFeePct = relayData.realizedLpFeePct;
           this.relays[l1Token][relayData.depositHash].priceRequestTime = relayData.priceRequestTime;
+          this.relays[l1Token][relayData.depositHash].liveness = relayData.liveness;
           // relayState should be the same.
         }
         // Else, if this if this is the first time we see this deposit hash, then store it.
