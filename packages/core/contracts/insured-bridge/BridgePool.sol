@@ -425,7 +425,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
      * the instant relayer will be reimbursed. Therefore, the caller has the same responsibility as the disputer in
      * validating the relay data.
      * @dev Caller must have approved this contract to spend the deposit amount of L1 tokens to relay. There can only
-     * be one instant relayer per relay attempt.
+     * be one instant relayer per relay attempt. You cannot speed up a relay that is past liveness.
      * @param depositData Unique set of L2 deposit data that caller is trying to instantly relay.
      * @param relayData Parameters of Relay that caller is attempting to speedup. Must hash to the stored relay hash
      * for this deposit or this method will revert.
@@ -783,6 +783,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
 
     // Proposes new price of True for relay event associated with `customAncillaryData` to optimistic oracle. If anyone
     // disagrees with the relay parameters and whether they map to an L2 deposit, they can dispute with the oracle.
+    // Note: This struct was created to address a "Stack too deep" issue in the following method.
     struct PriceRequestData {
         bytes ancillaryData;
         address disputer;
