@@ -199,7 +199,7 @@ export default async (env: ProcessEnv) => {
     await services.emps.update(startBlock, endBlock);
     await services.lsps.update(startBlock, endBlock);
     await services.erc20s.update();
-    await appState.appStats?.setLastBlockUpdate(endBlock);
+    await appState.appStats.setLastBlockUpdate(endBlock);
   }
 
   // separate out price updates into a different loop to query every few minutes
