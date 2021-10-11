@@ -1,3 +1,5 @@
+// Copied from: https://github.com/ethereum-optimism/optimism/blob/5fc728da7381eda6b6f858c091636c947186a3ce/packages/contracts/contracts/optimistic-ethereum/libraries/bridge/OVM_CrossDomainEnabled.sol
+
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
