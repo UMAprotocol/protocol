@@ -1220,6 +1220,66 @@ describe("BridgePool", () => {
       const instantRelayHash = generateInstantRelayHash(defaultDepositHash, relayAttemptData);
       assert.equal(await bridgePool.methods.instantRelays(instantRelayHash).call(), instantRelayer);
     });
+    it("Optimistic Oracle rejects proposal due to final fee change", async () => {
+      // Standard setup.
+      await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: relayer });
+      let relayAttemptData = {
+        ...defaultRelayData,
+        priceRequestTime: (await bridgePool.methods.getCurrentTime().call()).toString(),
+        relayState: InsuredBridgeRelayStateEnum.PENDING,
+      };
+      await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: relayer });
+      await l1Token.methods.approve(bridgePool.options.address, slowRelayAmountSubFee).send({ from: instantRelayer });
+      await bridgePool.methods.speedUpRelay(defaultDepositData, relayAttemptData).send({ from: instantRelayer });
+
+      // Relay should be canceled and all parties should be refunded since the final fee increased and the initial bond
+      // was not sufficient.
+      await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: disputer });
+      await store.methods
+        .setFinalFee(l1Token.options.address, { rawValue: toBN(finalFee).addn(1).toString() })
+        .send({ from: owner });
+      const txn = await bridgePool.methods.disputeRelay(defaultDepositData, relayAttemptData).send({ from: disputer });
+      await assertEventEmitted(txn, bridgePool, "RelayCanceled");
+      await store.methods.setFinalFee(l1Token.options.address, { rawValue: finalFee }).send({ from: owner });
+      assert.equal(await l1Token.methods.balanceOf(relayer).call(), totalRelayBond);
+      assert.equal(await l1Token.methods.balanceOf(disputer).call(), totalRelayBond);
+
+      // Another relay can be sent.
+      await l1Token.methods.mint(rando, totalRelayBond).send({ from: owner });
+      await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: rando });
+      await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: rando });
+    });
+    it("Refund on decreased final fee", async () => {
+      // Standard setup.
+      await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: relayer });
+      let relayAttemptData = {
+        ...defaultRelayData,
+        priceRequestTime: (await bridgePool.methods.getCurrentTime().call()).toString(),
+        relayState: InsuredBridgeRelayStateEnum.PENDING,
+      };
+      await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: relayer });
+      await l1Token.methods.approve(bridgePool.options.address, slowRelayAmountSubFee).send({ from: instantRelayer });
+      await bridgePool.methods.speedUpRelay(defaultDepositData, relayAttemptData).send({ from: instantRelayer });
+
+      // The final fee is decreased, so the disputer should pay in less and the relayer should be refunded.
+      await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: disputer });
+      await store.methods
+        .setFinalFee(l1Token.options.address, { rawValue: toBN(finalFee).subn(1).toString() })
+        .send({ from: owner });
+      const txn = await bridgePool.methods.disputeRelay(defaultDepositData, relayAttemptData).send({ from: disputer });
+      await assertEventEmitted(txn, bridgePool, "RelayDisputed");
+      await assertEventEmitted(txn, optimisticOracle, "RequestPrice");
+      await assertEventEmitted(txn, optimisticOracle, "ProposePrice");
+      await assertEventEmitted(txn, optimisticOracle, "DisputePrice");
+      assert.equal(await l1Token.methods.balanceOf(relayer).call(), "1");
+      assert.equal(await l1Token.methods.balanceOf(disputer).call(), "1");
+      await store.methods.setFinalFee(l1Token.options.address, { rawValue: finalFee }).send({ from: owner });
+
+      // Another relay can be sent.
+      await l1Token.methods.mint(rando, totalRelayBond).send({ from: owner });
+      await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: rando });
+      await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: rando });
+    });
   });
   describe("Settle finalized relay", () => {
     beforeEach(async function () {
