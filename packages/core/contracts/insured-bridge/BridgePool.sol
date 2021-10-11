@@ -306,8 +306,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
         instantRelays[instantRelayHash] = msg.sender;
 
         if (isWethPool) {
-            WETH9Like(address(l1Token)).withdraw(recipientAmount);
-            depositData.l1Recipient.transfer(recipientAmount);
+            _unwrapWETHTo(depositData.l1Recipient, recipientAmount);
         }
         // Else, this is a normal ERC20 token. Send to recipient.
         else l1Token.safeTransfer(depositData.l1Recipient, recipientAmount);
@@ -543,8 +542,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
         // If this is the WETH pool and the instant relayer is is address 0x0 (i.e the relay was not sped up) then:
         // a) withdraw WETH to ETH and b) send the ETH to the recipient.
         if (isWethPool && instantRelayer == address(0)) {
-            WETH9Like(address(l1Token)).withdraw(instantRelayerOrRecipientAmount);
-            depositData.l1Recipient.transfer(instantRelayerOrRecipientAmount);
+            _unwrapWETHTo(depositData.l1Recipient, instantRelayerOrRecipientAmount);
             // Else, this is a normal slow relay being finalizes where the contract sends ERC20 to the recipient OR this
             // is the finalization of an instant relay where we need to reimburse the instant relayer in WETH.
         } else
