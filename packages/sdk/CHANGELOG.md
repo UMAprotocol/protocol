@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.8.0](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.7.0...@uma/sdk@0.8.0) (2021-10-08)
+
+### Features
+
+- **api:** use Google Datastore as store provider for tables ([#3442](https://github.com/UMAprotocol/protocol/issues/3442)) ([ce68075](https://github.com/UMAprotocol/protocol/commit/ce6807591d478957172902a0e1bd727bb11b23a0))
+
 # [0.7.0](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.6.0...@uma/sdk@0.7.0) (2021-10-01)
 
 ### Bug Fixes

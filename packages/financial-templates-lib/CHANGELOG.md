@@ -3,6 +3,22 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.10.0](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.9.0...@uma/financial-templates-lib@2.10.0) (2021-10-08)
+
+### Bug Fixes
+
+- **hardhat:** update HRE syntax ([#3418](https://github.com/UMAprotocol/protocol/issues/3418)) ([359849a](https://github.com/UMAprotocol/protocol/commit/359849a814505d456f8109039747b7106786142c))
+- **insured-bridge:** Instant relayer should only receive refund iff they sped up valid relay ([#3425](https://github.com/UMAprotocol/protocol/issues/3425)) ([27d3634](https://github.com/UMAprotocol/protocol/commit/27d3634c6fbe9cf1eb8419641d0dbddf9cb56569))
+
+### Features
+
+- **insured-bridge:** Add additional ChainId props ([#3400](https://github.com/UMAprotocol/protocol/issues/3400)) ([95cf12e](https://github.com/UMAprotocol/protocol/commit/95cf12e30d82ec5b2876fc6188a37210ca287733))
+- **insured-bridge:** add Eth->Weth support on deposits and withdraws ([#3440](https://github.com/UMAprotocol/protocol/issues/3440)) ([33d01d4](https://github.com/UMAprotocol/protocol/commit/33d01d471437e1ab6861e4545ea4bb3895fd4d74))
+- **insured-bridge:** gas optimizations in bridge pool ([#3406](https://github.com/UMAprotocol/protocol/issues/3406)) ([c8cf31a](https://github.com/UMAprotocol/protocol/commit/c8cf31a7729b1791f70a92ec29238d18f757100f))
+- **insured-bridge:** Integrate SkinnyOptimisticOracle with BridgePool ([#3430](https://github.com/UMAprotocol/protocol/issues/3430)) ([554641c](https://github.com/UMAprotocol/protocol/commit/554641c25d79c4331e08a757f000621d55fe2675))
+- **insured-bridge:** Reduce function gas costs by storing hash of Relay params instead of full struct ([#3438](https://github.com/UMAprotocol/protocol/issues/3438)) ([ff231b4](https://github.com/UMAprotocol/protocol/commit/ff231b4df83ede216c0cb431d32e6920b36aec7d))
+- **pf-configs:** Add PUNKETH-1221 and GASETH-1221 default pf configs ([#3437](https://github.com/UMAprotocol/protocol/issues/3437)) ([ba20eb7](https://github.com/UMAprotocol/protocol/commit/ba20eb73b4f96e0b6a57c067eedb6522f1b49d3c))
+
 # [2.9.0](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.8.0...@uma/financial-templates-lib@2.9.0) (2021-10-01)
 
 ### Features

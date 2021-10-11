@@ -69,6 +69,10 @@ const defaultSlowRelayFeePct = toWei("0.01");
 const defaultInstantRelayFeePct = toWei("0.01");
 const lpFeeRatePerSecond = toWei("0.0000015");
 const finalFee = toWei("1");
+const proposerBond = toBN(defaultProposerBondPct)
+  .mul(toBN(relayAmount))
+  .div(toBN(toWei("1")))
+  .toString();
 const defaultGasLimit = 1_000_000;
 const defaultGasPrice = toWei("1", "gwei");
 const minimumBridgingDelay = 60; // L2->L1 token bridging must wait at least this time.
@@ -122,6 +126,8 @@ describe("InsuredBridgePriceFeed", function () {
         toBNWei("0.1")
       ).toString(),
       slowRelayer: relayer,
+      finalFee,
+      proposerBond,
       ...relayDataOverride,
     };
 
@@ -222,8 +228,10 @@ describe("InsuredBridgePriceFeed", function () {
         l1Token.options.address,
         l2Token.options.address,
         bridgePool.options.address,
+        0,
         defaultGasLimit,
-        defaultGasPrice
+        defaultGasPrice,
+        0
       )
       .send({ from: owner });
 

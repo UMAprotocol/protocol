@@ -167,13 +167,15 @@ describe("BridgePool", () => {
   const generateRelayHash = (_relayData) => {
     return soliditySha3(
       web3.eth.abi.encodeParameters(
-        ["uint256", "address", "uint32", "uint64", "uint256"],
+        ["uint256", "address", "uint32", "uint64", "uint256", "uint256", "uint256"],
         [
           _relayData.relayState,
           _relayData.slowRelayer,
           _relayData.relayId,
           _relayData.realizedLpFeePct,
           _relayData.priceRequestTime,
+          _relayData.proposerBond,
+          _relayData.finalFee,
         ]
       )
     );
@@ -295,8 +297,10 @@ describe("BridgePool", () => {
         l1Token.options.address,
         l2Token,
         bridgePool.options.address,
+        0,
         defaultGasLimit,
-        defaultGasPrice
+        defaultGasPrice,
+        0
       )
       .send({ from: owner });
 
@@ -323,6 +327,8 @@ describe("BridgePool", () => {
       priceRequestTime: 0,
       realizedLpFeePct: defaultRealizedLpFee,
       slowRelayer: relayer,
+      finalFee: finalFee,
+      proposerBond: proposalBond.toString(),
     };
 
     // Save other reused values.
@@ -474,7 +480,6 @@ describe("BridgePool", () => {
         priceRequestTime: requestTimestamp,
         relayState: InsuredBridgeRelayStateEnum.PENDING,
       };
-      const expectedExpirationTimestamp = (Number(requestTimestamp) + defaultLiveness).toString();
 
       // Proposer approves pool to withdraw total bond.
       await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: relayer });
@@ -490,8 +495,8 @@ describe("BridgePool", () => {
         "Relayer should post entire balance as bond"
       );
       assert.equal(
-        (await l1Token.methods.balanceOf(optimisticOracle.options.address).call()).toString(),
-        totalRelayBond,
+        (await l1Token.methods.balanceOf(bridgePool.options.address).call()).toString(),
+        totalRelayBond.add(toBN(initialPoolLiquidity)),
         "OptimisticOracle should custody total relay bond"
       );
 
@@ -523,49 +528,6 @@ describe("BridgePool", () => {
           ev.relay.priceRequestTime === relayAttemptData.priceRequestTime &&
           ev.relay.relayState === relayAttemptData.relayState &&
           ev.relayAncillaryDataHash === generateRelayAncillaryDataHash(defaultDepositData, relayAttemptData)
-        );
-      });
-
-      // Check OptimisticOracle emitted price request contains correct data.
-      const expectedRelayAncillaryData = await bridgePool.methods
-        .getRelayAncillaryData(defaultDepositData, relayAttemptData)
-        .call();
-      await assertEventEmitted(txn, optimisticOracle, "RequestPrice", (ev) => {
-        return (
-          ev.requester === bridgePool.options.address &&
-          hexToUtf8(ev.identifier) === hexToUtf8(defaultIdentifier) &&
-          ev.timestamp.toString() === relayAttemptData.priceRequestTime.toString() &&
-          ev.ancillaryData === expectedRelayAncillaryData &&
-          ev.request.proposer === relayer &&
-          ev.request.disputer === ZERO_ADDRESS &&
-          ev.request.currency === l1Token.options.address &&
-          !ev.request.settled &&
-          ev.request.proposedPrice === toWei("1") &&
-          ev.request.resolvedPrice === "0" &&
-          ev.request.expirationTime === expectedExpirationTimestamp &&
-          ev.request.reward === "0" &&
-          ev.request.finalFee === finalFee &&
-          ev.request.bond === proposalBond.toString() &&
-          ev.request.customLiveness === defaultLiveness.toString()
-        );
-      });
-      await assertEventEmitted(txn, optimisticOracle, "ProposePrice", (ev) => {
-        return (
-          ev.requester === bridgePool.options.address &&
-          hexToUtf8(ev.identifier) === hexToUtf8(defaultIdentifier) &&
-          ev.timestamp.toString() === relayAttemptData.priceRequestTime.toString() &&
-          ev.ancillaryData === expectedRelayAncillaryData &&
-          ev.request.proposer === relayer &&
-          ev.request.disputer === ZERO_ADDRESS &&
-          ev.request.currency === l1Token.options.address &&
-          !ev.request.settled &&
-          ev.request.proposedPrice === toWei("1") &&
-          ev.request.resolvedPrice === "0" &&
-          ev.request.expirationTime === expectedExpirationTimestamp &&
-          ev.request.reward === "0" &&
-          ev.request.finalFee === finalFee &&
-          ev.request.bond === proposalBond.toString() &&
-          ev.request.customLiveness === defaultLiveness.toString()
         );
       });
 
@@ -657,22 +619,10 @@ describe("BridgePool", () => {
         "Recipient should receive the full amount, minus slow & instant fees"
       );
 
-      // Grab proposed request data from events and submit for dispute:
-      const proposalEvent = (await optimisticOracle.getPastEvents("ProposePrice", { fromBlock: 0 }))[0];
-      await l1Token.methods.approve(optimisticOracle.options.address, totalRelayBond).send({ from: disputer });
-      await optimisticOracle.methods
-        .disputePrice(
-          bridgePool.options.address,
-          defaultIdentifier,
-          proposalEvent.returnValues.timestamp,
-          proposalEvent.returnValues.ancillaryData,
-          proposalEvent.returnValues.request
-        )
-        .send({ from: disputer });
+      // Submit dispute.
+      await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: disputer });
+      await bridgePool.methods.disputeRelay(defaultDepositData, relayAttemptData).send({ from: disputer });
 
-      // Submit another relay. Advance time so that price request data is different.
-      await l1Token.methods.mint(rando, totalRelayBond).send({ from: owner });
-      await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: rando });
       // Cache price request timestamp.
       await advanceTime(1);
       const requestTimestamp = (await bridgePool.methods.getCurrentTime().call()).toString();
@@ -684,10 +634,23 @@ describe("BridgePool", () => {
         relayState: InsuredBridgeRelayStateEnum.PENDING,
       };
       const expectedExpirationTimestamp = (Number(requestTimestamp) + defaultLiveness).toString();
+
+      // Set up a relayAndSpeedUp transaction that should fail due to an existing relay.
+      await l1Token.methods.mint(rando, totalRelayBond.add(toBN(instantRelayAmountSubFee))).send({ from: owner });
+      await l1Token.methods
+        .approve(bridgePool.options.address, totalRelayBond.add(toBN(instantRelayAmountSubFee)))
+        .send({ from: rando });
+      await didContractThrow(
+        bridgePool.methods.relayAndSpeedUp(defaultDepositData, relayAttemptData.realizedLpFeePct).send({ from: rando })
+      );
+
+      // Reset params to allow for a normal relay.
+      await l1Token.methods.transfer(instantRelayer, instantRelayAmountSubFee).send({ from: rando });
+      await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: rando });
+
       await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: rando });
 
       // Cannot repeatedly speed relay up.
-      await l1Token.methods.mint(instantRelayer, instantRelayAmountSubFee).send({ from: owner });
       await l1Token.methods
         .approve(bridgePool.options.address, instantRelayAmountSubFee)
         .send({ from: instantRelayer });
@@ -700,14 +663,11 @@ describe("BridgePool", () => {
       await l1Token.methods.transfer(owner, instantRelayAmountSubFee).send({ from: instantRelayer });
 
       // Resolve and settle relay.
-      const secondProposalEvent = (await optimisticOracle.getPastEvents("ProposePrice", { fromBlock: 0 }))[1];
       await timer.methods.setCurrentTime(expectedExpirationTimestamp).send({ from: owner });
 
       // Expire relay. Since instant relayed amount was correct, instant relayer should be refunded and user should
       // still just have the instant relay amount.
-      await bridgePool.methods
-        .settleRelay(defaultDepositData, relayAttemptData, secondProposalEvent.returnValues.request)
-        .send({ from: rando });
+      await bridgePool.methods.settleRelay(defaultDepositData, relayAttemptData).send({ from: rando });
 
       // Check token balances.
       // - Slow relayer should get back their proposal bond from OO and reward from BridgePool.
@@ -721,6 +681,133 @@ describe("BridgePool", () => {
       );
       assert.equal(
         (await l1Token.methods.balanceOf(instantRelayer).call()).toString(),
+        toBN(instantRelayAmountSubFee).add(realizedInstantRelayFeeAmount).toString(),
+        "Instant relayer should receive instant relay reward + the instant relay amount sub fees"
+      );
+      assert.equal(
+        (await l1Token.methods.balanceOf(defaultDepositData.l1Recipient).call()).toString(),
+        instantRelayAmountSubFee,
+        "Recipient should still have the full amount, minus slow & instant fees"
+      );
+      assert.equal(
+        (await l1Token.methods.balanceOf(optimisticOracle.options.address).call()).toString(),
+        totalDisputeRefund.toString(),
+        "OptimisticOracle should still hold dispute refund since dispute has not resolved yet"
+      );
+      assert.equal(
+        (await l1Token.methods.balanceOf(bridgePool.options.address).call()).toString(),
+        toBN(initialPoolLiquidity)
+          .sub(toBN(instantRelayAmountSubFee).add(realizedInstantRelayFeeAmount).add(realizedSlowRelayFeeAmount))
+          .toString(),
+        "BridgePool should have balance reduced by relayed amount to l1Recipient"
+      );
+    });
+    it("Valid slow + instant relay, disputed, instant relayer should receive refund following subsequent valid relay", async () => {
+      // Propose new relay:
+      let relayAttemptData = {
+        ...defaultRelayData,
+        priceRequestTime: (await bridgePool.methods.getCurrentTime().call()).toString(),
+        relayState: InsuredBridgeRelayStateEnum.PENDING,
+      };
+
+      await l1Token.methods
+        .approve(bridgePool.options.address, totalRelayBond.add(toBN(instantRelayAmountSubFee)))
+        .send({ from: relayer });
+      await l1Token.methods.mint(relayer, instantRelayAmountSubFee).send({ from: owner });
+      const speedupTxn = await bridgePool.methods
+        .relayAndSpeedUp(defaultDepositData, relayAttemptData.realizedLpFeePct)
+        .send({ from: relayer });
+
+      await assertEventEmitted(speedupTxn, bridgePool, "RelaySpedUp", (ev) => {
+        return (
+          ev.depositHash === defaultDepositHash &&
+          ev.instantRelayer === relayer &&
+          ev.relay.slowRelayer === relayer &&
+          ev.relay.relayId === relayAttemptData.relayId.toString() &&
+          ev.relay.realizedLpFeePct === relayAttemptData.realizedLpFeePct &&
+          ev.relay.priceRequestTime === relayAttemptData.priceRequestTime &&
+          ev.relay.relayState === relayAttemptData.relayState
+        );
+      });
+      const speedupRelayStatus = await bridgePool.methods.relays(defaultDepositHash).call();
+      assert.equal(speedupRelayStatus, generateRelayHash(relayAttemptData));
+      const instantRelayHash = generateInstantRelayHash(defaultDepositHash, relayAttemptData);
+      assert.equal(await bridgePool.methods.instantRelays(instantRelayHash).call(), relayer);
+
+      // Check that contract pulled relay amount from instant relayer.
+      assert.equal(
+        (await l1Token.methods.balanceOf(relayer).call()).toString(),
+        "0",
+        "Instant Relayer should transfer relay amount"
+      );
+      assert.equal(
+        (await l1Token.methods.balanceOf(defaultDepositData.l1Recipient).call()).toString(),
+        instantRelayAmountSubFee,
+        "Recipient should receive the full amount, minus slow & instant fees"
+      );
+
+      // Submit for dispute.
+      await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: disputer });
+      await bridgePool.methods.disputeRelay(defaultDepositData, relayAttemptData).send({ from: disputer });
+
+      // Cache price request timestamp.
+      await advanceTime(1);
+      const requestTimestamp = (await bridgePool.methods.getCurrentTime().call()).toString();
+      relayAttemptData = {
+        ...relayAttemptData,
+        slowRelayer: rando,
+        priceRequestTime: requestTimestamp,
+        relayId: (await bridgePool.methods.numberOfRelays().call()).toString(),
+        relayState: InsuredBridgeRelayStateEnum.PENDING,
+      };
+      const expectedExpirationTimestamp = (Number(requestTimestamp) + defaultLiveness).toString();
+
+      // Set up a relayAndSpeedUp transaction that should fail due to an existing relay.
+      await l1Token.methods.mint(rando, totalRelayBond.add(toBN(instantRelayAmountSubFee))).send({ from: owner });
+      await l1Token.methods
+        .approve(bridgePool.options.address, totalRelayBond.add(toBN(instantRelayAmountSubFee)))
+        .send({ from: rando });
+      await didContractThrow(
+        bridgePool.methods.relayAndSpeedUp(defaultDepositData, relayAttemptData.realizedLpFeePct).send({ from: rando })
+      );
+
+      // Reset params to allow for a normal relay.
+      await l1Token.methods.transfer(instantRelayer, instantRelayAmountSubFee).send({ from: rando });
+      await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: rando });
+
+      await bridgePool.methods.relayDeposit(...generateRelayParams({}, relayAttemptData)).send({ from: rando });
+
+      // Cannot repeatedly speed relay up.
+      await l1Token.methods
+        .approve(bridgePool.options.address, instantRelayAmountSubFee)
+        .send({ from: instantRelayer });
+      assert(
+        await didContractThrow(
+          bridgePool.methods.speedUpRelay(defaultDepositData, relayAttemptData).call({ from: instantRelayer })
+        )
+      );
+      // Burn newly minted tokens to make accounting simpler.
+      await l1Token.methods.transfer(owner, instantRelayAmountSubFee).send({ from: instantRelayer });
+
+      // Resolve and settle relay.
+      await timer.methods.setCurrentTime(expectedExpirationTimestamp).send({ from: owner });
+
+      // Expire relay. Since instant relayed amount was correct, instant relayer should be refunded and user should
+      // still just have the instant relay amount.
+      await bridgePool.methods.settleRelay(defaultDepositData, relayAttemptData).send({ from: rando });
+
+      // Check token balances.
+      // - Slow relayer should get back their proposal bond from OO and reward from BridgePool.
+      // - Fast relayer should get reward from BridgePool and the relayed amount, minus LP and slow relay fee. This
+      // is equivalent to what the l1Recipient received + the instant relayer fee.
+      // - Recipient already got paid by fast relayer and should receive no further tokens.
+      assert.equal(
+        (await l1Token.methods.balanceOf(rando).call()).toString(),
+        toBN(totalRelayBond).add(realizedSlowRelayFeeAmount).toString(),
+        "Slow relayer should receive proposal bond + slow relay reward"
+      );
+      assert.equal(
+        (await l1Token.methods.balanceOf(relayer).call()).toString(),
         toBN(instantRelayAmountSubFee).add(realizedInstantRelayFeeAmount).toString(),
         "Instant relayer should receive instant relay reward + the instant relay amount sub fees"
       );
@@ -776,17 +863,8 @@ describe("BridgePool", () => {
       );
 
       // Before slow relay expires, it is disputed.
-      await l1Token.methods.approve(optimisticOracle.options.address, totalRelayBond).send({ from: disputer });
-      const proposalEvent = (await optimisticOracle.getPastEvents("ProposePrice", { fromBlock: 0 }))[0];
-      await optimisticOracle.methods
-        .disputePrice(
-          bridgePool.options.address,
-          defaultIdentifier,
-          proposalEvent.returnValues.timestamp,
-          proposalEvent.returnValues.ancillaryData,
-          { ...proposalEvent.returnValues.request, instantRelayer }
-        )
-        .send({ from: disputer });
+      await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: disputer });
+      await bridgePool.methods.disputeRelay(defaultDepositData, invalidRelayData).send({ from: disputer });
 
       // While dispute is pending resolution, a valid relay is resubmitted. Advance time so that
       // price request data is different.
@@ -817,10 +895,7 @@ describe("BridgePool", () => {
       // Expire this valid relay and check payouts.
       const expectedExpirationTimestamp = (Number(requestTimestamp) + defaultLiveness).toString();
       await timer.methods.setCurrentTime(expectedExpirationTimestamp).send({ from: owner });
-      const secondProposalEvent = (await optimisticOracle.getPastEvents("ProposePrice", { fromBlock: 0 }))[1];
-      await bridgePool.methods
-        .settleRelay(defaultDepositData, relayAttemptData, secondProposalEvent.returnValues.request)
-        .send({ from: rando });
+      await bridgePool.methods.settleRelay(defaultDepositData, relayAttemptData).send({ from: rando });
 
       // User should receive correct instant relay amount + the amount they received from invalid instant relay.
       assert.equal(
@@ -875,16 +950,14 @@ describe("BridgePool", () => {
 
       // Dispute bond should be equal to proposal bond, and OptimisticOracle needs to be able to pull dispute bond
       // from disputer.
-      await l1Token.methods.approve(optimisticOracle.options.address, totalRelayBond).send({ from: disputer });
-      const proposalEvent = (await optimisticOracle.getPastEvents("ProposePrice", { fromBlock: 0 }))[0];
-      const disputeTxn = await optimisticOracle.methods
-        .disputePrice(
-          bridgePool.options.address,
-          defaultIdentifier,
-          proposalEvent.returnValues.timestamp,
-          defaultRelayAncillaryData,
-          proposalEvent.returnValues.request
-        )
+      let relayAttemptData = {
+        ...defaultRelayData,
+        priceRequestTime: (await bridgePool.methods.getCurrentTime().call()).toString(),
+        relayState: InsuredBridgeRelayStateEnum.PENDING,
+      };
+      await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: disputer });
+      const disputeTxn = await bridgePool.methods
+        .disputeRelay(defaultDepositData, relayAttemptData)
         .send({ from: disputer });
 
       // Check for expected events:
@@ -908,6 +981,14 @@ describe("BridgePool", () => {
         );
       });
 
+      await assertEventEmitted(disputeTxn, bridgePool, "RelayDisputed", (ev) => {
+        return (
+          ev.disputer === disputer &&
+          ev.depositHash === generateDepositHash(defaultDepositData) &&
+          ev.relayHash === generateRelayHash(relayAttemptData)
+        );
+      });
+
       // Mint relayer new bond to try relaying again:
       await l1Token.methods.mint(relayer, totalRelayBond).send({ from: owner });
       await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: relayer });
@@ -922,28 +1003,27 @@ describe("BridgePool", () => {
       const requestTimestamp = (await bridgePool.methods.getCurrentTime().call()).toString();
       const expectedExpirationTimestamp = (Number(requestTimestamp) + defaultLiveness).toString();
 
+      let relayAttemptData = {
+        ...defaultRelayData,
+        priceRequestTime: requestTimestamp,
+        relayId: (await bridgePool.methods.numberOfRelays().call()).toString(),
+        relayState: InsuredBridgeRelayStateEnum.PENDING,
+        slowRelayer: relayer,
+      };
+
       // Proposer approves pool to withdraw total bond.
       await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: relayer });
       await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: relayer });
 
       // Dispute bond should be equal to proposal bond, and OptimisticOracle needs to be able to pull dispute bond
       // from disputer.
-      await l1Token.methods.approve(optimisticOracle.options.address, totalRelayBond).send({ from: disputer });
-      const proposalEvent = (await optimisticOracle.getPastEvents("ProposePrice", { fromBlock: 0 }))[0];
-      await optimisticOracle.methods
-        .disputePrice(
-          bridgePool.options.address,
-          defaultIdentifier,
-          proposalEvent.returnValues.timestamp,
-          defaultRelayAncillaryData,
-          proposalEvent.returnValues.request
-        )
-        .send({ from: disputer });
+      await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: disputer });
+      await bridgePool.methods.disputeRelay(defaultDepositData, relayAttemptData).send({ from: disputer });
 
       // Mint new relayer bond to relay again:
       await l1Token.methods.mint(rando, totalRelayBond).send({ from: owner });
       await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: rando });
-      const relayAttemptData = {
+      relayAttemptData = {
         ...defaultRelayData,
         priceRequestTime: requestTimestamp,
         relayId: (await bridgePool.methods.numberOfRelays().call()).toString(),
@@ -951,23 +1031,16 @@ describe("BridgePool", () => {
         slowRelayer: rando,
       };
       await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: rando });
-      const proposalEvent2 = (await optimisticOracle.getPastEvents("ProposePrice", { fromBlock: 0 }))[1];
 
       // Resolve re-relay.
       await timer.methods.setCurrentTime(expectedExpirationTimestamp).send({ from: owner });
-      await bridgePool.methods
-        .settleRelay(defaultDepositData, relayAttemptData, proposalEvent2.returnValues.request)
-        .send({ from: rando });
+      await bridgePool.methods.settleRelay(defaultDepositData, relayAttemptData).send({ from: rando });
 
       // Should not be able to settle relay again even if the OO has a resolved price.
       assert(
         await didContractThrow(
           bridgePool.methods
-            .settleRelay(
-              defaultDepositData,
-              { ...relayAttemptData, relayState: InsuredBridgeRelayStateEnum.FINALIZED },
-              { ...proposalEvent2.returnValues.request, settled: true, resolvedPrice: toWei("1") }
-            )
+            .settleRelay(defaultDepositData, { ...relayAttemptData, relayState: InsuredBridgeRelayStateEnum.FINALIZED })
             .send({ from: rando })
         )
       );
@@ -977,6 +1050,8 @@ describe("BridgePool", () => {
       const stampedDisputeAncillaryData = await optimisticOracle.methods
         .stampAncillaryData(defaultRelayAncillaryData, bridgePool.options.address)
         .call();
+
+      const proposalEvent = (await optimisticOracle.getPastEvents("ProposePrice", { fromBlock: 0 }))[0];
       await mockOracle.methods
         .pushPrice(defaultIdentifier, proposalEvent.returnValues.timestamp, stampedDisputeAncillaryData, price)
         .send({ from: owner });
@@ -1019,28 +1094,28 @@ describe("BridgePool", () => {
       const requestTimestamp = (await bridgePool.methods.getCurrentTime().call()).toString();
       const expectedExpirationTimestamp = (Number(requestTimestamp) + defaultLiveness).toString();
 
+      let relayAttemptData = {
+        ...defaultRelayData,
+        priceRequestTime: requestTimestamp,
+        relayId: (await bridgePool.methods.numberOfRelays().call()).toString(),
+        relayState: InsuredBridgeRelayStateEnum.PENDING,
+        slowRelayer: relayer,
+      };
+
       // Proposer approves pool to withdraw total bond.
       await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: relayer });
       await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: relayer });
 
       // Dispute bond should be equal to proposal bond, and OptimisticOracle needs to be able to pull dispute bond
       // from disputer.
-      await l1Token.methods.approve(optimisticOracle.options.address, totalRelayBond).send({ from: disputer });
+      await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: disputer });
+      await bridgePool.methods.disputeRelay(defaultDepositData, relayAttemptData).send({ from: disputer });
       const proposalEvent = (await optimisticOracle.getPastEvents("ProposePrice", { fromBlock: 0 }))[0];
-      await optimisticOracle.methods
-        .disputePrice(
-          bridgePool.options.address,
-          defaultIdentifier,
-          proposalEvent.returnValues.timestamp,
-          defaultRelayAncillaryData,
-          proposalEvent.returnValues.request
-        )
-        .send({ from: disputer });
 
       // Mint new relayer bond to relay again:
       await l1Token.methods.mint(rando, totalRelayBond).send({ from: owner });
       await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: rando });
-      const relayAttemptData = {
+      relayAttemptData = {
         ...defaultRelayData,
         priceRequestTime: requestTimestamp,
         relayId: (await bridgePool.methods.numberOfRelays().call()).toString(),
@@ -1070,20 +1145,13 @@ describe("BridgePool", () => {
 
       // Resolve re-relay.
       await timer.methods.setCurrentTime(expectedExpirationTimestamp).send({ from: owner });
-      const proposalEvent2 = (await optimisticOracle.getPastEvents("ProposePrice", { fromBlock: 0 }))[1];
-      await bridgePool.methods
-        .settleRelay(defaultDepositData, relayAttemptData, proposalEvent2.returnValues.request)
-        .send({ from: rando });
+      await bridgePool.methods.settleRelay(defaultDepositData, relayAttemptData).send({ from: rando });
 
       // Should not be able to settle relay again.
       assert(
         await didContractThrow(
           bridgePool.methods
-            .settleRelay(
-              defaultDepositData,
-              { ...relayAttemptData, relayState: InsuredBridgeRelayStateEnum.FINALIZED },
-              { ...proposalEvent2.returnValues.request, settled: true, resolvedPrice: toWei("1") }
-            )
+            .settleRelay(defaultDepositData, { ...relayAttemptData, relayState: InsuredBridgeRelayStateEnum.FINALIZED })
             .send({ from: rando })
         )
       );
@@ -1127,17 +1195,8 @@ describe("BridgePool", () => {
 
       // Dispute bond should be equal to proposal bond, and OptimisticOracle needs to be able to pull dispute bond
       // from disputer.
-      await l1Token.methods.approve(optimisticOracle.options.address, totalRelayBond).send({ from: disputer });
-      const proposalEvent = (await optimisticOracle.getPastEvents("ProposePrice", { fromBlock: 0 }))[0];
-      await optimisticOracle.methods
-        .disputePrice(
-          bridgePool.options.address,
-          defaultIdentifier,
-          proposalEvent.returnValues.timestamp,
-          proposalEvent.returnValues.ancillaryData,
-          proposalEvent.returnValues.request
-        )
-        .send({ from: disputer });
+      await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: disputer });
+      await bridgePool.methods.disputeRelay(defaultDepositData, relayAttemptData).send({ from: disputer });
 
       // Mint another relayer a bond to relay again and check that the instant relayer address is migrated:
       // Advance time so that price request is different.
@@ -1161,23 +1220,65 @@ describe("BridgePool", () => {
       const instantRelayHash = generateInstantRelayHash(defaultDepositHash, relayAttemptData);
       assert.equal(await bridgePool.methods.instantRelays(instantRelayHash).call(), instantRelayer);
     });
-    it("Only OO can call priceDisputed", async function () {
+    it("Optimistic Oracle rejects proposal due to final fee change", async () => {
+      // Standard setup.
       await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: relayer });
+      let relayAttemptData = {
+        ...defaultRelayData,
+        priceRequestTime: (await bridgePool.methods.getCurrentTime().call()).toString(),
+        relayState: InsuredBridgeRelayStateEnum.PENDING,
+      };
       await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: relayer });
-      await l1Token.methods.approve(optimisticOracle.options.address, totalRelayBond).send({ from: disputer });
-      const proposalEvent = (await optimisticOracle.getPastEvents("ProposePrice", { fromBlock: 0 }))[0];
-      assert(
-        await didContractThrow(
-          bridgePool.methods
-            .priceDisputed(
-              defaultIdentifier,
-              proposalEvent.returnValues.timestamp,
-              proposalEvent.returnValues.ancillaryData,
-              proposalEvent.returnValues.request
-            )
-            .send({ from: rando })
-        )
-      );
+      await l1Token.methods.approve(bridgePool.options.address, slowRelayAmountSubFee).send({ from: instantRelayer });
+      await bridgePool.methods.speedUpRelay(defaultDepositData, relayAttemptData).send({ from: instantRelayer });
+
+      // Relay should be canceled and all parties should be refunded since the final fee increased and the initial bond
+      // was not sufficient.
+      await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: disputer });
+      await store.methods
+        .setFinalFee(l1Token.options.address, { rawValue: toBN(finalFee).addn(1).toString() })
+        .send({ from: owner });
+      const txn = await bridgePool.methods.disputeRelay(defaultDepositData, relayAttemptData).send({ from: disputer });
+      await assertEventEmitted(txn, bridgePool, "RelayCanceled");
+      await store.methods.setFinalFee(l1Token.options.address, { rawValue: finalFee }).send({ from: owner });
+      assert.equal(await l1Token.methods.balanceOf(relayer).call(), totalRelayBond);
+      assert.equal(await l1Token.methods.balanceOf(disputer).call(), totalRelayBond);
+
+      // Another relay can be sent.
+      await l1Token.methods.mint(rando, totalRelayBond).send({ from: owner });
+      await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: rando });
+      await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: rando });
+    });
+    it("Refund on decreased final fee", async () => {
+      // Standard setup.
+      await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: relayer });
+      let relayAttemptData = {
+        ...defaultRelayData,
+        priceRequestTime: (await bridgePool.methods.getCurrentTime().call()).toString(),
+        relayState: InsuredBridgeRelayStateEnum.PENDING,
+      };
+      await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: relayer });
+      await l1Token.methods.approve(bridgePool.options.address, slowRelayAmountSubFee).send({ from: instantRelayer });
+      await bridgePool.methods.speedUpRelay(defaultDepositData, relayAttemptData).send({ from: instantRelayer });
+
+      // The final fee is decreased, so the disputer should pay in less and the relayer should be refunded.
+      await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: disputer });
+      await store.methods
+        .setFinalFee(l1Token.options.address, { rawValue: toBN(finalFee).subn(1).toString() })
+        .send({ from: owner });
+      const txn = await bridgePool.methods.disputeRelay(defaultDepositData, relayAttemptData).send({ from: disputer });
+      await assertEventEmitted(txn, bridgePool, "RelayDisputed");
+      await assertEventEmitted(txn, optimisticOracle, "RequestPrice");
+      await assertEventEmitted(txn, optimisticOracle, "ProposePrice");
+      await assertEventEmitted(txn, optimisticOracle, "DisputePrice");
+      assert.equal(await l1Token.methods.balanceOf(relayer).call(), "1");
+      assert.equal(await l1Token.methods.balanceOf(disputer).call(), "1");
+      await store.methods.setFinalFee(l1Token.options.address, { rawValue: finalFee }).send({ from: owner });
+
+      // Another relay can be sent.
+      await l1Token.methods.mint(rando, totalRelayBond).send({ from: owner });
+      await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: rando });
+      await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: rando });
     });
   });
   describe("Settle finalized relay", () => {
@@ -1198,17 +1299,9 @@ describe("BridgePool", () => {
 
       // Dispute bond should be equal to proposal bond, and OptimisticOracle needs to be able to pull dispute bond
       // from disputer.
-      await l1Token.methods.approve(optimisticOracle.options.address, totalRelayBond).send({ from: disputer });
+      await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: disputer });
+      await bridgePool.methods.disputeRelay(defaultDepositData, relayAttemptData).send({ from: disputer });
       const proposalEvent = (await optimisticOracle.getPastEvents("ProposePrice", { fromBlock: 0 }))[0];
-      await optimisticOracle.methods
-        .disputePrice(
-          bridgePool.options.address,
-          defaultIdentifier,
-          proposalEvent.returnValues.timestamp,
-          proposalEvent.returnValues.ancillaryData,
-          proposalEvent.returnValues.request
-        )
-        .send({ from: disputer });
 
       // Can resolve OO request.
       const price = toWei("0");
@@ -1238,9 +1331,7 @@ describe("BridgePool", () => {
       // is submitted.
       assert(
         await didContractThrow(
-          bridgePool.methods
-            .settleRelay(defaultDepositData, relayAttemptData, disputeEvent.returnValues.request)
-            .send({ from: relayer })
+          bridgePool.methods.settleRelay(defaultDepositData, relayAttemptData).send({ from: relayer })
         )
       );
 
@@ -1254,17 +1345,12 @@ describe("BridgePool", () => {
           disputeEvent.returnValues.request
         )
         .send({ from: relayer });
-      const settleEvent = (await optimisticOracle.getPastEvents("Settle", { fromBlock: 0 }))[0];
 
       // Still cannot settle relay even with correct request params because the relay was disputed.
       assert(
         await didContractThrow(
           bridgePool.methods
-            .settleRelay(
-              defaultDepositData,
-              { ...relayAttemptData, relayState: InsuredBridgeRelayStateEnum.FINALIZED },
-              settleEvent.returnValues.request
-            )
+            .settleRelay(defaultDepositData, { ...relayAttemptData, relayState: InsuredBridgeRelayStateEnum.FINALIZED })
             .send({ from: relayer })
         )
       );
@@ -1292,7 +1378,7 @@ describe("BridgePool", () => {
         "Pool should have initial liquidity amount"
       );
     });
-    it("Can settle pending relays that passed challenge period directly with OO or via BridgePool", async () => {
+    it("Can settle pending relays that passed challenge period directly via BridgePool", async () => {
       // Cache price request timestamp.
       const requestTimestamp = (await bridgePool.methods.getCurrentTime().call()).toString();
       const relayAttemptData = {
@@ -1305,64 +1391,20 @@ describe("BridgePool", () => {
       // Proposer approves pool to withdraw total bond.
       await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: relayer });
       await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: relayer });
-      const proposeEvent = (await optimisticOracle.getPastEvents("ProposePrice", { fromBlock: 0 }))[0];
 
       // Cannot settle if there is no price available
-      assert.equal(
-        await optimisticOracle.methods
-          .hasPrice(
-            bridgePool.options.address,
-            defaultIdentifier,
-            proposeEvent.returnValues.timestamp,
-            proposeEvent.returnValues.ancillaryData,
-            proposeEvent.returnValues.request
-          )
-          .call(),
-        false
-      );
+      const settleTxn = bridgePool.methods.settleRelay(defaultDepositData, relayAttemptData);
+      await didContractThrow(settleTxn.send({ from: relayer }));
 
       // Set time such that optimistic price request is settleable.
       await timer.methods.setCurrentTime(expectedExpirationTimestamp).send({ from: owner });
 
       // Can now settle relay since OO resolved request.
-      assert.equal(
-        await optimisticOracle.methods
-          .hasPrice(
-            bridgePool.options.address,
-            defaultIdentifier,
-            proposeEvent.returnValues.timestamp,
-            proposeEvent.returnValues.ancillaryData,
-            proposeEvent.returnValues.request
-          )
-          .call(),
-        true
-      );
-      assert.ok(
-        await bridgePool.methods
-          .settleRelay(defaultDepositData, relayAttemptData, proposeEvent.returnValues.request)
-          .call({ from: rando })
-      );
-
-      // Can also settle relay after settling directly with OO
-      await optimisticOracle.methods
-        .settle(
-          bridgePool.options.address,
-          defaultIdentifier,
-          proposeEvent.returnValues.timestamp,
-          proposeEvent.returnValues.ancillaryData,
-          proposeEvent.returnValues.request
-        )
-        .send({ from: accounts[0] });
-      const settleEvent = (await optimisticOracle.getPastEvents("Settle", { fromBlock: 0 }))[0];
-
-      // Settle relay and check event logs.
-      const settleTxn = await bridgePool.methods
-        .settleRelay(defaultDepositData, relayAttemptData, settleEvent.returnValues.request)
-        .send({ from: rando });
+      assert.ok(await settleTxn.send({ from: relayer }));
       await assertEventEmitted(settleTxn, bridgePool, "RelaySettled", (ev) => {
         return (
           ev.depositHash === defaultDepositHash &&
-          ev.caller === rando &&
+          ev.caller === relayer &&
           ev.relay.slowRelayer === relayer &&
           ev.relay.relayId === relayAttemptData.relayId.toString() &&
           ev.relay.realizedLpFeePct === relayAttemptData.realizedLpFeePct &&
@@ -1375,23 +1417,19 @@ describe("BridgePool", () => {
       assert(
         await didContractThrow(
           bridgePool.methods
-            .settleRelay(
-              defaultDepositData,
-              { ...relayAttemptData, relayState: InsuredBridgeRelayStateEnum.FINALIZED },
-              settleEvent.returnValues.request
-            )
+            .settleRelay(defaultDepositData, { ...relayAttemptData, relayState: InsuredBridgeRelayStateEnum.FINALIZED })
             .send({ from: relayer })
         )
       );
 
       // Check token balances.
-      // -Slow relayer should get back their proposal bond from OO and reward from BridgePool.
+      // -Slow relayer should get back their proposal bond + reward from BridgePool.
       assert.equal(
         (await l1Token.methods.balanceOf(relayer).call()).toString(),
         toBN(totalRelayBond).add(realizedSlowRelayFeeAmount).toString(),
         "Relayer should receive proposal bond + slow relay reward"
       );
-      // - Optimistic oracle should have no funds left after refunding bond.
+      // - Optimistic oracle should have no funds (it was not involved).
       assert.equal(
         (await l1Token.methods.balanceOf(optimisticOracle.options.address).call()).toString(),
         "0",
@@ -1438,10 +1476,7 @@ describe("BridgePool", () => {
       const instantRelayerBalanceBefore = await l1Token.methods.balanceOf(instantRelayer).call();
 
       // Settle relay.
-      const proposeEvent = (await optimisticOracle.getPastEvents("ProposePrice", { fromBlock: 0 }))[0];
-      await bridgePool.methods
-        .settleRelay(defaultDepositData, relayAttemptData, proposeEvent.returnValues.request)
-        .send({ from: rando });
+      await bridgePool.methods.settleRelay(defaultDepositData, relayAttemptData).send({ from: relayer });
 
       // Check token balances.
       // - Slow relayer should get back their proposal bond from OO and reward from BridgePool.
@@ -1474,7 +1509,7 @@ describe("BridgePool", () => {
         "BridgePool should have balance reduced by relayed amount to l1Recipient"
       );
     });
-    it("Cannot settle another unique relay request by passing imposter price request data", async () => {
+    it("Cannot settle another unique relay request by passing an old request", async () => {
       // Cache price request timestamp.
       const requestTimestamp = (await bridgePool.methods.getCurrentTime().call()).toString();
       const relayId = (await bridgePool.methods.numberOfRelays().call()).toString();
@@ -1491,23 +1526,8 @@ describe("BridgePool", () => {
       await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: relayer });
 
       // Dispute the first relay to make room for the second.
-      await l1Token.methods.approve(optimisticOracle.options.address, totalRelayBond).send({ from: disputer });
-      const proposalEvent = (await optimisticOracle.getPastEvents("ProposePrice", { fromBlock: 0 }))[0];
-      await optimisticOracle.methods
-        .disputePrice(
-          bridgePool.options.address,
-          defaultIdentifier,
-          proposalEvent.returnValues.timestamp,
-          proposalEvent.returnValues.ancillaryData,
-          proposalEvent.returnValues.request
-        )
-        .send({ from: disputer });
-      const relayAttemptData2 = {
-        ...defaultRelayData,
-        priceRequestTime: requestTimestamp,
-        relayState: InsuredBridgeRelayStateEnum.PENDING,
-        relayId: (Number(relayId) + 1).toString(),
-      };
+      await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: disputer });
+      await bridgePool.methods.disputeRelay(defaultDepositData, relayAttemptData1).send({ from: disputer });
       await l1Token.methods.mint(relayer, totalRelayBond).send({ from: owner });
       await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: relayer });
       await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: relayer });
@@ -1521,7 +1541,7 @@ describe("BridgePool", () => {
         .stampAncillaryData(expectedRelayAncillaryData, bridgePool.options.address)
         .call();
       await mockOracle.methods
-        .pushPrice(defaultIdentifier, proposalEvent.returnValues.timestamp, stampedDisputeAncillaryData, price)
+        .pushPrice(defaultIdentifier, requestTimestamp, stampedDisputeAncillaryData, price)
         .send({ from: owner });
       const disputeEvent = (await optimisticOracle.getPastEvents("DisputePrice", { fromBlock: 0 }))[0];
       await optimisticOracle.methods
@@ -1535,14 +1555,59 @@ describe("BridgePool", () => {
         .send({ from: relayer });
 
       // We should not be able to settle the second relay attempt by passing in price request information from the
-      // newly resolved first relay attempt. The contract should check that the price request information
-      const settleEvent = (await optimisticOracle.getPastEvents("Settle", { fromBlock: 0 }))[0];
+      // newly resolved first relay attempt. The contract should check that the price request information.
       assert(
         await didContractThrow(
-          bridgePool.methods
-            .settleRelay(defaultDepositData, relayAttemptData2, settleEvent.returnValues.request)
-            .send({ from: relayer })
+          bridgePool.methods.settleRelay(defaultDepositData, relayAttemptData1).send({ from: relayer })
         )
+      );
+    });
+    it("Cannot settle someone else's relay until 15 minutes delay has passed", async () => {
+      // Cache price request timestamp.
+      const requestTimestamp = (await bridgePool.methods.getCurrentTime().call()).toString();
+      const relayAttemptData = {
+        ...defaultRelayData,
+        priceRequestTime: requestTimestamp,
+        relayState: InsuredBridgeRelayStateEnum.PENDING,
+      };
+      const expectedExpirationTimestamp = (Number(requestTimestamp) + defaultLiveness).toString();
+
+      // Proposer approves pool to withdraw total bond.
+      await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: relayer });
+      await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: relayer });
+
+      // Speed up relay.
+      await l1Token.methods.approve(bridgePool.options.address, slowRelayAmountSubFee).send({ from: instantRelayer });
+      await bridgePool.methods.speedUpRelay(defaultDepositData, relayAttemptData).send({ from: instantRelayer });
+
+      // Set time such that optimistic price request is settleable.
+      await timer.methods.setCurrentTime(expectedExpirationTimestamp).send({ from: owner });
+
+      const relayerBalanceBefore = await l1Token.methods.balanceOf(relayer).call();
+      const randoBalanceBefore = await l1Token.methods.balanceOf(rando).call();
+
+      // Settle relay.
+      await didContractThrow(
+        bridgePool.methods.settleRelay(defaultDepositData, relayAttemptData).send({ from: rando })
+      );
+
+      await timer.methods.setCurrentTime(Number(expectedExpirationTimestamp) + 901).send({ from: owner });
+      await bridgePool.methods.settleRelay(defaultDepositData, relayAttemptData).send({ from: rando });
+
+      assert.equal(
+        toBN(await l1Token.methods.balanceOf(relayer).call())
+          .sub(toBN(relayerBalanceBefore))
+          .toString(),
+        toBN(totalRelayBond).toString(),
+        "Slow relayer should only receive proposal bond"
+      );
+
+      assert.equal(
+        toBN(await l1Token.methods.balanceOf(rando).call())
+          .sub(toBN(randoBalanceBefore))
+          .toString(),
+        toBN(realizedSlowRelayFeeAmount).toString(),
+        "Settler should receive relay fee"
       );
     });
   });
@@ -1641,11 +1706,7 @@ describe("BridgePool", () => {
       await timer.methods
         .setCurrentTime(Number(await bridgePool.methods.getCurrentTime().call()) + defaultLiveness)
         .send({ from: owner });
-      const proposeEvent = (await optimisticOracle.getPastEvents("ProposePrice", { fromBlock: 0 }))[0];
-      await bridgePool.methods
-        .settleRelay(defaultDepositData, relayAttemptData, proposeEvent.returnValues.request)
-        .send({ from: rando });
-
+      await bridgePool.methods.settleRelay(defaultDepositData, relayAttemptData).send({ from: relayer });
       // Check the balances have updated correctly. Pending should be 0 (funds are actually utilized now), liquid should
       // be equal to the LP fee of 10 and the utilized should equal the total bridged amount (100).
       assert.equal(await bridgePool.methods.pendingReserves().call(), "0");
@@ -1692,10 +1753,7 @@ describe("BridgePool", () => {
       // Expire and settle proposal on the OptimisticOracle.
       await timer.methods.setCurrentTime(expectedExpirationTimestamp).send({ from: owner });
 
-      const proposeEvent = (await optimisticOracle.getPastEvents("ProposePrice", { fromBlock: 0 }))[0];
-      await bridgePool.methods
-        .settleRelay(defaultDepositData, relayAttemptData, proposeEvent.returnValues.request)
-        .send({ from: rando });
+      await bridgePool.methods.settleRelay(defaultDepositData, relayAttemptData).send({ from: relayer });
     });
     it("SettleRelay modifies virtual balances", async () => {
       // Exchange rate should still be 1, no fees accumulated yet as no time has passed from the settlement. Pool
@@ -1798,6 +1856,7 @@ describe("BridgePool", () => {
         priceRequestTime: (await bridgePool.methods.getCurrentTime().call()).toString(),
         relayId: (await bridgePool.methods.numberOfRelays().call()).toString(),
         relayState: InsuredBridgeRelayStateEnum.PENDING,
+        proposerBond: toWei("2.5"),
       };
       await bridgePool.methods.relayDeposit(...generateRelayParams(depositData)).send({ from: relayer });
 
@@ -1805,10 +1864,7 @@ describe("BridgePool", () => {
       await advanceTime(defaultLiveness);
 
       // Settle the relay action.
-      const proposeEvent = (await optimisticOracle.getPastEvents("ProposePrice", { fromBlock: 0 }))[1];
-      await bridgePool.methods
-        .settleRelay(depositData, newRelayAttemptData, proposeEvent.returnValues.request)
-        .send({ from: rando });
+      await bridgePool.methods.settleRelay(depositData, newRelayAttemptData).send({ from: relayer });
 
       // Double check the rando balance incremented by the expected amount of: 50-5 (LP fee)-0.5 (slow relay fee).
       assert.equal((await l1Token.methods.balanceOf(rando).call()).toString(), toWei("44.5"));
@@ -1993,10 +2049,7 @@ describe("BridgePool", () => {
 
       // Settle the relay action.
       await advanceTime(defaultLiveness);
-      const proposeEvent = (await optimisticOracle.getPastEvents("ProposePrice", { fromBlock: 0 }))[0];
-      await bridgePool.methods
-        .settleRelay(defaultDepositData, relayAttemptData, proposeEvent.returnValues.request)
-        .send({ from: rando });
+      await bridgePool.methods.settleRelay(defaultDepositData, relayAttemptData).send({ from: relayer });
 
       // Validate the balances and utilized ratio match to the above comment.
       assert.equal((await bridgePool.methods.pendingReserves().call()).toString(), toWei("0"));
@@ -2057,10 +2110,7 @@ describe("BridgePool", () => {
       // The recipient token balance should be the initial amount, - 1%  slow relay, - 1%  fast relay - 10% lp fee.
       // The utilization ratio should, therefore, be: (150+100)/910=0.274725274725274725
       await advanceTime(defaultLiveness);
-      const proposeEvent = (await optimisticOracle.getPastEvents("ProposePrice", { fromBlock: 0 }))[0];
-      await bridgePool.methods
-        .settleRelay(defaultDepositData, relayAttemptData, proposeEvent.returnValues.request)
-        .send({ from: rando });
+      await bridgePool.methods.settleRelay(defaultDepositData, relayAttemptData).send({ from: relayer });
 
       assert.equal((await bridgePool.methods.pendingReserves().call()).toString(), toWei("150"));
       assert.equal((await bridgePool.methods.liquidReserves().call()).toString(), toWei("910"));
@@ -2118,10 +2168,7 @@ describe("BridgePool", () => {
 
       // Expire and settle proposal on the OptimisticOracle.
       await timer.methods.setCurrentTime(expectedExpirationTimestamp).send({ from: owner });
-      const proposeEvent = (await optimisticOracle.getPastEvents("ProposePrice", { fromBlock: 0 }))[0];
-      await bridgePool.methods
-        .settleRelay(defaultDepositData, relayAttemptData, proposeEvent.returnValues.request)
-        .send({ from: rando });
+      await bridgePool.methods.settleRelay(defaultDepositData, relayAttemptData).send({ from: relayer });
       assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1"));
 
       // Going forward, the rate should increment as normal, starting from the settlement of the relay. EG advancing time
@@ -2154,10 +2201,7 @@ describe("BridgePool", () => {
       assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1"));
 
       // Only now that the bridging action has concluded do we finalize the relay action.
-      const proposeEvent = (await optimisticOracle.getPastEvents("ProposePrice", { fromBlock: 0 }))[0];
-      await bridgePool.methods
-        .settleRelay(defaultDepositData, relayAttemptData, proposeEvent.returnValues.request)
-        .send({ from: rando });
+      await bridgePool.methods.settleRelay(defaultDepositData, relayAttemptData).send({ from: rando });
       assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1"));
 
       // Going forward, the rate should increment as normal, starting from the settlement of the relay. EG advancing time
@@ -2190,10 +2234,7 @@ describe("BridgePool", () => {
       assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1"));
 
       // Only now that the bridging action has concluded do we finalize the relay action.
-      const proposeEvent = (await optimisticOracle.getPastEvents("ProposePrice", { fromBlock: 0 }))[0];
-      await bridgePool.methods
-        .settleRelay(defaultDepositData, relayAttemptData, proposeEvent.returnValues.request)
-        .send({ from: rando });
+      await bridgePool.methods.settleRelay(defaultDepositData, relayAttemptData).send({ from: rando });
       assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1"));
 
       // Going forward, the rate should increment as normal, starting from the settlement of the relay. EG advancing time
@@ -2227,8 +2268,10 @@ describe("BridgePool", () => {
           weth.options.address,
           l2Token,
           bridgePool.options.address,
+          0,
           defaultGasLimit,
-          defaultGasPrice
+          defaultGasPrice,
+          0
         )
         .send({ from: owner });
 
@@ -2257,11 +2300,8 @@ describe("BridgePool", () => {
         )
         .send({ from: owner });
 
-      // Settle OO request.
-      const proposeEvent = (await optimisticOracle.getPastEvents("ProposePrice", { fromBlock: 0 }))[0];
-      await bridgePool.methods
-        .settleRelay(defaultDepositData, relayAttemptData, proposeEvent.returnValues.request)
-        .send({ from: rando });
+      // Settle request.
+      await bridgePool.methods.settleRelay(defaultDepositData, relayAttemptData).send({ from: relayer });
 
       // Recipient eth balance should increment by the amount withdrawn.
       assert.equal(
@@ -2315,11 +2355,8 @@ describe("BridgePool", () => {
         )
         .send({ from: owner });
 
-      // Settle OO request.
-      const proposeEvent = (await optimisticOracle.getPastEvents("ProposePrice", { fromBlock: 0 }))[0];
-      await bridgePool.methods
-        .settleRelay(defaultDepositData, relayAttemptData, proposeEvent.returnValues.request)
-        .send({ from: rando });
+      // Settle request.
+      await bridgePool.methods.settleRelay(defaultDepositData, relayAttemptData).send({ from: relayer });
 
       assert.equal(
         toBN(await weth.methods.balanceOf(instantRelayer).call())

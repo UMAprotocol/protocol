@@ -26,6 +26,7 @@ contract LongShortPairCreator is Testable, Lockable {
         uint64 expirationTimestamp;
         uint256 collateralPerPair;
         bytes32 priceIdentifier;
+        bool enableEarlyExpiration;
         string longSynthName;
         string longSynthSymbol;
         string shortSynthName;
@@ -33,7 +34,7 @@ contract LongShortPairCreator is Testable, Lockable {
         IERC20Standard collateralToken;
         LongShortPairFinancialProductLibrary financialProductLibrary;
         bytes customAncillaryData;
-        uint256 prepaidProposerReward;
+        uint256 proposerReward;
         uint256 optimisticOracleLivenessTime;
         uint256 optimisticOracleProposerBond;
     }
@@ -67,12 +68,13 @@ contract LongShortPairCreator is Testable, Lockable {
 
     /**
      * @notice Creates a longShortPair contract and associated long and short tokens.
-     * @dev The caller must approve this contract to transfer `prepaidProposerReward` amount of collateral.
+     * @dev The caller must approve this contract to transfer `proposerReward` amount of collateral.
      * @param params Constructor params used to initialize the LSP. Key-valued object with the following structure:
      *     - `pairName`: Name of the long short pair contract.
-     *     - `expirationTimestamp`: unix timestamp of when the contract will expire.
-     *     - `collateralPerPair`: how many units of collateral are required to mint one pair of synthetic tokens.
-     *     - `priceIdentifier`: registered in the DVM for the synthetic.
+     *     - `expirationTimestamp`: Unix timestamp of when the contract will expire.
+     *     - `collateralPerPair`: How many units of collateral are required to mint one pair of synthetic tokens.
+     *     - `priceIdentifier`: Registered in the DVM for the synthetic.
+     *     - `enableEarlyExpiration`: Enables the LPS contract to be settled early.
      *     - `longSynthName`: Name of the long synthetic tokens to be created.
      *     - `longSynthSymbol`: Symbol of the long synthetic tokens to be created.
      *     - `shortSynthName`: Name of the short synthetic tokens to be created.
@@ -81,9 +83,9 @@ contract LongShortPairCreator is Testable, Lockable {
      *     - `financialProductLibrary`: Contract providing settlement payout logic.
      *     - `customAncillaryData`: Custom ancillary data to be passed along with the price request. If not needed, this
      *                              should be left as a 0-length bytes array.
-     *     - `prepaidProposerReward`: Proposal reward forwarded to the created LSP to incentivize price proposals.
+     *     - `proposerReward`: Optimistic oracle reward amount, pulled from the caller of the expire function.
      *     - `optimisticOracleLivenessTime`: Optimistic oracle liveness time for price requests.
-     *     - `optimisticOracleProposerBond`: optimistic oracle proposer bond for price requests.
+     *     - `optimisticOracleProposerBond`: Optimistic oracle proposer bond for price requests.
      * @return lspAddress the deployed address of the new long short pair contract.
      * @notice Created LSP is not registered within the registry as the LSP uses the Optimistic Oracle for settlement.
      * @notice The LSP constructor does a number of validations on input params. These are not repeated here.
@@ -107,8 +109,8 @@ contract LongShortPairCreator is Testable, Lockable {
         LongShortPair lsp = new LongShortPair(_convertParams(params, longToken, shortToken));
 
         // Move prepaid proposer reward from the deployer to the newly deployed contract.
-        if (params.prepaidProposerReward > 0)
-            params.collateralToken.safeTransferFrom(msg.sender, address(lsp), params.prepaidProposerReward);
+        if (params.proposerReward > 0)
+            params.collateralToken.safeTransferFrom(msg.sender, address(lsp), params.proposerReward);
 
         address lspAddress = address(lsp);
 
@@ -137,10 +139,11 @@ contract LongShortPairCreator is Testable, Lockable {
         constructorParams.expirationTimestamp = creatorParams.expirationTimestamp;
         constructorParams.collateralPerPair = creatorParams.collateralPerPair;
         constructorParams.priceIdentifier = creatorParams.priceIdentifier;
+        constructorParams.enableEarlyExpiration = creatorParams.enableEarlyExpiration;
         constructorParams.collateralToken = creatorParams.collateralToken;
         constructorParams.financialProductLibrary = creatorParams.financialProductLibrary;
         constructorParams.customAncillaryData = creatorParams.customAncillaryData;
-        constructorParams.prepaidProposerReward = creatorParams.prepaidProposerReward;
+        constructorParams.proposerReward = creatorParams.proposerReward;
         constructorParams.optimisticOracleLivenessTime = creatorParams.optimisticOracleLivenessTime;
         constructorParams.optimisticOracleProposerBond = creatorParams.optimisticOracleProposerBond;
 
