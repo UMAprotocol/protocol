@@ -17,6 +17,7 @@ import "../common/implementation/ExpandedERC20.sol";
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "hardhat/console.sol";
 
 interface WETH9Like {
     function withdraw(uint256 wad) external;
@@ -286,12 +287,6 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
 
         // Compute total proposal bond and pull from caller so that the OptimisticOracle can pull it from here.
         uint256 totalBond = proposerBond + finalFee;
-        l1Token.safeTransferFrom(msg.sender, address(this), depositData.amount + totalBond);
-        bonds += totalBond;
-
-        pendingReserves += depositData.amount; // Book off maximum liquidity used by this relay in the pending reserves.
-
-        instantRelays[instantRelayHash] = msg.sender;
 
         // Pull relay amount minus fees from caller and send to the deposit l1Recipient. The total fees paid is the sum
         // of the LP fees, the relayer fees and the instant relay fee.
@@ -302,6 +297,14 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
             );
         // If the L1 token is WETH then: a) pull WETH from instant relayer b) unwrap WETH c) send ETH to recipient.
         uint256 recipientAmount = depositData.amount - feesTotal;
+
+        l1Token.safeTransferFrom(msg.sender, address(this), recipientAmount + totalBond);
+        bonds += totalBond;
+
+        pendingReserves += depositData.amount; // Book off maximum liquidity used by this relay in the pending reserves.
+
+        instantRelays[instantRelayHash] = msg.sender;
+
         if (isWethPool) {
             WETH9Like(address(l1Token)).withdraw(recipientAmount);
             depositData.l1Recipient.transfer(recipientAmount);
@@ -475,8 +478,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
         uint256 recipientAmount = depositData.amount - feesTotal;
         if (isWethPool) {
             l1Token.safeTransferFrom(msg.sender, address(this), recipientAmount);
-            WETH9Like(address(l1Token)).withdraw(recipientAmount);
-            depositData.l1Recipient.transfer(recipientAmount);
+            _unwrapWETHTo(depositData.l1Recipient, recipientAmount);
         }
         // Else, this is a normal ERC20 token. Send to recipient.
         else l1Token.safeTransferFrom(msg.sender, depositData.l1Recipient, recipientAmount);
@@ -498,7 +500,15 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
         bytes32 depositHash = _getDepositHash(depositData);
         _validateRelayDataHash(depositHash, relayData);
         require(relayData.relayState == RelayState.Pending, "Already settled");
-        require(relayData.priceRequestTime + optimisticOracleLiveness <= getCurrentTime(), "Not settleable yet");
+        uint32 expirationTime = relayData.priceRequestTime + optimisticOracleLiveness;
+        require(expirationTime <= getCurrentTime(), "Not settleable yet");
+
+        // Note: this check is to give the relayer a small, but reasonable amount of time to complete the relay before
+        // before it can be "stolen" by someone else. This is to ensure there is an incentive to settle relays quickly.
+        require(
+            msg.sender == relayData.slowRelayer || getCurrentTime() > expirationTime + 15 minutes,
+            "Not slow relayer"
+        );
 
         // Update the relay state to Finalized. This prevents any re-settling of a relay.
         relays[depositHash] = _getRelayDataHash(
@@ -543,10 +553,18 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
                 instantRelayerOrRecipientAmount
             );
 
-        // The slow relayer gets paid the slow relay fee. This is the same irrespective if the relay was sped up or not.
+        // There is a fee and a bond to pay out. The fee goes to whoever settles. The bond always goes back to the
+        // slow relayer.
+        // Note: for gas efficiency, we use an if so we can combine these transfers in the event that they are the same
+        // address.
         uint256 slowRelayerReward = _getAmountFromPct(depositData.slowRelayFeePct, depositData.amount);
         uint256 totalBond = relayData.finalFee + relayData.proposerBond;
-        l1Token.safeTransfer(relayData.slowRelayer, slowRelayerReward + totalBond);
+        if (relayData.slowRelayer == msg.sender)
+            l1Token.safeTransfer(relayData.slowRelayer, slowRelayerReward + totalBond);
+        else {
+            l1Token.safeTransfer(relayData.slowRelayer, totalBond);
+            l1Token.safeTransfer(msg.sender, slowRelayerReward);
+        }
 
         uint256 totalReservesSent = instantRelayerOrRecipientAmount + slowRelayerReward;
 
@@ -643,6 +661,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
         optimisticOracle = SkinnyOptimisticOracleInterface(
             finder.getImplementationAddress(OracleInterfaces.SkinnyOptimisticOracle)
         );
+
         store = StoreInterface(finder.getImplementationAddress(OracleInterfaces.Store));
     }
 
@@ -863,6 +882,11 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
 
         // Return true to denote that the proposal + dispute calls succeeded.
         return true;
+    }
+
+    function _unwrapWETHTo(address payable to, uint256 amount) internal {
+        WETH9Like(address(l1Token)).withdraw(amount);
+        to.transfer(amount);
     }
 
     // Added to enable the BridgePool to receive ETH. used when unwrapping Weth.

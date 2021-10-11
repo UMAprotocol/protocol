@@ -18,6 +18,7 @@ const Finder = getContract("Finder");
 const BridgeDepositBox = getContract("BridgeDepositBoxMock");
 const IdentifierWhitelist = getContract("IdentifierWhitelist");
 const AddressWhitelist = getContract("AddressWhitelist");
+const ERC20 = getContract("ERC20");
 
 // Contract objects
 let arbitrumMessenger;
@@ -50,11 +51,11 @@ describe("ArbitrumMessenger integration with BridgeAdmin", () => {
   before(async function () {
     accounts = await web3.eth.getAccounts();
     [owner, rando, rando2, depositBoxImpersonator] = accounts;
-    l1Token = rando;
     l2Token = rando2;
     await runDefaultFixture(hre);
     timer = await Timer.new().send({ from: owner });
     finder = await Finder.new().send({ from: owner });
+    l1Token = (await ERC20.new("", "").send({ from: owner })).options.address;
     collateralWhitelist = await AddressWhitelist.new().send({ from: owner });
     await finder.methods
       .changeImplementationAddress(utf8ToHex(interfaceName.CollateralWhitelist), collateralWhitelist.options.address)
