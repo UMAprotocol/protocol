@@ -273,8 +273,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         uint256 proposerBond = _getProposerBond(depositData.amount);
 
         require(
-            l1Token.balanceOf(address(this)) >= depositData.amount + proposerBond &&
-                liquidReserves >= depositData.amount + proposerBond,
+            l1Token.balanceOf(address(this)) >= depositData.amount && liquidReserves >= depositData.amount,
             "Insufficient pool balance"
         );
 
@@ -384,10 +383,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         // Sanity check that pool has enough balance to cover relay amount + proposer reward. Reward amount will be
         // paid on settlement after the OptimisticOracle price request has passed the challenge period.
         uint256 proposerBond = _getProposerBond(amount);
-        require(
-            l1Token.balanceOf(address(this)) >= amount + proposerBond && liquidReserves >= amount + proposerBond,
-            "Insufficient pool balance"
-        );
+        require(l1Token.balanceOf(address(this)) >= amount && liquidReserves >= amount, "Insufficient pool balance");
 
         // Compute total proposal bond and pull from caller so that the OptimisticOracle can pull it from here.
         l1Token.safeTransferFrom(
