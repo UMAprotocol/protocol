@@ -129,7 +129,7 @@ export default async (env: ProcessEnv) => {
   const services = {
     // these services can optionally be configured with a config object, but currently they are undefined or have defaults
     emps: Services.EmpState({ debug }, appState),
-    registry: await Services.Registry({ debug }, appState, (event, data) =>
+    registry: await Services.Registry({ debug, registryAddress: env.EMP_REGISTRY_ADDRESS }, appState, (event, data) =>
       serviceEvents.emit("empRegistry", event, data)
     ),
     collateralPrices: Services.CollateralPrices({ debug }, appState),
