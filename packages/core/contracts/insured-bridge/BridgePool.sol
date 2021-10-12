@@ -50,7 +50,8 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
     // Reserves that are not yet utilized but are pre-allocated for a pending relay.
     uint256 public pendingReserves;
 
-    // If this pool contains WETH. If the withdrawn token is WETH then unwrap and send ETH when finalizing withdrawal.
+    // True If this pool houses WETH. If the withdrawn token is WETH then unwrap and send ETH when finalizing
+    // withdrawal.
     bool public isWethPool;
 
     // Exponential decay exchange rate to accumulate fees to LPs over time.
@@ -59,23 +60,26 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
     // Last timestamp that LP fees were updated.
     uint32 public lastLpFeeUpdate;
 
-    // Store local instances of contract params to save gas relaying. Can be synced with the BridgeAdmin at any time.
+    // Store local instances of contract params to save gas relaying. Can be synced with the BridgeAdmin at any time via
+    // the syncWithBridgeAdminParams() public function.
     uint64 public proposerBondPct;
     uint32 public optimisticOracleLiveness;
 
     // Cumulative undistributed LP fees. As fees accumulate, they are subtracted from this number.
     uint256 public undistributedLpFees;
 
-    // Total bonds held.
+    // Total bond amount held for pending relays. Bonds are released following a successful relay or after a dispute.
     uint256 public bonds;
 
     // Administrative contract that deployed this contract and also houses all state variables needed to relay deposits.
     BridgeAdminInterface public bridgeAdmin;
 
-    // Store local instances of the contract instances to save gas relaying. Can be sync with the Finder at any time.
+    // Store local instances of the contract instances to save gas relaying. Can be sync with the Finder at any time via
+    // the syncWithFinderAddresses() public function.
     StoreInterface public store;
     SkinnyOptimisticOracleInterface public optimisticOracle;
 
+    // DVM price request identifier that is resolved based on the validity of a relay attempt.
     bytes32 public identifier;
 
     // A Relay represents an attempt to finalize a cross-chain transfer that originated on an L2 DepositBox contract.
@@ -182,7 +186,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
      *************************************************/
 
     /**
-     * @notice Add liquidity to the bridge pool. Pulls l1tokens from the callers wallet. The caller is sent back a
+     * @notice Add liquidity to the bridge pool. Pulls l1Token from the callers wallet. The caller is sent back a
      * commensurate number of LP tokens (minted to their address) at the prevailing exchange rate.
      * @dev The caller must approve this contract to transfer `l1TokenAmount` amount of l1Token.
      * @dev Reentrancy guard not added to this function because this indirectly calls sync() which is guarded.
@@ -318,7 +322,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
     }
 
     /**
-     * @notice Called by Disiputer to dispute an ongoing relay.
+     * @notice Called by Disputer to dispute an ongoing relay.
      * @dev The result of this method is to always throw out the relay, providing an opportunity for another relay for
      * the same deposit. Between the disputer and proposer, whoever is incorrect loses their bond. Whoever is correct
      * gets it back + a payout.
@@ -578,6 +582,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
 
     /**
      * @notice Computes the exchange rate between LP tokens and L1Tokens. Used when adding/removing liquidity.
+     * @return The updated exchange rate between LP tokens and L1 tokens.
      */
     function exchangeRateCurrent() public returns (uint256) {
         if (totalSupply() == 0) return 1e18; // initial rate is 1 pre any mint action.
@@ -596,6 +601,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
     /**
      * @notice Computes the current liquidity utilization ratio.
      * @dev Used in computing realizedLpFeePct off-chain.
+     * @return The current utilization ratio.
      */
     function liquidityUtilizationCurrent() public returns (uint256) {
         return liquidityUtilizationPostRelay(0);
@@ -605,6 +611,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
      * @notice Computes the liquidity utilization ratio post a relay of known size.
      * @dev Used in computing realizedLpFeePct off-chain.
      * @param relayedAmount Size of the relayed deposit to factor into the utilization calculation.
+     * @return The updated utilization ratio accounting for a new `relayedAmount`.
      */
     function liquidityUtilizationPostRelay(uint256 relayedAmount) public returns (uint256) {
         sync(); // Fetch any balance changes due to token bridging finalization and factor them in.
