@@ -173,7 +173,7 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, Lockable {
      * @dev Only callable by the current owner.
      * @dev msg.value must equal to l1CallValue.
      * @param chainId L2 network ID where Deposit contract is deployed.
-     * @param _minimumBridgingDelay the new minimum delay.
+     * @param minimumBridgingDelay the new minimum delay.
      * @param l1CallValue Amount of ETH to include in msg.value. Used to pay for L2 fees, but its exact usage varies
      * depending on the L2 network that this contract sends a message to.
      * @param l2Gas Gas limit to set for relayed message on L2.
@@ -182,7 +182,7 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, Lockable {
      */
     function setMinimumBridgingDelay(
         uint256 chainId,
-        uint64 _minimumBridgingDelay,
+        uint64 minimumBridgingDelay,
         uint256 l1CallValue,
         uint256 l2Gas,
         uint256 l2GasPrice,
@@ -196,9 +196,9 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, Lockable {
             l2Gas,
             l2GasPrice,
             maxSubmissionCost,
-            abi.encodeWithSignature("setMinimumBridgingDelay(uint64)", _minimumBridgingDelay)
+            abi.encodeWithSignature("setMinimumBridgingDelay(uint64)", minimumBridgingDelay)
         );
-        emit SetMinimumBridgingDelay(chainId, _minimumBridgingDelay);
+        emit SetMinimumBridgingDelay(chainId, minimumBridgingDelay);
     }
 
     /**
