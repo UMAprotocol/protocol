@@ -49,8 +49,6 @@ export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
     // Construct a web3 instance running on L2.
     const l2Web3 = getWeb3ByChainId(config.activatedChainIds[0]);
 
-    // TODO: Add a STARTBLOCK config variable since there is a limit to how many blocks we can lookup for Arbitrum
-    // events.
     const l2Client = new InsuredBridgeL2Client(
       logger,
       l2Web3,
