@@ -161,6 +161,9 @@ export default async (env: ProcessEnv) => {
     console.log(`Backfilling price history from ${env.backfillDays} days ago`);
     await services.collateralPrices.backfill(moment().subtract(env.backfillDays, "days").valueOf());
     console.log("Updated Collateral Prices Backfill");
+
+    // backfill price history only if runs for the first time
+    if (await appState.appStats.getLastBlockUpdate()) return;
     await services.empStats.backfill();
     console.log("Updated EMP Backfill");
 
