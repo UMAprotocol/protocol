@@ -243,13 +243,20 @@ describe("Relayer.ts", function () {
         ShouldRelay.Ignore
       );
 
-      // b) Mint tokens to the relayer BUT set the ClientRelayState to None. This is the case once the Relay has already been
-      // finalized by another relayer and there is nothing to do. Again, the return should be Ignore.
+      // b) Mint tokens to the relayer BUT set the ClientRelayState to Finalized. This is the case once the Relay has
+      // already been finalized by another relayer and there is nothing to do. Again, the return should be Ignore.
       await l1Token.methods.mint(l1Relayer, toBN(depositAmount).muln(2)).send({ from: l1Owner });
       await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Relayer });
       clientRelayState = ClientRelayState.Finalized;
       assert.equal(
         await relayer.shouldRelay(deposit, clientRelayState, toBN(defaultRealizedLpFeePct), false),
+        ShouldRelay.Ignore
+      );
+
+      // c) Relay is pending and already spedup
+      clientRelayState = ClientRelayState.Pending;
+      assert.equal(
+        await relayer.shouldRelay(deposit, clientRelayState, toBN(defaultRealizedLpFeePct), true),
         ShouldRelay.Ignore
       );
     });
@@ -394,7 +401,7 @@ describe("Relayer.ts", function () {
       await Promise.all([l1Client.update(), l2Client.update()]);
       // As the relayer does not have enough token balance to do the relay (0 minted) should do nothing .
       await relayer.checkForPendingDepositsAndRelay();
-      assert.isTrue(lastSpyLogIncludes(spy, "Not relaying deposit"));
+      assert.isTrue(lastSpyLogIncludes(spy, "Not relaying"));
 
       // Mint the relayer some tokens and try again.
       await l1Token.methods.mint(l1Relayer, toBN(depositAmount).muln(2)).send({ from: l1Owner });
@@ -439,13 +446,18 @@ describe("Relayer.ts", function () {
       await Promise.all([l1Client.update(), l2Client.update()]);
       // As the relayer does not have enough token balance to do the relay (0 minted) should do nothing .
       await relayer.checkForPendingDepositsAndRelay();
-      assert.isTrue(lastSpyLogIncludes(spy, "Not relaying deposit"));
+      assert.isTrue(lastSpyLogIncludes(spy, "Not relaying"));
 
       // Mint the relayer some tokens and try again.
       await l1Token.methods.mint(l1Relayer, toBN(depositAmount).muln(2)).send({ from: l1Owner });
       await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Relayer });
       await relayer.checkForPendingDepositsAndRelay();
       assert.isTrue(lastSpyLogIncludes(spy, "Slow relay sped up"));
+
+      // Running relayer again ignores and sends appropriate message
+      await Promise.all([l1Client.update(), l2Client.update()]);
+      await relayer.checkForPendingDepositsAndRelay();
+      assert.isTrue(lastSpyLogIncludes(spy, "already sped up"));
     });
     it("Can correctly instantly relay deposits", async function () {
       // Make a deposit on L2 and see that the relayer correctly sends a slow relay and speedup it in the same tx.
@@ -467,7 +479,7 @@ describe("Relayer.ts", function () {
       await Promise.all([l1Client.update(), l2Client.update()]);
       // As the relayer does not have enough token balance to do the relay (0 minted) should do nothing.
       await relayer.checkForPendingDepositsAndRelay();
-      assert.isTrue(lastSpyLogIncludes(spy, "Not relaying deposit"));
+      assert.isTrue(lastSpyLogIncludes(spy, "Not relaying"));
 
       // Mint the relayer some tokens and try again.
       await l1Token.methods.mint(l1Relayer, toBN(depositAmount).muln(2)).send({ from: l1Owner });

@@ -93,6 +93,21 @@ export class Relayer {
           relayableDeposit.deposit.depositHash,
           realizedLpFeePct.toString()
         );
+        // If relay cannot occur because its finalized or pending and already sped up, then exit early.
+        if (
+          relayableDeposit.status == ClientRelayState.Finalized ||
+          (hasInstantRelayer && relayableDeposit.status == ClientRelayState.Pending)
+        ) {
+          this.logger.warn({
+            at: "InsuredBridgeRelayer#Relayer",
+            message: "Relay already finalized or pending and already sped up 😖",
+            realizedLpFeePct: realizedLpFeePct.toString(),
+            relayState: relayableDeposit.status,
+            hasInstantRelayer,
+            relayableDeposit,
+          });
+          continue;
+        }
         const shouldRelay = await this.shouldRelay(
           relayableDeposit.deposit,
           relayableDeposit.status,
@@ -103,8 +118,10 @@ export class Relayer {
           case ShouldRelay.Ignore:
             this.logger.warn({
               at: "InsuredBridgeRelayer#Relayer",
-              message: "Not relaying deposit 😖",
+              message: "Not relaying potentially unprofitable deposit, or insufficient balance 😖",
               realizedLpFeePct: realizedLpFeePct.toString(),
+              relayState: relayableDeposit.status,
+              hasInstantRelayer,
               relayableDeposit,
             });
             break;
@@ -262,6 +279,16 @@ export class Relayer {
           at: "InsuredBridgeRelayer#Relayer",
           type: "Slow relay sped up 🏇",
           tx: receipt.transactionHash,
+          chainId: receipt.events.DepositRelayed.returnValues.depositData.chainId,
+          depositId: receipt.events.DepositRelayed.returnValues.depositData.depositId,
+          sender: receipt.events.DepositRelayed.returnValues.depositData.l2Sender,
+          recipient: receipt.events.DepositRelayed.returnValues.depositData.l1Recipient,
+          l1Token: receipt.events.DepositRelayed.returnValues.l1Token,
+          amount: receipt.events.DepositRelayed.returnValues.depositData.amount,
+          slowRelayFeePct: receipt.events.DepositRelayed.returnValues.depositData.slowRelayFeePct,
+          instantRelayFeePct: receipt.events.DepositRelayed.returnValues.depositData.instantRelayFeePct,
+          quoteTimestamp: receipt.events.DepositRelayed.returnValues.depositData.quoteTimestamp,
+          relayAncillaryDataHash: receipt.events.DepositRelayed.returnValues.relayAncillaryDataHash,
           depositHash: receipt.events.RelaySpedUp.returnValues.depositHash,
           instantRelayer: receipt.events.RelaySpedUp.returnValues.instantRelayer,
           realizedLpFeePct: receipt.events.RelaySpedUp.returnValues.relay.realizedLpFeePct,
@@ -291,6 +318,16 @@ export class Relayer {
           at: "InsuredBridgeRelayer#Relayer",
           type: "Relay instantly sent 🚀",
           tx: receipt.transactionHash,
+          chainId: receipt.events.DepositRelayed.returnValues.depositData.chainId,
+          depositId: receipt.events.DepositRelayed.returnValues.depositData.depositId,
+          sender: receipt.events.DepositRelayed.returnValues.depositData.l2Sender,
+          recipient: receipt.events.DepositRelayed.returnValues.depositData.l1Recipient,
+          l1Token: receipt.events.DepositRelayed.returnValues.l1Token,
+          amount: receipt.events.DepositRelayed.returnValues.depositData.amount,
+          slowRelayFeePct: receipt.events.DepositRelayed.returnValues.depositData.slowRelayFeePct,
+          instantRelayFeePct: receipt.events.DepositRelayed.returnValues.depositData.instantRelayFeePct,
+          quoteTimestamp: receipt.events.DepositRelayed.returnValues.depositData.quoteTimestamp,
+          relayAncillaryDataHash: receipt.events.DepositRelayed.returnValues.relayAncillaryDataHash,
           depositHash: receipt.events.RelaySpedUp.returnValues.depositHash,
           instantRelayer: receipt.events.RelaySpedUp.returnValues.instantRelayer,
           realizedLpFeePct: receipt.events.RelaySpedUp.returnValues.relay.realizedLpFeePct,
@@ -309,14 +346,14 @@ export class Relayer {
   private generateSlowRelayTx(deposit: Deposit, realizedLpFeePct: BN): TransactionType {
     const bridgePool = this.l1Client.getBridgePoolForDeposit(deposit).contract;
     return (bridgePool.methods.relayDeposit(
-      deposit.chainId,
-      deposit.depositId,
+      deposit.chainId.toString(),
+      deposit.depositId.toString(),
       deposit.l1Recipient,
       deposit.l2Sender,
       deposit.amount,
       deposit.slowRelayFeePct,
       deposit.instantRelayFeePct,
-      deposit.quoteTimestamp,
+      deposit.quoteTimestamp.toString(),
       realizedLpFeePct
     ) as unknown) as TransactionType;
   }

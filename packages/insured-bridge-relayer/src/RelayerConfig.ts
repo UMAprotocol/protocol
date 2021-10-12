@@ -29,11 +29,24 @@ export class RelayerConfig {
   readonly whitelistedRelayL1Tokens: string[] = [];
   readonly rateModels: { [key: string]: RateModel } = {};
   readonly activatedChainIds: number[];
+  readonly l2StartBlock: number;
 
   constructor(env: ProcessEnv) {
-    const { BRIDGE_ADMIN_ADDRESS, POLLING_DELAY, ERROR_RETRIES, ERROR_RETRIES_TIMEOUT, RATE_MODELS, CHAIN_IDS } = env;
+    const {
+      BRIDGE_ADMIN_ADDRESS,
+      POLLING_DELAY,
+      ERROR_RETRIES,
+      ERROR_RETRIES_TIMEOUT,
+      RATE_MODELS,
+      CHAIN_IDS,
+      L2_START_BLOCK,
+    } = env;
     assert(BRIDGE_ADMIN_ADDRESS, "BRIDGE_ADMIN_ADDRESS required");
     this.bridgeAdmin = Web3.utils.toChecksumAddress(BRIDGE_ADMIN_ADDRESS);
+
+    // L2 start block is not required but without one, querying past logs might fail. For example, Arbitrum Infura has a
+    // query limit of up to 100,000 blocks into the past.
+    this.l2StartBlock = Number(L2_START_BLOCK);
 
     this.pollingDelay = POLLING_DELAY ? Number(POLLING_DELAY) : 60;
     this.errorRetries = ERROR_RETRIES ? Number(ERROR_RETRIES) : 3;

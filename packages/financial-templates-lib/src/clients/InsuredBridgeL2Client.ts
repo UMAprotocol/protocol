@@ -95,7 +95,7 @@ export class InsuredBridgeL2Client {
 
   generateDepositHash = (depositData: Deposit): string => {
     const depositDataAbiEncoded = this.l2Web3.eth.abi.encodeParameters(
-      ["uint8", "uint64", "address", "address", "address", "uint256", "uint64", "uint64", "uint64"],
+      ["uint256", "uint64", "address", "address", "address", "uint256", "uint64", "uint64", "uint32"],
       [
         depositData.chainId,
         depositData.depositId,
