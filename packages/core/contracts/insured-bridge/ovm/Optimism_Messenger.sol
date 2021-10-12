@@ -10,7 +10,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
  * @dev This contract's owner should be set to the BridgeAdmin deployed on the same L1 network so that only the
  * BridgeAdmin can call cross-chain administrative functions on the L2 DepositBox via this messenger.
  */
-contract OptimismMessenger is Ownable, OVM_CrossDomainEnabled, MessengerInterface {
+contract Optimism_Messenger is Ownable, OVM_CrossDomainEnabled, MessengerInterface {
     constructor(address _crossDomainMessenger) OVM_CrossDomainEnabled(_crossDomainMessenger) {}
 
     /**
