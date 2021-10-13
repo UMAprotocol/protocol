@@ -164,7 +164,7 @@ describe("BridgePool", () => {
   const generateRelayHash = (_relayData) => {
     return soliditySha3(
       web3.eth.abi.encodeParameters(
-        ["uint256", "address", "uint32", "uint64", "uint256", "uint256", "uint256", "uint32"],
+        ["uint256", "address", "uint32", "uint64", "uint256", "uint256", "uint256"],
         [
           _relayData.relayState,
           _relayData.slowRelayer,
@@ -173,7 +173,6 @@ describe("BridgePool", () => {
           _relayData.priceRequestTime,
           _relayData.proposerBond,
           _relayData.finalFee,
-          _relayData.liveness,
         ]
       )
     );
@@ -327,7 +326,6 @@ describe("BridgePool", () => {
       slowRelayer: relayer,
       finalFee: finalFee,
       proposerBond: proposalBond.toString(),
-      liveness: defaultLiveness.toString(),
     };
 
     // Save other reused values.
@@ -524,7 +522,6 @@ describe("BridgePool", () => {
           ev.l1Token === l1Token.options.address &&
           ev.relay.slowRelayer === relayer &&
           ev.relay.relayId.toString() === relayAttemptData.relayId.toString() &&
-          ev.relay.liveness === relayAttemptData.liveness &&
           ev.relay.realizedLpFeePct === relayAttemptData.realizedLpFeePct &&
           ev.relay.priceRequestTime === relayAttemptData.priceRequestTime &&
           ev.relay.relayState === relayAttemptData.relayState &&
@@ -588,7 +585,6 @@ describe("BridgePool", () => {
           ev.relay.relayId === relayAttemptData.relayId.toString() &&
           ev.relay.realizedLpFeePct === relayAttemptData.realizedLpFeePct &&
           ev.relay.priceRequestTime === relayAttemptData.priceRequestTime &&
-          ev.relay.liveness === relayAttemptData.liveness &&
           ev.relay.relayState === relayAttemptData.relayState
         );
       });
@@ -716,7 +712,6 @@ describe("BridgePool", () => {
           ev.relay.relayId === relayAttemptData.relayId.toString() &&
           ev.relay.realizedLpFeePct === relayAttemptData.realizedLpFeePct &&
           ev.relay.priceRequestTime === relayAttemptData.priceRequestTime &&
-          ev.relay.liveness === relayAttemptData.liveness &&
           ev.relay.relayState === relayAttemptData.relayState
         );
       });
@@ -1413,7 +1408,6 @@ describe("BridgePool", () => {
           ev.relay.relayId === relayAttemptData.relayId.toString() &&
           ev.relay.realizedLpFeePct === relayAttemptData.realizedLpFeePct &&
           ev.relay.priceRequestTime === relayAttemptData.priceRequestTime &&
-          ev.relay.liveness === relayAttemptData.liveness &&
           ev.relay.relayState === relayAttemptData.relayState
         );
       });

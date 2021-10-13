@@ -116,7 +116,6 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
         uint32 priceRequestTime;
         uint256 proposerBond;
         uint256 finalFee;
-        uint32 liveness;
     }
 
     // Associate deposits with pending relay data. When the mapped relay hash is empty, new relay attempts can be made
@@ -262,6 +261,9 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
         uint256 finalFee = store.computeFinalFee(address(l1Token)).rawValue;
 
         // Save hash of new relay attempt parameters.
+        // Note: The liveness for this relay can be changed in the BridgeAdmin, which means that each relay has a
+        // potentially variable liveness time. This should not provide any exploit opportunities, especially because
+        // the BridgeAdmin state (including the liveness value) is permissioned to the cross domained owner.
         RelayData memory relayData =
             RelayData({
                 relayState: RelayState.Pending,
@@ -270,8 +272,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
                 realizedLpFeePct: realizedLpFeePct,
                 priceRequestTime: priceRequestTime,
                 proposerBond: proposerBond,
-                finalFee: finalFee,
-                liveness: optimisticOracleLiveness
+                finalFee: finalFee
             });
         bytes32 relayHash = _getRelayHash(depositData, relayData);
         relays[depositHash] = _getRelayDataHash(relayData);
@@ -331,7 +332,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
      * @param relayData RelayData logged in the disputed relay.
      */
     function disputeRelay(DepositData memory depositData, RelayData memory relayData) public nonReentrant() {
-        require(relayData.priceRequestTime + relayData.liveness > getCurrentTime(), "Past liveness");
+        require(relayData.priceRequestTime + optimisticOracleLiveness > getCurrentTime(), "Past liveness");
         require(relayData.relayState == RelayState.Pending, "Not disputable");
         // Validate the input data.
         bytes32 depositHash = _getDepositHash(depositData);
@@ -343,8 +344,11 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
         // Note: in some cases this will fail due to changes in the OO and the method will refund the relayer.
         bool success =
             _requestProposeDispute(
-                PriceRequestData({ disputer: msg.sender, ancillaryData: _getRelayAncillaryData(relayHash) }),
-                relayData
+                relayData.slowRelayer,
+                msg.sender,
+                relayData.proposerBond,
+                relayData.finalFee,
+                _getRelayAncillaryData(relayHash)
             );
 
         // Drop the relay and remove the bond from the tracked bonds.
@@ -384,6 +388,9 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
         uint256 finalFee = store.computeFinalFee(address(l1Token)).rawValue;
 
         // Save hash of new relay attempt parameters.
+        // Note: The liveness for this relay can be changed in the BridgeAdmin, which means that each relay has a
+        // potentially variable liveness time. This should not provide any exploit opportunities, especially because
+        // the BridgeAdmin state (including the liveness value) is permissioned to the cross domained owner.
         RelayData memory relayData =
             RelayData({
                 relayState: RelayState.Pending,
@@ -392,8 +399,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
                 realizedLpFeePct: realizedLpFeePct,
                 priceRequestTime: priceRequestTime,
                 proposerBond: proposerBond,
-                finalFee: finalFee,
-                liveness: optimisticOracleLiveness
+                finalFee: finalFee
             });
         relays[depositHash] = _getRelayDataHash(relayData);
 
@@ -440,7 +446,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
         bytes32 instantRelayHash = _getInstantRelayHash(depositHash, relayData);
         require(
             // Can only speed up a pending relay without an existing instant relay associated with it.
-            getCurrentTime() < relayData.priceRequestTime + relayData.liveness &&
+            getCurrentTime() < relayData.priceRequestTime + optimisticOracleLiveness &&
                 relayData.relayState == RelayState.Pending &&
                 instantRelays[instantRelayHash] == address(0),
             "Relay cannot be sped up"
@@ -480,7 +486,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
         bytes32 depositHash = _getDepositHash(depositData);
         _validateRelayDataHash(depositHash, relayData);
         require(relayData.relayState == RelayState.Pending, "Already settled");
-        uint32 expirationTime = relayData.priceRequestTime + relayData.liveness;
+        uint32 expirationTime = relayData.priceRequestTime + optimisticOracleLiveness;
         require(expirationTime <= getCurrentTime(), "Not settleable yet");
 
         // Note: this check is to give the relayer a small, but reasonable amount of time to complete the relay before
@@ -499,8 +505,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
                 realizedLpFeePct: relayData.realizedLpFeePct,
                 priceRequestTime: relayData.priceRequestTime,
                 proposerBond: relayData.proposerBond,
-                finalFee: relayData.finalFee,
-                liveness: relayData.liveness
+                finalFee: relayData.finalFee
             })
         );
 
@@ -790,39 +795,37 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
 
     // Proposes new price of True for relay event associated with `customAncillaryData` to optimistic oracle. If anyone
     // disagrees with the relay parameters and whether they map to an L2 deposit, they can dispute with the oracle.
-    // Note: This struct was created to address a "Stack too deep" issue in the following method.
-    struct PriceRequestData {
-        bytes ancillaryData;
-        address disputer;
-    }
-
-    function _requestProposeDispute(PriceRequestData memory requestData, RelayData memory relayData)
-        private
-        returns (bool)
-    {
-        uint256 totalBond = relayData.finalFee + relayData.proposerBond;
+    function _requestProposeDispute(
+        address proposer,
+        address disputer,
+        uint256 proposerBond,
+        uint256 finalFee,
+        bytes memory customAncillaryData
+    ) private returns (bool) {
+        uint256 totalBond = finalFee + proposerBond;
         l1Token.safeApprove(address(optimisticOracle), totalBond);
         try
             optimisticOracle.requestAndProposePriceFor(
                 identifier,
                 uint32(getCurrentTime()),
-                requestData.ancillaryData,
+                customAncillaryData,
                 IERC20(l1Token),
                 // Set reward to 0, since we'll settle proposer reward payouts directly from this contract after a relay
                 // proposal has passed the challenge period.
                 0,
                 // Set the Optimistic oracle proposer bond for the price request.
-                relayData.proposerBond,
+                proposerBond,
                 // Set the Optimistic oracle liveness for the price request.
-                relayData.liveness,
-                relayData.slowRelayer,
+                optimisticOracleLiveness,
+                proposer,
                 // Canonical value representing "True"; i.e. the proposed relay is valid.
                 int256(1e18)
             )
         returns (uint256 bondSpent) {
             if (bondSpent < totalBond) {
                 // If the OO pulls less (due to a change in final fee), refund the proposer.
-                l1Token.safeTransfer(relayData.slowRelayer, totalBond - bondSpent);
+                uint256 refund = totalBond - bondSpent;
+                l1Token.safeTransfer(proposer, refund);
                 l1Token.safeApprove(address(optimisticOracle), 0);
                 totalBond = bondSpent;
             }
@@ -830,7 +833,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
             // If there's an error in the OO, this means something has changed to make this request undisputable.
             // To ensure the request does not go through by default, refund the proposer and return early, allowing
             // the calling method to delete the request, but with no additional recourse by the OO.
-            l1Token.safeTransfer(relayData.slowRelayer, totalBond);
+            l1Token.safeTransfer(proposer, totalBond);
             l1Token.safeApprove(address(optimisticOracle), 0);
 
             // Return early noting that the attempt at a proposal + dispute did not succeed.
@@ -839,17 +842,17 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
 
         SkinnyOptimisticOracleInterface.Request memory request =
             SkinnyOptimisticOracleInterface.Request({
-                proposer: relayData.slowRelayer,
+                proposer: proposer,
                 disputer: address(0),
                 currency: IERC20(l1Token),
                 settled: false,
                 proposedPrice: int256(1e18),
                 resolvedPrice: 0,
-                expirationTime: getCurrentTime() + relayData.liveness,
+                expirationTime: getCurrentTime() + optimisticOracleLiveness,
                 reward: 0,
-                finalFee: totalBond - relayData.proposerBond,
-                bond: relayData.proposerBond,
-                customLiveness: uint256(relayData.liveness)
+                finalFee: totalBond - proposerBond,
+                bond: proposerBond,
+                customLiveness: uint256(optimisticOracleLiveness)
             });
 
         // Note: don't pull funds until here to avoid any transfers that aren't needed.
@@ -859,9 +862,9 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
         optimisticOracle.disputePriceFor(
             identifier,
             uint32(getCurrentTime()),
-            requestData.ancillaryData,
+            customAncillaryData,
             request,
-            requestData.disputer,
+            disputer,
             address(this)
         );
 

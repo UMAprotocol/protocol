@@ -140,7 +140,6 @@ describe("InsuredBridgeL1Client", function () {
       quoteTimestamp: Number(depositData.quoteTimestamp),
       realizedLpFeePct: relayData.realizedLpFeePct,
       priceRequestTime: relayData.priceRequestTime,
-      liveness: defaultLiveness,
       depositHash: depositHash,
       relayState: ClientRelayState.Pending,
       relayHash,
@@ -285,7 +284,6 @@ describe("InsuredBridgeL1Client", function () {
       slowRelayer: relayer,
       proposerBond: proposerBond,
       finalFee: finalFee,
-      liveness: defaultLiveness,
     };
 
     ({ depositHash, relayAncillaryData, relayAncillaryDataHash } = await generateRelayData(
@@ -336,7 +334,6 @@ describe("InsuredBridgeL1Client", function () {
         relayId: client.getBridgePoolForDeposit(depositData).relayNonce,
         realizedLpFeePct: defaultRealizedLpFee,
         priceRequestTime: client.getBridgePoolForDeposit(depositData).currentTime,
-        liveness: defaultLiveness,
         proposerBond,
         finalFee,
       };
@@ -430,7 +427,6 @@ describe("InsuredBridgeL1Client", function () {
         relayId: client.getBridgePoolForDeposit(depositData).relayNonce,
         realizedLpFeePct: defaultRealizedLpFee,
         priceRequestTime: client.getBridgePoolForDeposit(depositData).currentTime,
-        liveness: defaultLiveness,
         proposerBond,
         finalFee,
       };
@@ -576,7 +572,6 @@ describe("InsuredBridgeL1Client", function () {
         relayId: client.getBridgePoolForDeposit(depositData).relayNonce,
         realizedLpFeePct: defaultRealizedLpFee,
         priceRequestTime: client.getBridgePoolForDeposit(depositData).currentTime,
-        liveness: defaultLiveness,
         proposerBond,
         finalFee,
       };

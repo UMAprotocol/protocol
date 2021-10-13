@@ -125,7 +125,6 @@ describe("InsuredBridgePriceFeed", function () {
       slowRelayer: relayer,
       finalFee,
       proposerBond,
-      liveness: defaultLiveness,
       ...relayDataOverride,
     };
 

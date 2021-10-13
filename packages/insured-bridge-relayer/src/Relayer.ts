@@ -237,7 +237,6 @@ export class Relayer {
           relayId: receipt.events.DepositRelayed.returnValues.relay.relayId,
           relayState: receipt.events.DepositRelayed.returnValues.relay.relayState,
           priceRequestTime: receipt.events.DepositRelayed.returnValues.relay.priceRequestTime,
-          liveness: receipt.events.DepositRelayed.returnValues.relay.liveness,
           relayAncillaryDataHash: receipt.events.DepositRelayed.returnValues.relayAncillaryDataHash,
           depositHash: receipt.events.DepositRelayed.returnValues.depositHash,
           transactionConfig,
@@ -269,7 +268,6 @@ export class Relayer {
           relayId: receipt.events.RelaySpedUp.returnValues.relay.relayId,
           relayState: receipt.events.RelaySpedUp.returnValues.relay.relayState,
           priceRequestTime: receipt.events.RelaySpedUp.returnValues.relay.priceRequestTime,
-          liveness: receipt.events.RelaySpedUp.returnValues.relay.liveness,
           slowRelayer: receipt.events.RelaySpedUp.returnValues.relay.slowRelayer,
           transactionConfig,
         });
@@ -299,7 +297,6 @@ export class Relayer {
           relayId: receipt.events.RelaySpedUp.returnValues.relay.relayId,
           relayState: receipt.events.RelaySpedUp.returnValues.relay.relayState,
           priceRequestTime: receipt.events.RelaySpedUp.returnValues.relay.priceRequestTime,
-          liveness: receipt.events.RelaySpedUp.returnValues.relay.liveness,
           slowRelayer: receipt.events.RelaySpedUp.returnValues.relay.slowRelayer,
           transactionConfig,
         });
