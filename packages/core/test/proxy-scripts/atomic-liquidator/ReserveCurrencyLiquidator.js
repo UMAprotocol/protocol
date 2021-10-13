@@ -278,7 +278,7 @@ describe("ReserveTokenLiquidator", function () {
     assert.equal((await pair.getPastEvents("Swap")).length, 1);
     assert.equal((await financialContract.getPastEvents("LiquidationCreated")).length, 1);
   });
-  it("should correctly handel synthetic balance larger than liquidated position", async function () {
+  it("should correctly handle synthetic balance larger than liquidated position", async function () {
     // If the DSProxy's synthetic balance is larger than that to be liquidated, then it does not need to preform any
     // extra buys OR mints. Send the synthetic reserve token, of which it should use only enough to buy the final fee.
     // Send synthetics larger than the position liquidated.
@@ -306,7 +306,7 @@ describe("ReserveTokenLiquidator", function () {
     assert.equal((await pair.getPastEvents("Swap")).length, 1);
     assert.equal((await financialContract.getPastEvents("LiquidationCreated")).length, 1);
   });
-  it("should correctly handel collateral balance larger than required for synthetic position mint", async function () {
+  it("should correctly handle collateral balance larger than required for synthetic position mint", async function () {
     // If the DSProxy's balance collateral balance is larger than then that to be minted, then it does not need to preform
     // any extra buys. However, the DSProxy still needs to mint synthetics to preform the liquidation. Send the synthetic
     // reserve token, of which it should use none. Send collateral larger than needed to mint positions.

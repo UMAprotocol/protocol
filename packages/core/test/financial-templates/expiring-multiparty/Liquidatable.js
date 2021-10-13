@@ -1993,7 +1993,7 @@ describe("Liquidatable", function () {
           });
         });
       });
-      describe("Can correctly handel reverting library call", () => {
+      describe("Can correctly handle reverting library call", () => {
         beforeEach(async () => {
           await financialProductLibraryTest.methods.setShouldRevert(true).send({ from: accounts[0] });
         });
