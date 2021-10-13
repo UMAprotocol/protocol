@@ -163,12 +163,13 @@ export default async (env: ProcessEnv) => {
     console.log("Updated Collateral Prices Backfill");
 
     // backfill price history only if runs for the first time
-    if (await appState.appStats.getLastBlockUpdate()) return;
-    await services.empStats.backfill();
-    console.log("Updated EMP Backfill");
+    if (!(await appState.appStats.getLastBlockUpdate())) {
+      await services.empStats.backfill();
+      console.log("Updated EMP Backfill");
 
-    await services.lspStats.backfill();
-    console.log("Updated LSP Backfill");
+      await services.lspStats.backfill();
+      console.log("Updated LSP Backfill");
+    }
   }
 
   // services consuming data
