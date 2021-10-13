@@ -239,7 +239,7 @@ export class Relayer {
         availableAccounts: 1,
       });
 
-      if (receipt.events) {
+      if (receipt.events)
         this.logger.info({
           at: "InsuredBridgeRelayer#Relayer",
           type: "Slow Relay executed  🐌",
@@ -262,7 +262,7 @@ export class Relayer {
           depositHash: receipt.events.DepositRelayed.returnValues.depositHash,
           transactionConfig,
         });
-      } else throw receipt;
+      else throw receipt;
     } catch (error) {
       this.logger.error({ at: "InsuredBridgeRelayer#Relayer", type: "Something errored slow relaying!", error });
     }
