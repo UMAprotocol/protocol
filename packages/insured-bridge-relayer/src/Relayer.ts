@@ -327,21 +327,12 @@ export class Relayer {
   }
 
   private generateInstantRelayTx(deposit: Deposit, realizedLpFeePct: BN): TransactionType {
-    const slowRelayTx = this.generateSlowRelayTx(deposit, realizedLpFeePct);
-    const relayData = {
-      relayState: ClientRelayState.Pending, // Should be pending since speedUpRelay() is called after relayDeposit()
-      slowRelayer: this.account,
-      relayId: this.l1Client.getBridgePoolForDeposit(deposit).relayNonce,
-      realizedLpFeePct: realizedLpFeePct.toString(),
-      priceRequestTime: this.l1Client.getBridgePoolForDeposit(deposit).currentTime,
-    };
-    const instantRelayTx = this.generateSpeedUpRelayTx(deposit, relayData as any);
-
     const bridgePool = this.l1Client.getBridgePoolForDeposit(deposit).contract;
-    return (bridgePool.methods.multicall([
-      slowRelayTx.encodeABI(),
-      instantRelayTx.encodeABI(),
-    ]) as unknown) as TransactionType;
+    type ContractDepositArg = Parameters<typeof bridgePool["methods"]["relayAndSpeedUp"]>[0];
+    return (bridgePool.methods.relayAndSpeedUp(
+      (deposit as unknown) as ContractDepositArg,
+      realizedLpFeePct.toString()
+    ) as unknown) as TransactionType;
   }
 
   private getRelayTokenRequirement(
