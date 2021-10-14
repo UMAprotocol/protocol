@@ -89,7 +89,7 @@ describe("InsuredBridgeL1Client", function () {
   const generateRelayData = async (depositData, relayData, bridgePool, l1TokenAddress = l1Token.options.address) => {
     // Save other reused values.
     depositDataAbiEncoded = web3.eth.abi.encodeParameters(
-      ["uint8", "uint64", "address", "address", "address", "uint256", "uint64", "uint64", "uint64"],
+      ["uint256", "uint64", "address", "address", "address", "uint256", "uint64", "uint64", "uint32"],
       [
         depositData.chainId,
         depositData.depositId,
@@ -110,14 +110,14 @@ describe("InsuredBridgeL1Client", function () {
 
   const syncExpectedRelayedDepositInformation = (_l1TokenAddress = l1Token.options.address) => {
     const parameters = [
-      { t: "uint8", v: depositData.chainId },
+      { t: "uint256", v: depositData.chainId },
       { t: "uint64", v: depositData.depositId },
       { t: "address", v: depositData.l1Recipient },
       { t: "address", v: depositData.l2Sender },
       { t: "uint256", v: depositData.amount },
       { t: "uint64", v: depositData.slowRelayFeePct },
       { t: "uint64", v: depositData.instantRelayFeePct },
-      { t: "uint64", v: depositData.quoteTimestamp },
+      { t: "uint32", v: depositData.quoteTimestamp },
       { t: "uint32", v: relayData.relayId },
       { t: "uint64", v: relayData.realizedLpFeePct },
       { t: "address", v: _l1TokenAddress },

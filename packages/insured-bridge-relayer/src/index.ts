@@ -53,7 +53,8 @@ export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
       logger,
       l2Web3,
       await getL2DepositBoxAddress(l1Web3, config.activatedChainIds[0], config.bridgeAdmin),
-      config.activatedChainIds[0]
+      config.activatedChainIds[0],
+      config.l2StartBlock
     );
 
     // For all specified whitelisted L1 tokens that this relayer supports, approve the bridge pool to spend them. This
