@@ -98,5 +98,17 @@
   {
     "contractName": "BridgeAdmin",
     "address": "0xC2cd5064Bbe7173E095a2d410CBc95fB6e5E3321"
+  },
+  {
+    "contractName": "SimpleSuccessTokenLongShortPairFinancialProductLibrary",
+    "address": "0x906Bf04a36822299293e0ee8dE0dA557e183319B"
+  },
+  {
+    "contractName": "CappedYieldDollarLongShortPairFinancialProductLibrary",
+    "address": "0x5e9131cbfFF5E4D0347256cf7A3D9e5bAF159e23"
+  },
+  {
+    "contractName": "SuccessTokenLongShortPairFinancialProductLibrary",
+    "address": "0x62AfB7C96c9DC17A103e7999Ac1bad64427227fb"
   }
 ]
