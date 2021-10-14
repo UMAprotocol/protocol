@@ -524,47 +524,12 @@ describe("Relayer.ts", function () {
       await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Relayer });
       await relayer.checkForPendingDepositsAndRelay();
       assert.isTrue(lastSpyLogIncludes(spy, "Pending relay is invalid"));
-    });
-    it("Ignores expired relays even if they have invalid relay data", async function () {
-      // Make a deposit on L2 and relay it with invalid relay params.
-      await l2Token.methods.approve(bridgeDepositBox.options.address, depositAmount).send({ from: l2Depositor });
-      const currentBlockTime = await bridgeDepositBox.methods.getCurrentTime().call();
-      await bridgeDepositBox.methods
-        .deposit(
-          l2Depositor,
-          l2Token.options.address,
-          depositAmount,
-          defaultSlowRelayFeePct,
-          defaultInstantRelayFeePct,
-          currentBlockTime
-        )
-        .send({ from: l2Depositor });
-
-      // Relay it from the tests to mimic someone else doing the slow relay.
-      await l1Token.methods.mint(l1Owner, toBN(depositAmount).muln(2)).send({ from: l1Owner });
-      await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Owner });
-      await bridgePool.methods
-        .relayDeposit(
-          chainId,
-          "0",
-          l2Depositor,
-          l2Depositor,
-          depositAmount,
-          defaultSlowRelayFeePct,
-          defaultInstantRelayFeePct,
-          currentBlockTime,
-          toBN(defaultRealizedLpFeePct)
-            .mul(toBN(toWei("2")))
-            .div(toBN(toWei("1")))
-            .toString() // Invalid relay param
-        )
-        .send({ from: l1Owner });
 
       // Advance time such that relay has expired and check that bot correctly identifies it as expired. Even if the
       // relay params are invalid, post-expiry its not disputable.
       const expirationTime = Number(currentBlockTime.toString()) + defaultLiveness;
       await bridgePool.methods.setCurrentTime(expirationTime).send({ from: l1Owner });
-      await Promise.all([l1Client.update(), l2Client.update()]);
+      await Promise.all([l1Client.update()]);
       await relayer.checkForPendingDepositsAndRelay();
       assert.isTrue(lastSpyLogIncludes(spy, "Pending relay has expired"));
     });
