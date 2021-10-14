@@ -149,8 +149,8 @@ export class Relayer {
         .getSettleableRelayedDepositsForL1Token(l1Token)
         .filter(
           (relay) =>
-            (relay.settleable === SettleableRelay.SlowRelayerCanRelay && relay.slowRelayer === this.account) ||
-            relay.settleable === SettleableRelay.AnyoneCanRelay
+            (relay.settleable === SettleableRelay.SlowRelayerCanSettle && relay.slowRelayer === this.account) ||
+            relay.settleable === SettleableRelay.AnyoneCanSettle
         );
 
       for (const settleableRelay of settleableRelays) {
@@ -186,7 +186,7 @@ export class Relayer {
     const relayExpirationTime = relay.priceRequestTime + this.l1Client.optimisticOracleLiveness;
     const currentContractTime = this.l1Client.getBridgePoolForDeposit(deposit).currentTime;
     return {
-      isExpired: relayExpirationTime <= currentContractTime,
+      isExpired: relay.settleable !== SettleableRelay.CannotSettle,
       expirationTime: relayExpirationTime,
       contractTime: currentContractTime,
     };

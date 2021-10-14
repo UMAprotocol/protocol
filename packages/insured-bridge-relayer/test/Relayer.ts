@@ -643,14 +643,16 @@ describe("Relayer.ts", function () {
       await l1Client.update(); // update L1 client to enable LP fee computation
       await bridgePool.methods
         .relayDeposit(
-          chainId,
-          "0",
-          l2Depositor,
-          l2Depositor,
-          depositAmount,
-          defaultSlowRelayFeePct,
-          "0", // set slow relay fee same as in the deposit call
-          currentBlockTime,
+          {
+            chainId: chainId,
+            depositId: "0",
+            l2Sender: l2Depositor,
+            l1Recipient: l2Depositor,
+            amount: depositAmount,
+            slowRelayFeePct: defaultSlowRelayFeePct,
+            instantRelayFeePct: "0", // set instant relay fee same as in the deposit call,
+            quoteTimestamp: currentBlockTime,
+          },
           await l1Client.calculateRealizedLpFeePctForDeposit({
             amount: depositAmount,
             l1Token: l1Token.options.address,
