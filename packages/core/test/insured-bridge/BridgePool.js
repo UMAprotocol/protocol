@@ -128,10 +128,7 @@ describe("BridgePool", () => {
   const generateRelayParams = (depositDataOverride = {}, relayDataOverride = {}) => {
     const _depositData = { ...defaultDepositData, ...depositDataOverride };
     const _relayData = { ...defaultRelayData, ...relayDataOverride };
-    // Remove the l1Token. This is part of the deposit data (hash) but is not part of the params for relayDeposit.
-    // eslint-disable-next-line no-unused-vars
-    const { l1Token, ...params } = _depositData;
-    return [...Object.values(params), _relayData.realizedLpFeePct];
+    return [_depositData, _relayData.realizedLpFeePct];
   };
 
   // Generate ABI encoded deposit data and deposit data hash.
@@ -457,7 +454,8 @@ describe("BridgePool", () => {
                 {
                   amount: toBN(initialPoolLiquidity)
                     .mul(toBN(toWei("0.99")))
-                    .div(toBN(toWei("1"))),
+                    .div(toBN(toWei("1")))
+                    .toString(),
                 },
                 { realizedLpFeePct: toWei("1.15") }
               )
@@ -537,19 +535,7 @@ describe("BridgePool", () => {
       let duplicateRelayData = { realizedLpFeePct: toBN(defaultRealizedLpFee).mul(toBN("2")) };
       assert(
         await didContractThrow(
-          bridgePool.methods
-            .relayDeposit(
-              defaultDepositData.chainId,
-              defaultDepositData.depositId,
-              defaultDepositData.l1Recipient,
-              defaultDepositData.l2Sender,
-              defaultDepositData.amount,
-              defaultDepositData.slowRelayFeePct,
-              defaultDepositData.instantRelayFeePct,
-              defaultDepositData.quoteTimestamp,
-              duplicateRelayData.realizedLpFeePct
-            )
-            .send({ from: rando })
+          bridgePool.methods.relayDeposit(defaultDepositData, duplicateRelayData.realizedLpFeePct).send({ from: rando })
         )
       );
     });
@@ -1396,8 +1382,21 @@ describe("BridgePool", () => {
       const settleTxn = bridgePool.methods.settleRelay(defaultDepositData, relayAttemptData);
       await didContractThrow(settleTxn.send({ from: relayer }));
 
+      // Can optionally speed up pending relay.
+      await l1Token.methods.approve(bridgePool.options.address, slowRelayAmountSubFee).send({ from: instantRelayer });
+      assert.ok(
+        await bridgePool.methods.speedUpRelay(defaultDepositData, relayAttemptData).call({ from: instantRelayer })
+      );
+
       // Set time such that optimistic price request is settleable.
       await timer.methods.setCurrentTime(expectedExpirationTimestamp).send({ from: owner });
+
+      // Cannot speed up relay now that contract time has passed relay expiry.
+      assert(
+        await didContractThrow(
+          bridgePool.methods.speedUpRelay(defaultDepositData, relayAttemptData).call({ from: instantRelayer })
+        )
+      );
 
       // Can now settle relay since OO resolved request.
       assert.ok(await settleTxn.send({ from: relayer }));

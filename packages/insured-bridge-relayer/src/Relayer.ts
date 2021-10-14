@@ -386,14 +386,16 @@ export class Relayer {
   private generateSlowRelayTx(deposit: Deposit, realizedLpFeePct: BN): TransactionType {
     const bridgePool = this.l1Client.getBridgePoolForDeposit(deposit).contract;
     return (bridgePool.methods.relayDeposit(
-      deposit.chainId.toString(),
-      deposit.depositId.toString(),
-      deposit.l1Recipient,
-      deposit.l2Sender,
-      deposit.amount,
-      deposit.slowRelayFeePct,
-      deposit.instantRelayFeePct,
-      deposit.quoteTimestamp.toString(),
+      [
+        deposit.chainId,
+        deposit.depositId,
+        deposit.l1Recipient,
+        deposit.l2Sender,
+        deposit.amount,
+        deposit.slowRelayFeePct,
+        deposit.instantRelayFeePct,
+        deposit.quoteTimestamp,
+      ],
       realizedLpFeePct
     ) as unknown) as TransactionType;
   }
