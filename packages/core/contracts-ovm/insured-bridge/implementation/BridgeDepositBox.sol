@@ -27,8 +27,6 @@ interface TokenLike {
 }
 
 interface WETH9Like {
-    function withdraw(uint256 wad) external;
-
     function deposit() external payable;
 }
 
