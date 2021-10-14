@@ -1634,13 +1634,34 @@ describe("BridgePool", () => {
       assert.equal((await bridgePool.methods.utilizedReserves().call()).toString(), toWei("0"));
       assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1"));
     });
+    it("Prevent ETH sent to non WETH pool deposits", async () => {
+      // If the user tries to deposit non-erc20 token with msg.value included in their tx, should revert.
+      assert.isFalse(await bridgePool.methods.isWethPool().call());
+
+      await l1Token.methods.approve(bridgePool.options.address, MAX_UINT_VAL).send({ from: rando });
+
+      assert(
+        await didContractThrow(
+          bridgePool.methods
+            .addLiquidity(initialPoolLiquidity)
+            .send({ from: liquidityProvider, value: toBN(initialPoolLiquidity) })
+        )
+      );
+      assert(
+        await didContractThrow(
+          bridgePool.methods
+            .addLiquidity(initialPoolLiquidity)
+            .send({ from: liquidityProvider, value: toBN(initialPoolLiquidity).subn(10) })
+        )
+      );
+    });
     it("Withdraw liquidity", async () => {
       // Approve funds and add to liquidity.
       await l1Token.methods.approve(bridgePool.options.address, MAX_UINT_VAL).send({ from: rando });
       await bridgePool.methods.addLiquidity(toWei("10")).send({ from: rando });
 
       // LP redeems half their liquidity. Balance should change accordingly.
-      await bridgePool.methods.removeLiquidity(toWei("5")).send({ from: rando });
+      await bridgePool.methods.removeLiquidity(toWei("5"), false).send({ from: rando });
 
       assert.equal((await l1Token.methods.balanceOf(bridgePool.options.address).call()).toString(), toWei("5"));
       assert.equal((await lpToken.methods.balanceOf(rando).call()).toString(), toWei("5"));
@@ -1649,13 +1670,23 @@ describe("BridgePool", () => {
       assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1"));
 
       // LP redeems their remaining liquidity. Balance should change accordingly.
-      await bridgePool.methods.removeLiquidity(toWei("5")).send({ from: rando });
+      await bridgePool.methods.removeLiquidity(toWei("5"), false).send({ from: rando });
 
       assert.equal((await l1Token.methods.balanceOf(bridgePool.options.address).call()).toString(), toWei("0"));
       assert.equal((await lpToken.methods.balanceOf(rando).call()).toString(), toWei("0"));
       assert.equal((await bridgePool.methods.liquidReserves().call()).toString(), toWei("0"));
       assert.equal((await bridgePool.methods.utilizedReserves().call()).toString(), toWei("0"));
       assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1"));
+    });
+    it("Prevent ETH removal from non WETH pool", async () => {
+      // If the user tries to withdraw ETH from a non-eth pool(standard ERC20 pool) it should revert.
+      // Approve funds and add to liquidity.
+      await l1Token.methods.approve(bridgePool.options.address, MAX_UINT_VAL).send({ from: rando });
+      await bridgePool.methods.addLiquidity(toWei("10")).send({ from: rando });
+
+      assert(
+        await didContractThrow(bridgePool.methods.removeLiquidity(toWei("5"), true).send({ from: liquidityProvider }))
+      );
     });
     it("Withdraw liquidity is blocked when utilization is too high", async () => {
       // Approve funds and add to liquidity.
@@ -1682,7 +1713,8 @@ describe("BridgePool", () => {
                 .mul(toBN(toWei("0.90"))) // try withdrawing 95%. should fail
                 .div(toBN(toWei("1")))
                 .addn(1) // 90% + 1 we
-                .toString()
+                .toString(),
+              false
             )
             .send({ from: liquidityProvider })
         )
@@ -1694,7 +1726,8 @@ describe("BridgePool", () => {
           toBN(initialPoolLiquidity)
             .mul(toBN(toWei("0.9"))) // try withdrawing 95%. should fail
             .div(toBN(toWei("1")))
-            .toString()
+            .toString(),
+          false
         )
         .send({ from: liquidityProvider });
 
@@ -1717,10 +1750,12 @@ describe("BridgePool", () => {
       // more than this is not possible as the remaining funds are in transit from L2.
       assert(
         await didContractThrow(
-          bridgePool.methods.removeLiquidity(toBN(toWei("10")).addn(1).toString()).send({ from: liquidityProvider })
+          bridgePool.methods
+            .removeLiquidity(toBN(toWei("10")).addn(1).toString(), false)
+            .send({ from: liquidityProvider })
         )
       );
-      await bridgePool.methods.removeLiquidity(toWei("10")).send({ from: liquidityProvider });
+      await bridgePool.methods.removeLiquidity(toWei("10"), false).send({ from: liquidityProvider });
 
       assert.equal(await bridgePool.methods.pendingReserves().call(), "0");
       assert.equal(await bridgePool.methods.liquidReserves().call(), "0");
@@ -1942,7 +1977,7 @@ describe("BridgePool", () => {
 
       // Now, remove the equivalent of 100 units of LP Tokens. This method takes in the number of LP tokens so we will
       // end up withdrawing slightly more than the number of LP tokens as the number of LP tokens * the exchange rate.
-      await bridgePool.methods.removeLiquidity(toWei("100")).send({ from: liquidityProvider });
+      await bridgePool.methods.removeLiquidity(toWei("100"), false).send({ from: liquidityProvider });
       assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1.002592"));
 
       // The internal counts should have updated as expected.
@@ -2243,7 +2278,7 @@ describe("BridgePool", () => {
       assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1.002592"));
     });
   });
-  describe("Weth withdraws", () => {
+  describe("Weth functionality", () => {
     beforeEach(async function () {
       // Deploy weth contract
       weth = await WETH9.new().send({ from: owner });
@@ -2363,6 +2398,89 @@ describe("BridgePool", () => {
           .sub(instantRelayerBalancePostSpeedUp)
           .toString(),
         toBN(instantRelayAmountSubFee).add(realizedInstantRelayFeeAmount).toString()
+      );
+    });
+    it("LP can send ETH when depositing into a WETH pool", async () => {
+      // LPs should be able to sent ETH with their deposit when adding funds to a WETH pool. Contract should auto wrap
+      // the ETH to WETH for them.
+
+      const poolEthBalanceBefore = await web3.eth.getBalance(bridgePool.options.address);
+      assert.equal(poolEthBalanceBefore, "0");
+      const poolWethBalanceBefore = await weth.methods.balanceOf(bridgePool.options.address).call();
+      await bridgePool.methods
+        .addLiquidity(initialPoolLiquidity)
+        .send({ from: liquidityProvider, value: initialPoolLiquidity });
+
+      assert.equal(poolEthBalanceBefore, await web3.eth.getBalance(bridgePool.options.address));
+      assert.equal(
+        (await weth.methods.balanceOf(bridgePool.options.address).call()).toString(),
+        toBN(poolWethBalanceBefore).add(toBN(initialPoolLiquidity)).toString()
+      );
+    });
+    it("Reverts if ETH sent on LP deposit mismatch", async () => {
+      // If the LP tries to deposit with a msg.value != l1TokenAmount should revert.
+      assert(
+        await didContractThrow(
+          bridgePool.methods
+            .addLiquidity(initialPoolLiquidity)
+            .send({ from: liquidityProvider, value: toBN(initialPoolLiquidity).subn(10) })
+        )
+      );
+    });
+    it("LP can send WETH to WETH Pool", async () => {
+      // LPs should be able to sent WETH to the WETH Pool (should act like a normal ERC20 deposit).
+
+      const poolEthBalanceBefore = await web3.eth.getBalance(bridgePool.options.address);
+      assert.equal(poolEthBalanceBefore, "0");
+      const poolWethBalanceBefore = await weth.methods.balanceOf(bridgePool.options.address).call();
+
+      // Mint some WETH to do the deposit with.
+
+      await weth.methods.deposit().send({ from: liquidityProvider, value: initialPoolLiquidity });
+      await weth.methods.approve(bridgePool.options.address, initialPoolLiquidity).send({ from: liquidityProvider });
+
+      // Value is set to zero. should act like a normal weth deposit.
+      await bridgePool.methods.addLiquidity(initialPoolLiquidity).send({ from: liquidityProvider });
+      assert.equal(poolEthBalanceBefore, await web3.eth.getBalance(bridgePool.options.address));
+      assert.equal(
+        (await weth.methods.balanceOf(bridgePool.options.address).call()).toString(),
+        toBN(poolWethBalanceBefore).add(toBN(initialPoolLiquidity)).toString()
+      );
+    });
+    it("LP can receive ETH when removing liquidity from a WETH pool", async () => {
+      // LPs should be able to receive eth, if they want, when withdrawing from a WETH pool.
+
+      // Can do a normal ERC20 withdraw from a weth pool.
+      const userWethBefore = await weth.methods.balanceOf(liquidityProvider).call();
+
+      await bridgePool.methods.removeLiquidity(toWei("10"), false).send({ from: liquidityProvider });
+
+      const userWethAfter1 = await weth.methods.balanceOf(liquidityProvider).call();
+
+      assert.equal(
+        userWethAfter1,
+        toBN(userWethBefore)
+          .add(toBN(toWei("10")))
+          .toString()
+      );
+
+      // Now try withdrawing into ETH.
+      const userEthBalanceBefore = await web3.eth.getBalance(liquidityProvider);
+
+      const withdrawTx = await bridgePool.methods.removeLiquidity(toWei("10"), true).send({ from: liquidityProvider });
+
+      const userWethAfter2 = await weth.methods.balanceOf(liquidityProvider).call();
+
+      // WETH balance should not have changed after a ETH removal.
+      assert.equal(userWethAfter1, userWethAfter2);
+
+      // Users eth balance should have increased by the amount withdrawn (10), minus the gas used in the withdrawTx.
+      const userEthBalanceAfter = await web3.eth.getBalance(liquidityProvider);
+      assert.equal(
+        userEthBalanceAfter,
+        toBN(userEthBalanceBefore).add(
+          toBN(toWei("10")).sub(toBN(withdrawTx.effectiveGasPrice).mul(toBN(withdrawTx.cumulativeGasUsed)))
+        )
       );
     });
   });

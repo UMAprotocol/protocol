@@ -21,6 +21,8 @@ import "hardhat/console.sol";
 
 interface WETH9Like {
     function withdraw(uint256 wad) external;
+
+    function deposit() external payable;
 }
 
 /**
@@ -183,12 +185,19 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
     /**
      * @notice Add liquidity to the bridge pool. Pulls l1tokens from the callers wallet. The caller is sent back a
      * commensurate number of LP tokens (minted to their address) at the prevailing exchange rate.
-     * @dev The caller must approve this contract to transfer `l1TokenAmount` amount of l1Token.
+     * @dev The caller must approve this contract to transfer `l1TokenAmount` amount of l1Token if depositing ERC20.
+     * @dev The caller can deposit ETH which is auto wrapped to WETH. This can only be done if: a) this is the Weth pool
+     * and b) the l1TokenAmount matches to the transaction msg.value.
      * @dev Reentrancy guard not added to this function because this indirectly calls sync() which is guarded.
      * @param l1TokenAmount Number of l1Token to add as liquidity.
      */
-    function addLiquidity(uint256 l1TokenAmount) public {
-        l1Token.safeTransferFrom(msg.sender, address(this), l1TokenAmount);
+    function addLiquidity(uint256 l1TokenAmount) public payable {
+        // If this is the weth pool and the caller sends msg.value then the msg.value must match the l1TokenAmount.
+        // Else, msg.value must be set to 0.
+        require((isWethPool && msg.value == l1TokenAmount) || msg.value == 0, "Bad add liquidity Eth value");
+
+        if (msg.value > 0 && isWethPool) WETH9Like(address(l1Token)).deposit{ value: msg.value }();
+        else l1Token.safeTransferFrom(msg.sender, address(this), l1TokenAmount);
 
         uint256 lpTokensToMint = (l1TokenAmount * 1e18) / exchangeRateCurrent();
 
@@ -206,7 +215,8 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
      * @dev Reentrancy guard not added to this function because this indirectly calls sync() which is guarded.
      * @param lpTokenAmount Number of lpTokens to redeem for underlying.
      */
-    function removeLiquidity(uint256 lpTokenAmount) public {
+    function removeLiquidity(uint256 lpTokenAmount, bool sendEth) public {
+        require(!sendEth || (isWethPool && sendEth), "Cant send eth");
         uint256 l1TokensToReturn = (lpTokenAmount * exchangeRateCurrent()) / 1e18;
 
         // Check that there is enough liquid reserves to withdraw the requested amount.
@@ -216,7 +226,8 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
 
         liquidReserves -= l1TokensToReturn;
 
-        l1Token.safeTransfer(msg.sender, l1TokensToReturn);
+        if (sendEth) _unwrapWETHTo(payable(msg.sender), l1TokensToReturn);
+        else l1Token.safeTransfer(msg.sender, l1TokensToReturn);
 
         emit LiquidityRemoved(address(l1Token), l1TokensToReturn, lpTokenAmount, msg.sender);
     }
