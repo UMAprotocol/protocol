@@ -214,8 +214,10 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
      * @dev The caller does not need to approve the spending of LP tokens as this method directly uses the burn logic.
      * @dev Reentrancy guard not added to this function because this indirectly calls sync() which is guarded.
      * @param lpTokenAmount Number of lpTokens to redeem for underlying.
+     * @param sendEth Enable the liquidity provider to remove liquidity in ETH, if this is the WETH pool.
      */
     function removeLiquidity(uint256 lpTokenAmount, bool sendEth) public {
+        // Can only send eth on withdrawing liquidity iff this is the WETH pool.
         require(!sendEth || (isWethPool && sendEth), "Cant send eth");
         uint256 l1TokensToReturn = (lpTokenAmount * exchangeRateCurrent()) / 1e18;
 
