@@ -156,22 +156,6 @@ export default async (env: ProcessEnv) => {
     globalStats: Services.stats.Global({ debug }, appState),
   };
 
-  // backfill price histories, disable if not specified in env
-  if (env.backfillDays) {
-    console.log(`Backfilling price history from ${env.backfillDays} days ago`);
-    await services.collateralPrices.backfill(moment().subtract(env.backfillDays, "days").valueOf());
-    console.log("Updated Collateral Prices Backfill");
-
-    // backfill price history only if runs for the first time
-    if (!(await appState.appStats.getLastBlockUpdate())) {
-      await services.empStats.backfill();
-      console.log("Updated EMP Backfill");
-
-      await services.lspStats.backfill();
-      console.log("Updated LSP Backfill");
-    }
-  }
-
   // services consuming data
   const channels: Channels = [
     // set this as default channel for backward compatibility. This is deprecated and will eventually be used for global style queries
@@ -216,8 +200,6 @@ export default async (env: ProcessEnv) => {
     await services.globalStats.update();
   }
 
-  console.log("Starting API update loops");
-
   // listen for new lsp contracts since after we have started api, and make sure they get state updated asap
   // These events should only be bound after startup, since initialization above takes care of updating all contracts on startup
   // Because there is now a event driven dependency, the lsp creator and lsp state updater must be in same process
@@ -249,8 +231,29 @@ export default async (env: ProcessEnv) => {
 
   await detectContractsProfiled();
   await updateContractsStateProfiled();
+
+  // backfill price histories, disable if not specified in env
+  if (env.backfillDays) {
+    console.log(`Backfilling price history from ${env.backfillDays} days ago`);
+    await services.collateralPrices.backfill(moment().subtract(env.backfillDays, "days").valueOf());
+    console.log("Updated Collateral Prices Backfill");
+
+    // backfill price history only if runs for the first time
+    if (!(await appState.appStats.getLastBlockUpdate())) {
+      await services.empStats.backfill();
+      console.log("Updated EMP Backfill");
+
+      await services.lspStats.backfill();
+      console.log("Updated LSP Backfill");
+    }
+  }
+
   await updatePricesProfiled();
 
+  // wait update rate before running loops, since all state was just updated on init
+  await new Promise((res) => setTimeout(res, updateRateS * 1000));
+
+  console.log("Starting API update loops");
   // detect contract loop
   utils.loop(detectContractsProfiled, detectContractsUpdateRateS * 1000);
 
@@ -259,9 +262,6 @@ export default async (env: ProcessEnv) => {
 
   // coingeckos prices don't update very fast, so set it on an interval every few minutes
   utils.loop(updatePricesProfiled, priceUpdateRateS * 1000);
-
-  // wait update rate before running loops, since all state was just updated on init
-  await new Promise((res) => setTimeout(res, updateRateS * 1000));
 
   async function detectContractsProfiled() {
     const end = profile("Detecting New Contracts");
