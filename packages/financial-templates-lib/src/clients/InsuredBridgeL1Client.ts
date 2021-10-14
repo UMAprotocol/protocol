@@ -204,12 +204,6 @@ export class InsuredBridgeL1Client {
       };
       this.relays[l1Token] = {};
       this.instantRelays[l1Token] = {};
-
-      // Set the optimisticOracleLiveness. Note that if this value changes in the contract the bot will need to be
-      // restarted to get the latest value. This is a fine assumption as: a) our production bots run in serverless mode
-      // (restarting all the time) and b) this value changes very infrequently.
-      if (this.optimisticOracleLiveness == 0)
-        this.optimisticOracleLiveness = Number(await this.bridgeAdmin.methods.optimisticOracleLiveness().call());
     }
 
     // Set the optimisticOracleLiveness. Note that if this value changes in the contract the bot will need to be
