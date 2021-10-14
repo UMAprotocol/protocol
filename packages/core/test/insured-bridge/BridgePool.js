@@ -640,8 +640,12 @@ describe("BridgePool", () => {
       await l1Token.methods
         .approve(bridgePool.options.address, totalRelayBond.add(toBN(instantRelayAmountSubFee)))
         .send({ from: rando });
-      await didContractThrow(
-        bridgePool.methods.relayAndSpeedUp(defaultDepositData, relayAttemptData.realizedLpFeePct).send({ from: rando })
+      assert(
+        await didContractThrow(
+          bridgePool.methods
+            .relayAndSpeedUp(defaultDepositData, relayAttemptData.realizedLpFeePct)
+            .send({ from: rando })
+        )
       );
 
       // Reset params to allow for a normal relay.
@@ -767,8 +771,12 @@ describe("BridgePool", () => {
       await l1Token.methods
         .approve(bridgePool.options.address, totalRelayBond.add(toBN(instantRelayAmountSubFee)))
         .send({ from: rando });
-      await didContractThrow(
-        bridgePool.methods.relayAndSpeedUp(defaultDepositData, relayAttemptData.realizedLpFeePct).send({ from: rando })
+      assert(
+        await didContractThrow(
+          bridgePool.methods
+            .relayAndSpeedUp(defaultDepositData, relayAttemptData.realizedLpFeePct)
+            .send({ from: rando })
+        )
       );
 
       // Reset params to allow for a normal relay.
@@ -1394,7 +1402,7 @@ describe("BridgePool", () => {
 
       // Cannot settle if there is no price available
       const settleTxn = bridgePool.methods.settleRelay(defaultDepositData, relayAttemptData);
-      await didContractThrow(settleTxn.send({ from: relayer }));
+      assert(await didContractThrow(settleTxn.send({ from: relayer })));
 
       // Set time such that optimistic price request is settleable.
       await timer.methods.setCurrentTime(expectedExpirationTimestamp).send({ from: owner });
@@ -1587,8 +1595,10 @@ describe("BridgePool", () => {
       const randoBalanceBefore = await l1Token.methods.balanceOf(rando).call();
 
       // Settle relay.
-      await didContractThrow(
-        bridgePool.methods.settleRelay(defaultDepositData, relayAttemptData).send({ from: rando })
+      assert(
+        await didContractThrow(
+          bridgePool.methods.settleRelay(defaultDepositData, relayAttemptData).send({ from: rando })
+        )
       );
 
       await timer.methods.setCurrentTime(Number(expectedExpirationTimestamp) + 901).send({ from: owner });
