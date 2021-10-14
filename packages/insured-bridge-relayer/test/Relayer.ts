@@ -455,14 +455,16 @@ describe("Relayer.ts", function () {
       await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Owner });
       await bridgePool.methods
         .relayDeposit(
-          chainId,
-          "0",
-          l2Depositor,
-          l2Depositor,
-          depositAmount,
-          defaultSlowRelayFeePct,
-          defaultInstantRelayFeePct,
-          currentBlockTime,
+          {
+            chainId: chainId,
+            depositId: "0",
+            l2Sender: l2Depositor,
+            l1Recipient: l2Depositor,
+            amount: depositAmount,
+            slowRelayFeePct: defaultSlowRelayFeePct,
+            instantRelayFeePct: defaultInstantRelayFeePct,
+            quoteTimestamp: currentBlockTime,
+          },
           calculateRealizedLpFeePct(rateModel, toBNWei("0"), toBNWei("0.01")) // compute the expected fee for 1% utilization
         )
         .send({ from: l1Owner });
@@ -535,14 +537,16 @@ describe("Relayer.ts", function () {
       await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Owner });
       await bridgePool.methods
         .relayDeposit(
-          chainId,
-          "0",
-          l2Depositor,
-          l2Depositor,
-          depositAmount,
-          defaultSlowRelayFeePct,
-          defaultInstantRelayFeePct,
-          quoteTime,
+          {
+            chainId: chainId,
+            depositId: "0",
+            l2Sender: l2Depositor,
+            l1Recipient: l2Depositor,
+            amount: depositAmount,
+            slowRelayFeePct: defaultSlowRelayFeePct,
+            instantRelayFeePct: defaultInstantRelayFeePct,
+            quoteTimestamp: quoteTime,
+          },
           toBN(defaultRealizedLpFeePct)
             .mul(toBN(toWei("2")))
             .div(toBN(toWei("1")))
