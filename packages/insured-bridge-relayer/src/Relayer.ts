@@ -49,7 +49,8 @@ export class Relayer {
   async checkForPendingDepositsAndRelay(): Promise<undefined> {
     this.logger.debug({ at: "Relayer", message: "Checking for pending deposits and relaying" });
 
-    // Build dictionary of relayable deposits keyed by L1 tokens.
+    // Build dictionary of relayable deposits keyed by L1 tokens. We assume that getRelayableDeposits() filters
+    // out Finalized relays.
     const relayableDeposits: RelayableDeposits = this.getRelayableDeposits();
     if (Object.keys(relayableDeposits).length == 0) {
       this.logger.debug({ at: "Relayer", message: "No relayable deposits for any whitelisted tokens" });
@@ -107,14 +108,11 @@ export class Relayer {
           relayableDeposit.deposit.depositHash,
           realizedLpFeePct.toString()
         );
-        // If relay cannot occur because its finalized or pending and already sped up, then exit early.
-        if (
-          relayableDeposit.status == ClientRelayState.Finalized ||
-          (hasInstantRelayer && relayableDeposit.status == ClientRelayState.Pending)
-        ) {
+        // If relay cannot occur because its pending and already sped up, then exit early.
+        if (hasInstantRelayer && relayableDeposit.status == ClientRelayState.Pending) {
           this.logger.warn({
             at: "InsuredBridgeRelayer#Relayer",
-            message: "Relay already finalized or pending and already sped up 😖",
+            message: "Relay pending and already sped up 😖",
             realizedLpFeePct: realizedLpFeePct.toString(),
             relayState: relayableDeposit.status,
             hasInstantRelayer,
