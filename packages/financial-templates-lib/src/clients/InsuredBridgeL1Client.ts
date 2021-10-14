@@ -51,6 +51,7 @@ export interface BridgePoolData {
 export class InsuredBridgeL1Client {
   public readonly bridgeAdmin: BridgeAdminInterfaceWeb3;
   public bridgePools: { [key: string]: BridgePoolData }; // L1TokenAddress=>BridgePoolData
+  public optimisticOracleLiveness = 0;
 
   private relays: { [key: string]: { [key: string]: Relay } } = {}; // L1TokenAddress=>depositHash=>Relay.
   private instantRelays: { [key: string]: { [key: string]: InstantRelay } } = {}; // L1TokenAddress=>{depositHash, realizedLpFeePct}=>InstantRelay.
@@ -182,6 +183,12 @@ export class InsuredBridgeL1Client {
       };
       this.relays[l1Token] = {};
       this.instantRelays[l1Token] = {};
+
+      // Set the optimisticOracleLiveness. Note that if this value changes in the contract the bot will need to be
+      // restarted to get the latest value. This is a fine assumption as: a) our production bots run in serverless mode
+      // (restarting all the time) and b) this value changes very infrequently.
+      if (this.optimisticOracleLiveness == 0)
+        this.optimisticOracleLiveness = Number(await this.bridgeAdmin.methods.optimisticOracleLiveness().call());
     }
 
     // Fetch event information
@@ -201,8 +208,8 @@ export class InsuredBridgeL1Client {
         bridgePool.contract.methods.numberOfRelays().call(),
       ]);
 
-      // Store current contract time and relay nonce that user can use to send instant relays (where there is no
-      // pending relay) for a deposit.
+      // Store current contract time and relay nonce that user can use to send instant relays
+      // (where there is no pending relay) for a deposit.
       bridgePool.currentTime = Number(contractTime);
       bridgePool.relayNonce = Number(relayNonce);
 

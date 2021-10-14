@@ -68,7 +68,7 @@ const depositAmount = toWei("1");
 const rateModel: RateModel = { UBar: toBNWei("0.65"), R0: toBNWei("0.00"), R1: toBNWei("0.08"), R2: toBNWei("1.00") };
 
 // Tested file
-import { Relayer, ShouldRelay } from "../src/Relayer";
+import { Relayer, RelaySubmitType } from "../src/Relayer";
 
 describe("Relayer.ts", function () {
   let l1Accounts;
@@ -240,7 +240,7 @@ describe("Relayer.ts", function () {
       // a) Dont add any tokens to the relayer. The relayer does not have enough to do any action and should do nothing.
       assert.equal(
         await relayer.shouldRelay(deposit, clientRelayState, toBN(defaultRealizedLpFeePct), false),
-        ShouldRelay.Ignore
+        RelaySubmitType.Ignore
       );
 
       // b) Mint tokens to the relayer BUT set the ClientRelayState to None. This is the case once the Relay has already been
@@ -250,7 +250,7 @@ describe("Relayer.ts", function () {
       clientRelayState = ClientRelayState.Finalized;
       assert.equal(
         await relayer.shouldRelay(deposit, clientRelayState, toBN(defaultRealizedLpFeePct), false),
-        ShouldRelay.Ignore
+        RelaySubmitType.Ignore
       );
     });
     it("Correctly decides when to slow relay", async function () {
@@ -264,7 +264,7 @@ describe("Relayer.ts", function () {
       deposit.instantRelayFeePct = "0";
       assert.equal(
         await relayer.shouldRelay(deposit, clientRelayState, toBN(defaultRealizedLpFeePct), false),
-        ShouldRelay.Slow
+        RelaySubmitType.Slow
       );
 
       // Validate the negative cases.
@@ -274,14 +274,14 @@ describe("Relayer.ts", function () {
       deposit.instantRelayFeePct = toWei("0.05");
       assert.equal(
         await relayer.shouldRelay(deposit, clientRelayState, toBN(defaultRealizedLpFeePct), false),
-        ShouldRelay.Slow
+        RelaySubmitType.Slow
       );
 
       // b) If the relayer is sent more tokens and instantRelayFeePct is anything greater than zero with the relay this.state.// set to any then the relayer should not propose a slow relay.
       await l1Token.methods.mint(l1Relayer, toBN(depositAmount).muln(2)).send({ from: l1Owner });
       assert.notEqual(
         await relayer.shouldRelay(deposit, clientRelayState, toBN(defaultRealizedLpFeePct), false),
-        ShouldRelay.Slow
+        RelaySubmitType.Slow
       );
     });
     it("Correctly decides when to instant relay", async function () {
@@ -296,7 +296,7 @@ describe("Relayer.ts", function () {
       clientRelayState = ClientRelayState.Uninitialized;
       assert.equal(
         await relayer.shouldRelay(deposit, clientRelayState, toBN(defaultRealizedLpFeePct), false),
-        ShouldRelay.Instant
+        RelaySubmitType.Instant
       );
 
       // Modifying any of the above 4 conditions should make the bot not instant relay.
@@ -304,14 +304,14 @@ describe("Relayer.ts", function () {
       // a) There already exists an instant relayer for this relay.
       assert.notEqual(
         await relayer.shouldRelay(deposit, clientRelayState, toBN(defaultRealizedLpFeePct), true),
-        ShouldRelay.Instant
+        RelaySubmitType.Instant
       );
 
       // b) ClientRelayState set to SpeedUpOnly
       clientRelayState = ClientRelayState.Pending;
       assert.notEqual(
         await relayer.shouldRelay(deposit, clientRelayState, toBN(defaultRealizedLpFeePct), false),
-        ShouldRelay.Instant
+        RelaySubmitType.Instant
       );
 
       // c) ClientRelayState set to SpeedUpOnly back to Any and profit set to something that makes instant relay less profit
@@ -319,7 +319,7 @@ describe("Relayer.ts", function () {
       deposit.instantRelayFeePct = "0";
       assert.notEqual(
         await relayer.shouldRelay(deposit, clientRelayState, toBN(defaultRealizedLpFeePct), false),
-        ShouldRelay.Instant
+        RelaySubmitType.Instant
       );
 
       // d) reset the instantRelayFeePct and set the token balance of the relayer to something too little to instant
@@ -327,7 +327,7 @@ describe("Relayer.ts", function () {
       await l1Token.methods.transfer(l1Owner, toBN(depositAmount).muln(1.5)).send({ from: l1Relayer });
       assert.notEqual(
         await relayer.shouldRelay(deposit, clientRelayState, toBN(defaultRealizedLpFeePct), false),
-        ShouldRelay.Instant
+        RelaySubmitType.Instant
       );
     });
     it("Correctly decides when to speedup relay", async function () {
@@ -339,7 +339,7 @@ describe("Relayer.ts", function () {
       clientRelayState = ClientRelayState.Pending;
       assert.equal(
         await relayer.shouldRelay(deposit, clientRelayState, toBN(defaultRealizedLpFeePct), false),
-        ShouldRelay.SpeedUp
+        RelaySubmitType.SpeedUp
       );
 
       // Modify above conditions:
@@ -348,7 +348,7 @@ describe("Relayer.ts", function () {
       clientRelayState = ClientRelayState.Uninitialized;
       assert.notEqual(
         await relayer.shouldRelay(deposit, clientRelayState, toBN(defaultRealizedLpFeePct), false),
-        ShouldRelay.SpeedUp
+        RelaySubmitType.SpeedUp
       );
 
       // b) reset in  ClientRelayState and bot does not have enough balance.
@@ -356,7 +356,7 @@ describe("Relayer.ts", function () {
       await l1Token.methods.transfer(l1Owner, toBN(depositAmount).muln(1.5)).send({ from: l1Relayer });
       assert.notEqual(
         await relayer.shouldRelay(deposit, clientRelayState, toBN(defaultRealizedLpFeePct), false),
-        ShouldRelay.SpeedUp
+        RelaySubmitType.SpeedUp
       );
     });
   });
@@ -401,6 +401,13 @@ describe("Relayer.ts", function () {
       await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Relayer });
       await relayer.checkForPendingDepositsAndRelay();
       assert.isTrue(lastSpyLogIncludes(spy, "Slow Relay executed"));
+
+      // Advance time such that relay has expired and check that bot correctly identifies it as expired.
+      const expirationTime = Number(currentBlockTime.toString()) + defaultLiveness;
+      await bridgePool.methods.setCurrentTime(expirationTime).send({ from: l1Owner });
+      await l1Client.update();
+      await relayer.checkForPendingDepositsAndRelay();
+      assert.isTrue(lastSpyLogIncludes(spy, "Pending relay has expired"));
     });
     it("Can correctly detect and produce speedup relays", async function () {
       // Make a deposit on L2 and relay it. Then, check the relayer picks this up and speeds up the relay.
@@ -516,7 +523,50 @@ describe("Relayer.ts", function () {
       await l1Token.methods.mint(l1Relayer, toBN(depositAmount).muln(2)).send({ from: l1Owner });
       await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Relayer });
       await relayer.checkForPendingDepositsAndRelay();
-      assert.isTrue(lastSpyLogIncludes(spy, "Pending relay is invalid, ignoring"));
+      assert.isTrue(lastSpyLogIncludes(spy, "Pending relay is invalid"));
+    });
+    it("Ignores expired relays even if they have invalid relay data", async function () {
+      // Make a deposit on L2 and relay it with invalid relay params.
+      await l2Token.methods.approve(bridgeDepositBox.options.address, depositAmount).send({ from: l2Depositor });
+      const currentBlockTime = await bridgeDepositBox.methods.getCurrentTime().call();
+      await bridgeDepositBox.methods
+        .deposit(
+          l2Depositor,
+          l2Token.options.address,
+          depositAmount,
+          defaultSlowRelayFeePct,
+          defaultInstantRelayFeePct,
+          currentBlockTime
+        )
+        .send({ from: l2Depositor });
+
+      // Relay it from the tests to mimic someone else doing the slow relay.
+      await l1Token.methods.mint(l1Owner, toBN(depositAmount).muln(2)).send({ from: l1Owner });
+      await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Owner });
+      await bridgePool.methods
+        .relayDeposit(
+          chainId,
+          "0",
+          l2Depositor,
+          l2Depositor,
+          depositAmount,
+          defaultSlowRelayFeePct,
+          defaultInstantRelayFeePct,
+          currentBlockTime,
+          toBN(defaultRealizedLpFeePct)
+            .mul(toBN(toWei("2")))
+            .div(toBN(toWei("1")))
+            .toString() // Invalid relay param
+        )
+        .send({ from: l1Owner });
+
+      // Advance time such that relay has expired and check that bot correctly identifies it as expired. Even if the
+      // relay params are invalid, post-expiry its not disputable.
+      const expirationTime = Number(currentBlockTime.toString()) + defaultLiveness;
+      await bridgePool.methods.setCurrentTime(expirationTime).send({ from: l1Owner });
+      await Promise.all([l1Client.update(), l2Client.update()]);
+      await relayer.checkForPendingDepositsAndRelay();
+      assert.isTrue(lastSpyLogIncludes(spy, "Pending relay has expired"));
     });
   });
 });
