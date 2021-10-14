@@ -11,6 +11,7 @@ import {
   Deposit,
   Relay,
   ClientRelayState,
+  SettleableRelay,
 } from "@uma/financial-templates-lib";
 import { getTokenBalance } from "./RelayerHelpers";
 
@@ -93,6 +94,21 @@ export class Relayer {
           relayableDeposit.deposit.depositHash,
           realizedLpFeePct.toString()
         );
+        // If relay cannot occur because its finalized or pending and already sped up, then exit early.
+        if (
+          relayableDeposit.status == ClientRelayState.Finalized ||
+          (hasInstantRelayer && relayableDeposit.status == ClientRelayState.Pending)
+        ) {
+          this.logger.warn({
+            at: "InsuredBridgeRelayer#Relayer",
+            message: "Relay already finalized or pending and already sped up 😖",
+            realizedLpFeePct: realizedLpFeePct.toString(),
+            relayState: relayableDeposit.status,
+            hasInstantRelayer,
+            relayableDeposit,
+          });
+          continue;
+        }
         const shouldRelay = await this.shouldRelay(
           relayableDeposit.deposit,
           relayableDeposit.status,
@@ -103,8 +119,10 @@ export class Relayer {
           case ShouldRelay.Ignore:
             this.logger.warn({
               at: "InsuredBridgeRelayer#Relayer",
-              message: "Not relaying deposit 😖",
+              message: "Not relaying potentially unprofitable deposit, or insufficient balance 😖",
               realizedLpFeePct: realizedLpFeePct.toString(),
+              relayState: relayableDeposit.status,
+              hasInstantRelayer,
               relayableDeposit,
             });
             break;
@@ -142,6 +160,26 @@ export class Relayer {
             break;
         }
       }
+    }
+  }
+
+  async checkforSettleableRelaysAndSettle() {
+    this.logger.debug({ at: "Relayer", message: "Checking for settleable relays and settling" });
+    for (const l1Token of this.whitelistedRelayL1Tokens) {
+      this.logger.debug({ at: "Relayer", message: "Checking settleable relays for token", l1Token });
+      // Either this bot is the slow relayer for this relay OR the relay is past 15 mins and is settleable by anyone.
+      const settleableRelays = this.l1Client
+        .getSettleableRelayedDepositsForL1Token(l1Token)
+        .filter(
+          (relay) =>
+            (relay.settleable === SettleableRelay.SlowRelayerCanRelay && relay.slowRelayer === this.account) ||
+            relay.settleable === SettleableRelay.AnyoneCanRelay
+        );
+
+      for (const settleableRelay of settleableRelays) {
+        await this.settleRelay(this.l2Client.getDepositByID(settleableRelay.depositId), settleableRelay);
+      }
+      if (settleableRelays.length == 0) this.logger.debug({ at: "Relayer", message: "No settleable relays" });
     }
   }
 
@@ -291,6 +329,16 @@ export class Relayer {
           at: "InsuredBridgeRelayer#Relayer",
           type: "Relay instantly sent 🚀",
           tx: receipt.transactionHash,
+          chainId: receipt.events.DepositRelayed.returnValues.depositData.chainId,
+          depositId: receipt.events.DepositRelayed.returnValues.depositData.depositId,
+          sender: receipt.events.DepositRelayed.returnValues.depositData.l2Sender,
+          recipient: receipt.events.DepositRelayed.returnValues.depositData.l1Recipient,
+          l1Token: receipt.events.DepositRelayed.returnValues.l1Token,
+          amount: receipt.events.DepositRelayed.returnValues.depositData.amount,
+          slowRelayFeePct: receipt.events.DepositRelayed.returnValues.depositData.slowRelayFeePct,
+          instantRelayFeePct: receipt.events.DepositRelayed.returnValues.depositData.instantRelayFeePct,
+          quoteTimestamp: receipt.events.DepositRelayed.returnValues.depositData.quoteTimestamp,
+          relayAncillaryDataHash: receipt.events.DepositRelayed.returnValues.relayAncillaryDataHash,
           depositHash: receipt.events.RelaySpedUp.returnValues.depositHash,
           instantRelayer: receipt.events.RelaySpedUp.returnValues.instantRelayer,
           realizedLpFeePct: receipt.events.RelaySpedUp.returnValues.relay.realizedLpFeePct,
@@ -306,17 +354,48 @@ export class Relayer {
     }
   }
 
+  private async settleRelay(deposit: Deposit, relay: Relay) {
+    await this.gasEstimator.update();
+    try {
+      const { receipt, transactionConfig } = await runTransaction({
+        web3: this.l1Client.l1Web3,
+        transaction: this.generateSettleRelayTx(deposit, relay),
+        transactionConfig: { gasPrice: this.gasEstimator.getCurrentFastPrice().toString(), from: this.account },
+        availableAccounts: 1,
+      });
+      if (receipt.events)
+        this.logger.info({
+          at: "InsuredBridgeRelayer#Relayer",
+          type: "Relay settled 💸",
+          tx: receipt.transactionHash,
+          depositHash: receipt.events.RelaySettled.returnValues.depositHash,
+          caller: receipt.events.RelaySettled.returnValues.caller,
+          realizedLpFeePct: receipt.events.RelaySettled.returnValues.relay.realizedLpFeePct,
+          relayId: receipt.events.RelaySettled.returnValues.relay.relayId,
+          relayState: receipt.events.RelaySettled.returnValues.relay.relayState,
+          priceRequestTime: receipt.events.RelaySettled.returnValues.relay.priceRequestTime,
+          slowRelayer: receipt.events.RelaySettled.returnValues.relay.slowRelayer,
+          transactionConfig,
+        });
+      else throw receipt;
+    } catch (error) {
+      this.logger.error({ at: "InsuredBridgeRelayer#Relayer", type: "Something errored instantly relaying!", error });
+    }
+  }
+
   private generateSlowRelayTx(deposit: Deposit, realizedLpFeePct: BN): TransactionType {
     const bridgePool = this.l1Client.getBridgePoolForDeposit(deposit).contract;
     return (bridgePool.methods.relayDeposit(
-      deposit.chainId,
-      deposit.depositId,
-      deposit.l1Recipient,
-      deposit.l2Sender,
-      deposit.amount,
-      deposit.slowRelayFeePct,
-      deposit.instantRelayFeePct,
-      deposit.quoteTimestamp,
+      [
+        deposit.chainId,
+        deposit.depositId,
+        deposit.l1Recipient,
+        deposit.l2Sender,
+        deposit.amount,
+        deposit.slowRelayFeePct,
+        deposit.instantRelayFeePct,
+        deposit.quoteTimestamp,
+      ],
       realizedLpFeePct
     ) as unknown) as TransactionType;
   }
@@ -328,10 +407,18 @@ export class Relayer {
 
   private generateInstantRelayTx(deposit: Deposit, realizedLpFeePct: BN): TransactionType {
     const bridgePool = this.l1Client.getBridgePoolForDeposit(deposit).contract;
-    type ContractDepositArg = Parameters<typeof bridgePool["methods"]["relayAndSpeedUp"]>[0];
     return (bridgePool.methods.relayAndSpeedUp(
-      (deposit as unknown) as ContractDepositArg,
+      deposit as any,
       realizedLpFeePct.toString()
+    ) as unknown) as TransactionType;
+  }
+
+  private generateSettleRelayTx(deposit: Deposit, relay: Relay): TransactionType {
+    const bridgePool = this.l1Client.getBridgePoolForDeposit(deposit).contract;
+    type ContractDepositArg = Parameters<typeof bridgePool["methods"]["settleRelay"]>[0];
+    return (bridgePool.methods.settleRelay(
+      (deposit as unknown) as ContractDepositArg,
+      relay as any
     ) as unknown) as TransactionType;
   }
 

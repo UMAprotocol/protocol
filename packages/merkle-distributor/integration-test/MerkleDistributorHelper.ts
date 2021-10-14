@@ -101,7 +101,7 @@ describe("MerkleDistributorHelper.js", async function () {
     // the 2rd index should be claimed. This was done manually against this claimerAddress on Kovan.
     assert.isTrue(claims[2].hasClaimed);
   });
-  it("Should correctly handel wallets that are not part of the distribution set", async function () {
+  it("Should correctly handle wallets that are not part of the distribution set", async function () {
     // Check that an address that has no rewards does not error out but rather just returns an empty array.
     const claims = await getClaimsForAddress(merkleDistributorContractAddress, invalidClaimerAddress, networkId);
     assert.equal(claims.length, 0);

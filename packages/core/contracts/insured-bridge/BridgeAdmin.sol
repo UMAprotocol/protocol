@@ -84,10 +84,10 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, Lockable {
     /**
      * @notice Sets challenge period for relayed deposits. BridgePools will read this value from this contract.
      * @dev Can only be called by the current owner.
-     * @param _liveness New OptimisticOracle liveness period to set for relay price requests.
+     * @param liveness New OptimisticOracle liveness period to set for relay price requests.
      */
-    function setOptimisticOracleLiveness(uint32 _liveness) public onlyOwner nonReentrant() {
-        _setOptimisticOracleLiveness(_liveness);
+    function setOptimisticOracleLiveness(uint32 liveness) public onlyOwner nonReentrant() {
+        _setOptimisticOracleLiveness(liveness);
     }
 
     /**
@@ -120,14 +120,14 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, Lockable {
     /**
      * @notice Enables the current owner to transfer ownership of a set of owned bridge pools to a new owner.
      * @dev Only callable by the current owner.
-     * @param _bridgePools array of bridge pools to transfer ownership.
-     * @param _newAdmin new admin contract to set ownership to.
+     * @param bridgePools array of bridge pools to transfer ownership.
+     * @param newAdmin new admin contract to set ownership to.
      */
-    function transferBridgePoolAdmin(address[] memory _bridgePools, address _newAdmin) public onlyOwner nonReentrant() {
-        for (uint8 i = 0; i < _bridgePools.length; i++) {
-            BridgePoolInterface(_bridgePools[i]).changeAdmin(_newAdmin);
+    function transferBridgePoolAdmin(address[] memory bridgePools, address newAdmin) public onlyOwner nonReentrant() {
+        for (uint8 i = 0; i < bridgePools.length; i++) {
+            BridgePoolInterface(bridgePools[i]).changeAdmin(newAdmin);
         }
-        emit BridgePoolsAdminTransferred(_bridgePools, _newAdmin);
+        emit BridgePoolsAdminTransferred(bridgePools, newAdmin);
     }
 
     /**************************************************
@@ -331,12 +331,12 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, Lockable {
         emit SetRelayIdentifier(identifier);
     }
 
-    function _setOptimisticOracleLiveness(uint32 _liveness) private {
+    function _setOptimisticOracleLiveness(uint32 liveness) private {
         // The following constraints are copied from a similar function in the OptimisticOracle contract:
         // - https://github.com/UMAprotocol/protocol/blob/dd211c4e3825fe007d1161025a34e9901b26031a/packages/core/contracts/oracle/implementation/OptimisticOracle.sol#L621
-        require(_liveness < 5200 weeks, "Liveness too large");
-        require(_liveness > 0, "Liveness cannot be 0");
-        optimisticOracleLiveness = _liveness;
+        require(liveness < 5200 weeks, "Liveness too large");
+        require(liveness > 0, "Liveness cannot be 0");
+        optimisticOracleLiveness = liveness;
         emit SetOptimisticOracleLiveness(optimisticOracleLiveness);
     }
 
