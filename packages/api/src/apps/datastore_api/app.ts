@@ -247,8 +247,23 @@ export default async (env: ProcessEnv) => {
   const newContractBlockTick = BlockInterval(detectNewContracts, lastBlockUpdate);
   const updateContractStateTick = BlockInterval(updateContractState, lastBlockUpdate);
 
+  await detectContractsProfiled();
+  await updateContractsStateProfiled();
+  await updatePricesProfiled();
+
   // detect contract loop
-  utils.loop(async () => {
+  utils.loop(detectContractsProfiled, detectContractsUpdateRateS * 1000);
+
+  // main update loop for all state, executes immediately and waits for updateRateS
+  utils.loop(updateContractsStateProfiled, updateRateS * 1000);
+
+  // coingeckos prices don't update very fast, so set it on an interval every few minutes
+  utils.loop(updatePricesProfiled, priceUpdateRateS * 1000);
+
+  // wait update rate before running loops, since all state was just updated on init
+  await new Promise((res) => setTimeout(res, updateRateS * 1000));
+
+  async function detectContractsProfiled() {
     const end = profile("Detecting New Contracts");
     // adding in a timeout rejection if the update takes too long
     await expirePromise(
@@ -262,10 +277,9 @@ export default async (env: ProcessEnv) => {
     )
       .catch(console.error)
       .finally(end);
-  }, detectContractsUpdateRateS * 1000);
+  }
 
-  // main update loop for all state, executes immediately and waits for updateRateS
-  utils.loop(async () => {
+  async function updateContractsStateProfiled() {
     const end = profile("Running contract state updates");
     // adding in a timeout rejection if the update takes too long
     await expirePromise(
@@ -279,11 +293,10 @@ export default async (env: ProcessEnv) => {
     )
       .catch(console.error)
       .finally(end);
-  }, updateRateS * 1000);
+  }
 
-  // coingeckos prices don't update very fast, so set it on an interval every few minutes
-  utils.loop(async () => {
+  async function updatePricesProfiled() {
     const end = profile("Update all prices");
     await updatePrices().catch(console.error).finally(end);
-  }, priceUpdateRateS * 1000);
+  }
 };
