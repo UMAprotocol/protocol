@@ -155,8 +155,8 @@ export class Relayer {
         .getSettleableRelayedDepositsForL1Token(l1Token)
         .filter(
           (relay) =>
-            (relay.settleable === SettleableRelay.SlowRelayer && relay.slowRelayer === this.account) ||
-            relay.settleable === SettleableRelay.Anyone
+            (relay.settleable === SettleableRelay.SlowRelayerCanRelay && relay.slowRelayer === this.account) ||
+            relay.settleable === SettleableRelay.AnyoneCanRelay
         );
 
       for (const settleableRelay of settleableRelays) {

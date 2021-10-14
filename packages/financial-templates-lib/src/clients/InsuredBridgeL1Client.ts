@@ -17,9 +17,9 @@ export enum ClientRelayState {
 }
 
 export enum SettleableRelay {
-  NotSettleable,
-  SlowRelayer,
-  Anyone,
+  CannotRelay,
+  SlowRelayerCanRelay,
+  AnyoneCanRelay,
 }
 
 export interface Relay {
@@ -133,15 +133,13 @@ export class InsuredBridgeL1Client {
 
   getSettleableRelayedDeposits(): Relay[] {
     return this.getAllRelayedDeposits().filter(
-      (relay: Relay) =>
-        relay.relayState === ClientRelayState.Pending && relay.settleable != SettleableRelay.NotSettleable
+      (relay: Relay) => relay.relayState === ClientRelayState.Pending && relay.settleable != SettleableRelay.CannotRelay
     );
   }
 
   getSettleableRelayedDepositsForL1Token(l1Token: string): Relay[] {
     return this.getRelayedDepositsForL1Token(l1Token).filter(
-      (relay: Relay) =>
-        relay.relayState === ClientRelayState.Pending && relay.settleable != SettleableRelay.NotSettleable
+      (relay: Relay) => relay.relayState === ClientRelayState.Pending && relay.settleable != SettleableRelay.CannotRelay
     );
   }
 
@@ -256,7 +254,7 @@ export class InsuredBridgeL1Client {
           relayHash: depositRelayedEvent.returnValues.relayAncillaryDataHash,
           proposerBond: depositRelayedEvent.returnValues.relay.proposerBond,
           finalFee: depositRelayedEvent.returnValues.relay.finalFee,
-          settleable: SettleableRelay.NotSettleable,
+          settleable: SettleableRelay.CannotRelay,
         };
 
         // If the local data contains this deposit ID then this is a re-relay of a disputed relay. In this case, we need
@@ -290,17 +288,17 @@ export class InsuredBridgeL1Client {
 
       for (const relaySettledEvent of relaySettledEvents) {
         this.relays[l1Token][relaySettledEvent.returnValues.depositHash].relayState = ClientRelayState.Finalized;
-        this.relays[l1Token][relaySettledEvent.returnValues.depositHash].settleable = SettleableRelay.NotSettleable;
+        this.relays[l1Token][relaySettledEvent.returnValues.depositHash].settleable = SettleableRelay.CannotRelay;
       }
 
       for (const pendingRelay of this.getPendingRelayedDepositsForL1Token(l1Token)) {
         // If relay is pending and the time is past the OO liveness, then it is settleable by the slow relayer.
         if (bridgePool.currentTime >= pendingRelay.priceRequestTime + this.optimisticOracleLiveness) {
-          this.relays[l1Token][pendingRelay.depositHash].settleable = SettleableRelay.SlowRelayer;
+          this.relays[l1Token][pendingRelay.depositHash].settleable = SettleableRelay.SlowRelayerCanRelay;
         }
         // If relay is pending and the time is past the OO liveness +15 mins, then it is settleable by anyone.
         if (bridgePool.currentTime >= pendingRelay.priceRequestTime + this.optimisticOracleLiveness + 54000) {
-          this.relays[l1Token][pendingRelay.depositHash].settleable = SettleableRelay.Anyone;
+          this.relays[l1Token][pendingRelay.depositHash].settleable = SettleableRelay.AnyoneCanRelay;
         }
       }
     }
