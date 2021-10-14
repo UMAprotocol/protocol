@@ -456,7 +456,6 @@ export class Relayer {
     const relayableDeposits: RelayableDeposits = {};
     for (const l1Token of this.whitelistedRelayL1Tokens) {
       this.logger.debug({ at: "Relayer", message: "Checking relays for token", l1Token });
-      // TODO: consider limiting how far back we look in this call size.
       const l2Deposits = this.l2Client.getAllDeposits();
       l2Deposits.forEach((deposit) => {
         const status = this.l1Client.getDepositRelayState(deposit);
