@@ -2365,7 +2365,7 @@ describe("BridgePool", () => {
         toBN(instantRelayAmountSubFee).add(realizedInstantRelayFeeAmount).toString()
       );
     });
-    it("Can handle recipient being a smart contract that does not accept eth transfer", async () => {
+    it("Can handle recipient being a smart contract that does not accept ETH transfer", async () => {
       // In the even the recipient is a smart contract that can not accept ETH transfers (no payable receive function)
       // and it is a WETH pool, the bridge pool should send WETH ERC20 to the recipient.
 
@@ -2404,8 +2404,7 @@ describe("BridgePool", () => {
         recipientEthBalanceBefore.toString()
       );
 
-      // Recipients weth balance should have increased instead.
-
+      // Recipients WETH balance should have increased instead.
       assert.equal(
         toBN(await weth.methods.balanceOf(finder.options.address).call())
           .sub(toBN(recipientWethBalanceBefore))
