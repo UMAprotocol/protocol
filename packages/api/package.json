@@ -30,7 +30,7 @@
     "web3": "^1.5.0"
   },
   "files": [
-    "/dist/**/*.js"
+    "build"
   ],
   "scripts": {
     "build": "tsc",

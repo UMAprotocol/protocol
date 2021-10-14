@@ -97,7 +97,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
 
     // Data from L2 deposit transaction.
     struct DepositData {
-        uint8 chainId;
+        uint256 chainId;
         uint64 depositId;
         address payable l1Recipient;
         address l2Sender;

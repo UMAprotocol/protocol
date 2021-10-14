@@ -1976,7 +1976,7 @@ describe("BridgePool", () => {
       await advanceTime(8640000);
       assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1.010823111111111111"));
     });
-    it("Fees & Exchange rate can correctly handel gifted tokens", async () => {
+    it("Fees & Exchange rate can correctly handle gifted tokens", async () => {
       // We cant control when funds are sent to the contract, just like we cant control when the bridging action
       // concludes. If someone was to randomly send the contract tokens the exchange rate should ignore this. The
       // contract should ignore the exchange rate if someone was to randomly send tokens.
