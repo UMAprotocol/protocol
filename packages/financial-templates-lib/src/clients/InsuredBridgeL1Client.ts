@@ -16,6 +16,12 @@ export enum ClientRelayState {
   Finalized, // Relay has been finalized through slow relay passed liveness or instantly relayed. Cant do anything.
 }
 
+export enum SettleableRelay {
+  CannotRelay,
+  SlowRelayerCanRelay,
+  AnyoneCanRelay,
+}
+
 export interface Relay {
   relayId: number;
   chainId: number;
@@ -36,6 +42,7 @@ export interface Relay {
   relayHash: string;
   proposerBond: string;
   finalFee: string;
+  settleable: SettleableRelay;
 }
 
 export interface InstantRelay {
@@ -51,6 +58,8 @@ export interface BridgePoolData {
 export class InsuredBridgeL1Client {
   public readonly bridgeAdmin: BridgeAdminInterfaceWeb3;
   public bridgePools: { [key: string]: BridgePoolData }; // L1TokenAddress=>BridgePoolData
+
+  public optimisticOracleLiveness = 0;
 
   private relays: { [key: string]: { [key: string]: Relay } } = {}; // L1TokenAddress=>depositHash=>Relay.
   private instantRelays: { [key: string]: { [key: string]: InstantRelay } } = {}; // L1TokenAddress=>{depositHash, realizedLpFeePct}=>InstantRelay.
@@ -122,6 +131,18 @@ export class InsuredBridgeL1Client {
     );
   }
 
+  getSettleableRelayedDeposits(): Relay[] {
+    return this.getAllRelayedDeposits().filter(
+      (relay: Relay) => relay.relayState === ClientRelayState.Pending && relay.settleable != SettleableRelay.CannotRelay
+    );
+  }
+
+  getSettleableRelayedDepositsForL1Token(l1Token: string): Relay[] {
+    return this.getRelayedDepositsForL1Token(l1Token).filter(
+      (relay: Relay) => relay.relayState === ClientRelayState.Pending && relay.settleable != SettleableRelay.CannotRelay
+    );
+  }
+
   async calculateRealizedLpFeePctForDeposit(deposit: Deposit): Promise<BN> {
     if (this.rateModels === undefined || this.rateModels[deposit.l1Token] === undefined)
       throw new Error("No rate model for l1Token");
@@ -184,6 +205,12 @@ export class InsuredBridgeL1Client {
       this.instantRelays[l1Token] = {};
     }
 
+    // Set the optimisticOracleLiveness. Note that if this value changes in the contract the bot will need to be
+    // restarted to get the latest value. This is a fine assumption as: a) our production bots run in serverless mode
+    // (restarting all the time) and b) this value changes very infrequently.
+    if (this.optimisticOracleLiveness == 0)
+      this.optimisticOracleLiveness = Number(await this.bridgeAdmin.methods.optimisticOracleLiveness().call());
+
     // Fetch event information
     // TODO: consider optimizing this further. Right now it will make a series of sequential BlueBird calls for each pool.
     for (const [l1Token, bridgePool] of Object.entries(this.bridgePools)) {
@@ -227,6 +254,7 @@ export class InsuredBridgeL1Client {
           relayHash: depositRelayedEvent.returnValues.relayAncillaryDataHash,
           proposerBond: depositRelayedEvent.returnValues.relay.proposerBond,
           finalFee: depositRelayedEvent.returnValues.relay.finalFee,
+          settleable: SettleableRelay.CannotRelay,
         };
 
         // If the local data contains this deposit ID then this is a re-relay of a disputed relay. In this case, we need
@@ -260,6 +288,18 @@ export class InsuredBridgeL1Client {
 
       for (const relaySettledEvent of relaySettledEvents) {
         this.relays[l1Token][relaySettledEvent.returnValues.depositHash].relayState = ClientRelayState.Finalized;
+        this.relays[l1Token][relaySettledEvent.returnValues.depositHash].settleable = SettleableRelay.CannotRelay;
+      }
+
+      for (const pendingRelay of this.getPendingRelayedDepositsForL1Token(l1Token)) {
+        // If relay is pending and the time is past the OO liveness, then it is settleable by the slow relayer.
+        if (bridgePool.currentTime >= pendingRelay.priceRequestTime + this.optimisticOracleLiveness) {
+          this.relays[l1Token][pendingRelay.depositHash].settleable = SettleableRelay.SlowRelayerCanRelay;
+        }
+        // If relay is pending and the time is past the OO liveness +15 mins, then it is settleable by anyone.
+        if (bridgePool.currentTime >= pendingRelay.priceRequestTime + this.optimisticOracleLiveness + 54000) {
+          this.relays[l1Token][pendingRelay.depositHash].settleable = SettleableRelay.AnyoneCanRelay;
+        }
       }
     }
     this.firstBlockToSearch = blockSearchConfig.toBlock + 1;

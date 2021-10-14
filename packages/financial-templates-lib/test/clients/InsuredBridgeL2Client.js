@@ -31,7 +31,7 @@ const quoteTimestampOffset = 60; // 60 seconds into the past.
 describe("InsuredBridgeL2Client", () => {
   const generateDepositHash = (depositData) => {
     const depositDataAbiEncoded = web3.eth.abi.encodeParameters(
-      ["uint8", "uint64", "address", "address", "address", "uint256", "uint64", "uint64", "uint64"],
+      ["uint256", "uint64", "address", "address", "address", "uint256", "uint64", "uint64", "uint32"],
       [
         depositData.chainId,
         depositData.depositId,
