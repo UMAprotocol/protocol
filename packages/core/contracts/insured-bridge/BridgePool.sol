@@ -353,6 +353,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
 
         // Drop the relay and remove the bond from the tracked bonds.
         bonds -= relayData.finalFee + relayData.proposerBond;
+        pendingReserves -= depositData.amount;
         delete relays[depositHash];
         if (success) emit RelayDisputed(depositHash, _getRelayDataHash(relayData), msg.sender);
         else emit RelayCanceled(depositHash, _getRelayDataHash(relayData), msg.sender);
