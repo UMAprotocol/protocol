@@ -131,7 +131,8 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
         address _timerAddress
     ) Testable(_timerAddress) {
         finder = FinderInterface(_finderAddress);
-        _validateLiveness(_liveness);
+        require(_liveness < 5200 weeks, "Liveness too large");
+        require(_liveness > 0, "Liveness cannot be 0");
         defaultLiveness = _liveness;
     }
 
@@ -159,21 +160,15 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
     ) external override nonReentrant() returns (uint256 totalBond) {
         bytes32 requestId = _getId(msg.sender, identifier, timestamp, ancillaryData);
         require(requests[requestId] == bytes32(0), "Request already initialized");
-        require(_getIdentifierWhitelist().isIdentifierSupported(identifier), "Unsupported identifier");
-        require(_getCollateralWhitelist().isOnWhitelist(address(currency)), "Unsupported currency");
-        require(timestamp <= getCurrentTime(), "Timestamp in future");
-        require(
-            _stampAncillaryData(ancillaryData, msg.sender).length <= ancillaryBytesLimit,
-            "Ancillary Data too long"
-        );
-        uint256 finalFee = _getStore().computeFinalFee(address(currency)).rawValue;
+        _validatePriceRequestParams(identifier, timestamp, ancillaryData, currency);
+        require(customLiveness < 5200 weeks, "Liveness too large");
 
         // Associate new request with ID
         Request memory request;
         request.currency = currency;
         request.reward = reward;
-        request.finalFee = finalFee;
-        request.bond = bond != 0 ? bond : finalFee;
+        request.finalFee = _getStore().computeFinalFee(address(currency)).rawValue;
+        request.bond = bond != 0 ? bond : request.finalFee;
         request.customLiveness = customLiveness;
         _storeRequestHash(requestId, request);
 
@@ -181,7 +176,7 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
 
         emit RequestPrice(msg.sender, identifier, timestamp, ancillaryData, request);
 
-        return request.bond.add(finalFee);
+        return request.bond.add(request.finalFee);
     }
 
     /**
@@ -304,20 +299,14 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
         bytes32 requestId = _getId(msg.sender, identifier, timestamp, ancillaryData);
         require(requests[requestId] == bytes32(0), "Request already initialized");
         require(proposer != address(0), "proposer address must be non 0");
-        require(_getIdentifierWhitelist().isIdentifierSupported(identifier), "Unsupported identifier");
-        require(_getCollateralWhitelist().isOnWhitelist(address(currency)), "Unsupported currency");
-        require(timestamp <= getCurrentTime(), "Timestamp in future");
-        require(
-            _stampAncillaryData(ancillaryData, msg.sender).length <= ancillaryBytesLimit,
-            "Ancillary Data too long"
-        );
-        uint256 finalFee = _getStore().computeFinalFee(address(currency)).rawValue;
+        _validatePriceRequestParams(identifier, timestamp, ancillaryData, currency);
+        require(customLiveness < 5200 weeks, "Liveness too large");
 
         // Associate new request with ID
         Request memory request;
         request.currency = currency;
         request.reward = reward;
-        request.finalFee = finalFee;
+        request.finalFee = _getStore().computeFinalFee(address(currency)).rawValue;
         request.bond = bond;
         request.customLiveness = customLiveness;
         request.proposer = proposer;
@@ -446,20 +435,13 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
         require(requests[requestId] == bytes32(0), "Request already initialized");
         require(proposer != address(0), "proposer address must be non 0");
         require(disputer != address(0), "disputer address must be non 0");
-        require(_getIdentifierWhitelist().isIdentifierSupported(identifier), "Unsupported identifier");
-        require(_getCollateralWhitelist().isOnWhitelist(address(currency)), "Unsupported currency");
-        require(timestamp <= getCurrentTime(), "Timestamp in future");
-        require(
-            _stampAncillaryData(ancillaryData, msg.sender).length <= ancillaryBytesLimit,
-            "Ancillary Data too long"
-        );
-        uint256 finalFee = _getStore().computeFinalFee(address(currency)).rawValue;
+        _validatePriceRequestParams(identifier, timestamp, ancillaryData, currency);
 
         // Associate new request with ID
         Request memory request;
         request.currency = currency;
         request.reward = reward;
-        request.finalFee = finalFee;
+        request.finalFee = _getStore().computeFinalFee(address(currency)).rawValue;
         request.bond = bond;
         request.proposer = proposer;
         request.disputer = disputer;
@@ -709,9 +691,19 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
         return request.bond.div(2);
     }
 
-    function _validateLiveness(uint256 liveness) private pure {
-        require(liveness < 5200 weeks, "Liveness too large");
-        require(liveness > 0, "Liveness cannot be 0");
+    function _validatePriceRequestParams(
+        bytes32 identifier,
+        uint32 timestamp,
+        bytes memory ancillaryData,
+        IERC20 collateralCurrency
+    ) private view {
+        require(_getIdentifierWhitelist().isIdentifierSupported(identifier), "Unsupported identifier");
+        require(_getCollateralWhitelist().isOnWhitelist(address(collateralCurrency)), "Unsupported currency");
+        require(timestamp <= getCurrentTime(), "Timestamp in future");
+        require(
+            _stampAncillaryData(ancillaryData, msg.sender).length <= ancillaryBytesLimit,
+            "Ancillary Data too long"
+        );
     }
 
     function _validateRequestHash(bytes32 requestId, Request memory request) private view {
