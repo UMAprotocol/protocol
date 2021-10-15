@@ -17,7 +17,12 @@ import { getTokenBalance } from "./RelayerHelpers";
 
 import type { BN, TransactionType } from "@uma/common";
 
-export enum ShouldRelay {
+// Stores state of Relay (i.e. Pending, Uninitialized, Finalized) and linked L2 deposit parameters.
+type RelayableDeposit = { status: ClientRelayState; deposit: Deposit };
+// Key for RelayableDeposits is L1 token address.
+type RelayableDeposits = { [key: string]: [RelayableDeposit] };
+
+export enum RelaySubmitType {
   Slow,
   SpeedUp,
   Instant,
@@ -42,27 +47,19 @@ export class Relayer {
     readonly account: string
   ) {}
 
-  // TODO: consider refactoring this further into multiple methods. One to build the object of relayableDeposits and one
-  // that processes relayableDeposits and calls respective relaying functions.
-  async checkForPendingDepositsAndRelay() {
+  async checkForPendingDepositsAndRelay(): Promise<undefined> {
     this.logger.debug({ at: "Relayer", message: "Checking for pending deposits and relaying" });
-    const relayableDeposits: { [key: string]: [{ status: ClientRelayState; deposit: Deposit }] } = {};
-    for (const l1Token of this.whitelistedRelayL1Tokens) {
-      this.logger.debug({ at: "Relayer", message: "Checking relays for token", l1Token });
-      // TODO: consider limiting how far back we look in this call size.
-      const l2Deposits = this.l2Client.getAllDeposits();
-      l2Deposits.forEach((deposit) => {
-        const status = this.l1Client.getDepositRelayState(deposit);
-        if (status != ClientRelayState.Finalized) {
-          if (!relayableDeposits[l1Token]) relayableDeposits[l1Token] = [{ status, deposit }];
-          else relayableDeposits[l1Token].push({ status, deposit });
-        }
-      });
-    }
+
+    // Build dictionary of relayable deposits keyed by L1 tokens. We assume that getRelayableDeposits() filters
+    // out Finalized relays.
+    const relayableDeposits: RelayableDeposits = this.getRelayableDeposits();
     if (Object.keys(relayableDeposits).length == 0) {
       this.logger.debug({ at: "Relayer", message: "No relayable deposits for any whitelisted tokens" });
       return;
     }
+
+    // Fetch pending relays (if any) for each relayable deposit and then decide whether to submit a relay (and what
+    // type of relay) or dispute.
     for (const l1Token of Object.keys(relayableDeposits)) {
       this.logger.debug({
         at: "Relayer",
@@ -70,23 +67,41 @@ export class Relayer {
         l1Token,
       });
       for (const relayableDeposit of relayableDeposits[l1Token]) {
-        // If deposit has a pending relay, then validate its relay params (i.e. any data not included in the deposit
-        // hash). If relay params are invalid, then we should skip it so that we don't speed up an invalid relay.
-        // If we cannot find the relay, then we should not skip it because we can still slow/instant relay it.
         const pendingRelay: Relay | undefined = this.l1Client.getRelayForDeposit(l1Token, relayableDeposit.deposit);
         if (pendingRelay) {
-          const isRelayValid = await this.isRelayValid(pendingRelay, relayableDeposit.deposit);
-          if (!isRelayValid.isValid) {
+          // We need to perform some prechecks on the relay before we attempt to submit a relay. First, we need to check
+          // if the relay has expired, for if it has then we cannot do anything with it except settle it. Second, we need
+          // to check the pending relay's parameters (i.e. any data not included in the deposit hash) and verify that
+          // they are correct. If they are not then we have an option to dispute it, or just ignore it as a potential
+          // speedup candidate.
+          const relayStatus = await this.getRelayStatus(pendingRelay, relayableDeposit.deposit);
+          if (relayStatus.relayExpired.isExpired) {
             this.logger.debug({
               at: "Relayer",
-              message: "Pending relay is invalid, ignoring",
+              message: "Pending relay has expired, ignoring",
               pendingRelay,
               relayableDeposit,
-              reason: isRelayValid.reason,
+              expirationTime: relayStatus.relayExpired.expirationTime,
+              contractTime: relayStatus.relayExpired.contractTime,
             });
+            continue;
+          } else if (relayStatus.relayDisputable.canDispute) {
+            this.logger.debug({
+              at: "Relayer",
+              message: "Pending relay is invalid",
+              pendingRelay,
+              relayableDeposit,
+              reason: relayStatus.relayDisputable.reason,
+            });
+            // TODO: Optionally dispute the relay here if DISPUTE_MODE=true
             continue;
           }
         }
+
+        // TODO: Optionally attempt to submit relay transaction if RELAY_MODE=true
+        // If there is no pending relay for deposit, there is possibility we can either relay it or relay and speed it
+        // up.
+
         // If relay is valid, then account for profitability and bot token balance when deciding how to relay.
         const realizedLpFeePct = await this.l1Client.calculateRealizedLpFeePctForDeposit(relayableDeposit.deposit);
         const hasInstantRelayer = this.l1Client.hasInstantRelayer(
@@ -94,14 +109,11 @@ export class Relayer {
           relayableDeposit.deposit.depositHash,
           realizedLpFeePct.toString()
         );
-        // If relay cannot occur because its finalized or pending and already sped up, then exit early.
-        if (
-          relayableDeposit.status == ClientRelayState.Finalized ||
-          (hasInstantRelayer && relayableDeposit.status == ClientRelayState.Pending)
-        ) {
+        // If relay cannot occur because its pending and already sped up, then exit early.
+        if (hasInstantRelayer && relayableDeposit.status == ClientRelayState.Pending) {
           this.logger.warn({
             at: "InsuredBridgeRelayer#Relayer",
-            message: "Relay already finalized or pending and already sped up 😖",
+            message: "Relay pending and already sped up 😖",
             realizedLpFeePct: realizedLpFeePct.toString(),
             relayState: relayableDeposit.status,
             hasInstantRelayer,
@@ -115,50 +127,15 @@ export class Relayer {
           realizedLpFeePct,
           hasInstantRelayer
         );
-        switch (shouldRelay) {
-          case ShouldRelay.Ignore:
-            this.logger.warn({
-              at: "InsuredBridgeRelayer#Relayer",
-              message: "Not relaying potentially unprofitable deposit, or insufficient balance 😖",
-              realizedLpFeePct: realizedLpFeePct.toString(),
-              relayState: relayableDeposit.status,
-              hasInstantRelayer,
-              relayableDeposit,
-            });
-            break;
-          case ShouldRelay.Slow:
-            this.logger.debug({
-              at: "InsuredBridgeRelayer#Relayer",
-              message: "Slow relaying deposit",
-              realizedLpFeePct: realizedLpFeePct.toString(),
-              relayableDeposit,
-            });
-            await this.slowRelay(relayableDeposit.deposit, realizedLpFeePct);
-            break;
 
-          case ShouldRelay.SpeedUp:
-            this.logger.debug({
-              at: "InsuredBridgeRelayer#Relayer",
-              message: "Speeding up existing relayed deposit",
-              realizedLpFeePct: realizedLpFeePct.toString(),
-              relayableDeposit,
-            });
-            if (pendingRelay === undefined)
-              // The `pendingRelay` should never be undefined if shouldRelay returns SpeedUp, but we have to catch the
-              // undefined type that is returned by the L1 client method.
-              this.logger.error({ at: "InsuredBridgeRelayer#Relayer", type: "speedUpRelay: undefined relay" });
-            else await this.speedUpRelay(relayableDeposit.deposit, pendingRelay);
-            break;
-          case ShouldRelay.Instant:
-            this.logger.debug({
-              at: "InsuredBridgeRelayer#Relayer",
-              message: "Instant relaying deposit",
-              realizedLpFeePct: realizedLpFeePct.toString(),
-              relayableDeposit,
-            });
-            await this.instantRelay(relayableDeposit.deposit, realizedLpFeePct);
-            break;
-        }
+        // Depending on value of `shouldRelay`, send correct type of relay.
+        await this.sendRelayTransaction(
+          shouldRelay,
+          realizedLpFeePct,
+          relayableDeposit,
+          pendingRelay,
+          hasInstantRelayer
+        );
       }
     }
   }
@@ -172,8 +149,8 @@ export class Relayer {
         .getSettleableRelayedDepositsForL1Token(l1Token)
         .filter(
           (relay) =>
-            (relay.settleable === SettleableRelay.SlowRelayerCanRelay && relay.slowRelayer === this.account) ||
-            relay.settleable === SettleableRelay.AnyoneCanRelay
+            (relay.settleable === SettleableRelay.SlowRelayerCanSettle && relay.slowRelayer === this.account) ||
+            relay.settleable === SettleableRelay.AnyoneCanSettle
         );
 
       for (const settleableRelay of settleableRelays) {
@@ -188,15 +165,47 @@ export class Relayer {
   // found. So, assuming that the relay contains a matching deposit hash, this bot's job is to only consider speeding up
   // relays that are valid, otherwise the bot might lose money without recourse on the relay.
 
-  private async isRelayValid(relay: Relay, deposit: Deposit): Promise<{ isValid: boolean; reason: string }> {
+  private async isPendingRelayDisputable(
+    relay: Relay,
+    deposit: Deposit
+  ): Promise<{ canDispute: boolean; reason: string }> {
     const relayRealizedLpFeePct = relay.realizedLpFeePct.toString();
     const expectedRelayRealizedLpFeePct = (await this.l1Client.calculateRealizedLpFeePctForDeposit(deposit)).toString();
     if (relayRealizedLpFeePct !== expectedRelayRealizedLpFeePct)
       return {
-        isValid: false,
+        canDispute: true,
         reason: `relayRealizedLpFeePct: ${relayRealizedLpFeePct} != expectedRelayRealizedLpFeePct: ${expectedRelayRealizedLpFeePct}`,
       };
-    return { isValid: true, reason: "" };
+    return { canDispute: false, reason: "" };
+  }
+
+  private isRelayExpired(
+    relay: Relay,
+    deposit: Deposit
+  ): { isExpired: boolean; expirationTime: number; contractTime: number } {
+    const relayExpirationTime = relay.priceRequestTime + this.l1Client.optimisticOracleLiveness;
+    const currentContractTime = this.l1Client.getBridgePoolForDeposit(deposit).currentTime;
+    return {
+      isExpired: relay.settleable !== SettleableRelay.CannotSettle,
+      expirationTime: relayExpirationTime,
+      contractTime: currentContractTime,
+    };
+  }
+
+  private async getRelayStatus(
+    relay: Relay,
+    deposit: Deposit
+  ): Promise<{
+    relayExpired: { isExpired: boolean; expirationTime: number; contractTime: number };
+    relayDisputable: { canDispute: boolean; reason: string };
+  }> {
+    // Check if relay is expired. If it has expired, then its not disputable and can only be settled.
+    const relayExpired = this.isRelayExpired(relay, deposit);
+    const relayDisputable = await this.isPendingRelayDisputable(relay, deposit);
+    return {
+      relayExpired,
+      relayDisputable,
+    };
   }
 
   private async shouldRelay(
@@ -204,7 +213,7 @@ export class Relayer {
     clientRelayState: ClientRelayState,
     realizedLpFeePct: BN,
     hasInstantRelayer: boolean
-  ): Promise<ShouldRelay> {
+  ): Promise<RelaySubmitType> {
     const [l1TokenBalance, proposerBondPct] = await Promise.all([
       getTokenBalance(this.l1Client.l1Web3, deposit.l1Token, this.account),
       this.l1Client.getProposerBondPct(),
@@ -239,11 +248,11 @@ export class Relayer {
       instantProfit = slowProfit.add(speedUpProfit);
 
     // Finally, decide what action to do based on the relative profits.
-    if (instantProfit.gt(speedUpProfit) && instantProfit.gt(slowProfit)) return ShouldRelay.Instant;
+    if (instantProfit.gt(speedUpProfit) && instantProfit.gt(slowProfit)) return RelaySubmitType.Instant;
 
-    if (speedUpProfit.gt(slowProfit)) return ShouldRelay.SpeedUp;
-    if (slowProfit.gt(toBN("0"))) return ShouldRelay.Slow;
-    return ShouldRelay.Ignore;
+    if (speedUpProfit.gt(slowProfit)) return RelaySubmitType.SpeedUp;
+    if (slowProfit.gt(toBN("0"))) return RelaySubmitType.Slow;
+    return RelaySubmitType.Ignore;
   }
 
   private async slowRelay(deposit: Deposit, realizedLpFeePct: BN) {
@@ -440,5 +449,76 @@ export class Relayer {
         )
         .div(fixedPointAdjustment),
     };
+  }
+
+  // Return fresh dictionary of relayable deposits keyed by the L1 token to be sent to recipient.
+  private getRelayableDeposits(): RelayableDeposits {
+    const relayableDeposits: RelayableDeposits = {};
+    for (const l1Token of this.whitelistedRelayL1Tokens) {
+      this.logger.debug({ at: "Relayer", message: "Checking relays for token", l1Token });
+      const l2Deposits = this.l2Client.getAllDeposits();
+      l2Deposits.forEach((deposit) => {
+        const status = this.l1Client.getDepositRelayState(deposit);
+        if (status != ClientRelayState.Finalized) {
+          if (!relayableDeposits[l1Token]) relayableDeposits[l1Token] = [{ status, deposit }];
+          else relayableDeposits[l1Token].push({ status, deposit });
+        }
+      });
+    }
+    return relayableDeposits;
+  }
+
+  // Send correct type of relay along with parameters to submit transaction.
+  private async sendRelayTransaction(
+    shouldRelay: RelaySubmitType,
+    realizedLpFeePct: BN,
+    relayableDeposit: RelayableDeposit,
+    pendingRelay: Relay | undefined,
+    hasInstantRelayer: boolean
+  ) {
+    switch (shouldRelay) {
+      case RelaySubmitType.Ignore:
+        this.logger.warn({
+          at: "InsuredBridgeRelayer#Relayer",
+          message: "Not relaying potentially unprofitable deposit, or insufficient balance 😖",
+          realizedLpFeePct: realizedLpFeePct.toString(),
+          relayState: relayableDeposit.status,
+          hasInstantRelayer,
+          relayableDeposit,
+        });
+        break;
+      case RelaySubmitType.Slow:
+        this.logger.debug({
+          at: "InsuredBridgeRelayer#Relayer",
+          message: "Slow relaying deposit",
+          realizedLpFeePct: realizedLpFeePct.toString(),
+          relayableDeposit,
+        });
+        await this.slowRelay(relayableDeposit.deposit, realizedLpFeePct);
+        break;
+
+      case RelaySubmitType.SpeedUp:
+        this.logger.debug({
+          at: "InsuredBridgeRelayer#Relayer",
+          message: "Speeding up existing relayed deposit",
+          realizedLpFeePct: realizedLpFeePct.toString(),
+          relayableDeposit,
+        });
+        if (pendingRelay === undefined)
+          // The `pendingRelay` should never be undefined if shouldRelay returns SpeedUp, but we have to catch the
+          // undefined type that is returned by the L1 client method.
+          this.logger.error({ at: "InsuredBridgeRelayer#Relayer", type: "speedUpRelay: undefined relay" });
+        else await this.speedUpRelay(relayableDeposit.deposit, pendingRelay);
+        break;
+      case RelaySubmitType.Instant:
+        this.logger.debug({
+          at: "InsuredBridgeRelayer#Relayer",
+          message: "Instant relaying deposit",
+          realizedLpFeePct: realizedLpFeePct.toString(),
+          relayableDeposit,
+        });
+        await this.instantRelay(relayableDeposit.deposit, realizedLpFeePct);
+        break;
+    }
   }
 }
