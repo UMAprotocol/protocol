@@ -623,9 +623,13 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
 
         // The liquidity utilization ratio is the ratio of utilized liquidity (pendingReserves + relayedAmount
         // +utilizedReserves) divided by the liquid reserves.
-        uint256 numerator = pendingReserves + relayedAmount;
-        if (utilizedReserves > 0) numerator += uint256(utilizedReserves);
-        else numerator -= uint256(utilizedReserves * -1);
+        int256 numerator = int256(pendingReserves + relayedAmount);
+        numerator += utilizedReserves;
+
+        // The numerator could be less than zero iff pending reserves is zero, relayed amount is zero and utilizedReserves
+        // is negative. This could happen if tokens are sent to the bridge after deployment without any relays yet
+        // having happened.
+        if (numerator < 0) return 0;
 
         // There are two cases where liquid reserves could be zero. Handle accordingly to avoid division by zero:
         // a) the pool is new and there no funds in it nor any bridging actions have happened. In this case the
@@ -635,7 +639,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
         if (numerator > 0 && liquidReserves == 0) return 1e18;
 
         // In all other cases, return the utilization ratio.
-        return (numerator * 1e18) / liquidReserves;
+        return (uint256(numerator) * 1e18) / liquidReserves;
     }
 
     /**
