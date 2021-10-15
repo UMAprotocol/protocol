@@ -846,6 +846,49 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
                 l1Token.safeApprove(address(optimisticOracle), 0);
                 totalBond = bondSpent;
             }
+
+            // If proposal succeeds, then attempt to dispute. This might also fail.
+            SkinnyOptimisticOracleInterface.Request memory request =
+                SkinnyOptimisticOracleInterface.Request({
+                    proposer: proposer,
+                    disputer: address(0),
+                    currency: IERC20(l1Token),
+                    settled: false,
+                    proposedPrice: int256(1e18),
+                    resolvedPrice: 0,
+                    expirationTime: getCurrentTime() + optimisticOracleLiveness,
+                    reward: 0,
+                    finalFee: totalBond - proposerBond,
+                    bond: proposerBond,
+                    customLiveness: uint256(optimisticOracleLiveness)
+                });
+
+            // Note: don't pull funds until here to avoid any transfers that aren't needed.
+            l1Token.safeTransferFrom(msg.sender, address(this), totalBond);
+            l1Token.safeApprove(address(optimisticOracle), totalBond);
+
+            // Dispute the request that we just sent.
+            try
+                optimisticOracle.disputePriceFor(
+                    identifier,
+                    uint32(getCurrentTime()),
+                    customAncillaryData,
+                    request,
+                    disputer,
+                    address(this)
+                )
+            returns (uint256) {
+                // Return true to denote that the proposal + dispute calls succeeded.
+                return true;
+            } catch {
+                // If dispute fails, refund disputer and proposer.
+                l1Token.safeTransfer(proposer, totalBond);
+                l1Token.safeTransfer(msg.sender, totalBond);
+                l1Token.safeApprove(address(optimisticOracle), 0);
+
+                // Return early noting that the attempt at a dispute did not succeed.
+                return false;
+            }
         } catch {
             // If there's an error in the OO, this means something has changed to make this request undisputable.
             // To ensure the request does not go through by default, refund the proposer and return early, allowing
@@ -853,40 +896,9 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
             l1Token.safeTransfer(proposer, totalBond);
             l1Token.safeApprove(address(optimisticOracle), 0);
 
-            // Return early noting that the attempt at a proposal + dispute did not succeed.
+            // Return early noting that the attempt at a proposal did not succeed.
             return false;
         }
-
-        SkinnyOptimisticOracleInterface.Request memory request =
-            SkinnyOptimisticOracleInterface.Request({
-                proposer: proposer,
-                disputer: address(0),
-                currency: IERC20(l1Token),
-                settled: false,
-                proposedPrice: int256(1e18),
-                resolvedPrice: 0,
-                expirationTime: getCurrentTime() + optimisticOracleLiveness,
-                reward: 0,
-                finalFee: totalBond - proposerBond,
-                bond: proposerBond,
-                customLiveness: uint256(optimisticOracleLiveness)
-            });
-
-        // Note: don't pull funds until here to avoid any transfers that aren't needed.
-        l1Token.safeTransferFrom(msg.sender, address(this), totalBond);
-        l1Token.safeApprove(address(optimisticOracle), totalBond);
-        // Dispute the request that we just sent.
-        optimisticOracle.disputePriceFor(
-            identifier,
-            uint32(getCurrentTime()),
-            customAncillaryData,
-            request,
-            disputer,
-            address(this)
-        );
-
-        // Return true to denote that the proposal + dispute calls succeeded.
-        return true;
     }
 
     function _unwrapWETHTo(address payable to, uint256 amount) internal {

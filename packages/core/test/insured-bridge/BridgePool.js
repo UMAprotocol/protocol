@@ -27,6 +27,7 @@ const ERC20 = getContract("ExpandedERC20");
 const WETH9 = getContract("WETH9");
 const Timer = getContract("Timer");
 const MockOracle = getContract("MockOracleAncillary");
+const MockOracleRevert = getContract("MockOracleRevert");
 
 // Contract objects
 let messenger;
@@ -1242,6 +1243,41 @@ describe("BridgePool", () => {
       await l1Token.methods.mint(rando, totalRelayBond).send({ from: owner });
       await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: rando });
       await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: rando });
+    });
+    it("Optimistic Oracle dispute reverts due to failed Voting transaction", async () => {
+      // Standard setup.
+      await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: relayer });
+      let relayAttemptData = {
+        ...defaultRelayData,
+        priceRequestTime: (await bridgePool.methods.getCurrentTime().call()).toString(),
+        relayState: InsuredBridgeRelayStateEnum.PENDING,
+      };
+      await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: relayer });
+      await l1Token.methods.approve(bridgePool.options.address, slowRelayAmountSubFee).send({ from: instantRelayer });
+
+      // Change Oracle in Finder to one that always reverts on requestPrice to simulate what would happen
+      // if OO.disputePriceFor reverted after OO.requestAndProposePriceFor succeeded.
+      const mockOracleRevert = await MockOracleRevert.new().send({ from: owner });
+      await finder.methods
+        .changeImplementationAddress(utf8ToHex(interfaceName.Oracle), mockOracleRevert.options.address)
+        .send({ from: owner });
+
+      // Relay should be deleted and all parties should be refunded.
+      await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: disputer });
+      const txn = await bridgePool.methods.disputeRelay(defaultDepositData, relayAttemptData).send({ from: disputer });
+      await assertEventEmitted(txn, bridgePool, "RelayCanceled");
+      assert.equal(await l1Token.methods.balanceOf(relayer).call(), totalRelayBond);
+      assert.equal(await l1Token.methods.balanceOf(disputer).call(), totalRelayBond);
+
+      // Another relay can be sent.
+      await l1Token.methods.mint(rando, totalRelayBond).send({ from: owner });
+      await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: rando });
+      await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: rando });
+
+      // Reset Oracle in Finder
+      await finder.methods
+        .changeImplementationAddress(utf8ToHex(interfaceName.Oracle), mockOracle.options.address)
+        .send({ from: owner });
     });
     it("Refund on decreased final fee", async () => {
       // Standard setup.
