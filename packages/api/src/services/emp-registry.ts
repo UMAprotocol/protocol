@@ -6,6 +6,7 @@ const { registry } = clients;
 
 interface Config extends BaseConfig {
   network?: number;
+  registryAddress?: string;
 }
 type Dependencies = Pick<AppState, "registeredEmps" | "provider" | "registeredEmpsMetadata">;
 
@@ -20,9 +21,9 @@ export type EmitData = {
 export type Events = "created";
 
 export default async (config: Config, appState: Dependencies, emit: (event: Events, data: EmitData) => void) => {
-  const { network = 1 } = config;
+  const { network = 1, registryAddress } = config;
   const { registeredEmps, provider, registeredEmpsMetadata } = appState;
-  const address = await registry.getAddress(network);
+  const address = registryAddress || (await registry.getAddress(network));
   const contract = registry.connect(address, provider);
 
   async function update(startBlock?: number, endBlock?: number) {
