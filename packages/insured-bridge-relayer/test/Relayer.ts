@@ -104,11 +104,6 @@ describe("Relayer.ts", function () {
     await finder.methods
       .changeImplementationAddress(utf8ToHex(interfaceName.IdentifierWhitelist), identifierWhitelist.options.address)
       .send({ from: l1Owner });
-    l1Timer = await Timer.new().send({ from: l1Owner });
-    store = await Store.new({ rawValue: "0" }, { rawValue: "0" }, l1Timer.options.address).send({ from: l1Owner });
-    await finder.methods
-      .changeImplementationAddress(utf8ToHex(interfaceName.Store), store.options.address)
-      .send({ from: l1Owner });
 
     // Other contract setup needed to relay deposit:
     await identifierWhitelist.methods.addSupportedIdentifier(defaultIdentifier).send({ from: l1Owner });
@@ -116,13 +111,18 @@ describe("Relayer.ts", function () {
 
   beforeEach(async function () {
     // Deploy new contracts with clean state and perform setup:
+    l1Timer = await Timer.new().send({ from: l1Owner });
+    store = await Store.new({ rawValue: "0" }, { rawValue: "0" }, l1Timer.options.address).send({ from: l1Owner });
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.Store), store.options.address)
+      .send({ from: l1Owner });
+    await store.methods.setFinalFee(l1Token.options.address, { rawValue: finalFee }).send({ from: l1Owner });
+
     l1Token = await ERC20.new("TESTERC20", "TESTERC20", 18).send({ from: l1Owner });
     await l1Token.methods.addMember(TokenRolesEnum.MINTER, l1Owner).send({ from: l1Owner });
     await collateralWhitelist.methods.addToWhitelist(l1Token.options.address).send({ from: l1Owner });
-    await store.methods.setFinalFee(l1Token.options.address, { rawValue: finalFee }).send({ from: l1Owner });
 
     // Deploy new OptimisticOracle so that we can control its timing:
-
     optimisticOracle = await OptimisticOracle.new(
       defaultLiveness,
       finder.options.address,

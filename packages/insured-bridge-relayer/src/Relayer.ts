@@ -52,7 +52,6 @@ export class Relayer {
     readonly disputerEnabled: boolean
   ) {}
 
-  // TODO: Rename function
   async checkForPendingDepositsAndRelay(): Promise<undefined> {
     this.logger.debug({ at: "Relayer", message: "Checking for pending deposits and relaying" });
 
@@ -160,9 +159,11 @@ export class Relayer {
         );
       }
     }
+
+    return;
   }
 
-  async checkforSettleableRelaysAndSettle() {
+  async checkforSettleableRelaysAndSettle(): Promise<undefined> {
     this.logger.debug({ at: "Relayer", message: "Checking for settleable relays and settling" });
     for (const l1Token of this.whitelistedRelayL1Tokens) {
       this.logger.debug({ at: "Relayer", message: "Checking settleable relays for token", l1Token });
@@ -180,6 +181,8 @@ export class Relayer {
       }
       if (settleableRelays.length == 0) this.logger.debug({ at: "Relayer", message: "No settleable relays" });
     }
+
+    return;
   }
 
   // Only Relay-specific params need to be validated (i.e. those params in the Relay struct of BridgePool). If any
