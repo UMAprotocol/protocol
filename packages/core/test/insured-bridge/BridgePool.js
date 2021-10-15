@@ -937,7 +937,6 @@ describe("BridgePool", () => {
     it("Can re-relay disputed request", async () => {
       // Cache price request timestamp.
       const requestTimestamp = (await bridgePool.methods.getCurrentTime().call()).toString();
-      const expectedExpirationTimestamp = (Number(requestTimestamp) + defaultLiveness).toString();
 
       // Proposer approves pool to withdraw total bond.
       await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: relayer });
@@ -947,7 +946,7 @@ describe("BridgePool", () => {
       // from disputer.
       let relayAttemptData = {
         ...defaultRelayData,
-        priceRequestTime: (await bridgePool.methods.getCurrentTime().call()).toString(),
+        priceRequestTime: requestTimestamp,
         relayState: InsuredBridgeRelayStateEnum.PENDING,
       };
       await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: disputer });
@@ -956,26 +955,6 @@ describe("BridgePool", () => {
         .send({ from: disputer });
 
       // Check for expected events:
-      await assertEventEmitted(disputeTxn, optimisticOracle, "DisputePrice", (ev) => {
-        return (
-          ev.requester === bridgePool.options.address &&
-          hexToUtf8(ev.identifier) === hexToUtf8(defaultIdentifier) &&
-          ev.timestamp.toString() === requestTimestamp &&
-          ev.ancillaryData === defaultRelayAncillaryData &&
-          ev.request.proposer === relayer &&
-          ev.request.disputer === disputer &&
-          ev.request.currency === l1Token.options.address &&
-          !ev.request.settled &&
-          ev.request.proposedPrice === toWei("1") &&
-          ev.request.resolvedPrice === "0" &&
-          ev.request.expirationTime === expectedExpirationTimestamp &&
-          ev.request.reward === "0" &&
-          ev.request.finalFee === finalFee &&
-          ev.request.bond === proposalBond.toString() &&
-          ev.request.customLiveness === defaultLiveness.toString()
-        );
-      });
-
       await assertEventEmitted(disputeTxn, bridgePool, "RelayDisputed", (ev) => {
         return (
           ev.disputer === disputer &&
@@ -1305,7 +1284,6 @@ describe("BridgePool", () => {
         .setFinalFee(l1Token.options.address, { rawValue: toBN(finalFee).subn(1).toString() })
         .send({ from: owner });
       const txn = await bridgePool.methods.disputeRelay(defaultDepositData, relayAttemptData).send({ from: disputer });
-      console.log(txn);
       await assertEventEmitted(txn, bridgePool, "RelayDisputed");
       await assertEventEmitted(txn, optimisticOracle, "RequestPrice");
       await assertEventEmitted(txn, optimisticOracle, "ProposePrice");

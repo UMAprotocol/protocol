@@ -821,10 +821,10 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
         uint256 finalFee,
         bytes memory customAncillaryData
     ) private returns (bool) {
-        // Pull dispute bond from disputer approve OO to pull it from this contract.
+        // Pull dispute bond from disputer and approve OO to pull it from this contract.
         uint256 totalBond = finalFee + proposerBond;
         l1Token.safeTransferFrom(disputer, address(this), totalBond);
-        l1Token.safeApprove(address(optimisticOracle), totalBond);
+        l1Token.safeApprove(address(optimisticOracle), totalBond * 2);
 
         try
             optimisticOracle.requestProposeAndDisputePriceFor(
@@ -842,13 +842,14 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
                 // Canonical value representing "True"; i.e. the proposed relay is valid.
                 int256(1e18)
             )
-        returns (uint256 proposerBondSpent) {
-            if (proposerBondSpent < totalBond) {
-                // If the OO pulls less (due to a change in final fee), refund the proposer.
-                uint256 refund = totalBond - proposerBondSpent;
+        returns (uint256 bondSpent) {
+            if (bondSpent < totalBond) {
+                // If the OO pulls less (due to a change in final fee), refund the proposer and disputer.
+                uint256 refund = totalBond - bondSpent;
                 l1Token.safeTransfer(proposer, refund);
+                l1Token.safeTransfer(disputer, refund);
                 l1Token.safeApprove(address(optimisticOracle), 0);
-                totalBond = proposerBondSpent;
+                totalBond = bondSpent;
             }
         } catch {
             // If there's an error in the OO, this means something has changed to make this request unproposable or

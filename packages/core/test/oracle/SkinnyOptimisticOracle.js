@@ -1247,7 +1247,12 @@ describe("SkinnyOptimisticOracle", function () {
     let customHalfTotalDefaultBond = toBN(customBond).div(toBN(2)).toString();
     let customPostDisputeParams;
     beforeEach(async function () {
-      customPostDisputeParams = { ...postDisputeParams(postProposalParams(requestParams)), bond: customBond };
+      // Expiration timestamp gets set to request timestamp for batched request+proposal+dispute.
+      customPostDisputeParams = {
+        ...postDisputeParams(postProposalParams(requestParams)),
+        bond: customBond,
+        expirationTime: requestTime.toString(),
+      };
 
       // Caller must post (reward + proposal bond) * 2.
       const totalStake = toBN(reward).add(toBN(finalFee)).add(toBN(customBond)).mul(toBN("2")).toString();

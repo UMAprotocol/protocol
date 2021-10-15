@@ -443,9 +443,9 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
      * @param proposer address to set as the proposer.
      * @param disputer address to set as the disputer.
      * @param proposedPrice price being proposed.
-     * @return proposalBond the amount that's pulled from the caller's wallet as a proposer bond. The dispute bond
-     * is equal to the proposal bond and is also pulled from the caller's wallet. The bond + unburned portion of loser's
-     * bond will be returned to the winner once settled.
+     * @return singlePartyTotalBond half the amount that's pulled from the caller's wallet as a proposer bond.
+     * The dispute bond is equal to the proposal bond and is also pulled from the caller's wallet. This value +
+     * unburned portion of loser's bond will be returned to the winner once settled.
      */
     function requestProposeAndDisputePriceFor(
         bytes32 identifier,
@@ -457,11 +457,11 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
         address proposer,
         address disputer,
         int256 proposedPrice
-    ) external override returns (uint256 proposalBond) {
+    ) external override returns (uint256 singlePartyTotalBond) {
         bytes32 requestId = _getId(msg.sender, identifier, timestamp, ancillaryData);
         require(requests[requestId] == bytes32(0), "Request already initialized");
         require(proposer != address(0), "proposer address must be non 0");
-        require(disputer != address(0), "proposer address must be non 0");
+        require(disputer != address(0), "disputer address must be non 0");
         require(_getIdentifierWhitelist().isIdentifierSupported(identifier), "Unsupported identifier");
         require(_getCollateralWhitelist().isOnWhitelist(address(currency)), "Unsupported currency");
         require(timestamp <= getCurrentTime(), "Timestamp in future");
@@ -480,9 +480,10 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
         request.proposer = proposer;
         request.disputer = disputer;
         request.proposedPrice = proposedPrice;
-        // Note: customLiveness is pointless to set in this call since the proposal is immediately disputed,
-        // therefore use the default liveness. The expirationTime is therefore also pointless.
-        request.expirationTime = getCurrentTime().add(defaultLiveness);
+        // Note: customLiveness is pointless to set in this call since the proposal is immediately disputed.
+        // The expirationTime is therefore also pointless and does not affect the settlement process for a disputed
+        // request, therefore we can trivially set it to the request timestamp.
+        request.expirationTime = timestamp;
         _storeRequestHash(requestId, request);
 
         // Pull reward from requester, who is the caller.
@@ -491,9 +492,9 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
 
             if (reward > 0) currency.safeTransferFrom(msg.sender, address(this), reward);
             // Pull proposal + dispute bond from caller, which are the same value.
-            proposalBond = request.bond.add(request.finalFee);
-            if (proposalBond > 0) {
-                currency.safeTransferFrom(msg.sender, address(this), proposalBond.mul(2));
+            singlePartyTotalBond = request.bond.add(request.finalFee);
+            if (singlePartyTotalBond > 0) {
+                currency.safeTransferFrom(msg.sender, address(this), singlePartyTotalBond.mul(2));
             }
         }
 
