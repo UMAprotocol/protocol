@@ -389,24 +389,8 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
         totalBond = request.bond.add(request.finalFee);
         if (totalBond > 0) request.currency.safeTransferFrom(msg.sender, address(this), totalBond);
 
-        StoreInterface store = _getStore();
-
-        // Avoids stack too deep compilation error.
-        {
-            // Along with the final fee, "burn" part of the loser's bond to ensure that a larger bond always makes it
-            // proportionally more expensive to delay the resolution even if the proposer and disputer are the same
-            // party.
-            uint256 burnedBond = _computeBurnedBond(disputedRequest);
-
-            // The total fee is the burned bond and the final fee added together.
-            uint256 totalFee = request.finalFee.add(burnedBond);
-
-            if (totalFee > 0) {
-                request.currency.safeIncreaseAllowance(address(store), totalFee);
-                _getStore().payOracleFeesErc20(address(request.currency), FixedPoint.Unsigned(totalFee));
-            }
-        }
-
+        // Submit price request to DVM for dispute.
+        _payFinalFeesForDispute(disputedRequest);
         _getOracle().requestPrice(identifier, timestamp, _stampAncillaryData(ancillaryData, requester));
 
         emit DisputePrice(requester, identifier, timestamp, ancillaryData, disputedRequest);
@@ -498,26 +482,11 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
             }
         }
 
-        // Avoids stack too deep compilation error.
-        {
-            StoreInterface store = _getStore();
-
-            // Along with the final fee, "burn" part of the loser's bond to ensure that a larger bond always makes it
-            // proportionally more expensive to delay the resolution even if the proposer and disputer are the same
-            // party.
-            uint256 burnedBond = _computeBurnedBond(request);
-
-            // The total fee is the burned bond and the final fee added together.
-            uint256 totalFee = request.finalFee.add(burnedBond);
-
-            if (totalFee > 0) {
-                request.currency.safeIncreaseAllowance(address(store), totalFee);
-                _getStore().payOracleFeesErc20(address(request.currency), FixedPoint.Unsigned(totalFee));
-            }
-        }
+        // Submit price request to DVM for dispute.
+        _payFinalFeesForDispute(request);
+        _getOracle().requestPrice(identifier, timestamp, _stampAncillaryData(ancillaryData, msg.sender));
 
         // Submit price request to Oracle.
-        _getOracle().requestPrice(identifier, timestamp, _stampAncillaryData(ancillaryData, msg.sender));
         emit RequestPrice(msg.sender, identifier, timestamp, ancillaryData, request);
         emit ProposePrice(msg.sender, identifier, timestamp, ancillaryData, request);
         emit DisputePrice(msg.sender, identifier, timestamp, ancillaryData, request);
@@ -651,6 +620,23 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
     // Returns hash of request parameters. These are mapped to the unique request ID to track a request's lifecycle.
     function _getRequestHash(Request memory request) private pure returns (bytes32) {
         return keccak256(abi.encode(request));
+    }
+
+    function _payFinalFeesForDispute(Request memory request) private {
+        StoreInterface store = _getStore();
+
+        // Along with the final fee, "burn" part of the loser's bond to ensure that a larger bond always makes it
+        // proportionally more expensive to delay the resolution even if the proposer and disputer are the same
+        // party.
+        uint256 burnedBond = _computeBurnedBond(request);
+
+        // The total fee is the burned bond and the final fee added together.
+        uint256 totalFee = request.finalFee.add(burnedBond);
+
+        if (totalFee > 0) {
+            request.currency.safeIncreaseAllowance(address(store), totalFee);
+            _getStore().payOracleFeesErc20(address(request.currency), FixedPoint.Unsigned(totalFee));
+        }
     }
 
     // Resolves a price request that has expired or been disputed and a price is available from the DVM. This will
