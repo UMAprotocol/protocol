@@ -84,6 +84,7 @@ describe("Relayer.ts", function () {
   let spy: any;
 
   let relayer: any;
+  let disputer: any;
   let l1Client: any;
   let l2Client: any;
   let gasEstimator: any;
@@ -204,7 +205,27 @@ describe("Relayer.ts", function () {
 
     gasEstimator = new GasEstimator(spyLogger);
 
-    relayer = new Relayer(spyLogger, gasEstimator, l1Client, l2Client, [l1Token.options.address], l1Relayer);
+    // Disputer and relayer are the same bot, but with the Dispute and Relay logic turned on/off.
+    relayer = new Relayer(
+      spyLogger,
+      gasEstimator,
+      l1Client,
+      l2Client,
+      [l1Token.options.address],
+      l1Relayer,
+      true, // Relayer mode enabled
+      false
+    );
+    disputer = new Relayer(
+      spyLogger,
+      gasEstimator,
+      l1Client,
+      l2Client,
+      [l1Token.options.address],
+      l1Relayer,
+      false,
+      true // Disputer mode enabled
+    );
   });
   it("Initialization is correct", async function () {
     assert.equal(relayer.l1Client.bridgeAdminAddress, bridgeAdmin.options.address);
@@ -416,6 +437,10 @@ describe("Relayer.ts", function () {
       // Mint the relayer some tokens and try again.
       await l1Token.methods.mint(l1Relayer, toBN(depositAmount).muln(2)).send({ from: l1Owner });
       await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Relayer });
+      // Test that the disputer, which is set up with the same account as the relayer, does not send relays because its
+      // Relayer mode is disabled.
+      await disputer.checkForPendingDepositsAndRelay();
+      assert.isTrue(lastSpyLogIncludes(spy, "Relayer disabled"));
       await relayer.checkForPendingDepositsAndRelay();
       assert.isTrue(lastSpyLogIncludes(spy, "Slow Relay executed"));
 
@@ -684,6 +709,67 @@ describe("Relayer.ts", function () {
       await Promise.all([l1Client.update(), l2Client.update()]);
       await relayer.checkforSettleableRelaysAndSettle();
       assert.isTrue(lastSpyLogIncludes(spy, "Relay settled"));
+    });
+  });
+  describe("Dispute transaction functionality", function () {
+    beforeEach(async function () {
+      // Add liquidity to the L1 pool to facilitate the relay action.
+      await l1Token.methods.mint(l1LiquidityProvider, initialPoolLiquidity).send({ from: l1Owner });
+      await l1Token.methods
+        .approve(bridgePool.options.address, initialPoolLiquidity)
+        .send({ from: l1LiquidityProvider });
+      await bridgePool.methods.addLiquidity(initialPoolLiquidity).send({ from: l1LiquidityProvider });
+
+      // Mint some tokens for the L2 depositor.
+      await l2Token.methods.mint(l2Depositor, depositAmount).send({ from: l2Owner });
+    });
+    it("Disputes pending relays with invalid relay data", async function () {
+      // This test looks exactly like the "Does not speedup relays with invalid relay data" test but it employs the
+      // disputer mode (with the Disputer mode enabled) instead of the relayer bot.
+
+      // Make a deposit on L2 and relay it with invalid relay params. The disputer should detect that the relay params
+      // are invalid and dispute it.
+      await l2Token.methods.approve(bridgeDepositBox.options.address, depositAmount).send({ from: l2Depositor });
+      const quoteTime = await bridgeDepositBox.methods.getCurrentTime().call();
+      await bridgeDepositBox.methods
+        .deposit(
+          l2Depositor,
+          l2Token.options.address,
+          depositAmount,
+          defaultSlowRelayFeePct,
+          defaultInstantRelayFeePct,
+          quoteTime
+        )
+        .send({ from: l2Depositor });
+
+      // Relay it from the tests to mimic someone else doing the slow relay.
+      await l1Token.methods.mint(l1Owner, toBN(depositAmount).muln(2)).send({ from: l1Owner });
+      await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Owner });
+      await bridgePool.methods
+        .relayDeposit(
+          {
+            chainId: chainId,
+            depositId: "0",
+            l2Sender: l2Depositor,
+            l1Recipient: l2Depositor,
+            amount: depositAmount,
+            slowRelayFeePct: defaultSlowRelayFeePct,
+            instantRelayFeePct: defaultInstantRelayFeePct,
+            quoteTimestamp: quoteTime,
+          },
+          toBN(defaultRealizedLpFeePct)
+            .mul(toBN(toWei("2")))
+            .div(toBN(toWei("1")))
+            .toString() // Invalid relay param
+        )
+        .send({ from: l1Owner });
+
+      // Now, run the disputer and check that it disputes the relay.
+      await Promise.all([l1Client.update(), l2Client.update()]);
+      await l1Token.methods.mint(l1Relayer, toBN(depositAmount).muln(2)).send({ from: l1Owner });
+      await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Relayer });
+      await disputer.checkForPendingDepositsAndRelay();
+      assert.isTrue(lastSpyLogIncludes(spy, "Disputed pending relay"));
     });
   });
 });

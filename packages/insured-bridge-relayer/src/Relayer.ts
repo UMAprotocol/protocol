@@ -37,6 +37,9 @@ export class Relayer {
    * @param {Object} l2Client Client for fetching L2 deposit data.
    * @param {Array} whitelistedRelayL1Tokens List of whitelisted L1 tokens that the relayer supports.
    * @param {string} account Unlocked web3 account to send L1 messages.
+   * @param {boolean} relayerEnabled If True, this bot will attempt to submit slow + fast relays.
+   * @param {boolean} disputerEnabled If True, this bot will dispute invalid pending relays.
+
    */
   constructor(
     readonly logger: winston.Logger,
@@ -44,9 +47,12 @@ export class Relayer {
     readonly l1Client: InsuredBridgeL1Client,
     readonly l2Client: InsuredBridgeL2Client,
     readonly whitelistedRelayL1Tokens: string[],
-    readonly account: string
+    readonly account: string,
+    readonly relayerEnabled: boolean,
+    readonly disputerEnabled: boolean
   ) {}
 
+  // TODO: Rename function
   async checkForPendingDepositsAndRelay(): Promise<undefined> {
     this.logger.debug({ at: "Relayer", message: "Checking for pending deposits and relaying" });
 
@@ -93,16 +99,32 @@ export class Relayer {
               relayableDeposit,
               reason: relayStatus.relayDisputable.reason,
             });
-            // TODO: Optionally dispute the relay here if DISPUTE_MODE=true
+            // If Disputer feature is enabled, submit a dispute on-chain. Otherwise skip to the next deposit.
+            if (this.disputerEnabled) {
+              this.logger.debug({
+                at: "InsuredBridgeRelayer#Disputer",
+                message: "Disputing pending invalid relay",
+              });
+              await this.disputeRelay(relayableDeposit.deposit, pendingRelay);
+            }
             continue;
           }
         }
 
-        // TODO: Optionally attempt to submit relay transaction if RELAY_MODE=true
-        // If there is no pending relay for deposit, there is possibility we can either relay it or relay and speed it
-        // up.
+        // If the Relayer feature is disabled, there are no more actions to do so skip to the next deposit. We still
+        // want to go through this loop in case the Disputer feature is enabled and there are disputable pending
+        // relays.
+        if (!this.relayerEnabled) {
+          this.logger.debug({
+            at: "InsuredBridgeRelayer#Relayer",
+            message: "Relayer disabled, skipping to next relayable deposit",
+            pendingRelay,
+            relayableDeposit,
+          });
+          continue;
+        }
 
-        // If relay is valid, then account for profitability and bot token balance when deciding how to relay.
+        // Account for profitability and bot token balance when deciding how to relay.
         const realizedLpFeePct = await this.l1Client.calculateRealizedLpFeePctForDeposit(relayableDeposit.deposit);
         const hasInstantRelayer = this.l1Client.hasInstantRelayer(
           relayableDeposit.deposit.l1Token,
@@ -392,6 +414,44 @@ export class Relayer {
     }
   }
 
+  private async disputeRelay(deposit: Deposit, relay: Relay) {
+    await this.gasEstimator.update();
+    try {
+      const { receipt, transactionConfig } = await runTransaction({
+        web3: this.l1Client.l1Web3,
+        transaction: this.generateDisputeRelayTx(deposit, relay),
+        transactionConfig: { gasPrice: this.gasEstimator.getCurrentFastPrice().toString(), from: this.account },
+        availableAccounts: 1,
+      });
+
+      if (receipt.events) {
+        if (receipt.events.RelayDisputed) {
+          this.logger.info({
+            at: "InsuredBridgeRelayer#Relayer",
+            type: "Disputed pending relay. Relay was deleted. 🧑🏻‍✈️",
+            tx: receipt.transactionHash,
+            depositHash: receipt.events.RelayDisputed.returnValues.depositHash,
+            relayHash: receipt.events.RelayDisputed.returnValues.relayHash,
+            disputer: receipt.events.RelayDisputed.returnValues.disputer,
+            transactionConfig,
+          });
+        } else if (receipt.events.RelayCanceled) {
+          this.logger.info({
+            at: "InsuredBridgeRelayer#Relayer",
+            type: "Disputed pending relay, but dispute failed to send to OO. Relay was deleted. 🧑🏻‍✈️",
+            tx: receipt.transactionHash,
+            depositHash: receipt.events.RelayCanceled.returnValues.depositHash,
+            relayHash: receipt.events.RelayCanceled.returnValues.relayHash,
+            disputer: receipt.events.RelayCanceled.returnValues.disputer,
+            transactionConfig,
+          });
+        } else throw receipt;
+      } else throw receipt;
+    } catch (error) {
+      this.logger.error({ at: "InsuredBridgeRelayer#Relayer", type: "Something errored speeding up relay!", error });
+    }
+  }
+
   private generateSlowRelayTx(deposit: Deposit, realizedLpFeePct: BN): TransactionType {
     const bridgePool = this.l1Client.getBridgePoolForDeposit(deposit).contract;
     return (bridgePool.methods.relayDeposit(
@@ -420,6 +480,11 @@ export class Relayer {
       deposit as any,
       realizedLpFeePct.toString()
     ) as unknown) as TransactionType;
+  }
+
+  private generateDisputeRelayTx(deposit: Deposit, relay: Relay): TransactionType {
+    const bridgePool = this.l1Client.getBridgePoolForDeposit(deposit).contract;
+    return (bridgePool.methods.disputeRelay(deposit as any, relay as any) as unknown) as TransactionType;
   }
 
   private generateSettleRelayTx(deposit: Deposit, relay: Relay): TransactionType {

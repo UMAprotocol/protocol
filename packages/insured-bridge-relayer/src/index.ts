@@ -68,7 +68,16 @@ export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
       config.whitelistedRelayL1Tokens
     );
 
-    const relayer = new Relayer(logger, gasEstimator, l1Client, l2Client, config.whitelistedRelayL1Tokens, accounts[0]);
+    const relayer = new Relayer(
+      logger,
+      gasEstimator,
+      l1Client,
+      l2Client,
+      config.whitelistedRelayL1Tokens,
+      accounts[0],
+      config.relayerEnabled,
+      config.disputerEnabled
+    );
 
     for (;;) {
       await retry(

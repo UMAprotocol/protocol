@@ -31,6 +31,9 @@ export class RelayerConfig {
   readonly activatedChainIds: number[];
   readonly l2StartBlock: number;
 
+  readonly disputerEnabled: boolean;
+  readonly relayerEnabled: boolean;
+
   constructor(env: ProcessEnv) {
     const {
       BRIDGE_ADMIN_ADDRESS,
@@ -40,7 +43,18 @@ export class RelayerConfig {
       RATE_MODELS,
       CHAIN_IDS,
       L2_START_BLOCK,
+      DISPUTER_ENABLED,
+      RELAYER_ENABLED,
     } = env;
+    // Activating the Relayer mode will perform the following actions:
+    // - Submit slow relays
+    // - Speed up pending slow relays
+    this.relayerEnabled = Boolean(RELAYER_ENABLED);
+
+    // Activating the Disputer mode will perform the following actions:
+    // - Dispute pending slow relays with invalid relay parameters
+    this.disputerEnabled = Boolean(DISPUTER_ENABLED);
+
     assert(BRIDGE_ADMIN_ADDRESS, "BRIDGE_ADMIN_ADDRESS required");
     this.bridgeAdmin = Web3.utils.toChecksumAddress(BRIDGE_ADMIN_ADDRESS);
 
