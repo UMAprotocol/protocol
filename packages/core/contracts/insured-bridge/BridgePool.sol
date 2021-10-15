@@ -810,8 +810,10 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
             );
     }
 
-    // Proposes new price of True for relay event associated with `customAncillaryData` to optimistic oracle. If anyone
-    // disagrees with the relay parameters and whether they map to an L2 deposit, they can dispute with the oracle.
+    // Proposes new price of True for relay event associated with `customAncillaryData` to optimistic oracle and
+    // atomically disputes it. This effectively submits a price request to the DVM linked to a settlement contract
+    // between the slow relayer and the disputer. The slow relayer alleges that the relay is valid, and the disputer
+    // disagrees. The OptimisticOracle settles the dispute once the DVM resolves the request.
     function _requestProposeDispute(
         address proposer,
         address disputer,
@@ -819,10 +821,13 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
         uint256 finalFee,
         bytes memory customAncillaryData
     ) private returns (bool) {
+        // Pull dispute bond from disputer approve OO to pull it from this contract.
         uint256 totalBond = finalFee + proposerBond;
+        l1Token.safeTransferFrom(disputer, address(this), totalBond);
         l1Token.safeApprove(address(optimisticOracle), totalBond);
+
         try
-            optimisticOracle.requestAndProposePriceFor(
+            optimisticOracle.requestProposeAndDisputePriceFor(
                 identifier,
                 uint32(getCurrentTime()),
                 customAncillaryData,
@@ -832,67 +837,27 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
                 0,
                 // Set the Optimistic oracle proposer bond for the price request.
                 proposerBond,
-                // Set the Optimistic oracle liveness for the price request.
-                optimisticOracleLiveness,
                 proposer,
+                disputer,
                 // Canonical value representing "True"; i.e. the proposed relay is valid.
                 int256(1e18)
             )
-        returns (uint256 bondSpent) {
-            if (bondSpent < totalBond) {
+        returns (uint256 proposerBondSpent) {
+            if (proposerBondSpent < totalBond) {
                 // If the OO pulls less (due to a change in final fee), refund the proposer.
-                uint256 refund = totalBond - bondSpent;
+                uint256 refund = totalBond - proposerBondSpent;
                 l1Token.safeTransfer(proposer, refund);
                 l1Token.safeApprove(address(optimisticOracle), 0);
-                totalBond = bondSpent;
+                totalBond = proposerBondSpent;
             }
-
-            // If proposal succeeds, then attempt to dispute. This might also fail.
-            SkinnyOptimisticOracleInterface.Request memory request =
-                SkinnyOptimisticOracleInterface.Request({
-                    proposer: proposer,
-                    disputer: address(0),
-                    currency: IERC20(l1Token),
-                    settled: false,
-                    proposedPrice: int256(1e18),
-                    resolvedPrice: 0,
-                    expirationTime: getCurrentTime() + optimisticOracleLiveness,
-                    reward: 0,
-                    finalFee: totalBond - proposerBond,
-                    bond: proposerBond,
-                    customLiveness: uint256(optimisticOracleLiveness)
-                });
-
-            // Note: don't pull funds until here to avoid any transfers that aren't needed.
-            l1Token.safeTransferFrom(msg.sender, address(this), totalBond);
-            l1Token.safeApprove(address(optimisticOracle), totalBond);
-
-            // Dispute the request that we just sent.
-            try
-                optimisticOracle.disputePriceFor(
-                    identifier,
-                    uint32(getCurrentTime()),
-                    customAncillaryData,
-                    request,
-                    disputer,
-                    address(this)
-                )
-            returns (uint256) {
-                // Return true to denote that the proposal + dispute calls succeeded.
-                return true;
-            } catch {
-                // If dispute fails, refund disputer.
-                l1Token.safeTransfer(msg.sender, totalBond);
-                l1Token.safeApprove(address(optimisticOracle), 0);
-
-                // Return early noting that the attempt at a dispute did not succeed.
-                return false;
-            }
+            // Return true to denote that the proposal + dispute calls succeeded.
+            return true;
         } catch {
-            // If there's an error in the OO, this means something has changed to make this request undisputable.
-            // To ensure the request does not go through by default, refund the proposer and return early, allowing
-            // the calling method to delete the request, but with no additional recourse by the OO.
+            // If there's an error in the OO, this means something has changed to make this request unproposable or
+            // undisputable. To ensure the request does not go through by default, refund the proposer and return early,
+            // allowing the calling method to delete the request, but with no additional recourse by the OO.
             l1Token.safeTransfer(proposer, totalBond);
+            l1Token.safeTransfer(disputer, totalBond);
             l1Token.safeApprove(address(optimisticOracle), 0);
 
             // Return early noting that the attempt at a proposal did not succeed.

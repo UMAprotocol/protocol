@@ -182,6 +182,46 @@ abstract contract SkinnyOptimisticOracleInterface {
     ) external virtual returns (uint256 totalBond);
 
     /**
+     * @notice Combines logic of requestAndProposePriceFor and disputePrice while taking advantage of gas savings from
+     * not having to overwrite Request params that a normal requestAndProposePriceFor() => disputePrice() flow would
+     * entail. This function also has the added benefit of atomically executing the request+proposal+dispute. If one
+     * were to instead call requestAndProposePriceFor() followed by disputePrice(), then its possible that
+     * the second call could revert after the first one succeeds, resulting in an undisputable pending proposal.
+     * Note: The proposer or disputer will receive any rewards that come from this proposal. However, any bonds are
+     * pulled from the caller.
+     * Note: This effectively submits a new price request to the DVM, however this contract manages dispute settlement
+     * which is not included natively in the DVM which just resolves prices. Therefore this function can be viewed as a
+     * helper method to resolve a disagreement between two parties, "proposer" and "disputer", and payout to the winner.
+     * The caller alleges that the price is equal to the `proposedPrice`, but wants the DVM to resolve it and therefore
+     * submits a price request for it. The caller also wants the this contract to handle settlement based on the
+     * resolved price.
+     * @dev The caller is the requester, but the proposer and disputer can be customized.
+     * @param identifier price identifier to identify the existing request.
+     * @param timestamp timestamp to identify the existing request.
+     * @param ancillaryData ancillary data of the price being requested.
+     * @param currency ERC20 token used for payment of rewards and fees. Must be approved for use with the DVM.
+     * @param reward reward offered to winner of dispute. Will be pulled from the caller. Note: this can be 0,
+     *               which could make sense if the contract provides its own reward system.
+     * @param bond custom proposal bond to set for request. If set to 0, defaults to the final fee.
+     * @param proposer address to set as the proposer.
+     * @param disputer address to set as the disputer.
+     * @param proposedPrice price being proposed.
+     * @return totalBond the amount that's pulled from the caller's wallet as a bond. The bond will be returned to
+     * the proposer once settled if the proposal is correct.
+     */
+    function requestProposeAndDisputePriceFor(
+        bytes32 identifier,
+        uint32 timestamp,
+        bytes memory ancillaryData,
+        IERC20 currency,
+        uint256 reward,
+        uint256 bond,
+        address proposer,
+        address disputer,
+        int256 proposedPrice
+    ) external virtual returns (uint256 totalBond);
+
+    /**
      * @notice Attempts to settle an outstanding price request. Will revert if it isn't settleable.
      * @param requester sender of the initial price request.
      * @param identifier price identifier to identify the existing request.

@@ -1240,6 +1240,185 @@ describe("SkinnyOptimisticOracle", function () {
     });
   });
 
+  describe("requestProposeAndDisputePriceFor multicall", function () {
+    // Test that custom bond can be set to 0.
+    let customBond = "0";
+    let customTotalDefaultBond = toBN(finalFee).add(toBN(customBond)).toString();
+    let customHalfTotalDefaultBond = toBN(customBond).div(toBN(2)).toString();
+    let customPostDisputeParams;
+    beforeEach(async function () {
+      customPostDisputeParams = { ...postDisputeParams(postProposalParams(requestParams)), bond: customBond };
+
+      // Caller must post (reward + proposal bond) * 2.
+      const totalStake = toBN(reward).add(toBN(finalFee)).add(toBN(customBond)).mul(toBN("2")).toString();
+      await collateral.methods.transfer(requester, totalStake).send({ from: accounts[0] });
+      await collateral.methods
+        .increaseAllowance(optimisticOracle.options.address, totalStake)
+        .send({ from: requester });
+    });
+
+    it("State and events check", async function () {
+      const txn = await optimisticOracle.methods.requestProposeAndDisputePriceFor(
+        identifier,
+        requestTime,
+        "0x",
+        collateral.options.address,
+        reward,
+        customBond,
+        proposer,
+        disputer,
+        correctPrice
+      );
+      const returnValue = await txn.call({ from: requester });
+      assert.equal(returnValue, customTotalDefaultBond);
+      const txnResult = await txn.send({ from: requester });
+
+      // DisputePrice, RequestPrice and ProposePrice should contain the same request params, which is different
+      // from the two-step flow where first requestAndProposePriceFor() is called followed by disputePrice().
+      await assertEventEmitted(txnResult, optimisticOracle, "DisputePrice", (ev) => {
+        return (
+          ev.requester === requester &&
+          hexToUtf8(ev.identifier) == hexToUtf8(identifier) &&
+          ev.timestamp.toString() === requestTime.toString() &&
+          ev.ancillaryData === null &&
+          ev.request.proposer === customPostDisputeParams.proposer &&
+          ev.request.disputer === customPostDisputeParams.disputer &&
+          ev.request.currency === customPostDisputeParams.currency &&
+          ev.request.settled === customPostDisputeParams.settled &&
+          ev.request.proposedPrice === customPostDisputeParams.proposedPrice &&
+          ev.request.resolvedPrice === customPostDisputeParams.resolvedPrice &&
+          ev.request.expirationTime === customPostDisputeParams.expirationTime &&
+          ev.request.reward === customPostDisputeParams.reward &&
+          ev.request.finalFee === customPostDisputeParams.finalFee &&
+          ev.request.bond === customPostDisputeParams.bond &&
+          ev.request.customLiveness === customPostDisputeParams.customLiveness
+        );
+      });
+      await assertEventEmitted(txnResult, optimisticOracle, "ProposePrice", (ev) => {
+        return (
+          ev.requester === requester &&
+          hexToUtf8(ev.identifier) == hexToUtf8(identifier) &&
+          ev.timestamp.toString() === requestTime.toString() &&
+          ev.ancillaryData === null &&
+          ev.request.proposer === customPostDisputeParams.proposer &&
+          ev.request.disputer === customPostDisputeParams.disputer &&
+          ev.request.currency === customPostDisputeParams.currency &&
+          ev.request.settled === customPostDisputeParams.settled &&
+          ev.request.proposedPrice === customPostDisputeParams.proposedPrice &&
+          ev.request.resolvedPrice === customPostDisputeParams.resolvedPrice &&
+          ev.request.expirationTime === customPostDisputeParams.expirationTime &&
+          ev.request.reward === customPostDisputeParams.reward &&
+          ev.request.finalFee === customPostDisputeParams.finalFee &&
+          ev.request.bond === customPostDisputeParams.bond &&
+          ev.request.customLiveness === customPostDisputeParams.customLiveness
+        );
+      });
+      await assertEventEmitted(txnResult, optimisticOracle, "RequestPrice", (ev) => {
+        return (
+          ev.requester === requester &&
+          hexToUtf8(ev.identifier) == hexToUtf8(identifier) &&
+          ev.timestamp.toString() === requestTime.toString() &&
+          ev.ancillaryData === null &&
+          ev.request.proposer === customPostDisputeParams.proposer &&
+          ev.request.disputer === customPostDisputeParams.disputer &&
+          ev.request.currency === customPostDisputeParams.currency &&
+          ev.request.settled === customPostDisputeParams.settled &&
+          ev.request.proposedPrice === customPostDisputeParams.proposedPrice &&
+          ev.request.resolvedPrice === customPostDisputeParams.resolvedPrice &&
+          ev.request.expirationTime === customPostDisputeParams.expirationTime &&
+          ev.request.reward === customPostDisputeParams.reward &&
+          ev.request.finalFee === customPostDisputeParams.finalFee &&
+          ev.request.bond === customPostDisputeParams.bond &&
+          ev.request.customLiveness === customPostDisputeParams.customLiveness
+        );
+      });
+
+      await verifyState(
+        OptimisticOracleRequestStatesEnum.DISPUTED,
+        requester,
+        identifier,
+        requestTime,
+        "0x",
+        customPostDisputeParams
+      );
+
+      // OO should have 2 * disputeBond + reward - 0.5 dispute bond - final fee.
+      await verifyBalanceSum(
+        optimisticOracle.options.address,
+        customTotalDefaultBond,
+        customTotalDefaultBond,
+        reward,
+        `-${finalFee}`,
+        `-${customHalfTotalDefaultBond}`
+      );
+    });
+
+    it("Should be able to settle dispute", async function () {
+      await optimisticOracle.methods
+        .requestProposeAndDisputePriceFor(
+          identifier,
+          requestTime,
+          "0x",
+          collateral.options.address,
+          reward,
+          customBond,
+          proposer,
+          disputer,
+          correctPrice
+        )
+        .send({ from: requester });
+
+      // Push price to Oracle to resolve dispute.
+      await pushPrice(correctPrice);
+      await verifyState(
+        OptimisticOracleRequestStatesEnum.RESOLVED,
+        requester,
+        identifier,
+        requestTime,
+        "0x",
+        customPostDisputeParams
+      );
+
+      // Settle and check price and payouts.
+      const settleTxn = optimisticOracle.methods.settle(
+        requester,
+        identifier,
+        requestTime,
+        "0x",
+        customPostDisputeParams
+      );
+      const returnValues = await settleTxn.call({ from: accounts[0] });
+      assert.equal(returnValues.resolvedPrice, correctPrice);
+      assert.equal(
+        returnValues.payout,
+        toBN(customTotalDefaultBond).add(toBN(customHalfTotalDefaultBond)).add(toBN(reward)).toString()
+      );
+
+      await settleTxn.send({ from: accounts[0] });
+      await verifyState(
+        OptimisticOracleRequestStatesEnum.SETTLED,
+        requester,
+        identifier,
+        requestTime,
+        "0x",
+        postSettleExpiryParams(customPostDisputeParams)
+      );
+
+      // Proposer should net half the disputer's bond plus the reward and receive their proposal bond back.
+      await verifyBalanceSum(proposer, initialUserBalance, customHalfTotalDefaultBond, reward, customTotalDefaultBond);
+
+      // Disputer balance should be unchanged since they didn't need to post anything for dispute. The dispute
+      // bond was taken out of requester's balance.
+      await verifyBalanceSum(disputer, initialUserBalance);
+
+      // Contract should be empty.
+      await verifyBalanceSum(optimisticOracle.options.address);
+
+      // Store should have a final fee.
+      await verifyBalanceSum(store.options.address, finalFee, customHalfTotalDefaultBond);
+    });
+  });
+
   describe("Callbacks", function () {
     beforeEach(async function () {
       // Caller must post reward + proposal bond.

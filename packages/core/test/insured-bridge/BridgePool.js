@@ -1227,7 +1227,7 @@ describe("BridgePool", () => {
       await l1Token.methods.approve(bridgePool.options.address, slowRelayAmountSubFee).send({ from: instantRelayer });
       await bridgePool.methods.speedUpRelay(defaultDepositData, relayAttemptData).send({ from: instantRelayer });
 
-      // Relay should be canceled and all parties should be refunded since the final fee increased and the initial bond
+      // Relay should be canceled and both parties should be refunded since the final fee increased and the initial bond
       // was not sufficient.
       await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: disputer });
       await store.methods
@@ -1266,19 +1266,16 @@ describe("BridgePool", () => {
         .changeImplementationAddress(utf8ToHex(interfaceName.Oracle), mockOracleRevert.options.address)
         .send({ from: owner });
 
-      // Relay should be deleted and disputer should be refunded.
+      // Relay should be deleted and both parties should be refunded.
       await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: disputer });
       const txn = await bridgePool.methods.disputeRelay(defaultDepositData, relayAttemptData).send({ from: disputer });
       await assertEventEmitted(txn, bridgePool, "RelayCanceled");
+      assert.equal(await l1Token.methods.balanceOf(relayer).call(), totalRelayBond);
       assert.equal(await l1Token.methods.balanceOf(disputer).call(), totalRelayBond);
 
-      // There should be a pending request + proposal in the OO, but no dispute.
+      // There should be no pending requests in the OO.
       const priceRequests = await optimisticOracle.getPastEvents("RequestPrice", { fromBlock: 0 });
-      const priceProposals = await optimisticOracle.getPastEvents("ProposePrice", { fromBlock: 0 });
-      const priceDisputes = await optimisticOracle.getPastEvents("DisputePrice", { fromBlock: 0 });
-      assert.equal(priceRequests.length, 1);
-      assert.equal(priceProposals.length, 1);
-      assert.equal(priceDisputes.length, 0);
+      assert.equal(priceRequests.length, 0);
 
       // Another relay can be sent.
       await l1Token.methods.mint(rando, totalRelayBond).send({ from: owner });
@@ -1308,6 +1305,7 @@ describe("BridgePool", () => {
         .setFinalFee(l1Token.options.address, { rawValue: toBN(finalFee).subn(1).toString() })
         .send({ from: owner });
       const txn = await bridgePool.methods.disputeRelay(defaultDepositData, relayAttemptData).send({ from: disputer });
+      console.log(txn);
       await assertEventEmitted(txn, bridgePool, "RelayDisputed");
       await assertEventEmitted(txn, optimisticOracle, "RequestPrice");
       await assertEventEmitted(txn, optimisticOracle, "ProposePrice");

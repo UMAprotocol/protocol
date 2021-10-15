@@ -419,6 +419,116 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
     }
 
     /**
+     * @notice Combines logic of requestAndProposePriceFor and disputePrice while taking advantage of gas savings from
+     * not having to overwrite Request params that a normal requestAndProposePriceFor() => disputePrice() flow would
+     * entail. This function also has the added benefit of atomically executing the request+proposal+dispute. If one
+     * were to instead call requestAndProposePriceFor() followed by disputePrice(), then its possible that
+     * the second call could revert after the first one succeeds, resulting in an undisputable pending proposal.
+     * Note: The proposer or disputer will receive any rewards that come from this proposal. However, any bonds are
+     * pulled from the caller.
+     * Note: This effectively submits a new price request to the DVM, however this contract manages dispute settlement
+     * which is not included natively in the DVM which just resolves prices. Therefore this function can be viewed as a
+     * helper method to resolve a disagreement between two parties, "proposer" and "disputer", and payout to the winner.
+     * The caller alleges that the price is equal to the `proposedPrice`, but wants the DVM to resolve it and therefore
+     * submits a price request for it. The caller also wants the this contract to handle settlement based on the
+     * resolved price.
+     * @dev The caller is the requester, but the proposer and disputer can be customized.
+     * @param identifier price identifier to identify the existing request.
+     * @param timestamp timestamp to identify the existing request.
+     * @param ancillaryData ancillary data of the price being requested.
+     * @param currency ERC20 token used for payment of rewards and fees. Must be approved for use with the DVM.
+     * @param reward reward offered to winner of dispute. Will be pulled from the caller. Note: this can be 0,
+     *               which could make sense if the contract provides its own reward system.
+     * @param bond custom proposal bond to set for request. If set to 0, defaults to the final fee.
+     * @param proposer address to set as the proposer.
+     * @param disputer address to set as the disputer.
+     * @param proposedPrice price being proposed.
+     * @return proposalBond the amount that's pulled from the caller's wallet as a proposer bond. The dispute bond
+     * is equal to the proposal bond and is also pulled from the caller's wallet. The bond + unburned portion of loser's
+     * bond will be returned to the winner once settled.
+     */
+    function requestProposeAndDisputePriceFor(
+        bytes32 identifier,
+        uint32 timestamp,
+        bytes memory ancillaryData,
+        IERC20 currency,
+        uint256 reward,
+        uint256 bond,
+        address proposer,
+        address disputer,
+        int256 proposedPrice
+    ) external override returns (uint256 proposalBond) {
+        bytes32 requestId = _getId(msg.sender, identifier, timestamp, ancillaryData);
+        require(requests[requestId] == bytes32(0), "Request already initialized");
+        require(proposer != address(0), "proposer address must be non 0");
+        require(disputer != address(0), "proposer address must be non 0");
+        require(_getIdentifierWhitelist().isIdentifierSupported(identifier), "Unsupported identifier");
+        require(_getCollateralWhitelist().isOnWhitelist(address(currency)), "Unsupported currency");
+        require(timestamp <= getCurrentTime(), "Timestamp in future");
+        require(
+            _stampAncillaryData(ancillaryData, msg.sender).length <= ancillaryBytesLimit,
+            "Ancillary Data too long"
+        );
+        uint256 finalFee = _getStore().computeFinalFee(address(currency)).rawValue;
+
+        // Associate new request with ID
+        Request memory request;
+        request.currency = currency;
+        request.reward = reward;
+        request.finalFee = finalFee;
+        request.bond = bond;
+        request.proposer = proposer;
+        request.disputer = disputer;
+        request.proposedPrice = proposedPrice;
+        // Note: customLiveness is pointless to set in this call since the proposal is immediately disputed,
+        // therefore use the default liveness. The expirationTime is therefore also pointless.
+        request.expirationTime = getCurrentTime().add(defaultLiveness);
+        _storeRequestHash(requestId, request);
+
+        // Pull reward from requester, who is the caller.
+        {
+            // Avoids stack too deep compilation error.
+
+            if (reward > 0) currency.safeTransferFrom(msg.sender, address(this), reward);
+            // Pull proposal + dispute bond from caller, which are the same value.
+            proposalBond = request.bond.add(request.finalFee);
+            if (proposalBond > 0) {
+                currency.safeTransferFrom(msg.sender, address(this), proposalBond.mul(2));
+            }
+        }
+
+        // Avoids stack too deep compilation error.
+        {
+            StoreInterface store = _getStore();
+
+            // Along with the final fee, "burn" part of the loser's bond to ensure that a larger bond always makes it
+            // proportionally more expensive to delay the resolution even if the proposer and disputer are the same
+            // party.
+            uint256 burnedBond = _computeBurnedBond(request);
+
+            // The total fee is the burned bond and the final fee added together.
+            uint256 totalFee = request.finalFee.add(burnedBond);
+
+            if (totalFee > 0) {
+                request.currency.safeIncreaseAllowance(address(store), totalFee);
+                _getStore().payOracleFeesErc20(address(request.currency), FixedPoint.Unsigned(totalFee));
+            }
+        }
+
+        // Submit price request to Oracle.
+        _getOracle().requestPrice(identifier, timestamp, _stampAncillaryData(ancillaryData, msg.sender));
+        emit RequestPrice(msg.sender, identifier, timestamp, ancillaryData, request);
+        emit ProposePrice(msg.sender, identifier, timestamp, ancillaryData, request);
+        emit DisputePrice(msg.sender, identifier, timestamp, ancillaryData, request);
+
+        // Callbacks.
+        if (address(msg.sender).isContract())
+            try OptimisticRequester(msg.sender).priceProposed(identifier, timestamp, ancillaryData, request) {} catch {}
+        if (address(msg.sender).isContract())
+            try OptimisticRequester(msg.sender).priceDisputed(identifier, timestamp, ancillaryData, request) {} catch {}
+    }
+
+    /**
      * @notice Disputes a price request with an active proposal where caller is the disputer.
      * @param requester sender of the initial price request.
      * @param identifier price identifier to identify the existing request.
