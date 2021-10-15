@@ -431,7 +431,7 @@ export class Relayer {
         if (receipt.events.RelayDisputed) {
           this.logger.info({
             at: "InsuredBridgeRelayer#Relayer",
-            type: "Disputed pending relay. Relay was deleted. 🧑🏻‍✈️",
+            type: "Disputed pending relay. Relay was deleted. 🚓",
             tx: receipt.transactionHash,
             depositHash: receipt.events.RelayDisputed.returnValues.depositHash,
             relayHash: receipt.events.RelayDisputed.returnValues.relayHash,
@@ -441,7 +441,7 @@ export class Relayer {
         } else if (receipt.events.RelayCanceled) {
           this.logger.info({
             at: "InsuredBridgeRelayer#Relayer",
-            type: "Dispute failed to send to OO. Relay was deleted. 🧑🏻‍✈️",
+            type: "Dispute failed to send to OO. Relay was deleted. 🚓",
             tx: receipt.transactionHash,
             depositHash: receipt.events.RelayCanceled.returnValues.depositHash,
             relayHash: receipt.events.RelayCanceled.returnValues.relayHash,
