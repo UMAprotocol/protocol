@@ -218,7 +218,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
      */
     function removeLiquidity(uint256 lpTokenAmount, bool sendEth) public {
         // Can only send eth on withdrawing liquidity iff this is the WETH pool.
-        require(!sendEth || (isWethPool && sendEth), "Cant send eth");
+        require(!sendEth || isWethPool, "Cant send eth");
         uint256 l1TokensToReturn = (lpTokenAmount * exchangeRateCurrent()) / 1e18;
 
         // Check that there is enough liquid reserves to withdraw the requested amount.
