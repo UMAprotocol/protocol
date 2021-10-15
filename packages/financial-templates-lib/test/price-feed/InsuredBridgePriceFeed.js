@@ -69,6 +69,10 @@ const defaultSlowRelayFeePct = toWei("0.01");
 const defaultInstantRelayFeePct = toWei("0.01");
 const lpFeeRatePerSecond = toWei("0.0000015");
 const finalFee = toWei("1");
+const proposerBond = toBN(defaultProposerBondPct)
+  .mul(toBN(relayAmount))
+  .div(toBN(toWei("1")))
+  .toString();
 const defaultGasLimit = 1_000_000;
 const defaultGasPrice = toWei("1", "gwei");
 const minimumBridgingDelay = 60; // L2->L1 token bridging must wait at least this time.
@@ -80,10 +84,7 @@ describe("InsuredBridgePriceFeed", function () {
   const generateRelayParams = (depositDataOverride = {}, relayDataOverride = {}) => {
     const _depositData = { ...depositData, ...depositDataOverride };
     const _relayData = { ...relayData, ...relayDataOverride };
-    // Remove the l1Token. This is part of the deposit data (hash) but is not part of the params for relayDeposit.
-    // eslint-disable-next-line no-unused-vars
-    const { l1Token, ...params } = _depositData;
-    return [...Object.values(params), _relayData.realizedLpFeePct];
+    return [_depositData, _relayData.realizedLpFeePct];
   };
 
   const generateRelayAncillaryData = async (depositData, relayData, bridgePool) => {
@@ -122,6 +123,8 @@ describe("InsuredBridgePriceFeed", function () {
         toBNWei("0.1")
       ).toString(),
       slowRelayer: relayer,
+      finalFee,
+      proposerBond,
       ...relayDataOverride,
     };
 

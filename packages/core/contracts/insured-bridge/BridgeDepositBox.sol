@@ -26,6 +26,10 @@ interface TokenLike {
     function balanceOf(address guy) external returns (uint256 wad);
 }
 
+interface WETH9Like {
+    function deposit() external payable;
+}
+
 /**
  * @title OVM Bridge Deposit Box.
  * @notice Accepts deposits on Optimism L2 to relay to Ethereum L1 as part of the UMA insured bridge system.
@@ -191,7 +195,7 @@ abstract contract BridgeDepositBox is Testable, Lockable {
         // is sending ETH. In this case, the ETH should be deposited to WETH, which is then bridged to L1.
         if (whitelistedTokens[l2Token].l1Token == l1Weth && msg.value > 0) {
             require(msg.value == amount, "msg.value must match amount");
-            l2Token.call{ value: msg.value }(abi.encodeWithSignature("deposit()"));
+            WETH9Like(address(l2Token)).deposit{ value: msg.value }();
         }
         // Else, it is a normal ERC20. In this case pull the token from the users wallet as per normal.
         // Note: this includes the case where the L2 user has WETH (already wrapped ETH) and wants to bridge them. In

@@ -1,7 +1,7 @@
 pragma solidity ^0.8.0;
-import "../ovm/iOptimism_CrossDomainMessenger.sol";
+import "../ovm/iOVM_CrossDomainMessenger.sol";
 
-contract OVM_L1CrossDomainMessengerMock is iOptimism_CrossDomainMessenger {
+contract OVM_L1CrossDomainMessengerMock is iOVM_CrossDomainMessenger {
     function xDomainMessageSender() external view override returns (address) {
         // Trivial return this contract's address.
         return address(this);
@@ -10,8 +10,7 @@ contract OVM_L1CrossDomainMessengerMock is iOptimism_CrossDomainMessenger {
     function sendMessage(
         address _target,
         bytes calldata _message,
-        uint256 _gasLimit
-    ) external override {
-        // Do nothing.
-    }
+        uint32 _gasLimit
+    ) external {}
+    // Do nothing.
 }

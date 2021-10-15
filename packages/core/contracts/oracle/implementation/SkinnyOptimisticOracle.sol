@@ -684,3 +684,20 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
         return AncillaryData.appendKeyValueAddress(ancillaryData, "ooRequester", requester);
     }
 }
+
+/**
+ * @notice This is the SkinnyOptimisticOracle contract that should be deployed on live networks. It is exactly the same
+ * as the regular SkinnyOptimisticOracle contract, but it overrides getCurrentTime to make the call a simply return
+ * block.timestamp with no branching or storage queries.
+ */
+contract SkinnyOptimisticOracleProd is SkinnyOptimisticOracle {
+    constructor(
+        uint256 _liveness,
+        address _finderAddress,
+        address _timerAddress
+    ) SkinnyOptimisticOracle(_liveness, _finderAddress, _timerAddress) {}
+
+    function getCurrentTime() public view virtual override returns (uint256) {
+        return block.timestamp;
+    }
+}

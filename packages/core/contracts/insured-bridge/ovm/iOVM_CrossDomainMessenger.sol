@@ -6,9 +6,9 @@
 pragma solidity ^0.8.0;
 
 /**
- * @title iOptimism_CrossDomainMessenger
+ * @title iOVM_CrossDomainMessenger
  */
-interface iOptimism_CrossDomainMessenger {
+interface iOVM_CrossDomainMessenger {
     /**********
      * Events *
      **********/
@@ -36,6 +36,6 @@ interface iOptimism_CrossDomainMessenger {
     function sendMessage(
         address _target,
         bytes calldata _message,
-        uint256 _gasLimit
+        uint32 _gasLimit
     ) external;
 }

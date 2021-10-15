@@ -1,6 +1,6 @@
 import type uma from "@uma/sdk";
 import type { ethers } from "ethers";
-import type { empStats, empStatsHistory, lsps } from "./tables";
+import type { empStats, empStatsHistory, lsps, appStats } from "./tables";
 import type Zrx from "./libs/zrx";
 export type { Channels } from "./services/express-channels";
 
@@ -115,4 +115,8 @@ export type AppState = {
   longAddresses: Set<string>;
   shortAddresses: Set<string>;
   multicall2: uma.Multicall2;
+};
+
+export type DatastoreAppState = AppState & {
+  appStats: appStats.Table;
 };
