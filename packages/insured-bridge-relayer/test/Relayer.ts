@@ -116,11 +116,11 @@ describe("Relayer.ts", function () {
     await finder.methods
       .changeImplementationAddress(utf8ToHex(interfaceName.Store), store.options.address)
       .send({ from: l1Owner });
-    await store.methods.setFinalFee(l1Token.options.address, { rawValue: finalFee }).send({ from: l1Owner });
 
     l1Token = await ERC20.new("TESTERC20", "TESTERC20", 18).send({ from: l1Owner });
     await l1Token.methods.addMember(TokenRolesEnum.MINTER, l1Owner).send({ from: l1Owner });
     await collateralWhitelist.methods.addToWhitelist(l1Token.options.address).send({ from: l1Owner });
+    await store.methods.setFinalFee(l1Token.options.address, { rawValue: finalFee }).send({ from: l1Owner });
 
     // Deploy new OptimisticOracle so that we can control its timing:
     optimisticOracle = await OptimisticOracle.new(
@@ -770,6 +770,57 @@ describe("Relayer.ts", function () {
       await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Relayer });
       await disputer.checkForPendingDepositsAndRelay();
       assert.isTrue(lastSpyLogIncludes(spy, "Disputed pending relay"));
+    });
+    it("Dispute fails to send to OptimisticOracle", async function () {
+      // Make a deposit on L2 and relay it with invalid relay params. The disputer should detect that the relay params
+      // are invalid and dispute it.
+      await l2Token.methods.approve(bridgeDepositBox.options.address, depositAmount).send({ from: l2Depositor });
+      const quoteTime = await bridgeDepositBox.methods.getCurrentTime().call();
+      await bridgeDepositBox.methods
+        .deposit(
+          l2Depositor,
+          l2Token.options.address,
+          depositAmount,
+          defaultSlowRelayFeePct,
+          defaultInstantRelayFeePct,
+          quoteTime
+        )
+        .send({ from: l2Depositor });
+
+      // Relay it from the tests to mimic someone else doing the slow relay.
+      await l1Token.methods.mint(l1Owner, toBN(depositAmount).muln(2)).send({ from: l1Owner });
+      await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Owner });
+      await bridgePool.methods
+        .relayDeposit(
+          {
+            chainId: chainId,
+            depositId: "0",
+            l2Sender: l2Depositor,
+            l1Recipient: l2Depositor,
+            amount: depositAmount,
+            slowRelayFeePct: defaultSlowRelayFeePct,
+            instantRelayFeePct: defaultInstantRelayFeePct,
+            quoteTimestamp: quoteTime,
+          },
+          toBN(defaultRealizedLpFeePct)
+            .mul(toBN(toWei("2")))
+            .div(toBN(toWei("1")))
+            .toString() // Invalid relay param
+        )
+        .send({ from: l1Owner });
+
+      // Before disputing, remove identifier from whitelist to make price request to optimistic oracle revert.
+      await identifierWhitelist.methods.removeSupportedIdentifier(defaultIdentifier).send({ from: l1Owner });
+
+      // Now, run the disputer and check that it disputes the relay.
+      await Promise.all([l1Client.update(), l2Client.update()]);
+      await l1Token.methods.mint(l1Relayer, toBN(depositAmount).muln(2)).send({ from: l1Owner });
+      await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Relayer });
+      await disputer.checkForPendingDepositsAndRelay();
+      assert.isTrue(lastSpyLogIncludes(spy, "Dispute failed to send to OO"));
+
+      // Add back identifier to restore state for other tests.
+      await identifierWhitelist.methods.addSupportedIdentifier(defaultIdentifier).send({ from: l1Owner });
     });
   });
 });
