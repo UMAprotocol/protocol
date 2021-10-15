@@ -881,8 +881,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
                 // Return true to denote that the proposal + dispute calls succeeded.
                 return true;
             } catch {
-                // If dispute fails, refund disputer and proposer.
-                l1Token.safeTransfer(proposer, totalBond);
+                // If dispute fails, refund disputer.
                 l1Token.safeTransfer(msg.sender, totalBond);
                 l1Token.safeApprove(address(optimisticOracle), 0);
 
