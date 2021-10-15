@@ -121,10 +121,9 @@ describe("Relayer.ts", function () {
     await store.methods.setFinalFee(l1Token.options.address, { rawValue: finalFee }).send({ from: l1Owner });
 
     // Deploy new OptimisticOracle so that we can control its timing:
-    // - Set initial liveness to something != `defaultLiveness` so we can test that the custom liveness is set
-    //   correctly by the BridgePool.
+
     optimisticOracle = await OptimisticOracle.new(
-      defaultLiveness * 10,
+      defaultLiveness,
       finder.options.address,
       l1Timer.options.address
     ).send({ from: l1Owner });
@@ -243,13 +242,20 @@ describe("Relayer.ts", function () {
         ShouldRelay.Ignore
       );
 
-      // b) Mint tokens to the relayer BUT set the ClientRelayState to None. This is the case once the Relay has already been
-      // finalized by another relayer and there is nothing to do. Again, the return should be Ignore.
+      // b) Mint tokens to the relayer BUT set the ClientRelayState to Finalized. This is the case once the Relay has
+      // already been finalized by another relayer and there is nothing to do. Again, the return should be Ignore.
       await l1Token.methods.mint(l1Relayer, toBN(depositAmount).muln(2)).send({ from: l1Owner });
       await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Relayer });
       clientRelayState = ClientRelayState.Finalized;
       assert.equal(
         await relayer.shouldRelay(deposit, clientRelayState, toBN(defaultRealizedLpFeePct), false),
+        ShouldRelay.Ignore
+      );
+
+      // c) Relay is pending and already spedup
+      clientRelayState = ClientRelayState.Pending;
+      assert.equal(
+        await relayer.shouldRelay(deposit, clientRelayState, toBN(defaultRealizedLpFeePct), true),
         ShouldRelay.Ignore
       );
     });
@@ -394,7 +400,7 @@ describe("Relayer.ts", function () {
       await Promise.all([l1Client.update(), l2Client.update()]);
       // As the relayer does not have enough token balance to do the relay (0 minted) should do nothing .
       await relayer.checkForPendingDepositsAndRelay();
-      assert.isTrue(lastSpyLogIncludes(spy, "Not relaying deposit"));
+      assert.isTrue(lastSpyLogIncludes(spy, "Not relaying"));
 
       // Mint the relayer some tokens and try again.
       await l1Token.methods.mint(l1Relayer, toBN(depositAmount).muln(2)).send({ from: l1Owner });
@@ -422,14 +428,16 @@ describe("Relayer.ts", function () {
       await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Owner });
       await bridgePool.methods
         .relayDeposit(
-          chainId,
-          "0",
-          l2Depositor,
-          l2Depositor,
-          depositAmount,
-          defaultSlowRelayFeePct,
-          defaultInstantRelayFeePct,
-          currentBlockTime,
+          {
+            chainId: chainId,
+            depositId: "0",
+            l2Sender: l2Depositor,
+            l1Recipient: l2Depositor,
+            amount: depositAmount,
+            slowRelayFeePct: defaultSlowRelayFeePct,
+            instantRelayFeePct: defaultInstantRelayFeePct,
+            quoteTimestamp: currentBlockTime,
+          },
           calculateRealizedLpFeePct(rateModel, toBNWei("0"), toBNWei("0.01")) // compute the expected fee for 1% utilization
         )
         .send({ from: l1Owner });
@@ -439,13 +447,18 @@ describe("Relayer.ts", function () {
       await Promise.all([l1Client.update(), l2Client.update()]);
       // As the relayer does not have enough token balance to do the relay (0 minted) should do nothing .
       await relayer.checkForPendingDepositsAndRelay();
-      assert.isTrue(lastSpyLogIncludes(spy, "Not relaying deposit"));
+      assert.isTrue(lastSpyLogIncludes(spy, "Not relaying"));
 
       // Mint the relayer some tokens and try again.
       await l1Token.methods.mint(l1Relayer, toBN(depositAmount).muln(2)).send({ from: l1Owner });
       await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Relayer });
       await relayer.checkForPendingDepositsAndRelay();
       assert.isTrue(lastSpyLogIncludes(spy, "Slow relay sped up"));
+
+      // Running relayer again ignores and sends appropriate message
+      await Promise.all([l1Client.update(), l2Client.update()]);
+      await relayer.checkForPendingDepositsAndRelay();
+      assert.isTrue(lastSpyLogIncludes(spy, "already sped up"));
     });
     it("Can correctly instantly relay deposits", async function () {
       // Make a deposit on L2 and see that the relayer correctly sends a slow relay and speedup it in the same tx.
@@ -467,7 +480,7 @@ describe("Relayer.ts", function () {
       await Promise.all([l1Client.update(), l2Client.update()]);
       // As the relayer does not have enough token balance to do the relay (0 minted) should do nothing.
       await relayer.checkForPendingDepositsAndRelay();
-      assert.isTrue(lastSpyLogIncludes(spy, "Not relaying deposit"));
+      assert.isTrue(lastSpyLogIncludes(spy, "Not relaying"));
 
       // Mint the relayer some tokens and try again.
       await l1Token.methods.mint(l1Relayer, toBN(depositAmount).muln(2)).send({ from: l1Owner });
@@ -496,14 +509,16 @@ describe("Relayer.ts", function () {
       await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Owner });
       await bridgePool.methods
         .relayDeposit(
-          chainId,
-          "0",
-          l2Depositor,
-          l2Depositor,
-          depositAmount,
-          defaultSlowRelayFeePct,
-          defaultInstantRelayFeePct,
-          currentBlockTime,
+          {
+            chainId: chainId,
+            depositId: "0",
+            l2Sender: l2Depositor,
+            l1Recipient: l2Depositor,
+            amount: depositAmount,
+            slowRelayFeePct: defaultSlowRelayFeePct,
+            instantRelayFeePct: defaultInstantRelayFeePct,
+            quoteTimestamp: currentBlockTime,
+          },
           toBN(defaultRealizedLpFeePct)
             .mul(toBN(toWei("2")))
             .div(toBN(toWei("1")))
@@ -517,6 +532,121 @@ describe("Relayer.ts", function () {
       await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Relayer });
       await relayer.checkForPendingDepositsAndRelay();
       assert.isTrue(lastSpyLogIncludes(spy, "Pending relay is invalid, ignoring"));
+    });
+  });
+  describe("Settle Relay transaction functionality", () => {
+    beforeEach(async function () {
+      // Add liquidity to the L1 pool to facilitate the relay action.
+      await l1Token.methods.mint(l1LiquidityProvider, initialPoolLiquidity).send({ from: l1Owner });
+      await l1Token.methods
+        .approve(bridgePool.options.address, initialPoolLiquidity)
+        .send({ from: l1LiquidityProvider });
+      await bridgePool.methods.addLiquidity(initialPoolLiquidity).send({ from: l1LiquidityProvider });
+
+      // Mint some tokens for the L2 depositor.
+      await l2Token.methods.mint(l2Depositor, depositAmount).send({ from: l2Owner });
+    });
+    it("Can correctly detect and settleable relays and settle them", async function () {
+      // Before any relays should do nothing and log accordingly.
+      await Promise.all([l1Client.update(), l2Client.update()]);
+      await relayer.checkforSettleableRelaysAndSettle();
+      assert.isTrue(lastSpyLogIncludes(spy, "No settleable relays"));
+
+      // Make a deposit on L2, relay it, advance time and check the bot settles it accordingly.
+      await l2Token.methods.approve(bridgeDepositBox.options.address, depositAmount).send({ from: l2Depositor });
+      const currentBlockTime = await bridgeDepositBox.methods.getCurrentTime().call();
+      await bridgeDepositBox.methods
+        .deposit(
+          l2Depositor,
+          l2Token.options.address,
+          depositAmount,
+          defaultSlowRelayFeePct,
+          "0", // set to zero to force slow relay for this test.
+          currentBlockTime
+        )
+        .send({ from: l2Depositor });
+
+      // Mint the relayer some tokens and try again.
+      await l1Token.methods.mint(l1Relayer, toBN(depositAmount).muln(2)).send({ from: l1Owner });
+      await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Relayer });
+      await Promise.all([l1Client.update(), l2Client.update()]);
+      await relayer.checkForPendingDepositsAndRelay();
+      assert.isTrue(lastSpyLogIncludes(spy, "Slow Relay executed"));
+
+      // Advance time to get the relay into a settable state.
+      await l1Timer.methods
+        .setCurrentTime(Number((await l1Timer.methods.getCurrentTime().call()) + defaultLiveness + 1))
+        .send({ from: l1Owner });
+
+      await Promise.all([l1Client.update(), l2Client.update()]);
+      await relayer.checkforSettleableRelaysAndSettle();
+      assert.isTrue(lastSpyLogIncludes(spy, "Relay settled"));
+    });
+    it("Can correctly detect and settleable relays from other relayers and settle them", async function () {
+      // Make a deposit on L2, relay it, advance time and check the bot settles it accordingly.
+      await l2Token.methods.approve(bridgeDepositBox.options.address, depositAmount).send({ from: l2Depositor });
+
+      // Sync block times. This is only needed in this test because we are manually depositing and relaying.
+      const currentBlockTime = Number((await web3.eth.getBlock(await web3.eth.getBlockNumber())).timestamp);
+
+      await l1Timer.methods.setCurrentTime(currentBlockTime).send({ from: l1Owner });
+      await l2Timer.methods.setCurrentTime(currentBlockTime).send({ from: l1Owner });
+      await bridgeDepositBox.methods
+        .deposit(
+          l2Depositor,
+          l2Token.options.address,
+          depositAmount,
+          defaultSlowRelayFeePct,
+          "0", // set to zero to force slow relay for this test.
+          currentBlockTime
+        )
+        .send({ from: l2Depositor });
+
+      // Relay from an account other than the relayer.
+      await l1Token.methods.mint(l1Owner, toBN(depositAmount).muln(2)).send({ from: l1Owner });
+      await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Owner });
+      await l1Client.update(); // update L1 client to enable LP fee computation
+      await bridgePool.methods
+        .relayDeposit(
+          chainId,
+          "0",
+          l2Depositor,
+          l2Depositor,
+          depositAmount,
+          defaultSlowRelayFeePct,
+          "0", // set slow relay fee same as in the deposit call
+          currentBlockTime,
+          await l1Client.calculateRealizedLpFeePctForDeposit({
+            amount: depositAmount,
+            l1Token: l1Token.options.address,
+            quoteTimestamp: currentBlockTime,
+          })
+        )
+        .send({ from: l1Owner });
+
+      // Before any time advancement should be nothing settleable.
+      await Promise.all([l1Client.update(), l2Client.update()]);
+      await relayer.checkforSettleableRelaysAndSettle();
+      assert.isTrue(lastSpyLogIncludes(spy, "No settleable relays"));
+
+      // Advance time past liveness. This makes the relay settleable. However, as the relayer did not do the relay they can settle it.
+
+      await l1Timer.methods
+        .setCurrentTime(Number(await l1Timer.methods.getCurrentTime().call()) + defaultLiveness + 1)
+        .send({ from: l1Owner });
+
+      await Promise.all([l1Client.update(), l2Client.update()]);
+      await relayer.checkforSettleableRelaysAndSettle();
+      assert.isTrue(lastSpyLogIncludes(spy, "No settleable relays"));
+
+      // If we now advance time 15 mins past the expiration, anyone can claim the relay. The relayer should now claim it.
+      await l1Timer.methods
+        .setCurrentTime(Number((await l1Timer.methods.getCurrentTime().call()) + 60 * 60 * 15 + 1))
+        .send({ from: l1Owner });
+
+      await Promise.all([l1Client.update(), l2Client.update()]);
+      await relayer.checkforSettleableRelaysAndSettle();
+      assert.isTrue(lastSpyLogIncludes(spy, "Relay settled"));
     });
   });
 });
