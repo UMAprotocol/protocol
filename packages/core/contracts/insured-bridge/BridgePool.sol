@@ -850,8 +850,6 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
                 l1Token.safeApprove(address(optimisticOracle), 0);
                 totalBond = proposerBondSpent;
             }
-            // Return true to denote that the proposal + dispute calls succeeded.
-            return true;
         } catch {
             // If there's an error in the OO, this means something has changed to make this request unproposable or
             // undisputable. To ensure the request does not go through by default, refund the proposer and return early,
@@ -863,6 +861,9 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
             // Return early noting that the attempt at a proposal did not succeed.
             return false;
         }
+
+        // Return true to denote that the proposal + dispute calls succeeded.
+        return true;
     }
 
     function _unwrapWETHTo(address payable to, uint256 amount) internal {
