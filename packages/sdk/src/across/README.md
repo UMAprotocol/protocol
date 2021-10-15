@@ -30,3 +30,41 @@ assert.equal(apyFeePct.toString(), interval.apy)
 const realizedLpFeePct = calculateRealizedLpFeePct(rateModel, interval.utilA, interval.utilB).toString()
 assert.equal(realizedLpFeePct.toString(), interval.wpy)
 ```
+
+## Gas Fee Calculator
+
+Calculates gas fee percentages when doing a transfer for slow and fast relays.
+
+### Usage Examples
+
+You must import the estimated gas costs ( or have your own constants defined) to estimate total gas effectively.
+See [gasFeeCalculator.e2e.ts](gasFeeCalculator e2e tests) for more examples.
+
+```ts
+import * as uma from "@uma/sdk"
+
+const { getGasFees, SLOW_ETH_GAS, SLOW_ERC_GAS, SLOW_UMA_GAS } = uma.across.gasFeeCalculator
+const { fromWei } = uma.across.utils
+
+// given a transfer of ETH across chains, get amount of eth used in gas for a slow transaction
+const gasPrice = await ethersProvider.getGasPrice() // you will need to get an estimate from provider
+const ethFees = getGasfees(SLOW_ETH_GAS, gasPrice)
+
+// Given a standard USDC ERC20 transfer across chains, get amount of the token used in gas for a slow transaction.
+const gas = SLOW_ERC_GAS
+const gasPrice = await ethersProvider.getGasPrice() // you will need to get an estimate from provider
+// we need a coingecko client to get us prices in ETH per USDC.
+const coingecko = new uma.Coingecko()
+// note we denominate price in eth when calling coingecko, this call returns [timestamp,price], but we only care about price
+const [timestamp, tokenPrice] = await coingecko.getCurrentPriceByContract(usdcAddress, "eth")
+const decimals = 6
+const result = getGasFees(gas, gasPrice, tokenPrice, decimals)
+const userDisplay = fromWei(result, decimals)
+
+// For non eth, or 18 decimal tokens, the tokenPrice can be omitted, as can decimals.
+// Calculating fast eth price.
+const gas = FAST_ETH_GAS
+const gasPrice = await ethersProvider.getGasPrice() // you will need to get an estimate from provider
+const result = getGasFees(gas, gasPrice)
+const userDisplay = fromWei(result)
+```
