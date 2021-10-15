@@ -8,7 +8,7 @@ import type { RateModel } from "@uma/financial-templates-lib";
 // Check each token rate model contains the expected data.
 const expectedRateModelKeys = ["UBar", "R0", "R1", "R2"];
 
-// const supported L2 Chain IDS:
+// Supported L2 Chain IDS:
 const supportedChainIds = [
   10, // optimism mainnet
   69, // optimism testnet
@@ -20,6 +20,12 @@ export interface ProcessEnv {
   [key: string]: string | undefined;
 }
 
+// Set modes to true that you want to enable in bot (i.e. in Relayer.ts).
+export interface BotModes {
+  relayerEnabled: boolean; // Submits slow and fast relays
+  disputerEnabled: boolean; // Submits disputes on pending relays with invalid params
+  finalizerEnabled: boolean; // Resolves expired relays
+}
 export class RelayerConfig {
   readonly bridgeAdmin: string;
 
@@ -30,9 +36,7 @@ export class RelayerConfig {
   readonly rateModels: { [key: string]: RateModel } = {};
   readonly activatedChainIds: number[];
   readonly l2StartBlock: number;
-
-  readonly disputerEnabled: boolean;
-  readonly relayerEnabled: boolean;
+  readonly botModes: BotModes;
 
   constructor(env: ProcessEnv) {
     const {
@@ -45,15 +49,14 @@ export class RelayerConfig {
       L2_START_BLOCK,
       DISPUTER_ENABLED,
       RELAYER_ENABLED,
+      FINALIZER_ENABLED,
     } = env;
-    // Activating the Relayer mode will perform the following actions:
-    // - Submit slow relays
-    // - Speed up pending slow relays
-    this.relayerEnabled = Boolean(RELAYER_ENABLED);
 
-    // Activating the Disputer mode will perform the following actions:
-    // - Dispute pending slow relays with invalid relay parameters
-    this.disputerEnabled = Boolean(DISPUTER_ENABLED);
+    this.botModes = {
+      relayerEnabled: RELAYER_ENABLED ? Boolean(RELAYER_ENABLED) : false,
+      disputerEnabled: DISPUTER_ENABLED ? Boolean(DISPUTER_ENABLED) : false,
+      finalizerEnabled: FINALIZER_ENABLED ? Boolean(FINALIZER_ENABLED) : false,
+    };
 
     assert(BRIDGE_ADMIN_ADDRESS, "BRIDGE_ADMIN_ADDRESS required");
     this.bridgeAdmin = Web3.utils.toChecksumAddress(BRIDGE_ADMIN_ADDRESS);

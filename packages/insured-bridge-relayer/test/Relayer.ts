@@ -85,6 +85,7 @@ describe("Relayer.ts", function () {
 
   let relayer: any;
   let disputer: any;
+  let finalizer: any;
   let l1Client: any;
   let l2Client: any;
   let gasEstimator: any;
@@ -205,27 +206,22 @@ describe("Relayer.ts", function () {
 
     gasEstimator = new GasEstimator(spyLogger);
 
-    // Disputer and relayer are the same bot, but with the Dispute and Relay logic turned on/off.
-    relayer = new Relayer(
-      spyLogger,
-      gasEstimator,
-      l1Client,
-      l2Client,
-      [l1Token.options.address],
-      l1Relayer,
-      true, // Relayer mode enabled
-      false
-    );
-    disputer = new Relayer(
-      spyLogger,
-      gasEstimator,
-      l1Client,
-      l2Client,
-      [l1Token.options.address],
-      l1Relayer,
-      false,
-      true // Disputer mode enabled
-    );
+    // Create different bots to test different bot modes.
+    relayer = new Relayer(spyLogger, gasEstimator, l1Client, l2Client, [l1Token.options.address], l1Relayer, {
+      relayerEnabled: true,
+      disputerEnabled: false,
+      finalizerEnabled: false,
+    });
+    disputer = new Relayer(spyLogger, gasEstimator, l1Client, l2Client, [l1Token.options.address], l1Relayer, {
+      relayerEnabled: false,
+      disputerEnabled: true,
+      finalizerEnabled: false,
+    });
+    finalizer = new Relayer(spyLogger, gasEstimator, l1Client, l2Client, [l1Token.options.address], l1Relayer, {
+      relayerEnabled: false,
+      disputerEnabled: false,
+      finalizerEnabled: true,
+    });
   });
   it("Initialization is correct", async function () {
     assert.equal(relayer.l1Client.bridgeAdminAddress, bridgeAdmin.options.address);
@@ -609,7 +605,7 @@ describe("Relayer.ts", function () {
     it("Can correctly detect and settleable relays and settle them", async function () {
       // Before any relays should do nothing and log accordingly.
       await Promise.all([l1Client.update(), l2Client.update()]);
-      await relayer.checkforSettleableRelaysAndSettle();
+      await finalizer.checkforSettleableRelaysAndSettle();
       assert.isTrue(lastSpyLogIncludes(spy, "No settleable relays"));
 
       // Make a deposit on L2, relay it, advance time and check the bot settles it accordingly.
@@ -639,7 +635,10 @@ describe("Relayer.ts", function () {
         .send({ from: l1Owner });
 
       await Promise.all([l1Client.update(), l2Client.update()]);
+      // Check that bot with finalizer mode disabled does nothing.
       await relayer.checkforSettleableRelaysAndSettle();
+      assert.isTrue(lastSpyLogIncludes(spy, "Finalizer disabled"));
+      await finalizer.checkforSettleableRelaysAndSettle();
       assert.isTrue(lastSpyLogIncludes(spy, "Relay settled"));
     });
     it("Can correctly detect and settleable relays from other relayers and settle them", async function () {
@@ -688,7 +687,7 @@ describe("Relayer.ts", function () {
 
       // Before any time advancement should be nothing settleable.
       await Promise.all([l1Client.update(), l2Client.update()]);
-      await relayer.checkforSettleableRelaysAndSettle();
+      await finalizer.checkforSettleableRelaysAndSettle();
       assert.isTrue(lastSpyLogIncludes(spy, "No settleable relays"));
 
       // Advance time past liveness. This makes the relay settleable. However, as the relayer did not do the relay they can settle it.
@@ -698,7 +697,7 @@ describe("Relayer.ts", function () {
         .send({ from: l1Owner });
 
       await Promise.all([l1Client.update(), l2Client.update()]);
-      await relayer.checkforSettleableRelaysAndSettle();
+      await finalizer.checkforSettleableRelaysAndSettle();
       assert.isTrue(lastSpyLogIncludes(spy, "No settleable relays"));
 
       // If we now advance time 15 mins past the expiration, anyone can claim the relay. The relayer should now claim it.
@@ -707,7 +706,7 @@ describe("Relayer.ts", function () {
         .send({ from: l1Owner });
 
       await Promise.all([l1Client.update(), l2Client.update()]);
-      await relayer.checkforSettleableRelaysAndSettle();
+      await finalizer.checkforSettleableRelaysAndSettle();
       assert.isTrue(lastSpyLogIncludes(spy, "Relay settled"));
     });
   });

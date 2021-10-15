@@ -75,8 +75,7 @@ export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
       l2Client,
       config.whitelistedRelayL1Tokens,
       accounts[0],
-      config.relayerEnabled,
-      config.disputerEnabled
+      config.botModes
     );
 
     for (;;) {

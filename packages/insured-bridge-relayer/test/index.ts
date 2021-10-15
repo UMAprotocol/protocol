@@ -170,6 +170,7 @@ describe("index.js", function () {
     process.env.BRIDGE_ADMIN_ADDRESS = bridgeAdmin.options.address;
     process.env.RELAYER_ENABLED = "1";
     process.env.DISPUTER_ENABLED = "1";
+    process.env.FINALIZER_ENABLED = "1";
     process.env.POLLING_DELAY = "0";
     process.env.RATE_MODELS = JSON.stringify({
       [l1Token.options.address]: {
