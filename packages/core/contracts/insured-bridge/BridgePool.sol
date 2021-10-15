@@ -821,7 +821,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
         uint256 finalFee,
         bytes memory customAncillaryData
     ) private returns (bool) {
-        // Pull dispute bond from disputer and approve OO to pull it from this contract.
+        // Pull dispute bond from disputer and approve OO to pull proposal + dispute bond from this contract.
         uint256 totalBond = finalFee + proposerBond;
         l1Token.safeTransferFrom(disputer, address(this), totalBond);
         l1Token.safeApprove(address(optimisticOracle), totalBond * 2);

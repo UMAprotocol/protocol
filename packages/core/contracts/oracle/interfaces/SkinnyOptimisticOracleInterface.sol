@@ -206,8 +206,9 @@ abstract contract SkinnyOptimisticOracleInterface {
      * @param proposer address to set as the proposer.
      * @param disputer address to set as the disputer.
      * @param proposedPrice price being proposed.
-     * @return totalBond the amount that's pulled from the caller's wallet as a bond. The bond will be returned to
-     * the proposer once settled if the proposal is correct.
+     * @return singlePartyTotalBond half the amount that's pulled from the caller's wallet as a proposer bond.
+     * The dispute bond is equal to the proposal bond and is also pulled from the caller's wallet. This value +
+     * unburned portion of loser's bond will be returned to the winner once settled.
      */
     function requestProposeAndDisputePriceFor(
         bytes32 identifier,
@@ -219,7 +220,7 @@ abstract contract SkinnyOptimisticOracleInterface {
         address proposer,
         address disputer,
         int256 proposedPrice
-    ) external virtual returns (uint256 totalBond);
+    ) external virtual returns (uint256 singlePartyTotalBond);
 
     /**
      * @notice Attempts to settle an outstanding price request. Will revert if it isn't settleable.
