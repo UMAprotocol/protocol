@@ -17,7 +17,7 @@ import "../common/implementation/ExpandedERC20.sol";
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "hardhat/console.sol";
+import "@openzeppelin/contracts/utils/Address.sol";
 
 interface WETH9Like {
     function withdraw(uint256 wad) external;
@@ -36,6 +36,7 @@ interface WETH9Like {
 contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
     using SafeERC20 for IERC20;
     using FixedPoint for FixedPoint.Unsigned;
+    using Address for address;
 
     // Token that this contract receives as LP deposits.
     IERC20 public override l1Token;
@@ -325,11 +326,11 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
 
         instantRelays[instantRelayHash] = msg.sender;
 
+        // If this is a weth pool then unwrap and send eth.
         if (isWethPool) {
             _unwrapWETHTo(depositData.l1Recipient, recipientAmount);
-        }
-        // Else, this is a normal ERC20 token. Send to recipient.
-        else l1Token.safeTransfer(depositData.l1Recipient, recipientAmount);
+            // Else, this is a normal ERC20 token. Send to recipient.
+        } else l1Token.safeTransfer(depositData.l1Recipient, recipientAmount);
 
         emit DepositRelayed(depositHash, depositData, address(l1Token), relayData, relayHash);
         emit RelaySpedUp(depositHash, msg.sender, relayData);
@@ -478,9 +479,8 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
         if (isWethPool) {
             l1Token.safeTransferFrom(msg.sender, address(this), recipientAmount);
             _unwrapWETHTo(depositData.l1Recipient, recipientAmount);
-        }
-        // Else, this is a normal ERC20 token. Send to recipient.
-        else l1Token.safeTransferFrom(msg.sender, depositData.l1Recipient, recipientAmount);
+            // Else, this is a normal ERC20 token. Send to recipient.
+        } else l1Token.safeTransferFrom(msg.sender, depositData.l1Recipient, recipientAmount);
 
         emit RelaySpedUp(depositHash, msg.sender, relayData);
     }
@@ -889,9 +889,14 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
         return true;
     }
 
+    // Unwraps ETH and does a transfer to a recipient address. If the recipient is a smart contract then sends WETH.
     function _unwrapWETHTo(address payable to, uint256 amount) internal {
-        WETH9Like(address(l1Token)).withdraw(amount);
-        to.transfer(amount);
+        if (address(to).isContract()) {
+            l1Token.safeTransfer(to, amount);
+        } else {
+            WETH9Like(address(l1Token)).withdraw(amount);
+            to.transfer(amount);
+        }
     }
 
     // Added to enable the BridgePool to receive ETH. used when unwrapping Weth.
