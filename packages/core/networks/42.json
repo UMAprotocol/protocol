@@ -97,7 +97,15 @@
   },
   {
     "contractName": "BridgeAdmin",
-    "address": "0xC2cd5064Bbe7173E095a2d410CBc95fB6e5E3321"
+    "address": "0x9358EE1e780fdf1A9534cF8c7bC617928E5E27C0"
+  },
+  {
+    "contractName": "SkinnyOptimisticOracle",
+    "address": "0xAa04b5D40574Fb8C001249B24d1c6B35a207F0bD"
+  },
+  {
+    "contractName": "Optimism_Messenger",
+    "address": "0xB9B6116E1F1bE6C586dD4868d09f4B0DFf6DB0Ee"
   },
   {
     "contractName": "SimpleSuccessTokenLongShortPairFinancialProductLibrary",
