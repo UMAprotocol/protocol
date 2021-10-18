@@ -19,7 +19,6 @@ export default async (env: ProcessEnv) => {
   assert(env.EXPRESS_PORT, "requires EXPRESS_PORT");
   assert(env.zrxBaseUrl, "requires zrxBaseUrl");
   assert(env.MULTI_CALL_2_ADDRESS, "requires MULTI_CALL_2_ADDRESS");
-  assert(env.GOOGLE_APPLICATION_CREDENTIALS, "requires GOOGLE_APPLICATION_CREDENTIALS");
   const lspCreatorAddresses = parseEnvArray(env.lspCreatorAddresses || "");
 
   // debug flag for more verbose logs
