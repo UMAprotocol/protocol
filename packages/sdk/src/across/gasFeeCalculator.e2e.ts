@@ -2,7 +2,7 @@ import dotenv from "dotenv";
 import assert from "assert";
 import * as across from ".";
 import { ethers } from "ethers";
-import { fromWei } from "./utils";
+import { fromWei, toWei } from "./utils";
 dotenv.config();
 
 const usdcAddress = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48";
@@ -20,21 +20,25 @@ describe("gasFeeCalculator", function () {
     assert.ok(fromWei(result));
   });
   test("gas fee eth e2e", async function () {
+    const totalRelayed = toWei(1);
     const gas = across.constants.SLOW_ETH_GAS;
-    const result = await across.gasFeeCalculator(provider, gas);
-    assert.ok(fromWei(result));
+    const result = await across.gasFeeCalculator(provider, totalRelayed, gas);
+    assert.ok(fromWei(result.gasFees));
+    assert.ok(fromWei(result.feesAsPercent));
   });
   test("gas fee uma e2e", async function () {
+    const totalRelayed = toWei(10);
     const gas = across.constants.SLOW_UMA_GAS;
-    const result = await across.gasFeeCalculator(provider, gas, umaAddress);
-    assert.ok(fromWei(result));
-    console.log(fromWei(result));
+    const result = await across.gasFeeCalculator(provider, totalRelayed, gas, umaAddress);
+    assert.ok(fromWei(result.gasFees));
+    assert.ok(fromWei(result.feesAsPercent));
   });
   test("gas fee usdc e2e", async function () {
+    const totalRelayed = toWei(100, 6);
     const gas = across.constants.SLOW_UMA_GAS;
-    const result = await across.gasFeeCalculator(provider, gas, usdcAddress);
+    const result = await across.gasFeeCalculator(provider, totalRelayed, gas, usdcAddress);
     // 6 decimals for usdc
-    assert.ok(fromWei(result, 6));
-    console.log(fromWei(result, 6));
+    assert.ok(fromWei(result.gasFees, 6));
+    assert.ok(fromWei(result.feesAsPercent));
   });
 });

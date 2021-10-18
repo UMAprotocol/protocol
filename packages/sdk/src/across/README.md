@@ -47,7 +47,7 @@ Quickest way to get up and running.
 
 ```ts
 import * as uma from "@uma/sdk"
-const { constants, gasFeeCalculator } = uma.across
+const { constants, gasFeeCalculator, utils } = uma.across
 
 // currently available constants
 const {
@@ -59,9 +59,11 @@ const {
   FAST_UMA_GAS
 } = constants
 
+const totalRelayed = utils.toWei(10)
 const provider = ethers.providers.getDefaultProvider();
 const usdcAddress = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48";
-const slowGasFees = gasFeeCalculator(provider, SLOW_ERC_GAS, usdcAddress);
+const slowGasFees = gasFeeCalculator(provider, totalRelayed, SLOW_ERC_GAS, usdcAddress);
+// returns an object { gasFees, feesAsPercent}
 
 ```
 

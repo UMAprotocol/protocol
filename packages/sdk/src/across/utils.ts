@@ -107,3 +107,7 @@ export function calculateGasFees(
   const amountEth = gasToEth(gas, gasPrice);
   return ethToToken(amountEth, price, decimals);
 }
+
+export function percent(numerator: BigNumberish, denominator: BigNumberish): BN {
+  return fixedPointAdjustment.mul(numerator).div(denominator);
+}

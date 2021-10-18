@@ -42,3 +42,9 @@ test("estimate uma slow", async function () {
   const userDisplay = utils.fromWei(result);
   assert.ok(userDisplay);
 });
+test("percent", async function () {
+  let percent = utils.percent(1, 10);
+  assert.equal(utils.fromWei(percent), "0.1");
+  percent = utils.percent(5, 88);
+  assert.equal(utils.fromWei(percent), "0.056818181818181818");
+});
