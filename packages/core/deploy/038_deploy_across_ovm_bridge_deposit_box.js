@@ -16,12 +16,14 @@ const func = async function (hre) {
   };
 
   const bridgeAdminAddress = l2ChainIdToL1[chainId]
-    ? await getAddress("BridgeAdmin", l2ChainIdToL1[chainId])
-    : (await deployments.get("BridgeAdmin")).address;
+    ? await getAddress("Optimism_Messenger", l2ChainIdToL1[chainId])
+    : (await deployments.get("Optimism_Messenger")).address;
 
   const args = [
     bridgeAdminAddress,
     1800, // minimumBridgingDelay of 30 mins
+    chainId,
+    await getAddress("WETH9", l2ChainIdToL1[chainId]),
     ZERO_ADDRESS, // timer address
   ];
 
@@ -29,4 +31,3 @@ const func = async function (hre) {
 };
 module.exports = func;
 func.tags = ["OVM_BridgeDepositBox"];
-func.dependencies = ["BridgeAdmin"];

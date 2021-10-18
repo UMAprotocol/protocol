@@ -149,7 +149,7 @@ describe("InsuredBridgeL1Client", function () {
       relayHash,
       proposerBond,
       finalFee,
-      settleable: SettleableRelay.CannotRelay,
+      settleable: SettleableRelay.CannotSettle,
     };
   };
 
@@ -301,6 +301,9 @@ describe("InsuredBridgeL1Client", function () {
     // Before the client is updated, client should error out.
     assert.throws(client.getBridgePoolsAddresses, Error);
 
+    // Before updating, optimistic oracle liveness defaults to 0.
+    assert.equal(client.optimisticOracleLiveness, 0);
+
     // After updating the client it should contain the appropriate addresses.
     await client.update();
     assert.equal(JSON.stringify(client.getBridgePoolsAddresses()), JSON.stringify([bridgePool.options.address]));
@@ -315,6 +318,9 @@ describe("InsuredBridgeL1Client", function () {
       client.getBridgePoolForDeposit(depositData).relayNonce,
       (await bridgePool.methods.numberOfRelays().call()).toString()
     );
+
+    // OptimisticOracle liveness should be reset.
+    assert.equal(client.optimisticOracleLiveness, defaultLiveness);
   });
   describe("Lifecycle tests", function () {
     it("Relayed deposits: deposit, speedup finalize lifecycle", async function () {
@@ -405,7 +411,7 @@ describe("InsuredBridgeL1Client", function () {
 
       // As time has been advanced but the relay has not yet been settled the settleable state should be "true".
       await client.update();
-      expectedRelayedDepositInformation.settleable = SettleableRelay.SlowRelayerCanRelay;
+      expectedRelayedDepositInformation.settleable = SettleableRelay.SlowRelayerCanSettle;
       assert.equal(
         JSON.stringify(client.getSettleableRelayedDeposits()),
         JSON.stringify([expectedRelayedDepositInformation])
@@ -424,7 +430,7 @@ describe("InsuredBridgeL1Client", function () {
         .send({ from: owner });
 
       await client.update();
-      expectedRelayedDepositInformation.settleable = SettleableRelay.AnyoneCanRelay;
+      expectedRelayedDepositInformation.settleable = SettleableRelay.AnyoneCanSettle;
       assert.equal(
         JSON.stringify(client.getSettleableRelayedDeposits()),
         JSON.stringify([expectedRelayedDepositInformation])
@@ -442,7 +448,7 @@ describe("InsuredBridgeL1Client", function () {
 
       await client.update();
       expectedRelayedDepositInformation.relayState = ClientRelayState.Finalized;
-      expectedRelayedDepositInformation.settleable = SettleableRelay.CannotRelay;
+      expectedRelayedDepositInformation.settleable = SettleableRelay.CannotSettle;
       assert.equal(JSON.stringify(client.getSettleableRelayedDeposits()), "[]");
 
       assert.equal(JSON.stringify(client.getSettleableRelayedDepositsForL1Token(l1Token.options.address)), "[]");

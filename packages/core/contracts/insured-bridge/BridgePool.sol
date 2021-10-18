@@ -17,10 +17,12 @@ import "../common/implementation/ExpandedERC20.sol";
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "hardhat/console.sol";
+import "@openzeppelin/contracts/utils/Address.sol";
 
 interface WETH9Like {
     function withdraw(uint256 wad) external;
+
+    function deposit() external payable;
 }
 
 /**
@@ -34,6 +36,7 @@ interface WETH9Like {
 contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
     using SafeERC20 for IERC20;
     using FixedPoint for FixedPoint.Unsigned;
+    using Address for address;
 
     // Token that this contract receives as LP deposits.
     IERC20 public override l1Token;
@@ -187,12 +190,19 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
     /**
      * @notice Add liquidity to the bridge pool. Pulls l1Token from the callers wallet. The caller is sent back a
      * commensurate number of LP tokens (minted to their address) at the prevailing exchange rate.
-     * @dev The caller must approve this contract to transfer `l1TokenAmount` amount of l1Token.
+     * @dev The caller must approve this contract to transfer `l1TokenAmount` amount of l1Token if depositing ERC20.
+     * @dev The caller can deposit ETH which is auto wrapped to WETH. This can only be done if: a) this is the Weth pool
+     * and b) the l1TokenAmount matches to the transaction msg.value.
      * @dev Reentrancy guard not added to this function because this indirectly calls sync() which is guarded.
      * @param l1TokenAmount Number of l1Token to add as liquidity.
      */
-    function addLiquidity(uint256 l1TokenAmount) public {
-        l1Token.safeTransferFrom(msg.sender, address(this), l1TokenAmount);
+    function addLiquidity(uint256 l1TokenAmount) public payable {
+        // If this is the weth pool and the caller sends msg.value then the msg.value must match the l1TokenAmount.
+        // Else, msg.value must be set to 0.
+        require((isWethPool && msg.value == l1TokenAmount) || msg.value == 0, "Bad add liquidity Eth value");
+
+        if (msg.value > 0 && isWethPool) WETH9Like(address(l1Token)).deposit{ value: msg.value }();
+        else l1Token.safeTransferFrom(msg.sender, address(this), l1TokenAmount);
 
         uint256 lpTokensToMint = (l1TokenAmount * 1e18) / exchangeRateCurrent();
 
@@ -209,8 +219,11 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
      * @dev The caller does not need to approve the spending of LP tokens as this method directly uses the burn logic.
      * @dev Reentrancy guard not added to this function because this indirectly calls sync() which is guarded.
      * @param lpTokenAmount Number of lpTokens to redeem for underlying.
+     * @param sendEth Enable the liquidity provider to remove liquidity in ETH, if this is the WETH pool.
      */
-    function removeLiquidity(uint256 lpTokenAmount) public {
+    function removeLiquidity(uint256 lpTokenAmount, bool sendEth) public {
+        // Can only send eth on withdrawing liquidity iff this is the WETH pool.
+        require(!sendEth || isWethPool, "Cant send eth");
         uint256 l1TokensToReturn = (lpTokenAmount * exchangeRateCurrent()) / 1e18;
 
         // Check that there is enough liquid reserves to withdraw the requested amount.
@@ -220,7 +233,8 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
 
         liquidReserves -= l1TokensToReturn;
 
-        l1Token.safeTransfer(msg.sender, l1TokensToReturn);
+        if (sendEth) _unwrapWETHTo(payable(msg.sender), l1TokensToReturn);
+        else l1Token.safeTransfer(msg.sender, l1TokensToReturn);
 
         emit LiquidityRemoved(address(l1Token), l1TokensToReturn, lpTokenAmount, msg.sender);
     }
@@ -311,11 +325,11 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
 
         instantRelays[instantRelayHash] = msg.sender;
 
+        // If this is a weth pool then unwrap and send eth.
         if (isWethPool) {
             _unwrapWETHTo(depositData.l1Recipient, recipientAmount);
-        }
-        // Else, this is a normal ERC20 token. Send to recipient.
-        else l1Token.safeTransfer(depositData.l1Recipient, recipientAmount);
+            // Else, this is a normal ERC20 token. Send to recipient.
+        } else l1Token.safeTransfer(depositData.l1Recipient, recipientAmount);
 
         emit DepositRelayed(depositHash, depositData, address(l1Token), relayData, relayHash);
         emit RelaySpedUp(depositHash, msg.sender, relayData);
@@ -463,9 +477,8 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
         if (isWethPool) {
             l1Token.safeTransferFrom(msg.sender, address(this), recipientAmount);
             _unwrapWETHTo(depositData.l1Recipient, recipientAmount);
-        }
-        // Else, this is a normal ERC20 token. Send to recipient.
-        else l1Token.safeTransferFrom(msg.sender, depositData.l1Recipient, recipientAmount);
+            // Else, this is a normal ERC20 token. Send to recipient.
+        } else l1Token.safeTransferFrom(msg.sender, depositData.l1Recipient, recipientAmount);
 
         emit RelaySpedUp(depositHash, msg.sender, relayData);
     }
@@ -621,9 +634,13 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
 
         // The liquidity utilization ratio is the ratio of utilized liquidity (pendingReserves + relayedAmount
         // +utilizedReserves) divided by the liquid reserves.
-        uint256 numerator = pendingReserves + relayedAmount;
-        if (utilizedReserves > 0) numerator += uint256(utilizedReserves);
-        else numerator -= uint256(utilizedReserves * -1);
+        int256 numerator = int256(pendingReserves + relayedAmount);
+        numerator += utilizedReserves;
+
+        // The numerator could be less than zero iff pending reserves is zero, relayed amount is zero and utilizedReserves
+        // is negative. This could happen if tokens are sent to the bridge after deployment without any relays yet
+        // having happened.
+        if (numerator < 0) return 0;
 
         // There are two cases where liquid reserves could be zero. Handle accordingly to avoid division by zero:
         // a) the pool is new and there no funds in it nor any bridging actions have happened. In this case the
@@ -633,7 +650,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
         if (numerator > 0 && liquidReserves == 0) return 1e18;
 
         // In all other cases, return the utilization ratio.
-        return (numerator * 1e18) / liquidReserves;
+        return (uint256(numerator) * 1e18) / liquidReserves;
     }
 
     /**
@@ -870,9 +887,14 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
         return true;
     }
 
+    // Unwraps ETH and does a transfer to a recipient address. If the recipient is a smart contract then sends WETH.
     function _unwrapWETHTo(address payable to, uint256 amount) internal {
-        WETH9Like(address(l1Token)).withdraw(amount);
-        to.transfer(amount);
+        if (address(to).isContract()) {
+            l1Token.safeTransfer(to, amount);
+        } else {
+            WETH9Like(address(l1Token)).withdraw(amount);
+            to.transfer(amount);
+        }
     }
 
     // Added to enable the BridgePool to receive ETH. used when unwrapping Weth.
