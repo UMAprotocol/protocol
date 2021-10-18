@@ -17,9 +17,9 @@ export enum ClientRelayState {
 }
 
 export enum SettleableRelay {
-  CannotRelay,
-  SlowRelayerCanRelay,
-  AnyoneCanRelay,
+  CannotSettle,
+  SlowRelayerCanSettle,
+  AnyoneCanSettle,
 }
 
 export interface Relay {
@@ -58,7 +58,6 @@ export interface BridgePoolData {
 export class InsuredBridgeL1Client {
   public readonly bridgeAdmin: BridgeAdminInterfaceWeb3;
   public bridgePools: { [key: string]: BridgePoolData }; // L1TokenAddress=>BridgePoolData
-
   public optimisticOracleLiveness = 0;
 
   private relays: { [key: string]: { [key: string]: Relay } } = {}; // L1TokenAddress=>depositHash=>Relay.
@@ -133,13 +132,15 @@ export class InsuredBridgeL1Client {
 
   getSettleableRelayedDeposits(): Relay[] {
     return this.getAllRelayedDeposits().filter(
-      (relay: Relay) => relay.relayState === ClientRelayState.Pending && relay.settleable != SettleableRelay.CannotRelay
+      (relay: Relay) =>
+        relay.relayState === ClientRelayState.Pending && relay.settleable != SettleableRelay.CannotSettle
     );
   }
 
   getSettleableRelayedDepositsForL1Token(l1Token: string): Relay[] {
     return this.getRelayedDepositsForL1Token(l1Token).filter(
-      (relay: Relay) => relay.relayState === ClientRelayState.Pending && relay.settleable != SettleableRelay.CannotRelay
+      (relay: Relay) =>
+        relay.relayState === ClientRelayState.Pending && relay.settleable != SettleableRelay.CannotSettle
     );
   }
 
@@ -228,8 +229,8 @@ export class InsuredBridgeL1Client {
         bridgePool.contract.methods.numberOfRelays().call(),
       ]);
 
-      // Store current contract time and relay nonce that user can use to send instant relays (where there is no
-      // pending relay) for a deposit.
+      // Store current contract time and relay nonce that user can use to send instant relays
+      // (where there is no pending relay) for a deposit.
       bridgePool.currentTime = Number(contractTime);
       bridgePool.relayNonce = Number(relayNonce);
 
@@ -254,7 +255,7 @@ export class InsuredBridgeL1Client {
           relayHash: depositRelayedEvent.returnValues.relayAncillaryDataHash,
           proposerBond: depositRelayedEvent.returnValues.relay.proposerBond,
           finalFee: depositRelayedEvent.returnValues.relay.finalFee,
-          settleable: SettleableRelay.CannotRelay,
+          settleable: SettleableRelay.CannotSettle,
         };
 
         // If the local data contains this deposit ID then this is a re-relay of a disputed relay. In this case, we need
@@ -288,17 +289,17 @@ export class InsuredBridgeL1Client {
 
       for (const relaySettledEvent of relaySettledEvents) {
         this.relays[l1Token][relaySettledEvent.returnValues.depositHash].relayState = ClientRelayState.Finalized;
-        this.relays[l1Token][relaySettledEvent.returnValues.depositHash].settleable = SettleableRelay.CannotRelay;
+        this.relays[l1Token][relaySettledEvent.returnValues.depositHash].settleable = SettleableRelay.CannotSettle;
       }
 
       for (const pendingRelay of this.getPendingRelayedDepositsForL1Token(l1Token)) {
         // If relay is pending and the time is past the OO liveness, then it is settleable by the slow relayer.
         if (bridgePool.currentTime >= pendingRelay.priceRequestTime + this.optimisticOracleLiveness) {
-          this.relays[l1Token][pendingRelay.depositHash].settleable = SettleableRelay.SlowRelayerCanRelay;
+          this.relays[l1Token][pendingRelay.depositHash].settleable = SettleableRelay.SlowRelayerCanSettle;
         }
         // If relay is pending and the time is past the OO liveness +15 mins, then it is settleable by anyone.
         if (bridgePool.currentTime >= pendingRelay.priceRequestTime + this.optimisticOracleLiveness + 54000) {
-          this.relays[l1Token][pendingRelay.depositHash].settleable = SettleableRelay.AnyoneCanRelay;
+          this.relays[l1Token][pendingRelay.depositHash].settleable = SettleableRelay.AnyoneCanSettle;
         }
       }
     }
