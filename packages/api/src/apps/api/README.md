@@ -42,6 +42,9 @@ debug=1
 
 # LSP Creator addresses are used to discover deployed lsp contracts. Currently we have to manually specify old creator addresses
 lspCreatorAddresses=0x0b8de441B26E36f461b2748919ed71f50593A67b,0x60F3f5DDE708D097B7F092EFaB2E085AC0a82F42,0x31C893843685f1255A26502eaB5379A3518Aa5a9,0x9504b4ab8cd743b06074757d3B1bE3a3aF9cea10
+
+# Overwrite the default Emp Registry Contract address
+EMP_REGISTRY_ADDRESS=0x...
 ```
 
 ## Starting
