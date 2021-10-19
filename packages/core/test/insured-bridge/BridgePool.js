@@ -1014,6 +1014,9 @@ describe("BridgePool", () => {
       await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: disputer });
       await bridgePool.methods.disputeRelay(defaultDepositData, relayAttemptData).send({ from: disputer });
 
+      // Dispute should leave pendingReserves at 0.
+      assert.equal(await bridgePool.methods.pendingReserves().call(), "0");
+
       // Mint new relayer bond to relay again:
       await l1Token.methods.mint(rando, totalRelayBond).send({ from: owner });
       await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: rando });
