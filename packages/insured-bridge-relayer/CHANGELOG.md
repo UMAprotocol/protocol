@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.5.0](https://github.com/UMAprotocol/protocol/compare/@uma/insured-bridge-relayer@1.4.0...@uma/insured-bridge-relayer@1.5.0) (2021-10-19)
+
+### Features
+
+- **across-bots:** add ability for relayer bot to finalize relays ([#3464](https://github.com/UMAprotocol/protocol/issues/3464)) ([0f9c26d](https://github.com/UMAprotocol/protocol/commit/0f9c26d8bda06aac0d08b5797e0bec2f2168c015))
+- **insured-bridge:** Block instant relays post-expiry and change relayDeposit interface to match relayAndSpeedUp ([#3458](https://github.com/UMAprotocol/protocol/issues/3458)) ([25ac3c0](https://github.com/UMAprotocol/protocol/commit/25ac3c00be8afb33a6c6e134509f068699591025))
+- **insured-bridge:** Update Arbitrum messenger contracts after e2e tests ([#3448](https://github.com/UMAprotocol/protocol/issues/3448)) ([fd2f9c5](https://github.com/UMAprotocol/protocol/commit/fd2f9c5976300cd3c82801884ef14abf890e1461))
+
 # [1.4.0](https://github.com/UMAprotocol/protocol/compare/@uma/insured-bridge-relayer@1.3.0...@uma/insured-bridge-relayer@1.4.0) (2021-10-08)
 
 ### Bug Fixes
