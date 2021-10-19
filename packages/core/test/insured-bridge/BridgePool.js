@@ -399,7 +399,7 @@ describe("BridgePool", () => {
       .changeImplementationAddress(utf8ToHex(interfaceName.SkinnyOptimisticOracle), rando)
       .send({ from: owner });
 
-    await bridgePool.methods.syncWithFinderAddresses().send({ from: rando });
+    await bridgePool.methods.syncUmaEcosystemParams().send({ from: rando });
 
     // Check it's been updated accordingly
     assert.equal(await bridgePool.methods.optimisticOracle().call(), rando);

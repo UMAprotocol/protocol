@@ -63,10 +63,12 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
     // Last timestamp that LP fees were updated.
     uint32 public lastLpFeeUpdate;
 
-    // Store local instances of contract params to save gas relaying. Can be synced with the BridgeAdmin at any time via
-    // the syncWithBridgeAdminParams() public function.
+    // Store local instances of contract params to save gas relaying.
     uint64 public proposerBondPct;
     uint32 public optimisticOracleLiveness;
+
+    // Store local instance of the reserve currency final fee. This is a gas optimization to not re-call the store.
+    uint256 l1TokenFinalFee;
 
     // Cumulative undistributed LP fees. As fees accumulate, they are subtracted from this number.
     uint256 public undistributedLpFees;
@@ -78,7 +80,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
     BridgeAdminInterface public bridgeAdmin;
 
     // Store local instances of the contract instances to save gas relaying. Can be sync with the Finder at any time via
-    // the syncWithFinderAddresses() public function.
+    // the syncUmaEcosystemParams() public function.
     StoreInterface public store;
     SkinnyOptimisticOracleInterface public optimisticOracle;
 
@@ -178,9 +180,6 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
         lastLpFeeUpdate = uint32(getCurrentTime());
         lpFeeRatePerSecond = _lpFeeRatePerSecond;
         isWethPool = _isWethPool;
-
-        syncWithFinderAddresses(); // Fetch OptimisticOracle and Store addresses from the Finder.
-        syncWithBridgeAdminParams(); // Fetch ProposerBondPct OptimisticOracleLiveness, Identifier from the BridgeAdmin.
     }
 
     /*************************************************
@@ -272,7 +271,6 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
         require(relays[depositHash] == bytes32(0), "Pending relay exists");
 
         uint256 proposerBond = _getProposerBond(depositData.amount);
-        uint256 finalFee = store.computeFinalFee(address(l1Token)).rawValue;
 
         // Save hash of new relay attempt parameters.
         // Note: The liveness for this relay can be changed in the BridgeAdmin, which means that each relay has a
@@ -286,7 +284,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
                 realizedLpFeePct: realizedLpFeePct,
                 priceRequestTime: priceRequestTime,
                 proposerBond: proposerBond,
-                finalFee: finalFee
+                finalFee: l1TokenFinalFee
             });
         bytes32 relayHash = _getRelayHash(depositData, relayData);
         relays[depositHash] = _getRelayDataHash(relayData);
@@ -306,7 +304,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
         );
 
         // Compute total proposal bond and pull from caller so that the OptimisticOracle can pull it from here.
-        uint256 totalBond = proposerBond + finalFee;
+        uint256 totalBond = proposerBond + l1TokenFinalFee;
 
         // Pull relay amount minus fees from caller and send to the deposit l1Recipient. The total fees paid is the sum
         // of the LP fees, the relayer fees and the instant relay fee.
@@ -398,7 +396,6 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
         uint32 priceRequestTime = uint32(getCurrentTime());
 
         uint256 proposerBond = _getProposerBond(depositData.amount);
-        uint256 finalFee = store.computeFinalFee(address(l1Token)).rawValue;
 
         // Save hash of new relay attempt parameters.
         // Note: The liveness for this relay can be changed in the BridgeAdmin, which means that each relay has a
@@ -412,7 +409,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
                 realizedLpFeePct: realizedLpFeePct,
                 priceRequestTime: priceRequestTime,
                 proposerBond: proposerBond,
-                finalFee: finalFee
+                finalFee: l1TokenFinalFee
             });
         relays[depositHash] = _getRelayDataHash(relayData);
 
@@ -426,7 +423,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
         );
 
         // Compute total proposal bond and pull from caller so that the OptimisticOracle can pull it from here.
-        uint256 totalBond = proposerBond + finalFee;
+        uint256 totalBond = proposerBond + l1TokenFinalFee;
         l1Token.safeTransferFrom(msg.sender, address(this), totalBond);
 
         pendingReserves += depositData.amount; // Book off maximum liquidity used by this relay in the pending reserves.
@@ -655,17 +652,18 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
 
     /**
      * @notice Updates the address stored in this contract for the OptimisticOracle and the Store to the latest versions
-     * set in the the Finder. We store these as local addresses to make relay methods more gas efficient.
+     * set in the the Finder. Also pull finalFee Store these as local variables to make relay methods gas efficient.
      * @dev There is no risk of leaving this function public for anyone to call as in all cases we want the addresses
-     * in this contract to map to the latest version in the Finder.
+     * in this contract to map to the latest version in the Finder and store the latest final fee.
      */
-    function syncWithFinderAddresses() public {
+    function syncUmaEcosystemParams() public {
         FinderInterface finder = FinderInterface(bridgeAdmin.finder());
         optimisticOracle = SkinnyOptimisticOracleInterface(
             finder.getImplementationAddress(OracleInterfaces.SkinnyOptimisticOracle)
         );
 
         store = StoreInterface(finder.getImplementationAddress(OracleInterfaces.Store));
+        l1TokenFinalFee = store.computeFinalFee(address(l1Token)).rawValue;
     }
 
     /**
