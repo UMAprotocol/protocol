@@ -15,7 +15,6 @@ cat << EOF
       - run:
           name: Run tests
           command: |
-            ./ci/truffle_workaround.sh
             pwd
             cd packages/liquidator
             circleci tests glob "test/**/*.js" | circleci tests split > /tmp/test-files

@@ -21,7 +21,7 @@ const { L2GatewayRouter__factory } = require("arb-ts");
 
 // Helper contracts
 const Token = getContract("ExpandedERC20");
-const Timer = getContract("Legacy_Timer");
+const Timer = getContract("Timer");
 
 // Contract objects
 let depositBox, l1TokenAddress, l2Token, timer, l2GatewayRouterMock;

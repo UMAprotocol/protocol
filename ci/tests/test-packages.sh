@@ -16,6 +16,5 @@ cat << EOF
       - run:
           name: Run tests
           command: |
-            ./ci/truffle_workaround.sh
             yarn test --scope ${PACKAGE};
 EOF

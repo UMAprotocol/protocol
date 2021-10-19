@@ -13,7 +13,7 @@ const { ZERO_ADDRESS } = require("@uma/common");
 const chainId = 10;
 const BridgeDepositBox = getContract("BridgeDepositBoxMock");
 const Token = getContract("ExpandedERC20");
-const Timer = getContract("Legacy_Timer");
+const Timer = getContract("Timer");
 
 // Contract objects
 let depositBox, l1TokenAddress, l2Token, timer, client;
