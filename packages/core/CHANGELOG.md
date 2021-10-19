@@ -3,6 +3,25 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.12.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.11.0...@uma/core@2.12.0) (2021-10-19)
+
+### Bug Fixes
+
+- **across:** fix broken didContractThrow syntax ([#3469](https://github.com/UMAprotocol/protocol/issues/3469)) ([42e5e10](https://github.com/UMAprotocol/protocol/commit/42e5e10573bdc55350876cec0b3ae58cf0113c43))
+- **bridge-pool:** remove outdated check ([#3456](https://github.com/UMAprotocol/protocol/issues/3456)) ([4cbb098](https://github.com/UMAprotocol/protocol/commit/4cbb0986d80dfbb351caaadf203d74f0c50b4db8))
+- **spelling:** address handel->handle typo ([#3465](https://github.com/UMAprotocol/protocol/issues/3465)) ([b0faad5](https://github.com/UMAprotocol/protocol/commit/b0faad57bb4f6549a1f90443780fc2932069a52b))
+
+### Features
+
+- **across:** allow relay and speed up to be called simultaneously ([#3449](https://github.com/UMAprotocol/protocol/issues/3449)) ([76b8964](https://github.com/UMAprotocol/protocol/commit/76b8964f8a6230993c53a0e731d0b368b0093746))
+- **across:** Enable LP deposit/withdraw in ETH ([#3468](https://github.com/UMAprotocol/protocol/issues/3468)) ([ad06324](https://github.com/UMAprotocol/protocol/commit/ad06324bf75d42fc70ef911f341ce3a27e1f6da1))
+- **across:** enable weth transfers to smart contracts ([#3467](https://github.com/UMAprotocol/protocol/issues/3467)) ([3c0c92d](https://github.com/UMAprotocol/protocol/commit/3c0c92d0925975c0e4da5e5751fe81ab6d97dc24))
+- **across:** slow relayer forfeits their reward after 15 minutes of no settlement ([#3450](https://github.com/UMAprotocol/protocol/issues/3450)) ([718adce](https://github.com/UMAprotocol/protocol/commit/718adcea4baad2b61b8539013680f2adbbd94e1c))
+- **across:** war games 2 ([#3460](https://github.com/UMAprotocol/protocol/issues/3460)) ([c2c849a](https://github.com/UMAprotocol/protocol/commit/c2c849ad046905b61f23f59ef32476a8eb8b04b1))
+- **insured-bridge:** Block instant relays post-expiry and change relayDeposit interface to match relayAndSpeedUp ([#3458](https://github.com/UMAprotocol/protocol/issues/3458)) ([25ac3c0](https://github.com/UMAprotocol/protocol/commit/25ac3c00be8afb33a6c6e134509f068699591025))
+- **insured-bridge:** Update Arbitrum messenger contracts after e2e tests ([#3448](https://github.com/UMAprotocol/protocol/issues/3448)) ([fd2f9c5](https://github.com/UMAprotocol/protocol/commit/fd2f9c5976300cd3c82801884ef14abf890e1461))
+- **LSP:** Enable LSP to support early expiration ([#3445](https://github.com/UMAprotocol/protocol/issues/3445)) ([d4e7ea2](https://github.com/UMAprotocol/protocol/commit/d4e7ea22159b2eed8e39d5b86ce0026ea3b8b995))
+
 # [2.11.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.10.0...@uma/core@2.11.0) (2021-10-08)
 
 ### Bug Fixes

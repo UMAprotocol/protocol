@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.11.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.10.0...@uma/common@2.11.0) (2021-10-19)
+
+### Features
+
+- **across:** war games 2 ([#3460](https://github.com/UMAprotocol/protocol/issues/3460)) ([c2c849a](https://github.com/UMAprotocol/protocol/commit/c2c849ad046905b61f23f59ef32476a8eb8b04b1))
+- **LSP:** Enable LSP to support early expiration ([#3445](https://github.com/UMAprotocol/protocol/issues/3445)) ([d4e7ea2](https://github.com/UMAprotocol/protocol/commit/d4e7ea22159b2eed8e39d5b86ce0026ea3b8b995))
+
 # [2.10.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.9.0...@uma/common@2.10.0) (2021-10-08)
 
 ### Features
