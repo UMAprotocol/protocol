@@ -180,6 +180,9 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
         lastLpFeeUpdate = uint32(getCurrentTime());
         lpFeeRatePerSecond = _lpFeeRatePerSecond;
         isWethPool = _isWethPool;
+
+        syncUmaEcosystemParams(); // Fetch OptimisticOracle and Store addresses and L1Token finalFee.
+        syncWithBridgeAdminParams(); // Fetch ProposerBondPct OptimisticOracleLiveness, Identifier from the BridgeAdmin.
     }
 
     /*************************************************
