@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity >=0.7.6;
+pragma solidity ^0.8.0;
 
-import "./BridgeDepositBox.sol";
-import "../external/AVM_CrossDomainEnabled.sol";
+import "../BridgeDepositBox.sol";
+import "../../external/avm/AVM_CrossDomainEnabled.sol";
 
 interface StandardBridgeLike {
     function outboundTransfer(

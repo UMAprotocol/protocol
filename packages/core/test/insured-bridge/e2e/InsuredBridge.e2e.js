@@ -1,3 +1,5 @@
+// Note: This test is currently deprecated and will be updated after the new @eth-optimism working with OVM 2.0 is
+// integrated into this repo.
 const { ZERO_ADDRESS } = require("@uma/common");
 
 const chai = require("chai");
