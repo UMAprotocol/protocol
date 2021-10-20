@@ -212,19 +212,17 @@ export default async (env: ProcessEnv) => {
   await updateContractsStateProfiled();
 
   // backfill price histories, disable if not specified in env
-  if (env.backfillDays) {
+  if (env.backfillDays && lastBlockUpdate === 0) {
     console.log(`Backfilling price history from ${env.backfillDays} days ago`);
     await services.collateralPrices.backfill(moment().subtract(env.backfillDays, "days").valueOf());
     console.log("Updated Collateral Prices Backfill");
 
     // backfill price history only if runs for the first time
-    if (!(await appState.appStats.getLastBlockUpdate())) {
-      await services.empStats.backfill();
-      console.log("Updated EMP Backfill");
+    await services.empStats.backfill();
+    console.log("Updated EMP Backfill");
 
-      await services.lspStats.backfill();
-      console.log("Updated LSP Backfill");
-    }
+    await services.lspStats.backfill();
+    console.log("Updated LSP Backfill");
   }
 
   await updatePricesProfiled();
