@@ -46,7 +46,7 @@
     "api": "node build/start api",
     "lsp_api": "node build/start lsp_api",
     "datastore_api": "node build/start datastore_api",
-    "ingestor_app": "node build/start ingestor_app"
+    "serverless_write": "node build/start serverless_write"
   },
   "publishConfig": {
     "registry": "https://registry.npmjs.com/",

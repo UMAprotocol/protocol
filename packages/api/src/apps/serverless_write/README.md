@@ -46,7 +46,7 @@ EMP_REGISTRY_ADDRESS=0x...
 Assuming all dependencies are installed and `.env` is configured:
 
 from package script:
-`yarn ingestor_app`
+`yarn serverless_write`
 
 or directly:
-`npx ts-node src/start.ts ingestor_app`
+`npx ts-node src/start.ts serverless_write`
