@@ -14,7 +14,6 @@ import {
   SettleableRelay,
 } from "@uma/financial-templates-lib";
 import { getTokenBalance } from "./RelayerHelpers";
-import { BotModes } from "./RelayerConfig";
 
 import type { BN, TransactionType } from "@uma/common";
 
@@ -38,8 +37,6 @@ export class Relayer {
    * @param {Object} l2Client Client for fetching L2 deposit data.
    * @param {Array} whitelistedRelayL1Tokens List of whitelisted L1 tokens that the relayer supports.
    * @param {string} account Unlocked web3 account to send L1 messages.
-   * @param {Object} botModes Enables caller to set which features of this bot to enable.
-
    */
   constructor(
     readonly logger: winston.Logger,
@@ -47,8 +44,7 @@ export class Relayer {
     readonly l1Client: InsuredBridgeL1Client,
     readonly l2Client: InsuredBridgeL2Client,
     readonly whitelistedRelayL1Tokens: string[],
-    readonly account: string,
-    readonly botModes: BotModes
+    readonly account: string
   ) {}
 
   async checkForPendingDepositsAndRelay(): Promise<undefined> {
@@ -76,8 +72,7 @@ export class Relayer {
           // We need to perform some prechecks on the relay before we attempt to submit a relay. First, we need to check
           // if the relay has expired, for if it has then we cannot do anything with it except settle it. Second, we need
           // to check the pending relay's parameters (i.e. any data not included in the deposit hash) and verify that
-          // they are correct. If they are not then we have an option to dispute it, or just ignore it as a potential
-          // speedup candidate.
+          // they are correct. If they are not then we just ignore it as a potential speedup candidate.
           const relayStatus = await this.getRelayStatus(pendingRelay, relayableDeposit.deposit);
           if (relayStatus.relayExpired.isExpired) {
             this.logger.debug({
@@ -97,29 +92,8 @@ export class Relayer {
               relayableDeposit,
               reason: relayStatus.relayDisputable.reason,
             });
-            // If Disputer feature is enabled, submit a dispute on-chain. Otherwise skip to the next deposit.
-            if (this.botModes.disputerEnabled) {
-              this.logger.debug({
-                at: "Disputer",
-                message: "Disputing pending invalid relay",
-              });
-              await this.disputeRelay(relayableDeposit.deposit, pendingRelay);
-            }
             continue;
           }
-        }
-
-        // If the Relayer feature is disabled, there are no more actions to do so skip to the next deposit. We still
-        // want to go through this loop in case the Disputer feature is enabled and there are disputable pending
-        // relays.
-        if (!this.botModes.relayerEnabled) {
-          this.logger.debug({
-            at: "Relayer",
-            message: "Relayer disabled, skipping to next relayable deposit",
-            pendingRelay,
-            relayableDeposit,
-          });
-          continue;
         }
 
         // Account for profitability and bot token balance when deciding how to relay.
@@ -162,14 +136,113 @@ export class Relayer {
     return;
   }
 
-  async checkforSettleableRelaysAndSettle(): Promise<undefined> {
-    if (!this.botModes.finalizerEnabled) {
-      this.logger.debug({
-        at: "Finalizer",
-        message: "Finalizer disabled, exiting",
-      });
+  async checkForPendingRelaysAndDispute(): Promise<undefined> {
+    this.logger.debug({ at: "Disputer", message: "Checking for pending relays and disputing" });
+
+    // Build dictionary of pending relays keyed by l1 token and deposit hash. We assume that getPendingRelays() filters
+    // out Finalized relays.
+    const pendingRelays: Relay[] = this.getPendingRelays();
+    if (pendingRelays.length == 0) {
+      this.logger.debug({ at: "Disputer", message: "No pending relays" });
       return;
     }
+    this.logger.debug({
+      at: "Disputer",
+      message: `Processing ${pendingRelays.length} pending relays`,
+    });
+
+    for (const relay of pendingRelays) {
+      // Construct deposit from relay params if the deposit is undefined.
+      const deposit =
+        this.l2Client.getDepositByID(relay.depositId) === undefined
+          ? {
+              chainId: relay.chainId,
+              depositId: relay.depositId,
+              depositHash: relay.depositHash,
+              l1Recipient: relay.l1Recipient,
+              l2Sender: relay.l2Sender,
+              l1Token: relay.l1Token,
+              amount: relay.amount,
+              slowRelayFeePct: relay.slowRelayFeePct,
+              instantRelayFeePct: relay.instantRelayFeePct,
+              quoteTimestamp: relay.quoteTimestamp,
+              depositContract: this.l2Client.bridgeDepositAddress,
+            }
+          : this.l2Client.getDepositByID(relay.depositId);
+
+      // Check if relay has expired, in which case we cannot dispute.
+      const relayStatus = await this.getRelayStatus(relay, deposit);
+      if (relayStatus.relayExpired.isExpired) {
+        this.logger.debug({
+          at: "Relayer",
+          message: "Pending relay has expired, ignoring",
+          relay,
+          deposit,
+          expirationTime: relayStatus.relayExpired.expirationTime,
+          contractTime: relayStatus.relayExpired.contractTime,
+        });
+        continue;
+      }
+
+      // Check if we can find a deposit for the Relay, if not then we can dispute.
+      if (
+        deposit !== undefined &&
+        deposit.chainId === relay.chainId &&
+        deposit.depositHash === relay.depositHash &&
+        deposit.l1Recipient === relay.l1Recipient &&
+        deposit.l2Sender === relay.l2Sender &&
+        deposit.l1Token === relay.l1Token &&
+        deposit.amount === relay.amount &&
+        deposit.slowRelayFeePct === relay.slowRelayFeePct &&
+        deposit.instantRelayFeePct === relay.instantRelayFeePct &&
+        deposit.quoteTimestamp === relay.quoteTimestamp
+      ) {
+        // Relay matched with a Deposit, now check if the relay params itself are valid.
+        if (relayStatus.relayDisputable.canDispute) {
+          this.logger.debug({
+            at: "Relayer",
+            message: "Disputing pending relay with invalid params",
+            relay,
+            deposit,
+            reason: relayStatus.relayDisputable.reason,
+          });
+          await this.disputeRelay(deposit, relay);
+        } else {
+          this.logger.debug({
+            at: "Relayer",
+            message: "Skipping; relay matched with deposit and params are valid",
+            relay,
+            deposit,
+          });
+        }
+      } else {
+        const missingDeposit: Deposit = {
+          chainId: relay.chainId,
+          depositId: relay.depositId,
+          depositHash: relay.depositHash,
+          l1Recipient: relay.l1Recipient,
+          l2Sender: relay.l2Sender,
+          l1Token: relay.l1Token,
+          amount: relay.amount,
+          slowRelayFeePct: relay.slowRelayFeePct,
+          instantRelayFeePct: relay.instantRelayFeePct,
+          quoteTimestamp: relay.quoteTimestamp,
+          depositContract: this.l2Client.bridgeDepositAddress,
+        };
+        this.logger.debug({
+          at: "Disputer",
+          message: "Disputing pending relay with no matching deposit",
+          missingDeposit,
+          relay,
+        });
+        await this.disputeRelay(missingDeposit, relay);
+      }
+    }
+
+    return;
+  }
+
+  async checkforSettleableRelaysAndSettle(): Promise<undefined> {
     this.logger.debug({ at: "Finalizer", message: "Checking for settleable relays and settling" });
     for (const l1Token of this.whitelistedRelayL1Tokens) {
       this.logger.debug({ at: "Finalizer", message: "Checking settleable relays for token", l1Token });
@@ -419,7 +492,7 @@ export class Relayer {
         });
       else throw receipt;
     } catch (error) {
-      this.logger.error({ at: "Relayer", type: "Something errored instantly relaying!", error });
+      this.logger.error({ at: "Relayer", type: "Something errored settling relay!", error });
     }
   }
 
@@ -457,7 +530,7 @@ export class Relayer {
         } else throw receipt;
       } else throw receipt;
     } catch (error) {
-      this.logger.error({ at: "Disputer", type: "Something errored speeding up relay!", error });
+      this.logger.error({ at: "Disputer", type: "Something errored disputing relay!", error });
     }
   }
 
@@ -540,6 +613,10 @@ export class Relayer {
       });
     }
     return relayableDeposits;
+  }
+
+  private getPendingRelays(): Relay[] {
+    return this.l1Client.getPendingRelayedDeposits();
   }
 
   // Send correct type of relay along with parameters to submit transaction.

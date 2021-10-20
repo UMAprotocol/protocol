@@ -68,15 +68,7 @@ export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
       config.whitelistedRelayL1Tokens
     );
 
-    const relayer = new Relayer(
-      logger,
-      gasEstimator,
-      l1Client,
-      l2Client,
-      config.whitelistedRelayL1Tokens,
-      accounts[0],
-      config.botModes
-    );
+    const relayer = new Relayer(logger, gasEstimator, l1Client, l2Client, config.whitelistedRelayL1Tokens, accounts[0]);
 
     for (;;) {
       await retry(
@@ -84,7 +76,27 @@ export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
           // Update state.
           await Promise.all([gasEstimator.update(), l1Client.update(), l2Client.update()]);
 
-          await relayer.checkForPendingDepositsAndRelay();
+          if (config.botModes.relayerEnabled) {
+            await relayer.checkForPendingDepositsAndRelay();
+            logger.debug({
+              at: "Relayer",
+              message: "Relayer disabled",
+            });
+          }
+          if (config.botModes.disputerEnabled) {
+            await relayer.checkForPendingRelaysAndDispute();
+            logger.debug({
+              at: "Disputer",
+              message: "Disputer disabled",
+            });
+          }
+          if (config.botModes.finalizerEnabled) {
+            await relayer.checkforSettleableRelaysAndSettle();
+            logger.debug({
+              at: "Finalizer",
+              message: "Finalizer disabled",
+            });
+          }
         },
         {
           retries: config.errorRetries,

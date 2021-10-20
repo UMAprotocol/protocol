@@ -84,8 +84,6 @@ describe("Relayer.ts", function () {
   let spy: any;
 
   let relayer: any;
-  let disputer: any;
-  let finalizer: any;
   let l1Client: any;
   let l2Client: any;
   let gasEstimator: any;
@@ -205,23 +203,7 @@ describe("Relayer.ts", function () {
     l2Client = new InsuredBridgeL2Client(spyLogger, web3, bridgeDepositBox.options.address);
 
     gasEstimator = new GasEstimator(spyLogger);
-
-    // Create different bots to test different bot modes.
-    relayer = new Relayer(spyLogger, gasEstimator, l1Client, l2Client, [l1Token.options.address], l1Relayer, {
-      relayerEnabled: true,
-      disputerEnabled: false,
-      finalizerEnabled: false,
-    });
-    disputer = new Relayer(spyLogger, gasEstimator, l1Client, l2Client, [l1Token.options.address], l1Relayer, {
-      relayerEnabled: false,
-      disputerEnabled: true,
-      finalizerEnabled: false,
-    });
-    finalizer = new Relayer(spyLogger, gasEstimator, l1Client, l2Client, [l1Token.options.address], l1Relayer, {
-      relayerEnabled: false,
-      disputerEnabled: false,
-      finalizerEnabled: true,
-    });
+    relayer = new Relayer(spyLogger, gasEstimator, l1Client, l2Client, [l1Token.options.address], l1Relayer);
   });
   it("Initialization is correct", async function () {
     assert.equal(relayer.l1Client.bridgeAdminAddress, bridgeAdmin.options.address);
@@ -433,10 +415,6 @@ describe("Relayer.ts", function () {
       // Mint the relayer some tokens and try again.
       await l1Token.methods.mint(l1Relayer, toBN(depositAmount).muln(2)).send({ from: l1Owner });
       await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Relayer });
-      // Test that the disputer, which is set up with the same account as the relayer, does not send relays because its
-      // Relayer mode is disabled.
-      await disputer.checkForPendingDepositsAndRelay();
-      assert.isTrue(lastSpyLogIncludes(spy, "Relayer disabled"));
       await relayer.checkForPendingDepositsAndRelay();
       assert.isTrue(lastSpyLogIncludes(spy, "Slow Relay executed"));
 
@@ -605,7 +583,7 @@ describe("Relayer.ts", function () {
     it("Can correctly detect and settleable relays and settle them", async function () {
       // Before any relays should do nothing and log accordingly.
       await Promise.all([l1Client.update(), l2Client.update()]);
-      await finalizer.checkforSettleableRelaysAndSettle();
+      await relayer.checkforSettleableRelaysAndSettle();
       assert.isTrue(lastSpyLogIncludes(spy, "No settleable relays"));
 
       // Make a deposit on L2, relay it, advance time and check the bot settles it accordingly.
@@ -635,10 +613,7 @@ describe("Relayer.ts", function () {
         .send({ from: l1Owner });
 
       await Promise.all([l1Client.update(), l2Client.update()]);
-      // Check that bot with finalizer mode disabled does nothing.
       await relayer.checkforSettleableRelaysAndSettle();
-      assert.isTrue(lastSpyLogIncludes(spy, "Finalizer disabled"));
-      await finalizer.checkforSettleableRelaysAndSettle();
       assert.isTrue(lastSpyLogIncludes(spy, "Relay settled"));
     });
     it("Can correctly detect and settleable relays from other relayers and settle them", async function () {
@@ -687,7 +662,7 @@ describe("Relayer.ts", function () {
 
       // Before any time advancement should be nothing settleable.
       await Promise.all([l1Client.update(), l2Client.update()]);
-      await finalizer.checkforSettleableRelaysAndSettle();
+      await relayer.checkforSettleableRelaysAndSettle();
       assert.isTrue(lastSpyLogIncludes(spy, "No settleable relays"));
 
       // Advance time past liveness. This makes the relay settleable. However, as the relayer did not do the relay they can settle it.
@@ -697,7 +672,7 @@ describe("Relayer.ts", function () {
         .send({ from: l1Owner });
 
       await Promise.all([l1Client.update(), l2Client.update()]);
-      await finalizer.checkforSettleableRelaysAndSettle();
+      await relayer.checkforSettleableRelaysAndSettle();
       assert.isTrue(lastSpyLogIncludes(spy, "No settleable relays"));
 
       // If we now advance time 15 mins past the expiration, anyone can claim the relay. The relayer should now claim it.
@@ -706,7 +681,7 @@ describe("Relayer.ts", function () {
         .send({ from: l1Owner });
 
       await Promise.all([l1Client.update(), l2Client.update()]);
-      await finalizer.checkforSettleableRelaysAndSettle();
+      await relayer.checkforSettleableRelaysAndSettle();
       assert.isTrue(lastSpyLogIncludes(spy, "Relay settled"));
     });
   });
@@ -767,7 +742,7 @@ describe("Relayer.ts", function () {
       await Promise.all([l1Client.update(), l2Client.update()]);
       await l1Token.methods.mint(l1Relayer, toBN(depositAmount).muln(2)).send({ from: l1Owner });
       await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Relayer });
-      await disputer.checkForPendingDepositsAndRelay();
+      await relayer.checkForPendingRelaysAndDispute();
       assert.isTrue(lastSpyLogIncludes(spy, "Disputed pending relay"));
     });
     it("Dispute fails to send to OptimisticOracle", async function () {
@@ -815,11 +790,95 @@ describe("Relayer.ts", function () {
       await Promise.all([l1Client.update(), l2Client.update()]);
       await l1Token.methods.mint(l1Relayer, toBN(depositAmount).muln(2)).send({ from: l1Owner });
       await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Relayer });
-      await disputer.checkForPendingDepositsAndRelay();
+      await relayer.checkForPendingRelaysAndDispute();
       assert.isTrue(lastSpyLogIncludes(spy, "Dispute failed to send to OO"));
 
       // Add back identifier to restore state for other tests.
       await identifierWhitelist.methods.addSupportedIdentifier(defaultIdentifier).send({ from: l1Owner });
+    });
+    it("Disputes pending relays for deposits it cannot identify", async function () {
+      // Relay a deposit that doesn't exist on-chain
+      await l1Token.methods.mint(l1Owner, toBN(depositAmount).muln(2)).send({ from: l1Owner });
+      await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Owner });
+      const quoteTime = await bridgeDepositBox.methods.getCurrentTime().call();
+      await bridgePool.methods
+        .relayDeposit(
+          {
+            chainId: chainId,
+            depositId: "0",
+            l2Sender: l2Depositor,
+            l1Recipient: l2Depositor,
+            amount: depositAmount,
+            slowRelayFeePct: defaultSlowRelayFeePct,
+            instantRelayFeePct: defaultInstantRelayFeePct,
+            quoteTimestamp: quoteTime,
+          },
+          toBN(defaultRealizedLpFeePct)
+            .mul(toBN(toWei("2")))
+            .div(toBN(toWei("1")))
+            .toString() // Invalid relay param
+        )
+        .send({ from: l1Owner });
+
+      // Now, run the disputer and check that it disputes the relay.
+      await Promise.all([l1Client.update(), l2Client.update()]);
+      await l1Token.methods.mint(l1Relayer, toBN(depositAmount).muln(2)).send({ from: l1Owner });
+      await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Relayer });
+      await relayer.checkForPendingRelaysAndDispute();
+      assert.isTrue(lastSpyLogIncludes(spy, "Disputed pending relay"));
+    });
+    it("Does not dispute valid relays", async function () {
+      // Make a deposit on L2 and relay it with valid relay params.
+      await l2Token.methods.approve(bridgeDepositBox.options.address, depositAmount).send({ from: l2Depositor });
+      const quoteTime = await bridgeDepositBox.methods.getCurrentTime().call();
+      await bridgeDepositBox.methods
+        .deposit(
+          l2Depositor,
+          l2Token.options.address,
+          depositAmount,
+          defaultSlowRelayFeePct,
+          defaultInstantRelayFeePct,
+          quoteTime
+        )
+        .send({ from: l2Depositor });
+
+      // Relay it from the tests to mimic someone else doing the slow relay.
+      await l1Token.methods.mint(l1Owner, toBN(depositAmount).muln(2)).send({ from: l1Owner });
+      await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Owner });
+      await l1Client.update(); // update L1 client to enable LP fee computation
+      await bridgePool.methods
+        .relayDeposit(
+          {
+            chainId: chainId,
+            depositId: "0",
+            l2Sender: l2Depositor,
+            l1Recipient: l2Depositor,
+            amount: depositAmount,
+            slowRelayFeePct: defaultSlowRelayFeePct,
+            instantRelayFeePct: defaultInstantRelayFeePct,
+            quoteTimestamp: quoteTime,
+          },
+          await l1Client.calculateRealizedLpFeePctForDeposit({
+            amount: depositAmount,
+            l1Token: l1Token.options.address,
+            quoteTimestamp: quoteTime,
+          })
+        )
+        .send({ from: l1Owner });
+
+      // Now, run the disputer and check that it skips the relay.
+      await Promise.all([l1Client.update(), l2Client.update()]);
+      await l1Token.methods.mint(l1Relayer, toBN(depositAmount).muln(2)).send({ from: l1Owner });
+      await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Relayer });
+      await relayer.checkForPendingRelaysAndDispute();
+      assert.isTrue(lastSpyLogIncludes(spy, "Skipping"));
+
+      // Advance time such that relay has expired and check that bot correctly identifies it as expired.
+      const expirationTime = Number(quoteTime.toString()) + defaultLiveness;
+      await bridgePool.methods.setCurrentTime(expirationTime).send({ from: l1Owner });
+      await l1Client.update();
+      await relayer.checkForPendingRelaysAndDispute();
+      assert.isTrue(lastSpyLogIncludes(spy, "Pending relay has expired"));
     });
   });
 });
