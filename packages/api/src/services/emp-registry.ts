@@ -20,7 +20,7 @@ export type EmitData = {
 // type of events
 export type Events = "created";
 
-export default async (config: Config, appState: Dependencies, emit: (event: Events, data: EmitData) => void) => {
+export default async (config: Config, appState: Dependencies, emit?: (event: Events, data: EmitData) => void) => {
   const { network = 1, registryAddress } = config;
   const { registeredEmps, provider, registeredEmpsMetadata } = appState;
   const address = registryAddress || (await registry.getAddress(network));
@@ -39,7 +39,10 @@ export default async (config: Config, appState: Dependencies, emit: (event: Even
       const blockNumber = contracts[address].blockNumber;
       registeredEmpsMetadata.set(address, { blockNumber });
       registeredEmps.add(address);
-      emit("created", { address, blockNumber, startBlock, endBlock });
+
+      if (emit) {
+        emit("created", { address, blockNumber, startBlock, endBlock });
+      }
     });
   }
 

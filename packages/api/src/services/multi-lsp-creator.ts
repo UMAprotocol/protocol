@@ -15,7 +15,7 @@ export type { EmitData };
 
 export type { Events };
 
-export default async (config: Config, appState: Dependencies, emit: (event: Events, data: EmitData) => void) => {
+export default async (config: Config, appState: Dependencies, emit?: (event: Events, data: EmitData) => void) => {
   const { addresses = [], network = 1 } = config;
 
   // always include latest known address
