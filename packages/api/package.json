@@ -45,7 +45,8 @@
     "lint": "yarn prettier --write && yarn eslint --fix",
     "api": "node build/start api",
     "lsp_api": "node build/start lsp_api",
-    "datastore_api": "node build/start datastore_api"
+    "datastore_api": "node build/start datastore_api",
+    "ingestor_app": "node build/start ingestor_app"
   },
   "publishConfig": {
     "registry": "https://registry.npmjs.com/",
