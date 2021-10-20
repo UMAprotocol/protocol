@@ -7,7 +7,7 @@
 //   accounts on the local node that we'll need to run this script.
 // - This script should be run after any Admin proposal UMIP script against a local Mainnet fork. It allows the tester
 //   to simulate what would happen if the proposal were to pass and to verify that contract state changes as expected.
-// - Vote Simulate: node ./packages/scripts/admin-proposals/simulateVote.js --network mainnet-fork
+// - Vote Simulate: node ./packages/scripts/src/admin-proposals/simulateVote.js --network mainnet-fork
 
 const hre = require("hardhat");
 const { getContract } = hre;

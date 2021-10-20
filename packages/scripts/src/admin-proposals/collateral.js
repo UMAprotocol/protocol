@@ -7,9 +7,9 @@
 //   be used to query contract data from Polygon when relaying proposals through the GovernorRootTunnel.
 // - Next, open another terminal window and run `./packages/scripts/setupFork.sh` to unlock
 //   accounts on the local node that we'll need to run this script.
-// - Propose: node ./packages/scripts/admin-proposals/collateral.js --collateral 0xabc,0x123 --fee 0.1,0.2 --polygon 0xdef,0x456 --network mainnet-fork
-// - Vote Simulate: node ./packages/scripts/admin-proposals/simulateVote.js --network mainnet-fork
-// - Verify: node ./packages/scripts/admin-proposals/collateral.js --verify --collateral 0xabc,0x123 --fee 0.1,0.2 --polygon 0xdef,0x456 --network mainnet-fork
+// - Propose: node ./packages/scripts/src/admin-proposals/collateral.js --collateral 0xabc,0x123 --fee 0.1,0.2 --polygon 0xdef,0x456 --network mainnet-fork
+// - Vote Simulate: node ./packages/scripts/src/admin-proposals/simulateVote.js --network mainnet-fork
+// - Verify: node ./packages/scripts/src/admin-proposals/collateral.js --verify --collateral 0xabc,0x123 --fee 0.1,0.2 --polygon 0xdef,0x456 --network mainnet-fork
 // - For production, set the CUSTOM_NODE_URL environment, run the script with a production network passed to the
 //   `--network` flag (along with other params like --keys) like so: `node ... --network mainnet_gckms --keys deployer`
 
@@ -23,11 +23,11 @@
 
 // Examples:
 // - Whitelist collateral on Ethereum only:
-//    - `node ./packages/scripts/admin-proposals/collateral.js --collateral 0xabc,0x123 --network mainnet-fork`
+//    - `node ./packages/scripts/src/admin-proposals/collateral.js --collateral 0xabc,0x123 --network mainnet-fork`
 // - Whitelist collateral on Polygon only:
-//    - `node ./packages/scripts/admin-proposals/collateral.js --polygon 0xabc,0x123 --network mainnet-fork`
+//    - `node ./packages/scripts/src/admin-proposals/collateral.js --polygon 0xabc,0x123 --network mainnet-fork`
 // - Whitelist collateral on both (some on Ethereum, some on Polygon):
-//    - `node ./packages/scripts/admin-proposals/collateral.js --collateral 0xabc,0x123 --polygon 0xdef, --network mainnet-fork`
+//    - `node ./packages/scripts/src/admin-proposals/collateral.js --collateral 0xabc,0x123 --polygon 0xdef, --network mainnet-fork`
 
 const hre = require("hardhat");
 const { getContract } = hre;
