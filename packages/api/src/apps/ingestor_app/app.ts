@@ -226,4 +226,9 @@ export default async (env: ProcessEnv) => {
   }
 
   await updatePricesProfiled();
+
+  // Send the SIGTERM signal to exit the application. This is a temporary
+  // approach until an upcoming fix that will clear the timers which prevent the
+  // process from exit
+  process.kill(process.pid, "SIGTERM");
 };
