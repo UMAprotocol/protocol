@@ -1,10 +1,9 @@
-// Copied from: https://github.com/ethereum-optimism/optimism/blob/5fc728da7381eda6b6f858c091636c947186a3ce/packages/contracts/contracts/optimistic-ethereum/libraries/bridge/OVM_CrossDomainEnabled.sol
-
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
 /**
  * @title iOVM_CrossDomainMessenger
+ * @notice Copied directly from https://github.com/ethereum-optimism/optimism/blob/294246d65e650f497527de398f51b2f6d11f602f/packages/contracts/contracts/libraries/bridge/ICrossDomainMessenger.sol
  */
 interface iOVM_CrossDomainMessenger {
     /**********
@@ -40,6 +39,7 @@ interface iOVM_CrossDomainMessenger {
 
 /**
  * @title OVM_CrossDomainEnabled
+ * @notice Copied from: https://github.com/ethereum-optimism/optimism/blob/294246d65e650f497527de398f51b2f6d11f602f/packages/contracts/contracts/libraries/bridge/CrossDomainEnabled.sol
  * @dev Helper contract for contracts performing cross-domain communications
  *
  * Compiler used: defined by inheriting contract
