@@ -60,6 +60,31 @@ describe("BridgeDepositBox", () => {
         .whitelistToken(l1TokenAddress, l2Token.options.address, bridgePool)
         .send({ from: bridgeAdmin });
     });
+    describe("Basic checks", () => {
+      it("hasEnoughTimeElapsedToBridge", async () => {
+        assert.equal(
+          await depositBox.methods.hasEnoughTimeElapsedToBridge(l1TokenAddress).call(),
+          false,
+          "Should return false for non-whitelisted token"
+        );
+        assert.equal(
+          await depositBox.methods.hasEnoughTimeElapsedToBridge(l2Token.options.address).call(),
+          false,
+          "Should return false for whitelisted token initially"
+        );
+
+        // Advance time past minimum bridging delay and then try again
+        await timer.methods
+          .setCurrentTime(Number(await timer.methods.getCurrentTime().call()) + minimumBridgingDelay + 1)
+          .send({ from: deployer });
+        assert.equal(await depositBox.methods.hasEnoughTimeElapsedToBridge(l2Token.options.address).call(), true);
+      });
+      it("isWhitelistToken", async () => {
+        assert.equal(await depositBox.methods.isWhitelistToken(l1TokenAddress).call(), false);
+        assert.equal(await depositBox.methods.isWhitelistToken(l2Token.options.address).call(), true);
+      });
+    });
+
     describe("ERC20 deposit logic", () => {
       it("Token flow, events and actions occur correctly on deposit", async () => {
         assert.equal(await depositBox.methods.numberOfDeposits().call(), "0"); // Deposit index should start at 0.

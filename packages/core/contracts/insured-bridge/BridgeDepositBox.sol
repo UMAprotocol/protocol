@@ -235,6 +235,8 @@ abstract contract BridgeDepositBox is Testable, Lockable {
      * @param l2Token L2 token to check against last bridge time delay.
      */
     function hasEnoughTimeElapsedToBridge(address l2Token) public view returns (bool) {
-        return getCurrentTime() > whitelistedTokens[l2Token].lastBridgeTime + minimumBridgingDelay;
+        return
+            whitelistedTokens[l2Token].lastBridgeTime != 0 &&
+            getCurrentTime() > whitelistedTokens[l2Token].lastBridgeTime + minimumBridgingDelay;
     }
 }
