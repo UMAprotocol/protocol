@@ -17,7 +17,7 @@ import "../common/implementation/ExpandedERC20.sol";
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "hardhat/console.sol";
+import "@openzeppelin/contracts/utils/Address.sol";
 
 interface WETH9Like {
     function withdraw(uint256 wad) external;
@@ -36,6 +36,7 @@ interface WETH9Like {
 contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
     using SafeERC20 for IERC20;
     using FixedPoint for FixedPoint.Unsigned;
+    using Address for address;
 
     // Token that this contract receives as LP deposits.
     IERC20 public override l1Token;
@@ -62,10 +63,12 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
     // Last timestamp that LP fees were updated.
     uint32 public lastLpFeeUpdate;
 
-    // Store local instances of contract params to save gas relaying. Can be synced with the BridgeAdmin at any time via
-    // the syncWithBridgeAdminParams() public function.
+    // Store local instances of contract params to save gas relaying.
     uint64 public proposerBondPct;
     uint32 public optimisticOracleLiveness;
+
+    // Store local instance of the reserve currency final fee. This is a gas optimization to not re-call the store.
+    uint256 l1TokenFinalFee;
 
     // Cumulative undistributed LP fees. As fees accumulate, they are subtracted from this number.
     uint256 public undistributedLpFees;
@@ -77,7 +80,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
     BridgeAdminInterface public bridgeAdmin;
 
     // Store local instances of the contract instances to save gas relaying. Can be sync with the Finder at any time via
-    // the syncWithFinderAddresses() public function.
+    // the syncUmaEcosystemParams() public function.
     StoreInterface public store;
     SkinnyOptimisticOracleInterface public optimisticOracle;
 
@@ -178,7 +181,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
         lpFeeRatePerSecond = _lpFeeRatePerSecond;
         isWethPool = _isWethPool;
 
-        syncWithFinderAddresses(); // Fetch OptimisticOracle and Store addresses from the Finder.
+        syncUmaEcosystemParams(); // Fetch OptimisticOracle and Store addresses and L1Token finalFee.
         syncWithBridgeAdminParams(); // Fetch ProposerBondPct OptimisticOracleLiveness, Identifier from the BridgeAdmin.
     }
 
@@ -271,7 +274,6 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
         require(relays[depositHash] == bytes32(0), "Pending relay exists");
 
         uint256 proposerBond = _getProposerBond(depositData.amount);
-        uint256 finalFee = store.computeFinalFee(address(l1Token)).rawValue;
 
         // Save hash of new relay attempt parameters.
         // Note: The liveness for this relay can be changed in the BridgeAdmin, which means that each relay has a
@@ -285,7 +287,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
                 realizedLpFeePct: realizedLpFeePct,
                 priceRequestTime: priceRequestTime,
                 proposerBond: proposerBond,
-                finalFee: finalFee
+                finalFee: l1TokenFinalFee
             });
         bytes32 relayHash = _getRelayHash(depositData, relayData);
         relays[depositHash] = _getRelayDataHash(relayData);
@@ -300,13 +302,12 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
         // Sanity check that pool has enough balance to cover relay amount + proposer reward. Reward amount will be
         // paid on settlement after the OptimisticOracle price request has passed the challenge period.
         require(
-            l1Token.balanceOf(address(this)) >= depositData.amount + proposerBond &&
-                liquidReserves >= depositData.amount + proposerBond,
+            l1Token.balanceOf(address(this)) - bonds >= depositData.amount && liquidReserves >= depositData.amount,
             "Insufficient pool balance"
         );
 
         // Compute total proposal bond and pull from caller so that the OptimisticOracle can pull it from here.
-        uint256 totalBond = proposerBond + finalFee;
+        uint256 totalBond = proposerBond + l1TokenFinalFee;
 
         // Pull relay amount minus fees from caller and send to the deposit l1Recipient. The total fees paid is the sum
         // of the LP fees, the relayer fees and the instant relay fee.
@@ -325,11 +326,11 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
 
         instantRelays[instantRelayHash] = msg.sender;
 
+        // If this is a weth pool then unwrap and send eth.
         if (isWethPool) {
             _unwrapWETHTo(depositData.l1Recipient, recipientAmount);
-        }
-        // Else, this is a normal ERC20 token. Send to recipient.
-        else l1Token.safeTransfer(depositData.l1Recipient, recipientAmount);
+            // Else, this is a normal ERC20 token. Send to recipient.
+        } else l1Token.safeTransfer(depositData.l1Recipient, recipientAmount);
 
         emit DepositRelayed(depositHash, depositData, address(l1Token), relayData, relayHash);
         emit RelaySpedUp(depositHash, msg.sender, relayData);
@@ -366,6 +367,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
 
         // Drop the relay and remove the bond from the tracked bonds.
         bonds -= relayData.finalFee + relayData.proposerBond;
+        pendingReserves -= depositData.amount;
         delete relays[depositHash];
         if (success) emit RelayDisputed(depositHash, _getRelayDataHash(relayData), msg.sender);
         else emit RelayCanceled(depositHash, _getRelayDataHash(relayData), msg.sender);
@@ -398,7 +400,6 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
         uint32 priceRequestTime = uint32(getCurrentTime());
 
         uint256 proposerBond = _getProposerBond(depositData.amount);
-        uint256 finalFee = store.computeFinalFee(address(l1Token)).rawValue;
 
         // Save hash of new relay attempt parameters.
         // Note: The liveness for this relay can be changed in the BridgeAdmin, which means that each relay has a
@@ -412,7 +413,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
                 realizedLpFeePct: realizedLpFeePct,
                 priceRequestTime: priceRequestTime,
                 proposerBond: proposerBond,
-                finalFee: finalFee
+                finalFee: l1TokenFinalFee
             });
         relays[depositHash] = _getRelayDataHash(relayData);
 
@@ -421,13 +422,12 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
         // Sanity check that pool has enough balance to cover relay amount + proposer reward. Reward amount will be
         // paid on settlement after the OptimisticOracle price request has passed the challenge period.
         require(
-            l1Token.balanceOf(address(this)) >= depositData.amount + proposerBond &&
-                liquidReserves >= depositData.amount + proposerBond,
+            l1Token.balanceOf(address(this)) - bonds >= depositData.amount && liquidReserves >= depositData.amount,
             "Insufficient pool balance"
         );
 
         // Compute total proposal bond and pull from caller so that the OptimisticOracle can pull it from here.
-        uint256 totalBond = proposerBond + finalFee;
+        uint256 totalBond = proposerBond + l1TokenFinalFee;
         l1Token.safeTransferFrom(msg.sender, address(this), totalBond);
 
         pendingReserves += depositData.amount; // Book off maximum liquidity used by this relay in the pending reserves.
@@ -478,9 +478,8 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
         if (isWethPool) {
             l1Token.safeTransferFrom(msg.sender, address(this), recipientAmount);
             _unwrapWETHTo(depositData.l1Recipient, recipientAmount);
-        }
-        // Else, this is a normal ERC20 token. Send to recipient.
-        else l1Token.safeTransferFrom(msg.sender, depositData.l1Recipient, recipientAmount);
+            // Else, this is a normal ERC20 token. Send to recipient.
+        } else l1Token.safeTransferFrom(msg.sender, depositData.l1Recipient, recipientAmount);
 
         emit RelaySpedUp(depositHash, msg.sender, relayData);
     }
@@ -657,17 +656,18 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
 
     /**
      * @notice Updates the address stored in this contract for the OptimisticOracle and the Store to the latest versions
-     * set in the the Finder. We store these as local addresses to make relay methods more gas efficient.
+     * set in the the Finder. Also pull finalFee Store these as local variables to make relay methods gas efficient.
      * @dev There is no risk of leaving this function public for anyone to call as in all cases we want the addresses
-     * in this contract to map to the latest version in the Finder.
+     * in this contract to map to the latest version in the Finder and store the latest final fee.
      */
-    function syncWithFinderAddresses() public {
+    function syncUmaEcosystemParams() public {
         FinderInterface finder = FinderInterface(bridgeAdmin.finder());
         optimisticOracle = SkinnyOptimisticOracleInterface(
             finder.getImplementationAddress(OracleInterfaces.SkinnyOptimisticOracle)
         );
 
         store = StoreInterface(finder.getImplementationAddress(OracleInterfaces.Store));
+        l1TokenFinalFee = store.computeFinalFee(address(l1Token)).rawValue;
     }
 
     /**
@@ -889,9 +889,14 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
         return true;
     }
 
+    // Unwraps ETH and does a transfer to a recipient address. If the recipient is a smart contract then sends WETH.
     function _unwrapWETHTo(address payable to, uint256 amount) internal {
-        WETH9Like(address(l1Token)).withdraw(amount);
-        to.transfer(amount);
+        if (address(to).isContract()) {
+            l1Token.safeTransfer(to, amount);
+        } else {
+            WETH9Like(address(l1Token)).withdraw(amount);
+            to.transfer(amount);
+        }
     }
 
     // Added to enable the BridgePool to receive ETH. used when unwrapping Weth.

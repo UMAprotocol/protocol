@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity >=0.7.6;
+pragma solidity ^0.8.0;
 
-import "../external/Legacy_Testable.sol"; //TODO: replace this with the normal UMA Testable once we can use 0.8 solidity.
-import "../external/Legacy_Lockable.sol"; //TODO: replace this with the normal UMA Lockable once we can use 0.8 solidity.
+import "../common/implementation/Testable.sol";
+import "../common/implementation/Lockable.sol";
 
 // Define some interfaces and helper libraries. This is temporary until we can bump the solidity version in these
 // contracts to 0.8.x and import the rest of these libs from other UMA contracts in the repo.
@@ -35,7 +35,7 @@ interface WETH9Like {
  * @notice Accepts deposits on Optimism L2 to relay to Ethereum L1 as part of the UMA insured bridge system.
  */
 
-abstract contract BridgeDepositBox is Legacy_Testable, Legacy_Lockable {
+abstract contract BridgeDepositBox is Testable, Lockable {
     /*************************************
      *  OVM DEPOSIT BOX DATA STRUCTURES  *
      *************************************/
@@ -104,7 +104,7 @@ abstract contract BridgeDepositBox is Legacy_Testable, Legacy_Lockable {
         uint256 _chainId,
         address _l1Weth,
         address timerAddress
-    ) Legacy_Testable(timerAddress) {
+    ) Testable(timerAddress) {
         _setMinimumBridgingDelay(_minimumBridgingDelay);
         chainId = _chainId;
         l1Weth = _l1Weth;

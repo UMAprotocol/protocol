@@ -13,7 +13,7 @@ const factory__L1_IdentifierWhitelist = createLocalEthersFactory("IdentifierWhit
 const factory__L1_Store = createLocalEthersFactory("Store");
 const factory__L1_OptimisticOracle = createLocalEthersFactory("OptimisticOracle");
 
-const factory__L2_Timer = createLocalEthersFactory("Legacy_Timer", true);
+const factory__L2_Timer = createLocalEthersFactory("Timer");
 
 async function setUpUmaEcosystemContracts(l1Wallet, l2Wallet, l1Erc20, identifier) {
   // Set up required UMA L1 ecosystem contracts.

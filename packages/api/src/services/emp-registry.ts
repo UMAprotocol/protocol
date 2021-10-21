@@ -20,7 +20,13 @@ export type EmitData = {
 // type of events
 export type Events = "created";
 
-export default async (config: Config, appState: Dependencies, emit: (event: Events, data: EmitData) => void) => {
+export default async (
+  config: Config,
+  appState: Dependencies,
+  emit: (event: Events, data: EmitData) => void = () => {
+    return;
+  }
+) => {
   const { network = 1, registryAddress } = config;
   const { registeredEmps, provider, registeredEmpsMetadata } = appState;
   const address = registryAddress || (await registry.getAddress(network));

@@ -1,5 +1,5 @@
 {
-  "version": "0.8.0",
+  "version": "0.9.0",
   "license": "MIT",
   "name": "@uma/sdk",
   "author": "David Adams",
@@ -35,9 +35,9 @@
     }
   ],
   "dependencies": {
-    "@google-cloud/datastore": "^6.0.0",
-    "@uma/contracts-frontend": "^0.1.4",
-    "@uma/contracts-node": "^0.1.4",
+    "@google-cloud/datastore": "^6.6.0",
+    "@uma/contracts-frontend": "^0.1.5",
+    "@uma/contracts-node": "^0.1.5",
     "axios": "^0.21.4",
     "decimal.js": "^10.3.1",
     "highland": "^2.13.5",

@@ -1,10 +1,28 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity >=0.7.6;
+pragma solidity ^0.8.0;
 
-import "./BridgeDepositBox.sol";
+import "../BridgeDepositBox.sol";
 
-import { OVM_CrossDomainEnabled } from "@eth-optimism/contracts/libraries/bridge/OVM_CrossDomainEnabled.sol";
-import { Lib_PredeployAddresses } from "@eth-optimism/contracts/libraries/constants/Lib_PredeployAddresses.sol";
+import "../../external/ovm/OVM_CrossDomainEnabled.sol";
+
+/**
+ * @title Lib_PredeployAddresses
+ * @dev Copied from https://github.com/ethereum-optimism/optimism/blob/5fc728da7381eda6b6f858c091636c947186a3ce/packages/contracts/contracts/optimistic-ethereum/libraries/constants/Lib_PredeployAddresses.sol
+ */
+library Lib_PredeployAddresses {
+    address internal constant L2_TO_L1_MESSAGE_PASSER = 0x4200000000000000000000000000000000000000;
+    address internal constant L1_MESSAGE_SENDER = 0x4200000000000000000000000000000000000001;
+    address internal constant DEPLOYER_WHITELIST = 0x4200000000000000000000000000000000000002;
+    address internal constant ECDSA_CONTRACT_ACCOUNT = 0x4200000000000000000000000000000000000003;
+    address internal constant SEQUENCER_ENTRYPOINT = 0x4200000000000000000000000000000000000005;
+    address internal constant OVM_ETH = 0x4200000000000000000000000000000000000006;
+    address internal constant L2_CROSS_DOMAIN_MESSENGER = 0x4200000000000000000000000000000000000007;
+    address internal constant LIB_ADDRESS_MANAGER = 0x4200000000000000000000000000000000000008;
+    address internal constant PROXY_EOA = 0x4200000000000000000000000000000000000009;
+    address internal constant SEQUENCER_FEE_WALLET = 0x4200000000000000000000000000000000000011;
+    address internal constant ERC1820_REGISTRY = 0x1820a4B7618BdE71Dce8cdc73aAB6C95905faD24;
+    address internal constant L2_STANDARD_BRIDGE = 0x4200000000000000000000000000000000000010;
+}
 
 interface StandardBridgeLike {
     function withdrawTo(

@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.9.0](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.8.0...@uma/sdk@0.9.0) (2021-10-19)
+
+### Bug Fixes
+
+- **api:** specify explicitly the npm datastore version ([#3476](https://github.com/UMAprotocol/protocol/issues/3476)) ([b588e83](https://github.com/UMAprotocol/protocol/commit/b588e83ca548a2a0d59b36f02ec9800afce28dec))
+
+### Features
+
+- **sdk:** add across gas fee estimations ([#3471](https://github.com/UMAprotocol/protocol/issues/3471)) ([6c205c3](https://github.com/UMAprotocol/protocol/commit/6c205c31176bd7c5aa7cc4ce2c9f0fa10d1ec9d0))
+
 # [0.8.0](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.7.0...@uma/sdk@0.8.0) (2021-10-08)
 
 ### Features

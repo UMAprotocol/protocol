@@ -399,7 +399,7 @@ describe("BridgePool", () => {
       .changeImplementationAddress(utf8ToHex(interfaceName.SkinnyOptimisticOracle), rando)
       .send({ from: owner });
 
-    await bridgePool.methods.syncWithFinderAddresses().send({ from: rando });
+    await bridgePool.methods.syncUmaEcosystemParams().send({ from: rando });
 
     // Check it's been updated accordingly
     assert.equal(await bridgePool.methods.optimisticOracle().call(), rando);
@@ -1013,6 +1013,9 @@ describe("BridgePool", () => {
       // from disputer.
       await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: disputer });
       await bridgePool.methods.disputeRelay(defaultDepositData, relayAttemptData).send({ from: disputer });
+
+      // Dispute should leave pendingReserves at 0.
+      assert.equal(await bridgePool.methods.pendingReserves().call(), "0");
 
       // Mint new relayer bond to relay again:
       await l1Token.methods.mint(rando, totalRelayBond).send({ from: owner });
@@ -2407,6 +2410,53 @@ describe("BridgePool", () => {
           .sub(instantRelayerBalancePostSpeedUp)
           .toString(),
         toBN(instantRelayAmountSubFee).add(realizedInstantRelayFeeAmount).toString()
+      );
+    });
+    it("Can handle recipient being a smart contract that does not accept ETH transfer", async () => {
+      // In the even the recipient is a smart contract that can not accept ETH transfers (no payable receive function)
+      // and it is a WETH pool, the bridge pool should send WETH ERC20 to the recipient.
+
+      // Relay, setting the finder as the recipient. this is a contract that cant accept ETH.
+      await weth.methods.deposit().send({ from: relayer, value: totalRelayBond });
+      await weth.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: relayer });
+      await bridgePool.methods
+        .relayDeposit(...generateRelayParams({ depositId: 2, l1Recipient: finder.options.address }))
+        .send({ from: relayer });
+
+      const relayAttemptData = {
+        ...defaultRelayData,
+        l1Recipient: finder.options.address,
+        priceRequestTime: (await bridgePool.methods.getCurrentTime().call()).toString(),
+        relayState: InsuredBridgeRelayStateEnum.PENDING,
+      };
+      const recipientEthBalanceBefore = await web3.eth.getBalance(finder.options.address);
+      const recipientWethBalanceBefore = await weth.methods.balanceOf(finder.options.address).call();
+      await timer.methods
+        .setCurrentTime(
+          (Number((await bridgePool.methods.getCurrentTime().call()).toString()) + defaultLiveness).toString()
+        )
+        .send({ from: owner });
+
+      // Settle request.
+      await bridgePool.methods
+        .settleRelay(
+          { ...defaultDepositData, depositId: 2, l1Recipient: finder.options.address },
+          { ...relayAttemptData, relayId: 1 }
+        )
+        .send({ from: relayer });
+
+      // Recipient eth balance should have stayed the same (cant receive eth)
+      assert.equal(
+        (await web3.eth.getBalance(finder.options.address)).toString(),
+        recipientEthBalanceBefore.toString()
+      );
+
+      // Recipients WETH balance should have increased instead.
+      assert.equal(
+        toBN(await weth.methods.balanceOf(finder.options.address).call())
+          .sub(toBN(recipientWethBalanceBefore))
+          .toString(),
+        slowRelayAmountSubFee.toString()
       );
     });
     it("LP can send ETH when depositing into a WETH pool", async () => {
