@@ -47,7 +47,7 @@ export class Relayer {
     readonly account: string
   ) {}
 
-  async checkForPendingDepositsAndRelay(): Promise<undefined> {
+  async checkForPendingDepositsAndRelay(): Promise<void> {
     this.logger.debug({ at: "Relayer", message: "Checking for pending deposits and relaying" });
 
     // Build dictionary of relayable deposits keyed by L1 tokens. We assume that getRelayableDeposits() filters
@@ -136,12 +136,12 @@ export class Relayer {
     return;
   }
 
-  async checkForPendingRelaysAndDispute(): Promise<undefined> {
+  async checkForPendingRelaysAndDispute(): Promise<void> {
     this.logger.debug({ at: "Disputer", message: "Checking for pending relays and disputing" });
 
     // Build dictionary of pending relays keyed by l1 token and deposit hash. We assume that getPendingRelays() filters
     // out Finalized relays.
-    const pendingRelays: Relay[] = this.getPendingRelays();
+    const pendingRelays: Relay[] = this.getPendingRelays(this.l2Client.chainId);
     if (pendingRelays.length == 0) {
       this.logger.debug({ at: "Disputer", message: "No pending relays" });
       return;
@@ -242,7 +242,7 @@ export class Relayer {
     return;
   }
 
-  async checkforSettleableRelaysAndSettle(): Promise<undefined> {
+  async checkforSettleableRelaysAndSettle(): Promise<void> {
     this.logger.debug({ at: "Finalizer", message: "Checking for settleable relays and settling" });
     for (const l1Token of this.whitelistedRelayL1Tokens) {
       this.logger.debug({ at: "Finalizer", message: "Checking settleable relays for token", l1Token });
@@ -615,8 +615,8 @@ export class Relayer {
     return relayableDeposits;
   }
 
-  private getPendingRelays(): Relay[] {
-    return this.l1Client.getPendingRelayedDeposits();
+  private getPendingRelays(chainId: number): Relay[] {
+    return this.l1Client.getPendingRelayedDeposits().filter((relay: Relay) => relay.chainId === chainId);
   }
 
   // Send correct type of relay along with parameters to submit transaction.

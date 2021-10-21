@@ -200,7 +200,7 @@ describe("Relayer.ts", function () {
     // Create the rate models for the one and only l1Token, set to the single rateModel defined in the constants.
     const rateModels = { [l1Token.options.address]: rateModel };
     l1Client = new InsuredBridgeL1Client(spyLogger, web3, bridgeAdmin.options.address, rateModels);
-    l2Client = new InsuredBridgeL2Client(spyLogger, web3, bridgeDepositBox.options.address);
+    l2Client = new InsuredBridgeL2Client(spyLogger, web3, bridgeDepositBox.options.address, chainId);
 
     gasEstimator = new GasEstimator(spyLogger);
     relayer = new Relayer(spyLogger, gasEstimator, l1Client, l2Client, [l1Token.options.address], l1Relayer);
@@ -826,6 +826,39 @@ describe("Relayer.ts", function () {
       await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Relayer });
       await relayer.checkForPendingRelaysAndDispute();
       assert.isTrue(lastSpyLogIncludes(spy, "Disputed pending relay"));
+    });
+    it("Ignores relay for different chain ID than the one set on L2 client", async function () {
+      await l1Token.methods.mint(l1Owner, toBN(depositAmount).muln(2)).send({ from: l1Owner });
+      await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Owner });
+      const quoteTime = await bridgeDepositBox.methods.getCurrentTime().call();
+
+      // This relay should be disputed because the deposit doesn't exist on L2, but the disputer should skip it because
+      // the L2 client is set for a different chain ID than the one included on the relay.
+      await bridgePool.methods
+        .relayDeposit(
+          {
+            chainId: chainId + 1, // Different chainID than one used by L2 client
+            depositId: "0",
+            l2Sender: l2Depositor,
+            l1Recipient: l2Depositor,
+            amount: depositAmount,
+            slowRelayFeePct: defaultSlowRelayFeePct,
+            instantRelayFeePct: defaultInstantRelayFeePct,
+            quoteTimestamp: quoteTime,
+          },
+          toBN(defaultRealizedLpFeePct)
+            .mul(toBN(toWei("2")))
+            .div(toBN(toWei("1")))
+            .toString() // Invalid relay param
+        )
+        .send({ from: l1Owner });
+
+      // Now, run the disputer and check that it disputes the relay.
+      await Promise.all([l1Client.update(), l2Client.update()]);
+      await l1Token.methods.mint(l1Relayer, toBN(depositAmount).muln(2)).send({ from: l1Owner });
+      await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Relayer });
+      await relayer.checkForPendingRelaysAndDispute();
+      assert.isTrue(lastSpyLogIncludes(spy, "No pending relays"));
     });
     it("Does not dispute valid relays", async function () {
       // Make a deposit on L2 and relay it with valid relay params.
