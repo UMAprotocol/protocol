@@ -6,9 +6,9 @@
 // be used to query contract data from Polygon when relaying proposals through the GovernorRootTunnel.
 // - Next, open another terminal window and run `./packages/scripts/setupFork.sh` to unlock
 //   accounts on the local node that we'll need to run this script.
-// - Propose: node ./packages/scripts/src/admin-proposals/identifier.js --identifier 0xabc,0x123 --polygon 0xabc,0x123 --network mainnet-fork
+// - Propose: node ./packages/scripts/src/admin-proposals/identifier.js --identifier ABC,DEF --polygon ABC,DEF --network mainnet-fork
 // - Vote Simulate: node ./packages/scripts/src/admin-proposals/simulateVote.js --network mainnet-fork
-// - Verify: node ./packages/scripts/src/admin-proposals/identifier.js --verify --polygon 0xabc,0x123 --identifier 0xabc,0x123 --network mainnet-fork
+// - Verify: node ./packages/scripts/src/admin-proposals/identifier.js --verify --polygon ABC,DEF --identifier ABC,DEF --network mainnet-fork
 // - For production, set the CUSTOM_NODE_URL environment, run the script with a production network passed to the
 //   `--network` flag (along with other params like --keys) like so: `node ... --network mainnet_gckms --keys deployer`
 
