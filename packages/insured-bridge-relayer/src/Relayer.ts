@@ -258,7 +258,7 @@ export class Relayer {
   private async slowRelay(deposit: Deposit, realizedLpFeePct: BN) {
     await this.gasEstimator.update();
     try {
-      const { receipt } = await runTransaction({
+      const { receipt, transactionConfig } = await runTransaction({
         web3: this.l1Client.l1Web3,
         transaction: this.generateSlowRelayTx(deposit, realizedLpFeePct),
         transactionConfig: { gasPrice: this.gasEstimator.getCurrentFastPrice().toString(), from: this.account },
@@ -286,6 +286,7 @@ export class Relayer {
           priceRequestTime: receipt.events.DepositRelayed.returnValues.relay.priceRequestTime,
           relayAncillaryDataHash: receipt.events.DepositRelayed.returnValues.relayAncillaryDataHash,
           depositHash: receipt.events.DepositRelayed.returnValues.depositHash,
+          transactionConfig,
         });
       else throw receipt;
     } catch (error) {
@@ -296,7 +297,7 @@ export class Relayer {
   private async speedUpRelay(deposit: Deposit, relay: Relay) {
     await this.gasEstimator.update();
     try {
-      const { receipt } = await runTransaction({
+      const { receipt, transactionConfig } = await runTransaction({
         web3: this.l1Client.l1Web3,
         transaction: this.generateSpeedUpRelayTx(deposit, relay),
         transactionConfig: { gasPrice: this.gasEstimator.getCurrentFastPrice().toString(), from: this.account },
@@ -315,6 +316,7 @@ export class Relayer {
           relayState: receipt.events.RelaySpedUp.returnValues.relay.relayState,
           priceRequestTime: receipt.events.RelaySpedUp.returnValues.relay.priceRequestTime,
           slowRelayer: receipt.events.RelaySpedUp.returnValues.relay.slowRelayer,
+          transactionConfig,
         });
       else throw receipt;
     } catch (error) {
@@ -325,7 +327,7 @@ export class Relayer {
   private async instantRelay(deposit: Deposit, realizedLpFeePct: BN) {
     await this.gasEstimator.update();
     try {
-      const { receipt } = await runTransaction({
+      const { receipt, transactionConfig } = await runTransaction({
         web3: this.l1Client.l1Web3,
         transaction: this.generateInstantRelayTx(deposit, realizedLpFeePct),
         transactionConfig: { gasPrice: this.gasEstimator.getCurrentFastPrice().toString(), from: this.account },
@@ -353,6 +355,7 @@ export class Relayer {
           relayState: receipt.events.RelaySpedUp.returnValues.relay.relayState,
           priceRequestTime: receipt.events.RelaySpedUp.returnValues.relay.priceRequestTime,
           slowRelayer: receipt.events.RelaySpedUp.returnValues.relay.slowRelayer,
+          transactionConfig,
         });
       else throw receipt;
     } catch (error) {
@@ -363,7 +366,7 @@ export class Relayer {
   private async settleRelay(deposit: Deposit, relay: Relay) {
     await this.gasEstimator.update();
     try {
-      const { receipt } = await runTransaction({
+      const { receipt, transactionConfig } = await runTransaction({
         web3: this.l1Client.l1Web3,
         transaction: this.generateSettleRelayTx(deposit, relay),
         transactionConfig: { gasPrice: this.gasEstimator.getCurrentFastPrice().toString(), from: this.account },
@@ -381,6 +384,7 @@ export class Relayer {
           relayState: receipt.events.RelaySettled.returnValues.relay.relayState,
           priceRequestTime: receipt.events.RelaySettled.returnValues.relay.priceRequestTime,
           slowRelayer: receipt.events.RelaySettled.returnValues.relay.slowRelayer,
+          transactionConfig,
         });
       else throw receipt;
     } catch (error) {
