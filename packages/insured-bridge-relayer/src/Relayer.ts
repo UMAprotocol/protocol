@@ -111,7 +111,7 @@ export class Relayer {
         );
         // If relay cannot occur because its pending and already sped up, then exit early.
         if (hasInstantRelayer && relayableDeposit.status == ClientRelayState.Pending) {
-          this.logger.warn({
+          this.logger.debug({
             at: "InsuredBridgeRelayer#Relayer",
             message: "Relay pending and already sped up 😖",
             realizedLpFeePct: realizedLpFeePct.toString(),
@@ -478,7 +478,7 @@ export class Relayer {
   ) {
     switch (shouldRelay) {
       case RelaySubmitType.Ignore:
-        this.logger.warn({
+        this.logger.debug({
           at: "InsuredBridgeRelayer#Relayer",
           message: "Not relaying potentially unprofitable deposit, or insufficient balance 😖",
           realizedLpFeePct: realizedLpFeePct.toString(),
