@@ -78,6 +78,7 @@ export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
 
           if (config.botModes.relayerEnabled) {
             await relayer.checkForPendingDepositsAndRelay();
+          } else {
             logger.debug({
               at: "Relayer",
               message: "Relayer disabled",
@@ -85,6 +86,7 @@ export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
           }
           if (config.botModes.disputerEnabled) {
             await relayer.checkForPendingRelaysAndDispute();
+          } else {
             logger.debug({
               at: "Disputer",
               message: "Disputer disabled",
@@ -92,6 +94,7 @@ export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
           }
           if (config.botModes.finalizerEnabled) {
             await relayer.checkforSettleableRelaysAndSettle();
+          } else {
             logger.debug({
               at: "Finalizer",
               message: "Finalizer disabled",
