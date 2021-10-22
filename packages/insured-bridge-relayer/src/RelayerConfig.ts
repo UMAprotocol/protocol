@@ -8,7 +8,7 @@ import type { RateModel } from "@uma/financial-templates-lib";
 // Check each token rate model contains the expected data.
 const expectedRateModelKeys = ["UBar", "R0", "R1", "R2"];
 
-// const supported L2 Chain IDS:
+// Supported L2 Chain IDS:
 const supportedChainIds = [
   10, // optimism mainnet
   69, // optimism testnet
@@ -20,6 +20,12 @@ export interface ProcessEnv {
   [key: string]: string | undefined;
 }
 
+// Set modes to true that you want to enable in bot (i.e. in Relayer.ts).
+export interface BotModes {
+  relayerEnabled: boolean; // Submits slow and fast relays
+  disputerEnabled: boolean; // Submits disputes on pending relays with invalid params
+  finalizerEnabled: boolean; // Resolves expired relays
+}
 export class RelayerConfig {
   readonly bridgeAdmin: string;
 
@@ -27,9 +33,11 @@ export class RelayerConfig {
   readonly errorRetries: number;
   readonly errorRetriesTimeout: number;
   readonly whitelistedRelayL1Tokens: string[] = [];
+  readonly whitelistedChainIds: number[] = [];
   readonly rateModels: { [key: string]: RateModel } = {};
   readonly activatedChainIds: number[];
   readonly l2StartBlock: number;
+  readonly botModes: BotModes;
 
   constructor(env: ProcessEnv) {
     const {
@@ -40,7 +48,18 @@ export class RelayerConfig {
       RATE_MODELS,
       CHAIN_IDS,
       L2_START_BLOCK,
+      DISPUTER_ENABLED,
+      RELAYER_ENABLED,
+      FINALIZER_ENABLED,
+      WHITELISTED_CHAIN_IDS,
     } = env;
+
+    this.botModes = {
+      relayerEnabled: RELAYER_ENABLED ? Boolean(RELAYER_ENABLED) : false,
+      disputerEnabled: DISPUTER_ENABLED ? Boolean(DISPUTER_ENABLED) : false,
+      finalizerEnabled: FINALIZER_ENABLED ? Boolean(FINALIZER_ENABLED) : false,
+    };
+
     assert(BRIDGE_ADMIN_ADDRESS, "BRIDGE_ADMIN_ADDRESS required");
     this.bridgeAdmin = Web3.utils.toChecksumAddress(BRIDGE_ADMIN_ADDRESS);
 
@@ -76,10 +95,22 @@ export class RelayerConfig {
       };
     }
 
+    // CHAIN_IDS sets the active chain ID's for this bot. Note how this is distinct from WHITELISTED_CHAIN_IDS which
+    // sets all valid chain ID's. Any relays for chain ID's outside of this whitelist will be disputed.
     this.activatedChainIds = JSON.parse(CHAIN_IDS || "[]");
     assert(this.activatedChainIds.length > 0, "Must define at least 1 chain ID to run the bot against");
     assert(!this.activatedChainIds.includes(1), "Do not include chainID 1 in CHAIN_IDS");
     for (const id of this.activatedChainIds)
       assert(supportedChainIds.includes(id), `The chainID you provided: ${id} is not supported by this relayer`);
+
+    // Default whitelisted deposit chain ID's are Optimism and Arbitrum mainnet and testnet. Be VERY CAREFUL defining
+    // this whitelist since any relays with non whitelisted chain IDs will be disputed!!
+    this.whitelistedChainIds = WHITELISTED_CHAIN_IDS ? JSON.parse(WHITELISTED_CHAIN_IDS) : supportedChainIds;
+    assert(this.whitelistedChainIds.length > 0, "Must define at least 1 whitelisted chain ID");
+    for (const id of this.whitelistedChainIds)
+      assert(
+        supportedChainIds.includes(id),
+        `The whitelisted chainID you provided: ${id} is not supported by this relayer`
+      );
   }
 }
