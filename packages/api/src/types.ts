@@ -104,7 +104,6 @@ export type AppState = {
     };
   };
   registeredEmps: registeredEmps.Table;
-  registeredEmpsMetadata: Map<string, { blockNumber: number }>;
   registeredLsps: Set<string>;
   registeredLspsMetadata: Map<string, { blockNumber: number }>;
   provider: Provider;

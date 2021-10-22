@@ -92,7 +92,6 @@ export default async (env: ProcessEnv) => {
     },
     lastBlockUpdate: 0,
     registeredEmps: registeredEmps.Table("Registered Emps", datastores.registeredEmps),
-    registeredEmpsMetadata: new Map(),
     registeredLsps: new Set<string>(),
     registeredLspsMetadata: new Map(),
     collateralAddresses: new Set<string>(),

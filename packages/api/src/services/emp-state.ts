@@ -8,25 +8,11 @@ type Instance = uma.clients.emp.Instance;
 type Config = BaseConfig;
 type Dependencies = Pick<
   AppState,
-  | "registeredEmps"
-  | "provider"
-  | "emps"
-  | "collateralAddresses"
-  | "syntheticAddresses"
-  | "registeredEmpsMetadata"
-  | "multicall2"
+  "registeredEmps" | "provider" | "emps" | "collateralAddresses" | "syntheticAddresses" | "multicall2"
 >;
 
 export default (config: Config, appState: Dependencies) => {
-  const {
-    registeredEmps,
-    registeredEmpsMetadata,
-    provider,
-    emps,
-    collateralAddresses,
-    syntheticAddresses,
-    multicall2,
-  } = appState;
+  const { registeredEmps, provider, emps, collateralAddresses, syntheticAddresses, multicall2 } = appState;
   const profile = Profile(config.debug);
   // default props we want to query on contract
   const staticProps: [string, (x: any) => any][] = [
@@ -135,10 +121,10 @@ export default (config: Config, appState: Dependencies) => {
     const emp = await table.get(address);
     if (emp.createdTimestamp) return;
 
-    const blockMetadata = registeredEmpsMetadata.get(address);
-    if (!blockMetadata) return;
+    const { blockNumber } = await registeredEmps.get(address);
+    if (typeof blockNumber !== "number") return;
 
-    const block = await provider.getBlock(blockMetadata.blockNumber);
+    const block = await provider.getBlock(blockNumber);
     await table.setCreatedTimestamp(address, block.timestamp);
   }
 
