@@ -44,12 +44,10 @@ export class InsuredBridgeL2Client {
   }
 
   getAllDeposits() {
-    this._throwIfNotInitialized();
     return Object.keys(this.deposits).map((depositId: string) => this.deposits[depositId]);
   }
 
   getDepositByID(depositId: string | number) {
-    this._throwIfNotInitialized();
     return this.deposits[depositId.toString()];
   }
 
@@ -114,9 +112,4 @@ export class InsuredBridgeL2Client {
     if (depositHash == "" || depositHash == null) throw new Error("Bad deposit hash");
     return depositHash;
   };
-
-  private _throwIfNotInitialized() {
-    if (Object.keys(this.deposits).length == 0)
-      throw new Error("InsuredBridgeClient method called before initialization! Call `update` first.");
-  }
 }
