@@ -86,7 +86,6 @@ export const runTransaction = async ({
   // .call() succeeded, now broadcast transaction.
   try {
     transactionConfig = { ...transactionConfig, gas: Math.floor(estimatedGas * GAS_LIMIT_BUFFER) };
-    console.log("INSUDE", transactionConfig);
 
     // ynatm doubles gasPrice or maxPriorityFeePerGas every retry depending if the transaction is a legacy or London.
     // Tries every minute(and increases gas price according to DOUBLE method) if tx hasn't mined. Min Gas price starts
@@ -95,10 +94,24 @@ export const runTransaction = async ({
     const retryDelay = 1000;
     if (!transactionConfig.gasPrice && !(transactionConfig.maxFeePerGas && transactionConfig.maxPriorityFeePerGas))
       throw new Error("No gas information provided");
-    console.log("PASSED");
     let receipt;
-    // Sending a legacy transaction (pre-London)
-    if (transactionConfig.gasPrice) {
+
+    // If the config contains maxPriorityFeePerGas then this is a london transaction.
+    if (transactionConfig.maxFeePerGas && transactionConfig.maxPriorityFeePerGas) {
+      const minPriorityFeePerGas = transactionConfig.maxPriorityFeePerGas || (1e9).toString();
+      const maxPriorityFeePerGas = 2 * 3 * parseInt(minPriorityFeePerGas);
+
+      receipt = await ynatm.send({
+        sendTransactionFunction: (maxPriorityFeePerGas: number) =>
+          transaction.send({ ...transactionConfig, maxPriorityFeePerGas: maxPriorityFeePerGas.toString() } as any),
+        minGasPrice: minPriorityFeePerGas,
+        maxGasPrice: maxPriorityFeePerGas,
+        gasPriceScalingFunction,
+        delay: retryDelay,
+      });
+
+      // Else, this is a legacy tx.
+    } else if (transactionConfig.gasPrice) {
       const minGasPrice = transactionConfig.gasPrice;
       const maxGasPrice = 2 * 3 * parseInt(minGasPrice);
 
@@ -110,23 +123,8 @@ export const runTransaction = async ({
         gasPriceScalingFunction,
         delay: retryDelay,
       });
-    }
-    // Else, send a London transaction. To do this we override how ynatm deals with minGasPrice/maxGasPrice to use
-    // the priority fee values.
-    else {
-      console.log("LONDON", transactionConfig);
-      const minPriorityFeePerGas = transactionConfig.maxPriorityFeePerGas || (1e9).toString();
-      const maxPriorityFeePerGas = 2 * 3 * parseInt(minPriorityFeePerGas);
-      console.log("A");
-      receipt = await ynatm.send({
-        sendTransactionFunction: (maxPriorityFeePerGas: number) =>
-          transaction.send({ ...transactionConfig, maxPriorityFeePerGas: maxPriorityFeePerGas.toString() } as any),
-        minGasPrice: minPriorityFeePerGas,
-        maxGasPrice: maxPriorityFeePerGas,
-        gasPriceScalingFunction,
-        delay: retryDelay,
-      });
-      console.log("B");
+    } else {
+      throw "Bad transactionConfig! not formatted correctly for pre or post london";
     }
 
     // Note: cast is due to an incorrect type in the web3 declarations that assumes send returns a contract.

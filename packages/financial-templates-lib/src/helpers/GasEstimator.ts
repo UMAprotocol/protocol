@@ -79,7 +79,6 @@ export class GasEstimator {
    */
 
   constructor(private readonly logger: Logger, private readonly updateThreshold = 60, networkId = DEFAULT_NETWORK_ID) {
-    console.log("HI", networkId);
     // If networkId is not found in MAPPING_BY_NETWORK, then default to 1.
     if (!Object.keys(MAPPING_BY_NETWORK).includes(networkId.toString())) this.networkId = DEFAULT_NETWORK_ID;
     else this.networkId = networkId;
