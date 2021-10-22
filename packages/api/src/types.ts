@@ -104,8 +104,7 @@ export type AppState = {
     };
   };
   registeredEmps: registeredContracts.Table;
-  registeredLsps: Set<string>;
-  registeredLspsMetadata: Map<string, { blockNumber: number }>;
+  registeredLsps: registeredContracts.Table;
   provider: Provider;
   web3: Web3;
   lastBlockUpdate: number;

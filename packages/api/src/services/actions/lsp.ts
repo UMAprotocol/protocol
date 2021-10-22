@@ -13,8 +13,8 @@ export function Handlers(config: Config, appState: Dependencies): Actions {
   const { registeredLsps, erc20s, collateralAddresses, longAddresses, shortAddresses, stats } = appState;
 
   const actions: Actions = {
-    listAddresses() {
-      return Array.from(registeredLsps.values());
+    async listAddresses() {
+      return await registeredLsps.keys();
     },
     hasAddress: queries.hasAddress,
     listActive: queries.listActive,

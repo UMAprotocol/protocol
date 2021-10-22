@@ -10,7 +10,7 @@ interface Config extends BaseConfig {
   network?: number;
   debug?: boolean;
 }
-type Dependencies = Pick<AppState, "registeredLsps" | "provider" | "registeredLspsMetadata">;
+type Dependencies = Pick<AppState, "registeredLsps" | "provider">;
 export type { EmitData };
 
 export type { Events };

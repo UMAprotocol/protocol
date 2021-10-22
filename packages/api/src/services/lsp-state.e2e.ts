@@ -5,20 +5,13 @@ import { ethers } from "ethers";
 import Service from "./lsp-state";
 import type { AppState } from "../types";
 import { Multicall2 } from "@uma/sdk";
-import { lsps } from "../tables";
+import * as tables from "../tables";
 // this fixes usage of "this" as any
 import "mocha";
 
 type Dependencies = Pick<
   AppState,
-  | "lsps"
-  | "registeredLsps"
-  | "provider"
-  | "collateralAddresses"
-  | "shortAddresses"
-  | "longAddresses"
-  | "multicall2"
-  | "registeredLspsMetadata"
+  "lsps" | "registeredLsps" | "provider" | "collateralAddresses" | "shortAddresses" | "longAddresses" | "multicall2"
 >;
 
 // this contract updated to have pairName                                 // does not have pairname
@@ -33,18 +26,19 @@ describe("lsp-state service", function () {
     assert(process.env.CUSTOM_NODE_URL);
     assert(process.env.MULTI_CALL_2_ADDRESS);
     const provider = new ethers.providers.WebSocketProvider(process.env.CUSTOM_NODE_URL);
+    const registeredLsps = tables.registeredContracts.Table("Registered Lsps");
+    await Promise.all(registeredContracts.map((address) => registeredLsps.set({ address, id: address })));
     appState = {
       provider,
       multicall2: new Multicall2(process.env.MULTI_CALL_2_ADDRESS, provider),
-      registeredLsps: new Set<string>(registeredContracts),
+      registeredLsps,
       collateralAddresses: new Set<string>(),
       longAddresses: new Set<string>(),
       shortAddresses: new Set<string>(),
       lsps: {
-        active: lsps.Table("Active LSP"),
-        expired: lsps.Table("Expired LSP"),
+        active: tables.lsps.Table("Active LSP"),
+        expired: tables.lsps.Table("Expired LSP"),
       },
-      registeredLspsMetadata: new Map(),
     };
   });
   it("init", async function () {

@@ -92,8 +92,7 @@ export default async (env: ProcessEnv) => {
     },
     lastBlockUpdate: 0,
     registeredEmps: registeredContracts.Table("Registered Emps", datastores.registeredEmps),
-    registeredLsps: new Set<string>(),
-    registeredLspsMetadata: new Map(),
+    registeredLsps: registeredContracts.Table("Registered Lsps", datastores.registeredLsps),
     collateralAddresses: new Set<string>(),
     syntheticAddresses: new Set<string>(),
     // lsp related props. could be its own state object

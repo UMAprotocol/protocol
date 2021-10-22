@@ -21,5 +21,6 @@ export default function StoresFactory(datastoreClient: Datastore) {
     lspsExpired: GoogleDatastore<string, lsps.Data>("Expired Lsp", datastoreClient),
     appStats: GoogleDatastore<number, appStats.Data>("App Stats", datastoreClient),
     registeredEmps: GoogleDatastore<string, registeredContracts.Data>("Registered Emps", datastoreClient),
+    registeredLsps: GoogleDatastore<string, registeredContracts.Data>("Registered Lsps", datastoreClient),
   };
 }

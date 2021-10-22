@@ -119,7 +119,7 @@ export default (config: Config, appState: Dependencies) => {
     return stats[currency].latest.tvm.upsertGlobal(update);
   }
   async function update() {
-    const addresses = Array.from(registeredLsps.values());
+    const addresses = await registeredLsps.keys();
     await updateAllTvl(addresses).then((results) => {
       results.forEach((result) => {
         if (result.status === "rejected") console.error("Error updating TVL: " + result.reason.message);
@@ -172,7 +172,7 @@ export default (config: Config, appState: Dependencies) => {
   }
 
   async function backfill() {
-    const addresses = Array.from(registeredLsps.values());
+    const addresses = await registeredLsps.keys();
     await backfillAllTvl(addresses).then((results) => {
       results.forEach((result) => {
         if (result.status === "rejected") console.error("Error updating TVL: " + result.reason.message);
