@@ -1,5 +1,8 @@
 import assert from "assert";
 import { BigNumber } from "ethers";
+import type Multicall2 from "./multicall2";
+import type { Contract } from "ethers";
+import zip from "lodash/zip";
 
 export type BigNumberish = number | string | BigNumber;
 // check if a value is not null or undefined, useful for numbers which could be 0.
@@ -69,3 +72,24 @@ export async function loop(fn: (...args: any[]) => any, delay: number, ...args: 
     /* eslint-disable-next-line no-constant-condition */
   } while (true);
 }
+
+type Call = [string, ...any[]];
+type Calls = Call[];
+export const BatchReadWithErrors = (multicall2: Multicall2) => (contract: Contract) => async (calls: Calls) => {
+  // multicall batch takes array of {method} objects
+  const results = await multicall2
+    .batch(
+      contract,
+      calls.map(([method, ...args]) => ({ method, args }))
+    )
+    .readWithErrors();
+  // convert results of multicall, an array of responses, into an object keyed by contract method
+  return Object.fromEntries(
+    zip(calls, results).map(([call, result]) => {
+      if (call == null) return [];
+      const [method] = call;
+      if (!result?.result) return [method, undefined];
+      return [method, result.result[0] || result.result];
+    })
+  );
+};

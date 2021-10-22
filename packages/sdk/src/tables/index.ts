@@ -1,4 +1,4 @@
-export { default as base } from "./base";
+export { default as Base } from "./base";
 export * as blocks from "./blocks";
 export * as emps from "./emps";
 export * as historicalPrices from "./historical-prices";
