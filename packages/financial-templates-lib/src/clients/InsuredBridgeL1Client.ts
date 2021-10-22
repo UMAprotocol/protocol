@@ -38,7 +38,7 @@ export interface Relay {
   priceRequestTime: number;
   depositHash: string;
   relayState: ClientRelayState;
-  relayHash: string;
+  relayAncillaryDataHash: string;
   proposerBond: string;
   finalFee: string;
   settleable: SettleableRelay;
@@ -254,7 +254,7 @@ export class InsuredBridgeL1Client {
           priceRequestTime: Number(depositRelayedEvent.returnValues.relay.priceRequestTime),
           depositHash: depositRelayedEvent.returnValues.depositHash,
           relayState: ClientRelayState.Pending, // Should be equal to depositRelayedEvent.returnValues.relay.relayState
-          relayHash: depositRelayedEvent.returnValues.relayAncillaryDataHash,
+          relayAncillaryDataHash: depositRelayedEvent.returnValues.relayAncillaryDataHash,
           proposerBond: depositRelayedEvent.returnValues.relay.proposerBond,
           finalFee: depositRelayedEvent.returnValues.relay.finalFee,
           settleable: SettleableRelay.CannotSettle,

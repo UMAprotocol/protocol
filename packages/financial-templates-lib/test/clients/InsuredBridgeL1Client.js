@@ -145,7 +145,7 @@ describe("InsuredBridgeL1Client", function () {
       priceRequestTime: relayData.priceRequestTime,
       depositHash: depositHash,
       relayState: ClientRelayState.Pending,
-      relayHash,
+      relayAncillaryDataHash: relayHash,
       proposerBond,
       finalFee,
       settleable: SettleableRelay.CannotSettle,
