@@ -115,7 +115,7 @@ export const runTransaction = async ({
         delay: retryDelay,
       });
 
-      // Else, this is a legacy tx.
+      // Else this is a legacy tx.
     } else if (transactionConfig.gasPrice) {
       const minGasPrice = transactionConfig.gasPrice;
       const maxGasPrice = 2 * 3 * parseInt(minGasPrice.toString());
