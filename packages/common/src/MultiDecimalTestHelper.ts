@@ -17,4 +17,3 @@ export const TEST_DECIMAL_COMBOS = [
     priceFeedDecimals: 18,
   },
 ];
-("");
