@@ -111,7 +111,7 @@ export class Relayer {
         );
         // If relay cannot occur because its pending and already sped up, then exit early.
         if (hasInstantRelayer && relayableDeposit.status == ClientRelayState.Pending) {
-          this.logger.warn({
+          this.logger.debug({
             at: "InsuredBridgeRelayer#Relayer",
             message: "Relay pending and already sped up 😖",
             realizedLpFeePct: realizedLpFeePct.toString(),
@@ -268,7 +268,7 @@ export class Relayer {
       if (receipt.events)
         this.logger.info({
           at: "InsuredBridgeRelayer#Relayer",
-          type: "Slow Relay executed  🐌",
+          message: "Slow Relay executed  🐌",
           tx: receipt.transactionHash,
           chainId: receipt.events.DepositRelayed.returnValues.depositData.chainId,
           depositId: receipt.events.DepositRelayed.returnValues.depositData.depositId,
@@ -290,7 +290,7 @@ export class Relayer {
         });
       else throw receipt;
     } catch (error) {
-      this.logger.error({ at: "InsuredBridgeRelayer#Relayer", type: "Something errored slow relaying!", error });
+      this.logger.error({ at: "InsuredBridgeRelayer#Relayer", message: "Something errored slow relaying!", error });
     }
   }
 
@@ -307,7 +307,7 @@ export class Relayer {
       if (receipt.events)
         this.logger.info({
           at: "InsuredBridgeRelayer#Relayer",
-          type: "Slow relay sped up 🏇",
+          message: "Slow relay sped up 🏇",
           tx: receipt.transactionHash,
           depositHash: receipt.events.RelaySpedUp.returnValues.depositHash,
           instantRelayer: receipt.events.RelaySpedUp.returnValues.instantRelayer,
@@ -320,7 +320,7 @@ export class Relayer {
         });
       else throw receipt;
     } catch (error) {
-      this.logger.error({ at: "InsuredBridgeRelayer#Relayer", type: "Something errored speeding up relay!", error });
+      this.logger.error({ at: "InsuredBridgeRelayer#Relayer", message: "Something errored speeding up relay!", error });
     }
   }
 
@@ -336,7 +336,7 @@ export class Relayer {
       if (receipt.events)
         this.logger.info({
           at: "InsuredBridgeRelayer#Relayer",
-          type: "Relay instantly sent 🚀",
+          message: "Relay instantly sent 🚀",
           tx: receipt.transactionHash,
           chainId: receipt.events.DepositRelayed.returnValues.depositData.chainId,
           depositId: receipt.events.DepositRelayed.returnValues.depositData.depositId,
@@ -359,7 +359,11 @@ export class Relayer {
         });
       else throw receipt;
     } catch (error) {
-      this.logger.error({ at: "InsuredBridgeRelayer#Relayer", type: "Something errored instantly relaying!", error });
+      this.logger.error({
+        at: "InsuredBridgeRelayer#Relayer",
+        message: "Something errored instantly relaying!",
+        error,
+      });
     }
   }
 
@@ -375,7 +379,7 @@ export class Relayer {
       if (receipt.events)
         this.logger.info({
           at: "InsuredBridgeRelayer#Relayer",
-          type: "Relay settled 💸",
+          message: "Relay settled 💸",
           tx: receipt.transactionHash,
           depositHash: receipt.events.RelaySettled.returnValues.depositHash,
           caller: receipt.events.RelaySettled.returnValues.caller,
@@ -388,7 +392,11 @@ export class Relayer {
         });
       else throw receipt;
     } catch (error) {
-      this.logger.error({ at: "InsuredBridgeRelayer#Relayer", type: "Something errored instantly relaying!", error });
+      this.logger.error({
+        at: "InsuredBridgeRelayer#Relayer",
+        message: "Something errored instantly relaying!",
+        error,
+      });
     }
   }
 
@@ -478,7 +486,7 @@ export class Relayer {
   ) {
     switch (shouldRelay) {
       case RelaySubmitType.Ignore:
-        this.logger.warn({
+        this.logger.debug({
           at: "InsuredBridgeRelayer#Relayer",
           message: "Not relaying potentially unprofitable deposit, or insufficient balance 😖",
           realizedLpFeePct: realizedLpFeePct.toString(),
@@ -507,7 +515,7 @@ export class Relayer {
         if (pendingRelay === undefined)
           // The `pendingRelay` should never be undefined if shouldRelay returns SpeedUp, but we have to catch the
           // undefined type that is returned by the L1 client method.
-          this.logger.error({ at: "InsuredBridgeRelayer#Relayer", type: "speedUpRelay: undefined relay" });
+          this.logger.error({ at: "InsuredBridgeRelayer#Relayer", message: "speedUpRelay: undefined relay" });
         else await this.speedUpRelay(relayableDeposit.deposit, pendingRelay);
         break;
       case RelaySubmitType.Instant:
