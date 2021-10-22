@@ -20,7 +20,7 @@ export type RelaySettled = GetEventType<Instance, "RelaySettled">;
 export type BridgePoolAdminTransferred = GetEventType<Instance, "BridgePoolAdminTransferred">;
 
 export type DepositData = {
-  chainId: number;
+  chainId: BigNumber;
   depositId: BigNumber;
   l1Recipient: string;
   l2Sender: string;
