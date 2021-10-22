@@ -135,7 +135,6 @@ describe("InsuredBridgeL1Client", function () {
       depositId: depositData.depositId,
       l2Sender: depositData.l2Sender,
       slowRelayer: relayData.slowRelayer,
-      disputedSlowRelayers: [],
       l1Recipient: depositData.l1Recipient,
       l1Token: _l1TokenAddress,
       amount: depositData.amount,
@@ -268,6 +267,7 @@ describe("InsuredBridgeL1Client", function () {
     // Create some data for relay the initial relay action.
 
     // Store expected relay data that we'll use to verify contract state:
+
     depositData = {
       chainId: chainId,
       depositId: 1,
@@ -294,6 +294,7 @@ describe("InsuredBridgeL1Client", function () {
       relayData,
       bridgePool
     ));
+    depositData.depositHash = depositHash;
 
     syncExpectedRelayedDepositInformation();
   });
@@ -483,11 +484,11 @@ describe("InsuredBridgeL1Client", function () {
 
       // As there is only one L1Token that has been set up with the bridge, getAllRelayedDeposits and getRelayedDepositsForL1Token
       // should both return the same thing. This should correspond to the expected data.
+      assert.notEqual(client.getRelayForDeposit(l1Token.options.address, depositData), undefined);
       assert.equal(
         JSON.stringify(client.getAllRelayedDeposits()),
         JSON.stringify(client.getRelayedDepositsForL1Token(l1Token.options.address))
       );
-
       assert.equal(JSON.stringify(client.getAllRelayedDeposits()), JSON.stringify([expectedRelayedDepositInformation]));
       assert.equal(
         JSON.stringify(client.getPendingRelayedDeposits()),
@@ -534,24 +535,84 @@ describe("InsuredBridgeL1Client", function () {
       await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: disputer });
       await bridgePool.methods.disputeRelay(depositData, relayAttemptData).send({ from: disputer });
 
-      // Before relaying, update client state and store expected relay information.
+      // After disputing, there should not be a pending relay. This is important because it means that the user (i.e.
+      // the Relayer) can use this deleted relay information to submit another relay.
       await client.update();
-      expectedRelayedDepositInformation.priceRequestTime = client.getBridgePoolForDeposit(depositData).currentTime;
-      expectedRelayedDepositInformation.relayId = client.getBridgePoolForDeposit(depositData).relayNonce;
+      assert.equal(client.getRelayForDeposit(l1Token.options.address, depositData), undefined);
+      assert.equal(JSON.stringify(client.getRelayedDepositsForL1Token(l1Token.options.address)), "[]");
+      assert.equal(JSON.stringify(client.getAllRelayedDeposits()), "[]");
+      assert.equal(JSON.stringify(client.getPendingRelayedDepositsForL1Token(l1Token.options.address)), "[]");
+
+      // Before relaying, store expected relay information and regenerate expected relay information.
+      const priceRequestTime = client.getBridgePoolForDeposit(depositData).currentTime;
+      const relayId = client.getBridgePoolForDeposit(depositData).relayNonce;
+      relayData = {
+        ...relayData,
+        priceRequestTime,
+        relayId,
+        slowRelayer: rando, // `rando` will be new relayer.
+      };
+      syncExpectedRelayedDepositInformation();
 
       // Can re-relay the deposit.
       await l1Token.methods.mint(rando, totalRelayBond).send({ from: owner });
       await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: rando });
       await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: rando });
 
-      // Check the client updated accordingly. Importantly there should be new relay params, and the disputed slow
-      // relayers should contain the previous relayer.
+      // Check the client updated accordingly. Importantly there should be new relay params that match with the newly
+      // synced.
       await client.update();
-      expectedRelayedDepositInformation.slowRelayer = rando; // The re-relayer was the rando account.
-      expectedRelayedDepositInformation.disputedSlowRelayers.push(relayer); // disputed
+      assert.notEqual(client.getRelayForDeposit(l1Token.options.address, depositData), undefined);
       assert.equal(JSON.stringify(client.getAllRelayedDeposits()), JSON.stringify([expectedRelayedDepositInformation]));
       assert.equal(
         JSON.stringify(client.getPendingRelayedDeposits()),
+        JSON.stringify([expectedRelayedDepositInformation])
+      );
+    });
+    it("Disputed relays do not overwrite follow-up relays", async function () {
+      // Before relay should contain no data.
+      await client.update();
+
+      // Initial Relay:
+      const totalRelayBond = toBN(relayAmount).mul(toBN(defaultProposerBondPct));
+      await l1Token.methods.mint(relayer, totalRelayBond).send({ from: owner });
+      await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: relayer });
+      await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: relayer });
+
+      // Dispute the initial relay:
+      await l1Token.methods.mint(disputer, totalRelayBond).send({ from: owner });
+      await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: disputer });
+      const relayAttemptData = {
+        relayState: ClientRelayState.Pending,
+        slowRelayer: relayer,
+        relayId: 0,
+        realizedLpFeePct: defaultRealizedLpFee,
+        priceRequestTime: client.getBridgePoolForDeposit(depositData).currentTime,
+        proposerBond,
+        finalFee,
+      };
+      await bridgePool.methods.disputeRelay(depositData, relayAttemptData).send({ from: disputer });
+
+      // Send another relay:
+      await l1Token.methods.mint(rando, totalRelayBond).send({ from: owner });
+      await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: rando });
+      await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: rando });
+
+      // Update the client. The relay should be set to the latest relay, and it should not have been deleted
+      // by the dispute.
+      relayData = { ...relayData, relayId: 1, slowRelayer: rando, priceRequestTime: relayAttemptData.priceRequestTime };
+      syncExpectedRelayedDepositInformation();
+
+      // After disputing, there should be a pending relay that was not disputed.
+      await client.update();
+      assert.notEqual(client.getRelayForDeposit(l1Token.options.address, depositData), undefined);
+      assert.equal(
+        JSON.stringify(client.getRelayedDepositsForL1Token(l1Token.options.address)),
+        JSON.stringify([expectedRelayedDepositInformation])
+      );
+      assert.equal(JSON.stringify(client.getAllRelayedDeposits()), JSON.stringify([expectedRelayedDepositInformation]));
+      assert.equal(
+        JSON.stringify(client.getPendingRelayedDepositsForL1Token(l1Token.options.address)),
         JSON.stringify([expectedRelayedDepositInformation])
       );
     });
