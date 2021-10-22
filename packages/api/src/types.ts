@@ -1,6 +1,6 @@
 import type uma from "@uma/sdk";
 import type { ethers } from "ethers";
-import type { empStats, empStatsHistory, lsps, appStats } from "./tables";
+import type { empStats, empStatsHistory, lsps, appStats, registeredEmps } from "./tables";
 import type Zrx from "./libs/zrx";
 export type { Channels } from "./services/express-channels";
 
@@ -103,7 +103,7 @@ export type AppState = {
       };
     };
   };
-  registeredEmps: Set<string>;
+  registeredEmps: registeredEmps.Table;
   registeredEmpsMetadata: Map<string, { blockNumber: number }>;
   registeredLsps: Set<string>;
   registeredLspsMetadata: Map<string, { blockNumber: number }>;

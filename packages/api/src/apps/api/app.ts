@@ -9,7 +9,7 @@ import * as Services from "../../services";
 import Express from "../../services/express-channels";
 import * as Actions from "../../services/actions";
 import { ProcessEnv, AppState, Channels } from "../../types";
-import { empStats, empStatsHistory, lsps } from "../../tables";
+import { empStats, empStatsHistory, lsps, registeredEmps } from "../../tables";
 import Zrx from "../../libs/zrx";
 import { Profile, parseEnvArray, getWeb3, BlockInterval, expirePromise } from "../../libs/utils";
 
@@ -106,7 +106,7 @@ export default async (env: ProcessEnv) => {
       },
     },
     lastBlockUpdate: 0,
-    registeredEmps: new Set<string>(),
+    registeredEmps: registeredEmps.Table("Registered Emps"),
     registeredEmpsMetadata: new Map(),
     registeredLsps: new Set<string>(),
     registeredLspsMetadata: new Map(),

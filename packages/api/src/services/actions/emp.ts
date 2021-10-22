@@ -29,7 +29,7 @@ export function Handlers(config: Config, appState: Dependencies): Actions {
       return args;
     },
     listEmpAddresses() {
-      return Array.from(registeredEmps.values());
+      return registeredEmps.keys();
     },
     lastBlock() {
       return appState.lastBlockUpdate;

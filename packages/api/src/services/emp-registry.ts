@@ -41,10 +41,14 @@ export default async (
     const { contracts } = registry.getEventState(events);
     if (!contracts) return;
 
-    await bluebird.map(Object.keys(contracts), (address) => {
+    await bluebird.map(Object.keys(contracts), async (address) => {
       const blockNumber = contracts[address].blockNumber;
       registeredEmpsMetadata.set(address, { blockNumber });
-      registeredEmps.add(address);
+      await registeredEmps.set({
+        id: address,
+        address,
+        blockNumber,
+      });
       emit("created", { address, blockNumber, startBlock, endBlock });
     });
   }

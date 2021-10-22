@@ -1,6 +1,6 @@
 import { Datastore } from "@google-cloud/datastore";
 import { tables, stores } from "@uma/sdk";
-import { empStats, empStatsHistory, lsps, appStats } from ".";
+import { empStats, empStatsHistory, lsps, appStats, registeredEmps } from ".";
 
 const { GoogleDatastore } = stores;
 
@@ -20,5 +20,6 @@ export default function StoresFactory(datastoreClient: Datastore) {
     lspsActive: GoogleDatastore<string, lsps.Data>("Active Lsp", datastoreClient),
     lspsExpired: GoogleDatastore<string, lsps.Data>("Expired Lsp", datastoreClient),
     appStats: GoogleDatastore<number, appStats.Data>("App Stats", datastoreClient),
+    registeredEmps: GoogleDatastore<string, registeredEmps.Data>("Registered Emps", datastoreClient),
   };
 }

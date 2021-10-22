@@ -165,7 +165,7 @@ export default (appState: Dependencies) => {
     return tvl.toString();
   }
   async function totalTvl(currency: CurrencySymbol = "usd") {
-    const addresses = Array.from(appState.registeredEmps.values());
+    const addresses = await appState.registeredEmps.keys();
     return sumTvl(addresses, currency);
   }
   async function sumTvm(addresses: string[], currency: CurrencySymbol = "usd") {
@@ -187,7 +187,7 @@ export default (appState: Dependencies) => {
     return tvm.toString();
   }
   async function totalTvm(currency: CurrencySymbol = "usd") {
-    const addresses = Array.from(appState.registeredEmps.values());
+    const addresses = await appState.registeredEmps.keys();
     return sumTvm(addresses, currency);
   }
   async function getTotalTvlSample(currency: CurrencySymbol = "usd") {

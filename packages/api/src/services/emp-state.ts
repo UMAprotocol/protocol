@@ -165,7 +165,7 @@ export default (config: Config, appState: Dependencies) => {
   }
 
   async function update(startBlock?: number, endBlock?: number) {
-    const addresses = Array.from(await registeredEmps.values());
+    const addresses = await registeredEmps.keys();
     await updateAll(addresses, startBlock, endBlock);
     await updateTokenAddresses();
   }

@@ -146,7 +146,7 @@ export default (config: Config, appState: Dependencies) => {
   }
 
   async function update() {
-    const addresses = Array.from(registeredEmps.values());
+    const addresses = await registeredEmps.keys();
     await updateAllTvl(addresses).then((results) => {
       results.forEach((result) => {
         if (result.status === "rejected") console.error("Error updating tvl: " + result.reason.message);
@@ -201,7 +201,7 @@ export default (config: Config, appState: Dependencies) => {
   }
 
   async function backfill() {
-    const addresses = Array.from(registeredEmps.values());
+    const addresses = await registeredEmps.keys();
     await backfillAllTvl(addresses).then((results) => {
       results.forEach((result) => {
         if (result.status === "rejected") console.error("Error updating tvl: " + result.reason.message);
