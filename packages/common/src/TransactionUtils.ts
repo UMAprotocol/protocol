@@ -96,7 +96,7 @@ export const runTransaction = async ({
     // Tries every minute(and increases gas price according to DOUBLE method) if tx hasn't mined. Min Gas price starts
     // at caller's transactionConfig.gasPrice or, with transactionConfig.maxPriorityFeePerGas a max gasPrice of x6.
     const gasPriceScalingFunction = ynatm.DOUBLES;
-    const retryDelay = 30000;
+    const retryDelay = 60000;
     if (!transactionConfig.gasPrice && !(transactionConfig.maxFeePerGas && transactionConfig.maxPriorityFeePerGas))
       throw new Error("No gas information provided");
     let receipt;
