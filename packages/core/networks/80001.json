@@ -70,5 +70,17 @@
   {
     "contractName": "MockOracleAncillary",
     "address": "0xe1C367e2b576Ac421a9f46C9cC624935730c36aa"
+  },
+  {
+    "contractName": "SuccessTokenLongShortPairFinancialProductLibrary",
+    "address": "0x4500B1274617DD38aC619bAdcf4355D96ed46bB6"
+  },
+  {
+    "contractName": "SimpleSuccessTokenLongShortPairFinancialProductLibrary",
+    "address": "0x010364155812542781A03550C181e687933b69d9"
+  },
+  {
+    "contractName": "CappedYieldDollarLongShortPairFinancialProductLibrary",
+    "address": "0xCc465a18517478532E8fd476663a8F03CD58E7f1"
   }
 ]
