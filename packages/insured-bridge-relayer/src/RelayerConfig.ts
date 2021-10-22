@@ -33,6 +33,7 @@ export class RelayerConfig {
   readonly errorRetries: number;
   readonly errorRetriesTimeout: number;
   readonly whitelistedRelayL1Tokens: string[] = [];
+  readonly whitelistedChainIds: number[] = [];
   readonly rateModels: { [key: string]: RateModel } = {};
   readonly activatedChainIds: number[];
   readonly l2StartBlock: number;
@@ -50,6 +51,7 @@ export class RelayerConfig {
       DISPUTER_ENABLED,
       RELAYER_ENABLED,
       FINALIZER_ENABLED,
+      WHITELISTED_CHAIN_IDS,
     } = env;
 
     this.botModes = {
@@ -93,10 +95,21 @@ export class RelayerConfig {
       };
     }
 
+    // CHAIN_IDS sets the active chain ID's for this bot. Note how this is distinct from WHITELISTED_CHAIN_IDS which
+    // sets all valid chain ID's. Any relays for chain ID's outside of this whitelist will be disputed.
     this.activatedChainIds = JSON.parse(CHAIN_IDS || "[]");
     assert(this.activatedChainIds.length > 0, "Must define at least 1 chain ID to run the bot against");
     assert(!this.activatedChainIds.includes(1), "Do not include chainID 1 in CHAIN_IDS");
     for (const id of this.activatedChainIds)
       assert(supportedChainIds.includes(id), `The chainID you provided: ${id} is not supported by this relayer`);
+
+    // Default whitelisted deposit chain ID's are Optimism and Arbitrum mainnet and testnet.
+    this.whitelistedChainIds = WHITELISTED_CHAIN_IDS ? JSON.parse(WHITELISTED_CHAIN_IDS) : supportedChainIds;
+    assert(this.whitelistedChainIds.length > 0, "Must define at least 1 whitelisted chain ID to");
+    for (const id of this.whitelistedChainIds)
+      assert(
+        supportedChainIds.includes(id),
+        `The whitelisted chainID you provided: ${id} is not supported by this relayer`
+      );
   }
 }

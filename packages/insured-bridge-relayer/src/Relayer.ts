@@ -36,6 +36,8 @@ export class Relayer {
    * @param {Object} l1Client Client for fetching L1 data from the insured bridge pool and admin contracts.
    * @param {Object} l2Client Client for fetching L2 deposit data.
    * @param {Array} whitelistedRelayL1Tokens List of whitelisted L1 tokens that the relayer supports.
+   * @param {Array} whitelistedChainIds List of whitelisted chain IDs that the relayer supports. Any relays for chain
+   * IDs not on this list will be disputed.
    * @param {string} account Unlocked web3 account to send L1 messages.
    */
   constructor(
@@ -44,7 +46,8 @@ export class Relayer {
     readonly l1Client: InsuredBridgeL1Client,
     readonly l2Client: InsuredBridgeL2Client,
     readonly whitelistedRelayL1Tokens: string[],
-    readonly account: string
+    readonly account: string,
+    readonly whitelistedChainIds: number[]
   ) {}
 
   async checkForPendingDepositsAndRelay(): Promise<void> {
@@ -184,8 +187,17 @@ export class Relayer {
         continue;
       }
 
+      // If relay's chain ID is not whitelisted then dispute it.
+      if (!this.whitelistedChainIds.includes(relay.chainId)) {
+        this.logger.debug({
+          at: "Relayer",
+          message: "Disputing pending relay with non-whitelisted chainID",
+          relay,
+        });
+        await this.disputeRelay(deposit, relay);
+      }
       // Check if we can find a deposit for the Relay, if not then we can dispute.
-      if (
+      else if (
         deposit !== undefined &&
         deposit.chainId === relay.chainId &&
         deposit.depositHash === relay.depositHash &&
