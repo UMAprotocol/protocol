@@ -41,7 +41,7 @@
     "axios": "^0.21.4",
     "decimal.js": "^10.3.1",
     "highland": "^2.13.5",
-    "lodash-es": "^4.17.21"
+    "lodash": "^4.17.21"
   },
   "peerDependencies": {
     "ethers": "^5.4.2"
