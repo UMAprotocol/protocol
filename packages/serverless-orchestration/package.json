@@ -5,9 +5,9 @@
   "dependencies": {
     "@openzeppelin/contracts": "4.1.0",
     "@truffle/contract": "^4.2.20",
-    "@uma/common": "^2.11.0",
-    "@uma/financial-templates-lib": "^2.11.0",
-    "web3": "^1.5.0"
+    "@uma/common": "^2.8.0",
+    "@uma/financial-templates-lib": "^2.8.0",
+    "web3": "^1.6.0"
   },
   "devDependencies": {
     "@awaitjs/express": "^0.3.0",

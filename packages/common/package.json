@@ -51,7 +51,7 @@
     "require-context": "^1.1.0",
     "solidity-coverage": "^0.7.13",
     "truffle-deploy-registry": "^0.5.1",
-    "web3": "^1.5.0"
+    "web3": "^1.6.0"
   },
   "devDependencies": {
     "@eth-optimism/hardhat-ovm": "^0.2.2",
@@ -63,8 +63,8 @@
     "@types/ethereum-protocol": "^1.0.0",
     "@types/lodash.uniqby": "^4.7.6",
     "@types/mocha": "^5.2.7",
-    "ethers": "^5.4.2",
-    "web3-core": "^1.5.0",
-    "web3-eth-contract": "^1.5.0"
+    "web3-core": "^1.6.0",
+    "web3-eth-contract": "^1.6.0",
+    "ethers": "^5.4.2"
   }
 }

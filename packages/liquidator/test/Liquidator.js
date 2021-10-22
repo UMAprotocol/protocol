@@ -349,7 +349,7 @@ describe("Liquidator.js", function () {
             liquidatorConfig,
           });
         });
-        versionedIt([{ contractType: "any", contractVersion: "any" }])(
+        versionedIt([{ contractType: "any", contractVersion: "any" }], true)(
           "Can correctly detect undercollateralized positions and liquidate them",
           async function () {
             // sponsor1 creates a position with 125 units of collateral, creating 100 synthetic tokens.
