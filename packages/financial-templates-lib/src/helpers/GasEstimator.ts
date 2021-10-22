@@ -156,7 +156,7 @@ export class GasEstimator {
     if (!url) throw new Error(`Missing URL for network ID ${_networkId}`);
 
     try {
-      // Primary URL expected response structure for 'London
+      // Primary URL expected response structure for London
       // {
       //    safeLow: 1, // slow maxPriorityFeePerGas
       //    standard: 1.5, // standard maxPriorityFeePerGas
