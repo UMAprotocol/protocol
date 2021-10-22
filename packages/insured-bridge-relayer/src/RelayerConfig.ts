@@ -105,7 +105,7 @@ export class RelayerConfig {
 
     // Default whitelisted deposit chain ID's are Optimism and Arbitrum mainnet and testnet.
     this.whitelistedChainIds = WHITELISTED_CHAIN_IDS ? JSON.parse(WHITELISTED_CHAIN_IDS) : supportedChainIds;
-    assert(this.whitelistedChainIds.length > 0, "Must define at least 1 whitelisted chain ID to");
+    assert(this.whitelistedChainIds.length > 0, "Must define at least 1 whitelisted chain ID");
     for (const id of this.whitelistedChainIds)
       assert(
         supportedChainIds.includes(id),
