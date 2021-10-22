@@ -8,7 +8,7 @@ import { Datastore } from "@google-cloud/datastore";
 import * as Services from "../../services";
 import Express from "../../services/express-channels";
 import * as Actions from "../../services/actions";
-import { appStats, empStats, empStatsHistory, lsps, registeredEmps, StoresFactory } from "../../tables";
+import { appStats, empStats, empStatsHistory, lsps, registeredContracts, StoresFactory } from "../../tables";
 import Zrx from "../../libs/zrx";
 import { Profile, parseEnvArray, getWeb3, BlockInterval, expirePromise } from "../../libs/utils";
 
@@ -109,7 +109,7 @@ export default async (env: ProcessEnv) => {
       },
     },
     lastBlockUpdate: 0,
-    registeredEmps: registeredEmps.Table("Registered Emps", datastores.registeredEmps),
+    registeredEmps: registeredContracts.Table("Registered Emps", datastores.registeredEmps),
     registeredLsps: new Set<string>(),
     registeredLspsMetadata: new Map(),
     collateralAddresses: new Set<string>(),
