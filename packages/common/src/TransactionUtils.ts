@@ -3,14 +3,19 @@ import minimist from "minimist";
 import ynatm from "@umaprotocol/ynatm";
 import type Web3 from "web3";
 import type { TransactionReceipt } from "web3-core";
-import type { ContractSendMethod, SendOptions } from "web3-eth-contract";
+import type { ContractSendMethod } from "web3-eth-contract";
 
 type CallReturnValue = ReturnType<ContractSendMethod["call"]>;
-interface AugmentedSendOptions extends SendOptions {
+interface AugmentedSendOptions {
+  from: string;
+  gas?: number;
+  value?: number | string;
+  nonce?: number;
   chainId?: string;
   usingOffSetDSProxyAccount?: boolean;
-  maxFeePerGas?: string;
-  maxPriorityFeePerGas?: string;
+  gasPrice?: number | string;
+  maxFeePerGas?: number | string;
+  maxPriorityFeePerGas?: number | string;
 }
 
 const argv = minimist(process.argv.slice(), {});
@@ -99,13 +104,13 @@ export const runTransaction = async ({
     // If the config contains maxPriorityFeePerGas then this is a london transaction.
     if (transactionConfig.maxFeePerGas && transactionConfig.maxPriorityFeePerGas) {
       const minPriorityFeePerGas = transactionConfig.maxPriorityFeePerGas || (1e9).toString();
-      const maxPriorityFeePerGas = 2 * 3 * parseInt(minPriorityFeePerGas);
+      const maxPriorityFeePerGas = 2 * 3 * parseInt(minPriorityFeePerGas.toString());
 
       receipt = await ynatm.send({
         sendTransactionFunction: (maxPriorityFeePerGas: number) =>
           transaction.send({ ...transactionConfig, maxPriorityFeePerGas: maxPriorityFeePerGas.toString() } as any),
-        minGasPrice: minPriorityFeePerGas,
-        maxGasPrice: maxPriorityFeePerGas,
+        minGasPrice: minPriorityFeePerGas.toString(),
+        maxGasPrice: maxPriorityFeePerGas.toString(),
         gasPriceScalingFunction,
         delay: retryDelay,
       });
@@ -113,7 +118,7 @@ export const runTransaction = async ({
       // Else, this is a legacy tx.
     } else if (transactionConfig.gasPrice) {
       const minGasPrice = transactionConfig.gasPrice;
-      const maxGasPrice = 2 * 3 * parseInt(minGasPrice);
+      const maxGasPrice = 2 * 3 * parseInt(minGasPrice.toString());
 
       receipt = await ynatm.send({
         sendTransactionFunction: (gasPrice: number) =>
