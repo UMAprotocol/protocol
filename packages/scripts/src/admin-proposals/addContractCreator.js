@@ -5,11 +5,11 @@
 // - For testing, start mainnet fork in one window with `yarn hardhat node --fork <ARCHIVAL_NODE_URL> --no-deploy --port 9545`
 // - (optional, or required if --polygon is not undefined) set POLYGON_NODE_URL to a Polygon mainnet node. This will
 //   be used to query contract data from Polygon when relaying proposals through the GovernorRootTunnel.
-// - Next, open another terminal window and run `node ./packages/scripts/admin-proposals/setupFork.sh` to unlock
+// - Next, open another terminal window and run `./packages/scripts/setupFork.sh` to unlock
 //   accounts on the local node that we'll need to run this script.
-// - Propose: node ./packages/scripts/admin-proposals/addContractCreator.js --ethereum 0xabc --polygon 0xdef --network mainnet-fork
-// - Vote Simulate: node ./packages/scripts/admin-proposals/simulateVote.js --network mainnet-fork
-// - Verify: node ./packages/scripts/admin-proposals/addContractCreator.js --verify --ethereum 0xabc --polygon 0xdef --network mainnet-fork
+// - Propose: node ./packages/scripts/src/admin-proposals/addContractCreator.js --ethereum 0xabc --polygon 0xdef --network mainnet-fork
+// - Vote Simulate: node ./packages/src/scripts/admin-proposals/simulateVote.js --network mainnet-fork
+// - Verify: node ./packages/scripts/src/admin-proposals/addContractCreator.js --verify --ethereum 0xabc --polygon 0xdef --network mainnet-fork
 // - For production, set the CUSTOM_NODE_URL environment, run the script with a production network passed to the
 //   `--network` flag (along with other params like --keys) like so: `node ... --network mainnet_gckms --keys deployer`
 
@@ -21,11 +21,11 @@
 
 // Examples:
 // - Add contract creator on Ethereum only:
-//    - `node ./packages/scripts/admin-proposals/addContractCreator.js --ethereum 0xabc --network mainnet-fork`
+//    - `node ./packages/scripts/src/admin-proposals/addContractCreator.js --ethereum 0xabc --network mainnet-fork`
 // - Add contract creator on Polygon only:
-//    - `node ./packages/scripts/admin-proposals/addContractCreator.js --polygon 0xabc --network mainnet-fork`
+//    - `node ./packages/scripts/src/admin-proposals/addContractCreator.js --polygon 0xabc --network mainnet-fork`
 // - Add contract creator on both:
-//    - `node ./packages/scripts/admin-proposals/addContractCreator.js --ethereum 0xabc --polygon 0xdef --network mainnet-fork`
+//    - `node ./packages/scripts/src/admin-proposals/addContractCreator.js --ethereum 0xabc --polygon 0xdef --network mainnet-fork`
 
 const hre = require("hardhat");
 const { getContract } = hre;

@@ -1,15 +1,15 @@
 // Description:
-// - Register new financial contract on Ethereum and/or Polygon.
+// - Register new contract on Ethereum and/or Polygon that can submit price requests to the DVM.
 
 // Run:
 // - For testing, start mainnet fork in one window with `yarn hardhat node --fork <ARCHIVAL_NODE_URL> --no-deploy --port 9545`
 // - (optional, or required if --polygon is not undefined) set POLYGON_NODE_URL to a Polygon mainnet node. This will
 //   be used to query contract data from Polygon when relaying proposals through the GovernorRootTunnel.
-// - Next, open another terminal window and run `node ./packages/scripts/admin-proposals/setupFork.sh` to unlock
+// - Next, open another terminal window and run `./packages/scripts/setupFork.sh` to unlock
 //   accounts on the local node that we'll need to run this script.
-// - Propose: node ./packages/scripts/admin-proposals/registerContract.js --ethereum 0xabc --polygon 0xdef --network mainnet-fork
-// - Vote Simulate: node ./packages/scripts/admin-proposals/simulateVote.js --network mainnet-fork
-// - Verify: node ./packages/scripts/admin-proposals/registerContract.js --verify --ethereum 0xabc --polygon 0xdef --network mainnet-fork
+// - Propose: node ./packages/scripts/src/admin-proposals/registerContract.js --ethereum 0xabc --polygon 0xdef --network mainnet-fork
+// - Vote Simulate: node ./packages/scripts/src/admin-proposals/simulateVote.js --network mainnet-fork
+// - Verify: node ./packages/scripts/src/admin-proposals/registerContract.js --verify --ethereum 0xabc --polygon 0xdef --network mainnet-fork
 // - For production, set the CUSTOM_NODE_URL environment, run the script with a production network passed to the
 //   `--network` flag (along with other params like --keys) like so: `node ... --network mainnet_gckms --keys deployer`
 
@@ -18,14 +18,17 @@
 // - --ethereum flag can also be omitted, in which case transactions will only be relayed to Polygon
 // - If --verify flag is set, script is assumed to be running after a Vote Simulation and updated contract state is
 // verified.
+// - --finderName <CONTRACT> param can be included which will set the registered contract as the CONTRACT in the finder.
+// for example, adding --finder SkinnyOptimisticOracle will set the registered contract as the "SkinnyOptimisticOracle"
+// in the Finder.
 
 // Examples:
 // - Register contract on Ethereum only:
-//    - `node ./packages/scripts/admin-proposals/registerContract.js --ethereum 0xabc --network mainnet-fork`
+//    - `node ./packages/scripts/src/admin-proposals/registerContract.js --ethereum 0xabc --network mainnet-fork`
 // - Register contract on Polygon only:
-//    - `node ./packages/scripts/admin-proposals/registerContract.js --polygon 0xabc --network mainnet-fork`
+//    - `node ./packages/scripts/src/admin-proposals/registerContract.js --polygon 0xabc --network mainnet-fork`
 // - Register contract on both:
-//    - `node ./packages/scripts/admin-proposals/registerContract.js --ethereum 0xabc --polygon 0xdef --network mainnet-fork`
+//    - `node ./packages/scripts/src/admin-proposals/registerContract.js --ethereum 0xabc --polygon 0xdef --network mainnet-fork`
 
 const hre = require("hardhat");
 const { getContract } = hre;
@@ -43,6 +46,8 @@ const argv = require("minimist")(process.argv.slice(), {
     "ethereum",
     // address to register on Polygon. Required if --ethereum is omitted
     "polygon",
+    // contract name in Finder to set newly registered contract to.
+    "finderName",
   ],
   boolean: [
     // set True if verifying, False for proposing.
@@ -52,8 +57,13 @@ const argv = require("minimist")(process.argv.slice(), {
 });
 
 async function run() {
-  const { ethereum, polygon, verify } = argv;
+  const { ethereum, polygon, finderName, verify } = argv;
   const { web3, netId } = await _setupWeb3();
+
+  // Verify argv params:
+  if (finderName !== undefined) {
+    assert(Object.keys(interfaceName).includes(finderName), "finderName must be valid interface name");
+  }
 
   // Contract ABI's
   const Registry = getContract("Registry");
@@ -72,6 +82,7 @@ async function run() {
   let polygon_netId;
   let polygon_registry;
   let polygon_governor;
+  let polygon_finder;
   if (!(polygonContractToRegister || ethereumContractToRegister))
     throw new Error("Must specify either --ethereum or --polygon or both");
   else if (polygonContractToRegister) {
@@ -86,6 +97,10 @@ async function run() {
     polygon_governor = new crossChainWeb3.eth.Contract(
       GovernorChildTunnel.abi,
       await _getContractAddressByName("GovernorChildTunnel", polygon_netId)
+    );
+    polygon_finder = new crossChainWeb3.eth.Contract(
+      Finder.abi,
+      await _getContractAddressByName("Finder", polygon_netId)
     );
   }
 
@@ -119,12 +134,14 @@ async function run() {
 
   if (polygonContractToRegister) {
     console.group("\nℹ️  Relayer infrastructure for Polygon transactions:");
+    console.log(`- Finder @ ${polygon_finder.options.address}`);
     console.log(`- Registry @ ${polygon_registry.options.address}`);
     console.log(`- GovernorRootTunnel @ ${governorRootTunnel.options.address}`);
     console.log(`- GovernorChildTunnel @ ${polygon_governor.options.address}`);
     console.groupEnd();
   }
   console.group("\nℹ️  DVM infrastructure for Ethereum transactions:");
+  console.log(`- Finder @ ${finder.options.address}`);
   console.log(`- Registry @ ${registry.options.address}`);
   console.log(`- Governor @ ${governor.options.address}`);
   console.groupEnd();
@@ -163,6 +180,15 @@ async function run() {
           .encodeABI();
         console.log("- removeMemberData", removeMemberData);
         adminProposalTransactions.push({ to: registry.options.address, value: 0, data: removeMemberData });
+
+        // 4. Set contract in finder.
+        if (finderName !== undefined) {
+          const setFinderData = finder.methods
+            .changeImplementationAddress(Web3.utils.utf8ToHex(interfaceName[finderName]), ethereumContractToRegister)
+            .encodeABI();
+          console.log("- changeImplementationAddressData", setFinderData);
+          adminProposalTransactions.push({ to: finder.options.address, value: 0, data: setFinderData });
+        }
       } else {
         console.log("- Contract @ ", ethereumContractToRegister, "is already registered. Nothing to do.");
       }
@@ -206,6 +232,15 @@ async function run() {
           .encodeABI();
         console.log("- relayGovernanceData", relayGovernanceData);
         adminProposalTransactions.push({ to: governorRootTunnel.options.address, value: 0, data: relayGovernanceData });
+
+        // 4. Set contract in finder.
+        if (finderName !== undefined) {
+          const setFinderData = polygon_finder.methods
+            .changeImplementationAddress(Web3.utils.utf8ToHex(interfaceName[finderName]), polygonContractToRegister)
+            .encodeABI();
+          console.log("- changeImplementationAddressData", setFinderData);
+          adminProposalTransactions.push({ to: polygon_finder.options.address, value: 0, data: setFinderData });
+        }
       } else {
         console.log("- Contract @ ", polygonContractToRegister, "is already registered. Nothing to do.");
       }
@@ -245,6 +280,13 @@ async function run() {
         !(await registry.methods.holdsRole(RegistryRolesEnum.CONTRACT_CREATOR, governor.options.address).call()),
         "Governor still holds creator role"
       );
+      if (finderName !== undefined) {
+        assert.equal(
+          await finder.methods.getImplementationAddress(Web3.utils.utf8ToHex(interfaceName[finderName])).call(),
+          web3.utils.toChecksumAddress(ethereumContractToRegister),
+          "Finder contract not set"
+        );
+      }
       console.log(`- Contract @ ${ethereumContractToRegister} is registered on Ethereum`);
     }
 
@@ -288,6 +330,15 @@ async function run() {
           afterRelayedRegistryTransactions.find((e) => e.returnValues.data === removeMemberData),
           "Could not find RelayedGovernanceRequest matching expected relayed removeMemberData transaction"
         );
+        if (finderName !== undefined) {
+          assert.equal(
+            await polygon_finder.methods
+              .getImplementationAddress(Web3.utils.utf8ToHex(interfaceName[finderName]))
+              .call(),
+            web3.utils.toChecksumAddress(polygonContractToRegister),
+            "Finder contract not set"
+          );
+        }
         console.log(
           `- GovernorRootTunnel correctly emitted events to registry ${polygon_registry.options.address} preceded and followed by addMember and removeMember respectively`
         );
