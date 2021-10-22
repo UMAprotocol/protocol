@@ -122,14 +122,12 @@ export const runTransaction = async ({
 
       receipt = await ynatm.send({
         sendTransactionFunction: (gasPrice: number) =>
-          transaction.send({ ...transactionConfig, gasPrice: gasPrice.toString() }),
+          transaction.send({ ...transactionConfig, gasPrice: gasPrice.toString() } as any),
         minGasPrice,
         maxGasPrice,
         gasPriceScalingFunction,
         delay: retryDelay,
       });
-    } else {
-      throw "Bad transactionConfig! not formatted correctly for pre or post london";
     }
 
     // Note: cast is due to an incorrect type in the web3 declarations that assumes send returns a contract.
