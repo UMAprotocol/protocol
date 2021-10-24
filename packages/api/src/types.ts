@@ -1,6 +1,15 @@
 import type uma from "@uma/sdk";
 import type { ethers } from "ethers";
-import type { empStats, empStatsHistory, lsps, appStats, registeredContracts, addresses, priceSamples } from "./tables";
+import type {
+  empStats,
+  empStatsHistory,
+  lsps,
+  appStats,
+  registeredContracts,
+  addresses,
+  priceSamples,
+  tvl,
+} from "./tables";
 import type Zrx from "./libs/zrx";
 export type { Channels } from "./services/express-channels";
 
@@ -91,7 +100,7 @@ export type AppState = {
     global: {
       usd: {
         latest: {
-          tvl: PriceSample;
+          tvl: tvl.Table;
         };
         history: {
           tvl: empStatsHistory.Table;

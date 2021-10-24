@@ -9,7 +9,7 @@ import * as Services from "../../services";
 import Express from "../../services/express-channels";
 import * as Actions from "../../services/actions";
 import { ProcessEnv, AppState, Channels } from "../../types";
-import { addresses, empStats, empStatsHistory, lsps, priceSamples, registeredContracts } from "../../tables";
+import { addresses, empStats, empStatsHistory, lsps, priceSamples, registeredContracts, tvl } from "../../tables";
 import Zrx from "../../libs/zrx";
 import { Profile, parseEnvArray, getWeb3, BlockInterval, expirePromise } from "../../libs/utils";
 
@@ -97,7 +97,7 @@ export default async (env: ProcessEnv) => {
       global: {
         usd: {
           latest: {
-            tvl: [0, "0"],
+            tvl: tvl.Table("Latest Usd Global Tvl"),
           },
           history: {
             tvl: empStatsHistory.Table("Tvl Global History"),
