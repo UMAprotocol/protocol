@@ -41,7 +41,7 @@ export default (config: Config, appState: Dependencies) => {
 
   async function getPriceFromTable(contractAddress: string, currencyAddress: string) {
     // PriceSample is type [ timestamp:number, price:string]
-    const priceSample: PriceSample = prices[currency].latest[currencyAddress];
+    const priceSample = await prices[currency].latest.get(currencyAddress);
     assert(uma.utils.exists(priceSample), "No latest price found for LSP: " + contractAddress);
     return priceSample;
   }
@@ -55,10 +55,10 @@ export default (config: Config, appState: Dependencies) => {
   async function updateTvl(data: tables.lsps.Data) {
     assert(data.collateralToken, "TVL Requires collateral currency for LSP: " + data.address);
     const priceSample = await getPriceFromTable(data.address, data.collateralToken);
-    const value = await calcTvl(priceSample[1], data).toString();
+    const value = await calcTvl(priceSample.price, data).toString();
     const update = {
       value,
-      timestamp: priceSample[0],
+      timestamp: priceSample.timestamp,
     };
     return stats[currency].latest.tvl.upsert(data.address, update);
   }

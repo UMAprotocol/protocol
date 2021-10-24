@@ -1,6 +1,6 @@
 import { Datastore } from "@google-cloud/datastore";
 import { tables, stores } from "@uma/sdk";
-import { empStats, empStatsHistory, lsps, appStats, registeredContracts, addresses } from ".";
+import { empStats, empStatsHistory, lsps, appStats, registeredContracts, addresses, priceSamples } from ".";
 
 const { GoogleDatastore } = stores;
 
@@ -26,5 +26,6 @@ export default function StoresFactory(datastoreClient: Datastore) {
     syntheticAddresses: GoogleDatastore<string, addresses.Data>("Synthetic Addresses", datastoreClient),
     longAddresses: GoogleDatastore<string, addresses.Data>("Long Addresses", datastoreClient),
     shortAddresses: GoogleDatastore<string, addresses.Data>("Short Addresses", datastoreClient),
+    latestUsdPrices: GoogleDatastore<string, priceSamples.Data>("Latest Usd Prices", datastoreClient),
   };
 }

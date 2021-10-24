@@ -4,4 +4,5 @@ export * as lsps from "./lsps";
 export * as appStats from "./app-stats";
 export * as registeredContracts from "./registered-contracts";
 export * as addresses from "./addresses";
+export * as priceSamples from "./price-samples";
 export { default as StoresFactory } from "./stores-factory";

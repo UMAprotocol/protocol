@@ -8,7 +8,16 @@ import { Datastore } from "@google-cloud/datastore";
 import * as Services from "../../services";
 import Express from "../../services/express-channels";
 import * as Actions from "../../services/actions";
-import { addresses, appStats, empStats, empStatsHistory, lsps, registeredContracts, StoresFactory } from "../../tables";
+import {
+  addresses,
+  appStats,
+  empStats,
+  empStatsHistory,
+  lsps,
+  priceSamples,
+  registeredContracts,
+  StoresFactory,
+} from "../../tables";
 import Zrx from "../../libs/zrx";
 import { Profile, parseEnvArray, getWeb3, BlockInterval, expirePromise } from "../../libs/utils";
 
@@ -58,7 +67,7 @@ export default async (env: ProcessEnv) => {
     },
     prices: {
       usd: {
-        latest: {},
+        latest: priceSamples.Table("Latest Usd Prices", datastores.latestUsdPrices),
         history: {},
       },
     },

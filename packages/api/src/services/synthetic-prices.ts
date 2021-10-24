@@ -49,7 +49,7 @@ export default function (config: Config, appState: Dependencies) {
     const emp = await getFullEmpState(empAddress);
     assert(uma.utils.exists(emp.tokenCurrency), "Requires emp.tokenCurrency: " + empAddress);
     const table = getOrCreateHistoryTable(emp.tokenCurrency);
-    const [timestamp, price] = await getLatestPriceFromTable(empAddress, emp.tokenCurrency);
+    const { timestamp, price } = await getLatestPriceFromTable(empAddress, emp.tokenCurrency);
     // if this timestamp exists in the table, dont bother re-adding it
     assert(uma.utils.exists(price), "No latest price available for: " + empAddress);
     assert(
@@ -99,11 +99,9 @@ export default function (config: Config, appState: Dependencies) {
   // gets any price from table, synthetic or collateral. Synthetics go into this table once converted to usd
   async function getLatestPriceFromTable(empAddress: string, currencyAddress: string) {
     // PriceSample is type [ timestamp:number, price:string]
-    const priceSample: PriceSample = prices[currency].latest[currencyAddress];
+    const priceSample = await prices[currency].latest.get(currencyAddress);
     assert(uma.utils.exists(priceSample), "No latest price found for emp: " + empAddress);
-
-    const price = priceSample[1];
-    assert(uma.utils.exists(price), "Invalid latest price found on emp: " + empAddress);
+    assert(uma.utils.exists(priceSample.price), "Invalid latest price found on emp: " + empAddress);
 
     return priceSample;
   }
@@ -116,14 +114,19 @@ export default function (config: Config, appState: Dependencies) {
     assert(uma.utils.exists(emp.tokenCurrency), "Requires contract tokenCurrency: " + empAddress);
 
     const [synthTimestamp, synthPrice] = await getLatestSynthPriceFromTable(empAddress);
-    const [collateralTimestamp, collateralPrice] = await getLatestPriceFromTable(empAddress, emp.collateralCurrency);
+    const collateralPriceSample = await getLatestPriceFromTable(empAddress, emp.collateralCurrency);
 
     // converted price from raw synth to currency ( usually usd)
-    const price = calcSyntheticPrice(synthPrice, collateralPrice).toString();
+    const price = calcSyntheticPrice(synthPrice, collateralPriceSample.price).toString();
 
     // use the most recent timestamp to index this price
-    const timestamp = Math.max(collateralTimestamp, synthTimestamp);
-    prices[currency].latest[emp.tokenCurrency] = [timestamp, price.toString()];
+    const timestamp = Math.max(collateralPriceSample.timestamp, synthTimestamp);
+    await prices[currency].latest.set({
+      id: emp.tokenCurrency,
+      address: emp.tokenCurrency,
+      timestamp,
+      price: price.toString(),
+    });
     return [timestamp, price];
   }
 

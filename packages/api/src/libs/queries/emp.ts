@@ -45,7 +45,7 @@ export default (appState: Dependencies) => {
   async function latestPriceByTokenAddress(address: string, currency: CurrencySymbol = "usd") {
     assert(address, "requires an erc20 token address");
     assert(exists(prices[currency]), "invalid currency type: " + currency);
-    const priceSample = prices[currency].latest[address];
+    const priceSample = await prices[currency].latest.get(address);
     assert(exists(priceSample), "No price for address: " + address);
     return priceSample;
   }

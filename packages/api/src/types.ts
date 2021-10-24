@@ -1,6 +1,6 @@
 import type uma from "@uma/sdk";
 import type { ethers } from "ethers";
-import type { empStats, empStatsHistory, lsps, appStats, registeredContracts, addresses } from "./tables";
+import type { empStats, empStatsHistory, lsps, appStats, registeredContracts, addresses, priceSamples } from "./tables";
 import type Zrx from "./libs/zrx";
 export type { Channels } from "./services/express-channels";
 
@@ -44,9 +44,7 @@ export type AppState = {
   };
   prices: {
     usd: {
-      latest: {
-        [key: string]: PriceSample;
-      };
+      latest: priceSamples.Table;
       history: {
         [key: string]: uma.tables.historicalPrices.Table;
       };

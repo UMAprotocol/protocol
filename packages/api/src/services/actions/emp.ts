@@ -4,6 +4,7 @@ import { Json, Actions, AppState, CurrencySymbol, PriceSample } from "../../type
 import * as Queries from "../../libs/queries";
 import { nowS } from "../../libs/utils";
 import lodash from "lodash";
+import { Data } from "../../tables/price-samples";
 
 const { exists } = uma.utils;
 
@@ -66,7 +67,11 @@ export function Handlers(config: Config, appState: Dependencies): Actions {
     },
     async allLatestPrices(currency: CurrencySymbol = "usd") {
       assert(exists(prices[currency]), "invalid currency type: " + currency);
-      return prices[currency].latest;
+      const priceSamples = await prices[currency].latest.values();
+      return priceSamples.reduce(
+        (acc, { price, timestamp, address }) => ({ ...acc, [address]: { price, timestamp } }),
+        {} as Record<string, Pick<Data, "price" | "timestamp">>
+      );
     },
     async allIdentifierPrices() {
       return synthPrices.latest;
