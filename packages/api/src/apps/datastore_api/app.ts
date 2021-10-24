@@ -72,7 +72,7 @@ export default async (env: ProcessEnv) => {
       },
     },
     synthPrices: {
-      latest: {},
+      latest: priceSamples.Table("Latest Synth Prices", datastores.latestSynthPrices),
       history: {},
     },
     marketPrices: {

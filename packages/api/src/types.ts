@@ -51,9 +51,7 @@ export type AppState = {
     };
   };
   synthPrices: {
-    latest: {
-      [empAddress: string]: PriceSample;
-    };
+    latest: priceSamples.Table;
     history: {
       [empAddress: string]: uma.tables.historicalPrices.Table;
     };

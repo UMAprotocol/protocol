@@ -69,12 +69,16 @@ export function Handlers(config: Config, appState: Dependencies): Actions {
       assert(exists(prices[currency]), "invalid currency type: " + currency);
       const priceSamples = await prices[currency].latest.values();
       return priceSamples.reduce(
-        (acc, { price, timestamp, address }) => ({ ...acc, [address]: { price, timestamp } }),
-        {} as Record<string, Pick<Data, "price" | "timestamp">>
+        (acc, { price, timestamp, address }) => ({ ...acc, [address]: [price, timestamp] }),
+        {}
       );
     },
     async allIdentifierPrices() {
-      return synthPrices.latest;
+      const synthPriceValues = await synthPrices.latest.values();
+      return synthPriceValues.reduce(
+        (acc, { address, timestamp, price }) => ({ ...acc, [address]: [timestamp, price] }),
+        {}
+      );
     },
     async allLatestMarketPrices() {
       return marketPrices.usdc.latest;

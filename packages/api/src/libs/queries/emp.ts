@@ -50,9 +50,10 @@ export default (appState: Dependencies) => {
     return priceSample;
   }
   async function getLatestIdentifierPrice(empAddress: string) {
-    assert(synthPrices.latest[empAddress], "No identifier price for emp address: " + empAddress);
+    const synthPrice = await synthPrices.latest.get(empAddress);
+    assert(synthPrice, "No identifier price for emp address: " + empAddress);
     // [timestamp, price], returns just price
-    return synthPrices.latest[empAddress][1];
+    return synthPrice.price;
   }
   async function getLatestMarketPrice(address: string, currency: "usdc" = "usdc") {
     assert(address, "requires an erc20 token address");

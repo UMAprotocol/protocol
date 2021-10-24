@@ -27,5 +27,6 @@ export default function StoresFactory(datastoreClient: Datastore) {
     longAddresses: GoogleDatastore<string, addresses.Data>("Long Addresses", datastoreClient),
     shortAddresses: GoogleDatastore<string, addresses.Data>("Short Addresses", datastoreClient),
     latestUsdPrices: GoogleDatastore<string, priceSamples.Data>("Latest Usd Prices", datastoreClient),
+    latestSynthPrices: GoogleDatastore<string, priceSamples.Data>("Latest Synth Prices", datastoreClient),
   };
 }

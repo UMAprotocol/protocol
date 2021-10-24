@@ -38,8 +38,8 @@ export default function (config: Config, appState: Dependencies) {
   }
 
   // utility to grab last price based on address
-  function getLatestSynthPriceFromTable(empAddress: string) {
-    const result = synthPrices.latest[empAddress];
+  async function getLatestSynthPriceFromTable(empAddress: string) {
+    const result = await synthPrices.latest.get(empAddress);
     assert(uma.utils.exists(result), "no latest sythetic price found for emp: " + empAddress);
     return result;
   }
@@ -65,8 +65,13 @@ export default function (config: Config, appState: Dependencies) {
 
   // updates raw synth price, in relation to collateral
   async function updateLatestSynthPrice(empAddress: string) {
-    const result: PriceSample = await getSynthPrices.getCurrentPrice(empAddress);
-    synthPrices.latest[empAddress] = result;
+    const result = await getSynthPrices.getCurrentPrice(empAddress);
+    synthPrices.latest.set({
+      id: empAddress,
+      address: empAddress,
+      price: result[1],
+      timestamp: result[0],
+    });
     return result;
   }
 
@@ -113,14 +118,14 @@ export default function (config: Config, appState: Dependencies) {
     assert(uma.utils.exists(emp.collateralCurrency), "Requires contract collateralCurrency: " + empAddress);
     assert(uma.utils.exists(emp.tokenCurrency), "Requires contract tokenCurrency: " + empAddress);
 
-    const [synthTimestamp, synthPrice] = await getLatestSynthPriceFromTable(empAddress);
+    const synthPrice = await getLatestSynthPriceFromTable(empAddress);
     const collateralPriceSample = await getLatestPriceFromTable(empAddress, emp.collateralCurrency);
 
     // converted price from raw synth to currency ( usually usd)
-    const price = calcSyntheticPrice(synthPrice, collateralPriceSample.price).toString();
+    const price = calcSyntheticPrice(synthPrice.price, collateralPriceSample.price).toString();
 
     // use the most recent timestamp to index this price
-    const timestamp = Math.max(collateralPriceSample.timestamp, synthTimestamp);
+    const timestamp = Math.max(collateralPriceSample.timestamp, synthPrice.timestamp);
     await prices[currency].latest.set({
       id: emp.tokenCurrency,
       address: emp.tokenCurrency,
