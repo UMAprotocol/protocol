@@ -132,8 +132,18 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
     // to determine if there was a valid instant relayer.
     mapping(bytes32 => address) public instantRelays;
 
-    event LiquidityAdded(address indexed token, uint256 amount, uint256 lpTokensMinted, address liquidityProvider);
-    event LiquidityRemoved(address indexed token, uint256 amount, uint256 lpTokensBurnt, address liquidityProvider);
+    event LiquidityAdded(
+        address indexed token,
+        uint256 amount,
+        uint256 lpTokensMinted,
+        address indexed liquidityProvider
+    );
+    event LiquidityRemoved(
+        address indexed token,
+        uint256 amount,
+        uint256 lpTokensBurnt,
+        address indexed liquidityProvider
+    );
     event DepositRelayed(
         bytes32 indexed depositHash,
         DepositData depositData,
@@ -149,7 +159,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
     event RelayDisputed(bytes32 indexed depositHash, bytes32 indexed relayHash, address indexed disputer);
     event RelayCanceled(bytes32 indexed depositHash, bytes32 indexed relayHash, address indexed disputer);
     event RelaySettled(bytes32 indexed depositHash, address indexed caller, RelayData relay);
-    event BridgePoolAdminTransferred(address oldAdmin, address newAdmin);
+    event BridgePoolAdminTransferred(address indexed oldAdmin, address indexed newAdmin);
 
     modifier onlyFromOptimisticOracle() {
         require(msg.sender == address(optimisticOracle), "Caller must be OptimisticOracle");
