@@ -59,10 +59,10 @@ export function Handlers(config: Config, appState: Dependencies): Actions {
       return erc20s.values();
     },
     async collateralAddresses() {
-      return Array.from(collateralAddresses.values());
+      return await collateralAddresses.keys();
     },
     async syntheticAddresses() {
-      return Array.from(syntheticAddresses.values());
+      return await syntheticAddresses.keys();
     },
     async allLatestPrices(currency: CurrencySymbol = "usd") {
       assert(exists(prices[currency]), "invalid currency type: " + currency);

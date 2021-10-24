@@ -1,6 +1,6 @@
 import type uma from "@uma/sdk";
 import type { ethers } from "ethers";
-import type { empStats, empStatsHistory, lsps, appStats, registeredContracts } from "./tables";
+import type { empStats, empStatsHistory, lsps, appStats, registeredContracts, addresses } from "./tables";
 import type Zrx from "./libs/zrx";
 export type { Channels } from "./services/express-channels";
 
@@ -108,10 +108,10 @@ export type AppState = {
   provider: Provider;
   web3: Web3;
   lastBlockUpdate: number;
-  collateralAddresses: Set<string>;
-  syntheticAddresses: Set<string>;
-  longAddresses: Set<string>;
-  shortAddresses: Set<string>;
+  collateralAddresses: addresses.Table;
+  syntheticAddresses: addresses.Table;
+  longAddresses: addresses.Table;
+  shortAddresses: addresses.Table;
   multicall2: uma.Multicall2;
 };
 

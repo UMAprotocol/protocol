@@ -32,9 +32,9 @@ describe("lsp-state service", function () {
       provider,
       multicall2: new Multicall2(process.env.MULTI_CALL_2_ADDRESS, provider),
       registeredLsps,
-      collateralAddresses: new Set<string>(),
-      longAddresses: new Set<string>(),
-      shortAddresses: new Set<string>(),
+      collateralAddresses: tables.addresses.Table("Collateral Addresses"),
+      longAddresses: tables.addresses.Table("Long Addresses"),
+      shortAddresses: tables.addresses.Table("Short Addresses"),
       lsps: {
         active: tables.lsps.Table("Active LSP"),
         expired: tables.lsps.Table("Expired LSP"),
@@ -101,8 +101,8 @@ describe("lsp-state service", function () {
     await service.update();
 
     assert.ok((await appState.lsps.active.values()).length || (await appState.lsps.expired.values()).length);
-    assert.ok([...appState.collateralAddresses.values()].length);
-    assert.ok([...appState.longAddresses.values()].length);
-    assert.ok([...appState.shortAddresses.values()].length);
+    assert.ok([...(await appState.collateralAddresses.keys())].length);
+    assert.ok([...(await appState.longAddresses.keys())].length);
+    assert.ok([...(await appState.shortAddresses.keys())].length);
   });
 });

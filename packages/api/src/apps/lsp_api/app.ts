@@ -9,7 +9,7 @@ import * as Services from "../../services";
 import Express from "../../services/express-channels";
 import * as Actions from "../../services/actions";
 import { ProcessEnv, AppState, Channels } from "../../types";
-import { empStats, empStatsHistory, lsps, registeredContracts } from "../../tables";
+import { addresses, empStats, empStatsHistory, lsps, registeredContracts } from "../../tables";
 import Zrx from "../../libs/zrx";
 import { Profile, parseEnvArray, BlockInterval, expirePromise } from "../../libs/utils";
 
@@ -110,11 +110,11 @@ export default async (env: ProcessEnv) => {
     lastBlockUpdate: 0,
     registeredEmps: registeredContracts.Table("Registered Emps"),
     registeredLsps: registeredContracts.Table("Registered Lsps"),
-    collateralAddresses: new Set<string>(),
-    syntheticAddresses: new Set<string>(),
+    collateralAddresses: addresses.Table("Collateral Addresses"),
+    syntheticAddresses: addresses.Table("Synthetic Addresses"),
     // lsp related props. could be its own state object
-    longAddresses: new Set<string>(),
-    shortAddresses: new Set<string>(),
+    longAddresses: addresses.Table("Long Addresses"),
+    shortAddresses: addresses.Table("Short Addresses"),
     multicall2: new Multicall2(env.MULTI_CALL_2_ADDRESS, provider),
     lsps: {
       active: lsps.Table("Active LSP"),

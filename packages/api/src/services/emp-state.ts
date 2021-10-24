@@ -131,10 +131,12 @@ export default (config: Config, appState: Dependencies) => {
   // add a set of all collateral addresses
   async function updateTokenAddresses() {
     const allEmps = [...(await emps.active.values()), ...(await emps.expired.values())];
-    allEmps.forEach((emp) => {
-      if (emp.collateralCurrency) collateralAddresses.add(emp.collateralCurrency);
-      if (emp.tokenCurrency) syntheticAddresses.add(emp.tokenCurrency);
-    });
+    await Promise.all([allEmps.map((emp) => updateTokenAddress(emp))]);
+  }
+
+  async function updateTokenAddress(emp: uma.tables.emps.Data) {
+    if (emp.collateralCurrency) await collateralAddresses.set(emp.collateralCurrency);
+    if (emp.tokenCurrency) await syntheticAddresses.set(emp.tokenCurrency);
   }
 
   async function updateAll(addresses: string[], startBlock?: number, endBlock?: number) {

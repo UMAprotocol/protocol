@@ -176,11 +176,13 @@ export default (config: Config, appState: Dependencies) => {
   }
   async function updateTokenAddresses() {
     const allLsps = [...(await lsps.active.values()), ...(await lsps.expired.values())];
-    allLsps.forEach((lsp) => {
-      if (lsp.collateralToken) collateralAddresses.add(lsp.collateralToken);
-      if (lsp.longToken) longAddresses.add(lsp.longToken);
-      if (lsp.shortToken) shortAddresses.add(lsp.shortToken);
-    });
+    await Promise.all(allLsps.map((lsp) => updateTokenAddress(lsp)));
+  }
+
+  async function updateTokenAddress(lsp: lsps.Data) {
+    if (lsp.collateralToken) await collateralAddresses.set(lsp.collateralToken);
+    if (lsp.longToken) await longAddresses.set(lsp.longToken);
+    if (lsp.shortToken) await shortAddresses.set(lsp.shortToken);
   }
 
   async function update(startBlock?: number, endBlock?: number) {

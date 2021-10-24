@@ -62,7 +62,7 @@ export default function (config: Config, appState: Dependencies) {
 
   // Currently we just care about collateral prices
   async function update() {
-    const addresses = Array.from(collateralAddresses.values());
+    const addresses = await collateralAddresses.keys();
     await updateLatestPrices(addresses).catch((err) => {
       console.error("Error getting LatestPrice: " + err.message);
     });
@@ -102,7 +102,7 @@ export default function (config: Config, appState: Dependencies) {
   }
 
   async function backfill(startMs: number) {
-    const addresses = Array.from(collateralAddresses.values());
+    const addresses = await collateralAddresses.keys();
     await backfillHistories(addresses, startMs).then((results) => {
       results.forEach((result) => {
         if (result.status === "rejected") console.error("Error backfilling prices: " + result.reason.message);

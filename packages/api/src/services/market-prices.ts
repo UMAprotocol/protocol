@@ -75,7 +75,7 @@ export default function (config: Config, appState: Dependencies) {
   // so we will just set one from our query time.
   async function update(timestampS = nowS()) {
     // want to make sure we dont have any duplicate addresses between collaterals and synthetic
-    const addresses = lodash.uniq(Array.from(collateralAddresses).concat(Array.from(syntheticAddresses)));
+    const addresses = lodash.uniq((await collateralAddresses.keys()).concat(await syntheticAddresses.keys()));
     await updateLatestPrices(addresses, timestampS).catch((err) => {
       console.error("Error getting Market Price: " + err.message);
     });

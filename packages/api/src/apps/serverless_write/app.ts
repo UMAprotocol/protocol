@@ -5,7 +5,7 @@ import { tables, Coingecko, Multicall2 } from "@uma/sdk";
 import { Datastore } from "@google-cloud/datastore";
 
 import * as Services from "../../services";
-import { appStats, empStats, empStatsHistory, lsps, registeredContracts, StoresFactory } from "../../tables";
+import { addresses, appStats, empStats, empStatsHistory, lsps, registeredContracts, StoresFactory } from "../../tables";
 import Zrx from "../../libs/zrx";
 import { Profile, parseEnvArray, getWeb3, expirePromise } from "../../libs/utils";
 
@@ -93,11 +93,11 @@ export default async (env: ProcessEnv) => {
     lastBlockUpdate: 0,
     registeredEmps: registeredContracts.Table("Registered Emps", datastores.registeredEmps),
     registeredLsps: registeredContracts.Table("Registered Lsps", datastores.registeredLsps),
-    collateralAddresses: new Set<string>(),
-    syntheticAddresses: new Set<string>(),
+    collateralAddresses: addresses.Table("Collateral Addresses", datastores.collateralAddresses),
+    syntheticAddresses: addresses.Table("Synthetic Addresses", datastores.syntheticAddresses),
     // lsp related props. could be its own state object
-    longAddresses: new Set<string>(),
-    shortAddresses: new Set<string>(),
+    longAddresses: addresses.Table("Long Addresses", datastores.longAddresses),
+    shortAddresses: addresses.Table("Short Addresses", datastores.shortAddresses),
     multicall2: new Multicall2(env.MULTI_CALL_2_ADDRESS, provider),
     lsps: {
       active: lsps.Table("Active LSP", datastores.lspsActive),
