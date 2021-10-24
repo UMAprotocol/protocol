@@ -261,13 +261,15 @@ describe("BridgeDepositBox", () => {
       });
     });
 
-    describe("canBridge", () => {
-      it("hasEnoughTimeElapsedToBridge", async () => {
+    describe("Basic checks", () => {
+      it("canBridge and isWhitelistToken", async () => {
+        assert.equal(await depositBox.methods.isWhitelistToken(l1TokenAddress).call(), false);
         assert.equal(
           await depositBox.methods.canBridge(l1TokenAddress).call(),
           false,
           "Should return false for non-whitelisted token"
         );
+        assert.equal(await depositBox.methods.isWhitelistToken(l2Token.options.address).call(), true);
         assert.equal(
           await depositBox.methods.canBridge(l2Token.options.address).call(),
           false,

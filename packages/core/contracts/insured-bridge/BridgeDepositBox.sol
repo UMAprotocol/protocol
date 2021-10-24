@@ -178,7 +178,7 @@ abstract contract BridgeDepositBox is Testable, Lockable {
         uint64 instantRelayFeePct,
         uint64 quoteTimestamp
     ) public payable onlyIfDepositsEnabled(l2Token) nonReentrant() {
-        require(_isWhitelistToken(l2Token), "deposit token not whitelisted");
+        require(isWhitelistToken(l2Token), "deposit token not whitelisted");
         // We limit the sum of slow and instant relay fees to 50% to prevent the user spending all their funds on fees.
         // The realizedLPFeePct on L1 is limited to 50% so the total spent on fees does not ever exceed 100%.
         require(slowRelayFeePct <= 0.25e18, "slowRelayFeePct must be <= 25%");
@@ -222,7 +222,14 @@ abstract contract BridgeDepositBox is Testable, Lockable {
      *           VIEW FUNCTIONS           *
      **************************************/
 
-    function _isWhitelistToken(address l2Token) internal view returns (bool) {
+    /**
+     * @notice Checks if a given L2 token is whitelisted.
+     * @dev Check the whitelisted token's `lastBridgeTime` parameter since its guaranteed to be != 0 once
+     * the token has been whitelisted.
+     * @param l2Token L2 token to check against the whitelist.
+     * @return true if token is whitelised.
+     */
+    function isWhitelistToken(address l2Token) public view returns (bool) {
         return whitelistedTokens[l2Token].lastBridgeTime != 0;
     }
 
@@ -239,6 +246,6 @@ abstract contract BridgeDepositBox is Testable, Lockable {
      * @return true if token is whitelised and enough time has elapsed since the previous bridge.
      */
     function canBridge(address l2Token) public view returns (bool) {
-        return _isWhitelistToken(l2Token) && _hasEnoughTimeElapsedToBridge(l2Token);
+        return isWhitelistToken(l2Token) && _hasEnoughTimeElapsedToBridge(l2Token);
     }
 }
