@@ -135,7 +135,7 @@ contract OVM_BridgeDepositBox is BridgeDepositBox, OVM_CrossDomainEnabled {
     function bridgeTokens(address l2Token, uint32 l1Gas) public nonReentrant() {
         uint256 bridgeDepositBoxBalance = TokenLike(l2Token).balanceOf(address(this));
         require(bridgeDepositBoxBalance > 0, "can't bridge zero tokens");
-        require(_canBridge(l2Token), "non-whitelisted token or last bridge too recent");
+        require(canBridge(l2Token), "non-whitelisted token or last bridge too recent");
 
         whitelistedTokens[l2Token].lastBridgeTime = uint64(getCurrentTime());
 

@@ -260,5 +260,31 @@ describe("BridgeDepositBox", () => {
           .send({ from: user1 });
       });
     });
+
+    describe("canBridge", () => {
+      it("hasEnoughTimeElapsedToBridge", async () => {
+        assert.equal(
+          await depositBox.methods.canBridge(l1TokenAddress).call(),
+          false,
+          "Should return false for non-whitelisted token"
+        );
+        assert.equal(
+          await depositBox.methods.canBridge(l2Token.options.address).call(),
+          false,
+          "Should return false for whitelisted with not enough time elapsed since whitelisting"
+        );
+
+        // Advance time past minimum bridging delay and then try again
+        await timer.methods
+          .setCurrentTime(Number(await timer.methods.getCurrentTime().call()) + minimumBridgingDelay + 1)
+          .send({ from: deployer });
+        assert.equal(await depositBox.methods.canBridge(l2Token.options.address).call(), true);
+        assert.equal(
+          await depositBox.methods.canBridge(l1TokenAddress).call(),
+          false,
+          "Should return false for non-whitelisted token"
+        );
+      });
+    });
   });
 });
