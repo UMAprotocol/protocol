@@ -178,7 +178,7 @@ abstract contract BridgeDepositBox is Testable, Lockable {
         uint64 instantRelayFeePct,
         uint64 quoteTimestamp
     ) public payable onlyIfDepositsEnabled(l2Token) nonReentrant() {
-        require(isWhitelistToken(l2Token), "deposit token not whitelisted");
+        require(_isWhitelistToken(l2Token), "deposit token not whitelisted");
         // We limit the sum of slow and instant relay fees to 50% to prevent the user spending all their funds on fees.
         // The realizedLPFeePct on L1 is limited to 50% so the total spent on fees does not ever exceed 100%.
         require(slowRelayFeePct <= 0.25e18, "slowRelayFeePct must be <= 25%");
@@ -226,18 +226,24 @@ abstract contract BridgeDepositBox is Testable, Lockable {
      * @notice Checks if a given L2 token is whitelisted.
      * @param l2Token L2 token to check against the whitelist.
      */
-    function isWhitelistToken(address l2Token) public view returns (bool) {
-        return whitelistedTokens[l2Token].l1Token != address(0);
+    function _isWhitelistToken(address l2Token) internal view returns (bool) {
+        return whitelistedTokens[l2Token].lastBridgeTime != 0;
     }
 
     /**
      * @notice Checks if enough time has elapsed from the previous bridge transfer to execute another bridge transfer.
      * @param l2Token L2 token to check against last bridge time delay.
      */
-    function hasEnoughTimeElapsedToBridge(address l2Token) public view returns (bool) {
-        // If l2Token is not whitelisted and `lastBridgeTime` is set to 0, then always return false.
-        return
-            whitelistedTokens[l2Token].lastBridgeTime != 0 &&
-            getCurrentTime() > whitelistedTokens[l2Token].lastBridgeTime + minimumBridgingDelay;
+    function _hasEnoughTimeElapsedToBridge(address l2Token) internal view returns (bool) {
+        return getCurrentTime() > whitelistedTokens[l2Token].lastBridgeTime + minimumBridgingDelay;
+    }
+
+    /**
+     * @notice Used by implementing contract in `bridgeTokens` method which sends this contract's balance of tokens from
+     * L2 to L1 via the canonical token bridge.
+     * @param l2Token L2 token to check bridging status.
+     */
+    function _canBridge(address l2Token) internal view returns (bool) {
+        return _isWhitelistToken(l2Token) && _hasEnoughTimeElapsedToBridge(l2Token);
     }
 }
