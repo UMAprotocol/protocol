@@ -9,7 +9,7 @@ describe("tvl table", function () {
   });
   it("create", async function () {
     const result = await table.create({
-      id: 0,
+      id: 1,
       timestamp: 16300011,
       value: "21331",
     });
