@@ -159,7 +159,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
     event RelayDisputed(bytes32 indexed depositHash, bytes32 indexed relayHash, address indexed disputer);
     event RelayCanceled(bytes32 indexed depositHash, bytes32 indexed relayHash, address indexed disputer);
     event RelaySettled(bytes32 indexed depositHash, address indexed caller, RelayData relay);
-    event BridgePoolAdminTransferred(address indexed oldAdmin, address indexed newAdmin);
+    event BridgePoolAdminTransferred(address oldAdmin, address newAdmin);
 
     modifier onlyFromOptimisticOracle() {
         require(msg.sender == address(optimisticOracle), "Caller must be OptimisticOracle");
