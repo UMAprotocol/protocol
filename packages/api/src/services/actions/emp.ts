@@ -4,7 +4,6 @@ import { Json, Actions, AppState, CurrencySymbol, PriceSample } from "../../type
 import * as Queries from "../../libs/queries";
 import { nowS } from "../../libs/utils";
 import lodash from "lodash";
-import { Data } from "../../tables/price-samples";
 
 const { exists } = uma.utils;
 
@@ -81,7 +80,11 @@ export function Handlers(config: Config, appState: Dependencies): Actions {
       );
     },
     async allLatestMarketPrices() {
-      return marketPrices.usdc.latest;
+      const marketPricesValues = await marketPrices.usdc.latest.values();
+      return marketPricesValues.reduce(
+        (acc, { address, timestamp, price }) => ({ ...acc, [address]: [timestamp, price] }),
+        {}
+      );
     },
     // get prices by token address
     latestPriceByTokenAddress: queries.latestPriceByTokenAddress,

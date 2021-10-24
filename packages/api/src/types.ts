@@ -59,7 +59,7 @@ export type AppState = {
   marketPrices: {
     // note this is in usdc since these are fetched from amms using usdc as the quote currency
     usdc: {
-      latest: { [tokenAddress: string]: PriceSample };
+      latest: priceSamples.Table;
       history: empStatsHistory.Table;
     };
   };

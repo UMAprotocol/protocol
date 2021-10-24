@@ -65,7 +65,7 @@ export default async (env: ProcessEnv) => {
     },
     marketPrices: {
       usdc: {
-        latest: {},
+        latest: priceSamples.Table("Latest USDC Market Prices"),
         history: empStatsHistory.Table("Market Price"),
       },
     },

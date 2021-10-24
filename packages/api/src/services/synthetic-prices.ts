@@ -1,6 +1,6 @@
 import assert from "assert";
 import SynthPrices from "../libs/synthPrices";
-import { AppState, PriceSample, Currencies, BaseConfig } from "../types";
+import { AppState, Currencies, BaseConfig } from "../types";
 import * as uma from "@uma/sdk";
 import bluebird from "bluebird";
 import * as Queries from "../libs/queries";

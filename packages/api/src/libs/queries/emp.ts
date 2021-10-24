@@ -58,9 +58,9 @@ export default (appState: Dependencies) => {
   async function getLatestMarketPrice(address: string, currency: "usdc" = "usdc") {
     assert(address, "requires an erc20 token address");
     assert(exists(marketPrices[currency]), "invalid currency type: " + currency);
-    const priceSample = marketPrices[currency].latest[address];
+    const priceSample = await marketPrices[currency].latest.get(address);
     assert(exists(priceSample), "No price for address: " + address);
-    return priceSample[1];
+    return priceSample.price;
   }
   async function hasAddress(address: string) {
     return (await appState.emps.active.has(address)) || (await appState.emps.expired.has(address));

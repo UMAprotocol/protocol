@@ -26,7 +26,12 @@ export default function (config: Config, appState: Dependencies) {
       sellAmount: parseUnits("1", tokenData.decimals || 18).toString(),
     });
     // we need to store prices in wei, so use parse units on this price
-    marketPrices.usdc.latest[tokenAddress] = [timestampS, parseUnits(result.price.toString()).toString()];
+    await marketPrices.usdc.latest.set({
+      id: tokenAddress,
+      address: tokenAddress,
+      price: parseUnits(result.price.toString()).toString(),
+      timestamp: timestampS,
+    });
   }
 
   async function updateLatestPrices(addresses: string[], timestampS: number = nowS()) {
@@ -51,15 +56,15 @@ export default function (config: Config, appState: Dependencies) {
   function getHistoryTable() {
     return marketPrices.usdc.history;
   }
-  function getLatestPrice(address: string) {
-    const result = marketPrices.usdc.latest[address];
+  async function getLatestPrice(address: string) {
+    const result = await marketPrices.usdc.latest.get(address);
     assert(result, "No price found for token address: " + address);
     return result;
   }
   // pulls price from latest and stuffs it into historical table.
   async function updatePriceHistory(tokenAddress: string) {
     const table = getHistoryTable();
-    const [timestamp, price] = getLatestPrice(tokenAddress);
+    const { timestamp, price } = await getLatestPrice(tokenAddress);
     if (await table.hasByAddress(tokenAddress, timestamp)) return;
     return table.create({
       address: tokenAddress,
