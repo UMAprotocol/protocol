@@ -32,7 +32,7 @@ export function Handlers(config: Config, appState: Dependencies): Actions {
       return registeredEmps.keys();
     },
     lastBlock() {
-      return appState.lastBlockUpdate;
+      return appState.appStats.getLastBlockUpdate();
     },
     hasAddress: queries.hasAddress,
     // deprecated

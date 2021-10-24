@@ -22,7 +22,7 @@ import {
 import Zrx from "../../libs/zrx";
 import { Profile, parseEnvArray, getWeb3, BlockInterval, expirePromise } from "../../libs/utils";
 
-import type { ProcessEnv, Channels, DatastoreAppState } from "../../types";
+import type { ProcessEnv, Channels, AppState } from "../../types";
 
 export default async (env: ProcessEnv) => {
   assert(env.CUSTOM_NODE_URL, "requires CUSTOM_NODE_URL");
@@ -57,7 +57,7 @@ export default async (env: ProcessEnv) => {
   const datastoreClient = new Datastore();
   const datastores = StoresFactory(datastoreClient);
   // state shared between services
-  const appState: DatastoreAppState = {
+  const appState: AppState = {
     provider,
     web3,
     coingecko: new Coingecko(),
@@ -118,7 +118,6 @@ export default async (env: ProcessEnv) => {
         },
       },
     },
-    lastBlockUpdate: 0,
     registeredEmps: registeredContracts.Table("Registered Emps", datastores.registeredEmps),
     registeredLsps: registeredContracts.Table("Registered Lsps", datastores.registeredLsps),
     collateralAddresses: addresses.Table("Collateral Addresses", datastores.collateralAddresses),

@@ -9,7 +9,16 @@ import * as Services from "../../services";
 import Express from "../../services/express-channels";
 import * as Actions from "../../services/actions";
 import { ProcessEnv, AppState, Channels } from "../../types";
-import { addresses, empStats, empStatsHistory, lsps, priceSamples, registeredContracts, tvl } from "../../tables";
+import {
+  addresses,
+  appStats,
+  empStats,
+  empStatsHistory,
+  lsps,
+  priceSamples,
+  registeredContracts,
+  tvl,
+} from "../../tables";
 import Zrx from "../../libs/zrx";
 import { Profile, parseEnvArray, BlockInterval, expirePromise } from "../../libs/utils";
 
@@ -107,7 +116,6 @@ export default async (env: ProcessEnv) => {
         },
       },
     },
-    lastBlockUpdate: 0,
     registeredEmps: registeredContracts.Table("Registered Emps"),
     registeredLsps: registeredContracts.Table("Registered Lsps"),
     collateralAddresses: addresses.Table("Collateral Addresses"),
@@ -120,6 +128,7 @@ export default async (env: ProcessEnv) => {
       active: lsps.Table("Active LSP"),
       expired: lsps.Table("Expired LSP"),
     },
+    appStats: appStats.Table("App Stats"),
   };
 
   // services for ingesting data
@@ -143,14 +152,18 @@ export default async (env: ProcessEnv) => {
 
   const initBlock = await provider.getBlock("latest");
 
-  await services.lspCreator.update(appState.lastBlockUpdate, initBlock.number);
+  async function lastBlockUpdate() {
+    return appState.appStats.getLastBlockUpdate() || 0;
+  }
+
+  await services.lspCreator.update(await lastBlockUpdate(), initBlock.number);
   console.log("Got all LSP addresses");
 
-  await services.lsps.update(appState.lastBlockUpdate, initBlock.number);
+  await services.lsps.update(await lastBlockUpdate(), initBlock.number);
   console.log("Updated LSP state");
 
   // we've update our state based on latest block we queried
-  appState.lastBlockUpdate = initBlock.number;
+  await appState.appStats.setLastBlockUpdate(initBlock.number);
 
   await services.erc20s.update();
   console.log("Updated tokens");
@@ -193,7 +206,7 @@ export default async (env: ProcessEnv) => {
     assert(startBlock < endBlock, "Startblock must be lower than endBlock");
     await services.lsps.update(startBlock, endBlock);
     await services.erc20s.update();
-    appState.lastBlockUpdate = endBlock;
+    await appState.appStats.setLastBlockUpdate(endBlock);
   }
 
   // separate out price updates into a different loop to query every few minutes

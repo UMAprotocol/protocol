@@ -112,14 +112,10 @@ export type AppState = {
   registeredLsps: registeredContracts.Table;
   provider: Provider;
   web3: Web3;
-  lastBlockUpdate: number;
+  appStats: appStats.Table;
   collateralAddresses: addresses.Table;
   syntheticAddresses: addresses.Table;
   longAddresses: addresses.Table;
   shortAddresses: addresses.Table;
   multicall2: uma.Multicall2;
-};
-
-export type DatastoreAppState = AppState & {
-  appStats: appStats.Table;
 };
