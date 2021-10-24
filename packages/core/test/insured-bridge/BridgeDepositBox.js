@@ -60,7 +60,6 @@ describe("BridgeDepositBox", () => {
         .whitelistToken(l1TokenAddress, l2Token.options.address, bridgePool)
         .send({ from: bridgeAdmin });
     });
-
     describe("ERC20 deposit logic", () => {
       it("Token flow, events and actions occur correctly on deposit", async () => {
         assert.equal(await depositBox.methods.numberOfDeposits().call(), "0"); // Deposit index should start at 0.
