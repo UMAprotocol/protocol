@@ -97,15 +97,15 @@ export const runTransaction = async ({
     // at caller's transactionConfig.gasPrice or, with transactionConfig.maxPriorityFeePerGas a max gasPrice of x6.
     const gasPriceScalingFunction = ynatm.DOUBLES;
     const retryDelay = 60000;
-// Pre-London transactions require `gasPrice`, London transactions require `maxFeePerGas` and `maxPriorityFeePerGas`. If one of these two conditions are not filled, throw an Error.
-    if (!(transactionConfig.gasPrice || (transactionConfig.maxFeePerGas && transactionConfig.maxPriorityFeePerGas)))
-      throw new Error("No gas information provided");
+    const maximumGasPriceMultiple = 2 * 3;
+    // Pre-London transactions require `gasPrice`, London transactions require `maxFeePerGas` and `maxPriorityFeePerGas`
+
     let receipt;
 
     // If the config contains maxPriorityFeePerGas then this is a london transaction.
     if (transactionConfig.maxFeePerGas && transactionConfig.maxPriorityFeePerGas) {
       const minPriorityFeePerGas = transactionConfig.maxPriorityFeePerGas || (1e9).toString();
-      const maxPriorityFeePerGas = 2 * 3 * parseInt(minPriorityFeePerGas.toString());
+      const maxPriorityFeePerGas = maximumGasPriceMultiple * parseInt(minPriorityFeePerGas.toString());
 
       receipt = await ynatm.send({
         sendTransactionFunction: (maxPriorityFeePerGas: number) =>
@@ -119,7 +119,7 @@ export const runTransaction = async ({
       // Else this is a legacy tx.
     } else if (transactionConfig.gasPrice) {
       const minGasPrice = transactionConfig.gasPrice;
-      const maxGasPrice = 2 * 3 * parseInt(minGasPrice.toString());
+      const maxGasPrice = maximumGasPriceMultiple * parseInt(minGasPrice.toString());
 
       receipt = await ynatm.send({
         sendTransactionFunction: (gasPrice: number) =>
@@ -129,7 +129,7 @@ export const runTransaction = async ({
         gasPriceScalingFunction,
         delay: retryDelay,
       });
-    }
+    } else throw new Error("No gas information provided");
 
     // Note: cast is due to an incorrect type in the web3 declarations that assumes send returns a contract.
     return { receipt: (receipt as unknown) as TransactionReceipt, returnValue, transactionConfig };
