@@ -103,7 +103,6 @@ export default function (config: Config, appState: Dependencies) {
 
   // gets any price from table, synthetic or collateral. Synthetics go into this table once converted to usd
   async function getLatestPriceFromTable(empAddress: string, currencyAddress: string) {
-    // PriceSample is type [ timestamp:number, price:string]
     const priceSample = await prices[currency].latest.get(currencyAddress);
     assert(uma.utils.exists(priceSample), "No latest price found for emp: " + empAddress);
     assert(uma.utils.exists(priceSample.price), "Invalid latest price found on emp: " + empAddress);

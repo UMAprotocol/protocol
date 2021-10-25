@@ -64,7 +64,6 @@ export default (config: Config, appState: Dependencies) => {
   }
 
   async function getPriceFromTable(empAddress: string, currencyAddress: string) {
-    // PriceSample is type [ timestamp:number, price:string]
     const priceSample = await prices[currency].latest.get(currencyAddress);
     assert(uma.utils.exists(priceSample), "No latest price found for emp: " + empAddress);
     return priceSample;
