@@ -272,8 +272,8 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
         // The realizedLPFeePct should never be greater than 0.5e18 and the slow and instant relay fees should never be
         // more than 0.25e18 each. Therefore, the sum of all fee types can never exceed 1e18 (or 100%).
         require(
-            depositData.slowRelayFeePct < 0.25e18 &&
-                depositData.instantRelayFeePct < 0.25e18 &&
+            depositData.slowRelayFeePct <= 0.25e18 &&
+                depositData.instantRelayFeePct <= 0.25e18 &&
                 realizedLpFeePct < 0.5e18
         );
 
@@ -395,8 +395,8 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
         // The realizedLPFeePct should never be greater than 0.5e18 and the slow and instant relay fees should never be
         // more than 0.25e18 each. Therefore, the sum of all fee types can never exceed 1e18 (or 100%).
         require(
-            depositData.slowRelayFeePct < 0.25e18 &&
-                depositData.instantRelayFeePct < 0.25e18 &&
+            depositData.slowRelayFeePct <= 0.25e18 &&
+                depositData.instantRelayFeePct <= 0.25e18 &&
                 realizedLpFeePct < 0.5e18
         );
 
