@@ -31,8 +31,11 @@ const poolState = await readClient.read()
 //{
 //  pool: {
 //    address: '0xf42bB7EC88d065dF48D60cb672B88F8330f9f764',
-//    totalPoolSize: '13900116882750652331',
-//    l1Token: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2'
+//    totalPoolSize: '900112495947893496',
+//    l1Token: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
+//    exchangeRateCurrent: '1000014111309289196',
+//    exchangeRatePrevious: '1000014110936934497',
+//    estimatedApy: '0.0008646096530698983'
 //  }
 //}
 
@@ -48,8 +51,11 @@ const userState = await readClient.read("0x9A8f92a830A5cB89a3816e3D267CB7791c16b
 //  },
 //  pool: {
 //    address: '0xf42bB7EC88d065dF48D60cb672B88F8330f9f764',
-//    totalPoolSize: '13900116882750652331',
-//    l1Token: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2'
+//    totalPoolSize: '900112495947893496',
+//    l1Token: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
+//    exchangeRateCurrent: '1000014111309289196',
+//    exchangeRatePrevious: '1000014110936934497',
+//    estimatedApy: '0.0008646096530698983'
 //  }
 //}
 ```

@@ -1,6 +1,6 @@
 import { bridgePool } from "../../clients";
 import { providers, BigNumber } from "ethers";
-import { toBNWei, fixedPointAdjustment } from "../utils";
+import { toBNWei, fixedPointAdjustment, calcInterest, calcApy, fromWei } from "../utils";
 import { BatchReadWithErrors } from "../../utils";
 import Multicall2 from "../../multicall2";
 
@@ -14,11 +14,16 @@ class PoolState {
     private contract: bridgePool.Instance,
     private address: string
   ) {}
-  public async read() {
+  public async read(latestBlock: number) {
     if (this.l1Token === undefined) this.l1Token = await this.contract.l1Token();
+    // typechain does not have complete types for call options, so we have to cast blockTag to any
+    const exchangeRatePrevious = await this.contract.callStatic.exchangeRateCurrent({
+      blockTag: latestBlock - 1,
+    } as any);
     return {
       address: this.address,
       l1Token: this.l1Token,
+      exchangeRatePrevious,
       ...(await this.batchRead([
         ["liquidReserves"],
         ["pendingReserves"],
@@ -35,12 +40,20 @@ class PoolEventState {
     private startBlock = 0,
     private state: bridgePool.EventState = bridgePool.eventStateDefaults()
   ) {}
-  public async read(endBlock: number) {
+  public async read(endBlock: number, user?: string) {
     if (endBlock <= this.startBlock) return this.state;
     const events = (
       await Promise.all([
-        ...(await this.contract.queryFilter(this.contract.filters.LiquidityAdded(), this.startBlock, endBlock)),
-        ...(await this.contract.queryFilter(this.contract.filters.LiquidityRemoved(), this.startBlock, endBlock)),
+        ...(await this.contract.queryFilter(
+          this.contract.filters.LiquidityAdded(undefined, undefined, user),
+          this.startBlock,
+          endBlock
+        )),
+        ...(await this.contract.queryFilter(
+          this.contract.filters.LiquidityRemoved(undefined, undefined, user),
+          this.startBlock,
+          endBlock
+        )),
       ])
     ).sort((a, b) => {
       if (a.blockNumber < b.blockNumber) return -1;
@@ -64,6 +77,15 @@ class UserState {
   }
 }
 
+// this is a rough estimation of blocks per day from: https://ycharts.com/indicators/ethereum_blocks_per_day
+// may be able to replace with dynamic value https://docs.etherscan.io/api-endpoints/blocks#get-daily-block-count-and-rewards
+const BLOCKS_PER_YEAR = 6359 * 365;
+export function calculateApy(currentExchangeRate: string, previousExchangeRate: string, periods = BLOCKS_PER_YEAR) {
+  const startPrice = fromWei(previousExchangeRate);
+  const endPrice = fromWei(currentExchangeRate);
+  const interest = calcInterest(startPrice, endPrice, periods.toString());
+  return calcApy(interest, periods.toString());
+}
 export function calculateRemoval(amountWei: BigNumber, percentWei: BigNumber) {
   const receive = amountWei.mul(percentWei).div(fixedPointAdjustment);
   const remain = amountWei.sub(receive);
@@ -121,10 +143,14 @@ export class ReadClient {
   }
   static joinPoolState(poolState: Awaited<ReturnType<PoolState["read"]>>) {
     const totalPoolSize = poolState.liquidReserves.add(poolState.pendingReserves).add(poolState.utilizedReserves);
+    const estimatedApy = calculateApy(poolState.exchangeRateCurrent, poolState.exchangeRatePrevious);
     return {
       address: poolState.address,
       totalPoolSize: totalPoolSize.toString(),
       l1Token: poolState.l1Token,
+      exchangeRateCurrent: poolState.exchangeRateCurrent.toString(),
+      exchangeRatePrevious: poolState.exchangeRatePrevious.toString(),
+      estimatedApy,
     };
   }
   static joinState(
@@ -140,8 +166,8 @@ export class ReadClient {
   }
   public async read(user?: string) {
     const latestBlock = (await this.provider.getBlock("latest")).number;
-    const poolState = await this.poolState.read();
-    const eventState = user ? await this.poolEventState.read(latestBlock) : undefined;
+    const poolState = await this.poolState.read(latestBlock);
+    const eventState = user ? await this.poolEventState.read(latestBlock, user) : undefined;
     const userState = user ? await this.userState.read(user) : undefined;
     return ReadClient.joinState(poolState, eventState, userState);
   }
