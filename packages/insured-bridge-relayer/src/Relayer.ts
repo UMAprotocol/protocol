@@ -514,7 +514,7 @@ export class Relayer {
       const { receipt, transactionConfig } = await runTransaction({
         web3: this.l1Client.l1Web3,
         transaction: this.generateDisputeRelayTx(deposit, relay),
-        transactionConfig: { gasPrice: this.gasEstimator.getCurrentFastPrice().toString(), from: this.account },
+        transactionConfig: { ...this.gasEstimator.getCurrentFastPrice(), from: this.account },
         availableAccounts: 1,
       });
 
