@@ -1,6 +1,15 @@
 import type uma from "@uma/sdk";
 import type { ethers } from "ethers";
-import type { empStats, empStatsHistory, lsps, appStats } from "./tables";
+import type {
+  empStats,
+  empStatsHistory,
+  lsps,
+  appStats,
+  registeredContracts,
+  addresses,
+  priceSamples,
+  tvl,
+} from "./tables";
 import type Zrx from "./libs/zrx";
 export type { Channels } from "./services/express-channels";
 
@@ -44,18 +53,14 @@ export type AppState = {
   };
   prices: {
     usd: {
-      latest: {
-        [key: string]: PriceSample;
-      };
+      latest: priceSamples.Table;
       history: {
         [key: string]: uma.tables.historicalPrices.Table;
       };
     };
   };
   synthPrices: {
-    latest: {
-      [empAddress: string]: PriceSample;
-    };
+    latest: priceSamples.Table;
     history: {
       [empAddress: string]: uma.tables.historicalPrices.Table;
     };
@@ -63,7 +68,7 @@ export type AppState = {
   marketPrices: {
     // note this is in usdc since these are fetched from amms using usdc as the quote currency
     usdc: {
-      latest: { [tokenAddress: string]: PriceSample };
+      latest: priceSamples.Table;
       history: empStatsHistory.Table;
     };
   };
@@ -95,7 +100,7 @@ export type AppState = {
     global: {
       usd: {
         latest: {
-          tvl: PriceSample;
+          tvl: tvl.Table;
         };
         history: {
           tvl: empStatsHistory.Table;
@@ -103,20 +108,14 @@ export type AppState = {
       };
     };
   };
-  registeredEmps: Set<string>;
-  registeredEmpsMetadata: Map<string, { blockNumber: number }>;
-  registeredLsps: Set<string>;
-  registeredLspsMetadata: Map<string, { blockNumber: number }>;
+  registeredEmps: registeredContracts.Table;
+  registeredLsps: registeredContracts.Table;
   provider: Provider;
   web3: Web3;
-  lastBlockUpdate: number;
-  collateralAddresses: Set<string>;
-  syntheticAddresses: Set<string>;
-  longAddresses: Set<string>;
-  shortAddresses: Set<string>;
-  multicall2: uma.Multicall2;
-};
-
-export type DatastoreAppState = AppState & {
   appStats: appStats.Table;
+  collateralAddresses: addresses.Table;
+  syntheticAddresses: addresses.Table;
+  longAddresses: addresses.Table;
+  shortAddresses: addresses.Table;
+  multicall2: uma.Multicall2;
 };

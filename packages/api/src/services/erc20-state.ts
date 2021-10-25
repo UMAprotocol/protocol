@@ -37,10 +37,10 @@ export default function (config: Config, appState: Dependencies) {
 
   async function update() {
     const addresses = new Set([
-      ...collateralAddresses.values(),
-      ...syntheticAddresses.values(),
-      ...longAddresses.values(),
-      ...shortAddresses.values(),
+      ...(await collateralAddresses.keys()),
+      ...(await syntheticAddresses.keys()),
+      ...(await longAddresses.keys()),
+      ...(await shortAddresses.keys()),
     ]);
     await updateTokens(Array.from(addresses)).then((results) => {
       results.forEach((result) => {
