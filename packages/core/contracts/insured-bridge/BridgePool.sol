@@ -16,6 +16,7 @@ import "../common/implementation/Lockable.sol";
 import "../common/implementation/ExpandedERC20.sol";
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 
@@ -33,7 +34,7 @@ interface WETH9Like {
  * to post collateral by earning a fee per fulfilled deposit order.
  * @dev A "Deposit" is an order to send capital from L2 to L1, and a "Relay" is a fulfillment attempt of that order.
  */
-contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
+contract BridgePool is Testable, BridgePoolInterface, ERC20, Lockable {
     using SafeERC20 for IERC20;
     using FixedPoint for FixedPoint.Unsigned;
     using Address for address;
@@ -183,7 +184,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
         uint64 _lpFeeRatePerSecond,
         bool _isWethPool,
         address _timer
-    ) Testable(_timer) ExpandedERC20(_lpTokenName, _lpTokenSymbol, 18) {
+    ) Testable(_timer) ERC20(_lpTokenName, _lpTokenSymbol) {
         require(bytes(_lpTokenName).length != 0 && bytes(_lpTokenSymbol).length != 0, "Bad LP token name or symbol");
         bridgeAdmin = BridgeAdminInterface(_bridgeAdmin);
         l1Token = IERC20(_l1Token);
