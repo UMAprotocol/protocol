@@ -97,7 +97,8 @@ export const runTransaction = async ({
     // at caller's transactionConfig.gasPrice or, with transactionConfig.maxPriorityFeePerGas a max gasPrice of x6.
     const gasPriceScalingFunction = ynatm.DOUBLES;
     const retryDelay = 60000;
-    if (!transactionConfig.gasPrice && !(transactionConfig.maxFeePerGas && transactionConfig.maxPriorityFeePerGas))
+// Pre-London transactions require `gasPrice`, London transactions require `maxFeePerGas` and `maxPriorityFeePerGas`. If one of these two conditions are not filled, throw an Error.
+    if (!(transactionConfig.gasPrice || (transactionConfig.maxFeePerGas && transactionConfig.maxPriorityFeePerGas)))
       throw new Error("No gas information provided");
     let receipt;
 
