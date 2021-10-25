@@ -129,7 +129,7 @@ export class GasEstimator {
     }
   }
 
-  // Returns the current fast maxFeePerGas and maxPriorityFeePerGas OR gasPrice depending on the connected network.
+  // Returns the current fast maxFeePerGas and maxPriorityFeePerGas OR gasPrice in gwei depending on the connected network.
   getCurrentFastPrice(): LondonGasData | LegacyGasData {
     // Sometimes the multiplication by 1e9 introduces some error into the resulting number, so we'll conservatively ceil
     // the result before returning. This output is usually passed into a web3 contract call so it MUST be an integer.
