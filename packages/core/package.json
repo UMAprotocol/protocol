@@ -13,6 +13,7 @@
   },
   "devDependencies": {
     "@awaitjs/express": "^0.3.0",
+    "@eth-optimism/contracts": "^0.4.5",
     "@eth-optimism/smock": "^1.1.9",
     "@ethersproject/abi": "^5.4.0",
     "@ethersproject/abstract-provider": "^5.4.0",
