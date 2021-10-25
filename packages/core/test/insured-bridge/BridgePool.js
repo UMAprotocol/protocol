@@ -1773,6 +1773,30 @@ describe("BridgePool", () => {
       assert.equal(await bridgePool.methods.liquidReserves().call(), "0");
       assert.equal(await bridgePool.methods.utilizedReserves().call(), defaultDepositData.amount);
     });
+    it("Can add liquidity multiple times", async () => {
+      // Approve funds and add to liquidity.
+      await l1Token.methods.approve(bridgePool.options.address, MAX_UINT_VAL).send({ from: liquidityProvider });
+      await bridgePool.methods.addLiquidity(initialPoolLiquidity).send({ from: liquidityProvider });
+
+      // Initiate a relay. The relay amount is 10% of the total pool liquidity.
+      await l1Token.methods.approve(bridgePool.options.address, MAX_UINT_VAL).send({ from: relayer });
+
+      // Utilized reserves are 0 before any relays. Added liquidity is available as liquid reserves.
+      assert.equal(await bridgePool.methods.utilizedReserves().call(), "0");
+      assert.equal(await bridgePool.methods.liquidReserves().call(), initialPoolLiquidity);
+
+      // Add more liquidity:
+      await l1Token.methods.mint(liquidityProvider, initialPoolLiquidity).send({ from: owner });
+      await bridgePool.methods.addLiquidity(initialPoolLiquidity).send({ from: liquidityProvider });
+
+      // Liquid reserves captures the two added liquidity transfers.
+      assert.equal(await bridgePool.methods.utilizedReserves().call(), "0");
+      assert.equal(await bridgePool.methods.liquidReserves().call(), toBN(initialPoolLiquidity).mul(toBN("2")));
+
+      // The above equation would fail if `addLiquidity()` transferred tokens to the contract before updating internal
+      // state via `sync()`, which checks the contract's balance and uses the number to update liquid + utilized
+      // reserves. If the contract's balance is higher than expected, then this state can be incorrect.
+    });
   });
   describe("Virtual balance accounting", () => {
     beforeEach(async function () {
