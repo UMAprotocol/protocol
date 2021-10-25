@@ -213,7 +213,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
         // Else, msg.value must be set to 0.
         require((isWethPool && msg.value == l1TokenAmount) || msg.value == 0, "Bad add liquidity Eth value");
 
-        // Since `exchangeRateCurrent()` reads this contract's balance and updates the liquidReserves() using it,
+        // Since `exchangeRateCurrent()` reads this contract's balance and updates contract state using it,
         // we must call it first before transferring any tokens to this contract.
         uint256 lpTokensToMint = (l1TokenAmount * 1e18) / exchangeRateCurrent();
 
