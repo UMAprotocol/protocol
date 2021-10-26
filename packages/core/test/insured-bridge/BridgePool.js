@@ -1774,7 +1774,9 @@ describe("BridgePool", () => {
       assert.equal(await bridgePool.methods.utilizedReserves().call(), defaultDepositData.amount);
     });
     it("Can add liquidity multiple times", async () => {
-      // Approve funds and add to liquidity.
+      // Approve funds and add to liquidity. The first addLiquidity always succeeds because `totalSupply = 0` so
+      // exchangeRateCurrent() always returns 1e18. In this test we test that subsequent calls to exchangeRateCurrent()
+      // from addLiquidity modify state as expected.
       await l1Token.methods.approve(bridgePool.options.address, MAX_UINT_VAL).send({ from: liquidityProvider });
       await bridgePool.methods.addLiquidity(initialPoolLiquidity).send({ from: liquidityProvider });
 
