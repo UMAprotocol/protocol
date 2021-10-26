@@ -1,6 +1,6 @@
 import { clients } from "@uma/sdk";
 import bluebird from "bluebird";
-import { AppState, BaseConfig } from "../types";
+import { AppClients, AppState, BaseConfig } from "../types";
 
 const { lspCreator } = clients;
 
@@ -8,7 +8,7 @@ interface Config extends BaseConfig {
   network?: number;
   address?: string;
 }
-type Dependencies = Pick<AppState, "registeredLsps" | "provider">;
+type Dependencies = Pick<AppState, "registeredLsps">;
 
 export type EmitData = {
   blockNumber: number;
@@ -19,10 +19,15 @@ export type EmitData = {
 
 export type Events = "created";
 
-export default async (config: Config, appState: Dependencies, emit: (event: Events, data: EmitData) => void) => {
+export default async (
+  config: Config,
+  appState: Dependencies,
+  appClients: AppClients,
+  emit: (event: Events, data: EmitData) => void
+) => {
   const { network = 1, address = await lspCreator.getAddress(network) } = config;
-  const { registeredLsps, provider } = appState;
-
+  const { registeredLsps } = appState;
+  const { provider } = appClients;
   const contract = lspCreator.connect(address, provider);
 
   async function update(startBlock?: number, endBlock?: number) {

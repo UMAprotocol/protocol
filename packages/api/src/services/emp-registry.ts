@@ -1,6 +1,6 @@
 import { clients } from "@uma/sdk";
 import bluebird from "bluebird";
-import { AppState, BaseConfig } from "../types";
+import { AppClients, AppState, BaseConfig } from "../types";
 
 const { registry } = clients;
 
@@ -8,7 +8,7 @@ interface Config extends BaseConfig {
   network?: number;
   registryAddress?: string;
 }
-type Dependencies = Pick<AppState, "registeredEmps" | "provider">;
+type Dependencies = Pick<AppState, "registeredEmps">;
 
 export type EmitData = {
   blockNumber: number;
@@ -23,12 +23,14 @@ export type Events = "created";
 export default async (
   config: Config,
   appState: Dependencies,
+  appClients: AppClients,
   emit: (event: Events, data: EmitData) => void = () => {
     return;
   }
 ) => {
   const { network = 1, registryAddress } = config;
-  const { registeredEmps, provider } = appState;
+  const { registeredEmps } = appState;
+  const { provider } = appClients;
   const address = registryAddress || (await registry.getAddress(network));
   const contract = registry.connect(address, provider);
 

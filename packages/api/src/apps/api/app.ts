@@ -8,7 +8,7 @@ import { tables, Coingecko, utils, Multicall2 } from "@uma/sdk";
 import * as Services from "../../services";
 import Express from "../../services/express-channels";
 import * as Actions from "../../services/actions";
-import { ProcessEnv, AppState, Channels } from "../../types";
+import { ProcessEnv, AppState, Channels, AppClients } from "../../types";
 import {
   addresses,
   appStats,
@@ -54,10 +54,6 @@ export default async (env: ProcessEnv) => {
 
   // state shared between services
   const appState: AppState = {
-    provider,
-    web3,
-    coingecko: new Coingecko(),
-    zrx: new Zrx(env.zrxBaseUrl),
     emps: {
       active: tables.emps.Table("Active Emp"),
       expired: tables.emps.Table("Expired Emp"),
@@ -121,22 +117,31 @@ export default async (env: ProcessEnv) => {
     // lsp related props. could be its own state object
     longAddresses: addresses.Table("Long Addresses"),
     shortAddresses: addresses.Table("Short Addresses"),
-    multicall2: new Multicall2(env.MULTI_CALL_2_ADDRESS, provider),
     lsps: {
       active: lsps.Table("Active LSP"),
       expired: lsps.Table("Expired LSP"),
     },
     appStats: appStats.Table("App Stats"),
   };
-
+  // clients shared between services
+  const appClients: AppClients = {
+    provider,
+    web3,
+    coingecko: new Coingecko(),
+    zrx: new Zrx(env.zrxBaseUrl),
+    multicall2: new Multicall2(env.MULTI_CALL_2_ADDRESS, provider),
+  };
   // services for ingesting data
   const services = {
     // these services can optionally be configured with a config object, but currently they are undefined or have defaults
-    emps: Services.EmpState({ debug }, appState),
-    registry: await Services.Registry({ debug, registryAddress: env.EMP_REGISTRY_ADDRESS }, appState, (event, data) =>
-      serviceEvents.emit("empRegistry", event, data)
+    emps: Services.EmpState({ debug }, appState, appClients),
+    registry: await Services.Registry(
+      { debug, registryAddress: env.EMP_REGISTRY_ADDRESS },
+      appState,
+      appClients,
+      (event, data) => serviceEvents.emit("empRegistry", event, data)
     ),
-    collateralPrices: Services.CollateralPrices({ debug }, appState),
+    collateralPrices: Services.CollateralPrices({ debug }, appState, appClients),
     syntheticPrices: Services.SyntheticPrices(
       {
         debug,
@@ -145,15 +150,19 @@ export default async (env: ProcessEnv) => {
         quandlApiKey: env.quandlApiKey,
         defipulseApiKey: env.defipulseApiKey,
       },
-      appState
+      appState,
+      appClients
     ),
-    erc20s: Services.Erc20s({ debug }, appState),
+    erc20s: Services.Erc20s({ debug }, appState, appClients),
     empStats: Services.stats.Emp({ debug }, appState),
-    marketPrices: Services.MarketPrices({ debug }, appState),
-    lspCreator: await Services.MultiLspCreator({ debug, addresses: lspCreatorAddresses }, appState, (event, data) =>
-      serviceEvents.emit("multiLspCreator", event, data)
+    marketPrices: Services.MarketPrices({ debug }, appState, appClients),
+    lspCreator: await Services.MultiLspCreator(
+      { debug, addresses: lspCreatorAddresses },
+      appState,
+      appClients,
+      (event, data) => serviceEvents.emit("multiLspCreator", event, data)
     ),
-    lsps: Services.LspState({ debug }, appState),
+    lsps: Services.LspState({ debug }, appState, appClients),
     lspStats: Services.stats.Lsp({ debug }, appState),
     globalStats: Services.stats.Global({ debug }, appState),
   };

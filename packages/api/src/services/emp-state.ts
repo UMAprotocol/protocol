@@ -2,17 +2,16 @@ import * as uma from "@uma/sdk";
 import Promise from "bluebird";
 const { emp } = uma.clients;
 import { BatchReadWithErrors, nowS, parseBytes, Profile, toNumber, toString } from "../libs/utils";
-import { AppState, BaseConfig } from "../types";
+import { AppClients, AppState, BaseConfig } from "../types";
 
 type Instance = uma.clients.emp.Instance;
 type Config = BaseConfig;
-type Dependencies = Pick<
-  AppState,
-  "registeredEmps" | "provider" | "emps" | "collateralAddresses" | "syntheticAddresses" | "multicall2"
->;
+type Dependencies = Pick<AppState, "registeredEmps" | "emps" | "collateralAddresses" | "syntheticAddresses">;
 
-export default (config: Config, appState: Dependencies) => {
-  const { registeredEmps, provider, emps, collateralAddresses, syntheticAddresses, multicall2 } = appState;
+export default (config: Config, appState: Dependencies, appClients: AppClients) => {
+  const { registeredEmps, emps, collateralAddresses, syntheticAddresses } = appState;
+  const { multicall2, provider } = appClients;
+
   const profile = Profile(config.debug);
   // default props we want to query on contract
   const staticProps: [string, (x: any) => any][] = [

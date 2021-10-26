@@ -3,7 +3,7 @@ import * as uma from "@uma/sdk";
 import assert from "assert";
 import { ethers } from "ethers";
 import Service from "./lsp-state";
-import type { AppState } from "../types";
+import type { AppClients, AppState } from "../types";
 import { Multicall2 } from "@uma/sdk";
 import * as tables from "../tables";
 // this fixes usage of "this" as any
@@ -11,8 +11,9 @@ import "mocha";
 
 type Dependencies = Pick<
   AppState,
-  "lsps" | "registeredLsps" | "provider" | "collateralAddresses" | "shortAddresses" | "longAddresses" | "multicall2"
+  "lsps" | "registeredLsps" | "collateralAddresses" | "shortAddresses" | "longAddresses"
 >;
+type ClientsDependencies = Pick<AppClients, "provider" | "multicall2">;
 
 // this contract updated to have pairName                                 // does not have pairname
 const registeredContracts = [
@@ -22,6 +23,7 @@ const registeredContracts = [
 
 describe("lsp-state service", function () {
   let appState: Dependencies;
+  let appClients: ClientsDependencies;
   before(async function () {
     assert(process.env.CUSTOM_NODE_URL);
     assert(process.env.MULTI_CALL_2_ADDRESS);
@@ -29,8 +31,6 @@ describe("lsp-state service", function () {
     const registeredLsps = tables.registeredContracts.Table("Registered Lsps");
     await Promise.all(registeredContracts.map((address) => registeredLsps.set({ address, id: address })));
     appState = {
-      provider,
-      multicall2: new Multicall2(process.env.MULTI_CALL_2_ADDRESS, provider),
       registeredLsps,
       collateralAddresses: tables.addresses.Table("Collateral Addresses"),
       longAddresses: tables.addresses.Table("Long Addresses"),
@@ -40,29 +40,33 @@ describe("lsp-state service", function () {
         expired: tables.lsps.Table("Expired LSP"),
       },
     };
+    appClients = {
+      provider,
+      multicall2: new Multicall2(process.env.MULTI_CALL_2_ADDRESS, provider),
+    };
   });
   it("init", async function () {
-    const service = Service({}, appState);
+    const service = Service({}, appState, appClients);
     assert.ok(service);
   });
   it("get collateral balance", async function () {
     const collateralAddress = "0x04Fa0d235C4abf4BcF4787aF4CF447DE572eF828";
-    const service = Service({}, appState);
+    const service = Service({}, appState, appClients);
     const [address] = registeredContracts;
     const result = await service.utils.getErc20BalanceOf(collateralAddress, address);
     assert.ok(result);
   });
   it("getPositionCollateral", async function () {
-    const service = Service({}, appState);
+    const service = Service({}, appState, appClients);
     const [address] = registeredContracts;
-    const instance = await uma.clients.lsp.connect(address, appState.provider);
+    const instance = await uma.clients.lsp.connect(address, appClients.provider);
     const result = await service.utils.getPositionCollateral(instance, address);
     assert.ok(result);
   });
   it("readDynamicState", async function () {
     const [address] = registeredContracts;
-    const service = Service({}, appState);
-    const instance = await uma.clients.lsp.connect(address, appState.provider);
+    const service = Service({}, appState, appClients);
+    const instance = await uma.clients.lsp.connect(address, appClients.provider);
     const result = await service.utils.getDynamicProps(instance, address);
     assert.equal(result.address, address);
     assert.ok(result.updated > 0);
@@ -72,15 +76,15 @@ describe("lsp-state service", function () {
   });
   it("readOptionalState", async function () {
     const [address] = registeredContracts;
-    const service = Service({}, appState);
-    const instance = await uma.clients.lsp.connect(address, appState.provider);
+    const service = Service({}, appState, appClients);
+    const instance = await uma.clients.lsp.connect(address, appClients.provider);
     const result = await service.utils.getOptionalProps(instance, address);
     assert.equal(result.pairName, "SUSHIsBOND July 2024");
   });
   it("readStaticState", async function () {
     const [address] = registeredContracts;
-    const service = Service({}, appState);
-    const instance = await uma.clients.lsp.connect(address, appState.provider);
+    const service = Service({}, appState, appClients);
+    const instance = await uma.clients.lsp.connect(address, appClients.provider);
     const result = await service.utils.getStaticProps(instance, address);
     assert.equal(result.address, address);
     assert.ok(result.updated > 0);
@@ -97,7 +101,7 @@ describe("lsp-state service", function () {
   });
   it("update", async function () {
     this.timeout(60000);
-    const service = Service({}, appState);
+    const service = Service({}, appState, appClients);
     await service.update();
 
     assert.ok((await appState.lsps.active.values()).length || (await appState.lsps.expired.values()).length);

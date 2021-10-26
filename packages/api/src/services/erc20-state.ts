@@ -1,16 +1,17 @@
 import { clients } from "@uma/sdk";
-import { AppState, BaseConfig } from "../types";
+import { AppClients, AppState, BaseConfig } from "../types";
 import { asyncValues } from "../libs/utils";
 
 type Config = BaseConfig;
 // break out this services specific state dependencies
 type Dependencies = Pick<
   AppState,
-  "provider" | "erc20s" | "collateralAddresses" | "syntheticAddresses" | "longAddresses" | "shortAddresses"
+  "erc20s" | "collateralAddresses" | "syntheticAddresses" | "longAddresses" | "shortAddresses"
 >;
 
-export default function (config: Config, appState: Dependencies) {
-  const { provider, erc20s, collateralAddresses, syntheticAddresses, longAddresses, shortAddresses } = appState;
+export default function (config: Config, appState: Dependencies, appClients: AppClients) {
+  const { erc20s, collateralAddresses, syntheticAddresses, longAddresses, shortAddresses } = appState;
+  const { provider } = appClients;
 
   // get token state based on contract
   async function getTokenStateFromContract(address: string) {
