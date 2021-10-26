@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import "./Finder.sol";
 import "./Governor.sol";
 import "./Constants.sol";
+import "./Voting.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -52,18 +53,7 @@ contract Proposer is Ownable {
     }
 
     function resolveProposal(uint256 id) external payable {
-        try governor.executeProposal(id, 0) {} catch {}
-        Governor.Proposal memory proposal = governor.getProposal(id);
-        BondedProposal storage bondedProposal = bondedProposals[id];
-        if (proposal.transactions[0].to == address(0)) {
-            // Proposal was (partially) executed.
-            token.safeTransfer(bondedProposal.sender, bondedProposal.lockedBond);
-            emit ProposalResolved(id, true);
-        } else {
-            token.safeTransfer(finder.getImplementationAddress(OracleInterfaces.Store), bondedProposal.lockedBond);
-            emit ProposalResolved(id, false);
-        }
-        delete bondedProposals[id];
+        require(finder.getImplementationAddress(OracleInterfaces.Oracle));
     }
 
     function setBond(uint256 _bond) public onlyOwner {
