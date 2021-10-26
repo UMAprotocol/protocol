@@ -41,14 +41,14 @@ export type RelayData = {
 export interface EventState {
   oldAdmin?: string;
   newAdmin?: string;
-  tokens: Record<string, Balances>;
-  lpTokens: Record<string, Balances>;
+  tokens: Balances;
+  lpTokens: Balances;
   deposits: Record<string, DepositData>;
   relays: Record<string, RelayData>;
   instantRelays: Record<string, string>;
 }
 
-function eventStateDefaults() {
+export function eventStateDefaults() {
   return {
     tokens: {},
     lpTokens: {},
@@ -63,40 +63,36 @@ export function reduceEvents(state: EventState, event: Event): EventState {
     // event LiquidityAdded(address indexed token, uint256 amount, uint256 lpTokensMinted, address liquidityProvider);
     case "LiquidityAdded": {
       const typedEvent = event as LiquidityAdded;
-      const { token, amount, lpTokensMinted, liquidityProvider } = typedEvent.args;
-      const tokens = Balances(state.tokens[token] || {});
-      const lpTokens = Balances(state.lpTokens[token] || {});
+      const { amount, lpTokensMinted, liquidityProvider } = typedEvent.args;
+      const tokens = Balances(state.tokens || {});
+      const lpTokens = Balances(state.lpTokens || {});
       tokens.add(liquidityProvider, amount.toString());
       lpTokens.add(liquidityProvider, lpTokensMinted.toString());
       return {
         ...state,
         tokens: {
-          ...state.tokens,
-          [token]: tokens.balances,
+          ...tokens.balances,
         },
         lpTokens: {
-          ...state.lpTokens,
-          [token]: lpTokens.balances,
+          ...lpTokens.balances,
         },
       };
     }
     // event LiquidityRemoved(address indexed token, uint256 amount, uint256 lpTokensBurnt, address liquidityProvider);
     case "LiquidityRemoved": {
       const typedEvent = event as LiquidityRemoved;
-      const { token, amount, lpTokensBurnt, liquidityProvider } = typedEvent.args;
-      const tokens = Balances(state.tokens[token] || {});
-      const lpTokens = Balances(state.lpTokens[token] || {});
+      const { amount, lpTokensBurnt, liquidityProvider } = typedEvent.args;
+      const tokens = Balances(state.tokens || {});
+      const lpTokens = Balances(state.lpTokens || {});
       tokens.sub(liquidityProvider, amount.toString());
       lpTokens.sub(liquidityProvider, lpTokensBurnt.toString());
       return {
         ...state,
         tokens: {
-          ...state.tokens,
-          [token]: tokens.balances,
+          ...tokens.balances,
         },
         lpTokens: {
-          ...state.lpTokens,
-          [token]: lpTokens.balances,
+          ...lpTokens.balances,
         },
       };
     }

@@ -536,7 +536,6 @@ describe("BridgePool", () => {
           ev.depositData.slowRelayFeePct === defaultDepositData.slowRelayFeePct &&
           ev.depositData.instantRelayFeePct === defaultDepositData.instantRelayFeePct &&
           ev.depositData.quoteTimestamp === defaultDepositData.quoteTimestamp &&
-          ev.l1Token === l1Token.options.address &&
           ev.relay.slowRelayer === relayer &&
           ev.relay.relayId.toString() === relayAttemptData.relayId.toString() &&
           ev.relay.realizedLpFeePct === relayAttemptData.realizedLpFeePct &&
