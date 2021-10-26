@@ -470,6 +470,23 @@ describe("BridgePool", () => {
       const relayStatus = await bridgePool.methods.relays(defaultDepositHash).call();
       assert.equal(relayStatus, defaultRelayHash);
     });
+    it("Relay checks", async () => {
+      // Proposer approves pool to withdraw total bond.
+      // Approve and mint many tokens to the relayer.
+      await l1Token.methods.approve(bridgePool.options.address, MAX_UINT_VAL).send({ from: relayer });
+      await l1Token.methods.mint(relayer, toWei("100000")).send({ from: owner });
+      await bridgePool.methods
+        .relayDeposit(...generateRelayParams({ amount: toBN(initialPoolLiquidity).subn(1).toString() }))
+        .send({ from: relayer });
+      await didContractThrow(
+        bridgePool.methods.relayDeposit(...generateRelayParams({ amount: "2" })).send({ from: relayer })
+      );
+      await didContractThrow(
+        bridgePool.methods
+          .relayAndSpeedUp({ ...defaultDepositData, amount: "2" }, defaultRealizedLpFee)
+          .send({ from: relayer })
+      );
+    });
     it("Requests and proposes optimistic price request", async () => {
       // Cache price request timestamp.
       const requestTimestamp = (await bridgePool.methods.getCurrentTime().call()).toString();
