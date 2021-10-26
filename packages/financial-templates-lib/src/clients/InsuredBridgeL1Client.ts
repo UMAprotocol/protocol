@@ -243,7 +243,7 @@ export class InsuredBridgeL1Client {
           slowRelayer: depositRelayedEvent.returnValues.relay.slowRelayer,
           disputedSlowRelayers: [],
           l1Recipient: depositRelayedEvent.returnValues.depositData.l1Recipient,
-          l1Token: depositRelayedEvent.returnValues.l1Token,
+          l1Token: l1Token,
           amount: depositRelayedEvent.returnValues.depositData.amount,
           slowRelayFeePct: depositRelayedEvent.returnValues.depositData.slowRelayFeePct,
           instantRelayFeePct: depositRelayedEvent.returnValues.depositData.instantRelayFeePct,
