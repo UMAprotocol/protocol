@@ -12,16 +12,16 @@ describe("BridgePool.ReadClient", function () {
   let provider: Provider;
   beforeAll(async () => {
     provider = ethers.getDefaultProvider(process.env.CUSTOM_NODE_URL);
-    client = await ReadClient(address, provider, multicall2Address);
+    client = new ReadClient(address, provider, multicall2Address);
   });
   test("getPoolState", async function () {
-    const result = await client();
+    const result = await client.read();
     assert.ok(result.pool.totalPoolSize);
     assert.ok(result.pool.l1Token);
     assert.ok(result.pool.address);
   });
   test("getUserState", async function () {
-    const result = await client("0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D");
+    const result = await client.read("0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D");
     console.log(result);
     assert.ok(result.user.address);
     assert.ok(result.user.lpTokens);

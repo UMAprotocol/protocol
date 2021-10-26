@@ -24,19 +24,20 @@ const address = "0xf42bB7EC88d065dF48D60cb672B88F8330f9f764"
 const provider = ethers.getDefaultProvider(process.env.CUSTOM_NODE_URL)
 
 // Initializes the read client
-const getState = await ReadClient(address, provider, multicall2Address)
+const readClient = new ReadClient(address, provider, multicall2Address)
 
 // to get pool state, omit any values
-const poolState = await getState()
+const poolState = await readClient.read()
 //{
 //  pool: {
+//    address: '0xf42bB7EC88d065dF48D60cb672B88F8330f9f764',
 //    totalPoolSize: '13900116882750652331',
 //    l1Token: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2'
 //  }
 //}
 
 // to get user and pool state, provide a users public address
-const userState = await getState("0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D")
+const userState = await readClient.read("0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D")
 //{
 //  user: {
 //    address: '0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D',
@@ -46,6 +47,7 @@ const userState = await getState("0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D")
 //    feesEarned: '541941830509'
 //  },
 //  pool: {
+//    address: '0xf42bB7EC88d065dF48D60cb672B88F8330f9f764',
 //    totalPoolSize: '13900116882750652331',
 //    l1Token: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2'
 //  }
