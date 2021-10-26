@@ -650,7 +650,7 @@ contract BridgePool is Testable, BridgePoolInterface, ERC20, Lockable {
         // (relayedAmount + pendingReserves + max(utilizedReserves,0)) / (liquidReserves + max(utilizedReserves,0))
         // UtilizedReserves has a dual meaning: if it's greater than zero then it represents funds pending in the bridge
         // that will flow from L2 to L1. In this case, we can use it normally in the equation. However, if it is
-        // negative, then it is already counted in liquidReserves. This occurs if someone dumps tokens on the contract.
+        // negative, then it is already counted in liquidReserves. This occurs if tokens are transferred directly to the contract.
         // In this case, ignore it as it is captured within liquid reserves and has no meaning in the numerator.
         uint256 flooredUtilizedReserves = utilizedReserves > 0 ? uint256(utilizedReserves) : 0;
         uint256 numerator = relayedAmount + pendingReserves + flooredUtilizedReserves;
