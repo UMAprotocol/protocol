@@ -2092,7 +2092,7 @@ describe("BridgePool", () => {
       await l1Token.methods.mint(relayer, totalRelayBond.muln(10)).send({ from: owner });
       await l1Token.methods.approve(bridgePool.options.address, totalRelayBond.muln(10)).send({ from: relayer });
     });
-    it("Rate updates as expected in slow relay", async () => {
+    it.only("Rate updates as expected in slow relay", async () => {
       // Before any relays (nothing in flight and none finalized) the rate should be 0 (no utilization).
       assert.equal((await bridgePool.methods.liquidityUtilizationCurrent().call()).toString(), toWei("0"));
 
@@ -2114,11 +2114,10 @@ describe("BridgePool", () => {
       assert.equal((await bridgePool.methods.liquidityUtilizationCurrent().call()).toString(), toWei("0.1"));
 
       // Advance time and settle the relay. This will send  funds from the bridge pool to the recipient and slow relayer.
-      // After this action, the utilized reserves should increase. The conclusion of the bridging action pays the slow
+      // After this action, the utilized reserves should decrease. The conclusion of the bridging action pays the slow
       // relayer their reward of 1% and the recipient their bridged amount of 89% of the 100 bridged (100%-1%-10%).
       // As a result, the pool should have it's initial balance, minus recipient amount, minus slow relayer reward.
-      // i.e 1000-1-89=910. As a result, the utalized reserves should be at 100 and the liquid reserves should be 910.
-      // With this, the pool liquidity utilization should be equal to 100/910=0.109890109890109890
+      // i.e 1000-1-89=910. The liquidity utilization ratio should therefore be 100 / (910 + 100) = 0.099009900990099009
 
       // Settle the relay action.
       await advanceTime(defaultLiveness);
@@ -2131,7 +2130,7 @@ describe("BridgePool", () => {
       assert.equal((await l1Token.methods.balanceOf(l1Recipient).call()).toString(), toWei("89"));
       assert.equal(
         (await bridgePool.methods.liquidityUtilizationCurrent().call()).toString(),
-        toWei("0.109890109890109890")
+        toWei("0.099009900990099009")
       );
 
       // Mimic the finilization of the bridging action over the canonical bridge by minting tokens to the bridgepool.
@@ -2141,7 +2140,7 @@ describe("BridgePool", () => {
 
       assert.equal((await bridgePool.methods.liquidityUtilizationCurrent().call()).toString(), toWei("0"));
     });
-    it("Rate updates as expected with multiple relays and instant relay", async () => {
+    it.only("Rate updates as expected with multiple relays and instant relay", async () => {
       // Before any relays (nothing in flight and none finalized) the rate should be 0 (no utilization).
       assert.equal((await bridgePool.methods.liquidityUtilizationCurrent().call()).toString(), toWei("0"));
 
@@ -2194,7 +2193,7 @@ describe("BridgePool", () => {
         toWei("0.274725274725274725")
       );
 
-      // Finally, mimic the finalization of the first relay by minting tokens to the pool. After this action, the pool
+      // Mimic the finalization of the first relay by minting tokens to the pool. After this action, the pool
       // will gain 100 tokens from the first deposit. At this point the pendingReserves should be 150 (as before), liquid
       // reserves are now 1010 and utilized reserves are set to 0. The utilization ratio is: (150+0)/1010=0.148514851485148514
       await l1Token.methods.mint(bridgePool.options.address, relayAmount).send({ from: owner });
@@ -2202,6 +2201,16 @@ describe("BridgePool", () => {
         (await bridgePool.methods.liquidityUtilizationCurrent().call()).toString(),
         toWei("0.148514851485148514")
       );
+
+      // Advance time to accumulate more fees. This should not change the utilization rate.
+      await advanceTime(defaultLiveness);
+      await bridgePool.methods.exchangeRateCurrent().send({ from: owner }); // enforce fees are accumulated.
+      assert.equal(
+        (await bridgePool.methods.liquidityUtilizationCurrent().call()).toString(),
+        toWei("0.148514851485148514")
+      );
+      // Finally relay another deposit. This should modify the utilization
+      await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: relayer });
     });
   });
   describe("Canonical bridge finalizing before insured bridge settlement edge cases", () => {

@@ -646,25 +646,23 @@ contract BridgePool is Testable, BridgePoolInterface, ERC20, Lockable {
     function liquidityUtilizationPostRelay(uint256 relayedAmount) public returns (uint256) {
         sync(); // Fetch any balance changes due to token bridging finalization and factor them in.
 
-        // The liquidity utilization ratio is the ratio of utilized liquidity (pendingReserves + relayedAmount
-        // +utilizedReserves) divided by the liquid reserves.
-        int256 numerator = int256(pendingReserves + relayedAmount);
-        numerator += utilizedReserves;
+        // liquidityUtilizationRatio := (relayedAmount + pendingReserves + utilizedReserves) / (liquidReserves + utilizedReserves)
 
-        // The numerator could be less than zero iff pending reserves is zero, relayed amount is zero and utilizedReserves
-        // is negative. This could happen if tokens are sent to the bridge after deployment without any relays yet
-        // having happened.
-        if (numerator < 0) return 0;
+        int256 numerator = int256(relayedAmount + pendingReserves) + utilizedReserves;
 
-        // There are two cases where liquid reserves could be zero. Handle accordingly to avoid division by zero:
-        // a) the pool is new and there no funds in it nor any bridging actions have happened. In this case the
-        // numerator is 0 and liquid reserves are 0. The utilization is therefore 0.
-        if (numerator == 0 && liquidReserves == 0) return 0;
+        int256 denominator = int256(liquidReserves) + utilizedReserves;
+
+        // Both the numerator and the denominator could go zero iff utilizedReserves is large and negative. This could
+        // happen if tokens are dumped on the contract in size greater than the bridged amount.
+        if (numerator < 0 || denominator < 0) return 0;
+
+        // There are cases where the numerator or denominator could be 0. Catch these cases to avoid division by 0.
+        if (numerator == 0 && denominator == 0) return 0;
         // b) the numerator is more than 0 and the liquid reserves are 0. in this case, The pool is at 100% utilization.
-        if (numerator > 0 && liquidReserves == 0) return 1e18;
+        if (numerator > 0 && denominator == 0) return 1e18;
 
         // In all other cases, return the utilization ratio.
-        return (uint256(numerator) * 1e18) / liquidReserves;
+        return uint256((numerator * 1e18) / denominator);
     }
 
     /**
