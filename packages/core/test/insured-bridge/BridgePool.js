@@ -470,6 +470,23 @@ describe("BridgePool", () => {
       const relayStatus = await bridgePool.methods.relays(defaultDepositHash).call();
       assert.equal(relayStatus, defaultRelayHash);
     });
+    it("Relay checks", async () => {
+      // Proposer approves pool to withdraw total bond.
+      // Approve and mint many tokens to the relayer.
+      await l1Token.methods.approve(bridgePool.options.address, MAX_UINT_VAL).send({ from: relayer });
+      await l1Token.methods.mint(relayer, toWei("100000")).send({ from: owner });
+      await bridgePool.methods
+        .relayDeposit(...generateRelayParams({ amount: toBN(initialPoolLiquidity).subn(1).toString() }))
+        .send({ from: relayer });
+      await didContractThrow(
+        bridgePool.methods.relayDeposit(...generateRelayParams({ amount: "2" })).send({ from: relayer })
+      );
+      await didContractThrow(
+        bridgePool.methods
+          .relayAndSpeedUp({ ...defaultDepositData, amount: "2" }, defaultRealizedLpFee)
+          .send({ from: relayer })
+      );
+    });
     it("Requests and proposes optimistic price request", async () => {
       // Cache price request timestamp.
       const requestTimestamp = (await bridgePool.methods.getCurrentTime().call()).toString();
@@ -519,7 +536,6 @@ describe("BridgePool", () => {
           ev.depositData.slowRelayFeePct === defaultDepositData.slowRelayFeePct &&
           ev.depositData.instantRelayFeePct === defaultDepositData.instantRelayFeePct &&
           ev.depositData.quoteTimestamp === defaultDepositData.quoteTimestamp &&
-          ev.l1Token === l1Token.options.address &&
           ev.relay.slowRelayer === relayer &&
           ev.relay.relayId.toString() === relayAttemptData.relayId.toString() &&
           ev.relay.realizedLpFeePct === relayAttemptData.realizedLpFeePct &&
@@ -1772,6 +1788,32 @@ describe("BridgePool", () => {
       assert.equal(await bridgePool.methods.pendingReserves().call(), "0");
       assert.equal(await bridgePool.methods.liquidReserves().call(), "0");
       assert.equal(await bridgePool.methods.utilizedReserves().call(), defaultDepositData.amount);
+    });
+    it("Can add liquidity multiple times", async () => {
+      // Approve funds and add to liquidity. The first addLiquidity always succeeds because `totalSupply = 0` so
+      // exchangeRateCurrent() always returns 1e18. In this test we test that subsequent calls to exchangeRateCurrent()
+      // from addLiquidity modify state as expected.
+      await l1Token.methods.approve(bridgePool.options.address, MAX_UINT_VAL).send({ from: liquidityProvider });
+      await bridgePool.methods.addLiquidity(initialPoolLiquidity).send({ from: liquidityProvider });
+
+      // Initiate a relay. The relay amount is 10% of the total pool liquidity.
+      await l1Token.methods.approve(bridgePool.options.address, MAX_UINT_VAL).send({ from: relayer });
+
+      // Utilized reserves are 0 before any relays. Added liquidity is available as liquid reserves.
+      assert.equal(await bridgePool.methods.utilizedReserves().call(), "0");
+      assert.equal(await bridgePool.methods.liquidReserves().call(), initialPoolLiquidity);
+
+      // Add more liquidity:
+      await l1Token.methods.mint(liquidityProvider, initialPoolLiquidity).send({ from: owner });
+      await bridgePool.methods.addLiquidity(initialPoolLiquidity).send({ from: liquidityProvider });
+
+      // Liquid reserves captures the two added liquidity transfers.
+      assert.equal(await bridgePool.methods.utilizedReserves().call(), "0");
+      assert.equal(await bridgePool.methods.liquidReserves().call(), toBN(initialPoolLiquidity).mul(toBN("2")));
+
+      // The above equation would fail if `addLiquidity()` transferred tokens to the contract before updating internal
+      // state via `sync()`, which checks the contract's balance and uses the number to update liquid + utilized
+      // reserves. If the contract's balance is higher than expected, then this state can be incorrect.
     });
   });
   describe("Virtual balance accounting", () => {

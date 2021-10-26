@@ -8,11 +8,21 @@ import { Datastore } from "@google-cloud/datastore";
 import * as Services from "../../services";
 import Express from "../../services/express-channels";
 import * as Actions from "../../services/actions";
-import { appStats, empStats, empStatsHistory, lsps, StoresFactory } from "../../tables";
+import {
+  addresses,
+  appStats,
+  empStats,
+  empStatsHistory,
+  lsps,
+  priceSamples,
+  registeredContracts,
+  StoresFactory,
+  tvl,
+} from "../../tables";
 import Zrx from "../../libs/zrx";
 import { Profile, parseEnvArray, getWeb3, BlockInterval, expirePromise } from "../../libs/utils";
 
-import type { ProcessEnv, Channels, DatastoreAppState } from "../../types";
+import type { ProcessEnv, Channels, AppState } from "../../types";
 
 export default async (env: ProcessEnv) => {
   assert(env.CUSTOM_NODE_URL, "requires CUSTOM_NODE_URL");
@@ -47,7 +57,7 @@ export default async (env: ProcessEnv) => {
   const datastoreClient = new Datastore();
   const datastores = StoresFactory(datastoreClient);
   // state shared between services
-  const appState: DatastoreAppState = {
+  const appState: AppState = {
     provider,
     web3,
     coingecko: new Coingecko(),
@@ -58,17 +68,17 @@ export default async (env: ProcessEnv) => {
     },
     prices: {
       usd: {
-        latest: {},
+        latest: priceSamples.Table("Latest Usd Prices", datastores.latestUsdPrices),
         history: {},
       },
     },
     synthPrices: {
-      latest: {},
+      latest: priceSamples.Table("Latest Synth Prices", datastores.latestSynthPrices),
       history: {},
     },
     marketPrices: {
       usdc: {
-        latest: {},
+        latest: priceSamples.Table("Latest USDC Market Prices", datastores.latestUsdcMarketPrices),
         history: empStatsHistory.Table("Market Price", datastores.empStatsHistory),
       },
     },
@@ -100,7 +110,7 @@ export default async (env: ProcessEnv) => {
       global: {
         usd: {
           latest: {
-            tvl: [0, "0"],
+            tvl: tvl.Table("Latest Usd Global Tvl", datastores.globalUsdLatestTvl),
           },
           history: {
             tvl: empStatsHistory.Table("Tvl Global History"),
@@ -108,16 +118,13 @@ export default async (env: ProcessEnv) => {
         },
       },
     },
-    lastBlockUpdate: 0,
-    registeredEmps: new Set<string>(),
-    registeredEmpsMetadata: new Map(),
-    registeredLsps: new Set<string>(),
-    registeredLspsMetadata: new Map(),
-    collateralAddresses: new Set<string>(),
-    syntheticAddresses: new Set<string>(),
+    registeredEmps: registeredContracts.Table("Registered Emps", datastores.registeredEmps),
+    registeredLsps: registeredContracts.Table("Registered Lsps", datastores.registeredLsps),
+    collateralAddresses: addresses.Table("Collateral Addresses", datastores.collateralAddresses),
+    syntheticAddresses: addresses.Table("Synthetic Addresses", datastores.syntheticAddresses),
     // lsp related props. could be its own state object
-    longAddresses: new Set<string>(),
-    shortAddresses: new Set<string>(),
+    longAddresses: addresses.Table("Long Addresses", datastores.longAddresses),
+    shortAddresses: addresses.Table("Short Addresses", datastores.shortAddresses),
     multicall2: new Multicall2(env.MULTI_CALL_2_ADDRESS, provider),
     lsps: {
       active: lsps.Table("Active LSP", datastores.lspsActive),

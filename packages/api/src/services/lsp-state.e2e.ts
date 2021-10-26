@@ -5,20 +5,13 @@ import { ethers } from "ethers";
 import Service from "./lsp-state";
 import type { AppState } from "../types";
 import { Multicall2 } from "@uma/sdk";
-import { lsps } from "../tables";
+import * as tables from "../tables";
 // this fixes usage of "this" as any
 import "mocha";
 
 type Dependencies = Pick<
   AppState,
-  | "lsps"
-  | "registeredLsps"
-  | "provider"
-  | "collateralAddresses"
-  | "shortAddresses"
-  | "longAddresses"
-  | "multicall2"
-  | "registeredLspsMetadata"
+  "lsps" | "registeredLsps" | "provider" | "collateralAddresses" | "shortAddresses" | "longAddresses" | "multicall2"
 >;
 
 // this contract updated to have pairName                                 // does not have pairname
@@ -33,18 +26,19 @@ describe("lsp-state service", function () {
     assert(process.env.CUSTOM_NODE_URL);
     assert(process.env.MULTI_CALL_2_ADDRESS);
     const provider = new ethers.providers.WebSocketProvider(process.env.CUSTOM_NODE_URL);
+    const registeredLsps = tables.registeredContracts.Table("Registered Lsps");
+    await Promise.all(registeredContracts.map((address) => registeredLsps.set({ address, id: address })));
     appState = {
       provider,
       multicall2: new Multicall2(process.env.MULTI_CALL_2_ADDRESS, provider),
-      registeredLsps: new Set<string>(registeredContracts),
-      collateralAddresses: new Set<string>(),
-      longAddresses: new Set<string>(),
-      shortAddresses: new Set<string>(),
+      registeredLsps,
+      collateralAddresses: tables.addresses.Table("Collateral Addresses"),
+      longAddresses: tables.addresses.Table("Long Addresses"),
+      shortAddresses: tables.addresses.Table("Short Addresses"),
       lsps: {
-        active: lsps.Table("Active LSP"),
-        expired: lsps.Table("Expired LSP"),
+        active: tables.lsps.Table("Active LSP"),
+        expired: tables.lsps.Table("Expired LSP"),
       },
-      registeredLspsMetadata: new Map(),
     };
   });
   it("init", async function () {
@@ -107,8 +101,8 @@ describe("lsp-state service", function () {
     await service.update();
 
     assert.ok((await appState.lsps.active.values()).length || (await appState.lsps.expired.values()).length);
-    assert.ok([...appState.collateralAddresses.values()].length);
-    assert.ok([...appState.longAddresses.values()].length);
-    assert.ok([...appState.shortAddresses.values()].length);
+    assert.ok([...(await appState.collateralAddresses.keys())].length);
+    assert.ok([...(await appState.longAddresses.keys())].length);
+    assert.ok([...(await appState.shortAddresses.keys())].length);
   });
 });

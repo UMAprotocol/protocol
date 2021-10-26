@@ -100,3 +100,7 @@ const gasPrice = await ethersProvider.getGasPrice() // you will need to get an e
 const result = utils.calculateGasFees(gas, gasPrice)
 const userDisplay = fromWei(result)
 ```
+
+### Contract Clients
+
+- [BridgePool Client](./clients/README.md)

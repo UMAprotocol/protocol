@@ -25,7 +25,7 @@ export default function (config: Config, appState: Dependencies) {
 
   // utility to grab last price based on address
   function getLatestPrice(address: string) {
-    const result = prices[currency].latest[address];
+    const result = prices[currency].latest.get(address);
     assert(uma.utils.exists(result), "no latest price found for: " + address);
     return result;
   }
@@ -33,7 +33,7 @@ export default function (config: Config, appState: Dependencies) {
   // pulls price from latest and stuffs it into historical table.
   async function updatePriceHistory(address: string) {
     const table = getOrCreateHistoryTable(address);
-    const [timestamp, price] = getLatestPrice(address);
+    const { price, timestamp } = await getLatestPrice(address);
     // if this timestamp exists in the table, dont bother re-adding it
     assert(uma.utils.exists(price), "No latest price available for: " + address);
     assert(
@@ -48,10 +48,15 @@ export default function (config: Config, appState: Dependencies) {
   }
 
   // does not do any queries, just a helper to mutate the latest price table
-  function updateLatestPrice(params: { address: string; price: number; timestamp: number }) {
+  async function updateLatestPrice(params: { address: string; price: number; timestamp: number }) {
     const { address, timestamp, price } = params;
     // we need to store prices in wei, so use parse units on this price
-    prices[currency].latest[address] = [timestamp, parseUnits(price.toString()).toString()];
+    await prices[currency].latest.set({
+      id: address,
+      address,
+      timestamp,
+      price: parseUnits(price.toString()).toString(),
+    });
     return params;
   }
 
@@ -62,7 +67,7 @@ export default function (config: Config, appState: Dependencies) {
 
   // Currently we just care about collateral prices
   async function update() {
-    const addresses = Array.from(collateralAddresses.values());
+    const addresses = await collateralAddresses.keys();
     await updateLatestPrices(addresses).catch((err) => {
       console.error("Error getting LatestPrice: " + err.message);
     });
@@ -102,7 +107,7 @@ export default function (config: Config, appState: Dependencies) {
   }
 
   async function backfill(startMs: number) {
-    const addresses = Array.from(collateralAddresses.values());
+    const addresses = await collateralAddresses.keys();
     await backfillHistories(addresses, startMs).then((results) => {
       results.forEach((result) => {
         if (result.status === "rejected") console.error("Error backfilling prices: " + result.reason.message);

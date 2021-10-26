@@ -44,6 +44,7 @@
     "highland": "^2.13.5",
     "lodash-es": "^4.17.21",
     "web3": "^1.6.0"
+    "lodash": "^4.17.21"
   },
   "peerDependencies": {
     "ethers": "^5.4.2"
