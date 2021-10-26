@@ -133,22 +133,11 @@ contract BridgePool is Testable, BridgePoolInterface, ERC20, Lockable {
     // to determine if there was a valid instant relayer.
     mapping(bytes32 => address) public instantRelays;
 
-    event LiquidityAdded(
-        address indexed token,
-        uint256 amount,
-        uint256 lpTokensMinted,
-        address indexed liquidityProvider
-    );
-    event LiquidityRemoved(
-        address indexed token,
-        uint256 amount,
-        uint256 lpTokensBurnt,
-        address indexed liquidityProvider
-    );
+    event LiquidityAdded(uint256 amount, uint256 lpTokensMinted, address indexed liquidityProvider);
+    event LiquidityRemoved(uint256 amount, uint256 lpTokensBurnt, address indexed liquidityProvider);
     event DepositRelayed(
         bytes32 indexed depositHash,
         DepositData depositData,
-        address l1Token,
         RelayData relay,
         bytes32 relayAncillaryDataHash
     );
@@ -225,7 +214,7 @@ contract BridgePool is Testable, BridgePoolInterface, ERC20, Lockable {
 
         liquidReserves += l1TokenAmount;
 
-        emit LiquidityAdded(address(l1Token), l1TokenAmount, lpTokensToMint, msg.sender);
+        emit LiquidityAdded(l1TokenAmount, lpTokensToMint, msg.sender);
     }
 
     /**
@@ -251,7 +240,7 @@ contract BridgePool is Testable, BridgePoolInterface, ERC20, Lockable {
         if (sendEth) _unwrapWETHTo(payable(msg.sender), l1TokensToReturn);
         else l1Token.safeTransfer(msg.sender, l1TokensToReturn);
 
-        emit LiquidityRemoved(address(l1Token), l1TokensToReturn, lpTokenAmount, msg.sender);
+        emit LiquidityRemoved(l1TokensToReturn, lpTokenAmount, msg.sender);
     }
 
     /**************************************
@@ -345,7 +334,7 @@ contract BridgePool is Testable, BridgePoolInterface, ERC20, Lockable {
             // Else, this is a normal ERC20 token. Send to recipient.
         } else l1Token.safeTransfer(depositData.l1Recipient, recipientAmount);
 
-        emit DepositRelayed(depositHash, depositData, address(l1Token), relayData, relayHash);
+        emit DepositRelayed(depositHash, depositData, relayData, relayHash);
         emit RelaySpedUp(depositHash, msg.sender, relayData);
     }
 
@@ -446,7 +435,7 @@ contract BridgePool is Testable, BridgePoolInterface, ERC20, Lockable {
         pendingReserves += depositData.amount; // Book off maximum liquidity used by this relay in the pending reserves.
         bonds += totalBond;
 
-        emit DepositRelayed(depositHash, depositData, address(l1Token), relayData, relayHash);
+        emit DepositRelayed(depositHash, depositData, relayData, relayHash);
     }
 
     /**
