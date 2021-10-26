@@ -648,7 +648,7 @@ contract BridgePool is Testable, BridgePoolInterface, ERC20, Lockable {
 
         // liquidityUtilizationRatio :=
         // (relayedAmount + pendingReserves + max(utilizedReserves,0)) / (liquidReserves + max(utilizedReserves,0))
-        // UtilizedReserves has a duel meaning: if it's greater than zero it is funds pending in the bridge, flowing
+        // UtilizedReserves has a duel meaning: if it's greater than zero it represents funds pending in the bridge that will flow
         // from L2 to L1. In this case, we can use it normally in the equation. However, if it is negative, then it is
         // already counted in liquidReserves. This occurs if someone dumps tokens on the contract. In this case,
         // ignore it as it is captured within liquid reserves and has no meaning in the numerator.
