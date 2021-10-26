@@ -646,7 +646,8 @@ contract BridgePool is Testable, BridgePoolInterface, ERC20, Lockable {
     function liquidityUtilizationPostRelay(uint256 relayedAmount) public returns (uint256) {
         sync(); // Fetch any balance changes due to token bridging finalization and factor them in.
 
-        // liquidityUtilizationRatio := (relayedAmount + pendingReserves + utilizedReserves) / (liquidReserves + utilizedReserves)
+        // liquidityUtilizationRatio :=
+        // (relayedAmount + pendingReserves + utilizedReserves) / (liquidReserves + utilizedReserves)
 
         int256 numerator = int256(relayedAmount + pendingReserves) + utilizedReserves;
 
