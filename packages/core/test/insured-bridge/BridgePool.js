@@ -2167,12 +2167,12 @@ describe("BridgePool", () => {
       // bridgepool. This should bring the bridge pool balance up to 1010 (the initial 1000 + 10% LP reward from
       // bridging action). Utilization should go back to same value it was right before the second relay.
       await l1Token.methods.mint(bridgePool.options.address, relayAmount).send({ from: owner });
-      await bridgePool.methods.sync().send({ from: owner }); // Sync state to get updated reserve values that we
-      // can verify.
       assert.equal(
         (await bridgePool.methods.liquidityUtilizationCurrent().call()).toString(),
         toWei("0.099009900990099009")
       );
+      await bridgePool.methods.sync().send({ from: owner }); // Sync state to get updated reserve values that we
+      // can verify.
       assert.equal((await bridgePool.methods.pendingReserves().call()).toString(), toWei("100"));
       assert.equal((await bridgePool.methods.liquidReserves().call()).toString(), toWei("1010"));
       assert.equal((await bridgePool.methods.utilizedReserves().call()).toString(), toWei("0"));
