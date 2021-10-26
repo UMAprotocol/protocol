@@ -605,8 +605,8 @@ contract BridgePool is Testable, BridgePoolInterface, ERC20, Lockable {
      * @param relayedAmount Size of the relayed deposit to factor into the utilization calculation.
      * @return The updated utilization ratio accounting for a new `relayedAmount`.
      */
-    function liquidityUtilizationPostRelay() public nonReentrant() returns (uint256) {
-        return _liquidityUtilizationPostRelay(0);
+    function liquidityUtilizationPostRelay(uint256 relayedAmount) public nonReentrant() returns (uint256) {
+        return _liquidityUtilizationPostRelay(relayedAmount);
     }
 
     /**
