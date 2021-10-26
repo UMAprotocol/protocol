@@ -214,10 +214,12 @@ contract BridgePool is Testable, BridgePoolInterface, ERC20, Lockable {
         // Else, msg.value must be set to 0.
         require((isWethPool && msg.value == l1TokenAmount) || msg.value == 0, "Bad add liquidity Eth value");
 
+        // Since `exchangeRateCurrent()` reads this contract's balance and updates contract state using it,
+        // we must call it first before transferring any tokens to this contract.
+        uint256 lpTokensToMint = (l1TokenAmount * 1e18) / exchangeRateCurrent();
+
         if (msg.value > 0 && isWethPool) WETH9Like(address(l1Token)).deposit{ value: msg.value }();
         else l1Token.safeTransferFrom(msg.sender, address(this), l1TokenAmount);
-
-        uint256 lpTokensToMint = (l1TokenAmount * 1e18) / exchangeRateCurrent();
 
         _mint(msg.sender, lpTokensToMint);
 
