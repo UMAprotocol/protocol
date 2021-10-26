@@ -242,7 +242,6 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
         require(liquidReserves >= (pendingReserves + l1TokensToReturn), "Utilization too high to remove");
 
         _burn(msg.sender, lpTokenAmount);
-
         liquidReserves -= l1TokensToReturn;
 
         if (sendEth) _unwrapWETHTo(payable(msg.sender), l1TokensToReturn);
@@ -329,12 +328,12 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
         // If the L1 token is WETH then: a) pull WETH from instant relayer b) unwrap WETH c) send ETH to recipient.
         uint256 recipientAmount = depositData.amount - feesTotal;
 
-        l1Token.safeTransferFrom(msg.sender, address(this), recipientAmount + totalBond);
         bonds += totalBond;
-
         pendingReserves += depositData.amount; // Book off maximum liquidity used by this relay in the pending reserves.
 
         instantRelays[instantRelayHash] = msg.sender;
+
+        l1Token.safeTransferFrom(msg.sender, address(this), recipientAmount + totalBond);
 
         // If this is a weth pool then unwrap and send eth.
         if (isWethPool) {
@@ -438,11 +437,10 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
 
         // Compute total proposal bond and pull from caller so that the OptimisticOracle can pull it from here.
         uint256 totalBond = proposerBond + l1TokenFinalFee;
-        l1Token.safeTransferFrom(msg.sender, address(this), totalBond);
-
         pendingReserves += depositData.amount; // Book off maximum liquidity used by this relay in the pending reserves.
         bonds += totalBond;
 
+        l1Token.safeTransferFrom(msg.sender, address(this), totalBond);
         emit DepositRelayed(depositHash, depositData, address(l1Token), relayData, relayHash);
     }
 
