@@ -618,9 +618,10 @@ contract BridgePool is Testable, BridgePoolInterface, ERC20, Lockable {
      */
     function getLiquidityUtilization(uint256 relayedAmount)
         public
+        nonReentrant()
         returns (uint256 utilizationCurrent, uint256 utilizationPostRelay)
     {
-        return (liquidityUtilizationCurrent(), _liquidityUtilizationPostRelay(relayedAmount));
+        return (_liquidityUtilizationPostRelay(0), _liquidityUtilizationPostRelay(relayedAmount));
     }
 
     /**
