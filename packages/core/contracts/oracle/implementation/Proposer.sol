@@ -52,7 +52,7 @@ contract Proposer is Ownable, Testable {
      * @notice Propose a new set of governance transactions for vote.
      * @dev Pulls bond from the caller.
      * @param transactions list of transactions for the governor to execute.
-     * @return the id of the governor proposal.
+     * @return id the id of the governor proposal.
      */
     function propose(Governor.Transaction[] memory transactions) public returns (uint256 id) {
         id = governor.numProposals();
