@@ -664,6 +664,20 @@ contract BridgePool is Testable, BridgePoolInterface, ERC20, Lockable {
     }
 
     /**
+     * @notice Return both the current utilization value and liquidity utilization post the relay.
+     * @dev Used in computing realizedLpFeePct off-chain.
+     * @param relayedAmount Size of the relayed deposit to factor into the utilization calculation.
+     * @return utilizationCurrent The current utilization ratio.
+     * @return utilizationPostRelay The updated utilization ratio accounting for a new `relayedAmount`.
+     */
+    function getLiquidityUtilization(uint256 relayedAmount)
+        public
+        returns (uint256 utilizationCurrent, uint256 utilizationPostRelay)
+    {
+        return (liquidityUtilizationCurrent(), liquidityUtilizationPostRelay(relayedAmount));
+    }
+
+    /**
      * @notice Updates the address stored in this contract for the OptimisticOracle and the Store to the latest versions
      * set in the the Finder. Also pull finalFee Store these as local variables to make relay methods gas efficient.
      * @dev There is no risk of leaving this function public for anyone to call as in all cases we want the addresses
@@ -788,10 +802,8 @@ contract BridgePool is Testable, BridgePoolInterface, ERC20, Lockable {
     function allocateLpFees(uint256 allocatedLpFees) internal {
         // Add to the total undistributed LP fees and the utilized reserves. Adding it to the utilized reserves acts to
         // track the fees while they are in transit.
-        if (allocatedLpFees > 0) {
-            undistributedLpFees += allocatedLpFees;
-            utilizedReserves += int256(allocatedLpFees);
-        }
+        undistributedLpFees += allocatedLpFees;
+        utilizedReserves += int256(allocatedLpFees);
     }
 
     function _getAmountFromPct(uint64 percent, uint256 amount) private pure returns (uint256) {
