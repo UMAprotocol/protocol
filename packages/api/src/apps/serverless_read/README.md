@@ -1,4 +1,4 @@
-# Uma Serverless Ingestor App
+# Uma Serverless Read App
 
 This is the application that exposes the Google Datastore application state through an Express server. It is designed to be lightweight and stateless.
 
