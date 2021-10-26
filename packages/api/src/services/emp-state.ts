@@ -8,25 +8,11 @@ type Instance = uma.clients.emp.Instance;
 type Config = BaseConfig;
 type Dependencies = Pick<
   AppState,
-  | "registeredEmps"
-  | "provider"
-  | "emps"
-  | "collateralAddresses"
-  | "syntheticAddresses"
-  | "registeredEmpsMetadata"
-  | "multicall2"
+  "registeredEmps" | "provider" | "emps" | "collateralAddresses" | "syntheticAddresses" | "multicall2"
 >;
 
 export default (config: Config, appState: Dependencies) => {
-  const {
-    registeredEmps,
-    registeredEmpsMetadata,
-    provider,
-    emps,
-    collateralAddresses,
-    syntheticAddresses,
-    multicall2,
-  } = appState;
+  const { registeredEmps, provider, emps, collateralAddresses, syntheticAddresses, multicall2 } = appState;
   const profile = Profile(config.debug);
   // default props we want to query on contract
   const staticProps: [string, (x: any) => any][] = [
@@ -135,20 +121,22 @@ export default (config: Config, appState: Dependencies) => {
     const emp = await table.get(address);
     if (emp.createdTimestamp) return;
 
-    const blockMetadata = registeredEmpsMetadata.get(address);
-    if (!blockMetadata) return;
+    const { blockNumber } = await registeredEmps.get(address);
+    if (typeof blockNumber !== "number") return;
 
-    const block = await provider.getBlock(blockMetadata.blockNumber);
+    const block = await provider.getBlock(blockNumber);
     await table.setCreatedTimestamp(address, block.timestamp);
   }
 
   // add a set of all collateral addresses
   async function updateTokenAddresses() {
     const allEmps = [...(await emps.active.values()), ...(await emps.expired.values())];
-    allEmps.forEach((emp) => {
-      if (emp.collateralCurrency) collateralAddresses.add(emp.collateralCurrency);
-      if (emp.tokenCurrency) syntheticAddresses.add(emp.tokenCurrency);
-    });
+    await Promise.all([allEmps.map((emp) => updateTokenAddress(emp))]);
+  }
+
+  async function updateTokenAddress(emp: uma.tables.emps.Data) {
+    if (emp.collateralCurrency) await collateralAddresses.set(emp.collateralCurrency);
+    if (emp.tokenCurrency) await syntheticAddresses.set(emp.tokenCurrency);
   }
 
   async function updateAll(addresses: string[], startBlock?: number, endBlock?: number) {
@@ -165,7 +153,7 @@ export default (config: Config, appState: Dependencies) => {
   }
 
   async function update(startBlock?: number, endBlock?: number) {
-    const addresses = Array.from(await registeredEmps.values());
+    const addresses = await registeredEmps.keys();
     await updateAll(addresses, startBlock, endBlock);
     await updateTokenAddresses();
   }

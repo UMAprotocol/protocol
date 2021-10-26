@@ -9,7 +9,16 @@ import * as Services from "../../services";
 import Express from "../../services/express-channels";
 import * as Actions from "../../services/actions";
 import { ProcessEnv, AppState, Channels } from "../../types";
-import { empStats, empStatsHistory, lsps } from "../../tables";
+import {
+  addresses,
+  appStats,
+  empStats,
+  empStatsHistory,
+  lsps,
+  priceSamples,
+  registeredContracts,
+  tvl,
+} from "../../tables";
 import Zrx from "../../libs/zrx";
 import { Profile, parseEnvArray, getWeb3, BlockInterval, expirePromise } from "../../libs/utils";
 
@@ -55,17 +64,17 @@ export default async (env: ProcessEnv) => {
     },
     prices: {
       usd: {
-        latest: {},
+        latest: priceSamples.Table("Latest Usd Prices"),
         history: {},
       },
     },
     synthPrices: {
-      latest: {},
+      latest: priceSamples.Table("Latest Synth Prices"),
       history: {},
     },
     marketPrices: {
       usdc: {
-        latest: {},
+        latest: priceSamples.Table("Latest USDC Market Prices"),
         history: empStatsHistory.Table("Market Price"),
       },
     },
@@ -97,7 +106,7 @@ export default async (env: ProcessEnv) => {
       global: {
         usd: {
           latest: {
-            tvl: [0, "0"],
+            tvl: tvl.Table("Latest Usd Global Tvl"),
           },
           history: {
             tvl: empStatsHistory.Table("Tvl Global History"),
@@ -105,21 +114,19 @@ export default async (env: ProcessEnv) => {
         },
       },
     },
-    lastBlockUpdate: 0,
-    registeredEmps: new Set<string>(),
-    registeredEmpsMetadata: new Map(),
-    registeredLsps: new Set<string>(),
-    registeredLspsMetadata: new Map(),
-    collateralAddresses: new Set<string>(),
-    syntheticAddresses: new Set<string>(),
+    registeredEmps: registeredContracts.Table("Registered Emps"),
+    registeredLsps: registeredContracts.Table("Registered Lsps"),
+    collateralAddresses: addresses.Table("Collateral Addresses"),
+    syntheticAddresses: addresses.Table("Synthetic Addresses"),
     // lsp related props. could be its own state object
-    longAddresses: new Set<string>(),
-    shortAddresses: new Set<string>(),
+    longAddresses: addresses.Table("Long Addresses"),
+    shortAddresses: addresses.Table("Short Addresses"),
     multicall2: new Multicall2(env.MULTI_CALL_2_ADDRESS, provider),
     lsps: {
       active: lsps.Table("Active LSP"),
       expired: lsps.Table("Expired LSP"),
     },
+    appStats: appStats.Table("App Stats"),
   };
 
   // services for ingesting data
@@ -153,21 +160,24 @@ export default async (env: ProcessEnv) => {
 
   const initBlock = await provider.getBlock("latest");
 
+  async function lastBlockUpdate() {
+    return appState.appStats.getLastBlockUpdate() || 0;
+  }
   // warm caches
-  await services.registry(appState.lastBlockUpdate, initBlock.number);
+  await services.registry(await lastBlockUpdate(), initBlock.number);
   console.log("Got all EMP addresses");
 
-  await services.lspCreator.update(appState.lastBlockUpdate, initBlock.number);
+  await services.lspCreator.update(await lastBlockUpdate(), initBlock.number);
   console.log("Got all LSP addresses");
 
-  await services.emps.update(appState.lastBlockUpdate, initBlock.number);
+  await services.emps.update(await lastBlockUpdate(), initBlock.number);
   console.log("Updated EMP state");
 
-  await services.lsps.update(appState.lastBlockUpdate, initBlock.number);
+  await services.lsps.update(await lastBlockUpdate(), initBlock.number);
   console.log("Updated LSP state");
 
   // we've update our state based on latest block we queried
-  appState.lastBlockUpdate = initBlock.number;
+  await appState.appStats.setLastBlockUpdate(initBlock.number);
 
   await services.erc20s.update();
   console.log("Updated tokens");
@@ -233,7 +243,7 @@ export default async (env: ProcessEnv) => {
     await services.emps.update(startBlock, endBlock);
     await services.lsps.update(startBlock, endBlock);
     await services.erc20s.update();
-    appState.lastBlockUpdate = endBlock;
+    await appState.appStats.setLastBlockUpdate(endBlock);
   }
 
   // separate out price updates into a different loop to query every few minutes

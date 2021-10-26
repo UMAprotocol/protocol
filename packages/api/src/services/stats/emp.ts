@@ -64,8 +64,7 @@ export default (config: Config, appState: Dependencies) => {
   }
 
   async function getPriceFromTable(empAddress: string, currencyAddress: string) {
-    // PriceSample is type [ timestamp:number, price:string]
-    const priceSample: PriceSample = prices[currency].latest[currencyAddress];
+    const priceSample = await prices[currency].latest.get(currencyAddress);
     assert(uma.utils.exists(priceSample), "No latest price found for emp: " + empAddress);
     return priceSample;
   }
@@ -79,10 +78,10 @@ export default (config: Config, appState: Dependencies) => {
   async function updateTvl(emp: uma.tables.emps.Data) {
     assert(emp.collateralCurrency, "TVL Requires collateral currency for emp: " + emp.address);
     const priceSample = await getPriceFromTable(emp.address, emp.collateralCurrency);
-    const value = await calcTvl(priceSample[1], emp).toString();
+    const value = await calcTvl(priceSample.price, emp).toString();
     const update = {
       value,
-      timestamp: priceSample[0],
+      timestamp: priceSample.timestamp,
     };
     return stats.emp[currency].latest.tvl.upsert(emp.address, update);
   }
@@ -95,10 +94,10 @@ export default (config: Config, appState: Dependencies) => {
       "Skipping tvm calculation, too little collateral in EMP: " + emp.address
     );
     const priceSample = await getPriceFromTable(emp.address, emp.tokenCurrency);
-    const value = await calcTvm(priceSample[1], emp).toString();
+    const value = await calcTvm(priceSample.price, emp).toString();
     const update = {
       value,
-      timestamp: priceSample[0],
+      timestamp: priceSample.timestamp,
     };
     return stats.emp[currency].latest.tvm.upsert(emp.address, update);
   }
@@ -146,7 +145,7 @@ export default (config: Config, appState: Dependencies) => {
   }
 
   async function update() {
-    const addresses = Array.from(registeredEmps.values());
+    const addresses = await registeredEmps.keys();
     await updateAllTvl(addresses).then((results) => {
       results.forEach((result) => {
         if (result.status === "rejected") console.error("Error updating tvl: " + result.reason.message);
@@ -201,7 +200,7 @@ export default (config: Config, appState: Dependencies) => {
   }
 
   async function backfill() {
-    const addresses = Array.from(registeredEmps.values());
+    const addresses = await registeredEmps.keys();
     await backfillAllTvl(addresses).then((results) => {
       results.forEach((result) => {
         if (result.status === "rejected") console.error("Error updating tvl: " + result.reason.message);

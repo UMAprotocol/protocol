@@ -8,7 +8,7 @@ interface Config extends BaseConfig {
   network?: number;
   registryAddress?: string;
 }
-type Dependencies = Pick<AppState, "registeredEmps" | "provider" | "registeredEmpsMetadata">;
+type Dependencies = Pick<AppState, "registeredEmps" | "provider">;
 
 export type EmitData = {
   blockNumber: number;
@@ -28,7 +28,7 @@ export default async (
   }
 ) => {
   const { network = 1, registryAddress } = config;
-  const { registeredEmps, provider, registeredEmpsMetadata } = appState;
+  const { registeredEmps, provider } = appState;
   const address = registryAddress || (await registry.getAddress(network));
   const contract = registry.connect(address, provider);
 
@@ -41,10 +41,13 @@ export default async (
     const { contracts } = registry.getEventState(events);
     if (!contracts) return;
 
-    await bluebird.map(Object.keys(contracts), (address) => {
+    await bluebird.map(Object.keys(contracts), async (address) => {
       const blockNumber = contracts[address].blockNumber;
-      registeredEmpsMetadata.set(address, { blockNumber });
-      registeredEmps.add(address);
+      await registeredEmps.set({
+        id: address,
+        address,
+        blockNumber,
+      });
       emit("created", { address, blockNumber, startBlock, endBlock });
     });
   }

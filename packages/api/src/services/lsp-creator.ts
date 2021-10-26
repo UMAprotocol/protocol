@@ -8,7 +8,7 @@ interface Config extends BaseConfig {
   network?: number;
   address?: string;
 }
-type Dependencies = Pick<AppState, "registeredLsps" | "provider" | "registeredLspsMetadata">;
+type Dependencies = Pick<AppState, "registeredLsps" | "provider">;
 
 export type EmitData = {
   blockNumber: number;
@@ -21,7 +21,7 @@ export type Events = "created";
 
 export default async (config: Config, appState: Dependencies, emit: (event: Events, data: EmitData) => void) => {
   const { network = 1, address = await lspCreator.getAddress(network) } = config;
-  const { registeredLsps, provider, registeredLspsMetadata } = appState;
+  const { registeredLsps, provider } = appState;
 
   const contract = lspCreator.connect(address, provider);
 
@@ -33,10 +33,13 @@ export default async (config: Config, appState: Dependencies, emit: (event: Even
     );
     const { contracts } = lspCreator.getEventState(events);
     if (!contracts) return;
-    await bluebird.map(Object.keys(contracts), (address) => {
+    await bluebird.map(Object.keys(contracts), async (address) => {
       const blockNumber = contracts[address].blockNumber;
-      registeredLspsMetadata.set(address, { blockNumber });
-      registeredLsps.add(address);
+      await registeredLsps.set({
+        address,
+        id: address,
+        blockNumber,
+      });
       // emit that a new contract was found. Must be done after saving meta data
       emit("created", { address, blockNumber, startBlock, endBlock });
     });
