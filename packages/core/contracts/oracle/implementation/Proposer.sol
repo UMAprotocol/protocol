@@ -11,7 +11,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 /**
- * @title
+ * @title Proposer contract that allows anyone to make governance proposals with a bond.
  */
 contract Proposer is Ownable, Testable {
     using SafeERC20 for IERC20;
@@ -48,13 +48,24 @@ contract Proposer is Ownable, Testable {
         emit BondSet(_bond);
     }
 
-    function propose(Governor.Transaction[] memory transactions) public {
-        uint256 id = governor.numProposals();
+    /**
+     * @notice Propose a new set of governance transactions for vote.
+     * @dev Pulls bond from the caller.
+     * @param transactions list of transactions for the governor to execute.
+     * @return the id of the governor proposal.
+     */
+    function propose(Governor.Transaction[] memory transactions) public returns (uint256 id) {
+        id = governor.numProposals();
         token.safeTransferFrom(msg.sender, address(this), bond);
         bondedProposals[id] = BondedProposal({ sender: msg.sender, lockedBond: bond, time: uint64(getCurrentTime()) });
         governor.propose(transactions);
     }
 
+    /**
+     * @notice Resolves a proposal by checking the status of the request in the Voting contract.
+     * @dev Pulls bond from the caller.
+     * @param id proposal id.
+     */
     function resolveProposal(uint256 id) external payable {
         BondedProposal storage bondedProposal = bondedProposals[id];
         Voting voting = Voting(finder.getImplementationAddress(OracleInterfaces.Oracle));
@@ -71,6 +82,11 @@ contract Proposer is Ownable, Testable {
         }
     }
 
+    /**
+     * @notice Admin method to set the bond amount.
+     * @dev Admin is intended to be the governance system, itself.
+     * @param _bond the new bond.
+     */
     function setBond(uint256 _bond) public onlyOwner {
         bond = _bond;
         emit BondSet(_bond);
