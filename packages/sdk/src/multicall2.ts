@@ -1,6 +1,6 @@
 import { multicall2 } from "./clients";
 import { Call, Multicall, Request, State } from "./multicall";
-import { zip } from "lodash";
+import zip from "lodash/zip";
 import { SignerOrProvider } from ".";
 import { Contract } from "ethers";
 

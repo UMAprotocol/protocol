@@ -58,9 +58,9 @@ export class InsuredBridgePriceFeed extends PriceFeedInterface {
 
     // Parse ancillary data for relay request and find deposit if possible with matching params.
     const parsedAncillaryData = (parseAncillaryData(ancillaryData) as unknown) as RelayAncillaryData;
-    const relayHash = "0x" + parsedAncillaryData.relayHash;
+    const relayAncillaryDataHash = "0x" + parsedAncillaryData.relayHash;
     const relay = this.l1Client.getAllRelayedDeposits().find((relay) => {
-      return relay.relayHash === relayHash;
+      return relay.relayAncillaryDataHash === relayAncillaryDataHash;
     });
 
     if (!relay) {
