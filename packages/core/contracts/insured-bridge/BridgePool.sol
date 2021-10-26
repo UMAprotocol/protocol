@@ -610,6 +610,21 @@ contract BridgePool is Testable, BridgePoolInterface, ERC20, Lockable {
     }
 
     /**
+     * @notice Return both the current utilization value and liquidity utilization post the relay.
+     * @dev Used in computing realizedLpFeePct off-chain.
+     * @param relayedAmount Size of the relayed deposit to factor into the utilization calculation.
+     * @return utilizationCurrent The current utilization ratio.
+     * @return utilizationPostRelay The updated utilization ratio accounting for a new `relayedAmount`.
+     */
+    function getLiquidityUtilization(uint256 relayedAmount)
+        public
+        nonReentrant()
+        returns (uint256 utilizationCurrent, uint256 utilizationPostRelay)
+    {
+        return (_liquidityUtilizationPostRelay(0), _liquidityUtilizationPostRelay(relayedAmount));
+    }
+
+    /**
      * @notice Updates the address stored in this contract for the OptimisticOracle and the Store to the latest versions
      * set in the the Finder. Also pull finalFee Store these as local variables to make relay methods gas efficient.
      * @dev There is no risk of leaving this function public for anyone to call as in all cases we want the addresses
@@ -685,6 +700,26 @@ contract BridgePool is Testable, BridgePoolInterface, ERC20, Lockable {
      *    INTERNAL & PRIVATE FUNCTIONS    *
      **************************************/
 
+    function _liquidityUtilizationPostRelay(uint256 relayedAmount) internal returns (uint256) {
+        _sync(); // Fetch any balance changes due to token bridging finalization and factor them in.
+
+        // liquidityUtilizationRatio :=
+        // (relayedAmount + pendingReserves + max(utilizedReserves,0)) / (liquidReserves + max(utilizedReserves,0))
+        // UtilizedReserves has a dual meaning: if it's greater than zero then it represents funds pending in the bridge
+        // that will flow from L2 to L1. In this case, we can use it normally in the equation. However, if it is
+        // negative, then it is already counted in liquidReserves. This occurs if tokens are transferred directly to the
+        // contract. In this case, ignore it as it is captured in liquid reserves and has no meaning in the numerator.
+        uint256 flooredUtilizedReserves = utilizedReserves > 0 ? uint256(utilizedReserves) : 0;
+        uint256 numerator = relayedAmount + pendingReserves + flooredUtilizedReserves;
+        uint256 denominator = liquidReserves + flooredUtilizedReserves;
+
+        // If the denominator equals zero, return 1e18 (max utilization).
+        if (denominator == 0) return 1e18;
+
+        // In all other cases, return the utilization ratio.
+        return (numerator * 1e18) / denominator;
+    }
+
     function _sync() internal {
         // Check if the l1Token balance of the contract is greater than the liquidReserves. If it is then the bridging
         // action from L2 -> L1 has concluded and the local accounting can be updated.
@@ -710,30 +745,6 @@ contract BridgePool is Testable, BridgePoolInterface, ERC20, Lockable {
         if (utilizedReserves > 0) numerator += uint256(utilizedReserves);
         else numerator -= uint256(utilizedReserves * -1);
         return (numerator * 1e18) / totalSupply();
-    }
-
-    function _liquidityUtilizationPostRelay(uint256 relayedAmount) internal returns (uint256) {
-        _sync(); // Fetch any balance changes due to token bridging finalization and factor them in.
-
-        // The liquidity utilization ratio is the ratio of utilized liquidity (pendingReserves + relayedAmount
-        // +utilizedReserves) divided by the liquid reserves.
-        int256 numerator = int256(pendingReserves + relayedAmount);
-        numerator += utilizedReserves;
-
-        // The numerator could be less than zero iff pending reserves is zero, relayed amount is zero and utilizedReserves
-        // is negative. This could happen if tokens are sent to the bridge after deployment without any relays yet
-        // having happened.
-        if (numerator < 0) return 0;
-
-        // There are two cases where liquid reserves could be zero. Handle accordingly to avoid division by zero:
-        // a) the pool is new and there no funds in it nor any bridging actions have happened. In this case the
-        // numerator is 0 and liquid reserves are 0. The utilization is therefore 0.
-        if (numerator == 0 && liquidReserves == 0) return 0;
-        // b) the numerator is more than 0 and the liquid reserves are 0. in this case, The pool is at 100% utilization.
-        if (numerator > 0 && liquidReserves == 0) return 1e18;
-
-        // In all other cases, return the utilization ratio.
-        return (uint256(numerator) * 1e18) / liquidReserves;
     }
 
     // Return UTF8-decodable ancillary data for relay price request associated with relay hash.
@@ -790,10 +801,8 @@ contract BridgePool is Testable, BridgePoolInterface, ERC20, Lockable {
     function _allocateLpFees(uint256 allocatedLpFees) internal {
         // Add to the total undistributed LP fees and the utilized reserves. Adding it to the utilized reserves acts to
         // track the fees while they are in transit.
-        if (allocatedLpFees > 0) {
-            undistributedLpFees += allocatedLpFees;
-            utilizedReserves += int256(allocatedLpFees);
-        }
+        undistributedLpFees += allocatedLpFees;
+        utilizedReserves += int256(allocatedLpFees);
     }
 
     function _getAmountFromPct(uint64 percent, uint256 amount) private pure returns (uint256) {
