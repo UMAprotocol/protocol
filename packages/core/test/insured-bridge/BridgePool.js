@@ -2307,6 +2307,7 @@ describe("BridgePool", () => {
         toWei("1")
       );
 
+      // A number greater than the maximum should return the expected amount (can be greater than 100%).
       assert.equal(
         (await bridgePool.methods.liquidityUtilizationPostRelay(toWei("3000")).call()).toString(),
         toWei("1.2")
