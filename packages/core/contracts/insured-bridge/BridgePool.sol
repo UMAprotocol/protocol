@@ -647,23 +647,20 @@ contract BridgePool is Testable, BridgePoolInterface, ERC20, Lockable {
         sync(); // Fetch any balance changes due to token bridging finalization and factor them in.
 
         // liquidityUtilizationRatio :=
-        // (relayedAmount + pendingReserves + utilizedReserves) / (liquidReserves + utilizedReserves)
+        // (relayedAmount + pendingReserves + max(utilizedReserves,0)) / (liquidReserves + max(utilizedReserves,0))
+        // UtilizedReserves has a duel meaning: if it's greater than zero it is funds pending in the bridge, flowing
+        // from L2 to L1. In this case, we can use it normally in the equation. However, if it is negative, then it
+        // acts like an implicit liquid reserves. This occurs if someone dumps tokens on the contract. In this case we
+        // ignore it as it is captured within liquid reserves and has no meaning in the numerator.
+        uint256 flooredUtilizedReserves = utilizedReserves > 0 ? uint256(utilizedReserves) : 0;
+        uint256 numerator = relayedAmount + pendingReserves + flooredUtilizedReserves;
+        uint256 denominator = liquidReserves + flooredUtilizedReserves;
 
-        int256 numerator = int256(relayedAmount + pendingReserves) + utilizedReserves;
-
-        int256 denominator = int256(liquidReserves) + utilizedReserves;
-
-        // Both the numerator and the denominator could go zero iff utilizedReserves is large and negative. This could
-        // happen if tokens are dumped on the contract in size greater than the bridged amount.
-        if (numerator < 0 || denominator < 0) return 0;
-
-        // There are cases where the numerator or denominator could be 0. Catch these cases to avoid division by 0.
-        if (numerator == 0 && denominator == 0) return 0;
-        // b) the numerator is more than 0 and the liquid reserves are 0. in this case, The pool is at 100% utilization.
-        if (numerator > 0 && denominator == 0) return 1e18;
+        // If the denominator equals zero, return 1e18 (max utilization).
+        if (denominator == 0) return 1e18;
 
         // In all other cases, return the utilization ratio.
-        return uint256((numerator * 1e18) / denominator);
+        return (numerator * 1e18) / denominator;
     }
 
     /**

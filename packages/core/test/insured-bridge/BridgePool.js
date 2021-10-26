@@ -546,6 +546,7 @@ describe("BridgePool", () => {
       await l1Token.methods.approve(bridgePool.options.address, initialPoolLiquidity).send({ from: liquidityProvider });
       await bridgePool.methods.addLiquidity(initialPoolLiquidity).send({ from: liquidityProvider });
     });
+
     it("Valid instant relay, disputed, instant relayer should receive refund following subsequent valid relay", async () => {
       // Propose new relay:
       let relayAttemptData = {
@@ -554,6 +555,7 @@ describe("BridgePool", () => {
         relayState: InsuredBridgeRelayStateEnum.PENDING,
       };
       await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: relayer });
+
       await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: relayer });
 
       // Must approve contract to pull deposit amount.
@@ -2251,6 +2253,63 @@ describe("BridgePool", () => {
       assert.equal(
         (await bridgePool.methods.liquidityUtilizationCurrent().call()).toString(),
         toWei("0.247524752475247524")
+      );
+    });
+    it("Rate updates as expected In edge cases with tokens minted to the pool to force negative utilizedReserves", async () => {
+      // Start off by redeeming all liquidity tokens to force everything to zero.
+      await bridgePool.methods.removeLiquidity(toWei("1000"), false).send({ from: liquidityProvider });
+      assert.equal((await bridgePool.methods.pendingReserves().call()).toString(), toWei("0"));
+      assert.equal((await bridgePool.methods.liquidReserves().call()).toString(), toWei("0"));
+      assert.equal((await bridgePool.methods.utilizedReserves().call()).toString(), toWei("0"));
+
+      // Utilization should be 1 if utilizedReserves,pendingReserves,relayedAmount are 0.
+      assert.equal((await bridgePool.methods.liquidityUtilizationCurrent().call()).toString(), toWei("1"));
+      assert.equal((await bridgePool.methods.liquidityUtilizationPostRelay(toWei("1")).call()).toString(), toWei("1"));
+
+      // Next, mint tokens to the pool without any liquidity added. Utilization should be 0
+      await l1Token.methods.mint(bridgePool.options.address, toWei("1000")).send({ from: owner });
+
+      assert.equal((await bridgePool.methods.liquidityUtilizationCurrent().call()).toString(), toWei("0"));
+
+      // Trying to relay 10 should have a utilization of 10/1000=0.01
+      assert.equal(
+        (await bridgePool.methods.liquidityUtilizationPostRelay(toWei("10")).call()).toString(),
+        toWei("0.01")
+      );
+
+      // Next, add liquidity back but add less than the amount dropped on the contract.
+      await bridgePool.methods.addLiquidity(toWei("500")).send({ from: liquidityProvider });
+      assert.equal((await bridgePool.methods.liquidityUtilizationCurrent().call()).toString(), toWei("0"));
+
+      // Trying to relay 10 should have a utilization of 10/1500=0.006666666667
+      assert.equal(
+        (await bridgePool.methods.liquidityUtilizationPostRelay(toWei("10")).call()).toString(),
+        toWei("0.006666666666666666")
+      );
+      // trying to relay 1250 should have a utilization of 1250/1500=0.8333333333
+      assert.equal(
+        (await bridgePool.methods.liquidityUtilizationPostRelay(toWei("1250")).call()).toString(),
+        toWei("0.833333333333333333")
+      );
+
+      // Add more liquidity finally such that the liquidity added is more than that minted.
+      await bridgePool.methods.addLiquidity(toWei("1000")).send({ from: liquidityProvider });
+
+      // Trying to relay 10 should have a utilization of 10/2500=0.004
+      assert.equal(
+        (await bridgePool.methods.liquidityUtilizationPostRelay(toWei("10")).call()).toString(),
+        toWei("0.004")
+      );
+
+      // If the amount bridged is the full amount of liquidity it should be utilization = 1.
+      assert.equal(
+        (await bridgePool.methods.liquidityUtilizationPostRelay(toWei("2500")).call()).toString(),
+        toWei("1")
+      );
+
+      assert.equal(
+        (await bridgePool.methods.liquidityUtilizationPostRelay(toWei("3000")).call()).toString(),
+        toWei("1.2")
       );
     });
   });
