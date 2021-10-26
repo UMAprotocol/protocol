@@ -2255,7 +2255,7 @@ describe("BridgePool", () => {
         toWei("0.247524752475247524")
       );
     });
-    it("Rate updates as expected In edge cases with tokens minted to the pool to force negative utilizedReserves", async () => {
+    it("Rate updates as expected in edge cases with tokens minted to the pool to force negative utilizedReserves", async () => {
       // Start off by redeeming all liquidity tokens to force everything to zero.
       await bridgePool.methods.removeLiquidity(toWei("1000"), false).send({ from: liquidityProvider });
       assert.equal((await bridgePool.methods.pendingReserves().call()).toString(), toWei("0"));
