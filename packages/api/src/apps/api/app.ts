@@ -134,14 +134,13 @@ export default async (env: ProcessEnv) => {
   // services for ingesting data
   const services = {
     // these services can optionally be configured with a config object, but currently they are undefined or have defaults
-    emps: Services.EmpState({ debug }, appState, appClients),
+    emps: Services.EmpState({ debug }, { tables: appState, appClients }),
     registry: await Services.Registry(
       { debug, registryAddress: env.EMP_REGISTRY_ADDRESS },
-      appState,
-      appClients,
+      { tables: appState, appClients },
       (event, data) => serviceEvents.emit("empRegistry", event, data)
     ),
-    collateralPrices: Services.CollateralPrices({ debug }, appState, appClients),
+    collateralPrices: Services.CollateralPrices({ debug }, { tables: appState, appClients }),
     syntheticPrices: Services.SyntheticPrices(
       {
         debug,
@@ -153,16 +152,15 @@ export default async (env: ProcessEnv) => {
       appState,
       appClients
     ),
-    erc20s: Services.Erc20s({ debug }, appState, appClients),
+    erc20s: Services.Erc20s({ debug }, { tables: appState, appClients }),
     empStats: Services.stats.Emp({ debug }, appState),
-    marketPrices: Services.MarketPrices({ debug }, appState, appClients),
+    marketPrices: Services.MarketPrices({ debug }, { tables: appState, appClients }),
     lspCreator: await Services.MultiLspCreator(
       { debug, addresses: lspCreatorAddresses },
-      appState,
-      appClients,
+      { tables: appState, appClients },
       (event, data) => serviceEvents.emit("multiLspCreator", event, data)
     ),
-    lsps: Services.LspState({ debug }, appState, appClients),
+    lsps: Services.LspState({ debug }, { tables: appState, appClients }),
     lspStats: Services.stats.Lsp({ debug }, appState),
     globalStats: Services.stats.Global({ debug }, appState),
   };

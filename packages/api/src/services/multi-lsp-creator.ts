@@ -10,15 +10,17 @@ interface Config extends BaseConfig {
   network?: number;
   debug?: boolean;
 }
-type Dependencies = Pick<AppState, "registeredLsps">;
+type Dependencies = {
+  tables: Pick<AppState, "registeredLsps">;
+  appClients: AppClients;
+};
 export type { EmitData };
 
 export type { Events };
 
 export default async (
   config: Config,
-  appState: Dependencies,
-  appClients: AppClients,
+  dependencies: Dependencies,
   emit: (event: Events, data: EmitData) => void = () => {
     return;
   }
@@ -32,7 +34,7 @@ export default async (
   const allAddresses = Array.from(new Set([...addresses, latestAddress]));
 
   // instantiate individual lsp creator services with a single address
-  const creatorServices = allAddresses.map((address) => LspCreator({ address, ...config }, appState, appClients, emit));
+  const creatorServices = allAddresses.map((address) => LspCreator({ address, ...config }, dependencies, emit));
 
   // run update on all creator services
   async function update(startBlock?: number, endBlock?: number) {

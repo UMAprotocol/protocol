@@ -6,10 +6,14 @@ import { AppClients, AppState, BaseConfig } from "../types";
 
 type Instance = uma.clients.emp.Instance;
 type Config = BaseConfig;
-type Dependencies = Pick<AppState, "registeredEmps" | "emps" | "collateralAddresses" | "syntheticAddresses">;
+type Dependencies = {
+  tables: Pick<AppState, "registeredEmps" | "emps" | "collateralAddresses" | "syntheticAddresses">;
+  appClients: AppClients;
+};
 
-export default (config: Config, appState: Dependencies, appClients: AppClients) => {
-  const { registeredEmps, emps, collateralAddresses, syntheticAddresses } = appState;
+export default (config: Config, dependencies: Dependencies) => {
+  const { appClients, tables } = dependencies;
+  const { registeredEmps, emps, collateralAddresses, syntheticAddresses } = tables;
   const { multicall2, provider } = appClients;
 
   const profile = Profile(config.debug);

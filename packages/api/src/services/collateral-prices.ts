@@ -7,11 +7,15 @@ interface Config extends BaseConfig {
 }
 import { parseUnits, msToS } from "../libs/utils";
 
-type Dependencies = Pick<AppState, "prices" | "collateralAddresses">;
+type Dependencies = {
+  tables: Pick<AppState, "prices" | "collateralAddresses">;
+  appClients: AppClients;
+};
 
-export default function (config: Config, appState: Dependencies, appClients: AppClients) {
+export default function (config: Config, dependencies: Dependencies) {
   const { currency = "usd" } = config;
-  const { prices, collateralAddresses } = appState;
+  const { appClients, tables } = dependencies;
+  const { prices, collateralAddresses } = tables;
   const { coingecko } = appClients;
   assert(coingecko, "requires coingecko library");
   assert(prices[currency], `requires prices.${currency}`);

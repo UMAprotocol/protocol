@@ -8,7 +8,10 @@ interface Config extends BaseConfig {
   network?: number;
   address?: string;
 }
-type Dependencies = Pick<AppState, "registeredLsps">;
+type Dependencies = {
+  tables: Pick<AppState, "registeredLsps">;
+  appClients: AppClients;
+};
 
 export type EmitData = {
   blockNumber: number;
@@ -19,14 +22,10 @@ export type EmitData = {
 
 export type Events = "created";
 
-export default async (
-  config: Config,
-  appState: Dependencies,
-  appClients: AppClients,
-  emit: (event: Events, data: EmitData) => void
-) => {
+export default async (config: Config, dependencies: Dependencies, emit: (event: Events, data: EmitData) => void) => {
   const { network = 1, address = await lspCreator.getAddress(network) } = config;
-  const { registeredLsps } = appState;
+  const { appClients, tables } = dependencies;
+  const { registeredLsps } = tables;
   const { provider } = appClients;
   const contract = lspCreator.connect(address, provider);
 

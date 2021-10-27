@@ -6,14 +6,14 @@ import { BigNumber } from "ethers";
 
 type Instance = uma.clients.lsp.Instance;
 type Config = BaseConfig;
-type Dependencies = Pick<
-  AppState,
-  "lsps" | "registeredLsps" | "collateralAddresses" | "shortAddresses" | "longAddresses"
->;
-type ClientsDependencies = Pick<AppClients, "provider" | "multicall2">;
+type Dependencies = {
+  tables: Pick<AppState, "lsps" | "registeredLsps" | "collateralAddresses" | "shortAddresses" | "longAddresses">;
+  appClients: Pick<AppClients, "provider" | "multicall2">;
+};
 
-export default (config: Config, appState: Dependencies, appClients: ClientsDependencies) => {
-  const { lsps, registeredLsps, collateralAddresses, shortAddresses, longAddresses } = appState;
+export default (config: Config, dependencies: Dependencies) => {
+  const { appClients, tables } = dependencies;
+  const { lsps, registeredLsps, collateralAddresses, shortAddresses, longAddresses } = tables;
   const { provider, multicall2 } = appClients;
   const profile = Profile(config.debug);
 
