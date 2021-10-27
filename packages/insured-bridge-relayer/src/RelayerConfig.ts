@@ -65,7 +65,7 @@ export class RelayerConfig {
 
     // L2 start block is not required but without one, querying past logs might fail. For example, Arbitrum Infura has a
     // query limit of up to 100,000 blocks into the past.
-    this.l2BlockLookback = L2_BLOCK_LOOKBACK ? Number(L2_BLOCK_LOOKBACK) : 100000;
+    this.l2BlockLookback = L2_BLOCK_LOOKBACK ? Number(L2_BLOCK_LOOKBACK) : 99999;
 
     this.pollingDelay = POLLING_DELAY ? Number(POLLING_DELAY) : 60;
     this.errorRetries = ERROR_RETRIES ? Number(ERROR_RETRIES) : 3;
