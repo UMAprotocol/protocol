@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.12.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.11.0...@uma/common@2.12.0) (2021-10-27)
+
+### Features
+
+- **insured-bridge:** Move contracts-ovm files to contracts/ and bump to ^0.8.0 ([#3454](https://github.com/UMAprotocol/protocol/issues/3454)) ([7189b0c](https://github.com/UMAprotocol/protocol/commit/7189b0c6ecea568a0c6a1f4bb5907a3d50d86186))
+
 # [2.11.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.10.0...@uma/common@2.11.0) (2021-10-19)
 
 ### Features

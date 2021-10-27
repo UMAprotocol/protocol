@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.6.0](https://github.com/UMAprotocol/protocol/compare/@uma/insured-bridge-relayer@1.5.0...@uma/insured-bridge-relayer@1.6.0) (2021-10-27)
+
+### Bug Fixes
+
+- **insured-bridge-relayer:** Do not fetch l1Token from DepositRelayed log ([#3505](https://github.com/UMAprotocol/protocol/issues/3505)) ([8e5ab9e](https://github.com/UMAprotocol/protocol/commit/8e5ab9e8d120e689197157ac576d535a24e443b5))
+- **insured-bridge-relayer:** Fix usage of Logger ([#3483](https://github.com/UMAprotocol/protocol/issues/3483)) ([09c9b72](https://github.com/UMAprotocol/protocol/commit/09c9b720cdb9feb956ba4201f530a5134b4a235f))
+
+### Features
+
+- **across:** Add Disputer mode to bot ([#3474](https://github.com/UMAprotocol/protocol/issues/3474)) ([e2e8c6b](https://github.com/UMAprotocol/protocol/commit/e2e8c6bf1ee7432dc7dfe951f4de7ec95f3e1f2d))
+
 # [1.5.0](https://github.com/UMAprotocol/protocol/compare/@uma/insured-bridge-relayer@1.4.0...@uma/insured-bridge-relayer@1.5.0) (2021-10-19)
 
 ### Features
