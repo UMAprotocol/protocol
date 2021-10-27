@@ -122,3 +122,52 @@ export type AppClients = {
   provider: Provider;
   web3: Web3;
 };
+
+export type AppServices = {
+  registry: (startBlock?: number, endBlock?: number) => Promise<void>;
+  lspCreator: {
+    update: (startBlock?: number, endBlock?: number) => Promise<void>;
+  };
+  emps: {
+    update: (startBlock?: number, endBlock?: number) => Promise<void>;
+    updateAll: (addresses: string[], startBlock?: number, endBlock?: number) => Promise<void>;
+  };
+  lsps: {
+    update: (startBlock?: number, endBlock?: number) => Promise<void>;
+    updateLsps: (addresses: string[], startBlock?: number, endBlock?: number) => Promise<PromiseSettledResult<void>[]>;
+  };
+  erc20s: {
+    update: () => Promise<void>;
+  };
+  collateralPrices: {
+    update: () => Promise<void>;
+    backfill: (startMs: number) => Promise<void>;
+  };
+  syntheticPrices: {
+    update: () => Promise<void>;
+  };
+  marketPrices: {
+    update: (timestampS?: number) => Promise<void>;
+  };
+  empStats: {
+    update: () => Promise<void>;
+    backfill: () => Promise<void>;
+  };
+  lspStats: {
+    update: () => Promise<void>;
+    backfill: () => Promise<void>;
+  };
+  globalStats: {
+    update: () => Promise<void>;
+  };
+};
+
+export type OrchestratorServices = {
+  contracts: {
+    detect: () => Promise<void>;
+    update: () => Promise<void>;
+  };
+  prices: {
+    update: () => Promise<void>;
+  };
+};
