@@ -1,20 +1,21 @@
 import { clients } from "@uma/sdk";
-import { AppState, BaseConfig } from "../types";
+import { AppClients, AppState, BaseConfig } from "../types";
 import { asyncValues } from "../libs/utils";
 
 type Config = BaseConfig;
 // break out this services specific state dependencies
-type Dependencies = Pick<
-  AppState,
-  "provider" | "erc20s" | "collateralAddresses" | "syntheticAddresses" | "longAddresses" | "shortAddresses"
->;
+type Dependencies = {
+  tables: Pick<AppState, "erc20s" | "collateralAddresses" | "syntheticAddresses" | "longAddresses" | "shortAddresses">;
+  appClients: AppClients;
+};
 
-export default function (config: Config, appState: Dependencies) {
-  const { provider, erc20s, collateralAddresses, syntheticAddresses, longAddresses, shortAddresses } = appState;
+export default function (config: Config, dependencies: Dependencies) {
+  const { tables, appClients } = dependencies;
+  const { erc20s, collateralAddresses, syntheticAddresses, longAddresses, shortAddresses } = tables;
 
   // get token state based on contract
   async function getTokenStateFromContract(address: string) {
-    const instance = clients.erc20.connect(address, provider);
+    const instance = clients.erc20.connect(address, appClients.provider);
     return asyncValues({
       address,
       // just in case these fail, return null

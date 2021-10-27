@@ -1,6 +1,6 @@
 import assert from "assert";
 import SynthPrices from "../libs/synthPrices";
-import { AppState, Currencies, BaseConfig } from "../types";
+import { AppState, Currencies, BaseConfig, AppClients } from "../types";
 import * as uma from "@uma/sdk";
 import bluebird from "bluebird";
 import * as Queries from "../libs/queries";
@@ -17,12 +17,13 @@ interface Config extends BaseConfig {
 
 type Dependencies = Pick<
   AppState,
-  "web3" | "emps" | "synthPrices" | "erc20s" | "prices" | "stats" | "registeredEmps" | "marketPrices" | "lsps"
+  "emps" | "synthPrices" | "erc20s" | "prices" | "stats" | "registeredEmps" | "marketPrices" | "lsps"
 >;
 
-export default function (config: Config, appState: Dependencies) {
+export default function (config: Config, appState: Dependencies, appClients: AppClients) {
   const { currency = "usd", debug } = config;
-  const { web3, emps, synthPrices, prices } = appState;
+  const { emps, synthPrices, prices } = appState;
+  const { web3 } = appClients;
   const getSynthPrices = SynthPrices(config, web3);
 
   const queries = Queries.Emp(appState);

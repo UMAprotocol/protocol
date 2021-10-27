@@ -3,16 +3,16 @@ import * as uma from "@uma/sdk";
 import assert from "assert";
 import { ethers } from "ethers";
 import Service from "./lsp-state";
-import type { AppState } from "../types";
+import type { AppClients, AppState } from "../types";
 import { Multicall2 } from "@uma/sdk";
 import * as tables from "../tables";
 // this fixes usage of "this" as any
 import "mocha";
 
-type Dependencies = Pick<
-  AppState,
-  "lsps" | "registeredLsps" | "provider" | "collateralAddresses" | "shortAddresses" | "longAddresses" | "multicall2"
->;
+type Dependencies = {
+  tables: Pick<AppState, "lsps" | "registeredLsps" | "collateralAddresses" | "shortAddresses" | "longAddresses">;
+  appClients: Pick<AppClients, "provider" | "multicall2">;
+};
 
 // this contract updated to have pairName                                 // does not have pairname
 const registeredContracts = [
@@ -21,48 +21,54 @@ const registeredContracts = [
 ];
 
 describe("lsp-state service", function () {
-  let appState: Dependencies;
+  let dependencies: Dependencies;
+
   before(async function () {
     assert(process.env.CUSTOM_NODE_URL);
     assert(process.env.MULTI_CALL_2_ADDRESS);
     const provider = new ethers.providers.WebSocketProvider(process.env.CUSTOM_NODE_URL);
     const registeredLsps = tables.registeredContracts.Table("Registered Lsps");
     await Promise.all(registeredContracts.map((address) => registeredLsps.set({ address, id: address })));
-    appState = {
-      provider,
-      multicall2: new Multicall2(process.env.MULTI_CALL_2_ADDRESS, provider),
-      registeredLsps,
-      collateralAddresses: tables.addresses.Table("Collateral Addresses"),
-      longAddresses: tables.addresses.Table("Long Addresses"),
-      shortAddresses: tables.addresses.Table("Short Addresses"),
-      lsps: {
-        active: tables.lsps.Table("Active LSP"),
-        expired: tables.lsps.Table("Expired LSP"),
+    dependencies = {
+      tables: {
+        registeredLsps,
+        collateralAddresses: tables.addresses.Table("Collateral Addresses"),
+        longAddresses: tables.addresses.Table("Long Addresses"),
+        shortAddresses: tables.addresses.Table("Short Addresses"),
+        lsps: {
+          active: tables.lsps.Table("Active LSP"),
+          expired: tables.lsps.Table("Expired LSP"),
+        },
+      },
+      appClients: {
+        provider,
+        multicall2: new Multicall2(process.env.MULTI_CALL_2_ADDRESS, provider),
       },
     };
   });
   it("init", async function () {
-    const service = Service({}, appState);
+    const service = Service({}, dependencies);
     assert.ok(service);
   });
   it("get collateral balance", async function () {
     const collateralAddress = "0x04Fa0d235C4abf4BcF4787aF4CF447DE572eF828";
-    const service = Service({}, appState);
+    const service = Service({}, dependencies);
     const [address] = registeredContracts;
     const result = await service.utils.getErc20BalanceOf(collateralAddress, address);
     assert.ok(result);
   });
   it("getPositionCollateral", async function () {
-    const service = Service({}, appState);
+    const service = Service({}, dependencies);
     const [address] = registeredContracts;
-    const instance = await uma.clients.lsp.connect(address, appState.provider);
+    const instance = await uma.clients.lsp.connect(address, dependencies.appClients.provider);
     const result = await service.utils.getPositionCollateral(instance, address);
     assert.ok(result);
   });
   it("readDynamicState", async function () {
+    const { appClients } = dependencies;
     const [address] = registeredContracts;
-    const service = Service({}, appState);
-    const instance = await uma.clients.lsp.connect(address, appState.provider);
+    const service = Service({}, dependencies);
+    const instance = await uma.clients.lsp.connect(address, appClients.provider);
     const result = await service.utils.getDynamicProps(instance, address);
     assert.equal(result.address, address);
     assert.ok(result.updated > 0);
@@ -71,16 +77,18 @@ describe("lsp-state service", function () {
     assert.ok(result.contractState >= 0);
   });
   it("readOptionalState", async function () {
+    const { appClients } = dependencies;
     const [address] = registeredContracts;
-    const service = Service({}, appState);
-    const instance = await uma.clients.lsp.connect(address, appState.provider);
+    const service = Service({}, dependencies);
+    const instance = await uma.clients.lsp.connect(address, appClients.provider);
     const result = await service.utils.getOptionalProps(instance, address);
     assert.equal(result.pairName, "SUSHIsBOND July 2024");
   });
   it("readStaticState", async function () {
+    const { appClients } = dependencies;
     const [address] = registeredContracts;
-    const service = Service({}, appState);
-    const instance = await uma.clients.lsp.connect(address, appState.provider);
+    const service = Service({}, dependencies);
+    const instance = await uma.clients.lsp.connect(address, appClients.provider);
     const result = await service.utils.getStaticProps(instance, address);
     assert.equal(result.address, address);
     assert.ok(result.updated > 0);
@@ -97,12 +105,12 @@ describe("lsp-state service", function () {
   });
   it("update", async function () {
     this.timeout(60000);
-    const service = Service({}, appState);
+    const service = Service({}, dependencies);
     await service.update();
-
-    assert.ok((await appState.lsps.active.values()).length || (await appState.lsps.expired.values()).length);
-    assert.ok([...(await appState.collateralAddresses.keys())].length);
-    assert.ok([...(await appState.longAddresses.keys())].length);
-    assert.ok([...(await appState.shortAddresses.keys())].length);
+    const { tables } = dependencies;
+    assert.ok((await tables.lsps.active.values()).length || (await tables.lsps.expired.values()).length);
+    assert.ok([...(await tables.collateralAddresses.keys())].length);
+    assert.ok([...(await tables.longAddresses.keys())].length);
+    assert.ok([...(await tables.shortAddresses.keys())].length);
   });
 });

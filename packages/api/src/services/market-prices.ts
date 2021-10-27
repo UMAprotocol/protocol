@@ -1,17 +1,22 @@
 import bluebird from "bluebird";
 import assert from "assert";
 import lodash from "lodash";
-import { AppState, BaseConfig } from "../types";
+import { AppClients, AppState, BaseConfig } from "../types";
 import { parseUnits, nowS, Profile } from "../libs/utils";
 
 type Config = BaseConfig;
 
-type Dependencies = Pick<AppState, "zrx" | "marketPrices" | "collateralAddresses" | "syntheticAddresses" | "erc20s">;
+type Dependencies = {
+  tables: Pick<AppState, "marketPrices" | "collateralAddresses" | "syntheticAddresses" | "erc20s">;
+  appClients: AppClients;
+};
 
 // market prices are pulled from the 0x matcha api
-export default function (config: Config, appState: Dependencies) {
+export default function (config: Config, dependencies: Dependencies) {
   // these prices will be quoted against usdc by default, but can be specified as address or symbol
-  const { zrx, marketPrices, collateralAddresses, syntheticAddresses, erc20s } = appState;
+  const { appClients, tables } = dependencies;
+  const { marketPrices, collateralAddresses, syntheticAddresses, erc20s } = tables;
+  const { zrx } = appClients;
   // this is hardcoded for now since it differs from the standard currency symbol usd
   const currency = "usdc";
   const profile = Profile(config.debug);

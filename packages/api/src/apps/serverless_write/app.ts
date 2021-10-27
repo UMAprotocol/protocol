@@ -19,7 +19,7 @@ import {
 import Zrx from "../../libs/zrx";
 import { Profile, parseEnvArray, getWeb3, expirePromise } from "../../libs/utils";
 
-import type { AppState, ProcessEnv } from "../../types";
+import type { AppClients, AppState, ProcessEnv } from "../../types";
 
 export default async (env: ProcessEnv) => {
   assert(env.CUSTOM_NODE_URL, "requires CUSTOM_NODE_URL");
@@ -40,10 +40,6 @@ export default async (env: ProcessEnv) => {
   const datastores = StoresFactory(datastoreClient);
   // state shared between services
   const appState: AppState = {
-    provider,
-    web3,
-    coingecko: new Coingecko(),
-    zrx: new Zrx(env.zrxBaseUrl),
     emps: {
       active: tables.emps.Table("Active Emp", datastores.empsActive),
       expired: tables.emps.Table("Expired Emp", datastores.empsExpired),
@@ -107,20 +103,29 @@ export default async (env: ProcessEnv) => {
     // lsp related props. could be its own state object
     longAddresses: addresses.Table("Long Addresses", datastores.longAddresses),
     shortAddresses: addresses.Table("Short Addresses", datastores.shortAddresses),
-    multicall2: new Multicall2(env.MULTI_CALL_2_ADDRESS, provider),
     lsps: {
       active: lsps.Table("Active LSP", datastores.lspsActive),
       expired: lsps.Table("Expired LSP", datastores.lspsExpired),
     },
     appStats: appStats.Table("App Stats", datastores.appStats),
   };
-
+  // clients shared between services
+  const appClients: AppClients = {
+    provider,
+    web3,
+    coingecko: new Coingecko(),
+    zrx: new Zrx(env.zrxBaseUrl),
+    multicall2: new Multicall2(env.MULTI_CALL_2_ADDRESS, provider),
+  };
   // services for ingesting data
   const services = {
     // these services can optionally be configured with a config object, but currently they are undefined or have defaults
-    emps: Services.EmpState({ debug }, appState),
-    registry: await Services.Registry({ debug, registryAddress: env.EMP_REGISTRY_ADDRESS }, appState),
-    collateralPrices: Services.CollateralPrices({ debug }, appState),
+    emps: Services.EmpState({ debug }, { tables: appState, appClients }),
+    registry: await Services.Registry(
+      { debug, registryAddress: env.EMP_REGISTRY_ADDRESS },
+      { tables: appState, appClients }
+    ),
+    collateralPrices: Services.CollateralPrices({ debug }, { tables: appState, appClients }),
     syntheticPrices: Services.SyntheticPrices(
       {
         debug,
@@ -129,13 +134,17 @@ export default async (env: ProcessEnv) => {
         quandlApiKey: env.quandlApiKey,
         defipulseApiKey: env.defipulseApiKey,
       },
-      appState
+      appState,
+      appClients
     ),
-    erc20s: Services.Erc20s({ debug }, appState),
+    erc20s: Services.Erc20s({ debug }, { tables: appState, appClients }),
     empStats: Services.stats.Emp({ debug }, appState),
-    marketPrices: Services.MarketPrices({ debug }, appState),
-    lspCreator: await Services.MultiLspCreator({ debug, addresses: lspCreatorAddresses }, appState),
-    lsps: Services.LspState({ debug }, appState),
+    marketPrices: Services.MarketPrices({ debug }, { tables: appState, appClients }),
+    lspCreator: await Services.MultiLspCreator(
+      { debug, addresses: lspCreatorAddresses },
+      { tables: appState, appClients }
+    ),
+    lsps: Services.LspState({ debug }, { tables: appState, appClients }),
     lspStats: Services.stats.Lsp({ debug }, appState),
     globalStats: Services.stats.Global({ debug }, appState),
   };

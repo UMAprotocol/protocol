@@ -1,17 +1,22 @@
 import * as uma from "@uma/sdk";
 import bluebird from "bluebird";
 import assert from "assert";
-import { AppState, CurrencySymbol, BaseConfig } from "../types";
+import { AppState, CurrencySymbol, BaseConfig, AppClients } from "../types";
 interface Config extends BaseConfig {
   currency?: CurrencySymbol;
 }
 import { parseUnits, msToS } from "../libs/utils";
 
-type Dependencies = Pick<AppState, "coingecko" | "prices" | "collateralAddresses">;
+type Dependencies = {
+  tables: Pick<AppState, "prices" | "collateralAddresses">;
+  appClients: AppClients;
+};
 
-export default function (config: Config, appState: Dependencies) {
+export default function (config: Config, dependencies: Dependencies) {
   const { currency = "usd" } = config;
-  const { coingecko, prices, collateralAddresses } = appState;
+  const { appClients, tables } = dependencies;
+  const { prices, collateralAddresses } = tables;
+  const { coingecko } = appClients;
   assert(coingecko, "requires coingecko library");
   assert(prices[currency], `requires prices.${currency}`);
 

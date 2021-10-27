@@ -41,8 +41,6 @@ export type CurrencySymbol = "usd";
 export type PriceSample = [timestamp: number, price: string];
 // These are library dependencies to all services
 export type AppState = {
-  coingecko: uma.Coingecko;
-  zrx: Zrx;
   emps: {
     active: uma.tables.emps.Table;
     expired: uma.tables.emps.Table;
@@ -110,12 +108,17 @@ export type AppState = {
   };
   registeredEmps: registeredContracts.Table;
   registeredLsps: registeredContracts.Table;
-  provider: Provider;
-  web3: Web3;
   appStats: appStats.Table;
   collateralAddresses: addresses.Table;
   syntheticAddresses: addresses.Table;
   longAddresses: addresses.Table;
   shortAddresses: addresses.Table;
+};
+
+export type AppClients = {
+  coingecko: uma.Coingecko;
+  zrx: Zrx;
   multicall2: uma.Multicall2;
+  provider: Provider;
+  web3: Web3;
 };

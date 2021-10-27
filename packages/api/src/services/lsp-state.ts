@@ -1,18 +1,20 @@
 import * as uma from "@uma/sdk";
 import { BatchRead, toString, toNumber, parseBytes, nowS, Profile } from "../libs/utils";
-import { AppState, BaseConfig } from "../types";
+import { AppClients, AppState, BaseConfig } from "../types";
 import { lsps } from "../tables";
 import { BigNumber } from "ethers";
 
 type Instance = uma.clients.lsp.Instance;
 type Config = BaseConfig;
-type Dependencies = Pick<
-  AppState,
-  "lsps" | "registeredLsps" | "provider" | "collateralAddresses" | "shortAddresses" | "longAddresses" | "multicall2"
->;
+type Dependencies = {
+  tables: Pick<AppState, "lsps" | "registeredLsps" | "collateralAddresses" | "shortAddresses" | "longAddresses">;
+  appClients: Pick<AppClients, "provider" | "multicall2">;
+};
 
-export default (config: Config, appState: Dependencies) => {
-  const { lsps, registeredLsps, provider, collateralAddresses, shortAddresses, longAddresses, multicall2 } = appState;
+export default (config: Config, dependencies: Dependencies) => {
+  const { appClients, tables } = dependencies;
+  const { lsps, registeredLsps, collateralAddresses, shortAddresses, longAddresses } = tables;
+  const { provider, multicall2 } = appClients;
   const profile = Profile(config.debug);
 
   // default props we want to query on contract
