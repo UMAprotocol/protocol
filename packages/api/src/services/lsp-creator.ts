@@ -1,6 +1,6 @@
 import { clients } from "@uma/sdk";
 import bluebird from "bluebird";
-import { AppState, BaseConfig } from "../types";
+import { AppClients, AppState, BaseConfig } from "../types";
 
 const { lspCreator } = clients;
 
@@ -8,7 +8,10 @@ interface Config extends BaseConfig {
   network?: number;
   address?: string;
 }
-type Dependencies = Pick<AppState, "registeredLsps" | "provider" | "registeredLspsMetadata">;
+type Dependencies = {
+  tables: Pick<AppState, "registeredLsps">;
+  appClients: AppClients;
+};
 
 export type EmitData = {
   blockNumber: number;
@@ -19,10 +22,11 @@ export type EmitData = {
 
 export type Events = "created";
 
-export default async (config: Config, appState: Dependencies, emit: (event: Events, data: EmitData) => void) => {
+export default async (config: Config, dependencies: Dependencies, emit: (event: Events, data: EmitData) => void) => {
   const { network = 1, address = await lspCreator.getAddress(network) } = config;
-  const { registeredLsps, provider, registeredLspsMetadata } = appState;
-
+  const { appClients, tables } = dependencies;
+  const { registeredLsps } = tables;
+  const { provider } = appClients;
   const contract = lspCreator.connect(address, provider);
 
   async function update(startBlock?: number, endBlock?: number) {
@@ -33,10 +37,13 @@ export default async (config: Config, appState: Dependencies, emit: (event: Even
     );
     const { contracts } = lspCreator.getEventState(events);
     if (!contracts) return;
-    await bluebird.map(Object.keys(contracts), (address) => {
+    await bluebird.map(Object.keys(contracts), async (address) => {
       const blockNumber = contracts[address].blockNumber;
-      registeredLspsMetadata.set(address, { blockNumber });
-      registeredLsps.add(address);
+      await registeredLsps.set({
+        address,
+        id: address,
+        blockNumber,
+      });
       // emit that a new contract was found. Must be done after saving meta data
       emit("created", { address, blockNumber, startBlock, endBlock });
     });

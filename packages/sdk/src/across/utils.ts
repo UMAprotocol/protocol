@@ -1,5 +1,6 @@
 import { BigNumber, ethers } from "ethers";
 import { ConvertDecimals } from "../utils";
+import Decimal from "decimal.js";
 
 export type BigNumberish = string | number | BigNumber;
 export type BN = BigNumber;
@@ -108,6 +109,42 @@ export function calculateGasFees(
   return ethToToken(amountEth, price, decimals);
 }
 
+/**
+ * percent.
+ *
+ * @param {BigNumberish} numerator
+ * @param {BigNumberish} denominator
+ * @returns {BN}
+ */
 export function percent(numerator: BigNumberish, denominator: BigNumberish): BN {
   return fixedPointAdjustment.mul(numerator).div(denominator);
 }
+
+/**
+ * calcInterest. Calculates a compounding interest:  https://www.calculatorsoup.com/calculators/financial/compound-interest-calculator.php
+ *
+ * @param {number} startPrice
+ * @param {number} endPrice
+ * @param {number} periodsRemaining
+ * @param {number} periods
+ */
+export const calcInterest = (startPrice: string, endPrice: string, periods: string, periodsRemaining = "1") => {
+  return new Decimal(periods)
+    .mul(
+      new Decimal(endPrice)
+        .div(startPrice)
+        .pow(new Decimal(1).div(new Decimal(periodsRemaining).div(periods).mul(periods)))
+        .sub(1)
+    )
+    .toString();
+};
+
+/**
+ * calcApy. Calculates apy based on interest rate: https://www.omnicalculator.com/finance/apy#how-does-this-apy-calculator-work
+ *
+ * @param {number} interest
+ * @param {number} periods
+ */
+export const calcApy = (interest: string, periods: string) => {
+  return new Decimal(interest).div(periods).add(1).pow(periods).sub(1).toString();
+};

@@ -13,8 +13,8 @@ export function Handlers(config: Config, appState: Dependencies): Actions {
   const { registeredLsps, erc20s, collateralAddresses, longAddresses, shortAddresses, stats } = appState;
 
   const actions: Actions = {
-    listAddresses() {
-      return Array.from(registeredLsps.values());
+    async listAddresses() {
+      return await registeredLsps.keys();
     },
     hasAddress: queries.hasAddress,
     listActive: queries.listActive,
@@ -31,13 +31,13 @@ export function Handlers(config: Config, appState: Dependencies): Actions {
       return erc20s.values();
     },
     async collateralAddresses() {
-      return Array.from(collateralAddresses.values());
+      return await collateralAddresses.keys();
     },
     async longAddresses() {
-      return Array.from(longAddresses.values());
+      return await longAddresses.keys();
     },
     async shortAddresses() {
-      return Array.from(shortAddresses.values());
+      return await shortAddresses.keys();
     },
     async listTvls(currency: CurrencySymbol = "usd") {
       return appState.stats.lsp[currency].latest.tvl.values();

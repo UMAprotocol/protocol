@@ -29,10 +29,10 @@ export function Handlers(config: Config, appState: Dependencies): Actions {
       return args;
     },
     listEmpAddresses() {
-      return Array.from(registeredEmps.values());
+      return registeredEmps.keys();
     },
     lastBlock() {
-      return appState.lastBlockUpdate;
+      return appState.appStats.getLastBlockUpdate();
     },
     hasAddress: queries.hasAddress,
     // deprecated
@@ -59,20 +59,32 @@ export function Handlers(config: Config, appState: Dependencies): Actions {
       return erc20s.values();
     },
     async collateralAddresses() {
-      return Array.from(collateralAddresses.values());
+      return await collateralAddresses.keys();
     },
     async syntheticAddresses() {
-      return Array.from(syntheticAddresses.values());
+      return await syntheticAddresses.keys();
     },
     async allLatestPrices(currency: CurrencySymbol = "usd") {
       assert(exists(prices[currency]), "invalid currency type: " + currency);
-      return prices[currency].latest;
+      const priceSamples = await prices[currency].latest.values();
+      return priceSamples.reduce(
+        (acc, { price, timestamp, address }) => ({ ...acc, [address]: [price, timestamp] }),
+        {}
+      );
     },
     async allIdentifierPrices() {
-      return synthPrices.latest;
+      const synthPriceValues = await synthPrices.latest.values();
+      return synthPriceValues.reduce(
+        (acc, { address, timestamp, price }) => ({ ...acc, [address]: [timestamp, price] }),
+        {}
+      );
     },
     async allLatestMarketPrices() {
-      return marketPrices.usdc.latest;
+      const marketPricesValues = await marketPrices.usdc.latest.values();
+      return marketPricesValues.reduce(
+        (acc, { address, timestamp, price }) => ({ ...acc, [address]: [timestamp, price] }),
+        {}
+      );
     },
     // get prices by token address
     latestPriceByTokenAddress: queries.latestPriceByTokenAddress,

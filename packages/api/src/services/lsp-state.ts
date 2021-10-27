@@ -1,34 +1,20 @@
 import * as uma from "@uma/sdk";
 import { BatchRead, toString, toNumber, parseBytes, nowS, Profile } from "../libs/utils";
-import { AppState, BaseConfig } from "../types";
+import { AppClients, AppState, BaseConfig } from "../types";
 import { lsps } from "../tables";
 import { BigNumber } from "ethers";
 
 type Instance = uma.clients.lsp.Instance;
 type Config = BaseConfig;
-type Dependencies = Pick<
-  AppState,
-  | "lsps"
-  | "registeredLsps"
-  | "provider"
-  | "collateralAddresses"
-  | "shortAddresses"
-  | "longAddresses"
-  | "multicall2"
-  | "registeredLspsMetadata"
->;
+type Dependencies = {
+  tables: Pick<AppState, "lsps" | "registeredLsps" | "collateralAddresses" | "shortAddresses" | "longAddresses">;
+  appClients: Pick<AppClients, "provider" | "multicall2">;
+};
 
-export default (config: Config, appState: Dependencies) => {
-  const {
-    lsps,
-    registeredLsps,
-    registeredLspsMetadata,
-    provider,
-    collateralAddresses,
-    shortAddresses,
-    longAddresses,
-    multicall2,
-  } = appState;
+export default (config: Config, dependencies: Dependencies) => {
+  const { appClients, tables } = dependencies;
+  const { lsps, registeredLsps, collateralAddresses, shortAddresses, longAddresses } = tables;
+  const { provider, multicall2 } = appClients;
   const profile = Profile(config.debug);
 
   // default props we want to query on contract
@@ -172,10 +158,10 @@ export default (config: Config, appState: Dependencies) => {
     const lsp = await table.get(address);
     if (lsp.createdTimestamp) return;
 
-    const blockMetadata = registeredLspsMetadata.get(address);
-    if (!blockMetadata) return;
+    const { blockNumber } = await registeredLsps.get(address);
+    if (typeof blockNumber !== "number") return;
 
-    const block = await provider.getBlock(blockMetadata.blockNumber);
+    const block = await provider.getBlock(blockNumber);
     await table.setCreatedTimestamp(address, block.timestamp);
   }
   async function updateLsps(addresses: string[], startBlock?: number, endBlock?: number) {
@@ -192,15 +178,17 @@ export default (config: Config, appState: Dependencies) => {
   }
   async function updateTokenAddresses() {
     const allLsps = [...(await lsps.active.values()), ...(await lsps.expired.values())];
-    allLsps.forEach((lsp) => {
-      if (lsp.collateralToken) collateralAddresses.add(lsp.collateralToken);
-      if (lsp.longToken) longAddresses.add(lsp.longToken);
-      if (lsp.shortToken) shortAddresses.add(lsp.shortToken);
-    });
+    await Promise.all(allLsps.map((lsp) => updateTokenAddress(lsp)));
+  }
+
+  async function updateTokenAddress(lsp: lsps.Data) {
+    if (lsp.collateralToken) await collateralAddresses.set(lsp.collateralToken);
+    if (lsp.longToken) await longAddresses.set(lsp.longToken);
+    if (lsp.shortToken) await shortAddresses.set(lsp.shortToken);
   }
 
   async function update(startBlock?: number, endBlock?: number) {
-    const addresses = Array.from(await registeredLsps.values());
+    const addresses = await registeredLsps.keys();
     await updateLsps(addresses, startBlock, endBlock).then((results) => {
       results.forEach((result) => {
         if (result.status === "rejected") console.error("Error Updating LSP State: " + result.reason.message);

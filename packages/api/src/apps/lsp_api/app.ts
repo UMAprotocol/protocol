@@ -8,8 +8,17 @@ import { tables, Coingecko, utils, Multicall2 } from "@uma/sdk";
 import * as Services from "../../services";
 import Express from "../../services/express-channels";
 import * as Actions from "../../services/actions";
-import { ProcessEnv, AppState, Channels } from "../../types";
-import { empStats, empStatsHistory, lsps } from "../../tables";
+import { ProcessEnv, AppState, Channels, AppClients } from "../../types";
+import {
+  addresses,
+  appStats,
+  empStats,
+  empStatsHistory,
+  lsps,
+  priceSamples,
+  registeredContracts,
+  tvl,
+} from "../../tables";
 import Zrx from "../../libs/zrx";
 import { Profile, parseEnvArray, BlockInterval, expirePromise } from "../../libs/utils";
 
@@ -46,28 +55,23 @@ export default async (env: ProcessEnv) => {
 
   // state shared between services
   const appState: AppState = {
-    provider,
-    // This isnt needed for the lsp app to run, but the type needs to conform to app state
-    web3: {} as Web3,
-    coingecko: new Coingecko(),
-    zrx: new Zrx(env.zrxBaseUrl),
     emps: {
       active: tables.emps.Table("Active Emp"),
       expired: tables.emps.Table("Expired Emp"),
     },
     prices: {
       usd: {
-        latest: {},
+        latest: priceSamples.Table("Latest Usd Prices"),
         history: {},
       },
     },
     synthPrices: {
-      latest: {},
+      latest: priceSamples.Table("Latest Synth Prices"),
       history: {},
     },
     marketPrices: {
       usdc: {
-        latest: {},
+        latest: priceSamples.Table("Latest USDC Market Prices"),
         history: empStatsHistory.Table("Market Price"),
       },
     },
@@ -99,7 +103,7 @@ export default async (env: ProcessEnv) => {
       global: {
         usd: {
           latest: {
-            tvl: [0, "0"],
+            tvl: tvl.Table("Latest Usd Global Tvl"),
           },
           history: {
             tvl: empStatsHistory.Table("Tvl Global History"),
@@ -107,52 +111,65 @@ export default async (env: ProcessEnv) => {
         },
       },
     },
-    lastBlockUpdate: 0,
-    registeredEmps: new Set<string>(),
-    registeredEmpsMetadata: new Map(),
-    registeredLsps: new Set<string>(),
-    registeredLspsMetadata: new Map(),
-    collateralAddresses: new Set<string>(),
-    syntheticAddresses: new Set<string>(),
+    registeredEmps: registeredContracts.Table("Registered Emps"),
+    registeredLsps: registeredContracts.Table("Registered Lsps"),
+    collateralAddresses: addresses.Table("Collateral Addresses"),
+    syntheticAddresses: addresses.Table("Synthetic Addresses"),
     // lsp related props. could be its own state object
-    longAddresses: new Set<string>(),
-    shortAddresses: new Set<string>(),
-    multicall2: new Multicall2(env.MULTI_CALL_2_ADDRESS, provider),
+    longAddresses: addresses.Table("Long Addresses"),
+    shortAddresses: addresses.Table("Short Addresses"),
     lsps: {
       active: lsps.Table("Active LSP"),
       expired: lsps.Table("Expired LSP"),
     },
+    appStats: appStats.Table("App Stats"),
   };
-
+  // clients shared between services
+  const appClients: AppClients = {
+    provider,
+    // This isnt needed for the lsp app to run, but the type needs to conform to app state
+    web3: {} as Web3,
+    coingecko: new Coingecko(),
+    zrx: new Zrx(env.zrxBaseUrl),
+    multicall2: new Multicall2(env.MULTI_CALL_2_ADDRESS, provider),
+  };
   // services for ingesting data
   const services = {
     // these services can optionally be configured with a config object, but currently they are undefined or have defaults
-    emps: Services.EmpState({ debug }, appState),
-    registry: await Services.Registry({ debug, registryAddress: env.EMP_REGISTRY_ADDRESS }, appState, (event, data) =>
-      serviceEvents.emit("empRegistry", event, data)
+    emps: Services.EmpState({ debug }, { tables: appState, appClients }),
+    registry: await Services.Registry(
+      { debug, registryAddress: env.EMP_REGISTRY_ADDRESS },
+      { tables: appState, appClients },
+      (event, data) => serviceEvents.emit("empRegistry", event, data)
     ),
-    collateralPrices: Services.CollateralPrices({ debug }, appState),
-    erc20s: Services.Erc20s({ debug }, appState),
+    collateralPrices: Services.CollateralPrices({ debug }, { tables: appState, appClients }),
+    erc20s: Services.Erc20s({ debug }, { tables: appState, appClients }),
     empStats: Services.stats.Emp({ debug }, appState),
-    marketPrices: Services.MarketPrices({ debug }, appState),
-    lspCreator: await Services.MultiLspCreator({ debug, addresses: lspCreatorAddresses }, appState, (event, data) =>
-      serviceEvents.emit("multiLspCreator", event, data)
+    marketPrices: Services.MarketPrices({ debug }, { tables: appState, appClients }),
+    lspCreator: await Services.MultiLspCreator(
+      { debug, addresses: lspCreatorAddresses },
+      { tables: appState, appClients },
+      (event, data) => serviceEvents.emit("multiLspCreator", event, data)
     ),
-    lsps: Services.LspState({ debug }, appState),
+    lsps: Services.LspState({ debug }, { tables: appState, appClients }),
     lspStats: Services.stats.Lsp({ debug }, appState),
     globalStats: Services.stats.Global({ debug }, appState),
   };
 
   const initBlock = await provider.getBlock("latest");
 
-  await services.lspCreator.update(appState.lastBlockUpdate, initBlock.number);
+  async function lastBlockUpdate() {
+    return appState.appStats.getLastBlockUpdate() || 0;
+  }
+
+  await services.lspCreator.update(await lastBlockUpdate(), initBlock.number);
   console.log("Got all LSP addresses");
 
-  await services.lsps.update(appState.lastBlockUpdate, initBlock.number);
+  await services.lsps.update(await lastBlockUpdate(), initBlock.number);
   console.log("Updated LSP state");
 
   // we've update our state based on latest block we queried
-  appState.lastBlockUpdate = initBlock.number;
+  await appState.appStats.setLastBlockUpdate(initBlock.number);
 
   await services.erc20s.update();
   console.log("Updated tokens");
@@ -195,7 +212,7 @@ export default async (env: ProcessEnv) => {
     assert(startBlock < endBlock, "Startblock must be lower than endBlock");
     await services.lsps.update(startBlock, endBlock);
     await services.erc20s.update();
-    appState.lastBlockUpdate = endBlock;
+    await appState.appStats.setLastBlockUpdate(endBlock);
   }
 
   // separate out price updates into a different loop to query every few minutes

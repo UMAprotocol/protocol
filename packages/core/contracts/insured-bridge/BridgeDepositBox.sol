@@ -224,17 +224,28 @@ abstract contract BridgeDepositBox is Testable, Lockable {
 
     /**
      * @notice Checks if a given L2 token is whitelisted.
+     * @dev Check the whitelisted token's `lastBridgeTime` parameter since its guaranteed to be != 0 once
+     * the token has been whitelisted.
      * @param l2Token L2 token to check against the whitelist.
+     * @return true if token is whitelised.
      */
     function isWhitelistToken(address l2Token) public view returns (bool) {
-        return whitelistedTokens[l2Token].l1Token != address(0);
+        return whitelistedTokens[l2Token].lastBridgeTime != 0;
+    }
+
+    function _hasEnoughTimeElapsedToBridge(address l2Token) internal view returns (bool) {
+        return getCurrentTime() > whitelistedTokens[l2Token].lastBridgeTime + minimumBridgingDelay;
     }
 
     /**
-     * @notice Checks if enough time has elapsed from the previous bridge transfer to execute another bridge transfer.
-     * @param l2Token L2 token to check against last bridge time delay.
+     * @notice Designed to be called by implementing contract in `bridgeTokens` method which sends this contract's
+     * balance of tokens from L2 to L1 via the canonical token bridge. Tokens that can be bridged are whitelisted
+     * and have had enough time elapsed since the latest bridge (or the time at which at was whitelisted).
+     * @dev This function is also public for caller convenience.
+     * @param l2Token L2 token to check bridging status.
+     * @return true if token is whitelised and enough time has elapsed since the previous bridge.
      */
-    function hasEnoughTimeElapsedToBridge(address l2Token) public view returns (bool) {
-        return getCurrentTime() > whitelistedTokens[l2Token].lastBridgeTime + minimumBridgingDelay;
+    function canBridge(address l2Token) public view returns (bool) {
+        return isWhitelistToken(l2Token) && _hasEnoughTimeElapsedToBridge(l2Token);
     }
 }

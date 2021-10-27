@@ -5,11 +5,21 @@ import { tables, Coingecko, Multicall2 } from "@uma/sdk";
 import { Datastore } from "@google-cloud/datastore";
 
 import * as Services from "../../services";
-import { appStats, empStats, empStatsHistory, lsps, StoresFactory } from "../../tables";
+import {
+  addresses,
+  appStats,
+  empStats,
+  empStatsHistory,
+  lsps,
+  priceSamples,
+  registeredContracts,
+  StoresFactory,
+  tvl,
+} from "../../tables";
 import Zrx from "../../libs/zrx";
 import { Profile, parseEnvArray, getWeb3, expirePromise } from "../../libs/utils";
 
-import type { ProcessEnv, DatastoreAppState } from "../../types";
+import type { AppClients, AppState, ProcessEnv } from "../../types";
 
 export default async (env: ProcessEnv) => {
   assert(env.CUSTOM_NODE_URL, "requires CUSTOM_NODE_URL");
@@ -29,28 +39,24 @@ export default async (env: ProcessEnv) => {
   const datastoreClient = new Datastore();
   const datastores = StoresFactory(datastoreClient);
   // state shared between services
-  const appState: DatastoreAppState = {
-    provider,
-    web3,
-    coingecko: new Coingecko(),
-    zrx: new Zrx(env.zrxBaseUrl),
+  const appState: AppState = {
     emps: {
       active: tables.emps.Table("Active Emp", datastores.empsActive),
       expired: tables.emps.Table("Expired Emp", datastores.empsExpired),
     },
     prices: {
       usd: {
-        latest: {},
+        latest: priceSamples.Table("Latest Usd Prices", datastores.latestUsdPrices),
         history: {},
       },
     },
     synthPrices: {
-      latest: {},
+      latest: priceSamples.Table("Latest Synth Prices", datastores.latestSynthPrices),
       history: {},
     },
     marketPrices: {
       usdc: {
-        latest: {},
+        latest: priceSamples.Table("Latest USDC Market Prices", datastores.latestUsdcMarketPrices),
         history: empStatsHistory.Table("Market Price", datastores.empStatsHistory),
       },
     },
@@ -82,7 +88,7 @@ export default async (env: ProcessEnv) => {
       global: {
         usd: {
           latest: {
-            tvl: [0, "0"],
+            tvl: tvl.Table("Latest Usd Global Tvl", datastores.globalUsdLatestTvl),
           },
           history: {
             tvl: empStatsHistory.Table("Tvl Global History"),
@@ -90,30 +96,36 @@ export default async (env: ProcessEnv) => {
         },
       },
     },
-    lastBlockUpdate: 0,
-    registeredEmps: new Set<string>(),
-    registeredEmpsMetadata: new Map(),
-    registeredLsps: new Set<string>(),
-    registeredLspsMetadata: new Map(),
-    collateralAddresses: new Set<string>(),
-    syntheticAddresses: new Set<string>(),
+    registeredEmps: registeredContracts.Table("Registered Emps", datastores.registeredEmps),
+    registeredLsps: registeredContracts.Table("Registered Lsps", datastores.registeredLsps),
+    collateralAddresses: addresses.Table("Collateral Addresses", datastores.collateralAddresses),
+    syntheticAddresses: addresses.Table("Synthetic Addresses", datastores.syntheticAddresses),
     // lsp related props. could be its own state object
-    longAddresses: new Set<string>(),
-    shortAddresses: new Set<string>(),
-    multicall2: new Multicall2(env.MULTI_CALL_2_ADDRESS, provider),
+    longAddresses: addresses.Table("Long Addresses", datastores.longAddresses),
+    shortAddresses: addresses.Table("Short Addresses", datastores.shortAddresses),
     lsps: {
       active: lsps.Table("Active LSP", datastores.lspsActive),
       expired: lsps.Table("Expired LSP", datastores.lspsExpired),
     },
     appStats: appStats.Table("App Stats", datastores.appStats),
   };
-
+  // clients shared between services
+  const appClients: AppClients = {
+    provider,
+    web3,
+    coingecko: new Coingecko(),
+    zrx: new Zrx(env.zrxBaseUrl),
+    multicall2: new Multicall2(env.MULTI_CALL_2_ADDRESS, provider),
+  };
   // services for ingesting data
   const services = {
     // these services can optionally be configured with a config object, but currently they are undefined or have defaults
-    emps: Services.EmpState({ debug }, appState),
-    registry: await Services.Registry({ debug, registryAddress: env.EMP_REGISTRY_ADDRESS }, appState),
-    collateralPrices: Services.CollateralPrices({ debug }, appState),
+    emps: Services.EmpState({ debug }, { tables: appState, appClients }),
+    registry: await Services.Registry(
+      { debug, registryAddress: env.EMP_REGISTRY_ADDRESS },
+      { tables: appState, appClients }
+    ),
+    collateralPrices: Services.CollateralPrices({ debug }, { tables: appState, appClients }),
     syntheticPrices: Services.SyntheticPrices(
       {
         debug,
@@ -122,13 +134,17 @@ export default async (env: ProcessEnv) => {
         quandlApiKey: env.quandlApiKey,
         defipulseApiKey: env.defipulseApiKey,
       },
-      appState
+      appState,
+      appClients
     ),
-    erc20s: Services.Erc20s({ debug }, appState),
+    erc20s: Services.Erc20s({ debug }, { tables: appState, appClients }),
     empStats: Services.stats.Emp({ debug }, appState),
-    marketPrices: Services.MarketPrices({ debug }, appState),
-    lspCreator: await Services.MultiLspCreator({ debug, addresses: lspCreatorAddresses }, appState),
-    lsps: Services.LspState({ debug }, appState),
+    marketPrices: Services.MarketPrices({ debug }, { tables: appState, appClients }),
+    lspCreator: await Services.MultiLspCreator(
+      { debug, addresses: lspCreatorAddresses },
+      { tables: appState, appClients }
+    ),
+    lsps: Services.LspState({ debug }, { tables: appState, appClients }),
     lspStats: Services.stats.Lsp({ debug }, appState),
     globalStats: Services.stats.Global({ debug }, appState),
   };
