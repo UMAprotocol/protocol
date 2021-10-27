@@ -36,7 +36,7 @@ export class RelayerConfig {
   readonly whitelistedChainIds: number[] = [];
   readonly rateModels: { [key: string]: RateModel } = {};
   readonly activatedChainIds: number[];
-  readonly l2StartBlock: number;
+  readonly l2BlockLookback: number;
   readonly botModes: BotModes;
 
   constructor(env: ProcessEnv) {
@@ -47,7 +47,7 @@ export class RelayerConfig {
       ERROR_RETRIES_TIMEOUT,
       RATE_MODELS,
       CHAIN_IDS,
-      L2_START_BLOCK,
+      L2_BLOCK_LOOKBACK,
       DISPUTER_ENABLED,
       RELAYER_ENABLED,
       FINALIZER_ENABLED,
@@ -65,7 +65,7 @@ export class RelayerConfig {
 
     // L2 start block is not required but without one, querying past logs might fail. For example, Arbitrum Infura has a
     // query limit of up to 100,000 blocks into the past.
-    this.l2StartBlock = L2_START_BLOCK ? Number(L2_START_BLOCK) : 0;
+    this.l2BlockLookback = L2_BLOCK_LOOKBACK ? Number(L2_BLOCK_LOOKBACK) : 100000;
 
     this.pollingDelay = POLLING_DELAY ? Number(POLLING_DELAY) : 60;
     this.errorRetries = ERROR_RETRIES ? Number(ERROR_RETRIES) : 3;
