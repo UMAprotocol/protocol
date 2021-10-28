@@ -147,7 +147,8 @@ export class InsuredBridgeL1Client {
     if (this.rateModels === undefined || this.rateModels[deposit.l1Token] === undefined)
       throw new Error("No rate model for l1Token");
 
-    const quoteBlockNumber = (await findBlockNumberAtTimestamp(this.l1Web3, deposit.quoteTimestamp)).blockNumber;
+    const quoteBlockNumber = (await findBlockNumberAtTimestamp(this.l1Web3, Number(deposit.quoteTimestamp)))
+      .blockNumber;
     const bridgePool = this.getBridgePoolForDeposit(deposit).contract;
     const [liquidityUtilizationCurrent, liquidityUtilizationPostRelay] = await Promise.all([
       bridgePool.methods.liquidityUtilizationCurrent().call(undefined, quoteBlockNumber),

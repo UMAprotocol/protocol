@@ -1,9 +1,10 @@
 import { PriceFeedInterface } from "./PriceFeedInterface";
 import Web3 from "web3";
+import { getAbi } from "@uma/contracts-node";
 import { parseAncillaryData } from "@uma/common";
 import { BN } from "../types";
 import type { Logger } from "winston";
-import { InsuredBridgeL1Client } from "../clients/InsuredBridgeL1Client";
+import { InsuredBridgeL1Client, Relay } from "../clients/InsuredBridgeL1Client";
 import { InsuredBridgeL2Client, Deposit } from "../clients/InsuredBridgeL2Client";
 
 const { toBN, toWei } = Web3.utils;
@@ -55,60 +56,92 @@ export class InsuredBridgePriceFeed extends PriceFeedInterface {
   public async getHistoricalPrice(time: number | string, ancillaryData: string): Promise<BN> {
     // Note: `time` is unused in this method because it is not included in the relay ancillary data.
 
-    // Parse ancillary data for relay request and find deposit if possible with matching params. Filter out already
-    // Finalized relays.
+    // Parse ancillary data for relay request and find deposit if possible with matching params.
     const parsedAncillaryData = (parseAncillaryData(ancillaryData) as unknown) as RelayAncillaryData;
     const relayAncillaryDataHash = "0x" + parsedAncillaryData.relayHash;
-    const relay = this.l1Client.getPendingRelayedDeposits().find((relay) => {
-      return relay.relayAncillaryDataHash === relayAncillaryDataHash;
-    });
-    if (!relay) {
+
+    // Search through all DepositRelayed events across all BridgePools to find specific relay.
+    // We can't simply use l1Client.getAllRelayedDeposits because this method overwrites any relays that are disputed
+    // with follow up relays, and usually we'll need to validate such an overwritten relay that has gone to dispute.
+    interface MatchedRelay {
+      relayData: Relay;
+      depositData: Deposit;
+      depositHash: string;
+    }
+    let matchedRelay: MatchedRelay | undefined;
+    for (const bridgePoolAddress of this.l1Client.getBridgePoolsAddresses()) {
+      const bridgePool = new this.l1Client.l1Web3.eth.Contract(getAbi("BridgePool"), bridgePoolAddress);
+      const relays = await bridgePool.getPastEvents("DepositRelayed", { fromBlock: 0 });
+      const relay = relays.find((_relay) => _relay.returnValues.relayAncillaryDataHash === relayAncillaryDataHash);
+      if (relay) {
+        matchedRelay = {
+          relayData: relay.returnValues.relay,
+          depositData: {
+            ...relay.returnValues.depositData,
+            l1Token: await bridgePool.methods.l1Token().call(),
+          },
+          depositHash: relay.returnValues.depositHash,
+        };
+        break;
+      }
+    }
+    if (!matchedRelay) {
       this.logger.debug({
         at: "InsuredBridgePriceFeed",
         message: "No relay event found matching provided ancillary data. Has the relay been finalized already?",
-        relay,
       });
       return toBNWei(isRelayValid.No);
-    }
-
-    // Check if pending relay has expired, in which case we cannot dispute it anymore.
-    if (relay.settleable) {
+    } else {
       this.logger.debug({
         at: "InsuredBridgePriceFeed",
-        message: "Relay liveness has expired, cannot dispute so the relay is validated",
-        relay,
+        message: "Matched relay",
+        matchedRelay,
       });
-      return toBNWei(isRelayValid.Yes);
-    }
+      // We found a relay on-chain, whether its pending, finalized, or disputed. Now let's find the matching deposit.
+      // Note this will always fail to find a matching deposit if the L2 web3 node is set incorrectly.
+      const deposit = this.deposits.find((deposit) => {
+        return deposit.depositHash === matchedRelay.depositHash;
+      });
+      if (!deposit) {
+        this.logger.debug({
+          at: "InsuredBridgePriceFeed",
+          message:
+            "No deposit event found matching relay request ancillary data and time. Are you using the correct L2 network?",
+          matchedRelay,
+        });
+        return toBNWei(isRelayValid.No);
+      } else {
+        this.logger.debug({
+          at: "InsuredBridgePriceFeed",
+          message: "Matched deposit",
+          deposit,
+        });
+      }
 
-    // We found a deposit on-chain, whether its pending, finalized, or disputed. Now let's find the matching deposit.
-    // Note this will always fail to find a matching deposit if the L2 web3 node is set incorrectly.
-    const deposit = this.deposits.find((deposit) => {
-      return deposit.depositHash === relay.depositHash;
-    });
-    if (!deposit) {
-      this.logger.debug({
-        at: "InsuredBridgePriceFeed",
-        message:
-          "No deposit event found matching relay request ancillary data and time. Are you using the correct L2 network?",
-        relay,
-      });
-      return toBNWei(isRelayValid.No);
-    }
-
-    // Validate relays proposed realized fee percentage.
-    const expectedRealizedFeePct = await this.l1Client.calculateRealizedLpFeePctForDeposit(deposit);
-    if (expectedRealizedFeePct.toString() !== relay.realizedLpFeePct.toString()) {
-      this.logger.debug({
-        at: "InsuredBridgePriceFeed",
-        message: "Matched deposit realized fee % is incorrect",
-        relay,
-        expectedRealizedFeePct: expectedRealizedFeePct.toString(),
-      });
-      return toBNWei(isRelayValid.No);
+      // Validate relays proposed realized fee percentage.
+      const expectedRealizedFeePct = await this.l1Client.calculateRealizedLpFeePctForDeposit(matchedRelay.depositData);
+      if (expectedRealizedFeePct.toString() !== matchedRelay.relayData.realizedLpFeePct) {
+        this.logger.debug({
+          at: "InsuredBridgePriceFeed",
+          message: "Matched deposit realized fee % is incorrect",
+          matchedRelay,
+          expectedRealizedFeePct: expectedRealizedFeePct.toString(),
+        });
+        return toBNWei(isRelayValid.No);
+      } else {
+        this.logger.debug({
+          at: "InsuredBridgePriceFeed",
+          message: "Expected realized fee % matches fee set in relay!",
+          expectedRealizedFeePct: expectedRealizedFeePct.toString(),
+        });
+      }
     }
 
     // Passed all checks, relay is valid!
+    this.logger.debug({
+      at: "InsuredBridgePriceFeed",
+      message: "Relay validation passed all tests",
+    });
     return toBNWei(isRelayValid.Yes);
   }
 
