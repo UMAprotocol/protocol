@@ -11,11 +11,10 @@ interface Config extends BaseConfig {
 type Dependencies = Pick<AppState, "lsps" | "stats" | "prices" | "erc20s" | "registeredLsps">;
 
 // this service is meant to calculate numbers derived from lsp state, things like TVL, TVM and other things
-export default (config: Config, appState: Dependencies) => {
+export function Lsp(config: Config, appState: Dependencies) {
   const { prices, registeredLsps } = appState;
   const { currency = "usd" } = config;
   const stats = appState.stats.lsp;
-
   const queries = Queries.Lsp(appState);
 
   function getTvlHistoryTable() {
@@ -192,4 +191,6 @@ export default (config: Config, appState: Dependencies) => {
       getFullState,
     },
   };
-};
+}
+
+export type Lsp = ReturnType<typeof Lsp>;

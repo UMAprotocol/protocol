@@ -9,7 +9,7 @@ type Dependencies = {
   appClients: AppClients;
 };
 
-export default function (config: Config, dependencies: Dependencies) {
+export function Erc20s(config: Config, dependencies: Dependencies) {
   const { tables, appClients } = dependencies;
   const { erc20s, collateralAddresses, syntheticAddresses, longAddresses, shortAddresses } = tables;
 
@@ -59,3 +59,5 @@ export default function (config: Config, dependencies: Dependencies) {
     },
   };
 }
+
+export type Erc20s = ReturnType<typeof Erc20s>;

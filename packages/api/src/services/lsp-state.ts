@@ -11,7 +11,7 @@ type Dependencies = {
   appClients: Pick<AppClients, "provider" | "multicall2">;
 };
 
-export default (config: Config, dependencies: Dependencies) => {
+export const LspState = (config: Config, dependencies: Dependencies) => {
   const { appClients, tables } = dependencies;
   const { lsps, registeredLsps, collateralAddresses, shortAddresses, longAddresses } = tables;
   const { provider, multicall2 } = appClients;
@@ -214,3 +214,5 @@ export default (config: Config, dependencies: Dependencies) => {
     },
   };
 };
+
+export type LspState = ReturnType<typeof LspState>;

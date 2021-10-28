@@ -1,3 +1,4 @@
+import { Awaited } from "@uma/financial-templates-lib/dist/types";
 import { clients } from "@uma/sdk";
 import bluebird from "bluebird";
 import { AppClients, AppState, BaseConfig } from "../types";
@@ -22,7 +23,7 @@ type Dependencies = {
   tables: Pick<AppState, "registeredEmps">;
   appClients: AppClients;
 };
-export default async (
+export const Registry = async (
   config: Config,
   dependencies: Dependencies,
   emit: (event: Events, data: EmitData) => void = () => {
@@ -58,3 +59,5 @@ export default async (
 
   return update;
 };
+
+export type Registry = Awaited<ReturnType<typeof Registry>>;

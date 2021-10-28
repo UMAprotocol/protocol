@@ -11,6 +11,8 @@ import type {
   tvl,
 } from "./tables";
 import type Zrx from "./libs/zrx";
+import type * as services from "./services";
+
 export type { Channels } from "./services/express-channels";
 
 export type EmpState = uma.tables.emps.Data;
@@ -124,42 +126,17 @@ export type AppClients = {
 };
 
 export type AppServices = {
-  registry: (startBlock?: number, endBlock?: number) => Promise<void>;
-  lspCreator: {
-    update: (startBlock?: number, endBlock?: number) => Promise<void>;
-  };
-  emps: {
-    update: (startBlock?: number, endBlock?: number) => Promise<void>;
-    updateAll: (addresses: string[], startBlock?: number, endBlock?: number) => Promise<void>;
-  };
-  lsps: {
-    update: (startBlock?: number, endBlock?: number) => Promise<void>;
-    updateLsps: (addresses: string[], startBlock?: number, endBlock?: number) => Promise<PromiseSettledResult<void>[]>;
-  };
-  erc20s: {
-    update: () => Promise<void>;
-  };
-  collateralPrices: {
-    update: () => Promise<void>;
-    backfill: (startMs: number) => Promise<void>;
-  };
-  syntheticPrices: {
-    update: () => Promise<void>;
-  };
-  marketPrices: {
-    update: (timestampS?: number) => Promise<void>;
-  };
-  empStats: {
-    update: () => Promise<void>;
-    backfill: () => Promise<void>;
-  };
-  lspStats: {
-    update: () => Promise<void>;
-    backfill: () => Promise<void>;
-  };
-  globalStats: {
-    update: () => Promise<void>;
-  };
+  registry: services.Registry;
+  lspCreator: services.LspCreator;
+  emps: services.EmpState;
+  lsps: services.LspState;
+  erc20s: services.Erc20s;
+  collateralPrices: services.CollateralPrices;
+  syntheticPrices: services.SyntheticPrices;
+  marketPrices: services.MarketPrices;
+  empStats: services.stats.Emp;
+  lspStats: services.stats.Lsp;
+  globalStats: services.stats.Global;
 };
 
 export type OrchestratorServices = {

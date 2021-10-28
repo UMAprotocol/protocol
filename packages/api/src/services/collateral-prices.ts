@@ -12,7 +12,7 @@ type Dependencies = {
   appClients: AppClients;
 };
 
-export default function (config: Config, dependencies: Dependencies) {
+export function CollateralPrices(config: Config, dependencies: Dependencies) {
   const { currency = "usd" } = config;
   const { appClients, tables } = dependencies;
   const { prices, collateralAddresses } = tables;
@@ -136,3 +136,5 @@ export default function (config: Config, dependencies: Dependencies) {
     },
   };
 }
+
+export type CollateralPrices = ReturnType<typeof CollateralPrices>;
