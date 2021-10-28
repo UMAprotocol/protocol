@@ -187,6 +187,9 @@ abstract contract BridgeDepositBox is Testable, Lockable {
         // Note that the OVM's notion of `block.timestamp` is different to the main ethereum L1 EVM. The OVM timestamp
         // corresponds to the L1 timestamp of the last confirmed L1 ⇒ L2 transaction. The quoteTime must be within 10
         // mins of the current time to allow for this variance.
+        // Note also that `quoteTimestamp` cannot be less than 10 minutes otherwise the following arithmetic can result
+        // in underflow. This isn't a problem as the deposit will revert, but the error might be unexpected for clients.
+        // Consider requiring `quoteTimestamp >= 10 minutes`.
         require(
             getCurrentTime() >= quoteTimestamp - 10 minutes && getCurrentTime() <= quoteTimestamp + 10 minutes,
             "deposit mined after deadline"
