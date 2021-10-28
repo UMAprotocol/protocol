@@ -22,6 +22,7 @@ const toBNWei = (number: string | number) => toBN(toWei(number.toString()).toStr
 
 // Helper contracts
 const chainId = 10;
+const whitelistedChainIds = [10, 12];
 const Messenger = getContract("MessengerMock");
 const BridgePool = getContract("BridgePool");
 const BridgeAdmin = getContract("BridgeAdmin");
@@ -204,7 +205,15 @@ describe("Relayer.ts", function () {
     l2Client = new InsuredBridgeL2Client(spyLogger, web3, bridgeDepositBox.options.address, chainId);
 
     gasEstimator = new GasEstimator(spyLogger);
-    relayer = new Relayer(spyLogger, gasEstimator, l1Client, l2Client, [l1Token.options.address], l1Relayer, [chainId]);
+    relayer = new Relayer(
+      spyLogger,
+      gasEstimator,
+      l1Client,
+      l2Client,
+      [l1Token.options.address],
+      l1Relayer,
+      whitelistedChainIds
+    );
   });
   it("Initialization is correct", async function () {
     assert.equal(relayer.l1Client.bridgeAdminAddress, bridgeAdmin.options.address);
@@ -862,7 +871,7 @@ describe("Relayer.ts", function () {
       // Add back identifier to restore state for other tests.
       await identifierWhitelist.methods.addSupportedIdentifier(defaultIdentifier).send({ from: l1Owner });
     });
-    it("Disputes pending relays for deposits it cannot identify", async function () {
+    it("Disputes pending relays for deposits it cannot identify with same chain ID as l2 client", async function () {
       // Relay a deposit that doesn't exist on-chain
       await l1Token.methods.mint(l1Owner, toBN(depositAmount).muln(2)).send({ from: l1Owner });
       await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Owner });
@@ -871,7 +880,8 @@ describe("Relayer.ts", function () {
         .relayDeposit(
           {
             chainId: chainId,
-            depositId: "0",
+            // Same chain ID as L2 client, meaning that if deposit can't be found the relay is disputable
+            depositId: "99", // deposit ID doesn't exist
             l2Sender: l2Depositor,
             l1Recipient: l2Depositor,
             amount: depositAmount,
@@ -898,17 +908,18 @@ describe("Relayer.ts", function () {
       await relayer.checkForPendingRelaysAndDispute();
       assert.isTrue(lastSpyLogIncludes(spy, "No pending relays"));
     });
-    it("Ignores relay for different chain ID than the one set on L2 client", async function () {
+    it("Ignores relay for different whitelisted chain ID than the one set on L2 client", async function () {
       await l1Token.methods.mint(l1Owner, toBN(depositAmount).muln(2)).send({ from: l1Owner });
       await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Owner });
       const quoteTime = await bridgeDepositBox.methods.getCurrentTime().call();
 
       // This relay should be disputed because the deposit doesn't exist on L2, but the disputer should skip it because
-      // the L2 client is set for a different chain ID than the one included on the relay.
+      // the L2 client is set for a different chain ID than the one included on the relay, and the chain ID
+      // is whitelisted so its a plausibly valid relay.
       await bridgePool.methods
         .relayDeposit(
           {
-            chainId: chainId + 1, // Different chainID than one used by L2 client
+            chainId: whitelistedChainIds[1], // Different chainID than one used by L2 client, but whitelisted
             depositId: "0",
             l2Sender: l2Depositor,
             l1Recipient: l2Depositor,
@@ -924,14 +935,14 @@ describe("Relayer.ts", function () {
         )
         .send({ from: l1Owner });
 
-      // Now, run the disputer and check that it disputes the relay.
+      // Now, run the disputer and check that it ignores the relay.
       await Promise.all([l1Client.update(), l2Client.update()]);
       await l1Token.methods.mint(l1Relayer, toBN(depositAmount).muln(2)).send({ from: l1Owner });
       await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Relayer });
       await relayer.checkForPendingRelaysAndDispute();
-      assert.isTrue(lastSpyLogIncludes(spy, "No pending relays"));
+      assert.isTrue(lastSpyLogIncludes(spy, "Relay chain ID is whitelisted but does not match L2 client chain ID"));
     });
-    it("Does not dispute valid relay data, unless it is a duplicate", async function () {
+    it("Does not dispute valid relay data that contains a valid deposit hash", async function () {
       // Make a deposit on L2 and relay it with valid relay params.
       await l2Token.methods.approve(bridgeDepositBox.options.address, depositAmount).send({ from: l2Depositor });
       const quoteTime = await bridgeDepositBox.methods.getCurrentTime().call();
@@ -1047,7 +1058,39 @@ describe("Relayer.ts", function () {
       await bridgePool.methods
         .relayDeposit(
           {
-            chainId: chainId,
+            chainId: chainId, // Same chain ID as L2 client, but not whitelisted.
+            depositId: "0",
+            l2Sender: l2Depositor,
+            l1Recipient: l2Depositor,
+            amount: depositAmount,
+            slowRelayFeePct: defaultSlowRelayFeePct,
+            instantRelayFeePct: defaultInstantRelayFeePct,
+            quoteTimestamp: quoteTime,
+          },
+          await l1Client.calculateRealizedLpFeePctForDeposit({
+            amount: depositAmount,
+            l1Token: l1Token.options.address,
+            quoteTimestamp: quoteTime,
+          })
+        )
+        .send({ from: l1Owner });
+
+      // Now, run the disputer and check that it disputes the relay with a non-whitelisted chain ID.
+      await Promise.all([l1Client.update(), l2Client.update()]);
+      await l1Token.methods.mint(l1Relayer, toBN(depositAmount).muln(2)).send({ from: l1Owner });
+      await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Relayer });
+      await _relayer.checkForPendingRelaysAndDispute();
+      assert.isTrue(lastSpyLogIncludes(spy, "Disputed pending relay"));
+
+      // This time, submit a relay for a chain ID that isn't used by the L2 client and also isn't on the list of
+      // whitelisted chain IDs. The bot should also dispute it.
+      await l1Token.methods.mint(l1Owner, toBN(depositAmount).muln(2)).send({ from: l1Owner });
+      await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Owner });
+      await l1Client.update(); // update L1 client to enable LP fee computation
+      await bridgePool.methods
+        .relayDeposit(
+          {
+            chainId: chainId + 1, // Different chain ID from L2 client, and not whitelisted.
             depositId: "0",
             l2Sender: l2Depositor,
             l1Recipient: l2Depositor,
