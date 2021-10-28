@@ -197,7 +197,7 @@ export class Relayer {
     for (const relay of pendingRelays) {
       // Construct deposit from relay params if the deposit is undefined.
       const deposit =
-        this.l2Client.getDepositByID(relay.depositId) === undefined
+        this.l2Client.getDepositByHash(relay.depositHash) === undefined
           ? {
               chainId: relay.chainId,
               depositId: relay.depositId,
@@ -211,7 +211,7 @@ export class Relayer {
               quoteTimestamp: relay.quoteTimestamp,
               depositContract: this.l2Client.bridgeDepositAddress,
             }
-          : this.l2Client.getDepositByID(relay.depositId);
+          : this.l2Client.getDepositByHash(relay.depositHash);
 
       // Check if relay has expired, in which case we cannot dispute.
       const relayExpired = await this.isRelayExpired(relay, deposit);
@@ -326,7 +326,7 @@ export class Relayer {
         );
 
       for (const settleableRelay of settleableRelays) {
-        await this.settleRelay(this.l2Client.getDepositByID(settleableRelay.depositId), settleableRelay);
+        await this.settleRelay(this.l2Client.getDepositByHash(settleableRelay.depositHash), settleableRelay);
       }
       if (settleableRelays.length == 0) this.logger.debug({ at: "Finalizer", message: "No settleable relays" });
     }
