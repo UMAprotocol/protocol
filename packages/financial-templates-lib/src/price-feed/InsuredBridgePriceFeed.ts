@@ -1,9 +1,10 @@
 import { PriceFeedInterface } from "./PriceFeedInterface";
 import Web3 from "web3";
+import { getAbi } from "@uma/contracts-node";
 import { parseAncillaryData } from "@uma/common";
 import { BN } from "../types";
 import type { Logger } from "winston";
-import { InsuredBridgeL1Client } from "../clients/InsuredBridgeL1Client";
+import { InsuredBridgeL1Client, Relay } from "../clients/InsuredBridgeL1Client";
 import { InsuredBridgeL2Client, Deposit } from "../clients/InsuredBridgeL2Client";
 
 const { toBN, toWei } = Web3.utils;
@@ -16,7 +17,6 @@ enum isRelayValid {
 
 interface Params {
   logger: Logger;
-  web3: Web3;
   l1Client: InsuredBridgeL1Client;
   l2Client: InsuredBridgeL2Client;
 }
@@ -59,48 +59,91 @@ export class InsuredBridgePriceFeed extends PriceFeedInterface {
     // Parse ancillary data for relay request and find deposit if possible with matching params.
     const parsedAncillaryData = (parseAncillaryData(ancillaryData) as unknown) as RelayAncillaryData;
     const relayAncillaryDataHash = "0x" + parsedAncillaryData.relayHash;
-    const relay = this.l1Client.getAllRelayedDeposits().find((relay) => {
-      return relay.relayAncillaryDataHash === relayAncillaryDataHash;
-    });
 
-    if (!relay) {
-      this.logger.debug({
-        at: "InsuredBridgePriceFeed",
-        message: "No relay event found matching provided ancillary data",
-        parsedAncillaryData,
-      });
-      return toBNWei(isRelayValid.No);
+    // Search through all DepositRelayed events across all BridgePools to find specific relay.
+    // We can't simply use l1Client.getAllRelayedDeposits because this method overwrites any relays that are disputed
+    // with follow up relays, and usually we'll need to validate such an overwritten relay that has gone to dispute.
+    interface MatchedRelay {
+      relayData: Relay;
+      depositData: Deposit;
+      depositHash: string;
     }
-
-    const deposit = this.deposits.find((deposit) => {
-      return deposit.depositHash === relay.depositHash;
-    });
-
-    // TODO: Do we need to check the `relayId` at all thats included in ancillary data?
-
-    // TODO: Do we need to handle the case where all of these params are matched and matchedDeposit.length > 1?
-    if (!deposit) {
-      this.logger.debug({
-        at: "InsuredBridgePriceFeed",
-        message: "No deposit event found matching relay request ancillary data and time",
-        parsedAncillaryData,
-      });
-      return toBNWei(isRelayValid.No);
+    let matchedRelay: MatchedRelay | undefined;
+    for (const bridgePoolAddress of this.l1Client.getBridgePoolsAddresses()) {
+      const bridgePool = new this.l1Client.l1Web3.eth.Contract(getAbi("BridgePool"), bridgePoolAddress);
+      const relays = await bridgePool.getPastEvents("DepositRelayed", { fromBlock: 0 });
+      const relay = relays.find((_relay) => _relay.returnValues.relayAncillaryDataHash === relayAncillaryDataHash);
+      if (relay) {
+        matchedRelay = {
+          relayData: relay.returnValues.relay,
+          depositData: {
+            ...relay.returnValues.depositData,
+            // quoteTimestamp type needs to be number for calculateRealizedLpFeePctForDeposit() to work.
+            quoteTimestamp: Number(relay.returnValues.depositData.quoteTimestamp),
+            l1Token: await bridgePool.methods.l1Token().call(),
+          },
+          depositHash: relay.returnValues.depositHash,
+        };
+        break;
+      }
     }
-
-    // Validate relays proposed realized fee percentage.
-    const expectedRealizedFeePct = await this.l1Client.calculateRealizedLpFeePctForDeposit(deposit);
-    if (expectedRealizedFeePct.toString() !== relay.realizedLpFeePct.toString()) {
+    if (!matchedRelay) {
       this.logger.debug({
         at: "InsuredBridgePriceFeed",
-        message: "Matched deposit realized fee % is incorrect",
-        expectedRealizedFeePct: expectedRealizedFeePct.toString(),
-        relayRealizedLpFeePct: relay.realizedLpFeePct.toString(),
+        message: "No relay event found matching provided ancillary data. Has the relay been finalized already?",
       });
       return toBNWei(isRelayValid.No);
+    } else {
+      this.logger.debug({
+        at: "InsuredBridgePriceFeed",
+        message: "Matched relay",
+        matchedRelay,
+      });
+      // We found a relay on-chain, whether its pending, finalized, or disputed. Now let's find the matching deposit.
+      // Note this will always fail to find a matching deposit if the L2 web3 node is set incorrectly.
+      const deposit = this.deposits.find((deposit) => {
+        return deposit.depositHash === matchedRelay?.depositHash;
+      });
+      if (!deposit) {
+        this.logger.debug({
+          at: "InsuredBridgePriceFeed",
+          message:
+            "No deposit event found matching relay request ancillary data and time. Are you using the correct L2 network?",
+          matchedRelay,
+        });
+        return toBNWei(isRelayValid.No);
+      } else {
+        this.logger.debug({
+          at: "InsuredBridgePriceFeed",
+          message: "Matched deposit",
+          deposit,
+        });
+      }
+
+      // Validate relays proposed realized fee percentage.
+      const expectedRealizedFeePct = await this.l1Client.calculateRealizedLpFeePctForDeposit(matchedRelay.depositData);
+      if (expectedRealizedFeePct.toString() !== matchedRelay.relayData.realizedLpFeePct) {
+        this.logger.debug({
+          at: "InsuredBridgePriceFeed",
+          message: "Matched deposit realized fee % is incorrect",
+          matchedRelay,
+          expectedRealizedFeePct: expectedRealizedFeePct.toString(),
+        });
+        return toBNWei(isRelayValid.No);
+      } else {
+        this.logger.debug({
+          at: "InsuredBridgePriceFeed",
+          message: "Expected realized fee % matches fee set in relay!",
+          expectedRealizedFeePct: expectedRealizedFeePct.toString(),
+        });
+      }
     }
 
     // Passed all checks, relay is valid!
+    this.logger.debug({
+      at: "InsuredBridgePriceFeed",
+      message: "Relay validation passed all tests",
+    });
     return toBNWei(isRelayValid.Yes);
   }
 

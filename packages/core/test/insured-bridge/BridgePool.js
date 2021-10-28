@@ -134,7 +134,7 @@ describe("BridgePool", () => {
   // Generate ABI encoded deposit data and deposit data hash.
   const generateDepositHash = (_depositData) => {
     const depositDataAbiEncoded = web3.eth.abi.encodeParameters(
-      ["uint8", "uint64", "address", "address", "address", "uint256", "uint64", "uint64", "uint64"],
+      ["uint256", "uint64", "address", "address", "address", "uint256", "uint64", "uint64", "uint64"],
       [
         _depositData.chainId,
         _depositData.depositId,
@@ -181,7 +181,7 @@ describe("BridgePool", () => {
   // Replicate the hashed ancillary data that is returned by BridgePool's internal _getRelayHash() method.
   const generateRelayAncillaryDataHash = (_depositData, _relayData) => {
     const parameters = [
-      { t: "uint8", v: _depositData.chainId },
+      { t: "uint256", v: _depositData.chainId },
       { t: "uint64", v: _depositData.depositId },
       { t: "address", v: _depositData.l1Recipient },
       { t: "address", v: _depositData.l2Sender },

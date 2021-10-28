@@ -113,3 +113,11 @@ export class InsuredBridgeL2Client {
     return depositHash;
   };
 }
+
+// Returns the L2 Deposit box address for a given bridgeAdmin on L1.
+export async function getL2DepositBoxAddress(web3: Web3, chainId: number, bridgeAdminAddress: string): Promise<string> {
+  const depositContracts = await new web3.eth.Contract(getAbi("BridgeAdminInterface"), bridgeAdminAddress).methods
+    .depositContracts(chainId)
+    .call();
+  return depositContracts.depositContract;
+}

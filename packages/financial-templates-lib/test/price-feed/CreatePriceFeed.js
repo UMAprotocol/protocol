@@ -12,6 +12,8 @@ const Token = getContract("ExpandedERC20");
 const SyntheticToken = getContract("SyntheticToken");
 const Timer = getContract("Timer");
 const Store = getContract("Store");
+const AddressWhitelist = getContract("AddressWhitelist");
+const BridgeAdmin = getContract("BridgeAdmin");
 
 const {
   createPriceFeed,
@@ -32,7 +34,10 @@ const { DefiPulsePriceFeed } = require("../../dist/price-feed/DefiPulsePriceFeed
 const { ETHVIXPriceFeed } = require("../../dist/price-feed/EthVixPriceFeed");
 const { ForexDailyPriceFeed } = require("../../dist/price-feed/ForexDailyPriceFeed");
 const { QuandlPriceFeed } = require("../../dist/price-feed/QuandlPriceFeed");
+const { InsuredBridgePriceFeed } = require("../../dist/price-feed/InsuredBridgePriceFeed");
 const { SpyTransport } = require("../../dist/logger/SpyTransport");
+const { InsuredBridgeL1Client } = require("../../dist/clients/InsuredBridgeL1Client");
+const { InsuredBridgeL2Client } = require("../../dist/clients/InsuredBridgeL2Client");
 
 const winston = require("winston");
 const sinon = require("sinon");
@@ -50,6 +55,8 @@ describe("CreatePriceFeed.js", function () {
   let timer;
   let finder;
   let identifierWhitelist;
+  let addressWhitelist;
+  let bridgeAdmin;
   let spy;
 
   const apiKey = "test-api-key";
@@ -71,16 +78,26 @@ describe("CreatePriceFeed.js", function () {
 
   before(async function () {
     accounts = await web3.eth.getAccounts();
+    finder = await Finder.new().send({ from: accounts[0] });
+    addressWhitelist = await AddressWhitelist.new().send({ from: accounts[0] });
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.AddressWhitelist), addressWhitelist.options.address)
+      .send({ from: accounts[0] });
     identifierWhitelist = await IdentifierWhitelist.new().send({ from: accounts[0] });
     await identifierWhitelist.methods
       .addSupportedIdentifier(padRight(utf8ToHex("ETH/BTC"), 64))
       .send({ from: accounts[0] });
-    finder = await Finder.new().send({ from: accounts[0] });
     timer = await Timer.new().send({ from: accounts[0] });
     store = await Store.new({ rawValue: "0" }, { rawValue: "0" }, timer.options.address).send({ from: accounts[0] });
     await finder.methods
       .changeImplementationAddress(utf8ToHex(interfaceName.IdentifierWhitelist), identifierWhitelist.options.address)
       .send({ from: accounts[0] });
+    bridgeAdmin = await BridgeAdmin.new(
+      finder.options.address,
+      7200,
+      "0",
+      padRight(utf8ToHex("ETH/BTC")) // Identifier shouldn't matter for these tests as we don't test any relays.
+    ).send({ from: accounts[0] });
     process.env[nodeUrlEnvVar] = "https://cloudflare-eth.com";
   });
 
@@ -1324,5 +1341,18 @@ describe("CreatePriceFeed.js", function () {
         type: "ethvix",
       })) instanceof ETHVIXPriceFeed
     );
+  });
+
+  it("Valid InsuredBridge Config", async function () {
+    const pricefeed = await createPriceFeed(logger, web3, networker, getTime, {
+      rateModels: {},
+      l2NetId: chainId,
+      bridgeAdminAddress: bridgeAdmin.options.address,
+      type: "insuredbridge",
+    });
+
+    assert.isTrue(pricefeed instanceof InsuredBridgePriceFeed);
+    assert.isTrue(pricefeed.l1Client instanceof InsuredBridgeL1Client);
+    assert.isTrue(pricefeed.l2Client instanceof InsuredBridgeL2Client);
   });
 });
