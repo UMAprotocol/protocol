@@ -11,7 +11,7 @@ type Dependencies = {
   profile: (msg: string) => () => void;
 };
 
-export default function (config: Config, dependencies: Dependencies) {
+export function Contracts(config: Config, dependencies: Dependencies) {
   const { profile } = dependencies;
 
   // break all state updates by block events into a cleaner function
@@ -79,3 +79,5 @@ export default function (config: Config, dependencies: Dependencies) {
     update: updateContractsStateProfiled,
   };
 }
+
+export type Contracts = ReturnType<typeof Contracts>;

@@ -12,7 +12,7 @@ type Dependencies = {
   profile: (msg: string) => () => void;
 };
 
-export default function (config: Config, dependencies: Dependencies) {
+export function Prices(config: Config, dependencies: Dependencies) {
   const { profile, services, tables } = dependencies;
 
   async function backfillPrices() {
@@ -53,3 +53,5 @@ export default function (config: Config, dependencies: Dependencies) {
     backfill: backfillPrices,
   };
 }
+
+export type Prices = ReturnType<typeof Prices>;

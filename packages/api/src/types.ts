@@ -140,11 +140,6 @@ export type AppServices = {
 };
 
 export type OrchestratorServices = {
-  contracts: {
-    detect: () => Promise<void>;
-    update: () => Promise<void>;
-  };
-  prices: {
-    update: () => Promise<void>;
-  };
+  contracts: services.Contracts;
+  prices: services.Prices;
 };
