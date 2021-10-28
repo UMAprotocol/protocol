@@ -78,6 +78,8 @@ export class InsuredBridgePriceFeed extends PriceFeedInterface {
           relayData: relay.returnValues.relay,
           depositData: {
             ...relay.returnValues.depositData,
+            // quoteTimestamp type needs to be number for calculateRealizedLpFeePctForDeposit() to work.
+            quoteTimestamp: Number(relay.returnValues.depositData.quoteTimestamp),
             l1Token: await bridgePool.methods.l1Token().call(),
           },
           depositHash: relay.returnValues.depositHash,
