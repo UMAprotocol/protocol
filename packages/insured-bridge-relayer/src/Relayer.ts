@@ -76,31 +76,71 @@ export class Relayer {
           // if the relay has expired, for if it has then we cannot do anything with it except settle it. Second, we need
           // to check the pending relay's parameters (i.e. any data not included in the deposit hash) and verify that
           // they are correct. If they are not then we just ignore it as a potential speedup candidate.
-          const relayStatus = await this.getRelayStatus(pendingRelay, relayableDeposit.deposit);
-          if (relayStatus.relayExpired.isExpired) {
+          const relayExpired = await this.isRelayExpired(pendingRelay, relayableDeposit.deposit);
+          if (relayExpired.isExpired) {
             this.logger.debug({
               at: "Relayer",
               message: "Pending relay has expired, ignoring",
               pendingRelay,
               relayableDeposit,
-              expirationTime: relayStatus.relayExpired.expirationTime,
-              contractTime: relayStatus.relayExpired.contractTime,
+              expirationTime: relayExpired.expirationTime,
+              contractTime: relayExpired.contractTime,
             });
             continue;
-          } else if (relayStatus.relayDisputable.canDispute) {
-            this.logger.debug({
-              at: "Relayer",
-              message: "Pending relay is invalid",
+          } else {
+            let realizedLpFeePct;
+            try {
+              // If `calculateRealizedLpFeePctForDeposit` throws an error, then we should skip the deposit because we
+              // cannot calculate the realized LP fee % correctly. This is possible, for example, if the relayed
+              // `quoteTime` is earlier than the contract's deployment time.
+              realizedLpFeePct = (
+                await this.l1Client.calculateRealizedLpFeePctForDeposit(relayableDeposit.deposit)
+              ).toString();
+            } catch (error) {
+              // Failed to compute realized LP fee % for deposit, its possible quote time is invalid. Skip any relay
+              // attempt.
+              this.logger.debug({
+                at: "Relayer",
+                message: "Failed to correct compute realized LP fee % for deposit with pending relay, skipping",
+                relayableDeposit,
+              });
+              continue;
+            }
+            const relayDisputable = await this.isPendingRelayDisputable(
               pendingRelay,
-              relayableDeposit,
-              reason: relayStatus.relayDisputable.reason,
-            });
-            continue;
+              relayableDeposit.deposit,
+              realizedLpFeePct
+            );
+            if (relayDisputable.canDispute) {
+              this.logger.debug({
+                at: "Relayer",
+                message: "Pending relay is invalid",
+                pendingRelay,
+                relayableDeposit,
+                reason: relayDisputable.reason,
+              });
+              continue;
+            }
           }
         }
 
         // Account for profitability and bot token balance when deciding how to relay.
-        const realizedLpFeePct = await this.l1Client.calculateRealizedLpFeePctForDeposit(relayableDeposit.deposit);
+        let realizedLpFeePct;
+        try {
+          // If `calculateRealizedLpFeePctForDeposit` throws an error, then we should skip the deposit because we
+          // cannot calculate the realized LP fee % correctly. This is possible, for example, if the relayed
+          // `quoteTime` is earlier than the contract's deployment time.
+          realizedLpFeePct = await this.l1Client.calculateRealizedLpFeePctForDeposit(relayableDeposit.deposit);
+        } catch (error) {
+          // Failed to compute realized LP fee % for deposit, its possible quote time is invalid. Skip any relay
+          // attempt.
+          this.logger.debug({
+            at: "Relayer",
+            message: "Failed to correct compute realized LP fee % for deposit, skipping",
+            relayableDeposit,
+          });
+          continue;
+        }
         const hasInstantRelayer = this.l1Client.hasInstantRelayer(
           relayableDeposit.deposit.l1Token,
           relayableDeposit.deposit.depositHash,
@@ -174,15 +214,15 @@ export class Relayer {
           : this.l2Client.getDepositByID(relay.depositId);
 
       // Check if relay has expired, in which case we cannot dispute.
-      const relayStatus = await this.getRelayStatus(relay, deposit);
-      if (relayStatus.relayExpired.isExpired) {
+      const relayExpired = await this.isRelayExpired(relay, deposit);
+      if (relayExpired.isExpired) {
         this.logger.debug({
           at: "Relayer",
           message: "Pending relay has expired, ignoring",
           relay,
           deposit,
-          expirationTime: relayStatus.relayExpired.expirationTime,
-          contractTime: relayStatus.relayExpired.contractTime,
+          expirationTime: relayExpired.expirationTime,
+          contractTime: relayExpired.contractTime,
         });
         continue;
       }
@@ -210,13 +250,31 @@ export class Relayer {
         deposit.quoteTimestamp === relay.quoteTimestamp
       ) {
         // Relay matched with a Deposit, now check if the relay params itself are valid.
-        if (relayStatus.relayDisputable.canDispute) {
+        let realizedLpFeePct;
+        try {
+          // If `calculateRealizedLpFeePctForDeposit` throws an error, then we should dispute the relay because we cannot
+          // calculate the realized LP fee % correctly. This is possible, for example, if the relayed `quoteTime` is
+          // earlier than the contract's deployment time.
+          realizedLpFeePct = (await this.l1Client.calculateRealizedLpFeePctForDeposit(deposit)).toString();
+        } catch (error) {
+          // Failed to compute realized LP fee % for deposit, meaning that relay likely includes invalid parameters.
+          this.logger.debug({
+            at: "Relayer",
+            message: "Failed to compute realized LP fee % for relayed deposit, disputing",
+            relay,
+            deposit,
+          });
+          await this.disputeRelay(deposit, relay);
+          return;
+        }
+        const relayDisputable = await this.isPendingRelayDisputable(relay, deposit, realizedLpFeePct);
+        if (relayDisputable.canDispute) {
           this.logger.debug({
             at: "Relayer",
             message: "Disputing pending relay with invalid params",
             relay,
             deposit,
-            reason: relayStatus.relayDisputable.reason,
+            reason: relayDisputable.reason,
           });
           await this.disputeRelay(deposit, relay);
         } else {
@@ -283,10 +341,10 @@ export class Relayer {
 
   private async isPendingRelayDisputable(
     relay: Relay,
-    deposit: Deposit
+    deposit: Deposit,
+    expectedRelayRealizedLpFeePct: string
   ): Promise<{ canDispute: boolean; reason: string }> {
     const relayRealizedLpFeePct = relay.realizedLpFeePct.toString();
-    const expectedRelayRealizedLpFeePct = (await this.l1Client.calculateRealizedLpFeePctForDeposit(deposit)).toString();
     if (relayRealizedLpFeePct !== expectedRelayRealizedLpFeePct)
       return {
         canDispute: true,
@@ -305,22 +363,6 @@ export class Relayer {
       isExpired: relay.settleable !== SettleableRelay.CannotSettle,
       expirationTime: relayExpirationTime,
       contractTime: currentContractTime,
-    };
-  }
-
-  private async getRelayStatus(
-    relay: Relay,
-    deposit: Deposit
-  ): Promise<{
-    relayExpired: { isExpired: boolean; expirationTime: number; contractTime: number };
-    relayDisputable: { canDispute: boolean; reason: string };
-  }> {
-    // Check if relay is expired. If it has expired, then its not disputable and can only be settled.
-    const relayExpired = this.isRelayExpired(relay, deposit);
-    const relayDisputable = await this.isPendingRelayDisputable(relay, deposit);
-    return {
-      relayExpired,
-      relayDisputable,
     };
   }
 

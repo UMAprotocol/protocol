@@ -173,7 +173,8 @@ describe("Relayer.ts", function () {
       l1Timer.options.address
     ).send({ from: l1Owner });
 
-    // Add L1-L2 token mapping
+    // Add L1-L2 token mapping. Note that we need to whitelist on both the L1 and L2 side because the L1 mapping
+    // is used by the bots to fetch bridge pool addresses.
     await bridgeAdmin.methods
       .whitelistToken(
         chainId,
@@ -566,6 +567,71 @@ describe("Relayer.ts", function () {
       await Promise.all([l1Client.update()]);
       await relayer.checkForPendingDepositsAndRelay();
       assert.isTrue(lastSpyLogIncludes(spy, "Pending relay has expired"));
+    });
+    it("Skips deposits with quote time < contract deployment time", async function () {
+      // Deposit
+      const quoteTime = await l1Timer.methods.getCurrentTime().call();
+      await l2Token.methods.approve(bridgeDepositBox.options.address, depositAmount).send({ from: l2Depositor });
+      await bridgeDepositBox.methods
+        .deposit(
+          l2Depositor,
+          l2Token.options.address,
+          depositAmount,
+          defaultSlowRelayFeePct,
+          defaultInstantRelayFeePct,
+          quoteTime
+        )
+        .send({ from: l2Depositor });
+
+      // Advance block time such that the subsequent bridge pool deploys at a future block.
+      await l1Timer.methods.setCurrentTime(Number(quoteTime) + 1).send({ from: l1Owner });
+
+      // Deploy a new bridge pool and whitelist it.
+      const newBridgePool = await BridgePool.new(
+        "LP Token",
+        "LPT",
+        bridgeAdmin.options.address,
+        l1Token.options.address,
+        lpFeeRatePerSecond,
+        false,
+        l1Timer.options.address
+      ).send({ from: l1Owner });
+      await bridgeDepositBox.methods
+        .whitelistToken(l1Token.options.address, l2Token.options.address, newBridgePool.options.address)
+        .send({ from: l2BridgeAdminImpersonator });
+
+      // Now, run the relayer and check that it ignores the relay. This is happening likely because we are failing to
+      // compute the realized LP fee %. This can happen if the deposit's quote time is invalid.
+      await Promise.all([l1Client.update(), l2Client.update()]);
+      await l1Token.methods.mint(l1Relayer, toBN(depositAmount).muln(2)).send({ from: l1Owner });
+      await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Relayer });
+      await relayer.checkForPendingDepositsAndRelay();
+      assert.isTrue(lastSpyLogIncludes(spy, "Failed to correct compute realized LP fee % for deposit, skipping"));
+
+      // Relay the deposit from another slow relayer, and check that the bot skips any attempt to speed up the relay
+      // since it cannot verify its realized LP fee %.
+      await l1Token.methods.mint(l1Owner, toBN(depositAmount).muln(2)).send({ from: l1Owner });
+      await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Owner });
+      await bridgePool.methods
+        .relayDeposit(
+          {
+            chainId: chainId,
+            depositId: "0",
+            l2Sender: l2Depositor,
+            l1Recipient: l2Depositor,
+            amount: depositAmount,
+            slowRelayFeePct: defaultSlowRelayFeePct,
+            instantRelayFeePct: defaultInstantRelayFeePct,
+            quoteTimestamp: quoteTime,
+          },
+          calculateRealizedLpFeePct(rateModel, toBNWei("0"), toBNWei("0.01")) // compute the expected fee for 1% utilization
+        )
+        .send({ from: l1Owner });
+      await Promise.all([l1Client.update(), l2Client.update()]);
+      await relayer.checkForPendingDepositsAndRelay();
+      assert.isTrue(
+        lastSpyLogIncludes(spy, "Failed to correct compute realized LP fee % for deposit with pending relay")
+      );
     });
   });
   describe("Settle Relay transaction functionality", () => {
@@ -969,6 +1035,66 @@ describe("Relayer.ts", function () {
       await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Relayer });
       await _relayer.checkForPendingRelaysAndDispute();
       assert.isTrue(lastSpyLogIncludes(spy, "Disputed pending relay"));
+    });
+    it("Disputes relays that bot cannot compute realized LP fee % for", async function () {
+      // Deposit
+      const quoteTime = await l1Timer.methods.getCurrentTime().call();
+      await l2Token.methods.approve(bridgeDepositBox.options.address, depositAmount).send({ from: l2Depositor });
+      await bridgeDepositBox.methods
+        .deposit(
+          l2Depositor,
+          l2Token.options.address,
+          depositAmount,
+          defaultSlowRelayFeePct,
+          defaultInstantRelayFeePct,
+          quoteTime
+        )
+        .send({ from: l2Depositor });
+
+      // Advance block time such that the subsequent bridge pool deploys at a future block.
+      await l1Timer.methods.setCurrentTime(Number(quoteTime) + 1).send({ from: l1Owner });
+
+      // Deploy a new bridge pool and whitelist it.
+      const newBridgePool = await BridgePool.new(
+        "LP Token",
+        "LPT",
+        bridgeAdmin.options.address,
+        l1Token.options.address,
+        lpFeeRatePerSecond,
+        false,
+        l1Timer.options.address
+      ).send({ from: l1Owner });
+      await bridgeDepositBox.methods
+        .whitelistToken(l1Token.options.address, l2Token.options.address, newBridgePool.options.address)
+        .send({ from: l2BridgeAdminImpersonator });
+
+      // Relay the deposit from another slow relayer, and check that the bot disputes the relay
+      // since it cannot verify its realized LP fee %.
+      await l1Token.methods.mint(l1Owner, toBN(depositAmount).muln(2)).send({ from: l1Owner });
+      await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Owner });
+      await bridgePool.methods
+        .relayDeposit(
+          {
+            chainId: chainId,
+            depositId: "0",
+            l2Sender: l2Depositor,
+            l1Recipient: l2Depositor,
+            amount: depositAmount,
+            slowRelayFeePct: defaultSlowRelayFeePct,
+            instantRelayFeePct: defaultInstantRelayFeePct,
+            quoteTimestamp: quoteTime,
+          },
+          calculateRealizedLpFeePct(rateModel, toBNWei("0"), toBNWei("0.01")) // compute the expected fee for 1% utilization
+        )
+        .send({ from: l1Owner });
+      await Promise.all([l1Client.update(), l2Client.update()]);
+      await l1Token.methods.mint(l1Relayer, toBN(depositAmount).muln(2)).send({ from: l1Owner });
+      await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Relayer });
+      await relayer.checkForPendingRelaysAndDispute();
+      const targetLog = spy.getCalls().filter((_log: any) => {
+        return _log.lastArg.message.includes("Failed to compute realized LP fee % for relayed deposit, disputing");
+      });
+      assert.equal(targetLog.length, 1);
     });
   });
 });
