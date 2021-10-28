@@ -100,6 +100,7 @@ describe("CreatePriceFeed.js", function () {
       "0",
       padRight(utf8ToHex("ETH/BTC")) // Identifier shouldn't matter for these tests as we don't test any relays.
     ).send({ from: accounts[0] });
+    process.env[nodeUrlEnvVar] = "https://cloudflare-eth.com";
   });
 
   beforeEach(async function () {
