@@ -328,7 +328,7 @@ export class Relayer {
         );
 
       for (const settleableRelay of settleableRelays) {
-        await this.settleRelay(this.l2Client.getDepositByID(settleableRelay.depositId), settleableRelay);
+        await this.settleRelay(this.l2Client.getDepositByHash(settleableRelay.depositHash), settleableRelay);
       }
       if (settleableRelays.length == 0) this.logger.debug({ at: "Finalizer", message: "No settleable relays" });
     }
