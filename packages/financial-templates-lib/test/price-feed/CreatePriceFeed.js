@@ -1332,8 +1332,8 @@ describe("CreatePriceFeed.js", function () {
   it("Valid InsuredBridge Config", async function () {
     const pricefeed = await createPriceFeed(logger, web3, networker, getTime, {
       bridgeAdminAddress: ZERO_ADDRESS,
-      depositBoxAddress: ZERO_ADDRESS,
       rateModels: {},
+      l2NetId: await web3.eth.getChainId(),
       type: "insuredbridge",
     });
 
