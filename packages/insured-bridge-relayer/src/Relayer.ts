@@ -419,7 +419,7 @@ export class Relayer {
       const { receipt, transactionConfig } = await runTransaction({
         web3: this.l1Client.l1Web3,
         transaction: this.generateSlowRelayTx(deposit, realizedLpFeePct),
-        transactionConfig: { gasPrice: this.gasEstimator.getCurrentFastPrice().toString(), from: this.account },
+        transactionConfig: { ...this.gasEstimator.getCurrentFastPrice(), from: this.account },
         availableAccounts: 1,
       });
 
@@ -457,7 +457,7 @@ export class Relayer {
       const { receipt, transactionConfig } = await runTransaction({
         web3: this.l1Client.l1Web3,
         transaction: this.generateSpeedUpRelayTx(deposit, relay),
-        transactionConfig: { gasPrice: this.gasEstimator.getCurrentFastPrice().toString(), from: this.account },
+        transactionConfig: { ...this.gasEstimator.getCurrentFastPrice(), from: this.account },
         availableAccounts: 1,
       });
 
@@ -487,7 +487,7 @@ export class Relayer {
       const { receipt, transactionConfig } = await runTransaction({
         web3: this.l1Client.l1Web3,
         transaction: this.generateInstantRelayTx(deposit, realizedLpFeePct),
-        transactionConfig: { gasPrice: this.gasEstimator.getCurrentFastPrice().toString(), from: this.account },
+        transactionConfig: { ...this.gasEstimator.getCurrentFastPrice(), from: this.account },
         availableAccounts: 1,
       });
       if (receipt.events)
@@ -525,7 +525,7 @@ export class Relayer {
       const { receipt, transactionConfig } = await runTransaction({
         web3: this.l1Client.l1Web3,
         transaction: this.generateSettleRelayTx(deposit, relay),
-        transactionConfig: { gasPrice: this.gasEstimator.getCurrentFastPrice().toString(), from: this.account },
+        transactionConfig: { ...this.gasEstimator.getCurrentFastPrice(), from: this.account },
         availableAccounts: 1,
       });
       if (receipt.events)
@@ -554,7 +554,7 @@ export class Relayer {
       const { receipt, transactionConfig } = await runTransaction({
         web3: this.l1Client.l1Web3,
         transaction: this.generateDisputeRelayTx(deposit, relay),
-        transactionConfig: { gasPrice: this.gasEstimator.getCurrentFastPrice().toString(), from: this.account },
+        transactionConfig: { ...this.gasEstimator.getCurrentFastPrice(), from: this.account },
         availableAccounts: 1,
       });
 
