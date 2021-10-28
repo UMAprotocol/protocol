@@ -100,7 +100,7 @@ export class InsuredBridgePriceFeed extends PriceFeedInterface {
       // We found a relay on-chain, whether its pending, finalized, or disputed. Now let's find the matching deposit.
       // Note this will always fail to find a matching deposit if the L2 web3 node is set incorrectly.
       const deposit = this.deposits.find((deposit) => {
-        return deposit.depositHash === matchedRelay.depositHash;
+        return deposit.depositHash === matchedRelay?.depositHash;
       });
       if (!deposit) {
         this.logger.debug({
