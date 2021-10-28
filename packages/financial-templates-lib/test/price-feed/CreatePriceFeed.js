@@ -1,4 +1,4 @@
-const { web3, getContract } = require("hardhat");
+const { web3, getContract, deployments } = require("hardhat");
 const { assert } = require("chai");
 const { toWei, utf8ToHex, padRight } = web3.utils;
 
@@ -8,10 +8,12 @@ const ExpiringMultiParty = getContract("ExpiringMultiParty");
 // Helper Contracts
 const Finder = getContract("Finder");
 const IdentifierWhitelist = getContract("IdentifierWhitelist");
+const AddressWhitelist = getContract("AddressWhitelist");
 const Token = getContract("ExpandedERC20");
 const SyntheticToken = getContract("SyntheticToken");
 const Timer = getContract("Timer");
 const Store = getContract("Store");
+const BridgeAdmin = getContract("BridgeAdmin");
 
 const {
   createPriceFeed,
@@ -52,6 +54,8 @@ describe("CreatePriceFeed.js", function () {
   let store;
   let timer;
   let finder;
+  let addressWhitelist;
+  let bridgeAdmin;
   let identifierWhitelist;
   let spy;
 
@@ -74,17 +78,32 @@ describe("CreatePriceFeed.js", function () {
 
   before(async function () {
     accounts = await web3.eth.getAccounts();
+    finder = await Finder.new().send({ from: accounts[0] });
+    addressWhitelist = await AddressWhitelist.new().send({ from: accounts[0] });
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.AddressWhitelist), addressWhitelist.options.address)
+      .send({ from: accounts[0] });
     identifierWhitelist = await IdentifierWhitelist.new().send({ from: accounts[0] });
     await identifierWhitelist.methods
       .addSupportedIdentifier(padRight(utf8ToHex("ETH/BTC"), 64))
       .send({ from: accounts[0] });
-    finder = await Finder.new().send({ from: accounts[0] });
     timer = await Timer.new().send({ from: accounts[0] });
     store = await Store.new({ rawValue: "0" }, { rawValue: "0" }, timer.options.address).send({ from: accounts[0] });
     await finder.methods
       .changeImplementationAddress(utf8ToHex(interfaceName.IdentifierWhitelist), identifierWhitelist.options.address)
       .send({ from: accounts[0] });
+    bridgeAdmin = await BridgeAdmin.new(
+      finder.options.address,
+      7200,
+      "0",
+      padRight(utf8ToHex("ETH/BTC")) // Identifier shouldn't matter for these tests as we don't test any relays.
+    ).send({ from: accounts[0] });
+    deployments.save("BridgeAdmin", { address: bridgeAdmin.options.address, abi: BridgeAdmin.abi });
+
     process.env[nodeUrlEnvVar] = "https://cloudflare-eth.com";
+
+    // Set node URL for current net ID so that any pricefeeds that call getWeb3ByChainId succeed.
+    process.env[`NODE_URL_${await web3.eth.getChainId()}`] = "http://127.0.0.1:8545/";
   });
 
   beforeEach(async function () {
@@ -1331,7 +1350,6 @@ describe("CreatePriceFeed.js", function () {
 
   it("Valid InsuredBridge Config", async function () {
     const pricefeed = await createPriceFeed(logger, web3, networker, getTime, {
-      bridgeAdminAddress: ZERO_ADDRESS,
       rateModels: {},
       l2NetId: await web3.eth.getChainId(),
       type: "insuredbridge",
