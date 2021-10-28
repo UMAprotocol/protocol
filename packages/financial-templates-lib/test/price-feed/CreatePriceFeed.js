@@ -1355,7 +1355,7 @@ describe("CreatePriceFeed.js", function () {
     };
     const currentWeb3Id = await web3.eth.getChainId();
     process.env[`NODE_URL_${currentWeb3Id}`] = "http://localhost:7777";
-    await startGanacheServer(currentWeb3Id, 7777);
+    startGanacheServer(currentWeb3Id, 7777);
 
     const pricefeed = await createPriceFeed(logger, web3, networker, getTime, {
       rateModels: {},
