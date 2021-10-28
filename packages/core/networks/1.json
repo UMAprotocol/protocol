@@ -118,9 +118,5 @@
   {
     "contractName": "SuccessTokenLongShortPairFinancialProductLibrary",
     "address": "0x67DE29D1A34FF2ea2b8C390B326456F4CBBE628F"
-  },
-  {
-    "contractName": "BridgeAdmin",
-    "address": "0xde7130ceaf4345a12a2764f0dc50bc4899d7ec08"
   }
 ]
