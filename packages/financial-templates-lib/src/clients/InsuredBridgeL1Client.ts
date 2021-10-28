@@ -176,6 +176,11 @@ export class InsuredBridgeL1Client {
     return this.bridgePools[l2Deposit.l1Token];
   }
 
+  getBridgePoolForToken(l1Token: string): BridgePoolData {
+    if (!this.bridgePools[l1Token]) throw new Error(`No bridge pool initialized for ${l1Token}`);
+    return this.bridgePools[l1Token];
+  }
+
   async getProposerBondPct(): Promise<BN> {
     return toBN(await this.bridgeAdmin.methods.proposerBondPct().call());
   }
