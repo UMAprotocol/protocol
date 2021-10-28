@@ -47,7 +47,10 @@ export class Relayer {
     readonly l2Client: InsuredBridgeL2Client,
     readonly whitelistedRelayL1Tokens: string[],
     readonly account: string,
-    readonly whitelistedChainIds: number[]
+    readonly whitelistedChainIds: number[],
+    // TODO: Deprecate `deployTimestamps` once BridgePools are upgraded and we can read `deployTimestamp` on-chain. For
+    // now, we need to hardcode each BP's deploy timestamp.
+    readonly deployTimestamps: { [key: string]: number }
   ) {}
 
   async checkForPendingDepositsAndRelay(): Promise<void> {
@@ -70,6 +73,19 @@ export class Relayer {
         l1Token,
       });
       for (const relayableDeposit of relayableDeposits[l1Token]) {
+        // If deposit quote time is before the bridgepool's deployment time, then skip it before attempting to calculate
+        // the realized LP fee % as this will be impossible to query a contract for a timestamp before its deployment.
+        if (relayableDeposit.deposit.quoteTimestamp < this.deployTimestamps[relayableDeposit.deposit.l1Token]) {
+          this.logger.debug({
+            at: "Relayer",
+            message: "Deposit quote time < bridge pool deployment for L1 token, skipping",
+            deposit: relayableDeposit.deposit,
+            deploymentTime: this.deployTimestamps[relayableDeposit.deposit.l1Token],
+          });
+          continue;
+        }
+        const realizedLpFeePct = await this.l1Client.calculateRealizedLpFeePctForDeposit(relayableDeposit.deposit);
+
         const pendingRelay: Relay | undefined = this.l1Client.getRelayForDeposit(l1Token, relayableDeposit.deposit);
         if (pendingRelay) {
           // We need to perform some prechecks on the relay before we attempt to submit a relay. First, we need to check
@@ -88,28 +104,10 @@ export class Relayer {
             });
             continue;
           } else {
-            let realizedLpFeePct;
-            try {
-              // If `calculateRealizedLpFeePctForDeposit` throws an error, then we should skip the deposit because we
-              // cannot calculate the realized LP fee % correctly. This is possible, for example, if the relayed
-              // `quoteTime` is earlier than the contract's deployment time.
-              realizedLpFeePct = (
-                await this.l1Client.calculateRealizedLpFeePctForDeposit(relayableDeposit.deposit)
-              ).toString();
-            } catch (error) {
-              // Failed to compute realized LP fee % for deposit, its possible quote time is invalid. Skip any relay
-              // attempt.
-              this.logger.debug({
-                at: "Relayer",
-                message: "Failed to correct compute realized LP fee % for deposit with pending relay, skipping",
-                relayableDeposit,
-              });
-              continue;
-            }
             const relayDisputable = await this.isPendingRelayDisputable(
               pendingRelay,
               relayableDeposit.deposit,
-              realizedLpFeePct
+              realizedLpFeePct.toString()
             );
             if (relayDisputable.canDispute) {
               this.logger.debug({
@@ -125,22 +123,6 @@ export class Relayer {
         }
 
         // Account for profitability and bot token balance when deciding how to relay.
-        let realizedLpFeePct;
-        try {
-          // If `calculateRealizedLpFeePctForDeposit` throws an error, then we should skip the deposit because we
-          // cannot calculate the realized LP fee % correctly. This is possible, for example, if the relayed
-          // `quoteTime` is earlier than the contract's deployment time.
-          realizedLpFeePct = await this.l1Client.calculateRealizedLpFeePctForDeposit(relayableDeposit.deposit);
-        } catch (error) {
-          // Failed to compute realized LP fee % for deposit, its possible quote time is invalid. Skip any relay
-          // attempt.
-          this.logger.debug({
-            at: "Relayer",
-            message: "Failed to correct compute realized LP fee % for deposit, skipping",
-            relayableDeposit,
-          });
-          continue;
-        }
         const hasInstantRelayer = this.l1Client.hasInstantRelayer(
           relayableDeposit.deposit.l1Token,
           relayableDeposit.deposit.depositHash,
@@ -265,23 +247,22 @@ export class Relayer {
         deposit.quoteTimestamp === relay.quoteTimestamp
       ) {
         // Relay matched with a Deposit, now check if the relay params itself are valid.
-        let realizedLpFeePct;
-        try {
-          // If `calculateRealizedLpFeePctForDeposit` throws an error, then we should dispute the relay because we cannot
-          // calculate the realized LP fee % correctly. This is possible, for example, if the relayed `quoteTime` is
-          // earlier than the contract's deployment time.
-          realizedLpFeePct = (await this.l1Client.calculateRealizedLpFeePctForDeposit(deposit)).toString();
-        } catch (error) {
-          // Failed to compute realized LP fee % for deposit, meaning that relay likely includes invalid parameters.
+
+        // If deposit quote time is before the bridgepool's deployment time, then dispute it by default because
+        // we won't be able to determine otherwise if the realized LP fee % is valid.
+        if (deposit.quoteTimestamp < this.deployTimestamps[deposit.l1Token]) {
           this.logger.debug({
             at: "Relayer",
-            message: "Failed to compute realized LP fee % for relayed deposit, disputing",
-            relay,
+            message: "Deposit quote time < bridge pool deployment for L1 token, disputing",
             deposit,
+            deploymentTime: this.deployTimestamps[deposit.l1Token],
           });
           await this.disputeRelay(deposit, relay);
           return;
         }
+
+        // Compute expected realized LP fee % and if the pending relay has a different fee then dispute it.
+        const realizedLpFeePct = (await this.l1Client.calculateRealizedLpFeePctForDeposit(deposit)).toString();
         const relayDisputable = await this.isPendingRelayDisputable(relay, deposit, realizedLpFeePct);
         if (relayDisputable.canDispute) {
           this.logger.debug({
