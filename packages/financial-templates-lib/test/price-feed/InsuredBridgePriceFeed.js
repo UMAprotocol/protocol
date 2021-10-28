@@ -282,29 +282,6 @@ describe("InsuredBridgePriceFeed", function () {
     assert.equal(JSON.stringify(pricefeed.deposits), JSON.stringify([]));
   });
   describe("Lifecycle tests", function () {
-    it("Pricefeed returns 0 if there is no matching deposit", async function () {
-      // Generate relay parameters for a deposit that doesn't exist.
-      const depositTimestamp = Number(await bridgePool.methods.getCurrentTime().call()) + 300;
-      const quoteTimestamp = depositTimestamp - quoteTimestampOffset;
-      ({ depositData, relayAncillaryData, relayData } = await generateRelayData(
-        bridgePool,
-        quoteTimestamp,
-        depositTimestamp
-      ));
-
-      // Relay the deposit.
-      const totalRelayBond = toBN(relayAmount).mul(toBN(defaultProposerBondPct));
-      await l1Token.methods.mint(relayer, totalRelayBond).send({ from: owner });
-      await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: relayer });
-
-      await bridgePool.methods.relayDeposit(...generateRelayParams({ quoteTimestamp })).send({ from: relayer });
-
-      // Update pricefeed and get price for relay request. Note that relay time doesn't actually matter for the
-      // getHistoricalPrice method. Price will always return 0 since there is no deposit on-chain.
-      await pricefeed.update();
-      assert.equal((await pricefeed.getHistoricalPrice(1, relayAncillaryData)).toString(), "0");
-      assert.isTrue(lastSpyLogIncludes(spy, "No deposit event found matching relay"));
-    });
     it("Pricefeed returns 1 if the relay ancillary data correctly matches a deposit", async function () {
       // Deposit some tokens.
 
