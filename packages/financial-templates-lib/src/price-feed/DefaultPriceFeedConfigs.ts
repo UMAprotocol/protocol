@@ -976,6 +976,25 @@ export const defaultConfigs: { [name: string]: { type: string; [key: string]: an
     twapLength: 7200,
     invertPrice: true,
   },
+  IS_RELAY_VALID: {
+    type: "insuredbridge",
+    l2BlockLookback: 99999, // Arbitrum only supports lookbacks of 100,000 blocks
+    l2NetId: 42161,
+    rateModels: {
+      "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2": {
+        UBar: "650000000000000000",
+        R0: "0",
+        R1: "80000000000000000",
+        R2: "1000000000000000000",
+      },
+      "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48": {
+        UBar: "800000000000000000",
+        R0: "0",
+        R1: "40000000000000000",
+        R2: "600000000000000000",
+      },
+    },
+  },
 };
 
 // Pull in the number of decimals for each identifier from the common getPrecisionForIdentifier. This is used within the
