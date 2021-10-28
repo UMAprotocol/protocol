@@ -76,7 +76,7 @@ export class Relayer {
           // if the relay has expired, for if it has then we cannot do anything with it except settle it. Second, we need
           // to check the pending relay's parameters (i.e. any data not included in the deposit hash) and verify that
           // they are correct. If they are not then we just ignore it as a potential speedup candidate.
-          const relayExpired = await this.isRelayExpired(pendingRelay, relayableDeposit.deposit);
+          const relayExpired = await this.isRelayExpired(pendingRelay, pendingRelay.l1Token);
           if (relayExpired.isExpired) {
             this.logger.debug({
               at: "Relayer",
@@ -183,8 +183,8 @@ export class Relayer {
     this.logger.debug({ at: "Disputer", message: "Checking for pending relays and disputing" });
 
     // Build dictionary of pending relays keyed by l1 token and deposit hash. We assume that getPendingRelays() filters
-    // out Finalized relays. Only search on relays for the network that the L2 client is connected to.
-    const pendingRelays: Relay[] = this.getPendingRelays(this.l2Client.chainId);
+    // out Finalized relays.
+    const pendingRelays: Relay[] = this.getPendingRelays();
     if (pendingRelays.length == 0) {
       this.logger.debug({ at: "Disputer", message: "No pending relays" });
       return;
@@ -195,37 +195,21 @@ export class Relayer {
     });
 
     for (const relay of pendingRelays) {
-      // Construct deposit from relay params if the deposit is undefined.
-      const deposit =
-        this.l2Client.getDepositByID(relay.depositId) === undefined
-          ? {
-              chainId: relay.chainId,
-              depositId: relay.depositId,
-              depositHash: relay.depositHash,
-              l1Recipient: relay.l1Recipient,
-              l2Sender: relay.l2Sender,
-              l1Token: relay.l1Token,
-              amount: relay.amount,
-              slowRelayFeePct: relay.slowRelayFeePct,
-              instantRelayFeePct: relay.instantRelayFeePct,
-              quoteTimestamp: relay.quoteTimestamp,
-              depositContract: this.l2Client.bridgeDepositAddress,
-            }
-          : this.l2Client.getDepositByID(relay.depositId);
-
       // Check if relay has expired, in which case we cannot dispute.
-      const relayExpired = await this.isRelayExpired(relay, deposit);
+      const relayExpired = await this.isRelayExpired(relay, relay.l1Token);
       if (relayExpired.isExpired) {
         this.logger.debug({
           at: "Relayer",
           message: "Pending relay has expired, ignoring",
           relay,
-          deposit,
           expirationTime: relayExpired.expirationTime,
           contractTime: relayExpired.contractTime,
         });
         continue;
       }
+
+      // Get deposit for relay.
+      const deposit = this.l2Client.getDepositByID(relay.depositId);
 
       // If relay's chain ID is not whitelisted then dispute it.
       if (!this.whitelistedChainIds.includes(relay.chainId)) {
@@ -234,7 +218,23 @@ export class Relayer {
           message: "Disputing pending relay with non-whitelisted chainID",
           relay,
         });
-        await this.disputeRelay(deposit, relay);
+        await this.disputeRelay(
+          {
+            chainId: relay.chainId,
+            depositId: relay.depositId,
+            depositHash: relay.depositHash,
+            l1Recipient: relay.l1Recipient,
+            l2Sender: relay.l2Sender,
+            l1Token: relay.l1Token,
+            amount: relay.amount,
+            slowRelayFeePct: relay.slowRelayFeePct,
+            instantRelayFeePct: relay.instantRelayFeePct,
+            quoteTimestamp: relay.quoteTimestamp,
+            depositContract: (await this.l1Client.bridgeAdmin.methods.depositContracts(relay.chainId).call())[0],
+            // `depositContracts()` returns [depositContract, messengerContract] and we want the first arg.
+          },
+          relay
+        );
       }
       // Check if we can find a deposit for the Relay, if not then we can dispute.
       else if (
@@ -286,6 +286,8 @@ export class Relayer {
           });
         }
       } else {
+        // Finally, if we can't find a deposit, only skip the dispute if the chain ID is whitelisted.
+        if (this.whitelistedChainIds.includes(relay.chainId)) continue;
         const missingDeposit: Deposit = {
           chainId: relay.chainId,
           depositId: relay.depositId,
@@ -355,10 +357,10 @@ export class Relayer {
 
   private isRelayExpired(
     relay: Relay,
-    deposit: Deposit
+    l1Token: string
   ): { isExpired: boolean; expirationTime: number; contractTime: number } {
     const relayExpirationTime = relay.priceRequestTime + this.l1Client.optimisticOracleLiveness;
-    const currentContractTime = this.l1Client.getBridgePoolForDeposit(deposit).currentTime;
+    const currentContractTime = this.l1Client.getBridgePoolForToken(l1Token).currentTime;
     return {
       isExpired: relay.settleable !== SettleableRelay.CannotSettle,
       expirationTime: relayExpirationTime,
@@ -587,7 +589,7 @@ export class Relayer {
   }
 
   private generateSlowRelayTx(deposit: Deposit, realizedLpFeePct: BN): TransactionType {
-    const bridgePool = this.l1Client.getBridgePoolForDeposit(deposit).contract;
+    const bridgePool = this.l1Client.getBridgePoolForToken(deposit.l1Token).contract;
     return (bridgePool.methods.relayDeposit(
       [
         deposit.chainId,
@@ -604,12 +606,12 @@ export class Relayer {
   }
 
   private generateSpeedUpRelayTx(deposit: Deposit, relay: Relay): TransactionType {
-    const bridgePool = this.l1Client.getBridgePoolForDeposit(deposit).contract;
+    const bridgePool = this.l1Client.getBridgePoolForToken(deposit.l1Token).contract;
     return (bridgePool.methods.speedUpRelay(deposit as any, relay as any) as unknown) as TransactionType;
   }
 
   private generateInstantRelayTx(deposit: Deposit, realizedLpFeePct: BN): TransactionType {
-    const bridgePool = this.l1Client.getBridgePoolForDeposit(deposit).contract;
+    const bridgePool = this.l1Client.getBridgePoolForToken(deposit.l1Token).contract;
     return (bridgePool.methods.relayAndSpeedUp(
       deposit as any,
       realizedLpFeePct.toString()
@@ -617,12 +619,12 @@ export class Relayer {
   }
 
   private generateDisputeRelayTx(deposit: Deposit, relay: Relay): TransactionType {
-    const bridgePool = this.l1Client.getBridgePoolForDeposit(deposit).contract;
+    const bridgePool = this.l1Client.getBridgePoolForToken(deposit.l1Token).contract;
     return (bridgePool.methods.disputeRelay(deposit as any, relay as any) as unknown) as TransactionType;
   }
 
   private generateSettleRelayTx(deposit: Deposit, relay: Relay): TransactionType {
-    const bridgePool = this.l1Client.getBridgePoolForDeposit(deposit).contract;
+    const bridgePool = this.l1Client.getBridgePoolForToken(deposit.l1Token).contract;
     type ContractDepositArg = Parameters<typeof bridgePool["methods"]["settleRelay"]>[0];
     return (bridgePool.methods.settleRelay(
       (deposit as unknown) as ContractDepositArg,
@@ -667,8 +669,8 @@ export class Relayer {
     return relayableDeposits;
   }
 
-  private getPendingRelays(chainId: number): Relay[] {
-    return this.l1Client.getPendingRelayedDeposits().filter((relay: Relay) => relay.chainId === chainId);
+  private getPendingRelays(): Relay[] {
+    return this.l1Client.getPendingRelayedDeposits();
   }
 
   // Send correct type of relay along with parameters to submit transaction.
