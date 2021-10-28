@@ -1,7 +1,7 @@
 import assert = require("assert");
 import { ChainId, Token, Pair, TokenAmount } from "@uniswap/sdk";
 import { defaultConfigs } from "./DefaultPriceFeedConfigs";
-import { getAbi, getAddress } from "@uma/contracts-node";
+import { getAbi } from "@uma/contracts-node";
 import { BlockFinder } from "./utils";
 import { getPrecisionForIdentifier, PublicNetworks, getWeb3ByChainId } from "@uma/common";
 import { multicallAddressMap } from "../helpers/multicall";
@@ -463,7 +463,7 @@ export async function createPriceFeed(
       blockFinder: getSharedBlockFinder(web3),
     });
   } else if (config.type === "insuredbridge") {
-    const requiredFields = ["rateModels", "l2NetId"];
+    const requiredFields = ["bridgeAdminAddress", "rateModels", "l2NetId"];
 
     if (isMissingField(config, requiredFields, logger)) {
       return null;
@@ -475,14 +475,13 @@ export async function createPriceFeed(
     // Infura only allows lookbacks 100,000 blocks into the past.
     const l2BlockLookback = config.l2BlockLookback ? Number(config.l2BlockLookback) : 99999;
 
-    const bridgeAdminAddress = await getAddress("BridgeAdmin", await providedWeb3.eth.getChainId());
-    const l1Client = new InsuredBridgeL1Client(logger, providedWeb3, bridgeAdminAddress, config.rateModels);
+    const l1Client = new InsuredBridgeL1Client(logger, providedWeb3, config.bridgeAdminAddress, config.rateModels);
     const l2Web3 = getWeb3ByChainId(config.l2NetId);
     const currentL2Block = await l2Web3.eth.getBlockNumber();
     const l2Client = new InsuredBridgeL2Client(
       logger,
       providedWeb3,
-      await getL2DepositBoxAddress(providedWeb3, config.l2NetId, bridgeAdminAddress),
+      await getL2DepositBoxAddress(providedWeb3, config.l2NetId, config.bridgeAdminAddress),
       config.l2NetId,
       currentL2Block - l2BlockLookback
     );

@@ -1,6 +1,8 @@
-const { web3, getContract, deployments } = require("hardhat");
+const { web3, getContract } = require("hardhat");
 const { assert } = require("chai");
 const { toWei, utf8ToHex, padRight } = web3.utils;
+const Web3 = require("web3");
+const ganache = require("ganache-core");
 
 // Tested Contract
 const ExpiringMultiParty = getContract("ExpiringMultiParty");
@@ -8,11 +10,11 @@ const ExpiringMultiParty = getContract("ExpiringMultiParty");
 // Helper Contracts
 const Finder = getContract("Finder");
 const IdentifierWhitelist = getContract("IdentifierWhitelist");
-const AddressWhitelist = getContract("AddressWhitelist");
 const Token = getContract("ExpandedERC20");
 const SyntheticToken = getContract("SyntheticToken");
 const Timer = getContract("Timer");
 const Store = getContract("Store");
+const AddressWhitelist = getContract("AddressWhitelist");
 const BridgeAdmin = getContract("BridgeAdmin");
 
 const {
@@ -54,9 +56,9 @@ describe("CreatePriceFeed.js", function () {
   let store;
   let timer;
   let finder;
+  let identifierWhitelist;
   let addressWhitelist;
   let bridgeAdmin;
-  let identifierWhitelist;
   let spy;
 
   const apiKey = "test-api-key";
@@ -98,12 +100,6 @@ describe("CreatePriceFeed.js", function () {
       "0",
       padRight(utf8ToHex("ETH/BTC")) // Identifier shouldn't matter for these tests as we don't test any relays.
     ).send({ from: accounts[0] });
-    deployments.save("BridgeAdmin", { address: bridgeAdmin.options.address, abi: BridgeAdmin.abi });
-
-    process.env[nodeUrlEnvVar] = "https://cloudflare-eth.com";
-
-    // Set node URL for current net ID so that any pricefeeds that call getWeb3ByChainId succeed.
-    process.env[`NODE_URL_${await web3.eth.getChainId()}`] = "http://127.0.0.1:8545/";
   });
 
   beforeEach(async function () {
@@ -1349,9 +1345,21 @@ describe("CreatePriceFeed.js", function () {
   });
 
   it("Valid InsuredBridge Config", async function () {
+    // InsuredBridgePriceFeed needs to construct a new web3 object for the L2 net id. We spoof this L2 network
+    // by creating a separate ganache instance pointed to the net ID we set as the `l2NetId`.
+    const startGanacheServer = (chainId, port) => {
+      const node = ganache.server({ _chainIdRpc: chainId });
+      node.listen(port);
+      return new Web3("http://127.0.0.1:" + port);
+    };
+    const currentWeb3Id = await web3.eth.getChainId();
+    process.env[`NODE_URL_${currentWeb3Id}`] = "http://localhost:7777";
+    await startGanacheServer(currentWeb3Id, 7777);
+
     const pricefeed = await createPriceFeed(logger, web3, networker, getTime, {
       rateModels: {},
       l2NetId: await web3.eth.getChainId(),
+      bridgeAdminAddress: bridgeAdmin.options.address,
       type: "insuredbridge",
     });
 
