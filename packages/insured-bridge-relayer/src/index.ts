@@ -35,6 +35,8 @@ export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
     const [accounts] = await Promise.all([l1Web3.eth.getAccounts()]);
 
     const gasEstimator = new GasEstimator(logger);
+    await gasEstimator.update();
+    console.log("...this.gasEstimator.getCurrentFastPrice()", { ...gasEstimator.getCurrentFastPrice() });
 
     // Create L1/L2 clients to pull data to inform the relayer.
     // todo: add in start and ending block numbers (if need be).
@@ -50,13 +52,15 @@ export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
 
     // Construct a web3 instance running on L2.
     const l2Web3 = getWeb3ByChainId(config.activatedChainIds[0]);
+    const latestL2BlockNumber = await l2Web3.eth.getBlockNumber();
+    const l2StartBlock = latestL2BlockNumber - config.l2BlockLookback;
 
     const l2Client = new InsuredBridgeL2Client(
       logger,
       l2Web3,
       await getL2DepositBoxAddress(l1Web3, config.activatedChainIds[0], config.bridgeAdmin),
       config.activatedChainIds[0],
-      config.l2StartBlock
+      l2StartBlock
     );
 
     // For all specified whitelisted L1 tokens that this relayer supports, approve the bridge pool to spend them. This

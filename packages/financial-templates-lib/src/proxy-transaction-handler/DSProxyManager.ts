@@ -133,7 +133,7 @@ export class DSProxyManager {
       const { receipt, transactionConfig } = await runTransaction({
         web3: this.web3,
         transaction: (this.dsProxyFactory.methods["build()"]() as unknown) as TransactionType,
-        transactionConfig: { gasPrice: this.gasEstimator.getCurrentFastPrice().toString(), from: this.account },
+        transactionConfig: { ...this.gasEstimator.getCurrentFastPrice(), from: this.account } as any,
         availableAccounts: this.availableAccounts, // give the run transaction access to additional EOAs, if they are set.
       });
       if (!receipt?.events?.Created?.returnValues?.proxy) throw new Error("Proxy address not found in log");
@@ -170,7 +170,7 @@ export class DSProxyManager {
         libraryAddress,
         callData
       ) as unknown) as TransactionType,
-      transactionConfig: { gasPrice: this.gasEstimator.getCurrentFastPrice().toString(), from: this.account },
+      transactionConfig: { ...this.gasEstimator.getCurrentFastPrice(), from: this.account } as any,
       availableAccounts: this.availableAccounts,
     });
 
@@ -201,7 +201,7 @@ export class DSProxyManager {
     const { receipt, returnValue, transactionConfig } = await runTransaction({
       web3: this.web3,
       transaction: (this.dsProxy.methods["execute(bytes,bytes)"](callCode, callData) as unknown) as TransactionType,
-      transactionConfig: { gasPrice: this.gasEstimator.getCurrentFastPrice().toString(), from: this.account },
+      transactionConfig: { ...this.gasEstimator.getCurrentFastPrice(), from: this.account } as any,
       availableAccounts: this.availableAccounts,
     });
 
