@@ -34,6 +34,8 @@ export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
     const [accounts] = await Promise.all([l1Web3.eth.getAccounts()]);
 
     const gasEstimator = new GasEstimator(logger);
+    await gasEstimator.update();
+    console.log("...this.gasEstimator.getCurrentFastPrice()", { ...gasEstimator.getCurrentFastPrice() });
 
     // Create L1/L2 clients to pull data to inform the relayer.
     // todo: add in start and ending block numbers (if need be).

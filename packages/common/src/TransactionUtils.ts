@@ -3,7 +3,7 @@ import minimist from "minimist";
 import ynatm from "@umaprotocol/ynatm";
 import type Web3 from "web3";
 import type { TransactionReceipt } from "web3-core";
-import type { ContractSendMethod } from "web3-eth-contract";
+import type { ContractSendMethod, SendOptions } from "web3-eth-contract";
 
 type CallReturnValue = ReturnType<ContractSendMethod["call"]>;
 interface AugmentedSendOptions {
@@ -12,6 +12,7 @@ interface AugmentedSendOptions {
   value?: number | string;
   nonce?: number;
   chainId?: string;
+  type?: string;
   usingOffSetDSProxyAccount?: boolean;
   gasPrice?: number | string;
   maxFeePerGas?: number | string;
@@ -102,19 +103,15 @@ export const runTransaction = async ({
 
     let receipt;
 
-    // If the config contains maxPriorityFeePerGas then this is a london transaction.
+    // If the config contains maxPriorityFeePerGas then this is a London transaction. In this case, simply use the
+    // provided config settings but double the maxFeePerGas to ensure the transaction is included, even if the base fee
+    // spikes up. The difference between the realized base fee and maxFeePerGas is refunded in a London transaction.
     if (transactionConfig.maxFeePerGas && transactionConfig.maxPriorityFeePerGas) {
-      const minPriorityFeePerGas = transactionConfig.maxPriorityFeePerGas || (1e9).toString();
-      const maxPriorityFeePerGas = maximumGasPriceMultiple * parseInt(minPriorityFeePerGas.toString());
-
-      receipt = await ynatm.send({
-        sendTransactionFunction: (maxPriorityFeePerGas: number) =>
-          transaction.send({ ...transactionConfig, maxPriorityFeePerGas: maxPriorityFeePerGas.toString() } as any),
-        minGasPrice: minPriorityFeePerGas.toString(),
-        maxGasPrice: maxPriorityFeePerGas.toString(),
-        gasPriceScalingFunction,
-        delay: retryDelay,
-      });
+      receipt = await transaction.send({
+        ...transactionConfig,
+        maxFeePerGas: parseInt(transactionConfig.maxFeePerGas.toString()) * 2,
+        type: "0x2",
+      } as SendOptions);
 
       // Else this is a legacy tx.
     } else if (transactionConfig.gasPrice) {

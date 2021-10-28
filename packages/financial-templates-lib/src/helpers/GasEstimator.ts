@@ -47,7 +47,7 @@ export const MAPPING_BY_NETWORK: GasEstimatorMapping = {
   // }
   1: {
     url: "https://www.etherchain.org/api/gasPriceOracle",
-    defaultMaxFeePerGasGwei: 50,
+    defaultMaxFeePerGasGwei: 500,
     defaultMaxPriorityFeePerGasGwei: 5,
     type: NetworkType.London,
   },
@@ -104,6 +104,7 @@ export class GasEstimator {
     if (this.lastUpdateTimestamp !== undefined && currentTime < this.lastUpdateTimestamp + this.updateThreshold) {
       this.logger.debug({
         at: "GasEstimator",
+        networkType: this.type == NetworkType.Legacy ? "Legacy" : "London",
         message: "Gas estimator update skipped",
         networkId: this.networkId,
         currentTime: currentTime,
@@ -119,6 +120,7 @@ export class GasEstimator {
       this.lastUpdateTimestamp = currentTime;
       this.logger.debug({
         at: "GasEstimator",
+        networkType: this.type == NetworkType.Legacy ? "Legacy" : "London",
         message: "Gas estimator updated",
         networkId: this.networkId,
         lastUpdateTimestamp: this.lastUpdateTimestamp,
@@ -180,6 +182,7 @@ export class GasEstimator {
     } catch (error) {
       this.logger.debug({
         at: "GasEstimator",
+        networkType: this.type == NetworkType.Legacy ? "Legacy" : "London",
         message: "client polling error, trying backup API🚨",
         error: typeof error === "string" ? new Error(error) : error,
       });
@@ -193,6 +196,7 @@ export class GasEstimator {
         } catch (errorBackup) {
           this.logger.debug({
             at: "GasEstimator",
+            networkType: this.type == NetworkType.Legacy ? "Legacy" : "London",
             message: "backup API failed, falling back to default fast gas price🚨",
             defaultMaxFeePerGasGwei: this.defaultMaxFeePerGasGwei,
             error: typeof errorBackup === "string" ? new Error(errorBackup) : errorBackup,
