@@ -3,7 +3,7 @@ import bluebird from "bluebird";
 import { BigNumber } from "ethers";
 
 import * as tables from "../../tables";
-import type { AppState, CurrencySymbol } from "../..";
+import type { AppState, CurrencySymbol } from "../../types";
 
 type Dependencies = Pick<AppState, "erc20s" | "stats" | "lsps" | "registeredLsps">;
 
@@ -83,7 +83,7 @@ export default (appState: Dependencies) => {
     return tvl.toString();
   }
   async function totalTvl(currency: CurrencySymbol = "usd") {
-    const addresses = Array.from(appState.registeredLsps);
+    const addresses = await appState.registeredLsps.keys();
     return sumTvl(addresses, currency);
   }
 
@@ -115,7 +115,7 @@ export default (appState: Dependencies) => {
     return tvm.toString();
   }
   async function totalTvm(currency: CurrencySymbol = "usd") {
-    const addresses = Array.from(appState.registeredLsps);
+    const addresses = await appState.registeredLsps.keys();
     return sumTvm(addresses, currency);
   }
   async function getTotalTvmSample(currency: CurrencySymbol = "usd") {

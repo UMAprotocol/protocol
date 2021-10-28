@@ -103,7 +103,7 @@ contract DSNote {
 contract DSProxy is DSAuth, DSNote {
     DSProxyCache public cache; // global cache for contracts
 
-    constructor(address _cacheAddr) public {
+    constructor(address _cacheAddr) {
         require(setCache(_cacheAddr));
     }
 

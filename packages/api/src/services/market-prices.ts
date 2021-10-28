@@ -1,17 +1,22 @@
 import bluebird from "bluebird";
 import assert from "assert";
 import lodash from "lodash";
-import { AppState, BaseConfig } from "..";
+import { AppClients, AppState, BaseConfig } from "../types";
 import { parseUnits, nowS, Profile } from "../libs/utils";
 
 type Config = BaseConfig;
 
-type Dependencies = Pick<AppState, "zrx" | "marketPrices" | "collateralAddresses" | "syntheticAddresses" | "erc20s">;
+type Dependencies = {
+  tables: Pick<AppState, "marketPrices" | "collateralAddresses" | "syntheticAddresses" | "erc20s">;
+  appClients: AppClients;
+};
 
 // market prices are pulled from the 0x matcha api
-export default function (config: Config, appState: Dependencies) {
+export default function (config: Config, dependencies: Dependencies) {
   // these prices will be quoted against usdc by default, but can be specified as address or symbol
-  const { zrx, marketPrices, collateralAddresses, syntheticAddresses, erc20s } = appState;
+  const { appClients, tables } = dependencies;
+  const { marketPrices, collateralAddresses, syntheticAddresses, erc20s } = tables;
+  const { zrx } = appClients;
   // this is hardcoded for now since it differs from the standard currency symbol usd
   const currency = "usdc";
   const profile = Profile(config.debug);
@@ -26,7 +31,12 @@ export default function (config: Config, appState: Dependencies) {
       sellAmount: parseUnits("1", tokenData.decimals || 18).toString(),
     });
     // we need to store prices in wei, so use parse units on this price
-    marketPrices.usdc.latest[tokenAddress] = [timestampS, parseUnits(result.price.toString()).toString()];
+    await marketPrices.usdc.latest.set({
+      id: tokenAddress,
+      address: tokenAddress,
+      price: parseUnits(result.price.toString()).toString(),
+      timestamp: timestampS,
+    });
   }
 
   async function updateLatestPrices(addresses: string[], timestampS: number = nowS()) {
@@ -51,15 +61,15 @@ export default function (config: Config, appState: Dependencies) {
   function getHistoryTable() {
     return marketPrices.usdc.history;
   }
-  function getLatestPrice(address: string) {
-    const result = marketPrices.usdc.latest[address];
+  async function getLatestPrice(address: string) {
+    const result = await marketPrices.usdc.latest.get(address);
     assert(result, "No price found for token address: " + address);
     return result;
   }
   // pulls price from latest and stuffs it into historical table.
   async function updatePriceHistory(tokenAddress: string) {
     const table = getHistoryTable();
-    const [timestamp, price] = getLatestPrice(tokenAddress);
+    const { timestamp, price } = await getLatestPrice(tokenAddress);
     if (await table.hasByAddress(tokenAddress, timestamp)) return;
     return table.create({
       address: tokenAddress,
@@ -75,7 +85,7 @@ export default function (config: Config, appState: Dependencies) {
   // so we will just set one from our query time.
   async function update(timestampS = nowS()) {
     // want to make sure we dont have any duplicate addresses between collaterals and synthetic
-    const addresses = lodash.uniq(Array.from(collateralAddresses).concat(Array.from(syntheticAddresses)));
+    const addresses = lodash.uniq((await collateralAddresses.keys()).concat(await syntheticAddresses.keys()));
     await updateLatestPrices(addresses, timestampS).catch((err) => {
       console.error("Error getting Market Price: " + err.message);
     });

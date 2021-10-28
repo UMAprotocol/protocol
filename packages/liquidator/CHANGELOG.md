@@ -3,6 +3,41 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.6.5](https://github.com/UMAprotocol/protocol/compare/@uma/liquidator@2.6.4...@uma/liquidator@2.6.5) (2021-10-27)
+
+**Note:** Version bump only for package @uma/liquidator
+
+## [2.6.4](https://github.com/UMAprotocol/protocol/compare/@uma/liquidator@2.6.3...@uma/liquidator@2.6.4) (2021-10-19)
+
+**Note:** Version bump only for package @uma/liquidator
+
+## [2.6.3](https://github.com/UMAprotocol/protocol/compare/@uma/liquidator@2.6.2...@uma/liquidator@2.6.3) (2021-10-08)
+
+### Bug Fixes
+
+- revert wait for logs, increase log wait in spoke ([#3424](https://github.com/UMAprotocol/protocol/issues/3424)) ([752a4de](https://github.com/UMAprotocol/protocol/commit/752a4de296ffddf6fd662b0e46ba9b34c1ed0b6f))
+- **bots:** add log waiting for happy bot paths ([#3423](https://github.com/UMAprotocol/protocol/issues/3423)) ([0dbdb5d](https://github.com/UMAprotocol/protocol/commit/0dbdb5dbf10987fa51d8f4f4704b70ce48c6a531))
+
+## [2.6.2](https://github.com/UMAprotocol/protocol/compare/@uma/liquidator@2.6.1...@uma/liquidator@2.6.2) (2021-10-01)
+
+**Note:** Version bump only for package @uma/liquidator
+
+## [2.6.1](https://github.com/UMAprotocol/protocol/compare/@uma/liquidator@2.6.0...@uma/liquidator@2.6.1) (2021-10-01)
+
+### Bug Fixes
+
+- **bots:** fix minor versioning and test inconsistencies in bots ([#3405](https://github.com/UMAprotocol/protocol/issues/3405)) ([f67f751](https://github.com/UMAprotocol/protocol/commit/f67f751b0e0658812795c1025ac5219177bd06ec))
+
+# [2.6.0](https://github.com/UMAprotocol/protocol/compare/@uma/liquidator@2.5.1...@uma/liquidator@2.6.0) (2021-09-28)
+
+### Bug Fixes
+
+- **cross-package:** Fixed typo of "ballance"->"balance" in a few packages ([#3265](https://github.com/UMAprotocol/protocol/issues/3265)) ([f48cd48](https://github.com/UMAprotocol/protocol/commit/f48cd48f74aefec1b348f2d8ea1cf4e787810809))
+
+### Features
+
+- **liquidator,disputer,monitor:** remove unnecessary unit conversion helpers in tests ([#3215](https://github.com/UMAprotocol/protocol/issues/3215)) ([77993f4](https://github.com/UMAprotocol/protocol/commit/77993f4d8ffa5ba821f66d5ff5d7c0cac7813009))
+
 ## [2.5.1](https://github.com/UMAprotocol/protocol/compare/@uma/liquidator@2.5.0...@uma/liquidator@2.5.1) (2021-07-19)
 
 **Note:** Version bump only for package @uma/liquidator

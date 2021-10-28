@@ -8,8 +8,17 @@ import { tables, Coingecko, utils, Multicall2 } from "@uma/sdk";
 import * as Services from "../../services";
 import Express from "../../services/express-channels";
 import * as Actions from "../../services/actions";
-import { ProcessEnv, AppState, Channels } from "../..";
-import { empStats, empStatsHistory, lsps } from "../../tables";
+import { ProcessEnv, AppState, Channels, AppClients } from "../../types";
+import {
+  addresses,
+  appStats,
+  empStats,
+  empStatsHistory,
+  lsps,
+  priceSamples,
+  registeredContracts,
+  tvl,
+} from "../../tables";
 import Zrx from "../../libs/zrx";
 import { Profile, parseEnvArray, getWeb3, BlockInterval, expirePromise } from "../../libs/utils";
 
@@ -35,8 +44,6 @@ export default async (env: ProcessEnv) => {
   const detectContractsUpdateRateS = Number(env.DETECT_CONTRACTS_UPDATE_RATE_S || 60);
   // Defaults to 15 minutes, prices dont update in coingecko or other calls very fast
   const priceUpdateRateS = Number(env.PRICE_UPDATE_RATE_S || 15 * 60);
-  // default to 10 days worth of blocks
-  const oldestBlock = Number(env.OLDEST_BLOCK_MS || 10 * 60 * 60 * 24 * 1000);
 
   assert(updateRateS >= 1, "UPDATE_RATE_S must be 1 or higher");
   assert(detectContractsUpdateRateS >= 1, "DETECT_CONTRACTS_UPDATE_RATE_S must be 1 or higher");
@@ -47,93 +54,93 @@ export default async (env: ProcessEnv) => {
 
   // state shared between services
   const appState: AppState = {
-    provider,
-    web3,
-    coingecko: new Coingecko(),
-    zrx: new Zrx(env.zrxBaseUrl),
-    blocks: tables.blocks.JsMap(),
     emps: {
-      active: tables.emps.JsMap("Active Emp"),
-      expired: tables.emps.JsMap("Expired Emp"),
+      active: tables.emps.Table("Active Emp"),
+      expired: tables.emps.Table("Expired Emp"),
     },
     prices: {
       usd: {
-        latest: {},
+        latest: priceSamples.Table("Latest Usd Prices"),
         history: {},
       },
     },
     synthPrices: {
-      latest: {},
+      latest: priceSamples.Table("Latest Synth Prices"),
       history: {},
     },
     marketPrices: {
       usdc: {
-        latest: {},
-        history: empStatsHistory.SortedJsMap("Market Price"),
+        latest: priceSamples.Table("Latest USDC Market Prices"),
+        history: empStatsHistory.Table("Market Price"),
       },
     },
-    erc20s: tables.erc20s.JsMap(),
+    erc20s: tables.erc20s.Table(),
     stats: {
       emp: {
         usd: {
           latest: {
-            tvm: empStats.JsMap("Latest Tvm"),
-            tvl: empStats.JsMap("Latest Tvl"),
+            tvm: empStats.Table("Latest Tvm"),
+            tvl: empStats.Table("Latest Tvl"),
           },
           history: {
-            tvm: empStatsHistory.SortedJsMap("Tvm History"),
-            tvl: empStatsHistory.SortedJsMap("Tvl History"),
+            tvm: empStatsHistory.Table("Tvm History"),
+            tvl: empStatsHistory.Table("Tvl History"),
           },
         },
       },
       lsp: {
         usd: {
           latest: {
-            tvl: empStats.JsMap("Latest Tvl"),
-            tvm: empStats.JsMap("Latest Tvm"),
+            tvl: empStats.Table("Latest Tvl"),
+            tvm: empStats.Table("Latest Tvm"),
           },
           history: {
-            tvl: empStatsHistory.SortedJsMap("Tvl History"),
+            tvl: empStatsHistory.Table("Tvl History"),
           },
         },
       },
       global: {
         usd: {
           latest: {
-            tvl: [0, "0"],
+            tvl: tvl.Table("Latest Usd Global Tvl"),
           },
           history: {
-            tvl: empStatsHistory.SortedJsMap("Tvl Global History"),
+            tvl: empStatsHistory.Table("Tvl Global History"),
           },
         },
       },
     },
-    lastBlockUpdate: 0,
-    registeredEmps: new Set<string>(),
-    registeredEmpsMetadata: new Map(),
-    registeredLsps: new Set<string>(),
-    registeredLspsMetadata: new Map(),
-    collateralAddresses: new Set<string>(),
-    syntheticAddresses: new Set<string>(),
+    registeredEmps: registeredContracts.Table("Registered Emps"),
+    registeredLsps: registeredContracts.Table("Registered Lsps"),
+    collateralAddresses: addresses.Table("Collateral Addresses"),
+    syntheticAddresses: addresses.Table("Synthetic Addresses"),
     // lsp related props. could be its own state object
-    longAddresses: new Set<string>(),
-    shortAddresses: new Set<string>(),
-    multicall2: new Multicall2(env.MULTI_CALL_2_ADDRESS, provider),
+    longAddresses: addresses.Table("Long Addresses"),
+    shortAddresses: addresses.Table("Short Addresses"),
     lsps: {
-      active: lsps.JsMap("Active LSP"),
-      expired: lsps.JsMap("Expired LSP"),
+      active: lsps.Table("Active LSP"),
+      expired: lsps.Table("Expired LSP"),
     },
+    appStats: appStats.Table("App Stats"),
   };
-
+  // clients shared between services
+  const appClients: AppClients = {
+    provider,
+    web3,
+    coingecko: new Coingecko(),
+    zrx: new Zrx(env.zrxBaseUrl),
+    multicall2: new Multicall2(env.MULTI_CALL_2_ADDRESS, provider),
+  };
   // services for ingesting data
   const services = {
     // these services can optionally be configured with a config object, but currently they are undefined or have defaults
-    blocks: Services.Blocks(undefined, appState),
-    emps: Services.EmpState({ debug }, appState),
-    registry: await Services.Registry({ debug }, appState, (event, data) =>
-      serviceEvents.emit("empRegistry", event, data)
+    emps: Services.EmpState({ debug }, { tables: appState, appClients }),
+    registry: await Services.Registry(
+      { debug, registryAddress: env.EMP_REGISTRY_ADDRESS },
+      { tables: appState, appClients },
+      (event, data) => serviceEvents.emit("empRegistry", event, data)
     ),
-    collateralPrices: Services.CollateralPrices({ debug }, appState),
+    collateralPrices: Services.CollateralPrices({ debug }, { tables: appState, appClients }),
     syntheticPrices: Services.SyntheticPrices(
       {
         debug,
@@ -142,36 +149,42 @@ export default async (env: ProcessEnv) => {
         quandlApiKey: env.quandlApiKey,
         defipulseApiKey: env.defipulseApiKey,
       },
-      appState
+      appState,
+      appClients
     ),
-    erc20s: Services.Erc20s({ debug }, appState),
+    erc20s: Services.Erc20s({ debug }, { tables: appState, appClients }),
     empStats: Services.stats.Emp({ debug }, appState),
-    marketPrices: Services.MarketPrices({ debug }, appState),
-    lspCreator: await Services.MultiLspCreator({ debug, addresses: lspCreatorAddresses }, appState, (event, data) =>
-      serviceEvents.emit("multiLspCreator", event, data)
+    marketPrices: Services.MarketPrices({ debug }, { tables: appState, appClients }),
+    lspCreator: await Services.MultiLspCreator(
+      { debug, addresses: lspCreatorAddresses },
+      { tables: appState, appClients },
+      (event, data) => serviceEvents.emit("multiLspCreator", event, data)
     ),
-    lsps: Services.LspState({ debug }, appState),
+    lsps: Services.LspState({ debug }, { tables: appState, appClients }),
     lspStats: Services.stats.Lsp({ debug }, appState),
     globalStats: Services.stats.Global({ debug }, appState),
   };
 
   const initBlock = await provider.getBlock("latest");
 
+  async function lastBlockUpdate() {
+    return appState.appStats.getLastBlockUpdate() || 0;
+  }
   // warm caches
-  await services.registry(appState.lastBlockUpdate, initBlock.number);
+  await services.registry(await lastBlockUpdate(), initBlock.number);
   console.log("Got all EMP addresses");
 
-  await services.lspCreator.update(appState.lastBlockUpdate, initBlock.number);
+  await services.lspCreator.update(await lastBlockUpdate(), initBlock.number);
   console.log("Got all LSP addresses");
 
-  await services.emps.update(appState.lastBlockUpdate, initBlock.number);
+  await services.emps.update(await lastBlockUpdate(), initBlock.number);
   console.log("Updated EMP state");
 
-  await services.lsps.update(appState.lastBlockUpdate, initBlock.number);
+  await services.lsps.update(await lastBlockUpdate(), initBlock.number);
   console.log("Updated LSP state");
 
   // we've update our state based on latest block we queried
-  appState.lastBlockUpdate = initBlock.number;
+  await appState.appStats.setLastBlockUpdate(initBlock.number);
 
   await services.erc20s.update();
   console.log("Updated tokens");
@@ -221,19 +234,23 @@ export default async (env: ProcessEnv) => {
   console.log("Started Express Server, API accessible");
 
   async function detectNewContracts(startBlock: number, endBlock: number) {
+    // ignore case when startblock == endblock, this can happen when loop is run before a new block has changed
+    if (startBlock === endBlock) return;
+    assert(startBlock < endBlock, "Startblock must be lower than endBlock");
     await services.registry(startBlock, endBlock);
     await services.lspCreator.update(startBlock, endBlock);
   }
 
   // break all state updates by block events into a cleaner function
   async function updateContractState(startBlock: number, endBlock: number) {
-    await services.blocks.handleNewBlock(endBlock);
+    // ignore case when startblock == endblock, this can happen when loop is run before a new block has changed
+    if (startBlock === endBlock) return;
+    assert(startBlock < endBlock, "Startblock must be lower than endBlock");
     // update everyting
     await services.emps.update(startBlock, endBlock);
     await services.lsps.update(startBlock, endBlock);
     await services.erc20s.update();
-    await services.blocks.cleanBlocks(oldestBlock);
-    appState.lastBlockUpdate = endBlock;
+    await appState.appStats.setLastBlockUpdate(endBlock);
   }
 
   // separate out price updates into a different loop to query every few minutes

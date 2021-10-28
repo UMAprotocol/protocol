@@ -18,11 +18,10 @@ export async function approveL1Tokens(
   bridgeAdminAddress: string,
   whitelistedRelayL1Tokens: string[]
 ): Promise<void> {
-  const bridgeAdmin = new web3.eth.Contract(getAbi("BridgeAdmin"), bridgeAdminAddress);
+  const bridgeAdmin = new web3.eth.Contract(getAbi("BridgeAdminInterface"), bridgeAdminAddress);
 
   for (const whitelistedL1Token of whitelistedRelayL1Tokens) {
-    console.log("whitelistedL1Token", whitelistedL1Token);
-    const bridgePool = (await bridgeAdmin.methods.whitelistedTokens(whitelistedL1Token).call()).bridgePool;
+    const bridgePool = (await bridgeAdmin.methods.whitelistedTokens(whitelistedL1Token, 0).call()).bridgePool;
     if (bridgePool === ZERO_ADDRESS) throw new Error("whitelistedRelayL1Tokens contains not-whitelisted token");
     const approvalTx = await setAllowance(web3, gasEstimator, account, bridgePool, whitelistedL1Token);
     if (approvalTx)
@@ -36,9 +35,12 @@ export async function approveL1Tokens(
   }
 }
 
-// Returns the L2 Deposit box address for a given bridgeAdmin
-export async function getL2DepositBoxAddress(web3: Web3, bridgeAdminAddress: string): Promise<string> {
-  return await new web3.eth.Contract(getAbi("BridgeAdmin"), bridgeAdminAddress).methods.depositContract().call();
+// Returns the L2 Deposit box address for a given bridgeAdmin on L1.
+export async function getL2DepositBoxAddress(web3: Web3, chainId: number, bridgeAdminAddress: string): Promise<string> {
+  const depositContracts = await new web3.eth.Contract(getAbi("BridgeAdminInterface"), bridgeAdminAddress).methods
+    .depositContracts(chainId)
+    .call();
+  return depositContracts.depositContract;
 }
 
 // Return the ballance of account on tokenAddress for a given web3 network.

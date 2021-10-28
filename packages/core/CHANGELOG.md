@@ -3,6 +3,140 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.13.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.12.0...@uma/core@2.13.0) (2021-10-27)
+
+### Bug Fixes
+
+- **across:** address issue in liquidity utilization calculation ([#3499](https://github.com/UMAprotocol/protocol/issues/3499)) ([35e279a](https://github.com/UMAprotocol/protocol/commit/35e279a9f681082bb7ccb49748566d2600bf483f))
+- fix liquid reserves check ([#3501](https://github.com/UMAprotocol/protocol/issues/3501)) ([e8a582b](https://github.com/UMAprotocol/protocol/commit/e8a582b36114dcf92a8887c33d520f0b889ea35e))
+- **bridge-pool:** BridgePool should set same fee % bounds as BridgeDepositBox ([#3494](https://github.com/UMAprotocol/protocol/issues/3494)) ([819730d](https://github.com/UMAprotocol/protocol/commit/819730d2edadee4d2df60c558d02535dac801a19))
+- **insured-bridge:** Add reentrancy guards to all public functions and enforce Check-Effects-Interaction ([#3497](https://github.com/UMAprotocol/protocol/issues/3497)) ([fe5f448](https://github.com/UMAprotocol/protocol/commit/fe5f448ccf7cb91594921daae49cb1f7d9ecac67))
+- **insured-bridge:** Call exchangeRateCurrent before external call ([#3498](https://github.com/UMAprotocol/protocol/issues/3498)) ([4a90b20](https://github.com/UMAprotocol/protocol/commit/4a90b20d20c9152c65a4424d1cffea39375e8035))
+- **insured-bridge:** Prevent deployer from owning ERC20 LP token ([#3492](https://github.com/UMAprotocol/protocol/issues/3492)) ([e25ac97](https://github.com/UMAprotocol/protocol/commit/e25ac9773c0f6c3a69ca9361b195059945d71571))
+- **insured-bridge:** remove reserves on dispute ([#3473](https://github.com/UMAprotocol/protocol/issues/3473)) ([5a68148](https://github.com/UMAprotocol/protocol/commit/5a68148204bdcadc81f38f4fa3a4f3a74655fd85))
+
+### Features
+
+- **across:** refactor address initialization ([#3478](https://github.com/UMAprotocol/protocol/issues/3478)) ([d22e3bd](https://github.com/UMAprotocol/protocol/commit/d22e3bdf6247b2e570de480f437df0121a55b771))
+- **core:** Update missing fpl addresses ([#3472](https://github.com/UMAprotocol/protocol/issues/3472)) ([d598e7c](https://github.com/UMAprotocol/protocol/commit/d598e7cce1c466c6acf0769d25465cef21431b22))
+- **insured-bridge:** Move contracts-ovm files to contracts/ and bump to ^0.8.0 ([#3454](https://github.com/UMAprotocol/protocol/issues/3454)) ([7189b0c](https://github.com/UMAprotocol/protocol/commit/7189b0c6ecea568a0c6a1f4bb5907a3d50d86186))
+- **scripts:** Add option to set contract in Finder when registering contract ([#3481](https://github.com/UMAprotocol/protocol/issues/3481)) ([43ede96](https://github.com/UMAprotocol/protocol/commit/43ede968ec5bd8268179c0a69ce730a07b65f1da))
+
+# [2.12.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.11.0...@uma/core@2.12.0) (2021-10-19)
+
+### Bug Fixes
+
+- **across:** fix broken didContractThrow syntax ([#3469](https://github.com/UMAprotocol/protocol/issues/3469)) ([42e5e10](https://github.com/UMAprotocol/protocol/commit/42e5e10573bdc55350876cec0b3ae58cf0113c43))
+- **bridge-pool:** remove outdated check ([#3456](https://github.com/UMAprotocol/protocol/issues/3456)) ([4cbb098](https://github.com/UMAprotocol/protocol/commit/4cbb0986d80dfbb351caaadf203d74f0c50b4db8))
+- **spelling:** address handel->handle typo ([#3465](https://github.com/UMAprotocol/protocol/issues/3465)) ([b0faad5](https://github.com/UMAprotocol/protocol/commit/b0faad57bb4f6549a1f90443780fc2932069a52b))
+
+### Features
+
+- **across:** allow relay and speed up to be called simultaneously ([#3449](https://github.com/UMAprotocol/protocol/issues/3449)) ([76b8964](https://github.com/UMAprotocol/protocol/commit/76b8964f8a6230993c53a0e731d0b368b0093746))
+- **across:** Enable LP deposit/withdraw in ETH ([#3468](https://github.com/UMAprotocol/protocol/issues/3468)) ([ad06324](https://github.com/UMAprotocol/protocol/commit/ad06324bf75d42fc70ef911f341ce3a27e1f6da1))
+- **across:** enable weth transfers to smart contracts ([#3467](https://github.com/UMAprotocol/protocol/issues/3467)) ([3c0c92d](https://github.com/UMAprotocol/protocol/commit/3c0c92d0925975c0e4da5e5751fe81ab6d97dc24))
+- **across:** slow relayer forfeits their reward after 15 minutes of no settlement ([#3450](https://github.com/UMAprotocol/protocol/issues/3450)) ([718adce](https://github.com/UMAprotocol/protocol/commit/718adcea4baad2b61b8539013680f2adbbd94e1c))
+- **across:** war games 2 ([#3460](https://github.com/UMAprotocol/protocol/issues/3460)) ([c2c849a](https://github.com/UMAprotocol/protocol/commit/c2c849ad046905b61f23f59ef32476a8eb8b04b1))
+- **insured-bridge:** Block instant relays post-expiry and change relayDeposit interface to match relayAndSpeedUp ([#3458](https://github.com/UMAprotocol/protocol/issues/3458)) ([25ac3c0](https://github.com/UMAprotocol/protocol/commit/25ac3c00be8afb33a6c6e134509f068699591025))
+- **insured-bridge:** Update Arbitrum messenger contracts after e2e tests ([#3448](https://github.com/UMAprotocol/protocol/issues/3448)) ([fd2f9c5](https://github.com/UMAprotocol/protocol/commit/fd2f9c5976300cd3c82801884ef14abf890e1461))
+- **LSP:** Enable LSP to support early expiration ([#3445](https://github.com/UMAprotocol/protocol/issues/3445)) ([d4e7ea2](https://github.com/UMAprotocol/protocol/commit/d4e7ea22159b2eed8e39d5b86ce0026ea3b8b995))
+
+# [2.11.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.10.0...@uma/core@2.11.0) (2021-10-08)
+
+### Bug Fixes
+
+- **across:** small commenting and styling nits ([#3451](https://github.com/UMAprotocol/protocol/issues/3451)) ([9635357](https://github.com/UMAprotocol/protocol/commit/9635357a89a5c60aa95be4bbf7fc77e1a253abde))
+- **core:** remove migrations contract ([#3441](https://github.com/UMAprotocol/protocol/issues/3441)) ([dc3afa5](https://github.com/UMAprotocol/protocol/commit/dc3afa5f2f0e1084b15e536b89af153bea201050))
+- **hardhat:** update HRE syntax ([#3418](https://github.com/UMAprotocol/protocol/issues/3418)) ([359849a](https://github.com/UMAprotocol/protocol/commit/359849a814505d456f8109039747b7106786142c))
+- **insured-bridge:** fix whitelist to work with multiple L2 chains ([#3436](https://github.com/UMAprotocol/protocol/issues/3436)) ([58f727e](https://github.com/UMAprotocol/protocol/commit/58f727e2cb96fa828385835e562f691d7c4fd6e3))
+- **insured-bridge:** Instant relayer should only receive refund iff they sped up valid relay ([#3425](https://github.com/UMAprotocol/protocol/issues/3425)) ([27d3634](https://github.com/UMAprotocol/protocol/commit/27d3634c6fbe9cf1eb8419641d0dbddf9cb56569))
+- **insured-bridge:** remove fixedpoint from InsuredBridge math to save gas ([#3433](https://github.com/UMAprotocol/protocol/issues/3433)) ([34f9cc9](https://github.com/UMAprotocol/protocol/commit/34f9cc9993c7ed102a04aed5025af146e454ba2c))
+- **insured-bridge:** standardize variable styling with the rest of the repo ([#3427](https://github.com/UMAprotocol/protocol/issues/3427)) ([8b030a5](https://github.com/UMAprotocol/protocol/commit/8b030a5117af2bd8840618f36dd8ebb615f3cd33))
+
+### Features
+
+- **across:** Update the bridge pool to deal with the scenario where tokens are not relayed before they come through the canonical bridge ([#3412](https://github.com/UMAprotocol/protocol/issues/3412)) ([66d1391](https://github.com/UMAprotocol/protocol/commit/66d13914ea68fb60b56c2c2196976a6da391dbb1))
+- **contracts:** optimize address -> utf8 conversion ([#3439](https://github.com/UMAprotocol/protocol/issues/3439)) ([610df3e](https://github.com/UMAprotocol/protocol/commit/610df3e8de408aeb824d044fc45c52b21582decf))
+- **insured-bridge:** Add additional ChainId props ([#3400](https://github.com/UMAprotocol/protocol/issues/3400)) ([95cf12e](https://github.com/UMAprotocol/protocol/commit/95cf12e30d82ec5b2876fc6188a37210ca287733))
+- **insured-bridge:** add caching of addresses and common params to save gas in relaying ([#3432](https://github.com/UMAprotocol/protocol/issues/3432)) ([61e8cc5](https://github.com/UMAprotocol/protocol/commit/61e8cc5357e975362fb259ca9b490455c6b30033))
+- **insured-bridge:** add Eth->Weth support on deposits and withdraws ([#3440](https://github.com/UMAprotocol/protocol/issues/3440)) ([33d01d4](https://github.com/UMAprotocol/protocol/commit/33d01d471437e1ab6861e4545ea4bb3895fd4d74))
+- **insured-bridge:** Add the ability to transfer bridgeAdmin in the bridgePool to enable upgradability ([#3426](https://github.com/UMAprotocol/protocol/issues/3426)) ([9a4dd75](https://github.com/UMAprotocol/protocol/commit/9a4dd75bd00b4e58da553e8b386c54cb227b740f))
+- **insured-bridge:** gas optimizations in bridge pool ([#3406](https://github.com/UMAprotocol/protocol/issues/3406)) ([c8cf31a](https://github.com/UMAprotocol/protocol/commit/c8cf31a7729b1791f70a92ec29238d18f757100f))
+- **insured-bridge:** Integrate SkinnyOptimisticOracle with BridgePool ([#3430](https://github.com/UMAprotocol/protocol/issues/3430)) ([554641c](https://github.com/UMAprotocol/protocol/commit/554641c25d79c4331e08a757f000621d55fe2675))
+- **insured-bridge:** optimize bytes32 encode function ([#3431](https://github.com/UMAprotocol/protocol/issues/3431)) ([9967e70](https://github.com/UMAprotocol/protocol/commit/9967e70e7db3f262fde0dc9d89ea04d4cd11ed97))
+- **insured-bridge:** Reduce function gas costs by storing hash of Relay params instead of full struct ([#3438](https://github.com/UMAprotocol/protocol/issues/3438)) ([ff231b4](https://github.com/UMAprotocol/protocol/commit/ff231b4df83ede216c0cb431d32e6920b36aec7d))
+- **optimistic-oracle:** Introduce gas-lite version of OptimisticOracle ([#3409](https://github.com/UMAprotocol/protocol/issues/3409)) ([42f26de](https://github.com/UMAprotocol/protocol/commit/42f26deb8af3fed37272130b20418d9f93f12339))
+
+# [2.10.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.9.0...@uma/core@2.10.0) (2021-10-01)
+
+### Features
+
+- **insured-bridge:** War games 1 ([#3399](https://github.com/UMAprotocol/protocol/issues/3399)) ([8773494](https://github.com/UMAprotocol/protocol/commit/8773494d29cf0428ca6d65f0272b135ba3dafcbf))
+
+# [2.9.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.8.0...@uma/core@2.9.0) (2021-10-01)
+
+### Features
+
+- **core:** move all active scripts out of core and deprecate rest ([#3397](https://github.com/UMAprotocol/protocol/issues/3397)) ([f96b8c9](https://github.com/UMAprotocol/protocol/commit/f96b8c90b01002594bf44ac44f03f6d021bee460))
+- **insured-bridge:** Remove deposit contract from relay params ([#3401](https://github.com/UMAprotocol/protocol/issues/3401)) ([c607211](https://github.com/UMAprotocol/protocol/commit/c607211b0cf0653ad5bb128042515b27efa492a3))
+
+# [2.8.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.7.0...@uma/core@2.8.0) (2021-09-28)
+
+### Bug Fixes
+
+- **cross-package:** Fixed typo of "ballance"->"balance" in a few packages ([#3265](https://github.com/UMAprotocol/protocol/issues/3265)) ([f48cd48](https://github.com/UMAprotocol/protocol/commit/f48cd48f74aefec1b348f2d8ea1cf4e787810809))
+- **e2e:** fix broken test ([#3318](https://github.com/UMAprotocol/protocol/issues/3318)) ([6a4f19b](https://github.com/UMAprotocol/protocol/commit/6a4f19ba948e66fc379ab0fa97ddb83e622e6580))
+- **insured-bridge:** clean unit tests and simplify param injection ([#3335](https://github.com/UMAprotocol/protocol/issues/3335)) ([564f2a8](https://github.com/UMAprotocol/protocol/commit/564f2a8d7f170bd472f2e11bf69df9102c82eec7))
+- make unused variables an error in the typescript linter ([#3279](https://github.com/UMAprotocol/protocol/issues/3279)) ([1d26dfc](https://github.com/UMAprotocol/protocol/commit/1d26dfcd500cc4f84dc5672de0c8f9a7c5592e43))
+- **scripts:** Fixes made after running scripts in prod ([#3254](https://github.com/UMAprotocol/protocol/issues/3254)) ([0f4dcbf](https://github.com/UMAprotocol/protocol/commit/0f4dcbfc56a4669e9571c6d007436c7928f51735))
+
+### Features
+
+- **common:** Initial PR adding Optimism plugin to Hardhat config ([#3154](https://github.com/UMAprotocol/protocol/issues/3154)) ([9e6eb07](https://github.com/UMAprotocol/protocol/commit/9e6eb078096c2c986ecfc3d014b7e45ee5e4be54))
+- **contract commenting:** Change commenting style to better generate docs ([#3270](https://github.com/UMAprotocol/protocol/issues/3270)) ([d84db68](https://github.com/UMAprotocol/protocol/commit/d84db6844b4a78303b0e17eb0856177420ecce6c))
+- **core:** Add register-contract and add-contract-creator admin proposal scripts ([#3243](https://github.com/UMAprotocol/protocol/issues/3243)) ([0e9de7a](https://github.com/UMAprotocol/protocol/commit/0e9de7af57e793a668e2c64f07645d7184a20313))
+- **core:** add tasks to manage artifacts and deployments ([#3229](https://github.com/UMAprotocol/protocol/issues/3229)) ([15a8f31](https://github.com/UMAprotocol/protocol/commit/15a8f31e3d3ce0df9b68b03ae56f8df789ae481a))
+- **core:** Update Mumbai addresses with verified ones ([#3250](https://github.com/UMAprotocol/protocol/issues/3250)) ([7c17dcd](https://github.com/UMAprotocol/protocol/commit/7c17dcda115210b6771b25f78651581816568056))
+- **financial-templates-lib:** Stub for InsuredBridgePriceFeed ([#3356](https://github.com/UMAprotocol/protocol/issues/3356)) ([8abd36f](https://github.com/UMAprotocol/protocol/commit/8abd36f0c938d85985661245f2fd51f465601df4))
+- **fpl:** add generalized success token FPL with parameterized base percentage ([#3263](https://github.com/UMAprotocol/protocol/issues/3263)) ([35c528e](https://github.com/UMAprotocol/protocol/commit/35c528e54f4ba51271fbdff7ce939030e3666166))
+- **fx-tunnel-relayer:** Implement bot that can relay messages from Polygon ChildTunnel to Ethereum RootTunnel ([#3314](https://github.com/UMAprotocol/protocol/issues/3314)) ([dc1a6b0](https://github.com/UMAprotocol/protocol/commit/dc1a6b08202444e0c97ff84dc7b3cd3d66e2de48))
+- **insured-bridge:** Add "ownable" bridge deposit box to simplify testing ([#3389](https://github.com/UMAprotocol/protocol/issues/3389)) ([359bb68](https://github.com/UMAprotocol/protocol/commit/359bb68b62e800f9b42182a78fdc518f9751696a))
+- **insured-bridge:** add arbitrum contract support to deposit box inheritance path ([#3385](https://github.com/UMAprotocol/protocol/issues/3385)) ([c77cce7](https://github.com/UMAprotocol/protocol/commit/c77cce7e5a0c37b9880cad045403f7b79dabc626))
+- **insured-bridge:** Add ArbitrumMessenger ([#3392](https://github.com/UMAprotocol/protocol/issues/3392)) ([fa56d3c](https://github.com/UMAprotocol/protocol/commit/fa56d3c02c40fc72fe2288a286ea7849f14754f2))
+- **insured-bridge:** Add realized LP fee pct computation ([#3373](https://github.com/UMAprotocol/protocol/issues/3373)) ([95abd8d](https://github.com/UMAprotocol/protocol/commit/95abd8d2d6e481a54e234bda6c7f8585babaa5eb))
+- **insured-bridge:** Add reentrancy guards ([#3386](https://github.com/UMAprotocol/protocol/issues/3386)) ([88df33c](https://github.com/UMAprotocol/protocol/commit/88df33c743c51f0a6145e8cd188c3afc1eb45fe6))
+- **insured-bridge:** Additional admin e2e unit tests for remaining cross-domain admin logic ([#3280](https://github.com/UMAprotocol/protocol/issues/3280)) ([a4d3015](https://github.com/UMAprotocol/protocol/commit/a4d3015bf253dc047d76348697ac6af8e61822e6))
+- **insured-bridge:** AVM bridge deposit box ([#3391](https://github.com/UMAprotocol/protocol/issues/3391)) ([7d73fde](https://github.com/UMAprotocol/protocol/commit/7d73fde9cf062c50a599166a0fe52f3f2a817ddb))
+- **insured-bridge:** BridgeAdmin supports multiple L2s ([#3390](https://github.com/UMAprotocol/protocol/issues/3390)) ([96cb0a4](https://github.com/UMAprotocol/protocol/commit/96cb0a4afd9b2f78a44d2cb481ec25c6e069cf58))
+- **insured-bridge:** Change internal relay data structures ([#3276](https://github.com/UMAprotocol/protocol/issues/3276)) ([07d083e](https://github.com/UMAprotocol/protocol/commit/07d083e1da49e94e5886c2ab1496a5b3bef3b1e0))
+- **insured-bridge:** clean comments, address some todos and general code hygiene ([#3323](https://github.com/UMAprotocol/protocol/issues/3323)) ([6b9b4ef](https://github.com/UMAprotocol/protocol/commit/6b9b4efc66e3cc9b9a362e94ca9d206558ff2c21))
+- **insured-bridge:** end to end testing stub ([#3255](https://github.com/UMAprotocol/protocol/issues/3255)) ([dda6f10](https://github.com/UMAprotocol/protocol/commit/dda6f108e6e5c023c0324988d79fc7eabef97039))
+- **insured-bridge:** Exponential fee calculation ([#3302](https://github.com/UMAprotocol/protocol/issues/3302)) ([bca414a](https://github.com/UMAprotocol/protocol/commit/bca414a5a2cfd989bba98e76c47f536758d75c64))
+- **insured-bridge:** Implement remaining crossdomain admin functions in BridgeAdmin ([#3275](https://github.com/UMAprotocol/protocol/issues/3275)) ([169b2cf](https://github.com/UMAprotocol/protocol/commit/169b2cf7b7c54b4665b217d7898648481703881d))
+- **insured-bridge:** Implement settleRelay ([#3286](https://github.com/UMAprotocol/protocol/issues/3286)) ([7027f30](https://github.com/UMAprotocol/protocol/commit/7027f304bb4d3077c6421f391f2cae613cadd56e))
+- **insured-bridge:** Implement speedUpRelay and settleRelay ([#3285](https://github.com/UMAprotocol/protocol/issues/3285)) ([53d6b53](https://github.com/UMAprotocol/protocol/commit/53d6b53d05709e01f725dc26689799a6ead232cb))
+- **insured-bridge:** Implement xchain messaging in BridgeRouter ([#3259](https://github.com/UMAprotocol/protocol/issues/3259)) ([cde2ab9](https://github.com/UMAprotocol/protocol/commit/cde2ab975cecdfc5169f489db1b7f9730466a62b))
+- **insured-bridge:** initial LP functionality ([#3287](https://github.com/UMAprotocol/protocol/issues/3287)) ([5a72e02](https://github.com/UMAprotocol/protocol/commit/5a72e0249476a4736772dd227a3f13f448727620))
+- **insured-bridge:** Make XMessenger contracts Ownable ([#3395](https://github.com/UMAprotocol/protocol/issues/3395)) ([49f22ee](https://github.com/UMAprotocol/protocol/commit/49f22ee2cbb647be700ad3ab81abac9581c94fb4))
+- **insured-bridge:** Modify relay ancillary data to enhance off-chain bots ([#3363](https://github.com/UMAprotocol/protocol/issues/3363)) ([1c2ea19](https://github.com/UMAprotocol/protocol/commit/1c2ea19af1d586c79ba0fe51a7be6cdbd25bea7c))
+- **insured-bridge:** Refactoring for gas savings ([#3369](https://github.com/UMAprotocol/protocol/issues/3369)) ([1568cd9](https://github.com/UMAprotocol/protocol/commit/1568cd91406f38f8b69ba48753f1a7d094b8ea18))
+- **insured-bridge:** whitelist collateral cross-chain end to end tests ([#3269](https://github.com/UMAprotocol/protocol/issues/3269)) ([3780fb7](https://github.com/UMAprotocol/protocol/commit/3780fb7c00993dabde2b70b12dcc4033c024f446))
+- **Insured-Bridge:** initial contract interfaces & smocking ([#3249](https://github.com/UMAprotocol/protocol/issues/3249)) ([aeea8ae](https://github.com/UMAprotocol/protocol/commit/aeea8ae30c6f7d5065e3857d25c75b8d69005d81))
+- **insured-bridge-bot:** instant relay logic ([#3364](https://github.com/UMAprotocol/protocol/issues/3364)) ([65600ae](https://github.com/UMAprotocol/protocol/commit/65600aec5f53ae17792b4191a8dd03a03deceba7))
+- **insured-bridge-e2e:** add full lifecycle end to end tests ([#3321](https://github.com/UMAprotocol/protocol/issues/3321)) ([4c4434a](https://github.com/UMAprotocol/protocol/commit/4c4434a0c169119a6aff97a34ed8d59059c1c580))
+- **insured-bridge-relayer:** Add additional relay logic, should relay and slow relay implementation ([#3359](https://github.com/UMAprotocol/protocol/issues/3359)) ([2a81888](https://github.com/UMAprotocol/protocol/commit/2a81888934594815a5d85a7358c357397083ea23))
+- **insured-bridge-relayer:** add speed up bridging and additional standardization ([#3362](https://github.com/UMAprotocol/protocol/issues/3362)) ([dfb578a](https://github.com/UMAprotocol/protocol/commit/dfb578a1008a4954534fa87b3f7752ef3c8fa9b1))
+- **insured-bridge-relayer:** initial relayer logic implementation ([#3351](https://github.com/UMAprotocol/protocol/issues/3351)) ([a350bd9](https://github.com/UMAprotocol/protocol/commit/a350bd9d1fc9a8c58b4a57f58fee62e7cfd75141))
+- **insured-brige:** update depositor fee information to give more control to different fee types ([#3298](https://github.com/UMAprotocol/protocol/issues/3298)) ([8f786d2](https://github.com/UMAprotocol/protocol/commit/8f786d2811e37de4c27f3f2453b1f2f13efa2652))
+- **insured-oracle:** Added initial client implementation and tests ([#3324](https://github.com/UMAprotocol/protocol/issues/3324)) ([877e204](https://github.com/UMAprotocol/protocol/commit/877e2042cd317fe1a1e8d1a1be036b2a738daaf9))
+- **lib:** add SimpleSuccessToken and CappedYieldDollar FPLs ([#3237](https://github.com/UMAprotocol/protocol/issues/3237)) ([7242ad2](https://github.com/UMAprotocol/protocol/commit/7242ad25171cab229e0a63c84590ac56992b3cd3))
+- **liquidator,disputer,monitor:** remove unnecessary unit conversion helpers in tests ([#3215](https://github.com/UMAprotocol/protocol/issues/3215)) ([77993f4](https://github.com/UMAprotocol/protocol/commit/77993f4d8ffa5ba821f66d5ff5d7c0cac7813009))
+- **monitors:** remove all truffle dependencies ([#3361](https://github.com/UMAprotocol/protocol/issues/3361)) ([a4fd298](https://github.com/UMAprotocol/protocol/commit/a4fd29856b7e6bb4ee4a87313de29aba3b344c95))
+- **periphery:** Create new package for scripts that interact with core contracts ([#3247](https://github.com/UMAprotocol/protocol/issues/3247)) ([091fd33](https://github.com/UMAprotocol/protocol/commit/091fd3379e3f007adedf4db91ec4e83268ba3110))
+- **upp:** add scripts for removing collateral types ([#3232](https://github.com/UMAprotocol/protocol/issues/3232)) ([5dbb842](https://github.com/UMAprotocol/protocol/commit/5dbb8420602aa06b63d9309873699bf2e34f8bcb))
+- Add cross-chain governance to UMIP collateral and identifier scripts ([#3234](https://github.com/UMAprotocol/protocol/issues/3234)) ([247a367](https://github.com/UMAprotocol/protocol/commit/247a367d7967a8673b05d2f4fb3e2bb4c35a2b02))
+- Upgrade hardhat to 2.5 to be compatible with London hardfork ([#3248](https://github.com/UMAprotocol/protocol/issues/3248)) ([b1524ce](https://github.com/UMAprotocol/protocol/commit/b1524ce868fc17c7486872a8ef632497f757288d))
+
 # [2.7.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.6.0...@uma/core@2.7.0) (2021-07-19)
 
 ### Features

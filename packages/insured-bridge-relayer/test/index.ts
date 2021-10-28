@@ -3,35 +3,43 @@ import winston from "winston";
 import sinon from "sinon";
 import hre from "hardhat";
 const { assert } = require("chai");
+const Web3 = require("web3");
+const ganache = require("ganache-core");
 
 import { interfaceName, TokenRolesEnum, HRE } from "@uma/common";
 
-// TODO: clean up this export/import path
-const { deployOptimismContractMock } = require("../../core/test/insured-bridge/helpers/SmockitHelper.js");
-
 const { web3, getContract } = hre as HRE;
-const { toWei, utf8ToHex } = web3.utils;
+const { toWei, toBN, utf8ToHex } = web3.utils;
+const toBNWei = (number: string | number) => toBN(toWei(number.toString()).toString());
+
+const startGanacheServer = (chainId: number, port: number) => {
+  const node = ganache.server({ _chainIdRpc: chainId });
+  node.listen(port);
+  return new Web3("http://127.0.0.1:" + port);
+};
 
 // Helper contracts
+const chainId = 10;
+const Messenger = getContract("MessengerMock");
 const BridgePool = getContract("BridgePool");
 const BridgeAdmin = getContract("BridgeAdmin");
 const Finder = getContract("Finder");
 const IdentifierWhitelist = getContract("IdentifierWhitelist");
 const AddressWhitelist = getContract("AddressWhitelist");
-const OptimisticOracle = getContract("OptimisticOracle");
+const OptimisticOracle = getContract("SkinnyOptimisticOracle");
 const Store = getContract("Store");
 const ERC20 = getContract("ExpandedERC20");
 const Timer = getContract("Timer");
 const MockOracle = getContract("MockOracleAncillary");
 
 // Contract objects
+let messenger: any;
 let bridgeAdmin: any;
 let bridgePool: any;
 let finder: any;
 let store: any;
 let identifierWhitelist: any;
 let collateralWhitelist: any;
-let l1CrossDomainMessengerMock: any;
 let timer: any;
 let optimisticOracle: any;
 let l1Token: any;
@@ -40,6 +48,7 @@ let mockOracle: any;
 
 // Hard-coded test params:
 const defaultGasLimit = 1_000_000;
+const defaultGasPrice = toWei("1", "gwei");
 const defaultIdentifier = utf8ToHex("IS_CROSS_CHAIN_RELAY_VALID");
 const defaultLiveness = 100;
 const lpFeeRatePerSecond = toWei("0.0000015");
@@ -102,7 +111,7 @@ describe("index.js", function () {
       timer.options.address
     ).send({ from: owner });
     await finder.methods
-      .changeImplementationAddress(utf8ToHex(interfaceName.OptimisticOracle), optimisticOracle.options.address)
+      .changeImplementationAddress(utf8ToHex(interfaceName.SkinnyOptimisticOracle), optimisticOracle.options.address)
       .send({ from: owner });
 
     // Deploy new MockOracle so that OptimisticOracle disputes can make price requests to it:
@@ -112,15 +121,16 @@ describe("index.js", function () {
       .send({ from: owner });
 
     // Deploy and setup BridgeAdmin:
-    l1CrossDomainMessengerMock = await deployOptimismContractMock("OVM_L1CrossDomainMessenger");
+    messenger = await Messenger.new().send({ from: owner });
     bridgeAdmin = await BridgeAdmin.new(
       finder.options.address,
-      l1CrossDomainMessengerMock.options.address,
       defaultLiveness,
       defaultProposerBondPct,
       defaultIdentifier
     ).send({ from: owner });
-    await bridgeAdmin.methods.setDepositContract(depositContractImpersonator).send({ from: owner });
+    await bridgeAdmin.methods
+      .setDepositContract(chainId, depositContractImpersonator, messenger.options.address)
+      .send({ from: owner });
 
     // New BridgePool linked to BridgeAdmin
     bridgePool = await BridgePool.new(
@@ -129,12 +139,22 @@ describe("index.js", function () {
       bridgeAdmin.options.address,
       l1Token.options.address,
       lpFeeRatePerSecond,
+      false,
       timer.options.address
     ).send({ from: owner });
 
     // Add L1-L2 token mapping
     await bridgeAdmin.methods
-      .whitelistToken(l1Token.options.address, l2Token, bridgePool.options.address, defaultGasLimit)
+      .whitelistToken(
+        chainId,
+        l1Token.options.address,
+        l2Token,
+        bridgePool.options.address,
+        0,
+        defaultGasLimit,
+        defaultGasPrice,
+        0
+      )
       .send({ from: owner });
 
     spy = sinon.spy();
@@ -142,12 +162,26 @@ describe("index.js", function () {
       level: "debug",
       transports: [new SpyTransport({ level: "debug" }, { spy: spy })],
     });
+
+    await startGanacheServer(69, 7777);
   });
 
   it("Runs with no errors and correctly sets approvals for whitelisted L1 tokens", async function () {
     process.env.BRIDGE_ADMIN_ADDRESS = bridgeAdmin.options.address;
+    process.env.RELAYER_ENABLED = "1";
+    process.env.DISPUTER_ENABLED = "1";
+    process.env.FINALIZER_ENABLED = "1";
     process.env.POLLING_DELAY = "0";
-    process.env.WHITELISTED_L1_TOKENS = JSON.stringify([l1Token.options.address]);
+    process.env.RATE_MODELS = JSON.stringify({
+      [l1Token.options.address]: {
+        UBar: toBNWei("0.65"),
+        R0: toBNWei("0.00"),
+        R1: toBNWei("0.08"),
+        R2: toBNWei("1.00"),
+      },
+    });
+    process.env.CHAIN_IDS = JSON.stringify([69]);
+    process.env.NODE_URL_69 = "http://localhost:7777";
 
     // Must not throw.
     await run(spyLogger, web3);

@@ -1,8 +1,11 @@
 {
-  "version": "0.4.1",
+  "version": "0.10.0",
   "license": "MIT",
-  "main": "dist/index.js",
-  "typings": "dist/index.d.ts",
+  "name": "@uma/sdk",
+  "author": "David Adams",
+  "main": "dist/node/index.js",
+  "module": "dist/web/index.js",
+  "typings": "dist/types/index.d.ts",
   "files": [
     "dist",
     "src"
@@ -12,43 +15,43 @@
   },
   "scripts": {
     "start": "tsdx watch",
-    "build": "tsdx build",
+    "build": "node ./build.js",
+    "build:web": "ENV_TYPE=web tsdx build --target web --format esm --name index",
+    "build:node": "tsdx build --target node --format cjs --name index",
     "test": "tsdx test",
     "test:e2e": "tsdx test --config jest-e2e-config.json",
     "test:watch": "tsdx test --watch",
     "eslint": "eslint './src/**/*.ts'",
     "prettier": "prettier './**/*.md' './src/**/*.ts'",
     "lint": "yarn prettier --write && yarn eslint --fix",
-    "prepare": "tsdx build",
+    "prepare": "yarn build",
     "size": "size-limit",
     "analyze": "size-limit --why"
   },
-  "name": "@uma/sdk",
-  "author": "David Adams",
-  "module": "dist/sdk.esm.js",
   "size-limit": [
     {
-      "path": "dist/sdk.cjs.production.min.js",
-      "limit": "10 KB"
-    },
-    {
-      "path": "dist/sdk.esm.js",
-      "limit": "10 KB"
+      "path": "dist/web/index.js",
+      "limit": "500 KB"
     }
   ],
   "dependencies": {
-    "@uma/contracts-node": "^0.1.0",
-    "ethers": "^5.4.2",
-    "highland": "^2.13.5"
+    "@google-cloud/datastore": "^6.6.0",
+    "@uma/contracts-frontend": "^0.1.6",
+    "@uma/contracts-node": "^0.1.6",
+    "axios": "^0.21.4",
+    "decimal.js": "^10.3.1",
+    "highland": "^2.13.5",
+    "lodash": "^4.17.21"
+  },
+  "peerDependencies": {
+    "ethers": "^5.4.2"
   },
   "devDependencies": {
-    "@ethersproject/abi": "^5.4.0",
-    "@ethersproject/abstract-provider": "^5.4.0",
-    "@ethersproject/contracts": "^5.4.0",
-    "@ethersproject/providers": "^5.4.2",
+    "@rollup/plugin-replace": "^3.0.0",
     "@size-limit/preset-small-lib": "^4.10.2",
     "@types/dotenv": "^8.2.0",
     "@types/highland": "^2.12.13",
+    "dotenv": "^10.0.0",
     "size-limit": "^4.10.2",
     "tsdx": "^0.14.1",
     "tslib": "^2.2.0"

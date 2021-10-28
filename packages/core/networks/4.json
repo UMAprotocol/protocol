@@ -1,11 +1,7 @@
 [
   {
-    "contractName": "Migrations",
-    "address": "0x50039fAEfebef707cFD94D6d462fE6D10B39207a"
-  },
-  {
     "contractName": "Finder",
-    "address": "0x2BEF44A613a09a1007a9D98526A3AAD068FCc480"
+    "address": "0xbb6206fb01fAad31e8aaFc3AD303cEA89D8c8157"
   },
   {
     "contractName": "VotingToken",
@@ -13,7 +9,15 @@
   },
   {
     "contractName": "IdentifierWhitelist",
-    "address": "0x7242892cc4653F1214cf700DdCc50ad47EBff564"
+    "address": "0xCF744280D6ee7ca04e6D4167546a8463Ad899105"
+  },
+  {
+    "contractName": "AddressWhitelist",
+    "address": "0xbBD1B575BEE5A77d393973Fe79B1d6e1762BB1d0"
+  },
+  {
+    "contractName": "SkinnyOptimisticOracle",
+    "address": "0xAbE04Ace666294aefD65F991d78CE9F9218aFC67"
   },
   {
     "contractName": "Voting",
@@ -29,7 +33,7 @@
   },
   {
     "contractName": "Store",
-    "address": "0xa4199d73ae206d49c966cF16c58436851f87d47F"
+    "address": "0x9A50d72aB5E5336EA30D5D8e1FBA80ba3ebd151E"
   },
   {
     "contractName": "Governor",
@@ -58,5 +62,9 @@
   {
     "contractName": "SourceOracle",
     "address": "0x110009DB52a1AcA1A885F494ff5717017D0A8257"
+  },
+  {
+    "contractName": "BridgeAdmin",
+    "address": "0x5e01469f733a47CA50e7b4366Ef601fD0FE05Dd1"
   }
 ]

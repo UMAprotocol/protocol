@@ -1,18 +1,17 @@
 {
   "name": "@uma/liquidator",
-  "version": "2.5.1",
+  "version": "2.6.5",
   "description": "UMA Liquidator",
   "dependencies": {
-    "@uma/common": "^2.6.0",
-    "@uma/core": "^2.7.0",
-    "@uma/financial-templates-lib": "^2.6.1",
+    "@uma/common": "^2.12.0",
+    "@uma/core": "^2.13.0",
+    "@uma/financial-templates-lib": "^2.12.0",
     "@umaprotocol/ynatm": "^0.0.1",
     "async-retry": "^1.3.1",
     "dotenv": "^6.2.0"
   },
   "devDependencies": {
     "sinon": "^9.0.2",
-    "truffle": "^5.2.3",
     "winston": "^3.2.1"
   },
   "homepage": "https://umaproject.org",

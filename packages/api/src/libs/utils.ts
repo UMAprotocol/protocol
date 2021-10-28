@@ -1,5 +1,5 @@
 import lodash from "lodash";
-import { Obj } from "..";
+import { Obj } from "../types";
 import * as uma from "@uma/sdk";
 import { utils, BigNumber, Contract } from "ethers";
 import assert from "assert";
@@ -202,7 +202,6 @@ export function getWeb3(url: string, options: Obj = {}) {
 // this just maintains the start/endblock given sporadic updates with a latest block number
 export function BlockInterval(update: (startBlock: number, endBlock: number) => Promise<void>, startBlock = 0) {
   return async (endBlock: number) => {
-    assert(endBlock > startBlock, "End block must be greater than start block");
     const params = {
       startBlock,
       endBlock,

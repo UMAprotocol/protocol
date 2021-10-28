@@ -51,6 +51,7 @@ export const PublicNetworks: PublicNetworksType = {
     wethAddress: "0xc778417E063141139Fce010982780140Aa0cD5Ab",
   },
   5: { name: "goerli", etherscan: "https://goerli.etherscan.io/" },
+  10: { name: "optimism", etherscan: "https://optimistic.etherscan.io/" },
   42: {
     name: "kovan",
     ethFaucet: "https://faucet.kovan.network/",
@@ -58,6 +59,7 @@ export const PublicNetworks: PublicNetworksType = {
     daiAddress: "0xbF7A7169562078c96f0eC1A8aFD6aE50f12e5A99",
     wethAddress: "0xd0A1E359811322d97991E03f863a0C30C2cF029C",
   },
+  69: { name: "optimism-kovan", etherscan: "https://kovan-optimistic.etherscan.io/" },
   137: {
     name: "polygon-matic",
     etherscan: "https://polygonscan.com/",
@@ -67,6 +69,10 @@ export const PublicNetworks: PublicNetworksType = {
     name: "polygon-mumbai",
     etherscan: "https://mumbai.polygonscan.com/",
     customTruffleConfig: { confirmations: 2, timeoutBlocks: 200 },
+  },
+  421611: {
+    name: "arbitrum-rinkeby",
+    etherscan: "https://testnet.arbiscan.io/",
   },
 };
 

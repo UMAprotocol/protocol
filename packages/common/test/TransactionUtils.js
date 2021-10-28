@@ -1,16 +1,20 @@
 // Script to test
+const { web3, getContract } = require("hardhat");
+const { assert } = require("chai");
 const TransactionUtils = require("../dist/TransactionUtils");
-const { getTruffleContract, getAbi } = require("@uma/core");
-const ERC20 = getTruffleContract("BasicERC20", web3);
-const ERC20ABI = getAbi("BasicERC20");
 
-contract("TransactionUtils.js", function (accounts) {
+const ERC20 = getContract("BasicERC20");
+
+describe("TransactionUtils.js", function () {
+  let accounts;
+  before(async function () {
+    accounts = await web3.eth.getAccounts();
+  });
   describe("runTransaction", function () {
     it("sets error.type correctly", async function () {
       // `.call()` fails, error.type = "call"
       try {
-        const erc20 = await ERC20.new("0");
-        const erc20Contract = new web3.eth.Contract(ERC20ABI, erc20.address);
+        const erc20Contract = await ERC20.new("0").send({ from: accounts[0] });
         // Allowance is not set for accounts[0] so this should fail on .call()
         const transaction = erc20Contract.methods.transferFrom(accounts[0], accounts[1], "1");
         const transactionConfig = { from: accounts[0] };

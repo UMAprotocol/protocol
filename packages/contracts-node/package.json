@@ -1,14 +1,14 @@
 {
   "name": "@uma/contracts-node",
-  "version": "0.1.0",
+  "version": "0.1.6",
   "description": "UMA smart contracts and unit tests",
   "devDependencies": {
     "@ethersproject/abi": "^5.4.0",
-    "@ethersproject/contracts": "^5.4.0",
     "@ethersproject/abstract-provider": "^5.4.0",
+    "@ethersproject/contracts": "^5.4.0",
     "@ethersproject/providers": "^5.4.2",
-    "@uma/core": "^2.5.0",
-    "@uma/common": "^2.4.0",
+    "@uma/common": "^2.12.0",
+    "@uma/core": "^2.13.0",
     "ethers": "^5.4.2"
   },
   "homepage": "https://umaproject.org",

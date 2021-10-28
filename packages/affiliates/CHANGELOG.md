@@ -3,6 +3,43 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.6.5](https://github.com/UMAprotocol/protocol/compare/@uma/affiliates@1.6.4...@uma/affiliates@1.6.5) (2021-10-27)
+
+**Note:** Version bump only for package @uma/affiliates
+
+## [1.6.4](https://github.com/UMAprotocol/protocol/compare/@uma/affiliates@1.6.3...@uma/affiliates@1.6.4) (2021-10-19)
+
+**Note:** Version bump only for package @uma/affiliates
+
+## [1.6.3](https://github.com/UMAprotocol/protocol/compare/@uma/affiliates@1.6.2...@uma/affiliates@1.6.3) (2021-10-08)
+
+**Note:** Version bump only for package @uma/affiliates
+
+## [1.6.2](https://github.com/UMAprotocol/protocol/compare/@uma/affiliates@1.6.1...@uma/affiliates@1.6.2) (2021-10-01)
+
+**Note:** Version bump only for package @uma/affiliates
+
+## [1.6.1](https://github.com/UMAprotocol/protocol/compare/@uma/affiliates@1.6.0...@uma/affiliates@1.6.1) (2021-10-01)
+
+**Note:** Version bump only for package @uma/affiliates
+
+# [1.6.0](https://github.com/UMAprotocol/protocol/compare/@uma/affiliates@1.5.1...@uma/affiliates@1.6.0) (2021-09-28)
+
+### Bug Fixes
+
+- fix dependabot alert around googleapis version ([#3267](https://github.com/UMAprotocol/protocol/issues/3267)) ([a4f4c59](https://github.com/UMAprotocol/protocol/commit/a4f4c59380318f035cba0b61e28e3f8fe5288fdb))
+- make unused variables an error in the typescript linter ([#3279](https://github.com/UMAprotocol/protocol/issues/3279)) ([1d26dfc](https://github.com/UMAprotocol/protocol/commit/1d26dfcd500cc4f84dc5672de0c8f9a7c5592e43))
+- **affiliates:** change devmining-status totalReward from 50k to 35k ([#3246](https://github.com/UMAprotocol/protocol/issues/3246)) ([682c9f9](https://github.com/UMAprotocol/protocol/commit/682c9f9eff86057089f55926f6e8fa1da9f51c2f))
+- **cross-package:** Fixed typo of "ballance"->"balance" in a few packages ([#3265](https://github.com/UMAprotocol/protocol/issues/3265)) ([f48cd48](https://github.com/UMAprotocol/protocol/commit/f48cd48f74aefec1b348f2d8ea1cf4e787810809))
+
+### Features
+
+- **affiliates:** 1776 add v2 dev mining based on tvl ([#3266](https://github.com/UMAprotocol/protocol/issues/3266)) ([e95408e](https://github.com/UMAprotocol/protocol/commit/e95408eb71a0abeea14c1adc7e1bfb60bd4e5767))
+- **affiliates:** Update dev mining whitelist ([#3274](https://github.com/UMAprotocol/protocol/issues/3274)) ([063c7b8](https://github.com/UMAprotocol/protocol/commit/063c7b82e8f256b9a02e8bcd4c6447641ea5f7ce))
+- **core:** add tasks to manage artifacts and deployments ([#3229](https://github.com/UMAprotocol/protocol/issues/3229)) ([15a8f31](https://github.com/UMAprotocol/protocol/commit/15a8f31e3d3ce0df9b68b03ae56f8df789ae481a))
+- **gas-rebate:** Gas rebate 13 ([#3375](https://github.com/UMAprotocol/protocol/issues/3375)) ([a1df36e](https://github.com/UMAprotocol/protocol/commit/a1df36e175eddddded95210fac494c254d2d67ed))
+- **insured-bridge:** Add realized LP fee pct computation ([#3373](https://github.com/UMAprotocol/protocol/issues/3373)) ([95abd8d](https://github.com/UMAprotocol/protocol/commit/95abd8d2d6e481a54e234bda6c7f8585babaa5eb))
+
 ## [1.5.1](https://github.com/UMAprotocol/protocol/compare/@uma/affiliates@1.5.0...@uma/affiliates@1.5.1) (2021-07-19)
 
 **Note:** Version bump only for package @uma/affiliates

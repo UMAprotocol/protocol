@@ -1,3 +1,5 @@
+// Note: This test is currently deprecated and will be updated after the new @eth-optimism working with OVM 2.0 is
+// integrated into this repo.
 const { ZERO_ADDRESS } = require("@uma/common");
 
 const chai = require("chai");
@@ -23,6 +25,8 @@ const {
   PROXY__OVM_L1_CROSS_DOMAIN_MESSENGER,
 } = require("./helpers/OptimismConstants");
 
+const chainId = "10";
+
 // Token and Optimism contracts factories
 const factory__L1_ERC20 = createLocalEthersFactory("ExpandedERC20");
 const factory__L2_ERC20 = createOptimismEthersFactory("L2StandardERC20", true);
@@ -30,6 +34,7 @@ const factory__L1StandardBridge = createOptimismEthersFactory("OVM_L1StandardBri
 const factory__L2StandardBridge = createOptimismEthersFactory("OVM_L2StandardBridge", true);
 
 // Insured bridge contract factories
+const factory__L1_OptimismMessenger = createLocalEthersFactory("Optimism_Messenger");
 const factory__L1_BridgeAdmin = createLocalEthersFactory("BridgeAdmin");
 const factory__L1_BridgePool = createLocalEthersFactory("BridgePool");
 const factory__L2_BridgeDepositBox = createLocalEthersFactory("OVM_BridgeDepositBox", true);
@@ -151,7 +156,7 @@ describe("Insured bridge e2e tests", () => {
     let depositData;
 
     // End to end tested contracts
-    let l1BridgeAdmin, l1BridgePool, l2BridgeDepositBox;
+    let l1OptimismMessenger, l1BridgeAdmin, l1BridgePool, l2BridgeDepositBox;
 
     // UMA ecosystem objects.
     let l1Timer, l1Finder, l1CollateralWhitelist, l2Timer;
@@ -168,18 +173,19 @@ describe("Insured bridge e2e tests", () => {
         identifier
       ));
 
-      // Bridging infrastructure and initialization. Note we use the l1 proxy cross-domain messenger for the routers
-      // _crossDomainMessenger. This is done to mimic the production setup which routes transactions through this proxy.
+      // Note we use the l1 proxy cross-domain messenger for the routers _crossDomainMessenger.
+      // This is done to mimic the production setup which routes transactions through this proxy.
+      l1OptimismMessenger = await factory__L1_OptimismMessenger
+        .connect(l1Wallet)
+        .deploy(PROXY__OVM_L1_CROSS_DOMAIN_MESSENGER);
+      await l1OptimismMessenger.deployTransaction.wait();
+
+      // Bridging infrastructure and initialization.
       l1BridgeAdmin = await factory__L1_BridgeAdmin
         .connect(l1Wallet)
-        .deploy(
-          l1Finder.address,
-          PROXY__OVM_L1_CROSS_DOMAIN_MESSENGER,
-          optimisticOracleLiveness,
-          proposerBondPct,
-          identifier
-        );
+        .deploy(l1Finder.address, optimisticOracleLiveness, proposerBondPct, identifier);
       await l1BridgeAdmin.deployTransaction.wait();
+      await l1OptimismMessenger.transferOwnership(l1BridgeAdmin.address);
 
       l1BridgePool = await factory__L1_BridgePool
         .connect(l1Wallet)
@@ -188,11 +194,11 @@ describe("Insured bridge e2e tests", () => {
 
       l2BridgeDepositBox = await factory__L2_BridgeDepositBox
         .connect(l2Wallet)
-        .deploy(l1BridgeAdmin.address, minimumBridgingDelay, l2Timer.address, OPTIMISM_GAS_OPTS);
+        .deploy(l1OptimismMessenger.address, minimumBridgingDelay, l2Timer.address, OPTIMISM_GAS_OPTS);
       await l2BridgeDepositBox.deployTransaction.wait();
 
       // Set deposit contract on deposit Admin.
-      await l1BridgeAdmin.setDepositContract(l2BridgeDepositBox.address);
+      await l1BridgeAdmin.setDepositContract(chainId, l2BridgeDepositBox.address, l1OptimismMessenger.address);
     });
     describe("Cross-domain admin functionality", () => {
       it("Can whitelist token on L2 from L1", async () => {
@@ -204,6 +210,7 @@ describe("Insured bridge e2e tests", () => {
 
         // Wallet should have to tokens on L1 from the mint action and no tokens on L2.
         const adminTx = await l1BridgeAdmin.whitelistToken(
+          chainId,
           l1Token.address, // L1 token.
           l2Token.address, // Associated L2 token.
           l1BridgePool.address,
@@ -225,7 +232,11 @@ describe("Insured bridge e2e tests", () => {
         // Correct admin before the change.
 
         assert.equal(await l2BridgeDepositBox.bridgeAdmin(), l1BridgeAdmin.address);
-        const bridgeAdminChangeTx = await l1BridgeAdmin.setBridgeAdmin(l1Wallet.address, OPTIMISM_GAS_OPTS.gasLimit);
+        const bridgeAdminChangeTx = await l1BridgeAdmin.setBridgeAdmin(
+          chainId,
+          l1Wallet.address,
+          OPTIMISM_GAS_OPTS.gasLimit
+        );
         await waitForL1ToL2Transaction(bridgeAdminChangeTx, watcher);
 
         // Validate that on L2 the bridge admin has been changed correctly.
@@ -235,7 +246,12 @@ describe("Insured bridge e2e tests", () => {
         // Is enabled before the change.
 
         assert.isFalse((await l2BridgeDepositBox.whitelistedTokens(l2Token.address)).depositsEnabled);
-        const adminTx = await l1BridgeAdmin.setEnableDeposits(l2Token.address, true, OPTIMISM_GAS_OPTS.gasLimit);
+        const adminTx = await l1BridgeAdmin.setEnableDeposits(
+          chainId,
+          l2Token.address,
+          true,
+          OPTIMISM_GAS_OPTS.gasLimit
+        );
         await waitForL1ToL2Transaction(adminTx, watcher);
 
         // Validate that on L2 the deposits have been disabled.
@@ -244,7 +260,7 @@ describe("Insured bridge e2e tests", () => {
       it("Can update the L2 minimum bridging delay", async () => {
         // Correct min delay before the change.
         assert.equal(await l2BridgeDepositBox.minimumBridgingDelay(), minimumBridgingDelay);
-        const adminTx = await l1BridgeAdmin.setMinimumBridgingDelay(420, OPTIMISM_GAS_OPTS.gasLimit);
+        const adminTx = await l1BridgeAdmin.setMinimumBridgingDelay(chainId, 420, OPTIMISM_GAS_OPTS.gasLimit);
         await waitForL1ToL2Transaction(adminTx, watcher);
 
         // Validate that on L2 the deposits have been disabled.
@@ -255,11 +271,17 @@ describe("Insured bridge e2e tests", () => {
     describe("Cross-domain token bridging functionality", () => {
       beforeEach(async () => {
         // Enable deposits on L2.
-        const adminTx = await l1BridgeAdmin.setEnableDeposits(l2Token.address, true, OPTIMISM_GAS_OPTS.gasLimit);
+        const adminTx = await l1BridgeAdmin.setEnableDeposits(
+          chainId,
+          l2Token.address,
+          true,
+          OPTIMISM_GAS_OPTS.gasLimit
+        );
         await waitForL1ToL2Transaction(adminTx, watcher);
 
         // Whitelist the token on L2.
         const whitelistTx = await l1BridgeAdmin.whitelistToken(
+          chainId,
           l1Token.address,
           l2Token.address,
           l1BridgePool.address,
@@ -301,7 +323,7 @@ describe("Insured bridge e2e tests", () => {
         )
           .to.emit(l2BridgeDepositBox, "FundsDeposited")
           .withArgs(
-            "69", // chainId
+            "10", // chainId
             "0", // depositId
             l2Wallet.address, // sender
             l2Wallet.address, // recipient

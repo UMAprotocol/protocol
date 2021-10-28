@@ -4,7 +4,7 @@ import cors from "cors";
 import bodyParser from "body-parser";
 import assert from "assert";
 import type { Request, Response, NextFunction } from "express";
-import { Json, BaseConfig } from "..";
+import { Json, BaseConfig } from "../types";
 import { Profile } from "../libs/utils";
 
 interface Config extends BaseConfig {

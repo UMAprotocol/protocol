@@ -1,4 +1,10 @@
-import { RegistryEthers, RegistryEthers__factory, getAddress as getAddressForContract } from "@uma/contracts-node";
+import {
+  RegistryEthers,
+  RegistryEthers__factory,
+  getRegistryAddress as getAbi,
+  getRegistryAddress as getAddress,
+} from "@uma/contracts-node";
+
 import type { SignerOrProvider, GetEventType } from "../..";
 import { Event } from "ethers";
 
@@ -7,9 +13,7 @@ const Factory = RegistryEthers__factory;
 
 export type Network = string | number;
 
-export function getAddress(network: Network): Promise<string> {
-  return getAddressForContract("Registry", Number(network));
-}
+export { getAddress, getAbi };
 
 export function connect(address: string, provider: SignerOrProvider): Instance {
   return Factory.connect(address, provider);

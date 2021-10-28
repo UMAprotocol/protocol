@@ -13,14 +13,8 @@ cat << EOF
       - restore_cache:
           key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
       - run:
-          name: Run mocha tests
-          command: |
-            cd packages/liquidator
-            yarn mocha mocha-test
-      - run:
           name: Run tests
           command: |
-            ./ci/truffle_workaround.sh
             pwd
             cd packages/liquidator
             circleci tests glob "test/**/*.js" | circleci tests split > /tmp/test-files

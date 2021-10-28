@@ -41,7 +41,7 @@ contract GenericHandler is IGenericHandler {
         _;
     }
 
-    function _onlyBridge() private {
+    function _onlyBridge() private view {
         require(msg.sender == _bridgeAddress, "sender must be bridge contract");
     }
 
@@ -136,10 +136,6 @@ contract GenericHandler is IGenericHandler {
         @param destinationChainID Chain ID deposit is expected to be bridged to.
         @param depositNonce This value is generated as an ID by the Bridge contract.
         @param depositer Address of account making the deposit in the Bridge contract.
-        @param data Consists of: {resourceID}, {lenMetaData}, and {metaData} all padded to 32 bytes.
-        @notice Data passed into the function should be constructed as follows:
-        len(data)                              uint256     bytes  0  - 32
-        data                                   bytes       bytes  64 - END
         @notice {contractAddress} is required to be whitelisted
         @notice If {_contractAddressToDepositFunctionSignature}[{contractAddress}] is set,
         {metaData} is expected to consist of needed function arguments.
@@ -149,7 +145,7 @@ contract GenericHandler is IGenericHandler {
         uint8 destinationChainID,
         uint64 depositNonce,
         address depositer,
-        bytes calldata data
+        bytes calldata
     ) external onlyBridge {
         bytes32 lenMetadata;
         bytes memory metadata;
@@ -192,15 +188,11 @@ contract GenericHandler is IGenericHandler {
 
     /**
         @notice Proposal execution should be initiated when a proposal is finalized in the Bridge contract.
-        @param data Consists of {resourceID}, {lenMetaData}, and {metaData}.
-        @notice Data passed into the function should be constructed as follows:
-        len(data)                              uint256     bytes  0  - 32
-        data                                   bytes       bytes  32 - END
         @notice {contractAddress} is required to be whitelisted
         @notice If {_contractAddressToExecuteFunctionSignature}[{contractAddress}] is set,
         {metaData} is expected to consist of needed function arguments.
      */
-    function executeProposal(bytes32 resourceID, bytes calldata data) external onlyBridge {
+    function executeProposal(bytes32 resourceID, bytes calldata) external onlyBridge {
         bytes memory metaData;
         assembly {
             // metadata has variable length

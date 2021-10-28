@@ -3,6 +3,37 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.2.5](https://github.com/UMAprotocol/protocol/compare/@uma/bot-strategy-runner@1.2.4...@uma/bot-strategy-runner@1.2.5) (2021-10-27)
+
+**Note:** Version bump only for package @uma/bot-strategy-runner
+
+## [1.2.4](https://github.com/UMAprotocol/protocol/compare/@uma/bot-strategy-runner@1.2.3...@uma/bot-strategy-runner@1.2.4) (2021-10-19)
+
+**Note:** Version bump only for package @uma/bot-strategy-runner
+
+## [1.2.3](https://github.com/UMAprotocol/protocol/compare/@uma/bot-strategy-runner@1.2.2...@uma/bot-strategy-runner@1.2.3) (2021-10-08)
+
+**Note:** Version bump only for package @uma/bot-strategy-runner
+
+## [1.2.2](https://github.com/UMAprotocol/protocol/compare/@uma/bot-strategy-runner@1.2.1...@uma/bot-strategy-runner@1.2.2) (2021-10-01)
+
+**Note:** Version bump only for package @uma/bot-strategy-runner
+
+## [1.2.1](https://github.com/UMAprotocol/protocol/compare/@uma/bot-strategy-runner@1.2.0...@uma/bot-strategy-runner@1.2.1) (2021-10-01)
+
+**Note:** Version bump only for package @uma/bot-strategy-runner
+
+# [1.2.0](https://github.com/UMAprotocol/protocol/compare/@uma/bot-strategy-runner@1.1.3...@uma/bot-strategy-runner@1.2.0) (2021-09-28)
+
+### Bug Fixes
+
+- **serverless-infrastructure:** Add additional error modes to serverless hub ([#3299](https://github.com/UMAprotocol/protocol/issues/3299)) ([a9dcfc1](https://github.com/UMAprotocol/protocol/commit/a9dcfc1f0cd3f89a34437c3a2ddc31ee79625ce9))
+- make unused variables an error in the typescript linter ([#3279](https://github.com/UMAprotocol/protocol/issues/3279)) ([1d26dfc](https://github.com/UMAprotocol/protocol/commit/1d26dfcd500cc4f84dc5672de0c8f9a7c5592e43))
+
+### Features
+
+- **core:** add tasks to manage artifacts and deployments ([#3229](https://github.com/UMAprotocol/protocol/issues/3229)) ([15a8f31](https://github.com/UMAprotocol/protocol/commit/15a8f31e3d3ce0df9b68b03ae56f8df789ae481a))
+
 ## [1.1.3](https://github.com/UMAprotocol/protocol/compare/@uma/bot-strategy-runner@1.1.2...@uma/bot-strategy-runner@1.1.3) (2021-07-19)
 
 **Note:** Version bump only for package @uma/bot-strategy-runner

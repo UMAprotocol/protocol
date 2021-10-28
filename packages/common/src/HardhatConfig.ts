@@ -1,6 +1,6 @@
 import { HardhatConfig } from "hardhat/types";
 
-const { getNodeUrl, mnemonic } = require("./TruffleConfig");
+import { getNodeUrl, getMnemonic } from "./ProviderUtils";
 import { HRE } from "./hardhat/plugins/ExtendedWeb3";
 export type { HRE };
 
@@ -10,6 +10,7 @@ export function getHardhatConfig(
   _workingDir = "./",
   includeTruffle = true
 ): Partial<HardhatConfig> {
+  const mnemonic = getMnemonic();
   // Hardhat plugins. These are imported inside `getHardhatConfig` so that other packages importing this function
   // get access to the plugins as well.
   if (includeTruffle) require("@nomiclabs/hardhat-truffle5");
@@ -28,7 +29,7 @@ export function getHardhatConfig(
   require("./hardhat/plugins/ExtendedWeb3");
 
   // Solc version defined here so etherscan-verification has access to it.
-  const solcVersion = "0.8.4";
+  const solcVersion = "0.8.9";
 
   // Compilation settings are overridden for large contracts to allow them to compile without going over the bytecode
   // limit.
@@ -40,12 +41,11 @@ export function getHardhatConfig(
   // Some tests should not be tested using hardhat. Define all tests that end with *e2e.js to be ignored.
   const testBlacklist = [".e2e.js"];
 
+  const optimismCompileWhitelist = ["OVM_BridgeDepositBox", "Testable", "Lockable"];
+
   const defaultConfig = ({
     solidity: {
-      compilers: [
-        { version: solcVersion, settings: { optimizer: { enabled: true, runs: 1000000 } } },
-        { version: "0.7.6", settings: { optimizer: { enabled: true, runs: 1000000 } } },
-      ],
+      compilers: [{ version: solcVersion, settings: { optimizer: { enabled: true, runs: 1000000 } } }],
       overrides: {
         "contracts/financial-templates/expiring-multiparty/ExpiringMultiParty.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
         "contracts/financial-templates/expiring-multiparty/ExpiringMultiPartyLib.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
@@ -55,10 +55,9 @@ export function getHardhatConfig(
         "contracts/financial-templates/expiring-multiparty/Liquidatable.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
         "contracts/oracle/implementation/Voting.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
         "contracts/oracle/implementation/test/VotingTest.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
-        "contracts-ovm/insured-bridge/implementation/BridgePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
+        "contracts/insured-bridge/BridgePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       },
     },
-    ovm: { solcVersion: "0.7.6" },
     networks: {
       hardhat: {
         hardfork: "london",
@@ -70,13 +69,29 @@ export function getHardhatConfig(
         testBlacklist,
       },
       localhost: { url: "http://127.0.0.1:9545", timeout: 1800000, testBlacklist },
-      rinkeby: { chainId: 4, url: getNodeUrl("rinkeby", true), accounts: { mnemonic } },
-      kovan: { chainId: 42, url: getNodeUrl("kovan", true), accounts: { mnemonic } },
-      goerli: { chainId: 5, url: getNodeUrl("goerli", true), accounts: { mnemonic } },
-      mumbai: { chainId: 80001, url: getNodeUrl("polygon-mumbai", true), accounts: { mnemonic } },
-      matic: { chainId: 137, url: getNodeUrl("polygon-matic", true), accounts: { mnemonic } },
       mainnet: { chainId: 1, url: getNodeUrl("mainnet", true), accounts: { mnemonic } },
+      rinkeby: { chainId: 4, url: getNodeUrl("rinkeby", true), accounts: { mnemonic } },
+      goerli: { chainId: 5, url: getNodeUrl("goerli", true), accounts: { mnemonic } },
+      kovan: { chainId: 42, url: getNodeUrl("kovan", true), accounts: { mnemonic } },
+      "arbitrum-rinkeby": { chainId: 421611, url: getNodeUrl("arbitrum-rinkeby", true), accounts: { mnemonic } },
       optimism: {
+        chainId: 10,
+        url: getNodeUrl("optimism", true),
+        accounts: { mnemonic },
+        gasPrice: 15000000,
+        compileWhitelist: optimismCompileWhitelist,
+      },
+      matic: { chainId: 137, url: getNodeUrl("polygon-matic", true), accounts: { mnemonic } },
+      "optimism-kovan": {
+        ovm: true,
+        chainId: 69,
+        url: getNodeUrl("optimism-kovan", true),
+        accounts: { mnemonic },
+        gasPrice: 15000000,
+        compileWhitelist: optimismCompileWhitelist,
+      },
+      mumbai: { chainId: 80001, url: getNodeUrl("polygon-mumbai", true), accounts: { mnemonic } },
+      "optimism-test": {
         ovm: true,
         url: "http://127.0.0.1:8545",
         accounts: { mnemonic: "test test test test test test test test test test test junk" },
@@ -85,7 +100,7 @@ export function getHardhatConfig(
         gasPrice: 0,
         // We use custom logic to only compile contracts within the listed directories, as opposed to choosing which
         // ones to ignore, because there are more contracts to ignore than to include.
-        compileWhitelist: ["OVM_BridgeDepositBox", "Legacy_Timer"],
+        compileWhitelist: optimismCompileWhitelist,
         testWhitelist: ["oracle/Finder"],
         testBlacklist,
       },

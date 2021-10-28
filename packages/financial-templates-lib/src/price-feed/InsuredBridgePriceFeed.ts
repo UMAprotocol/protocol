@@ -6,7 +6,7 @@ import type { Logger } from "winston";
 import { InsuredBridgeL1Client } from "../clients/InsuredBridgeL1Client";
 import { InsuredBridgeL2Client, Deposit } from "../clients/InsuredBridgeL2Client";
 
-const { toBN, toWei, toChecksumAddress } = Web3.utils;
+const { toBN, toWei } = Web3.utils;
 const toBNWei = (number: string | number) => toBN(toWei(number.toString()).toString());
 
 enum isRelayValid {
@@ -21,18 +21,7 @@ interface Params {
 }
 
 interface RelayAncillaryData {
-  chainId: number;
-  depositId: number;
-  l1Recipient: string;
-  l2Sender: string;
-  l1Token: string;
-  amount: number;
-  slowRelayFeePct: number;
-  instantRelayFeePct: number;
-  quoteTimestamp: number;
-  realizedLpFeePct: number;
-  depositContract: string;
-  priceRequestTime: string;
+  relayHash: string;
 }
 
 // Allows user to respond to a "relay" price request that was sent in response to a "deposit" on a InsuredBridge
@@ -67,26 +56,29 @@ export class InsuredBridgePriceFeed extends PriceFeedInterface {
     // Note: `time` is unused in this method because it is not included in the relay ancillary data.
 
     // Parse ancillary data for relay request and find deposit if possible with matching params.
-    const parsedAncillaryData: RelayAncillaryData = (parseAncillaryData(
-      ancillaryData
-    ) as unknown) as RelayAncillaryData;
-    const matchedDeposit = this.deposits.filter(
-      (deposit: Deposit) =>
-        deposit.chainId === parsedAncillaryData.chainId &&
-        deposit.depositId === parsedAncillaryData.depositId &&
-        deposit.l1Recipient === toChecksumAddress("0x" + parsedAncillaryData.l1Recipient) &&
-        deposit.l2Sender === toChecksumAddress("0x" + parsedAncillaryData.l2Sender) &&
-        deposit.l1Token === toChecksumAddress("0x" + parsedAncillaryData.l1Token) &&
-        deposit.amount === parsedAncillaryData.amount.toString() &&
-        deposit.slowRelayFeePct === parsedAncillaryData.slowRelayFeePct.toString() &&
-        deposit.instantRelayFeePct === parsedAncillaryData.instantRelayFeePct.toString() &&
-        deposit.quoteTimestamp === parsedAncillaryData.quoteTimestamp &&
-        deposit.depositContract === toChecksumAddress("0x" + parsedAncillaryData.depositContract)
-    );
+    const parsedAncillaryData = (parseAncillaryData(ancillaryData) as unknown) as RelayAncillaryData;
+    const relayAncillaryDataHash = "0x" + parsedAncillaryData.relayHash;
+    const relay = this.l1Client.getAllRelayedDeposits().find((relay) => {
+      return relay.relayAncillaryDataHash === relayAncillaryDataHash;
+    });
+
+    if (!relay) {
+      this.logger.debug({
+        at: "InsuredBridgePriceFeed",
+        message: "No relay event found matching provided ancillary data",
+        parsedAncillaryData,
+      });
+      return toBNWei(isRelayValid.No);
+    }
+
+    const deposit = this.deposits.find((deposit) => {
+      return deposit.depositHash === relay.depositHash;
+    });
+
     // TODO: Do we need to check the `relayId` at all thats included in ancillary data?
 
     // TODO: Do we need to handle the case where all of these params are matched and matchedDeposit.length > 1?
-    if (matchedDeposit.length === 0) {
+    if (!deposit) {
       this.logger.debug({
         at: "InsuredBridgePriceFeed",
         message: "No deposit event found matching relay request ancillary data and time",
@@ -96,9 +88,14 @@ export class InsuredBridgePriceFeed extends PriceFeedInterface {
     }
 
     // Validate relays proposed realized fee percentage.
-    const expectedRealizedFeePct = await this.l1Client.calculateRealizedLpFeePctForDeposit(matchedDeposit[0]);
-    if (expectedRealizedFeePct.toString() !== parsedAncillaryData.realizedLpFeePct.toString()) {
-      this.logger.debug({ at: "InsuredBridgePriceFeed", message: "Matched deposit realized fee % is incorrect" });
+    const expectedRealizedFeePct = await this.l1Client.calculateRealizedLpFeePctForDeposit(deposit);
+    if (expectedRealizedFeePct.toString() !== relay.realizedLpFeePct.toString()) {
+      this.logger.debug({
+        at: "InsuredBridgePriceFeed",
+        message: "Matched deposit realized fee % is incorrect",
+        expectedRealizedFeePct: expectedRealizedFeePct.toString(),
+        relayRealizedLpFeePct: relay.realizedLpFeePct.toString(),
+      });
       return toBNWei(isRelayValid.No);
     }
 

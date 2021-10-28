@@ -13,16 +13,16 @@ function getProviderUrls() {
   return { l1RpcProviderUrl: "http://localhost:9545", l2RpcProviderUrl: "http://localhost:8545" };
 }
 
-function getOptimismArtifact(contractName, ovm = false) {
+function getOptimismArtifact(contractName) {
   const optimismContractsPath = findPathToRootOfPackage("@eth-optimism/contracts");
-  const artifactsPath = ovm ? `${optimismContractsPath}/artifacts-ovm` : `${optimismContractsPath}/artifacts`;
+  const artifactsPath = `${optimismContractsPath}/artifacts`;
 
   return findArtifactFromPath(contractName, artifactsPath);
 }
 
-function getLocalArtifact(contractName, ovm = false) {
+function getLocalArtifact(contractName) {
   const coreContractsPath = findPathToRootOfPackage("@uma/core");
-  const artifactsPath = ovm ? `${coreContractsPath}artifacts-ovm` : `${coreContractsPath}artifacts`;
+  const artifactsPath = `${coreContractsPath}artifacts`;
 
   return findArtifactFromPath(contractName, artifactsPath);
 }
@@ -32,13 +32,13 @@ function findPathToRootOfPackage(packageName) {
   return packagePath.slice(0, packagePath.indexOf("package.json"));
 }
 
-function createLocalEthersFactory(contractName, ovm = false) {
-  const artifact = getLocalArtifact(contractName, ovm);
+function createLocalEthersFactory(contractName) {
+  const artifact = getLocalArtifact(contractName);
   return new hre.ethers.ContractFactory(artifact.abi, artifact.bytecode);
 }
 
-function createOptimismEthersFactory(contractName, ovm = false) {
-  const artifact = getOptimismArtifact(contractName, ovm);
+function createOptimismEthersFactory(contractName) {
+  const artifact = getOptimismArtifact(contractName);
   return new hre.ethers.ContractFactory(artifact.abi, artifact.bytecode);
 }
 

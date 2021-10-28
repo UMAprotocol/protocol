@@ -4,7 +4,7 @@ import * as uma from "@uma/sdk";
 import { calcGcr } from "../utils";
 import bluebird from "bluebird";
 import { BigNumber, utils } from "ethers";
-import type { AppState, CurrencySymbol, PriceSample } from "../..";
+import type { AppState, CurrencySymbol, PriceSample } from "../../types";
 
 const { exists } = uma.utils;
 type Dependencies = Pick<
@@ -45,21 +45,22 @@ export default (appState: Dependencies) => {
   async function latestPriceByTokenAddress(address: string, currency: CurrencySymbol = "usd") {
     assert(address, "requires an erc20 token address");
     assert(exists(prices[currency]), "invalid currency type: " + currency);
-    const priceSample = prices[currency].latest[address];
+    const priceSample = await prices[currency].latest.get(address);
     assert(exists(priceSample), "No price for address: " + address);
     return priceSample;
   }
   async function getLatestIdentifierPrice(empAddress: string) {
-    assert(synthPrices.latest[empAddress], "No identifier price for emp address: " + empAddress);
+    const synthPrice = await synthPrices.latest.get(empAddress);
+    assert(synthPrice, "No identifier price for emp address: " + empAddress);
     // [timestamp, price], returns just price
-    return synthPrices.latest[empAddress][1];
+    return synthPrice.price;
   }
   async function getLatestMarketPrice(address: string, currency: "usdc" = "usdc") {
     assert(address, "requires an erc20 token address");
     assert(exists(marketPrices[currency]), "invalid currency type: " + currency);
-    const priceSample = marketPrices[currency].latest[address];
+    const priceSample = await marketPrices[currency].latest.get(address);
     assert(exists(priceSample), "No price for address: " + address);
-    return priceSample[1];
+    return priceSample.price;
   }
   async function hasAddress(address: string) {
     return (await appState.emps.active.has(address)) || (await appState.emps.expired.has(address));
@@ -165,7 +166,7 @@ export default (appState: Dependencies) => {
     return tvl.toString();
   }
   async function totalTvl(currency: CurrencySymbol = "usd") {
-    const addresses = Array.from(appState.registeredEmps.values());
+    const addresses = await appState.registeredEmps.keys();
     return sumTvl(addresses, currency);
   }
   async function sumTvm(addresses: string[], currency: CurrencySymbol = "usd") {
@@ -187,7 +188,7 @@ export default (appState: Dependencies) => {
     return tvm.toString();
   }
   async function totalTvm(currency: CurrencySymbol = "usd") {
-    const addresses = Array.from(appState.registeredEmps.values());
+    const addresses = await appState.registeredEmps.keys();
     return sumTvm(addresses, currency);
   }
   async function getTotalTvlSample(currency: CurrencySymbol = "usd") {
