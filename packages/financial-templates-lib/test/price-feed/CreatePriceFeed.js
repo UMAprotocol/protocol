@@ -1,8 +1,6 @@
 const { web3, getContract } = require("hardhat");
 const { assert } = require("chai");
 const { toWei, utf8ToHex, padRight } = web3.utils;
-const Web3 = require("web3");
-const ganache = require("ganache-core");
 
 // Tested Contract
 const ExpiringMultiParty = getContract("ExpiringMultiParty");
@@ -1346,20 +1344,9 @@ describe("CreatePriceFeed.js", function () {
   });
 
   it("Valid InsuredBridge Config", async function () {
-    // InsuredBridgePriceFeed needs to construct a new web3 object for the L2 net id. We spoof this L2 network
-    // by creating a separate ganache instance pointed to the net ID we set as the `l2NetId`.
-    const startGanacheServer = (chainId, port) => {
-      const node = ganache.server({ _chainIdRpc: chainId });
-      node.listen(port);
-      return new Web3("http://127.0.0.1:" + port);
-    };
-    const currentWeb3Id = await web3.eth.getChainId();
-    process.env[`NODE_URL_${currentWeb3Id}`] = "http://localhost:7777";
-    startGanacheServer(currentWeb3Id, 7777);
-
     const pricefeed = await createPriceFeed(logger, web3, networker, getTime, {
       rateModels: {},
-      l2NetId: await web3.eth.getChainId(),
+      l2NetId: chainId,
       bridgeAdminAddress: bridgeAdmin.options.address,
       type: "insuredbridge",
     });
