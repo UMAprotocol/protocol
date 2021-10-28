@@ -107,7 +107,11 @@ export const runTransaction = async ({
     // provided config settings but double the maxFeePerGas to ensure the transaction is included, even if the base fee
     // spikes up. The difference between the realized base fee and maxFeePerGas is refunded in a London transaction.
     if (transactionConfig.maxFeePerGas && transactionConfig.maxPriorityFeePerGas) {
-      receipt = await transaction.send({ ...transactionConfig, type: "0x2" } as SendOptions);
+      receipt = await transaction.send({
+        ...transactionConfig,
+        maxFeePerGas: parseInt(transactionConfig.maxFeePerGas.toString()) * 2,
+        type: "0x2",
+      } as SendOptions);
 
       // Else this is a legacy tx.
     } else if (transactionConfig.gasPrice) {
