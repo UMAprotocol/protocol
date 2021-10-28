@@ -11,7 +11,7 @@ type Dependencies = {
   appClients: AppClients;
 };
 
-export default (config: Config, dependencies: Dependencies) => {
+export const EmpState = (config: Config, dependencies: Dependencies) => {
   const { appClients, tables } = dependencies;
   const { registeredEmps, emps, collateralAddresses, syntheticAddresses } = tables;
   const { multicall2, provider } = appClients;
@@ -166,3 +166,5 @@ export default (config: Config, dependencies: Dependencies) => {
     updateAll,
   };
 };
+
+export type EmpState = ReturnType<typeof EmpState>;

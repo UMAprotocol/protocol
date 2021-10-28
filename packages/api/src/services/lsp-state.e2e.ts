@@ -2,7 +2,7 @@ require("dotenv").config();
 import * as uma from "@uma/sdk";
 import assert from "assert";
 import { ethers } from "ethers";
-import Service from "./lsp-state";
+import { LspState as Service } from "./lsp-state";
 import type { AppClients, AppState } from "../types";
 import { Multicall2 } from "@uma/sdk";
 import * as tables from "../tables";

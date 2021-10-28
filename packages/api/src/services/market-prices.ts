@@ -12,7 +12,7 @@ type Dependencies = {
 };
 
 // market prices are pulled from the 0x matcha api
-export default function (config: Config, dependencies: Dependencies) {
+export function MarketPrices(config: Config, dependencies: Dependencies) {
   // these prices will be quoted against usdc by default, but can be specified as address or symbol
   const { appClients, tables } = dependencies;
   const { marketPrices, collateralAddresses, syntheticAddresses, erc20s } = tables;
@@ -105,3 +105,5 @@ export default function (config: Config, dependencies: Dependencies) {
     },
   };
 }
+
+export type MarketPrices = ReturnType<typeof MarketPrices>;

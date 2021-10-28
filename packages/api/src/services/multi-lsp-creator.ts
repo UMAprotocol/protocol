@@ -1,7 +1,7 @@
 import { clients } from "@uma/sdk";
 import bluebird from "bluebird";
 import { AppClients, AppState, BaseConfig } from "../types";
-import LspCreator, { EmitData, Events } from "./lsp-creator";
+import { LspCreator, EmitData, Events } from "./lsp-creator";
 
 const { lspCreator } = clients;
 

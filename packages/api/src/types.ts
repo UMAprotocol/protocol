@@ -11,6 +11,8 @@ import type {
   tvl,
 } from "./tables";
 import type Zrx from "./libs/zrx";
+import type * as services from "./services";
+
 export type { Channels } from "./services/express-channels";
 
 export type EmpState = uma.tables.emps.Data;
@@ -121,4 +123,23 @@ export type AppClients = {
   multicall2: uma.Multicall2;
   provider: Provider;
   web3: Web3;
+};
+
+export type AppServices = {
+  registry: services.Registry;
+  lspCreator: services.LspCreator;
+  emps: services.EmpState;
+  lsps: services.LspState;
+  erc20s: services.Erc20s;
+  collateralPrices: services.CollateralPrices;
+  syntheticPrices: services.SyntheticPrices;
+  marketPrices: services.MarketPrices;
+  empStats: services.stats.Emp;
+  lspStats: services.stats.Lsp;
+  globalStats: services.stats.Global;
+};
+
+export type OrchestratorServices = {
+  contracts: services.Contracts;
+  prices: services.Prices;
 };
