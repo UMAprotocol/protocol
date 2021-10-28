@@ -63,7 +63,8 @@ export class RelayerConfig {
     assert(BRIDGE_ADMIN_ADDRESS, "BRIDGE_ADMIN_ADDRESS required");
     this.bridgeAdmin = Web3.utils.toChecksumAddress(BRIDGE_ADMIN_ADDRESS);
 
-    // L2 start block is not required but without one, querying past logs might fail. For example, Arbitrum Infura has a
+    // L2 start block must be explicitly set unlike L1 due to how L2 nodes work. For best practices, we also should
+    // constrain L1 start blocks but this hasn't been an issue empirically. As a data point, Arbitrum Infura has a
     // query limit of up to 100,000 blocks into the past.
     this.l2BlockLookback = L2_BLOCK_LOOKBACK ? Number(L2_BLOCK_LOOKBACK) : 99999;
 
