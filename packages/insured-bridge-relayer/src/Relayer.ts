@@ -144,7 +144,7 @@ export class Relayer {
 
     // Build dictionary of pending relays keyed by l1 token and deposit hash. We assume that getPendingRelays() filters
     // out Finalized relays. Only search on relays for the network that the L2 client is connected to.
-    const pendingRelays: Relay[] = this.getPendingRelays(await this.l2Client.l2Web3.eth.getChainId());
+    const pendingRelays: Relay[] = this.getPendingRelays(this.l2Client.chainId);
     if (pendingRelays.length == 0) {
       this.logger.debug({ at: "Disputer", message: "No pending relays" });
       return;
