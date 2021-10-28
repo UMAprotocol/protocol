@@ -208,9 +208,6 @@ export class Relayer {
         continue;
       }
 
-      // Get deposit for relay.
-      const deposit = this.l2Client.getDepositByID(relay.depositId);
-
       // If relay's chain ID is not whitelisted then dispute it.
       if (!this.whitelistedChainIds.includes(relay.chainId)) {
         this.logger.debug({
@@ -235,9 +232,27 @@ export class Relayer {
           },
           relay
         );
+        continue;
       }
-      // Check if we can find a deposit for the Relay, if not then we can dispute.
-      else if (
+
+      // We now know that the relay chain ID is whitelisted, so let's skip any relays for chain ID's that do not match
+      // the L2 clients. We won't be able to query deposit data for these relays.
+      if (relay.chainId !== this.l2Client.chainId) {
+        this.logger.debug({
+          at: "Relayer",
+          message: "Relay chain ID is whitelisted but does not match L2 client chain ID",
+          l2ClientChainId: this.l2Client.chainId,
+          relay,
+        });
+        continue;
+      }
+
+      // Get deposit for relay.
+      const deposit = this.l2Client.getDepositByHash(relay.depositHash);
+
+      // Check if we can find a deposit for the Relay, if we can, then we need to validate whether the relay params
+      // are correct.
+      if (
         deposit !== undefined &&
         deposit.chainId === relay.chainId &&
         deposit.depositHash === relay.depositHash &&
@@ -286,8 +301,7 @@ export class Relayer {
           });
         }
       } else {
-        // Finally, if we can't find a deposit, only skip the dispute if the chain ID is whitelisted.
-        if (this.whitelistedChainIds.includes(relay.chainId)) continue;
+        // We could not find a deposit, so we'll submit a dispute.
         const missingDeposit: Deposit = {
           chainId: relay.chainId,
           depositId: relay.depositId,
