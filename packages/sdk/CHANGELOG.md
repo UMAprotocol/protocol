@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.10.0](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.9.0...@uma/sdk@0.10.0) (2021-10-27)
+
+### Bug Fixes
+
+- **sdk:** fix chainid type to bignumber ([#3487](https://github.com/UMAprotocol/protocol/issues/3487)) ([1e3cc70](https://github.com/UMAprotocol/protocol/commit/1e3cc709e098f862dcc812d00dfba67a8d99360b))
+
+### Features
+
+- **sdk:** add across bridge pool read only client ([#3493](https://github.com/UMAprotocol/protocol/issues/3493)) ([043f7c2](https://github.com/UMAprotocol/protocol/commit/043f7c2083a2cff89c3dcee93dc51d8c8df018d6))
+- **sdk:** add bridge pool contract client ([#3462](https://github.com/UMAprotocol/protocol/issues/3462)) ([32238f9](https://github.com/UMAprotocol/protocol/commit/32238f9c6160511588527e83afdc0a747fc5cbca))
+- **sdk:** add estimated apy calculation to bridgepool read client ([#3502](https://github.com/UMAprotocol/protocol/issues/3502)) ([80cf357](https://github.com/UMAprotocol/protocol/commit/80cf357b0a398fd4b6b738605fcffab732b2f252))
+
 # [0.9.0](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.8.0...@uma/sdk@0.9.0) (2021-10-19)
 
 ### Bug Fixes
