@@ -479,7 +479,6 @@ export async function createPriceFeed(
     const l1Client = new InsuredBridgeL1Client(logger, providedWeb3, config.bridgeAdminAddress, config.rateModels);
     const l2Web3 = getWeb3ByChainId(config.l2NetId);
     const currentL2Block = await l2Web3.eth.getBlockNumber();
-    // TODO: Allow caller to set lookback value to get start block.
     const l2Client = new InsuredBridgeL2Client(
       logger,
       providedWeb3,
