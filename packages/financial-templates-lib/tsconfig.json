@@ -4,6 +4,7 @@
   "compilerOptions": {
     "typeRoots": ["./types", "./node_modules/@types"],
     "outDir": "dist",
+    "esModuleInterop": true,
     "declaration": true
   }
 }

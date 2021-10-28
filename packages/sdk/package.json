@@ -39,8 +39,11 @@
     "@uma/contracts-frontend": "^0.1.6",
     "@uma/contracts-node": "^0.1.6",
     "axios": "^0.21.4",
+    "bn.js": "^4.11.9",
     "decimal.js": "^10.3.1",
     "highland": "^2.13.5",
+    "lodash-es": "^4.17.21",
+    "web3": "^1.6.0",
     "lodash": "^4.17.21"
   },
   "peerDependencies": {
@@ -49,6 +52,7 @@
   "devDependencies": {
     "@rollup/plugin-replace": "^3.0.0",
     "@size-limit/preset-small-lib": "^4.10.2",
+    "@types/bn.js": "^5.1.0",
     "@types/dotenv": "^8.2.0",
     "@types/highland": "^2.12.13",
     "dotenv": "^10.0.0",

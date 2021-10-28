@@ -256,7 +256,7 @@ class Disputer {
         const { receipt, transactionConfig } = await runTransaction({
           web3: this.web3,
           transaction: withdraw,
-          transactionConfig: { gasPrice: this.gasEstimator.getCurrentFastPrice(), from: this.account },
+          transactionConfig: { ...this.gasEstimator.getCurrentFastPrice(), from: this.account },
         });
         let logResult = {
           tx: receipt.transactionHash,

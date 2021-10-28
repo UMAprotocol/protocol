@@ -34,7 +34,7 @@ export const setAllowance = async (
     const { receipt } = await runTransaction({
       web3,
       transaction: (approveTransaction as unknown) as ContractSendMethod,
-      transactionConfig: { gasPrice: gasEstimator.getCurrentFastPrice().toString(), from: ownerAddress },
+      transactionConfig: { ...gasEstimator.getCurrentFastPrice(), from: ownerAddress },
     });
     return { tx: receipt, spenderAddress, currencyAddress };
   }

@@ -3,12 +3,19 @@ import minimist from "minimist";
 import ynatm from "@umaprotocol/ynatm";
 import type Web3 from "web3";
 import type { TransactionReceipt } from "web3-core";
-import type { ContractSendMethod, SendOptions } from "web3-eth-contract";
+import type { ContractSendMethod } from "web3-eth-contract";
 
 type CallReturnValue = ReturnType<ContractSendMethod["call"]>;
-interface AugmentedSendOptions extends SendOptions {
+interface AugmentedSendOptions {
+  from: string;
+  gas?: number;
+  value?: number | string;
+  nonce?: number;
   chainId?: string;
   usingOffSetDSProxyAccount?: boolean;
+  gasPrice?: number | string;
+  maxFeePerGas?: number | string;
+  maxPriorityFeePerGas?: number | string;
 }
 
 const argv = minimist(process.argv.slice(), {});
@@ -20,7 +27,8 @@ const argv = minimist(process.argv.slice(), {});
  * @notice Uses the ynatm package to retry the transaction with increasing gas price.
  * @param {*Object} web3.js object for making queries and accessing Ethereum related methods.
  * @param {*Object} transaction Transaction to call `.call()` and subsequently `.send()` on from `senderAccount`.
- * @param {*Object} transactionconfig transaction config, e.g. { gasPrice, from }, passed to web3 transaction.
+ * @param {*Object} transactionConfig config, e.g. { maxFeePerGas, maxPriorityFeePerGas, from } or { gasPrice, from}
+ *     depending if this is a london or pre-london transaction, passed to transaction.
  * @return Error and type of error (originating from `.call()` or `.send()`) or transaction receipt and return value.
  */
 export const runTransaction = async ({
@@ -64,7 +72,7 @@ export const runTransaction = async ({
   if (await accountHasPendingTransactions(web3, transactionConfig.from))
     transactionConfig.nonce = await getPendingTransactionCount(web3, transactionConfig.from);
   // Else, there is no pending transaction and we use the current account transaction count as the nonce.
-  // This method does not play niceley in tests. Leave the nounce null to auto fill.
+  // This method does not play nicely in tests. Leave the nonce null to auto fill.
   else if (argv.network != "test") transactionConfig.nonce = await web3.eth.getTransactionCount(transactionConfig.from);
 
   // Next, simulate transaction and also extract return value if its a state-modifying transaction. If the function is state
@@ -84,22 +92,44 @@ export const runTransaction = async ({
   try {
     transactionConfig = { ...transactionConfig, gas: Math.floor(estimatedGas * GAS_LIMIT_BUFFER) };
 
-    // ynatm doubles gasPrice every retry. Tries every minute (and increases gas price according to DOUBLE method) if tx
-    // hasn't mined. Min Gas price starts at caller's transactionConfig.gasPrice, with a max gasPrice of x6.
+    // ynatm doubles gasPrice or maxPriorityFeePerGas every retry depending if the transaction is a legacy or London.
+    // Tries every minute(and increases gas price according to DOUBLE method) if tx hasn't mined. Min Gas price starts
+    // at caller's transactionConfig.gasPrice or, with transactionConfig.maxPriorityFeePerGas a max gasPrice of x6.
     const gasPriceScalingFunction = ynatm.DOUBLES;
     const retryDelay = 60000;
-    if (!transactionConfig.gasPrice) throw new Error("No gas price provided");
-    const minGasPrice = transactionConfig.gasPrice;
-    const maxGasPrice = 2 * 3 * parseInt(minGasPrice);
+    const maximumGasPriceMultiple = 2 * 3;
+    // Pre-London transactions require `gasPrice`, London transactions require `maxFeePerGas` and `maxPriorityFeePerGas`
 
-    const receipt = await ynatm.send({
-      sendTransactionFunction: (gasPrice: number) =>
-        transaction.send({ ...transactionConfig, gasPrice: gasPrice.toString() }),
-      minGasPrice,
-      maxGasPrice,
-      gasPriceScalingFunction,
-      delay: retryDelay,
-    });
+    let receipt;
+
+    // If the config contains maxPriorityFeePerGas then this is a london transaction.
+    if (transactionConfig.maxFeePerGas && transactionConfig.maxPriorityFeePerGas) {
+      const minPriorityFeePerGas = transactionConfig.maxPriorityFeePerGas || (1e9).toString();
+      const maxPriorityFeePerGas = maximumGasPriceMultiple * parseInt(minPriorityFeePerGas.toString());
+
+      receipt = await ynatm.send({
+        sendTransactionFunction: (maxPriorityFeePerGas: number) =>
+          transaction.send({ ...transactionConfig, maxPriorityFeePerGas: maxPriorityFeePerGas.toString() } as any),
+        minGasPrice: minPriorityFeePerGas.toString(),
+        maxGasPrice: maxPriorityFeePerGas.toString(),
+        gasPriceScalingFunction,
+        delay: retryDelay,
+      });
+
+      // Else this is a legacy tx.
+    } else if (transactionConfig.gasPrice) {
+      const minGasPrice = transactionConfig.gasPrice;
+      const maxGasPrice = maximumGasPriceMultiple * parseInt(minGasPrice.toString());
+
+      receipt = await ynatm.send({
+        sendTransactionFunction: (gasPrice: number) =>
+          transaction.send({ ...transactionConfig, gasPrice: gasPrice.toString() } as any),
+        minGasPrice,
+        maxGasPrice,
+        gasPriceScalingFunction,
+        delay: retryDelay,
+      });
+    } else throw new Error("No gas information provided");
 
     // Note: cast is due to an incorrect type in the web3 declarations that assumes send returns a contract.
     return { receipt: (receipt as unknown) as TransactionReceipt, returnValue, transactionConfig };

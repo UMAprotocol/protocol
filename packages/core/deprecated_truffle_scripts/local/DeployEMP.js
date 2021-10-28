@@ -130,7 +130,7 @@ const deployEMP = async (callback) => {
     await gasEstimator.update();
     const transactionParams = {
       gas: 12000000, // 12MM is very high. Set this lower if you only have < 2 ETH or so in your wallet.
-      gasPrice: gasEstimator.getCurrentFastPrice(),
+      ...gasEstimator.getCurrentFastPrice(),
       from: deployer,
       chainId: await web3.eth.getChainId(),
     };
