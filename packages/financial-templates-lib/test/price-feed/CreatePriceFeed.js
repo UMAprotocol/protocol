@@ -1333,6 +1333,7 @@ describe("CreatePriceFeed.js", function () {
     const pricefeed = await createPriceFeed(logger, web3, networker, getTime, {
       bridgeAdminAddress: ZERO_ADDRESS,
       depositBoxAddress: ZERO_ADDRESS,
+      rateModels: {},
       type: "insuredbridge",
     });
 

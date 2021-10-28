@@ -3,7 +3,7 @@ import { ChainId, Token, Pair, TokenAmount } from "@uniswap/sdk";
 import { defaultConfigs } from "./DefaultPriceFeedConfigs";
 import { getAbi } from "@uma/contracts-node";
 import { BlockFinder } from "./utils";
-import { getPrecisionForIdentifier, PublicNetworks } from "@uma/common";
+import { getPrecisionForIdentifier, PublicNetworks, getWeb3ByChainId } from "@uma/common";
 import { multicallAddressMap } from "../helpers/multicall";
 import Web3 from "web3";
 
@@ -34,7 +34,7 @@ import type { Logger } from "winston";
 import { NetworkerInterface } from "./Networker";
 import { PriceFeedInterface } from "./PriceFeedInterface";
 import { isDefined } from "../types";
-import { InsuredBridgeL1Client, InsuredBridgeL2Client } from "..";
+import { InsuredBridgeL1Client, InsuredBridgeL2Client, getL2DepositBoxAddress } from "..";
 
 interface Block {
   number: number;
@@ -464,17 +464,29 @@ export async function createPriceFeed(
     });
   } else if (config.type === "insuredbridge") {
     // TODO: Should we try to detect these addresses automatically via getAddress?
-    const requiredFields = ["bridgeAdminAddress", "depositBoxAddress"];
+    const requiredFields = ["bridgeAdminAddress", "rateModels", "l2NetId"];
 
     if (isMissingField(config, requiredFields, logger)) {
       return null;
     }
-
     logger.debug({ at: "createPriceFeed", message: "Creating InsuredBridgePriceFeed", config });
 
-    // TODO: Set starting block numbers for clients?
-    const l1Client = new InsuredBridgeL1Client(logger, providedWeb3, config.bridgeAdminAddress);
-    const l2Client = new InsuredBridgeL2Client(logger, providedWeb3, config.depositBoxAddress);
+    // By default, L2 client will look up contract events from now to `l2BlockLookback` into the past. This is
+    // explicitly set because some L2 nodes cap the amount of blocks they can lookback. For example, Arbitrum
+    // Infura only allows lookbacks 100,000 blocks into the past.
+    const l2BlockLookback = config.l2BlockLookback ? Number(config.l2BlockLookback) : 99999;
+
+    const l1Client = new InsuredBridgeL1Client(logger, providedWeb3, config.bridgeAdminAddress, config.rateModels);
+    const l2Web3 = getWeb3ByChainId(config.l2NetId);
+    const currentL2Block = await l2Web3.eth.getBlockNumber();
+    // TODO: Allow caller to set lookback value to get start block.
+    const l2Client = new InsuredBridgeL2Client(
+      logger,
+      providedWeb3,
+      await getL2DepositBoxAddress(l2Web3, config.l2NetId, config.bridgeAdminAddress),
+      config.l2NetId,
+      currentL2Block - l2BlockLookback
+    );
 
     return new InsuredBridgePriceFeed({
       logger,

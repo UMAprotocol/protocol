@@ -55,34 +55,43 @@ export class InsuredBridgePriceFeed extends PriceFeedInterface {
   public async getHistoricalPrice(time: number | string, ancillaryData: string): Promise<BN> {
     // Note: `time` is unused in this method because it is not included in the relay ancillary data.
 
-    // Parse ancillary data for relay request and find deposit if possible with matching params.
+    // Parse ancillary data for relay request and find deposit if possible with matching params. Filter out already
+    // Finalized relays.
     const parsedAncillaryData = (parseAncillaryData(ancillaryData) as unknown) as RelayAncillaryData;
     const relayAncillaryDataHash = "0x" + parsedAncillaryData.relayHash;
-    const relay = this.l1Client.getAllRelayedDeposits().find((relay) => {
+    const relay = this.l1Client.getPendingRelayedDeposits().find((relay) => {
       return relay.relayAncillaryDataHash === relayAncillaryDataHash;
     });
-
     if (!relay) {
       this.logger.debug({
         at: "InsuredBridgePriceFeed",
-        message: "No relay event found matching provided ancillary data",
-        parsedAncillaryData,
+        message: "No relay event found matching provided ancillary data. Has the relay been finalized already?",
+        relay,
       });
       return toBNWei(isRelayValid.No);
     }
 
+    // Check if pending relay has expired, in which case we cannot dispute it anymore.
+    if (relay.settleable) {
+      this.logger.debug({
+        at: "InsuredBridgePriceFeed",
+        message: "Relay liveness has expired, cannot dispute so the relay is validated",
+        relay,
+      });
+      return toBNWei(isRelayValid.Yes);
+    }
+
+    // We found a deposit on-chain, whether its pending, finalized, or disputed. Now let's find the matching deposit.
+    // Note this will always fail to find a matching deposit if the L2 web3 node is set incorrectly.
     const deposit = this.deposits.find((deposit) => {
       return deposit.depositHash === relay.depositHash;
     });
-
-    // TODO: Do we need to check the `relayId` at all thats included in ancillary data?
-
-    // TODO: Do we need to handle the case where all of these params are matched and matchedDeposit.length > 1?
     if (!deposit) {
       this.logger.debug({
         at: "InsuredBridgePriceFeed",
-        message: "No deposit event found matching relay request ancillary data and time",
-        parsedAncillaryData,
+        message:
+          "No deposit event found matching relay request ancillary data and time. Are you using the correct L2 network?",
+        relay,
       });
       return toBNWei(isRelayValid.No);
     }
@@ -93,8 +102,8 @@ export class InsuredBridgePriceFeed extends PriceFeedInterface {
       this.logger.debug({
         at: "InsuredBridgePriceFeed",
         message: "Matched deposit realized fee % is incorrect",
+        relay,
         expectedRealizedFeePct: expectedRealizedFeePct.toString(),
-        relayRealizedLpFeePct: relay.realizedLpFeePct.toString(),
       });
       return toBNWei(isRelayValid.No);
     }

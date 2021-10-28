@@ -31,7 +31,6 @@ export class InsuredBridgeL2Client {
     private readonly logger: Logger,
     readonly l2Web3: Web3,
     readonly bridgeDepositAddress: string,
-    readonly chainId: number = 0,
     readonly startingBlockNumber: number = 0,
     readonly endingBlockNumber: number | null = null
   ) {
@@ -89,7 +88,6 @@ export class InsuredBridgeL2Client {
     this.logger.debug({
       at: "InsuredBridgeL2Client",
       message: "Insured bridge l2 client updated",
-      chainId: this.chainId,
     });
   }
 
@@ -112,4 +110,12 @@ export class InsuredBridgeL2Client {
     if (depositHash == "" || depositHash == null) throw new Error("Bad deposit hash");
     return depositHash;
   };
+}
+
+// Returns the L2 Deposit box address for a given bridgeAdmin on L1.
+export async function getL2DepositBoxAddress(web3: Web3, chainId: number, bridgeAdminAddress: string): Promise<string> {
+  const depositContracts = await new web3.eth.Contract(getAbi("BridgeAdminInterface"), bridgeAdminAddress).methods
+    .depositContracts(chainId)
+    .call();
+  return depositContracts.depositContract;
 }
