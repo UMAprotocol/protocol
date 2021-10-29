@@ -148,3 +148,6 @@ export const calcInterest = (startPrice: string, endPrice: string, periods: stri
 export const calcApy = (interest: string, periods: string) => {
   return new Decimal(interest).div(periods).add(1).pow(periods).sub(1).toString();
 };
+export const calcApr = (startPrice: string, endPrice: string, periods: string) => {
+  return new Decimal(endPrice).sub(startPrice).mul(periods).toString();
+};

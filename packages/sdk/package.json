@@ -36,6 +36,7 @@
   ],
   "dependencies": {
     "@google-cloud/datastore": "^6.6.0",
+    "@types/lodash-es": "^4.17.5",
     "@uma/contracts-frontend": "^0.1.6",
     "@uma/contracts-node": "^0.1.6",
     "axios": "^0.21.4",
@@ -43,8 +44,7 @@
     "decimal.js": "^10.3.1",
     "highland": "^2.13.5",
     "lodash-es": "^4.17.21",
-    "web3": "^1.6.0",
-    "lodash": "^4.17.21"
+    "web3": "^1.6.0"
   },
   "peerDependencies": {
     "ethers": "^5.4.2"
