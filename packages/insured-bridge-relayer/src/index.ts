@@ -91,15 +91,34 @@ export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
           // Update state.
           await Promise.all([gasEstimator.update(), l1Client.update(), l2Client.update()]);
 
-          // Start bots that are enabled.
-          if (config.botModes.relayerEnabled) await relayer.checkForPendingDepositsAndRelay();
+          // Gather promises from all bots that are enabled and Promise.allSettled() them all in parallel. This means
+          // that one relay/dispute/settlement failing won't cause this bot to fail early.
+          let promisesToExecute: Promise<void>[] = [];
+          if (config.botModes.relayerEnabled)
+            promisesToExecute = promisesToExecute.concat(relayer.checkForPendingDepositsAndRelay());
           else logger.debug({ at: "Relayer", message: "Relayer disabled" });
 
-          if (config.botModes.disputerEnabled) await relayer.checkForPendingRelaysAndDispute();
+          if (config.botModes.disputerEnabled)
+            promisesToExecute = promisesToExecute.concat(relayer.checkForPendingRelaysAndDispute());
           else logger.debug({ at: "Disputer", message: "Disputer disabled" });
 
-          if (config.botModes.finalizerEnabled) await relayer.checkforSettleableRelaysAndSettle();
+          if (config.botModes.finalizerEnabled)
+            promisesToExecute = promisesToExecute.concat(relayer.checkforSettleableRelaysAndSettle());
           else logger.debug({ at: "Finalizer", message: "Finalizer disabled" });
+
+          // TODO: Should we Promise.race the parallel execution to make sure that it times out eventually?
+          const results = await Promise.allSettled(promisesToExecute);
+          results.forEach((result) => {
+            if (result.status == "rejected") {
+              logger.error({
+                at: "InsuredBridgeRelayer#index",
+                message:
+                  "An error was thrown in a relay/dispute/settlement attempt. Note that this does not mean that a transaction would have been sent on-chain, but instead that an error occurred when evaluating whether to submit a transaction",
+                errorReason: result.reason,
+              });
+              return; // go to next result in the forEach loop.
+            }
+          });
         },
         {
           retries: config.errorRetries,
