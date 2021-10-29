@@ -211,7 +211,6 @@ export async function findBlockNumberAtTimestamp(
   blockDelta = 4,
   averageBlockTime = 14
 ): Promise<{ blockNumber: number; error: number }> {
-  const start = Date.now();
   const higherLimitStamp = targetTimestamp + higherLimitMax;
   const lowerLimitStamp = targetTimestamp - lowerLimitMax;
 
@@ -262,6 +261,5 @@ export async function findBlockNumberAtTimestamp(
       }
     }
   }
-  console.log(`Elapsed time: ${Date.now() - start} ms`);
   return { blockNumber: block.number, error: Math.abs(targetTimestamp - parseInt(block.timestamp.toString())) };
 }
