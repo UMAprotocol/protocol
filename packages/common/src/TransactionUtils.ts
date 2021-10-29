@@ -200,7 +200,7 @@ export const blockUntilBlockMined = async (web3: Web3, blockerBlockNumber: numbe
  * @param blockDelta Amount of blocks to hop when binary searching for block. Increasing this increases error
  * but significantly reduces time to compute.
  * @param averageBlockTime Decreasing average block size will decrease precision and also decrease the amount of
- * requests made in order to find the closest block.
+ * requests made in order to find the closest block. Increasing this reduces time to compute but increases requests.
  * @returns {number, number} Block height and difference between block timestamp and target timestamp
  */
 export async function findBlockNumberAtTimestamp(
@@ -208,9 +208,10 @@ export async function findBlockNumberAtTimestamp(
   targetTimestamp: number,
   higherLimitMax = 15,
   lowerLimitMax = 15,
-  blockDelta = 5,
-  averageBlockTime = 13
+  blockDelta = 4,
+  averageBlockTime = 14
 ): Promise<{ blockNumber: number; error: number }> {
+  const start = Date.now();
   const higherLimitStamp = targetTimestamp + higherLimitMax;
   const lowerLimitStamp = targetTimestamp - lowerLimitMax;
 
@@ -229,6 +230,7 @@ export async function findBlockNumberAtTimestamp(
 
     blockNumber -= decreaseBlocks;
     block = await web3.eth.getBlock(blockNumber);
+    console.log(block.timestamp);
   }
 
   if (lowerLimitStamp && block.timestamp < lowerLimitStamp) {
@@ -260,5 +262,6 @@ export async function findBlockNumberAtTimestamp(
       }
     }
   }
+  console.log(`Elapsed time: ${Date.now() - start} ms`);
   return { blockNumber: block.number, error: Math.abs(targetTimestamp - parseInt(block.timestamp.toString())) };
 }
