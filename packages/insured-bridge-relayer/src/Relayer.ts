@@ -3,7 +3,7 @@ import Web3 from "web3";
 const { toWei, toBN } = Web3.utils;
 const fixedPointAdjustment = toBN(toWei("1"));
 
-import { runTransaction } from "@uma/common";
+import { runTransaction, findBlockNumberAtTimestamp } from "@uma/common";
 import {
   InsuredBridgeL1Client,
   InsuredBridgeL2Client,
@@ -39,6 +39,8 @@ export class Relayer {
    * @param {Array} whitelistedChainIds List of whitelisted chain IDs that the relayer supports. Any relays for chain
    * IDs not on this list will be disputed.
    * @param {string} account Unlocked web3 account to send L1 messages.
+   * @param {number} l2LookbackWindow Used for last-resort block search for a missing deposit event. Should be same
+   * period used by default in L2 client to find deposits.
    */
   constructor(
     readonly logger: winston.Logger,
@@ -50,7 +52,8 @@ export class Relayer {
     readonly whitelistedChainIds: number[],
     // TODO: Deprecate `deployTimestamps` once BridgePools are upgraded and we can read `deployTimestamp` on-chain. For
     // now, we need to hardcode each BP's deploy timestamp.
-    readonly deployTimestamps: { [key: string]: number }
+    readonly deployTimestamps: { [key: string]: number },
+    readonly l2LookbackWindow: number
   ) {}
 
   async checkForPendingDepositsAndRelay(): Promise<void> {
@@ -181,7 +184,7 @@ export class Relayer {
       const relayExpired = await this.isRelayExpired(relay, relay.l1Token);
       if (relayExpired.isExpired) {
         this.logger.debug({
-          at: "Relayer",
+          at: "Disputer",
           message: "Pending relay has expired, ignoring",
           relay,
           expirationTime: relayExpired.expirationTime,
@@ -193,7 +196,7 @@ export class Relayer {
       // If relay's chain ID is not whitelisted then dispute it.
       if (!this.whitelistedChainIds.includes(relay.chainId)) {
         this.logger.debug({
-          at: "Relayer",
+          at: "Disputer",
           message: "Disputing pending relay with non-whitelisted chainID",
           relay,
         });
@@ -221,7 +224,7 @@ export class Relayer {
       // the L2 clients. We won't be able to query deposit data for these relays.
       if (relay.chainId !== this.l2Client.chainId) {
         this.logger.debug({
-          at: "Relayer",
+          at: "Disputer",
           message: "Relay chain ID is whitelisted but does not match L2 client chain ID",
           l2ClientChainId: this.l2Client.chainId,
           relay,
@@ -229,11 +232,10 @@ export class Relayer {
         continue;
       }
 
-      // Get deposit for relay.
-      const deposit = this.l2Client.getDepositByHash(relay.depositHash);
+      // Fetch deposit for relay.
+      const deposit = await this.matchRelayWithDeposit(relay);
 
-      // Check if we can find a deposit for the Relay, if we can, then we need to validate whether the relay params
-      // are correct.
+      // If Relay matchers a Deposit, then we need to validate whether the relay params are correct.
       if (
         deposit !== undefined &&
         deposit.chainId === relay.chainId &&
@@ -252,7 +254,7 @@ export class Relayer {
         // we won't be able to determine otherwise if the realized LP fee % is valid.
         if (deposit.quoteTimestamp < this.deployTimestamps[deposit.l1Token]) {
           this.logger.debug({
-            at: "Relayer",
+            at: "Disputer",
             message: "Deposit quote time < bridge pool deployment for L1 token, disputing",
             deposit,
             deploymentTime: this.deployTimestamps[deposit.l1Token],
@@ -266,7 +268,7 @@ export class Relayer {
         const relayDisputable = await this.isPendingRelayDisputable(relay, deposit, realizedLpFeePct);
         if (relayDisputable.canDispute) {
           this.logger.debug({
-            at: "Relayer",
+            at: "Disputer",
             message: "Disputing pending relay with invalid params",
             relay,
             deposit,
@@ -275,14 +277,15 @@ export class Relayer {
           await this.disputeRelay(deposit, relay);
         } else {
           this.logger.debug({
-            at: "Relayer",
+            at: "Disputer",
             message: "Skipping; relay matched with deposit and params are valid",
             relay,
             deposit,
           });
         }
       } else {
-        // We could not find a deposit, so we'll submit a dispute.
+        // At this point, we can't match the relay with a deposit (even after a second block search), so we will
+        // submit a dispute.
         const missingDeposit: Deposit = {
           chainId: relay.chainId,
           depositId: relay.depositId,
@@ -294,7 +297,8 @@ export class Relayer {
           slowRelayFeePct: relay.slowRelayFeePct,
           instantRelayFeePct: relay.instantRelayFeePct,
           quoteTimestamp: relay.quoteTimestamp,
-          depositContract: this.l2Client.bridgeDepositAddress,
+          depositContract: (await this.l1Client.bridgeAdmin.methods.depositContracts(relay.chainId).call())[0],
+          // `depositContracts()` returns [depositContract, messengerContract] and we want the first arg.
         };
         this.logger.debug({
           at: "Disputer",
@@ -720,5 +724,57 @@ export class Relayer {
         await this.instantRelay(relayableDeposit.deposit, realizedLpFeePct);
         break;
     }
+  }
+
+  // Return unique deposit event matching relay
+  private async matchRelayWithDeposit(relay: Relay): Promise<Deposit | undefined> {
+    // First try to fetch deposit from the L2 client's default block search config. This should work in most cases.
+    let deposit: Deposit | undefined = this.l2Client.getDepositByHash(relay.depositHash);
+
+    // We could not find a deposit using the L2 client's default block search config. Next, we'll modify the block
+    // searcg config using the relay's quote time. This allows us to capture any deposits that happened outside of
+    // the L2 client's default block search config.
+    if (deposit === undefined) {
+      const l2BlockForDepositQuoteTime = await findBlockNumberAtTimestamp(this.l2Client.l2Web3, relay.quoteTimestamp);
+      // Search for blocks 1/2 of lookback period before and after target quote time. This 1/2 value is arbitrary and
+      // should be reviewed.
+      const blockSearchConfig = {
+        fromBlock: Math.max(l2BlockForDepositQuoteTime.blockNumber - this.l2LookbackWindow / 2, 0),
+        toBlock: l2BlockForDepositQuoteTime.blockNumber + this.l2LookbackWindow / 2,
+      };
+      const [fundsDepositedEvents] = await Promise.all([
+        this.l2Client.bridgeDepositBox.getPastEvents("FundsDeposited", blockSearchConfig),
+      ]);
+      // For any found deposits, try to match it with the relay:
+      for (const fundsDepositedEvent of fundsDepositedEvents) {
+        const _deposit: Deposit = {
+          chainId: Number(fundsDepositedEvent.returnValues.chainId),
+          depositId: Number(fundsDepositedEvent.returnValues.depositId),
+          depositHash: "", // Filled in after initialization of the remaining variables.
+          l1Recipient: fundsDepositedEvent.returnValues.l1Recipient,
+          l2Sender: fundsDepositedEvent.returnValues.l2Sender,
+          l1Token: fundsDepositedEvent.returnValues.l1Token,
+          amount: fundsDepositedEvent.returnValues.amount,
+          slowRelayFeePct: fundsDepositedEvent.returnValues.slowRelayFeePct,
+          instantRelayFeePct: fundsDepositedEvent.returnValues.instantRelayFeePct,
+          quoteTimestamp: Number(fundsDepositedEvent.returnValues.quoteTimestamp),
+          depositContract: fundsDepositedEvent.address,
+        };
+        _deposit.depositHash = this.l2Client.generateDepositHash(_deposit);
+        if (_deposit.depositHash === relay.depositHash) {
+          this.logger.debug({
+            at: "Disputer",
+            message: "Matched deposit using relay quote time to run new block search",
+            blockSearchConfig,
+            deposit,
+            relay,
+          });
+          deposit = _deposit;
+          break;
+        }
+      }
+    }
+
+    return deposit;
   }
 }
