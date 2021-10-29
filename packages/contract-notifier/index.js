@@ -97,9 +97,6 @@ async function Poll(callback) {
       // NOTIFIER_CONFIG={
       //  "maxTimeTillExpiration": 604800,                   // If time till expiration (in seconds) is below this fire the alert.
       //  "apiEndpoint": "https://prod.api.umaproject.org"   // API endpoint to check for contract information.
-      //  "logOverrides":{                                   // override specific events log levels.
-      //       "expiration":"error",                         // Contract expiration alert.
-      //   }
       // }
       notifierConfig: process.env.NOTIFIER_CONFIG ? JSON.parse(process.env.NOTIFIER_CONFIG) : {},
     };
