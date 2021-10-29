@@ -19,9 +19,6 @@
     "/src/**/*.js"
   ],
   "bin": "index.js",
-  "scripts": {
-    "test": "mocha 'test/**/*.js'"
-  },
   "bugs": {
     "url": "https://github.com/UMAprotocol/protocol/issues"
   }
