@@ -55,7 +55,6 @@ const lpFeeRatePerSecond = toWei("0.0000015");
 const defaultProposerBondPct = toWei("0.05");
 const defaultSlowRelayFeePct = toWei("0.01");
 const defaultInstantRelayFeePct = toWei("0.01");
-const defaultQuoteTimestamp = "100000"; // no validation of this happens on L1.
 const defaultRealizedLpFee = toWei("0.1");
 const finalFee = toWei("1");
 const initialPoolLiquidity = toWei("1000");
@@ -104,6 +103,8 @@ let defaultRelayData;
 let defaultDepositData;
 let defaultDepositHash;
 let defaultRelayAncillaryData;
+let deploymentTime;
+let defaultQuoteTimestamp; // Must be >= deployment time so we'll set dynamically
 
 describe("BridgePool", () => {
   let accounts,
@@ -283,6 +284,10 @@ describe("BridgePool", () => {
       false, // this is not a weth pool (contains normal ERC20)
       timer.options.address
     ).send({ from: owner });
+
+    // Store deployment time and set default quote timestamp equal to it so relays can be submitted.
+    deploymentTime = Number((await bridgePool.methods.deploymentTimestamp().call()).toString());
+    defaultQuoteTimestamp = deploymentTime;
 
     // The bridge pool has an embedded ERC20 to represent LP positions.
     lpToken = await ERC20.at(bridgePool.options.address);
@@ -470,11 +475,23 @@ describe("BridgePool", () => {
         )
       );
 
+      // Cannot relay using quote time < deployment time.
+      assert(
+        await didContractThrow(
+          bridgePool.methods
+            .relayDeposit(...generateRelayParams({ quoteTimestamp: deploymentTime - 1 }, {}))
+            .send({ from: relayer })
+        )
+      );
+
       assert.equal(await bridgePool.methods.numberOfRelays().call(), "0"); // Relay index should start at 0.
 
       // Deposit with no relay attempt should have correct state and empty relay hash.
       const relayStatus = await bridgePool.methods.relays(defaultDepositHash).call();
       assert.equal(relayStatus, defaultRelayHash);
+
+      // Can relay with default params
+      assert.ok(await bridgePool.methods.relayDeposit(...generateRelayParams()).call({ from: relayer }));
     });
     it("Relay checks", async () => {
       // Proposer approves pool to withdraw total bond.
@@ -541,7 +558,7 @@ describe("BridgePool", () => {
           ev.depositData.amount === defaultDepositData.amount &&
           ev.depositData.slowRelayFeePct === defaultDepositData.slowRelayFeePct &&
           ev.depositData.instantRelayFeePct === defaultDepositData.instantRelayFeePct &&
-          ev.depositData.quoteTimestamp === defaultDepositData.quoteTimestamp &&
+          ev.depositData.quoteTimestamp === defaultDepositData.quoteTimestamp.toString() &&
           ev.relay.slowRelayer === relayer &&
           ev.relay.relayId.toString() === relayAttemptData.relayId.toString() &&
           ev.relay.realizedLpFeePct === relayAttemptData.realizedLpFeePct &&

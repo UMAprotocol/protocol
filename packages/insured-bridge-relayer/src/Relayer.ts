@@ -250,6 +250,8 @@ export class Relayer {
 
         // If deposit quote time is before the bridgepool's deployment time, then dispute it by default because
         // we won't be able to determine otherwise if the realized LP fee % is valid.
+        // Note: If the BridgePool contracts requires relay.deposit.quoteTimestamp < contract.deployTime, then we can
+        // remove the following block of code because it won't be possible for such a relay to be sent and disputed.
         if (deposit.quoteTimestamp < this.deployTimestamps[deposit.l1Token]) {
           this.logger.debug({
             at: "Relayer",
