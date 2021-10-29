@@ -229,7 +229,6 @@ export async function findBlockNumberAtTimestamp(
 
     blockNumber -= decreaseBlocks;
     block = await web3.eth.getBlock(blockNumber);
-    console.log(block.timestamp);
   }
 
   if (lowerLimitStamp && block.timestamp < lowerLimitStamp) {
