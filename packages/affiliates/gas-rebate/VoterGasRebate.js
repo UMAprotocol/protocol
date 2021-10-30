@@ -634,9 +634,9 @@ async function Main(callback) {
       console.log(`- Using start date: ${moment.unix(startDate).toString()}`);
       console.log(`- Using end date: ${moment.unix(endDate).toString()}`);
 
-      endBlock = (await FindBlockAtTimestamp._findBlockNumberAtTimestamp(web3, Number(endDate), 15, 15, 1, 14))
+      endBlock = (await FindBlockAtTimestamp._findBlockNumberAtTimestamp(web3, Number(endDate), 1, 1, 1, 14))
         .blockNumber;
-      startBlock = (await FindBlockAtTimestamp._findBlockNumberAtTimestamp(web3, Number(startDate), 15, 15, 1, 14))
+      startBlock = (await FindBlockAtTimestamp._findBlockNumberAtTimestamp(web3, Number(startDate), 1, 1, 1, 14))
         .blockNumber;
     }
 
