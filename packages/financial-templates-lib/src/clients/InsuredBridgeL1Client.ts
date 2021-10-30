@@ -147,7 +147,10 @@ export class InsuredBridgeL1Client {
     if (this.rateModels === undefined || this.rateModels[deposit.l1Token] === undefined)
       throw new Error("No rate model for l1Token");
 
-    const quoteBlockNumber = (await findBlockNumberAtTimestamp(this.l1Web3, deposit.quoteTimestamp, 15, 15, 1, 14))
+    // The block number must be exactly the one containing the deposit.quoteTimestamp, so we set the upper/lower limit
+    // to +/- 1 second around the target time and use the lowest block delta of 1. Setting averageBlockTime to 14
+    // increases the speed at the cost of more web3 requests.
+    const quoteBlockNumber = (await findBlockNumberAtTimestamp(this.l1Web3, deposit.quoteTimestamp, 1, 1, 1, 14))
       .blockNumber;
     const bridgePool = this.getBridgePoolForDeposit(deposit).contract;
     const [liquidityUtilizationCurrent, liquidityUtilizationPostRelay] = await Promise.all([
