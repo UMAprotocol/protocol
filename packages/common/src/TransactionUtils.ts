@@ -208,8 +208,8 @@ export async function findBlockNumberAtTimestamp(
   targetTimestamp: number,
   higherLimitMax = 15,
   lowerLimitMax = 15,
-  blockDelta = 4,
-  averageBlockTime = 14
+  blockDelta = 1,
+  averageBlockTime = 13
 ): Promise<{ blockNumber: number; error: number }> {
   const higherLimitStamp = targetTimestamp + higherLimitMax;
   const lowerLimitStamp = targetTimestamp - lowerLimitMax;

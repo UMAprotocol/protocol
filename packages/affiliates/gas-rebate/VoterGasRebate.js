@@ -634,8 +634,10 @@ async function Main(callback) {
       console.log(`- Using start date: ${moment.unix(startDate).toString()}`);
       console.log(`- Using end date: ${moment.unix(endDate).toString()}`);
 
-      endBlock = (await FindBlockAtTimestamp._findBlockNumberAtTimestamp(web3, Number(endDate))).blockNumber;
-      startBlock = (await FindBlockAtTimestamp._findBlockNumberAtTimestamp(web3, Number(startDate))).blockNumber;
+      endBlock = (await FindBlockAtTimestamp._findBlockNumberAtTimestamp(web3, Number(endDate), 15, 15, 4, 14))
+        .blockNumber;
+      startBlock = (await FindBlockAtTimestamp._findBlockNumberAtTimestamp(web3, Number(startDate), 15, 15, 4, 14))
+        .blockNumber;
     }
 
     // Fetch gas price data in parallel
