@@ -1,7 +1,7 @@
 import Web3 from "web3";
 const { toBN, soliditySha3 } = Web3.utils;
 
-import { findBlockNumberAtTimestamp } from "@uma/common";
+import { BlockFinder } from "../price-feed/utils";
 import { getAbi } from "@uma/contracts-node";
 import { Deposit } from "./InsuredBridgeL2Client";
 import { RateModel, calculateRealizedLpFeePct } from "../helpers/acrossFeesCalculator";
@@ -9,6 +9,7 @@ import { RateModel, calculateRealizedLpFeePct } from "../helpers/acrossFeesCalcu
 import type { BridgeAdminInterfaceWeb3, BridgePoolWeb3 } from "@uma/contracts-node";
 import type { Logger } from "winston";
 import type { BN } from "@uma/common";
+import type { BlockTransactionBase } from "web3-eth";
 
 export enum ClientRelayState {
   Uninitialized, // Deposit on L2, nothing yet on L1. Can be slow relayed and can be sped up to instantly relay.
@@ -64,6 +65,7 @@ export class InsuredBridgeL1Client {
 
   private firstBlockToSearch: number;
   private web3: Web3;
+  private readonly blockFinder: BlockFinder<BlockTransactionBase>;
 
   constructor(
     private readonly logger: Logger,
@@ -82,6 +84,7 @@ export class InsuredBridgeL1Client {
 
     this.firstBlockToSearch = startingBlockNumber;
     this.web3 = l1Web3;
+    this.blockFinder = new BlockFinder<BlockTransactionBase>(this.web3.eth.getBlock);
   }
 
   // Return an array of all bridgePool addresses
@@ -149,8 +152,7 @@ export class InsuredBridgeL1Client {
 
     // The block number must be exactly the one containing the deposit.quoteTimestamp, so we use the lowest block delta
     // of 1. Setting averageBlockTime to 14 increases the speed at the cost of more web3 requests.
-    const quoteBlockNumber = (await findBlockNumberAtTimestamp(this.l1Web3, deposit.quoteTimestamp, 15, 15, 1, 14))
-      .blockNumber;
+    const quoteBlockNumber = (await this.blockFinder.getBlockForTimestamp(deposit.quoteTimestamp)).number;
     const bridgePool = this.getBridgePoolForDeposit(deposit).contract;
     const [liquidityUtilizationCurrent, liquidityUtilizationPostRelay] = await Promise.all([
       bridgePool.methods.liquidityUtilizationCurrent().call(undefined, quoteBlockNumber),

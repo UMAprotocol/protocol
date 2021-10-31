@@ -199,41 +199,70 @@ export const PriceHistory = <T>(
   };
 };
 
-/**
- * @notice Constructs the BlockFinder, which is a simple class-like object to find blocks by timestamp, but keeps a
- *      cache to optimize the search.
- * @param {Function} requestBlock async function, like web3.eth.getBlock that returns a block for a particular block
- *      number or returns the latest block if no argument is provided. Blocks returned must have a `number` and
- */
-export const BlockFinder = <T extends { number: number; timestamp: number | string }>(
-  requestBlock: (requestedBlock: string | number) => Promise<T>,
-  blocks: T[] = []
-): {
-  getBlockForTimestamp: (timestamp: number) => Promise<T>;
-} => {
-  assert(requestBlock, "requestBlock function must be provided");
+export class BlockFinder<T extends { number: number; timestamp: number | string }> {
+  constructor(
+    private readonly requestBlock: (requestedBlock: string | number) => Promise<T>,
+    private readonly blocks: T[] = []
+  ) {
+    assert(requestBlock, "requestBlock function must be provided");
+  }
+
+  /**
+   * @notice Gets the latest block whose timestamp is <= the provided timestamp.
+   * @param {number} timestamp timestamp to search.
+   */
+  public async getBlockForTimestamp(timestamp: number | string): Promise<T> {
+    timestamp = Number(timestamp);
+    assert(timestamp !== undefined && timestamp !== null, "timestamp must be provided");
+    // If the last block we have stored is too early, grab the latest block.
+    if (this.blocks.length === 0 || this.blocks[this.blocks.length - 1].timestamp < timestamp) {
+      const block = await this.getLatestBlock();
+      if (timestamp >= block.timestamp) return block;
+    }
+
+    // Check the first block. If it's grater than our timestamp, we need to find an earlier block.
+    if (this.blocks[0].timestamp > timestamp) {
+      const initialBlock = this.blocks[0] as WithoutStringTimestamp<T>;
+      const cushion = 1.1;
+      // Ensure the increment block distance is _at least_ a single block to prevent an infinite loop.
+      const incrementDistance = Math.max(await estimateBlocksElapsed(initialBlock.timestamp - timestamp, cushion), 1);
+
+      // Search backwards by a constant increment until we find a block before the timestamp or hit block 0.
+      for (let multiplier = 1; ; multiplier++) {
+        const distance = multiplier * incrementDistance;
+        const blockNumber = Math.max(0, initialBlock.number - distance);
+        const block = await this.getBlock(blockNumber);
+        if (block.timestamp <= timestamp) break; // Found an earlier block.
+        assert(blockNumber > 0, "timestamp is before block 0"); // Block 0 was not earlier than this timestamp. Throw.
+      }
+    }
+
+    // Find the index where the block would be inserted and use that as the end block (since it is >= the timestamp).
+    const index = lodash.sortedIndexBy(this.blocks, { timestamp } as T, "timestamp");
+    return this.findBlock(this.blocks[index - 1], this.blocks[index], timestamp);
+  }
 
   // Grabs the most recent block and caches it.
-  async function getLatestBlock() {
-    const block = await requestBlock("latest");
-    const index = lodash.sortedIndexBy(blocks, block, "number");
-    if (blocks[index]?.number !== block.number) blocks.splice(index, 0, block);
-    return blocks[index];
+  private async getLatestBlock() {
+    const block = await this.requestBlock("latest");
+    const index = lodash.sortedIndexBy(this.blocks, block, "number");
+    if (this.blocks[index]?.number !== block.number) this.blocks.splice(index, 0, block);
+    return this.blocks[index];
   }
 
   // Grabs the block for a particular number and caches it.
-  async function getBlock(number: number) {
-    const index = lodash.sortedIndexBy(blocks, { number } as T, "number");
-    if (blocks[index]?.number === number) return blocks[index]; // Return early if block already exists.
-    const block = await requestBlock(number);
-    blocks.splice(index, 0, block); // A simple insert at index.
+  private async getBlock(number: number) {
+    const index = lodash.sortedIndexBy(this.blocks, { number } as T, "number");
+    if (this.blocks[index]?.number === number) return this.blocks[index]; // Return early if block already exists.
+    const block = await this.requestBlock(number);
+    this.blocks.splice(index, 0, block); // A simple insert at index.
     return block;
   }
 
   // Return the latest block, between startBlock and endBlock, whose timestamp is <= timestamp.
   // Effectively, this is an interpolation search algorithm to minimize block requests.
   // Note: startBlock and endBlock _must_ be different blocks.
-  async function findBlock(_startBlock: T, _endBlock: T, timestamp: number): Promise<T> {
+  private async findBlock(_startBlock: T, _endBlock: T, timestamp: number): Promise<T> {
     const [startBlock, endBlock] = [_startBlock, _endBlock] as WithoutStringTimestamp<T>[];
     // In the case of equality, the endBlock is expected to be passed as the one whose timestamp === the requested
     // timestamp.
@@ -256,53 +285,16 @@ export const BlockFinder = <T extends { number: number; timestamp: number | stri
     const estimatedBlock = startBlock.number + Math.round(blockPercentile * totalBlockDistance);
 
     // Clamp ensures the estimated block is strictly greater than the start block and strictly less than the end block.
-    const newBlock = await getBlock(lodash.clamp(estimatedBlock, startBlock.number + 1, endBlock.number - 1));
+    const newBlock = await this.getBlock(lodash.clamp(estimatedBlock, startBlock.number + 1, endBlock.number - 1));
 
     // Depending on whether the new block is below or above the timestamp, narrow the search space accordingly.
     if (newBlock.timestamp < timestamp) {
-      return findBlock(newBlock, endBlock, timestamp);
+      return this.findBlock(newBlock, endBlock, timestamp);
     } else {
-      return findBlock(startBlock, newBlock, timestamp);
+      return this.findBlock(startBlock, newBlock, timestamp);
     }
   }
-
-  /**
-   * @notice Gets the latest block whose timestamp is <= the provided timestamp.
-   * @param {number} timestamp timestamp to search.
-   */
-  async function getBlockForTimestamp(timestamp: number | string): Promise<T> {
-    timestamp = Number(timestamp);
-    assert(timestamp !== undefined && timestamp !== null, "timestamp must be provided");
-    // If the last block we have stored is too early, grab the latest block.
-    if (blocks.length === 0 || blocks[blocks.length - 1].timestamp < timestamp) {
-      const block = await getLatestBlock();
-      if (timestamp >= block.timestamp) return block;
-    }
-
-    // Check the first block. If it's grater than our timestamp, we need to find an earlier block.
-    if (blocks[0].timestamp > timestamp) {
-      const initialBlock = blocks[0] as WithoutStringTimestamp<T>;
-      const cushion = 1.1;
-      // Ensure the increment block distance is _at least_ a single block to prevent an infinite loop.
-      const incrementDistance = Math.max(await estimateBlocksElapsed(initialBlock.timestamp - timestamp, cushion), 1);
-
-      // Search backwards by a constant increment until we find a block before the timestamp or hit block 0.
-      for (let multiplier = 1; ; multiplier++) {
-        const distance = multiplier * incrementDistance;
-        const blockNumber = Math.max(0, initialBlock.number - distance);
-        const block = await getBlock(blockNumber);
-        if (block.timestamp <= timestamp) break; // Found an earlier block.
-        assert(blockNumber > 0, "timestamp is before block 0"); // Block 0 was not earlier than this timestamp. Throw.
-      }
-    }
-
-    // Find the index where the block would be inserted and use that as the end block (since it is >= the timestamp).
-    const index = lodash.sortedIndexBy(blocks, { timestamp } as T, "timestamp");
-    return findBlock(blocks[index - 1], blocks[index], timestamp);
-  }
-
-  return { getBlockForTimestamp };
-};
+}
 
 type TwapEvent = [timestamp: number, price: BN | null];
 
