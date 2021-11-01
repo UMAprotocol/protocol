@@ -730,11 +730,11 @@ export class Relayer {
   private async matchRelayWithDeposit(relay: Relay): Promise<Deposit | undefined> {
     // First try to fetch deposit from the L2 client's default block search config. This should work in most cases.
     let deposit: Deposit | undefined = this.l2Client.getDepositByHash(relay.depositHash);
-
+    if (deposit !== undefined) return deposit;
     // We could not find a deposit using the L2 client's default block search config. Next, we'll modify the block
     // searcg config using the relay's quote time. This allows us to capture any deposits that happened outside of
     // the L2 client's default block search config.
-    if (deposit === undefined) {
+    else {
       const l2BlockForDepositQuoteTime = await findBlockNumberAtTimestamp(this.l2Client.l2Web3, relay.quoteTimestamp);
       // Search for blocks 1/2 of lookback period before and after target quote time. This 1/2 value is arbitrary and
       // should be reviewed.
