@@ -68,7 +68,6 @@ contract LongShortPairCreator is Testable, Lockable {
 
     /**
      * @notice Creates a longShortPair contract and associated long and short tokens.
-     * @dev The caller must approve this contract to transfer `proposerReward` amount of collateral.
      * @param params Constructor params used to initialize the LSP. Key-valued object with the following structure:
      *     - `pairName`: Name of the long short pair contract.
      *     - `expirationTimestamp`: Unix timestamp of when the contract will expire.
