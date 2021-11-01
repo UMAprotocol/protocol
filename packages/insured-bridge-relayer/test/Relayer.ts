@@ -895,9 +895,8 @@ describe("Relayer.ts", function () {
       assert.isTrue(lastSpyLogIncludes(spy, "No pending relays"));
     });
     it("Before disputing relays for deposits it cannot find, first tries to find deposit in new blocksearch", async function () {
-      // First send a valid deposit at the default quote time.
       await l2Token.methods.approve(bridgeDepositBox.options.address, depositAmount).send({ from: l2Depositor });
-      const quoteTime = await bridgeDepositBox.methods.getCurrentTime().call();
+      const quoteTime = Number((await web3.eth.getBlock("latest")).timestamp);
       await bridgeDepositBox.methods
         .deposit(
           l2Depositor,

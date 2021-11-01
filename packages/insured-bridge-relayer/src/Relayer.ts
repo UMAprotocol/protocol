@@ -761,16 +761,17 @@ export class Relayer {
     // search config bridge pool's deployment time. This allows us to capture any deposits that happened outside of
     // the L2 client's default block search config.
     else {
-      let l2StartBlock = (await this.l2BlockFinder.getBlockForTimestamp(this.deployTimestamps[relay.l1Token])).number;
+      const bridgePoolDeploymentTime = (
+        await this.l2BlockFinder.getBlockForTimestamp(this.deployTimestamps[relay.l1Token])
+      ).number;
+      let blockSearchConfig = {
+        fromBlock: bridgePoolDeploymentTime,
+        toBlock: bridgePoolDeploymentTime + this.l2LookbackWindow,
+      };
+      const latestBlock = Number((await this.l2Client.l2Web3.eth.getBlock("latest")).number);
 
-      // Look up all blocks from contract deployment time to first block that l2 client searches for on default.
-      while (deposit === undefined && l2StartBlock < this.l2Client.startingBlockNumber) {
-        // Search for blocks 1/2 of lookback period before and after target quote time. This 1/2 value is arbitrary and
-        // should be reviewed.
-        const blockSearchConfig = {
-          fromBlock: l2StartBlock,
-          toBlock: l2StartBlock + this.l2LookbackWindow,
-        };
+      // Look up all blocks from contract deployment time to latest to ensure that a deposit, if it exists, is found.
+      while (deposit === undefined) {
         const [fundsDepositedEvents] = await Promise.all([
           this.l2Client.bridgeDepositBox.getPastEvents("FundsDeposited", blockSearchConfig),
         ]);
@@ -803,8 +804,15 @@ export class Relayer {
           }
         }
 
-        // Increment start of block search
-        l2StartBlock += this.l2LookbackWindow;
+        // Exit loop if block search encompasses "latest" block number. Breaking the loop here guarantees that the
+        // above event search executes at least once.
+        if (blockSearchConfig.toBlock < latestBlock) break;
+
+        // Increment block search.
+        blockSearchConfig = {
+          fromBlock: blockSearchConfig.toBlock,
+          toBlock: blockSearchConfig.toBlock + this.l2LookbackWindow,
+        };
       }
     }
 
