@@ -1,13 +1,17 @@
-import { BridgePoolEthers, BridgePoolEthers__factory } from "@uma/contracts-node";
+import { BridgePoolEthers, BridgePoolEthers__factory, BridgePoolInterfaceEthers } from "@uma/contracts-node";
 import type { SignerOrProvider, GetEventType } from "../..";
 import { Event, BigNumber } from "ethers";
 import { Balances } from "../../utils";
 
 export type Instance = BridgePoolEthers;
-const Factory = BridgePoolEthers__factory;
+export const Factory = BridgePoolEthers__factory;
+export type Interface = BridgePoolInterfaceEthers;
 
 export function connect(address: string, provider: SignerOrProvider): Instance {
   return Factory.connect(address, provider);
+}
+export function attach(address: string): Instance {
+  return new Factory().attach(address);
 }
 
 export type LiquidityAdded = GetEventType<Instance, "LiquidityAdded">;

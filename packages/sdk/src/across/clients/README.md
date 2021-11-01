@@ -6,61 +6,67 @@ These are utility libraries meant for supporting the Across dapp contract intera
 
 Interact with the bridge pool client for users who want to provide liquidity for relays.
 
-### Read Only Client
-
-This client is meant for reading state of the pool and specific users.
-
-#### Quick Start
+### Quick Start
 
 ```ts
 import * as uma from "@uma/sdk"
 import { ethers } from "ethers"
+import lodash from "lodash"
 
-const { ReadClient } = uma.across.clients.bridgePool
+const { Client, State } = uma.across.clients.bridgePool
 // this client requires multicall2 be accessible on the chain. This is the address for mainnet.
 const multicall2Address = "0x5BA1e12693Dc8F9c48aAD8770482f4739bEeD696"
 // The client works on a single pool currently, this is the deployed pool for weth on mainnet.
-const address = "0xf42bB7EC88d065dF48D60cb672B88F8330f9f764"
+const wethPool = "0xf42bB7EC88d065dF48D60cb672B88F8330f9f764"
+const userAddress = "0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D"
 const provider = ethers.getDefaultProvider(process.env.CUSTOM_NODE_URL)
 
+// Hook into your store or dispatch here. This will emit paths that change data.
+// The data state its building looks like this:
+// export type State = {
+//   pools: Record<string, Pool>;
+//   users: Record<string, Record<string, User>>;
+//   transactions: Record<string, Transaction>;
+// };
+const state: State = {}
+function eventHandler(path: string[], data: any) {
+  lodash.set(state, path, data)
+}
 // Initializes the read client
-const readClient = new ReadClient(address, provider, multicall2Address)
+const client = new Client({ multicall2Address }, { provider }, eventHandler)
 
 // to get pool state, omit any values
-const poolState = await readClient.read()
-//{
-//  pool: {
-//    address: '0xf42bB7EC88d065dF48D60cb672B88F8330f9f764',
-//    totalPoolSize: '900112495947893496',
-//    l1Token: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
-//    exchangeRateCurrent: '1000014111309289196',
-//    exchangeRatePrevious: '1000014110936934497',
-//    estimatedApy: '0.0008646096530698983'
-//  }
-//}
+await client.updatePool(wethPool)
+const pool = lodash.get(state, ["pools", wethPool])
+// or
+const pool = client.getPool(wethPool)
+// {
+//   address: '0x75a29a66452C80702952bbcEDd284C8c4CF5Ab17',
+//   totalPoolSize: '14000109368430725411',
+//   l1Token: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
+//   liquidReserves: '13386109368430725412',
+//   pendingReserves: '0',
+//   exchangeRateCurrent: '1000003603469406073',
+//   exchangeRatePrevious: '1000003603402421313',
+//   estimatedApy: '0.0001554854987408569'
+// }
 
-// to get user and pool state, provide a users public address
-const userState = await readClient.read("0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D")
-//{
-//  user: {
+// to get user and pool state, provide a users public address and the pool
+await client.updateUser(userAddress, wethPool)
+const user = lodash.get(state, ["users", userAddress, wethPool])
+// or
+const user = client.getUser(userAddress, wethPool)
+//  {
 //    address: '0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D',
-//    lpTokens: '900000000000000000',
-//    positionValue: '900000541941830509',
-//    totalDeposited: '900000000000000000',
-//    feesEarned: '541941830509'
-//  },
-//  pool: {
-//    address: '0xf42bB7EC88d065dF48D60cb672B88F8330f9f764',
-//    totalPoolSize: '900112495947893496',
-//    l1Token: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
-//    exchangeRateCurrent: '1000014111309289196',
-//    exchangeRatePrevious: '1000014110936934497',
-//    estimatedApy: '0.0008646096530698983'
+//    poolAddress: '0x75a29a66452C80702952bbcEDd284C8c4CF5Ab17',
+//    lpTokens: '1000000000000000000',
+//    positionValue: '1000003603096205268',
+//    totalDeposited: '999998479837042055',
+//    feesEarned: '5123259163213'
 //  }
-//}
 ```
 
-#### Preview Liquidity Removal
+### Preview Liquidity Removal
 
 Liquidity removal calculators are provided as static functions.
 
@@ -81,4 +87,61 @@ const preview = previewRemoval(user.positionValue, user.feesEarned, percentFloat
 //  fees: { recieve: '406456372881', remain: '135485457628' },
 //  total: { recieve: '675000406456372881', remain: '225000135485457628' }
 //}
+```
+
+### Reading State
+
+### Submit Deposit / Withdraw
+
+Submits transactions to the blockchain on behalf of the user. Requires signer and pool address.
+
+**async addEthLiquidity(signer: Signer, pool: string, l1TokenAmount: BigNumberish) => string**  
+**async addTokenLiquidity(signer: Signer, pool: string, l1TokenAmount: BigNumberish) => string**
+
+Note that adding liquidity requires the token amount you want to send in tokens native decimals. The functions
+are split between raw eth deposit vs erc20 deposit.
+
+**async removeTokenLiquidity(signer: Signer, pool: string, lpTokenAmount: BigNumberish) => string**  
+**async removeEthliquidity(signer: Signer, pool: string, lpTokenAmount: BigNumberish) => string**
+
+Note that removing liquidity requires the LP token amount you want to burn to receive underlying collateral. The functions
+are split between raw eth removal vs erc20 removal.
+
+#### Example
+
+```js
+const exampleAmount = toWei("1")
+const signer: ethers.Signer = new ethers.Wallet() // get a signer somehow
+const txid = await client.addEthLiquidity(signer, wethPool, userAddress, exampleAmount)
+// txid is not a normal transaction id, but how the client internally tracks the transaction.
+// Its returned in case you want to track progress of this transaction
+
+const transaction = lodash.get(state, ["transactions", txid])
+// or
+const transaction = client.getTx(txid)
+// {
+//   id: string;
+//   state: "requested" | "submitted" | "mined";
+//   toAddress: string;
+//   fromAddress: string;
+//   type: "Add Liquidity" | "Remove Liquidity";
+//   description: string;
+//   request?: TransactionRequest;
+//   hash?: string;
+//   receipt?: TransactionReceipt;
+// }
+```
+
+### Tracking Transactions
+
+You must manually call `updateTransactions` on an interval if you care about tracking transactions. This is optional.
+
+```js
+// updates once a minute
+setInterval(() => {
+  client.updateTransactions().catch((err) => {
+    console.error("Something happened when updating transactions", err)
+  })
+}, 60000)
+// completed transactions will have the state "mined"
 ```

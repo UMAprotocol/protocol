@@ -5,15 +5,9 @@ import assert from "assert";
 import type { Logger } from "winston";
 import type { Abi } from "../types";
 import Web3 from "web3";
-import type { BlockTransactionString } from "web3-eth";
+import type { BlockTransactionBase } from "web3-eth";
 import type { ERC20Web3 } from "@uma/contracts-node";
 import type { BN } from "../types";
-
-const _blockFinderGenericWorkaround = (requestBlock: (number: string | number) => Promise<BlockTransactionString>) => {
-  return BlockFinder(requestBlock);
-};
-
-type BlockFinder = ReturnType<typeof _blockFinderGenericWorkaround>;
 
 interface Params {
   logger: Logger;
@@ -22,7 +16,7 @@ interface Params {
   poolAddress: string;
   tokenAddress: string;
   getTime: () => Promise<number>;
-  blockFinder?: BlockFinder;
+  blockFinder?: BlockFinder<BlockTransactionBase>;
   minTimeBetweenUpdates?: number;
   priceFeedDecimals?: number;
 }
@@ -37,7 +31,7 @@ export class LPPriceFeed extends PriceFeedInterface {
   private readonly getTime: () => Promise<number>;
   private readonly priceFeedDecimals: number;
   private readonly minTimeBetweenUpdates: number;
-  private readonly blockFinder: BlockFinder;
+  private readonly blockFinder: BlockFinder<BlockTransactionBase>;
 
   private price: BN | null = null;
   private lastUpdateTime: number | null = null;
@@ -90,7 +84,7 @@ export class LPPriceFeed extends PriceFeedInterface {
     this.getTime = getTime;
     this.priceFeedDecimals = priceFeedDecimals;
     this.minTimeBetweenUpdates = minTimeBetweenUpdates;
-    this.blockFinder = blockFinder || BlockFinder((number: number | string) => web3.eth.getBlock(number));
+    this.blockFinder = blockFinder || new BlockFinder<BlockTransactionBase>(web3.eth.getBlock);
   }
 
   public getCurrentPrice(): BN | null {

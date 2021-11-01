@@ -188,23 +188,40 @@ export const blockUntilBlockMined = async (web3: Web3, blockerBlockNumber: numbe
     await new Promise((r) => setTimeout(r, delay));
   }
 };
+
+/**
+ * @notice Finds block closest to target timestamp. User can configure search based on error tolerance.
+ * @param web3 Web3 network to search blocks on.
+ * @param targetTimestamp Timestamp that we are finding a block for.
+ * @param higherLimitMax Returned block must have timestamp less than targetTimestamp + higherLimitMax. Increasing this
+ * increases error and reduces time to compute.
+ * @param lowerLimitMax Returned block must have timestamp more than targetTimestamp - lowerLimitMax. Increasing this
+ * increases error and reduces time to compute.
+ * @param blockDelta Amount of blocks to hop when binary searching for block. Increasing this increases error
+ * but significantly reduces time to compute.
+ * @param averageBlockTime Decreasing average block size will decrease precision and also decrease the amount of
+ * requests made in order to find the closest block. Increasing this reduces time to compute but increases requests.
+ * @returns {number, number} Block height and difference between block timestamp and target timestamp
+ */
 export async function findBlockNumberAtTimestamp(
   web3: Web3,
   targetTimestamp: number,
   higherLimitMax = 15,
-  lowerLimitMax = 15
+  lowerLimitMax = 15,
+  blockDelta = 1,
+  averageBlockTime = 13
 ): Promise<{ blockNumber: number; error: number }> {
   const higherLimitStamp = targetTimestamp + higherLimitMax;
   const lowerLimitStamp = targetTimestamp - lowerLimitMax;
-  // Decreasing average block size will decrease precision and also decrease the amount of requests made in order to
-  // find the closest block.
-  const averageBlockTime = 13;
 
   // get current block number
   const currentBlockNumber = await web3.eth.getBlockNumber();
   let block = await web3.eth.getBlock(currentBlockNumber);
   let blockNumber = currentBlockNumber;
 
+  // if current block timestamp > target timestamp, set block to approximate height using `averageBlockTime`, and
+  // repeat until we find a block below the target time. This loop should usually only run once, unless the
+  // `averageBlockTime` is set too high.
   while (block.timestamp > targetTimestamp) {
     const decreaseBlocks = Math.floor((parseInt(block.timestamp.toString()) - targetTimestamp) / averageBlockTime);
 
@@ -216,7 +233,7 @@ export async function findBlockNumberAtTimestamp(
 
   if (lowerLimitStamp && block.timestamp < lowerLimitStamp) {
     while (block.timestamp < lowerLimitStamp) {
-      blockNumber += 1;
+      blockNumber += blockDelta;
       block = await web3.eth.getBlock(blockNumber);
     }
   }

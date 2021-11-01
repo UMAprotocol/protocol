@@ -819,11 +819,23 @@ describe("InsuredBridgeL1Client", function () {
       await bridgePool.methods.relayDeposit(...generateRelayParams({ amount: toWei("60") })).send({ from: relayer });
 
       // Now, as the pool utilization has increased, the quote we get from the client should increment accordingly.
-      // The `depositData` should bring the utilization from 60% to 70%. From the notebook, this should be a realize
-      // LP rate of 0.11417582417582407
+      // However, the quote at the time of the depositData should NOT increase relay was done after that quote
+      // timestamp. Check that this has not moved.
       await client.update();
       assert.equal(
         (await client.calculateRealizedLpFeePctForDeposit(depositData)).toString(),
+        toWei("0.000117987509354032")
+      );
+
+      // If we set the quoteTimestamp to the current block time then the realizedLPFee should increase.
+
+      assert.equal(
+        (
+          await client.calculateRealizedLpFeePctForDeposit({
+            ...depositData,
+            quoteTimestamp: (await web3.eth.getBlock("latest")).timestamp,
+          })
+        ).toString(),
         toWei("0.002081296752280018")
       );
     });
