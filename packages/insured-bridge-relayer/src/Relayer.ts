@@ -758,46 +758,53 @@ export class Relayer {
     let deposit: Deposit | undefined = this.l2Client.getDepositByHash(relay.depositHash);
     if (deposit !== undefined) return deposit;
     // We could not find a deposit using the L2 client's default block search config. Next, we'll modify the block
-    // searcg config using the relay's quote time. This allows us to capture any deposits that happened outside of
+    // search config bridge pool's deployment time. This allows us to capture any deposits that happened outside of
     // the L2 client's default block search config.
     else {
-      const l2BlockForDepositQuoteTime = (await this.l2BlockFinder.getBlockForTimestamp(relay.quoteTimestamp)).number;
-      // Search for blocks 1/2 of lookback period before and after target quote time. This 1/2 value is arbitrary and
-      // should be reviewed.
-      const blockSearchConfig = {
-        fromBlock: Math.max(l2BlockForDepositQuoteTime - this.l2LookbackWindow / 2, 0),
-        toBlock: l2BlockForDepositQuoteTime + this.l2LookbackWindow / 2,
-      };
-      const [fundsDepositedEvents] = await Promise.all([
-        this.l2Client.bridgeDepositBox.getPastEvents("FundsDeposited", blockSearchConfig),
-      ]);
-      // For any found deposits, try to match it with the relay:
-      for (const fundsDepositedEvent of fundsDepositedEvents) {
-        const _deposit: Deposit = {
-          chainId: Number(fundsDepositedEvent.returnValues.chainId),
-          depositId: Number(fundsDepositedEvent.returnValues.depositId),
-          depositHash: "", // Filled in after initialization of the remaining variables.
-          l1Recipient: fundsDepositedEvent.returnValues.l1Recipient,
-          l2Sender: fundsDepositedEvent.returnValues.l2Sender,
-          l1Token: fundsDepositedEvent.returnValues.l1Token,
-          amount: fundsDepositedEvent.returnValues.amount,
-          slowRelayFeePct: fundsDepositedEvent.returnValues.slowRelayFeePct,
-          instantRelayFeePct: fundsDepositedEvent.returnValues.instantRelayFeePct,
-          quoteTimestamp: Number(fundsDepositedEvent.returnValues.quoteTimestamp),
-          depositContract: fundsDepositedEvent.address,
+      let l2StartBlock = (await this.l2BlockFinder.getBlockForTimestamp(this.deployTimestamps[relay.l1Token])).number;
+
+      // Look up all blocks from contract deployment time to first block that l2 client searches for on default.
+      while (deposit === undefined && l2StartBlock < this.l2Client.startingBlockNumber) {
+        // Search for blocks 1/2 of lookback period before and after target quote time. This 1/2 value is arbitrary and
+        // should be reviewed.
+        const blockSearchConfig = {
+          fromBlock: l2StartBlock,
+          toBlock: l2StartBlock + this.l2LookbackWindow,
         };
-        _deposit.depositHash = this.l2Client.generateDepositHash(_deposit);
-        if (_deposit.depositHash === relay.depositHash) {
-          this.logger.debug({
-            at: "InsuredBridgeRelayer#Disputer",
-            message: "Matched deposit using relay quote time to run new block search",
-            blockSearchConfig,
-            deposit,
-            relay,
-          });
-          deposit = _deposit;
-          break;
+        const [fundsDepositedEvents] = await Promise.all([
+          this.l2Client.bridgeDepositBox.getPastEvents("FundsDeposited", blockSearchConfig),
+        ]);
+        // For any found deposits, try to match it with the relay:
+        for (const fundsDepositedEvent of fundsDepositedEvents) {
+          const _deposit: Deposit = {
+            chainId: Number(fundsDepositedEvent.returnValues.chainId),
+            depositId: Number(fundsDepositedEvent.returnValues.depositId),
+            depositHash: "", // Filled in after initialization of the remaining variables.
+            l1Recipient: fundsDepositedEvent.returnValues.l1Recipient,
+            l2Sender: fundsDepositedEvent.returnValues.l2Sender,
+            l1Token: fundsDepositedEvent.returnValues.l1Token,
+            amount: fundsDepositedEvent.returnValues.amount,
+            slowRelayFeePct: fundsDepositedEvent.returnValues.slowRelayFeePct,
+            instantRelayFeePct: fundsDepositedEvent.returnValues.instantRelayFeePct,
+            quoteTimestamp: Number(fundsDepositedEvent.returnValues.quoteTimestamp),
+            depositContract: fundsDepositedEvent.address,
+          };
+          _deposit.depositHash = this.l2Client.generateDepositHash(_deposit);
+          if (_deposit.depositHash === relay.depositHash) {
+            this.logger.debug({
+              at: "InsuredBridgeRelayer#Disputer",
+              message: "Matched deposit using relay quote time to run new block search",
+              blockSearchConfig,
+              deposit,
+              relay,
+            });
+            deposit = _deposit;
+            break;
+          }
         }
+
+        // Increment start of block search
+        l2StartBlock += this.l2LookbackWindow;
       }
     }
 
