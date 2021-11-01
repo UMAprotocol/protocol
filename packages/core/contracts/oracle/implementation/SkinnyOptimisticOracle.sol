@@ -318,7 +318,7 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
         request.currency = currency;
         request.reward = reward;
         request.finalFee = finalFee;
-        request.bond = bond;
+        request.bond = bond != 0 ? bond : finalFee;
         request.customLiveness = customLiveness;
         request.proposer = proposer;
         request.proposedPrice = proposedPrice;
