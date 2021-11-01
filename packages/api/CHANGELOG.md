@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.8.1](https://github.com/UMAprotocol/protocol/compare/@uma/api@0.8.0...@uma/api@0.8.1) (2021-10-29)
+
+### Bug Fixes
+
+- cancel timeouts used for race against promises ([#3513](https://github.com/UMAprotocol/protocol/issues/3513)) ([3b019ee](https://github.com/UMAprotocol/protocol/commit/3b019eeb5224134ffe8566f9a5fd2192a5b5dce6))
+- **GasEstimator:** protocol upgrade for EIP1559 ([#3306](https://github.com/UMAprotocol/protocol/issues/3306)) ([8245391](https://github.com/UMAprotocol/protocol/commit/8245391ee07dca37be3c52a9a9ba47ed4d63f6f7))
+
 # [0.8.0](https://github.com/UMAprotocol/protocol/compare/@uma/api@0.7.0...@uma/api@0.8.0) (2021-10-27)
 
 ### Features
