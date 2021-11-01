@@ -928,7 +928,8 @@ describe("Relayer.ts", function () {
         l1Relayer,
         whitelistedChainIds,
         deployTimestamps,
-        defaultLookbackWindow
+        1 // Use small lookback window to test that the back up block search loop runs at least a few times before
+        // finding the deposit.
       );
       await Promise.all([l1Client.update(), l2Client.update()]);
       await relayer.checkForPendingDepositsAndRelay();
