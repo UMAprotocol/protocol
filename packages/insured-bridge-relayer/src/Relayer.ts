@@ -806,7 +806,7 @@ export class Relayer {
 
         // Exit loop if block search encompasses "latest" block number. Breaking the loop here guarantees that the
         // above event search executes at least once.
-        if (blockSearchConfig.toBlock < latestBlock) break;
+        if (blockSearchConfig.toBlock >= latestBlock) break;
 
         // Increment block search.
         blockSearchConfig = {
