@@ -765,8 +765,8 @@ export class Relayer {
       // Search for blocks 1/2 of lookback period before and after target quote time. This 1/2 value is arbitrary and
       // should be reviewed.
       const blockSearchConfig = {
-        fromBlock: Math.max(l2BlockForDepositQuoteTime.number - this.l2LookbackWindow / 2, 0),
-        toBlock: l2BlockForDepositQuoteTime.number + this.l2LookbackWindow / 2,
+        fromBlock: Math.max(l2BlockForDepositQuoteTime - this.l2LookbackWindow / 2, 0),
+        toBlock: l2BlockForDepositQuoteTime + this.l2LookbackWindow / 2,
       };
       const [fundsDepositedEvents] = await Promise.all([
         this.l2Client.bridgeDepositBox.getPastEvents("FundsDeposited", blockSearchConfig),
