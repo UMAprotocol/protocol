@@ -241,9 +241,9 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
         emit ProposePrice(requester, identifier, timestamp, ancillaryData, proposedRequest);
 
         // Callback.
-        if (address(msg.sender).isContract())
+        if (address(requester).isContract())
             try
-                OptimisticRequester(msg.sender).priceProposed(identifier, timestamp, ancillaryData, proposedRequest)
+                OptimisticRequester(requester).priceProposed(identifier, timestamp, ancillaryData, proposedRequest)
             {} catch {}
     }
 
