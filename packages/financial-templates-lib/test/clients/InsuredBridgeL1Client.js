@@ -277,7 +277,7 @@ describe("InsuredBridgeL1Client", function () {
       amount: relayAmount,
       slowRelayFeePct: defaultSlowRelayFeePct,
       instantRelayFeePct: defaultInstantRelayFeePct,
-      quoteTimestamp: Number((await bridgePool.methods.getCurrentTime().call()).toString()),
+      quoteTimestamp: (await web3.eth.getBlock("latest")).timestamp, // set this to the current block timestamp.
     };
     relayData = {
       relayId: 0,
