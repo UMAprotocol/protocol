@@ -82,7 +82,7 @@ abstract contract BridgeDepositBox is Testable, Lockable {
         uint64 instantRelayFeePct,
         uint64 quoteTimestamp
     );
-    event TokensBridged(address l2Token, uint256 numberOfTokensBridged, uint256 l1Gas, address caller);
+    event TokensBridged(address indexed l2Token, uint256 numberOfTokensBridged, uint256 l1Gas, address indexed caller);
 
     /****************************************
      *               MODIFIERS              *
