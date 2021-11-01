@@ -285,6 +285,7 @@ contract LongShortPair is Testable, Lockable {
     {
         require(enableEarlyExpiration, "Early expiration disabled");
         require(_earlyExpirationTimestamp <= getCurrentTime(), "Only propose expire in the past");
+        require(_earlyExpirationTimestamp > 0, "Early expiration time > 0");
 
         earlyExpirationTimestamp = _earlyExpirationTimestamp;
 
