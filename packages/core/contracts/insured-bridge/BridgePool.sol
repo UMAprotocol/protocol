@@ -258,7 +258,7 @@ contract BridgePool is Testable, BridgePoolInterface, ERC20, Lockable {
      * @dev Caller must have approved this contract to spend the total bond + amount - fees for `l1Token`.
      * @param depositData the deposit data struct containing all the user's deposit information.
      * @param realizedLpFeePct LP fee calculated off-chain considering the L1 pool liquidity at deposit time, before
-     *      quoteTimestamp. The OO acts to verify the correctness of this realized fee. cannot exceed 50%.
+     *      quoteTimestamp. The OO acts to verify the correctness of this realized fee. Cannot exceed 50%.
      */
     function relayAndSpeedUp(DepositData memory depositData, uint64 realizedLpFeePct) public nonReentrant() {
         // If no pending relay for this deposit, then associate the caller's relay attempt with it.
