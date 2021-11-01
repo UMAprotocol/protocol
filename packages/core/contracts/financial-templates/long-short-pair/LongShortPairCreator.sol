@@ -108,10 +108,6 @@ contract LongShortPairCreator is Testable, Lockable {
         // Deploy the LPS contract.
         LongShortPair lsp = new LongShortPair(_convertParams(params, longToken, shortToken));
 
-        // Move prepaid proposer reward from the deployer to the newly deployed contract.
-        if (params.proposerReward > 0)
-            params.collateralToken.safeTransferFrom(msg.sender, address(lsp), params.proposerReward);
-
         address lspAddress = address(lsp);
 
         // Give permissions to new lsp contract and then hand over ownership.
