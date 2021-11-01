@@ -13,7 +13,6 @@ import "../common/implementation/AncillaryData.sol";
 import "../common/implementation/Testable.sol";
 import "../common/implementation/FixedPoint.sol";
 import "../common/implementation/Lockable.sol";
-import "../common/implementation/ExpandedERC20.sol";
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
