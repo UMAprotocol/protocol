@@ -7,13 +7,7 @@ import type { Logger } from "winston";
 import Web3 from "web3";
 import { PerpetualWeb3 } from "@uma/contracts-frontend";
 import { BN, Abi, Awaited } from "../types";
-import { BlockTransactionString } from "web3-eth";
-
-const _blockFinderGenericWorkaround = (requestBlock: (number: string | number) => Promise<BlockTransactionString>) => {
-  return BlockFinder(requestBlock);
-};
-
-type BlockFinder = ReturnType<typeof _blockFinderGenericWorkaround>;
+import type { BlockTransactionBase } from "web3-eth";
 
 interface Params {
   logger: Logger;
@@ -22,7 +16,7 @@ interface Params {
   perpetualAddress: string;
   multicallAddress: string;
   getTime: () => Promise<number>;
-  blockFinder?: BlockFinder;
+  blockFinder?: BlockFinder<BlockTransactionBase>;
   minTimeBetweenUpdates?: number;
   priceFeedDecimals?: number;
 }
@@ -32,7 +26,7 @@ export class FundingRateMultiplierPriceFeed extends PriceFeedInterface {
   private readonly web3: Web3;
   private readonly getTime: () => Promise<number>;
   private readonly multicallAddress: string;
-  private readonly blockFinder: BlockFinder;
+  private readonly blockFinder: BlockFinder<BlockTransactionBase>;
   private readonly minTimeBetweenUpdates: number;
   private readonly priceFeedDecimals: number;
   private lastUpdateTime: number | null = null;
@@ -85,7 +79,7 @@ export class FundingRateMultiplierPriceFeed extends PriceFeedInterface {
     this.priceFeedDecimals = priceFeedDecimals;
     this.minTimeBetweenUpdates = minTimeBetweenUpdates;
     // Must wrap the getBlock in a lambda to specify the overload.
-    this.blockFinder = blockFinder || BlockFinder((number: number | string) => web3.eth.getBlock(number));
+    this.blockFinder = blockFinder || new BlockFinder<BlockTransactionBase>(web3.eth.getBlock);
     this.convertDecimals = ConvertDecimals(18, priceFeedDecimals);
   }
 
