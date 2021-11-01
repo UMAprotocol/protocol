@@ -74,7 +74,7 @@ contract LongShortPairCreator is Testable, Lockable {
      *     - `expirationTimestamp`: Unix timestamp of when the contract will expire.
      *     - `collateralPerPair`: How many units of collateral are required to mint one pair of synthetic tokens.
      *     - `priceIdentifier`: Registered in the DVM for the synthetic.
-     *     - `enableEarlyExpiration`: Enables the LPS contract to be settled early.
+     *     - `enableEarlyExpiration`: Enables the LSP contract to be settled early.
      *     - `longSynthName`: Name of the long synthetic tokens to be created.
      *     - `longSynthSymbol`: Symbol of the long synthetic tokens to be created.
      *     - `shortSynthName`: Name of the short synthetic tokens to be created.
@@ -105,7 +105,7 @@ contract LongShortPairCreator is Testable, Lockable {
         ExpandedIERC20 shortToken =
             tokenFactory.createToken(params.shortSynthName, params.shortSynthSymbol, collateralDecimals);
 
-        // Deploy the LPS contract.
+        // Deploy the LSP contract.
         LongShortPair lsp = new LongShortPair(_convertParams(params, longToken, shortToken));
 
         // Move prepaid proposer reward from the deployer to the newly deployed contract.

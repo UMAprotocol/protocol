@@ -274,7 +274,7 @@ describe("Relayer.ts", function () {
     });
     it("Correctly decides when to slow relay", async function () {
       // The only time the relayer should decide to do a slow relay is when: a) the relayer has enough tokens, b) the
-      // deposit has had no other relayer pick it up and c) the deposit contains a instantRelayFeePct set to 0.
+      // deposit has had no other relayer pick it up and c) the deposit contains an instantRelayFeePct set to 0.
 
       // Mint tokens, set ClientRelayState to Any and update instantRelayFeePct.
       await l1Token.methods.mint(l1Relayer, toBN(defaultProposerBondPct).muln(2)).send({ from: l1Owner });
