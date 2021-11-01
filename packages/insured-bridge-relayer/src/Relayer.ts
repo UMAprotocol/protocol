@@ -811,7 +811,7 @@ export class Relayer {
         // Increment block search.
         blockSearchConfig = {
           fromBlock: blockSearchConfig.toBlock,
-          toBlock: blockSearchConfig.toBlock + this.l2LookbackWindow,
+          toBlock: Math.min(latestBlock, blockSearchConfig.toBlock + this.l2LookbackWindow),
         };
       }
     }
