@@ -1,9 +1,10 @@
 import winston from "winston";
 import Web3 from "web3";
+import type { BlockTransactionBase } from "web3-eth";
 const { toWei, toBN } = Web3.utils;
 const fixedPointAdjustment = toBN(toWei("1"));
 
-import { runTransaction, findBlockNumberAtTimestamp } from "@uma/common";
+import { runTransaction } from "@uma/common";
 import {
   InsuredBridgeL1Client,
   InsuredBridgeL2Client,
@@ -12,6 +13,7 @@ import {
   Relay,
   ClientRelayState,
   SettleableRelay,
+  BlockFinder,
 } from "@uma/financial-templates-lib";
 import { getTokenBalance } from "./RelayerHelpers";
 
@@ -30,6 +32,8 @@ export enum RelaySubmitType {
 }
 
 export class Relayer {
+  private readonly l2BlockFinder: BlockFinder<BlockTransactionBase>;
+
   /**
    * @notice Constructs new Relayer Instance.
    * @param {Object} logger Module used to send logs.
@@ -54,7 +58,9 @@ export class Relayer {
     // now, we need to hardcode each BP's deploy timestamp.
     readonly deployTimestamps: { [key: string]: number },
     readonly l2LookbackWindow: number
-  ) {}
+  ) {
+    this.l2BlockFinder = new BlockFinder<BlockTransactionBase>(this.l2Client.l2Web3.eth.getBlock);
+  }
 
   async checkForPendingDepositsAndRelay(): Promise<void> {
     this.logger.debug({ at: "InsuredBridgeRelayer#Relayer", message: "Checking for pending deposits and relaying" });
@@ -755,7 +761,7 @@ export class Relayer {
     // searcg config using the relay's quote time. This allows us to capture any deposits that happened outside of
     // the L2 client's default block search config.
     else {
-      const l2BlockForDepositQuoteTime = await findBlockNumberAtTimestamp(this.l2Client.l2Web3, relay.quoteTimestamp);
+      const l2BlockForDepositQuoteTime = (await this.l2BlockFinder.getBlockForTimestamp(relay.quoteTimestamp)).number;
       // Search for blocks 1/2 of lookback period before and after target quote time. This 1/2 value is arbitrary and
       // should be reviewed.
       const blockSearchConfig = {
