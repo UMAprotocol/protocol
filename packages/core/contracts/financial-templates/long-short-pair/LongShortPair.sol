@@ -362,7 +362,7 @@ contract LongShortPair is Testable, Lockable {
 
     // Request a price in the optimistic oracle for a given request timestamp and ancillary data combo. Set the bonds
     // accordingly to the deployer's parameters. Will revert if re-requesting for a previously requested combo.
-    function _requestOraclePrice(uint256 requestTimestamp, bytes memory requestAncillaryData) internal {
+    function _requestOraclePrice(uint64 requestTimestamp, bytes memory requestAncillaryData) internal {
         OptimisticOracleInterface optimisticOracle = _getOptimisticOracle();
 
         // If the proposer reward was set then pull it from the caller of the function.
@@ -372,7 +372,7 @@ contract LongShortPair is Testable, Lockable {
         }
         optimisticOracle.requestPrice(
             priceIdentifier,
-            requestTimestamp,
+            uint256(requestTimestamp),
             requestAncillaryData,
             collateralToken,
             proposerReward
@@ -381,13 +381,18 @@ contract LongShortPair is Testable, Lockable {
         // Set the Optimistic oracle liveness for the price request.
         optimisticOracle.setCustomLiveness(
             priceIdentifier,
-            requestTimestamp,
+            uint256(requestTimestamp),
             requestAncillaryData,
             optimisticOracleLivenessTime
         );
 
         // Set the Optimistic oracle proposer bond for the price request.
-        optimisticOracle.setBond(priceIdentifier, requestTimestamp, requestAncillaryData, optimisticOracleProposerBond);
+        optimisticOracle.setBond(
+            priceIdentifier,
+            uint256(requestTimestamp),
+            requestAncillaryData,
+            optimisticOracleProposerBond
+        );
     }
 
     // Fetch the optimistic oracle expiration price. If the oracle has the price for the provided expiration timestamp
