@@ -277,7 +277,8 @@ describe("InsuredBridgeL1Client", function () {
       amount: relayAmount,
       slowRelayFeePct: defaultSlowRelayFeePct,
       instantRelayFeePct: defaultInstantRelayFeePct,
-      quoteTimestamp: (await web3.eth.getBlock("latest")).timestamp, // set this to the current block timestamp.
+      // quote time must be <= deployment time of BridgePool for relayDeposit to succeed
+      quoteTimestamp: Number((await bridgePool.methods.deploymentTimestamp().call()).toString()),
     };
     relayData = {
       relayId: 0,
@@ -805,9 +806,15 @@ describe("InsuredBridgeL1Client", function () {
       // at the top, is for a relay of 10 units. This should increment the pool utilization from 0% to 10%. From the
       // jupiter notebook, this should be a rate of 0.000117987509354032.
 
+      // Save quote time that we'll look up realized LP fee % for. We don't want to use the default
+      // depositData.quoteTimestamp because we want to simulate production and look up blocks by block time instead
+      // of contract time, as set by a Timer that might not exist on the tested network.
+      const _quoteTimestamp = (await web3.eth.getBlock("latest")).timestamp;
       await client.update();
       assert.equal(
-        (await client.calculateRealizedLpFeePctForDeposit(depositData)).toString(),
+        (
+          await client.calculateRealizedLpFeePctForDeposit({ ...depositData, quoteTimestamp: _quoteTimestamp })
+        ).toString(),
         toWei("0.000117987509354032")
       );
 
@@ -823,12 +830,13 @@ describe("InsuredBridgeL1Client", function () {
       // timestamp. Check that this has not moved.
       await client.update();
       assert.equal(
-        (await client.calculateRealizedLpFeePctForDeposit(depositData)).toString(),
+        (
+          await client.calculateRealizedLpFeePctForDeposit({ ...depositData, quoteTimestamp: _quoteTimestamp })
+        ).toString(),
         toWei("0.000117987509354032")
       );
 
       // If we set the quoteTimestamp to the current block time then the realizedLPFee should increase.
-
       assert.equal(
         (
           await client.calculateRealizedLpFeePctForDeposit({
