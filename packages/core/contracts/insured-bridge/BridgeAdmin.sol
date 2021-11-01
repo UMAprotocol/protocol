@@ -188,6 +188,7 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, Lockable {
         uint256 l2GasPrice,
         uint256 maxSubmissionCost
     ) public payable onlyOwner canRelay(chainId) nonReentrant() {
+        require(l1CallValue == msg.value, "Wrong number of ETH sent");
         _relayMessage(
             _depositContracts[chainId].messengerContract,
             l1CallValue,
