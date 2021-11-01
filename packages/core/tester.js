@@ -28,11 +28,20 @@ async function run() {
   //     availableAccounts: 1,
   //   });
 
-  const receipt = tkn.methods
-    .approve("0xe101B874431B5dc96f6d19fC1DE16eAD922D639b", 100)
-    .send({ ...gasEstimator.getCurrentFastPrice(), from: accounts[0], type: "0x2" });
-
-  console.log("receipt", receipt);
+  console.log("SENDING");
+  await web3.eth.sendTransaction(
+    {
+      from: accounts[0],
+      to: tkn.options.address,
+      type: "0x2",
+      ...gasEstimator.getCurrentFastPrice(),
+      data: tkn.methods.approve("0xe101B874431B5dc96f6d19fC1DE16eAD922D639b", 100).encodeABI(),
+    },
+    function (error, hash) {
+      console.log("error", error);
+      console.log("hash", hash);
+    }
+  );
 }
 
 function main() {
