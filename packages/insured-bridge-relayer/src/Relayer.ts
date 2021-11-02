@@ -62,77 +62,6 @@ export class Relayer {
     this.l2BlockFinder = new BlockFinder<BlockTransactionBase>(this.l2Client.l2Web3.eth.getBlock);
   }
 
-  // Evaluates given `relayableDeposit` for the `l1Token` and determines whether to submit a slow or fast relay.
-  private async _relayPendingDeposit(l1Token: string, relayableDeposit: RelayableDeposit): Promise<void> {
-    const realizedLpFeePct = await this.l1Client.calculateRealizedLpFeePctForDeposit(relayableDeposit.deposit);
-
-    const pendingRelay: Relay | undefined = this.l1Client.getRelayForDeposit(l1Token, relayableDeposit.deposit);
-    if (pendingRelay) {
-      // We need to perform some prechecks on the relay before we attempt to submit a relay. First, we need to check
-      // if the relay has expired, for if it has then we cannot do anything with it except settle it. Second, we need
-      // to check the pending relay's parameters (i.e. any data not included in the deposit hash) and verify that
-      // they are correct. If they are not then we just ignore it as a potential speedup candidate.
-      const relayExpired = await this.isRelayExpired(pendingRelay, pendingRelay.l1Token);
-      if (relayExpired.isExpired) {
-        this.logger.debug({
-          at: "InsuredBridgeRelayer#Relayer",
-          message: "Pending relay has expired, ignoring",
-          pendingRelay,
-          relayableDeposit,
-          expirationTime: relayExpired.expirationTime,
-          contractTime: relayExpired.contractTime,
-        });
-        return;
-      } else {
-        const relayDisputable = await this.isPendingRelayDisputable(
-          pendingRelay,
-          relayableDeposit.deposit,
-          realizedLpFeePct.toString()
-        );
-        if (relayDisputable.canDispute) {
-          this.logger.debug({
-            at: "InsuredBridgeRelayer#Relayer",
-            message: "Pending relay is invalid",
-            pendingRelay,
-            relayableDeposit,
-            reason: relayDisputable.reason,
-          });
-          return;
-        }
-
-        // If we reach here, then pending relay has not expired and its valid, so there is a chance we can speed it up.
-      }
-    }
-
-    // Account for profitability and bot token balance when deciding how to relay.
-    const hasInstantRelayer = this.l1Client.hasInstantRelayer(
-      relayableDeposit.deposit.l1Token,
-      relayableDeposit.deposit.depositHash,
-      realizedLpFeePct.toString()
-    );
-    // If relay cannot occur because its pending and already sped up, then exit early.
-    if (hasInstantRelayer && relayableDeposit.status == ClientRelayState.Pending) {
-      this.logger.debug({
-        at: "InsuredBridgeRelayer#Relayer",
-        message: "Relay pending and already sped up 😖",
-        realizedLpFeePct: realizedLpFeePct.toString(),
-        relayState: relayableDeposit.status,
-        hasInstantRelayer,
-        relayableDeposit,
-      });
-      return;
-    }
-    const shouldRelay = await this.shouldRelay(
-      relayableDeposit.deposit,
-      relayableDeposit.status,
-      realizedLpFeePct,
-      hasInstantRelayer
-    );
-
-    // Depending on value of `shouldRelay`, send correct type of relay.
-    await this.sendRelayTransaction(shouldRelay, realizedLpFeePct, relayableDeposit, pendingRelay, hasInstantRelayer);
-    return;
-  }
   async checkForPendingDepositsAndRelay(): Promise<void> {
     this.logger.debug({ at: "InsuredBridgeRelayer#Relayer", message: "Checking for pending deposits and relaying" });
 
@@ -173,6 +102,74 @@ export class Relayer {
           this.logger.error({
             at: "InsuredBridgeRelayer#Relayer",
             message: "Unexpected error processing deposit",
+            error,
+          });
+        }
+      }
+    }
+
+    return;
+  }
+
+  async checkForPendingRelaysAndDispute(): Promise<void> {
+    this.logger.debug({ at: "InsuredBridgeRelayer#Disputer", message: "Checking for pending relays and disputing" });
+
+    // Build dictionary of pending relays keyed by l1 token and deposit hash. We assume that getPendingRelays() filters
+    // out Finalized relays.
+    const pendingRelays: Relay[] = this.getPendingRelays();
+    if (pendingRelays.length == 0) {
+      this.logger.debug({ at: "InsuredBridgeRelayer#Disputer", message: "No pending relays" });
+      return;
+    }
+    this.logger.debug({
+      at: "InsuredBridgeRelayer#Disputer",
+      message: `Processing ${pendingRelays.length} pending relays`,
+    });
+
+    for (const relay of pendingRelays) {
+      try {
+        await this._disputePendingRelay(relay);
+      } catch (error) {
+        this.logger.error({
+          at: "InsuredBridgeRelayer#Disputer",
+          message: "Unexpected error processing relay",
+          error,
+        });
+      }
+    }
+
+    return;
+  }
+
+  async checkforSettleableRelaysAndSettle(): Promise<void> {
+    this.logger.debug({ at: "InsuredBridgeRelayer#Finalizer", message: "Checking for settleable relays and settling" });
+    for (const l1Token of this.whitelistedRelayL1Tokens) {
+      this.logger.debug({
+        at: "InsuredBridgeRelayer#Finalizer",
+        message: "Checking settleable relays for token",
+        l1Token,
+      });
+      // Either this bot is the slow relayer for this relay OR the relay is past 15 mins and is settleable by anyone.
+      const settleableRelays = this.l1Client
+        .getSettleableRelayedDepositsForL1Token(l1Token)
+        .filter(
+          (relay) =>
+            (relay.settleable === SettleableRelay.SlowRelayerCanSettle && relay.slowRelayer === this.account) ||
+            relay.settleable === SettleableRelay.AnyoneCanSettle
+        );
+
+      if (settleableRelays.length == 0) {
+        this.logger.debug({ at: "InsuredBridgeRelayer#Finalizer", message: "No settleable relays" });
+        return;
+      }
+
+      for (const settleableRelay of settleableRelays) {
+        try {
+          await this.settleRelay(this.l2Client.getDepositByHash(settleableRelay.depositHash), settleableRelay);
+        } catch (error) {
+          this.logger.error({
+            at: "InsuredBridgeRelayer#Finalizer",
+            message: "Unexpected error processing relay",
             error,
           });
         }
@@ -316,71 +313,76 @@ export class Relayer {
       return;
     }
   }
-  async checkForPendingRelaysAndDispute(): Promise<void> {
-    this.logger.debug({ at: "InsuredBridgeRelayer#Disputer", message: "Checking for pending relays and disputing" });
 
-    // Build dictionary of pending relays keyed by l1 token and deposit hash. We assume that getPendingRelays() filters
-    // out Finalized relays.
-    const pendingRelays: Relay[] = this.getPendingRelays();
-    if (pendingRelays.length == 0) {
-      this.logger.debug({ at: "InsuredBridgeRelayer#Disputer", message: "No pending relays" });
+  // Evaluates given `relayableDeposit` for the `l1Token` and determines whether to submit a slow or fast relay.
+  private async _relayPendingDeposit(l1Token: string, relayableDeposit: RelayableDeposit): Promise<void> {
+    const realizedLpFeePct = await this.l1Client.calculateRealizedLpFeePctForDeposit(relayableDeposit.deposit);
+
+    const pendingRelay: Relay | undefined = this.l1Client.getRelayForDeposit(l1Token, relayableDeposit.deposit);
+    if (pendingRelay) {
+      // We need to perform some prechecks on the relay before we attempt to submit a relay. First, we need to check
+      // if the relay has expired, for if it has then we cannot do anything with it except settle it. Second, we need
+      // to check the pending relay's parameters (i.e. any data not included in the deposit hash) and verify that
+      // they are correct. If they are not then we just ignore it as a potential speedup candidate.
+      const relayExpired = await this.isRelayExpired(pendingRelay, pendingRelay.l1Token);
+      if (relayExpired.isExpired) {
+        this.logger.debug({
+          at: "InsuredBridgeRelayer#Relayer",
+          message: "Pending relay has expired, ignoring",
+          pendingRelay,
+          relayableDeposit,
+          expirationTime: relayExpired.expirationTime,
+          contractTime: relayExpired.contractTime,
+        });
+        return;
+      } else {
+        const relayDisputable = await this.isPendingRelayDisputable(
+          pendingRelay,
+          relayableDeposit.deposit,
+          realizedLpFeePct.toString()
+        );
+        if (relayDisputable.canDispute) {
+          this.logger.debug({
+            at: "InsuredBridgeRelayer#Relayer",
+            message: "Pending relay is invalid",
+            pendingRelay,
+            relayableDeposit,
+            reason: relayDisputable.reason,
+          });
+          return;
+        }
+
+        // If we reach here, then pending relay has not expired and its valid, so there is a chance we can speed it up.
+      }
+    }
+
+    // Account for profitability and bot token balance when deciding how to relay.
+    const hasInstantRelayer = this.l1Client.hasInstantRelayer(
+      relayableDeposit.deposit.l1Token,
+      relayableDeposit.deposit.depositHash,
+      realizedLpFeePct.toString()
+    );
+    // If relay cannot occur because its pending and already sped up, then exit early.
+    if (hasInstantRelayer && relayableDeposit.status == ClientRelayState.Pending) {
+      this.logger.debug({
+        at: "InsuredBridgeRelayer#Relayer",
+        message: "Relay pending and already sped up 😖",
+        realizedLpFeePct: realizedLpFeePct.toString(),
+        relayState: relayableDeposit.status,
+        hasInstantRelayer,
+        relayableDeposit,
+      });
       return;
     }
-    this.logger.debug({
-      at: "InsuredBridgeRelayer#Disputer",
-      message: `Processing ${pendingRelays.length} pending relays`,
-    });
+    const shouldRelay = await this.shouldRelay(
+      relayableDeposit.deposit,
+      relayableDeposit.status,
+      realizedLpFeePct,
+      hasInstantRelayer
+    );
 
-    for (const relay of pendingRelays) {
-      try {
-        await this._disputePendingRelay(relay);
-      } catch (error) {
-        this.logger.error({
-          at: "InsuredBridgeRelayer#Disputer",
-          message: "Unexpected error processing relay",
-          error,
-        });
-      }
-    }
-
-    return;
-  }
-
-  async checkforSettleableRelaysAndSettle(): Promise<void> {
-    this.logger.debug({ at: "InsuredBridgeRelayer#Finalizer", message: "Checking for settleable relays and settling" });
-    for (const l1Token of this.whitelistedRelayL1Tokens) {
-      this.logger.debug({
-        at: "InsuredBridgeRelayer#Finalizer",
-        message: "Checking settleable relays for token",
-        l1Token,
-      });
-      // Either this bot is the slow relayer for this relay OR the relay is past 15 mins and is settleable by anyone.
-      const settleableRelays = this.l1Client
-        .getSettleableRelayedDepositsForL1Token(l1Token)
-        .filter(
-          (relay) =>
-            (relay.settleable === SettleableRelay.SlowRelayerCanSettle && relay.slowRelayer === this.account) ||
-            relay.settleable === SettleableRelay.AnyoneCanSettle
-        );
-
-      if (settleableRelays.length == 0) {
-        this.logger.debug({ at: "InsuredBridgeRelayer#Finalizer", message: "No settleable relays" });
-        return;
-      }
-
-      for (const settleableRelay of settleableRelays) {
-        try {
-          await this.settleRelay(this.l2Client.getDepositByHash(settleableRelay.depositHash), settleableRelay);
-        } catch (error) {
-          this.logger.error({
-            at: "InsuredBridgeRelayer#Finalizer",
-            message: "Unexpected error processing relay",
-            error,
-          });
-        }
-      }
-    }
-
+    // Depending on value of `shouldRelay`, send correct type of relay.
+    await this.sendRelayTransaction(shouldRelay, realizedLpFeePct, relayableDeposit, pendingRelay, hasInstantRelayer);
     return;
   }
 
