@@ -250,7 +250,7 @@ describe("LongShortPair", function () {
       );
 
       // Subtracting the additional appended data length should enable deployment.
-      LongShortPair.new({
+      await LongShortPair.new({
         ...constructorParams,
         enableEarlyExpiration: true,
         customAncillaryData: web3.utils.randomHex(remainingLength - "earlyExpiration: 1".length),
