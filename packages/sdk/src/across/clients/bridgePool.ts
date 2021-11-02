@@ -2,7 +2,7 @@ import assert from "assert";
 import { bridgePool } from "../../clients";
 import { BigNumber, Signer } from "ethers";
 import { toBNWei, fixedPointAdjustment, calcInterest, calcApy, fromWei, BigNumberish } from "../utils";
-import { BatchReadWithErrors } from "../../utils";
+import { BatchReadWithErrors, loop } from "../../utils";
 import Multicall2 from "../../multicall2";
 import TransactionManager from "../transactionManager";
 import { TransactionRequest, TransactionReceipt, Provider } from "@ethersproject/abstract-provider";
@@ -21,6 +21,7 @@ export type Awaited<T> = T extends PromiseLike<infer U> ? U : T;
 
 export type Config = {
   multicall2Address: string;
+  confirmations?: number;
 };
 export type Dependencies = {
   provider: Provider;
@@ -45,7 +46,7 @@ export type User = {
 };
 export type Transaction = {
   id: string;
-  state: "requested" | "submitted" | "mined";
+  state: "requested" | "submitted" | "mined" | "error";
   toAddress: string;
   fromAddress: string;
   type: "Add Liquidity" | "Remove Liquidity";
@@ -53,6 +54,7 @@ export type Transaction = {
   request?: TransactionRequest;
   hash?: string;
   receipt?: TransactionReceipt;
+  error?: Error;
 };
 export type Token = {
   decimals: string;
@@ -63,6 +65,7 @@ export type State = {
   pools: Record<string, Pool>;
   users: Record<string, Record<string, User>>;
   transactions: Record<string, Transaction>;
+  error?: Error;
 };
 export type EmitState = (path: string[], data: any) => void;
 
@@ -99,20 +102,12 @@ class PoolEventState {
     private startBlock = 0,
     private state: bridgePool.EventState = bridgePool.eventStateDefaults()
   ) {}
-  public async read(endBlock: number, user?: string) {
+  public async read(endBlock: number) {
     if (endBlock <= this.startBlock) return this.state;
     const events = (
       await Promise.all([
-        ...(await this.contract.queryFilter(
-          this.contract.filters.LiquidityAdded(undefined, undefined, user),
-          this.startBlock,
-          endBlock
-        )),
-        ...(await this.contract.queryFilter(
-          this.contract.filters.LiquidityRemoved(undefined, undefined, user),
-          this.startBlock,
-          endBlock
-        )),
+        ...(await this.contract.queryFilter(this.contract.filters.LiquidityAdded(), this.startBlock, endBlock)),
+        ...(await this.contract.queryFilter(this.contract.filters.LiquidityRemoved(), this.startBlock, endBlock)),
       ])
     ).sort((a, b) => {
       if (a.blockNumber < b.blockNumber) return -1;
@@ -183,23 +178,6 @@ function joinUserState(
     feesEarned: feesEarned.toString(),
   };
 }
-export class ReadUserClient {
-  private poolEventState: PoolEventState;
-  private userState: UserState;
-  constructor(private contract: bridgePool.Instance, private user: string) {
-    this.poolEventState = new PoolEventState(this.contract);
-    this.userState = new UserState(this.contract);
-  }
-  public async read(latestBlock: number) {
-    const eventState = await this.poolEventState.read(latestBlock, this.user);
-    const userState = await this.userState.read(this.user);
-    return {
-      eventState,
-      userState,
-    };
-  }
-}
-
 function joinPoolState(poolState: Awaited<ReturnType<PoolState["read"]>>): Pool {
   const totalPoolSize = poolState.liquidReserves.add(poolState.pendingReserves).add(poolState.utilizedReserves);
   const estimatedApy = calculateApy(poolState.exchangeRateCurrent, poolState.exchangeRatePrevious);
@@ -247,7 +225,7 @@ export class Client {
   private state: State = { pools: {}, users: {}, transactions: {} };
   private batchRead: ReturnType<typeof BatchReadWithErrors>;
   private poolEvents: Record<string, PoolEventState> = {};
-  // private batchRead:BatchReadWithErrorsType
+  private intervalStarted = false;
   constructor(private config: Config, private deps: Dependencies, private emit: EmitState) {
     this.multicall = new Multicall2(config.multicall2Address, deps.provider);
     this.batchRead = BatchReadWithErrors(this.multicall);
@@ -265,18 +243,30 @@ export class Client {
   }
   private getOrCreateTransactionManager(signer: Signer, address: string) {
     if (this.transactionManagers[address]) return this.transactionManagers[address];
-    const txman = TransactionManager(signer, (event, id, data) => {
-      if (event === "requested") {
-        this.emit(["transactions", id], this.state.transactions[id]);
-      }
+    const txman = TransactionManager({ confirmations: this.config.confirmations }, signer, (event, id, data) => {
       if (event === "submitted") {
         this.state.transactions[id].state = event;
         this.state.transactions[id].hash = data as string;
         this.emit(["transactions", id], { ...this.state.transactions[id] });
       }
       if (event === "mined") {
+        const txReceipt = data as TransactionReceipt;
         this.state.transactions[id].state = event;
-        this.state.transactions[id].receipt = data as TransactionReceipt;
+        this.state.transactions[id].receipt = txReceipt;
+        this.emit(["transactions", id], { ...this.state.transactions[id] });
+        // trigger pool and user update for a known mined transaction
+        const tx = this.state.transactions[id];
+        this.updatePool(tx.toAddress)
+          .then(() => {
+            return this.updateUser(tx.fromAddress, tx.toAddress);
+          })
+          .catch((err) => {
+            this.emit(["error"], err);
+          });
+      }
+      if (event === "error") {
+        this.state.transactions[id].state = event;
+        this.state.transactions[id].error = data as Error;
         this.emit(["transactions", id], { ...this.state.transactions[id] });
       }
     });
@@ -300,7 +290,7 @@ export class Client {
       description: `Adding ETH to pool`,
       request,
     };
-
+    this.emit(["transactions", id], { ...this.state.transactions[id] });
     await txman.update();
     return id;
   }
@@ -322,6 +312,7 @@ export class Client {
       request,
     };
 
+    this.emit(["transactions", id], { ...this.state.transactions[id] });
     await txman.update();
     return id;
   }
@@ -355,6 +346,7 @@ export class Client {
       request,
     };
 
+    this.emit(["transactions", id], { ...this.state.transactions[id] });
     await txman.update();
     return id;
   }
@@ -376,6 +368,7 @@ export class Client {
       description: `Withdrawing Eth from pool`,
       request,
     };
+    this.emit(["transactions", id], { ...this.state.transactions[id] });
     await txman.update();
     return id;
   }
@@ -404,7 +397,6 @@ export class Client {
     }
     const poolState = this.getPool(poolAddress);
     const latestBlock = (await this.deps.provider.getBlock("latest")).number;
-    // const userClient = new ReadUserClient(contract,userAddress)
     const getUserState = new UserState(contract);
     const getPoolEventState = this.getOrCreatePoolEvents(poolAddress);
     const userState = await getUserState.read(userAddress);
@@ -422,7 +414,26 @@ export class Client {
   }
   async updateTransactions() {
     for (const txMan of Object.values(this.transactionManagers)) {
-      await txMan.update();
+      try {
+        await txMan.update();
+      } catch (err) {
+        this.emit(["error"], err);
+      }
     }
+  }
+  // starts transaction checking intervals, defaults to 30 seconds
+  async startInterval(delayMs = 30000) {
+    assert(!this.intervalStarted, "Interval already started, try stopping first");
+    this.intervalStarted = true;
+    loop(async () => {
+      assert(this.intervalStarted, "Bridgepool Interval Stopped");
+      await this.updateTransactions();
+    }, delayMs).catch((err) => {
+      this.emit(["error"], err);
+    });
+  }
+  // starts transaction checking intervals
+  async stopInterval() {
+    this.intervalStarted = false;
   }
 }
