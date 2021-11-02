@@ -34,7 +34,7 @@ import type { Logger } from "winston";
 import { NetworkerInterface } from "./Networker";
 import { PriceFeedInterface } from "./PriceFeedInterface";
 import { isDefined } from "../types";
-import { InsuredBridgeL1Client, InsuredBridgeL2Client, getL2DepositBoxAddress } from "..";
+import { InsuredBridgeL1Client, InsuredBridgeL2Client } from "..";
 import type { BlockTransactionBase } from "web3-eth";
 
 interface Block {
@@ -504,7 +504,7 @@ export async function createPriceFeed(
     const l2Client = new InsuredBridgeL2Client(
       logger,
       l2Web3,
-      await getL2DepositBoxAddress(providedWeb3, config.l2NetId, config.bridgeAdminAddress),
+      await l1Client.getL2DepositBoxAddress(config.l2NetId),
       config.l2NetId,
       currentL2Block - l2BlockLookback
     );
