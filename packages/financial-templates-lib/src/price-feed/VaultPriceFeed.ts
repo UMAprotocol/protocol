@@ -6,9 +6,7 @@ import type { Logger } from "winston";
 import Web3 from "web3";
 import { VaultInterfaceWeb3, HarvestVaultInterfaceWeb3 } from "@uma/contracts-frontend";
 import { BN, Abi } from "../types";
-
-const _blockFinderWorkaround = (web3: Web3) => BlockFinder((number: number | string) => web3.eth.getBlock(number));
-type BlockFinder = ReturnType<typeof _blockFinderWorkaround>;
+import { BlockTransactionBase } from "web3-eth";
 
 interface Params {
   logger: Logger;
@@ -17,7 +15,7 @@ interface Params {
   web3: Web3;
   vaultAddress: string;
   getTime: () => Promise<number>;
-  blockFinder: BlockFinder;
+  blockFinder: BlockFinder<BlockTransactionBase>;
   minTimeBetweenUpdates?: number;
   priceFeedDecimals?: number;
 }
@@ -31,7 +29,7 @@ export abstract class VaultPriceFeedBase extends PriceFeedInterface {
   private readonly getTime: () => Promise<number>;
   private readonly priceFeedDecimals: number;
   private readonly minTimeBetweenUpdates: number;
-  private readonly blockFinder: BlockFinder;
+  private readonly blockFinder: BlockFinder<BlockTransactionBase>;
   private cachedConvertDecimalsFn: ReturnType<typeof ConvertDecimals> | null = null;
   private price: BN | null = null;
   private lastUpdateTime: number | null = null;
@@ -82,7 +80,7 @@ export abstract class VaultPriceFeedBase extends PriceFeedInterface {
     this.getTime = getTime;
     this.priceFeedDecimals = priceFeedDecimals;
     this.minTimeBetweenUpdates = minTimeBetweenUpdates;
-    this.blockFinder = blockFinder || BlockFinder((number: number | string) => web3.eth.getBlock(number));
+    this.blockFinder = blockFinder || new BlockFinder<BlockTransactionBase>(web3.eth.getBlock);
   }
 
   public getCurrentPrice(): BN | null {

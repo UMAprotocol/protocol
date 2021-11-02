@@ -119,7 +119,7 @@ export class BasketSpreadPriceFeed extends PriceFeedInterface {
     }
   }
 
-  public async getHistoricalPrice(time: number, ancillaryData: string, verbose = false) {
+  public async getHistoricalPrice(time: number, ancillaryData: string, verbose = false): Promise<BN | null> {
     // If failure to fetch any constituent historical prices, then throw
     // array of errors.
     const errors: any[] = [];
@@ -158,7 +158,7 @@ export class BasketSpreadPriceFeed extends PriceFeedInterface {
   // This searches for closest time in a list of [[time,price]] data. Based on code in affiliates models/prices.
   // input list is [[time,price]]
   // output price as BN
-  public closestTime(list: [time: number, price: string | number | BN][]) {
+  public closestTime(list: [time: number, price: string | number | BN][]): (time: number) => BN {
     return (time: number) => {
       const result = list.reduce((a, b) => {
         const aDiff = Math.abs(a[0] - time);

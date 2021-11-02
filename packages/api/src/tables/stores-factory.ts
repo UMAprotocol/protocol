@@ -1,6 +1,6 @@
 import { Datastore } from "@google-cloud/datastore";
 import { tables, stores } from "@uma/sdk";
-import { empStats, empStatsHistory, lsps, appStats } from ".";
+import { empStats, empStatsHistory, lsps, appStats, registeredContracts, addresses, priceSamples, tvl } from ".";
 
 const { GoogleDatastore } = stores;
 
@@ -20,5 +20,15 @@ export default function StoresFactory(datastoreClient: Datastore) {
     lspsActive: GoogleDatastore<string, lsps.Data>("Active Lsp", datastoreClient),
     lspsExpired: GoogleDatastore<string, lsps.Data>("Expired Lsp", datastoreClient),
     appStats: GoogleDatastore<number, appStats.Data>("App Stats", datastoreClient),
+    registeredEmps: GoogleDatastore<string, registeredContracts.Data>("Registered Emps", datastoreClient),
+    registeredLsps: GoogleDatastore<string, registeredContracts.Data>("Registered Lsps", datastoreClient),
+    collateralAddresses: GoogleDatastore<string, addresses.Data>("Collateral Addresses", datastoreClient),
+    syntheticAddresses: GoogleDatastore<string, addresses.Data>("Synthetic Addresses", datastoreClient),
+    longAddresses: GoogleDatastore<string, addresses.Data>("Long Addresses", datastoreClient),
+    shortAddresses: GoogleDatastore<string, addresses.Data>("Short Addresses", datastoreClient),
+    latestUsdPrices: GoogleDatastore<string, priceSamples.Data>("Latest Usd Prices", datastoreClient),
+    latestSynthPrices: GoogleDatastore<string, priceSamples.Data>("Latest Synth Prices", datastoreClient),
+    latestUsdcMarketPrices: GoogleDatastore<string, priceSamples.Data>("Latest USDC Market Prices", datastoreClient),
+    globalUsdLatestTvl: GoogleDatastore<number, tvl.Data>("Latest Usd Global Tvl", datastoreClient),
   };
 }

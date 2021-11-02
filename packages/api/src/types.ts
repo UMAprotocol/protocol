@@ -1,7 +1,18 @@
 import type uma from "@uma/sdk";
 import type { ethers } from "ethers";
-import type { empStats, empStatsHistory, lsps, appStats } from "./tables";
+import type {
+  empStats,
+  empStatsHistory,
+  lsps,
+  appStats,
+  registeredContracts,
+  addresses,
+  priceSamples,
+  tvl,
+} from "./tables";
 import type Zrx from "./libs/zrx";
+import type * as services from "./services";
+
 export type { Channels } from "./services/express-channels";
 
 export type EmpState = uma.tables.emps.Data;
@@ -32,8 +43,6 @@ export type CurrencySymbol = "usd";
 export type PriceSample = [timestamp: number, price: string];
 // These are library dependencies to all services
 export type AppState = {
-  coingecko: uma.Coingecko;
-  zrx: Zrx;
   emps: {
     active: uma.tables.emps.Table;
     expired: uma.tables.emps.Table;
@@ -44,18 +53,14 @@ export type AppState = {
   };
   prices: {
     usd: {
-      latest: {
-        [key: string]: PriceSample;
-      };
+      latest: priceSamples.Table;
       history: {
         [key: string]: uma.tables.historicalPrices.Table;
       };
     };
   };
   synthPrices: {
-    latest: {
-      [empAddress: string]: PriceSample;
-    };
+    latest: priceSamples.Table;
     history: {
       [empAddress: string]: uma.tables.historicalPrices.Table;
     };
@@ -63,7 +68,7 @@ export type AppState = {
   marketPrices: {
     // note this is in usdc since these are fetched from amms using usdc as the quote currency
     usdc: {
-      latest: { [tokenAddress: string]: PriceSample };
+      latest: priceSamples.Table;
       history: empStatsHistory.Table;
     };
   };
@@ -95,7 +100,7 @@ export type AppState = {
     global: {
       usd: {
         latest: {
-          tvl: PriceSample;
+          tvl: tvl.Table;
         };
         history: {
           tvl: empStatsHistory.Table;
@@ -103,20 +108,38 @@ export type AppState = {
       };
     };
   };
-  registeredEmps: Set<string>;
-  registeredEmpsMetadata: Map<string, { blockNumber: number }>;
-  registeredLsps: Set<string>;
-  registeredLspsMetadata: Map<string, { blockNumber: number }>;
-  provider: Provider;
-  web3: Web3;
-  lastBlockUpdate: number;
-  collateralAddresses: Set<string>;
-  syntheticAddresses: Set<string>;
-  longAddresses: Set<string>;
-  shortAddresses: Set<string>;
-  multicall2: uma.Multicall2;
+  registeredEmps: registeredContracts.Table;
+  registeredLsps: registeredContracts.Table;
+  appStats: appStats.Table;
+  collateralAddresses: addresses.Table;
+  syntheticAddresses: addresses.Table;
+  longAddresses: addresses.Table;
+  shortAddresses: addresses.Table;
 };
 
-export type DatastoreAppState = AppState & {
-  appStats: appStats.Table;
+export type AppClients = {
+  coingecko: uma.Coingecko;
+  zrx: Zrx;
+  multicall2: uma.Multicall2;
+  provider: Provider;
+  web3: Web3;
+};
+
+export type AppServices = {
+  registry: services.Registry;
+  lspCreator: services.LspCreator;
+  emps: services.EmpState;
+  lsps: services.LspState;
+  erc20s: services.Erc20s;
+  collateralPrices: services.CollateralPrices;
+  syntheticPrices: services.SyntheticPrices;
+  marketPrices: services.MarketPrices;
+  empStats: services.stats.Emp;
+  lspStats: services.stats.Lsp;
+  globalStats: services.stats.Global;
+};
+
+export type OrchestratorServices = {
+  contracts: services.Contracts;
+  prices: services.Prices;
 };

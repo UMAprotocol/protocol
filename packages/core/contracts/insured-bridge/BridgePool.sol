@@ -13,9 +13,9 @@ import "../common/implementation/AncillaryData.sol";
 import "../common/implementation/Testable.sol";
 import "../common/implementation/FixedPoint.sol";
 import "../common/implementation/Lockable.sol";
-import "../common/implementation/ExpandedERC20.sol";
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 
@@ -33,10 +33,15 @@ interface WETH9Like {
  * to post collateral by earning a fee per fulfilled deposit order.
  * @dev A "Deposit" is an order to send capital from L2 to L1, and a "Relay" is a fulfillment attempt of that order.
  */
-contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
+contract BridgePool is Testable, BridgePoolInterface, ERC20, Lockable {
     using SafeERC20 for IERC20;
     using FixedPoint for FixedPoint.Unsigned;
     using Address for address;
+
+    // Useful for clients to know if any quote times are for a time prior to the contract's deployment. These
+    // deposits will be impossible to compute realized LP fee % for since there will be no utilization at that quote
+    // time. Therefore, clients need to deal with this special case.
+    uint32 public deploymentTimestamp;
 
     // Token that this contract receives as LP deposits.
     IERC20 public override l1Token;
@@ -132,22 +137,11 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
     // to determine if there was a valid instant relayer.
     mapping(bytes32 => address) public instantRelays;
 
-    event LiquidityAdded(
-        address indexed token,
-        uint256 amount,
-        uint256 lpTokensMinted,
-        address indexed liquidityProvider
-    );
-    event LiquidityRemoved(
-        address indexed token,
-        uint256 amount,
-        uint256 lpTokensBurnt,
-        address indexed liquidityProvider
-    );
+    event LiquidityAdded(uint256 amount, uint256 lpTokensMinted, address indexed liquidityProvider);
+    event LiquidityRemoved(uint256 amount, uint256 lpTokensBurnt, address indexed liquidityProvider);
     event DepositRelayed(
         bytes32 indexed depositHash,
         DepositData depositData,
-        address l1Token,
         RelayData relay,
         bytes32 relayAncillaryDataHash
     );
@@ -161,11 +155,6 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
     event RelaySettled(bytes32 indexed depositHash, address indexed caller, RelayData relay);
     event BridgePoolAdminTransferred(address oldAdmin, address newAdmin);
 
-    modifier onlyFromOptimisticOracle() {
-        require(msg.sender == address(optimisticOracle), "Caller must be OptimisticOracle");
-        _;
-    }
-
     /**
      * @notice Construct the Bridge Pool.
      * @param _lpTokenName Name of the LP token to be deployed by this contract.
@@ -173,6 +162,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
      * @param _bridgeAdmin Admin contract deployed alongside on L1. Stores global variables and has owner control.
      * @param _l1Token Address of the L1 token that this bridgePool holds. This is the token LPs deposit and is bridged.
      * @param _lpFeeRatePerSecond Interest rate payment that scales the amount of pending fees per second paid to LPs.
+     * @param _isWethPool Toggles if this is the WETH pool. If it is then can accept ETH and wrap to WETH for the user.
      * @param _timer Timer used to synchronize contract time in testing. Set to 0x000... in production.
      */
     constructor(
@@ -183,13 +173,14 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
         uint64 _lpFeeRatePerSecond,
         bool _isWethPool,
         address _timer
-    ) Testable(_timer) ExpandedERC20(_lpTokenName, _lpTokenSymbol, 18) {
+    ) Testable(_timer) ERC20(_lpTokenName, _lpTokenSymbol) {
         require(bytes(_lpTokenName).length != 0 && bytes(_lpTokenSymbol).length != 0, "Bad LP token name or symbol");
         bridgeAdmin = BridgeAdminInterface(_bridgeAdmin);
         l1Token = IERC20(_l1Token);
         lastLpFeeUpdate = uint32(getCurrentTime());
         lpFeeRatePerSecond = _lpFeeRatePerSecond;
         isWethPool = _isWethPool;
+        deploymentTimestamp = lastLpFeeUpdate;
 
         syncUmaEcosystemParams(); // Fetch OptimisticOracle and Store addresses and L1Token finalFee.
         syncWithBridgeAdminParams(); // Fetch ProposerBondPct OptimisticOracleLiveness, Identifier from the BridgeAdmin.
@@ -200,7 +191,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
      *************************************************/
 
     /**
-     * @notice Add liquidity to the bridge pool. Pulls l1Token from the callers wallet. The caller is sent back a
+     * @notice Add liquidity to the bridge pool. Pulls l1Token from the caller's wallet. The caller is sent back a
      * commensurate number of LP tokens (minted to their address) at the prevailing exchange rate.
      * @dev The caller must approve this contract to transfer `l1TokenAmount` amount of l1Token if depositing ERC20.
      * @dev The caller can deposit ETH which is auto wrapped to WETH. This can only be done if: a) this is the Weth pool
@@ -208,47 +199,46 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
      * @dev Reentrancy guard not added to this function because this indirectly calls sync() which is guarded.
      * @param l1TokenAmount Number of l1Token to add as liquidity.
      */
-    function addLiquidity(uint256 l1TokenAmount) public payable {
+    function addLiquidity(uint256 l1TokenAmount) public payable nonReentrant() {
         // If this is the weth pool and the caller sends msg.value then the msg.value must match the l1TokenAmount.
         // Else, msg.value must be set to 0.
         require((isWethPool && msg.value == l1TokenAmount) || msg.value == 0, "Bad add liquidity Eth value");
 
+        // Since `exchangeRateCurrent()` reads this contract's balance and updates contract state using it,
+        // we must call it first before transferring any tokens to this contract.
+        uint256 lpTokensToMint = (l1TokenAmount * 1e18) / _exchangeRateCurrent();
+        _mint(msg.sender, lpTokensToMint);
+        liquidReserves += l1TokenAmount;
+
         if (msg.value > 0 && isWethPool) WETH9Like(address(l1Token)).deposit{ value: msg.value }();
         else l1Token.safeTransferFrom(msg.sender, address(this), l1TokenAmount);
 
-        uint256 lpTokensToMint = (l1TokenAmount * 1e18) / exchangeRateCurrent();
-
-        _mint(msg.sender, lpTokensToMint);
-
-        liquidReserves += l1TokenAmount;
-
-        emit LiquidityAdded(address(l1Token), l1TokenAmount, lpTokensToMint, msg.sender);
+        emit LiquidityAdded(l1TokenAmount, lpTokensToMint, msg.sender);
     }
 
     /**
-     * @notice Removes liquidity to the bridge pool. Burns lpTokenAmount LP tokens from the callers wallet. The caller
+     * @notice Removes liquidity from the bridge pool. Burns lpTokenAmount LP tokens from the caller's wallet. The caller
      * is sent back a commensurate number of l1Tokens at the prevailing exchange rate.
      * @dev The caller does not need to approve the spending of LP tokens as this method directly uses the burn logic.
      * @dev Reentrancy guard not added to this function because this indirectly calls sync() which is guarded.
      * @param lpTokenAmount Number of lpTokens to redeem for underlying.
      * @param sendEth Enable the liquidity provider to remove liquidity in ETH, if this is the WETH pool.
      */
-    function removeLiquidity(uint256 lpTokenAmount, bool sendEth) public {
+    function removeLiquidity(uint256 lpTokenAmount, bool sendEth) public nonReentrant() {
         // Can only send eth on withdrawing liquidity iff this is the WETH pool.
         require(!sendEth || isWethPool, "Cant send eth");
-        uint256 l1TokensToReturn = (lpTokenAmount * exchangeRateCurrent()) / 1e18;
+        uint256 l1TokensToReturn = (lpTokenAmount * _exchangeRateCurrent()) / 1e18;
 
         // Check that there is enough liquid reserves to withdraw the requested amount.
         require(liquidReserves >= (pendingReserves + l1TokensToReturn), "Utilization too high to remove");
 
         _burn(msg.sender, lpTokenAmount);
-
         liquidReserves -= l1TokensToReturn;
 
         if (sendEth) _unwrapWETHTo(payable(msg.sender), l1TokensToReturn);
         else l1Token.safeTransfer(msg.sender, l1TokensToReturn);
 
-        emit LiquidityRemoved(address(l1Token), l1TokensToReturn, lpTokenAmount, msg.sender);
+        emit LiquidityRemoved(l1TokensToReturn, lpTokenAmount, msg.sender);
     }
 
     /**************************************
@@ -263,18 +253,23 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
      * @dev Caller must have approved this contract to spend the total bond + amount - fees for `l1Token`.
      * @param depositData the deposit data struct containing all the user's deposit information.
      * @param realizedLpFeePct LP fee calculated off-chain considering the L1 pool liquidity at deposit time, before
-     *      quoteTimestamp. The OO acts to verify the correctness of this realized fee. Can not exceed 50%.
+     *      quoteTimestamp. The OO acts to verify the correctness of this realized fee. Cannot exceed 50%.
      */
     function relayAndSpeedUp(DepositData memory depositData, uint64 realizedLpFeePct) public nonReentrant() {
+        // If deposit quote time is before this contract's deployment, then clients will not be able to compute
+        // a realized LP fee %, so we should block such relays.
+        require(depositData.quoteTimestamp >= deploymentTimestamp, "Deposit before deployment");
+
         // If no pending relay for this deposit, then associate the caller's relay attempt with it.
         uint32 priceRequestTime = uint32(getCurrentTime());
 
         // The realizedLPFeePct should never be greater than 0.5e18 and the slow and instant relay fees should never be
         // more than 0.25e18 each. Therefore, the sum of all fee types can never exceed 1e18 (or 100%).
         require(
-            depositData.slowRelayFeePct < 0.25e18 &&
-                depositData.instantRelayFeePct < 0.25e18 &&
-                realizedLpFeePct < 0.5e18
+            depositData.slowRelayFeePct <= 0.25e18 &&
+                depositData.instantRelayFeePct <= 0.25e18 &&
+                realizedLpFeePct <= 0.5e18,
+            "Invalid fees"
         );
 
         // Check if there is a pending relay for this deposit.
@@ -311,10 +306,8 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
 
         // Sanity check that pool has enough balance to cover relay amount + proposer reward. Reward amount will be
         // paid on settlement after the OptimisticOracle price request has passed the challenge period.
-        require(
-            l1Token.balanceOf(address(this)) - bonds >= depositData.amount && liquidReserves >= depositData.amount,
-            "Insufficient pool balance"
-        );
+        // Note: liquidReserves should always be <= balance - bonds.
+        require(liquidReserves - pendingReserves >= depositData.amount, "Insufficient pool balance");
 
         // Compute total proposal bond and pull from caller so that the OptimisticOracle can pull it from here.
         uint256 totalBond = proposerBond + l1TokenFinalFee;
@@ -329,12 +322,12 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
         // If the L1 token is WETH then: a) pull WETH from instant relayer b) unwrap WETH c) send ETH to recipient.
         uint256 recipientAmount = depositData.amount - feesTotal;
 
-        l1Token.safeTransferFrom(msg.sender, address(this), recipientAmount + totalBond);
         bonds += totalBond;
-
         pendingReserves += depositData.amount; // Book off maximum liquidity used by this relay in the pending reserves.
 
         instantRelays[instantRelayHash] = msg.sender;
+
+        l1Token.safeTransferFrom(msg.sender, address(this), recipientAmount + totalBond);
 
         // If this is a weth pool then unwrap and send eth.
         if (isWethPool) {
@@ -342,7 +335,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
             // Else, this is a normal ERC20 token. Send to recipient.
         } else l1Token.safeTransfer(depositData.l1Recipient, recipientAmount);
 
-        emit DepositRelayed(depositHash, depositData, address(l1Token), relayData, relayHash);
+        emit DepositRelayed(depositHash, depositData, relayData, relayHash);
         emit RelaySpedUp(depositHash, msg.sender, relayData);
     }
 
@@ -389,15 +382,20 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
      * @dev Caller must have approved this contract to spend the total bond + amount - fees for `l1Token`.
      * @param depositData the deposit data struct containing all the user's deposit information.
      * @param realizedLpFeePct LP fee calculated off-chain considering the L1 pool liquidity at deposit time, before
-     *      quoteTimestamp. The OO acts to verify the correctness of this realized fee. Can not exceed 50%.
+     *      quoteTimestamp. The OO acts to verify the correctness of this realized fee. Cannot exceed 50%.
      */
     function relayDeposit(DepositData memory depositData, uint64 realizedLpFeePct) public nonReentrant() {
+        // If deposit quote time is before this contract's deployment, then clients will not be able to compute
+        // a realized LP fee %, so we should block such relays.
+        require(depositData.quoteTimestamp >= deploymentTimestamp, "Deposit before deployment");
+
         // The realizedLPFeePct should never be greater than 0.5e18 and the slow and instant relay fees should never be
         // more than 0.25e18 each. Therefore, the sum of all fee types can never exceed 1e18 (or 100%).
         require(
-            depositData.slowRelayFeePct < 0.25e18 &&
-                depositData.instantRelayFeePct < 0.25e18 &&
-                realizedLpFeePct < 0.5e18
+            depositData.slowRelayFeePct <= 0.25e18 &&
+                depositData.instantRelayFeePct <= 0.25e18 &&
+                realizedLpFeePct <= 0.5e18,
+            "Invalid fees"
         );
 
         // Check if there is a pending relay for this deposit.
@@ -431,19 +429,16 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
 
         // Sanity check that pool has enough balance to cover relay amount + proposer reward. Reward amount will be
         // paid on settlement after the OptimisticOracle price request has passed the challenge period.
-        require(
-            l1Token.balanceOf(address(this)) - bonds >= depositData.amount && liquidReserves >= depositData.amount,
-            "Insufficient pool balance"
-        );
+        // Note: liquidReserves should always be <= balance - bonds.
+        require(liquidReserves - pendingReserves >= depositData.amount, "Insufficient pool balance");
 
         // Compute total proposal bond and pull from caller so that the OptimisticOracle can pull it from here.
         uint256 totalBond = proposerBond + l1TokenFinalFee;
-        l1Token.safeTransferFrom(msg.sender, address(this), totalBond);
-
         pendingReserves += depositData.amount; // Book off maximum liquidity used by this relay in the pending reserves.
         bonds += totalBond;
 
-        emit DepositRelayed(depositHash, depositData, address(l1Token), relayData, relayHash);
+        l1Token.safeTransferFrom(msg.sender, address(this), totalBond);
+        emit DepositRelayed(depositHash, depositData, relayData, relayHash);
     }
 
     /**
@@ -535,7 +530,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
         // At this point there are two possible cases:
         // - This was a slow relay: In this case, a) pay the slow relayer their reward and b) pay the l1Recipient of the
         //      amount minus the realized LP fee and the slow Relay fee. The transfer was not sped up so no instant fee.
-        // - This was a instant relay: In this case, a) pay the slow relayer their reward and b) pay the instant relayer
+        // - This was an instant relay: In this case, a) pay the slow relayer their reward and b) pay the instant relayer
         //      the full bridging amount, minus the realized LP fee and minus the slow relay fee. When the instant
         //      relayer called speedUpRelay they were docked this same amount, minus the instant relayer fee. As a
         //      result, they are effectively paid what they spent when speeding up the relay + the instantRelayFee.
@@ -580,8 +575,8 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
         liquidReserves -= totalReservesSent;
         utilizedReserves += int256(totalReservesSent);
         bonds -= totalBond;
-        updateAccumulatedLpFees();
-        allocateLpFees(_getAmountFromPct(relayData.realizedLpFeePct, depositData.amount));
+        _updateAccumulatedLpFees();
+        _allocateLpFees(_getAmountFromPct(relayData.realizedLpFeePct, depositData.amount));
 
         emit RelaySettled(depositHash, msg.sender, relayData);
 
@@ -595,34 +590,15 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
      * at the conclusion of an L2 -> L1 token transfer via the canonical token bridge.
      */
     function sync() public nonReentrant() {
-        // Check if the l1Token balance of the contract is greater than the liquidReserves. If it is then the bridging
-        // action from L2 -> L1 has concluded and the local accounting can be updated.
-        uint256 l1TokenBalance = l1Token.balanceOf(address(this)) - bonds;
-        if (l1TokenBalance > liquidReserves) {
-            // utilizedReserves can go to less than zero. This will happen if the accumulated fees exceeds the current
-            // outstanding utilization. In other words, if outstanding bridging transfers are 0 then utilizedReserves
-            // will equal the total LP fees accumulated over all time.
-            utilizedReserves -= int256(l1TokenBalance - liquidReserves);
-            liquidReserves = l1TokenBalance;
-        }
+        _sync();
     }
 
     /**
      * @notice Computes the exchange rate between LP tokens and L1Tokens. Used when adding/removing liquidity.
      * @return The updated exchange rate between LP tokens and L1 tokens.
      */
-    function exchangeRateCurrent() public returns (uint256) {
-        if (totalSupply() == 0) return 1e18; // initial rate is 1 pre any mint action.
-
-        // First, update fee counters and local accounting of finalized transfers from L2 -> L1.
-        updateAccumulatedLpFees(); // Accumulate all allocated fees from the last time this method was called.
-        sync(); // Fetch any balance changes due to token bridging finalization and factor them in.
-
-        // ExchangeRate := (liquidReserves + utilizedReserves - undistributedLpFees) / lpTokenSupply
-        uint256 numerator = liquidReserves - undistributedLpFees;
-        if (utilizedReserves > 0) numerator += uint256(utilizedReserves);
-        else numerator -= uint256(utilizedReserves * -1);
-        return (numerator * 1e18) / totalSupply();
+    function exchangeRateCurrent() public nonReentrant() returns (uint256) {
+        return _exchangeRateCurrent();
     }
 
     /**
@@ -630,8 +606,8 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
      * @dev Used in computing realizedLpFeePct off-chain.
      * @return The current utilization ratio.
      */
-    function liquidityUtilizationCurrent() public returns (uint256) {
-        return liquidityUtilizationPostRelay(0);
+    function liquidityUtilizationCurrent() public nonReentrant() returns (uint256) {
+        return _liquidityUtilizationPostRelay(0);
     }
 
     /**
@@ -640,28 +616,23 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
      * @param relayedAmount Size of the relayed deposit to factor into the utilization calculation.
      * @return The updated utilization ratio accounting for a new `relayedAmount`.
      */
-    function liquidityUtilizationPostRelay(uint256 relayedAmount) public returns (uint256) {
-        sync(); // Fetch any balance changes due to token bridging finalization and factor them in.
+    function liquidityUtilizationPostRelay(uint256 relayedAmount) public nonReentrant() returns (uint256) {
+        return _liquidityUtilizationPostRelay(relayedAmount);
+    }
 
-        // The liquidity utilization ratio is the ratio of utilized liquidity (pendingReserves + relayedAmount
-        // +utilizedReserves) divided by the liquid reserves.
-        int256 numerator = int256(pendingReserves + relayedAmount);
-        numerator += utilizedReserves;
-
-        // The numerator could be less than zero iff pending reserves is zero, relayed amount is zero and utilizedReserves
-        // is negative. This could happen if tokens are sent to the bridge after deployment without any relays yet
-        // having happened.
-        if (numerator < 0) return 0;
-
-        // There are two cases where liquid reserves could be zero. Handle accordingly to avoid division by zero:
-        // a) the pool is new and there no funds in it nor any bridging actions have happened. In this case the
-        // numerator is 0 and liquid reserves are 0. The utilization is therefore 0.
-        if (numerator == 0 && liquidReserves == 0) return 0;
-        // b) the numerator is more than 0 and the liquid reserves are 0. in this case, The pool is at 100% utilization.
-        if (numerator > 0 && liquidReserves == 0) return 1e18;
-
-        // In all other cases, return the utilization ratio.
-        return (uint256(numerator) * 1e18) / liquidReserves;
+    /**
+     * @notice Return both the current utilization value and liquidity utilization post the relay.
+     * @dev Used in computing realizedLpFeePct off-chain.
+     * @param relayedAmount Size of the relayed deposit to factor into the utilization calculation.
+     * @return utilizationCurrent The current utilization ratio.
+     * @return utilizationPostRelay The updated utilization ratio accounting for a new `relayedAmount`.
+     */
+    function getLiquidityUtilization(uint256 relayedAmount)
+        public
+        nonReentrant()
+        returns (uint256 utilizationCurrent, uint256 utilizationPostRelay)
+    {
+        return (_liquidityUtilizationPostRelay(0), _liquidityUtilizationPostRelay(relayedAmount));
     }
 
     /**
@@ -670,7 +641,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
      * @dev There is no risk of leaving this function public for anyone to call as in all cases we want the addresses
      * in this contract to map to the latest version in the Finder and store the latest final fee.
      */
-    function syncUmaEcosystemParams() public {
+    function syncUmaEcosystemParams() public nonReentrant() {
         FinderInterface finder = FinderInterface(bridgeAdmin.finder());
         optimisticOracle = SkinnyOptimisticOracleInterface(
             finder.getImplementationAddress(OracleInterfaces.SkinnyOptimisticOracle)
@@ -686,7 +657,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
      * @dev There is no risk of leaving this function public for anyone to call as in all cases we want these values
      * in this contract to map to the latest version set in the BridgeAdmin.
      */
-    function syncWithBridgeAdminParams() public {
+    function syncWithBridgeAdminParams() public nonReentrant() {
         proposerBondPct = bridgeAdmin.proposerBondPct();
         optimisticOracleLiveness = bridgeAdmin.optimisticOracleLiveness();
         identifier = bridgeAdmin.identifier();
@@ -714,12 +685,8 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
      * @notice Computes the current amount of unallocated fees that have accumulated from the previous time this the
      * contract was called.
      */
-    function getAccumulatedFees() public view returns (uint256) {
-        // UnallocatedLpFees := min(undistributedLpFees*lpFeeRatePerSecond*timeFromLastInteraction,undistributedLpFees)
-        // The min acts to pay out all fees in the case the equation returns more than the remaining a fees.
-        uint256 possibleUnpaidFees =
-            (undistributedLpFees * lpFeeRatePerSecond * (getCurrentTime() - lastLpFeeUpdate)) / (1e18);
-        return possibleUnpaidFees < undistributedLpFees ? possibleUnpaidFees : undistributedLpFees;
+    function getAccumulatedFees() public view nonReentrantView() returns (uint256) {
+        return _getAccumulatedFees();
     }
 
     /**
@@ -734,6 +701,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
     function getRelayAncillaryData(DepositData memory depositData, RelayData memory relayData)
         public
         view
+        nonReentrantView()
         returns (bytes memory)
     {
         return _getRelayAncillaryData(_getRelayHash(depositData, relayData));
@@ -742,6 +710,53 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
     /**************************************
      *    INTERNAL & PRIVATE FUNCTIONS    *
      **************************************/
+
+    function _liquidityUtilizationPostRelay(uint256 relayedAmount) internal returns (uint256) {
+        _sync(); // Fetch any balance changes due to token bridging finalization and factor them in.
+
+        // liquidityUtilizationRatio :=
+        // (relayedAmount + pendingReserves + max(utilizedReserves,0)) / (liquidReserves + max(utilizedReserves,0))
+        // UtilizedReserves has a dual meaning: if it's greater than zero then it represents funds pending in the bridge
+        // that will flow from L2 to L1. In this case, we can use it normally in the equation. However, if it is
+        // negative, then it is already counted in liquidReserves. This occurs if tokens are transferred directly to the
+        // contract. In this case, ignore it as it is captured in liquid reserves and has no meaning in the numerator.
+        uint256 flooredUtilizedReserves = utilizedReserves > 0 ? uint256(utilizedReserves) : 0;
+        uint256 numerator = relayedAmount + pendingReserves + flooredUtilizedReserves;
+        uint256 denominator = liquidReserves + flooredUtilizedReserves;
+
+        // If the denominator equals zero, return 1e18 (max utilization).
+        if (denominator == 0) return 1e18;
+
+        // In all other cases, return the utilization ratio.
+        return (numerator * 1e18) / denominator;
+    }
+
+    function _sync() internal {
+        // Check if the l1Token balance of the contract is greater than the liquidReserves. If it is then the bridging
+        // action from L2 -> L1 has concluded and the local accounting can be updated.
+        uint256 l1TokenBalance = l1Token.balanceOf(address(this)) - bonds;
+        if (l1TokenBalance > liquidReserves) {
+            // utilizedReserves can go to less than zero. This will happen if the accumulated fees exceeds the current
+            // outstanding utilization. In other words, if outstanding bridging transfers are 0 then utilizedReserves
+            // will equal the total LP fees accumulated over all time.
+            utilizedReserves -= int256(l1TokenBalance - liquidReserves);
+            liquidReserves = l1TokenBalance;
+        }
+    }
+
+    function _exchangeRateCurrent() internal returns (uint256) {
+        if (totalSupply() == 0) return 1e18; // initial rate is 1 pre any mint action.
+
+        // First, update fee counters and local accounting of finalized transfers from L2 -> L1.
+        _updateAccumulatedLpFees(); // Accumulate all allocated fees from the last time this method was called.
+        _sync(); // Fetch any balance changes due to token bridging finalization and factor them in.
+
+        // ExchangeRate := (liquidReserves + utilizedReserves - undistributedLpFees) / lpTokenSupply
+        uint256 numerator = liquidReserves - undistributedLpFees;
+        if (utilizedReserves > 0) numerator += uint256(utilizedReserves);
+        else numerator -= uint256(utilizedReserves * -1);
+        return (numerator * 1e18) / totalSupply();
+    }
 
     // Return UTF8-decodable ancillary data for relay price request associated with relay hash.
     function _getRelayAncillaryData(bytes32 relayHash) private pure returns (bytes memory) {
@@ -774,10 +789,18 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
         return keccak256(abi.encode(depositHash, relayData.realizedLpFeePct));
     }
 
+    function _getAccumulatedFees() internal view returns (uint256) {
+        // UnallocatedLpFees := min(undistributedLpFees*lpFeeRatePerSecond*timeFromLastInteraction,undistributedLpFees)
+        // The min acts to pay out all fees in the case the equation returns more than the remaining a fees.
+        uint256 possibleUnpaidFees =
+            (undistributedLpFees * lpFeeRatePerSecond * (getCurrentTime() - lastLpFeeUpdate)) / (1e18);
+        return possibleUnpaidFees < undistributedLpFees ? possibleUnpaidFees : undistributedLpFees;
+    }
+
     // Update internal fee counters by adding in any accumulated fees from the last time this logic was called.
-    function updateAccumulatedLpFees() internal {
+    function _updateAccumulatedLpFees() internal {
         // Calculate the unallocatedAccumulatedFees from the last time the contract was called.
-        uint256 unallocatedAccumulatedFees = getAccumulatedFees();
+        uint256 unallocatedAccumulatedFees = _getAccumulatedFees();
 
         // Decrement the undistributedLpFees by the amount of accumulated fees.
         undistributedLpFees = undistributedLpFees - unallocatedAccumulatedFees;
@@ -786,13 +809,11 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, Lockable {
     }
 
     // Allocate fees to the LPs by incrementing counters.
-    function allocateLpFees(uint256 allocatedLpFees) internal {
+    function _allocateLpFees(uint256 allocatedLpFees) internal {
         // Add to the total undistributed LP fees and the utilized reserves. Adding it to the utilized reserves acts to
         // track the fees while they are in transit.
-        if (allocatedLpFees > 0) {
-            undistributedLpFees += allocatedLpFees;
-            utilizedReserves += int256(allocatedLpFees);
-        }
+        undistributedLpFees += allocatedLpFees;
+        utilizedReserves += int256(allocatedLpFees);
     }
 
     function _getAmountFromPct(uint64 percent, uint256 amount) private pure returns (uint256) {

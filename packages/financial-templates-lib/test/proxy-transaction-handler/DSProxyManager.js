@@ -154,7 +154,7 @@ describe("DSProxyManager", function () {
 
     const dsProxyCallReturn = await dsProxyManager.callFunctionOnNewlyDeployedLibrary(callCode, callData);
 
-    // We can get the events to double check token transferers were correct.
+    // We can get the events to double check token transferrers were correct.
     let tokenEvents = await testToken.getPastEvents("Transfer");
 
     // The transaction hash should equal that in the transaction from the dsProxyManager.

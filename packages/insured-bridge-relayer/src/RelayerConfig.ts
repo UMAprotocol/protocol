@@ -16,6 +16,22 @@ const supportedChainIds = [
   421611, // arbitrum testnet
 ];
 
+// This struct is a hack right now but prevents an edge case bug where a deposit.quoteTime < bridgePool.deployment time.
+// The deposit.quoteTime is used to call bridgePool.liquidityUtilizationCurrent at a specific block height. This call
+// always reverts if the quote time is before the bridge pool's deployment time. This causes the disputer to error out
+// because it cannot validate a relay's realizedLpFeePct properly. We need to therefore know which deposit quote times
+// are off-limits and need to either be ignored or auto-disputed. This is a hack because ideally the bridgePool sets
+// a timestamp on construction. Then we can easily query on-chain whether a deposit.quoteTime is before this timestamp.
+const bridgePoolDeployTimestamps = {
+  // Note: keyed by L1 token.
+  // WETH:
+  "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2": 1635305400,
+  // USDC:
+  "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48": 1635312600,
+  // UMA:
+  "0x04fa0d235c4abf4bcf4787af4cf447de572ef828": 1635312600,
+};
+
 export interface ProcessEnv {
   [key: string]: string | undefined;
 }
@@ -36,8 +52,9 @@ export class RelayerConfig {
   readonly whitelistedChainIds: number[] = [];
   readonly rateModels: { [key: string]: RateModel } = {};
   readonly activatedChainIds: number[];
-  readonly l2StartBlock: number;
+  readonly l2BlockLookback: number;
   readonly botModes: BotModes;
+  readonly deployTimestamps: { [key: string]: number };
 
   constructor(env: ProcessEnv) {
     const {
@@ -47,11 +64,12 @@ export class RelayerConfig {
       ERROR_RETRIES_TIMEOUT,
       RATE_MODELS,
       CHAIN_IDS,
-      L2_START_BLOCK,
-      DISPUTER_ENABLED,
+      L2_BLOCK_LOOKBACK,
       RELAYER_ENABLED,
       FINALIZER_ENABLED,
+      DISPUTER_ENABLED,
       WHITELISTED_CHAIN_IDS,
+      DEPLOY_TIMESTAMPS,
     } = env;
 
     this.botModes = {
@@ -63,13 +81,16 @@ export class RelayerConfig {
     assert(BRIDGE_ADMIN_ADDRESS, "BRIDGE_ADMIN_ADDRESS required");
     this.bridgeAdmin = Web3.utils.toChecksumAddress(BRIDGE_ADMIN_ADDRESS);
 
-    // L2 start block is not required but without one, querying past logs might fail. For example, Arbitrum Infura has a
+    // L2 start block must be explicitly set unlike L1 due to how L2 nodes work. For best practices, we also should
+    // constrain L1 start blocks but this hasn't been an issue empirically. As a data point, Arbitrum Infura has a
     // query limit of up to 100,000 blocks into the past.
-    this.l2StartBlock = L2_START_BLOCK ? Number(L2_START_BLOCK) : 0;
+    this.l2BlockLookback = L2_BLOCK_LOOKBACK ? Number(L2_BLOCK_LOOKBACK) : 99999;
 
     this.pollingDelay = POLLING_DELAY ? Number(POLLING_DELAY) : 60;
     this.errorRetries = ERROR_RETRIES ? Number(ERROR_RETRIES) : 3;
     this.errorRetriesTimeout = ERROR_RETRIES_TIMEOUT ? Number(ERROR_RETRIES_TIMEOUT) : 1;
+
+    this.deployTimestamps = DEPLOY_TIMESTAMPS ? JSON.parse(DEPLOY_TIMESTAMPS) : bridgePoolDeployTimestamps;
 
     assert(RATE_MODELS, "RATE_MODELS required");
     const processingRateModels = JSON.parse(RATE_MODELS);

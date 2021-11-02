@@ -90,7 +90,7 @@ library AncillaryData {
         bytes32 value
     ) internal pure returns (bytes memory) {
         bytes memory prefix = constructPrefix(currentAncillaryData, key);
-        return abi.encodePacked(prefix, toUtf8Bytes(value));
+        return abi.encodePacked(currentAncillaryData, prefix, toUtf8Bytes(value));
     }
 
     /**

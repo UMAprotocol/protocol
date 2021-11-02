@@ -21,7 +21,6 @@ const { toWei, toBN, utf8ToHex } = web3.utils;
 const toBNWei = (number: string | number) => toBN(toWei(number.toString()).toString());
 
 // Helper contracts
-const chainId = 10;
 const Messenger = getContract("MessengerMock");
 const BridgePool = getContract("BridgePool");
 const BridgeAdmin = getContract("BridgeAdmin");
@@ -52,6 +51,8 @@ let l2Token: any;
 let mockOracle: any;
 
 // Hard-coded test params:
+const chainId = 10;
+const whitelistedChainIds = [10, 12];
 const defaultGasLimit = 1_000_000;
 const defaultGasPrice = toWei("1", "gwei");
 const defaultIdentifier = utf8ToHex("IS_CROSS_CHAIN_RELAY_VALID");
@@ -66,6 +67,7 @@ const minimumBridgingDelay = 60; // L2->L1 token bridging must wait at least thi
 const initialPoolLiquidity = toWei("100");
 const depositAmount = toWei("1");
 const rateModel: RateModel = { UBar: toBNWei("0.65"), R0: toBNWei("0.00"), R1: toBNWei("0.08"), R2: toBNWei("1.00") };
+const defaultLookbackWindow = 100;
 
 // Tested file
 import { Relayer, RelaySubmitType } from "../src/Relayer";
@@ -87,6 +89,8 @@ describe("Relayer.ts", function () {
   let l1Client: any;
   let l2Client: any;
   let gasEstimator: any;
+
+  let deployTimestamps: any;
 
   before(async function () {
     l1Accounts = await web3.eth.getAccounts();
@@ -173,7 +177,8 @@ describe("Relayer.ts", function () {
       l1Timer.options.address
     ).send({ from: l1Owner });
 
-    // Add L1-L2 token mapping
+    // Add L1-L2 token mapping. Note that we need to whitelist on both the L1 and L2 side because the L1 mapping
+    // is used by the bots to fetch bridge pool addresses.
     await bridgeAdmin.methods
       .whitelistToken(
         chainId,
@@ -186,6 +191,8 @@ describe("Relayer.ts", function () {
         0
       )
       .send({ from: l1Owner });
+
+    deployTimestamps = { [l1Token.options.address]: (await l1Timer.methods.getCurrentTime().call()).toString() };
 
     await bridgeDepositBox.methods
       .whitelistToken(l1Token.options.address, l2Token.options.address, bridgePool.options.address)
@@ -203,7 +210,17 @@ describe("Relayer.ts", function () {
     l2Client = new InsuredBridgeL2Client(spyLogger, web3, bridgeDepositBox.options.address, chainId);
 
     gasEstimator = new GasEstimator(spyLogger);
-    relayer = new Relayer(spyLogger, gasEstimator, l1Client, l2Client, [l1Token.options.address], l1Relayer, [chainId]);
+    relayer = new Relayer(
+      spyLogger,
+      gasEstimator,
+      l1Client,
+      l2Client,
+      [l1Token.options.address],
+      l1Relayer,
+      whitelistedChainIds,
+      deployTimestamps,
+      defaultLookbackWindow
+    );
   });
   it("Initialization is correct", async function () {
     assert.equal(relayer.l1Client.bridgeAdminAddress, bridgeAdmin.options.address);
@@ -224,7 +241,7 @@ describe("Relayer.ts", function () {
         amount: depositAmount,
         slowRelayFeePct: defaultSlowRelayFeePct,
         instantRelayFeePct: defaultInstantRelayFeePct,
-        quoteTimestamp: 1,
+        quoteTimestamp: Number((await bridgePool.methods.getCurrentTime().call()).toString()),
         depositContract: bridgeDepositBox.options.address,
       };
 
@@ -260,7 +277,7 @@ describe("Relayer.ts", function () {
     });
     it("Correctly decides when to slow relay", async function () {
       // The only time the relayer should decide to do a slow relay is when: a) the relayer has enough tokens, b) the
-      // deposit has had no other relayer pick it up and c) the deposit contains a instantRelayFeePct set to 0.
+      // deposit has had no other relayer pick it up and c) the deposit contains an instantRelayFeePct set to 0.
 
       // Mint tokens, set ClientRelayState to Any and update instantRelayFeePct.
       await l1Token.methods.mint(l1Relayer, toBN(defaultProposerBondPct).muln(2)).send({ from: l1Owner });
@@ -385,8 +402,8 @@ describe("Relayer.ts", function () {
 
       // Make a deposit on L2 and check the bot relays it accordingly.
       await l2Token.methods.approve(bridgeDepositBox.options.address, depositAmount).send({ from: l2Depositor });
-      const relaytime = await bridgePool.methods.getCurrentTime().call();
-      const quoteTime = await bridgeDepositBox.methods.getCurrentTime().call();
+      const relayTime = await bridgePool.methods.getCurrentTime().call();
+      const quoteTime = (await web3.eth.getBlock("latest")).timestamp;
       const depositData = {
         chainId,
         depositId: "0",
@@ -408,7 +425,7 @@ describe("Relayer.ts", function () {
         )
         .send({ from: l2Depositor });
       await Promise.all([l1Client.update(), l2Client.update()]);
-      // As the relayer does not have enough token balance to do the relay (0 minted) should do nothing .
+      // As the relayer does not have enough token balance to do the relay (0 minted) should do nothing.
       await relayer.checkForPendingDepositsAndRelay();
       assert.isTrue(lastSpyLogIncludes(spy, "Not relaying"));
 
@@ -419,7 +436,7 @@ describe("Relayer.ts", function () {
       assert.isTrue(lastSpyLogIncludes(spy, "Slow Relay executed"));
 
       // Advance time such that relay has expired and check that bot correctly identifies it as expired.
-      const expirationTime = Number(relaytime.toString()) + defaultLiveness;
+      const expirationTime = Number(relayTime.toString()) + defaultLiveness;
       await bridgePool.methods.setCurrentTime(expirationTime).send({ from: l1Owner });
       await l1Client.update();
       await relayer.checkForPendingDepositsAndRelay();
@@ -433,10 +450,63 @@ describe("Relayer.ts", function () {
       // Bot filters out Finalized relays
       assert.isTrue(lastSpyLogIncludes(spy, "No relayable deposits"));
     });
+    it("Two deposits, one relay fails, one succeeds", async function () {
+      // Deposit #1
+      await l2Token.methods.approve(bridgeDepositBox.options.address, depositAmount).send({ from: l2Depositor });
+      const quoteTime = (await web3.eth.getBlock("latest")).timestamp;
+      const depositData = {
+        chainId,
+        depositId: "0",
+        l1Recipient: l2Depositor,
+        l2Sender: l2Depositor,
+        amount: depositAmount,
+        slowRelayFeePct: defaultSlowRelayFeePct,
+        instantRelayFeePct: "0", // set to zero to force slow relay for this test.
+        quoteTimestamp: quoteTime,
+      };
+      await bridgeDepositBox.methods
+        .deposit(
+          depositData.l1Recipient,
+          l2Token.options.address,
+          depositData.amount,
+          depositData.slowRelayFeePct,
+          depositData.instantRelayFeePct, // set to zero to force slow relay for this test.
+          depositData.quoteTimestamp
+        )
+        .send({ from: l2Depositor });
+
+      // Deposit #2
+      await l2Token.methods.mint(l2Depositor, depositAmount).send({ from: l2Owner });
+      await l2Token.methods.approve(bridgeDepositBox.options.address, depositAmount).send({ from: l2Depositor });
+      await bridgeDepositBox.methods
+        .deposit(
+          depositData.l1Recipient,
+          l2Token.options.address,
+          depositData.amount,
+          depositData.slowRelayFeePct,
+          depositData.instantRelayFeePct, // set to zero to force slow relay for this test.
+          depositData.quoteTimestamp
+        )
+        .send({ from: l2Depositor });
+      await Promise.all([l1Client.update(), l2Client.update()]);
+
+      // Mint the relayer enough tokens for two slow relays, but only approve enough for one. This should cause the
+      // second relay to error:
+      await l1Token.methods.mint(l1Relayer, toBN(depositAmount).muln(4)).send({ from: l1Owner });
+      await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Relayer });
+      await relayer.checkForPendingDepositsAndRelay();
+
+      // Logs should reflect one slow relay executed and one that errored.
+      const targetLog = spy.getCalls().filter((_log: any) => {
+        return _log.lastArg.message.includes("Slow Relay executed");
+      });
+      assert.equal(targetLog.length, 1);
+      assert.isTrue(lastSpyLogIncludes(spy, "Something errored slow relaying"));
+    });
     it("Can correctly detect and produce speedup relays", async function () {
       // Make a deposit on L2 and relay it. Then, check the relayer picks this up and speeds up the relay.
       await l2Token.methods.approve(bridgeDepositBox.options.address, depositAmount).send({ from: l2Depositor });
-      const currentBlockTime = await bridgeDepositBox.methods.getCurrentTime().call();
+      const currentBlockTime = (await web3.eth.getBlock("latest")).timestamp;
       await bridgeDepositBox.methods
         .deposit(
           l2Depositor,
@@ -488,7 +558,7 @@ describe("Relayer.ts", function () {
     it("Can correctly instantly relay deposits", async function () {
       // Make a deposit on L2 and see that the relayer correctly sends a slow relay and speedup it in the same tx.
       await l2Token.methods.approve(bridgeDepositBox.options.address, depositAmount).send({ from: l2Depositor });
-      const currentBlockTime = await bridgeDepositBox.methods.getCurrentTime().call();
+      const currentBlockTime = (await web3.eth.getBlock("latest")).timestamp;
       await bridgeDepositBox.methods
         .deposit(
           l2Depositor,
@@ -517,8 +587,8 @@ describe("Relayer.ts", function () {
       // Make a deposit on L2 and relay it with invalid relay params. The relayer should detect that the relay params
       // are invalid and skip it.
       await l2Token.methods.approve(bridgeDepositBox.options.address, depositAmount).send({ from: l2Depositor });
-      const relaytime = await bridgePool.methods.getCurrentTime().call();
-      const quoteTime = await bridgeDepositBox.methods.getCurrentTime().call();
+      const relayTime = await bridgePool.methods.getCurrentTime().call();
+      const quoteTime = (await web3.eth.getBlock("latest")).timestamp;
       await bridgeDepositBox.methods
         .deposit(
           l2Depositor,
@@ -561,11 +631,32 @@ describe("Relayer.ts", function () {
 
       // Advance time such that relay has expired and check that bot correctly identifies it as expired. Even if the
       // relay params are invalid, post-expiry its not disputable.
-      const expirationTime = Number(relaytime.toString()) + defaultLiveness;
+      const expirationTime = Number(relayTime.toString()) + defaultLiveness;
       await bridgePool.methods.setCurrentTime(expirationTime).send({ from: l1Owner });
       await Promise.all([l1Client.update()]);
       await relayer.checkForPendingDepositsAndRelay();
       assert.isTrue(lastSpyLogIncludes(spy, "Pending relay has expired"));
+    });
+    it("Skips deposits with quote time < contract deployment time", async function () {
+      // Deposit using quote time prior to deploy timestamp for this L1 token.
+      const quoteTime = Number(deployTimestamps[l1Token.options.address]) - 1;
+      await l2Token.methods.approve(bridgeDepositBox.options.address, depositAmount).send({ from: l2Depositor });
+      await bridgeDepositBox.methods
+        .deposit(
+          l2Depositor,
+          l2Token.options.address,
+          depositAmount,
+          defaultSlowRelayFeePct,
+          defaultInstantRelayFeePct,
+          quoteTime.toString()
+        )
+        .send({ from: l2Depositor });
+      // Now, run the relayer and check that it ignores the relay.
+      await Promise.all([l1Client.update(), l2Client.update()]);
+      await l1Token.methods.mint(l1Relayer, toBN(depositAmount).muln(2)).send({ from: l1Owner });
+      await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Relayer });
+      await relayer.checkForPendingDepositsAndRelay();
+      assert.isTrue(lastSpyLogIncludes(spy, "Deposit quote time < bridge pool deployment"));
     });
   });
   describe("Settle Relay transaction functionality", () => {
@@ -588,7 +679,7 @@ describe("Relayer.ts", function () {
 
       // Make a deposit on L2, relay it, advance time and check the bot settles it accordingly.
       await l2Token.methods.approve(bridgeDepositBox.options.address, depositAmount).send({ from: l2Depositor });
-      const currentBlockTime = await bridgeDepositBox.methods.getCurrentTime().call();
+      const currentBlockTime = (await web3.eth.getBlock("latest")).timestamp;
       await bridgeDepositBox.methods
         .deposit(
           l2Depositor,
@@ -704,7 +795,7 @@ describe("Relayer.ts", function () {
       // Make a deposit on L2 and relay it with invalid relay params. The disputer should detect that the relay params
       // are invalid and dispute it.
       await l2Token.methods.approve(bridgeDepositBox.options.address, depositAmount).send({ from: l2Depositor });
-      const quoteTime = await bridgeDepositBox.methods.getCurrentTime().call();
+      const quoteTime = (await web3.eth.getBlock("latest")).timestamp;
       await bridgeDepositBox.methods
         .deposit(
           l2Depositor,
@@ -745,11 +836,73 @@ describe("Relayer.ts", function () {
       await relayer.checkForPendingRelaysAndDispute();
       assert.isTrue(lastSpyLogIncludes(spy, "Disputed pending relay"));
     });
+    it("Two pending relays with invalid relay data, one dispute succeeds, one fails", async function () {
+      // Invalid relay #1
+      await l1Token.methods.mint(l1Owner, toBN(depositAmount).muln(2)).send({ from: l1Owner });
+      await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Owner });
+      const quoteTime = await bridgeDepositBox.methods.getCurrentTime().call();
+      await bridgePool.methods
+        .relayDeposit(
+          {
+            chainId: chainId,
+            // Same chain ID as L2 client, meaning that if deposit can't be found the relay is disputable
+            depositId: "99", // deposit ID doesn't exist
+            l2Sender: l2Depositor,
+            l1Recipient: l2Depositor,
+            amount: depositAmount,
+            slowRelayFeePct: defaultSlowRelayFeePct,
+            instantRelayFeePct: defaultInstantRelayFeePct,
+            quoteTimestamp: quoteTime,
+          },
+          toBN(defaultRealizedLpFeePct)
+            .mul(toBN(toWei("2")))
+            .div(toBN(toWei("1")))
+            .toString() // Invalid relay param
+        )
+        .send({ from: l1Owner });
+
+      // Invalid relay #2
+      await l1Token.methods.mint(l1Owner, toBN(depositAmount).muln(2)).send({ from: l1Owner });
+      await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Owner });
+      await bridgePool.methods
+        .relayDeposit(
+          {
+            chainId: chainId,
+            // Same chain ID as L2 client, meaning that if deposit can't be found the relay is disputable
+            depositId: "100", // deposit ID doesn't exist
+            l2Sender: l2Depositor,
+            l1Recipient: l2Depositor,
+            amount: depositAmount,
+            slowRelayFeePct: defaultSlowRelayFeePct,
+            instantRelayFeePct: defaultInstantRelayFeePct,
+            quoteTimestamp: quoteTime,
+          },
+          toBN(defaultRealizedLpFeePct)
+            .mul(toBN(toWei("2")))
+            .div(toBN(toWei("1")))
+            .toString() // Invalid relay param
+        )
+        .send({ from: l1Owner });
+
+      // Mint the disputer enough tokens for two disputes, but only approve enough for one. This should cause the
+      // second dispute to error:
+      await l1Token.methods.mint(l1Relayer, toBN(depositAmount).muln(4)).send({ from: l1Owner });
+      await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Relayer });
+      await Promise.all([l1Client.update(), l2Client.update()]);
+      await relayer.checkForPendingRelaysAndDispute();
+
+      // Logs should reflect one dispute executed and one that errored.
+      const targetLog = spy.getCalls().filter((_log: any) => {
+        return _log.lastArg.message.includes("Disputed pending relay");
+      });
+      assert.equal(targetLog.length, 1);
+      assert.isTrue(lastSpyLogIncludes(spy, "Something errored disputing"));
+    });
     it("Dispute fails to send to OptimisticOracle", async function () {
       // Make a deposit on L2 and relay it with invalid relay params. The disputer should detect that the relay params
       // are invalid and dispute it.
       await l2Token.methods.approve(bridgeDepositBox.options.address, depositAmount).send({ from: l2Depositor });
-      const quoteTime = await bridgeDepositBox.methods.getCurrentTime().call();
+      const quoteTime = (await web3.eth.getBlock("latest")).timestamp;
       await bridgeDepositBox.methods
         .deposit(
           l2Depositor,
@@ -796,16 +949,17 @@ describe("Relayer.ts", function () {
       // Add back identifier to restore state for other tests.
       await identifierWhitelist.methods.addSupportedIdentifier(defaultIdentifier).send({ from: l1Owner });
     });
-    it("Disputes pending relays for deposits it cannot identify", async function () {
+    it("Disputes pending relays for deposits it cannot identify with same chain ID as l2 client", async function () {
       // Relay a deposit that doesn't exist on-chain
       await l1Token.methods.mint(l1Owner, toBN(depositAmount).muln(2)).send({ from: l1Owner });
       await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Owner });
-      const quoteTime = await bridgeDepositBox.methods.getCurrentTime().call();
+      const quoteTime = (await web3.eth.getBlock("latest")).timestamp;
       await bridgePool.methods
         .relayDeposit(
           {
             chainId: chainId,
-            depositId: "0",
+            // Same chain ID as L2 client, meaning that if deposit can't be found the relay is disputable
+            depositId: "99", // deposit ID doesn't exist
             l2Sender: l2Depositor,
             l1Recipient: l2Depositor,
             amount: depositAmount,
@@ -826,18 +980,102 @@ describe("Relayer.ts", function () {
       await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Relayer });
       await relayer.checkForPendingRelaysAndDispute();
       assert.isTrue(lastSpyLogIncludes(spy, "Disputed pending relay"));
+
+      // L1 Client should no longer see relay.
+      await Promise.all([l1Client.update(), l2Client.update()]);
+      await relayer.checkForPendingRelaysAndDispute();
+      assert.isTrue(lastSpyLogIncludes(spy, "No pending relays"));
     });
-    it("Ignores relay for different chain ID than the one set on L2 client", async function () {
+    it("Before disputing relays for deposits it cannot find, first tries to find deposit in new blocksearch", async function () {
+      await l2Token.methods.approve(bridgeDepositBox.options.address, depositAmount).send({ from: l2Depositor });
+      const quoteTime = Number((await web3.eth.getBlock("latest")).timestamp);
+      await bridgeDepositBox.methods
+        .deposit(
+          l2Depositor,
+          l2Token.options.address,
+          depositAmount,
+          defaultSlowRelayFeePct,
+          defaultInstantRelayFeePct,
+          quoteTime
+        )
+        .send({ from: l2Depositor });
+
+      // Next, create a new L2 client that trivially sets its block range such that it can't find the deposit.
+      l2Client = new InsuredBridgeL2Client(
+        spyLogger,
+        web3,
+        bridgeDepositBox.options.address,
+        chainId,
+        0,
+        1 // End block of 1, which is less than the deposit.
+      );
+
+      // Create new relayer and update it. It should not see any pending deposits.
+      relayer = new Relayer(
+        spyLogger,
+        gasEstimator,
+        l1Client,
+        l2Client,
+        [l1Token.options.address],
+        l1Relayer,
+        whitelistedChainIds,
+        deployTimestamps,
+        1 // Use small lookback window to test that the back up block search loop runs at least a few times before
+        // finding the deposit.
+      );
+      await Promise.all([l1Client.update(), l2Client.update()]);
+      await relayer.checkForPendingDepositsAndRelay();
+      assert.isTrue(lastSpyLogIncludes(spy, "No relayable deposits"));
+
+      // Now, relay the deposit.
       await l1Token.methods.mint(l1Owner, toBN(depositAmount).muln(2)).send({ from: l1Owner });
       await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Owner });
-      const quoteTime = await bridgeDepositBox.methods.getCurrentTime().call();
+      await l1Client.update(); // update L1 client to enable LP fee computation
+      const depositData = {
+        chainId: chainId,
+        depositId: "0",
+        l2Sender: l2Depositor,
+        l1Recipient: l2Depositor,
+        amount: depositAmount,
+        slowRelayFeePct: defaultSlowRelayFeePct,
+        instantRelayFeePct: defaultInstantRelayFeePct,
+        quoteTimestamp: quoteTime,
+      };
+      await bridgePool.methods
+        .relayDeposit(
+          depositData,
+          await l1Client.calculateRealizedLpFeePctForDeposit({
+            amount: depositAmount,
+            l1Token: l1Token.options.address,
+            quoteTimestamp: quoteTime,
+          })
+        )
+        .send({ from: l1Owner });
+
+      // The relayer should not be able to find the deposit associated with this relay, so it should begin a new search
+      // at the relay's quote time where it can find the deposit. This avoids submitting a false dispute.
+      await l1Client.update();
+      await l1Token.methods.mint(l1Relayer, toBN(depositAmount).muln(2)).send({ from: l1Owner });
+      await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Relayer });
+      await relayer.checkForPendingRelaysAndDispute();
+      const targetLog = spy.getCalls().filter((_log: any) => {
+        return _log.lastArg.message.includes("Matched deposit using relay quote time to run new block search");
+      });
+      assert.equal(targetLog.length, 1);
+      assert.isTrue(lastSpyLogIncludes(spy, "Skipping"));
+    });
+    it("Ignores relay for different whitelisted chain ID than the one set on L2 client", async function () {
+      await l1Token.methods.mint(l1Owner, toBN(depositAmount).muln(2)).send({ from: l1Owner });
+      await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Owner });
+      const quoteTime = (await web3.eth.getBlock("latest")).timestamp;
 
       // This relay should be disputed because the deposit doesn't exist on L2, but the disputer should skip it because
-      // the L2 client is set for a different chain ID than the one included on the relay.
+      // the L2 client is set for a different chain ID than the one included on the relay, and the chain ID
+      // is whitelisted so its a plausibly valid relay.
       await bridgePool.methods
         .relayDeposit(
           {
-            chainId: chainId + 1, // Different chainID than one used by L2 client
+            chainId: whitelistedChainIds[1], // Different chainID than one used by L2 client, but whitelisted
             depositId: "0",
             l2Sender: l2Depositor,
             l1Recipient: l2Depositor,
@@ -853,17 +1091,17 @@ describe("Relayer.ts", function () {
         )
         .send({ from: l1Owner });
 
-      // Now, run the disputer and check that it disputes the relay.
+      // Now, run the disputer and check that it ignores the relay.
       await Promise.all([l1Client.update(), l2Client.update()]);
       await l1Token.methods.mint(l1Relayer, toBN(depositAmount).muln(2)).send({ from: l1Owner });
       await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Relayer });
       await relayer.checkForPendingRelaysAndDispute();
-      assert.isTrue(lastSpyLogIncludes(spy, "No pending relays"));
+      assert.isTrue(lastSpyLogIncludes(spy, "Relay chain ID is whitelisted but does not match L2 client chain ID"));
     });
-    it("Does not dispute valid relays", async function () {
+    it("Does not dispute valid relay data that contains a valid deposit hash", async function () {
       // Make a deposit on L2 and relay it with valid relay params.
       await l2Token.methods.approve(bridgeDepositBox.options.address, depositAmount).send({ from: l2Depositor });
-      const quoteTime = await bridgeDepositBox.methods.getCurrentTime().call();
+      const quoteTime = (await web3.eth.getBlock("latest")).timestamp;
       await bridgeDepositBox.methods
         .deposit(
           l2Depositor,
@@ -879,18 +1117,19 @@ describe("Relayer.ts", function () {
       await l1Token.methods.mint(l1Owner, toBN(depositAmount).muln(2)).send({ from: l1Owner });
       await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Owner });
       await l1Client.update(); // update L1 client to enable LP fee computation
+      const depositData = {
+        chainId: chainId,
+        depositId: "0",
+        l2Sender: l2Depositor,
+        l1Recipient: l2Depositor,
+        amount: depositAmount,
+        slowRelayFeePct: defaultSlowRelayFeePct,
+        instantRelayFeePct: defaultInstantRelayFeePct,
+        quoteTimestamp: quoteTime,
+      };
       await bridgePool.methods
         .relayDeposit(
-          {
-            chainId: chainId,
-            depositId: "0",
-            l2Sender: l2Depositor,
-            l1Recipient: l2Depositor,
-            amount: depositAmount,
-            slowRelayFeePct: defaultSlowRelayFeePct,
-            instantRelayFeePct: defaultInstantRelayFeePct,
-            quoteTimestamp: quoteTime,
-          },
+          depositData,
           await l1Client.calculateRealizedLpFeePctForDeposit({
             amount: depositAmount,
             l1Token: l1Token.options.address,
@@ -912,6 +1151,35 @@ describe("Relayer.ts", function () {
       await l1Client.update();
       await relayer.checkForPendingRelaysAndDispute();
       assert.isTrue(lastSpyLogIncludes(spy, "Pending relay has expired"));
+
+      // Settle relay.
+      const relayEvents = (await bridgePool.getPastEvents("DepositRelayed", { fromBlock: 0 }))[0];
+      await bridgePool.methods.settleRelay(depositData, relayEvents.returnValues.relay).send({ from: l1Owner });
+
+      // Now try to submit a relay for slightly different deposit data. For example, re-use the deposit ID. This should
+      // get disputed as the deposit hash of the duplicate relay no longer exists, even if some specific params
+      // are re-used. This basically tests that the Relayer does not lookup deposits just by deposit ID's, but uses the
+      // more unique deposit hash as a key.
+      await l1Token.methods.mint(l1Owner, toBN(depositAmount).muln(2)).send({ from: l1Owner });
+      await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Owner });
+      await l1Client.update(); // update L1 client to enable LP fee computation
+      await bridgePool.methods
+        .relayDeposit(
+          {
+            ...depositData,
+            l1Recipient: l1Owner, // Change this so the deposit hash is different.
+          },
+          await l1Client.calculateRealizedLpFeePctForDeposit({
+            amount: depositAmount,
+            l1Token: l1Token.options.address,
+            quoteTimestamp: quoteTime,
+          })
+        )
+        .send({ from: l1Owner });
+
+      await l1Client.update();
+      await relayer.checkForPendingRelaysAndDispute();
+      assert.isTrue(lastSpyLogIncludes(spy, "Disputed pending relay"));
     });
     it("Disputes non-whitelisted chainIDs", async function () {
       // Create Relayer with empty chain ID list, so even valid relay gets disputed.
@@ -922,12 +1190,14 @@ describe("Relayer.ts", function () {
         l2Client,
         [l1Token.options.address],
         l1Relayer,
-        []
+        [],
+        deployTimestamps,
+        defaultLookbackWindow
       );
 
       // Make a deposit on L2 and relay it with valid relay params.
       await l2Token.methods.approve(bridgeDepositBox.options.address, depositAmount).send({ from: l2Depositor });
-      const quoteTime = await bridgeDepositBox.methods.getCurrentTime().call();
+      const quoteTime = (await web3.eth.getBlock("latest")).timestamp;
       await bridgeDepositBox.methods
         .deposit(
           l2Depositor,
@@ -946,7 +1216,39 @@ describe("Relayer.ts", function () {
       await bridgePool.methods
         .relayDeposit(
           {
-            chainId: chainId,
+            chainId: chainId, // Same chain ID as L2 client, but not whitelisted.
+            depositId: "0",
+            l2Sender: l2Depositor,
+            l1Recipient: l2Depositor,
+            amount: depositAmount,
+            slowRelayFeePct: defaultSlowRelayFeePct,
+            instantRelayFeePct: defaultInstantRelayFeePct,
+            quoteTimestamp: quoteTime,
+          },
+          await l1Client.calculateRealizedLpFeePctForDeposit({
+            amount: depositAmount,
+            l1Token: l1Token.options.address,
+            quoteTimestamp: quoteTime,
+          })
+        )
+        .send({ from: l1Owner });
+
+      // Now, run the disputer and check that it disputes the relay with a non-whitelisted chain ID.
+      await Promise.all([l1Client.update(), l2Client.update()]);
+      await l1Token.methods.mint(l1Relayer, toBN(depositAmount).muln(2)).send({ from: l1Owner });
+      await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Relayer });
+      await _relayer.checkForPendingRelaysAndDispute();
+      assert.isTrue(lastSpyLogIncludes(spy, "Disputed pending relay"));
+
+      // This time, submit a relay for a chain ID that isn't used by the L2 client and also isn't on the list of
+      // whitelisted chain IDs. The bot should also dispute it.
+      await l1Token.methods.mint(l1Owner, toBN(depositAmount).muln(2)).send({ from: l1Owner });
+      await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Owner });
+      await l1Client.update(); // update L1 client to enable LP fee computation
+      await bridgePool.methods
+        .relayDeposit(
+          {
+            chainId: chainId + 1, // Different chain ID from L2 client, and not whitelisted.
             depositId: "0",
             l2Sender: l2Depositor,
             l1Recipient: l2Depositor,
