@@ -188,6 +188,7 @@ export class InsuredBridgeL1Client {
     return toBN(await this.bridgeAdmin.methods.proposerBondPct().call());
   }
 
+  // Returns the L2 Deposit box address for a given bridgeAdmin on L1.
   async getL2DepositBoxAddress(chainId: number): Promise<string> {
     const depositContracts = (await this.bridgeAdmin.methods.depositContracts(chainId).call()) as any;
     return depositContracts.depositContract || depositContracts[0];
@@ -349,5 +350,3 @@ export class InsuredBridgeL1Client {
       throw new Error("InsuredBridgeClient method called before initialization! Call `update` first.");
   }
 }
-
-// Returns the L2 Deposit box address for a given bridgeAdmin on L1.
