@@ -44,7 +44,7 @@ try {
 }
 
 const FindBlockAtTimestamp = require("../liquidity-mining/FindBlockAtTimeStamp");
-const { getAbi, getAddress } = require("@uma/core");
+const { getAbi, getAddress } = require("@uma/contracts-node");
 const { getWeb3 } = require("@uma/common");
 /** *****************************************
  *
@@ -376,7 +376,7 @@ async function calculateRebate({
   debug = false,
 }) {
   try {
-    const voting = new web3.eth.Contract(getAbi("Voting"), getAddress("Voting", 1));
+    const voting = new web3.eth.Contract(getAbi("Voting"), await getAddress("Voting", 1));
     console.log(`Using DVM @ ${voting.options.address}`);
 
     if (!debug) {
@@ -634,8 +634,10 @@ async function Main(callback) {
       console.log(`- Using start date: ${moment.unix(startDate).toString()}`);
       console.log(`- Using end date: ${moment.unix(endDate).toString()}`);
 
-      endBlock = (await FindBlockAtTimestamp._findBlockNumberAtTimestamp(web3, Number(endDate))).blockNumber;
-      startBlock = (await FindBlockAtTimestamp._findBlockNumberAtTimestamp(web3, Number(startDate))).blockNumber;
+      endBlock = (await FindBlockAtTimestamp._findBlockNumberAtTimestamp(web3, Number(endDate), 1, 1, 1, 14))
+        .blockNumber;
+      startBlock = (await FindBlockAtTimestamp._findBlockNumberAtTimestamp(web3, Number(startDate), 1, 1, 1, 14))
+        .blockNumber;
     }
 
     // Fetch gas price data in parallel

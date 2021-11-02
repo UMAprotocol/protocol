@@ -109,7 +109,7 @@ describe("Price Feed Utils", async function () {
         return { number: blockNumber, timestamp: blockNumber };
       };
 
-      const blockFinder = BlockFinder(getBlock);
+      const blockFinder = new BlockFinder(getBlock);
 
       // Ensure that a timestamp _after_ the last block fails.
       assert.equal((await blockFinder.getBlockForTimestamp(latestBlockNumber + 1)).number, latestBlockNumber);
@@ -126,7 +126,7 @@ describe("Price Feed Utils", async function () {
         return { number: blockNumber, timestamp: blockNumber ** 2 };
       };
 
-      const blockFinder = BlockFinder(getBlock);
+      const blockFinder = new BlockFinder(getBlock);
 
       // Last timestamp is just the last block number squared.
       const cases = generateCases(0, latestBlockNumber ** 2);
@@ -159,7 +159,7 @@ describe("Price Feed Utils", async function () {
         return blocks.find((block) => block.number === blockNumber);
       };
 
-      const blockFinder = BlockFinder(getBlock);
+      const blockFinder = new BlockFinder(getBlock);
 
       // Last timestamp is just the last block number squared.
       const cases = generateCases(blocks[0].timestamp, blocks[blocks.length - 1].timestamp);

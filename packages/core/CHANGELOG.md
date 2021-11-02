@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.14.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.13.0...@uma/core@2.14.0) (2021-10-29)
+
+### Bug Fixes
+
+- **GasEstimator:** protocol upgrade for EIP1559 ([#3306](https://github.com/UMAprotocol/protocol/issues/3306)) ([8245391](https://github.com/UMAprotocol/protocol/commit/8245391ee07dca37be3c52a9a9ba47ed4d63f6f7))
+- **insured-bridge-relayer:** Handle case where computing realized LP fee % fails ([#3504](https://github.com/UMAprotocol/protocol/issues/3504)) ([9c69a9d](https://github.com/UMAprotocol/protocol/commit/9c69a9d3f545741820fbf73d5436b7f9f30aa8e0))
+
+### Features
+
+- **create-price-feed:** Add InsuredBridge ([#3388](https://github.com/UMAprotocol/protocol/issues/3388)) ([4dd8116](https://github.com/UMAprotocol/protocol/commit/4dd811635fd5647bf5916eb366daf5d613f3856c))
+
 # [2.13.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.12.0...@uma/core@2.13.0) (2021-10-27)
 
 ### Bug Fixes
@@ -173,7 +184,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 - **LSP-creator:** Add new factory addresses ([#3175](https://github.com/UMAprotocol/protocol/issues/3175)) ([1f8728a](https://github.com/UMAprotocol/protocol/commit/1f8728a62f4b5a9e450d981d51d71411bbdd7452))
 - **LSP-creator:** address incorrect comment in creator ([#3157](https://github.com/UMAprotocol/protocol/issues/3157)) ([03925a3](https://github.com/UMAprotocol/protocol/commit/03925a3b91466b468a36ee001be0e803289ba3a0))
 - **LSP-creator:** update create params to add more deployment options ([#3167](https://github.com/UMAprotocol/protocol/issues/3167)) ([d6dab2a](https://github.com/UMAprotocol/protocol/commit/d6dab2afb69e5df13583e2183000801e68ba4ac5))
-- **networks:** deploy and verify new LPS creator on testnets ([#3179](https://github.com/UMAprotocol/protocol/issues/3179)) ([908aabd](https://github.com/UMAprotocol/protocol/commit/908aabdc714e80f2bbd39dedc30270f6db3fc36e))
+- **networks:** deploy and verify new LSP creator on testnets ([#3179](https://github.com/UMAprotocol/protocol/issues/3179)) ([908aabd](https://github.com/UMAprotocol/protocol/commit/908aabdc714e80f2bbd39dedc30270f6db3fc36e))
 - **polygon-tunnel:** Response to audit ([#3188](https://github.com/UMAprotocol/protocol/issues/3188)) ([dd211c4](https://github.com/UMAprotocol/protocol/commit/dd211c4e3825fe007d1161025a34e9901b26031a)), addresses comments to [#3061](https://github.com/UMAprotocol/protocol/issues/3061) [#3054](https://github.com/UMAprotocol/protocol/issues/3054) [#3082](https://github.com/UMAprotocol/protocol/issues/3082) [#3092](https://github.com/UMAprotocol/protocol/issues/3092)
 - **chainbridge:** Response to audit ([#3189](https://github.com/UMAprotocol/protocol/issues/3189)) ([97e91cc](https://github.com/UMAprotocol/protocol/commit/97e91cc50a3095fe52bd2bac4d2900ba60235d6a)), addresses comments to [#2969](https://github.com/UMAprotocol/protocol/issues/2969)
 - fix polygon deployment scripts for test/local environments ([#3136](https://github.com/UMAprotocol/protocol/issues/3136)) ([d11bb4f](https://github.com/UMAprotocol/protocol/commit/d11bb4ffd7faa19d16938ff702847d1b4fed6c0b))

@@ -292,7 +292,7 @@ library FixedPoint {
      * @return the product of `a` and `b`.
      */
     function mulCeil(Unsigned memory a, uint256 b) internal pure returns (Unsigned memory) {
-        // Since b is an int, there is no risk of truncation and we can just mul it normally
+        // Since b is an uint, there is no risk of truncation and we can just mul it normally
         return Unsigned(a.rawValue.mul(b));
     }
 

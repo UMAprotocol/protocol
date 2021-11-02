@@ -1,7 +1,7 @@
 import Web3 from "web3";
 const { toBN, soliditySha3 } = Web3.utils;
 
-import { findBlockNumberAtTimestamp } from "@uma/common";
+import { BlockFinder } from "../price-feed/utils";
 import { getAbi } from "@uma/contracts-node";
 import { Deposit } from "./InsuredBridgeL2Client";
 import { RateModel, calculateRealizedLpFeePct } from "../helpers/acrossFeesCalculator";
@@ -9,6 +9,7 @@ import { RateModel, calculateRealizedLpFeePct } from "../helpers/acrossFeesCalcu
 import type { BridgeAdminInterfaceWeb3, BridgePoolWeb3 } from "@uma/contracts-node";
 import type { Logger } from "winston";
 import type { BN } from "@uma/common";
+import type { BlockTransactionBase } from "web3-eth";
 
 export enum ClientRelayState {
   Uninitialized, // Deposit on L2, nothing yet on L1. Can be slow relayed and can be sped up to instantly relay.
@@ -63,7 +64,7 @@ export class InsuredBridgeL1Client {
   private instantRelays: { [key: string]: { [key: string]: InstantRelay } } = {}; // L1TokenAddress=>{depositHash, realizedLpFeePct}=>InstantRelay.
 
   private firstBlockToSearch: number;
-  private web3: Web3;
+  private readonly blockFinder: BlockFinder<BlockTransactionBase>;
 
   constructor(
     private readonly logger: Logger,
@@ -81,7 +82,7 @@ export class InsuredBridgeL1Client {
     this.bridgePools = {}; // Initialize the bridgePools with no pools yet. Will be populated in the _initialSetup.
 
     this.firstBlockToSearch = startingBlockNumber;
-    this.web3 = l1Web3;
+    this.blockFinder = new BlockFinder<BlockTransactionBase>(this.l1Web3.eth.getBlock);
   }
 
   // Return an array of all bridgePool addresses
@@ -147,7 +148,9 @@ export class InsuredBridgeL1Client {
     if (this.rateModels === undefined || this.rateModels[deposit.l1Token] === undefined)
       throw new Error("No rate model for l1Token");
 
-    const quoteBlockNumber = (await findBlockNumberAtTimestamp(this.l1Web3, deposit.quoteTimestamp)).blockNumber;
+    // The block number must be exactly the one containing the deposit.quoteTimestamp, so we use the lowest block delta
+    // of 1. Setting averageBlockTime to 14 increases the speed at the cost of more web3 requests.
+    const quoteBlockNumber = (await this.blockFinder.getBlockForTimestamp(deposit.quoteTimestamp)).number;
     const bridgePool = this.getBridgePoolForDeposit(deposit).contract;
     const [liquidityUtilizationCurrent, liquidityUtilizationPostRelay] = await Promise.all([
       bridgePool.methods.liquidityUtilizationCurrent().call(undefined, quoteBlockNumber),
@@ -183,6 +186,12 @@ export class InsuredBridgeL1Client {
 
   async getProposerBondPct(): Promise<BN> {
     return toBN(await this.bridgeAdmin.methods.proposerBondPct().call());
+  }
+
+  // Returns the L2 Deposit box address for a given bridgeAdmin on L1.
+  async getL2DepositBoxAddress(chainId: number): Promise<string> {
+    const depositContracts = (await this.bridgeAdmin.methods.depositContracts(chainId).call()) as any;
+    return depositContracts.depositContract || depositContracts[0]; // When latest BridgeAdmin is redeployed, can remove the "|| depositContracts[0]".
   }
 
   async update(): Promise<void> {
@@ -314,14 +323,14 @@ export class InsuredBridgeL1Client {
 
   private _getInstantRelayHash(depositHash: string, realizedLpFeePct: string): string | null {
     const instantRelayDataHash = soliditySha3(
-      this.web3.eth.abi.encodeParameters(["bytes32", "uint64"], [depositHash, realizedLpFeePct])
+      this.l1Web3.eth.abi.encodeParameters(["bytes32", "uint64"], [depositHash, realizedLpFeePct])
     );
     return instantRelayDataHash;
   }
 
   private _getRelayHash = (relay: Relay) => {
     return soliditySha3(
-      this.web3.eth.abi.encodeParameters(
+      this.l1Web3.eth.abi.encodeParameters(
         ["uint256", "address", "uint32", "uint64", "uint256", "uint256", "uint256"],
         [
           relay.relayState,

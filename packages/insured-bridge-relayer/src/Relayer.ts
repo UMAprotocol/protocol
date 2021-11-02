@@ -1,9 +1,10 @@
 import winston from "winston";
 import Web3 from "web3";
+import type { BlockTransactionBase } from "web3-eth";
 const { toWei, toBN } = Web3.utils;
 const fixedPointAdjustment = toBN(toWei("1"));
 
-import { runTransaction, findBlockNumberAtTimestamp } from "@uma/common";
+import { runTransaction } from "@uma/common";
 import {
   InsuredBridgeL1Client,
   InsuredBridgeL2Client,
@@ -12,6 +13,7 @@ import {
   Relay,
   ClientRelayState,
   SettleableRelay,
+  BlockFinder,
 } from "@uma/financial-templates-lib";
 import { getTokenBalance } from "./RelayerHelpers";
 
@@ -30,6 +32,8 @@ export enum RelaySubmitType {
 }
 
 export class Relayer {
+  private readonly l2BlockFinder: BlockFinder<BlockTransactionBase>;
+
   /**
    * @notice Constructs new Relayer Instance.
    * @param {Object} logger Module used to send logs.
@@ -54,7 +58,9 @@ export class Relayer {
     // now, we need to hardcode each BP's deploy timestamp.
     readonly deployTimestamps: { [key: string]: number },
     readonly l2LookbackWindow: number
-  ) {}
+  ) {
+    this.l2BlockFinder = new BlockFinder<BlockTransactionBase>(this.l2Client.l2Web3.eth.getBlock);
+  }
 
   // Evaluates given `relayableDeposit` for the `l1Token` and determines whether to submit a slow or fast relay.
   private async _relayPendingDeposit(l1Token: string, relayableDeposit: RelayableDeposit): Promise<void> {
@@ -69,7 +75,7 @@ export class Relayer {
       const relayExpired = await this.isRelayExpired(pendingRelay, pendingRelay.l1Token);
       if (relayExpired.isExpired) {
         this.logger.debug({
-          at: "Relayer",
+          at: "InsuredBridgeRelayer#Relayer",
           message: "Pending relay has expired, ignoring",
           pendingRelay,
           relayableDeposit,
@@ -85,7 +91,7 @@ export class Relayer {
         );
         if (relayDisputable.canDispute) {
           this.logger.debug({
-            at: "Relayer",
+            at: "InsuredBridgeRelayer#Relayer",
             message: "Pending relay is invalid",
             pendingRelay,
             relayableDeposit,
@@ -108,7 +114,7 @@ export class Relayer {
     // If relay cannot occur because its pending and already sped up, then exit early.
     if (hasInstantRelayer && relayableDeposit.status == ClientRelayState.Pending) {
       this.logger.debug({
-        at: "Relayer",
+        at: "InsuredBridgeRelayer#Relayer",
         message: "Relay pending and already sped up 😖",
         realizedLpFeePct: realizedLpFeePct.toString(),
         relayState: relayableDeposit.status,
@@ -130,13 +136,16 @@ export class Relayer {
   }
   checkForPendingDepositsAndRelay(): Promise<void>[] {
     const promises: Promise<void>[] = [];
-    this.logger.debug({ at: "Relayer", message: "Checking for pending deposits and relaying" });
+    this.logger.debug({ at: "InsuredBridgeRelayer#Relayer", message: "Checking for pending deposits and relaying" });
 
     // Build dictionary of relayable deposits keyed by L1 tokens. We assume that getRelayableDeposits() filters
     // out Finalized relays.
     const relayableDeposits: RelayableDeposits = this.getRelayableDeposits();
     if (Object.keys(relayableDeposits).length == 0) {
-      this.logger.debug({ at: "Relayer", message: "No relayable deposits for any whitelisted tokens" });
+      this.logger.debug({
+        at: "InsuredBridgeRelayer#Relayer",
+        message: "No relayable deposits for any whitelisted tokens",
+      });
       return promises;
     }
 
@@ -144,7 +153,7 @@ export class Relayer {
     // type of relay) or dispute.
     for (const l1Token of Object.keys(relayableDeposits)) {
       this.logger.debug({
-        at: "Relayer",
+        at: "InsuredBridgeRelayer#Relayer",
         message: `Processing ${relayableDeposits[l1Token].length} relayable deposits for L1Token`,
         l1Token,
       });
@@ -153,7 +162,7 @@ export class Relayer {
         // the realized LP fee % as this will be impossible to query a contract for a timestamp before its deployment.
         if (relayableDeposit.deposit.quoteTimestamp < this.deployTimestamps[relayableDeposit.deposit.l1Token]) {
           this.logger.debug({
-            at: "Relayer",
+            at: "InsuredBridgeRelayer#Relayer",
             message: "Deposit quote time < bridge pool deployment for L1 token, skipping",
             deposit: relayableDeposit.deposit,
             deploymentTime: this.deployTimestamps[relayableDeposit.deposit.l1Token],
@@ -173,7 +182,7 @@ export class Relayer {
     const relayExpired = await this.isRelayExpired(relay, relay.l1Token);
     if (relayExpired.isExpired) {
       this.logger.debug({
-        at: "Disputer",
+        at: "InsuredBridgeRelayer#Disputer",
         message: "Pending relay has expired, ignoring",
         relay,
         expirationTime: relayExpired.expirationTime,
@@ -185,7 +194,7 @@ export class Relayer {
     // If relay's chain ID is not whitelisted then dispute it.
     if (!this.whitelistedChainIds.includes(relay.chainId)) {
       this.logger.debug({
-        at: "Disputer",
+        at: "InsuredBridgeRelayer#Disputer",
         message: "Disputing pending relay with non-whitelisted chainID",
         relay,
       });
@@ -213,7 +222,7 @@ export class Relayer {
     // the L2 clients. We won't be able to query deposit data for these relays.
     if (relay.chainId !== this.l2Client.chainId) {
       this.logger.debug({
-        at: "Disputer",
+        at: "InsuredBridgeRelayer#Disputer",
         message: "Relay chain ID is whitelisted but does not match L2 client chain ID",
         l2ClientChainId: this.l2Client.chainId,
         relay,
@@ -257,7 +266,7 @@ export class Relayer {
       const relayDisputable = await this.isPendingRelayDisputable(relay, deposit, realizedLpFeePct);
       if (relayDisputable.canDispute) {
         this.logger.debug({
-          at: "Disputer",
+          at: "InsuredBridgeRelayer#Disputer",
           message: "Disputing pending relay with invalid params",
           relay,
           deposit,
@@ -267,7 +276,7 @@ export class Relayer {
         return;
       } else {
         this.logger.debug({
-          at: "Disputer",
+          at: "InsuredBridgeRelayer#Disputer",
           message: "Skipping; relay matched with deposit and params are valid",
           relay,
           deposit,
@@ -292,7 +301,7 @@ export class Relayer {
         // `depositContracts()` returns [depositContract, messengerContract] and we want the first arg.
       };
       this.logger.debug({
-        at: "Disputer",
+        at: "InsuredBridgeRelayer#Disputer",
         message: "Disputing pending relay with no matching deposit",
         missingDeposit,
         relay,
@@ -304,17 +313,17 @@ export class Relayer {
   checkForPendingRelaysAndDispute(): Promise<void>[] {
     const promises: Promise<void>[] = [];
 
-    this.logger.debug({ at: "Disputer", message: "Checking for pending relays and disputing" });
+    this.logger.debug({ at: "InsuredBridgeRelayer#Disputer", message: "Checking for pending relays and disputing" });
 
     // Build dictionary of pending relays keyed by l1 token and deposit hash. We assume that getPendingRelays() filters
     // out Finalized relays.
     const pendingRelays: Relay[] = this.getPendingRelays();
     if (pendingRelays.length == 0) {
-      this.logger.debug({ at: "Disputer", message: "No pending relays" });
+      this.logger.debug({ at: "InsuredBridgeRelayer#Disputer", message: "No pending relays" });
       return promises;
     }
     this.logger.debug({
-      at: "Disputer",
+      at: "InsuredBridgeRelayer#Disputer",
       message: `Processing ${pendingRelays.length} pending relays`,
     });
 
@@ -328,9 +337,13 @@ export class Relayer {
   checkforSettleableRelaysAndSettle(): Promise<void>[] {
     const promises: Promise<void>[] = [];
 
-    this.logger.debug({ at: "Finalizer", message: "Checking for settleable relays and settling" });
+    this.logger.debug({ at: "InsuredBridgeRelayer#Finalizer", message: "Checking for settleable relays and settling" });
     for (const l1Token of this.whitelistedRelayL1Tokens) {
-      this.logger.debug({ at: "Finalizer", message: "Checking settleable relays for token", l1Token });
+      this.logger.debug({
+        at: "InsuredBridgeRelayer#Finalizer",
+        message: "Checking settleable relays for token",
+        l1Token,
+      });
       // Either this bot is the slow relayer for this relay OR the relay is past 15 mins and is settleable by anyone.
       const settleableRelays = this.l1Client
         .getSettleableRelayedDepositsForL1Token(l1Token)
@@ -341,7 +354,7 @@ export class Relayer {
         );
 
       if (settleableRelays.length == 0) {
-        this.logger.debug({ at: "Finalizer", message: "No settleable relays" });
+        this.logger.debug({ at: "InsuredBridgeRelayer#Finalizer", message: "No settleable relays" });
         return promises;
       }
 
@@ -444,7 +457,7 @@ export class Relayer {
 
       if (receipt.events)
         this.logger.info({
-          at: "Relayer",
+          at: "InsuredBridgeRelayer#Relayer",
           message: "Slow Relay executed  🐌",
           tx: receipt.transactionHash,
           chainId: receipt.events.DepositRelayed.returnValues.depositData.chainId,
@@ -456,6 +469,8 @@ export class Relayer {
           slowRelayFeePct: receipt.events.DepositRelayed.returnValues.depositData.slowRelayFeePct,
           instantRelayFeePct: receipt.events.DepositRelayed.returnValues.depositData.instantRelayFeePct,
           quoteTimestamp: receipt.events.DepositRelayed.returnValues.depositData.quoteTimestamp,
+          proposerBond: receipt.events.DepositRelayed.returnValues.relay.proposerBond,
+          finalFee: receipt.events.DepositRelayed.returnValues.relay.finalFee,
           realizedLpFeePct: receipt.events.DepositRelayed.returnValues.relay.realizedLpFeePct,
           relayId: receipt.events.DepositRelayed.returnValues.relay.relayId,
           relayState: receipt.events.DepositRelayed.returnValues.relay.relayState,
@@ -466,7 +481,7 @@ export class Relayer {
         });
       else throw receipt;
     } catch (error) {
-      this.logger.error({ at: "Relayer", message: "Something errored slow relaying!", error });
+      this.logger.error({ at: "InsuredBridgeRelayer#Relayer", message: "Something errored slow relaying!", error });
     }
   }
 
@@ -482,11 +497,13 @@ export class Relayer {
 
       if (receipt.events)
         this.logger.info({
-          at: "Relayer",
+          at: "InsuredBridgeRelayer#Relayer",
           message: "Slow relay sped up 🏇",
           tx: receipt.transactionHash,
           depositHash: receipt.events.RelaySpedUp.returnValues.depositHash,
           instantRelayer: receipt.events.RelaySpedUp.returnValues.instantRelayer,
+          proposerBond: receipt.events.RelaySpedUp.returnValues.relay.proposerBond,
+          finalFee: receipt.events.RelaySpedUp.returnValues.relay.finalFee,
           realizedLpFeePct: receipt.events.RelaySpedUp.returnValues.relay.realizedLpFeePct,
           relayId: receipt.events.RelaySpedUp.returnValues.relay.relayId,
           relayState: receipt.events.RelaySpedUp.returnValues.relay.relayState,
@@ -496,7 +513,7 @@ export class Relayer {
         });
       else throw receipt;
     } catch (error) {
-      this.logger.error({ at: "Relayer", message: "Something errored speeding up relay!", error });
+      this.logger.error({ at: "InsuredBridgeRelayer#Relayer", message: "Something errored speeding up relay!", error });
     }
   }
 
@@ -511,7 +528,7 @@ export class Relayer {
       });
       if (receipt.events)
         this.logger.info({
-          at: "Relayer",
+          at: "InsuredBridgeRelayer#Relayer",
           message: "Relay instantly sent 🚀",
           tx: receipt.transactionHash,
           chainId: receipt.events.DepositRelayed.returnValues.depositData.chainId,
@@ -523,6 +540,8 @@ export class Relayer {
           instantRelayFeePct: receipt.events.DepositRelayed.returnValues.depositData.instantRelayFeePct,
           quoteTimestamp: receipt.events.DepositRelayed.returnValues.depositData.quoteTimestamp,
           relayAncillaryDataHash: receipt.events.DepositRelayed.returnValues.relayAncillaryDataHash,
+          proposerBond: receipt.events.DepositRelayed.returnValues.relay.proposerBond,
+          finalFee: receipt.events.DepositRelayed.returnValues.relay.finalFee,
           depositHash: receipt.events.RelaySpedUp.returnValues.depositHash,
           instantRelayer: receipt.events.RelaySpedUp.returnValues.instantRelayer,
           realizedLpFeePct: receipt.events.RelaySpedUp.returnValues.relay.realizedLpFeePct,
@@ -534,7 +553,11 @@ export class Relayer {
         });
       else throw receipt;
     } catch (error) {
-      this.logger.error({ at: "Relayer", message: "Something errored instantly relaying!", error });
+      this.logger.error({
+        at: "InsuredBridgeRelayer#Relayer",
+        message: "Something errored instantly relaying!",
+        error,
+      });
     }
   }
 
@@ -549,12 +572,14 @@ export class Relayer {
       });
       if (receipt.events)
         this.logger.info({
-          at: "Relayer",
+          at: "InsuredBridgeRelayer#Finalizer",
           message: "Relay settled 💸",
           tx: receipt.transactionHash,
           depositHash: receipt.events.RelaySettled.returnValues.depositHash,
           caller: receipt.events.RelaySettled.returnValues.caller,
           realizedLpFeePct: receipt.events.RelaySettled.returnValues.relay.realizedLpFeePct,
+          proposerBond: receipt.events.RelaySettled.returnValues.relay.proposerBond,
+          finalFee: receipt.events.RelaySettled.returnValues.relay.finalFee,
           relayId: receipt.events.RelaySettled.returnValues.relay.relayId,
           relayState: receipt.events.RelaySettled.returnValues.relay.relayState,
           priceRequestTime: receipt.events.RelaySettled.returnValues.relay.priceRequestTime,
@@ -563,7 +588,7 @@ export class Relayer {
         });
       else throw receipt;
     } catch (error) {
-      this.logger.error({ at: "Relayer", message: "Something errored settling relay!", error });
+      this.logger.error({ at: "InsuredBridgeRelayer#Finalizer", message: "Something errored settling relay!", error });
     }
   }
 
@@ -580,7 +605,7 @@ export class Relayer {
       if (receipt.events) {
         if (receipt.events.RelayDisputed) {
           this.logger.info({
-            at: "Disputer",
+            at: "InsuredBridgeRelayer#Disputer",
             message: "Disputed pending relay. Relay was deleted. 🚓",
             tx: receipt.transactionHash,
             depositHash: receipt.events.RelayDisputed.returnValues.depositHash,
@@ -590,7 +615,7 @@ export class Relayer {
           });
         } else if (receipt.events.RelayCanceled) {
           this.logger.info({
-            at: "Disputer",
+            at: "InsuredBridgeRelayer#Disputer",
             message: "Dispute failed to send to OO. Relay was deleted. 🚓",
             tx: receipt.transactionHash,
             depositHash: receipt.events.RelayCanceled.returnValues.depositHash,
@@ -601,7 +626,7 @@ export class Relayer {
         } else throw receipt;
       } else throw receipt;
     } catch (error) {
-      this.logger.error({ at: "Disputer", message: "Something errored disputing relay!", error });
+      this.logger.error({ at: "InsuredBridgeRelayer#Disputer", message: "Something errored disputing relay!", error });
     }
   }
 
@@ -673,8 +698,8 @@ export class Relayer {
   private getRelayableDeposits(): RelayableDeposits {
     const relayableDeposits: RelayableDeposits = {};
     for (const l1Token of this.whitelistedRelayL1Tokens) {
-      this.logger.debug({ at: "Relayer", message: "Checking relays for token", l1Token });
-      const l2Deposits = this.l2Client.getAllDeposits();
+      this.logger.debug({ at: "InsuredBridgeRelayer#Relayer", message: "Checking relays for token", l1Token });
+      const l2Deposits = this.l2Client.getAllDepositsForL1Token(l1Token);
       l2Deposits.forEach((deposit) => {
         const status = this.l1Client.getDepositRelayState(deposit);
         if (status != ClientRelayState.Finalized) {
@@ -701,7 +726,7 @@ export class Relayer {
     switch (shouldRelay) {
       case RelaySubmitType.Ignore:
         this.logger.debug({
-          at: "Relayer",
+          at: "InsuredBridgeRelayer#Relayer",
           message: "Not relaying potentially unprofitable deposit, or insufficient balance 😖",
           realizedLpFeePct: realizedLpFeePct.toString(),
           relayState: relayableDeposit.status,
@@ -711,7 +736,7 @@ export class Relayer {
         break;
       case RelaySubmitType.Slow:
         this.logger.debug({
-          at: "Relayer",
+          at: "InsuredBridgeRelayer#Relayer",
           message: "Slow relaying deposit",
           realizedLpFeePct: realizedLpFeePct.toString(),
           relayableDeposit,
@@ -721,7 +746,7 @@ export class Relayer {
 
       case RelaySubmitType.SpeedUp:
         this.logger.debug({
-          at: "Relayer",
+          at: "InsuredBridgeRelayer#Relayer",
           message: "Speeding up existing relayed deposit",
           realizedLpFeePct: realizedLpFeePct.toString(),
           relayableDeposit,
@@ -729,12 +754,12 @@ export class Relayer {
         if (pendingRelay === undefined)
           // The `pendingRelay` should never be undefined if shouldRelay returns SpeedUp, but we have to catch the
           // undefined type that is returned by the L1 client method.
-          this.logger.error({ at: "Relayer", message: "speedUpRelay: undefined relay" });
+          this.logger.error({ at: "InsuredBridgeRelayer#Relayer", message: "speedUpRelay: undefined relay" });
         else await this.speedUpRelay(relayableDeposit.deposit, pendingRelay);
         break;
       case RelaySubmitType.Instant:
         this.logger.debug({
-          at: "Relayer",
+          at: "InsuredBridgeRelayer#Relayer",
           message: "Instant relaying deposit",
           realizedLpFeePct: realizedLpFeePct.toString(),
           relayableDeposit,
@@ -748,48 +773,63 @@ export class Relayer {
   private async matchRelayWithDeposit(relay: Relay): Promise<Deposit | undefined> {
     // First try to fetch deposit from the L2 client's default block search config. This should work in most cases.
     let deposit: Deposit | undefined = this.l2Client.getDepositByHash(relay.depositHash);
-
+    if (deposit !== undefined) return deposit;
     // We could not find a deposit using the L2 client's default block search config. Next, we'll modify the block
-    // searcg config using the relay's quote time. This allows us to capture any deposits that happened outside of
+    // search config bridge pool's deployment time. This allows us to capture any deposits that happened outside of
     // the L2 client's default block search config.
-    if (deposit === undefined) {
-      const l2BlockForDepositQuoteTime = await findBlockNumberAtTimestamp(this.l2Client.l2Web3, relay.quoteTimestamp);
-      // Search for blocks 1/2 of lookback period before and after target quote time. This 1/2 value is arbitrary and
-      // should be reviewed.
-      const blockSearchConfig = {
-        fromBlock: Math.max(l2BlockForDepositQuoteTime.blockNumber - this.l2LookbackWindow / 2, 0),
-        toBlock: l2BlockForDepositQuoteTime.blockNumber + this.l2LookbackWindow / 2,
+    else {
+      const bridgePoolDeploymentTime = (
+        await this.l2BlockFinder.getBlockForTimestamp(this.deployTimestamps[relay.l1Token])
+      ).number;
+      let blockSearchConfig = {
+        fromBlock: bridgePoolDeploymentTime,
+        toBlock: bridgePoolDeploymentTime + this.l2LookbackWindow,
       };
-      const [fundsDepositedEvents] = await Promise.all([
-        this.l2Client.bridgeDepositBox.getPastEvents("FundsDeposited", blockSearchConfig),
-      ]);
-      // For any found deposits, try to match it with the relay:
-      for (const fundsDepositedEvent of fundsDepositedEvents) {
-        const _deposit: Deposit = {
-          chainId: Number(fundsDepositedEvent.returnValues.chainId),
-          depositId: Number(fundsDepositedEvent.returnValues.depositId),
-          depositHash: "", // Filled in after initialization of the remaining variables.
-          l1Recipient: fundsDepositedEvent.returnValues.l1Recipient,
-          l2Sender: fundsDepositedEvent.returnValues.l2Sender,
-          l1Token: fundsDepositedEvent.returnValues.l1Token,
-          amount: fundsDepositedEvent.returnValues.amount,
-          slowRelayFeePct: fundsDepositedEvent.returnValues.slowRelayFeePct,
-          instantRelayFeePct: fundsDepositedEvent.returnValues.instantRelayFeePct,
-          quoteTimestamp: Number(fundsDepositedEvent.returnValues.quoteTimestamp),
-          depositContract: fundsDepositedEvent.address,
-        };
-        _deposit.depositHash = this.l2Client.generateDepositHash(_deposit);
-        if (_deposit.depositHash === relay.depositHash) {
-          this.logger.debug({
-            at: "Disputer",
-            message: "Matched deposit using relay quote time to run new block search",
-            blockSearchConfig,
-            deposit,
-            relay,
-          });
-          deposit = _deposit;
-          break;
+      const latestBlock = Number((await this.l2Client.l2Web3.eth.getBlock("latest")).number);
+
+      // Look up all blocks from contract deployment time to latest to ensure that a deposit, if it exists, is found.
+      while (deposit === undefined) {
+        const [fundsDepositedEvents] = await Promise.all([
+          this.l2Client.bridgeDepositBox.getPastEvents("FundsDeposited", blockSearchConfig),
+        ]);
+        // For any found deposits, try to match it with the relay:
+        for (const fundsDepositedEvent of fundsDepositedEvents) {
+          const _deposit: Deposit = {
+            chainId: Number(fundsDepositedEvent.returnValues.chainId),
+            depositId: Number(fundsDepositedEvent.returnValues.depositId),
+            depositHash: "", // Filled in after initialization of the remaining variables.
+            l1Recipient: fundsDepositedEvent.returnValues.l1Recipient,
+            l2Sender: fundsDepositedEvent.returnValues.l2Sender,
+            l1Token: fundsDepositedEvent.returnValues.l1Token,
+            amount: fundsDepositedEvent.returnValues.amount,
+            slowRelayFeePct: fundsDepositedEvent.returnValues.slowRelayFeePct,
+            instantRelayFeePct: fundsDepositedEvent.returnValues.instantRelayFeePct,
+            quoteTimestamp: Number(fundsDepositedEvent.returnValues.quoteTimestamp),
+            depositContract: fundsDepositedEvent.address,
+          };
+          _deposit.depositHash = this.l2Client.generateDepositHash(_deposit);
+          if (_deposit.depositHash === relay.depositHash) {
+            this.logger.debug({
+              at: "InsuredBridgeRelayer#Disputer",
+              message: "Matched deposit using relay quote time to run new block search",
+              blockSearchConfig,
+              deposit,
+              relay,
+            });
+            deposit = _deposit;
+            break;
+          }
         }
+
+        // Exit loop if block search encompasses "latest" block number. Breaking the loop here guarantees that the
+        // above event search executes at least once.
+        if (blockSearchConfig.toBlock >= latestBlock) break;
+
+        // Increment block search.
+        blockSearchConfig = {
+          fromBlock: blockSearchConfig.toBlock,
+          toBlock: Math.min(latestBlock, blockSearchConfig.toBlock + this.l2LookbackWindow),
+        };
       }
     }
 

@@ -21,4 +21,5 @@ export * from "./price-feed/Networker";
 export * from "./price-feed/PriceFeedMock";
 export * from "./price-feed/PriceFeedMockScaled";
 export * from "./price-feed/InvalidPriceFeedMock";
+export * from "./price-feed/utils";
 export * from "./proxy-transaction-handler/DSProxyManager";
