@@ -159,12 +159,12 @@ contract LongShortPair is Testable, Lockable {
         // expiration ancillary data, if enableEarlyExpiration is set.
         customAncillaryData = params.customAncillaryData;
         require(
-            (enableEarlyExpiration &&
-                optimisticOracle.stampAncillaryData(getEarlyExpirationAncillaryData(), address(this)).length <=
-                optimisticOracle.ancillaryBytesLimit()) ||
-                (!enableEarlyExpiration &&
-                    optimisticOracle.stampAncillaryData(customAncillaryData, address(this)).length <=
-                    optimisticOracle.ancillaryBytesLimit()),
+            optimisticOracle
+                .stampAncillaryData(
+                (enableEarlyExpiration ? getEarlyExpirationAncillaryData() : customAncillaryData),
+                address(this)
+            )
+                .length <= optimisticOracle.ancillaryBytesLimit(),
             "Ancillary Data too long"
         );
 
