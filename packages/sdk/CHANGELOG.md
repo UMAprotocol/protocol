@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.10.2](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.10.1...@uma/sdk@0.10.2) (2021-11-02)
+
+### Bug Fixes
+
+- update user and pool after transaction confirms ([#3543](https://github.com/UMAprotocol/protocol/issues/3543)) ([cc382b3](https://github.com/UMAprotocol/protocol/commit/cc382b3ea1a44624951884f65c630aeb87a11004))
+
 ## [0.10.1](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.10.0...@uma/sdk@0.10.1) (2021-10-29)
 
 ### Bug Fixes

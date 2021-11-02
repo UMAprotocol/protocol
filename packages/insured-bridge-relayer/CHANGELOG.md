@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.8.0](https://github.com/UMAprotocol/protocol/compare/@uma/insured-bridge-relayer@1.7.0...@uma/insured-bridge-relayer@1.8.0) (2021-11-02)
+
+### Bug Fixes
+
+- **across-bots:** Address issue where relayer produces an error after every relay ([#3544](https://github.com/UMAprotocol/protocol/issues/3544)) ([0d84e58](https://github.com/UMAprotocol/protocol/commit/0d84e5861f4fa51d03ea6e3d8baee9edb13398d3))
+- **BridgeAdmin:** Fix typographical in contracts ([#3540](https://github.com/UMAprotocol/protocol/issues/3540)) ([e70a342](https://github.com/UMAprotocol/protocol/commit/e70a34282a0a6a3f92ffe1e88d4ea96fa4f3f54c))
+
+### Features
+
+- use faster block finder ([#3522](https://github.com/UMAprotocol/protocol/issues/3522)) ([d0336ef](https://github.com/UMAprotocol/protocol/commit/d0336ef86d16dc28607a4693356f8c9e7c8e457a))
+
 # [1.7.0](https://github.com/UMAprotocol/protocol/compare/@uma/insured-bridge-relayer@1.6.0...@uma/insured-bridge-relayer@1.7.0) (2021-10-29)
 
 ### Bug Fixes

@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.12.2](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.12.1...@uma/common@2.12.2) (2021-11-02)
+
+### Bug Fixes
+
+- **BridgeAdmin:** Fix typographical in contracts ([#3540](https://github.com/UMAprotocol/protocol/issues/3540)) ([e70a342](https://github.com/UMAprotocol/protocol/commit/e70a34282a0a6a3f92ffe1e88d4ea96fa4f3f54c))
+
 ## [2.12.1](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.12.0...@uma/common@2.12.1) (2021-10-29)
 
 ### Bug Fixes
