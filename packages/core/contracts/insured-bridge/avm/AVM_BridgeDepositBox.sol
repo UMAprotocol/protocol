@@ -25,7 +25,7 @@ contract AVM_BridgeDepositBox is BridgeDepositBox, AVM_CrossDomainEnabled {
     // Address of the Arbitrum L2 token gateway.
     address public l2GatewayRouter;
 
-    event SetXDomainAdmin(address newAdmin);
+    event SetXDomainAdmin(address indexed newAdmin);
 
     /**
      * @notice Construct the Arbitrum Bridge Deposit Box

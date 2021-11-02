@@ -43,7 +43,7 @@ contract OVM_BridgeDepositBox is BridgeDepositBox, OVM_CrossDomainEnabled {
     // Address of the L1 contract that acts as the owner of this Bridge deposit box.
     address public crossDomainAdmin;
 
-    event SetXDomainAdmin(address newAdmin);
+    event SetXDomainAdmin(address indexed newAdmin);
 
     /**
      * @notice Construct the Optimism Bridge Deposit Box
