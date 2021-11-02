@@ -90,8 +90,6 @@ describe("Relayer.ts", function () {
   let l2Client: any;
   let gasEstimator: any;
 
-  let deployTimestamps: any;
-
   before(async function () {
     l1Accounts = await web3.eth.getAccounts();
     [l1Owner, l1Relayer, l1LiquidityProvider, l2Owner, l2Depositor, l2BridgeAdminImpersonator] = l1Accounts;
@@ -192,8 +190,6 @@ describe("Relayer.ts", function () {
       )
       .send({ from: l1Owner });
 
-    deployTimestamps = { [l1Token.options.address]: (await l1Timer.methods.getCurrentTime().call()).toString() };
-
     await bridgeDepositBox.methods
       .whitelistToken(l1Token.options.address, l2Token.options.address, bridgePool.options.address)
       .send({ from: l2BridgeAdminImpersonator });
@@ -218,7 +214,6 @@ describe("Relayer.ts", function () {
       [l1Token.options.address],
       l1Relayer,
       whitelistedChainIds,
-      deployTimestamps,
       defaultLookbackWindow
     );
   });
@@ -639,7 +634,7 @@ describe("Relayer.ts", function () {
     });
     it("Skips deposits with quote time < contract deployment time", async function () {
       // Deposit using quote time prior to deploy timestamp for this L1 token.
-      const quoteTime = Number(deployTimestamps[l1Token.options.address]) - 1;
+      const quoteTime = Number((await bridgePool.methods.getCurrentTime().call()).toString()) - 1;
       await l2Token.methods.approve(bridgeDepositBox.options.address, depositAmount).send({ from: l2Depositor });
       await bridgeDepositBox.methods
         .deposit(
@@ -656,7 +651,7 @@ describe("Relayer.ts", function () {
       await l1Token.methods.mint(l1Relayer, toBN(depositAmount).muln(2)).send({ from: l1Owner });
       await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Relayer });
       await relayer.checkForPendingDepositsAndRelay();
-      assert.isTrue(lastSpyLogIncludes(spy, "Deposit quote time < bridge pool deployment"));
+      assert.isTrue(lastSpyLogIncludes(spy, "Deposit quote time before bridge pool deployment"));
 
       // Relay the deposit from another slow relayer, and check that the bot skips any attempt to speed up the relay
       // since it cannot verify its realized LP fee %.
@@ -679,7 +674,7 @@ describe("Relayer.ts", function () {
         .send({ from: l1Owner });
       await Promise.all([l1Client.update(), l2Client.update()]);
       await relayer.checkForPendingDepositsAndRelay();
-      assert.isTrue(lastSpyLogIncludes(spy, "Deposit quote time < bridge pool deployment"));
+      assert.isTrue(lastSpyLogIncludes(spy, "Deposit quote time before bridge pool deployment"));
     });
   });
   describe("Settle Relay transaction functionality", () => {
@@ -1042,7 +1037,6 @@ describe("Relayer.ts", function () {
         [l1Token.options.address],
         l1Relayer,
         whitelistedChainIds,
-        deployTimestamps,
         1 // Use small lookback window to test that the back up block search loop runs at least a few times before
         // finding the deposit.
       );
@@ -1214,7 +1208,6 @@ describe("Relayer.ts", function () {
         [l1Token.options.address],
         l1Relayer,
         [],
-        deployTimestamps,
         defaultLookbackWindow
       );
 
@@ -1297,7 +1290,7 @@ describe("Relayer.ts", function () {
     });
     it("Disputes relays that bot cannot compute realized LP fee % for", async function () {
       // Deposit using quote time prior to deploy timestamp for this L1 token.
-      const quoteTime = Number(deployTimestamps[l1Token.options.address]) - 1;
+      const quoteTime = Number((await bridgePool.methods.getCurrentTime().call()).toString()) - 1;
       await l2Token.methods.approve(bridgeDepositBox.options.address, depositAmount).send({ from: l2Depositor });
       await bridgeDepositBox.methods
         .deposit(
@@ -1334,7 +1327,7 @@ describe("Relayer.ts", function () {
       await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Relayer });
       await relayer.checkForPendingRelaysAndDispute();
       const targetLog = spy.getCalls().filter((_log: any) => {
-        return _log.lastArg.message.includes("Deposit quote time < bridge pool deployment");
+        return _log.lastArg.message.includes("Deposit quote time before bridge pool deployment");
       });
       assert.equal(targetLog.length, 1);
     });
