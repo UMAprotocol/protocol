@@ -3,6 +3,20 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.14.0](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.13.0...@uma/financial-templates-lib@2.14.0) (2021-11-02)
+
+### Bug Fixes
+
+- **across-bots:** Address issue where relayer produces an error after every relay ([#3544](https://github.com/UMAprotocol/protocol/issues/3544)) ([0d84e58](https://github.com/UMAprotocol/protocol/commit/0d84e5861f4fa51d03ea6e3d8baee9edb13398d3))
+
+### Features
+
+- use faster block finder ([#3522](https://github.com/UMAprotocol/protocol/issues/3522)) ([d0336ef](https://github.com/UMAprotocol/protocol/commit/d0336ef86d16dc28607a4693356f8c9e7c8e457a))
+
+### Reverts
+
+- Revert "improve(insured-bridge): Reduce verbosity of \_getDepositHash() (#3538)" (#3545) ([d1a07f0](https://github.com/UMAprotocol/protocol/commit/d1a07f0c4e244acaf58f51a20c9a8d6e539f1bdd)), closes [#3538](https://github.com/UMAprotocol/protocol/issues/3538) [#3545](https://github.com/UMAprotocol/protocol/issues/3545)
+
 # [2.13.0](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.12.0...@uma/financial-templates-lib@2.13.0) (2021-10-29)
 
 ### Bug Fixes

@@ -3,6 +3,31 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.14.1](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.14.0...@uma/core@2.14.1) (2021-11-02)
+
+### Bug Fixes
+
+- **ancillary-data-lib:** Fix faulty append function ([#3532](https://github.com/UMAprotocol/protocol/issues/3532)) ([26a95fc](https://github.com/UMAprotocol/protocol/commit/26a95fc39d69a20211c18429d790ba9c5f620445))
+- **BridgeAdmin:** Fix typographical in contracts ([#3540](https://github.com/UMAprotocol/protocol/issues/3540)) ([e70a342](https://github.com/UMAprotocol/protocol/commit/e70a34282a0a6a3f92ffe1e88d4ea96fa4f3f54c))
+- **BridgeAdmin:** validated amount sent is correct when making admin calls ([#3537](https://github.com/UMAprotocol/protocol/issues/3537)) ([3bfd30d](https://github.com/UMAprotocol/protocol/commit/3bfd30dfbc8ea10d1b7bdeecb697a6df78581b99))
+- **BridgePool:** add more indexed params ([#3535](https://github.com/UMAprotocol/protocol/issues/3535)) ([0e12eb6](https://github.com/UMAprotocol/protocol/commit/0e12eb6ef1d3ad381290a4e4d5f0490855d3d0f3))
+- **BridgePool:** address missing nat-spec ([#3533](https://github.com/UMAprotocol/protocol/issues/3533)) ([ef39e73](https://github.com/UMAprotocol/protocol/commit/ef39e733308268c08caef3b464005ab84ea3d7aa))
+- **BridgePool:** remove redundant ExpandedERC20 import ([#3530](https://github.com/UMAprotocol/protocol/issues/3530)) ([a9e50e2](https://github.com/UMAprotocol/protocol/commit/a9e50e20989f549396880d369a38c5350a4078a9))
+- **insured-bridge:** Remove unused modifier ([#3542](https://github.com/UMAprotocol/protocol/issues/3542)) ([19c9f9a](https://github.com/UMAprotocol/protocol/commit/19c9f9a5e254fe9eb6a1ca2db1fc964c8c3c377b))
+- **lsp:** fix ancillary data length check in constructor for early expiration ([#3524](https://github.com/UMAprotocol/protocol/issues/3524)) ([041ac34](https://github.com/UMAprotocol/protocol/commit/041ac3414deca70a8f5a2f62f65d5488a31ddff2))
+- **lsp:** Fix inconsistent type casting for expiration timestamp ([#3528](https://github.com/UMAprotocol/protocol/issues/3528)) ([08456fa](https://github.com/UMAprotocol/protocol/commit/08456fab9bab474487d66533ae73e8e9282f7f4f))
+- **lsp:** Fix incorrect inequality for expiration timestamp in settle method ([#3527](https://github.com/UMAprotocol/protocol/issues/3527)) ([ad4c56e](https://github.com/UMAprotocol/protocol/commit/ad4c56ee35eac24bc0b5e717f29f55b409aa8129))
+- **lsp:** Fix request early expiration with timestamp of 0 ([#3526](https://github.com/UMAprotocol/protocol/issues/3526)) ([e2e088b](https://github.com/UMAprotocol/protocol/commit/e2e088b547a7652fe11b223860e42172b4a88a4f))
+- **lsp:** Fix requestEarlyExpiration and expire natspec comments ([#3529](https://github.com/UMAprotocol/protocol/issues/3529)) ([78b371c](https://github.com/UMAprotocol/protocol/commit/78b371ca70fe855239bd95ba1662475c4550f94b))
+- **lsp:** remove duplicate transfer in factory ([#3523](https://github.com/UMAprotocol/protocol/issues/3523)) ([faf58ea](https://github.com/UMAprotocol/protocol/commit/faf58ea5116e105bf0ef7ecc094e96eea9878cfb))
+- **skinny-optimistic-oracle:** Default proposer bond to final fee in requestAndProposePriceFor ([#3534](https://github.com/UMAprotocol/protocol/issues/3534)) ([7fb2918](https://github.com/UMAprotocol/protocol/commit/7fb291856faa5ebd18cae3e50bd5d380e48dc8d9))
+- **skinny-optimistic-oracle:** proposePrice callback should be to requester not msg.sender ([#3531](https://github.com/UMAprotocol/protocol/issues/3531)) ([4dd9c4a](https://github.com/UMAprotocol/protocol/commit/4dd9c4a5a3cd041897b71547d27ecfbc230a29e8))
+- **skinny-optimistic-oracle:** Reentrancy guard requestAndProposePriceFor ([#3539](https://github.com/UMAprotocol/protocol/issues/3539)) ([a9e3fc7](https://github.com/UMAprotocol/protocol/commit/a9e3fc7ef6aa00cc1f093d89305a351a0af09407))
+
+### Reverts
+
+- Revert "improve(insured-bridge): Reduce verbosity of \_getDepositHash() (#3538)" (#3545) ([d1a07f0](https://github.com/UMAprotocol/protocol/commit/d1a07f0c4e244acaf58f51a20c9a8d6e539f1bdd)), closes [#3538](https://github.com/UMAprotocol/protocol/issues/3538) [#3545](https://github.com/UMAprotocol/protocol/issues/3545)
+
 # [2.14.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.13.0...@uma/core@2.14.0) (2021-10-29)
 
 ### Bug Fixes
