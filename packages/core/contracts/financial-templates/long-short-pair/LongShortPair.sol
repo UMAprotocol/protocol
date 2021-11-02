@@ -154,13 +154,20 @@ contract LongShortPair is Testable, Lockable {
 
         financialProductLibrary = params.financialProductLibrary;
         OptimisticOracleInterface optimisticOracle = _getOptimisticOracle();
+
+        // Ancillary data + additional stamped information should be less than ancillary data limit. Consider early
+        // expiration ancillary data, if enableEarlyExpiration is set.
+        customAncillaryData = params.customAncillaryData;
         require(
-            optimisticOracle.stampAncillaryData(params.customAncillaryData, address(this)).length <=
-                optimisticOracle.ancillaryBytesLimit(),
+            optimisticOracle
+                .stampAncillaryData(
+                (enableEarlyExpiration ? getEarlyExpirationAncillaryData() : customAncillaryData),
+                address(this)
+            )
+                .length <= optimisticOracle.ancillaryBytesLimit(),
             "Ancillary Data too long"
         );
 
-        customAncillaryData = params.customAncillaryData;
         proposerReward = params.proposerReward;
         optimisticOracleLivenessTime = params.optimisticOracleLivenessTime;
         optimisticOracleProposerBond = params.optimisticOracleProposerBond;

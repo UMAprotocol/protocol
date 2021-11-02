@@ -224,12 +224,37 @@ describe("LongShortPair", function () {
       const remainingLength = maxLength - (ooAncillary.length - 2) / 2; // Remove the 0x and divide by 2 to get bytes.
       assert(
         await didContractThrow(
+          LongShortPair.new({ ...constructorParams, customAncillaryData: web3.utils.randomHex(remainingLength) }).send({
+            from: deployer,
+          })
+        )
+      );
+
+      // Right below the size limit should work.
+      await LongShortPair.new({
+        ...constructorParams,
+        customAncillaryData: web3.utils.randomHex(remainingLength - 1),
+      }).send({ from: deployer });
+
+      // If the contract is set to enable early expiration, should have a more strict ancillary data size limit
+      // to factor in the additional appended ancillary data for this kind of expiration.
+
+      assert(
+        await didContractThrow(
           LongShortPair.new({
             ...constructorParams,
-            customAncillaryData: web3.utils.randomHex(remainingLength + 1),
+            enableEarlyExpiration: true,
+            customAncillaryData: web3.utils.randomHex(remainingLength - 1),
           }).send({ from: deployer })
         )
       );
+
+      // Subtracting the additional appended data length should enable deployment.
+      await LongShortPair.new({
+        ...constructorParams,
+        enableEarlyExpiration: true,
+        customAncillaryData: web3.utils.randomHex(remainingLength - "earlyExpiration: 1".length - 1),
+      }).send({ from: deployer });
     });
     it("Mint, redeem, expire lifecycle", async function () {
       // Create some sponsor tokens. Send half to the holder account.
