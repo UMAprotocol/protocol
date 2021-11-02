@@ -335,12 +335,6 @@ describe("BridgePool", () => {
       .call();
   });
   it("Constructor validation", async function () {
-    // deployment timestamp is set.
-    assert.equal(
-      (await bridgePool.methods.deploymentTimestamp().call()).toString(),
-      (await bridgePool.methods.getCurrentTime().call()).toString()
-    );
-
     // LP Token symbol and name cannot be empty.
     assert(
       await didContractThrow(

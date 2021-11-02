@@ -38,11 +38,6 @@ contract BridgePool is Testable, BridgePoolInterface, ERC20, Lockable {
     using FixedPoint for FixedPoint.Unsigned;
     using Address for address;
 
-    // Useful for clients to know if any quote times are for a time prior to the contract's deployment. These
-    // deposits will be impossible to compute realized LP fee % for since there will be no utilization at that quote
-    // time. Therefore, clients need to deal with this special case.
-    uint32 public deploymentTimestamp;
-
     // Token that this contract receives as LP deposits.
     IERC20 public override l1Token;
 
@@ -180,7 +175,6 @@ contract BridgePool is Testable, BridgePoolInterface, ERC20, Lockable {
         lastLpFeeUpdate = uint32(getCurrentTime());
         lpFeeRatePerSecond = _lpFeeRatePerSecond;
         isWethPool = _isWethPool;
-        deploymentTimestamp = lastLpFeeUpdate;
 
         syncUmaEcosystemParams(); // Fetch OptimisticOracle and Store addresses and L1Token finalFee.
         syncWithBridgeAdminParams(); // Fetch ProposerBondPct OptimisticOracleLiveness, Identifier from the BridgeAdmin.
