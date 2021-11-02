@@ -134,17 +134,17 @@ describe("BridgePool", () => {
   // Generate ABI encoded deposit data and deposit data hash.
   const generateDepositHash = (_depositData) => {
     const depositDataAbiEncoded = web3.eth.abi.encodeParameters(
-      ["uint256", "uint64", "address", "address", "uint256", "uint64", "uint64", "uint64", "address"],
+      ["uint256", "uint64", "address", "address", "address", "uint256", "uint64", "uint64", "uint64"],
       [
         _depositData.chainId,
         _depositData.depositId,
         _depositData.l1Recipient,
         _depositData.l2Sender,
+        l1Token.options.address,
         _depositData.amount,
         _depositData.slowRelayFeePct,
         _depositData.instantRelayFeePct,
         _depositData.quoteTimestamp,
-        l1Token.options.address,
       ]
     );
     const depositHash = soliditySha3(depositDataAbiEncoded);

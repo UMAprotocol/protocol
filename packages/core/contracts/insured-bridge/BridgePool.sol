@@ -817,7 +817,20 @@ contract BridgePool is Testable, BridgePoolInterface, ERC20, Lockable {
     }
 
     function _getDepositHash(DepositData memory depositData) private view returns (bytes32) {
-        return keccak256(abi.encode(depositData, address(l1Token)));
+        return
+            keccak256(
+                abi.encode(
+                    depositData.chainId,
+                    depositData.depositId,
+                    depositData.l1Recipient,
+                    depositData.l2Sender,
+                    address(l1Token),
+                    depositData.amount,
+                    depositData.slowRelayFeePct,
+                    depositData.instantRelayFeePct,
+                    depositData.quoteTimestamp
+                )
+            );
     }
 
     // Proposes new price of True for relay event associated with `customAncillaryData` to optimistic oracle. If anyone
