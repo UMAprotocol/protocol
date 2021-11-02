@@ -269,7 +269,7 @@ contract BridgePool is Testable, BridgePoolInterface, ERC20, Lockable {
         require(
             depositData.slowRelayFeePct <= 0.25e18 &&
                 depositData.instantRelayFeePct <= 0.25e18 &&
-                realizedLpFeePct < 0.5e18,
+                realizedLpFeePct <= 0.5e18,
             "Invalid fees"
         );
 
@@ -391,7 +391,7 @@ contract BridgePool is Testable, BridgePoolInterface, ERC20, Lockable {
         require(
             depositData.slowRelayFeePct <= 0.25e18 &&
                 depositData.instantRelayFeePct <= 0.25e18 &&
-                realizedLpFeePct < 0.5e18,
+                realizedLpFeePct <= 0.5e18,
             "Invalid fees"
         );
 
