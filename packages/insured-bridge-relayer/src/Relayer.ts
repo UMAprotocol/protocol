@@ -85,17 +85,13 @@ export class Relayer {
       for (const relayableDeposit of relayableDeposits[l1Token]) {
         // If deposit quote time is before the bridgepool's deployment time, then skip it before attempting to calculate
         // the realized LP fee % as this will be impossible to query a contract for a timestamp before its deployment.
-        const depositBlockNumber = (
-          await this.l2BlockFinder.getBlockForTimestamp(relayableDeposit.deposit.quoteTimestamp)
-        ).number;
-        const hasContractData =
-          (await this.l1Client.l1Web3.eth.getCode(bridgePoolAddress, depositBlockNumber)) !== "0x";
-        if (!hasContractData) {
+        if (
+          (await this.getCodeDeployedAtTimestamp(bridgePoolAddress, relayableDeposit.deposit.quoteTimestamp)) === "0x"
+        ) {
           this.logger.debug({
             at: "InsuredBridgeRelayer#Relayer",
             message: "Deposit quote time before bridge pool deployment for L1 token, skipping",
             deposit: relayableDeposit.deposit,
-            computedDepositBlockNumber: depositBlockNumber,
           });
           continue;
         }
@@ -257,14 +253,11 @@ export class Relayer {
       // If deposit quote time is before the bridgepool's deployment time, then dispute it by default because
       // we won't be able to determine otherwise if the realized LP fee % is valid.
       const bridgePoolAddress = this.l1Client.getBridgePoolForToken(deposit.l1Token).contract.options.address;
-      const depositBlockNumber = (await this.l2BlockFinder.getBlockForTimestamp(deposit.quoteTimestamp)).number;
-      const hasContractData = (await this.l1Client.l1Web3.eth.getCode(bridgePoolAddress, depositBlockNumber)) !== "0x";
-      if (!hasContractData) {
+      if ((await this.getCodeDeployedAtTimestamp(bridgePoolAddress, deposit.quoteTimestamp)) === "0x") {
         this.logger.debug({
           at: "Disputer",
           message: "Deposit quote time before bridge pool deployment for L1 token, disputing",
           deposit,
-          computedDepositBlockNumber: depositBlockNumber,
         });
         await this.disputeRelay(deposit, relay);
         return;
@@ -718,6 +711,11 @@ export class Relayer {
         )
         .div(fixedPointAdjustment),
     };
+  }
+
+  private async getCodeDeployedAtTimestamp(address: string, timestamp: number): Promise<string> {
+    const blockNumberForTimestamp = (await this.l2BlockFinder.getBlockForTimestamp(timestamp)).number;
+    return await this.l1Client.l1Web3.eth.getCode(address, blockNumberForTimestamp);
   }
 
   // Return fresh dictionary of relayable deposits keyed by the L1 token to be sent to recipient.
