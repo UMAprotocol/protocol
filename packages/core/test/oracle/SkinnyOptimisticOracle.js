@@ -1231,21 +1231,18 @@ describe("SkinnyOptimisticOracle", function () {
   });
 
   describe("requestProposeAndDisputePriceFor multicall", function () {
-    // Test that custom bond can be set to 0.
-    let customBond = "0";
-    let customTotalDefaultBond = toBN(finalFee).add(toBN(customBond)).toString();
-    let customHalfTotalDefaultBond = toBN(customBond).div(toBN(2)).toString();
     let customPostDisputeParams;
     beforeEach(async function () {
       // Expiration timestamp gets set to request timestamp for batched request+proposal+dispute.
       customPostDisputeParams = {
         ...postDisputeParams(postProposalParams(requestParams)),
-        bond: customBond,
         expirationTime: requestTime.toString(),
       };
 
       // Caller must post (reward + proposal bond) * 2.
-      const totalStake = toBN(reward).add(toBN(finalFee)).add(toBN(customBond)).mul(toBN("2")).toString();
+      const totalStake = toBN(toBN(reward).add(toBN(totalDefaultBond)))
+        .mul(toBN("2"))
+        .toString();
       await collateral.methods.transfer(requester, totalStake).send({ from: accounts[0] });
       await collateral.methods
         .increaseAllowance(optimisticOracle.options.address, totalStake)
@@ -1259,13 +1256,13 @@ describe("SkinnyOptimisticOracle", function () {
         "0x",
         collateral.options.address,
         reward,
-        customBond,
+        0,
         proposer,
         disputer,
         correctPrice
       );
       const returnValue = await txn.call({ from: requester });
-      assert.equal(returnValue, customTotalDefaultBond);
+      assert.equal(returnValue, totalDefaultBond);
       const txnResult = await txn.send({ from: requester });
 
       // DisputePrice, RequestPrice and ProposePrice should contain the same request params, which is different
@@ -1340,11 +1337,11 @@ describe("SkinnyOptimisticOracle", function () {
       // OO should have 2 * disputeBond + reward - 0.5 dispute bond - final fee.
       await verifyBalanceSum(
         optimisticOracle.options.address,
-        customTotalDefaultBond,
-        customTotalDefaultBond,
+        totalDefaultBond,
+        totalDefaultBond,
         reward,
         `-${finalFee}`,
-        `-${customHalfTotalDefaultBond}`
+        `-${halfDefaultBond}`
       );
     });
 
@@ -1356,7 +1353,7 @@ describe("SkinnyOptimisticOracle", function () {
           "0x",
           collateral.options.address,
           reward,
-          customBond,
+          0,
           proposer,
           disputer,
           correctPrice
@@ -1384,10 +1381,7 @@ describe("SkinnyOptimisticOracle", function () {
       );
       const returnValues = await settleTxn.call({ from: accounts[0] });
       assert.equal(returnValues.resolvedPrice, correctPrice);
-      assert.equal(
-        returnValues.payout,
-        toBN(customTotalDefaultBond).add(toBN(customHalfTotalDefaultBond)).add(toBN(reward)).toString()
-      );
+      assert.equal(returnValues.payout, toBN(totalDefaultBond).add(toBN(halfDefaultBond)).add(toBN(reward)).toString());
 
       await settleTxn.send({ from: accounts[0] });
       await verifyState(
@@ -1400,7 +1394,7 @@ describe("SkinnyOptimisticOracle", function () {
       );
 
       // Proposer should net half the disputer's bond plus the reward and receive their proposal bond back.
-      await verifyBalanceSum(proposer, initialUserBalance, customHalfTotalDefaultBond, reward, customTotalDefaultBond);
+      await verifyBalanceSum(proposer, initialUserBalance, halfDefaultBond, reward, totalDefaultBond);
 
       // Disputer balance should be unchanged since they didn't need to post anything for dispute. The dispute
       // bond was taken out of requester's balance.
@@ -1410,7 +1404,7 @@ describe("SkinnyOptimisticOracle", function () {
       await verifyBalanceSum(optimisticOracle.options.address);
 
       // Store should have a final fee.
-      await verifyBalanceSum(store.options.address, finalFee, customHalfTotalDefaultBond);
+      await verifyBalanceSum(store.options.address, finalFee, halfDefaultBond);
     });
   });
 
