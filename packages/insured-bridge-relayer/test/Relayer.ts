@@ -397,11 +397,7 @@ describe("Relayer.ts", function () {
     it("Can correctly detect and produce slow relays", async function () {
       // Before any relays should do nothing and log accordingly.
       await Promise.all([l1Client.update(), l2Client.update()]);
-      assert.equal(
-        (await Promise.allSettled(relayer.checkForPendingDepositsAndRelay())).length,
-        0,
-        "No promises pushed since no pending deposits"
-      );
+      await relayer.checkForPendingDepositsAndRelay();
       assert.isTrue(lastSpyLogIncludes(spy, "No relayable deposits"));
 
       // Make a deposit on L2 and check the bot relays it accordingly.
@@ -430,39 +426,27 @@ describe("Relayer.ts", function () {
         .send({ from: l2Depositor });
       await Promise.all([l1Client.update(), l2Client.update()]);
       // As the relayer does not have enough token balance to do the relay (0 minted) should do nothing.
-      assert.equal(
-        (await Promise.allSettled(relayer.checkForPendingDepositsAndRelay())).length,
-        1,
-        "One promise pushed for one pending deposit skipped"
-      );
+      await relayer.checkForPendingDepositsAndRelay();
       assert.isTrue(lastSpyLogIncludes(spy, "Not relaying"));
 
       // Mint the relayer some tokens and try again.
       await l1Token.methods.mint(l1Relayer, toBN(depositAmount).muln(2)).send({ from: l1Owner });
       await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Relayer });
-      assert.equal(
-        (await Promise.allSettled(relayer.checkForPendingDepositsAndRelay())).length,
-        1,
-        "One promise pushed for one pending deposit containing one relay submission"
-      );
+      await relayer.checkForPendingDepositsAndRelay();
       assert.isTrue(lastSpyLogIncludes(spy, "Slow Relay executed"));
 
       // Advance time such that relay has expired and check that bot correctly identifies it as expired.
       const expirationTime = Number(relayTime.toString()) + defaultLiveness;
       await bridgePool.methods.setCurrentTime(expirationTime).send({ from: l1Owner });
       await l1Client.update();
-      assert.equal(
-        (await Promise.allSettled(relayer.checkForPendingDepositsAndRelay())).length,
-        1,
-        "One promise pushed for one pending deposit skipped"
-      );
+      await relayer.checkForPendingDepositsAndRelay();
       assert.isTrue(lastSpyLogIncludes(spy, "Pending relay has expired"));
 
       // Settle relay and check that bot detects it as finalized.
       const relay = (await bridgePool.getPastEvents("DepositRelayed", { fromBlock: 0 }))[0];
       await bridgePool.methods.settleRelay(depositData, relay.returnValues.relay).send({ from: l1Relayer });
       await l1Client.update();
-      assert.equal((await Promise.allSettled(relayer.checkForPendingDepositsAndRelay())).length, 0);
+      await relayer.checkForPendingDepositsAndRelay();
       // Bot filters out Finalized relays
       assert.isTrue(lastSpyLogIncludes(spy, "No relayable deposits"));
     });
@@ -510,7 +494,7 @@ describe("Relayer.ts", function () {
       // second relay to error:
       await l1Token.methods.mint(l1Relayer, toBN(depositAmount).muln(4)).send({ from: l1Owner });
       await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Relayer });
-      assert.equal((await Promise.allSettled(relayer.checkForPendingDepositsAndRelay())).length, 2);
+      await relayer.checkForPendingDepositsAndRelay();
 
       // Logs should reflect one slow relay executed and one that errored.
       const targetLog = spy.getCalls().filter((_log: any) => {
@@ -557,19 +541,18 @@ describe("Relayer.ts", function () {
       // correctly detect this and submit the relay speed up transaction.
       await Promise.all([l1Client.update(), l2Client.update()]);
       // As the relayer does not have enough token balance to do the relay (0 minted) should do nothing .
-      assert.equal((await Promise.allSettled(relayer.checkForPendingDepositsAndRelay())).length, 1);
+      await relayer.checkForPendingDepositsAndRelay();
       assert.isTrue(lastSpyLogIncludes(spy, "Not relaying"));
 
       // Mint the relayer some tokens and try again.
       await l1Token.methods.mint(l1Relayer, toBN(depositAmount).muln(2)).send({ from: l1Owner });
       await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Relayer });
-      assert.equal((await Promise.allSettled(relayer.checkForPendingDepositsAndRelay())).length, 1);
+      await relayer.checkForPendingDepositsAndRelay();
       assert.isTrue(lastSpyLogIncludes(spy, "Slow relay sped up"));
 
       // Running relayer again ignores and sends appropriate message
       await Promise.all([l1Client.update(), l2Client.update()]);
       await relayer.checkForPendingDepositsAndRelay();
-      assert.equal((await Promise.allSettled(relayer.checkForPendingDepositsAndRelay())).length, 1);
       assert.isTrue(lastSpyLogIncludes(spy, "already sped up"));
     });
     it("Can correctly instantly relay deposits", async function () {
@@ -591,13 +574,13 @@ describe("Relayer.ts", function () {
       // correctly detect this and submit the relay speed up transaction.
       await Promise.all([l1Client.update(), l2Client.update()]);
       // As the relayer does not have enough token balance to do the relay (0 minted) should do nothing.
-      assert.equal((await Promise.allSettled(relayer.checkForPendingDepositsAndRelay())).length, 1);
+      await relayer.checkForPendingDepositsAndRelay();
       assert.isTrue(lastSpyLogIncludes(spy, "Not relaying"));
 
       // Mint the relayer some tokens and try again.
       await l1Token.methods.mint(l1Relayer, toBN(depositAmount).muln(2)).send({ from: l1Owner });
       await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Relayer });
-      assert.equal((await Promise.allSettled(relayer.checkForPendingDepositsAndRelay())).length, 1);
+      await relayer.checkForPendingDepositsAndRelay();
       assert.isTrue(lastSpyLogIncludes(spy, "Relay instantly sent"));
     });
     it("Does not speedup relays with invalid relay data", async function () {
@@ -643,7 +626,7 @@ describe("Relayer.ts", function () {
       await Promise.all([l1Client.update(), l2Client.update()]);
       await l1Token.methods.mint(l1Relayer, toBN(depositAmount).muln(2)).send({ from: l1Owner });
       await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Relayer });
-      assert.equal((await Promise.allSettled(relayer.checkForPendingDepositsAndRelay())).length, 1);
+      await relayer.checkForPendingDepositsAndRelay();
       assert.isTrue(lastSpyLogIncludes(spy, "Pending relay is invalid"));
 
       // Advance time such that relay has expired and check that bot correctly identifies it as expired. Even if the
@@ -651,7 +634,7 @@ describe("Relayer.ts", function () {
       const expirationTime = Number(relayTime.toString()) + defaultLiveness;
       await bridgePool.methods.setCurrentTime(expirationTime).send({ from: l1Owner });
       await Promise.all([l1Client.update()]);
-      assert.equal((await Promise.allSettled(relayer.checkForPendingDepositsAndRelay())).length, 1);
+      await relayer.checkForPendingDepositsAndRelay();
       assert.isTrue(lastSpyLogIncludes(spy, "Pending relay has expired"));
     });
     it("Skips deposits with quote time < contract deployment time", async function () {
@@ -672,7 +655,7 @@ describe("Relayer.ts", function () {
       await Promise.all([l1Client.update(), l2Client.update()]);
       await l1Token.methods.mint(l1Relayer, toBN(depositAmount).muln(2)).send({ from: l1Owner });
       await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Relayer });
-      assert.equal((await Promise.allSettled(relayer.checkForPendingDepositsAndRelay())).length, 0);
+      await relayer.checkForPendingDepositsAndRelay();
       assert.isTrue(lastSpyLogIncludes(spy, "Deposit quote time < bridge pool deployment"));
     });
   });
@@ -691,7 +674,7 @@ describe("Relayer.ts", function () {
     it("Can correctly detect and settleable relays and settle them", async function () {
       // Before any relays should do nothing and log accordingly.
       await Promise.all([l1Client.update(), l2Client.update()]);
-      assert.equal((await Promise.allSettled(relayer.checkforSettleableRelaysAndSettle())).length, 0);
+      await relayer.checkforSettleableRelaysAndSettle();
       assert.isTrue(lastSpyLogIncludes(spy, "No settleable relays"));
 
       // Make a deposit on L2, relay it, advance time and check the bot settles it accordingly.
@@ -712,7 +695,7 @@ describe("Relayer.ts", function () {
       await l1Token.methods.mint(l1Relayer, toBN(depositAmount).muln(2)).send({ from: l1Owner });
       await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Relayer });
       await Promise.all([l1Client.update(), l2Client.update()]);
-      assert.equal((await Promise.allSettled(relayer.checkForPendingDepositsAndRelay())).length, 1);
+      await relayer.checkForPendingDepositsAndRelay();
       assert.isTrue(lastSpyLogIncludes(spy, "Slow Relay executed"));
 
       // Advance time to get the relay into a settable state.
@@ -721,7 +704,7 @@ describe("Relayer.ts", function () {
         .send({ from: l1Owner });
 
       await Promise.all([l1Client.update(), l2Client.update()]);
-      assert.equal((await Promise.allSettled(relayer.checkforSettleableRelaysAndSettle())).length, 1);
+      await relayer.checkforSettleableRelaysAndSettle();
       assert.isTrue(lastSpyLogIncludes(spy, "Relay settled"));
     });
     it("Can correctly detect and settleable relays from other relayers and settle them", async function () {
@@ -770,7 +753,7 @@ describe("Relayer.ts", function () {
 
       // Before any time advancement should be nothing settleable.
       await Promise.all([l1Client.update(), l2Client.update()]);
-      assert.equal((await Promise.allSettled(relayer.checkforSettleableRelaysAndSettle())).length, 0);
+      await relayer.checkforSettleableRelaysAndSettle();
       assert.isTrue(lastSpyLogIncludes(spy, "No settleable relays"));
 
       // Advance time past liveness. This makes the relay settleable. However, as the relayer did not do the relay they can settle it.
@@ -780,7 +763,7 @@ describe("Relayer.ts", function () {
         .send({ from: l1Owner });
 
       await Promise.all([l1Client.update(), l2Client.update()]);
-      assert.equal((await Promise.allSettled(relayer.checkforSettleableRelaysAndSettle())).length, 0);
+      await relayer.checkforSettleableRelaysAndSettle();
       assert.isTrue(lastSpyLogIncludes(spy, "No settleable relays"));
 
       // If we now advance time 15 mins past the expiration, anyone can claim the relay. The relayer should now claim it.
@@ -789,7 +772,7 @@ describe("Relayer.ts", function () {
         .send({ from: l1Owner });
 
       await Promise.all([l1Client.update(), l2Client.update()]);
-      assert.equal((await Promise.allSettled(relayer.checkforSettleableRelaysAndSettle())).length, 1);
+      await relayer.checkforSettleableRelaysAndSettle();
       assert.isTrue(lastSpyLogIncludes(spy, "Relay settled"));
     });
   });
@@ -850,7 +833,7 @@ describe("Relayer.ts", function () {
       await Promise.all([l1Client.update(), l2Client.update()]);
       await l1Token.methods.mint(l1Relayer, toBN(depositAmount).muln(2)).send({ from: l1Owner });
       await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Relayer });
-      assert.equal((await Promise.allSettled(relayer.checkForPendingRelaysAndDispute())).length, 1);
+      await relayer.checkForPendingRelaysAndDispute();
       assert.isTrue(lastSpyLogIncludes(spy, "Disputed pending relay"));
     });
     it("Two pending relays with invalid relay data, one dispute succeeds, one fails", async function () {
@@ -906,7 +889,7 @@ describe("Relayer.ts", function () {
       await l1Token.methods.mint(l1Relayer, toBN(depositAmount).muln(4)).send({ from: l1Owner });
       await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Relayer });
       await Promise.all([l1Client.update(), l2Client.update()]);
-      assert.equal((await Promise.allSettled(relayer.checkForPendingRelaysAndDispute())).length, 2);
+      await relayer.checkForPendingRelaysAndDispute();
 
       // Logs should reflect one dispute executed and one that errored.
       const targetLog = spy.getCalls().filter((_log: any) => {
@@ -960,7 +943,7 @@ describe("Relayer.ts", function () {
       await Promise.all([l1Client.update(), l2Client.update()]);
       await l1Token.methods.mint(l1Relayer, toBN(depositAmount).muln(2)).send({ from: l1Owner });
       await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Relayer });
-      assert.equal((await Promise.allSettled(relayer.checkForPendingRelaysAndDispute())).length, 1);
+      await relayer.checkForPendingRelaysAndDispute();
       assert.isTrue(lastSpyLogIncludes(spy, "Dispute failed to send to OO"));
 
       // Add back identifier to restore state for other tests.
@@ -995,12 +978,12 @@ describe("Relayer.ts", function () {
       await Promise.all([l1Client.update(), l2Client.update()]);
       await l1Token.methods.mint(l1Relayer, toBN(depositAmount).muln(2)).send({ from: l1Owner });
       await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Relayer });
-      assert.equal((await Promise.allSettled(relayer.checkForPendingRelaysAndDispute())).length, 1);
+      await relayer.checkForPendingRelaysAndDispute();
       assert.isTrue(lastSpyLogIncludes(spy, "Disputed pending relay"));
 
       // L1 Client should no longer see relay.
       await Promise.all([l1Client.update(), l2Client.update()]);
-      assert.equal((await Promise.allSettled(relayer.checkForPendingRelaysAndDispute())).length, 0);
+      await relayer.checkForPendingRelaysAndDispute();
       assert.isTrue(lastSpyLogIncludes(spy, "No pending relays"));
     });
     it("Before disputing relays for deposits it cannot find, first tries to find deposit in new blocksearch", async function () {
@@ -1074,7 +1057,7 @@ describe("Relayer.ts", function () {
       await l1Client.update();
       await l1Token.methods.mint(l1Relayer, toBN(depositAmount).muln(2)).send({ from: l1Owner });
       await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Relayer });
-      assert.equal((await Promise.allSettled(relayer.checkForPendingRelaysAndDispute())).length, 1);
+      await relayer.checkForPendingRelaysAndDispute();
       const targetLog = spy.getCalls().filter((_log: any) => {
         return _log.lastArg.message.includes("Matched deposit using relay quote time to run new block search");
       });
@@ -1112,7 +1095,7 @@ describe("Relayer.ts", function () {
       await Promise.all([l1Client.update(), l2Client.update()]);
       await l1Token.methods.mint(l1Relayer, toBN(depositAmount).muln(2)).send({ from: l1Owner });
       await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Relayer });
-      assert.equal((await Promise.allSettled(relayer.checkForPendingRelaysAndDispute())).length, 1);
+      await relayer.checkForPendingRelaysAndDispute();
       assert.isTrue(lastSpyLogIncludes(spy, "Relay chain ID is whitelisted but does not match L2 client chain ID"));
     });
     it("Does not dispute valid relay data that contains a valid deposit hash", async function () {
@@ -1159,14 +1142,14 @@ describe("Relayer.ts", function () {
       await Promise.all([l1Client.update(), l2Client.update()]);
       await l1Token.methods.mint(l1Relayer, toBN(depositAmount).muln(2)).send({ from: l1Owner });
       await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Relayer });
-      assert.equal((await Promise.allSettled(relayer.checkForPendingRelaysAndDispute())).length, 1);
+      await relayer.checkForPendingRelaysAndDispute();
       assert.isTrue(lastSpyLogIncludes(spy, "Skipping"));
 
       // Advance time such that relay has expired and check that bot correctly identifies it as expired.
       const expirationTime = Number(quoteTime.toString()) + defaultLiveness;
       await bridgePool.methods.setCurrentTime(expirationTime).send({ from: l1Owner });
       await l1Client.update();
-      assert.equal((await Promise.allSettled(relayer.checkForPendingRelaysAndDispute())).length, 1);
+      await relayer.checkForPendingRelaysAndDispute();
       assert.isTrue(lastSpyLogIncludes(spy, "Pending relay has expired"));
 
       // Settle relay.
@@ -1195,7 +1178,7 @@ describe("Relayer.ts", function () {
         .send({ from: l1Owner });
 
       await l1Client.update();
-      assert.equal((await Promise.allSettled(relayer.checkForPendingRelaysAndDispute())).length, 1);
+      await relayer.checkForPendingRelaysAndDispute();
       assert.isTrue(lastSpyLogIncludes(spy, "Disputed pending relay"));
     });
     it("Disputes non-whitelisted chainIDs", async function () {
@@ -1254,7 +1237,7 @@ describe("Relayer.ts", function () {
       await Promise.all([l1Client.update(), l2Client.update()]);
       await l1Token.methods.mint(l1Relayer, toBN(depositAmount).muln(2)).send({ from: l1Owner });
       await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Relayer });
-      assert.equal((await Promise.allSettled(_relayer.checkForPendingRelaysAndDispute())).length, 1);
+      await _relayer.checkForPendingRelaysAndDispute();
       assert.isTrue(lastSpyLogIncludes(spy, "Disputed pending relay"));
 
       // This time, submit a relay for a chain ID that isn't used by the L2 client and also isn't on the list of
@@ -1286,7 +1269,7 @@ describe("Relayer.ts", function () {
       await Promise.all([l1Client.update(), l2Client.update()]);
       await l1Token.methods.mint(l1Relayer, toBN(depositAmount).muln(2)).send({ from: l1Owner });
       await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Relayer });
-      assert.equal((await Promise.allSettled(_relayer.checkForPendingRelaysAndDispute())).length, 1);
+      await _relayer.checkForPendingRelaysAndDispute();
       assert.isTrue(lastSpyLogIncludes(spy, "Disputed pending relay"));
     });
   });

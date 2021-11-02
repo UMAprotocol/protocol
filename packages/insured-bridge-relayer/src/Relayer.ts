@@ -134,8 +134,7 @@ export class Relayer {
     await this.sendRelayTransaction(shouldRelay, realizedLpFeePct, relayableDeposit, pendingRelay, hasInstantRelayer);
     return;
   }
-  checkForPendingDepositsAndRelay(): Promise<void>[] {
-    const promises: Promise<void>[] = [];
+  async checkForPendingDepositsAndRelay(): Promise<void> {
     this.logger.debug({ at: "InsuredBridgeRelayer#Relayer", message: "Checking for pending deposits and relaying" });
 
     // Build dictionary of relayable deposits keyed by L1 tokens. We assume that getRelayableDeposits() filters
@@ -146,7 +145,7 @@ export class Relayer {
         at: "InsuredBridgeRelayer#Relayer",
         message: "No relayable deposits for any whitelisted tokens",
       });
-      return promises;
+      return;
     }
 
     // Fetch pending relays (if any) for each relayable deposit and then decide whether to submit a relay (and what
@@ -169,11 +168,19 @@ export class Relayer {
           });
           continue;
         }
-        promises.push(this._relayPendingDeposit(l1Token, relayableDeposit));
+        try {
+          await this._relayPendingDeposit(l1Token, relayableDeposit);
+        } catch (error) {
+          this.logger.error({
+            at: "InsuredBridgeRelayer#Relayer",
+            message: "Unexpected error processing deposit",
+            error,
+          });
+        }
       }
     }
 
-    return promises;
+    return;
   }
 
   // Evaluates given pending `relay` and determines whether to submit a dispute.
@@ -310,9 +317,7 @@ export class Relayer {
       return;
     }
   }
-  checkForPendingRelaysAndDispute(): Promise<void>[] {
-    const promises: Promise<void>[] = [];
-
+  async checkForPendingRelaysAndDispute(): Promise<void> {
     this.logger.debug({ at: "InsuredBridgeRelayer#Disputer", message: "Checking for pending relays and disputing" });
 
     // Build dictionary of pending relays keyed by l1 token and deposit hash. We assume that getPendingRelays() filters
@@ -320,7 +325,7 @@ export class Relayer {
     const pendingRelays: Relay[] = this.getPendingRelays();
     if (pendingRelays.length == 0) {
       this.logger.debug({ at: "InsuredBridgeRelayer#Disputer", message: "No pending relays" });
-      return promises;
+      return;
     }
     this.logger.debug({
       at: "InsuredBridgeRelayer#Disputer",
@@ -328,15 +333,21 @@ export class Relayer {
     });
 
     for (const relay of pendingRelays) {
-      promises.push(this._disputePendingRelay(relay));
+      try {
+        await this._disputePendingRelay(relay);
+      } catch (error) {
+        this.logger.error({
+          at: "InsuredBridgeRelayer#Disputer",
+          message: "Unexpected error processing relay",
+          error,
+        });
+      }
     }
 
-    return promises;
+    return;
   }
 
-  checkforSettleableRelaysAndSettle(): Promise<void>[] {
-    const promises: Promise<void>[] = [];
-
+  async checkforSettleableRelaysAndSettle(): Promise<void> {
     this.logger.debug({ at: "InsuredBridgeRelayer#Finalizer", message: "Checking for settleable relays and settling" });
     for (const l1Token of this.whitelistedRelayL1Tokens) {
       this.logger.debug({
@@ -355,15 +366,23 @@ export class Relayer {
 
       if (settleableRelays.length == 0) {
         this.logger.debug({ at: "InsuredBridgeRelayer#Finalizer", message: "No settleable relays" });
-        return promises;
+        return;
       }
 
       for (const settleableRelay of settleableRelays) {
-        promises.push(this.settleRelay(this.l2Client.getDepositByHash(settleableRelay.depositHash), settleableRelay));
+        try {
+          await this.settleRelay(this.l2Client.getDepositByHash(settleableRelay.depositHash), settleableRelay);
+        } catch (error) {
+          this.logger.error({
+            at: "InsuredBridgeRelayer#Relayer",
+            message: "Unexpected error processing deposit",
+            error,
+          });
+        }
       }
     }
 
-    return promises;
+    return;
   }
 
   // Only Relay-specific params need to be validated (i.e. those params in the Relay struct of BridgePool). If any
