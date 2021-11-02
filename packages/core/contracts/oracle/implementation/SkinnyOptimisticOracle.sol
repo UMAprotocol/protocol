@@ -306,8 +306,8 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
         Request memory request;
         request.currency = currency;
         request.reward = reward;
-        request.finalFee = finalFee;
-        request.bond = bond != 0 ? bond : finalFee;
+        request.finalFee = _getStore().computeFinalFee(address(currency)).rawValue;
+        request.bond = bond != 0 ? bond : request.finalFee;
         request.customLiveness = customLiveness;
         request.proposer = proposer;
         request.proposedPrice = proposedPrice;
@@ -442,7 +442,7 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
         request.currency = currency;
         request.reward = reward;
         request.finalFee = _getStore().computeFinalFee(address(currency)).rawValue;
-        request.bond = bond;
+        request.bond = bond != 0 ? bond : request.finalFee;
         request.proposer = proposer;
         request.disputer = disputer;
         request.proposedPrice = proposedPrice;
