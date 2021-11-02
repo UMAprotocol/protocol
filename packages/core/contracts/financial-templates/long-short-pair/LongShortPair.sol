@@ -228,9 +228,10 @@ contract LongShortPair is Testable, Lockable {
         nonReentrant()
         returns (uint256 collateralReturned)
     {
-        // Either early expiration is enabled and its before the expiration timestamp or it is after the expiration time.
+        // Either early expiration is enabled and it's before the expiration time or it's after the expiration time.
         require(
-            (enableEarlyExpiration && getCurrentTime() < expirationTimestamp) || getCurrentTime() > expirationTimestamp,
+            (enableEarlyExpiration && getCurrentTime() < expirationTimestamp) ||
+                getCurrentTime() >= expirationTimestamp,
             "Can not settle"
         );
 
