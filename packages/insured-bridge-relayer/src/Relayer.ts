@@ -100,8 +100,7 @@ export class Relayer {
           return;
         }
 
-        // If we reach here, then pending relay has not expired and its valid, so there is a chance we can speed
-        // it up.
+        // If we reach here, then pending relay has not expired and its valid, so there is a chance we can speed it up.
       }
     }
 
