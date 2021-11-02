@@ -121,7 +121,7 @@ const transaction = lodash.get(state, ["transactions", txid])
 const transaction = client.getTx(txid)
 // {
 //   id: string;
-//   state: "requested" | "submitted" | "mined";
+//   state: "requested" | "submitted" | "mined" | "error";
 //   toAddress: string;
 //   fromAddress: string;
 //   type: "Add Liquidity" | "Remove Liquidity";
@@ -129,19 +129,19 @@ const transaction = client.getTx(txid)
 //   request?: TransactionRequest;
 //   hash?: string;
 //   receipt?: TransactionReceipt;
+//   error?: Error;
 // }
 ```
 
 ### Tracking Transactions
 
-You must manually call `updateTransactions` on an interval if you care about tracking transactions. This is optional.
+You must manually call `startInterval` or 'updateTransactions' on an interval manually you care about tracking transactions. This is optional.
 
 ```js
-// updates once a minute
-setInterval(() => {
-  client.updateTransactions().catch((err) => {
-    console.error("Something happened when updating transactions", err)
-  })
-}, 60000)
+// updates once every 30 seconds
+client.startInterval(/* optionally pass in ms to update, defaults to 30 seconds */)
 // completed transactions will have the state "mined"
+
+// stops checking for transactions
+client.stopInterval()
 ```

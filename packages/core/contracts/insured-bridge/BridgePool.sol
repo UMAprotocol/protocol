@@ -256,6 +256,10 @@ contract BridgePool is Testable, BridgePoolInterface, ERC20, Lockable {
      *      quoteTimestamp. The OO acts to verify the correctness of this realized fee. Cannot exceed 50%.
      */
     function relayAndSpeedUp(DepositData memory depositData, uint64 realizedLpFeePct) public nonReentrant() {
+        // If deposit quote time is before this contract's deployment, then clients will not be able to compute
+        // a realized LP fee %, so we should block such relays.
+        require(depositData.quoteTimestamp >= deploymentTimestamp, "Deposit before deployment");
+
         // If no pending relay for this deposit, then associate the caller's relay attempt with it.
         uint32 priceRequestTime = uint32(getCurrentTime());
 
@@ -264,7 +268,8 @@ contract BridgePool is Testable, BridgePoolInterface, ERC20, Lockable {
         require(
             depositData.slowRelayFeePct <= 0.25e18 &&
                 depositData.instantRelayFeePct <= 0.25e18 &&
-                realizedLpFeePct < 0.5e18
+                realizedLpFeePct <= 0.5e18,
+            "Invalid fees"
         );
 
         // Check if there is a pending relay for this deposit.
@@ -380,12 +385,17 @@ contract BridgePool is Testable, BridgePoolInterface, ERC20, Lockable {
      *      quoteTimestamp. The OO acts to verify the correctness of this realized fee. Cannot exceed 50%.
      */
     function relayDeposit(DepositData memory depositData, uint64 realizedLpFeePct) public nonReentrant() {
+        // If deposit quote time is before this contract's deployment, then clients will not be able to compute
+        // a realized LP fee %, so we should block such relays.
+        require(depositData.quoteTimestamp >= deploymentTimestamp, "Deposit before deployment");
+
         // The realizedLPFeePct should never be greater than 0.5e18 and the slow and instant relay fees should never be
         // more than 0.25e18 each. Therefore, the sum of all fee types can never exceed 1e18 (or 100%).
         require(
             depositData.slowRelayFeePct <= 0.25e18 &&
                 depositData.instantRelayFeePct <= 0.25e18 &&
-                realizedLpFeePct < 0.5e18
+                realizedLpFeePct <= 0.5e18,
+            "Invalid fees"
         );
 
         // Check if there is a pending relay for this deposit.
@@ -815,7 +825,20 @@ contract BridgePool is Testable, BridgePoolInterface, ERC20, Lockable {
     }
 
     function _getDepositHash(DepositData memory depositData) private view returns (bytes32) {
-        return keccak256(abi.encode(depositData, address(l1Token)));
+        return
+            keccak256(
+                abi.encode(
+                    depositData.chainId,
+                    depositData.depositId,
+                    depositData.l1Recipient,
+                    depositData.l2Sender,
+                    address(l1Token),
+                    depositData.amount,
+                    depositData.slowRelayFeePct,
+                    depositData.instantRelayFeePct,
+                    depositData.quoteTimestamp
+                )
+            );
     }
 
     // Proposes new price of True for relay event associated with `customAncillaryData` to optimistic oracle and
