@@ -53,6 +53,7 @@ export interface BridgePoolData {
   contract: BridgePoolWeb3;
   currentTime: number;
   relayNonce: number;
+  deploymentTime: number;
 }
 
 export class InsuredBridgeL1Client {
@@ -214,6 +215,7 @@ export class InsuredBridgeL1Client {
         // We'll set the following params when fetching bridge pool state in parallel.
         currentTime: 0,
         relayNonce: 0,
+        deploymentTime: 0,
       };
       this.relays[l1Token] = {};
       this.instantRelays[l1Token] = {};
@@ -236,6 +238,7 @@ export class InsuredBridgeL1Client {
         relayCanceledEvents,
         contractTime,
         relayNonce,
+        deploymentTime,
       ] = await Promise.all([
         bridgePool.contract.getPastEvents("DepositRelayed", blockSearchConfig),
         bridgePool.contract.getPastEvents("RelaySpedUp", blockSearchConfig),
@@ -244,12 +247,13 @@ export class InsuredBridgeL1Client {
         bridgePool.contract.getPastEvents("RelayCanceled", blockSearchConfig),
         bridgePool.contract.methods.getCurrentTime().call(),
         bridgePool.contract.methods.numberOfRelays().call(),
+        bridgePool.contract.methods.deploymentTimestamp().call(),
       ]);
 
-      // Store current contract time and relay nonce that user can use to send instant relays
-      // (where there is no pending relay) for a deposit.
+      // Store current contract state for bridge pool.
       bridgePool.currentTime = Number(contractTime);
       bridgePool.relayNonce = Number(relayNonce);
+      bridgePool.deploymentTime = Number(deploymentTime);
 
       for (const depositRelayedEvent of depositRelayedEvents) {
         const relayData: Relay = {

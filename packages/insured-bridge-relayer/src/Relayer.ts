@@ -54,9 +54,6 @@ export class Relayer {
     readonly whitelistedRelayL1Tokens: string[],
     readonly account: string,
     readonly whitelistedChainIds: number[],
-    // TODO: Deprecate `deployTimestamps` once BridgePools are upgraded and we can read `deployTimestamp` on-chain. For
-    // now, we need to hardcode each BP's deploy timestamp.
-    readonly deployTimestamps: { [key: string]: number },
     readonly l2LookbackWindow: number
   ) {
     this.l2BlockFinder = new BlockFinder<BlockTransactionBase>(this.l2Client.l2Web3.eth.getBlock);
@@ -87,12 +84,14 @@ export class Relayer {
       for (const relayableDeposit of relayableDeposits[l1Token]) {
         // If deposit quote time is before the bridgepool's deployment time, then skip it before attempting to calculate
         // the realized LP fee % as this will be impossible to query a contract for a timestamp before its deployment.
-        if (relayableDeposit.deposit.quoteTimestamp < this.deployTimestamps[relayableDeposit.deposit.l1Token]) {
+        const bridgePoolDeploymentTime = this.l1Client.getBridgePoolForToken(relayableDeposit.deposit.l1Token)
+          .deploymentTime;
+        if (relayableDeposit.deposit.quoteTimestamp < bridgePoolDeploymentTime) {
           this.logger.debug({
             at: "InsuredBridgeRelayer#Relayer",
             message: "Deposit quote time < bridge pool deployment for L1 token, skipping",
             deposit: relayableDeposit.deposit,
-            deploymentTime: this.deployTimestamps[relayableDeposit.deposit.l1Token],
+            deploymentTime: bridgePoolDeploymentTime,
           });
           continue;
         }
@@ -258,21 +257,6 @@ export class Relayer {
         deposit.quoteTimestamp === relay.quoteTimestamp
       ) {
         // Relay matched with a Deposit, now check if the relay params itself are valid.
-
-        // If deposit quote time is before the bridgepool's deployment time, then dispute it by default because
-        // we won't be able to determine otherwise if the realized LP fee % is valid.
-        // Note: If the BridgePool contracts requires relay.deposit.quoteTimestamp < contract.deployTime, then we can
-        // remove the following block of code because it won't be possible for such a relay to be sent and disputed.
-        if (deposit.quoteTimestamp < this.deployTimestamps[deposit.l1Token]) {
-          this.logger.debug({
-            at: "InsuredBridgeRelayer#Disputer",
-            message: "Deposit quote time < bridge pool deployment for L1 token, disputing",
-            deposit,
-            deploymentTime: this.deployTimestamps[deposit.l1Token],
-          });
-          await this.disputeRelay(deposit, relay);
-          return;
-        }
 
         // Compute expected realized LP fee % and if the pending relay has a different fee then dispute it.
         const realizedLpFeePct = (await this.l1Client.calculateRealizedLpFeePctForDeposit(deposit)).toString();
@@ -763,9 +747,8 @@ export class Relayer {
     // search config bridge pool's deployment time. This allows us to capture any deposits that happened outside of
     // the L2 client's default block search config.
     else {
-      const bridgePoolDeploymentTime = (
-        await this.l2BlockFinder.getBlockForTimestamp(this.deployTimestamps[relay.l1Token])
-      ).number;
+      const bridgePoolDeploymentTime = this.l1Client.getBridgePoolForToken(relayableDeposit.deposit.l1Token)
+        .deploymentTime;
       let blockSearchConfig = {
         fromBlock: bridgePoolDeploymentTime,
         toBlock: bridgePoolDeploymentTime + this.l2LookbackWindow,

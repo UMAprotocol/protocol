@@ -320,6 +320,10 @@ describe("InsuredBridgeL1Client", function () {
       client.getBridgePoolForDeposit(depositData).relayNonce,
       (await bridgePool.methods.numberOfRelays().call()).toString()
     );
+    assert.equal(
+      client.getBridgePoolForDeposit(depositData).deploymentTime,
+      (await bridgePool.methods.deploymentTimestamp().call()).toString()
+    );
 
     // OptimisticOracle liveness should be reset.
     assert.equal(client.optimisticOracleLiveness, defaultLiveness);
