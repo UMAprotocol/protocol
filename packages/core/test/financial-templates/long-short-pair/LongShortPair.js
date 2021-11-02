@@ -253,7 +253,7 @@ describe("LongShortPair", function () {
       await LongShortPair.new({
         ...constructorParams,
         enableEarlyExpiration: true,
-        customAncillaryData: web3.utils.randomHex(remainingLength - "earlyExpiration: 1".length),
+        customAncillaryData: web3.utils.randomHex(remainingLength - "earlyExpiration: 1".length - 1),
       }).send({ from: deployer });
     });
     it("Mint, redeem, expire lifecycle", async function () {
