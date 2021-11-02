@@ -634,7 +634,7 @@ describe("Relayer.ts", function () {
     });
     it("Skips deposits with quote time < contract deployment time", async function () {
       // Deposit using quote time prior to deploy timestamp for this L1 token.
-      const quoteTime = Number((await bridgePool.methods.deploymentTime().call()).toString()) - 1;
+      const quoteTime = Number((await bridgePool.methods.deploymentTimestamp().call()).toString()) - 1;
       await l2Token.methods.approve(bridgeDepositBox.options.address, depositAmount).send({ from: l2Depositor });
       await bridgeDepositBox.methods
         .deposit(
