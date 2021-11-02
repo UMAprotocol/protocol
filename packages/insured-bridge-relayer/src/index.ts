@@ -12,7 +12,6 @@ import {
   delay,
   InsuredBridgeL1Client,
   InsuredBridgeL2Client,
-  getL2DepositBoxAddress,
 } from "@uma/financial-templates-lib";
 
 import { approveL1Tokens } from "./RelayerHelpers";
@@ -57,7 +56,7 @@ export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
     const l2Client = new InsuredBridgeL2Client(
       logger,
       l2Web3,
-      await getL2DepositBoxAddress(l1Web3, config.activatedChainIds[0], config.bridgeAdmin),
+      await l1Client.getL2DepositBoxAddress(config.activatedChainIds[0]),
       config.activatedChainIds[0],
       l2StartBlock
     );
@@ -81,7 +80,8 @@ export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
       config.whitelistedRelayL1Tokens,
       accounts[0],
       config.whitelistedChainIds,
-      config.deployTimestamps
+      config.deployTimestamps,
+      config.l2BlockLookback
     );
 
     for (;;) {

@@ -44,7 +44,7 @@ try {
 }
 
 const FindBlockAtTimestamp = require("../liquidity-mining/FindBlockAtTimeStamp");
-const { getAbi, getAddress } = require("@uma/core");
+const { getAbi, getAddress } = require("@uma/contracts-node");
 const { getWeb3 } = require("@uma/common");
 /** *****************************************
  *
@@ -376,7 +376,7 @@ async function calculateRebate({
   debug = false,
 }) {
   try {
-    const voting = new web3.eth.Contract(getAbi("Voting"), getAddress("Voting", 1));
+    const voting = new web3.eth.Contract(getAbi("Voting"), await getAddress("Voting", 1));
     console.log(`Using DVM @ ${voting.options.address}`);
 
     if (!debug) {

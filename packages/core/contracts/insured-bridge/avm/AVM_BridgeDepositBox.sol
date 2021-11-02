@@ -25,7 +25,7 @@ contract AVM_BridgeDepositBox is BridgeDepositBox, AVM_CrossDomainEnabled {
     // Address of the Arbitrum L2 token gateway.
     address public l2GatewayRouter;
 
-    event SetXDomainAdmin(address newAdmin);
+    event SetXDomainAdmin(address indexed newAdmin);
 
     /**
      * @notice Construct the Arbitrum Bridge Deposit Box
@@ -33,6 +33,7 @@ contract AVM_BridgeDepositBox is BridgeDepositBox, AVM_CrossDomainEnabled {
      * @param _crossDomainAdmin Address of the L1 contract that can call admin functions on this contract from L1.
      * @param _minimumBridgingDelay Minimum second that must elapse between L2->L1 token transfer to prevent dos.
      * @param _chainId L2 Chain identifier this deposit box is deployed on.
+     * @param _l1Weth Address of Weth on L1. Used to inform if the deposit should wrap ETH to WETH, if deposit is ETH.
      * @param timerAddress Timer used to synchronize contract time in testing. Set to 0x000... in production.
      */
     constructor(
@@ -54,7 +55,7 @@ contract AVM_BridgeDepositBox is BridgeDepositBox, AVM_CrossDomainEnabled {
     /**
      * @notice Changes the L1 contract that can trigger admin functions on this L2 deposit deposit box.
      * @dev This should be set to the address of the L1 contract that ultimately relays a cross-domain message, which
-     * is expected to be the ArbitrumMessenger.
+     * is expected to be the Arbitrum_Messenger.
      * @dev Only callable by the existing crossDomainAdmin via the Arbitrum cross domain messenger.
      * @param newCrossDomainAdmin address of the new L1 admin contract.
      */
@@ -90,7 +91,7 @@ contract AVM_BridgeDepositBox is BridgeDepositBox, AVM_CrossDomainEnabled {
     }
 
     /**
-     * @notice L1 owner can enable/disable deposits for a whitelisted tokens.
+     * @notice L1 owner can enable/disable deposits for a whitelisted token.
      * @dev Only callable by the existing crossDomainAdmin via the Arbitrum cross domain messenger.
      * @param l2Token address of L2 token to enable/disable deposits for.
      * @param depositsEnabled bool to set if the deposit box should accept/reject deposits.

@@ -65,7 +65,7 @@ contract BridgeDepositBoxMock is BridgeDepositBox {
     }
 
     /**
-     * @notice L1 owner can enable/disable deposits for a whitelisted tokens.
+     * @notice L1 owner can enable/disable deposits for a whitelisted token.
      * @dev Only callable by the existing bridgeAdmin via the optimism cross domain messenger.
      * @param _l2Token address of L2 token to enable/disable deposits for.
      * @param _depositsEnabled bool to set if the deposit box should accept/reject deposits.

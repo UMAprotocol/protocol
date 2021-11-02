@@ -90,17 +90,17 @@ describe("InsuredBridgeL1Client", function () {
   const generateRelayData = async (depositData, relayData, bridgePool, l1TokenAddress = l1Token.options.address) => {
     // Save other reused values.
     depositDataAbiEncoded = web3.eth.abi.encodeParameters(
-      ["uint256", "uint64", "address", "address", "address", "uint256", "uint64", "uint64", "uint32"],
+      ["uint256", "uint64", "address", "address", "uint256", "uint64", "uint64", "uint32", "address"],
       [
         depositData.chainId,
         depositData.depositId,
         depositData.l1Recipient,
         depositData.l2Sender,
-        l1TokenAddress,
         depositData.amount,
         depositData.slowRelayFeePct,
         depositData.instantRelayFeePct,
         depositData.quoteTimestamp,
+        l1TokenAddress,
       ]
     );
     depositHash = soliditySha3(depositDataAbiEncoded);
