@@ -55,9 +55,6 @@ export class InsuredBridgeL2Client {
     return this.deposits[depositHash];
   }
 
-  // TODO: consider adding a method that limits how far back the deposits will be returned from. In this implementation
-  // we might hit some performance issues when returning a lot of bridging actions
-
   async update(): Promise<void> {
     // Define a config to bound the queries by.
     const blockSearchConfig = {

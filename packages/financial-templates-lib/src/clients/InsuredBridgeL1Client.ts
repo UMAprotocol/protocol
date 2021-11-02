@@ -191,7 +191,7 @@ export class InsuredBridgeL1Client {
   // Returns the L2 Deposit box address for a given bridgeAdmin on L1.
   async getL2DepositBoxAddress(chainId: number): Promise<string> {
     const depositContracts = (await this.bridgeAdmin.methods.depositContracts(chainId).call()) as any;
-    return depositContracts.depositContract || depositContracts[0]; // When latest BridgeAdmin is redeployed, can remove the "|| depositContracts[0]".
+    return depositContracts.depositContract;
   }
 
   async update(): Promise<void> {
