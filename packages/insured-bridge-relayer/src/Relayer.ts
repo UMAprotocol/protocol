@@ -797,8 +797,7 @@ export class Relayer {
     // search config bridge pool's deployment time. This allows us to capture any deposits that happened outside of
     // the L2 client's default block search config.
     else {
-      const bridgePoolDeploymentTime = this.l1Client.getBridgePoolForToken(relayableDeposit.deposit.l1Token)
-        .deploymentTime;
+      const bridgePoolDeploymentTime = this.l1Client.getBridgePoolForToken(relay.l1Token).deploymentTime;
       let blockSearchConfig = {
         fromBlock: bridgePoolDeploymentTime,
         toBlock: bridgePoolDeploymentTime + this.l2LookbackWindow,
