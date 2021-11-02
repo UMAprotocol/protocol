@@ -65,9 +65,9 @@ export class RelayerConfig {
       RATE_MODELS,
       CHAIN_IDS,
       L2_BLOCK_LOOKBACK,
-      DISPUTER_ENABLED,
       RELAYER_ENABLED,
       FINALIZER_ENABLED,
+      DISPUTER_ENABLED,
       WHITELISTED_CHAIN_IDS,
       DEPLOY_TIMESTAMPS,
     } = env;
