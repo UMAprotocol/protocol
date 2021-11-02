@@ -155,11 +155,6 @@ contract BridgePool is Testable, BridgePoolInterface, ERC20, Lockable {
     event RelaySettled(bytes32 indexed depositHash, address indexed caller, RelayData relay);
     event BridgePoolAdminTransferred(address oldAdmin, address newAdmin);
 
-    modifier onlyFromOptimisticOracle() {
-        require(msg.sender == address(optimisticOracle), "Caller must be OptimisticOracle");
-        _;
-    }
-
     /**
      * @notice Construct the Bridge Pool.
      * @param _lpTokenName Name of the LP token to be deployed by this contract.
