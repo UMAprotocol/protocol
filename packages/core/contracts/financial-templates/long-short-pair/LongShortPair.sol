@@ -272,6 +272,7 @@ contract LongShortPair is Testable, Lockable {
      * @notice Enables the LSP to request early expiration. This initiates a price request to the optimistic oracle at
      * the provided timestamp with a modified version of the ancillary data that includes the key "earlyExpiration:1"
      * which signals to the OO that this is an early expiration request, rather than standard settlement.
+     * @dev The caller must approve this contract to transfer `proposerReward` amount of collateral.
      * @dev Will revert if: a) the contract is already early expire, b) it is after the expiration timestamp, c)
      * early expiration is disabled for this contract, d) the proposed expiration timestamp is in the future.
      * e) an early expiration attempt has already been made (in pending state).
@@ -296,6 +297,7 @@ contract LongShortPair is Testable, Lockable {
 
     /**
      * @notice Expire the LSP contract. Makes a request to the optimistic oracle to inform the settlement price.
+     * @dev The caller must approve this contract to transfer `proposerReward` amount of collateral.
      * @dev Will revert if: a) the contract is already early expire, b) it is before the expiration timestamp or c)
      * an expire call has already been made.
      */
