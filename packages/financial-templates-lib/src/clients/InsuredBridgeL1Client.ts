@@ -64,7 +64,6 @@ export class InsuredBridgeL1Client {
   private instantRelays: { [key: string]: { [key: string]: InstantRelay } } = {}; // L1TokenAddress=>{depositHash, realizedLpFeePct}=>InstantRelay.
 
   private firstBlockToSearch: number;
-  private web3: Web3;
   private readonly blockFinder: BlockFinder<BlockTransactionBase>;
 
   constructor(
@@ -83,8 +82,7 @@ export class InsuredBridgeL1Client {
     this.bridgePools = {}; // Initialize the bridgePools with no pools yet. Will be populated in the _initialSetup.
 
     this.firstBlockToSearch = startingBlockNumber;
-    this.web3 = l1Web3;
-    this.blockFinder = new BlockFinder<BlockTransactionBase>(this.web3.eth.getBlock);
+    this.blockFinder = new BlockFinder<BlockTransactionBase>(this.l1Web3.eth.getBlock);
   }
 
   // Return an array of all bridgePool addresses
@@ -188,6 +186,11 @@ export class InsuredBridgeL1Client {
 
   async getProposerBondPct(): Promise<BN> {
     return toBN(await this.bridgeAdmin.methods.proposerBondPct().call());
+  }
+
+  async getL2DepositBoxAddress(chainId: number): Promise<string> {
+    const depositContracts = (await this.bridgeAdmin.methods.depositContracts(chainId).call()) as any;
+    return depositContracts.depositContract || depositContracts[0];
   }
 
   async update(): Promise<void> {
@@ -319,14 +322,14 @@ export class InsuredBridgeL1Client {
 
   private _getInstantRelayHash(depositHash: string, realizedLpFeePct: string): string | null {
     const instantRelayDataHash = soliditySha3(
-      this.web3.eth.abi.encodeParameters(["bytes32", "uint64"], [depositHash, realizedLpFeePct])
+      this.l1Web3.eth.abi.encodeParameters(["bytes32", "uint64"], [depositHash, realizedLpFeePct])
     );
     return instantRelayDataHash;
   }
 
   private _getRelayHash = (relay: Relay) => {
     return soliditySha3(
-      this.web3.eth.abi.encodeParameters(
+      this.l1Web3.eth.abi.encodeParameters(
         ["uint256", "address", "uint32", "uint64", "uint256", "uint256", "uint256"],
         [
           relay.relayState,
@@ -348,9 +351,3 @@ export class InsuredBridgeL1Client {
 }
 
 // Returns the L2 Deposit box address for a given bridgeAdmin on L1.
-export async function getL2DepositBoxAddress(web3: Web3, chainId: number, bridgeAdminAddress: string): Promise<string> {
-  const depositContracts = await new web3.eth.Contract(getAbi("BridgeAdminInterface"), bridgeAdminAddress).methods
-    .depositContracts(chainId)
-    .call();
-  return depositContracts.depositContract;
-}
