@@ -469,7 +469,7 @@ describe("Relayer.ts", function () {
     it("Two deposits, one relay fails, one succeeds", async function () {
       // Deposit #1
       await l2Token.methods.approve(bridgeDepositBox.options.address, depositAmount).send({ from: l2Depositor });
-      const quoteTime = await bridgeDepositBox.methods.getCurrentTime().call();
+      const quoteTime = (await web3.eth.getBlock("latest")).timestamp;
       const depositData = {
         chainId,
         depositId: "0",
