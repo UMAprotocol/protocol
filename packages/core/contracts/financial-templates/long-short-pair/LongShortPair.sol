@@ -217,7 +217,7 @@ contract LongShortPair is Testable, Lockable {
      * @dev This contract must have the `Burner` role for the `longToken` and `shortToken` in order to call `burnFrom`.
      * @dev The caller does not need to approve this contract to transfer any amount of `tokensToRedeem` since long
      * and short tokens are burned, rather than transferred, from the caller.
-     * @dev This function can be called before or after expiration method to facilitate early expiration. If a price has
+     * @dev This function can be called before or after expiration to facilitate early expiration. If a price has
      * not yet been resolved for either normal or early expiration yet then it will revert.
      * @param longTokensToRedeem number of long tokens to settle.
      * @param shortTokensToRedeem number of short tokens to settle.
@@ -232,7 +232,7 @@ contract LongShortPair is Testable, Lockable {
         require(
             (enableEarlyExpiration && getCurrentTime() < expirationTimestamp) ||
                 getCurrentTime() >= expirationTimestamp,
-            "Can not settle"
+            "Cannot settle"
         );
 
         // Get the settlement price and store it. Also sets expiryPercentLong to inform settlement. Reverts if either:
@@ -274,7 +274,7 @@ contract LongShortPair is Testable, Lockable {
      * the provided timestamp with a modified version of the ancillary data that includes the key "earlyExpiration:1"
      * which signals to the OO that this is an early expiration request, rather than standard settlement.
      * @dev The caller must approve this contract to transfer `proposerReward` amount of collateral.
-     * @dev Will revert if: a) the contract is already early expire, b) it is after the expiration timestamp, c)
+     * @dev Will revert if: a) the contract is already early expired, b) it is after the expiration timestamp, c)
      * early expiration is disabled for this contract, d) the proposed expiration timestamp is in the future.
      * e) an early expiration attempt has already been made (in pending state).
      * @param _earlyExpirationTimestamp timestamp at which the early expiration is proposed.
@@ -299,7 +299,7 @@ contract LongShortPair is Testable, Lockable {
     /**
      * @notice Expire the LSP contract. Makes a request to the optimistic oracle to inform the settlement price.
      * @dev The caller must approve this contract to transfer `proposerReward` amount of collateral.
-     * @dev Will revert if: a) the contract is already early expire, b) it is before the expiration timestamp or c)
+     * @dev Will revert if: a) the contract is already early expired, b) it is before the expiration timestamp or c)
      * an expire call has already been made.
      */
     function expire() public nonReentrant() notEarlyExpired() postExpiration() {

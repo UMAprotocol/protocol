@@ -930,7 +930,7 @@ describe("LongShortPair", function () {
 
       // Propose a to the OO that indicates the contract should not settle. price to the OO for the early settlement.
       await proposeAndSettleOptimisticOraclePrice(
-        toBN(MIN_INT_VALUE), // Magic number the LPS uses to ignore early expiration settlement actions.
+        toBN(MIN_INT_VALUE), // Magic number the LSP uses to ignore early expiration settlement actions.
         earlyExpirationTimestamp,
         earlyExpirationAncillaryData
       );
@@ -939,7 +939,7 @@ describe("LongShortPair", function () {
       assert(await didContractThrow(longShortPair.methods.settle(toWei("100"), toWei("100")).send({ from: sponsor })));
     });
     it("Can not re-request early expiration while the previous request is in pending state", async function () {
-      // In the event that someone tried to early expire the LPS, the LPS should not alow someone else to re-request
+      // In the event that someone tried to early expire the LSP, the LSP should not alow someone else to re-request
       // early expiration until the first request is done.
 
       await longShortPair.methods.requestEarlyExpiration(earlyExpirationTimestamp).send({ from: rando });
@@ -959,7 +959,7 @@ describe("LongShortPair", function () {
       );
     });
     it("Can not re-request early expiration if a previous early expiration finalized successfully", async function () {
-      // In the event that someone tries to early expire the LPS, which is successful (returns a number other than
+      // In the event that someone tries to early expire the LSP, which is successful (returns a number other than
       // type(int256).min) future attempts to early expire should be blocked.
 
       await longShortPair.methods.requestEarlyExpiration(earlyExpirationTimestamp).send({ from: rando });
@@ -985,7 +985,7 @@ describe("LongShortPair", function () {
       );
     });
     it("Can re-request early expiration if a previous request failed", async function () {
-      // In the event that someone tries to early expire the LPS, which is unsuccessful (OO returns the magic
+      // In the event that someone tries to early expire the LSP, which is unsuccessful (OO returns the magic
       // type(int256).min number) future attempts to early expire should be valid, assuming the request timestamp is
       // different to the original request timestamp.
 
@@ -993,7 +993,7 @@ describe("LongShortPair", function () {
 
       // Propose a to the OO that indicates the contract should not settle.
       await proposeAndSettleOptimisticOraclePrice(
-        toBN(MIN_INT_VALUE), // Magic number the LPS uses to ignore early expiration settlement actions.
+        toBN(MIN_INT_VALUE), // Magic number the LSP uses to ignore early expiration settlement actions.
         earlyExpirationTimestamp,
         earlyExpirationAncillaryData
       );
@@ -1053,7 +1053,7 @@ describe("LongShortPair", function () {
 
       // Propose a to the OO that indicates the contract should not settle.
       await proposeAndSettleOptimisticOraclePrice(
-        toBN(MIN_INT_VALUE), // Magic number the LPS uses to ignore early expiration settlement actions.
+        toBN(MIN_INT_VALUE), // Magic number the LSP uses to ignore early expiration settlement actions.
         earlyExpirationTimestamp,
         earlyExpirationAncillaryData
       );

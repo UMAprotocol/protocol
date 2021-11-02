@@ -95,7 +95,7 @@ abstract contract BridgeDepositBox is Testable, Lockable {
 
     /**
      * @notice Construct the Bridge Deposit Box
-     * @param _minimumBridgingDelay Minimum second that must elapse between L2 -> L1 token transfer to prevent dos.
+     * @param _minimumBridgingDelay Minimum seconds that must elapse between L2 -> L1 token transfer to prevent dos.
      * @param _chainId Chain identifier for the Bridge deposit box.
      * @param _l1Weth Address of Weth on L1. Used to inform if the deposit should wrap ETH to WETH, if deposit is ETH.
      * @param timerAddress Timer used to synchronize contract time in testing. Set to 0x000... in production.
@@ -146,7 +146,7 @@ abstract contract BridgeDepositBox is Testable, Lockable {
     }
 
     /**
-     * @notice L1 owner can enable/disable deposits for a whitelisted tokens.
+     * @notice L1 owner can enable/disable deposits for a whitelisted token.
      * @param l2Token address of L2 token to enable/disable deposits for.
      * @param depositsEnabled bool to set if the deposit box should accept/reject deposits.
      */
@@ -167,7 +167,7 @@ abstract contract BridgeDepositBox is Testable, Lockable {
      * @param l2Token L2 token to deposit.
      * @param amount How many L2 tokens should be deposited.
      * @param slowRelayFeePct Max fraction of `amount` that the depositor is willing to pay as a slow relay fee.
-     * @param instantRelayFeePct Fraction of `amount` that the depositor is willing to pay as a instant relay fee.
+     * @param instantRelayFeePct Fraction of `amount` that the depositor is willing to pay as an instant relay fee.
      * @param quoteTimestamp Timestamp, at which the depositor will be quoted for L1 liquidity. This enables the
      *    depositor to know the L1 fees before submitting their deposit. Must be within 10 mins of the current time.
      */

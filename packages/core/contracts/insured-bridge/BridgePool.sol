@@ -196,7 +196,7 @@ contract BridgePool is Testable, BridgePoolInterface, ERC20, Lockable {
      *************************************************/
 
     /**
-     * @notice Add liquidity to the bridge pool. Pulls l1Token from the callers wallet. The caller is sent back a
+     * @notice Add liquidity to the bridge pool. Pulls l1Token from the caller's wallet. The caller is sent back a
      * commensurate number of LP tokens (minted to their address) at the prevailing exchange rate.
      * @dev The caller must approve this contract to transfer `l1TokenAmount` amount of l1Token if depositing ERC20.
      * @dev The caller can deposit ETH which is auto wrapped to WETH. This can only be done if: a) this is the Weth pool
@@ -222,7 +222,7 @@ contract BridgePool is Testable, BridgePoolInterface, ERC20, Lockable {
     }
 
     /**
-     * @notice Removes liquidity to the bridge pool. Burns lpTokenAmount LP tokens from the callers wallet. The caller
+     * @notice Removes liquidity from the bridge pool. Burns lpTokenAmount LP tokens from the caller's wallet. The caller
      * is sent back a commensurate number of l1Tokens at the prevailing exchange rate.
      * @dev The caller does not need to approve the spending of LP tokens as this method directly uses the burn logic.
      * @dev Reentrancy guard not added to this function because this indirectly calls sync() which is guarded.
@@ -258,7 +258,7 @@ contract BridgePool is Testable, BridgePoolInterface, ERC20, Lockable {
      * @dev Caller must have approved this contract to spend the total bond + amount - fees for `l1Token`.
      * @param depositData the deposit data struct containing all the user's deposit information.
      * @param realizedLpFeePct LP fee calculated off-chain considering the L1 pool liquidity at deposit time, before
-     *      quoteTimestamp. The OO acts to verify the correctness of this realized fee. Can not exceed 50%.
+     *      quoteTimestamp. The OO acts to verify the correctness of this realized fee. Cannot exceed 50%.
      */
     function relayAndSpeedUp(DepositData memory depositData, uint64 realizedLpFeePct) public nonReentrant() {
         // If no pending relay for this deposit, then associate the caller's relay attempt with it.
@@ -382,7 +382,7 @@ contract BridgePool is Testable, BridgePoolInterface, ERC20, Lockable {
      * @dev Caller must have approved this contract to spend the total bond + amount - fees for `l1Token`.
      * @param depositData the deposit data struct containing all the user's deposit information.
      * @param realizedLpFeePct LP fee calculated off-chain considering the L1 pool liquidity at deposit time, before
-     *      quoteTimestamp. The OO acts to verify the correctness of this realized fee. Can not exceed 50%.
+     *      quoteTimestamp. The OO acts to verify the correctness of this realized fee. Cannot exceed 50%.
      */
     function relayDeposit(DepositData memory depositData, uint64 realizedLpFeePct) public nonReentrant() {
         // The realizedLPFeePct should never be greater than 0.5e18 and the slow and instant relay fees should never be
@@ -525,7 +525,7 @@ contract BridgePool is Testable, BridgePoolInterface, ERC20, Lockable {
         // At this point there are two possible cases:
         // - This was a slow relay: In this case, a) pay the slow relayer their reward and b) pay the l1Recipient of the
         //      amount minus the realized LP fee and the slow Relay fee. The transfer was not sped up so no instant fee.
-        // - This was a instant relay: In this case, a) pay the slow relayer their reward and b) pay the instant relayer
+        // - This was an instant relay: In this case, a) pay the slow relayer their reward and b) pay the instant relayer
         //      the full bridging amount, minus the realized LP fee and minus the slow relay fee. When the instant
         //      relayer called speedUpRelay they were docked this same amount, minus the instant relayer fee. As a
         //      result, they are effectively paid what they spent when speeding up the relay + the instantRelayFee.

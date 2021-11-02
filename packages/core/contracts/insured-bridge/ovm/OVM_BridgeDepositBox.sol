@@ -73,7 +73,7 @@ contract OVM_BridgeDepositBox is BridgeDepositBox, OVM_CrossDomainEnabled {
     /**
      * @notice Changes the L1 contract that can trigger admin functions on this L2 deposit deposit box.
      * @dev This should be set to the address of the L1 contract that ultimately relays a cross-domain message, which
-     * is expected to be the OptimismMessenger.
+     * is expected to be the Optimism_Messenger.
      * @dev Only callable by the existing admin via the Optimism cross domain messenger.
      * @param newCrossDomainAdmin address of the new L1 admin contract.
      */
@@ -109,7 +109,7 @@ contract OVM_BridgeDepositBox is BridgeDepositBox, OVM_CrossDomainEnabled {
     }
 
     /**
-     * @notice L1 owner can enable/disable deposits for a whitelisted tokens.
+     * @notice L1 owner can enable/disable deposits for a whitelisted token.
      * @dev Only callable by the existing crossDomainAdmin via the optimism cross domain messenger.
      * @param l2Token address of L2 token to enable/disable deposits for.
      * @param depositsEnabled bool to set if the deposit box should accept/reject deposits.
