@@ -682,7 +682,7 @@ export class Relayer {
     const relayableDeposits: RelayableDeposits = {};
     for (const l1Token of this.whitelistedRelayL1Tokens) {
       this.logger.debug({ at: "InsuredBridgeRelayer#Relayer", message: "Checking relays for token", l1Token });
-      const l2Deposits = this.l2Client.getAllDeposits();
+      const l2Deposits = this.l2Client.getAllDepositsForL1Token(l1Token);
       l2Deposits.forEach((deposit) => {
         const status = this.l1Client.getDepositRelayState(deposit);
         if (status != ClientRelayState.Finalized) {
