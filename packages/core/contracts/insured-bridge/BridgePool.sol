@@ -13,7 +13,6 @@ import "../common/implementation/AncillaryData.sol";
 import "../common/implementation/Testable.sol";
 import "../common/implementation/FixedPoint.sol";
 import "../common/implementation/Lockable.sol";
-import "../common/implementation/ExpandedERC20.sol";
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -168,6 +167,7 @@ contract BridgePool is Testable, BridgePoolInterface, ERC20, Lockable {
      * @param _bridgeAdmin Admin contract deployed alongside on L1. Stores global variables and has owner control.
      * @param _l1Token Address of the L1 token that this bridgePool holds. This is the token LPs deposit and is bridged.
      * @param _lpFeeRatePerSecond Interest rate payment that scales the amount of pending fees per second paid to LPs.
+     * @param _isWethPool Toggles if this is the WETH pool. If it is then can accept ETH and wrap to WETH for the user.
      * @param _timer Timer used to synchronize contract time in testing. Set to 0x000... in production.
      */
     constructor(

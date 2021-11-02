@@ -935,9 +935,18 @@ describe("LongShortPair", function () {
     });
 
     it("Can not attempt early expiration post expiration", async function () {
-      const earlyExpirationTimestamp = Number(await timer.methods.getCurrentTime().call()) - 10;
-      await longShortPair.methods.requestEarlyExpiration(earlyExpirationTimestamp).send({ from: rando });
+      const earlyExpirationTimestamp = Number(await timer.methods.getCurrentTime().call());
+      assert(
+        await didContractThrow(
+          longShortPair.methods.requestEarlyExpiration(earlyExpirationTimestamp + 10).send({ from: rando })
+        )
+      );
     });
+
+    it("Can not attempt early expiration with a timestamp of 0", async function () {
+      assert(await didContractThrow(longShortPair.methods.requestEarlyExpiration(0).send({ from: rando })));
+    });
+
     it("Optimistic oracle returning 'do nothing' number blocks early expiration", async function () {
       // In the event that someone tried to incorrectly settle the contract early, the OO will return type(int256).min.
       // This indicates that the contract should "do nothing" (i.e keep running).

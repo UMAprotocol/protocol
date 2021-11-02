@@ -68,7 +68,6 @@ contract LongShortPairCreator is Testable, Lockable {
 
     /**
      * @notice Creates a longShortPair contract and associated long and short tokens.
-     * @dev The caller must approve this contract to transfer `proposerReward` amount of collateral.
      * @param params Constructor params used to initialize the LSP. Key-valued object with the following structure:
      *     - `pairName`: Name of the long short pair contract.
      *     - `expirationTimestamp`: Unix timestamp of when the contract will expire.
@@ -107,10 +106,6 @@ contract LongShortPairCreator is Testable, Lockable {
 
         // Deploy the LPS contract.
         LongShortPair lsp = new LongShortPair(_convertParams(params, longToken, shortToken));
-
-        // Move prepaid proposer reward from the deployer to the newly deployed contract.
-        if (params.proposerReward > 0)
-            params.collateralToken.safeTransferFrom(msg.sender, address(lsp), params.proposerReward);
 
         address lspAddress = address(lsp);
 

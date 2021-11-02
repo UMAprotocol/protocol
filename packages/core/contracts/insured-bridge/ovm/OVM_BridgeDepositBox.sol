@@ -43,13 +43,14 @@ contract OVM_BridgeDepositBox is BridgeDepositBox, OVM_CrossDomainEnabled {
     // Address of the L1 contract that acts as the owner of this Bridge deposit box.
     address public crossDomainAdmin;
 
-    event SetXDomainAdmin(address newAdmin);
+    event SetXDomainAdmin(address indexed newAdmin);
 
     /**
      * @notice Construct the Optimism Bridge Deposit Box
      * @param _crossDomainAdmin Address of the L1 contract that can call admin functions on this contract from L1.
      * @param _minimumBridgingDelay Minimum second that must elapse between L2->L1 token transfer to prevent dos.
      * @param _chainId L2 Chain identifier this deposit box is deployed on.
+     * @param _l1Weth Address of Weth on L1. Used to inform if the deposit should wrap ETH to WETH, if deposit is ETH.
      * @param timerAddress Timer used to synchronize contract time in testing. Set to 0x000... in production.
      */
     constructor(
