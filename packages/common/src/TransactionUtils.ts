@@ -37,11 +37,13 @@ export const runTransaction = async ({
   transaction,
   transactionConfig,
   availableAccounts = 1,
+  waitForMine = true,
 }: {
   web3: Web3;
   transaction: ContractSendMethod;
   transactionConfig: AugmentedSendOptions;
   availableAccounts?: number;
+  waitForMine: boolean;
 }): Promise<{
   receipt: TransactionReceipt;
   returnValue: CallReturnValue;
@@ -101,17 +103,34 @@ export const runTransaction = async ({
     const maximumGasPriceMultiple = 2 * 3;
     // Pre-London transactions require `gasPrice`, London transactions require `maxFeePerGas` and `maxPriorityFeePerGas`
 
-    let receipt;
+    let receipt: any;
 
     // If the config contains maxPriorityFeePerGas then this is a London transaction. In this case, simply use the
     // provided config settings but double the maxFeePerGas to ensure the transaction is included, even if the base fee
     // spikes up. The difference between the realized base fee and maxFeePerGas is refunded in a London transaction.
     if (transactionConfig.maxFeePerGas && transactionConfig.maxPriorityFeePerGas) {
-      receipt = await transaction.send({
-        ...transactionConfig,
-        maxFeePerGas: parseInt(transactionConfig.maxFeePerGas.toString()) * 2,
-        type: "0x2",
-      } as SendOptions);
+      // console.log("transactionConfig", transactionConfig);
+      // console.log("transaction", transaction);
+      if (waitForMine)
+        receipt = await transaction.send({
+          ...transactionConfig,
+          maxFeePerGas: parseInt(transactionConfig.maxFeePerGas.toString()) * 2,
+          type: "0x2",
+        } as SendOptions);
+      else {
+        return new Promise((resolve) => {
+          web3.eth
+            .sendTransaction({
+              to: (transaction as any)._parent._address,
+              ...transactionConfig,
+              type: "0x2",
+              data: transaction.encodeABI(),
+            } as any)
+            .on("transactionHash", (hash) => {
+              resolve({ receipt: { transactionHash: hash } as any, transactionConfig, returnValue: null as any });
+            });
+        });
+      }
 
       // Else this is a legacy tx.
     } else if (transactionConfig.gasPrice) {
