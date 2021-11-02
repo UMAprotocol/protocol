@@ -56,15 +56,7 @@ contract Arbitrum_Messenger is Ownable, Arbitrum_CrossDomainEnabled, MessengerIn
     ) external payable override onlyOwner {
         // Since we know the L2 target's address in advance, we don't need to alias an L1 address.
         uint256 seqNumber =
-            sendTxToL2NoAliassing(
-                target,
-                userToRefund,
-                l1CallValue,
-                maxSubmissionCost, // TODO: Determine the max submission cost. From the docs: "current base submission fee is queryable via ArbRetryableTx.getSubmissionPrice"
-                gasLimit,
-                gasPrice,
-                message
-            );
+            sendTxToL2NoAliassing(target, userToRefund, l1CallValue, maxSubmissionCost, gasLimit, gasPrice, message);
         emit RelayedMessage(
             msg.sender,
             target,
