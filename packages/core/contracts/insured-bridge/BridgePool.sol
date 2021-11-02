@@ -256,6 +256,10 @@ contract BridgePool is Testable, BridgePoolInterface, ERC20, Lockable {
      *      quoteTimestamp. The OO acts to verify the correctness of this realized fee. Cannot exceed 50%.
      */
     function relayAndSpeedUp(DepositData memory depositData, uint64 realizedLpFeePct) public nonReentrant() {
+        // If deposit quote time is before this contract's deployment, then clients will not be able to compute
+        // a realized LP fee %, so we should block such relays.
+        require(depositData.quoteTimestamp >= deploymentTimestamp, "Deposit before deployment");
+
         // If no pending relay for this deposit, then associate the caller's relay attempt with it.
         uint32 priceRequestTime = uint32(getCurrentTime());
 
@@ -381,6 +385,10 @@ contract BridgePool is Testable, BridgePoolInterface, ERC20, Lockable {
      *      quoteTimestamp. The OO acts to verify the correctness of this realized fee. Cannot exceed 50%.
      */
     function relayDeposit(DepositData memory depositData, uint64 realizedLpFeePct) public nonReentrant() {
+        // If deposit quote time is before this contract's deployment, then clients will not be able to compute
+        // a realized LP fee %, so we should block such relays.
+        require(depositData.quoteTimestamp >= deploymentTimestamp, "Deposit before deployment");
+
         // The realizedLPFeePct should never be greater than 0.5e18 and the slow and instant relay fees should never be
         // more than 0.25e18 each. Therefore, the sum of all fee types can never exceed 1e18 (or 100%).
         require(
