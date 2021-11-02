@@ -250,19 +250,6 @@ export class Relayer {
     ) {
       // Relay matched with a Deposit, now check if the relay params itself are valid.
 
-      // If deposit quote time is before the bridgepool's deployment time, then dispute it by default because
-      // we won't be able to determine otherwise if the realized LP fee % is valid.
-      if (deposit.quoteTimestamp < this.deployTimestamps[deposit.l1Token]) {
-        this.logger.debug({
-          at: "Disputer",
-          message: "Deposit quote time < bridge pool deployment for L1 token, disputing",
-          deposit,
-          deploymentTime: this.deployTimestamps[deposit.l1Token],
-        });
-        await this.disputeRelay(deposit, relay);
-        return;
-      }
-
       // Compute expected realized LP fee % and if the pending relay has a different fee then dispute it.
       const realizedLpFeePct = (await this.l1Client.calculateRealizedLpFeePctForDeposit(deposit)).toString();
       const relayDisputable = await this.isPendingRelayDisputable(relay, deposit, realizedLpFeePct);
