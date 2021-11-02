@@ -10,6 +10,7 @@ const MessengerMock = getContract("MessengerMock");
 const BridgeAdmin = getContract("BridgeAdmin");
 const BridgePool = getContract("BridgePool");
 const Timer = getContract("Timer");
+const Store = getContract("Store");
 const Finder = getContract("Finder");
 const BridgeDepositBox = getContract("BridgeDepositBoxMock");
 const IdentifierWhitelist = getContract("IdentifierWhitelist");
@@ -20,6 +21,7 @@ const ERC20 = getContract("ERC20");
 let messenger;
 let bridgeAdmin;
 let finder;
+let store;
 let depositBox;
 let identifierWhitelist;
 let collateralWhitelist;
@@ -46,7 +48,7 @@ describe("BridgeAdmin", () => {
   before(async function () {
     accounts = await web3.eth.getAccounts();
     [owner, rando, rando2, depositBoxImpersonator] = accounts;
-    l1Token = (await ERC20.new("", "").send({ from: owner })).options.address;
+    l1Token = await ERC20.new("", "").send({ from: owner });
     l2Token = rando2;
     finder = await Finder.new().send({ from: owner });
     collateralWhitelist = await AddressWhitelist.new().send({ from: owner });
@@ -63,7 +65,11 @@ describe("BridgeAdmin", () => {
 
     // The initialization of the bridge pool requires there to be an address of both the store and the SkinnyOptimisticOracle
     // set in the finder. These tests dont use these contracts but there are never the less needed for deployment.
-    await finder.methods.changeImplementationAddress(utf8ToHex(interfaceName.Store), rando).send({ from: owner });
+    store = await Store.new({ rawValue: "0" }, { rawValue: "0" }, timer.options.address).send({ from: owner });
+    await store.methods.setFinalFee(l1Token.options.address, { rawValue: toWei("1") }).send({ from: owner });
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.Store), store.options.address)
+      .send({ from: owner });
     await finder.methods
       .changeImplementationAddress(utf8ToHex(interfaceName.SkinnyOptimisticOracle), rando)
       .send({ from: owner });
@@ -82,7 +88,7 @@ describe("BridgeAdmin", () => {
       "LP Token",
       "LPT",
       bridgeAdmin.options.address,
-      l1Token,
+      l1Token.options.address,
       lpFeeRatePerSecond,
       false,
       timer.options.address
@@ -199,7 +205,7 @@ describe("BridgeAdmin", () => {
         "LP Token2",
         "LPT2",
         bridgeAdmin.options.address,
-        l1Token,
+        l1Token.options.address,
         lpFeeRatePerSecond,
         false,
         timer.options.address
@@ -234,7 +240,7 @@ describe("BridgeAdmin", () => {
               bridgeAdmin.methods
                 .whitelistToken(
                   chainId,
-                  l1Token,
+                  l1Token.options.address,
                   l2Token,
                   bridgePool.options.address,
                   defaultL1CallValue,
@@ -253,7 +259,7 @@ describe("BridgeAdmin", () => {
               bridgeAdmin.methods
                 .whitelistToken(
                   chainId,
-                  l1Token,
+                  l1Token.options.address,
                   l2Token,
                   bridgePool.options.address,
                   defaultL1CallValue,
@@ -275,7 +281,7 @@ describe("BridgeAdmin", () => {
               bridgeAdmin.methods
                 .whitelistToken(
                   chainId,
-                  l1Token,
+                  l1Token.options.address,
                   l2Token,
                   bridgePool.options.address,
                   defaultL1CallValue,
@@ -287,7 +293,7 @@ describe("BridgeAdmin", () => {
             ),
             "L1 token is not whitelisted collateral"
           );
-          await collateralWhitelist.methods.addToWhitelist(l1Token).send({ from: owner });
+          await collateralWhitelist.methods.addToWhitelist(l1Token.options.address).send({ from: owner });
 
           // Fails if l2 token address is invalid
           assert(
@@ -295,7 +301,7 @@ describe("BridgeAdmin", () => {
               bridgeAdmin.methods
                 .whitelistToken(
                   chainId,
-                  l1Token,
+                  l1Token.options.address,
                   ZERO_ADDRESS,
                   bridgePool.options.address,
                   defaultL1CallValue,
@@ -314,7 +320,7 @@ describe("BridgeAdmin", () => {
               bridgeAdmin.methods
                 .whitelistToken(
                   chainId,
-                  l1Token,
+                  l1Token.options.address,
                   l2Token,
                   ZERO_ADDRESS,
                   defaultL1CallValue,
@@ -333,7 +339,7 @@ describe("BridgeAdmin", () => {
               bridgeAdmin.methods
                 .whitelistToken(
                   chainId,
-                  l1Token,
+                  l1Token.options.address,
                   l2Token,
                   bridgePool.options.address,
                   defaultL1CallValue,
@@ -351,7 +357,7 @@ describe("BridgeAdmin", () => {
             await bridgeAdmin.methods
               .whitelistToken(
                 chainId,
-                l1Token,
+                l1Token.options.address,
                 l2Token,
                 bridgePool.options.address,
                 0,
@@ -366,7 +372,7 @@ describe("BridgeAdmin", () => {
           await bridgeAdmin.methods
             .whitelistToken(
               chainId,
-              l1Token,
+              l1Token.options.address,
               l2Token,
               bridgePool.options.address,
               defaultL1CallValue,
@@ -379,7 +385,7 @@ describe("BridgeAdmin", () => {
           // Messenger should receive msg.value.
           assert.equal((await web3.eth.getBalance(messenger.options.address)).toString(), defaultL1CallValue);
 
-          const tokenMapping = await bridgeAdmin.methods.whitelistedTokens(l1Token, chainId).call();
+          const tokenMapping = await bridgeAdmin.methods.whitelistedTokens(l1Token.options.address, chainId).call();
           assert.isTrue(
             tokenMapping.l2Token === l2Token && tokenMapping.bridgePool === bridgePool.options.address,
             "Token mapping not created correctly"
@@ -389,11 +395,11 @@ describe("BridgeAdmin", () => {
           await bridgeAdmin.methods
             .setDepositContract(chainId, depositBoxImpersonator, messenger.options.address)
             .send({ from: owner });
-          await collateralWhitelist.methods.addToWhitelist(l1Token).send({ from: owner });
+          await collateralWhitelist.methods.addToWhitelist(l1Token.options.address).send({ from: owner });
           const whitelistTxn = await bridgeAdmin.methods
             .whitelistToken(
               chainId,
-              l1Token,
+              l1Token.options.address,
               l2Token,
               bridgePool.options.address,
               defaultL1CallValue,
@@ -407,12 +413,12 @@ describe("BridgeAdmin", () => {
           await assertEventEmitted(whitelistTxn, bridgeAdmin, "WhitelistToken", (ev) => {
             return (
               ev.chainId === chainId &&
-              ev.l1Token === l1Token &&
+              ev.l1Token === l1Token.options.address &&
               ev.l2Token === l2Token &&
               ev.bridgePool === bridgePool.options.address
             );
           });
-          const tokenMapping = await bridgeAdmin.methods.whitelistedTokens(l1Token, chainId).call();
+          const tokenMapping = await bridgeAdmin.methods.whitelistedTokens(l1Token.options.address, chainId).call();
           assert.isTrue(
             tokenMapping.l2Token === l2Token && tokenMapping.bridgePool === bridgePool.options.address,
             "Token mapping not created correctly"
@@ -420,7 +426,7 @@ describe("BridgeAdmin", () => {
 
           // Validate xchain message
           const expectedAbiData = depositBox.methods
-            .whitelistToken(l1Token, l2Token, bridgePool.options.address)
+            .whitelistToken(l1Token.options.address, l2Token, bridgePool.options.address)
             .encodeABI();
           await assertEventEmitted(whitelistTxn, messenger, "RelayedMessage", (ev) => {
             return (
@@ -435,13 +441,13 @@ describe("BridgeAdmin", () => {
           await bridgeAdmin.methods
             .setDepositContract(chainId, depositBoxImpersonator, messenger.options.address)
             .send({ from: owner });
-          await collateralWhitelist.methods.addToWhitelist(l1Token).send({ from: owner });
+          await collateralWhitelist.methods.addToWhitelist(l1Token.options.address).send({ from: owner });
 
           // Whitelist multiple L2 tokens for the one L1 tokens and bridge pool.
           await bridgeAdmin.methods
             .whitelistToken(
               chainId,
-              l1Token,
+              l1Token.options.address,
               l2Token,
               bridgePool.options.address,
               defaultL1CallValue,
@@ -464,7 +470,7 @@ describe("BridgeAdmin", () => {
           await bridgeAdmin.methods
             .whitelistToken(
               chainId2,
-              l1Token,
+              l1Token.options.address,
               l2Token2,
               bridgePool.options.address,
               defaultL1CallValue,
@@ -473,13 +479,13 @@ describe("BridgeAdmin", () => {
               maxSubmissionCost
             )
             .send({ from: owner, value: defaultL1CallValue });
-          const tokenMapping1 = await bridgeAdmin.methods.whitelistedTokens(l1Token, chainId).call();
+          const tokenMapping1 = await bridgeAdmin.methods.whitelistedTokens(l1Token.options.address, chainId).call();
           assert.isTrue(
             tokenMapping1.l2Token === l2Token && tokenMapping1.bridgePool === bridgePool.options.address,
             "Token mapping not created correctly"
           );
 
-          const tokenMapping2 = await bridgeAdmin.methods.whitelistedTokens(l1Token, chainId2).call();
+          const tokenMapping2 = await bridgeAdmin.methods.whitelistedTokens(l1Token.options.address, chainId2).call();
           assert.isTrue(
             tokenMapping2.l2Token === l2Token2 && tokenMapping2.bridgePool === bridgePool.options.address,
             "Token mapping not created correctly"
@@ -491,13 +497,13 @@ describe("BridgeAdmin", () => {
           await bridgeAdmin.methods
             .setDepositContract(chainId, depositBoxImpersonator, messenger.options.address)
             .send({ from: owner });
-          await collateralWhitelist.methods.addToWhitelist(l1Token).send({ from: owner });
+          await collateralWhitelist.methods.addToWhitelist(l1Token.options.address).send({ from: owner });
 
           // Whitelist multiple L2 tokens for the one L1 tokens and bridge pool.
           await bridgeAdmin.methods
             .whitelistToken(
               chainId,
-              l1Token,
+              l1Token.options.address,
               l2Token,
               bridgePool.options.address,
               defaultL1CallValue,
@@ -514,7 +520,7 @@ describe("BridgeAdmin", () => {
             "LP Token2",
             "LPT2",
             bridgeAdmin.options.address,
-            l1Token,
+            l1Token.options.address,
             lpFeeRatePerSecond,
             false,
             timer.options.address
@@ -522,7 +528,7 @@ describe("BridgeAdmin", () => {
           const whitelistTxn = await bridgeAdmin.methods
             .whitelistToken(
               chainId,
-              l1Token,
+              l1Token.options.address,
               l2Token,
               bridgePool2.options.address,
               defaultL1CallValue,
@@ -534,7 +540,7 @@ describe("BridgeAdmin", () => {
 
           // After this whitelist call the address in the bridge admin should have been updated as expected and the
           // messenger should have sent the call to update the latest bridgePool.
-          const tokenMapping = await bridgeAdmin.methods.whitelistedTokens(l1Token, chainId).call();
+          const tokenMapping = await bridgeAdmin.methods.whitelistedTokens(l1Token.options.address, chainId).call();
           assert.isTrue(
             tokenMapping.l2Token === l2Token && tokenMapping.bridgePool === bridgePool2.options.address,
             "Token mapping not created correctly"
@@ -542,7 +548,7 @@ describe("BridgeAdmin", () => {
 
           // Validate xchain message correctly updates to the new bridgePool2 address
           const expectedAbiData = depositBox.methods
-            .whitelistToken(l1Token, l2Token, bridgePool2.options.address)
+            .whitelistToken(l1Token.options.address, l2Token, bridgePool2.options.address)
             .encodeABI();
           await assertEventEmitted(whitelistTxn, messenger, "RelayedMessage", (ev) => {
             return (

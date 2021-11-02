@@ -3,6 +3,38 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.7.0](https://github.com/UMAprotocol/protocol/compare/@uma/insured-bridge-relayer@1.6.0...@uma/insured-bridge-relayer@1.7.0) (2021-10-29)
+
+### Bug Fixes
+
+- **GasEstimator:** protocol upgrade for EIP1559 ([#3306](https://github.com/UMAprotocol/protocol/issues/3306)) ([8245391](https://github.com/UMAprotocol/protocol/commit/8245391ee07dca37be3c52a9a9ba47ed4d63f6f7))
+- **insured-bridge-relayer:** Dispute any relay with non-whitelisted chain ID even if not using same chain ID as L2 client ([#3511](https://github.com/UMAprotocol/protocol/issues/3511)) ([557aeb9](https://github.com/UMAprotocol/protocol/commit/557aeb94cead79854ffc49b56dcab0cd52c39b48))
+- **insured-bridge-relayer:** Handle case where computing realized LP fee % fails ([#3504](https://github.com/UMAprotocol/protocol/issues/3504)) ([9c69a9d](https://github.com/UMAprotocol/protocol/commit/9c69a9d3f545741820fbf73d5436b7f9f30aa8e0))
+- **insured-bridge-relayer:** Key deposits by deposit hash instead of deposit ID ([#3510](https://github.com/UMAprotocol/protocol/issues/3510)) ([d75c342](https://github.com/UMAprotocol/protocol/commit/d75c34279c89f8d880416ef765cd36c0dc9b97b5))
+
+### Features
+
+- **create-price-feed:** Add InsuredBridge ([#3388](https://github.com/UMAprotocol/protocol/issues/3388)) ([4dd8116](https://github.com/UMAprotocol/protocol/commit/4dd811635fd5647bf5916eb366daf5d613f3856c))
+
+# [1.6.0](https://github.com/UMAprotocol/protocol/compare/@uma/insured-bridge-relayer@1.5.0...@uma/insured-bridge-relayer@1.6.0) (2021-10-27)
+
+### Bug Fixes
+
+- **insured-bridge-relayer:** Do not fetch l1Token from DepositRelayed log ([#3505](https://github.com/UMAprotocol/protocol/issues/3505)) ([8e5ab9e](https://github.com/UMAprotocol/protocol/commit/8e5ab9e8d120e689197157ac576d535a24e443b5))
+- **insured-bridge-relayer:** Fix usage of Logger ([#3483](https://github.com/UMAprotocol/protocol/issues/3483)) ([09c9b72](https://github.com/UMAprotocol/protocol/commit/09c9b720cdb9feb956ba4201f530a5134b4a235f))
+
+### Features
+
+- **across:** Add Disputer mode to bot ([#3474](https://github.com/UMAprotocol/protocol/issues/3474)) ([e2e8c6b](https://github.com/UMAprotocol/protocol/commit/e2e8c6bf1ee7432dc7dfe951f4de7ec95f3e1f2d))
+
+# [1.5.0](https://github.com/UMAprotocol/protocol/compare/@uma/insured-bridge-relayer@1.4.0...@uma/insured-bridge-relayer@1.5.0) (2021-10-19)
+
+### Features
+
+- **across-bots:** add ability for relayer bot to finalize relays ([#3464](https://github.com/UMAprotocol/protocol/issues/3464)) ([0f9c26d](https://github.com/UMAprotocol/protocol/commit/0f9c26d8bda06aac0d08b5797e0bec2f2168c015))
+- **insured-bridge:** Block instant relays post-expiry and change relayDeposit interface to match relayAndSpeedUp ([#3458](https://github.com/UMAprotocol/protocol/issues/3458)) ([25ac3c0](https://github.com/UMAprotocol/protocol/commit/25ac3c00be8afb33a6c6e134509f068699591025))
+- **insured-bridge:** Update Arbitrum messenger contracts after e2e tests ([#3448](https://github.com/UMAprotocol/protocol/issues/3448)) ([fd2f9c5](https://github.com/UMAprotocol/protocol/commit/fd2f9c5976300cd3c82801884ef14abf890e1461))
+
 # [1.4.0](https://github.com/UMAprotocol/protocol/compare/@uma/insured-bridge-relayer@1.3.0...@uma/insured-bridge-relayer@1.4.0) (2021-10-08)
 
 ### Bug Fixes

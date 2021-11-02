@@ -224,12 +224,37 @@ describe("LongShortPair", function () {
       const remainingLength = maxLength - (ooAncillary.length - 2) / 2; // Remove the 0x and divide by 2 to get bytes.
       assert(
         await didContractThrow(
+          LongShortPair.new({ ...constructorParams, customAncillaryData: web3.utils.randomHex(remainingLength) }).send({
+            from: deployer,
+          })
+        )
+      );
+
+      // Right below the size limit should work.
+      await LongShortPair.new({
+        ...constructorParams,
+        customAncillaryData: web3.utils.randomHex(remainingLength - 1),
+      }).send({ from: deployer });
+
+      // If the contract is set to enable early expiration, should have a more strict ancillary data size limit
+      // to factor in the additional appended ancillary data for this kind of expiration.
+
+      assert(
+        await didContractThrow(
           LongShortPair.new({
             ...constructorParams,
-            customAncillaryData: web3.utils.randomHex(remainingLength + 1),
+            enableEarlyExpiration: true,
+            customAncillaryData: web3.utils.randomHex(remainingLength - 1),
           }).send({ from: deployer })
         )
       );
+
+      // Subtracting the additional appended data length should enable deployment.
+      await LongShortPair.new({
+        ...constructorParams,
+        enableEarlyExpiration: true,
+        customAncillaryData: web3.utils.randomHex(remainingLength - "earlyExpiration: 1".length - 1),
+      }).send({ from: deployer });
     });
     it("Mint, redeem, expire lifecycle", async function () {
       // Create some sponsor tokens. Send half to the holder account.
@@ -910,9 +935,18 @@ describe("LongShortPair", function () {
     });
 
     it("Can not attempt early expiration post expiration", async function () {
-      const earlyExpirationTimestamp = Number(await timer.methods.getCurrentTime().call()) - 10;
-      await longShortPair.methods.requestEarlyExpiration(earlyExpirationTimestamp).send({ from: rando });
+      const earlyExpirationTimestamp = Number(await timer.methods.getCurrentTime().call());
+      assert(
+        await didContractThrow(
+          longShortPair.methods.requestEarlyExpiration(earlyExpirationTimestamp + 10).send({ from: rando })
+        )
+      );
     });
+
+    it("Can not attempt early expiration with a timestamp of 0", async function () {
+      assert(await didContractThrow(longShortPair.methods.requestEarlyExpiration(0).send({ from: rando })));
+    });
+
     it("Optimistic oracle returning 'do nothing' number blocks early expiration", async function () {
       // In the event that someone tried to incorrectly settle the contract early, the OO will return type(int256).min.
       // This indicates that the contract should "do nothing" (i.e keep running).
@@ -921,7 +955,7 @@ describe("LongShortPair", function () {
 
       // Propose a to the OO that indicates the contract should not settle. price to the OO for the early settlement.
       await proposeAndSettleOptimisticOraclePrice(
-        toBN(MIN_INT_VALUE), // Magic number the LPS uses to ignore early expiration settlement actions.
+        toBN(MIN_INT_VALUE), // Magic number the LSP uses to ignore early expiration settlement actions.
         earlyExpirationTimestamp,
         earlyExpirationAncillaryData
       );
@@ -930,7 +964,7 @@ describe("LongShortPair", function () {
       assert(await didContractThrow(longShortPair.methods.settle(toWei("100"), toWei("100")).send({ from: sponsor })));
     });
     it("Can not re-request early expiration while the previous request is in pending state", async function () {
-      // In the event that someone tried to early expire the LPS, the LPS should not alow someone else to re-request
+      // In the event that someone tried to early expire the LSP, the LSP should not alow someone else to re-request
       // early expiration until the first request is done.
 
       await longShortPair.methods.requestEarlyExpiration(earlyExpirationTimestamp).send({ from: rando });
@@ -950,7 +984,7 @@ describe("LongShortPair", function () {
       );
     });
     it("Can not re-request early expiration if a previous early expiration finalized successfully", async function () {
-      // In the event that someone tries to early expire the LPS, which is successful (returns a number other than
+      // In the event that someone tries to early expire the LSP, which is successful (returns a number other than
       // type(int256).min) future attempts to early expire should be blocked.
 
       await longShortPair.methods.requestEarlyExpiration(earlyExpirationTimestamp).send({ from: rando });
@@ -976,7 +1010,7 @@ describe("LongShortPair", function () {
       );
     });
     it("Can re-request early expiration if a previous request failed", async function () {
-      // In the event that someone tries to early expire the LPS, which is unsuccessful (OO returns the magic
+      // In the event that someone tries to early expire the LSP, which is unsuccessful (OO returns the magic
       // type(int256).min number) future attempts to early expire should be valid, assuming the request timestamp is
       // different to the original request timestamp.
 
@@ -984,7 +1018,7 @@ describe("LongShortPair", function () {
 
       // Propose a to the OO that indicates the contract should not settle.
       await proposeAndSettleOptimisticOraclePrice(
-        toBN(MIN_INT_VALUE), // Magic number the LPS uses to ignore early expiration settlement actions.
+        toBN(MIN_INT_VALUE), // Magic number the LSP uses to ignore early expiration settlement actions.
         earlyExpirationTimestamp,
         earlyExpirationAncillaryData
       );
@@ -1044,7 +1078,7 @@ describe("LongShortPair", function () {
 
       // Propose a to the OO that indicates the contract should not settle.
       await proposeAndSettleOptimisticOraclePrice(
-        toBN(MIN_INT_VALUE), // Magic number the LPS uses to ignore early expiration settlement actions.
+        toBN(MIN_INT_VALUE), // Magic number the LSP uses to ignore early expiration settlement actions.
         earlyExpirationTimestamp,
         earlyExpirationAncillaryData
       );

@@ -1,6 +1,6 @@
 {
   "name": "@uma/api",
-  "version": "0.6.0",
+  "version": "0.8.1",
   "author": "David Adams",
   "license": "AGPL-3.0-or-later",
   "main": "build/index.js",
@@ -16,9 +16,10 @@
     "ts-node": "^10.1.0"
   },
   "dependencies": {
+    "@google-cloud/datastore": "^6.6.0",
     "@types/express": "^4.17.11",
-    "@uma/financial-templates-lib": "^2.10.0",
-    "@uma/sdk": "^0.8.0",
+    "@uma/financial-templates-lib": "^2.13.0",
+    "@uma/sdk": "^0.10.1",
     "body-parser": "^1.19.0",
     "cors": "^2.8.5",
     "ethers": "^5.4.2",
@@ -27,7 +28,7 @@
     "lodash": "^4.17.21",
     "minimist": "^1.2.5",
     "url-join": "^4.0.1",
-    "web3": "^1.5.0"
+    "web3": "^1.6.0"
   },
   "files": [
     "build"
@@ -44,7 +45,9 @@
     "lint": "yarn prettier --write && yarn eslint --fix",
     "api": "node build/start api",
     "lsp_api": "node build/start lsp_api",
-    "datastore_api": "node build/start datastore_api"
+    "datastore_api": "node build/start datastore_api",
+    "serverless_write": "node build/start serverless_write",
+    "serverless_read": "node build/start serverless_read"
   },
   "publishConfig": {
     "registry": "https://registry.npmjs.com/",

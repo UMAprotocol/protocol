@@ -214,15 +214,23 @@ export function BlockInterval(update: (startBlock: number, endBlock: number) => 
 
 // rejects after a timeout period
 export function rejectAfterDelay(ms: number, message = "Call timed out") {
-  return new Promise((res, rej) => {
-    const to = setTimeout(() => {
-      clearTimeout(to);
+  let timeout: NodeJS.Timeout;
+
+  const cancel = () => {
+    clearInterval(timeout);
+  };
+  const promise = new Promise<void>((res, rej) => {
+    timeout = setTimeout(() => {
+      clearTimeout(timeout);
       rej(message);
     }, ms);
   });
+
+  return [promise, cancel] as [Promise<void>, () => void];
 }
 
 // races a promise against a timeout to reject if it takes too long
-export function expirePromise(promise: () => Promise<any>, timeoutms: number, errorMessage?: string) {
-  return Promise.race([promise(), rejectAfterDelay(timeoutms, errorMessage)]);
+export async function expirePromise(promise: () => Promise<any>, timeoutms: number, errorMessage?: string) {
+  const [rejectPromise, cancel] = rejectAfterDelay(timeoutms, errorMessage);
+  return Promise.race([promise(), rejectPromise]).finally(cancel);
 }

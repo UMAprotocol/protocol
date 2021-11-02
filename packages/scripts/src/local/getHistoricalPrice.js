@@ -75,7 +75,7 @@ async function main() {
   const lookback = Math.round(Math.max(getTime() - queryTime, 1800));
 
   // Create and update a new default price feed.
-  let dummyLogger = winston.createLogger({ silent: true });
+  let dummyLogger = winston.createLogger({ level: "debug", transports: [new winston.transports.Console()] });
   let priceFeedConfig = {
     // Empirically, Cryptowatch API only returns data up to ~4 days back so that's why we default the lookback
     // 1800.
@@ -105,7 +105,7 @@ async function main() {
   const precisionToUse = UMIP_PRECISION[queryIdentifier] ? UMIP_PRECISION[queryIdentifier] : DEFAULT_PRECISION;
   console.log(`\n⚠️ Truncating price to ${precisionToUse} decimals (default: 18)`);
   const [predec, postdec] = fromWei(queryPrice.toString()).split(".");
-  const truncated = [predec, postdec.slice(0, precisionToUse)].join(".");
+  const truncated = postdec ? [predec, postdec.slice(0, precisionToUse)].join(".") : predec;
   console.log(`\n💹 Median ${queryIdentifier} price @ ${queryTime} = ${truncated}`);
 }
 

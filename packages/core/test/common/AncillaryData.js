@@ -3,7 +3,7 @@ const { getContract } = hre;
 const { assert } = require("chai");
 
 const AncillaryDataTest = getContract("AncillaryDataTest");
-const { utf8ToHex } = web3.utils;
+const { utf8ToHex, padRight } = web3.utils;
 
 describe("AncillaryData", function () {
   let ancillaryDataTest;
@@ -50,7 +50,39 @@ describe("AncillaryData", function () {
       "Should return key: with leading comma"
     );
   });
+  it("appendKeyValueBytes32", async function () {
+    let originalAncillaryData, appendedAncillaryData;
+    const keyName = utf8ToHex("bytes32");
+    const value = padRight(utf8ToHex("SOMETHING RANDOM"), 64); // Random bytes32 string
+    const keyValueLengthBytes = 9 + 64; // "," + "bytes32:" + <value> = 1 + 8 + 64 bytes.
 
+    // Test 1: append AFTER ancillary data:
+    originalAncillaryData = utf8ToHex("key:value");
+    assert.equal(
+      await ancillaryDataTest.methods.appendKeyValueBytes32(originalAncillaryData, keyName, value).call(),
+      utf8ToHex(`key:value,bytes32:${value.substr(2).toLowerCase()}`),
+      "Should append key:value to original ancillary data"
+    );
+
+    // Test 2: ancillary data is not utf8 decodeable:
+    originalAncillaryData = "0xab";
+    appendedAncillaryData = await ancillaryDataTest.methods
+      .appendKeyValueBytes32(originalAncillaryData, keyName, value)
+      .call();
+    assert.equal(
+      "0x" + appendedAncillaryData.substr(appendedAncillaryData.length - keyValueLengthBytes * 2),
+      utf8ToHex(`,bytes32:${value.substr(2).toLowerCase()}`),
+      "Should be able to decode appended ancillary data after stripping out non-utf8 decodeable component"
+    );
+
+    // Test 3: ancillary data is utf8 decodeable but not key:value syntax:
+    originalAncillaryData = utf8ToHex("ignore this syntax");
+    assert.equal(
+      await ancillaryDataTest.methods.appendKeyValueBytes32(originalAncillaryData, keyName, value).call(),
+      utf8ToHex(`ignore this syntax,bytes32:${value.substr(2).toLowerCase()}`),
+      "Should be able to utf8-decode the entire ancillary data"
+    );
+  });
   it("appendKeyValueAddress", async function () {
     let originalAncillaryData, appendedAncillaryData;
     const keyName = utf8ToHex("address");

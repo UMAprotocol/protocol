@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity >=0.7.6;
+pragma solidity ^0.8.0;
 
-import "../implementation/BridgeDepositBox.sol";
+import "../BridgeDepositBox.sol";
 
 contract BridgeDepositBoxMock is BridgeDepositBox {
     // Address of the L1 contract that acts as the owner of this Bridge deposit box.
@@ -65,7 +65,7 @@ contract BridgeDepositBoxMock is BridgeDepositBox {
     }
 
     /**
-     * @notice L1 owner can enable/disable deposits for a whitelisted tokens.
+     * @notice L1 owner can enable/disable deposits for a whitelisted token.
      * @dev Only callable by the existing bridgeAdmin via the optimism cross domain messenger.
      * @param _l2Token address of L2 token to enable/disable deposits for.
      * @param _depositsEnabled bool to set if the deposit box should accept/reject deposits.
@@ -89,8 +89,7 @@ contract BridgeDepositBoxMock is BridgeDepositBox {
     function bridgeTokens(address l2Token, uint32 l1Gas) public nonReentrant() {
         uint256 bridgeDepositBoxBalance = TokenLike(l2Token).balanceOf(address(this));
         require(bridgeDepositBoxBalance > 0, "can't bridge zero tokens");
-        require(isWhitelistToken(l2Token), "can't bridge non-whitelisted token");
-        require(hasEnoughTimeElapsedToBridge(l2Token), "not enough time has elapsed from previous bridge");
+        require(canBridge(l2Token), "non-whitelisted token or last bridge too recent");
 
         whitelistedTokens[l2Token].lastBridgeTime = uint64(getCurrentTime());
 

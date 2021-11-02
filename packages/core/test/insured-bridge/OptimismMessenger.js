@@ -14,6 +14,7 @@ const Optimism_Messenger = getContract("Optimism_Messenger");
 const BridgeAdmin = getContract("BridgeAdmin");
 const BridgePool = getContract("BridgePool");
 const Timer = getContract("Timer");
+const Store = getContract("Store");
 const Finder = getContract("Finder");
 const BridgeDepositBox = getContract("BridgeDepositBoxMock");
 const IdentifierWhitelist = getContract("IdentifierWhitelist");
@@ -24,6 +25,7 @@ const ERC20 = getContract("ERC20");
 let optimismMessenger;
 let bridgeAdmin;
 let finder;
+let store;
 let l1CrossDomainMessengerMock;
 let depositBox;
 let identifierWhitelist;
@@ -49,7 +51,7 @@ describe("OptimismMessenger integration with BridgeAdmin", () => {
   before(async function () {
     accounts = await web3.eth.getAccounts();
     [owner, rando, rando2, depositBoxImpersonator] = accounts;
-    l1Token = (await ERC20.new("", "").send({ from: owner })).options.address;
+    l1Token = await ERC20.new("", "").send({ from: owner });
     l2Token = rando2;
 
     timer = await Timer.new().send({ from: owner });
@@ -67,7 +69,11 @@ describe("OptimismMessenger integration with BridgeAdmin", () => {
 
     // The initialization of the bridge pool requires there to be an address of both the store and the SkinnyOptimisticOracle
     // set in the finder. These tests dont use these contracts but there are never the less needed for deployment.
-    await finder.methods.changeImplementationAddress(utf8ToHex(interfaceName.Store), rando).send({ from: owner });
+    store = await Store.new({ rawValue: "0" }, { rawValue: "0" }, timer.options.address).send({ from: owner });
+    await store.methods.setFinalFee(l1Token.options.address, { rawValue: toWei("1") }).send({ from: owner });
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.Store), store.options.address)
+      .send({ from: owner });
     await finder.methods
       .changeImplementationAddress(utf8ToHex(interfaceName.SkinnyOptimisticOracle), rando)
       .send({ from: owner });
@@ -92,7 +98,7 @@ describe("OptimismMessenger integration with BridgeAdmin", () => {
       "LP Token",
       "LPT",
       bridgeAdmin.options.address,
-      l1Token,
+      l1Token.options.address,
       lpFeeRatePerSecond,
       false, // not set to weth pool
       timer.options.address
@@ -126,9 +132,18 @@ describe("OptimismMessenger integration with BridgeAdmin", () => {
       await bridgeAdmin.methods
         .setDepositContract(chainId, depositBoxImpersonator, optimismMessenger.options.address)
         .send({ from: owner });
-      await collateralWhitelist.methods.addToWhitelist(l1Token).send({ from: owner });
+      await collateralWhitelist.methods.addToWhitelist(l1Token.options.address).send({ from: owner });
       await bridgeAdmin.methods
-        .whitelistToken(chainId, l1Token, l2Token, bridgePool.options.address, 0, defaultGasLimit, defaultGasPrice, 0)
+        .whitelistToken(
+          chainId,
+          l1Token.options.address,
+          l2Token,
+          bridgePool.options.address,
+          0,
+          defaultGasLimit,
+          defaultGasPrice,
+          0
+        )
         .send({ from: owner });
       const whitelistCallToMessengerCall = l1CrossDomainMessengerMock.smocked.sendMessage.calls[0];
 
@@ -139,7 +154,7 @@ describe("OptimismMessenger integration with BridgeAdmin", () => {
         "xchain target should be deposit contract"
       );
       const expectedAbiData = depositBox.methods
-        .whitelistToken(l1Token, l2Token, bridgePool.options.address)
+        .whitelistToken(l1Token.options.address, l2Token, bridgePool.options.address)
         .encodeABI();
       assert.equal(whitelistCallToMessengerCall._message, expectedAbiData, "xchain message bytes unexpected");
       assert.equal(whitelistCallToMessengerCall._gasLimit, defaultGasLimit, "xchain gas limit unexpected");

@@ -11,6 +11,6 @@ contract OVM_L1CrossDomainMessengerMock is iOVM_CrossDomainMessenger {
         address _target,
         bytes calldata _message,
         uint32 _gasLimit
-    ) external {}
+    ) external override {}
     // Do nothing.
 }

@@ -5,6 +5,8 @@ import Web3 from "web3";
 const { toWei, toBN } = Web3.utils;
 const toBNWei = (number: string | number) => toBN(toWei(number.toString()).toString());
 
+import type { BN } from "@uma/common";
+
 import ExchangeAdapterInterface from "./exchange-adapters/ExchangeAdapterInterface";
 
 import { ConvertDecimals, createFormatFunction, createObjectFromDefaultProps, blockUntilBlockMined } from "@uma/common";
@@ -171,7 +173,7 @@ export class RangeTrader {
   }
 
   // TODO: there are a number of places through the repo that re-use this method. it should be refactored to a common util.
-  _invertPriceSafely(price: BigNumber) {
+  _invertPriceSafely(price: BigNumber): BN {
     return toBN(toWei(this.normalizePriceFeedDecimals("1")).toString())
       .mul(toBN(toWei(this.normalizePriceFeedDecimals("1")).toString()))
       .div(toBN(price.toString()));

@@ -3,6 +3,20 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.5.6](https://github.com/UMAprotocol/protocol/compare/@uma/funding-rate-proposer@2.5.5...@uma/funding-rate-proposer@2.5.6) (2021-10-29)
+
+### Bug Fixes
+
+- **GasEstimator:** protocol upgrade for EIP1559 ([#3306](https://github.com/UMAprotocol/protocol/issues/3306)) ([8245391](https://github.com/UMAprotocol/protocol/commit/8245391ee07dca37be3c52a9a9ba47ed4d63f6f7))
+
+## [2.5.5](https://github.com/UMAprotocol/protocol/compare/@uma/funding-rate-proposer@2.5.4...@uma/funding-rate-proposer@2.5.5) (2021-10-27)
+
+**Note:** Version bump only for package @uma/funding-rate-proposer
+
+## [2.5.4](https://github.com/UMAprotocol/protocol/compare/@uma/funding-rate-proposer@2.5.3...@uma/funding-rate-proposer@2.5.4) (2021-10-19)
+
+**Note:** Version bump only for package @uma/funding-rate-proposer
+
 ## [2.5.3](https://github.com/UMAprotocol/protocol/compare/@uma/funding-rate-proposer@2.5.2...@uma/funding-rate-proposer@2.5.3) (2021-10-08)
 
 **Note:** Version bump only for package @uma/funding-rate-proposer

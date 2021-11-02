@@ -5,11 +5,11 @@
 // - For testing, start mainnet fork in one window with `yarn hardhat node --fork <ARCHIVAL_NODE_URL> --no-deploy --port 9545`
 // - (optional, or required if --polygon is not undefined) set POLYGON_NODE_URL to a Polygon mainnet node. This will
 //   be used to query contract data from Polygon when relaying proposals through the GovernorRootTunnel.
-// - Next, open another terminal window and run `node ./packages/scripts/admin-proposals/setupFork.sh` to unlock
+// - Next, open another terminal window and run `./packages/scripts/setupFork.sh` to unlock
 //   accounts on the local node that we'll need to run this script.
-// - Propose: node ./packages/scripts/admin-proposals/collateral.js --collateral 0xabc,0x123 --fee 0.1,0.2 --polygon 0xdef,0x456 --network mainnet-fork
-// - Vote Simulate: node ./packages/scripts/admin-proposals/simulateVote.js --network mainnet-fork
-// - Verify: node ./packages/scripts/admin-proposals/collateral.js --verify --collateral 0xabc,0x123 --fee 0.1,0.2 --polygon 0xdef,0x456 --network mainnet-fork
+// - Propose: node ./packages/scripts/src/admin-proposals/collateral.js --collateral 0xabc,0x123 --fee 0.1,0.2 --polygon 0xdef,0x456 --network mainnet-fork
+// - Vote Simulate: node ./packages/scripts/src/admin-proposals/simulateVote.js --network mainnet-fork
+// - Verify: node ./packages/scripts/src/admin-proposals/collateral.js --verify --collateral 0xabc,0x123 --fee 0.1,0.2 --polygon 0xdef,0x456 --network mainnet-fork
 // - For production, set the CUSTOM_NODE_URL environment, run the script with a production network passed to the
 //   `--network` flag (along with other params like --keys) like so: `node ... --network mainnet_gckms --keys deployer`
 
@@ -23,11 +23,11 @@
 
 // Examples:
 // - Whitelist collateral on Ethereum only:
-//    - `node ./packages/scripts/admin-proposals/collateral.js --collateral 0xabc,0x123 --network mainnet-fork`
+//    - `node ./packages/scripts/src/admin-proposals/collateral.js --collateral 0xabc,0x123 --network mainnet-fork`
 // - Whitelist collateral on Polygon only:
-//    - `node ./packages/scripts/admin-proposals/collateral.js --polygon 0xabc,0x123 --network mainnet-fork`
+//    - `node ./packages/scripts/src/admin-proposals/collateral.js --polygon 0xabc,0x123 --network mainnet-fork`
 // - Whitelist collateral on both (some on Ethereum, some on Polygon):
-//    - `node ./packages/scripts/admin-proposals/collateral.js --collateral 0xabc,0x123 --polygon 0xdef, --network mainnet-fork`
+//    - `node ./packages/scripts/src/admin-proposals/collateral.js --collateral 0xabc,0x123 --polygon 0xdef, --network mainnet-fork`
 
 const hre = require("hardhat");
 const { getContract } = hre;
@@ -118,9 +118,12 @@ async function run() {
   await gasEstimator.update();
   console.log(
     `⛽️ Current fast gas price for Ethereum: ${web3.utils.fromWei(
-      gasEstimator.getCurrentFastPrice().toString(),
+      gasEstimator.getCurrentFastPrice().maxFeePerGas.toString(),
       "gwei"
-    )} gwei`
+    )} maxFeePerGas and ${web3.utils.fromWei(
+      gasEstimator.getCurrentFastPrice().maxPriorityFeePerGas.toString(),
+      "gwei"
+    )} maxPriorityFeePerGas`
   );
   const governor = new web3.eth.Contract(Governor.abi, await _getContractAddressByName("Governor", netId));
   const finder = new web3.eth.Contract(Finder.abi, await _getContractAddressByName("Finder", netId));
@@ -242,7 +245,7 @@ async function run() {
     if (adminProposalTransactions.length > 0) {
       const txn = await governor.methods
         .propose(adminProposalTransactions)
-        .send({ from: REQUIRED_SIGNER_ADDRESSES["deployer"], gasPrice: gasEstimator.getCurrentFastPrice() });
+        .send({ from: REQUIRED_SIGNER_ADDRESSES["deployer"], ...gasEstimator.getCurrentFastPrice() });
       console.log("- Transaction: ", txn?.transactionHash);
 
       // Print out details about new Admin proposal

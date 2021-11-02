@@ -217,7 +217,7 @@ class OptimisticOracleProposer {
       const { receipt, returnValue, transactionConfig } = await runTransaction({
         web3: this.web3,
         transaction: proposal,
-        transactionConfig: { gasPrice: this.gasEstimator.getCurrentFastPrice(), from: this.account },
+        transactionConfig: { ...this.gasEstimator.getCurrentFastPrice(), from: this.account },
       });
 
       const logResult = {
@@ -311,7 +311,7 @@ class OptimisticOracleProposer {
         const { receipt, returnValue, transactionConfig } = await runTransaction({
           web3: this.web3,
           transaction: dispute,
-          transactionConfig: { gasPrice: this.gasEstimator.getCurrentFastPrice(), from: this.account },
+          transactionConfig: { ...this.gasEstimator.getCurrentFastPrice(), from: this.account },
         });
 
         const logResult = {
@@ -371,7 +371,7 @@ class OptimisticOracleProposer {
       const { receipt, returnValue, transactionConfig } = await runTransaction({
         web3: this.web3,
         transaction: settle,
-        transactionConfig: { gasPrice: this.gasEstimator.getCurrentFastPrice(), from: this.account },
+        transactionConfig: { ...this.gasEstimator.getCurrentFastPrice(), from: this.account },
       });
 
       const logResult = {

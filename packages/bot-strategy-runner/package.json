@@ -1,15 +1,15 @@
 {
   "name": "@uma/bot-strategy-runner",
-  "version": "1.2.3",
+  "version": "1.2.6",
   "description": "Scripts for running a set of UMA bots against an address whitelist",
   "homepage": "https://umaproject.org",
   "license": "AGPL-3.0-or-later",
   "dependencies": {
-    "@uma/contracts-node": "^0.1.4",
-    "@uma/disputer": "^2.6.3",
-    "@uma/financial-templates-lib": "^2.10.0",
-    "@uma/liquidator": "^2.6.3",
-    "@uma/monitors": "^2.6.3",
+    "@uma/contracts-node": "^0.1.7",
+    "@uma/disputer": "^2.6.6",
+    "@uma/financial-templates-lib": "^2.13.0",
+    "@uma/liquidator": "^2.6.6",
+    "@uma/monitors": "^2.6.6",
     "bluebird": "^3.7.2",
     "cli-progress": "^3.9.0",
     "commander": "^7.2.0",
@@ -23,7 +23,7 @@
     "@types/commander": "^2.12.2",
     "@types/mocha": "^8.2.2",
     "@types/node-fetch": "^2.5.8",
-    "web3": "^1.5.0"
+    "web3": "^1.6.0"
   },
   "publishConfig": {
     "registry": "https://registry.npmjs.com/",

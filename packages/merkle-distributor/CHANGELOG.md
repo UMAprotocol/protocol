@@ -3,6 +3,20 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.3.6](https://github.com/UMAprotocol/protocol/compare/@uma/merkle-distributor@1.3.5...@uma/merkle-distributor@1.3.6) (2021-10-29)
+
+**Note:** Version bump only for package @uma/merkle-distributor
+
+## [1.3.5](https://github.com/UMAprotocol/protocol/compare/@uma/merkle-distributor@1.3.4...@uma/merkle-distributor@1.3.5) (2021-10-27)
+
+**Note:** Version bump only for package @uma/merkle-distributor
+
+## [1.3.4](https://github.com/UMAprotocol/protocol/compare/@uma/merkle-distributor@1.3.3...@uma/merkle-distributor@1.3.4) (2021-10-19)
+
+### Bug Fixes
+
+- **spelling:** address handel->handle typo ([#3465](https://github.com/UMAprotocol/protocol/issues/3465)) ([b0faad5](https://github.com/UMAprotocol/protocol/commit/b0faad57bb4f6549a1f90443780fc2932069a52b))
+
 ## [1.3.3](https://github.com/UMAprotocol/protocol/compare/@uma/merkle-distributor@1.3.2...@uma/merkle-distributor@1.3.3) (2021-10-08)
 
 **Note:** Version bump only for package @uma/merkle-distributor

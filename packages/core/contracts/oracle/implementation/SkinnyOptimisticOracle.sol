@@ -236,9 +236,9 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
         emit ProposePrice(requester, identifier, timestamp, ancillaryData, proposedRequest);
 
         // Callback.
-        if (address(msg.sender).isContract())
+        if (address(requester).isContract())
             try
-                OptimisticRequester(msg.sender).priceProposed(identifier, timestamp, ancillaryData, proposedRequest)
+                OptimisticRequester(requester).priceProposed(identifier, timestamp, ancillaryData, proposedRequest)
             {} catch {}
     }
 
@@ -295,7 +295,7 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
         uint256 customLiveness,
         address proposer,
         int256 proposedPrice
-    ) external override returns (uint256 totalBond) {
+    ) external override nonReentrant() returns (uint256 totalBond) {
         bytes32 requestId = _getId(msg.sender, identifier, timestamp, ancillaryData);
         require(requests[requestId] == bytes32(0), "Request already initialized");
         require(proposer != address(0), "proposer address must be non 0");
@@ -306,8 +306,8 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
         Request memory request;
         request.currency = currency;
         request.reward = reward;
-        request.finalFee = _getStore().computeFinalFee(address(currency)).rawValue;
-        request.bond = bond;
+        request.finalFee = finalFee;
+        request.bond = bond != 0 ? bond : finalFee;
         request.customLiveness = customLiveness;
         request.proposer = proposer;
         request.proposedPrice = proposedPrice;

@@ -3,6 +3,25 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.12.1](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.12.0...@uma/common@2.12.1) (2021-10-29)
+
+### Bug Fixes
+
+- **GasEstimator:** protocol upgrade for EIP1559 ([#3306](https://github.com/UMAprotocol/protocol/issues/3306)) ([8245391](https://github.com/UMAprotocol/protocol/commit/8245391ee07dca37be3c52a9a9ba47ed4d63f6f7))
+
+# [2.12.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.11.0...@uma/common@2.12.0) (2021-10-27)
+
+### Features
+
+- **insured-bridge:** Move contracts-ovm files to contracts/ and bump to ^0.8.0 ([#3454](https://github.com/UMAprotocol/protocol/issues/3454)) ([7189b0c](https://github.com/UMAprotocol/protocol/commit/7189b0c6ecea568a0c6a1f4bb5907a3d50d86186))
+
+# [2.11.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.10.0...@uma/common@2.11.0) (2021-10-19)
+
+### Features
+
+- **across:** war games 2 ([#3460](https://github.com/UMAprotocol/protocol/issues/3460)) ([c2c849a](https://github.com/UMAprotocol/protocol/commit/c2c849ad046905b61f23f59ef32476a8eb8b04b1))
+- **LSP:** Enable LSP to support early expiration ([#3445](https://github.com/UMAprotocol/protocol/issues/3445)) ([d4e7ea2](https://github.com/UMAprotocol/protocol/commit/d4e7ea22159b2eed8e39d5b86ce0026ea3b8b995))
+
 # [2.10.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.9.0...@uma/common@2.10.0) (2021-10-08)
 
 ### Features

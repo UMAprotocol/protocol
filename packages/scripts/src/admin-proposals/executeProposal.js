@@ -3,12 +3,12 @@
 
 // Run:
 // - Start mainnet fork in one window with `yarn hardhat node --fork <ARCHIVAL_NODE_URL> --no-deploy --port 9545`
-// - Next, open another terminal window and run `node ./packages/scripts/admin-proposals/setupFork.sh` to unlock
+// - Next, open another terminal window and run `./packages/scripts/setupFork.sh` to unlock
 //   accounts on the local node that we'll need to run this script.
 // - This script should be run after any Admin proposal UMIP script against a local Mainnet fork. It allows the tester
 //   to simulate what would happen if the proposal were to pass and to verify that contract state changes as expected.
 // - Execute proposal 10:
-//   node ./packages/scripts/admin-proposals/executeProposal.js --id 10 --network mainnet-fork
+//   node ./packages/scripts/src/admin-proposals/executeProposal.js --id 10 --network mainnet-fork
 
 const hre = require("hardhat");
 const { getContract } = hre;
@@ -41,9 +41,12 @@ async function run() {
   await gasEstimator.update();
   console.log(
     `⛽️ Current fast gas price for Ethereum: ${web3.utils.fromWei(
-      gasEstimator.getCurrentFastPrice().toString(),
+      gasEstimator.getCurrentFastPrice().maxFeePerGas.toString(),
       "gwei"
-    )} gwei`
+    )} maxFeePerGas and ${web3.utils.fromWei(
+      gasEstimator.getCurrentFastPrice().maxPriorityFeePerGas.toString(),
+      "gwei"
+    )} maxPriorityFeePerGas`
   );
   const governor = new web3.eth.Contract(Governor.abi, await _getContractAddressByName("Governor", netId));
   console.group("\nℹ️  DVM infrastructure for Ethereum transactions:");
@@ -61,7 +64,7 @@ async function run() {
     try {
       let txn = await governor.methods
         .executeProposal(id.toString(), j.toString())
-        .send({ from: accounts[0], gasPrice: gasEstimator.getCurrentFastPrice() });
+        .send({ from: accounts[0], ...gasEstimator.getCurrentFastPrice() });
       console.log(`    - Success, receipt: ${txn.transactionHash}`);
     } catch (err) {
       console.error("    - Failure: Txn was likely executed previously, skipping to next one");

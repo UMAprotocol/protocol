@@ -14,6 +14,7 @@ const Arbitrum_Messenger = getContract("Arbitrum_Messenger");
 const BridgeAdmin = getContract("BridgeAdmin");
 const BridgePool = getContract("BridgePool");
 const Timer = getContract("Timer");
+const Store = getContract("Store");
 const Finder = getContract("Finder");
 const BridgeDepositBox = getContract("BridgeDepositBoxMock");
 const IdentifierWhitelist = getContract("IdentifierWhitelist");
@@ -24,6 +25,7 @@ const ERC20 = getContract("ERC20");
 let arbitrumMessenger;
 let bridgeAdmin;
 let finder;
+let store;
 let l1InboxMock;
 let depositBox;
 let identifierWhitelist;
@@ -55,7 +57,7 @@ describe("ArbitrumMessenger integration with BridgeAdmin", () => {
     await runDefaultFixture(hre);
     timer = await Timer.new().send({ from: owner });
     finder = await Finder.new().send({ from: owner });
-    l1Token = (await ERC20.new("", "").send({ from: owner })).options.address;
+    l1Token = await ERC20.new("", "").send({ from: owner });
     collateralWhitelist = await AddressWhitelist.new().send({ from: owner });
     await finder.methods
       .changeImplementationAddress(utf8ToHex(interfaceName.CollateralWhitelist), collateralWhitelist.options.address)
@@ -68,9 +70,13 @@ describe("ArbitrumMessenger integration with BridgeAdmin", () => {
 
     await identifierWhitelist.methods.addSupportedIdentifier(defaultIdentifier).send({ from: owner });
 
-    // The initialization of the bridge pool requires there to be an address of both the store and the SkinnyOptimisticOracle
-    // set in the finder. These tests dont use these contracts but there are never the less needed for deployment.
-    await finder.methods.changeImplementationAddress(utf8ToHex(interfaceName.Store), rando).send({ from: owner });
+    // The initialization of the bridge pool requires there to be an address of both the store and the
+    // SkinnyOptimisticOracle set in the finder.
+    store = await Store.new({ rawValue: "0" }, { rawValue: "0" }, timer.options.address).send({ from: owner });
+    await store.methods.setFinalFee(l1Token.options.address, { rawValue: toWei("1") }).send({ from: owner });
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.Store), store.options.address)
+      .send({ from: owner });
     await finder.methods
       .changeImplementationAddress(utf8ToHex(interfaceName.SkinnyOptimisticOracle), rando)
       .send({ from: owner });
@@ -91,7 +97,7 @@ describe("ArbitrumMessenger integration with BridgeAdmin", () => {
       "LP Token",
       "LPT",
       bridgeAdmin.options.address,
-      l1Token,
+      l1Token.options.address,
       lpFeeRatePerSecond,
       false, // not set to weth pool
       timer.options.address
@@ -134,11 +140,11 @@ describe("ArbitrumMessenger integration with BridgeAdmin", () => {
       await bridgeAdmin.methods
         .setDepositContract(chainId, depositBoxImpersonator, arbitrumMessenger.options.address)
         .send({ from: owner });
-      await collateralWhitelist.methods.addToWhitelist(l1Token).send({ from: owner });
+      await collateralWhitelist.methods.addToWhitelist(l1Token.options.address).send({ from: owner });
       await bridgeAdmin.methods
         .whitelistToken(
           chainId,
-          l1Token,
+          l1Token.options.address,
           l2Token,
           bridgePool.options.address,
           defaultL1CallValue,
@@ -161,7 +167,7 @@ describe("ArbitrumMessenger integration with BridgeAdmin", () => {
       assert.equal(whitelistCallToMessengerCall.maxGas, defaultGasLimit);
       assert.equal(whitelistCallToMessengerCall.gasPriceBid, defaultGasPrice);
       const expectedAbiData = depositBox.methods
-        .whitelistToken(l1Token, l2Token, bridgePool.options.address)
+        .whitelistToken(l1Token.options.address, l2Token, bridgePool.options.address)
         .encodeABI();
       assert.equal(whitelistCallToMessengerCall.data, expectedAbiData, "xchain message bytes unexpected");
     });

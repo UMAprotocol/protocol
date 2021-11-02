@@ -135,17 +135,17 @@ describe("BridgePool", () => {
   // Generate ABI encoded deposit data and deposit data hash.
   const generateDepositHash = (_depositData) => {
     const depositDataAbiEncoded = web3.eth.abi.encodeParameters(
-      ["uint8", "uint64", "address", "address", "address", "uint256", "uint64", "uint64", "uint64"],
+      ["uint256", "uint64", "address", "address", "uint256", "uint64", "uint64", "uint64", "address"],
       [
         _depositData.chainId,
         _depositData.depositId,
         _depositData.l1Recipient,
         _depositData.l2Sender,
-        l1Token.options.address,
         _depositData.amount,
         _depositData.slowRelayFeePct,
         _depositData.instantRelayFeePct,
         _depositData.quoteTimestamp,
+        l1Token.options.address,
       ]
     );
     const depositHash = soliditySha3(depositDataAbiEncoded);
@@ -182,7 +182,7 @@ describe("BridgePool", () => {
   // Replicate the hashed ancillary data that is returned by BridgePool's internal _getRelayHash() method.
   const generateRelayAncillaryDataHash = (_depositData, _relayData) => {
     const parameters = [
-      { t: "uint8", v: _depositData.chainId },
+      { t: "uint256", v: _depositData.chainId },
       { t: "uint64", v: _depositData.depositId },
       { t: "address", v: _depositData.l1Recipient },
       { t: "address", v: _depositData.l2Sender },
@@ -336,6 +336,12 @@ describe("BridgePool", () => {
       .call();
   });
   it("Constructor validation", async function () {
+    // deployment timestamp is set.
+    assert.equal(
+      (await bridgePool.methods.deploymentTimestamp().call()).toString(),
+      (await bridgePool.methods.getCurrentTime().call()).toString()
+    );
+
     // LP Token symbol and name cannot be empty.
     assert(
       await didContractThrow(
@@ -400,7 +406,7 @@ describe("BridgePool", () => {
       .changeImplementationAddress(utf8ToHex(interfaceName.SkinnyOptimisticOracle), rando)
       .send({ from: owner });
 
-    await bridgePool.methods.syncWithFinderAddresses().send({ from: rando });
+    await bridgePool.methods.syncUmaEcosystemParams().send({ from: rando });
 
     // Check it's been updated accordingly
     assert.equal(await bridgePool.methods.optimisticOracle().call(), rando);
@@ -471,6 +477,23 @@ describe("BridgePool", () => {
       const relayStatus = await bridgePool.methods.relays(defaultDepositHash).call();
       assert.equal(relayStatus, defaultRelayHash);
     });
+    it("Relay checks", async () => {
+      // Proposer approves pool to withdraw total bond.
+      // Approve and mint many tokens to the relayer.
+      await l1Token.methods.approve(bridgePool.options.address, MAX_UINT_VAL).send({ from: relayer });
+      await l1Token.methods.mint(relayer, toWei("100000")).send({ from: owner });
+      await bridgePool.methods
+        .relayDeposit(...generateRelayParams({ amount: toBN(initialPoolLiquidity).subn(1).toString() }))
+        .send({ from: relayer });
+      await didContractThrow(
+        bridgePool.methods.relayDeposit(...generateRelayParams({ amount: "2" })).send({ from: relayer })
+      );
+      await didContractThrow(
+        bridgePool.methods
+          .relayAndSpeedUp({ ...defaultDepositData, amount: "2" }, defaultRealizedLpFee)
+          .send({ from: relayer })
+      );
+    });
     it("Requests and proposes optimistic price request", async () => {
       // Cache price request timestamp.
       const requestTimestamp = (await bridgePool.methods.getCurrentTime().call()).toString();
@@ -520,7 +543,6 @@ describe("BridgePool", () => {
           ev.depositData.slowRelayFeePct === defaultDepositData.slowRelayFeePct &&
           ev.depositData.instantRelayFeePct === defaultDepositData.instantRelayFeePct &&
           ev.depositData.quoteTimestamp === defaultDepositData.quoteTimestamp &&
-          ev.l1Token === l1Token.options.address &&
           ev.relay.slowRelayer === relayer &&
           ev.relay.relayId.toString() === relayAttemptData.relayId.toString() &&
           ev.relay.realizedLpFeePct === relayAttemptData.realizedLpFeePct &&
@@ -547,6 +569,7 @@ describe("BridgePool", () => {
       await l1Token.methods.approve(bridgePool.options.address, initialPoolLiquidity).send({ from: liquidityProvider });
       await bridgePool.methods.addLiquidity(initialPoolLiquidity).send({ from: liquidityProvider });
     });
+
     it("Valid instant relay, disputed, instant relayer should receive refund following subsequent valid relay", async () => {
       // Propose new relay:
       let relayAttemptData = {
@@ -555,6 +578,7 @@ describe("BridgePool", () => {
         relayState: InsuredBridgeRelayStateEnum.PENDING,
       };
       await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: relayer });
+
       await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: relayer });
 
       // Must approve contract to pull deposit amount.
@@ -993,6 +1017,9 @@ describe("BridgePool", () => {
       // from disputer.
       await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: disputer });
       await bridgePool.methods.disputeRelay(defaultDepositData, relayAttemptData).send({ from: disputer });
+
+      // Dispute should leave pendingReserves at 0.
+      assert.equal(await bridgePool.methods.pendingReserves().call(), "0");
 
       // Mint new relayer bond to relay again:
       await l1Token.methods.mint(rando, totalRelayBond).send({ from: owner });
@@ -1793,6 +1820,32 @@ describe("BridgePool", () => {
       assert.equal(await bridgePool.methods.liquidReserves().call(), "0");
       assert.equal(await bridgePool.methods.utilizedReserves().call(), defaultDepositData.amount);
     });
+    it("Can add liquidity multiple times", async () => {
+      // Approve funds and add to liquidity. The first addLiquidity always succeeds because `totalSupply = 0` so
+      // exchangeRateCurrent() always returns 1e18. In this test we test that subsequent calls to exchangeRateCurrent()
+      // from addLiquidity modify state as expected.
+      await l1Token.methods.approve(bridgePool.options.address, MAX_UINT_VAL).send({ from: liquidityProvider });
+      await bridgePool.methods.addLiquidity(initialPoolLiquidity).send({ from: liquidityProvider });
+
+      // Initiate a relay. The relay amount is 10% of the total pool liquidity.
+      await l1Token.methods.approve(bridgePool.options.address, MAX_UINT_VAL).send({ from: relayer });
+
+      // Utilized reserves are 0 before any relays. Added liquidity is available as liquid reserves.
+      assert.equal(await bridgePool.methods.utilizedReserves().call(), "0");
+      assert.equal(await bridgePool.methods.liquidReserves().call(), initialPoolLiquidity);
+
+      // Add more liquidity:
+      await l1Token.methods.mint(liquidityProvider, initialPoolLiquidity).send({ from: owner });
+      await bridgePool.methods.addLiquidity(initialPoolLiquidity).send({ from: liquidityProvider });
+
+      // Liquid reserves captures the two added liquidity transfers.
+      assert.equal(await bridgePool.methods.utilizedReserves().call(), "0");
+      assert.equal(await bridgePool.methods.liquidReserves().call(), toBN(initialPoolLiquidity).mul(toBN("2")));
+
+      // The above equation would fail if `addLiquidity()` transferred tokens to the contract before updating internal
+      // state via `sync()`, which checks the contract's balance and uses the number to update liquid + utilized
+      // reserves. If the contract's balance is higher than expected, then this state can be incorrect.
+    });
   });
   describe("Virtual balance accounting", () => {
     beforeEach(async function () {
@@ -2087,8 +2140,14 @@ describe("BridgePool", () => {
       await l1Token.methods.approve(bridgePool.options.address, totalRelayBond.muln(10)).send({ from: relayer });
     });
     it("Rate updates as expected in slow relay", async () => {
+      // liquidityUtilizationRatio :=
+      // (relayedAmount + pendingReserves + utilizedReserves) / (liquidReserves + utilizedReserves)
+
       // Before any relays (nothing in flight and none finalized) the rate should be 0 (no utilization).
       assert.equal((await bridgePool.methods.liquidityUtilizationCurrent().call()).toString(), toWei("0"));
+      assert.equal((await bridgePool.methods.pendingReserves().call()).toString(), toWei("0"));
+      assert.equal((await bridgePool.methods.liquidReserves().call()).toString(), toWei("1000"));
+      assert.equal((await bridgePool.methods.utilizedReserves().call()).toString(), toWei("0"));
 
       // liquidityUtilizationPostRelay of the relay size should correctly factor in the relay.
       assert.equal(
@@ -2106,34 +2165,64 @@ describe("BridgePool", () => {
 
       // The relay amount is set to 10% of the pool liquidity. As a result, the post relay utilization should be 10%.
       assert.equal((await bridgePool.methods.liquidityUtilizationCurrent().call()).toString(), toWei("0.1"));
+      assert.equal((await bridgePool.methods.pendingReserves().call()).toString(), toWei("100"));
+      assert.equal((await bridgePool.methods.liquidReserves().call()).toString(), toWei("1000"));
+      assert.equal((await bridgePool.methods.utilizedReserves().call()).toString(), toWei("0"));
 
       // Advance time and settle the relay. This will send  funds from the bridge pool to the recipient and slow relayer.
-      // After this action, the utilized reserves should increase. The conclusion of the bridging action pays the slow
+      // After this action, the utilized reserves should decrease. The conclusion of the bridging action pays the slow
       // relayer their reward of 1% and the recipient their bridged amount of 89% of the 100 bridged (100%-1%-10%).
       // As a result, the pool should have it's initial balance, minus recipient amount, minus slow relayer reward.
-      // i.e 1000-1-89=910. As a result, the utalized reserves should be at 100 and the liquid reserves should be 910.
-      // With this, the pool liquidity utilization should be equal to 100/910=0.109890109890109890
+      // i.e 1000-1-89=910. The liquidity utilization ratio should therefore be 100 / (910 + 100) = 0.099009900990099009
 
       // Settle the relay action.
       await advanceTime(defaultLiveness);
       await bridgePool.methods.settleRelay(defaultDepositData, relayAttemptData).send({ from: relayer });
 
-      // Validate the balances and utilized ratio match to the above comment.
+      // Validate the balances and utilized ratio match to the above comment. Utilization % should be slightly less
+      // than 10% because fees are included in the denominator.
       assert.equal((await bridgePool.methods.pendingReserves().call()).toString(), toWei("0"));
       assert.equal((await bridgePool.methods.liquidReserves().call()).toString(), toWei("910"));
       assert.equal((await bridgePool.methods.utilizedReserves().call()).toString(), toWei("100"));
       assert.equal((await l1Token.methods.balanceOf(l1Recipient).call()).toString(), toWei("89"));
       assert.equal(
         (await bridgePool.methods.liquidityUtilizationCurrent().call()).toString(),
-        toWei("0.109890109890109890")
+        toWei("0.099009900990099009")
       );
 
-      // Mimic the finilization of the bridging action over the canonical bridge by minting tokens to the bridgepool.
-      // This should bring the bridge pool balance up to 1010 (the initial 1000 + 10% LP reward from bridging action).
-      // The utilization ratio should go back down to 0 at this point.
-      await l1Token.methods.mint(bridgePool.options.address, relayAmount).send({ from: owner });
+      // Relay again.
+      await l1Token.methods.mint(liquidityProvider, initialPoolLiquidity).send({ from: owner });
+      await l1Token.methods.approve(bridgePool.options.address, MAX_UINT_VAL).send({ from: liquidityProvider });
+      const newDeposit = {
+        ...defaultDepositData,
+        depositId: 1,
+        quoteTimestamp: await bridgePool.methods.getCurrentTime().call(),
+      };
+      await bridgePool.methods.relayDeposit(newDeposit, relayAttemptData.realizedLpFeePct).send({ from: relayer });
 
-      assert.equal((await bridgePool.methods.liquidityUtilizationCurrent().call()).toString(), toWei("0"));
+      // Check new reserve amounts. Utilization should increase, but should be slightly less
+      // than 20% because fees are included in the denominator.
+      assert.equal(
+        (await bridgePool.methods.liquidityUtilizationCurrent().call()).toString(),
+        toWei("0.198019801980198019")
+      );
+      assert.equal((await bridgePool.methods.pendingReserves().call()).toString(), toWei("100"));
+      assert.equal((await bridgePool.methods.liquidReserves().call()).toString(), toWei("910"));
+      assert.equal((await bridgePool.methods.utilizedReserves().call()).toString(), toWei("100"));
+
+      // Mimic the finalization of the first bridging action over the canonical bridge by minting tokens to the
+      // bridgepool. This should bring the bridge pool balance up to 1010 (the initial 1000 + 10% LP reward from
+      // bridging action). Utilization should go back to same value it was right before the second relay.
+      await l1Token.methods.mint(bridgePool.options.address, relayAmount).send({ from: owner });
+      assert.equal(
+        (await bridgePool.methods.liquidityUtilizationCurrent().call()).toString(),
+        toWei("0.099009900990099009")
+      );
+      await bridgePool.methods.sync().send({ from: owner }); // Sync state to get updated reserve values that we
+      // can verify.
+      assert.equal((await bridgePool.methods.pendingReserves().call()).toString(), toWei("100"));
+      assert.equal((await bridgePool.methods.liquidReserves().call()).toString(), toWei("1010"));
+      assert.equal((await bridgePool.methods.utilizedReserves().call()).toString(), toWei("0"));
     });
     it("Rate updates as expected with multiple relays and instant relay", async () => {
       // Before any relays (nothing in flight and none finalized) the rate should be 0 (no utilization).
@@ -2175,7 +2264,7 @@ describe("BridgePool", () => {
       // amount + the LP fees (to 910, same as in the first test). The pending reserves should be 150, from the second
       // bridging action. The utilized reserves should be 100 for the funds in flight from the first bridging action.
       // The recipient token balance should be the initial amount, - 1%  slow relay, - 1%  fast relay - 10% lp fee.
-      // The utilization ratio should, therefore, be: (150+100)/910=0.274725274725274725
+      // The utilization ratio should, therefore, be: (150+100)/(910+100)=0.247524752475247524
       await advanceTime(defaultLiveness);
       await bridgePool.methods.settleRelay(defaultDepositData, relayAttemptData).send({ from: relayer });
 
@@ -2185,16 +2274,88 @@ describe("BridgePool", () => {
       assert.equal((await l1Token.methods.balanceOf(l1Recipient).call()).toString(), toWei("88"));
       assert.equal(
         (await bridgePool.methods.liquidityUtilizationCurrent().call()).toString(),
-        toWei("0.274725274725274725")
+        toWei("0.247524752475247524")
       );
 
-      // Finally, mimic the finalization of the first relay by minting tokens to the pool. After this action, the pool
-      // will gain 100 tokens from the first deposit. At this point the pendingReserves should be 150 (as before), liquid
-      // reserves are now 1010 and utilized reserves are set to 0. The utilization ratio is: (150+0)/1010=0.148514851485148514
+      // Mimic the finalization of the first relay by minting tokens to the pool. After this action, the pool
+      // will gain 100 tokens from the first deposit. At this point the pendingReserves should be 150 (as before),
+      // liquid reserves are now 1010 and utilized reserves are set to 0. The utilization ratio is: (150+0)/1010+0=0.148514851485148514
       await l1Token.methods.mint(bridgePool.options.address, relayAmount).send({ from: owner });
       assert.equal(
         (await bridgePool.methods.liquidityUtilizationCurrent().call()).toString(),
         toWei("0.148514851485148514")
+      );
+
+      // Advance time to accumulate more fees. This should not change the utilization rate.
+      await advanceTime(defaultLiveness);
+      await bridgePool.methods.exchangeRateCurrent().send({ from: owner }); // enforce fees are accumulated.
+      assert.equal(
+        (await bridgePool.methods.liquidityUtilizationCurrent().call()).toString(),
+        toWei("0.148514851485148514")
+      );
+      // Finally relay another deposit. This should modify the utilization again to (150+100)/910+100=0.247524752475247524
+      await bridgePool.methods.relayDeposit(...generateRelayParams({ depositId: 2 })).send({ from: relayer });
+      assert.equal(
+        (await bridgePool.methods.liquidityUtilizationCurrent().call()).toString(),
+        toWei("0.247524752475247524")
+      );
+    });
+    it("Rate updates as expected in edge cases with tokens minted to the pool to force negative utilizedReserves", async () => {
+      // Start off by redeeming all liquidity tokens to force everything to zero.
+      await bridgePool.methods.removeLiquidity(toWei("1000"), false).send({ from: liquidityProvider });
+      assert.equal((await bridgePool.methods.pendingReserves().call()).toString(), toWei("0"));
+      assert.equal((await bridgePool.methods.liquidReserves().call()).toString(), toWei("0"));
+      assert.equal((await bridgePool.methods.utilizedReserves().call()).toString(), toWei("0"));
+
+      // Utilization should be 1 if utilizedReserves,pendingReserves,relayedAmount are 0.
+      assert.equal((await bridgePool.methods.liquidityUtilizationCurrent().call()).toString(), toWei("1"));
+      assert.equal((await bridgePool.methods.liquidityUtilizationPostRelay(toWei("1")).call()).toString(), toWei("1"));
+
+      // Next, mint tokens to the pool without any liquidity added. Utilization should be 0
+      await l1Token.methods.mint(bridgePool.options.address, toWei("1000")).send({ from: owner });
+
+      assert.equal((await bridgePool.methods.liquidityUtilizationCurrent().call()).toString(), toWei("0"));
+
+      // Trying to relay 10 should have a utilization of 10/1000=0.01
+      assert.equal(
+        (await bridgePool.methods.liquidityUtilizationPostRelay(toWei("10")).call()).toString(),
+        toWei("0.01")
+      );
+
+      // Next, add liquidity back but add less than the amount dropped on the contract.
+      await bridgePool.methods.addLiquidity(toWei("500")).send({ from: liquidityProvider });
+      assert.equal((await bridgePool.methods.liquidityUtilizationCurrent().call()).toString(), toWei("0"));
+
+      // Trying to relay 10 should have a utilization of 10/1500=0.006666666667
+      assert.equal(
+        (await bridgePool.methods.liquidityUtilizationPostRelay(toWei("10")).call()).toString(),
+        toWei("0.006666666666666666")
+      );
+      // trying to relay 1250 should have a utilization of 1250/1500=0.8333333333
+      assert.equal(
+        (await bridgePool.methods.liquidityUtilizationPostRelay(toWei("1250")).call()).toString(),
+        toWei("0.833333333333333333")
+      );
+
+      // Add more liquidity finally such that the liquidity added is more than that minted.
+      await bridgePool.methods.addLiquidity(toWei("1000")).send({ from: liquidityProvider });
+
+      // Trying to relay 10 should have a utilization of 10/2500=0.004
+      assert.equal(
+        (await bridgePool.methods.liquidityUtilizationPostRelay(toWei("10")).call()).toString(),
+        toWei("0.004")
+      );
+
+      // If the amount bridged is the full amount of liquidity it should be utilization = 1.
+      assert.equal(
+        (await bridgePool.methods.liquidityUtilizationPostRelay(toWei("2500")).call()).toString(),
+        toWei("1")
+      );
+
+      // A number greater than the maximum should return the expected amount (can be greater than 100%).
+      assert.equal(
+        (await bridgePool.methods.liquidityUtilizationPostRelay(toWei("3000")).call()).toString(),
+        toWei("1.2")
       );
     });
   });
@@ -2430,6 +2591,53 @@ describe("BridgePool", () => {
           .sub(instantRelayerBalancePostSpeedUp)
           .toString(),
         toBN(instantRelayAmountSubFee).add(realizedInstantRelayFeeAmount).toString()
+      );
+    });
+    it("Can handle recipient being a smart contract that does not accept ETH transfer", async () => {
+      // In the even the recipient is a smart contract that can not accept ETH transfers (no payable receive function)
+      // and it is a WETH pool, the bridge pool should send WETH ERC20 to the recipient.
+
+      // Relay, setting the finder as the recipient. this is a contract that cant accept ETH.
+      await weth.methods.deposit().send({ from: relayer, value: totalRelayBond });
+      await weth.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: relayer });
+      await bridgePool.methods
+        .relayDeposit(...generateRelayParams({ depositId: 2, l1Recipient: finder.options.address }))
+        .send({ from: relayer });
+
+      const relayAttemptData = {
+        ...defaultRelayData,
+        l1Recipient: finder.options.address,
+        priceRequestTime: (await bridgePool.methods.getCurrentTime().call()).toString(),
+        relayState: InsuredBridgeRelayStateEnum.PENDING,
+      };
+      const recipientEthBalanceBefore = await web3.eth.getBalance(finder.options.address);
+      const recipientWethBalanceBefore = await weth.methods.balanceOf(finder.options.address).call();
+      await timer.methods
+        .setCurrentTime(
+          (Number((await bridgePool.methods.getCurrentTime().call()).toString()) + defaultLiveness).toString()
+        )
+        .send({ from: owner });
+
+      // Settle request.
+      await bridgePool.methods
+        .settleRelay(
+          { ...defaultDepositData, depositId: 2, l1Recipient: finder.options.address },
+          { ...relayAttemptData, relayId: 1 }
+        )
+        .send({ from: relayer });
+
+      // Recipient eth balance should have stayed the same (cant receive eth)
+      assert.equal(
+        (await web3.eth.getBalance(finder.options.address)).toString(),
+        recipientEthBalanceBefore.toString()
+      );
+
+      // Recipients WETH balance should have increased instead.
+      assert.equal(
+        toBN(await weth.methods.balanceOf(finder.options.address).call())
+          .sub(toBN(recipientWethBalanceBefore))
+          .toString(),
+        slowRelayAmountSubFee.toString()
       );
     });
     it("LP can send ETH when depositing into a WETH pool", async () => {

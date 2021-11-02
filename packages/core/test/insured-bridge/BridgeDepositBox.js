@@ -15,7 +15,7 @@ const BridgeDepositBox = getContract("BridgeDepositBoxMock");
 // Helper contracts
 const Weth9 = getContract("WETH9");
 const Token = getContract("ExpandedERC20");
-const Timer = getContract("Legacy_Timer");
+const Timer = getContract("Timer");
 
 // Contract objects
 let depositBox, l2Token, timer;
@@ -258,6 +258,34 @@ describe("BridgeDepositBox", () => {
         await depositBox.methods
           .deposit(user1, l2Token.options.address, depositAmount, toWei("0.24"), toWei("0.24"), quoteTimestamp)
           .send({ from: user1 });
+      });
+    });
+
+    describe("Basic checks", () => {
+      it("canBridge and isWhitelistToken", async () => {
+        assert.equal(await depositBox.methods.isWhitelistToken(l1TokenAddress).call(), false);
+        assert.equal(
+          await depositBox.methods.canBridge(l1TokenAddress).call(),
+          false,
+          "Should return false for non-whitelisted token"
+        );
+        assert.equal(await depositBox.methods.isWhitelistToken(l2Token.options.address).call(), true);
+        assert.equal(
+          await depositBox.methods.canBridge(l2Token.options.address).call(),
+          false,
+          "Should return false for whitelisted with not enough time elapsed since whitelisting"
+        );
+
+        // Advance time past minimum bridging delay and then try again
+        await timer.methods
+          .setCurrentTime(Number(await timer.methods.getCurrentTime().call()) + minimumBridgingDelay + 1)
+          .send({ from: deployer });
+        assert.equal(await depositBox.methods.canBridge(l2Token.options.address).call(), true);
+        assert.equal(
+          await depositBox.methods.canBridge(l1TokenAddress).call(),
+          false,
+          "Should return false for non-whitelisted token"
+        );
       });
     });
   });

@@ -3,6 +3,36 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.8.1](https://github.com/UMAprotocol/protocol/compare/@uma/api@0.8.0...@uma/api@0.8.1) (2021-10-29)
+
+### Bug Fixes
+
+- cancel timeouts used for race against promises ([#3513](https://github.com/UMAprotocol/protocol/issues/3513)) ([3b019ee](https://github.com/UMAprotocol/protocol/commit/3b019eeb5224134ffe8566f9a5fd2192a5b5dce6))
+- **GasEstimator:** protocol upgrade for EIP1559 ([#3306](https://github.com/UMAprotocol/protocol/issues/3306)) ([8245391](https://github.com/UMAprotocol/protocol/commit/8245391ee07dca37be3c52a9a9ba47ed4d63f6f7))
+
+# [0.8.0](https://github.com/UMAprotocol/protocol/compare/@uma/api@0.7.0...@uma/api@0.8.0) (2021-10-27)
+
+### Features
+
+- **api:** add serverless read app ([#3503](https://github.com/UMAprotocol/protocol/issues/3503)) ([82df16d](https://github.com/UMAprotocol/protocol/commit/82df16d038d5ecd6f5ac70e3a447171364fdb0c4))
+
+# [0.7.0](https://github.com/UMAprotocol/protocol/compare/@uma/api@0.6.0...@uma/api@0.7.0) (2021-10-19)
+
+### Bug Fixes
+
+- **api:** fix packaged files in release ([#3453](https://github.com/UMAprotocol/protocol/issues/3453)) ([0631f3b](https://github.com/UMAprotocol/protocol/commit/0631f3b142ca56381f92351060eef3366563deb0))
+- **api:** remove some lsps props causing error ([#3459](https://github.com/UMAprotocol/protocol/issues/3459)) ([812e17c](https://github.com/UMAprotocol/protocol/commit/812e17c1470f2a605cbfff82180443fd3e185eec))
+- **api:** specify explicitly the npm datastore version ([#3476](https://github.com/UMAprotocol/protocol/issues/3476)) ([b588e83](https://github.com/UMAprotocol/protocol/commit/b588e83ca548a2a0d59b36f02ec9800afce28dec))
+- **api:** undo requirement for google credentials file ([#3477](https://github.com/UMAprotocol/protocol/issues/3477)) ([be1db87](https://github.com/UMAprotocol/protocol/commit/be1db871460d4c6153679e39dce6eb5599cd7960))
+
+### Features
+
+- **LSP:** Enable LSP to support early expiration ([#3445](https://github.com/UMAprotocol/protocol/issues/3445)) ([d4e7ea2](https://github.com/UMAprotocol/protocol/commit/d4e7ea22159b2eed8e39d5b86ce0026ea3b8b995))
+
+### Performance Improvements
+
+- **api:** optimize api for Google datastore ([#3457](https://github.com/UMAprotocol/protocol/issues/3457)) ([67be6a3](https://github.com/UMAprotocol/protocol/commit/67be6a32067505939b80d10e95e7671aef03cfa9))
+
 # [0.6.0](https://github.com/UMAprotocol/protocol/compare/@uma/api@0.5.2...@uma/api@0.6.0) (2021-10-08)
 
 ### Features
