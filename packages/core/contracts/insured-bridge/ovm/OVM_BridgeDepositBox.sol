@@ -23,6 +23,7 @@ library Lib_PredeployAddresses {
     address internal constant L1_BLOCK_NUMBER = 0x4200000000000000000000000000000000000013;
 }
 
+// Interface copied from https://github.com/ethereum-optimism/optimism/blob/23def39dd1037f4364d1841549990b0ca61f5d88/packages/contracts/contracts/L2/messaging/L2StandardBridge.sol#L54
 interface StandardBridgeLike {
     function withdrawTo(
         address _l2Token,
@@ -144,7 +145,7 @@ contract OVM_BridgeDepositBox is BridgeDepositBox, OVM_CrossDomainEnabled {
             whitelistedTokens[l2Token].l1BridgePool, // _to. Withdraw, over the bridge, to the l1 withdraw contract.
             bridgeDepositBoxBalance, // _amount. Send the full balance of the deposit box to bridge.
             l1Gas, // _l1Gas. Unused, but included for potential forward compatibility considerations
-            "" // _data. TODO: add additional info into this data prop this.
+            "" // _data. We don't need to send any data for the bridging action.
         );
 
         emit TokensBridged(l2Token, bridgeDepositBoxBalance, l1Gas, msg.sender);

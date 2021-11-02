@@ -6,14 +6,6 @@ pragma solidity ^0.8.0;
  * @notice Copied directly from https://github.com/ethereum-optimism/optimism/blob/294246d65e650f497527de398f51b2f6d11f602f/packages/contracts/contracts/libraries/bridge/ICrossDomainMessenger.sol
  */
 interface iOVM_CrossDomainMessenger {
-    /**********
-     * Events *
-     **********/
-
-    event SentMessage(bytes message);
-    event RelayedMessage(bytes32 msgHash);
-    event FailedRelayedMessage(bytes32 msgHash);
-
     /*************
      * Variables *
      *************/
