@@ -97,6 +97,7 @@ abstract contract BridgeDepositBox is Testable, Lockable {
      * @notice Construct the Bridge Deposit Box
      * @param _minimumBridgingDelay Minimum second that must elapse between L2 -> L1 token transfer to prevent dos.
      * @param _chainId Chain identifier for the Bridge deposit box.
+     * @param _l1Weth Address of Weth on L1. Used to inform if the deposit should wrap ETH to WETH, if deposit is ETH.
      * @param timerAddress Timer used to synchronize contract time in testing. Set to 0x000... in production.
      */
     constructor(
