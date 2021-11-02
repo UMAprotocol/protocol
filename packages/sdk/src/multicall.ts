@@ -1,7 +1,7 @@
 import { multicall } from "./clients";
 import { Contract } from "ethers";
 import type { SignerOrProvider } from ".";
-import { zip } from "lodash";
+import zip from "lodash/zip";
 
 export type Call = {
   method: string;

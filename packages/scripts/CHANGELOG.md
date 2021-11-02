@@ -3,6 +3,26 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.4.0](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.3.0...@uma/scripts@1.4.0) (2021-10-29)
+
+### Bug Fixes
+
+- **GasEstimator:** protocol upgrade for EIP1559 ([#3306](https://github.com/UMAprotocol/protocol/issues/3306)) ([8245391](https://github.com/UMAprotocol/protocol/commit/8245391ee07dca37be3c52a9a9ba47ed4d63f6f7))
+
+### Features
+
+- **create-price-feed:** Add InsuredBridge ([#3388](https://github.com/UMAprotocol/protocol/issues/3388)) ([4dd8116](https://github.com/UMAprotocol/protocol/commit/4dd811635fd5647bf5916eb366daf5d613f3856c))
+
+# [1.3.0](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.2.3...@uma/scripts@1.3.0) (2021-10-27)
+
+### Bug Fixes
+
+- **script:** minor fix to the comments ([#3479](https://github.com/UMAprotocol/protocol/issues/3479)) ([b2d7017](https://github.com/UMAprotocol/protocol/commit/b2d701740330ec4f16ad74bdb523241883749591))
+
+### Features
+
+- **scripts:** Add option to set contract in Finder when registering contract ([#3481](https://github.com/UMAprotocol/protocol/issues/3481)) ([43ede96](https://github.com/UMAprotocol/protocol/commit/43ede968ec5bd8268179c0a69ce730a07b65f1da))
+
 ## [1.2.3](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.2.2...@uma/scripts@1.2.3) (2021-10-19)
 
 **Note:** Version bump only for package @uma/scripts

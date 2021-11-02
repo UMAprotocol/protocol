@@ -82,7 +82,7 @@ abstract contract BridgeDepositBox is Testable, Lockable {
         uint64 instantRelayFeePct,
         uint64 quoteTimestamp
     );
-    event TokensBridged(address l2Token, uint256 numberOfTokensBridged, uint256 l1Gas, address caller);
+    event TokensBridged(address indexed l2Token, uint256 numberOfTokensBridged, uint256 l1Gas, address indexed caller);
 
     /****************************************
      *               MODIFIERS              *
@@ -95,8 +95,9 @@ abstract contract BridgeDepositBox is Testable, Lockable {
 
     /**
      * @notice Construct the Bridge Deposit Box
-     * @param _minimumBridgingDelay Minimum second that must elapse between L2 -> L1 token transfer to prevent dos.
+     * @param _minimumBridgingDelay Minimum seconds that must elapse between L2 -> L1 token transfer to prevent dos.
      * @param _chainId Chain identifier for the Bridge deposit box.
+     * @param _l1Weth Address of Weth on L1. Used to inform if the deposit should wrap ETH to WETH, if deposit is ETH.
      * @param timerAddress Timer used to synchronize contract time in testing. Set to 0x000... in production.
      */
     constructor(
@@ -145,7 +146,7 @@ abstract contract BridgeDepositBox is Testable, Lockable {
     }
 
     /**
-     * @notice L1 owner can enable/disable deposits for a whitelisted tokens.
+     * @notice L1 owner can enable/disable deposits for a whitelisted token.
      * @param l2Token address of L2 token to enable/disable deposits for.
      * @param depositsEnabled bool to set if the deposit box should accept/reject deposits.
      */
@@ -166,7 +167,7 @@ abstract contract BridgeDepositBox is Testable, Lockable {
      * @param l2Token L2 token to deposit.
      * @param amount How many L2 tokens should be deposited.
      * @param slowRelayFeePct Max fraction of `amount` that the depositor is willing to pay as a slow relay fee.
-     * @param instantRelayFeePct Fraction of `amount` that the depositor is willing to pay as a instant relay fee.
+     * @param instantRelayFeePct Fraction of `amount` that the depositor is willing to pay as an instant relay fee.
      * @param quoteTimestamp Timestamp, at which the depositor will be quoted for L1 liquidity. This enables the
      *    depositor to know the L1 fees before submitting their deposit. Must be within 10 mins of the current time.
      */
@@ -187,6 +188,9 @@ abstract contract BridgeDepositBox is Testable, Lockable {
         // Note that the OVM's notion of `block.timestamp` is different to the main ethereum L1 EVM. The OVM timestamp
         // corresponds to the L1 timestamp of the last confirmed L1 ⇒ L2 transaction. The quoteTime must be within 10
         // mins of the current time to allow for this variance.
+        // Note also that `quoteTimestamp` cannot be less than 10 minutes otherwise the following arithmetic can result
+        // in underflow. This isn't a problem as the deposit will revert, but the error might be unexpected for clients.
+        // Consider requiring `quoteTimestamp >= 10 minutes`.
         require(
             getCurrentTime() >= quoteTimestamp - 10 minutes && getCurrentTime() <= quoteTimestamp + 10 minutes,
             "deposit mined after deadline"
@@ -224,17 +228,28 @@ abstract contract BridgeDepositBox is Testable, Lockable {
 
     /**
      * @notice Checks if a given L2 token is whitelisted.
+     * @dev Check the whitelisted token's `lastBridgeTime` parameter since its guaranteed to be != 0 once
+     * the token has been whitelisted.
      * @param l2Token L2 token to check against the whitelist.
+     * @return true if token is whitelised.
      */
     function isWhitelistToken(address l2Token) public view returns (bool) {
-        return whitelistedTokens[l2Token].l1Token != address(0);
+        return whitelistedTokens[l2Token].lastBridgeTime != 0;
+    }
+
+    function _hasEnoughTimeElapsedToBridge(address l2Token) internal view returns (bool) {
+        return getCurrentTime() > whitelistedTokens[l2Token].lastBridgeTime + minimumBridgingDelay;
     }
 
     /**
-     * @notice Checks if enough time has elapsed from the previous bridge transfer to execute another bridge transfer.
-     * @param l2Token L2 token to check against last bridge time delay.
+     * @notice Designed to be called by implementing contract in `bridgeTokens` method which sends this contract's
+     * balance of tokens from L2 to L1 via the canonical token bridge. Tokens that can be bridged are whitelisted
+     * and have had enough time elapsed since the latest bridge (or the time at which at was whitelisted).
+     * @dev This function is also public for caller convenience.
+     * @param l2Token L2 token to check bridging status.
+     * @return true if token is whitelised and enough time has elapsed since the previous bridge.
      */
-    function hasEnoughTimeElapsedToBridge(address l2Token) public view returns (bool) {
-        return getCurrentTime() > whitelistedTokens[l2Token].lastBridgeTime + minimumBridgingDelay;
+    function canBridge(address l2Token) public view returns (bool) {
+        return isWhitelistToken(l2Token) && _hasEnoughTimeElapsedToBridge(l2Token);
     }
 }

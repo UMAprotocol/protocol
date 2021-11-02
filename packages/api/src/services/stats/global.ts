@@ -14,15 +14,17 @@ type Dependencies = Pick<
 >;
 
 // this service is meant to calculate numbers derived from lsp state, things like TVL, TVM and other things
-export default (config: Config, appState: Dependencies) => {
+export function Global(config: Config, appState: Dependencies) {
   const { currency = "usd" } = config;
   const queries = [Queries.Emp(appState), Queries.Lsp(appState)];
   const stats = appState.stats.global;
 
   async function updateTvlHistory() {
-    const [timestamp, value] = stats[currency].latest.tvl;
-    assert(uma.utils.exists(timestamp), "stats require global TVL timestamp");
-    assert(uma.utils.exists(value), "stats require TVL global TVL value");
+    const tvl = await stats[currency].latest.tvl.get();
+    assert(uma.utils.exists(tvl), "stats require global TVL");
+    assert(uma.utils.exists(tvl.timestamp), "stats require global TVL timestamp");
+    assert(uma.utils.exists(tvl.value), "stats require TVL global TVL value");
+    const { timestamp, value } = tvl;
     if (await stats[currency].history.tvl.hasGlobal(timestamp)) return;
     return stats[currency].history.tvl.createGlobal({
       value,
@@ -40,7 +42,7 @@ export default (config: Config, appState: Dependencies) => {
       },
       { timestamp: 0, value: BigNumber.from("0") }
     );
-    stats[currency].latest.tvl = [result.timestamp, result.value.toString()];
+    await stats[currency].latest.tvl.set(result.value.toString(), result.timestamp);
   }
   async function update() {
     await updateLatestTvl().catch((err) => {
@@ -54,4 +56,6 @@ export default (config: Config, appState: Dependencies) => {
   return {
     update,
   };
-};
+}
+
+export type Global = ReturnType<typeof Global>;

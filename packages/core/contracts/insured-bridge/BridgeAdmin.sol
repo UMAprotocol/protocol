@@ -352,6 +352,7 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, Lockable {
         );
     }
 
+    // Send msg.value == l1CallValue to Messenger, which can then use it in any way to execute cross domain message.
     function _relayMessage(
         address messengerContract,
         uint256 l1CallValue,
@@ -362,8 +363,7 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, Lockable {
         uint256 maxSubmissionCost,
         bytes memory message
     ) private {
-        // Send msg.value == l1CallValue to Messenger contract, which can then use it in any way to execute cross
-        // domain message.
+        require(l1CallValue == msg.value, "Wrong number of ETH sent");
         MessengerInterface(messengerContract).relayMessage{ value: l1CallValue }(
             target,
             user,

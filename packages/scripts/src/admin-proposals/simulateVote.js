@@ -3,11 +3,11 @@
 
 // Run:
 // - Start mainnet fork in one window with `yarn hardhat node --fork <ARCHIVAL_NODE_URL> --no-deploy --port 9545`
-// - Next, open another terminal window and run `node ./packages/scripts/admin-proposals/setupFork.sh` to unlock
+// - Next, open another terminal window and run `./packages/scripts/setupFork.sh` to unlock
 //   accounts on the local node that we'll need to run this script.
 // - This script should be run after any Admin proposal UMIP script against a local Mainnet fork. It allows the tester
 //   to simulate what would happen if the proposal were to pass and to verify that contract state changes as expected.
-// - Vote Simulate: node ./packages/scripts/admin-proposals/simulateVote.js --network mainnet-fork
+// - Vote Simulate: node ./packages/scripts/src/admin-proposals/simulateVote.js --network mainnet-fork
 
 const hre = require("hardhat");
 const { getContract } = hre;
@@ -54,9 +54,12 @@ async function run() {
   await gasEstimator.update();
   console.log(
     `⛽️ Current fast gas price for Ethereum: ${web3.utils.fromWei(
-      gasEstimator.getCurrentFastPrice().toString(),
+      gasEstimator.getCurrentFastPrice().maxFeePerGas.toString(),
       "gwei"
-    )} gwei`
+    )} maxFeePerGas and ${web3.utils.fromWei(
+      gasEstimator.getCurrentFastPrice().maxPriorityFeePerGas.toString(),
+      "gwei"
+    )} maxPriorityFeePerGas`
   );
   const governor = new web3.eth.Contract(Governor.abi, await _getContractAddressByName("Governor", netId));
   const finder = new web3.eth.Contract(Finder.abi, await _getContractAddressByName("Finder", netId));
@@ -148,13 +151,13 @@ async function run() {
     from: accounts[0],
     to: REQUIRED_SIGNER_ADDRESSES["foundation"],
     value: web3.utils.toWei("10"),
-    gasPrice: gasEstimator.getCurrentFastPrice(),
+    ...gasEstimator.getCurrentFastPrice(),
   });
   for (let i = 0; i < requestsToVoteOn.length; i++) {
     const request = requestsToVoteOn[i];
     const txn = await votingInterface.methods
       .commitVote(request.identifier, request.time, request.voteHash)
-      .send({ from: REQUIRED_SIGNER_ADDRESSES["foundation"], gasPrice: gasEstimator.getCurrentFastPrice() });
+      .send({ from: REQUIRED_SIGNER_ADDRESSES["foundation"], ...gasEstimator.getCurrentFastPrice() });
     console.log(`- [${i + 1}/${requestsToVoteOn.length}] Commit transaction hash: ${txn.transactionHash}`);
   }
   console.groupEnd();
@@ -168,7 +171,7 @@ async function run() {
   let signature = await signMessage(web3, SNAPSHOT_MESSAGE, accounts[0]);
   let snapshotTxn = await votingInterface.methods
     .snapshotCurrentRound(signature)
-    .send({ from: accounts[0], gasPrice: gasEstimator.getCurrentFastPrice() });
+    .send({ from: accounts[0], ...gasEstimator.getCurrentFastPrice() });
   console.log(`Snapshot transaction hash: ${snapshotTxn.transactionHash}`);
   console.groupEnd();
 
@@ -177,7 +180,7 @@ async function run() {
     const request = requestsToVoteOn[i];
     const txn = await votingInterface.methods
       .revealVote(request.identifier, request.time, request.price, request.salt)
-      .send({ from: REQUIRED_SIGNER_ADDRESSES["foundation"], gasPrice: gasEstimator.getCurrentFastPrice() });
+      .send({ from: REQUIRED_SIGNER_ADDRESSES["foundation"], ...gasEstimator.getCurrentFastPrice() });
     console.log(`- [${i + 1}/${requestsToVoteOn.length}] Reveal transaction hash: ${txn.transactionHash}`);
   }
   console.groupEnd();
@@ -213,7 +216,7 @@ async function run() {
         try {
           let txn = await governor.methods
             .executeProposal(proposalId.toString(), j.toString())
-            .send({ from: accounts[0], gasPrice: gasEstimator.getCurrentFastPrice() });
+            .send({ from: accounts[0], ...gasEstimator.getCurrentFastPrice() });
           console.log(`    - Success, receipt: ${txn.transactionHash}`);
         } catch (err) {
           console.error("    - Failure: Txn was likely executed previously, skipping to next one");

@@ -70,5 +70,17 @@
   {
     "contractName": "RangeBondLongShortPairFinancialProductLibrary",
     "address": "0x8245545845a664f25cE407ee2EFe73CE6b14a837"
+  },
+  {
+    "contractName": "SuccessTokenLongShortPairFinancialProductLibrary",
+    "address": "0xce9Cf0C8f8121b573f6212344F53BC7746846e71"
+  },
+  {
+    "contractName": "SimpleSuccessTokenLongShortPairFinancialProductLibrary",
+    "address": "0xC920dAbe5f40d0785Be9b4aCf5B4B8D662a5955A"
+  },
+  {
+    "contractName": "CappedYieldDollarLongShortPairFinancialProductLibrary",
+    "address": "0x821B8aF8f616bd5C2B3ccF4392F5635CcA545307"
   }
 ]
