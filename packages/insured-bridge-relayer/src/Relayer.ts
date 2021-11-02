@@ -373,8 +373,8 @@ export class Relayer {
           await this.settleRelay(this.l2Client.getDepositByHash(settleableRelay.depositHash), settleableRelay);
         } catch (error) {
           this.logger.error({
-            at: "InsuredBridgeRelayer#Relayer",
-            message: "Unexpected error processing deposit",
+            at: "InsuredBridgeRelayer#Finalizer",
+            message: "Unexpected error processing relay",
             error,
           });
         }
