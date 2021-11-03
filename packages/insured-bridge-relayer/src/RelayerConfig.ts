@@ -29,18 +29,18 @@ const bridgePoolDeployData = {
   // Note: keyed by L1 token.
   // WETH:
   "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2": {
-    timestamp: 1635305400,
-    blockNumber: 13495915,
+    timestamp: 1635962805,
+    blockNumber: 13545377,
   },
   // USDC:
   "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48": {
-    timestamp: 1635312600,
-    blockNumber: 13496441,
+    timestamp: 1635964115,
+    blockNumber: 13545487,
   },
   // UMA:
   "0x04fa0d235c4abf4bcf4787af4cf447de572ef828": {
-    timestamp: 1635312600,
-    blockNumber: 13496464,
+    timestamp: 1635964053,
+    blockNumber: 13545478,
   },
 };
 
