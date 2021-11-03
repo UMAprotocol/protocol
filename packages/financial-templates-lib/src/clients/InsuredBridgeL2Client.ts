@@ -23,7 +23,7 @@ export interface Deposit {
 export class InsuredBridgeL2Client {
   public bridgeDepositBox: BridgeDepositBoxWeb3;
 
-  private deposits: { [key: string]: Deposit } = {}; // DepositId=>Deposit
+  private deposits: { [key: string]: Deposit } = {}; // DepositHash=>Deposit
 
   private firstBlockToSearch: number;
 
@@ -44,11 +44,15 @@ export class InsuredBridgeL2Client {
   }
 
   getAllDeposits() {
-    return Object.keys(this.deposits).map((depositId: string) => this.deposits[depositId]);
+    return Object.keys(this.deposits).map((depositHash: string) => this.deposits[depositHash]);
   }
 
-  getDepositByID(depositId: string | number) {
-    return this.deposits[depositId.toString()];
+  getAllDepositsForL1Token(l1TokenAddress: string) {
+    return this.getAllDeposits().filter((deposit: Deposit) => deposit.l1Token === l1TokenAddress);
+  }
+
+  getDepositByHash(depositHash: string) {
+    return this.deposits[depositHash];
   }
 
   // TODO: consider adding a method that limits how far back the deposits will be returned from. In this implementation
@@ -81,7 +85,7 @@ export class InsuredBridgeL2Client {
         depositContract: fundsDepositedEvent.address,
       };
       depositData.depositHash = this.generateDepositHash(depositData);
-      this.deposits[fundsDepositedEvent.returnValues.depositId] = depositData;
+      this.deposits[depositData.depositHash] = depositData;
     }
 
     this.firstBlockToSearch = blockSearchConfig.toBlock + 1;

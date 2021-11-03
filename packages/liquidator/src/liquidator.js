@@ -404,7 +404,7 @@ class Liquidator {
         const { receipt, transactionConfig } = await runTransaction({
           web3: this.web3,
           transaction: withdraw,
-          transactionConfig: { gasPrice: this.gasEstimator.getCurrentFastPrice(), from: this.account },
+          transactionConfig: { ...this.gasEstimator.getCurrentFastPrice(), from: this.account },
         });
 
         const logResult = {

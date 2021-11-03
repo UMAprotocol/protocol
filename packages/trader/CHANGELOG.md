@@ -3,6 +3,20 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.7.6](https://github.com/UMAprotocol/protocol/compare/@uma/trader@1.7.5...@uma/trader@1.7.6) (2021-11-02)
+
+**Note:** Version bump only for package @uma/trader
+
+## [1.7.5](https://github.com/UMAprotocol/protocol/compare/@uma/trader@1.7.4...@uma/trader@1.7.5) (2021-10-29)
+
+### Bug Fixes
+
+- **GasEstimator:** protocol upgrade for EIP1559 ([#3306](https://github.com/UMAprotocol/protocol/issues/3306)) ([8245391](https://github.com/UMAprotocol/protocol/commit/8245391ee07dca37be3c52a9a9ba47ed4d63f6f7))
+
+## [1.7.4](https://github.com/UMAprotocol/protocol/compare/@uma/trader@1.7.3...@uma/trader@1.7.4) (2021-10-27)
+
+**Note:** Version bump only for package @uma/trader
+
 ## [1.7.3](https://github.com/UMAprotocol/protocol/compare/@uma/trader@1.7.2...@uma/trader@1.7.3) (2021-10-19)
 
 **Note:** Version bump only for package @uma/trader

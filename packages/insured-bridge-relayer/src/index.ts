@@ -14,7 +14,7 @@ import {
   InsuredBridgeL2Client,
 } from "@uma/financial-templates-lib";
 
-import { approveL1Tokens, getL2DepositBoxAddress } from "./RelayerHelpers";
+import { approveL1Tokens } from "./RelayerHelpers";
 import { Relayer } from "./Relayer";
 import { RelayerConfig } from "./RelayerConfig";
 config();
@@ -34,9 +34,11 @@ export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
     const [accounts] = await Promise.all([l1Web3.eth.getAccounts()]);
 
     const gasEstimator = new GasEstimator(logger);
+    await gasEstimator.update();
 
     // Create L1/L2 clients to pull data to inform the relayer.
     // todo: add in start and ending block numbers (if need be).
+    // todo: grab bridge admin from `getAddress`.
     const l1Client = new InsuredBridgeL1Client(logger, l1Web3, config.bridgeAdmin, config.rateModels);
 
     // TODO: Add a method to fetch all registered chainIDs from bridge admin to let the bot default to all chains when
@@ -48,13 +50,15 @@ export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
 
     // Construct a web3 instance running on L2.
     const l2Web3 = getWeb3ByChainId(config.activatedChainIds[0]);
+    const latestL2BlockNumber = await l2Web3.eth.getBlockNumber();
+    const l2StartBlock = latestL2BlockNumber - config.l2BlockLookback;
 
     const l2Client = new InsuredBridgeL2Client(
       logger,
       l2Web3,
-      await getL2DepositBoxAddress(l1Web3, config.activatedChainIds[0], config.bridgeAdmin),
+      await l1Client.getL2DepositBoxAddress(config.activatedChainIds[0]),
       config.activatedChainIds[0],
-      config.l2StartBlock
+      l2StartBlock
     );
 
     // For all specified whitelisted L1 tokens that this relayer supports, approve the bridge pool to spend them. This
@@ -75,7 +79,9 @@ export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
       l2Client,
       config.whitelistedRelayL1Tokens,
       accounts[0],
-      config.whitelistedChainIds
+      config.whitelistedChainIds,
+      config.deployTimestamps,
+      config.l2BlockLookback
     );
 
     for (;;) {

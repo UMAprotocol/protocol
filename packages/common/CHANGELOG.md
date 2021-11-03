@@ -3,6 +3,24 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.12.2](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.12.1...@uma/common@2.12.2) (2021-11-02)
+
+### Bug Fixes
+
+- **BridgeAdmin:** Fix typographical in contracts ([#3540](https://github.com/UMAprotocol/protocol/issues/3540)) ([e70a342](https://github.com/UMAprotocol/protocol/commit/e70a34282a0a6a3f92ffe1e88d4ea96fa4f3f54c))
+
+## [2.12.1](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.12.0...@uma/common@2.12.1) (2021-10-29)
+
+### Bug Fixes
+
+- **GasEstimator:** protocol upgrade for EIP1559 ([#3306](https://github.com/UMAprotocol/protocol/issues/3306)) ([8245391](https://github.com/UMAprotocol/protocol/commit/8245391ee07dca37be3c52a9a9ba47ed4d63f6f7))
+
+# [2.12.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.11.0...@uma/common@2.12.0) (2021-10-27)
+
+### Features
+
+- **insured-bridge:** Move contracts-ovm files to contracts/ and bump to ^0.8.0 ([#3454](https://github.com/UMAprotocol/protocol/issues/3454)) ([7189b0c](https://github.com/UMAprotocol/protocol/commit/7189b0c6ecea568a0c6a1f4bb5907a3d50d86186))
+
 # [2.11.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.10.0...@uma/common@2.11.0) (2021-10-19)
 
 ### Features

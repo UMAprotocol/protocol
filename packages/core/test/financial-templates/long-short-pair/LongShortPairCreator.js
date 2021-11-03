@@ -181,21 +181,6 @@ describe("LongShortPairCreator", function () {
     assert.equal(await (await Token.at(await lsp.methods.shortToken().call())).methods.decimals().call(), "6");
   });
 
-  it("Transfers proposerReward", async function () {
-    const customProposerReward = toWei("100");
-    await collateralToken.methods.mint(deployer, customProposerReward).send({ from: accounts[0] });
-    await collateralToken.methods
-      .approve(longShortPairCreator.options.address, customProposerReward)
-      .send({ from: accounts[0] });
-    await longShortPairCreator.methods
-      .createLongShortPair({ ...constructorParams, proposerReward: customProposerReward })
-      .send({ from: accounts[0] });
-
-    const lspAddress = (await longShortPairCreator.getPastEvents("CreatedLongShortPair"))[0].returnValues.longShortPair;
-
-    assert.equal((await collateralToken.methods.balanceOf(lspAddress).call()).toString(), customProposerReward);
-  });
-
   it("Rejects on past expirationTimestamp", async function () {
     assert(
       await didContractThrow(

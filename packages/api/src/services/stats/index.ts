@@ -1,3 +1,3 @@
-export { default as Emp } from "./emp";
-export { default as Lsp } from "./lsp";
-export { default as Global } from "./global";
+export { Emp } from "./emp";
+export { Lsp } from "./lsp";
+export { Global } from "./global";

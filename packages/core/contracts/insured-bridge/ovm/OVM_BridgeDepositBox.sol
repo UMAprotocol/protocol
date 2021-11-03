@@ -43,13 +43,14 @@ contract OVM_BridgeDepositBox is BridgeDepositBox, OVM_CrossDomainEnabled {
     // Address of the L1 contract that acts as the owner of this Bridge deposit box.
     address public crossDomainAdmin;
 
-    event SetXDomainAdmin(address newAdmin);
+    event SetXDomainAdmin(address indexed newAdmin);
 
     /**
      * @notice Construct the Optimism Bridge Deposit Box
      * @param _crossDomainAdmin Address of the L1 contract that can call admin functions on this contract from L1.
      * @param _minimumBridgingDelay Minimum second that must elapse between L2->L1 token transfer to prevent dos.
      * @param _chainId L2 Chain identifier this deposit box is deployed on.
+     * @param _l1Weth Address of Weth on L1. Used to inform if the deposit should wrap ETH to WETH, if deposit is ETH.
      * @param timerAddress Timer used to synchronize contract time in testing. Set to 0x000... in production.
      */
     constructor(
@@ -72,7 +73,7 @@ contract OVM_BridgeDepositBox is BridgeDepositBox, OVM_CrossDomainEnabled {
     /**
      * @notice Changes the L1 contract that can trigger admin functions on this L2 deposit deposit box.
      * @dev This should be set to the address of the L1 contract that ultimately relays a cross-domain message, which
-     * is expected to be the OptimismMessenger.
+     * is expected to be the Optimism_Messenger.
      * @dev Only callable by the existing admin via the Optimism cross domain messenger.
      * @param newCrossDomainAdmin address of the new L1 admin contract.
      */
@@ -108,7 +109,7 @@ contract OVM_BridgeDepositBox is BridgeDepositBox, OVM_CrossDomainEnabled {
     }
 
     /**
-     * @notice L1 owner can enable/disable deposits for a whitelisted tokens.
+     * @notice L1 owner can enable/disable deposits for a whitelisted token.
      * @dev Only callable by the existing crossDomainAdmin via the optimism cross domain messenger.
      * @param l2Token address of L2 token to enable/disable deposits for.
      * @param depositsEnabled bool to set if the deposit box should accept/reject deposits.
@@ -135,8 +136,7 @@ contract OVM_BridgeDepositBox is BridgeDepositBox, OVM_CrossDomainEnabled {
     function bridgeTokens(address l2Token, uint32 l1Gas) public nonReentrant() {
         uint256 bridgeDepositBoxBalance = TokenLike(l2Token).balanceOf(address(this));
         require(bridgeDepositBoxBalance > 0, "can't bridge zero tokens");
-        require(isWhitelistToken(l2Token), "can't bridge non-whitelisted token");
-        require(hasEnoughTimeElapsedToBridge(l2Token), "not enough time has elapsed from previous bridge");
+        require(canBridge(l2Token), "non-whitelisted token or last bridge too recent");
 
         whitelistedTokens[l2Token].lastBridgeTime = uint64(getCurrentTime());
 

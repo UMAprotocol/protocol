@@ -3,6 +3,61 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.14.1](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.14.0...@uma/core@2.14.1) (2021-11-02)
+
+### Bug Fixes
+
+- **ancillary-data-lib:** Fix faulty append function ([#3532](https://github.com/UMAprotocol/protocol/issues/3532)) ([26a95fc](https://github.com/UMAprotocol/protocol/commit/26a95fc39d69a20211c18429d790ba9c5f620445))
+- **BridgeAdmin:** Fix typographical in contracts ([#3540](https://github.com/UMAprotocol/protocol/issues/3540)) ([e70a342](https://github.com/UMAprotocol/protocol/commit/e70a34282a0a6a3f92ffe1e88d4ea96fa4f3f54c))
+- **BridgeAdmin:** validated amount sent is correct when making admin calls ([#3537](https://github.com/UMAprotocol/protocol/issues/3537)) ([3bfd30d](https://github.com/UMAprotocol/protocol/commit/3bfd30dfbc8ea10d1b7bdeecb697a6df78581b99))
+- **BridgePool:** add more indexed params ([#3535](https://github.com/UMAprotocol/protocol/issues/3535)) ([0e12eb6](https://github.com/UMAprotocol/protocol/commit/0e12eb6ef1d3ad381290a4e4d5f0490855d3d0f3))
+- **BridgePool:** address missing nat-spec ([#3533](https://github.com/UMAprotocol/protocol/issues/3533)) ([ef39e73](https://github.com/UMAprotocol/protocol/commit/ef39e733308268c08caef3b464005ab84ea3d7aa))
+- **BridgePool:** remove redundant ExpandedERC20 import ([#3530](https://github.com/UMAprotocol/protocol/issues/3530)) ([a9e50e2](https://github.com/UMAprotocol/protocol/commit/a9e50e20989f549396880d369a38c5350a4078a9))
+- **insured-bridge:** Remove unused modifier ([#3542](https://github.com/UMAprotocol/protocol/issues/3542)) ([19c9f9a](https://github.com/UMAprotocol/protocol/commit/19c9f9a5e254fe9eb6a1ca2db1fc964c8c3c377b))
+- **lsp:** fix ancillary data length check in constructor for early expiration ([#3524](https://github.com/UMAprotocol/protocol/issues/3524)) ([041ac34](https://github.com/UMAprotocol/protocol/commit/041ac3414deca70a8f5a2f62f65d5488a31ddff2))
+- **lsp:** Fix inconsistent type casting for expiration timestamp ([#3528](https://github.com/UMAprotocol/protocol/issues/3528)) ([08456fa](https://github.com/UMAprotocol/protocol/commit/08456fab9bab474487d66533ae73e8e9282f7f4f))
+- **lsp:** Fix incorrect inequality for expiration timestamp in settle method ([#3527](https://github.com/UMAprotocol/protocol/issues/3527)) ([ad4c56e](https://github.com/UMAprotocol/protocol/commit/ad4c56ee35eac24bc0b5e717f29f55b409aa8129))
+- **lsp:** Fix request early expiration with timestamp of 0 ([#3526](https://github.com/UMAprotocol/protocol/issues/3526)) ([e2e088b](https://github.com/UMAprotocol/protocol/commit/e2e088b547a7652fe11b223860e42172b4a88a4f))
+- **lsp:** Fix requestEarlyExpiration and expire natspec comments ([#3529](https://github.com/UMAprotocol/protocol/issues/3529)) ([78b371c](https://github.com/UMAprotocol/protocol/commit/78b371ca70fe855239bd95ba1662475c4550f94b))
+- **lsp:** remove duplicate transfer in factory ([#3523](https://github.com/UMAprotocol/protocol/issues/3523)) ([faf58ea](https://github.com/UMAprotocol/protocol/commit/faf58ea5116e105bf0ef7ecc094e96eea9878cfb))
+- **skinny-optimistic-oracle:** Default proposer bond to final fee in requestAndProposePriceFor ([#3534](https://github.com/UMAprotocol/protocol/issues/3534)) ([7fb2918](https://github.com/UMAprotocol/protocol/commit/7fb291856faa5ebd18cae3e50bd5d380e48dc8d9))
+- **skinny-optimistic-oracle:** proposePrice callback should be to requester not msg.sender ([#3531](https://github.com/UMAprotocol/protocol/issues/3531)) ([4dd9c4a](https://github.com/UMAprotocol/protocol/commit/4dd9c4a5a3cd041897b71547d27ecfbc230a29e8))
+- **skinny-optimistic-oracle:** Reentrancy guard requestAndProposePriceFor ([#3539](https://github.com/UMAprotocol/protocol/issues/3539)) ([a9e3fc7](https://github.com/UMAprotocol/protocol/commit/a9e3fc7ef6aa00cc1f093d89305a351a0af09407))
+
+### Reverts
+
+- Revert "improve(insured-bridge): Reduce verbosity of \_getDepositHash() (#3538)" (#3545) ([d1a07f0](https://github.com/UMAprotocol/protocol/commit/d1a07f0c4e244acaf58f51a20c9a8d6e539f1bdd)), closes [#3538](https://github.com/UMAprotocol/protocol/issues/3538) [#3545](https://github.com/UMAprotocol/protocol/issues/3545)
+
+# [2.14.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.13.0...@uma/core@2.14.0) (2021-10-29)
+
+### Bug Fixes
+
+- **GasEstimator:** protocol upgrade for EIP1559 ([#3306](https://github.com/UMAprotocol/protocol/issues/3306)) ([8245391](https://github.com/UMAprotocol/protocol/commit/8245391ee07dca37be3c52a9a9ba47ed4d63f6f7))
+- **insured-bridge-relayer:** Handle case where computing realized LP fee % fails ([#3504](https://github.com/UMAprotocol/protocol/issues/3504)) ([9c69a9d](https://github.com/UMAprotocol/protocol/commit/9c69a9d3f545741820fbf73d5436b7f9f30aa8e0))
+
+### Features
+
+- **create-price-feed:** Add InsuredBridge ([#3388](https://github.com/UMAprotocol/protocol/issues/3388)) ([4dd8116](https://github.com/UMAprotocol/protocol/commit/4dd811635fd5647bf5916eb366daf5d613f3856c))
+
+# [2.13.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.12.0...@uma/core@2.13.0) (2021-10-27)
+
+### Bug Fixes
+
+- **across:** address issue in liquidity utilization calculation ([#3499](https://github.com/UMAprotocol/protocol/issues/3499)) ([35e279a](https://github.com/UMAprotocol/protocol/commit/35e279a9f681082bb7ccb49748566d2600bf483f))
+- fix liquid reserves check ([#3501](https://github.com/UMAprotocol/protocol/issues/3501)) ([e8a582b](https://github.com/UMAprotocol/protocol/commit/e8a582b36114dcf92a8887c33d520f0b889ea35e))
+- **bridge-pool:** BridgePool should set same fee % bounds as BridgeDepositBox ([#3494](https://github.com/UMAprotocol/protocol/issues/3494)) ([819730d](https://github.com/UMAprotocol/protocol/commit/819730d2edadee4d2df60c558d02535dac801a19))
+- **insured-bridge:** Add reentrancy guards to all public functions and enforce Check-Effects-Interaction ([#3497](https://github.com/UMAprotocol/protocol/issues/3497)) ([fe5f448](https://github.com/UMAprotocol/protocol/commit/fe5f448ccf7cb91594921daae49cb1f7d9ecac67))
+- **insured-bridge:** Call exchangeRateCurrent before external call ([#3498](https://github.com/UMAprotocol/protocol/issues/3498)) ([4a90b20](https://github.com/UMAprotocol/protocol/commit/4a90b20d20c9152c65a4424d1cffea39375e8035))
+- **insured-bridge:** Prevent deployer from owning ERC20 LP token ([#3492](https://github.com/UMAprotocol/protocol/issues/3492)) ([e25ac97](https://github.com/UMAprotocol/protocol/commit/e25ac9773c0f6c3a69ca9361b195059945d71571))
+- **insured-bridge:** remove reserves on dispute ([#3473](https://github.com/UMAprotocol/protocol/issues/3473)) ([5a68148](https://github.com/UMAprotocol/protocol/commit/5a68148204bdcadc81f38f4fa3a4f3a74655fd85))
+
+### Features
+
+- **across:** refactor address initialization ([#3478](https://github.com/UMAprotocol/protocol/issues/3478)) ([d22e3bd](https://github.com/UMAprotocol/protocol/commit/d22e3bdf6247b2e570de480f437df0121a55b771))
+- **core:** Update missing fpl addresses ([#3472](https://github.com/UMAprotocol/protocol/issues/3472)) ([d598e7c](https://github.com/UMAprotocol/protocol/commit/d598e7cce1c466c6acf0769d25465cef21431b22))
+- **insured-bridge:** Move contracts-ovm files to contracts/ and bump to ^0.8.0 ([#3454](https://github.com/UMAprotocol/protocol/issues/3454)) ([7189b0c](https://github.com/UMAprotocol/protocol/commit/7189b0c6ecea568a0c6a1f4bb5907a3d50d86186))
+- **scripts:** Add option to set contract in Finder when registering contract ([#3481](https://github.com/UMAprotocol/protocol/issues/3481)) ([43ede96](https://github.com/UMAprotocol/protocol/commit/43ede968ec5bd8268179c0a69ce730a07b65f1da))
+
 # [2.12.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.11.0...@uma/core@2.12.0) (2021-10-19)
 
 ### Bug Fixes
@@ -154,7 +209,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 - **LSP-creator:** Add new factory addresses ([#3175](https://github.com/UMAprotocol/protocol/issues/3175)) ([1f8728a](https://github.com/UMAprotocol/protocol/commit/1f8728a62f4b5a9e450d981d51d71411bbdd7452))
 - **LSP-creator:** address incorrect comment in creator ([#3157](https://github.com/UMAprotocol/protocol/issues/3157)) ([03925a3](https://github.com/UMAprotocol/protocol/commit/03925a3b91466b468a36ee001be0e803289ba3a0))
 - **LSP-creator:** update create params to add more deployment options ([#3167](https://github.com/UMAprotocol/protocol/issues/3167)) ([d6dab2a](https://github.com/UMAprotocol/protocol/commit/d6dab2afb69e5df13583e2183000801e68ba4ac5))
-- **networks:** deploy and verify new LPS creator on testnets ([#3179](https://github.com/UMAprotocol/protocol/issues/3179)) ([908aabd](https://github.com/UMAprotocol/protocol/commit/908aabdc714e80f2bbd39dedc30270f6db3fc36e))
+- **networks:** deploy and verify new LSP creator on testnets ([#3179](https://github.com/UMAprotocol/protocol/issues/3179)) ([908aabd](https://github.com/UMAprotocol/protocol/commit/908aabdc714e80f2bbd39dedc30270f6db3fc36e))
 - **polygon-tunnel:** Response to audit ([#3188](https://github.com/UMAprotocol/protocol/issues/3188)) ([dd211c4](https://github.com/UMAprotocol/protocol/commit/dd211c4e3825fe007d1161025a34e9901b26031a)), addresses comments to [#3061](https://github.com/UMAprotocol/protocol/issues/3061) [#3054](https://github.com/UMAprotocol/protocol/issues/3054) [#3082](https://github.com/UMAprotocol/protocol/issues/3082) [#3092](https://github.com/UMAprotocol/protocol/issues/3092)
 - **chainbridge:** Response to audit ([#3189](https://github.com/UMAprotocol/protocol/issues/3189)) ([97e91cc](https://github.com/UMAprotocol/protocol/commit/97e91cc50a3095fe52bd2bac4d2900ba60235d6a)), addresses comments to [#2969](https://github.com/UMAprotocol/protocol/issues/2969)
 - fix polygon deployment scripts for test/local environments ([#3136](https://github.com/UMAprotocol/protocol/issues/3136)) ([d11bb4f](https://github.com/UMAprotocol/protocol/commit/d11bb4ffd7faa19d16938ff702847d1b4fed6c0b))

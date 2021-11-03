@@ -14,6 +14,6 @@ contract Arbitrum_InboxMock is iArbitrum_Inbox {
         uint256 gasPriceBid,
         bytes calldata data
     ) external payable override returns (uint256) {
-        return 1;
+        return 0;
     }
 }

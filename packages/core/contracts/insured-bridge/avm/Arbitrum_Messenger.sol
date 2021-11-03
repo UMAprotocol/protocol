@@ -13,6 +13,18 @@ import "@openzeppelin/contracts/access/Ownable.sol";
  * owner for L2 contracts that expect to receive cross domain messages.
  */
 contract Arbitrum_Messenger is Ownable, Arbitrum_CrossDomainEnabled, MessengerInterface {
+    event RelayedMessage(
+        address indexed from,
+        address indexed to,
+        uint256 indexed seqNum,
+        address userToRefund,
+        uint256 l1CallValue,
+        uint256 gasLimit,
+        uint256 gasPrice,
+        uint256 maxSubmissionCost,
+        bytes data
+    );
+
     /**
      * @param _inbox Contract that sends generalized messages to the Arbitrum chain.
      */
@@ -43,13 +55,17 @@ contract Arbitrum_Messenger is Ownable, Arbitrum_CrossDomainEnabled, MessengerIn
         bytes memory message
     ) external payable override onlyOwner {
         // Since we know the L2 target's address in advance, we don't need to alias an L1 address.
-        sendTxToL2NoAliassing(
+        uint256 seqNumber =
+            sendTxToL2NoAliassing(target, userToRefund, l1CallValue, maxSubmissionCost, gasLimit, gasPrice, message);
+        emit RelayedMessage(
+            msg.sender,
             target,
+            seqNumber,
             userToRefund,
             l1CallValue,
-            maxSubmissionCost, // TODO: Determine the max submission cost. From the docs: "current base submission fee is queryable via ArbRetryableTx.getSubmissionPrice"
             gasLimit,
             gasPrice,
+            maxSubmissionCost,
             message
         );
     }

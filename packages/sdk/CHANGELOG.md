@@ -3,6 +3,30 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.10.2](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.10.1...@uma/sdk@0.10.2) (2021-11-02)
+
+### Bug Fixes
+
+- update user and pool after transaction confirms ([#3543](https://github.com/UMAprotocol/protocol/issues/3543)) ([cc382b3](https://github.com/UMAprotocol/protocol/commit/cc382b3ea1a44624951884f65c630aeb87a11004))
+
+## [0.10.1](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.10.0...@uma/sdk@0.10.1) (2021-10-29)
+
+### Bug Fixes
+
+- **GasEstimator:** protocol upgrade for EIP1559 ([#3306](https://github.com/UMAprotocol/protocol/issues/3306)) ([8245391](https://github.com/UMAprotocol/protocol/commit/8245391ee07dca37be3c52a9a9ba47ed4d63f6f7))
+
+# [0.10.0](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.9.0...@uma/sdk@0.10.0) (2021-10-27)
+
+### Bug Fixes
+
+- **sdk:** fix chainid type to bignumber ([#3487](https://github.com/UMAprotocol/protocol/issues/3487)) ([1e3cc70](https://github.com/UMAprotocol/protocol/commit/1e3cc709e098f862dcc812d00dfba67a8d99360b))
+
+### Features
+
+- **sdk:** add across bridge pool read only client ([#3493](https://github.com/UMAprotocol/protocol/issues/3493)) ([043f7c2](https://github.com/UMAprotocol/protocol/commit/043f7c2083a2cff89c3dcee93dc51d8c8df018d6))
+- **sdk:** add bridge pool contract client ([#3462](https://github.com/UMAprotocol/protocol/issues/3462)) ([32238f9](https://github.com/UMAprotocol/protocol/commit/32238f9c6160511588527e83afdc0a747fc5cbca))
+- **sdk:** add estimated apy calculation to bridgepool read client ([#3502](https://github.com/UMAprotocol/protocol/issues/3502)) ([80cf357](https://github.com/UMAprotocol/protocol/commit/80cf357b0a398fd4b6b738605fcffab732b2f252))
+
 # [0.9.0](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.8.0...@uma/sdk@0.9.0) (2021-10-19)
 
 ### Bug Fixes

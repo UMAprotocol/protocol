@@ -3,7 +3,7 @@ import { ChainId, Token, Pair, TokenAmount } from "@uniswap/sdk";
 import { defaultConfigs } from "./DefaultPriceFeedConfigs";
 import { getAbi } from "@uma/contracts-node";
 import { BlockFinder } from "./utils";
-import { getPrecisionForIdentifier, PublicNetworks } from "@uma/common";
+import { getPrecisionForIdentifier, PublicNetworks, getWeb3ByChainId } from "@uma/common";
 import { multicallAddressMap } from "../helpers/multicall";
 import Web3 from "web3";
 
@@ -28,11 +28,14 @@ import { QuandlPriceFeed } from "./QuandlPriceFeed";
 import { TraderMadePriceFeed } from "./TraderMadePriceFeed";
 import { UniswapV2PriceFeed, UniswapV3PriceFeed } from "./UniswapPriceFeed";
 import { VaultPriceFeed, HarvestVaultPriceFeed } from "./VaultPriceFeed";
+import { InsuredBridgePriceFeed } from "./InsuredBridgePriceFeed";
 
 import type { Logger } from "winston";
 import { NetworkerInterface } from "./Networker";
 import { PriceFeedInterface } from "./PriceFeedInterface";
 import { isDefined } from "../types";
+import { InsuredBridgeL1Client, InsuredBridgeL2Client } from "..";
+import type { BlockTransactionBase } from "web3-eth";
 
 interface Block {
   number: number;
@@ -460,6 +463,57 @@ export async function createPriceFeed(
       multicallAddress: multicallAddress,
       blockFinder: getSharedBlockFinder(web3),
     });
+  } else if (config.type === "insuredbridge") {
+    const requiredFields = ["bridgeAdminAddress", "rateModels", "l2NetId"];
+
+    if (isMissingField(config, requiredFields, logger)) {
+      return null;
+    }
+    logger.debug({ at: "createPriceFeed", message: "Creating InsuredBridgePriceFeed", config });
+
+    // By default, L2 client will look up contract events from now to `l2BlockLookback` into the past. This is
+    // explicitly set because some L2 nodes cap the amount of blocks they can lookback. For example, Arbitrum
+    // Infura only allows lookbacks 100,000 blocks into the past.
+    const l2BlockLookback = config.l2BlockLookback ? Number(config.l2BlockLookback) : 99999;
+
+    // Clean up rate model.
+    // - Check each token rate model contains the expected data.
+    const expectedRateModelKeys = ["UBar", "R0", "R1", "R2"];
+    interface RateModel {
+      [key: string]: any;
+    }
+    const processingRateModels: RateModel = {};
+    for (const l1Token of Object.keys(config.rateModels)) {
+      assert(
+        expectedRateModelKeys.every((item) => Object.prototype.hasOwnProperty.call(config.rateModels[l1Token], item)),
+        `${web3.utils.toChecksumAddress(
+          l1Token
+        )} does not contain the required rate model keys ${expectedRateModelKeys}`
+      );
+      processingRateModels[web3.utils.toChecksumAddress(l1Token)] = {
+        UBar: web3.utils.toBN(config.rateModels[l1Token].UBar),
+        R0: web3.utils.toBN(config.rateModels[l1Token].R0),
+        R1: web3.utils.toBN(config.rateModels[l1Token].R1),
+        R2: web3.utils.toBN(config.rateModels[l1Token].R2),
+      };
+    }
+
+    const l1Client = new InsuredBridgeL1Client(logger, providedWeb3, config.bridgeAdminAddress, processingRateModels);
+    const l2Web3 = getWeb3ByChainId(config.l2NetId);
+    const currentL2Block = await l2Web3.eth.getBlockNumber();
+    const l2Client = new InsuredBridgeL2Client(
+      logger,
+      l2Web3,
+      await l1Client.getL2DepositBoxAddress(config.l2NetId),
+      config.l2NetId,
+      currentL2Block - l2BlockLookback
+    );
+
+    return new InsuredBridgePriceFeed({
+      logger,
+      l1Client,
+      l2Client,
+    });
   }
 
   logger.error({ at: "createPriceFeed", message: "Invalid price feed type specified🚨", config });
@@ -590,14 +644,14 @@ export async function createPriceFeed(
   }
 }
 
-const _blockFinderWorkaround = (web3: Web3) => BlockFinder((number: number | string) => web3.eth.getBlock(number));
-type BlockFinder = ReturnType<typeof _blockFinderWorkaround>;
-
 // Simple function to grab a singleton instance of the blockFinder to share the cache.
-const getSharedBlockFinder: { (web3: Web3): BlockFinder; blockFinder?: BlockFinder } = (web3: Web3): BlockFinder => {
+const getSharedBlockFinder: {
+  (web3: Web3): BlockFinder<BlockTransactionBase>;
+  blockFinder?: BlockFinder<BlockTransactionBase>;
+} = (web3: Web3): BlockFinder<BlockTransactionBase> => {
   // Attach the blockFinder to this function.
   if (!getSharedBlockFinder.blockFinder) {
-    getSharedBlockFinder.blockFinder = BlockFinder((number: number | string) => web3.eth.getBlock(number));
+    getSharedBlockFinder.blockFinder = new BlockFinder<BlockTransactionBase>(web3.eth.getBlock);
   }
   return getSharedBlockFinder.blockFinder;
 };
