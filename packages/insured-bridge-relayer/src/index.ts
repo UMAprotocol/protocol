@@ -80,7 +80,6 @@ export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
       config.whitelistedRelayL1Tokens,
       accounts[0],
       config.whitelistedChainIds,
-      config.deployTimestamps,
       config.l2BlockLookback
     );
 

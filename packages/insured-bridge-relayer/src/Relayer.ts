@@ -54,9 +54,6 @@ export class Relayer {
     readonly whitelistedRelayL1Tokens: string[],
     readonly account: string,
     readonly whitelistedChainIds: number[],
-    // TODO: Deprecate `deployTimestamps` once BridgePools are upgraded and we can read `deployTimestamp` on-chain. For
-    // now, we need to hardcode each BP's deploy timestamp.
-    readonly deployTimestamps: { [key: string]: number },
     readonly l2LookbackWindow: number
   ) {
     this.l2BlockFinder = new BlockFinder<BlockTransactionBase>(this.l2Client.l2Web3.eth.getBlock);
@@ -84,15 +81,17 @@ export class Relayer {
         message: `Processing ${relayableDeposits[l1Token].length} relayable deposits for L1Token`,
         l1Token,
       });
+      const bridgePoolAddress = this.l1Client.getBridgePoolForToken(l1Token).contract.options.address;
       for (const relayableDeposit of relayableDeposits[l1Token]) {
         // If deposit quote time is before the bridgepool's deployment time, then skip it before attempting to calculate
         // the realized LP fee % as this will be impossible to query a contract for a timestamp before its deployment.
-        if (relayableDeposit.deposit.quoteTimestamp < this.deployTimestamps[relayableDeposit.deposit.l1Token]) {
+        if (
+          (await this.getCodeDeployedAtTimestamp(bridgePoolAddress, relayableDeposit.deposit.quoteTimestamp)) === "0x"
+        ) {
           this.logger.debug({
             at: "InsuredBridgeRelayer#Relayer",
-            message: "Deposit quote time < bridge pool deployment for L1 token, skipping",
+            message: "Deposit quote time before bridge pool deployment for L1 token, skipping",
             deposit: relayableDeposit.deposit,
-            deploymentTime: this.deployTimestamps[relayableDeposit.deposit.l1Token],
           });
           continue;
         }
@@ -253,12 +252,12 @@ export class Relayer {
 
       // If deposit quote time is before the bridgepool's deployment time, then dispute it by default because
       // we won't be able to determine otherwise if the realized LP fee % is valid.
-      if (deposit.quoteTimestamp < this.deployTimestamps[deposit.l1Token]) {
+      const bridgePoolAddress = this.l1Client.getBridgePoolForToken(deposit.l1Token).contract.options.address;
+      if ((await this.getCodeDeployedAtTimestamp(bridgePoolAddress, deposit.quoteTimestamp)) === "0x") {
         this.logger.debug({
           at: "Disputer",
-          message: "Deposit quote time < bridge pool deployment for L1 token, disputing",
+          message: "Deposit quote time before bridge pool deployment for L1 token, disputing",
           deposit,
-          deploymentTime: this.deployTimestamps[deposit.l1Token],
         });
         await this.disputeRelay(deposit, relay);
         return;
@@ -714,6 +713,11 @@ export class Relayer {
     };
   }
 
+  private async getCodeDeployedAtTimestamp(address: string, timestamp: number): Promise<string> {
+    const blockNumberForTimestamp = (await this.l2BlockFinder.getBlockForTimestamp(timestamp)).number;
+    return await this.l1Client.l1Web3.eth.getCode(address, blockNumberForTimestamp);
+  }
+
   // Return fresh dictionary of relayable deposits keyed by the L1 token to be sent to recipient.
   private getRelayableDeposits(): RelayableDeposits {
     const relayableDeposits: RelayableDeposits = {};
@@ -794,16 +798,15 @@ export class Relayer {
     // First try to fetch deposit from the L2 client's default block search config. This should work in most cases.
     let deposit: Deposit | undefined = this.l2Client.getDepositByHash(relay.depositHash);
     if (deposit !== undefined) return deposit;
-    // We could not find a deposit using the L2 client's default block search config. Next, we'll modify the block
-    // search config bridge pool's deployment time. This allows us to capture any deposits that happened outside of
-    // the L2 client's default block search config.
+    // We could not find a deposit using the L2 client's default block search config. As a fallback, we'll modify the
+    // the block search config such that we can find the valid deposit if it exists. This fallback logic is expensive
+    // and results in a lot of web3 requests, but will find the deposit in the worst case.
+    // TODO: We could improve this search by only looking +/- 10 minutes within the quote time, as this is a constraint
+    // enforced by the BridgeDepositBox. The hard part is that determining the average time per L2 block is not trivial.
     else {
-      const bridgePoolDeploymentTime = (
-        await this.l2BlockFinder.getBlockForTimestamp(this.deployTimestamps[relay.l1Token])
-      ).number;
       let blockSearchConfig = {
-        fromBlock: bridgePoolDeploymentTime,
-        toBlock: bridgePoolDeploymentTime + this.l2LookbackWindow,
+        fromBlock: 0,
+        toBlock: this.l2LookbackWindow,
       };
       const latestBlock = Number((await this.l2Client.l2Web3.eth.getBlock("latest")).number);
 
