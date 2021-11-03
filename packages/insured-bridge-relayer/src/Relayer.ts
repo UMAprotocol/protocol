@@ -82,13 +82,14 @@ export class Relayer {
         // If deposit quote time is before the bridgepool's deployment time, then skip it before attempting to calculate
         // the realized LP fee % as this will be impossible to query a contract for a timestamp before its deployment.
         if (
-          relayableDeposit.deposit.quoteTimestamp < this.deployTimestamps[relayableDeposit.deposit.l1Token].timestamp
+          relayableDeposit.deposit.quoteTimestamp <
+          this.deployTimestamps[relayableDeposit.deposit.l1Token.toLowerCase()].timestamp
         ) {
           this.logger.debug({
             at: "InsuredBridgeRelayer#Relayer",
             message: "Deposit quote time < bridge pool deployment for L1 token, skipping",
             deposit: relayableDeposit.deposit,
-            deploymentTime: this.deployTimestamps[relayableDeposit.deposit.l1Token].timestamp,
+            deploymentTime: this.deployTimestamps[relayableDeposit.deposit.l1Token.toLowerCase()].timestamp,
           });
           continue;
         }
@@ -249,12 +250,12 @@ export class Relayer {
 
       // If deposit quote time is before the bridgepool's deployment time, then dispute it by default because
       // we won't be able to determine otherwise if the realized LP fee % is valid.
-      if (deposit.quoteTimestamp < this.deployTimestamps[deposit.l1Token].timestamp) {
+      if (deposit.quoteTimestamp < this.deployTimestamps[deposit.l1Token.toLowerCase()].timestamp) {
         this.logger.debug({
           at: "Disputer",
           message: "Deposit quote time < bridge pool deployment for L1 token, disputing",
           deposit,
-          deploymentTime: this.deployTimestamps[deposit.l1Token].timestamp,
+          deploymentTime: this.deployTimestamps[deposit.l1Token.toLowerCase()].timestamp,
         });
         await this.disputeRelay(deposit, relay);
         return;
@@ -795,8 +796,8 @@ export class Relayer {
     // outside of the L2 client's default block search config.
     else {
       let blockSearchConfig = {
-        fromBlock: this.deployTimestamps[relay.l1Token].blockNumber,
-        toBlock: this.deployTimestamps[relay.l1Token].blockNumber + this.l2LookbackWindow,
+        fromBlock: this.deployTimestamps[relay.l1Token.toLowerCase()].blockNumber,
+        toBlock: this.deployTimestamps[relay.l1Token.toLowerCase()].blockNumber + this.l2LookbackWindow,
       };
       const latestBlock = Number((await this.l2Client.l2Web3.eth.getBlock("latest")).number);
 

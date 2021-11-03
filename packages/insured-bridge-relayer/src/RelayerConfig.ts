@@ -25,6 +25,7 @@ const supportedChainIds = [
 // The alternative to using this hard-coded mapping is to call `web3.eth.getCode(bridgePoolAddress, blockNumber)` but
 // making a web3 call per relay is expensive. Therefore this mapping is also a runtime optimization where we can
 // eliminate web3 calls. This is also why we store block numbers for the deploy timestamp.
+// Note: Keep these addresses lower case.
 const bridgePoolDeployData = {
   // Note: keyed by L1 token.
   // WETH:
