@@ -1,13 +1,15 @@
 // A thick client for getting information about an OptimisticOracle. Used to get price requests and
 // proposals, which can be disputed and settled.
-import { averageBlockTimeSeconds, revertWrapper, OptimisticOracleRequestStatesEnum } from "@uma/common";
+import { averageBlockTimeSeconds, revertWrapper } from "@uma/common";
 import Web3 from "web3";
 import type { Logger } from "winston";
 import { Abi, isDefined } from "../types";
 import {
+  SkinnyOptimisticOracleWeb3,
   OptimisticOracleWeb3,
   VotingAncillaryInterfaceTestingWeb3,
   OptimisticOracleWeb3Events,
+  SkinnyOptimisticOracleWeb3Events,
 } from "@uma/contracts-node";
 
 type RequestPrice = OptimisticOracleWeb3Events.RequestPrice["returnValues"];
@@ -16,10 +18,35 @@ type DisputePrice = OptimisticOracleWeb3Events.DisputePrice["returnValues"];
 type AnyRequestEvent =
   | OptimisticOracleWeb3Events.RequestPrice
   | OptimisticOracleWeb3Events.ProposePrice
-  | OptimisticOracleWeb3Events.DisputePrice;
+  | OptimisticOracleWeb3Events.DisputePrice
+  | OptimisticOracleWeb3Events.Settle;
 
+type SkinnyRequestPrice = SkinnyOptimisticOracleWeb3Events.RequestPrice["returnValues"];
+type SkinnyProposePrice = SkinnyOptimisticOracleWeb3Events.ProposePrice["returnValues"];
+type SkinnyDisputePrice = SkinnyOptimisticOracleWeb3Events.DisputePrice["returnValues"];
+type AnySkinnyRequestEvent =
+  | SkinnyOptimisticOracleWeb3Events.RequestPrice
+  | SkinnyOptimisticOracleWeb3Events.ProposePrice
+  | SkinnyOptimisticOracleWeb3Events.DisputePrice
+  | SkinnyOptimisticOracleWeb3Events.Settle;
+
+interface SkinnyRequest {
+  proposer: string;
+  disputer: string;
+  currency: string;
+  settled: boolean;
+  proposedPrice: string;
+  resolvedPrice: string;
+  expirationTime: string;
+  reward: string;
+  finalFee: string;
+  bond: string;
+  customLiveness: string;
+}
+
+type OptimisticOracleType = "OptimisticOracle" | "SkinnyOptimisticOracle";
 export class OptimisticOracleClient {
-  public readonly oracle: OptimisticOracleWeb3;
+  public readonly oracle: OptimisticOracleWeb3 | SkinnyOptimisticOracleWeb3;
   public readonly voting: VotingAncillaryInterfaceTestingWeb3;
 
   // Store the last on-chain time the clients were updated to inform price request information.
@@ -27,10 +54,10 @@ export class OptimisticOracleClient {
   private hexToUtf8 = Web3.utils.hexToUtf8;
 
   // Oracle Data structures & values to enable synchronous returns of the state seen by the client.
-  private unproposedPriceRequests: RequestPrice[] = [];
-  private undisputedProposals: ProposePrice[] = [];
-  private expiredProposals: ProposePrice[] = [];
-  private settleableDisputes: DisputePrice[] = [];
+  private unproposedPriceRequests: RequestPrice[] | SkinnyRequestPrice[] = [];
+  private undisputedProposals: ProposePrice[] | SkinnyProposePrice[] = [];
+  private expiredProposals: ProposePrice[] | SkinnyProposePrice[] = [];
+  private settleableDisputes: DisputePrice[] | SkinnyDisputePrice[] = [];
 
   /**
    * @notice Constructs new OptimisticOracleClient.
@@ -42,6 +69,7 @@ export class OptimisticOracleClient {
    * @param {String} votingAddress Ethereum address of the Voting contract deployed on the current network.
    * @param {Number} lookback Any requests, proposals, or disputes that occurred prior to this timestamp will be ignored.
    * Used to limit the web3 requests made by this client.
+   * @param {OptimisticOracleType} oracleType Type of OptimisticOracle to query state for.
    * @return None or throws an Error.
    */
   constructor(
@@ -51,10 +79,15 @@ export class OptimisticOracleClient {
     public readonly web3: Web3,
     oracleAddress: string,
     votingAddress: string,
-    public readonly lookback = 604800 // 1 Week
+    public readonly lookback = 604800, // 1 Week
+    public readonly oracleType: OptimisticOracleType = "OptimisticOracle"
   ) {
     // Optimistic Oracle contract:
-    this.oracle = (new web3.eth.Contract(oracleAbi, oracleAddress) as unknown) as OptimisticOracleWeb3;
+    if (this.oracleType === "SkinnyOptimisticOracle") {
+      this.oracle = (new web3.eth.Contract(oracleAbi, oracleAddress) as unknown) as SkinnyOptimisticOracleWeb3;
+    } else {
+      this.oracle = (new web3.eth.Contract(oracleAbi, oracleAddress) as unknown) as OptimisticOracleWeb3;
+    }
 
     // Voting contract we'll use to determine whether OO disputes can be settled:
     this.voting = (new web3.eth.Contract(votingAbi, votingAddress) as unknown) as VotingAncillaryInterfaceTestingWeb3;
@@ -67,28 +100,40 @@ export class OptimisticOracleClient {
   }
 
   // Returns an array of Price Requests that have no proposals yet.
-  public getUnproposedPriceRequests(): RequestPrice[] {
+  public getUnproposedPriceRequests(): RequestPrice[] | SkinnyRequestPrice[] {
     return this.unproposedPriceRequests;
   }
 
   // Returns an array of Price Proposals that have not been disputed.
-  public getUndisputedProposals(): ProposePrice[] {
+  public getUndisputedProposals(): ProposePrice[] | SkinnyProposePrice[] {
     return this.undisputedProposals;
   }
 
   // Returns an array of expired Price Proposals that can be settled and that involved
   // the caller as the proposer
-  public getSettleableProposals(caller: string): ProposePrice[] {
-    return this.expiredProposals.filter((event) => {
-      return event.proposer === caller;
-    });
+  public getSettleableProposals(caller: string): ProposePrice[] | SkinnyProposePrice[] {
+    if (this.oracleType === "SkinnyOptimisticOracle") {
+      return (this.expiredProposals as SkinnyProposePrice[]).filter((event) => {
+        return ((event.request as unknown) as SkinnyRequest).proposer === caller;
+      });
+    } else {
+      return (this.expiredProposals as ProposePrice[]).filter((event) => {
+        return event.proposer === caller;
+      });
+    }
   }
 
   // Returns disputes that can be settled and that involved the caller as the disputer
-  public getSettleableDisputes(caller: string): DisputePrice[] {
-    return this.settleableDisputes.filter((event) => {
-      return event.disputer === caller;
-    });
+  public getSettleableDisputes(caller: string): DisputePrice[] | SkinnyDisputePrice[] {
+    if (this.oracleType === "SkinnyOptimisticOracle") {
+      return (this.settleableDisputes as SkinnyDisputePrice[]).filter((event) => {
+        return ((event.request as unknown) as SkinnyRequest).disputer === caller;
+      });
+    } else {
+      return (this.settleableDisputes as DisputePrice[]).filter((event) => {
+        return event.disputer === caller;
+      });
+    }
   }
 
   // Returns the last update timestamp.
@@ -96,7 +141,7 @@ export class OptimisticOracleClient {
     return this.lastUpdateTimestamp;
   }
 
-  private _getPriceRequestKey(reqEvent: AnyRequestEvent): string {
+  private _getPriceRequestKey(reqEvent: AnyRequestEvent | AnySkinnyRequestEvent): string {
     return `${reqEvent.returnValues.requester}-${reqEvent.returnValues.identifier}-${reqEvent.returnValues.timestamp}-${reqEvent.returnValues.ancillaryData}`;
   }
 
@@ -110,7 +155,10 @@ export class OptimisticOracleClient {
     const earliestBlockToQuery = Math.max(currentBlock.number - lookbackBlocks, 0);
 
     // Fetch contract state variables in parallel.
-    const [requestEvents, proposalEvents, disputeEvents, currentTime] = await Promise.all([
+    // Note: We can treat all events by default as normal OptimisticOracle events because in most cases we only
+    // need to read the requester, identifier, timestamp, and ancillary data which are emitted in both Skinny
+    // and normal OptimisticOracle events.
+    const [requestEvents, proposalEvents, disputeEvents, settleEvents, currentTime] = await Promise.all([
       (this.oracle.getPastEvents("RequestPrice", { fromBlock: earliestBlockToQuery }) as unknown) as Promise<
         OptimisticOracleWeb3Events.RequestPrice[]
       >,
@@ -119,6 +167,9 @@ export class OptimisticOracleClient {
       >,
       (this.oracle.getPastEvents("DisputePrice", { fromBlock: earliestBlockToQuery }) as unknown) as Promise<
         OptimisticOracleWeb3Events.DisputePrice[]
+      >,
+      (this.oracle.getPastEvents("Settle", { fromBlock: earliestBlockToQuery }) as unknown) as Promise<
+        OptimisticOracleWeb3Events.Settle[]
       >,
       this.oracle.methods.getCurrentTime().call(),
     ]);
@@ -144,33 +195,31 @@ export class OptimisticOracleClient {
       return hasDispute === undefined;
     });
 
-    const unsettledProposals = (
-      await Promise.all(
-        undisputedProposals.map(async (event) => {
-          const state = await this.oracle.methods
-            .getState(
-              event.returnValues.requester,
-              event.returnValues.identifier,
-              event.returnValues.timestamp,
-              event.returnValues.ancillaryData ? event.returnValues.ancillaryData : "0x"
-            )
-            .call();
-
-          // For unsettled proposals, reformat the data:
-          if (state !== OptimisticOracleRequestStatesEnum.SETTLED) {
-            return {
-              ...event.returnValues,
-              identifier: this.hexToUtf8(event.returnValues.identifier),
-              ancillaryData: event.returnValues.ancillaryData ? event.returnValues.ancillaryData : "0x",
-            };
-          }
-        })
-      )
-    ).filter(isDefined);
+    const unsettledProposals = undisputedProposals
+      .map((event) => {
+        const key = this._getPriceRequestKey(event);
+        const settlement = settleEvents.find((settleEvent) => this._getPriceRequestKey(settleEvent) === key);
+        if (settlement === undefined) {
+          return {
+            ...event.returnValues,
+            identifier: this.hexToUtf8(event.returnValues.identifier),
+            ancillaryData: event.returnValues.ancillaryData ? event.returnValues.ancillaryData : "0x",
+          };
+        }
+      })
+      .filter(isDefined);
 
     // Filter proposals based on their expiration timestamp:
-    const isExpired = (proposal: OptimisticOracleWeb3Events.ProposePrice["returnValues"]) => {
-      return Number(proposal.expirationTimestamp) <= Number(currentTime);
+    const isExpired = (proposal: ProposePrice | SkinnyProposePrice): boolean => {
+      if (this.oracleType === "SkinnyOptimisticOracle") {
+        return (
+          Number(
+            ((((proposal as unknown) as SkinnyProposePrice).request as unknown) as SkinnyRequest).expirationTime
+          ) <= Number(currentTime)
+        );
+      } else {
+        return Number(((proposal as unknown) as ProposePrice).expirationTimestamp) <= Number(currentTime);
+      }
     };
     this.expiredProposals = unsettledProposals.filter((proposal) => isExpired(proposal));
     this.undisputedProposals = unsettledProposals.filter((proposal) => !isExpired(proposal));
@@ -212,29 +261,19 @@ export class OptimisticOracleClient {
     ).filter(isDefined);
 
     // Filter out disputes that were already settled and reformat data.
-    const unsettledResolvedDisputeEvents = (
-      await Promise.all(
-        resolvedDisputeEvents.map(async (event) => {
-          const state = await this.oracle.methods
-            .getState(
-              event.returnValues.requester,
-              event.returnValues.identifier,
-              event.returnValues.timestamp,
-              event.returnValues.ancillaryData ? event.returnValues.ancillaryData : "0x"
-            )
-            .call();
-
-          // For unsettled disputes, reformat the data:
-          if (state !== OptimisticOracleRequestStatesEnum.SETTLED) {
-            return {
-              ...event.returnValues,
-              identifier: this.hexToUtf8(event.returnValues.identifier),
-              ancillaryData: event.returnValues.ancillaryData ? event.returnValues.ancillaryData : "0x",
-            };
-          }
-        })
-      )
-    ).filter(isDefined);
+    const unsettledResolvedDisputeEvents = resolvedDisputeEvents
+      .map((event) => {
+        const key = this._getPriceRequestKey(event);
+        const settlement = settleEvents.find((settleEvent) => this._getPriceRequestKey(settleEvent) === key);
+        if (settlement === undefined) {
+          return {
+            ...event.returnValues,
+            identifier: this.hexToUtf8(event.returnValues.identifier),
+            ancillaryData: event.returnValues.ancillaryData ? event.returnValues.ancillaryData : "0x",
+          };
+        }
+      })
+      .filter(isDefined);
     this.settleableDisputes = unsettledResolvedDisputeEvents;
 
     // Update timestamp and end update.
@@ -242,6 +281,8 @@ export class OptimisticOracleClient {
     this.logger.debug({
       at: "OptimisticOracleClient",
       message: "Optimistic Oracle state updated",
+      oracleType: this.oracleType,
+      oracleAddress: this.oracle.options.address,
       lastUpdateTimestamp: this.lastUpdateTimestamp,
     });
   }
