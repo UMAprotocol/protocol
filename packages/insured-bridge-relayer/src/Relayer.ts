@@ -54,6 +54,9 @@ export class Relayer {
     readonly whitelistedRelayL1Tokens: string[],
     readonly account: string,
     readonly whitelistedChainIds: number[],
+    // TODO: Deprecate `deployTimestamps` once BridgePools are upgraded and we can read `deployTimestamp` on-chain. For
+    // now, we need to hardcode each BP's deploy timestamp.
+    readonly deployTimestamps: { [key: string]: number },
     readonly l2LookbackWindow: number
   ) {
     this.l2BlockFinder = new BlockFinder<BlockTransactionBase>(this.l2Client.l2Web3.eth.getBlock);
@@ -62,7 +65,8 @@ export class Relayer {
   async checkForPendingDepositsAndRelay(): Promise<void> {
     this.logger.debug({ at: "InsuredBridgeRelayer#Relayer", message: "Checking for pending deposits and relaying" });
 
-    // Build dictionary of relayable deposits keyed by L1 tokens. getRelayableDeposits() filters out Finalized relays.
+    // Build dictionary of relayable deposits keyed by L1 tokens. We assume that getRelayableDeposits() filters
+    // out Finalized relays.
     const relayableDeposits: RelayableDeposits = this.getRelayableDeposits();
     if (Object.keys(relayableDeposits).length == 0) {
       this.logger.debug({
@@ -73,30 +77,27 @@ export class Relayer {
     }
 
     // Fetch pending relays (if any) for each relayable deposit and then decide whether to submit a relay (and what
-    // type of relay) or dispute. Build an array of transactions which are batch sent after the fact.
-    let relayTransactions = [];
+    // type of relay) or dispute.
     for (const l1Token of Object.keys(relayableDeposits)) {
       this.logger.debug({
         at: "InsuredBridgeRelayer#Relayer",
         message: `Processing ${relayableDeposits[l1Token].length} relayable deposits for L1Token`,
         l1Token,
       });
-      const bridgePoolAddress = this.l1Client.getBridgePoolForToken(l1Token).contract.options.address;
       for (const relayableDeposit of relayableDeposits[l1Token]) {
         // If deposit quote time is before the bridgepool's deployment time, then skip it before attempting to calculate
         // the realized LP fee % as this will be impossible to query a contract for a timestamp before its deployment.
-        if (
-          (await this._getCodeDeployedAtTimestamp(bridgePoolAddress, relayableDeposit.deposit.quoteTimestamp)) === "0x"
-        ) {
+        if (relayableDeposit.deposit.quoteTimestamp < this.deployTimestamps[relayableDeposit.deposit.l1Token]) {
           this.logger.debug({
             at: "InsuredBridgeRelayer#Relayer",
-            message: "Deposit quote time before bridge pool deployment for L1 token, skipping",
+            message: "Deposit quote time < bridge pool deployment for L1 token, skipping",
             deposit: relayableDeposit.deposit,
+            deploymentTime: this.deployTimestamps[relayableDeposit.deposit.l1Token],
           });
           continue;
         }
         try {
-          relayTransactions.push(await this._generateTransactionForPendingDeposit(l1Token, relayableDeposit));
+          await this._relayPendingDeposit(l1Token, relayableDeposit);
         } catch (error) {
           this.logger.error({
             at: "InsuredBridgeRelayer#Relayer",
@@ -106,8 +107,6 @@ export class Relayer {
         }
       }
     }
-
-    await this._processTransactionBatch(relayTransactions);
 
     return;
   }
@@ -254,12 +253,12 @@ export class Relayer {
 
       // If deposit quote time is before the bridgepool's deployment time, then dispute it by default because
       // we won't be able to determine otherwise if the realized LP fee % is valid.
-      const bridgePoolAddress = this.l1Client.getBridgePoolForToken(deposit.l1Token).contract.options.address;
-      if ((await this._getCodeDeployedAtTimestamp(bridgePoolAddress, deposit.quoteTimestamp)) === "0x") {
+      if (deposit.quoteTimestamp < this.deployTimestamps[deposit.l1Token]) {
         this.logger.debug({
           at: "Disputer",
-          message: "Deposit quote time before bridge pool deployment for L1 token, disputing",
+          message: "Deposit quote time < bridge pool deployment for L1 token, disputing",
           deposit,
+          deploymentTime: this.deployTimestamps[deposit.l1Token],
         });
         await this.disputeRelay(deposit, relay);
         return;
@@ -316,7 +315,7 @@ export class Relayer {
   }
 
   // Evaluates given `relayableDeposit` for the `l1Token` and determines whether to submit a slow or fast relay.
-  private async _generateTransactionForPendingDeposit(l1Token: string, relayableDeposit: RelayableDeposit) {
+  private async _relayPendingDeposit(l1Token: string, relayableDeposit: RelayableDeposit): Promise<void> {
     const realizedLpFeePct = await this.l1Client.calculateRealizedLpFeePctForDeposit(relayableDeposit.deposit);
 
     const pendingRelay: Relay | undefined = this.l1Client.getRelayForDeposit(l1Token, relayableDeposit.deposit);
@@ -383,13 +382,8 @@ export class Relayer {
     );
 
     // Depending on value of `shouldRelay`, send correct type of relay.
-    return await this._generateRelayTransaction(
-      shouldRelay,
-      realizedLpFeePct,
-      relayableDeposit,
-      pendingRelay,
-      hasInstantRelayer
-    );
+    await this.sendRelayTransaction(shouldRelay, realizedLpFeePct, relayableDeposit, pendingRelay, hasInstantRelayer);
+    return;
   }
 
   // Only Relay-specific params need to be validated (i.e. those params in the Relay struct of BridgePool). If any
@@ -446,8 +440,8 @@ export class Relayer {
     if (l1TokenBalance.gte(relayTokenRequirement.slow) && clientRelayState === ClientRelayState.Uninitialized)
       slowProfit = toBN(deposit.amount).mul(toBN(deposit.slowRelayFeePct)).div(fixedPointAdjustment);
 
-    // b) Balance is large enough to instant relay and the relay does not have an instant relayer. Deposit is in any
-    // state except finalized (i.e can be slow relayed and sped up or only sped up.)
+    // b) Balance is large enough to instant relay and the relay does not have an instant relayer. Deposit is in any state except finalized (i.e can be slow relayed
+    // and sped up or only sped up.)
     if (
       !hasInstantRelayer &&
       l1TokenBalance.gte(relayTokenRequirement.instant) &&
@@ -656,47 +650,6 @@ export class Relayer {
     }
   }
 
-  private async _processTransactionBatch(transactions: any[]) {
-    // Remove any undefined transaction objects or objects that contain null transactions.
-    transactions = transactions.filter((transaction) => {
-      if (!transaction) return false;
-      if (!transaction.transaction) return false;
-      return true;
-    });
-
-    console.log("transactions", transactions);
-    if (transactions.length == 0) return;
-    if (transactions.length == 1) {
-      if (!transactions[0].transaction) return;
-      try {
-        await this.gasEstimator.update();
-        const { receipt, transactionConfig } = await runTransaction({
-          web3: this.l1Client.l1Web3,
-          transaction: transactions[0].transaction,
-          transactionConfig: { ...this.gasEstimator.getCurrentFastPrice(), from: this.account },
-          availableAccounts: 1,
-        });
-        if (receipt.events) {
-          console.log("EVENT", receipt.events);
-          this.logger.info({
-            at: "InsuredBridgeRelayer#TransactionProcessor",
-            message: transactions[0].message,
-            tx: receipt.transactionHash,
-            // TODO: find a way to nicely spread event information
-            transactionConfig,
-          });
-        } else throw receipt;
-      } catch (error) {
-        console.log("error", error);
-        this.logger.error({
-          at: "InsuredBridgeRelayer#TransactionProcessor",
-          message: "Something errored sending a single transaction",
-          error,
-        });
-      }
-    }
-  }
-
   private generateSlowRelayTx(deposit: Deposit, realizedLpFeePct: BN): TransactionType {
     const bridgePool = this.l1Client.getBridgePoolForToken(deposit.l1Token).contract;
     return (bridgePool.methods.relayDeposit(
@@ -761,11 +714,6 @@ export class Relayer {
     };
   }
 
-  private async _getCodeDeployedAtTimestamp(address: string, timestamp: number): Promise<string> {
-    const blockNumberForTimestamp = (await this.l2BlockFinder.getBlockForTimestamp(timestamp)).number;
-    return await this.l1Client.l1Web3.eth.getCode(address, blockNumberForTimestamp);
-  }
-
   // Return fresh dictionary of relayable deposits keyed by the L1 token to be sent to recipient.
   private getRelayableDeposits(): RelayableDeposits {
     const relayableDeposits: RelayableDeposits = {};
@@ -788,7 +736,7 @@ export class Relayer {
   }
 
   // Send correct type of relay along with parameters to submit transaction.
-  private async _generateRelayTransaction(
+  private async sendRelayTransaction(
     shouldRelay: RelaySubmitType,
     realizedLpFeePct: BN,
     relayableDeposit: RelayableDeposit,
@@ -805,14 +753,7 @@ export class Relayer {
           hasInstantRelayer,
           relayableDeposit,
         });
-        return {
-          transaction: null,
-          message: null,
-          realizedLpFeePct,
-          hasInstantRelayer,
-          relayableDeposit,
-          pendingRelay,
-        };
+        break;
       case RelaySubmitType.Slow:
         this.logger.debug({
           at: "InsuredBridgeRelayer#Relayer",
@@ -820,14 +761,8 @@ export class Relayer {
           realizedLpFeePct: realizedLpFeePct.toString(),
           relayableDeposit,
         });
-        return {
-          transaction: this.generateSlowRelayTx(relayableDeposit.deposit, realizedLpFeePct),
-          message: "Slow Relay executed  🐌",
-          realizedLpFeePct,
-          hasInstantRelayer,
-          relayableDeposit,
-          pendingRelay,
-        };
+        await this.slowRelay(relayableDeposit.deposit, realizedLpFeePct);
+        break;
 
       case RelaySubmitType.SpeedUp:
         this.logger.debug({
@@ -840,16 +775,8 @@ export class Relayer {
           // The `pendingRelay` should never be undefined if shouldRelay returns SpeedUp, but we have to catch the
           // undefined type that is returned by the L1 client method.
           this.logger.error({ at: "InsuredBridgeRelayer#Relayer", message: "speedUpRelay: undefined relay" });
-        else
-          return {
-            transaction: this.generateSpeedUpRelayTx(relayableDeposit.deposit, pendingRelay),
-            message: "Slow relay sped up 🏇",
-            realizedLpFeePct,
-            hasInstantRelayer,
-            relayableDeposit,
-            pendingRelay,
-          };
-
+        else await this.speedUpRelay(relayableDeposit.deposit, pendingRelay);
+        break;
       case RelaySubmitType.Instant:
         this.logger.debug({
           at: "InsuredBridgeRelayer#Relayer",
@@ -857,14 +784,8 @@ export class Relayer {
           realizedLpFeePct: realizedLpFeePct.toString(),
           relayableDeposit,
         });
-        return {
-          transaction: this.generateInstantRelayTx(relayableDeposit.deposit, realizedLpFeePct),
-          message: "Relay instantly sent 🚀",
-          realizedLpFeePct,
-          hasInstantRelayer,
-          relayableDeposit,
-          pendingRelay,
-        };
+        await this.instantRelay(relayableDeposit.deposit, realizedLpFeePct);
+        break;
     }
   }
 
@@ -873,15 +794,16 @@ export class Relayer {
     // First try to fetch deposit from the L2 client's default block search config. This should work in most cases.
     let deposit: Deposit | undefined = this.l2Client.getDepositByHash(relay.depositHash);
     if (deposit !== undefined) return deposit;
-    // We could not find a deposit using the L2 client's default block search config. As a fallback, we'll modify the
-    // the block search config such that we can find the valid deposit if it exists. This fallback logic is expensive
-    // and results in a lot of web3 requests, but will find the deposit in the worst case.
-    // TODO: We could improve this search by only looking +/- 10 minutes within the quote time, as this is a constraint
-    // enforced by the BridgeDepositBox. The hard part is that determining the average time per L2 block is not trivial.
+    // We could not find a deposit using the L2 client's default block search config. Next, we'll modify the block
+    // search config bridge pool's deployment time. This allows us to capture any deposits that happened outside of
+    // the L2 client's default block search config.
     else {
+      const bridgePoolDeploymentTime = (
+        await this.l2BlockFinder.getBlockForTimestamp(this.deployTimestamps[relay.l1Token])
+      ).number;
       let blockSearchConfig = {
-        fromBlock: 0,
-        toBlock: this.l2LookbackWindow,
+        fromBlock: bridgePoolDeploymentTime,
+        toBlock: bridgePoolDeploymentTime + this.l2LookbackWindow,
       };
       const latestBlock = Number((await this.l2Client.l2Web3.eth.getBlock("latest")).number);
 
