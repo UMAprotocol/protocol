@@ -192,7 +192,12 @@ describe("Relayer.ts", function () {
       )
       .send({ from: l1Owner });
 
-    deployTimestamps = { [l1Token.options.address]: (await l1Timer.methods.getCurrentTime().call()).toString() };
+    deployTimestamps = {
+      [l1Token.options.address]: {
+        timestamp: (await l1Timer.methods.getCurrentTime().call()).toString(),
+        blockNumber: await web3.eth.getBlockNumber(),
+      },
+    };
 
     await bridgeDepositBox.methods
       .whitelistToken(l1Token.options.address, l2Token.options.address, bridgePool.options.address)
@@ -639,7 +644,7 @@ describe("Relayer.ts", function () {
     });
     it("Skips deposits with quote time < contract deployment time", async function () {
       // Deposit using quote time prior to deploy timestamp for this L1 token.
-      const quoteTime = Number(deployTimestamps[l1Token.options.address]) - 1;
+      const quoteTime = Number(deployTimestamps[l1Token.options.address].timestamp) - 1;
       await l2Token.methods.approve(bridgeDepositBox.options.address, depositAmount).send({ from: l2Depositor });
       await bridgeDepositBox.methods
         .deposit(
@@ -1297,7 +1302,7 @@ describe("Relayer.ts", function () {
     });
     it("Disputes relays that bot cannot compute realized LP fee % for", async function () {
       // Deposit using quote time prior to deploy timestamp for this L1 token.
-      const quoteTime = Number(deployTimestamps[l1Token.options.address]) - 1;
+      const quoteTime = Number(deployTimestamps[l1Token.options.address].timestamp) - 1;
       await l2Token.methods.approve(bridgeDepositBox.options.address, depositAmount).send({ from: l2Depositor });
       await bridgeDepositBox.methods
         .deposit(
