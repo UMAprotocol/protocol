@@ -2,6 +2,7 @@ import Web3 from "web3";
 const { isAddress, toChecksumAddress, toBN } = Web3.utils;
 
 import assert from "assert";
+import { replaceAddressCase } from "@uma/common";
 
 import type { RateModel } from "@uma/financial-templates-lib";
 
@@ -25,7 +26,6 @@ const supportedChainIds = [
 // The alternative to using this hard-coded mapping is to call `web3.eth.getCode(bridgePoolAddress, blockNumber)` but
 // making a web3 call per relay is expensive. Therefore this mapping is also a runtime optimization where we can
 // eliminate web3 calls. This is also why we store block numbers for the deploy timestamp.
-// Note: Keep these addresses lower case.
 const bridgePoolDeployData = {
   // Note: keyed by L1 token.
   // WETH:
@@ -92,7 +92,7 @@ export class RelayerConfig {
     };
 
     assert(BRIDGE_ADMIN_ADDRESS, "BRIDGE_ADMIN_ADDRESS required");
-    this.bridgeAdmin = Web3.utils.toChecksumAddress(BRIDGE_ADMIN_ADDRESS);
+    this.bridgeAdmin = toChecksumAddress(BRIDGE_ADMIN_ADDRESS);
 
     // L2 start block must be explicitly set unlike L1 due to how L2 nodes work. For best practices, we also should
     // constrain L1 start blocks but this hasn't been an issue empirically. As a data point, Arbitrum Infura has a
@@ -103,7 +103,9 @@ export class RelayerConfig {
     this.errorRetries = ERROR_RETRIES ? Number(ERROR_RETRIES) : 3;
     this.errorRetriesTimeout = ERROR_RETRIES_TIMEOUT ? Number(ERROR_RETRIES_TIMEOUT) : 1;
 
-    this.deployTimestamps = DEPLOY_TIMESTAMPS ? JSON.parse(DEPLOY_TIMESTAMPS) : bridgePoolDeployData;
+    this.deployTimestamps = replaceAddressCase(
+      DEPLOY_TIMESTAMPS ? JSON.parse(DEPLOY_TIMESTAMPS) : bridgePoolDeployData
+    );
 
     assert(RATE_MODELS, "RATE_MODELS required");
     const processingRateModels = JSON.parse(RATE_MODELS);
