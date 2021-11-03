@@ -29,17 +29,17 @@ const supportedChainIds = [
 const bridgePoolDeployData = {
   // Note: keyed by L1 token.
   // WETH:
-  "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2": {
+  "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2": {
     timestamp: 1635962805,
     blockNumber: 13545377,
   },
   // USDC:
-  "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48": {
+  "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48": {
     timestamp: 1635964115,
     blockNumber: 13545487,
   },
   // UMA:
-  "0x04fa0d235c4abf4bcf4787af4cf447de572ef828": {
+  "0x04Fa0d235C4abf4BcF4787aF4CF447DE572eF828": {
     timestamp: 1635964053,
     blockNumber: 13545478,
   },

@@ -795,8 +795,8 @@ export class Relayer {
     // outside of the L2 client's default block search config.
     else {
       let blockSearchConfig = {
-        fromBlock: this.deployTimestamps[relay.l1Token.toLowerCase()].blockNumber,
-        toBlock: this.deployTimestamps[relay.l1Token.toLowerCase()].blockNumber + this.l2LookbackWindow,
+        fromBlock: this.deployTimestamps[relay.l1Token].blockNumber,
+        toBlock: this.deployTimestamps[relay.l1Token].blockNumber + this.l2LookbackWindow,
       };
       const latestBlock = Number((await this.l2Client.l2Web3.eth.getBlock("latest")).number);
 
