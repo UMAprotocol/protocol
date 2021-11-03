@@ -62,8 +62,7 @@ export class Relayer {
   async checkForPendingDepositsAndRelay(): Promise<void> {
     this.logger.debug({ at: "InsuredBridgeRelayer#Relayer", message: "Checking for pending deposits and relaying" });
 
-    // Build dictionary of relayable deposits keyed by L1 tokens. We assume that getRelayableDeposits() filters
-    // out Finalized relays.
+    // Build dictionary of relayable deposits keyed by L1 tokens. getRelayableDeposits() filters out Finalized relays.
     const relayableDeposits: RelayableDeposits = this.getRelayableDeposits();
     if (Object.keys(relayableDeposits).length == 0) {
       this.logger.debug({
@@ -74,7 +73,8 @@ export class Relayer {
     }
 
     // Fetch pending relays (if any) for each relayable deposit and then decide whether to submit a relay (and what
-    // type of relay) or dispute.
+    // type of relay) or dispute. Build an array of transactions which are batch sent after the fact.
+    let relayTransactions = [];
     for (const l1Token of Object.keys(relayableDeposits)) {
       this.logger.debug({
         at: "InsuredBridgeRelayer#Relayer",
@@ -86,7 +86,7 @@ export class Relayer {
         // If deposit quote time is before the bridgepool's deployment time, then skip it before attempting to calculate
         // the realized LP fee % as this will be impossible to query a contract for a timestamp before its deployment.
         if (
-          (await this.getCodeDeployedAtTimestamp(bridgePoolAddress, relayableDeposit.deposit.quoteTimestamp)) === "0x"
+          (await this._getCodeDeployedAtTimestamp(bridgePoolAddress, relayableDeposit.deposit.quoteTimestamp)) === "0x"
         ) {
           this.logger.debug({
             at: "InsuredBridgeRelayer#Relayer",
@@ -96,7 +96,7 @@ export class Relayer {
           continue;
         }
         try {
-          await this._relayPendingDeposit(l1Token, relayableDeposit);
+          relayTransactions.push(await this._generateTransactionForPendingDeposit(l1Token, relayableDeposit));
         } catch (error) {
           this.logger.error({
             at: "InsuredBridgeRelayer#Relayer",
@@ -106,6 +106,8 @@ export class Relayer {
         }
       }
     }
+
+    await this._processTransactionBatch(relayTransactions);
 
     return;
   }
@@ -253,7 +255,7 @@ export class Relayer {
       // If deposit quote time is before the bridgepool's deployment time, then dispute it by default because
       // we won't be able to determine otherwise if the realized LP fee % is valid.
       const bridgePoolAddress = this.l1Client.getBridgePoolForToken(deposit.l1Token).contract.options.address;
-      if ((await this.getCodeDeployedAtTimestamp(bridgePoolAddress, deposit.quoteTimestamp)) === "0x") {
+      if ((await this._getCodeDeployedAtTimestamp(bridgePoolAddress, deposit.quoteTimestamp)) === "0x") {
         this.logger.debug({
           at: "Disputer",
           message: "Deposit quote time before bridge pool deployment for L1 token, disputing",
@@ -314,7 +316,7 @@ export class Relayer {
   }
 
   // Evaluates given `relayableDeposit` for the `l1Token` and determines whether to submit a slow or fast relay.
-  private async _relayPendingDeposit(l1Token: string, relayableDeposit: RelayableDeposit): Promise<void> {
+  private async _generateTransactionForPendingDeposit(l1Token: string, relayableDeposit: RelayableDeposit) {
     const realizedLpFeePct = await this.l1Client.calculateRealizedLpFeePctForDeposit(relayableDeposit.deposit);
 
     const pendingRelay: Relay | undefined = this.l1Client.getRelayForDeposit(l1Token, relayableDeposit.deposit);
@@ -381,8 +383,13 @@ export class Relayer {
     );
 
     // Depending on value of `shouldRelay`, send correct type of relay.
-    await this.sendRelayTransaction(shouldRelay, realizedLpFeePct, relayableDeposit, pendingRelay, hasInstantRelayer);
-    return;
+    return await this._generateRelayTransaction(
+      shouldRelay,
+      realizedLpFeePct,
+      relayableDeposit,
+      pendingRelay,
+      hasInstantRelayer
+    );
   }
 
   // Only Relay-specific params need to be validated (i.e. those params in the Relay struct of BridgePool). If any
@@ -439,8 +446,8 @@ export class Relayer {
     if (l1TokenBalance.gte(relayTokenRequirement.slow) && clientRelayState === ClientRelayState.Uninitialized)
       slowProfit = toBN(deposit.amount).mul(toBN(deposit.slowRelayFeePct)).div(fixedPointAdjustment);
 
-    // b) Balance is large enough to instant relay and the relay does not have an instant relayer. Deposit is in any state except finalized (i.e can be slow relayed
-    // and sped up or only sped up.)
+    // b) Balance is large enough to instant relay and the relay does not have an instant relayer. Deposit is in any
+    // state except finalized (i.e can be slow relayed and sped up or only sped up.)
     if (
       !hasInstantRelayer &&
       l1TokenBalance.gte(relayTokenRequirement.instant) &&
@@ -649,6 +656,47 @@ export class Relayer {
     }
   }
 
+  private async _processTransactionBatch(transactions: any[]) {
+    // Remove any undefined transaction objects or objects that contain null transactions.
+    transactions = transactions.filter((transaction) => {
+      if (!transaction) return false;
+      if (!transaction.transaction) return false;
+      return true;
+    });
+
+    console.log("transactions", transactions);
+    if (transactions.length == 0) return;
+    if (transactions.length == 1) {
+      if (!transactions[0].transaction) return;
+      try {
+        await this.gasEstimator.update();
+        const { receipt, transactionConfig } = await runTransaction({
+          web3: this.l1Client.l1Web3,
+          transaction: transactions[0].transaction,
+          transactionConfig: { ...this.gasEstimator.getCurrentFastPrice(), from: this.account },
+          availableAccounts: 1,
+        });
+        if (receipt.events) {
+          console.log("EVENT", receipt.events);
+          this.logger.info({
+            at: "InsuredBridgeRelayer#TransactionProcessor",
+            message: transactions[0].message,
+            tx: receipt.transactionHash,
+            // TODO: find a way to nicely spread event information
+            transactionConfig,
+          });
+        } else throw receipt;
+      } catch (error) {
+        console.log("error", error);
+        this.logger.error({
+          at: "InsuredBridgeRelayer#TransactionProcessor",
+          message: "Something errored sending a single transaction",
+          error,
+        });
+      }
+    }
+  }
+
   private generateSlowRelayTx(deposit: Deposit, realizedLpFeePct: BN): TransactionType {
     const bridgePool = this.l1Client.getBridgePoolForToken(deposit.l1Token).contract;
     return (bridgePool.methods.relayDeposit(
@@ -713,7 +761,7 @@ export class Relayer {
     };
   }
 
-  private async getCodeDeployedAtTimestamp(address: string, timestamp: number): Promise<string> {
+  private async _getCodeDeployedAtTimestamp(address: string, timestamp: number): Promise<string> {
     const blockNumberForTimestamp = (await this.l2BlockFinder.getBlockForTimestamp(timestamp)).number;
     return await this.l1Client.l1Web3.eth.getCode(address, blockNumberForTimestamp);
   }
@@ -740,7 +788,7 @@ export class Relayer {
   }
 
   // Send correct type of relay along with parameters to submit transaction.
-  private async sendRelayTransaction(
+  private async _generateRelayTransaction(
     shouldRelay: RelaySubmitType,
     realizedLpFeePct: BN,
     relayableDeposit: RelayableDeposit,
@@ -757,7 +805,14 @@ export class Relayer {
           hasInstantRelayer,
           relayableDeposit,
         });
-        break;
+        return {
+          transaction: null,
+          message: null,
+          realizedLpFeePct,
+          hasInstantRelayer,
+          relayableDeposit,
+          pendingRelay,
+        };
       case RelaySubmitType.Slow:
         this.logger.debug({
           at: "InsuredBridgeRelayer#Relayer",
@@ -765,8 +820,14 @@ export class Relayer {
           realizedLpFeePct: realizedLpFeePct.toString(),
           relayableDeposit,
         });
-        await this.slowRelay(relayableDeposit.deposit, realizedLpFeePct);
-        break;
+        return {
+          transaction: this.generateSlowRelayTx(relayableDeposit.deposit, realizedLpFeePct),
+          message: "Slow Relay executed  🐌",
+          realizedLpFeePct,
+          hasInstantRelayer,
+          relayableDeposit,
+          pendingRelay,
+        };
 
       case RelaySubmitType.SpeedUp:
         this.logger.debug({
@@ -779,8 +840,16 @@ export class Relayer {
           // The `pendingRelay` should never be undefined if shouldRelay returns SpeedUp, but we have to catch the
           // undefined type that is returned by the L1 client method.
           this.logger.error({ at: "InsuredBridgeRelayer#Relayer", message: "speedUpRelay: undefined relay" });
-        else await this.speedUpRelay(relayableDeposit.deposit, pendingRelay);
-        break;
+        else
+          return {
+            transaction: this.generateSpeedUpRelayTx(relayableDeposit.deposit, pendingRelay),
+            message: "Slow relay sped up 🏇",
+            realizedLpFeePct,
+            hasInstantRelayer,
+            relayableDeposit,
+            pendingRelay,
+          };
+
       case RelaySubmitType.Instant:
         this.logger.debug({
           at: "InsuredBridgeRelayer#Relayer",
@@ -788,8 +857,14 @@ export class Relayer {
           realizedLpFeePct: realizedLpFeePct.toString(),
           relayableDeposit,
         });
-        await this.instantRelay(relayableDeposit.deposit, realizedLpFeePct);
-        break;
+        return {
+          transaction: this.generateInstantRelayTx(relayableDeposit.deposit, realizedLpFeePct),
+          message: "Relay instantly sent 🚀",
+          realizedLpFeePct,
+          hasInstantRelayer,
+          relayableDeposit,
+          pendingRelay,
+        };
     }
   }
 

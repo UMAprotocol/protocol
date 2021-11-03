@@ -389,7 +389,7 @@ describe("Relayer.ts", function () {
       // Mint some tokens for the L2 depositor.
       await l2Token.methods.mint(l2Depositor, depositAmount).send({ from: l2Owner });
     });
-    it("Can correctly detect and produce slow relays", async function () {
+    it.only("Can correctly detect and produce slow relays", async function () {
       // Before any relays should do nothing and log accordingly.
       await Promise.all([l1Client.update(), l2Client.update()]);
       await relayer.checkForPendingDepositsAndRelay();
