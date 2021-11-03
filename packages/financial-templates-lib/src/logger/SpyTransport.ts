@@ -18,8 +18,7 @@ export class SpyTransport extends Transport {
 
   async log(info: any, callback: () => void): Promise<void> {
     // Add an `logInTest` option to help with debugging to bots in tests by printing all logs received by winston.
-    // if (argv._.includes("logInTest"))
-      console.log(JSON.stringify(info, null, 2));
+    if (argv._.includes("logInTest")) console.log(JSON.stringify(info, null, 2));
     // Add info sent to the winston transport to the spy. This enables unit tests to validate what is passed to winston.
     this.spy(info);
     callback();
