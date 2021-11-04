@@ -89,6 +89,7 @@ export class OptimisticOracleClient {
   ) {
     // Optimistic Oracle contract:
     this.oracle = (new web3.eth.Contract(oracleAbi, oracleAddress) as unknown) as OptimisticOracleContract;
+    this.oracleType = oracleType;
 
     // Voting contract we'll use to determine whether OO disputes can be settled:
     this.voting = (new web3.eth.Contract(votingAbi, votingAddress) as unknown) as VotingAncillaryInterfaceTestingWeb3;

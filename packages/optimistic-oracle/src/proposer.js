@@ -90,6 +90,7 @@ class OptimisticOracleProposer {
   async sendProposals() {
     this.logger.debug({
       at: "OptimisticOracleProposer#sendProposals",
+      oracleType: this.optimisticOracleClient.oracleType,
       message: "Checking for unproposed price requests to send proposals for",
     });
 
@@ -105,6 +106,7 @@ class OptimisticOracleProposer {
   async sendDisputes() {
     this.logger.debug({
       at: "OptimisticOracleProposer#sendDisputes",
+      oracleType: this.optimisticOracleClient.oracleType,
       message: "Checking for undisputed price requests to dispute",
     });
 
@@ -118,6 +120,7 @@ class OptimisticOracleProposer {
   async settleRequests() {
     this.logger.debug({
       at: "OptimisticOracleProposer#settleRequests",
+      oracleType: this.optimisticOracleClient.oracleType,
       message: "Checking for proposals and disputes to settle",
     });
 
@@ -199,16 +202,29 @@ class OptimisticOracleProposer {
     }
 
     // Get successful transaction receipt and return value or error.
-    const proposal = this.optimisticOracleContract.methods.proposePrice(
-      priceRequest.requester,
-      this.utf8ToHex(priceRequest.identifier),
-      priceRequest.timestamp,
-      priceRequest.ancillaryData,
-      proposalPrice
-    );
+    let proposal;
+    if (this.optimisticOracleClient.oracleType === "SkinnyOptimisticOracle") {
+      proposal = this.optimisticOracleContract.methods.proposePrice(
+        priceRequest.requester,
+        this.utf8ToHex(priceRequest.identifier),
+        priceRequest.timestamp,
+        priceRequest.ancillaryData,
+        priceRequest.request,
+        proposalPrice
+      );
+    } else {
+      proposal = this.optimisticOracleContract.methods.proposePrice(
+        priceRequest.requester,
+        this.utf8ToHex(priceRequest.identifier),
+        priceRequest.timestamp,
+        priceRequest.ancillaryData,
+        proposalPrice
+      );
+    }
     this.logger.debug({
       at: "OptimisticOracleProposer#sendProposals",
       message: "Detected price request, and proposing new price",
+      oracleType: this.optimisticOracleClient.oracleType,
       priceRequest,
       potentialProposalPrice: proposalPrice,
       proposer: this.account,
@@ -220,19 +236,32 @@ class OptimisticOracleProposer {
         transactionConfig: { ...this.gasEstimator.getCurrentFastPrice(), from: this.account },
       });
 
-      const logResult = {
-        tx: receipt.transactionHash,
-        requester: receipt.events.ProposePrice.returnValues.requester,
-        proposer: receipt.events.ProposePrice.returnValues.proposer,
-        identifier: this.hexToUtf8(receipt.events.ProposePrice.returnValues.identifier),
-        ancillaryData: receipt.events.ProposePrice.returnValues.ancillaryData || "0x",
-        timestamp: receipt.events.ProposePrice.returnValues.timestamp,
-        proposedPrice: receipt.events.ProposePrice.returnValues.proposedPrice,
-        expirationTimestamp: receipt.events.ProposePrice.returnValues.expirationTimestamp,
-      };
+      let logResult;
+      if (this.optimisticOracleClient.oracleType === "SkinnyOptimisticOracle") {
+        logResult = {
+          tx: receipt.transactionHash,
+          requester: receipt.events.ProposePrice.returnValues.requester,
+          identifier: this.hexToUtf8(receipt.events.ProposePrice.returnValues.identifier),
+          ancillaryData: receipt.events.ProposePrice.returnValues.ancillaryData || "0x",
+          timestamp: receipt.events.ProposePrice.returnValues.timestamp,
+          request: receipt.events.ProposePrice.returnValues.request,
+        };
+      } else {
+        logResult = {
+          tx: receipt.transactionHash,
+          requester: receipt.events.ProposePrice.returnValues.requester,
+          proposer: receipt.events.ProposePrice.returnValues.proposer,
+          identifier: this.hexToUtf8(receipt.events.ProposePrice.returnValues.identifier),
+          ancillaryData: receipt.events.ProposePrice.returnValues.ancillaryData || "0x",
+          timestamp: receipt.events.ProposePrice.returnValues.timestamp,
+          proposedPrice: receipt.events.ProposePrice.returnValues.proposedPrice,
+          expirationTimestamp: receipt.events.ProposePrice.returnValues.expirationTimestamp,
+        };
+      }
       this.logger.info({
         at: "OptimisticOracleProposer#sendProposals",
         message: "Proposed price!💍",
+        oracleType: this.optimisticOracleClient.oracleType,
         priceRequest,
         proposalBond: returnValue.toString(),
         proposalPrice,
@@ -244,7 +273,13 @@ class OptimisticOracleProposer {
         error.type === "call"
           ? "Cannot propose price: not enough collateral (or large enough approval)✋"
           : "Failed to propose price🚨";
-      this.logger.error({ at: "OptimisticOracleProposer#sendProposals", message, priceRequest, error });
+      this.logger.error({
+        at: "OptimisticOracleProposer#sendProposals",
+        oracleType: this.optimisticOracleClient.oracleType,
+        message,
+        priceRequest,
+        error,
+      });
       return;
     }
   }
@@ -292,15 +327,27 @@ class OptimisticOracleProposer {
     );
     if (isPriceDisputable) {
       // Get successful transaction receipt and return value or error.
-      const dispute = this.optimisticOracleContract.methods.disputePrice(
-        priceRequest.requester,
-        this.utf8ToHex(priceRequest.identifier),
-        priceRequest.timestamp,
-        priceRequest.ancillaryData
-      );
+      let dispute;
+      if (this.optimisticOracleClient.oracleType === "SkinnyOptimisticOracle") {
+        dispute = this.optimisticOracleContract.methods.disputePrice(
+          priceRequest.requester,
+          this.utf8ToHex(priceRequest.identifier),
+          priceRequest.timestamp,
+          priceRequest.ancillaryData,
+          priceRequest.request
+        );
+      } else {
+        dispute = this.optimisticOracleContract.methods.disputePrice(
+          priceRequest.requester,
+          this.utf8ToHex(priceRequest.identifier),
+          priceRequest.timestamp,
+          priceRequest.ancillaryData
+        );
+      }
       this.logger.debug({
         at: "OptimisticOracleProposer#sendDisputes",
         message: "Disputing proposal",
+        oracleType: this.optimisticOracleClient.oracleType,
         priceRequest,
         proposalPrice,
         disputePrice,
@@ -314,19 +361,32 @@ class OptimisticOracleProposer {
           transactionConfig: { ...this.gasEstimator.getCurrentFastPrice(), from: this.account },
         });
 
-        const logResult = {
-          tx: receipt.transactionHash,
-          requester: receipt.events.DisputePrice.returnValues.requester,
-          proposer: receipt.events.DisputePrice.returnValues.proposer,
-          disputer: receipt.events.DisputePrice.returnValues.disputer,
-          identifier: this.hexToUtf8(receipt.events.DisputePrice.returnValues.identifier),
-          ancillaryData: receipt.events.DisputePrice.returnValues.ancillaryData || "0x",
-          timestamp: receipt.events.DisputePrice.returnValues.timestamp,
-          proposedPrice: receipt.events.DisputePrice.returnValues.proposedPrice,
-        };
+        let logResult;
+        if (this.optimisticOracleClient.oracleType === "SkinnyOptimisticOracle") {
+          logResult = {
+            tx: receipt.transactionHash,
+            requester: receipt.events.DisputePrice.returnValues.requester,
+            identifier: this.hexToUtf8(receipt.events.DisputePrice.returnValues.identifier),
+            ancillaryData: receipt.events.DisputePrice.returnValues.ancillaryData || "0x",
+            timestamp: receipt.events.DisputePrice.returnValues.timestamp,
+            request: receipt.events.DisputePrice.returnValues.request,
+          };
+        } else {
+          logResult = {
+            tx: receipt.transactionHash,
+            requester: receipt.events.DisputePrice.returnValues.requester,
+            proposer: receipt.events.DisputePrice.returnValues.proposer,
+            disputer: receipt.events.DisputePrice.returnValues.disputer,
+            identifier: this.hexToUtf8(receipt.events.DisputePrice.returnValues.identifier),
+            ancillaryData: receipt.events.DisputePrice.returnValues.ancillaryData || "0x",
+            timestamp: receipt.events.DisputePrice.returnValues.timestamp,
+            proposedPrice: receipt.events.DisputePrice.returnValues.proposedPrice,
+          };
+        }
         this.logger.info({
           at: "OptimisticOracleProposer#sendDisputes",
           message: "Disputed proposal!⛑",
+          oracleType: this.optimisticOracleClient.oracleType,
           priceRequest,
           disputePrice,
           disputeBond: returnValue.toString(),
@@ -339,7 +399,13 @@ class OptimisticOracleProposer {
           error.type === "call"
             ? "Cannot dispute price: not enough collateral (or large enough approval)✋"
             : "Failed to dispute proposal🚨";
-        this.logger.error({ at: "OptimisticOracleProposer#sendDisputes", message, priceRequest, error });
+        this.logger.error({
+          at: "OptimisticOracleProposer#sendDisputes",
+          message,
+          oracleType: this.optimisticOracleClient.oracleType,
+          priceRequest,
+          error,
+        });
         return;
       }
     } else {
@@ -356,12 +422,24 @@ class OptimisticOracleProposer {
   // Construct settlement transaction and send or return early if an error is encountered.
   async _settleRequest(priceRequest) {
     // Get successful transaction receipt and return value or error.
-    const settle = this.optimisticOracleContract.methods.settle(
-      priceRequest.requester,
-      this.utf8ToHex(priceRequest.identifier),
-      priceRequest.timestamp,
-      priceRequest.ancillaryData
-    );
+    let settle;
+    if (this.optimisticOracleClient.oracleType === "SkinnyOptimisticOracle") {
+      settle = this.optimisticOracleContract.methods.settle(
+        priceRequest.requester,
+        this.utf8ToHex(priceRequest.identifier),
+        priceRequest.timestamp,
+        priceRequest.ancillaryData,
+        priceRequest.request
+      );
+    } else {
+      settle = this.optimisticOracleContract.methods.settle(
+        priceRequest.requester,
+        this.utf8ToHex(priceRequest.identifier),
+        priceRequest.timestamp,
+        priceRequest.ancillaryData
+      );
+    }
+
     this.logger.debug({
       at: "OptimisticOracleProposer#settleRequests",
       message: "Settling proposal or dispute",
@@ -374,17 +452,29 @@ class OptimisticOracleProposer {
         transactionConfig: { ...this.gasEstimator.getCurrentFastPrice(), from: this.account },
       });
 
-      const logResult = {
-        tx: receipt.transactionHash,
-        requester: receipt.events.Settle.returnValues.requester,
-        proposer: receipt.events.Settle.returnValues.proposer,
-        disputer: receipt.events.Settle.returnValues.disputer,
-        identifier: this.hexToUtf8(receipt.events.Settle.returnValues.identifier),
-        ancillaryData: receipt.events.Settle.returnValues.ancillaryData || "0x",
-        timestamp: receipt.events.Settle.returnValues.timestamp,
-        price: receipt.events.Settle.returnValues.price,
-        payout: receipt.events.Settle.returnValues.payout,
-      };
+      let logResult;
+      if (this.optimisticOracleClient.oracleType === "SkinnyOptimisticOracle") {
+        logResult = {
+          tx: receipt.transactionHash,
+          requester: receipt.events.Settle.returnValues.requester,
+          identifier: this.hexToUtf8(receipt.events.Settle.returnValues.identifier),
+          ancillaryData: receipt.events.Settle.returnValues.ancillaryData || "0x",
+          timestamp: receipt.events.Settle.returnValues.timestamp,
+          request: receipt.events.Settle.returnValues.request,
+        };
+      } else {
+        logResult = {
+          tx: receipt.transactionHash,
+          requester: receipt.events.Settle.returnValues.requester,
+          proposer: receipt.events.Settle.returnValues.proposer,
+          disputer: receipt.events.Settle.returnValues.disputer,
+          identifier: this.hexToUtf8(receipt.events.Settle.returnValues.identifier),
+          ancillaryData: receipt.events.Settle.returnValues.ancillaryData || "0x",
+          timestamp: receipt.events.Settle.returnValues.timestamp,
+          price: receipt.events.Settle.returnValues.price,
+          payout: receipt.events.Settle.returnValues.payout,
+        };
+      }
       this.logger.info({
         at: "OptimisticOracleProposer#settleRequests",
         message: "Settled proposal or dispute!⛑",
