@@ -78,7 +78,8 @@ export class OptimisticOracleClient {
    * @param {String} votingAddress Ethereum address of the Voting contract deployed on the current network.
    * @param {Number} lookback Any requests, proposals, or disputes that occurred prior to this timestamp will be ignored.
    * Used to limit the web3 requests made by this client.
-   * @param {OptimisticOracleType} oracleType Index of allowed OptimisticOracle types.
+   * @param {OptimisticOracleType} oracleType Type of OptimisticOracle to query state for. Defaults to
+   * "OptimisticOracle".
    * @return None or throws an Error.
    */
   constructor(

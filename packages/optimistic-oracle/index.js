@@ -160,8 +160,8 @@ async function Poll(callback) {
       // Type of "Oracle" set for this network's Finder, default is "Voting". Other possible types include "SinkOracle",
       //  "OracleChildTunnel", and "MockOracleAncillary"
       oracleType: process.env.ORACLE_TYPE ? process.env.ORACLE_TYPE : "Voting",
-      // Type of "OptimisticOracle" to load in client, default is OptimisticOracleType.OptimisticOracle or '0'. The
-      // other possible types are exported in an enum from financial-templates-lib/OptimisticOracleClient
+      // Type of "OptimisticOracle" to load in client, default is OptimisticOracle. The other possible types are
+      // exported in an enum from financial-templates-lib/OptimisticOracleClient.
       optimisticOracleType: process.env.OPTIMISTIC_ORACLE_TYPE
         ? process.env.OPTIMISTIC_ORACLE_TYPE
         : OptimisticOracleType.OptimisticOracle,
