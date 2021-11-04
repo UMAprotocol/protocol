@@ -96,7 +96,6 @@ export class Relayer {
         try {
           relayTransactions.push(await this._generateRelayTransactionForPendingDeposit(l1Token, relayableDeposit));
         } catch (error) {
-          console.log("error", error);
           this.logger.error({ at: "AcrossRelayer#Relayer", message: "Unexpected error processing deposit", error });
         }
       }
@@ -510,11 +509,7 @@ export class Relayer {
     transactions: { transaction: TransactionType | any; message: string; mrkdwn: string }[]
   ) {
     // Remove any undefined transaction objects or objects that contain null transactions.
-    transactions = transactions.filter((transaction) => {
-      if (!transaction) return false;
-      if (!transaction.transaction) return false;
-      return true;
-    });
+    transactions = transactions.filter((transaction) => transaction && transaction.transaction);
 
     if (transactions.length == 0) return;
     if (transactions.length == 1) {
@@ -579,7 +574,6 @@ export class Relayer {
         return true;
       } else throw receipt;
     } catch (error) {
-      console.log("error", error);
       this.logger.error({
         at: "AcrossRelayerTxProcessor",
         message: "Something errored sending a transaction",
