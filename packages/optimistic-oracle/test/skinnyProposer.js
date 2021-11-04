@@ -13,6 +13,7 @@ const {
   lastSpyLogLevel,
   spyLogIncludes,
   PriceFeedMockScaled,
+  OptimisticOracleType,
 } = require("@uma/financial-templates-lib");
 const { OptimisticOracleProposer } = require("../src/proposer");
 const {
@@ -167,7 +168,7 @@ describe("SkinnyOptimisticOracle: proposer.js", function () {
       optimisticOracle.options.address,
       mockOracle.options.address,
       604800, // default lookback
-      "SkinnyOptimisticOracle"
+      OptimisticOracleType.SkinnyOptimisticOracle
     );
 
     gasEstimator = new GasEstimator(spyLogger);

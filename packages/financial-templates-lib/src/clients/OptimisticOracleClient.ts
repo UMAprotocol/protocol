@@ -49,7 +49,11 @@ interface SkinnyRequest {
 }
 
 type OptimisticOracleContract = SkinnyOptimisticOracleWeb3 | OptimisticOracleWeb3;
-type OptimisticOracleType = "OptimisticOracle" | "SkinnyOptimisticOracle";
+
+export enum OptimisticOracleType {
+  OptimisticOracle,
+  SkinnyOptimisticOracle,
+}
 export class OptimisticOracleClient {
   public readonly oracle: OptimisticOracleContract;
   public readonly voting: VotingAncillaryInterfaceTestingWeb3;
@@ -74,7 +78,7 @@ export class OptimisticOracleClient {
    * @param {String} votingAddress Ethereum address of the Voting contract deployed on the current network.
    * @param {Number} lookback Any requests, proposals, or disputes that occurred prior to this timestamp will be ignored.
    * Used to limit the web3 requests made by this client.
-   * @param {OptimisticOracleType} oracleType Type of OptimisticOracle to query state for.
+   * @param {OptimisticOracleType} oracleType Index of allowed OptimisticOracle types.
    * @return None or throws an Error.
    */
   constructor(
@@ -85,7 +89,7 @@ export class OptimisticOracleClient {
     oracleAddress: string,
     votingAddress: string,
     public readonly lookback: number = 604800, // 1 Week
-    public readonly oracleType: OptimisticOracleType = "OptimisticOracle"
+    public readonly oracleType: OptimisticOracleType = OptimisticOracleType.OptimisticOracle
   ) {
     // Optimistic Oracle contract:
     this.oracle = (new web3.eth.Contract(oracleAbi, oracleAddress) as unknown) as OptimisticOracleContract;
@@ -114,7 +118,7 @@ export class OptimisticOracleClient {
   // Returns an array of expired Price Proposals that can be settled and that involved
   // the caller as the proposer
   public getSettleableProposals(caller: string): ProposePriceReturnValues[] {
-    if (this.oracleType === "SkinnyOptimisticOracle") {
+    if (this.oracleType === OptimisticOracleType.SkinnyOptimisticOracle) {
       return (this.expiredProposals as SkinnyProposePrice["returnValues"][]).filter((event) => {
         return ((event.request as unknown) as SkinnyRequest).proposer === caller;
       });
@@ -127,7 +131,7 @@ export class OptimisticOracleClient {
 
   // Returns disputes that can be settled and that involved the caller as the disputer
   public getSettleableDisputes(caller: string): DisputePriceReturnValues[] {
-    if (this.oracleType === "SkinnyOptimisticOracle") {
+    if (this.oracleType === OptimisticOracleType.SkinnyOptimisticOracle) {
       return (this.settleableDisputes as SkinnyDisputePrice["returnValues"][]).filter((event) => {
         return ((event.request as unknown) as SkinnyRequest).disputer === caller;
       });
@@ -217,7 +221,7 @@ export class OptimisticOracleClient {
 
     // Filter proposals based on their expiration timestamp:
     const isExpired = (proposal: ProposePriceReturnValues): boolean => {
-      if (this.oracleType === "SkinnyOptimisticOracle") {
+      if (this.oracleType === OptimisticOracleType.SkinnyOptimisticOracle) {
         return (
           Number(
             ((((proposal as unknown) as SkinnyProposePrice["returnValues"]).request as unknown) as SkinnyRequest)
@@ -290,7 +294,7 @@ export class OptimisticOracleClient {
     this.logger.debug({
       at: "OptimisticOracleClient",
       message: "Optimistic Oracle state updated",
-      oracleType: this.oracleType,
+      oracleType: OptimisticOracleType[this.oracleType],
       oracleAddress: this.oracle.options.address,
       lastUpdateTimestamp: this.lastUpdateTimestamp,
     });

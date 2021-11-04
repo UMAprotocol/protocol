@@ -9,7 +9,7 @@ const { assert } = require("chai");
 const hre = require("hardhat");
 const { getContract, deployments } = hre;
 
-const { SpyTransport, spyLogLevel, spyLogIncludes } = require("@uma/financial-templates-lib");
+const { SpyTransport, spyLogLevel, spyLogIncludes, OptimisticOracleType } = require("@uma/financial-templates-lib");
 
 const OptimisticOracle = getContract("OptimisticOracle");
 const SkinnyOptimisticOracle = getContract("SkinnyOptimisticOracle");
@@ -93,7 +93,7 @@ describe("index.js", function () {
       pollingDelay,
       errorRetries,
       errorRetriesTimeout,
-      optimisticOracleType: "SkinnyOptimisticOracle",
+      optimisticOracleType: OptimisticOracleType.SkinnyOptimisticOracle,
     });
 
     for (let i = 0; i < spy.callCount; i++) {

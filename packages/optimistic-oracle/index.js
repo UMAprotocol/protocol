@@ -3,7 +3,14 @@
 require("dotenv").config();
 const retry = require("async-retry");
 
-const { Logger, waitForLogger, delay, OptimisticOracleClient, GasEstimator } = require("@uma/financial-templates-lib");
+const {
+  Logger,
+  waitForLogger,
+  delay,
+  OptimisticOracleClient,
+  GasEstimator,
+  OptimisticOracleType,
+} = require("@uma/financial-templates-lib");
 const { OptimisticOracleProposer } = require("./src/proposer");
 
 // Contract ABIs and network Addresses.
@@ -33,11 +40,11 @@ async function run({
   commonPriceFeedConfig,
   optimisticOracleProposerConfig,
   oracleType = "Voting",
-  optimisticOracleType = "OptimisticOracle",
+  optimisticOracleType = OptimisticOracleType.OptimisticOracle,
 }) {
   try {
     const [accounts, networkId] = await Promise.all([web3.eth.getAccounts(), web3.eth.net.getId()]);
-    const optimisticOracleAddress = await getAddress(optimisticOracleType, networkId);
+    const optimisticOracleAddress = await getAddress(OptimisticOracleType[optimisticOracleType], networkId);
     // If pollingDelay === 0 then the bot is running in serverless mode and should send a `debug` level log.
     // Else, if running in loop mode (pollingDelay != 0), then it should send a `info` level log.
     logger[pollingDelay === 0 ? "debug" : "info"]({
@@ -50,14 +57,14 @@ async function run({
       commonPriceFeedConfig,
       optimisticOracleProposerConfig,
       oracleType,
-      optimisticOracleType,
+      optimisticOracleType: OptimisticOracleType[optimisticOracleType],
     });
 
     // Create the OptimisticOracleClient to query on-chain information, GasEstimator to get latest gas prices and an
     // instance of the OO Proposer to respond to price requests and proposals.
     const optimisticOracleClient = new OptimisticOracleClient(
       logger,
-      getAbi(optimisticOracleType),
+      getAbi(OptimisticOracleType[optimisticOracleType]),
       getAbi(oracleType),
       web3,
       optimisticOracleAddress,
@@ -153,11 +160,11 @@ async function Poll(callback) {
       // Type of "Oracle" set for this network's Finder, default is "Voting". Other possible types include "SinkOracle",
       //  "OracleChildTunnel", and "MockOracleAncillary"
       oracleType: process.env.ORACLE_TYPE ? process.env.ORACLE_TYPE : "Voting",
-      // Type of "OptimisticOracle" to load in client, default is "OptimisticOracle". The only other possible type is
-      // "SkinnyOptimisticOracle."
+      // Type of "OptimisticOracle" to load in client, default is OptimisticOracleType.OptimisticOracle or '0'. The
+      // other possible types are exported in an enum from financial-templates-lib/OptimisticOracleClient
       optimisticOracleType: process.env.OPTIMISTIC_ORACLE_TYPE
         ? process.env.OPTIMISTIC_ORACLE_TYPE
-        : "OptimisticOracle",
+        : OptimisticOracleType.OptimisticOracle,
     };
 
     await run({ logger: Logger, web3: getWeb3(), ...executionParameters });
