@@ -194,9 +194,15 @@ export function getWeb3Websocket(url: string, options: Obj = {}) {
   );
 }
 
+export function getWeb3Http(url: string) {
+  return new Web3(new Web3.providers.HttpProvider(url));
+}
+
 export function getWeb3(url: string, options: Obj = {}) {
   if (url.startsWith("ws")) return getWeb3Websocket(url, options);
-  throw new Error("Only supporting websocket provider URLs for Web3");
+  if (url.startsWith("http")) return getWeb3Http(url);
+
+  throw new Error("Web3 provider URLs not supported");
 }
 
 // this just maintains the start/endblock given sporadic updates with a latest block number

@@ -31,7 +31,7 @@ export default async (env: ProcessEnv) => {
   // debug flag for more verbose logs
   const debug = Boolean(env.debug);
   const profile = Profile(debug);
-  const provider = new ethers.providers.WebSocketProvider(env.CUSTOM_NODE_URL);
+  const provider = new ethers.providers.JsonRpcProvider(env.CUSTOM_NODE_URL);
   // we need web3 for syth price feeds
   const web3 = getWeb3(env.CUSTOM_NODE_URL);
   const datastoreClient = new Datastore();
