@@ -37,6 +37,12 @@ export default async (env: ProcessEnv) => {
   const datastoreClient = new Datastore();
   const datastores = StoresFactory(datastoreClient);
   const networkChainId = env.NETWORK_CHAIN_ID ? parseInt(env.NETWORK_CHAIN_ID) : undefined;
+  const detectContractsBatchSize = env.DETECT_CONTRACTS_BATCH_SIZE
+    ? parseInt(env.DETECT_CONTRACTS_BATCH_SIZE)
+    : undefined;
+  const updateContractsBatchSize = env.UPDATE_CONTRACTS_BATCH_SIZE
+    ? parseInt(env.UPDATE_CONTRACTS_BATCH_SIZE)
+    : undefined;
   // state shared between services
   const appState: AppState = {
     emps: {
@@ -150,7 +156,10 @@ export default async (env: ProcessEnv) => {
 
   // Orchestrator services are services that coordinate and aggregate other services
   const orchestratorServices: OrchestratorServices = {
-    contracts: Services.Contracts({ debug }, { tables: appState, profile, appClients, services }),
+    contracts: Services.Contracts(
+      { debug, detectContractsBatchSize, updateContractsBatchSize },
+      { tables: appState, profile, appClients, services }
+    ),
     prices: Services.Prices(
       { backfillDays: parseInt(env.backfillDays || "") },
       { services, tables: appState, appClients, profile }
