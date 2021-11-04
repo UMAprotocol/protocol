@@ -2,6 +2,7 @@ import Web3 from "web3";
 const { isAddress, toChecksumAddress, toBN } = Web3.utils;
 
 import assert from "assert";
+import { replaceAddressCase } from "@uma/common";
 
 import type { RateModel } from "@uma/financial-templates-lib";
 
@@ -15,6 +16,34 @@ const supportedChainIds = [
   42161, // arbitrum mainnet
   421611, // arbitrum testnet
 ];
+
+// This struct is a hack right now but prevents an edge case bug where a deposit.quoteTime < bridgePool.deployment time.
+// The deposit.quoteTime is used to call bridgePool.liquidityUtilizationCurrent at a specific block height. This call
+// always reverts if the quote time is before the bridge pool's deployment time. This causes the disputer to error out
+// because it cannot validate a relay's realizedLpFeePct properly. We need to therefore know which deposit quote times
+// are off-limits and need to either be ignored or auto-disputed. This is a hack because ideally the bridgePool sets
+// a timestamp on construction. Then we can easily query on-chain whether a deposit.quoteTime is before this timestamp.
+// The alternative to using this hard-coded mapping is to call `web3.eth.getCode(bridgePoolAddress, blockNumber)` but
+// making a web3 call per relay is expensive. Therefore this mapping is also a runtime optimization where we can
+// eliminate web3 calls. This is also why we store block numbers for the deploy timestamp.
+const bridgePoolDeployData = {
+  // Note: keyed by L1 token.
+  // WETH:
+  "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2": {
+    timestamp: 1635962805,
+    blockNumber: 13545377,
+  },
+  // USDC:
+  "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48": {
+    timestamp: 1635964115,
+    blockNumber: 13545487,
+  },
+  // UMA:
+  "0x04Fa0d235C4abf4BcF4787aF4CF447DE572eF828": {
+    timestamp: 1635964053,
+    blockNumber: 13545478,
+  },
+};
 
 export interface ProcessEnv {
   [key: string]: string | undefined;
@@ -38,6 +67,7 @@ export class RelayerConfig {
   readonly activatedChainIds: number[];
   readonly l2BlockLookback: number;
   readonly botModes: BotModes;
+  readonly deployTimestamps: { [key: string]: { timestamp: number; blockNumber: number } };
 
   constructor(env: ProcessEnv) {
     const {
@@ -52,6 +82,7 @@ export class RelayerConfig {
       FINALIZER_ENABLED,
       DISPUTER_ENABLED,
       WHITELISTED_CHAIN_IDS,
+      DEPLOY_TIMESTAMPS,
     } = env;
 
     this.botModes = {
@@ -61,7 +92,7 @@ export class RelayerConfig {
     };
 
     assert(BRIDGE_ADMIN_ADDRESS, "BRIDGE_ADMIN_ADDRESS required");
-    this.bridgeAdmin = Web3.utils.toChecksumAddress(BRIDGE_ADMIN_ADDRESS);
+    this.bridgeAdmin = toChecksumAddress(BRIDGE_ADMIN_ADDRESS);
 
     // L2 start block must be explicitly set unlike L1 due to how L2 nodes work. For best practices, we also should
     // constrain L1 start blocks but this hasn't been an issue empirically. As a data point, Arbitrum Infura has a
@@ -71,6 +102,10 @@ export class RelayerConfig {
     this.pollingDelay = POLLING_DELAY ? Number(POLLING_DELAY) : 60;
     this.errorRetries = ERROR_RETRIES ? Number(ERROR_RETRIES) : 3;
     this.errorRetriesTimeout = ERROR_RETRIES_TIMEOUT ? Number(ERROR_RETRIES_TIMEOUT) : 1;
+
+    this.deployTimestamps = replaceAddressCase(
+      DEPLOY_TIMESTAMPS ? JSON.parse(DEPLOY_TIMESTAMPS) : bridgePoolDeployData
+    );
 
     assert(RATE_MODELS, "RATE_MODELS required");
     const processingRateModels = JSON.parse(RATE_MODELS);

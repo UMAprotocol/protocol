@@ -1,5 +1,6 @@
 import { PublicNetworks as networkUtils } from "./PublicNetworks";
 import Web3 from "web3";
+const { toChecksumAddress, fromWei, toBN } = Web3.utils;
 import type { BN } from "./types";
 
 import BigNumber from "bignumber.js";
@@ -34,7 +35,7 @@ export const formatWei = (num: string | BN): string => {
   // Web3's `fromWei` function doesn't work on BN objects in minified mode (e.g.,
   // `web3.utils.isBN(web3.utils.fromBN("5"))` is false), so we use a workaround where we always pass in strings.
   // See https://github.com/ethereum/web3.js/issues/1777.
-  return Web3.utils.fromWei(num.toString());
+  return fromWei(num.toString());
 };
 
 // Formats the input to round to decimalPlaces number of decimals if the number has a magnitude larger than 1 and fixes
@@ -141,11 +142,18 @@ export const ConvertDecimals = (fromDecimals: number, toDecimals: number): ((amo
   // amount: string, BN, number - integer amount in fromDecimals smallest unit that want to convert toDecimals
   // returns: BN with toDecimals in smallest unit
   return (amountIn: string | number | BN) => {
-    const amount = Web3.utils.toBN(amountIn.toString());
+    const amount = toBN(amountIn.toString());
     if (amount.isZero()) return amount;
     const diff = fromDecimals - toDecimals;
     if (diff == 0) return amount;
-    if (diff > 0) return amount.div(Web3.utils.toBN("10").pow(Web3.utils.toBN(diff.toString())));
-    return amount.mul(Web3.utils.toBN("10").pow(Web3.utils.toBN((-1 * diff).toString())));
+    if (diff > 0) return amount.div(toBN("10").pow(toBN(diff.toString())));
+    return amount.mul(toBN("10").pow(toBN((-1 * diff).toString())));
   };
+};
+
+// Takes in an object of any structure and returns the exact same object with all addresses converted to check sum format.
+export const replaceAddressCase = (object: any) => {
+  const stringifiedObject = JSON.stringify(object);
+  const replacedStringifiedObject = stringifiedObject.replace(/0x[a-fA-F0-9]{40}/g, toChecksumAddress);
+  return JSON.parse(replacedStringifiedObject);
 };

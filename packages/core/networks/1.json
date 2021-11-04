@@ -118,5 +118,13 @@
   {
     "contractName": "SuccessTokenLongShortPairFinancialProductLibrary",
     "address": "0x67DE29D1A34FF2ea2b8C390B326456F4CBBE628F"
+  },
+  {
+    "contractName": "Arbitrum_Messenger",
+    "address": "0x0d8563d3b8b3fec542aae50a530c606dac4d1c4f"
+  },
+  {
+    "contractName": "BridgeAdmin",
+    "address": "0x30B44C676A05F1264d1dE9cC31dB5F2A945186b6"
   }
 ]
