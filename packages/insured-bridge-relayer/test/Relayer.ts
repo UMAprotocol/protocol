@@ -1357,7 +1357,7 @@ describe("Relayer.ts", function () {
       assert.equal(targetLog.length, 1);
     });
   });
-  describe("Mutlicall Batching", function () {
+  describe("Multicall Batching", function () {
     beforeEach(async function () {
       // Add liquidity to the L1 pool to facilitate the relay action.
       await l1Token.methods.mint(l1LiquidityProvider, initialPoolLiquidity).send({ from: l1Owner });
