@@ -980,7 +980,7 @@ export const defaultConfigs: { [name: string]: { type: string; [key: string]: an
     type: "insuredbridge",
     l2BlockLookback: 99000, // Arbitrum only supports lookbacks of 100,000 blocks
     l2NetId: 42161,
-    bridgeAdminAddress: "0xde7130ceaf4345a12a2764f0dc50bc4899d7ec08",
+    bridgeAdminAddress: "0x30B44C676A05F1264d1dE9cC31dB5F2A945186b6",
     rateModels: {
       "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2": {
         UBar: "650000000000000000",

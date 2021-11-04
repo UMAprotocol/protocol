@@ -13,6 +13,7 @@ import "../common/implementation/AncillaryData.sol";
 import "../common/implementation/Testable.sol";
 import "../common/implementation/FixedPoint.sol";
 import "../common/implementation/Lockable.sol";
+import "../common/implementation/MultiCaller.sol";
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -33,15 +34,10 @@ interface WETH9Like {
  * to post collateral by earning a fee per fulfilled deposit order.
  * @dev A "Deposit" is an order to send capital from L2 to L1, and a "Relay" is a fulfillment attempt of that order.
  */
-contract BridgePool is Testable, BridgePoolInterface, ERC20, Lockable {
+contract BridgePool is MultiCaller, Testable, BridgePoolInterface, ERC20, Lockable {
     using SafeERC20 for IERC20;
     using FixedPoint for FixedPoint.Unsigned;
     using Address for address;
-
-    // Useful for clients to know if any quote times are for a time prior to the contract's deployment. These
-    // deposits will be impossible to compute realized LP fee % for since there will be no utilization at that quote
-    // time. Therefore, clients need to deal with this special case.
-    uint32 public deploymentTimestamp;
 
     // Token that this contract receives as LP deposits.
     IERC20 public override l1Token;
@@ -180,7 +176,6 @@ contract BridgePool is Testable, BridgePoolInterface, ERC20, Lockable {
         lastLpFeeUpdate = uint32(getCurrentTime());
         lpFeeRatePerSecond = _lpFeeRatePerSecond;
         isWethPool = _isWethPool;
-        deploymentTimestamp = lastLpFeeUpdate;
 
         syncUmaEcosystemParams(); // Fetch OptimisticOracle and Store addresses and L1Token finalFee.
         syncWithBridgeAdminParams(); // Fetch ProposerBondPct OptimisticOracleLiveness, Identifier from the BridgeAdmin.
@@ -256,10 +251,6 @@ contract BridgePool is Testable, BridgePoolInterface, ERC20, Lockable {
      *      quoteTimestamp. The OO acts to verify the correctness of this realized fee. Cannot exceed 50%.
      */
     function relayAndSpeedUp(DepositData memory depositData, uint64 realizedLpFeePct) public nonReentrant() {
-        // If deposit quote time is before this contract's deployment, then clients will not be able to compute
-        // a realized LP fee %, so we should block such relays.
-        require(depositData.quoteTimestamp >= deploymentTimestamp, "Deposit before deployment");
-
         // If no pending relay for this deposit, then associate the caller's relay attempt with it.
         uint32 priceRequestTime = uint32(getCurrentTime());
 
@@ -385,10 +376,6 @@ contract BridgePool is Testable, BridgePoolInterface, ERC20, Lockable {
      *      quoteTimestamp. The OO acts to verify the correctness of this realized fee. Cannot exceed 50%.
      */
     function relayDeposit(DepositData memory depositData, uint64 realizedLpFeePct) public nonReentrant() {
-        // If deposit quote time is before this contract's deployment, then clients will not be able to compute
-        // a realized LP fee %, so we should block such relays.
-        require(depositData.quoteTimestamp >= deploymentTimestamp, "Deposit before deployment");
-
         // The realizedLPFeePct should never be greater than 0.5e18 and the slow and instant relay fees should never be
         // more than 0.25e18 each. Therefore, the sum of all fee types can never exceed 1e18 (or 100%).
         require(
@@ -825,20 +812,7 @@ contract BridgePool is Testable, BridgePoolInterface, ERC20, Lockable {
     }
 
     function _getDepositHash(DepositData memory depositData) private view returns (bytes32) {
-        return
-            keccak256(
-                abi.encode(
-                    depositData.chainId,
-                    depositData.depositId,
-                    depositData.l1Recipient,
-                    depositData.l2Sender,
-                    address(l1Token),
-                    depositData.amount,
-                    depositData.slowRelayFeePct,
-                    depositData.instantRelayFeePct,
-                    depositData.quoteTimestamp
-                )
-            );
+        return keccak256(abi.encode(depositData, address(l1Token)));
     }
 
     // Proposes new price of True for relay event associated with `customAncillaryData` to optimistic oracle. If anyone

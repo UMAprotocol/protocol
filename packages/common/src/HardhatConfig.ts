@@ -73,6 +73,7 @@ export function getHardhatConfig(
       rinkeby: { chainId: 4, url: getNodeUrl("rinkeby", true), accounts: { mnemonic } },
       goerli: { chainId: 5, url: getNodeUrl("goerli", true), accounts: { mnemonic } },
       kovan: { chainId: 42, url: getNodeUrl("kovan", true), accounts: { mnemonic } },
+      arbitrum: { chainId: 42161, url: getNodeUrl("arbitrum", true), accounts: { mnemonic } },
       "arbitrum-rinkeby": { chainId: 421611, url: getNodeUrl("arbitrum-rinkeby", true), accounts: { mnemonic } },
       optimism: {
         chainId: 10,
@@ -81,7 +82,6 @@ export function getHardhatConfig(
         gasPrice: 15000000,
         compileWhitelist: optimismCompileWhitelist,
       },
-      matic: { chainId: 137, url: getNodeUrl("polygon-matic", true), accounts: { mnemonic } },
       "optimism-kovan": {
         ovm: true,
         chainId: 69,
@@ -90,7 +90,6 @@ export function getHardhatConfig(
         gasPrice: 15000000,
         compileWhitelist: optimismCompileWhitelist,
       },
-      mumbai: { chainId: 80001, url: getNodeUrl("polygon-mumbai", true), accounts: { mnemonic } },
       "optimism-test": {
         ovm: true,
         url: "http://127.0.0.1:8545",
@@ -104,6 +103,8 @@ export function getHardhatConfig(
         testWhitelist: ["oracle/Finder"],
         testBlacklist,
       },
+      matic: { chainId: 137, url: getNodeUrl("polygon-matic", true), accounts: { mnemonic } },
+      mumbai: { chainId: 80001, url: getNodeUrl("polygon-mumbai", true), accounts: { mnemonic } },
     },
     mocha: { timeout: 1800000 },
     etherscan: {

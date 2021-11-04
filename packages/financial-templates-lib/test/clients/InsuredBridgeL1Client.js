@@ -90,17 +90,17 @@ describe("InsuredBridgeL1Client", function () {
   const generateRelayData = async (depositData, relayData, bridgePool, l1TokenAddress = l1Token.options.address) => {
     // Save other reused values.
     depositDataAbiEncoded = web3.eth.abi.encodeParameters(
-      ["uint256", "uint64", "address", "address", "address", "uint256", "uint64", "uint64", "uint32"],
+      ["uint256", "uint64", "address", "address", "uint256", "uint64", "uint64", "uint32", "address"],
       [
         depositData.chainId,
         depositData.depositId,
         depositData.l1Recipient,
         depositData.l2Sender,
-        l1TokenAddress,
         depositData.amount,
         depositData.slowRelayFeePct,
         depositData.instantRelayFeePct,
         depositData.quoteTimestamp,
+        l1TokenAddress,
       ]
     );
     depositHash = soliditySha3(depositDataAbiEncoded);
@@ -277,8 +277,7 @@ describe("InsuredBridgeL1Client", function () {
       amount: relayAmount,
       slowRelayFeePct: defaultSlowRelayFeePct,
       instantRelayFeePct: defaultInstantRelayFeePct,
-      // quote time must be <= deployment time of BridgePool for relayDeposit to succeed
-      quoteTimestamp: Number((await bridgePool.methods.deploymentTimestamp().call()).toString()),
+      quoteTimestamp: (await web3.eth.getBlock("latest")).timestamp, // set this to the current block timestamp.
     };
     relayData = {
       relayId: 0,
@@ -806,15 +805,9 @@ describe("InsuredBridgeL1Client", function () {
       // at the top, is for a relay of 10 units. This should increment the pool utilization from 0% to 10%. From the
       // jupiter notebook, this should be a rate of 0.000117987509354032.
 
-      // Save quote time that we'll look up realized LP fee % for. We don't want to use the default
-      // depositData.quoteTimestamp because we want to simulate production and look up blocks by block time instead
-      // of contract time, as set by a Timer that might not exist on the tested network.
-      const _quoteTimestamp = (await web3.eth.getBlock("latest")).timestamp;
       await client.update();
       assert.equal(
-        (
-          await client.calculateRealizedLpFeePctForDeposit({ ...depositData, quoteTimestamp: _quoteTimestamp })
-        ).toString(),
+        (await client.calculateRealizedLpFeePctForDeposit(depositData)).toString(),
         toWei("0.000117987509354032")
       );
 
@@ -830,13 +823,12 @@ describe("InsuredBridgeL1Client", function () {
       // timestamp. Check that this has not moved.
       await client.update();
       assert.equal(
-        (
-          await client.calculateRealizedLpFeePctForDeposit({ ...depositData, quoteTimestamp: _quoteTimestamp })
-        ).toString(),
+        (await client.calculateRealizedLpFeePctForDeposit(depositData)).toString(),
         toWei("0.000117987509354032")
       );
 
       // If we set the quoteTimestamp to the current block time then the realizedLPFee should increase.
+
       assert.equal(
         (
           await client.calculateRealizedLpFeePctForDeposit({

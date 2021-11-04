@@ -1,10 +1,7 @@
 // Config builder that constructs whitelists and bot configs. Used to parameterize the strategy runner.
 import lodash from "lodash";
 
-import Web3 from "web3";
-const { toChecksumAddress } = Web3.utils;
-
-import { getWeb3 } from "@uma/common";
+import { getWeb3, replaceAddressCase } from "@uma/common";
 import { getAbi } from "@uma/contracts-node";
 
 import nodeFetch from "node-fetch";
@@ -144,11 +141,4 @@ function buildConfigForBotType(
     botConfigs.push(lodash.merge({}, commonConfig, addressConfig));
   });
   return botConfigs;
-}
-
-// Takes in an object of any structure and returns the exact same object with all strings converted to check sum format.
-function replaceAddressCase(object: any) {
-  const stringifiedObject = JSON.stringify(object);
-  const replacedStringifiedObject = stringifiedObject.replace(/0x[a-fA-F0-9]{40}/g, toChecksumAddress);
-  return JSON.parse(replacedStringifiedObject);
 }
