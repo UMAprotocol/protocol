@@ -58,7 +58,7 @@ async function run({
       errorRetriesTimeout,
       commonPriceFeedConfig,
       optimisticOracleProposerConfig,
-      oracleType: OracleType[oracleType],
+      oracleType,
     });
 
     // Create the OptimisticOracleClient to query on-chain information, GasEstimator to get latest gas prices and an
@@ -66,10 +66,10 @@ async function run({
     const optimisticOracleClient = new OptimisticOracleClient(
       logger,
       getAbi("OptimisticOracle"),
-      getAbi(OracleType[oracleType]),
+      getAbi(oracleType),
       web3,
       optimisticOracleAddress,
-      await getAddress(OracleType[oracleType], networkId)
+      await getAddress(oracleType, networkId)
     );
     const gasEstimator = new GasEstimator(logger, 60, networkId);
 
