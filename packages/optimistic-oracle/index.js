@@ -44,7 +44,7 @@ async function run({
 }) {
   try {
     const [accounts, networkId] = await Promise.all([web3.eth.getAccounts(), web3.eth.net.getId()]);
-    const optimisticOracleAddress = await getAddress(OptimisticOracleType[optimisticOracleType], networkId);
+    const optimisticOracleAddress = await getAddress(optimisticOracleType, networkId);
     // If pollingDelay === 0 then the bot is running in serverless mode and should send a `debug` level log.
     // Else, if running in loop mode (pollingDelay != 0), then it should send a `info` level log.
     logger[pollingDelay === 0 ? "debug" : "info"]({
@@ -57,14 +57,14 @@ async function run({
       commonPriceFeedConfig,
       optimisticOracleProposerConfig,
       oracleType,
-      optimisticOracleType: OptimisticOracleType[optimisticOracleType],
+      optimisticOracleType,
     });
 
     // Create the OptimisticOracleClient to query on-chain information, GasEstimator to get latest gas prices and an
     // instance of the OO Proposer to respond to price requests and proposals.
     const optimisticOracleClient = new OptimisticOracleClient(
       logger,
-      getAbi(OptimisticOracleType[optimisticOracleType]),
+      getAbi(optimisticOracleType),
       getAbi(oracleType),
       web3,
       optimisticOracleAddress,

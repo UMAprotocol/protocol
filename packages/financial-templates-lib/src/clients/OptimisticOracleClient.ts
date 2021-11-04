@@ -51,8 +51,8 @@ interface SkinnyRequest {
 type OptimisticOracleContract = SkinnyOptimisticOracleWeb3 | OptimisticOracleWeb3;
 
 export enum OptimisticOracleType {
-  OptimisticOracle,
-  SkinnyOptimisticOracle,
+  OptimisticOracle = "OptimisticOracle",
+  SkinnyOptimisticOracle = "SkinnyOptimisticOracle",
 }
 export class OptimisticOracleClient {
   public readonly oracle: OptimisticOracleContract;
@@ -295,7 +295,7 @@ export class OptimisticOracleClient {
     this.logger.debug({
       at: "OptimisticOracleClient",
       message: "Optimistic Oracle state updated",
-      oracleType: OptimisticOracleType[this.oracleType],
+      oracleType: this.oracleType,
       oracleAddress: this.oracle.options.address,
       lastUpdateTimestamp: this.lastUpdateTimestamp,
     });
