@@ -143,16 +143,20 @@ export const EmpState = (config: Config, dependencies: Dependencies) => {
   }
 
   async function updateAll(addresses: string[], startBlock?: number, endBlock?: number) {
-    await Promise.mapSeries(addresses, async (address: string) => {
-      const end = profile(`Update Emp state for ${address}`);
-      try {
-        return await updateOne(address, startBlock, endBlock);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        end();
-      }
-    });
+    await Promise.map(
+      addresses,
+      async (address: string) => {
+        const end = profile(`Update Emp state for ${address}`);
+        try {
+          return await updateOne(address, startBlock, endBlock);
+        } catch (err) {
+          console.error(err);
+        } finally {
+          end();
+        }
+      },
+      { concurrency: 10 }
+    );
   }
 
   async function update(startBlock?: number, endBlock?: number) {
