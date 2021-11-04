@@ -91,7 +91,7 @@ class OptimisticOracleProposer {
   async sendProposals() {
     this.logger.debug({
       at: "OptimisticOracleProposer#sendProposals",
-      oracleType: OptimisticOracleType[this.optimisticOracleClient.oracleType],
+      oracleType: this.optimisticOracleClient.oracleType,
       message: "Checking for unproposed price requests to send proposals for",
     });
 
@@ -107,7 +107,7 @@ class OptimisticOracleProposer {
   async sendDisputes() {
     this.logger.debug({
       at: "OptimisticOracleProposer#sendDisputes",
-      oracleType: OptimisticOracleType[this.optimisticOracleClient.oracleType],
+      oracleType: this.optimisticOracleClient.oracleType,
       message: "Checking for undisputed price requests to dispute",
     });
 
@@ -121,7 +121,7 @@ class OptimisticOracleProposer {
   async settleRequests() {
     this.logger.debug({
       at: "OptimisticOracleProposer#settleRequests",
-      oracleType: OptimisticOracleType[this.optimisticOracleClient.oracleType],
+      oracleType: this.optimisticOracleClient.oracleType,
       message: "Checking for proposals and disputes to settle",
     });
 
@@ -225,7 +225,7 @@ class OptimisticOracleProposer {
     this.logger.debug({
       at: "OptimisticOracleProposer#sendProposals",
       message: "Detected price request, and proposing new price",
-      oracleType: OptimisticOracleType[this.optimisticOracleClient.oracleType],
+      oracleType: this.optimisticOracleClient.oracleType,
       priceRequest,
       potentialProposalPrice: proposalPrice,
       proposer: this.account,
@@ -248,7 +248,7 @@ class OptimisticOracleProposer {
       this.logger.info({
         at: "OptimisticOracleProposer#sendProposals",
         message: "Proposed price!💍",
-        oracleType: OptimisticOracleType[this.optimisticOracleClient.oracleType],
+        oracleType: this.optimisticOracleClient.oracleType,
         priceRequest,
         proposalBond: returnValue.toString(),
         proposalResult: logResult,
@@ -261,7 +261,7 @@ class OptimisticOracleProposer {
           : "Failed to propose price🚨";
       this.logger.error({
         at: "OptimisticOracleProposer#sendProposals",
-        oracleType: OptimisticOracleType[this.optimisticOracleClient.oracleType],
+        oracleType: this.optimisticOracleClient.oracleType,
         message,
         priceRequest,
         error,
@@ -336,7 +336,7 @@ class OptimisticOracleProposer {
       this.logger.debug({
         at: "OptimisticOracleProposer#sendDisputes",
         message: "Disputing proposal",
-        oracleType: OptimisticOracleType[this.optimisticOracleClient.oracleType],
+        oracleType: this.optimisticOracleClient.oracleType,
         priceRequest,
         proposalPrice,
         disputePrice,
@@ -361,7 +361,7 @@ class OptimisticOracleProposer {
         this.logger.info({
           at: "OptimisticOracleProposer#sendDisputes",
           message: "Disputed proposal!⛑",
-          oracleType: OptimisticOracleType[this.optimisticOracleClient.oracleType],
+          oracleType: this.optimisticOracleClient.oracleType,
           priceRequest,
           disputeBond: returnValue.toString(),
           allowedError: this.disputePriceErrorPercent,
@@ -376,7 +376,7 @@ class OptimisticOracleProposer {
         this.logger.error({
           at: "OptimisticOracleProposer#sendDisputes",
           message,
-          oracleType: OptimisticOracleType[this.optimisticOracleClient.oracleType],
+          oracleType: this.optimisticOracleClient.oracleType,
           priceRequest,
           error,
         });
