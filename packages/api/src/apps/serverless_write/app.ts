@@ -36,6 +36,7 @@ export default async (env: ProcessEnv) => {
   const web3 = getWeb3(env.CUSTOM_NODE_URL);
   const datastoreClient = new Datastore();
   const datastores = StoresFactory(datastoreClient);
+  const networkChainId = env.NETWORK_CHAIN_ID ? parseInt(env.NETWORK_CHAIN_ID) : undefined;
   // state shared between services
   const appState: AppState = {
     emps: {
@@ -120,7 +121,7 @@ export default async (env: ProcessEnv) => {
     // these services can optionally be configured with a config object, but currently they are undefined or have defaults
     emps: Services.EmpState({ debug }, { tables: appState, appClients }),
     registry: await Services.Registry(
-      { debug, registryAddress: env.EMP_REGISTRY_ADDRESS },
+      { debug, registryAddress: env.EMP_REGISTRY_ADDRESS, network: networkChainId },
       { tables: appState, appClients }
     ),
     collateralPrices: Services.CollateralPrices({ debug }, { tables: appState, appClients }),
@@ -139,7 +140,7 @@ export default async (env: ProcessEnv) => {
     empStats: Services.stats.Emp({ debug }, appState),
     marketPrices: Services.MarketPrices({ debug }, { tables: appState, appClients }),
     lspCreator: await Services.MultiLspCreator(
-      { debug, addresses: lspCreatorAddresses },
+      { debug, addresses: lspCreatorAddresses, network: networkChainId },
       { tables: appState, appClients }
     ),
     lsps: Services.LspState({ debug }, { tables: appState, appClients }),
