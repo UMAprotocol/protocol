@@ -90,6 +90,8 @@ describe("Relayer.ts", function () {
   let l2Client: any;
   let gasEstimator: any;
 
+  let deployTimestamps: any;
+
   before(async function () {
     l1Accounts = await web3.eth.getAccounts();
     [l1Owner, l1Relayer, l1LiquidityProvider, l2Owner, l2Depositor, l2BridgeAdminImpersonator] = l1Accounts;
@@ -221,6 +223,7 @@ describe("Relayer.ts", function () {
       [l1Token.options.address],
       l1Relayer,
       whitelistedChainIds,
+      deployTimestamps,
       defaultLookbackWindow
     );
   });
@@ -1057,6 +1060,7 @@ describe("Relayer.ts", function () {
         [l1Token.options.address],
         l1Relayer,
         whitelistedChainIds,
+        deployTimestamps,
         1 // Use small lookback window to test that the back up block search loop runs at least a few times before
         // finding the deposit.
       );
@@ -1228,6 +1232,7 @@ describe("Relayer.ts", function () {
         [l1Token.options.address],
         l1Relayer,
         [],
+        deployTimestamps,
         defaultLookbackWindow
       );
 

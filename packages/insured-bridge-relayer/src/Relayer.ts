@@ -86,8 +86,8 @@ export class Relayer {
           relayableDeposit.deposit.quoteTimestamp < this.deployTimestamps[relayableDeposit.deposit.l1Token].timestamp
         ) {
           this.logger.debug({
-            at: "AcrossRelayer#Relayer",
-            message: "Deposit quote time before bridge pool deployment for L1 token, skipping",
+            at: "InsuredBridgeRelayer#Relayer",
+            message: "Deposit quote time < bridge pool deployment for L1 token, skipping",
             deposit: relayableDeposit.deposit,
             deploymentTime: this.deployTimestamps[relayableDeposit.deposit.l1Token].timestamp,
           });
@@ -246,7 +246,7 @@ export class Relayer {
       if (deposit.quoteTimestamp < this.deployTimestamps[deposit.l1Token].timestamp) {
         this.logger.debug({
           at: "Disputer",
-          message: "Deposit quote time before bridge pool deployment for L1 token, disputing",
+          message: "Deposit quote time < bridge pool deployment for L1 token, disputing",
           deposit,
           deploymentTime: this.deployTimestamps[deposit.l1Token].timestamp,
         });
@@ -554,7 +554,6 @@ export class Relayer {
       // In the event the batch transaction was unsuccessful, iterate over all transactions and send them individually.
       if (!batchTxSuccess) {
         for (const transaction of transactions) {
-          console.log("INSIDE");
           this.logger.info({ at: "AcrossRelayerTxProcessor", message: "Sending batched transactions individually😷" });
           await this._sendTransaction(transaction.transaction, transaction.message, transaction.mrkdwn);
         }
@@ -652,11 +651,6 @@ export class Relayer {
         )
         .div(fixedPointAdjustment),
     };
-  }
-
-  private async _getCodeDeployedAtTimestamp(address: string, timestamp: number): Promise<string> {
-    const blockNumberForTimestamp = (await this.l2BlockFinder.getBlockForTimestamp(timestamp)).number;
-    return await this.l1Client.l1Web3.eth.getCode(address, blockNumberForTimestamp);
   }
 
   // Return fresh dictionary of relayable deposits keyed by the L1 token to be sent to recipient.
