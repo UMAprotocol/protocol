@@ -81,14 +81,17 @@ export class Relayer {
       for (const relayableDeposit of relayableDeposits[l1Token]) {
         // If deposit quote time is before the bridgepool's deployment time, then skip it before attempting to calculate
         // the realized LP fee % as this will be impossible to query a contract for a timestamp before its deployment.
+        const latestBlockTime = Number((await this.l1Client.l1Web3.eth.getBlock("latest")).timestamp);
         if (
-          relayableDeposit.deposit.quoteTimestamp < this.deployTimestamps[relayableDeposit.deposit.l1Token].timestamp
+          relayableDeposit.deposit.quoteTimestamp < this.deployTimestamps[relayableDeposit.deposit.l1Token].timestamp ||
+          relayableDeposit.deposit.quoteTimestamp > latestBlockTime
         ) {
           this.logger.debug({
             at: "InsuredBridgeRelayer#Relayer",
-            message: "Deposit quote time < bridge pool deployment for L1 token, skipping",
+            message: "Deposit quote time < bridge pool deployment for L1 token or > latest block time, skipping",
             deposit: relayableDeposit.deposit,
             deploymentTime: this.deployTimestamps[relayableDeposit.deposit.l1Token].timestamp,
+            latestBlockTime,
           });
           continue;
         }
@@ -249,12 +252,17 @@ export class Relayer {
 
       // If deposit quote time is before the bridgepool's deployment time, then dispute it by default because
       // we won't be able to determine otherwise if the realized LP fee % is valid.
-      if (deposit.quoteTimestamp < this.deployTimestamps[deposit.l1Token].timestamp) {
+      const latestBlockTime = Number((await this.l1Client.l1Web3.eth.getBlock("latest")).timestamp);
+      if (
+        deposit.quoteTimestamp < this.deployTimestamps[deposit.l1Token].timestamp ||
+        deposit.quoteTimestamp > latestBlockTime
+      ) {
         this.logger.debug({
           at: "Disputer",
-          message: "Deposit quote time < bridge pool deployment for L1 token, disputing",
+          message: "Deposit quote time < bridge pool deployment for L1 token or > latest block time, disputing",
           deposit,
           deploymentTime: this.deployTimestamps[deposit.l1Token].timestamp,
+          latestBlockTime,
         });
         await this.disputeRelay(deposit, relay);
         return;
