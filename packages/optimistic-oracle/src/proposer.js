@@ -352,6 +352,7 @@ class OptimisticOracleProposer {
 
         const logResult = {
           tx: receipt.transactionHash,
+          // This is undefined unless the oracle type is SkinnyOptimisticOracle.
           ...receipt.events.DisputePrice.returnValues.request,
           ...receipt.events.DisputePrice.returnValues,
           identifier: this.hexToUtf8(receipt.events.DisputePrice.returnValues.identifier),
@@ -427,6 +428,7 @@ class OptimisticOracleProposer {
 
       const logResult = {
         tx: receipt.transactionHash,
+        // This is undefined unless the oracle type is SkinnyOptimisticOracle.
         ...receipt.events.Settle.returnValues.request,
         ...receipt.events.Settle.returnValues,
         identifier: this.hexToUtf8(receipt.events.Settle.returnValues.identifier),
