@@ -118,5 +118,9 @@
   {
     "contractName": "SuccessTokenLongShortPairFinancialProductLibrary",
     "address": "0x67DE29D1A34FF2ea2b8C390B326456F4CBBE628F"
+  },
+  {
+    "contractName": "SkinnyOptimisticOracle",
+    "address": "0xeE3Afe347D5C74317041E2618C49534dAf887c24"
   }
 ]
