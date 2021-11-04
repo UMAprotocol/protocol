@@ -26,13 +26,13 @@ task("deploy-across-pool", "Deploys an L1 across pool and whitelists it within t
       bridgeAdmin.options.address, // _bridgeAdmin
       l1tokenaddress, // _l1Token
       lpfeeratepersecond, // _lpFeeRatePerSecond
-      Boolean(iswethpool), // _isWethPool
+      Boolean(JSON.parse(iswethpool)), // _isWethPool
       ZERO_ADDRESS, // _timer
     ];
 
     console.log(`Deploying bridgePool from ${deployer}`, args);
 
-    const bridgePool = await deploy("BridgePool", { from: deployer, args, log: true });
+    const bridgePool = await deploy("BridgePoolProd", { from: deployer, args, log: true });
 
     console.log("Bridge pool deployed @ ", bridgePool.address);
   });
