@@ -241,10 +241,13 @@ class OptimisticOracleProposer {
         logResult = {
           tx: receipt.transactionHash,
           requester: receipt.events.ProposePrice.returnValues.requester,
+          proposer: receipt.events.ProposePrice.returnValues.request.proposer,
           identifier: this.hexToUtf8(receipt.events.ProposePrice.returnValues.identifier),
           ancillaryData: receipt.events.ProposePrice.returnValues.ancillaryData || "0x",
           timestamp: receipt.events.ProposePrice.returnValues.timestamp,
           request: receipt.events.ProposePrice.returnValues.request,
+          proposedPrice: receipt.events.ProposePrice.returnValues.request.proposedPrice,
+          expirationTimestamp: receipt.events.ProposePrice.returnValues.request.expirationTimestamp,
         };
       } else {
         logResult = {
@@ -286,7 +289,10 @@ class OptimisticOracleProposer {
   // Construct dispute transaction and send or return early if an error is encountered.
   async _sendDispute(priceRequest) {
     // Get proposal price
-    let proposalPrice = priceRequest.proposedPrice;
+    let proposalPrice;
+    if (this.optimisticOracleClient.oracleType === "SkinnyOptimisticOracle")
+      proposalPrice = priceRequest.request.proposedPrice;
+    else proposalPrice = priceRequest.proposedPrice;
 
     // Create pricefeed for identifier
     const priceFeed = await this._createOrGetCachedPriceFeed(priceRequest.identifier);
@@ -366,10 +372,12 @@ class OptimisticOracleProposer {
           logResult = {
             tx: receipt.transactionHash,
             requester: receipt.events.DisputePrice.returnValues.requester,
+            proposer: receipt.events.DisputePrice.returnValues.request.proposer,
+            disputer: receipt.events.DisputePrice.returnValues.request.disputer,
             identifier: this.hexToUtf8(receipt.events.DisputePrice.returnValues.identifier),
             ancillaryData: receipt.events.DisputePrice.returnValues.ancillaryData || "0x",
             timestamp: receipt.events.DisputePrice.returnValues.timestamp,
-            request: receipt.events.DisputePrice.returnValues.request,
+            proposedPrice: receipt.events.DisputePrice.returnValues.request.proposedPrice,
           };
         } else {
           logResult = {
@@ -457,10 +465,12 @@ class OptimisticOracleProposer {
         logResult = {
           tx: receipt.transactionHash,
           requester: receipt.events.Settle.returnValues.requester,
+          proposer: receipt.events.Settle.returnValues.request.proposer,
+          disputer: receipt.events.Settle.returnValues.request.disputer,
           identifier: this.hexToUtf8(receipt.events.Settle.returnValues.identifier),
           ancillaryData: receipt.events.Settle.returnValues.ancillaryData || "0x",
           timestamp: receipt.events.Settle.returnValues.timestamp,
-          request: receipt.events.Settle.returnValues.request,
+          price: receipt.events.Settle.returnValues.request.resolvedPrice,
         };
       } else {
         logResult = {
@@ -472,14 +482,16 @@ class OptimisticOracleProposer {
           ancillaryData: receipt.events.Settle.returnValues.ancillaryData || "0x",
           timestamp: receipt.events.Settle.returnValues.timestamp,
           price: receipt.events.Settle.returnValues.price,
-          payout: receipt.events.Settle.returnValues.payout,
         };
       }
       this.logger.info({
         at: "OptimisticOracleProposer#settleRequests",
         message: "Settled proposal or dispute!⛑",
         priceRequest,
-        payout: returnValue.toString(),
+        payout:
+          this.optimisticOracleClient.oracleType === "SkinnyOptimisticOracle"
+            ? returnValue.payout.toString()
+            : returnValue.toString(),
         settleResult: logResult,
         transactionConfig,
       });
@@ -505,12 +517,16 @@ class OptimisticOracleProposer {
       .concat(this.optimisticOracleClient.getUndisputedProposals());
     for (let priceRequest of allPriceRequests) {
       if (await this._shouldIgnorePriceRequest(priceRequest)) continue;
+      const collateralCurrencyAddress =
+        this.optimisticOracleClient.oracleType === "SkinnyOptimisticOracle"
+          ? priceRequest.request.currency
+          : priceRequest.currency;
       const receipt = await setAllowance(
         this.web3,
         this.gasEstimator,
         this.account,
         this.optimisticOracleContract.options.address,
-        priceRequest.currency
+        collateralCurrencyAddress
       );
       if (receipt) {
         this.logger.info({
