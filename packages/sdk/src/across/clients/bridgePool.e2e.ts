@@ -1,5 +1,6 @@
 import dotenv from "dotenv";
-import { Client, Provider } from "./bridgePool";
+import { Client, Provider, PoolEventState } from "./bridgePool";
+import { bridgePool } from "../../clients";
 import { ethers } from "ethers";
 import assert from "assert";
 import set from "lodash/set";
@@ -14,6 +15,20 @@ const users = [
   "0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D",
   "0x718648C8c531F91b528A7757dD2bE813c3940608",
 ];
+describe("PoolEventState", function () {
+  let provider: Provider;
+  let client: PoolEventState;
+  beforeAll(async () => {
+    provider = ethers.getDefaultProvider(process.env.CUSTOM_NODE_URL);
+    const instance = bridgePool.connect(wethAddress, provider);
+    client = new PoolEventState(instance, 13496023);
+  });
+  test("read events", async function () {
+    let result = await client.read(13496024);
+    result = await client.read(13496025);
+    assert.ok(result);
+  });
+});
 describe("Client", function () {
   const state = {};
   let provider: Provider;
