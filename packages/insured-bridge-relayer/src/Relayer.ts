@@ -84,7 +84,7 @@ export class Relayer {
         const latestBlockTime = Number((await this.l1Client.l1Web3.eth.getBlock("latest")).timestamp);
         if (
           relayableDeposit.deposit.quoteTimestamp < this.deployTimestamps[relayableDeposit.deposit.l1Token].timestamp ||
-          relayableDeposit.deposit.quoteTimestamp > latestBlockTime
+          relayableDeposit.deposit.quoteTimestamp > latestBlockTime // + buffer?
         ) {
           this.logger.debug({
             at: "InsuredBridgeRelayer#Relayer",
@@ -95,6 +95,11 @@ export class Relayer {
           });
           continue;
         }
+        // Now, check if deposit.quoteTimestamp > latestBlockTime
+        // and skip those deposits until the deposit.quoteTime is "in the future".
+        // This is a special case because we cannot compute the realized LP fee % reliably for a timestamp in the future.
+        // Eventually, the deposit.quoteTime will be "in the past" and we'll be able to compute a realized LP fee % for
+        // it.
         try {
           await this._relayPendingDeposit(l1Token, relayableDeposit);
         } catch (error) {
@@ -255,7 +260,9 @@ export class Relayer {
       const latestBlockTime = Number((await this.l1Client.l1Web3.eth.getBlock("latest")).timestamp);
       if (
         deposit.quoteTimestamp < this.deployTimestamps[deposit.l1Token].timestamp ||
-        deposit.quoteTimestamp > latestBlockTime
+        deposit.quoteTimestamp > latestBlockTime // + buffer. This buffer is important to give us confidence
+        // that if we dispute this relay, the relay's quote time will be < dispute.requestTime even after waiting for
+        // it to be mined.
       ) {
         this.logger.debug({
           at: "Disputer",
@@ -267,6 +274,13 @@ export class Relayer {
         await this.disputeRelay(deposit, relay);
         return;
       }
+      // Now, check if deposit.quoteTimestamp > latestBlockTime
+      // and skip those relays until the deposit.quoteTime is "in the past"
+      // This is a special case because we cannot compute the realized LP fee % reliably for a timestamp in the future,
+      // BUT we also cannot risk disputing it because by the time it gets mined the deposit.quoteTime might be <=
+      // dispute.priceRequest time. This isn't a problem as long as the dispute liveness is sufficiently long.
+      // A long enough liveness period (i.e. longer than the average time between blocks) will give this bot the chance
+      // to eventually dispute the relay since it will eventually be able to compute the realized LP fee %.
 
       // Compute expected realized LP fee % and if the pending relay has a different fee then dispute it.
       const realizedLpFeePct = (await this.l1Client.calculateRealizedLpFeePctForDeposit(deposit)).toString();
