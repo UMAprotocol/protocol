@@ -132,10 +132,11 @@ export class PoolEventState {
     )
       .filter(this.filterSeen)
       .sort((a, b) => {
-        if (a.blockNumber < b.blockNumber) return -1;
-        if (a.transactionIndex < b.transactionIndex) return -1;
-        if (a.logIndex < b.logIndex) return -1;
-        return 1;
+        if (a.blockNumber !== b.blockNumber) return a.blockNumber - b.blockNumber;
+        if (a.transactionIndex !== b.transactionIndex) return a.transactionIndex - b.transactionIndex;
+        if (a.logIndex !== b.logIndex) a.logIndex - b.logIndex;
+        // if everything is the same, return a, ie maintain order of array
+        return -1;
       });
     // ethers queries are inclusive [start,end] unless start === end, then exclusive (start,end). we increment to make sure we dont see same event twice
     this.startBlock = endBlock + 1;
