@@ -81,7 +81,8 @@ export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
       accounts[0],
       config.whitelistedChainIds,
       config.deployTimestamps,
-      config.l2BlockLookback
+      config.l2BlockLookback,
+      config.quoteTimeInFutureBuffer
     );
 
     for (;;) {

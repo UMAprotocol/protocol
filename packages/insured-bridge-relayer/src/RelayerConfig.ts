@@ -66,6 +66,7 @@ export class RelayerConfig {
   readonly rateModels: { [key: string]: RateModel } = {};
   readonly activatedChainIds: number[];
   readonly l2BlockLookback: number;
+  readonly quoteTimeInFutureBuffer: number;
   readonly botModes: BotModes;
   readonly deployTimestamps: { [key: string]: { timestamp: number; blockNumber: number } };
 
@@ -83,6 +84,7 @@ export class RelayerConfig {
       DISPUTER_ENABLED,
       WHITELISTED_CHAIN_IDS,
       DEPLOY_TIMESTAMPS,
+      QUOTE_TIME_FUTURE_BUFFER,
     } = env;
 
     this.botModes = {
@@ -106,6 +108,20 @@ export class RelayerConfig {
     this.deployTimestamps = replaceAddressCase(
       DEPLOY_TIMESTAMPS ? JSON.parse(DEPLOY_TIMESTAMPS) : bridgePoolDeployData
     );
+
+    // If a deposit's quote timestamp is greater than the latest block time, then we won't be able to compute a
+    // realized LP fee for it until the time becomes "in the past". Relayers should skip this deposit until they
+    // can compute a realized LP fee for it. Disputers should dispute any pending relays with a quote time in the
+    // future, unless the quote time is NO MORE than `quoteTimeInFutureBuffer` seconds into the future. This buffer
+    // defends against the rare edge case where a malicious relayer sets a deposit.quoteTime slightly in the future,
+    // such that their relay would be disputable (i.e. because a realized LP fee cannot be computed for it), but by
+    // the time the relay is mined, the deposit.quoteTime becomes "in the past". This would make the dispute invalid
+    // because voters would see that the deposit.quoteTime < dispute.priceRequestTime and a realizedLPFee could
+    // be computed for the deposit.quoteTime. Therefore, disputers should only dispute relays where the quote time
+    // is "significantly" in the future (i.e. greater than the latest block time + buffer) such that when the
+    // dispute is probabilistically mined, the deposit.quoteTime is > dispute.priceRequestTime. Specifically, we set
+    // the default buffer to 5 minutes into the future, which should give the dispute plenty of time to mine.
+    this.quoteTimeInFutureBuffer = QUOTE_TIME_FUTURE_BUFFER ? Number(QUOTE_TIME_FUTURE_BUFFER) : 18000;
 
     assert(RATE_MODELS, "RATE_MODELS required");
     const processingRateModels = JSON.parse(RATE_MODELS);

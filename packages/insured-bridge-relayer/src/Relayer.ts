@@ -43,6 +43,8 @@ export class Relayer {
    * runtime speed by eliminating getBlockForTime calls, and to detect deposits with invalid quote times.
    * @param {number} l2LookbackWindow Used for last-resort block search for a missing deposit event. Should be same
    * period used by default in L2 client to find deposits.
+   * @param {number} quoteTimeInFutureBuffer Dispute relays where quote time is more than this # of seconds in the
+   * future.
    */
   constructor(
     readonly logger: winston.Logger,
@@ -53,7 +55,8 @@ export class Relayer {
     readonly account: string,
     readonly whitelistedChainIds: number[],
     readonly deployTimestamps: { [key: string]: { timestamp: number; blockNumber: number } },
-    readonly l2LookbackWindow: number
+    readonly l2LookbackWindow: number,
+    readonly quoteTimeInFutureBuffer: number
   ) {}
 
   async checkForPendingDepositsAndRelay(): Promise<void> {
@@ -81,10 +84,11 @@ export class Relayer {
       for (const relayableDeposit of relayableDeposits[l1Token]) {
         // If deposit quote time is before the bridgepool's deployment time, then skip it before attempting to calculate
         // the realized LP fee % as this will be impossible to query a contract for a timestamp before its deployment.
+        // Similarly, we cannot compute realized LP fee % for quote times in the future.
         const latestBlockTime = Number((await this.l1Client.l1Web3.eth.getBlock("latest")).timestamp);
         if (
           relayableDeposit.deposit.quoteTimestamp < this.deployTimestamps[relayableDeposit.deposit.l1Token].timestamp ||
-          relayableDeposit.deposit.quoteTimestamp > latestBlockTime // + buffer?
+          relayableDeposit.deposit.quoteTimestamp > latestBlockTime
         ) {
           this.logger.debug({
             at: "InsuredBridgeRelayer#Relayer",
@@ -95,11 +99,6 @@ export class Relayer {
           });
           continue;
         }
-        // Now, check if deposit.quoteTimestamp > latestBlockTime
-        // and skip those deposits until the deposit.quoteTime is "in the future".
-        // This is a special case because we cannot compute the realized LP fee % reliably for a timestamp in the future.
-        // Eventually, the deposit.quoteTime will be "in the past" and we'll be able to compute a realized LP fee % for
-        // it.
         try {
           await this._relayPendingDeposit(l1Token, relayableDeposit);
         } catch (error) {
@@ -230,7 +229,7 @@ export class Relayer {
     if (relay.chainId !== this.l2Client.chainId) {
       this.logger.debug({
         at: "InsuredBridgeRelayer#Disputer",
-        message: "Relay chain ID is whitelisted but does not match L2 client chain ID",
+        message: "Relay chain ID is whitelisted but does not match L2 client chain ID, ignoring",
         l2ClientChainId: this.l2Client.chainId,
         relay,
       });
@@ -260,9 +259,9 @@ export class Relayer {
       const latestBlockTime = Number((await this.l1Client.l1Web3.eth.getBlock("latest")).timestamp);
       if (
         deposit.quoteTimestamp < this.deployTimestamps[deposit.l1Token].timestamp ||
-        deposit.quoteTimestamp > latestBlockTime // + buffer. This buffer is important to give us confidence
-        // that if we dispute this relay, the relay's quote time will be < dispute.requestTime even after waiting for
-        // it to be mined.
+        deposit.quoteTimestamp > latestBlockTime + this.quoteTimeInFutureBuffer
+        // This buffer is important to give us confidence that if we dispute this relay, the relay's quote time will
+        // be < dispute.requestTime after the dispute transaction is mined.
       ) {
         this.logger.debug({
           at: "Disputer",
@@ -270,17 +269,27 @@ export class Relayer {
           deposit,
           deploymentTime: this.deployTimestamps[deposit.l1Token].timestamp,
           latestBlockTime,
+          quoteTimeInFutureBuffer: this.quoteTimeInFutureBuffer,
         });
         await this.disputeRelay(deposit, relay);
         return;
+      } else if (
+        deposit.quoteTimestamp > latestBlockTime &&
+        deposit.quoteTimestamp <= latestBlockTime + this.quoteTimeInFutureBuffer
+      ) {
+        // If deposit quote time is in the future, such that we cannot compute a realized LP fee % for it, but within
+        // the buffer, then we won't dispute it because there is chance that the dispute transaction takes long enough
+        // to mine and the mined block's timestamp is greater than the deposit.quoteTime. This would render the dispute
+        // invalid. Therefore we'll skip these relays until they become "in the past" and evaluate them then.
+        this.logger.debug({
+          at: "Disputer",
+          message: "Deposit quote time in future but within buffer, ignoring",
+          deposit,
+          latestBlockTime,
+          quoteTimeInFutureBuffer: this.quoteTimeInFutureBuffer,
+        });
+        return;
       }
-      // Now, check if deposit.quoteTimestamp > latestBlockTime
-      // and skip those relays until the deposit.quoteTime is "in the past"
-      // This is a special case because we cannot compute the realized LP fee % reliably for a timestamp in the future,
-      // BUT we also cannot risk disputing it because by the time it gets mined the deposit.quoteTime might be <=
-      // dispute.priceRequest time. This isn't a problem as long as the dispute liveness is sufficiently long.
-      // A long enough liveness period (i.e. longer than the average time between blocks) will give this bot the chance
-      // to eventually dispute the relay since it will eventually be able to compute the realized LP fee %.
 
       // Compute expected realized LP fee % and if the pending relay has a different fee then dispute it.
       const realizedLpFeePct = (await this.l1Client.calculateRealizedLpFeePctForDeposit(deposit)).toString();
