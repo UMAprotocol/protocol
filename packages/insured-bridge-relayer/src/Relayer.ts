@@ -155,11 +155,16 @@ export class Relayer {
         );
 
       if (settleableRelays.length == 0) {
-        this.logger.debug({ at: "InsuredBridgeRelayer#Finalizer", message: "No settleable relays" });
+        this.logger.debug({ at: "InsuredBridgeRelayer#Finalizer", message: "No settleable relays for token", l1Token });
         return;
       }
 
       for (const settleableRelay of settleableRelays) {
+        this.logger.debug({
+          at: "InsuredBridgeRelayer#Finalizer",
+          message: "Settling relay",
+          settleableRelay,
+        });
         try {
           await this.settleRelay(this.l2Client.getDepositByHash(settleableRelay.depositHash), settleableRelay);
         } catch (error) {
