@@ -3,6 +3,22 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.15.0](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.14.0...@uma/financial-templates-lib@2.15.0) (2021-11-05)
+
+### Bug Fixes
+
+- **insured-bridge-relayer:** Key deployTimestamps by lowercase addresses ([#3557](https://github.com/UMAprotocol/protocol/issues/3557)) ([fc14de5](https://github.com/UMAprotocol/protocol/commit/fc14de5abedc72c4890e9f354463438c1d2f3164))
+
+### Features
+
+- **across-relayer:** Enable batch relays via multicall and improve log production ([#3559](https://github.com/UMAprotocol/protocol/issues/3559)) ([f1cfecc](https://github.com/UMAprotocol/protocol/commit/f1cfecc3d085d5be86a4557682b0ae931cbb24b5))
+- **optimistic-oracle-client:** Can read SkinnyOptimisticOracle state ([#3554](https://github.com/UMAprotocol/protocol/issues/3554)) ([9d4d3b2](https://github.com/UMAprotocol/protocol/commit/9d4d3b27ec39977604bb2f461e48112c51642c4f))
+- **optimistic-oracle-proposer:** Can propose, dispute, and settle SkinnyOptimisticOracle price requests ([#3558](https://github.com/UMAprotocol/protocol/issues/3558)) ([c58a19b](https://github.com/UMAprotocol/protocol/commit/c58a19b316001ea59dc21b7932c7f4e66cdba413))
+
+### Reverts
+
+- Revert "Revert "improve(insured-bridge): Reduce verbosity of \_getDepositHash() (#3538)" (#3545)" (#3547) ([2d489f7](https://github.com/UMAprotocol/protocol/commit/2d489f7bc145d305a593fbd98a2d6aea5ebd5f59)), closes [#3538](https://github.com/UMAprotocol/protocol/issues/3538) [#3545](https://github.com/UMAprotocol/protocol/issues/3545) [#3547](https://github.com/UMAprotocol/protocol/issues/3547)
+
 # [2.14.0](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.13.0...@uma/financial-templates-lib@2.14.0) (2021-11-02)
 
 ### Bug Fixes

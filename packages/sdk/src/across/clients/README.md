@@ -81,7 +81,11 @@ const user = {
   feesEarned: "541941830509",
 }
 const percentFloat = 0.75 //user is removing 75% of position
-const preview = previewRemoval(user.positionValue, user.feesEarned, percentFloat)
+const preview = previewRemoval(
+  // or just pass in user object
+  { positionValue: user.positionValue, feesEarned: user.feesEarned, totalDeposited: user.totalDeposited },
+  percentFloat
+)
 //{
 //  position: { recieve: '675000406456372881', remain: '225000135485457628' },
 //  fees: { recieve: '406456372881', remain: '135485457628' },

@@ -6,7 +6,7 @@ import type { TransactionReceipt } from "web3-core";
 import type { ContractSendMethod, SendOptions } from "web3-eth-contract";
 
 type CallReturnValue = ReturnType<ContractSendMethod["call"]>;
-interface AugmentedSendOptions {
+export interface AugmentedSendOptions {
   from: string;
   gas?: number;
   value?: number | string;

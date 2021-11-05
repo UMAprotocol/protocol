@@ -3,6 +3,25 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.11.0](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.10.2...@uma/sdk@0.11.0) (2021-11-05)
+
+### Bug Fixes
+
+- **sdk:** fix next startblock for pooleventstate ([#3560](https://github.com/UMAprotocol/protocol/issues/3560)) ([e3ade22](https://github.com/UMAprotocol/protocol/commit/e3ade22a0c8682532714a75d710ad829453579a5))
+- **sdk:** fix total pool size, remove pendingReserves ([#3568](https://github.com/UMAprotocol/protocol/issues/3568)) ([469969a](https://github.com/UMAprotocol/protocol/commit/469969a79f493695d3eca5d0a311859c24e77d4a))
+
+- fix(sdk)!: fix pool removal preview calcs (#3567) ([ef6f326](https://github.com/UMAprotocol/protocol/commit/ef6f3267f4f66e943ffa367919c2e6797b5cd8eb)), closes [#3567](https://github.com/UMAprotocol/protocol/issues/3567)
+
+### Features
+
+- **sdk:** add tx receipt decoding events to bridgepool client ([#3565](https://github.com/UMAprotocol/protocol/issues/3565)) ([fc46a59](https://github.com/UMAprotocol/protocol/commit/fc46a59dc5f62f5423972d151efc06be2f62476b))
+
+### BREAKING CHANGES
+
+- previewRemoval function api is changed to accept user object
+
+Signed-off-by: David <david@umaproject.org>
+
 ## [0.10.2](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.10.1...@uma/sdk@0.10.2) (2021-11-02)
 
 ### Bug Fixes

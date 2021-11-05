@@ -54,6 +54,8 @@ export interface BridgePoolData {
   contract: BridgePoolWeb3;
   currentTime: number;
   relayNonce: number;
+  poolCollateralDecimals: number;
+  poolCollateralSymbol: string;
 }
 
 export class InsuredBridgeL1Client {
@@ -113,12 +115,15 @@ export class InsuredBridgeL1Client {
 
   hasInstantRelayer(l1Token: string, depositHash: string, realizedLpFeePct: string): boolean {
     this._throwIfNotInitialized();
+    return this.getInstantRelayer(l1Token, depositHash, realizedLpFeePct) !== undefined;
+  }
+
+  getInstantRelayer(l1Token: string, depositHash: string, realizedLpFeePct: string): string | undefined {
+    this._throwIfNotInitialized();
     const instantRelayDataHash = this._getInstantRelayHash(depositHash, realizedLpFeePct);
-    return (
-      instantRelayDataHash !== null &&
-      this.instantRelays[l1Token][instantRelayDataHash] !== undefined &&
-      this.instantRelays[l1Token][instantRelayDataHash].instantRelayer !== undefined
-    );
+    return instantRelayDataHash !== null
+      ? this.instantRelays[l1Token][instantRelayDataHash]?.instantRelayer
+      : undefined;
   }
 
   getPendingRelayedDeposits(): Relay[] {
@@ -175,9 +180,17 @@ export class InsuredBridgeL1Client {
     return ClientRelayState.Finalized;
   }
 
+  getBridgePoolCollateralInfoForDeposit(l2Deposit: Deposit): { collateralDecimals: number; collateralSymbol: string } {
+    if (!this.bridgePools[l2Deposit.l1Token]) throw new Error(`No bridge pool initialized for ${l2Deposit.l1Token}`);
+    return {
+      collateralDecimals: this.getBridgePoolForDeposit(l2Deposit).poolCollateralDecimals,
+      collateralSymbol: this.getBridgePoolForDeposit(l2Deposit).poolCollateralSymbol,
+    };
+  }
+
   getBridgePoolForDeposit(l2Deposit: Deposit): BridgePoolData {
     if (!this.bridgePools[l2Deposit.l1Token]) throw new Error(`No bridge pool initialized for ${l2Deposit.l1Token}`);
-    return this.bridgePools[l2Deposit.l1Token];
+    return this.getBridgePoolForToken(l2Deposit.l1Token);
   }
 
   getBridgePoolForToken(l1Token: string): BridgePoolData {
@@ -215,6 +228,8 @@ export class InsuredBridgeL1Client {
         // We'll set the following params when fetching bridge pool state in parallel.
         currentTime: 0,
         relayNonce: 0,
+        poolCollateralDecimals: 0,
+        poolCollateralSymbol: "",
       };
       this.relays[l1Token] = {};
       this.instantRelays[l1Token] = {};
@@ -229,6 +244,7 @@ export class InsuredBridgeL1Client {
     // Fetch event information
     // TODO: consider optimizing this further. Right now it will make a series of sequential BlueBird calls for each pool.
     for (const [l1Token, bridgePool] of Object.entries(this.bridgePools)) {
+      const l1TokenInstance = new this.l1Web3.eth.Contract(getAbi("ERC20"), l1Token);
       const [
         depositRelayedEvents,
         relaySpedUpEvents,
@@ -237,6 +253,8 @@ export class InsuredBridgeL1Client {
         relayCanceledEvents,
         contractTime,
         relayNonce,
+        poolCollateralDecimals,
+        poolCollateralSymbol,
       ] = await Promise.all([
         bridgePool.contract.getPastEvents("DepositRelayed", blockSearchConfig),
         bridgePool.contract.getPastEvents("RelaySpedUp", blockSearchConfig),
@@ -245,13 +263,18 @@ export class InsuredBridgeL1Client {
         bridgePool.contract.getPastEvents("RelayCanceled", blockSearchConfig),
         bridgePool.contract.methods.getCurrentTime().call(),
         bridgePool.contract.methods.numberOfRelays().call(),
+        l1TokenInstance.methods.decimals().call(),
+        l1TokenInstance.methods.symbol().call(),
       ]);
 
-      // Store current contract time and relay nonce that user can use to send instant relays
-      // (where there is no pending relay) for a deposit.
+      // Store current contract time and relay nonce that user can use to send instant relays (where there is no pending
+      // relay) for a deposit. Store the l1Token decimals and symbol to enhance logging.
       bridgePool.currentTime = Number(contractTime);
       bridgePool.relayNonce = Number(relayNonce);
+      bridgePool.poolCollateralDecimals = Number(poolCollateralDecimals);
+      bridgePool.poolCollateralSymbol = poolCollateralSymbol;
 
+      // Process events an set in state.
       for (const depositRelayedEvent of depositRelayedEvents) {
         const relayData: Relay = {
           relayId: Number(depositRelayedEvent.returnValues.relay.relayId),

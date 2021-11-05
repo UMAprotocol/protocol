@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.2.8](https://github.com/UMAprotocol/protocol/compare/@uma/bot-strategy-runner@1.2.7...@uma/bot-strategy-runner@1.2.8) (2021-11-05)
+
+### Bug Fixes
+
+- **insured-bridge-relayer:** Key deployTimestamps by lowercase addresses ([#3557](https://github.com/UMAprotocol/protocol/issues/3557)) ([fc14de5](https://github.com/UMAprotocol/protocol/commit/fc14de5abedc72c4890e9f354463438c1d2f3164))
+
 ## [1.2.7](https://github.com/UMAprotocol/protocol/compare/@uma/bot-strategy-runner@1.2.6...@uma/bot-strategy-runner@1.2.7) (2021-11-02)
 
 **Note:** Version bump only for package @uma/bot-strategy-runner

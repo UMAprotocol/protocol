@@ -3,6 +3,10 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.7.1](https://github.com/UMAprotocol/protocol/compare/@uma/affiliates@1.7.0...@uma/affiliates@1.7.1) (2021-11-05)
+
+**Note:** Version bump only for package @uma/affiliates
+
 # [1.7.0](https://github.com/UMAprotocol/protocol/compare/@uma/affiliates@1.6.6...@uma/affiliates@1.7.0) (2021-11-02)
 
 ### Features
