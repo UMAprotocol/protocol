@@ -534,7 +534,7 @@ export class Relayer {
       let mrkdwnBlock = "*Transactions sent in batch:*\n";
       transactions.forEach((transaction) => {
         mrkdwnBlock += `  • ${transaction.message}:\n`;
-        mrkdwnBlock += `    - ${transaction.mrkdwn}\n`;
+        mrkdwnBlock += `      ◦ ${transaction.mrkdwn}\n`;
       });
 
       // Send the batch transaction to the L1 bridge pool contract. Catch if the transaction succeeds.
