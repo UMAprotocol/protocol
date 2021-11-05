@@ -525,7 +525,7 @@ export class Relayer {
       );
 
       for (const transaction of transactions) {
-        if (targetMultiCallerContract.options.address != transaction.transaction._parent._address)
+        if (targetMultiCallerContract.options.address != transaction.transaction._parent.options.address)
           throw new Error("Batch transaction processing error! Can't specify multiple `to` fields within batch");
       }
 
