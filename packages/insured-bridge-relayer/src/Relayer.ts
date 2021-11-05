@@ -519,15 +519,13 @@ export class Relayer {
     if (transactions.length > 1) {
       // The `to` field in the transaction must be the same for all transactions or the batch processing will not work.
       // This should be a MultiCaller enabled contract.
-      const targetMultiCallerContract = new this.l1Client.l1Web3.eth.Contract(
+      const targetMultiCaller = new this.l1Client.l1Web3.eth.Contract(
         getAbi("MultiCaller"),
         transactions[0].transaction._parent._address
       );
 
-      for (const transaction of transactions) {
-        if (targetMultiCallerContract.options.address != transaction.transaction._parent.options.address)
-          throw new Error("Batch transaction processing error! Can't specify multiple `to` fields within batch");
-      }
+      if (transactions.some((tx) => targetMultiCaller.options.address != tx.transaction._parent.options.address))
+        throw new Error("Batch transaction processing error! Can't specify multiple `to` fields within batch");
 
       // Iterate over all transactions and build up a set of multicall blocks and a block of markdown to send to slack
       // to make the set of transactions readable.
@@ -541,7 +539,7 @@ export class Relayer {
 
       // Send the batch transaction to the L1 bridge pool contract. Catch if the transaction succeeds.
       const batchTxSuccess = await this._sendTransaction(
-        (targetMultiCallerContract.methods.multicall(multiCallTransaction) as unknown) as TransactionType,
+        (targetMultiCaller.methods.multicall(multiCallTransaction) as unknown) as TransactionType,
         "Multicall Transaction batch sent!🧙",
         mrkdwnBlock
       );
