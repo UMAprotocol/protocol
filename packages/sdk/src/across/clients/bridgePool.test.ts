@@ -10,9 +10,10 @@ test("previewRemoval", function () {
     totalDeposited: "900000000000000000",
     feesEarned: "541941830509",
   };
-  const result = bridgePool.previewRemoval(user.positionValue, user.feesEarned, 0.75);
-  assert.equal(BigNumber.from(result.position.recieve).add(result.position.remain), user.positionValue);
-  assert.equal(BigNumber.from(result.fees.recieve).add(result.fees.remain), user.feesEarned);
+  const result = bridgePool.previewRemoval(user, 0.75);
+  assert.equal(BigNumber.from(result.position.recieve).add(result.position.remain).toString(), user.totalDeposited);
+  assert.equal(BigNumber.from(result.fees.recieve).add(result.fees.remain).toString(), user.feesEarned);
+  assert.equal(BigNumber.from(result.total.recieve).add(result.total.remain).toString(), user.positionValue);
 });
 test("calculateApy", function () {
   const pool = {
