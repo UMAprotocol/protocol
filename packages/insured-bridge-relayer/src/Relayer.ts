@@ -101,7 +101,11 @@ export class Relayer {
           this.logger.error({ at: "AcrossRelayer#Relayer", message: "Unexpected error processing deposit", error });
         }
       }
-      await this._processTransactionBatch(relayTransactions as any);
+      try {
+        await this._processTransactionBatch(relayTransactions as any);
+      } catch (error) {
+        this.logger.error({ at: "AcrossRelayer#Relayer", message: "Unexpected error processing deposit batch", error });
+      }
     }
 
     return;
@@ -164,7 +168,11 @@ export class Relayer {
         }
       }
 
-      await this._processTransactionBatch(settleRelayTransactions);
+      try {
+        await this._processTransactionBatch(settleRelayTransactions);
+      } catch (error) {
+        this.logger.error({ at: "AcrossRelayer#Finalizer", message: "Unexpected error processing relay batch", error });
+      }
     }
 
     return;
