@@ -44,7 +44,7 @@ class CRMonitor {
     this.normalizeSyntheticDecimals = ConvertDecimals(financialContractProps.syntheticDecimals, 18, this.web3);
     this.normalizePriceFeedDecimals = ConvertDecimals(financialContractProps.priceFeedDecimals, 18, this.web3);
 
-    this.formatDecimalString = createFormatFunction(this.web3, 2, 4, false);
+    this.formatDecimalString = createFormatFunction(2, 4, false);
 
     // Wallets to monitor collateralization ratio.
     const defaultConfig = {

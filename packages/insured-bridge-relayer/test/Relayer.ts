@@ -456,6 +456,9 @@ describe("Relayer.ts", function () {
       assert.isTrue(lastSpyLogIncludes(spy, "No relayable deposits"));
     });
     it("Two deposits, one relay fails, one succeeds", async function () {
+      // Validates that one failed tx does not break the other in multi execution. Also validates unbundling with
+      // error works as expected.
+
       // Deposit #1
       await l2Token.methods.approve(bridgeDepositBox.options.address, depositAmount).send({ from: l2Depositor });
       const quoteTime = (await web3.eth.getBlock("latest")).timestamp;
@@ -501,12 +504,22 @@ describe("Relayer.ts", function () {
       await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Relayer });
       await relayer.checkForPendingDepositsAndRelay();
 
+      // Logs should reflect that the batch of transactions failed and so they were sent individually. Expect two logs
+      // for the two individual transactions being re-sent
+      assert.equal(
+        spy.getCalls().filter((_log: any) => _log.lastArg.message.includes("Sending batched transactions individually"))
+          .length,
+        2
+      );
+
       // Logs should reflect one slow relay executed and one that errored.
-      const targetLog = spy.getCalls().filter((_log: any) => {
-        return _log.lastArg.message.includes("Slow Relay executed");
-      });
-      assert.equal(targetLog.length, 1);
-      assert.isTrue(lastSpyLogIncludes(spy, "Something errored slow relaying"));
+      assert.equal(
+        spy.getCalls().filter((_log: any) => _log.lastArg.message.includes("Slow Relay executed")).length,
+        1
+      );
+
+      // The final log should be an error from the failed second transaction in the bundle.
+      assert.isTrue(lastSpyLogIncludes(spy, "Something errored sending a transaction"));
     });
     it("Can correctly detect and produce speedup relays", async function () {
       // Make a deposit on L2 and relay it. Then, check the relayer picks this up and speeds up the relay.
@@ -920,11 +933,11 @@ describe("Relayer.ts", function () {
       await relayer.checkForPendingRelaysAndDispute();
 
       // Logs should reflect one dispute executed and one that errored.
-      const targetLog = spy.getCalls().filter((_log: any) => {
-        return _log.lastArg.message.includes("Disputed pending relay");
-      });
-      assert.equal(targetLog.length, 1);
-      assert.isTrue(lastSpyLogIncludes(spy, "Something errored disputing"));
+      assert.equal(
+        spy.getCalls().filter((_log: any) => _log.lastArg.message.includes("Disputed pending relay")).length,
+        1
+      );
+      assert.isTrue(lastSpyLogIncludes(spy, "Something errored"));
     });
     it("Dispute fails to send to OptimisticOracle", async function () {
       // Make a deposit on L2 and relay it with invalid relay params. The disputer should detect that the relay params
@@ -1342,6 +1355,80 @@ describe("Relayer.ts", function () {
         return _log.lastArg.message.includes("Deposit quote time < bridge pool deployment");
       });
       assert.equal(targetLog.length, 1);
+    });
+  });
+  describe("Multicall Batching", function () {
+    beforeEach(async function () {
+      // Add liquidity to the L1 pool to facilitate the relay action.
+      await l1Token.methods.mint(l1LiquidityProvider, initialPoolLiquidity).send({ from: l1Owner });
+      await l1Token.methods
+        .approve(bridgePool.options.address, initialPoolLiquidity)
+        .send({ from: l1LiquidityProvider });
+      await bridgePool.methods.addLiquidity(initialPoolLiquidity).send({ from: l1LiquidityProvider });
+
+      // Mint some tokens for the L2 depositor and approve. Mint 2x for the two deposits to be batched.
+      await l2Token.methods.mint(l2Depositor, toBN(depositAmount).muln(2)).send({ from: l2Owner });
+      await l2Token.methods
+        .approve(bridgeDepositBox.options.address, toBN(depositAmount).muln(2))
+        .send({ from: l2Depositor });
+    });
+    it("Can correctly send batch relays and settle relay with multicall", async function () {
+      // Before any relays should do nothing and log accordingly.
+      await Promise.all([l1Client.update(), l2Client.update()]);
+      await relayer.checkForPendingDepositsAndRelay();
+      assert.isTrue(lastSpyLogIncludes(spy, "No relayable deposits"));
+
+      // Make two deposits on L2 and check the bot relays them in a batch accordingly.
+      const relayTime = await bridgePool.methods.getCurrentTime().call();
+      const quoteTime = (await web3.eth.getBlock("latest")).timestamp;
+      // Deposit #1
+      await bridgeDepositBox.methods
+        .deposit(
+          l2Depositor,
+          l2Token.options.address,
+          depositAmount,
+          defaultSlowRelayFeePct,
+          "0", // set to zero to force slow relay for this test.
+          quoteTime
+        )
+        .send({ from: l2Depositor });
+
+      // Deposit #2
+      await bridgeDepositBox.methods
+        .deposit(
+          l2Depositor,
+          l2Token.options.address,
+          depositAmount,
+          defaultSlowRelayFeePct,
+          "0", // set to zero to force slow relay for this test.
+          quoteTime
+        )
+        .send({ from: l2Depositor });
+
+      await Promise.all([l1Client.update(), l2Client.update()]);
+
+      await l1Token.methods.mint(l1Relayer, toBN(depositAmount).muln(4)).send({ from: l1Owner });
+      await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(4)).send({ from: l1Relayer });
+      await relayer.checkForPendingDepositsAndRelay();
+
+      // The log should also inform that this is a multicall batch.
+      assert.isTrue(lastSpyLogIncludes(spy, "Multicall Transaction batch sent"));
+      // There should be two "slow relay executed" transactions within the batch.
+      assert.equal(spy.getCall(-1).lastArg.mrkdwn.match(/Slow Relay executed/g).length, 2);
+
+      // Advance time such that relay has expired and check that bot correctly identifies it as expired.
+      const expirationTime = Number(relayTime.toString()) + defaultLiveness;
+      await bridgePool.methods.setCurrentTime(expirationTime).send({ from: l1Owner });
+      await l1Client.update();
+      await relayer.checkForPendingDepositsAndRelay();
+      assert.isTrue(lastSpyLogIncludes(spy, "Pending relay has expired"));
+
+      // Finally, settle. We should be able to do both of these in one tx.
+      await relayer.checkforSettleableRelaysAndSettle();
+
+      assert.isTrue(lastSpyLogIncludes(spy, "Multicall Transaction batch sent"));
+      // There should be two "Relay settled" transactions within the batch.
+      assert.equal(spy.getCall(-1).lastArg.mrkdwn.match(/Relay settled/g).length, 2);
     });
   });
 });

@@ -51,7 +51,7 @@ class SyntheticPegMonitor {
 
     this.normalizePriceFeedDecimals = ConvertDecimals(financialContractProps.priceFeedDecimals, 18, this.web3);
 
-    this.formatDecimalString = createFormatFunction(this.web3, 2, 4);
+    this.formatDecimalString = createFormatFunction(2, 4);
 
     // Default config settings. SyntheticPegMonitor deployer can override these settings by passing in new
     // values via the `monitorConfig` input object. The `isValid` property is a function that should be called

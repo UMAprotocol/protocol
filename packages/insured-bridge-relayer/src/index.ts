@@ -26,7 +26,7 @@ export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
     // If pollingDelay === 0 then the bot is running in serverless mode and should send a `debug` level log.
     // Else, if running in loop mode (pollingDelay != 0), then it should send a `info` level log.
     logger[config.pollingDelay === 0 ? "debug" : "info"]({
-      at: "InsuredBridgeRelayer#index",
+      at: "AcrossRelayer#index",
       message: "Relayer started 🌉",
       config,
     });
@@ -92,13 +92,13 @@ export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
 
           // Start bots that are enabled.
           if (config.botModes.relayerEnabled) await relayer.checkForPendingDepositsAndRelay();
-          else logger.debug({ at: "Relayer", message: "Relayer disabled" });
+          else logger.debug({ at: "AcrossRelayer#Relayer", message: "Relayer disabled" });
 
           if (config.botModes.disputerEnabled) await relayer.checkForPendingRelaysAndDispute();
-          else logger.debug({ at: "Disputer", message: "Disputer disabled" });
+          else logger.debug({ at: "AcrossRelayer#Disputer", message: "Disputer disabled" });
 
           if (config.botModes.finalizerEnabled) await relayer.checkforSettleableRelaysAndSettle();
-          else logger.debug({ at: "Finalizer", message: "Finalizer disabled" });
+          else logger.debug({ at: "AcrossRelayer#Finalizer", message: "Finalizer disabled" });
         },
         {
           retries: config.errorRetries,
@@ -106,7 +106,7 @@ export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
           randomize: false,
           onRetry: (error) => {
             logger.debug({
-              at: "InsuredBridgeRelayer#index",
+              at: "AcrossRelayer#index",
               message: "An error was thrown in the execution loop - retrying",
               error: typeof error === "string" ? new Error(error) : error,
             });
@@ -115,16 +115,13 @@ export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
       );
       // If the polling delay is set to 0 then the script will terminate the bot after one full run.
       if (config.pollingDelay === 0) {
-        logger.debug({
-          at: "InsuredBridgeRelayer#index",
-          message: "End of serverless execution loop - terminating process",
-        });
+        logger.debug({ at: "AcrossRelayer#index", message: "End of serverless execution loop - terminating process" });
         await waitForLogger(logger);
         await delay(2);
         break;
       }
       logger.debug({
-        at: "InsuredBridgeRelayer#index",
+        at: "AcrossRelayer#index",
         message: "End of execution loop - waiting polling delay",
         pollingDelay: `${config.pollingDelay} (s)`,
       });
@@ -143,8 +140,8 @@ if (require.main === module) {
     })
     .catch((error) => {
       Logger.error({
-        at: "InsuredBridgeRelayer#index",
-        message: "InsuredBridgeRelayer execution error🚨",
+        at: "AcrossRelayer#index",
+        message: "AcrossRelayer execution error🚨",
         error: typeof error === "string" ? new Error(error) : error,
       });
       process.exit(1);
