@@ -51,7 +51,7 @@ export default async (env: ProcessEnv) => {
 
   // services can emit events when necessary, though for now any services that depend on events must be in same process
   const serviceEvents = new Events();
-  const networkChainId = env.NETWORK_CHAIN_ID ? parseInt(env.NETWORK_CHAIN_ID) : undefined;
+  const networkChainId = env.NETWORK_CHAIN_ID ? parseInt(env.NETWORK_CHAIN_ID) : (await provider.getNetwork()).chainId;
   // state shared between services
   const appState: AppState = {
     emps: {

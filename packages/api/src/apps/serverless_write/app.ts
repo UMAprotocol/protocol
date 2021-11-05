@@ -36,7 +36,7 @@ export default async (env: ProcessEnv) => {
   const web3 = getWeb3(env.CUSTOM_NODE_URL);
   const datastoreClient = new Datastore();
   const datastores = StoresFactory(datastoreClient);
-  const networkChainId = env.NETWORK_CHAIN_ID ? parseInt(env.NETWORK_CHAIN_ID) : undefined;
+  const networkChainId = env.NETWORK_CHAIN_ID ? parseInt(env.NETWORK_CHAIN_ID) : (await provider.getNetwork()).chainId;
   const detectContractsBatchSize = env.DETECT_CONTRACTS_BATCH_SIZE
     ? parseInt(env.DETECT_CONTRACTS_BATCH_SIZE)
     : undefined;

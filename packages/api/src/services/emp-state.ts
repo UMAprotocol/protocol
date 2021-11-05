@@ -6,7 +6,7 @@ import { AppClients, AppState, BaseConfig } from "../types";
 
 type Instance = uma.clients.emp.Instance;
 type Config = BaseConfig & {
-  updateEmpsConcurrency: number;
+  updateEmpsConcurrency?: number;
 };
 type Dependencies = {
   tables: Pick<AppState, "registeredEmps" | "emps" | "collateralAddresses" | "syntheticAddresses">;
