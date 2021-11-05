@@ -43,8 +43,6 @@ export class Relayer {
    * runtime speed by eliminating getBlockForTime calls, and to detect deposits with invalid quote times.
    * @param {number} l2LookbackWindow Used for last-resort block search for a missing deposit event. Should be same
    * period used by default in L2 client to find deposits.
-   * @param {number} quoteTimeInFutureBuffer Dispute relays where quote time is more than this # of seconds in the
-   * future.
    */
   constructor(
     readonly logger: winston.Logger,
@@ -55,8 +53,7 @@ export class Relayer {
     readonly account: string,
     readonly whitelistedChainIds: number[],
     readonly deployTimestamps: { [key: string]: { timestamp: number; blockNumber: number } },
-    readonly l2LookbackWindow: number,
-    readonly quoteTimeInFutureBuffer: number
+    readonly l2LookbackWindow: number
   ) {}
 
   async checkForPendingDepositsAndRelay(): Promise<void> {
@@ -256,37 +253,30 @@ export class Relayer {
 
       // If deposit quote time is before the bridgepool's deployment time, then dispute it by default because
       // we won't be able to determine otherwise if the realized LP fee % is valid.
+      // Similarly, if deposit.quoteTimestamp > relay.blockTime then its also an invalid relay because it would have
+      // been impossible for the relayer to compute the realized LP fee % for the deposit.quoteTime in the future.
       const latestBlockTime = Number((await this.l1Client.l1Web3.eth.getBlock("latest")).timestamp);
       if (
         deposit.quoteTimestamp < this.deployTimestamps[deposit.l1Token].timestamp ||
-        deposit.quoteTimestamp > latestBlockTime + this.quoteTimeInFutureBuffer
-        // This buffer is important to give us confidence that if we dispute this relay, the relay's quote time will
-        // be < dispute.requestTime after the dispute transaction is mined.
+        deposit.quoteTimestamp > relay.blockTime
       ) {
         this.logger.debug({
           at: "Disputer",
-          message: "Deposit quote time < bridge pool deployment for L1 token or > latest block time, disputing",
+          message: "Deposit quote time < bridge pool deployment for L1 token or > relay block time, disputing",
           deposit,
           deploymentTime: this.deployTimestamps[deposit.l1Token].timestamp,
-          latestBlockTime,
-          quoteTimeInFutureBuffer: this.quoteTimeInFutureBuffer,
+          relayBlockTime: relay.blockTime,
         });
         await this.disputeRelay(deposit, relay);
         return;
-      } else if (
-        deposit.quoteTimestamp > latestBlockTime &&
-        deposit.quoteTimestamp <= latestBlockTime + this.quoteTimeInFutureBuffer
-      ) {
+      } else if (deposit.quoteTimestamp > latestBlockTime) {
         // If deposit quote time is in the future, such that we cannot compute a realized LP fee % for it, but within
-        // the buffer, then we won't dispute it because there is chance that the dispute transaction takes long enough
-        // to mine and the mined block's timestamp is greater than the deposit.quoteTime. This would render the dispute
-        // invalid. Therefore we'll skip these relays until they become "in the past" and evaluate them then.
+        // the buffer, then we'll skip it until it becomes "in the past" and we can compute its realized LP fee %.
         this.logger.debug({
           at: "Disputer",
-          message: "Deposit quote time in future but within buffer, ignoring",
+          message: "Deposit quote time in future, ignoring",
           deposit,
           latestBlockTime,
-          quoteTimeInFutureBuffer: this.quoteTimeInFutureBuffer,
         });
         return;
       }

@@ -43,6 +43,7 @@ export interface Relay {
   proposerBond: string;
   finalFee: string;
   settleable: SettleableRelay;
+  blockTime: number;
 }
 
 export interface InstantRelay {
@@ -272,6 +273,7 @@ export class InsuredBridgeL1Client {
           proposerBond: depositRelayedEvent.returnValues.relay.proposerBond,
           finalFee: depositRelayedEvent.returnValues.relay.finalFee,
           settleable: SettleableRelay.CannotSettle,
+          blockTime: Number((await this.l1Web3.eth.getBlock(depositRelayedEvent.blockNumber)).timestamp),
         };
         this.relays[l1Token][relayData.depositHash] = relayData;
       }

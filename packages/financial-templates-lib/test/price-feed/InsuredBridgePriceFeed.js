@@ -507,5 +507,43 @@ describe("InsuredBridgePriceFeed", function () {
       assert.equal(price, toWei("0"));
       assert.isTrue(lastSpyLogIncludes(spy, "Matched deposit realized fee % is incorrect"));
     });
+    it("Pricefeed returns 0 if quote time > relay.block time", async function () {
+      // Deposit some tokens.
+
+      await l2Token.methods.mint(depositor, toWei("200")).send({ from: owner });
+
+      await l2Token.methods.approve(depositBox.options.address, toWei("200")).send({ from: depositor });
+
+      // Setting quote time after the latest block time will cause pricefeed to return 0.
+      const depositTimestamp = Number(await bridgePool.methods.getCurrentTime().call());
+      const quoteTimestamp = Number((await web3.eth.getBlock("latest")).timestamp) + 60;
+
+      await depositBox.methods
+        .deposit(
+          l1Recipient,
+          l2Token.options.address,
+          relayAmount,
+          defaultSlowRelayFeePct,
+          defaultInstantRelayFeePct,
+          quoteTimestamp
+        )
+        .send({ from: depositor }),
+        ({ depositData, relayAncillaryData, relayData } = await generateRelayData(
+          bridgePool,
+          quoteTimestamp,
+          depositTimestamp
+        ));
+
+      // Relay the deposit.
+      const totalRelayBond = toBN(relayAmount).mul(toBN(defaultProposerBondPct));
+      await l1Token.methods.mint(relayer, totalRelayBond).send({ from: owner });
+      await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: relayer });
+      await bridgePool.methods.relayDeposit(...generateRelayParams({ quoteTimestamp })).send({ from: relayer });
+
+      // Update pricefeed and get price for relay request. Note that relay time doesn't actually matter for the
+      // getHistoricalPrice method.
+      await pricefeed.update();
+      assert.equal((await pricefeed.getHistoricalPrice(1, relayAncillaryData)).toString(), toWei("0"));
+    });
   });
 });

@@ -120,8 +120,23 @@ export class InsuredBridgePriceFeed extends PriceFeedInterface {
         });
       }
 
+      // If deposit.quoteTimestamp > relay.blockTime then its an invalid relay because it would have
+      // been impossible for the relayer to compute the realized LP fee % for the deposit.quoteTime in the future.
+      if (deposit.quoteTimestamp > matchedRelay.relayData.blockTime) {
+        this.logger.debug({
+          at: "InsuredBridgePriceFeed",
+          message: "Deposit quote time > relay block time",
+          deposit,
+          matchedRelay,
+        });
+        return toBNWei(isRelayValid.No);
+      }
+
       // Validate relays proposed realized fee percentage.
       const expectedRealizedFeePct = await this.l1Client.calculateRealizedLpFeePctForDeposit(matchedRelay.depositData);
+
+      // Note: The `calculateRealizedLpFeePctForDeposit` will fail if the deposit.quote time is either less than the bridge
+      // pool's deployment time, or greater than the latest block time.
       if (expectedRealizedFeePct.toString() !== matchedRelay.relayData.realizedLpFeePct) {
         this.logger.debug({
           at: "InsuredBridgePriceFeed",
