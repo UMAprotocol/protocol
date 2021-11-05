@@ -96,7 +96,7 @@ class PoolState {
   }
 }
 
-class PoolEventState {
+export class PoolEventState {
   constructor(
     private contract: bridgePool.Instance,
     private startBlock = 0,
@@ -115,7 +115,8 @@ class PoolEventState {
       if (a.logIndex < b.logIndex) return -1;
       return 1;
     });
-    this.startBlock = endBlock;
+    // ethers queries are inclusive [start,end] unless start === end, then exclusive (start,end). we increment to make sure we dont see same event twice
+    this.startBlock = endBlock + 1;
     this.state = bridgePool.getEventState(events, this.state);
     return this.state;
   }
