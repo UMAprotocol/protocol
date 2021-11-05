@@ -63,7 +63,7 @@ contract Proposer is Ownable, Testable {
 
     /**
      * @notice Resolves a proposal by checking the status of the request in the Voting contract.
-     * @dev Pulls bond from the caller.
+     * @dev For the resolution to work correctly, this contract must be a registered contract in the DVM.
      * @param id proposal id.
      */
     function resolveProposal(uint256 id) external payable {
