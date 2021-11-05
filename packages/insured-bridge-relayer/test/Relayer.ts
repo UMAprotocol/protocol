@@ -456,7 +456,7 @@ describe("Relayer.ts", function () {
       assert.isTrue(lastSpyLogIncludes(spy, "No relayable deposits"));
     });
     it("Two deposits, one relay fails, one succeeds", async function () {
-      // Validates that one failed tx does not break the other in multi execution. Also validates unbundeling with
+      // Validates that one failed tx does not break the other in multi execution. Also validates unbundling with
       // error works as expected.
 
       // Deposit #1
