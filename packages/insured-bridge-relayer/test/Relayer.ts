@@ -933,7 +933,7 @@ describe("Relayer.ts", function () {
       // Invalid relay #1
       await l1Token.methods.mint(l1Owner, toBN(depositAmount).muln(2)).send({ from: l1Owner });
       await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Owner });
-      const quoteTime = await bridgeDepositBox.methods.getCurrentTime().call();
+      const quoteTime = (await web3.eth.getBlock("latest")).timestamp;
       await bridgePool.methods
         .relayDeposit(
           {
