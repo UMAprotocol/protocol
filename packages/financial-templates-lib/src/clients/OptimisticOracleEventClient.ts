@@ -222,6 +222,10 @@ export class OptimisticOracleEventClient {
           blockNumber: event.blockNumber,
           identifier: this.hexToUtf8(event.returnValues.identifier),
           ancillaryData: event.returnValues.ancillaryData ? event.returnValues.ancillaryData : "0x",
+          // Note: The only param not included in the Skinny version of this event that is included in the normal
+          // Settle event is the "payout". This can be easily computed by determing if the settlement was for a Disputed
+          // or expired Proposal request. For the former, the payout = bond + finalFee + reward, and for the latter
+          // the payout is 1.5 bond + finalFee + reward.
         });
       } else {
         // See explanation above in disputeEventsObj loop.
