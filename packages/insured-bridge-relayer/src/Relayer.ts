@@ -3,7 +3,7 @@ import Web3 from "web3";
 const { toWei, toBN } = Web3.utils;
 const fixedPointAdjustment = toBN(toWei("1"));
 
-import { runTransaction, createEtherscanLinkMarkdown, createFormatFunction } from "@uma/common";
+import { runTransaction, createEtherscanLinkMarkdown, createFormatFunction, PublicNetworks } from "@uma/common";
 import { getAbi } from "@uma/contracts-node";
 import {
   InsuredBridgeL1Client,
@@ -473,7 +473,7 @@ export class Relayer {
     const { receipt } = await this._sendTransaction(
       this._generateDisputeRelayTx(deposit, relay),
       "Disputed pending relay. Relay was deleted 🚓",
-      this._generateMarkdownForDispute(deposit, relay)
+      this._generateMrkdwnForDispute(deposit, relay)
     );
 
     if (receipt?.events?.RelayCanceled)
@@ -720,69 +720,86 @@ export class Relayer {
   }
 
   private _generateMarkdownForRelay(deposit: Deposit, realizedLpFeePct: BN) {
-    const { collateralDecimals, collateralSymbol } = this.l1Client.getBridgePoolCollateralInfoForDeposit(deposit);
     return (
-      "Relayed deposit ID " +
-      deposit.depositId +
-      " of size " +
-      createFormatFunction(2, 4, false, collateralDecimals)(deposit.amount) +
-      " " +
-      collateralSymbol +
-      " from " +
-      createEtherscanLinkMarkdown(deposit.l2Sender, this.l2Client.chainId) +
-      " to " +
-      createEtherscanLinkMarkdown(deposit.l1Recipient) +
-      ". slowRelayFeePct: " +
+      "Relayed " +
+      this._generateMrkdwnDepositIdNetworkSizeFromTo(deposit) +
+      "slowRelayFeePct " +
       createFormatFunction(2, 4, false, 18)(toBN(deposit.slowRelayFeePct).muln(100)) +
-      "%, instantRelayFeePct: " +
+      "%, instantRelayFeePct " +
       createFormatFunction(2, 4, false, 18)(toBN(deposit.instantRelayFeePct).muln(100)) +
-      "%, realizedLpFeePct: " +
+      "%, realizedLpFeePct " +
       createFormatFunction(2, 4, false, 18)(realizedLpFeePct.muln(100)) +
       "%."
     );
   }
 
   private _generateMarkdownForSettle(deposit: Deposit, relay: Relay) {
+    return (
+      "Settled " +
+      this._generateMrkdwnDepositIdNetworkSizeFromTo(deposit) +
+      this._generateMrkdwnForBonds(deposit, relay) +
+      this._generateMrkdwnForRelayerAddresses(deposit, relay) +
+      " ."
+    );
+  }
+
+  private _generateMrkdwnForDispute(deposit: Deposit, relay: Relay) {
+    return (
+      "Disputed " +
+      this._generateMrkdwnDepositIdNetworkSizeFromTo(deposit) +
+      "DepositHash " +
+      deposit.depositHash +
+      " relayAncillaryDataHash " +
+      relay.relayAncillaryDataHash +
+      ". " +
+      this._generateMrkdwnForBonds(deposit, relay) +
+      this._generateMrkdwnForRelayerAddresses(deposit, relay)
+    );
+  }
+
+  private _generateMrkdwnDepositIdNetworkSizeFromTo(deposit: Deposit) {
     const { collateralDecimals, collateralSymbol } = this.l1Client.getBridgePoolCollateralInfoForDeposit(deposit);
     return (
-      "Settled deposit ID " +
+      "depositId " +
       deposit.depositId +
+      " on " +
+      PublicNetworks[this.l2Client.chainId]?.name +
       " of size " +
       createFormatFunction(2, 4, false, collateralDecimals)(deposit.amount) +
       " " +
       collateralSymbol +
-      " from " +
+      " sent from " +
       createEtherscanLinkMarkdown(deposit.l2Sender, this.l2Client.chainId) +
       " to " +
       createEtherscanLinkMarkdown(deposit.l1Recipient) +
-      ". slowRelayer: " +
-      createEtherscanLinkMarkdown(relay.slowRelayer) +
-      " instantRelayer: " +
-      createEtherscanLinkMarkdown(
-        this.l1Client.getInstantRelayer(deposit.l1Token, deposit.depositHash, relay.realizedLpFeePct.toString()) || ""
-      ) +
-      "."
+      ". "
     );
   }
 
-  private _generateMarkdownForDispute(deposit: Deposit, relay: Relay) {
+  private _generateMrkdwnForBonds(deposit: Deposit, relay: Relay) {
     const { collateralDecimals, collateralSymbol } = this.l1Client.getBridgePoolCollateralInfoForDeposit(deposit);
     return (
-      "Deposit ID" +
-      deposit.depositId +
-      "l2Sender: " +
-      deposit.l2Sender +
-      ", +l1Recipient: " +
-      deposit.l1Recipient +
-      "of amount " +
-      createFormatFunction(2, 4, false, collateralDecimals)(deposit.amount) +
+      "proposerBond " +
+      createFormatFunction(2, 4, false, collateralDecimals)(relay.proposerBond) +
       " " +
       collateralSymbol +
-      " was disputed! Deposit hash: " +
-      deposit.depositHash +
-      ", relayAncillaryDataHash: " +
-      relay.relayAncillaryDataHash +
-      "."
+      " finalFee " +
+      createFormatFunction(2, 4, false, collateralDecimals)(relay.finalFee) +
+      " " +
+      collateralSymbol +
+      ". "
+    );
+  }
+
+  private _generateMrkdwnForRelayerAddresses(deposit: Deposit, relay: Relay) {
+    return (
+      "slowRelayer " +
+      createEtherscanLinkMarkdown(relay.slowRelayer) +
+      " instantRelayer " +
+      createEtherscanLinkMarkdown(
+        this.l1Client.getInstantRelayer(deposit.l1Token, deposit.depositHash, relay.realizedLpFeePct.toString()) || ""
+      ) +
+      ". "
     );
   }
 
