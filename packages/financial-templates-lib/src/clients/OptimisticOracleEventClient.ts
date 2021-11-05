@@ -1,7 +1,12 @@
 import Web3 from "web3";
 import { Logger } from "winston";
-import { OptimisticOracleWeb3, OptimisticOracleWeb3Events } from "@uma/contracts-node";
+import {
+  OptimisticOracleWeb3,
+  OptimisticOracleWeb3Events,
+  SkinnyOptimisticOracleWeb3Events,
+} from "@uma/contracts-node";
 import { Abi } from "../types";
+import { OptimisticOracleContract, OptimisticOracleType } from "./OptimisticOracleClient";
 
 interface TransactionMetadata {
   transactionHash: string;
@@ -14,19 +19,23 @@ type RequestPrice = EventExport<OptimisticOracleWeb3Events.RequestPrice>;
 type ProposePrice = EventExport<OptimisticOracleWeb3Events.ProposePrice>;
 type DisputePrice = EventExport<OptimisticOracleWeb3Events.DisputePrice> & { currency: string };
 type Settle = EventExport<OptimisticOracleWeb3Events.Settle> & { currency: string };
+type SkinnyRequestPrice = EventExport<SkinnyOptimisticOracleWeb3Events.RequestPrice>;
+type SkinnyProposePrice = EventExport<SkinnyOptimisticOracleWeb3Events.ProposePrice>;
+type SkinnyDisputePrice = EventExport<SkinnyOptimisticOracleWeb3Events.DisputePrice>;
+type SkinnySettle = EventExport<SkinnyOptimisticOracleWeb3Events.Settle>;
 
 // A thick client for getting information about OptimisticOracle events. This client is kept separate from the
 // OptimisticOracleClient to keep a clear separation of concerns and to limit the overhead from querying the chain.
 
 export class OptimisticOracleEventClient {
   // OptimisticOracle contract
-  public optimisticOracleContract: OptimisticOracleWeb3;
+  public optimisticOracleContract: OptimisticOracleContract;
 
   // OptimisticOracle Contract Events data structure to enable synchronous retrieval of information.
-  private requestPriceEvents: RequestPrice[] = [];
-  private proposePriceEvents: ProposePrice[] = [];
-  private disputePriceEvents: DisputePrice[] = [];
-  private settlementEvents: Settle[] = [];
+  private requestPriceEvents: RequestPrice[] | SkinnyRequestPrice[] = [];
+  private proposePriceEvents: ProposePrice[] | SkinnyProposePrice[] = [];
+  private disputePriceEvents: DisputePrice[] | SkinnyDisputePrice[] = [];
+  private settlementEvents: Settle[] | SkinnySettle[] = [];
 
   // First block number to begin searching for events after.
   private firstBlockToSearch: number;
@@ -44,6 +53,8 @@ export class OptimisticOracleEventClient {
    * @param {Object} optimisticOracleAbi OptimisticOracle truffle ABI object to create a contract instance.
    * @param {Object} web3 Web3 provider from truffle instance.
    * @param {String} optimisticOracleAddress Ethereum address of the OptimisticOracle contract deployed on the current network.
+   * @param {OptimisticOracleType} oracleType Type of OptimisticOracle to query state for. Defaults to
+   * "OptimisticOracle".
    * @param {Integer} startingBlockNumber Offset block number to index events from.
    * @param {Integer} endingBlockNumber Termination block number to index events until. If not defined runs to `latest`.
    * @return None or throws an Error.
@@ -53,13 +64,14 @@ export class OptimisticOracleEventClient {
     optimisticOracleAbi: Abi,
     public readonly web3: Web3,
     optimisticOracleAddress: string,
+    public readonly oracleType: OptimisticOracleType = OptimisticOracleType.OptimisticOracle,
     startingBlockNumber = 0,
     endingBlockNumber: number | null = null
   ) {
     this.optimisticOracleContract = (new this.web3.eth.Contract(
       optimisticOracleAbi,
       optimisticOracleAddress
-    ) as unknown) as OptimisticOracleWeb3;
+    ) as unknown) as OptimisticOracleContract;
     this.firstBlockToSearch = startingBlockNumber;
     this.lastBlockToSearchUntil = endingBlockNumber;
   }
@@ -71,19 +83,19 @@ export class OptimisticOracleEventClient {
     this.settlementEvents = [];
   }
 
-  getAllRequestPriceEvents(): RequestPrice[] {
+  getAllRequestPriceEvents(): RequestPrice[] | SkinnyRequestPrice[] {
     return this.requestPriceEvents;
   }
 
-  getAllProposePriceEvents(): ProposePrice[] {
+  getAllProposePriceEvents(): ProposePrice[] | SkinnyProposePrice[] {
     return this.proposePriceEvents;
   }
 
-  getAllDisputePriceEvents(): DisputePrice[] {
+  getAllDisputePriceEvents(): DisputePrice[] | SkinnyDisputePrice[] {
     return this.disputePriceEvents;
   }
 
-  getAllSettlementEvents(): Settle[] {
+  getAllSettlementEvents(): Settle[] | SkinnySettle[] {
     return this.settlementEvents;
   }
 
@@ -113,16 +125,16 @@ export class OptimisticOracleEventClient {
     ] = await Promise.all([
       this.optimisticOracleContract.methods.getCurrentTime().call(),
       (this.optimisticOracleContract.getPastEvents("RequestPrice", blockSearchConfig) as unknown) as Promise<
-        OptimisticOracleWeb3Events.RequestPrice[]
+        OptimisticOracleWeb3Events.RequestPrice[] | SkinnyOptimisticOracleWeb3Events.RequestPrice[]
       >,
       (this.optimisticOracleContract.getPastEvents("ProposePrice", blockSearchConfig) as unknown) as Promise<
-        OptimisticOracleWeb3Events.ProposePrice[]
+        OptimisticOracleWeb3Events.ProposePrice[] | SkinnyOptimisticOracleWeb3Events.ProposePrice[]
       >,
       (this.optimisticOracleContract.getPastEvents("DisputePrice", blockSearchConfig) as unknown) as Promise<
-        OptimisticOracleWeb3Events.DisputePrice[]
+        OptimisticOracleWeb3Events.DisputePrice[] | SkinnyOptimisticOracleWeb3Events.DisputePrice[]
       >,
       (this.optimisticOracleContract.getPastEvents("Settle", blockSearchConfig) as unknown) as Promise<
-        OptimisticOracleWeb3Events.Settle[]
+        OptimisticOracleWeb3Events.Settle[] | SkinnyOptimisticOracleWeb3Events.Settle[]
       >,
     ]);
     // Set the current contract time as the last update timestamp from the contract.
@@ -131,63 +143,103 @@ export class OptimisticOracleEventClient {
     // Process the responses into clean objects.
     // RequestPrice events.
     for (const event of requestPriceEventsObj) {
-      this.requestPriceEvents.push({
-        ...event.returnValues,
-        transactionHash: event.transactionHash,
-        blockNumber: event.blockNumber,
-        identifier: this.hexToUtf8(event.returnValues.identifier),
-        ancillaryData: event.returnValues.ancillaryData ? event.returnValues.ancillaryData : "0x",
-      });
+      if (this.oracleType === OptimisticOracleType.SkinnyOptimisticOracle) {
+        (this.requestPriceEvents as SkinnyRequestPrice[]).push({
+          ...(event as SkinnyOptimisticOracleWeb3Events.RequestPrice).returnValues,
+          transactionHash: event.transactionHash,
+          blockNumber: event.blockNumber,
+          identifier: this.hexToUtf8(event.returnValues.identifier),
+          ancillaryData: event.returnValues.ancillaryData ? event.returnValues.ancillaryData : "0x",
+        });
+      } else {
+        (this.requestPriceEvents as RequestPrice[]).push({
+          ...(event as OptimisticOracleWeb3Events.RequestPrice).returnValues,
+          transactionHash: event.transactionHash,
+          blockNumber: event.blockNumber,
+          identifier: this.hexToUtf8(event.returnValues.identifier),
+          ancillaryData: event.returnValues.ancillaryData ? event.returnValues.ancillaryData : "0x",
+        });
+      }
     }
 
     // ProposePrice events.
     for (const event of proposePriceEventsObj) {
-      this.proposePriceEvents.push({
-        ...event.returnValues,
-        transactionHash: event.transactionHash,
-        blockNumber: event.blockNumber,
-        identifier: this.hexToUtf8(event.returnValues.identifier),
-        ancillaryData: event.returnValues.ancillaryData ? event.returnValues.ancillaryData : "0x",
-      });
+      if (this.oracleType === OptimisticOracleType.SkinnyOptimisticOracle) {
+        (this.proposePriceEvents as SkinnyProposePrice[]).push({
+          ...(event as SkinnyOptimisticOracleWeb3Events.ProposePrice).returnValues,
+          transactionHash: event.transactionHash,
+          blockNumber: event.blockNumber,
+          identifier: this.hexToUtf8(event.returnValues.identifier),
+          ancillaryData: event.returnValues.ancillaryData ? event.returnValues.ancillaryData : "0x",
+        });
+      } else {
+        (this.proposePriceEvents as ProposePrice[]).push({
+          ...(event as OptimisticOracleWeb3Events.ProposePrice).returnValues,
+          transactionHash: event.transactionHash,
+          blockNumber: event.blockNumber,
+          identifier: this.hexToUtf8(event.returnValues.identifier),
+          ancillaryData: event.returnValues.ancillaryData ? event.returnValues.ancillaryData : "0x",
+        });
+      }
     }
 
     // DisputePrice events.
     for (const event of disputePriceEventsObj) {
-      // The OptimisticOracle contract should ideally emit `currency` as part of this event, but alternatively we can
-      // query the currency address on-chain.
-      const requestData = await this._getRequestData(
-        event.returnValues.requester,
-        event.returnValues.identifier,
-        event.returnValues.timestamp,
-        event.returnValues.ancillaryData
-      );
-      this.disputePriceEvents.push({
-        ...event.returnValues,
-        transactionHash: event.transactionHash,
-        blockNumber: event.blockNumber,
-        identifier: this.hexToUtf8(event.returnValues.identifier),
-        ancillaryData: event.returnValues.ancillaryData ? event.returnValues.ancillaryData : "0x",
-        currency: requestData.currency,
-      });
+      if (this.oracleType === OptimisticOracleType.SkinnyOptimisticOracle) {
+        (this.disputePriceEvents as SkinnyDisputePrice[]).push({
+          ...(event as SkinnyOptimisticOracleWeb3Events.DisputePrice).returnValues,
+          transactionHash: event.transactionHash,
+          blockNumber: event.blockNumber,
+          identifier: this.hexToUtf8(event.returnValues.identifier),
+          ancillaryData: event.returnValues.ancillaryData ? event.returnValues.ancillaryData : "0x",
+        });
+      } else {
+        // The OptimisticOracle contract should ideally emit `currency` as part of this event, but alternatively we can
+        // query the currency address on-chain.
+        const requestData = await this._getRequestData(
+          event.returnValues.requester,
+          event.returnValues.identifier,
+          event.returnValues.timestamp,
+          event.returnValues.ancillaryData
+        );
+        (this.disputePriceEvents as DisputePrice[]).push({
+          ...(event as OptimisticOracleWeb3Events.DisputePrice).returnValues,
+          transactionHash: event.transactionHash,
+          blockNumber: event.blockNumber,
+          identifier: this.hexToUtf8(event.returnValues.identifier),
+          ancillaryData: event.returnValues.ancillaryData ? event.returnValues.ancillaryData : "0x",
+          currency: requestData.currency,
+        });
+      }
     }
 
     // Settlement events.
     for (const event of settlementEventsObj) {
-      // See explanation above in disputeEventsObj loop.
-      const requestData = await this._getRequestData(
-        event.returnValues.requester,
-        event.returnValues.identifier,
-        event.returnValues.timestamp,
-        event.returnValues.ancillaryData
-      );
-      this.settlementEvents.push({
-        ...event.returnValues,
-        transactionHash: event.transactionHash,
-        blockNumber: event.blockNumber,
-        identifier: this.hexToUtf8(event.returnValues.identifier),
-        ancillaryData: event.returnValues.ancillaryData ? event.returnValues.ancillaryData : "0x",
-        currency: requestData.currency,
-      });
+      if (this.oracleType === OptimisticOracleType.SkinnyOptimisticOracle) {
+        (this.settlementEvents as SkinnySettle[]).push({
+          ...(event as SkinnyOptimisticOracleWeb3Events.Settle).returnValues,
+          transactionHash: event.transactionHash,
+          blockNumber: event.blockNumber,
+          identifier: this.hexToUtf8(event.returnValues.identifier),
+          ancillaryData: event.returnValues.ancillaryData ? event.returnValues.ancillaryData : "0x",
+        });
+      } else {
+        // See explanation above in disputeEventsObj loop.
+        const requestData = await this._getRequestData(
+          event.returnValues.requester,
+          event.returnValues.identifier,
+          event.returnValues.timestamp,
+          event.returnValues.ancillaryData
+        );
+        (this.settlementEvents as Settle[]).push({
+          ...(event as OptimisticOracleWeb3Events.Settle).returnValues,
+          transactionHash: event.transactionHash,
+          blockNumber: event.blockNumber,
+          identifier: this.hexToUtf8(event.returnValues.identifier),
+          ancillaryData: event.returnValues.ancillaryData ? event.returnValues.ancillaryData : "0x",
+          currency: requestData.currency,
+        });
+      }
     }
 
     // Add 1 to current block so that we do not double count the last block number seen.
@@ -196,6 +248,7 @@ export class OptimisticOracleEventClient {
     this.logger.debug({
       at: "OptimisticOracleEventClient",
       message: "Optimistic Oracle event state updated",
+      optimisticOracleType: this.oracleType,
       lastUpdateTimestamp: this.lastUpdateTimestamp,
     });
   }
@@ -206,7 +259,7 @@ export class OptimisticOracleEventClient {
     timestamp: string,
     ancillaryData: string | null | undefined
   ) {
-    return await ((this.optimisticOracleContract.methods
+    return await (((this.optimisticOracleContract as OptimisticOracleWeb3).methods
       .getRequest(requester, identifier, timestamp, ancillaryData || "0x")
       .call() as unknown) as ReturnType<ReturnType<OptimisticOracleWeb3["methods"]["requests"]>["call"]>);
   }

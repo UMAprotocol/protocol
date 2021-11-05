@@ -48,7 +48,7 @@ interface SkinnyRequest {
   customLiveness: string;
 }
 
-type OptimisticOracleContract = SkinnyOptimisticOracleWeb3 | OptimisticOracleWeb3;
+export type OptimisticOracleContract = SkinnyOptimisticOracleWeb3 | OptimisticOracleWeb3;
 
 export enum OptimisticOracleType {
   OptimisticOracle = "OptimisticOracle",
