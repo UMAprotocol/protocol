@@ -195,17 +195,21 @@ export function calculateRemoval(amountWei: BigNumber, percentWei: BigNumber) {
     remain: remain.toString(),
   };
 }
-export function previewRemoval(positionValue: string, feesEarned: string, percentFloat: number) {
+// params here mimic the user object type
+export function previewRemoval(
+  values: { positionValue: BigNumberish; feesEarned: BigNumberish; totalDeposited: BigNumberish },
+  percentFloat: number
+) {
   const percentWei = toBNWei(percentFloat);
   return {
     position: {
-      ...calculateRemoval(BigNumber.from(positionValue), percentWei),
+      ...calculateRemoval(BigNumber.from(values.totalDeposited), percentWei),
     },
     fees: {
-      ...calculateRemoval(BigNumber.from(feesEarned), percentWei),
+      ...calculateRemoval(BigNumber.from(values.feesEarned), percentWei),
     },
     total: {
-      ...calculateRemoval(BigNumber.from(positionValue), percentWei),
+      ...calculateRemoval(BigNumber.from(values.positionValue), percentWei),
     },
   };
 }
