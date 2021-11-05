@@ -16,7 +16,9 @@ import {
 } from "@uma/financial-templates-lib";
 import { getTokenBalance } from "./RelayerHelpers";
 
-import type { BN, TransactionType } from "@uma/common";
+import type { BN, TransactionType, AugmentedSendOptions } from "@uma/common";
+
+import type { TransactionReceipt } from "web3-core";
 
 // Stores state of Relay (i.e. Pending, Uninitialized, Finalized) and linked L2 deposit parameters.
 type RelayableDeposit = { status: ClientRelayState; deposit: Deposit };
@@ -468,41 +470,21 @@ export class Relayer {
   }
 
   private async _disputeRelay(deposit: Deposit, relay: Relay) {
-    await this.gasEstimator.update();
-    try {
-      const { receipt, transactionConfig } = await runTransaction({
-        web3: this.l1Client.l1Web3,
-        transaction: this._generateDisputeRelayTx(deposit, relay),
-        transactionConfig: { ...this.gasEstimator.getCurrentFastPrice(), from: this.account },
-        availableAccounts: 1,
-      });
+    const { receipt } = await this._sendTransaction(
+      this._generateDisputeRelayTx(deposit, relay),
+      "Disputed pending relay. Relay was deleted 🚓",
+      this._generateMarkdownForDispute(deposit, relay)
+    );
 
-      if (receipt.events) {
-        if (receipt.events.RelayDisputed) {
-          this.logger.info({
-            at: "AcrossRelayer#Disputer",
-            message: "Disputed pending relay. Relay was deleted. 🚓",
-            tx: receipt.transactionHash,
-            depositHash: receipt.events.RelayDisputed.returnValues.depositHash,
-            relayHash: receipt.events.RelayDisputed.returnValues.relayHash,
-            disputer: receipt.events.RelayDisputed.returnValues.disputer,
-            transactionConfig,
-          });
-        } else if (receipt.events.RelayCanceled) {
-          this.logger.info({
-            at: "AcrossRelayer#Disputer",
-            message: "Dispute failed to send to OO. Relay was deleted. 🚓",
-            tx: receipt.transactionHash,
-            depositHash: receipt.events.RelayCanceled.returnValues.depositHash,
-            relayHash: receipt.events.RelayCanceled.returnValues.relayHash,
-            disputer: receipt.events.RelayCanceled.returnValues.disputer,
-            transactionConfig,
-          });
-        } else throw receipt;
-      } else throw receipt;
-    } catch (error) {
-      this.logger.error({ at: "AcrossRelayer#Disputer", message: "Something errored disputing relay!", error });
-    }
+    if (receipt?.events?.RelayCanceled)
+      this.logger.error({
+        at: "AcrossRelayer#Disputer",
+        message: "Dispute failed to send to OO 👀!",
+        tx: receipt.transactionHash,
+        depositHash: receipt.events.RelayCanceled.returnValues.depositHash,
+        relayHash: receipt.events.RelayCanceled.returnValues.relayHash,
+        disputer: receipt.events.RelayCanceled.returnValues.disputer,
+      });
   }
 
   private async _processTransactionBatch(
@@ -538,14 +520,14 @@ export class Relayer {
       });
 
       // Send the batch transaction to the L1 bridge pool contract. Catch if the transaction succeeds.
-      const batchTxSuccess = await this._sendTransaction(
+      const { txStatus } = await this._sendTransaction(
         (targetMultiCaller.methods.multicall(multiCallTransaction) as unknown) as TransactionType,
         "Multicall Transaction batch sent!🧙",
         mrkdwnBlock
       );
 
       // In the event the batch transaction was unsuccessful, iterate over all transactions and send them individually.
-      if (!batchTxSuccess) {
+      if (!txStatus) {
         for (const transaction of transactions) {
           this.logger.info({ at: "AcrossRelayer#TxProcessor", message: "Sending batched transactions individually😷" });
           await this._sendTransaction(transaction.transaction, transaction.message, transaction.mrkdwn);
@@ -554,10 +536,18 @@ export class Relayer {
     }
   }
 
-  private async _sendTransaction(transaction: TransactionType, message: string, mrkdwn: string): Promise<boolean> {
+  private async _sendTransaction(
+    transaction: TransactionType,
+    message: string,
+    mrkdwn: string
+  ): Promise<{
+    txStatus: boolean;
+    receipt: TransactionReceipt | null;
+    transactionConfig: AugmentedSendOptions | null;
+  }> {
     try {
       await this.gasEstimator.update();
-      const { receipt } = await runTransaction({
+      const { receipt, transactionConfig } = await runTransaction({
         web3: this.l1Client.l1Web3,
         transaction,
         transactionConfig: { ...this.gasEstimator.getCurrentFastPrice(), from: this.account },
@@ -569,7 +559,7 @@ export class Relayer {
           message,
           mrkdwn: mrkdwn + " tx: " + createEtherscanLinkMarkdown(receipt.transactionHash),
         });
-        return true;
+        return { txStatus: true, receipt, transactionConfig };
       } else throw receipt;
     } catch (error) {
       this.logger.error({
@@ -577,7 +567,7 @@ export class Relayer {
         message: "Something errored sending a transaction",
         error,
       });
-      return false;
+      return { txStatus: false, receipt: null, transactionConfig: null };
     }
   }
 
@@ -771,6 +761,27 @@ export class Relayer {
       createEtherscanLinkMarkdown(
         this.l1Client.getInstantRelayer(deposit.l1Token, deposit.depositHash, relay.realizedLpFeePct.toString()) || ""
       ) +
+      "."
+    );
+  }
+
+  private _generateMarkdownForDispute(deposit: Deposit, relay: Relay) {
+    const { collateralDecimals, collateralSymbol } = this.l1Client.getBridgePoolCollateralInfoForDeposit(deposit);
+    return (
+      "Deposit ID" +
+      deposit.depositId +
+      "l2Sender: " +
+      deposit.l2Sender +
+      ", +l1Recipient: " +
+      deposit.l1Recipient +
+      "of amount " +
+      createFormatFunction(2, 4, false, collateralDecimals)(deposit.amount) +
+      " " +
+      collateralSymbol +
+      " was disputed! Deposit hash: " +
+      deposit.depositHash +
+      ", relayAncillaryDataHash: " +
+      relay.relayAncillaryDataHash +
       "."
     );
   }

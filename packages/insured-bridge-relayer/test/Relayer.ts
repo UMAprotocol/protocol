@@ -937,7 +937,7 @@ describe("Relayer.ts", function () {
         spy.getCalls().filter((_log: any) => _log.lastArg.message.includes("Disputed pending relay")).length,
         1
       );
-      assert.isTrue(lastSpyLogIncludes(spy, "Something errored disputing"));
+      assert.isTrue(lastSpyLogIncludes(spy, "Something errored"));
     });
     it("Dispute fails to send to OptimisticOracle", async function () {
       // Make a deposit on L2 and relay it with invalid relay params. The disputer should detect that the relay params
