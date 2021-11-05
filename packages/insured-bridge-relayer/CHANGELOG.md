@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.9.0](https://github.com/UMAprotocol/protocol/compare/@uma/insured-bridge-relayer@1.8.0...@uma/insured-bridge-relayer@1.9.0) (2021-11-05)
+
+### Bug Fixes
+
+- **insured-bridge-relayer:** Key deployTimestamps by lowercase addresses ([#3557](https://github.com/UMAprotocol/protocol/issues/3557)) ([fc14de5](https://github.com/UMAprotocol/protocol/commit/fc14de5abedc72c4890e9f354463438c1d2f3164))
+
+### Features
+
+- **across-relayer:** Enable batch relays via multicall and improve log production ([#3559](https://github.com/UMAprotocol/protocol/issues/3559)) ([f1cfecc](https://github.com/UMAprotocol/protocol/commit/f1cfecc3d085d5be86a4557682b0ae931cbb24b5))
+
 # [1.8.0](https://github.com/UMAprotocol/protocol/compare/@uma/insured-bridge-relayer@1.7.0...@uma/insured-bridge-relayer@1.8.0) (2021-11-02)
 
 ### Bug Fixes
