@@ -470,6 +470,7 @@ export class Relayer {
   }
 
   private async _disputeRelay(deposit: Deposit, relay: Relay) {
+    // We shouldn't be batching disputes because we don't expect to send batches of them.
     const { receipt } = await this._sendTransaction(
       this._generateDisputeRelayTx(deposit, relay),
       "Disputed pending relay. Relay was deleted 🚓",
