@@ -2,10 +2,11 @@ import assert from "assert";
 import { bridgePool } from "../../clients";
 import { BigNumber, Signer } from "ethers";
 import { toBNWei, fixedPointAdjustment, calcInterest, calcApy, fromWei, BigNumberish } from "../utils";
-import { BatchReadWithErrors, loop } from "../../utils";
+import { BatchReadWithErrors, loop, exists } from "../../utils";
 import Multicall2 from "../../multicall2";
 import TransactionManager from "../transactionManager";
-import { TransactionRequest, TransactionReceipt, Provider } from "@ethersproject/abstract-provider";
+import { ethers } from "ethers";
+import { TransactionRequest, TransactionReceipt, Provider, Log } from "@ethersproject/abstract-provider";
 import set from "lodash/set";
 import get from "lodash/get";
 import has from "lodash/has";
@@ -96,12 +97,31 @@ class PoolState {
   }
 }
 
+type EventIdParams = { blockNumber: number; transactionIndex: number; logIndex: number };
 export class PoolEventState {
+  private seen = new Set<string>();
+  private iface: ethers.utils.Interface;
   constructor(
     private contract: bridgePool.Instance,
     private startBlock = 0,
     private state: bridgePool.EventState = bridgePool.eventStateDefaults()
-  ) {}
+  ) {
+    this.iface = new ethers.utils.Interface(bridgePool.Factory.abi);
+  }
+  private makeId(params: EventIdParams) {
+    return [params.blockNumber, params.transactionIndex, params.logIndex].join("!");
+  }
+  hasEvent(params: EventIdParams) {
+    return this.seen.has(this.makeId(params));
+  }
+  private addEvent(params: EventIdParams) {
+    return this.seen.add(this.makeId(params));
+  }
+  private filterSeen = (params: EventIdParams) => {
+    const seen = this.hasEvent(params);
+    if (!seen) this.addEvent(params);
+    return !seen;
+  };
   public async read(endBlock: number) {
     if (endBlock <= this.startBlock) return this.state;
     const events = (
@@ -109,14 +129,43 @@ export class PoolEventState {
         ...(await this.contract.queryFilter(this.contract.filters.LiquidityAdded(), this.startBlock, endBlock)),
         ...(await this.contract.queryFilter(this.contract.filters.LiquidityRemoved(), this.startBlock, endBlock)),
       ])
-    ).sort((a, b) => {
-      if (a.blockNumber < b.blockNumber) return -1;
-      if (a.transactionIndex < b.transactionIndex) return -1;
-      if (a.logIndex < b.logIndex) return -1;
-      return 1;
-    });
+    )
+      .filter(this.filterSeen)
+      .sort((a, b) => {
+        if (a.blockNumber !== b.blockNumber) return a.blockNumber - b.blockNumber;
+        if (a.transactionIndex !== b.transactionIndex) return a.transactionIndex - b.transactionIndex;
+        if (a.logIndex !== b.logIndex) a.logIndex - b.logIndex;
+        // if everything is the same, return a, ie maintain order of array
+        return -1;
+      });
     // ethers queries are inclusive [start,end] unless start === end, then exclusive (start,end). we increment to make sure we dont see same event twice
     this.startBlock = endBlock + 1;
+    this.state = bridgePool.getEventState(events, this.state);
+    return this.state;
+  }
+  makeEventFromLog(log: Log) {
+    const description = this.iface.parseLog(log);
+    return {
+      ...log,
+      ...description,
+      event: description.name,
+      eventSignature: description.signature,
+    };
+  }
+  readTxReceipt(receipt: TransactionReceipt) {
+    const events = receipt.logs
+      .map((log) => {
+        try {
+          return this.makeEventFromLog(log);
+        } catch (err) {
+          // return nothing, this throws a lot because logs from other contracts are included in receipt
+          return;
+        }
+      })
+      // filter out undefined
+      .filter(exists)
+      .filter(this.filterSeen);
+
     this.state = bridgePool.getEventState(events, this.state);
     return this.state;
   }
@@ -259,7 +308,7 @@ export class Client {
         const tx = this.state.transactions[id];
         this.updatePool(tx.toAddress)
           .then(() => {
-            return this.updateUser(tx.fromAddress, tx.toAddress);
+            return this.updateUserWithTransaction(tx.fromAddress, tx.toAddress, txReceipt);
           })
           .catch((err) => {
             this.emit(["error"], err);
@@ -390,6 +439,19 @@ export class Client {
   }
   getTx(id: string) {
     return get(this.state, ["transactions", id]);
+  }
+  private async updateUserWithTransaction(userAddress: string, poolAddress: string, txReceipt: TransactionReceipt) {
+    const contract = this.getOrCreatePoolContract(poolAddress);
+    if (!this.hasPool(poolAddress)) {
+      await this.updatePool(poolAddress);
+    }
+    const poolState = this.getPool(poolAddress);
+    const getUserState = new UserState(contract);
+    const getPoolEventState = this.getOrCreatePoolEvents(poolAddress);
+    const userState = await getUserState.read(userAddress);
+    const eventState = await getPoolEventState.readTxReceipt(txReceipt);
+    set(this.state, ["users", userAddress, poolAddress], joinUserState(poolState, eventState, userState));
+    this.emit(["users", userAddress, poolAddress], this.state.users[userAddress][poolAddress]);
   }
   async updateUser(userAddress: string, poolAddress: string) {
     const contract = this.getOrCreatePoolContract(poolAddress);
