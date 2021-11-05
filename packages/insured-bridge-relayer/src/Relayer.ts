@@ -513,7 +513,7 @@ export class Relayer {
 
     if (transactions.length == 0) return;
     if (transactions.length == 1) {
-      this.logger.debug({ at: "AcrossRelayerTxProcessor", message: "Sending transaction" });
+      this.logger.debug({ at: "AcrossRelayer#TxProcessor", message: "Sending transaction" });
       await this._sendTransaction(transactions[0].transaction, transactions[0].message, transactions[0].mrkdwn);
     }
     if (transactions.length > 1) {
@@ -547,7 +547,7 @@ export class Relayer {
       // In the event the batch transaction was unsuccessful, iterate over all transactions and send them individually.
       if (!batchTxSuccess) {
         for (const transaction of transactions) {
-          this.logger.info({ at: "AcrossRelayerTxProcessor", message: "Sending batched transactions individually😷" });
+          this.logger.info({ at: "AcrossRelayer#TxProcessor", message: "Sending batched transactions individually😷" });
           await this._sendTransaction(transaction.transaction, transaction.message, transaction.mrkdwn);
         }
       }
@@ -565,7 +565,7 @@ export class Relayer {
       });
       if (receipt) {
         this.logger.info({
-          at: "AcrossRelayerTxProcessor",
+          at: "AcrossRelayer#TxProcessor",
           message,
           mrkdwn: mrkdwn + " tx: " + createEtherscanLinkMarkdown(receipt.transactionHash),
         });
@@ -573,7 +573,7 @@ export class Relayer {
       } else throw receipt;
     } catch (error) {
       this.logger.error({
-        at: "AcrossRelayerTxProcessor",
+        at: "AcrossRelayer#TxProcessor",
         message: "Something errored sending a transaction",
         error,
       });
@@ -742,7 +742,7 @@ export class Relayer {
       createEtherscanLinkMarkdown(deposit.l2Sender, this.l2Client.chainId) +
       " to " +
       createEtherscanLinkMarkdown(deposit.l1Recipient) +
-      "%. slowRelayFeePct: " +
+      ". slowRelayFeePct: " +
       createFormatFunction(2, 4, false, 18)(toBN(deposit.slowRelayFeePct).muln(100)) +
       "%, instantRelayFeePct: " +
       createFormatFunction(2, 4, false, 18)(toBN(deposit.instantRelayFeePct).muln(100)) +
