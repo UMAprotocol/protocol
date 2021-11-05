@@ -6,6 +6,7 @@ import "./Governor.sol";
 import "./Constants.sol";
 import "./Voting.sol";
 import "./AdminIdentifierLib.sol";
+import "../../common/implementation/Lockable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -13,7 +14,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 /**
  * @title Proposer contract that allows anyone to make governance proposals with a bond.
  */
-contract Proposer is Ownable, Testable {
+contract Proposer is Ownable, Testable, Lockable {
     using SafeERC20 for IERC20;
     IERC20 public token;
     uint256 public bond;
@@ -33,6 +34,11 @@ contract Proposer is Ownable, Testable {
 
     /**
      * @notice Construct the Proposer contract.
+     * @param _token the ERC20 token that the bond is paid in.
+     * @param _bond the bond amount.
+     * @param _governor the governor contract that this contract makes proposals to.
+     * @param _finder the finder contract used to look up addresses.
+     * @param _timer the timer contract to control the output of getCurrentTime(). Set to 0x0 if in production.
      */
     constructor(
         IERC20 _token,
@@ -42,10 +48,10 @@ contract Proposer is Ownable, Testable {
         address _timer
     ) Testable(_timer) {
         token = _token;
-        bond = _bond;
         governor = _governor;
         finder = _finder;
-        emit BondSet(_bond);
+        setBond(_bond);
+        transferOwnership(address(_governor));
     }
 
     /**
@@ -54,7 +60,7 @@ contract Proposer is Ownable, Testable {
      * @param transactions list of transactions for the governor to execute.
      * @return id the id of the governor proposal.
      */
-    function propose(Governor.Transaction[] memory transactions) public returns (uint256 id) {
+    function propose(Governor.Transaction[] memory transactions) external nonReentrant() returns (uint256 id) {
         id = governor.numProposals();
         token.safeTransferFrom(msg.sender, address(this), bond);
         bondedProposals[id] = BondedProposal({ sender: msg.sender, lockedBond: bond, time: uint64(getCurrentTime()) });
@@ -66,7 +72,7 @@ contract Proposer is Ownable, Testable {
      * @dev For the resolution to work correctly, this contract must be a registered contract in the DVM.
      * @param id proposal id.
      */
-    function resolveProposal(uint256 id) external payable {
+    function resolveProposal(uint256 id) external nonReentrant() {
         BondedProposal storage bondedProposal = bondedProposals[id];
         Voting voting = Voting(finder.getImplementationAddress(OracleInterfaces.Oracle));
         require(
@@ -87,7 +93,7 @@ contract Proposer is Ownable, Testable {
      * @dev Admin is intended to be the governance system, itself.
      * @param _bond the new bond.
      */
-    function setBond(uint256 _bond) public onlyOwner {
+    function setBond(uint256 _bond) public nonReentrant() onlyOwner() {
         bond = _bond;
         emit BondSet(_bond);
     }

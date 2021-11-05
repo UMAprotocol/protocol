@@ -55,6 +55,22 @@ describe("Proposer", function () {
     await identifierWhitelist.methods.transferOwnership(governor.options.address).send({ from: owner });
   });
 
+  const changeBond = async (newBond) => {
+    const currentBond = await proposer.methods.bond().call();
+    await votingToken.methods.transfer(submitter, currentBond).send({ from: owner });
+    await votingToken.methods.approve(proposer.options.address, currentBond).send({ from: submitter });
+    const txData = proposer.methods.setBond(newBond).encodeABI();
+    const proposalTx = proposer.methods.propose([{ data: txData, value: 0, to: proposer.options.address }]);
+    const id = await proposalTx.call({ from: submitter });
+    await proposalTx.send({ from: submitter });
+    const pendingQueries = await mockOracle.methods.getPendingQueries().call();
+    const { identifier, time, ancillaryData } = pendingQueries[pendingQueries.length - 1];
+    await mockOracle.methods.pushPrice(identifier, time, ancillaryData, toWei("1")).send({ from: owner });
+    await proposer.methods.resolveProposal(id).send({ from: submitter });
+    await votingToken.methods.transfer(owner, currentBond).send({ from: submitter });
+    return await governor.methods.executeProposal(id, 0).send({ from: submitter });
+  };
+
   it("Setting the bond", async function () {
     // Bond should start with the constructed value.
     assert.equal(await proposer.methods.bond().call(), bond);
@@ -63,12 +79,12 @@ describe("Proposer", function () {
     await didContractThrow(proposer.methods.setBond(toWei("10")).send({ from: submitter }));
 
     // Set the bond to 10.
-    const tx = await proposer.methods.setBond(toWei("10")).send({ from: owner });
+    const tx = await changeBond(toWei("10"));
     await assertEventEmitted(tx, proposer, "BondSet", (event) => event.bond === toWei("10"));
     assert.equal(await proposer.methods.bond().call(), toWei("10"));
 
     // Reset the bond for other tests.
-    await proposer.methods.setBond(bond).send({ from: owner });
+    await changeBond(bond);
   });
 
   it("Bond must be paid", async function () {
