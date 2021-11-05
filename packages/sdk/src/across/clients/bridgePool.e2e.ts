@@ -130,7 +130,6 @@ describe("Client", function () {
   test("read pool", async function () {
     await client.updatePool(wethAddress);
     const result = get(state, ["pools", wethAddress]);
-    console.log(result);
     assert.ok(result);
   });
 });
