@@ -9,7 +9,7 @@ export { default as Multicall2 } from "./multicall2";
 
 // types
 import type { TypedEventFilterEthers as TypedEventFilter, TypedEventEthers as TypedEvent } from "@uma/contracts-node";
-import { Contract, ethers, Signer, providers } from "ethers";
+import { Contract, ethers, Signer, providers, Event } from "ethers";
 
 type Result = ethers.utils.Result;
 
@@ -28,6 +28,12 @@ export interface HasId<I> {
 export interface Callable {
   (...args: any[]): any;
 }
+
+export type SerializableEvent = Omit<
+  Event,
+  "decode" | "removeListener" | "getBlock" | "getTransaction" | "getTransactionReceipt"
+>;
+
 // this convoluted type is meant to cast events to the types you need based on the contract and event name
 // example: type NewContractRegistered = GetEventType<Registry,"NewContractRegistered">;
 export type GetEventType<ContractType extends Contract, EventName extends string> = ReturnType<
