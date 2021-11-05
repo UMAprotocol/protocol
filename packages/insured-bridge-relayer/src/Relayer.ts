@@ -156,6 +156,11 @@ export class Relayer {
       }
 
       for (const settleableRelay of settleableRelays) {
+        this.logger.debug({
+          at: "InsuredBridgeRelayer#Finalizer",
+          message: "Settling relay",
+          settleableRelay,
+        });
         try {
           settleRelayTransactions.push(
             await this._generateSettleTransactionForSettleableRelay(

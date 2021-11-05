@@ -5,11 +5,12 @@ const winston = require("winston");
 
 const { toWei, hexToUtf8, utf8ToHex } = web3.utils;
 
-const { OptimisticOracleClient } = require("../../dist/clients/OptimisticOracleClient");
+const { OptimisticOracleClient, OptimisticOracleType } = require("../../dist/clients/OptimisticOracleClient");
 const { interfaceName, advanceBlockAndSetTime } = require("@uma/common");
 
 const OptimisticOracle = getContract("OptimisticOracle");
 const OptimisticRequesterTest = getContract("OptimisticRequesterTest");
+const SkinnyOptimisticOracle = getContract("SkinnyOptimisticOracle");
 const Finder = getContract("Finder");
 const IdentifierWhitelist = getContract("IdentifierWhitelist");
 const Token = getContract("ExpandedERC20");
@@ -126,203 +127,418 @@ describe("OptimisticOracleClient.js", function () {
     );
   });
 
-  it("Basic proposal lifecycle: request, propose, expire without dispute", async function () {
-    // Initial update.
-    await client.update();
+  describe("Default OptimisticOracle contract", function () {
+    it("Basic proposal lifecycle: request, propose, expire without dispute", async function () {
+      // Initial update.
+      await client.update();
 
-    // Initially, no proposals and no price requests.
-    let result = client.getUndisputedProposals();
-    objectsInArrayInclude(result, []);
-    result = client.getUnproposedPriceRequests();
-    objectsInArrayInclude(result, []);
-    result = client.getSettleableProposals(proposer);
-    objectsInArrayInclude(result, []);
+      // Initially, no proposals and no price requests.
+      let result = client.getUndisputedProposals();
+      objectsInArrayInclude(result, []);
+      result = client.getUnproposedPriceRequests();
+      objectsInArrayInclude(result, []);
+      result = client.getSettleableProposals(proposer);
+      objectsInArrayInclude(result, []);
 
-    // Request and update again, should show no proposals.
-    await optimisticRequester.methods
-      .requestPrice(identifier, requestTime, "0x", collateral.options.address, 0)
-      .send({ from: accounts[0] });
-    await client.update();
-    result = client.getUndisputedProposals();
-    objectsInArrayInclude(result, []);
-    result = client.getSettleableProposals(proposer);
-    objectsInArrayInclude(result, []);
+      // Request and update again, should show no proposals.
+      await optimisticRequester.methods
+        .requestPrice(identifier, requestTime, "0x", collateral.options.address, 0)
+        .send({ from: accounts[0] });
+      await client.update();
+      result = client.getUndisputedProposals();
+      objectsInArrayInclude(result, []);
+      result = client.getSettleableProposals(proposer);
+      objectsInArrayInclude(result, []);
 
-    // Should have one price request.
-    result = client.getUnproposedPriceRequests();
-    objectsInArrayInclude(result, [
-      {
-        requester: optimisticRequester.options.address,
-        identifier: hexToUtf8(identifier),
-        ancillaryData: "0x",
-        timestamp: requestTime.toString(),
-        currency: collateral.options.address,
-        reward: "0",
-        finalFee,
-      },
-    ]);
+      // Should have one price request.
+      result = client.getUnproposedPriceRequests();
+      objectsInArrayInclude(result, [
+        {
+          requester: optimisticRequester.options.address,
+          identifier: hexToUtf8(identifier),
+          ancillaryData: "0x",
+          timestamp: requestTime.toString(),
+          currency: collateral.options.address,
+          reward: "0",
+          finalFee,
+        },
+      ]);
 
-    // Make a proposal and update, should now show one proposal, 0 unproposed requests, and 0 expired proposals:
-    await collateral.methods.approve(optimisticOracle.options.address, totalDefaultBond).send({ from: proposer });
-    const currentContractTime = await optimisticOracle.methods.getCurrentTime().call();
-    await optimisticOracle.methods
-      .proposePrice(optimisticRequester.options.address, identifier, requestTime, "0x", correctPrice)
-      .send({ from: proposer });
+      // Make a proposal and update, should now show one proposal, 0 unproposed requests, and 0 expired proposals:
+      await collateral.methods.approve(optimisticOracle.options.address, totalDefaultBond).send({ from: proposer });
+      const currentContractTime = await optimisticOracle.methods.getCurrentTime().call();
+      await optimisticOracle.methods
+        .proposePrice(optimisticRequester.options.address, identifier, requestTime, "0x", correctPrice)
+        .send({ from: proposer });
 
-    await client.update();
-    result = client.getUndisputedProposals();
-    objectsInArrayInclude(result, [
-      {
-        requester: optimisticRequester.options.address,
-        proposer: proposer,
-        identifier: hexToUtf8(identifier),
-        ancillaryData: "0x",
-        currency: collateral.options.address,
-        timestamp: requestTime.toString(),
-        proposedPrice: correctPrice,
-        expirationTimestamp: (Number(currentContractTime) + liveness).toString(),
-      },
-    ]);
-    result = client.getUnproposedPriceRequests();
-    objectsInArrayInclude(result, []);
-    result = client.getSettleableProposals(proposer);
-    objectsInArrayInclude(result, []);
+      await client.update();
+      result = client.getUndisputedProposals();
+      objectsInArrayInclude(result, [
+        {
+          requester: optimisticRequester.options.address,
+          proposer: proposer,
+          identifier: hexToUtf8(identifier),
+          ancillaryData: "0x",
+          currency: collateral.options.address,
+          timestamp: requestTime.toString(),
+          proposedPrice: correctPrice,
+          expirationTimestamp: (Number(currentContractTime) + liveness).toString(),
+        },
+      ]);
+      result = client.getUnproposedPriceRequests();
+      objectsInArrayInclude(result, []);
+      result = client.getSettleableProposals(proposer);
+      objectsInArrayInclude(result, []);
 
-    // Now, advance time so that the proposal expires and check that the client detects the new state:
-    await optimisticOracle.methods
-      .setCurrentTime((Number(currentContractTime) + liveness).toString())
-      .send({ from: accounts[0] });
-    await client.update();
-    result = client.getUndisputedProposals();
-    objectsInArrayInclude(result, []);
-    result = client.getUnproposedPriceRequests();
-    objectsInArrayInclude(result, []);
-    // Note: `getSettleableProposals` only returns proposals where the `proposer` is involved
-    result = client.getSettleableProposals(rando);
-    objectsInArrayInclude(result, []);
-    result = client.getSettleableProposals(proposer);
-    objectsInArrayInclude(result, [
-      {
-        requester: optimisticRequester.options.address,
-        proposer: proposer,
-        identifier: hexToUtf8(identifier),
-        ancillaryData: "0x",
-        currency: collateral.options.address,
-        timestamp: requestTime.toString(),
-        proposedPrice: correctPrice,
-        expirationTimestamp: (Number(currentContractTime) + liveness).toString(),
-      },
-    ]);
+      // Now, advance time so that the proposal expires and check that the client detects the new state:
+      await optimisticOracle.methods
+        .setCurrentTime((Number(currentContractTime) + liveness).toString())
+        .send({ from: accounts[0] });
+      await client.update();
+      result = client.getUndisputedProposals();
+      objectsInArrayInclude(result, []);
+      result = client.getUnproposedPriceRequests();
+      objectsInArrayInclude(result, []);
+      // Note: `getSettleableProposals` only returns proposals where the `proposer` is involved
+      result = client.getSettleableProposals(rando);
+      objectsInArrayInclude(result, []);
+      result = client.getSettleableProposals(proposer);
+      objectsInArrayInclude(result, [
+        {
+          requester: optimisticRequester.options.address,
+          proposer: proposer,
+          identifier: hexToUtf8(identifier),
+          ancillaryData: "0x",
+          currency: collateral.options.address,
+          timestamp: requestTime.toString(),
+          proposedPrice: correctPrice,
+          expirationTimestamp: (Number(currentContractTime) + liveness).toString(),
+        },
+      ]);
 
-    // Once proposals are settled they no longer appear as settleable in the client.
-    await optimisticOracle.methods
-      .settle(optimisticRequester.options.address, identifier, requestTime, "0x")
-      .send({ from: accounts[0] });
-    await client.update();
-    result = client.getSettleableProposals(proposer);
-    objectsInArrayInclude(result, []);
+      // Once proposals are settled they no longer appear as settleable in the client.
+      await optimisticOracle.methods
+        .settle(optimisticRequester.options.address, identifier, requestTime, "0x")
+        .send({ from: accounts[0] });
+      await client.update();
+      result = client.getSettleableProposals(proposer);
+      objectsInArrayInclude(result, []);
+    });
+
+    it("Basic dispute lifecycle: request, propose, dispute, resolve & settle", async function () {
+      // Initial update.
+      await client.update();
+
+      // Initially, no settleable disputes:
+      let result = client.getSettleableDisputes(disputer);
+      objectsInArrayInclude(result, []);
+
+      // Request a price:
+      await optimisticRequester.methods
+        .requestPrice(identifier, requestTime, "0x", collateral.options.address, 0)
+        .send({ from: accounts[0] });
+      await client.update();
+      result = client.getSettleableDisputes(disputer);
+      objectsInArrayInclude(result, []);
+
+      // Make a proposal:
+      await collateral.methods.approve(optimisticOracle.options.address, totalDefaultBond).send({ from: proposer });
+      await optimisticOracle.methods
+        .proposePrice(optimisticRequester.options.address, identifier, requestTime, "0x", correctPrice)
+        .send({ from: proposer });
+
+      await client.update();
+      result = client.getSettleableDisputes(disputer);
+      objectsInArrayInclude(result, []);
+
+      // Dispute the proposal:
+      await collateral.methods.approve(optimisticOracle.options.address, totalDefaultBond).send({ from: disputer });
+      await optimisticOracle.methods
+        .disputePrice(optimisticRequester.options.address, identifier, requestTime, "0x")
+        .send({ from: disputer });
+      result = client.getSettleableDisputes(disputer);
+      objectsInArrayInclude(result, []);
+
+      // Resolve the dispute and check that the client detects the new state:
+      await pushPrice(correctPrice);
+      await client.update();
+      // Note: `getSettleableDisputes` only returns proposals where the `disputer` is involved
+      result = client.getSettleableDisputes(rando);
+      objectsInArrayInclude(result, []);
+      result = client.getSettleableDisputes(disputer);
+      objectsInArrayInclude(result, [
+        {
+          requester: optimisticRequester.options.address,
+          proposer: proposer,
+          disputer: disputer,
+          identifier: hexToUtf8(identifier),
+          ancillaryData: "0x",
+          timestamp: requestTime.toString(),
+        },
+      ]);
+
+      // Settle the dispute and make sure that the client no longer sees it as settleable:
+      await optimisticOracle.methods
+        .settle(optimisticRequester.options.address, identifier, requestTime, "0x")
+        .send({ from: accounts[0] });
+      await client.update();
+      result = client.getSettleableDisputes(disputer);
+      objectsInArrayInclude(result, []);
+    });
+
+    it("Lookback window enforced", async function () {
+      // Create a new client with a shorter lookback equal to approximately
+      // the amount of seconds that it takes 1 block to get mined
+      let clientShortLookback = new OptimisticOracleClient(
+        dummyLogger,
+        OptimisticOracle.abi,
+        MockOracle.abi,
+        web3,
+        optimisticOracle.options.address,
+        mockOracle.options.address,
+        13
+      );
+
+      // Request a price and check that the longer lookback client currently sees it
+      await optimisticRequester.methods
+        .requestPrice(identifier, requestTime, "0x", collateral.options.address, 0)
+        .send({ from: accounts[0] });
+      await client.update();
+      let result = client.getUnproposedPriceRequests();
+      objectsInArrayInclude(result, [
+        {
+          requester: optimisticRequester.options.address,
+          identifier: hexToUtf8(identifier),
+          ancillaryData: "0x",
+          timestamp: requestTime.toString(),
+          currency: collateral.options.address,
+          reward: "0",
+          finalFee,
+        },
+      ]);
+
+      // Mine two blocks to move past the lookback window, and make sure the shorter lookback client
+      // ignores the price request.
+      const currentTime = Number((await web3.eth.getBlock("latest")).timestamp);
+      await advanceBlockAndSetTime(web3, currentTime + 1);
+      await advanceBlockAndSetTime(web3, currentTime + 2);
+
+      await clientShortLookback.update();
+      result = clientShortLookback.getUnproposedPriceRequests();
+      objectsInArrayInclude(result, []);
+    });
   });
+  describe("Skinny OptimisticOracle contract", function () {
+    beforeEach(async function () {
+      optimisticOracle = await SkinnyOptimisticOracle.new(
+        liveness,
+        finder.options.address,
+        timer.options.address
+      ).send({ from: accounts[0] });
+      client = new OptimisticOracleClient(
+        dummyLogger,
+        SkinnyOptimisticOracle.abi,
+        MockOracle.abi,
+        web3,
+        optimisticOracle.options.address,
+        mockOracle.options.address,
+        604800, // Default lookback
+        OptimisticOracleType.SkinnyOptimisticOracle
+      );
+    });
+    it("Basic proposal lifecycle: request, propose, expire without dispute", async function () {
+      // Initial update.
+      await client.update();
 
-  it("Basic dispute lifecycle: request, propose, dispute, resolve & settle", async function () {
-    // Initial update.
-    await client.update();
+      // Initially, no proposals and no price requests.
+      let result = client.getUndisputedProposals();
+      objectsInArrayInclude(result, []);
+      result = client.getUnproposedPriceRequests();
+      objectsInArrayInclude(result, []);
+      result = client.getSettleableProposals(proposer);
+      objectsInArrayInclude(result, []);
 
-    // Initially, no settleable disputes:
-    let result = client.getSettleableDisputes(disputer);
-    objectsInArrayInclude(result, []);
+      // Request and update again, should show no proposals.
+      await optimisticOracle.methods
+        .requestPrice(identifier, requestTime, "0x", collateral.options.address, 0, finalFee, 0)
+        .send({ from: accounts[0] });
+      await client.update();
+      result = client.getUndisputedProposals();
+      objectsInArrayInclude(result, []);
+      result = client.getSettleableProposals(proposer);
+      objectsInArrayInclude(result, []);
 
-    // Request a price:
-    await optimisticRequester.methods
-      .requestPrice(identifier, requestTime, "0x", collateral.options.address, 0)
-      .send({ from: accounts[0] });
-    await client.update();
-    result = client.getSettleableDisputes(disputer);
-    objectsInArrayInclude(result, []);
+      // Should have one price request.
+      const priceRequest = (await optimisticOracle.getPastEvents("RequestPrice", { fromBlock: 0 }))[0];
+      result = client.getUnproposedPriceRequests();
+      objectsInArrayInclude(result, [
+        {
+          requester: accounts[0],
+          identifier: hexToUtf8(identifier),
+          ancillaryData: "0x",
+          timestamp: requestTime.toString(),
+          request: priceRequest.returnValues.request,
+        },
+      ]);
 
-    // Make a proposal:
-    await collateral.methods.approve(optimisticOracle.options.address, totalDefaultBond).send({ from: proposer });
-    await optimisticOracle.methods
-      .proposePrice(optimisticRequester.options.address, identifier, requestTime, "0x", correctPrice)
-      .send({ from: proposer });
+      // Make a proposal and update, should now show one proposal, 0 unproposed requests, and 0 expired proposals:
+      await collateral.methods.approve(optimisticOracle.options.address, totalDefaultBond).send({ from: proposer });
+      const currentContractTime = await optimisticOracle.methods.getCurrentTime().call();
+      await optimisticOracle.methods
+        .proposePrice(accounts[0], identifier, requestTime, "0x", priceRequest.returnValues.request, correctPrice)
+        .send({ from: proposer });
+      const priceProposal = (await optimisticOracle.getPastEvents("ProposePrice", { fromBlock: 0 }))[0];
 
-    await client.update();
-    result = client.getSettleableDisputes(disputer);
-    objectsInArrayInclude(result, []);
+      await client.update();
+      result = client.getUndisputedProposals();
+      objectsInArrayInclude(result, [
+        {
+          requester: accounts[0],
+          identifier: hexToUtf8(identifier),
+          ancillaryData: "0x",
+          request: priceProposal.returnValues.request,
+        },
+      ]);
+      result = client.getUnproposedPriceRequests();
+      objectsInArrayInclude(result, []);
+      result = client.getSettleableProposals(proposer);
+      objectsInArrayInclude(result, []);
 
-    // Dispute the proposal:
-    await collateral.methods.approve(optimisticOracle.options.address, totalDefaultBond).send({ from: disputer });
-    await optimisticOracle.methods
-      .disputePrice(optimisticRequester.options.address, identifier, requestTime, "0x")
-      .send({ from: disputer });
-    result = client.getSettleableDisputes(disputer);
-    objectsInArrayInclude(result, []);
+      // Now, advance time so that the proposal expires and check that the client detects the new state:
+      await optimisticOracle.methods
+        .setCurrentTime((Number(currentContractTime) + liveness).toString())
+        .send({ from: accounts[0] });
+      await client.update();
+      result = client.getUndisputedProposals();
+      objectsInArrayInclude(result, []);
+      result = client.getUnproposedPriceRequests();
+      objectsInArrayInclude(result, []);
+      // Note: `getSettleableProposals` only returns proposals where the `proposer` is involved
+      result = client.getSettleableProposals(rando);
+      objectsInArrayInclude(result, []);
+      result = client.getSettleableProposals(proposer);
+      objectsInArrayInclude(result, [
+        {
+          requester: accounts[0],
+          identifier: hexToUtf8(identifier),
+          ancillaryData: "0x",
+          timestamp: requestTime.toString(),
+          request: priceProposal.returnValues.request,
+        },
+      ]);
 
-    // Resolve the dispute and check that the client detects the new state:
-    await pushPrice(correctPrice);
-    await client.update();
-    // Note: `getSettleableDisputes` only returns proposals where the `disputer` is involved
-    result = client.getSettleableDisputes(rando);
-    objectsInArrayInclude(result, []);
-    result = client.getSettleableDisputes(disputer);
-    objectsInArrayInclude(result, [
-      {
-        requester: optimisticRequester.options.address,
-        proposer: proposer,
-        disputer: disputer,
-        identifier: hexToUtf8(identifier),
-        ancillaryData: "0x",
-        timestamp: requestTime.toString(),
-      },
-    ]);
+      // Once proposals are settled they no longer appear as settleable in the client.
+      await optimisticOracle.methods
+        .settle(accounts[0], identifier, requestTime, "0x", priceProposal.returnValues.request)
+        .send({ from: accounts[0] });
+      await client.update();
+      result = client.getSettleableProposals(proposer);
+      objectsInArrayInclude(result, []);
+    });
 
-    // Settle the dispute and make sure that the client no longer sees it as settleable:
-    await optimisticOracle.methods
-      .settle(optimisticRequester.options.address, identifier, requestTime, "0x")
-      .send({ from: accounts[0] });
-    await client.update();
-    result = client.getSettleableDisputes(disputer);
-    objectsInArrayInclude(result, []);
-  });
+    it("Basic dispute lifecycle: request, propose, dispute, resolve & settle", async function () {
+      // Initial update.
+      await client.update();
 
-  it("Lookback window enforced", async function () {
-    // Create a new client with a shorter lookback equal to approximately
-    // the amount of seconds that it takes 1 block to get mined
-    let clientShortLookback = new OptimisticOracleClient(
-      dummyLogger,
-      OptimisticOracle.abi,
-      MockOracle.abi,
-      web3,
-      optimisticOracle.options.address,
-      mockOracle.options.address,
-      13
-    );
+      // Initially, no settleable disputes:
+      let result = client.getSettleableDisputes(disputer);
+      objectsInArrayInclude(result, []);
 
-    // Request a price and check that the longer lookback client currently sees it
-    await optimisticRequester.methods
-      .requestPrice(identifier, requestTime, "0x", collateral.options.address, 0)
-      .send({ from: accounts[0] });
-    await client.update();
-    let result = client.getUnproposedPriceRequests();
-    objectsInArrayInclude(result, [
-      {
-        requester: optimisticRequester.options.address,
-        identifier: hexToUtf8(identifier),
-        ancillaryData: "0x",
-        timestamp: requestTime.toString(),
-        currency: collateral.options.address,
-        reward: "0",
-        finalFee,
-      },
-    ]);
+      // Request a price:
+      await optimisticOracle.methods
+        .requestPrice(identifier, requestTime, "0x", collateral.options.address, 0, finalFee, 0)
+        .send({ from: accounts[0] });
+      await client.update();
+      result = client.getSettleableDisputes(disputer);
+      objectsInArrayInclude(result, []);
 
-    // Mine two blocks to move past the lookback window, and make sure the shorter lookback client
-    // ignores the price request.
-    const currentTime = Number((await web3.eth.getBlock("latest")).timestamp);
-    await advanceBlockAndSetTime(web3, currentTime + 1);
-    await advanceBlockAndSetTime(web3, currentTime + 2);
+      // Make a proposal:
+      const priceRequest = (await optimisticOracle.getPastEvents("RequestPrice", { fromBlock: 0 }))[0];
+      await collateral.methods.approve(optimisticOracle.options.address, totalDefaultBond).send({ from: proposer });
+      await optimisticOracle.methods
+        .proposePrice(accounts[0], identifier, requestTime, "0x", priceRequest.returnValues.request, correctPrice)
+        .send({ from: proposer });
+      const priceProposal = (await optimisticOracle.getPastEvents("ProposePrice", { fromBlock: 0 }))[0];
 
-    await clientShortLookback.update();
-    result = clientShortLookback.getUnproposedPriceRequests();
-    objectsInArrayInclude(result, []);
+      await client.update();
+      result = client.getSettleableDisputes(disputer);
+      objectsInArrayInclude(result, []);
+
+      // Dispute the proposal:
+      await collateral.methods.approve(optimisticOracle.options.address, totalDefaultBond).send({ from: disputer });
+      await optimisticOracle.methods
+        .disputePrice(accounts[0], identifier, requestTime, "0x", priceProposal.returnValues.request)
+        .send({ from: disputer });
+      const priceDispute = (await optimisticOracle.getPastEvents("DisputePrice", { fromBlock: 0 }))[0];
+      result = client.getSettleableDisputes(disputer);
+      objectsInArrayInclude(result, []);
+
+      // Resolve the dispute and check that the client detects the new state:
+      await pushPrice(correctPrice);
+      await client.update();
+      // Note: `getSettleableDisputes` only returns proposals where the `disputer` is involved
+      result = client.getSettleableDisputes(rando);
+      objectsInArrayInclude(result, []);
+      result = client.getSettleableDisputes(disputer);
+      objectsInArrayInclude(result, [
+        {
+          requester: accounts[0],
+          identifier: hexToUtf8(identifier),
+          ancillaryData: "0x",
+          timestamp: requestTime.toString(),
+          request: priceDispute.returnValues.request,
+        },
+      ]);
+
+      // Settle the dispute and make sure that the client no longer sees it as settleable:
+      await optimisticOracle.methods
+        .settle(accounts[0], identifier, requestTime, "0x", priceDispute.returnValues.request)
+        .send({ from: accounts[0] });
+      await client.update();
+      result = client.getSettleableDisputes(disputer);
+      objectsInArrayInclude(result, []);
+    });
+
+    it("Lookback window enforced", async function () {
+      // Create a new client with a shorter lookback equal to approximately
+      // the amount of seconds that it takes 1 block to get mined
+      let clientShortLookback = new OptimisticOracleClient(
+        dummyLogger,
+        SkinnyOptimisticOracle.abi,
+        MockOracle.abi,
+        web3,
+        optimisticOracle.options.address,
+        mockOracle.options.address,
+        13,
+        OptimisticOracleType.SkinnyOptimisticOracle
+      );
+
+      // Request a price and check that the longer lookback client currently sees it
+      await optimisticOracle.methods
+        .requestPrice(identifier, requestTime, "0x", collateral.options.address, 0, finalFee, 0)
+        .send({ from: accounts[0] });
+      const priceRequest = (await optimisticOracle.getPastEvents("RequestPrice", { fromBlock: 0 }))[0];
+      await client.update();
+      let result = client.getUnproposedPriceRequests();
+      objectsInArrayInclude(result, [
+        {
+          requester: accounts[0],
+          identifier: hexToUtf8(identifier),
+          ancillaryData: "0x",
+          timestamp: requestTime.toString(),
+          request: priceRequest.returnValues.request,
+        },
+      ]);
+
+      // Mine two blocks to move past the lookback window, and make sure the shorter lookback client
+      // ignores the price request.
+      const currentTime = Number((await web3.eth.getBlock("latest")).timestamp);
+      await advanceBlockAndSetTime(web3, currentTime + 1);
+      await advanceBlockAndSetTime(web3, currentTime + 2);
+
+      await clientShortLookback.update();
+      result = clientShortLookback.getUnproposedPriceRequests();
+      objectsInArrayInclude(result, []);
+    });
   });
 });

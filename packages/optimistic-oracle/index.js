@@ -3,7 +3,14 @@
 require("dotenv").config();
 const retry = require("async-retry");
 
-const { Logger, waitForLogger, delay, OptimisticOracleClient, GasEstimator } = require("@uma/financial-templates-lib");
+const {
+  Logger,
+  waitForLogger,
+  delay,
+  OptimisticOracleClient,
+  GasEstimator,
+  OptimisticOracleType,
+} = require("@uma/financial-templates-lib");
 const { OptimisticOracleProposer } = require("./src/proposer");
 
 // Contract ABIs and network Addresses.
@@ -21,6 +28,7 @@ const { getAbi, getAddress } = require("@uma/contracts-node");
  * @param {Object} [commonPriceFeedConfig] Common configuration to pass to all PriceFeeds constructed by proposer.
  * @param {Object} [optimisticOracleProposerConfig] Configuration to construct the OptimisticOracle proposer.
  * @param {String} [oracleType] Type of "Oracle" for this network, defaults to "Votng"
+ * @param {String} [optimisticOracleType] Type of "OptimisticOracle" for this network, defaults to "OptimisticOracle"
  * @return None or throws an Error.
  */
 async function run({
@@ -32,10 +40,11 @@ async function run({
   commonPriceFeedConfig,
   optimisticOracleProposerConfig,
   oracleType = "Voting",
+  optimisticOracleType = OptimisticOracleType.OptimisticOracle,
 }) {
   try {
     const [accounts, networkId] = await Promise.all([web3.eth.getAccounts(), web3.eth.net.getId()]);
-    const optimisticOracleAddress = await getAddress("OptimisticOracle", networkId);
+    const optimisticOracleAddress = await getAddress(optimisticOracleType, networkId);
     // If pollingDelay === 0 then the bot is running in serverless mode and should send a `debug` level log.
     // Else, if running in loop mode (pollingDelay != 0), then it should send a `info` level log.
     logger[pollingDelay === 0 ? "debug" : "info"]({
@@ -48,17 +57,20 @@ async function run({
       commonPriceFeedConfig,
       optimisticOracleProposerConfig,
       oracleType,
+      optimisticOracleType,
     });
 
     // Create the OptimisticOracleClient to query on-chain information, GasEstimator to get latest gas prices and an
     // instance of the OO Proposer to respond to price requests and proposals.
     const optimisticOracleClient = new OptimisticOracleClient(
       logger,
-      getAbi("OptimisticOracle"),
+      getAbi(optimisticOracleType),
       getAbi(oracleType),
       web3,
       optimisticOracleAddress,
-      await getAddress(oracleType, networkId)
+      await getAddress(oracleType, networkId),
+      604800, // default lookback setting for this client
+      optimisticOracleType
     );
     const gasEstimator = new GasEstimator(logger, 60, networkId);
 
@@ -148,6 +160,11 @@ async function Poll(callback) {
       // Type of "Oracle" set for this network's Finder, default is "Voting". Other possible types include "SinkOracle",
       //  "OracleChildTunnel", and "MockOracleAncillary"
       oracleType: process.env.ORACLE_TYPE ? process.env.ORACLE_TYPE : "Voting",
+      // Type of "OptimisticOracle" to load in client, default is OptimisticOracle. The other possible types are
+      // exported in an enum from financial-templates-lib/OptimisticOracleClient.
+      optimisticOracleType: process.env.OPTIMISTIC_ORACLE_TYPE
+        ? process.env.OPTIMISTIC_ORACLE_TYPE
+        : OptimisticOracleType.OptimisticOracle,
     };
 
     await run({ logger: Logger, web3: getWeb3(), ...executionParameters });
