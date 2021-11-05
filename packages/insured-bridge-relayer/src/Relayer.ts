@@ -800,7 +800,7 @@ export class Relayer {
     // search config using the bridge deposit box's deployment block. This allows us to capture any deposits that
     // happened outside of the L2 client's default block search config.
     else {
-      let blockSearchConfig = {
+      let l2BlockSearchConfig = {
         fromBlock: this.l2DeployData[relay.chainId].blockNumber,
         toBlock: this.l2DeployData[relay.chainId].blockNumber + this.l2LookbackWindow,
       };
@@ -809,7 +809,7 @@ export class Relayer {
       // Look up all blocks from contract deployment time to latest to ensure that a deposit, if it exists, is found.
       while (deposit === undefined) {
         const [fundsDepositedEvents] = await Promise.all([
-          this.l2Client.bridgeDepositBox.getPastEvents("FundsDeposited", blockSearchConfig),
+          this.l2Client.bridgeDepositBox.getPastEvents("FundsDeposited", l2BlockSearchConfig),
         ]);
         // For any found deposits, try to match it with the relay:
         for (const fundsDepositedEvent of fundsDepositedEvents) {
@@ -831,7 +831,7 @@ export class Relayer {
             this.logger.debug({
               at: "InsuredBridgeRelayer#Disputer",
               message: "Matched deposit using relay quote time to run new block search",
-              blockSearchConfig,
+              l2BlockSearchConfig,
               deposit,
               relay,
             });
@@ -842,12 +842,12 @@ export class Relayer {
 
         // Exit loop if block search encompasses "latest" block number. Breaking the loop here guarantees that the
         // above event search executes at least once.
-        if (blockSearchConfig.toBlock >= latestBlock) break;
+        if (l2BlockSearchConfig.toBlock >= latestBlock) break;
 
         // Increment block search.
-        blockSearchConfig = {
-          fromBlock: blockSearchConfig.toBlock,
-          toBlock: Math.min(latestBlock, blockSearchConfig.toBlock + this.l2LookbackWindow),
+        l2BlockSearchConfig = {
+          fromBlock: l2BlockSearchConfig.toBlock,
+          toBlock: Math.min(latestBlock, l2BlockSearchConfig.toBlock + this.l2LookbackWindow),
         };
       }
     }
