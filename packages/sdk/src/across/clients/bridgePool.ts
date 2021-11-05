@@ -233,7 +233,7 @@ function joinUserState(
   };
 }
 function joinPoolState(poolState: Awaited<ReturnType<PoolState["read"]>>): Pool {
-  const totalPoolSize = poolState.liquidReserves.add(poolState.pendingReserves).add(poolState.utilizedReserves);
+  const totalPoolSize = poolState.liquidReserves.add(poolState.utilizedReserves);
   const estimatedApy = calculateApy(poolState.exchangeRateCurrent, poolState.exchangeRatePrevious);
   return {
     address: poolState.address,
