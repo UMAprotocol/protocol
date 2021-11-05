@@ -10,7 +10,7 @@ import get from "lodash/get";
 dotenv.config();
 
 const multicall2Address = "0x5BA1e12693Dc8F9c48aAD8770482f4739bEeD696";
-const wethAddress = "0x75a29a66452C80702952bbcEDd284C8c4CF5Ab17";
+const wethAddress = "0x7355Efc63Ae731f584380a9838292c7046c1e433";
 const users = [
   "0x06d8aeb52f99f8542429df3009ed26535c22d5aa",
   "0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D",
