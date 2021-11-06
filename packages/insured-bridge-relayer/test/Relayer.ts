@@ -12,7 +12,6 @@ import {
 import winston from "winston";
 import sinon from "sinon";
 import hre from "hardhat";
-
 const { assert } = require("chai");
 
 import { interfaceName, TokenRolesEnum, HRE, ZERO_ADDRESS } from "@uma/common";
