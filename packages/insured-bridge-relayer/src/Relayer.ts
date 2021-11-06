@@ -266,7 +266,6 @@ export class Relayer {
       // we won't be able to determine otherwise if the realized LP fee % is valid.
       // Similarly, if deposit.quoteTimestamp > relay.blockTime then its also an invalid relay because it would have
       // been impossible for the relayer to compute the realized LP fee % for the deposit.quoteTime in the future.
-      const latestBlockTime = Number((await this.l1Client.l1Web3.eth.getBlock("latest")).timestamp);
       if (
         deposit.quoteTimestamp < this.l1DeployData[deposit.l1Token].timestamp ||
         deposit.quoteTimestamp > relay.blockTime
@@ -279,16 +278,6 @@ export class Relayer {
           relayBlockTime: relay.blockTime,
         });
         await this._disputeRelay(deposit, relay);
-        return;
-      } else if (deposit.quoteTimestamp > latestBlockTime) {
-        // If deposit quote time is in the future, such that we cannot compute a realized LP fee % for it, but within
-        // the buffer, then we'll skip it until it becomes "in the past" and we can compute its realized LP fee %.
-        this.logger.debug({
-          at: "Disputer",
-          message: "Deposit quote time in future, ignoring",
-          deposit,
-          latestBlockTime,
-        });
         return;
       }
 

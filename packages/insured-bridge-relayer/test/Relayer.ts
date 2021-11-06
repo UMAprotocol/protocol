@@ -12,6 +12,7 @@ import {
 import winston from "winston";
 import sinon from "sinon";
 import hre from "hardhat";
+
 const { assert } = require("chai");
 
 import { interfaceName, TokenRolesEnum, HRE, ZERO_ADDRESS } from "@uma/common";
@@ -985,11 +986,10 @@ describe("Relayer.ts", function () {
       await relayer.checkForPendingRelaysAndDispute();
 
       // Logs should reflect one dispute executed and one that errored.
-      const targetLog = spy.getCalls().filter((_log: any) => {
-        return _log.lastArg.message.includes("Disputed pending relay");
-      });
-      assert.equal(targetLog.length, 1);
-      assert.isTrue(lastSpyLogIncludes(spy, "Something errored disputing"));
+      assert.equal(
+        spy.getCalls().filter((_log: any) => _log.lastArg.message.includes("Disputed pending relay")).length,
+        1
+      );
       const disputeEvents = await bridgePool.getPastEvents("RelayDisputed", { fromBlock: 0 });
       assert.equal(disputeEvents.length, 1);
     });
@@ -1460,7 +1460,9 @@ describe("Relayer.ts", function () {
             instantRelayFeePct: defaultInstantRelayFeePct,
             quoteTimestamp: quoteTime,
           },
-          calculateRealizedLpFeePct(rateModel, toBNWei("0"), toBNWei("0.01")) // compute the expected fee for 1% utilization
+          calculateRealizedLpFeePct(rateModel, toBNWei("0"), toBNWei("0.01")) // This realized LP fee computation should
+          // be impossible for the relayer to compute since its for a timestamp in the future, therefore the bot should
+          // dispute.
         )
         .send({ from: l1Owner });
       await Promise.all([l1Client.update(), l2Client.update()]);
@@ -1474,10 +1476,6 @@ describe("Relayer.ts", function () {
 
       const disputeEvents = await bridgePool.getPastEvents("RelayDisputed", { fromBlock: 0 });
       assert.equal(disputeEvents.length, 1);
-    });
-    it("Quote time in future but <= relay.blockTime: ignores relays that bot cannot compute realized LP fee % for", async function () {
-      // TODO: Will need to either reverse time or override latest block time reported bytesting node before
-      // submitting relay transaction, or run test with deposit box and bridge pool on different nodes.
     });
   });
   describe("Multicall Batching", function () {
