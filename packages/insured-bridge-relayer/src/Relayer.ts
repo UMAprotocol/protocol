@@ -537,7 +537,7 @@ export class Relayer {
       // Send the batch transaction to the L1 bridge pool contract. Catch if the transaction succeeds.
       const { txStatus } = await this._sendTransaction(
         (targetMultiCaller.methods.multicall(multiCallTransaction) as unknown) as TransactionType,
-        "Multicall Transaction batch sent!🧙",
+        "Multicall batch sent!🧙",
         mrkdwnBlock
       );
 
@@ -753,8 +753,7 @@ export class Relayer {
       "Settled " +
       this._generateMrkdwnDepositIdNetworkSizeFromTo(deposit) +
       this._generateMrkdwnForBonds(deposit, relay) +
-      this._generateMrkdwnForRelayerAddresses(deposit, relay) +
-      " ."
+      this._generateMrkdwnForRelayerAddresses(deposit, relay)
     );
   }
 
