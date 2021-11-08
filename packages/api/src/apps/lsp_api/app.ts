@@ -142,7 +142,7 @@ export default async (env: ProcessEnv) => {
       { tables: appState, appClients },
       (event, data) => serviceEvents.emit("empRegistry", event, data)
     ),
-    collateralPrices: Services.CollateralPrices({ debug }, { tables: appState, appClients }),
+    collateralPrices: Services.CollateralPrices({ debug, network: networkChainId }, { tables: appState, appClients }),
     erc20s: Services.Erc20s({ debug }, { tables: appState, appClients }),
     empStats: Services.stats.Emp({ debug }, appState),
     marketPrices: Services.MarketPrices({ debug }, { tables: appState, appClients }),

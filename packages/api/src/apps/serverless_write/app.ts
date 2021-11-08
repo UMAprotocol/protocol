@@ -130,7 +130,7 @@ export default async (env: ProcessEnv) => {
       { debug, registryAddress: env.EMP_REGISTRY_ADDRESS, network: networkChainId },
       { tables: appState, appClients }
     ),
-    collateralPrices: Services.CollateralPrices({ debug }, { tables: appState, appClients }),
+    collateralPrices: Services.CollateralPrices({ debug, network: networkChainId }, { tables: appState, appClients }),
     syntheticPrices: Services.SyntheticPrices(
       {
         debug,
