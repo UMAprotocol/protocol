@@ -33,6 +33,7 @@ export type Awaited<T> = T extends PromiseLike<infer U> ? U : T;
 export type Config = {
   multicall2Address: string;
   confirmations?: number;
+  blockDelta?: number;
 };
 export type Dependencies = {
   provider: Provider;
@@ -49,6 +50,8 @@ export type Pool = {
   estimatedApr: string;
   estimatedApyBlocks: string;
   estimatedAprBlocks: string;
+  blocksElapsed: number;
+  secondsElapsed: number;
 };
 export type User = {
   address: string;
@@ -301,6 +304,8 @@ function joinPoolState(
     estimatedApr,
     estimatedApyBlocks,
     estimatedAprBlocks,
+    blocksElapsed,
+    secondsElapsed,
   };
 }
 export class ReadPoolClient {
@@ -529,10 +534,12 @@ export class Client {
     this.emit(["users", userAddress, poolAddress], this.state.users[userAddress][poolAddress]);
   }
   async updatePool(poolAddress: string) {
+    // default to 100 block delta unless specified otherwise in config
+    const { blockDelta = 100 } = this.config;
     const contract = this.getOrCreatePoolContract(poolAddress);
     const pool = new PoolState(this.batchRead(contract), contract, poolAddress);
     const latestBlock = await this.deps.provider.getBlock("latest");
-    const previousBlock = await this.deps.provider.getBlock(latestBlock.number - 1);
+    const previousBlock = await this.deps.provider.getBlock(latestBlock.number - blockDelta);
     const state = await pool.read(latestBlock.number, previousBlock.number);
     this.state.pools[poolAddress] = joinPoolState(state, latestBlock, previousBlock);
     this.emit(["pools", poolAddress], this.state.pools[poolAddress]);
