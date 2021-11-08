@@ -149,6 +149,7 @@ describe("InsuredBridgeL1Client", function () {
       proposerBond,
       finalFee,
       settleable: SettleableRelay.CannotSettle,
+      blockTime: undefined, // We won't know this until the relay is mined
     };
   };
 
@@ -334,7 +335,7 @@ describe("InsuredBridgeL1Client", function () {
       await l1Token.methods.mint(relayer, totalRelayBond).send({ from: owner });
       await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: relayer });
 
-      await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: relayer });
+      const txn = await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: relayer });
 
       // Before updating, save expected relayed information based on current contract state. We shouldn't have to make
       // a contract call to fetch this data as it should be stored in the client.
@@ -349,6 +350,7 @@ describe("InsuredBridgeL1Client", function () {
       };
       expectedRelayedDepositInformation.priceRequestTime = relayAttemptData.priceRequestTime;
       expectedRelayedDepositInformation.relayId = relayAttemptData.relayId;
+      expectedRelayedDepositInformation.blockTime = Number((await web3.eth.getBlock(txn.blockNumber)).timestamp);
       await client.update();
 
       // As there is only one L1Token that has been set up with the bridge, getAllRelayedDeposits and getRelayedDepositsForL1Token
@@ -465,7 +467,7 @@ describe("InsuredBridgeL1Client", function () {
 
       await l1Token.methods.mint(relayer, totalRelayBond).send({ from: owner });
       await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: relayer });
-      await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: relayer });
+      const txn = await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: relayer });
 
       // Before updating, save expected relayed information based on current contract state. We shouldn't have to make
       // a contract call to fetch this data as it should be stored in the client.
@@ -480,6 +482,7 @@ describe("InsuredBridgeL1Client", function () {
       };
       expectedRelayedDepositInformation.priceRequestTime = relayAttemptData.priceRequestTime;
       expectedRelayedDepositInformation.relayId = relayAttemptData.relayId;
+      expectedRelayedDepositInformation.blockTime = Number((await web3.eth.getBlock(txn.blockNumber)).timestamp);
       await client.update();
 
       // As there is only one L1Token that has been set up with the bridge, getAllRelayedDeposits and getRelayedDepositsForL1Token
@@ -557,7 +560,8 @@ describe("InsuredBridgeL1Client", function () {
       // Can re-relay the deposit.
       await l1Token.methods.mint(rando, totalRelayBond).send({ from: owner });
       await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: rando });
-      await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: rando });
+      const txn2 = await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: rando });
+      expectedRelayedDepositInformation.blockTime = Number((await web3.eth.getBlock(txn2.blockNumber)).timestamp);
 
       // Check the client updated accordingly. Importantly there should be new relay params that match with the newly
       // synced.
@@ -596,12 +600,13 @@ describe("InsuredBridgeL1Client", function () {
       // Send another relay:
       await l1Token.methods.mint(rando, totalRelayBond).send({ from: owner });
       await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: rando });
-      await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: rando });
+      const txn = await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: rando });
 
       // Update the client. The relay should be set to the latest relay, and it should not have been deleted
       // by the dispute.
       relayData = { ...relayData, relayId: 1, slowRelayer: rando, priceRequestTime: relayAttemptData.priceRequestTime };
       syncExpectedRelayedDepositInformation();
+      expectedRelayedDepositInformation.blockTime = Number((await web3.eth.getBlock(txn.blockNumber)).timestamp);
 
       // After disputing, there should be a pending relay that was not disputed.
       await client.update();
@@ -670,7 +675,7 @@ describe("InsuredBridgeL1Client", function () {
       const totalRelayBond = toBN(relayAmount).mul(toBN(defaultProposerBondPct));
       await l1Token.methods.mint(relayer, totalRelayBond).send({ from: owner });
       await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: relayer });
-      await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: relayer });
+      const txn = await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: relayer });
 
       // Before updating, save expected relayed information based on current contract state. We shouldn't have to make
       // a contract call to fetch this data as it should be stored in the client.
@@ -694,6 +699,7 @@ describe("InsuredBridgeL1Client", function () {
 
       // Construct the expected relay data that the client should return.
       expectedRelayedDepositInformation.relayState = ClientRelayState.Finalized;
+      expectedRelayedDepositInformation.blockTime = Number((await web3.eth.getBlock(txn.blockNumber)).timestamp);
       let expectedBridgePool1Relays = [JSON.parse(JSON.stringify(expectedRelayedDepositInformation))]; // deep copy
 
       // Change some of the variables and and re-relay.
@@ -708,7 +714,7 @@ describe("InsuredBridgeL1Client", function () {
 
       await l1Token.methods.mint(rando, totalRelayBond).send({ from: owner });
       await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: rando });
-      await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: rando });
+      const txn2 = await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: rando });
 
       // Sync the modified deposit and relay data with the expected returned data and store it.
       syncExpectedRelayedDepositInformation();
@@ -721,6 +727,7 @@ describe("InsuredBridgeL1Client", function () {
       expectedRelayedDepositInformation.relayState = ClientRelayState.Pending;
       expectedRelayedDepositInformation.depositHash = depositHash;
       expectedRelayedDepositInformation.proposerBond = toWei("0.21");
+      expectedRelayedDepositInformation.blockTime = Number((await web3.eth.getBlock(txn2.blockNumber)).timestamp);
       expectedBridgePool1Relays.push(JSON.parse(JSON.stringify(expectedRelayedDepositInformation)));
 
       // Again, change some more variable and relay something on the second bridgePool
@@ -739,7 +746,7 @@ describe("InsuredBridgeL1Client", function () {
       await bridgePool2.methods.addLiquidity(initialPoolLiquidity).send({ from: liquidityProvider });
       await l1Token2.methods.mint(relayer, totalRelayBond).send({ from: owner });
       await l1Token2.methods.approve(bridgePool2.options.address, totalRelayBond).send({ from: relayer });
-      await bridgePool2.methods.relayDeposit(...generateRelayParams()).send({ from: relayer });
+      const txn3 = await bridgePool2.methods.relayDeposit(...generateRelayParams()).send({ from: relayer });
 
       // Sync the modified deposit and relay data with the expected returned data and store it.
       syncExpectedRelayedDepositInformation(l1Token2.options.address);
@@ -751,6 +758,7 @@ describe("InsuredBridgeL1Client", function () {
       ));
       expectedRelayedDepositInformation.depositHash = depositHash;
       expectedRelayedDepositInformation.proposerBond = toWei("0.2105");
+      expectedRelayedDepositInformation.blockTime = Number((await web3.eth.getBlock(txn3.blockNumber)).timestamp);
       let expectedBridgePool2Relays = [expectedRelayedDepositInformation];
 
       await client.update();

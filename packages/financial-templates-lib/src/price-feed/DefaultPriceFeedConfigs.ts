@@ -994,6 +994,12 @@ export const defaultConfigs: { [name: string]: { type: string; [key: string]: an
         R1: "40000000000000000",
         R2: "600000000000000000",
       },
+      "0x04fa0d235c4abf4bcf4787af4cf447de572ef828": {
+        UBar: "500000000000000000",
+        R0: "0",
+        R1: "50000000000000000",
+        R2: "2000000000000000000",
+      },
     },
   },
 };
