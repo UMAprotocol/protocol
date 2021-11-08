@@ -35,7 +35,7 @@ class OptimisticOracleContractMonitor {
     this.lastSettlementBlockNumber = 0;
 
     // Formats an 18 decimal point string with a define number of decimals and precision for use in message generation.
-    this.formatDecimalString = createFormatFunction(this.web3, 2, 4, false);
+    this.formatDecimalString = createFormatFunction(2, 4, false);
 
     // Bot and ecosystem accounts to monitor, overridden by monitorConfig parameter.
     const defaultConfig = {

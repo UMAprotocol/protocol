@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.13.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.12.2...@uma/common@2.13.0) (2021-11-05)
+
+### Bug Fixes
+
+- **insured-bridge-relayer:** Key deployTimestamps by lowercase addresses ([#3557](https://github.com/UMAprotocol/protocol/issues/3557)) ([fc14de5](https://github.com/UMAprotocol/protocol/commit/fc14de5abedc72c4890e9f354463438c1d2f3164))
+
+### Features
+
+- **across-relayer:** Enable batch relays via multicall and improve log production ([#3559](https://github.com/UMAprotocol/protocol/issues/3559)) ([f1cfecc](https://github.com/UMAprotocol/protocol/commit/f1cfecc3d085d5be86a4557682b0ae931cbb24b5))
+- **core:** add new deployment addresses for across and update script ([#3556](https://github.com/UMAprotocol/protocol/issues/3556)) ([2348eaf](https://github.com/UMAprotocol/protocol/commit/2348eaf669054f722b0d6909569ffa3db88d5155))
+
 ## [2.12.2](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.12.1...@uma/common@2.12.2) (2021-11-02)
 
 ### Bug Fixes

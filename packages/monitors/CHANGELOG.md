@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.7.0](https://github.com/UMAprotocol/protocol/compare/@uma/monitors@2.6.7...@uma/monitors@2.7.0) (2021-11-05)
+
+### Features
+
+- **across-relayer:** Enable batch relays via multicall and improve log production ([#3559](https://github.com/UMAprotocol/protocol/issues/3559)) ([f1cfecc](https://github.com/UMAprotocol/protocol/commit/f1cfecc3d085d5be86a4557682b0ae931cbb24b5))
+
 ## [2.6.7](https://github.com/UMAprotocol/protocol/compare/@uma/monitors@2.6.6...@uma/monitors@2.6.7) (2021-11-02)
 
 **Note:** Version bump only for package @uma/monitors

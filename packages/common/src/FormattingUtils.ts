@@ -71,7 +71,6 @@ export const formatWithMaxDecimals = (
 };
 
 export const createFormatFunction = (
-  _web3: Web3 | undefined, // unused
   numDisplayedDecimals: number,
   minDisplayedPrecision: number,
   showSign = false,
