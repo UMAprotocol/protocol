@@ -9,6 +9,7 @@ const {
   createFormatFunction,
   ConvertDecimals,
 } = require("@uma/common");
+const { OptimisticOracleType } = require("@uma/financial-templates-lib");
 const { getAbi } = require("@uma/contracts-node");
 
 class OptimisticOracleContractMonitor {
@@ -25,6 +26,7 @@ class OptimisticOracleContractMonitor {
 
     // OptimisticOracle Contract event client to read latest contract events.
     this.optimisticOracleContractEventClient = optimisticOracleContractEventClient;
+    this.oracleType = optimisticOracleContractEventClient.oracleType;
     this.optimisticOracleContract = this.optimisticOracleContractEventClient.optimisticOracleContract;
     this.web3 = this.optimisticOracleContractEventClient.web3;
 
@@ -75,6 +77,7 @@ class OptimisticOracleContractMonitor {
   async checkForRequests() {
     this.logger.debug({
       at: "OptimisticOracleContractMonitor",
+      type: this.oracleType,
       message: "Checking for RequestPrice events",
       lastRequestPriceBlockNumber: this.lastRequestPriceBlockNumber,
     });
@@ -85,14 +88,24 @@ class OptimisticOracleContractMonitor {
     latestEvents = latestEvents.filter((event) => event.blockNumber > this.lastRequestPriceBlockNumber);
 
     for (let event of latestEvents) {
-      const convertCollateralDecimals = await this._getCollateralDecimalsConverted(event.currency);
+      const convertCollateralDecimals = await this._getCollateralDecimalsConverted(
+        this.oracleType === OptimisticOracleType.OptimisticOracle ? event.currency : event.request.currency
+      );
       const mrkdwn =
         createEtherscanLinkMarkdown(event.requester, this.contractProps.networkId) +
         ` requested a price at the timestamp ${event.timestamp} for the identifier: ${event.identifier}. ` +
         `The ancillary data field is ${event.ancillaryData || "0x"}. ` +
-        `Collateral currency address is ${event.currency}. Reward amount is ${this.formatDecimalString(
-          convertCollateralDecimals(event.reward)
-        )} and the final fee is ${this.formatDecimalString(convertCollateralDecimals(event.finalFee))}. ` +
+        `Collateral currency address is ${
+          this.oracleType === OptimisticOracleType.OptimisticOracle ? event.currency : event.request.currency
+        }. Reward amount is ${this.formatDecimalString(
+          convertCollateralDecimals(
+            this.oracleType === OptimisticOracleType.OptimisticOracle ? event.reward : event.request.reward
+          )
+        )} and the final fee is ${this.formatDecimalString(
+          convertCollateralDecimals(
+            this.oracleType === OptimisticOracleType.OptimisticOracle ? event.finalFee : event.request.finalFee
+          )
+        )}. ` +
         `tx: ${createEtherscanLinkMarkdown(event.transactionHash, this.contractProps.networkId)}`;
 
       // The default log level should be reduced to "debug" for funding rate identifiers:
@@ -100,6 +113,7 @@ class OptimisticOracleContractMonitor {
         this.logOverrides.requestedPrice || (this._isFundingRateIdentifier(event.identifier) ? "debug" : "error")
       ]({
         at: "OptimisticOracleContractMonitor",
+        type: this.oracleType,
         message: "Price Request Alert 👮🏻!",
         mrkdwn,
         notificationPath: "optimistic-oracle",
@@ -112,6 +126,7 @@ class OptimisticOracleContractMonitor {
   async checkForProposals() {
     this.logger.debug({
       at: "OptimisticOracleContractMonitor",
+      type: this.oracleType,
       message: "Checking for ProposePrice events",
       lastProposePriceBlockNumber: this.lastProposePriceBlockNumber,
     });
@@ -123,13 +138,22 @@ class OptimisticOracleContractMonitor {
 
     for (let event of latestEvents) {
       const mrkdwn =
-        createEtherscanLinkMarkdown(event.proposer, this.contractProps.networkId) +
+        createEtherscanLinkMarkdown(
+          this.oracleType === OptimisticOracleType.OptimisticOracle ? event.proposer : event.request.proposer,
+          this.contractProps.networkId
+        ) +
         ` proposed a price for the request made by ${event.requester} at the timestamp ${event.timestamp} for the identifier: ${event.identifier}. ` +
-        `The proposal price of ${this.formatDecimalString(event.proposedPrice)} will expire at ${
-          event.expirationTimestamp
+        `The proposal price of ${this.formatDecimalString(
+          this.oracleType === OptimisticOracleType.OptimisticOracle ? event.proposedPrice : event.request.proposedPrice
+        )} will expire at ${
+          this.oracleType === OptimisticOracleType.OptimisticOracle
+            ? event.expirationTimestamp
+            : event.request.expirationTime
         }. ` +
         `The ancillary data field is ${event.ancillaryData || "0x"}. ` +
-        `Collateral currency address is ${event.currency}. ` +
+        `Collateral currency address is ${
+          this.oracleType === OptimisticOracleType.OptimisticOracle ? event.currency : event.request.currency
+        }. ` +
         `tx: ${createEtherscanLinkMarkdown(event.transactionHash, this.contractProps.networkId)}`;
 
       // The default log level should be reduced to "info" for funding rate identifiers:
@@ -137,6 +161,7 @@ class OptimisticOracleContractMonitor {
         this.logOverrides.proposedPrice || (this._isFundingRateIdentifier(event.identifier) ? "info" : "error")
       ]({
         at: "OptimisticOracleContractMonitor",
+        type: this.oracleType,
         message: "Price Proposal Alert 🧞‍♂️!",
         mrkdwn,
         notificationPath: "optimistic-oracle",
@@ -149,6 +174,7 @@ class OptimisticOracleContractMonitor {
   async checkForDisputes() {
     this.logger.debug({
       at: "OptimisticOracleContractMonitor",
+      type: this.oracleType,
       message: "Checking for DisputePrice events",
       lastDisputePriceBlockNumber: this.lastDisputePriceBlockNumber,
     });
@@ -160,14 +186,22 @@ class OptimisticOracleContractMonitor {
 
     for (let event of latestEvents) {
       const mrkdwn =
-        createEtherscanLinkMarkdown(event.disputer, this.contractProps.networkId) +
+        createEtherscanLinkMarkdown(
+          this.oracleType === OptimisticOracleType.OptimisticOracle ? event.disputer : event.request.disputer,
+          this.contractProps.networkId
+        ) +
         ` disputed a price for the request made by ${event.requester} at the timestamp ${event.timestamp} for the identifier: ${event.identifier}. ` +
-        `The proposer ${event.proposer} proposed a price of ${this.formatDecimalString(event.proposedPrice)}. ` +
+        `The proposer ${
+          this.oracleType === OptimisticOracleType.OptimisticOracle ? event.proposer : event.request.proposer
+        } proposed a price of ${this.formatDecimalString(
+          this.oracleType === OptimisticOracleType.OptimisticOracle ? event.proposedPrice : event.request.proposedPrice
+        )}. ` +
         `The ancillary data field is ${event.ancillaryData || "0x"}. ` +
         `tx: ${createEtherscanLinkMarkdown(event.transactionHash, this.contractProps.networkId)}`;
 
       this.logger[this.logOverrides.disputedPrice || "error"]({
         at: "OptimisticOracleContractMonitor",
+        type: this.oracleType,
         message: "Price Dispute Alert ⛔️!",
         mrkdwn,
         notificationPath: "optimistic-oracle",
@@ -180,6 +214,7 @@ class OptimisticOracleContractMonitor {
   async checkForSettlements() {
     this.logger.debug({
       at: "OptimisticOracleContractMonitor",
+      type: this.oracleType,
       message: "Checking for Settle events",
       lastSettlementBlockNumber: this.lastSettlementBlockNumber,
     });
@@ -190,13 +225,37 @@ class OptimisticOracleContractMonitor {
     latestEvents = latestEvents.filter((event) => event.blockNumber > this.lastSettlementBlockNumber);
 
     for (let event of latestEvents) {
-      const convertCollateralDecimals = await this._getCollateralDecimalsConverted(event.currency);
+      const convertCollateralDecimals = await this._getCollateralDecimalsConverted(
+        this.oracleType === OptimisticOracleType.OptimisticOracle ? event.currency : event.request.currency
+      );
+      let payout, isDispute;
+      if (this.oracleType === OptimisticOracleType.OptimisticOracle) {
+        payout = event.payout;
+        isDispute = Boolean(event.disputer !== ZERO_ADDRESS);
+      } else {
+        payout = this.web3.utils.toBN(event.request.bond);
+        isDispute = Boolean(event.request.disputer !== ZERO_ADDRESS);
+        if (isDispute) {
+          // If settlement was a disputed price request, then payout includes 1.5x proposer bond instead of 1x
+          payout = payout.mul(this.web3.utils.toBN("3")).div(this.web3.utils.toBN("2"));
+        }
+        payout = payout
+          .add(this.web3.utils.toBN(event.request.finalFee))
+          .add(this.web3.utils.toBN(event.request.reward))
+          .toString();
+      }
       const mrkdwn =
         `Detected a price request settlement for the request made by ${event.requester} at the timestamp ${event.timestamp} for the identifier: ${event.identifier}. ` +
-        `The proposer was ${event.proposer} and the disputer was ${event.disputer}. ` +
-        `The settlement price is ${this.formatDecimalString(event.price)}. ` +
-        `The payout was ${this.formatDecimalString(convertCollateralDecimals(event.payout))} made to the ${
-          event.disputer === ZERO_ADDRESS ? "proposer" : "winner of the dispute"
+        `The proposer was ${
+          this.oracleType === OptimisticOracleType.OptimisticOracle ? event.proposer : event.request.proposer
+        } and the disputer was ${
+          this.oracleType === OptimisticOracleType.OptimisticOracle ? event.disputer : event.request.disputer
+        }. ` +
+        `The settlement price is ${this.formatDecimalString(
+          this.oracleType === OptimisticOracleType.OptimisticOracle ? event.price : event.request.resolvedPrice
+        )}. ` +
+        `The payout was ${this.formatDecimalString(convertCollateralDecimals(payout))} made to the ${
+          isDispute ? "winner of the dispute" : "proposer"
         }. ` +
         `The ancillary data field is ${event.ancillaryData || "0x"}. ` +
         `tx: ${createEtherscanLinkMarkdown(event.transactionHash, this.contractProps.networkId)}`;
@@ -206,6 +265,7 @@ class OptimisticOracleContractMonitor {
         this.logOverrides.settledPrice || (this._isFundingRateIdentifier(event.identifier) ? "debug" : "info")
       ]({
         at: "OptimisticOracleContractMonitor",
+        type: this.oracleType,
         message: "Price Settlement Alert 🏧!",
         mrkdwn,
         notificationPath: "optimistic-oracle",
