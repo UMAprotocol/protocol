@@ -60,6 +60,7 @@ export interface BotModes {
   relayerEnabled: boolean; // Submits slow and fast relays
   disputerEnabled: boolean; // Submits disputes on pending relays with invalid params
   finalizerEnabled: boolean; // Resolves expired relays
+  l2FinalizerEnabled: boolean; // Facilitates L2->L1 bridging over the canonical roll-up bridge.
 }
 export class RelayerConfig {
   readonly bridgeAdmin: string;
@@ -88,6 +89,7 @@ export class RelayerConfig {
       RELAYER_ENABLED,
       FINALIZER_ENABLED,
       DISPUTER_ENABLED,
+      CROSS_DOMAIN_FINALIZER_ENABLED,
       WHITELISTED_CHAIN_IDS,
       L1_DEPLOY_DATA,
       L2_DEPLOY_DATA,
@@ -97,6 +99,7 @@ export class RelayerConfig {
       relayerEnabled: RELAYER_ENABLED ? Boolean(RELAYER_ENABLED) : false,
       disputerEnabled: DISPUTER_ENABLED ? Boolean(DISPUTER_ENABLED) : false,
       finalizerEnabled: FINALIZER_ENABLED ? Boolean(FINALIZER_ENABLED) : false,
+      l2FinalizerEnabled: CROSS_DOMAIN_FINALIZER_ENABLED ? Boolean(CROSS_DOMAIN_FINALIZER_ENABLED) : false,
     };
 
     assert(BRIDGE_ADMIN_ADDRESS, "BRIDGE_ADMIN_ADDRESS required");

@@ -61,11 +61,11 @@ export class InsuredBridgeL1Client {
   public readonly bridgeAdmin: BridgeAdminInterfaceWeb3;
   public bridgePools: { [key: string]: BridgePoolData }; // L1TokenAddress=>BridgePoolData
   public optimisticOracleLiveness = 0;
+  public firstBlockToSearch: number;
 
   private relays: { [key: string]: { [key: string]: Relay } } = {}; // L1TokenAddress=>depositHash=>Relay.
   private instantRelays: { [key: string]: { [key: string]: InstantRelay } } = {}; // L1TokenAddress=>{depositHash, realizedLpFeePct}=>InstantRelay.
 
-  private firstBlockToSearch: number;
   private readonly blockFinder: BlockFinder<BlockTransactionBase>;
 
   constructor(

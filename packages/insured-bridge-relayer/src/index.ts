@@ -16,6 +16,7 @@ import {
 
 import { approveL1Tokens } from "./RelayerHelpers";
 import { Relayer } from "./Relayer";
+import { CrossDomainFinalizer } from "./CrossDomainFinalizer";
 import { RelayerConfig } from "./RelayerConfig";
 config();
 
@@ -85,6 +86,8 @@ export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
       config.l2BlockLookback
     );
 
+    const crossDomainFinalizer = new CrossDomainFinalizer(logger, gasEstimator, l1Client, l2Client, accounts[0]);
+
     for (;;) {
       await retry(
         async () => {
@@ -100,6 +103,9 @@ export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
 
           if (config.botModes.finalizerEnabled) await relayer.checkforSettleableRelaysAndSettle();
           else logger.debug({ at: "AcrossRelayer#Finalizer", message: "Finalizer disabled" });
+
+          if (config.botModes.l2FinalizerEnabled) await crossDomainFinalizer.checkForBridgeableL2TokensAndBridge();
+          else logger.debug({ at: "AcrossRelayer#CrossDomainFinalizer", message: "Cross Domain Finalizer disabled" });
         },
         {
           retries: config.errorRetries,
@@ -116,7 +122,10 @@ export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
       );
       // If the polling delay is set to 0 then the script will terminate the bot after one full run.
       if (config.pollingDelay === 0) {
-        logger.debug({ at: "AcrossRelayer#index", message: "End of serverless execution loop - terminating process" });
+        logger.debug({
+          at: "AcrossRelayer#index",
+          message: "End of serverless execution loop - terminating process",
+        });
         await waitForLogger(logger);
         await delay(2);
         break;

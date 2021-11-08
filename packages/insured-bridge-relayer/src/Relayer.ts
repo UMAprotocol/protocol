@@ -753,8 +753,7 @@ export class Relayer {
       "Settled " +
       this._generateMrkdwnDepositIdNetworkSizeFromTo(deposit) +
       this._generateMrkdwnForBonds(deposit, relay) +
-      this._generateMrkdwnForRelayerAddresses(deposit, relay) +
-      " ."
+      this._generateMrkdwnForRelayerAddresses(deposit, relay)
     );
   }
 
