@@ -87,12 +87,18 @@ export class Relayer {
       for (const relayableDeposit of relayableDeposits[l1Token]) {
         // If deposit quote time is before the bridgepool's deployment time, then skip it before attempting to calculate
         // the realized LP fee % as this will be impossible to query a contract for a timestamp before its deployment.
-        if (relayableDeposit.deposit.quoteTimestamp < this.l1DeployData[relayableDeposit.deposit.l1Token].timestamp) {
+        // Similarly, we cannot compute realized LP fee % for quote times in the future.
+        const latestBlockTime = Number((await this.l1Client.l1Web3.eth.getBlock("latest")).timestamp);
+        if (
+          relayableDeposit.deposit.quoteTimestamp < this.l1DeployData[relayableDeposit.deposit.l1Token].timestamp ||
+          relayableDeposit.deposit.quoteTimestamp > latestBlockTime
+        ) {
           this.logger.debug({
             at: "InsuredBridgeRelayer#Relayer",
-            message: "Deposit quote time < bridge pool deployment for L1 token, skipping",
+            message: "Deposit quote time < bridge pool deployment for L1 token or > latest block time, skipping",
             deposit: relayableDeposit.deposit,
             deploymentTime: this.l1DeployData[relayableDeposit.deposit.l1Token].timestamp,
+            latestBlockTime,
           });
           continue;
         }
@@ -230,8 +236,8 @@ export class Relayer {
     // the L2 clients. We won't be able to query deposit data for these relays.
     if (relay.chainId !== this.l2Client.chainId) {
       this.logger.debug({
-        at: "AcrossRelayer#Disputer",
-        message: "Relay chain ID is whitelisted but does not match L2 client chain ID",
+        at: "InsuredBridgeRelayer#Disputer",
+        message: "Relay chain ID is whitelisted but does not match L2 client chain ID, ignoring",
         l2ClientChainId: this.l2Client.chainId,
         relay,
       });
@@ -258,12 +264,18 @@ export class Relayer {
 
       // If deposit quote time is before the bridgepool's deployment time, then dispute it by default because
       // we won't be able to determine otherwise if the realized LP fee % is valid.
-      if (deposit.quoteTimestamp < this.l1DeployData[deposit.l1Token].timestamp) {
+      // Similarly, if deposit.quoteTimestamp > relay.blockTime then its also an invalid relay because it would have
+      // been impossible for the relayer to compute the realized LP fee % for the deposit.quoteTime in the future.
+      if (
+        deposit.quoteTimestamp < this.l1DeployData[deposit.l1Token].timestamp ||
+        deposit.quoteTimestamp > relay.blockTime
+      ) {
         this.logger.debug({
           at: "Disputer",
-          message: "Deposit quote time < bridge pool deployment for L1 token, disputing",
+          message: "Deposit quote time < bridge pool deployment for L1 token or > relay block time, disputing",
           deposit,
           deploymentTime: this.l1DeployData[deposit.l1Token].timestamp,
+          relayBlockTime: relay.blockTime,
         });
         await this._disputeRelay(deposit, relay);
         return;
