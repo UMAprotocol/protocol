@@ -153,7 +153,7 @@ export class Relayer {
 
       if (settleableRelays.length == 0) {
         this.logger.debug({ at: "AcrossRelayer#Finalizer", message: "No settleable relays" });
-        return;
+        continue;
       }
 
       for (const settleableRelay of settleableRelays) {
