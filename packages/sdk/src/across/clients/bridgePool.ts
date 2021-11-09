@@ -234,7 +234,7 @@ function joinPoolState(
   latestBlock: Block,
   previousBlock: Block
 ): Pool {
-  const totalPoolSize = poolState.liquidReserves.add(poolState.pendingReserves).add(poolState.utilizedReserves);
+  const totalPoolSize = poolState.liquidReserves.add(poolState.utilizedReserves);
   const secondsElapsed = latestBlock.timestamp - previousBlock.timestamp;
   const blocksElapsed = latestBlock.number - previousBlock.number;
   const exchangeRatePrevious = poolState.exchangeRatePrevious.toString();
