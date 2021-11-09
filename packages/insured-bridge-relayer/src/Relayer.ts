@@ -266,14 +266,17 @@ export class Relayer {
       // we won't be able to determine otherwise if the realized LP fee % is valid.
       // Similarly, if deposit.quoteTimestamp > relay.blockTime then its also an invalid relay because it would have
       // been impossible for the relayer to compute the realized LP fee % for the deposit.quoteTime in the future.
-      const blockTime = Number((await this.l1Client.l1Web3.eth.getBlock(relay.blockNumber)).timestamp);
-      if (deposit.quoteTimestamp < this.l1DeployData[deposit.l1Token].timestamp || deposit.quoteTimestamp > blockTime) {
+      const relayBlockTime = Number((await this.l1Client.l1Web3.eth.getBlock(relay.blockNumber)).timestamp);
+      if (
+        deposit.quoteTimestamp < this.l1DeployData[deposit.l1Token].timestamp ||
+        deposit.quoteTimestamp > relayBlockTime
+      ) {
         this.logger.debug({
           at: "Disputer",
           message: "Deposit quote time < bridge pool deployment for L1 token or > relay block time, disputing",
           deposit,
           deploymentTime: this.l1DeployData[deposit.l1Token].timestamp,
-          relayBlockTime: blockTime,
+          relayBlockTime,
         });
         await this._disputeRelay(deposit, relay);
         return;
