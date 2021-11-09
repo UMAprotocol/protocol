@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.12.0](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.11.0...@uma/sdk@0.12.0) (2021-11-09)
+
+### Bug Fixes
+
+- use timestamps to calculate apy periods for more accuracy ([#3569](https://github.com/UMAprotocol/protocol/issues/3569)) ([75bb3b7](https://github.com/UMAprotocol/protocol/commit/75bb3b7dac2b18de7a0e30e1ec76c494ae7cb6c9))
+
+### Features
+
+- **api:** add ability to pull in Polygon contracts ([#3564](https://github.com/UMAprotocol/protocol/issues/3564)) ([e2d7dce](https://github.com/UMAprotocol/protocol/commit/e2d7dce3e157132e36a2bfdc3b81080dbf8a6cbe))
+
 # [0.11.0](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.10.2...@uma/sdk@0.11.0) (2021-11-05)
 
 ### Bug Fixes
