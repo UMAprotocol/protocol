@@ -45,38 +45,12 @@ export class CrossDomainFinalizer {
       this.logger.debug({ at: "AcrossRelayer#CrossDomainFinalizer", message: "No bridgeable L2 tokens" });
       return;
     }
-    let nonceCounter = await this.l2Client.l2Web3.eth.getTransactionCount(this.account);
+    const nonce = await this.l2Client.l2Web3.eth.getTransactionCount(this.account);
     for (const l2Token of bridgeableL2Tokens) {
       // Track the account nonce and manually increment on each TX. We need to do this because the L2 transactions
       // process quicker than the infura node updates and we need to avoid the nonce collision.
       try {
-        // Note that this tx sending method is NOT using TransactionUtils runTransaction as it is not required on L2.
-        const receipt = await this.l2Client.bridgeDepositBox.methods
-          .bridgeTokens(l2Token, "0")
-          .send({ from: this.account, nonce: nonceCounter });
-        nonceCounter += 1;
-
-        const l2TokenInstance = new this.l2Client.l2Web3.eth.Contract(getAbi("ERC20"), l2Token);
-
-        const [tokenSymbol, tokenDecimals] = await Promise.all([
-          l2TokenInstance.methods.symbol().call(),
-          l2TokenInstance.methods.decimals().call(),
-        ]);
-        if (receipt.events) {
-          const tokensSent = receipt.events.TokensBridged.returnValues.numberOfTokensBridged;
-          this.logger.info({
-            at: "AcrossRelayer#CrossDomainFinalizer",
-            message: `L2 ${tokenSymbol} bridged over the canonical bridge! 🌁`,
-            mrkdwn:
-              createFormatFunction(2, 4, false, tokenDecimals)(tokensSent) +
-              " " +
-              tokenSymbol +
-              " was sent over the canonical " +
-              PublicNetworks[this.l2Client.chainId]?.name +
-              " bridge. tx: " +
-              createEtherscanLinkMarkdown(receipt.transactionHash, this.l2Client.chainId),
-          });
-        }
+        this._bridgeL2Token(l2Token, nonce);
       } catch (error) {
         this.logger.error({
           at: "AcrossRelayer#CrossDomainFinalizer",
@@ -88,4 +62,34 @@ export class CrossDomainFinalizer {
   }
   // TODO
   // async checkForFinalizedCanonicalRelaysAndFinalize() {}
+
+  private async _bridgeL2Token(l2Token: string, nonce: number) {
+    // Note that this tx sending method is NOT using TransactionUtils runTransaction as it is not required on L2.
+    const receipt = await this.l2Client.bridgeDepositBox.methods
+      .bridgeTokens(l2Token, "0") // The second term in this function call is l2Gas, which is currently unused.
+      .send({ from: this.account, nonce });
+    nonce += 1;
+
+    const l2TokenInstance = new this.l2Client.l2Web3.eth.Contract(getAbi("ERC20"), l2Token);
+
+    const [tokenSymbol, tokenDecimals] = await Promise.all([
+      l2TokenInstance.methods.symbol().call(),
+      l2TokenInstance.methods.decimals().call(),
+    ]);
+    if (receipt.events) {
+      const tokensSent = receipt.events.TokensBridged.returnValues.numberOfTokensBridged;
+      this.logger.info({
+        at: "AcrossRelayer#CrossDomainFinalizer",
+        message: `L2 ${tokenSymbol} bridged over the canonical bridge! 🌁`,
+        mrkdwn:
+          createFormatFunction(2, 4, false, tokenDecimals)(tokensSent) +
+          " " +
+          tokenSymbol +
+          " was sent over the canonical " +
+          PublicNetworks[this.l2Client.chainId]?.name +
+          " bridge. tx: " +
+          createEtherscanLinkMarkdown(receipt.transactionHash, this.l2Client.chainId),
+      });
+    }
+  }
 }
