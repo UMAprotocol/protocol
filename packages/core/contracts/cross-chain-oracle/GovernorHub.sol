@@ -35,7 +35,7 @@ contract GovernorHub is Ownable, Lockable {
      * @param chainId network that messenger contract will communicate with
      * @param to Contract on child chain to send message to
      * @param data Message to send
-     * @dev Only callable by the owner (presumably the Ethereum Governor contract).
+     * @dev Only callable by the owner (presumably the UMA DVM Governor contract, on L1 Ethereum).
      */
     function relayGovernance(
         uint256 chainId,
