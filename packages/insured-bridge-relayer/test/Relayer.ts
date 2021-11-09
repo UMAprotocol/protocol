@@ -1727,7 +1727,7 @@ describe("Relayer.ts", function () {
       // Finally, settle. We should be able to do both of these in one tx.
       await relayer.checkforSettleableRelaysAndSettle();
 
-      assert.isTrue(lastSpyLogIncludes(spy, "Multicall Transaction batch sent"));
+      assert.isTrue(lastSpyLogIncludes(spy, "Multicall batch sent"));
       // There should be two "Relay settled" transactions within the batch.
       assert.equal(spy.getCall(-1).lastArg.mrkdwn.match(/Relay settled/g).length, 2);
     });
