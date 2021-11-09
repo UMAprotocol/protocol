@@ -183,17 +183,6 @@ describe("CrossDomainFinalizer.ts", function () {
       )
       .send({ from: l1Owner });
 
-    l1DeployData = {
-      [l1Token.options.address]: {
-        timestamp: (await l1Timer.methods.getCurrentTime().call()).toString(),
-      },
-    };
-    l2DeployData = {
-      [chainId]: {
-        blockNumber: await web3.eth.getBlockNumber(),
-      },
-    };
-
     await bridgeDepositBox.methods
       .whitelistToken(l1Token.options.address, l2Token.options.address, bridgePool.options.address)
       .send({ from: l2BridgeAdminImpersonator });
