@@ -516,7 +516,7 @@ describe("InsuredBridgePriceFeed", function () {
 
       // Setting quote time after the latest block time will cause pricefeed to return 0.
       const depositTimestamp = Number(await bridgePool.methods.getCurrentTime().call());
-      const quoteTimestamp = Number((await web3.eth.getBlock("latest")).timestamp) + 60;
+      const quoteTimestamp = Number((await web3.eth.getBlock("latest")).timestamp);
 
       await depositBox.methods
         .deposit(
