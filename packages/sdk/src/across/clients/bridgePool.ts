@@ -1,7 +1,7 @@
 import assert from "assert";
 import { bridgePool } from "../../clients";
 import { BigNumber, Signer } from "ethers";
-import { toBNWei, fixedPointAdjustment, calcInterest, calcApy, fromWei, BigNumberish } from "../utils";
+import { toBNWei, fixedPointAdjustment, calcPeriodicCompoundInterest, calcApr, BigNumberish } from "../utils";
 import { BatchReadWithErrors, loop, exists } from "../../utils";
 import Multicall2 from "../../multicall2";
 import TransactionManager from "../transactionManager";
@@ -10,15 +10,14 @@ import { TransactionRequest, TransactionReceipt, Provider, Log, Block } from "@e
 import set from "lodash/set";
 import get from "lodash/get";
 import has from "lodash/has";
-import Decimal from "decimal.js";
 
 export type { Provider };
 export type BatchReadWithErrorsType = ReturnType<ReturnType<typeof BatchReadWithErrors>>;
 
-// this is a rough estimation of blocks per day from: https://ycharts.com/indicators/ethereum_blocks_per_day
 // may be able to replace with dynamic value https://docs.etherscan.io/api-endpoints/blocks#get-daily-block-count-and-rewards
-export const BLOCKS_PER_YEAR = 6359 * 365;
-export const SECONDS_PER_YEAR = 60 * 60 * 24 * 365.25;
+export const BLOCKS_PER_YEAR = 2317876; // estimated from https://ycharts.com/indicators/ethereum_blocks_per_day
+export const SECONDS_PER_YEAR = 31557600; // based on 365.25 days per year
+export const DEFAULT_BLOCK_DELTA = 10; // look exchange rate up based on 10 block difference by default
 
 export type Awaited<T> = T extends PromiseLike<infer U> ? U : T;
 
@@ -189,29 +188,6 @@ class UserState {
   }
 }
 
-export function calculateApy(
-  currentExchangeRate: string,
-  previousExchangeRate: string,
-  periods: number,
-  periodsPerYear: number
-) {
-  const startPrice = fromWei(previousExchangeRate);
-  const endPrice = fromWei(
-    BigNumber.from(currentExchangeRate).sub(previousExchangeRate).div(periods).add(previousExchangeRate)
-  );
-  const interest = calcInterest(startPrice, endPrice, periodsPerYear.toString());
-  return calcApy(interest, periodsPerYear.toString());
-}
-export function calculateApr(
-  currentExchangeRate: string,
-  previousExchangeRate: string,
-  periods: number,
-  periodsPerYear: number
-) {
-  const startPrice = fromWei(previousExchangeRate);
-  const endPrice = fromWei(currentExchangeRate);
-  return new Decimal(endPrice).sub(startPrice).div(startPrice).mul(periodsPerYear).div(new Decimal(periods)).toString();
-}
 export function calculateRemoval(amountWei: BigNumber, percentWei: BigNumber) {
   const receive = amountWei.mul(percentWei).div(fixedPointAdjustment);
   const remain = amountWei.sub(receive);
@@ -265,32 +241,24 @@ function joinPoolState(
   const totalPoolSize = poolState.liquidReserves.add(poolState.pendingReserves).add(poolState.utilizedReserves);
   const secondsElapsed = latestBlock.timestamp - previousBlock.timestamp;
   const blocksElapsed = latestBlock.number - previousBlock.number;
+  const exchangeRatePrevious = poolState.exchangeRatePrevious.toString();
+  const exchangeRateCurrent = poolState.exchangeRateCurrent.toString();
 
-  const estimatedApy = calculateApy(
-    poolState.exchangeRateCurrent,
-    poolState.exchangeRatePrevious,
+  const estimatedApy = calcPeriodicCompoundInterest(
+    exchangeRatePrevious,
+    exchangeRateCurrent,
     secondsElapsed,
     SECONDS_PER_YEAR
   );
-  const estimatedApr = calculateApr(
-    poolState.exchangeRateCurrent,
-    poolState.exchangeRatePrevious,
-    secondsElapsed,
-    SECONDS_PER_YEAR
-  );
+  const estimatedApr = calcApr(exchangeRatePrevious, exchangeRateCurrent, secondsElapsed, SECONDS_PER_YEAR);
 
-  const estimatedApyBlocks = calculateApy(
-    poolState.exchangeRateCurrent,
-    poolState.exchangeRatePrevious,
+  const estimatedApyBlocks = calcPeriodicCompoundInterest(
+    exchangeRatePrevious,
+    exchangeRateCurrent,
     blocksElapsed,
     BLOCKS_PER_YEAR
   );
-  const estimatedAprBlocks = calculateApr(
-    poolState.exchangeRateCurrent,
-    poolState.exchangeRatePrevious,
-    blocksElapsed,
-    BLOCKS_PER_YEAR
-  );
+  const estimatedAprBlocks = calcApr(exchangeRatePrevious, exchangeRateCurrent, blocksElapsed, BLOCKS_PER_YEAR);
 
   return {
     address: poolState.address,
@@ -535,7 +503,7 @@ export class Client {
   }
   async updatePool(poolAddress: string) {
     // default to 100 block delta unless specified otherwise in config
-    const { blockDelta = 100 } = this.config;
+    const { blockDelta = DEFAULT_BLOCK_DELTA } = this.config;
     const contract = this.getOrCreatePoolContract(poolAddress);
     const pool = new PoolState(this.batchRead(contract), contract, poolAddress);
     const latestBlock = await this.deps.provider.getBlock("latest");

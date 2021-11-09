@@ -4,6 +4,7 @@ import Decimal from "decimal.js";
 
 export type BigNumberish = string | number | BigNumber;
 export type BN = BigNumber;
+export type Decimalish = string | number | Decimal;
 
 /**
  * toBN.
@@ -121,30 +122,65 @@ export function percent(numerator: BigNumberish, denominator: BigNumberish): BN 
 }
 
 /**
- * calcInterest. Calculates a compounding interest:  https://www.calculatorsoup.com/calculators/financial/compound-interest-calculator.php
+ * calcContinuousCompoundInterest. From https://www.calculatorsoup.com/calculators/financial/compound-interest-calculator.php?given_data=find_r&A=2&P=1&n=0&t=1&given_data_last=find_r&action=solve
+ * Returns a yearly interest rate if start/end amount had been continuously compounded over the period elapsed. Multiply result by 100 for a %.
  *
- * @param {number} startPrice
- * @param {number} endPrice
- * @param {number} periodsRemaining
- * @param {number} periods
+ * @param {string} startAmount
+ * @param {string} endAmount
+ * @param {string} periodsElapsed
+ * @param {string} periodsPerYear
  */
-export const calcInterest = (startPrice: string, endPrice: string, periods: string, periodsRemaining = "1") => {
-  return new Decimal(periods)
+export const calcContinuousCompoundInterest = (
+  startAmount: Decimalish,
+  endAmount: Decimalish,
+  periodsElapsed: Decimalish,
+  periodsPerYear: Decimalish
+): string => {
+  const years = new Decimal(periodsPerYear).div(periodsElapsed);
+  return new Decimal(endAmount).div(startAmount).ln().div(years).toString();
+};
+/**
+ * calcPeriodicCompoundInterest. Taken from https://www.calculatorsoup.com/calculators/financial/compound-interest-calculator.php?given_data=find_r&A=2&P=1&n=365&t=1&given_data_last=find_r&action=solve
+ * This will return a periodically compounded interest rate for 1 year. Multiply result by 100 for a %.
+ *
+ * @param {string} startAmount - Starting amount or price
+ * @param {string} endAmount - Ending amount or price
+ * @param {string} periodsElapsed - How many periods elapsed for the start and end amount.
+ * @param {string} periodsPerYear - How many periods in 1 year.
+ */
+export const calcPeriodicCompoundInterest = (
+  startAmount: Decimalish,
+  endAmount: Decimalish,
+  periodsElapsed: Decimalish,
+  periodsPerYear: Decimalish
+): string => {
+  const n = new Decimal(periodsPerYear);
+  const A = new Decimal(endAmount);
+  const P = new Decimal(startAmount);
+  const t = new Decimal(periodsPerYear).div(periodsElapsed);
+  const one = new Decimal(1);
+  return n
     .mul(
-      new Decimal(endPrice)
-        .div(startPrice)
-        .pow(new Decimal(1).div(new Decimal(periodsRemaining).div(periods).mul(periods)))
-        .sub(1)
+      A.div(P)
+        .pow(one.div(n.div(t)))
+        .sub(one)
     )
     .toString();
 };
 
 /**
- * calcApy. Calculates apy based on interest rate: https://www.omnicalculator.com/finance/apy#how-does-this-apy-calculator-work
+ * calcApr. Simple apr calculation based on extrapolating the difference for a short period over a year.
  *
- * @param {number} interest
- * @param {number} periods
+ * @param {Decimalish} startAmount - Starting amount or price
+ * @param {Decimalish} endAmount - Ending amount or price
+ * @param {Decimalish} periodsElapsed - periods elapsed from start to end
+ * @param {Decimalish} periodsPerYear - periods per year
  */
-export const calcApy = (interest: string, periods: string) => {
-  return new Decimal(interest).div(periods).add(1).pow(periods).sub(1).toString();
+export const calcApr = (
+  startAmount: Decimalish,
+  endAmount: Decimalish,
+  periodsElapsed: Decimalish,
+  periodsPerYear: Decimalish
+): string => {
+  return new Decimal(endAmount).sub(startAmount).div(startAmount).mul(periodsPerYear).div(periodsElapsed).toString();
 };
