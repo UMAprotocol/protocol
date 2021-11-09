@@ -6,6 +6,13 @@ export function msToS(ms: number) {
   return Math.floor(ms / 1000);
 }
 
+type CoinGeckoAssetPlatform = {
+  id: string;
+  chain_identifier: number;
+  name: string;
+  shortname: string;
+};
+
 class Coingecko {
   private host: string;
   constructor(host = "https://api.coingecko.com/api/v3") {
@@ -38,7 +45,7 @@ class Coingecko {
   }
   // Return an array of spot prices for an array of collateral addresses in one async call. Note we might in future
   // This was adapted from packages/merkle-distributor/kpi-options-helpers/calculate-uma-tvl.ts
-  async getContractPrices(addresses: Array<string>, currency = "usd") {
+  async getContractPrices(addresses: Array<string>, currency = "usd", platform_id = "ethereum") {
     // Generate a unique set with no repeated. join the set with the required coingecko delimiter.
     const contract_addresses = Array.from(new Set(addresses.filter((n) => n).values()));
     assert(contract_addresses.length > 0, "Must supply at least 1 contract address");
@@ -56,7 +63,7 @@ class Coingecko {
       };
     };
     const result: Result = await this.call(
-      `simple/token_price/ethereum?contract_addresses=${contract_addresses.join(
+      `simple/token_price/${platform_id}?contract_addresses=${contract_addresses.join(
         "%2C"
       )}&vs_currencies=${currency}&include_last_updated_at=true`
     );
@@ -64,6 +71,11 @@ class Coingecko {
       return { address: lookup[key], timestamp: value.last_updated_at, price: value.usd };
     });
   }
+
+  async getPlatforms(): Promise<CoinGeckoAssetPlatform[]> {
+    return this.call(`asset_platforms`);
+  }
+
   async call(path: string) {
     try {
       const { host } = this;

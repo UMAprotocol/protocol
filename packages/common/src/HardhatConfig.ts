@@ -41,8 +41,6 @@ export function getHardhatConfig(
   // Some tests should not be tested using hardhat. Define all tests that end with *e2e.js to be ignored.
   const testBlacklist = [".e2e.js"];
 
-  const optimismCompileWhitelist = ["OVM_BridgeDepositBox", "Testable", "Lockable"];
-
   const defaultConfig = ({
     solidity: {
       compilers: [{ version: solcVersion, settings: { optimizer: { enabled: true, runs: 1000000 } } }],
@@ -80,7 +78,6 @@ export function getHardhatConfig(
         url: getNodeUrl("optimism", true),
         accounts: { mnemonic },
         gasPrice: 15000000,
-        compileWhitelist: optimismCompileWhitelist,
       },
       "optimism-kovan": {
         ovm: true,
@@ -88,7 +85,6 @@ export function getHardhatConfig(
         url: getNodeUrl("optimism-kovan", true),
         accounts: { mnemonic },
         gasPrice: 15000000,
-        compileWhitelist: optimismCompileWhitelist,
       },
       "optimism-test": {
         ovm: true,
@@ -97,9 +93,6 @@ export function getHardhatConfig(
         // This sets the gas price to 0 for all transactions on L2. We do this because account balances are not yet
         // automatically initiated with an ETH balance.
         gasPrice: 0,
-        // We use custom logic to only compile contracts within the listed directories, as opposed to choosing which
-        // ones to ignore, because there are more contracts to ignore than to include.
-        compileWhitelist: optimismCompileWhitelist,
         testWhitelist: ["oracle/Finder"],
         testBlacklist,
       },

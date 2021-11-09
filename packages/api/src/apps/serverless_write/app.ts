@@ -31,11 +31,18 @@ export default async (env: ProcessEnv) => {
   // debug flag for more verbose logs
   const debug = Boolean(env.debug);
   const profile = Profile(debug);
-  const provider = new ethers.providers.WebSocketProvider(env.CUSTOM_NODE_URL);
+  const provider = new ethers.providers.JsonRpcProvider(env.CUSTOM_NODE_URL);
   // we need web3 for syth price feeds
   const web3 = getWeb3(env.CUSTOM_NODE_URL);
   const datastoreClient = new Datastore();
   const datastores = StoresFactory(datastoreClient);
+  const networkChainId = env.NETWORK_CHAIN_ID ? parseInt(env.NETWORK_CHAIN_ID) : (await provider.getNetwork()).chainId;
+  const detectContractsBatchSize = env.DETECT_CONTRACTS_BATCH_SIZE
+    ? parseInt(env.DETECT_CONTRACTS_BATCH_SIZE)
+    : undefined;
+  const updateContractsBatchSize = env.UPDATE_CONTRACTS_BATCH_SIZE
+    ? parseInt(env.UPDATE_CONTRACTS_BATCH_SIZE)
+    : undefined;
   // state shared between services
   const appState: AppState = {
     emps: {
@@ -120,10 +127,10 @@ export default async (env: ProcessEnv) => {
     // these services can optionally be configured with a config object, but currently they are undefined or have defaults
     emps: Services.EmpState({ debug }, { tables: appState, appClients }),
     registry: await Services.Registry(
-      { debug, registryAddress: env.EMP_REGISTRY_ADDRESS },
+      { debug, registryAddress: env.EMP_REGISTRY_ADDRESS, network: networkChainId },
       { tables: appState, appClients }
     ),
-    collateralPrices: Services.CollateralPrices({ debug }, { tables: appState, appClients }),
+    collateralPrices: Services.CollateralPrices({ debug, network: networkChainId }, { tables: appState, appClients }),
     syntheticPrices: Services.SyntheticPrices(
       {
         debug,
@@ -139,7 +146,7 @@ export default async (env: ProcessEnv) => {
     empStats: Services.stats.Emp({ debug }, appState),
     marketPrices: Services.MarketPrices({ debug }, { tables: appState, appClients }),
     lspCreator: await Services.MultiLspCreator(
-      { debug, addresses: lspCreatorAddresses },
+      { debug, addresses: lspCreatorAddresses, network: networkChainId },
       { tables: appState, appClients }
     ),
     lsps: Services.LspState({ debug }, { tables: appState, appClients }),
@@ -149,7 +156,10 @@ export default async (env: ProcessEnv) => {
 
   // Orchestrator services are services that coordinate and aggregate other services
   const orchestratorServices: OrchestratorServices = {
-    contracts: Services.Contracts({ debug }, { tables: appState, profile, appClients, services }),
+    contracts: Services.Contracts(
+      { debug, detectContractsBatchSize, updateContractsBatchSize },
+      { tables: appState, profile, appClients, services }
+    ),
     prices: Services.Prices(
       { backfillDays: parseInt(env.backfillDays || "") },
       { services, tables: appState, appClients, profile }

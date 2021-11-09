@@ -17,6 +17,17 @@ const { OptimisticOracleProposer } = require("./src/proposer");
 const { getWeb3 } = require("@uma/common");
 const { getAbi, getAddress } = require("@uma/contracts-node");
 
+// Types of oracles, used by the optimistic oracle proposer off-chain bot to determine if a price request has resolved.
+// Note: Keys and valuesmust match the contract names listed in core/networks file so that this file can use them
+// as input into getAbi and getAddress.
+const OracleType = {
+  Voting: "Voting", // Used on mainnet when optimistic oracle directly submits price requests to Voting.
+  OracleChildTunnel: "OracleChildTunnel", // Used in production when running proposer bot on sidechain that needs to
+  // bridge price requests back to L1.
+  MockOracleAncillary: "MockOracleAncillary", // Used for testing when caller wants to be able to manually push prices
+  // to resolve requests
+};
+
 /**
  * @notice Runs strategies that propose and dispute prices for any price identifier serviced by the Optimistic Oracle.
  * @param {Object} logger Module responsible for sending logs.
@@ -27,8 +38,8 @@ const { getAbi, getAddress } = require("@uma/contracts-node");
  * @param {Number} errorRetriesTimeout The amount of milliseconds to wait between re-try iterations on failed loops.
  * @param {Object} [commonPriceFeedConfig] Common configuration to pass to all PriceFeeds constructed by proposer.
  * @param {Object} [optimisticOracleProposerConfig] Configuration to construct the OptimisticOracle proposer.
- * @param {String} [oracleType] Type of "Oracle" for this network, defaults to "Votng"
- * @param {String} [optimisticOracleType] Type of "OptimisticOracle" for this network, defaults to "OptimisticOracle"
+ * @param {OracleType} [oracleType] Type of "Oracle" for this network, defaults to "Voting"
+ * @param {OptimisticOracleType} [optimisticOracleType] Type of "OptimisticOracle" for this network, defaults to "OptimisticOracle"
  * @return None or throws an Error.
  */
 async function run({
@@ -39,7 +50,7 @@ async function run({
   errorRetriesTimeout,
   commonPriceFeedConfig,
   optimisticOracleProposerConfig,
-  oracleType = "Voting",
+  oracleType = OracleType.Voting,
   optimisticOracleType = OptimisticOracleType.OptimisticOracle,
 }) {
   try {
@@ -157,9 +168,9 @@ async function Poll(callback) {
       optimisticOracleProposerConfig: process.env.OPTIMISTIC_ORACLE_PROPOSER_CONFIG
         ? JSON.parse(process.env.OPTIMISTIC_ORACLE_PROPOSER_CONFIG)
         : {},
-      // Type of "Oracle" set for this network's Finder, default is "Voting". Other possible types include "SinkOracle",
-      //  "OracleChildTunnel", and "MockOracleAncillary"
-      oracleType: process.env.ORACLE_TYPE ? process.env.ORACLE_TYPE : "Voting",
+      // Type of "Oracle" to that optimistic oracle on this network submits price requests to, default is "Voting".
+      // The other possible types are exported in an enum in this file.
+      oracleType: process.env.ORACLE_TYPE ? process.env.ORACLE_TYPE : OracleType.Voting,
       // Type of "OptimisticOracle" to load in client, default is OptimisticOracle. The other possible types are
       // exported in an enum from financial-templates-lib/OptimisticOracleClient.
       optimisticOracleType: process.env.OPTIMISTIC_ORACLE_TYPE

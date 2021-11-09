@@ -7,7 +7,7 @@ const { lspCreator } = clients;
 
 interface Config extends BaseConfig {
   addresses?: string[];
-  network?: number;
+  network: number;
   debug?: boolean;
 }
 type Dependencies = {
@@ -25,7 +25,7 @@ export default async (
     return;
   }
 ) => {
-  const { addresses = [], network = 1 } = config;
+  const { addresses = [], network } = config;
 
   // always include latest known address
   const latestAddress = await lspCreator.getAddress(network);
