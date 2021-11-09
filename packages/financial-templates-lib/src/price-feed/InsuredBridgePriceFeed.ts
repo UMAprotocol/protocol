@@ -122,7 +122,8 @@ export class InsuredBridgePriceFeed extends PriceFeedInterface {
 
       // If deposit.quoteTimestamp > relay.blockTime then its an invalid relay because it would have
       // been impossible for the relayer to compute the realized LP fee % for the deposit.quoteTime in the future.
-      if (deposit.quoteTimestamp > matchedRelay.relayData.blockTime) {
+      const blockTime = Number((await this.l1Client.l1Web3.eth.getBlock(matchedRelay.relayData.blockNumber)).timestamp);
+      if (deposit.quoteTimestamp > blockTime) {
         this.logger.debug({
           at: "InsuredBridgePriceFeed",
           message: "Deposit quote time > relay block time",
