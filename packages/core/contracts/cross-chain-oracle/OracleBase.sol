@@ -15,11 +15,6 @@ abstract contract OracleBase {
         int256 price;
     }
 
-    // This value must be <= the Voting contract's `ancillaryBytesLimit` value otherwise it is possible
-    // that a price can be requested to this contract successfully, but cannot be resolved by the DVM which refuses
-    // to accept a price request made with ancillary data length over a certain size.
-    uint256 public constant ancillaryBytesLimit = 8192;
-
     // Mapping of encoded price requests {identifier, time, ancillaryData} to Price objects.
     mapping(bytes32 => Price) internal prices;
 
@@ -52,7 +47,7 @@ abstract contract OracleBase {
         uint256 time,
         bytes memory ancillaryData
     ) internal returns (bool) {
-        require(ancillaryData.length <= ancillaryBytesLimit, "Invalid ancillary data");
+        require(ancillaryData.length <= OptimisticOracleConstraints.ancillaryBytesLimit, "Invalid ancillary data");
         bytes32 priceRequestId = _encodePriceRequest(identifier, time, ancillaryData);
         Price storage lookup = prices[priceRequestId];
         if (lookup.state == RequestState.NeverRequested) {
