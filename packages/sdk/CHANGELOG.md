@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.12.1](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.12.0...@uma/sdk@0.12.1) (2021-11-09)
+
+### Bug Fixes
+
+- **sdk:** fix across pool size calculation regression ([#3590](https://github.com/UMAprotocol/protocol/issues/3590)) ([8e6cb1d](https://github.com/UMAprotocol/protocol/commit/8e6cb1daed174b5c8f435cd616c6b7fed1864a6a))
+
 # [0.12.0](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.11.0...@uma/sdk@0.12.0) (2021-11-09)
 
 ### Bug Fixes
