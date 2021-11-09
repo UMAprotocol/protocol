@@ -3,6 +3,15 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.9.1](https://github.com/UMAprotocol/protocol/compare/@uma/insured-bridge-relayer@1.9.0...@uma/insured-bridge-relayer@1.9.1) (2021-11-09)
+
+### Bug Fixes
+
+- **across-relayer:** Deposit search should start at BridgeDeposit block height, not BridgePool block height ([#3566](https://github.com/UMAprotocol/protocol/issues/3566)) ([665e78e](https://github.com/UMAprotocol/protocol/commit/665e78eb56cdb4ce2fc8736c6b5441dbbc79f282))
+- **across-relayer:** Finalizer can settle multiple L1 tokens ([#3580](https://github.com/UMAprotocol/protocol/issues/3580)) ([aa36f1f](https://github.com/UMAprotocol/protocol/commit/aa36f1f1426a7379b36ffab0236c9fde61ea291a))
+- **across-relayer:** tiny logging fix to improve logging ([#3584](https://github.com/UMAprotocol/protocol/issues/3584)) ([2492e60](https://github.com/UMAprotocol/protocol/commit/2492e60218a5a77cb12dd9dd9165aad565e6fec1))
+- **L1-client:** optimize how the L1 client fetches some internal data ([#3588](https://github.com/UMAprotocol/protocol/issues/3588)) ([fa2c538](https://github.com/UMAprotocol/protocol/commit/fa2c538c4af638a0e304e013de1f5d66b81842cc))
+
 # [1.9.0](https://github.com/UMAprotocol/protocol/compare/@uma/insured-bridge-relayer@1.8.0...@uma/insured-bridge-relayer@1.9.0) (2021-11-05)
 
 ### Bug Fixes
