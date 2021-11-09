@@ -14,8 +14,6 @@ import has from "lodash/has";
 export type { Provider };
 export type BatchReadWithErrorsType = ReturnType<ReturnType<typeof BatchReadWithErrors>>;
 
-// may be able to replace with dynamic value https://docs.etherscan.io/api-endpoints/blocks#get-daily-block-count-and-rewards
-export const BLOCKS_PER_YEAR = 2317876; // estimated from https://ycharts.com/indicators/ethereum_blocks_per_day
 export const SECONDS_PER_YEAR = 31557600; // based on 365.25 days per year
 export const DEFAULT_BLOCK_DELTA = 10; // look exchange rate up based on 10 block difference by default
 
@@ -39,8 +37,6 @@ export type Pool = {
   exchangeRatePrevious: string;
   estimatedApy: string;
   estimatedApr: string;
-  estimatedApyBlocks: string;
-  estimatedAprBlocks: string;
   blocksElapsed: number;
   secondsElapsed: number;
 };
@@ -252,14 +248,6 @@ function joinPoolState(
   );
   const estimatedApr = calcApr(exchangeRatePrevious, exchangeRateCurrent, secondsElapsed, SECONDS_PER_YEAR);
 
-  const estimatedApyBlocks = calcPeriodicCompoundInterest(
-    exchangeRatePrevious,
-    exchangeRateCurrent,
-    blocksElapsed,
-    BLOCKS_PER_YEAR
-  );
-  const estimatedAprBlocks = calcApr(exchangeRatePrevious, exchangeRateCurrent, blocksElapsed, BLOCKS_PER_YEAR);
-
   return {
     address: poolState.address,
     totalPoolSize: totalPoolSize.toString(),
@@ -270,8 +258,6 @@ function joinPoolState(
     exchangeRatePrevious: poolState.exchangeRatePrevious.toString(),
     estimatedApy,
     estimatedApr,
-    estimatedApyBlocks,
-    estimatedAprBlocks,
     blocksElapsed,
     secondsElapsed,
   };
