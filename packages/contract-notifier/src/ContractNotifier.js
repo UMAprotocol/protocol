@@ -20,6 +20,7 @@ class ContractNotifier {
     this.maxTimeTillExpiration = maxTimeTillExpiration;
   }
 
+  // Main function to check contracts for upcoming expirations.
   async checkUpcomingExpirations() {
     this.logger.debug({
       at: "ExpirationsNotifier",
@@ -34,13 +35,19 @@ class ContractNotifier {
       this.maxTimeTillExpiration > 259200
         ? parseInt(this.maxTimeTillExpiration / 86400) + " days"
         : parseInt(this.maxTimeTillExpiration / 3600) + " hours";
+
+    // Get non-expired LSP and EMP contracts (global route) from UMA API endpoint.
     const apiUrl = this.apiEndpoint + "/global/listActive";
     const activeContracts = await this.networker.getJson(apiUrl, { method: "post" });
+
     const expiringContracts = activeContracts
       .map((contract) => {
+        // EMP endpoint covers all contracts registered with DVM including e.g. OptimisticOracle
+        // or non-expiring Jarvis contracts that should be filtered out.
         if (!contract.type || !contract.expirationTimestamp) {
           return null;
         }
+        // Use long token name for LSP contracts to be consistent with behavior at https://projects.umaproject.org
         let tokenName;
         if (contract.type === "emp") {
           tokenName = contract.tokenName;
@@ -62,8 +69,12 @@ class ContractNotifier {
       .filter((contract) => {
         return (
           contract &&
+          // Include only contracts that expire within maxTimeTillExpiration seconds.
           contract.expirationTimestamp - currentTime <= this.maxTimeTillExpiration &&
+          // Filter out contracts that are past expiration, but have not been expired yet.
           contract.expirationTimestamp > currentTime &&
+          // Filter out contracts that have already been notified, but repeat notification if they were
+          // previosly notified due to longer maxTimeTillExpiration window than current setting.
           (!Object.keys(notifiedExpirations).includes(contract.chainId + "_" + contract.address) ||
             contract.expirationTimestamp -
               notifiedExpirations[contract.chainId + "_" + contract.address].notificationTimestamp >
@@ -92,6 +103,7 @@ class ContractNotifier {
     await this.updateNotifiedExpirations(expiringContracts, currentTime);
   }
 
+  // Gets previously notified contracts from google Datastore.
   async getNotifiedExpirations() {
     const notifiedExpirations = (await datastore.runQuery(datastore.createQuery("NotifiedExpirations")))[0];
     return notifiedExpirations.reduce((contracts, contract) => {
@@ -106,6 +118,7 @@ class ContractNotifier {
     }, {});
   }
 
+  // Adds notified contracts to google Datastore.
   async updateNotifiedExpirations(notifiedContracts, currentTime) {
     const promises = notifiedContracts.map((contract) => {
       const key = datastore.key(["NotifiedExpirations", contract.chainId + "_" + contract.address]);
