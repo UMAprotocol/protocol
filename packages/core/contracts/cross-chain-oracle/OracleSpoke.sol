@@ -9,18 +9,22 @@ import "../common/implementation/Lockable.sol";
 import "./ChildMessengerInterface.sol";
 
 /**
- * @title Adapter deployed on child chain to give financial contracts the ability to trigger cross-chain price requests
- * to the mainnet DVM. Also has the ability to receive published prices from mainnet. This contract can be treated as
- * the "DVM" for this network, because a calling contract can request and access a resolved price request from this
- * contract.
+ * @title This contract is primarily intended to receive messages on the child chain from a parent chain and allow
+ * contracts deployed on the child chain to interact with this contract as an Oracle. Moreover, this contract gives
+ * child chain contracts the ability to trigger cross-chain price requests to the mainnet DVM. This Spoke knows how
+ * to communicate with the parent chain via a "ChildMessenger" contract which directly communicates with the
+ * "ParentMessenger" on mainnet.
  * @dev The intended client of this contract is an OptimisticOracle on sidechain that needs price
  * resolution secured by the DVM on mainnet.
  */
 contract OracleSpoke is OracleBase, OracleAncillaryInterface, Lockable {
     ChildMessengerInterface public messenger;
 
-    constructor(address _finderAddress, address _messengerAddress) OracleBase(_finderAddress) {
-        messenger = ChildMessengerInterface(_messengerAddress);
+    event SetChildMessenger(address indexed childMessenger);
+
+    constructor(address _finderAddress, ChildMessengerInterface _messengerAddress) OracleBase(_finderAddress) {
+        messenger = _messengerAddress;
+        emit SetChildMessenger(address(messenger));
     }
 
     // This assumes that the local network has a Registry that resembles the mainnet registry.
@@ -36,8 +40,9 @@ contract OracleSpoke is OracleBase, OracleAncillaryInterface, Lockable {
     }
 
     /**
-     * @notice This should be called to bridge a price request to mainnet. This method will enqueue a new price request
-     * or return silently if already requested or return silently if price request is a duplicate.
+     * @notice This is called to bridge a price request to mainnet. This method will enqueue a new price request
+     * or return silently if already requested. Price requests are relayed to mainnet (the "Parent" chain) via
+     * the ChildMessenger contract.
      * @dev Can be called only by a registered contract that is allowed to make DVM price requests. Will mark this
      * price request as Requested, and therefore able to receive the price resolution data from mainnet.
      * @param identifier Identifier of price request.
@@ -51,22 +56,24 @@ contract OracleSpoke is OracleBase, OracleAncillaryInterface, Lockable {
     ) public override nonReentrant() onlyRegisteredContract() {
         bool newPriceRequested = _requestPrice(identifier, time, _stampAncillaryData(ancillaryData, msg.sender));
         if (newPriceRequested) {
-            messenger.sendMessageToRoot(abi.encode(identifier, time, _stampAncillaryData(ancillaryData, msg.sender)));
+            messenger.sendMessageToParent(abi.encode(identifier, time, _stampAncillaryData(ancillaryData, msg.sender)));
         }
     }
 
     /**
-     * @notice Resolves a price request originating from root. Request data must be sent via the Messenger contract.
+     * @notice Resolves a price request originating from a message sent by the DVM on the parent chain. This method
+     * must be called by the ChildMessenger contract which is designed to communicate only with the ParentMessenger
+     * contract on Mainnet.
      * @param data ABI encoded params with which to call `_publishPrice`.
      */
-    function processMessageFromRoot(bytes memory data) public nonReentrant() onlyMessenger() {
+    function processMessageFromParent(bytes memory data) public nonReentrant() onlyMessenger() {
         (bytes32 identifier, uint256 time, bytes memory ancillaryData, int256 price) =
             abi.decode(data, (bytes32, uint256, bytes, int256));
         _publishPrice(identifier, time, ancillaryData, price);
     }
 
     /**
-     * @notice Returns whether a price has resolved for the request.
+     * @notice Returns whether a price has resolved for the request. This method will not revert.
      * @param identifier Identifier of price request.
      * @param time Timestamp of price request
      * @param ancillaryData extra data of price request.
@@ -82,8 +89,7 @@ contract OracleSpoke is OracleBase, OracleAncillaryInterface, Lockable {
     }
 
     /**
-     * @notice Returns resolved price for the request.
-     * @dev Reverts if price is not available.
+     * @notice Returns resolved price for the request. Reverts if price is not available.
      * @param identifier Identifier of price request.
      * @param time Timestamp of price request
      * @param ancillaryData extra data of price request.

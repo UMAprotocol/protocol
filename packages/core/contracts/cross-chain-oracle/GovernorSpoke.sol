@@ -12,9 +12,11 @@ contract GovernorSpoke is Lockable {
     ChildMessengerInterface public messenger;
 
     event ExecutedGovernanceTransaction(address indexed to, bytes data);
+    event SetChildMessenger(address indexed childMessenger);
 
-    constructor(address _messengerAddress) {
-        messenger = ChildMessengerInterface(_messengerAddress);
+    constructor(ChildMessengerInterface _messengerAddress) {
+        messenger = _messengerAddress;
+        emit SetChildMessenger(address(messenger));
     }
 
     modifier onlyMessenger() {
@@ -24,11 +26,12 @@ contract GovernorSpoke is Lockable {
 
     /**
      * @notice Executes governance transaction created on Ethereum.
-     * @dev Should be called by adapter contract that wants to execute governance action on this child chain that
-     * originated from DVM voters on root chain.
+     * @dev Can only called by ChildMessenger contract that wants to execute governance action on this child chain that
+     * originated from DVM voters on root chain. ChildMessenger should only receive communication from ParentMessenger
+     * on mainnet.
      * @param data ABI encoded params to include in delegated transaction.
      */
-    function processMessageFromRoot(bytes memory data) public nonReentrant() onlyMessenger() {
+    function processMessageFromParent(bytes memory data) public nonReentrant() onlyMessenger() {
         (address to, bytes memory inputData) = abi.decode(data, (address, bytes));
         require(_executeCall(to, inputData), "execute call failed");
         emit ExecutedGovernanceTransaction(to, inputData);
