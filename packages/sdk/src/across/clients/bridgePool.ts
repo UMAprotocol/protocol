@@ -1,16 +1,7 @@
 import assert from "assert";
 import { bridgePool } from "../../clients";
 import { BigNumber, Signer } from "ethers";
-import {
-  toBNWei,
-  fixedPointAdjustment,
-  calcInterest,
-  calcApy,
-  calcApr,
-  fromWei,
-  BigNumberish,
-  calcPeriods,
-} from "../utils";
+import { toBNWei, fixedPointAdjustment, calcInterest, calcApy, fromWei, BigNumberish } from "../utils";
 import { BatchReadWithErrors, loop, exists } from "../../utils";
 import Multicall2 from "../../multicall2";
 import TransactionManager from "../transactionManager";
@@ -19,6 +10,7 @@ import { TransactionRequest, TransactionReceipt, Provider, Log, Block } from "@e
 import set from "lodash/set";
 import get from "lodash/get";
 import has from "lodash/has";
+import Decimal from "decimal.js";
 
 export type { Provider };
 export type BatchReadWithErrorsType = ReturnType<ReturnType<typeof BatchReadWithErrors>>;
@@ -200,21 +192,25 @@ class UserState {
 export function calculateApy(
   currentExchangeRate: string,
   previousExchangeRate: string,
-  periods: string | number = BLOCKS_PER_YEAR
+  periods: number,
+  periodsPerYear: number
 ) {
   const startPrice = fromWei(previousExchangeRate);
-  const endPrice = fromWei(currentExchangeRate);
-  const interest = calcInterest(startPrice, endPrice, periods.toString());
-  return calcApy(interest, periods.toString());
+  const endPrice = fromWei(
+    BigNumber.from(currentExchangeRate).sub(previousExchangeRate).div(periods).add(previousExchangeRate)
+  );
+  const interest = calcInterest(startPrice, endPrice, periodsPerYear.toString());
+  return calcApy(interest, periodsPerYear.toString());
 }
 export function calculateApr(
   currentExchangeRate: string,
   previousExchangeRate: string,
-  periods: string | number = BLOCKS_PER_YEAR
+  periods: number,
+  periodsPerYear: number
 ) {
   const startPrice = fromWei(previousExchangeRate);
   const endPrice = fromWei(currentExchangeRate);
-  return calcApr(startPrice, endPrice, periods.toString());
+  return new Decimal(endPrice).sub(startPrice).div(startPrice).mul(periodsPerYear).div(new Decimal(periods)).toString();
 }
 export function calculateRemoval(amountWei: BigNumber, percentWei: BigNumber) {
   const receive = amountWei.mul(percentWei).div(fixedPointAdjustment);
@@ -273,23 +269,27 @@ function joinPoolState(
   const estimatedApy = calculateApy(
     poolState.exchangeRateCurrent,
     poolState.exchangeRatePrevious,
-    calcPeriods(secondsElapsed, SECONDS_PER_YEAR)
+    secondsElapsed,
+    SECONDS_PER_YEAR
   );
   const estimatedApr = calculateApr(
     poolState.exchangeRateCurrent,
     poolState.exchangeRatePrevious,
-    calcPeriods(secondsElapsed, SECONDS_PER_YEAR)
+    secondsElapsed,
+    SECONDS_PER_YEAR
   );
 
   const estimatedApyBlocks = calculateApy(
     poolState.exchangeRateCurrent,
     poolState.exchangeRatePrevious,
-    calcPeriods(blocksElapsed, BLOCKS_PER_YEAR)
+    blocksElapsed,
+    BLOCKS_PER_YEAR
   );
   const estimatedAprBlocks = calculateApr(
     poolState.exchangeRateCurrent,
     poolState.exchangeRatePrevious,
-    calcPeriods(blocksElapsed, BLOCKS_PER_YEAR)
+    blocksElapsed,
+    BLOCKS_PER_YEAR
   );
 
   return {
