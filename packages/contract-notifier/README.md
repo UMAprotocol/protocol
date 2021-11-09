@@ -1,6 +1,6 @@
 # UMA Contracts Notifier
 
-This app continuously attempts to monitor UMA financial contracts and sends notifications based on predefined conditions. Currently the app implements only expiring contracts notifier.
+This app continuously monitors UMA financial contracts and sends notifications based on predefined conditions. Currently the app implements only expiration notifications on EMP and LSP contracts..
 
 ## Contract expiration notifier
 
