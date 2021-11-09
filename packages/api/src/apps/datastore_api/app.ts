@@ -56,6 +56,7 @@ export default async (env: ProcessEnv) => {
 
   const datastoreClient = new Datastore();
   const datastores = StoresFactory(datastoreClient);
+  const networkChainId = env.NETWORK_CHAIN_ID ? parseInt(env.NETWORK_CHAIN_ID) : (await provider.getNetwork()).chainId;
   // state shared between services
   const appState: AppState = {
     emps: {
@@ -140,11 +141,11 @@ export default async (env: ProcessEnv) => {
     // these services can optionally be configured with a config object, but currently they are undefined or have defaults
     emps: Services.EmpState({ debug }, { tables: appState, appClients }),
     registry: await Services.Registry(
-      { debug, registryAddress: env.EMP_REGISTRY_ADDRESS },
+      { debug, registryAddress: env.EMP_REGISTRY_ADDRESS, network: networkChainId },
       { tables: appState, appClients },
       (event, data) => serviceEvents.emit("empRegistry", event, data)
     ),
-    collateralPrices: Services.CollateralPrices({ debug }, { tables: appState, appClients }),
+    collateralPrices: Services.CollateralPrices({ debug, network: networkChainId }, { tables: appState, appClients }),
     syntheticPrices: Services.SyntheticPrices(
       {
         debug,
@@ -160,7 +161,7 @@ export default async (env: ProcessEnv) => {
     empStats: Services.stats.Emp({ debug }, appState),
     marketPrices: Services.MarketPrices({ debug }, { tables: appState, appClients }),
     lspCreator: await Services.MultiLspCreator(
-      { debug, addresses: lspCreatorAddresses },
+      { debug, addresses: lspCreatorAddresses, network: networkChainId },
       { tables: appState, appClients },
       (event, data) => serviceEvents.emit("multiLspCreator", event, data)
     ),

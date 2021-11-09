@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import "./OVM_CrossDomainEnabled.sol";
+import "../../external/ovm/OVM_CrossDomainEnabled.sol";
 import "../interfaces/MessengerInterface.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 

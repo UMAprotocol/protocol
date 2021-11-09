@@ -818,7 +818,7 @@ describe("MerkleDistributor.js", function () {
 
         // Check estimated gas for batch claiming unsorted array of claims:
         const gasUnsorted = await merkleDistributor.methods.claimMulti(batchedClaims).estimateGas();
-        assertApproximate(53247, Math.floor(gasUnsorted / batchedClaims.length));
+        assertApproximate(52700, Math.floor(gasUnsorted / batchedClaims.length));
 
         // Sort the claims such that windows with the same reward currency end up next to each other.
         const sortedClaims = await sortClaimsByAccountAndToken(batchedClaims);
