@@ -5,7 +5,9 @@ import { BatchReadWithErrors, nowS, parseBytes, Profile, toNumber, toString } fr
 import { AppClients, AppState, BaseConfig } from "../types";
 
 type Instance = uma.clients.emp.Instance;
-type Config = BaseConfig;
+type Config = BaseConfig & {
+  updateEmpsConcurrency?: number;
+};
 type Dependencies = {
   tables: Pick<AppState, "registeredEmps" | "emps" | "collateralAddresses" | "syntheticAddresses">;
   appClients: AppClients;
@@ -143,16 +145,21 @@ export const EmpState = (config: Config, dependencies: Dependencies) => {
   }
 
   async function updateAll(addresses: string[], startBlock?: number, endBlock?: number) {
-    await Promise.mapSeries(addresses, async (address: string) => {
-      const end = profile(`Update Emp state for ${address}`);
-      try {
-        return await updateOne(address, startBlock, endBlock);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        end();
-      }
-    });
+    const { updateEmpsConcurrency = 10 } = config;
+    await Promise.map(
+      addresses,
+      async (address: string) => {
+        const end = profile(`Update Emp state for ${address}`);
+        try {
+          return await updateOne(address, startBlock, endBlock);
+        } catch (err) {
+          console.error(err);
+        } finally {
+          end();
+        }
+      },
+      { concurrency: updateEmpsConcurrency }
+    );
   }
 
   async function update(startBlock?: number, endBlock?: number) {

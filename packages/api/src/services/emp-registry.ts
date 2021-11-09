@@ -6,7 +6,7 @@ import { AppClients, AppState, BaseConfig } from "../types";
 const { registry } = clients;
 
 interface Config extends BaseConfig {
-  network?: number;
+  network: number;
   registryAddress?: string;
 }
 
@@ -30,7 +30,7 @@ export const Registry = async (
     return;
   }
 ) => {
-  const { network = 1, registryAddress } = config;
+  const { network, registryAddress } = config;
   const { appClients, tables } = dependencies;
   const { registeredEmps } = tables;
   const { provider } = appClients;
