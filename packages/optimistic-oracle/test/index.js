@@ -75,6 +75,7 @@ describe("index.js", function () {
     // and auto detected the OO's deployed address.
     assert.isTrue(spyLogIncludes(spy, 0, "OptimisticOracle proposer started"));
     assert.isTrue(spyLogIncludes(spy, 0, optimisticOracle.options.address));
+    assert.equal(spy.getCall(0).lastArg.oracleType, "Voting");
     assert.equal(spy.getCall(0).lastArg.optimisticOracleType, "OptimisticOracle");
     assert.isTrue(spyLogIncludes(spy, spy.callCount - 1, "End of serverless execution loop - terminating process"));
   });

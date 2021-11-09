@@ -194,9 +194,15 @@ export function getWeb3Websocket(url: string, options: Obj = {}) {
   );
 }
 
+export function getWeb3Http(url: string) {
+  return new Web3(new Web3.providers.HttpProvider(url));
+}
+
 export function getWeb3(url: string, options: Obj = {}) {
   if (url.startsWith("ws")) return getWeb3Websocket(url, options);
-  throw new Error("Only supporting websocket provider URLs for Web3");
+  if (url.startsWith("http")) return getWeb3Http(url);
+
+  throw new Error("Web3 provider URLs not supported");
 }
 
 // this just maintains the start/endblock given sporadic updates with a latest block number
@@ -233,4 +239,26 @@ export function rejectAfterDelay(ms: number, message = "Call timed out") {
 export async function expirePromise(promise: () => Promise<any>, timeoutms: number, errorMessage?: string) {
   const [rejectPromise, cancel] = rejectAfterDelay(timeoutms, errorMessage);
   return Promise.race([promise(), rejectPromise]).finally(cancel);
+}
+
+/**
+ * Takes two values and returns a list of number intervals
+ *
+ * @example
+ * ```js
+ * getSamplesBetween(1, 10, 3) //returns [[1, 4], [5, 8], [9, 10]]
+ * ```
+ */
+export function getSamplesBetween(min: number, max: number, size: number) {
+  let keepIterate = true;
+  const intervals = [];
+
+  while (keepIterate) {
+    const to = Math.min(min + size, max);
+    intervals.push([min, to]);
+    min = to + 1;
+    if (min >= max) keepIterate = false;
+  }
+
+  return intervals;
 }
