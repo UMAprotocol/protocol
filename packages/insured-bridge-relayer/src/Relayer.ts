@@ -433,7 +433,7 @@ export class Relayer {
     l1Token: string
   ): { isExpired: boolean; expirationTime: number; contractTime: number } {
     const relayExpirationTime = relay.priceRequestTime + this.l1Client.optimisticOracleLiveness;
-    const currentContractTime = this.l1Client.getBridgePoolForToken(l1Token).currentTime;
+    const currentContractTime = this.l1Client.getBridgePoolForL1Token(l1Token).currentTime;
     return {
       isExpired: relay.settleable !== SettleableRelay.CannotSettle,
       expirationTime: relayExpirationTime,
@@ -600,7 +600,7 @@ export class Relayer {
   }
 
   private _generateSlowRelayTx(deposit: Deposit, realizedLpFeePct: BN): TransactionType {
-    const bridgePool = this.l1Client.getBridgePoolForToken(deposit.l1Token).contract;
+    const bridgePool = this.l1Client.getBridgePoolForL1Token(deposit.l1Token).contract;
     return (bridgePool.methods.relayDeposit(
       [
         deposit.chainId,
@@ -617,12 +617,12 @@ export class Relayer {
   }
 
   private _generateSpeedUpRelayTx(deposit: Deposit, relay: Relay): TransactionType {
-    const bridgePool = this.l1Client.getBridgePoolForToken(deposit.l1Token).contract;
+    const bridgePool = this.l1Client.getBridgePoolForL1Token(deposit.l1Token).contract;
     return (bridgePool.methods.speedUpRelay(deposit as any, relay as any) as unknown) as TransactionType;
   }
 
   private _generateInstantRelayTx(deposit: Deposit, realizedLpFeePct: BN): TransactionType {
-    const bridgePool = this.l1Client.getBridgePoolForToken(deposit.l1Token).contract;
+    const bridgePool = this.l1Client.getBridgePoolForL1Token(deposit.l1Token).contract;
     return (bridgePool.methods.relayAndSpeedUp(
       deposit as any,
       realizedLpFeePct.toString()
@@ -630,12 +630,12 @@ export class Relayer {
   }
 
   private _generateDisputeRelayTx(deposit: Deposit, relay: Relay): TransactionType {
-    const bridgePool = this.l1Client.getBridgePoolForToken(deposit.l1Token).contract;
+    const bridgePool = this.l1Client.getBridgePoolForL1Token(deposit.l1Token).contract;
     return (bridgePool.methods.disputeRelay(deposit as any, relay as any) as unknown) as TransactionType;
   }
 
   private _generateSettleRelayTx(deposit: Deposit, relay: Relay): TransactionType {
-    const bridgePool = this.l1Client.getBridgePoolForToken(deposit.l1Token).contract;
+    const bridgePool = this.l1Client.getBridgePoolForL1Token(deposit.l1Token).contract;
     type ContractDepositArg = Parameters<typeof bridgePool["methods"]["settleRelay"]>[0];
     return (bridgePool.methods.settleRelay(
       (deposit as unknown) as ContractDepositArg,
