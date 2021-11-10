@@ -34,7 +34,10 @@ contract GovernorSpoke is Lockable {
      */
     function processMessageFromParent(bytes memory data) public nonReentrant() onlyMessenger() {
         (address to, bytes memory inputData) = abi.decode(data, (address, bytes));
-        require(to.call(data), "execute call failed");
+        // We trust the caller (i.e. the Messenger) and therefore we ignore warnings that .call() bypasses type
+        // checking, function existence checking, and argument packing.
+        (bool success, ) = to.call(data);
+        require(success, "execute call failed");
         emit ExecutedGovernanceTransaction(to, inputData);
     }
 }
