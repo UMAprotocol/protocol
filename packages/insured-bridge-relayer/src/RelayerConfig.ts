@@ -94,9 +94,9 @@ export class RelayerConfig {
     } = env;
 
     this.botModes = {
-      relayerEnabled: RELAYER_ENABLED ? Boolean(RELAYER_ENABLED) : false,
-      disputerEnabled: DISPUTER_ENABLED ? Boolean(DISPUTER_ENABLED) : false,
-      finalizerEnabled: FINALIZER_ENABLED ? Boolean(FINALIZER_ENABLED) : false,
+      relayerEnabled: RELAYER_ENABLED === "true" ? true : false,
+      disputerEnabled: DISPUTER_ENABLED === "true" ? true : false,
+      finalizerEnabled: FINALIZER_ENABLED === "true" ? true : false,
     };
 
     assert(BRIDGE_ADMIN_ADDRESS, "BRIDGE_ADMIN_ADDRESS required");
