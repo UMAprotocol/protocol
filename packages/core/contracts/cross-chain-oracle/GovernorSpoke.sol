@@ -29,7 +29,8 @@ contract GovernorSpoke is Lockable {
      * @dev Can only called by ChildMessenger contract that wants to execute governance action on this child chain that
      * originated from DVM voters on root chain. ChildMessenger should only receive communication from ParentMessenger
      * on mainnet.
-     * @param data ABI encoded params to include in delegated transaction.
+     * @param data Contains the target address and the encoded function selector + ABI encoded params to include in
+     * delegated transaction.
      */
     function processMessageFromParent(bytes memory data) public nonReentrant() onlyMessenger() {
         (address to, bytes memory inputData) = abi.decode(data, (address, bytes));
