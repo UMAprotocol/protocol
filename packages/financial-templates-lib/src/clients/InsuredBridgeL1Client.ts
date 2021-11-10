@@ -52,6 +52,7 @@ export interface InstantRelay {
 
 export interface BridgePoolData {
   contract: BridgePoolWeb3;
+  l2Token: string;
   currentTime: number;
   relayNonce: number;
   poolCollateralDecimals: number;
@@ -190,12 +191,18 @@ export class InsuredBridgeL1Client {
 
   getBridgePoolForDeposit(l2Deposit: Deposit): BridgePoolData {
     if (!this.bridgePools[l2Deposit.l1Token]) throw new Error(`No bridge pool initialized for ${l2Deposit.l1Token}`);
-    return this.getBridgePoolForToken(l2Deposit.l1Token);
+    return this.getBridgePoolForL1Token(l2Deposit.l1Token);
   }
 
-  getBridgePoolForToken(l1Token: string): BridgePoolData {
+  getBridgePoolForL1Token(l1Token: string): BridgePoolData {
     if (!this.bridgePools[l1Token]) throw new Error(`No bridge pool initialized for ${l1Token}`);
     return this.bridgePools[l1Token];
+  }
+
+  getBridgePoolForL2Token(l2Token: string): BridgePoolData {
+    const bridgePoolData = Object.values(this.bridgePools).filter((bridgePool) => bridgePool.l2Token == l2Token)[0];
+    if (!bridgePoolData) throw new Error(`No bridge pool initialized for ${l2Token}`);
+    return bridgePoolData;
   }
 
   async getProposerBondPct(): Promise<BN> {
@@ -225,6 +232,7 @@ export class InsuredBridgeL1Client {
           getAbi("BridgePool"),
           whitelistedTokenEvent.returnValues.bridgePool
         ) as unknown) as BridgePoolWeb3,
+        l2Token: whitelistedTokenEvent.returnValues.l2Token,
         // We'll set the following params when fetching bridge pool state in parallel.
         currentTime: 0,
         relayNonce: 0,
