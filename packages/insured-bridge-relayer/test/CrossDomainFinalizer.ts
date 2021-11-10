@@ -280,7 +280,7 @@ describe("CrossDomainFinalizer.ts", function () {
 
       // Now, when running the cross-domain finalizer, should send the L2->L1 transfer via the bridgeTokens method.
       await crossDomainFinalizer.checkForBridgeableL2TokensAndBridge();
-      assert.isTrue(lastSpyLogIncludes(spy, "L2 L2ERC20 bridged over the canonical bridge"));
+      assert.isTrue(lastSpyLogIncludes(spy, "L2ERC20 sent over optimism bridge"));
       assert.isFalse(await bridgeDepositBox.methods.canBridge(l2Token.options.address).call());
     });
   });
@@ -391,8 +391,8 @@ describe("CrossDomainFinalizer.ts", function () {
       assert.isTrue(await bridgeDepositBox.methods.canBridge(l2Token.options.address).call());
       assert.isTrue(await bridgeDepositBox.methods.canBridge(l2Token2.options.address).call());
       await crossDomainFinalizer.checkForBridgeableL2TokensAndBridge();
-      assert.isTrue(spyLogIncludes(spy, -1, "L2 L2ERC202 bridged over the canonical bridge"));
-      assert.isTrue(spyLogIncludes(spy, -2, "L2 L2ERC20 bridged over the canonical bridge"));
+      assert.isTrue(spyLogIncludes(spy, -1, "L2ERC202 sent over optimism bridge"));
+      assert.isTrue(spyLogIncludes(spy, -2, "L2ERC20 sent over optimism bridge"));
       assert.isFalse(await bridgeDepositBox.methods.canBridge(l2Token.options.address).call());
       assert.isFalse(await bridgeDepositBox.methods.canBridge(l2Token2.options.address).call());
     });
@@ -436,7 +436,7 @@ describe("CrossDomainFinalizer.ts", function () {
       assert.isTrue(await bridgeDepositBox.methods.canBridge(l2Token.options.address).call());
       assert.isTrue(await bridgeDepositBox.methods.canBridge(l2Token2.options.address).call());
       await crossDomainFinalizer.checkForBridgeableL2TokensAndBridge();
-      assert.isTrue(spyLogIncludes(spy, -1, "L2 L2ERC202 bridged over the canonical bridge"));
+      assert.isTrue(spyLogIncludes(spy, -1, "L2ERC202 sent over optimism bridge"));
       // The log before the last log should NOT contain any bridging action logging.
       assert.isTrue(spyLogIncludes(spy, -2, "Checking bridgeable L2 tokens"));
       assert.isTrue(await bridgeDepositBox.methods.canBridge(l2Token.options.address).call());
@@ -488,7 +488,7 @@ describe("CrossDomainFinalizer.ts", function () {
       assert.isFalse(await bridgeDepositBox.methods.canBridge(l2Token.options.address).call());
 
       await crossDomainFinalizer.checkForBridgeableL2TokensAndBridge();
-      assert.isTrue(spyLogIncludes(spy, -1, "L2 L2ERC202 bridged over the canonical bridge"));
+      assert.isTrue(spyLogIncludes(spy, -1, "L2ERC202 sent over optimism bridge"));
       // The log before the last log should NOT contain any bridging action logging.
       assert.isTrue(spyLogIncludes(spy, -2, "Checking bridgeable L2 tokens"));
       assert.isFalse(await bridgeDepositBox.methods.canBridge(l2Token.options.address).call());
