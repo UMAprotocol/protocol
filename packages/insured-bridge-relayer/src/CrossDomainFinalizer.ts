@@ -77,7 +77,7 @@ export class CrossDomainFinalizer {
       const tokensSent = receipt.events.TokensBridged.returnValues.numberOfTokensBridged;
       this.logger.info({
         at: "AcrossRelayer#CrossDomainFinalizer",
-        message: `L2 ${symbol} bridged over the canonical bridge! 🌁`,
+        message: `Tokens sent over ${PublicNetworks[this.l2Client.chainId]?.name} bridge! 🌁`,
         mrkdwn:
           createFormatFunction(2, 4, false, decimals)(tokensSent) +
           " " +
