@@ -52,8 +52,10 @@ export class CrossDomainFinalizer {
         const { symbol, decimals, l2PoolBalance } = await this._getL2TokenInfo(l2Token);
         const l1PoolReserves = await this._getL1PoolReserves(l2Token);
 
-        if (l2PoolBalance.gt(toBN(this.crossDomainFinalizationThreshold).mul(l1PoolReserves).div(toBN(100))))
-          nonce = await this._bridgeL2Token(l2Token, nonce, symbol, decimals);
+        if (l2PoolBalance.gt(toBN(this.crossDomainFinalizationThreshold).mul(l1PoolReserves).div(toBN(100)))) {
+          await this._bridgeL2Token(l2Token, nonce, symbol, decimals);
+          nonce++; // increment the nonce for the next transaction.
+        }
       } catch (error) {
         this.logger.error({
           at: "AcrossRelayer#CrossDomainFinalizer",
@@ -67,8 +69,9 @@ export class CrossDomainFinalizer {
   // async checkForFinalizedCanonicalRelaysAndFinalize() {}
 
   // Bridged L2 tokens and returns the current account nonce after the transaction.
-  private async _bridgeL2Token(l2Token: string, nonce: number, symbol: string, decimals: number): Promise<number> {
+  private async _bridgeL2Token(l2Token: string, nonce: number, symbol: string, decimals: number) {
     // Note that this tx sending method is NOT using TransactionUtils runTransaction as it is not required on L2.
+    // Provide the nonce manually. Web3.js will increment it for us normally but it struggle with doing thins on L2s.
     const receipt = await this.l2Client.bridgeDepositBox.methods
       .bridgeTokens(l2Token, "0") // The second term in this function call is l2Gas, which is currently unused.
       .send({ from: this.account, nonce });
@@ -88,8 +91,6 @@ export class CrossDomainFinalizer {
           createEtherscanLinkMarkdown(receipt.transactionHash, this.l2Client.chainId),
       });
     }
-
-    return nonce + 1;
   }
 
   // Fetch info about a token on L2.
