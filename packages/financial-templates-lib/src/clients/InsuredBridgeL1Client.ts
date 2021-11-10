@@ -336,7 +336,7 @@ export class InsuredBridgeL1Client {
           this.relays[l1Token][pendingRelay.depositHash].settleable = SettleableRelay.SlowRelayerCanSettle;
         }
         // If relay is pending and the time is past the OO liveness +15 mins, then it is settleable by anyone.
-        if (bridgePool.currentTime >= pendingRelay.priceRequestTime + this.optimisticOracleLiveness + 54000) {
+        if (bridgePool.currentTime >= pendingRelay.priceRequestTime + this.optimisticOracleLiveness + 900) {
           this.relays[l1Token][pendingRelay.depositHash].settleable = SettleableRelay.AnyoneCanSettle;
         }
       }
