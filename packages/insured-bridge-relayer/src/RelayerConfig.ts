@@ -102,10 +102,10 @@ export class RelayerConfig {
     this.bridgeAdmin = toChecksumAddress(BRIDGE_ADMIN_ADDRESS);
 
     this.botModes = {
-      relayerEnabled: RELAYER_ENABLED ? Boolean(RELAYER_ENABLED) : false,
-      disputerEnabled: DISPUTER_ENABLED ? Boolean(DISPUTER_ENABLED) : false,
-      finalizerEnabled: FINALIZER_ENABLED ? Boolean(FINALIZER_ENABLED) : false,
-      l2FinalizerEnabled: CROSS_DOMAIN_FINALIZER_ENABLED ? Boolean(CROSS_DOMAIN_FINALIZER_ENABLED) : false,
+      relayerEnabled: RELAYER_ENABLED === "true" ? true : false,
+      disputerEnabled: DISPUTER_ENABLED === "true" ? true : false,
+      finalizerEnabled: FINALIZER_ENABLED === "true" ? true : false,
+      l2FinalizerEnabled: CROSS_DOMAIN_FINALIZER_ENABLED === "true" ? true : false,
     };
 
     this.crossDomainFinalizationThreshold = CROSS_DOMAIN_FINALIZATION_THRESHOLD
