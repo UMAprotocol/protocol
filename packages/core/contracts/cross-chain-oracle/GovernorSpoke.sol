@@ -5,7 +5,8 @@ import "./interfaces/ChildMessengerConsumerInterface.sol";
 import "../common/implementation/Lockable.sol";
 
 /**
- * @title Governor contract deployed on sidechain that receives governance actions from Ethereum.
+ * @title Cross-chain Oracle L2 Governor Spoke.
+ * @notice Governor contract deployed on L2 that receives governance actions from Ethereum.
  */
 contract GovernorSpoke is Lockable, ChildMessengerConsumerInterface {
     // Messenger contract that receives messages from root chain.

@@ -11,11 +11,14 @@ import "./interfaces/ChildMessengerInterface.sol";
 import "./interfaces/ChildMessengerConsumerInterface.sol";
 
 /**
- * @title This contract is primarily intended to receive messages on the child chain from a parent chain and allow
-import "./ChildMessengerInterface.sol";
-
-/**
+ * @title Cross-chain Oracle L2 Oracle Spoke.
  * @notice This contract is primarily intended to receive messages on the child chain from a parent chain and allow
+ * contracts deployed on the child chain to interact with this contract as an Oracle. Moreover, this contract gives
+ * child chain contracts the ability to trigger cross-chain price requests to the mainnet DVM. This Spoke knows how
+ * to communicate with the parent chain via a "ChildMessenger" contract which directly communicates with the
+ * "ParentMessenger" on mainnet.
+ * @dev The intended client of this contract is an OptimisticOracle on sidechain that needs price
+ * resolution secured by the DVM on mainnet.
  */
 contract OracleSpoke is
     OracleBase,
@@ -106,7 +109,6 @@ contract OracleSpoke is
     }
 
     /**
-
      * @notice Overloaded function to provide backwards compatibility for legacy financial contracts that do not use
      * ancillary data.
      */
@@ -141,7 +143,6 @@ contract OracleSpoke is
     }
 
     /**
-
      * @notice Overloaded function to provide backwards compatibility for legacy financial contracts that do not use
      * ancillary data.
      */

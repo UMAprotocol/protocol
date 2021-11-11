@@ -5,6 +5,7 @@ import "../oracle/interfaces/FinderInterface.sol";
 import "../oracle/implementation/Constants.sol";
 
 /**
+ * @title Cross-chain Oracle L1 Oracle Base.
  * @notice Enforces lifecycle of price requests for deriving contract.
  */
 abstract contract OracleBase {

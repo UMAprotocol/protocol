@@ -6,7 +6,8 @@ import "../common/implementation/Lockable.sol";
 import "./interfaces/ParentMessengerInterface.sol";
 
 /**
- * @title Governance relayer contract to be deployed on Ethereum that receives messages from the owner (Governor) and
+ * @title Cross-chain Oracle L1 Governor Hub.
+ * @notice Governance relayer contract to be deployed on Ethereum that receives messages from the owner (Governor) and
  * sends them to spoke contracts on child chains.
  */
 
