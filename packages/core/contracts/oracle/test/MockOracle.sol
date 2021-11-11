@@ -81,14 +81,12 @@ contract MockOracle is OracleInterface, Testable {
 
     // Checks whether a price has been resolved.
     function hasPrice(bytes32 identifier, uint256 time) public view override returns (bool) {
-        require(_getIdentifierWhitelist().isIdentifierSupported(identifier));
         Price storage lookup = verifiedPrices[identifier][time];
         return lookup.isAvailable;
     }
 
     // Gets a price that has already been resolved.
     function getPrice(bytes32 identifier, uint256 time) public view override returns (int256) {
-        require(_getIdentifierWhitelist().isIdentifierSupported(identifier));
         Price storage lookup = verifiedPrices[identifier][time];
         require(lookup.isAvailable);
         return lookup.price;

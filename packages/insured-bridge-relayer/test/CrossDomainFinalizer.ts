@@ -3,6 +3,7 @@ import {
   InsuredBridgeL1Client,
   InsuredBridgeL2Client,
   lastSpyLogIncludes,
+  spyLogIncludes,
   GasEstimator,
   RateModel,
 } from "@uma/financial-templates-lib";
@@ -46,6 +47,9 @@ let optimisticOracle: any;
 let l1Token: any;
 let l2Token: any;
 let mockOracle: any;
+let l1Token2: any;
+let l2Token2: any;
+let bridgePool2: any;
 
 // Hard-coded test params:
 const chainId = 10;
@@ -60,8 +64,9 @@ const defaultSlowRelayFeePct = toWei("0.05");
 const defaultInstantRelayFeePct = toWei("0.05");
 const minimumBridgingDelay = 60; // L2->L1 token bridging must wait at least this time.
 const initialPoolLiquidity = toWei("100");
-const depositAmount = toWei("1");
+const depositAmount = toBNWei("1");
 const rateModel: RateModel = { UBar: toBNWei("0.65"), R0: toBNWei("0.00"), R1: toBNWei("0.08"), R2: toBNWei("1.00") };
+const crossDomainFinalizationThreshold = 5; // Only if there is more than 5% in L2 vs the L1 pool should we bridge.
 
 import { CrossDomainFinalizer } from "../src/CrossDomainFinalizer";
 
@@ -199,9 +204,16 @@ describe("CrossDomainFinalizer.ts", function () {
     l2Client = new InsuredBridgeL2Client(spyLogger, web3, bridgeDepositBox.options.address, chainId);
 
     gasEstimator = new GasEstimator(spyLogger);
-    crossDomainFinalizer = new CrossDomainFinalizer(spyLogger, gasEstimator, l1Client, l2Client, l1Relayer);
+    crossDomainFinalizer = new CrossDomainFinalizer(
+      spyLogger,
+      gasEstimator,
+      l1Client,
+      l2Client,
+      l1Relayer,
+      crossDomainFinalizationThreshold
+    );
   });
-  describe("L2->L1 cross-domain transfers over the canonical bridge", () => {
+  describe("L2->L1 cross-domain transfers over the canonical bridge: single token", () => {
     beforeEach(async function () {
       // Add liquidity to the L1 pool to facilitate the relay action.
       await l1Token.methods.mint(l1LiquidityProvider, initialPoolLiquidity).send({ from: l1Owner });
@@ -211,9 +223,12 @@ describe("CrossDomainFinalizer.ts", function () {
       await bridgePool.methods.addLiquidity(initialPoolLiquidity).send({ from: l1LiquidityProvider });
 
       // Mint some tokens for the L2 depositor.
-      await l2Token.methods.mint(l2Depositor, depositAmount).send({ from: l2Owner });
+      await l2Token.methods.mint(l2Depositor, depositAmount.muln(10)).send({ from: l2Owner });
+      await l2Token.methods
+        .approve(bridgeDepositBox.options.address, depositAmount.muln(10))
+        .send({ from: l2Depositor });
     });
-    it("Can correctly detect and cross-domain transfers", async function () {
+    it("Can correctly detect and initiate cross-domain transfers", async function () {
       // Before any should do nothing and log accordingly.
       await Promise.all([l1Client.update(), l2Client.update()]);
 
@@ -222,7 +237,7 @@ describe("CrossDomainFinalizer.ts", function () {
 
       // Now, make a deposit to the L2 contract.
       const depositTime = await bridgeDepositBox.methods.getCurrentTime().call();
-      await l2Token.methods.approve(bridgeDepositBox.options.address, depositAmount).send({ from: l2Depositor });
+
       await bridgeDepositBox.methods
         .deposit(
           l2Depositor,
@@ -240,18 +255,244 @@ describe("CrossDomainFinalizer.ts", function () {
       await crossDomainFinalizer.checkForBridgeableL2TokensAndBridge();
       assert.isTrue(lastSpyLogIncludes(spy, "No bridgeable L2 tokens"));
 
-      // Now, advance time such that the L2->L1 token bridging action should be enabled.
-      console.log("depositTime", depositTime);
+      // Now, advance time such that the L2->L1 token bridging action should be enabled. However, we should still not
+      // bridge as we are below the bridging threshold of 5%. The deposit amount is 1% of initial pool liquidity.
       await l2Timer.methods.setCurrentTime(Number(depositTime) + minimumBridgingDelay + 1).send({ from: l1Owner });
+      assert.isTrue(lastSpyLogIncludes(spy, "No bridgeable L2 tokens"));
 
-      // Token should show up as bridgeable.
+      // Token should show up as bridgeable, even though we chose not to bridge.
+      assert.isTrue(await bridgeDepositBox.methods.canBridge(l2Token.options.address).call());
+
+      // Now, deposit more to bring the amount of funds on L2 to > the cross-domain bridging threshold.
+      await bridgeDepositBox.methods
+        .deposit(
+          l2Depositor,
+          l2Token.options.address,
+          depositAmount.muln(5),
+          defaultSlowRelayFeePct,
+          defaultInstantRelayFeePct,
+          depositTime
+        )
+        .send({ from: l2Depositor });
+
+      // Token should still show up as bridgeable.
       assert.isTrue(await bridgeDepositBox.methods.canBridge(l2Token.options.address).call());
 
       // Now, when running the cross-domain finalizer, should send the L2->L1 transfer via the bridgeTokens method.
-      console.log("await", (await l2Token.methods.balanceOf(bridgeDepositBox.options.address).call()).toString());
       await crossDomainFinalizer.checkForBridgeableL2TokensAndBridge();
-      assert.isTrue(lastSpyLogIncludes(spy, "L2 L2ERC20 bridged over the canonical bridge"));
+      assert.isTrue(lastSpyLogIncludes(spy, "L2ERC20 sent over optimism bridge"));
       assert.isFalse(await bridgeDepositBox.methods.canBridge(l2Token.options.address).call());
+    });
+  });
+  describe("L2->L1 cross-domain transfers over the canonical bridge multi token", () => {
+    beforeEach(async function () {
+      // Add liquidity to the L1 pool to facilitate the relay action.
+      await l1Token.methods.mint(l1LiquidityProvider, initialPoolLiquidity).send({ from: l1Owner });
+      await l1Token.methods
+        .approve(bridgePool.options.address, initialPoolLiquidity)
+        .send({ from: l1LiquidityProvider });
+      await bridgePool.methods.addLiquidity(initialPoolLiquidity).send({ from: l1LiquidityProvider });
+
+      // Mint some tokens for the L2 depositor.
+      await l2Token.methods.mint(l2Depositor, depositAmount.muln(10)).send({ from: l2Owner });
+      await l2Token.methods
+        .approve(bridgeDepositBox.options.address, depositAmount.muln(10))
+        .send({ from: l2Depositor });
+
+      // Create a second L2 token, L1 Bridge pool and whitelist accordingly.
+      l1Token2 = await ERC20.new("L1ERC202", "L1ERC202", 18).send({ from: l1Owner });
+      await collateralWhitelist.methods.addToWhitelist(l1Token2.options.address).send({ from: l1Owner });
+      await store.methods.setFinalFee(l1Token2.options.address, { rawValue: finalFee }).send({ from: l1Owner });
+      await l1Token2.methods.addMember(TokenRolesEnum.MINTER, l1Owner).send({ from: l1Owner });
+
+      l2Token2 = await ERC20.new("L2ERC202", "L2ERC202", 18).send({ from: l2Owner });
+      await l2Token2.methods.addMember(TokenRolesEnum.MINTER, l2Owner).send({ from: l2Owner });
+
+      bridgePool2 = await BridgePool.new(
+        "LP Token2",
+        "LPT2",
+        bridgeAdmin.options.address,
+        l1Token2.options.address,
+        lpFeeRatePerSecond,
+        false,
+        l1Timer.options.address
+      ).send({ from: l1Owner });
+
+      await bridgeAdmin.methods
+        .whitelistToken(
+          chainId,
+          l1Token2.options.address,
+          l2Token2.options.address,
+          bridgePool2.options.address,
+          0,
+          defaultGasLimit,
+          defaultGasPrice,
+          0
+        )
+        .send({ from: l1Owner });
+
+      await bridgeDepositBox.methods
+        .whitelistToken(l1Token2.options.address, l2Token2.options.address, bridgePool2.options.address)
+        .send({ from: l2BridgeAdminImpersonator });
+
+      await l1Token2.methods.mint(l1LiquidityProvider, initialPoolLiquidity).send({ from: l1Owner });
+      await l1Token2.methods
+        .approve(bridgePool2.options.address, initialPoolLiquidity)
+        .send({ from: l1LiquidityProvider });
+      await bridgePool2.methods.addLiquidity(initialPoolLiquidity).send({ from: l1LiquidityProvider });
+
+      // Mint some tokens for the L2 depositor.
+      await l2Token2.methods.mint(l2Depositor, depositAmount.muln(10)).send({ from: l2Owner });
+      await l2Token2.methods
+        .approve(bridgeDepositBox.options.address, depositAmount.muln(10))
+        .send({ from: l2Depositor });
+    });
+    it("Correctly sends both cross-chain bridging actions for both tokens", async function () {
+      // Before any should do nothing and log accordingly.
+      await Promise.all([l1Client.update(), l2Client.update()]);
+
+      await crossDomainFinalizer.checkForBridgeableL2TokensAndBridge();
+      assert.isTrue(lastSpyLogIncludes(spy, "No bridgeable L2 tokens"));
+
+      // Now, make sufficient deposits on both pools to initiate bridging. deposit to the L2 contract.
+      const depositTime = await bridgeDepositBox.methods.getCurrentTime().call();
+
+      await bridgeDepositBox.methods
+        .deposit(
+          l2Depositor,
+          l2Token.options.address,
+          depositAmount.muln(6),
+          defaultSlowRelayFeePct,
+          defaultInstantRelayFeePct,
+          depositTime
+        )
+        .send({ from: l2Depositor });
+
+      await bridgeDepositBox.methods
+        .deposit(
+          l2Depositor,
+          l2Token2.options.address,
+          depositAmount.muln(6),
+          defaultSlowRelayFeePct,
+          defaultInstantRelayFeePct,
+          depositTime
+        )
+        .send({ from: l2Depositor });
+
+      // Tokens should not yet be bridgeable as not enough time has passed.
+      assert.isFalse(await bridgeDepositBox.methods.canBridge(l2Token.options.address).call());
+      assert.isFalse(await bridgeDepositBox.methods.canBridge(l2Token2.options.address).call());
+
+      await crossDomainFinalizer.checkForBridgeableL2TokensAndBridge();
+      assert.isTrue(lastSpyLogIncludes(spy, "No bridgeable L2 tokens"));
+
+      // Now, advance time such that the L2->L1 token bridging action should be enabled.
+      await l2Timer.methods.setCurrentTime(Number(depositTime) + minimumBridgingDelay + 1).send({ from: l1Owner });
+      assert.isTrue(await bridgeDepositBox.methods.canBridge(l2Token.options.address).call());
+      assert.isTrue(await bridgeDepositBox.methods.canBridge(l2Token2.options.address).call());
+      await crossDomainFinalizer.checkForBridgeableL2TokensAndBridge();
+      assert.isTrue(spyLogIncludes(spy, -1, "L2ERC202 sent over optimism bridge"));
+      assert.isTrue(spyLogIncludes(spy, -2, "L2ERC20 sent over optimism bridge"));
+      assert.isFalse(await bridgeDepositBox.methods.canBridge(l2Token.options.address).call());
+      assert.isFalse(await bridgeDepositBox.methods.canBridge(l2Token2.options.address).call());
+    });
+
+    it("Correctly sends one cross-chain bridging action for one token above the threshold", async function () {
+      await Promise.all([l1Client.update(), l2Client.update()]);
+      // Make sufficient deposit for only one token to be bridged.
+      const depositTime = await bridgeDepositBox.methods.getCurrentTime().call();
+
+      await bridgeDepositBox.methods
+        .deposit(
+          l2Depositor,
+          l2Token.options.address,
+          depositAmount.muln(4),
+          defaultSlowRelayFeePct,
+          defaultInstantRelayFeePct,
+          depositTime
+        )
+        .send({ from: l2Depositor });
+
+      await bridgeDepositBox.methods
+        .deposit(
+          l2Depositor,
+          l2Token2.options.address,
+          depositAmount.muln(6),
+          defaultSlowRelayFeePct,
+          defaultInstantRelayFeePct,
+          depositTime
+        )
+        .send({ from: l2Depositor });
+
+      // Tokens should not yet be bridgeable as not enough time has passed.
+      assert.isFalse(await bridgeDepositBox.methods.canBridge(l2Token.options.address).call());
+      assert.isFalse(await bridgeDepositBox.methods.canBridge(l2Token2.options.address).call());
+
+      await crossDomainFinalizer.checkForBridgeableL2TokensAndBridge();
+      assert.isTrue(lastSpyLogIncludes(spy, "No bridgeable L2 tokens"));
+
+      // Now, advance time such that the L2->L1 token bridging action should be enabled.
+      await l2Timer.methods.setCurrentTime(Number(depositTime) + minimumBridgingDelay + 1).send({ from: l1Owner });
+      assert.isTrue(await bridgeDepositBox.methods.canBridge(l2Token.options.address).call());
+      assert.isTrue(await bridgeDepositBox.methods.canBridge(l2Token2.options.address).call());
+      await crossDomainFinalizer.checkForBridgeableL2TokensAndBridge();
+      assert.isTrue(spyLogIncludes(spy, -1, "L2ERC202 sent over optimism bridge"));
+      // The log before the last log should NOT contain any bridging action logging.
+      assert.isTrue(spyLogIncludes(spy, -2, "Checking bridgeable L2 tokens"));
+      assert.isTrue(await bridgeDepositBox.methods.canBridge(l2Token.options.address).call());
+      assert.isFalse(await bridgeDepositBox.methods.canBridge(l2Token2.options.address).call());
+    });
+
+    it("Correctly sends one cross-chain bridging actions for one can bridge token", async function () {
+      await Promise.all([l1Client.update(), l2Client.update()]);
+      // Make sufficient deposit for both one token to be bridged.
+      const depositTime = await bridgeDepositBox.methods.getCurrentTime().call();
+
+      await bridgeDepositBox.methods
+        .deposit(
+          l2Depositor,
+          l2Token.options.address,
+          depositAmount.muln(6),
+          defaultSlowRelayFeePct,
+          defaultInstantRelayFeePct,
+          depositTime
+        )
+        .send({ from: l2Depositor });
+
+      await bridgeDepositBox.methods
+        .deposit(
+          l2Depositor,
+          l2Token2.options.address,
+          depositAmount.muln(6),
+          defaultSlowRelayFeePct,
+          defaultInstantRelayFeePct,
+          depositTime
+        )
+        .send({ from: l2Depositor });
+
+      // Tokens should not yet be bridgeable as not enough time has passed.
+      assert.isFalse(await bridgeDepositBox.methods.canBridge(l2Token.options.address).call());
+      assert.isFalse(await bridgeDepositBox.methods.canBridge(l2Token2.options.address).call());
+
+      await crossDomainFinalizer.checkForBridgeableL2TokensAndBridge();
+      assert.isTrue(lastSpyLogIncludes(spy, "No bridgeable L2 tokens"));
+
+      // Now, advance time such that the L2->L1 token bridging action should be enabled.
+      await l2Timer.methods.setCurrentTime(Number(depositTime) + minimumBridgingDelay + 1).send({ from: l1Owner });
+      assert.isTrue(await bridgeDepositBox.methods.canBridge(l2Token.options.address).call());
+      assert.isTrue(await bridgeDepositBox.methods.canBridge(l2Token2.options.address).call());
+
+      // Now, we will manually send the bridging action for one of the l1Tokens. The bot should detect this and
+      // only try and bridge the other one.
+      await bridgeDepositBox.methods.bridgeTokens(l2Token.options.address, "0").send({ from: l1Owner });
+      assert.isFalse(await bridgeDepositBox.methods.canBridge(l2Token.options.address).call());
+
+      await crossDomainFinalizer.checkForBridgeableL2TokensAndBridge();
+      assert.isTrue(spyLogIncludes(spy, -1, "L2ERC202 sent over optimism bridge"));
+      // The log before the last log should NOT contain any bridging action logging.
+      assert.isTrue(spyLogIncludes(spy, -2, "Checking bridgeable L2 tokens"));
+      assert.isFalse(await bridgeDepositBox.methods.canBridge(l2Token.options.address).call());
+      assert.isFalse(await bridgeDepositBox.methods.canBridge(l2Token2.options.address).call());
     });
   });
 });

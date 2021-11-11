@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.13.1](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.13.0...@uma/common@2.13.1) (2021-11-09)
+
+### Bug Fixes
+
+- add required common deps ([#3582](https://github.com/UMAprotocol/protocol/issues/3582)) ([f973cab](https://github.com/UMAprotocol/protocol/commit/f973cab63ee494aae94531adc6123711730ebdf0))
+
 # [2.13.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.12.2...@uma/common@2.13.0) (2021-11-05)
 
 ### Bug Fixes

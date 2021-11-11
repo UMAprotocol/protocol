@@ -266,16 +266,17 @@ export class Relayer {
       // we won't be able to determine otherwise if the realized LP fee % is valid.
       // Similarly, if deposit.quoteTimestamp > relay.blockTime then its also an invalid relay because it would have
       // been impossible for the relayer to compute the realized LP fee % for the deposit.quoteTime in the future.
+      const relayBlockTime = Number((await this.l1Client.l1Web3.eth.getBlock(relay.blockNumber)).timestamp);
       if (
         deposit.quoteTimestamp < this.l1DeployData[deposit.l1Token].timestamp ||
-        deposit.quoteTimestamp > relay.blockTime
+        deposit.quoteTimestamp > relayBlockTime
       ) {
         this.logger.debug({
           at: "Disputer",
           message: "Deposit quote time < bridge pool deployment for L1 token or > relay block time, disputing",
           deposit,
           deploymentTime: this.l1DeployData[deposit.l1Token].timestamp,
-          relayBlockTime: relay.blockTime,
+          relayBlockTime,
         });
         await this._disputeRelay(deposit, relay);
         return;
@@ -432,7 +433,7 @@ export class Relayer {
     l1Token: string
   ): { isExpired: boolean; expirationTime: number; contractTime: number } {
     const relayExpirationTime = relay.priceRequestTime + this.l1Client.optimisticOracleLiveness;
-    const currentContractTime = this.l1Client.getBridgePoolForToken(l1Token).currentTime;
+    const currentContractTime = this.l1Client.getBridgePoolForL1Token(l1Token).currentTime;
     return {
       isExpired: relay.settleable !== SettleableRelay.CannotSettle,
       expirationTime: relayExpirationTime,
@@ -549,7 +550,7 @@ export class Relayer {
       // Send the batch transaction to the L1 bridge pool contract. Catch if the transaction succeeds.
       const { txStatus } = await this._sendTransaction(
         (targetMultiCaller.methods.multicall(multiCallTransaction) as unknown) as TransactionType,
-        "Multicall Transaction batch sent!🧙",
+        "Multicall batch sent!🧙",
         mrkdwnBlock
       );
 
@@ -599,7 +600,7 @@ export class Relayer {
   }
 
   private _generateSlowRelayTx(deposit: Deposit, realizedLpFeePct: BN): TransactionType {
-    const bridgePool = this.l1Client.getBridgePoolForToken(deposit.l1Token).contract;
+    const bridgePool = this.l1Client.getBridgePoolForL1Token(deposit.l1Token).contract;
     return (bridgePool.methods.relayDeposit(
       [
         deposit.chainId,
@@ -616,12 +617,12 @@ export class Relayer {
   }
 
   private _generateSpeedUpRelayTx(deposit: Deposit, relay: Relay): TransactionType {
-    const bridgePool = this.l1Client.getBridgePoolForToken(deposit.l1Token).contract;
+    const bridgePool = this.l1Client.getBridgePoolForL1Token(deposit.l1Token).contract;
     return (bridgePool.methods.speedUpRelay(deposit as any, relay as any) as unknown) as TransactionType;
   }
 
   private _generateInstantRelayTx(deposit: Deposit, realizedLpFeePct: BN): TransactionType {
-    const bridgePool = this.l1Client.getBridgePoolForToken(deposit.l1Token).contract;
+    const bridgePool = this.l1Client.getBridgePoolForL1Token(deposit.l1Token).contract;
     return (bridgePool.methods.relayAndSpeedUp(
       deposit as any,
       realizedLpFeePct.toString()
@@ -629,12 +630,12 @@ export class Relayer {
   }
 
   private _generateDisputeRelayTx(deposit: Deposit, relay: Relay): TransactionType {
-    const bridgePool = this.l1Client.getBridgePoolForToken(deposit.l1Token).contract;
+    const bridgePool = this.l1Client.getBridgePoolForL1Token(deposit.l1Token).contract;
     return (bridgePool.methods.disputeRelay(deposit as any, relay as any) as unknown) as TransactionType;
   }
 
   private _generateSettleRelayTx(deposit: Deposit, relay: Relay): TransactionType {
-    const bridgePool = this.l1Client.getBridgePoolForToken(deposit.l1Token).contract;
+    const bridgePool = this.l1Client.getBridgePoolForL1Token(deposit.l1Token).contract;
     type ContractDepositArg = Parameters<typeof bridgePool["methods"]["settleRelay"]>[0];
     return (bridgePool.methods.settleRelay(
       (deposit as unknown) as ContractDepositArg,

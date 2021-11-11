@@ -86,7 +86,14 @@ export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
       config.l2BlockLookback
     );
 
-    const crossDomainFinalizer = new CrossDomainFinalizer(logger, gasEstimator, l1Client, l2Client, accounts[0]);
+    const crossDomainFinalizer = new CrossDomainFinalizer(
+      logger,
+      gasEstimator,
+      l1Client,
+      l2Client,
+      accounts[0],
+      config.crossDomainFinalizationThreshold
+    );
 
     for (;;) {
       await retry(
@@ -105,7 +112,7 @@ export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
           else logger.debug({ at: "AcrossRelayer#Finalizer", message: "Finalizer disabled" });
 
           if (config.botModes.l2FinalizerEnabled) await crossDomainFinalizer.checkForBridgeableL2TokensAndBridge();
-          else logger.debug({ at: "AcrossRelayer#CrossDomainFinalizer", message: "Cross Domain Finalizer disabled" });
+          else logger.debug({ at: "AcrossRelayer#CrossDomainFinalizer", message: "Cross domain finalizer disabled" });
         },
         {
           retries: config.errorRetries,

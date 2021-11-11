@@ -15,25 +15,3 @@ test("previewRemoval", function () {
   assert.equal(BigNumber.from(result.fees.recieve).add(result.fees.remain).toString(), user.feesEarned);
   assert.equal(BigNumber.from(result.total.recieve).add(result.total.remain).toString(), user.positionValue);
 });
-test("calculateApy", function () {
-  const pool = {
-    address: "0xf42bB7EC88d065dF48D60cb672B88F8330f9f764",
-    totalPoolSize: "13900116882750652331",
-    l1Token: "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
-    exchangeRateCurrent: "1000000666720227009",
-    exchangeRatePrevious: "1000000666644862062",
-  };
-  const result = bridgePool.calculateApy(pool.exchangeRateCurrent, pool.exchangeRatePrevious);
-  assert.ok(result);
-});
-test("calculateApy2", function () {
-  const pool = {
-    address: "0xf42bB7EC88d065dF48D60cb672B88F8330f9f764",
-    totalPoolSize: "13900116882750652331",
-    l1Token: "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
-    exchangeRateCurrent: "1000100000000000000",
-    exchangeRatePrevious: "1000000000000000000",
-  };
-  const result = bridgePool.calculateApy(pool.exchangeRateCurrent, pool.exchangeRatePrevious);
-  assert.ok(result);
-});

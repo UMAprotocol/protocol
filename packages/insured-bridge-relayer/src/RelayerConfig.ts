@@ -68,11 +68,13 @@ export class RelayerConfig {
   readonly pollingDelay: number;
   readonly errorRetries: number;
   readonly errorRetriesTimeout: number;
+
   readonly whitelistedRelayL1Tokens: string[] = [];
   readonly whitelistedChainIds: number[] = [];
   readonly rateModels: { [key: string]: RateModel } = {};
   readonly activatedChainIds: number[];
   readonly l2BlockLookback: number;
+  readonly crossDomainFinalizationThreshold: number;
   readonly botModes: BotModes;
   readonly l1DeployData: { [key: string]: { timestamp: number } };
   readonly l2DeployData: { [key: string]: { blockNumber: number } };
@@ -86,6 +88,7 @@ export class RelayerConfig {
       RATE_MODELS,
       CHAIN_IDS,
       L2_BLOCK_LOOKBACK,
+      CROSS_DOMAIN_FINALIZATION_THRESHOLD,
       RELAYER_ENABLED,
       FINALIZER_ENABLED,
       DISPUTER_ENABLED,
@@ -95,15 +98,21 @@ export class RelayerConfig {
       L2_DEPLOY_DATA,
     } = env;
 
-    this.botModes = {
-      relayerEnabled: RELAYER_ENABLED ? Boolean(RELAYER_ENABLED) : false,
-      disputerEnabled: DISPUTER_ENABLED ? Boolean(DISPUTER_ENABLED) : false,
-      finalizerEnabled: FINALIZER_ENABLED ? Boolean(FINALIZER_ENABLED) : false,
-      l2FinalizerEnabled: CROSS_DOMAIN_FINALIZER_ENABLED ? Boolean(CROSS_DOMAIN_FINALIZER_ENABLED) : false,
-    };
-
     assert(BRIDGE_ADMIN_ADDRESS, "BRIDGE_ADMIN_ADDRESS required");
     this.bridgeAdmin = toChecksumAddress(BRIDGE_ADMIN_ADDRESS);
+
+    this.botModes = {
+      relayerEnabled: RELAYER_ENABLED === "true" ? true : false,
+      disputerEnabled: DISPUTER_ENABLED === "true" ? true : false,
+      finalizerEnabled: FINALIZER_ENABLED === "true" ? true : false,
+      l2FinalizerEnabled: CROSS_DOMAIN_FINALIZER_ENABLED === "true" ? true : false,
+    };
+
+    this.crossDomainFinalizationThreshold = CROSS_DOMAIN_FINALIZATION_THRESHOLD
+      ? Number(CROSS_DOMAIN_FINALIZATION_THRESHOLD)
+      : 5;
+
+    assert(this.crossDomainFinalizationThreshold < 100, "CROSS_DOMAIN_FINALIZATION_THRESHOLD must be < 100");
 
     // L2 start block must be explicitly set unlike L1 due to how L2 nodes work. For best practices, we also should
     // constrain L1 start blocks but this hasn't been an issue empirically. As a data point, Arbitrum Infura has a
