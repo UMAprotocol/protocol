@@ -17,6 +17,8 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
  * resolution data to OracleSpokes on any chainId via the messenger for that chainId.
  * @dev This contract must be a registered financial contract in order to make and query DVM price requests.
  */
+
+// TODO: Consider extending MultiCall contract so that user can seed an L2 state with a lot of publishPrice() calls.
 contract OracleHub is OracleBase, Ownable, Lockable {
     using SafeERC20 for IERC20;
 
