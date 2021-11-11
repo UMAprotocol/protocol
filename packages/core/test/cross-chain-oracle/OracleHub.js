@@ -12,7 +12,7 @@ const MessengerMock = getContract("OracleMessengerMock");
 const IdentifierWhitelist = getContract("IdentifierWhitelist");
 const Store = getContract("Store");
 
-const defaultIdentifier = utf8ToHex("IS_CROSS_CHAIN_RELAY_VALID");
+const defaultIdentifier = utf8ToHex("Admin 1");
 const defaultTimestamp = 100;
 const defaultAncillaryData = "0xdeadbeef";
 const defaultPrice = toWei("1");
