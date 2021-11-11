@@ -45,7 +45,6 @@ contract OracleHub is OracleBase, Ownable, Lockable {
      * @dev Only callable by the owner (presumably the Ethereum Governor contract).
      */
     function setMessenger(uint256 chainId, ParentMessengerInterface messenger) public nonReentrant() onlyOwner {
-        require(address(messenger) != address(0), "Invalid messenger contract");
         messengers[chainId] = messenger;
         emit SetParentMessenger(chainId, address(messenger));
     }
