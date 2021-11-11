@@ -77,7 +77,6 @@ class OptimisticOracleContractMonitor {
   async checkForRequests() {
     this.logger.debug({
       at: "OptimisticOracleContractMonitor",
-      type: this.oracleType,
       message: "Checking for RequestPrice events",
       lastRequestPriceBlockNumber: this.lastRequestPriceBlockNumber,
     });
@@ -113,8 +112,7 @@ class OptimisticOracleContractMonitor {
         this.logOverrides.requestedPrice || (this._isFundingRateIdentifier(event.identifier) ? "debug" : "error")
       ]({
         at: "OptimisticOracleContractMonitor",
-        type: this.oracleType,
-        message: "Price Request Alert 👮🏻!",
+        message: `${this.oracleType}: Price Request Alert 👮🏻!`,
         mrkdwn,
         notificationPath: "optimistic-oracle",
       });
@@ -126,7 +124,6 @@ class OptimisticOracleContractMonitor {
   async checkForProposals() {
     this.logger.debug({
       at: "OptimisticOracleContractMonitor",
-      type: this.oracleType,
       message: "Checking for ProposePrice events",
       lastProposePriceBlockNumber: this.lastProposePriceBlockNumber,
     });
@@ -161,8 +158,7 @@ class OptimisticOracleContractMonitor {
         this.logOverrides.proposedPrice || (this._isFundingRateIdentifier(event.identifier) ? "info" : "error")
       ]({
         at: "OptimisticOracleContractMonitor",
-        type: this.oracleType,
-        message: "Price Proposal Alert 🧞‍♂️!",
+        message: `${this.oracleType}: Price Proposal Alert 🧞‍♂️!`,
         mrkdwn,
         notificationPath: "optimistic-oracle",
       });
@@ -174,7 +170,6 @@ class OptimisticOracleContractMonitor {
   async checkForDisputes() {
     this.logger.debug({
       at: "OptimisticOracleContractMonitor",
-      type: this.oracleType,
       message: "Checking for DisputePrice events",
       lastDisputePriceBlockNumber: this.lastDisputePriceBlockNumber,
     });
@@ -201,8 +196,7 @@ class OptimisticOracleContractMonitor {
 
       this.logger[this.logOverrides.disputedPrice || "error"]({
         at: "OptimisticOracleContractMonitor",
-        type: this.oracleType,
-        message: "Price Dispute Alert ⛔️!",
+        message: `${this.oracleType}: Price Dispute Alert ⛔️!`,
         mrkdwn,
         notificationPath: "optimistic-oracle",
       });
@@ -214,7 +208,6 @@ class OptimisticOracleContractMonitor {
   async checkForSettlements() {
     this.logger.debug({
       at: "OptimisticOracleContractMonitor",
-      type: this.oracleType,
       message: "Checking for Settle events",
       lastSettlementBlockNumber: this.lastSettlementBlockNumber,
     });
@@ -265,8 +258,7 @@ class OptimisticOracleContractMonitor {
         this.logOverrides.settledPrice || (this._isFundingRateIdentifier(event.identifier) ? "debug" : "info")
       ]({
         at: "OptimisticOracleContractMonitor",
-        type: this.oracleType,
-        message: "Price Settlement Alert 🏧!",
+        message: `${this.oracleType}: Price Settlement Alert 🏧!`,
         mrkdwn,
         notificationPath: "optimistic-oracle",
       });
