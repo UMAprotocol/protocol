@@ -66,9 +66,9 @@ contract OracleSpoke is OracleBase, OracleAncillaryInterface, OracleInterface, L
      * ancillary data.
      */
     function requestPrice(bytes32 identifier, uint256 time) public override nonReentrant() onlyRegisteredContract() {
-        bool newPriceRequested = _requestPrice(identifier, time, "");
+        bool newPriceRequested = _requestPrice(identifier, time, _stampAncillaryData("", msg.sender));
         if (newPriceRequested) {
-            messenger.sendMessageToParent(abi.encode(identifier, time, ""));
+            messenger.sendMessageToParent(abi.encode(identifier, time, _stampAncillaryData("", msg.sender)));
         }
     }
 
@@ -112,7 +112,7 @@ contract OracleSpoke is OracleBase, OracleAncillaryInterface, OracleInterface, L
         onlyRegisteredContract()
         returns (bool)
     {
-        bytes32 priceRequestId = _encodePriceRequest(identifier, time, "");
+        bytes32 priceRequestId = _encodePriceRequest(identifier, time, _stampAncillaryData("", msg.sender));
         return prices[priceRequestId].state == RequestState.Resolved;
     }
 
@@ -146,7 +146,7 @@ contract OracleSpoke is OracleBase, OracleAncillaryInterface, OracleInterface, L
         onlyRegisteredContract()
         returns (int256)
     {
-        bytes32 priceRequestId = _encodePriceRequest(identifier, time, "");
+        bytes32 priceRequestId = _encodePriceRequest(identifier, time, _stampAncillaryData("", msg.sender));
         Price storage lookup = prices[priceRequestId];
         require(lookup.state == RequestState.Resolved, "Price has not been resolved");
         return lookup.price;
