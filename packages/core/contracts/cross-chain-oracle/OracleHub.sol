@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
 import "./OracleBase.sol";
@@ -12,13 +12,17 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 /**
- * @title Gatekeeper contract deployed on mainnet that validates and sends price requests from sidechain to the DVM on
+
+ * @title Oracle Hub.
+ * @notice Gatekeeper contract deployed on mainnet that validates and sends price requests from sidechain to the DVM on
  * mainnet. This is a "gate keeper" contract because it performs the final validation for any messages originating from
  * a child chain's oracle before submitting price requests to the DVM. This contract also can publish DVM price
  * resolution data to OracleSpokes on any chainId via the messenger for that chainId.
  * @dev This contract must be a registered financial contract in order to make and query DVM price requests.
  */
+
 contract OracleHub is OracleBase, ParentMessengerConsumerInterface, Ownable, Lockable {
+    // TODO: Consider extending MultiCall contract so that user can seed an L2 state with a lot of publishPrice() calls.
     using SafeERC20 for IERC20;
 
     // Currency that final fees are paid in.
@@ -46,7 +50,6 @@ contract OracleHub is OracleBase, ParentMessengerConsumerInterface, Ownable, Loc
      * @dev Only callable by the owner (presumably the Ethereum Governor contract).
      */
     function setMessenger(uint256 chainId, ParentMessengerInterface messenger) public nonReentrant() onlyOwner {
-        require(address(messenger) != address(0), "Invalid messenger contract");
         messengers[chainId] = messenger;
         emit SetParentMessenger(chainId, address(messenger));
     }

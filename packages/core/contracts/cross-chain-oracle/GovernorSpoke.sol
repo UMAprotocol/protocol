@@ -29,10 +29,15 @@ contract GovernorSpoke is Lockable, ChildMessengerConsumerInterface {
      * @dev Can only called by ChildMessenger contract that wants to execute governance action on this child chain that
      * originated from DVM voters on root chain. ChildMessenger should only receive communication from ParentMessenger
      * on mainnet.
-     * @param data ABI encoded params to include in delegated transaction.
+
+     * @param data Contains the target address and the encoded function selector + ABI encoded params to include in
+     * delegated transaction.
      */
     function processMessageFromParent(bytes memory data) public override nonReentrant() onlyMessenger() {
         (address to, bytes memory inputData) = abi.decode(data, (address, bytes));
+        // TODO: Consider calling this via <address>.call(): https://docs.soliditylang.org/en/v0.8.10/units-and-global-variables.html?highlight=low%20level%20call#members-of-address-types
+        // to avoid inline assembly.
+
         require(_executeCall(to, inputData), "execute call failed");
         emit ExecutedGovernanceTransaction(to, inputData);
     }

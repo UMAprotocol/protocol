@@ -1,6 +1,6 @@
 {
   "name": "@uma/common",
-  "version": "2.13.0",
+  "version": "2.13.1",
   "description": "Common js utilities used by other UMA packages",
   "homepage": "http://umaproject.org",
   "license": "AGPL-3.0-or-later",
@@ -28,8 +28,8 @@
     "/dist/**/*"
   ],
   "dependencies": {
-    "@ethersproject/bignumber": "^5.0.5",
     "@eth-optimism/hardhat-ovm": "^0.2.2",
+    "@ethersproject/bignumber": "^5.0.5",
     "@google-cloud/kms": "^2.3.1",
     "@google-cloud/storage": "^5.8.5",
     "@nomiclabs/hardhat-ethers": "^2.0.2",

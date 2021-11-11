@@ -1,7 +1,8 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
 import "../oracle/interfaces/OracleAncillaryInterface.sol";
+import "../oracle/interfaces/OracleInterface.sol";
 import "../oracle/interfaces/RegistryInterface.sol";
 import "./OracleBase.sol";
 import "../common/implementation/AncillaryData.sol";
@@ -11,14 +12,18 @@ import "./interfaces/ChildMessengerConsumerInterface.sol";
 
 /**
  * @title This contract is primarily intended to receive messages on the child chain from a parent chain and allow
- * contracts deployed on the child chain to interact with this contract as an Oracle. Moreover, this contract gives
- * child chain contracts the ability to trigger cross-chain price requests to the mainnet DVM. This Spoke knows how
- * to communicate with the parent chain via a "ChildMessenger" contract which directly communicates with the
- * "ParentMessenger" on mainnet.
- * @dev The intended client of this contract is an OptimisticOracle on sidechain that needs price
- * resolution secured by the DVM on mainnet.
+import "./ChildMessengerInterface.sol";
+
+/**
+ * @notice This contract is primarily intended to receive messages on the child chain from a parent chain and allow
  */
-contract OracleSpoke is OracleBase, OracleAncillaryInterface, ChildMessengerConsumerInterface, Lockable {
+contract OracleSpoke is
+    OracleBase,
+    OracleAncillaryInterface,
+    OracleInterface,
+    ChildMessengerConsumerInterface,
+    Lockable
+{
     ChildMessengerInterface public messenger;
 
     event SetChildMessenger(address indexed childMessenger);
@@ -62,6 +67,17 @@ contract OracleSpoke is OracleBase, OracleAncillaryInterface, ChildMessengerCons
     }
 
     /**
+     * @notice Overloaded function to provide backwards compatibility for legacy financial contracts that do not use
+     * ancillary data.
+     */
+    function requestPrice(bytes32 identifier, uint256 time) public override nonReentrant() onlyRegisteredContract() {
+        bool newPriceRequested = _requestPrice(identifier, time, "");
+        if (newPriceRequested) {
+            messenger.sendMessageToParent(abi.encode(identifier, time, ""));
+        }
+    }
+
+    /**
      * @notice Resolves a price request originating from a message sent by the DVM on the parent chain. This method
      * must be called by the ChildMessenger contract which is designed to communicate only with the ParentMessenger
      * contract on Mainnet.
@@ -90,6 +106,23 @@ contract OracleSpoke is OracleBase, OracleAncillaryInterface, ChildMessengerCons
     }
 
     /**
+
+     * @notice Overloaded function to provide backwards compatibility for legacy financial contracts that do not use
+     * ancillary data.
+     */
+    function hasPrice(bytes32 identifier, uint256 time)
+        public
+        view
+        override
+        nonReentrantView()
+        onlyRegisteredContract()
+        returns (bool)
+    {
+        bytes32 priceRequestId = _encodePriceRequest(identifier, time, "");
+        return prices[priceRequestId].state == RequestState.Resolved;
+    }
+
+    /**
      * @notice Returns resolved price for the request. Reverts if price is not available.
      * @param identifier Identifier of price request.
      * @param time Timestamp of price request
@@ -102,6 +135,25 @@ contract OracleSpoke is OracleBase, OracleAncillaryInterface, ChildMessengerCons
         bytes memory ancillaryData
     ) public view override nonReentrantView() onlyRegisteredContract() returns (int256) {
         bytes32 priceRequestId = _encodePriceRequest(identifier, time, _stampAncillaryData(ancillaryData, msg.sender));
+        Price storage lookup = prices[priceRequestId];
+        require(lookup.state == RequestState.Resolved, "Price has not been resolved");
+        return lookup.price;
+    }
+
+    /**
+
+     * @notice Overloaded function to provide backwards compatibility for legacy financial contracts that do not use
+     * ancillary data.
+     */
+    function getPrice(bytes32 identifier, uint256 time)
+        public
+        view
+        override
+        nonReentrantView()
+        onlyRegisteredContract()
+        returns (int256)
+    {
+        bytes32 priceRequestId = _encodePriceRequest(identifier, time, "");
         Price storage lookup = prices[priceRequestId];
         require(lookup.state == RequestState.Resolved, "Price has not been resolved");
         return lookup.price;

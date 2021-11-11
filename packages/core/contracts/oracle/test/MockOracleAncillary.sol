@@ -78,7 +78,7 @@ contract MockOracleAncillary is OracleAncillaryInterface, Testable {
         uint256 time,
         bytes memory ancillaryData,
         int256 price
-    ) external {
+    ) public {
         verifiedPrices[identifier][time][ancillaryData] = Price(true, price, getCurrentTime());
 
         QueryIndex storage queryIndex = queryIndices[identifier][time][ancillaryData];
@@ -103,7 +103,6 @@ contract MockOracleAncillary is OracleAncillaryInterface, Testable {
         uint256 time,
         bytes memory ancillaryData
     ) public view override returns (bool) {
-        require(_getIdentifierWhitelist().isIdentifierSupported(identifier));
         Price storage lookup = verifiedPrices[identifier][time][ancillaryData];
         return lookup.isAvailable;
     }
@@ -114,7 +113,6 @@ contract MockOracleAncillary is OracleAncillaryInterface, Testable {
         uint256 time,
         bytes memory ancillaryData
     ) public view override returns (int256) {
-        require(_getIdentifierWhitelist().isIdentifierSupported(identifier));
         Price storage lookup = verifiedPrices[identifier][time][ancillaryData];
         require(lookup.isAvailable);
         return lookup.price;
