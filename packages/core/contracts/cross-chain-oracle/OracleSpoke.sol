@@ -6,7 +6,8 @@ import "../oracle/interfaces/RegistryInterface.sol";
 import "./OracleBase.sol";
 import "../common/implementation/AncillaryData.sol";
 import "../common/implementation/Lockable.sol";
-import "./ChildMessengerInterface.sol";
+import "./interfaces/ChildMessengerInterface.sol";
+import "./interfaces/ChildMessengerConsumerInterface.sol";
 
 /**
  * @title This contract is primarily intended to receive messages on the child chain from a parent chain and allow
@@ -17,7 +18,7 @@ import "./ChildMessengerInterface.sol";
  * @dev The intended client of this contract is an OptimisticOracle on sidechain that needs price
  * resolution secured by the DVM on mainnet.
  */
-contract OracleSpoke is OracleBase, OracleAncillaryInterface, Lockable {
+contract OracleSpoke is OracleBase, OracleAncillaryInterface, ChildMessengerConsumerInterface, Lockable {
     ChildMessengerInterface public messenger;
 
     event SetChildMessenger(address indexed childMessenger);
@@ -66,7 +67,7 @@ contract OracleSpoke is OracleBase, OracleAncillaryInterface, Lockable {
      * contract on Mainnet.
      * @param data ABI encoded params with which to call `_publishPrice`.
      */
-    function processMessageFromParent(bytes memory data) public nonReentrant() onlyMessenger() {
+    function processMessageFromParent(bytes memory data) public override nonReentrant() onlyMessenger() {
         (bytes32 identifier, uint256 time, bytes memory ancillaryData, int256 price) =
             abi.decode(data, (bytes32, uint256, bytes, int256));
         _publishPrice(identifier, time, ancillaryData, price);

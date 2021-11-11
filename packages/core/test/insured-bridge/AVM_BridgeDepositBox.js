@@ -8,13 +8,13 @@ const { getContract, assertEventEmitted } = hre;
 
 const { didContractThrow, ZERO_ADDRESS } = require("@uma/common");
 
-const { applyL1ToL2Alias } = require("./helpers/ArbitrumHelper");
+const { applyL1ToL2Alias } = require("../helpers/ArbitrumHelper");
+const { deployContractMock } = require("../helpers/SmockitHelper");
 
 const { assert } = require("chai");
 
 // Tested contract
 const BridgeDepositBox = getContract("AVM_BridgeDepositBox");
-const { deployContractMock } = require("./helpers/SmockitHelper");
 
 // Fetch the artifacts to create a mock arbitrum gateway router
 const { L2GatewayRouter__factory } = require("arb-ts");

@@ -1,20 +1,20 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import "./ChildMessengerInterface.sol";
+import "./interfaces/ChildMessengerConsumerInterface.sol";
 import "../common/implementation/Lockable.sol";
 
 /**
  * @title Governor contract deployed on sidechain that receives governance actions from Ethereum.
  */
-contract GovernorSpoke is Lockable {
+contract GovernorSpoke is Lockable, ChildMessengerConsumerInterface {
     // Messenger contract that receives messages from root chain.
-    ChildMessengerInterface public messenger;
+    ChildMessengerConsumerInterface public messenger;
 
     event ExecutedGovernanceTransaction(address indexed to, bytes data);
     event SetChildMessenger(address indexed childMessenger);
 
-    constructor(ChildMessengerInterface _messengerAddress) {
+    constructor(ChildMessengerConsumerInterface _messengerAddress) {
         messenger = _messengerAddress;
         emit SetChildMessenger(address(messenger));
     }
@@ -31,7 +31,7 @@ contract GovernorSpoke is Lockable {
      * on mainnet.
      * @param data ABI encoded params to include in delegated transaction.
      */
-    function processMessageFromParent(bytes memory data) public nonReentrant() onlyMessenger() {
+    function processMessageFromParent(bytes memory data) public override nonReentrant() onlyMessenger() {
         (address to, bytes memory inputData) = abi.decode(data, (address, bytes));
         require(_executeCall(to, inputData), "execute call failed");
         emit ExecutedGovernanceTransaction(to, inputData);

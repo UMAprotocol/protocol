@@ -6,7 +6,8 @@ import "../oracle/interfaces/OracleAncillaryInterface.sol";
 import "../oracle/interfaces/StoreInterface.sol";
 import "../common/implementation/Lockable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "./ParentMessengerInterface.sol";
+import "./interfaces/ParentMessengerInterface.sol";
+import "./interfaces/ParentMessengerConsumerInterface.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
@@ -17,7 +18,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
  * resolution data to OracleSpokes on any chainId via the messenger for that chainId.
  * @dev This contract must be a registered financial contract in order to make and query DVM price requests.
  */
-contract OracleHub is OracleBase, Ownable, Lockable {
+contract OracleHub is OracleBase, ParentMessengerConsumerInterface, Ownable, Lockable {
     using SafeERC20 for IERC20;
 
     // Currency that final fees are paid in.
@@ -82,7 +83,12 @@ contract OracleHub is OracleBase, Ownable, Lockable {
      * message, then they can call `requestPrice` on this contract for the same unique price request.
      * @param data ABI encoded params with which to call `_requestPrice`.
      */
-    function processMessageFromChild(uint256 chainid, bytes memory data) public nonReentrant() onlyMessenger(chainid) {
+    function processMessageFromChild(uint256 chainid, bytes memory data)
+        public
+        override
+        nonReentrant()
+        onlyMessenger(chainid)
+    {
         (bytes32 identifier, uint256 time, bytes memory ancillaryData) = abi.decode(data, (bytes32, uint256, bytes));
         bool newPriceRequested = _requestPrice(identifier, time, ancillaryData);
         if (newPriceRequested) {

@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "../common/implementation/Lockable.sol";
-import "./ParentMessengerInterface.sol";
+import "./interfaces/ParentMessengerInterface.sol";
 
 /**
  * @title Governance relayer contract to be deployed on Ethereum that receives messages from the owner (Governor) and
