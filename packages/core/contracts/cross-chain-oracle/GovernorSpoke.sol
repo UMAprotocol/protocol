@@ -5,7 +5,7 @@ import "./ChildMessengerInterface.sol";
 import "../common/implementation/Lockable.sol";
 
 /**
- * @title Governor contract deployed on sidechain that receives governance actions from Ethereum.
+ * @notice Governor contract deployed on sidechain that receives governance actions from Ethereum.
  */
 contract GovernorSpoke is Lockable {
     // Messenger contract that receives messages from root chain.
