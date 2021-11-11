@@ -35,6 +35,7 @@ export type Pool = {
   exchangeRateCurrent: string;
   exchangeRatePrevious: string;
   estimatedApy: string;
+  liquidityUtilizationCurrent: string;
 };
 export type User = {
   address: string;
@@ -194,6 +195,7 @@ function joinPoolState(poolState: Awaited<ReturnType<PoolState["read"]>>): Pool 
     exchangeRateCurrent: poolState.exchangeRateCurrent.toString(),
     exchangeRatePrevious: poolState.exchangeRatePrevious.toString(),
     estimatedApy,
+    liquidityUtilizationCurrent: poolState.exchangeRatePrevious.toString(),
   };
 }
 export class ReadPoolClient {
