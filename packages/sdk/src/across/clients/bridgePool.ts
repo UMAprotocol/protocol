@@ -79,13 +79,17 @@ class PoolState {
   public async read(latestBlock: number) {
     if (this.l1Token === undefined) this.l1Token = await this.contract.l1Token();
     // typechain does not have complete types for call options, so we have to cast blockTag to any
-    const exchangeRatePrevious = await this.contract.callStatic.exchangeRateCurrent({
-      blockTag: latestBlock - 1,
-    } as any);
+    const [exchangeRatePrevious, liquidityUtilizationCurrent] = await Promise.all([
+      this.contract.callStatic.exchangeRateCurrent({
+        blockTag: latestBlock - 1,
+      } as any),
+      this.contract.callStatic.liquidityUtilizationCurrent(),
+    ]);
     return {
       address: this.address,
       l1Token: this.l1Token,
       exchangeRatePrevious,
+      liquidityUtilizationCurrent,
       ...(await this.batchRead([
         ["liquidReserves"],
         ["pendingReserves"],
