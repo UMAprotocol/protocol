@@ -25,23 +25,29 @@ const supportedChainIds = [
 // a timestamp on construction. Then we can easily query on-chain whether a deposit.quoteTime is before this timestamp.
 // The alternative to using this hard-coded mapping is to call `web3.eth.getCode(bridgePoolAddress, blockNumber)` but
 // making a web3 call per relay is expensive. Therefore this mapping is also a runtime optimization where we can
-// eliminate web3 calls. This is also why we store block numbers for the deploy timestamp.
+// eliminate web3 calls.
 const bridgePoolDeployData = {
   // Note: keyed by L1 token.
   // WETH:
   "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2": {
     timestamp: 1635962805,
-    blockNumber: 13545377,
   },
   // USDC:
   "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48": {
     timestamp: 1635964115,
-    blockNumber: 13545487,
   },
   // UMA:
   "0x04Fa0d235C4abf4BcF4787aF4CF447DE572eF828": {
     timestamp: 1635964053,
-    blockNumber: 13545478,
+  },
+};
+
+// For similar reasons to why we store BridgePool deployment times, we store BridgeDepositBox times for each L2 network
+// here. We use this in the fallback search for a FundsDeposited L2 event to optimize how we search for the event. We
+// don't need to search for events earlier than the BridgeDepositBox's deployment block.
+const bridgeDepositBoxDeployData = {
+  42161: {
+    blockNumber: 2811998,
   },
 };
 
@@ -54,6 +60,7 @@ export interface BotModes {
   relayerEnabled: boolean; // Submits slow and fast relays
   disputerEnabled: boolean; // Submits disputes on pending relays with invalid params
   finalizerEnabled: boolean; // Resolves expired relays
+  l2FinalizerEnabled: boolean; // Facilitates L2->L1 bridging over the canonical roll-up bridge.
 }
 export class RelayerConfig {
   readonly bridgeAdmin: string;
@@ -61,13 +68,16 @@ export class RelayerConfig {
   readonly pollingDelay: number;
   readonly errorRetries: number;
   readonly errorRetriesTimeout: number;
+
   readonly whitelistedRelayL1Tokens: string[] = [];
   readonly whitelistedChainIds: number[] = [];
   readonly rateModels: { [key: string]: RateModel } = {};
   readonly activatedChainIds: number[];
   readonly l2BlockLookback: number;
+  readonly crossDomainFinalizationThreshold: number;
   readonly botModes: BotModes;
-  readonly deployTimestamps: { [key: string]: { timestamp: number; blockNumber: number } };
+  readonly l1DeployData: { [key: string]: { timestamp: number } };
+  readonly l2DeployData: { [key: string]: { blockNumber: number } };
 
   constructor(env: ProcessEnv) {
     const {
@@ -78,21 +88,31 @@ export class RelayerConfig {
       RATE_MODELS,
       CHAIN_IDS,
       L2_BLOCK_LOOKBACK,
+      CROSS_DOMAIN_FINALIZATION_THRESHOLD,
       RELAYER_ENABLED,
       FINALIZER_ENABLED,
       DISPUTER_ENABLED,
+      CROSS_DOMAIN_FINALIZER_ENABLED,
       WHITELISTED_CHAIN_IDS,
-      DEPLOY_TIMESTAMPS,
+      L1_DEPLOY_DATA,
+      L2_DEPLOY_DATA,
     } = env;
-
-    this.botModes = {
-      relayerEnabled: RELAYER_ENABLED ? Boolean(RELAYER_ENABLED) : false,
-      disputerEnabled: DISPUTER_ENABLED ? Boolean(DISPUTER_ENABLED) : false,
-      finalizerEnabled: FINALIZER_ENABLED ? Boolean(FINALIZER_ENABLED) : false,
-    };
 
     assert(BRIDGE_ADMIN_ADDRESS, "BRIDGE_ADMIN_ADDRESS required");
     this.bridgeAdmin = toChecksumAddress(BRIDGE_ADMIN_ADDRESS);
+
+    this.botModes = {
+      relayerEnabled: RELAYER_ENABLED === "true" ? true : false,
+      disputerEnabled: DISPUTER_ENABLED === "true" ? true : false,
+      finalizerEnabled: FINALIZER_ENABLED === "true" ? true : false,
+      l2FinalizerEnabled: CROSS_DOMAIN_FINALIZER_ENABLED === "true" ? true : false,
+    };
+
+    this.crossDomainFinalizationThreshold = CROSS_DOMAIN_FINALIZATION_THRESHOLD
+      ? Number(CROSS_DOMAIN_FINALIZATION_THRESHOLD)
+      : 5;
+
+    assert(this.crossDomainFinalizationThreshold < 100, "CROSS_DOMAIN_FINALIZATION_THRESHOLD must be < 100");
 
     // L2 start block must be explicitly set unlike L1 due to how L2 nodes work. For best practices, we also should
     // constrain L1 start blocks but this hasn't been an issue empirically. As a data point, Arbitrum Infura has a
@@ -103,9 +123,8 @@ export class RelayerConfig {
     this.errorRetries = ERROR_RETRIES ? Number(ERROR_RETRIES) : 3;
     this.errorRetriesTimeout = ERROR_RETRIES_TIMEOUT ? Number(ERROR_RETRIES_TIMEOUT) : 1;
 
-    this.deployTimestamps = replaceAddressCase(
-      DEPLOY_TIMESTAMPS ? JSON.parse(DEPLOY_TIMESTAMPS) : bridgePoolDeployData
-    );
+    this.l1DeployData = replaceAddressCase(L1_DEPLOY_DATA ? JSON.parse(L1_DEPLOY_DATA) : bridgePoolDeployData);
+    this.l2DeployData = L2_DEPLOY_DATA ? JSON.parse(L2_DEPLOY_DATA) : bridgeDepositBoxDeployData;
 
     assert(RATE_MODELS, "RATE_MODELS required");
     const processingRateModels = JSON.parse(RATE_MODELS);

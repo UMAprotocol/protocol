@@ -5,7 +5,7 @@ const winston = require("winston");
 
 const { toWei, hexToUtf8, utf8ToHex } = web3.utils;
 
-const { OptimisticOracleClient } = require("../../dist/clients/OptimisticOracleClient");
+const { OptimisticOracleClient, OptimisticOracleType } = require("../../dist/clients/OptimisticOracleClient");
 const { interfaceName, advanceBlockAndSetTime } = require("@uma/common");
 
 const OptimisticOracle = getContract("OptimisticOracle");
@@ -343,7 +343,7 @@ describe("OptimisticOracleClient.js", function () {
         optimisticOracle.options.address,
         mockOracle.options.address,
         604800, // Default lookback
-        "SkinnyOptimisticOracle"
+        OptimisticOracleType.SkinnyOptimisticOracle
       );
     });
     it("Basic proposal lifecycle: request, propose, expire without dispute", async function () {
@@ -510,7 +510,7 @@ describe("OptimisticOracleClient.js", function () {
         optimisticOracle.options.address,
         mockOracle.options.address,
         13,
-        "SkinnyOptimisticOracle"
+        OptimisticOracleType.SkinnyOptimisticOracle
       );
 
       // Request a price and check that the longer lookback client currently sees it

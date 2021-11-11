@@ -3,6 +3,22 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.15.1](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.15.0...@uma/core@2.15.1) (2021-11-09)
+
+**Note:** Version bump only for package @uma/core
+
+# [2.15.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.14.1...@uma/core@2.15.0) (2021-11-05)
+
+### Features
+
+- **across-contracts:** add back safe multicaller ([#3553](https://github.com/UMAprotocol/protocol/issues/3553)) ([b8f660e](https://github.com/UMAprotocol/protocol/commit/b8f660e98a84349ccb5cc5d19416ea2668256036))
+- **core:** add new deployment addresses for across and update script ([#3556](https://github.com/UMAprotocol/protocol/issues/3556)) ([2348eaf](https://github.com/UMAprotocol/protocol/commit/2348eaf669054f722b0d6909569ffa3db88d5155))
+- **optimistic-oracle-proposer:** Can propose, dispute, and settle SkinnyOptimisticOracle price requests ([#3558](https://github.com/UMAprotocol/protocol/issues/3558)) ([c58a19b](https://github.com/UMAprotocol/protocol/commit/c58a19b316001ea59dc21b7932c7f4e66cdba413))
+
+### Reverts
+
+- Revert "Revert "improve(insured-bridge): Reduce verbosity of \_getDepositHash() (#3538)" (#3545)" (#3547) ([2d489f7](https://github.com/UMAprotocol/protocol/commit/2d489f7bc145d305a593fbd98a2d6aea5ebd5f59)), closes [#3538](https://github.com/UMAprotocol/protocol/issues/3538) [#3545](https://github.com/UMAprotocol/protocol/issues/3545) [#3547](https://github.com/UMAprotocol/protocol/issues/3547)
+
 ## [2.14.1](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.14.0...@uma/core@2.14.1) (2021-11-02)
 
 ### Bug Fixes

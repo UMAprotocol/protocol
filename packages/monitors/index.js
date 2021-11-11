@@ -16,6 +16,7 @@ const {
   waitForLogger,
   delay,
   multicallAddressMap,
+  OptimisticOracleType,
 } = require("@uma/financial-templates-lib");
 
 // Monitor modules to report on client state changes.
@@ -326,6 +327,7 @@ async function run({
         getAbi("OptimisticOracle"),
         web3,
         optimisticOracleAddress,
+        OptimisticOracleType.OptimisticOracle,
         eventsFromBlockNumber,
         endingBlock
       );

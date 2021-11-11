@@ -75,7 +75,10 @@ export class InsuredBridgePriceFeed extends PriceFeedInterface {
       const relay = relays.find((_relay) => _relay.returnValues.relayAncillaryDataHash === relayAncillaryDataHash);
       if (relay) {
         matchedRelay = {
-          relayData: relay.returnValues.relay,
+          relayData: {
+            ...relay.returnValues.relay,
+            blockNumber: relay.blockNumber,
+          },
           depositData: {
             ...relay.returnValues.depositData,
             // quoteTimestamp type needs to be number for calculateRealizedLpFeePctForDeposit() to work.
@@ -120,8 +123,27 @@ export class InsuredBridgePriceFeed extends PriceFeedInterface {
         });
       }
 
+      // If deposit.quoteTimestamp > relay.blockTime then its an invalid relay because it would have
+      // been impossible for the relayer to compute the realized LP fee % for the deposit.quoteTime in the future.
+      const relayBlockTime = Number(
+        (await this.l1Client.l1Web3.eth.getBlock(matchedRelay.relayData.blockNumber)).timestamp
+      );
+      if (deposit.quoteTimestamp > relayBlockTime) {
+        this.logger.debug({
+          at: "InsuredBridgePriceFeed",
+          message: "Deposit quote time > relay block time",
+          deposit,
+          matchedRelay,
+          relayBlockTime,
+        });
+        return toBNWei(isRelayValid.No);
+      }
+
       // Validate relays proposed realized fee percentage.
       const expectedRealizedFeePct = await this.l1Client.calculateRealizedLpFeePctForDeposit(matchedRelay.depositData);
+
+      // Note: The `calculateRealizedLpFeePctForDeposit` will fail if the deposit.quote time is either less than the bridge
+      // pool's deployment time, or greater than the latest block time.
       if (expectedRealizedFeePct.toString() !== matchedRelay.relayData.realizedLpFeePct) {
         this.logger.debug({
           at: "InsuredBridgePriceFeed",

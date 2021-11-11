@@ -6,7 +6,7 @@ import { AppClients, AppState, BaseConfig } from "../types";
 const { lspCreator } = clients;
 
 interface Config extends BaseConfig {
-  network?: number;
+  network: number;
   address?: string;
 }
 type Dependencies = {
@@ -28,7 +28,7 @@ export const LspCreator = async (
   dependencies: Dependencies,
   emit: (event: Events, data: EmitData) => void
 ) => {
-  const { network = 1, address = await lspCreator.getAddress(network) } = config;
+  const { network, address = await lspCreator.getAddress(network) } = config;
   const { appClients, tables } = dependencies;
   const { registeredLsps } = tables;
   const { provider } = appClients;

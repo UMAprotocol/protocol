@@ -113,7 +113,7 @@ class BalanceMonitor {
     this.normalizeSyntheticDecimals = ConvertDecimals(financialContractProps.syntheticDecimals, 18, this.web3);
 
     // Formats an 18 decimal point string with a define number of decimals and precision for use in message generation.
-    this.formatDecimalString = createFormatFunction(this.web3, 2, 4, false);
+    this.formatDecimalString = createFormatFunction(2, 4, false);
 
     // Helper functions from web3.
     this.toBN = this.web3.utils.toBN;

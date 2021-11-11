@@ -86,11 +86,7 @@ describe("OptimisticOracle: proposer.js", function () {
 
   const verifyState = async (state, identifier, ancillaryData = "0x") => {
     assert.equal(
-      (
-        await optimisticOracle.methods
-          .getState(optimisticRequester.options.address, identifier, requestTime, ancillaryData)
-          .call()
-      ).toString(),
+      (await optimisticOracle.methods.getState(requester, identifier, requestTime, ancillaryData).call()).toString(),
       state
     );
   };
@@ -194,7 +190,7 @@ describe("OptimisticOracle: proposer.js", function () {
         let ancillaryData = collateralCurrenciesForIdentifier[i].options.address.toLowerCase();
         ancillaryDataAddresses[i] = ancillaryData;
 
-        await optimisticRequester.methods
+        await optimisticOracle.methods
           .requestPrice(
             identifiersToTest[i],
             requestTime,
@@ -202,7 +198,7 @@ describe("OptimisticOracle: proposer.js", function () {
             collateralCurrenciesForIdentifier[i].options.address,
             0
           )
-          .send({ from: owner });
+          .send({ from: requester });
       }
 
       // Construct OO Proposer using a valid default price feed config containing any additional properties
@@ -249,7 +245,7 @@ describe("OptimisticOracle: proposer.js", function () {
       let expectedResults = [];
       for (let i = 0; i < identifiersToTest.length; i++) {
         expectedResults.push({
-          requester: optimisticRequester.options.address,
+          requester: requester,
           identifier: hexToUtf8(identifiersToTest[i]),
           ancillaryData: ancillaryDataAddresses[i],
           timestamp: requestTime.toString(),
@@ -294,7 +290,7 @@ describe("OptimisticOracle: proposer.js", function () {
       let expectedRequests = [];
       for (let i = 0; i < identifiersToTest.length; i++) {
         expectedRequests.push({
-          requester: optimisticRequester.options.address,
+          requester: requester,
           identifier: hexToUtf8(identifiersToTest[i]),
           ancillaryData: ancillaryDataAddresses[i],
           timestamp: requestTime.toString(),
@@ -336,16 +332,10 @@ describe("OptimisticOracle: proposer.js", function () {
           .approve(optimisticOracle.options.address, totalDefaultBond)
           .send({ from: randoProposer });
         await optimisticOracle.methods
-          .proposePrice(
-            optimisticRequester.options.address,
-            identifiersToTest[i],
-            requestTime,
-            ancillaryDataAddresses[i],
-            disputablePrices[i]
-          )
+          .proposePrice(requester, identifiersToTest[i], requestTime, ancillaryDataAddresses[i], disputablePrices[i])
           .send({ from: randoProposer });
         expectedProposals.push({
-          requester: optimisticRequester.options.address,
+          requester: requester,
           identifier: hexToUtf8(identifiersToTest[i]),
           ancillaryData: ancillaryDataAddresses[i],
           timestamp: requestTime.toString(),
@@ -399,7 +389,7 @@ describe("OptimisticOracle: proposer.js", function () {
       let expectedRequests = [];
       for (let i = 0; i < identifiersToTest.length; i++) {
         expectedRequests.push({
-          requester: optimisticRequester.options.address,
+          requester: requester,
           identifier: hexToUtf8(identifiersToTest[i]),
           ancillaryData: ancillaryDataAddresses[i],
           timestamp: requestTime.toString(),
@@ -418,7 +408,7 @@ describe("OptimisticOracle: proposer.js", function () {
         .send({ from: randoProposer });
       await optimisticOracle.methods
         .proposePrice(
-          optimisticRequester.options.address,
+          requester,
           identifiersToTest[0],
           requestTime,
           ancillaryDataAddresses[0],
@@ -489,9 +479,9 @@ describe("OptimisticOracle: proposer.js", function () {
 
   it("Skip price requests with identifiers that proposer cannot construct a price feed for", async function () {
     // Request a valid identifier but set an invalid price feed config:
-    await optimisticRequester.methods
+    await optimisticOracle.methods
       .requestPrice(identifiersToTest[0], requestTime, "0x", collateralCurrenciesForIdentifier[0].options.address, 0)
-      .send({ from: owner });
+      .send({ from: requester });
 
     // This pricefeed config will cause the proposer to fail to construct a price feed because the
     // PriceFeedMock type requires a `currentPrice` and a `historicalPrice` to be specified, which are missing
@@ -518,7 +508,7 @@ describe("OptimisticOracle: proposer.js", function () {
       .approve(optimisticOracle.options.address, totalDefaultBond)
       .send({ from: randoProposer });
     await optimisticOracle.methods
-      .proposePrice(optimisticRequester.options.address, identifiersToTest[0], requestTime, "0x", "1")
+      .proposePrice(requester, identifiersToTest[0], requestTime, "0x", "1")
       .send({ from: randoProposer });
 
     // `sendDisputes`: Should throw another error
@@ -534,7 +524,7 @@ describe("OptimisticOracle: proposer.js", function () {
     // Note: "INVALID" maps specifically to the InvalidPriceFeedMock in the DefaultPriceFeedConfig.js file.
     const invalidPriceFeedIdentifier = padRight(utf8ToHex("INVALID"), 64);
     await identifierWhitelist.methods.addSupportedIdentifier(invalidPriceFeedIdentifier).send({ from: owner });
-    await optimisticRequester.methods
+    await optimisticOracle.methods
       .requestPrice(
         invalidPriceFeedIdentifier,
         requestTime,
@@ -543,7 +533,7 @@ describe("OptimisticOracle: proposer.js", function () {
         // collateral token doesn't matter as the error should log before its used
         0
       )
-      .send({ from: owner });
+      .send({ from: requester });
     proposer = new OptimisticOracleProposer({
       logger: spyLogger,
       optimisticOracleClient: client,
@@ -565,7 +555,7 @@ describe("OptimisticOracle: proposer.js", function () {
       .approve(optimisticOracle.options.address, totalDefaultBond)
       .send({ from: randoProposer });
     await optimisticOracle.methods
-      .proposePrice(optimisticRequester.options.address, invalidPriceFeedIdentifier, requestTime, "0x", "1")
+      .proposePrice(requester, invalidPriceFeedIdentifier, requestTime, "0x", "1")
       .send({ from: randoProposer });
 
     // `sendDisputes`: Should throw another error
@@ -635,7 +625,14 @@ describe("OptimisticOracle: proposer.js", function () {
     await proposer.update();
     await proposer.sendProposals();
 
-    await verifyState(OptimisticOracleRequestStatesEnum.PROPOSED, identifierToIgnore, ancillaryDataAddress);
+    assert.equal(
+      (
+        await optimisticOracle.methods
+          .getState(optimisticRequester.options.address, identifierToIgnore, requestTime, ancillaryDataAddress)
+          .call()
+      ).toString(),
+      OptimisticOracleRequestStatesEnum.PROPOSED
+    );
     assert.equal(lastSpyLogLevel(spy), "info");
     assert.isTrue(spyLogIncludes(spy, -1, "Proposed price"));
     assert.ok(spy.getCall(-1).lastArg.proposalResult.tx);
@@ -666,9 +663,9 @@ describe("OptimisticOracle: proposer.js", function () {
     const identifierToIgnore = padRight(utf8ToHex(OPTIMISTIC_ORACLE_IGNORE[0]), 64);
     await identifierWhitelist.methods.addSupportedIdentifier(identifierToIgnore).send({ from: owner });
 
-    await optimisticRequester.methods
+    await optimisticOracle.methods
       .requestPrice(identifierToIgnore, requestTime, ancillaryData, collateralCurrency.options.address, 0)
-      .send({ from: owner });
+      .send({ from: requester });
 
     // Use debug spy to catch "skip" log.
     spyLogger = winston.createLogger({
@@ -693,7 +690,7 @@ describe("OptimisticOracle: proposer.js", function () {
     // Client should still see the unproposed price request:
     objectsInArrayInclude(client.getUnproposedPriceRequests(), [
       {
-        requester: optimisticRequester.options.address,
+        requester: requester,
         identifier: hexToUtf8(identifierToIgnore),
         ancillaryData: ancillaryDataAddress,
         timestamp: requestTime.toString(),

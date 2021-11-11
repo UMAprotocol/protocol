@@ -14,6 +14,7 @@ const {
   SpyTransport,
   lastSpyLogIncludes,
   lastSpyLogLevel,
+  OptimisticOracleType,
 } = require("@uma/financial-templates-lib");
 
 const OptimisticOracle = getContract("OptimisticOracle");
@@ -136,6 +137,7 @@ describe("OptimisticOracleContractMonitor.js", function () {
       OptimisticOracle.abi,
       web3,
       optimisticOracle.options.address,
+      OptimisticOracleType.OptimisticOracle,
       0, // startingBlockNumber
       null // endingBlockNumber
     );

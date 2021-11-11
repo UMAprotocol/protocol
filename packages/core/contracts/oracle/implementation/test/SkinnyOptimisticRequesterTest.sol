@@ -25,6 +25,9 @@ contract SkinnyOptimisticRequesterTest {
     bytes public ancillaryData;
     SkinnyOptimisticOracle.Request public request;
 
+    // Manually set an expiration timestamp to simulate expiry price requests
+    uint256 public expirationTimestamp;
+
     constructor(SkinnyOptimisticOracle _optimisticOracle, FinderInterface _finderAddress) {
         optimisticOracle = _optimisticOracle;
         finder = _finderAddress;
@@ -55,6 +58,23 @@ contract SkinnyOptimisticRequesterTest {
             proposer,
             proposedPrice
         );
+    }
+
+    function requestPrice(
+        bytes32 _identifier,
+        uint32 _timestamp,
+        bytes memory _ancillaryData,
+        IERC20 currency,
+        uint256 reward,
+        uint256 bond,
+        uint256 customLiveness
+    ) external {
+        currency.approve(address(optimisticOracle), reward);
+        optimisticOracle.requestPrice(_identifier, _timestamp, _ancillaryData, currency, reward, bond, customLiveness);
+    }
+
+    function setExpirationTimestamp(uint256 _expirationTimestamp) external {
+        expirationTimestamp = _expirationTimestamp;
     }
 
     function setRevert(bool _shouldRevert) external {

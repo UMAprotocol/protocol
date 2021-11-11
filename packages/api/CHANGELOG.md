@@ -3,6 +3,20 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.9.1](https://github.com/UMAprotocol/protocol/compare/@uma/api@0.9.0...@uma/api@0.9.1) (2021-11-09)
+
+**Note:** Version bump only for package @uma/api
+
+# [0.9.0](https://github.com/UMAprotocol/protocol/compare/@uma/api@0.8.3...@uma/api@0.9.0) (2021-11-09)
+
+### Features
+
+- **api:** add ability to pull in Polygon contracts ([#3564](https://github.com/UMAprotocol/protocol/issues/3564)) ([e2d7dce](https://github.com/UMAprotocol/protocol/commit/e2d7dce3e157132e36a2bfdc3b81080dbf8a6cbe))
+
+## [0.8.3](https://github.com/UMAprotocol/protocol/compare/@uma/api@0.8.2...@uma/api@0.8.3) (2021-11-05)
+
+**Note:** Version bump only for package @uma/api
+
 ## [0.8.2](https://github.com/UMAprotocol/protocol/compare/@uma/api@0.8.1...@uma/api@0.8.2) (2021-11-02)
 
 **Note:** Version bump only for package @uma/api

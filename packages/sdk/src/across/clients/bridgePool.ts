@@ -1,11 +1,12 @@
 import assert from "assert";
 import { bridgePool } from "../../clients";
 import { BigNumber, Signer } from "ethers";
-import { toBNWei, fixedPointAdjustment, calcInterest, calcApy, fromWei, BigNumberish } from "../utils";
-import { BatchReadWithErrors, loop } from "../../utils";
+import { toBNWei, fixedPointAdjustment, calcPeriodicCompoundInterest, calcApr, BigNumberish } from "../utils";
+import { BatchReadWithErrors, loop, exists } from "../../utils";
 import Multicall2 from "../../multicall2";
 import TransactionManager from "../transactionManager";
-import { TransactionRequest, TransactionReceipt, Provider } from "@ethersproject/abstract-provider";
+import { ethers } from "ethers";
+import { TransactionRequest, TransactionReceipt, Provider, Log, Block } from "@ethersproject/abstract-provider";
 import set from "lodash/set";
 import get from "lodash/get";
 import has from "lodash/has";
@@ -13,15 +14,15 @@ import has from "lodash/has";
 export type { Provider };
 export type BatchReadWithErrorsType = ReturnType<ReturnType<typeof BatchReadWithErrors>>;
 
-// this is a rough estimation of blocks per day from: https://ycharts.com/indicators/ethereum_blocks_per_day
-// may be able to replace with dynamic value https://docs.etherscan.io/api-endpoints/blocks#get-daily-block-count-and-rewards
-export const BLOCKS_PER_YEAR = 6359 * 365;
+export const SECONDS_PER_YEAR = 31557600; // based on 365.25 days per year
+export const DEFAULT_BLOCK_DELTA = 10; // look exchange rate up based on 10 block difference by default
 
 export type Awaited<T> = T extends PromiseLike<infer U> ? U : T;
 
 export type Config = {
   multicall2Address: string;
   confirmations?: number;
+  blockDelta?: number;
 };
 export type Dependencies = {
   provider: Provider;
@@ -35,6 +36,9 @@ export type Pool = {
   exchangeRateCurrent: string;
   exchangeRatePrevious: string;
   estimatedApy: string;
+  estimatedApr: string;
+  blocksElapsed: number;
+  secondsElapsed: number;
   liquidityUtilizationCurrent: string;
 };
 export type User = {
@@ -77,12 +81,12 @@ class PoolState {
     private contract: bridgePool.Instance,
     private address: string
   ) {}
-  public async read(latestBlock: number) {
+  public async read(latestBlock: number, previousBlock?: number) {
     if (this.l1Token === undefined) this.l1Token = await this.contract.l1Token();
     // typechain does not have complete types for call options, so we have to cast blockTag to any
     const [exchangeRatePrevious, liquidityUtilizationCurrent] = await Promise.all([
       this.contract.callStatic.exchangeRateCurrent({
-        blockTag: latestBlock - 1,
+        blockTag: previousBlock || latestBlock - 1,
       } as any),
       this.contract.callStatic.liquidityUtilizationCurrent(),
     ]);
@@ -101,12 +105,31 @@ class PoolState {
   }
 }
 
-class PoolEventState {
+type EventIdParams = { blockNumber: number; transactionIndex: number; logIndex: number };
+export class PoolEventState {
+  private seen = new Set<string>();
+  private iface: ethers.utils.Interface;
   constructor(
     private contract: bridgePool.Instance,
     private startBlock = 0,
     private state: bridgePool.EventState = bridgePool.eventStateDefaults()
-  ) {}
+  ) {
+    this.iface = new ethers.utils.Interface(bridgePool.Factory.abi);
+  }
+  private makeId(params: EventIdParams) {
+    return [params.blockNumber, params.transactionIndex, params.logIndex].join("!");
+  }
+  hasEvent(params: EventIdParams) {
+    return this.seen.has(this.makeId(params));
+  }
+  private addEvent(params: EventIdParams) {
+    return this.seen.add(this.makeId(params));
+  }
+  private filterSeen = (params: EventIdParams) => {
+    const seen = this.hasEvent(params);
+    if (!seen) this.addEvent(params);
+    return !seen;
+  };
   public async read(endBlock: number) {
     if (endBlock <= this.startBlock) return this.state;
     const events = (
@@ -114,13 +137,43 @@ class PoolEventState {
         ...(await this.contract.queryFilter(this.contract.filters.LiquidityAdded(), this.startBlock, endBlock)),
         ...(await this.contract.queryFilter(this.contract.filters.LiquidityRemoved(), this.startBlock, endBlock)),
       ])
-    ).sort((a, b) => {
-      if (a.blockNumber < b.blockNumber) return -1;
-      if (a.transactionIndex < b.transactionIndex) return -1;
-      if (a.logIndex < b.logIndex) return -1;
-      return 1;
-    });
-    this.startBlock = endBlock;
+    )
+      .filter(this.filterSeen)
+      .sort((a, b) => {
+        if (a.blockNumber !== b.blockNumber) return a.blockNumber - b.blockNumber;
+        if (a.transactionIndex !== b.transactionIndex) return a.transactionIndex - b.transactionIndex;
+        if (a.logIndex !== b.logIndex) a.logIndex - b.logIndex;
+        // if everything is the same, return a, ie maintain order of array
+        return -1;
+      });
+    // ethers queries are inclusive [start,end] unless start === end, then exclusive (start,end). we increment to make sure we dont see same event twice
+    this.startBlock = endBlock + 1;
+    this.state = bridgePool.getEventState(events, this.state);
+    return this.state;
+  }
+  makeEventFromLog(log: Log) {
+    const description = this.iface.parseLog(log);
+    return {
+      ...log,
+      ...description,
+      event: description.name,
+      eventSignature: description.signature,
+    };
+  }
+  readTxReceipt(receipt: TransactionReceipt) {
+    const events = receipt.logs
+      .map((log) => {
+        try {
+          return this.makeEventFromLog(log);
+        } catch (err) {
+          // return nothing, this throws a lot because logs from other contracts are included in receipt
+          return;
+        }
+      })
+      // filter out undefined
+      .filter(exists)
+      .filter(this.filterSeen);
+
     this.state = bridgePool.getEventState(events, this.state);
     return this.state;
   }
@@ -136,12 +189,6 @@ class UserState {
   }
 }
 
-export function calculateApy(currentExchangeRate: string, previousExchangeRate: string, periods = BLOCKS_PER_YEAR) {
-  const startPrice = fromWei(previousExchangeRate);
-  const endPrice = fromWei(currentExchangeRate);
-  const interest = calcInterest(startPrice, endPrice, periods.toString());
-  return calcApy(interest, periods.toString());
-}
 export function calculateRemoval(amountWei: BigNumber, percentWei: BigNumber) {
   const receive = amountWei.mul(percentWei).div(fixedPointAdjustment);
   const remain = amountWei.sub(receive);
@@ -150,17 +197,21 @@ export function calculateRemoval(amountWei: BigNumber, percentWei: BigNumber) {
     remain: remain.toString(),
   };
 }
-export function previewRemoval(positionValue: string, feesEarned: string, percentFloat: number) {
+// params here mimic the user object type
+export function previewRemoval(
+  values: { positionValue: BigNumberish; feesEarned: BigNumberish; totalDeposited: BigNumberish },
+  percentFloat: number
+) {
   const percentWei = toBNWei(percentFloat);
   return {
     position: {
-      ...calculateRemoval(BigNumber.from(positionValue), percentWei),
+      ...calculateRemoval(BigNumber.from(values.totalDeposited), percentWei),
     },
     fees: {
-      ...calculateRemoval(BigNumber.from(feesEarned), percentWei),
+      ...calculateRemoval(BigNumber.from(values.feesEarned), percentWei),
     },
     total: {
-      ...calculateRemoval(BigNumber.from(positionValue), percentWei),
+      ...calculateRemoval(BigNumber.from(values.positionValue), percentWei),
     },
   };
 }
@@ -183,9 +234,25 @@ function joinUserState(
     feesEarned: feesEarned.toString(),
   };
 }
-function joinPoolState(poolState: Awaited<ReturnType<PoolState["read"]>>): Pool {
-  const totalPoolSize = poolState.liquidReserves.add(poolState.pendingReserves).add(poolState.utilizedReserves);
-  const estimatedApy = calculateApy(poolState.exchangeRateCurrent, poolState.exchangeRatePrevious);
+function joinPoolState(
+  poolState: Awaited<ReturnType<PoolState["read"]>>,
+  latestBlock: Block,
+  previousBlock: Block
+): Pool {
+  const totalPoolSize = poolState.liquidReserves.add(poolState.utilizedReserves);
+  const secondsElapsed = latestBlock.timestamp - previousBlock.timestamp;
+  const blocksElapsed = latestBlock.number - previousBlock.number;
+  const exchangeRatePrevious = poolState.exchangeRatePrevious.toString();
+  const exchangeRateCurrent = poolState.exchangeRateCurrent.toString();
+
+  const estimatedApy = calcPeriodicCompoundInterest(
+    exchangeRatePrevious,
+    exchangeRateCurrent,
+    secondsElapsed,
+    SECONDS_PER_YEAR
+  );
+  const estimatedApr = calcApr(exchangeRatePrevious, exchangeRateCurrent, secondsElapsed, SECONDS_PER_YEAR);
+
   return {
     address: poolState.address,
     totalPoolSize: totalPoolSize.toString(),
@@ -195,6 +262,9 @@ function joinPoolState(poolState: Awaited<ReturnType<PoolState["read"]>>): Pool 
     exchangeRateCurrent: poolState.exchangeRateCurrent.toString(),
     exchangeRatePrevious: poolState.exchangeRatePrevious.toString(),
     estimatedApy,
+    estimatedApr,
+    blocksElapsed,
+    secondsElapsed,
     liquidityUtilizationCurrent: poolState.exchangeRatePrevious.toString(),
   };
 }
@@ -264,7 +334,7 @@ export class Client {
         const tx = this.state.transactions[id];
         this.updatePool(tx.toAddress)
           .then(() => {
-            return this.updateUser(tx.fromAddress, tx.toAddress);
+            return this.updateUserWithTransaction(tx.fromAddress, tx.toAddress, txReceipt);
           })
           .catch((err) => {
             this.emit(["error"], err);
@@ -396,6 +466,19 @@ export class Client {
   getTx(id: string) {
     return get(this.state, ["transactions", id]);
   }
+  private async updateUserWithTransaction(userAddress: string, poolAddress: string, txReceipt: TransactionReceipt) {
+    const contract = this.getOrCreatePoolContract(poolAddress);
+    if (!this.hasPool(poolAddress)) {
+      await this.updatePool(poolAddress);
+    }
+    const poolState = this.getPool(poolAddress);
+    const getUserState = new UserState(contract);
+    const getPoolEventState = this.getOrCreatePoolEvents(poolAddress);
+    const userState = await getUserState.read(userAddress);
+    const eventState = await getPoolEventState.readTxReceipt(txReceipt);
+    set(this.state, ["users", userAddress, poolAddress], joinUserState(poolState, eventState, userState));
+    this.emit(["users", userAddress, poolAddress], this.state.users[userAddress][poolAddress]);
+  }
   async updateUser(userAddress: string, poolAddress: string) {
     const contract = this.getOrCreatePoolContract(poolAddress);
     if (!this.hasPool(poolAddress)) {
@@ -411,11 +494,14 @@ export class Client {
     this.emit(["users", userAddress, poolAddress], this.state.users[userAddress][poolAddress]);
   }
   async updatePool(poolAddress: string) {
+    // default to 100 block delta unless specified otherwise in config
+    const { blockDelta = DEFAULT_BLOCK_DELTA } = this.config;
     const contract = this.getOrCreatePoolContract(poolAddress);
     const pool = new PoolState(this.batchRead(contract), contract, poolAddress);
-    const latestBlock = (await this.deps.provider.getBlock("latest")).number;
-    const state = await pool.read(latestBlock);
-    this.state.pools[poolAddress] = joinPoolState(state);
+    const latestBlock = await this.deps.provider.getBlock("latest");
+    const previousBlock = await this.deps.provider.getBlock(latestBlock.number - blockDelta);
+    const state = await pool.read(latestBlock.number, previousBlock.number);
+    this.state.pools[poolAddress] = joinPoolState(state, latestBlock, previousBlock);
     this.emit(["pools", poolAddress], this.state.pools[poolAddress]);
   }
   async updateTransactions() {

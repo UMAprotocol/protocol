@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.8.1](https://github.com/UMAprotocol/protocol/compare/@uma/optimistic-oracle@2.8.0...@uma/optimistic-oracle@2.8.1) (2021-11-09)
+
+**Note:** Version bump only for package @uma/optimistic-oracle
+
+# [2.8.0](https://github.com/UMAprotocol/protocol/compare/@uma/optimistic-oracle@2.7.6...@uma/optimistic-oracle@2.8.0) (2021-11-05)
+
+### Features
+
+- **optimistic-oracle-proposer:** Can propose, dispute, and settle SkinnyOptimisticOracle price requests ([#3558](https://github.com/UMAprotocol/protocol/issues/3558)) ([c58a19b](https://github.com/UMAprotocol/protocol/commit/c58a19b316001ea59dc21b7932c7f4e66cdba413))
+
 ## [2.7.6](https://github.com/UMAprotocol/protocol/compare/@uma/optimistic-oracle@2.7.5...@uma/optimistic-oracle@2.7.6) (2021-11-02)
 
 **Note:** Version bump only for package @uma/optimistic-oracle

@@ -45,6 +45,9 @@ lspCreatorAddresses=0x0b8de441B26E36f461b2748919ed71f50593A67b,0x60F3f5DDE708D09
 
 # Overwrite the default Emp Registry Contract address
 EMP_REGISTRY_ADDRESS=0x...
+
+# optional parameter for defining a custom chain id (1: mainnet, 137: polygon, ...)
+NETWORK_CHAIN_ID=1
 ```
 
 ## Starting

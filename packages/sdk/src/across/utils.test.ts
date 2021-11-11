@@ -48,3 +48,29 @@ test("percent", async function () {
   percent = utils.percent(5, 88);
   assert.equal(utils.fromWei(percent), "0.056818181818181818");
 });
+test("calcContinuousCompoundInterest", function () {
+  const startPrice = "1";
+  const endPrice = "2";
+  const periodsElapsed = "365";
+  const periodsPerYear = "365";
+  const result = utils.calcContinuousCompoundInterest(startPrice, endPrice, periodsElapsed, periodsPerYear);
+  // https://www.calculatorsoup.com/calculators/financial/compound-interest-calculator.php?given_data=find_r&A=2.00&P=1.00&n=0&t=1&given_data_last=find_r&action=solve
+  assert.equal((Number(result) * 100).toFixed(3), "69.315");
+});
+test("calcPeriodicCompoundInterest", function () {
+  const startPrice = "1";
+  const endPrice = "2";
+  const periodsElapsed = "365";
+  const periodsPerYear = "365";
+  const result = utils.calcPeriodicCompoundInterest(startPrice, endPrice, periodsElapsed, periodsPerYear);
+  // https://www.calculatorsoup.com/calculators/financial/compound-interest-calculator.php?given_data=find_r&A=2.00&P=1.00&n=365&t=1&given_data_last=find_r&action=solve
+  assert.equal((Number(result) * 100).toFixed(3), "69.381");
+});
+test("calcApr", function () {
+  const startPrice = "1";
+  const endPrice = "2";
+  const periodsElapsed = "365";
+  const periodsPerYear = "365";
+  const result = utils.calcApr(startPrice, endPrice, periodsElapsed, periodsPerYear);
+  assert.equal(Number(result), 1);
+});
