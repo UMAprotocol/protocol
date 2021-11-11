@@ -34,6 +34,8 @@ contract GovernorSpoke is Lockable {
      */
     function processMessageFromParent(bytes memory data) public nonReentrant() onlyMessenger() {
         (address to, bytes memory inputData) = abi.decode(data, (address, bytes));
+        // TODO: Consider calling this via <address>.call(): https://docs.soliditylang.org/en/v0.8.10/units-and-global-variables.html?highlight=low%20level%20call#members-of-address-types
+        // to avoid inline assembly.
         require(_executeCall(to, inputData), "execute call failed");
         emit ExecutedGovernanceTransaction(to, inputData);
     }
