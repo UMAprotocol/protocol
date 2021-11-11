@@ -1,12 +1,12 @@
 {
   "name": "@uma/fx-tunnel-relayer",
-  "version": "1.0.9",
+  "version": "1.0.10",
   "description": "Relayer bot to support UMA's Polygon-Ethereum oracle bridge",
   "dependencies": {
     "@maticnetwork/maticjs": "^2.0.45",
-    "@uma/common": "^2.13.0",
-    "@uma/contracts-node": "^0.1.9",
-    "@uma/financial-templates-lib": "^2.15.0",
+    "@uma/common": "^2.13.1",
+    "@uma/contracts-node": "^0.1.10",
+    "@uma/financial-templates-lib": "^2.16.0",
     "async-retry": "^1.3.1",
     "dotenv": "^8.2.0"
   },

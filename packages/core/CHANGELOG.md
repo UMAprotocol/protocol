@@ -3,6 +3,10 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.15.1](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.15.0...@uma/core@2.15.1) (2021-11-09)
+
+**Note:** Version bump only for package @uma/core
+
 # [2.15.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.14.1...@uma/core@2.15.0) (2021-11-05)
 
 ### Features

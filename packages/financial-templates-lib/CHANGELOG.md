@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.16.0](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.15.0...@uma/financial-templates-lib@2.16.0) (2021-11-09)
+
+### Bug Fixes
+
+- **L1-client:** optimize how the L1 client fetches some internal data ([#3588](https://github.com/UMAprotocol/protocol/issues/3588)) ([fa2c538](https://github.com/UMAprotocol/protocol/commit/fa2c538c4af638a0e304e013de1f5d66b81842cc))
+
+### Features
+
+- **financial-templates-lib:** Add UMA rate model to InsuredBridgePriceFeed default config ([#3578](https://github.com/UMAprotocol/protocol/issues/3578)) ([de3fb39](https://github.com/UMAprotocol/protocol/commit/de3fb39dbe3223ede50acd0426ef9de950f04e03))
+- **optimistic-oracle-event-client:** Add compatibility with SkinnyOptimisticOracle events ([#3577](https://github.com/UMAprotocol/protocol/issues/3577)) ([7856b7e](https://github.com/UMAprotocol/protocol/commit/7856b7ec0176bc0ec3095d05409829eb7d7aeabc))
+
 # [2.15.0](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.14.0...@uma/financial-templates-lib@2.15.0) (2021-11-05)
 
 ### Bug Fixes

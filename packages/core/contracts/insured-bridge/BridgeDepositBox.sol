@@ -4,23 +4,8 @@ pragma solidity ^0.8.0;
 import "../common/implementation/Testable.sol";
 import "../common/implementation/Lockable.sol";
 
-// Define some interfaces and helper libraries. This is temporary until we can bump the solidity version in these
-// contracts to 0.8.x and import the rest of these libs from other UMA contracts in the repo.
-library TokenHelper {
-    function safeTransferFrom(
-        address token,
-        address from,
-        address to,
-        uint256 value
-    ) internal {
-        // bytes4(keccak256(bytes('transferFrom(address,address,uint256)')));
-        (bool success, bytes memory data) = token.call(abi.encodeWithSelector(0x23b872dd, from, to, value));
-        require(
-            success && (data.length == 0 || abi.decode(data, (bool))),
-            "TokenHelper::transferFrom: transferFrom failed"
-        );
-    }
-}
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 interface TokenLike {
     function balanceOf(address guy) external returns (uint256 wad);
@@ -36,6 +21,7 @@ interface WETH9Like {
  */
 
 abstract contract BridgeDepositBox is Testable, Lockable {
+    using SafeERC20 for IERC20;
     /*************************************
      *  OVM DEPOSIT BOX DATA STRUCTURES  *
      *************************************/
@@ -155,6 +141,8 @@ abstract contract BridgeDepositBox is Testable, Lockable {
         emit DepositsEnabled(l2Token, depositsEnabled);
     }
 
+    function bridgeTokens(address l2Token, uint32 l2Gas) public virtual;
+
     /**************************************
      *         DEPOSITOR FUNCTIONS        *
      **************************************/
@@ -204,7 +192,7 @@ abstract contract BridgeDepositBox is Testable, Lockable {
         // Else, it is a normal ERC20. In this case pull the token from the users wallet as per normal.
         // Note: this includes the case where the L2 user has WETH (already wrapped ETH) and wants to bridge them. In
         // this case the msg.value will be set to 0, indicating a "normal" ERC20 bridging action.
-        else TokenHelper.safeTransferFrom(l2Token, msg.sender, address(this), amount);
+        else IERC20(l2Token).safeTransferFrom(msg.sender, address(this), amount);
 
         emit FundsDeposited(
             chainId,
