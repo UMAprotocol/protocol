@@ -13,7 +13,7 @@ const {
 // Custom winston transport module to monitor winston log outputs
 const winston = require("winston");
 const sinon = require("sinon");
-const { SpyTransport, spyLogLevel, spyLogIncludes } = require("@uma/financial-templates-lib");
+const { SpyTransport, spyLogLevel, spyLogIncludes, OptimisticOracleType } = require("@uma/financial-templates-lib");
 
 // Script to test
 const Poll = require("../index.js");
@@ -29,6 +29,7 @@ let identifierWhitelist;
 let configStore;
 let collateralWhitelist;
 let optimisticOracle;
+let skinnyOptimisticOracle;
 
 let constructorParams;
 let defaultMonitorConfig;
@@ -77,7 +78,8 @@ describe("index.js", function () {
     const Store = createContract("Store");
     const ConfigStore = createContract("ConfigStore");
     // Note: OptimisticOracle always uses "2.0.1"
-    const OptimisticOracle = createContract("OptimisticOracle");
+    const OptimisticOracle = getContract("OptimisticOracle");
+    const SkinnyOptimisticOracle = getContract("SkinnyOptimisticOracle");
 
     describe(`Tests running on smart contract version ${contractVersion.contractType} @ ${contractVersion.contractVersion}`, function () {
       before(async function () {
@@ -144,6 +146,11 @@ describe("index.js", function () {
         optimisticOracle = await OptimisticOracle.new(7200, finder.options.address, timer.options.address).send({
           from: contractCreator,
         });
+        skinnyOptimisticOracle = await SkinnyOptimisticOracle.new(
+          7200,
+          finder.options.address,
+          timer.options.address
+        ).send({ from: contractCreator });
         await finder.methods
           .changeImplementationAddress(utf8ToHex(interfaceName.OptimisticOracle), optimisticOracle.options.address)
           .send({ from: contractCreator });
@@ -215,6 +222,7 @@ describe("index.js", function () {
           logger: spyLogger,
           web3,
           optimisticOracleAddress: optimisticOracle.options.address,
+          optimisticOracleType: OptimisticOracleType.OptimisticOracle,
           pollingDelay,
           errorRetries,
           errorRetriesTimeout,
@@ -227,6 +235,27 @@ describe("index.js", function () {
         for (let i = 0; i < spy.callCount; i++) {
           assert.notEqual(spyLogLevel(spy, i), "error");
         }
+        assert.equal(spy.getCall(0).lastArg.optimisticOracleType, OptimisticOracleType.OptimisticOracle);
+      });
+      it("SkinnyOptimisticOracle monitor: Completes one iteration without logging any errors", async function () {
+        await Poll.run({
+          logger: spyLogger,
+          web3,
+          optimisticOracleAddress: skinnyOptimisticOracle.options.address,
+          optimisticOracleType: OptimisticOracleType.SkinnyOptimisticOracle,
+          pollingDelay,
+          errorRetries,
+          errorRetriesTimeout,
+          startingBlock: fromBlock,
+          endingBlock: toBlock,
+          monitorConfig: defaultMonitorConfig,
+          tokenPriceFeedConfig: defaultTokenPricefeedConfig,
+          medianizerPriceFeedConfig: defaultMedianizerPricefeedConfig,
+        });
+        for (let i = 0; i < spy.callCount; i++) {
+          assert.notEqual(spyLogLevel(spy, i), "error");
+        }
+        assert.equal(spy.getCall(0).lastArg.optimisticOracleType, OptimisticOracleType.SkinnyOptimisticOracle);
       });
       it("Activating all monitors: Completes one iteration without logging any errors", async function () {
         await Poll.run({
@@ -234,6 +263,7 @@ describe("index.js", function () {
           web3,
           financialContractAddress: financialContract.options.address,
           optimisticOracleAddress: optimisticOracle.options.address,
+          optimisticOracleType: OptimisticOracleType.OptimisticOracle,
           pollingDelay,
           errorRetries,
           errorRetriesTimeout,
