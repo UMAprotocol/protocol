@@ -24,6 +24,10 @@ contract Optimism_ChildMessenger is OVM_CrossDomainEnabled, ChildMessengerInterf
     // TODO: import from optimism contracts when they release their latest version.
     address internal constant L2_CROSS_DOMAIN_MESSENGER = 0x4200000000000000000000000000000000000007;
 
+    /**
+     * @notice Construct the Optimism_ChildMessenger contract.
+     * @param _parentMessenger The address of the L1 parent messenger. Acts as the "owner" of this contract.
+     */
     constructor(address _parentMessenger) OVM_CrossDomainEnabled(L2_CROSS_DOMAIN_MESSENGER) {
         parentMessenger = _parentMessenger;
     }
@@ -55,6 +59,12 @@ contract Optimism_ChildMessenger is OVM_CrossDomainEnabled, ChildMessengerInterf
         defaultGasLimit = newDefaultGasLimit;
     }
 
+    /**
+     * @notice Sends a message to the parent messenger via the canonical message bridge.
+     * @dev The caller must be the OracleSpoke on L2. No other contract is permissioned to call this function.
+     * @dev The L1 target, the parent messenger, must implement processMessageFromChild to consume the message.
+     * @param data data message sent to the L1 messenger. Should be an encoded function call or packed data.
+     */
     function sendMessageToParent(bytes memory data) public override {
         require(msg.sender == oracleSpoke, "Only callable by oracleSpoke");
         sendCrossDomainMessage(
@@ -64,6 +74,14 @@ contract Optimism_ChildMessenger is OVM_CrossDomainEnabled, ChildMessengerInterf
         );
     }
 
+    /**
+     * @notice Process a received message from the parent messenger via the canonical message bridge.
+     * @dev The caller must be the the parent messenger, sent over the canonical message bridge.
+     * @param data data message sent from the L1 messenger. Should be an encoded function call or packed data.
+     * @param target desired recipient of `data`. Target must implement the `processMessageFromParent` function. Having
+     * this as a param enables the L1 Messenger to send messages to arbitrary addresses on the L1. This is primarily
+     * used to send messages to the OracleSpoke and GovernorSpoke on L2.
+     */
     function processMessageFromParent(bytes memory data, address target)
         public
         override

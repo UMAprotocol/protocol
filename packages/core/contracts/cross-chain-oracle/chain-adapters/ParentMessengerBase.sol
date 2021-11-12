@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract ParentMessengerBase is Ownable {
+abstract contract ParentMessengerBase is Ownable {
     uint256 public chainId;
 
     address public childMessenger;
@@ -21,6 +21,10 @@ contract ParentMessengerBase is Ownable {
         _;
     }
 
+    /**
+     * @notice Construct the ParentMessengerBase contract.
+     * @param _chainId The chain id of the L2 network this messenger should connect to.
+     **/
     constructor(uint256 _chainId) {
         chainId = _chainId;
     }
