@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.12.2](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.12.1...@uma/sdk@0.12.2) (2021-11-11)
+
+### Bug Fixes
+
+- **sdk:** add pool utilization ([#3597](https://github.com/UMAprotocol/protocol/issues/3597)) ([f34d59c](https://github.com/UMAprotocol/protocol/commit/f34d59cd183bdfa5baab15a6e788f7c087ba3e33))
+
 ## [0.12.1](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.12.0...@uma/sdk@0.12.1) (2021-11-09)
 
 ### Bug Fixes

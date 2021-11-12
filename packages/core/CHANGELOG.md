@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.16.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.15.1...@uma/core@2.16.0) (2021-11-11)
+
+### Features
+
+- **across-relayer:** Add ability to finalize L2->L1 transfer actions ([#3585](https://github.com/UMAprotocol/protocol/issues/3585)) ([e41ab0d](https://github.com/UMAprotocol/protocol/commit/e41ab0d60d5598a6af71405db94f4d2e8479a004))
+- **cross-chain-oracle:** Generalized cross-chain oracle and governance contracts ([#3586](https://github.com/UMAprotocol/protocol/issues/3586)) ([f865eb6](https://github.com/UMAprotocol/protocol/commit/f865eb6abf762e43aef9e6dcee1c75873dd5016e))
+- decentralized proposal system ([#3490](https://github.com/UMAprotocol/protocol/issues/3490)) ([2fc8fe4](https://github.com/UMAprotocol/protocol/commit/2fc8fe4237156e68a02bf15ff9f981eed0598137))
+
 ## [2.15.1](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.15.0...@uma/core@2.15.1) (2021-11-09)
 
 **Note:** Version bump only for package @uma/core
