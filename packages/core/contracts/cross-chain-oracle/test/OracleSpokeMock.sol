@@ -31,8 +31,6 @@ contract OracleSpokeMock is ChildMessengerConsumerInterface {
     }
 
     function _stampAncillaryData(bytes memory ancillaryData, address requester) public view returns (bytes memory) {
-        // This contract should stamp its requester's address and network in the
-        // ancillary data so voters can conveniently track the requests path to the DVM.
         return
             AncillaryData.appendKeyValueUint(
                 AncillaryData.appendKeyValueAddress(ancillaryData, "childRequester", requester),
