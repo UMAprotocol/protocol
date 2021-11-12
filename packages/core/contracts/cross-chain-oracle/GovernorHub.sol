@@ -11,6 +11,7 @@ import "./interfaces/ParentMessengerInterface.sol";
  * sends them to spoke contracts on child chains.
  */
 
+// TODO: Consider extending MultiCall contract so that user can seed an L2 state with a lot of relayGovernance() calls.
 contract GovernorHub is Ownable, Lockable {
     // Associates chain ID with ParentMessenger contract to use to send governance actions to that chain's GovernorSpoke
     // contract.
