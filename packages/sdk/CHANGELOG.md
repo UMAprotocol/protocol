@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.12.3](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.12.2...@uma/sdk@0.12.3) (2021-11-12)
+
+### Bug Fixes
+
+- **sdk:** fix typo in PoolClient ([#3600](https://github.com/UMAprotocol/protocol/issues/3600)) ([d59fe26](https://github.com/UMAprotocol/protocol/commit/d59fe266c9223759f6a21825f456e485bac93867))
+
 ## [0.12.2](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.12.1...@uma/sdk@0.12.2) (2021-11-11)
 
 ### Bug Fixes
