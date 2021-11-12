@@ -216,8 +216,8 @@ describe("Optimism_ParentMessenger", function () {
       l1CrossDomainMessengerMock.smocked.xDomainMessageSender.will.return.with(() => rando);
       assert(await didContractThrow(messageFromChildTx.send({ from: l1CrossDomainMessengerMock.options.address })));
 
-      // calling via the l2 oracle spoke (the only address that should be able to call this method) should work.
-      l1CrossDomainMessengerMock.smocked.xDomainMessageSender.will.return.with(() => oracleSpokeAddress);
+      // calling via the child messenger (the only address that should be able to call this method) should work.
+      l1CrossDomainMessengerMock.smocked.xDomainMessageSender.will.return.with(() => childMessengerAddress);
       const tx = await messageFromChildTx.send({ from: l1CrossDomainMessengerMock.options.address });
 
       // Validate that the tx contains the correct message sent from L2.

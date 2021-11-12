@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-abstract contract ParentMessengerBase is Ownable {
+contract ParentMessengerBase is Ownable {
     uint256 public chainId;
 
     address public childMessenger;
