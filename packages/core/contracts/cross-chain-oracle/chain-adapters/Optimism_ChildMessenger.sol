@@ -24,7 +24,9 @@ contract Optimism_ChildMessenger is OVM_CrossDomainEnabled, ChildMessengerInterf
     // TODO: import from optimism contracts when they release their latest version.
     address internal constant L2_CROSS_DOMAIN_MESSENGER = 0x4200000000000000000000000000000000000007;
 
-    constructor() OVM_CrossDomainEnabled(L2_CROSS_DOMAIN_MESSENGER) {}
+    constructor(address _parentMessenger) OVM_CrossDomainEnabled(L2_CROSS_DOMAIN_MESSENGER) {
+        parentMessenger = _parentMessenger;
+    }
 
     /**
      * @notice Changes the stored address of the Oracle spoke, deployed on L2.

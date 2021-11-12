@@ -9,16 +9,16 @@ const { ZERO_ADDRESS, didContractThrow } = require("@uma/common");
 const ParentMessengerBase = getContract("ParentMessengerBase");
 
 // Create some random accounts to to mimic key cross-chain oracle addresses.
-const childMessengerAddress = web3.utils.toChecksumAddress(web3.utils.randomHex(20));
-const oracleHubAddress = web3.utils.toChecksumAddress(web3.utils.randomHex(20));
-const governorHubAddress = web3.utils.toChecksumAddress(web3.utils.randomHex(20));
-const oracleSpokeAddress = web3.utils.toChecksumAddress(web3.utils.randomHex(20));
-const governorSpokeAddress = web3.utils.toChecksumAddress(web3.utils.randomHex(20));
+const childMessenger = web3.utils.toChecksumAddress(web3.utils.randomHex(20));
+const oracleHub = web3.utils.toChecksumAddress(web3.utils.randomHex(20));
+const governorHub = web3.utils.toChecksumAddress(web3.utils.randomHex(20));
+const oracleSpoke = web3.utils.toChecksumAddress(web3.utils.randomHex(20));
+const governorSpoke = web3.utils.toChecksumAddress(web3.utils.randomHex(20));
 
 const chainId = 42069;
 
 describe("ParentMessengerBase", function () {
-  let parentMessengerBase;
+  let parentMessenger;
   let l1Owner;
   let rando;
 
@@ -26,54 +26,40 @@ describe("ParentMessengerBase", function () {
     const accounts = await hre.web3.eth.getAccounts();
     [l1Owner, rando] = accounts;
 
-    parentMessengerBase = await ParentMessengerBase.new(chainId).send({ from: l1Owner });
+    parentMessenger = await ParentMessengerBase.new(chainId).send({ from: l1Owner });
   });
   describe("Admin controls", () => {
     it("Constructs correctly", async () => {
-      assert.equal(await parentMessengerBase.methods.chainId().call(), chainId);
+      assert.equal(await parentMessenger.methods.chainId().call(), chainId);
     });
     it("Can change addresses of key admin addresses", async () => {
-      assert.equal(await parentMessengerBase.methods.childMessenger().call(), ZERO_ADDRESS);
-      assert.equal(await parentMessengerBase.methods.oracleHub().call(), ZERO_ADDRESS);
-      assert.equal(await parentMessengerBase.methods.governorHub().call(), ZERO_ADDRESS);
-      assert.equal(await parentMessengerBase.methods.oracleSpoke().call(), ZERO_ADDRESS);
-      assert.equal(await parentMessengerBase.methods.governorSpoke().call(), ZERO_ADDRESS);
+      assert.equal(await parentMessenger.methods.childMessenger().call(), ZERO_ADDRESS);
+      assert.equal(await parentMessenger.methods.oracleHub().call(), ZERO_ADDRESS);
+      assert.equal(await parentMessenger.methods.governorHub().call(), ZERO_ADDRESS);
+      assert.equal(await parentMessenger.methods.oracleSpoke().call(), ZERO_ADDRESS);
+      assert.equal(await parentMessenger.methods.governorSpoke().call(), ZERO_ADDRESS);
 
-      await parentMessengerBase.methods.setChildMessenger(childMessengerAddress).send({ from: l1Owner });
-      assert.equal(await parentMessengerBase.methods.childMessenger().call(), childMessengerAddress);
+      await parentMessenger.methods.setChildMessenger(childMessenger).send({ from: l1Owner });
+      assert.equal(await parentMessenger.methods.childMessenger().call(), childMessenger);
 
-      await parentMessengerBase.methods.setOracleHub(oracleHubAddress).send({ from: l1Owner });
-      assert.equal(await parentMessengerBase.methods.oracleHub().call(), oracleHubAddress);
+      await parentMessenger.methods.setOracleHub(oracleHub).send({ from: l1Owner });
+      assert.equal(await parentMessenger.methods.oracleHub().call(), oracleHub);
 
-      await parentMessengerBase.methods.setGovernorHub(governorHubAddress).send({ from: l1Owner });
-      assert.equal(await parentMessengerBase.methods.governorHub().call(), governorHubAddress);
+      await parentMessenger.methods.setGovernorHub(governorHub).send({ from: l1Owner });
+      assert.equal(await parentMessenger.methods.governorHub().call(), governorHub);
 
-      await parentMessengerBase.methods.setOracleSpoke(oracleSpokeAddress).send({ from: l1Owner });
-      assert.equal(await parentMessengerBase.methods.oracleSpoke().call(), oracleSpokeAddress);
+      await parentMessenger.methods.setOracleSpoke(oracleSpoke).send({ from: l1Owner });
+      assert.equal(await parentMessenger.methods.oracleSpoke().call(), oracleSpoke);
 
-      await parentMessengerBase.methods.setGovernorSpoke(governorSpokeAddress).send({ from: l1Owner });
-      assert.equal(await parentMessengerBase.methods.governorSpoke().call(), governorSpokeAddress);
+      await parentMessenger.methods.setGovernorSpoke(governorSpoke).send({ from: l1Owner });
+      assert.equal(await parentMessenger.methods.governorSpoke().call(), governorSpoke);
     });
     it("Admin methods block calls by non-owner", async () => {
-      assert(
-        await didContractThrow(
-          parentMessengerBase.methods.setChildMessenger(childMessengerAddress).send({ from: rando })
-        )
-      );
-      assert(
-        await didContractThrow(parentMessengerBase.methods.setOracleHub(childMessengerAddress).send({ from: rando }))
-      );
-      assert(
-        await didContractThrow(parentMessengerBase.methods.setGovernorHub(childMessengerAddress).send({ from: rando }))
-      );
-      assert(
-        await didContractThrow(parentMessengerBase.methods.setOracleSpoke(childMessengerAddress).send({ from: rando }))
-      );
-      assert(
-        await didContractThrow(
-          parentMessengerBase.methods.setGovernorSpoke(childMessengerAddress).send({ from: rando })
-        )
-      );
+      assert(await didContractThrow(parentMessenger.methods.setChildMessenger(childMessenger).send({ from: rando })));
+      assert(await didContractThrow(parentMessenger.methods.setOracleHub(childMessenger).send({ from: rando })));
+      assert(await didContractThrow(parentMessenger.methods.setGovernorHub(childMessenger).send({ from: rando })));
+      assert(await didContractThrow(parentMessenger.methods.setOracleSpoke(childMessenger).send({ from: rando })));
+      assert(await didContractThrow(parentMessenger.methods.setGovernorSpoke(childMessenger).send({ from: rando })));
     });
   });
 });

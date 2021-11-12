@@ -1,5 +1,5 @@
 const hre = require("hardhat");
-const { web3 } = hre;
+const { web3, assertEventEmitted } = hre;
 const { toWei, utf8ToHex, padRight } = web3.utils;
 const { getContract } = hre;
 const { assert } = require("chai");
@@ -27,17 +27,9 @@ const l2FinderAddress = web3.utils.toChecksumAddress(web3.utils.randomHex(20));
 const chainId = 42069;
 const priceIdentifier = padRight(utf8ToHex("TEST_IDENTIFIER"), 64);
 const ancillaryData = utf8ToHex("some-address-field:0x1234");
-console.log({ priceIdentifier });
-console.log({ ancillaryData });
 
 describe("Optimism_ParentMessenger", function () {
-  let optimism_ParentMessenger;
-  let l1Owner;
-  let controlledEOA;
-  let rando;
-  let oracleHub;
-  let governorHub;
-  let l1CrossDomainMessengerMock;
+  let optimism_ParentMessenger, l1Owner, controlledEOA, rando, oracleHub, governorHub, l1CrossDomainMessengerMock;
 
   beforeEach(async () => {
     const accounts = await hre.web3.eth.getAccounts();
@@ -48,6 +40,12 @@ describe("Optimism_ParentMessenger", function () {
       {},
       OVM_L1CrossDomainMessengerMock
     );
+    await web3.eth.sendTransaction({
+      from: l1Owner,
+      to: l1CrossDomainMessengerMock.options.address,
+      value: toWei("1"),
+    });
+
     optimism_ParentMessenger = await Optimism_ParentMessenger.new(
       l1CrossDomainMessengerMock.options.address,
       chainId
@@ -185,7 +183,6 @@ describe("Optimism_ParentMessenger", function () {
       });
 
       const targetDataSentFromGovernorHub = emittedData[0].returnValues.dataSentToChild;
-      console.log({ targetDataSentFromGovernorHub });
 
       // Generate the target message data that should have been forwarded to the Child messenger interface from the
       // Optimism Parent messenger within the sendMessageToChild function call.
@@ -205,6 +202,28 @@ describe("Optimism_ParentMessenger", function () {
         .processMessageFromParent(encodedData, governorSpokeAddress)
         .encodeABI();
       assert.equal(publishPriceMessage[0]._message, expectedMessageFromManualEncoding);
+    });
+  });
+  describe("Receiving messages from child on L2", () => {
+    it("Only callable from oracle spoke via cross domain message", async () => {
+      const sentData = "0x1234";
+      const messageFromChildTx = optimism_ParentMessenger.methods.processMessageFromChild(sentData);
+
+      // Calling from some EOA on L1 should fail.
+      assert(await didContractThrow(messageFromChildTx.send({ from: rando })));
+
+      // Calling via the canonical bridge but with the wrong cross-domain messenger address should also fail.
+      l1CrossDomainMessengerMock.smocked.xDomainMessageSender.will.return.with(() => rando);
+      assert(await didContractThrow(messageFromChildTx.send({ from: l1CrossDomainMessengerMock.options.address })));
+
+      // calling via the l2 oracle spoke (the only address that should be able to call this method) should work.
+      l1CrossDomainMessengerMock.smocked.xDomainMessageSender.will.return.with(() => oracleSpokeAddress);
+      const tx = await messageFromChildTx.send({ from: l1CrossDomainMessengerMock.options.address });
+
+      // Validate that the tx contains the correct message sent from L2.
+      await assertEventEmitted(tx, oracleHub, "MessageProcessed", (ev) => {
+        return ev.chainId == chainId && ev.data == sentData;
+      });
     });
   });
 });
