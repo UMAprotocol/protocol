@@ -73,21 +73,9 @@ export function getHardhatConfig(
       kovan: { chainId: 42, url: getNodeUrl("kovan", true), accounts: { mnemonic } },
       arbitrum: { chainId: 42161, url: getNodeUrl("arbitrum", true), accounts: { mnemonic } },
       "arbitrum-rinkeby": { chainId: 421611, url: getNodeUrl("arbitrum-rinkeby", true), accounts: { mnemonic } },
-      optimism: {
-        chainId: 10,
-        url: getNodeUrl("optimism", true),
-        accounts: { mnemonic },
-        gasPrice: 15000000,
-      },
-      "optimism-kovan": {
-        ovm: true,
-        chainId: 69,
-        url: getNodeUrl("optimism-kovan", true),
-        accounts: { mnemonic },
-        gasPrice: 15000000,
-      },
+      optimism: { chainId: 10, url: getNodeUrl("optimism", true), accounts: { mnemonic } },
+      "optimism-kovan": { chainId: 69, url: getNodeUrl("optimism-kovan", true), accounts: { mnemonic } },
       "optimism-test": {
-        ovm: true,
         url: "http://127.0.0.1:8545",
         accounts: { mnemonic: "test test test test test test test test test test test junk" },
         // This sets the gas price to 0 for all transactions on L2. We do this because account balances are not yet
