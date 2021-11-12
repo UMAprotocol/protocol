@@ -265,7 +265,7 @@ function joinPoolState(
     estimatedApr,
     blocksElapsed,
     secondsElapsed,
-    liquidityUtilizationCurrent: poolState.exchangeRatePrevious.toString(),
+    liquidityUtilizationCurrent: poolState.liquidityUtilizationCurrent.toString(),
   };
 }
 export class ReadPoolClient {
