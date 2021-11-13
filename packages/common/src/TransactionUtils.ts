@@ -75,6 +75,10 @@ export const runTransaction = async ({
   // Else, there is no pending transaction and we use the current account transaction count as the nonce.
   // This method does not play nicely in tests. Leave the nonce null to auto fill.
   else if (argv.network != "test") transactionConfig.nonce = await web3.eth.getTransactionCount(transactionConfig.from);
+  
+  if (web3.nonce !== undefined) transactionConfig.nonce = ++web3.nonce;
+  else web3.nonce = transactionConfig.nonce;
+  
 
   // Next, simulate transaction and also extract return value if its a state-modifying transaction. If the function is state
   // modifying, then successfully sending it will return the transaction receipt, not the return value, so we grab it here.
