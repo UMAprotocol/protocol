@@ -76,8 +76,8 @@ export const runTransaction = async ({
   // This method does not play nicely in tests. Leave the nonce null to auto fill.
   else if (argv.network != "test") transactionConfig.nonce = await web3.eth.getTransactionCount(transactionConfig.from);
   
-  if (web3.nonce !== undefined) transactionConfig.nonce = ++web3.nonce;
-  else web3.nonce = transactionConfig.nonce;
+  if (web3.nonces?.[transactionConfig.from] !== undefined) transactionConfig.nonce = ++web3.nonces[transactionConfig.from];
+  else web3.nonces = { ...web3.nonces, [transactionConfig.from]: transactionConfig.nonce };
   
 
   // Next, simulate transaction and also extract return value if its a state-modifying transaction. If the function is state
