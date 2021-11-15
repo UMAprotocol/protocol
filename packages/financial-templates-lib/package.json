@@ -9,7 +9,6 @@
     "@uma/common": "^2.13.1",
     "@uma/contracts-node": "^0.1.11",
     "@uniswap/sdk": "^2.0.5",
-    "bn.js": "^4.11.9",
     "bluebird": "^3.7.2",
     "bn.js": "^4.11.9",
     "dotenv": "^9.0.0",
