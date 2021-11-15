@@ -47,11 +47,11 @@ export const runTransaction = async ({
   availableAccounts = 1,
   waitForMine = true,
 }: {
-  web3: AugmentedWeb3;
+  web3: Web3;
   transaction: ContractSendMethod;
   transactionConfig: AugmentedSendOptions;
   availableAccounts?: number;
-  waitForMine: boolean;
+  waitForMine?: boolean;
 }): Promise<{
   receipt: TransactionReceipt;
   returnValue: CallReturnValue;
@@ -88,8 +88,13 @@ export const runTransaction = async ({
 
   // Store the transaction nonce in the web3 object so that it can be used in the future. This enables us to fire a
   // bunch of transactions off without needing to wait for them to be included in the mempool by manually incrementing.
-  if (web3.nonces?.[transactionConfig.from]) transactionConfig.nonce = ++web3.nonces[transactionConfig.from];
-  else if (transactionConfig.nonce) web3.nonces = { ...web3.nonces, [transactionConfig.from]: transactionConfig.nonce };
+  if ((web3 as AugmentedWeb3).nonces?.[transactionConfig.from])
+    transactionConfig.nonce = ++(web3 as AugmentedWeb3).nonces[transactionConfig.from];
+  else if (transactionConfig.nonce)
+    (web3 as AugmentedWeb3).nonces = {
+      ...(web3 as AugmentedWeb3).nonces,
+      [transactionConfig.from]: transactionConfig.nonce,
+    };
 
   // Next, simulate transaction and also extract return value if its a state-modifying transaction. If the function is state
   // modifying, then successfully sending it will return the transaction receipt, not the return value, so we grab it here.
