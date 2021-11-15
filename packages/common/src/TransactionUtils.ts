@@ -19,6 +19,10 @@ interface AugmentedSendOptions {
   maxPriorityFeePerGas?: number | string;
 }
 
+interface AugmentedWeb3 extends Web3 {
+  nonces: { [key: string]: number };
+}
+
 const argv = minimist(process.argv.slice(), {});
 
 /**
@@ -39,7 +43,7 @@ export const runTransaction = async ({
   availableAccounts = 1,
   waitForMine = true,
 }: {
-  web3: Web3;
+  web3: AugmentedWeb3;
   transaction: ContractSendMethod;
   transactionConfig: AugmentedSendOptions;
   availableAccounts?: number;
@@ -78,6 +82,11 @@ export const runTransaction = async ({
   // This method does not play nicely in tests. Leave the nonce null to auto fill.
   else if (argv.network != "test") transactionConfig.nonce = await web3.eth.getTransactionCount(transactionConfig.from);
 
+  // Store the transaction nonce in the web3 object so that it can be used in the future. This enables us to fire a
+  // bunch of transactions off without needing to wait for them to be included in the mempool by manually incrementing.
+  if (web3.nonces?.[transactionConfig.from]) transactionConfig.nonce = ++web3.nonces[transactionConfig.from];
+  else if (transactionConfig.nonce) web3.nonces = { ...web3.nonces, [transactionConfig.from]: transactionConfig.nonce };
+
   // Next, simulate transaction and also extract return value if its a state-modifying transaction. If the function is state
   // modifying, then successfully sending it will return the transaction receipt, not the return value, so we grab it here.
   let returnValue, estimatedGas;
@@ -109,8 +118,6 @@ export const runTransaction = async ({
     // provided config settings but double the maxFeePerGas to ensure the transaction is included, even if the base fee
     // spikes up. The difference between the realized base fee and maxFeePerGas is refunded in a London transaction.
     if (transactionConfig.maxFeePerGas && transactionConfig.maxPriorityFeePerGas) {
-      // console.log("transactionConfig", transactionConfig);
-      // console.log("transaction", transaction);
       if (waitForMine)
         receipt = await transaction.send({
           ...transactionConfig,
