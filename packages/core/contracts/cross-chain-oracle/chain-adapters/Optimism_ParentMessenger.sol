@@ -12,6 +12,12 @@ import "./ParentMessengerBase.sol";
  * @dev This contract's is ownable and should be owned by the DVM governor.
  */
 contract Optimism_ParentMessenger is OVM_CrossDomainEnabled, ParentMessengerInterface, ParentMessengerBase {
+    event defaultGasLimitSet(uint32 newDefaultGasLimit);
+    event MessageSentToChild(bytes data, address indexed childAddress, uint32 defaultGasLimit);
+    event MessageReceivedFromChild(bytes data, address indexed childAddress);
+
+    uint32 public defaultGasLimit = 5_000_000;
+
     /**
      * @notice Construct the Optimism_ParentMessenger contract.
      * @param _crossDomainMessenger The address of the Optimism cross domain messenger contract.
@@ -29,6 +35,7 @@ contract Optimism_ParentMessenger is OVM_CrossDomainEnabled, ParentMessengerInte
      */
     function setDefaultGasLimit(uint32 newDefaultGasLimit) public onlyOwner {
         defaultGasLimit = newDefaultGasLimit;
+        emit defaultGasLimitSet(newDefaultGasLimit);
     }
 
     /**
@@ -41,12 +48,9 @@ contract Optimism_ParentMessenger is OVM_CrossDomainEnabled, ParentMessengerInte
      */
     function sendMessageToChild(bytes memory data) public override onlyHubContract() {
         address target = msg.sender == oracleHub ? oracleSpoke : governorSpoke;
-
-        sendCrossDomainMessage(
-            childMessenger, // L2 Target
-            defaultGasLimit, // L2 Gas limit
-            abi.encodeWithSignature("processMessageFromParent(bytes,address)", data, target) // L2 TX to send.
-        );
+        bytes memory dataSentToChild = abi.encodeWithSignature("processMessageFromParent(bytes,address)", data, target);
+        sendCrossDomainMessage(childMessenger, defaultGasLimit, dataSentToChild);
+        emit MessageSentToChild(data, target, defaultGasLimit);
     }
 
     /**
@@ -58,5 +62,6 @@ contract Optimism_ParentMessenger is OVM_CrossDomainEnabled, ParentMessengerInte
      */
     function processMessageFromChild(bytes memory data) public override onlyFromCrossDomainAccount(childMessenger) {
         ParentMessengerConsumerInterface(oracleHub).processMessageFromChild(childChainId, data);
+        emit MessageReceivedFromChild(data, childMessenger);
     }
 }

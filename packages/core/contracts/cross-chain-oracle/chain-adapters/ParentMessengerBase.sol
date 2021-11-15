@@ -14,7 +14,11 @@ contract ParentMessengerBase is Ownable {
     address public oracleSpoke;
     address public governorSpoke;
 
-    uint32 public defaultGasLimit = 5_000_000;
+    event ChildMessengerSet(address indexed childMessenger);
+    event OracleHubSet(address indexed oracleHub);
+    event GovernorHubSet(address indexed governorHub);
+    event OracleSpokeSet(address indexed oracleSpoke);
+    event GovernorSpokeSet(address indexed governorSpoke);
 
     modifier onlyHubContract() {
         require(msg.sender == oracleHub || msg.sender == governorHub, "Only privileged caller");
@@ -40,6 +44,7 @@ contract ParentMessengerBase is Ownable {
      */
     function setChildMessenger(address newChildMessenger) public onlyOwner {
         childMessenger = newChildMessenger;
+        emit ChildMessengerSet(childMessenger);
     }
 
     /**
@@ -49,6 +54,7 @@ contract ParentMessengerBase is Ownable {
      */
     function setOracleHub(address newOracleHub) public onlyOwner {
         oracleHub = newOracleHub;
+        emit OracleHubSet(oracleHub);
     }
 
     /**
@@ -58,6 +64,7 @@ contract ParentMessengerBase is Ownable {
      */
     function setGovernorHub(address newGovernorHub) public onlyOwner {
         governorHub = newGovernorHub;
+        emit GovernorHubSet(governorHub);
     }
 
     /**
@@ -67,6 +74,7 @@ contract ParentMessengerBase is Ownable {
      */
     function setOracleSpoke(address newOracleSpoke) public onlyOwner {
         oracleSpoke = newOracleSpoke;
+        emit OracleSpokeSet(oracleSpoke);
     }
 
     /**
@@ -76,5 +84,6 @@ contract ParentMessengerBase is Ownable {
      */
     function setGovernorSpoke(address newGovernorSpoke) public onlyOwner {
         governorSpoke = newGovernorSpoke;
+        emit GovernorSpokeSet(governorSpoke);
     }
 }

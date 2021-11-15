@@ -24,12 +24,18 @@ contract Optimism_ChildMessenger is OVM_CrossDomainEnabled, ChildMessengerInterf
     // TODO: import from optimism contracts when they release their latest version.
     address internal constant L2_CROSS_DOMAIN_MESSENGER = 0x4200000000000000000000000000000000000007;
 
+    event OracleSpokeSet(address newOracleSpoke);
+    event ParentMessengerSet(address newParentMessenger);
+    event defaultGasLimitSet(uint32 newDefaultGasLimit);
+    event MessageSentToParent(bytes data, address indexed parentAddress, uint32 gasLimit);
+    event MessageReceivedFromParent(bytes data, address indexed parentAddress);
+
     /**
      * @notice Construct the Optimism_ChildMessenger contract.
      * @param _parentMessenger The address of the L1 parent messenger. Acts as the "owner" of this contract.
      */
     constructor(address _parentMessenger) OVM_CrossDomainEnabled(L2_CROSS_DOMAIN_MESSENGER) {
-        parentMessenger = _parentMessenger;
+        setParentMessenger(_parentMessenger);
     }
 
     /**
@@ -39,6 +45,7 @@ contract Optimism_ChildMessenger is OVM_CrossDomainEnabled, ChildMessengerInterf
      */
     function setOracleSpoke(address newOracleSpoke) public onlyFromCrossDomainAccount(parentMessenger) {
         oracleSpoke = newOracleSpoke;
+        emit OracleSpokeSet(newOracleSpoke);
     }
 
     /**
@@ -48,6 +55,7 @@ contract Optimism_ChildMessenger is OVM_CrossDomainEnabled, ChildMessengerInterf
      */
     function setParentMessenger(address newParentMessenger) public onlyFromCrossDomainAccount(parentMessenger) {
         parentMessenger = newParentMessenger;
+        emit ParentMessengerSet(newParentMessenger);
     }
 
     /**
@@ -57,6 +65,7 @@ contract Optimism_ChildMessenger is OVM_CrossDomainEnabled, ChildMessengerInterf
      */
     function setDefaultGasLimit(uint32 newDefaultGasLimit) public onlyFromCrossDomainAccount(parentMessenger) {
         defaultGasLimit = newDefaultGasLimit;
+        emit defaultGasLimitSet(newDefaultGasLimit);
     }
 
     /**
@@ -67,11 +76,9 @@ contract Optimism_ChildMessenger is OVM_CrossDomainEnabled, ChildMessengerInterf
      */
     function sendMessageToParent(bytes memory data) public override {
         require(msg.sender == oracleSpoke, "Only callable by oracleSpoke");
-        sendCrossDomainMessage(
-            parentMessenger,
-            defaultGasLimit,
-            abi.encodeWithSignature("processMessageFromChild(bytes)", data)
-        );
+        bytes memory dataSentToParent = abi.encodeWithSignature("processMessageFromChild(bytes)", data);
+        sendCrossDomainMessage(parentMessenger, defaultGasLimit, dataSentToParent);
+        emit MessageSentToParent(dataSentToParent, parentMessenger, defaultGasLimit);
     }
 
     /**
@@ -88,5 +95,6 @@ contract Optimism_ChildMessenger is OVM_CrossDomainEnabled, ChildMessengerInterf
         onlyFromCrossDomainAccount(parentMessenger)
     {
         ChildMessengerConsumerInterface(target).processMessageFromParent(data);
+        emit MessageReceivedFromParent(data, target);
     }
 }

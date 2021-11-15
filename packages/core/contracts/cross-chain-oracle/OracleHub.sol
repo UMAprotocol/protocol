@@ -84,14 +84,14 @@ contract OracleHub is OracleBase, ParentMessengerConsumerInterface, Ownable, Loc
      * @dev This contract must be registered to submit price requests to the DVM. Only the ParentMessenger
      * can call this method. If the original requester on the child chain wants to expedite the Child --> Parent
      * message, then they can call `requestPrice` on this contract for the same unique price request.
-     * @param ChainId ChainId of the child chain that sent the price request.
+     * @param chainId id of the child chain that sent the price request.
      * @param data ABI encoded params with which to call `_requestPrice`.
      */
-    function processMessageFromChild(uint256 ChainId, bytes memory data)
+    function processMessageFromChild(uint256 chainId, bytes memory data)
         public
         override
         nonReentrant()
-        onlyMessenger(ChainId)
+        onlyMessenger(chainId)
     {
         (bytes32 identifier, uint256 time, bytes memory ancillaryData) = abi.decode(data, (bytes32, uint256, bytes));
         bool newPriceRequested = _requestPrice(identifier, time, ancillaryData);
