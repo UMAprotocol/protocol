@@ -19,6 +19,10 @@ export interface AugmentedSendOptions {
   maxPriorityFeePerGas?: number | string;
 }
 
+interface AugmentedWeb3 extends Web3 {
+  nonces: { [key: string]: number };
+}
+
 const argv = minimist(process.argv.slice(), {});
 
 /**
@@ -30,6 +34,10 @@ const argv = minimist(process.argv.slice(), {});
  * @param {*Object} transaction Transaction to call `.call()` and subsequently `.send()` on from `senderAccount`.
  * @param {*Object} transactionConfig config, e.g. { maxFeePerGas, maxPriorityFeePerGas, from } or { gasPrice, from}
  *     depending if this is a london or pre-london transaction, passed to transaction.
+ * @param availableAccounts {number} defines how many EOAs the transaction runner has access too. If the 0th account
+ * has a pending tx then the runner will automatically send the transaction from the next EOA.
+ * @param waitForMine {Boolean} informs if the transaction runner should wait until the tx is mined or return early once
+ * it has a transaction hash. Useful when sending many transactions in quick succession.
  * @return Error and type of error (originating from `.call()` or `.send()`) or transaction receipt and return value.
  */
 export const runTransaction = async ({
@@ -108,17 +116,32 @@ export const runTransaction = async ({
     const maximumGasPriceMultiple = 2 * 3;
     // Pre-London transactions require `gasPrice`, London transactions require `maxFeePerGas` and `maxPriorityFeePerGas`
 
-    let receipt;
+    let receipt: any;
 
     // If the config contains maxPriorityFeePerGas then this is a London transaction. In this case, simply use the
     // provided config settings but double the maxFeePerGas to ensure the transaction is included, even if the base fee
     // spikes up. The difference between the realized base fee and maxFeePerGas is refunded in a London transaction.
     if (transactionConfig.maxFeePerGas && transactionConfig.maxPriorityFeePerGas) {
-      receipt = await transaction.send({
-        ...transactionConfig,
-        maxFeePerGas: parseInt(transactionConfig.maxFeePerGas.toString()) * 2,
-        type: "0x2",
-      } as SendOptions);
+      if (waitForMine)
+        receipt = await transaction.send({
+          ...transactionConfig,
+          maxFeePerGas: parseInt(transactionConfig.maxFeePerGas.toString()) * 2,
+          type: "0x2",
+        } as SendOptions);
+      else {
+        return new Promise((resolve) => {
+          web3.eth
+            .sendTransaction({
+              to: (transaction as any)._parent._address,
+              ...transactionConfig,
+              type: "0x2",
+              data: transaction.encodeABI(),
+            } as any)
+            .on("transactionHash", (hash) => {
+              resolve({ receipt: { transactionHash: hash } as any, transactionConfig, returnValue: null as any });
+            });
+        });
+      }
 
       // Else this is a legacy tx.
     } else if (transactionConfig.gasPrice) {
