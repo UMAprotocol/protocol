@@ -1483,7 +1483,6 @@ describe("Relayer.ts", function () {
       // is no associated L2 deposit so all three are disputable.
       await l1Token.methods.mint(l1Owner, toBN(depositAmount).muln(4)).send({ from: l1Owner });
       await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(4)).send({ from: l1Owner });
-      console.log("a");
       await bridgePool.methods
         .relayDeposit(
           {
@@ -1499,7 +1498,6 @@ describe("Relayer.ts", function () {
           calculateRealizedLpFeePct(rateModel, toBNWei("0"), toBNWei("0.01"))
         )
         .send({ from: l1Owner });
-      console.log("b");
       await bridgePool.methods
         .relayDeposit(
           {
@@ -1515,7 +1513,6 @@ describe("Relayer.ts", function () {
           calculateRealizedLpFeePct(rateModel, toBNWei("0"), toBNWei("0.01"))
         )
         .send({ from: l1Owner });
-      console.log("c");
       await bridgePool.methods
         .relayDeposit(
           {
