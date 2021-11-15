@@ -121,8 +121,8 @@ export class Relayer {
   async checkForPendingRelaysAndDispute(): Promise<void> {
     this.logger.debug({ at: "AcrossRelayer#Disputer", message: "Checking for pending relays and disputing" });
 
-    // Build dictionary of pending relays keyed by l1 token and deposit hash. getPendingRelays() filters
-    // out Finalized relays.
+    // Build dictionary of pending relays keyed by l1 token and deposit hash. getPendingRelays() filters out Finalized
+    // relays and orders by the relay size so we dispute the most dangerous relays first.
     const pendingRelays: Relay[] = this.l1Client.getPendingRelayedDeposits();
     if (pendingRelays.length == 0) {
       this.logger.debug({ at: "AcrossRelayer#Disputer", message: "No pending relays" });

@@ -127,8 +127,11 @@ export class InsuredBridgeL1Client {
       : undefined;
   }
 
+  // Return all relays in the Pending state, ordered by amount relayed.
   getPendingRelayedDeposits(): Relay[] {
-    return this.getAllRelayedDeposits().filter((relay: Relay) => relay.relayState === ClientRelayState.Pending);
+    return this.getAllRelayedDeposits()
+      .filter((relay: Relay) => relay.relayState === ClientRelayState.Pending)
+      .sort((a, b) => (toBN(a.amount).lt(toBN(b.amount)) ? 1 : toBN(b.amount).lt(toBN(a.amount)) ? -1 : 0));
   }
 
   getPendingRelayedDepositsForL1Token(l1Token: string): Relay[] {

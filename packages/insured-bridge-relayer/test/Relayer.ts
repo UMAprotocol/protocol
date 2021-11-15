@@ -1476,6 +1476,86 @@ describe("Relayer.ts", function () {
       const disputeEvents = await bridgePool.getPastEvents("RelayDisputed", { fromBlock: 0 });
       assert.equal(disputeEvents.length, 1);
     });
+    it("Always disputes the largest relay first", async function () {
+      // When there are multiple relays with the same amount, the bot should always dispute the largest relay first.
+      const quoteTime = Number((await web3.eth.getBlock("latest")).timestamp) + 60;
+      // Do 3 relays, the middle relay should be the largest. The disputer should dispute this first. Note that there
+      // is no associated L2 deposit so all three are disputable.
+      await l1Token.methods.mint(l1Owner, toBN(depositAmount).muln(4)).send({ from: l1Owner });
+      await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(4)).send({ from: l1Owner });
+      console.log("a");
+      await bridgePool.methods
+        .relayDeposit(
+          {
+            chainId: chainId,
+            depositId: "0",
+            l2Sender: l2Depositor,
+            l1Recipient: l2Depositor,
+            amount: depositAmount,
+            slowRelayFeePct: defaultSlowRelayFeePct,
+            instantRelayFeePct: defaultInstantRelayFeePct,
+            quoteTimestamp: quoteTime,
+          },
+          calculateRealizedLpFeePct(rateModel, toBNWei("0"), toBNWei("0.01"))
+        )
+        .send({ from: l1Owner });
+      console.log("b");
+      await bridgePool.methods
+        .relayDeposit(
+          {
+            chainId: chainId,
+            depositId: "1",
+            l2Sender: l2Depositor,
+            l1Recipient: l2Depositor,
+            amount: toBN(depositAmount).muln(2).toString(),
+            slowRelayFeePct: defaultSlowRelayFeePct,
+            instantRelayFeePct: defaultInstantRelayFeePct,
+            quoteTimestamp: quoteTime,
+          },
+          calculateRealizedLpFeePct(rateModel, toBNWei("0"), toBNWei("0.01"))
+        )
+        .send({ from: l1Owner });
+      console.log("c");
+      await bridgePool.methods
+        .relayDeposit(
+          {
+            chainId: chainId,
+            depositId: "2",
+            l2Sender: l2Depositor,
+            l1Recipient: l2Depositor,
+            amount: depositAmount,
+            slowRelayFeePct: defaultSlowRelayFeePct,
+            instantRelayFeePct: defaultInstantRelayFeePct,
+            quoteTimestamp: quoteTime,
+          },
+          calculateRealizedLpFeePct(rateModel, toBNWei("0"), toBNWei("0.01"))
+        )
+        .send({ from: l1Owner });
+
+      // Fetch the largest deposit's depositHash. This should be the deposit at index 1 in the array (second deposit).
+      const largestDepositDepositHash = (await bridgePool.getPastEvents("DepositRelayed", { fromBlock: 0 }))[1]
+        .returnValues.depositHash;
+
+      // Update the clients and check for pending relays. It should dispute all 3 but dispute the largest first.
+      await Promise.all([l1Client.update(), l2Client.update()]);
+      await l1Token.methods.mint(l1Relayer, toBN(depositAmount).muln(5)).send({ from: l1Owner });
+      await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(5)).send({ from: l1Relayer });
+
+      await relayer.checkForPendingRelaysAndDispute();
+
+      const disputeEvents = await bridgePool.getPastEvents("RelayDisputed", { fromBlock: 0 });
+      // All three should be disputed.
+      assert.equal(disputeEvents.length, 3);
+
+      // Within the contract, the first dispute should be for the deposit hash extracted before for the largest deposit.
+      assert.equal(disputeEvents[0].returnValues.depositHash, largestDepositDepositHash);
+
+      // There should be a total of 3 dispute logs generated.
+      assert.equal(
+        spy.getCalls().filter((_log: any) => _log.lastArg.message.includes("Disputed pending relay")).length,
+        3
+      );
+    });
   });
   describe("Multiple whitelisted token mappings", function () {
     let newL1Token: any, newL2Token: any, newBridgePool: any;
