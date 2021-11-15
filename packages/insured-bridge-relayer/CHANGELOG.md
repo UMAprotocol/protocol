@@ -3,6 +3,59 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.10.0](https://github.com/UMAprotocol/protocol/compare/@uma/insured-bridge-relayer@1.9.1...@uma/insured-bridge-relayer@1.10.0) (2021-11-11)
+
+### Bug Fixes
+
+- **across-relayer:** Two small patches ([#3593](https://github.com/UMAprotocol/protocol/issues/3593)) ([fe27d33](https://github.com/UMAprotocol/protocol/commit/fe27d333ef3ff72f16e757d2e75edb309809e2f5))
+
+### Features
+
+- **across-relayer:** Add ability to finalize L2->L1 transfer actions ([#3585](https://github.com/UMAprotocol/protocol/issues/3585)) ([e41ab0d](https://github.com/UMAprotocol/protocol/commit/e41ab0d60d5598a6af71405db94f4d2e8479a004))
+
+## [1.9.1](https://github.com/UMAprotocol/protocol/compare/@uma/insured-bridge-relayer@1.9.0...@uma/insured-bridge-relayer@1.9.1) (2021-11-09)
+
+### Bug Fixes
+
+- **across-relayer:** Deposit search should start at BridgeDeposit block height, not BridgePool block height ([#3566](https://github.com/UMAprotocol/protocol/issues/3566)) ([665e78e](https://github.com/UMAprotocol/protocol/commit/665e78eb56cdb4ce2fc8736c6b5441dbbc79f282))
+- **across-relayer:** Finalizer can settle multiple L1 tokens ([#3580](https://github.com/UMAprotocol/protocol/issues/3580)) ([aa36f1f](https://github.com/UMAprotocol/protocol/commit/aa36f1f1426a7379b36ffab0236c9fde61ea291a))
+- **across-relayer:** tiny logging fix to improve logging ([#3584](https://github.com/UMAprotocol/protocol/issues/3584)) ([2492e60](https://github.com/UMAprotocol/protocol/commit/2492e60218a5a77cb12dd9dd9165aad565e6fec1))
+- **L1-client:** optimize how the L1 client fetches some internal data ([#3588](https://github.com/UMAprotocol/protocol/issues/3588)) ([fa2c538](https://github.com/UMAprotocol/protocol/commit/fa2c538c4af638a0e304e013de1f5d66b81842cc))
+
+# [1.9.0](https://github.com/UMAprotocol/protocol/compare/@uma/insured-bridge-relayer@1.8.0...@uma/insured-bridge-relayer@1.9.0) (2021-11-05)
+
+### Bug Fixes
+
+- **insured-bridge-relayer:** Key deployTimestamps by lowercase addresses ([#3557](https://github.com/UMAprotocol/protocol/issues/3557)) ([fc14de5](https://github.com/UMAprotocol/protocol/commit/fc14de5abedc72c4890e9f354463438c1d2f3164))
+
+### Features
+
+- **across-relayer:** Enable batch relays via multicall and improve log production ([#3559](https://github.com/UMAprotocol/protocol/issues/3559)) ([f1cfecc](https://github.com/UMAprotocol/protocol/commit/f1cfecc3d085d5be86a4557682b0ae931cbb24b5))
+
+# [1.8.0](https://github.com/UMAprotocol/protocol/compare/@uma/insured-bridge-relayer@1.7.0...@uma/insured-bridge-relayer@1.8.0) (2021-11-02)
+
+### Bug Fixes
+
+- **across-bots:** Address issue where relayer produces an error after every relay ([#3544](https://github.com/UMAprotocol/protocol/issues/3544)) ([0d84e58](https://github.com/UMAprotocol/protocol/commit/0d84e5861f4fa51d03ea6e3d8baee9edb13398d3))
+- **BridgeAdmin:** Fix typographical in contracts ([#3540](https://github.com/UMAprotocol/protocol/issues/3540)) ([e70a342](https://github.com/UMAprotocol/protocol/commit/e70a34282a0a6a3f92ffe1e88d4ea96fa4f3f54c))
+
+### Features
+
+- use faster block finder ([#3522](https://github.com/UMAprotocol/protocol/issues/3522)) ([d0336ef](https://github.com/UMAprotocol/protocol/commit/d0336ef86d16dc28607a4693356f8c9e7c8e457a))
+
+# [1.7.0](https://github.com/UMAprotocol/protocol/compare/@uma/insured-bridge-relayer@1.6.0...@uma/insured-bridge-relayer@1.7.0) (2021-10-29)
+
+### Bug Fixes
+
+- **GasEstimator:** protocol upgrade for EIP1559 ([#3306](https://github.com/UMAprotocol/protocol/issues/3306)) ([8245391](https://github.com/UMAprotocol/protocol/commit/8245391ee07dca37be3c52a9a9ba47ed4d63f6f7))
+- **insured-bridge-relayer:** Dispute any relay with non-whitelisted chain ID even if not using same chain ID as L2 client ([#3511](https://github.com/UMAprotocol/protocol/issues/3511)) ([557aeb9](https://github.com/UMAprotocol/protocol/commit/557aeb94cead79854ffc49b56dcab0cd52c39b48))
+- **insured-bridge-relayer:** Handle case where computing realized LP fee % fails ([#3504](https://github.com/UMAprotocol/protocol/issues/3504)) ([9c69a9d](https://github.com/UMAprotocol/protocol/commit/9c69a9d3f545741820fbf73d5436b7f9f30aa8e0))
+- **insured-bridge-relayer:** Key deposits by deposit hash instead of deposit ID ([#3510](https://github.com/UMAprotocol/protocol/issues/3510)) ([d75c342](https://github.com/UMAprotocol/protocol/commit/d75c34279c89f8d880416ef765cd36c0dc9b97b5))
+
+### Features
+
+- **create-price-feed:** Add InsuredBridge ([#3388](https://github.com/UMAprotocol/protocol/issues/3388)) ([4dd8116](https://github.com/UMAprotocol/protocol/commit/4dd811635fd5647bf5916eb366daf5d613f3856c))
+
 # [1.6.0](https://github.com/UMAprotocol/protocol/compare/@uma/insured-bridge-relayer@1.5.0...@uma/insured-bridge-relayer@1.6.0) (2021-10-27)
 
 ### Bug Fixes

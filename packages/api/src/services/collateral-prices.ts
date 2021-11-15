@@ -3,6 +3,7 @@ import bluebird from "bluebird";
 import assert from "assert";
 import { AppState, CurrencySymbol, BaseConfig, AppClients } from "../types";
 interface Config extends BaseConfig {
+  network: number;
   currency?: CurrencySymbol;
 }
 import { parseUnits, msToS } from "../libs/utils";
@@ -12,7 +13,7 @@ type Dependencies = {
   appClients: AppClients;
 };
 
-export default function (config: Config, dependencies: Dependencies) {
+export function CollateralPrices(config: Config, dependencies: Dependencies) {
   const { currency = "usd" } = config;
   const { appClients, tables } = dependencies;
   const { prices, collateralAddresses } = tables;
@@ -66,7 +67,11 @@ export default function (config: Config, dependencies: Dependencies) {
   }
 
   async function updateLatestPrices(addresses: string[]) {
-    const prices = await coingecko.getContractPrices(addresses, currency);
+    const platforms = (await coingecko.getPlatforms()).filter(
+      (platform) => platform.chain_identifier === config.network
+    );
+    if (platforms.length === 0) throw new Error("Platform not found on CoinGecko");
+    const prices = await coingecko.getContractPrices(addresses, currency, platforms[0].id);
     return prices.map(updateLatestPrice);
   }
 
@@ -136,3 +141,5 @@ export default function (config: Config, dependencies: Dependencies) {
     },
   };
 }
+
+export type CollateralPrices = ReturnType<typeof CollateralPrices>;

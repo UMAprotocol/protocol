@@ -1,7 +1,7 @@
 import Web3 from "web3";
 const { toBN, soliditySha3 } = Web3.utils;
 
-import { findBlockNumberAtTimestamp } from "@uma/common";
+import { BlockFinder } from "../price-feed/utils";
 import { getAbi } from "@uma/contracts-node";
 import { Deposit } from "./InsuredBridgeL2Client";
 import { RateModel, calculateRealizedLpFeePct } from "../helpers/acrossFeesCalculator";
@@ -9,6 +9,7 @@ import { RateModel, calculateRealizedLpFeePct } from "../helpers/acrossFeesCalcu
 import type { BridgeAdminInterfaceWeb3, BridgePoolWeb3 } from "@uma/contracts-node";
 import type { Logger } from "winston";
 import type { BN } from "@uma/common";
+import type { BlockTransactionBase } from "web3-eth";
 
 export enum ClientRelayState {
   Uninitialized, // Deposit on L2, nothing yet on L1. Can be slow relayed and can be sped up to instantly relay.
@@ -42,6 +43,7 @@ export interface Relay {
   proposerBond: string;
   finalFee: string;
   settleable: SettleableRelay;
+  blockNumber: number;
 }
 
 export interface InstantRelay {
@@ -50,20 +52,23 @@ export interface InstantRelay {
 
 export interface BridgePoolData {
   contract: BridgePoolWeb3;
+  l2Token: string;
   currentTime: number;
   relayNonce: number;
+  poolCollateralDecimals: number;
+  poolCollateralSymbol: string;
 }
 
 export class InsuredBridgeL1Client {
   public readonly bridgeAdmin: BridgeAdminInterfaceWeb3;
   public bridgePools: { [key: string]: BridgePoolData }; // L1TokenAddress=>BridgePoolData
   public optimisticOracleLiveness = 0;
+  public firstBlockToSearch: number;
 
   private relays: { [key: string]: { [key: string]: Relay } } = {}; // L1TokenAddress=>depositHash=>Relay.
   private instantRelays: { [key: string]: { [key: string]: InstantRelay } } = {}; // L1TokenAddress=>{depositHash, realizedLpFeePct}=>InstantRelay.
 
-  private firstBlockToSearch: number;
-  private web3: Web3;
+  private readonly blockFinder: BlockFinder<BlockTransactionBase>;
 
   constructor(
     private readonly logger: Logger,
@@ -81,7 +86,7 @@ export class InsuredBridgeL1Client {
     this.bridgePools = {}; // Initialize the bridgePools with no pools yet. Will be populated in the _initialSetup.
 
     this.firstBlockToSearch = startingBlockNumber;
-    this.web3 = l1Web3;
+    this.blockFinder = new BlockFinder<BlockTransactionBase>(this.l1Web3.eth.getBlock);
   }
 
   // Return an array of all bridgePool addresses
@@ -111,12 +116,15 @@ export class InsuredBridgeL1Client {
 
   hasInstantRelayer(l1Token: string, depositHash: string, realizedLpFeePct: string): boolean {
     this._throwIfNotInitialized();
+    return this.getInstantRelayer(l1Token, depositHash, realizedLpFeePct) !== undefined;
+  }
+
+  getInstantRelayer(l1Token: string, depositHash: string, realizedLpFeePct: string): string | undefined {
+    this._throwIfNotInitialized();
     const instantRelayDataHash = this._getInstantRelayHash(depositHash, realizedLpFeePct);
-    return (
-      instantRelayDataHash !== null &&
-      this.instantRelays[l1Token][instantRelayDataHash] !== undefined &&
-      this.instantRelays[l1Token][instantRelayDataHash].instantRelayer !== undefined
-    );
+    return instantRelayDataHash !== null
+      ? this.instantRelays[l1Token][instantRelayDataHash]?.instantRelayer
+      : undefined;
   }
 
   getPendingRelayedDeposits(): Relay[] {
@@ -147,7 +155,9 @@ export class InsuredBridgeL1Client {
     if (this.rateModels === undefined || this.rateModels[deposit.l1Token] === undefined)
       throw new Error("No rate model for l1Token");
 
-    const quoteBlockNumber = (await findBlockNumberAtTimestamp(this.l1Web3, deposit.quoteTimestamp)).blockNumber;
+    // The block number must be exactly the one containing the deposit.quoteTimestamp, so we use the lowest block delta
+    // of 1. Setting averageBlockTime to 14 increases the speed at the cost of more web3 requests.
+    const quoteBlockNumber = (await this.blockFinder.getBlockForTimestamp(deposit.quoteTimestamp)).number;
     const bridgePool = this.getBridgePoolForDeposit(deposit).contract;
     const [liquidityUtilizationCurrent, liquidityUtilizationPostRelay] = await Promise.all([
       bridgePool.methods.liquidityUtilizationCurrent().call(undefined, quoteBlockNumber),
@@ -171,13 +181,38 @@ export class InsuredBridgeL1Client {
     return ClientRelayState.Finalized;
   }
 
+  getBridgePoolCollateralInfoForDeposit(l2Deposit: Deposit): { collateralDecimals: number; collateralSymbol: string } {
+    if (!this.bridgePools[l2Deposit.l1Token]) throw new Error(`No bridge pool initialized for ${l2Deposit.l1Token}`);
+    return {
+      collateralDecimals: this.getBridgePoolForDeposit(l2Deposit).poolCollateralDecimals,
+      collateralSymbol: this.getBridgePoolForDeposit(l2Deposit).poolCollateralSymbol,
+    };
+  }
+
   getBridgePoolForDeposit(l2Deposit: Deposit): BridgePoolData {
     if (!this.bridgePools[l2Deposit.l1Token]) throw new Error(`No bridge pool initialized for ${l2Deposit.l1Token}`);
-    return this.bridgePools[l2Deposit.l1Token];
+    return this.getBridgePoolForL1Token(l2Deposit.l1Token);
+  }
+
+  getBridgePoolForL1Token(l1Token: string): BridgePoolData {
+    if (!this.bridgePools[l1Token]) throw new Error(`No bridge pool initialized for ${l1Token}`);
+    return this.bridgePools[l1Token];
+  }
+
+  getBridgePoolForL2Token(l2Token: string): BridgePoolData {
+    const bridgePoolData = Object.values(this.bridgePools).filter((bridgePool) => bridgePool.l2Token == l2Token)[0];
+    if (!bridgePoolData) throw new Error(`No bridge pool initialized for ${l2Token}`);
+    return bridgePoolData;
   }
 
   async getProposerBondPct(): Promise<BN> {
     return toBN(await this.bridgeAdmin.methods.proposerBondPct().call());
+  }
+
+  // Returns the L2 Deposit box address for a given bridgeAdmin on L1.
+  async getL2DepositBoxAddress(chainId: number): Promise<string> {
+    const depositContracts = (await this.bridgeAdmin.methods.depositContracts(chainId).call()) as any;
+    return depositContracts.depositContract || depositContracts[0]; // When latest BridgeAdmin is redeployed, can remove the "|| depositContracts[0]".
   }
 
   async update(): Promise<void> {
@@ -197,9 +232,12 @@ export class InsuredBridgeL1Client {
           getAbi("BridgePool"),
           whitelistedTokenEvent.returnValues.bridgePool
         ) as unknown) as BridgePoolWeb3,
+        l2Token: whitelistedTokenEvent.returnValues.l2Token,
         // We'll set the following params when fetching bridge pool state in parallel.
         currentTime: 0,
         relayNonce: 0,
+        poolCollateralDecimals: 0,
+        poolCollateralSymbol: "",
       };
       this.relays[l1Token] = {};
       this.instantRelays[l1Token] = {};
@@ -214,6 +252,7 @@ export class InsuredBridgeL1Client {
     // Fetch event information
     // TODO: consider optimizing this further. Right now it will make a series of sequential BlueBird calls for each pool.
     for (const [l1Token, bridgePool] of Object.entries(this.bridgePools)) {
+      const l1TokenInstance = new this.l1Web3.eth.Contract(getAbi("ERC20"), l1Token);
       const [
         depositRelayedEvents,
         relaySpedUpEvents,
@@ -222,6 +261,8 @@ export class InsuredBridgeL1Client {
         relayCanceledEvents,
         contractTime,
         relayNonce,
+        poolCollateralDecimals,
+        poolCollateralSymbol,
       ] = await Promise.all([
         bridgePool.contract.getPastEvents("DepositRelayed", blockSearchConfig),
         bridgePool.contract.getPastEvents("RelaySpedUp", blockSearchConfig),
@@ -230,13 +271,18 @@ export class InsuredBridgeL1Client {
         bridgePool.contract.getPastEvents("RelayCanceled", blockSearchConfig),
         bridgePool.contract.methods.getCurrentTime().call(),
         bridgePool.contract.methods.numberOfRelays().call(),
+        l1TokenInstance.methods.decimals().call(),
+        l1TokenInstance.methods.symbol().call(),
       ]);
 
-      // Store current contract time and relay nonce that user can use to send instant relays
-      // (where there is no pending relay) for a deposit.
+      // Store current contract time and relay nonce that user can use to send instant relays (where there is no pending
+      // relay) for a deposit. Store the l1Token decimals and symbol to enhance logging.
       bridgePool.currentTime = Number(contractTime);
       bridgePool.relayNonce = Number(relayNonce);
+      bridgePool.poolCollateralDecimals = Number(poolCollateralDecimals);
+      bridgePool.poolCollateralSymbol = poolCollateralSymbol;
 
+      // Process events an set in state.
       for (const depositRelayedEvent of depositRelayedEvents) {
         const relayData: Relay = {
           relayId: Number(depositRelayedEvent.returnValues.relay.relayId),
@@ -258,6 +304,7 @@ export class InsuredBridgeL1Client {
           proposerBond: depositRelayedEvent.returnValues.relay.proposerBond,
           finalFee: depositRelayedEvent.returnValues.relay.finalFee,
           settleable: SettleableRelay.CannotSettle,
+          blockNumber: depositRelayedEvent.blockNumber,
         };
         this.relays[l1Token][relayData.depositHash] = relayData;
       }
@@ -297,7 +344,7 @@ export class InsuredBridgeL1Client {
           this.relays[l1Token][pendingRelay.depositHash].settleable = SettleableRelay.SlowRelayerCanSettle;
         }
         // If relay is pending and the time is past the OO liveness +15 mins, then it is settleable by anyone.
-        if (bridgePool.currentTime >= pendingRelay.priceRequestTime + this.optimisticOracleLiveness + 54000) {
+        if (bridgePool.currentTime >= pendingRelay.priceRequestTime + this.optimisticOracleLiveness + 900) {
           this.relays[l1Token][pendingRelay.depositHash].settleable = SettleableRelay.AnyoneCanSettle;
         }
       }
@@ -309,14 +356,14 @@ export class InsuredBridgeL1Client {
 
   private _getInstantRelayHash(depositHash: string, realizedLpFeePct: string): string | null {
     const instantRelayDataHash = soliditySha3(
-      this.web3.eth.abi.encodeParameters(["bytes32", "uint64"], [depositHash, realizedLpFeePct])
+      this.l1Web3.eth.abi.encodeParameters(["bytes32", "uint64"], [depositHash, realizedLpFeePct])
     );
     return instantRelayDataHash;
   }
 
   private _getRelayHash = (relay: Relay) => {
     return soliditySha3(
-      this.web3.eth.abi.encodeParameters(
+      this.l1Web3.eth.abi.encodeParameters(
         ["uint256", "address", "uint32", "uint64", "uint256", "uint256", "uint256"],
         [
           relay.relayState,

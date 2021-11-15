@@ -16,6 +16,7 @@ const {
   waitForLogger,
   delay,
   multicallAddressMap,
+  OptimisticOracleType,
 } = require("@uma/financial-templates-lib");
 
 // Monitor modules to report on client state changes.
@@ -40,6 +41,7 @@ const {
  * @param {Object} logger Module responsible for sending logs.
  * @param {String} financialContractAddress Contract address of the Financial Contract.
  * @param {String} optimisticOracleAddress Contract address of the OptimisticOracle Contract.
+ * @param {OptimisticOracleType} [optimisticOracleType] Type of "OptimisticOracle" for this network, defaults to "OptimisticOracle"
  * @param {Number} pollingDelay The amount of seconds to wait between iterations. If set to 0 then running in serverless
  *     mode which will exit after the loop.
  * @param {Number} errorRetries The number of times the execution loop will re-try before throwing if an error occurs.
@@ -58,6 +60,7 @@ async function run({
   logger,
   web3,
   financialContractAddress,
+  optimisticOracleType,
   optimisticOracleAddress,
   pollingDelay,
   errorRetries,
@@ -79,6 +82,7 @@ async function run({
       message: "Monitor started 🕵️‍♂️",
       financialContractAddress,
       optimisticOracleAddress,
+      optimisticOracleType,
       pollingDelay,
       errorRetries,
       errorRetriesTimeout,
@@ -323,9 +327,10 @@ async function run({
     if (optimisticOracleAddress) {
       const optimisticOracleContractEventClient = new OptimisticOracleEventClient(
         logger,
-        getAbi("OptimisticOracle"),
+        getAbi(optimisticOracleType),
         web3,
         optimisticOracleAddress,
+        optimisticOracleType,
         eventsFromBlockNumber,
         endingBlock
       );
@@ -408,6 +413,11 @@ async function Poll(callback) {
     // match the order of parameters defined in the`run` function.
     const executionParameters = {
       optimisticOracleAddress: process.env.OPTIMISTIC_ORACLE_ADDRESS,
+      // Type of "OptimisticOracle" to load in client, default is OptimisticOracle. The other possible types are
+      // exported in an enum from financial-templates-lib/OptimisticOracleClient.
+      optimisticOracleType: process.env.OPTIMISTIC_ORACLE_TYPE
+        ? process.env.OPTIMISTIC_ORACLE_TYPE
+        : OptimisticOracleType.OptimisticOracle,
       financialContractAddress: process.env.EMP_ADDRESS || process.env.FINANCIAL_CONTRACT_ADDRESS,
       // Default to 1 minute delay. If set to 0 in env variables then the script will exit after full execution.
       pollingDelay: process.env.POLLING_DELAY ? Number(process.env.POLLING_DELAY) : 60,

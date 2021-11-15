@@ -3,6 +3,69 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.17.0](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.16.0...@uma/financial-templates-lib@2.17.0) (2021-11-11)
+
+### Bug Fixes
+
+- **across-relayer:** Two small patches ([#3593](https://github.com/UMAprotocol/protocol/issues/3593)) ([fe27d33](https://github.com/UMAprotocol/protocol/commit/fe27d333ef3ff72f16e757d2e75edb309809e2f5))
+
+### Features
+
+- **across-relayer:** Add ability to finalize L2->L1 transfer actions ([#3585](https://github.com/UMAprotocol/protocol/issues/3585)) ([e41ab0d](https://github.com/UMAprotocol/protocol/commit/e41ab0d60d5598a6af71405db94f4d2e8479a004))
+
+# [2.16.0](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.15.0...@uma/financial-templates-lib@2.16.0) (2021-11-09)
+
+### Bug Fixes
+
+- **L1-client:** optimize how the L1 client fetches some internal data ([#3588](https://github.com/UMAprotocol/protocol/issues/3588)) ([fa2c538](https://github.com/UMAprotocol/protocol/commit/fa2c538c4af638a0e304e013de1f5d66b81842cc))
+
+### Features
+
+- **financial-templates-lib:** Add UMA rate model to InsuredBridgePriceFeed default config ([#3578](https://github.com/UMAprotocol/protocol/issues/3578)) ([de3fb39](https://github.com/UMAprotocol/protocol/commit/de3fb39dbe3223ede50acd0426ef9de950f04e03))
+- **optimistic-oracle-event-client:** Add compatibility with SkinnyOptimisticOracle events ([#3577](https://github.com/UMAprotocol/protocol/issues/3577)) ([7856b7e](https://github.com/UMAprotocol/protocol/commit/7856b7ec0176bc0ec3095d05409829eb7d7aeabc))
+
+# [2.15.0](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.14.0...@uma/financial-templates-lib@2.15.0) (2021-11-05)
+
+### Bug Fixes
+
+- **insured-bridge-relayer:** Key deployTimestamps by lowercase addresses ([#3557](https://github.com/UMAprotocol/protocol/issues/3557)) ([fc14de5](https://github.com/UMAprotocol/protocol/commit/fc14de5abedc72c4890e9f354463438c1d2f3164))
+
+### Features
+
+- **across-relayer:** Enable batch relays via multicall and improve log production ([#3559](https://github.com/UMAprotocol/protocol/issues/3559)) ([f1cfecc](https://github.com/UMAprotocol/protocol/commit/f1cfecc3d085d5be86a4557682b0ae931cbb24b5))
+- **optimistic-oracle-client:** Can read SkinnyOptimisticOracle state ([#3554](https://github.com/UMAprotocol/protocol/issues/3554)) ([9d4d3b2](https://github.com/UMAprotocol/protocol/commit/9d4d3b27ec39977604bb2f461e48112c51642c4f))
+- **optimistic-oracle-proposer:** Can propose, dispute, and settle SkinnyOptimisticOracle price requests ([#3558](https://github.com/UMAprotocol/protocol/issues/3558)) ([c58a19b](https://github.com/UMAprotocol/protocol/commit/c58a19b316001ea59dc21b7932c7f4e66cdba413))
+
+### Reverts
+
+- Revert "Revert "improve(insured-bridge): Reduce verbosity of \_getDepositHash() (#3538)" (#3545)" (#3547) ([2d489f7](https://github.com/UMAprotocol/protocol/commit/2d489f7bc145d305a593fbd98a2d6aea5ebd5f59)), closes [#3538](https://github.com/UMAprotocol/protocol/issues/3538) [#3545](https://github.com/UMAprotocol/protocol/issues/3545) [#3547](https://github.com/UMAprotocol/protocol/issues/3547)
+
+# [2.14.0](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.13.0...@uma/financial-templates-lib@2.14.0) (2021-11-02)
+
+### Bug Fixes
+
+- **across-bots:** Address issue where relayer produces an error after every relay ([#3544](https://github.com/UMAprotocol/protocol/issues/3544)) ([0d84e58](https://github.com/UMAprotocol/protocol/commit/0d84e5861f4fa51d03ea6e3d8baee9edb13398d3))
+
+### Features
+
+- use faster block finder ([#3522](https://github.com/UMAprotocol/protocol/issues/3522)) ([d0336ef](https://github.com/UMAprotocol/protocol/commit/d0336ef86d16dc28607a4693356f8c9e7c8e457a))
+
+### Reverts
+
+- Revert "improve(insured-bridge): Reduce verbosity of \_getDepositHash() (#3538)" (#3545) ([d1a07f0](https://github.com/UMAprotocol/protocol/commit/d1a07f0c4e244acaf58f51a20c9a8d6e539f1bdd)), closes [#3538](https://github.com/UMAprotocol/protocol/issues/3538) [#3545](https://github.com/UMAprotocol/protocol/issues/3545)
+
+# [2.13.0](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.12.0...@uma/financial-templates-lib@2.13.0) (2021-10-29)
+
+### Bug Fixes
+
+- **GasEstimator:** protocol upgrade for EIP1559 ([#3306](https://github.com/UMAprotocol/protocol/issues/3306)) ([8245391](https://github.com/UMAprotocol/protocol/commit/8245391ee07dca37be3c52a9a9ba47ed4d63f6f7))
+- **insured-bridge-relayer:** Dispute any relay with non-whitelisted chain ID even if not using same chain ID as L2 client ([#3511](https://github.com/UMAprotocol/protocol/issues/3511)) ([557aeb9](https://github.com/UMAprotocol/protocol/commit/557aeb94cead79854ffc49b56dcab0cd52c39b48))
+- **insured-bridge-relayer:** Key deposits by deposit hash instead of deposit ID ([#3510](https://github.com/UMAprotocol/protocol/issues/3510)) ([d75c342](https://github.com/UMAprotocol/protocol/commit/d75c34279c89f8d880416ef765cd36c0dc9b97b5))
+
+### Features
+
+- **create-price-feed:** Add InsuredBridge ([#3388](https://github.com/UMAprotocol/protocol/issues/3388)) ([4dd8116](https://github.com/UMAprotocol/protocol/commit/4dd811635fd5647bf5916eb366daf5d613f3856c))
+
 # [2.12.0](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.11.0...@uma/financial-templates-lib@2.12.0) (2021-10-27)
 
 ### Bug Fixes

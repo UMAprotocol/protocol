@@ -20,7 +20,7 @@ type Dependencies = Pick<
   "emps" | "synthPrices" | "erc20s" | "prices" | "stats" | "registeredEmps" | "marketPrices" | "lsps"
 >;
 
-export default function (config: Config, appState: Dependencies, appClients: AppClients) {
+export function SyntheticPrices(config: Config, appState: Dependencies, appClients: AppClients) {
   const { currency = "usd", debug } = config;
   const { emps, synthPrices, prices } = appState;
   const { web3 } = appClients;
@@ -196,3 +196,5 @@ export default function (config: Config, appState: Dependencies, appClients: App
     },
   };
 }
+
+export type SyntheticPrices = ReturnType<typeof SyntheticPrices>;

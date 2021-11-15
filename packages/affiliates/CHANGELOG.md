@@ -3,6 +3,28 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.7.3](https://github.com/UMAprotocol/protocol/compare/@uma/affiliates@1.7.2...@uma/affiliates@1.7.3) (2021-11-11)
+
+**Note:** Version bump only for package @uma/affiliates
+
+## [1.7.2](https://github.com/UMAprotocol/protocol/compare/@uma/affiliates@1.7.1...@uma/affiliates@1.7.2) (2021-11-09)
+
+**Note:** Version bump only for package @uma/affiliates
+
+## [1.7.1](https://github.com/UMAprotocol/protocol/compare/@uma/affiliates@1.7.0...@uma/affiliates@1.7.1) (2021-11-05)
+
+**Note:** Version bump only for package @uma/affiliates
+
+# [1.7.0](https://github.com/UMAprotocol/protocol/compare/@uma/affiliates@1.6.6...@uma/affiliates@1.7.0) (2021-11-02)
+
+### Features
+
+- **gas-rebate:** Gas rebate 14 ([#3525](https://github.com/UMAprotocol/protocol/issues/3525)) ([c582881](https://github.com/UMAprotocol/protocol/commit/c58288187a1c89348ce5697c97d9acd24cff2ff2))
+
+## [1.6.6](https://github.com/UMAprotocol/protocol/compare/@uma/affiliates@1.6.5...@uma/affiliates@1.6.6) (2021-10-29)
+
+**Note:** Version bump only for package @uma/affiliates
+
 ## [1.6.5](https://github.com/UMAprotocol/protocol/compare/@uma/affiliates@1.6.4...@uma/affiliates@1.6.5) (2021-10-27)
 
 **Note:** Version bump only for package @uma/affiliates

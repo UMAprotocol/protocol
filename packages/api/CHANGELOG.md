@@ -3,6 +3,39 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.9.3](https://github.com/UMAprotocol/protocol/compare/@uma/api@0.9.2...@uma/api@0.9.3) (2021-11-12)
+
+**Note:** Version bump only for package @uma/api
+
+## [0.9.2](https://github.com/UMAprotocol/protocol/compare/@uma/api@0.9.1...@uma/api@0.9.2) (2021-11-11)
+
+**Note:** Version bump only for package @uma/api
+
+## [0.9.1](https://github.com/UMAprotocol/protocol/compare/@uma/api@0.9.0...@uma/api@0.9.1) (2021-11-09)
+
+**Note:** Version bump only for package @uma/api
+
+# [0.9.0](https://github.com/UMAprotocol/protocol/compare/@uma/api@0.8.3...@uma/api@0.9.0) (2021-11-09)
+
+### Features
+
+- **api:** add ability to pull in Polygon contracts ([#3564](https://github.com/UMAprotocol/protocol/issues/3564)) ([e2d7dce](https://github.com/UMAprotocol/protocol/commit/e2d7dce3e157132e36a2bfdc3b81080dbf8a6cbe))
+
+## [0.8.3](https://github.com/UMAprotocol/protocol/compare/@uma/api@0.8.2...@uma/api@0.8.3) (2021-11-05)
+
+**Note:** Version bump only for package @uma/api
+
+## [0.8.2](https://github.com/UMAprotocol/protocol/compare/@uma/api@0.8.1...@uma/api@0.8.2) (2021-11-02)
+
+**Note:** Version bump only for package @uma/api
+
+## [0.8.1](https://github.com/UMAprotocol/protocol/compare/@uma/api@0.8.0...@uma/api@0.8.1) (2021-10-29)
+
+### Bug Fixes
+
+- cancel timeouts used for race against promises ([#3513](https://github.com/UMAprotocol/protocol/issues/3513)) ([3b019ee](https://github.com/UMAprotocol/protocol/commit/3b019eeb5224134ffe8566f9a5fd2192a5b5dce6))
+- **GasEstimator:** protocol upgrade for EIP1559 ([#3306](https://github.com/UMAprotocol/protocol/issues/3306)) ([8245391](https://github.com/UMAprotocol/protocol/commit/8245391ee07dca37be3c52a9a9ba47ed4d63f6f7))
+
 # [0.8.0](https://github.com/UMAprotocol/protocol/compare/@uma/api@0.7.0...@uma/api@0.8.0) (2021-10-27)
 
 ### Features

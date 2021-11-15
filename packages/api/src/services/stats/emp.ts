@@ -14,7 +14,7 @@ type Dependencies = Pick<
 >;
 
 // this service is meant to calculate numbers derived from emp state, things like TVL, TVM and other things
-export default (config: Config, appState: Dependencies) => {
+export function Emp(config: Config, appState: Dependencies) {
   const { stats, prices, registeredEmps } = appState;
   const { currency = "usd" } = config;
 
@@ -225,4 +225,6 @@ export default (config: Config, appState: Dependencies) => {
       getFullEmpState,
     },
   };
-};
+}
+
+export type Emp = ReturnType<typeof Emp>;

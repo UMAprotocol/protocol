@@ -6,7 +6,7 @@ import type { TransactionReceipt } from "web3-core";
 import type { ContractSendMethod, SendOptions } from "web3-eth-contract";
 
 type CallReturnValue = ReturnType<ContractSendMethod["call"]>;
-interface AugmentedSendOptions {
+export interface AugmentedSendOptions {
   from: string;
   gas?: number;
   value?: number | string;
@@ -17,10 +17,6 @@ interface AugmentedSendOptions {
   gasPrice?: number | string;
   maxFeePerGas?: number | string;
   maxPriorityFeePerGas?: number | string;
-}
-
-interface AugmentedWeb3 extends Web3 {
-  nonces: { [key: string]: number };
 }
 
 const argv = minimist(process.argv.slice(), {});
@@ -112,32 +108,17 @@ export const runTransaction = async ({
     const maximumGasPriceMultiple = 2 * 3;
     // Pre-London transactions require `gasPrice`, London transactions require `maxFeePerGas` and `maxPriorityFeePerGas`
 
-    let receipt: any;
+    let receipt;
 
     // If the config contains maxPriorityFeePerGas then this is a London transaction. In this case, simply use the
     // provided config settings but double the maxFeePerGas to ensure the transaction is included, even if the base fee
     // spikes up. The difference between the realized base fee and maxFeePerGas is refunded in a London transaction.
     if (transactionConfig.maxFeePerGas && transactionConfig.maxPriorityFeePerGas) {
-      if (waitForMine)
-        receipt = await transaction.send({
-          ...transactionConfig,
-          maxFeePerGas: parseInt(transactionConfig.maxFeePerGas.toString()) * 2,
-          type: "0x2",
-        } as SendOptions);
-      else {
-        return new Promise((resolve) => {
-          web3.eth
-            .sendTransaction({
-              to: (transaction as any)._parent._address,
-              ...transactionConfig,
-              type: "0x2",
-              data: transaction.encodeABI(),
-            } as any)
-            .on("transactionHash", (hash) => {
-              resolve({ receipt: { transactionHash: hash } as any, transactionConfig, returnValue: null as any });
-            });
-        });
-      }
+      receipt = await transaction.send({
+        ...transactionConfig,
+        maxFeePerGas: parseInt(transactionConfig.maxFeePerGas.toString()) * 2,
+        type: "0x2",
+      } as SendOptions);
 
       // Else this is a legacy tx.
     } else if (transactionConfig.gasPrice) {
@@ -214,23 +195,40 @@ export const blockUntilBlockMined = async (web3: Web3, blockerBlockNumber: numbe
     await new Promise((r) => setTimeout(r, delay));
   }
 };
+
+/**
+ * @notice Finds block closest to target timestamp. User can configure search based on error tolerance.
+ * @param web3 Web3 network to search blocks on.
+ * @param targetTimestamp Timestamp that we are finding a block for.
+ * @param higherLimitMax Returned block must have timestamp less than targetTimestamp + higherLimitMax. Increasing this
+ * increases error and reduces time to compute.
+ * @param lowerLimitMax Returned block must have timestamp more than targetTimestamp - lowerLimitMax. Increasing this
+ * increases error and reduces time to compute.
+ * @param blockDelta Amount of blocks to hop when binary searching for block. Increasing this increases error
+ * but significantly reduces time to compute.
+ * @param averageBlockTime Decreasing average block size will decrease precision and also decrease the amount of
+ * requests made in order to find the closest block. Increasing this reduces time to compute but increases requests.
+ * @returns {number, number} Block height and difference between block timestamp and target timestamp
+ */
 export async function findBlockNumberAtTimestamp(
   web3: Web3,
   targetTimestamp: number,
   higherLimitMax = 15,
-  lowerLimitMax = 15
+  lowerLimitMax = 15,
+  blockDelta = 1,
+  averageBlockTime = 13
 ): Promise<{ blockNumber: number; error: number }> {
   const higherLimitStamp = targetTimestamp + higherLimitMax;
   const lowerLimitStamp = targetTimestamp - lowerLimitMax;
-  // Decreasing average block size will decrease precision and also decrease the amount of requests made in order to
-  // find the closest block.
-  const averageBlockTime = 13;
 
   // get current block number
   const currentBlockNumber = await web3.eth.getBlockNumber();
   let block = await web3.eth.getBlock(currentBlockNumber);
   let blockNumber = currentBlockNumber;
 
+  // if current block timestamp > target timestamp, set block to approximate height using `averageBlockTime`, and
+  // repeat until we find a block below the target time. This loop should usually only run once, unless the
+  // `averageBlockTime` is set too high.
   while (block.timestamp > targetTimestamp) {
     const decreaseBlocks = Math.floor((parseInt(block.timestamp.toString()) - targetTimestamp) / averageBlockTime);
 
@@ -242,7 +240,7 @@ export async function findBlockNumberAtTimestamp(
 
   if (lowerLimitStamp && block.timestamp < lowerLimitStamp) {
     while (block.timestamp < lowerLimitStamp) {
-      blockNumber += 1;
+      blockNumber += blockDelta;
       block = await web3.eth.getBlock(blockNumber);
     }
   }

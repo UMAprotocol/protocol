@@ -43,6 +43,7 @@ let pricefeed;
 let l1Client;
 let l2Client;
 let spy;
+let spyLogger;
 
 let finder,
   store,
@@ -249,7 +250,7 @@ describe("InsuredBridgePriceFeed", function () {
     // The InsuredBridgePriceFeed does not emit any info `level` events.  Therefore no need to test Winston outputs.
     // DummyLogger will not print anything to console as only capture `info` level events.
     spy = sinon.spy();
-    const spyLogger = winston.createLogger({
+    spyLogger = winston.createLogger({
       level: "info",
       transports: [new SpyTransport({ level: "debug" }, { spy: spy })],
     });
@@ -315,21 +316,29 @@ describe("InsuredBridgePriceFeed", function () {
         depositTimestamp
       ));
 
-      // Relay the deposit to trigger a price request.
+      // Before relay is submitted on-chain, pricefeed returns 0:
+      await pricefeed.update();
+      assert.equal((await pricefeed.getHistoricalPrice(1, relayAncillaryData)).toString(), "0");
+
+      // Relay the deposit.
       const totalRelayBond = toBN(relayAmount).mul(toBN(defaultProposerBondPct));
       await l1Token.methods.mint(relayer, totalRelayBond).send({ from: owner });
       await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: relayer });
-
       await bridgePool.methods.relayDeposit(...generateRelayParams({ quoteTimestamp })).send({ from: relayer });
 
       // Update pricefeed and get price for relay request. Note that relay time doesn't actually matter for the
       // getHistoricalPrice method.
-
       await pricefeed.update();
+      assert.equal((await pricefeed.getHistoricalPrice(1, relayAncillaryData)).toString(), toWei("1"));
 
-      const price = await pricefeed.getHistoricalPrice(1, relayAncillaryData);
+      // If pricefeed uses an L2 client for a different network, then it will return 0.
+      const otherL2Client = new InsuredBridgeL2Client(spyLogger, web3, ZERO_ADDRESS);
 
-      assert.equal(price.toString(), toWei("1"));
+      // Recreate the pricefeed with new l2 client:
+      pricefeed = new InsuredBridgePriceFeed({ logger: spyLogger, l1Client, l2Client: otherL2Client });
+      await pricefeed.update();
+      assert.equal((await pricefeed.getHistoricalPrice(1, relayAncillaryData)).toString(), "0");
+      assert.isTrue(lastSpyLogIncludes(spy, "No deposit event found matching relay"));
     });
     it("Pricefeed returns 0 if incorrect ancillary data or relay time is passed into getPrice method", async function () {
       // Deposit some tokens.
@@ -497,6 +506,44 @@ describe("InsuredBridgePriceFeed", function () {
       const price = await pricefeed.getHistoricalPrice(1, modifiedRelayAncillaryData);
       assert.equal(price, toWei("0"));
       assert.isTrue(lastSpyLogIncludes(spy, "Matched deposit realized fee % is incorrect"));
+    });
+    it("Pricefeed returns 0 if quote time > relay.block time", async function () {
+      // Deposit some tokens.
+
+      await l2Token.methods.mint(depositor, toWei("200")).send({ from: owner });
+
+      await l2Token.methods.approve(depositBox.options.address, toWei("200")).send({ from: depositor });
+
+      // Setting quote time after the latest block time will cause pricefeed to return 0.
+      const depositTimestamp = Number(await bridgePool.methods.getCurrentTime().call());
+      const quoteTimestamp = Number((await web3.eth.getBlock("latest")).timestamp) + 60;
+
+      await depositBox.methods
+        .deposit(
+          l1Recipient,
+          l2Token.options.address,
+          relayAmount,
+          defaultSlowRelayFeePct,
+          defaultInstantRelayFeePct,
+          quoteTimestamp
+        )
+        .send({ from: depositor }),
+        ({ depositData, relayAncillaryData, relayData } = await generateRelayData(
+          bridgePool,
+          quoteTimestamp,
+          depositTimestamp
+        ));
+
+      // Relay the deposit.
+      const totalRelayBond = toBN(relayAmount).mul(toBN(defaultProposerBondPct));
+      await l1Token.methods.mint(relayer, totalRelayBond).send({ from: owner });
+      await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: relayer });
+      await bridgePool.methods.relayDeposit(...generateRelayParams({ quoteTimestamp })).send({ from: relayer });
+
+      // Update pricefeed and get price for relay request. Note that relay time doesn't actually matter for the
+      // getHistoricalPrice method.
+      await pricefeed.update();
+      assert.equal((await pricefeed.getHistoricalPrice(1, relayAncillaryData)).toString(), toWei("0"));
     });
   });
 });

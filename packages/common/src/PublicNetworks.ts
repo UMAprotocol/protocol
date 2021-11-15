@@ -70,6 +70,10 @@ export const PublicNetworks: PublicNetworksType = {
     etherscan: "https://mumbai.polygonscan.com/",
     customTruffleConfig: { confirmations: 2, timeoutBlocks: 200 },
   },
+  42161: {
+    name: "arbitrum",
+    etherscan: "https://arbiscan.io/",
+  },
   421611: {
     name: "arbitrum-rinkeby",
     etherscan: "https://testnet.arbiscan.io/",

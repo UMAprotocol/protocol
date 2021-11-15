@@ -131,7 +131,7 @@ describe("LPPriceFeed.js", function () {
   });
 
   it("BlockFinder correctly passed in", async function () {
-    const blockFinder = BlockFinder(() => {
+    const blockFinder = new BlockFinder(() => {
       throw "err";
     }); // BlockFinder should throw immediately.
 

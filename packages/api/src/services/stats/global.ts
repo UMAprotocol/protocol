@@ -14,7 +14,7 @@ type Dependencies = Pick<
 >;
 
 // this service is meant to calculate numbers derived from lsp state, things like TVL, TVM and other things
-export default (config: Config, appState: Dependencies) => {
+export function Global(config: Config, appState: Dependencies) {
   const { currency = "usd" } = config;
   const queries = [Queries.Emp(appState), Queries.Lsp(appState)];
   const stats = appState.stats.global;
@@ -56,4 +56,6 @@ export default (config: Config, appState: Dependencies) => {
   return {
     update,
   };
-};
+}
+
+export type Global = ReturnType<typeof Global>;

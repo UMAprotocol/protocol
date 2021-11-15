@@ -4,6 +4,8 @@ pragma solidity ^0.8.0;
 import "../BridgeDepositBox.sol";
 
 contract BridgeDepositBoxMock is BridgeDepositBox {
+    using SafeERC20 for IERC20;
+
     // Address of the L1 contract that acts as the owner of this Bridge deposit box.
     address public bridgeAdmin;
 
@@ -65,7 +67,7 @@ contract BridgeDepositBoxMock is BridgeDepositBox {
     }
 
     /**
-     * @notice L1 owner can enable/disable deposits for a whitelisted tokens.
+     * @notice L1 owner can enable/disable deposits for a whitelisted token.
      * @dev Only callable by the existing bridgeAdmin via the optimism cross domain messenger.
      * @param _l2Token address of L2 token to enable/disable deposits for.
      * @param _depositsEnabled bool to set if the deposit box should accept/reject deposits.
@@ -86,7 +88,7 @@ contract BridgeDepositBoxMock is BridgeDepositBox {
      * @param l2Token L2 token to relay over the canonical bridge.
      * @param l1Gas Unused by optimism, but included for potential forward compatibility considerations.
      */
-    function bridgeTokens(address l2Token, uint32 l1Gas) public nonReentrant() {
+    function bridgeTokens(address l2Token, uint32 l1Gas) public override nonReentrant() {
         uint256 bridgeDepositBoxBalance = TokenLike(l2Token).balanceOf(address(this));
         require(bridgeDepositBoxBalance > 0, "can't bridge zero tokens");
         require(canBridge(l2Token), "non-whitelisted token or last bridge too recent");
@@ -94,12 +96,7 @@ contract BridgeDepositBoxMock is BridgeDepositBox {
         whitelistedTokens[l2Token].lastBridgeTime = uint64(getCurrentTime());
 
         // Note in this test contract we simply send the l2 tokens to the l1BridgePool.
-        TokenHelper.safeTransferFrom(
-            l2Token,
-            address(this),
-            whitelistedTokens[l2Token].l1BridgePool,
-            bridgeDepositBoxBalance
-        );
+        IERC20(l2Token).safeTransfer(whitelistedTokens[l2Token].l1BridgePool, bridgeDepositBoxBalance);
 
         emit TokensBridged(l2Token, bridgeDepositBoxBalance, l1Gas, msg.sender);
     }

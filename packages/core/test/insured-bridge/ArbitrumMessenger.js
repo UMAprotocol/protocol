@@ -1,5 +1,5 @@
 const hre = require("hardhat");
-const { web3 } = hre;
+const { web3, assertEventEmitted } = hre;
 const { runDefaultFixture, ZERO_ADDRESS, didContractThrow, interfaceName } = require("@uma/common");
 const { getContract } = hre;
 const { utf8ToHex, toWei } = web3.utils;
@@ -82,7 +82,7 @@ describe("ArbitrumMessenger integration with BridgeAdmin", () => {
       .send({ from: owner });
   });
   beforeEach(async function () {
-    l1InboxMock = await deployContractMock("AVM_InboxMock", {}, Arbitrum_InboxMock);
+    l1InboxMock = await deployContractMock("Arbitrum_InboxMock", {}, Arbitrum_InboxMock);
 
     arbitrumMessenger = await Arbitrum_Messenger.new(l1InboxMock.options.address).send({ from: owner });
 
@@ -130,7 +130,24 @@ describe("ArbitrumMessenger integration with BridgeAdmin", () => {
 
     // Must set msg.value = defaultL1CallValue
     assert(await didContractThrow(relayMessageTxn.send({ from: owner, value: 0 })));
-    assert.ok(await relayMessageTxn.send({ from: owner, value: defaultL1CallValue }));
+    const tx = await relayMessageTxn.send({ from: owner, value: defaultL1CallValue });
+
+    console.log(tx);
+    // Events
+    await assertEventEmitted(tx, arbitrumMessenger, "RelayedMessage", (ev) => {
+      console.log(ev);
+      return (
+        ev.from === owner &&
+        ev.to === depositBox.options.address &&
+        ev.seqNum === "0" &&
+        ev.userToRefund === owner &&
+        ev.l1CallValue === defaultL1CallValue.toString() &&
+        ev.gasLimit === defaultGasLimit.toString() &&
+        ev.gasPrice === defaultGasPrice &&
+        ev.maxSubmissionCost === maxSubmissionCost.toString() &&
+        ev.data === null
+      );
+    });
   });
   describe("Cross domain Admin functions", () => {
     beforeEach(async function () {

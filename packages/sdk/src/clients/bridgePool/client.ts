@@ -1,13 +1,17 @@
-import { BridgePoolEthers, BridgePoolEthers__factory } from "@uma/contracts-node";
-import type { SignerOrProvider, GetEventType } from "../..";
-import { Event, BigNumber } from "ethers";
+import { BridgePoolEthers, BridgePoolEthers__factory, BridgePoolInterfaceEthers } from "@uma/contracts-node";
+import type { SignerOrProvider, GetEventType, SerializableEvent } from "../..";
+import { BigNumber } from "ethers";
 import { Balances } from "../../utils";
 
 export type Instance = BridgePoolEthers;
-const Factory = BridgePoolEthers__factory;
+export const Factory = BridgePoolEthers__factory;
+export type Interface = BridgePoolInterfaceEthers;
 
 export function connect(address: string, provider: SignerOrProvider): Instance {
   return Factory.connect(address, provider);
+}
+export function attach(address: string): Instance {
+  return new Factory().attach(address);
 }
 
 export type LiquidityAdded = GetEventType<Instance, "LiquidityAdded">;
@@ -58,7 +62,7 @@ export function eventStateDefaults() {
   };
 }
 
-export function reduceEvents(state: EventState, event: Event): EventState {
+export function reduceEvents(state: EventState, event: SerializableEvent): EventState {
   switch (event.event) {
     // event LiquidityAdded(address indexed token, uint256 amount, uint256 lpTokensMinted, address liquidityProvider);
     case "LiquidityAdded": {
@@ -158,6 +162,6 @@ export function reduceEvents(state: EventState, event: Event): EventState {
   }
   return state;
 }
-export function getEventState(events: Event[], eventState: EventState = eventStateDefaults()): EventState {
+export function getEventState(events: SerializableEvent[], eventState: EventState = eventStateDefaults()): EventState {
   return events.reduce(reduceEvents, eventState);
 }

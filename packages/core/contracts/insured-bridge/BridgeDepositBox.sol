@@ -4,23 +4,8 @@ pragma solidity ^0.8.0;
 import "../common/implementation/Testable.sol";
 import "../common/implementation/Lockable.sol";
 
-// Define some interfaces and helper libraries. This is temporary until we can bump the solidity version in these
-// contracts to 0.8.x and import the rest of these libs from other UMA contracts in the repo.
-library TokenHelper {
-    function safeTransferFrom(
-        address token,
-        address from,
-        address to,
-        uint256 value
-    ) internal {
-        // bytes4(keccak256(bytes('transferFrom(address,address,uint256)')));
-        (bool success, bytes memory data) = token.call(abi.encodeWithSelector(0x23b872dd, from, to, value));
-        require(
-            success && (data.length == 0 || abi.decode(data, (bool))),
-            "TokenHelper::transferFrom: transferFrom failed"
-        );
-    }
-}
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 interface TokenLike {
     function balanceOf(address guy) external returns (uint256 wad);
@@ -36,6 +21,7 @@ interface WETH9Like {
  */
 
 abstract contract BridgeDepositBox is Testable, Lockable {
+    using SafeERC20 for IERC20;
     /*************************************
      *  OVM DEPOSIT BOX DATA STRUCTURES  *
      *************************************/
@@ -82,7 +68,7 @@ abstract contract BridgeDepositBox is Testable, Lockable {
         uint64 instantRelayFeePct,
         uint64 quoteTimestamp
     );
-    event TokensBridged(address l2Token, uint256 numberOfTokensBridged, uint256 l1Gas, address caller);
+    event TokensBridged(address indexed l2Token, uint256 numberOfTokensBridged, uint256 l1Gas, address indexed caller);
 
     /****************************************
      *               MODIFIERS              *
@@ -95,8 +81,9 @@ abstract contract BridgeDepositBox is Testable, Lockable {
 
     /**
      * @notice Construct the Bridge Deposit Box
-     * @param _minimumBridgingDelay Minimum second that must elapse between L2 -> L1 token transfer to prevent dos.
+     * @param _minimumBridgingDelay Minimum seconds that must elapse between L2 -> L1 token transfer to prevent dos.
      * @param _chainId Chain identifier for the Bridge deposit box.
+     * @param _l1Weth Address of Weth on L1. Used to inform if the deposit should wrap ETH to WETH, if deposit is ETH.
      * @param timerAddress Timer used to synchronize contract time in testing. Set to 0x000... in production.
      */
     constructor(
@@ -145,7 +132,7 @@ abstract contract BridgeDepositBox is Testable, Lockable {
     }
 
     /**
-     * @notice L1 owner can enable/disable deposits for a whitelisted tokens.
+     * @notice L1 owner can enable/disable deposits for a whitelisted token.
      * @param l2Token address of L2 token to enable/disable deposits for.
      * @param depositsEnabled bool to set if the deposit box should accept/reject deposits.
      */
@@ -153,6 +140,8 @@ abstract contract BridgeDepositBox is Testable, Lockable {
         whitelistedTokens[l2Token].depositsEnabled = depositsEnabled;
         emit DepositsEnabled(l2Token, depositsEnabled);
     }
+
+    function bridgeTokens(address l2Token, uint32 l2Gas) public virtual;
 
     /**************************************
      *         DEPOSITOR FUNCTIONS        *
@@ -166,7 +155,7 @@ abstract contract BridgeDepositBox is Testable, Lockable {
      * @param l2Token L2 token to deposit.
      * @param amount How many L2 tokens should be deposited.
      * @param slowRelayFeePct Max fraction of `amount` that the depositor is willing to pay as a slow relay fee.
-     * @param instantRelayFeePct Fraction of `amount` that the depositor is willing to pay as a instant relay fee.
+     * @param instantRelayFeePct Fraction of `amount` that the depositor is willing to pay as an instant relay fee.
      * @param quoteTimestamp Timestamp, at which the depositor will be quoted for L1 liquidity. This enables the
      *    depositor to know the L1 fees before submitting their deposit. Must be within 10 mins of the current time.
      */
@@ -203,7 +192,7 @@ abstract contract BridgeDepositBox is Testable, Lockable {
         // Else, it is a normal ERC20. In this case pull the token from the users wallet as per normal.
         // Note: this includes the case where the L2 user has WETH (already wrapped ETH) and wants to bridge them. In
         // this case the msg.value will be set to 0, indicating a "normal" ERC20 bridging action.
-        else TokenHelper.safeTransferFrom(l2Token, msg.sender, address(this), amount);
+        else IERC20(l2Token).safeTransferFrom(msg.sender, address(this), amount);
 
         emit FundsDeposited(
             chainId,

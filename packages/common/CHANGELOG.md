@@ -3,6 +3,35 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.13.1](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.13.0...@uma/common@2.13.1) (2021-11-09)
+
+### Bug Fixes
+
+- add required common deps ([#3582](https://github.com/UMAprotocol/protocol/issues/3582)) ([f973cab](https://github.com/UMAprotocol/protocol/commit/f973cab63ee494aae94531adc6123711730ebdf0))
+
+# [2.13.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.12.2...@uma/common@2.13.0) (2021-11-05)
+
+### Bug Fixes
+
+- **insured-bridge-relayer:** Key deployTimestamps by lowercase addresses ([#3557](https://github.com/UMAprotocol/protocol/issues/3557)) ([fc14de5](https://github.com/UMAprotocol/protocol/commit/fc14de5abedc72c4890e9f354463438c1d2f3164))
+
+### Features
+
+- **across-relayer:** Enable batch relays via multicall and improve log production ([#3559](https://github.com/UMAprotocol/protocol/issues/3559)) ([f1cfecc](https://github.com/UMAprotocol/protocol/commit/f1cfecc3d085d5be86a4557682b0ae931cbb24b5))
+- **core:** add new deployment addresses for across and update script ([#3556](https://github.com/UMAprotocol/protocol/issues/3556)) ([2348eaf](https://github.com/UMAprotocol/protocol/commit/2348eaf669054f722b0d6909569ffa3db88d5155))
+
+## [2.12.2](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.12.1...@uma/common@2.12.2) (2021-11-02)
+
+### Bug Fixes
+
+- **BridgeAdmin:** Fix typographical in contracts ([#3540](https://github.com/UMAprotocol/protocol/issues/3540)) ([e70a342](https://github.com/UMAprotocol/protocol/commit/e70a34282a0a6a3f92ffe1e88d4ea96fa4f3f54c))
+
+## [2.12.1](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.12.0...@uma/common@2.12.1) (2021-10-29)
+
+### Bug Fixes
+
+- **GasEstimator:** protocol upgrade for EIP1559 ([#3306](https://github.com/UMAprotocol/protocol/issues/3306)) ([8245391](https://github.com/UMAprotocol/protocol/commit/8245391ee07dca37be3c52a9a9ba47ed4d63f6f7))
+
 # [2.12.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.11.0...@uma/common@2.12.0) (2021-10-27)
 
 ### Features
