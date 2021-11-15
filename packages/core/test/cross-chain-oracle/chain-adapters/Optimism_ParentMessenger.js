@@ -13,10 +13,15 @@ const Optimism_ParentMessenger = getContract("Optimism_ParentMessenger");
 
 // Other helper contracts
 const OVM_L1CrossDomainMessengerMock = getContract("OVM_L1CrossDomainMessengerMock");
-const OracleHubMock = getContract("OracleHubMock");
-const GovernorHubMock = getContract("GovernorHubMock");
+const OracleHub = getContract("OracleHub");
+const GovernorHub = getContract("GovernorHub");
 const ChildMessengerInterface = getContract("ChildMessengerInterface");
 const Finder = getContract("Finder");
+const Store = getContract("Store");
+const IdentifierWhitelist = getContract("IdentifierWhitelist");
+const MockOracle = getContract("MockOracleAncillary");
+const Timer = getContract("Timer");
+const ExpandedERC20 = getContract("ExpandedERC20");
 
 // Create some random accounts to to mimic key cross-chain oracle addresses.
 const childMessengerAddress = web3.utils.toChecksumAddress(web3.utils.randomHex(20));
@@ -27,9 +32,21 @@ const l2FinderAddress = web3.utils.toChecksumAddress(web3.utils.randomHex(20));
 const chainId = 42069;
 const priceIdentifier = padRight(utf8ToHex("TEST_IDENTIFIER"), 64);
 const ancillaryData = utf8ToHex("some-address-field:0x1234");
+const bond = toWei("1");
+const defaultTimestamp = 100;
 
 describe("Optimism_ParentMessenger", function () {
-  let optimism_ParentMessenger, l1Owner, controlledEOA, rando, oracleHub, governorHub, l1CrossDomainMessengerMock;
+  let optimism_ParentMessenger,
+    oracleHub,
+    governorHub,
+    l1CrossDomainMessengerMock,
+    bondToken,
+    identifierWhitelist,
+    store,
+    mockOracle,
+    finder,
+    timer;
+  let l1Owner, controlledEOA, rando;
 
   beforeEach(async () => {
     const accounts = await hre.web3.eth.getAccounts();
@@ -51,11 +68,35 @@ describe("Optimism_ParentMessenger", function () {
       chainId
     ).send({ from: l1Owner });
 
-    oracleHub = await OracleHubMock.new().send({ from: l1Owner });
-    await oracleHub.methods.setMessenger(optimism_ParentMessenger.options.address).send({ from: l1Owner });
+    // Deploy UMA contracts to enable the OracleHub to pull prices from.
+    timer = await Timer.new().send({ from: l1Owner });
+    finder = await Finder.new().send({ from: l1Owner });
+    store = await Store.new({ rawValue: "0" }, { rawValue: "0" }, timer.options.address).send({ from: l1Owner });
+    identifierWhitelist = await IdentifierWhitelist.new().send({ from: l1Owner });
+    bondToken = await ExpandedERC20.new("BOND", "BOND", 18).send({ from: l1Owner });
+    await identifierWhitelist.methods.addSupportedIdentifier(priceIdentifier).send({ from: l1Owner });
 
-    governorHub = await GovernorHubMock.new().send({ from: l1Owner });
-    await governorHub.methods.setMessenger(optimism_ParentMessenger.options.address).send({ from: l1Owner });
+    await store.methods.setFinalFee(bondToken.options.address, { rawValue: bond }).send({ from: l1Owner });
+    mockOracle = await MockOracle.new(finder.options.address, timer.options.address).send({ from: l1Owner });
+
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.IdentifierWhitelist), identifierWhitelist.options.address)
+      .send({ from: l1Owner });
+
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.Store), mockOracle.options.address)
+      .send({ from: l1Owner });
+
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.Oracle), mockOracle.options.address)
+      .send({ from: l1Owner });
+
+    // deploy the oracleHub. Set the token used for bonding to the zero address as this is not tested here.
+    oracleHub = await OracleHub.new(finder.options.address, ZERO_ADDRESS).send({ from: l1Owner });
+    await oracleHub.methods.setMessenger(chainId, optimism_ParentMessenger.options.address).send({ from: l1Owner });
+
+    governorHub = await GovernorHub.new().send({ from: l1Owner });
+    await governorHub.methods.setMessenger(chainId, optimism_ParentMessenger.options.address).send({ from: l1Owner });
 
     await optimism_ParentMessenger.methods.setChildMessenger(childMessengerAddress).send({ from: l1Owner });
     await optimism_ParentMessenger.methods.setOracleHub(oracleHub.options.address).send({ from: l1Owner });
@@ -81,10 +122,11 @@ describe("Optimism_ParentMessenger", function () {
       // L1 and L2.
       const pushedPrice = toWei("1234");
       const priceTime = 1234;
-      await oracleHub.methods.setPrice(pushedPrice).send({ from: l1Owner });
-      await await oracleHub.methods
-        .publishPrice(chainId, priceIdentifier, priceTime, ancillaryData)
+      await mockOracle.methods.requestPrice(priceIdentifier, priceTime, ancillaryData).send({ from: l1Owner });
+      await mockOracle.methods
+        .pushPrice(priceIdentifier, priceTime, ancillaryData, pushedPrice)
         .send({ from: l1Owner });
+      await oracleHub.methods.publishPrice(chainId, priceIdentifier, priceTime, ancillaryData).send({ from: l1Owner });
 
       // Validate that the l1CrossDomainMessengerMock received the expected cross-domain message, destine for the child.
       const publishPriceMessage = l1CrossDomainMessengerMock.smocked.sendMessage.calls;
@@ -92,67 +134,13 @@ describe("Optimism_ParentMessenger", function () {
       assert.equal(publishPriceMessage.length, 1); // there should be only one call to sendMessage.
       assert.equal(publishPriceMessage[0]._target, childMessengerAddress); // Target should be the child messenger.
 
-      // Grab the data emitted from the mock Oracle hub. This contains the dataSentToChild.
-      const emittedData = await oracleHub.getPastEvents("PricePublished", { fromBlock: 0, toBlock: "latest" });
-      const targetDataSentFromOracleHub = emittedData[0].returnValues.dataSentToChild;
-
-      // Generate the target message data that should have been forwarded to the Child messenger interface from the
-      // Optimism Parent messenger within the sendMessageToChild function call.
-      const childMessengerInterface = await ChildMessengerInterface.at(ZERO_ADDRESS);
-      const expectedMessageFromEvent = await childMessengerInterface.methods
-        .processMessageFromParent(targetDataSentFromOracleHub, oracleSpokeAddress) // note the oracleSpokeAddress for the target in the message
-        .encodeABI();
-
-      assert.equal(publishPriceMessage[0]._message, expectedMessageFromEvent);
-
-      // Equally, we should be able to re-construct this same data without fetching events from the mock.
+      // We should be able to re-construct the encoded data, which should match what was sent from the messenger.
       const encodedData = web3.eth.abi.encodeParameters(
         ["bytes32", "uint256", "bytes", "int256"],
         [priceIdentifier, priceTime, ancillaryData, pushedPrice]
       );
+      const childMessengerInterface = await ChildMessengerInterface.at(ZERO_ADDRESS);
       const expectedMessageFromManualEncoding = await await childMessengerInterface.methods
-        .processMessageFromParent(encodedData, oracleSpokeAddress)
-        .encodeABI();
-      assert.equal(publishPriceMessage[0]._message, expectedMessageFromManualEncoding);
-    });
-
-    it("Can correctly send messages to L2 child from Oracle Hub", async () => {
-      // The oracle hub is used to push prices to the oracle Spoke. We can create a fake price, set it in the mock
-      // oracle hub and then try send it to the oracle spoke via the publish price method. To validate the correctness
-      // of this action we can check what data is sent to the l1CrossDomainMessengerMock, which passes messages between
-      // L1 and L2.
-      const pushedPrice = toWei("1234");
-      const priceTime = 1234;
-      await oracleHub.methods.setPrice(pushedPrice).send({ from: l1Owner });
-      await await oracleHub.methods
-        .publishPrice(chainId, priceIdentifier, priceTime, ancillaryData)
-        .send({ from: l1Owner });
-
-      // Validate that the l1CrossDomainMessengerMock received the expected cross-domain message, destine for the child.
-      const publishPriceMessage = l1CrossDomainMessengerMock.smocked.sendMessage.calls;
-
-      assert.equal(publishPriceMessage.length, 1); // there should be only one call to sendMessage.
-      assert.equal(publishPriceMessage[0]._target, childMessengerAddress); // Target should be the child messenger.
-
-      // Grab the data emitted from the mock Oracle hub. This contains the dataSentToChild.
-      const emittedData = await oracleHub.getPastEvents("PricePublished", { fromBlock: 0, toBlock: "latest" });
-      const targetDataSentFromOracleHub = emittedData[0].returnValues.dataSentToChild;
-
-      // Generate the target message data that should have been forwarded to the Child messenger interface from the
-      // Optimism Parent messenger within the sendMessageToChild function call.
-      const childMessengerInterface = await ChildMessengerInterface.at(ZERO_ADDRESS);
-      const expectedMessageFromEvent = await childMessengerInterface.methods
-        .processMessageFromParent(targetDataSentFromOracleHub, oracleSpokeAddress) // note the oracleSpokeAddress for the target in the message
-        .encodeABI();
-
-      assert.equal(publishPriceMessage[0]._message, expectedMessageFromEvent);
-
-      // Equally, we should be able to re-construct this same data without fetching events from the mock.
-      const encodedData = web3.eth.abi.encodeParameters(
-        ["bytes32", "uint256", "bytes", "int256"],
-        [priceIdentifier, priceTime, ancillaryData, pushedPrice]
-      );
-      const expectedMessageFromManualEncoding = await childMessengerInterface.methods
         .processMessageFromParent(encodedData, oracleSpokeAddress)
         .encodeABI();
       assert.equal(publishPriceMessage[0]._message, expectedMessageFromManualEncoding);
@@ -193,7 +181,7 @@ describe("Optimism_ParentMessenger", function () {
 
       assert.equal(publishPriceMessage[0]._message, expectedMessageFromEvent);
 
-      // Equally, we should be able to re-construct this same data without fetching events from the mock.
+      // Re-construct the data that the Governor hub should have sent to the child.the mock.
       const encodedData = web3.eth.abi.encodeParameters(
         ["address", "bytes"],
         [l2FinderAddress, sampleGovernanceAction]
@@ -206,7 +194,10 @@ describe("Optimism_ParentMessenger", function () {
   });
   describe("Receiving messages from child on L2", () => {
     it("Only callable from oracle spoke via cross domain message", async () => {
-      const sentData = "0x1234";
+      const sentData = web3.eth.abi.encodeParameters(
+        ["bytes32", "uint256", "bytes"],
+        [priceIdentifier, defaultTimestamp, ancillaryData]
+      );
       const messageFromChildTx = optimism_ParentMessenger.methods.processMessageFromChild(sentData);
 
       // Calling from some EOA on L1 should fail.
@@ -221,8 +212,8 @@ describe("Optimism_ParentMessenger", function () {
       const tx = await messageFromChildTx.send({ from: l1CrossDomainMessengerMock.options.address });
 
       // Validate that the tx contains the correct message sent from L2.
-      await assertEventEmitted(tx, oracleHub, "MessageProcessed", (ev) => {
-        return ev.chainId == chainId && ev.data == sentData;
+      await assertEventEmitted(tx, mockOracle, "PriceRequestAdded", (ev) => {
+        return ev.identifier == priceIdentifier && ev.time == defaultTimestamp && ev.ancillaryData == ancillaryData;
       });
     });
   });

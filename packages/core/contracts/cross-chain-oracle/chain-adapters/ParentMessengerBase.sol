@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract ParentMessengerBase is Ownable {
-    uint256 public chainId;
+    uint256 public childChainId;
 
     address public childMessenger;
 
@@ -16,17 +16,17 @@ contract ParentMessengerBase is Ownable {
 
     uint32 public defaultGasLimit = 5_000_000;
 
-    modifier onlyPrivilegedCaller() {
+    modifier onlyHubContract() {
         require(msg.sender == oracleHub || msg.sender == governorHub, "Only privileged caller");
         _;
     }
 
     /**
      * @notice Construct the ParentMessengerBase contract.
-     * @param _chainId The chain id of the L2 network this messenger should connect to.
+     * @param _childChainId The chain id of the L2 network this messenger should connect to.
      **/
-    constructor(uint256 _chainId) {
-        chainId = _chainId;
+    constructor(uint256 _childChainId) {
+        childChainId = _childChainId;
     }
 
     /*******************

@@ -30,7 +30,7 @@ describe("ParentMessengerBase", function () {
   });
   describe("Admin controls", () => {
     it("Constructs correctly", async () => {
-      assert.equal(await parentMessenger.methods.chainId().call(), chainId);
+      assert.equal(await parentMessenger.methods.childChainId().call(), chainId);
     });
     it("Can change addresses of key admin addresses", async () => {
       assert.equal(await parentMessenger.methods.childMessenger().call(), ZERO_ADDRESS);

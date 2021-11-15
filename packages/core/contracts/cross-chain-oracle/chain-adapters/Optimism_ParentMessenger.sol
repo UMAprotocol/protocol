@@ -15,11 +15,11 @@ contract Optimism_ParentMessenger is OVM_CrossDomainEnabled, ParentMessengerInte
     /**
      * @notice Construct the Optimism_ParentMessenger contract.
      * @param _crossDomainMessenger The address of the Optimism cross domain messenger contract.
-     * @param _chainId The chain id of the Optimism L2 network this messenger should connect to.
+     * @param _childChainId The chain id of the Optimism L2 network this messenger should connect to.
      **/
-    constructor(address _crossDomainMessenger, uint256 _chainId)
+    constructor(address _crossDomainMessenger, uint256 _childChainId)
         OVM_CrossDomainEnabled(_crossDomainMessenger)
-        ParentMessengerBase(_chainId)
+        ParentMessengerBase(_childChainId)
     {}
 
     /**
@@ -39,7 +39,7 @@ contract Optimism_ParentMessenger is OVM_CrossDomainEnabled, ParentMessengerInte
      * which then forwards the data to the target either the OracleSpoke or the governorSpoke depending on the caller.
      * @param data data message sent to the L2 messenger. Should be an encoded function call or packed data.
      */
-    function sendMessageToChild(bytes memory data) public override onlyPrivilegedCaller() {
+    function sendMessageToChild(bytes memory data) public override onlyHubContract() {
         address target = msg.sender == oracleHub ? oracleSpoke : governorSpoke;
 
         sendCrossDomainMessage(
@@ -57,6 +57,6 @@ contract Optimism_ParentMessenger is OVM_CrossDomainEnabled, ParentMessengerInte
      * @param data data message sent from the L2 messenger. Should be an encoded function call or packed data.
      */
     function processMessageFromChild(bytes memory data) public override onlyFromCrossDomainAccount(childMessenger) {
-        ParentMessengerConsumerInterface(oracleHub).processMessageFromChild(chainId, data);
+        ParentMessengerConsumerInterface(oracleHub).processMessageFromChild(childChainId, data);
     }
 }
