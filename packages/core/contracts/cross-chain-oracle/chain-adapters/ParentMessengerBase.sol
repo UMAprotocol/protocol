@@ -14,11 +14,11 @@ contract ParentMessengerBase is Ownable {
     address public oracleSpoke;
     address public governorSpoke;
 
-    event ChildMessengerSet(address indexed childMessenger);
-    event OracleHubSet(address indexed oracleHub);
-    event GovernorHubSet(address indexed governorHub);
-    event OracleSpokeSet(address indexed oracleSpoke);
-    event GovernorSpokeSet(address indexed governorSpoke);
+    event SetChildMessenger(address indexed childMessenger);
+    event SetOracleHub(address indexed oracleHub);
+    event SetGovernorHub(address indexed governorHub);
+    event SetOracleSpoke(address indexed oracleSpoke);
+    event SetGovernorSpoke(address indexed governorSpoke);
 
     modifier onlyHubContract() {
         require(msg.sender == oracleHub || msg.sender == governorHub, "Only privileged caller");
@@ -44,7 +44,7 @@ contract ParentMessengerBase is Ownable {
      */
     function setChildMessenger(address newChildMessenger) public onlyOwner {
         childMessenger = newChildMessenger;
-        emit ChildMessengerSet(childMessenger);
+        emit SetChildMessenger(childMessenger);
     }
 
     /**
@@ -54,7 +54,7 @@ contract ParentMessengerBase is Ownable {
      */
     function setOracleHub(address newOracleHub) public onlyOwner {
         oracleHub = newOracleHub;
-        emit OracleHubSet(oracleHub);
+        emit SetOracleHub(oracleHub);
     }
 
     /**
@@ -64,7 +64,7 @@ contract ParentMessengerBase is Ownable {
      */
     function setGovernorHub(address newGovernorHub) public onlyOwner {
         governorHub = newGovernorHub;
-        emit GovernorHubSet(governorHub);
+        emit SetGovernorHub(governorHub);
     }
 
     /**
@@ -74,7 +74,7 @@ contract ParentMessengerBase is Ownable {
      */
     function setOracleSpoke(address newOracleSpoke) public onlyOwner {
         oracleSpoke = newOracleSpoke;
-        emit OracleSpokeSet(oracleSpoke);
+        emit SetOracleSpoke(oracleSpoke);
     }
 
     /**
@@ -84,6 +84,6 @@ contract ParentMessengerBase is Ownable {
      */
     function setGovernorSpoke(address newGovernorSpoke) public onlyOwner {
         governorSpoke = newGovernorSpoke;
-        emit GovernorSpokeSet(governorSpoke);
+        emit SetGovernorSpoke(governorSpoke);
     }
 }

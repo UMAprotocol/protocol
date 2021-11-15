@@ -12,7 +12,7 @@ import "./ParentMessengerBase.sol";
  * @dev This contract's is ownable and should be owned by the DVM governor.
  */
 contract Optimism_ParentMessenger is OVM_CrossDomainEnabled, ParentMessengerInterface, ParentMessengerBase {
-    event defaultGasLimitSet(uint32 newDefaultGasLimit);
+    event SetdefaultGasLimit(uint32 newDefaultGasLimit);
     event MessageSentToChild(bytes data, address indexed childAddress, uint32 defaultGasLimit);
     event MessageReceivedFromChild(bytes data, address indexed childAddress);
 
@@ -35,7 +35,7 @@ contract Optimism_ParentMessenger is OVM_CrossDomainEnabled, ParentMessengerInte
      */
     function setDefaultGasLimit(uint32 newDefaultGasLimit) public onlyOwner {
         defaultGasLimit = newDefaultGasLimit;
-        emit defaultGasLimitSet(newDefaultGasLimit);
+        emit SetdefaultGasLimit(newDefaultGasLimit);
     }
 
     /**
