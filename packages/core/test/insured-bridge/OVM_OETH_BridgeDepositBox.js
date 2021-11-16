@@ -19,12 +19,18 @@ const Token = getContract("ExpandedERC20");
 const Timer = getContract("Timer");
 
 // Contract objects
-let depositBox, l2CrossDomainMessengerMock, l1TokenAddress, l1WethAddress, timer, l2Weth, l2Token;
+let depositBox, l2CrossDomainMessengerMock, l1TokenAddress, l1WethAddress, timer, l2Weth, l2Token, l2EthAddress;
 
 // As these tests are in the context of l2, we dont have the deployed notion of an "L1 Token". The L1 token is within
 // another domain (L1). Therefore we can generate random addresses to represent the L1 tokens.
 l1TokenAddress = web3.utils.toChecksumAddress(web3.utils.randomHex(20));
 l1WethAddress = web3.utils.toChecksumAddress(web3.utils.randomHex(20));
+
+// We don't test whether L2 ETH is sent so we'll set it to a random address and just check that `bridgeTokens` correctly
+// calls `StandardBridge.withdrawTo` with the `_l2Token` set to `l2Eth` instead of the `l2Weth` token. This happens
+// because the StandardBridge first unwraps `l2Weth --> l2Eth` before bridging it, because the OVM StandardBridge
+// cannot handle `l2Weth` at the moment.
+l2EthAddress = web3.utils.toChecksumAddress(web3.utils.randomHex(20));
 
 const minimumBridgingDelay = 60; // L2->L1 token bridging must wait at least this time.
 const depositAmount = toWei("50");
@@ -66,7 +72,7 @@ describe("OVM_OETH_BridgeDepositBox", () => {
       minimumBridgingDelay,
       chainId,
       l1WethAddress,
-      l2Weth.options.address,
+      l2EthAddress,
       wethWrapper,
       timer.options.address
     ).send({ from: deployer });
@@ -101,10 +107,7 @@ describe("OVM_OETH_BridgeDepositBox", () => {
 
       await assertEventEmitted(tx, depositBox, "TokensBridged", (ev) => {
         return (
-          ev.l2Token == l2Weth.options.address &&
-          ev.numberOfTokensBridged == depositAmount &&
-          ev.l1Gas == 0 &&
-          ev.caller == rando
+          ev.l2Token == l2EthAddress && ev.numberOfTokensBridged == depositAmount && ev.l1Gas == 0 && ev.caller == rando
         );
       });
 
@@ -113,7 +116,8 @@ describe("OVM_OETH_BridgeDepositBox", () => {
       const tokenBridgingCallsToBridge = l2StandardBridge.smocked.withdrawTo.calls;
       assert.equal(tokenBridgingCallsToBridge.length, 1); // only 1 call
       const call = tokenBridgingCallsToBridge[0];
-      assert.equal(call._l2Token, l2Weth.options.address); // right token.
+      assert.equal(call._l2Token, l2EthAddress); // Bridging WETH should unwrap the WETH and bridge l2ETH instead
+      // of the l2WETH contract, because the OVM standard bridge cannot handle WETH at the moment.
       assert.equal(call._to, wethWrapper); // Bridging WETH should set WETH wrapper as recipient, not the whitelisted
       // BridgePool contract.
       assert.equal(call._amount.toString(), depositAmount); // right amount. We deposited 50e18.

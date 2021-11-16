@@ -17,16 +17,20 @@ interface WETH9Like {
 }
 
 contract Optimism_Wrapper is Ownable {
-    WETH9Like weth;
-    address bridgePool;
+    WETH9Like public weth;
+    address public bridgePool;
+
+    event ChangedBridgePool(address indexed bridgePool);
 
     constructor(WETH9Like _weth, address _bridgePool) {
         weth = _weth;
         bridgePool = _bridgePool;
+        emit ChangedBridgePool(bridgePool);
     }
 
     function changeBridgePool(address newBridgePool) public onlyOwner {
         bridgePool = newBridgePool;
+        emit ChangedBridgePool(bridgePool);
     }
 
     receive() external payable {
