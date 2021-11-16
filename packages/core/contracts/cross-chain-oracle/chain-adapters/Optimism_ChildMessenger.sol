@@ -8,7 +8,7 @@ import "../interfaces/ChildMessengerConsumerInterface.sol";
 
 /**
  * @notice Sends cross chain messages from Optimism L2 to Ethereum L1 network.
- * @dev This contract's is ownable via the onlyCrossDomainAccount modifier, restricting ownership to the cross-domain
+ * @dev This contract is ownable via the onlyCrossDomainAccount modifier, restricting ownership to the cross-domain
  * parent messenger contract that lives on L1.
  */
 contract Optimism_ChildMessenger is OVM_CrossDomainEnabled, ChildMessengerInterface {
