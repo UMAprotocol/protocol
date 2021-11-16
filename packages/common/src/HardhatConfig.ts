@@ -86,7 +86,7 @@ export function getHardhatConfig(
       },
       matic: { chainId: 137, url: getNodeUrl("polygon-matic", true), accounts: { mnemonic } },
       mumbai: { chainId: 80001, url: getNodeUrl("polygon-mumbai", true), accounts: { mnemonic } },
-      boba: { chainId: 288, url: getNodeUrl("polygon-mumbai", true), accounts: { mnemonic } },
+      boba: { chainId: 288, url: getNodeUrl("boba", true), accounts: { mnemonic } },
     },
     mocha: { timeout: 1800000 },
     etherscan: {
