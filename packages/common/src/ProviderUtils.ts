@@ -37,6 +37,9 @@ export function getNodeUrl(networkName: string, useHttps = false): string {
   if (isPublicNetwork(networkName) && !networkName.includes("fork")) {
     const infuraApiKey = process.env.INFURA_API_KEY || "e34138b2db5b496ab5cc52319d2f0299";
     const name = networkName.split("_")[0];
+
+    // Note: boba currently has no infura support.
+    if (name === "boba") return process.env.CUSTOM_NODE_URL || "https://mainnet.boba.network/";
     return (
       process.env.CUSTOM_NODE_URL ||
       (useHttps ? `https://${name}.infura.io/v3/${infuraApiKey}` : `wss://${name}.infura.io/ws/v3/${infuraApiKey}`)
