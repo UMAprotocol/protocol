@@ -45,13 +45,13 @@ node YOUR_FILE.js --network mainnet-fork
 Start a local hardhat node:
 
 ```sh
-yarn hardhat node --no-deploy
+yarn hardhat node --no-deploy --port 9545
 ```
 
 Run the base contract deployment:
 
 ```sh
-yarn hardhat deploy --network localhost --tags dvm --port 9545
+yarn hardhat deploy --network localhost --tags dvm
 ```
 
 Run the fixture script to set up the contracts:
