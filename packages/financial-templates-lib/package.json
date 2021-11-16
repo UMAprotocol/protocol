@@ -6,6 +6,7 @@
     "@ethersproject/bignumber": "^5.4.2",
     "@google-cloud/logging-winston": "^4.0.4",
     "@google-cloud/trace-agent": "^4.2.5",
+    "@uma/sdk": "^0.12.3",
     "@uma/common": "^2.13.1",
     "@uma/contracts-node": "^0.1.11",
     "@uniswap/sdk": "^2.0.5",
