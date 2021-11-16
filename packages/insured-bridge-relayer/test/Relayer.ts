@@ -1547,11 +1547,9 @@ describe("Relayer.ts", function () {
       // Within the contract, the first dispute should be for the deposit hash extracted before for the largest deposit.
       assert.equal(disputeEvents[0].returnValues.depositHash, largestDepositDepositHash);
 
-      // There should be a total of 3 dispute logs generated.
-      assert.equal(
-        spy.getCalls().filter((_log: any) => _log.lastArg.message.includes("Disputed pending relay")).length,
-        3
-      );
+      // There should be a total of 3 dispute logs generated. within the multicall batch.
+      assert.isTrue(lastSpyLogIncludes(spy, "Multicall batch sent"));
+      assert.equal(spy.getCall(-1).lastArg.mrkdwn.match(/Disputed pending relay/g).length, 3);
     });
   });
   describe("Multiple whitelisted token mappings", function () {
