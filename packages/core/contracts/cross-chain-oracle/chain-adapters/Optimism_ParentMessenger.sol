@@ -35,7 +35,7 @@ contract Optimism_ParentMessenger is OVM_CrossDomainEnabled, ParentMessengerInte
      */
     function setDefaultGasLimit(uint32 newDefaultGasLimit) public onlyOwner {
         defaultGasLimit = newDefaultGasLimit;
-        emit SetdefaultGasLimit(newDefaultGasLimit);
+        emit SetDefaultGasLimit(newDefaultGasLimit);
     }
 
     /**
