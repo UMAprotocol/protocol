@@ -2,23 +2,37 @@ pragma solidity ^0.8.0;
 
 import "./OVM_BridgeDepositBox.sol";
 
+/**
+ * @title OVM_OETH_BridgeDepositBox
+ * @dev Modified version of OVM_BridgeDepositBox that supports Optimism ETH being sent over the canonical bridge as ETH.
+ * This is re-wrapped to WETH on L2. All other functionality remains the same.
+ */
+
 contract OVM_OETH_BridgeDepositBox is OVM_BridgeDepositBox {
-    // Stored to work around Optimism not allowing for WETH to be bridge over the canonical bridge.
-    address public l2Weth;
     address public l2Eth;
     address public l1EthWrapper;
 
+    /**
+     * @notice Construct the Optimism Bridge Deposit Box
+     * @param _crossDomainAdmin Address of the L1 contract that can call admin functions on this contract from L1.
+     * @param _minimumBridgingDelay Minimum second that must elapse between L2->L1 token transfer to prevent dos.
+     * @param _chainId L2 Chain identifier this deposit box is deployed on.
+     * @param _l1Weth Address of Weth on L1. Used to inform if the deposit should wrap ETH to WETH, if deposit is ETH.
+     * @param _l2Eth Address of ETH on L2. Used to inform the token that should be sent over the Optimism bridge.
+     * @param _l1EthWrapper Address of custom ETH wrapper on L1. Any ETH sent to this contract will be wrapped to WETH
+     *     and sent to the WETH Bridge Pool.
+     * @param _l1Weth Address of Weth on L1. Used to inform if the deposit should wrap ETH to WETH, if deposit is ETH.
+     * @param timerAddress Timer used to synchronize contract time in testing. Set to 0x000... in production.
+     */
     constructor(
         address _crossDomainAdmin,
         uint64 _minimumBridgingDelay,
         uint256 _chainId,
         address _l1Weth,
-        address _l2Weth,
         address _l2Eth,
         address _l1EthWrapper,
         address timerAddress
     ) OVM_BridgeDepositBox(_crossDomainAdmin, _minimumBridgingDelay, _chainId, _l1Weth, timerAddress) {
-        l2Weth = _l2Weth;
         l2Eth = _l2Eth;
         l1EthWrapper = _l1EthWrapper;
     }
@@ -45,7 +59,7 @@ contract OVM_OETH_BridgeDepositBox is OVM_BridgeDepositBox {
         // If the L2 token is L2WETH then, to work with the canonical optimism bridge, we first unwrap it to ETH then
         // bridge ETH over the canonical bridge. On L1 the l1EthWrapper will re-wrap the ETH to WETH and send it to
         // the WETH bridge pool.
-        if (l2Token == l2Weth) {
+        if (whitelistedTokens[l2Token].l1Token == l1Weth) {
             WETH9Like(l2Token).withdraw(bridgeDepositBoxBalance);
             l2Token = l2Eth;
             bridgePool = l1EthWrapper;
