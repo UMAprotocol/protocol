@@ -1,9 +1,9 @@
 {
   "name": "@uma/core",
-  "version": "2.15.1",
+  "version": "2.16.0",
   "description": "UMA smart contracts and unit tests",
   "dependencies": {
-    "@openzeppelin/contracts": "4.3.2",
+    "@openzeppelin/contracts": "4.3.3",
     "@uma/common": "^2.13.1",
     "@uniswap/lib": "4.0.1-alpha",
     "@uniswap/v2-core": "1.0.0",
@@ -16,7 +16,6 @@
     "@eth-optimism/contracts": "^0.4.5",
     "@eth-optimism/message-relayer": "^0.1.8",
     "@eth-optimism/smock": "^1.1.9",
-    "@eth-optimism/watcher": "^0.0.1-alpha.9",
     "@ethersproject/abi": "^5.4.0",
     "@ethersproject/abstract-provider": "^5.4.0",
     "@ethersproject/contracts": "^5.4.0",
@@ -72,7 +71,6 @@
   "sideEffects": false,
   "scripts": {
     "test": "yarn hardhat-test",
-    "test-e2e": "mocha -test ./.mocharc.js --e2e",
     "hardhat-test": "hardhat test --network hardhat",
     "mocha-test": "mocha ./mocha-test --recursive",
     "load-addresses": "yarn hardhat load-addresses",

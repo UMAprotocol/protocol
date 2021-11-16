@@ -52,6 +52,7 @@ export interface InstantRelay {
 
 export interface BridgePoolData {
   contract: BridgePoolWeb3;
+  l2Token: string;
   currentTime: number;
   relayNonce: number;
   poolCollateralDecimals: number;
@@ -62,11 +63,11 @@ export class InsuredBridgeL1Client {
   public readonly bridgeAdmin: BridgeAdminInterfaceWeb3;
   public bridgePools: { [key: string]: BridgePoolData }; // L1TokenAddress=>BridgePoolData
   public optimisticOracleLiveness = 0;
+  public firstBlockToSearch: number;
 
   private relays: { [key: string]: { [key: string]: Relay } } = {}; // L1TokenAddress=>depositHash=>Relay.
   private instantRelays: { [key: string]: { [key: string]: InstantRelay } } = {}; // L1TokenAddress=>{depositHash, realizedLpFeePct}=>InstantRelay.
 
-  private firstBlockToSearch: number;
   private readonly blockFinder: BlockFinder<BlockTransactionBase>;
 
   constructor(
@@ -126,8 +127,21 @@ export class InsuredBridgeL1Client {
       : undefined;
   }
 
+  // Return all relays in the Pending state, ordered by amount relayed.
   getPendingRelayedDeposits(): Relay[] {
-    return this.getAllRelayedDeposits().filter((relay: Relay) => relay.relayState === ClientRelayState.Pending);
+    return this.getAllRelayedDeposits()
+      .filter((relay: Relay) => relay.relayState === ClientRelayState.Pending)
+      .sort((a, b) => (toBN(a.amount).lt(toBN(b.amount)) ? 1 : toBN(b.amount).lt(toBN(a.amount)) ? -1 : 0));
+  }
+
+  getPendingRelayedDepositsGroupedByL1Token(): { [key: string]: Relay[] } {
+    const pendingRelayedDeposits = this.getPendingRelayedDeposits();
+    const groupedL1Deposits: { [key: string]: Relay[] } = {};
+    pendingRelayedDeposits.forEach((relay: Relay) => {
+      if (groupedL1Deposits[relay.l1Token] === undefined) groupedL1Deposits[relay.l1Token] = [];
+      groupedL1Deposits[relay.l1Token].push(relay);
+    });
+    return groupedL1Deposits;
   }
 
   getPendingRelayedDepositsForL1Token(l1Token: string): Relay[] {
@@ -190,12 +204,18 @@ export class InsuredBridgeL1Client {
 
   getBridgePoolForDeposit(l2Deposit: Deposit): BridgePoolData {
     if (!this.bridgePools[l2Deposit.l1Token]) throw new Error(`No bridge pool initialized for ${l2Deposit.l1Token}`);
-    return this.getBridgePoolForToken(l2Deposit.l1Token);
+    return this.getBridgePoolForL1Token(l2Deposit.l1Token);
   }
 
-  getBridgePoolForToken(l1Token: string): BridgePoolData {
+  getBridgePoolForL1Token(l1Token: string): BridgePoolData {
     if (!this.bridgePools[l1Token]) throw new Error(`No bridge pool initialized for ${l1Token}`);
     return this.bridgePools[l1Token];
+  }
+
+  getBridgePoolForL2Token(l2Token: string): BridgePoolData {
+    const bridgePoolData = Object.values(this.bridgePools).filter((bridgePool) => bridgePool.l2Token == l2Token)[0];
+    if (!bridgePoolData) throw new Error(`No bridge pool initialized for ${l2Token}`);
+    return bridgePoolData;
   }
 
   async getProposerBondPct(): Promise<BN> {
@@ -225,6 +245,7 @@ export class InsuredBridgeL1Client {
           getAbi("BridgePool"),
           whitelistedTokenEvent.returnValues.bridgePool
         ) as unknown) as BridgePoolWeb3,
+        l2Token: whitelistedTokenEvent.returnValues.l2Token,
         // We'll set the following params when fetching bridge pool state in parallel.
         currentTime: 0,
         relayNonce: 0,
@@ -336,7 +357,7 @@ export class InsuredBridgeL1Client {
           this.relays[l1Token][pendingRelay.depositHash].settleable = SettleableRelay.SlowRelayerCanSettle;
         }
         // If relay is pending and the time is past the OO liveness +15 mins, then it is settleable by anyone.
-        if (bridgePool.currentTime >= pendingRelay.priceRequestTime + this.optimisticOracleLiveness + 54000) {
+        if (bridgePool.currentTime >= pendingRelay.priceRequestTime + this.optimisticOracleLiveness + 900) {
           this.relays[l1Token][pendingRelay.depositHash].settleable = SettleableRelay.AnyoneCanSettle;
         }
       }

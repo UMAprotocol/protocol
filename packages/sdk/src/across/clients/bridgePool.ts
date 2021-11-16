@@ -39,6 +39,7 @@ export type Pool = {
   estimatedApr: string;
   blocksElapsed: number;
   secondsElapsed: number;
+  liquidityUtilizationCurrent: string;
 };
 export type User = {
   address: string;
@@ -83,13 +84,17 @@ class PoolState {
   public async read(latestBlock: number, previousBlock?: number) {
     if (this.l1Token === undefined) this.l1Token = await this.contract.l1Token();
     // typechain does not have complete types for call options, so we have to cast blockTag to any
-    const exchangeRatePrevious = await this.contract.callStatic.exchangeRateCurrent({
-      blockTag: previousBlock || latestBlock - 1,
-    } as any);
+    const [exchangeRatePrevious, liquidityUtilizationCurrent] = await Promise.all([
+      this.contract.callStatic.exchangeRateCurrent({
+        blockTag: previousBlock || latestBlock - 1,
+      } as any),
+      this.contract.callStatic.liquidityUtilizationCurrent(),
+    ]);
     return {
       address: this.address,
       l1Token: this.l1Token,
       exchangeRatePrevious,
+      liquidityUtilizationCurrent,
       ...(await this.batchRead([
         ["liquidReserves"],
         ["pendingReserves"],
@@ -260,6 +265,7 @@ function joinPoolState(
     estimatedApr,
     blocksElapsed,
     secondsElapsed,
+    liquidityUtilizationCurrent: poolState.liquidityUtilizationCurrent.toString(),
   };
 }
 export class ReadPoolClient {
