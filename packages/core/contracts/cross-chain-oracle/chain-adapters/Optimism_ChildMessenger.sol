@@ -35,7 +35,7 @@ contract Optimism_ChildMessenger is OVM_CrossDomainEnabled, ChildMessengerInterf
      * @param _parentMessenger The address of the L1 parent messenger. Acts as the "owner" of this contract.
      */
     constructor(address _parentMessenger) OVM_CrossDomainEnabled(L2_CROSS_DOMAIN_MESSENGER) {
-        setParentMessenger(_parentMessenger);
+        parentMessenger = _parentMessenger;
     }
 
     /**
