@@ -58,7 +58,7 @@ contract BridgePool is MultiCaller, Testable, BridgePoolInterface, ERC20, Lockab
     // withdrawal.
     bool public isWethPool;
 
-    // Exponential decay exchange rate to accumulate fees to LPs over time.
+    // Exponential decay exchange rate to accumulate fees to LPs over time. This can be changed via the BridgeAdmin.
     uint64 public lpFeeRatePerSecond;
 
     // Last timestamp that LP fees were updated.
@@ -150,6 +150,7 @@ contract BridgePool is MultiCaller, Testable, BridgePoolInterface, ERC20, Lockab
     event RelayCanceled(bytes32 indexed depositHash, bytes32 indexed relayHash, address indexed disputer);
     event RelaySettled(bytes32 indexed depositHash, address indexed caller, RelayData relay);
     event BridgePoolAdminTransferred(address oldAdmin, address newAdmin);
+    event LpFeeRateChanged(uint64 newLpFeeRatePerSecond);
 
     /**
      * @notice Construct the Bridge Pool.
@@ -179,6 +180,8 @@ contract BridgePool is MultiCaller, Testable, BridgePoolInterface, ERC20, Lockab
 
         syncUmaEcosystemParams(); // Fetch OptimisticOracle and Store addresses and L1Token finalFee.
         syncWithBridgeAdminParams(); // Fetch ProposerBondPct OptimisticOracleLiveness, Identifier from the BridgeAdmin.
+
+        emit LpFeeRateChanged(lpFeeRatePerSecond);
     }
 
     /*************************************************
@@ -662,6 +665,17 @@ contract BridgePool is MultiCaller, Testable, BridgePoolInterface, ERC20, Lockab
         require(msg.sender == address(bridgeAdmin));
         bridgeAdmin = BridgeAdminInterface(_newAdmin);
         emit BridgePoolAdminTransferred(msg.sender, _newAdmin);
+    }
+
+    /**
+     * @notice Enable the bridge admin to change the decay rate at which LP shares accumulate fees. The higher this
+     * value, the faster LP shares realize pending fees.
+     * @param _newLpFeeRatePerSecond The new rate to set.
+     */
+    function changeLpFeeRatePerSecond(uint64 _newLpFeeRatePerSecond) public override nonReentrant() {
+        require(msg.sender == address(bridgeAdmin));
+        lpFeeRatePerSecond = _newLpFeeRatePerSecond;
+        emit LpFeeRateChanged(lpFeeRatePerSecond);
     }
 
     /************************************

@@ -18,6 +18,7 @@ interface BridgeAdminInterface {
     event SetMinimumBridgingDelay(uint256 indexed chainId, uint64 newMinimumBridgingDelay);
     event DepositsEnabled(uint256 indexed chainId, address indexed l2Token, bool depositsEnabled);
     event BridgePoolsAdminTransferred(address[] bridgePools, address indexed newAdmin);
+    event ChangedLpFeeRate(address indexed bridgePool, uint64 newLpFeeRatePerSecond);
 
     function finder() external view returns (address);
 

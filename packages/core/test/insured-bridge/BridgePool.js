@@ -384,6 +384,26 @@ describe("BridgePool", () => {
       return ev.oldAdmin === bridgeAdmin.options.address && ev.newAdmin === owner;
     });
   });
+  it("Lp Fee %/second", async function () {
+    // Can only be set by current admin.
+    const newRate = toWei("0.0000025");
+    assert(
+      await didContractThrow(
+        bridgeAdmin.methods.changeLpFeeRatePerSecond(bridgePool.options.address, newRate).send({ from: rando })
+      )
+    );
+
+    // Calling from the correct address succeeds.
+    const tx = await bridgeAdmin.methods
+      .changeLpFeeRatePerSecond(bridgePool.options.address, newRate)
+      .send({ from: owner });
+
+    assert.equal(await bridgePool.methods.lpFeeRatePerSecond().call(), newRate);
+
+    await assertEventEmitted(tx, bridgePool, "LpFeeRateChanged", (ev) => {
+      return ev.newLpFeeRatePerSecond.toString() === newRate;
+    });
+  });
   it("Constructs utf8-encoded ancillary data for relay", async function () {
     assert.equal(
       hexToUtf8(defaultRelayAncillaryData),

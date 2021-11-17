@@ -130,6 +130,11 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, Lockable {
         emit BridgePoolsAdminTransferred(bridgePools, newAdmin);
     }
 
+    function changeLpFeeRatePerSecond(address bridgePool, uint64 newLpFeeRate) public onlyOwner nonReentrant() {
+        BridgePoolInterface(bridgePool).changeLpFeeRatePerSecond(newLpFeeRate);
+        emit ChangedLpFeeRate(bridgePool, newLpFeeRate);
+    }
+
     /**************************************************
      *        CROSSDOMAIN ADMIN FUNCTIONS             *
      **************************************************/
