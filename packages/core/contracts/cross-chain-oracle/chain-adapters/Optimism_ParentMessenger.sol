@@ -61,7 +61,7 @@ contract Optimism_ParentMessenger is OVM_CrossDomainEnabled, ParentMessengerInte
     }
 
     /**
-     * @notice Changes the childs default gas limit on L2 via the child messenger.
+     * @notice Changes the Optimism_ChildMessenger default gas limit on L2 via the child messenger.
      * @dev The caller of this function must be the owner. This should be set to the DVM governor.
      * @param newDefaultGasLimit the new default gas limit set on L2.
      */
