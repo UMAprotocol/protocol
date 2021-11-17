@@ -38,18 +38,33 @@ contract Optimism_ParentMessenger is OVM_CrossDomainEnabled, ParentMessengerInte
         emit SetDefaultGasLimit(newDefaultGasLimit);
     }
 
+    /**
+     * @notice Changes the address of the oracle spoke on L2 via the child messenger.
+     * @dev The caller of this function must be the owner. This should be set to the DVM governor.
+     * @param newOracleSpoke the new oracle spoke address set on L2.
+     */
     function setChildOracleSpoke(address newOracleSpoke) public onlyOwner {
         bytes memory dataSentToChild = abi.encodeWithSignature("setOracleSpoke(address)", newOracleSpoke);
         sendCrossDomainMessage(childMessenger, defaultGasLimit, dataSentToChild);
         emit MessageSentToChild(dataSentToChild, childMessenger, defaultGasLimit);
     }
 
+    /**
+     * @notice Changes the address of the parent messenger on L2 via the child messenger.
+     * @dev The caller of this function must be the owner. This should be set to the DVM governor.
+     * @param newParentMessenger the new parent messenger contract to be set on L2.
+     */
     function setChildParentMessenger(address newParentMessenger) public onlyOwner {
         bytes memory dataSentToChild = abi.encodeWithSignature("setParentMessenger(address)", newParentMessenger);
         sendCrossDomainMessage(childMessenger, defaultGasLimit, dataSentToChild);
         emit MessageSentToChild(dataSentToChild, childMessenger, defaultGasLimit);
     }
 
+    /**
+     * @notice Changes the childs default gas limit on L2 via the child messenger.
+     * @dev The caller of this function must be the owner. This should be set to the DVM governor.
+     * @param newDefaultGasLimit the new default gas limit set on L2.
+     */
     function setChildDefaultGasLimit(uint32 newDefaultGasLimit) public onlyOwner {
         bytes memory dataSentToChild = abi.encodeWithSignature("setDefaultGasLimit(uint32)", newDefaultGasLimit);
         sendCrossDomainMessage(childMessenger, defaultGasLimit, dataSentToChild);
@@ -69,6 +84,7 @@ contract Optimism_ParentMessenger is OVM_CrossDomainEnabled, ParentMessengerInte
         bytes memory dataSentToChild =
             abi.encodeWithSignature("processMessageFromCrossChainParent(bytes,address)", data, target);
         sendCrossDomainMessage(childMessenger, defaultGasLimit, dataSentToChild);
+
         emit MessageSentToChild(dataSentToChild, target, defaultGasLimit);
     }
 

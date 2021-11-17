@@ -127,8 +127,21 @@ export class InsuredBridgeL1Client {
       : undefined;
   }
 
+  // Return all relays in the Pending state, ordered by amount relayed.
   getPendingRelayedDeposits(): Relay[] {
-    return this.getAllRelayedDeposits().filter((relay: Relay) => relay.relayState === ClientRelayState.Pending);
+    return this.getAllRelayedDeposits()
+      .filter((relay: Relay) => relay.relayState === ClientRelayState.Pending)
+      .sort((a, b) => (toBN(a.amount).lt(toBN(b.amount)) ? 1 : toBN(b.amount).lt(toBN(a.amount)) ? -1 : 0));
+  }
+
+  getPendingRelayedDepositsGroupedByL1Token(): { [key: string]: Relay[] } {
+    const pendingRelayedDeposits = this.getPendingRelayedDeposits();
+    const groupedL1Deposits: { [key: string]: Relay[] } = {};
+    pendingRelayedDeposits.forEach((relay: Relay) => {
+      if (groupedL1Deposits[relay.l1Token] === undefined) groupedL1Deposits[relay.l1Token] = [];
+      groupedL1Deposits[relay.l1Token].push(relay);
+    });
+    return groupedL1Deposits;
   }
 
   getPendingRelayedDepositsForL1Token(l1Token: string): Relay[] {

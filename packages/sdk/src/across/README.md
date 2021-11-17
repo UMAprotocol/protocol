@@ -31,6 +31,31 @@ const realizedLpFeePct = calculateRealizedLpFeePct(rateModel, interval.utilA, in
 assert.equal(realizedLpFeePct.toString(), interval.wpy)
 ```
 
+### Constants
+
+Across has some important constants which can be found in the [constants.ts](./constants.ts) file.
+
+#### RATE_MODELS
+
+The rate models here should be considered the source of truth, and be imported for the frontend and bots.
+
+```ts
+import { across } from "@uma/sdk"
+const { RATE_MODELS } = across.constants
+// Rate models are specified by bridge pool checksummed address. You can ensure checksum with ethers.getAddress.
+const wethPoolAddress = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"
+const wethRateModel = RATE_MODELS[wethPoolAddress]
+
+// example output
+console.log(wethRateModel)
+// {
+//   UBar: "650000000000000000",
+//   R0: "0",
+//   R1: "80000000000000000",
+//   R2: "1000000000000000000",
+// }
+```
+
 ## Gas Fee Calculator
 
 Calculates gas fee percentages when doing a transfer for slow and fast relays.

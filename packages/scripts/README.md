@@ -39,3 +39,41 @@ yarn hardhat node --fork https://mainnet.infura.io/v3/YOUR-INFURA-KEY --no-deplo
 ```sh
 node YOUR_FILE.js --network mainnet-fork
 ```
+
+## Testing the Voter Dapp
+
+Start a local hardhat node:
+
+```sh
+yarn hardhat node --no-deploy --port 9545
+```
+
+Run the base contract deployment:
+
+```sh
+yarn hardhat deploy --network localhost --tags dvm
+```
+
+Run the fixture script to set up the contracts:
+
+```sh
+HARDHAT_NETWORK=localhost ./src/utils/Deploy.js
+```
+
+To request a typical price (that you can vote on in the dapp):
+
+```sh
+HARDHAT_NETWORK=localhost ./src/local/RequestOraclePrice.js --identifier SOME_ID --time 1636667039
+```
+
+To trigger a sample governance vote (that you can vote on in the dapp):
+
+```sh
+HARDHAT_NETWORK=localhost ./src/mainnet/ProposeAdmin.js --prod
+```
+
+To move to the next phase of voting:
+
+```sh
+HARDHAT_NETWORK=localhost ./src/local/AdvanceToNextVotingPhase.js
+```

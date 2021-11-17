@@ -786,10 +786,12 @@ describe("InsuredBridgeL1Client", function () {
         JSON.stringify(expectedBridgePool2Relays)
       );
 
-      // Filtering by pendingRelays should return accordingly.
+      // Filtering by pendingRelays should return accordingly. Note that we need to put expectedBridgePool1Relays[1]
+      // second as this had a larger relay (of size 4.21 vs 4.20) and the getPendingRelayedDeposits orders by relay
+      // size to enable the disputer to dispute the most dangerous invalid relays first.
       assert.equal(
         JSON.stringify(await client.getPendingRelayedDeposits()),
-        JSON.stringify([expectedBridgePool1Relays[1], ...expectedBridgePool2Relays])
+        JSON.stringify([...expectedBridgePool2Relays, expectedBridgePool1Relays[1]])
       );
 
       assert.equal(
