@@ -75,9 +75,9 @@ contract OVM_OETH_BridgeDepositBox is OVM_BridgeDepositBox {
         emit TokensBridged(l2Token, bridgeDepositBoxBalance, l1Gas, msg.sender);
     }
 
-    // This contract contains the receive and fallback methods to enable the contract to receive ETH sent to it via the
-    // weth unwrapping done above. When l2ETH is unwrapped from l2WETH, the l2ETH is sent to this contract before being
-    // sent over the canonical Optimims bridge.
+    // This contract contains the receive(transfers without call data) and fallback(no function matching interfaces)
+    // methods to enable the contract to receive ETH sent to it via the weth unwrapping done above. When l2ETH is
+    // unwrapped from l2WETH, the l2ETH is sent to this contract before being sent over the canonical Optimims bridge.
     receive() external payable {}
 
     fallback() external payable {}
