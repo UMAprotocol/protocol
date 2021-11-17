@@ -6,5 +6,5 @@ interface ParentMessengerInterface {
     function sendMessageToChild(bytes memory data) external;
 
     // Should be targeted by ChildMessenger and executed upon receiving a message from child chain.
-    function processMessageFromChild(bytes memory data) external;
+    function processMessageFromCrossChainChild(bytes memory data) external;
 }

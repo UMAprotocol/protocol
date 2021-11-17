@@ -6,7 +6,7 @@ const { utf8ToHex, toWei } = web3.utils;
 
 const { assert } = require("chai");
 
-const { deployContractMock } = require("./helpers/SmockitHelper");
+const { deployContractMock } = require("../helpers/SmockitHelper");
 
 // Tested contracts
 const OVM_L1CrossDomainMessengerMock = getContract("OVM_L1CrossDomainMessengerMock");

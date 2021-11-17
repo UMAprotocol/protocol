@@ -6,11 +6,14 @@ import "../oracle/interfaces/OracleAncillaryInterface.sol";
 import "../oracle/interfaces/StoreInterface.sol";
 import "../common/implementation/Lockable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "./ParentMessengerInterface.sol";
+import "./interfaces/ParentMessengerInterface.sol";
+import "./interfaces/ParentMessengerConsumerInterface.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 /**
+
+ * @title Cross-chain Oracle L1 Oracle Hub.
  * @notice Gatekeeper contract deployed on mainnet that validates and sends price requests from sidechain to the DVM on
  * mainnet. This is a "gate keeper" contract because it performs the final validation for any messages originating from
  * a child chain's oracle before submitting price requests to the DVM. This contract also can publish DVM price
@@ -18,8 +21,8 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
  * @dev This contract must be a registered financial contract in order to make and query DVM price requests.
  */
 
-// TODO: Consider extending MultiCall contract so that user can seed an L2 state with a lot of publishPrice() calls.
-contract OracleHub is OracleBase, Ownable, Lockable {
+contract OracleHub is OracleBase, ParentMessengerConsumerInterface, Ownable, Lockable {
+    // TODO: Consider extending MultiCall contract so that user can seed an L2 state with a lot of publishPrice() calls.
     using SafeERC20 for IERC20;
 
     // Currency that final fees are paid in.
@@ -81,9 +84,15 @@ contract OracleHub is OracleBase, Ownable, Lockable {
      * @dev This contract must be registered to submit price requests to the DVM. Only the ParentMessenger
      * can call this method. If the original requester on the child chain wants to expedite the Child --> Parent
      * message, then they can call `requestPrice` on this contract for the same unique price request.
+     * @param chainId id of the child chain that sent the price request.
      * @param data ABI encoded params with which to call `_requestPrice`.
      */
-    function processMessageFromChild(uint256 chainid, bytes memory data) public nonReentrant() onlyMessenger(chainid) {
+    function processMessageFromChild(uint256 chainId, bytes memory data)
+        public
+        override
+        nonReentrant()
+        onlyMessenger(chainId)
+    {
         (bytes32 identifier, uint256 time, bytes memory ancillaryData) = abi.decode(data, (bytes32, uint256, bytes));
         bool newPriceRequested = _requestPrice(identifier, time, ancillaryData);
         if (newPriceRequested) {
