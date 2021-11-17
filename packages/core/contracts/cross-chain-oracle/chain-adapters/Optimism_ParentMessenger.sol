@@ -14,8 +14,8 @@ import "../../common/implementation/Lockable.sol";
  */
 contract Optimism_ParentMessenger is OVM_CrossDomainEnabled, ParentMessengerInterface, ParentMessengerBase, Lockable {
     event SetDefaultGasLimit(uint32 newDefaultGasLimit);
-    event MessageSentToChild(bytes data, address indexed targetSpoke, uint32 defaultGasLimit);
-    event MessageReceivedFromChild(bytes data, address indexed targetHub);
+    event MessageSentToChild(bytes data, address indexed targetSpoke, uint32 gasLimit, address indexed childAddress);
+    event MessageReceivedFromChild(bytes data, address indexed childAddress, address indexed targetHub);
 
     uint32 public defaultGasLimit = 5_000_000;
 
@@ -52,7 +52,7 @@ contract Optimism_ParentMessenger is OVM_CrossDomainEnabled, ParentMessengerInte
         bytes memory dataSentToChild =
             abi.encodeWithSignature("processMessageFromCrossChainParent(bytes,address)", data, target);
         sendCrossDomainMessage(childMessenger, defaultGasLimit, dataSentToChild);
-        emit MessageSentToChild(data, target, defaultGasLimit);
+        emit MessageSentToChild(dataSentToChild, target, defaultGasLimit, childMessenger);
     }
 
     /**
@@ -68,6 +68,6 @@ contract Optimism_ParentMessenger is OVM_CrossDomainEnabled, ParentMessengerInte
         nonReentrant()
     {
         ParentMessengerConsumerInterface(oracleHub).processMessageFromChild(childChainId, data);
-        emit MessageReceivedFromChild(data, childMessenger);
+        emit MessageReceivedFromChild(data, childMessenger, oracleHub);
     }
 }

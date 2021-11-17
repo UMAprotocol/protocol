@@ -28,8 +28,8 @@ contract Optimism_ChildMessenger is OVM_CrossDomainEnabled, ChildMessengerInterf
     event SetOracleSpoke(address newOracleSpoke);
     event SetParentMessenger(address newParentMessenger);
     event SetDefaultGasLimit(uint32 newDefaultGasLimit);
-    event MessageSentToParent(bytes data, address indexed targetHub, uint32 gasLimit);
-    event MessageReceivedFromParent(bytes data, address indexed targetSpoke);
+    event MessageSentToParent(bytes data, address indexed parentAddress, uint32 gasLimit);
+    event MessageReceivedFromParent(bytes data, address indexed targetSpoke, address indexed parentAddress);
 
     /**
      * @notice Construct the Optimism_ChildMessenger contract.
@@ -104,6 +104,6 @@ contract Optimism_ChildMessenger is OVM_CrossDomainEnabled, ChildMessengerInterf
         nonReentrant()
     {
         ChildMessengerConsumerInterface(target).processMessageFromParent(data);
-        emit MessageReceivedFromParent(data, target);
+        emit MessageReceivedFromParent(data, target, parentMessenger);
     }
 }
