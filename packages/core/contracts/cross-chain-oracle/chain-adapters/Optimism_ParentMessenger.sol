@@ -38,6 +38,24 @@ contract Optimism_ParentMessenger is OVM_CrossDomainEnabled, ParentMessengerInte
         emit SetDefaultGasLimit(newDefaultGasLimit);
     }
 
+    function setChildOracleSpoke(address newOracleSpoke) public onlyOwner {
+        bytes memory dataSentToChild = abi.encodeWithSignature("setOracleSpoke(address)", newOracleSpoke);
+        sendCrossDomainMessage(childMessenger, defaultGasLimit, dataSentToChild);
+        emit MessageSentToChild(dataSentToChild, childMessenger, defaultGasLimit);
+    }
+
+    function setChildParentMessenger(address newParentMessenger) public onlyOwner {
+        bytes memory dataSentToChild = abi.encodeWithSignature("setParentMessenger(address)", newParentMessenger);
+        sendCrossDomainMessage(childMessenger, defaultGasLimit, dataSentToChild);
+        emit MessageSentToChild(dataSentToChild, childMessenger, defaultGasLimit);
+    }
+
+    function setChildDefaultGasLimit(uint32 newDefaultGasLimit) public onlyOwner {
+        bytes memory dataSentToChild = abi.encodeWithSignature("setDefaultGasLimit(uint32)", newDefaultGasLimit);
+        sendCrossDomainMessage(childMessenger, defaultGasLimit, dataSentToChild);
+        emit MessageSentToChild(dataSentToChild, childMessenger, defaultGasLimit);
+    }
+
     /**
      * @notice Sends a message to the child messenger via the canonical message bridge.
      * @dev The caller must be the either the OracleHub or the GovernorHub, deployed on L2. This is to send either a
@@ -51,7 +69,7 @@ contract Optimism_ParentMessenger is OVM_CrossDomainEnabled, ParentMessengerInte
         bytes memory dataSentToChild =
             abi.encodeWithSignature("processMessageFromCrossChainParent(bytes,address)", data, target);
         sendCrossDomainMessage(childMessenger, defaultGasLimit, dataSentToChild);
-        emit MessageSentToChild(data, target, defaultGasLimit);
+        emit MessageSentToChild(dataSentToChild, target, defaultGasLimit);
     }
 
     /**
