@@ -141,7 +141,7 @@ describe("Optimism_ParentMessenger", function () {
       );
       const childMessengerInterface = await ChildMessengerInterface.at(ZERO_ADDRESS);
       const expectedMessageFromManualEncoding = await await childMessengerInterface.methods
-        .processMessageFromParent(encodedData, oracleSpokeAddress)
+        .processMessageFromCrossChainParent(encodedData, oracleSpokeAddress)
         .encodeABI();
       assert.equal(publishPriceMessage[0]._message, expectedMessageFromManualEncoding);
     });
@@ -176,7 +176,7 @@ describe("Optimism_ParentMessenger", function () {
       // Optimism Parent messenger within the sendMessageToChild function call.
       const childMessengerInterface = await ChildMessengerInterface.at(ZERO_ADDRESS);
       const expectedMessageFromEvent = childMessengerInterface.methods
-        .processMessageFromParent(targetDataSentFromGovernorHub, governorSpokeAddress) // note the oracleSpokeAddress for the target in the message
+        .processMessageFromCrossChainParent(targetDataSentFromGovernorHub, governorSpokeAddress) // note the oracleSpokeAddress for the target in the message
         .encodeABI();
 
       assert.equal(publishPriceMessage[0]._message, expectedMessageFromEvent);
@@ -187,7 +187,7 @@ describe("Optimism_ParentMessenger", function () {
         [l2FinderAddress, sampleGovernanceAction]
       );
       const expectedMessageFromManualEncoding = childMessengerInterface.methods
-        .processMessageFromParent(encodedData, governorSpokeAddress)
+        .processMessageFromCrossChainParent(encodedData, governorSpokeAddress)
         .encodeABI();
       assert.equal(publishPriceMessage[0]._message, expectedMessageFromManualEncoding);
     });
@@ -198,7 +198,7 @@ describe("Optimism_ParentMessenger", function () {
         ["bytes32", "uint256", "bytes"],
         [priceIdentifier, defaultTimestamp, ancillaryData]
       );
-      const messageFromChildTx = optimism_ParentMessenger.methods.processMessageFromChild(sentData);
+      const messageFromChildTx = optimism_ParentMessenger.methods.processMessageFromCrossChainChild(sentData);
 
       // Calling from some EOA on L1 should fail.
       assert(await didContractThrow(messageFromChildTx.send({ from: rando })));

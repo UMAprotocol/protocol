@@ -7,5 +7,5 @@ interface ChildMessengerInterface {
 
     // Should be called by parent messenger over the canonical bridge. Includes a target as the L2 contract that should
     // have data passed to it.
-    function processMessageFromParent(bytes memory data, address target) external;
+    function processMessageFromCrossChainParent(bytes memory data, address target) external;
 }

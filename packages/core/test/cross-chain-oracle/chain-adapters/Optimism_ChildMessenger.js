@@ -95,10 +95,10 @@ describe("Optimism_ChildMessenger", function () {
         ]
       );
 
-      // This data is then encoded within the ParentMessengerInterface processMessageFromChild function.
+      // This data is then encoded within the ParentMessengerInterface processMessageFromCrossChainChild function.
       const parentMessengerInterface = await ParentMessengerInterface.at(ZERO_ADDRESS);
       const expectedMessageFromManualEncoding = await parentMessengerInterface.methods
-        .processMessageFromChild(encodedData)
+        .processMessageFromCrossChainChild(encodedData)
         .encodeABI();
 
       assert.equal(requestPriceMessage[0]._message, expectedMessageFromManualEncoding);
@@ -111,7 +111,7 @@ describe("Optimism_ChildMessenger", function () {
         ["bytes32", "uint256", "bytes", "int256"],
         [priceIdentifier, defaultTimestamp, ancillaryData, toWei("1234")]
       );
-      const relayMessageTxn = optimism_ChildMessenger.methods.processMessageFromParent(
+      const relayMessageTxn = optimism_ChildMessenger.methods.processMessageFromCrossChainParent(
         data,
         oracleSpoke.options.address
       );
@@ -148,7 +148,7 @@ describe("Optimism_ChildMessenger", function () {
 
       l2CrossDomainMessengerMock.smocked.xDomainMessageSender.will.return.with(() => parentMessenger);
       const tx = await optimism_ChildMessenger.methods
-        .processMessageFromParent(data, oracleSpoke.options.address)
+        .processMessageFromCrossChainParent(data, oracleSpoke.options.address)
         .send({ from: l2CrossDomainMessengerMock.options.address });
 
       // Validate that the tx contains the correct message sent from L1.

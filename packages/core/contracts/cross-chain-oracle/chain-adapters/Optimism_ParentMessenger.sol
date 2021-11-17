@@ -48,7 +48,8 @@ contract Optimism_ParentMessenger is OVM_CrossDomainEnabled, ParentMessengerInte
      */
     function sendMessageToChild(bytes memory data) public override onlyHubContract() {
         address target = msg.sender == oracleHub ? oracleSpoke : governorSpoke;
-        bytes memory dataSentToChild = abi.encodeWithSignature("processMessageFromParent(bytes,address)", data, target);
+        bytes memory dataSentToChild =
+            abi.encodeWithSignature("processMessageFromCrossChainParent(bytes,address)", data, target);
         sendCrossDomainMessage(childMessenger, defaultGasLimit, dataSentToChild);
         emit MessageSentToChild(data, target, defaultGasLimit);
     }
@@ -60,7 +61,11 @@ contract Optimism_ParentMessenger is OVM_CrossDomainEnabled, ParentMessengerInte
      * these messages to this contract. The OracleHub must implement processMessageFromChild to handel this message.
      * @param data data message sent from the L2 messenger. Should be an encoded function call or packed data.
      */
-    function processMessageFromChild(bytes memory data) public override onlyFromCrossDomainAccount(childMessenger) {
+    function processMessageFromCrossChainChild(bytes memory data)
+        public
+        override
+        onlyFromCrossDomainAccount(childMessenger)
+    {
         ParentMessengerConsumerInterface(oracleHub).processMessageFromChild(childChainId, data);
         emit MessageReceivedFromChild(data, childMessenger);
     }

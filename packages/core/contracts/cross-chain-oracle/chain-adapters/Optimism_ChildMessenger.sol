@@ -76,7 +76,7 @@ contract Optimism_ChildMessenger is OVM_CrossDomainEnabled, ChildMessengerInterf
      */
     function sendMessageToParent(bytes memory data) public override {
         require(msg.sender == oracleSpoke, "Only callable by oracleSpoke");
-        bytes memory dataSentToParent = abi.encodeWithSignature("processMessageFromChild(bytes)", data);
+        bytes memory dataSentToParent = abi.encodeWithSignature("processMessageFromCrossChainChild(bytes)", data);
         sendCrossDomainMessage(parentMessenger, defaultGasLimit, dataSentToParent);
         emit MessageSentToParent(dataSentToParent, parentMessenger, defaultGasLimit);
     }
@@ -89,7 +89,7 @@ contract Optimism_ChildMessenger is OVM_CrossDomainEnabled, ChildMessengerInterf
      * this as a param enables the L1 Messenger to send messages to arbitrary addresses on the L1. This is primarily
      * used to send messages to the OracleSpoke and GovernorSpoke on L2.
      */
-    function processMessageFromParent(bytes memory data, address target)
+    function processMessageFromCrossChainParent(bytes memory data, address target)
         public
         override
         onlyFromCrossDomainAccount(parentMessenger)
