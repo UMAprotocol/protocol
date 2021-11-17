@@ -20,9 +20,12 @@ export default (config: Config, signer: Signer, emit: Emit = () => null) => {
   const requests = new Map<string, TransactionRequest>();
   const submissions = new Map<string, string>();
   const mined = new Map<string, TransactionReceipt>();
-  async function request(unsignedTx: TransactionRequest) {
-    const populated = await signer.populateTransaction(unsignedTx);
+  function request(unsignedTx: TransactionRequest) {
+    // this no longer calls signer.populateTransaction, to allow metamask to fill in missing details instead
+    // use overrides if you want to manually fill in other tx details, including the overrides.customData field.
+    const populated = unsignedTx;
     const key = makeKey(populated);
+    assert(!requests.has(key), "Transaction already in progress");
     requests.set(key, populated);
     return key;
   }
