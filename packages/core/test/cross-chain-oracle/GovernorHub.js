@@ -38,22 +38,28 @@ describe("GovernorHub.js", async () => {
   it("relayGovernance", async function () {
     await governor.methods.setMessenger(1, messenger.options.address).send({ from: owner });
 
-    const relayGovernance = governor.methods.relayGovernance("1", rando, "0xdeadbeef");
+    const dataToRelay = "0xdeadbeef";
+    const relayGovernance = governor.methods.relayGovernance("1", rando, dataToRelay);
 
     // Only owner can call
     assert(await didContractThrow(relayGovernance.send({ from: rando })));
 
     const tx = await relayGovernance.send({ from: owner });
+    const dataSentToChild = web3.eth.abi.encodeParameters(["address", "bytes"], [rando, dataToRelay]);
     await assertEventEmitted(
       tx,
       governor,
       "RelayedGovernanceRequest",
       (event) =>
-        event.chainId.toString() === "1" && event.messenger === messenger.options.address && event.data === "0xdeadbeef"
+        event.chainId.toString() === "1" &&
+        event.messenger === messenger.options.address &&
+        event.to === rando &&
+        event.dataFromGovernor === dataToRelay &&
+        event.dataSentToChild === dataSentToChild
     );
 
     // Check that external call messenger.sendMessageToChild occurred.
-    assert.equal(await messenger.methods.latestData().call(), "0xdeadbeef");
+    assert.equal(await messenger.methods.latestData().call(), dataToRelay);
     assert.equal(await messenger.methods.latestTo().call(), rando);
   });
 });
