@@ -58,7 +58,7 @@ contract OVM_OETH_BridgeDepositBox is OVM_BridgeDepositBox {
         address bridgePool = whitelistedTokens[l2Token].l1BridgePool;
 
         // If the l1Token mapping to the l2Token is l1Weth, then to work with the canonical optimism bridge, we first
-        //  unwrap it to ETH then bridge ETH over the canonical bridge. On L1 the l1EthWrapper will re-wrap the ETH to
+        //  unwrap it to ETH then bridge the newly unwraped L2 ETH over the canonical bridge. On L1 the l1EthWrapper will re-wrap the ETH to
         // WETH and send it to the WETH bridge pool.
         if (whitelistedTokens[l2Token].l1Token == l1Weth) {
             WETH9Like(l2Token).withdraw(bridgeDepositBoxBalance);
