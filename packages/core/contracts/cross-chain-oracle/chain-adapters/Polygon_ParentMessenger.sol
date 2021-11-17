@@ -53,7 +53,7 @@ contract Polygon_ParentMessenger is FxBaseRootTunnel, ParentMessengerInterface, 
      * @dev This call will revert if `setFxChild` has not been called. Fx Child should be set to Polygon_ChildMessenger.
      * @param data ABI encoded params with which to call function on OracleHub or GovernorHub.
      */
-    function _processMessageFromChild(bytes memory data) internal override {
+    function _processMessageFromChild(bytes memory data) internal override nonReentrant() {
         // We know that this internal execution can only be triggered by the ChildMessenger, which inherits
         // FxBaseChildTunnel and is mapped 1-to-1 with this contract's FxBaseRootTunnel via
         // `setFxRootTunnel/setFxChildTunnel`.
