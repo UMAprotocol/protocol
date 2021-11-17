@@ -19,7 +19,7 @@ contract OVM_OETH_BridgeDepositBox is OVM_BridgeDepositBox {
      * @param _minimumBridgingDelay Minimum second that must elapse between L2->L1 token transfer to prevent dos.
      * @param _chainId L2 Chain identifier this deposit box is deployed on.
      * @param _l1Weth Address of Weth on L1. Used to inform if a bridging action should wrap ETH to WETH, if the desired asset-to-bridge is for a whitelisted token mapped to this L1 Weth token.
-     * @param _l2Eth Address of ETH on L2. Used to inform the token that should be sent over the Optimism bridge.
+     * @param _l2Eth Address of ETH on L2. If someone wants to bridge L2 Weth from this contract to L1, then L2 ETH should be sent over the Optimism bridge.
      * @param _l1EthWrapper Address of custom ETH wrapper on L1. Any ETH sent to this contract will be wrapped to WETH
      *     and sent to the WETH Bridge Pool.
      * @param _l1Weth Address of Weth on L1. Used to inform if the deposit should wrap ETH to WETH, if deposit is ETH.
