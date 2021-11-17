@@ -349,7 +349,7 @@ export class Client {
     this.transactionManagers[address] = txman;
     return txman;
   }
-  async addEthLiquidity(signer: Signer, pool: string, l1TokenAmount: BigNumberish, overrides?: Overrides) {
+  async addEthLiquidity(signer: Signer, pool: string, l1TokenAmount: BigNumberish, overrides: Overrides = {}) {
     const userAddress = await signer.getAddress();
     const contract = this.getOrCreatePoolContract(pool);
     const txman = this.getOrCreateTransactionManager(signer, userAddress);
@@ -374,7 +374,7 @@ export class Client {
     await txman.update();
     return id;
   }
-  async addTokenLiquidity(signer: Signer, pool: string, l1TokenAmount: BigNumberish, overrides?: Overrides) {
+  async addTokenLiquidity(signer: Signer, pool: string, l1TokenAmount: BigNumberish, overrides: Overrides = {}) {
     const userAddress = await signer.getAddress();
     const contract = this.getOrCreatePoolContract(pool);
     const txman = this.getOrCreateTransactionManager(signer, userAddress);
@@ -407,7 +407,7 @@ export class Client {
     const userState = this.getUser(poolAddress, userAddress);
     return validateWithdraw(poolState, userState, lpAmount);
   }
-  async removeTokenLiquidity(signer: Signer, pool: string, lpTokenAmount: BigNumberish, overrides?: Overrides) {
+  async removeTokenLiquidity(signer: Signer, pool: string, lpTokenAmount: BigNumberish, overrides: Overrides = {}) {
     const userAddress = await signer.getAddress();
     await this.validateWithdraw(pool, userAddress, lpTokenAmount);
     const contract = this.getOrCreatePoolContract(pool);
@@ -430,7 +430,7 @@ export class Client {
     await txman.update();
     return id;
   }
-  async removeEthliquidity(signer: Signer, pool: string, lpTokenAmount: BigNumberish, overrides?: Overrides) {
+  async removeEthliquidity(signer: Signer, pool: string, lpTokenAmount: BigNumberish, overrides: Overrides = {}) {
     const userAddress = await signer.getAddress();
     await this.validateWithdraw(pool, userAddress, lpTokenAmount);
     const contract = this.getOrCreatePoolContract(pool);
