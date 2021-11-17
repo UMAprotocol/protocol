@@ -32,10 +32,6 @@ contract OracleHub is OracleBase, ParentMessengerConsumerInterface, Ownable, Loc
     // contract via its ChildMessenger contract.
     mapping(uint256 => ParentMessengerInterface) public messengers;
 
-    // Store prices resolved for each chain ID. Allows the contract to only send one cross-chain message per publish
-    // event per chain ID.
-    mapping(uint256 => bytes32) public publishesPrices;
-
     event SetParentMessenger(uint256 indexed chainId, address indexed parentMessenger);
 
     constructor(address _finderAddress, IERC20 _token) OracleBase(_finderAddress) {
@@ -80,12 +76,10 @@ contract OracleHub is OracleBase, ParentMessengerConsumerInterface, Ownable, Loc
         int256 price = _getOracle().getPrice(identifier, time, ancillaryData);
         _publishPrice(identifier, time, ancillaryData, price);
 
-        // Limit the `sendMessageToChild` calls to one per chainId and prevent users from spam the bridges for
-        // this chainID with calls coming from this messenger.
-        if (publishesPrices[chainId] == bytes32(0)) {
-            publishesPrices[chainId] = _encodePriceRequest(identifier, time, ancillaryData);
-            messengers[chainId].sendMessageToChild(abi.encode(identifier, time, ancillaryData, price));
-        } else return;
+        // TODO: Consider storing all publishPrice events for each chainId, therefore we can limit the
+        // sendMessageToChild calls to one per chainId and not allow users to spam the bridge for this chainID
+        // with calls coming from this contract.
+        messengers[chainId].sendMessageToChild(abi.encode(identifier, time, ancillaryData, price));
     }
 
     /**
