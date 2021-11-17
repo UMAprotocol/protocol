@@ -22,27 +22,42 @@ contract Optimism_Wrapper is Ownable {
 
     event ChangedBridgePool(address indexed bridgePool);
 
+    /**
+     * @notice Construct Optimism Wrapper contract.
+     * @param _weth l1WethContract address. Normally deployed at 0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2.
+     * @param _bridgePool address of the bridge pool to send Wrapped ETH to when ETH is sent to this contract.
+     */
     constructor(WETH9Like _weth, address _bridgePool) {
         weth = _weth;
         bridgePool = _bridgePool;
         emit ChangedBridgePool(bridgePool);
     }
 
+    /**
+     * @notice Called by owner of the wrapper to change the destination of the wrapped ETH (bridgePool).
+     * @param newBridgePool address of the bridge pool to send Wrapped ETH to when ETH is sent to this contract.
+     */
     function changeBridgePool(address newBridgePool) public onlyOwner {
         bridgePool = newBridgePool;
         emit ChangedBridgePool(bridgePool);
     }
 
+    /**
+     * @notice Publicly callable function that takes all ETH in this contract, wraps it to WETH and sends it to the
+     * bridge pool contract. Function is called by fallback functions to automatically wrap ETH to WETH and send at the
+     * conclusion of a canonical ETH bridging action.
+     */
+    function wrapAndTransfer() public payable {
+        weth.deposit{ value: address(this).balance }();
+        weth.transfer(bridgePool, weth.balanceOf(address(this)));
+    }
+
+    // Fallback functions included to make this contract accept ETH.
     receive() external payable {
         wrapAndTransfer();
     }
 
     fallback() external payable {
         wrapAndTransfer();
-    }
-
-    function wrapAndTransfer() public payable {
-        weth.deposit{ value: address(this).balance }();
-        weth.transfer(bridgePool, weth.balanceOf(address(this)));
     }
 }

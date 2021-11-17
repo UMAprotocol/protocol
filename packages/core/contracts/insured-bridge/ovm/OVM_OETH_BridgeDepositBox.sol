@@ -9,6 +9,7 @@ import "./OVM_BridgeDepositBox.sol";
  */
 
 contract OVM_OETH_BridgeDepositBox is OVM_BridgeDepositBox {
+    // l2Eth is ETH on Optimism. This acts as both an ERC20 and ETH and is @ 0xdeaddeaddeaddeaddeaddeaddeaddeaddead0000.
     address public l2Eth;
     address public l1EthWrapper;
 
@@ -56,9 +57,9 @@ contract OVM_OETH_BridgeDepositBox is OVM_BridgeDepositBox {
 
         address bridgePool = whitelistedTokens[l2Token].l1BridgePool;
 
-        // If the L2 token is L2WETH then, to work with the canonical optimism bridge, we first unwrap it to ETH then
-        // bridge ETH over the canonical bridge. On L1 the l1EthWrapper will re-wrap the ETH to WETH and send it to
-        // the WETH bridge pool.
+        // If the l1Token mapping to the l2Token is l1Weth, then to work with the canonical optimism bridge, we first
+        //  unwrap it to ETH then bridge ETH over the canonical bridge. On L1 the l1EthWrapper will re-wrap the ETH to
+        // WETH and send it to the WETH bridge pool.
         if (whitelistedTokens[l2Token].l1Token == l1Weth) {
             WETH9Like(l2Token).withdraw(bridgeDepositBoxBalance);
             l2Token = l2Eth;
@@ -75,6 +76,9 @@ contract OVM_OETH_BridgeDepositBox is OVM_BridgeDepositBox {
         emit TokensBridged(l2Token, bridgeDepositBoxBalance, l1Gas, msg.sender);
     }
 
+    // This contract contains the receive and fallback methods to enable the contract to receive ETH sent to it via the
+    // weth unwrapping done above. When l2ETH is unwrapped from l2WETH, the l2ETH is sent to this contract before being
+    // sent over the canonical Optimims bridge.
     receive() external payable {}
 
     fallback() external payable {}
