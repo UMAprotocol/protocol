@@ -58,19 +58,6 @@ contract Polygon_ChildMessenger is FxBaseChildTunnel, ChildMessengerInterface, L
 
     /**
      * @notice Process a received message from the parent messenger via the canonical message bridge.
-     * @dev The caller must be the the parent messenger, sent over the canonical message bridge.
-     * @param data data message sent from the L1 messenger. Should be an encoded function call or packed data.
-     * @param target desired recipient of `data`. Target must implement the `processMessageFromParent` function. Having
-     * this as a param enables the L1 Messenger to send messages to arbitrary addresses on the L1. This is primarily
-     * used to send messages to the OracleSpoke and GovernorSpoke on L2.
-     */
-    function processMessageFromCrossChainParent(bytes memory data, address target) public override {
-        // no-op. The Polygon data tunnel will relay a message to this contract via the internal
-        // `_processMessageFromRoot` function. This function is only included here to implement the interface function.
-    }
-
-    /**
-     * @notice Process a received message from the parent messenger via the canonical message bridge.
      * @dev The data will be received automatically from the state receiver when the state is synced between Ethereum
      * and Polygon. This will revert if the Root chain sender is not the `fxRootTunnel` contract.
      * @param sender The sender of `data` from the Root chain.

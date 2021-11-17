@@ -45,11 +45,6 @@ contract Polygon_ParentMessenger is FxBaseRootTunnel, ParentMessengerInterface, 
         emit MessageSentToChild(data, target);
     }
 
-    function processMessageFromCrossChainChild(bytes memory) public override {
-        // no-op. The Polygon data tunnel will relay a message to this contract via the internal
-        // `_processMessageFromChild` function. This function is only included here to implement the interface function.
-    }
-
     /**
      * @notice Process a received message from the child messenger via the canonical message bridge.
      * @dev This internal method will be called inside `FxBaseRootTunnel.receiveMessage(bytes memory inputData)`.

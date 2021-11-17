@@ -100,7 +100,6 @@ contract Optimism_ChildMessenger is OVM_CrossDomainEnabled, ChildMessengerInterf
      */
     function processMessageFromCrossChainParent(bytes memory data, address target)
         public
-        override
         onlyFromCrossDomainAccount(parentMessenger)
         nonReentrant()
     {
