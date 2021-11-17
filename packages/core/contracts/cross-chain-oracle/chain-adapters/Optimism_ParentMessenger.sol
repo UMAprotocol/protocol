@@ -14,8 +14,8 @@ import "../../common/implementation/Lockable.sol";
  */
 contract Optimism_ParentMessenger is OVM_CrossDomainEnabled, ParentMessengerInterface, ParentMessengerBase, Lockable {
     event SetDefaultGasLimit(uint32 newDefaultGasLimit);
-    event MessageSentToChild(bytes data, address indexed childAddress, uint32 defaultGasLimit);
-    event MessageReceivedFromChild(bytes data, address indexed childAddress);
+    event MessageSentToChild(bytes data, address indexed targetSpoke, uint32 defaultGasLimit);
+    event MessageReceivedFromChild(bytes data, address indexed targetHub);
 
     uint32 public defaultGasLimit = 5_000_000;
 

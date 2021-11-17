@@ -14,7 +14,7 @@ import "../../common/implementation/Lockable.sol";
  * the internal `_processMessageFromChild` function is only callable indirectly by the `Polygon_ChildMessenger`.
  */
 contract Polygon_ParentMessenger is FxBaseRootTunnel, ParentMessengerInterface, ParentMessengerBase, Lockable {
-    event MessageSentToChild(bytes data, address indexed childAddress);
+    event MessageSentToChild(bytes data, address indexed targetSpoke);
     event MessageReceivedFromChild(bytes data, address indexed targetHub, bytes dataToSendToTarget);
 
     /**
@@ -50,6 +50,7 @@ contract Polygon_ParentMessenger is FxBaseRootTunnel, ParentMessengerInterface, 
      * @dev This internal method will be called inside `FxBaseRootTunnel.receiveMessage(bytes memory inputData)`.
      * The `inputData` is a proof of transaction that is derived from the transaction hash of the transaction on the
      * child chain that originated the cross-chain price request via _sendMessageToRoot.
+     * @dev This call will revert if `setFxChild` has not been called. Fx Child should be set to Polygon_ChildMessenger.
      * @param data ABI encoded params with which to call function on OracleHub or GovernorHub.
      */
     function _processMessageFromChild(bytes memory data) internal override {

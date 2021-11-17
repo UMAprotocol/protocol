@@ -8,10 +8,9 @@ import "../../common/implementation/Lockable.sol";
 
 /**
  * @notice Sends cross chain messages from Polygon to Ethereum network.
- * @dev This contract extends the `FxBaseChildTunnel` contract and therefore is 1-to-1 mapped with the 
+ * @dev This contract extends the `FxBaseChildTunnel` contract and therefore is 1-to-1 mapped with the
  * `FxBaseRootTunnel` extended by the `Polygon_ParentMessenger` contract deployed on Polygon. This mapping ensures that
  * the internal `_processMessageFromRoot` function is only callable indirectly by the `Polygon_ParentMessenger`.
-
  */
 contract Polygon_ChildMessenger is FxBaseChildTunnel, ChildMessengerInterface, Lockable {
     // The only child network contract that can send messages over the bridge via the messenger is the oracle spoke.
@@ -21,8 +20,8 @@ contract Polygon_ChildMessenger is FxBaseChildTunnel, ChildMessengerInterface, L
 
     event SetOracleSpoke(address newOracleSpoke);
     event SetOracleHub(address newOracleHub);
-    event MessageSentToParent(bytes data);
-    event MessageReceivedFromParent(bytes data, address indexed parentAddress);
+    event MessageSentToParent(bytes data, address indexed targetHub);
+    event MessageReceivedFromParent(bytes data, address indexed targetSpoke, bytes dataToSendToTarget);
 
     /**
      * @notice Construct the Polygon_ChildMessenger contract.
@@ -53,13 +52,14 @@ contract Polygon_ChildMessenger is FxBaseChildTunnel, ChildMessengerInterface, L
     function sendMessageToParent(bytes memory data) public override {
         require(msg.sender == oracleSpoke, "Only callable by oracleSpoke");
         _sendMessageToRoot(abi.encode(data, oracleHub));
-        emit MessageSentToParent(data);
+        emit MessageSentToParent(data, oracleHub);
     }
 
     /**
      * @notice Process a received message from the parent messenger via the canonical message bridge.
      * @dev The data will be received automatically from the state receiver when the state is synced between Ethereum
      * and Polygon. This will revert if the Root chain sender is not the `fxRootTunnel` contract.
+     * @dev This call will revert if `setFxRoot` has not been called. Fx Child should be set to Polygon_ParentMessenger.
      * @param sender The sender of `data` from the Root chain.
      * @param data ABI encoded params with which to call function on OracleHub or GovernorHub.
      */
@@ -70,5 +70,6 @@ contract Polygon_ChildMessenger is FxBaseChildTunnel, ChildMessengerInterface, L
     ) internal override validateSender(sender) {
         (bytes memory dataToSendToTarget, address target) = abi.decode(data, (bytes, address));
         ChildMessengerConsumerInterface(target).processMessageFromParent(dataToSendToTarget);
+        emit MessageReceivedFromParent(data, target, dataToSendToTarget);
     }
 }
