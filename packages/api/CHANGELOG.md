@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.9.3](https://github.com/UMAprotocol/protocol/compare/@uma/api@0.9.2...@uma/api@0.9.3) (2021-11-12)
+
+**Note:** Version bump only for package @uma/api
+
+## [0.9.2](https://github.com/UMAprotocol/protocol/compare/@uma/api@0.9.1...@uma/api@0.9.2) (2021-11-11)
+
+**Note:** Version bump only for package @uma/api
+
 ## [0.9.1](https://github.com/UMAprotocol/protocol/compare/@uma/api@0.9.0...@uma/api@0.9.1) (2021-11-09)
 
 **Note:** Version bump only for package @uma/api

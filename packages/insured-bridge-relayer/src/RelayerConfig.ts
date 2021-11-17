@@ -40,6 +40,10 @@ const bridgePoolDeployData = {
   "0x04Fa0d235C4abf4BcF4787aF4CF447DE572eF828": {
     timestamp: 1635964053,
   },
+  // BADGER:
+  "0x3472a5a71965499acd81997a54bba8d852c6e53d": {
+    timestamp: 1636750354,
+  },
 };
 
 // For similar reasons to why we store BridgePool deployment times, we store BridgeDepositBox times for each L2 network

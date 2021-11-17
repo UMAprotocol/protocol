@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.17.0](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.16.0...@uma/financial-templates-lib@2.17.0) (2021-11-11)
+
+### Bug Fixes
+
+- **across-relayer:** Two small patches ([#3593](https://github.com/UMAprotocol/protocol/issues/3593)) ([fe27d33](https://github.com/UMAprotocol/protocol/commit/fe27d333ef3ff72f16e757d2e75edb309809e2f5))
+
+### Features
+
+- **across-relayer:** Add ability to finalize L2->L1 transfer actions ([#3585](https://github.com/UMAprotocol/protocol/issues/3585)) ([e41ab0d](https://github.com/UMAprotocol/protocol/commit/e41ab0d60d5598a6af71405db94f4d2e8479a004))
+
 # [2.16.0](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.15.0...@uma/financial-templates-lib@2.16.0) (2021-11-09)
 
 ### Bug Fixes

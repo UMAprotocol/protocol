@@ -11,7 +11,7 @@ const { toWei } = web3.utils;
 
 const { assert } = require("chai");
 
-const { deployContractMock } = require("./helpers/SmockitHelper");
+const { deployContractMock } = require("../helpers/SmockitHelper");
 
 // Tested contract
 const BridgeDepositBox = getContract("OVM_BridgeDepositBox");

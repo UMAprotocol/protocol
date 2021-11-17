@@ -81,11 +81,15 @@ export function createBasicProvider(nodeRetryConfig: RetryConfig[]): RetryProvid
 
 const KEY_TYPES = ["gckms", "mnemonic", "none"] as const;
 
-function getDefaultKeyType(): typeof KEY_TYPES[number] {
-  if (argv.network) {
-    const networkSplit = argv.network.split("_");
+function isKeyType(input: string): input is typeof KEY_TYPES[number] {
+  return KEY_TYPES.some((keyType) => keyType === input);
+}
+
+function getDefaultKeyType(network: string): typeof KEY_TYPES[number] {
+  if (network) {
+    const networkSplit = network.split("_");
     const keyType = networkSplit[networkSplit.length - 1];
-    if (KEY_TYPES.includes(keyType)) {
+    if (isKeyType(keyType)) {
       return keyType;
     }
   }
@@ -110,8 +114,8 @@ function addGckmsToProvider(provider: AbstractProvider): ManagedSecretProvider {
   return new ManagedSecretProvider(gckmsConfig, provider, 0, gckmsConfig.length);
 }
 
-function addDefaultKeysToProvider(provider: AbstractProvider): AbstractProvider {
-  switch (getDefaultKeyType()) {
+function addDefaultKeysToProvider(provider: AbstractProvider, network: string = argv.network): AbstractProvider {
+  switch (getDefaultKeyType(network)) {
     case "gckms":
       return addGckmsToProvider(provider);
     case "mnemonic":
@@ -172,7 +176,7 @@ export function getWeb3(parameterizedNetwork = "test"): Web3 {
     : [{ url: getNodeUrl(network), retries: 0 }];
   const basicProvider = createBasicProvider(nodeRetryConfig);
 
-  const providerWithWallet = addDefaultKeysToProvider(basicProvider);
+  const providerWithWallet = addDefaultKeysToProvider(basicProvider, network);
 
   // Lastly, create a web3 instance with the wallet-based provider. This can be used to query the chain via the
   // a basic web3 provider & has access to the users wallet based on the kind of connection they created.

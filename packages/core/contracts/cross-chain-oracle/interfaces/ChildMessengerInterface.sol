@@ -5,6 +5,7 @@ interface ChildMessengerInterface {
     // Should send cross-chain message to Parent messenger contract or revert.
     function sendMessageToParent(bytes memory data) external;
 
-    // Should be targeted by ParentMessenger and executed upon receiving a message from root chain.
-    function processMessageFromParent(bytes memory data) external;
+    // Should be called by parent messenger over the canonical bridge. Includes a target as the L2 contract that should
+    // have data passed to it.
+    function processMessageFromCrossChainParent(bytes memory data, address target) external;
 }
