@@ -21,7 +21,7 @@ contract Polygon_ChildMessenger is FxBaseChildTunnel, ChildMessengerInterface, L
     event SetOracleSpoke(address newOracleSpoke);
     event SetOracleHub(address newOracleHub);
     event MessageSentToParent(bytes data, address indexed targetHub);
-    event MessageReceivedFromParent(bytes data, address indexed targetSpoke, bytes dataToSendToTarget);
+    event MessageReceivedFromParent(address indexed targetSpoke, bytes dataToSendToTarget);
 
     /**
      * @notice Construct the Polygon_ChildMessenger contract.
@@ -81,6 +81,6 @@ contract Polygon_ChildMessenger is FxBaseChildTunnel, ChildMessengerInterface, L
     ) internal override validateSender(sender) nonReentrant() {
         (bytes memory dataToSendToTarget, address target) = abi.decode(data, (bytes, address));
         ChildMessengerConsumerInterface(target).processMessageFromParent(dataToSendToTarget);
-        emit MessageReceivedFromParent(data, target, dataToSendToTarget);
+        emit MessageReceivedFromParent(target, dataToSendToTarget);
     }
 }

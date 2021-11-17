@@ -15,7 +15,7 @@ import "../../common/implementation/Lockable.sol";
  */
 contract Polygon_ParentMessenger is FxBaseRootTunnel, ParentMessengerInterface, ParentMessengerBase, Lockable {
     event MessageSentToChild(bytes data, address indexed targetSpoke);
-    event MessageReceivedFromChild(bytes data, address indexed targetHub, bytes dataToSendToTarget);
+    event MessageReceivedFromChild(address indexed targetHub, bytes dataToSendToTarget);
 
     /**
      * @notice Construct the Optimism_ParentMessenger contract.
@@ -41,8 +41,9 @@ contract Polygon_ParentMessenger is FxBaseRootTunnel, ParentMessengerInterface, 
      */
     function sendMessageToChild(bytes memory data) public override onlyHubContract() nonReentrant() {
         address target = msg.sender == oracleHub ? oracleSpoke : governorSpoke;
-        _sendMessageToChild(abi.encode(data, target));
-        emit MessageSentToChild(data, target);
+        bytes memory dataToSendToChild = abi.encode(data, target);
+        _sendMessageToChild(dataToSendToChild);
+        emit MessageSentToChild(dataToSendToChild, target);
     }
 
     /**
@@ -59,6 +60,6 @@ contract Polygon_ParentMessenger is FxBaseRootTunnel, ParentMessengerInterface, 
         // `setFxRootTunnel/setFxChildTunnel`.
         (bytes memory dataToSendToTarget, address target) = abi.decode(data, (bytes, address));
         ParentMessengerConsumerInterface(target).processMessageFromChild(childChainId, dataToSendToTarget);
-        emit MessageReceivedFromChild(data, target, dataToSendToTarget);
+        emit MessageReceivedFromChild(target, dataToSendToTarget);
     }
 }
