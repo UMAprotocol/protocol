@@ -22,7 +22,6 @@ contract OVM_OETH_BridgeDepositBox is OVM_BridgeDepositBox {
      * @param _l2Eth Address of ETH on L2. If someone wants to bridge L2 Weth from this contract to L1, then L2 ETH should be sent over the Optimism bridge.
      * @param _l1EthWrapper Address of custom ETH wrapper on L1. Any ETH sent to this contract will be wrapped to WETH
      *     and sent to the WETH Bridge Pool.
-     * @param _l1Weth Address of Weth on L1. Used to inform if the deposit should wrap ETH to WETH, if deposit is ETH.
      * @param timerAddress Timer used to synchronize contract time in testing. Set to 0x000... in production.
      */
     constructor(
