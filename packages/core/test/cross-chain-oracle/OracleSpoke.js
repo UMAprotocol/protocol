@@ -69,10 +69,7 @@ describe("OracleSpoke.js", async () => {
     // Can call requestPrice without ancillary data:
     const txn2 = await oracleSpoke.methods.requestPrice(defaultIdentifier, defaultTimestamp).send({ from: owner });
     await assertEventEmitted(txn2, oracleSpoke, "PriceRequestAdded");
-    assert.equal(
-      await messenger.methods.latestAncillaryData().call(),
-      await oracleSpoke.methods.stampAncillaryData("0x", owner).call()
-    );
+    assert.equal(await messenger.methods.latestAncillaryData().call(), "0x");
     assert.equal(await messenger.methods.latestTime().call(), defaultTimestamp);
     assert.equal(hexToUtf8(await messenger.methods.latestIdentifier().call()), hexToUtf8(defaultIdentifier));
 

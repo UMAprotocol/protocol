@@ -74,9 +74,9 @@ contract OracleSpoke is
      * ancillary data.
      */
     function requestPrice(bytes32 identifier, uint256 time) public override nonReentrant() onlyRegisteredContract() {
-        bool newPriceRequested = _requestPrice(identifier, time, _stampAncillaryData("", msg.sender));
+        bool newPriceRequested = _requestPrice(identifier, time, "");
         if (newPriceRequested) {
-            messenger.sendMessageToParent(abi.encode(identifier, time, _stampAncillaryData("", msg.sender)));
+            messenger.sendMessageToParent(abi.encode(identifier, time, ""));
         }
     }
 
