@@ -53,6 +53,29 @@ abstract contract Arbitrum_CrossDomainEnabled {
         return seqNum;
     }
 
+    function sendTxToL2(
+        address target,
+        address user,
+        uint256 l1CallValue,
+        uint256 maxSubmissionCost,
+        uint256 maxGas,
+        uint256 gasPriceBid,
+        bytes memory data
+    ) internal returns (uint256) {
+        uint256 seqNum =
+            inbox.createRetryableTicket{ value: l1CallValue }(
+                target,
+                0, // we always assume that l2CallValue = 0
+                maxSubmissionCost,
+                user,
+                user,
+                maxGas,
+                gasPriceBid,
+                data
+            );
+        return seqNum;
+    }
+
     // Copied mostly from: https://github.com/makerdao/arbitrum-dai-bridge/blob/34acc39bc6f3a2da0a837ea3c5dbc634ec61c7de/contracts/l1/L1CrossDomainEnabled.sol#L31
     modifier onlyFromCrossDomainAccount(address l2Counterpart) {
         // a message coming from the counterpart gateway was executed by the bridge
