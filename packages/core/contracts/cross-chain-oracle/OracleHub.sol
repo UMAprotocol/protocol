@@ -75,6 +75,10 @@ contract OracleHub is OracleBase, ParentMessengerConsumerInterface, Ownable, Loc
         // `getPrice` will revert if there is no price.
         int256 price = _getOracle().getPrice(identifier, time, ancillaryData);
         _publishPrice(identifier, time, ancillaryData, price);
+
+        // TODO: Consider storing all publishPrice events for each chainId, therefore we can limit the
+        // sendMessageToChild calls to one per chainId and not allow users to spam the bridge for this chainID
+        // with calls coming from this contract.
         messengers[chainId].sendMessageToChild(abi.encode(identifier, time, ancillaryData, price));
     }
 
