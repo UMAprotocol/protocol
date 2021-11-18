@@ -67,7 +67,63 @@ contract Arbitrum_ParentMessenger is
         emit SetDefaultMaxSubmissionCost(newDefaultMaxSubmissionCost);
     }
 
-    // TODO: Add setters for other Arbitrum transaction params.
+    /**
+     * @notice Changes the address of the oracle spoke on L2 via the child messenger.
+     * @dev The caller of this function must be the owner. This should be set to the DVM governor.
+     * @param newOracleSpoke the new oracle spoke address set on L2.
+     */
+    function setChildOracleSpoke(address newOracleSpoke) public payable onlyOwner {
+        bytes memory dataSentToChild = abi.encodeWithSignature("setOracleSpoke(address)", newOracleSpoke);
+        uint256 seqNumber =
+            sendTxToL2NoAliassing(
+                childMessenger,
+                owner(), // This is the address that will send ETH refunds for any failed messages.
+                msg.value, // Pass along all msg.value included by Hub caller.
+                defaultGasLimit,
+                defaultGasPrice,
+                defaultMaxSubmissionCost,
+                dataSentToChild
+            );
+        emit MessageSentToChild(
+            dataSentToChild,
+            childMessenger,
+            msg.value,
+            defaultGasLimit,
+            defaultGasPrice,
+            defaultMaxSubmissionCost,
+            childMessenger,
+            seqNumber
+        );
+    }
+
+    /**
+     * @notice Changes the address of the parent messenger on L2 via the child messenger.
+     * @dev The caller of this function must be the owner. This should be set to the DVM governor.
+     * @param newParentMessenger the new parent messenger contract to be set on L2.
+     */
+    function setChildParentMessenger(address newParentMessenger) public payable onlyOwner {
+        bytes memory dataSentToChild = abi.encodeWithSignature("setParentMessenger(address)", newParentMessenger);
+        uint256 seqNumber =
+            sendTxToL2NoAliassing(
+                childMessenger,
+                owner(), // This is the address that will send ETH refunds for any failed messages.
+                msg.value, // Pass along all msg.value included by Hub caller.
+                defaultGasLimit,
+                defaultGasPrice,
+                defaultMaxSubmissionCost,
+                dataSentToChild
+            );
+        emit MessageSentToChild(
+            dataSentToChild,
+            childMessenger,
+            msg.value,
+            defaultGasLimit,
+            defaultGasPrice,
+            defaultMaxSubmissionCost,
+            childMessenger,
+            seqNumber
+        );
+    }
 
     /**
      * @notice Sends a message to the child messenger via the canonical message bridge.
@@ -82,7 +138,6 @@ contract Arbitrum_ParentMessenger is
         bytes memory dataSentToChild =
             abi.encodeWithSignature("processMessageFromCrossChainParent(bytes,address)", data, target);
 
-        // Since we know the L2 target's address in advance, we don't need to alias an L1 address.
         uint256 seqNumber =
             sendTxToL2NoAliassing(
                 target,

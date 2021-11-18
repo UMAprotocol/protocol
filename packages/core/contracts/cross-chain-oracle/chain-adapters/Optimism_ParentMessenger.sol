@@ -47,7 +47,7 @@ contract Optimism_ParentMessenger is OVM_CrossDomainEnabled, ParentMessengerInte
     function setChildOracleSpoke(address newOracleSpoke) public onlyOwner {
         bytes memory dataSentToChild = abi.encodeWithSignature("setOracleSpoke(address)", newOracleSpoke);
         sendCrossDomainMessage(childMessenger, defaultGasLimit, dataSentToChild);
-        emit MessageSentToChild(dataSentToChild, childMessenger, defaultGasLimit);
+        emit MessageSentToChild(dataSentToChild, childMessenger, defaultGasLimit, childMessenger);
     }
 
     /**
@@ -58,7 +58,7 @@ contract Optimism_ParentMessenger is OVM_CrossDomainEnabled, ParentMessengerInte
     function setChildParentMessenger(address newParentMessenger) public onlyOwner {
         bytes memory dataSentToChild = abi.encodeWithSignature("setParentMessenger(address)", newParentMessenger);
         sendCrossDomainMessage(childMessenger, defaultGasLimit, dataSentToChild);
-        emit MessageSentToChild(dataSentToChild, childMessenger, defaultGasLimit);
+        emit MessageSentToChild(dataSentToChild, childMessenger, defaultGasLimit, childMessenger);
     }
 
     /**
@@ -69,7 +69,7 @@ contract Optimism_ParentMessenger is OVM_CrossDomainEnabled, ParentMessengerInte
     function setChildDefaultGasLimit(uint32 newDefaultGasLimit) public onlyOwner {
         bytes memory dataSentToChild = abi.encodeWithSignature("setDefaultGasLimit(uint32)", newDefaultGasLimit);
         sendCrossDomainMessage(childMessenger, defaultGasLimit, dataSentToChild);
-        emit MessageSentToChild(dataSentToChild, childMessenger, defaultGasLimit);
+        emit MessageSentToChild(dataSentToChild, childMessenger, defaultGasLimit, childMessenger);
     }
 
     /**
