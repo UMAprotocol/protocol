@@ -70,7 +70,7 @@ contract OVM_OETH_BridgeDepositBox is OVM_BridgeDepositBox {
             l2Token = l2Eth;
             bridgePool = l1EthWrapper;
         }
-        StandardBridgeLike(Lib_PredeployAddresses.L2_STANDARD_BRIDGE).withdrawTo(
+        IL2ERC20Bridge(Lib_PredeployAddresses.L2_STANDARD_BRIDGE).withdrawTo(
             l2Token, // _l2Token. Address of the L2 token to bridge over.
             bridgePool, // _to. Withdraw, over the bridge, to the l1 withdraw contract.
             bridgeDepositBoxBalance, // _amount. Send the full balance of the deposit box to bridge.
