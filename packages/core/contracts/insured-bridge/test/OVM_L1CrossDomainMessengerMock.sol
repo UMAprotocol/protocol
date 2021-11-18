@@ -1,7 +1,7 @@
 pragma solidity ^0.8.0;
-import "../../external/ovm/OVM_CrossDomainEnabled.sol";
+import "@eth-optimism/contracts/libraries/bridge/ICrossDomainMessenger.sol";
 
-contract OVM_L1CrossDomainMessengerMock is iOVM_CrossDomainMessenger {
+contract OVM_L1CrossDomainMessengerMock is ICrossDomainMessenger {
     function xDomainMessageSender() external view override returns (address) {
         // Trivial return this contract's address.
         return address(this);

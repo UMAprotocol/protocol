@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 // This should be replaced with a "real" import when Optimism release their new contract versions.
-import "../../external/ovm/OVM_CrossDomainEnabled.sol";
+import "@eth-optimism/contracts/libraries/bridge/CrossDomainEnabled.sol";
 import "../interfaces/ParentMessengerInterface.sol";
 import "../interfaces/ParentMessengerConsumerInterface.sol";
 import "./ParentMessengerBase.sol";
@@ -11,7 +11,7 @@ import "./ParentMessengerBase.sol";
  * @notice Sends cross chain messages from Ethereum L1 to Optimism L2 network.
  * @dev This contract's is ownable and should be owned by the DVM governor.
  */
-contract Optimism_ParentMessenger is OVM_CrossDomainEnabled, ParentMessengerInterface, ParentMessengerBase {
+contract Optimism_ParentMessenger is CrossDomainEnabled, ParentMessengerInterface, ParentMessengerBase {
     event SetDefaultGasLimit(uint32 newDefaultGasLimit);
     event MessageSentToChild(bytes data, address indexed childAddress, uint32 defaultGasLimit);
     event MessageReceivedFromChild(bytes data, address indexed childAddress);
@@ -24,7 +24,7 @@ contract Optimism_ParentMessenger is OVM_CrossDomainEnabled, ParentMessengerInte
      * @param _childChainId The chain id of the Optimism L2 network this messenger should connect to.
      **/
     constructor(address _crossDomainMessenger, uint256 _childChainId)
-        OVM_CrossDomainEnabled(_crossDomainMessenger)
+        CrossDomainEnabled(_crossDomainMessenger)
         ParentMessengerBase(_childChainId)
     {}
 
