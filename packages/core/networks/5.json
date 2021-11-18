@@ -24,10 +24,6 @@
     "address": "0x20570e9e27920ac5e2601e0bef7244deff7f0b28"
   },
   {
-    "contractName": "ExpandedERC20",
-    "address": "0xefd7ee5fc0bc42e41d800c4d9db912bc42a4530f"
-  },
-  {
     "contractName": "OracleHub",
     "address": "0xd2Aa779253c0Ab194d8c3e6708e5EB4697F13941"
   },
