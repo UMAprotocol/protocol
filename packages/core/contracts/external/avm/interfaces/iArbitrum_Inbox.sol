@@ -24,16 +24,5 @@ interface iArbitrum_Inbox {
         bytes calldata data
     ) external payable returns (uint256);
 
-    function createRetryableTicket(
-        address destAddr,
-        uint256 l2CallValue,
-        uint256 maxSubmissionCost,
-        address excessFeeRefundAddress,
-        address callValueRefundAddress,
-        uint256 maxGas,
-        uint256 gasPriceBid,
-        bytes calldata data
-    ) external payable returns (uint256);
-
     function bridge() external view returns (address);
 }

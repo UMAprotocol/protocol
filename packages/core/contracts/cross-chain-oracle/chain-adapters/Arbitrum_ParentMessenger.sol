@@ -75,7 +75,7 @@ contract Arbitrum_ParentMessenger is
     function setChildOracleSpoke(address newOracleSpoke) public payable onlyOwner {
         bytes memory dataSentToChild = abi.encodeWithSignature("setOracleSpoke(address)", newOracleSpoke);
         uint256 seqNumber =
-            sendTxToL2(
+            sendTxToL2NoAliassing(
                 childMessenger,
                 owner(), // This is the address that will send ETH refunds for any failed messages.
                 msg.value, // Pass along all msg.value included by Hub caller.
