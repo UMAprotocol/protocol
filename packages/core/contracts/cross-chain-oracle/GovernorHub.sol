@@ -3,9 +3,10 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "../common/implementation/Lockable.sol";
-import "./ParentMessengerInterface.sol";
+import "./interfaces/ParentMessengerInterface.sol";
 
 /**
+ * @title Cross-chain Oracle L1 Governor Hub.
  * @notice Governance relayer contract to be deployed on Ethereum that receives messages from the owner (Governor) and
  * sends them to spoke contracts on child chains.
  */
@@ -16,7 +17,13 @@ contract GovernorHub is Ownable, Lockable {
     // contract.
     mapping(uint256 => ParentMessengerInterface) public messengers;
 
-    event RelayedGovernanceRequest(uint256 indexed chainId, address indexed messenger, address indexed to, bytes data);
+    event RelayedGovernanceRequest(
+        uint256 indexed chainId,
+        address indexed messenger,
+        address indexed to,
+        bytes dataFromGovernor,
+        bytes dataSentToChild
+    );
     event SetParentMessenger(uint256 indexed chainId, address indexed parentMessenger);
 
     /**
@@ -31,19 +38,20 @@ contract GovernorHub is Ownable, Lockable {
     }
 
     /**
-     * @notice This should be called in order to relay a governance request to the `GovernorSpoke` contract
-     * deployed to the child chain associated with `chainId`.
+     * @notice This should be called in order to relay a governance request to the `GovernorSpoke` contract deployed to
+     * the child chain associated with `chainId`.
      * @param chainId network that messenger contract will communicate with
      * @param to Contract on child chain to send message to
-     * @param data Message to send. Should contain the encoded function selector and params.
+     * @param dataFromGovernor Message to send. Should contain the encoded function selector and params.
      * @dev Only callable by the owner (presumably the UMA DVM Governor contract, on L1 Ethereum).
      */
     function relayGovernance(
         uint256 chainId,
         address to,
-        bytes memory data
+        bytes memory dataFromGovernor
     ) external nonReentrant() onlyOwner {
-        messengers[chainId].sendMessageToChild(abi.encode(to, data));
-        emit RelayedGovernanceRequest(chainId, address(messengers[chainId]), to, data);
+        bytes memory dataSentToChild = abi.encode(to, dataFromGovernor);
+        messengers[chainId].sendMessageToChild(dataSentToChild);
+        emit RelayedGovernanceRequest(chainId, address(messengers[chainId]), to, dataFromGovernor, dataSentToChild);
     }
 }
