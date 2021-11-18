@@ -8,7 +8,7 @@ const { toWei } = web3.utils;
 
 const { assert } = require("chai");
 
-const { deployContractMock } = require("./helpers/SmockitHelper");
+const { deployContractMock } = require("../helpers/SmockitHelper");
 
 // Tested contract
 const BridgeDepositBox = getContract("OVM_OETH_BridgeDepositBox");
@@ -53,10 +53,12 @@ describe("OVM_OETH_BridgeDepositBox", () => {
   beforeEach(async function () {
     // Initialize the cross domain massager messenger mock at the address of the OVM pre-deploy. The OVM will always use
     // this address for L1<->L2 messaging. Seed this address with some funds so it can send transactions.
-    l2CrossDomainMessengerMock = await deployContractMock("OVM_L2CrossDomainMessenger", {
-      address: predeploys.OVM_L2CrossDomainMessenger,
+    console.log("a");
+    l2CrossDomainMessengerMock = await deployContractMock("L2CrossDomainMessenger", {
+      address: predeploys.L2CrossDomainMessenger,
     });
-    await web3.eth.sendTransaction({ from: deployer, to: predeploys.OVM_L2CrossDomainMessenger, value: toWei("1") });
+    console.log("b");
+    await web3.eth.sendTransaction({ from: deployer, to: predeploys.L2CrossDomainMessenger, value: toWei("1") });
 
     // Deploy and mintL2 token contracts:
     // - WETH
@@ -84,10 +86,10 @@ describe("OVM_OETH_BridgeDepositBox", () => {
       l2CrossDomainMessengerMock.smocked.xDomainMessageSender.will.return.with(() => bridgeAdmin);
       await depositBox.methods
         .whitelistToken(l1WethAddress, l2Weth.options.address, bridgePoolWeth)
-        .send({ from: predeploys.OVM_L2CrossDomainMessenger });
+        .send({ from: predeploys.L2CrossDomainMessenger });
 
       // Setup the l2StandardBridge mock to validate cross-domain bridging occurs as expected.
-      l2StandardBridge = await deployContractMock("OVM_L2StandardBridge", { address: predeploys.OVM_L2StandardBridge });
+      l2StandardBridge = await deployContractMock("L2StandardBridge", { address: predeploys.L2StandardBridge });
     });
     it("Can initiate cross-domain bridging action", async () => {
       // Deposit tokens as the user.
@@ -137,10 +139,10 @@ describe("OVM_OETH_BridgeDepositBox", () => {
       l2CrossDomainMessengerMock.smocked.xDomainMessageSender.will.return.with(() => bridgeAdmin);
       await depositBox.methods
         .whitelistToken(l1TokenAddress, l2Token.options.address, bridgePool)
-        .send({ from: predeploys.OVM_L2CrossDomainMessenger });
+        .send({ from: predeploys.L2CrossDomainMessenger });
 
       // Setup the l2StandardBridge mock to validate cross-domain bridging occurs as expected.
-      l2StandardBridge = await deployContractMock("OVM_L2StandardBridge", { address: predeploys.OVM_L2StandardBridge });
+      l2StandardBridge = await deployContractMock("L2StandardBridge", { address: predeploys.L2StandardBridge });
     });
     it("Can initiate cross-domain bridging action", async () => {
       // Deposit tokens as the user.

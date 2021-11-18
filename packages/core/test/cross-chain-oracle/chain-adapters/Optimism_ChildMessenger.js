@@ -32,10 +32,10 @@ describe("Optimism_ChildMessenger", function () {
     const accounts = await hre.web3.eth.getAccounts();
     [l1Owner, controlledEOA, parentMessenger, rando] = accounts;
 
-    l2CrossDomainMessengerMock = await deployContractMock("OVM_L2CrossDomainMessenger", {
-      address: predeploys.OVM_L2CrossDomainMessenger,
+    l2CrossDomainMessengerMock = await deployContractMock("L2CrossDomainMessenger", {
+      address: predeploys.L2CrossDomainMessenger,
     });
-    await web3.eth.sendTransaction({ from: l1Owner, to: predeploys.OVM_L2CrossDomainMessenger, value: toWei("1") });
+    await web3.eth.sendTransaction({ from: l1Owner, to: predeploys.L2CrossDomainMessenger, value: toWei("1") });
 
     optimism_ChildMessenger = await Optimism_ChildMessenger.new(parentMessenger).send({ from: l1Owner });
 
