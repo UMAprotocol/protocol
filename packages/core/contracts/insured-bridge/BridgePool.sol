@@ -152,6 +152,11 @@ contract BridgePool is MultiCaller, Testable, BridgePoolInterface, ERC20, Lockab
     event BridgePoolAdminTransferred(address oldAdmin, address newAdmin);
     event LpFeeRateChanged(uint64 newLpFeeRatePerSecond);
 
+    modifier onlyBridgeAdmin() {
+        require(msg.sender == address(bridgeAdmin), "Caller not bridge admin");
+        _;
+    }
+
     /**
      * @notice Construct the Bridge Pool.
      * @param _lpTokenName Name of the LP token to be deployed by this contract.
@@ -659,10 +664,10 @@ contract BridgePool is MultiCaller, Testable, BridgePoolInterface, ERC20, Lockab
 
     /**
      * @notice Enable the current bridge admin to transfer admin to to a new address.
+     * @dev Caller must be BridgeAdmin contract.
      * @param _newAdmin Admin address of the new admin.
      */
-    function changeAdmin(address _newAdmin) public override nonReentrant() {
-        require(msg.sender == address(bridgeAdmin));
+    function changeAdmin(address _newAdmin) public override onlyBridgeAdmin() nonReentrant() {
         bridgeAdmin = BridgeAdminInterface(_newAdmin);
         emit BridgePoolAdminTransferred(msg.sender, _newAdmin);
     }
@@ -670,10 +675,10 @@ contract BridgePool is MultiCaller, Testable, BridgePoolInterface, ERC20, Lockab
     /**
      * @notice Enable the bridge admin to change the decay rate at which LP shares accumulate fees. The higher this
      * value, the faster LP shares realize pending fees.
+     * @dev Caller must be BridgeAdmin contract.
      * @param _newLpFeeRatePerSecond The new rate to set.
      */
-    function changeLpFeeRatePerSecond(uint64 _newLpFeeRatePerSecond) public override nonReentrant() {
-        require(msg.sender == address(bridgeAdmin));
+    function changeLpFeeRatePerSecond(uint64 _newLpFeeRatePerSecond) public override onlyBridgeAdmin() nonReentrant() {
         lpFeeRatePerSecond = _newLpFeeRatePerSecond;
         emit LpFeeRateChanged(lpFeeRatePerSecond);
     }
