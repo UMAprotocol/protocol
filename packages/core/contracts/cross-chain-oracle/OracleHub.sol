@@ -80,9 +80,6 @@ contract OracleHub is OracleBase, ParentMessengerConsumerInterface, Ownable, Loc
         int256 price = _getOracle().getPrice(identifier, time, ancillaryData);
         _publishPrice(identifier, time, ancillaryData, price);
 
-        // TODO: Consider storing all publishPrice events for each chainId, therefore we can limit the
-        // sendMessageToChild calls to one per chainId and not allow users to spam the bridge for this chainID
-        // with calls coming from this contract.
         // Limit the `sendMessageToChild` calls to one per unique price request per chainId and prevent users from
         // spamming the bridges calls coming from this messenger.
         bytes32 priceRequestKey = _encodePriceRequest(identifier, time, ancillaryData);
