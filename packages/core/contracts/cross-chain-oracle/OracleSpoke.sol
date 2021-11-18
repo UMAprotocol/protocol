@@ -104,7 +104,7 @@ contract OracleSpoke is
         uint256 time,
         bytes memory ancillaryData
     ) public view override nonReentrantView() onlyRegisteredContract() returns (bool) {
-        bytes32 priceRequestId = _encodePriceRequest(identifier, time, _stampAncillaryData(ancillaryData, msg.sender));
+        bytes32 priceRequestId = _encodePriceRequest(identifier, time, ancillaryData);
         return prices[priceRequestId].state == RequestState.Resolved;
     }
 
@@ -120,7 +120,7 @@ contract OracleSpoke is
         onlyRegisteredContract()
         returns (bool)
     {
-        bytes32 priceRequestId = _encodePriceRequest(identifier, time, _stampAncillaryData("", msg.sender));
+        bytes32 priceRequestId = _encodePriceRequest(identifier, time, "");
         return prices[priceRequestId].state == RequestState.Resolved;
     }
 
@@ -136,7 +136,7 @@ contract OracleSpoke is
         uint256 time,
         bytes memory ancillaryData
     ) public view override nonReentrantView() onlyRegisteredContract() returns (int256) {
-        bytes32 priceRequestId = _encodePriceRequest(identifier, time, _stampAncillaryData(ancillaryData, msg.sender));
+        bytes32 priceRequestId = _encodePriceRequest(identifier, time, ancillaryData);
         Price storage lookup = prices[priceRequestId];
         require(lookup.state == RequestState.Resolved, "Price has not been resolved");
         return lookup.price;
@@ -154,7 +154,7 @@ contract OracleSpoke is
         onlyRegisteredContract()
         returns (int256)
     {
-        bytes32 priceRequestId = _encodePriceRequest(identifier, time, _stampAncillaryData("", msg.sender));
+        bytes32 priceRequestId = _encodePriceRequest(identifier, time, "");
         Price storage lookup = prices[priceRequestId];
         require(lookup.state == RequestState.Resolved, "Price has not been resolved");
         return lookup.price;
