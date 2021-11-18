@@ -64,6 +64,7 @@ abstract contract OracleBase {
 
     /**
      * @notice Publishes price for a requested query.
+     * @dev Does not update price state if price is already resolved.
      */
     function _publishPrice(
         bytes32 identifier,
@@ -73,6 +74,7 @@ abstract contract OracleBase {
     ) internal {
         bytes32 priceRequestId = _encodePriceRequest(identifier, time, ancillaryData);
         Price storage lookup = prices[priceRequestId];
+        if (lookup.state == RequestState.Resolved) return;
         lookup.price = price;
         lookup.state = RequestState.Resolved;
         emit PushedPrice(identifier, time, ancillaryData, lookup.price, priceRequestId);

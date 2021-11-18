@@ -73,6 +73,12 @@ describe("OracleBase", async () => {
         event.ancillaryData.toLowerCase() === testAncillary.toLowerCase() &&
         event.price.toString() === testPrice
     );
+
+    // Duplicate call does not emit an event.
+    txn = await oracle.methods
+      .publishPrice(testIdentifier, testRequestTime, testAncillary, testPrice)
+      .send({ from: owner });
+    await assertEventNotEmitted(txn, oracle, "PushedPrice");
   });
   it("encodePriceRequest", async function () {
     const encodedPrice = await oracle.methods.encodePriceRequest(testIdentifier, testRequestTime, testAncillary).call();
