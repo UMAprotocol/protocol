@@ -186,7 +186,7 @@ contract BridgePool is MultiCaller, Testable, BridgePoolInterface, ERC20, Lockab
         syncUmaEcosystemParams(); // Fetch OptimisticOracle and Store addresses and L1Token finalFee.
         syncWithBridgeAdminParams(); // Fetch ProposerBondPct OptimisticOracleLiveness, Identifier from the BridgeAdmin.
 
-        emit LpFeeRateChanged(lpFeeRatePerSecond);
+        emit LpFeeRateSet(lpFeeRatePerSecond);
     }
 
     /*************************************************
