@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.18.0](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.17.0...@uma/financial-templates-lib@2.18.0) (2021-11-18)
+
+### Features
+
+- **across:** Add Badger pool ([#3603](https://github.com/UMAprotocol/protocol/issues/3603)) ([f61a064](https://github.com/UMAprotocol/protocol/commit/f61a064abb599175cc7e9b5c225bbd4eb3a09d04))
+- **across-relayer:** enable batch disputing ([#3608](https://github.com/UMAprotocol/protocol/issues/3608)) ([29713da](https://github.com/UMAprotocol/protocol/commit/29713da6d361f21323d7d752f043e0a967cdcf64))
+- **across-relayer:** sort by deposit size when disputing ([#3607](https://github.com/UMAprotocol/protocol/issues/3607)) ([7fc75fc](https://github.com/UMAprotocol/protocol/commit/7fc75fc01afc34d4f678532aeb864592e0eab5c1))
+
 # [2.17.0](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.16.0...@uma/financial-templates-lib@2.17.0) (2021-11-11)
 
 ### Bug Fixes

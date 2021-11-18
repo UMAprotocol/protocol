@@ -3,6 +3,10 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.3.11](https://github.com/UMAprotocol/protocol/compare/@uma/merkle-distributor@1.3.10...@uma/merkle-distributor@1.3.11) (2021-11-18)
+
+**Note:** Version bump only for package @uma/merkle-distributor
+
 ## [1.3.10](https://github.com/UMAprotocol/protocol/compare/@uma/merkle-distributor@1.3.9...@uma/merkle-distributor@1.3.10) (2021-11-11)
 
 **Note:** Version bump only for package @uma/merkle-distributor

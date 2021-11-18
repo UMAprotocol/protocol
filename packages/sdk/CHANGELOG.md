@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.13.0](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.12.3...@uma/sdk@0.13.0) (2021-11-18)
+
+### Bug Fixes
+
+- **sdk:** do not pre-populate transactions, allow overrides ([#3619](https://github.com/UMAprotocol/protocol/issues/3619)) ([fc07785](https://github.com/UMAprotocol/protocol/commit/fc07785f6ce09bd8417257b6a255c424f3ec4708))
+- **sdk:** pass empty object instead of undefined to tx calls to fix call errors ([#3621](https://github.com/UMAprotocol/protocol/issues/3621)) ([9d4ef82](https://github.com/UMAprotocol/protocol/commit/9d4ef8218f28f3978a3d21509db791b775212929))
+
+### Features
+
+- **sdk:** add rate models to constants ([#3613](https://github.com/UMAprotocol/protocol/issues/3613)) ([20495c3](https://github.com/UMAprotocol/protocol/commit/20495c36083b4fe9968cb95541d9d33200ca0fa4))
+
 ## [0.12.3](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.12.2...@uma/sdk@0.12.3) (2021-11-12)
 
 ### Bug Fixes
