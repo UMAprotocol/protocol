@@ -85,7 +85,7 @@ contract Optimism_ParentMessenger is OVM_CrossDomainEnabled, ParentMessengerInte
             abi.encodeWithSignature("processMessageFromCrossChainParent(bytes,address)", data, target);
         sendCrossDomainMessage(childMessenger, defaultGasLimit, dataSentToChild);
 
-        emit MessageSentToChild(dataSentToChild, target, defaultGasLimit);
+        emit MessageSentToChild(data, target, defaultGasLimit);
     }
 
     /**
