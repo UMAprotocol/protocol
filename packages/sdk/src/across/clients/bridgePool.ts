@@ -1,21 +1,21 @@
 import assert from "assert";
 import { bridgePool } from "../../clients";
-import { BigNumber, Signer } from "ethers";
 import { toBNWei, fixedPointAdjustment, calcPeriodicCompoundInterest, calcApr, BigNumberish } from "../utils";
 import { BatchReadWithErrors, loop, exists } from "../../utils";
 import Multicall2 from "../../multicall2";
 import TransactionManager from "../transactionManager";
-import { ethers } from "ethers";
+import { ethers, Signer, BigNumber } from "ethers";
+import type { Overrides } from "@ethersproject/contracts";
 import { TransactionRequest, TransactionReceipt, Provider, Log, Block } from "@ethersproject/abstract-provider";
 import set from "lodash/set";
 import get from "lodash/get";
 import has from "lodash/has";
 
-export type { Provider };
-export type BatchReadWithErrorsType = ReturnType<ReturnType<typeof BatchReadWithErrors>>;
-
 export const SECONDS_PER_YEAR = 31557600; // based on 365.25 days per year
 export const DEFAULT_BLOCK_DELTA = 10; // look exchange rate up based on 10 block difference by default
+
+export type { Provider };
+export type BatchReadWithErrorsType = ReturnType<ReturnType<typeof BatchReadWithErrors>>;
 
 export type Awaited<T> = T extends PromiseLike<infer U> ? U : T;
 
@@ -349,12 +349,16 @@ export class Client {
     this.transactionManagers[address] = txman;
     return txman;
   }
-  async addEthLiquidity(signer: Signer, pool: string, l1TokenAmount: BigNumberish) {
+  async addEthLiquidity(signer: Signer, pool: string, l1TokenAmount: BigNumberish, overrides: Overrides = {}) {
     const userAddress = await signer.getAddress();
     const contract = this.getOrCreatePoolContract(pool);
     const txman = this.getOrCreateTransactionManager(signer, userAddress);
 
-    const request = await contract.populateTransaction.addLiquidity(l1TokenAmount, { value: l1TokenAmount });
+    // dont allow override value here
+    const request = await contract.populateTransaction.addLiquidity(l1TokenAmount, {
+      ...overrides,
+      value: l1TokenAmount,
+    });
     const id = await txman.request(request);
 
     this.state.transactions[id] = {
@@ -370,12 +374,12 @@ export class Client {
     await txman.update();
     return id;
   }
-  async addTokenLiquidity(signer: Signer, pool: string, l1TokenAmount: BigNumberish) {
+  async addTokenLiquidity(signer: Signer, pool: string, l1TokenAmount: BigNumberish, overrides: Overrides = {}) {
     const userAddress = await signer.getAddress();
     const contract = this.getOrCreatePoolContract(pool);
     const txman = this.getOrCreateTransactionManager(signer, userAddress);
 
-    const request = await contract.populateTransaction.addLiquidity(l1TokenAmount);
+    const request = await contract.populateTransaction.addLiquidity(l1TokenAmount, overrides);
     const id = await txman.request(request);
 
     this.state.transactions[id] = {
@@ -403,13 +407,13 @@ export class Client {
     const userState = this.getUser(poolAddress, userAddress);
     return validateWithdraw(poolState, userState, lpAmount);
   }
-  async removeTokenLiquidity(signer: Signer, pool: string, lpTokenAmount: BigNumberish) {
+  async removeTokenLiquidity(signer: Signer, pool: string, lpTokenAmount: BigNumberish, overrides: Overrides = {}) {
     const userAddress = await signer.getAddress();
     await this.validateWithdraw(pool, userAddress, lpTokenAmount);
     const contract = this.getOrCreatePoolContract(pool);
     const txman = this.getOrCreateTransactionManager(signer, userAddress);
 
-    const request = await contract.populateTransaction.removeLiquidity(lpTokenAmount, false);
+    const request = await contract.populateTransaction.removeLiquidity(lpTokenAmount, false, overrides);
     const id = await txman.request(request);
 
     this.state.transactions[id] = {
@@ -426,13 +430,13 @@ export class Client {
     await txman.update();
     return id;
   }
-  async removeEthliquidity(signer: Signer, pool: string, lpTokenAmount: BigNumberish) {
+  async removeEthliquidity(signer: Signer, pool: string, lpTokenAmount: BigNumberish, overrides: Overrides = {}) {
     const userAddress = await signer.getAddress();
     await this.validateWithdraw(pool, userAddress, lpTokenAmount);
     const contract = this.getOrCreatePoolContract(pool);
     const txman = this.getOrCreateTransactionManager(signer, userAddress);
 
-    const request = await contract.populateTransaction.removeLiquidity(lpTokenAmount, true);
+    const request = await contract.populateTransaction.removeLiquidity(lpTokenAmount, true, overrides);
     const id = await txman.request(request);
 
     this.state.transactions[id] = {

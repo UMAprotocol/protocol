@@ -26,6 +26,11 @@ describe("GovernorSpoke.js", async () => {
     addressWhitelist = await AddressWhitelist.new().send({ from: owner });
     await addressWhitelist.methods.transferOwnership(governor.options.address).send({ from: owner });
   });
+  it("Constructor", async function () {
+    const setChildMessengerEvents = await governor.getPastEvents("SetChildMessenger", { fromBlock: 0 });
+    assert.equal(setChildMessengerEvents.length, 1);
+    assert.equal(setChildMessengerEvents[0].returnValues.childMessenger, messenger);
+  });
   it("Can delegate call if called by Messenger", async function () {
     let targetAddress = addressWhitelist.options.address;
     let inputDataBytes = addressWhitelist.methods.addToWhitelist(messenger).encodeABI();
