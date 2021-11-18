@@ -48,7 +48,8 @@ contract Polygon_ParentMessenger is FxBaseRootTunnel, ParentMessengerInterface, 
 
     /**
      * @notice Process a received message from the child messenger via the canonical message bridge.
-     * @dev This internal method will be called inside `FxBaseRootTunnel.receiveMessage(bytes memory inputData)`.
+     * @dev This internal method will be called inside `FxBaseRootTunnel.receiveMessage(bytes memory inputData)`,
+     * which must be called by an EOA to finalize the relay of the message from Polygon to Ethereum.
      * The `inputData` is a proof of transaction that is derived from the transaction hash of the transaction on the
      * child chain that originated the cross-chain price request via _sendMessageToRoot.
      * @dev This call will revert if `setFxChild` has not been called. Fx Child should be set to Polygon_ChildMessenger.
