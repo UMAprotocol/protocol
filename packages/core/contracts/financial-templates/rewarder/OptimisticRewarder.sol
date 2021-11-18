@@ -170,9 +170,13 @@ contract OptimisticRewarder is ERC721, Lockable {
 
         for (uint256 i = 0; i < cumulativeRedemptions.length; i++) {
             IERC20 token = cumulativeRedemptions[i].token;
-            uint256 amount = cumulativeRedemptions[i].amount - redeemedAmounts[tokenId][token];
-            redeemedAmounts[tokenId][token] = cumulativeRedemptions[i].amount;
-            token.safeTransfer(msg.sender, amount);
+            uint256 currentRedemptionTotal = redeemedAmounts[tokenId][token];
+            uint256 proposedRedemptionTotal = cumulativeRedemptions[i].amount;
+            if (proposedRedemptionTotal > currentRedemptionTotal) {
+                uint256 amount = proposedRedemptionTotal - currentRedemptionTotal;
+                redeemedAmounts[tokenId][token] = proposedRedemptionTotal;
+                token.safeTransfer(msg.sender, amount);
+            }
         }
 
         // Return the bond to the owner.
