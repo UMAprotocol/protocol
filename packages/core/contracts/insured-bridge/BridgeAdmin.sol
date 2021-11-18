@@ -137,9 +137,9 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, Lockable {
      * @param bridgePool Bridge Pool to change LP fee rate for.
      * @param newLpFeeRate The new rate to set for the `bridgePool`.
      */
-    function changeLpFeeRatePerSecond(address bridgePool, uint64 newLpFeeRate) public onlyOwner nonReentrant() {
-        BridgePoolInterface(bridgePool).changeLpFeeRatePerSecond(newLpFeeRate);
-        emit ChangedLpFeeRate(bridgePool, newLpFeeRate);
+    function setLpFeeRatePerSecond(address bridgePool, uint64 newLpFeeRate) public onlyOwner nonReentrant() {
+        BridgePoolInterface(bridgePool).setLpFeeRatePerSecond(newLpFeeRate);
+        emit SetLpFeeRate(bridgePool, newLpFeeRate);
     }
 
     /**************************************************

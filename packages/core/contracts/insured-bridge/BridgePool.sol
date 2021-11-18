@@ -150,7 +150,7 @@ contract BridgePool is MultiCaller, Testable, BridgePoolInterface, ERC20, Lockab
     event RelayCanceled(bytes32 indexed depositHash, bytes32 indexed relayHash, address indexed disputer);
     event RelaySettled(bytes32 indexed depositHash, address indexed caller, RelayData relay);
     event BridgePoolAdminTransferred(address oldAdmin, address newAdmin);
-    event LpFeeRateChanged(uint64 newLpFeeRatePerSecond);
+    event LpFeeRateSet(uint64 newLpFeeRatePerSecond);
 
     modifier onlyBridgeAdmin() {
         require(msg.sender == address(bridgeAdmin), "Caller not bridge admin");
@@ -678,9 +678,9 @@ contract BridgePool is MultiCaller, Testable, BridgePoolInterface, ERC20, Lockab
      * @dev Caller must be BridgeAdmin contract.
      * @param _newLpFeeRatePerSecond The new rate to set.
      */
-    function changeLpFeeRatePerSecond(uint64 _newLpFeeRatePerSecond) public override onlyBridgeAdmin() nonReentrant() {
+    function setLpFeeRatePerSecond(uint64 _newLpFeeRatePerSecond) public override onlyBridgeAdmin() nonReentrant() {
         lpFeeRatePerSecond = _newLpFeeRatePerSecond;
-        emit LpFeeRateChanged(lpFeeRatePerSecond);
+        emit LpFeeRateSet(lpFeeRatePerSecond);
     }
 
     /************************************

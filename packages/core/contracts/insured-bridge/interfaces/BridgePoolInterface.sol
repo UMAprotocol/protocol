@@ -8,5 +8,5 @@ interface BridgePoolInterface {
 
     function changeAdmin(address newAdmin) external;
 
-    function changeLpFeeRatePerSecond(uint64 _newLpFeeRatePerSecond) external;
+    function setLpFeeRatePerSecond(uint64 _newLpFeeRatePerSecond) external;
 }

@@ -389,18 +389,18 @@ describe("BridgePool", () => {
     const newRate = toWei("0.0000025");
     assert(
       await didContractThrow(
-        bridgeAdmin.methods.changeLpFeeRatePerSecond(bridgePool.options.address, newRate).send({ from: rando })
+        bridgeAdmin.methods.setLpFeeRatePerSecond(bridgePool.options.address, newRate).send({ from: rando })
       )
     );
 
     // Calling from the correct address succeeds.
     const tx = await bridgeAdmin.methods
-      .changeLpFeeRatePerSecond(bridgePool.options.address, newRate)
+      .setLpFeeRatePerSecond(bridgePool.options.address, newRate)
       .send({ from: owner });
 
     assert.equal(await bridgePool.methods.lpFeeRatePerSecond().call(), newRate);
 
-    await assertEventEmitted(tx, bridgePool, "LpFeeRateChanged", (ev) => {
+    await assertEventEmitted(tx, bridgePool, "LpFeeRateSet", (ev) => {
       return ev.newLpFeeRatePerSecond.toString() === newRate;
     });
   });
