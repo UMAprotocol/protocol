@@ -104,7 +104,7 @@ contract Arbitrum_ParentMessenger is
     function setChildParentMessenger(address newParentMessenger) public payable onlyOwner {
         bytes memory dataSentToChild = abi.encodeWithSignature("setParentMessenger(address)", newParentMessenger);
         uint256 seqNumber =
-            sendTxToL2(
+            sendTxToL2NoAliassing(
                 childMessenger,
                 owner(), // This is the address that will send ETH refunds for any failed messages.
                 msg.value, // Pass along all msg.value included by Hub caller.
@@ -139,7 +139,7 @@ contract Arbitrum_ParentMessenger is
             abi.encodeWithSignature("processMessageFromCrossChainParent(bytes,address)", data, target);
 
         uint256 seqNumber =
-            sendTxToL2(
+            sendTxToL2NoAliassing(
                 childMessenger,
                 owner(), // This is the address that will send ETH refunds for any failed messages.
                 msg.value, // Pass along all msg.value included by Hub caller.
