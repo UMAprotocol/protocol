@@ -16,4 +16,9 @@ contract Arbitrum_InboxMock is iArbitrum_Inbox {
     ) external payable override returns (uint256) {
         return 0;
     }
+
+    function bridge() external view returns (address) {
+        require(false, "untested function, always reverts");
+        return address(this);
+    }
 }

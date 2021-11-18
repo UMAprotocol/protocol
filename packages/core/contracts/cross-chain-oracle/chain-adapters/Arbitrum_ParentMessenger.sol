@@ -1,31 +1,49 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-// This should be replaced with a "real" import when Optimism release their new contract versions.
-import "../../external/ovm/OVM_CrossDomainEnabled.sol";
+import "../../insured-bridge/avm/Arbitrum_CrossDomainEnabled.sol";
 import "../interfaces/ParentMessengerInterface.sol";
 import "../interfaces/ParentMessengerConsumerInterface.sol";
 import "./ParentMessengerBase.sol";
 import "../../common/implementation/Lockable.sol";
 
 /**
- * @notice Sends cross chain messages from Ethereum L1 to Optimism L2 network.
+ * @notice Sends cross chain messages from Ethereum L1 to Arbitrum L2 network.
  * @dev This contract is ownable and should be owned by the DVM governor.
  */
-contract Optimism_ParentMessenger is OVM_CrossDomainEnabled, ParentMessengerInterface, ParentMessengerBase, Lockable {
+contract Arbitrum_ParentMessenger is
+    Arbitrum_CrossDomainEnabled,
+    ParentMessengerInterface,
+    ParentMessengerBase,
+    Lockable
+{
     event SetDefaultGasLimit(uint32 newDefaultGasLimit);
-    event MessageSentToChild(bytes data, address indexed targetSpoke, uint32 gasLimit, address indexed childAddress);
+    event SetDefaultMaxSubmissionCost(uint256 newMaxSubmissionCost);
+    event SetDefaultGasPrice(uint256 newDefaultGasPrice);
+    event MessageSentToChild(
+        bytes data,
+        address indexed targetSpoke,
+        uint256 l1CallValue,
+        uint32 gasLimit,
+        uint256 gasPrice,
+        uint256 maxSubmissionCost,
+        address indexed childAddress,
+        uint256 sequenceNumber
+    );
     event MessageReceivedFromChild(bytes data, address indexed childAddress, address indexed targetHub);
 
+    // TODO: Try to read these from Arbitrum system contracts.
     uint32 public defaultGasLimit = 5_000_000;
+    uint256 public defaultMaxSubmissionCost = 1e18 / 10; // 0.1e18
+    uint256 public defaultGasPrice = 10e9; // 10 gWei
 
     /**
      * @notice Construct the Optimism_ParentMessenger contract.
-     * @param _crossDomainMessenger The address of the Optimism cross domain messenger contract.
+     * @param _inbox Contract that sends generalized messages to the Arbitrum chain.
      * @param _childChainId The chain id of the Optimism L2 network this messenger should connect to.
      **/
-    constructor(address _crossDomainMessenger, uint256 _childChainId)
-        OVM_CrossDomainEnabled(_crossDomainMessenger)
+    constructor(address _inbox, uint256 _childChainId)
+        Arbitrum_CrossDomainEnabled(_inbox)
         ParentMessengerBase(_childChainId)
     {}
 
@@ -39,6 +57,18 @@ contract Optimism_ParentMessenger is OVM_CrossDomainEnabled, ParentMessengerInte
         emit SetDefaultGasLimit(newDefaultGasLimit);
     }
 
+    function setDefaultGasPrice(uint256 newDefaultGasPrice) public onlyOwner nonReentrant() {
+        defaultGasPrice = newDefaultGasPrice;
+        emit SetDefaultGasPrice(newDefaultGasPrice);
+    }
+
+    function setDefaultGasLimit(uint256 newDefaultMaxSubmissionCost) public onlyOwner nonReentrant() {
+        defaultMaxSubmissionCost = newDefaultMaxSubmissionCost;
+        emit SetDefaultMaxSubmissionCost(newDefaultMaxSubmissionCost);
+    }
+
+    // TODO: Add setters for other Arbitrum transaction params.
+
     /**
      * @notice Sends a message to the child messenger via the canonical message bridge.
      * @dev The caller must be the either the OracleHub or the GovernorHub. This is to send either a
@@ -51,8 +81,28 @@ contract Optimism_ParentMessenger is OVM_CrossDomainEnabled, ParentMessengerInte
         address target = msg.sender == oracleHub ? oracleSpoke : governorSpoke;
         bytes memory dataSentToChild =
             abi.encodeWithSignature("processMessageFromCrossChainParent(bytes,address)", data, target);
-        sendCrossDomainMessage(childMessenger, defaultGasLimit, dataSentToChild);
-        emit MessageSentToChild(dataSentToChild, target, defaultGasLimit, childMessenger);
+
+        // Since we know the L2 target's address in advance, we don't need to alias an L1 address.
+        uint256 seqNumber =
+            sendTxToL2NoAliassing(
+                target,
+                owner(), // This is the address that will send ETH refunds for any failed messages.
+                msg.value, // Pass along all msg.value included by Hub caller.
+                defaultGasLimit,
+                defaultGasPrice,
+                defaultMaxSubmissionCost,
+                dataSentToChild
+            );
+        emit MessageSentToChild(
+            dataSentToChild,
+            target,
+            msg.value,
+            defaultGasLimit,
+            defaultGasPrice,
+            defaultMaxSubmissionCost,
+            childMessenger,
+            seqNumber
+        );
     }
 
     /**

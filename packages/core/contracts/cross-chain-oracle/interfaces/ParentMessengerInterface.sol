@@ -3,5 +3,5 @@ pragma solidity ^0.8.0;
 
 interface ParentMessengerInterface {
     // Should send cross-chain message to Child messenger contract or revert.
-    function sendMessageToChild(bytes memory data) external;
+    function sendMessageToChild(bytes memory data) external payable;
 }
