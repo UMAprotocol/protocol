@@ -232,6 +232,26 @@ describe("BridgeAdmin", () => {
       assert.equal(await bridgePool.methods.bridgeAdmin().call(), owner);
       assert.equal(await bridgePool2.methods.bridgeAdmin().call(), owner);
     });
+    it("Set LP fee rate %/second", async () => {
+      const newRate = toWei("0.0000025");
+      assert(
+        await didContractThrow(
+          bridgeAdmin.methods.setLpFeeRatePerSecond(bridgePool.options.address, newRate).send({ from: rando })
+        ),
+        "OnlyOwner modifier not enforced"
+      );
+
+      const txn = await bridgeAdmin.methods
+        .setLpFeeRatePerSecond(bridgePool.options.address, newRate)
+        .send({ from: owner });
+
+      // Check for L1 logs and state change
+
+      await assertEventEmitted(txn, bridgeAdmin, "SetLpFeeRate", (ev) => {
+        return ev.bridgePool == bridgePool.options.address && ev.newLpFeeRatePerSecond.toString() == newRate;
+      });
+      assert.equal(await bridgePool.methods.lpFeeRatePerSecond().call(), newRate);
+    });
     describe("Cross domain Admin functions", () => {
       describe("Whitelist tokens", () => {
         it("Basic checks", async () => {
