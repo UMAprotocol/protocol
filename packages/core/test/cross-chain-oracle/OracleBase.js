@@ -60,7 +60,6 @@ describe("OracleBase", async () => {
     await assertEventNotEmitted(txn, oracle, "PriceRequestAdded");
   });
   it("publishPrice", async function () {
-    await oracle.methods.requestPrice(testIdentifier, testRequestTime, testAncillary).send({ from: owner });
     let txn = await oracle.methods
       .publishPrice(testIdentifier, testRequestTime, testAncillary, testPrice)
       .send({ from: owner });
@@ -74,6 +73,7 @@ describe("OracleBase", async () => {
         event.ancillaryData.toLowerCase() === testAncillary.toLowerCase() &&
         event.price.toString() === testPrice
     );
+
     // Duplicate call does not emit an event.
     txn = await oracle.methods
       .publishPrice(testIdentifier, testRequestTime, testAncillary, testPrice)
