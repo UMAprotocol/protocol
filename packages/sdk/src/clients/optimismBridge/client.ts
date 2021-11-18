@@ -2,14 +2,13 @@ import ethers from "ethers";
 import type { providers, ContractTransaction } from "ethers";
 import assert from "assert";
 import { predeploys, getContractInterface } from "@eth-optimism/contracts";
-import { TransactionReceipt } from "@ethersproject/abstract-provider";
 import {
   ERC20Ethers__factory,
   L1StandardBridgeEthers__factory,
   L2StandardBridgeEthers__factory,
   L2StandardERC20Ethers__factory,
 } from "@uma/contracts-node";
-// import { Watcher } from "@eth-optimism/core-utils";
+import { Watcher } from "@eth-optimism/core-utils";
 
 import type { SignerOrProvider } from "../..";
 import { BigNumberish } from "../../utils";
@@ -70,7 +69,7 @@ export async function waitRelayToL2(
   tx: ContractTransaction,
   l1RpcProvider: providers.Provider,
   l2RpcProvider: providers.Provider
-): Promise<TransactionReceipt> {
+) {
   const l2Messenger = new ethers.Contract(
     predeploys.L2CrossDomainMessenger,
     getContractInterface("L2CrossDomainMessenger"),
@@ -81,7 +80,6 @@ export async function waitRelayToL2(
     getContractInterface("L1CrossDomainMessenger"),
     l1RpcProvider
   );
-
   // Watch for messages to be relayed between L1 and L2.
   const watcher = new Watcher({
     l1: {
@@ -93,7 +91,6 @@ export async function waitRelayToL2(
       messengerAddress: l2Messenger.address,
     },
   });
-
   // Wait for the message to be relayed to L2
   const [msgHash1] = await watcher.getMessageHashesFromL1Tx(tx.hash);
   return watcher.getL2TransactionReceipt(msgHash1, true);
