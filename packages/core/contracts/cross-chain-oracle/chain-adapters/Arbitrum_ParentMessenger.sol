@@ -79,9 +79,9 @@ contract Arbitrum_ParentMessenger is
                 childMessenger,
                 owner(), // This is the address that will send ETH refunds for any failed messages.
                 msg.value, // Pass along all msg.value included by Hub caller.
+                defaultMaxSubmissionCost,
                 defaultGasLimit,
                 defaultGasPrice,
-                defaultMaxSubmissionCost,
                 dataSentToChild
             );
         emit MessageSentToChild(
@@ -108,9 +108,9 @@ contract Arbitrum_ParentMessenger is
                 childMessenger,
                 owner(), // This is the address that will send ETH refunds for any failed messages.
                 msg.value, // Pass along all msg.value included by Hub caller.
+                defaultMaxSubmissionCost,
                 defaultGasLimit,
                 defaultGasPrice,
-                defaultMaxSubmissionCost,
                 dataSentToChild
             );
         emit MessageSentToChild(
@@ -140,12 +140,12 @@ contract Arbitrum_ParentMessenger is
 
         uint256 seqNumber =
             sendTxToL2(
-                target,
+                childMessenger,
                 owner(), // This is the address that will send ETH refunds for any failed messages.
                 msg.value, // Pass along all msg.value included by Hub caller.
+                defaultMaxSubmissionCost,
                 defaultGasLimit,
                 defaultGasPrice,
-                defaultMaxSubmissionCost,
                 dataSentToChild
             );
         emit MessageSentToChild(
