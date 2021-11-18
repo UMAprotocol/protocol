@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.17.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.16.0...@uma/core@2.17.0) (2021-11-18)
+
+### Bug Fixes
+
+- **common/core:** small changes post optimsim deployment ([#3592](https://github.com/UMAprotocol/protocol/issues/3592)) ([b940fb7](https://github.com/UMAprotocol/protocol/commit/b940fb77b26c5973b98aa6b191fb1b663df18eae))
+
+### Features
+
+- **cross-chain-oracle:** add optimism chain adapters ([#3595](https://github.com/UMAprotocol/protocol/issues/3595)) ([0c14d8f](https://github.com/UMAprotocol/protocol/commit/0c14d8fa6634da8e4fedd9a4e3caba591d2fca07))
+- convert voter dapp test scripts to hardhat ([#3604](https://github.com/UMAprotocol/protocol/issues/3604)) ([1a8ce57](https://github.com/UMAprotocol/protocol/commit/1a8ce57ce56a8e21988f4838f934bb2b7d38239a))
+
 # [2.16.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.15.1...@uma/core@2.16.0) (2021-11-11)
 
 ### Features
