@@ -9,7 +9,7 @@ import {
   L2StandardBridgeEthers__factory,
   L2StandardERC20Ethers__factory,
 } from "@uma/contracts-node";
-import { Watcher } from "@eth-optimism/core-utils";
+// import { Watcher } from "@eth-optimism/core-utils";
 
 import type { SignerOrProvider } from "../..";
 import { BigNumberish } from "../../utils";
@@ -40,6 +40,23 @@ export async function depositERC20(
 
   assert((await L2_ERC20.l1Token()) === L1_ERC20.address, "L2 token does not correspond to L1 token");
   return L1StandardBridge.depositERC20(L1_ERC20.address, L2_ERC20.address, amount, 2000000, "0x");
+}
+
+export async function depositEth(
+  l1Provider: SignerOrProvider,
+  l2Provider: SignerOrProvider,
+  l1Erc20Address: string,
+  l2Erc20Address: string,
+  amount: BigNumberish
+): Promise<ContractTransaction> {
+  const L2StandardBridge = L2StandardBridgeEthers__factory.connect(L2_STANDARD_BRIDGE_ADDRESS, l2Provider);
+  const L1StandardBridgeAddress = await L2StandardBridge.l1TokenBridge();
+  const L1StandardBridge = L1StandardBridgeEthers__factory.connect(L1StandardBridgeAddress, l1Provider);
+  const L1_ERC20 = ERC20Ethers__factory.connect(l1Erc20Address, l1Provider);
+  const L2_ERC20 = L2StandardERC20Ethers__factory.connect(l2Erc20Address, l2Provider);
+
+  assert((await L2_ERC20.l1Token()) === L1_ERC20.address, "L2 token does not correspond to L1 token");
+  return L1StandardBridge.depositETH(2000000, "0x", { value: amount });
 }
 
 /**

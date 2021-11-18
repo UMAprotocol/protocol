@@ -35,8 +35,6 @@
     }
   ],
   "dependencies": {
-    "@eth-optimism/contracts": "^0.5.1",
-    "@eth-optimism/core-utils": "^0.7.0",
     "@google-cloud/datastore": "^6.6.0",
     "@types/lodash-es": "^4.17.5",
     "@uma/contracts-frontend": "^0.1.11",
@@ -49,6 +47,7 @@
     "web3": "^1.6.0"
   },
   "peerDependencies": {
+    "@eth-optimism/contracts": "^0.5.1",
     "ethers": "^5.4.2"
   },
   "devDependencies": {
