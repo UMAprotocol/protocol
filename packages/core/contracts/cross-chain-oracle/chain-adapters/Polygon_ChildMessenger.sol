@@ -13,9 +13,9 @@ import "../../common/implementation/Lockable.sol";
  * the internal `_processMessageFromRoot` function is only callable indirectly by the `Polygon_ParentMessenger`.
  */
 contract Polygon_ChildMessenger is FxBaseChildTunnel, ChildMessengerInterface, Lockable {
-    // The only child network contract that can send messages over the bridge via the messenger is the oracle spoke.
+    // The only child network contract that can send messages over the bridge via the messenger is the OracleSpoke.
     address public oracleSpoke;
-    // Store oracle hub address that oracle spoke can send messages to via `sendMessageToParent`.
+    // Store oracle hub address that OracleSpoke can send messages to via `sendMessageToParent`.
     address public oracleHub;
 
     event SetOracleSpoke(address newOracleSpoke);
@@ -33,7 +33,7 @@ contract Polygon_ChildMessenger is FxBaseChildTunnel, ChildMessengerInterface, L
     /**
      * @notice Set OracleSpoke address, which is the only address that can call `sendMessageToParent`.
      * @dev Can only reset this address once.
-     * @param _oracleSpoke address of the new oracle spoke, deployed on this network.
+     * @param _oracleSpoke address of the new OracleSpoke, deployed on this network.
      */
     function setOracleSpoke(address _oracleSpoke) public nonReentrant() {
         require(oracleSpoke == address(0x0), "OracleSpoke already set");
@@ -45,7 +45,7 @@ contract Polygon_ChildMessenger is FxBaseChildTunnel, ChildMessengerInterface, L
      * @notice Set OracleHub address, which is always the target address for messages sent from this network to
      * the parent network.
      * @dev Can only reset this address once.
-     * @param _oracleHub address of the new oracle hub, deployed on the parent network.
+     * @param _oracleHub address of the new OracleHub, deployed on the parent network.
      */
     function setOracleHub(address _oracleHub) public nonReentrant() {
         require(oracleHub == address(0x0), "OracleHub already set");
