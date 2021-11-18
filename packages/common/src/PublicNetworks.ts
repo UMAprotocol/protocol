@@ -78,6 +78,10 @@ export const PublicNetworks: PublicNetworksType = {
     name: "arbitrum-rinkeby",
     etherscan: "https://testnet.arbiscan.io/",
   },
+  288: {
+    name: "boba",
+    etherscan: "https://blockexplorer.boba.network/",
+  },
 };
 
 export function isPublicNetwork(name: string): boolean {
