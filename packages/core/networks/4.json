@@ -69,14 +69,14 @@
   },
   {
     "contractName": "Arbitrum_ParentMessenger",
-    "address": "0x089E6167Dc98cffB73A3A490a7a41ca098a9a188"
+    "address": "0x0fe9C5A29d79e928B41642EEbB9590dB4667eD70"
   },
   {
     "contractName": "OracleHub",
-    "address": "0x826603862E421E0827A063e05aaDe67217B09EC9"
+    "address": "0x7927E5432E7f97E53470674a466565DE721F7AC0"
   },
   {
     "contractName": "GovernorHub",
-    "address": "0x6dfF62Adc450e9b772c96d6b73f2F41BF453e9fd"
+    "address": "0x5A361C68c0F6605F44e564469Ff68826DAA3A36E"
   }
 ]

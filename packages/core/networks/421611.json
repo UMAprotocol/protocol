@@ -1,7 +1,7 @@
 [
   {
     "contractName": "Arbitrum_ChildMessenger",
-    "address": "0x1F5AA71C79ec6a11FC55789ed32dAE3B64d75791"
+    "address": "0x62530b7D3DcbCb0699480094E29Cec181eC3ea6a"
   },
   {
     "contractName": "Finder",
@@ -13,7 +13,7 @@
   },
   {
     "contractName": "OracleSpoke",
-    "address": "0xCb08678e4381Be3E264E6A0037E3297Ca56a583e"
+    "address": "0xA011B82880D0235f845c9d1EA5610b965e0CD759"
   },
   {
     "contractName": "GovernorSpoke",
