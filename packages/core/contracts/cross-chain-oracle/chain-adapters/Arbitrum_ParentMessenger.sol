@@ -20,6 +20,7 @@ contract Arbitrum_ParentMessenger is
     event SetDefaultGasLimit(uint32 newDefaultGasLimit);
     event SetDefaultMaxSubmissionCost(uint256 newMaxSubmissionCost);
     event SetDefaultGasPrice(uint256 newDefaultGasPrice);
+    event SetRefundL2Address(address newRefundL2Address);
     event MessageSentToChild(
         bytes data,
         address indexed targetContract,
@@ -27,15 +28,30 @@ contract Arbitrum_ParentMessenger is
         uint32 gasLimit,
         uint256 gasPrice,
         uint256 maxSubmissionCost,
+        address refundL2Address,
         address indexed childAddress,
         uint256 sequenceNumber
     );
     event MessageReceivedFromChild(bytes data, address indexed childAddress, address indexed targetHub);
 
-    // TODO: Try to read these from Arbitrum system contracts.
+    // TODO: Can these default values be determined dynamically via L1 Arbitrum system contracts?
+
+    // Gas limit for immediate L2 execution attempt (can be estimated via NodeInterface.estimateRetryableTicket).
+    // NodeInterface precompile interface exists at L2 address 0x00000000000000000000000000000000000000C8
     uint32 public defaultGasLimit = 5_000_000;
+
+    // Amount of ETH allocated to pay for the base submission fee. The base submission fee is a parameter unique to
+    // retryable transactions; the user is charged the base submission fee to cover the storage costs of keeping their
+    // ticket’s calldata in the retry buffer. (current base submission fee is queryable via
+    // ArbRetryableTx.getSubmissionPrice). ArbRetryableTicket precompile interface exists at L2 address
+    // 0x000000000000000000000000000000000000006E.
     uint256 public defaultMaxSubmissionCost = 1e18 / 10; // 0.1e18
+
+    // L2 Gas price bid for immediate L2 execution attempt (queryable via standard eth*gasPrice RPC)
     uint256 public defaultGasPrice = 10e9; // 10 gWei
+
+    // This address on L2 receives extra ETH that is left over after relaying a message via the inbox.
+    address public refundL2Address;
 
     /**
      * @notice Construct the Optimism_ParentMessenger contract.
@@ -45,7 +61,20 @@ contract Arbitrum_ParentMessenger is
     constructor(address _inbox, uint256 _childChainId)
         Arbitrum_CrossDomainEnabled(_inbox)
         ParentMessengerBase(_childChainId)
-    {}
+    {
+        refundL2Address = owner();
+    }
+
+    /**
+     * @notice Changes the refund address on L2 that receives excess gas or the full msg.value if the retryable
+     * ticket reverts.
+     * @dev The caller of this function must be the owner. This should be set to the DVM governor.
+     * @param newRefundl2Address the new refund address to set.
+     */
+    function setRefundL2Address(address newRefundl2Address) public onlyOwner nonReentrant() {
+        refundL2Address = newRefundl2Address;
+        emit SetRefundL2Address(refundL2Address);
+    }
 
     /**
      * @notice Changes the default gas limit that is sent along with transactions to Arbitrum.
@@ -132,7 +161,7 @@ contract Arbitrum_ParentMessenger is
         uint256 seqNumber =
             sendTxToL2NoAliassing(
                 childMessenger,
-                owner(), // This is the address that will send ETH refunds for any failed messages.
+                refundL2Address,
                 msg.value, // Pass along all msg.value included by Hub caller.
                 defaultMaxSubmissionCost,
                 defaultGasLimit,
@@ -146,6 +175,7 @@ contract Arbitrum_ParentMessenger is
             defaultGasLimit,
             defaultGasPrice,
             defaultMaxSubmissionCost,
+            refundL2Address,
             childMessenger,
             seqNumber
         );
