@@ -12,7 +12,7 @@ import "../../common/implementation/Lockable.sol";
  * @dev This contract is ownable via the onlyCrossDomainAccount modifier, restricting ownership to the cross-domain
  * parent messenger contract that lives on L1.
  */
-contract Optimism_ChildMessenger is OVM_CrossDomainEnabled, ChildMessengerInterface, Lockable {
+contract Optimism_ChildMessenger is CrossDomainEnabled, ChildMessengerInterface, Lockable {
     // The only child network contract that can send messages over the bridge via the messenger is the oracle spoke.
     address public oracleSpoke;
 

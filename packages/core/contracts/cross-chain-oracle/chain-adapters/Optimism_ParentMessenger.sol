@@ -12,7 +12,7 @@ import "../../common/implementation/Lockable.sol";
  * @notice Sends cross chain messages from Ethereum L1 to Optimism L2 network.
  * @dev This contract is ownable and should be owned by the DVM governor.
  */
-contract Optimism_ParentMessenger is OVM_CrossDomainEnabled, ParentMessengerInterface, ParentMessengerBase, Lockable {
+contract Optimism_ParentMessenger is CrossDomainEnabled, ParentMessengerInterface, ParentMessengerBase, Lockable {
     event SetDefaultGasLimit(uint32 newDefaultGasLimit);
     event MessageSentToChild(bytes data, address indexed targetSpoke, uint32 gasLimit, address indexed childAddress);
     event MessageReceivedFromChild(bytes data, address indexed childAddress, address indexed targetHub);
