@@ -739,6 +739,9 @@ contract BridgePool is MultiCaller, Testable, BridgePoolInterface, ERC20, Lockab
         _sync(); // Fetch any balance changes due to token bridging finalization and factor them in.
 
         // ExchangeRate := (liquidReserves + utilizedReserves - undistributedLpFees) / lpTokenSupply
+        // Note that utilizedReserves can be negative. If this is the case, then liquidReserves is offset by an equal
+        // and opposite size. LiquidReserves + utilizedReserves will always be larger than undistributedLpFees so this
+        // int will always be positive so there is no risk in underflow in type casting in the return line.
         int256 numerator = int256(liquidReserves) + utilizedReserves - int256(undistributedLpFees);
         return (uint256(numerator) * 1e18) / totalSupply();
     }

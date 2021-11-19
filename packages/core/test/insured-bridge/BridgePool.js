@@ -2098,6 +2098,92 @@ describe("BridgePool", () => {
       await l1Token.methods.mint(bridgePool.options.address, toWei("100")).send({ from: owner });
       assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1.01"));
     });
+    it("Edge cases cant force exchange rate current to revert", async () => {
+      // There are some extreme edge cases that can cause the exchange rate to revert in pervious versions of the smart
+      // contracts. This test aims to mimic them and show that there is no condition where this is an issue with the
+      // modified exchange rate computation logic.
+      // Create a relay that uses all liquid reserves.
+      const liquidReservesPreLargeRelay = await bridgePool.methods.liquidReserves().call();
+
+      await l1Token.methods.mint(relayer, liquidReservesPreLargeRelay).send({ from: owner });
+      await l1Token.methods.approve(bridgePool.options.address, liquidReservesPreLargeRelay).send({ from: relayer });
+
+      let requestTimestamp = (await bridgePool.methods.getCurrentTime().call()).toString();
+      await bridgePool.methods
+        .relayDeposit(...generateRelayParams({ depositId: 1, amount: liquidReservesPreLargeRelay }))
+        .send({ from: relayer });
+
+      console.log(
+        "bond",
+        toBN(liquidReservesPreLargeRelay)
+          .mul(toBN(defaultProposerBondPct))
+          .div(toBN(toWei("1")))
+          .toString()
+      );
+
+      const relayAttemptData2 = {
+        ...defaultRelayData,
+        relayId: 1,
+        priceRequestTime: requestTimestamp,
+        relayState: InsuredBridgeRelayStateEnum.PENDING,
+        proposerBond: toBN(liquidReservesPreLargeRelay)
+          .mul(toBN(defaultProposerBondPct))
+          .div(toBN(toWei("1")))
+          .toString(),
+      };
+      await advanceTime(defaultLiveness);
+      await bridgePool.methods
+        .settleRelay({ ...defaultDepositData, depositId: 1, amount: liquidReservesPreLargeRelay }, relayAttemptData2)
+        .send({ from: relayer });
+
+      // now, liquid reserves should be the realizedLP Fee from the previous relay.
+      assert.equal(
+        (await bridgePool.methods.liquidReserves().call()).toString(),
+        toBN(liquidReservesPreLargeRelay)
+          .mul(toBN(defaultRealizedLpFee))
+          .div(toBN(toWei("1")))
+          .toString()
+      );
+
+      await bridgePool.methods.exchangeRateCurrent().call(); // Exchange rate current should still work, as expected (not revert).
+
+      // Further relay the remaining liquid reserves.
+      requestTimestamp = (await bridgePool.methods.getCurrentTime().call()).toString();
+      const liquidReservesPostLargeRelay = await bridgePool.methods.liquidReserves().call();
+      await bridgePool.methods
+        .relayDeposit(...generateRelayParams({ depositId: 2, amount: liquidReservesPostLargeRelay }))
+        .send({ from: relayer });
+
+      // Now, finalize this relay.
+      const relayAttemptData3 = {
+        ...defaultRelayData,
+        relayId: 2,
+        priceRequestTime: requestTimestamp,
+        relayState: InsuredBridgeRelayStateEnum.PENDING,
+        proposerBond: toBN(liquidReservesPostLargeRelay)
+          .mul(toBN(defaultProposerBondPct))
+          .div(toBN(toWei("1")))
+          .toString(),
+      };
+
+      await advanceTime(defaultLiveness);
+      await bridgePool.methods
+        .settleRelay({ ...defaultDepositData, depositId: 2, amount: liquidReservesPostLargeRelay }, relayAttemptData3)
+        .send({ from: relayer });
+
+      // Exchange rate current should still work, as expected (not revert). Note that at this point the undistributed LP fees exceed the liquid reserves.
+      const endRate = await bridgePool.methods.exchangeRateCurrent().call();
+
+      // Mimic some funds coming over the canonical bridge by a mint. This should not affect the exchange rate.
+      await l1Token.methods.mint(bridgePool.options.address, toWei("500")).send({ from: owner });
+      assert.equal(endRate.toString(), (await bridgePool.methods.exchangeRateCurrent().call()).toString());
+
+      // Finally, dump a larger amount of tokens into the pool than was originally added by LPs. Again, this should
+      // break nothing.
+      await l1Token.methods.mint(bridgePool.options.address, toWei("1500")).send({ from: owner });
+      await bridgePool.methods.exchangeRateCurrent().call();
+      assert.equal(endRate.toString(), (await bridgePool.methods.exchangeRateCurrent().call()).toString());
+    });
   });
   describe("Liquidity utilization rato", () => {
     beforeEach(async function () {
