@@ -54,9 +54,12 @@ contract BridgePool is MultiCaller, Testable, BridgePoolInterface, ERC20, Lockab
     // Reserves that are not yet utilized but are pre-allocated for a pending relay.
     uint256 public pendingReserves;
 
-    // True If this pool houses WETH. If the withdrawn token is WETH then unwrap and send ETH when finalizing
-    // withdrawal.
+    // True If this pool stores WETH. If the withdrawn token is WETH then unwrap and send ETH when finalizing
+    // relays. Also enable LPs to receive ETH, if they choose, when withdrawing liquidity.
     bool public isWethPool;
+
+    // Enables the Bridge Admin to enable/disable relays in this pool. Disables relayDeposit and relayAndSpeedUp.
+    bool public relaysEnabled = true;
 
     // Exponential decay exchange rate to accumulate fees to LPs over time. This can be changed via the BridgeAdmin.
     uint64 public lpFeeRatePerSecond;
@@ -150,10 +153,16 @@ contract BridgePool is MultiCaller, Testable, BridgePoolInterface, ERC20, Lockab
     event RelayCanceled(bytes32 indexed depositHash, bytes32 indexed relayHash, address indexed disputer);
     event RelaySettled(bytes32 indexed depositHash, address indexed caller, RelayData relay);
     event BridgePoolAdminTransferred(address oldAdmin, address newAdmin);
+    event RelaysEnabledSet(bool newRelaysEnabled);
     event LpFeeRateSet(uint64 newLpFeeRatePerSecond);
 
     modifier onlyBridgeAdmin() {
         require(msg.sender == address(bridgeAdmin), "Caller not bridge admin");
+        _;
+    }
+
+    modifier onlyIfRelaysEnabld() {
+        require(relaysEnabled, "Relays are disabled");
         _;
     }
 
@@ -254,11 +263,16 @@ contract BridgePool is MultiCaller, Testable, BridgePoolInterface, ERC20, Lockab
      * speedUpRelay methods concatenated. This could be refactored to just call each method, but there
      * are some gas savings in combining the transfers and hash computations.
      * @dev Caller must have approved this contract to spend the total bond + amount - fees for `l1Token`.
+     * @dev This function can only be called if relays are enabled for this bridge pool.
      * @param depositData the deposit data struct containing all the user's deposit information.
      * @param realizedLpFeePct LP fee calculated off-chain considering the L1 pool liquidity at deposit time, before
      *      quoteTimestamp. The OO acts to verify the correctness of this realized fee. Cannot exceed 50%.
      */
-    function relayAndSpeedUp(DepositData memory depositData, uint64 realizedLpFeePct) public nonReentrant() {
+    function relayAndSpeedUp(DepositData memory depositData, uint64 realizedLpFeePct)
+        public
+        onlyIfRelaysEnabld()
+        nonReentrant()
+    {
         // If no pending relay for this deposit, then associate the caller's relay attempt with it.
         uint32 priceRequestTime = uint32(getCurrentTime());
 
@@ -379,11 +393,16 @@ contract BridgePool is MultiCaller, Testable, BridgePoolInterface, ERC20, Lockab
      * @notice Called by Relayer to execute a slow relay from L2 to L1, fulfilling a corresponding deposit order.
      * @dev There can only be one pending relay for a deposit.
      * @dev Caller must have approved this contract to spend the total bond + amount - fees for `l1Token`.
+     * @dev This function can only be called if relays are enabled for this bridge pool.
      * @param depositData the deposit data struct containing all the user's deposit information.
      * @param realizedLpFeePct LP fee calculated off-chain considering the L1 pool liquidity at deposit time, before
      *      quoteTimestamp. The OO acts to verify the correctness of this realized fee. Cannot exceed 50%.
      */
-    function relayDeposit(DepositData memory depositData, uint64 realizedLpFeePct) public nonReentrant() {
+    function relayDeposit(DepositData memory depositData, uint64 realizedLpFeePct)
+        public
+        onlyIfRelaysEnabld()
+        nonReentrant()
+    {
         // The realizedLPFeePct should never be greater than 0.5e18 and the slow and instant relay fees should never be
         // more than 0.25e18 each. Therefore, the sum of all fee types can never exceed 1e18 (or 100%).
         require(
@@ -681,6 +700,17 @@ contract BridgePool is MultiCaller, Testable, BridgePoolInterface, ERC20, Lockab
     function setLpFeeRatePerSecond(uint64 _newLpFeeRatePerSecond) public override onlyBridgeAdmin() nonReentrant() {
         lpFeeRatePerSecond = _newLpFeeRatePerSecond;
         emit LpFeeRateSet(lpFeeRatePerSecond);
+    }
+
+    /**
+     * @notice Enable the bridge admin to enable/disable relays for this pool. Acts as a pause. Only effects
+     * relayDeposit and relayAndSpeedUp methods. ALl other contract logic remains functional after a pause.
+     * @dev Caller must be BridgeAdmin contract.
+     * @param _relaysEnabled The new relaysEnabled state.
+     */
+    function setRelaysEnabled(bool _relaysEnabled) public override onlyBridgeAdmin() nonReentrant() {
+        relaysEnabled = _relaysEnabled;
+        emit RelaysEnabledSet(_relaysEnabled);
     }
 
     /************************************
