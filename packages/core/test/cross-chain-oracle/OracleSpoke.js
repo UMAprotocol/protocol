@@ -142,7 +142,7 @@ describe("OracleSpoke.js", async () => {
 
     // Can call has without ancillary data:
     assert.isFalse(await oracleSpoke.methods.hasPrice(defaultIdentifier, defaultTimestamp).call({ from: owner }));
-    expectedAncillaryData = await oracleSpoke.methods.stampAncillaryData("0x", owner).call();
+    expectedAncillaryData = await oracleSpoke.methods.stampAncillaryData("0x").call();
     await messenger.methods
       .publishPrice(
         oracleSpoke.options.address,
@@ -190,7 +190,7 @@ describe("OracleSpoke.js", async () => {
     );
 
     // Can call has without ancillary data:
-    expectedAncillaryData = await oracleSpoke.methods.stampAncillaryData("0x", owner).call();
+    expectedAncillaryData = await oracleSpoke.methods.stampAncillaryData("0x").call();
     await messenger.methods
       .publishPrice(
         oracleSpoke.options.address,
