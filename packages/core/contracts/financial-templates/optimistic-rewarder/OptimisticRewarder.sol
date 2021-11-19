@@ -214,8 +214,8 @@ contract OptimisticRewarder is OptimisticRewarderBase, OptimisticRewarderToken {
         bytes32 _identifier,
         FinderInterface _finder
     )
-        OptimisticRewarderToken(_name, _symbol, _baseUri)
         OptimisticRewarderBase(_liveness, _bondToken, _bond, _identifier, _finder)
+        OptimisticRewarderToken(_name, _symbol, _baseUri)
     {}
 
     function mintNextToken(address recipient)
