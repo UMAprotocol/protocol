@@ -51,7 +51,6 @@ contract GovernorHub is Ownable, Lockable {
         bytes memory dataFromGovernor
     ) external nonReentrant() onlyOwner {
         bytes memory dataSentToChild = abi.encode(to, dataFromGovernor);
-
         messengers[chainId].sendMessageToChild(dataSentToChild);
         emit RelayedGovernanceRequest(chainId, address(messengers[chainId]), to, dataFromGovernor, dataSentToChild);
     }
