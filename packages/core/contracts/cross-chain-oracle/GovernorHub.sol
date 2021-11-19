@@ -40,6 +40,9 @@ contract GovernorHub is Ownable, Lockable {
     /**
      * @notice This should be called in order to relay a governance request to the `GovernorSpoke` contract deployed to
      * the child chain associated with `chainId`.
+     * @dev This method is `payable` so that ETH can be forwarded to Messenger contracts that need to send ETH
+     * from L1 to L2, like Arbitrum messengers for example. For networks that do not use ETH, the caller will
+     * lose ETH, therefore it is the caller's responsibility to know when to send ETH.
      * @param chainId network that messenger contract will communicate with
      * @param to Contract on child chain to send message to
      * @param dataFromGovernor Message to send. Should contain the encoded function selector and params.

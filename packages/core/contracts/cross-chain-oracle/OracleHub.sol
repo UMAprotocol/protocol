@@ -61,6 +61,9 @@ contract OracleHub is OracleBase, ParentMessengerConsumerInterface, Ownable, Loc
      * @dev This method will always attempt to call `messenger.sendMessageToChild` even if it is a duplicate call for
      * this price request. Therefore the Messenger contract for this `chainId` should determine how to handle duplicate
      * calls.
+     * @dev This method is `payable` so that ETH can be forwarded to Messenger contracts that need to send ETH
+     * from L1 to L2, like Arbitrum messengers for example. For networks that do not use ETH, the caller will
+     * lose ETH, therefore it is the caller's responsibility to know when to send ETH.
      * @param chainId Network to resolve price for.
      * @param identifier Identifier of price request to resolve.
      * @param time Timestamp of price request to resolve.
