@@ -1204,19 +1204,6 @@
     pino-sentry "^0.7.0"
     prom-client "^13.1.0"
 
-"@eth-optimism/contracts@^0.4.13":
-  version "0.4.14"
-  resolved "https://registry.yarnpkg.com/@eth-optimism/contracts/-/contracts-0.4.14.tgz#e9b29f84e85d3db37e956c0df07c8af3d99e766d"
-  integrity sha512-E2IfkevM6DbTPhVpEvEo3Ws5tDWz5qmtGMzWZGSgZvcyC/GY0t0XKkZUUOrYDzYjOK9lAO21fa7WCPYP6Ay2IA==
-  dependencies:
-    "@eth-optimism/core-utils" "^0.6.1"
-    "@ethersproject/abstract-provider" "^5.4.1"
-    "@ethersproject/abstract-signer" "^5.4.1"
-    "@ethersproject/contracts" "^5.4.1"
-    "@ethersproject/hardware-wallets" "^5.4.0"
-    "@nomiclabs/hardhat-etherscan" "^2.1.5"
-    glob "^7.1.6"
-
 "@eth-optimism/contracts@^0.4.5":
   version "0.4.6"
   resolved "https://registry.yarnpkg.com/@eth-optimism/contracts/-/contracts-0.4.6.tgz#47448c3ebcc8611fd6b5dd31632a28a2cb7f8710"
@@ -1229,6 +1216,29 @@
     "@ethersproject/hardware-wallets" "^5.4.0"
     glob "^7.1.6"
 
+"@eth-optimism/contracts@^0.5.2":
+  version "0.5.2"
+  resolved "https://registry.yarnpkg.com/@eth-optimism/contracts/-/contracts-0.5.2.tgz#462db48e5247fe73ac80fb85f7c9d3fd125015d7"
+  integrity sha512-vfVfZOtjye2chfOtZLUHT59aK/h6jMQiYN4kA7e9wln2QMEOyMHeq0WNLql0dTpUmMWOiYLZc8d8c9oX+6OAcQ==
+  dependencies:
+    "@eth-optimism/core-utils" "0.7.1"
+    "@ethersproject/abstract-provider" "^5.4.1"
+    "@ethersproject/abstract-signer" "^5.4.1"
+    "@ethersproject/hardware-wallets" "^5.4.0"
+
+"@eth-optimism/core-utils@0.7.1":
+  version "0.7.1"
+  resolved "https://registry.yarnpkg.com/@eth-optimism/core-utils/-/core-utils-0.7.1.tgz#2fae2e6d61c3f92d5ab1e3c742ca7c808efee762"
+  integrity sha512-gNEVh8gXTICbtsq7Wd6qXjpOmnhvsd3ADSC8hXdKbZ+aqz0cK8NPAzmPuwLDuTJG42HJ3phfcXmbzAMGafIUHQ==
+  dependencies:
+    "@ethersproject/abstract-provider" "^5.4.1"
+    "@ethersproject/bytes" "^5.5.0"
+    "@ethersproject/providers" "^5.4.5"
+    "@ethersproject/web" "^5.5.0"
+    chai "^4.3.4"
+    ethers "^5.4.5"
+    lodash "^4.17.21"
+
 "@eth-optimism/core-utils@^0.5.1":
   version "0.5.1"
   resolved "https://registry.yarnpkg.com/@eth-optimism/core-utils/-/core-utils-0.5.1.tgz#bdf9c08e95e09a72fed52b6665811d364d32ecb3"
@@ -1236,16 +1246,6 @@
   dependencies:
     "@ethersproject/abstract-provider" "^5.0.9"
     ethers "^5.0.31"
-    lodash "^4.17.21"
-
-"@eth-optimism/core-utils@^0.6.1":
-  version "0.6.1"
-  resolved "https://registry.yarnpkg.com/@eth-optimism/core-utils/-/core-utils-0.6.1.tgz#ace2f9c31e995e48d1fa6229e3afaa7f4c53e11d"
-  integrity sha512-mTNEpUIaYXf+fSXxJCbWO9+1+vKzAPc3mC4TU3ukCfL19IdFf9ytG/9YKAM3Ls6bAhpwgKdIy1G+OEHvt4vxmA==
-  dependencies:
-    "@ethersproject/abstract-provider" "^5.4.1"
-    "@ethersproject/providers" "^5.4.5"
-    ethers "^5.4.5"
     lodash "^4.17.21"
 
 "@eth-optimism/hardhat-ovm@^0.2.2":
@@ -1748,7 +1748,7 @@
     "@ethersproject/properties" "^5.4.0"
     "@ethersproject/transactions" "^5.4.0"
 
-"@ethersproject/contracts@5.5.0", "@ethersproject/contracts@^5.4.1":
+"@ethersproject/contracts@5.5.0":
   version "5.5.0"
   resolved "https://registry.yarnpkg.com/@ethersproject/contracts/-/contracts-5.5.0.tgz#b735260d4bd61283a670a82d5275e2a38892c197"
   integrity sha512-2viY7NzyvJkh+Ug17v7g3/IJC8HqZBDcOjYARZLdzRxrfGlRgmYgl6xPRKVbEzy1dWKw/iv7chDcS83pg6cLxg==
@@ -4064,19 +4064,6 @@
   version "2.0.2"
   resolved "https://registry.yarnpkg.com/@nomiclabs/hardhat-ethers/-/hardhat-ethers-2.0.2.tgz#c472abcba0c5185aaa4ad4070146e95213c68511"
   integrity sha512-6quxWe8wwS4X5v3Au8q1jOvXYEPkS1Fh+cME5u6AwNdnI4uERvPlVjlgRWzpnb+Rrt1l/cEqiNRH9GlsBMSDQg==
-
-"@nomiclabs/hardhat-etherscan@^2.1.5":
-  version "2.1.7"
-  resolved "https://registry.yarnpkg.com/@nomiclabs/hardhat-etherscan/-/hardhat-etherscan-2.1.7.tgz#f76ce0da1b503d3e506bffbd044967b1a9443675"
-  integrity sha512-9nt9EXubnkd2aTMnQIqKtp80bQFhun88krfB31FN2wB0T54b8YuK0riG2d+EKq/D3t1Kb00oA7oFSFpHLIbLDQ==
-  dependencies:
-    "@ethersproject/abi" "^5.1.2"
-    "@ethersproject/address" "^5.0.2"
-    cbor "^5.0.2"
-    debug "^4.1.1"
-    fs-extra "^7.0.1"
-    node-fetch "^2.6.0"
-    semver "^6.3.0"
 
 "@nomiclabs/hardhat-etherscan@^2.1.6":
   version "2.1.6"
