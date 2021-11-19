@@ -49,7 +49,7 @@ contract Polygon_ParentMessenger is FxBaseRootTunnel, ParentMessengerInterface, 
     /**
      * @notice sendMessageToChild never sends any msg.value, so this should always return 0.
      */
-    function getL1CallValue() external view override nonReentrantView() returns (uint256) {
+    function getL1CallValue() external pure override returns (uint256) {
         return 0;
     }
 

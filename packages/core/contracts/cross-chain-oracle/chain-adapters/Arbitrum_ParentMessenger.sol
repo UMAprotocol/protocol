@@ -134,7 +134,7 @@ contract Arbitrum_ParentMessenger is
      * which then forwards the data to the target either the OracleSpoke or the governorSpoke depending on the caller.
      * @param data data message sent to the child messenger. Should be an encoded function call or packed data.
      */
-    function sendMessageToChild(bytes memory data) public override onlyHubContract() nonReentrant() {
+    function sendMessageToChild(bytes memory data) external override onlyHubContract() nonReentrant() {
         address target = msg.sender == oracleHub ? oracleSpoke : governorSpoke;
         bytes memory dataSentToChild =
             abi.encodeWithSignature("processMessageFromCrossChainParent(bytes,address)", data, target);
