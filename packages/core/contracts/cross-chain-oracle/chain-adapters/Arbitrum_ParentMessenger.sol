@@ -165,7 +165,13 @@ contract Arbitrum_ParentMessenger is
      * to include in msg.value when calling `sendMessageToChild`.
      * @return Amount of msg.value to include to send cross-chain message.
      */
-    function getL1CallValue() public view override nonReentrantView() returns (uint256) {
+    function getL1CallValue()
+        public
+        view
+        override(ParentMessengerBase, ParentMessengerInterface)
+        nonReentrantView()
+        returns (uint256)
+    {
         return _getL1CallValue();
     }
 

@@ -103,11 +103,4 @@ contract Optimism_ParentMessenger is CrossDomainEnabled, ParentMessengerInterfac
         ParentMessengerConsumerInterface(oracleHub).processMessageFromChild(childChainId, data);
         emit MessageReceivedFromChild(data, childMessenger, oracleHub);
     }
-
-    /**
-     * @notice sendMessageToChild never sends any msg.value, so this should always return 0.
-     */
-    function getL1CallValue() external pure override returns (uint256) {
-        return 0;
-    }
 }
