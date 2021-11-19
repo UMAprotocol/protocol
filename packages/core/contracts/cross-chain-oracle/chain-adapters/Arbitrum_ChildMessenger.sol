@@ -7,7 +7,7 @@ import "../../common/implementation/Lockable.sol";
 import "../../external/avm/AVM_CrossDomainEnabled.sol";
 
 /**
- * @notice Sends cross chain messages from Arbitrum L2 to Ethereum L1 network.
+ * @notice Sends and receives cross chain messages between Arbitrum L2 and Ethereum L1 network.
  * @dev This contract is ownable via the onlyCrossDomainAccount modifier, restricting ownership to the cross-domain
  * parent messenger contract that lives on L1.
  */
