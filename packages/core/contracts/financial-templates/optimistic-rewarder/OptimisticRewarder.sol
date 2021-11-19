@@ -187,12 +187,12 @@ abstract contract OptimisticRewarderBase is Lockable {
                     bondToken,
                     // Reward = 0
                     0,
-                    // Set the Optimistic oracle proposer bond for the price request.
+                    // Set the proposer and disputer bond for the price request.
                     bond,
-                    // Set the Optimistic oracle liveness for the price request.
+                    // Set the liveness for the price request.
                     liveness,
                     proposer,
-                    // Canonical value representing "True"; i.e. the proposed relay is valid.
+                    // Canonical value representing "True"; i.e. the proposed redemption is valid.
                     int256(1e18)
                 )
             returns (uint256) {} catch {
