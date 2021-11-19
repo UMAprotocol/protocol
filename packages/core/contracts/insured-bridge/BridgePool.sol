@@ -161,7 +161,7 @@ contract BridgePool is MultiCaller, Testable, BridgePoolInterface, ERC20, Lockab
         _;
     }
 
-    modifier onlyIfRelaysEnable() {
+    modifier onlyIfRelaysEnabld() {
         require(relaysEnabled, "Relays are disabled");
         _;
     }
@@ -270,7 +270,7 @@ contract BridgePool is MultiCaller, Testable, BridgePoolInterface, ERC20, Lockab
      */
     function relayAndSpeedUp(DepositData memory depositData, uint64 realizedLpFeePct)
         public
-        onlyIfRelaysEnable()
+        onlyIfRelaysEnabld()
         nonReentrant()
     {
         // If no pending relay for this deposit, then associate the caller's relay attempt with it.
@@ -400,7 +400,7 @@ contract BridgePool is MultiCaller, Testable, BridgePoolInterface, ERC20, Lockab
      */
     function relayDeposit(DepositData memory depositData, uint64 realizedLpFeePct)
         public
-        onlyIfRelaysEnable()
+        onlyIfRelaysEnabld()
         nonReentrant()
     {
         // The realizedLPFeePct should never be greater than 0.5e18 and the slow and instant relay fees should never be
