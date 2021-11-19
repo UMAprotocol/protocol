@@ -22,7 +22,7 @@ contract Arbitrum_BridgeMock {
 
     // This function can be called by an EOA to send a call to the parent messenger, which is important in tests
     // because `processMessageFromCrossChainChild` can only be called by the Bridge contract.
-    function processMessageFromCrossChainChild(address messengerToCall, bytes memory data) external {
+    function processMessageFromCrossChainChild(address payable messengerToCall, bytes memory data) external {
         Arbitrum_ParentMessenger(messengerToCall).processMessageFromCrossChainChild(data);
     }
 }

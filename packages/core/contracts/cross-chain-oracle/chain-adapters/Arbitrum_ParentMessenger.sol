@@ -111,7 +111,7 @@ contract Arbitrum_ParentMessenger is
      * @dev The caller of this function must be the owner. This should be set to the DVM governor.
      * @param newOracleSpoke the new oracle spoke address set on L2.
      */
-    function setChildOracleSpoke(address newOracleSpoke) public payable onlyOwner {
+    function setChildOracleSpoke(address newOracleSpoke) public onlyOwner {
         bytes memory dataSentToChild = abi.encodeWithSignature("setOracleSpoke(address)", newOracleSpoke);
         _sendMessageToChild(dataSentToChild, childMessenger);
     }
@@ -121,7 +121,7 @@ contract Arbitrum_ParentMessenger is
      * @dev The caller of this function must be the owner. This should be set to the DVM governor.
      * @param newParentMessenger the new parent messenger contract to be set on L2.
      */
-    function setChildParentMessenger(address newParentMessenger) public payable onlyOwner {
+    function setChildParentMessenger(address newParentMessenger) public onlyOwner {
         bytes memory dataSentToChild = abi.encodeWithSignature("setParentMessenger(address)", newParentMessenger);
         _sendMessageToChild(dataSentToChild, childMessenger);
     }
@@ -134,7 +134,7 @@ contract Arbitrum_ParentMessenger is
      * which then forwards the data to the target either the OracleSpoke or the governorSpoke depending on the caller.
      * @param data data message sent to the child messenger. Should be an encoded function call or packed data.
      */
-    function sendMessageToChild(bytes memory data) public payable override onlyHubContract() nonReentrant() {
+    function sendMessageToChild(bytes memory data) public override onlyHubContract() nonReentrant() {
         address target = msg.sender == oracleHub ? oracleSpoke : governorSpoke;
         bytes memory dataSentToChild =
             abi.encodeWithSignature("processMessageFromCrossChainParent(bytes,address)", data, target);
@@ -157,12 +157,33 @@ contract Arbitrum_ParentMessenger is
         emit MessageReceivedFromChild(data, childMessenger, oracleHub);
     }
 
+    /**
+     * @notice This function is expected to be queried by Hub contracts that need to determine how much ETH
+     * to include in msg.value when calling `sendMessageToChild`. It is also used to determine how much ETH to include
+     * in msg.value when calling admin functions like `setChildParentMessenger`.
+     */
+    function getL1CallValue() public view override nonReentrantView() returns (uint256) {
+        // This could overflow if these values are set too high, but since they are configurable by trusted owner
+        // we won't catch this case.
+        return defaultMaxSubmissionCost + defaultGasPrice * defaultGasLimit;
+    }
+
+    // We need to allow this contract to receive ETH, so that it can include some msg.value amount on external calls
+    // to the `sendMessageToChild` function. We shouldn't expect the owner of this contract to send
+    // ETH because the owner is intended to be a contract (e.g. the Governor) and we don't want to change the
+    // Governor interface.
+    fallback() external payable {}
+
+    // This function will only succeed if this contract has enough ETH to cover the approximate L1 call value.
     function _sendMessageToChild(bytes memory data, address target) internal {
+        uint256 requiredL1CallValue = getL1CallValue();
+        require(address(this).balance >= requiredL1CallValue, "Insufficient ETH balance");
+
         uint256 seqNumber =
             sendTxToL2NoAliassing(
                 childMessenger,
                 refundL2Address,
-                msg.value, // Pass along all msg.value included by Hub caller.
+                requiredL1CallValue,
                 defaultMaxSubmissionCost,
                 defaultGasLimit,
                 defaultGasPrice,
@@ -171,7 +192,7 @@ contract Arbitrum_ParentMessenger is
         emit MessageSentToChild(
             data,
             target,
-            msg.value,
+            requiredL1CallValue,
             defaultGasLimit,
             defaultGasPrice,
             defaultMaxSubmissionCost,

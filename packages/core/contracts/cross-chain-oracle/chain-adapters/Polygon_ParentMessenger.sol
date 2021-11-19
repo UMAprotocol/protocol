@@ -39,11 +39,18 @@ contract Polygon_ParentMessenger is FxBaseRootTunnel, ParentMessengerInterface, 
      * which then forwards the data to the target either the OracleSpoke or the governorSpoke depending on the caller.
      * @param data data message sent to the child messenger. Should be an encoded function call or packed data.
      */
-    function sendMessageToChild(bytes memory data) public payable override onlyHubContract() nonReentrant() {
+    function sendMessageToChild(bytes memory data) public override onlyHubContract() nonReentrant() {
         address target = msg.sender == oracleHub ? oracleSpoke : governorSpoke;
         bytes memory dataToSendToChild = abi.encode(data, target);
         _sendMessageToChild(dataToSendToChild);
         emit MessageSentToChild(dataToSendToChild, target);
+    }
+
+    /**
+     * @notice sendMessageToChild never sends any msg.value, so this should always return 0.
+     */
+    function getL1CallValue() external view override nonReentrantView() returns (uint256) {
+        return 0;
     }
 
     /**

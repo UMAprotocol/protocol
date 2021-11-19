@@ -80,7 +80,7 @@ contract Optimism_ParentMessenger is OVM_CrossDomainEnabled, ParentMessengerInte
      * which then forwards the data to the target either the OracleSpoke or the governorSpoke depending on the caller.
      * @param data data message sent to the child messenger. Should be an encoded function call or packed data.
      */
-    function sendMessageToChild(bytes memory data) public payable override onlyHubContract() nonReentrant() {
+    function sendMessageToChild(bytes memory data) public override onlyHubContract() nonReentrant() {
         address target = msg.sender == oracleHub ? oracleSpoke : governorSpoke;
         bytes memory dataSentToChild =
             abi.encodeWithSignature("processMessageFromCrossChainParent(bytes,address)", data, target);
@@ -102,5 +102,12 @@ contract Optimism_ParentMessenger is OVM_CrossDomainEnabled, ParentMessengerInte
     {
         ParentMessengerConsumerInterface(oracleHub).processMessageFromChild(childChainId, data);
         emit MessageReceivedFromChild(data, childMessenger, oracleHub);
+    }
+
+    /**
+     * @notice sendMessageToChild never sends any msg.value, so this should always return 0.
+     */
+    function getL1CallValue() external view override nonReentrantView() returns (uint256) {
+        return 0;
     }
 }
