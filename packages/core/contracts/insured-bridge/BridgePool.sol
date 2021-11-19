@@ -58,7 +58,7 @@ contract BridgePool is MultiCaller, Testable, BridgePoolInterface, ERC20, Lockab
     // relays. Also enable LPs to receive ETH, if they choose, when withdrawing liquidity.
     bool public isWethPool;
 
-    // Enables the bridge admin to pause relays from this bridge pool
+    // Enables the Bridge Admin to enable/disable relays in this pool. Disables relayDeposit and relayAndSpeedUp.
     bool public relaysEnabled = true;
 
     // Exponential decay exchange rate to accumulate fees to LPs over time. This can be changed via the BridgeAdmin.
