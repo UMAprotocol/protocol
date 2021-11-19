@@ -12,7 +12,7 @@ import "./OptimisticRewarderToken.sol";
  * @notice An example use case of the OptimisticRewarder in use by a contract that allows users to stake an ERC20 to
  * earn rewards.
  */
-contract OptimisticMintr is Lockable {
+contract OptimisticStaker is Lockable {
     using SafeERC20 for IERC20;
 
     // Optimistic rewarder contract used to pay out user rewards.
@@ -41,7 +41,6 @@ contract OptimisticMintr is Lockable {
 
     /**
      * @notice Deposit the staked token into the contract and mint a fresh token to manage the position.
-     * @param tokenId the tokenId that will own this liquidity. User must be the owner of this tokenId.
      * @param amount the amount of the ERC20 to deposit.
      * @return tokenId the token id for the freshly minted token.
      */
@@ -79,7 +78,7 @@ contract OptimisticMintr is Lockable {
         optimisticRewarder.updateToken(tokenId, msg.data);
     }
 
-    function _depositFor(uint256 tokenId, uint256 amount) public {
+    function _depositFor(uint256 tokenId, uint256 amount) internal {
         balances[tokenId] += amount;
         stakedToken.safeTransferFrom(msg.sender, address(this), amount);
         optimisticRewarder.updateToken(tokenId, msg.data);
