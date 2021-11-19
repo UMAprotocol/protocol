@@ -79,7 +79,7 @@ describe("OracleSpoke.js", async () => {
     assert.equal((await messenger.methods.messageCount().call()).toString(), "2");
   });
   it("processMessageFromParent", async function () {
-    const expectedAncillaryData = await oracleSpoke.methods.stampAncillaryData(defaultAncillaryData, owner).call();
+    const expectedAncillaryData = await oracleSpoke.methods.stampAncillaryData(defaultAncillaryData).call();
     const expectedData = web3.eth.abi.encodeParameters(
       ["bytes32", "uint256", "bytes", "int256"],
       [defaultIdentifier, defaultTimestamp, expectedAncillaryData, defaultPrice]
@@ -116,7 +116,7 @@ describe("OracleSpoke.js", async () => {
         .call({ from: owner })
     );
 
-    expectedAncillaryData = await oracleSpoke.methods.stampAncillaryData(defaultAncillaryData, owner).call();
+    expectedAncillaryData = await oracleSpoke.methods.stampAncillaryData(defaultAncillaryData).call();
     await messenger.methods
       .publishPrice(
         oracleSpoke.options.address,
@@ -164,7 +164,7 @@ describe("OracleSpoke.js", async () => {
       )
     );
 
-    expectedAncillaryData = await oracleSpoke.methods.stampAncillaryData(defaultAncillaryData, owner).call();
+    expectedAncillaryData = await oracleSpoke.methods.stampAncillaryData(defaultAncillaryData).call();
     await messenger.methods
       .publishPrice(
         oracleSpoke.options.address,
