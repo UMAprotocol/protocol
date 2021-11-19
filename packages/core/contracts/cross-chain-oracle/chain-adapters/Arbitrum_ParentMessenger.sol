@@ -109,6 +109,7 @@ contract Arbitrum_ParentMessenger is
     /**
      * @notice Changes the address of the oracle spoke on L2 via the child messenger.
      * @dev The caller of this function must be the owner. This should be set to the DVM governor.
+     * @dev This function will only succeed if this contract has enough ETH to cover the approximate L1 call value.
      * @param newOracleSpoke the new oracle spoke address set on L2.
      */
     function setChildOracleSpoke(address newOracleSpoke) public onlyOwner {
@@ -119,6 +120,7 @@ contract Arbitrum_ParentMessenger is
     /**
      * @notice Changes the address of the parent messenger on L2 via the child messenger.
      * @dev The caller of this function must be the owner. This should be set to the DVM governor.
+     * @dev This function will only succeed if this contract has enough ETH to cover the approximate L1 call value.
      * @param newParentMessenger the new parent messenger contract to be set on L2.
      */
     function setChildParentMessenger(address newParentMessenger) public onlyOwner {
@@ -132,6 +134,7 @@ contract Arbitrum_ParentMessenger is
      * price or initiate a governance action to the OracleSpoke or GovernorSpoke on the child network.
      * @dev The recipient of this message is the child messenger. The messenger must implement processMessageFromParent
      * which then forwards the data to the target either the OracleSpoke or the governorSpoke depending on the caller.
+     * @dev This function will only succeed if this contract has enough ETH to cover the approximate L1 call value.
      * @param data data message sent to the child messenger. Should be an encoded function call or packed data.
      */
     function sendMessageToChild(bytes memory data) external override onlyHubContract() nonReentrant() {
@@ -159,13 +162,11 @@ contract Arbitrum_ParentMessenger is
 
     /**
      * @notice This function is expected to be queried by Hub contracts that need to determine how much ETH
-     * to include in msg.value when calling `sendMessageToChild`. It is also used to determine how much ETH to include
-     * in msg.value when calling admin functions like `setChildParentMessenger`.
+     * to include in msg.value when calling `sendMessageToChild`.
+     * @return Amount of msg.value to include to send cross-chain message.
      */
     function getL1CallValue() public view override nonReentrantView() returns (uint256) {
-        // This could overflow if these values are set too high, but since they are configurable by trusted owner
-        // we won't catch this case.
-        return defaultMaxSubmissionCost + defaultGasPrice * defaultGasLimit;
+        return _getL1CallValue();
     }
 
     // We need to allow this contract to receive ETH, so that it can include some msg.value amount on external calls
@@ -174,9 +175,17 @@ contract Arbitrum_ParentMessenger is
     // Governor interface.
     fallback() external payable {}
 
+    // Used to determine how much ETH to include in msg.value when calling admin functions like
+    // `setChildParentMessenger` and sending messages across the bridge.
+    function _getL1CallValue() internal view returns (uint256) {
+        // This could overflow if these values are set too high, but since they are configurable by trusted owner
+        // we won't catch this case.
+        return defaultMaxSubmissionCost + defaultGasPrice * defaultGasLimit;
+    }
+
     // This function will only succeed if this contract has enough ETH to cover the approximate L1 call value.
     function _sendMessageToChild(bytes memory data, address target) internal {
-        uint256 requiredL1CallValue = getL1CallValue();
+        uint256 requiredL1CallValue = _getL1CallValue();
         require(address(this).balance >= requiredL1CallValue, "Insufficient ETH balance");
 
         uint256 seqNumber =

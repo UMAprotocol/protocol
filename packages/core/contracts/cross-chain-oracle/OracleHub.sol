@@ -85,7 +85,7 @@ contract OracleHub is OracleBase, ParentMessengerConsumerInterface, Ownable, Loc
         // with calls coming from this contract.
 
         // Require caller to include enough ETH to pass to Messenger so that caller cannot take advantage of excess
-        // ETH held by the Messenger.
+        // ETH held by the Messenger. Caller can easily query messenger to get exact amount of ETh to send.
         uint256 requiredL1CallValue = messengers[chainId].getL1CallValue();
         require(msg.value == requiredL1CallValue, "Insufficient msg.value");
 

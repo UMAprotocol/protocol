@@ -1,6 +1,6 @@
 const hre = require("hardhat");
 const { web3, assertEventEmitted } = hre;
-const { toWei, utf8ToHex, padRight } = web3.utils;
+const { toWei, utf8ToHex, padRight, toBN } = web3.utils;
 const { getContract } = hre;
 const { assert } = require("chai");
 
@@ -33,11 +33,11 @@ const priceIdentifier = padRight(utf8ToHex("TEST_IDENTIFIER"), 64);
 const ancillaryData = utf8ToHex("some-address-field:0x1234");
 const bond = toWei("1");
 const defaultTimestamp = 100;
-const defaultMsgValue = toWei("0.1");
 
 let defaultMaxSubmissionCost;
 let defaultGasLimit;
 let defaultGasPrice;
+let l1CallValue;
 
 describe("Arbitrum_ParentMessenger", function () {
   let arbitrum_ParentMessenger,
@@ -107,9 +107,19 @@ describe("Arbitrum_ParentMessenger", function () {
     defaultMaxSubmissionCost = await arbitrum_ParentMessenger.methods.defaultMaxSubmissionCost().call();
     defaultGasLimit = await arbitrum_ParentMessenger.methods.defaultGasLimit().call();
     defaultGasPrice = await arbitrum_ParentMessenger.methods.defaultGasPrice().call();
+    l1CallValue = await arbitrum_ParentMessenger.methods.getL1CallValue().call();
   });
   describe("Resetting contract state", () => {
     // Check that only owner can call these methods, that events are emitted as expected, and that state is modified.
+    it("setRefundL2Address", async () => {
+      const transactionToSend = arbitrum_ParentMessenger.methods.setRefundL2Address(rando);
+      assert(await didContractThrow(transactionToSend.send({ from: rando })));
+      const receipt = await transactionToSend.send({ from: l1Owner });
+      await assertEventEmitted(receipt, arbitrum_ParentMessenger, "SetRefundL2Address", (ev) => {
+        return ev.newRefundL2Address == rando;
+      });
+      assert.equal(await arbitrum_ParentMessenger.methods.refundL2Address().call(), rando);
+    });
     it("setDefaultGasLimit", async () => {
       const transactionToSend = arbitrum_ParentMessenger.methods.setDefaultGasLimit("100");
       assert(await didContractThrow(transactionToSend.send({ from: rando })));
@@ -139,14 +149,37 @@ describe("Arbitrum_ParentMessenger", function () {
     });
   });
   describe("Sending messages to child on L2", () => {
-    it("Blocks calls from non privileged callers", async () => {
+    it("Caller must be hub and messenger must have sufficient ETH balance", async () => {
+      // Send enough ETH to contract to cover sendMessage call.
+      const expectedL1CallValue = toBN(defaultMaxSubmissionCost.toString()).add(
+        toBN(defaultGasLimit.toString()).mul(toBN(defaultGasPrice.toString()))
+      );
+      assert.equal(l1CallValue.toString(), expectedL1CallValue.toString());
+      await web3.eth.sendTransaction({
+        from: l1Owner,
+        to: arbitrum_ParentMessenger.options.address,
+        value: l1CallValue.toString(),
+      });
+
       const relayMessageTxn = arbitrum_ParentMessenger.methods.sendMessageToChild("0x123");
       assert(await didContractThrow(relayMessageTxn.send({ from: rando })));
 
+      // Caller must be a hub contract.
       await arbitrum_ParentMessenger.methods.setGovernorHub(controlledEOA).send({ from: l1Owner });
       assert.ok(await relayMessageTxn.send({ from: controlledEOA }));
 
+      // Reset hub and check that if caller is the other hub, it also works.
+      await arbitrum_ParentMessenger.methods.setGovernorHub(governorHub.options.address).send({ from: l1Owner });
+      assert(await didContractThrow(relayMessageTxn.send({ from: rando })));
       await arbitrum_ParentMessenger.methods.setOracleHub(controlledEOA).send({ from: l1Owner });
+
+      // Fails unless more ETH is sent to contract to cover second cross chain message:
+      assert(await didContractThrow(relayMessageTxn.send({ from: controlledEOA })));
+      await web3.eth.sendTransaction({
+        from: l1Owner,
+        to: arbitrum_ParentMessenger.options.address,
+        value: l1CallValue.toString(),
+      });
       assert.ok(await relayMessageTxn.send({ from: controlledEOA }));
     });
     it("Can correctly send messages to L2 child from Oracle Hub", async () => {
@@ -160,9 +193,23 @@ describe("Arbitrum_ParentMessenger", function () {
       await mockOracle.methods
         .pushPrice(priceIdentifier, priceTime, ancillaryData, pushedPrice)
         .send({ from: l1Owner });
+
+      // Transaction will fail unless caller includes exactly enough ETH to pay for message:
+      assert(
+        await didContractThrow(
+          oracleHub.methods.publishPrice(chainId, priceIdentifier, priceTime, ancillaryData).send({ from: l1Owner })
+        )
+      );
+      assert(
+        await didContractThrow(
+          oracleHub.methods
+            .publishPrice(chainId, priceIdentifier, priceTime, ancillaryData)
+            .send({ from: l1Owner, value: toBN(l1CallValue.toString()).add(toBN("1")) })
+        )
+      );
       const txn = await oracleHub.methods
         .publishPrice(chainId, priceIdentifier, priceTime, ancillaryData)
-        .send({ from: l1Owner, value: defaultMsgValue });
+        .send({ from: l1Owner, value: l1CallValue.toString() });
 
       // Validate that the inbox received the expected cross-domain message, destined for the child.
       const publishPriceMessage = inbox.smocked.createRetryableTicketNoRefundAliasRewrite.calls;
@@ -177,7 +224,7 @@ describe("Arbitrum_ParentMessenger", function () {
       assert.equal(publishPriceMessage[0].gasPriceBid.toString(), defaultGasPrice.toString());
 
       // Inbox receives msg.value
-      assert.equal((await web3.eth.getBalance(inbox.options.address)).toString(), defaultMsgValue);
+      assert.equal((await web3.eth.getBalance(inbox.options.address)).toString(), l1CallValue.toString());
 
       // We should be able to re-construct the encoded data, which should match what was sent from the messenger.
       const encodedData = web3.eth.abi.encodeParameters(
@@ -195,7 +242,7 @@ describe("Arbitrum_ParentMessenger", function () {
           ev.data == expectedMessageFromManualEncoding &&
           ev.childAddress == childMessengerAddress &&
           ev.gasLimit.toString() == defaultGasLimit.toString() &&
-          ev.l1CallValue.toString() == defaultMsgValue &&
+          ev.l1CallValue.toString() == l1CallValue.toString() &&
           ev.targetContract == oracleSpokeAddress &&
           ev.gasPrice.toString() == defaultGasPrice.toString() &&
           ev.maxSubmissionCost.toString() == defaultMaxSubmissionCost.toString() &&
@@ -211,9 +258,20 @@ describe("Arbitrum_ParentMessenger", function () {
         .changeImplementationAddress(utf8ToHex(interfaceName.CollateralWhitelist), l1Owner)
         .encodeABI();
 
+      // Transaction will fail unless messenger has enough ETH to pay for message:
+      assert(
+        await didContractThrow(
+          governorHub.methods.relayGovernance(chainId, l2FinderAddress, sampleGovernanceAction).send({ from: l1Owner })
+        )
+      );
+      await web3.eth.sendTransaction({
+        from: l1Owner,
+        to: arbitrum_ParentMessenger.options.address,
+        value: l1CallValue.toString(),
+      });
       const txn = await governorHub.methods
         .relayGovernance(chainId, l2FinderAddress, sampleGovernanceAction)
-        .send({ from: l1Owner, value: defaultMsgValue });
+        .send({ from: l1Owner });
 
       // Validate that the inbox received the expected cross-domain message, destined for the child.
       const relayGovernanceMessage = inbox.smocked.createRetryableTicketNoRefundAliasRewrite.calls;
@@ -228,7 +286,7 @@ describe("Arbitrum_ParentMessenger", function () {
       assert.equal(relayGovernanceMessage[0].gasPriceBid.toString(), defaultGasPrice.toString());
 
       // Inbox receives msg.value
-      assert.equal((await web3.eth.getBalance(inbox.options.address)).toString(), defaultMsgValue);
+      assert.equal((await web3.eth.getBalance(inbox.options.address)).toString(), l1CallValue.toString());
 
       // Grab the data emitted from the mock Oracle hub. This contains the dataSentToChild.
       const emittedData = await governorHub.getPastEvents("RelayedGovernanceRequest", {
@@ -257,7 +315,7 @@ describe("Arbitrum_ParentMessenger", function () {
           ev.data == expectedMessageFromEvent &&
           ev.childAddress == childMessengerAddress &&
           ev.gasLimit.toString() == defaultGasLimit.toString() &&
-          ev.l1CallValue.toString() == defaultMsgValue &&
+          ev.l1CallValue.toString() == l1CallValue.toString() &&
           ev.targetContract == governorSpokeAddress &&
           ev.gasPrice.toString() == defaultGasPrice.toString() &&
           ev.maxSubmissionCost.toString() == defaultMaxSubmissionCost.toString() &&
@@ -271,7 +329,14 @@ describe("Arbitrum_ParentMessenger", function () {
       // Can only call as owner
       assert(await didContractThrow(setChildParentMessenger.send({ from: rando })));
 
-      const txn = await setChildParentMessenger.send({ from: l1Owner, value: defaultMsgValue });
+      // Will fail unless contract has enough ETH to pay for message.
+      assert(await didContractThrow(setChildParentMessenger.send({ from: l1Owner })));
+      await web3.eth.sendTransaction({
+        from: l1Owner,
+        to: arbitrum_ParentMessenger.options.address,
+        value: l1CallValue.toString(),
+      });
+      const txn = await setChildParentMessenger.send({ from: l1Owner });
 
       // Validate that the inbox received the expected cross-domain message, destined for the child.
       const smockedMessage = inbox.smocked.createRetryableTicketNoRefundAliasRewrite.calls;
@@ -286,7 +351,7 @@ describe("Arbitrum_ParentMessenger", function () {
       assert.equal(smockedMessage[0].gasPriceBid.toString(), defaultGasPrice.toString());
 
       // Inbox receives msg.value
-      assert.equal((await web3.eth.getBalance(inbox.options.address)).toString(), defaultMsgValue);
+      assert.equal((await web3.eth.getBalance(inbox.options.address)).toString(), l1CallValue.toString());
 
       // We should be able to re-construct the encoded data, which should match what was sent from the messenger.
       const childMessengerInterface = await Arbitrum_ChildMessenger.at(ZERO_ADDRESS);
@@ -300,7 +365,7 @@ describe("Arbitrum_ParentMessenger", function () {
           ev.data == expectedMessageFromManualEncoding &&
           ev.childAddress == childMessengerAddress &&
           ev.gasLimit.toString() == defaultGasLimit.toString() &&
-          ev.l1CallValue.toString() == defaultMsgValue &&
+          ev.l1CallValue.toString() == l1CallValue.toString() &&
           ev.targetContract == childMessengerAddress &&
           ev.gasPrice.toString() == defaultGasPrice.toString() &&
           ev.maxSubmissionCost.toString() == defaultMaxSubmissionCost.toString() &&
@@ -314,7 +379,14 @@ describe("Arbitrum_ParentMessenger", function () {
       // Can only call as owner
       assert(await didContractThrow(setChildOracleSpoke.send({ from: rando })));
 
-      const txn = await setChildOracleSpoke.send({ from: l1Owner, value: defaultMsgValue });
+      // Will fail unless contract has enough ETH to pay for message.
+      assert(await didContractThrow(setChildOracleSpoke.send({ from: l1Owner })));
+      await web3.eth.sendTransaction({
+        from: l1Owner,
+        to: arbitrum_ParentMessenger.options.address,
+        value: l1CallValue.toString(),
+      });
+      const txn = await setChildOracleSpoke.send({ from: l1Owner });
 
       // Validate that the inbox received the expected cross-domain message, destined for the child.
       const smockedMessage = inbox.smocked.createRetryableTicketNoRefundAliasRewrite.calls;
@@ -329,7 +401,7 @@ describe("Arbitrum_ParentMessenger", function () {
       assert.equal(smockedMessage[0].gasPriceBid.toString(), defaultGasPrice.toString());
 
       // Inbox receives msg.value
-      assert.equal((await web3.eth.getBalance(inbox.options.address)).toString(), defaultMsgValue);
+      assert.equal((await web3.eth.getBalance(inbox.options.address)).toString(), l1CallValue.toString());
 
       // We should be able to re-construct the encoded data, which should match what was sent from the messenger.
       const childMessengerInterface = await Arbitrum_ChildMessenger.at(ZERO_ADDRESS);
@@ -341,7 +413,7 @@ describe("Arbitrum_ParentMessenger", function () {
           ev.data == expectedMessageFromManualEncoding &&
           ev.childAddress == childMessengerAddress &&
           ev.gasLimit.toString() == defaultGasLimit.toString() &&
-          ev.l1CallValue.toString() == defaultMsgValue &&
+          ev.l1CallValue.toString() == l1CallValue.toString() &&
           ev.targetContract == childMessengerAddress &&
           ev.gasPrice.toString() == defaultGasPrice.toString() &&
           ev.maxSubmissionCost.toString() == defaultMaxSubmissionCost.toString() &&
