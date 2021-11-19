@@ -55,7 +55,7 @@ describe("OracleSpoke.js", async () => {
     await assertEventEmitted(txn1, oracleSpoke, "PriceRequestAdded");
 
     // Check that external call messenger.sendMessageToParent occurred.
-    const expectedAncillaryData = await oracleSpoke.methods.stampAncillaryData(defaultAncillaryData, owner).call();
+    let expectedAncillaryData = await oracleSpoke.methods.stampAncillaryData(defaultAncillaryData).call();
     assert.equal(await messenger.methods.latestAncillaryData().call(), expectedAncillaryData);
     assert.equal(await messenger.methods.latestTime().call(), defaultTimestamp);
     assert.equal(hexToUtf8(await messenger.methods.latestIdentifier().call()), hexToUtf8(defaultIdentifier));
@@ -69,10 +69,8 @@ describe("OracleSpoke.js", async () => {
     // Can call requestPrice without ancillary data:
     const txn2 = await oracleSpoke.methods.requestPrice(defaultIdentifier, defaultTimestamp).send({ from: owner });
     await assertEventEmitted(txn2, oracleSpoke, "PriceRequestAdded");
-    assert.equal(
-      await messenger.methods.latestAncillaryData().call(),
-      await oracleSpoke.methods.stampAncillaryData("0x", owner).call()
-    );
+    expectedAncillaryData = await oracleSpoke.methods.stampAncillaryData("0x").call();
+    assert.equal(await messenger.methods.latestAncillaryData().call(), expectedAncillaryData);
     assert.equal(await messenger.methods.latestTime().call(), defaultTimestamp);
     assert.equal(hexToUtf8(await messenger.methods.latestIdentifier().call()), hexToUtf8(defaultIdentifier));
 
@@ -81,7 +79,7 @@ describe("OracleSpoke.js", async () => {
     assert.equal((await messenger.methods.messageCount().call()).toString(), "2");
   });
   it("processMessageFromParent", async function () {
-    const expectedAncillaryData = await oracleSpoke.methods.stampAncillaryData(defaultAncillaryData, owner).call();
+    const expectedAncillaryData = await oracleSpoke.methods.stampAncillaryData(defaultAncillaryData).call();
     const expectedData = web3.eth.abi.encodeParameters(
       ["bytes32", "uint256", "bytes", "int256"],
       [defaultIdentifier, defaultTimestamp, expectedAncillaryData, defaultPrice]
@@ -105,18 +103,20 @@ describe("OracleSpoke.js", async () => {
     assert.equal(pushPriceEvents.length, 1);
     assert.isTrue(
       await oracleSpoke.methods
-        .hasPrice(defaultIdentifier, defaultTimestamp, defaultAncillaryData)
+        .hasPrice(defaultIdentifier, defaultTimestamp, expectedAncillaryData)
         .call({ from: owner })
     );
   });
   it("hasPrice", async function () {
+    let expectedAncillaryData = await oracleSpoke.methods.stampAncillaryData(defaultAncillaryData).call();
+
     assert.isFalse(
       await oracleSpoke.methods
-        .hasPrice(defaultIdentifier, defaultTimestamp, defaultAncillaryData)
+        .hasPrice(defaultIdentifier, defaultTimestamp, expectedAncillaryData)
         .call({ from: owner })
     );
 
-    let expectedAncillaryData = await oracleSpoke.methods.stampAncillaryData(defaultAncillaryData, owner).call();
+    expectedAncillaryData = await oracleSpoke.methods.stampAncillaryData(defaultAncillaryData).call();
     await messenger.methods
       .publishPrice(
         oracleSpoke.options.address,
@@ -130,19 +130,19 @@ describe("OracleSpoke.js", async () => {
     // Only registered caller can call
     assert(
       await didContractThrow(
-        oracleSpoke.methods.hasPrice(defaultIdentifier, defaultTimestamp, defaultAncillaryData).call({ from: rando })
+        oracleSpoke.methods.hasPrice(defaultIdentifier, defaultTimestamp, expectedAncillaryData).call({ from: rando })
       )
     );
 
     assert.isTrue(
       await oracleSpoke.methods
-        .hasPrice(defaultIdentifier, defaultTimestamp, defaultAncillaryData)
+        .hasPrice(defaultIdentifier, defaultTimestamp, expectedAncillaryData)
         .call({ from: owner })
     );
 
     // Can call has without ancillary data:
     assert.isFalse(await oracleSpoke.methods.hasPrice(defaultIdentifier, defaultTimestamp).call({ from: owner }));
-    expectedAncillaryData = await oracleSpoke.methods.stampAncillaryData("0x", owner).call();
+    expectedAncillaryData = await oracleSpoke.methods.stampAncillaryData("0x").call();
     await messenger.methods
       .publishPrice(
         oracleSpoke.options.address,
@@ -155,14 +155,16 @@ describe("OracleSpoke.js", async () => {
     assert.isTrue(await oracleSpoke.methods.hasPrice(defaultIdentifier, defaultTimestamp).call({ from: owner }));
   });
   it("getPrice", async function () {
+    let expectedAncillaryData = await oracleSpoke.methods.stampAncillaryData(defaultAncillaryData).call();
+
     // Reverts if price not available
     assert(
       await didContractThrow(
-        oracleSpoke.methods.getPrice(defaultIdentifier, defaultTimestamp, defaultAncillaryData).call({ from: owner })
+        oracleSpoke.methods.getPrice(defaultIdentifier, defaultTimestamp, expectedAncillaryData).call({ from: owner })
       )
     );
 
-    let expectedAncillaryData = await oracleSpoke.methods.stampAncillaryData(defaultAncillaryData, owner).call();
+    expectedAncillaryData = await oracleSpoke.methods.stampAncillaryData(defaultAncillaryData).call();
     await messenger.methods
       .publishPrice(
         oracleSpoke.options.address,
@@ -176,19 +178,19 @@ describe("OracleSpoke.js", async () => {
     // Only registered caller can call
     assert(
       await didContractThrow(
-        oracleSpoke.methods.getPrice(defaultIdentifier, defaultTimestamp, defaultAncillaryData).call({ from: rando })
+        oracleSpoke.methods.getPrice(defaultIdentifier, defaultTimestamp, expectedAncillaryData).call({ from: rando })
       )
     );
 
     assert.equal(
       await oracleSpoke.methods
-        .getPrice(defaultIdentifier, defaultTimestamp, defaultAncillaryData)
+        .getPrice(defaultIdentifier, defaultTimestamp, expectedAncillaryData)
         .call({ from: owner }),
       defaultPrice
     );
 
     // Can call has without ancillary data:
-    expectedAncillaryData = await oracleSpoke.methods.stampAncillaryData("0x", owner).call();
+    expectedAncillaryData = await oracleSpoke.methods.stampAncillaryData("0x").call();
     await messenger.methods
       .publishPrice(
         oracleSpoke.options.address,
@@ -204,11 +206,8 @@ describe("OracleSpoke.js", async () => {
     );
   });
   it("stampAncillaryData", async function () {
-    const stampedAncillaryData = await oracleSpoke.methods.stampAncillaryData(defaultAncillaryData, owner).call();
+    const stampedAncillaryData = await oracleSpoke.methods.stampAncillaryData(defaultAncillaryData).call();
     const chainId = await web3.eth.getChainId();
-    assert.equal(
-      hexToUtf8(stampedAncillaryData),
-      `${hexToUtf8(defaultAncillaryData)},childRequester:${owner.toLowerCase().substring(2)},childChainId:${chainId}`
-    );
+    assert.equal(hexToUtf8(stampedAncillaryData), `${hexToUtf8(defaultAncillaryData)},childChainId:${chainId}`);
   });
 });
