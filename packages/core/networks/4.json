@@ -9,7 +9,7 @@
   },
   {
     "contractName": "IdentifierWhitelist",
-    "address": "0xCF744280D6ee7ca04e6D4167546a8463Ad899105"
+    "address": "0x7242892cc4653f1214cf700ddcc50ad47ebff564"
   },
   {
     "contractName": "AddressWhitelist",
@@ -66,5 +66,17 @@
   {
     "contractName": "BridgeAdmin",
     "address": "0x5e01469f733a47CA50e7b4366Ef601fD0FE05Dd1"
+  },
+  {
+    "contractName": "Arbitrum_ParentMessenger",
+    "address": "0x089E6167Dc98cffB73A3A490a7a41ca098a9a188"
+  },
+  {
+    "contractName": "OracleHub",
+    "address": "0x826603862E421E0827A063e05aaDe67217B09EC9"
+  },
+  {
+    "contractName": "GovernorHub",
+    "address": "0x6dfF62Adc450e9b772c96d6b73f2F41BF453e9fd"
   }
 ]
