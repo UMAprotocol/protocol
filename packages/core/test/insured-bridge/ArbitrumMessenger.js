@@ -132,10 +132,8 @@ describe("ArbitrumMessenger integration with BridgeAdmin", () => {
     assert(await didContractThrow(relayMessageTxn.send({ from: owner, value: 0 })));
     const tx = await relayMessageTxn.send({ from: owner, value: defaultL1CallValue });
 
-    console.log(tx);
     // Events
     await assertEventEmitted(tx, arbitrumMessenger, "RelayedMessage", (ev) => {
-      console.log(ev);
       return (
         ev.from === owner &&
         ev.to === depositBox.options.address &&
@@ -245,10 +243,26 @@ describe("ArbitrumMessenger integration with BridgeAdmin", () => {
       await bridgeAdmin.methods
         .setDepositContract(chainId, depositBoxImpersonator, arbitrumMessenger.options.address)
         .send({ from: owner });
+
+      await collateralWhitelist.methods.addToWhitelist(l1Token.options.address).send({ from: owner });
+
       await bridgeAdmin.methods
-        .setEnableDeposits(
+        .whitelistToken(
           chainId,
+          l1Token.options.address,
           l2Token,
+          bridgePool.options.address,
+          0,
+          defaultGasLimit,
+          defaultGasPrice,
+          maxSubmissionCost
+        )
+        .send({ from: owner });
+
+      await bridgeAdmin.methods
+        .setEnableDepositsAndRelays(
+          chainId,
+          l1Token.options.address,
           false,
           defaultL1CallValue,
           defaultGasLimit,

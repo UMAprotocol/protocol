@@ -58,9 +58,9 @@ contract OracleHub is OracleBase, ParentMessengerConsumerInterface, Ownable, Loc
      * @notice Publishes a DVM resolved price to the OracleSpoke deployed on the network linked  with `chainId`, or
      * reverts if not resolved yet. This contract must be registered with the DVM to query price requests.
      * The DVM price resolution is communicated to the OracleSpoke via the Parent-->Child messenger channel.
-     * @dev This method will return silently if already called for this price request, but will still attempt to call
-     * `messenger.sendMessageToChild` again even if it is a duplicate call. Therefore the Messenger contract for this
-     * `chainId` should determine how to handle duplicate calls.
+     * @dev This method will always attempt to call `messenger.sendMessageToChild` even if it is a duplicate call for
+     * this price request. Therefore the Messenger contract for this `chainId` should determine how to handle duplicate
+     * calls.
      * @param chainId Network to resolve price for.
      * @param identifier Identifier of price request to resolve.
      * @param time Timestamp of price request to resolve.
@@ -107,7 +107,9 @@ contract OracleHub is OracleBase, ParentMessengerConsumerInterface, Ownable, Loc
     /**
      * @notice Anyone can call this method to directly request a price to the DVM. This could be used by the child
      * chain requester in the case where Child --> Parent communication takes too long and the requester wants to speed
-     * up the price resolution process. Returns silently if price request is a duplicate.
+     * up the price resolution process. Returns silently if price request is a duplicate. Calling this method from
+     * the user's point of view is no different than calling the OptimisticOracle.requestPrice method, but with a
+     * different interface.
      * @dev The caller must pay a final fee and have approved this contract to pull final fee from it.
      * @dev If the price request params including the ancillary data does not match exactly the price request submitted
      * on the child chain, then the child chain's price request will not resolve. The caller is recommended to use the

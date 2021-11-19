@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 // This should be replaced with a "real" import when Optimism release their new contract versions.
-import "../../external/ovm/OVM_CrossDomainEnabled.sol";
+import "@eth-optimism/contracts/libraries/bridge/CrossDomainEnabled.sol";
 import "../interfaces/ChildMessengerInterface.sol";
 import "../interfaces/ChildMessengerConsumerInterface.sol";
 import "../../common/implementation/Lockable.sol";
@@ -12,7 +12,7 @@ import "../../common/implementation/Lockable.sol";
  * @dev This contract is ownable via the onlyCrossDomainAccount modifier, restricting ownership to the cross-domain
  * parent messenger contract that lives on L1.
  */
-contract Optimism_ChildMessenger is OVM_CrossDomainEnabled, ChildMessengerInterface, Lockable {
+contract Optimism_ChildMessenger is CrossDomainEnabled, ChildMessengerInterface, Lockable {
     // The only child network contract that can send messages over the bridge via the messenger is the oracle spoke.
     address public oracleSpoke;
 
@@ -35,7 +35,7 @@ contract Optimism_ChildMessenger is OVM_CrossDomainEnabled, ChildMessengerInterf
      * @notice Construct the Optimism_ChildMessenger contract.
      * @param _parentMessenger The address of the L1 parent messenger. Acts as the "owner" of this contract.
      */
-    constructor(address _parentMessenger) OVM_CrossDomainEnabled(L2_CROSS_DOMAIN_MESSENGER) {
+    constructor(address _parentMessenger) CrossDomainEnabled(L2_CROSS_DOMAIN_MESSENGER) {
         parentMessenger = _parentMessenger;
     }
 

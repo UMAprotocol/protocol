@@ -201,8 +201,24 @@ describe("OptimismMessenger integration with BridgeAdmin", () => {
       await bridgeAdmin.methods
         .setDepositContract(chainId, depositBoxImpersonator, optimismMessenger.options.address)
         .send({ from: owner });
+
+      await collateralWhitelist.methods.addToWhitelist(l1Token.options.address).send({ from: owner });
+
       await bridgeAdmin.methods
-        .setEnableDeposits(chainId, l2Token, false, 0, defaultGasLimit, defaultGasPrice, 0)
+        .whitelistToken(
+          chainId,
+          l1Token.options.address,
+          l2Token,
+          bridgePool.options.address,
+          0,
+          defaultGasLimit,
+          defaultGasPrice,
+          0
+        )
+        .send({ from: owner });
+
+      await bridgeAdmin.methods
+        .setEnableDepositsAndRelays(chainId, l1Token.options.address, false, 0, defaultGasLimit, defaultGasPrice, 0)
         .send({ from: owner });
       const setPauseCallToMessengerCall = l1CrossDomainMessengerMock.smocked.sendMessage.calls[0];
 
