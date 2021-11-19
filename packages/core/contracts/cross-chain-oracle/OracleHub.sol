@@ -58,9 +58,9 @@ contract OracleHub is OracleBase, ParentMessengerConsumerInterface, Ownable, Loc
      * @notice Publishes a DVM resolved price to the OracleSpoke deployed on the network linked  with `chainId`, or
      * reverts if not resolved yet. This contract must be registered with the DVM to query price requests.
      * The DVM price resolution is communicated to the OracleSpoke via the Parent-->Child messenger channel.
-     * @dev This method will return silently if already called for this price request, but will still attempt to call
-     * `messenger.sendMessageToChild` again even if it is a duplicate call. Therefore the Messenger contract for this
-     * `chainId` should determine how to handle duplicate calls.
+     * @dev This method will always attempt to call `messenger.sendMessageToChild` even if it is a duplicate call for
+     * this price request. Therefore the Messenger contract for this `chainId` should determine how to handle duplicate
+     * calls.
      * @param chainId Network to resolve price for.
      * @param identifier Identifier of price request to resolve.
      * @param time Timestamp of price request to resolve.
@@ -75,6 +75,10 @@ contract OracleHub is OracleBase, ParentMessengerConsumerInterface, Ownable, Loc
         // `getPrice` will revert if there is no price.
         int256 price = _getOracle().getPrice(identifier, time, ancillaryData);
         _publishPrice(identifier, time, ancillaryData, price);
+
+        // TODO: Consider storing all publishPrice events for each chainId, therefore we can limit the
+        // sendMessageToChild calls to one per chainId and not allow users to spam the bridge for this chainID
+        // with calls coming from this contract.
         messengers[chainId].sendMessageToChild(abi.encode(identifier, time, ancillaryData, price));
     }
 
