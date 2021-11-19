@@ -212,7 +212,7 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, Lockable {
      * domain messenger.
      * @dev msg.value must equal to l1CallValue.
      * @param chainId L2 network ID where Deposit contract is deployed.
-     * @param l2Token address of L2 token to enable/disable deposits for.
+     * @param l1Token address of L1 Token to enable/disable deposits and relays for.
      * @param depositsEnabled bool to set if the deposit box should accept/reject deposits.
      * @param l1CallValue Amount of ETH to include in msg.value. Used to pay for L2 fees, but its exact usage varies
      * depending on the L2 network that this contract sends a message to.
@@ -220,15 +220,20 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, Lockable {
      * @param l2GasPrice Gas price bid to set for relayed message on L2.
      * @param maxSubmissionCost: Arbitrum only: fee deducted from L2 sender's balance to pay for L2 gas.
      */
-    function setEnableDeposits(
+    function setEnableDepositsAndRelays(
         uint256 chainId,
-        address l2Token,
+        address l1Token,
         bool depositsEnabled,
         uint256 l1CallValue,
         uint256 l2Gas,
         uint256 l2GasPrice,
         uint256 maxSubmissionCost
     ) public payable onlyOwner canRelay(chainId) nonReentrant() {
+        // Disable relays on the BridgePool.
+        BridgePoolInterface(_whitelistedTokens[l1Token].bridgePool).setRelaysEnabled(depositsEnabled);
+
+        // Send cross-chain message to the associated bridgeDepositBox to disable deposits.
+        address l2Token = _whitelistedTokens[l1Token].l2Tokens[chainId];
         _relayMessage(
             _depositContracts[chainId].messengerContract,
             l1CallValue,

@@ -363,79 +363,129 @@ describe("BridgePool", () => {
       )
     );
   });
-  it("Bridge Admin functionality", async function () {
-    // Admin can only be transferred by current admin.
-    assert.equal(await bridgePool.methods.bridgeAdmin().call(), bridgeAdmin.options.address);
+  describe("Bridge Admin functionality", () => {
+    it("Transferring Bridge Admin", async function () {
+      // Admin can only be transferred by current admin.
+      assert.equal(await bridgePool.methods.bridgeAdmin().call(), bridgeAdmin.options.address);
 
-    assert(
-      await didContractThrow(
-        bridgeAdmin.methods.transferBridgePoolAdmin([bridgePool.options.address], rando).send({ from: rando })
-      )
-    );
+      assert(
+        await didContractThrow(
+          bridgeAdmin.methods.transferBridgePoolAdmin([bridgePool.options.address], rando).send({ from: rando })
+        )
+      );
 
-    // Calling from the correct address can transfer ownership.
-    const tx = await bridgeAdmin.methods
-      .transferBridgePoolAdmin([bridgePool.options.address], owner)
-      .send({ from: owner });
+      // Calling from the correct address can transfer ownership.
+      const tx = await bridgeAdmin.methods
+        .transferBridgePoolAdmin([bridgePool.options.address], owner)
+        .send({ from: owner });
 
-    assert.equal(await bridgePool.methods.bridgeAdmin().call(), owner);
+      assert.equal(await bridgePool.methods.bridgeAdmin().call(), owner);
 
-    await assertEventEmitted(tx, bridgePool, "BridgePoolAdminTransferred", (ev) => {
-      return ev.oldAdmin === bridgeAdmin.options.address && ev.newAdmin === owner;
+      await assertEventEmitted(tx, bridgePool, "BridgePoolAdminTransferred", (ev) => {
+        return ev.oldAdmin === bridgeAdmin.options.address && ev.newAdmin === owner;
+      });
     });
-  });
-  it("Lp Fee %/second", async function () {
-    // Can only be set by current admin.
-    const newRate = toWei("0.0000025");
-    assert(
-      await didContractThrow(
-        bridgeAdmin.methods.changeLpFeeRatePerSecond(bridgePool.options.address, newRate).send({ from: rando })
-      )
-    );
+    it("Lp Fee %/second", async function () {
+      // Can only be set by current admin.
+      const newRate = toWei("0.0000025");
+      assert(
+        await didContractThrow(
+          bridgeAdmin.methods.changeLpFeeRatePerSecond(bridgePool.options.address, newRate).send({ from: rando })
+        )
+      );
 
-    // Calling from the correct address succeeds.
-    const tx = await bridgeAdmin.methods
-      .changeLpFeeRatePerSecond(bridgePool.options.address, newRate)
-      .send({ from: owner });
+      // Calling from the correct address succeeds.
+      const tx = await bridgeAdmin.methods
+        .changeLpFeeRatePerSecond(bridgePool.options.address, newRate)
+        .send({ from: owner });
 
-    assert.equal(await bridgePool.methods.lpFeeRatePerSecond().call(), newRate);
+      assert.equal(await bridgePool.methods.lpFeeRatePerSecond().call(), newRate);
 
-    await assertEventEmitted(tx, bridgePool, "LpFeeRateChanged", (ev) => {
-      return ev.newLpFeeRatePerSecond.toString() === newRate;
+      await assertEventEmitted(tx, bridgePool, "LpFeeRateChanged", (ev) => {
+        return ev.newLpFeeRatePerSecond.toString() === newRate;
+      });
     });
-  });
-  it("Constructs utf8-encoded ancillary data for relay", async function () {
-    assert.equal(
-      hexToUtf8(defaultRelayAncillaryData),
-      `relayHash:${generateRelayAncillaryDataHash(defaultDepositData, defaultRelayData).substring(2)}`
-    );
-  });
-  it("Sync with Finder addresses", async function () {
-    // Check the sync with finder correctly updates the local instance of important contracts to that in the finder.
-    assert.equal(await bridgePool.methods.optimisticOracle().call(), optimisticOracle.options.address);
+    it("Constructs utf8-encoded ancillary data for relay", async function () {
+      assert.equal(
+        hexToUtf8(defaultRelayAncillaryData),
+        `relayHash:${generateRelayAncillaryDataHash(defaultDepositData, defaultRelayData).substring(2)}`
+      );
+    });
+    it("Sync with Finder addresses", async function () {
+      // Check the sync with finder correctly updates the local instance of important contracts to that in the finder.
+      assert.equal(await bridgePool.methods.optimisticOracle().call(), optimisticOracle.options.address);
 
-    // Change the address of the OO in the finder to any random address.
-    await finder.methods
-      .changeImplementationAddress(utf8ToHex(interfaceName.SkinnyOptimisticOracle), rando)
-      .send({ from: owner });
+      // Change the address of the OO in the finder to any random address.
+      await finder.methods
+        .changeImplementationAddress(utf8ToHex(interfaceName.SkinnyOptimisticOracle), rando)
+        .send({ from: owner });
 
-    await bridgePool.methods.syncUmaEcosystemParams().send({ from: rando });
+      await bridgePool.methods.syncUmaEcosystemParams().send({ from: rando });
 
-    // Check it's been updated accordingly
-    assert.equal(await bridgePool.methods.optimisticOracle().call(), rando);
-  });
-  it("Sync with BridgeAdmin params", async function () {
-    // Check the sync with bridgeAdmin params correctly updates the local params.
-    assert.equal(await bridgePool.methods.proposerBondPct().call(), await bridgeAdmin.methods.proposerBondPct().call());
+      // Check it's been updated accordingly
+      assert.equal(await bridgePool.methods.optimisticOracle().call(), rando);
+    });
+    it("Sync with BridgeAdmin params", async function () {
+      // Check the sync with bridgeAdmin params correctly updates the local params.
+      assert.equal(
+        await bridgePool.methods.proposerBondPct().call(),
+        await bridgeAdmin.methods.proposerBondPct().call()
+      );
 
-    // Change the address of the OO in the finder to any random address.
-    await bridgeAdmin.methods.setProposerBondPct(toWei("0.06")).send({ from: owner });
-    assert.equal(await bridgeAdmin.methods.proposerBondPct().call(), toWei("0.06"));
+      // Change the address of the OO in the finder to any random address.
+      await bridgeAdmin.methods.setProposerBondPct(toWei("0.06")).send({ from: owner });
+      assert.equal(await bridgeAdmin.methods.proposerBondPct().call(), toWei("0.06"));
 
-    await bridgePool.methods.syncWithBridgeAdminParams().send({ from: rando });
+      await bridgePool.methods.syncWithBridgeAdminParams().send({ from: rando });
 
-    // Check it's been updated accordingly
-    assert.equal(await bridgePool.methods.proposerBondPct().call(), toWei("0.06"));
+      // Check it's been updated accordingly
+      assert.equal(await bridgePool.methods.proposerBondPct().call(), toWei("0.06"));
+    });
+    it("BridgeAdmin can pause relays", async function () {
+      // Before pausing, relays should be enabled.
+      assert.isTrue(await bridgePool.methods.relaysEnabled().call());
+
+      // Creating a relay should be posable
+
+      // Add liquidity to the pool
+      await l1Token.methods.approve(bridgePool.options.address, initialPoolLiquidity).send({ from: liquidityProvider });
+      await bridgePool.methods.addLiquidity(initialPoolLiquidity).send({ from: liquidityProvider });
+
+      // Mint some tokens to the relayer so they can do relays.
+      await l1Token.methods.mint(relayer, initialPoolLiquidity).send({ from: owner });
+      await l1Token.methods.approve(bridgePool.options.address, initialPoolLiquidity).send({ from: relayer });
+
+      // Do a relay to show it wont revert.
+      await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: relayer });
+
+      // Next, the bridge admin calls to pause relays. This should block subsequent deposit relay actions. Note that the
+      // magic numbers in the function call below are L2->L2 gas params that are not used in these tests.
+      await bridgeAdmin.methods
+        .setEnableDepositsAndRelays(chainId, l1Token.options.address, false, 0, 0, 0, 0)
+        .send({ from: owner });
+
+      // Now, as paused, both relay and relay and speedup should be disabled.
+
+      await didContractThrow(
+        bridgePool.methods
+          .relayAndSpeedUp({ ...defaultDepositData, amount: "2" }, defaultRealizedLpFee)
+          .send({ from: relayer })
+      );
+
+      await didContractThrow(
+        bridgePool.methods.relayDeposit(...generateRelayParams({ depositId: 3 })).send({ from: relayer })
+      );
+
+      // re-enabling relays should make the above no longer throw.
+      await bridgeAdmin.methods
+        .setEnableDepositsAndRelays(chainId, l1Token.options.address, true, 0, 0, 0, 0)
+        .send({ from: owner });
+
+      await bridgePool.methods
+        .relayAndSpeedUp({ ...defaultDepositData, amount: "2" }, defaultRealizedLpFee)
+        .send({ from: relayer });
+      await bridgePool.methods.relayDeposit(...generateRelayParams({ depositId: 3 })).send({ from: relayer });
+    });
   });
   describe("Relay deposit", () => {
     beforeEach(async function () {
