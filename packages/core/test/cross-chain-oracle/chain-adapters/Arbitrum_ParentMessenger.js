@@ -240,10 +240,10 @@ describe("Arbitrum_ParentMessenger", function () {
       await assertEventEmitted(txn, arbitrum_ParentMessenger, "MessageSentToChild", (ev) => {
         return (
           ev.data == expectedMessageFromManualEncoding &&
-          ev.childAddress == childMessengerAddress &&
+          ev.childMessenger == childMessengerAddress &&
           ev.gasLimit.toString() == defaultGasLimit.toString() &&
           ev.l1CallValue.toString() == l1CallValue.toString() &&
-          ev.targetContract == oracleSpokeAddress &&
+          ev.targetSpoke == oracleSpokeAddress &&
           ev.gasPrice.toString() == defaultGasPrice.toString() &&
           ev.maxSubmissionCost.toString() == defaultMaxSubmissionCost.toString() &&
           ev.sequenceNumber.toString() == "0"
@@ -313,10 +313,10 @@ describe("Arbitrum_ParentMessenger", function () {
       await assertEventEmitted(txn, arbitrum_ParentMessenger, "MessageSentToChild", (ev) => {
         return (
           ev.data == expectedMessageFromEvent &&
-          ev.childAddress == childMessengerAddress &&
+          ev.childMessenger == childMessengerAddress &&
           ev.gasLimit.toString() == defaultGasLimit.toString() &&
           ev.l1CallValue.toString() == l1CallValue.toString() &&
-          ev.targetContract == governorSpokeAddress &&
+          ev.targetSpoke == governorSpokeAddress &&
           ev.gasPrice.toString() == defaultGasPrice.toString() &&
           ev.maxSubmissionCost.toString() == defaultMaxSubmissionCost.toString() &&
           ev.sequenceNumber.toString() == "0"
@@ -363,10 +363,10 @@ describe("Arbitrum_ParentMessenger", function () {
       await assertEventEmitted(txn, arbitrum_ParentMessenger, "MessageSentToChild", (ev) => {
         return (
           ev.data == expectedMessageFromManualEncoding &&
-          ev.childAddress == childMessengerAddress &&
+          ev.childMessenger == childMessengerAddress &&
           ev.gasLimit.toString() == defaultGasLimit.toString() &&
           ev.l1CallValue.toString() == l1CallValue.toString() &&
-          ev.targetContract == childMessengerAddress &&
+          ev.targetSpoke == childMessengerAddress &&
           ev.gasPrice.toString() == defaultGasPrice.toString() &&
           ev.maxSubmissionCost.toString() == defaultMaxSubmissionCost.toString() &&
           ev.sequenceNumber.toString() == "0"
@@ -411,10 +411,10 @@ describe("Arbitrum_ParentMessenger", function () {
       await assertEventEmitted(txn, arbitrum_ParentMessenger, "MessageSentToChild", (ev) => {
         return (
           ev.data == expectedMessageFromManualEncoding &&
-          ev.childAddress == childMessengerAddress &&
+          ev.childMessenger == childMessengerAddress &&
           ev.gasLimit.toString() == defaultGasLimit.toString() &&
           ev.l1CallValue.toString() == l1CallValue.toString() &&
-          ev.targetContract == childMessengerAddress &&
+          ev.targetSpoke == childMessengerAddress &&
           ev.gasPrice.toString() == defaultGasPrice.toString() &&
           ev.maxSubmissionCost.toString() == defaultMaxSubmissionCost.toString() &&
           ev.sequenceNumber.toString() == "0"
@@ -447,7 +447,7 @@ describe("Arbitrum_ParentMessenger", function () {
 
       await assertEventEmitted(tx, arbitrum_ParentMessenger, "MessageReceivedFromChild", (ev) => {
         return (
-          ev.data == sentData && ev.childAddress == childMessengerAddress && ev.targetHub == oracleHub.options.address
+          ev.data == sentData && ev.childMessenger == childMessengerAddress && ev.targetHub == oracleHub.options.address
         );
       });
 

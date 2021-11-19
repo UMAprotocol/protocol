@@ -165,9 +165,9 @@ describe("Optimism_ParentMessenger", function () {
       await assertEventEmitted(txn, optimism_ParentMessenger, "MessageSentToChild", (ev) => {
         return (
           ev.data == expectedMessageFromManualEncoding &&
-          ev.childAddress == childMessengerAddress &&
+          ev.childMessenger == childMessengerAddress &&
           ev.gasLimit.toString() == "5000000" &&
-          ev.targetContract == oracleSpokeAddress
+          ev.targetSpoke == oracleSpokeAddress
         );
       });
     });
@@ -220,9 +220,9 @@ describe("Optimism_ParentMessenger", function () {
       await assertEventEmitted(txn, optimism_ParentMessenger, "MessageSentToChild", (ev) => {
         return (
           ev.data == expectedMessageFromManualEncoding &&
-          ev.childAddress == childMessengerAddress &&
+          ev.childMessenger == childMessengerAddress &&
           ev.gasLimit.toString() == "5000000" &&
-          ev.targetContract == governorSpokeAddress
+          ev.targetSpoke == governorSpokeAddress
         );
       });
     });
@@ -249,9 +249,9 @@ describe("Optimism_ParentMessenger", function () {
       await assertEventEmitted(txn, optimism_ParentMessenger, "MessageSentToChild", (ev) => {
         return (
           ev.data == expectedMessageFromManualEncoding &&
-          ev.childAddress == childMessengerAddress &&
+          ev.childMessenger == childMessengerAddress &&
           ev.gasLimit.toString() == defaultGasLimit.toString() &&
-          ev.targetContract == childMessengerAddress
+          ev.targetSpoke == ZERO_ADDRESS
         );
       });
     });
@@ -276,9 +276,9 @@ describe("Optimism_ParentMessenger", function () {
       await assertEventEmitted(txn, optimism_ParentMessenger, "MessageSentToChild", (ev) => {
         return (
           ev.data == expectedMessageFromManualEncoding &&
-          ev.childAddress == childMessengerAddress &&
+          ev.childMessenger == childMessengerAddress &&
           ev.gasLimit.toString() == defaultGasLimit.toString() &&
-          ev.targetContract == childMessengerAddress
+          ev.targetSpoke == ZERO_ADDRESS
         );
       });
     });
@@ -305,9 +305,9 @@ describe("Optimism_ParentMessenger", function () {
       await assertEventEmitted(txn, optimism_ParentMessenger, "MessageSentToChild", (ev) => {
         return (
           ev.data == expectedMessageFromManualEncoding &&
-          ev.childAddress == childMessengerAddress &&
+          ev.childMessenger == childMessengerAddress &&
           ev.gasLimit.toString() == defaultGasLimit.toString() &&
-          ev.targetContract == childMessengerAddress
+          ev.targetSpoke == ZERO_ADDRESS
         );
       });
     });
@@ -333,7 +333,7 @@ describe("Optimism_ParentMessenger", function () {
 
       await assertEventEmitted(tx, optimism_ParentMessenger, "MessageReceivedFromChild", (ev) => {
         return (
-          ev.data == sentData && ev.childAddress == childMessengerAddress && ev.targetHub == oracleHub.options.address
+          ev.data == sentData && ev.childMessenger == childMessengerAddress && ev.targetHub == oracleHub.options.address
         );
       });
 

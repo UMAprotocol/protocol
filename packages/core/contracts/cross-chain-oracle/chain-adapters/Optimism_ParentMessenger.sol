@@ -14,8 +14,8 @@ import "../../common/implementation/Lockable.sol";
  */
 contract Optimism_ParentMessenger is CrossDomainEnabled, ParentMessengerInterface, ParentMessengerBase, Lockable {
     event SetDefaultGasLimit(uint32 newDefaultGasLimit);
-    event MessageSentToChild(bytes data, address indexed targetContract, uint32 gasLimit, address indexed childAddress);
-    event MessageReceivedFromChild(bytes data, address indexed childAddress, address indexed targetHub);
+    event MessageSentToChild(bytes data, address indexed targetSpoke, uint32 gasLimit, address indexed childMessenger);
+    event MessageReceivedFromChild(bytes data, address indexed childMessenger, address indexed targetHub);
 
     uint32 public defaultGasLimit = 5_000_000;
 
@@ -47,7 +47,7 @@ contract Optimism_ParentMessenger is CrossDomainEnabled, ParentMessengerInterfac
     function setChildOracleSpoke(address newOracleSpoke) public onlyOwner {
         bytes memory dataSentToChild = abi.encodeWithSignature("setOracleSpoke(address)", newOracleSpoke);
         sendCrossDomainMessage(childMessenger, defaultGasLimit, dataSentToChild);
-        emit MessageSentToChild(dataSentToChild, childMessenger, defaultGasLimit, childMessenger);
+        emit MessageSentToChild(dataSentToChild, address(0), defaultGasLimit, childMessenger);
     }
 
     /**
@@ -58,7 +58,7 @@ contract Optimism_ParentMessenger is CrossDomainEnabled, ParentMessengerInterfac
     function setChildParentMessenger(address newParentMessenger) public onlyOwner {
         bytes memory dataSentToChild = abi.encodeWithSignature("setParentMessenger(address)", newParentMessenger);
         sendCrossDomainMessage(childMessenger, defaultGasLimit, dataSentToChild);
-        emit MessageSentToChild(dataSentToChild, childMessenger, defaultGasLimit, childMessenger);
+        emit MessageSentToChild(dataSentToChild, address(0), defaultGasLimit, childMessenger);
     }
 
     /**
@@ -69,7 +69,7 @@ contract Optimism_ParentMessenger is CrossDomainEnabled, ParentMessengerInterfac
     function setChildDefaultGasLimit(uint32 newDefaultGasLimit) public onlyOwner {
         bytes memory dataSentToChild = abi.encodeWithSignature("setDefaultGasLimit(uint32)", newDefaultGasLimit);
         sendCrossDomainMessage(childMessenger, defaultGasLimit, dataSentToChild);
-        emit MessageSentToChild(dataSentToChild, childMessenger, defaultGasLimit, childMessenger);
+        emit MessageSentToChild(dataSentToChild, address(0), defaultGasLimit, childMessenger);
     }
 
     /**

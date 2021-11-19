@@ -23,16 +23,16 @@ contract Arbitrum_ParentMessenger is
     event SetRefundL2Address(address newRefundL2Address);
     event MessageSentToChild(
         bytes data,
-        address indexed targetContract,
+        address indexed targetSpoke,
         uint256 l1CallValue,
         uint32 gasLimit,
         uint256 gasPrice,
         uint256 maxSubmissionCost,
         address refundL2Address,
-        address indexed childAddress,
+        address indexed childMessenger,
         uint256 sequenceNumber
     );
-    event MessageReceivedFromChild(bytes data, address indexed childAddress, address indexed targetHub);
+    event MessageReceivedFromChild(bytes data, address indexed childMessenger, address indexed targetHub);
 
     // TODO: Can these default values be determined dynamically via L1 Arbitrum system contracts?
 
