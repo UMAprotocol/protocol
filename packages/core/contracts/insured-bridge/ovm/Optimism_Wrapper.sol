@@ -52,11 +52,7 @@ contract Optimism_Wrapper is Ownable {
         weth.transfer(bridgePool, weth.balanceOf(address(this)));
     }
 
-    // Fallback functions included to make this contract accept ETH.
-    receive() external payable {
-        wrapAndTransfer();
-    }
-
+    // Fallback function enable this contract to receive funds when they are unwrapped from the weth contract.
     fallback() external payable {
         wrapAndTransfer();
     }
