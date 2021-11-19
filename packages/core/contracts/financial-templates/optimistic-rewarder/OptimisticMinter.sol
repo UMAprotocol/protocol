@@ -25,7 +25,7 @@ contract OptimisticMintr is Lockable {
     mapping(uint256 => uint256) public balances;
 
     /**
-     * @notice Constructor
+     * @notice Constructor.
      * @param _optimisticRewarder Optimistic rewarder contract used to pay out user rewards.
      * @param _stakedToken staked ERC20 token.
      */

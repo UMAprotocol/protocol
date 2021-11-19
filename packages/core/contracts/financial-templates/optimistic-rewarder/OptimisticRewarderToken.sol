@@ -8,6 +8,12 @@ contract OptimisticRewarderToken is ERC721 {
     string public baseUri;
     uint256 public nextTokenId;
 
+    /**
+     * @notice Constructor.
+     * @param _name name for the ERC721 token.
+     * @param _symbol symbol for the ERC721 token.
+     * @param _baseUri prefix to each ERC721 tokenId's name.
+     */
     constructor(
         string memory _name,
         string memory _symbol,
@@ -17,6 +23,10 @@ contract OptimisticRewarderToken is ERC721 {
         baseUri = _baseUri;
     }
 
+    /**
+     * @notice Used to mint the next ERC721 tokenId.
+     * @param recipient the recipient of the newly minted token.
+     */
     function mintNextToken(address recipient) public virtual returns (uint256 tokenId) {
         tokenId = tokenId++;
         _safeMint(recipient, tokenId);
