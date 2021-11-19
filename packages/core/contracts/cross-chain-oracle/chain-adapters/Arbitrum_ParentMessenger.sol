@@ -45,7 +45,7 @@ contract Arbitrum_ParentMessenger is
     // ticket’s calldata in the retry buffer. (current base submission fee is queryable via
     // ArbRetryableTx.getSubmissionPrice). ArbRetryableTicket precompile interface exists at L2 address
     // 0x000000000000000000000000000000000000006E.
-    uint256 public defaultMaxSubmissionCost = 1e18 / 10; // 0.1e18
+    uint256 public defaultMaxSubmissionCost = 0.1e18;
 
     // L2 Gas price bid for immediate L2 execution attempt (queryable via standard eth*gasPrice RPC)
     uint256 public defaultGasPrice = 10e9; // 10 gWei
