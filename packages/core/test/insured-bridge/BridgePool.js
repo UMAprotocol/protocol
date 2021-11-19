@@ -390,9 +390,32 @@ describe("BridgePool", () => {
       const newRate = toWei("0.0000025");
       assert(
         await didContractThrow(
-          bridgeAdmin.methods.changeLpFeeRatePerSecond(bridgePool.options.address, newRate).send({ from: rando })
+          bridgeAdmin.methods.setLpFeeRatePerSecond(bridgePool.options.address, newRate).send({ from: rando })
         )
       );
+
+      // Calling from the correct address succeeds.
+      const tx = await bridgeAdmin.methods
+        .setLpFeeRatePerSecond(bridgePool.options.address, newRate)
+        .send({ from: owner });
+
+      assert.equal(await bridgePool.methods.lpFeeRatePerSecond().call(), newRate);
+
+      await assertEventEmitted(tx, bridgePool, "LpFeeRateSet", (ev) => {
+        return ev.newLpFeeRatePerSecond.toString() === newRate;
+      });
+    });
+    it("Constructs utf8-encoded ancillary data for relay", async function () {
+      assert.equal(
+        hexToUtf8(defaultRelayAncillaryData),
+        `relayHash:${generateRelayAncillaryDataHash(defaultDepositData, defaultRelayData).substring(2)}`
+      );
+    });
+    it("Sync with Finder addresses", async function () {
+      // Check the sync with finder correctly updates the local instance of important contracts to that in the finder.
+      assert.equal(await bridgePool.methods.optimisticOracle().call(), optimisticOracle.options.address);
+
+      const newRate = toWei("0.0000025");
 
       // Calling from the correct address succeeds.
       const tx = await bridgeAdmin.methods

@@ -237,18 +237,14 @@ describe("BridgeAdmin", () => {
       const newRate = toWei("0.0000025");
       assert(
         await didContractThrow(
-          bridgeAdmin.methods.changeLpFeeRatePerSecond(bridgePool.options.address, newRate).send({ from: rando })
+          bridgeAdmin.methods.setLpFeeRatePerSecond(bridgePool.options.address, newRate).send({ from: rando })
         ),
         "OnlyOwner modifier not enforced"
       );
 
-      const txn = await bridgeAdmin.methods
-        .changeLpFeeRatePerSecond(bridgePool.options.address, newRate)
-        .send({ from: owner });
+      const txn = await bridgeAdmin.methods.setLpFeeRatePerSecond(bridgePool.options.address, newRate);
 
-      // Check for L1 logs and state change
-
-      await assertEventEmitted(txn, bridgeAdmin, "ChangedLpFeeRate", (ev) => {
+      await assertEventEmitted(txn, bridgeAdmin, "SetLpFeeRate", (ev) => {
         return ev.bridgePool == bridgePool.options.address && ev.newLpFeeRatePerSecond.toString() == newRate;
       });
       assert.equal(await bridgePool.methods.lpFeeRatePerSecond().call(), newRate);

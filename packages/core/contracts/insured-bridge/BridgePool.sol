@@ -153,8 +153,8 @@ contract BridgePool is MultiCaller, Testable, BridgePoolInterface, ERC20, Lockab
     event RelayCanceled(bytes32 indexed depositHash, bytes32 indexed relayHash, address indexed disputer);
     event RelaySettled(bytes32 indexed depositHash, address indexed caller, RelayData relay);
     event BridgePoolAdminTransferred(address oldAdmin, address newAdmin);
-    event LpFeeRateChanged(uint64 newLpFeeRatePerSecond);
-    event RelaysEnabledChanged(bool newRelaysEnabled);
+    event RelaysEnabledSet(bool newRelaysEnabled);
+    event LpFeeRateSet(uint64 newLpFeeRatePerSecond);
 
     modifier onlyBridgeAdmin() {
         require(msg.sender == address(bridgeAdmin), "Caller not bridge admin");
@@ -195,7 +195,7 @@ contract BridgePool is MultiCaller, Testable, BridgePoolInterface, ERC20, Lockab
         syncUmaEcosystemParams(); // Fetch OptimisticOracle and Store addresses and L1Token finalFee.
         syncWithBridgeAdminParams(); // Fetch ProposerBondPct OptimisticOracleLiveness, Identifier from the BridgeAdmin.
 
-        emit LpFeeRateChanged(lpFeeRatePerSecond);
+        emit LpFeeRateSet(lpFeeRatePerSecond);
     }
 
     /*************************************************
@@ -695,11 +695,11 @@ contract BridgePool is MultiCaller, Testable, BridgePoolInterface, ERC20, Lockab
      * @notice Enable the bridge admin to change the decay rate at which LP shares accumulate fees. The higher this
      * value, the faster LP shares realize pending fees.
      * @dev Caller must be BridgeAdmin contract.
-     * @param _lpFeeRatePerSecond The new rate to set.
+     * @param _newLpFeeRatePerSecond The new rate to set.
      */
-    function changeLpFeeRatePerSecond(uint64 _lpFeeRatePerSecond) public override onlyBridgeAdmin() nonReentrant() {
-        lpFeeRatePerSecond = _lpFeeRatePerSecond;
-        emit LpFeeRateChanged(lpFeeRatePerSecond);
+    function setLpFeeRatePerSecond(uint64 _newLpFeeRatePerSecond) public override onlyBridgeAdmin() nonReentrant() {
+        lpFeeRatePerSecond = _newLpFeeRatePerSecond;
+        emit LpFeeRateSet(lpFeeRatePerSecond);
     }
 
     /**
@@ -710,7 +710,7 @@ contract BridgePool is MultiCaller, Testable, BridgePoolInterface, ERC20, Lockab
      */
     function setRelaysEnabled(bool _relaysEnabled) public override onlyBridgeAdmin() nonReentrant() {
         relaysEnabled = _relaysEnabled;
-        emit RelaysEnabledChanged(_relaysEnabled);
+        emit RelaysEnabledSet(_relaysEnabled);
     }
 
     /************************************
