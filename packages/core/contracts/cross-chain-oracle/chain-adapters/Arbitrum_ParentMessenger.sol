@@ -22,7 +22,7 @@ contract Arbitrum_ParentMessenger is
     event SetDefaultGasPrice(uint256 newDefaultGasPrice);
     event MessageSentToChild(
         bytes data,
-        address indexed targetSpoke,
+        address indexed targetContract,
         uint256 l1CallValue,
         uint32 gasLimit,
         uint256 gasPrice,
@@ -48,7 +48,7 @@ contract Arbitrum_ParentMessenger is
     {}
 
     /**
-     * @notice Changes the default gas limit that is sent along with transactions to Optimism.
+     * @notice Changes the default gas limit that is sent along with transactions to Arbitrum.
      * @dev The caller of this function must be the owner. This should be set to the DVM governor.
      * @param newDefaultGasLimit the new L2 gas limit to be set.
      */
@@ -57,12 +57,22 @@ contract Arbitrum_ParentMessenger is
         emit SetDefaultGasLimit(newDefaultGasLimit);
     }
 
+    /**
+     * @notice Changes the default gas price that is sent along with transactions to Arbitrum.
+     * @dev The caller of this function must be the owner. This should be set to the DVM governor.
+     * @param newDefaultGasPrice the new L2 gas price to be set.
+     */
     function setDefaultGasPrice(uint256 newDefaultGasPrice) public onlyOwner nonReentrant() {
         defaultGasPrice = newDefaultGasPrice;
         emit SetDefaultGasPrice(newDefaultGasPrice);
     }
 
-    function setDefaultGasLimit(uint256 newDefaultMaxSubmissionCost) public onlyOwner nonReentrant() {
+    /**
+     * @notice Changes the default max submission cost that is sent along with transactions to Arbitrum.
+     * @dev The caller of this function must be the owner. This should be set to the DVM governor.
+     * @param newDefaultMaxSubmissionCost the new L2 max submission cost to be set.
+     */
+    function setDefaultMaxSubmissionCost(uint256 newDefaultMaxSubmissionCost) public onlyOwner nonReentrant() {
         defaultMaxSubmissionCost = newDefaultMaxSubmissionCost;
         emit SetDefaultMaxSubmissionCost(newDefaultMaxSubmissionCost);
     }
@@ -74,26 +84,7 @@ contract Arbitrum_ParentMessenger is
      */
     function setChildOracleSpoke(address newOracleSpoke) public payable onlyOwner {
         bytes memory dataSentToChild = abi.encodeWithSignature("setOracleSpoke(address)", newOracleSpoke);
-        uint256 seqNumber =
-            sendTxToL2NoAliassing(
-                childMessenger,
-                owner(), // This is the address that will send ETH refunds for any failed messages.
-                msg.value, // Pass along all msg.value included by Hub caller.
-                defaultMaxSubmissionCost,
-                defaultGasLimit,
-                defaultGasPrice,
-                dataSentToChild
-            );
-        emit MessageSentToChild(
-            dataSentToChild,
-            childMessenger,
-            msg.value,
-            defaultGasLimit,
-            defaultGasPrice,
-            defaultMaxSubmissionCost,
-            childMessenger,
-            seqNumber
-        );
+        _sendMessageToChild(dataSentToChild, childMessenger);
     }
 
     /**
@@ -103,26 +94,7 @@ contract Arbitrum_ParentMessenger is
      */
     function setChildParentMessenger(address newParentMessenger) public payable onlyOwner {
         bytes memory dataSentToChild = abi.encodeWithSignature("setParentMessenger(address)", newParentMessenger);
-        uint256 seqNumber =
-            sendTxToL2NoAliassing(
-                childMessenger,
-                owner(), // This is the address that will send ETH refunds for any failed messages.
-                msg.value, // Pass along all msg.value included by Hub caller.
-                defaultMaxSubmissionCost,
-                defaultGasLimit,
-                defaultGasPrice,
-                dataSentToChild
-            );
-        emit MessageSentToChild(
-            dataSentToChild,
-            childMessenger,
-            msg.value,
-            defaultGasLimit,
-            defaultGasPrice,
-            defaultMaxSubmissionCost,
-            childMessenger,
-            seqNumber
-        );
+        _sendMessageToChild(dataSentToChild, childMessenger);
     }
 
     /**
@@ -137,27 +109,7 @@ contract Arbitrum_ParentMessenger is
         address target = msg.sender == oracleHub ? oracleSpoke : governorSpoke;
         bytes memory dataSentToChild =
             abi.encodeWithSignature("processMessageFromCrossChainParent(bytes,address)", data, target);
-
-        uint256 seqNumber =
-            sendTxToL2NoAliassing(
-                childMessenger,
-                owner(), // This is the address that will send ETH refunds for any failed messages.
-                msg.value, // Pass along all msg.value included by Hub caller.
-                defaultMaxSubmissionCost,
-                defaultGasLimit,
-                defaultGasPrice,
-                dataSentToChild
-            );
-        emit MessageSentToChild(
-            dataSentToChild,
-            target,
-            msg.value,
-            defaultGasLimit,
-            defaultGasPrice,
-            defaultMaxSubmissionCost,
-            childMessenger,
-            seqNumber
-        );
+        _sendMessageToChild(dataSentToChild, target);
     }
 
     /**
@@ -174,5 +126,28 @@ contract Arbitrum_ParentMessenger is
     {
         ParentMessengerConsumerInterface(oracleHub).processMessageFromChild(childChainId, data);
         emit MessageReceivedFromChild(data, childMessenger, oracleHub);
+    }
+
+    function _sendMessageToChild(bytes memory data, address target) internal {
+        uint256 seqNumber =
+            sendTxToL2NoAliassing(
+                childMessenger,
+                owner(), // This is the address that will send ETH refunds for any failed messages.
+                msg.value, // Pass along all msg.value included by Hub caller.
+                defaultMaxSubmissionCost,
+                defaultGasLimit,
+                defaultGasPrice,
+                data
+            );
+        emit MessageSentToChild(
+            data,
+            target,
+            msg.value,
+            defaultGasLimit,
+            defaultGasPrice,
+            defaultMaxSubmissionCost,
+            childMessenger,
+            seqNumber
+        );
     }
 }

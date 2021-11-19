@@ -1,5 +1,31 @@
 pragma solidity ^0.8.0;
 import "../../external/avm/interfaces/iArbitrum_Inbox.sol";
+import "../../cross-chain-oracle/chain-adapters/Arbitrum_ParentMessenger.sol";
+
+contract Arbitrum_OutboxMock {
+    function l2ToL1Sender() external view returns (address) {
+        // Function not called in tests, only smocked.
+        return address(this);
+    }
+}
+
+contract Arbitrum_BridgeMock {
+    address public outbox;
+
+    function setOutbox(address _outbox) external {
+        outbox = _outbox;
+    }
+
+    function activeOutbox() external view returns (address) {
+        return outbox;
+    }
+
+    // This function can be called by an EOA to send a call to the parent messenger, which is important in tests
+    // because `processMessageFromCrossChainChild` can only be called by the Bridge contract.
+    function processMessageFromCrossChainChild(address messengerToCall, bytes memory data) external {
+        Arbitrum_ParentMessenger(messengerToCall).processMessageFromCrossChainChild(data);
+    }
+}
 
 contract Arbitrum_InboxMock is iArbitrum_Inbox {
     // We leave these unused function parameters named because this contract is used with smockit and makes testing
@@ -18,7 +44,7 @@ contract Arbitrum_InboxMock is iArbitrum_Inbox {
     }
 
     function bridge() external view returns (address) {
-        require(false, "untested function, always reverts");
+        // Function not called in tests, only smocked.
         return address(this);
     }
 }
