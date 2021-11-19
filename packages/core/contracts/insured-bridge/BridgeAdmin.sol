@@ -130,6 +130,18 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, Lockable {
         emit BridgePoolsAdminTransferred(bridgePools, newAdmin);
     }
 
+    /**
+     * @notice Enable the current owner to change the decay rate at which LP shares accumulate fees for a particular
+     * BridgePool. The higher this value, the faster LP shares realize pending fees.
+     * @dev Only callable by the current owner.
+     * @param bridgePool Bridge Pool to change LP fee rate for.
+     * @param newLpFeeRate The new rate to set for the `bridgePool`.
+     */
+    function setLpFeeRatePerSecond(address bridgePool, uint64 newLpFeeRate) public onlyOwner nonReentrant() {
+        BridgePoolInterface(bridgePool).setLpFeeRatePerSecond(newLpFeeRate);
+        emit SetLpFeeRate(bridgePool, newLpFeeRate);
+    }
+
     /**************************************************
      *        CROSSDOMAIN ADMIN FUNCTIONS             *
      **************************************************/

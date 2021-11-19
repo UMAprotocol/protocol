@@ -11,10 +11,10 @@ const { deployContractMock } = require("../../helpers/SmockitHelper");
 
 // Tested Contract
 const Optimism_ChildMessenger = getContract("Optimism_ChildMessenger");
+const Optimism_ParentMessenger = getContract("Optimism_ParentMessenger");
 
 // Helper contracts
 const OracleSpoke = getContract("OracleSpoke");
-const ParentMessengerInterface = getContract("ParentMessengerInterface");
 const Finder = getContract("Finder");
 const Registry = getContract("Registry");
 
@@ -76,7 +76,9 @@ describe("Optimism_ChildMessenger", function () {
       // function call. Note normally only a registered contract can call this function.
 
       const requestTime = 123456789;
-      await oracleSpoke.methods.requestPrice(priceIdentifier, requestTime, ancillaryData).send({ from: controlledEOA });
+      const txn = await oracleSpoke.methods
+        .requestPrice(priceIdentifier, requestTime, ancillaryData)
+        .send({ from: controlledEOA });
 
       // Check the message was sent to the l2 cross domain messenger and was encoded correctly.
 
@@ -91,13 +93,21 @@ describe("Optimism_ChildMessenger", function () {
         [priceIdentifier, requestTime, await oracleSpoke.methods.stampAncillaryData(ancillaryData).call()]
       );
 
-      // This data is then encoded within the ParentMessengerInterface processMessageFromCrossChainChild function.
-      const parentMessengerInterface = await ParentMessengerInterface.at(ZERO_ADDRESS);
+      // This data is then encoded within the Optimism_ParentMessenger.processMessageFromCrossChainChild function.
+      const parentMessengerInterface = await Optimism_ParentMessenger.at(ZERO_ADDRESS);
       const expectedMessageFromManualEncoding = await parentMessengerInterface.methods
         .processMessageFromCrossChainChild(encodedData)
         .encodeABI();
 
       assert.equal(requestPriceMessage[0]._message, expectedMessageFromManualEncoding);
+
+      await assertEventEmitted(txn, optimism_ChildMessenger, "MessageSentToParent", (ev) => {
+        return (
+          ev.data == expectedMessageFromManualEncoding &&
+          ev.parentAddress == parentMessenger &&
+          ev.gasLimit.toString() == "5000000"
+        );
+      });
     });
   });
   describe("Receiving messages from parent on L1", () => {
@@ -146,6 +156,10 @@ describe("Optimism_ChildMessenger", function () {
       const tx = await optimism_ChildMessenger.methods
         .processMessageFromCrossChainParent(data, oracleSpoke.options.address)
         .send({ from: l2CrossDomainMessengerMock.options.address });
+
+      await assertEventEmitted(tx, optimism_ChildMessenger, "MessageReceivedFromParent", (ev) => {
+        return ev.data == data && ev.targetSpoke == oracleSpoke.options.address && ev.parentAddress == parentMessenger;
+      });
 
       // Validate that the tx contains the correct message sent from L1.
       await assertEventEmitted(tx, oracleSpoke, "PushedPrice", (ev) => {

@@ -9,13 +9,13 @@ const { ZERO_ADDRESS, didContractThrow, interfaceName } = require("@uma/common")
 const { deployContractMock } = require("../../helpers/SmockitHelper");
 
 // Tested Contract
+const Optimism_ChildMessenger = getContract("Optimism_ChildMessenger");
 const Optimism_ParentMessenger = getContract("Optimism_ParentMessenger");
 
 // Other helper contracts
 const OVM_L1CrossDomainMessengerMock = getContract("OVM_L1CrossDomainMessengerMock");
 const OracleHub = getContract("OracleHub");
 const GovernorHub = getContract("GovernorHub");
-const ChildMessengerInterface = getContract("ChildMessengerInterface");
 const Finder = getContract("Finder");
 const Store = getContract("Store");
 const IdentifierWhitelist = getContract("IdentifierWhitelist");
@@ -126,7 +126,9 @@ describe("Optimism_ParentMessenger", function () {
       await mockOracle.methods
         .pushPrice(priceIdentifier, priceTime, ancillaryData, pushedPrice)
         .send({ from: l1Owner });
-      await oracleHub.methods.publishPrice(chainId, priceIdentifier, priceTime, ancillaryData).send({ from: l1Owner });
+      const txn = await oracleHub.methods
+        .publishPrice(chainId, priceIdentifier, priceTime, ancillaryData)
+        .send({ from: l1Owner });
 
       // Validate that the l1CrossDomainMessengerMock received the expected cross-domain message, destine for the child.
       const publishPriceMessage = l1CrossDomainMessengerMock.smocked.sendMessage.calls;
@@ -139,11 +141,20 @@ describe("Optimism_ParentMessenger", function () {
         ["bytes32", "uint256", "bytes", "int256"],
         [priceIdentifier, priceTime, ancillaryData, pushedPrice]
       );
-      const childMessengerInterface = await ChildMessengerInterface.at(ZERO_ADDRESS);
+      const childMessengerInterface = await Optimism_ChildMessenger.at(ZERO_ADDRESS);
       const expectedMessageFromManualEncoding = await await childMessengerInterface.methods
         .processMessageFromCrossChainParent(encodedData, oracleSpokeAddress)
         .encodeABI();
       assert.equal(publishPriceMessage[0]._message, expectedMessageFromManualEncoding);
+
+      await assertEventEmitted(txn, optimism_ParentMessenger, "MessageSentToChild", (ev) => {
+        return (
+          ev.data == expectedMessageFromManualEncoding &&
+          ev.childAddress == childMessengerAddress &&
+          ev.gasLimit.toString() == "5000000" &&
+          ev.targetSpoke == oracleSpokeAddress
+        );
+      });
     });
 
     it("Can correctly send messages to L2 child from Governor Hub", async () => {
@@ -154,7 +165,7 @@ describe("Optimism_ParentMessenger", function () {
         .changeImplementationAddress(utf8ToHex(interfaceName.CollateralWhitelist), l1Owner)
         .encodeABI();
 
-      await governorHub.methods
+      const txn = await governorHub.methods
         .relayGovernance(chainId, l2FinderAddress, sampleGovernanceAction)
         .send({ from: l1Owner });
 
@@ -174,7 +185,7 @@ describe("Optimism_ParentMessenger", function () {
 
       // Generate the target message data that should have been forwarded to the Child messenger interface from the
       // Optimism Parent messenger within the sendMessageToChild function call.
-      const childMessengerInterface = await ChildMessengerInterface.at(ZERO_ADDRESS);
+      const childMessengerInterface = await Optimism_ChildMessenger.at(ZERO_ADDRESS);
       const expectedMessageFromEvent = childMessengerInterface.methods
         .processMessageFromCrossChainParent(targetDataSentFromGovernorHub, governorSpokeAddress) // note the oracleSpokeAddress for the target in the message
         .encodeABI();
@@ -190,6 +201,15 @@ describe("Optimism_ParentMessenger", function () {
         .processMessageFromCrossChainParent(encodedData, governorSpokeAddress)
         .encodeABI();
       assert.equal(publishPriceMessage[0]._message, expectedMessageFromManualEncoding);
+
+      await assertEventEmitted(txn, optimism_ParentMessenger, "MessageSentToChild", (ev) => {
+        return (
+          ev.data == expectedMessageFromManualEncoding &&
+          ev.childAddress == childMessengerAddress &&
+          ev.gasLimit.toString() == "5000000" &&
+          ev.targetSpoke == governorSpokeAddress
+        );
+      });
     });
   });
   describe("Receiving messages from child on L2", () => {
@@ -210,6 +230,12 @@ describe("Optimism_ParentMessenger", function () {
       // calling via the child messenger (the only address that should be able to call this method) should work.
       l1CrossDomainMessengerMock.smocked.xDomainMessageSender.will.return.with(() => childMessengerAddress);
       const tx = await messageFromChildTx.send({ from: l1CrossDomainMessengerMock.options.address });
+
+      await assertEventEmitted(tx, optimism_ParentMessenger, "MessageReceivedFromChild", (ev) => {
+        return (
+          ev.data == sentData && ev.childAddress == childMessengerAddress && ev.targetHub == oracleHub.options.address
+        );
+      });
 
       // Validate that the tx contains the correct message sent from L2.
       await assertEventEmitted(tx, mockOracle, "PriceRequestAdded", (ev) => {

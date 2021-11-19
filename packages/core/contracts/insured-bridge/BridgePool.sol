@@ -58,7 +58,7 @@ contract BridgePool is MultiCaller, Testable, BridgePoolInterface, ERC20, Lockab
     // withdrawal.
     bool public isWethPool;
 
-    // Exponential decay exchange rate to accumulate fees to LPs over time.
+    // Exponential decay exchange rate to accumulate fees to LPs over time. This can be changed via the BridgeAdmin.
     uint64 public lpFeeRatePerSecond;
 
     // Last timestamp that LP fees were updated.
@@ -150,6 +150,12 @@ contract BridgePool is MultiCaller, Testable, BridgePoolInterface, ERC20, Lockab
     event RelayCanceled(bytes32 indexed depositHash, bytes32 indexed relayHash, address indexed disputer);
     event RelaySettled(bytes32 indexed depositHash, address indexed caller, RelayData relay);
     event BridgePoolAdminTransferred(address oldAdmin, address newAdmin);
+    event LpFeeRateSet(uint64 newLpFeeRatePerSecond);
+
+    modifier onlyBridgeAdmin() {
+        require(msg.sender == address(bridgeAdmin), "Caller not bridge admin");
+        _;
+    }
 
     /**
      * @notice Construct the Bridge Pool.
@@ -179,6 +185,8 @@ contract BridgePool is MultiCaller, Testable, BridgePoolInterface, ERC20, Lockab
 
         syncUmaEcosystemParams(); // Fetch OptimisticOracle and Store addresses and L1Token finalFee.
         syncWithBridgeAdminParams(); // Fetch ProposerBondPct OptimisticOracleLiveness, Identifier from the BridgeAdmin.
+
+        emit LpFeeRateSet(lpFeeRatePerSecond);
     }
 
     /*************************************************
@@ -656,12 +664,23 @@ contract BridgePool is MultiCaller, Testable, BridgePoolInterface, ERC20, Lockab
 
     /**
      * @notice Enable the current bridge admin to transfer admin to to a new address.
+     * @dev Caller must be BridgeAdmin contract.
      * @param _newAdmin Admin address of the new admin.
      */
-    function changeAdmin(address _newAdmin) public override nonReentrant() {
-        require(msg.sender == address(bridgeAdmin));
+    function changeAdmin(address _newAdmin) public override onlyBridgeAdmin() nonReentrant() {
         bridgeAdmin = BridgeAdminInterface(_newAdmin);
         emit BridgePoolAdminTransferred(msg.sender, _newAdmin);
+    }
+
+    /**
+     * @notice Enable the bridge admin to change the decay rate at which LP shares accumulate fees. The higher this
+     * value, the faster LP shares realize pending fees.
+     * @dev Caller must be BridgeAdmin contract.
+     * @param _newLpFeeRatePerSecond The new rate to set.
+     */
+    function setLpFeeRatePerSecond(uint64 _newLpFeeRatePerSecond) public override onlyBridgeAdmin() nonReentrant() {
+        lpFeeRatePerSecond = _newLpFeeRatePerSecond;
+        emit LpFeeRateSet(lpFeeRatePerSecond);
     }
 
     /************************************

@@ -5,14 +5,15 @@ pragma solidity ^0.8.0;
 import "../../external/ovm/OVM_CrossDomainEnabled.sol";
 import "../interfaces/ChildMessengerInterface.sol";
 import "../interfaces/ChildMessengerConsumerInterface.sol";
+import "../../common/implementation/Lockable.sol";
 
 /**
  * @notice Sends cross chain messages from Optimism L2 to Ethereum L1 network.
  * @dev This contract is ownable via the onlyCrossDomainAccount modifier, restricting ownership to the cross-domain
  * parent messenger contract that lives on L1.
  */
-contract Optimism_ChildMessenger is OVM_CrossDomainEnabled, ChildMessengerInterface {
-    // The only L2 contract that can send messages over the bridge via the messenger is the oracle spoke.
+contract Optimism_ChildMessenger is OVM_CrossDomainEnabled, ChildMessengerInterface, Lockable {
+    // The only child network contract that can send messages over the bridge via the messenger is the oracle spoke.
     address public oracleSpoke;
 
     // Messenger contract on the other side of the L1<->L2 bridge.
@@ -28,7 +29,7 @@ contract Optimism_ChildMessenger is OVM_CrossDomainEnabled, ChildMessengerInterf
     event SetParentMessenger(address newParentMessenger);
     event SetDefaultGasLimit(uint32 newDefaultGasLimit);
     event MessageSentToParent(bytes data, address indexed parentAddress, uint32 gasLimit);
-    event MessageReceivedFromParent(bytes data, address indexed parentAddress);
+    event MessageReceivedFromParent(bytes data, address indexed targetSpoke, address indexed parentAddress);
 
     /**
      * @notice Construct the Optimism_ChildMessenger contract.
@@ -43,7 +44,7 @@ contract Optimism_ChildMessenger is OVM_CrossDomainEnabled, ChildMessengerInterf
      * @dev The caller of this function must be the parent messenger, over the canonical bridge.
      * @param newOracleSpoke address of the new oracle spoke, deployed on L2.
      */
-    function setOracleSpoke(address newOracleSpoke) public onlyFromCrossDomainAccount(parentMessenger) {
+    function setOracleSpoke(address newOracleSpoke) public onlyFromCrossDomainAccount(parentMessenger) nonReentrant() {
         oracleSpoke = newOracleSpoke;
         emit SetOracleSpoke(newOracleSpoke);
     }
@@ -53,7 +54,11 @@ contract Optimism_ChildMessenger is OVM_CrossDomainEnabled, ChildMessengerInterf
      * @dev The caller of this function must be the parent messenger, over the canonical bridge.
      * @param newParentMessenger address of the new parent messenger, deployed on L1.
      */
-    function setParentMessenger(address newParentMessenger) public onlyFromCrossDomainAccount(parentMessenger) {
+    function setParentMessenger(address newParentMessenger)
+        public
+        onlyFromCrossDomainAccount(parentMessenger)
+        nonReentrant()
+    {
         parentMessenger = newParentMessenger;
         emit SetParentMessenger(newParentMessenger);
     }
@@ -63,7 +68,11 @@ contract Optimism_ChildMessenger is OVM_CrossDomainEnabled, ChildMessengerInterf
      * @dev The caller of this function must be the parent messenger, over the canonical bridge.
      * @param newDefaultGasLimit the new L1 gas limit to be set.
      */
-    function setDefaultGasLimit(uint32 newDefaultGasLimit) public onlyFromCrossDomainAccount(parentMessenger) {
+    function setDefaultGasLimit(uint32 newDefaultGasLimit)
+        public
+        onlyFromCrossDomainAccount(parentMessenger)
+        nonReentrant()
+    {
         defaultGasLimit = newDefaultGasLimit;
         emit SetDefaultGasLimit(newDefaultGasLimit);
     }
@@ -74,7 +83,7 @@ contract Optimism_ChildMessenger is OVM_CrossDomainEnabled, ChildMessengerInterf
      * @dev The L1 target, the parent messenger, must implement processMessageFromChild to consume the message.
      * @param data data message sent to the L1 messenger. Should be an encoded function call or packed data.
      */
-    function sendMessageToParent(bytes memory data) public override {
+    function sendMessageToParent(bytes memory data) public override nonReentrant() {
         require(msg.sender == oracleSpoke, "Only callable by oracleSpoke");
         bytes memory dataSentToParent = abi.encodeWithSignature("processMessageFromCrossChainChild(bytes)", data);
         sendCrossDomainMessage(parentMessenger, defaultGasLimit, dataSentToParent);
@@ -91,10 +100,10 @@ contract Optimism_ChildMessenger is OVM_CrossDomainEnabled, ChildMessengerInterf
      */
     function processMessageFromCrossChainParent(bytes memory data, address target)
         public
-        override
         onlyFromCrossDomainAccount(parentMessenger)
+        nonReentrant()
     {
         ChildMessengerConsumerInterface(target).processMessageFromParent(data);
-        emit MessageReceivedFromParent(data, target);
+        emit MessageReceivedFromParent(data, target, parentMessenger);
     }
 }
