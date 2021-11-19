@@ -12,8 +12,9 @@ import "../../oracle/interfaces/StoreInterface.sol";
 import "../../oracle/implementation/Constants.sol";
 import "../../oracle/interfaces/SkinnyOptimisticOracleInterface.sol";
 import "../../common/implementation/AncillaryData.sol";
+import "./OptimisticRewarderToken.sol";
 
-contract OptimisticRewarder is ERC721, Lockable {
+abstract contract OptimisticRewarderBase is Lockable {
     using SafeERC20 for IERC20;
 
     struct RedemptionAmount {
@@ -27,8 +28,6 @@ contract OptimisticRewarder is ERC721, Lockable {
     }
 
     FinderInterface public finder;
-    string public baseUri;
-    uint256 public nextTokenId;
     uint256 public liveness;
     uint256 public bond;
     IERC20 public bondToken;
@@ -48,16 +47,12 @@ contract OptimisticRewarder is ERC721, Lockable {
     event Redeemed(uint256 indexed tokenId, bytes32 indexed redemptionId, uint256 expiryTime);
 
     constructor(
-        string memory _name,
-        string memory _symbol,
-        string memory _baseUri,
         uint256 _liveness,
         IERC20 _bondToken,
         uint256 _bond,
         bytes32 _identifier,
         FinderInterface _finder
-    ) ERC721(_name, _symbol) {
-        baseUri = _baseUri;
+    ) {
         liveness = _liveness;
         finder = _finder;
         bondToken = _bondToken;
@@ -70,8 +65,7 @@ contract OptimisticRewarder is ERC721, Lockable {
     }
 
     function mint(address receiver, bytes memory data) public nonReentrant returns (uint256 tokenId) {
-        tokenId = nextTokenId++;
-        _safeMint(receiver, tokenId);
+        tokenId = mintNextToken(receiver);
         emit UpdateToken(tokenId, msg.sender, data);
     }
 
@@ -191,9 +185,9 @@ contract OptimisticRewarder is ERC721, Lockable {
         return block.timestamp;
     }
 
-    function _baseURI() internal view override returns (string memory) {
-        return baseUri;
-    }
+    function mintNextToken(address recipient) public virtual returns (uint256);
+
+    function ownerOf(uint256 tokenId) public view virtual returns (address);
 
     function _redemptionId(uint256 tokenId, RedemptionAmount[] memory amounts) internal pure returns (bytes32) {
         return keccak256(abi.encode(tokenId, amounts));
@@ -206,5 +200,60 @@ contract OptimisticRewarder is ERC721, Lockable {
     function _getOptimisticOracle() internal view returns (SkinnyOptimisticOracleInterface) {
         return
             SkinnyOptimisticOracleInterface(finder.getImplementationAddress(OracleInterfaces.SkinnyOptimisticOracle));
+    }
+}
+
+contract OptimisticRewarder is OptimisticRewarderBase, OptimisticRewarderToken {
+    constructor(
+        string memory _name,
+        string memory _symbol,
+        string memory _baseUri,
+        uint256 _liveness,
+        IERC20 _bondToken,
+        uint256 _bond,
+        bytes32 _identifier,
+        FinderInterface _finder
+    )
+        OptimisticRewarderToken(_name, _symbol, _baseUri)
+        OptimisticRewarderBase(_liveness, _bondToken, _bond, _identifier, _finder)
+    {}
+
+    function mintNextToken(address recipient)
+        public
+        virtual
+        override(OptimisticRewarderBase, OptimisticRewarderToken)
+        returns (uint256)
+    {
+        return OptimisticRewarderToken.mintNextToken(recipient);
+    }
+
+    function ownerOf(uint256 tokenId) public view virtual override(OptimisticRewarderBase, ERC721) returns (address) {
+        return ERC721.ownerOf(tokenId);
+    }
+}
+
+// This implementation allows the user to pass in an ERC721 that will be used.
+contract OptimisticRewarderNoToken is OptimisticRewarderBase {
+    OptimisticRewarderToken public token;
+
+    constructor(
+        OptimisticRewarderToken _token,
+        uint256 _liveness,
+        IERC20 _bondToken,
+        uint256 _bond,
+        bytes32 _identifier,
+        FinderInterface _finder
+    ) OptimisticRewarderBase(_liveness, _bondToken, _bond, _identifier, _finder) {
+        token = _token;
+    }
+
+    // Note: even if token contract does not support the `mintNextToken` function, this contract can still function
+    // correctly assuming there is some other way to mint the ERC721 tokens.
+    function mintNextToken(address recipient) public virtual override returns (uint256) {
+        return token.mintNextToken(recipient);
+    }
+
+    function ownerOf(uint256 tokenId) public view virtual override returns (address) {
+        return token.ownerOf(tokenId);
     }
 }
