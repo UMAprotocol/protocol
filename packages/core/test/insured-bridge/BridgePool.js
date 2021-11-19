@@ -415,29 +415,6 @@ describe("BridgePool", () => {
       // Check the sync with finder correctly updates the local instance of important contracts to that in the finder.
       assert.equal(await bridgePool.methods.optimisticOracle().call(), optimisticOracle.options.address);
 
-      const newRate = toWei("0.0000025");
-
-      // Calling from the correct address succeeds.
-      const tx = await bridgeAdmin.methods
-        .changeLpFeeRatePerSecond(bridgePool.options.address, newRate)
-        .send({ from: owner });
-
-      assert.equal(await bridgePool.methods.lpFeeRatePerSecond().call(), newRate);
-
-      await assertEventEmitted(tx, bridgePool, "LpFeeRateChanged", (ev) => {
-        return ev.newLpFeeRatePerSecond.toString() === newRate;
-      });
-    });
-    it("Constructs utf8-encoded ancillary data for relay", async function () {
-      assert.equal(
-        hexToUtf8(defaultRelayAncillaryData),
-        `relayHash:${generateRelayAncillaryDataHash(defaultDepositData, defaultRelayData).substring(2)}`
-      );
-    });
-    it("Sync with Finder addresses", async function () {
-      // Check the sync with finder correctly updates the local instance of important contracts to that in the finder.
-      assert.equal(await bridgePool.methods.optimisticOracle().call(), optimisticOracle.options.address);
-
       // Change the address of the OO in the finder to any random address.
       await finder.methods
         .changeImplementationAddress(utf8ToHex(interfaceName.SkinnyOptimisticOracle), rando)

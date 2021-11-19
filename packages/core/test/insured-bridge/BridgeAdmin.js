@@ -242,7 +242,9 @@ describe("BridgeAdmin", () => {
         "OnlyOwner modifier not enforced"
       );
 
-      const txn = await bridgeAdmin.methods.setLpFeeRatePerSecond(bridgePool.options.address, newRate);
+      const txn = await bridgeAdmin.methods
+        .setLpFeeRatePerSecond(bridgePool.options.address, newRate)
+        .send({ from: owner });
 
       await assertEventEmitted(txn, bridgeAdmin, "SetLpFeeRate", (ev) => {
         return ev.bridgePool == bridgePool.options.address && ev.newLpFeeRatePerSecond.toString() == newRate;
