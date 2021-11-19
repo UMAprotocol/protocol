@@ -39,6 +39,7 @@
     "@types/lodash-es": "^4.17.5",
     "@uma/contracts-frontend": "^0.1.12",
     "@uma/contracts-node": "^0.1.12",
+    "arb-ts": "^1.0.2",
     "axios": "^0.21.4",
     "bn.js": "^4.11.9",
     "decimal.js": "^10.3.1",

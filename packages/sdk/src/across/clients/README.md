@@ -149,3 +149,12 @@ client.startInterval(/* optionally pass in ms to update, defaults to 30 seconds 
 // stops checking for transactions
 client.stopInterval()
 ```
+
+### Arbitrum Deposit Client
+
+This client is meant to deposit ETH or ERC20 tokens across Arbitrums native bridge. Most code is ripped from arb-ts, but put in
+a form more consumable to the front end. It has 2 major functions, previewing your deposit to arbitrum and depositing Eth/ERC20 to arbitrum.
+
+```js
+
+```
