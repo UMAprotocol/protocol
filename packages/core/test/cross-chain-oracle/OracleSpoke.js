@@ -208,11 +208,6 @@ describe("OracleSpoke.js", async () => {
   it("stampAncillaryData", async function () {
     const stampedAncillaryData = await oracleSpoke.methods.stampAncillaryData(defaultAncillaryData).call();
     const chainId = await web3.eth.getChainId();
-    assert.equal(
-      hexToUtf8(stampedAncillaryData),
-      `${hexToUtf8(defaultAncillaryData)},oracleSpoke:${oracleSpoke.options.address
-        .toLowerCase()
-        .substring(2)},childChainId:${chainId}`
-    );
+    assert.equal(hexToUtf8(stampedAncillaryData), `${hexToUtf8(defaultAncillaryData)},childChainId:${chainId}`);
   });
 });

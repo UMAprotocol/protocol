@@ -175,13 +175,8 @@ contract OracleSpoke is
      * ancillary data that this contract stamps.
      */
     function _stampAncillaryData(bytes memory ancillaryData) internal view returns (bytes memory) {
-        // This contract should stamp the child network's ID and its address so that voters on the parent network can
+        // This contract should stamp the child network's ID so that voters on the parent network can
         // deterministically track unique price requests back to this contract.
-        return
-            AncillaryData.appendKeyValueUint(
-                AncillaryData.appendKeyValueAddress(ancillaryData, "oracleSpoke", address(this)),
-                "childChainId",
-                block.chainid
-            );
+        return AncillaryData.appendKeyValueUint(ancillaryData, "childChainId", block.chainid);
     }
 }
