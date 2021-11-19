@@ -107,7 +107,9 @@ contract OracleHub is OracleBase, ParentMessengerConsumerInterface, Ownable, Loc
     /**
      * @notice Anyone can call this method to directly request a price to the DVM. This could be used by the child
      * chain requester in the case where Child --> Parent communication takes too long and the requester wants to speed
-     * up the price resolution process. Returns silently if price request is a duplicate.
+     * up the price resolution process. Returns silently if price request is a duplicate. Calling this method from
+     * the user's point of view is no different than calling the OptimisticOracle.requestPrice method, but with a
+     * different interface.
      * @dev The caller must pay a final fee and have approved this contract to pull final fee from it.
      * @dev If the price request params including the ancillary data does not match exactly the price request submitted
      * on the child chain, then the child chain's price request will not resolve. The caller is recommended to use the
