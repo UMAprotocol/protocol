@@ -1,7 +1,6 @@
 const hre = require("hardhat");
 const { web3, assertEventEmitted } = hre;
-const { predeploys } = require("@eth-optimism/contracts");
-const { toWei, utf8ToHex, padRight } = web3.utils;
+const { toWei, utf8ToHex, padRight, toBN } = web3.utils;
 const { getContract } = hre;
 const { assert } = require("chai");
 
@@ -10,8 +9,8 @@ const { ZERO_ADDRESS, interfaceName, RegistryRolesEnum, didContractThrow } = req
 const { deployContractMock } = require("../../helpers/SmockitHelper");
 
 // Tested Contract
-const Optimism_ChildMessenger = getContract("Optimism_ChildMessenger");
-const Optimism_ParentMessenger = getContract("Optimism_ParentMessenger");
+const Arbitrum_ChildMessenger = getContract("Arbitrum_ChildMessenger");
+const Arbitrum_ParentMessenger = getContract("Arbitrum_ParentMessenger");
 
 // Helper contracts
 const OracleSpoke = getContract("OracleSpoke");
@@ -22,22 +21,43 @@ const priceIdentifier = padRight(utf8ToHex("TEST_IDENTIFIER"), 64);
 const ancillaryData = utf8ToHex("some-address-field:0x1234");
 const defaultTimestamp = 100;
 
-// Create some random accounts to mimic key cross-chain oracle addresses that are not deployed in these tests.
+// Helper methods that we will use to call cross-domain permissioned methods on the Messenger. These are neccesary
+// because addresses are aliased in any contract that extends AVM_CrossDomainEnabled
+function applyL1ToL2Alias(l1Address) {
+  const offset = toBN("0x1111000000000000000000000000000000001111");
+  const l1AddressAsNumber = toBN(l1Address);
 
-describe("Optimism_ChildMessenger", function () {
-  let optimism_ChildMessenger, finder, oracleSpoke, l2CrossDomainMessengerMock;
+  const l2AddressAsNumber = l1AddressAsNumber.add(offset);
+
+  const mask = toBN("2").pow(toBN("160"));
+  return "0x" + l2AddressAsNumber.mod(mask).toString(16); // convert back to hex string so that we return an address.
+}
+
+// Unlock alias `l1Signer` account that we can send transactions from.
+async function getL2SignerFromL1(l1Signer) {
+  const l2Address = applyL1ToL2Alias(l1Signer);
+
+  await hre.network.provider.request({ method: "hardhat_impersonateAccount", params: [l2Address] });
+
+  return l2Address;
+}
+
+describe("Arbitrum_ChildMessenger", function () {
+  let arbitrum_ChildMessenger, finder, oracleSpoke, arbsys, crossDomainOwner;
   let l1Owner, parentMessenger, controlledEOA, rando;
 
   beforeEach(async () => {
     const accounts = await hre.web3.eth.getAccounts();
     [l1Owner, controlledEOA, parentMessenger, rando] = accounts;
 
-    l2CrossDomainMessengerMock = await deployContractMock("L2CrossDomainMessenger", {
-      address: predeploys.L2CrossDomainMessenger,
-    });
-    await web3.eth.sendTransaction({ from: l1Owner, to: predeploys.L2CrossDomainMessenger, value: toWei("1") });
+    arbsys = await deployContractMock(
+      "ArbSys",
+      { address: "0x0000000000000000000000000000000000000064" },
+      getContract("ArbSys")
+    );
+    arbsys.smocked.sendTxToL1.will.return.with(() => "9");
 
-    optimism_ChildMessenger = await Optimism_ChildMessenger.new(parentMessenger).send({ from: l1Owner });
+    arbitrum_ChildMessenger = await Arbitrum_ChildMessenger.new(parentMessenger).send({ from: l1Owner });
 
     // Deploy a finder & Registry. Add Registry to the Finder. add the controlledEOA to be registered.
     finder = await Finder.new().send({ from: l1Owner });
@@ -48,64 +68,50 @@ describe("Optimism_ChildMessenger", function () {
     await finder.methods
       .changeImplementationAddress(utf8ToHex(interfaceName.Registry), registry.options.address)
       .send({ from: l1Owner });
-    oracleSpoke = await OracleSpoke.new(finder.options.address, optimism_ChildMessenger.options.address).send({
+    oracleSpoke = await OracleSpoke.new(finder.options.address, arbitrum_ChildMessenger.options.address).send({
       from: l1Owner,
     });
 
-    l2CrossDomainMessengerMock.smocked.xDomainMessageSender.will.return.with(() => parentMessenger);
-    await optimism_ChildMessenger.methods
-      .setOracleSpoke(oracleSpoke.options.address)
-      .send({ from: l2CrossDomainMessengerMock.options.address });
+    crossDomainOwner = await getL2SignerFromL1(parentMessenger);
+    await web3.eth.sendTransaction({ from: l1Owner, to: crossDomainOwner, value: toWei("1") });
+    await arbitrum_ChildMessenger.methods.setOracleSpoke(oracleSpoke.options.address).send({ from: crossDomainOwner });
   });
   describe("Resetting contract state", () => {
     // Check that only cross-domain owner can call these methods, that events are emitted as expected, and that state
     // is modified.
     it("setOracleSpoke", async () => {
-      const transactionToSend = optimism_ChildMessenger.methods.setOracleSpoke(rando);
+      const transactionToSend = arbitrum_ChildMessenger.methods.setOracleSpoke(rando);
       assert(await didContractThrow(transactionToSend.send({ from: rando })));
-      const receipt = await transactionToSend.send({ from: l2CrossDomainMessengerMock.options.address });
-      await assertEventEmitted(receipt, optimism_ChildMessenger, "SetOracleSpoke", (ev) => {
+      const receipt = await transactionToSend.send({ from: crossDomainOwner });
+      await assertEventEmitted(receipt, arbitrum_ChildMessenger, "SetOracleSpoke", (ev) => {
         return ev.newOracleSpoke == rando;
       });
-      assert.equal(await optimism_ChildMessenger.methods.oracleSpoke().call(), rando);
+      assert.equal(await arbitrum_ChildMessenger.methods.oracleSpoke().call(), rando);
     });
     it("setParentMessenger", async () => {
-      const transactionToSend = optimism_ChildMessenger.methods.setParentMessenger(rando);
+      const transactionToSend = arbitrum_ChildMessenger.methods.setParentMessenger(rando);
       assert(await didContractThrow(transactionToSend.send({ from: rando })));
-      const receipt = await transactionToSend.send({ from: l2CrossDomainMessengerMock.options.address });
-      await assertEventEmitted(receipt, optimism_ChildMessenger, "SetParentMessenger", (ev) => {
+      const receipt = await transactionToSend.send({ from: crossDomainOwner });
+      await assertEventEmitted(receipt, arbitrum_ChildMessenger, "SetParentMessenger", (ev) => {
         return ev.newParentMessenger == rando;
       });
-      assert.equal(await optimism_ChildMessenger.methods.parentMessenger().call(), rando);
-    });
-    it("setDefaultGasLimit", async () => {
-      const transactionToSend = optimism_ChildMessenger.methods.setDefaultGasLimit("100");
-      assert(await didContractThrow(transactionToSend.send({ from: rando })));
-      const receipt = await transactionToSend.send({ from: l2CrossDomainMessengerMock.options.address });
-      await assertEventEmitted(receipt, optimism_ChildMessenger, "SetDefaultGasLimit", (ev) => {
-        return ev.newDefaultGasLimit == "100";
-      });
-      assert.equal((await optimism_ChildMessenger.methods.defaultGasLimit().call()).toString(), "100");
+      assert.equal(await arbitrum_ChildMessenger.methods.parentMessenger().call(), rando);
     });
   });
   describe("Sending messages to parent on L1", () => {
     it("Blocks calls from non privileged callers", async () => {
       // Only the oracleSpoke should be able to call this function. All other accounts should be blocked.
-      const relayMessageTxn = optimism_ChildMessenger.methods.sendMessageToParent("0x123");
+      const relayMessageTxn = arbitrum_ChildMessenger.methods.sendMessageToParent("0x123");
       assert(await didContractThrow(relayMessageTxn.send({ from: rando })));
 
       // Change the oracle spoke to be some EOA that we control to check the function can be called.
-      l2CrossDomainMessengerMock.smocked.xDomainMessageSender.will.return.with(() => parentMessenger);
-      await optimism_ChildMessenger.methods
-        .setOracleSpoke(controlledEOA)
-        .send({ from: l2CrossDomainMessengerMock.options.address });
+      await arbitrum_ChildMessenger.methods.setOracleSpoke(controlledEOA).send({ from: crossDomainOwner });
       assert.ok(await relayMessageTxn.send({ from: controlledEOA }));
     });
 
     it("Correctly encodes and sends messages to parent on L1", async () => {
       // For this test we will call the `requestPrice` method on the OracleSpoke which will initiate the cross chain
       // function call. Note normally only a registered contract can call this function.
-
       const requestTime = 123456789;
       const txn = await oracleSpoke.methods
         .requestPrice(priceIdentifier, requestTime, ancillaryData)
@@ -113,69 +119,61 @@ describe("Optimism_ChildMessenger", function () {
 
       // Check the message was sent to the l2 cross domain messenger and was encoded correctly.
 
-      const requestPriceMessage = l2CrossDomainMessengerMock.smocked.sendMessage.calls;
+      const smockedMessage = arbsys.smocked.sendTxToL1.calls;
 
-      assert.equal(requestPriceMessage.length, 1); // there should be only one call to sendMessage.
-      assert.equal(requestPriceMessage[0]._target, parentMessenger); // Target should be the parent messenger.
+      assert.equal(smockedMessage.length, 1); // there should be only one call
+      assert.equal(smockedMessage[0].destination, parentMessenger); // Target should be the parent messenger.
 
       // We should be able to construct the function call sent from the oracle spoke directly.
       const encodedData = web3.eth.abi.encodeParameters(
         ["bytes32", "uint256", "bytes"],
-        [priceIdentifier, requestTime, await oracleSpoke.methods.stampAncillaryData(ancillaryData).call()]
+        [
+          priceIdentifier,
+          requestTime,
+          await oracleSpoke.methods.stampAncillaryData(ancillaryData, controlledEOA).call(),
+        ]
       );
 
-      // This data is then encoded within the Optimism_ParentMessenger.processMessageFromCrossChainChild function.
-      const parentMessengerInterface = await Optimism_ParentMessenger.at(ZERO_ADDRESS);
+      // This data is then encoded within the ParentMessenger.processMessageFromCrossChainChild function.
+      const parentMessengerInterface = await Arbitrum_ParentMessenger.at(ZERO_ADDRESS);
       const expectedMessageFromManualEncoding = await parentMessengerInterface.methods
         .processMessageFromCrossChainChild(encodedData)
         .encodeABI();
 
-      assert.equal(requestPriceMessage[0]._message, expectedMessageFromManualEncoding);
+      assert.equal(smockedMessage[0].calldataForL1, expectedMessageFromManualEncoding);
 
-      await assertEventEmitted(txn, optimism_ChildMessenger, "MessageSentToParent", (ev) => {
+      await assertEventEmitted(txn, arbitrum_ChildMessenger, "MessageSentToParent", (ev) => {
         return (
-          ev.data == expectedMessageFromManualEncoding &&
-          ev.parentAddress == parentMessenger &&
-          ev.gasLimit.toString() == "5000000"
+          ev.data == expectedMessageFromManualEncoding && ev.parentAddress == parentMessenger && ev.id.toString() == "9"
         );
       });
     });
   });
   describe("Receiving messages from parent on L1", () => {
     it("Blocks calls from non privileged callers", async () => {
-      // only the parent messenger should be able to call this function. All other accounts should be blocked.
+      // only the aliased parent messenger should be able to call this function. All other accounts should be blocked.
       const data = web3.eth.abi.encodeParameters(
         ["bytes32", "uint256", "bytes", "int256"],
         [priceIdentifier, defaultTimestamp, ancillaryData, toWei("1234")]
       );
-      const relayMessageTxn = optimism_ChildMessenger.methods.processMessageFromCrossChainParent(
+      const relayMessageTxn = arbitrum_ChildMessenger.methods.processMessageFromCrossChainParent(
         data,
         oracleSpoke.options.address
       );
       assert(await didContractThrow(relayMessageTxn.send({ from: rando })));
-
-      // Equally, calling via the cross domain messenger with the wrong source (not parentMessenger) should fail.
-      l2CrossDomainMessengerMock.smocked.xDomainMessageSender.will.return.with(() => rando);
-
-      assert(await didContractThrow(relayMessageTxn.send({ from: l2CrossDomainMessengerMock.options.address })));
-
-      // Finally, should be able to send cross domain call to this function when the parent messenger is set.
-      l2CrossDomainMessengerMock.smocked.xDomainMessageSender.will.return.with(() => parentMessenger);
-
-      assert.ok(await relayMessageTxn.send({ from: l2CrossDomainMessengerMock.options.address }));
+      assert.ok(await relayMessageTxn.send({ from: crossDomainOwner }));
     });
 
     it("Correctly decodes and sends to target when sent from parent messenger on L1", async () => {
       // For this test request a price from a registered contract and then push the price. Validate the data is
       // requested and forwarded to the oracleSpoke correctly.
-
       await oracleSpoke.methods
         .requestPrice(priceIdentifier, defaultTimestamp, ancillaryData)
         .send({ from: controlledEOA });
 
       const priceRequestEvents = await oracleSpoke.getPastEvents("PriceRequestAdded", { fromBock: 0 });
 
-      const requestAncillaryData = await oracleSpoke.methods.stampAncillaryData(ancillaryData).call();
+      const requestAncillaryData = await oracleSpoke.methods.stampAncillaryData(ancillaryData, controlledEOA).call();
       const requestPrice = toWei("1234");
 
       const data = web3.eth.abi.encodeParameters(
@@ -183,12 +181,11 @@ describe("Optimism_ChildMessenger", function () {
         [priceIdentifier, defaultTimestamp, requestAncillaryData, requestPrice]
       );
 
-      l2CrossDomainMessengerMock.smocked.xDomainMessageSender.will.return.with(() => parentMessenger);
-      const tx = await optimism_ChildMessenger.methods
+      const tx = await arbitrum_ChildMessenger.methods
         .processMessageFromCrossChainParent(data, oracleSpoke.options.address)
-        .send({ from: l2CrossDomainMessengerMock.options.address });
+        .send({ from: crossDomainOwner });
 
-      await assertEventEmitted(tx, optimism_ChildMessenger, "MessageReceivedFromParent", (ev) => {
+      await assertEventEmitted(tx, arbitrum_ChildMessenger, "MessageReceivedFromParent", (ev) => {
         return ev.data == data && ev.targetSpoke == oracleSpoke.options.address && ev.parentAddress == parentMessenger;
       });
 

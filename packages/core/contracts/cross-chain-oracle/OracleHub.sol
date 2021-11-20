@@ -61,6 +61,10 @@ contract OracleHub is OracleBase, ParentMessengerConsumerInterface, Ownable, Loc
      * @dev This method will always attempt to call `messenger.sendMessageToChild` even if it is a duplicate call for
      * this price request. Therefore the Messenger contract for this `chainId` should determine how to handle duplicate
      * calls.
+     * @dev This method is `payable` so that ETH can be forwarded to Messenger contracts that need to send ETH
+     * from L1 to L2, like Arbitrum messengers for example. For networks that do not use ETH, the caller will
+     * lose ETH, therefore it is the caller's responsibility to know when to send ETH. This is allowed to be
+     * `payable` because any EOA can call this function.
      * @param chainId Network to resolve price for.
      * @param identifier Identifier of price request to resolve.
      * @param time Timestamp of price request to resolve.
@@ -71,7 +75,7 @@ contract OracleHub is OracleBase, ParentMessengerConsumerInterface, Ownable, Loc
         bytes32 identifier,
         uint256 time,
         bytes memory ancillaryData
-    ) public nonReentrant() {
+    ) public payable nonReentrant() {
         // `getPrice` will revert if there is no price.
         int256 price = _getOracle().getPrice(identifier, time, ancillaryData);
         _publishPrice(identifier, time, ancillaryData, price);
@@ -79,6 +83,20 @@ contract OracleHub is OracleBase, ParentMessengerConsumerInterface, Ownable, Loc
         // TODO: Consider storing all publishPrice events for each chainId, therefore we can limit the
         // sendMessageToChild calls to one per chainId and not allow users to spam the bridge for this chainID
         // with calls coming from this contract.
+
+        // Require caller to include enough ETH to pass to Messenger so that caller cannot take advantage of excess
+        // ETH held by the Messenger. Caller can easily query messenger to get exact amount of ETh to send.
+        uint256 requiredL1CallValue = messengers[chainId].getL1CallValue();
+        require(msg.value == requiredL1CallValue, "Insufficient msg.value");
+
+        // Call returns a boolean value indicating success or failure.
+        // This is the current recommended method to use: https://solidity-by-example.org/sending-ether/
+        if (msg.value > 0) {
+            (bool sent, ) = address(messengers[chainId]).call{ value: msg.value }("");
+            require(sent, "Cannot send ETH to messenger");
+        }
+
+        // Pass all msg.value to Messenger:
         messengers[chainId].sendMessageToChild(abi.encode(identifier, time, ancillaryData, price));
     }
 
