@@ -2,8 +2,9 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "../interfaces/ParentMessengerInterface.sol";
 
-contract ParentMessengerBase is Ownable {
+abstract contract ParentMessengerBase is Ownable, ParentMessengerInterface {
     uint256 public childChainId;
 
     address public childMessenger;
@@ -85,5 +86,13 @@ contract ParentMessengerBase is Ownable {
     function setGovernorSpoke(address newGovernorSpoke) public onlyOwner {
         governorSpoke = newGovernorSpoke;
         emit SetGovernorSpoke(governorSpoke);
+    }
+
+    /**
+     * @notice Returns the amount of ETH required for a caller to pass as msg.value when calling `sendMessageToChild`.
+     * @return The amount of ETH required for a caller to pass as msg.value when calling `sendMessageToChild`.
+     */
+    function getL1CallValue() external view virtual override returns (uint256) {
+        return 0;
     }
 }

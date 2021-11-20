@@ -6,7 +6,7 @@ const { assert } = require("chai");
 const { ZERO_ADDRESS, didContractThrow } = require("@uma/common");
 
 // Tested Contract
-const ParentMessengerBase = getContract("ParentMessengerBase");
+const ParentMessengerBase = getContract("ParentMessengerBaseMock");
 
 // Create some random accounts to to mimic key cross-chain oracle addresses.
 const childMessenger = web3.utils.toChecksumAddress(web3.utils.randomHex(20));

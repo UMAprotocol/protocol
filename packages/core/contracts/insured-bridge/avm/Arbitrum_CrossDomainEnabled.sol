@@ -3,6 +3,7 @@
 pragma solidity ^0.8.0;
 
 import "../../external/avm/interfaces/iArbitrum_Inbox.sol";
+import "../../external/avm/interfaces/iArbitrum_Outbox.sol";
 
 abstract contract Arbitrum_CrossDomainEnabled {
     iArbitrum_Inbox public immutable inbox;
@@ -50,5 +51,17 @@ abstract contract Arbitrum_CrossDomainEnabled {
                 data
             );
         return seqNum;
+    }
+
+    // Copied mostly from: https://github.com/makerdao/arbitrum-dai-bridge/blob/34acc39bc6f3a2da0a837ea3c5dbc634ec61c7de/contracts/l1/L1CrossDomainEnabled.sol#L31
+    modifier onlyFromCrossDomainAccount(address l2Counterpart) {
+        // a message coming from the counterpart gateway was executed by the bridge
+        IBridge bridge = IBridge(inbox.bridge());
+        require(msg.sender == address(bridge), "NOT_FROM_BRIDGE");
+
+        // and the outbox reports that the L2 address of the sender is the counterpart gateway
+        address l2ToL1Sender = iArbitrum_Outbox(bridge.activeOutbox()).l2ToL1Sender();
+        require(l2ToL1Sender == l2Counterpart, "ONLY_COUNTERPART_GATEWAY");
+        _;
     }
 }
