@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "../common/implementation/Lockable.sol";
+import "../common/implementation/MultiCaller.sol";
 import "./interfaces/ParentMessengerInterface.sol";
 
 /**
@@ -11,8 +12,7 @@ import "./interfaces/ParentMessengerInterface.sol";
  * sends them to spoke contracts on child chains.
  */
 
-// TODO: Consider extending MultiCall contract so that user can seed an L2 state with a lot of relayGovernance() calls.
-contract GovernorHub is Ownable, Lockable {
+contract GovernorHub is Ownable, Lockable, MultiCaller {
     // Associates chain ID with ParentMessenger contract to use to send governance actions to that chain's GovernorSpoke
     // contract.
     mapping(uint256 => ParentMessengerInterface) public messengers;
