@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import "../../common/implementation/Lockable.sol";
+import "../../common/implementation/MultiCaller.sol";
 import "../../common/implementation/Testable.sol";
 
 import "../../oracle/interfaces/FinderInterface.sol";

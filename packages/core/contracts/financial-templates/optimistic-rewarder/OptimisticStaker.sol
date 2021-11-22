@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import "../../common/implementation/Lockable.sol";
+import "../../common/implementation/MultiCaller.sol";
 import "./OptimisticRewarder.sol";
 import "./OptimisticRewarderToken.sol";
 
@@ -12,7 +13,7 @@ import "./OptimisticRewarderToken.sol";
  * @notice An example use case of the OptimisticRewarder in use by a contract that allows users to stake an ERC20 to
  * earn rewards.
  */
-contract OptimisticStaker is Lockable {
+contract OptimisticStaker is Lockable, MultiCaller {
     using SafeERC20 for IERC20;
 
     // Optimistic rewarder contract used to pay out user rewards.

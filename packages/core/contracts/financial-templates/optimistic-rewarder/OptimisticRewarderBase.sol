@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import "../../oracle/interfaces/FinderInterface.sol";
 import "../../common/implementation/Lockable.sol";
+import "../../common/implementation/MultiCaller.sol";
 import "../../oracle/interfaces/StoreInterface.sol";
 import "../../oracle/interfaces/IdentifierWhitelistInterface.sol";
 import "../../oracle/implementation/Constants.sol";
@@ -17,7 +18,7 @@ import "../../common/interfaces/AddressWhitelistInterface.sol";
  * @notice The base rewarder contract. This manages depositing rewards and paying them out to tokenholders using values
  * backed by the OptimisticOracle's dispute process.
  */
-abstract contract OptimisticRewarderBase is Lockable {
+abstract contract OptimisticRewarderBase is Lockable, MultiCaller {
     using SafeERC20 for IERC20;
 
     struct RedemptionAmount {
