@@ -582,7 +582,6 @@ export class Relayer {
         transactionConfig: { ...this.gasEstimator.getCurrentFastPrice(), from: this.account },
         availableAccounts: 1,
       });
-      console.log("level", level);
       if (receipt) {
         this.logger.log({
           level,
