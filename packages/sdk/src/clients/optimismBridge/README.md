@@ -1,1 +1,0 @@
-# UMA SDK Optimism Bridge
