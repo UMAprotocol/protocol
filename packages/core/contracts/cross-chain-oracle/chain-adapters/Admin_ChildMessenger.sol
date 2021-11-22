@@ -47,8 +47,8 @@ contract Admin_ChildMessenger is Ownable, Lockable, ChildMessengerInterface {
      * @dev The caller must be the the admin.
      * @param data data message sent from the admin. Should be an encoded function call or packed data.
      * @param target desired recipient of `data`. Target must implement the `processMessageFromParent` function. Having
-     * this as a param enables the Admin to send messages to arbitrary addresses on the L2. This is primarily
-     * used to send messages to the OracleSpoke and GovernorSpoke on L2.
+     * this as a param enables the Admin to send messages to arbitrary addresses from the messenger contract. This is
+     * primarily used to send messages to the OracleSpoke and GovernorSpoke.
      */
     function processMessageFromCrossChainParent(bytes memory data, address target) public onlyOwner nonReentrant() {
         ChildMessengerConsumerInterface(target).processMessageFromParent(data);
