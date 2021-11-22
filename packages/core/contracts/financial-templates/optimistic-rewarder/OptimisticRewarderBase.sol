@@ -87,7 +87,7 @@ abstract contract OptimisticRewarderBase is Lockable {
         bytes memory _customAncillaryData,
         FinderInterface _finder
     ) {
-        require(liveness > 0, "liveness can't be 0");
+        require(_liveness > 0, "liveness can't be 0");
         liveness = _liveness;
         finder = _finder;
         require(_getCollateralWhitelist().isOnWhitelist(address(_bondToken)), "bond token not supported");
@@ -106,6 +106,7 @@ abstract contract OptimisticRewarderBase is Lockable {
             "ancillary data too long"
         );
         customAncillaryData = _customAncillaryData;
+        _sync();
     }
 
     /**
@@ -157,6 +158,10 @@ abstract contract OptimisticRewarderBase is Lockable {
         bytes32 redemptionId = getRedemptionId(tokenId, cumulativeRedemptions);
         require(redemptions[redemptionId].expiryTime == 0, "Redemption already exists");
         require(ownerOf(tokenId) != address(0), "tokenId is invalid");
+        // Note: it's important to put _some_ limit on the length of data passed in here. Otherwise, it is possible to
+        // create values that are so long that this transaction would fit within the block gas limit, but the dispute
+        // transaction would not.
+        require(cumulativeRedemptions.length <= 100, "too many token transfers");
 
         uint256 time = getCurrentTime();
 
@@ -292,7 +297,7 @@ abstract contract OptimisticRewarderBase is Lockable {
         }
 
         // Return the bond to the owner.
-        bondToken.safeTransfer(msg.sender, redemptions[redemptionId].expiryTime + bond);
+        bondToken.safeTransfer(msg.sender, bond + redemptions[redemptionId].finalFee);
 
         delete redemptions[redemptionId];
 

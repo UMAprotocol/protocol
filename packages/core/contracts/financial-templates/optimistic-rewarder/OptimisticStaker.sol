@@ -24,6 +24,9 @@ contract OptimisticStaker is Lockable {
     // Balances by tokenId.
     mapping(uint256 => uint256) public balances;
 
+    event Deposit(uint256 indexed tokenId, uint256 amount);
+    event Withdraw(uint256 indexed tokenId, uint256 amount);
+
     /**
      * @notice Constructor.
      * @param _optimisticRewarder Optimistic rewarder contract used to pay out user rewards.
@@ -76,11 +79,13 @@ contract OptimisticStaker is Lockable {
         balances[tokenId] -= amount;
         stakedToken.safeTransfer(msg.sender, amount);
         optimisticRewarder.updateToken(tokenId, msg.data);
+        emit Withdraw(tokenId, amount);
     }
 
     function _depositFor(uint256 tokenId, uint256 amount) internal {
         balances[tokenId] += amount;
         stakedToken.safeTransferFrom(msg.sender, address(this), amount);
         optimisticRewarder.updateToken(tokenId, msg.data);
+        emit Deposit(tokenId, amount);
     }
 }

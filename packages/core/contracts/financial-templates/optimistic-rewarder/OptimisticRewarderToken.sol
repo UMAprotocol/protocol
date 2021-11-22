@@ -28,7 +28,7 @@ contract OptimisticRewarderToken is ERC721 {
      * @param recipient the recipient of the newly minted token.
      */
     function mintNextToken(address recipient) public virtual returns (uint256 tokenId) {
-        tokenId = tokenId++;
+        tokenId = nextTokenId++;
         _safeMint(recipient, tokenId);
     }
 
