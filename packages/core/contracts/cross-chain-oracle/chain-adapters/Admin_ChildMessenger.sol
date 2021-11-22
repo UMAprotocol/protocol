@@ -17,7 +17,7 @@ contract Admin_ChildMessenger is Ownable, Lockable, ChildMessengerInterface {
     address public oracleSpoke;
 
     event SetOracleSpoke(address newOracleSpoke);
-    event MessageSentToParent(bytes data);
+    event MessageSentToParent(bytes data, address indexed oracleSpoke);
     event MessageReceivedFromParent(bytes data, address indexed targetSpoke, address indexed caller);
 
     /**
@@ -38,11 +38,8 @@ contract Admin_ChildMessenger is Ownable, Lockable, ChildMessengerInterface {
     function sendMessageToParent(bytes memory data) public override nonReentrant() {
         require(msg.sender == oracleSpoke, "Only callable by oracleSpoke");
 
-        // The data formmat is kept the same to match the format in other ChildMessenger classes.
-        bytes memory dataSentToParent = abi.encodeWithSignature("processMessageFromCrossChainChild(bytes)", data);
-
         // Note: only emit an event. These messages will be manually relayed.
-        emit MessageSentToParent(dataSentToParent);
+        emit MessageSentToParent(data, oracleSpoke);
     }
 
     /**
