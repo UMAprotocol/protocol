@@ -14,6 +14,7 @@ const defaultFixtureWhitelist = [
   "IdentifierWhitelist",
   "AddressWhitelist",
   "OptimisticOracle",
+  "SkinnyOptimisticOracle",
   "Bridge",
   "GenericHandler",
   "OptimisticOracle",
@@ -53,6 +54,7 @@ export async function runDefaultFixture(
     await addToFinder("IdentifierWhitelist", interfaceName.IdentifierWhitelist);
     await addToFinder("AddressWhitelist", interfaceName.CollateralWhitelist);
     await addToFinder("OptimisticOracle", interfaceName.OptimisticOracle);
+    await addToFinder("SkinnyOptimisticOracle", interfaceName.SkinnyOptimisticOracle);
     await addToFinder("Bridge", interfaceName.Bridge);
     await addToFinder("GenericHandler", interfaceName.GenericHandler);
 
