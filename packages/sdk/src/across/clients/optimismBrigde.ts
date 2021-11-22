@@ -1,4 +1,4 @@
-import { Provider } from "@ethersproject/abstract-provider";
+import { Provider } from "@ethersproject/providers";
 import { Contract, Signer, BigNumber, ContractTransaction } from "ethers";
 import { predeploys, getContractInterface } from "@eth-optimism/contracts";
 import { ERC20Ethers__factory, L1StandardBridgeEthers__factory } from "@uma/contracts-node";
