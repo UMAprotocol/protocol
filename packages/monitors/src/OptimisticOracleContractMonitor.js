@@ -293,6 +293,7 @@ class OptimisticOracleContractMonitor {
 
   _formatAncillaryData(ancillaryData) {
     try {
+      // Return the decoded ancillary data as a string. The `replace` syntax removes any escaped quotes from the string.
       return "Ancillary data: " + JSON.stringify(parseAncillaryData(ancillaryData)).replace(/"/g, "");
     } catch (_) {
       return `Could not decode ancillary data: ${ancillaryData || "0x"}`;
