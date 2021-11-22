@@ -2,16 +2,12 @@
 pragma solidity ^0.8.0;
 
 import "./OracleBase.sol";
-
 import "../oracle/interfaces/OracleAncillaryInterface.sol";
 import "../oracle/interfaces/StoreInterface.sol";
-
 import "../common/implementation/Lockable.sol";
 import "../common/implementation/MultiCaller.sol";
-
 import "./interfaces/ParentMessengerInterface.sol";
 import "./interfaces/ParentMessengerConsumerInterface.sol";
-
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";

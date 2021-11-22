@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
 import "../common/implementation/Lockable.sol";
 import "../common/implementation/MultiCaller.sol";
 import "./interfaces/ParentMessengerInterface.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
 /**
  * @title Cross-chain Oracle L1 Governor Hub.
