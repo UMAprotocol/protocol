@@ -1,0 +1,22 @@
+[
+  {
+    "contractName": "Arbitrum_ChildMessenger",
+    "address": "0x62530b7D3DcbCb0699480094E29Cec181eC3ea6a"
+  },
+  {
+    "contractName": "Finder",
+    "address": "0x0d6b8752e5AdBafb3F75299aD15863a1fd02D565"
+  },
+  {
+    "contractName": "Registry",
+    "address": "0xD8c6dD978a3768F7DDfE3A9aAD2c3Fd75Fa9B6Fd"
+  },
+  {
+    "contractName": "OracleSpoke",
+    "address": "0xA011B82880D0235f845c9d1EA5610b965e0CD759"
+  },
+  {
+    "contractName": "GovernorSpoke",
+    "address": "0xe59E84570052D3A7aA84Fdc0dA78389206fba9fD"
+  }
+]
