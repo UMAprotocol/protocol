@@ -15,6 +15,10 @@ describe("Admin_ChildMessenger", function () {
   let owner, rando, oracleSpoke;
   let messenger;
 
+  before(async () => {
+    await runDefaultFixture(hre);
+  });
+
   beforeEach(async () => {
     const accounts = await web3.eth.getAccounts();
     [owner, rando, oracleSpoke] = accounts;
@@ -60,7 +64,6 @@ describe("Admin_ChildMessenger", function () {
 
   it("Process message from parent", async () => {
     // Set up commmon infra to run real price requests.
-    await runDefaultFixture(hre);
     const finder = await Finder.deployed();
     const registry = await Registry.deployed();
     const timer = await Timer.deployed();
