@@ -34,6 +34,7 @@ const priceIdentifier = padRight(utf8ToHex("TEST_IDENTIFIER"), 64);
 const ancillaryData = utf8ToHex("some-address-field:0x1234");
 const bond = toWei("1");
 const defaultTimestamp = 100;
+let defaultGasLimit;
 
 describe("Optimism_ParentMessenger", function () {
   let optimism_ParentMessenger,
@@ -84,7 +85,7 @@ describe("Optimism_ParentMessenger", function () {
       .send({ from: l1Owner });
 
     await finder.methods
-      .changeImplementationAddress(utf8ToHex(interfaceName.Store), mockOracle.options.address)
+      .changeImplementationAddress(utf8ToHex(interfaceName.Store), store.options.address)
       .send({ from: l1Owner });
 
     await finder.methods
@@ -103,6 +104,20 @@ describe("Optimism_ParentMessenger", function () {
     await optimism_ParentMessenger.methods.setGovernorHub(governorHub.options.address).send({ from: l1Owner });
     await optimism_ParentMessenger.methods.setOracleSpoke(oracleSpokeAddress).send({ from: l1Owner });
     await optimism_ParentMessenger.methods.setGovernorSpoke(governorSpokeAddress).send({ from: l1Owner });
+
+    defaultGasLimit = await optimism_ParentMessenger.methods.defaultGasLimit().call();
+  });
+  describe("Resetting contract state", () => {
+    // Check that only owner can call these methods, that events are emitted as expected, and that state is modified.
+    it("setDefaultGasLimit", async () => {
+      const transactionToSend = optimism_ParentMessenger.methods.setDefaultGasLimit("100");
+      assert(await didContractThrow(transactionToSend.send({ from: rando })));
+      const receipt = await transactionToSend.send({ from: l1Owner });
+      await assertEventEmitted(receipt, optimism_ParentMessenger, "SetDefaultGasLimit", (ev) => {
+        return ev.newDefaultGasLimit == "100";
+      });
+      assert.equal((await optimism_ParentMessenger.methods.defaultGasLimit().call()).toString(), "100");
+    });
   });
   describe("Sending messages to child on L2", () => {
     it("Blocks calls from non privileged callers", async () => {
@@ -150,7 +165,7 @@ describe("Optimism_ParentMessenger", function () {
       await assertEventEmitted(txn, optimism_ParentMessenger, "MessageSentToChild", (ev) => {
         return (
           ev.data == expectedMessageFromManualEncoding &&
-          ev.childAddress == childMessengerAddress &&
+          ev.childMessenger == childMessengerAddress &&
           ev.gasLimit.toString() == "5000000" &&
           ev.targetSpoke == oracleSpokeAddress
         );
@@ -205,9 +220,94 @@ describe("Optimism_ParentMessenger", function () {
       await assertEventEmitted(txn, optimism_ParentMessenger, "MessageSentToChild", (ev) => {
         return (
           ev.data == expectedMessageFromManualEncoding &&
-          ev.childAddress == childMessengerAddress &&
+          ev.childMessenger == childMessengerAddress &&
           ev.gasLimit.toString() == "5000000" &&
           ev.targetSpoke == governorSpokeAddress
+        );
+      });
+    });
+    it("setChildParentMessenger", async () => {
+      const setChildParentMessenger = optimism_ParentMessenger.methods.setChildParentMessenger(rando);
+
+      // Can only call as owner
+      assert(await didContractThrow(setChildParentMessenger.send({ from: rando })));
+
+      const txn = await setChildParentMessenger.send({ from: l1Owner });
+
+      // Validate that the inbox received the expected cross-domain message, destined for the child.
+      const smockedMessage = l1CrossDomainMessengerMock.smocked.sendMessage.calls;
+      assert.equal(smockedMessage.length, 1); // there should be only one call to sendMessage.
+      assert.equal(smockedMessage[0]._target, childMessengerAddress); // Target should be the child messenger.
+
+      // We should be able to re-construct the encoded data, which should match what was sent from the messenger.
+      const childMessengerInterface = await Optimism_ChildMessenger.at(ZERO_ADDRESS);
+      const expectedMessageFromManualEncoding = await childMessengerInterface.methods
+        .setParentMessenger(rando)
+        .encodeABI();
+      assert.equal(smockedMessage[0]._message, expectedMessageFromManualEncoding);
+
+      await assertEventEmitted(txn, optimism_ParentMessenger, "MessageSentToChild", (ev) => {
+        return (
+          ev.data == expectedMessageFromManualEncoding &&
+          ev.childMessenger == childMessengerAddress &&
+          ev.gasLimit.toString() == defaultGasLimit.toString() &&
+          ev.targetSpoke == ZERO_ADDRESS
+        );
+      });
+    });
+    it("setChildOracleSpoke", async () => {
+      const setChildOracleSpoke = optimism_ParentMessenger.methods.setChildOracleSpoke(rando);
+
+      // Can only call as owner
+      assert(await didContractThrow(setChildOracleSpoke.send({ from: rando })));
+
+      const txn = await setChildOracleSpoke.send({ from: l1Owner });
+
+      // Validate that the inbox received the expected cross-domain message, destined for the child.
+      const smockedMessage = l1CrossDomainMessengerMock.smocked.sendMessage.calls;
+      assert.equal(smockedMessage.length, 1); // there should be only one call to sendMessage.
+      assert.equal(smockedMessage[0]._target, childMessengerAddress); // Target should be the child messenger.
+
+      // We should be able to re-construct the encoded data, which should match what was sent from the messenger.
+      const childMessengerInterface = await Optimism_ChildMessenger.at(ZERO_ADDRESS);
+      const expectedMessageFromManualEncoding = await childMessengerInterface.methods.setOracleSpoke(rando).encodeABI();
+      assert.equal(smockedMessage[0]._message, expectedMessageFromManualEncoding);
+
+      await assertEventEmitted(txn, optimism_ParentMessenger, "MessageSentToChild", (ev) => {
+        return (
+          ev.data == expectedMessageFromManualEncoding &&
+          ev.childMessenger == childMessengerAddress &&
+          ev.gasLimit.toString() == defaultGasLimit.toString() &&
+          ev.targetSpoke == ZERO_ADDRESS
+        );
+      });
+    });
+    it("setChildDefaultGasLimit", async () => {
+      const setChildDefaultGasLimit = optimism_ParentMessenger.methods.setChildDefaultGasLimit("100");
+
+      // Can only call as owner
+      assert(await didContractThrow(setChildDefaultGasLimit.send({ from: rando })));
+
+      const txn = await setChildDefaultGasLimit.send({ from: l1Owner });
+
+      // Validate that the inbox received the expected cross-domain message, destined for the child.
+      const smockedMessage = l1CrossDomainMessengerMock.smocked.sendMessage.calls;
+      assert.equal(smockedMessage.length, 1); // there should be only one call to sendMessage.
+      assert.equal(smockedMessage[0]._target, childMessengerAddress); // Target should be the child messenger.
+
+      // We should be able to re-construct the encoded data, which should match what was sent from the messenger.
+      const childMessengerInterface = await Optimism_ChildMessenger.at(ZERO_ADDRESS);
+      const expectedMessageFromManualEncoding = await childMessengerInterface.methods
+        .setDefaultGasLimit("100")
+        .encodeABI();
+      assert.equal(smockedMessage[0]._message, expectedMessageFromManualEncoding);
+
+      await assertEventEmitted(txn, optimism_ParentMessenger, "MessageSentToChild", (ev) => {
+        return (
+          ev.data == expectedMessageFromManualEncoding &&
+          ev.childMessenger == childMessengerAddress &&
+          ev.gasLimit.toString() == defaultGasLimit.toString() &&
+          ev.targetSpoke == ZERO_ADDRESS
         );
       });
     });
@@ -233,7 +333,7 @@ describe("Optimism_ParentMessenger", function () {
 
       await assertEventEmitted(tx, optimism_ParentMessenger, "MessageReceivedFromChild", (ev) => {
         return (
-          ev.data == sentData && ev.childAddress == childMessengerAddress && ev.targetHub == oracleHub.options.address
+          ev.data == sentData && ev.childMessenger == childMessengerAddress && ev.targetHub == oracleHub.options.address
         );
       });
 
