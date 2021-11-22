@@ -35,8 +35,6 @@
     }
   ],
   "dependencies": {
-    "@eth-optimism/core-utils": "^0.7.0",
-    "@ethersproject/abstract-provider": "^5.4.1",
     "@google-cloud/datastore": "^6.6.0",
     "@types/lodash-es": "^4.17.5",
     "@uma/contracts-frontend": "^0.1.12",
@@ -49,8 +47,7 @@
     "web3": "^1.6.0"
   },
   "peerDependencies": {
-    "@eth-optimism/contracts": "^0.5.1",
-    "ethers": "^5.4.5"
+    "ethers": "^5.4.2"
   },
   "devDependencies": {
     "@rollup/plugin-replace": "^3.0.0",
