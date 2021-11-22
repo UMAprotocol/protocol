@@ -20,7 +20,7 @@ contract Polygon_ChildMessenger is FxBaseChildTunnel, ChildMessengerInterface, L
 
     event SetOracleSpoke(address newOracleSpoke);
     event SetOracleHub(address newOracleHub);
-    event MessageSentToParent(bytes data, address indexed targetHub);
+    event MessageSentToParent(bytes data, address indexed targetHub, address indexed oracleSpoke);
     event MessageReceivedFromParent(address indexed targetSpoke, bytes dataToSendToTarget);
 
     /**
@@ -63,7 +63,7 @@ contract Polygon_ChildMessenger is FxBaseChildTunnel, ChildMessengerInterface, L
     function sendMessageToParent(bytes memory data) public override nonReentrant() {
         require(msg.sender == oracleSpoke, "Only callable by oracleSpoke");
         _sendMessageToRoot(abi.encode(data, oracleHub));
-        emit MessageSentToParent(data, oracleHub);
+        emit MessageSentToParent(data, oracleHub, oracleSpoke);
     }
 
     /**
