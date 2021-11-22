@@ -3,6 +3,7 @@ import {
   InsuredBridgeL1Client,
   InsuredBridgeL2Client,
   lastSpyLogIncludes,
+  lastSpyLogLevel,
   GasEstimator,
   Deposit,
   ClientRelayState,
@@ -928,6 +929,7 @@ describe("Relayer.ts", function () {
       assert.isTrue(lastSpyLogIncludes(spy, "Disputed pending relay"));
       const disputeEvents = await bridgePool.getPastEvents("RelayDisputed", { fromBlock: 0 });
       assert.equal(disputeEvents.length, 1);
+      assert.equal(lastSpyLogLevel(spy), "error");
     });
     it("Two pending relays with invalid relay data, one dispute succeeds, one fails", async function () {
       // Invalid relay #1

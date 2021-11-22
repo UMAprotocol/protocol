@@ -190,7 +190,7 @@ export class Relayer {
       }
 
       try {
-        await this._processTransactionBatch(settleRelayTransactions);
+        await this._processTransactionBatch(settleRelayTransactions as any);
       } catch (error) {
         this.logger.error({ at: "AcrossRelayer#Finalizer", message: "Unexpected error processing relay batch", error });
       }
@@ -504,11 +504,12 @@ export class Relayer {
       transaction: this._generateDisputeRelayTx(deposit, relay),
       message: "Disputed pending relay. Relay was deleted 🚓",
       mrkdwn: this._generateMrkdwnForDispute(deposit, relay),
+      level: "error", // Disputes are bad! we should know about this to check out what's going on.
     };
   }
 
   private async _processTransactionBatch(
-    transactions: { transaction: TransactionType | any; message: string; mrkdwn: string }[]
+    transactions: { transaction: TransactionType | any; message: string; mrkdwn: string; level: string }[]
   ) {
     // Remove any undefined transaction objects or objects that contain null transactions.
     transactions = transactions.filter((transaction) => transaction && transaction.transaction);
@@ -516,7 +517,8 @@ export class Relayer {
     if (transactions.length == 0) return;
     if (transactions.length == 1) {
       this.logger.debug({ at: "AcrossRelayer#TxProcessor", message: "Sending transaction" });
-      await this._sendTransaction(transactions[0].transaction, transactions[0].message, transactions[0].mrkdwn);
+      const transaction = transactions[0];
+      await this._sendTransaction(transaction.transaction, transaction.message, transaction.mrkdwn, transaction.level);
     }
     if (transactions.length > 1) {
       // The `to` field in the transaction must be the same for all transactions or the batch processing will not work.
@@ -543,14 +545,20 @@ export class Relayer {
       const { txStatus } = await this._sendTransaction(
         (targetMultiCaller.methods.multicall(multiCallTransaction) as unknown) as TransactionType,
         "Multicall batch sent!🧙",
-        mrkdwnBlock
+        mrkdwnBlock,
+        transactions[0].level // note that we only send one kind of transaction in a batch so they'll all have the same level.
       );
 
       // In the event the batch transaction was unsuccessful, iterate over all transactions and send them individually.
       if (!txStatus) {
         for (const transaction of transactions) {
           this.logger.info({ at: "AcrossRelayer#TxProcessor", message: "Sending batched transactions individually😷" });
-          await this._sendTransaction(transaction.transaction, transaction.message, transaction.mrkdwn);
+          await this._sendTransaction(
+            transaction.transaction,
+            transaction.message,
+            transaction.mrkdwn,
+            transaction.level
+          );
         }
       }
     }
@@ -559,7 +567,8 @@ export class Relayer {
   private async _sendTransaction(
     transaction: TransactionType,
     message: string,
-    mrkdwn: string
+    mrkdwn: string,
+    level = "info"
   ): Promise<{
     txStatus: boolean;
     receipt: TransactionReceipt | null;
@@ -573,8 +582,10 @@ export class Relayer {
         transactionConfig: { ...this.gasEstimator.getCurrentFastPrice(), from: this.account },
         availableAccounts: 1,
       });
+      console.log("level", level);
       if (receipt) {
-        this.logger.info({
+        this.logger.log({
+          level,
           at: "AcrossRelayer#TxProcessor",
           message,
           mrkdwn: mrkdwn + " tx: " + createEtherscanLinkMarkdown(receipt.transactionHash),
@@ -703,6 +714,7 @@ export class Relayer {
           transaction: this._generateSlowRelayTx(relayableDeposit.deposit, realizedLpFeePct),
           message: "Slow Relay executed  🐌",
           mrkdwn,
+          logLevel: "error", // In almost all normal cases we should not have slow relays. If we do, we should know!
         };
 
       case RelaySubmitType.SpeedUp:
