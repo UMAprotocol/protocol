@@ -63,9 +63,9 @@ contract OracleSpoke is
         uint256 time,
         bytes memory ancillaryData
     ) public override nonReentrant() onlyRegisteredContract() {
-        bool newPriceRequested = _requestPrice(identifier, time, _stampAncillaryData(ancillaryData, msg.sender));
+        bool newPriceRequested = _requestPrice(identifier, time, _stampAncillaryData(ancillaryData));
         if (newPriceRequested) {
-            messenger.sendMessageToParent(abi.encode(identifier, time, _stampAncillaryData(ancillaryData, msg.sender)));
+            messenger.sendMessageToParent(abi.encode(identifier, time, _stampAncillaryData(ancillaryData)));
         }
     }
 
@@ -74,9 +74,9 @@ contract OracleSpoke is
      * ancillary data.
      */
     function requestPrice(bytes32 identifier, uint256 time) public override nonReentrant() onlyRegisteredContract() {
-        bool newPriceRequested = _requestPrice(identifier, time, "");
+        bool newPriceRequested = _requestPrice(identifier, time, _stampAncillaryData(""));
         if (newPriceRequested) {
-            messenger.sendMessageToParent(abi.encode(identifier, time, ""));
+            messenger.sendMessageToParent(abi.encode(identifier, time, _stampAncillaryData("")));
         }
     }
 
@@ -104,7 +104,7 @@ contract OracleSpoke is
         uint256 time,
         bytes memory ancillaryData
     ) public view override nonReentrantView() onlyRegisteredContract() returns (bool) {
-        bytes32 priceRequestId = _encodePriceRequest(identifier, time, _stampAncillaryData(ancillaryData, msg.sender));
+        bytes32 priceRequestId = _encodePriceRequest(identifier, time, ancillaryData);
         return prices[priceRequestId].state == RequestState.Resolved;
     }
 
@@ -120,7 +120,7 @@ contract OracleSpoke is
         onlyRegisteredContract()
         returns (bool)
     {
-        bytes32 priceRequestId = _encodePriceRequest(identifier, time, "");
+        bytes32 priceRequestId = _encodePriceRequest(identifier, time, _stampAncillaryData(""));
         return prices[priceRequestId].state == RequestState.Resolved;
     }
 
@@ -136,7 +136,7 @@ contract OracleSpoke is
         uint256 time,
         bytes memory ancillaryData
     ) public view override nonReentrantView() onlyRegisteredContract() returns (int256) {
-        bytes32 priceRequestId = _encodePriceRequest(identifier, time, _stampAncillaryData(ancillaryData, msg.sender));
+        bytes32 priceRequestId = _encodePriceRequest(identifier, time, ancillaryData);
         Price storage lookup = prices[priceRequestId];
         require(lookup.state == RequestState.Resolved, "Price has not been resolved");
         return lookup.price;
@@ -154,7 +154,7 @@ contract OracleSpoke is
         onlyRegisteredContract()
         returns (int256)
     {
-        bytes32 priceRequestId = _encodePriceRequest(identifier, time, "");
+        bytes32 priceRequestId = _encodePriceRequest(identifier, time, _stampAncillaryData(""));
         Price storage lookup = prices[priceRequestId];
         require(lookup.state == RequestState.Resolved, "Price has not been resolved");
         return lookup.price;
@@ -163,16 +163,10 @@ contract OracleSpoke is
     /**
      * @notice Generates stamped ancillary data in the format that it would be used in the case of a price request.
      * @param ancillaryData ancillary data of the price being requested.
-     * @param requester sender of the initial price request.
      * @return the stamped ancillary bytes.
      */
-    function stampAncillaryData(bytes memory ancillaryData, address requester)
-        public
-        view
-        nonReentrantView()
-        returns (bytes memory)
-    {
-        return _stampAncillaryData(ancillaryData, requester);
+    function stampAncillaryData(bytes memory ancillaryData) public view nonReentrantView() returns (bytes memory) {
+        return _stampAncillaryData(ancillaryData);
     }
 
     /**
@@ -180,14 +174,9 @@ contract OracleSpoke is
      * For those cases, we assume that the client will be able to strip out the utf8-translatable part of the
      * ancillary data that this contract stamps.
      */
-    function _stampAncillaryData(bytes memory ancillaryData, address requester) internal view returns (bytes memory) {
-        // This contract should stamp its requester's address and network in the
-        // ancillary data so voters can conveniently track the requests path to the DVM.
-        return
-            AncillaryData.appendKeyValueUint(
-                AncillaryData.appendKeyValueAddress(ancillaryData, "childRequester", requester),
-                "childChainId",
-                block.chainid
-            );
+    function _stampAncillaryData(bytes memory ancillaryData) internal view returns (bytes memory) {
+        // This contract should stamp the child network's ID so that voters on the parent network can
+        // deterministically track unique price requests back to this contract.
+        return AncillaryData.appendKeyValueUint(ancillaryData, "childChainId", block.chainid);
     }
 }

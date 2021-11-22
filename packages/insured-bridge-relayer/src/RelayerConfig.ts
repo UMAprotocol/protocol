@@ -3,6 +3,7 @@ const { isAddress, toChecksumAddress, toBN } = Web3.utils;
 
 import assert from "assert";
 import { replaceAddressCase } from "@uma/common";
+import { across } from "@uma/sdk";
 
 import type { RateModel } from "@uma/financial-templates-lib";
 
@@ -131,7 +132,7 @@ export class RelayerConfig {
     this.l2DeployData = L2_DEPLOY_DATA ? JSON.parse(L2_DEPLOY_DATA) : bridgeDepositBoxDeployData;
 
     assert(RATE_MODELS, "RATE_MODELS required");
-    const processingRateModels = JSON.parse(RATE_MODELS);
+    const processingRateModels = RATE_MODELS ? JSON.parse(RATE_MODELS) : across.constants.RATE_MODELS;
 
     for (const l1Token of Object.keys(processingRateModels)) {
       // Check the keys in the rate model provided are addresses.

@@ -1,5 +1,5 @@
 const hre = require("hardhat");
-const { runDefaultFixture } = require("@uma/common");
+const { runDefaultFixture, didContractThrow } = require("@uma/common");
 const { getContract, assertEventEmitted, assertEventNotEmitted } = hre;
 const { assert } = require("chai");
 const OracleBase = getContract("OracleBaseMock");
@@ -32,6 +32,15 @@ describe("OracleBase", async () => {
     assert.equal(await oracle.methods.finder().call(), finder.options.address, "finder address not set");
   });
   it("requestPrice", async function () {
+    // Cannot set ancillary data size too large:
+    const DATA_LIMIT_BYTES = 8192; // Max ancillary data length allowed by OracleBase:
+    let largeAncillaryData = web3.utils.randomHex(DATA_LIMIT_BYTES + 1);
+    assert(
+      await didContractThrow(
+        oracle.methods.requestPrice(testIdentifier, testRequestTime, largeAncillaryData).send({ from: owner })
+      )
+    );
+
     // New price request returns true and emits event.
     assert.equal(await oracle.methods.requestPrice(testIdentifier, testRequestTime, testAncillary).call(), true);
     let txn = await oracle.methods.requestPrice(testIdentifier, testRequestTime, testAncillary).send({ from: owner });
@@ -51,7 +60,6 @@ describe("OracleBase", async () => {
     await assertEventNotEmitted(txn, oracle, "PriceRequestAdded");
   });
   it("publishPrice", async function () {
-    await oracle.methods.requestPrice(testIdentifier, testRequestTime, testAncillary).send({ from: owner });
     let txn = await oracle.methods
       .publishPrice(testIdentifier, testRequestTime, testAncillary, testPrice)
       .send({ from: owner });
@@ -65,6 +73,7 @@ describe("OracleBase", async () => {
         event.ancillaryData.toLowerCase() === testAncillary.toLowerCase() &&
         event.price.toString() === testPrice
     );
+
     // Duplicate call does not emit an event.
     txn = await oracle.methods
       .publishPrice(testIdentifier, testRequestTime, testAncillary, testPrice)
