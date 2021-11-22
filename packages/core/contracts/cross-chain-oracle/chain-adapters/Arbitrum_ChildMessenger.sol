@@ -20,7 +20,7 @@ contract Arbitrum_ChildMessenger is AVM_CrossDomainEnabled, ChildMessengerInterf
 
     event SetOracleSpoke(address newOracleSpoke);
     event SetParentMessenger(address newParentMessenger);
-    event MessageSentToParent(bytes data, address indexed parentAddress, uint256 id);
+    event MessageSentToParent(bytes data, address indexed parentAddress, address indexed oracleSpoke, uint256 id);
     event MessageReceivedFromParent(bytes data, address indexed targetSpoke, address indexed parentAddress);
 
     /**
@@ -65,7 +65,7 @@ contract Arbitrum_ChildMessenger is AVM_CrossDomainEnabled, ChildMessengerInterf
         require(msg.sender == oracleSpoke, "Only callable by oracleSpoke");
         bytes memory dataSentToParent = abi.encodeWithSignature("processMessageFromCrossChainChild(bytes)", data);
         uint256 id = sendCrossDomainMessage(msg.sender, parentMessenger, dataSentToParent);
-        emit MessageSentToParent(dataSentToParent, parentMessenger, id);
+        emit MessageSentToParent(dataSentToParent, parentMessenger, oracleSpoke, id);
     }
 
     /**

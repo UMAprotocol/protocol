@@ -28,7 +28,7 @@ contract Optimism_ChildMessenger is CrossDomainEnabled, ChildMessengerInterface,
     event SetOracleSpoke(address newOracleSpoke);
     event SetParentMessenger(address newParentMessenger);
     event SetDefaultGasLimit(uint32 newDefaultGasLimit);
-    event MessageSentToParent(bytes data, address indexed parentAddress, uint32 gasLimit);
+    event MessageSentToParent(bytes data, address indexed parentAddress, address oracleSpoke, uint32 gasLimit);
     event MessageReceivedFromParent(bytes data, address indexed targetSpoke, address indexed parentAddress);
 
     /**
@@ -87,7 +87,7 @@ contract Optimism_ChildMessenger is CrossDomainEnabled, ChildMessengerInterface,
         require(msg.sender == oracleSpoke, "Only callable by oracleSpoke");
         bytes memory dataSentToParent = abi.encodeWithSignature("processMessageFromCrossChainChild(bytes)", data);
         sendCrossDomainMessage(parentMessenger, defaultGasLimit, dataSentToParent);
-        emit MessageSentToParent(dataSentToParent, parentMessenger, defaultGasLimit);
+        emit MessageSentToParent(dataSentToParent, parentMessenger, oracleSpoke, defaultGasLimit);
     }
 
     /**
