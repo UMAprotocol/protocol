@@ -1,10 +1,11 @@
+import assert from "assert";
 import { Provider } from "@ethersproject/providers";
 import { Contract, Signer, BigNumber, ContractTransaction } from "ethers";
 import { predeploys, getContractInterface } from "@eth-optimism/contracts";
 import { ERC20Ethers__factory, OptimismL1StandardBridgeEthers__factory } from "@uma/contracts-node";
 import { Watcher } from "@eth-optimism/core-utils";
 
-const l1Contracts: { Proxy__OVM_L1StandardBridge: { [chainId: number]: string } } = {
+export const l1Contracts: { Proxy__OVM_L1StandardBridge: { [chainId: number]: string } } = {
   Proxy__OVM_L1StandardBridge: {
     42069: "0x99C9fc46f92E8a1c0deC1b1747d010903E884bE1",
     1: "0x99C9fc46f92E8a1c0deC1b1747d010903E884bE1",
@@ -26,6 +27,7 @@ export class OptimismBridgeClient {
   async depositERC20(l1Signer: Signer, l1Erc20Address: string, l2Erc20Address: string, amount: BigNumber) {
     const chainId = await l1Signer.getChainId();
     const l1StandardBridgeAddress = l1Contracts.Proxy__OVM_L1StandardBridge[chainId];
+    assert(typeof l1StandardBridgeAddress === "string", "Chain not supported");
     const l1StandardBridge = OptimismL1StandardBridgeEthers__factory.connect(l1StandardBridgeAddress, l1Signer);
     const l1_ERC20 = ERC20Ethers__factory.connect(l1Erc20Address, l1Signer);
     return l1StandardBridge.depositERC20(l1_ERC20.address, l2Erc20Address, amount, this.L2_DEPOSIT_GAS_LIMIT, "0x");
@@ -40,6 +42,7 @@ export class OptimismBridgeClient {
   async depositEth(l1Signer: Signer, amount: BigNumber) {
     const chainId = await l1Signer.getChainId();
     const l1StandardBridgeAddress = l1Contracts.Proxy__OVM_L1StandardBridge[chainId];
+    assert(typeof l1StandardBridgeAddress === "string", "Chain not supported");
     const l1StandardBridge = OptimismL1StandardBridgeEthers__factory.connect(l1StandardBridgeAddress, l1Signer);
     return l1StandardBridge.depositETH(this.L2_DEPOSIT_GAS_LIMIT, "0x", { value: amount });
   }
