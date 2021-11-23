@@ -2,7 +2,7 @@ const hre = require("hardhat");
 const { web3 } = hre;
 const { interfaceName, TokenRolesEnum, InsuredBridgeRelayStateEnum } = require("@uma/common");
 const { getContract } = hre;
-const { utf8ToHex, toWei, toBN, soliditySha3 } = web3.utils;
+const { utf8ToHex, toWei, toBN, soliditySha3, toChecksumAddress, randomHex } = web3.utils;
 const toBNWei = (number) => toBN(toWei(number.toString()).toString());
 
 const winston = require("winston");
@@ -320,9 +320,51 @@ describe("InsuredBridgeL1Client", function () {
       client.getBridgePoolForDeposit(depositData).relayNonce,
       (await bridgePool.methods.numberOfRelays().call()).toString()
     );
-
+    assert.equal(Object.keys(client.getBridgePoolForDeposit(depositData).l2Token).length, 1);
+    assert.equal(client.getBridgePoolForDeposit(depositData).l2Token[chainId], l2Token);
     // OptimisticOracle liveness should be reset.
     assert.equal(client.optimisticOracleLiveness, defaultLiveness);
+
+    // Whitelisting a new L2 token for this bridge pool adds to L2 token array, but resets the BridgePool address.
+    const bridgePool2 = await BridgePool.new(
+      "LP Token 2",
+      "LPT2",
+      bridgeAdmin.options.address,
+      l1Token.options.address,
+      lpFeeRatePerSecond,
+      false,
+      timer.options.address
+    ).send({ from: owner });
+    const chainId2 = chainId + 1;
+    const l2Token2 = toChecksumAddress(randomHex(20));
+
+    await bridgeAdmin.methods
+      .whitelistToken(
+        chainId2,
+        l1Token.options.address,
+        l2Token2,
+        bridgePool2.options.address,
+        0,
+        defaultGasLimit,
+        defaultGasPrice,
+        0
+      )
+      .send({ from: owner });
+    await client.update();
+    assert.equal(JSON.stringify(client.getBridgePoolsAddresses()), JSON.stringify([bridgePool2.options.address]));
+    assert.equal(client.getBridgePoolForDeposit(depositData).contract.options.address, bridgePool2.options.address);
+    assert.equal(
+      client.getBridgePoolForDeposit(depositData).currentTime,
+      (await bridgePool2.methods.getCurrentTime().call()).toString()
+    );
+    assert.equal(
+      client.getBridgePoolForDeposit(depositData).relayNonce,
+      (await bridgePool2.methods.numberOfRelays().call()).toString()
+    );
+    assert.equal(client.optimisticOracleLiveness, defaultLiveness);
+    assert.equal(Object.keys(client.getBridgePoolForDeposit(depositData).l2Token).length, 2);
+    assert.equal(client.getBridgePoolForDeposit(depositData).l2Token[chainId], l2Token);
+    assert.equal(client.getBridgePoolForDeposit(depositData).l2Token[chainId2], l2Token);
   });
   describe("Lifecycle tests", function () {
     it("Relayed deposits: deposit, speedup finalize lifecycle", async function () {
