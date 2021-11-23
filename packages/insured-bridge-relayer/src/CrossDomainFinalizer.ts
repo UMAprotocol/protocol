@@ -21,7 +21,11 @@ export class CrossDomainFinalizer {
   async checkForBridgeableL2TokensAndBridge() {
     this.logger.debug({ at: "AcrossRelayer#CrossDomainFinalizer", message: "Checking bridgeable L2 tokens" });
 
-    const whitelistedTokenEvents = await this.l1Client.bridgeAdmin.getPastEvents("WhitelistToken", { fromBlock: 0 });
+    // Fetch all WhitelistToken events on L1. Manually filter out the ones that are not on the associated L2Client
+    // chainId. We have to do this in JS as the chainId prop is not indexed in the BridgeAdmin contract.
+    const whitelistedTokenEvents = (
+      await this.l1Client.bridgeAdmin.getPastEvents("WhitelistToken", { fromBlock: 0 })
+    ).filter((event) => Number(event.returnValues.chainId) === this.l2Client.chainId);
 
     // Extract the l2Tokens that have been whitelisted. The new Set syntax acts to remove any duplicates from the array.
     // This would be the case if a l2 token was re - whitelisted after upgrading the bridgePool contract on L1.

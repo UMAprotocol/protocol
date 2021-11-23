@@ -162,8 +162,9 @@ export class Relayer {
         .getSettleableRelayedDepositsForL1Token(l1Token)
         .filter(
           (relay) =>
-            (relay.settleable === SettleableRelay.SlowRelayerCanSettle && relay.slowRelayer === this.account) ||
-            relay.settleable === SettleableRelay.AnyoneCanSettle
+            ((relay.settleable === SettleableRelay.SlowRelayerCanSettle && relay.slowRelayer === this.account) ||
+              relay.settleable === SettleableRelay.AnyoneCanSettle) &&
+            relay.chainId === this.l2Client.chainId
         );
 
       if (settleableRelays.length == 0) {
