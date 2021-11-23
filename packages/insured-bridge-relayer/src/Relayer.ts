@@ -130,7 +130,11 @@ export class Relayer {
     }
     this.logger.debug({
       at: "AcrossRelayer#Disputer",
-      message: `Processing ${Object.keys(pendingRelays).length} l1 token pending relays`,
+      message: `Processing pending relays for ${Object.keys(pendingRelays).length} l1 tokens`,
+      // Log # of relays for each L1 token:
+      pendingRelayCounts: Object.keys(pendingRelays).map((l1Token) => ({
+        [l1Token]: pendingRelays[l1Token].length,
+      })),
     });
     for (const l1Token of Object.keys(pendingRelays)) {
       const disputeTransactions = []; // Array of dispute transactions to send.
@@ -249,7 +253,7 @@ export class Relayer {
         l2ClientChainId: this.l2Client.chainId,
         relay,
       });
-      return null;
+      return;
     }
 
     // Fetch deposit for relay.
@@ -513,7 +517,7 @@ export class Relayer {
     transactions: { transaction: TransactionType | any; message: string; mrkdwn: string; level: string }[]
   ) {
     // Remove any undefined transaction objects or objects that contain null transactions.
-    transactions = transactions.filter((transaction) => transaction && transaction.transaction);
+    transactions = transactions.filter((transaction) => transaction && transaction !== null && transaction.transaction);
 
     if (transactions.length == 0) return;
     if (transactions.length == 1) {
