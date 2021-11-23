@@ -31,7 +31,7 @@ export enum RelaySubmitType {
 }
 
 export class Relayer {
-  executedTransactions: Array<executedTransaction>;
+  executedTransactions: Array<executedTransaction> = []; // store all submitted transactions during execution lifecycle.
 
   /**
    * @notice Constructs new Relayer Instance.
@@ -60,9 +60,7 @@ export class Relayer {
     readonly l1DeployData: { [key: string]: { timestamp: number } },
     readonly l2DeployData: { [key: string]: { blockNumber: number } },
     readonly l2LookbackWindow: number
-  ) {
-    this.executedTransactions = [];
-  }
+  ) {}
 
   async checkForPendingDepositsAndRelay(): Promise<void> {
     this.logger.debug({ at: "AcrossRelayer#Relayer", message: "Checking for pending deposits and relaying" });
@@ -201,8 +199,14 @@ export class Relayer {
     return;
   }
 
+  // Returns all executedTransactions from the current execution block.
   getExecutedTransactions(): executedTransaction[] {
     return this.executedTransactions;
+  }
+
+  // Resets executedTransactions to the null state. Done at the start of each execution loop.
+  resetExecutedTransactions(): void {
+    this.executedTransactions = [];
   }
 
   // Evaluates given pending `relay` and determines whether to submit a dispute.

@@ -118,6 +118,7 @@ export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
           // in the executed transactions array. The method below awaits all these transactions to ensure they are
           // correctly included in a block. if any submitted transactions contains an error then a log is produced.
           await processTransactionPromiseBatch(relayer.getExecutedTransactions(), logger);
+          relayer.resetExecutedTransactions(); // Purge the executed transactions array for next execution loop.
         },
 
         {
