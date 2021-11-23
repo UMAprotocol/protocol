@@ -142,7 +142,8 @@ export const runTransaction = async ({
           maxFeePerGas: parseInt(transactionConfig.maxFeePerGas.toString()) * 2,
           type: "0x2",
         } as SendOptions);
-      //
+      // Else, waitForMine is false and we return the transaction hash immediately as soon as it is included in the
+      // mempool. Receipt is a promise of the pending transaction that can be awaited later to ensure block inclusion.
       else {
         const receiptPromiseEvent = transaction.send({
           ...transactionConfig,
