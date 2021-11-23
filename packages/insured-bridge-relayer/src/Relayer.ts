@@ -16,9 +16,7 @@ import {
 } from "@uma/financial-templates-lib";
 import { getTokenBalance } from "./RelayerHelpers";
 
-import type { BN, TransactionType, AugmentedSendOptions, executedTransaction } from "@uma/common";
-
-import type { TransactionReceipt } from "web3-core";
+import type { BN, TransactionType, executedTransaction } from "@uma/common";
 
 // Stores state of Relay (i.e. Pending, Uninitialized, Finalized) and linked L2 deposit parameters.
 type RelayableDeposit = { status: ClientRelayState; deposit: Deposit };
@@ -583,6 +581,10 @@ export class Relayer {
   }> {
     try {
       await this.gasEstimator.update();
+      // Run the transaction provided. Note that waitForMine is set to false. This means the function will return as
+      // soon as the transaction has been included in the mem pool, but is not yet mined. This is important as we want
+      // to be able to fire off as many transactions as quickly as posable. Note that as soon as the transaction is
+      // in the mem pool we will produces a transaction hash for logging.
       const executionResult = await runTransaction({
         web3: this.l1Client.l1Web3,
         transaction,
@@ -591,12 +593,15 @@ export class Relayer {
         waitForMine: false,
       });
       if (executionResult.receipt) {
-      this.logger.log({
+        this.logger.log({
           level,
           at: "AcrossRelayer#TxProcessor",
           message,
           mrkdwn: mrkdwn + " tx: " + createEtherscanLinkMarkdown(executionResult.transactionHash),
         });
+        // Just because the transaction was successfully included in the mem pool does not mean it will be mined without
+        // reverting. Store the transaction execution result within the executedTransactions array. This is processed
+        // at the end of the bot execution loop to ensure that all submitted transactions were successfully included.
         this.executedTransactions.push(executionResult);
         return { txStatus: true, executionResult };
       } else throw executionResult;
