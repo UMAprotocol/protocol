@@ -1,7 +1,7 @@
 import { Provider } from "@ethersproject/providers";
 import { Contract, Signer, BigNumber, ContractTransaction } from "ethers";
 import { predeploys, getContractInterface } from "@eth-optimism/contracts";
-import { ERC20Ethers__factory, L1StandardBridgeEthers__factory } from "@uma/contracts-node";
+import { ERC20Ethers__factory, OptimismL1StandardBridgeEthers__factory } from "@uma/contracts-node";
 import { Watcher } from "@eth-optimism/core-utils";
 
 const l1Contracts: { Proxy__OVM_L1StandardBridge: { [chainId: number]: string } } = {
@@ -13,7 +13,8 @@ const l1Contracts: { Proxy__OVM_L1StandardBridge: { [chainId: number]: string } 
 };
 
 export class OptimismBridgeClient {
-  public static readonly L2_STANDARD_BRIDGE_ADDRESS = "0x4200000000000000000000000000000000000010";
+  public readonly L2_DEPOSIT_GAS_LIMIT = 2000000;
+
   /**
    * Create a transaction to deposit ERC20 tokens to Optimism
    * @param l1Signer The L1 wallet provider (signer)
@@ -25,9 +26,9 @@ export class OptimismBridgeClient {
   async depositERC20(l1Signer: Signer, l1Erc20Address: string, l2Erc20Address: string, amount: BigNumber) {
     const chainId = await l1Signer.getChainId();
     const l1StandardBridgeAddress = l1Contracts.Proxy__OVM_L1StandardBridge[chainId];
-    const l1StandardBridge = L1StandardBridgeEthers__factory.connect(l1StandardBridgeAddress, l1Signer);
+    const l1StandardBridge = OptimismL1StandardBridgeEthers__factory.connect(l1StandardBridgeAddress, l1Signer);
     const l1_ERC20 = ERC20Ethers__factory.connect(l1Erc20Address, l1Signer);
-    return l1StandardBridge.depositERC20(l1_ERC20.address, l2Erc20Address, amount, 2000000, "0x");
+    return l1StandardBridge.depositERC20(l1_ERC20.address, l2Erc20Address, amount, this.L2_DEPOSIT_GAS_LIMIT, "0x");
   }
 
   /**
@@ -39,8 +40,8 @@ export class OptimismBridgeClient {
   async depositEth(l1Signer: Signer, amount: BigNumber) {
     const chainId = await l1Signer.getChainId();
     const l1StandardBridgeAddress = l1Contracts.Proxy__OVM_L1StandardBridge[chainId];
-    const l1StandardBridge = L1StandardBridgeEthers__factory.connect(l1StandardBridgeAddress, l1Signer);
-    return l1StandardBridge.depositETH(2000000, "0x", { value: amount });
+    const l1StandardBridge = OptimismL1StandardBridgeEthers__factory.connect(l1StandardBridgeAddress, l1Signer);
+    return l1StandardBridge.depositETH(this.L2_DEPOSIT_GAS_LIMIT, "0x", { value: amount });
   }
 
   /**
