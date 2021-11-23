@@ -157,10 +157,12 @@ export class InsuredBridgeL1Client {
     );
   }
 
-  getSettleableRelayedDepositsForL1Token(l1Token: string): Relay[] {
+  getSettleableRelayedDepositsForL1Token(l1Token: string, chainId: number): Relay[] {
     return this.getRelayedDepositsForL1Token(l1Token).filter(
       (relay: Relay) =>
-        relay.relayState === ClientRelayState.Pending && relay.settleable != SettleableRelay.CannotSettle
+        relay.relayState === ClientRelayState.Pending && // The relay is in the Pending state.
+        relay.settleable != SettleableRelay.CannotSettle && // The relay is not set to CannotSettle.
+        relay.chainId === chainId // The relay happened on the appropriate chain.
     );
   }
 

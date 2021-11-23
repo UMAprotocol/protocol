@@ -159,7 +159,7 @@ export class Relayer {
 
       // Either this bot is the slow relayer for this relay OR the relay is past 15 mins and is settleable by anyone.
       const settleableRelays = this.l1Client
-        .getSettleableRelayedDepositsForL1Token(l1Token)
+        .getSettleableRelayedDepositsForL1Token(l1Token, this.l2Client.chainId)
         .filter(
           (relay) =>
             (relay.settleable === SettleableRelay.SlowRelayerCanSettle && relay.slowRelayer === this.account) ||
