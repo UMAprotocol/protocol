@@ -52,7 +52,7 @@ export interface InstantRelay {
 
 export interface BridgePoolData {
   contract: BridgePoolWeb3;
-  l2Token: string;
+  l2Token: { [key: string]: string }; // chainID=>L1TokenAddress
   currentTime: number;
   relayNonce: number;
   poolCollateralDecimals: number;
@@ -213,9 +213,11 @@ export class InsuredBridgeL1Client {
     return this.bridgePools[l1Token];
   }
 
-  getBridgePoolForL2Token(l2Token: string): BridgePoolData {
-    const bridgePoolData = Object.values(this.bridgePools).filter((bridgePool) => bridgePool.l2Token == l2Token)[0];
-    if (!bridgePoolData) throw new Error(`No bridge pool initialized for ${l2Token}`);
+  getBridgePoolForL2Token(l2Token: string, chainId: string): BridgePoolData {
+    const bridgePoolData = Object.values(this.bridgePools).filter(
+      (bridgePool) => bridgePool.l2Token[chainId] == l2Token
+    )[0];
+    if (!bridgePoolData) throw new Error(`No bridge pool initialized for ${l2Token} and chainID: ${chainId}`);
     return bridgePoolData;
   }
 
@@ -241,17 +243,24 @@ export class InsuredBridgeL1Client {
     const whitelistedTokenEvents = await this.bridgeAdmin.getPastEvents("WhitelistToken", blockSearchConfig);
     for (const whitelistedTokenEvent of whitelistedTokenEvents) {
       const l1Token = whitelistedTokenEvent.returnValues.l1Token;
+      const l2Tokens = this.bridgePools[l1Token].l2Token;
       this.bridgePools[l1Token] = {
+        l2Token: l2Tokens, // Re-use existing L2 token array and update after resetting other state.
         contract: (new this.l1Web3.eth.Contract(
           getAbi("BridgePool"),
           whitelistedTokenEvent.returnValues.bridgePool
         ) as unknown) as BridgePoolWeb3,
-        l2Token: whitelistedTokenEvent.returnValues.l2Token,
         // We'll set the following params when fetching bridge pool state in parallel.
         currentTime: 0,
         relayNonce: 0,
         poolCollateralDecimals: 0,
         poolCollateralSymbol: "",
+      };
+
+      // Associate whitelisted L2 token with chain ID for L2.
+      this.bridgePools[l1Token].l2Token = {
+        ...l2Tokens,
+        [whitelistedTokenEvent.returnValues.chainId]: whitelistedTokenEvent.returnValues.l2Token,
       };
       this.relays[l1Token] = {};
       this.instantRelays[l1Token] = {};

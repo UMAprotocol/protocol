@@ -112,7 +112,7 @@ export class CrossDomainFinalizer {
 
   // Fetch L1 pool reserves for a given l2Token.
   private async _getL1PoolReserves(l2Token: string): Promise<BN> {
-    const bridgePool = this.l1Client.getBridgePoolForL2Token(l2Token).contract;
+    const bridgePool = this.l1Client.getBridgePoolForL2Token(l2Token, this.l2Client.chainId).contract;
 
     const [liquidReserves, utilizedReserves] = await Promise.all([
       bridgePool.methods.liquidReserves().call(),
