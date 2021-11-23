@@ -12,7 +12,7 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
  * and listening to it for newly finalized withdrawals.
  *
  */
-interface L1StandardBridge {
+interface OptimismL1StandardBridge {
     function depositETH(uint32 _l2Gas, bytes calldata _data) external payable;
 
     function depositERC20(

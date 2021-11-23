@@ -10,7 +10,7 @@ pragma solidity ^0.8.0;
  * This contract also acts as a burner of the tokens intended for withdrawal, informing the L1
  * bridge to release L1 funds.
  */
-contract L2StandardBridge {
+contract OptimismL2StandardBridge {
     /********************************
      * External Contract References *
      ********************************/
