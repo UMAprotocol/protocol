@@ -149,3 +149,17 @@ client.startInterval(/* optionally pass in ms to update, defaults to 30 seconds 
 // stops checking for transactions
 client.stopInterval()
 ```
+
+## Optimism Bridge Client
+
+```ts
+// Initialize the L1 and the L2 Web3 Providers
+const l1provider = ethers.getDefaultProvider(<L1_RPC_URL>);
+const l2provider = ethers.getDefaultProvider(<L2_RPC_URL>);
+const client = new OptimismBridgeClient();
+// Signer who makes the deposit. Construct it using ethers or use the signer provided by Metamask
+const signer = new Wallet(<WALLET_PRIVATE_KET>, l1provider);
+const l1Tx = await client.depositEth(signer, utils.parseEther("0.00001"));
+// Wait for the deposit to be completed on L2
+const l2Receipt = await client.waitRelayToL2(tx, l1provider, l2provider);
+```
