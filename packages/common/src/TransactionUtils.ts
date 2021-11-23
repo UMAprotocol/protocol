@@ -47,7 +47,8 @@ const argv = minimist(process.argv.slice(), {});
  * has a pending tx then the runner will automatically send the transaction from the next EOA.
  * @param waitForMine {Boolean} informs if the transaction runner should wait until the tx is mined or return early once
  * it has a transaction hash. Useful when sending many transactions in quick succession.
- * @return Error and type of error (originating from `.call()` or `.send()`) or transaction receipt and return value.
+ * @return Error and type of error (originating from `.call()` or `.send()`) or transaction receipt, return value and
+ * transaction config. Note that the transaction receipt will be a promise if waitForMine is false.
  */
 export const runTransaction = async ({
   web3,
