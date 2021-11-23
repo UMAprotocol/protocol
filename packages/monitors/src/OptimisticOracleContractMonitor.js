@@ -8,6 +8,7 @@ const {
   ZERO_ADDRESS,
   createFormatFunction,
   ConvertDecimals,
+  parseAncillaryData,
 } = require("@uma/common");
 const { OptimisticOracleType } = require("@uma/financial-templates-lib");
 const { getAbi } = require("@uma/contracts-node");
@@ -93,7 +94,8 @@ class OptimisticOracleContractMonitor {
       const mrkdwn =
         createEtherscanLinkMarkdown(event.requester, this.contractProps.networkId) +
         ` requested a price at the timestamp ${event.timestamp} for the identifier: ${event.identifier}. ` +
-        `The ancillary data field is ${event.ancillaryData || "0x"}. ` +
+        this._formatAncillaryData(event.ancillaryData) +
+        ". " +
         `Collateral currency address is ${
           this.oracleType === OptimisticOracleType.OptimisticOracle ? event.currency : event.request.currency
         }. Reward amount is ${this.formatDecimalString(
@@ -147,7 +149,8 @@ class OptimisticOracleContractMonitor {
             ? event.expirationTimestamp
             : event.request.expirationTime
         }. ` +
-        `The ancillary data field is ${event.ancillaryData || "0x"}. ` +
+        this._formatAncillaryData(event.ancillaryData) +
+        ". " +
         `Collateral currency address is ${
           this.oracleType === OptimisticOracleType.OptimisticOracle ? event.currency : event.request.currency
         }. ` +
@@ -191,7 +194,8 @@ class OptimisticOracleContractMonitor {
         } proposed a price of ${this.formatDecimalString(
           this.oracleType === OptimisticOracleType.OptimisticOracle ? event.proposedPrice : event.request.proposedPrice
         )}. ` +
-        `The ancillary data field is ${event.ancillaryData || "0x"}. ` +
+        this._formatAncillaryData(event.ancillaryData) +
+        ". " +
         `tx: ${createEtherscanLinkMarkdown(event.transactionHash, this.contractProps.networkId)}`;
 
       this.logger[this.logOverrides.disputedPrice || "error"]({
@@ -250,7 +254,8 @@ class OptimisticOracleContractMonitor {
         `The payout was ${this.formatDecimalString(convertCollateralDecimals(payout))} made to the ${
           isDispute ? "winner of the dispute" : "proposer"
         }. ` +
-        `The ancillary data field is ${event.ancillaryData || "0x"}. ` +
+        this._formatAncillaryData(event.ancillaryData) +
+        ". " +
         `tx: ${createEtherscanLinkMarkdown(event.transactionHash, this.contractProps.networkId)}`;
 
       // The default log level should be reduced to "debug" for funding rate identifiers:
@@ -284,6 +289,15 @@ class OptimisticOracleContractMonitor {
   // and we should lower the alert levels for such price requests because we expect them to appear often.
   _isFundingRateIdentifier(identifier) {
     return identifier.toLowerCase().endsWith("_fr");
+  }
+
+  _formatAncillaryData(ancillaryData) {
+    try {
+      // Return the decoded ancillary data as a string. The `replace` syntax removes any escaped quotes from the string.
+      return "Ancillary data: " + JSON.stringify(parseAncillaryData(ancillaryData)).replace(/"/g, "");
+    } catch (_) {
+      return `Could not decode ancillary data: ${ancillaryData || "0x"}`;
+    }
   }
 }
 
