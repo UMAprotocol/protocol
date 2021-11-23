@@ -13,7 +13,7 @@ const { toWei, toBN, utf8ToHex, toChecksumAddress, randomHex } = web3.utils;
 const toBNWei = (number: string | number) => toBN(toWei(number.toString()).toString());
 
 let l2Web3: typeof Web3 = undefined;
-const startGanacheServer = (chainId: number, port: number): typeof Web3 => {
+const startGanacheServer = (chainId: number, port: number) => {
   if (l2Web3 !== undefined) return;
   const node = ganache.server({ _chainIdRpc: chainId });
   node.listen(port);
@@ -150,7 +150,7 @@ describe("index.js", function () {
       transports: [new SpyTransport({ level: "debug" }, { spy: spy })],
     });
 
-    const l2Web3 = await startGanacheServer(chainId, 7777);
+    await startGanacheServer(chainId, 7777);
     const [l2Owner, l2BridgeAdminImpersonator] = await l2Web3.eth.getAccounts();
 
     // Deploy deposit box on L2 web3 so that L2 client can read its events.
@@ -242,6 +242,7 @@ describe("index.js", function () {
     const targetLog = spy.getCalls().filter((_log: any) => {
       return _log.lastArg.message.includes("Filtered out tokens that are not whitelisted on L2");
     })[0];
-    assert.equal(targetLog.filteredWhitelistedRelayL1Tokens, [l1Token.options.address]);
+    assert.equal(targetLog.lastArg.filteredWhitelistedRelayL1Tokens.length, 1);
+    assert.equal(targetLog.lastArg.filteredWhitelistedRelayL1Tokens[0], l1Token.options.address);
   });
 });
