@@ -7,7 +7,6 @@ import { Watcher } from "@eth-optimism/core-utils";
 
 export const l1Contracts: { Proxy__OVM_L1StandardBridge: { [chainId: number]: string } } = {
   Proxy__OVM_L1StandardBridge: {
-    42069: "0x99C9fc46f92E8a1c0deC1b1747d010903E884bE1",
     1: "0x99C9fc46f92E8a1c0deC1b1747d010903E884bE1",
     42: "0x22F24361D548e5FaAfb36d1437839f080363982B",
   },
