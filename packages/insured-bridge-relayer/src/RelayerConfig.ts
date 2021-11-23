@@ -54,6 +54,9 @@ const bridgeDepositBoxDeployData = {
   42161: {
     blockNumber: 2811998,
   },
+  10: {
+    blockNumber: 204576,
+  },
 };
 
 export interface ProcessEnv {
