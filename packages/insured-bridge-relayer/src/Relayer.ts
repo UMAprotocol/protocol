@@ -16,7 +16,7 @@ import {
 } from "@uma/financial-templates-lib";
 import { getTokenBalance } from "./RelayerHelpers";
 
-import type { BN, TransactionType, AugmentedSendOptions } from "@uma/common";
+import type { BN, TransactionType, AugmentedSendOptions, executedTransaction } from "@uma/common";
 
 import type { TransactionReceipt } from "web3-core";
 
@@ -33,6 +33,8 @@ export enum RelaySubmitType {
 }
 
 export class Relayer {
+  executedTransactions: Array<executedTransaction>;
+
   /**
    * @notice Constructs new Relayer Instance.
    * @param {Object} logger Module used to send logs.
@@ -60,7 +62,9 @@ export class Relayer {
     readonly l1DeployData: { [key: string]: { timestamp: number } },
     readonly l2DeployData: { [key: string]: { blockNumber: number } },
     readonly l2LookbackWindow: number
-  ) {}
+  ) {
+    this.executedTransactions = [];
+  }
 
   async checkForPendingDepositsAndRelay(): Promise<void> {
     this.logger.debug({ at: "AcrossRelayer#Relayer", message: "Checking for pending deposits and relaying" });
@@ -188,6 +192,10 @@ export class Relayer {
     }
 
     return;
+  }
+
+  getExecutedTransactions(): executedTransaction[] {
+    return this.executedTransactions;
   }
 
   // Evaluates given pending `relay` and determines whether to submit a dispute.
@@ -570,32 +578,29 @@ export class Relayer {
     mrkdwn: string
   ): Promise<{
     txStatus: boolean;
-    receipt: TransactionReceipt | null;
-    transactionConfig: AugmentedSendOptions | null;
+    executionResult: executedTransaction | null;
   }> {
     try {
       await this.gasEstimator.update();
-      const { receipt, transactionConfig } = await runTransaction({
+      const executionResult = await runTransaction({
         web3: this.l1Client.l1Web3,
         transaction,
         transactionConfig: { ...this.gasEstimator.getCurrentFastPrice(), from: this.account },
         availableAccounts: 1,
+        waitForMine: false,
       });
-      if (receipt) {
+      if (executionResult.receipt) {
         this.logger.info({
           at: "AcrossRelayer#TxProcessor",
           message,
-          mrkdwn: mrkdwn + " tx: " + createEtherscanLinkMarkdown(receipt.transactionHash),
+          mrkdwn: mrkdwn + " tx: " + createEtherscanLinkMarkdown(executionResult.transactionHash),
         });
-        return { txStatus: true, receipt, transactionConfig };
-      } else throw receipt;
+        this.executedTransactions.push(executionResult);
+        return { txStatus: true, executionResult };
+      } else throw executionResult;
     } catch (error) {
-      this.logger.error({
-        at: "AcrossRelayer#TxProcessor",
-        message: "Something errored sending a transaction",
-        error,
-      });
-      return { txStatus: false, receipt: null, transactionConfig: null };
+      this.logger.error({ at: "AcrossRelayer#TxProcessor", message: "Something errored sending a transaction", error });
+      return { txStatus: false, executionResult: null };
     }
   }
 
