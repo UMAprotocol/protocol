@@ -243,7 +243,7 @@ export class InsuredBridgeL1Client {
     const whitelistedTokenEvents = await this.bridgeAdmin.getPastEvents("WhitelistToken", blockSearchConfig);
     for (const whitelistedTokenEvent of whitelistedTokenEvents) {
       const l1Token = whitelistedTokenEvent.returnValues.l1Token;
-      const l2Tokens = this.bridgePools[l1Token].l2Token;
+      const l2Tokens = this.bridgePools[l1Token]?.l2Token;
       this.bridgePools[l1Token] = {
         l2Token: l2Tokens, // Re-use existing L2 token array and update after resetting other state.
         contract: (new this.l1Web3.eth.Contract(

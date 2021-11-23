@@ -337,6 +337,9 @@ describe("InsuredBridgeL1Client", function () {
     ).send({ from: owner });
     const chainId2 = chainId + 1;
     const l2Token2 = toChecksumAddress(randomHex(20));
+    await bridgeAdmin.methods
+      .setDepositContract(chainId2, depositContractImpersonator, messenger.options.address)
+      .send({ from: owner });
 
     await bridgeAdmin.methods
       .whitelistToken(
@@ -364,7 +367,7 @@ describe("InsuredBridgeL1Client", function () {
     assert.equal(client.optimisticOracleLiveness, defaultLiveness);
     assert.equal(Object.keys(client.getBridgePoolForDeposit(depositData).l2Token).length, 2);
     assert.equal(client.getBridgePoolForDeposit(depositData).l2Token[chainId], l2Token);
-    assert.equal(client.getBridgePoolForDeposit(depositData).l2Token[chainId2], l2Token);
+    assert.equal(client.getBridgePoolForDeposit(depositData).l2Token[chainId2], l2Token2);
   });
   describe("Lifecycle tests", function () {
     it("Relayed deposits: deposit, speedup finalize lifecycle", async function () {
