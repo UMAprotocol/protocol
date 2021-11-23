@@ -82,6 +82,7 @@ export class RelayerConfig {
   readonly rateModels: { [key: string]: RateModel } = {};
   readonly activatedChainIds: number[];
   readonly l2BlockLookback: number;
+  readonly l2EndBlock: number;
   readonly crossDomainFinalizationThreshold: number;
   readonly botModes: BotModes;
   readonly l1DeployData: { [key: string]: { timestamp: number } };
@@ -96,6 +97,7 @@ export class RelayerConfig {
       RATE_MODELS,
       CHAIN_IDS,
       L2_BLOCK_LOOKBACK,
+      L2_END_BLOCK,
       CROSS_DOMAIN_FINALIZATION_THRESHOLD,
       RELAYER_ENABLED,
       FINALIZER_ENABLED,
@@ -126,6 +128,7 @@ export class RelayerConfig {
     // constrain L1 start blocks but this hasn't been an issue empirically. As a data point, Arbitrum Infura has a
     // query limit of up to 100,000 blocks into the past.
     this.l2BlockLookback = L2_BLOCK_LOOKBACK ? Number(L2_BLOCK_LOOKBACK) : 99999;
+    this.l2EndBlock = L2_END_BLOCK ? Number(L2_END_BLOCK) : 0;
 
     this.pollingDelay = POLLING_DELAY ? Number(POLLING_DELAY) : 60;
     this.errorRetries = ERROR_RETRIES ? Number(ERROR_RETRIES) : 3;

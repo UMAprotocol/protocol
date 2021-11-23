@@ -24,8 +24,10 @@ export class InsuredBridgeL2Client {
   public bridgeDepositBox: BridgeDepositBoxWeb3;
 
   private deposits: { [key: string]: Deposit } = {}; // DepositHash=>Deposit
+  private whitelistedTokens: { [key: string]: string } = {}; // L1Token=>L2Token
 
   private firstBlockToSearch: number;
+  private lastBlockToSearch: number | null;
 
   constructor(
     private readonly logger: Logger,
@@ -41,6 +43,7 @@ export class InsuredBridgeL2Client {
     ) as unknown) as BridgeDepositBoxWeb3;
 
     this.firstBlockToSearch = startingBlockNumber;
+    this.lastBlockToSearch = endingBlockNumber;
   }
 
   getAllDeposits() {
@@ -49,6 +52,10 @@ export class InsuredBridgeL2Client {
 
   getAllDepositsForL1Token(l1TokenAddress: string) {
     return this.getAllDeposits().filter((deposit: Deposit) => deposit.l1Token === l1TokenAddress);
+  }
+
+  isWhitelistedToken(l1TokenAddress: string) {
+    return this.whitelistedTokens[l1TokenAddress] !== undefined;
   }
 
   getDepositByHash(depositHash: string) {
@@ -62,13 +69,22 @@ export class InsuredBridgeL2Client {
     // Define a config to bound the queries by.
     const blockSearchConfig = {
       fromBlock: this.firstBlockToSearch,
-      toBlock: this.endingBlockNumber || (await this.l2Web3.eth.getBlockNumber()),
+      toBlock: this.lastBlockToSearch || (await this.l2Web3.eth.getBlockNumber()),
     };
     // TODO: update this state retrieval to include looking for L2 liquidity in the deposit box that can be sent over
     // the bridge. This should consider the minimumBridgingDelay and the lastBridgeTime for a respective L2Token.
-    const [fundsDepositedEvents] = await Promise.all([
+    const [fundsDepositedEvents, whitelistedTokenEvents] = await Promise.all([
       this.bridgeDepositBox.getPastEvents("FundsDeposited", blockSearchConfig),
+      this.bridgeDepositBox.getPastEvents("WhitelistToken", blockSearchConfig),
     ]);
+
+    // We assume that whitelisted token events are searched from oldest to newest so we'll just store the most recently
+    // whitelisted token mappings.
+    for (const whitelistedTokenEvent of whitelistedTokenEvents) {
+      this.whitelistedTokens[
+        this.l2Web3.utils.toChecksumAddress(whitelistedTokenEvent.returnValues.l1Token)
+      ] = this.l2Web3.utils.toChecksumAddress(whitelistedTokenEvent.returnValues.l2Token);
+    }
 
     for (const fundsDepositedEvent of fundsDepositedEvents) {
       const depositData = {
@@ -88,7 +104,10 @@ export class InsuredBridgeL2Client {
       this.deposits[depositData.depositHash] = depositData;
     }
 
+    // Advance block search one same-length window forwards.
+    const blockSearchWindowLength = blockSearchConfig.toBlock - blockSearchConfig.fromBlock;
     this.firstBlockToSearch = blockSearchConfig.toBlock + 1;
+    this.lastBlockToSearch = this.firstBlockToSearch + blockSearchWindowLength;
 
     this.logger.debug({
       at: "InsuredBridgeL2Client",
