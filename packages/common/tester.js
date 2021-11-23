@@ -1,5 +1,5 @@
 const { getAbi } = require("@uma/contracts-node");
-const { getWeb3, runTransaction, processTransactionPromisesBatch } = require("@uma/common");
+const { getWeb3, runTransaction, processTransactionPromiseBatch } = require("@uma/common");
 const { GasEstimator } = require("@uma/financial-templates-lib");
 const winston = require("winston");
 
@@ -21,6 +21,7 @@ async function run() {
   console.log("CALLING RUNNER");
 
   let promiseArray = [];
+  await processTransactionPromiseBatch(promiseArray, logger);
 
   for (let i = 0; i < 5; i++) {
     const output1 = await runTransaction({
@@ -37,7 +38,7 @@ async function run() {
 
   console.log("END LOOP. promise count:", promiseArray.length, "waiting...");
 
-  await processTransactionPromisesBatch(promiseArray, logger);
+  await processTransactionPromiseBatch(promiseArray, logger);
 }
 
 function main() {
