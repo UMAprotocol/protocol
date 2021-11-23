@@ -12,13 +12,12 @@ const { web3, getContract } = hre as HRE;
 const { toWei, toBN, utf8ToHex, toChecksumAddress, randomHex } = web3.utils;
 const toBNWei = (number: string | number) => toBN(toWei(number.toString()).toString());
 
-let isGanacheServerStarted = false;
-const startGanacheServer = (chainId: number, port: number) => {
-  if (isGanacheServerStarted) return;
+let l2Web3: typeof Web3 = undefined;
+const startGanacheServer = (chainId: number, port: number): typeof Web3 => {
+  if (l2Web3 !== undefined) return;
   const node = ganache.server({ _chainIdRpc: chainId });
   node.listen(port);
-  isGanacheServerStarted = true;
-  return new Web3("http://127.0.0.1:" + port);
+  l2Web3 = new Web3("http://127.0.0.1:" + port);
 };
 
 // Helper contracts
