@@ -421,7 +421,7 @@ describe("InsuredBridgeL1Client", function () {
       );
 
       assert.equal(
-        JSON.stringify(client.getSettleableRelayedDepositsForL1Token(l1Token.options.address, chainId)),
+        JSON.stringify(client.getSettleableRelayedDepositsForL1Token(l1Token.options.address)),
         JSON.stringify([expectedRelayedDepositInformation])
       );
 
@@ -440,12 +440,9 @@ describe("InsuredBridgeL1Client", function () {
       );
 
       assert.equal(
-        JSON.stringify(client.getSettleableRelayedDepositsForL1Token(l1Token.options.address, chainId)),
+        JSON.stringify(client.getSettleableRelayedDepositsForL1Token(l1Token.options.address)),
         JSON.stringify([expectedRelayedDepositInformation])
       );
-
-      // should return nothing on the wrong chainID
-      assert.equal(JSON.stringify(client.getSettleableRelayedDepositsForL1Token(l1Token.options.address, 42069)), "[]");
 
       assert.equal(JSON.stringify(client.getAllRelayedDeposits()), JSON.stringify([expectedRelayedDepositInformation]));
 
@@ -457,10 +454,7 @@ describe("InsuredBridgeL1Client", function () {
       expectedRelayedDepositInformation.settleable = SettleableRelay.CannotSettle;
       assert.equal(JSON.stringify(client.getSettleableRelayedDeposits()), "[]");
 
-      assert.equal(
-        JSON.stringify(client.getSettleableRelayedDepositsForL1Token(l1Token.options.address, chainId)),
-        "[]"
-      );
+      assert.equal(JSON.stringify(client.getSettleableRelayedDepositsForL1Token(l1Token.options.address)), "[]");
       assert.equal(JSON.stringify(client.getAllRelayedDeposits()), JSON.stringify([expectedRelayedDepositInformation]));
       assert.equal(JSON.stringify(client.getPendingRelayedDeposits()), JSON.stringify([])); // Not pending anymore
     });
