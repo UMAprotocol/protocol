@@ -82,5 +82,17 @@
   {
     "contractName": "CappedYieldDollarLongShortPairFinancialProductLibrary",
     "address": "0xCc465a18517478532E8fd476663a8F03CD58E7f1"
+  },
+  {
+    "contractName": "Polygon_ChildMessenger",
+    "address": "0x561C834B1Ca5883460D2E605B1d7F3e61714C6d8"
+  },
+  {
+    "contractName": "OracleSpoke",
+    "address": "0x255483434aba5a75dc60c1391bB162BCd9DE2882"
+  },
+  {
+    "contractName": "GovernorSpoke",
+    "address": "0xAd5AA9F37d5BBfceE45BD9f43CbE0018ceEc7A4e"
   }
 ]

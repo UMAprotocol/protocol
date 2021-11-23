@@ -125,23 +125,32 @@ export class Relayer {
   async checkForPendingRelaysAndDispute(): Promise<void> {
     this.logger.debug({ at: "AcrossRelayer#Disputer", message: "Checking for pending relays and disputing" });
 
-    // Build dictionary of pending relays keyed by l1 token and deposit hash. getPendingRelays() filters
-    // out Finalized relays.
-    const pendingRelays: Relay[] = this.l1Client.getPendingRelayedDeposits();
-    if (pendingRelays.length == 0) {
+    // Build dictionary of pending relays keyed by l1 token and deposit hash. getPendingRelayedDepositsGroupedByL1Token
+    // filters out Finalized relays and orders by the relay size so we dispute the most dangerous relays first.
+    const pendingRelays: { [key: string]: Relay[] } = this.l1Client.getPendingRelayedDepositsGroupedByL1Token();
+    if (Object.keys(pendingRelays).length == 0) {
       this.logger.debug({ at: "AcrossRelayer#Disputer", message: "No pending relays" });
       return;
     }
-    this.logger.debug({ at: "AcrossRelayer#Disputer", message: `Processing ${pendingRelays.length} pending relays` });
-
-    for (const relay of pendingRelays) {
+    this.logger.debug({
+      at: "AcrossRelayer#Disputer",
+      message: `Processing ${Object.keys(pendingRelays).length} l1 token pending relays`,
+    });
+    for (const l1Token of Object.keys(pendingRelays)) {
+      const disputeTransactions = []; // Array of dispute transactions to send.
+      for (const relay of pendingRelays[l1Token]) {
+        try {
+          disputeTransactions.push(await this._generateDisputeTransactionForPendingRelayIfDisputable(relay));
+        } catch (error) {
+          this.logger.error({ at: "AcrossRelayer#Disputer", message: "Unexpected error processing dispute", error });
+        }
+      }
       try {
-        await this._disputePendingRelay(relay);
+        await this._processTransactionBatch(disputeTransactions as any);
       } catch (error) {
-        this.logger.error({ at: "AcrossRelayer#Disputer", message: "Unexpected error processing relay", error });
+        this.logger.error({ at: "AcrossRelayer#Relayer", message: "Unexpected error processing dispute batch", error });
       }
     }
-
     return;
   }
 
@@ -185,7 +194,7 @@ export class Relayer {
       }
 
       try {
-        await this._processTransactionBatch(settleRelayTransactions);
+        await this._processTransactionBatch(settleRelayTransactions as any);
       } catch (error) {
         this.logger.error({ at: "AcrossRelayer#Finalizer", message: "Unexpected error processing relay batch", error });
       }
@@ -199,7 +208,7 @@ export class Relayer {
   }
 
   // Evaluates given pending `relay` and determines whether to submit a dispute.
-  private async _disputePendingRelay(relay: Relay): Promise<void> {
+  private async _generateDisputeTransactionForPendingRelayIfDisputable(relay: Relay) {
     // Check if relay has expired, in which case we cannot dispute.
     const relayExpired = await this._isRelayExpired(relay, relay.l1Token);
     if (relayExpired.isExpired) {
@@ -220,7 +229,7 @@ export class Relayer {
         message: "Disputing pending relay with non-whitelisted chainID",
         relay,
       });
-      await this._disputeRelay(
+      return await this._generateDisputeRelayTransaction(
         {
           chainId: relay.chainId,
           depositId: relay.depositId,
@@ -233,11 +242,9 @@ export class Relayer {
           instantRelayFeePct: relay.instantRelayFeePct,
           quoteTimestamp: relay.quoteTimestamp,
           depositContract: (await this.l1Client.bridgeAdmin.methods.depositContracts(relay.chainId).call())[0],
-          // `depositContracts()` returns [depositContract, messengerContract] and we want the first arg.
         },
         relay
       );
-      return;
     }
 
     // We now know that the relay chain ID is whitelisted, so let's skip any relays for chain ID's that do not match
@@ -249,7 +256,7 @@ export class Relayer {
         l2ClientChainId: this.l2Client.chainId,
         relay,
       });
-      return;
+      return null;
     }
 
     // Fetch deposit for relay.
@@ -286,8 +293,7 @@ export class Relayer {
           deploymentTime: this.l1DeployData[deposit.l1Token].timestamp,
           relayBlockTime,
         });
-        await this._disputeRelay(deposit, relay);
-        return;
+        return await this._generateDisputeRelayTransaction(deposit, relay);
       }
 
       // Compute expected realized LP fee % and if the pending relay has a different fee then dispute it.
@@ -301,8 +307,7 @@ export class Relayer {
           deposit,
           reason: relayDisputable.reason,
         });
-        await this._disputeRelay(deposit, relay);
-        return;
+        return await this._generateDisputeRelayTransaction(deposit, relay);
       } else {
         this.logger.debug({
           at: "AcrossRelayer#Disputer",
@@ -327,7 +332,6 @@ export class Relayer {
         instantRelayFeePct: relay.instantRelayFeePct,
         quoteTimestamp: relay.quoteTimestamp,
         depositContract: (await this.l1Client.bridgeAdmin.methods.depositContracts(relay.chainId).call())[0],
-        // `depositContracts()` returns [depositContract, messengerContract] and we want the first arg.
       };
       this.logger.debug({
         at: "AcrossRelayer#Disputer",
@@ -335,8 +339,7 @@ export class Relayer {
         missingDeposit,
         relay,
       });
-      await this._disputeRelay(missingDeposit, relay);
-      return;
+      return await this._generateDisputeRelayTransaction(missingDeposit, relay);
     }
   }
 
@@ -504,27 +507,17 @@ export class Relayer {
     };
   }
 
-  private async _disputeRelay(deposit: Deposit, relay: Relay) {
-    // We shouldn't be batching disputes because we don't expect to send batches of them.
-    const { receipt } = await this._sendTransaction(
-      this._generateDisputeRelayTx(deposit, relay),
-      "Disputed pending relay. Relay was deleted 🚓",
-      this._generateMrkdwnForDispute(deposit, relay)
-    );
-
-    if (receipt?.events?.RelayCanceled)
-      this.logger.error({
-        at: "AcrossRelayer#Disputer",
-        message: "Dispute failed to send to OO 👀!",
-        tx: receipt.transactionHash,
-        depositHash: receipt.events.RelayCanceled.returnValues.depositHash,
-        relayHash: receipt.events.RelayCanceled.returnValues.relayHash,
-        disputer: receipt.events.RelayCanceled.returnValues.disputer,
-      });
+  private async _generateDisputeRelayTransaction(deposit: Deposit, relay: Relay) {
+    return {
+      transaction: this._generateDisputeRelayTx(deposit, relay),
+      message: "Disputed pending relay. Relay was deleted 🚓",
+      mrkdwn: this._generateMrkdwnForDispute(deposit, relay),
+      level: "error", // Disputes are bad! we should know about this to check out what's going on.
+    };
   }
 
   private async _processTransactionBatch(
-    transactions: { transaction: TransactionType | any; message: string; mrkdwn: string }[]
+    transactions: { transaction: TransactionType | any; message: string; mrkdwn: string; level: string }[]
   ) {
     // Remove any undefined transaction objects or objects that contain null transactions.
     transactions = transactions.filter((transaction) => transaction && transaction.transaction);
@@ -532,7 +525,8 @@ export class Relayer {
     if (transactions.length == 0) return;
     if (transactions.length == 1) {
       this.logger.debug({ at: "AcrossRelayer#TxProcessor", message: "Sending transaction" });
-      await this._sendTransaction(transactions[0].transaction, transactions[0].message, transactions[0].mrkdwn);
+      const transaction = transactions[0];
+      await this._sendTransaction(transaction.transaction, transaction.message, transaction.mrkdwn, transaction.level);
     }
     if (transactions.length > 1) {
       // The `to` field in the transaction must be the same for all transactions or the batch processing will not work.
@@ -559,14 +553,20 @@ export class Relayer {
       const { txStatus } = await this._sendTransaction(
         (targetMultiCaller.methods.multicall(multiCallTransaction) as unknown) as TransactionType,
         "Multicall batch sent!🧙",
-        mrkdwnBlock
+        mrkdwnBlock,
+        transactions[0].level // note that we only send one kind of transaction in a batch so they'll all have the same level.
       );
 
       // In the event the batch transaction was unsuccessful, iterate over all transactions and send them individually.
       if (!txStatus) {
         for (const transaction of transactions) {
           this.logger.info({ at: "AcrossRelayer#TxProcessor", message: "Sending batched transactions individually😷" });
-          await this._sendTransaction(transaction.transaction, transaction.message, transaction.mrkdwn);
+          await this._sendTransaction(
+            transaction.transaction,
+            transaction.message,
+            transaction.mrkdwn,
+            transaction.level
+          );
         }
       }
     }
@@ -575,7 +575,8 @@ export class Relayer {
   private async _sendTransaction(
     transaction: TransactionType,
     message: string,
-    mrkdwn: string
+    mrkdwn: string,
+    level = "info"
   ): Promise<{
     txStatus: boolean;
     executionResult: executedTransaction | null;
@@ -590,7 +591,8 @@ export class Relayer {
         waitForMine: false,
       });
       if (executionResult.receipt) {
-        this.logger.info({
+      this.logger.log({
+          level,
           at: "AcrossRelayer#TxProcessor",
           message,
           mrkdwn: mrkdwn + " tx: " + createEtherscanLinkMarkdown(executionResult.transactionHash),
@@ -716,6 +718,7 @@ export class Relayer {
           transaction: this._generateSlowRelayTx(relayableDeposit.deposit, realizedLpFeePct),
           message: "Slow Relay executed  🐌",
           mrkdwn,
+          logLevel: "error", // In almost all normal cases we should not have slow relays. If we do, we should know!
         };
 
       case RelaySubmitType.SpeedUp:

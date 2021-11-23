@@ -26,7 +26,6 @@ import "../../oracle/implementation/Constants.sol";
  * @title Long Short Pair.
  * @notice Uses a combination of long and short tokens to tokenize the bounded price exposure to a given identifier.
  */
-
 contract LongShortPair is Testable, Lockable {
     using FixedPoint for FixedPoint.Unsigned;
     using SafeERC20 for IERC20;

@@ -7,9 +7,11 @@ import "../oracle/interfaces/RegistryInterface.sol";
 import "./OracleBase.sol";
 import "../common/implementation/AncillaryData.sol";
 import "../common/implementation/Lockable.sol";
-import "./ChildMessengerInterface.sol";
+import "./interfaces/ChildMessengerInterface.sol";
+import "./interfaces/ChildMessengerConsumerInterface.sol";
 
 /**
+ * @title Cross-chain Oracle L2 Oracle Spoke.
  * @notice This contract is primarily intended to receive messages on the child chain from a parent chain and allow
  * contracts deployed on the child chain to interact with this contract as an Oracle. Moreover, this contract gives
  * child chain contracts the ability to trigger cross-chain price requests to the mainnet DVM. This Spoke knows how
@@ -18,7 +20,13 @@ import "./ChildMessengerInterface.sol";
  * @dev The intended client of this contract is an OptimisticOracle on sidechain that needs price
  * resolution secured by the DVM on mainnet.
  */
-contract OracleSpoke is OracleBase, OracleAncillaryInterface, OracleInterface, Lockable {
+contract OracleSpoke is
+    OracleBase,
+    OracleAncillaryInterface,
+    OracleInterface,
+    ChildMessengerConsumerInterface,
+    Lockable
+{
     ChildMessengerInterface public messenger;
 
     event SetChildMessenger(address indexed childMessenger);
@@ -55,9 +63,9 @@ contract OracleSpoke is OracleBase, OracleAncillaryInterface, OracleInterface, L
         uint256 time,
         bytes memory ancillaryData
     ) public override nonReentrant() onlyRegisteredContract() {
-        bool newPriceRequested = _requestPrice(identifier, time, _stampAncillaryData(ancillaryData, msg.sender));
+        bool newPriceRequested = _requestPrice(identifier, time, _stampAncillaryData(ancillaryData));
         if (newPriceRequested) {
-            messenger.sendMessageToParent(abi.encode(identifier, time, _stampAncillaryData(ancillaryData, msg.sender)));
+            messenger.sendMessageToParent(abi.encode(identifier, time, _stampAncillaryData(ancillaryData)));
         }
     }
 
@@ -66,9 +74,9 @@ contract OracleSpoke is OracleBase, OracleAncillaryInterface, OracleInterface, L
      * ancillary data.
      */
     function requestPrice(bytes32 identifier, uint256 time) public override nonReentrant() onlyRegisteredContract() {
-        bool newPriceRequested = _requestPrice(identifier, time, "");
+        bool newPriceRequested = _requestPrice(identifier, time, _stampAncillaryData(""));
         if (newPriceRequested) {
-            messenger.sendMessageToParent(abi.encode(identifier, time, ""));
+            messenger.sendMessageToParent(abi.encode(identifier, time, _stampAncillaryData("")));
         }
     }
 
@@ -78,7 +86,7 @@ contract OracleSpoke is OracleBase, OracleAncillaryInterface, OracleInterface, L
      * contract on Mainnet.
      * @param data ABI encoded params with which to call `_publishPrice`.
      */
-    function processMessageFromParent(bytes memory data) public nonReentrant() onlyMessenger() {
+    function processMessageFromParent(bytes memory data) public override nonReentrant() onlyMessenger() {
         (bytes32 identifier, uint256 time, bytes memory ancillaryData, int256 price) =
             abi.decode(data, (bytes32, uint256, bytes, int256));
         _publishPrice(identifier, time, ancillaryData, price);
@@ -96,7 +104,7 @@ contract OracleSpoke is OracleBase, OracleAncillaryInterface, OracleInterface, L
         uint256 time,
         bytes memory ancillaryData
     ) public view override nonReentrantView() onlyRegisteredContract() returns (bool) {
-        bytes32 priceRequestId = _encodePriceRequest(identifier, time, _stampAncillaryData(ancillaryData, msg.sender));
+        bytes32 priceRequestId = _encodePriceRequest(identifier, time, ancillaryData);
         return prices[priceRequestId].state == RequestState.Resolved;
     }
 
@@ -112,7 +120,7 @@ contract OracleSpoke is OracleBase, OracleAncillaryInterface, OracleInterface, L
         onlyRegisteredContract()
         returns (bool)
     {
-        bytes32 priceRequestId = _encodePriceRequest(identifier, time, "");
+        bytes32 priceRequestId = _encodePriceRequest(identifier, time, _stampAncillaryData(""));
         return prices[priceRequestId].state == RequestState.Resolved;
     }
 
@@ -128,7 +136,7 @@ contract OracleSpoke is OracleBase, OracleAncillaryInterface, OracleInterface, L
         uint256 time,
         bytes memory ancillaryData
     ) public view override nonReentrantView() onlyRegisteredContract() returns (int256) {
-        bytes32 priceRequestId = _encodePriceRequest(identifier, time, _stampAncillaryData(ancillaryData, msg.sender));
+        bytes32 priceRequestId = _encodePriceRequest(identifier, time, ancillaryData);
         Price storage lookup = prices[priceRequestId];
         require(lookup.state == RequestState.Resolved, "Price has not been resolved");
         return lookup.price;
@@ -146,7 +154,7 @@ contract OracleSpoke is OracleBase, OracleAncillaryInterface, OracleInterface, L
         onlyRegisteredContract()
         returns (int256)
     {
-        bytes32 priceRequestId = _encodePriceRequest(identifier, time, "");
+        bytes32 priceRequestId = _encodePriceRequest(identifier, time, _stampAncillaryData(""));
         Price storage lookup = prices[priceRequestId];
         require(lookup.state == RequestState.Resolved, "Price has not been resolved");
         return lookup.price;
@@ -155,16 +163,10 @@ contract OracleSpoke is OracleBase, OracleAncillaryInterface, OracleInterface, L
     /**
      * @notice Generates stamped ancillary data in the format that it would be used in the case of a price request.
      * @param ancillaryData ancillary data of the price being requested.
-     * @param requester sender of the initial price request.
      * @return the stamped ancillary bytes.
      */
-    function stampAncillaryData(bytes memory ancillaryData, address requester)
-        public
-        view
-        nonReentrantView()
-        returns (bytes memory)
-    {
-        return _stampAncillaryData(ancillaryData, requester);
+    function stampAncillaryData(bytes memory ancillaryData) public view nonReentrantView() returns (bytes memory) {
+        return _stampAncillaryData(ancillaryData);
     }
 
     /**
@@ -172,14 +174,9 @@ contract OracleSpoke is OracleBase, OracleAncillaryInterface, OracleInterface, L
      * For those cases, we assume that the client will be able to strip out the utf8-translatable part of the
      * ancillary data that this contract stamps.
      */
-    function _stampAncillaryData(bytes memory ancillaryData, address requester) internal view returns (bytes memory) {
-        // This contract should stamp its requester's address and network in the
-        // ancillary data so voters can conveniently track the requests path to the DVM.
-        return
-            AncillaryData.appendKeyValueUint(
-                AncillaryData.appendKeyValueAddress(ancillaryData, "childRequester", requester),
-                "childChainId",
-                block.chainid
-            );
+    function _stampAncillaryData(bytes memory ancillaryData) internal view returns (bytes memory) {
+        // This contract should stamp the child network's ID so that voters on the parent network can
+        // deterministically track unique price requests back to this contract.
+        return AncillaryData.appendKeyValueUint(ancillaryData, "childChainId", block.chainid);
     }
 }

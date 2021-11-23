@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.5.0](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.4.4...@uma/scripts@1.5.0) (2021-11-18)
+
+### Bug Fixes
+
+- fix typo in readme ([#3614](https://github.com/UMAprotocol/protocol/issues/3614)) ([2d48672](https://github.com/UMAprotocol/protocol/commit/2d48672dff4fd0c9c5ba8a61fe87dd6caea43dba))
+
+### Features
+
+- convert voter dapp test scripts to hardhat ([#3604](https://github.com/UMAprotocol/protocol/issues/3604)) ([1a8ce57](https://github.com/UMAprotocol/protocol/commit/1a8ce57ce56a8e21988f4838f934bb2b7d38239a))
+
 ## [1.4.4](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.4.3...@uma/scripts@1.4.4) (2021-11-11)
 
 **Note:** Version bump only for package @uma/scripts

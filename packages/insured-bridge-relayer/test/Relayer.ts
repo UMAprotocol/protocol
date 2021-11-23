@@ -3,6 +3,7 @@ import {
   InsuredBridgeL1Client,
   InsuredBridgeL2Client,
   lastSpyLogIncludes,
+  lastSpyLogLevel,
   GasEstimator,
   Deposit,
   ClientRelayState,
@@ -928,6 +929,7 @@ describe("Relayer.ts", function () {
       assert.isTrue(lastSpyLogIncludes(spy, "Disputed pending relay"));
       const disputeEvents = await bridgePool.getPastEvents("RelayDisputed", { fromBlock: 0 });
       assert.equal(disputeEvents.length, 1);
+      assert.equal(lastSpyLogLevel(spy), "error");
     });
     it("Two pending relays with invalid relay data, one dispute succeeds, one fails", async function () {
       // Invalid relay #1
@@ -1038,7 +1040,7 @@ describe("Relayer.ts", function () {
       await l1Token.methods.mint(l1Relayer, toBN(depositAmount).muln(2)).send({ from: l1Owner });
       await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Relayer });
       await relayer.checkForPendingRelaysAndDispute();
-      assert.isTrue(lastSpyLogIncludes(spy, "Dispute failed to send to OO"));
+      assert.isTrue(lastSpyLogIncludes(spy, "Disputed pending relay"));
 
       // Add back identifier to restore state for other tests.
       await identifierWhitelist.methods.addSupportedIdentifier(defaultIdentifier).send({ from: l1Owner });
@@ -1476,6 +1478,81 @@ describe("Relayer.ts", function () {
       const disputeEvents = await bridgePool.getPastEvents("RelayDisputed", { fromBlock: 0 });
       assert.equal(disputeEvents.length, 1);
     });
+    it("Always disputes the largest relay first", async function () {
+      // When there are multiple relays with the same amount, the bot should always dispute the largest relay first.
+      const quoteTime = Number((await web3.eth.getBlock("latest")).timestamp) + 60;
+      // Do 3 relays, the middle relay should be the largest. The disputer should dispute this first. Note that there
+      // is no associated L2 deposit so all three are disputable.
+      await l1Token.methods.mint(l1Owner, toBN(depositAmount).muln(4)).send({ from: l1Owner });
+      await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(4)).send({ from: l1Owner });
+      await bridgePool.methods
+        .relayDeposit(
+          {
+            chainId: chainId,
+            depositId: "0",
+            l2Sender: l2Depositor,
+            l1Recipient: l2Depositor,
+            amount: depositAmount,
+            slowRelayFeePct: defaultSlowRelayFeePct,
+            instantRelayFeePct: defaultInstantRelayFeePct,
+            quoteTimestamp: quoteTime,
+          },
+          calculateRealizedLpFeePct(rateModel, toBNWei("0"), toBNWei("0.01"))
+        )
+        .send({ from: l1Owner });
+      await bridgePool.methods
+        .relayDeposit(
+          {
+            chainId: chainId,
+            depositId: "1",
+            l2Sender: l2Depositor,
+            l1Recipient: l2Depositor,
+            amount: toBN(depositAmount).muln(2).toString(),
+            slowRelayFeePct: defaultSlowRelayFeePct,
+            instantRelayFeePct: defaultInstantRelayFeePct,
+            quoteTimestamp: quoteTime,
+          },
+          calculateRealizedLpFeePct(rateModel, toBNWei("0"), toBNWei("0.01"))
+        )
+        .send({ from: l1Owner });
+      await bridgePool.methods
+        .relayDeposit(
+          {
+            chainId: chainId,
+            depositId: "2",
+            l2Sender: l2Depositor,
+            l1Recipient: l2Depositor,
+            amount: depositAmount,
+            slowRelayFeePct: defaultSlowRelayFeePct,
+            instantRelayFeePct: defaultInstantRelayFeePct,
+            quoteTimestamp: quoteTime,
+          },
+          calculateRealizedLpFeePct(rateModel, toBNWei("0"), toBNWei("0.01"))
+        )
+        .send({ from: l1Owner });
+
+      // Fetch the largest deposit's depositHash. This should be the deposit at index 1 in the array (second deposit).
+      const largestDepositDepositHash = (await bridgePool.getPastEvents("DepositRelayed", { fromBlock: 0 }))[1]
+        .returnValues.depositHash;
+
+      // Update the clients and check for pending relays. It should dispute all 3 but dispute the largest first.
+      await Promise.all([l1Client.update(), l2Client.update()]);
+      await l1Token.methods.mint(l1Relayer, toBN(depositAmount).muln(5)).send({ from: l1Owner });
+      await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(5)).send({ from: l1Relayer });
+
+      await relayer.checkForPendingRelaysAndDispute();
+
+      const disputeEvents = await bridgePool.getPastEvents("RelayDisputed", { fromBlock: 0 });
+      // All three should be disputed.
+      assert.equal(disputeEvents.length, 3);
+
+      // Within the contract, the first dispute should be for the deposit hash extracted before for the largest deposit.
+      assert.equal(disputeEvents[0].returnValues.depositHash, largestDepositDepositHash);
+
+      // There should be a total of 3 dispute logs generated. within the multicall batch.
+      assert.isTrue(lastSpyLogIncludes(spy, "Multicall batch sent"));
+      assert.equal(spy.getCall(-1).lastArg.mrkdwn.match(/Disputed pending relay/g).length, 3);
+    });
   });
   describe("Multiple whitelisted token mappings", function () {
     let newL1Token: any, newL2Token: any, newBridgePool: any;
@@ -1614,6 +1691,8 @@ describe("Relayer.ts", function () {
       assert.equal((await newBridgePool.getPastEvents("RelaySettled", { fromBlock: 0 })).length, 1);
     });
     it("Can dispute relays", async function () {
+      // Note this test also indirectly validates that the relayer can send two disputes to two separate contracts
+      // within the same execution loop.
       const quoteTime = (await web3.eth.getBlock("latest")).timestamp;
 
       // Invalid relay #1
@@ -1730,6 +1809,63 @@ describe("Relayer.ts", function () {
       assert.isTrue(lastSpyLogIncludes(spy, "Multicall batch sent"));
       // There should be two "Relay settled" transactions within the batch.
       assert.equal(spy.getCall(-1).lastArg.mrkdwn.match(/Relay settled/g).length, 2);
+    });
+    it("Can correctly send batch disputes with multicall", async function () {
+      // Before any relays should do nothing and log accordingly.
+      await Promise.all([l1Client.update(), l2Client.update()]);
+      await relayer.checkForPendingRelaysAndDispute();
+      assert.isTrue(lastSpyLogIncludes(spy, "No pending relays"));
+
+      // Make two invalid relays. Check the disputer correctly disputes both of them within one transaction.
+      const quoteTime = (await web3.eth.getBlock("latest")).timestamp;
+
+      await l1Token.methods.mint(l1Relayer, toBN(depositAmount).muln(10)).send({ from: l1Owner });
+      await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(10)).send({ from: l1Relayer });
+
+      // Invalid relay #1
+      await bridgePool.methods
+        .relayDeposit(
+          {
+            chainId: chainId,
+            depositId: "99", // deposit ID doesn't exist
+            l2Sender: l2Depositor,
+            l1Recipient: l2Depositor,
+            amount: depositAmount,
+            slowRelayFeePct: defaultSlowRelayFeePct,
+            instantRelayFeePct: defaultInstantRelayFeePct,
+            quoteTimestamp: quoteTime,
+          },
+          defaultRealizedLpFeePct
+        )
+        .send({ from: l1Relayer });
+
+      // Invalid relay #2
+      await bridgePool.methods
+        .relayDeposit(
+          {
+            chainId: chainId,
+            depositId: "100", // deposit ID doesn't exist
+            l2Sender: l2Depositor,
+            l1Recipient: l2Depositor,
+            amount: depositAmount,
+            slowRelayFeePct: defaultSlowRelayFeePct,
+            instantRelayFeePct: defaultInstantRelayFeePct,
+            quoteTimestamp: quoteTime,
+          },
+          defaultRealizedLpFeePct
+        )
+        .send({ from: l1Relayer });
+
+      await Promise.all([l1Client.update(), l2Client.update()]);
+
+      await relayer.checkForPendingRelaysAndDispute();
+
+      // The log should also inform that this is a multicall batch.
+      assert.isTrue(lastSpyLogIncludes(spy, "Multicall batch sent"));
+      // There should be two "slow relay executed" transactions within the batch.
+      assert.equal(spy.getCall(-1).lastArg.mrkdwn.match(/Disputed pending relay/g).length, 2);
+
+      assert.equal((await bridgePool.getPastEvents("RelayDisputed", { fromBlock: 0 })).length, 2);
     });
   });
 });

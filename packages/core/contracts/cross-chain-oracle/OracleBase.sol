@@ -5,6 +5,7 @@ import "../oracle/interfaces/FinderInterface.sol";
 import "../oracle/implementation/Constants.sol";
 
 /**
+ * @title Cross-chain Oracle L1 Oracle Base.
  * @notice Enforces lifecycle of price requests for deriving contract.
  */
 abstract contract OracleBase {
@@ -41,6 +42,8 @@ abstract contract OracleBase {
     /**
      * @notice Enqueues a request (if a request isn't already present) for the given (identifier, time,
      * ancillary data) combination. Will only emit an event if the request has never been requested.
+     * @return True if price request is new, false otherwise. This is useful for caller to keep track of
+     * duplicate price requests.
      */
     function _requestPrice(
         bytes32 identifier,
@@ -60,7 +63,8 @@ abstract contract OracleBase {
     }
 
     /**
-     * @notice Publishes price for a requested query. Will only emit an event if the request has never been resolved.
+     * @notice Publishes price for a requested query.
+     * @dev Does not update price state if price is already resolved.
      */
     function _publishPrice(
         bytes32 identifier,
@@ -70,11 +74,10 @@ abstract contract OracleBase {
     ) internal {
         bytes32 priceRequestId = _encodePriceRequest(identifier, time, ancillaryData);
         Price storage lookup = prices[priceRequestId];
-        if (lookup.state == RequestState.Requested) {
-            lookup.price = price;
-            lookup.state = RequestState.Resolved;
-            emit PushedPrice(identifier, time, ancillaryData, lookup.price, priceRequestId);
-        }
+        if (lookup.state == RequestState.Resolved) return;
+        lookup.price = price;
+        lookup.state = RequestState.Resolved;
+        emit PushedPrice(identifier, time, ancillaryData, lookup.price, priceRequestId);
     }
 
     /**
