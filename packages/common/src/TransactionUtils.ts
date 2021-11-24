@@ -92,11 +92,12 @@ export const runTransaction = async ({
     transactionConfig.nonce = await getPendingTransactionCount(augmentedWeb3, transactionConfig.from);
   // Else, there is no pending transaction and we use the current account transaction count as the nonce.
   // This method does not play nicely in tests. Leave the nonce null to auto fill.
-  else if (argv.network != "test" && argv._[2] != "test")
+  else if (argv.network != "test" && argv._.includes("test"))
     transactionConfig.nonce = await augmentedWeb3.eth.getTransactionCount(transactionConfig.from);
   // Store the transaction nonce in the augmentedWeb3 object so that it can be used in the future. This enables us to fire a
   // bunch of transactions off without needing to wait for them to be included in the mempool by manually incrementing.
-  if (argv.network != "test" && argv._[2] != "test") {
+  console.log("argv", argv);
+  if (argv.network != "test" && argv._.includes("test")) {
     if (augmentedWeb3.nonces?.[transactionConfig.from])
       transactionConfig.nonce = ++augmentedWeb3.nonces[transactionConfig.from];
     else if (transactionConfig.nonce)
