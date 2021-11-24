@@ -53,11 +53,9 @@ describe("OVM_OETH_BridgeDepositBox", () => {
   beforeEach(async function () {
     // Initialize the cross domain massager messenger mock at the address of the OVM pre-deploy. The OVM will always use
     // this address for L1<->L2 messaging. Seed this address with some funds so it can send transactions.
-    console.log("a");
     l2CrossDomainMessengerMock = await deployContractMock("L2CrossDomainMessenger", {
       address: predeploys.L2CrossDomainMessenger,
     });
-    console.log("b");
     await web3.eth.sendTransaction({ from: deployer, to: predeploys.L2CrossDomainMessenger, value: toWei("1") });
 
     // Deploy and mintL2 token contracts:
