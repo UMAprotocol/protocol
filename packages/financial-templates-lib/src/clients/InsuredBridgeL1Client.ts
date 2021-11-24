@@ -1,5 +1,5 @@
 import Web3 from "web3";
-const { toBN, soliditySha3 } = Web3.utils;
+const { toBN, soliditySha3, toChecksumAddress } = Web3.utils;
 
 import { BlockFinder } from "../price-feed/utils";
 import { getAbi } from "@uma/contracts-node";
@@ -215,10 +215,7 @@ export class InsuredBridgeL1Client {
 
   getBridgePoolForL2Token(l2Token: string, chainId: string): BridgePoolData {
     const bridgePoolData = Object.values(this.bridgePools).find((bridgePool) => {
-      return (
-        this.l1Web3.utils.toChecksumAddress(bridgePool.l2Token[chainId]) ===
-        this.l1Web3.utils.toChecksumAddress(l2Token)
-      );
+      return toChecksumAddress(bridgePool.l2Token[chainId]) === toChecksumAddress(l2Token);
     });
     if (!bridgePoolData) throw new Error(`No bridge pool initialized for ${l2Token} and chainID: ${chainId}`);
     return bridgePoolData;
@@ -253,7 +250,7 @@ export class InsuredBridgeL1Client {
     // while the bot is running.
     const whitelistedTokenEvents = await this.bridgeAdmin.getPastEvents("WhitelistToken", blockSearchConfig);
     for (const whitelistedTokenEvent of whitelistedTokenEvents) {
-      const l1Token = this.l1Web3.utils.toChecksumAddress(whitelistedTokenEvent.returnValues.l1Token);
+      const l1Token = toChecksumAddress(whitelistedTokenEvent.returnValues.l1Token);
       const l2Tokens = this.bridgePools[l1Token]?.l2Token;
       this.bridgePools[l1Token] = {
         l2Token: l2Tokens, // Re-use existing L2 token array and update after resetting other state.
@@ -271,9 +268,7 @@ export class InsuredBridgeL1Client {
       // Associate whitelisted L2 token with chain ID for L2.
       this.bridgePools[l1Token].l2Token = {
         ...l2Tokens,
-        [whitelistedTokenEvent.returnValues.chainId]: this.l1Web3.utils.toChecksumAddress(
-          whitelistedTokenEvent.returnValues.l2Token
-        ),
+        [whitelistedTokenEvent.returnValues.chainId]: toChecksumAddress(whitelistedTokenEvent.returnValues.l2Token),
       };
       this.relays[l1Token] = {};
       this.instantRelays[l1Token] = {};
