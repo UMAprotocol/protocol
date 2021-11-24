@@ -13,6 +13,7 @@ export const l1Contracts: { Proxy__OVM_L1StandardBridge: { [chainId: number]: st
 };
 
 export class OptimismBridgeClient {
+  // Gas limit for the L2 transaction initiated by the Sequencer
   public readonly L2_DEPOSIT_GAS_LIMIT = 2000000;
 
   /**
