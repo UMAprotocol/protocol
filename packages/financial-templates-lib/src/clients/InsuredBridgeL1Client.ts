@@ -1,5 +1,5 @@
 import Web3 from "web3";
-const { toBN, soliditySha3 } = Web3.utils;
+const { toBN, soliditySha3, toChecksumAddress } = Web3.utils;
 
 import { BlockFinder } from "../price-feed/utils";
 import { getAbi } from "@uma/contracts-node";
@@ -260,9 +260,9 @@ export class InsuredBridgeL1Client {
       const whitelistedTokenMappingsForChainId = this.whitelistedTokens[whitelistedTokenEvent.returnValues.chainId];
       this.whitelistedTokens[whitelistedTokenEvent.returnValues.chainId] = {
         ...whitelistedTokenMappingsForChainId,
-        [this.l1Web3.utils.toChecksumAddress(
-          whitelistedTokenEvent.returnValues.l1Token
-        )]: this.l1Web3.utils.toChecksumAddress(whitelistedTokenEvent.returnValues.l2Token),
+        [toChecksumAddress(whitelistedTokenEvent.returnValues.l1Token)]: toChecksumAddress(
+          whitelistedTokenEvent.returnValues.l2Token
+        ),
       };
 
       const l1Token = whitelistedTokenEvent.returnValues.l1Token;
