@@ -69,7 +69,7 @@ export class InsuredBridgeL2Client {
       fromBlock: this.firstBlockToSearch,
       toBlock: this.endingBlockNumber || (await this.l2Web3.eth.getBlockNumber()),
     };
-    if (blockSearchConfig.fromBlock >= blockSearchConfig.toBlock) {
+    if (blockSearchConfig.fromBlock > blockSearchConfig.toBlock) {
       this.logger.debug({
         at: "InsuredBridgeL2Client",
         message: "All blocks are searched, returning early",
