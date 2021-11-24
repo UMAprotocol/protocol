@@ -237,6 +237,14 @@ export class InsuredBridgeL1Client {
       fromBlock: this.firstBlockToSearch,
       toBlock: this.endingBlockNumber || (await this.l1Web3.eth.getBlockNumber()),
     };
+    if (blockSearchConfig.fromBlock >= blockSearchConfig.toBlock) {
+      this.logger.debug({
+        at: "InsuredBridgeL1Client",
+        message: "All blocks are searched, returning early",
+        toBlock: blockSearchConfig.toBlock,
+      });
+      return;
+    }
 
     // Check for new bridgePools deployed. This acts as the initial setup and acts to more pools if they are deployed
     // while the bot is running.
