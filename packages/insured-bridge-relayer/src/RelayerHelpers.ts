@@ -48,7 +48,7 @@ export async function pruneWhitelistedL1Tokens(
   const filteredWhitelistedRelayL1Tokens = whitelistedRelayL1Tokens.filter((l1TokenAddress: string) => {
     return l2Client.isWhitelistedToken(l1TokenAddress);
   });
-  logger.info({
+  logger.debug({
     at: "AcrossRelayer#index",
     message: "Filtered out tokens that are not whitelisted on L2",
     filteredWhitelistedRelayL1Tokens,
