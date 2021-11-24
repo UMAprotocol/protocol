@@ -214,9 +214,9 @@ export class InsuredBridgeL1Client {
   }
 
   getBridgePoolForL2Token(l2Token: string, chainId: string): BridgePoolData {
-    const bridgePoolData = Object.values(this.bridgePools).filter(
-      (bridgePool) => bridgePool.l2Token[chainId] == l2Token
-    )[0];
+    const bridgePoolData = Object.values(this.bridgePools).find((bridgePool) => {
+      bridgePool.l2Token[chainId] == l2Token;
+    });
     if (!bridgePoolData) throw new Error(`No bridge pool initialized for ${l2Token} and chainID: ${chainId}`);
     return bridgePoolData;
   }
