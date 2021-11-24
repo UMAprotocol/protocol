@@ -67,29 +67,18 @@ export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
     // Update the L2 client and filter out tokens that are not whitelisted on the L2 from the whitelisted
     // L1 relay list.
     await l2Client.update();
-    const filteredWhitelistedRelayL1Tokens = await pruneWhitelistedL1Tokens(
-      logger,
-      l2Client,
-      config.whitelistedRelayL1Tokens
-    );
+    const filteredL1Whitelist = await pruneWhitelistedL1Tokens(logger, l2Client, config.whitelistedRelayL1Tokens);
 
     // For all specified whitelisted L1 tokens that this relayer supports, approve the bridge pool to spend them. This
     // method will error if the bot runner has specified a L1 tokens that is not part of the Bridge Admin whitelist.
-    await approveL1Tokens(
-      logger,
-      l1Web3,
-      gasEstimator,
-      accounts[0],
-      config.bridgeAdmin,
-      filteredWhitelistedRelayL1Tokens
-    );
+    await approveL1Tokens(logger, l1Web3, gasEstimator, accounts[0], config.bridgeAdmin, filteredL1Whitelist);
 
     const relayer = new Relayer(
       logger,
       gasEstimator,
       l1Client,
       l2Client,
-      filteredWhitelistedRelayL1Tokens,
+      filteredL1Whitelist,
       accounts[0],
       config.whitelistedChainIds,
       config.l1DeployData,
