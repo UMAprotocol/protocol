@@ -27,7 +27,6 @@ export class InsuredBridgeL2Client {
   private whitelistedTokens: { [key: string]: string } = {}; // L1Token=>L2Token
 
   private firstBlockToSearch: number;
-  private lastBlockToSearch: number | null;
 
   constructor(
     private readonly logger: Logger,
@@ -43,7 +42,6 @@ export class InsuredBridgeL2Client {
     ) as unknown) as BridgeDepositBoxWeb3;
 
     this.firstBlockToSearch = startingBlockNumber;
-    this.lastBlockToSearch = endingBlockNumber;
   }
 
   getAllDeposits() {
@@ -69,7 +67,7 @@ export class InsuredBridgeL2Client {
     // Define a config to bound the queries by.
     const blockSearchConfig = {
       fromBlock: this.firstBlockToSearch,
-      toBlock: this.lastBlockToSearch || (await this.l2Web3.eth.getBlockNumber()),
+      toBlock: this.endingBlockNumber || (await this.l2Web3.eth.getBlockNumber()),
     };
     // TODO: update this state retrieval to include looking for L2 liquidity in the deposit box that can be sent over
     // the bridge. This should consider the minimumBridgingDelay and the lastBridgeTime for a respective L2Token.
@@ -104,10 +102,7 @@ export class InsuredBridgeL2Client {
       this.deposits[depositData.depositHash] = depositData;
     }
 
-    // Advance block search one same-length window forwards.
-    const blockSearchWindowLength = blockSearchConfig.toBlock - blockSearchConfig.fromBlock;
     this.firstBlockToSearch = blockSearchConfig.toBlock + 1;
-    this.lastBlockToSearch = this.firstBlockToSearch + blockSearchWindowLength;
 
     this.logger.debug({
       at: "InsuredBridgeL2Client",

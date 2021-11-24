@@ -214,7 +214,6 @@ describe("index.js", function () {
     process.env.DISPUTER_ENABLED = "1";
     process.env.FINALIZER_ENABLED = "1";
     process.env.POLLING_DELAY = "0";
-    process.env.L2_END_BLOCK = "1000"; // Set end block to ensure WhitelistToken event is captured
 
     // Add another L1 token to rate model that is not whitelisted.
     const unWhitelistedL1Token = toChecksumAddress(randomHex(20));
