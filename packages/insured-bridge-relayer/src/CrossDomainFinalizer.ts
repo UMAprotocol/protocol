@@ -57,8 +57,25 @@ export class CrossDomainFinalizer {
         const l1PoolReserves = await this._getL1PoolReserves(l2Token);
 
         if (l2PoolBalance.gt(toBN(this.crossDomainFinalizationThreshold).mul(l1PoolReserves).div(toBN(100)))) {
+          this.logger.debug({
+            at: "AcrossRelayer#CrossDomainFinalizer",
+            message: "L2 balance > cross domain finalization threshold % of L1 pool reserves, bridging",
+            l2Token,
+            l2PoolBalance: l2PoolBalance.toString(),
+            l1PoolReserves: l1PoolReserves.toString(),
+            crossDomainFinalizationThresholdPercent: this.crossDomainFinalizationThreshold,
+          });
           await this._bridgeL2Token(l2Token, nonce, symbol, decimals);
           nonce++; // increment the nonce for the next transaction.
+        } else {
+          this.logger.debug({
+            at: "AcrossRelayer#CrossDomainFinalizer",
+            message: "L2 balance <= cross domain finalization threshold % of L1 pool reserves, skipping",
+            l2Token,
+            l2PoolBalance: l2PoolBalance.toString(),
+            l1PoolReserves: l1PoolReserves.toString(),
+            crossDomainFinalizationThresholdPercent: this.crossDomainFinalizationThreshold,
+          });
         }
       } catch (error) {
         this.logger.error({
