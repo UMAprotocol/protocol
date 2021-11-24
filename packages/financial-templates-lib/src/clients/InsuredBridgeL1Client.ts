@@ -52,7 +52,7 @@ export interface InstantRelay {
 
 export interface BridgePoolData {
   contract: BridgePoolWeb3;
-  l2Token: { [key: string]: string }; // chainID=>L1TokenAddress
+  l2Token: { [chainId: string]: string }; // chainID=>L2TokenAddress
   currentTime: number;
   relayNonce: number;
   poolCollateralDecimals: number;
