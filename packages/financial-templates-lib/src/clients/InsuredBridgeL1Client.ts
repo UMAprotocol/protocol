@@ -62,6 +62,7 @@ export interface BridgePoolData {
 export class InsuredBridgeL1Client {
   public readonly bridgeAdmin: BridgeAdminInterfaceWeb3;
   public bridgePools: { [key: string]: BridgePoolData }; // L1TokenAddress=>BridgePoolData
+  private whitelistedTokens: { [chainId: string]: { [l1TokenAddress: string]: string } } = {};
   public optimisticOracleLiveness = 0;
   public firstBlockToSearch: number;
 
@@ -112,6 +113,11 @@ export class InsuredBridgeL1Client {
   getRelayForDeposit(l1Token: string, deposit: Deposit): Relay | undefined {
     this._throwIfNotInitialized();
     return this.relays[l1Token][deposit.depositHash];
+  }
+
+  getWhitelistedTokensForChainId(chainId: string): { [l1TokenAddress: string]: string } {
+    this._throwIfNotInitialized();
+    return this.whitelistedTokens[chainId];
   }
 
   hasInstantRelayer(l1Token: string, depositHash: string, realizedLpFeePct: string): boolean {
@@ -250,6 +256,12 @@ export class InsuredBridgeL1Client {
     // while the bot is running.
     const whitelistedTokenEvents = await this.bridgeAdmin.getPastEvents("WhitelistToken", blockSearchConfig);
     for (const whitelistedTokenEvent of whitelistedTokenEvents) {
+      this.whitelistedTokens[whitelistedTokenEvent.returnValues.chainId] = {
+        [this.l1Web3.utils.toChecksumAddress(
+          whitelistedTokenEvent.returnValues.l1Token
+        )]: this.l1Web3.utils.toChecksumAddress(whitelistedTokenEvent.returnValues.l2Token),
+      };
+
       const l1Token = whitelistedTokenEvent.returnValues.l1Token;
       const l2Tokens = this.bridgePools[l1Token]?.l2Token;
       this.bridgePools[l1Token] = {
