@@ -54,6 +54,9 @@ const bridgeDepositBoxDeployData = {
   42161: {
     blockNumber: 2811998,
   },
+  10: {
+    blockNumber: 204576,
+  },
 };
 
 export interface ProcessEnv {
@@ -130,8 +133,6 @@ export class RelayerConfig {
 
     this.l1DeployData = replaceAddressCase(L1_DEPLOY_DATA ? JSON.parse(L1_DEPLOY_DATA) : bridgePoolDeployData);
     this.l2DeployData = L2_DEPLOY_DATA ? JSON.parse(L2_DEPLOY_DATA) : bridgeDepositBoxDeployData;
-
-    assert(RATE_MODELS, "RATE_MODELS required");
     const processingRateModels = RATE_MODELS ? JSON.parse(RATE_MODELS) : across.constants.RATE_MODELS;
 
     for (const l1Token of Object.keys(processingRateModels)) {

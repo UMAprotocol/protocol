@@ -6,22 +6,25 @@ const { assert } = require("chai");
 const Web3 = require("web3");
 const ganache = require("ganache-core");
 
-import { interfaceName, TokenRolesEnum, HRE } from "@uma/common";
+import { interfaceName, TokenRolesEnum, HRE, ZERO_ADDRESS } from "@uma/common";
 
 const { web3, getContract } = hre as HRE;
-const { toWei, toBN, utf8ToHex } = web3.utils;
+const { toWei, toBN, utf8ToHex, toChecksumAddress, randomHex } = web3.utils;
 const toBNWei = (number: string | number) => toBN(toWei(number.toString()).toString());
 
+let l2Web3: typeof Web3 = undefined;
 const startGanacheServer = (chainId: number, port: number) => {
+  if (l2Web3 !== undefined) return;
   const node = ganache.server({ _chainIdRpc: chainId });
   node.listen(port);
-  return new Web3("http://127.0.0.1:" + port);
+  l2Web3 = new Web3("http://127.0.0.1:" + port);
 };
 
 // Helper contracts
 const chainId = 10;
 const Messenger = getContract("MessengerMock");
 const BridgePool = getContract("BridgePool");
+const BridgeDepositBox = getContract("BridgeDepositBoxMock");
 const BridgeAdmin = getContract("BridgeAdmin");
 const Finder = getContract("Finder");
 const IdentifierWhitelist = getContract("IdentifierWhitelist");
@@ -36,6 +39,7 @@ const MockOracle = getContract("MockOracleAncillary");
 let messenger: any;
 let bridgeAdmin: any;
 let bridgePool: any;
+let bridgeDepositBox: any;
 let finder: any;
 let store: any;
 let identifierWhitelist: any;
@@ -54,6 +58,7 @@ const defaultLiveness = 100;
 const lpFeeRatePerSecond = toWei("0.0000015");
 const finalFee = toWei("1");
 const defaultProposerBondPct = toWei("0.05");
+const minimumBridgingDelay = 60; // L2->L1 token bridging must wait at least this time.
 
 // Tested file
 import { run } from "../src/index";
@@ -61,7 +66,6 @@ import { run } from "../src/index";
 describe("index.js", function () {
   let accounts;
   let owner: string;
-  let depositContractImpersonator: string;
   let spyLogger: any;
   let spy: any;
   let originalEnv: any;
@@ -71,7 +75,7 @@ describe("index.js", function () {
   });
   before(async function () {
     accounts = await web3.eth.getAccounts();
-    [owner, l2Token, depositContractImpersonator] = accounts;
+    [owner, l2Token] = accounts;
     originalEnv = process.env;
 
     // Deploy or fetch deployed contracts:
@@ -128,9 +132,6 @@ describe("index.js", function () {
       defaultProposerBondPct,
       defaultIdentifier
     ).send({ from: owner });
-    await bridgeAdmin.methods
-      .setDepositContract(chainId, depositContractImpersonator, messenger.options.address)
-      .send({ from: owner });
 
     // New BridgePool linked to BridgeAdmin
     bridgePool = await BridgePool.new(
@@ -143,7 +144,31 @@ describe("index.js", function () {
       timer.options.address
     ).send({ from: owner });
 
-    // Add L1-L2 token mapping
+    spy = sinon.spy();
+    spyLogger = winston.createLogger({
+      level: "debug",
+      transports: [new SpyTransport({ level: "debug" }, { spy: spy })],
+    });
+
+    await startGanacheServer(chainId, 7777);
+    const [l2Owner, l2BridgeAdminImpersonator] = await l2Web3.eth.getAccounts();
+
+    // Deploy deposit box on L2 web3 so that L2 client can read its events.
+    const L2BridgeDepositBox = new l2Web3.eth.Contract(BridgeDepositBox.abi);
+    bridgeDepositBox = await L2BridgeDepositBox.deploy({
+      data: BridgeDepositBox.bytecode,
+      arguments: [l2BridgeAdminImpersonator, minimumBridgingDelay, ZERO_ADDRESS, ZERO_ADDRESS],
+    }).send({
+      from: l2Owner,
+      gas: 6000000,
+      gasPrice: toWei("1", "gwei"),
+    });
+
+    await bridgeAdmin.methods
+      .setDepositContract(chainId, bridgeDepositBox.options.address, messenger.options.address)
+      .send({ from: owner });
+
+    // Add L1-L2 token mapping after deposit box address is set.
     await bridgeAdmin.methods
       .whitelistToken(
         chainId,
@@ -156,16 +181,10 @@ describe("index.js", function () {
         0
       )
       .send({ from: owner });
-
-    spy = sinon.spy();
-    spyLogger = winston.createLogger({
-      level: "debug",
-      transports: [new SpyTransport({ level: "debug" }, { spy: spy })],
-    });
-
-    await startGanacheServer(69, 7777);
+    await bridgeDepositBox.methods
+      .whitelistToken(l1Token.options.address, l2Token, bridgePool.options.address)
+      .send({ from: l2BridgeAdminImpersonator });
   });
-
   it("Runs with no errors and correctly sets approvals for whitelisted L1 tokens", async function () {
     process.env.BRIDGE_ADMIN_ADDRESS = bridgeAdmin.options.address;
     process.env.RELAYER_ENABLED = "1";
@@ -180,13 +199,49 @@ describe("index.js", function () {
         R2: toBNWei("1.00"),
       },
     });
-    process.env.CHAIN_IDS = JSON.stringify([69]);
-    process.env.NODE_URL_69 = "http://localhost:7777";
+    process.env.CHAIN_IDS = JSON.stringify([chainId]);
+    process.env[`NODE_URL_${chainId}`] = "http://localhost:7777";
 
     // Must not throw.
     await run(spyLogger, web3);
 
     // Approvals are set correctly
     assert.notEqual((await l1Token.methods.allowance(owner, bridgePool.options.address)).toString(), "0");
+  });
+  it("Filters L1 token whitelist on L2 whitelist events", async function () {
+    process.env.BRIDGE_ADMIN_ADDRESS = bridgeAdmin.options.address;
+    process.env.RELAYER_ENABLED = "1";
+    process.env.DISPUTER_ENABLED = "1";
+    process.env.FINALIZER_ENABLED = "1";
+    process.env.POLLING_DELAY = "0";
+
+    // Add another L1 token to rate model that is not whitelisted.
+    const unWhitelistedL1Token = toChecksumAddress(randomHex(20));
+    process.env.RATE_MODELS = JSON.stringify({
+      [l1Token.options.address]: {
+        UBar: toBNWei("0.65"),
+        R0: toBNWei("0.00"),
+        R1: toBNWei("0.08"),
+        R2: toBNWei("1.00"),
+      },
+      [unWhitelistedL1Token]: {
+        UBar: toBNWei("0.75"),
+        R0: toBNWei("0.00"),
+        R1: toBNWei("0.06"),
+        R2: toBNWei("2.00"),
+      },
+    });
+    process.env.CHAIN_IDS = JSON.stringify([chainId]);
+    process.env[`NODE_URL_${chainId}`] = "http://localhost:7777";
+
+    // Must not throw.
+    await run(spyLogger, web3);
+
+    // Check logs for filtered whitelist, which should contain only the whitelisted L1 token.
+    const targetLog = spy.getCalls().filter((_log: any) => {
+      return _log.lastArg.message.includes("Filtered out tokens that are not whitelisted on L2");
+    })[0];
+    assert.equal(targetLog.lastArg.filteredWhitelistedRelayL1Tokens.length, 1);
+    assert.equal(targetLog.lastArg.filteredWhitelistedRelayL1Tokens[0], l1Token.options.address);
   });
 });

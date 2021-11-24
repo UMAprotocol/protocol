@@ -34,11 +34,11 @@ export class PagerDutyTransport extends Transport {
   // Note: info must be any because that's what the base class uses.
   async log(info: any, callback: () => void): Promise<void> {
     try {
-      // If the message has markdown then add it and the bot-identifer field. Else put the whole info object as a string
+      // If the message has markdown then add it and the bot-identifier field. Else put the whole info object as a string
       const logMessage = info.mrkdwn ? info.mrkdwn + `\n${info["bot-identifier"]}` : JSON.stringify(info);
 
       // If the log contains a notification path then use a custom PagerDuty service. This lets the transport route to
-      // different pagerduty escilation paths depending on the context of the log.
+      // different pagerduty escalation paths depending on the context of the log.
       const serviceId = this.customServices[info.notificationPath] ?? this.defaultServiceId;
 
       await this.pd.incidents.createIncident(this.fromEmail, {

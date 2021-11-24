@@ -130,7 +130,11 @@ export class Relayer {
     }
     this.logger.debug({
       at: "AcrossRelayer#Disputer",
-      message: `Processing ${Object.keys(pendingRelays).length} l1 token pending relays`,
+      message: `Processing pending relays for ${Object.keys(pendingRelays).length} l1 tokens`,
+      // Log # of relays for each L1 token:
+      pendingRelayCounts: Object.keys(pendingRelays).map((l1Token) => ({
+        [l1Token]: pendingRelays[l1Token].length,
+      })),
     });
     for (const l1Token of Object.keys(pendingRelays)) {
       const disputeTransactions = []; // Array of dispute transactions to send.
@@ -162,8 +166,9 @@ export class Relayer {
         .getSettleableRelayedDepositsForL1Token(l1Token)
         .filter(
           (relay) =>
-            (relay.settleable === SettleableRelay.SlowRelayerCanSettle && relay.slowRelayer === this.account) ||
-            relay.settleable === SettleableRelay.AnyoneCanSettle
+            ((relay.settleable === SettleableRelay.SlowRelayerCanSettle && relay.slowRelayer === this.account) ||
+              relay.settleable === SettleableRelay.AnyoneCanSettle) &&
+            relay.chainId === this.l2Client.chainId
         );
 
       if (settleableRelays.length == 0) {
@@ -190,7 +195,7 @@ export class Relayer {
       }
 
       try {
-        await this._processTransactionBatch(settleRelayTransactions);
+        await this._processTransactionBatch(settleRelayTransactions as any);
       } catch (error) {
         this.logger.error({ at: "AcrossRelayer#Finalizer", message: "Unexpected error processing relay batch", error });
       }
@@ -248,7 +253,7 @@ export class Relayer {
         l2ClientChainId: this.l2Client.chainId,
         relay,
       });
-      return null;
+      return;
     }
 
     // Fetch deposit for relay.
@@ -273,6 +278,10 @@ export class Relayer {
       // we won't be able to determine otherwise if the realized LP fee % is valid.
       // Similarly, if deposit.quoteTimestamp > relay.blockTime then its also an invalid relay because it would have
       // been impossible for the relayer to compute the realized LP fee % for the deposit.quoteTime in the future.
+      // Note: This means that if the bridgepool contract is upgraded, all deposits should be disabled until the L2
+      // block time has caught up to the bridge pool's deployment time. For example, if the Optimism block time is 15
+      // minutes before Mainnet's block time, and a new bridge pool is deployed, all deposits on Optimism should be
+      // disabled for 15 minutes until deposit quote timestamps catch up to the bridge pool's deployment time.
       const relayBlockTime = Number((await this.l1Client.l1Web3.eth.getBlock(relay.blockNumber)).timestamp);
       if (
         deposit.quoteTimestamp < this.l1DeployData[deposit.l1Token].timestamp ||
@@ -504,19 +513,21 @@ export class Relayer {
       transaction: this._generateDisputeRelayTx(deposit, relay),
       message: "Disputed pending relay. Relay was deleted 🚓",
       mrkdwn: this._generateMrkdwnForDispute(deposit, relay),
+      level: "error", // Disputes are bad! we should know about this to check out what's going on.
     };
   }
 
   private async _processTransactionBatch(
-    transactions: { transaction: TransactionType | any; message: string; mrkdwn: string }[]
+    transactions: { transaction: TransactionType | any; message: string; mrkdwn: string; level: string }[]
   ) {
     // Remove any undefined transaction objects or objects that contain null transactions.
-    transactions = transactions.filter((transaction) => transaction && transaction.transaction);
+    transactions = transactions.filter((transaction) => transaction && transaction !== null && transaction.transaction);
 
     if (transactions.length == 0) return;
     if (transactions.length == 1) {
       this.logger.debug({ at: "AcrossRelayer#TxProcessor", message: "Sending transaction" });
-      await this._sendTransaction(transactions[0].transaction, transactions[0].message, transactions[0].mrkdwn);
+      const transaction = transactions[0];
+      await this._sendTransaction(transaction.transaction, transaction.message, transaction.mrkdwn, transaction.level);
     }
     if (transactions.length > 1) {
       // The `to` field in the transaction must be the same for all transactions or the batch processing will not work.
@@ -543,14 +554,20 @@ export class Relayer {
       const { txStatus } = await this._sendTransaction(
         (targetMultiCaller.methods.multicall(multiCallTransaction) as unknown) as TransactionType,
         "Multicall batch sent!🧙",
-        mrkdwnBlock
+        mrkdwnBlock,
+        transactions[0].level // note that we only send one kind of transaction in a batch so they'll all have the same level.
       );
 
       // In the event the batch transaction was unsuccessful, iterate over all transactions and send them individually.
       if (!txStatus) {
         for (const transaction of transactions) {
           this.logger.info({ at: "AcrossRelayer#TxProcessor", message: "Sending batched transactions individually😷" });
-          await this._sendTransaction(transaction.transaction, transaction.message, transaction.mrkdwn);
+          await this._sendTransaction(
+            transaction.transaction,
+            transaction.message,
+            transaction.mrkdwn,
+            transaction.level
+          );
         }
       }
     }
@@ -559,7 +576,8 @@ export class Relayer {
   private async _sendTransaction(
     transaction: TransactionType,
     message: string,
-    mrkdwn: string
+    mrkdwn: string,
+    level = "info"
   ): Promise<{
     txStatus: boolean;
     receipt: TransactionReceipt | null;
@@ -574,7 +592,8 @@ export class Relayer {
         availableAccounts: 1,
       });
       if (receipt) {
-        this.logger.info({
+        this.logger.log({
+          level,
           at: "AcrossRelayer#TxProcessor",
           message,
           mrkdwn: mrkdwn + " tx: " + createEtherscanLinkMarkdown(receipt.transactionHash),
@@ -703,6 +722,7 @@ export class Relayer {
           transaction: this._generateSlowRelayTx(relayableDeposit.deposit, realizedLpFeePct),
           message: "Slow Relay executed  🐌",
           mrkdwn,
+          logLevel: "error", // In almost all normal cases we should not have slow relays. If we do, we should know!
         };
 
       case RelaySubmitType.SpeedUp:

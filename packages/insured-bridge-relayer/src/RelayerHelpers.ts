@@ -4,7 +4,7 @@ const { toBN } = Web3.utils;
 import winston from "winston";
 import { getAbi } from "@uma/contracts-node";
 import { ZERO_ADDRESS } from "@uma/common";
-import { GasEstimator, setAllowance } from "@uma/financial-templates-lib";
+import { GasEstimator, setAllowance, InsuredBridgeL2Client } from "@uma/financial-templates-lib";
 
 import type { BN } from "@uma/common";
 
@@ -33,6 +33,27 @@ export async function approveL1Tokens(
         approvalTx: approvalTx.tx.transactionHash,
       });
   }
+}
+
+// Iterate over provided list of whitelisted L1 tokens and remove any that are not whitelisted on a specific L2.
+// The Relayer will use this whitelist to determine which deposits to relay. By default, the whitelist will be set
+// to the list of all possible tokens provided in the RateModels dictionary. However, not all L1 tokens in this
+// dictionary will be whitelisted for all L2 deposit boxes.
+export async function pruneWhitelistedL1Tokens(
+  logger: winston.Logger,
+  l2Client: InsuredBridgeL2Client,
+  whitelistedRelayL1Tokens: string[]
+): Promise<string[]> {
+  await l2Client.update();
+  const filteredWhitelistedRelayL1Tokens = whitelistedRelayL1Tokens.filter((l1TokenAddress: string) => {
+    return l2Client.isWhitelistedToken(l1TokenAddress);
+  });
+  logger.debug({
+    at: "AcrossRelayer#index",
+    message: "Filtered out tokens that are not whitelisted on L2",
+    filteredWhitelistedRelayL1Tokens,
+  });
+  return filteredWhitelistedRelayL1Tokens;
 }
 
 // Return the ballance of account on tokenAddress for a given web3 network.

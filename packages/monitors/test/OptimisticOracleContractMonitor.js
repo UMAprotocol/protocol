@@ -67,9 +67,10 @@ describe("OptimisticOracleContractMonitor.js", function () {
   const finalFee = toWei("1");
   const reward = toWei("3");
   const correctPrice = toWei("-17"); // Arbitrary price to use as the correct price for proposals + disputes
-  const identifier = web3.utils.utf8ToHex("Test Identifier");
+  const identifier = utf8ToHex("Test Identifier");
   const defaultAncillaryData = "0x";
-  const alternativeAncillaryData = "0x1234";
+  const alternativeAncillaryRaw = "someRandomKey:alaValue42069";
+  const alternativeAncillaryData = utf8ToHex(alternativeAncillaryRaw);
 
   const pushPrice = async (price) => {
     const [lastQuery] = (await mockOracle.methods.getPendingQueries().call()).slice(-1);
@@ -258,7 +259,7 @@ describe("OptimisticOracleContractMonitor.js", function () {
     await eventClient.update();
     await contractMonitor.checkForRequests();
     assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/tx/${newTxn.transactionHash}`));
-    assert.isTrue(lastSpyLogIncludes(spy, alternativeAncillaryData)); // Ancillary Data
+    assert.isTrue(lastSpyLogIncludes(spy, alternativeAncillaryRaw)); // Ancillary Data
 
     // Check that only one extra event was emitted since we already "checked" the original events.
     assert.equal(spy.callCount, spyCount + 1);
@@ -299,7 +300,7 @@ describe("OptimisticOracleContractMonitor.js", function () {
     await eventClient.update();
     await contractMonitor.checkForProposals();
     assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/tx/${newTxn.transactionHash}`));
-    assert.isTrue(lastSpyLogIncludes(spy, alternativeAncillaryData)); // Ancillary Data
+    assert.isTrue(lastSpyLogIncludes(spy, alternativeAncillaryRaw)); // Ancillary Data
 
     // Check that only one extra event was emitted since we already "checked" the original events.
     assert.equal(spy.callCount, spyCount + 1);
@@ -342,7 +343,7 @@ describe("OptimisticOracleContractMonitor.js", function () {
     await eventClient.update();
     await contractMonitor.checkForDisputes();
     assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/tx/${newTxn.transactionHash}`));
-    assert.isTrue(lastSpyLogIncludes(spy, alternativeAncillaryData)); // Ancillary Data
+    assert.isTrue(lastSpyLogIncludes(spy, alternativeAncillaryRaw)); // Ancillary Data
 
     // Check that only one extra event was emitted since we already "checked" the original events.
     assert.equal(spy.callCount, spyCount + 1);
@@ -455,7 +456,7 @@ describe("OptimisticOracleContractMonitor.js", function () {
       await skinnyEventClient.update();
       await skinnyContractMonitor.checkForRequests();
       assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/tx/${newTxn.transactionHash}`));
-      assert.isTrue(lastSpyLogIncludes(spy, alternativeAncillaryData)); // Ancillary Data
+      assert.isTrue(lastSpyLogIncludes(spy, alternativeAncillaryRaw)); // Ancillary Data
 
       // Check that only one extra event was emitted since we already "checked" the original events.
       assert.equal(spy.callCount, spyCount + 1);
@@ -508,7 +509,7 @@ describe("OptimisticOracleContractMonitor.js", function () {
       await skinnyEventClient.update();
       await skinnyContractMonitor.checkForProposals();
       assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/tx/${newTxn.transactionHash}`));
-      assert.isTrue(lastSpyLogIncludes(spy, alternativeAncillaryData)); // Ancillary Data
+      assert.isTrue(lastSpyLogIncludes(spy, alternativeAncillaryRaw)); // Ancillary Data
 
       // Check that only one extra event was emitted since we already "checked" the original events.
       assert.equal(spy.callCount, spyCount + 1);
@@ -572,7 +573,7 @@ describe("OptimisticOracleContractMonitor.js", function () {
       await skinnyEventClient.update();
       await skinnyContractMonitor.checkForDisputes();
       assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/tx/${newTxn.transactionHash}`));
-      assert.isTrue(lastSpyLogIncludes(spy, alternativeAncillaryData)); // Ancillary Data
+      assert.isTrue(lastSpyLogIncludes(spy, alternativeAncillaryRaw)); // Ancillary Data
 
       // Check that only one extra event was emitted since we already "checked" the original events.
       assert.equal(spy.callCount, spyCount + 1);
