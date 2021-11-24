@@ -241,7 +241,7 @@ describe("index.js", function () {
     const targetLog = spy.getCalls().filter((_log: any) => {
       return _log.lastArg.message.includes("Filtered out tokens that are not whitelisted on L2");
     })[0];
-    assert.equal(targetLog.lastArg.filteredWhitelistedRelayL1Tokens.length, 1);
-    assert.equal(targetLog.lastArg.filteredWhitelistedRelayL1Tokens[0], l1Token.options.address);
+    assert.equal(targetLog.lastArg.prunedWhitelist.length, 1);
+    assert.equal(targetLog.lastArg.prunedWhitelist[0], l1Token.options.address);
   });
 });

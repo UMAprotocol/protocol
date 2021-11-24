@@ -4,7 +4,7 @@ const { toBN } = Web3.utils;
 import winston from "winston";
 import { getAbi } from "@uma/contracts-node";
 import { ZERO_ADDRESS } from "@uma/common";
-import { GasEstimator, setAllowance, InsuredBridgeL2Client } from "@uma/financial-templates-lib";
+import { GasEstimator, setAllowance, InsuredBridgeL1Client, InsuredBridgeL2Client } from "@uma/financial-templates-lib";
 
 import type { BN } from "@uma/common";
 
@@ -41,19 +41,34 @@ export async function approveL1Tokens(
 // dictionary will be whitelisted for all L2 deposit boxes.
 export async function pruneWhitelistedL1Tokens(
   logger: winston.Logger,
+  l1Client: InsuredBridgeL1Client,
   l2Client: InsuredBridgeL2Client,
   whitelistedRelayL1Tokens: string[]
 ): Promise<string[]> {
-  await l2Client.update();
-  const filteredWhitelistedRelayL1Tokens = whitelistedRelayL1Tokens.filter((l1TokenAddress: string) => {
-    return l2Client.isWhitelistedToken(l1TokenAddress);
-  });
-  logger.debug({
-    at: "AcrossRelayer#index",
-    message: "Filtered out tokens that are not whitelisted on L2",
-    filteredWhitelistedRelayL1Tokens,
-  });
-  return filteredWhitelistedRelayL1Tokens;
+  await Promise.all([l2Client.update(), l1Client.update()]);
+  const whitelistedTokenMappings = await Promise.all(
+    whitelistedRelayL1Tokens.map((tokenAddress) =>
+      l1Client.bridgeAdmin.methods.whitelistedTokens(tokenAddress, l2Client.chainId.toString()).call()
+    )
+  );
+  const prunedWhitelist = whitelistedRelayL1Tokens.filter(
+    (_tokenAddress, i) => whitelistedTokenMappings[i].l2Token !== ZERO_ADDRESS
+  );
+  if (prunedWhitelist.length === 0) {
+    logger.error({
+      at: "AcrossRelayer#index",
+      message: "Filtered whitelist is empty",
+      l2DepositBox: l2Client.bridgeDepositAddress,
+    });
+  } else {
+    logger.debug({
+      at: "AcrossRelayer#index",
+      message: "Filtered out tokens that are not whitelisted on L2",
+      l2DepositBox: l2Client.bridgeDepositAddress,
+      prunedWhitelist,
+    });
+  }
+  return prunedWhitelist;
 }
 
 // Return the ballance of account on tokenAddress for a given web3 network.
