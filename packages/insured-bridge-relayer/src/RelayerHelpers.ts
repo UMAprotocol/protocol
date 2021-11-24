@@ -45,16 +45,30 @@ export async function pruneWhitelistedL1Tokens(
   l2Client: InsuredBridgeL2Client,
   whitelistedRelayL1Tokens: string[]
 ): Promise<string[]> {
-  await l1Client.update();
-  const filteredWhitelistedRelayL1Tokens = whitelistedRelayL1Tokens.filter((l1TokenAddress: string) => {
-    return l1Client.isWhitelistedToken(l1TokenAddress, l2Client.chainId.toString());
-  });
-  logger.debug({
-    at: "AcrossRelayer#index",
-    message: "Filtered out tokens that are not whitelisted on L2",
-    filteredWhitelistedRelayL1Tokens,
-  });
-  return filteredWhitelistedRelayL1Tokens;
+  await Promise.all([l2Client.update(), l1Client.update()]);
+  const whitelistedTokenMappings = await Promise.all(
+    whitelistedRelayL1Tokens.map((tokenAddress) =>
+      l1Client.bridgeAdmin.methods.whitelistedTokens(tokenAddress, l2Client.chainId.toString()).call()
+    )
+  );
+  const prunedWhitelist = whitelistedRelayL1Tokens.filter(
+    (_tokenAddress, i) => whitelistedTokenMappings[i].l2Token !== ZERO_ADDRESS
+  );
+  if (prunedWhitelist.length === 0) {
+    logger.error({
+      at: "AcrossRelayer#index",
+      message: "Filtered whitelist is empty",
+      l2DepositBox: l2Client.bridgeDepositAddress,
+    });
+  } else {
+    logger.debug({
+      at: "AcrossRelayer#index",
+      message: "Filtered out tokens that are not whitelisted on L2",
+      l2DepositBox: l2Client.bridgeDepositAddress,
+      prunedWhitelist,
+    });
+  }
+  return prunedWhitelist;
 }
 
 // Return the ballance of account on tokenAddress for a given web3 network.

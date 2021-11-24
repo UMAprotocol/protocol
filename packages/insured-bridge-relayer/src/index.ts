@@ -64,7 +64,6 @@ export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
 
     // Update the L2 client and filter out tokens that are not whitelisted on the L2 from the whitelisted
     // L1 relay list.
-    await l2Client.update();
     const filteredL1Whitelist = await pruneWhitelistedL1Tokens(
       logger,
       l1Client,

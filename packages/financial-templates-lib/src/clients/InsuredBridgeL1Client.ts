@@ -120,11 +120,6 @@ export class InsuredBridgeL1Client {
     return this.whitelistedTokens[chainId];
   }
 
-  isWhitelistedToken(l1TokenAddress: string, chainId: string): boolean {
-    this._throwIfNotInitialized();
-    return this.whitelistedTokens[chainId][toChecksumAddress(l1TokenAddress)] !== undefined;
-  }
-
   hasInstantRelayer(l1Token: string, depositHash: string, realizedLpFeePct: string): boolean {
     this._throwIfNotInitialized();
     return this.getInstantRelayer(l1Token, depositHash, realizedLpFeePct) !== undefined;
