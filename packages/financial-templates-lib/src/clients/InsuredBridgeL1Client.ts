@@ -256,7 +256,10 @@ export class InsuredBridgeL1Client {
     // while the bot is running.
     const whitelistedTokenEvents = await this.bridgeAdmin.getPastEvents("WhitelistToken", blockSearchConfig);
     for (const whitelistedTokenEvent of whitelistedTokenEvents) {
+      // Add L1=>L2 token mapping to whitelisted dictionary for this chain ID.
+      const whitelistedTokenMappingsForChainId = this.whitelistedTokens[whitelistedTokenEvent.returnValues.chainId];
       this.whitelistedTokens[whitelistedTokenEvent.returnValues.chainId] = {
+        ...whitelistedTokenMappingsForChainId,
         [this.l1Web3.utils.toChecksumAddress(
           whitelistedTokenEvent.returnValues.l1Token
         )]: this.l1Web3.utils.toChecksumAddress(whitelistedTokenEvent.returnValues.l2Token),
