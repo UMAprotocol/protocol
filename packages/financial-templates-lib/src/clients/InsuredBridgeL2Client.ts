@@ -53,7 +53,7 @@ export class InsuredBridgeL2Client {
   }
 
   isWhitelistedToken(l1TokenAddress: string) {
-    return this.whitelistedTokens[l1TokenAddress] !== undefined;
+    return this.whitelistedTokens[this.l2Web3.utils.toChecksumAddress(l1TokenAddress)] !== undefined;
   }
 
   getDepositByHash(depositHash: string) {
