@@ -33,8 +33,7 @@ export class InsuredBridgeL2Client {
     readonly l2Web3: Web3,
     readonly bridgeDepositAddress: string,
     readonly chainId: number = 0,
-    readonly startingBlockNumber: number = 0,
-    readonly endingBlockNumber: number | null = null
+    readonly startingBlockNumber: number = 0
   ) {
     this.bridgeDepositBox = (new l2Web3.eth.Contract(
       getAbi("BridgeDepositBox"),
@@ -67,7 +66,7 @@ export class InsuredBridgeL2Client {
     // Define a config to bound the queries by.
     const blockSearchConfig = {
       fromBlock: this.firstBlockToSearch,
-      toBlock: this.endingBlockNumber || (await this.l2Web3.eth.getBlockNumber()),
+      toBlock: await this.l2Web3.eth.getBlockNumber(),
     };
     if (blockSearchConfig.fromBlock > blockSearchConfig.toBlock) {
       this.logger.debug({

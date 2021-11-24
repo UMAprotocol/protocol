@@ -75,8 +75,7 @@ export class InsuredBridgeL1Client {
     readonly l1Web3: Web3,
     readonly bridgeAdminAddress: string,
     readonly rateModels: { [key: string]: RateModel },
-    readonly startingBlockNumber = 0,
-    readonly endingBlockNumber: number | null = null
+    readonly startingBlockNumber = 0
   ) {
     this.bridgeAdmin = (new l1Web3.eth.Contract(
       getAbi("BridgeAdminInterface"),
@@ -235,7 +234,7 @@ export class InsuredBridgeL1Client {
     // Define a config to bound the queries by.
     const blockSearchConfig = {
       fromBlock: this.firstBlockToSearch,
-      toBlock: this.endingBlockNumber || (await this.l1Web3.eth.getBlockNumber()),
+      toBlock: await this.l1Web3.eth.getBlockNumber(),
     };
     if (blockSearchConfig.fromBlock > blockSearchConfig.toBlock) {
       this.logger.debug({
