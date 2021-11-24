@@ -69,6 +69,15 @@ export class InsuredBridgeL2Client {
       fromBlock: this.firstBlockToSearch,
       toBlock: this.endingBlockNumber || (await this.l2Web3.eth.getBlockNumber()),
     };
+    if (blockSearchConfig.fromBlock > blockSearchConfig.toBlock) {
+      this.logger.debug({
+        at: "InsuredBridgeL2Client",
+        message: "All blocks are searched, returning early",
+        toBlock: blockSearchConfig.toBlock,
+      });
+      return;
+    }
+
     // TODO: update this state retrieval to include looking for L2 liquidity in the deposit box that can be sent over
     // the bridge. This should consider the minimumBridgingDelay and the lastBridgeTime for a respective L2Token.
     const [fundsDepositedEvents, whitelistedTokenEvents] = await Promise.all([
