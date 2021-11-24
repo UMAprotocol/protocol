@@ -4,7 +4,7 @@ const { toBN } = Web3.utils;
 import winston from "winston";
 import { getAbi } from "@uma/contracts-node";
 import { ZERO_ADDRESS } from "@uma/common";
-import { GasEstimator, setAllowance, InsuredBridgeL2Client } from "@uma/financial-templates-lib";
+import { GasEstimator, setAllowance, InsuredBridgeL1Client, InsuredBridgeL2Client } from "@uma/financial-templates-lib";
 
 import type { BN } from "@uma/common";
 
@@ -41,12 +41,13 @@ export async function approveL1Tokens(
 // dictionary will be whitelisted for all L2 deposit boxes.
 export async function pruneWhitelistedL1Tokens(
   logger: winston.Logger,
+  l1Client: InsuredBridgeL1Client,
   l2Client: InsuredBridgeL2Client,
   whitelistedRelayL1Tokens: string[]
 ): Promise<string[]> {
-  await l2Client.update();
+  await l1Client.update();
   const filteredWhitelistedRelayL1Tokens = whitelistedRelayL1Tokens.filter((l1TokenAddress: string) => {
-    return l2Client.isWhitelistedToken(l1TokenAddress);
+    return l1Client.isWhitelistedToken(l1TokenAddress, l2Client.chainId.toString());
   });
   logger.debug({
     at: "AcrossRelayer#index",

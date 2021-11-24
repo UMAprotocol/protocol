@@ -4,6 +4,7 @@
 import { getAbi } from "@uma/contracts-node";
 import type { BridgeDepositBoxWeb3 } from "@uma/contracts-node";
 import Web3 from "web3";
+const { toChecksumAddress } = Web3.utils;
 import type { Logger } from "winston";
 
 export interface Deposit {
@@ -53,7 +54,7 @@ export class InsuredBridgeL2Client {
   }
 
   isWhitelistedToken(l1TokenAddress: string) {
-    return this.whitelistedTokens[this.l2Web3.utils.toChecksumAddress(l1TokenAddress)] !== undefined;
+    return this.whitelistedTokens[toChecksumAddress(l1TokenAddress)] !== undefined;
   }
 
   getDepositByHash(depositHash: string) {
@@ -88,9 +89,9 @@ export class InsuredBridgeL2Client {
     // We assume that whitelisted token events are searched from oldest to newest so we'll just store the most recently
     // whitelisted token mappings.
     for (const whitelistedTokenEvent of whitelistedTokenEvents) {
-      this.whitelistedTokens[
-        this.l2Web3.utils.toChecksumAddress(whitelistedTokenEvent.returnValues.l1Token)
-      ] = this.l2Web3.utils.toChecksumAddress(whitelistedTokenEvent.returnValues.l2Token);
+      this.whitelistedTokens[toChecksumAddress(whitelistedTokenEvent.returnValues.l1Token)] = toChecksumAddress(
+        whitelistedTokenEvent.returnValues.l2Token
+      );
     }
 
     for (const fundsDepositedEvent of fundsDepositedEvents) {
