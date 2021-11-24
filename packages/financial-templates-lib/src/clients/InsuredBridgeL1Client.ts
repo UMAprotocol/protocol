@@ -253,7 +253,7 @@ export class InsuredBridgeL1Client {
     // while the bot is running.
     const whitelistedTokenEvents = await this.bridgeAdmin.getPastEvents("WhitelistToken", blockSearchConfig);
     for (const whitelistedTokenEvent of whitelistedTokenEvents) {
-      const l1Token = whitelistedTokenEvent.returnValues.l1Token;
+      const l1Token = this.l1Web3.utils.toChecksumAddress(whitelistedTokenEvent.returnValues.l1Token);
       const l2Tokens = this.bridgePools[l1Token]?.l2Token;
       this.bridgePools[l1Token] = {
         l2Token: l2Tokens, // Re-use existing L2 token array and update after resetting other state.
@@ -271,7 +271,9 @@ export class InsuredBridgeL1Client {
       // Associate whitelisted L2 token with chain ID for L2.
       this.bridgePools[l1Token].l2Token = {
         ...l2Tokens,
-        [whitelistedTokenEvent.returnValues.chainId]: whitelistedTokenEvent.returnValues.l2Token,
+        [whitelistedTokenEvent.returnValues.chainId]: this.l1Web3.utils.toChecksumAddress(
+          whitelistedTokenEvent.returnValues.l2Token
+        ),
       };
       this.relays[l1Token] = {};
       this.instantRelays[l1Token] = {};
