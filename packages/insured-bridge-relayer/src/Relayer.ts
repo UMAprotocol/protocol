@@ -278,6 +278,10 @@ export class Relayer {
       // we won't be able to determine otherwise if the realized LP fee % is valid.
       // Similarly, if deposit.quoteTimestamp > relay.blockTime then its also an invalid relay because it would have
       // been impossible for the relayer to compute the realized LP fee % for the deposit.quoteTime in the future.
+      // Note: This means that if the bridgepool contract is upgraded, all deposits should be disabled until the L2
+      // block time has caught up to the bridge pool's deployment time. For example, if the Optimism block time is 15
+      // minutes before Mainnet's block time, and a new bridge pool is deployed, all deposits on Optimism should be
+      // disabled for 15 minutes until deposit quote timestamps catch up to the bridge pool's deployment time.
       const relayBlockTime = Number((await this.l1Client.l1Web3.eth.getBlock(relay.blockNumber)).timestamp);
       if (
         deposit.quoteTimestamp < this.l1DeployData[deposit.l1Token].timestamp ||

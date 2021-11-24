@@ -147,4 +147,15 @@ describe("InsuredBridgeL2Client", () => {
     expectedDeposits[1].depositHash = generateDepositHash(expectedDeposits[1]);
     assert.equal(JSON.stringify(client.getAllDeposits()), JSON.stringify(expectedDeposits));
   });
+
+  it("Correctly returns whitelisted token event information", async () => {
+    // Before updating, should return false for whitelisted token.
+    assert.isFalse(client.isWhitelistedToken(l1TokenAddress));
+
+    await client.update();
+    assert.isTrue(client.isWhitelistedToken(l1TokenAddress));
+
+    // Should return false if l1 token address is not whitelisted
+    assert.isFalse(client.isWhitelistedToken(l2Token.options.address));
+  });
 });
