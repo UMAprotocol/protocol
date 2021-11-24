@@ -258,7 +258,8 @@ describe("CrossDomainFinalizer.ts", function () {
       // Now, advance time such that the L2->L1 token bridging action should be enabled. However, we should still not
       // bridge as we are below the bridging threshold of 5%. The deposit amount is 1% of initial pool liquidity.
       await l2Timer.methods.setCurrentTime(Number(depositTime) + minimumBridgingDelay + 1).send({ from: l1Owner });
-      assert.isTrue(lastSpyLogIncludes(spy, "No bridgeable L2 tokens"));
+      await crossDomainFinalizer.checkForBridgeableL2TokensAndBridge();
+      assert.isTrue(lastSpyLogIncludes(spy, "L2 balance <= cross domain finalization threshold % of L1 pool reserves"));
 
       // Token should show up as bridgeable, even though we chose not to bridge.
       assert.isTrue(await bridgeDepositBox.methods.canBridge(l2Token.options.address).call());
@@ -392,7 +393,7 @@ describe("CrossDomainFinalizer.ts", function () {
       assert.isTrue(await bridgeDepositBox.methods.canBridge(l2Token2.options.address).call());
       await crossDomainFinalizer.checkForBridgeableL2TokensAndBridge();
       assert.isTrue(spyLogIncludes(spy, -1, "L2ERC202 sent over optimism bridge"));
-      assert.isTrue(spyLogIncludes(spy, -2, "L2ERC20 sent over optimism bridge"));
+      assert.isTrue(spyLogIncludes(spy, -3, "L2ERC20 sent over optimism bridge"));
       assert.isFalse(await bridgeDepositBox.methods.canBridge(l2Token.options.address).call());
       assert.isFalse(await bridgeDepositBox.methods.canBridge(l2Token2.options.address).call());
     });
@@ -436,9 +437,9 @@ describe("CrossDomainFinalizer.ts", function () {
       assert.isTrue(await bridgeDepositBox.methods.canBridge(l2Token.options.address).call());
       assert.isTrue(await bridgeDepositBox.methods.canBridge(l2Token2.options.address).call());
       await crossDomainFinalizer.checkForBridgeableL2TokensAndBridge();
+      // Logs should indicate that L2ERC202 was bridged but not L2ERC20
       assert.isTrue(spyLogIncludes(spy, -1, "L2ERC202 sent over optimism bridge"));
-      // The log before the last log should NOT contain any bridging action logging.
-      assert.isTrue(spyLogIncludes(spy, -2, "Checking bridgeable L2 tokens"));
+      assert.isTrue(spyLogIncludes(spy, -3, "L2 balance <= cross domain finalization threshold % of L1 pool reserves"));
       assert.isTrue(await bridgeDepositBox.methods.canBridge(l2Token.options.address).call());
       assert.isFalse(await bridgeDepositBox.methods.canBridge(l2Token2.options.address).call());
     });
@@ -488,9 +489,10 @@ describe("CrossDomainFinalizer.ts", function () {
       assert.isFalse(await bridgeDepositBox.methods.canBridge(l2Token.options.address).call());
 
       await crossDomainFinalizer.checkForBridgeableL2TokensAndBridge();
+      // Logs should indicate that L2ERC202 can be and was bridged, while L2ERC20 cannot be bridged so its threshold
+      // is not even considered.
       assert.isTrue(spyLogIncludes(spy, -1, "L2ERC202 sent over optimism bridge"));
-      // The log before the last log should NOT contain any bridging action logging.
-      assert.isTrue(spyLogIncludes(spy, -2, "Checking bridgeable L2 tokens"));
+      assert.isTrue(spyLogIncludes(spy, -3, "Checking bridgeable L2 tokens"));
       assert.isFalse(await bridgeDepositBox.methods.canBridge(l2Token.options.address).call());
       assert.isFalse(await bridgeDepositBox.methods.canBridge(l2Token2.options.address).call());
     });
