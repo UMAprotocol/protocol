@@ -5,7 +5,6 @@ const fixedPointAdjustment = toBN(toWei("1"));
 
 import { runTransaction, createEtherscanLinkMarkdown, createFormatFunction, PublicNetworks } from "@uma/common";
 import { getAbi } from "@uma/contracts-node";
-import type { BridgeDepositBoxWeb3 } from "@uma/contracts-node";
 import {
   InsuredBridgeL1Client,
   InsuredBridgeL2Client,
@@ -860,30 +859,7 @@ export class Relayer {
 
       // Look up all blocks from contract deployment time to latest to ensure that a deposit, if it exists, is found.
       while (deposit === undefined) {
-        const [fundsDepositedEvents] = await Promise.all([
-          this.l2Client.bridgeDepositBox.getPastEvents("FundsDeposited", l2BlockSearchConfig),
-        ]);
-        // If there is a fallback L2 web3 provider, check that the deposit box events are also found by those providers,
-        // otherwise throw an error. This allows the caller to have additional confidence about the accuracy of fetched L2
-        // state.
-        const fundsDepositedTransactionHashes = fundsDepositedEvents.map((event) => event.transactionHash);
-        for (let i = 0; i < this.l2Client.fallbackL2Web3s.length; i++) {
-          const _bridgeDepositBox = (new this.l2Client.fallbackL2Web3s[i].eth.Contract(
-            getAbi("BridgeDepositBox"),
-            this.l2Client.bridgeDepositAddress
-          ) as unknown) as BridgeDepositBoxWeb3;
-          const [_fundsDepositedEvents] = await Promise.all([
-            _bridgeDepositBox.getPastEvents("FundsDeposited", l2BlockSearchConfig),
-          ]);
-          _fundsDepositedEvents.forEach((event) => {
-            if (!fundsDepositedTransactionHashes.includes(event.transactionHash)) {
-              throw new Error(
-                `FundsDeposited transaction hash ${event.transactionHash} found in fallback l2 provider not found in first l2 web3 provider`
-              );
-            }
-          });
-        }
-
+        const [fundsDepositedEvents] = await this.l2Client.getEventsForBlockSearch(l2BlockSearchConfig);
         // For any found deposits, try to match it with the relay:
         for (const fundsDepositedEvent of fundsDepositedEvents) {
           const _deposit: Deposit = {
