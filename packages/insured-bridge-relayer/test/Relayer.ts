@@ -218,7 +218,7 @@ describe("Relayer.ts", function () {
     // Create the rate models for the one and only l1Token, set to the single rateModel defined in the constants.
     const rateModels = { [l1Token.options.address]: rateModel };
     l1Client = new InsuredBridgeL1Client(spyLogger, web3, bridgeAdmin.options.address, rateModels);
-    l2Client = new InsuredBridgeL2Client(spyLogger, web3, bridgeDepositBox.options.address, chainId);
+    l2Client = new InsuredBridgeL2Client(spyLogger, web3, [], bridgeDepositBox.options.address, chainId);
 
     gasEstimator = new GasEstimator(spyLogger);
     relayer = new Relayer(
@@ -1102,6 +1102,7 @@ describe("Relayer.ts", function () {
       l2Client = new InsuredBridgeL2Client(
         spyLogger,
         web3,
+        [],
         bridgeDepositBox.options.address,
         chainId,
         0,
@@ -1609,7 +1610,7 @@ describe("Relayer.ts", function () {
       // Create new Relayer that is aware of new L1 token:
       const rateModels = { [l1Token.options.address]: rateModel, [newL1Token.options.address]: rateModel };
       l1Client = new InsuredBridgeL1Client(spyLogger, web3, bridgeAdmin.options.address, rateModels);
-      l2Client = new InsuredBridgeL2Client(spyLogger, web3, bridgeDepositBox.options.address, chainId);
+      l2Client = new InsuredBridgeL2Client(spyLogger, web3, [], bridgeDepositBox.options.address, chainId);
       relayer = new Relayer(
         spyLogger,
         gasEstimator,
