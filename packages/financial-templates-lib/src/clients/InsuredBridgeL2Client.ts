@@ -4,6 +4,7 @@
 import { getAbi } from "@uma/contracts-node";
 import type { BridgeDepositBoxWeb3 } from "@uma/contracts-node";
 import Web3 from "web3";
+const { toChecksumAddress } = Web3.utils;
 import type { Logger } from "winston";
 
 export interface Deposit {
@@ -24,6 +25,7 @@ export class InsuredBridgeL2Client {
   public bridgeDepositBox: BridgeDepositBoxWeb3;
 
   private deposits: { [key: string]: Deposit } = {}; // DepositHash=>Deposit
+  private whitelistedTokens: { [key: string]: string } = {}; // L1Token=>L2Token
 
   private firstBlockToSearch: number;
 
@@ -51,6 +53,10 @@ export class InsuredBridgeL2Client {
     return this.getAllDeposits().filter((deposit: Deposit) => deposit.l1Token === l1TokenAddress);
   }
 
+  isWhitelistedToken(l1TokenAddress: string) {
+    return this.whitelistedTokens[toChecksumAddress(l1TokenAddress)] !== undefined;
+  }
+
   getDepositByHash(depositHash: string) {
     return this.deposits[depositHash];
   }
@@ -64,11 +70,29 @@ export class InsuredBridgeL2Client {
       fromBlock: this.firstBlockToSearch,
       toBlock: this.endingBlockNumber || (await this.l2Web3.eth.getBlockNumber()),
     };
+    if (blockSearchConfig.fromBlock > blockSearchConfig.toBlock) {
+      this.logger.debug({
+        at: "InsuredBridgeL2Client",
+        message: "All blocks are searched, returning early",
+        toBlock: blockSearchConfig.toBlock,
+      });
+      return;
+    }
+
     // TODO: update this state retrieval to include looking for L2 liquidity in the deposit box that can be sent over
     // the bridge. This should consider the minimumBridgingDelay and the lastBridgeTime for a respective L2Token.
-    const [fundsDepositedEvents] = await Promise.all([
+    const [fundsDepositedEvents, whitelistedTokenEvents] = await Promise.all([
       this.bridgeDepositBox.getPastEvents("FundsDeposited", blockSearchConfig),
+      this.bridgeDepositBox.getPastEvents("WhitelistToken", blockSearchConfig),
     ]);
+
+    // We assume that whitelisted token events are searched from oldest to newest so we'll just store the most recently
+    // whitelisted token mappings.
+    for (const whitelistedTokenEvent of whitelistedTokenEvents) {
+      this.whitelistedTokens[toChecksumAddress(whitelistedTokenEvent.returnValues.l1Token)] = toChecksumAddress(
+        whitelistedTokenEvent.returnValues.l2Token
+      );
+    }
 
     for (const fundsDepositedEvent of fundsDepositedEvents) {
       const depositData = {

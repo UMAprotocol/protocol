@@ -21,11 +21,13 @@ export class CrossDomainFinalizer {
   async checkForBridgeableL2TokensAndBridge() {
     this.logger.debug({ at: "AcrossRelayer#CrossDomainFinalizer", message: "Checking bridgeable L2 tokens" });
 
-    const whitelistedTokenEvents = await this.l1Client.bridgeAdmin.getPastEvents("WhitelistToken", { fromBlock: 0 });
+    // Fetch all WhitelistToken events on L1 and filter out the ones that are not on the associated L2Client
+    // chainId.
+    const whitelistedTokenMappings = this.l1Client.getWhitelistedTokensForChainId(this.l2Client.chainId.toString());
 
-    // Extract the l2Tokens that have been whitelisted. The new Set syntax acts to remove any duplicates from the array.
-    // This would be the case if a l2 token was re - whitelisted after upgrading the bridgePool contract on L1.
-    const whitelistedL2Tokens = [...new Set(whitelistedTokenEvents.map((event) => event.returnValues.l2Token))];
+    // Extract the l2Tokens that have been whitelisted. `whitelistedTokenMappings` is a key-value dictionary of L1 to
+    // L2 token addresses so we'll extract just the values.
+    const whitelistedL2Tokens = Object.values(whitelistedTokenMappings);
 
     // Check if any of the whitelisted l2Tokens are bridgeable. Do this in one parallel call. Returns an array of bool
     // for each l2Token, describing if it can be bridged from L2->L1.
@@ -53,8 +55,25 @@ export class CrossDomainFinalizer {
         const l1PoolReserves = await this._getL1PoolReserves(l2Token);
 
         if (l2PoolBalance.gt(toBN(this.crossDomainFinalizationThreshold).mul(l1PoolReserves).div(toBN(100)))) {
+          this.logger.debug({
+            at: "AcrossRelayer#CrossDomainFinalizer",
+            message: "L2 balance > cross domain finalization threshold % of L1 pool reserves, bridging",
+            l2Token,
+            l2PoolBalance: l2PoolBalance.toString(),
+            l1PoolReserves: l1PoolReserves.toString(),
+            crossDomainFinalizationThresholdPercent: this.crossDomainFinalizationThreshold,
+          });
           await this._bridgeL2Token(l2Token, nonce, symbol, decimals);
           nonce++; // increment the nonce for the next transaction.
+        } else {
+          this.logger.debug({
+            at: "AcrossRelayer#CrossDomainFinalizer",
+            message: "L2 balance <= cross domain finalization threshold % of L1 pool reserves, skipping",
+            l2Token,
+            l2PoolBalance: l2PoolBalance.toString(),
+            l1PoolReserves: l1PoolReserves.toString(),
+            crossDomainFinalizationThresholdPercent: this.crossDomainFinalizationThreshold,
+          });
         }
       } catch (error) {
         this.logger.error({
@@ -108,7 +127,7 @@ export class CrossDomainFinalizer {
 
   // Fetch L1 pool reserves for a given l2Token.
   private async _getL1PoolReserves(l2Token: string): Promise<BN> {
-    const bridgePool = this.l1Client.getBridgePoolForL2Token(l2Token).contract;
+    const bridgePool = this.l1Client.getBridgePoolForL2Token(l2Token, this.l2Client.chainId.toString()).contract;
 
     const [liquidReserves, utilizedReserves] = await Promise.all([
       bridgePool.methods.liquidReserves().call(),

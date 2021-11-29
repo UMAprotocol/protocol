@@ -130,7 +130,11 @@ export class Relayer {
     }
     this.logger.debug({
       at: "AcrossRelayer#Disputer",
-      message: `Processing ${Object.keys(pendingRelays).length} l1 token pending relays`,
+      message: `Processing pending relays for ${Object.keys(pendingRelays).length} l1 tokens`,
+      // Log # of relays for each L1 token:
+      pendingRelayCounts: Object.keys(pendingRelays).map((l1Token) => ({
+        [l1Token]: pendingRelays[l1Token].length,
+      })),
     });
     for (const l1Token of Object.keys(pendingRelays)) {
       const disputeTransactions = []; // Array of dispute transactions to send.
@@ -162,8 +166,9 @@ export class Relayer {
         .getSettleableRelayedDepositsForL1Token(l1Token)
         .filter(
           (relay) =>
-            (relay.settleable === SettleableRelay.SlowRelayerCanSettle && relay.slowRelayer === this.account) ||
-            relay.settleable === SettleableRelay.AnyoneCanSettle
+            ((relay.settleable === SettleableRelay.SlowRelayerCanSettle && relay.slowRelayer === this.account) ||
+              relay.settleable === SettleableRelay.AnyoneCanSettle) &&
+            relay.chainId === this.l2Client.chainId
         );
 
       if (settleableRelays.length == 0) {
@@ -258,7 +263,7 @@ export class Relayer {
         l2ClientChainId: this.l2Client.chainId,
         relay,
       });
-      return null;
+      return;
     }
 
     // Fetch deposit for relay.
@@ -283,6 +288,10 @@ export class Relayer {
       // we won't be able to determine otherwise if the realized LP fee % is valid.
       // Similarly, if deposit.quoteTimestamp > relay.blockTime then its also an invalid relay because it would have
       // been impossible for the relayer to compute the realized LP fee % for the deposit.quoteTime in the future.
+      // Note: This means that if the bridgepool contract is upgraded, all deposits should be disabled until the L2
+      // block time has caught up to the bridge pool's deployment time. For example, if the Optimism block time is 15
+      // minutes before Mainnet's block time, and a new bridge pool is deployed, all deposits on Optimism should be
+      // disabled for 15 minutes until deposit quote timestamps catch up to the bridge pool's deployment time.
       const relayBlockTime = Number((await this.l1Client.l1Web3.eth.getBlock(relay.blockNumber)).timestamp);
       if (
         deposit.quoteTimestamp < this.l1DeployData[deposit.l1Token].timestamp ||
@@ -522,7 +531,7 @@ export class Relayer {
     transactions: { transaction: TransactionType | any; message: string; mrkdwn: string; level: string }[]
   ) {
     // Remove any undefined transaction objects or objects that contain null transactions.
-    transactions = transactions.filter((transaction) => transaction && transaction.transaction);
+    transactions = transactions.filter((transaction) => transaction && transaction !== null && transaction.transaction);
 
     if (transactions.length == 0) return;
     if (transactions.length == 1) {

@@ -14,7 +14,7 @@ import {
   InsuredBridgeL2Client,
 } from "@uma/financial-templates-lib";
 
-import { approveL1Tokens } from "./RelayerHelpers";
+import { approveL1Tokens, pruneWhitelistedL1Tokens } from "./RelayerHelpers";
 import { Relayer } from "./Relayer";
 import { CrossDomainFinalizer } from "./CrossDomainFinalizer";
 import { RelayerConfig } from "./RelayerConfig";
@@ -52,7 +52,7 @@ export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
     // Construct a web3 instance running on L2.
     const l2Web3 = getWeb3ByChainId(config.activatedChainIds[0]);
     const latestL2BlockNumber = await l2Web3.eth.getBlockNumber();
-    const l2StartBlock = latestL2BlockNumber - config.l2BlockLookback;
+    const l2StartBlock = Math.max(0, latestL2BlockNumber - config.l2BlockLookback);
 
     const l2Client = new InsuredBridgeL2Client(
       logger,
@@ -62,23 +62,25 @@ export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
       l2StartBlock
     );
 
-    // For all specified whitelisted L1 tokens that this relayer supports, approve the bridge pool to spend them. This
-    // method will error if the bot runner has specified a L1 tokens that is not part of the Bridge Admin whitelist.
-    await approveL1Tokens(
+    // Update the L2 client and filter out tokens that are not whitelisted on the L2 from the whitelisted
+    // L1 relay list.
+    const filteredL1Whitelist = await pruneWhitelistedL1Tokens(
       logger,
-      l1Web3,
-      gasEstimator,
-      accounts[0],
-      config.bridgeAdmin,
+      l1Client,
+      l2Client,
       config.whitelistedRelayL1Tokens
     );
+
+    // For all specified whitelisted L1 tokens that this relayer supports, approve the bridge pool to spend them. This
+    // method will error if the bot runner has specified a L1 tokens that is not part of the Bridge Admin whitelist.
+    await approveL1Tokens(logger, l1Web3, gasEstimator, accounts[0], config.bridgeAdmin, filteredL1Whitelist);
 
     const relayer = new Relayer(
       logger,
       gasEstimator,
       l1Client,
       l2Client,
-      config.whitelistedRelayL1Tokens,
+      filteredL1Whitelist,
       accounts[0],
       config.whitelistedChainIds,
       config.l1DeployData,
