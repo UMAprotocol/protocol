@@ -98,6 +98,7 @@ export class InsuredBridgeL2Client {
       fundsDepositedEvents = fundsDepositedEvents.concat(_fundsDepositedEvents);
       whitelistedTokenEvents = whitelistedTokenEvents.concat(_whitelistedTokenEvents);
     }
+    // TODO: filter out redundant events
 
     // We assume that whitelisted token events are searched from oldest to newest so we'll just store the most recently
     // whitelisted token mappings.

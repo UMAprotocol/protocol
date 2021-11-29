@@ -866,6 +866,7 @@ export class Relayer {
           ]);
           fundsDepositedEvents = fundsDepositedEvents.concat(_fundsDepositedEvents);
         }
+        // TODO: Filter out redundant events
         // For any found deposits, try to match it with the relay:
         for (const fundsDepositedEvent of fundsDepositedEvents) {
           const _deposit: Deposit = {
