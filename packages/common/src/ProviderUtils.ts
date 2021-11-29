@@ -158,16 +158,9 @@ export function getWeb3ByChainId(chainId: number): Web3 {
  * @returns array of new readonly Web3 instances.
  */
 export function getRetryWeb3sByChainId(chainId: number): Web3[] {
-  const retryConfigJson = process.env[`RETRY_CONFIG_${chainId}`];
-  if (!retryConfigJson) return [];
+  const retryConfigJson = process.env[`RETRY_CONFIG_${chainId}`] || "[]";
   const retryConfig: RetryConfig[] = JSON.parse(retryConfigJson);
-
-  const retryWeb3s: Web3[] = [];
-  retryConfig.forEach((config) => {
-    retryWeb3s.push(new Web3(config.url));
-  });
-
-  return retryWeb3s;
+  return retryConfig.map((config) => new Web3(config.url));
 }
 
 /**
