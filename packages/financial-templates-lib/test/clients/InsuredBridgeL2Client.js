@@ -77,7 +77,7 @@ describe("InsuredBridgeL2Client", () => {
     // DummyLogger will not print anything to console as only capture `info` level events.
     const dummyLogger = winston.createLogger({ level: "info", transports: [new winston.transports.Console()] });
 
-    client = new InsuredBridgeL2Client(dummyLogger, web3, [], depositBox.options.address);
+    client = new InsuredBridgeL2Client(dummyLogger, web3, depositBox.options.address);
   });
 
   it("Correctly returns deposit event information", async () => {
