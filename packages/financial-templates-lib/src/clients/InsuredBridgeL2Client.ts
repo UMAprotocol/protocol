@@ -4,8 +4,9 @@
 import { getAbi } from "@uma/contracts-node";
 import type { BridgeDepositBoxWeb3 } from "@uma/contracts-node";
 import Web3 from "web3";
-const { toChecksumAddress } = Web3.utils;
+const { toChecksumAddress, soliditySha3 } = Web3.utils;
 import type { Logger } from "winston";
+import { EventData } from "web3-eth-contract";
 
 export interface Deposit {
   chainId: number;
@@ -22,7 +23,7 @@ export interface Deposit {
 }
 
 export class InsuredBridgeL2Client {
-  public bridgeDepositBox: BridgeDepositBoxWeb3;
+  public bridgeDepositBoxes: BridgeDepositBoxWeb3[];
 
   private deposits: { [key: string]: Deposit } = {}; // DepositHash=>Deposit
   private whitelistedTokens: { [key: string]: string } = {}; // L1Token=>L2Token
@@ -31,16 +32,21 @@ export class InsuredBridgeL2Client {
 
   constructor(
     private readonly logger: Logger,
-    readonly l2Web3: Web3,
+    readonly l2Web3s: Web3[],
     readonly bridgeDepositAddress: string,
     readonly chainId: number = 0,
     readonly startingBlockNumber: number = 0,
     readonly endingBlockNumber: number | null = null
   ) {
-    this.bridgeDepositBox = (new l2Web3.eth.Contract(
-      getAbi("BridgeDepositBox"),
-      bridgeDepositAddress
-    ) as unknown) as BridgeDepositBoxWeb3;
+    // For each L2 web3 provider, store a contract instance. We do this for l2 web3 provider redundancy because l2
+    // providers are expected to be flaky (compared to L1 providers) and we will query state from all l2 providers.
+    this.bridgeDepositBoxes = [];
+
+    l2Web3s.forEach((_l2Web3) => {
+      this.bridgeDepositBoxes.push(
+        (new _l2Web3.eth.Contract(getAbi("BridgeDepositBox"), bridgeDepositAddress) as unknown) as BridgeDepositBoxWeb3
+      );
+    });
 
     this.firstBlockToSearch = startingBlockNumber;
   }
@@ -66,9 +72,10 @@ export class InsuredBridgeL2Client {
 
   async update(): Promise<void> {
     // Define a config to bound the queries by.
+    const latestBlockNumbers = await Promise.all(this.l2Web3s.map((l2Web3) => l2Web3.eth.getBlockNumber()));
     const blockSearchConfig = {
       fromBlock: this.firstBlockToSearch,
-      toBlock: this.endingBlockNumber || (await this.l2Web3.eth.getBlockNumber()),
+      toBlock: this.endingBlockNumber || Math.min.apply(null, latestBlockNumbers),
     };
     if (blockSearchConfig.fromBlock > blockSearchConfig.toBlock) {
       this.logger.debug({
@@ -81,10 +88,16 @@ export class InsuredBridgeL2Client {
 
     // TODO: update this state retrieval to include looking for L2 liquidity in the deposit box that can be sent over
     // the bridge. This should consider the minimumBridgingDelay and the lastBridgeTime for a respective L2Token.
-    const [fundsDepositedEvents, whitelistedTokenEvents] = await Promise.all([
-      this.bridgeDepositBox.getPastEvents("FundsDeposited", blockSearchConfig),
-      this.bridgeDepositBox.getPastEvents("WhitelistToken", blockSearchConfig),
-    ]);
+    let fundsDepositedEvents: EventData[] = [];
+    let whitelistedTokenEvents: EventData[] = [];
+    for (let i = 0; i < this.bridgeDepositBoxes.length; i++) {
+      const [_fundsDepositedEvents, _whitelistedTokenEvents] = await Promise.all([
+        this.bridgeDepositBoxes[i].getPastEvents("FundsDeposited", blockSearchConfig),
+        this.bridgeDepositBoxes[i].getPastEvents("WhitelistToken", blockSearchConfig),
+      ]);
+      fundsDepositedEvents = fundsDepositedEvents.concat(_fundsDepositedEvents);
+      whitelistedTokenEvents = whitelistedTokenEvents.concat(_whitelistedTokenEvents);
+    }
 
     // We assume that whitelisted token events are searched from oldest to newest so we'll just store the most recently
     // whitelisted token mappings.
@@ -122,7 +135,7 @@ export class InsuredBridgeL2Client {
   }
 
   generateDepositHash = (depositData: Deposit): string => {
-    const depositDataAbiEncoded = this.l2Web3.eth.abi.encodeParameters(
+    const depositDataAbiEncoded = this.l2Web3s[0].eth.abi.encodeParameters(
       ["uint256", "uint64", "address", "address", "uint256", "uint64", "uint64", "uint32", "address"],
       [
         depositData.chainId,
@@ -136,7 +149,7 @@ export class InsuredBridgeL2Client {
         depositData.l1Token,
       ]
     );
-    const depositHash = this.l2Web3.utils.soliditySha3(depositDataAbiEncoded);
+    const depositHash = soliditySha3(depositDataAbiEncoded);
     if (depositHash == "" || depositHash == null) throw new Error("Bad deposit hash");
     return depositHash;
   };

@@ -503,7 +503,7 @@ export async function createPriceFeed(
     const currentL2Block = await l2Web3.eth.getBlockNumber();
     const l2Client = new InsuredBridgeL2Client(
       logger,
-      l2Web3,
+      [l2Web3],
       await l1Client.getL2DepositBoxAddress(config.l2NetId),
       config.l2NetId,
       currentL2Block - l2BlockLookback

@@ -3,6 +3,7 @@ import Web3 from "web3";
 const { toWei, toBN } = Web3.utils;
 const fixedPointAdjustment = toBN(toWei("1"));
 
+import { EventData } from "web3-eth-contract";
 import { runTransaction, createEtherscanLinkMarkdown, createFormatFunction, PublicNetworks } from "@uma/common";
 import { getAbi } from "@uma/contracts-node";
 import {
@@ -855,13 +856,16 @@ export class Relayer {
         fromBlock: this.l2DeployData[relay.chainId].blockNumber,
         toBlock: this.l2DeployData[relay.chainId].blockNumber + this.l2LookbackWindow,
       };
-      const latestBlock = Number((await this.l2Client.l2Web3.eth.getBlock("latest")).number);
-
+      const latestBlockNumbers = await Promise.all(this.l2Client.l2Web3s.map((l2Web3) => l2Web3.eth.getBlockNumber()));
       // Look up all blocks from contract deployment time to latest to ensure that a deposit, if it exists, is found.
       while (deposit === undefined) {
-        const [fundsDepositedEvents] = await Promise.all([
-          this.l2Client.bridgeDepositBox.getPastEvents("FundsDeposited", l2BlockSearchConfig),
-        ]);
+        let fundsDepositedEvents: EventData[] = [];
+        for (let i = 0; i < this.l2Client.bridgeDepositBoxes.length; i++) {
+          const [_fundsDepositedEvents] = await Promise.all([
+            this.l2Client.bridgeDepositBoxes[i].getPastEvents("FundsDeposited", l2BlockSearchConfig),
+          ]);
+          fundsDepositedEvents = fundsDepositedEvents.concat(_fundsDepositedEvents);
+        }
         // For any found deposits, try to match it with the relay:
         for (const fundsDepositedEvent of fundsDepositedEvents) {
           const _deposit: Deposit = {
@@ -893,12 +897,15 @@ export class Relayer {
 
         // Exit loop if block search encompasses "latest" block number. Breaking the loop here guarantees that the
         // above event search executes at least once.
-        if (l2BlockSearchConfig.toBlock >= latestBlock) break;
+        if (l2BlockSearchConfig.toBlock >= Math.min.apply(null, latestBlockNumbers)) break;
 
         // Increment block search.
         l2BlockSearchConfig = {
           fromBlock: l2BlockSearchConfig.toBlock,
-          toBlock: Math.min(latestBlock, l2BlockSearchConfig.toBlock + this.l2LookbackWindow),
+          toBlock: Math.min(
+            Math.min.apply(null, latestBlockNumbers),
+            l2BlockSearchConfig.toBlock + this.l2LookbackWindow
+          ),
         };
       }
     }

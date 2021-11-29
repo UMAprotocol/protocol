@@ -56,7 +56,7 @@ export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
 
     const l2Client = new InsuredBridgeL2Client(
       logger,
-      l2Web3,
+      [l2Web3],
       await l1Client.getL2DepositBoxAddress(config.activatedChainIds[0]),
       config.activatedChainIds[0],
       l2StartBlock

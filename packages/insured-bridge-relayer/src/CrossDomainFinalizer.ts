@@ -32,7 +32,7 @@ export class CrossDomainFinalizer {
     // Check if any of the whitelisted l2Tokens are bridgeable. Do this in one parallel call. Returns an array of bool
     // for each l2Token, describing if it can be bridged from L2->L1.
     const canBridge = await Promise.all(
-      whitelistedL2Tokens.map((l2Token) => this.l2Client.bridgeDepositBox.methods.canBridge(l2Token).call())
+      whitelistedL2Tokens.map((l2Token) => this.l2Client.bridgeDepositBoxes[0].methods.canBridge(l2Token).call())
     );
 
     // For each canBridge result, check if it is true. If so, then we can bridge the token.
@@ -45,7 +45,7 @@ export class CrossDomainFinalizer {
     }
     // Track the account nonce and manually increment on each TX. We need to do this because the L2 transactions
     // process quicker than the infura node updates and we need to avoid the nonce collision.
-    let nonce = await this.l2Client.l2Web3.eth.getTransactionCount(this.account);
+    let nonce = await this.l2Client.l2Web3s[0].eth.getTransactionCount(this.account);
     for (const l2Token of bridgeableL2Tokens) {
       // For each bridgeable L2Token, check the balance in the deposit box. If it is greater than
       // crossDomainFinalizationThreshold, as a percentage, then we can bridge it.
@@ -91,7 +91,7 @@ export class CrossDomainFinalizer {
   private async _bridgeL2Token(l2Token: string, nonce: number, symbol: string, decimals: number) {
     // Note that this tx sending method is NOT using TransactionUtils runTransaction as it is not required on L2.
     // Provide the nonce manually. Web3.js will increment it for us normally but it struggle with doing thins on L2s.
-    const receipt = await this.l2Client.bridgeDepositBox.methods
+    const receipt = await this.l2Client.bridgeDepositBoxes[0].methods
       .bridgeTokens(l2Token, "0") // The second term in this function call is l2Gas, which is currently unused.
       .send({ from: this.account, nonce });
 
@@ -114,12 +114,12 @@ export class CrossDomainFinalizer {
 
   // Fetch info about a token on L2.
   private async _getL2TokenInfo(l2Token: string): Promise<{ symbol: string; decimals: number; l2PoolBalance: BN }> {
-    const l2TokenInstance = new this.l2Client.l2Web3.eth.Contract(getAbi("ERC20"), l2Token);
+    const l2TokenInstance = new this.l2Client.l2Web3s[0].eth.Contract(getAbi("ERC20"), l2Token);
 
     const [symbol, decimals, l2PoolBalance] = await Promise.all([
       l2TokenInstance.methods.symbol().call(),
       l2TokenInstance.methods.decimals().call(),
-      l2TokenInstance.methods.balanceOf(this.l2Client.bridgeDepositBox.options.address).call(),
+      l2TokenInstance.methods.balanceOf(this.l2Client.bridgeDepositBoxes[0].options.address).call(),
     ]);
 
     return { symbol, decimals, l2PoolBalance: toBN(l2PoolBalance) };
