@@ -1,3 +1,4 @@
+import { BigNumber, ethers } from "ethers";
 // these gas costs are estimations, its possible to provide better estimations yourself when invoking getGasFees.
 export const SLOW_ETH_GAS = 243177;
 export const SLOW_ERC_GAS = 250939;
@@ -8,7 +9,20 @@ export const FAST_ETH_GAS = 273519;
 export const FAST_ERC_GAS = 281242;
 export const FAST_UMA_GAS = 305572;
 
-export const RATE_MODELS = {
+export interface RateModel {
+  UBar: string; // denote the utilization kink along the rate model where the slope of the interest rate model changes.
+  R0: string; // is the interest rate charged at 0 utilization
+  R1: string; // R_0+R_1 is the interest rate charged at UBar
+  R2: string; // R_0+R_1+R_2 is the interest rate charged at 100% utilization
+}
+export interface RateModelBN {
+  UBar: BigNumber; // denote the utilization kink along the rate model where the slope of the interest rate model changes.
+  R0: BigNumber; // is the interest rate charged at 0 utilization
+  R1: BigNumber; // R_0+R_1 is the interest rate charged at UBar
+  R2: BigNumber; // R_0+R_1+R_2 is the interest rate charged at 100% utilization
+}
+
+export const RATE_MODELS: Record<string, RateModel> = {
   "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2": {
     UBar: "650000000000000000",
     R0: "0",
@@ -34,3 +48,13 @@ export const RATE_MODELS = {
     R2: "2000000000000000000",
   },
 };
+
+export function getRateModel(address: string): RateModelBN | undefined {
+  const model = RATE_MODELS[ethers.utils.getAddress(address)];
+  console.log(address, model);
+  if (!model) return;
+  // convert model into big numbers
+  return (Object.fromEntries(
+    Object.entries(model).map(([key, value]) => [key, BigNumber.from(value)])
+  ) as unknown) as RateModelBN;
+}

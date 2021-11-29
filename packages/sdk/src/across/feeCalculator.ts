@@ -30,7 +30,7 @@ function max(a: BigNumberish, b: BigNumberish) {
 const fixedPointAdjustment = toBNWei("1");
 
 // Calculate the rate for a 0 sized deposit (infinitesimally small).
-function calculateInstantaneousRate(rateModel: RateModel, utilization: BN) {
+export function calculateInstantaneousRate(rateModel: RateModel, utilization: BN) {
   const beforeKink = min(utilization, rateModel.UBar).mul(rateModel.R1).div(rateModel.UBar);
   const afterKink = max(toBN("0"), utilization.sub(rateModel.UBar))
     .mul(rateModel.R2)
