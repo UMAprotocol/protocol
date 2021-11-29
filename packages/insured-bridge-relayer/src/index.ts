@@ -54,6 +54,10 @@ export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
     const latestL2BlockNumber = await l2Web3.eth.getBlockNumber();
     const l2StartBlock = Math.max(0, latestL2BlockNumber - config.l2BlockLookback);
     const fallbackL2Web3s = getRetryWeb3sByChainId(config.activatedChainIds[0]);
+    logger.debug({
+      at: "AcrossRelayer#index",
+      message: `Constructed ${fallbackL2Web3s.length} fallback L2 web3 providers`,
+    });
     const l2Client = new InsuredBridgeL2Client(
       logger,
       l2Web3,
