@@ -6,7 +6,6 @@ import type { BridgeDepositBoxWeb3 } from "@uma/contracts-node";
 import Web3 from "web3";
 const { toChecksumAddress, soliditySha3 } = Web3.utils;
 import type { Logger } from "winston";
-import { EventData } from "web3-eth-contract";
 
 export interface Deposit {
   chainId: number;
@@ -39,7 +38,8 @@ export class InsuredBridgeL2Client {
     readonly endingBlockNumber: number | null = null
   ) {
     // For each L2 web3 provider, store a contract instance. We do this for l2 web3 provider redundancy because l2
-    // providers are expected to be flaky (compared to L1 providers) and we will query state from all l2 providers.
+    // providers are expected to be flaky (compared to L1 providers) and we will compare state from all l2 providers
+    // for extra safety.
     this.bridgeDepositBoxes = [];
 
     l2Web3s.forEach((_l2Web3) => {
@@ -88,17 +88,34 @@ export class InsuredBridgeL2Client {
 
     // TODO: update this state retrieval to include looking for L2 liquidity in the deposit box that can be sent over
     // the bridge. This should consider the minimumBridgingDelay and the lastBridgeTime for a respective L2Token.
-    let fundsDepositedEvents: EventData[] = [];
-    let whitelistedTokenEvents: EventData[] = [];
-    for (let i = 0; i < this.bridgeDepositBoxes.length; i++) {
+    const [fundsDepositedEvents, whitelistedTokenEvents] = await Promise.all([
+      this.bridgeDepositBoxes[0].getPastEvents("FundsDeposited", blockSearchConfig),
+      this.bridgeDepositBoxes[0].getPastEvents("WhitelistToken", blockSearchConfig),
+    ]);
+
+    // Compare the events found on other providers with the first provider, if they do not match then throw an error.
+    const fundsDepositedTransactionHashes = fundsDepositedEvents.map((event) => event.transactionHash);
+    const whitelistedTokenTransactionHashes = whitelistedTokenEvents.map((event) => event.transactionHash);
+    for (let i = 1; i < this.bridgeDepositBoxes.length; i++) {
       const [_fundsDepositedEvents, _whitelistedTokenEvents] = await Promise.all([
         this.bridgeDepositBoxes[i].getPastEvents("FundsDeposited", blockSearchConfig),
         this.bridgeDepositBoxes[i].getPastEvents("WhitelistToken", blockSearchConfig),
       ]);
-      fundsDepositedEvents = fundsDepositedEvents.concat(_fundsDepositedEvents);
-      whitelistedTokenEvents = whitelistedTokenEvents.concat(_whitelistedTokenEvents);
+      _fundsDepositedEvents.forEach((event) => {
+        if (!fundsDepositedTransactionHashes.includes(event.transactionHash)) {
+          throw new Error(
+            `Could not find FundsDeposited transaction hash ${event.transactionHash} in first l2 web3 provider`
+          );
+        }
+      });
+      _whitelistedTokenEvents.forEach((event) => {
+        if (!whitelistedTokenTransactionHashes.includes(event.transactionHash)) {
+          throw new Error(
+            `Could not find WhitelistToken transaction hash ${event.transactionHash} in first l2 web3 provider`
+          );
+        }
+      });
     }
-    // TODO: filter out redundant events
 
     // We assume that whitelisted token events are searched from oldest to newest so we'll just store the most recently
     // whitelisted token mappings.

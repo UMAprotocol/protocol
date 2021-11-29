@@ -3,7 +3,6 @@ import Web3 from "web3";
 const { toWei, toBN } = Web3.utils;
 const fixedPointAdjustment = toBN(toWei("1"));
 
-import { EventData } from "web3-eth-contract";
 import { runTransaction, createEtherscanLinkMarkdown, createFormatFunction, PublicNetworks } from "@uma/common";
 import { getAbi } from "@uma/contracts-node";
 import {
@@ -859,14 +858,23 @@ export class Relayer {
       const latestBlockNumbers = await Promise.all(this.l2Client.l2Web3s.map((l2Web3) => l2Web3.eth.getBlockNumber()));
       // Look up all blocks from contract deployment time to latest to ensure that a deposit, if it exists, is found.
       while (deposit === undefined) {
-        let fundsDepositedEvents: EventData[] = [];
-        for (let i = 0; i < this.l2Client.bridgeDepositBoxes.length; i++) {
+        const [fundsDepositedEvents] = await Promise.all([
+          this.l2Client.bridgeDepositBoxes[0].getPastEvents("FundsDeposited", l2BlockSearchConfig),
+        ]);
+        // Compare the events found on other providers with the first provider, if they do not match then throw an error.
+        const fundsDepositedTransactionHashes = fundsDepositedEvents.map((event) => event.transactionHash);
+        for (let i = 1; i < this.l2Client.bridgeDepositBoxes.length; i++) {
           const [_fundsDepositedEvents] = await Promise.all([
             this.l2Client.bridgeDepositBoxes[i].getPastEvents("FundsDeposited", l2BlockSearchConfig),
           ]);
-          fundsDepositedEvents = fundsDepositedEvents.concat(_fundsDepositedEvents);
+          _fundsDepositedEvents.forEach((event) => {
+            if (!fundsDepositedTransactionHashes.includes(event.transactionHash)) {
+              throw new Error(
+                `Could not find FundsDeposited transaction hash ${event.transactionHash} in first l2 web3 provider`
+              );
+            }
+          });
         }
-        // TODO: Filter out redundant events
         // For any found deposits, try to match it with the relay:
         for (const fundsDepositedEvent of fundsDepositedEvents) {
           const _deposit: Deposit = {
