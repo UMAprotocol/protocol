@@ -4,7 +4,7 @@ import ynatm from "@umaprotocol/ynatm";
 import winston from "winston";
 
 import type Web3 from "web3";
-import type { TransactionReceipt } from "web3-core";
+import type { TransactionReceipt, PromiEvent } from "web3-core";
 import type { ContractSendMethod, SendOptions } from "web3-eth-contract";
 
 type CallReturnValue = ReturnType<ContractSendMethod["call"]>;
@@ -25,8 +25,8 @@ interface AugmentedWeb3 extends Web3 {
   nonces: { [address: string]: number };
 }
 
-export interface executedTransaction {
-  receipt: TransactionReceipt;
+export interface ExecutedTransaction {
+  receipt: TransactionReceipt | PromiEvent<TransactionReceipt>;
   transactionHash: string;
   returnValue: CallReturnValue;
   transactionConfig: AugmentedSendOptions;
@@ -51,7 +51,7 @@ const argv = minimist(process.argv.slice(), {});
  * transaction config. Note that the transaction receipt will be a promise if waitForMine is false.
  */
 export const runTransaction = async ({
-  web3,
+  web3: _web3,
   transaction,
   transactionConfig,
   availableAccounts = 1,
@@ -62,12 +62,12 @@ export const runTransaction = async ({
   transactionConfig: AugmentedSendOptions;
   availableAccounts?: number;
   waitForMine?: boolean;
-}): Promise<executedTransaction> => {
-  // use a cast version of web3 to enable callers to not have to define the `nonces` mapping in the web3 object.
-  const augmentedWeb3 = web3 as AugmentedWeb3;
+}): Promise<ExecutedTransaction> => {
+  // Use a cast version of web3 to enable callers to not have to define the `nonces` mapping in the web3 object.
+  const web3 = _web3 as AugmentedWeb3;
   // Add chainId in case RPC enforces transactions to be replay-protected, (i.e. enforced in geth v1.10,
   // https://blog.ethereum.org/2021/03/03/geth-v1-10-0/).
-  transactionConfig.chainId = augmentedWeb3.utils.toHex(await augmentedWeb3.eth.getChainId());
+  transactionConfig.chainId = web3.utils.toHex(await web3.eth.getChainId());
 
   // Multiplier applied to Truffle's estimated gas limit for a transaction to send.
   const GAS_LIMIT_BUFFER = 1.25;
@@ -76,9 +76,9 @@ export const runTransaction = async ({
   // pending transaction. Note if all accounts have pending transactions then the account provided in the original
   // config.from (accounts[0]) will be used.
   if (availableAccounts > 1) {
-    const availableAccountsArray = (await augmentedWeb3.eth.getAccounts()).slice(0, availableAccounts);
+    const availableAccountsArray = (await web3.eth.getAccounts()).slice(0, availableAccounts);
     for (const account of availableAccountsArray) {
-      if (!(await accountHasPendingTransactions(augmentedWeb3, account))) {
+      if (!(await accountHasPendingTransactions(web3, account))) {
         transactionConfig.from = account; // set the account to execute the transaction to the available account.
         transactionConfig.usingOffSetDSProxyAccount = true; // add a bit more details to the logs produced.
         break;
@@ -88,21 +88,19 @@ export const runTransaction = async ({
 
   // Compute the selected account nonce. If the account has a pending transaction then use the subsequent index after the
   // pending transactions to ensure this new transaction does not collide with any existing transactions in the mempool.
-  if (await accountHasPendingTransactions(augmentedWeb3, transactionConfig.from))
-    transactionConfig.nonce = await getPendingTransactionCount(augmentedWeb3, transactionConfig.from);
+  if (await accountHasPendingTransactions(web3, transactionConfig.from))
+    transactionConfig.nonce = await getPendingTransactionCount(web3, transactionConfig.from);
   // Else, there is no pending transaction and we use the current account transaction count as the nonce.
   // This method does not play nicely in tests. Leave the nonce null to auto fill.
   else if (argv.network != "test" && argv._.includes("test"))
-    transactionConfig.nonce = await augmentedWeb3.eth.getTransactionCount(transactionConfig.from);
-  // Store the transaction nonce in the augmentedWeb3 object so that it can be used in the future. This enables us to fire a
+    transactionConfig.nonce = await web3.eth.getTransactionCount(transactionConfig.from);
+  // Store the transaction nonce in the web3 object so that it can be used in the future. This enables us to fire a
   // bunch of transactions off without needing to wait for them to be included in the mempool by manually incrementing.
-  console.log("argv", argv);
   if (argv.network != "test" && argv._.includes("test")) {
-    if (augmentedWeb3.nonces?.[transactionConfig.from])
-      transactionConfig.nonce = ++augmentedWeb3.nonces[transactionConfig.from];
+    if (web3.nonces?.[transactionConfig.from]) transactionConfig.nonce = ++web3.nonces[transactionConfig.from];
     else if (transactionConfig.nonce)
-      augmentedWeb3.nonces = {
-        ...augmentedWeb3.nonces,
+      web3.nonces = {
+        ...web3.nonces,
         [transactionConfig.from]: transactionConfig.nonce,
       };
   }
@@ -316,14 +314,14 @@ export async function findBlockNumberAtTimestamp(
  * transaction if the function can detect it will revert (i.e using the .call syntax). Therefore this function will only
  * catch reverts that could not be seen at submission time.
  */
-export async function processTransactionPromiseBatch(transactions: Array<executedTransaction>, logger: winston.Logger) {
+export async function processTransactionPromiseBatch(transactions: Array<ExecutedTransaction>, logger: winston.Logger) {
   logger.debug({
     at: "TransactionUtils",
     message: "Waiting on transaction batch",
     transactions: transactions.map((transaction) => transaction.transactionHash),
   });
-  const transactionResults = await Promise.allSettled(transactions.map((tx: any) => tx.receipt));
-  const revertedTransactions = (transactionResults as any).filter((result: any) => result.status === "rejected");
+  const transactionResults = await Promise.allSettled(transactions.map((tx: ExecutedTransaction) => tx.receipt));
+  const revertedTransactions = transactionResults.filter((result) => result.status === "rejected");
   if (revertedTransactions.length == 0)
     logger.debug({ at: "TransactionUtils", message: "Transaction batch processed without error" });
   else

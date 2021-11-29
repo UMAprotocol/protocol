@@ -16,7 +16,7 @@ import {
 } from "@uma/financial-templates-lib";
 import { getTokenBalance } from "./RelayerHelpers";
 
-import type { BN, TransactionType, executedTransaction } from "@uma/common";
+import type { BN, TransactionType, ExecutedTransaction } from "@uma/common";
 
 // Stores state of Relay (i.e. Pending, Uninitialized, Finalized) and linked L2 deposit parameters.
 type RelayableDeposit = { status: ClientRelayState; deposit: Deposit };
@@ -31,7 +31,7 @@ export enum RelaySubmitType {
 }
 
 export class Relayer {
-  executedTransactions: Array<executedTransaction> = []; // store all submitted transactions during execution lifecycle.
+  ExecutedTransactions: Array<ExecutedTransaction> = []; // store all submitted transactions during execution lifecycle.
 
   /**
    * @notice Constructs new Relayer Instance.
@@ -204,14 +204,14 @@ export class Relayer {
     return;
   }
 
-  // Returns all executedTransactions from the current execution block.
-  getExecutedTransactions(): executedTransaction[] {
-    return this.executedTransactions;
+  // Returns all ExecutedTransactions from the current execution block.
+  getExecutedTransactions(): ExecutedTransaction[] {
+    return this.ExecutedTransactions;
   }
 
-  // Resets executedTransactions to the null state. Done at the start of each execution loop.
+  // Resets ExecutedTransactions to the null state. Done at the start of each execution loop.
   resetExecutedTransactions(): void {
-    this.executedTransactions = [];
+    this.ExecutedTransactions = [];
   }
 
   // Evaluates given pending `relay` and determines whether to submit a dispute.
@@ -590,7 +590,7 @@ export class Relayer {
     level = "info"
   ): Promise<{
     txStatus: boolean;
-    executionResult: executedTransaction | null;
+    executionResult: ExecutedTransaction | null;
   }> {
     try {
       await this.gasEstimator.update();
@@ -613,9 +613,9 @@ export class Relayer {
           mrkdwn: mrkdwn + " tx: " + createEtherscanLinkMarkdown(executionResult.transactionHash),
         });
         // Just because the transaction was successfully included in the mem pool does not mean it will be mined without
-        // reverting. Store the transaction execution result within the executedTransactions array. This is processed
+        // reverting. Store the transaction execution result within the ExecutedTransactions array. This is processed
         // at the end of the bot execution loop to ensure that all submitted transactions were successfully included.
-        this.executedTransactions.push(executionResult);
+        this.ExecutedTransactions.push(executionResult);
         return { txStatus: true, executionResult };
       } else throw executionResult;
     } catch (error) {

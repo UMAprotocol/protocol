@@ -130,20 +130,21 @@ export class DSProxyManager {
         account: this.account,
       });
       await this.gasEstimator.update();
-      const { receipt, transactionConfig } = await runTransaction({
+      const { receipt, transactionConfig, transactionHash } = await runTransaction({
         web3: this.web3,
         transaction: (this.dsProxyFactory.methods["build()"]() as unknown) as TransactionType,
         transactionConfig: { ...this.gasEstimator.getCurrentFastPrice(), from: this.account } as any,
         availableAccounts: this.availableAccounts, // give the run transaction access to additional EOAs, if they are set.
       });
-      if (!receipt?.events?.Created?.returnValues?.proxy) throw new Error("Proxy address not found in log");
-      this.dsProxyAddress = receipt.events.Created.returnValues.proxy as string;
+      if (!(receipt as TransactionReceipt)?.events?.Created?.returnValues?.proxy)
+        throw new Error("Proxy address not found in log");
+      this.dsProxyAddress = (receipt as TransactionReceipt)?.events?.Created.returnValues.proxy as string;
       this.dsProxy = (new this.web3.eth.Contract(this.dsProxyAbi, this.dsProxyAddress) as unknown) as DSProxyWeb3;
       this.logger.info({
         at: "DSProxyManager",
         message: "DSProxy deployed for your EOA 🚀",
         dsProxyAddress: this.dsProxyAddress,
-        tx: receipt.transactionHash,
+        tx: transactionHash,
         account: this.account,
         transactionConfig,
       });
@@ -163,7 +164,7 @@ export class DSProxyManager {
       callData,
     });
     await this.gasEstimator.update();
-    const { receipt, returnValue, transactionConfig } = await runTransaction({
+    const { receipt, returnValue, transactionConfig, transactionHash } = await runTransaction({
       web3: this.web3,
       // Have to hard cast this due to minor issues with types and versions.
       transaction: (this.dsProxy.methods["execute(address,bytes)"](
@@ -179,7 +180,7 @@ export class DSProxyManager {
       message: "Executed function on deployed library 📸",
       libraryAddress,
       callData,
-      tx: receipt.transactionHash,
+      tx: transactionHash,
       returnValue: returnValue.toString(),
       transactionConfig,
     });
@@ -198,7 +199,7 @@ export class DSProxyManager {
     });
 
     await this.gasEstimator.update();
-    const { receipt, returnValue, transactionConfig } = await runTransaction({
+    const { receipt, returnValue, transactionConfig, transactionHash } = await runTransaction({
       web3: this.web3,
       transaction: (this.dsProxy.methods["execute(bytes,bytes)"](callCode, callData) as unknown) as TransactionType,
       transactionConfig: { ...this.gasEstimator.getCurrentFastPrice(), from: this.account } as any,
@@ -209,7 +210,7 @@ export class DSProxyManager {
       at: "DSProxyManager",
       message: "Executed function on a freshly deployed library, created in the same tx 🤗",
       callData,
-      tx: receipt.transactionHash,
+      tx: transactionHash,
       returnValue: returnValue.toString(),
       transactionConfig,
     });
