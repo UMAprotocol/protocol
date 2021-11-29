@@ -855,7 +855,7 @@ export class Relayer {
         fromBlock: this.l2DeployData[relay.chainId].blockNumber,
         toBlock: this.l2DeployData[relay.chainId].blockNumber + this.l2LookbackWindow,
       };
-      const latestBlockNumbers = await Promise.all(this.l2Client.l2Web3s.map((l2Web3) => l2Web3.eth.getBlockNumber()));
+      const latestBlock = Number((await this.l2Client.l2Web3s[0].eth.getBlock("latest")).number);
       // Look up all blocks from contract deployment time to latest to ensure that a deposit, if it exists, is found.
       while (deposit === undefined) {
         const [fundsDepositedEvents] = await Promise.all([
@@ -906,15 +906,12 @@ export class Relayer {
 
         // Exit loop if block search encompasses "latest" block number. Breaking the loop here guarantees that the
         // above event search executes at least once.
-        if (l2BlockSearchConfig.toBlock >= Math.min.apply(null, latestBlockNumbers)) break;
+        if (l2BlockSearchConfig.toBlock >= latestBlock) break;
 
         // Increment block search.
         l2BlockSearchConfig = {
           fromBlock: l2BlockSearchConfig.toBlock,
-          toBlock: Math.min(
-            Math.min.apply(null, latestBlockNumbers),
-            l2BlockSearchConfig.toBlock + this.l2LookbackWindow
-          ),
+          toBlock: Math.min(latestBlock, l2BlockSearchConfig.toBlock + this.l2LookbackWindow),
         };
       }
     }

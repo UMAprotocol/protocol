@@ -72,10 +72,9 @@ export class InsuredBridgeL2Client {
 
   async update(): Promise<void> {
     // Define a config to bound the queries by.
-    const latestBlockNumbers = await Promise.all(this.l2Web3s.map((l2Web3) => l2Web3.eth.getBlockNumber()));
     const blockSearchConfig = {
       fromBlock: this.firstBlockToSearch,
-      toBlock: this.endingBlockNumber || Math.min.apply(null, latestBlockNumbers),
+      toBlock: this.endingBlockNumber || (await this.l2Web3s[0].eth.getBlockNumber()),
     };
     if (blockSearchConfig.fromBlock > blockSearchConfig.toBlock) {
       this.logger.debug({
