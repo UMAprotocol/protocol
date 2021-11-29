@@ -4,7 +4,7 @@
 import { getAbi } from "@uma/contracts-node";
 import type { BridgeDepositBoxWeb3 } from "@uma/contracts-node";
 import Web3 from "web3";
-import { EventData } from "web3-eth-contract";
+import { EventData, Contract } from "web3-eth-contract";
 const { toChecksumAddress } = Web3.utils;
 import type { Logger } from "winston";
 
@@ -29,6 +29,7 @@ type BlockSearchConfig = {
 
 export class InsuredBridgeL2Client {
   public bridgeDepositBox: BridgeDepositBoxWeb3;
+  private bridgeDepositBoxContract: Contract;
 
   private deposits: { [key: string]: Deposit } = {}; // DepositHash=>Deposit
   private whitelistedTokens: { [key: string]: string } = {}; // L1Token=>L2Token
@@ -44,10 +45,8 @@ export class InsuredBridgeL2Client {
     readonly endingBlockNumber: number | null = null,
     readonly fallbackL2Web3s: Web3[] = []
   ) {
-    this.bridgeDepositBox = (new l2Web3.eth.Contract(
-      getAbi("BridgeDepositBox"),
-      bridgeDepositAddress
-    ) as unknown) as BridgeDepositBoxWeb3;
+    this.bridgeDepositBoxContract = new l2Web3.eth.Contract(getAbi("BridgeDepositBox"), bridgeDepositAddress);
+    this.bridgeDepositBox = (this.bridgeDepositBoxContract as unknown) as BridgeDepositBoxWeb3;
 
     this.firstBlockToSearch = startingBlockNumber;
   }
@@ -129,7 +128,12 @@ export class InsuredBridgeL2Client {
   }
 
   async getFundsDepositedEvents(blockSearchConfig: BlockSearchConfig): Promise<EventData[]> {
-    const eventsData = await this._getEventsAndCheckAgainstFallbackProviders("FundsDeposited", blockSearchConfig);
+    const eventsData = await this.getEventsForMultipleProviders(
+      this.fallbackL2Web3s,
+      this.bridgeDepositBoxContract,
+      "FundsDeposited",
+      blockSearchConfig
+    );
     if (!eventsData.success)
       throw new Error(
         `FundsDeposited transaction hash ${eventsData.missingEvent} found in fallback l2 provider not found in first l2 web3 provider`
@@ -138,7 +142,12 @@ export class InsuredBridgeL2Client {
   }
 
   async getWhitelistTokenEvents(blockSearchConfig: BlockSearchConfig): Promise<EventData[]> {
-    const eventsData = await this._getEventsAndCheckAgainstFallbackProviders("WhitelistToken", blockSearchConfig);
+    const eventsData = await this.getEventsForMultipleProviders(
+      this.fallbackL2Web3s,
+      this.bridgeDepositBoxContract,
+      "WhitelistToken",
+      blockSearchConfig
+    );
     if (!eventsData.success)
       throw new Error(
         `WhitelistToken transaction hash ${eventsData.missingEvent} found in fallback l2 provider not found in first l2 web3 provider`
@@ -146,31 +155,36 @@ export class InsuredBridgeL2Client {
     return eventsData.events[0];
   }
 
-  // Fetches specified BridgeDeposit event for all L2 web3 providers, which returns an array of EventData arrays.
-  // Assumes that the first fetched EventData array  contains the "control" events. Compares the "control" events
-  // against each of the other EventData arrays. Returns false if any of the "control" events are NOT found exactly in
-  // ALL of the other EventData arrays.
-  async _getEventsAndCheckAgainstFallbackProviders(
+  /**
+   * Fetches specified event data for all input web3 providers. Assumes that the first fetched EventData array contains
+   * the "control" events. Compares the "control" events against each of the other EventData arrays. Returns false
+   * if any of the "control" events are NOT found exactly in ALL of the other EventData arrays.
+   * @param web3s Web3 providers to check for target event.
+   * @param contract Contract to query target event on.
+   * @param eventName Name of target event
+   * @param blockSearchConfig Target event search config
+   * @returns Object containing success of event query, missing event if not found in all providers, and all event data
+   */
+  async getEventsForMultipleProviders(
+    web3s: Web3[],
+    contract: Contract,
     eventName: string,
     blockSearchConfig: BlockSearchConfig
   ): Promise<{ success: boolean; missingEvent: string | null; events: EventData[][] }> {
-    const getEventsPromises = [this.bridgeDepositBox.getPastEvents(eventName, blockSearchConfig)];
+    const getEventsPromises = [contract.getPastEvents(eventName, blockSearchConfig)];
 
-    // If there is a fallback L2 web3 provider, check that the deposit box events are also found by those providers,
-    // otherwise throw an error. This allows the caller to have additional confidence about the accuracy of fetched L2
-    // state.
-    for (let i = 0; i < this.fallbackL2Web3s.length; i++) {
-      const _bridgeDepositBox = (new this.fallbackL2Web3s[i].eth.Contract(
-        getAbi("BridgeDepositBox"),
-        this.bridgeDepositAddress
-      ) as unknown) as BridgeDepositBoxWeb3;
-      getEventsPromises.push(_bridgeDepositBox.getPastEvents(eventName, blockSearchConfig));
+    // For each fallback web3 provider, check that the specified events are also found by those providers,
+    // otherwise throw an error. This allows the caller to have additional confidence about the accuracy of fetched
+    // contract state.
+    for (let i = 0; i < web3s.length; i++) {
+      const _contract = new web3s[i].eth.Contract(contract.options.jsonInterface, contract.options.address);
+      getEventsPromises.push(_contract.getPastEvents(eventName, blockSearchConfig));
     }
     const events = await Promise.all(getEventsPromises);
 
     const controlEvents = events[0].map((event) => event.transactionHash);
 
-    // events[0] contains the events returned by the main L2 web3 provider at index 0. We'll compare those events
+    // events[0] contains the events returned by the main web3 provider at index 0. We'll compare those events
     // against those returned by the fallback providers in events[1,...n].
     for (let i = 1; i < events.length; i++) {
       const fallbackEvents = events[i];
