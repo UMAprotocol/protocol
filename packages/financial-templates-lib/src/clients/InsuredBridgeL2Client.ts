@@ -22,6 +22,11 @@ export interface Deposit {
   depositContract: string;
 }
 
+type BlockSearchConfig = {
+  fromBlock: number;
+  toBlock: number;
+};
+
 export class InsuredBridgeL2Client {
   public bridgeDepositBox: BridgeDepositBoxWeb3;
 
@@ -83,7 +88,10 @@ export class InsuredBridgeL2Client {
 
     // TODO: update this state retrieval to include looking for L2 liquidity in the deposit box that can be sent over
     // the bridge. This should consider the minimumBridgingDelay and the lastBridgeTime for a respective L2Token.
-    const [fundsDepositedEvents, whitelistedTokenEvents] = await this.getEventsForBlockSearch(blockSearchConfig);
+    const [fundsDepositedEvents, whitelistedTokenEvents] = await Promise.all([
+      this.getFundsDepositedEvents(blockSearchConfig),
+      this.getWhitelistTokenEvents(blockSearchConfig),
+    ]);
 
     // We assume that whitelisted token events are searched from oldest to newest so we'll just store the most recently
     // whitelisted token mappings.
@@ -120,45 +128,70 @@ export class InsuredBridgeL2Client {
     });
   }
 
-  async getEventsForBlockSearch(blockSearchConfig: { fromBlock: number; toBlock: number }): Promise<EventData[][]> {
-    const [fundsDepositedEvents, whitelistedTokenEvents] = await Promise.all([
-      this.bridgeDepositBox.getPastEvents("FundsDeposited", blockSearchConfig),
-      this.bridgeDepositBox.getPastEvents("WhitelistToken", blockSearchConfig),
-    ]);
+  async getFundsDepositedEvents(blockSearchConfig: BlockSearchConfig): Promise<EventData[]> {
+    const eventsData = await this._getEventsAndCheckAgainstFallbackProviders("FundsDeposited", blockSearchConfig);
+    if (!eventsData.success)
+      throw new Error(
+        `FundsDeposited transaction hash ${eventsData.missingEvent} found in fallback l2 provider not found in first l2 web3 provider`
+      );
+    return eventsData.events[0];
+  }
+
+  async getWhitelistTokenEvents(blockSearchConfig: BlockSearchConfig): Promise<EventData[]> {
+    const eventsData = await this._getEventsAndCheckAgainstFallbackProviders("WhitelistToken", blockSearchConfig);
+    if (!eventsData.success)
+      throw new Error(
+        `WhitelistToken transaction hash ${eventsData.missingEvent} found in fallback l2 provider not found in first l2 web3 provider`
+      );
+    return eventsData.events[0];
+  }
+
+  // Fetches specified BridgeDeposit event for all L2 web3 providers, which returns an array of EventData arrays.
+  // Assumes that the first fetched EventData array  contains the "control" events. Compares the "control" events
+  // against each of the other EventData arrays. Returns false if any of the "control" events are NOT found exactly in
+  // ALL of the other EventData arrays.
+  async _getEventsAndCheckAgainstFallbackProviders(
+    eventName: string,
+    blockSearchConfig: BlockSearchConfig
+  ): Promise<{ success: boolean; missingEvent: string | null; events: EventData[][] }> {
+    const getEventsPromises = [this.bridgeDepositBox.getPastEvents(eventName, blockSearchConfig)];
 
     // If there is a fallback L2 web3 provider, check that the deposit box events are also found by those providers,
     // otherwise throw an error. This allows the caller to have additional confidence about the accuracy of fetched L2
     // state.
-    const fundsDepositedTransactionHashes = fundsDepositedEvents.map((event) => event.transactionHash);
-    const whitelistedTokenTransactionHashes = whitelistedTokenEvents.map((event) => event.transactionHash);
     for (let i = 0; i < this.fallbackL2Web3s.length; i++) {
       const _bridgeDepositBox = (new this.fallbackL2Web3s[i].eth.Contract(
         getAbi("BridgeDepositBox"),
         this.bridgeDepositAddress
       ) as unknown) as BridgeDepositBoxWeb3;
-      const [_fundsDepositedEvents, _whitelistedTokenEvents] = await Promise.all([
-        _bridgeDepositBox.getPastEvents("FundsDeposited", blockSearchConfig),
-        _bridgeDepositBox.getPastEvents("WhitelistToken", blockSearchConfig),
-      ]);
-      _fundsDepositedEvents.forEach((event) => {
-        if (!fundsDepositedTransactionHashes.includes(event.transactionHash)) {
-          throw new Error(
-            `FundsDeposited transaction hash ${event.transactionHash} found in fallback l2 provider not found in first l2 web3 provider`
-          );
-        }
-      });
-      _whitelistedTokenEvents.forEach((event) => {
-        if (!whitelistedTokenTransactionHashes.includes(event.transactionHash)) {
-          throw new Error(
-            `WhitelistToken transaction hash ${event.transactionHash} found in fallback l2 provider not found in first l2 web3 provider`
-          );
+      getEventsPromises.push(_bridgeDepositBox.getPastEvents(eventName, blockSearchConfig));
+    }
+    const events = await Promise.all(getEventsPromises);
+
+    const controlEvents = events[0].map((event) => event.transactionHash);
+
+    // events[0] contains the events returned by the main L2 web3 provider at index 0. We'll compare those events
+    // against those returned by the fallback providers in events[1,...n].
+    for (let i = 1; i < events.length; i++) {
+      const fallbackEvents = events[i];
+      fallbackEvents.forEach((event) => {
+        if (!controlEvents.includes(event.transactionHash)) {
+          return {
+            success: false,
+            missingEvent: event.transactionHash,
+            events,
+          };
         }
       });
     }
 
-    return [fundsDepositedEvents, whitelistedTokenEvents];
+    // All events[0] found in each of the other events[1,...n] arrays!
+    return {
+      success: true,
+      missingEvent: null,
+      events,
+    };
   }
-
   generateDepositHash = (depositData: Deposit): string => {
     const depositDataAbiEncoded = this.l2Web3.eth.abi.encodeParameters(
       ["uint256", "uint64", "address", "address", "uint256", "uint64", "uint64", "uint32", "address"],
