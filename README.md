@@ -240,18 +240,3 @@ The full report can be viewed by opening the `packages/core/coverage/index.html`
 ### Style Guide 🕺
 
 See [STYLE.md](STYLE.md).
-
-## Roadmap for the DVM 🛣
-
-Version 1 of the UMA Token and DVM have been released and launched. You can find the addresses of relevant contracts
-[here](./packages/core/networks/1.json). This version implements most of what's described in the
-[whitepaper](https://github.com/UMAprotocol/whitepaper/blob/master/UMA-DVM-oracle-whitepaper.pdf). Notable exceptions
-include:
-
-- The voting process uses a simple modal majority. If there is no majority, the vote is retried in the next round.
-- Defense against parasitic usage as described in section 8.1.
-- The buyback-and-burn mechanism is currently run by the UMA Foundation rather than other automated mechanisms
-  mentioned in section 5.2.
-
-The goal is to bring the implementation closer to the whitepaper in future DVM upgrades. Please see the
-[documentation site](https://docs.umaproject.org) for more details.
