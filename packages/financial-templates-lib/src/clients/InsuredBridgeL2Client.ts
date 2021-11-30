@@ -130,7 +130,7 @@ export class InsuredBridgeL2Client {
 
   async getFundsDepositedEvents(blockSearchConfig: BlockSearchConfig): Promise<EventData[]> {
     const eventsData = await this.getEventsForMultipleProviders(
-      [this.l2Web3].concat(this.fallbackL2Web3s),
+      [this.l2Web3].concat(this.fallbackL2Web3s), // TODO: This might create redundant web3 calls for the same provider
       this.bridgeDepositBox.options.jsonInterface,
       this.bridgeDepositAddress,
       "FundsDeposited",
@@ -149,7 +149,7 @@ export class InsuredBridgeL2Client {
 
   async getWhitelistTokenEvents(blockSearchConfig: BlockSearchConfig): Promise<EventData[]> {
     const eventsData = await this.getEventsForMultipleProviders(
-      [this.l2Web3].concat(this.fallbackL2Web3s),
+      [this.l2Web3].concat(this.fallbackL2Web3s), // TODO: This might create redundant web3 calls for the same provider
       this.bridgeDepositBox.options.jsonInterface,
       this.bridgeDepositAddress,
       "WhitelistToken",
