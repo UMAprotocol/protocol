@@ -130,40 +130,42 @@ export class InsuredBridgeL2Client {
 
   async getFundsDepositedEvents(blockSearchConfig: BlockSearchConfig): Promise<EventData[]> {
     const eventsData = await this.getEventsForMultipleProviders(
-      [this.l2Web3].concat(this.fallbackL2Web3s), // TODO: This might create redundant web3 calls for the same provider
+      [this.l2Web3].concat(this.fallbackL2Web3s),
       this.bridgeDepositBox.options.jsonInterface,
       this.bridgeDepositAddress,
       "FundsDeposited",
       blockSearchConfig
     );
-    if (!eventsData.success) {
-      // TODO: Do something with eventsData.missingEvents array.
+    // TODO: Should we throw, or even send a warning?
+    if (eventsData.missingEvents.length > 0) {
+      // TODO: Do something with eventsData.missingEvents array?
       throw new Error(
         `${eventsData.missingEvents.length} FundsDeposited events found in fallback l2 provider not found in all l2 web3 providers`
       );
     }
 
     // All events were found in all providers, can return any of the event data arrays
-    return eventsData.events[0];
+    return eventsData.events;
   }
 
   async getWhitelistTokenEvents(blockSearchConfig: BlockSearchConfig): Promise<EventData[]> {
     const eventsData = await this.getEventsForMultipleProviders(
-      [this.l2Web3].concat(this.fallbackL2Web3s), // TODO: This might create redundant web3 calls for the same provider
+      [this.l2Web3].concat(this.fallbackL2Web3s),
       this.bridgeDepositBox.options.jsonInterface,
       this.bridgeDepositAddress,
       "WhitelistToken",
       blockSearchConfig
     );
-    if (!eventsData.success) {
-      // TODO: Do something with eventsData.missingEvents array.
+    // TODO: Should we throw, or even send a warning?
+    if (eventsData.missingEvents.length > 0) {
+      // TODO: Do something with eventsData.missingEvents array?
       throw new Error(
         `${eventsData.missingEvents.length} WhitelistToken events found in fallback l2 provider not found in all l2 web3 providers`
       );
     }
 
     // All events were found in all providers, can return any of the event data arrays
-    return eventsData.events[0];
+    return eventsData.events;
   }
 
   /**
@@ -182,32 +184,46 @@ export class InsuredBridgeL2Client {
     contractAddress: string,
     eventName: string,
     blockSearchConfig: BlockSearchConfig
-  ): Promise<{ success: boolean; missingEvents: EventData[]; events: EventData[][] }> {
-    const events = await Promise.all(
+  ): Promise<{ missingEvents: EventData[]; events: EventData[] }> {
+    const allProviderEvents = await Promise.all(
       web3s.map((_web3) => {
         const _contract = new _web3.eth.Contract(contractAbi, contractAddress);
         return _contract.getPastEvents(eventName, blockSearchConfig);
       })
     );
 
-    // Create array of data uniquely identifying each event that we'll use to compare across providers.
-    const uniqueEventKeys = events[0].map((event) => event.transactionHash);
+    // Associate each event with a key uniquely identifying the event. We'll use this key in the next step to determine
+    // which events were returned by all providers.
+    type UniqueEventData = { [uniqueEventKey: string]: EventData };
+    const uniqueEventsForProvider: UniqueEventData[] = [];
+    // [index of web3Provider => {eventKey => event}]
 
-    // Compare unique event keys from all providers with the provider at index 0, and keep track of mismatching events.
-    const missingEvents: EventData[] = [];
-    for (let i = 1; i < events.length; i++) {
-      const _events = events[i];
-      _events.forEach((event) => {
-        if (!uniqueEventKeys.includes(event.transactionHash)) {
-          missingEvents.push(event);
-        }
+    allProviderEvents.forEach((eventDataForProvider, i) => {
+      uniqueEventsForProvider[i] = {};
+      eventDataForProvider.forEach((event) => {
+        const uniqueEventKey = event.transactionHash;
+        uniqueEventsForProvider[i][uniqueEventKey] = event;
       });
-    }
+    });
+
+    // Store only the events returned by ALL providers.
+    const eventKeysReturnedByAllProviders: string[] = [];
+    const missingEventKeys: string[] = [];
+    Object.keys(uniqueEventsForProvider[0]).forEach((eventKeysForFirstProvider: string) => {
+      let eventFoundInAllProviders = true;
+      for (let providerIndex = 1; providerIndex < uniqueEventsForProvider.length; providerIndex++) {
+        if (uniqueEventsForProvider[providerIndex][eventKeysForFirstProvider] === undefined) {
+          eventFoundInAllProviders = false;
+          break;
+        }
+      }
+      if (eventFoundInAllProviders) eventKeysReturnedByAllProviders.push(eventKeysForFirstProvider);
+      else missingEventKeys.push(eventKeysForFirstProvider);
+    });
 
     return {
-      success: Boolean(missingEvents.length === 0),
-      missingEvents,
-      events,
+      missingEvents: missingEventKeys.map((eventKey) => uniqueEventsForProvider[0][eventKey]),
+      events: eventKeysReturnedByAllProviders.map((eventKey) => uniqueEventsForProvider[0][eventKey]),
     };
   }
   generateDepositHash = (depositData: Deposit): string => {
