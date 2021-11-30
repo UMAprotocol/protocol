@@ -204,7 +204,6 @@ export class InsuredBridgeL2Client {
       });
     }
 
-    // All events[0] found in each of the other events[1,...n] arrays!
     return {
       success: Boolean(missingEvents.length === 0),
       missingEvents,
