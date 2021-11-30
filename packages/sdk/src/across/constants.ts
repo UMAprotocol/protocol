@@ -51,7 +51,6 @@ export const RATE_MODELS: Record<string, RateModel> = {
 
 export function getRateModel(address: string): RateModelBN | undefined {
   const model = RATE_MODELS[ethers.utils.getAddress(address)];
-  console.log(address, model);
   if (!model) return;
   // convert model into big numbers
   return (Object.fromEntries(

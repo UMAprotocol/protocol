@@ -259,7 +259,11 @@ function joinPoolState(
   let projectedApr = "N/A";
   const rateModel = getRateModel(poolState.l1Token);
   if (rateModel) {
-    projectedApr = fromWei(calculateInstantaneousRate(rateModel, poolState.liquidityUtilizationCurrent));
+    projectedApr = fromWei(
+      calculateInstantaneousRate(rateModel, poolState.liquidityUtilizationCurrent)
+        .mul(poolState.liquidityUtilizationCurrent)
+        .div(fixedPointAdjustment)
+    );
   }
 
   return {
