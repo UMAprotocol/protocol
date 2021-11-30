@@ -198,10 +198,19 @@ export class InsuredBridgeL2Client {
     const uniqueEventsForProvider: UniqueEventData[] = [];
     // [index of web3Provider => {eventKey => event}]
 
+    const _getUniqueEventKey = (event: EventData): string => {
+      return JSON.stringify({
+        transactionHash: event.transactionHash,
+        transactionIndex: event.transactionIndex,
+        logIndex: event.logIndex,
+        returnValues: event.returnValues,
+        address: event.address,
+      });
+    };
     allProviderEvents.forEach((eventDataForProvider, i) => {
       uniqueEventsForProvider[i] = {};
       eventDataForProvider.forEach((event) => {
-        const uniqueEventKey = event.transactionHash;
+        const uniqueEventKey = _getUniqueEventKey(event);
         uniqueEventsForProvider[i][uniqueEventKey] = event;
       });
     });
