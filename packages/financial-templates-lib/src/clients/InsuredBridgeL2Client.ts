@@ -4,7 +4,7 @@
 import { getAbi } from "@uma/contracts-node";
 import type { BridgeDepositBoxWeb3 } from "@uma/contracts-node";
 import Web3 from "web3";
-import { EventData, Contract } from "web3-eth-contract";
+import { EventData } from "web3-eth-contract";
 const { toChecksumAddress } = Web3.utils;
 import type { Logger } from "winston";
 
@@ -29,7 +29,6 @@ type BlockSearchConfig = {
 
 export class InsuredBridgeL2Client {
   public bridgeDepositBox: BridgeDepositBoxWeb3;
-  private bridgeDepositBoxContract: Contract;
 
   private deposits: { [key: string]: Deposit } = {}; // DepositHash=>Deposit
   private whitelistedTokens: { [key: string]: string } = {}; // L1Token=>L2Token
@@ -45,8 +44,10 @@ export class InsuredBridgeL2Client {
     readonly endingBlockNumber: number | null = null,
     readonly fallbackL2Web3s: Web3[] = []
   ) {
-    this.bridgeDepositBoxContract = new l2Web3.eth.Contract(getAbi("BridgeDepositBox"), bridgeDepositAddress);
-    this.bridgeDepositBox = (this.bridgeDepositBoxContract as unknown) as BridgeDepositBoxWeb3;
+    this.bridgeDepositBox = (new l2Web3.eth.Contract(
+      getAbi("BridgeDepositBox"),
+      bridgeDepositAddress
+    ) as unknown) as BridgeDepositBoxWeb3;
 
     this.firstBlockToSearch = startingBlockNumber;
   }
@@ -129,80 +130,84 @@ export class InsuredBridgeL2Client {
 
   async getFundsDepositedEvents(blockSearchConfig: BlockSearchConfig): Promise<EventData[]> {
     const eventsData = await this.getEventsForMultipleProviders(
-      this.fallbackL2Web3s,
-      this.bridgeDepositBoxContract,
+      [this.l2Web3].concat(this.fallbackL2Web3s),
+      this.bridgeDepositBox.options.jsonInterface,
+      this.bridgeDepositAddress,
       "FundsDeposited",
       blockSearchConfig
     );
-    if (!eventsData.success)
+    if (!eventsData.success) {
+      // TODO: Do something with eventsData.missingEvents array.
       throw new Error(
-        `FundsDeposited transaction hash ${eventsData.missingEvent} found in fallback l2 provider not found in first l2 web3 provider`
+        `${eventsData.missingEvents.length} FundsDeposited events found in fallback l2 provider not found in all l2 web3 providers`
       );
+    }
+
+    // All events were found in all providers, can return any of the event data arrays
     return eventsData.events[0];
   }
 
   async getWhitelistTokenEvents(blockSearchConfig: BlockSearchConfig): Promise<EventData[]> {
     const eventsData = await this.getEventsForMultipleProviders(
-      this.fallbackL2Web3s,
-      this.bridgeDepositBoxContract,
+      [this.l2Web3].concat(this.fallbackL2Web3s),
+      this.bridgeDepositBox.options.jsonInterface,
+      this.bridgeDepositAddress,
       "WhitelistToken",
       blockSearchConfig
     );
-    if (!eventsData.success)
+    if (!eventsData.success) {
+      // TODO: Do something with eventsData.missingEvents array.
       throw new Error(
-        `WhitelistToken transaction hash ${eventsData.missingEvent} found in fallback l2 provider not found in first l2 web3 provider`
+        `${eventsData.missingEvents.length} WhitelistToken events found in fallback l2 provider not found in all l2 web3 providers`
       );
+    }
+
+    // All events were found in all providers, can return any of the event data arrays
     return eventsData.events[0];
   }
 
   /**
-   * Fetches specified event data for all input web3 providers. Assumes that the first fetched EventData array contains
-   * the "control" events. Compares the "control" events against each of the other EventData arrays. Returns false
-   * if any of the "control" events are NOT found exactly in ALL of the other EventData arrays.
+   * Fetches specified contract event data for all input web3 providers. Returns false if any of the events found with
+   * one provider are NOT matched exactly in ALL of the other providers' event arrays.
    * @param web3s Web3 providers to check for target event.
-   * @param contract Contract to query target event on.
-   * @param eventName Name of target event
+   * @param contractAbi Contract ABI to query target event on.
+   * @param contractAddress Contract address to query target event on.
+   * @param eventName Name of target event.
    * @param blockSearchConfig Target event search config
-   * @returns Object containing success of event query, missing event if not found in all providers, and all event data
+   * @returns Object containing success of event query, missing events not found in all providers, and all event data
    */
   async getEventsForMultipleProviders(
     web3s: Web3[],
-    contract: Contract,
+    contractAbi: any[],
+    contractAddress: string,
     eventName: string,
     blockSearchConfig: BlockSearchConfig
-  ): Promise<{ success: boolean; missingEvent: string | null; events: EventData[][] }> {
-    const getEventsPromises = [contract.getPastEvents(eventName, blockSearchConfig)];
+  ): Promise<{ success: boolean; missingEvents: EventData[]; events: EventData[][] }> {
+    const events = await Promise.all(
+      web3s.map((_web3) => {
+        const _contract = new _web3.eth.Contract(contractAbi, contractAddress);
+        return _contract.getPastEvents(eventName, blockSearchConfig);
+      })
+    );
 
-    // For each fallback web3 provider, check that the specified events are also found by those providers,
-    // otherwise throw an error. This allows the caller to have additional confidence about the accuracy of fetched
-    // contract state.
-    for (let i = 0; i < web3s.length; i++) {
-      const _contract = new web3s[i].eth.Contract(contract.options.jsonInterface, contract.options.address);
-      getEventsPromises.push(_contract.getPastEvents(eventName, blockSearchConfig));
-    }
-    const events = await Promise.all(getEventsPromises);
+    // Create array of data uniquely identifying each event that we'll use to compare across providers.
+    const uniqueEventKeys = events[0].map((event) => event.transactionHash);
 
-    const controlEvents = events[0].map((event) => event.transactionHash);
-
-    // events[0] contains the events returned by the main web3 provider at index 0. We'll compare those events
-    // against those returned by the fallback providers in events[1,...n].
+    // Compare unique event keys from all providers with the provider at index 0, and keep track of mismatching events.
+    const missingEvents: EventData[] = [];
     for (let i = 1; i < events.length; i++) {
-      const fallbackEvents = events[i];
-      fallbackEvents.forEach((event) => {
-        if (!controlEvents.includes(event.transactionHash)) {
-          return {
-            success: false,
-            missingEvent: event.transactionHash,
-            events,
-          };
+      const _events = events[i];
+      _events.forEach((event) => {
+        if (!uniqueEventKeys.includes(event.transactionHash)) {
+          missingEvents.push(event);
         }
       });
     }
 
     // All events[0] found in each of the other events[1,...n] arrays!
     return {
-      success: true,
-      missingEvent: null,
+      success: Boolean(missingEvents.length === 0),
+      missingEvents,
       events,
     };
   }
