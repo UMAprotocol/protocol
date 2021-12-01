@@ -199,6 +199,9 @@ export class InsuredBridgeL2Client {
     type UniqueEventData = { [uniqueEventKey: string]: EventData };
     const uniqueEventsForProvider: UniqueEventData[] = [];
     // [index of web3Provider => {eventKey => event}]
+    const uniqueEvents: UniqueEventData = {};
+    // Union map of ALL unique events across all providers: [{eventKey => event}]. We'll use this map as the starting
+    // point for all of the matched events that we'll return from this function.
 
     const _getUniqueEventKey = (event: EventData): string => {
       return JSON.stringify({
@@ -213,23 +216,26 @@ export class InsuredBridgeL2Client {
       uniqueEventsForProvider[i] = {};
       eventDataForProvider.forEach((event) => {
         const uniqueEventKey = _getUniqueEventKey(event);
+        // Add event for this provider.
         uniqueEventsForProvider[i][uniqueEventKey] = event;
+        // Add event to union map if we haven't seen it before.
+        uniqueEvents[uniqueEventKey] = event;
       });
     });
 
     // Store only the events returned by ALL providers.
     const eventKeysReturnedByAllProviders: string[] = [];
     const missingEventKeys: string[] = [];
-    Object.keys(uniqueEventsForProvider[0]).forEach((eventKeysForFirstProvider: string) => {
+    Object.keys(uniqueEvents).forEach((eventKey: string) => {
       let eventFoundInAllProviders = true;
       for (let providerIndex = 1; providerIndex < uniqueEventsForProvider.length; providerIndex++) {
-        if (uniqueEventsForProvider[providerIndex][eventKeysForFirstProvider] === undefined) {
+        if (uniqueEventsForProvider[providerIndex][eventKey] === undefined) {
           eventFoundInAllProviders = false;
           break;
         }
       }
-      if (eventFoundInAllProviders) eventKeysReturnedByAllProviders.push(eventKeysForFirstProvider);
-      else missingEventKeys.push(eventKeysForFirstProvider);
+      if (eventFoundInAllProviders) eventKeysReturnedByAllProviders.push(eventKey);
+      else missingEventKeys.push(eventKey);
     });
 
     return {
