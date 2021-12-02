@@ -133,12 +133,20 @@ export class InsuredBridgeL2Client {
       "FundsDeposited",
       eventSearchOptions
     );
-    // TODO: Should we throw, or even send a warning?
     if (eventsData.missingEvents.length > 0) {
-      // TODO: Do something with eventsData.missingEvents array?
-      throw new Error(
-        `${eventsData.missingEvents.length} FundsDeposited events found in fallback l2 provider not found in all l2 web3 providers`
-      );
+      const errorMessage = `L2 RPC endpoints disagree about L2 contract events, please manually investigate.`;
+      const error = new Error(errorMessage);
+      this.logger.error({
+        at: "InsuredBridgeL2Client",
+        message:
+          "L2 client will not complete update because L2 RPC endpoints disagree about L2 contract events. This error requires manual investigation to determine which events are valid and whether manual disputes should be sent. L2 rpcs are described in NODE_URL and RETRY_CONFIG environment variables.",
+        eventName: "FundsDeposited",
+        eventSearchOptions,
+        countMissingEvents: eventsData.missingEvents.length,
+        countMatchingEvents: eventsData.events.length,
+        error,
+      });
+      throw error;
     }
 
     // All events were found in all providers, can return any of the event data arrays
@@ -153,12 +161,20 @@ export class InsuredBridgeL2Client {
       "WhitelistToken",
       eventSearchOptions
     );
-    // TODO: Should we throw, or even send a warning?
     if (eventsData.missingEvents.length > 0) {
-      // TODO: Do something with eventsData.missingEvents array?
-      throw new Error(
-        `${eventsData.missingEvents.length} WhitelistToken events found in fallback l2 provider not found in all l2 web3 providers`
-      );
+      const errorMessage = `L2 RPC endpoints disagree about L2 contract events, please manually investigate.`;
+      const error = new Error(errorMessage);
+      this.logger.error({
+        at: "InsuredBridgeL2Client",
+        message:
+          "L2 client will not complete update because L2 RPC endpoints disagree about L2 contract events. This error requires manual investigation to determine which events are valid and whether manual disputes should be sent. L2 rpcs are described in NODE_URL and RETRY_CONFIG environment variables.",
+        eventName: "WhitelistToken",
+        eventSearchOptions,
+        countMissingEvents: eventsData.missingEvents.length,
+        countMatchingEvents: eventsData.events.length,
+        error,
+      });
+      throw error;
     }
 
     // All events were found in all providers, can return any of the event data arrays
