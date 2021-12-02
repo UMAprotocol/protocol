@@ -114,12 +114,13 @@ export async function getEventsForMultipleProviders(
 
   // Associate each event with a key uniquely identifying the event. We'll use this key in the next step to determine
   // which events were returned by all providers.
-  type UniqueEventData = { [uniqueEventKey: string]: EventData };
+  type UniqueEventData = { [key: string]: EventData };
   const uniqueEventsForProvider: UniqueEventData[] = [];
   // [index of web3Provider => {eventKey => event}]
-  const uniqueEvents: UniqueEventData = {};
-  // Union map of ALL unique events across all providers: [{eventKey => event}]. We'll use this map as the starting
-  // point for all of the matched events that we'll return from this function.
+  const uniqueEvents: { [uniqueEventKey: string]: { event: EventData; count: number } } = {};
+  // Union map of ALL unique events across all providers: [{eventKey => {eventData, count}}]. We'll use this map to
+  // keep track of how many times we see each event. For an event to be returned successfully from this method, it must
+  // seen exactly once for each web3 provider.
 
   const _getUniqueEventKey = (event: EventData): string => {
     return JSON.stringify({
@@ -137,7 +138,8 @@ export async function getEventsForMultipleProviders(
       // Add event for this provider.
       uniqueEventsForProvider[i][uniqueEventKey] = event;
       // Add event to union map if we haven't seen it before.
-      uniqueEvents[uniqueEventKey] = event;
+      if (uniqueEvents[uniqueEventKey] === undefined) uniqueEvents[uniqueEventKey] = { event, count: 1 };
+      else uniqueEvents[uniqueEventKey].count++;
     });
   });
 
@@ -145,19 +147,12 @@ export async function getEventsForMultipleProviders(
   const eventKeysReturnedByAllProviders: string[] = [];
   const missingEventKeys: string[] = [];
   Object.keys(uniqueEvents).forEach((eventKey: string) => {
-    let eventFoundInAllProviders = true;
-    for (let providerIndex = 0; providerIndex < uniqueEventsForProvider.length; providerIndex++) {
-      if (uniqueEventsForProvider[providerIndex][eventKey] === undefined) {
-        eventFoundInAllProviders = false;
-        break;
-      }
-    }
-    if (eventFoundInAllProviders) eventKeysReturnedByAllProviders.push(eventKey);
+    if (uniqueEvents[eventKey].count === web3s.length) eventKeysReturnedByAllProviders.push(eventKey);
     else missingEventKeys.push(eventKey);
   });
 
   return {
-    missingEvents: missingEventKeys.map((eventKey) => uniqueEvents[eventKey]),
-    events: eventKeysReturnedByAllProviders.map((eventKey) => uniqueEvents[eventKey]),
+    missingEvents: missingEventKeys.map((eventKey) => uniqueEvents[eventKey].event),
+    events: eventKeysReturnedByAllProviders.map((eventKey) => uniqueEvents[eventKey].event),
   };
 }
