@@ -12,10 +12,7 @@ import set from "lodash/set";
 import get from "lodash/get";
 import has from "lodash/has";
 import { calculateInstantaneousRate } from "../feeCalculator";
-import { getRateModel } from "../constants";
-
-export const SECONDS_PER_YEAR = 31557600; // based on 365.25 days per year
-export const DEFAULT_BLOCK_DELTA = 10; // look exchange rate up based on 10 block difference by default
+import { RATE_MODELS, SECONDS_PER_YEAR, DEFAULT_BLOCK_DELTA } from "../constants";
 
 export type { Provider };
 export type BatchReadWithErrorsType = ReturnType<ReturnType<typeof BatchReadWithErrors>>;
@@ -256,8 +253,8 @@ function joinPoolState(
     SECONDS_PER_YEAR
   );
   const estimatedApr = calcApr(exchangeRatePrevious, exchangeRateCurrent, secondsElapsed, SECONDS_PER_YEAR);
-  let projectedApr = "N/A";
-  const rateModel = getRateModel(poolState.l1Token);
+  let projectedApr = "";
+  const rateModel = RATE_MODELS[poolState.l1Token];
   if (rateModel) {
     projectedApr = fromWei(
       calculateInstantaneousRate(rateModel, poolState.liquidityUtilizationCurrent)

@@ -1,4 +1,3 @@
-import { BigNumber, ethers } from "ethers";
 // these gas costs are estimations, its possible to provide better estimations yourself when invoking getGasFees.
 export const SLOW_ETH_GAS = 243177;
 export const SLOW_ERC_GAS = 250939;
@@ -14,12 +13,6 @@ export interface RateModel {
   R0: string; // is the interest rate charged at 0 utilization
   R1: string; // R_0+R_1 is the interest rate charged at UBar
   R2: string; // R_0+R_1+R_2 is the interest rate charged at 100% utilization
-}
-export interface RateModelBN {
-  UBar: BigNumber; // denote the utilization kink along the rate model where the slope of the interest rate model changes.
-  R0: BigNumber; // is the interest rate charged at 0 utilization
-  R1: BigNumber; // R_0+R_1 is the interest rate charged at UBar
-  R2: BigNumber; // R_0+R_1+R_2 is the interest rate charged at 100% utilization
 }
 
 export const RATE_MODELS: Record<string, RateModel> = {
@@ -49,11 +42,5 @@ export const RATE_MODELS: Record<string, RateModel> = {
   },
 };
 
-export function getRateModel(address: string): RateModelBN | undefined {
-  const model = RATE_MODELS[ethers.utils.getAddress(address)];
-  if (!model) return;
-  // convert model into big numbers
-  return (Object.fromEntries(
-    Object.entries(model).map(([key, value]) => [key, BigNumber.from(value)])
-  ) as unknown) as RateModelBN;
-}
+export const SECONDS_PER_YEAR = 31557600; // based on 365.25 days per year
+export const DEFAULT_BLOCK_DELTA = 10; // look exchange rate up based on 10 block difference by default
