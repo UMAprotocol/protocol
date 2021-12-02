@@ -66,7 +66,7 @@ export async function getEventsForMultipleProviders(
   const missingEventKeys: string[] = [];
   Object.keys(uniqueEvents).forEach((eventKey: string) => {
     let eventFoundInAllProviders = true;
-    for (let providerIndex = 1; providerIndex < uniqueEventsForProvider.length; providerIndex++) {
+    for (let providerIndex = 0; providerIndex < uniqueEventsForProvider.length; providerIndex++) {
       if (uniqueEventsForProvider[providerIndex][eventKey] === undefined) {
         eventFoundInAllProviders = false;
         break;
