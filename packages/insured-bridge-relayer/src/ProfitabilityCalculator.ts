@@ -120,8 +120,8 @@ export class ProfitabilityCalculator {
     let relaySubmitType: RelaySubmitType;
     if (
       ethProfitability.instantEthProfit.gt(toBN(0)) &&
-      ethProfitability.instantEthProfit.gt(ethProfitability.speedUpEthProfit) &&
-      ethProfitability.instantEthProfit.gt(ethProfitability.slowEthProfit)
+      ethProfitability.instantEthProfit.gte(ethProfitability.speedUpEthProfit) &&
+      ethProfitability.instantEthProfit.gte(ethProfitability.slowEthProfit)
     )
       relaySubmitType = RelaySubmitType.Instant;
     else if (
