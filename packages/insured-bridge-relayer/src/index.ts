@@ -110,7 +110,12 @@ export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
       await retry(
         async () => {
           // Update state.
-          await Promise.all([gasEstimator.update(), l1Client.update(), l2Client.update()]);
+          await Promise.all([
+            gasEstimator.update(),
+            l1Client.update(),
+            l2Client.update(),
+            profitabilityCalculator.update(),
+          ]);
 
           // Start bots that are enabled.
           if (config.botModes.relayerEnabled) await relayer.checkForPendingDepositsAndRelay();
