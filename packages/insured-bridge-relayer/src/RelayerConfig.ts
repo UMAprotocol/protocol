@@ -27,36 +27,20 @@ const supportedChainIds = [
 // The alternative to using this hard-coded mapping is to call `web3.eth.getCode(bridgePoolAddress, blockNumber)` but
 // making a web3 call per relay is expensive. Therefore this mapping is also a runtime optimization where we can
 // eliminate web3 calls.
+// Note: keyed by L1 token.
 const bridgePoolDeployData = {
-  // Note: keyed by L1 token.
-  // WETH:
-  "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2": {
-    timestamp: 1635962805,
-  },
-  // USDC:
-  "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48": {
-    timestamp: 1635964115,
-  },
-  // UMA:
-  "0x04Fa0d235C4abf4BcF4787aF4CF447DE572eF828": {
-    timestamp: 1635964053,
-  },
-  // BADGER:
-  "0x3472a5a71965499acd81997a54bba8d852c6e53d": {
-    timestamp: 1636750354,
-  },
+  "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2": { timestamp: 1635962805 }, // WETH
+  "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48": { timestamp: 1635964115 }, // USDC
+  "0x04Fa0d235C4abf4BcF4787aF4CF447DE572eF828": { timestamp: 1635964053 }, // UMA
+  "0x3472a5a71965499acd81997a54bba8d852c6e53d": { timestamp: 1636750354 }, // BADGER
 };
 
 // For similar reasons to why we store BridgePool deployment times, we store BridgeDepositBox times for each L2 network
 // here. We use this in the fallback search for a FundsDeposited L2 event to optimize how we search for the event. We
 // don't need to search for events earlier than the BridgeDepositBox's deployment block.
 const bridgeDepositBoxDeployData = {
-  42161: {
-    blockNumber: 2811998,
-  },
-  10: {
-    blockNumber: 204576,
-  },
+  42161: { blockNumber: 2811998 },
+  10: { blockNumber: 204576 },
 };
 
 export interface ProcessEnv {
