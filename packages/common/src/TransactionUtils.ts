@@ -96,7 +96,7 @@ export const runTransaction = async ({
     transactionConfig.nonce = await web3.eth.getTransactionCount(transactionConfig.from);
   // Store the transaction nonce in the web3 object so that it can be used in the future. This enables us to fire a
   // bunch of transactions off without needing to wait for them to be included in the mempool by manually incrementing.
-  if (argv.network != "test" && argv._.includes("test")) {
+  if (argv.network != "test" && !argv._.includes("test")) {
     if (web3.nonces?.[transactionConfig.from]) transactionConfig.nonce = ++web3.nonces[transactionConfig.from];
     else if (transactionConfig.nonce)
       web3.nonces = {
