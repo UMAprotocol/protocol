@@ -5,7 +5,7 @@ import { getAbi } from "@uma/contracts-node";
 import type { BridgeDepositBoxWeb3 } from "@uma/contracts-node";
 import Web3 from "web3";
 import type { EventData } from "web3-eth-contract";
-import { EventSearchOptions, getEventsForMultipleProviders } from "../helpers/contractEvents";
+import { EventSearchOptions, getEventsForMultipleProviders } from "@uma/common";
 
 const { toChecksumAddress } = Web3.utils;
 import type { Logger } from "winston";
