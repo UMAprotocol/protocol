@@ -418,10 +418,19 @@ describe("CryptoWatchPriceFeed.js", function () {
 
     // When passing in ancillary data that doesn't specify TWAP length, pricefeed default twapLength is used. In this
     // case, the default TWAP length is 0 so it should return the current price for the timestamp.
+    assert.equal((await cryptoWatchPriceFeed.getHistoricalPrice(1588376460, "")).toString(), web3.utils.toWei("1.2"));
     assert.equal(
       (await cryptoWatchPriceFeed.getHistoricalPrice(1588376460, utf8ToHex("key:value"))).toString(),
       web3.utils.toWei("1.2")
     );
+
+    // If ancillary data can't be parsed to UTF8, then it should throw.
+    try {
+      await cryptoWatchPriceFeed.getHistoricalPrice(1588376460, "0xabcd");
+      assert.isTrue(false);
+    } catch (e) {
+      assert.isTrue(e.message.includes("Cannot parse ancillary data bytes to UTF-8"));
+    }
   });
 
   it("TWAP fails if period ends before data", async function () {

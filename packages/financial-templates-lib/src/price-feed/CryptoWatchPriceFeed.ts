@@ -91,11 +91,11 @@ export class CryptoWatchPriceFeed extends PriceFeedInterface {
 
     let twapLength = this.twapLength;
     // Ancillary data might contain parameters that affect how we compute the historical price, such as the twapLength.
-    try {
+    if (ancillaryData) {
       const parsedAncillaryData = (parseAncillaryData(ancillaryData) as unknown) as SimplePriceAncillaryData;
-      twapLength = Number(parsedAncillaryData.twapLength);
-    } catch (err) {
-      // Could not parse ancillary data into utf8 dictionary, use default parameters.
+      if (parsedAncillaryData.twapLength) {
+        twapLength = Number(parsedAncillaryData.twapLength);
+      }
     }
 
     // Return early if computing a TWAP.
