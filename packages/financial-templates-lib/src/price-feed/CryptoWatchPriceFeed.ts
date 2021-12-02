@@ -1,5 +1,5 @@
 import { PriceFeedInterface } from "./PriceFeedInterface";
-import { parseFixed, formatFixed } from "@uma/common";
+import { parseFixed, formatFixed, parseAncillaryData } from "@uma/common";
 import { computeTWAP } from "./utils";
 import type { Logger } from "winston";
 import Web3 from "web3";
@@ -11,6 +11,11 @@ interface PricePeriod {
   closeTime: number;
   openPrice: BN;
   closePrice: BN;
+}
+
+// Options for retrieving most prices such as TWAP length
+export interface SimplePriceAncillaryData {
+  twapLength: string;
 }
 // An implementation of PriceFeedInterface that uses CryptoWatch to retrieve prices.
 export class CryptoWatchPriceFeed extends PriceFeedInterface {
@@ -84,9 +89,14 @@ export class CryptoWatchPriceFeed extends PriceFeedInterface {
       throw new Error(`${this.uuid}: undefined lastUpdateTime`);
     }
 
+    // Ancillary data might contain parameters that affect how we compute the historical price, such as the twapLength.
+    const parsedAncillaryData = (parseAncillaryData(ancillaryData) as unknown) as SimplePriceAncillaryData;
+    const ancillaryDataTwapLength = Number(parsedAncillaryData.twapLength);
+
     // Return early if computing a TWAP.
-    if (this.twapLength) {
-      const twapPrice = this._computeTwap(time, this.historicalPricePeriods);
+    const twapLength = ancillaryDataTwapLength ? ancillaryDataTwapLength : this.twapLength;
+    if (twapLength) {
+      const twapPrice = this._computeTwap(time, this.historicalPricePeriods, twapLength);
       if (!twapPrice) {
         throw new Error(`${this.uuid}: historical TWAP computation failed due to no data in the TWAP range`);
       }
@@ -234,7 +244,7 @@ export class CryptoWatchPriceFeed extends PriceFeedInterface {
 
     const newHistoricalPricePeriods = await this._getOhlcPricePeriods(earliestHistoricalTimestamp, currentTime);
     const newPrice = this.twapLength
-      ? this._computeTwap(currentTime, newHistoricalPricePeriods)
+      ? this._computeTwap(currentTime, newHistoricalPricePeriods, this.twapLength)
       : await this._getImmediatePrice();
 
     // 5. Store results.
@@ -344,7 +354,8 @@ export class CryptoWatchPriceFeed extends PriceFeedInterface {
 
   private _computeTwap(
     endTime: number,
-    ohlcs: { openTime: number; closeTime: number; openPrice: BN; closePrice: BN }[]
+    ohlcs: { openTime: number; closeTime: number; openPrice: BN; closePrice: BN }[],
+    twapLength: number
   ): BN | null {
     // Combine open and close to get more data fidelity at the edges of the range.
     const priceTimes = ohlcs
@@ -355,7 +366,7 @@ export class CryptoWatchPriceFeed extends PriceFeedInterface {
         ] as [number, BN][];
       })
       .flat();
-    const startTime = endTime - this.twapLength;
+    const startTime = endTime - twapLength;
     const twapPrice = computeTWAP(priceTimes, startTime, endTime, this.web3.utils.toBN("0"));
 
     return this.invertPrice ? this._invertPriceSafely(twapPrice) : twapPrice;

@@ -21,7 +21,7 @@ describe("CryptoWatchPriceFeed.js", function () {
   const getTime = () => mockTime;
   const minTimeBetweenUpdates = 60;
 
-  const { toBN, toWei } = web3.utils;
+  const { toBN, toWei, utf8ToHex } = web3.utils;
 
   // Fake data to inject.
   // Note: the first element is the historical data and the second is the price. There's a lot of magic numbers here,
@@ -385,6 +385,43 @@ describe("CryptoWatchPriceFeed.js", function () {
 
     // ((12 * 60) + (11 * 60)) / 120
     assert.equal((await cryptoWatchPriceFeed.getHistoricalPrice(1588376460)).toString(), web3.utils.toWei("1.15"));
+  });
+
+  it("Basic TWAP historical price, TWAP specified in ancillary data", async function () {
+    cryptoWatchPriceFeed = new CryptoWatchPriceFeed(
+      spyLogger,
+      web3,
+      apiKey,
+      exchange,
+      pair,
+      lookback,
+      networker,
+      getTime,
+      minTimeBetweenUpdates,
+      false,
+      18, // Add arbitrary decimal conversion and prove this works.
+      undefined,
+      0 // We'll specify TWAP length in ancillary data
+    );
+
+    // Inject data.
+    networker.getJsonReturns = [...validResponses];
+
+    await cryptoWatchPriceFeed.update();
+
+    // This time, specify a smaller TWAP period by passing in ancillary data containing `twapLength`.
+    // ((12 * 60) + (11 * 60)) / 120
+    assert.equal(
+      (await cryptoWatchPriceFeed.getHistoricalPrice(1588376460, utf8ToHex("twapLength:120"))).toString(),
+      web3.utils.toWei("1.15")
+    );
+
+    // When passing in ancillary data that doesn't specify TWAP length, pricefeed default twapLength is used. In this
+    // case, the default TWAP length is 0 so it should return the current price for the timestamp.
+    assert.equal(
+      (await cryptoWatchPriceFeed.getHistoricalPrice(1588376460, utf8ToHex("key:value"))).toString(),
+      web3.utils.toWei("1.2")
+    );
   });
 
   it("TWAP fails if period ends before data", async function () {
