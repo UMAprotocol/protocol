@@ -24,6 +24,14 @@ export class ProfitabilityCalculator {
   public relayerDiscount: BN;
 
   private readonly coingecko;
+  /**
+   * @notice Constructs new Profitability Calculator Instance.
+   * @param {Object} logger Module used to send logs.
+   * @param {Array }l1Tokens list of L1 tokens the relayer is running on. Profitability module will store the prices of
+   * these tokens and use them when computing if a relay should be executed or not.
+   * @param {Number} l1ChainId L1 chain id that the relayer is running on.
+   * @param {Number} relayerDiscount Relayer discount applied to relays to offset gas cost.
+   */
   constructor(
     readonly logger: winston.Logger,
     readonly l1Tokens: string[],
@@ -40,6 +48,7 @@ export class ProfitabilityCalculator {
   async update() {
     this.logger.debug({ at: "ProfitabilityCalculator", message: "Updating prices", tokenList: this.l1Tokens });
 
+    // If the l1TokenInfo is empty then this is the first run. Figure out the token types of each l1Token.
     if (Object.keys(this.l1TokenInfo).length == 0) {
       const [umaAddress, wethAddress] = await Promise.all([
         await getAddress("VotingToken", this.l1ChainId),
@@ -53,10 +62,13 @@ export class ProfitabilityCalculator {
       }
     }
 
+    // Fetch the prices of each token, denominated in ETH.
     const tokenPrices = await Promise.all(
       this.l1Tokens.map((l1Token) => this.coingecko.getCurrentPriceByContract(l1Token, "eth"))
     );
 
+    // For each token, extract the price and convert to a wei'd BN. Note that if the type is WETH then the price is 1.
+    // This is done as coingecko does not always return the price of 1 for WETH, in ETH.
     for (const [index, priceResponse] of tokenPrices.entries()) {
       this.l1TokenInfo[this.l1Tokens[index]].tokenEthPrice =
         this.l1TokenInfo[this.l1Tokens[index]].tokenType == TokenType.WETH ? toBNWei("1") : toBNWei(priceResponse[1]);
