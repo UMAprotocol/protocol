@@ -130,7 +130,7 @@ export const runTransaction = async ({
     const maximumGasPriceMultiple = 2 * 3;
     // Pre-London transactions require `gasPrice`, London transactions require `maxFeePerGas` and `maxPriorityFeePerGas`
 
-    let receipt: any;
+    let receipt: TransactionReceipt | PromiEvent<TransactionReceipt>;
     let transactionHash: string;
 
     // If the config contains maxPriorityFeePerGas then this is a London transaction. In this case, simply use the
@@ -139,23 +139,23 @@ export const runTransaction = async ({
     if (transactionConfig.maxFeePerGas && transactionConfig.maxPriorityFeePerGas) {
       // If waitForMine is set (default) then code blocks until the transaction is mined and a receipt is returned.
       if (waitForMine) {
-        receipt = await transaction.send({
+        receipt = ((await transaction.send({
           ...transactionConfig,
           maxFeePerGas: parseInt(transactionConfig.maxFeePerGas.toString()) * 2,
           type: "0x2",
-        } as SendOptions);
+        } as SendOptions)) as unknown) as TransactionReceipt;
         transactionHash = receipt.transactionHash;
       }
       // Else, waitForMine is false and we return the transaction hash immediately as soon as it is included in the
       // mempool. Receipt is a promise of the pending transaction that can be awaited later to ensure block inclusion.
       else {
-        receipt = transaction.send({
+        receipt = (transaction.send({
           ...transactionConfig,
           maxFeePerGas: parseInt(transactionConfig.maxFeePerGas.toString()) * 2,
           type: "0x2",
-        } as SendOptions);
+        } as SendOptions) as unknown) as PromiEvent<TransactionReceipt>;
         transactionHash = await new Promise((resolve) => {
-          receipt.on("transactionHash", (transactionHash: any) => resolve(transactionHash));
+          (receipt as any).on("transactionHash", (transactionHash: any) => resolve(transactionHash));
         });
       }
 
@@ -164,14 +164,14 @@ export const runTransaction = async ({
       const minGasPrice = transactionConfig.gasPrice;
       const maxGasPrice = maximumGasPriceMultiple * parseInt(minGasPrice.toString());
 
-      receipt = await ynatm.send({
+      receipt = ((await ynatm.send({
         sendTransactionFunction: (gasPrice: number) =>
           transaction.send({ ...transactionConfig, gasPrice: gasPrice.toString() } as any),
         minGasPrice,
         maxGasPrice,
         gasPriceScalingFunction,
         delay: retryDelay,
-      });
+      })) as unknown) as TransactionReceipt;
       transactionHash = receipt.transactionHash;
     } else throw new Error("No gas information provided");
 
