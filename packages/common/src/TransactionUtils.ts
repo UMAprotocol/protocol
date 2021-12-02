@@ -92,7 +92,7 @@ export const runTransaction = async ({
     transactionConfig.nonce = await getPendingTransactionCount(web3, transactionConfig.from);
   // Else, there is no pending transaction and we use the current account transaction count as the nonce.
   // This method does not play nicely in tests. Leave the nonce null to auto fill.
-  else if (argv.network != "test" && argv._.includes("test"))
+  else if (argv.network != "test" && !argv._.includes("test"))
     transactionConfig.nonce = await web3.eth.getTransactionCount(transactionConfig.from);
   // Store the transaction nonce in the web3 object so that it can be used in the future. This enables us to fire a
   // bunch of transactions off without needing to wait for them to be included in the mempool by manually incrementing.
@@ -131,30 +131,32 @@ export const runTransaction = async ({
     // Pre-London transactions require `gasPrice`, London transactions require `maxFeePerGas` and `maxPriorityFeePerGas`
 
     let receipt: any;
+    let transactionHash: string;
 
     // If the config contains maxPriorityFeePerGas then this is a London transaction. In this case, simply use the
     // provided config settings but double the maxFeePerGas to ensure the transaction is included, even if the base fee
     // spikes up. The difference between the realized base fee and maxFeePerGas is refunded in a London transaction.
     if (transactionConfig.maxFeePerGas && transactionConfig.maxPriorityFeePerGas) {
       // If waitForMine is set (default) then code blocks until the transaction is mined and a receipt is returned.
-      if (waitForMine)
+      if (waitForMine) {
         receipt = await transaction.send({
           ...transactionConfig,
           maxFeePerGas: parseInt(transactionConfig.maxFeePerGas.toString()) * 2,
           type: "0x2",
         } as SendOptions);
+        transactionHash = receipt.transactionHash;
+      }
       // Else, waitForMine is false and we return the transaction hash immediately as soon as it is included in the
       // mempool. Receipt is a promise of the pending transaction that can be awaited later to ensure block inclusion.
       else {
-        const receiptPromiseEvent = transaction.send({
+        receipt = transaction.send({
           ...transactionConfig,
           maxFeePerGas: parseInt(transactionConfig.maxFeePerGas.toString()) * 2,
           type: "0x2",
         } as SendOptions);
-        const transactionHash: string = await new Promise((resolve) => {
-          receiptPromiseEvent.on("transactionHash", (transactionHash) => resolve(transactionHash));
+        transactionHash = await new Promise((resolve) => {
+          receipt.on("transactionHash", (transactionHash: any) => resolve(transactionHash));
         });
-        return { receipt: receiptPromiseEvent as any, transactionHash, returnValue, transactionConfig };
       }
 
       // Else this is a legacy tx.
@@ -170,9 +172,10 @@ export const runTransaction = async ({
         gasPriceScalingFunction,
         delay: retryDelay,
       });
+      transactionHash = receipt.transactionHash;
     } else throw new Error("No gas information provided");
 
-    return { receipt, transactionHash: receipt.transactionHash, returnValue, transactionConfig };
+    return { receipt, transactionHash, returnValue, transactionConfig };
   } catch (error) {
     error.type = "send";
     throw error;
