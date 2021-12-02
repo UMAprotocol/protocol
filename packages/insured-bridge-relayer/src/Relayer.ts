@@ -533,7 +533,7 @@ export class Relayer {
 
     if (transactions.length == 0) return;
     if (transactions.length == 1) {
-      this.logger.debug({ at: "AcrossRelayer#TxProcessor", message: "Sending transactions" });
+      this.logger.debug({ at: "AcrossRelayer#TxProcessor", message: "Sending transaction" });
       const transaction = transactions[0];
       await this._sendTransaction(transaction.transaction, transaction.message, transaction.mrkdwn, transaction.level);
     }
