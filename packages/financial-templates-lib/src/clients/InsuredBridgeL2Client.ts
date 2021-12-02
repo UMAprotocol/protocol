@@ -4,6 +4,7 @@
 import { getAbi } from "@uma/contracts-node";
 import type { BridgeDepositBoxWeb3 } from "@uma/contracts-node";
 import Web3 from "web3";
+import { EventData } from "web3-eth-contract";
 const { toChecksumAddress } = Web3.utils;
 import type { Logger } from "winston";
 
@@ -82,8 +83,8 @@ export class InsuredBridgeL2Client {
     // TODO: update this state retrieval to include looking for L2 liquidity in the deposit box that can be sent over
     // the bridge. This should consider the minimumBridgingDelay and the lastBridgeTime for a respective L2Token.
     const [fundsDepositedEvents, whitelistedTokenEvents] = await Promise.all([
-      this.bridgeDepositBox.getPastEvents("FundsDeposited", blockSearchConfig),
-      this.bridgeDepositBox.getPastEvents("WhitelistToken", blockSearchConfig),
+      this.getFundsDepositedEvents(blockSearchConfig),
+      this.getWhitelistTokenEvents(blockSearchConfig),
     ]);
 
     // We assume that whitelisted token events are searched from oldest to newest so we'll just store the most recently
@@ -119,6 +120,14 @@ export class InsuredBridgeL2Client {
       message: "Insured bridge l2 client updated",
       chainId: this.chainId,
     });
+  }
+
+  async getFundsDepositedEvents(blockSearchConfig: { fromBlock: number; toBlock: number }): Promise<EventData[]> {
+    return await this.bridgeDepositBox.getPastEvents("FundsDeposited", blockSearchConfig);
+  }
+
+  async getWhitelistTokenEvents(blockSearchConfig: { fromBlock: number; toBlock: number }): Promise<EventData[]> {
+    return await this.bridgeDepositBox.getPastEvents("WhitelistToken", blockSearchConfig);
   }
 
   generateDepositHash = (depositData: Deposit): string => {

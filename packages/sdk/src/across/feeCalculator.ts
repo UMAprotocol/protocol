@@ -3,17 +3,19 @@
 // and ethers BNs in the main entry point function calculateRealizedLpFeePct.
 
 import Decimal from "decimal.js";
-import { BigNumber, utils } from "ethers";
+
 import type _Web3 from "web3";
 export type web3BN = ReturnType<_Web3["utils"]["toBN"]>;
-type BigNumberish = string | number | BigNumber | web3BN;
-type BN = BigNumber;
 
+import { BigNumberish, BN, toBN, toBNWei, fromWei, min, max, fixedPointAdjustment } from "./utils";
+
+// note a similar type exists in the constants file, but are strings only. This is a bit more permissive to allow
+// backward compatibility for callers with a rate model defined with bignumbers and not strings.
 export interface RateModel {
-  UBar: BN; // denote the utilization kink along the rate model where the slope of the interest rate model changes.
-  R0: BN; // is the interest rate charged at 0 utilization
-  R1: BN; // R_0+R_1 is the interest rate charged at UBar
-  R2: BN; // R_0+R_1+R_2 is the interest rate charged at 100% utilization
+  UBar: BigNumberish; // denote the utilization kink along the rate model where the slope of the interest rate model changes.
+  R0: BigNumberish; // is the interest rate charged at 0 utilization
+  R1: BigNumberish; // R_0+R_1 is the interest rate charged at UBar
+  R2: BigNumberish; // R_0+R_1+R_2 is the interest rate charged at 100% utilization
 }
 
 export interface Web3RateModel {
@@ -23,32 +25,14 @@ export interface Web3RateModel {
   R2: BigNumberish;
 }
 
-export const toBN = (num: BigNumberish) => BigNumber.from(num.toString());
-export const toBNWei = (num: BigNumberish) => utils.parseEther(num.toString());
-export const toWei = (num: BigNumberish) => toBNWei(num).toString();
-export const fromWei = (num: BigNumberish) => utils.formatEther(num.toString());
-
-function min(a: BigNumberish, b: BigNumberish) {
-  const bna = toBN(a);
-  const bnb = toBN(b);
-  return bna.lte(bnb) ? bna : bnb;
-}
-function max(a: BigNumberish, b: BigNumberish) {
-  const bna = toBN(a);
-  const bnb = toBN(b);
-  return bna.gte(bnb) ? bna : bnb;
-}
-
-const fixedPointAdjustment = toBNWei("1");
-
 // Calculate the rate for a 0 sized deposit (infinitesimally small).
-function calculateInstantaneousRate(rateModel: RateModel, utilization: BN) {
+export function calculateInstantaneousRate(rateModel: RateModel, utilization: BigNumberish) {
   const beforeKink = min(utilization, rateModel.UBar).mul(rateModel.R1).div(rateModel.UBar);
-  const afterKink = max(toBN("0"), utilization.sub(rateModel.UBar))
+  const afterKink = max(toBN("0"), toBN(utilization).sub(rateModel.UBar))
     .mul(rateModel.R2)
     .div(toBNWei("1").sub(rateModel.UBar));
 
-  return rateModel.R0.add(beforeKink).add(afterKink);
+  return toBN(rateModel.R0).add(beforeKink).add(afterKink);
 }
 
 //  Compute area under curve of the piece-wise linear rate model.
@@ -64,9 +48,9 @@ function calculateAreaUnderRateCurve(rateModel: RateModel, utilization: BN) {
 
   // Area under second piecewise component
   const utilizationAfter = max(toBN("0"), utilization.sub(rateModel.UBar));
-  const rectangle2Area = utilizationAfter.mul(rateModel.R0.add(rateModel.R1)).div(fixedPointAdjustment);
+  const rectangle2Area = utilizationAfter.mul(toBN(rateModel.R0).add(rateModel.R1)).div(fixedPointAdjustment);
   const triangle2Area = toBNWei("0.5")
-    .mul(calculateInstantaneousRate(rateModel, utilization).sub(rateModel.R0.add(rateModel.R1)))
+    .mul(calculateInstantaneousRate(rateModel, utilization).sub(toBN(rateModel.R0).add(rateModel.R1)))
     .mul(utilizationAfter)
     .div(fixedPointAdjustment)
     .div(fixedPointAdjustment);

@@ -12,7 +12,14 @@ export const SPEED_UP_ETH_GAS = 195288;
 export const SPEED_UP_ERC_GAS = 203011;
 export const SPEED_UP_UMA_GAS = 227341;
 
-export const RATE_MODELS = {
+export interface RateModel {
+  UBar: string; // denote the utilization kink along the rate model where the slope of the interest rate model changes.
+  R0: string; // is the interest rate charged at 0 utilization
+  R1: string; // R_0+R_1 is the interest rate charged at UBar
+  R2: string; // R_0+R_1+R_2 is the interest rate charged at 100% utilization
+}
+
+export const RATE_MODELS: Record<string, RateModel> = {
   "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2": {
     UBar: "650000000000000000",
     R0: "0",
@@ -38,3 +45,6 @@ export const RATE_MODELS = {
     R2: "2000000000000000000",
   },
 };
+
+export const SECONDS_PER_YEAR = 31557600; // based on 365.25 days per year
+export const DEFAULT_BLOCK_DELTA = 10; // look exchange rate up based on 10 block difference by default

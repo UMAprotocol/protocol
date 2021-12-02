@@ -1,6 +1,6 @@
 import assert from "assert";
 import { bridgePool } from "../../clients";
-import { toBNWei, fixedPointAdjustment, calcPeriodicCompoundInterest, calcApr, BigNumberish } from "../utils";
+import { toBNWei, fixedPointAdjustment, calcPeriodicCompoundInterest, calcApr, BigNumberish, fromWei } from "../utils";
 import { BatchReadWithErrors, loop, exists } from "../../utils";
 import Multicall2 from "../../multicall2";
 import TransactionManager from "../transactionManager";
@@ -11,9 +11,8 @@ import { Provider, Block } from "@ethersproject/providers";
 import set from "lodash/set";
 import get from "lodash/get";
 import has from "lodash/has";
-
-export const SECONDS_PER_YEAR = 31557600; // based on 365.25 days per year
-export const DEFAULT_BLOCK_DELTA = 10; // look exchange rate up based on 10 block difference by default
+import { calculateInstantaneousRate } from "../feeCalculator";
+import { RATE_MODELS, SECONDS_PER_YEAR, DEFAULT_BLOCK_DELTA } from "../constants";
 
 export type { Provider };
 export type BatchReadWithErrorsType = ReturnType<ReturnType<typeof BatchReadWithErrors>>;
@@ -41,6 +40,7 @@ export type Pool = {
   blocksElapsed: number;
   secondsElapsed: number;
   liquidityUtilizationCurrent: string;
+  projectedApr: string;
 };
 export type User = {
   address: string;
@@ -253,6 +253,15 @@ function joinPoolState(
     SECONDS_PER_YEAR
   );
   const estimatedApr = calcApr(exchangeRatePrevious, exchangeRateCurrent, secondsElapsed, SECONDS_PER_YEAR);
+  let projectedApr = "";
+  const rateModel = RATE_MODELS[poolState.l1Token];
+  if (rateModel) {
+    projectedApr = fromWei(
+      calculateInstantaneousRate(rateModel, poolState.liquidityUtilizationCurrent)
+        .mul(poolState.liquidityUtilizationCurrent)
+        .div(fixedPointAdjustment)
+    );
+  }
 
   return {
     address: poolState.address,
@@ -267,6 +276,7 @@ function joinPoolState(
     blocksElapsed,
     secondsElapsed,
     liquidityUtilizationCurrent: poolState.liquidityUtilizationCurrent.toString(),
+    projectedApr,
   };
 }
 export class ReadPoolClient {
