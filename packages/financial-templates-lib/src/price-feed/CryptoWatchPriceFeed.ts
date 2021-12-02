@@ -89,12 +89,16 @@ export class CryptoWatchPriceFeed extends PriceFeedInterface {
       throw new Error(`${this.uuid}: undefined lastUpdateTime`);
     }
 
+    let twapLength = this.twapLength;
     // Ancillary data might contain parameters that affect how we compute the historical price, such as the twapLength.
-    const parsedAncillaryData = (parseAncillaryData(ancillaryData) as unknown) as SimplePriceAncillaryData;
-    const ancillaryDataTwapLength = Number(parsedAncillaryData.twapLength);
+    try {
+      const parsedAncillaryData = (parseAncillaryData(ancillaryData) as unknown) as SimplePriceAncillaryData;
+      twapLength = Number(parsedAncillaryData.twapLength);
+    } catch (err) {
+      // Could not parse ancillary data into utf8 dictionary, use default parameters.
+    }
 
     // Return early if computing a TWAP.
-    const twapLength = ancillaryDataTwapLength ? ancillaryDataTwapLength : this.twapLength;
     if (twapLength) {
       const twapPrice = this._computeTwap(time, this.historicalPricePeriods, twapLength);
       if (!twapPrice) {
