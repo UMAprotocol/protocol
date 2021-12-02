@@ -33,9 +33,9 @@ export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
       config,
     });
 
-    const [accounts] = await Promise.all([l1Web3.eth.getAccounts()]);
+    const [accounts, l1ChainId] = await Promise.all([l1Web3.eth.getAccounts(), await l1Web3.eth.getChainId()]);
 
-    const gasEstimator = new GasEstimator(logger);
+    const gasEstimator = new GasEstimator(logger, 60, l1ChainId, l1Web3);
     await gasEstimator.update();
 
     // Create L1/L2 clients to pull data to inform the relayer.
@@ -79,7 +79,7 @@ export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
     const profitabilityCalculator = new ProfitabilityCalculator(
       logger,
       filteredL1Whitelist,
-      await l1Web3.eth.getChainId(),
+      l1ChainId,
       config.relayerDiscount
     );
 

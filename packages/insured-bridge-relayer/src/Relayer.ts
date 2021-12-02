@@ -109,7 +109,6 @@ export class Relayer {
         try {
           relayTransactions.push(await this._generateRelayTransactionForPendingDeposit(l1Token, relayableDeposit));
         } catch (error) {
-          console.log("error", error);
           this.logger.error({ at: "AcrossRelayer#Relayer", message: "Unexpected error processing deposit", error });
         }
       }
@@ -593,7 +592,6 @@ export class Relayer {
   }> {
     try {
       await this.gasEstimator.update();
-      console.log("config", { ...this.gasEstimator.getCurrentFastPrice(), from: this.account });
       const { receipt, transactionConfig } = await runTransaction({
         web3: this.l1Client.l1Web3,
         transaction,
@@ -704,7 +702,6 @@ export class Relayer {
     hasInstantRelayer: boolean
   ) {
     const mrkdwn = this._generateMarkdownForRelay(relayableDeposit.deposit, realizedLpFeePct);
-    console.log("shouldRelay", shouldRelay);
     switch (shouldRelay) {
       case RelaySubmitType.Ignore:
         this.logger.warn({
