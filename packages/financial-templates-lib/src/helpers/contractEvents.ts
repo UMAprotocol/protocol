@@ -77,7 +77,7 @@ export async function getEventsForMultipleProviders(
   });
 
   return {
-    missingEvents: missingEventKeys.map((eventKey) => uniqueEventsForProvider[0][eventKey]),
-    events: eventKeysReturnedByAllProviders.map((eventKey) => uniqueEventsForProvider[0][eventKey]),
+    missingEvents: missingEventKeys.map((eventKey) => uniqueEvents[eventKey]),
+    events: eventKeysReturnedByAllProviders.map((eventKey) => uniqueEvents[eventKey]),
   };
 }
