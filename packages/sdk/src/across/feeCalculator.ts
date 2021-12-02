@@ -1,7 +1,12 @@
-// Taken from https://github.com/UMAprotocol/protocol/blob/master/packages/financial-templates-lib/src/helpers/acrossFeesCalculator.ts
+// This Util calculates the across realized LP fees. See https://gist.github.com/chrismaree/a713725e4fe96c531c42ed7b629d4a85
+// gist for a python implementation of the logic in this file. This implementation is designed to work with both web3.js
+// and ethers BNs in the main entry point function calculateRealizedLpFeePct.
+
 import Decimal from "decimal.js";
 import { BigNumber, utils } from "ethers";
-type BigNumberish = string | number | BigNumber;
+import type _Web3 from "web3";
+export type web3BN = ReturnType<_Web3["utils"]["toBN"]>;
+type BigNumberish = string | number | BigNumber | web3BN;
 type BN = BigNumber;
 
 export interface RateModel {
@@ -9,6 +14,13 @@ export interface RateModel {
   R0: BN; // is the interest rate charged at 0 utilization
   R1: BN; // R_0+R_1 is the interest rate charged at UBar
   R2: BN; // R_0+R_1+R_2 is the interest rate charged at 100% utilization
+}
+
+export interface Web3RateModel {
+  UBar: BigNumberish;
+  R0: BigNumberish;
+  R1: BigNumberish;
+  R2: BigNumberish;
 }
 
 export const toBN = (num: BigNumberish) => BigNumber.from(num.toString());
@@ -92,10 +104,16 @@ export function calculateApyFromUtilization(
 }
 
 export function calculateRealizedLpFeePct(
-  rateModel: RateModel,
-  utilizationBeforeDeposit: BN,
-  utilizationAfterDeposit: BN
+  _rateModel: Web3RateModel,
+  utilizationBeforeDeposit: BigNumberish,
+  utilizationAfterDeposit: BigNumberish
 ) {
-  const apy = calculateApyFromUtilization(rateModel, utilizationBeforeDeposit, utilizationAfterDeposit);
+  const rateModel: RateModel = {
+    UBar: toBN(_rateModel.UBar),
+    R0: toBN(_rateModel.R0),
+    R1: toBN(_rateModel.R1),
+    R2: toBN(_rateModel.R2),
+  };
+  const apy = calculateApyFromUtilization(rateModel, toBN(utilizationBeforeDeposit), toBN(utilizationAfterDeposit));
   return convertApyToWeeklyFee(apy);
 }

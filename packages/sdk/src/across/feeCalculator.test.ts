@@ -1,5 +1,5 @@
-// The tests below validate the behaviour of the LP fee equations. We do not re-implement the equations here as
-// this would not actually test anything. Rather, the equations are documented and outputs from a juypter are
+// The tests below validate the behavior of the LP fee equations. We do not re-implement the equations here as
+// this would not actually test anything. Rather, the equations are documented and outputs from a jupyter are
 // compared with as a point of reference. Moreover, we only need to validate the final calculateRealizedLpFeePct
 // and can skip the underlying methods as if they contain errors so will the calculateRealizedLpFeePct method.
 // The python implementation can be seen here: https://gist.github.com/chrismaree/a713725e4fe96c531c42ed7b629d4a85

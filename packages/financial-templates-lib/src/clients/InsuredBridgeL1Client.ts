@@ -4,7 +4,7 @@ const { toBN, soliditySha3, toChecksumAddress } = Web3.utils;
 import { BlockFinder } from "../price-feed/utils";
 import { getAbi } from "@uma/contracts-node";
 import { Deposit } from "./InsuredBridgeL2Client";
-import { RateModel, calculateRealizedLpFeePct } from "../helpers/acrossFeesCalculator";
+import { across } from "@uma/sdk";
 
 import type { BridgeAdminInterfaceWeb3, BridgePoolWeb3 } from "@uma/contracts-node";
 import type { Logger } from "winston";
@@ -62,7 +62,7 @@ export interface BridgePoolData {
 export class InsuredBridgeL1Client {
   public readonly bridgeAdmin: BridgeAdminInterfaceWeb3;
   public bridgePools: { [key: string]: BridgePoolData }; // L1TokenAddress=>BridgePoolData
-  private whitelistedTokens: { [chainId: string]: { [l1TokenAddress: string]: string } } = {};
+  public whitelistedTokens: { [chainId: string]: { [l1TokenAddress: string]: string } } = {};
   public optimisticOracleLiveness = 0;
   public firstBlockToSearch: number;
 
@@ -75,7 +75,7 @@ export class InsuredBridgeL1Client {
     private readonly logger: Logger,
     readonly l1Web3: Web3,
     readonly bridgeAdminAddress: string,
-    readonly rateModels: { [key: string]: RateModel },
+    readonly rateModels: { [key: string]: across.feeCalculator.Web3RateModel },
     readonly startingBlockNumber = 0,
     readonly endingBlockNumber: number | null = null
   ) {
@@ -184,10 +184,14 @@ export class InsuredBridgeL1Client {
       bridgePool.methods.liquidityUtilizationPostRelay(deposit.amount.toString()).call(undefined, quoteBlockNumber),
     ]);
 
-    return calculateRealizedLpFeePct(
-      this.rateModels[deposit.l1Token],
-      toBN(liquidityUtilizationCurrent),
-      toBN(liquidityUtilizationPostRelay)
+    return toBN(
+      across.feeCalculator
+        .calculateRealizedLpFeePct(
+          this.rateModels[deposit.l1Token],
+          liquidityUtilizationCurrent.toString(),
+          liquidityUtilizationPostRelay.toString()
+        )
+        .toString()
     );
   }
 

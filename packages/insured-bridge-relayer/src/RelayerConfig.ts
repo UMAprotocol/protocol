@@ -5,8 +5,6 @@ import assert from "assert";
 import { replaceAddressCase } from "@uma/common";
 import { across } from "@uma/sdk";
 
-import type { RateModel } from "@uma/financial-templates-lib";
-
 // Check each token rate model contains the expected data.
 const expectedRateModelKeys = ["UBar", "R0", "R1", "R2"];
 
@@ -79,11 +77,14 @@ export class RelayerConfig {
 
   readonly whitelistedRelayL1Tokens: string[] = [];
   readonly whitelistedChainIds: number[] = [];
-  readonly rateModels: { [key: string]: RateModel } = {};
+  readonly rateModels: { [key: string]: across.feeCalculator.Web3RateModel } = {};
   readonly activatedChainIds: number[];
   readonly l2BlockLookback: number;
+
   readonly crossDomainFinalizationThreshold: number;
+  readonly relayerDiscount: number;
   readonly botModes: BotModes;
+
   readonly l1DeployData: { [key: string]: { timestamp: number } };
   readonly l2DeployData: { [key: string]: { blockNumber: number } };
 
@@ -97,6 +98,7 @@ export class RelayerConfig {
       CHAIN_IDS,
       L2_BLOCK_LOOKBACK,
       CROSS_DOMAIN_FINALIZATION_THRESHOLD,
+      RELAYER_DISCOUNT,
       RELAYER_ENABLED,
       FINALIZER_ENABLED,
       DISPUTER_ENABLED,
@@ -121,6 +123,9 @@ export class RelayerConfig {
       : 5;
 
     assert(this.crossDomainFinalizationThreshold < 100, "CROSS_DOMAIN_FINALIZATION_THRESHOLD must be < 100");
+
+    this.relayerDiscount = RELAYER_DISCOUNT ? Number(RELAYER_DISCOUNT) : 0;
+    assert(this.relayerDiscount >= 0 && this.relayerDiscount <= 100, "RELAYER_DISCOUNT must be between 0 and 100");
 
     // L2 start block must be explicitly set unlike L1 due to how L2 nodes work. For best practices, we also should
     // constrain L1 start blocks but this hasn't been an issue empirically. As a data point, Arbitrum Infura has a

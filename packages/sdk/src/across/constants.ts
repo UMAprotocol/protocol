@@ -8,6 +8,10 @@ export const FAST_ETH_GAS = 273519;
 export const FAST_ERC_GAS = 281242;
 export const FAST_UMA_GAS = 305572;
 
+export const SPEED_UP_ETH_GAS = 195288;
+export const SPEED_UP_ERC_GAS = 203011;
+export const SPEED_UP_UMA_GAS = 227341;
+
 export const RATE_MODELS = {
   "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2": {
     UBar: "650000000000000000",

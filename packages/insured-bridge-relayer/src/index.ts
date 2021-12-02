@@ -14,8 +14,9 @@ import {
   InsuredBridgeL2Client,
 } from "@uma/financial-templates-lib";
 
-import { approveL1Tokens, pruneWhitelistedL1Tokens } from "./RelayerHelpers";
 import { Relayer } from "./Relayer";
+import { approveL1Tokens, pruneWhitelistedL1Tokens } from "./RelayerHelpers";
+import { ProfitabilityCalculator } from "./ProfitabilityCalculator";
 import { CrossDomainFinalizer } from "./CrossDomainFinalizer";
 import { RelayerConfig } from "./RelayerConfig";
 config();
@@ -62,8 +63,7 @@ export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
       l2StartBlock
     );
 
-    // Update the L2 client and filter out tokens that are not whitelisted on the L2 from the whitelisted
-    // L1 relay list.
+    // Update the L2 client and filter out tokens that are not whitelisted on the L2 from the whitelisted L1 relay list.
     const filteredL1Whitelist = await pruneWhitelistedL1Tokens(
       logger,
       l1Client,
@@ -75,11 +75,20 @@ export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
     // method will error if the bot runner has specified a L1 tokens that is not part of the Bridge Admin whitelist.
     await approveL1Tokens(logger, l1Web3, gasEstimator, accounts[0], config.bridgeAdmin, filteredL1Whitelist);
 
+    // Construct the profitability calculator based on the filteredL1Whitelist and relayerDiscount.
+    const profitabilityCalculator = new ProfitabilityCalculator(
+      logger,
+      filteredL1Whitelist,
+      await l1Web3.eth.getChainId(),
+      config.relayerDiscount
+    );
+
     const relayer = new Relayer(
       logger,
       gasEstimator,
       l1Client,
       l2Client,
+      profitabilityCalculator,
       filteredL1Whitelist,
       accounts[0],
       config.whitelistedChainIds,

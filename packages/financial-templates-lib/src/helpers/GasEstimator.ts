@@ -1,5 +1,7 @@
-import type { Logger } from "winston";
 import fetch from "node-fetch";
+import Web3 from "web3";
+
+import type { Logger } from "winston";
 
 enum NetworkType {
   Legacy,
@@ -57,12 +59,11 @@ export const MAPPING_BY_NETWORK: GasEstimatorMapping = {
 
 const DEFAULT_NETWORK_ID = 1; // Ethereum Mainnet.
 export class GasEstimator {
-  private readonly networkId: number;
-
   private lastUpdateTimestamp: undefined | number;
   private lastFastPriceGwei = 0;
   private latestMaxFeePerGasGwei: number;
   private latestMaxPriorityFeePerGasGwei: number;
+  private latestBaseFee: number;
 
   private defaultFastPriceGwei = 0;
   private defaultMaxFeePerGasGwei = 0;
@@ -78,7 +79,12 @@ export class GasEstimator {
    * @return None or throws an Error.
    */
 
-  constructor(private readonly logger: Logger, private readonly updateThreshold = 60, networkId = DEFAULT_NETWORK_ID) {
+  constructor(
+    private readonly logger: Logger,
+    private readonly updateThreshold = 60,
+    private readonly networkId = DEFAULT_NETWORK_ID,
+    private readonly web3: Web3 | undefined = undefined
+  ) {
     // If networkId is not found in MAPPING_BY_NETWORK, then default to 1.
     if (!Object.keys(MAPPING_BY_NETWORK).includes(networkId.toString())) this.networkId = DEFAULT_NETWORK_ID;
     else this.networkId = networkId;
@@ -95,6 +101,7 @@ export class GasEstimator {
     // Set the initial values to the defaults.
     this.lastFastPriceGwei = this.defaultFastPriceGwei;
     this.latestMaxFeePerGasGwei = this.defaultMaxFeePerGasGwei;
+    this.latestBaseFee = this.defaultMaxFeePerGasGwei;
     this.latestMaxPriorityFeePerGasGwei = this.defaultMaxPriorityFeePerGasGwei;
   }
 
@@ -112,6 +119,7 @@ export class GasEstimator {
         currentMaxFeePerGas: this.latestMaxFeePerGasGwei,
         currentMaxPriorityFeePerGas: this.latestMaxPriorityFeePerGasGwei,
         lastFastPriceGwei: this.lastFastPriceGwei,
+        lastBaseFee: this.latestBaseFee,
         timeRemainingUntilUpdate: this.lastUpdateTimestamp + this.updateThreshold - currentTime,
       });
       return;
@@ -127,6 +135,7 @@ export class GasEstimator {
         currentMaxFeePerGas: this.latestMaxFeePerGasGwei,
         currentMaxPriorityFeePerGas: this.latestMaxPriorityFeePerGasGwei,
         lastFastPriceGwei: this.lastFastPriceGwei,
+        latestBaseFee: this.latestBaseFee,
       });
     }
   }
@@ -143,12 +152,32 @@ export class GasEstimator {
     } else return { gasPrice: Math.ceil(this.lastFastPriceGwei * 1e9) };
   }
 
+  // Returns the base fee observed the last time the estimator was updated.
+  getCurrentBaseFee(): number {
+    return this.latestBaseFee;
+  }
+
+  getExpectedCumulativeGasPrice(): number {
+    if (this.type == NetworkType.London) return this.latestBaseFee + this.latestMaxPriorityFeePerGasGwei;
+    else return this.latestBaseFee;
+  }
+
   async _update() {
-    const latestGasInfo = await this._getPrice(this.networkId);
+    // Fetch the gasPrice info from the external provider and fetch the base fee from the web3 instance. Note that the
+    // gas price provider on mainnet (etherchain) does provide a base fee but in practice it seems to lag behind the
+    // most recent blocks somewhat. Using the web3 provider is more direct. Also Note that if this is not on L1 then the
+    // web3.eth.getGasPrice call will return the current gas price, not base fee. finally, note that if web3 was not
+    // defined then the base fee will be 0.
+    const [gasInfo, baseFee] = await Promise.all([
+      this._getPrice(this.networkId),
+      this.web3 ? this.web3.eth.getGasPrice() : null, // If a web3 instance was provided, fetch the base fee.
+    ]);
+    this.latestBaseFee = Number(baseFee);
+
     if (this.type == NetworkType.London) {
-      this.latestMaxFeePerGasGwei = (latestGasInfo as LondonGasData).maxFeePerGas;
-      this.latestMaxPriorityFeePerGasGwei = (latestGasInfo as LondonGasData).maxPriorityFeePerGas;
-    } else this.lastFastPriceGwei = (latestGasInfo as LegacyGasData).gasPrice;
+      this.latestMaxFeePerGasGwei = (gasInfo as LondonGasData).maxFeePerGas;
+      this.latestMaxPriorityFeePerGasGwei = (gasInfo as LondonGasData).maxPriorityFeePerGas;
+    } else this.lastFastPriceGwei = (gasInfo as LegacyGasData).gasPrice;
   }
 
   async _getPrice(_networkId: number): Promise<LondonGasData | LegacyGasData> {
@@ -158,7 +187,7 @@ export class GasEstimator {
     if (!url) throw new Error(`Missing URL for network ID ${_networkId}`);
 
     try {
-      // Primary URL expected response structure for London
+      // Primary URL expected response structure for London.
       // {
       //    safeLow: 1, // slow maxPriorityFeePerGas
       //    standard: 1.5, // standard maxPriorityFeePerGas
@@ -167,7 +196,7 @@ export class GasEstimator {
       //    currentBaseFee: 33.1, // previous blocks base fee
       //    recommendedBaseFee: 67.1 // maxFeePerGas
       // }
-      // Primary URL expected response structure for legacy. All values are gas price in Gwei
+      // Primary URL expected response structure for legacy.
       // {
       //    "safeLow": 3,
       //    "standard": 15,

@@ -1,7 +1,8 @@
 import winston from "winston";
 import Web3 from "web3";
 const { toWei, toBN } = Web3.utils;
-const fixedPointAdjustment = toBN(toWei("1"));
+const toBNWei = (number: string | number) => toBN(toWei(number.toString()).toString());
+const fixedPointAdjustment = toBNWei(1);
 
 import { runTransaction, createEtherscanLinkMarkdown, createFormatFunction, PublicNetworks } from "@uma/common";
 import { getAbi } from "@uma/contracts-node";
@@ -15,6 +16,7 @@ import {
   SettleableRelay,
 } from "@uma/financial-templates-lib";
 import { getTokenBalance } from "./RelayerHelpers";
+import { ProfitabilityCalculator } from "./ProfitabilityCalculator";
 
 import type { BN, TransactionType, AugmentedSendOptions } from "@uma/common";
 
@@ -38,6 +40,7 @@ export class Relayer {
    * @param {Object} logger Module used to send logs.
    * @param {Object} l1Client Client for fetching L1 data from the insured bridge pool and admin contracts.
    * @param {Object} l2Client Client for fetching L2 deposit data.
+   * @param {Object} profitabilityCalculator Calculator client used to calculate profitability of relays.
    * @param {Array} whitelistedRelayL1Tokens List of whitelisted L1 tokens that the relayer supports.
    * @param {Array} whitelistedChainIds List of whitelisted chain IDs that the relayer supports. Any relays for chain
    * IDs not on this list will be disputed.
@@ -54,6 +57,7 @@ export class Relayer {
     readonly gasEstimator: GasEstimator,
     readonly l1Client: InsuredBridgeL1Client,
     readonly l2Client: InsuredBridgeL2Client,
+    readonly profitabilityCalculator: ProfitabilityCalculator,
     readonly whitelistedRelayL1Tokens: string[],
     readonly account: string,
     readonly whitelistedChainIds: number[],
@@ -105,6 +109,7 @@ export class Relayer {
         try {
           relayTransactions.push(await this._generateRelayTransactionForPendingDeposit(l1Token, relayableDeposit));
         } catch (error) {
+          console.log("error", error);
           this.logger.error({ at: "AcrossRelayer#Relayer", message: "Unexpected error processing deposit", error });
         }
       }
@@ -465,15 +470,16 @@ export class Relayer {
     ]);
     const relayTokenRequirement = this._getRelayTokenRequirement(deposit, proposerBondPct, realizedLpFeePct);
 
-    // There are three different kinds of profits that the bot can produce:
-    let slowProfit = toBN("0");
-    let speedUpProfit = toBN("0");
-    let instantProfit = toBN("0");
-    // Based on the bots token balance, and the relay state we can compute the profitability of each action.
+    // There are three different kinds of Revenues that the bot can produce:
+    let slowRevenue = toBN("0");
+    let speedUpRevenue = toBN("0");
+    let instantRevenue = toBN("0");
+
+    // Based on the bots token balance, and the relay state we can compute the revenue of each action.
 
     // a) Balance is large enough to do a slow relay. No relay action has happened on L1 yet for this deposit.
     if (l1TokenBalance.gte(relayTokenRequirement.slow) && clientRelayState === ClientRelayState.Uninitialized)
-      slowProfit = toBN(deposit.amount).mul(toBN(deposit.slowRelayFeePct)).div(fixedPointAdjustment);
+      slowRevenue = toBN(deposit.amount).mul(toBN(deposit.slowRelayFeePct)).div(fixedPointAdjustment);
 
     // b) Balance is large enough to instant relay and the relay does not have an instant relayer. Deposit is in any
     // state except finalized (i.e can be slow relayed and sped up or only sped up.)
@@ -482,7 +488,7 @@ export class Relayer {
       l1TokenBalance.gte(relayTokenRequirement.instant) &&
       clientRelayState !== ClientRelayState.Finalized
     )
-      speedUpProfit = toBN(deposit.amount).mul(toBN(deposit.instantRelayFeePct)).div(fixedPointAdjustment);
+      speedUpRevenue = toBN(deposit.amount).mul(toBN(deposit.instantRelayFeePct)).div(fixedPointAdjustment);
 
     // c) Balance is large enough to slow relay and then speed up. Only considered if no L1 action has happened yet as
     // wont be able to do an instant relay if the relay has already been slow relayed. In that case, should speedUp.
@@ -490,14 +496,16 @@ export class Relayer {
       l1TokenBalance.gte(relayTokenRequirement.slow.add(relayTokenRequirement.instant)) &&
       clientRelayState == ClientRelayState.Uninitialized
     )
-      instantProfit = slowProfit.add(speedUpProfit);
+      instantRevenue = slowRevenue.add(speedUpRevenue);
 
     // Finally, decide what action to do based on the relative profits.
-    if (instantProfit.gt(speedUpProfit) && instantProfit.gt(slowProfit)) return RelaySubmitType.Instant;
-
-    if (speedUpProfit.gt(slowProfit)) return RelaySubmitType.SpeedUp;
-    if (slowProfit.gt(toBN("0"))) return RelaySubmitType.Slow;
-    return RelaySubmitType.Ignore;
+    return this.profitabilityCalculator.getRelaySubmitTypeBasedOnProfitability(
+      deposit.l1Token,
+      toBN(this.gasEstimator.getExpectedCumulativeGasPrice()),
+      slowRevenue,
+      speedUpRevenue,
+      instantRevenue
+    );
   }
 
   private async _generateSettleTransactionForSettleableRelay(deposit: Deposit, relay: Relay) {
@@ -525,7 +533,7 @@ export class Relayer {
 
     if (transactions.length == 0) return;
     if (transactions.length == 1) {
-      this.logger.debug({ at: "AcrossRelayer#TxProcessor", message: "Sending transaction" });
+      this.logger.debug({ at: "AcrossRelayer#TxProcessor", message: "Sending transactions" });
       const transaction = transactions[0];
       await this._sendTransaction(transaction.transaction, transaction.message, transaction.mrkdwn, transaction.level);
     }
@@ -585,6 +593,7 @@ export class Relayer {
   }> {
     try {
       await this.gasEstimator.update();
+      console.log("config", { ...this.gasEstimator.getCurrentFastPrice(), from: this.account });
       const { receipt, transactionConfig } = await runTransaction({
         web3: this.l1Client.l1Web3,
         transaction,
@@ -664,12 +673,7 @@ export class Relayer {
       slow: toBN(deposit.amount).mul(proposerBondPct).div(fixedPointAdjustment),
       // instant relay :amount - LP fee, - slow fee, - instant fee = amount * (1-lpFeePct+slowRelayFeePct+instantRelayFeePct)
       instant: toBN(deposit.amount)
-        .mul(
-          toBN(toWei("1"))
-            .sub(realizedLpFeePct)
-            .sub(toBN(deposit.slowRelayFeePct))
-            .sub(toBN(deposit.instantRelayFeePct))
-        )
+        .mul(toBNWei(1).sub(realizedLpFeePct).sub(toBN(deposit.slowRelayFeePct)).sub(toBN(deposit.instantRelayFeePct)))
         .div(fixedPointAdjustment),
     };
   }
@@ -700,9 +704,10 @@ export class Relayer {
     hasInstantRelayer: boolean
   ) {
     const mrkdwn = this._generateMarkdownForRelay(relayableDeposit.deposit, realizedLpFeePct);
+    console.log("shouldRelay", shouldRelay);
     switch (shouldRelay) {
       case RelaySubmitType.Ignore:
-        this.logger.debug({
+        this.logger.warn({
           at: "AcrossRelayer#Relayer",
           message: "Not relaying potentially unprofitable deposit, or insufficient balance 😖",
           realizedLpFeePct: realizedLpFeePct.toString(),
