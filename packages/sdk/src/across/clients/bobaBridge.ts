@@ -8,6 +8,7 @@ import {
   BobaAddressManagerEthers__factory,
 } from "@uma/contracts-node";
 import { Watcher } from "@eth-optimism/core-utils";
+import { SignerOrProvider } from "../..";
 
 export const l1Contracts: { ADDRESS_MANAGER_ADDRESS: { [chainId: number]: string } } = {
   ADDRESS_MANAGER_ADDRESS: {
@@ -22,6 +23,15 @@ export class BobaBridgeClient {
   // Gas limit for the L2 transaction initiated by the Sequencer
   public readonly L2_DEPOSIT_GAS_LIMIT = 1300000;
 
+  public async getL1BridgeAddress(chainId: number, l1Provider: SignerOrProvider): Promise<string> {
+    const addressManagerAddress = l1Contracts.ADDRESS_MANAGER_ADDRESS[chainId];
+    assert(typeof addressManagerAddress === "string", "Chain not supported");
+    const addressManager = BobaAddressManagerEthers__factory.connect(addressManagerAddress, l1Provider);
+    const l1StandardBridgeAddress = await addressManager.getAddress("Proxy__OVM_L1StandardBridge");
+
+    return l1StandardBridgeAddress;
+  }
+
   /**
    * Create a transaction to deposit ERC20 tokens to Boba. Mainnet and Rinkeby are currently supported
    * @param l1Signer The L1 wallet provider (signer)
@@ -32,11 +42,7 @@ export class BobaBridgeClient {
    */
   async depositERC20(l1Signer: Signer, l1Erc20Address: string, l2Erc20Address: string, amount: BigNumber) {
     const chainId = await l1Signer.getChainId();
-    const addressManagerAddress = l1Contracts.ADDRESS_MANAGER_ADDRESS[chainId];
-    assert(typeof addressManagerAddress === "string", "Chain not supported");
-
-    const addressManager = BobaAddressManagerEthers__factory.connect(addressManagerAddress, l1Signer);
-    const l1StandardBridgeAddress = await addressManager.getAddress("Proxy__OVM_L1StandardBridge");
+    const l1StandardBridgeAddress = await this.getL1BridgeAddress(chainId, l1Signer);
     const l1StandardBridge = OptimismL1StandardBridgeEthers__factory.connect(l1StandardBridgeAddress, l1Signer);
     const l1_ERC20 = ERC20Ethers__factory.connect(l1Erc20Address, l1Signer);
     return l1StandardBridge.depositERC20(
@@ -56,11 +62,7 @@ export class BobaBridgeClient {
    */
   async depositEth(l1Signer: Signer, amount: BigNumber) {
     const chainId = await l1Signer.getChainId();
-    const addressManagerAddress = l1Contracts.ADDRESS_MANAGER_ADDRESS[chainId];
-    assert(typeof addressManagerAddress === "string", "Chain not supported");
-
-    const addressManager = BobaAddressManagerEthers__factory.connect(addressManagerAddress, l1Signer);
-    const l1StandardBridgeAddress = await addressManager.getAddress("Proxy__OVM_L1StandardBridge");
+    const l1StandardBridgeAddress = await this.getL1BridgeAddress(chainId, l1Signer);
     const l1StandardBridge = OptimismL1StandardBridgeEthers__factory.connect(l1StandardBridgeAddress, l1Signer);
     return l1StandardBridge.depositETH(
       this.L2_DEPOSIT_GAS_LIMIT,
