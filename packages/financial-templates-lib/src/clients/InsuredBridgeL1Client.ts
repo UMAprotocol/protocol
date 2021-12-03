@@ -75,7 +75,7 @@ export class InsuredBridgeL1Client {
     private readonly logger: Logger,
     readonly l1Web3: Web3,
     readonly bridgeAdminAddress: string,
-    readonly rateModels: { [key: string]: across.feeCalculator.Web3RateModel },
+    readonly rateModels: { [key: string]: across.constants.RateModel },
     readonly startingBlockNumber = 0,
     readonly endingBlockNumber: number | null = null
   ) {

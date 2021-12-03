@@ -1,5 +1,5 @@
 import Web3 from "web3";
-const { isAddress, toChecksumAddress, toBN } = Web3.utils;
+const { isAddress, toChecksumAddress } = Web3.utils;
 
 import assert from "assert";
 import { replaceAddressCase } from "@uma/common";
@@ -77,7 +77,7 @@ export class RelayerConfig {
 
   readonly whitelistedRelayL1Tokens: string[] = [];
   readonly whitelistedChainIds: number[] = [];
-  readonly rateModels: { [key: string]: across.feeCalculator.Web3RateModel } = {};
+  readonly rateModels: { [key: string]: across.constants.RateModel } = {};
   readonly activatedChainIds: number[];
   readonly l2BlockLookback: number;
 
@@ -154,10 +154,10 @@ export class RelayerConfig {
         `${toChecksumAddress(l1Token)} does not contain the required rate model keys ${expectedRateModelKeys}`
       );
       this.rateModels[toChecksumAddress(l1Token)] = {
-        UBar: toBN(processingRateModels[l1Token].UBar),
-        R0: toBN(processingRateModels[l1Token].R0),
-        R1: toBN(processingRateModels[l1Token].R1),
-        R2: toBN(processingRateModels[l1Token].R2),
+        UBar: processingRateModels[l1Token].UBar.toString(),
+        R0: processingRateModels[l1Token].R0.toString(),
+        R1: processingRateModels[l1Token].R1.toString(),
+        R2: processingRateModels[l1Token].R2.toString(),
       };
     }
 

@@ -5,9 +5,6 @@
 import Decimal from "decimal.js";
 import { BigNumberish, BN, toBN, toBNWei, fromWei, min, max, fixedPointAdjustment } from "./utils";
 
-import type Web3 from "web3";
-export type Web3BN = ReturnType<Web3["utils"]["toBN"]>;
-
 // note a similar type exists in the constants file, but are strings only. This is a bit more permissive to allow
 // backward compatibility for callers with a rate model defined with bignumbers and not strings.
 export interface RateModel {
@@ -15,13 +12,6 @@ export interface RateModel {
   R0: BigNumberish; // is the interest rate charged at 0 utilization
   R1: BigNumberish; // R_0+R_1 is the interest rate charged at UBar
   R2: BigNumberish; // R_0+R_1+R_2 is the interest rate charged at 100% utilization
-}
-
-export interface Web3RateModel {
-  UBar: Web3BN; // denote the utilization kink along the rate model where the slope of the interest rate model changes.
-  R0: Web3BN; // is the interest rate charged at 0 utilization
-  R1: Web3BN; // R_0+R_1 is the interest rate charged at UBar
-  R2: Web3BN; // R_0+R_1+R_2 is the interest rate charged at 100% utilization
 }
 
 // Calculate the rate for a 0 sized deposit (infinitesimally small).
@@ -87,20 +77,10 @@ export function calculateApyFromUtilization(
 }
 
 export function calculateRealizedLpFeePct(
-  _rateModel: RateModel | Web3RateModel,
-  utilizationBeforeDeposit: BigNumberish | Web3BN,
-  utilizationAfterDeposit: BigNumberish | Web3BN
+  rateModel: RateModel,
+  utilizationBeforeDeposit: BigNumberish,
+  utilizationAfterDeposit: BigNumberish
 ) {
-  const rateModel: RateModel = {
-    UBar: toBN(_rateModel.UBar.toString()),
-    R0: toBN(_rateModel.R0.toString()),
-    R1: toBN(_rateModel.R1.toString()),
-    R2: toBN(_rateModel.R2.toString()),
-  };
-  const apy = calculateApyFromUtilization(
-    rateModel,
-    toBN(utilizationBeforeDeposit.toString()),
-    toBN(utilizationAfterDeposit.toString())
-  );
+  const apy = calculateApyFromUtilization(rateModel, toBN(utilizationBeforeDeposit), toBN(utilizationAfterDeposit));
   return convertApyToWeeklyFee(apy);
 }

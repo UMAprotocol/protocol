@@ -72,11 +72,11 @@ const defaultRealizedLpFeePct = toWei("0.05");
 const minimumBridgingDelay = 60; // L2->L1 token bridging must wait at least this time.
 const initialPoolLiquidity = toWei("100");
 const depositAmount = toWei("1");
-const rateModel: across.feeCalculator.Web3RateModel = {
-  UBar: toBNWei("0.65"),
-  R0: toBNWei("0.00"),
-  R1: toBNWei("0.08"),
-  R2: toBNWei("1.00"),
+const rateModel: across.feeCalculator.RateModel = {
+  UBar: toWei("0.65"),
+  R0: toWei("0.00"),
+  R1: toWei("0.08"),
+  R2: toWei("1.00"),
 };
 const defaultLookbackWindow = 100;
 
@@ -579,7 +579,7 @@ describe("Relayer.ts", function () {
             instantRelayFeePct: defaultInstantRelayFeePct,
             quoteTimestamp: currentBlockTime,
           },
-          across.feeCalculator.calculateRealizedLpFeePct(rateModel, toBNWei("0"), toBNWei("0.01")) // compute the expected fee for 1% utilization
+          across.feeCalculator.calculateRealizedLpFeePct(rateModel, toWei("0"), toWei("0.01")) // compute the expected fee for 1% utilization
         )
         .send({ from: l1Owner });
 
@@ -720,7 +720,7 @@ describe("Relayer.ts", function () {
             instantRelayFeePct: defaultInstantRelayFeePct,
             quoteTimestamp: quoteTime,
           },
-          across.feeCalculator.calculateRealizedLpFeePct(rateModel, toBNWei("0"), toBNWei("0.01")) // compute the expected fee for 1% utilization
+          across.feeCalculator.calculateRealizedLpFeePct(rateModel, toWei("0"), toWei("0.01")) // compute the expected fee for 1% utilization
         )
         .send({ from: l1Owner });
       await Promise.all([l1Client.update(), l2Client.update()]);
@@ -764,7 +764,7 @@ describe("Relayer.ts", function () {
             instantRelayFeePct: defaultInstantRelayFeePct,
             quoteTimestamp: quoteTime,
           },
-          across.feeCalculator.calculateRealizedLpFeePct(rateModel, toBNWei("0"), toBNWei("0.01")) // compute the expected fee for 1% utilization
+          across.feeCalculator.calculateRealizedLpFeePct(rateModel, toWei("0"), toWei("0.01")) // compute the expected fee for 1% utilization
         )
         .send({ from: l1Owner });
       await Promise.all([l1Client.update(), l2Client.update()]);
@@ -1435,7 +1435,7 @@ describe("Relayer.ts", function () {
             instantRelayFeePct: defaultInstantRelayFeePct,
             quoteTimestamp: quoteTime,
           },
-          across.feeCalculator.calculateRealizedLpFeePct(rateModel, toBNWei("0"), toBNWei("0.01")) // compute the expected fee for 1% utilization
+          across.feeCalculator.calculateRealizedLpFeePct(rateModel, toWei("0"), toWei("0.01")) // compute the expected fee for 1% utilization
         )
         .send({ from: l1Owner });
       await Promise.all([l1Client.update(), l2Client.update()]);
@@ -1484,7 +1484,7 @@ describe("Relayer.ts", function () {
             instantRelayFeePct: defaultInstantRelayFeePct,
             quoteTimestamp: quoteTime,
           },
-          across.feeCalculator.calculateRealizedLpFeePct(rateModel, toBNWei("0"), toBNWei("0.01")) // This realized LP fee computation should
+          across.feeCalculator.calculateRealizedLpFeePct(rateModel, toWei("0"), toWei("0.01")) // This realized LP fee computation should
           // be impossible for the relayer to compute since its for a timestamp in the future, therefore the bot should
           // dispute.
         )
@@ -1520,7 +1520,7 @@ describe("Relayer.ts", function () {
             instantRelayFeePct: defaultInstantRelayFeePct,
             quoteTimestamp: quoteTime,
           },
-          across.feeCalculator.calculateRealizedLpFeePct(rateModel, toBNWei("0"), toBNWei("0.01"))
+          across.feeCalculator.calculateRealizedLpFeePct(rateModel, toWei("0"), toWei("0.01"))
         )
         .send({ from: l1Owner });
       await bridgePool.methods
@@ -1535,7 +1535,7 @@ describe("Relayer.ts", function () {
             instantRelayFeePct: defaultInstantRelayFeePct,
             quoteTimestamp: quoteTime,
           },
-          across.feeCalculator.calculateRealizedLpFeePct(rateModel, toBNWei("0"), toBNWei("0.01"))
+          across.feeCalculator.calculateRealizedLpFeePct(rateModel, toWei("0"), toWei("0.01"))
         )
         .send({ from: l1Owner });
       await bridgePool.methods
@@ -1550,7 +1550,7 @@ describe("Relayer.ts", function () {
             instantRelayFeePct: defaultInstantRelayFeePct,
             quoteTimestamp: quoteTime,
           },
-          across.feeCalculator.calculateRealizedLpFeePct(rateModel, toBNWei("0"), toBNWei("0.01"))
+          across.feeCalculator.calculateRealizedLpFeePct(rateModel, toWei("0"), toWei("0.01"))
         )
         .send({ from: l1Owner });
 
