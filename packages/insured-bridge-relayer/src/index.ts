@@ -4,7 +4,7 @@ import retry from "async-retry";
 import { config } from "dotenv";
 import assert from "assert";
 
-import { getWeb3, getWeb3ByChainId } from "@uma/common";
+import { getWeb3, getWeb3ByChainId, getRetryWeb3sByChainId } from "@uma/common";
 import {
   GasEstimator,
   Logger,
@@ -53,13 +53,21 @@ export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
     const l2Web3 = getWeb3ByChainId(config.activatedChainIds[0]);
     const latestL2BlockNumber = await l2Web3.eth.getBlockNumber();
     const l2StartBlock = Math.max(0, latestL2BlockNumber - config.l2BlockLookback);
-
+    const fallbackL2Web3s = getRetryWeb3sByChainId(config.activatedChainIds[0]);
+    // Note: This will not construct duplicate Web3 objects for URL's in the Retry config that are the same as the
+    // one used to construct l2Web3.
+    logger.debug({
+      at: "AcrossRelayer#index",
+      message: `Constructed ${fallbackL2Web3s.length} fallback L2 web3 providers`,
+    });
     const l2Client = new InsuredBridgeL2Client(
       logger,
       l2Web3,
       await l1Client.getL2DepositBoxAddress(config.activatedChainIds[0]),
       config.activatedChainIds[0],
-      l2StartBlock
+      l2StartBlock,
+      null,
+      fallbackL2Web3s
     );
 
     // Update the L2 client and filter out tokens that are not whitelisted on the L2 from the whitelisted
