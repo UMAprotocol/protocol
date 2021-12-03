@@ -173,7 +173,7 @@ describe("InsuredBridgeL2Client", () => {
 
   it("Fails to update if L2 rpcs disagree about contract state", async () => {
     // Construct new Web3 that will disagree with main Web3 provider about which events were emitted by DepositBox.
-    await startGanacheServer(7777);
+    startGanacheServer(7777);
     const spy = sinon.spy();
     const spyLogger = winston.createLogger({
       level: "info",
