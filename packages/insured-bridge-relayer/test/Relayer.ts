@@ -72,7 +72,7 @@ const defaultRealizedLpFeePct = toWei("0.05");
 const minimumBridgingDelay = 60; // L2->L1 token bridging must wait at least this time.
 const initialPoolLiquidity = toWei("100");
 const depositAmount = toWei("1");
-const rateModel: across.feeCalculator.RateModel = {
+const rateModel: across.constants.RateModel = {
   UBar: toWei("0.65"),
   R0: toWei("0.00"),
   R1: toWei("0.08"),
