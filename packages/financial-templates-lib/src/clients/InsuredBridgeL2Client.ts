@@ -128,7 +128,7 @@ export class InsuredBridgeL2Client {
   async getFundsDepositedEvents(eventSearchOptions: EventSearchOptions): Promise<EventData[]> {
     const eventsData = await getEventsForMultipleProviders(
       [this.l2Web3].concat(this.fallbackL2Web3s),
-      this.bridgeDepositBox.options.jsonInterface,
+      getAbi("BridgeDepositBox"),
       this.bridgeDepositAddress,
       "FundsDeposited",
       eventSearchOptions
@@ -156,7 +156,7 @@ export class InsuredBridgeL2Client {
   async getWhitelistTokenEvents(eventSearchOptions: EventSearchOptions): Promise<EventData[]> {
     const eventsData = await getEventsForMultipleProviders(
       [this.l2Web3].concat(this.fallbackL2Web3s),
-      this.bridgeDepositBox.options.jsonInterface,
+      getAbi("BridgeDepositBox"),
       this.bridgeDepositAddress,
       "WhitelistToken",
       eventSearchOptions
