@@ -112,15 +112,10 @@ export async function getEventsForMultipleProviders(
     })
   );
 
-  // Associate each event with a key uniquely identifying the event. We'll use this key in the next step to determine
-  // which events were returned by all providers.
-  type UniqueEventData = { [key: string]: EventData };
-  const uniqueEventsForProvider: UniqueEventData[] = [];
-  // [index of web3Provider => {eventKey => event}]
-  const uniqueEvents: { [uniqueEventKey: string]: { event: EventData; count: number } } = {};
   // Union map of ALL unique events across all providers: [{eventKey => {eventData, count}}]. We'll use this map to
   // keep track of how many times we see each event. For an event to be returned successfully from this method, it must
   // seen exactly once for each web3 provider.
+  const uniqueEvents: { [uniqueEventKey: string]: { event: EventData; count: number } } = {};
 
   const _getUniqueEventKey = (event: EventData): string => {
     return JSON.stringify({
@@ -131,12 +126,9 @@ export async function getEventsForMultipleProviders(
       address: event.address,
     });
   };
-  allProviderEvents.forEach((eventDataForProvider, i) => {
-    uniqueEventsForProvider[i] = {};
+  allProviderEvents.forEach((eventDataForProvider) => {
     eventDataForProvider.forEach((event) => {
       const uniqueEventKey = _getUniqueEventKey(event);
-      // Add event for this provider.
-      uniqueEventsForProvider[i][uniqueEventKey] = event;
       // Add event to union map if we haven't seen it before.
       if (uniqueEvents[uniqueEventKey] === undefined) uniqueEvents[uniqueEventKey] = { event, count: 1 };
       else uniqueEvents[uniqueEventKey].count++;
