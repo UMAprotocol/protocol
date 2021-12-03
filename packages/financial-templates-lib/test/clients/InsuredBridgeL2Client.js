@@ -32,14 +32,6 @@ const slowRelayFeePct = toWei("0.005");
 const instantRelayFeePct = toWei("0.005");
 const quoteTimestampOffset = 60; // 60 seconds into the past.
 
-let fallbackL2Web3 = undefined;
-const startGanacheServer = (port) => {
-  if (fallbackL2Web3 !== undefined) return;
-  const node = ganache.server();
-  node.listen(port);
-  fallbackL2Web3 = new Web3("http://127.0.0.1:" + port);
-};
-
 describe("InsuredBridgeL2Client", () => {
   const generateDepositHash = (depositData) => {
     const depositDataAbiEncoded = web3.eth.abi.encodeParameters(
@@ -173,7 +165,6 @@ describe("InsuredBridgeL2Client", () => {
 
   it("Fails to update if L2 rpcs disagree about contract state", async () => {
     // Construct new Web3 that will disagree with main Web3 provider about which events were emitted by DepositBox.
-    startGanacheServer(7878);
     const spy = sinon.spy();
     const spyLogger = winston.createLogger({
       level: "info",
@@ -188,7 +179,8 @@ describe("InsuredBridgeL2Client", () => {
       chainId,
       0,
       null,
-      [fallbackL2Web3]
+      [new Web3(ganache.provider())] // Ganache provider will be different from hardhat provider that is already
+      // connected to the BridgeDepositBox.
     );
 
     const eventSearchOptions = { fromBlock: 0, toBlock: "latest" };
