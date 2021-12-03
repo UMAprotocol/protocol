@@ -1,8 +1,7 @@
 // A thick client for getting information about insured bridge L1 & L2 information. Simply acts to fetch information
 // from the respective chains and return it to client implementors.
 
-import { getAbi } from "@uma/contracts-node";
-import type { BridgeDepositBoxWeb3 } from "@uma/contracts-node";
+import { getAbi, BridgeDepositBoxWeb3 } from "@uma/contracts-node";
 import Web3 from "web3";
 import type { EventData } from "web3-eth-contract";
 import { EventSearchOptions, getEventsForMultipleProviders } from "@uma/common";
@@ -134,12 +133,11 @@ export class InsuredBridgeL2Client {
       eventSearchOptions
     );
     if (eventsData.missingEvents.length > 0) {
-      const errorMessage = `L2 RPC endpoints disagree about L2 contract events, please manually investigate.`;
+      const errorMessage = `L2 RPC endpoints disagree about L2 contract events, please manually investigate. L2 rpcs are described in NODE_URL and RETRY_CONFIG environment variables.`;
       const error = new Error(errorMessage);
       this.logger.error({
         at: "InsuredBridgeL2Client",
-        message:
-          "L2 client will not complete update because L2 RPC endpoints disagree about L2 contract events. This error requires manual investigation to determine which events are valid and whether manual disputes should be sent. L2 rpcs are described in NODE_URL and RETRY_CONFIG environment variables.",
+        message: "L2 RPC endpoint state disagreement! 🤺",
         eventName: "FundsDeposited",
         eventSearchOptions,
         countMissingEvents: eventsData.missingEvents.length,
@@ -162,12 +160,11 @@ export class InsuredBridgeL2Client {
       eventSearchOptions
     );
     if (eventsData.missingEvents.length > 0) {
-      const errorMessage = `L2 RPC endpoints disagree about L2 contract events, please manually investigate.`;
+      const errorMessage = `L2 RPC endpoints disagree about L2 contract events, please manually investigate. L2 rpcs are described in NODE_URL and RETRY_CONFIG environment variables.`;
       const error = new Error(errorMessage);
       this.logger.error({
         at: "InsuredBridgeL2Client",
-        message:
-          "L2 client will not complete update because L2 RPC endpoints disagree about L2 contract events. This error requires manual investigation to determine which events are valid and whether manual disputes should be sent. L2 rpcs are described in NODE_URL and RETRY_CONFIG environment variables.",
+        message: "L2 RPC endpoint state disagreement! 🤺",
         eventName: "WhitelistToken",
         eventSearchOptions,
         countMissingEvents: eventsData.missingEvents.length,

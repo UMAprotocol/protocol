@@ -229,7 +229,7 @@ describe("InsuredBridgeL2Client", () => {
       assert.isTrue(false);
     } catch (e) {
       assert.equal(lastSpyLogLevel(spy), "error");
-      assert.isTrue(lastSpyLogIncludes(spy, "L2 client will not complete update"));
+      assert.isTrue(lastSpyLogIncludes(spy, "L2 RPC endpoint state disagreement"));
     }
   });
 });
