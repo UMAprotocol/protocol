@@ -8,7 +8,7 @@ interface BridgePoolLike {
 
 /**
  * @notice Small helper contract to facilitate calling sync methods on a set of bridge pools. When one pool needs to be
- * sync it is likely that all ecosystem pools also need to be synced. This contract lets the caller do this in a batch.
+ * synced it is likely that all ecosystem pools also need to be synced. This contract lets the caller do this in a batch.
  */
 contract BridgePoolSynchronizer {
     function syncUmaEcosystemParams(BridgePoolLike[] memory bridgePools) public {
