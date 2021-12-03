@@ -3,6 +3,7 @@ const { assert } = require("chai");
 const hre = require("hardhat");
 const { web3, network } = require("hardhat");
 
+const { across } = require("@uma/sdk");
 const {
   interfaceName,
   TokenRolesEnum,
@@ -33,7 +34,6 @@ const Timer = getContract("Timer");
 const { InsuredBridgePriceFeed } = require("../../dist/price-feed/InsuredBridgePriceFeed");
 const { InsuredBridgeL1Client } = require("../../dist/clients/InsuredBridgeL1Client");
 const { InsuredBridgeL2Client } = require("../../dist/clients/InsuredBridgeL2Client");
-const { calculateRealizedLpFeePct } = require("../../dist/helpers/acrossFeesCalculator");
 
 // Contract objects
 let messenger, bridgeAdmin, bridgePool;
@@ -118,11 +118,9 @@ describe("InsuredBridgePriceFeed", function () {
       priceRequestTime: depositTimestamp,
       // This should match the realized fee % that the L1 client computes, otherwise the pricefeed will determine the
       // relay to be invalid.
-      realizedLpFeePct: calculateRealizedLpFeePct(
-        rateModels[l1Token.options.address],
-        toBNWei("0"),
-        toBNWei("0.1")
-      ).toString(),
+      realizedLpFeePct: across.feeCalculator
+        .calculateRealizedLpFeePct(rateModels[l1Token.options.address], toBNWei("0"), toBNWei("0.1"))
+        .toString(),
       slowRelayer: relayer,
       finalFee,
       proposerBond,
