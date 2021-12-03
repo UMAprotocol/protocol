@@ -84,4 +84,18 @@ export class OptimismBridgeClient {
     const [msgHash1] = await watcher.getMessageHashesFromL1Tx(tx.hash);
     return watcher.getL2TransactionReceipt(msgHash1, true);
   }
+
+  public async checkAllowance(l1Signer: Signer, l1Erc20Address: string) {
+    const chainId = await l1Signer.getChainId();
+    const l1StandardBridgeAddress = this.getL1BridgeAddress(chainId);
+    const l1_ERC20 = ERC20Ethers__factory.connect(l1Erc20Address, l1Signer);
+    return l1_ERC20.allowance(await l1Signer.getAddress(), l1StandardBridgeAddress);
+  }
+
+  public async approve(l1Signer: Signer, l1Erc20Address: string, amount: BigNumber) {
+    const chainId = await l1Signer.getChainId();
+    const l1StandardBridgeAddress = this.getL1BridgeAddress(chainId);
+    const l1_ERC20 = ERC20Ethers__factory.connect(l1Erc20Address, l1Signer);
+    return l1_ERC20.approve(l1StandardBridgeAddress, amount);
+  }
 }
