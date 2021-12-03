@@ -1924,7 +1924,7 @@ describe("BridgePool", () => {
       // If the LP tries to pull out more than the liquid reserves, should revert.
       assert(await didContractThrow(bridgePool.methods.removeLiquidity(toWei("6"), false).send({ from: rando })));
 
-      // Now, consider some funds have come over the canonical bridge the enable the withdrawal attempt.
+      // Now, consider some funds have come over the canonical bridge that enable the withdrawal attempt.
       await l1Token.methods.mint(bridgePool.options.address, toWei("1")).send({ from: owner });
 
       // The "true" liquid reserves should now be 6.5. However, sync has not been called so the contracts state does not
