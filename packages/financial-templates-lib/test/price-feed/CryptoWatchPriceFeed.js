@@ -361,6 +361,49 @@ describe("CryptoWatchPriceFeed.js", function () {
     assert.equal(cryptoWatchPriceFeed.getCurrentPrice().toString(), "1296666666666666666");
   });
 
+  it("Basic TWAP price, TWAP specified in ancillary data", async function () {
+    cryptoWatchPriceFeed = new CryptoWatchPriceFeed(
+      spyLogger,
+      web3,
+      apiKey,
+      exchange,
+      pair,
+      lookback,
+      networker,
+      getTime,
+      minTimeBetweenUpdates,
+      false,
+      18, // Add arbitrary decimal conversion and prove this works.
+      undefined,
+      0 // We'll specify TWAP length in ancillary data
+    );
+
+    // Specify a TWAP period by passing in ancillary data containing `twapLength`.
+    networker.getJsonReturns = [...validResponses];
+    await cryptoWatchPriceFeed.update(utf8ToHex("twapLength:120"));
+
+    // ((12 * 32) + (13 * 60) + (14 * 28)) / 120
+    assert.equal((await cryptoWatchPriceFeed.getCurrentPrice()).toString(), "1296666666666666666");
+
+    // When passing in ancillary data that doesn't specify TWAP length, pricefeed default twapLength is used. In this
+    // case, the default TWAP length is 0 so it should return the current price for the timestamp.
+    networker.getJsonReturns = [...validResponses];
+    await cryptoWatchPriceFeed.update("");
+    assert.equal((await cryptoWatchPriceFeed.getCurrentPrice()).toString(), web3.utils.toWei("1.5"));
+    networker.getJsonReturns = [...validResponses];
+    await cryptoWatchPriceFeed.update(utf8ToHex("key:value"));
+    assert.equal((await cryptoWatchPriceFeed.getCurrentPrice()).toString(), web3.utils.toWei("1.5"));
+
+    // If ancillary data can't be parsed to UTF8, then it should throw.
+    networker.getJsonReturns = [...validResponses];
+    try {
+      await cryptoWatchPriceFeed.update("0xabcd");
+      assert.isTrue(false);
+    } catch (e) {
+      assert.isTrue(e.message.includes("Cannot parse ancillary data bytes to UTF-8"));
+    }
+  });
+
   it("Basic TWAP historical price", async function () {
     cryptoWatchPriceFeed = new CryptoWatchPriceFeed(
       spyLogger,
@@ -409,7 +452,7 @@ describe("CryptoWatchPriceFeed.js", function () {
 
     await cryptoWatchPriceFeed.update();
 
-    // This time, specify a smaller TWAP period by passing in ancillary data containing `twapLength`.
+    // Specify a smaller TWAP period by passing in ancillary data containing `twapLength`.
     // ((12 * 60) + (11 * 60)) / 120
     assert.equal(
       (await cryptoWatchPriceFeed.getHistoricalPrice(1588376460, utf8ToHex("twapLength:120"))).toString(),
