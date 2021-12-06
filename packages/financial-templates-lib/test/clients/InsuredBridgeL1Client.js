@@ -3,7 +3,6 @@ const { web3 } = hre;
 const { interfaceName, TokenRolesEnum, InsuredBridgeRelayStateEnum } = require("@uma/common");
 const { getContract } = hre;
 const { utf8ToHex, toWei, toBN, soliditySha3, toChecksumAddress, randomHex } = web3.utils;
-const toBNWei = (number) => toBN(toWei(number.toString()).toString());
 
 const winston = require("winston");
 const { assert } = require("chai");
@@ -66,7 +65,7 @@ const proposerBond = toBN(defaultProposerBondPct)
   .toString();
 const defaultGasLimit = 1_000_000;
 const defaultGasPrice = toWei("1", "gwei");
-const rateModel = { UBar: toBNWei("0.65"), R0: toBNWei("0.00"), R1: toBNWei("0.08"), R2: toBNWei("1.00") };
+const rateModel = { UBar: toWei("0.65"), R0: toWei("0.00"), R1: toWei("0.08"), R2: toWei("1.00") };
 
 describe("InsuredBridgeL1Client", function () {
   let accounts,
@@ -883,7 +882,6 @@ describe("InsuredBridgeL1Client", function () {
       );
 
       // If we set the quoteTimestamp to the current block time then the realizedLPFee should increase.
-
       assert.equal(
         (
           await client.calculateRealizedLpFeePctForDeposit({

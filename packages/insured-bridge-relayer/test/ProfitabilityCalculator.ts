@@ -4,6 +4,7 @@ import Web3 from "web3";
 const { toWei, toBN, toChecksumAddress, randomHex } = Web3.utils;
 const toBNWei = (number: string | number) => toBN(toWei(number.toString()).toString());
 
+const { ZERO_ADDRESS } = require("@uma/common");
 const { across } = require("@uma/sdk");
 
 import { SpyTransport, lastSpyLogIncludes } from "@uma/financial-templates-lib";
@@ -81,6 +82,23 @@ describe("ProfitabilityCalculator.ts", function () {
       assert.equal(lastLog.level, "debug");
       assert.equal(lastLog.message, "Updated prices");
       assert.equal(Object.keys(lastLog.tokenInfo).length, 3); // 3 tokens
+    });
+    it("Warns and sets price to 0 if cant find token price", async function () {
+      // In the event that coingecko cant find the price should not blow up but rather set the token price to 0 and send
+      // a warning message. This way, the bot will keep running but wont do any relays for that token type.
+      profitabilityCalculator = new ProfitabilityCalculator(
+        spyLogger,
+        [ZERO_ADDRESS], // Not a token with a price
+        mainnetChainId,
+        relayerDiscount
+      );
+
+      await profitabilityCalculator.update();
+
+      assert.isTrue(profitabilityCalculator.l1TokenInfo[ZERO_ADDRESS].tokenEthPrice.eq(toBN(0)));
+      const lastLog = spy.getCall(-2).lastArg;
+      assert.equal(lastLog.level, "warn");
+      assert.equal(lastLog.message, "Could not find token price!");
     });
   });
   describe("Profitability calculation", function () {

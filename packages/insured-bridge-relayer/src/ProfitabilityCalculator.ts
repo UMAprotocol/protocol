@@ -62,16 +62,30 @@ export class ProfitabilityCalculator {
       }
     }
 
-    // Fetch the prices of each token, denominated in ETH.
-    const tokenPrices = await Promise.all(
+    // Fetch the prices of each token, denominated in ETH. If coingecko does not have the price or is down then this
+    // call will fail and the tokenPrices array will have this error.
+    const tokenPrices = await Promise.allSettled(
       this.l1Tokens.map((l1Token) => this.coingecko.getCurrentPriceByContract(l1Token, "eth"))
     );
 
     // For each token, extract the price and convert to a wei'd BN. Note that if the type is WETH then the price is 1.
-    // This is done as coingecko does not always return the price of 1 for WETH, in ETH.
+    // This is done as coingecko does not always return the price of 1 for WETH, in ETH. Note that if the status is not
+    // fulfilled then the call failed. In this case we dont have pricing information for this token. Set price to 0 to
+    // not send arrays (always will be unprofitable) and generate a warning.
     for (const [index, priceResponse] of tokenPrices.entries()) {
-      this.l1TokenInfo[this.l1Tokens[index]].tokenEthPrice =
-        this.l1TokenInfo[this.l1Tokens[index]].tokenType == TokenType.WETH ? toBNWei("1") : toBNWei(priceResponse[1]);
+      if (priceResponse.status == "fulfilled") {
+        this.l1TokenInfo[this.l1Tokens[index]].tokenEthPrice =
+          this.l1TokenInfo[this.l1Tokens[index]].tokenType == TokenType.WETH
+            ? toBNWei("1")
+            : toBNWei(priceResponse.value[1]);
+      } else {
+        this.l1TokenInfo[this.l1Tokens[index]].tokenEthPrice = toBNWei("0");
+        this.logger.warn({
+          at: "ProfitabilityCalculator",
+          message: "Could not find token price!",
+          token: this.l1Tokens[index],
+        });
+      }
     }
     this.logger.debug({
       at: "ProfitabilityCalculator",
