@@ -31,7 +31,7 @@ export enum RelaySubmitType {
 }
 
 export class Relayer {
-  ExecutedTransactions: Array<ExecutedTransaction> = []; // store all submitted transactions during execution lifecycle.
+  executedTransactions: Array<ExecutedTransaction> = []; // store all submitted transactions during execution lifecycle.
 
   /**
    * @notice Constructs new Relayer Instance.
@@ -206,12 +206,12 @@ export class Relayer {
 
   // Returns all ExecutedTransactions from the current execution block.
   getExecutedTransactions(): ExecutedTransaction[] {
-    return this.ExecutedTransactions;
+    return this.executedTransactions;
   }
 
   // Resets ExecutedTransactions to the null state. Done at the start of each execution loop.
   resetExecutedTransactions(): void {
-    this.ExecutedTransactions = [];
+    this.executedTransactions = [];
   }
 
   // Evaluates given pending `relay` and determines whether to submit a dispute.
@@ -612,10 +612,10 @@ export class Relayer {
           message,
           mrkdwn: mrkdwn + " tx: " + createEtherscanLinkMarkdown(executionResult.transactionHash),
         });
-        // Just because the transaction was successfully included in the mem pool does not mean it will be mined without
-        // reverting. Store the transaction execution result within the ExecutedTransactions array. This is processed
+        // Just because the transaction was successfully included in the mempool does not mean it will be mined without
+        // reverting. Store the transaction execution result within the executedTransactions array. This is processed
         // at the end of the bot execution loop to ensure that all submitted transactions were successfully included.
-        this.ExecutedTransactions.push(executionResult);
+        this.executedTransactions.push(executionResult);
         return { txStatus: true, executionResult };
       } else throw executionResult;
     } catch (error) {
