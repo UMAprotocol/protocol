@@ -495,7 +495,9 @@ export class Relayer {
       l1TokenBalance.gte(relayTokenRequirement.slow.add(relayTokenRequirement.instant)) &&
       clientRelayState == ClientRelayState.Uninitialized
     )
-      instantRevenue = slowRevenue.add(speedUpRevenue);
+      // If the relay has an instant relayer than the instant revenue is zero. Else, the instant revenue is the sum of
+      // the slow and speed up revenues as the instant relayer will capture both.
+      instantRevenue = hasInstantRelayer ? toBN(0) : slowRevenue.add(speedUpRevenue);
 
     // Finally, decide what action to do based on the relative profits.
     return this.profitabilityCalculator.getRelaySubmitTypeBasedOnProfitability(
