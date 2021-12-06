@@ -37,6 +37,9 @@ contract RateModelStore is Ownable, MultiCaller {
         // If current block >= existing rate model's start block, then the new "old" rate model is the existing
         // "new" rate model. Otherwise, the existing rate model has not updated to the "new" rate model yet and the new
         // "old" rate model gets carried over.
+        // Note: If current block >= existing rate model's start block, then the new rate model will immediately take
+        // effect. This is a potentially useful feature for the admin who has the responsibility for determining when
+        // the rate model should update.
         string memory oldRateModel =
             (block.number >= l1TokenRateModels[l1Token].startBlock)
                 ? l1TokenRateModels[l1Token].newRateModel
