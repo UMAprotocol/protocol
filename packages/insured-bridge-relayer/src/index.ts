@@ -4,7 +4,8 @@ import retry from "async-retry";
 import { config } from "dotenv";
 import assert from "assert";
 
-import { getWeb3, getWeb3ByChainId, getRetryWeb3sByChainId } from "@uma/common";
+import { getWeb3, getWeb3ByChainId, processTransactionPromiseBatch, getRetryWeb3sByChainId } from "@uma/common";
+
 import {
   GasEstimator,
   Logger,
@@ -123,7 +124,14 @@ export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
 
           if (config.botModes.l2FinalizerEnabled) await crossDomainFinalizer.checkForBridgeableL2TokensAndBridge();
           else logger.debug({ at: "AcrossRelayer#CrossDomainFinalizer", message: "Cross domain finalizer disabled" });
+
+          // Each of the above code blocks could have produced transactions. If they did, their promises are stored
+          // in the executed transactions array. The method below awaits all these transactions to ensure they are
+          // correctly included in a block. if any submitted transactions contains an error then a log is produced.
+          await processTransactionPromiseBatch(relayer.getExecutedTransactions(), logger);
+          relayer.resetExecutedTransactions(); // Purge the executed transactions array for next execution loop.
         },
+
         {
           retries: config.errorRetries,
           minTimeout: config.errorRetriesTimeout * 1000, // delay between retries in ms

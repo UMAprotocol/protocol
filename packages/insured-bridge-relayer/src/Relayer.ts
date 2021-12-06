@@ -16,9 +16,7 @@ import {
 } from "@uma/financial-templates-lib";
 import { getTokenBalance } from "./RelayerHelpers";
 
-import type { BN, TransactionType, AugmentedSendOptions } from "@uma/common";
-
-import type { TransactionReceipt } from "web3-core";
+import type { BN, TransactionType, ExecutedTransaction } from "@uma/common";
 
 // Stores state of Relay (i.e. Pending, Uninitialized, Finalized) and linked L2 deposit parameters.
 type RelayableDeposit = { status: ClientRelayState; deposit: Deposit };
@@ -33,6 +31,8 @@ export enum RelaySubmitType {
 }
 
 export class Relayer {
+  executedTransactions: Array<ExecutedTransaction> = []; // store all submitted transactions during execution lifecycle.
+
   /**
    * @notice Constructs new Relayer Instance.
    * @param {Object} logger Module used to send logs.
@@ -202,6 +202,16 @@ export class Relayer {
     }
 
     return;
+  }
+
+  // Returns all ExecutedTransactions from the current execution block.
+  getExecutedTransactions(): ExecutedTransaction[] {
+    return this.executedTransactions;
+  }
+
+  // Resets ExecutedTransactions to the null state. Done at the start of each execution loop.
+  resetExecutedTransactions(): void {
+    this.executedTransactions = [];
   }
 
   // Evaluates given pending `relay` and determines whether to submit a dispute.
@@ -580,33 +590,37 @@ export class Relayer {
     level = "info"
   ): Promise<{
     txStatus: boolean;
-    receipt: TransactionReceipt | null;
-    transactionConfig: AugmentedSendOptions | null;
+    executionResult: ExecutedTransaction | null;
   }> {
     try {
       await this.gasEstimator.update();
-      const { receipt, transactionConfig } = await runTransaction({
+      // Run the transaction provided. Note that waitForMine is set to false. This means the function will return as
+      // soon as the transaction has been included in the mem pool, but is not yet mined. This is important as we want
+      // to be able to fire off as many transactions as quickly as posable. Note that as soon as the transaction is
+      // in the mem pool we will produces a transaction hash for logging.
+      const executionResult = await runTransaction({
         web3: this.l1Client.l1Web3,
         transaction,
         transactionConfig: { ...this.gasEstimator.getCurrentFastPrice(), from: this.account },
         availableAccounts: 1,
+        waitForMine: false,
       });
-      if (receipt) {
+      if (executionResult.receipt) {
         this.logger.log({
           level,
           at: "AcrossRelayer#TxProcessor",
           message,
-          mrkdwn: mrkdwn + " tx: " + createEtherscanLinkMarkdown(receipt.transactionHash),
+          mrkdwn: mrkdwn + " tx: " + createEtherscanLinkMarkdown(executionResult.transactionHash),
         });
-        return { txStatus: true, receipt, transactionConfig };
-      } else throw receipt;
+        // Just because the transaction was successfully included in the mempool does not mean it will be mined without
+        // reverting. Store the transaction execution result within the executedTransactions array. This is processed
+        // at the end of the bot execution loop to ensure that all submitted transactions were successfully included.
+        this.executedTransactions.push(executionResult);
+        return { txStatus: true, executionResult };
+      } else throw executionResult;
     } catch (error) {
-      this.logger.error({
-        at: "AcrossRelayer#TxProcessor",
-        message: "Something errored sending a transaction",
-        error,
-      });
-      return { txStatus: false, receipt: null, transactionConfig: null };
+      this.logger.error({ at: "AcrossRelayer#TxProcessor", message: "Something errored sending a transaction", error });
+      return { txStatus: false, executionResult: null };
     }
   }
 
