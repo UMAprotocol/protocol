@@ -873,6 +873,15 @@ export class Relayer {
 
       // Look up all blocks from contract deployment time to latest to ensure that a deposit, if it exists, is found.
       while (deposit === undefined) {
+        this.logger.debug({
+          at: "AcrossRelayer#Disputer",
+          message: "Searching through all L2 block history for event",
+          l2BlockSearchConfig,
+          latestBlock,
+          lookback: this.l2LookbackWindow,
+          deposit,
+          relay,
+        });
         const fundsDepositedEvents = await this.l2Client.getFundsDepositedEvents(l2BlockSearchConfig);
         // For any found deposits, try to match it with the relay:
         for (const fundsDepositedEvent of fundsDepositedEvents) {
