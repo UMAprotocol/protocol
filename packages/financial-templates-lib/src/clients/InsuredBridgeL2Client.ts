@@ -85,8 +85,8 @@ export class InsuredBridgeL2Client {
     // TODO: update this state retrieval to include looking for L2 liquidity in the deposit box that can be sent over
     // the bridge. This should consider the minimumBridgingDelay and the lastBridgeTime for a respective L2Token.
     const [fundsDepositedEvents, whitelistedTokenEvents] = await Promise.all([
-      this.getBridgeDepositEvents(blockSearchConfig, "FundsDeposited"),
-      this.getBridgeDepositEvents(blockSearchConfig, "WhitelistToken"),
+      this.getBridgeDepositBoxEvents(blockSearchConfig, "FundsDeposited"),
+      this.getBridgeDepositBoxEvents(blockSearchConfig, "WhitelistToken"),
     ]);
 
     // We assume that whitelisted token events are searched from oldest to newest so we'll just store the most recently
@@ -124,7 +124,7 @@ export class InsuredBridgeL2Client {
     });
   }
 
-  async getBridgeDepositEvents(eventSearchOptions: EventSearchOptions, eventName: string): Promise<EventData[]> {
+  async getBridgeDepositBoxEvents(eventSearchOptions: EventSearchOptions, eventName: string): Promise<EventData[]> {
     const eventsData = await getEventsForMultipleProviders(
       [this.l2Web3].concat(this.fallbackL2Web3s),
       getAbi("BridgeDepositBox"),
