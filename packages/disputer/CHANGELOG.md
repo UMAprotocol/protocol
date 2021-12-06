@@ -3,6 +3,10 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.6.12](https://github.com/UMAprotocol/protocol/compare/@uma/disputer@2.6.11...@uma/disputer@2.6.12) (2021-12-06)
+
+**Note:** Version bump only for package @uma/disputer
+
 ## [2.6.11](https://github.com/UMAprotocol/protocol/compare/@uma/disputer@2.6.10...@uma/disputer@2.6.11) (2021-11-18)
 
 **Note:** Version bump only for package @uma/disputer
