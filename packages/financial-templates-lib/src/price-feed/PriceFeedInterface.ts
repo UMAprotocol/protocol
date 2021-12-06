@@ -5,6 +5,7 @@ export abstract class PriceFeedInterface {
   // Updates the internal state of the price feed. Should pull in any async data so the get*Price methods can be called.
   // Will use the optional ancillary data parameter to customize what kind of data get*Price returns.
   // Note: derived classes *must* override this method.
+  // Note: Eventually `update` will be removed in favor of folding its logic into `getCurrentPrice`.
   public abstract update(ancillaryData?: string): Promise<void>;
 
   // Gets the current price (as a BN) for this feed synchronously from the in-memory state of this price feed object.
