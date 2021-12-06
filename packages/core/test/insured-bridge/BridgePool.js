@@ -1887,6 +1887,54 @@ describe("BridgePool", () => {
       // state via `sync()`, which checks the contract's balance and uses the number to update liquid + utilized
       // reserves. If the contract's balance is higher than expected, then this state can be incorrect.
     });
+    it("Can call remove liquidity when internal accounting mismatches state, requiring sync", async () => {
+      // Approve funds and add to liquidity.
+      await l1Token.methods.approve(bridgePool.options.address, MAX_UINT_VAL).send({ from: rando });
+
+      await bridgePool.methods.addLiquidity(toWei("10")).send({ from: rando });
+      // pool should have exactly 10 tokens worth in it.
+      assert.equal((await l1Token.methods.balanceOf(bridgePool.options.address).call()).toString(), toWei("10"));
+
+      // utilize half the liquidity.
+      await l1Token.methods.mint(relayer, toWei("10")).send({ from: owner });
+      await l1Token.methods.approve(bridgePool.options.address, MAX_UINT_VAL).send({ from: relayer });
+      await bridgePool.methods.relayDeposit(...generateRelayParams({ amount: toWei("5") })).send({ from: relayer });
+
+      const requestTimestamp = (await bridgePool.methods.getCurrentTime().call()).toString();
+      const expectedExpirationTimestamp = (Number(requestTimestamp) + defaultLiveness).toString();
+
+      const relayAttemptData = {
+        ...defaultRelayData,
+        priceRequestTime: requestTimestamp,
+        relayState: InsuredBridgeRelayStateEnum.PENDING,
+        proposerBond: toWei("0.25"),
+      };
+      // Expire and settle proposal on the OptimisticOracle.
+      await timer.methods.setCurrentTime(expectedExpirationTimestamp).send({ from: owner });
+
+      await bridgePool.methods
+        .settleRelay({ ...defaultDepositData, amount: toWei("5") }, relayAttemptData)
+        .send({ from: relayer });
+
+      // Token balance (and liquid reserves) should be 10 - 5 + 5 * 0.1 = 5.5 (5 * 0.1 is the realized LP fee fee).
+      assert.equal((await l1Token.methods.balanceOf(bridgePool.options.address).call()).toString(), toWei("5.5"));
+      assert.equal((await bridgePool.methods.liquidReserves().call()).toString(), toWei("5.5"));
+      assert.equal((await bridgePool.methods.utilizedReserves().call()).toString(), toWei("5"));
+
+      // If the LP tries to pull out more than the liquid reserves, should revert.
+      assert(await didContractThrow(bridgePool.methods.removeLiquidity(toWei("6"), false).send({ from: rando })));
+
+      // Now, consider some funds have come over the canonical bridge that enable the withdrawal attempt.
+      await l1Token.methods.mint(bridgePool.options.address, toWei("1")).send({ from: owner });
+
+      // The "true" liquid reserves should now be 6.5. However, sync has not been called so the contracts state does not
+      // match the actual token balances.
+      assert.equal((await l1Token.methods.balanceOf(bridgePool.options.address).call()).toString(), toWei("6.5"));
+      assert.equal((await bridgePool.methods.liquidReserves().call()).toString(), toWei("5.5"));
+
+      // Despite this, the user should be able to withdraw their liquidity as the method should internally calls _sync
+      await bridgePool.methods.removeLiquidity(toWei("6"), false).send({ from: rando });
+    });
   });
   describe("Virtual balance accounting", () => {
     beforeEach(async function () {
