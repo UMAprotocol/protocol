@@ -4,7 +4,7 @@ import type Multicall2 from "./multicall2";
 import type { Contract } from "ethers";
 import zip from "lodash/zip";
 
-export type BigNumberish = string | BigNumber;
+export type BigNumberish = number | string | BigNumber;
 // check if a value is not null or undefined, useful for numbers which could be 0.
 // "is" syntax: https://stackoverflow.com/questions/40081332/what-does-the-is-keyword-do-in-typescript
 /* eslint-disable-next-line @typescript-eslint/ban-types */
@@ -30,7 +30,7 @@ export function Balances(balances: Balances = {}) {
     return set(id, BigNumber.from(amount).add(getOrCreate(id)).toString());
   }
   function sub(id: string, amount: BigNumberish) {
-    return set(id, BigNumber.from(getOrCreate(id)).sub(BigNumber.from(amount)).toString());
+    return set(id, BigNumber.from(getOrCreate(id)).sub(amount).toString());
   }
   function get(id: string) {
     assert(has(id), "balance does not exist");
