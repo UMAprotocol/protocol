@@ -78,8 +78,6 @@ describe("ProfitabilityCalculator.ts", function () {
       assert.equal(profitabilityCalculator.l1TokenInfo[usdcAddress].tokenType, TokenType.ERC20);
 
       const lastLog = spy.getCall(-1).lastArg;
-      console.log("lastLog", lastLog);
-
       assert.equal(lastLog.level, "debug");
       assert.equal(lastLog.message, "Updated prices");
       assert.equal(Object.keys(lastLog.tokenInfo).length, 3); // 3 tokens
@@ -129,8 +127,8 @@ describe("ProfitabilityCalculator.ts", function () {
           profitabilityCalculator.getRelaySubmitTypeBasedOnProfitability(
             wethAddress,
             sampleCumulativeGasPrice,
-            toBNWei(1.1), // Set speedUp and instant revenue to 1. Set slow revenue to 1.1 WETH. Should be a slow relay.
-            toBNWei(1),
+            toBNWei(1.1), // Set instant revenue to 1. Set slow revenue to 1.1 WETH. Should be a slow relay.
+            toBNWei(0),
             toBNWei(1)
           ),
           RelaySubmitType.Slow
@@ -173,8 +171,8 @@ describe("ProfitabilityCalculator.ts", function () {
           profitabilityCalculator.getRelaySubmitTypeBasedOnProfitability(
             wethAddress,
             sampleCumulativeGasPrice,
-            toBNWei(1), // set slow and speed up to 1. Set instant to 1.1 WETH. Should be instant relayed.
-            toBNWei(1),
+            toBNWei(1), // set slow up to 1. Set instant to 1.1 WETH. Should be instant relayed.
+            toBNWei(0),
             toBNWei(1.1)
           ),
           RelaySubmitType.Instant
