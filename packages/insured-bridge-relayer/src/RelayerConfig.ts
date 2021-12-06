@@ -125,7 +125,12 @@ export class RelayerConfig {
     // L2 start block must be explicitly set unlike L1 due to how L2 nodes work. For best practices, we also should
     // constrain L1 start blocks but this hasn't been an issue empirically. As a data point, Arbitrum Infura has a
     // query limit of up to 100,000 blocks into the past.
-    this.l2BlockLookback = L2_BLOCK_LOOKBACK ? Number(L2_BLOCK_LOOKBACK) : 99999;
+    // Note: Set this to some buffer below the 100,000 limit based on how the `index.ts` file computes the start block
+    // to set in the L2 client. It takes the L2 latest block and then subtracts `L2_BLOCK_LOOKBACK` to get the start
+    // block. A little after, the L2 client updates and sets its own `toBlock` to the latest L2 block at the update
+    // time. Therefore, its possible that block height increases enough between the initial L2 latest block query and
+    // the second one that more than 100,000 blocks are queried and the API throws an error.
+    this.l2BlockLookback = L2_BLOCK_LOOKBACK ? Number(L2_BLOCK_LOOKBACK) : 99900;
 
     this.pollingDelay = POLLING_DELAY ? Number(POLLING_DELAY) : 60;
     this.errorRetries = ERROR_RETRIES ? Number(ERROR_RETRIES) : 3;
