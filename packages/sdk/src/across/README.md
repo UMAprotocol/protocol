@@ -142,7 +142,7 @@ const tokenAddress = // token address on L1 to transfer from l2 to l1
 const bridgePoolAddress = // bridge pool address on L1 with the liquidity pool
 const amount = // amount in wei for user to send across
 const timestamp = // timestamp in seconds of latest block on L2 chain
-const const percent = await calculator.getLpFeePct(tokenAddress, bridgePoolAddress, amount, timestamp)
+const percent = await calculator.getLpFeePct(tokenAddress, bridgePoolAddress, amount, timestamp)
 
 
 ```
