@@ -1,8 +1,10 @@
 import assert from "assert";
-import { BigNumber } from "ethers";
+import { BigNumber, Contract } from "ethers";
 import type Multicall2 from "./multicall2";
-import type { Contract } from "ethers";
 import zip from "lodash/zip";
+
+// re-use this class, its compatible with FE and BE
+export { BlockFinder } from "@uma/financial-templates-lib/dist/price-feed/utils";
 
 export type BigNumberish = number | string | BigNumber;
 // check if a value is not null or undefined, useful for numbers which could be 0.
