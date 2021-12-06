@@ -875,11 +875,10 @@ export class Relayer {
       while (deposit === undefined) {
         this.logger.debug({
           at: "AcrossRelayer#Disputer",
-          message: "Searching through all L2 block history for event",
+          message: "Searching through all L2 block history for matching deposit event for relay",
           l2BlockSearchConfig,
           latestBlock,
           lookback: this.l2LookbackWindow,
-          deposit,
           relay,
         });
         const fundsDepositedEvents = await this.l2Client.getFundsDepositedEvents(l2BlockSearchConfig);
@@ -900,6 +899,7 @@ export class Relayer {
           };
           _deposit.depositHash = this.l2Client.generateDepositHash(_deposit);
           if (_deposit.depositHash === relay.depositHash) {
+            deposit = _deposit;
             this.logger.debug({
               at: "AcrossRelayer#Disputer",
               message: "Matched deposit using relay quote time to run new block search",
@@ -907,7 +907,6 @@ export class Relayer {
               deposit,
               relay,
             });
-            deposit = _deposit;
             break;
           }
         }
