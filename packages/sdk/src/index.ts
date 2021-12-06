@@ -6,6 +6,7 @@ export * as across from "./across";
 export { default as Coingecko } from "./coingecko";
 export { default as Multicall } from "./multicall";
 export { default as Multicall2 } from "./multicall2";
+export { default as BlockFinder } from "./blockFinder";
 
 // types
 import type { TypedEventFilterEthers as TypedEventFilter, TypedEventEthers as TypedEvent } from "@uma/contracts-node";
