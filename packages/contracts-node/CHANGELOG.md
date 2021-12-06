@@ -3,6 +3,10 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.1.13](https://github.com/UMAprotocol/protocol/compare/@uma/contracts-node@0.1.12...@uma/contracts-node@0.1.13) (2021-12-06)
+
+**Note:** Version bump only for package @uma/contracts-node
+
 ## [0.1.12](https://github.com/UMAprotocol/protocol/compare/@uma/contracts-node@0.1.11...@uma/contracts-node@0.1.12) (2021-11-18)
 
 **Note:** Version bump only for package @uma/contracts-node

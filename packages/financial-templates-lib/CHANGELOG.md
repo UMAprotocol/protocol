@@ -3,6 +3,21 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.19.0](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.18.0...@uma/financial-templates-lib@2.19.0) (2021-12-06)
+
+### Bug Fixes
+
+- **across-bots:** address issues found when launching on optimism regarding multiple chainIds ([#3637](https://github.com/UMAprotocol/protocol/issues/3637)) ([962b946](https://github.com/UMAprotocol/protocol/commit/962b9467efd4f251762cc50441ad42e27ac16dcf))
+- **across-relayer:** Checksum address before comparing ([#3642](https://github.com/UMAprotocol/protocol/issues/3642)) ([9bca742](https://github.com/UMAprotocol/protocol/commit/9bca7428ac1c4f78898ab31d9341bd0d00f351b1))
+- **across-relayer:** Key BridgePool.l2Tokens by chain ID ([#3639](https://github.com/UMAprotocol/protocol/issues/3639)) ([78f0262](https://github.com/UMAprotocol/protocol/commit/78f0262ce16feafe4909095fd41e8f951f3f06ba))
+- **across-relayer:** Key L1 client dictionary by checksummed addresses ([#3644](https://github.com/UMAprotocol/protocol/issues/3644)) ([184000e](https://github.com/UMAprotocol/protocol/commit/184000e28a44a2dd95aa73ae381f9075856de080))
+- **across-relayer:** Prune L1 token whitelist using L1 contract state instead of L2 event data ([#3648](https://github.com/UMAprotocol/protocol/issues/3648)) ([4e26423](https://github.com/UMAprotocol/protocol/commit/4e2642374c1edaaa00be07e38fa4eb534383449f))
+
+### Features
+
+- **logging:** add error logging on disputes and slow relay. Decode OO ancillary data ([#3635](https://github.com/UMAprotocol/protocol/issues/3635)) ([8022ff7](https://github.com/UMAprotocol/protocol/commit/8022ff70b399589c058dc676a33fa43430f0521d))
+- **transaction-manager:** enable early return from runTransaction method ([#3609](https://github.com/UMAprotocol/protocol/issues/3609)) ([fcfe27a](https://github.com/UMAprotocol/protocol/commit/fcfe27a21c1b34ae6683534e6059e186684b1819))
+
 # [2.18.0](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.17.0...@uma/financial-templates-lib@2.18.0) (2021-11-18)
 
 ### Features

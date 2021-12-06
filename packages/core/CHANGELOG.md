@@ -3,6 +3,28 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.18.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.17.0...@uma/core@2.18.0) (2021-12-06)
+
+### Bug Fixes
+
+- **across:** address possible underflow in bridge pool ([#3624](https://github.com/UMAprotocol/protocol/issues/3624)) ([a01005c](https://github.com/UMAprotocol/protocol/commit/a01005cf08dad4f84039d6f8eeb7d14c7b730fa3))
+- **cross-chain-oracle:** add additional cross-chain admin logic ([#3617](https://github.com/UMAprotocol/protocol/issues/3617)) ([a4f3f50](https://github.com/UMAprotocol/protocol/commit/a4f3f506e3b49eb1788638c438ac24f25f40957a))
+- **cross-chain-oracle:** Fix unit tests ([#3633](https://github.com/UMAprotocol/protocol/issues/3633)) ([0b6ec4b](https://github.com/UMAprotocol/protocol/commit/0b6ec4b28067f698158d14f7151f4cf377b4cc9b))
+
+### Features
+
+- **across:** Add Setter for LP Fee %/second in BridgePool ([#3622](https://github.com/UMAprotocol/protocol/issues/3622)) ([76be217](https://github.com/UMAprotocol/protocol/commit/76be217e16bebae1d409fb116db10a7a6c2b09ae))
+- **across:** bridge admin to enable/disable pool relays ([#3629](https://github.com/UMAprotocol/protocol/issues/3629)) ([a548875](https://github.com/UMAprotocol/protocol/commit/a548875c69e98ffb24c637699cae06ac4bfbb541))
+- **across:** show that even when internal account mismatches state, can still call removeLiquidity if enough implied liquidity ([#3660](https://github.com/UMAprotocol/protocol/issues/3660)) ([3afcee1](https://github.com/UMAprotocol/protocol/commit/3afcee1183602a789b5e6be4316b75ebc98aadd8))
+- **across-contracts:** added WETH<->ETH wrappers for optimism ([#3611](https://github.com/UMAprotocol/protocol/issues/3611)) ([a0c1e3f](https://github.com/UMAprotocol/protocol/commit/a0c1e3f0af6dba02034eb9262c0d65d1e88d0c4f))
+- **cross-chain-oracle:** Add Arbitrum adapters ([#3628](https://github.com/UMAprotocol/protocol/issues/3628)) ([3d0a471](https://github.com/UMAprotocol/protocol/commit/3d0a471e7af88a3a626eb9d457dd9a93a3ad835b))
+- **cross-chain-oracle:** Add multicaller to oracleHub and spoke ([#3634](https://github.com/UMAprotocol/protocol/issues/3634)) ([ac2dc0c](https://github.com/UMAprotocol/protocol/commit/ac2dc0c7b6b3f62434fcef9c7c740e1576ab18b5))
+- **sdk:** add L1 -> L2 Optimism Bridge Client ([#3623](https://github.com/UMAprotocol/protocol/issues/3623)) ([732ff78](https://github.com/UMAprotocol/protocol/commit/732ff78ad38e2b17affb51195602b61864b87d40))
+- **transaction-manager:** enable early return from runTransaction method ([#3609](https://github.com/UMAprotocol/protocol/issues/3609)) ([fcfe27a](https://github.com/UMAprotocol/protocol/commit/fcfe27a21c1b34ae6683534e6059e186684b1819))
+- add Admin_ChildMessenger ([#3631](https://github.com/UMAprotocol/protocol/issues/3631)) ([0c4cea3](https://github.com/UMAprotocol/protocol/commit/0c4cea3c3d5e48da6f8984b8ba3afdfea4ce47cc))
+- add OptimisticRewarder ([#3594](https://github.com/UMAprotocol/protocol/issues/3594)) ([eeba703](https://github.com/UMAprotocol/protocol/commit/eeba70300441a474bd613ba3104a0322a8ce09c4))
+- **cross-chain-oracle:** Add Polygon adapters ([#3620](https://github.com/UMAprotocol/protocol/issues/3620)) ([e5c8ff9](https://github.com/UMAprotocol/protocol/commit/e5c8ff9b7bd30b480f24c55a29f45280646a8c5a))
+
 # [2.17.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.16.0...@uma/core@2.17.0) (2021-11-18)
 
 ### Bug Fixes
