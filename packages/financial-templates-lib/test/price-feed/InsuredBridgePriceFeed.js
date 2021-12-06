@@ -255,12 +255,7 @@ describe("InsuredBridgePriceFeed", function () {
 
     // Construct L1 and L2 clients that we'll need to construct the pricefeed:
     rateModels = {
-      [l1Token.options.address]: {
-        UBar: toBNWei("0.65"),
-        R0: toBNWei("0.00"),
-        R1: toBNWei("0.08"),
-        R2: toBNWei("1.00"),
-      },
+      [l1Token.options.address]: { UBar: toWei("0.65"), R0: toWei("0.00"), R1: toWei("0.08"), R2: toWei("1.00") },
     };
 
     l1Client = new InsuredBridgeL1Client(spyLogger, web3, bridgeAdmin.options.address, rateModels);
