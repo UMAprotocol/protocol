@@ -150,7 +150,7 @@ describe("index.js", function () {
       transports: [new SpyTransport({ level: "debug" }, { spy: spy })],
     });
 
-    await startGanacheServer(chainId, 7777);
+    startGanacheServer(chainId, 7777);
     const [l2Owner, l2BridgeAdminImpersonator] = await l2Web3.eth.getAccounts();
 
     // Deploy deposit box on L2 web3 so that L2 client can read its events.

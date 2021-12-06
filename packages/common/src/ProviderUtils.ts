@@ -152,6 +152,20 @@ export function getWeb3ByChainId(chainId: number): Web3 {
 }
 
 /**
+ * @notice Creates array of web3 instances for a particular chain.
+ * @dev Providers to use are described in RETRY_CONFIG_{chainId} dictionary under the "url" key.
+ * @param chainId the chain id for the network the user wants to connect to.
+ * @returns array of new readonly Web3 instances.
+ */
+export function getRetryWeb3sByChainId(chainId: number): Web3[] {
+  const retryConfigJson = process.env[`RETRY_CONFIG_${chainId}`] || "[]";
+  const retryConfig: RetryConfig[] = JSON.parse(retryConfigJson);
+  const nodeUrl = process.env[`NODE_URL_${chainId}`];
+  // Construct a new web3 object for each URL that isn't a duplicate of NODE_URL_{chainId}.
+  return retryConfig.filter((config) => config.url !== nodeUrl).map((config) => new Web3(config.url));
+}
+
+/**
  * @notice Gets a web3 instance based on the network argument using the truffle config in this package.
  * Use this for compatibility for running with or without truffle.
  * @example
