@@ -3,6 +3,10 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.14.1](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.14.0...@uma/common@2.14.1) (2021-12-07)
+
+**Note:** Version bump only for package @uma/common
+
 # [2.14.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.13.1...@uma/common@2.14.0) (2021-12-06)
 
 ### Bug Fixes

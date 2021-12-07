@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.19.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.18.0...@uma/core@2.19.0) (2021-12-07)
+
+### Features
+
+- **sdk:** ability to send funds from Ethereum to Boba ([#3646](https://github.com/UMAprotocol/protocol/issues/3646)) ([543cf74](https://github.com/UMAprotocol/protocol/commit/543cf745858b8b75f7034ca91d701c2f7c5045b7))
+
 # [2.18.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.17.0...@uma/core@2.18.0) (2021-12-06)
 
 ### Bug Fixes

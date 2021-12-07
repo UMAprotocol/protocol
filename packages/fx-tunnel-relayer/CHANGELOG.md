@@ -3,6 +3,10 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.1.1](https://github.com/UMAprotocol/protocol/compare/@uma/fx-tunnel-relayer@1.1.0...@uma/fx-tunnel-relayer@1.1.1) (2021-12-07)
+
+**Note:** Version bump only for package @uma/fx-tunnel-relayer
+
 # [1.1.0](https://github.com/UMAprotocol/protocol/compare/@uma/fx-tunnel-relayer@1.0.12...@uma/fx-tunnel-relayer@1.1.0) (2021-12-06)
 
 ### Features

@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.15.0](https://amateima.github.com/UMAprotocol/protocol/compare/@uma/sdk@0.14.0...@uma/sdk@0.15.0) (2021-12-07)
+
+### Features
+
+- **sdk:** ability to send funds from Ethereum to Boba ([#3646](https://amateima.github.com/UMAprotocol/protocol/issues/3646)) ([543cf74](https://amateima.github.com/UMAprotocol/protocol/commit/543cf745858b8b75f7034ca91d701c2f7c5045b7))
+
 # [0.14.0](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.13.0...@uma/sdk@0.14.0) (2021-12-06)
 
 ### Features

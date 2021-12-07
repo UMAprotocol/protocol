@@ -3,6 +3,10 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.19.1](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.19.0...@uma/financial-templates-lib@2.19.1) (2021-12-07)
+
+**Note:** Version bump only for package @uma/financial-templates-lib
+
 # [2.19.0](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.18.0...@uma/financial-templates-lib@2.19.0) (2021-12-06)
 
 ### Bug Fixes
