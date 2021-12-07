@@ -3,9 +3,6 @@ import { BigNumber, Contract } from "ethers";
 import type Multicall2 from "./multicall2";
 import zip from "lodash/zip";
 
-// re-use this class, its compatible with FE and BE
-export { BlockFinder } from "@uma/financial-templates-lib/dist/price-feed/utils";
-
 export type BigNumberish = number | string | BigNumber;
 // check if a value is not null or undefined, useful for numbers which could be 0.
 // "is" syntax: https://stackoverflow.com/questions/40081332/what-does-the-is-keyword-do-in-typescript

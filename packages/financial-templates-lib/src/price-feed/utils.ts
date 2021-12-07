@@ -1,8 +1,8 @@
 import lodash from "lodash";
 import assert from "assert";
-import { averageBlockTimeSeconds, MAX_SAFE_JS_INT, estimateBlocksElapsed } from "@uma/common";
+import { averageBlockTimeSeconds, MAX_SAFE_JS_INT } from "@uma/common";
 import type { BN } from "../types";
-export { BlockFinder} from '@uma/sdk'
+export { BlockFinder } from "@uma/sdk";
 
 type WithoutStringTimestamp<T extends { timestamp: number | string }> = T & { timestamp: number };
 

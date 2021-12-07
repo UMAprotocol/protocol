@@ -5,7 +5,8 @@ import { bridgePool } from "../clients";
 import { RATE_MODELS } from "./constants";
 import { BigNumberish } from "./utils";
 import { calculateRealizedLpFeePct } from "./feeCalculator";
-import { exists, BlockFinder } from "../utils";
+import { exists } from "../utils";
+import BlockFinder from "../blockFinder";
 
 export default class LpFeeCalculator {
   private blockFinder: BlockFinder<Block>;
