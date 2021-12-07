@@ -1,9 +1,9 @@
 import assert from "assert";
 import sortedIndexBy from "lodash/sortedIndexBy";
 import clamp from "lodash/clamp";
-import { estimateBlocksElapsed } from "./utils";
+import { estimateBlocksElapsed } from "@uma/common";
 
-type WithoutStringTimestamp<T extends { timestamp: number | string }> = T & { timestamp: number };
+export type WithoutStringTimestamp<T extends { timestamp: number | string }> = T & { timestamp: number };
 
 export default class BlockFinder<T extends { number: number; timestamp: number | string }> {
   constructor(
