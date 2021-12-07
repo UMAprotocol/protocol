@@ -1,7 +1,7 @@
 import assert from "assert";
 import sortedIndexBy from "lodash/sortedIndexBy";
 import clamp from "lodash/clamp";
-import { estimateBlocksElapsed } from "@uma/common";
+import { estimateBlocksElapsed } from "./utils";
 
 export type WithoutStringTimestamp<T extends { timestamp: number | string }> = T & { timestamp: number };
 

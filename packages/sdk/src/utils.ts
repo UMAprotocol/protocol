@@ -92,3 +92,33 @@ export const BatchReadWithErrors = (multicall2: Multicall2) => (contract: Contra
     })
   );
 };
+
+/**
+ * @notice Return average block-time for a period.
+ */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export async function averageBlockTimeSeconds(lookbackSeconds?: number, networkId?: number): Promise<number> {
+  // TODO: Call an external API to get this data. Currently this value is a hard-coded estimate
+  // based on the data from https://etherscan.io/chart/blocktime. ~13.5 seconds has been the average
+  // since April 2016, although this value seems to spike periodically for a relatively short period of time.
+  const defaultBlockTimeSeconds = 13.5;
+  if (!defaultBlockTimeSeconds) {
+    throw "Missing default block time value";
+  }
+
+  switch (networkId) {
+    // Source: https://polygonscan.com/chart/blocktime
+    case 137:
+      return 2.5;
+    case 1:
+      return defaultBlockTimeSeconds;
+    default:
+      return defaultBlockTimeSeconds;
+  }
+}
+
+export async function estimateBlocksElapsed(seconds: number, cushionPercentage = 0.0): Promise<number> {
+  const cushionMultiplier = cushionPercentage + 1.0;
+  const averageBlockTime = await averageBlockTimeSeconds();
+  return Math.floor((seconds * cushionMultiplier) / averageBlockTime);
+}
