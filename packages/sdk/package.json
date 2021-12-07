@@ -47,6 +47,8 @@
     "web3": "^1.6.0"
   },
   "peerDependencies": {
+    "@eth-optimism/contracts": "^0.5.5",
+    "@eth-optimism/core-utils": "^0.7.3",
     "ethers": "^5.4.2"
   },
   "devDependencies": {
