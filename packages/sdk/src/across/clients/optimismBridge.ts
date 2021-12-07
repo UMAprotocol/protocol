@@ -16,6 +16,12 @@ export class OptimismBridgeClient {
   // Gas limit for the L2 transaction initiated by the Sequencer
   public readonly L2_DEPOSIT_GAS_LIMIT = 2000000;
 
+  public getL1BridgeAddress(chainId: number): string {
+    const l1StandardBridgeAddress = l1Contracts.Proxy__OVM_L1StandardBridge[chainId];
+    assert(typeof l1StandardBridgeAddress === "string", "Chain not supported");
+    return l1StandardBridgeAddress;
+  }
+
   /**
    * Create a transaction to deposit ERC20 tokens to Optimism
    * @param l1Signer The L1 wallet provider (signer)
@@ -26,8 +32,7 @@ export class OptimismBridgeClient {
    */
   async depositERC20(l1Signer: Signer, l1Erc20Address: string, l2Erc20Address: string, amount: BigNumber) {
     const chainId = await l1Signer.getChainId();
-    const l1StandardBridgeAddress = l1Contracts.Proxy__OVM_L1StandardBridge[chainId];
-    assert(typeof l1StandardBridgeAddress === "string", "Chain not supported");
+    const l1StandardBridgeAddress = this.getL1BridgeAddress(chainId);
     const l1StandardBridge = OptimismL1StandardBridgeEthers__factory.connect(l1StandardBridgeAddress, l1Signer);
     const l1_ERC20 = ERC20Ethers__factory.connect(l1Erc20Address, l1Signer);
     return l1StandardBridge.depositERC20(l1_ERC20.address, l2Erc20Address, amount, this.L2_DEPOSIT_GAS_LIMIT, "0x");
@@ -41,8 +46,7 @@ export class OptimismBridgeClient {
    */
   async depositEth(l1Signer: Signer, amount: BigNumber) {
     const chainId = await l1Signer.getChainId();
-    const l1StandardBridgeAddress = l1Contracts.Proxy__OVM_L1StandardBridge[chainId];
-    assert(typeof l1StandardBridgeAddress === "string", "Chain not supported");
+    const l1StandardBridgeAddress = this.getL1BridgeAddress(chainId);
     const l1StandardBridge = OptimismL1StandardBridgeEthers__factory.connect(l1StandardBridgeAddress, l1Signer);
     return l1StandardBridge.depositETH(this.L2_DEPOSIT_GAS_LIMIT, "0x", { value: amount });
   }
@@ -79,5 +83,19 @@ export class OptimismBridgeClient {
     // Wait for the message to be relayed to L2
     const [msgHash1] = await watcher.getMessageHashesFromL1Tx(tx.hash);
     return watcher.getL2TransactionReceipt(msgHash1, true);
+  }
+
+  public async checkAllowance(l1Signer: Signer, l1Erc20Address: string) {
+    const chainId = await l1Signer.getChainId();
+    const l1StandardBridgeAddress = this.getL1BridgeAddress(chainId);
+    const l1_ERC20 = ERC20Ethers__factory.connect(l1Erc20Address, l1Signer);
+    return l1_ERC20.allowance(await l1Signer.getAddress(), l1StandardBridgeAddress);
+  }
+
+  public async approve(l1Signer: Signer, l1Erc20Address: string, amount: BigNumber) {
+    const chainId = await l1Signer.getChainId();
+    const l1StandardBridgeAddress = this.getL1BridgeAddress(chainId);
+    const l1_ERC20 = ERC20Ethers__factory.connect(l1Erc20Address, l1Signer);
+    return l1_ERC20.approve(l1StandardBridgeAddress, amount);
   }
 }
