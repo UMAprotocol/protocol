@@ -187,6 +187,7 @@ describe("index.js", function () {
   });
   it("Runs with no errors and correctly sets approvals for whitelisted L1 tokens", async function () {
     process.env.BRIDGE_ADMIN_ADDRESS = bridgeAdmin.options.address;
+    process.env.WHITELISTED_CHAIN_IDS = JSON.stringify([chainId]);
     process.env.RELAYER_ENABLED = "1";
     process.env.DISPUTER_ENABLED = "1";
     process.env.FINALIZER_ENABLED = "1";
@@ -210,6 +211,7 @@ describe("index.js", function () {
   });
   it("Filters L1 token whitelist on L2 whitelist events", async function () {
     process.env.BRIDGE_ADMIN_ADDRESS = bridgeAdmin.options.address;
+    process.env.WHITELISTED_CHAIN_IDS = JSON.stringify([chainId]);
     process.env.RELAYER_ENABLED = "1";
     process.env.DISPUTER_ENABLED = "1";
     process.env.FINALIZER_ENABLED = "1";
