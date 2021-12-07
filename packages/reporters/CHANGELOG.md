@@ -3,6 +3,10 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.1.19](https://github.com/UMAprotocol/protocol/compare/@uma/reporters@1.1.17...@uma/reporters@1.1.19) (2021-12-07)
+
+**Note:** Version bump only for package @uma/reporters
+
 ## [1.1.18](https://amateima.github.com/UMAprotocol/protocol/compare/@uma/reporters@1.1.17...@uma/reporters@1.1.18) (2021-12-07)
 
 **Note:** Version bump only for package @uma/reporters

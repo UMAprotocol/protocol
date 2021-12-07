@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.20.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.18.0...@uma/core@2.20.0) (2021-12-07)
+
+### Features
+
+- add new LSPCreator deployment ([#3666](https://github.com/UMAprotocol/protocol/issues/3666)) ([39d434c](https://github.com/UMAprotocol/protocol/commit/39d434cda46d3ded9e2aaade2d4f2c2817804bd5))
+- **sdk:** ability to send funds from Ethereum to Boba ([#3646](https://github.com/UMAprotocol/protocol/issues/3646)) ([543cf74](https://github.com/UMAprotocol/protocol/commit/543cf745858b8b75f7034ca91d701c2f7c5045b7))
+
 # [2.19.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.18.0...@uma/core@2.19.0) (2021-12-07)
 
 ### Features
