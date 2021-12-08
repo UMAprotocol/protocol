@@ -58,7 +58,6 @@ export class ProfitabilityCalculator {
         this.l1TokenInfo[l1Token] = { tokenType: TokenType.ERC20, tokenEthPrice: toBNWei("1") };
         if (l1Token == umaAddress) this.l1TokenInfo[l1Token].tokenType = TokenType.UMA;
         else if (l1Token == wethAddress) this.l1TokenInfo[l1Token].tokenType = TokenType.WETH;
-        else this.l1TokenInfo[l1Token].tokenType = TokenType.ERC20;
       }
     }
 
