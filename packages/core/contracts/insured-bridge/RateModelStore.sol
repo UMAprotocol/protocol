@@ -13,52 +13,17 @@ import "../common/implementation/MultiCaller.sol";
  * the structure in the future.
  */
 contract RateModelStore is Ownable, MultiCaller {
-    struct RateModel {
-        uint256 startBlock; // When the new rate model becomes active.
-        string oldRateModel; // Store old rate model so that public getter method does not need to modify state to
-        // return correct rate model based on current block
-        string newRateModel; // New rate model that becomes active when current block >= start block.
-    }
-    mapping(address => RateModel) public l1TokenRateModels;
+    mapping(address => string) public l1TokenRateModels;
 
-    event UpdatedRateModel(address indexed l1Token, string oldRateModel, string newRateModel, uint256 startBlock);
+    event UpdatedRateModel(address indexed l1Token, string rateModel);
 
     /**
      * @notice Updates rate model string for L1 token.
      * @param l1Token the l1 token rate model to update.
      * @param rateModel the updated rate model.
-     * @param startBlock determines when `rateModel` officially becomes active.
      */
-    function updateRateModel(
-        address l1Token,
-        string memory rateModel,
-        uint256 startBlock
-    ) external onlyOwner {
-        // If current block >= existing rate model's start block, then the new "old" rate model is the existing
-        // "new" rate model. Otherwise, the existing rate model has not updated to the "new" rate model yet and the new
-        // "old" rate model gets carried over.
-        string memory oldRateModel =
-            (block.number >= l1TokenRateModels[l1Token].startBlock)
-                ? l1TokenRateModels[l1Token].newRateModel
-                : l1TokenRateModels[l1Token].oldRateModel;
-        l1TokenRateModels[l1Token] = RateModel({
-            startBlock: startBlock,
-            oldRateModel: oldRateModel,
-            newRateModel: rateModel
-        });
-        emit UpdatedRateModel(l1Token, oldRateModel, rateModel, startBlock);
-    }
-
-    /**
-     * @notice Designed to be called by off-chain clien to get latest rate model for L1 token.
-     * @param l1Token the l1 token rate model to fetch rate model for.
-     * @return rateModel the latest rate model.
-     */
-    function getRateModel(address l1Token) external view returns (string memory) {
-        if (block.number >= l1TokenRateModels[l1Token].startBlock) {
-            return l1TokenRateModels[l1Token].newRateModel;
-        } else {
-            return l1TokenRateModels[l1Token].oldRateModel;
-        }
+    function updateRateModel(address l1Token, string memory rateModel) external onlyOwner {
+        l1TokenRateModels[l1Token] = rateModel;
+        emit UpdatedRateModel(l1Token, rateModel);
     }
 }
