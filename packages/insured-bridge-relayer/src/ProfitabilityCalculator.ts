@@ -165,29 +165,19 @@ export class ProfitabilityCalculator {
     speedUpEthCost: BN;
     instantEthCost: BN;
   } {
+    const cost = across.constants;
+    const costConstants = {
+      [TokenType.WETH]: { slow: cost.SLOW_ETH_GAS, SpeedUp: cost.SPEED_UP_ETH_GAS, instant: cost.FAST_ETH_GAS },
+      [TokenType.ERC20]: { slow: cost.SLOW_ERC_GAS, SpeedUp: cost.SPEED_UP_ERC_GAS, instant: cost.FAST_ERC_GAS },
+      [TokenType.UMA]: { slow: cost.SLOW_UMA_GAS, SpeedUp: cost.SPEED_UP_UMA_GAS, instant: cost.FAST_UMA_GAS },
+    };
+
     const discount = fixedPoint.sub(this.relayerDiscount);
-    switch (tokenType) {
-      case TokenType.WETH:
-        return {
-          slowEThCost: gasPrice.mul(toBN(across.constants.SLOW_ETH_GAS)).mul(discount).div(fixedPoint),
-          speedUpEthCost: gasPrice.mul(toBN(across.constants.SPEED_UP_ETH_GAS)).mul(discount).div(fixedPoint),
-          instantEthCost: gasPrice.mul(toBN(across.constants.FAST_ETH_GAS)).mul(discount).div(fixedPoint),
-        };
-
-      case TokenType.ERC20:
-        return {
-          slowEThCost: gasPrice.mul(toBN(across.constants.SLOW_ERC_GAS)).mul(discount).div(fixedPoint),
-          speedUpEthCost: gasPrice.mul(toBN(across.constants.SPEED_UP_ERC_GAS)).mul(discount).div(fixedPoint),
-          instantEthCost: gasPrice.mul(toBN(across.constants.FAST_ERC_GAS)).mul(discount).div(fixedPoint),
-        };
-
-      case TokenType.UMA:
-        return {
-          slowEThCost: gasPrice.mul(toBN(across.constants.SLOW_UMA_GAS)).mul(discount).div(fixedPoint),
-          speedUpEthCost: gasPrice.mul(toBN(across.constants.SPEED_UP_UMA_GAS)).mul(discount).div(fixedPoint),
-          instantEthCost: gasPrice.mul(toBN(across.constants.FAST_UMA_GAS)).mul(discount).div(fixedPoint),
-        };
-    }
+    return {
+      slowEThCost: gasPrice.mul(toBN(costConstants[tokenType].slow)).mul(discount).div(fixedPoint),
+      speedUpEthCost: gasPrice.mul(toBN(costConstants[tokenType].SpeedUp)).mul(discount).div(fixedPoint),
+      instantEthCost: gasPrice.mul(toBN(costConstants[tokenType].instant)).mul(discount).div(fixedPoint),
+    };
   }
   getEthRevenue(
     tokenPrice: BN,
