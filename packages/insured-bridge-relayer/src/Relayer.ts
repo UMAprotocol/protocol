@@ -406,7 +406,7 @@ export class Relayer {
     if (hasInstantRelayer && relayableDeposit.status == ClientRelayState.Pending) {
       this.logger.debug({
         at: "AcrossRelayer#Relayer",
-        message: "Relay pending and already sped up 😖",
+        message: "Relay pending and already sped up",
         realizedLpFeePct: realizedLpFeePct.toString(),
         relayState: relayableDeposit.status,
         hasInstantRelayer,
@@ -873,7 +873,10 @@ export class Relayer {
 
       // Look up all blocks from contract deployment time to latest to ensure that a deposit, if it exists, is found.
       while (deposit === undefined) {
-        const fundsDepositedEvents = await this.l2Client.getFundsDepositedEvents(l2BlockSearchConfig);
+        const fundsDepositedEvents = await this.l2Client.getBridgeDepositBoxEvents(
+          l2BlockSearchConfig,
+          "FundsDeposited"
+        );
         // For any found deposits, try to match it with the relay:
         for (const fundsDepositedEvent of fundsDepositedEvents) {
           const _deposit: Deposit = {

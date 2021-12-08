@@ -16,6 +16,7 @@ const supportedChainIds = [
   69, // optimism testnet
   42161, // arbitrum mainnet
   421611, // arbitrum testnet
+  288,
 ];
 
 // This struct is a hack right now but prevents an edge case bug where a deposit.quoteTime < bridgePool.deployment time.
@@ -51,8 +52,9 @@ export interface ProcessEnv {
 export interface BotModes {
   relayerEnabled: boolean; // Submits slow and fast relays
   disputerEnabled: boolean; // Submits disputes on pending relays with invalid params
-  finalizerEnabled: boolean; // Resolves expired relays
+  settlerEnabled: boolean; // Resolves expired relays
   l2FinalizerEnabled: boolean; // Facilitates L2->L1 bridging over the canonical roll-up bridge.
+  l1FinalizerEnabled: boolean; // Finalizes the bridging action on L1 for tokens sent over the canonical roll-up bridge.
 }
 export class RelayerConfig {
   readonly bridgeAdmin: string;
@@ -82,9 +84,10 @@ export class RelayerConfig {
       L2_BLOCK_LOOKBACK,
       CROSS_DOMAIN_FINALIZATION_THRESHOLD,
       RELAYER_ENABLED,
-      FINALIZER_ENABLED,
+      SETTLER_ENABLED,
       DISPUTER_ENABLED,
-      CROSS_DOMAIN_FINALIZER_ENABLED,
+      L1_FINALIZER_ENABLED,
+      L2_FINALIZER_ENABLED,
       WHITELISTED_CHAIN_IDS,
       L1_DEPLOY_DATA,
       L2_DEPLOY_DATA,
@@ -96,8 +99,9 @@ export class RelayerConfig {
     this.botModes = {
       relayerEnabled: RELAYER_ENABLED === "true" ? true : false,
       disputerEnabled: DISPUTER_ENABLED === "true" ? true : false,
-      finalizerEnabled: FINALIZER_ENABLED === "true" ? true : false,
-      l2FinalizerEnabled: CROSS_DOMAIN_FINALIZER_ENABLED === "true" ? true : false,
+      settlerEnabled: SETTLER_ENABLED === "true" ? true : false,
+      l1FinalizerEnabled: L1_FINALIZER_ENABLED === "true" ? true : false,
+      l2FinalizerEnabled: L2_FINALIZER_ENABLED === "true" ? true : false,
     };
 
     this.crossDomainFinalizationThreshold = CROSS_DOMAIN_FINALIZATION_THRESHOLD
@@ -109,7 +113,7 @@ export class RelayerConfig {
     // L2 start block must be explicitly set unlike L1 due to how L2 nodes work. For best practices, we also should
     // constrain L1 start blocks but this hasn't been an issue empirically. As a data point, Arbitrum Infura has a
     // query limit of up to 100,000 blocks into the past.
-    this.l2BlockLookback = L2_BLOCK_LOOKBACK ? Number(L2_BLOCK_LOOKBACK) : 99999;
+    this.l2BlockLookback = L2_BLOCK_LOOKBACK ? Number(L2_BLOCK_LOOKBACK) : 99900;
 
     this.pollingDelay = POLLING_DELAY ? Number(POLLING_DELAY) : 60;
     this.errorRetries = ERROR_RETRIES ? Number(ERROR_RETRIES) : 3;

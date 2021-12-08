@@ -186,7 +186,7 @@ describe("InsuredBridgeL2Client", () => {
     const eventSearchOptions = { fromBlock: 0, toBlock: "latest" };
     // WhitelistToken event search will fail since we've already whitelisted a token on the deposit box.
     try {
-      await clientWithFallbackWeb3s.getWhitelistTokenEvents(eventSearchOptions);
+      await clientWithFallbackWeb3s.getBridgeDepositBoxEvents(eventSearchOptions, "WhitelistToken");
       assert.isTrue(false);
     } catch (e) {
       assert.equal(lastSpyLogLevel(spy), "error");
@@ -196,7 +196,7 @@ describe("InsuredBridgeL2Client", () => {
     }
 
     // FundsDeposited event search will succeed since there have not been any such events emitted yet.
-    await clientWithFallbackWeb3s.getFundsDepositedEvents(eventSearchOptions);
+    await clientWithFallbackWeb3s.getBridgeDepositBoxEvents(eventSearchOptions, "FundsDeposited");
 
     // Now, deposit some tokens and check that FundsDeposited event search throws.
     await l2Token.methods.mint(user1, toWei("200")).send({ from: deployer });
@@ -207,7 +207,7 @@ describe("InsuredBridgeL2Client", () => {
       .deposit(user1, l2Token.options.address, depositAmount, slowRelayFeePct, instantRelayFeePct, quoteTimestamp)
       .send({ from: user1 });
     try {
-      await clientWithFallbackWeb3s.getFundsDepositedEvents(eventSearchOptions);
+      await clientWithFallbackWeb3s.getBridgeDepositBoxEvents(eventSearchOptions, "FundsDeposited");
       assert.isTrue(false);
     } catch (e) {
       assert.equal(lastSpyLogLevel(spy), "error");
@@ -223,5 +223,24 @@ describe("InsuredBridgeL2Client", () => {
       assert.equal(lastSpyLogLevel(spy), "error");
       assert.isTrue(lastSpyLogIncludes(spy, "L2 RPC endpoint state disagreement"));
     }
+  });
+  it("Correctly returns TokenBridge transaction information", async () => {
+    // Deposit some tokens and bridge them. Check the client picks it up accordingly.
+    await l2Token.methods.mint(user1, toWei("200")).send({ from: deployer });
+    await l2Token.methods.approve(depositBox.options.address, toWei("200")).send({ from: user1 });
+    const depositTimestamp = Number(await timer.methods.getCurrentTime().call());
+    const quoteTimestamp = depositTimestamp + quoteTimestampOffset;
+    await depositBox.methods
+      .deposit(user1, l2Token.options.address, depositAmount, slowRelayFeePct, instantRelayFeePct, quoteTimestamp)
+      .send({ from: user1 });
+    await timer.methods
+      .setCurrentTime(Number(await timer.methods.getCurrentTime().call()) + 2000)
+      .send({ from: deployer });
+    const bridgeTx = await depositBox.methods.bridgeTokens(l2Token.options.address, 0).send({ from: user1 });
+
+    await client.update();
+
+    assert.equal(client.getTokensBridgeTransactionsForL2Token(l2Token.options.address).length, 1);
+    assert.equal(client.getTokensBridgeTransactionsForL2Token(l2Token.options.address)[0], bridgeTx.transactionHash);
   });
 });

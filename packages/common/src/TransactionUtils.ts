@@ -318,6 +318,7 @@ export async function findBlockNumberAtTimestamp(
  * catch reverts that could not be seen at submission time.
  */
 export async function processTransactionPromiseBatch(transactions: Array<ExecutedTransaction>, logger: winston.Logger) {
+  if (transactions.length == 0) return;
   logger.debug({
     at: "TransactionUtils",
     message: "Waiting on transaction batch",
