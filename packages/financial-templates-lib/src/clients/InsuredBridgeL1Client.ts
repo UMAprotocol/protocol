@@ -187,6 +187,7 @@ export class InsuredBridgeL1Client {
     this.logger.debug({
       at: "InsuredBridgeL1Client",
       message: "Computed realized LP fee % for deposit",
+      deposit,
       quoteBlockNumber,
       liquidityUtilizationCurrent: liquidityUtilizationCurrent.toString(),
       liquidityUtilizationPostRelay: liquidityUtilizationPostRelay.toString(),
