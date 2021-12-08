@@ -1,0 +1,114 @@
+import Web3 from "web3";
+const { toBN, toWei } = Web3.utils;
+
+import winston from "winston";
+
+import { createEtherscanLinkMarkdown, createFormatFunction, PublicNetworks } from "@uma/common";
+
+import { RelayEventFetcher } from "./RelayEventFetcher";
+
+import type { BridgePoolData, InsuredBridgeL1Client } from "@uma/financial-templates-lib";
+import type { AcrossMonitorConfig } from "./AcrossMonitorConfig";
+
+export class AcrossMonitor {
+  // Discovered bridge pools are populated after update().
+  public bridgePools: { [key: string]: BridgePoolData } = {};
+
+  // Block range to search is only defined on calling update().
+  private startingBlock: number | undefined = undefined;
+  private endingBlock: number | undefined = undefined;
+
+  // relayEventFetcher Module used to fetch relay events.
+  private relayEventFetcher: RelayEventFetcher;
+
+  /**
+   * @notice Constructs new AcrossMonitor Instance.
+   * @param {Object} logger Module used to send logs.
+   * @param {Object} monitorConfig Across monitor configuration parameters.
+   * @param {Object} l1Client InsuredBridgeL1Client used for bridge pool discovery.
+   */
+  constructor(
+    readonly logger: winston.Logger,
+    readonly monitorConfig: AcrossMonitorConfig,
+    // readonly relayEventFetcher: RelayEventFetcher,
+    readonly l1Client: InsuredBridgeL1Client
+  ) {
+    this.relayEventFetcher = new RelayEventFetcher();
+  }
+
+  async update(): Promise<void> {
+    // Update l1Client for bridge pool discovery.
+    await this.l1Client.update();
+    this.bridgePools = this.l1Client.bridgePools;
+    this.relayEventFetcher.bridgePools = this.l1Client.bridgePools;
+
+    // In serverless mode (pollingDelay === 0) use block range from environment (or just the latest block if not provided) to fetch for latest events.
+    // Else, if running in loop mode (pollingDelay != 0), start with the latest block and on next loops continue from where the last one ended.
+    const latestL1BlockNumber = await this.l1Client.l1Web3.eth.getBlockNumber();
+    if (this.monitorConfig.pollingDelay === 0) {
+      this.startingBlock =
+        this.monitorConfig.startingBlock !== undefined ? this.monitorConfig.startingBlock : latestL1BlockNumber;
+      this.endingBlock =
+        this.monitorConfig.endingBlock !== undefined ? this.monitorConfig.endingBlock : latestL1BlockNumber;
+    } else {
+      this.startingBlock = this.endingBlock ? this.endingBlock + 1 : latestL1BlockNumber;
+      this.endingBlock = latestL1BlockNumber;
+    }
+    // Starting block should not be after the ending block (this could happen on short polling period or misconfiguration).
+    this.startingBlock = Math.min(this.startingBlock, this.endingBlock);
+
+    await this.relayEventFetcher.update(this.endingBlock);
+  }
+
+  async checkUtilization(): Promise<void> {
+    this.logger.debug({ at: "AcrossMonitor#Utilization", message: "Checking for pool utilization ratio" });
+
+    // Collect utilization and other properties for all bridge pools.
+    const bridgePools = await Promise.all(
+      Object.keys(this.bridgePools).map(async (L1TokenAddress) => {
+        const utilization = await this.bridgePools[L1TokenAddress].contract.methods
+          .liquidityUtilizationCurrent()
+          .call();
+        return {
+          address: this.bridgePools[L1TokenAddress].contract.options.address,
+          chainId: this.monitorConfig.bridgeAdminChainId,
+          poolCollateralSymbol: this.bridgePools[L1TokenAddress].poolCollateralSymbol,
+          utilization: utilization,
+        };
+      })
+    );
+
+    // Send notification if pool utilization is above configured threshold.
+    for (const bridgePool of bridgePools) {
+      if (
+        toBN(bridgePool.utilization).gt(
+          toBN(this.monitorConfig.utilizationThreshold)
+            .mul(toBN(toWei("1")))
+            .div(toBN(100))
+        )
+      ) {
+        this.logger.warn({
+          at: "UtilizationMonitor",
+          message: "Across bridge pool utilization warning⚠",
+          mrkdwn:
+            bridgePool.poolCollateralSymbol +
+            " bridge pool at " +
+            createEtherscanLinkMarkdown(bridgePool.address, bridgePool.chainId) +
+            " on " +
+            PublicNetworks[bridgePool.chainId]?.name +
+            " is at " +
+            createFormatFunction(0, 2)(toBN(bridgePool.utilization).mul(toBN(100))) +
+            "% utilization!",
+        });
+      }
+    }
+
+    return;
+  }
+
+  async checkUnknownRelays(): Promise<void> {
+    this.logger.debug({ at: "AcrossMonitor#UnknownRelays", message: "Checking for unknown relays" });
+
+    await this.relayEventFetcher.getEvents();
+  }
+}
