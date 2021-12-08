@@ -3,6 +3,20 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.1.2](https://github.com/UMAprotocol/protocol/compare/@uma/fx-tunnel-relayer@1.1.0...@uma/fx-tunnel-relayer@1.1.2) (2021-12-07)
+
+**Note:** Version bump only for package @uma/fx-tunnel-relayer
+
+## [1.1.1](https://github.com/UMAprotocol/protocol/compare/@uma/fx-tunnel-relayer@1.1.0...@uma/fx-tunnel-relayer@1.1.1) (2021-12-07)
+
+**Note:** Version bump only for package @uma/fx-tunnel-relayer
+
+# [1.1.0](https://github.com/UMAprotocol/protocol/compare/@uma/fx-tunnel-relayer@1.0.12...@uma/fx-tunnel-relayer@1.1.0) (2021-12-06)
+
+### Features
+
+- **transaction-manager:** enable early return from runTransaction method ([#3609](https://github.com/UMAprotocol/protocol/issues/3609)) ([fcfe27a](https://github.com/UMAprotocol/protocol/commit/fcfe27a21c1b34ae6683534e6059e186684b1819))
+
 ## [1.0.12](https://github.com/UMAprotocol/protocol/compare/@uma/fx-tunnel-relayer@1.0.11...@uma/fx-tunnel-relayer@1.0.12) (2021-11-18)
 
 **Note:** Version bump only for package @uma/fx-tunnel-relayer

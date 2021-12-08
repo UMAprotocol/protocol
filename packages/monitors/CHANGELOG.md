@@ -3,6 +3,20 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.10.2](https://github.com/UMAprotocol/protocol/compare/@uma/monitors@2.10.0...@uma/monitors@2.10.2) (2021-12-07)
+
+**Note:** Version bump only for package @uma/monitors
+
+## [2.10.1](https://github.com/UMAprotocol/protocol/compare/@uma/monitors@2.10.0...@uma/monitors@2.10.1) (2021-12-07)
+
+**Note:** Version bump only for package @uma/monitors
+
+# [2.10.0](https://github.com/UMAprotocol/protocol/compare/@uma/monitors@2.9.1...@uma/monitors@2.10.0) (2021-12-06)
+
+### Features
+
+- **logging:** add error logging on disputes and slow relay. Decode OO ancillary data ([#3635](https://github.com/UMAprotocol/protocol/issues/3635)) ([8022ff7](https://github.com/UMAprotocol/protocol/commit/8022ff70b399589c058dc676a33fa43430f0521d))
+
 ## [2.9.1](https://github.com/UMAprotocol/protocol/compare/@uma/monitors@2.9.0...@uma/monitors@2.9.1) (2021-11-18)
 
 **Note:** Version bump only for package @uma/monitors

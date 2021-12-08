@@ -31,7 +31,7 @@ test("estimate usdc slow", async function () {
   const result = utils.calculateGasFees(gas, gasPrice, tokenPrice, decimals);
   const userDisplay = utils.fromWei(result, decimals);
   assert.ok(userDisplay);
-}, 10000);
+});
 test("estimate uma slow", async function () {
   const gas = constants.SLOW_UMA_GAS;
   const gasPrice = estimatedGasPrice;

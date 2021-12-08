@@ -154,7 +154,7 @@ describe("index.js", function () {
       transports: [new SpyTransport({ level: "debug" }, { spy: spy })],
     });
 
-    await startGanacheServer(chainId, 7777);
+    startGanacheServer(chainId, 7777);
     const [l2Owner, l2BridgeAdminImpersonator] = await l2Web3.eth.getAccounts();
 
     // Deploy deposit box on L2 web3 so that L2 client can read its events.
@@ -191,6 +191,7 @@ describe("index.js", function () {
   });
   it("Runs with no errors and correctly sets approvals for whitelisted L1 tokens", async function () {
     process.env.BRIDGE_ADMIN_ADDRESS = bridgeAdmin.options.address;
+    process.env.WHITELISTED_CHAIN_IDS = JSON.stringify([chainId]);
     process.env.RELAYER_ENABLED = "1";
     process.env.DISPUTER_ENABLED = "1";
     process.env.FINALIZER_ENABLED = "1";
@@ -209,6 +210,7 @@ describe("index.js", function () {
   });
   it("Filters L1 token whitelist on L2 whitelist events", async function () {
     process.env.BRIDGE_ADMIN_ADDRESS = bridgeAdmin.options.address;
+    process.env.WHITELISTED_CHAIN_IDS = JSON.stringify([chainId]);
     process.env.RELAYER_ENABLED = "1";
     process.env.DISPUTER_ENABLED = "1";
     process.env.FINALIZER_ENABLED = "1";

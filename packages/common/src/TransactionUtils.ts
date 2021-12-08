@@ -1,8 +1,10 @@
 import util from "util";
 import minimist from "minimist";
 import ynatm from "@umaprotocol/ynatm";
+import winston from "winston";
+
 import type Web3 from "web3";
-import type { TransactionReceipt } from "web3-core";
+import type { TransactionReceipt, PromiEvent } from "web3-core";
 import type { ContractSendMethod, SendOptions } from "web3-eth-contract";
 
 type CallReturnValue = ReturnType<ContractSendMethod["call"]>;
@@ -19,6 +21,17 @@ export interface AugmentedSendOptions {
   maxPriorityFeePerGas?: number | string;
 }
 
+interface AugmentedWeb3 extends Web3 {
+  nonces: { [address: string]: number };
+}
+
+export interface ExecutedTransaction {
+  receipt: TransactionReceipt | PromiEvent<TransactionReceipt>;
+  transactionHash: string;
+  returnValue: CallReturnValue;
+  transactionConfig: AugmentedSendOptions;
+}
+
 const argv = minimist(process.argv.slice(), {});
 
 /**
@@ -30,23 +43,28 @@ const argv = minimist(process.argv.slice(), {});
  * @param {*Object} transaction Transaction to call `.call()` and subsequently `.send()` on from `senderAccount`.
  * @param {*Object} transactionConfig config, e.g. { maxFeePerGas, maxPriorityFeePerGas, from } or { gasPrice, from}
  *     depending if this is a london or pre-london transaction, passed to transaction.
- * @return Error and type of error (originating from `.call()` or `.send()`) or transaction receipt and return value.
+ * @param availableAccounts {number} defines how many EOAs the transaction runner has access too. If the 0th account
+ * has a pending tx then the runner will automatically send the transaction from the next EOA.
+ * @param waitForMine {Boolean} informs if the transaction runner should wait until the tx is mined or return early once
+ * it has a transaction hash. Useful when sending many transactions in quick succession.
+ * @return Error and type of error (originating from `.call()` or `.send()`) or transaction receipt, return value and
+ * transaction config. Note that the transaction receipt will be a promise if waitForMine is false.
  */
 export const runTransaction = async ({
-  web3,
+  web3: _web3,
   transaction,
   transactionConfig,
   availableAccounts = 1,
+  waitForMine = true,
 }: {
   web3: Web3;
   transaction: ContractSendMethod;
   transactionConfig: AugmentedSendOptions;
   availableAccounts?: number;
-}): Promise<{
-  receipt: TransactionReceipt;
-  returnValue: CallReturnValue;
-  transactionConfig: AugmentedSendOptions;
-}> => {
+  waitForMine?: boolean;
+}): Promise<ExecutedTransaction> => {
+  // Use a cast version of web3 to enable callers to not have to define the `nonces` mapping in the web3 object.
+  const web3 = _web3 as AugmentedWeb3;
   // Add chainId in case RPC enforces transactions to be replay-protected, (i.e. enforced in geth v1.10,
   // https://blog.ethereum.org/2021/03/03/geth-v1-10-0/).
   transactionConfig.chainId = web3.utils.toHex(await web3.eth.getChainId());
@@ -74,7 +92,18 @@ export const runTransaction = async ({
     transactionConfig.nonce = await getPendingTransactionCount(web3, transactionConfig.from);
   // Else, there is no pending transaction and we use the current account transaction count as the nonce.
   // This method does not play nicely in tests. Leave the nonce null to auto fill.
-  else if (argv.network != "test") transactionConfig.nonce = await web3.eth.getTransactionCount(transactionConfig.from);
+  else if (argv.network != "test" && !argv._.some((e) => /test/g.test(e)))
+    transactionConfig.nonce = await web3.eth.getTransactionCount(transactionConfig.from);
+  // Store the transaction nonce in the web3 object so that it can be used in the future. This enables us to fire a
+  // bunch of transactions off without needing to wait for them to be included in the mempool by manually incrementing.
+  if (argv.network != "test" && !argv._.some((e) => /test/g.test(e))) {
+    if (web3.nonces?.[transactionConfig.from]) transactionConfig.nonce = ++web3.nonces[transactionConfig.from];
+    else if (transactionConfig.nonce)
+      web3.nonces = {
+        ...web3.nonces,
+        [transactionConfig.from]: transactionConfig.nonce,
+      };
+  }
 
   // Next, simulate transaction and also extract return value if its a state-modifying transaction. If the function is state
   // modifying, then successfully sending it will return the transaction receipt, not the return value, so we grab it here.
@@ -101,35 +130,52 @@ export const runTransaction = async ({
     const maximumGasPriceMultiple = 2 * 3;
     // Pre-London transactions require `gasPrice`, London transactions require `maxFeePerGas` and `maxPriorityFeePerGas`
 
-    let receipt;
+    let receipt: TransactionReceipt | PromiEvent<TransactionReceipt>;
+    let transactionHash: string;
 
     // If the config contains maxPriorityFeePerGas then this is a London transaction. In this case, simply use the
     // provided config settings but double the maxFeePerGas to ensure the transaction is included, even if the base fee
     // spikes up. The difference between the realized base fee and maxFeePerGas is refunded in a London transaction.
     if (transactionConfig.maxFeePerGas && transactionConfig.maxPriorityFeePerGas) {
-      receipt = await transaction.send({
-        ...transactionConfig,
-        maxFeePerGas: parseInt(transactionConfig.maxFeePerGas.toString()) * 2,
-        type: "0x2",
-      } as SendOptions);
+      // If waitForMine is set (default) then code blocks until the transaction is mined and a receipt is returned.
+      if (waitForMine) {
+        receipt = ((await transaction.send({
+          ...transactionConfig,
+          maxFeePerGas: parseInt(transactionConfig.maxFeePerGas.toString()) * 2,
+          type: "0x2",
+        } as SendOptions)) as unknown) as TransactionReceipt;
+        transactionHash = receipt.transactionHash;
+      }
+      // Else, waitForMine is false and we return the transaction hash immediately as soon as it is included in the
+      // mempool. Receipt is a promise of the pending transaction that can be awaited later to ensure block inclusion.
+      else {
+        receipt = (transaction.send({
+          ...transactionConfig,
+          maxFeePerGas: parseInt(transactionConfig.maxFeePerGas.toString()) * 2,
+          type: "0x2",
+        } as SendOptions) as unknown) as PromiEvent<TransactionReceipt>;
+        transactionHash = await new Promise((resolve) => {
+          (receipt as any).on("transactionHash", (transactionHash: any) => resolve(transactionHash));
+        });
+      }
 
       // Else this is a legacy tx.
     } else if (transactionConfig.gasPrice) {
       const minGasPrice = transactionConfig.gasPrice;
       const maxGasPrice = maximumGasPriceMultiple * parseInt(minGasPrice.toString());
 
-      receipt = await ynatm.send({
+      receipt = ((await ynatm.send({
         sendTransactionFunction: (gasPrice: number) =>
           transaction.send({ ...transactionConfig, gasPrice: gasPrice.toString() } as any),
         minGasPrice,
         maxGasPrice,
         gasPriceScalingFunction,
         delay: retryDelay,
-      });
+      })) as unknown) as TransactionReceipt;
+      transactionHash = receipt.transactionHash;
     } else throw new Error("No gas information provided");
 
-    // Note: cast is due to an incorrect type in the web3 declarations that assumes send returns a contract.
-    return { receipt: (receipt as unknown) as TransactionReceipt, returnValue, transactionConfig };
+    return { receipt, transactionHash, returnValue, transactionConfig };
   } catch (error) {
     error.type = "send";
     throw error;
@@ -261,4 +307,30 @@ export async function findBlockNumberAtTimestamp(
     }
   }
   return { blockNumber: block.number, error: Math.abs(targetTimestamp - parseInt(block.timestamp.toString())) };
+}
+
+/**
+ * @notice Consumes an array of transactions with embedded promises produced by iteratively calling runTransaction.
+ * Waits on all transactions to settle within the batch (included in a block). If any transaction contains an error then
+ * produce a log to that effect. This method is intended to be called at the end of a bot run cycle to ensure that all
+ * transactions that were submitted were indeed included without error. Note that runTransaction will not submit a
+ * transaction if the function can detect it will revert (i.e using the .call syntax). Therefore this function will only
+ * catch reverts that could not be seen at submission time.
+ */
+export async function processTransactionPromiseBatch(transactions: Array<ExecutedTransaction>, logger: winston.Logger) {
+  logger.debug({
+    at: "TransactionUtils",
+    message: "Waiting on transaction batch",
+    transactions: transactions.map((transaction) => transaction.transactionHash),
+  });
+  const transactionResults = await Promise.allSettled(transactions.map((tx: ExecutedTransaction) => tx.receipt));
+  const revertedTransactions = transactionResults.filter((result) => result.status === "rejected");
+  if (revertedTransactions.length == 0)
+    logger.debug({ at: "TransactionUtils", message: "Transaction batch processed without error" });
+  else
+    logger.error({
+      at: "TransactionUtils",
+      message: "Transaction batch processed with error",
+      errors: revertedTransactions.map((transaction: any) => transaction.reason),
+    });
 }

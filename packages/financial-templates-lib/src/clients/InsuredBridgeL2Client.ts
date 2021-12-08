@@ -1,10 +1,11 @@
 // A thick client for getting information about insured bridge L1 & L2 information. Simply acts to fetch information
 // from the respective chains and return it to client implementors.
 
-import { getAbi } from "@uma/contracts-node";
-import type { BridgeDepositBoxWeb3 } from "@uma/contracts-node";
+import { getAbi, BridgeDepositBoxWeb3 } from "@uma/contracts-node";
 import Web3 from "web3";
-import { EventData } from "web3-eth-contract";
+import type { EventData } from "web3-eth-contract";
+import { EventSearchOptions, getEventsForMultipleProviders } from "@uma/common";
+
 const { toChecksumAddress } = Web3.utils;
 import type { Logger } from "winston";
 
@@ -36,7 +37,8 @@ export class InsuredBridgeL2Client {
     readonly bridgeDepositAddress: string,
     readonly chainId: number = 0,
     readonly startingBlockNumber: number = 0,
-    readonly endingBlockNumber: number | null = null
+    readonly endingBlockNumber: number | null = null,
+    readonly fallbackL2Web3s: Web3[] = []
   ) {
     this.bridgeDepositBox = (new l2Web3.eth.Contract(
       getAbi("BridgeDepositBox"),
@@ -122,12 +124,58 @@ export class InsuredBridgeL2Client {
     });
   }
 
-  async getFundsDepositedEvents(blockSearchConfig: { fromBlock: number; toBlock: number }): Promise<EventData[]> {
-    return await this.bridgeDepositBox.getPastEvents("FundsDeposited", blockSearchConfig);
+  async getFundsDepositedEvents(eventSearchOptions: EventSearchOptions): Promise<EventData[]> {
+    const eventsData = await getEventsForMultipleProviders(
+      [this.l2Web3].concat(this.fallbackL2Web3s),
+      getAbi("BridgeDepositBox"),
+      this.bridgeDepositAddress,
+      "FundsDeposited",
+      eventSearchOptions
+    );
+    if (eventsData.missingEvents.length > 0) {
+      const errorMessage = `L2 RPC endpoints disagree about L2 contract events, please manually investigate. L2 rpcs are described in NODE_URL and RETRY_CONFIG environment variables.`;
+      const error = new Error(errorMessage);
+      this.logger.error({
+        at: "InsuredBridgeL2Client",
+        message: "L2 RPC endpoint state disagreement! 🤺",
+        eventName: "FundsDeposited",
+        eventSearchOptions,
+        countMissingEvents: eventsData.missingEvents.length,
+        countMatchingEvents: eventsData.events.length,
+        error,
+      });
+      throw error;
+    }
+
+    // All events were found in all providers, can return any of the event data arrays
+    return eventsData.events;
   }
 
-  async getWhitelistTokenEvents(blockSearchConfig: { fromBlock: number; toBlock: number }): Promise<EventData[]> {
-    return await this.bridgeDepositBox.getPastEvents("WhitelistToken", blockSearchConfig);
+  async getWhitelistTokenEvents(eventSearchOptions: EventSearchOptions): Promise<EventData[]> {
+    const eventsData = await getEventsForMultipleProviders(
+      [this.l2Web3].concat(this.fallbackL2Web3s),
+      getAbi("BridgeDepositBox"),
+      this.bridgeDepositAddress,
+      "WhitelistToken",
+      eventSearchOptions
+    );
+    if (eventsData.missingEvents.length > 0) {
+      const errorMessage = `L2 RPC endpoints disagree about L2 contract events, please manually investigate. L2 rpcs are described in NODE_URL and RETRY_CONFIG environment variables.`;
+      const error = new Error(errorMessage);
+      this.logger.error({
+        at: "InsuredBridgeL2Client",
+        message: "L2 RPC endpoint state disagreement! 🤺",
+        eventName: "WhitelistToken",
+        eventSearchOptions,
+        countMissingEvents: eventsData.missingEvents.length,
+        countMatchingEvents: eventsData.events.length,
+        error,
+      });
+      throw error;
+    }
+
+    // All events were found in all providers, can return any of the event data arrays
+    return eventsData.events;
   }
 
   generateDepositHash = (depositData: Deposit): string => {

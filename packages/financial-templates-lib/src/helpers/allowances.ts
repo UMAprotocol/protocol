@@ -36,6 +36,6 @@ export const setAllowance = async (
       transaction: (approveTransaction as unknown) as ContractSendMethod,
       transactionConfig: { ...gasEstimator.getCurrentFastPrice(), from: ownerAddress },
     });
-    return { tx: receipt, spenderAddress, currencyAddress };
+    return { tx: receipt as TransactionReceipt, spenderAddress, currencyAddress };
   }
 };

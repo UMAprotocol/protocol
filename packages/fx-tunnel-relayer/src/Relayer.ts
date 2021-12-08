@@ -103,7 +103,7 @@ export class Relayer {
       account: this.account,
     });
     try {
-      const { receipt } = await runTransaction({
+      const { transactionHash } = await runTransaction({
         web3: this.web3,
         transaction: this.oracleRootTunnel.methods.receiveMessage(proof),
         transactionConfig: { ...this.gasEstimator.getCurrentFastPrice(), from: this.account },
@@ -112,7 +112,7 @@ export class Relayer {
       this.logger.info({
         at: "Relayer#relayMessage",
         message: "Submitted relay proof!🕴🏼",
-        tx: receipt.transactionHash,
+        tx: transactionHash,
         messageEvent,
       });
     } catch (error) {

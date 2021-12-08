@@ -4,6 +4,10 @@ const hre = require("hardhat");
 const { getContract } = hre;
 const { web3 } = hre;
 const { toWei } = web3.utils;
+const Web3 = require("web3");
+const ganache = require("ganache-core");
+const { SpyTransport, lastSpyLogIncludes, lastSpyLogLevel } = require("../../dist/logger/SpyTransport");
+const sinon = require("sinon");
 
 // Client to test
 const { InsuredBridgeL2Client } = require("../../dist/clients/InsuredBridgeL2Client");
@@ -157,5 +161,67 @@ describe("InsuredBridgeL2Client", () => {
 
     // Should return false if l1 token address is not whitelisted
     assert.isFalse(client.isWhitelistedToken(l2Token.options.address));
+  });
+
+  it("Fails to update if L2 rpcs disagree about contract state", async () => {
+    // Construct new Web3 that will disagree with main Web3 provider about which events were emitted by DepositBox.
+    const spy = sinon.spy();
+    const spyLogger = winston.createLogger({
+      level: "info",
+      transports: [new SpyTransport({ level: "debug" }, { spy: spy })],
+    });
+
+    // Construct new client where we pass in a fallback L2 web3.
+    const clientWithFallbackWeb3s = new InsuredBridgeL2Client(
+      spyLogger,
+      web3,
+      depositBox.options.address,
+      chainId,
+      0,
+      null,
+      [new Web3(ganache.provider())] // Ganache provider will be different from hardhat provider that is already
+      // connected to the BridgeDepositBox.
+    );
+
+    const eventSearchOptions = { fromBlock: 0, toBlock: "latest" };
+    // WhitelistToken event search will fail since we've already whitelisted a token on the deposit box.
+    try {
+      await clientWithFallbackWeb3s.getWhitelistTokenEvents(eventSearchOptions);
+      assert.isTrue(false);
+    } catch (e) {
+      assert.equal(lastSpyLogLevel(spy), "error");
+      assert.equal(spy.getCall(-1).lastArg.countMissingEvents, 1);
+      assert.equal(spy.getCall(-1).lastArg.eventSearchOptions, eventSearchOptions);
+      assert.equal(spy.getCall(-1).lastArg.eventName, "WhitelistToken");
+    }
+
+    // FundsDeposited event search will succeed since there have not been any such events emitted yet.
+    await clientWithFallbackWeb3s.getFundsDepositedEvents(eventSearchOptions);
+
+    // Now, deposit some tokens and check that FundsDeposited event search throws.
+    await l2Token.methods.mint(user1, toWei("200")).send({ from: deployer });
+    await l2Token.methods.approve(depositBox.options.address, toWei("200")).send({ from: user1 });
+    const depositTimestamp = Number(await timer.methods.getCurrentTime().call());
+    const quoteTimestamp = depositTimestamp + quoteTimestampOffset;
+    await depositBox.methods
+      .deposit(user1, l2Token.options.address, depositAmount, slowRelayFeePct, instantRelayFeePct, quoteTimestamp)
+      .send({ from: user1 });
+    try {
+      await clientWithFallbackWeb3s.getFundsDepositedEvents(eventSearchOptions);
+      assert.isTrue(false);
+    } catch (e) {
+      assert.equal(lastSpyLogLevel(spy), "error");
+      assert.equal(spy.getCall(-1).lastArg.countMissingEvents, 1);
+      assert.equal(spy.getCall(-1).lastArg.eventName, "FundsDeposited");
+    }
+
+    // Update will throw an error.
+    try {
+      await clientWithFallbackWeb3s.update();
+      assert.isTrue(false);
+    } catch (e) {
+      assert.equal(lastSpyLogLevel(spy), "error");
+      assert.isTrue(lastSpyLogIncludes(spy, "L2 RPC endpoint state disagreement"));
+    }
   });
 });
