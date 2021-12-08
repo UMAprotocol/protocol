@@ -62,7 +62,8 @@ export class ProfitabilityCalculator {
     }
 
     // Fetch the prices of each token, denominated in ETH. If coingecko does not have the price or is down then this
-    // call will fail and the tokenPrices array will have this error.
+    // call will fail and the tokenPrices array will have this error. Note that Coingecko could also rate limit this
+    // call. TODO: consider dealing with Coingecko rate limiting.
     const tokenPrices = await Promise.allSettled(
       this.l1Tokens.map((l1Token) => this.coingecko.getCurrentPriceByContract(l1Token, "eth"))
     );
