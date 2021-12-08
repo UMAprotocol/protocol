@@ -38,7 +38,7 @@ export class ProfitabilityCalculator {
     readonly l1ChainId: number,
     readonly relayerDiscountNumber: number = 0
   ) {
-    this.relayerDiscount = toBNWei(relayerDiscountNumber).div(toBN("100"));
+    this.relayerDiscount = toBNWei(Math.floor(relayerDiscountNumber)).div(toBN("100"));
     if (this.relayerDiscount.lt(toBN(0)) || this.relayerDiscount.gt(toBNWei(1)))
       throw new Error("Bad discount factor! 0<=relayerDiscount<=1e18");
 
