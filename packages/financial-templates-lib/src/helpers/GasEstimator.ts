@@ -144,39 +144,34 @@ export class GasEstimator {
   getCurrentFastPrice(): LondonGasData | LegacyGasData {
     // Sometimes the multiplication by 1e9 introduces some error into the resulting number, so we'll conservatively ceil
     // the result before returning. This output is usually passed into a web3 contract call so it MUST be an integer.
-    if (this.type == NetworkType.London) {
+    if (this.type == NetworkType.London)
       return {
         maxFeePerGas: Math.ceil(this.latestMaxFeePerGasGwei * 1e9),
         maxPriorityFeePerGas: Math.ceil(this.latestMaxPriorityFeePerGasGwei * 1e9),
       };
-    } else return { gasPrice: Math.ceil(this.lastFastPriceGwei * 1e9) };
+    else return { gasPrice: Math.ceil(this.lastFastPriceGwei * 1e9) };
   }
 
-  // Returns the base fee observed the last time the estimator was updated.
-  getCurrentBaseFee(): number {
-    return this.latestBaseFee;
-  }
-
+  // Returns an estimate of the gas price that you will actually pay based on most recent data. If this is a london
+  // network then you will pay the prevailing base fee + the max priority fee. if not london then pay the latest fast
+  // gas price.
   getExpectedCumulativeGasPrice(): number {
     if (this.type == NetworkType.London) return this.latestBaseFee + this.latestMaxPriorityFeePerGasGwei;
-    else return this.latestBaseFee;
+    else return this.lastFastPriceGwei;
   }
 
   async _update() {
-    // Fetch the gasPrice info from the external provider and fetch the base fee from the web3 instance. Note that the
-    // gas price provider on mainnet (etherchain) does provide a base fee but in practice it seems to lag behind the
-    // most recent blocks somewhat. Using the web3 provider is more direct. Also Note that if this is not on L1 then the
-    // web3.eth.getGasPrice call will return the current gas price, not base fee. finally, note that if web3 was not
-    // defined then the base fee will be 0.
-    const [gasInfo, baseFee] = await Promise.all([
+    // Fetch the latest gas info from the gas price API and fetch the latest block to extract baseFeePerGas, if London.
+    const [gasInfo, latestBlock] = await Promise.all([
       this._getPrice(this.networkId),
-      this.web3 ? this.web3.eth.getGasPrice() : null, // If a web3 instance was provided, fetch the base fee.
+      this.web3 && this.type == NetworkType.London ? this.web3.eth.getBlock("latest") : null,
     ]);
-    this.latestBaseFee = Number(baseFee);
 
     if (this.type == NetworkType.London) {
       this.latestMaxFeePerGasGwei = (gasInfo as LondonGasData).maxFeePerGas;
       this.latestMaxPriorityFeePerGasGwei = (gasInfo as LondonGasData).maxPriorityFeePerGas;
+      // extract the base fee from the most recent block. If the block is not available or errored then is set to 0.
+      this.latestBaseFee = Number((latestBlock as any).baseFeePerGas) || 0;
     } else this.lastFastPriceGwei = (gasInfo as LegacyGasData).gasPrice;
   }
 
