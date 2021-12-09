@@ -170,8 +170,8 @@ export class GasEstimator {
     if (this.type == NetworkType.London) {
       this.latestMaxFeePerGasGwei = (gasInfo as LondonGasData).maxFeePerGas;
       this.latestMaxPriorityFeePerGasGwei = (gasInfo as LondonGasData).maxPriorityFeePerGas;
-      // extract the base fee from the most recent block. If the block is not available or errored then is set to 0.
-      this.latestBaseFee = Number((latestBlock as any).baseFeePerGas) || 0;
+      // Extract the base fee from the most recent block. If the block is not available or errored then is set to 0.
+      this.latestBaseFee = Number((latestBlock as any)?.baseFeePerGas) || 0;
     } else this.lastFastPriceGwei = (gasInfo as LegacyGasData).gasPrice;
   }
 
