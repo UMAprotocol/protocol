@@ -54,6 +54,8 @@ describe("ProfitabilityCalculator.ts", function () {
       );
     });
     it("Update method correctly pulls appropriate pricing information", async function () {
+      assert.equal(Object.keys(profitabilityCalculator.l1TokenInfo).length, 0); // no info before update
+
       await profitabilityCalculator.update();
 
       assert.equal(Object.keys(profitabilityCalculator.l1TokenInfo).length, 3); // 3 separate tokens after update
