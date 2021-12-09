@@ -105,9 +105,9 @@ export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
       gasEstimator,
       l1Client,
       l2Client,
+      canonicalBridgeAdapter,
       accounts[0],
-      config.crossDomainFinalizationThreshold,
-      canonicalBridgeAdapter
+      config.crossDomainFinalizationThreshold
     );
 
     for (;;) {

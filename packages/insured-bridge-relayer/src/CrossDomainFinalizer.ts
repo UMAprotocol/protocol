@@ -25,9 +25,9 @@ export class CrossDomainFinalizer {
     readonly gasEstimator: GasEstimator,
     readonly l1Client: InsuredBridgeL1Client,
     readonly l2Client: InsuredBridgeL2Client,
+    readonly bridgeAdapter: BridgeAdapterInterface,
     readonly account: string,
-    readonly crossDomainFinalizationThreshold: number = 5,
-    readonly bridgeAdapter: BridgeAdapterInterface
+    readonly crossDomainFinalizationThreshold: number = 5
   ) {}
   async checkForBridgeableL2TokensAndBridge() {
     this.logger.debug({ at: "AcrossRelayer#CrossDomainFinalizer", message: "Checking bridgeable L2 tokens" });
@@ -120,21 +120,24 @@ export class CrossDomainFinalizer {
     // L2->L1 Finalization transactions that can be executed and the associated L2 tokens bridged tx hash.
     const confirmedFinalizationTransactions = finalizationTransactions.filter((tx) => tx.finalizationTransaction);
 
-    // If there are confirmed finalization transactions, then we can execute them.
-    if (confirmedFinalizationTransactions.length > 0) {
-      this.logger.debug({
-        at: "CrossDomainFinalizer",
-        message: `Found L2->L1 relays to finalize`,
-        confirmedL2TransactionsToExecute: confirmedFinalizationTransactions.map((tx) => tx.l2TransactionHash),
-      });
+    if (confirmedFinalizationTransactions.length == 0) {
+      this.logger.debug({ at: "CrossDomainFinalizer", message: `No L2->L1 relays to finalize` });
+      return;
+    }
 
-      for (const l2TokenBridgedTransaction of confirmedFinalizationTransactions) {
-        if (l2TokenBridgedTransaction.finalizationTransaction)
-          await this.executeConfirmedL2ToL1Relay(
-            l2TokenBridgedTransaction.l2TransactionHash,
-            l2TokenBridgedTransaction.finalizationTransaction
-          );
-      }
+    // If there are confirmed finalization transactions, then we can execute them.
+    this.logger.debug({
+      at: "CrossDomainFinalizer",
+      message: `Found L2->L1 relays to finalize`,
+      confirmedL2TransactionsToExecute: confirmedFinalizationTransactions.map((tx) => tx.l2TransactionHash),
+    });
+
+    for (const l2TokenBridgedTransaction of confirmedFinalizationTransactions) {
+      if (l2TokenBridgedTransaction.finalizationTransaction)
+        await this.executeConfirmedL2ToL1Relay(
+          l2TokenBridgedTransaction.l2TransactionHash,
+          l2TokenBridgedTransaction.finalizationTransaction
+        );
     }
   }
 
@@ -190,7 +193,7 @@ export class CrossDomainFinalizer {
       if (executionResult.receipt) {
         this.logger.info({
           at: "AcrossRelayer#CrossDomainFinalizer",
-          message: `L2->L1 ${PublicNetworks[this.l2Client.chainId]?.name} canonical relay finalized 🪄`,
+          message: `${PublicNetworks[this.l2Client.chainId]?.name} canonical relay finalized 🪄`,
           mrkdwn:
             "Canonical L2->L1 transfer over the " +
             PublicNetworks[this.l2Client.chainId]?.name +
@@ -198,7 +201,7 @@ export class CrossDomainFinalizer {
             createFormatFunction(2, 4, false, decimals)(tokensBridged) +
             " " +
             symbol +
-            " were bridged. L2 deposit TX: " +
+            " were bridged. L2 TokensBridged TX: " +
             createEtherscanLinkMarkdown(l2TransactionHash, this.l2Client.chainId) +
             ". tx: " +
             createEtherscanLinkMarkdown(executionResult.transactionHash),
