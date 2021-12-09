@@ -110,6 +110,7 @@ export class Relayer {
           relayTransactions.push(await this._generateRelayTransactionForPendingDeposit(l1Token, relayableDeposit));
         } catch (error) {
           this.logger.error({ at: "AcrossRelayer#Relayer", message: "Unexpected error processing deposit", error });
+          console.log("ERROR", error);
         }
       }
       try {
@@ -512,7 +513,7 @@ export class Relayer {
     // Finally, decide what action to do based on the relative profits.
     return this.profitabilityCalculator.getRelaySubmitTypeBasedOnProfitability(
       deposit.l1Token,
-      toBN(this.gasEstimator.getExpectedCumulativeGasPrice()),
+      toBN(Math.ceil(this.gasEstimator.getExpectedCumulativeGasPrice())),
       slowRevenue,
       speedUpRevenue,
       instantRevenue

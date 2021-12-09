@@ -1638,7 +1638,7 @@ describe("Relayer.ts", function () {
         spyLogger,
         [l1Token.options.address, newL1Token.options.address],
         1,
-        100
+        100 // 100% discount (ignores profitability calculator)
       );
       profitabilityCalculator.setL1TokenInfo({
         [l1Token.options.address]: { tokenType: TokenType.ERC20, tokenEthPrice: toBNWei("0.1") },
