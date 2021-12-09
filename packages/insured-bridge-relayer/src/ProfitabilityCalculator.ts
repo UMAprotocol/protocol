@@ -18,12 +18,20 @@ export enum TokenType {
   UMA,
 }
 
+const costs = across.constants;
+const costConstants = {
+  [TokenType.WETH]: { slow: costs.SLOW_ETH_GAS, SpeedUp: costs.SPEED_UP_ETH_GAS, instant: costs.FAST_ETH_GAS },
+  [TokenType.ERC20]: { slow: costs.SLOW_ERC_GAS, SpeedUp: costs.SPEED_UP_ERC_GAS, instant: costs.FAST_ERC_GAS },
+  [TokenType.UMA]: { slow: costs.SLOW_UMA_GAS, SpeedUp: costs.SPEED_UP_UMA_GAS, instant: costs.FAST_UMA_GAS },
+};
+
 export class ProfitabilityCalculator {
   public l1TokenInfo: { [token: string]: { tokenType: TokenType; tokenEthPrice: BN } } = {};
 
   public relayerDiscount: BN;
 
   private readonly coingecko;
+
   /**
    * @notice Constructs new Profitability Calculator Instance.
    * @param {Object} logger Module used to send logs.
@@ -107,6 +115,11 @@ export class ProfitabilityCalculator {
     if (!this.l1TokenInfo[l1Token]) throw new Error("Token info not found. Ensure to construct correctly");
     const { tokenType, tokenEthPrice } = this.l1TokenInfo[l1Token];
 
+    // If the relayer discount is 100% then we can relay tokens with a price of 0. Else, if the price is zero then there
+    // is no way that this is a profitable relay. In this case, error out.
+    if (this.relayerDiscountNumber != 100 && tokenEthPrice.toString() == "0")
+      throw new Error("Token price stored at 0. Cant consider profit.");
+
     this.logger.debug({
       at: "ProfitabilityCalculator",
       message: "Considering relay profitability",
@@ -165,13 +178,6 @@ export class ProfitabilityCalculator {
     speedUpEthCost: BN;
     instantEthCost: BN;
   } {
-    const cost = across.constants;
-    const costConstants = {
-      [TokenType.WETH]: { slow: cost.SLOW_ETH_GAS, SpeedUp: cost.SPEED_UP_ETH_GAS, instant: cost.FAST_ETH_GAS },
-      [TokenType.ERC20]: { slow: cost.SLOW_ERC_GAS, SpeedUp: cost.SPEED_UP_ERC_GAS, instant: cost.FAST_ERC_GAS },
-      [TokenType.UMA]: { slow: cost.SLOW_UMA_GAS, SpeedUp: cost.SPEED_UP_UMA_GAS, instant: cost.FAST_UMA_GAS },
-    };
-
     const discount = fixedPoint.sub(this.relayerDiscount);
     return {
       slowEThCost: gasPrice.mul(toBN(costConstants[tokenType].slow)).mul(discount).div(fixedPoint),

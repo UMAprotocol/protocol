@@ -51,8 +51,8 @@ export const createObjectFromDefaultProps = (overrideProps: ObjectType, defaultP
  * @param {mapFn} the mapping function to apply to each element in the `object`.
  * @returns {object} new Object with the same keys as the `object`, but each value is the result of applying the mapFn.
  */
-export const objectMap = (object: ObjectType, mapFn: any): ObjectType => {
-  return Object.keys(object).reduce(function (result: any, key) {
+export const objectMap = <T extends ObjectType, U>(object: T, mapFn: (T: any) => U): { [key: string]: U } => {
+  return Object.keys(object).reduce(function (result: { [key: string]: U }, key) {
     result[key] = mapFn(object[key]);
     return result;
   }, {});
