@@ -25,8 +25,7 @@ export default async (
   gas: number,
   tokenAddress?: string
 ): Promise<ReturnType> => {
-  const latestBlockNumber = await (ethersProvider as ethers.providers.JsonRpcProvider).getBlockNumber();
-  const { baseFeePerGas } = await (ethersProvider as ethers.providers.JsonRpcProvider).getBlock(latestBlockNumber);
+  const { baseFeePerGas } = await (ethersProvider as ethers.providers.JsonRpcProvider).getBlock("latest");
   let gasPrice: ethers.BigNumber;
 
   if (baseFeePerGas) {
