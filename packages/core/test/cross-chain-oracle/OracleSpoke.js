@@ -103,20 +103,18 @@ describe("OracleSpoke.js", async () => {
     assert.equal(pushPriceEvents.length, 1);
     assert.isTrue(
       await oracleSpoke.methods
-        .hasPrice(defaultIdentifier, defaultTimestamp, expectedAncillaryData)
+        .hasPrice(defaultIdentifier, defaultTimestamp, defaultAncillaryData)
         .call({ from: owner })
     );
   });
   it("hasPrice", async function () {
-    let expectedAncillaryData = await oracleSpoke.methods.stampAncillaryData(defaultAncillaryData).call();
-
     assert.isFalse(
       await oracleSpoke.methods
-        .hasPrice(defaultIdentifier, defaultTimestamp, expectedAncillaryData)
+        .hasPrice(defaultIdentifier, defaultTimestamp, defaultAncillaryData)
         .call({ from: owner })
     );
 
-    expectedAncillaryData = await oracleSpoke.methods.stampAncillaryData(defaultAncillaryData).call();
+    let expectedAncillaryData = await oracleSpoke.methods.stampAncillaryData(defaultAncillaryData).call();
     await messenger.methods
       .publishPrice(
         oracleSpoke.options.address,
@@ -130,13 +128,13 @@ describe("OracleSpoke.js", async () => {
     // Only registered caller can call
     assert(
       await didContractThrow(
-        oracleSpoke.methods.hasPrice(defaultIdentifier, defaultTimestamp, expectedAncillaryData).call({ from: rando })
+        oracleSpoke.methods.hasPrice(defaultIdentifier, defaultTimestamp, defaultAncillaryData).call({ from: rando })
       )
     );
 
     assert.isTrue(
       await oracleSpoke.methods
-        .hasPrice(defaultIdentifier, defaultTimestamp, expectedAncillaryData)
+        .hasPrice(defaultIdentifier, defaultTimestamp, defaultAncillaryData)
         .call({ from: owner })
     );
 
@@ -155,16 +153,14 @@ describe("OracleSpoke.js", async () => {
     assert.isTrue(await oracleSpoke.methods.hasPrice(defaultIdentifier, defaultTimestamp).call({ from: owner }));
   });
   it("getPrice", async function () {
-    let expectedAncillaryData = await oracleSpoke.methods.stampAncillaryData(defaultAncillaryData).call();
-
     // Reverts if price not available
     assert(
       await didContractThrow(
-        oracleSpoke.methods.getPrice(defaultIdentifier, defaultTimestamp, expectedAncillaryData).call({ from: owner })
+        oracleSpoke.methods.getPrice(defaultIdentifier, defaultTimestamp, defaultAncillaryData).call({ from: owner })
       )
     );
 
-    expectedAncillaryData = await oracleSpoke.methods.stampAncillaryData(defaultAncillaryData).call();
+    let expectedAncillaryData = await oracleSpoke.methods.stampAncillaryData(defaultAncillaryData).call();
     await messenger.methods
       .publishPrice(
         oracleSpoke.options.address,
@@ -178,13 +174,13 @@ describe("OracleSpoke.js", async () => {
     // Only registered caller can call
     assert(
       await didContractThrow(
-        oracleSpoke.methods.getPrice(defaultIdentifier, defaultTimestamp, expectedAncillaryData).call({ from: rando })
+        oracleSpoke.methods.getPrice(defaultIdentifier, defaultTimestamp, defaultAncillaryData).call({ from: rando })
       )
     );
 
     assert.equal(
       await oracleSpoke.methods
-        .getPrice(defaultIdentifier, defaultTimestamp, expectedAncillaryData)
+        .getPrice(defaultIdentifier, defaultTimestamp, defaultAncillaryData)
         .call({ from: owner }),
       defaultPrice
     );

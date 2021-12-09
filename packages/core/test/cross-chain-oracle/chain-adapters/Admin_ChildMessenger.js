@@ -88,7 +88,7 @@ describe("Admin_ChildMessenger", function () {
     // Encode price response data.
     const dataToSend = web3.eth.abi.encodeParameters(
       ["bytes32", "uint256", "bytes", "int256"],
-      [identifier, timestamp, ancillaryData, "100"]
+      [identifier, timestamp, await oracleSpokeReal.methods.stampAncillaryData(ancillaryData).call(), "100"]
     );
 
     // Only the owner can send a message to the spoke contracts.
