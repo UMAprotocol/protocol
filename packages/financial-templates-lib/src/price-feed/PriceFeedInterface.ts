@@ -3,12 +3,15 @@ import { BN } from "../types";
 // Price feed interface -- all price feed implementations should override all functions (except for _abstractFunctionCalled).
 export abstract class PriceFeedInterface {
   // Updates the internal state of the price feed. Should pull in any async data so the get*Price methods can be called.
+  // Will use the optional ancillary data parameter to customize what kind of data get*Price returns.
   // Note: derived classes *must* override this method.
-  public abstract update(): Promise<void>;
+  // Note: Eventually `update` will be removed in favor of folding its logic into `getCurrentPrice`.
+  public abstract update(ancillaryData?: string): Promise<void>;
 
   // Gets the current price (as a BN) for this feed synchronously from the in-memory state of this price feed object.
-  // This price should be up-to-date as of the last time `update()` was called. If `update()` has never been called,
-  // this should return `null` or `undefined`. If no price could be retrieved, it should return `null` or `undefined`.
+  // This price should be up-to-date as of the last time that `update(ancillaryData)` was called, using any parameters
+  // specified in the ancillary data passed as input. If `update()` has never been called, this should return `null` or
+  // `undefined`. If no price could be retrieved, it should return `null` or `undefined`.
   // Note: derived classes *must* override this method.
   public abstract getCurrentPrice(): BN | null;
 

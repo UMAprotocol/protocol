@@ -184,6 +184,16 @@ export class InsuredBridgeL1Client {
       bridgePool.methods.liquidityUtilizationPostRelay(deposit.amount.toString()).call(undefined, quoteBlockNumber),
     ]);
 
+    this.logger.debug({
+      at: "InsuredBridgeL1Client",
+      message: "Computed realized LP fee % for deposit",
+      deposit,
+      quoteBlockNumber,
+      liquidityUtilizationCurrent: liquidityUtilizationCurrent.toString(),
+      liquidityUtilizationPostRelay: liquidityUtilizationPostRelay.toString(),
+      rateModel: this.rateModels[deposit.l1Token],
+    });
+
     return toBN(
       across.feeCalculator
         .calculateRealizedLpFeePct(
