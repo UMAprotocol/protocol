@@ -240,7 +240,7 @@ describe("InsuredBridgeL2Client", () => {
 
     await client.update();
 
-    assert.equal(client.getTokensBridgeTransactionsForL2Token(l2Token.options.address).length, 1);
-    assert.equal(client.getTokensBridgeTransactionsForL2Token(l2Token.options.address)[0], bridgeTx.transactionHash);
+    assert.equal(client.getTokensBridgedTransactionsForL2Token(l2Token.options.address).length, 1);
+    assert.equal(client.getTokensBridgedTransactionsForL2Token(l2Token.options.address)[0], bridgeTx.transactionHash);
   });
 });
