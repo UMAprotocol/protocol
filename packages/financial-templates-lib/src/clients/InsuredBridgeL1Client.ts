@@ -374,6 +374,8 @@ export class InsuredBridgeL1Client {
     // specific deposit quote timestamp.
     const updatedRateModelEvents = await this.rateModelStore.getPastEvents("UpdatedRateModel", blockSearchConfig);
     for (const updatedRateModelEvent of updatedRateModelEvents) {
+      // The contract enforces that all rate models are mapped to addresses, therefore we do not need to check that
+      // `l1Token` is a valid address.
       const l1TokenNormalized = toChecksumAddress(updatedRateModelEvent.returnValues.l1Token);
       if (!this.rateModelsForToken[l1TokenNormalized]) this.rateModelsForToken[l1TokenNormalized] = [];
 
