@@ -40,25 +40,20 @@ const mockUSDCPriceInEth = toBNWei(0.0002);
 const sampleCumulativeGasPrice = toBN(100e9); // A gas price of 100 Gwei.
 
 describe("ProfitabilityCalculator.ts", function () {
-  before(async function () {
+  beforeEach(async function () {
     spy = sinon.spy();
     spyLogger = winston.createLogger({ level: "debug", transports: [new SpyTransport({ level: "debug" }, { spy })] });
   });
   describe("Update logic", function () {
-    before(async function () {
+    it("Update method correctly pulls appropriate pricing information", async function () {
       profitabilityCalculator = new ProfitabilityCalculator(
         spyLogger,
         [umaAddress, wethAddress, usdcAddress],
         mainnetChainId,
         relayerDiscount
       );
-    });
-    it("Update method correctly pulls appropriate pricing information", async function () {
-      assert.equal(Object.keys(profitabilityCalculator.l1TokenInfo).length, 0); // no info before update
 
       await profitabilityCalculator.update();
-
-      assert.equal(Object.keys(profitabilityCalculator.l1TokenInfo).length, 3); // 3 separate tokens after update
 
       // The three keys of each token should be included in the calculators state.
       assert.equal(Object.keys(profitabilityCalculator.l1TokenInfo)[0], umaAddress);
@@ -100,7 +95,7 @@ describe("ProfitabilityCalculator.ts", function () {
   });
   describe("Profitability calculation", function () {
     // Mock the update method to return a fixed price for each token.
-    before(async function () {
+    beforeEach(async function () {
       profitabilityCalculator = new MockProfitabilityCalculator(
         spyLogger,
         [umaAddress, wethAddress, usdcAddress],
