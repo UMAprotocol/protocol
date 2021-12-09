@@ -11,11 +11,7 @@ type GasPrice = {
 };
 
 export class Etherchain {
-  private url: string;
-
-  constructor(url = "https://www.etherchain.org/api") {
-    this.url = url;
-  }
+  constructor(private url = "https://www.etherchain.org/api") {}
 
   public async getGasPrice(): Promise<GasPrice> {
     try {
