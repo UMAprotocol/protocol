@@ -102,7 +102,7 @@ export class RelayerConfig {
       throw new Error("CROSS_DOMAIN_FINALIZATION_THRESHOLD must be < 100");
 
     this.relayerDiscount = RELAYER_DISCOUNT ? Number(RELAYER_DISCOUNT) : 0;
-    if (this.relayerDiscount <= 0 || this.relayerDiscount >= 100)
+    if (this.relayerDiscount < 0 || this.relayerDiscount > 100)
       throw new Error("RELAYER_DISCOUNT must be between 0 and 100");
 
     // L2 start block must be explicitly set unlike L1 due to how L2 nodes work. For best practices, we also should
