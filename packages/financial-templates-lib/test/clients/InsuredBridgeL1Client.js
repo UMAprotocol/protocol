@@ -441,13 +441,12 @@ describe("InsuredBridgeL1Client", function () {
       assert.isTrue(err.message.includes("before first UpdatedRateModel event"));
     }
 
-    // If rate model is not parseable into expected keys throws error
-    const invalidRateModelTxn = await rateModelStore.methods
+    // If rate model is not parseable into expected keys, then update throws error
+    await rateModelStore.methods
       .updateRateModel(l1Token.options.address, JSON.stringify({ key: "value" }))
       .send({ from: owner });
-    await client.update();
     try {
-      client.getRateModelForBlockNumber(l1Token.options.address, invalidRateModelTxn.blockNumber);
+      await client.update();
       assert(false);
     } catch (err) {
       assert.isTrue(err.message.includes("Improperly formatted rate model"));
