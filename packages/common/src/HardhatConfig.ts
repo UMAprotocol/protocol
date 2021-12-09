@@ -57,7 +57,15 @@ export function getHardhatConfig(
       },
     },
     networks: {
-      hardhat: { hardfork: "london", testBlacklist },
+      hardhat: {
+        hardfork: "london",
+        gasPrice: "auto",
+        initialBaseFeePerGas: 1_000_000_000,
+        gas: 11500000,
+        blockGasLimit: 15_000_000,
+        timeout: 1800000,
+        testBlacklist,
+      },
       localhost: { url: "http://127.0.0.1:9545", timeout: 1800000, testBlacklist },
       mainnet: { chainId: 1, url: getNodeUrl("mainnet", true), accounts: { mnemonic } },
       rinkeby: { chainId: 4, url: getNodeUrl("rinkeby", true), accounts: { mnemonic } },
