@@ -138,5 +138,9 @@
   {
     "contractName": "SkinnyOptimisticOracle",
     "address": "0xeE3Afe347D5C74317041E2618C49534dAf887c24"
+  },
+  {
+    "contractName": "RateModelStore",
+    "address": "0xd18fFeb5fdd1F2e122251eA7Bf357D8Af0B60B50"
   }
 ]
