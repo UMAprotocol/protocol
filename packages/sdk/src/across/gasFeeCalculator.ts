@@ -31,7 +31,9 @@ export default async (
 
   if (baseFeePerGas) {
     const priorityFeePerGas = (await new Etherchain().getGasPrice()).fastest;
-    gasPrice = baseFeePerGas.add(priorityFeePerGas);
+    // transform priority fee from gwei (eg 4.1) to wei
+    const priorityFeePerGasWei = Math.round(priorityFeePerGas * 10 ** 9);
+    gasPrice = baseFeePerGas.add(priorityFeePerGasWei);
   } else {
     // fallback in case baseFeePerGas is undefined / null
     gasPrice = await ethersProvider.getGasPrice();
