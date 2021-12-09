@@ -53,7 +53,11 @@ describe("ProfitabilityCalculator.ts", function () {
         relayerDiscount
       );
 
+      assert.equal(Object.keys(profitabilityCalculator.l1TokenInfo).length, 0); // no info before update
+
       await profitabilityCalculator.update();
+
+      assert.equal(Object.keys(profitabilityCalculator.l1TokenInfo).length, 3); // 3 separate tokens after update
 
       // The three keys of each token should be included in the calculators state.
       assert.equal(Object.keys(profitabilityCalculator.l1TokenInfo)[0], umaAddress);

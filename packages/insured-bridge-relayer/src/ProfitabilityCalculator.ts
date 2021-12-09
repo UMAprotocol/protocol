@@ -1,6 +1,6 @@
 import winston from "winston";
 import Web3 from "web3";
-const { toWei, toBN, fromWei } = Web3.utils;
+const { toWei, toBN, fromWei, toChecksumAddress } = Web3.utils;
 const toBNWei = (number: string | number) => toBN(toWei(number.toString()).toString());
 const fixedPoint = toBNWei(1);
 
@@ -62,10 +62,12 @@ export class ProfitabilityCalculator {
         await getAddress("VotingToken", this.l1ChainId),
         await getAddress("WETH9", this.l1ChainId),
       ]);
+      console.log("umaAddress", umaAddress);
+      console.log("wethAddress", wethAddress);
       for (const l1Token of this.l1Tokens) {
         this.l1TokenInfo[l1Token] = { tokenType: TokenType.ERC20, tokenEthPrice: toBNWei("1") };
-        if (l1Token == umaAddress) this.l1TokenInfo[l1Token].tokenType = TokenType.UMA;
-        else if (l1Token == wethAddress) this.l1TokenInfo[l1Token].tokenType = TokenType.WETH;
+        if (l1Token == toChecksumAddress(umaAddress)) this.l1TokenInfo[l1Token].tokenType = TokenType.UMA;
+        else if (l1Token == toChecksumAddress(wethAddress)) this.l1TokenInfo[l1Token].tokenType = TokenType.WETH;
       }
     }
 
