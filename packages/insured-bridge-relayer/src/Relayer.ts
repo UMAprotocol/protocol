@@ -110,7 +110,6 @@ export class Relayer {
           relayTransactions.push(await this._generateRelayTransactionForPendingDeposit(l1Token, relayableDeposit));
         } catch (error) {
           this.logger.error({ at: "AcrossRelayer#Relayer", message: "Unexpected error processing deposit", error });
-          console.log("ERROR", error);
         }
       }
       try {
