@@ -126,6 +126,27 @@ const result = utils.calculateGasFees(gas, gasPrice)
 const userDisplay = fromWei(result)
 ```
 
+### LP Fee Calculator
+
+Get lp fee calculations by timestamp.
+
+```ts
+import * as uma from "@uma/sdk"
+
+const LpFeeCalculator = uma.across.LpFeeCalculator
+
+// pass in L1 read only provider. You should only have a single instance of the calculator.
+const calculator = new LpFeeCalculator(provider)
+
+const tokenAddress = // token address on L1 to transfer from l2 to l1
+const bridgePoolAddress = // bridge pool address on L1 with the liquidity pool
+const amount = // amount in wei for user to send across
+const timestamp = // timestamp in seconds of latest block on L2 chain
+const percent = await calculator.getLpFeePct(tokenAddress, bridgePoolAddress, amount, timestamp)
+
+
+```
+
 ### Contract Clients
 
 - [BridgePool Client](./clients/README.md)

@@ -3,6 +3,26 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.16.0](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.14.0...@uma/sdk@0.16.0) (2021-12-07)
+
+### Features
+
+- **sdk:** ability to send funds from Ethereum to Boba ([#3646](https://github.com/UMAprotocol/protocol/issues/3646)) ([543cf74](https://github.com/UMAprotocol/protocol/commit/543cf745858b8b75f7034ca91d701c2f7c5045b7))
+- **sdk:** add timestamp search for lp fee pct calculation ([#3665](https://github.com/UMAprotocol/protocol/issues/3665)) ([3db71fe](https://github.com/UMAprotocol/protocol/commit/3db71fe7aef3a97e8707592a0129ed157ba2802a))
+
+# [0.15.0](https://amateima.github.com/UMAprotocol/protocol/compare/@uma/sdk@0.14.0...@uma/sdk@0.15.0) (2021-12-07)
+
+### Features
+
+- **sdk:** ability to send funds from Ethereum to Boba ([#3646](https://amateima.github.com/UMAprotocol/protocol/issues/3646)) ([543cf74](https://amateima.github.com/UMAprotocol/protocol/commit/543cf745858b8b75f7034ca91d701c2f7c5045b7))
+
+# [0.14.0](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.13.0...@uma/sdk@0.14.0) (2021-12-06)
+
+### Features
+
+- **sdk:** add L1 -> L2 Optimism Bridge Client ([#3623](https://github.com/UMAprotocol/protocol/issues/3623)) ([732ff78](https://github.com/UMAprotocol/protocol/commit/732ff78ad38e2b17affb51195602b61864b87d40))
+- **sdk:** add projected apr calculation ([#3655](https://github.com/UMAprotocol/protocol/issues/3655)) ([0796f8b](https://github.com/UMAprotocol/protocol/commit/0796f8b002e32bd9ce5ec6319d76ca785c844dd9))
+
 # [0.13.0](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.12.3...@uma/sdk@0.13.0) (2021-11-18)
 
 ### Bug Fixes

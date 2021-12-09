@@ -1,7 +1,6 @@
 import Web3 from "web3";
 const { isAddress, toChecksumAddress, toBN } = Web3.utils;
 
-import assert from "assert";
 import { replaceAddressCase } from "@uma/common";
 import { across } from "@uma/sdk";
 
@@ -9,15 +8,6 @@ import type { RateModel } from "@uma/financial-templates-lib";
 
 // Check each token rate model contains the expected data.
 const expectedRateModelKeys = ["UBar", "R0", "R1", "R2"];
-
-// Supported L2 Chain IDS:
-const supportedChainIds = [
-  10, // optimism mainnet
-  69, // optimism testnet
-  42161, // arbitrum mainnet
-  421611, // arbitrum testnet
-  288,
-];
 
 // This struct is a hack right now but prevents an edge case bug where a deposit.quoteTime < bridgePool.deployment time.
 // The deposit.quoteTime is used to call bridgePool.liquidityUtilizationCurrent at a specific block height. This call
@@ -42,6 +32,7 @@ const bridgePoolDeployData = {
 const bridgeDepositBoxDeployData = {
   42161: { blockNumber: 2811998 },
   10: { blockNumber: 204576 },
+  288: { blockNumber: 223808 },
 };
 
 export interface ProcessEnv {
@@ -93,7 +84,7 @@ export class RelayerConfig {
       L2_DEPLOY_DATA,
     } = env;
 
-    assert(BRIDGE_ADMIN_ADDRESS, "BRIDGE_ADMIN_ADDRESS required");
+    if (!BRIDGE_ADMIN_ADDRESS) throw new Error("BRIDGE_ADMIN_ADDRESS required");
     this.bridgeAdmin = toChecksumAddress(BRIDGE_ADMIN_ADDRESS);
 
     this.botModes = {
@@ -108,11 +99,19 @@ export class RelayerConfig {
       ? Number(CROSS_DOMAIN_FINALIZATION_THRESHOLD)
       : 5;
 
-    assert(this.crossDomainFinalizationThreshold < 100, "CROSS_DOMAIN_FINALIZATION_THRESHOLD must be < 100");
+    if (this.crossDomainFinalizationThreshold >= 100)
+      throw new Error("CROSS_DOMAIN_FINALIZATION_THRESHOLD must be < 100");
 
     // L2 start block must be explicitly set unlike L1 due to how L2 nodes work. For best practices, we also should
     // constrain L1 start blocks but this hasn't been an issue empirically. As a data point, Arbitrum Infura has a
     // query limit of up to 100,000 blocks into the past.
+
+    // Note: Set this to some buffer below the 100,000 limit based on how the `index.ts` file computes the start block
+    // to set in the L2 client. It takes the L2 latest block and then subtracts `L2_BLOCK_LOOKBACK` to get the start
+    // block. A little after, the L2 client updates and sets its own `toBlock` to the latest L2 block at the update
+    // time. Therefore, its possible that block height increases enough between the initial L2 latest block query and
+    // the second one that more than 100,000 blocks are queried and the API throws an error.
+
     this.l2BlockLookback = L2_BLOCK_LOOKBACK ? Number(L2_BLOCK_LOOKBACK) : 99900;
 
     this.pollingDelay = POLLING_DELAY ? Number(POLLING_DELAY) : 60;
@@ -125,17 +124,19 @@ export class RelayerConfig {
 
     for (const l1Token of Object.keys(processingRateModels)) {
       // Check the keys in the rate model provided are addresses.
-      assert(isAddress(l1Token), "Bad l1Token provided in rate model!");
+      if (!isAddress(l1Token)) throw new Error("Bad l1Token provided in rate model!");
 
       // Append this key to the whitelistedRelayL1Tokens array.
       this.whitelistedRelayL1Tokens.push(toChecksumAddress(l1Token)); // ensure case is converted correctly
 
-      assert(
-        expectedRateModelKeys.every((item) =>
+      if (
+        !expectedRateModelKeys.every((item) =>
           Object.prototype.hasOwnProperty.call(processingRateModels[l1Token], item)
-        ),
-        `${toChecksumAddress(l1Token)} does not contain the required rate model keys ${expectedRateModelKeys}`
-      );
+        )
+      )
+        throw new Error(
+          `${toChecksumAddress(l1Token)} does not contain the required rate model keys ${expectedRateModelKeys}`
+        );
       this.rateModels[toChecksumAddress(l1Token)] = {
         UBar: toBN(processingRateModels[l1Token].UBar),
         R0: toBN(processingRateModels[l1Token].R0),
@@ -147,19 +148,13 @@ export class RelayerConfig {
     // CHAIN_IDS sets the active chain ID's for this bot. Note how this is distinct from WHITELISTED_CHAIN_IDS which
     // sets all valid chain ID's. Any relays for chain ID's outside of this whitelist will be disputed.
     this.activatedChainIds = JSON.parse(CHAIN_IDS || "[]");
-    assert(this.activatedChainIds.length > 0, "Must define at least 1 chain ID to run the bot against");
-    assert(!this.activatedChainIds.includes(1), "Do not include chainID 1 in CHAIN_IDS");
-    for (const id of this.activatedChainIds)
-      assert(supportedChainIds.includes(id), `The chainID you provided: ${id} is not supported by this relayer`);
+    if (this.activatedChainIds.length === 0) throw new Error("Must define at least 1 chain ID to run the bot against");
+    if (this.activatedChainIds.includes(1)) throw new Error("Do not include chainID 1 in CHAIN_IDS");
 
     // Default whitelisted deposit chain ID's are Optimism and Arbitrum mainnet and testnet. Be VERY CAREFUL defining
     // this whitelist since any relays with non whitelisted chain IDs will be disputed!!
-    this.whitelistedChainIds = WHITELISTED_CHAIN_IDS ? JSON.parse(WHITELISTED_CHAIN_IDS) : supportedChainIds;
-    assert(this.whitelistedChainIds.length > 0, "Must define at least 1 whitelisted chain ID");
-    for (const id of this.whitelistedChainIds)
-      assert(
-        supportedChainIds.includes(id),
-        `The whitelisted chainID you provided: ${id} is not supported by this relayer`
-      );
+    if (!WHITELISTED_CHAIN_IDS) throw new Error("Must set WHITELISTED_CHAIN_IDS");
+    this.whitelistedChainIds = JSON.parse(WHITELISTED_CHAIN_IDS);
+    if (this.whitelistedChainIds.length === 0) throw new Error("Must define at least 1 whitelisted chain ID");
   }
 }

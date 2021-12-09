@@ -873,6 +873,14 @@ export class Relayer {
 
       // Look up all blocks from contract deployment time to latest to ensure that a deposit, if it exists, is found.
       while (deposit === undefined) {
+        this.logger.debug({
+          at: "AcrossRelayer#Disputer",
+          message: "Searching through all L2 block history for matching deposit event for relay",
+          l2BlockSearchConfig,
+          latestBlock,
+          lookback: this.l2LookbackWindow,
+          relay,
+        });
         const fundsDepositedEvents = await this.l2Client.getBridgeDepositBoxEvents(
           l2BlockSearchConfig,
           "FundsDeposited"
@@ -894,6 +902,7 @@ export class Relayer {
           };
           _deposit.depositHash = this.l2Client.generateDepositHash(_deposit);
           if (_deposit.depositHash === relay.depositHash) {
+            deposit = _deposit;
             this.logger.debug({
               at: "AcrossRelayer#Disputer",
               message: "Matched deposit using relay quote time to run new block search",
@@ -901,7 +910,6 @@ export class Relayer {
               deposit,
               relay,
             });
-            deposit = _deposit;
             break;
           }
         }

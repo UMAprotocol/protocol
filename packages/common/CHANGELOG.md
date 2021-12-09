@@ -3,6 +3,28 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.14.2](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.14.0...@uma/common@2.14.2) (2021-12-07)
+
+**Note:** Version bump only for package @uma/common
+
+## [2.14.1](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.14.0...@uma/common@2.14.1) (2021-12-07)
+
+**Note:** Version bump only for package @uma/common
+
+# [2.14.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.13.1...@uma/common@2.14.0) (2021-12-06)
+
+### Bug Fixes
+
+- minor fix to get web3 to respect user-provided network ([#3598](https://github.com/UMAprotocol/protocol/issues/3598)) ([54e3b29](https://github.com/UMAprotocol/protocol/commit/54e3b29f9f1f461541cd2fbb127ae8bf5930cd10))
+- **common/core:** small changes post optimsim deployment ([#3592](https://github.com/UMAprotocol/protocol/issues/3592)) ([b940fb7](https://github.com/UMAprotocol/protocol/commit/b940fb77b26c5973b98aa6b191fb1b663df18eae))
+
+### Features
+
+- **pf-utils:** Ignore DPI/ETH price identifier ([#3649](https://github.com/UMAprotocol/protocol/issues/3649)) ([4e1f003](https://github.com/UMAprotocol/protocol/commit/4e1f0038551779fa49e5c76fdb7a4214c22009d1))
+- **transaction-manager:** enable early return from runTransaction method ([#3609](https://github.com/UMAprotocol/protocol/issues/3609)) ([fcfe27a](https://github.com/UMAprotocol/protocol/commit/fcfe27a21c1b34ae6683534e6059e186684b1819))
+- add boba network ([#3616](https://github.com/UMAprotocol/protocol/issues/3616)) ([eba0287](https://github.com/UMAprotocol/protocol/commit/eba0287c19c8139f8917dc9c6cea8cc80b09c083))
+- add OptimisticRewarder ([#3594](https://github.com/UMAprotocol/protocol/issues/3594)) ([eeba703](https://github.com/UMAprotocol/protocol/commit/eeba70300441a474bd613ba3104a0322a8ce09c4))
+
 ## [2.13.1](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.13.0...@uma/common@2.13.1) (2021-11-09)
 
 ### Bug Fixes

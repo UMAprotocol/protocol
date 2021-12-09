@@ -6,15 +6,23 @@ export * as across from "./across";
 export { default as Coingecko } from "./coingecko";
 export { default as Multicall } from "./multicall";
 export { default as Multicall2 } from "./multicall2";
+export { default as BlockFinder } from "./blockFinder";
 
 // types
 import type { TypedEventFilterEthers as TypedEventFilter, TypedEventEthers as TypedEvent } from "@uma/contracts-node";
-import { Contract, ethers, Signer, providers, Event } from "ethers";
+import { Contract, ethers, providers, Event } from "ethers";
 import { Provider } from "@ethersproject/providers";
+import { Signer } from "@ethersproject/abstract-signer";
 
 type Result = ethers.utils.Result;
 
-export type SignerOrProvider = providers.BaseProvider | Signer | Provider;
+export type SignerOrProvider =
+  | providers.Provider
+  | providers.BaseProvider
+  | Signer
+  | Provider
+  | providers.JsonRpcProvider
+  | ethers.Signer;
 
 export interface MakeId<I, D> {
   (d: D): I;
