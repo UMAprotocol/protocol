@@ -42,10 +42,7 @@ const sampleCumulativeGasPrice = toBN(100e9); // A gas price of 100 Gwei.
 describe("ProfitabilityCalculator.ts", function () {
   before(async function () {
     spy = sinon.spy();
-    spyLogger = winston.createLogger({
-      level: "debug",
-      transports: [new SpyTransport({ level: "debug" }, { spy: spy })],
-    });
+    spyLogger = winston.createLogger({ level: "debug", transports: [new SpyTransport({ level: "debug" }, { spy })] });
   });
   describe("Update logic", function () {
     before(async function () {
@@ -57,8 +54,6 @@ describe("ProfitabilityCalculator.ts", function () {
       );
     });
     it("Update method correctly pulls appropriate pricing information", async function () {
-      assert.equal(Object.keys(profitabilityCalculator.l1TokenInfo).length, 0); // no info before update
-
       await profitabilityCalculator.update();
 
       assert.equal(Object.keys(profitabilityCalculator.l1TokenInfo).length, 3); // 3 separate tokens after update
