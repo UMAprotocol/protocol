@@ -4,6 +4,7 @@ const { assert } = require("chai");
 const TransactionUtils = require("../dist/TransactionUtils");
 
 const ERC20 = getContract("BasicERC20");
+const { toWei } = web3.utils;
 
 describe("TransactionUtils.js", function () {
   let accounts;
@@ -27,5 +28,23 @@ describe("TransactionUtils.js", function () {
       }
     });
     // TODO: Figure out how to test situations where the `transaction.send()` fails but `.call()` does not
+    it("waitForMine = false doesn't hang if transaction hash errors", async function () {
+      const erc20Contract = await ERC20.new("1").send({ from: accounts[0] });
+      // Allowance is not set for accounts[0] so this should fail on .call()
+      const transaction = erc20Contract.methods.transfer(accounts[1], "1");
+
+      // Should fail pre-transaction hash because gas prices cannot be negative.
+      const transactionConfig = {
+        from: accounts[0],
+        maxFeePerGas: toWei("-1", "gwei"),
+        maxPriorityFeePerGas: toWei("4", "gwei"),
+      };
+
+      assert.isTrue(
+        await TransactionUtils.runTransaction({ web3, transaction, transactionConfig, waitForMine: false }).catch(
+          () => true
+        )
+      );
+    });
   });
 });
