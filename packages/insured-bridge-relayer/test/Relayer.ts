@@ -34,6 +34,7 @@ const Store = getContract("Store");
 const ERC20 = getContract("ExpandedERC20");
 const Timer = getContract("Timer");
 const MockOracle = getContract("MockOracleAncillary");
+const RateModelStore = getContract("RateModelStore");
 
 // Contract objects
 let messenger: any;
@@ -50,6 +51,7 @@ let optimisticOracle: any;
 let l1Token: any;
 let l2Token: any;
 let mockOracle: any;
+let rateModelStore: any;
 
 // Hard-coded test params:
 const chainId = 10;
@@ -217,7 +219,20 @@ describe("Relayer.ts", function () {
 
     // Create the rate models for the one and only l1Token, set to the single rateModel defined in the constants.
     const rateModels = { [l1Token.options.address]: rateModel };
-    l1Client = new InsuredBridgeL1Client(spyLogger, web3, bridgeAdmin.options.address, rateModels);
+    rateModelStore = await RateModelStore.new().send({ from: l1Owner });
+    await rateModelStore.methods
+      .updateRateModel(
+        l1Token.options.address,
+        JSON.stringify({
+          UBar: rateModels[l1Token.options.address].UBar.toString(),
+          R0: rateModels[l1Token.options.address].R0.toString(),
+          R1: rateModels[l1Token.options.address].R1.toString(),
+          R2: rateModels[l1Token.options.address].R2.toString(),
+        })
+      )
+      .send({ from: l1Owner });
+
+    l1Client = new InsuredBridgeL1Client(spyLogger, web3, bridgeAdmin.options.address, rateModelStore.options.address);
     l2Client = new InsuredBridgeL2Client(spyLogger, web3, bridgeDepositBox.options.address, chainId);
 
     gasEstimator = new GasEstimator(spyLogger);
@@ -439,6 +454,7 @@ describe("Relayer.ts", function () {
       await Promise.all([l1Client.update(), l2Client.update()]);
       // As the relayer does not have enough token balance to do the relay (0 minted) should do nothing.
       await relayer.checkForPendingDepositsAndRelay();
+      // console.log(spy.getCalls())
       assert.isTrue(lastSpyLogIncludes(spy, "Not relaying"));
 
       // Mint the relayer some tokens and try again.
@@ -1608,7 +1624,24 @@ describe("Relayer.ts", function () {
 
       // Create new Relayer that is aware of new L1 token:
       const rateModels = { [l1Token.options.address]: rateModel, [newL1Token.options.address]: rateModel };
-      l1Client = new InsuredBridgeL1Client(spyLogger, web3, bridgeAdmin.options.address, rateModels);
+      await rateModelStore.methods
+        .updateRateModel(
+          newL1Token.options.address,
+          JSON.stringify({
+            UBar: rateModels[l1Token.options.address].UBar.toString(),
+            R0: rateModels[l1Token.options.address].R0.toString(),
+            R1: rateModels[l1Token.options.address].R1.toString(),
+            R2: rateModels[l1Token.options.address].R2.toString(),
+          })
+        )
+        .send({ from: l1Owner });
+
+      l1Client = new InsuredBridgeL1Client(
+        spyLogger,
+        web3,
+        bridgeAdmin.options.address,
+        rateModelStore.options.address
+      );
       l2Client = new InsuredBridgeL2Client(spyLogger, web3, bridgeDepositBox.options.address, chainId);
       relayer = new Relayer(
         spyLogger,

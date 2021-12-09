@@ -3,7 +3,6 @@ const { web3 } = hre;
 const { interfaceName, TokenRolesEnum, InsuredBridgeRelayStateEnum } = require("@uma/common");
 const { getContract } = hre;
 const { utf8ToHex, toWei, toBN, soliditySha3, toChecksumAddress, randomHex } = web3.utils;
-const toBNWei = (number) => toBN(toWei(number.toString()).toString());
 
 const winston = require("winston");
 const { assert } = require("chai");
@@ -19,6 +18,7 @@ const Store = getContract("Store");
 const ERC20 = getContract("ExpandedERC20");
 const Timer = getContract("Timer");
 const MockOracle = getContract("MockOracleAncillary");
+const RateModelStore = getContract("RateModelStore");
 
 // Client to test
 const {
@@ -41,6 +41,7 @@ let finder,
   optimisticOracle,
   l1Token,
   mockOracle,
+  rateModelStore,
   depositData,
   relayData,
   depositDataAbiEncoded,
@@ -66,7 +67,7 @@ const proposerBond = toBN(defaultProposerBondPct)
   .toString();
 const defaultGasLimit = 1_000_000;
 const defaultGasPrice = toWei("1", "gwei");
-const rateModel = { UBar: toBNWei("0.65"), R0: toBNWei("0.00"), R1: toBNWei("0.08"), R2: toBNWei("1.00") };
+const rateModel = { UBar: toWei("0.65"), R0: toWei("0.00"), R1: toWei("0.08"), R2: toWei("1.00") };
 
 describe("InsuredBridgeL1Client", function () {
   let accounts,
@@ -211,6 +212,12 @@ describe("InsuredBridgeL1Client", function () {
       .changeImplementationAddress(utf8ToHex(interfaceName.Oracle), mockOracle.options.address)
       .send({ from: owner });
 
+    // Add rate model for L1 token.
+    rateModelStore = await RateModelStore.new().send({ from: owner });
+    await rateModelStore.methods
+      .updateRateModel(l1Token.options.address, JSON.stringify(rateModel))
+      .send({ from: owner });
+
     // Set up the Insured bridge contracts.
 
     // Deploy and setup BridgeAdmin
@@ -262,8 +269,7 @@ describe("InsuredBridgeL1Client", function () {
     // DummyLogger will not print anything to console as only capture `info` level events.
     const dummyLogger = winston.createLogger({ level: "info", transports: [new winston.transports.Console()] });
 
-    const rateModels = { [l1Token.options.address]: rateModel };
-    client = new InsuredBridgeL1Client(dummyLogger, web3, bridgeAdmin.options.address, rateModels);
+    client = new InsuredBridgeL1Client(dummyLogger, web3, bridgeAdmin.options.address, rateModelStore.options.address);
 
     // Create some data for relay the initial relay action.
 
@@ -368,6 +374,110 @@ describe("InsuredBridgeL1Client", function () {
     assert.equal(Object.keys(client.getBridgePoolForDeposit(depositData).l2Token).length, 2);
     assert.equal(client.getBridgePoolForDeposit(depositData).l2Token[chainId], l2Token);
     assert.equal(client.getBridgePoolForDeposit(depositData).l2Token[chainId2], l2Token2);
+
+    // Rate model for block number after initial rate model update should return that rate model.
+    const initialUpdatedRateModelEvent = (await rateModelStore.getPastEvents("UpdatedRateModel", { fromBlock: 0 }))[0];
+    let rateModel = client.getRateModelForBlockNumber(
+      l1Token.options.address,
+      initialUpdatedRateModelEvent.blockNumber
+    );
+    assert.equal(rateModel.UBar.toString(), rateModel.UBar);
+    assert.equal(rateModel.R0.toString(), rateModel.R0);
+    assert.equal(rateModel.R1.toString(), rateModel.R1);
+    assert.equal(rateModel.R2.toString(), rateModel.R2);
+  });
+  it("Fetch rate model for block number", async function () {
+    // Update once to demonstrate that the rate model state is not deleted between iterations.
+    await client.update();
+
+    // Add a new rate model and check that we can fetch rate model for this new block number.
+    const newRateModel = { UBar: toWei("0.1"), R0: toWei("0.1"), R1: toWei("0.1"), R2: toWei("10.00") };
+    const updatedRateModelTxn = await rateModelStore.methods
+      .updateRateModel(l1Token.options.address, JSON.stringify(newRateModel))
+      .send({ from: owner });
+    await client.update();
+
+    let rateModel = client.getRateModelForBlockNumber(l1Token.options.address, updatedRateModelTxn.blockNumber);
+    assert.equal(rateModel.UBar.toString(), newRateModel.UBar);
+    assert.equal(rateModel.R0.toString(), newRateModel.R0);
+    assert.equal(rateModel.R1.toString(), newRateModel.R1);
+    assert.equal(rateModel.R2.toString(), newRateModel.R2);
+
+    // Returns latest rate model when searching for block number far into future
+    rateModel = client.getRateModelForBlockNumber(l1Token.options.address, updatedRateModelTxn.blockNumber + 100);
+    assert.equal(rateModel.UBar.toString(), newRateModel.UBar);
+    assert.equal(rateModel.R0.toString(), newRateModel.R0);
+    assert.equal(rateModel.R1.toString(), newRateModel.R1);
+    assert.equal(rateModel.R2.toString(), newRateModel.R2);
+
+    // Returns latest rate model when block number is undefined
+    rateModel = client.getRateModelForBlockNumber(l1Token.options.address);
+    assert.equal(rateModel.UBar.toString(), newRateModel.UBar);
+    assert.equal(rateModel.R0.toString(), newRateModel.R0);
+    assert.equal(rateModel.R1.toString(), newRateModel.R1);
+    assert.equal(rateModel.R2.toString(), newRateModel.R2);
+
+    // Rate model returned for initial update block number should be initial rate model.
+    const initialUpdatedRateModelEvent = (await rateModelStore.getPastEvents("UpdatedRateModel", { fromBlock: 0 }))[0];
+    rateModel = client.getRateModelForBlockNumber(l1Token.options.address, initialUpdatedRateModelEvent.blockNumber);
+    assert.equal(rateModel.UBar.toString(), rateModel.UBar);
+    assert.equal(rateModel.R0.toString(), rateModel.R0);
+    assert.equal(rateModel.R1.toString(), rateModel.R1);
+    assert.equal(rateModel.R2.toString(), rateModel.R2);
+
+    // Fetching rate model for unknown L1 token throws error
+    try {
+      client.getRateModelForBlockNumber(l2Token, initialUpdatedRateModelEvent.blockNumber);
+      assert(false);
+    } catch (err) {
+      assert.isTrue(err.message.includes("No updated rate model"));
+    }
+
+    // Fetching rate model for block number before first event throws error
+    try {
+      client.getRateModelForBlockNumber(l1Token.options.address, initialUpdatedRateModelEvent.blockNumber - 1);
+      assert(false);
+    } catch (err) {
+      assert.isTrue(err.message.includes("before first UpdatedRateModel event"));
+    }
+
+    // If rate model is not parseable into expected keys throws error
+    const invalidRateModelTxn = await rateModelStore.methods
+      .updateRateModel(l1Token.options.address, JSON.stringify({ key: "value" }))
+      .send({ from: owner });
+    await client.update();
+    try {
+      client.getRateModelForBlockNumber(l1Token.options.address, invalidRateModelTxn.blockNumber);
+      assert(false);
+    } catch (err) {
+      assert.isTrue(err.message.includes("Improperly formatted rate model"));
+    }
+  });
+  it("Fetch l1 tokens from rate model", async function () {
+    // Add a new rate model at a different block height from original rate model update.
+    const newRateModel = { UBar: toWei("0.1"), R0: toWei("0.1"), R1: toWei("0.1"), R2: toWei("10.00") };
+    const newTokenAddress = finder.options.address;
+    const latestTxn = await rateModelStore.methods
+      .updateRateModel(newTokenAddress, JSON.stringify(newRateModel))
+      .send({ from: owner });
+    await client.update();
+
+    let l1Tokens = client.getL1TokensFromRateModel(latestTxn.blockNumber);
+    assert.equal(l1Tokens.length, 2);
+    assert.equal(l1Tokens[0], l1Token.options.address);
+    assert.equal(l1Tokens[1], newTokenAddress);
+
+    // When block number is before the second UpdatedRateModel event, should only return the earlier rate model key.
+    const initialUpdatedRateModelEvent = (await rateModelStore.getPastEvents("UpdatedRateModel", { fromBlock: 0 }))[0];
+    l1Tokens = client.getL1TokensFromRateModel(initialUpdatedRateModelEvent.blockNumber);
+    assert.equal(l1Tokens.length, 1);
+    assert.equal(l1Tokens[0], l1Token.options.address);
+
+    // When block number is undefined, return all token addresses
+    l1Tokens = client.getL1TokensFromRateModel();
+    assert.equal(l1Tokens.length, 2);
+    assert.equal(l1Tokens[0], l1Token.options.address);
+    assert.equal(l1Tokens[1], newTokenAddress);
   });
   describe("Lifecycle tests", function () {
     it("Relayed deposits: deposit, speedup finalize lifecycle", async function () {

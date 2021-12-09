@@ -35,17 +35,20 @@ export async function approveL1Tokens(
   }
 }
 
-// Iterate over provided list of whitelisted L1 tokens and remove any that are not whitelisted on a specific L2.
+// Iterate over queried list of whitelisted L1 tokens and remove any that are not whitelisted on a specific L2.
 // The Relayer will use this whitelist to determine which deposits to relay. By default, the whitelist will be set
-// to the list of all possible tokens provided in the RateModels dictionary. However, not all L1 tokens in this
+// to the list of all possible tokens provided in the on-chain RateModels dictionary. However, not all L1 tokens in this
 // dictionary will be whitelisted for all L2 deposit boxes.
 export async function pruneWhitelistedL1Tokens(
   logger: winston.Logger,
   l1Client: InsuredBridgeL1Client,
-  l2Client: InsuredBridgeL2Client,
-  whitelistedRelayL1Tokens: string[]
+  l2Client: InsuredBridgeL2Client
 ): Promise<string[]> {
   await Promise.all([l2Client.update(), l1Client.update()]);
+
+  // Fetch list of potential whitelisted L1 tokens from keys in the RateModelStore.
+  const whitelistedRelayL1Tokens = l1Client.getL1TokensFromRateModel();
+
   const whitelistedTokenMappings = await Promise.all(
     whitelistedRelayL1Tokens.map((tokenAddress) =>
       l1Client.bridgeAdmin.methods.whitelistedTokens(tokenAddress, l2Client.chainId.toString()).call()

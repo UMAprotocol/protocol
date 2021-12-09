@@ -17,6 +17,8 @@ export interface RateModel {
   R2: BN; // R_0+R_1+R_2 is the interest rate charged at 100% utilization
 }
 
+export const expectedRateModelKeys = ["UBar", "R0", "R1", "R2"];
+
 // Calculate the rate for a 0 sized deposit (infinitesimally small).
 function calculateInstantaneousRate(rateModel: RateModel, utilization: BN) {
   const beforeKink = BN.min(utilization, rateModel.UBar).mul(rateModel.R1).div(rateModel.UBar);

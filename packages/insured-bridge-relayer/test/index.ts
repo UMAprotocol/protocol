@@ -9,8 +9,7 @@ const ganache = require("ganache-core");
 import { interfaceName, TokenRolesEnum, HRE, ZERO_ADDRESS } from "@uma/common";
 
 const { web3, getContract } = hre as HRE;
-const { toWei, toBN, utf8ToHex, toChecksumAddress, randomHex } = web3.utils;
-const toBNWei = (number: string | number) => toBN(toWei(number.toString()).toString());
+const { toWei, utf8ToHex, toChecksumAddress, randomHex } = web3.utils;
 
 let l2Web3: typeof Web3 = undefined;
 const startGanacheServer = (chainId: number, port: number) => {
@@ -34,6 +33,7 @@ const Store = getContract("Store");
 const ERC20 = getContract("ExpandedERC20");
 const Timer = getContract("Timer");
 const MockOracle = getContract("MockOracleAncillary");
+const RateModelStore = getContract("RateModelStore");
 
 // Contract objects
 let messenger: any;
@@ -49,6 +49,7 @@ let optimisticOracle: any;
 let l1Token: any;
 let l2Token: any;
 let mockOracle: any;
+let rateModelStore: any;
 
 // Hard-coded test params:
 const defaultGasLimit = 1_000_000;
@@ -184,6 +185,19 @@ describe("index.js", function () {
     await bridgeDepositBox.methods
       .whitelistToken(l1Token.options.address, l2Token, bridgePool.options.address)
       .send({ from: l2BridgeAdminImpersonator });
+
+    rateModelStore = await RateModelStore.new().send({ from: owner });
+    await rateModelStore.methods
+      .updateRateModel(
+        l1Token.options.address,
+        JSON.stringify({
+          UBar: toWei("0.65"),
+          R0: toWei("0.00"),
+          R1: toWei("0.08"),
+          R2: toWei("1.00"),
+        })
+      )
+      .send({ from: owner });
   });
   it("Runs with no errors and correctly sets approvals for whitelisted L1 tokens", async function () {
     process.env.BRIDGE_ADMIN_ADDRESS = bridgeAdmin.options.address;
@@ -192,14 +206,7 @@ describe("index.js", function () {
     process.env.DISPUTER_ENABLED = "1";
     process.env.FINALIZER_ENABLED = "1";
     process.env.POLLING_DELAY = "0";
-    process.env.RATE_MODELS = JSON.stringify({
-      [l1Token.options.address]: {
-        UBar: toBNWei("0.65"),
-        R0: toBNWei("0.00"),
-        R1: toBNWei("0.08"),
-        R2: toBNWei("1.00"),
-      },
-    });
+    process.env.RATE_MODEL_ADDRESS = rateModelStore.options.address;
     process.env.CHAIN_IDS = JSON.stringify([chainId]);
     process.env[`NODE_URL_${chainId}`] = "http://localhost:7777";
 
@@ -211,6 +218,7 @@ describe("index.js", function () {
   });
   it("Filters L1 token whitelist on L2 whitelist events", async function () {
     process.env.BRIDGE_ADMIN_ADDRESS = bridgeAdmin.options.address;
+    process.env.RATE_MODEL_ADDRESS = rateModelStore.options.address;
     process.env.WHITELISTED_CHAIN_IDS = JSON.stringify([chainId]);
     process.env.RELAYER_ENABLED = "1";
     process.env.DISPUTER_ENABLED = "1";
@@ -219,20 +227,17 @@ describe("index.js", function () {
 
     // Add another L1 token to rate model that is not whitelisted.
     const unWhitelistedL1Token = toChecksumAddress(randomHex(20));
-    process.env.RATE_MODELS = JSON.stringify({
-      [l1Token.options.address]: {
-        UBar: toBNWei("0.65"),
-        R0: toBNWei("0.00"),
-        R1: toBNWei("0.08"),
-        R2: toBNWei("1.00"),
-      },
-      [unWhitelistedL1Token]: {
-        UBar: toBNWei("0.75"),
-        R0: toBNWei("0.00"),
-        R1: toBNWei("0.06"),
-        R2: toBNWei("2.00"),
-      },
-    });
+    await rateModelStore.methods
+      .updateRateModel(
+        unWhitelistedL1Token,
+        JSON.stringify({
+          UBar: toWei("0.75"),
+          R0: toWei("0.00"),
+          R1: toWei("0.06"),
+          R2: toWei("2.00"),
+        })
+      )
+      .send({ from: owner });
     process.env.CHAIN_IDS = JSON.stringify([chainId]);
     process.env[`NODE_URL_${chainId}`] = "http://localhost:7777";
 

@@ -4,12 +4,13 @@ const { toBN, soliditySha3, toChecksumAddress } = Web3.utils;
 import { BlockFinder } from "../price-feed/utils";
 import { getAbi } from "@uma/contracts-node";
 import { Deposit } from "./InsuredBridgeL2Client";
-import { RateModel, calculateRealizedLpFeePct } from "../helpers/acrossFeesCalculator";
+import { RateModel, calculateRealizedLpFeePct, expectedRateModelKeys } from "../helpers/acrossFeesCalculator";
 
-import type { BridgeAdminInterfaceWeb3, BridgePoolWeb3 } from "@uma/contracts-node";
+import type { BridgeAdminInterfaceWeb3, BridgePoolWeb3, RateModelStoreWeb3 } from "@uma/contracts-node";
 import type { Logger } from "winston";
 import type { BN } from "@uma/common";
 import type { BlockTransactionBase } from "web3-eth";
+import { EventData } from "web3-eth-contract";
 
 export enum ClientRelayState {
   Uninitialized, // Deposit on L2, nothing yet on L1. Can be slow relayed and can be sped up to instantly relay.
@@ -61,8 +62,10 @@ export interface BridgePoolData {
 
 export class InsuredBridgeL1Client {
   public readonly bridgeAdmin: BridgeAdminInterfaceWeb3;
+  public readonly rateModelStore: RateModelStoreWeb3;
   public bridgePools: { [key: string]: BridgePoolData }; // L1TokenAddress=>BridgePoolData
   private whitelistedTokens: { [chainId: string]: { [l1TokenAddress: string]: string } } = {};
+  private rateModelsForToken: { [l1TokenAddress: string]: EventData[] } = {};
   public optimisticOracleLiveness = 0;
   public firstBlockToSearch: number;
 
@@ -75,14 +78,19 @@ export class InsuredBridgeL1Client {
     private readonly logger: Logger,
     readonly l1Web3: Web3,
     readonly bridgeAdminAddress: string,
-    readonly rateModels: { [key: string]: RateModel },
+    readonly rateModelStoreAddress: string, // TODO: Should this address be exported/hardcoded elsewhere?
     readonly startingBlockNumber = 0,
     readonly endingBlockNumber: number | null = null
   ) {
+    // Cast the following contracts to web3-specific type
     this.bridgeAdmin = (new l1Web3.eth.Contract(
       getAbi("BridgeAdminInterface"),
       bridgeAdminAddress
-    ) as unknown) as BridgeAdminInterfaceWeb3; // Cast to web3-specific type
+    ) as unknown) as BridgeAdminInterfaceWeb3;
+    this.rateModelStore = (new l1Web3.eth.Contract(
+      getAbi("RateModelStore"),
+      rateModelStoreAddress
+    ) as unknown) as RateModelStoreWeb3;
 
     this.bridgePools = {}; // Initialize the bridgePools with no pools yet. Will be populated in the _initialSetup.
 
@@ -118,6 +126,70 @@ export class InsuredBridgeL1Client {
   getWhitelistedTokensForChainId(chainId: string): { [l1TokenAddress: string]: string } {
     this._throwIfNotInitialized();
     return this.whitelistedTokens[chainId];
+  }
+
+  getRateModelForBlockNumber(l1Token: string, blockNumber: number | undefined = undefined): RateModel {
+    this._throwIfNotInitialized();
+    const l1TokenNormalized = toChecksumAddress(l1Token);
+
+    if (!this.rateModelsForToken[l1TokenNormalized])
+      throw new Error(`No updated rate model events for L1 token: ${l1TokenNormalized}`);
+
+    let rateModelToReturn: any;
+    // Rate model events are inserted into the array from oldest at index 0 to newest at index length-1, so we'll
+    // reverse the array so it goes from newest at index 0 to oldest at index length-1, and then find the first event
+    // who's block number is less than or equal to the target block number. If block number is undefined, then return
+    // latest rate model.
+    if (!blockNumber) {
+      rateModelToReturn = JSON.parse(
+        this.rateModelsForToken[l1TokenNormalized][this.rateModelsForToken[l1TokenNormalized].length - 1].returnValues
+          .rateModel
+      );
+    } else {
+      if (blockNumber < this.rateModelsForToken[l1TokenNormalized][0].blockNumber) {
+        throw new Error(
+          `Block number #${blockNumber} is before first UpdatedRateModel event block ${this.rateModelsForToken[l1TokenNormalized][0].blockNumber}`
+        );
+      }
+      const rateModelString = this.rateModelsForToken[l1TokenNormalized]
+        .slice() // reverse() modifies memory in place so create a copy first.
+        .reverse()
+        .find((event) => event.blockNumber <= blockNumber)?.returnValues.rateModel;
+
+      rateModelToReturn = JSON.parse(rateModelString);
+    }
+
+    // Make sure rate model string can be parsed into expected shape:
+    if (!expectedRateModelKeys.every((item) => Object.prototype.hasOwnProperty.call(rateModelToReturn, item))) {
+      throw new Error(`Improperly formatted rate model for L1 token: ${l1TokenNormalized}`);
+    }
+    return {
+      UBar: toBN(rateModelToReturn.UBar),
+      R0: toBN(rateModelToReturn.R0),
+      R1: toBN(rateModelToReturn.R1),
+      R2: toBN(rateModelToReturn.R2),
+    };
+  }
+
+  getL1TokensFromRateModel(blockNumber: number | undefined = undefined): string[] {
+    this._throwIfNotInitialized();
+
+    return Object.keys(this.rateModelsForToken)
+      .map((l1Token) => {
+        const l1TokenNormalized = toChecksumAddress(l1Token);
+
+        // Check that there is at least one UpdatedRateModel event before the provided block number, otherwise
+        // this L1 token didn't exist in the RateModel at the block height and we shouldn't include it in the returned
+        // array.
+        if (!this.rateModelsForToken[l1TokenNormalized]) return null;
+        if (
+          !blockNumber ||
+          this.rateModelsForToken[l1TokenNormalized].find((event) => event.blockNumber <= blockNumber)
+        )
+          return toChecksumAddress(l1Token);
+        else return null;
+      })
+      .filter((x) => x !== null) as string[];
   }
 
   hasInstantRelayer(l1Token: string, depositHash: string, realizedLpFeePct: string): boolean {
@@ -172,12 +244,11 @@ export class InsuredBridgeL1Client {
   }
 
   async calculateRealizedLpFeePctForDeposit(deposit: Deposit): Promise<BN> {
-    if (this.rateModels === undefined || this.rateModels[deposit.l1Token] === undefined)
-      throw new Error("No rate model for l1Token");
-
     // The block number must be exactly the one containing the deposit.quoteTimestamp, so we use the lowest block delta
     // of 1. Setting averageBlockTime to 14 increases the speed at the cost of more web3 requests.
     const quoteBlockNumber = (await this.blockFinder.getBlockForTimestamp(deposit.quoteTimestamp)).number;
+    const rateModelForBlockNumber = this.getRateModelForBlockNumber(deposit.l1Token, quoteBlockNumber);
+
     const bridgePool = this.getBridgePoolForDeposit(deposit).contract;
     const [liquidityUtilizationCurrent, liquidityUtilizationPostRelay] = await Promise.all([
       bridgePool.methods.liquidityUtilizationCurrent().call(undefined, quoteBlockNumber),
@@ -191,11 +262,11 @@ export class InsuredBridgeL1Client {
       quoteBlockNumber,
       liquidityUtilizationCurrent: liquidityUtilizationCurrent.toString(),
       liquidityUtilizationPostRelay: liquidityUtilizationPostRelay.toString(),
-      rateModel: this.rateModels[deposit.l1Token],
+      rateModel: rateModelForBlockNumber,
     });
 
     return calculateRealizedLpFeePct(
-      this.rateModels[deposit.l1Token],
+      rateModelForBlockNumber,
       toBN(liquidityUtilizationCurrent),
       toBN(liquidityUtilizationPostRelay)
     );
@@ -297,6 +368,18 @@ export class InsuredBridgeL1Client {
       };
       this.relays[l1Token] = {};
       this.instantRelays[l1Token] = {};
+    }
+
+    // Fetch and store all rate model updated events, which the user of this client can use to fetch a rate model for a
+    // specific deposit quote timestamp.
+    const updatedRateModelEvents = await this.rateModelStore.getPastEvents("UpdatedRateModel", blockSearchConfig);
+    for (const updatedRateModelEvent of updatedRateModelEvents) {
+      const l1TokenNormalized = toChecksumAddress(updatedRateModelEvent.returnValues.l1Token);
+      if (!this.rateModelsForToken[l1TokenNormalized]) this.rateModelsForToken[l1TokenNormalized] = [];
+
+      // We assume that events are returned from oldest to newest, so we can simply push events into the array and
+      // and maintain their time order.
+      this.rateModelsForToken[l1TokenNormalized].push(updatedRateModelEvent);
     }
 
     // Set the optimisticOracleLiveness. Note that if this value changes in the contract the bot will need to be
