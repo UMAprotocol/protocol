@@ -99,7 +99,7 @@ export class CrossDomainFinalizer {
     // array of arrays, with each L2 token's transaction hashes being the nested array to each L2Token.
     const l2TokensBridgedTransactions = whitelistedL2Tokens
       .map((l2Token) => this.l2Client.getTokensBridgedTransactionsForL2Token(l2Token))
-      .flat(2) // Flatten the array to get a 1D array of all TokenBridged transaction hashes.
+      .flat() // Flatten the array to get a 1D array of all TokenBridged transaction hashes.
       .filter((transaction: string) => transaction); // filter out undefined or null values. this'll happen if there has never been a token bridging action.
 
     this.logger.debug({
@@ -190,24 +190,23 @@ export class CrossDomainFinalizer {
         availableAccounts: 1,
         waitForMine: false,
       });
-      if (executionResult.receipt) {
-        this.logger.info({
-          at: "AcrossRelayer#CrossDomainFinalizer",
-          message: `${PublicNetworks[this.l2Client.chainId]?.name} canonical relay finalized 🪄`,
-          mrkdwn:
-            "Canonical L2->L1 transfer over the " +
-            PublicNetworks[this.l2Client.chainId]?.name +
-            " bridge. A total of " +
-            createFormatFunction(2, 4, false, decimals)(tokensBridged) +
-            " " +
-            symbol +
-            " were bridged. L2 TokensBridged TX: " +
-            createEtherscanLinkMarkdown(l2TransactionHash, this.l2Client.chainId) +
-            ". tx: " +
-            createEtherscanLinkMarkdown(executionResult.transactionHash),
-        });
-        this.executedL1Transactions.push(executionResult);
-      } else throw executionResult;
+
+      this.logger.info({
+        at: "AcrossRelayer#CrossDomainFinalizer",
+        message: `${PublicNetworks[this.l2Client.chainId]?.name} canonical relay finalized 🪄`,
+        mrkdwn:
+          "Canonical L2->L1 transfer over the " +
+          PublicNetworks[this.l2Client.chainId]?.name +
+          " bridge. A total of " +
+          createFormatFunction(2, 4, false, decimals)(tokensBridged) +
+          " " +
+          symbol +
+          " were bridged. L2 TokensBridged TX: " +
+          createEtherscanLinkMarkdown(l2TransactionHash, this.l2Client.chainId) +
+          ". tx: " +
+          createEtherscanLinkMarkdown(executionResult.transactionHash),
+      });
+      this.executedL1Transactions.push(executionResult);
     } catch (error) {
       this.logger.error({
         at: "AcrossRelayer#CrossDomainFinalizer",
