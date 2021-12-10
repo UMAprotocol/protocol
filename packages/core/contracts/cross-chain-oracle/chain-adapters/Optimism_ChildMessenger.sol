@@ -9,7 +9,7 @@ import "../../common/implementation/Lockable.sol";
 
 /**
  * @notice Sends cross chain messages from Optimism L2 to Ethereum L1 network.
- * @dev This contract is ownable via the onlyCrossDomainAccount modifier, restricting ownership to the cross-domain
+ * @dev This contract is ownable via the onlyFromCrossDomainAccount. modifier, restricting ownership to the cross-domain
  * parent messenger contract that lives on L1.
  */
 contract Optimism_ChildMessenger is CrossDomainEnabled, ChildMessengerInterface, Lockable {
@@ -95,7 +95,7 @@ contract Optimism_ChildMessenger is CrossDomainEnabled, ChildMessengerInterface,
      * @dev The caller must be the the parent messenger, sent over the canonical message bridge.
      * @param data data message sent from the L1 messenger. Should be an encoded function call or packed data.
      * @param target desired recipient of `data`. Target must implement the `processMessageFromParent` function. Having
-     * this as a param enables the L1 Messenger to send messages to arbitrary addresses on the L1. This is primarily
+     * this as a param enables the L1 Messenger to send messages to arbitrary addresses on the L2. This is primarily
      * used to send messages to the OracleSpoke and GovernorSpoke on L2.
      */
     function processMessageFromCrossChainParent(bytes memory data, address target)

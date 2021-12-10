@@ -27,7 +27,7 @@ contract GovernorSpoke is Lockable, ChildMessengerConsumerInterface {
 
     /**
      * @notice Executes governance transaction created on Ethereum.
-     * @dev Can only called by ChildMessenger contract that wants to execute governance action on this child chain that
+     * @dev Can only be called by ChildMessenger contract that wants to execute governance action on this child chain that
      * originated from DVM voters on root chain. ChildMessenger should only receive communication from ParentMessenger
      * on mainnet.
 

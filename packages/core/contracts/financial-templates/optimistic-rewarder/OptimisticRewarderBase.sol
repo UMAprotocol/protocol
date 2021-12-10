@@ -149,7 +149,7 @@ abstract contract OptimisticRewarderBase is Lockable, MultiCaller {
      * @dev if called by someone who doesn't own the token, they are effectively gifting their bond to the owner.
      * @param tokenId the tokenId the redemption is for.
      * @param cumulativeRedemptions the cumulative token addresses and amounts that this tokenId is eligible for
-     * at the current timestap. cumulative redemptions that are too low should be considered to be valid.
+     * at the current timestamp. cumulative redemptions that are too low should be considered to be valid.
      */
     function requestRedemption(uint256 tokenId, RedemptionAmount[] memory cumulativeRedemptions)
         public
@@ -185,7 +185,7 @@ abstract contract OptimisticRewarderBase is Lockable, MultiCaller {
         bytes32 redemptionId = getRedemptionId(tokenId, cumulativeRedemptions);
 
         // This automatically checks that redemptions[redemptionId] != 0.
-        // Check that it has not passed liveness liveness.
+        // Check that it has not passed liveness.
         Redemption storage redemption = redemptions[redemptionId];
         require(getCurrentTime() < redemption.expiryTime, "redemption expired or nonexistent");
 
