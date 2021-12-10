@@ -30,7 +30,7 @@ describe("TransactionUtils.js", function () {
     // TODO: Figure out how to test situations where the `transaction.send()` fails but `.call()` does not
     it("waitForMine = false doesn't hang if transaction hash errors", async function () {
       const erc20Contract = await ERC20.new("1").send({ from: accounts[0] });
-      // Allowance is not set for accounts[0] so this should fail on .call()
+      // This transaction should be successful since the sender has 1 wei.
       const transaction = erc20Contract.methods.transfer(accounts[1], "1");
 
       // Should fail pre-transaction hash because gas prices cannot be negative.
