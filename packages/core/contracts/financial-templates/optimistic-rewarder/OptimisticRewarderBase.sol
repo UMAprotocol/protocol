@@ -9,6 +9,7 @@ import "../../common/implementation/Lockable.sol";
 import "../../common/implementation/MultiCaller.sol";
 import "../../oracle/interfaces/StoreInterface.sol";
 import "../../oracle/interfaces/IdentifierWhitelistInterface.sol";
+import "../../oracle/implementation/Constants.sol";
 import "../../oracle/interfaces/SkinnyOptimisticOracleInterface.sol";
 import "../../common/implementation/AncillaryData.sol";
 import "../../common/interfaces/AddressWhitelistInterface.sol";
