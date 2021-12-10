@@ -64,7 +64,9 @@ export class InsuredBridgeL1Client {
   public readonly rateModelStore: RateModelStoreWeb3;
   public bridgePools: { [key: string]: BridgePoolData }; // L1TokenAddress=>BridgePoolData
   private whitelistedTokens: { [chainId: string]: { [l1TokenAddress: string]: string } } = {};
-  private rateModelsForToken: { [l1TokenAddress: string]: { blockNumber: number; rateModel: RateModel }[] } = {};
+  private updatedRateModelEventsForToken: {
+    [l1TokenAddress: string]: { blockNumber: number; rateModel: RateModel }[];
+  } = {};
   public optimisticOracleLiveness = 0;
   public firstBlockToSearch: number;
 
@@ -131,23 +133,28 @@ export class InsuredBridgeL1Client {
     this._throwIfNotInitialized();
     const l1TokenNormalized = toChecksumAddress(l1Token);
 
-    if (!this.rateModelsForToken[l1TokenNormalized] || this.rateModelsForToken[l1TokenNormalized].length === 0)
+    if (
+      !this.updatedRateModelEventsForToken[l1TokenNormalized] ||
+      this.updatedRateModelEventsForToken[l1TokenNormalized].length === 0
+    )
       throw new Error(`No updated rate model events for L1 token: ${l1TokenNormalized}`);
 
-    // Rate model events are inserted into the array from oldest at index 0 to newest at index length-1, so we'll
-    // reverse the array so it goes from newest at index 0 to oldest at index length-1, and then find the first event
-    // who's block number is less than or equal to the target block number. If block number is undefined, then return
-    // latest rate model.
     if (!blockNumber) {
-      return this.rateModelsForToken[l1TokenNormalized][this.rateModelsForToken[l1TokenNormalized].length - 1]
-        .rateModel;
+      // If block number is undefined, return latest updated rate model.
+      return this.updatedRateModelEventsForToken[l1TokenNormalized].slice(-1)[0].rateModel;
     } else {
-      if (blockNumber < this.rateModelsForToken[l1TokenNormalized][0].blockNumber) {
+      const firstEventBlockNumber = this.updatedRateModelEventsForToken[l1TokenNormalized][0].blockNumber;
+      if (blockNumber < firstEventBlockNumber) {
         throw new Error(
-          `Block number #${blockNumber} is before first UpdatedRateModel event block ${this.rateModelsForToken[l1TokenNormalized][0].blockNumber}`
+          `Block number #${blockNumber} is before first UpdatedRateModel event block ${firstEventBlockNumber}`
         );
       }
-      const rateModel = this.rateModelsForToken[l1TokenNormalized]
+
+      // We're looking for the latest rate model update that occurred at or before the block number.
+      // Rate model events are inserted into the array from oldest at index 0 to newest at index length-1, so we'll
+      // reverse the array so it goes from newest at index 0 to oldest at index length-1, and then find the first event
+      // who's block number is less than or equal to the target block number.
+      const rateModel = this.updatedRateModelEventsForToken[l1TokenNormalized]
         .slice() // reverse() modifies memory in place so create a copy first.
         .reverse()
         .find((event) => event.blockNumber <= blockNumber);
@@ -158,20 +165,25 @@ export class InsuredBridgeL1Client {
     }
   }
 
+  /**
+   * @notice Return all L1 tokens that had a rate model associated with it at the block number.
+   * @param blockNumber Returns l1 tokens that were mapped to a rate model at this block height. If undefined,
+   * this function will return all L1 tokens that have a block number as of the latest block height.
+   * @returns array of L1 token addresses.
+   */
   getL1TokensFromRateModel(blockNumber: number | undefined = undefined): string[] {
     this._throwIfNotInitialized();
 
-    return Object.keys(this.rateModelsForToken)
+    return Object.keys(this.updatedRateModelEventsForToken)
       .map((l1Token) => {
         const l1TokenNormalized = toChecksumAddress(l1Token);
 
         // Check that there is at least one UpdatedRateModel event before the provided block number, otherwise
         // this L1 token didn't exist in the RateModel at the block height and we shouldn't include it in the returned
         // array.
-        if (!this.rateModelsForToken[l1TokenNormalized]) return null;
         if (
           !blockNumber ||
-          this.rateModelsForToken[l1TokenNormalized].find((event) => event.blockNumber <= blockNumber)
+          this.updatedRateModelEventsForToken[l1TokenNormalized].find((event) => event.blockNumber <= blockNumber)
         )
           return toChecksumAddress(l1Token);
         else return null;
@@ -364,13 +376,23 @@ export class InsuredBridgeL1Client {
       // The contract enforces that all rate models are mapped to addresses, therefore we do not need to check that
       // `l1Token` is a valid address.
       const l1TokenNormalized = toChecksumAddress(updatedRateModelEvent.returnValues.l1Token);
-      if (!this.rateModelsForToken[l1TokenNormalized]) this.rateModelsForToken[l1TokenNormalized] = [];
+      if (!this.updatedRateModelEventsForToken[l1TokenNormalized])
+        this.updatedRateModelEventsForToken[l1TokenNormalized] = [];
 
       // Before adding the new rate model to the array, first validate its format:
-      const rateModelFromEvent = JSON.parse(updatedRateModelEvent.returnValues.rateModel);
-      if (!expectedRateModelKeys.every((item) => Object.prototype.hasOwnProperty.call(rateModelFromEvent, item))) {
-        throw new Error(`Improperly formatted rate model for L1 token: ${l1TokenNormalized}`);
+      let rateModelFromEvent: any;
+      try {
+        rateModelFromEvent = JSON.parse(updatedRateModelEvent.returnValues.rateModel);
+      } catch (err) {
+        // Found an UpdatedRateModel event where the rate model string cannot be parsed into JSON, ignore it.
+        continue;
       }
+
+      if (!expectedRateModelKeys.every((item) => Object.prototype.hasOwnProperty.call(rateModelFromEvent, item))) {
+        // Improperly formatted rate model for L1 token, ignore it.
+        continue;
+      }
+
       const validatedRateModel = {
         UBar: toBN(rateModelFromEvent.UBar),
         R0: toBN(rateModelFromEvent.R0),
@@ -380,7 +402,7 @@ export class InsuredBridgeL1Client {
 
       // We assume that events are returned from oldest to newest, so we can simply push events into the array and
       // and maintain their time order.
-      this.rateModelsForToken[l1TokenNormalized].push({
+      this.updatedRateModelEventsForToken[l1TokenNormalized].push({
         blockNumber: updatedRateModelEvent.blockNumber,
         rateModel: validatedRateModel,
       });
