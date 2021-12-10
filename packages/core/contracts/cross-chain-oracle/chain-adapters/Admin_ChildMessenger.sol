@@ -50,7 +50,12 @@ contract Admin_ChildMessenger is Ownable, Lockable, ChildMessengerInterface {
      * this as a param enables the Admin to send messages to arbitrary addresses from the messenger contract. This is
      * primarily used to send messages to the OracleSpoke and GovernorSpoke.
      */
-    function processMessageFromCrossChainParent(bytes memory data, address target) public onlyOwner nonReentrant() {
+    function processMessageFromCrossChainParent(bytes memory data, address target)
+        public
+        override
+        onlyOwner
+        nonReentrant()
+    {
         ChildMessengerConsumerInterface(target).processMessageFromParent(data);
         emit MessageReceivedFromParent(data, target, msg.sender);
     }

@@ -78,6 +78,7 @@ contract Arbitrum_ChildMessenger is AVM_CrossDomainEnabled, ChildMessengerInterf
      */
     function processMessageFromCrossChainParent(bytes memory data, address target)
         public
+        override
         onlyFromCrossDomainAccount(parentMessenger)
         nonReentrant()
     {
