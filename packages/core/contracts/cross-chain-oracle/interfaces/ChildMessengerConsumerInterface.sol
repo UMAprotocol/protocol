@@ -2,6 +2,6 @@
 pragma solidity ^0.8.0;
 
 interface ChildMessengerConsumerInterface {
-    // Called on L2 by parent messenger.
+    // Called on L2 by child messenger.
     function processMessageFromParent(bytes memory data) external;
 }

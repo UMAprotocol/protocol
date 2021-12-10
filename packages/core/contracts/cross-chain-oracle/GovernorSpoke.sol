@@ -45,9 +45,7 @@ contract GovernorSpoke is Lockable, ChildMessengerConsumerInterface {
 
     // Note: this snippet of code is copied from Governor.sol.
     function _executeCall(address to, bytes memory data) private returns (bool) {
-        // Note: this snippet of code is copied from Governor.sol.
-        // solhint-disable-next-line max-line-length
-        // https://github.com/gnosis/safe-contracts/blob/59cfdaebcd8b87a0a32f87b50fead092c10d3a05/contracts/base/Executor.sol#L23-L31
+        // Note: this snippet of code is copied from Governor.sol and modified to not include any "value" field.
         // solhint-disable-next-line no-inline-assembly
 
         bool success;
