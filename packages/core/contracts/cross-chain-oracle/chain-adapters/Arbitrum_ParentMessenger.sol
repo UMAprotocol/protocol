@@ -34,8 +34,6 @@ contract Arbitrum_ParentMessenger is
     );
     event MessageReceivedFromChild(bytes data, address indexed childMessenger, address indexed targetHub);
 
-    // TODO: Can these default values be determined dynamically via L1 Arbitrum system contracts?
-
     // Gas limit for immediate L2 execution attempt (can be estimated via NodeInterface.estimateRetryableTicket).
     // NodeInterface precompile interface exists at L2 address 0x00000000000000000000000000000000000000C8
     uint32 public defaultGasLimit = 5_000_000;
