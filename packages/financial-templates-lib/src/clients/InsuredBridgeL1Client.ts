@@ -79,7 +79,7 @@ export class InsuredBridgeL1Client {
     private readonly logger: Logger,
     readonly l1Web3: Web3,
     readonly bridgeAdminAddress: string,
-    readonly rateModelStoreAddress: string, // TODO: Should this address be exported/hardcoded elsewhere?
+    readonly rateModelStoreAddress: string,
     readonly startingBlockNumber = 0,
     readonly endingBlockNumber: number | null = null
   ) {
