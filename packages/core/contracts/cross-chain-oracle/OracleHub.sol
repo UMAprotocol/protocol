@@ -139,8 +139,6 @@ contract OracleHub is OracleBase, ParentMessengerConsumerInterface, Ownable, Loc
     ) public nonReentrant() {
         bool newPriceRequested = _requestPrice(identifier, time, ancillaryData);
         if (newPriceRequested) {
-            // TODO: Decide whether to rebate the caller their final fee so that, in the worst case, they did not pay
-            // two final fees (one on child chain, one here).
             uint256 finalFee = _getStore().computeFinalFee(address(token)).rawValue;
             token.safeTransferFrom(msg.sender, address(_getStore()), finalFee);
             _getOracle().requestPrice(identifier, time, ancillaryData);
