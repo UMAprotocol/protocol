@@ -9,6 +9,7 @@ import "../common/implementation/AncillaryData.sol";
 import "../common/implementation/Lockable.sol";
 import "./interfaces/ChildMessengerInterface.sol";
 import "./interfaces/ChildMessengerConsumerInterface.sol";
+import "./interfaces/OracleSpokeInterface.sol";
 
 /**
  * @title Cross-chain Oracle L2 Oracle Spoke.
@@ -21,6 +22,7 @@ import "./interfaces/ChildMessengerConsumerInterface.sol";
  * resolution secured by the DVM on mainnet.
  */
 contract OracleSpoke is
+    OracleSpokeInterface,
     OracleBase,
     OracleAncillaryInterface,
     OracleInterface,
@@ -42,10 +44,28 @@ contract OracleSpoke is
         require(registry.isContractRegistered(msg.sender), "Caller must be registered");
         _;
     }
+    modifier onlyGovernorSpoke() {
+        require(
+            msg.sender == finder.getImplementationAddress(OracleInterfaces.GovernorSpoke),
+            "Caller must be governor spoke"
+        );
+        _;
+    }
 
     modifier onlyMessenger() {
         require(msg.sender == address(messenger), "Caller must be messenger");
         _;
+    }
+
+    /**
+     * @notice Changes the stored address of the child messenger.
+     * @dev The caller of this function must be the governor spoke, and therefore this function can only be triggered
+     * by a cross-chain call that originated in the parent messenger.
+     * @param newChildMessenger address of the new child messenger.
+     */
+    function setChildMessenger(address newChildMessenger) public nonReentrant() onlyGovernorSpoke() {
+        messenger = ChildMessengerInterface(newChildMessenger);
+        emit SetChildMessenger(address(messenger));
     }
 
     /**
