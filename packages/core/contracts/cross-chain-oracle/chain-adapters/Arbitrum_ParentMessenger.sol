@@ -68,8 +68,9 @@ contract Arbitrum_ParentMessenger is
     /**
      * @notice Changes the refund address on L2 that receives excess gas or the full msg.value if the retryable
      * ticket reverts.
-     * @dev The caller of this function must be the owner. This should be set to the DVM governor.
-     * @param newRefundl2Address the new refund address to set.
+     * @dev The caller of this function must be the owner, which should be set to the DVM governor.
+     * @param newRefundl2Address the new refund address to set. This should be set to an L2 EOA that is trusted by the
+     * owner.
      */
     function setRefundL2Address(address newRefundl2Address) public onlyOwner nonReentrant() {
         refundL2Address = newRefundl2Address;
@@ -78,7 +79,7 @@ contract Arbitrum_ParentMessenger is
 
     /**
      * @notice Changes the default gas limit that is sent along with transactions to Arbitrum.
-     * @dev The caller of this function must be the owner. This should be set to the DVM governor.
+     * @dev The caller of this function must be the owner, which should be set to the DVM governor.
      * @param newDefaultGasLimit the new L2 gas limit to be set.
      */
     function setDefaultGasLimit(uint32 newDefaultGasLimit) public onlyOwner nonReentrant() {
@@ -88,7 +89,7 @@ contract Arbitrum_ParentMessenger is
 
     /**
      * @notice Changes the default gas price that is sent along with transactions to Arbitrum.
-     * @dev The caller of this function must be the owner. This should be set to the DVM governor.
+     * @dev The caller of this function must be the owner, which should be set to the DVM governor.
      * @param newDefaultGasPrice the new L2 gas price to be set.
      */
     function setDefaultGasPrice(uint256 newDefaultGasPrice) public onlyOwner nonReentrant() {
@@ -98,7 +99,7 @@ contract Arbitrum_ParentMessenger is
 
     /**
      * @notice Changes the default max submission cost that is sent along with transactions to Arbitrum.
-     * @dev The caller of this function must be the owner. This should be set to the DVM governor.
+     * @dev The caller of this function must be the owner, which should be set to the DVM governor.
      * @param newDefaultMaxSubmissionCost the new L2 max submission cost to be set.
      */
     function setDefaultMaxSubmissionCost(uint256 newDefaultMaxSubmissionCost) public onlyOwner nonReentrant() {
@@ -108,7 +109,7 @@ contract Arbitrum_ParentMessenger is
 
     /**
      * @notice Changes the address of the oracle spoke on L2 via the child messenger.
-     * @dev The caller of this function must be the owner. This should be set to the DVM governor.
+     * @dev The caller of this function must be the owner, which should be set to the DVM governor.
      * @dev This function will only succeed if this contract has enough ETH to cover the approximate L1 call value.
      * @param newOracleSpoke the new oracle spoke address set on L2.
      */
@@ -119,7 +120,7 @@ contract Arbitrum_ParentMessenger is
 
     /**
      * @notice Changes the address of the parent messenger on L2 via the child messenger.
-     * @dev The caller of this function must be the owner. This should be set to the DVM governor.
+     * @dev The caller of this function must be the owner, which should be set to the DVM governor.
      * @dev This function will only succeed if this contract has enough ETH to cover the approximate L1 call value.
      * @param newParentMessenger the new parent messenger contract to be set on L2.
      */
