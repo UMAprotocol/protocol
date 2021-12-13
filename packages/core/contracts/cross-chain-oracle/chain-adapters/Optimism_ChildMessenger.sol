@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 // This should be replaced with a "real" import when Optimism release their new contract versions.
 import "@eth-optimism/contracts/libraries/bridge/CrossDomainEnabled.sol";
+import "@eth-optimism/contracts/libraries/constants/Lib_PredeployAddresses.sol";
 import "../interfaces/ChildMessengerInterface.sol";
 import "../interfaces/ChildMessengerConsumerInterface.sol";
 import "../../common/implementation/Lockable.sol";
@@ -22,9 +23,6 @@ contract Optimism_ChildMessenger is CrossDomainEnabled, ChildMessengerInterface,
     // Hard coded default gas limit for L1 transactions.
     uint32 public defaultGasLimit = 5_000_000;
 
-    // TODO: import from optimism contracts when they release their latest version.
-    address internal constant L2_CROSS_DOMAIN_MESSENGER = 0x4200000000000000000000000000000000000007;
-
     event SetOracleSpoke(address newOracleSpoke);
     event SetParentMessenger(address newParentMessenger);
     event SetDefaultGasLimit(uint32 newDefaultGasLimit);
@@ -35,7 +33,7 @@ contract Optimism_ChildMessenger is CrossDomainEnabled, ChildMessengerInterface,
      * @notice Construct the Optimism_ChildMessenger contract.
      * @param _parentMessenger The address of the L1 parent messenger. Acts as the "owner" of this contract.
      */
-    constructor(address _parentMessenger) CrossDomainEnabled(L2_CROSS_DOMAIN_MESSENGER) {
+    constructor(address _parentMessenger) CrossDomainEnabled(Lib_PredeployAddresses.L2_CROSS_DOMAIN_MESSENGER) {
         parentMessenger = _parentMessenger;
     }
 
