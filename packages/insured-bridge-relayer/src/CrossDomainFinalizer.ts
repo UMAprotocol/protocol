@@ -193,15 +193,15 @@ export class CrossDomainFinalizer {
 
       this.logger.info({
         at: "AcrossRelayer#CrossDomainFinalizer",
-        message: `${PublicNetworks[this.l2Client.chainId]?.name} canonical relay finalized 🪄`,
+        message: `Canonical relay finalized 🪄`,
         mrkdwn:
           "Canonical L2->L1 transfer over the " +
           PublicNetworks[this.l2Client.chainId]?.name +
-          " bridge. A total of " +
+          " bridge has been finalized! A total of " +
           createFormatFunction(2, 4, false, decimals)(tokensBridged) +
           " " +
           symbol +
-          " were bridged. L2 TokensBridged TX: " +
+          " was bridged. L2 TokensBridged tx: " +
           createEtherscanLinkMarkdown(l2TransactionHash, this.l2Client.chainId) +
           ". tx: " +
           createEtherscanLinkMarkdown(executionResult.transactionHash),
