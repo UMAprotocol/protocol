@@ -193,7 +193,7 @@ abstract contract OptimisticRewarderBase is Lockable, MultiCaller {
         bytes32 redemptionId = getRedemptionId(tokenId, cumulativeRedemptions);
 
         // This automatically checks that redemptions[redemptionId] != 0.
-        // Check that it has not passed liveness liveness.
+        // Check that it has not passed liveness.
         Redemption storage redemption = redemptions[redemptionId];
         require(getCurrentTime() < redemption.expiryTime, "redemption expired or nonexistent");
 
