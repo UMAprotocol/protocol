@@ -385,8 +385,7 @@ describe("OptimisticRewarder", () => {
     await optimisticRewarder.methods.requestRedemption(tokenId, redemptions).send({ from: submitter });
 
     // Add 100 seconds to the current time so the dispute occurs at a different time than the proposal.
-    const currentTime = await optimisticRewarder.methods.getCurrentTime().call();
-    await optimisticRewarder.methods.setCurrentTime(parseInt(currentTime) + 100).send({ from: owner });
+    await advanceTime(100);
 
     const disputeReceipt = await optimisticRewarder.methods.dispute(tokenId, redemptions).send({ from: disputer });
     const { request, timestamp, ancillaryData } = (
@@ -439,8 +438,7 @@ describe("OptimisticRewarder", () => {
     await store.methods.setFinalFee(bondToken.options.address, { rawValue: toWei("1") }).send({ from: owner });
 
     // Add 100 seconds to the current time so the dispute occurs at a different time than the proposal.
-    const currentTime = await optimisticRewarder.methods.getCurrentTime().call();
-    await optimisticRewarder.methods.setCurrentTime(parseInt(currentTime) + 100).send({ from: owner });
+    await advanceTime(100);
 
     receipt = await optimisticRewarder.methods.dispute(tokenId, redemptions).send({ from: disputer });
     await assertEventEmitted(receipt, optimisticRewarder, "Canceled");
@@ -476,8 +474,7 @@ describe("OptimisticRewarder", () => {
     await collateralWhitelist.methods.removeFromWhitelist(bondToken.options.address).send({ from: owner });
 
     // Add 100 seconds to the current time so the dispute occurs at a different time than the proposal.
-    const currentTime = await optimisticRewarder.methods.getCurrentTime().call();
-    await optimisticRewarder.methods.setCurrentTime(parseInt(currentTime) + 100).send({ from: owner });
+    await advanceTime(100);
 
     receipt = await optimisticRewarder.methods.dispute(tokenId, redemptions).send({ from: disputer });
     await assertEventEmitted(receipt, optimisticRewarder, "Canceled");
