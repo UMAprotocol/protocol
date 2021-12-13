@@ -179,4 +179,37 @@ describe("Proposer", function () {
     assert.equal(await votingToken.methods.balanceOf(store.options.address).call(), bond);
     assert.equal(await votingToken.methods.balanceOf(submitter).call(), "0");
   });
+
+  it("No repeated payouts", async function () {
+    // Move tokens.
+    await votingToken.methods.transfer(submitter, bond).send({ from: owner });
+    await votingToken.methods.approve(proposer.options.address, bond).send({ from: submitter });
+
+    // Build a no-op txn for the governor to execute.
+    const noOpTxnBytes = votingToken.methods.approve(submitter, "0").encodeABI();
+
+    // Grab the proposal id and then send the proposal txn.
+    const txn = proposer.methods.propose([{ to: votingToken.options.address, value: 0, data: noOpTxnBytes }]);
+    const id = await txn.call({ from: submitter });
+    await txn.send({ from: submitter });
+
+    // Should have pulled the submitter's tokens.
+    assert.equal(await votingToken.methods.balanceOf(submitter).call(), "0");
+
+    // Push the proce and execute the proposal.
+    const pendingQueries = await mockOracle.methods.getPendingQueries().call();
+    const { identifier, time, ancillaryData } = pendingQueries[pendingQueries.length - 1];
+    await mockOracle.methods.pushPrice(identifier, time, ancillaryData, toWei("1")).send({ from: owner });
+    await governor.methods.executeProposal(id, 0).send({ from: rando });
+
+    // Resolve the proposal in the proposer.
+    await proposer.methods.resolveProposal(id).send({ from: rando });
+
+    // Check that the event resolved as expected for a true value and the bond was repaid to the submitter.
+    assert.equal(await votingToken.methods.balanceOf(submitter).call(), bond);
+
+    // Send balance back to the proposer and check that the payout can't be made again.
+    await votingToken.methods.transfer(proposer.options.address, bond).send({ from: submitter });
+    assert(await didContractThrow(proposer.methods.resolveProposal(id).send({ from: submitter })));
+  });
 });
