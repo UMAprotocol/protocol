@@ -54,7 +54,8 @@ contract OracleSpoke is
      * ChildMessenger contract.
      * @dev Can be called only by a registered contract that is allowed to make DVM price requests. Will mark this
      * price request as Requested, and therefore able to receive the price resolution data from mainnet.
-     * @dev Contract registration enables the DVM to validate that the implementation correctly pays final fees.
+     * @dev Contract registration enables the DVM to validate that the calling contract correctly pays final fees.
+     * Therefore, this function does not directly attempt to pull a final fee from the caller.
      * @param identifier Identifier of price request.
      * @param time Timestamp of price request.
      * @param ancillaryData extra data of price request.
