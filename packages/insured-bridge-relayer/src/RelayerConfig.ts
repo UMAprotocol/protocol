@@ -29,7 +29,7 @@ const bridgePoolDeployData = {
 // For similar reasons to why we store BridgePool deployment times, we store BridgeDepositBox times for each L2 network
 // here. We use this in the fallback search for a FundsDeposited L2 event to optimize how we search for the event. We
 // don't need to search for events earlier than the BridgeDepositBox's deployment block.
-const bridgeDepositBoxDeployData = {
+export const bridgeDepositBoxDeployData = {
   42161: { blockNumber: 2811998 },
   10: { blockNumber: 204576 },
   288: { blockNumber: 223808 },

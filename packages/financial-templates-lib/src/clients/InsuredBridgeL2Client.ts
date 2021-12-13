@@ -6,7 +6,6 @@ import Web3 from "web3";
 import type { EventData } from "web3-eth-contract";
 import { EventSearchOptions, getEventsForMultipleProviders } from "@uma/common";
 
-const { toChecksumAddress } = Web3.utils;
 import type { Logger } from "winston";
 
 export interface Deposit {
@@ -23,17 +22,10 @@ export interface Deposit {
   depositContract: string;
 }
 
-export interface TokensBridged {
-  bridgedTokensTxHash: string;
-  numberOfTokens: string;
-}
-
 export class InsuredBridgeL2Client {
   public bridgeDepositBox: BridgeDepositBoxWeb3;
 
   private deposits: { [key: string]: Deposit } = {}; // DepositHash=>Deposit
-  private whitelistedTokens: { [key: string]: string } = {}; // L1Token=>L2Token
-  private tokensBridgedTransactions: { [key: string]: TokensBridged[] } = {}; // L2Token=>BridgeTransactionHash[]
 
   private firstBlockToSearch: number;
 
@@ -44,8 +36,7 @@ export class InsuredBridgeL2Client {
     readonly chainId: number = 0,
     readonly startingBlockNumber: number = 0,
     readonly endingBlockNumber: number | null = null,
-    readonly fallbackL2Web3s: Web3[] = [],
-    readonly l2BlockLookback: number = 0
+    readonly fallbackL2Web3s: Web3[] = []
   ) {
     this.bridgeDepositBox = (new l2Web3.eth.Contract(
       getAbi("BridgeDepositBox"),
@@ -63,41 +54,8 @@ export class InsuredBridgeL2Client {
     return this.getAllDeposits().filter((deposit: Deposit) => deposit.l1Token === l1TokenAddress);
   }
 
-  isWhitelistedToken(l1TokenAddress: string) {
-    return this.whitelistedTokens[toChecksumAddress(l1TokenAddress)] !== undefined;
-  }
-
   getDepositByHash(depositHash: string) {
     return this.deposits[depositHash];
-  }
-
-  getTokensBridgedTransactionsForL2Token(l2TokenAddress: string) {
-    if (!this.tokensBridgedTransactions[l2TokenAddress]) return [];
-    return this.tokensBridgedTransactions[l2TokenAddress].map(
-      (tokensBridgedTransaction: TokensBridged) => tokensBridgedTransaction.bridgedTokensTxHash
-    );
-  }
-
-  getL2TokenForTokensBridgedTransactionHash(tokensBridgedTransaction: string) {
-    let foundL2TokenAddress = "";
-    Object.keys(this.tokensBridgedTransactions).forEach((l2TokenAddress: string) => {
-      if (
-        this.tokensBridgedTransactions[l2TokenAddress]
-          .map((tokensBridged: TokensBridged) => tokensBridged.bridgedTokensTxHash)
-          .includes(tokensBridgedTransaction)
-      ) {
-        foundL2TokenAddress = l2TokenAddress;
-      }
-    });
-    return foundL2TokenAddress;
-  }
-
-  getTokensBridgedForTokenBridgeTransactionHash(l2TokenAddress: string, tokenBridgeTransaction: string) {
-    const tokensBridgedIndex = this.tokensBridgedTransactions[l2TokenAddress]
-      .map((tokensBridged: TokensBridged) => tokensBridged.bridgedTokensTxHash)
-      .indexOf(tokenBridgeTransaction);
-
-    return this.tokensBridgedTransactions[l2TokenAddress][tokensBridgedIndex].numberOfTokens;
   }
 
   // TODO: consider adding a method that limits how far back the deposits will be returned from. In this implementation
@@ -118,18 +76,7 @@ export class InsuredBridgeL2Client {
       return;
     }
 
-    // TODO: update this state retrieval to include looking for L2 liquidity in the deposit box that can be sent over
-    // the bridge. This should consider the minimumBridgingDelay and the lastBridgeTime for a respective L2Token.
-    const [fundsDepositedEvents, whitelistedTokenEvents, tokensBridgedEvents] = await Promise.all([
-      this.getBridgeDepositBoxEvents(blockSearchConfig, "FundsDeposited"),
-      this.getBridgeDepositBoxEvents(blockSearchConfig, "WhitelistToken"),
-      this.getBridgeDepositBoxEvents(blockSearchConfig, "TokensBridged"),
-    ]);
-
-    // We assume that whitelisted token events are searched from oldest to newest so we'll just store the most recently
-    // whitelisted token mappings.
-    for (const whitelistedTokenEvent of whitelistedTokenEvents)
-      this.whitelistedTokens[whitelistedTokenEvent.returnValues.l1Token] = whitelistedTokenEvent.returnValues.l2Token;
+    const fundsDepositedEvents = await this.getBridgeDepositBoxEvents(blockSearchConfig, "FundsDeposited");
 
     for (const fundsDepositedEvent of fundsDepositedEvents) {
       const depositData = {
@@ -147,15 +94,6 @@ export class InsuredBridgeL2Client {
       };
       depositData.depositHash = this.generateDepositHash(depositData);
       this.deposits[depositData.depositHash] = depositData;
-    }
-
-    for (const tokensBridgedEvent of tokensBridgedEvents) {
-      if (!this.tokensBridgedTransactions[tokensBridgedEvent.returnValues.l2Token])
-        this.tokensBridgedTransactions[tokensBridgedEvent.returnValues.l2Token] = [];
-      this.tokensBridgedTransactions[tokensBridgedEvent.returnValues.l2Token].push({
-        bridgedTokensTxHash: tokensBridgedEvent.transactionHash,
-        numberOfTokens: tokensBridgedEvent.returnValues.numberOfTokensBridged,
-      });
     }
 
     this.firstBlockToSearch = blockSearchConfig.toBlock + 1;

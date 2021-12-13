@@ -224,23 +224,4 @@ describe("InsuredBridgeL2Client", () => {
       assert.isTrue(lastSpyLogIncludes(spy, "L2 RPC endpoint state disagreement"));
     }
   });
-  it("Correctly returns TokenBridge transaction information", async () => {
-    // Deposit some tokens and bridge them. Check the client picks it up accordingly.
-    await l2Token.methods.mint(user1, toWei("200")).send({ from: deployer });
-    await l2Token.methods.approve(depositBox.options.address, toWei("200")).send({ from: user1 });
-    const depositTimestamp = Number(await timer.methods.getCurrentTime().call());
-    const quoteTimestamp = depositTimestamp + quoteTimestampOffset;
-    await depositBox.methods
-      .deposit(user1, l2Token.options.address, depositAmount, slowRelayFeePct, instantRelayFeePct, quoteTimestamp)
-      .send({ from: user1 });
-    await timer.methods
-      .setCurrentTime(Number(await timer.methods.getCurrentTime().call()) + 2000)
-      .send({ from: deployer });
-    const bridgeTx = await depositBox.methods.bridgeTokens(l2Token.options.address, 0).send({ from: user1 });
-
-    await client.update();
-
-    assert.equal(client.getTokensBridgedTransactionsForL2Token(l2Token.options.address).length, 1);
-    assert.equal(client.getTokensBridgedTransactionsForL2Token(l2Token.options.address)[0], bridgeTx.transactionHash);
-  });
 });

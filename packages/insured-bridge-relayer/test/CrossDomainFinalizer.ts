@@ -56,6 +56,7 @@ let mockOracle: any;
 let l1Token2: any;
 let l2Token2: any;
 let bridgePool2: any;
+let l2DeployData: any;
 
 // Hard-coded test params:
 const chainId = 10;
@@ -161,6 +162,13 @@ describe("CrossDomainFinalizer.ts", function () {
       l2Timer.options.address
     ).send({ from: l2Owner });
 
+    // Store the deployment block for the bridge deposit box.
+    l2DeployData = {
+      [chainId]: {
+        blockNumber: await web3.eth.getBlockNumber(),
+      },
+    };
+
     l2Token = await ERC20.new("L2ERC20", "L2ERC20", 18).send({ from: l2Owner });
     await l2Token.methods.addMember(TokenRolesEnum.MINTER, l2Owner).send({ from: l2Owner });
 
@@ -211,6 +219,7 @@ describe("CrossDomainFinalizer.ts", function () {
     gasEstimator = new GasEstimator(spyLogger);
 
     bridgeAdapterMock = new BridgeAdapterMock(spyLogger, web3, web3);
+
     crossDomainFinalizer = new CrossDomainFinalizer(
       spyLogger,
       gasEstimator,
@@ -218,6 +227,7 @@ describe("CrossDomainFinalizer.ts", function () {
       l2Client,
       bridgeAdapterMock,
       l1Relayer,
+      l2DeployData,
       crossDomainFinalizationThreshold
     );
   });
@@ -520,6 +530,38 @@ describe("CrossDomainFinalizer.ts", function () {
         .approve(bridgeDepositBox.options.address, depositAmount.muln(10))
         .send({ from: l2Depositor });
     });
+    it("Correctly Fetches tokens bridged events from L2 Bridge Deposit Box", async function () {
+      // Deposit some tokens and bridge them. Check the client picks it up accordingly.
+      await l2Token.methods.mint(l1LiquidityProvider, toWei("200")).send({ from: l2Owner });
+      await l2Token.methods.approve(bridgeDepositBox.options.address, toWei("200")).send({ from: l1LiquidityProvider });
+      const depositTimestamp = Number(await l2Timer.methods.getCurrentTime().call());
+      const quoteTimestamp = depositTimestamp;
+      await bridgeDepositBox.methods
+        .deposit(
+          l1LiquidityProvider,
+          l2Token.options.address,
+          depositAmount,
+          toWei("0.1"),
+          toWei("0.1"),
+          quoteTimestamp
+        )
+        .send({ from: l1LiquidityProvider });
+      await l2Timer.methods
+        .setCurrentTime(Number(await l2Timer.methods.getCurrentTime().call()) + 2000)
+        .send({ from: l2Owner });
+      const bridgeTx = await bridgeDepositBox.methods
+        .bridgeTokens(l2Token.options.address, 0)
+        .send({ from: l1LiquidityProvider });
+
+      // Fetch the TokensBridged events from the L2 bridge deposit box.
+      await crossDomainFinalizer.fetchTokensBridgedEvents();
+
+      assert.equal(crossDomainFinalizer.getTokensBridgedTransactionsForL2Token(l2Token.options.address).length, 1);
+      assert.equal(
+        crossDomainFinalizer.getTokensBridgedTransactionsForL2Token(l2Token.options.address)[0],
+        bridgeTx.transactionHash
+      );
+    });
     it("Correctly sends L1 cross domain finalization transactions on confirmed L2->L1 transfers", async function () {
       // The crossdomain finalizer was initiated using a bridge adapter mock to abstract away cross-chain implementation
       // details from this set of unit tests. Rather, we use a mock that lets us set transactions for each chain.
@@ -553,7 +595,6 @@ describe("CrossDomainFinalizer.ts", function () {
       const bridgeTx = await bridgeDepositBox.methods
         .bridgeTokens(l2Token.options.address, "0")
         .send({ from: l1Owner });
-      console.log("bridgeTx", bridgeTx);
 
       // Now, the logs should contain the associated l2TokensBridgedTransactions transaction hashes.
       await Promise.all([l1Client.update(), l2Client.update()]);
@@ -574,7 +615,7 @@ describe("CrossDomainFinalizer.ts", function () {
       assert.isTrue(spyLogIncludes(spy, -3, `confirmedL2TransactionsToExecute":["${bridgeTx.transactionHash}"]`));
       assert.isTrue(spyLogIncludes(spy, -2, "Gas estimator updated"));
       assert.isTrue(spyLogIncludes(spy, -1, "Canonical L2->L1 transfer over the optimism bridge"));
-      assert.isTrue(spyLogIncludes(spy, -1, "A total of 4.00 L2ERC20 were bridged")); // depositAmount.muln(4) is 4.
+      assert.isTrue(spyLogIncludes(spy, -1, "A total of 4.00 L2ERC20 was bridged")); // depositAmount.muln(4) is 4.
     });
   });
 });
