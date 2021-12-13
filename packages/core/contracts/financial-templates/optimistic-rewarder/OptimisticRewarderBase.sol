@@ -15,7 +15,7 @@ import "../../common/implementation/AncillaryData.sol";
 import "../../common/interfaces/AddressWhitelistInterface.sol";
 
 /**
- * @notice The base rewarder contract. This manages depositing rewards and paying them out to tokenholders using values
+ * @notice The base rewarder contract. This manages depositing rewards and paying them out to token holders using values
  * backed by the OptimisticOracle's dispute process.
  */
 abstract contract OptimisticRewarderBase is Lockable, MultiCaller {
@@ -38,9 +38,8 @@ abstract contract OptimisticRewarderBase is Lockable, MultiCaller {
     bytes32 public identifier;
 
     // Note: setters are intentionally absent for these parameters. If a deployer intends to modify these parameters,
-    // this contract suite offers a simple migration path where a new Rewarder contract is created and the existing
-    // ERC721 token can be passed in and used as the reward token there as well. This would be minimally painful for
-    // users.
+    // this contract suite offers a simple migration path where a new Rewarder is created and the existing ERC721 token
+    // can be passed in and used as the reward token there as well. This would be minimally painful for users.
     uint256 public liveness;
     uint256 public bond;
 
@@ -54,6 +53,10 @@ abstract contract OptimisticRewarderBase is Lockable, MultiCaller {
 
     // Mapping to track the past total cumulative redemptions for tokenIds.
     mapping(uint256 => mapping(IERC20 => uint256)) public redeemedAmounts;
+
+    /****************************************
+     *                EVENTS                *
+     ****************************************/
 
     // This allows other contracts to publish reward updates.
     event UpdateToken(uint256 indexed tokenId, address indexed caller, bytes data);
@@ -110,6 +113,10 @@ abstract contract OptimisticRewarderBase is Lockable, MultiCaller {
         _sync();
     }
 
+    /****************************************
+     *       GLOBAL PUBLIC FUNCTIONS        *
+     ****************************************/
+
     /**
      * @notice Allows anyone to deposit reward tokens into the contract. Presumably, this would be the deployer or
      * protocol that wishes to reward the users interacting with the system.
@@ -129,6 +136,7 @@ abstract contract OptimisticRewarderBase is Lockable, MultiCaller {
      * @dev if the user prefers to only mint a new token, they should call the mintNextToken function.
      * @param receiver user that will receive the newly minted token.
      * @param data arbitrary caller-generated data that will be associated with this update.
+     * @return tokenId of the newly minted token.
      */
     function mint(address receiver, bytes memory data) public nonReentrant returns (uint256 tokenId) {
         tokenId = mintNextToken(receiver);
@@ -146,10 +154,11 @@ abstract contract OptimisticRewarderBase is Lockable, MultiCaller {
 
     /**
      * @notice Requests a redemption for any tokenId. This can be called by anyone.
-     * @dev if called by someone who doesn't own the token, they are effectively gifting their bond to the owner.
+     * @dev If called by someone who doesn't own the token, they are effectively gifting their bond to the owner.
      * @param tokenId the tokenId the redemption is for.
      * @param cumulativeRedemptions the cumulative token addresses and amounts that this tokenId is eligible for
      * at the current timestamp. cumulative redemptions that are too low should be considered to be valid.
+     * @return totalBond sum of finalFee and bond paid by the caller of this function.
      */
     function requestRedemption(uint256 tokenId, RedemptionAmount[] memory cumulativeRedemptions)
         public
@@ -176,8 +185,7 @@ abstract contract OptimisticRewarderBase is Lockable, MultiCaller {
 
     /**
      * @notice Disputes a redemption request.
-     * @dev this will cancel a request if the final fee changes or something causes the optimistic oracle proposal to
-     * fail.
+     * @dev will cancel a request if the final fee changes or something causes the optimistic oracle proposal to fail.
      * @param tokenId the tokenId the redemption is for.
      * @param cumulativeRedemptions the cumulative redemptions that were provided in the original request.
      */
@@ -315,6 +323,7 @@ abstract contract OptimisticRewarderBase is Lockable, MultiCaller {
 
     /**
      * @notice gets the current time. Can be overridden for testing.
+     * @return current block timestamp.
      */
     function getCurrentTime() public view virtual returns (uint256) {
         return block.timestamp;
@@ -323,6 +332,7 @@ abstract contract OptimisticRewarderBase is Lockable, MultiCaller {
     /**
      * @notice Abstract function that is called to mint the next ERC721 tokenId.
      * @param recipient the recipient of the newly minted token.
+     * @return index of the next minted token.
      */
     function mintNextToken(address recipient) public virtual returns (uint256);
 
@@ -330,6 +340,7 @@ abstract contract OptimisticRewarderBase is Lockable, MultiCaller {
      * @notice Abstract function that is called to check the owner of the token.
      * @dev this matches the ERC721 ownerOf interface.
      * @param tokenId the tokenId to check the owner of.
+     * @return owner of a particular tokenId.
      */
     function ownerOf(uint256 tokenId) public view virtual returns (address);
 
@@ -337,6 +348,7 @@ abstract contract OptimisticRewarderBase is Lockable, MultiCaller {
      * @notice Generates a redemption id for the tokenId and the claim amounts.
      * @param tokenId the tokenId that the claim is for.
      * @param cumulativeRedemptions the cumulative redemptions that were provided in the request.
+     * @return redemption id. This is a hash of the tokenId and the cumulative redemptions.
      */
     function getRedemptionId(uint256 tokenId, RedemptionAmount[] memory cumulativeRedemptions)
         public
@@ -345,6 +357,10 @@ abstract contract OptimisticRewarderBase is Lockable, MultiCaller {
     {
         return keccak256(abi.encode(tokenId, cumulativeRedemptions));
     }
+
+    /****************************************
+     *          INTERNAL FUNCTIONS          *
+     ****************************************/
 
     function _sync() internal {
         store = _getStore();

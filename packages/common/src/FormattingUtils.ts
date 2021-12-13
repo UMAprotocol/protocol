@@ -104,7 +104,7 @@ export function createEtherscanLinkFromtx(networkId: NetworkId): string {
 // Convert either an address or transaction to a shorter version.
 // 0x772871a444c6e4e9903d8533a5a13101b74037158123e6709470f0afbf6e7d94 -> 0x7787...7d94
 export function createShortHexString(hex: string): string {
-  return hex.substring(0, 5) + "..." + hex.substring(hex.length - 6, hex.length - 1);
+  return hex.substring(0, 5) + "..." + hex.substring(hex.length - 6, hex.length);
 }
 
 // Take in either a transaction or an account and generate an etherscan link for the corresponding

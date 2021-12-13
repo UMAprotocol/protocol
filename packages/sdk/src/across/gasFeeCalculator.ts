@@ -1,7 +1,9 @@
 import { calculateGasFees, percent, BigNumberish } from "./utils";
 import type { SignerOrProvider } from "..";
 import { connect as erc20Connect } from "../clients/erc20";
+import { Etherchain } from "../clients/etherchain";
 import Coingecko from "../coingecko";
+import { ethers } from "ethers";
 
 /**
  * Main function to estimate gas fees based on coingecko token price and ethers gasPrice. You must still
@@ -23,7 +25,19 @@ export default async (
   gas: number,
   tokenAddress?: string
 ): Promise<ReturnType> => {
-  const gasPrice = await ethersProvider.getGasPrice();
+  const { baseFeePerGas } = await (ethersProvider as ethers.providers.JsonRpcProvider).getBlock("latest");
+  let gasPrice: ethers.BigNumber;
+
+  if (baseFeePerGas) {
+    const priorityFeePerGas = (await new Etherchain().getGasPrice()).fastest;
+    // transform priority fee from gwei (eg 4.1) to wei
+    const priorityFeePerGasWei = Math.round(priorityFeePerGas * 10 ** 9);
+    gasPrice = baseFeePerGas.add(priorityFeePerGasWei);
+  } else {
+    // fallback in case baseFeePerGas is undefined / null
+    gasPrice = await ethersProvider.getGasPrice();
+  }
+
   if (tokenAddress === undefined) {
     const gasFees = calculateGasFees(gas, gasPrice);
     return {

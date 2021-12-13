@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "./interfaces/ChildMessengerConsumerInterface.sol";
+import "./interfaces/ChildMessengerInterface.sol";
 import "../common/implementation/Lockable.sol";
 
 /**
@@ -10,12 +11,12 @@ import "../common/implementation/Lockable.sol";
  */
 contract GovernorSpoke is Lockable, ChildMessengerConsumerInterface {
     // Messenger contract that receives messages from root chain.
-    ChildMessengerConsumerInterface public messenger;
+    ChildMessengerInterface public messenger;
 
     event ExecutedGovernanceTransaction(address indexed to, bytes data);
     event SetChildMessenger(address indexed childMessenger);
 
-    constructor(ChildMessengerConsumerInterface _messengerAddress) {
+    constructor(ChildMessengerInterface _messengerAddress) {
         messenger = _messengerAddress;
         emit SetChildMessenger(address(messenger));
     }

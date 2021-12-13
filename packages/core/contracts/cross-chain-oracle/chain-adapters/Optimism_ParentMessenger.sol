@@ -44,7 +44,7 @@ contract Optimism_ParentMessenger is CrossDomainEnabled, ParentMessengerInterfac
      * @dev The caller of this function must be the owner. This should be set to the DVM governor.
      * @param newOracleSpoke the new oracle spoke address set on L2.
      */
-    function setChildOracleSpoke(address newOracleSpoke) public onlyOwner {
+    function setChildOracleSpoke(address newOracleSpoke) public onlyOwner nonReentrant() {
         bytes memory dataSentToChild = abi.encodeWithSignature("setOracleSpoke(address)", newOracleSpoke);
         sendCrossDomainMessage(childMessenger, defaultGasLimit, dataSentToChild);
         emit MessageSentToChild(dataSentToChild, address(0), defaultGasLimit, childMessenger);
@@ -55,7 +55,7 @@ contract Optimism_ParentMessenger is CrossDomainEnabled, ParentMessengerInterfac
      * @dev The caller of this function must be the owner. This should be set to the DVM governor.
      * @param newParentMessenger the new parent messenger contract to be set on L2.
      */
-    function setChildParentMessenger(address newParentMessenger) public onlyOwner {
+    function setChildParentMessenger(address newParentMessenger) public onlyOwner nonReentrant() {
         bytes memory dataSentToChild = abi.encodeWithSignature("setParentMessenger(address)", newParentMessenger);
         sendCrossDomainMessage(childMessenger, defaultGasLimit, dataSentToChild);
         emit MessageSentToChild(dataSentToChild, address(0), defaultGasLimit, childMessenger);
@@ -66,7 +66,7 @@ contract Optimism_ParentMessenger is CrossDomainEnabled, ParentMessengerInterfac
      * @dev The caller of this function must be the owner. This should be set to the DVM governor.
      * @param newDefaultGasLimit the new default gas limit set on L2.
      */
-    function setChildDefaultGasLimit(uint32 newDefaultGasLimit) public onlyOwner {
+    function setChildDefaultGasLimit(uint32 newDefaultGasLimit) public onlyOwner nonReentrant() {
         bytes memory dataSentToChild = abi.encodeWithSignature("setDefaultGasLimit(uint32)", newDefaultGasLimit);
         sendCrossDomainMessage(childMessenger, defaultGasLimit, dataSentToChild);
         emit MessageSentToChild(dataSentToChild, address(0), defaultGasLimit, childMessenger);
