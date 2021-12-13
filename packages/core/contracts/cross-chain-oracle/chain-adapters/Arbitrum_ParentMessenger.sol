@@ -112,7 +112,7 @@ contract Arbitrum_ParentMessenger is
      * @dev This function will only succeed if this contract has enough ETH to cover the approximate L1 call value.
      * @param newOracleSpoke the new oracle spoke address set on L2.
      */
-    function setChildOracleSpoke(address newOracleSpoke) public onlyOwner {
+    function setChildOracleSpoke(address newOracleSpoke) public onlyOwner nonReentrant() {
         bytes memory dataSentToChild = abi.encodeWithSignature("setOracleSpoke(address)", newOracleSpoke);
         _sendMessageToChild(dataSentToChild, childMessenger);
     }
@@ -123,7 +123,7 @@ contract Arbitrum_ParentMessenger is
      * @dev This function will only succeed if this contract has enough ETH to cover the approximate L1 call value.
      * @param newParentMessenger the new parent messenger contract to be set on L2.
      */
-    function setChildParentMessenger(address newParentMessenger) public onlyOwner {
+    function setChildParentMessenger(address newParentMessenger) public onlyOwner nonReentrant() {
         bytes memory dataSentToChild = abi.encodeWithSignature("setParentMessenger(address)", newParentMessenger);
         _sendMessageToChild(dataSentToChild, childMessenger);
     }
