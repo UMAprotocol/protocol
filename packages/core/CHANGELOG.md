@@ -3,6 +3,23 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.21.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.20.0...@uma/core@2.21.0) (2021-12-13)
+
+### Bug Fixes
+
+- **core-contracts:** [N06] fix some typographical errors ([#3681](https://github.com/UMAprotocol/protocol/issues/3681)) ([0593039](https://github.com/UMAprotocol/protocol/commit/05930397cd67e018bc09d6c5d8169514b365a4ee))
+- **cross-chain-oracle:** [L02] add more nonReentrant() modifiers ([#3677](https://github.com/UMAprotocol/protocol/issues/3677)) ([d452e5f](https://github.com/UMAprotocol/protocol/commit/d452e5f44cc7e59dc96a7e685d6b1dc9f82630b8))
+- **cross-chain-oracle:** [N03] address incorrect interface ([#3680](https://github.com/UMAprotocol/protocol/issues/3680)) ([88bd694](https://github.com/UMAprotocol/protocol/commit/88bd694ad916cb3ee5e97102e27d073b1b9fdf67))
+- **cross-chain-oracle:** fixed wrong commenting ([#3678](https://github.com/UMAprotocol/protocol/issues/3678)) ([dd8ea29](https://github.com/UMAprotocol/protocol/commit/dd8ea2982fc01fe523dfe7b0b77ff1350e304a23))
+- **cross-domain-oracle:** [N05] fixed outstanding todos ([#3684](https://github.com/UMAprotocol/protocol/issues/3684)) ([e683be2](https://github.com/UMAprotocol/protocol/commit/e683be255ed61f7e582b88a64d7d0fe6b596287a))
+- **optimistic-rewarder:** [L05] improved natspec commenting ([#3679](https://github.com/UMAprotocol/protocol/issues/3679)) ([1306aaa](https://github.com/UMAprotocol/protocol/commit/1306aaaaed7d6846cc9670ad673899fcceb610cd))
+- **optimistic-rewarder:** [N07] addressed unused imports ([#3682](https://github.com/UMAprotocol/protocol/issues/3682)) ([29dcb76](https://github.com/UMAprotocol/protocol/commit/29dcb76798755928ea3e192c101823262a0f824e))
+
+### Features
+
+- **across:** Add RateModelStore contract ([#3658](https://github.com/UMAprotocol/protocol/issues/3658)) ([42567bd](https://github.com/UMAprotocol/protocol/commit/42567bd1f4f2d9db8418872d773e352c66120675))
+- **core:** Deploy new RateModel ([#3671](https://github.com/UMAprotocol/protocol/issues/3671)) ([9528747](https://github.com/UMAprotocol/protocol/commit/952874792bf5d12bbfc12470997a0569aa4edcd8))
+
 # [2.20.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.18.0...@uma/core@2.20.0) (2021-12-07)
 
 ### Features

@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.16.1](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.16.0...@uma/sdk@0.16.1) (2021-12-13)
+
+### Bug Fixes
+
+- **sdk:** fix rate model address for uma ([#3691](https://github.com/UMAprotocol/protocol/issues/3691)) ([4492971](https://github.com/UMAprotocol/protocol/commit/4492971554f4deef3c400ac0c023d09d0fb8e37a))
+
 # [0.16.0](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.14.0...@uma/sdk@0.16.0) (2021-12-07)
 
 ### Features
