@@ -13,7 +13,6 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 /**
-
  * @title Cross-chain Oracle L1 Oracle Hub.
  * @notice Gatekeeper contract deployed on mainnet that validates and sends price requests from sidechain to the DVM on
  * mainnet. This is a "gate keeper" contract because it performs the final validation for any messages originating from

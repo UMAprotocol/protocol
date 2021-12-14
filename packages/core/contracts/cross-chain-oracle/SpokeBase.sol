@@ -7,6 +7,11 @@ import "./interfaces/ChildMessengerInterface.sol";
 
 import "../oracle/implementation/Constants.sol";
 
+/**
+ * @title Cross-chain Oracle L2 Spoke Base.
+ * @notice Provides access control to Governance and Oracle spoke L2 contracts.
+ */
+
 contract SpokeBase {
     FinderInterface private finder;
 
@@ -19,6 +24,10 @@ contract SpokeBase {
         _;
     }
 
+    /**
+     * @notice Returns the child messenger address set in the finder.
+     * @return ChildMessengerInterface instance of child messenger deployed on L2.
+     */
     function getChildMessenger() public view returns (ChildMessengerInterface) {
         return ChildMessengerInterface(finder.getImplementationAddress(OracleInterfaces.ChildMessenger));
     }
