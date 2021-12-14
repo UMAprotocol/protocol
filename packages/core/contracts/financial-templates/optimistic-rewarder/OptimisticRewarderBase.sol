@@ -207,7 +207,7 @@ abstract contract OptimisticRewarderBase is Lockable, MultiCaller {
             return;
         } else {
             uint256 totalBond = bond + redemption.finalFee;
-            bondToken.safeApprove(address(optimisticOracle), totalBond * 2);
+            bondToken.safeIncreaseAllowance(address(optimisticOracle), totalBond * 2);
             bytes memory ancillaryData =
                 AncillaryData.appendKeyValueBytes32(customAncillaryData, "redemptionId", redemptionId);
             uint32 requestTimestamp = uint32(redemption.expiryTime - liveness);
@@ -236,6 +236,7 @@ abstract contract OptimisticRewarderBase is Lockable, MultiCaller {
                 // 4. The money bond + final fee is larger than approved or in the contract's balance. This should also
                 //    be impossible in this contract.
                 _cancelRedemption(tokenId, redemptionId);
+                bondToken.safeDecreaseAllowance(address(optimisticOracle), totalBond * 2);
                 return;
             }
 
