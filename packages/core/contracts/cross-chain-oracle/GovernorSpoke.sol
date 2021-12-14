@@ -2,8 +2,11 @@
 pragma solidity ^0.8.0;
 
 import "./interfaces/ChildMessengerConsumerInterface.sol";
+
 import "./interfaces/OracleSpokeInterface.sol";
+
 import "./interfaces/ChildMessengerInterface.sol";
+
 import "../common/implementation/Lockable.sol";
 import "../oracle/interfaces/FinderInterface.sol";
 import "../oracle/implementation/Constants.sol";
@@ -16,10 +19,13 @@ contract GovernorSpoke is Lockable, ChildMessengerConsumerInterface {
     // Messenger contract that receives messages from root chain.
     ChildMessengerInterface public messenger;
 
+    FinderInterface public finder;
+
     event ExecutedGovernanceTransaction(address indexed to, bytes data);
     event SetChildMessenger(address indexed childMessenger);
 
-    constructor(ChildMessengerInterface _messengerAddress) {
+    constructor(FinderInterface _finder, ChildMessengerInterface _messengerAddress) {
+        finder = _finder;
         messenger = _messengerAddress;
         emit SetChildMessenger(address(messenger));
     }
@@ -40,22 +46,19 @@ contract GovernorSpoke is Lockable, ChildMessengerConsumerInterface {
      */
     function processMessageFromParent(bytes memory data) public override nonReentrant() onlyMessenger() {
         (address to, bytes memory inputData) = abi.decode(data, (address, bytes));
-        // TODO: Consider calling this via <address>.call(): https://docs.soliditylang.org/en/v0.8.10/units-and-global-variables.html?highlight=low%20level%20call#members-of-address-types
-        // to avoid inline assembly.
 
         // There is a special case if `to` is this contract. If this contract is the target, then we assume that the
         // cross-chain caller is attempting to change the child messenger.
-        if (to == address(this)) {
-            address newChildMessenger = abi.decode(inputData, (address));
-            messenger = ChildMessengerConsumerInterface(newChildMessenger);
-            OracleSpokeInterface(finder.getImplementationAddress(OracleInterfaces.OracleSpoke)).setChildMessenger(
-                newChildMessenger
-            );
-            emit SetChildMessenger(address(messenger));
-        } else {
-            require(_executeCall(to, inputData), "execute call failed");
-            emit ExecutedGovernanceTransaction(to, inputData);
-        }
+        if (to == address(this)) setChildMessenger(abi.decode(inputData, (address)));
+        else require(_executeCall(to, inputData), "execute call failed");
+    }
+
+    function setChildMessenger(address newChildMessenger) public onlyMessenger() {
+        messenger = ChildMessengerInterface(newChildMessenger);
+        OracleSpokeInterface(finder.getImplementationAddress(OracleInterfaces.OracleSpoke)).setChildMessenger(
+            newChildMessenger
+        );
+        emit SetChildMessenger(address(messenger));
     }
 
     // Note: this snippet of code is copied from Governor.sol.
@@ -71,6 +74,7 @@ contract GovernorSpoke is Lockable, ChildMessengerConsumerInterface {
             // value cross-chain.
             success := call(gas(), to, 0, inputData, inputDataSize, 0, 0)
         }
+        emit ExecutedGovernanceTransaction(to, data);
         return success;
     }
 }
