@@ -9,7 +9,12 @@ const func = async function (hre) {
 
   const startingProposalId = 0;
 
-  await deploy("Governor", { from: deployer, args: [Finder.address, startingProposalId, Timer.address], log: true });
+  await deploy("Governor", {
+    from: deployer,
+    args: [Finder.address, startingProposalId, Timer.address],
+    log: true,
+    skipIfAlreadyDeployed: true,
+  });
 };
 module.exports = func;
 func.tags = ["Governor", "dvm"];

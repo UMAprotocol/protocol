@@ -14,6 +14,7 @@ const func = async function (hre) {
     from: deployer,
     args: [initialFixedOracleFeePerSecondPerPfc, initialWeeklyDelayFeePerSecondPerPfc, Timer.address],
     log: true,
+    skipIfAlreadyDeployed: true,
   });
 };
 module.exports = func;

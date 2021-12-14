@@ -13,6 +13,7 @@ const func = async function (hre) {
     from: deployer,
     args: [Finder.address, TokenFactory.address, Timer.address],
     log: true,
+    skipIfAlreadyDeployed: true,
   });
 };
 module.exports = func;

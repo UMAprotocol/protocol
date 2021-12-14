@@ -16,7 +16,7 @@ const func = async function (hre) {
     hre.web3.utils.padRight(hre.web3.utils.utf8ToHex("IS_CROSS_CHAIN_RELAY_VALID"), 64), // price identifier to validate bridging action
   ];
 
-  await deploy("BridgeAdmin", { from: deployer, args, log: true });
+  await deploy("BridgeAdmin", { from: deployer, args, log: true, skipIfAlreadyDeployed: true });
 };
 module.exports = func;
 func.tags = ["BridgeAdmin"];
