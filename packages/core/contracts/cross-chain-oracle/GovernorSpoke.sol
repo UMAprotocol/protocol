@@ -31,7 +31,7 @@ contract GovernorSpoke is Lockable, SpokeBase, ChildMessengerConsumerInterface {
     }
 
     // Note: this snippet of code is copied from Governor.sol.
-    function _executeCall(address to, bytes memory data) internal returns (bool) {
+    function _executeCall(address to, bytes memory data) private returns (bool) {
         // Note: this snippet of code is copied from Governor.sol and modified to not include any "value" field.
         // solhint-disable-next-line no-inline-assembly
 
