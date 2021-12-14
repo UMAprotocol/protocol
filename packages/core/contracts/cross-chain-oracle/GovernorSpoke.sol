@@ -2,11 +2,8 @@
 pragma solidity ^0.8.0;
 
 import "./interfaces/ChildMessengerConsumerInterface.sol";
-
 import "./interfaces/OracleSpokeInterface.sol";
-
 import "./interfaces/ChildMessengerInterface.sol";
-
 import "../common/implementation/Lockable.sol";
 import "../oracle/interfaces/FinderInterface.sol";
 import "../oracle/implementation/Constants.sol";
