@@ -15,11 +15,14 @@ const spoke = express();
 spoke.use(express.json()); // Enables json to be parsed by the express process.
 const exec = require("child_process").exec;
 
-const { Logger, delay } = require("@uma/financial-templates-lib");
-let logger;
+const { delay, createNewLogger, waitForLogger } = require("@uma/financial-templates-lib");
 
-const waitForLogsS = 5;
+let customLogger;
+
+const waitForLoggerDelay = process.env.WAIT_FOR_LOGGER_DELAY || 5;
+
 spoke.post("/", async (req, res) => {
+  const logger = customLogger || createNewLogger();
   try {
     logger.debug({
       at: "ServerlessSpoke",
@@ -54,17 +57,28 @@ spoke.post("/", async (req, res) => {
     if (execResponse.error) {
       throw execResponse;
     }
+    // Log the full execResponse in this log. This enables you to retrieve the full output of the child process.
     logger.debug({
       at: "ServerlessSpoke",
       message: "Process exited with no error",
       childProcessIdentifier: _getChildProcessIdentifier(req),
       execResponse,
     });
-    await delay(waitForLogsS); // Wait a few seconds to be sure the the winston logs are processed upstream.
+    await waitForLogger(logger);
+    await delay(waitForLoggerDelay); // Wait a few seconds to be sure the the winston logs are processed upstream.
+
+    // Send back a redacted log to the hub, if possible. This is done to decrease the amount of logs that are sent to
+    // the hub. extract only the `message` filed from the logs. This is the main log headline without any details.
     res.status(200).send({
       message: "Process exited with no error",
       childProcessIdentifier: _getChildProcessIdentifier(req),
-      execResponse,
+      execResponse: {
+        error: execResponse.error,
+        stderr: execResponse.stderr,
+        stdout: Array.isArray(execResponse.stdout)
+          ? execResponse.stdout.map((logMessage) => logMessage["message"])
+          : execResponse.stdout,
+      },
     });
   } catch (execResponse) {
     // If there is an error, send a debug log to the winston transport to capture in GCP. We dont want to trigger a
@@ -76,7 +90,8 @@ spoke.post("/", async (req, res) => {
       jsonBody: req.body,
       execResponse: execResponse instanceof Error ? execResponse.message : execResponse,
     });
-    await delay(waitForLogsS); // Wait a few seconds to be sure the the winston logs are processed upstream.
+    await waitForLogger(logger);
+    await delay(waitForLoggerDelay); // Wait a few seconds to be sure the the winston logs are processed upstream.
     res.status(500).send({
       message: "Process exited with error",
       childProcessIdentifier: _getChildProcessIdentifier(req),
@@ -91,7 +106,7 @@ function _execShellCommand(cmd, inputEnv, strategyRunnerSpoke = false) {
       cmd,
       { env: { ...process.env, ...inputEnv }, stdio: "inherit" },
       (error, stdout, stderr) => {
-        // The output from the process execution contains a punctuation marks and escape chars that should be stripped.
+        // The output from the process execution contains punctuation marks and escape chars that should be stripped.
         stdout = _stripExecStdout(stdout, strategyRunnerSpoke);
         stderr = _stripExecStdError(stderr);
         resolve({ error, stdout, stderr });
@@ -105,18 +120,19 @@ function _execShellCommand(cmd, inputEnv, strategyRunnerSpoke = false) {
 // Format stdout outputs. Turns all logs generated while running the script into an array of Json objects.
 function _stripExecStdout(output, strategyRunnerSpoke = false) {
   if (!output) return output;
-  // Parse the outputs into a json object to get an array of logs. It is possible that the output is not in a parable form
-  // if the spoke was running a process that did not correctly generate a winston log. In this case simply return the stripped output.
+  // Parse the outputs into a json object to get an array of logs. It is possible that the output is not in a parable
+  // form if the spoke was running a process that did not correctly generate a winston log. In this case simply return
+  // the stripped output. Note that we use an array to preserve the log ordering.
+  const strippedOutput = _regexStrip(output).replace(/\r?\n|\r/g, ","); // Remove escaped new line chars. Replace with comma between each log output.
   try {
-    const strippedOutput = _regexStrip(output).replace(/\r?\n|\r/g, ","); // Remove escaped new line chars. Replace with comma between each log output.
     const logsArray = JSON.parse("[" + strippedOutput.substring(0, strippedOutput.length - 1) + "]");
-    // If the body contains `strategyRunnerSpoke` return filter to only return the `BotStrategyRunner` logs. This is done
-    // to clean up the upstream logs produced by the bots so the serverless hub can still produce meaningful logs while
-    // preserving the individual bot execution logs within GCP when using the strategy runner.
+    // If the body contains `strategyRunnerSpoke` return filter to only return the `BotStrategyRunner` logs. This is
+    // done to clean up the upstream logs produced by the bots so the serverless hub can still produce meaningful logs
+    // while preserving the individual bot execution logs within GCP when using the strategy runner.
     if (strategyRunnerSpoke) return logsArray.filter((logMessage) => logMessage.at == "BotStrategyRunner");
-    else return logsArray.map((logMessage) => logMessage["message"]);
+    else return logsArray; // move the mapping into the above method
   } catch (error) {
-    return _regexStrip(output).replace(/\r?\n|\r/g, " ");
+    return strippedOutput;
   }
 }
 
@@ -141,15 +157,17 @@ function _getChildProcessIdentifier(req) {
 }
 
 // Start the spoke's async listening process. Enables injection of a logging instance & port for testing.
-async function Poll(injectedLogger = Logger, port = 8080) {
-  logger = injectedLogger;
+async function Poll(_customLogger, port = 8080) {
+  // Use custom logger if passed in. Otherwise, create a local logger.
+  customLogger = _customLogger;
+  const logger = customLogger || createNewLogger();
   return spoke.listen(port, () => {
     logger.debug({ at: "ServerlessSpoke", message: "serverless spoke initialized", port });
   });
 }
 // If called directly by node, start the Poll process. If imported as a module then do nothing.
 if (require.main === module) {
-  Poll(Logger, process.env.PORT).then(() => {}); // Use the default winston logger & env port.
+  Poll(null, process.env.PORT).then(() => {}); // Use the default winston logger & env port.
 }
 
 spoke.Poll = Poll;

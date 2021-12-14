@@ -47,7 +47,7 @@ export function createTransports(transportsConfig: TransportsConfig = {}): Trans
     transports.push(createConsoleTransport());
   }
 
-  // If there is "test" in the environment then skip the slack or pagerduty.
+  // If there is "test" in the environment then skip the slack and pagerduty.
   if (argv._.indexOf("test") == -1) {
     // If there is a slack web hook, add to the transports array to enable slack messages.
     const slackConfig: SlackConfig = transportsConfig.slackConfig ?? JSON.parse(process.env.SLACK_CONFIG || "null");
