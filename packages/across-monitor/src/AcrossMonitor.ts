@@ -9,6 +9,7 @@ import { RelayEventFetcher } from "./RelayEventFetcher";
 
 import type { BridgePoolData, InsuredBridgeL1Client } from "@uma/financial-templates-lib";
 import type { AcrossMonitorConfig } from "./AcrossMonitorConfig";
+import type { EventInfo } from "./RelayEventFetcher";
 
 export class AcrossMonitor {
   // Discovered bridge pools are populated after update().
@@ -65,14 +66,14 @@ export class AcrossMonitor {
 
     // Collect utilization and other properties for all bridge pools.
     const bridgePools = await Promise.all(
-      Object.keys(this.bridgePools).map(async (L1TokenAddress) => {
-        const utilization = await this.bridgePools[L1TokenAddress].contract.methods
+      Object.keys(this.bridgePools).map(async (l1TokenAddress) => {
+        const utilization = await this.bridgePools[l1TokenAddress].contract.methods
           .liquidityUtilizationCurrent()
           .call();
         return {
-          address: this.bridgePools[L1TokenAddress].contract.options.address,
+          address: this.bridgePools[l1TokenAddress].contract.options.address,
           chainId: this.monitorConfig.bridgeAdminChainId,
-          poolCollateralSymbol: this.bridgePools[L1TokenAddress].poolCollateralSymbol,
+          poolCollateralSymbol: this.bridgePools[l1TokenAddress].poolCollateralSymbol,
           utilization: utilization,
         };
       })
@@ -109,6 +110,43 @@ export class AcrossMonitor {
   async checkUnknownRelays(): Promise<void> {
     this.logger.debug({ at: "AcrossMonitor#UnknownRelays", message: "Checking for unknown relays" });
 
-    await this.relayEventFetcher.getEvents();
+    const relayEvents: EventInfo[] = await this.relayEventFetcher.getRelayEventInfo(
+      this.startingBlock,
+      this.endingBlock
+    );
+    for (const event of relayEvents) {
+      // Skip notifications for known relay caller addresses.
+      if (this.monitorConfig.whitelistedAddresses.includes(event.caller.toLowerCase())) {
+        continue;
+      }
+
+      this.logger.warn({
+        at: "UnknownRelays",
+        message: "Across bridge pool unknown relay event warning⚠",
+        mrkdwn:
+          createEtherscanLinkMarkdown(event.caller, this.monitorConfig.bridgeAdminChainId) +
+          " " +
+          event.action +
+          " depositId " +
+          event.relay.depositId +
+          " on " +
+          PublicNetworks[event.relay.chainId]?.name +
+          " of " +
+          createFormatFunction(2, 4, false, event.poolCollateralDecimals)(event.relay.amount) +
+          " " +
+          event.poolCollateralSymbol +
+          " from " +
+          createEtherscanLinkMarkdown(event.relay.l2Sender, event.relay.chainId) +
+          " to " +
+          createEtherscanLinkMarkdown(event.relay.l1Recipient, this.monitorConfig.bridgeAdminChainId) +
+          ". slowRelayFee " +
+          createFormatFunction(2, 4, false, 18)(toBN(event.relay.slowRelayFeePct).muln(100)) +
+          "%, instantRelayFee " +
+          createFormatFunction(2, 4, false, 18)(toBN(event.relay.instantRelayFeePct).muln(100)) +
+          "%, realizedLpFee " +
+          createFormatFunction(2, 4, false, 18)(toBN(event.relay.realizedLpFeePct).muln(100)) +
+          "%.",
+      });
+    }
   }
 }

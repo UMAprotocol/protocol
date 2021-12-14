@@ -50,6 +50,9 @@ export class AcrossMonitorConfig {
     assert(this.utilizationThreshold >= 0, "UTILIZATION_THRESHOLD must be >= 0");
 
     this.whitelistedAddresses = WHITELISTED_ADDRESSES ? JSON.parse(WHITELISTED_ADDRESSES) : [];
+    for (let i = 0; i < this.whitelistedAddresses.length; i++) {
+      this.whitelistedAddresses[i] = this.whitelistedAddresses[i].toLowerCase();
+    }
 
     // Default bridge pools on mainnet.
     this.bridgeAdminChainId = BRIDGE_ADMIN_CHAIN_ID ? Number(BRIDGE_ADMIN_CHAIN_ID) : 1;
