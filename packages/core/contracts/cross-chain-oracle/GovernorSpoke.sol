@@ -47,13 +47,17 @@ contract GovernorSpoke is Lockable, ChildMessengerConsumerInterface {
     function processMessageFromParent(bytes memory data) public override nonReentrant() onlyMessenger() {
         (address to, bytes memory inputData) = abi.decode(data, (address, bytes));
 
-        // There is a special case if `to` is this contract. If this contract is the target, then we assume that the
-        // cross-chain caller is attempting to change the child messenger.
-        if (to == address(this)) _setChildMessenger(abi.decode(inputData, (address)));
-        else require(_executeCall(to, inputData), "execute call failed");
+        require(_executeCall(to, inputData), "execute call failed");
     }
 
-    function _setChildMessenger(address newChildMessenger) internal {
+    /**
+     * @notice Changes the address of the child messenger contract used by both this contract and the OracleSpoke.
+     * @dev Can only be called by this contract. i.e Executed by the GovernorHub sending a message, via the messenger
+     * to the processMessageFromParent function which intern calls back into this contract.
+     * @param newChildMessenger Address of the child messenger contract to set for this contract and OracleSpoke.
+     */
+    function setChildMessenger(address newChildMessenger) public {
+        require(msg.sender == address(this), "Caller must this contract");
         messenger = ChildMessengerInterface(newChildMessenger);
         OracleSpokeInterface(finder.getImplementationAddress(OracleInterfaces.OracleSpoke)).setChildMessenger(
             newChildMessenger

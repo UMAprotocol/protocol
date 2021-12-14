@@ -65,24 +65,22 @@ describe("GovernorSpoke.js", async () => {
 
     assert.isTrue(await addressWhitelist.methods.isOnWhitelist(messenger).call());
   });
-  it("If target address is the GovernorSpoke itself, then change child messenger address", async function () {
+  it("Can upgrade the child messenger by calling back into itself", async function () {
+    // Craft transaction to set the child messenger to the owner address.
     let targetAddress = governor.options.address;
-    const newChildMessengerAddress = owner;
-    let inputDataBytes = web3.eth.abi.encodeParameters(["address"], [newChildMessengerAddress]);
+    let inputDataBytes = governor.methods.setChildMessenger(owner).encodeABI();
     let messageBytes = web3.eth.abi.encodeParameters(["address", "bytes"], [targetAddress, inputDataBytes]);
+
     let txn = await governor.methods.processMessageFromParent(messageBytes).send({ from: messenger });
     await assertEventEmitted(
       txn,
       governor,
-      "SetChildMessenger",
-      (event) => event.childMessenger === newChildMessengerAddress
+      "ExecutedGovernanceTransaction",
+      (event) => event.to === targetAddress && event.data === inputDataBytes
     );
-    assert.equal(await governor.methods.messenger().call(), newChildMessengerAddress);
-    assert.equal(await oracleSpoke.methods.messenger().call(), newChildMessengerAddress);
 
-    // Reverts if `inputDataBytes` does not contain an address.
-    inputDataBytes = web3.eth.abi.encodeParameters(["string"], ["deadbeef"]);
-    messageBytes = web3.eth.abi.encodeParameters(["address", "bytes"], [targetAddress, inputDataBytes]);
-    assert(await didContractThrow(governor.methods.processMessageFromParent(messageBytes).send({ from: messenger })));
+    await assertEventEmitted(txn, governor, "SetChildMessenger", (event) => event.childMessenger === owner);
+    assert.equal(await governor.methods.messenger().call(), owner);
+    assert.equal(await oracleSpoke.methods.messenger().call(), owner);
   });
 });
