@@ -2,7 +2,6 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import "./OptimisticRewarder.sol";
 
 contract OptimisticRewarderToken is ERC721 {
     string public baseUri;

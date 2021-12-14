@@ -777,11 +777,11 @@ export class Relayer {
     return (
       "Relayed " +
       this._generateMrkdwnDepositIdNetworkSizeFromTo(deposit) +
-      "slowRelayFeePct " +
+      "slowRelayFee " +
       createFormatFunction(2, 4, false, 18)(toBN(deposit.slowRelayFeePct).muln(100)) +
-      "%, instantRelayFeePct " +
+      "%, instantRelayFee " +
       createFormatFunction(2, 4, false, 18)(toBN(deposit.instantRelayFeePct).muln(100)) +
-      "%, realizedLpFeePct " +
+      "%, realizedLpFee " +
       createFormatFunction(2, 4, false, 18)(realizedLpFeePct.muln(100)) +
       "%."
     );
@@ -817,7 +817,7 @@ export class Relayer {
       deposit.depositId +
       " on " +
       PublicNetworks[this.l2Client.chainId]?.name +
-      " of size " +
+      " of " +
       createFormatFunction(2, 4, false, collateralDecimals)(deposit.amount) +
       " " +
       collateralSymbol +

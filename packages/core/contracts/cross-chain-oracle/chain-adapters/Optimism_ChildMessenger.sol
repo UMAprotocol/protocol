@@ -3,13 +3,14 @@ pragma solidity ^0.8.0;
 
 // This should be replaced with a "real" import when Optimism release their new contract versions.
 import "@eth-optimism/contracts/libraries/bridge/CrossDomainEnabled.sol";
+import "@eth-optimism/contracts/libraries/constants/Lib_PredeployAddresses.sol";
 import "../interfaces/ChildMessengerInterface.sol";
 import "../interfaces/ChildMessengerConsumerInterface.sol";
 import "../../common/implementation/Lockable.sol";
 
 /**
  * @notice Sends cross chain messages from Optimism L2 to Ethereum L1 network.
- * @dev This contract is ownable via the onlyCrossDomainAccount modifier, restricting ownership to the cross-domain
+ * @dev This contract is ownable via the onlyFromCrossDomainAccount. modifier, restricting ownership to the cross-domain
  * parent messenger contract that lives on L1.
  */
 contract Optimism_ChildMessenger is CrossDomainEnabled, ChildMessengerInterface, Lockable {
@@ -22,9 +23,6 @@ contract Optimism_ChildMessenger is CrossDomainEnabled, ChildMessengerInterface,
     // Hard coded default gas limit for L1 transactions.
     uint32 public defaultGasLimit = 5_000_000;
 
-    // TODO: import from optimism contracts when they release their latest version.
-    address internal constant L2_CROSS_DOMAIN_MESSENGER = 0x4200000000000000000000000000000000000007;
-
     event SetOracleSpoke(address newOracleSpoke);
     event SetParentMessenger(address newParentMessenger);
     event SetDefaultGasLimit(uint32 newDefaultGasLimit);
@@ -35,7 +33,7 @@ contract Optimism_ChildMessenger is CrossDomainEnabled, ChildMessengerInterface,
      * @notice Construct the Optimism_ChildMessenger contract.
      * @param _parentMessenger The address of the L1 parent messenger. Acts as the "owner" of this contract.
      */
-    constructor(address _parentMessenger) CrossDomainEnabled(L2_CROSS_DOMAIN_MESSENGER) {
+    constructor(address _parentMessenger) CrossDomainEnabled(Lib_PredeployAddresses.L2_CROSS_DOMAIN_MESSENGER) {
         parentMessenger = _parentMessenger;
     }
 
@@ -95,7 +93,7 @@ contract Optimism_ChildMessenger is CrossDomainEnabled, ChildMessengerInterface,
      * @dev The caller must be the the parent messenger, sent over the canonical message bridge.
      * @param data data message sent from the L1 messenger. Should be an encoded function call or packed data.
      * @param target desired recipient of `data`. Target must implement the `processMessageFromParent` function. Having
-     * this as a param enables the L1 Messenger to send messages to arbitrary addresses on the L1. This is primarily
+     * this as a param enables the L1 Messenger to send messages to arbitrary addresses on the L2. This is primarily
      * used to send messages to the OracleSpoke and GovernorSpoke on L2.
      */
     function processMessageFromCrossChainParent(bytes memory data, address target)
