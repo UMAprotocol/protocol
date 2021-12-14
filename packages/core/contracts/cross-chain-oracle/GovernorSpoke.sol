@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import "./interfaces/ChildMessengerConsumerInterface.sol";
 import "./interfaces/OracleSpokeInterface.sol";
+import "./interfaces/ChildMessengerInterface.sol";
 import "../common/implementation/Lockable.sol";
 import "../oracle/interfaces/FinderInterface.sol";
 import "../oracle/implementation/Constants.sol";
@@ -13,15 +14,12 @@ import "../oracle/implementation/Constants.sol";
  */
 contract GovernorSpoke is Lockable, ChildMessengerConsumerInterface {
     // Messenger contract that receives messages from root chain.
-    ChildMessengerConsumerInterface public messenger;
-
-    FinderInterface public finder;
+    ChildMessengerInterface public messenger;
 
     event ExecutedGovernanceTransaction(address indexed to, bytes data);
     event SetChildMessenger(address indexed childMessenger);
 
-    constructor(FinderInterface _finder, ChildMessengerConsumerInterface _messengerAddress) {
-        finder = _finder;
+    constructor(ChildMessengerInterface _messengerAddress) {
         messenger = _messengerAddress;
         emit SetChildMessenger(address(messenger));
     }
@@ -33,7 +31,7 @@ contract GovernorSpoke is Lockable, ChildMessengerConsumerInterface {
 
     /**
      * @notice Executes governance transaction created on Ethereum.
-     * @dev Can only called by ChildMessenger contract that wants to execute governance action on this child chain that
+     * @dev Can only be called by ChildMessenger contract that wants to execute governance action on this child chain that
      * originated from DVM voters on root chain. ChildMessenger should only receive communication from ParentMessenger
      * on mainnet.
 
@@ -62,9 +60,7 @@ contract GovernorSpoke is Lockable, ChildMessengerConsumerInterface {
 
     // Note: this snippet of code is copied from Governor.sol.
     function _executeCall(address to, bytes memory data) private returns (bool) {
-        // Note: this snippet of code is copied from Governor.sol.
-        // solhint-disable-next-line max-line-length
-        // https://github.com/gnosis/safe-contracts/blob/59cfdaebcd8b87a0a32f87b50fead092c10d3a05/contracts/base/Executor.sol#L23-L31
+        // Note: this snippet of code is copied from Governor.sol and modified to not include any "value" field.
         // solhint-disable-next-line no-inline-assembly
 
         bool success;

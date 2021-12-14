@@ -6,7 +6,7 @@ const func = async function (hre) {
 
   const StateSyncMock = await deployments.get("StateSyncMock");
 
-  await deploy("FxRootMock", { from: deployer, args: [StateSyncMock.address], log: true });
+  await deploy("FxRootMock", { from: deployer, args: [StateSyncMock.address], log: true, skipIfAlreadyDeployed: true });
 };
 module.exports = func;
 func.tags = ["FxRootMock", "test"];

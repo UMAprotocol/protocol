@@ -10,7 +10,7 @@ const func = async function (hre) {
   const Timer = (await deployments.getOrNull("Timer")) || { address: ZERO_ADDRESS };
 
   const args = [Finder.address, Timer.address];
-  await deploy("MockOracleAncillary", { from: deployer, args, log: true });
+  await deploy("MockOracleAncillary", { from: deployer, args, log: true, skipIfAlreadyDeployed: true });
 };
 module.exports = func;
 func.tags = ["MockOracle", "test"];

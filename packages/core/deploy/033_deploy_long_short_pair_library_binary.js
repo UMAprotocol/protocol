@@ -4,7 +4,11 @@ const func = async function (hre) {
 
   const { deployer } = await getNamedAccounts();
 
-  await deploy("BinaryOptionLongShortPairFinancialProductLibrary", { from: deployer, log: true });
+  await deploy("BinaryOptionLongShortPairFinancialProductLibrary", {
+    from: deployer,
+    log: true,
+    skipIfAlreadyDeployed: true,
+  });
 };
 module.exports = func;
 func.tags = ["LongShortPairLibraries", "lsplib", "BinaryLongShortPairLibrary"];

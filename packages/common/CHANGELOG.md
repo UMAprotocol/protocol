@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.14.3](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.14.2...@uma/common@2.14.3) (2021-12-13)
+
+### Bug Fixes
+
+- **slack-logger/relay-logs:** small logger fixes ([#3685](https://github.com/UMAprotocol/protocol/issues/3685)) ([06ba1e4](https://github.com/UMAprotocol/protocol/commit/06ba1e40d04135b6f73e6ac4048cdd16d1b8ce54))
+- throw errors when transaction fails pre tx hash ([#3674](https://github.com/UMAprotocol/protocol/issues/3674)) ([5155025](https://github.com/UMAprotocol/protocol/commit/5155025ff725e15853cf996557f1e46eaa9fd80c))
+
 ## [2.14.2](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.14.0...@uma/common@2.14.2) (2021-12-07)
 
 **Note:** Version bump only for package @uma/common

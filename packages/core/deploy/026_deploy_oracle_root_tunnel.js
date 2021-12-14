@@ -28,7 +28,7 @@ const func = async function (hre) {
     args = [deployer, FxRootMock.address, Finder.address]; // Note: uses deployer as the checkpoint manager.
   }
 
-  await deploy("OracleRootTunnel", { from: deployer, args, log: true });
+  await deploy("OracleRootTunnel", { from: deployer, args, log: true, skipIfAlreadyDeployed: true });
 };
 module.exports = func;
 func.tags = ["OracleRootTunnel", "l1-polygon"];

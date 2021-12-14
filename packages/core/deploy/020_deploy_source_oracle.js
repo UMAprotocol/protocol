@@ -14,7 +14,7 @@ const func = async function (hre) {
     Finder.address,
     bridgeId, // Current chain ID.
   ];
-  await deploy("SourceOracle", { from: deployer, args, log: true });
+  await deploy("SourceOracle", { from: deployer, args, log: true, skipIfAlreadyDeployed: true });
 };
 module.exports = func;
 func.tags = ["SourceOracle", "l1-chainbridge"];

@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.12.3](https://github.com/UMAprotocol/protocol/compare/@uma/insured-bridge-relayer@1.12.2...@uma/insured-bridge-relayer@1.12.3) (2021-12-13)
+
+### Bug Fixes
+
+- **slack-logger/relay-logs:** small logger fixes ([#3685](https://github.com/UMAprotocol/protocol/issues/3685)) ([06ba1e4](https://github.com/UMAprotocol/protocol/commit/06ba1e40d04135b6f73e6ac4048cdd16d1b8ce54))
+
 ## [1.12.2](https://github.com/UMAprotocol/protocol/compare/@uma/insured-bridge-relayer@1.12.0...@uma/insured-bridge-relayer@1.12.2) (2021-12-07)
 
 **Note:** Version bump only for package @uma/insured-bridge-relayer
