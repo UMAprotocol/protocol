@@ -7,3 +7,4 @@ export * as lspCreator from "./lsp-creator";
 export * as lsp from "./lsp";
 export * as bridgeDepositBox from "./bridgeDepositBox";
 export * as bridgePool from "./bridgePool";
+export * as etherchain from "./etherchain";
