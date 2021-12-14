@@ -70,8 +70,7 @@ contract Arbitrum_ParentMessenger is
      * ticket reverts.
      * @dev The caller of this function must be the owner, which should be set to the DVM governor.
      * @param newRefundl2Address the new refund address to set. This should be set to an L2 address that is trusted by
-     * the owner and that can spend the funds by generating a signature for its address. For example, an EOA or a
-     * custom contract.
+     * the owner as it can spend Arbitrum L2 refunds for excess gas when sending transactions on Arbitrum.
      */
     function setRefundL2Address(address newRefundl2Address) public onlyOwner nonReentrant() {
         refundL2Address = newRefundl2Address;
