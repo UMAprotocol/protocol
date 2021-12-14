@@ -387,6 +387,12 @@ describe("OptimisticRewarder", () => {
     const { request, timestamp, ancillaryData } = (
       await findEvent(disputeReceipt, optimisticOracle, "DisputePrice")
     ).match.returnValues;
+    await assertEventEmitted(
+      disputeReceipt,
+      optimisticRewarder,
+      "Disputed",
+      (event) => event.tokenId === tokenId && request.expirationTime.toString() === event.expiryTime.toString()
+    );
 
     const [dvmRequest] = await mockOracle.methods.getPendingQueries().call();
     await mockOracle.methods

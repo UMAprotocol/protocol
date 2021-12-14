@@ -266,6 +266,8 @@ abstract contract OptimisticRewarderBase is Lockable, MultiCaller {
                 msg.sender,
                 address(this)
             );
+
+            emit Disputed(tokenId, redemptionId, redemption.expiryTime);
         }
 
         delete redemptions[redemptionId];
