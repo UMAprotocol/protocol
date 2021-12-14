@@ -35,6 +35,11 @@ contract GovernorSpoke is Lockable, ChildMessengerConsumerInterface {
         _;
     }
 
+    modifier onlyThisContract() {
+        require(msg.sender == address(this), "Caller must be this contract");
+        _;
+    }
+
     /**
      * @notice Executes governance transaction created on Ethereum.
      * @dev Can only be called by ChildMessenger contract that wants to execute governance action on this child chain that
@@ -56,8 +61,7 @@ contract GovernorSpoke is Lockable, ChildMessengerConsumerInterface {
      * to the processMessageFromParent function which intern calls back into this contract.
      * @param newChildMessenger Address of the child messenger contract to set for this contract and OracleSpoke.
      */
-    function setChildMessenger(address newChildMessenger) public {
-        require(msg.sender == address(this), "Caller must this contract");
+    function setChildMessenger(address newChildMessenger) public onlyThisContract {
         messenger = ChildMessengerInterface(newChildMessenger);
         OracleSpokeInterface(finder.getImplementationAddress(OracleInterfaces.OracleSpoke)).setChildMessenger(
             newChildMessenger
