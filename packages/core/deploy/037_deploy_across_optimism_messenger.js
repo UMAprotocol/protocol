@@ -12,12 +12,7 @@ const func = async function (hre) {
     1: "0x25ace71c97B33Cc4729CF772ae268934F7ab5fA1", // mainnet
   };
 
-  await deploy("Optimism_Messenger", {
-    from: deployer,
-    args: [l1ChainIdToMessenger[chainId]],
-    log: true,
-    skipIfAlreadyDeployed: true,
-  });
+  await deploy("Optimism_Messenger", { from: deployer, args: [l1ChainIdToMessenger[chainId]], log: true });
 };
 module.exports = func;
 func.tags = ["Optimism_Messenger"];

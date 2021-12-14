@@ -4,7 +4,7 @@ const func = async function (hre) {
 
   const { deployer } = await getNamedAccounts();
 
-  await deploy("VotingToken", { from: deployer, log: true, skipIfAlreadyDeployed: true });
+  await deploy("VotingToken", { from: deployer, log: true });
 };
 module.exports = func;
 func.tags = ["dvm"];

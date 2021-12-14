@@ -27,7 +27,7 @@ const func = async function (hre) {
     args = [deployer, FxRootMock.address]; // Note: uses deployer as the checkpoint manager.
   }
 
-  await deploy("GovernorRootTunnel", { from: deployer, args, log: true, skipIfAlreadyDeployed: true });
+  await deploy("GovernorRootTunnel", { from: deployer, args, log: true });
 };
 module.exports = func;
 func.tags = ["GovernorRootTunnel", "l1-polygon"];

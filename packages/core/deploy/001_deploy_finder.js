@@ -4,7 +4,7 @@ const func = async function (hre) {
 
   const { deployer } = await getNamedAccounts();
 
-  await deploy("Finder", { from: deployer, log: true, skipIfAlreadyDeployed: true });
+  await deploy("Finder", { from: deployer });
 };
 module.exports = func;
 func.tags = ["Finder", "dvm"];

@@ -18,7 +18,7 @@ const func = async function (hre) {
     bridgeId, // Current chain ID.
     SOURCE_ORACLE_CHAIN_ID, // Chain ID where SourceOracle is located that this SinkOracle will make price requests to.
   ];
-  await deploy("SinkOracle", { from: deployer, args, log: true, skipIfAlreadyDeployed: true });
+  await deploy("SinkOracle", { from: deployer, args, log: true });
 };
 module.exports = func;
 func.tags = ["SinkOracle", "l2-chainbridge"];

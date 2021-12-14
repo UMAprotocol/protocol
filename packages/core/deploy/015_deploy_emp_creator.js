@@ -9,13 +9,12 @@ const func = async function (hre) {
   const TokenFactory = await deployments.get("TokenFactory");
   const Timer = (await deployments.getOrNull("Timer")) || ZERO_ADDRESS;
 
-  const EMPLib = await deploy("ExpiringMultiPartyLib", { from: deployer, log: true, skipIfAlreadyDeployed: true });
+  const EMPLib = await deploy("ExpiringMultiPartyLib", { from: deployer, log: true });
   await deploy("ExpiringMultiPartyCreator", {
     from: deployer,
     args: [Finder.address, TokenFactory.address, Timer.address],
     libraries: { ExpiringMultiPartyLib: EMPLib.address },
     log: true,
-    skipIfAlreadyDeployed: true,
   });
 };
 module.exports = func;

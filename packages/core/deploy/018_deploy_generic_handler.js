@@ -7,7 +7,7 @@ const func = async function (hre) {
   const Bridge = await deployments.get("Bridge");
 
   const args = [Bridge.address, [], [], [], []];
-  await deploy("GenericHandler", { from: deployer, args, log: true, skipIfAlreadyDeployed: true });
+  await deploy("GenericHandler", { from: deployer, args, log: true });
 };
 module.exports = func;
 func.tags = ["GenericHandler", "bridge-l2", "bridge-l1"];

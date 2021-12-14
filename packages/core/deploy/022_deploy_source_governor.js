@@ -11,12 +11,7 @@ const func = async function (hre) {
 
   const Finder = await deployments.get("Finder");
 
-  await deploy("SourceGovernor", {
-    from: deployer,
-    args: [Finder.address, bridgeId],
-    log: true,
-    skipIfAlreadyDeployed: true,
-  });
+  await deploy("SourceGovernor", { from: deployer, args: [Finder.address, bridgeId], log: true });
 };
 module.exports = func;
 func.tags = ["SourceGovernor", "l1-chainbridge"];

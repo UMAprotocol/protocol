@@ -8,7 +8,6 @@ const func = async function (hre) {
     from: deployer,
     args: [deployer], // Set deployer as the systemSuperUser.
     log: true,
-    skipIfAlreadyDeployed: true,
   });
 };
 module.exports = func;

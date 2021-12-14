@@ -4,7 +4,7 @@ const func = async function (hre) {
 
   const { deployer } = await getNamedAccounts();
 
-  await deploy("RateModelStore", { from: deployer, args: [], log: true, skipIfAlreadyDeployed: true });
+  await deploy("RateModelStore", { from: deployer, args: [], log: true });
 };
 module.exports = func;
 func.tags = ["RateModelStore"];

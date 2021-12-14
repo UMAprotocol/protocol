@@ -27,7 +27,7 @@ const func = async function (hre) {
     ZERO_ADDRESS, // timer address
   ];
 
-  await deploy("OVM_BridgeDepositBox", { from: deployer, args, log: true, skipIfAlreadyDeployed: true });
+  await deploy("OVM_BridgeDepositBox", { from: deployer, args, log: true });
 };
 module.exports = func;
 func.tags = ["OVM_BridgeDepositBox"];
