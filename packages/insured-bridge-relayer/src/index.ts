@@ -107,6 +107,7 @@ export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
       l2Client,
       canonicalBridgeAdapter,
       accounts[0],
+      config.l2DeployData,
       config.crossDomainFinalizationThreshold
     );
 
