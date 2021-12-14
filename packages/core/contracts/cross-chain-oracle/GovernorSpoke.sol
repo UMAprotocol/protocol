@@ -49,11 +49,11 @@ contract GovernorSpoke is Lockable, ChildMessengerConsumerInterface {
 
         // There is a special case if `to` is this contract. If this contract is the target, then we assume that the
         // cross-chain caller is attempting to change the child messenger.
-        if (to == address(this)) setChildMessenger(abi.decode(inputData, (address)));
+        if (to == address(this)) _setChildMessenger(abi.decode(inputData, (address)));
         else require(_executeCall(to, inputData), "execute call failed");
     }
 
-    function setChildMessenger(address newChildMessenger) public onlyMessenger() {
+    function _setChildMessenger(address newChildMessenger) internal {
         messenger = ChildMessengerInterface(newChildMessenger);
         OracleSpokeInterface(finder.getImplementationAddress(OracleInterfaces.OracleSpoke)).setChildMessenger(
             newChildMessenger
@@ -62,7 +62,7 @@ contract GovernorSpoke is Lockable, ChildMessengerConsumerInterface {
     }
 
     // Note: this snippet of code is copied from Governor.sol.
-    function _executeCall(address to, bytes memory data) private returns (bool) {
+    function _executeCall(address to, bytes memory data) internal returns (bool) {
         // Note: this snippet of code is copied from Governor.sol and modified to not include any "value" field.
         // solhint-disable-next-line no-inline-assembly
 
