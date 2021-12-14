@@ -50,7 +50,7 @@ contract GovernorSpoke is Lockable, ChildMessengerConsumerInterface {
         (address to, bytes memory inputData) = abi.decode(data, (address, bytes));
 
         require(_executeCall(to, inputData), "execute call failed");
-        emit ExecutedGovernanceTransaction(to, data);
+        emit ExecutedGovernanceTransaction(to, inputData);
     }
 
     /**
