@@ -1,4 +1,5 @@
 const hre = require("hardhat");
+const { web3 } = hre;
 const { getContract, assertEventEmitted } = hre;
 const { didContractThrow, interfaceName, RegistryRolesEnum } = require("@uma/common");
 const { assert } = require("chai");
@@ -38,12 +39,14 @@ describe("OracleSpoke.js", async () => {
   });
   beforeEach(async function () {
     messenger = await MessengerMock.new().send({ from: owner });
-    oracleSpoke = await OracleSpoke.new(finder.options.address, messenger.options.address).send({ from: owner });
+    oracleSpoke = await OracleSpoke.new(finder.options.address).send({ from: owner });
+
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.ChildMessenger), messenger.options.address)
+      .send({ from: owner });
   });
   it("constructor", async function () {
-    assert.equal(await oracleSpoke.methods.messenger().call(), messenger.options.address);
-    const events = await oracleSpoke.getPastEvents("SetChildMessenger", { fromBlock: 0 });
-    assert.equal(events.length, 1);
+    assert.equal(await oracleSpoke.methods.getChildMessenger().call(), messenger.options.address);
   });
   it("requestPrice", async function () {
     const requestPrice = oracleSpoke.methods.requestPrice(defaultIdentifier, defaultTimestamp, defaultAncillaryData);
@@ -79,16 +82,11 @@ describe("OracleSpoke.js", async () => {
     assert.equal((await messenger.methods.messageCount().call()).toString(), "2");
   });
   it("setChildMessenger", async function () {
-    const newMessengerAddress = rando;
-    const setChildMessenger = oracleSpoke.methods.setChildMessenger(newMessengerAddress);
-
-    // Can only be called by GovernorSpoke in finder.
-    assert(await didContractThrow(setChildMessenger.send({ from: owner })));
+    // Setting a new messenger happens by changing the address in the finder.
     await finder.methods
-      .changeImplementationAddress(utf8ToHex(interfaceName.GovernorSpoke), owner)
+      .changeImplementationAddress(utf8ToHex(interfaceName.ChildMessenger), owner)
       .send({ from: owner });
-    const tx = await setChildMessenger.send({ from: owner });
-    await assertEventEmitted(tx, oracleSpoke, "SetChildMessenger", (e) => e.childMessenger === newMessengerAddress);
+    assert.equal(await oracleSpoke.methods.getChildMessenger().call(), owner);
   });
   it("processMessageFromParent", async function () {
     const expectedAncillaryData = await oracleSpoke.methods.stampAncillaryData(defaultAncillaryData).call();

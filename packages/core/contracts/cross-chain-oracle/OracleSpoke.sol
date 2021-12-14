@@ -9,7 +9,7 @@ import "../common/implementation/AncillaryData.sol";
 import "../common/implementation/Lockable.sol";
 import "./interfaces/ChildMessengerInterface.sol";
 import "./interfaces/ChildMessengerConsumerInterface.sol";
-import "./interfaces/OracleSpokeInterface.sol";
+import "./SpokeBase.sol";
 
 /**
  * @title Cross-chain Oracle L2 Oracle Spoke.
@@ -22,21 +22,14 @@ import "./interfaces/OracleSpokeInterface.sol";
  * resolution secured by the DVM on mainnet.
  */
 contract OracleSpoke is
-    OracleSpokeInterface,
     OracleBase,
+    SpokeBase,
     OracleAncillaryInterface,
     OracleInterface,
     ChildMessengerConsumerInterface,
     Lockable
 {
-    ChildMessengerInterface public messenger;
-
-    event SetChildMessenger(address indexed childMessenger);
-
-    constructor(address _finderAddress, ChildMessengerInterface _messengerAddress) OracleBase(_finderAddress) {
-        messenger = _messengerAddress;
-        emit SetChildMessenger(address(messenger));
-    }
+    constructor(address _finderAddress) OracleBase(_finderAddress) SpokeBase(_finderAddress) {}
 
     // This assumes that the local network has a Registry that resembles the mainnet registry.
     modifier onlyRegisteredContract() {
@@ -50,22 +43,6 @@ contract OracleSpoke is
             "Caller must be governor spoke"
         );
         _;
-    }
-
-    modifier onlyMessenger() {
-        require(msg.sender == address(messenger), "Caller must be messenger");
-        _;
-    }
-
-    /**
-     * @notice Changes the stored address of the child messenger.
-     * @dev The caller of this function must be the governor spoke, and therefore this function can only be triggered
-     * by a cross-chain call that originated in the parent messenger.
-     * @param newChildMessenger address of the new child messenger.
-     */
-    function setChildMessenger(address newChildMessenger) public nonReentrant() onlyGovernorSpoke() {
-        messenger = ChildMessengerInterface(newChildMessenger);
-        emit SetChildMessenger(address(messenger));
     }
 
     /**
@@ -87,7 +64,7 @@ contract OracleSpoke is
     ) public override nonReentrant() onlyRegisteredContract() {
         bool newPriceRequested = _requestPrice(identifier, time, _stampAncillaryData(ancillaryData));
         if (newPriceRequested) {
-            messenger.sendMessageToParent(abi.encode(identifier, time, _stampAncillaryData(ancillaryData)));
+            getChildMessenger().sendMessageToParent(abi.encode(identifier, time, _stampAncillaryData(ancillaryData)));
         }
     }
 
@@ -98,14 +75,14 @@ contract OracleSpoke is
     function requestPrice(bytes32 identifier, uint256 time) public override nonReentrant() onlyRegisteredContract() {
         bool newPriceRequested = _requestPrice(identifier, time, _stampAncillaryData(""));
         if (newPriceRequested) {
-            messenger.sendMessageToParent(abi.encode(identifier, time, _stampAncillaryData("")));
+            getChildMessenger().sendMessageToParent(abi.encode(identifier, time, _stampAncillaryData("")));
         }
     }
 
     /**
-     * @notice Resolves a price request originating from a message sent by the DVM on the parent chain. This method
-     * must be called by the ChildMessenger contract which is designed to communicate only with the ParentMessenger
-     * contract on Mainnet.
+     * @notice Resolves a price request originating from a message sent by the DVM on the parent chain.
+     * @dev Can only be called by the ChildMessenger contract which is designed to communicate only with the
+     * ParentMessenger contract on Mainnet. See the SpokeBase for the onlyMessenger modifier.
      * @param data ABI encoded params with which to call `_publishPrice`.
      */
     function processMessageFromParent(bytes memory data) public override nonReentrant() onlyMessenger() {

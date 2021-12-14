@@ -2,46 +2,23 @@
 pragma solidity ^0.8.0;
 
 import "./interfaces/ChildMessengerConsumerInterface.sol";
-import "./interfaces/OracleSpokeInterface.sol";
-import "./interfaces/ChildMessengerInterface.sol";
 import "../common/implementation/Lockable.sol";
-import "../oracle/interfaces/FinderInterface.sol";
-import "../oracle/implementation/Constants.sol";
+import "./SpokeBase.sol";
 
 /**
  * @title Cross-chain Oracle L2 Governor Spoke.
  * @notice Governor contract deployed on L2 that receives governance actions from Ethereum.
  */
-contract GovernorSpoke is Lockable, ChildMessengerConsumerInterface {
-    // Messenger contract that receives messages from root chain.
-    ChildMessengerInterface public messenger;
-
-    FinderInterface public finder;
+contract GovernorSpoke is Lockable, SpokeBase, ChildMessengerConsumerInterface {
+    constructor(address _finderAddress) SpokeBase(_finderAddress) {}
 
     event ExecutedGovernanceTransaction(address indexed to, bytes data);
-    event SetChildMessenger(address indexed childMessenger);
-
-    constructor(FinderInterface _finder, ChildMessengerInterface _messengerAddress) {
-        finder = _finder;
-        messenger = _messengerAddress;
-        emit SetChildMessenger(address(messenger));
-    }
-
-    modifier onlyMessenger() {
-        require(msg.sender == address(messenger), "Caller must be messenger");
-        _;
-    }
-
-    modifier onlyThisContract() {
-        require(msg.sender == address(this), "Caller must be this contract");
-        _;
-    }
 
     /**
      * @notice Executes governance transaction created on Ethereum.
-     * @dev Can only be called by ChildMessenger contract that wants to execute governance action on this child chain that
-     * originated from DVM voters on root chain. ChildMessenger should only receive communication from ParentMessenger
-     * on mainnet.
+     * @dev Can only be called by ChildMessenger contract that wants to execute governance action on this child chain
+     * that originated from DVM voters on root chain. ChildMessenger should only receive communication from
+     * ParentMessenger on mainnet. See the SpokeBase for the onlyMessenger modifier.
 
      * @param data Contains the target address and the encoded function selector + ABI encoded params to include in
      * delegated transaction.
@@ -51,20 +28,6 @@ contract GovernorSpoke is Lockable, ChildMessengerConsumerInterface {
 
         require(_executeCall(to, inputData), "execute call failed");
         emit ExecutedGovernanceTransaction(to, inputData);
-    }
-
-    /**
-     * @notice Changes the address of the child messenger contract used by both this contract and the OracleSpoke.
-     * @dev Can only be called by this contract. i.e Executed by the GovernorHub sending a message, via the messenger
-     * to the processMessageFromParent function which intern calls back into this contract.
-     * @param newChildMessenger Address of the child messenger contract to set for this contract and OracleSpoke.
-     */
-    function setChildMessenger(address newChildMessenger) public onlyThisContract {
-        messenger = ChildMessengerInterface(newChildMessenger);
-        OracleSpokeInterface(finder.getImplementationAddress(OracleInterfaces.OracleSpoke)).setChildMessenger(
-            newChildMessenger
-        );
-        emit SetChildMessenger(address(messenger));
     }
 
     // Note: this snippet of code is copied from Governor.sol.

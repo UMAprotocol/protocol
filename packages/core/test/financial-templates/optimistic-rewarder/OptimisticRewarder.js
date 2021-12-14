@@ -423,6 +423,7 @@ describe("OptimisticRewarder", () => {
     const { request, timestamp, ancillaryData } = (
       await findEvent(disputeReceipt, optimisticOracle, "DisputePrice")
     ).match.returnValues;
+    console.log("EXpected", tokenId, request.expirationTime.toString());
     await assertEventEmitted(
       disputeReceipt,
       optimisticRewarder,
