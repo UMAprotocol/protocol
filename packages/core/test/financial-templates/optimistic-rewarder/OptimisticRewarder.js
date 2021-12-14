@@ -2,7 +2,7 @@ const { assert } = require("chai");
 const hre = require("hardhat");
 const { web3, getContract, assertEventEmitted, findEvent } = hre;
 const { didContractThrow, interfaceName, runDefaultFixture, TokenRolesEnum, ZERO_ADDRESS } = require("@uma/common");
-const { utf8ToHex, toWei, randomHex, toBN } = web3.utils;
+const { utf8ToHex, toWei, randomHex, toBN, toChecksumAddress } = web3.utils;
 
 // Tested contracts
 const OptimisticRewarder = getContract("OptimisticRewarderTest");
@@ -52,12 +52,24 @@ describe("OptimisticRewarder", () => {
       ?.tokenId;
   };
 
+  const getRedemptionId = async (receipt, contract = optimisticRewarder) => {
+    return (await findEvent(receipt, contract, "Requested")).match?.returnValues?.redemptionId;
+  };
+
   const mint = async (token, recipient, amount) => {
     if (!(await token.methods.holdsRole(TokenRolesEnum.MINTER, owner).call())) {
       await token.methods.addMember(TokenRolesEnum.MINTER, owner).send({ from: owner });
     }
 
     await token.methods.mint(recipient, amount).send({ from: owner });
+  };
+
+  const areCumulativeRedemptionsEqual = (a, b) => {
+    return a.every(
+      (element, index) =>
+        toChecksumAddress(element.token) === toChecksumAddress(b[index].token) &&
+        element.amount.toString() === b[index].amount.toString()
+    );
   };
 
   before(async function () {
@@ -219,14 +231,34 @@ describe("OptimisticRewarder", () => {
 
     // Submit redemption
     const redemptions = [{ token: redemptionToken.options.address, amount: toWei("100") }];
-    await optimisticRewarder.methods.requestRedemption(tokenId, redemptions).send({ from: submitter });
+    receipt = await optimisticRewarder.methods.requestRedemption(tokenId, redemptions).send({ from: submitter });
+    const expiryTime = parseInt(await optimisticRewarder.methods.getCurrentTime().call()) + liveness;
+    await assertEventEmitted(
+      receipt,
+      optimisticRewarder,
+      "Requested",
+      (event) =>
+        event.tokenId === tokenId &&
+        areCumulativeRedemptionsEqual(event.cumulativeRedemptions, redemptions) &&
+        event.expiryTime.toString() === expiryTime.toString()
+    );
+    const redemptionId = await getRedemptionId(receipt);
     await advanceTime(liveness);
 
     // Can't dispute after liveness.
     assert(await didContractThrow(optimisticRewarder.methods.dispute(tokenId, redemptions).send({ from: disputer })));
 
     // Redeem.
-    await optimisticRewarder.methods.redeem(tokenId, redemptions).send({ from: submitter });
+    receipt = await optimisticRewarder.methods.redeem(tokenId, redemptions).send({ from: submitter });
+    await assertEventEmitted(
+      receipt,
+      optimisticRewarder,
+      "Redeemed",
+      (event) =>
+        event.tokenId === tokenId &&
+        event.redemptionId === redemptionId &&
+        event.expiryTime.toString() === expiryTime.toString()
+    );
 
     // Repeat redemption not allowed.
     assert(await didContractThrow(optimisticRewarder.methods.redeem(tokenId, redemptions).send({ from: submitter })));

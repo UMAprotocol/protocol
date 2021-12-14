@@ -173,14 +173,14 @@ abstract contract OptimisticRewarderBase is Lockable, MultiCaller {
         // transaction would not.
         require(cumulativeRedemptions.length <= 100, "too many token transfers");
 
-        uint256 time = getCurrentTime();
+        uint256 expiryTime = getCurrentTime() + liveness;
 
         totalBond = finalFee + bond;
         bondToken.safeTransferFrom(msg.sender, address(this), totalBond);
 
-        redemptions[redemptionId] = Redemption({ finalFee: finalFee, expiryTime: time + liveness });
+        redemptions[redemptionId] = Redemption({ finalFee: finalFee, expiryTime: expiryTime });
 
-        emit Requested(tokenId, redemptionId, cumulativeRedemptions, time);
+        emit Requested(tokenId, redemptionId, cumulativeRedemptions, expiryTime);
     }
 
     /**
@@ -311,9 +311,9 @@ abstract contract OptimisticRewarderBase is Lockable, MultiCaller {
         // Return the bond to the owner.
         bondToken.safeTransfer(msg.sender, bond + redemptions[redemptionId].finalFee);
 
-        delete redemptions[redemptionId];
-
         emit Redeemed(tokenId, redemptionId, redemptions[redemptionId].expiryTime);
+
+        delete redemptions[redemptionId];
     }
 
     /**
