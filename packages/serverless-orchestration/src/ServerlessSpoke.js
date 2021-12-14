@@ -15,13 +15,15 @@ const spoke = express();
 spoke.use(express.json()); // Enables json to be parsed by the express process.
 const exec = require("child_process").exec;
 
-const { delay, createNewLogger, waitForLogger } = require("@uma/financial-templates-lib");
+const { delay, createNewLogger } = require("@uma/financial-templates-lib");
 
 let customLogger;
 
 const waitForLoggerDelay = process.env.WAIT_FOR_LOGGER_DELAY || 5;
 
 spoke.post("/", async (req, res) => {
+  // Use a custom logger if provided. Otherwise, initialize a local logger.
+  // Note: no reason to put this into the try-catch since a logger is required to throw the error.
   const logger = customLogger || createNewLogger();
   try {
     logger.debug({
@@ -64,22 +66,23 @@ spoke.post("/", async (req, res) => {
       childProcessIdentifier: _getChildProcessIdentifier(req),
       execResponse,
     });
-    await waitForLogger(logger);
     await delay(waitForLoggerDelay); // Wait a few seconds to be sure the the winston logs are processed upstream.
 
     // Send back a redacted log to the hub, if possible. This is done to decrease the amount of logs that are sent to
     // the hub. extract only the `message` filed from the logs. This is the main log headline without any details.
-    res.status(200).send({
-      message: "Process exited with no error",
-      childProcessIdentifier: _getChildProcessIdentifier(req),
-      execResponse: {
-        error: execResponse.error,
-        stderr: execResponse.stderr,
-        stdout: Array.isArray(execResponse.stdout)
-          ? execResponse.stdout.map((logMessage) => logMessage["message"])
-          : execResponse.stdout,
-      },
-    });
+    res
+      .status(200)
+      .send({
+        message: "Process exited with no error",
+        childProcessIdentifier: _getChildProcessIdentifier(req),
+        execResponse: {
+          error: execResponse.error,
+          stderr: execResponse.stderr,
+          stdout: Array.isArray(execResponse.stdout)
+            ? execResponse.stdout.map((logMessage) => logMessage["message"])
+            : execResponse.stdout,
+        },
+      });
   } catch (execResponse) {
     // If there is an error, send a debug log to the winston transport to capture in GCP. We dont want to trigger a
     // `logger.error` here as this will be dealt with one layer up in the Hub implementation.
@@ -90,13 +93,14 @@ spoke.post("/", async (req, res) => {
       jsonBody: req.body,
       execResponse: execResponse instanceof Error ? execResponse.message : execResponse,
     });
-    await waitForLogger(logger);
     await delay(waitForLoggerDelay); // Wait a few seconds to be sure the the winston logs are processed upstream.
-    res.status(500).send({
-      message: "Process exited with error",
-      childProcessIdentifier: _getChildProcessIdentifier(req),
-      execResponse: execResponse instanceof Error ? execResponse.message : execResponse,
-    });
+    res
+      .status(500)
+      .send({
+        message: "Process exited with error",
+        childProcessIdentifier: _getChildProcessIdentifier(req),
+        execResponse: execResponse instanceof Error ? execResponse.message : execResponse,
+      });
   }
 });
 
@@ -158,11 +162,11 @@ function _getChildProcessIdentifier(req) {
 
 // Start the spoke's async listening process. Enables injection of a logging instance & port for testing.
 async function Poll(_customLogger, port = 8080) {
-  // Use custom logger if passed in. Otherwise, create a local logger.
   customLogger = _customLogger;
+  // Use custom logger if passed in. Otherwise, create a local logger.
   const logger = customLogger || createNewLogger();
   return spoke.listen(port, () => {
-    logger.debug({ at: "ServerlessSpoke", message: "serverless spoke initialized", port });
+    logger.debug({ at: "ServerlessSpoke", message: "serverless spoke initialized", port, env: process.env });
   });
 }
 // If called directly by node, start the Poll process. If imported as a module then do nothing.
