@@ -50,6 +50,7 @@ contract GovernorSpoke is Lockable, ChildMessengerConsumerInterface {
         (address to, bytes memory inputData) = abi.decode(data, (address, bytes));
 
         require(_executeCall(to, inputData), "execute call failed");
+        emit ExecutedGovernanceTransaction(to, data);
     }
 
     /**
@@ -79,7 +80,6 @@ contract GovernorSpoke is Lockable, ChildMessengerConsumerInterface {
             // value cross-chain.
             success := call(gas(), to, 0, inputData, inputDataSize, 0, 0)
         }
-        emit ExecutedGovernanceTransaction(to, data);
         return success;
     }
 }
