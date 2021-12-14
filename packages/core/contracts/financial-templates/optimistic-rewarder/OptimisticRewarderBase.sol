@@ -236,7 +236,7 @@ abstract contract OptimisticRewarderBase is Lockable, MultiCaller {
                 // 4. The money bond + final fee is larger than approved or in the contract's balance. This should also
                 //    be impossible in this contract.
                 _cancelRedemption(tokenId, redemptionId);
-                bondToken.safeDecreaseAllowance(address(optimisticOracle), totalBond * 2);
+                bondToken.safeApprove(address(optimisticOracle), 0); // Reset allowance.
                 return;
             }
 
