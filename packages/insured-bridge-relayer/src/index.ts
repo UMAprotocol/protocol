@@ -53,6 +53,8 @@ export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
 
     // Construct a web3 instance running on L2.
     const l2Web3 = getWeb3ByChainId(config.activatedChainIds[0]);
+    const latestL2BlockNumber = await l2Web3.eth.getBlockNumber();
+    const l2StartBlock = Math.max(0, latestL2BlockNumber - config.l2BlockLookback);
     const fallbackL2Web3s = getRetryWeb3sByChainId(config.activatedChainIds[0]);
     // Note: This will not construct duplicate Web3 objects for URL's in the Retry config that are the same as the
     // one used to construct l2Web3.
@@ -65,12 +67,10 @@ export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
       l2Web3,
       await l1Client.getL2DepositBoxAddress(config.activatedChainIds[0]),
       config.activatedChainIds[0],
-      0, // starting block number
-      null, // ending block number
-      fallbackL2Web3s,
-      config.l2BlockLookback
+      l2StartBlock,
+      null,
+      fallbackL2Web3s
     );
-
     // Update the L2 client and filter out tokens that are not whitelisted on the L2 from the whitelisted
     // L1 relay list.
     const filteredL1Whitelist = await pruneWhitelistedL1Tokens(
