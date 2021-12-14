@@ -195,7 +195,8 @@ abstract contract OptimisticRewarderBase is Lockable, MultiCaller {
         // This automatically checks that redemptions[redemptionId] != 0.
         // Check that it has not passed liveness.
         Redemption storage redemption = redemptions[redemptionId];
-        require(getCurrentTime() < redemption.expiryTime, "redemption expired or nonexistent");
+        uint256 currentTime = getCurrentTime();
+        require(currentTime < redemption.expiryTime, "redemption expired or nonexistent");
 
         // Final fees don't match to those in the current store, which means the bond the initial caller provided was
         // incorrect. Cancel the request to allow the requester to resubmit with the correct params.
@@ -247,7 +248,7 @@ abstract contract OptimisticRewarderBase is Lockable, MultiCaller {
                     settled: false,
                     proposedPrice: int256(1e18),
                     resolvedPrice: 0,
-                    expirationTime: redemption.expiryTime,
+                    expirationTime: currentTime + liveness,
                     reward: 0,
                     finalFee: redemption.finalFee,
                     bond: bond,
