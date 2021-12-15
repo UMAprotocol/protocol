@@ -22,7 +22,7 @@ contract GovernorHub is Ownable, Lockable, MultiCaller {
         uint256 indexed chainId,
         address indexed messenger,
         GovernorSpoke.Call[] calls,
-        bytes dataSentToChilds
+        bytes dataSentToChild
     );
     event SetParentMessenger(uint256 indexed chainId, address indexed parentMessenger);
 
