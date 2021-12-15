@@ -24,7 +24,6 @@
 import Transport from "winston-transport";
 import axios from "axios";
 import type { AxiosInstance, AxiosRequestConfig } from "axios";
-import { createEtherscanLinkMarkdown, getWeb3 } from "@uma/common";
 
 interface MarkdownText {
   type: "mrkdwn";
@@ -49,18 +48,6 @@ interface SlackFormatterResponse {
 }
 // Note: info is any because it comes directly from winston.
 function slackFormatter(info: any): SlackFormatterResponse {
-  // Try and fetch injected web3 which we can use to customize the transaction receipt hyperlink:
-  let networkId = 1;
-  try {
-    getWeb3()
-      .eth.net.getId()
-      .then((_netId) => {
-        if (_netId) networkId = _netId;
-      });
-  } catch (err) {
-    // Do nothing, use default "EtherscanLinkMarkdown"
-  }
-
   try {
     if (!("level" in info) || !("at" in info) || !("message" in info))
       throw new Error("WINSTON MESSAGE INCORRECTLY CONFIGURED");
@@ -98,17 +85,9 @@ function slackFormatter(info: any): SlackFormatterResponse {
         formattedResponse.blocks.push(newBlock);
         // For each key value pair within the object, spread the object out for formatting.
         for (const subKey in info[key]) {
-          // If the length of the value is 66 then we know this is a transaction hash. Format accordingly.
-          if (info[key][subKey]?.length == 66) {
-            newBlock.text.text += `    - _tx_: ${createEtherscanLinkMarkdown(info[key][subKey], networkId)}\n`;
-          }
-          // If the length of the value is 42 then we know this is an address. Format accordingly.
-          else if (info[key][subKey]?.length == 42) {
-            newBlock.text.text += `    - _${subKey}_: ${createEtherscanLinkMarkdown(info[key][subKey], networkId)}\n`;
-          }
           // If the value within the object itself is an object we dont want to spread it any further. Rather,
           // convert the object to a string and print it along side it's key value pair.
-          else if (typeof info[key][subKey] === "object" && info[key][subKey] !== null) {
+          if (typeof info[key][subKey] === "object" && info[key][subKey] !== null) {
             formattedResponse.blocks.push({
               type: "section",
               text: { type: "mrkdwn", text: `    - _${subKey}_: ${JSON.stringify(info[key][subKey])}\n` },
@@ -123,20 +102,11 @@ function slackFormatter(info: any): SlackFormatterResponse {
         }
         // Else, if the input is not an object then print the values as key value pairs. First check for addresses or txs
       } else if (info[key]) {
-        const lastBlock = formattedResponse.blocks[formattedResponse.blocks.length - 1] as SectionBlock;
-        // like with the previous level, if there is a value that is a transaction or an address format accordingly
-        if (info[key]?.length == 66) {
-          lastBlock.text.text += ` • _tx_: ${createEtherscanLinkMarkdown(info[key], networkId)}\n`;
-        }
-        // If the length of the value is 42 then we know this is an address. Format accordingly.
-        else if (info[key]?.length == 42) {
-          lastBlock.text.text += ` • _${key}_: ${createEtherscanLinkMarkdown(info[key], networkId)}\n`;
-        } else {
-          formattedResponse.blocks.push({
-            type: "section",
-            text: { type: "mrkdwn", text: ` • _${key}_: ${info[key]}\n` },
-          });
-        }
+        formattedResponse.blocks.push({
+          type: "section",
+          text: { type: "mrkdwn", text: ` • _${key}_: ${info[key]}\n` },
+        });
+
         // Else, if the value from the key value pair is null still show the key in the log. For example if a param is
         // logged but empty we still want to see the key.
       } else if (info[key] == null) {
@@ -196,7 +166,7 @@ class SlackHook extends Transport {
 
   async log(info: any, callback: () => void) {
     // If the log contains a notification path then use a custom slack webhook service. This lets the transport route to
-    // diffrent slack channels depending on the context of the log.
+    // different slack channels depending on the context of the log.
     const webhookUrl = this.escalationPathWebhookUrls[info.notificationPath] ?? this.defaultWebHookUrl;
 
     const payload: { blocks?: Block[]; text?: string; mrkdwn?: boolean } = { mrkdwn: this.mrkdwn };

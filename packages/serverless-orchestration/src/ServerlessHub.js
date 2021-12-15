@@ -91,8 +91,7 @@ hub.post("/", async (req, res) => {
       // (url: string): <int>
     };
     for (const botName in configObject) {
-      // Check if bot is running on a non-default chain, and then fetch last block number seen on this or the default
-      // chain.
+      // Check if bot is running on a non-default chain, and fetch last block number seen on this or the default chain.
       const spokeCustomNodeUrl = configObject[botName]?.environmentVariables?.CUSTOM_NODE_URL;
       const chainId = await _getChainId(spokeCustomNodeUrl);
       nodeUrlToChainIdCache[spokeCustomNodeUrl] = chainId;
@@ -242,13 +241,14 @@ hub.post("/", async (req, res) => {
           try {
             return {
               spokeName: spokeName,
-              errorReported: errorOutput.errorOutputs[spokeName].execResponse
-                ? errorOutput.errorOutputs[spokeName].execResponse.stderr
-                : errorOutput.errorOutputs[spokeName],
+              errorReported:
+                errorOutput.errorOutputs[spokeName]?.execResponse?.stderr ??
+                errorOutput.errorOutputs[spokeName].message ??
+                errorOutput.errorOutputs[spokeName].reason ??
+                errorOutput.errorOutputs[spokeName],
             };
           } catch (err) {
-            // `errorMessages` is in an unexpected JSON shape.
-            return "Hub unable to parse error";
+            return "Hub unable to parse error"; // `errorMessages` is in an unexpected JSON shape.
           }
         }), // eslint-disable-line indent
         validOutputs: Object.keys(errorOutput.validOutputs), // eslint-disable-line indent
@@ -382,7 +382,7 @@ async function _getLastQueriedBlockNumber(configIdentifier, chainId, logger) {
         const [dataField] = await datastore.get(key);
         return dataField[chainId];
       } else if (hubConfig.saveQueriedBlock == "localStorage") {
-        return process.env[`lastQueriedBlockNumber-${chainId}-${configIdentifier}`];
+        return process.env[`lastQueriedBlockNumber-${chainId}-${configIdentifier}`] | 0;
       }
     },
     {
@@ -455,7 +455,7 @@ function _processSpokeResponse(botKey, spokeResponse, validOutputs, errorOutputs
     errorOutputs[botKey] = {
       status: spokeResponse.status,
       execResponse: spokeResponse.value && spokeResponse.value.execResponse,
-      reason: "empty stdout",
+      message: "empty stdout",
       botIdentifier: botKey,
     };
   } else if (
@@ -466,7 +466,7 @@ function _processSpokeResponse(botKey, spokeResponse, validOutputs, errorOutputs
     errorOutputs[botKey] = {
       status: spokeResponse.status,
       execResponse: spokeResponse.value && spokeResponse.value.execResponse,
-      reason: "missing `Started` keyword",
+      message: "missing `started` keyword",
       botIdentifier: botKey,
     };
   } else {
@@ -515,7 +515,7 @@ async function Poll(_customLogger, port = 8080, _spokeURL, _CustomNodeUrl, _hubC
       customNodeUrl,
       hubConfig,
       port,
-      processEnvironment: process.env,
+      env: process.env,
     });
   });
 }
