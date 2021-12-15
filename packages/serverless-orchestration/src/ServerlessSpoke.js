@@ -135,7 +135,7 @@ function _stripExecStdout(output, strategyRunnerSpoke = false) {
     // done to clean up the upstream logs produced by the bots so the serverless hub can still produce meaningful logs
     // while preserving the individual bot execution logs within GCP when using the strategy runner.
     if (strategyRunnerSpoke) return logsArray.filter((logMessage) => logMessage.at == "BotStrategyRunner");
-    else return logsArray; // move the mapping into the above method
+    else return logsArray;
   } catch (error) {
     return _regexStrip(output).replace(/\r?\n|\r/g, " "); // Remove escaped new line chars. Replace with space between each log output.
   }
