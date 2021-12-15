@@ -18,6 +18,7 @@ import {
 import { approveL1Tokens, pruneWhitelistedL1Tokens } from "./RelayerHelpers";
 import { Relayer } from "./Relayer";
 import { CrossDomainFinalizer } from "./CrossDomainFinalizer";
+import { createBridgeAdapter } from "./canonical-bridge-adapters/CreateBridgeAdapter";
 import { RelayerConfig } from "./RelayerConfig";
 config();
 
@@ -70,7 +71,6 @@ export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
       null,
       fallbackL2Web3s
     );
-
     // Update the L2 client and filter out tokens that are not whitelisted on the L2 from the whitelisted
     // L1 relay list.
     const filteredL1Whitelist = await pruneWhitelistedL1Tokens(
@@ -97,12 +97,17 @@ export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
       config.l2BlockLookback
     );
 
+    const canonicalBridgeAdapter = await createBridgeAdapter(logger, l1Web3, l2Web3);
+    if (config.botModes.l1FinalizerEnabled) await canonicalBridgeAdapter.initialize();
+
     const crossDomainFinalizer = new CrossDomainFinalizer(
       logger,
       gasEstimator,
       l1Client,
       l2Client,
+      canonicalBridgeAdapter,
       accounts[0],
+      config.l2DeployData,
       config.crossDomainFinalizationThreshold
     );
 
@@ -119,16 +124,22 @@ export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
           if (config.botModes.disputerEnabled) await relayer.checkForPendingRelaysAndDispute();
           else logger.debug({ at: "AcrossRelayer#Disputer", message: "Disputer disabled" });
 
-          if (config.botModes.finalizerEnabled) await relayer.checkforSettleableRelaysAndSettle();
-          else logger.debug({ at: "AcrossRelayer#Finalizer", message: "Finalizer disabled" });
+          if (config.botModes.settlerEnabled) await relayer.checkforSettleableRelaysAndSettle();
+          else logger.debug({ at: "AcrossRelayer#Finalizer", message: "Relay Settler disabled" });
+
+          if (config.botModes.l1FinalizerEnabled) await crossDomainFinalizer.checkForConfirmedL2ToL1RelaysAndFinalize();
+          else logger.debug({ at: "AcrossRelayer#CrossDomainFinalizer", message: "Confirmed L1 finalizer disabled" });
 
           if (config.botModes.l2FinalizerEnabled) await crossDomainFinalizer.checkForBridgeableL2TokensAndBridge();
-          else logger.debug({ at: "AcrossRelayer#CrossDomainFinalizer", message: "Cross domain finalizer disabled" });
+          else logger.debug({ at: "AcrossRelayer#CrossDomainFinalizer", message: "L2->L1 finalizer disabled" });
 
           // Each of the above code blocks could have produced transactions. If they did, their promises are stored
           // in the executed transactions array. The method below awaits all these transactions to ensure they are
           // correctly included in a block. if any submitted transactions contains an error then a log is produced.
-          await processTransactionPromiseBatch(relayer.getExecutedTransactions(), logger);
+          await processTransactionPromiseBatch(
+            [...relayer.getExecutedTransactions(), ...crossDomainFinalizer.getExecutedTransactions()],
+            logger
+          );
           relayer.resetExecutedTransactions(); // Purge the executed transactions array for next execution loop.
         },
 
