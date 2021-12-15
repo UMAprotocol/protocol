@@ -28,10 +28,14 @@ export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
 
     // If pollingDelay === 0 then the bot is running in serverless mode and should send a `debug` level log.
     // Else, if running in loop mode (pollingDelay != 0), then it should send a `info` level log.
+
+    // The logger is having issues with logging nested BNs. Remove this for now. Is indirectly fixed in PR https://github.com/UMAprotocol/protocol/pull/3656
+    /* eslint-disable @typescript-eslint/no-unused-vars */
+    const { rateModels, ...logableConfig } = config;
     logger[config.pollingDelay === 0 ? "debug" : "info"]({
       at: "AcrossRelayer#index",
       message: "Relayer started 🌉",
-      config,
+      logableConfig,
     });
 
     const [accounts] = await Promise.all([l1Web3.eth.getAccounts()]);
