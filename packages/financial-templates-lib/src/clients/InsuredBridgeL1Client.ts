@@ -62,7 +62,7 @@ export interface BridgePoolData {
 export class InsuredBridgeL1Client {
   public readonly bridgeAdmin: BridgeAdminInterfaceWeb3;
   public bridgePools: { [key: string]: BridgePoolData }; // L1TokenAddress=>BridgePoolData
-  private whitelistedTokens: { [chainId: string]: { [l1TokenAddress: string]: string } } = {};
+  private whitelistedTokens: { [chainId: string]: { [l1TokenAddress: string]: string } } = {}; // chainId => L1TokenAddress => L2TokenAddress
   public optimisticOracleLiveness = 0;
   public firstBlockToSearch: number;
 
@@ -118,6 +118,11 @@ export class InsuredBridgeL1Client {
   getWhitelistedTokensForChainId(chainId: string): { [l1TokenAddress: string]: string } {
     this._throwIfNotInitialized();
     return this.whitelistedTokens[chainId];
+  }
+
+  getWhitelistedL2TokensForChainId(chainId: string) {
+    this._throwIfNotInitialized();
+    return Object.values(this.getWhitelistedTokensForChainId(chainId));
   }
 
   hasInstantRelayer(l1Token: string, depositHash: string, realizedLpFeePct: string): boolean {
