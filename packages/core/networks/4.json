@@ -78,5 +78,17 @@
   {
     "contractName": "GovernorHub",
     "address": "0x5A361C68c0F6605F44e564469Ff68826DAA3A36E"
+  },
+  {
+    "contractName": "OptimisticOracle",
+    "address": "0x3746badD4d6002666dacd5d7bEE19f60019A8433"
+  },
+  {
+    "contractName": "TokenFactory",
+    "address": "0xcB69d8dAb9b1F1D9dF8A42a1001fd0ce7A8fFB5B"
+  },
+  {
+    "contractName": "LongShortPairCreator",
+    "address": "0x8f584beEd8371757d520f7CEC06fF07de225371D"
   }
 ]
