@@ -85,22 +85,22 @@ class PoolState {
   public async read(latestBlock: number, previousBlock?: number) {
     if (this.l1Token === undefined) this.l1Token = await this.contract.l1Token();
     // typechain does not have complete types for call options, so we have to cast blockTag to any
-    const [exchangeRatePrevious, liquidityUtilizationCurrent] = await Promise.all([
-      this.contract.callStatic.exchangeRateCurrent({
-        blockTag: previousBlock || latestBlock - 1,
-      } as any),
-      this.contract.callStatic.liquidityUtilizationCurrent(),
-    ]);
+    const exchangeRatePrevious = await this.contract.callStatic.exchangeRateCurrent({
+      blockTag: previousBlock || latestBlock - 1,
+    } as any);
+
     return {
       address: this.address,
       l1Token: this.l1Token,
       exchangeRatePrevious,
-      liquidityUtilizationCurrent,
       ...(await this.batchRead([
+        // its important exchangeRateCurrent is called first, as it calls _sync under the hood which updates the contract
+        // and gives more accurate values for the following properties.
+        ["exchangeRateCurrent"],
+        ["liquidityUtilizationCurrent"],
         ["liquidReserves"],
         ["pendingReserves"],
         ["utilizedReserves"],
-        ["exchangeRateCurrent"],
       ])),
     };
   }
@@ -297,6 +297,10 @@ export class ReadPoolClient {
 export function validateWithdraw(pool: Pool, user: User, lpTokenAmount: BigNumberish) {
   const l1TokensToReturn = BigNumber.from(lpTokenAmount).mul(pool.exchangeRateCurrent).div(fixedPointAdjustment);
   assert(BigNumber.from(l1TokensToReturn).gt("0"), "Must withdraw amount greater than 0");
+  assert(
+    BigNumber.from(pool.liquidReserves).gte(l1TokensToReturn.add(pool.pendingReserves)),
+    "Utilization too high to remove that amount, try lowering withdraw amount"
+  );
   assert(BigNumber.from(lpTokenAmount).lte(user.lpTokens), "You cannot withdraw more than you have");
   return { lpTokenAmount, l1TokensToReturn: l1TokensToReturn.toString() };
 }
