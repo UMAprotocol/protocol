@@ -59,7 +59,6 @@ spoke.post("/", async (req, res) => {
     if (execResponse.error) {
       throw execResponse;
     }
-    // Log the full execResponse in this log. This enables you to retrieve the full output of the child process.
     logger.debug({
       at: "ServerlessSpoke",
       message: "Process exited with no error",
@@ -68,18 +67,10 @@ spoke.post("/", async (req, res) => {
     });
     await delay(waitForLoggerDelay); // Wait a few seconds to be sure the the winston logs are processed upstream.
 
-    // Send back a redacted log to the hub, if possible. This is done to decrease the amount of logs that are sent to
-    // the hub. extract only the `message` filed from the logs. This is the main log headline without any details.
     res.status(200).send({
       message: "Process exited with no error",
       childProcessIdentifier: _getChildProcessIdentifier(req),
-      execResponse: {
-        error: execResponse.error,
-        stderr: execResponse.stderr,
-        stdout: Array.isArray(execResponse.stdout)
-          ? execResponse.stdout.map((logMessage) => logMessage["message"])
-          : execResponse.stdout,
-      },
+      execResponse,
     });
   } catch (execResponse) {
     // If there is an error, send a debug log to the winston transport to capture in GCP. We dont want to trigger a
@@ -131,7 +122,8 @@ function _stripExecStdout(output, strategyRunnerSpoke = false) {
     // done to clean up the upstream logs produced by the bots so the serverless hub can still produce meaningful logs
     // while preserving the individual bot execution logs within GCP when using the strategy runner.
     if (strategyRunnerSpoke) return logsArray.filter((logMessage) => logMessage.at == "BotStrategyRunner");
-    else return logsArray;
+    // extract only the `message` field from each log to reduce how much is sent back to the hub and logged in GCP.
+    else return logsArray.map((logMessage) => logMessage["message"]);
   } catch (error) {
     return _regexStrip(output).replace(/\r?\n|\r/g, " "); // Remove escaped new line chars. Replace with space between each log output.
   }
