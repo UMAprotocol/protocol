@@ -124,7 +124,7 @@ function _execShellCommand(cmd, inputEnv, strategyRunnerSpoke = false) {
 // Format stdout outputs. Turns all logs generated while running the script into an array of Json objects.
 function _stripExecStdout(output, strategyRunnerSpoke = false) {
   if (!output) return output;
-  // Parse the outputs into a json object to get an array of logs. It is possible that the output is not in a parable
+  // Parse the outputs into a json object to get an array of logs. It is possible that the output is not in a parsable
   // form if the spoke was running a process that did not correctly generate a winston log. In this case simply return
   // the stripped output. Note that we use an array to preserve the log ordering.
 
