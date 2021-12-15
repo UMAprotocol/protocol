@@ -8,7 +8,7 @@ import { ethers } from "ethers";
 import * as constants from "./constants";
 
 /**
- * Main function to estimate gas fees based on coingecko token price and ethers gasPrice. You must still
+ * Function to estimate gas fees based on coingecko token price and ethers gasPrice. You must still
  * provide a gas amount estimation based on the usage pattern. See constants for current estimations. Returns
  * an amount of gas estimated in the token provided in wei.
  *
@@ -35,7 +35,7 @@ export async function getGasFee(
     gasPrice = await ethersProvider.getGasPrice();
   }
 
-  // this means the token is eth, address undefined or address zero
+  // We treat ETH differently since we dont need a price conversion like other tokens and return early.
   if (tokenAddress === constants.ADDRESSES.ETH) {
     return calculateGasFees(gas, gasPrice);
   }
@@ -71,10 +71,10 @@ const GetGasByAddress = (gasTable: GasTable) => (tokenAddress: string): number =
   return gasTable.DEFAULT;
 };
 
-const getInstantGasByAddress = GetGasByAddress(makeInstantGasTable());
-const getSlowGasByAddress = GetGasByAddress(makeSlowGasTable());
+export const getInstantGasByAddress = GetGasByAddress(makeInstantGasTable());
+export const getSlowGasByAddress = GetGasByAddress(makeSlowGasTable());
 
-type ReturnGetDepositFees = {
+type DepositFees = {
   slowPct: string;
   instantPct: string;
 };
@@ -86,13 +86,14 @@ type ReturnGetDepositFees = {
  * @param {Provider} ethersProvider - Read provider on mainnet
  * @param {BigNumberish} amountToRelay - Amount in wei of token to relay
  * @param {string} tokenAddress - Mainnet address of token to relay, for ETH specify constants.ADDRESSES.ETH
- * @returns {Promise<ReturnGetDepositFees>} - Returns the fee parameters to the deposit function on the deposit box contract. These are percentages in wei.
+ * @returns {Promise<DepositFees>} - Returns the fee parameters to the deposit function on the deposit box contract.
+ * These are percentages in wei. For example 50% is represented as 0.5 * 1e18.
  */
 export async function getDepositFees(
   ethersProvider: Provider,
   amountToRelay: BigNumberish,
   tokenAddress: string = constants.ADDRESSES.ETH
-): Promise<ReturnGetDepositFees> {
+): Promise<DepositFees> {
   const slowGas = getSlowGasByAddress(tokenAddress);
   const instantGas = getInstantGasByAddress(tokenAddress);
   const slowGasFee = await getGasFee(ethersProvider, slowGas, tokenAddress);
