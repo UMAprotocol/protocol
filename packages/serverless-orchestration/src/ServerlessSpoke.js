@@ -67,13 +67,11 @@ spoke.post("/", async (req, res) => {
     });
     await delay(waitForLoggerDelay); // Wait a few seconds to be sure the the winston logs are processed upstream.
 
-    res
-      .status(200)
-      .send({
-        message: "Process exited with no error",
-        childProcessIdentifier: _getChildProcessIdentifier(req),
-        execResponse,
-      });
+    res.status(200).send({
+      message: "Process exited with no error",
+      childProcessIdentifier: _getChildProcessIdentifier(req),
+      execResponse,
+    });
   } catch (execResponse) {
     // If there is an error, send a debug log to the winston transport to capture in GCP. We dont want to trigger a
     // `logger.error` here as this will be dealt with one layer up in the Hub implementation.
@@ -85,13 +83,11 @@ spoke.post("/", async (req, res) => {
       execResponse: execResponse instanceof Error ? execResponse.message : execResponse,
     });
     await delay(waitForLoggerDelay); // Wait a few seconds to be sure the the winston logs are processed upstream.
-    res
-      .status(500)
-      .send({
-        message: "Process exited with error",
-        childProcessIdentifier: _getChildProcessIdentifier(req),
-        execResponse: execResponse instanceof Error ? execResponse.message : execResponse,
-      });
+    res.status(500).send({
+      message: "Process exited with error",
+      childProcessIdentifier: _getChildProcessIdentifier(req),
+      execResponse: execResponse instanceof Error ? execResponse.message : execResponse,
+    });
   }
 });
 
