@@ -10,6 +10,11 @@ import "../common/implementation/Lockable.sol";
  * @notice Governor contract deployed on L2 that receives governance actions from Ethereum.
  */
 contract GovernorSpoke is Lockable, ChildMessengerConsumerInterface {
+    struct Call {
+        address to;
+        bytes data;
+    }
+
     // Messenger contract that receives messages from root chain.
     ChildMessengerInterface public messenger;
 
@@ -36,12 +41,15 @@ contract GovernorSpoke is Lockable, ChildMessengerConsumerInterface {
      * delegated transaction.
      */
     function processMessageFromParent(bytes memory data) public override nonReentrant() onlyMessenger() {
-        (address to, bytes memory inputData) = abi.decode(data, (address, bytes));
+        Call[] memory calls = abi.decode(data, (Call[]));
         // TODO: Consider calling this via <address>.call(): https://docs.soliditylang.org/en/v0.8.10/units-and-global-variables.html?highlight=low%20level%20call#members-of-address-types
         // to avoid inline assembly.
 
-        require(_executeCall(to, inputData), "execute call failed");
-        emit ExecutedGovernanceTransaction(to, inputData);
+        for (uint256 i = 0; i < calls.length; i++) {
+            (address to, bytes memory inputData) = (calls[i].to, calls[i].data);
+            require(_executeCall(to, inputData), "execute call failed");
+            emit ExecutedGovernanceTransaction(to, inputData);
+        }
     }
 
     // Note: this snippet of code is copied from Governor.sol.
