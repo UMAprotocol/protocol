@@ -70,17 +70,19 @@ spoke.post("/", async (req, res) => {
 
     // Send back a redacted log to the hub, if possible. This is done to decrease the amount of logs that are sent to
     // the hub. extract only the `message` filed from the logs. This is the main log headline without any details.
-    res.status(200).send({
-      message: "Process exited with no error",
-      childProcessIdentifier: _getChildProcessIdentifier(req),
-      execResponse: {
-        error: execResponse.error,
-        stderr: execResponse.stderr,
-        stdout: Array.isArray(execResponse.stdout)
-          ? execResponse.stdout.map((logMessage) => logMessage["message"])
-          : execResponse.stdout,
-      },
-    });
+    res
+      .status(200)
+      .send({
+        message: "Process exited with no error",
+        childProcessIdentifier: _getChildProcessIdentifier(req),
+        execResponse: {
+          error: execResponse.error,
+          stderr: execResponse.stderr,
+          stdout: Array.isArray(execResponse.stdout)
+            ? execResponse.stdout.map((logMessage) => logMessage["message"])
+            : execResponse.stdout,
+        },
+      });
   } catch (execResponse) {
     // If there is an error, send a debug log to the winston transport to capture in GCP. We dont want to trigger a
     // `logger.error` here as this will be dealt with one layer up in the Hub implementation.
@@ -92,11 +94,13 @@ spoke.post("/", async (req, res) => {
       execResponse: execResponse instanceof Error ? execResponse.message : execResponse,
     });
     await delay(waitForLoggerDelay); // Wait a few seconds to be sure the the winston logs are processed upstream.
-    res.status(500).send({
-      message: "Process exited with error",
-      childProcessIdentifier: _getChildProcessIdentifier(req),
-      execResponse: execResponse instanceof Error ? execResponse.message : execResponse,
-    });
+    res
+      .status(500)
+      .send({
+        message: "Process exited with error",
+        childProcessIdentifier: _getChildProcessIdentifier(req),
+        execResponse: execResponse instanceof Error ? execResponse.message : execResponse,
+      });
   }
 });
 
@@ -123,8 +127,9 @@ function _stripExecStdout(output, strategyRunnerSpoke = false) {
   // Parse the outputs into a json object to get an array of logs. It is possible that the output is not in a parable
   // form if the spoke was running a process that did not correctly generate a winston log. In this case simply return
   // the stripped output. Note that we use an array to preserve the log ordering.
-  const strippedOutput = _regexStrip(output).replace(/\r?\n|\r/g, ","); // Remove escaped new line chars. Replace with comma between each log output.
+
   try {
+    const strippedOutput = _regexStrip(output).replace(/\r?\n|\r/g, ","); // Remove escaped new line chars. Replace with comma between each log output.
     const logsArray = JSON.parse("[" + strippedOutput.substring(0, strippedOutput.length - 1) + "]");
     // If the body contains `strategyRunnerSpoke` return filter to only return the `BotStrategyRunner` logs. This is
     // done to clean up the upstream logs produced by the bots so the serverless hub can still produce meaningful logs
@@ -132,7 +137,7 @@ function _stripExecStdout(output, strategyRunnerSpoke = false) {
     if (strategyRunnerSpoke) return logsArray.filter((logMessage) => logMessage.at == "BotStrategyRunner");
     else return logsArray; // move the mapping into the above method
   } catch (error) {
-    return strippedOutput;
+    return _regexStrip(output).replace(/\r?\n|\r/g, " "); // Remove escaped new line chars. Replace with space between each log output.
   }
 }
 
