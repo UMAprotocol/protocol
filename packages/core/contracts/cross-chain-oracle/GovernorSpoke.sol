@@ -2,43 +2,29 @@
 pragma solidity ^0.8.0;
 
 import "./interfaces/ChildMessengerConsumerInterface.sol";
-import "./interfaces/ChildMessengerInterface.sol";
 import "../common/implementation/Lockable.sol";
+import "./SpokeBase.sol";
 
 /**
  * @title Cross-chain Oracle L2 Governor Spoke.
  * @notice Governor contract deployed on L2 that receives governance actions from Ethereum.
  */
-contract GovernorSpoke is Lockable, ChildMessengerConsumerInterface {
-    // Messenger contract that receives messages from root chain.
-    ChildMessengerInterface public messenger;
+contract GovernorSpoke is Lockable, SpokeBase, ChildMessengerConsumerInterface {
+    constructor(address _finderAddress) SpokeBase(_finderAddress) {}
 
     event ExecutedGovernanceTransaction(address indexed to, bytes data);
-    event SetChildMessenger(address indexed childMessenger);
-
-    constructor(ChildMessengerInterface _messengerAddress) {
-        messenger = _messengerAddress;
-        emit SetChildMessenger(address(messenger));
-    }
-
-    modifier onlyMessenger() {
-        require(msg.sender == address(messenger), "Caller must be messenger");
-        _;
-    }
 
     /**
      * @notice Executes governance transaction created on Ethereum.
-     * @dev Can only be called by ChildMessenger contract that wants to execute governance action on this child chain that
-     * originated from DVM voters on root chain. ChildMessenger should only receive communication from ParentMessenger
-     * on mainnet.
+     * @dev Can only be called by ChildMessenger contract that wants to execute governance action on this child chain
+     * that originated from DVM voters on root chain. ChildMessenger should only receive communication from
+     * ParentMessenger on mainnet. See the SpokeBase for the onlyMessenger modifier.
 
      * @param data Contains the target address and the encoded function selector + ABI encoded params to include in
      * delegated transaction.
      */
     function processMessageFromParent(bytes memory data) public override nonReentrant() onlyMessenger() {
         (address to, bytes memory inputData) = abi.decode(data, (address, bytes));
-        // TODO: Consider calling this via <address>.call(): https://docs.soliditylang.org/en/v0.8.10/units-and-global-variables.html?highlight=low%20level%20call#members-of-address-types
-        // to avoid inline assembly.
 
         require(_executeCall(to, inputData), "execute call failed");
         emit ExecutedGovernanceTransaction(to, inputData);

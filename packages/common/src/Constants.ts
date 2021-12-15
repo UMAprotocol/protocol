@@ -13,6 +13,7 @@ export const interfaceName = {
   MockOracleAncillary: "Oracle",
   SinkOracle: "Oracle",
   SkinnyOptimisticOracle: "SkinnyOptimisticOracle",
+  ChildMessenger: "ChildMessenger",
 };
 
 // These enforce the maximum number of transactions that can fit within one batch-commit and batch-reveal.
