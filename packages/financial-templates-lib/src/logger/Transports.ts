@@ -39,8 +39,8 @@ export function createTransports(transportsConfig: TransportsConfig = {}): Trans
 
   // If the logger is running in production mode then add the GCE winston transport. Else, add a console transport.
   else if ((transportsConfig.environment ?? process.env.ENVIRONMENT) == "production") {
-    // const { LoggingWinston } = require("@google-cloud/logging-winston");
-    // transports.push(new LoggingWinston());
+    const { LoggingWinston } = require("@google-cloud/logging-winston");
+    transports.push(new LoggingWinston());
     if (!require("@google-cloud/trace-agent").get().enabled) require("@google-cloud/trace-agent").start();
   } else if (transportsConfig.createConsoleTransport != undefined ? transportsConfig.createConsoleTransport : true) {
     // Add a console transport to log to the console.
