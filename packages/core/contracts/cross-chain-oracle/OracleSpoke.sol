@@ -37,13 +37,6 @@ contract OracleSpoke is
         require(registry.isContractRegistered(msg.sender), "Caller must be registered");
         _;
     }
-    modifier onlyGovernorSpoke() {
-        require(
-            msg.sender == finder.getImplementationAddress(OracleInterfaces.GovernorSpoke),
-            "Caller must be governor spoke"
-        );
-        _;
-    }
 
     /**
      * @notice This is called to bridge a price request to mainnet. This method will enqueue a new price request
