@@ -261,9 +261,10 @@ hub.post("/", async (req, res) => {
     res
       .status(500)
       .send({
-      message: errorOutput instanceof Error ? "A fatal error occurred in the hub" : "Some spoke calls returned errors",
-      output: errorOutput instanceof Error ? errorOutput.message : errorOutput,
-    });
+        message:
+          errorOutput instanceof Error ? "A fatal error occurred in the hub" : "Some spoke calls returned errors",
+        output: errorOutput instanceof Error ? errorOutput.message : errorOutput,
+      });
   }
 });
 
