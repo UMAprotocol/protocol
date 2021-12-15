@@ -180,9 +180,9 @@ describe("Optimism_ParentMessenger", function () {
         .changeImplementationAddress(utf8ToHex(interfaceName.CollateralWhitelist), l1Owner)
         .encodeABI();
 
-      const txn = await governorHub.methods
-        .relayGovernance(chainId, l2FinderAddress, sampleGovernanceAction)
-        .send({ from: l1Owner });
+      const call = [{ to: l2FinderAddress, data: sampleGovernanceAction }];
+
+      const txn = await governorHub.methods.relayGovernance(chainId, call).send({ from: l1Owner });
 
       // Validate that the l1CrossDomainMessengerMock received the expected cross-domain message, destine for the child.
       const publishPriceMessage = l1CrossDomainMessengerMock.smocked.sendMessage.calls;
@@ -209,8 +209,16 @@ describe("Optimism_ParentMessenger", function () {
 
       // Re-construct the data that the Governor hub should have sent to the child.the mock.
       const encodedData = web3.eth.abi.encodeParameters(
-        ["address", "bytes"],
-        [l2FinderAddress, sampleGovernanceAction]
+        [
+          {
+            type: "tuple[]",
+            components: [
+              { name: "to", type: "address" },
+              { name: "data", type: "bytes" },
+            ],
+          },
+        ],
+        [call]
       );
       const expectedMessageFromManualEncoding = childMessengerInterface.methods
         .processMessageFromCrossChainParent(encodedData, governorSpokeAddress)
