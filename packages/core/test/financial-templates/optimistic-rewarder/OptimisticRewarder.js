@@ -415,6 +415,7 @@ describe("OptimisticRewarder", () => {
     const redemptions = [{ token: redemptionToken.options.address, amount: toWei("100") }];
     assert(await didContractThrow(optimisticRewarder.methods.dispute(tokenId, redemptions).send({ from: disputer })));
     await optimisticRewarder.methods.requestRedemption(tokenId, redemptions).send({ from: submitter });
+    const expirationTime = parseInt(await optimisticRewarder.methods.getCurrentTime().call()) + liveness;
 
     // Add 100 seconds to the current time so the dispute occurs at a different time than the proposal.
     await advanceTime(100);
@@ -427,7 +428,7 @@ describe("OptimisticRewarder", () => {
       disputeReceipt,
       optimisticRewarder,
       "Disputed",
-      (event) => event.tokenId === tokenId && request.expirationTime.toString() === event.expiryTime.toString()
+      (event) => event.tokenId === tokenId && expirationTime.toString() === event.expiryTime.toString()
     );
 
     const [dvmRequest] = await mockOracle.methods.getPendingQueries().call();
