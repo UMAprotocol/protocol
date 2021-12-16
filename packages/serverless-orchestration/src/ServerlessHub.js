@@ -37,7 +37,7 @@ const datastore = new Datastore();
 // Web3 instance to get current block numbers of polling loops.
 const Web3 = require("web3");
 
-const { delay, createNewLogger, waitForLogger } = require("@uma/financial-templates-lib");
+const { delay, createNewLogger } = require("@uma/financial-templates-lib");
 let customLogger;
 let spokeUrl;
 let customNodeUrl;
@@ -211,7 +211,6 @@ hub.post("/", async (req, res) => {
       output: { errorOutputs, validOutputs, retriedOutputs },
     });
 
-    await waitForLogger(logger);
     await delay(waitForLoggerDelay); // Wait a few seconds to be sure the the winston logs are processed upstream.
     res
       .status(200)
@@ -256,7 +255,6 @@ hub.post("/", async (req, res) => {
       });
     }
 
-    await waitForLogger(logger);
     await delay(waitForLoggerDelay); // Wait a few seconds to be sure the the winston logs are processed upstream.
     res.status(500).send({
       message: errorOutput instanceof Error ? "A fatal error occurred in the hub" : "Some spoke calls returned errors",

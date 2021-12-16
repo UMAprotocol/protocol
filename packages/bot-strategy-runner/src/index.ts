@@ -104,13 +104,13 @@ async function runStrategies(strategyRunnerConfig: strategyRunnerConfig) {
           message: "End of execution loop - terminating process",
         });
 
-      await delay(2); // waitForLogger does not always work 100% correctly in serverless. add a delay to ensure logs are captured upstream.
+      await delay(5);
       break;
     }
     if (strategyRunnerConfig.emitRunnerLogs)
       Logger.debug({
         at: "BotStrategyRunner",
-        message: "End of execution loop - waiting polling delay",
+        message: "End of execution loop - ting polling delay",
         pollingDelay: `${strategyRunnerConfig.pollingDelay} (s)`,
       });
     await delay(Number(strategyRunnerConfig.pollingDelay));

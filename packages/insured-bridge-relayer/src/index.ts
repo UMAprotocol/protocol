@@ -9,7 +9,6 @@ import { getWeb3, getWeb3ByChainId, processTransactionPromiseBatch, getRetryWeb3
 import {
   GasEstimator,
   Logger,
-  waitForLogger,
   delay,
   InsuredBridgeL1Client,
   InsuredBridgeL2Client,
@@ -166,8 +165,7 @@ export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
           at: "AcrossRelayer#index",
           message: "End of serverless execution loop - terminating process",
         });
-        await delay(5);
-        await waitForLogger(logger);
+        await delay(5); // Set a delay to let the transports flush fully.
         break;
       }
       logger.debug({
