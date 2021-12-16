@@ -41,7 +41,7 @@ contract GovernorHub is Ownable, Lockable, MultiCaller {
      * @notice This should be called in order to relay a governance request to the `GovernorSpoke` contract deployed to
      * the child chain associated with `chainId`.
      * @param chainId network that messenger contract will communicate with
-     * @param calls the calls to be made by the GovernorSpoke.
+     * @param calls the calls to be made by the GovernorSpoke. Should encode a `to` and `data` prop for each call.
      * @dev Only callable by the owner (presumably the UMA DVM Governor contract, on L1 Ethereum).
      */
     function relayGovernance(uint256 chainId, GovernorSpoke.Call[] memory calls) external nonReentrant() onlyOwner {
