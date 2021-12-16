@@ -98,8 +98,10 @@ function _execShellCommand(cmd, inputEnv, strategyRunnerSpoke = false) {
       { env: { ...process.env, ...inputEnv }, stdio: "inherit" },
       (error, stdout, stderr) => {
         // The output from the process execution contains punctuation marks and escape chars that should be stripped.
-        stdout = _stripExecStdout(stdout, strategyRunnerSpoke);
-        stderr = _stripExecStdError(stderr);
+        // Note: we also hard-limit the size of the output to avoid issues when trying to log the result.
+        const bytesLimit = 50000;
+        stdout = cutString(_stripExecStdout(stdout, strategyRunnerSpoke), bytesLimit);
+        stderr = cutString(_stripExecStdError(stderr), bytesLimit);
         resolve({ error, stdout, stderr });
       }
     );
@@ -147,6 +149,13 @@ function _regexStrip(output) {
 function _getChildProcessIdentifier(req) {
   if (!req.body.environmentVariables) return null;
   return req.body.environmentVariables.BOT_IDENTIFIER || null;
+}
+
+// Cuts a string such that it is at _most_ maxBytes bytes.
+// If cutting is necessary, it removes the beginning of the string and leaves the end.
+function cutString(input, maxBytes) {
+  const lengthLimit = Math.floor(maxBytes / 2);
+  return input.substring(Math.max(0, input.length - lengthLimit));
 }
 
 // Start the spoke's async listening process. Enables injection of a logging instance & port for testing.
