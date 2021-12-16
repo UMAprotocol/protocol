@@ -76,8 +76,14 @@ export class OptimismBridgeAdapter implements BridgeAdapterInterface {
 
     try {
       await finalizationTransaction.call({ from: ZERO_ADDRESS });
+
+      this.logger.debug({
+        at: "OptimismBridgeAdapter",
+        message: `Constructing cross domain finalization transaction for ${l2TransactionHash}`,
+      });
       return { l2TransactionHash, finalizationTransaction };
     } catch (error) {
+      this.logger.debug({ at: "OptimismBridgeAdapter", message: `${l2TransactionHash} is not confirmed` });
       return { l2TransactionHash, finalizationTransaction: null };
     }
   }
