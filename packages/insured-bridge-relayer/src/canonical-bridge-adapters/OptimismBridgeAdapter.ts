@@ -10,18 +10,18 @@ import { getDeployedContractArtifact } from "@eth-optimism/contracts/dist/contra
 import BridgeAdapterInterface from "./BridgeAdapterInterface";
 
 import Web3 from "web3";
+import { Contract } from "web3-eth-contract";
+
 import type { TransactionType } from "@uma/common";
 
 export class OptimismBridgeAdapter implements BridgeAdapterInterface {
-  private l1EthersProvider: any;
-  private l2EthersProvider: any;
-  private l1StateCommitmentChainAddress: any;
-  private l2CrossDomainMessengerAddress: any;
-  private l1CrossDomainMessenger: any;
+  private l1EthersProvider: providers.JsonRpcProvider;
+  private l2EthersProvider: providers.JsonRpcProvider;
+  private l1StateCommitmentChainAddress: string;
+  private l2CrossDomainMessengerAddress: string;
+  private l1CrossDomainMessenger: Contract;
 
-  constructor(readonly logger: winston.Logger, readonly l1Web3: Web3, readonly l2Web3: Web3) {}
-
-  async initialize() {
+  constructor(readonly logger: winston.Logger, readonly l1Web3: Web3, readonly l2Web3: Web3) {
     // Set providers for L1 and L2. Optimism package requires ethers providers.
     this.l1EthersProvider = new providers.Web3Provider(this.l1Web3.currentProvider as any);
     this.l2EthersProvider = new providers.Web3Provider(this.l2Web3.currentProvider as any);
@@ -33,6 +33,10 @@ export class OptimismBridgeAdapter implements BridgeAdapterInterface {
       getContractDefinition("IL1CrossDomainMessenger").abi,
       getDeployedContractArtifact("Proxy__OVM_L1CrossDomainMessenger", "mainnet").address
     );
+  }
+
+  async initialize() {
+    return;
   }
 
   async constructCrossDomainFinalizationTransaction(
