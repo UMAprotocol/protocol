@@ -166,8 +166,8 @@ export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
           at: "AcrossRelayer#index",
           message: "End of serverless execution loop - terminating process",
         });
+        await delay(5);
         await waitForLogger(logger);
-        await delay(2);
         break;
       }
       logger.debug({
