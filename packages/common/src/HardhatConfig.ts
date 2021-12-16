@@ -84,7 +84,7 @@ export function getHardhatConfig(
         testWhitelist: ["oracle/Finder"],
         testBlacklist,
       },
-      matic: { chainId: 137, url: getNodeUrl("polygon-matic", true), accounts: { mnemonic } },
+      matic: { chainId: 137, url: getNodeUrl("polygon-matic", true), accounts: { mnemonic }, gasPrice: 30000000000 },
       mumbai: { chainId: 80001, url: getNodeUrl("polygon-mumbai", true), accounts: { mnemonic } },
       boba: { chainId: 288, url: getNodeUrl("boba", true), accounts: { mnemonic } },
     },
