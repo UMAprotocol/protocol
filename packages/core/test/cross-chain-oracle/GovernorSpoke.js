@@ -41,7 +41,7 @@ describe("GovernorSpoke.js", async () => {
     await addressWhitelist.methods.transferOwnership(governorSpoke.options.address).send({ from: owner });
 
     identifierWhitelist = await IdentifierWhitelist.new().send({ from: owner });
-    await addressWhitelist.methods.transferOwnership(governorSpoke.options.address).send({ from: owner });
+    await identifierWhitelist.methods.transferOwnership(governorSpoke.options.address).send({ from: owner });
   });
 
   it("Can delegate call if called by Messenger", async function () {
@@ -92,7 +92,18 @@ describe("GovernorSpoke.js", async () => {
     let inputDataBytes = finder.methods
       .changeImplementationAddress(utf8ToHex(interfaceName.ChildMessenger), owner)
       .encodeABI();
-    let messageBytes = web3.eth.abi.encodeParameters(["address", "bytes"], [targetAddress, inputDataBytes]);
+    let messageBytes = web3.eth.abi.encodeParameters(
+      [
+        {
+          type: "tuple[]",
+          components: [
+            { name: "to", type: "address" },
+            { name: "data", type: "bytes" },
+          ],
+        },
+      ],
+      [[{ to: targetAddress, data: inputDataBytes }]]
+    );
 
     let txn = await governorSpoke.methods.processMessageFromParent(messageBytes).send({ from: messenger });
     await assertEventEmitted(
