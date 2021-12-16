@@ -104,7 +104,7 @@ async function runStrategies(strategyRunnerConfig: strategyRunnerConfig) {
           message: "End of execution loop - terminating process",
         });
 
-      await delay(5);
+      await delay(5); // Set a delay to let the transports flush fully.
       break;
     }
     if (strategyRunnerConfig.emitRunnerLogs)
