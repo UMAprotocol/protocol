@@ -28,7 +28,7 @@ const SyntheticToken = getContract("SyntheticToken");
 const winston = require("winston");
 const sinon = require("sinon");
 const { SpyTransport, lastSpyLogIncludes, spyLogIncludes, lastSpyLogLevel } = require("@uma/financial-templates-lib");
-const { ZERO_ADDRESS, runDefaultFixture } = require("@uma/common");
+const { ZERO_ADDRESS, runDefaultFixture, addGlobalHardhatTestingAddress } = require("@uma/common");
 
 // Use Ganache to create additional web3 providers with different chain ID's
 const ganache = require("ganache-core");
@@ -105,9 +105,6 @@ describe("ServerlessHub.js", function () {
       transports: [new SpyTransport({ level: "debug" }, { spy: spokeSpy })],
     });
 
-    // Start the serverless spoke instance with the spy logger injected.
-    spokeInstance = await spoke.Poll(spokeSpyLogger, spokeTestPort);
-
     hubInstance = await hub.Poll(
       hubSpyLogger, // injected spy logger
       hubTestPort, // port to run the hub on
@@ -115,6 +112,9 @@ describe("ServerlessHub.js", function () {
       network.config.url, // custom node URL to enable the hub to query block numbers.
       { printHubConfig: true } // set hub config to print config before execution.
     );
+
+    // Start the serverless spoke instance with the spy logger injected.
+    spokeInstance = await spoke.Poll(spokeSpyLogger, spokeTestPort);
 
     const constructorParams = {
       expirationTimestamp: "22345678900",
@@ -144,6 +144,8 @@ describe("ServerlessHub.js", function () {
     // Set two uniswap prices to give it a little history.
     await uniswap.methods.setPrice(toWei("1"), toWei("1")).send({ from: contractDeployer });
     await uniswap.methods.setPrice(toWei("1"), toWei("1")).send({ from: contractDeployer });
+
+    addGlobalHardhatTestingAddress("Voting", ZERO_ADDRESS);
   });
   afterEach(async function () {
     hubInstance.close();
@@ -688,7 +690,7 @@ describe("ServerlessHub.js", function () {
     ); // check that the catcher for empty standouts correctly caught the error
     assert.isTrue(
       JSON.stringify(responseObject.output.errorOutputs["testServerlessMonitorError2"]).includes(
-        "missing `Started` keyword"
+        "missing `started` keyword"
       )
     ); // check the catcher for missing `Started` key words, sent at the booting sequency of all bots, is captured correctly.
   });

@@ -91,7 +91,7 @@ export class ArbitrumBridgeAdapter implements BridgeAdapterInterface {
       batchNumber: batchNumber.toNumber(),
       indexInBatch: indexInBatch.toNumber(),
       l2TransactionHash,
-      outboxProofData, // todo: improve the quality of this log by converting the bns to strings.
+      // outboxProofData, // todo: improve the quality of this log by converting the bns to strings.
     });
 
     return {

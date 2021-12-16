@@ -196,7 +196,6 @@ export class InsuredBridgeL1Client {
       quoteBlockNumber,
       liquidityUtilizationCurrent: liquidityUtilizationCurrent.toString(),
       liquidityUtilizationPostRelay: liquidityUtilizationPostRelay.toString(),
-      rateModel: this.rateModels[deposit.l1Token],
     });
 
     return calculateRealizedLpFeePct(
