@@ -42,7 +42,7 @@ describe("gasFeeCalculator", function () {
       const amount = toWei("1");
       const discount = 0;
       const feeLimit = 5;
-      const result = await across.gasFeeCalculator.getDepositFeesDetails(provider, amount, address, discount, feeLimit);
+      const result = await across.gasFeeCalculator.getDepositFeesDetails(provider, amount, address, feeLimit, discount);
       assert.ok(result.isAmountTooLow);
     });
     test(`deposit fee details eth with discount`, async function () {
@@ -50,7 +50,7 @@ describe("gasFeeCalculator", function () {
       const amount = toWei("1");
       const discount = 25;
       const feeLimit = 25;
-      const result = await across.gasFeeCalculator.getDepositFeesDetails(provider, amount, address, discount, feeLimit);
+      const result = await across.gasFeeCalculator.getDepositFeesDetails(provider, amount, address, feeLimit, discount);
       assert.ok(!result.isAmountTooLow);
     });
   });

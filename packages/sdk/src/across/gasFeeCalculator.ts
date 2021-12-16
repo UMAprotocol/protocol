@@ -87,7 +87,8 @@ export type DepositFees = {
  * @param {Provider} ethersProvider - Read provider on mainnet
  * @param {BigNumberish} amountToRelay - Amount in wei of token to relay
  * @param {string} tokenAddress = 0 - Mainnet address of token to relay. Defaults to ETH which is constants.ADDRESSES.ETH.
- * @param {string} discountPercent = 0 - Percent as a value 0-100 of gas fee discount. 0 means no discount. Typically 25 for a 25% gas fee reduction.
+ * @param {string} discountPercent = DEFAULT_GAS_DISCOUNT- Percent as a value 0-100 of gas fee discount. 0 means no discount. Typically 25 for a 25% gas fee reduction.
+ * No need to override this as the values are hardcoded in the sdk.
  * @returns {Promise<DepositFees>} - Returns the fee parameters to the deposit function on the deposit box contract.
  * These are percentages in wei. For example 50% is represented as 0.5 * 1e18.
  */
@@ -95,7 +96,7 @@ export async function getDepositFees(
   ethersProvider: Provider,
   amountToRelay: BigNumberish,
   tokenAddress: string = constants.ADDRESSES.ETH,
-  discountPercent = 0
+  discountPercent: number = constants.DEFAULT_GAS_DISCOUNT
 ): Promise<DepositFees> {
   assert(discountPercent >= 0 && discountPercent <= 100, "discountPercent must be between 0 and 100 percent");
   const slowGas = getSlowGasByAddress(tokenAddress);
@@ -133,17 +134,18 @@ export type DepositFeeDetails = {
  * @param {Provider} ethersProvider - Read provider on mainnet
  * @param {BigNumberish} amountToRelay - Amount in wei of token to relay
  * @param {string} tokenAddress = 0 - Mainnet address of token to relay, for ETH specify constants.ADDRESSES.ETH
- * @param {string} discountPercent = 0 - Percent as a value 0-100 of gas fee discount. 0 means no discount. Typically 25 for a 25% gas fee reduction.
  * @param {number} feeLimitPercent? - Optional, percent as a value 0-100 of how much to limit fees as a percentage of the total relayed. Typically 25 or 25% of fees are acceptable out of the total relay amount.
  * For instance 25 means fees can be up to 25% of the total amount to send, fees above this will cause isAmountTooLow to be true.
+ * @param {string} discountPercent = DEFAULT_GAS_DISCOUNT - Percent as a value 0-100 of gas fee discount. 0 means no discount. Typically 25 for a 25% gas fee reduction.
+ * No need to override this as the values are hardcoded in the sdk.
  * @returns {DepositFeeDetails}
  */
 export async function getDepositFeesDetails(
   ethersProvider: Provider,
   amountToRelay: BigNumberish,
   tokenAddress: string = constants.ADDRESSES.ETH,
-  discountPercent = 0,
-  feeLimitPercent?: number
+  feeLimitPercent?: number,
+  discountPercent: number = constants.DEFAULT_GAS_DISCOUNT
 ): Promise<DepositFeeDetails> {
   const { slowPct, instantPct } = await getDepositFees(ethersProvider, amountToRelay, tokenAddress, discountPercent);
   const slowTotal = BigNumber.from(slowPct).mul(amountToRelay).div(fixedPointAdjustment).toString();

@@ -81,13 +81,7 @@ const { gasFeeCalculator, constants, utils } = uma.across
 const totalRelayed = utils.toWei(10)
 const provider = ethers.providers.getDefaultProvider()
 const umaAddress = constants.ADDRESSES.UMA
-const optionalDiscountPercent = 25 // we may decide to discount gas fees by this percent, optionally omit this param
-const { slowPct, instantPct } = await gasFeecalculator.getDepositFees(
-  provider,
-  totalRelayed,
-  umaAddress,
-  optionalDiscountPercent
-)
+const { slowPct, instantPct } = await gasFeecalculator.getDepositFees(provider, totalRelayed, umaAddress)
 
 // example call to deposit, uses the slow/instant percentages from getDepositFees call
 // const tx = await depositBox.deposit(
@@ -111,13 +105,11 @@ const { gasFeeCalculator, constants, utils } = uma.across
 const totalRelayed = utils.toWei(10)
 const provider = ethers.providers.getDefaultProvider()
 const umaAddress = constants.ADDRESSES.UMA
-const optionalDiscountPercent = 25 // we may decide to discount gas fees by this percent, optionally omit this param
 const optionalFeeLimitPercent = 25 // this checks if fees are too high as a percentage of total amount to relay, omit to disable check
 const feeDetails: gasFeeCalculator.DepositFeeDetails = await gasFeecalculator.getDepositFeesDetails(
   provider,
   totalRelayed,
   umaAddress,
-  optionalDiscountPercent,
   optionalFeeLimitPercent
 )
 
