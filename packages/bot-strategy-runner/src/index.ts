@@ -110,7 +110,7 @@ async function runStrategies(strategyRunnerConfig: strategyRunnerConfig) {
     if (strategyRunnerConfig.emitRunnerLogs)
       Logger.debug({
         at: "BotStrategyRunner",
-        message: "End of execution loop - ting polling delay",
+        message: "End of execution loop - waiting polling delay",
         pollingDelay: `${strategyRunnerConfig.pollingDelay} (s)`,
       });
     await delay(Number(strategyRunnerConfig.pollingDelay));
