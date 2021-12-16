@@ -905,7 +905,7 @@ export class Relayer {
             deposit = _deposit;
             this.logger.debug({
               at: "AcrossRelayer#Disputer",
-              message: "Matched deposit using relay quote time to run new block search",
+              message: "Matched deposit using relay quote time to run new block searchz",
               l2BlockSearchConfig,
               deposit,
               relay,
