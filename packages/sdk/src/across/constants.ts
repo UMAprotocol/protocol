@@ -13,7 +13,7 @@ export const SPEED_UP_ETH_GAS = 195288;
 export const SPEED_UP_ERC_GAS = 203011;
 export const SPEED_UP_UMA_GAS = 227341;
 
-// Bots offer a discount on gas costs when batching mulitple transactions, this roughly estimates the savings
+// Bots incur lower than expected costs due to batching mulitple transactions, this roughly estimates the savings
 export const DEFAULT_GAS_DISCOUNT = 25;
 
 export interface RateModel {
