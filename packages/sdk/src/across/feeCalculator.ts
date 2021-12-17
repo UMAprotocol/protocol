@@ -1,4 +1,7 @@
-// Taken from https://github.com/UMAprotocol/protocol/blob/master/packages/financial-templates-lib/src/helpers/acrossFeesCalculator.ts
+// This Util calculates the across realized LP fees. See https://gist.github.com/chrismaree/a713725e4fe96c531c42ed7b629d4a85
+// gist for a python implementation of the logic in this file. This implementation is designed to work with both web3.js
+// and ethers BNs in the main entry point function calculateRealizedLpFeePct.
+
 import Decimal from "decimal.js";
 import { BigNumberish, BN, toBN, toBNWei, fromWei, min, max, fixedPointAdjustment } from "./utils";
 
@@ -75,9 +78,9 @@ export function calculateApyFromUtilization(
 
 export function calculateRealizedLpFeePct(
   rateModel: RateModel,
-  utilizationBeforeDeposit: BN,
-  utilizationAfterDeposit: BN
+  utilizationBeforeDeposit: BigNumberish,
+  utilizationAfterDeposit: BigNumberish
 ) {
-  const apy = calculateApyFromUtilization(rateModel, utilizationBeforeDeposit, utilizationAfterDeposit);
+  const apy = calculateApyFromUtilization(rateModel, toBN(utilizationBeforeDeposit), toBN(utilizationAfterDeposit));
   return convertApyToWeeklyFee(apy);
 }

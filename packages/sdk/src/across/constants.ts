@@ -9,6 +9,10 @@ export const FAST_ETH_GAS = 273519;
 export const FAST_ERC_GAS = 281242;
 export const FAST_UMA_GAS = 305572;
 
+export const SPEED_UP_ETH_GAS = 195288;
+export const SPEED_UP_ERC_GAS = 203011;
+export const SPEED_UP_UMA_GAS = 227341;
+
 export interface RateModel {
   UBar: string; // denote the utilization kink along the rate model where the slope of the interest rate model changes.
   R0: string; // is the interest rate charged at 0 utilization

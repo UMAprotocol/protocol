@@ -5,8 +5,8 @@ import {
   lastSpyLogIncludes,
   spyLogIncludes,
   GasEstimator,
-  RateModel,
 } from "@uma/financial-templates-lib";
+import { across } from "@uma/sdk";
 import winston from "winston";
 import sinon from "sinon";
 import hre from "hardhat";
@@ -72,7 +72,12 @@ const defaultInstantRelayFeePct = toWei("0.05");
 const minimumBridgingDelay = 60; // L2->L1 token bridging must wait at least this time.
 const initialPoolLiquidity = toWei("100");
 const depositAmount = toBNWei("1");
-const rateModel: RateModel = { UBar: toBNWei("0.65"), R0: toBNWei("0.00"), R1: toBNWei("0.08"), R2: toBNWei("1.00") };
+const rateModel: across.constants.RateModel = {
+  UBar: toWei("0.65"),
+  R0: toWei("0.00"),
+  R1: toWei("0.08"),
+  R2: toWei("1.00"),
+};
 const crossDomainFinalizationThreshold = 5; // Only if there is more than 5% in L2 vs the L1 pool should we bridge.
 
 describe("CrossDomainFinalizer.ts", function () {
