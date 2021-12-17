@@ -10,6 +10,11 @@ import "./SpokeBase.sol";
  * @notice Governor contract deployed on L2 that receives governance actions from Ethereum.
  */
 contract GovernorSpoke is Lockable, SpokeBase, ChildMessengerConsumerInterface {
+    struct Call {
+        address to;
+        bytes data;
+    }
+
     constructor(address _finderAddress) SpokeBase(_finderAddress) {}
 
     event ExecutedGovernanceTransaction(address indexed to, bytes data);
@@ -24,10 +29,13 @@ contract GovernorSpoke is Lockable, SpokeBase, ChildMessengerConsumerInterface {
      * delegated transaction.
      */
     function processMessageFromParent(bytes memory data) public override nonReentrant() onlyMessenger() {
-        (address to, bytes memory inputData) = abi.decode(data, (address, bytes));
+        Call[] memory calls = abi.decode(data, (Call[]));
 
-        require(_executeCall(to, inputData), "execute call failed");
-        emit ExecutedGovernanceTransaction(to, inputData);
+        for (uint256 i = 0; i < calls.length; i++) {
+            (address to, bytes memory inputData) = (calls[i].to, calls[i].data);
+            require(_executeCall(to, inputData), "execute call failed");
+            emit ExecutedGovernanceTransaction(to, inputData);
+        }
     }
 
     // Note: this snippet of code is copied from Governor.sol.

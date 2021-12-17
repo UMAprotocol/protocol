@@ -258,20 +258,16 @@ describe("Arbitrum_ParentMessenger", function () {
         .changeImplementationAddress(utf8ToHex(interfaceName.CollateralWhitelist), l1Owner)
         .encodeABI();
 
+      const call = [{ to: l2FinderAddress, data: sampleGovernanceAction }];
+
       // Transaction will fail unless messenger has enough ETH to pay for message:
-      assert(
-        await didContractThrow(
-          governorHub.methods.relayGovernance(chainId, l2FinderAddress, sampleGovernanceAction).send({ from: l1Owner })
-        )
-      );
+      assert(await didContractThrow(governorHub.methods.relayGovernance(chainId, call).send({ from: l1Owner })));
       await web3.eth.sendTransaction({
         from: l1Owner,
         to: arbitrum_ParentMessenger.options.address,
         value: l1CallValue.toString(),
       });
-      const txn = await governorHub.methods
-        .relayGovernance(chainId, l2FinderAddress, sampleGovernanceAction)
-        .send({ from: l1Owner });
+      const txn = await governorHub.methods.relayGovernance(chainId, call).send({ from: l1Owner });
 
       // Validate that the inbox received the expected cross-domain message, destined for the child.
       const relayGovernanceMessage = inbox.smocked.createRetryableTicketNoRefundAliasRewrite.calls;
@@ -297,8 +293,16 @@ describe("Arbitrum_ParentMessenger", function () {
 
       // Check that the relayed data contains the correct target address and encoded function data.
       const encodedData = web3.eth.abi.encodeParameters(
-        ["address", "bytes"],
-        [l2FinderAddress, sampleGovernanceAction]
+        [
+          {
+            type: "tuple[]",
+            components: [
+              { name: "to", type: "address" },
+              { name: "data", type: "bytes" },
+            ],
+          },
+        ],
+        [call]
       );
       assert.equal(encodedData, targetDataSentFromGovernorHub);
 

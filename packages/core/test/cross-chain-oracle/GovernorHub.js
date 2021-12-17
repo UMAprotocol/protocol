@@ -1,7 +1,8 @@
 const hre = require("hardhat");
-const { getContract, assertEventEmitted } = hre;
+const { getContract, assertEventEmitted, web3 } = hre;
 const { didContractThrow } = require("@uma/common");
 const { assert } = require("chai");
+const { toChecksumAddress } = web3.utils;
 
 const GovernorHub = getContract("GovernorHub");
 const MessengerMock = getContract("GovernorMessengerMock");
@@ -14,6 +15,11 @@ describe("GovernorHub.js", async () => {
   let governor;
   let messenger;
 
+  const areCallsEqual = (a, b) =>
+    a.every(
+      (aCall, index) => toChecksumAddress(aCall.to) === toChecksumAddress(b[index].to) && aCall.data === b[index].data
+    );
+
   before(async function () {
     accounts = await web3.eth.getAccounts();
     [owner, rando] = accounts;
@@ -23,6 +29,7 @@ describe("GovernorHub.js", async () => {
     governor = await GovernorHub.new().send({ from: owner });
     messenger = await MessengerMock.new().send({ from: owner });
   });
+
   it("setMessenger", async function () {
     // Only owner can call
     assert(await didContractThrow(governor.methods.setMessenger("1", messenger.options.address).send({ from: rando })));
@@ -38,14 +45,28 @@ describe("GovernorHub.js", async () => {
   it("relayGovernance", async function () {
     await governor.methods.setMessenger(1, messenger.options.address).send({ from: owner });
 
-    const dataToRelay = "0xdeadbeef";
-    const relayGovernance = governor.methods.relayGovernance("1", rando, dataToRelay);
+    const calls = [
+      { to: web3.utils.randomHex(20), data: "0xdeadbeef" },
+      { to: web3.utils.randomHex(20), data: "0xdeadbeefbeef" },
+    ];
+    const relayGovernance = governor.methods.relayGovernance("1", calls);
 
     // Only owner can call
     assert(await didContractThrow(relayGovernance.send({ from: rando })));
 
     const tx = await relayGovernance.send({ from: owner });
-    const dataSentToChild = web3.eth.abi.encodeParameters(["address", "bytes"], [rando, dataToRelay]);
+    const dataSentToChild = web3.eth.abi.encodeParameters(
+      [
+        {
+          type: "tuple[]",
+          components: [
+            { name: "to", type: "address" },
+            { name: "data", type: "bytes" },
+          ],
+        },
+      ],
+      [calls]
+    );
     await assertEventEmitted(
       tx,
       governor,
@@ -53,13 +74,11 @@ describe("GovernorHub.js", async () => {
       (event) =>
         event.chainId.toString() === "1" &&
         event.messenger === messenger.options.address &&
-        event.to === rando &&
-        event.dataFromGovernor === dataToRelay &&
+        areCallsEqual(event.calls, calls) &&
         event.dataSentToChild === dataSentToChild
     );
 
     // Check that external call messenger.sendMessageToChild occurred.
-    assert.equal(await messenger.methods.latestData().call(), dataToRelay);
-    assert.equal(await messenger.methods.latestTo().call(), rando);
+    assert.isTrue(areCallsEqual(await messenger.methods.latestCalls().call(), calls));
   });
 });
