@@ -1,10 +1,8 @@
 import Web3 from "web3";
-const { isAddress, toChecksumAddress, toBN } = Web3.utils;
+const { isAddress, toChecksumAddress } = Web3.utils;
 
 import { replaceAddressCase } from "@uma/common";
 import { across } from "@uma/sdk";
-
-import type { RateModel } from "@uma/financial-templates-lib";
 
 // Check each token rate model contains the expected data.
 const expectedRateModelKeys = ["UBar", "R0", "R1", "R2"];
@@ -56,11 +54,14 @@ export class RelayerConfig {
 
   readonly whitelistedRelayL1Tokens: string[] = [];
   readonly whitelistedChainIds: number[] = [];
-  readonly rateModels: { [key: string]: RateModel } = {};
+  readonly rateModels: { [key: string]: across.constants.RateModel } = {};
   readonly activatedChainIds: number[];
   readonly l2BlockLookback: number;
+
   readonly crossDomainFinalizationThreshold: number;
+  readonly relayerDiscount: number;
   readonly botModes: BotModes;
+
   readonly l1DeployData: { [key: string]: { timestamp: number } };
   readonly l2DeployData: { [key: string]: { blockNumber: number } };
 
@@ -74,6 +75,7 @@ export class RelayerConfig {
       CHAIN_IDS,
       L2_BLOCK_LOOKBACK,
       CROSS_DOMAIN_FINALIZATION_THRESHOLD,
+      RELAYER_DISCOUNT,
       RELAYER_ENABLED,
       SETTLER_ENABLED,
       DISPUTER_ENABLED,
@@ -101,6 +103,10 @@ export class RelayerConfig {
 
     if (this.crossDomainFinalizationThreshold >= 100)
       throw new Error("CROSS_DOMAIN_FINALIZATION_THRESHOLD must be < 100");
+
+    this.relayerDiscount = RELAYER_DISCOUNT ? Number(RELAYER_DISCOUNT) : 0;
+    if (this.relayerDiscount < 0 || this.relayerDiscount > 100)
+      throw new Error("RELAYER_DISCOUNT must be between 0 and 100");
 
     // L2 start block must be explicitly set unlike L1 due to how L2 nodes work. For best practices, we also should
     // constrain L1 start blocks but this hasn't been an issue empirically. As a data point, Arbitrum Infura has a
@@ -138,10 +144,10 @@ export class RelayerConfig {
           `${toChecksumAddress(l1Token)} does not contain the required rate model keys ${expectedRateModelKeys}`
         );
       this.rateModels[toChecksumAddress(l1Token)] = {
-        UBar: toBN(processingRateModels[l1Token].UBar),
-        R0: toBN(processingRateModels[l1Token].R0),
-        R1: toBN(processingRateModels[l1Token].R1),
-        R2: toBN(processingRateModels[l1Token].R2),
+        UBar: processingRateModels[l1Token].UBar.toString(),
+        R0: processingRateModels[l1Token].R0.toString(),
+        R1: processingRateModels[l1Token].R1.toString(),
+        R2: processingRateModels[l1Token].R2.toString(),
       };
     }
 

@@ -6,11 +6,10 @@ const { assert } = require("chai");
 const Web3 = require("web3");
 const ganache = require("ganache-core");
 
-import { interfaceName, TokenRolesEnum, HRE, ZERO_ADDRESS } from "@uma/common";
+import { interfaceName, TokenRolesEnum, HRE, ZERO_ADDRESS, addGlobalHardhatTestingAddress } from "@uma/common";
 
 const { web3, getContract } = hre as HRE;
-const { toWei, toBN, utf8ToHex, toChecksumAddress, randomHex } = web3.utils;
-const toBNWei = (number: string | number) => toBN(toWei(number.toString()).toString());
+const { toWei, utf8ToHex, toChecksumAddress, randomHex } = web3.utils;
 
 let l2Web3: typeof Web3 = undefined;
 const startGanacheServer = (chainId: number, port: number) => {
@@ -97,6 +96,11 @@ describe("index.js", function () {
 
     // Other contract setup needed to relay deposit:
     await identifierWhitelist.methods.addSupportedIdentifier(defaultIdentifier).send({ from: owner });
+
+    // Set the addresses of $UMA and $WETH in the global hardhat testing environment. This enables the profitability
+    // module to update using the real world prices.
+    addGlobalHardhatTestingAddress("VotingToken", "0x04fa0d235c4abf4bcf4787af4cf447de572ef828");
+    addGlobalHardhatTestingAddress("WETH9", "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2");
   });
 
   beforeEach(async function () {
@@ -193,12 +197,7 @@ describe("index.js", function () {
     process.env.FINALIZER_ENABLED = "1";
     process.env.POLLING_DELAY = "0";
     process.env.RATE_MODELS = JSON.stringify({
-      [l1Token.options.address]: {
-        UBar: toBNWei("0.65"),
-        R0: toBNWei("0.00"),
-        R1: toBNWei("0.08"),
-        R2: toBNWei("1.00"),
-      },
+      [l1Token.options.address]: { UBar: toWei("0.65"), R0: toWei("0.00"), R1: toWei("0.08"), R2: toWei("1.00") },
     });
     process.env.CHAIN_IDS = JSON.stringify([chainId]);
     process.env[`NODE_URL_${chainId}`] = "http://localhost:7777";
@@ -220,18 +219,8 @@ describe("index.js", function () {
     // Add another L1 token to rate model that is not whitelisted.
     const unWhitelistedL1Token = toChecksumAddress(randomHex(20));
     process.env.RATE_MODELS = JSON.stringify({
-      [l1Token.options.address]: {
-        UBar: toBNWei("0.65"),
-        R0: toBNWei("0.00"),
-        R1: toBNWei("0.08"),
-        R2: toBNWei("1.00"),
-      },
-      [unWhitelistedL1Token]: {
-        UBar: toBNWei("0.75"),
-        R0: toBNWei("0.00"),
-        R1: toBNWei("0.06"),
-        R2: toBNWei("2.00"),
-      },
+      [l1Token.options.address]: { UBar: toWei("0.65"), R0: toWei("0.00"), R1: toWei("0.08"), R2: toWei("1.00") },
+      [unWhitelistedL1Token]: { UBar: toWei("0.75"), R0: toWei("0.00"), R1: toWei("0.06"), R2: toWei("2.00") },
     });
     process.env.CHAIN_IDS = JSON.stringify([chainId]);
     process.env[`NODE_URL_${chainId}`] = "http://localhost:7777";

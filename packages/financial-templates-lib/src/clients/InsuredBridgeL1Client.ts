@@ -4,7 +4,7 @@ const { toBN, soliditySha3, toChecksumAddress } = Web3.utils;
 import { BlockFinder } from "../price-feed/utils";
 import { getAbi } from "@uma/contracts-node";
 import { Deposit } from "./InsuredBridgeL2Client";
-import { RateModel, calculateRealizedLpFeePct } from "../helpers/acrossFeesCalculator";
+import { across } from "@uma/sdk";
 
 import type { BridgeAdminInterfaceWeb3, BridgePoolWeb3 } from "@uma/contracts-node";
 import type { Logger } from "winston";
@@ -75,7 +75,7 @@ export class InsuredBridgeL1Client {
     private readonly logger: Logger,
     readonly l1Web3: Web3,
     readonly bridgeAdminAddress: string,
-    readonly rateModels: { [key: string]: RateModel },
+    readonly rateModels: { [key: string]: across.constants.RateModel },
     readonly startingBlockNumber = 0,
     readonly endingBlockNumber: number | null = null
   ) {
@@ -198,10 +198,14 @@ export class InsuredBridgeL1Client {
       liquidityUtilizationPostRelay: liquidityUtilizationPostRelay.toString(),
     });
 
-    return calculateRealizedLpFeePct(
-      this.rateModels[deposit.l1Token],
-      toBN(liquidityUtilizationCurrent),
-      toBN(liquidityUtilizationPostRelay)
+    return toBN(
+      across.feeCalculator
+        .calculateRealizedLpFeePct(
+          this.rateModels[deposit.l1Token],
+          liquidityUtilizationCurrent.toString(),
+          liquidityUtilizationPostRelay.toString()
+        )
+        .toString()
     );
   }
 

@@ -4,7 +4,7 @@ require("dotenv").config();
 const retry = require("async-retry");
 
 // Helpers:
-const { Networker, Logger, waitForLogger, delay } = require("@uma/financial-templates-lib");
+const { Networker, Logger, delay } = require("@uma/financial-templates-lib");
 
 const { ContractNotifier } = require("./src/ContractNotifier");
 
@@ -65,8 +65,7 @@ async function run({ logger, pollingDelay, errorRetries, errorRetriesTimeout, no
           at: "ContractNotifier#index",
           message: "End of serverless execution loop - terminating process",
         });
-        await waitForLogger(logger);
-        await delay(2); // waitForLogger does not always work 100% correctly in serverless. add a delay to ensure logs are captured upstream.
+        await delay(5); // Set a delay to let the transports flush fully.
         break;
       }
       logger.debug({
@@ -115,7 +114,7 @@ async function Poll(callback) {
       error: typeof error === "string" ? new Error(error) : error,
       notificationPath: "infrastructure-error",
     });
-    await waitForLogger(Logger);
+    await delay(5); // Set a delay to let the transports flush fully.
     callback(error);
   }
   callback();

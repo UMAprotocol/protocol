@@ -9,14 +9,14 @@ import { getWeb3, getWeb3ByChainId, processTransactionPromiseBatch, getRetryWeb3
 import {
   GasEstimator,
   Logger,
-  waitForLogger,
   delay,
   InsuredBridgeL1Client,
   InsuredBridgeL2Client,
 } from "@uma/financial-templates-lib";
 
-import { approveL1Tokens, pruneWhitelistedL1Tokens } from "./RelayerHelpers";
 import { Relayer } from "./Relayer";
+import { approveL1Tokens, pruneWhitelistedL1Tokens } from "./RelayerHelpers";
+import { ProfitabilityCalculator } from "./ProfitabilityCalculator";
 import { CrossDomainFinalizer } from "./CrossDomainFinalizer";
 import { createBridgeAdapter } from "./canonical-bridge-adapters/CreateBridgeAdapter";
 import { RelayerConfig } from "./RelayerConfig";
@@ -38,9 +38,9 @@ export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
       logableConfig,
     });
 
-    const [accounts] = await Promise.all([l1Web3.eth.getAccounts()]);
+    const [accounts, l1ChainId] = await Promise.all([l1Web3.eth.getAccounts(), await l1Web3.eth.getChainId()]);
 
-    const gasEstimator = new GasEstimator(logger);
+    const gasEstimator = new GasEstimator(logger, 60, l1ChainId, l1Web3);
     await gasEstimator.update();
 
     // Create L1/L2 clients to pull data to inform the relayer.
@@ -75,8 +75,8 @@ export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
       null,
       fallbackL2Web3s
     );
-    // Update the L2 client and filter out tokens that are not whitelisted on the L2 from the whitelisted
-    // L1 relay list.
+
+    // Update the L2 client and filter out tokens that are not whitelisted on the L2 from the whitelisted L1 relay list.
     const filteredL1Whitelist = await pruneWhitelistedL1Tokens(
       logger,
       l1Client,
@@ -88,11 +88,20 @@ export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
     // method will error if the bot runner has specified a L1 tokens that is not part of the Bridge Admin whitelist.
     await approveL1Tokens(logger, l1Web3, gasEstimator, accounts[0], config.bridgeAdmin, filteredL1Whitelist);
 
+    // Construct the profitability calculator based on the filteredL1Whitelist and relayerDiscount.
+    const profitabilityCalculator = new ProfitabilityCalculator(
+      logger,
+      filteredL1Whitelist,
+      l1ChainId,
+      config.relayerDiscount
+    );
+
     const relayer = new Relayer(
       logger,
       gasEstimator,
       l1Client,
       l2Client,
+      profitabilityCalculator,
       filteredL1Whitelist,
       accounts[0],
       config.whitelistedChainIds,
@@ -119,7 +128,12 @@ export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
       await retry(
         async () => {
           // Update state.
-          await Promise.all([gasEstimator.update(), l1Client.update(), l2Client.update()]);
+          await Promise.all([
+            gasEstimator.update(),
+            l1Client.update(),
+            l2Client.update(),
+            profitabilityCalculator.update(),
+          ]);
 
           // Start bots that are enabled.
           if (config.botModes.relayerEnabled) await relayer.checkForPendingDepositsAndRelay();
@@ -166,8 +180,7 @@ export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
           at: "AcrossRelayer#index",
           message: "End of serverless execution loop - terminating process",
         });
-        await delay(5);
-        await waitForLogger(logger);
+        await delay(5); // Set a delay to let the transports flush fully.
         break;
       }
       logger.debug({

@@ -19,7 +19,6 @@ const {
   Networker,
   Logger,
   createReferencePriceFeedForFinancialContract,
-  waitForLogger,
   delay,
   setAllowance,
   DSProxyManager,
@@ -329,8 +328,7 @@ async function run({
       // If the polling delay is set to 0 then the script will terminate the bot after one full run.
       if (pollingDelay === 0) {
         logger.debug({ at: "Liquidator#index", message: "End of serverless execution loop - terminating process" });
-        await waitForLogger(logger);
-        await delay(2); // waitForLogger does not always work 100% correctly in serverless. add a delay to ensure logs are captured upstream.
+        await delay(5); // Set a delay to let the transports flush fully.
         break;
       }
       logger.debug({
@@ -416,7 +414,7 @@ async function Poll(callback) {
       error: typeof error === "string" ? new Error(error) : error,
       notificationPath: "infrastructure-error",
     });
-    await waitForLogger(Logger);
+    await delay(5); // Set a delay to let the transports flush fully.
     callback(error);
   }
   callback();
