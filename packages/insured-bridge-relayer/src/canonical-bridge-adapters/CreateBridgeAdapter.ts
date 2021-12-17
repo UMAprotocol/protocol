@@ -14,7 +14,7 @@ export function createBridgeAdapter(
 ): BridgeAdapterInterface {
   if (l2ChainId == 42161) return new ArbitrumBridgeAdapter(logger, l1Web3, l2Web3);
 
-  if (l2ChainId == 10) return new OptimismBridgeAdapter(logger, l1Web3, l2Web3);
+  if (l2ChainId == 10 || l2ChainId == 288) return new OptimismBridgeAdapter(logger, l1Web3, l2Web3);
 
   throw new Error(`Unsupported l2ChainId ${l2ChainId}`);
 }
