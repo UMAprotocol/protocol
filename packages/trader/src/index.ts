@@ -11,7 +11,6 @@ import {
   Logger,
   createReferencePriceFeedForFinancialContract,
   createTokenPriceFeedForFinancialContract,
-  waitForLogger,
   delay,
   DSProxyManager,
 } from "@uma/financial-templates-lib";
@@ -121,8 +120,7 @@ export async function run(logger: winston.Logger, web3: Web3): Promise<void> {
           at: "Trader#index",
           message: "End of serverless execution loop - terminating process",
         });
-        await waitForLogger(logger);
-        await delay(2); // waitForLogger does not always work 100% correctly in serverless. add a delay to ensure logs are captured upstream.
+        await delay(5); // Set a delay to let the transports flush fully.
         break;
       }
       logger.debug({
