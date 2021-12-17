@@ -1,10 +1,10 @@
 {
   "name": "@uma/core",
-  "version": "2.20.0",
+  "version": "2.21.0",
   "description": "UMA smart contracts and unit tests",
   "dependencies": {
     "@openzeppelin/contracts": "4.3.3",
-    "@uma/common": "^2.14.2",
+    "@uma/common": "^2.14.3",
     "@uniswap/lib": "4.0.1-alpha",
     "@uniswap/v2-core": "1.0.0",
     "@uniswap/v2-periphery": "1.1.0-beta.0",
@@ -13,7 +13,7 @@
   },
   "devDependencies": {
     "@awaitjs/express": "^0.3.0",
-    "@eth-optimism/contracts": "^0.5.2",
+    "@eth-optimism/contracts": "^0.5.6",
     "@eth-optimism/message-relayer": "^0.1.8",
     "@eth-optimism/smock": "^1.1.9",
     "@ethersproject/abi": "^5.4.0",

@@ -104,7 +104,7 @@ async function runStrategies(strategyRunnerConfig: strategyRunnerConfig) {
           message: "End of execution loop - terminating process",
         });
 
-      await delay(2); // waitForLogger does not always work 100% correctly in serverless. add a delay to ensure logs are captured upstream.
+      await delay(5); // Set a delay to let the transports flush fully.
       break;
     }
     if (strategyRunnerConfig.emitRunnerLogs)

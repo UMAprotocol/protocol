@@ -27,7 +27,7 @@ const bridgePoolDeployData = {
 // For similar reasons to why we store BridgePool deployment times, we store BridgeDepositBox times for each L2 network
 // here. We use this in the fallback search for a FundsDeposited L2 event to optimize how we search for the event. We
 // don't need to search for events earlier than the BridgeDepositBox's deployment block.
-const bridgeDepositBoxDeployData = {
+export const bridgeDepositBoxDeployData = {
   42161: { blockNumber: 2811998 },
   10: { blockNumber: 204576 },
   288: { blockNumber: 223808 },
@@ -41,8 +41,9 @@ export interface ProcessEnv {
 export interface BotModes {
   relayerEnabled: boolean; // Submits slow and fast relays
   disputerEnabled: boolean; // Submits disputes on pending relays with invalid params
-  finalizerEnabled: boolean; // Resolves expired relays
+  settlerEnabled: boolean; // Resolves expired relays
   l2FinalizerEnabled: boolean; // Facilitates L2->L1 bridging over the canonical roll-up bridge.
+  l1FinalizerEnabled: boolean; // Finalizes the bridging action on L1 for tokens sent over the canonical roll-up bridge.
 }
 export class RelayerConfig {
   readonly bridgeAdmin: string;
@@ -76,9 +77,10 @@ export class RelayerConfig {
       CROSS_DOMAIN_FINALIZATION_THRESHOLD,
       RELAYER_DISCOUNT,
       RELAYER_ENABLED,
-      FINALIZER_ENABLED,
+      SETTLER_ENABLED,
       DISPUTER_ENABLED,
-      CROSS_DOMAIN_FINALIZER_ENABLED,
+      L1_FINALIZER_ENABLED,
+      L2_FINALIZER_ENABLED,
       WHITELISTED_CHAIN_IDS,
       L1_DEPLOY_DATA,
       L2_DEPLOY_DATA,
@@ -90,8 +92,9 @@ export class RelayerConfig {
     this.botModes = {
       relayerEnabled: RELAYER_ENABLED === "true" ? true : false,
       disputerEnabled: DISPUTER_ENABLED === "true" ? true : false,
-      finalizerEnabled: FINALIZER_ENABLED === "true" ? true : false,
-      l2FinalizerEnabled: CROSS_DOMAIN_FINALIZER_ENABLED === "true" ? true : false,
+      settlerEnabled: SETTLER_ENABLED === "true" ? true : false,
+      l1FinalizerEnabled: L1_FINALIZER_ENABLED === "true" ? true : false,
+      l2FinalizerEnabled: L2_FINALIZER_ENABLED === "true" ? true : false,
     };
 
     this.crossDomainFinalizationThreshold = CROSS_DOMAIN_FINALIZATION_THRESHOLD
@@ -108,11 +111,13 @@ export class RelayerConfig {
     // L2 start block must be explicitly set unlike L1 due to how L2 nodes work. For best practices, we also should
     // constrain L1 start blocks but this hasn't been an issue empirically. As a data point, Arbitrum Infura has a
     // query limit of up to 100,000 blocks into the past.
+
     // Note: Set this to some buffer below the 100,000 limit based on how the `index.ts` file computes the start block
     // to set in the L2 client. It takes the L2 latest block and then subtracts `L2_BLOCK_LOOKBACK` to get the start
     // block. A little after, the L2 client updates and sets its own `toBlock` to the latest L2 block at the update
     // time. Therefore, its possible that block height increases enough between the initial L2 latest block query and
     // the second one that more than 100,000 blocks are queried and the API throws an error.
+
     this.l2BlockLookback = L2_BLOCK_LOOKBACK ? Number(L2_BLOCK_LOOKBACK) : 99900;
 
     this.pollingDelay = POLLING_DELAY ? Number(POLLING_DELAY) : 60;

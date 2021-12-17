@@ -86,6 +86,7 @@ contract Proposer is Ownable, Testable, Lockable {
             token.safeTransfer(finder.getImplementationAddress(OracleInterfaces.Store), bondedProposal.lockedBond);
             emit ProposalResolved(id, false);
         }
+        delete bondedProposals[id];
     }
 
     /**

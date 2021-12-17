@@ -32,22 +32,22 @@ export function createTransports(transportsConfig: TransportsConfig = {}): Trans
   // If the logger is running in serverless mode then add the GCP winston transport and console transport.
   if ((transportsConfig.environment ?? process.env.ENVIRONMENT) == "serverless") {
     const { LoggingWinston } = require("@google-cloud/logging-winston");
-    if (!require("@google-cloud/trace-agent").get().enabled) require("@google-cloud/trace-agent").start();
     transports.push(new LoggingWinston());
+    if (!require("@google-cloud/trace-agent").get().enabled) require("@google-cloud/trace-agent").start();
     transports.push(createJsonTransport());
   }
 
   // If the logger is running in production mode then add the GCE winston transport. Else, add a console transport.
   else if ((transportsConfig.environment ?? process.env.ENVIRONMENT) == "production") {
     const { LoggingWinston } = require("@google-cloud/logging-winston");
-    if (!require("@google-cloud/trace-agent").get().enabled) require("@google-cloud/trace-agent").start();
     transports.push(new LoggingWinston());
+    if (!require("@google-cloud/trace-agent").get().enabled) require("@google-cloud/trace-agent").start();
   } else if (transportsConfig.createConsoleTransport != undefined ? transportsConfig.createConsoleTransport : true) {
     // Add a console transport to log to the console.
     transports.push(createConsoleTransport());
   }
 
-  // If there is "test" in the environment then skip the slack or pagerduty.
+  // If there is "test" in the environment then skip the slack and pagerduty.
   if (argv._.indexOf("test") == -1) {
     // If there is a slack web hook, add to the transports array to enable slack messages.
     const slackConfig: SlackConfig = transportsConfig.slackConfig ?? JSON.parse(process.env.SLACK_CONFIG || "null");

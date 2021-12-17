@@ -22,7 +22,7 @@ const func = async function (hre) {
     args = [FxChildMock.address, Finder.address];
   }
 
-  await deploy("OracleChildTunnel", { from: deployer, args, log: true });
+  await deploy("OracleChildTunnel", { from: deployer, args, log: true, skipIfAlreadyDeployed: true });
 };
 module.exports = func;
 func.tags = ["OracleChildTunnel", "l2-polygon"];

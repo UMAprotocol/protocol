@@ -37,8 +37,8 @@ const datastore = new Datastore();
 // Web3 instance to get current block numbers of polling loops.
 const Web3 = require("web3");
 
-const { Logger, delay } = require("@uma/financial-templates-lib");
-let logger;
+const { delay, createNewLogger } = require("@uma/financial-templates-lib");
+let customLogger;
 let spokeUrl;
 let customNodeUrl;
 let hubConfig = {};
@@ -50,7 +50,12 @@ const defaultHubConfig = {
   rejectSpokeDelay: 120, // 2 min.
 };
 
+const waitForLoggerDelay = process.env.WAIT_FOR_LOGGER_DELAY || 5;
+
 hub.post("/", async (req, res) => {
+  // Use a custom logger if provided. Otherwise, initialize a local logger.
+  // Note: no reason to put this into the try-catch since a logger is required to throw the error.
+  const logger = customLogger || createNewLogger();
   try {
     logger.debug({ at: "ServerlessHub", message: "Running Serverless hub query", reqBody: req.body, hubConfig });
 
@@ -86,8 +91,7 @@ hub.post("/", async (req, res) => {
       // (url: string): <int>
     };
     for (const botName in configObject) {
-      // Check if bot is running on a non-default chain, and then fetch last block number seen on this or the default
-      // chain.
+      // Check if bot is running on a non-default chain, and fetch last block number seen on this or the default chain.
       const spokeCustomNodeUrl = configObject[botName]?.environmentVariables?.CUSTOM_NODE_URL;
       const chainId = await _getChainId(spokeCustomNodeUrl);
       nodeUrlToChainIdCache[spokeCustomNodeUrl] = chainId;
@@ -96,7 +100,7 @@ hub.post("/", async (req, res) => {
       if (blockNumbersForChain[chainId]) continue;
 
       // Fetch last seen block for this chain:
-      let lastQueriedBlockNumber = await _getLastQueriedBlockNumber(req.body.configFile, chainId);
+      let lastQueriedBlockNumber = await _getLastQueriedBlockNumber(req.body.configFile, chainId, logger);
 
       // Next, get the head block for the chosen chain, which we'll use to override the last queried block number
       // stored in GCP at the end of this hub execution.
@@ -130,7 +134,7 @@ hub.post("/", async (req, res) => {
     // Now, that we've precomputed all of the last seen blocks for each chain, we can update their values in the
     // GCP Data Store. These will all be the fetched as the "lastQueriedBlockNumber" in the next iteration when the
     // hub is called again.
-    await _saveQueriedBlockNumber(req.body.configFile, blockNumbersForChain);
+    await _saveQueriedBlockNumber(req.body.configFile, blockNumbersForChain, logger);
 
     // Finally, loop over all config objects in the config file and for each append a call promise to the promiseArray.
     // Note that each promise is a race between the serverlessSpoke command and a `_rejectAfterDelay`. This places an
@@ -206,7 +210,8 @@ hub.post("/", async (req, res) => {
       message: "All calls returned correctly",
       output: { errorOutputs, validOutputs, retriedOutputs },
     });
-    await delay(2); // Wait a few seconds to be sure the the winston logs are processed upstream.
+
+    await delay(waitForLoggerDelay); // Wait a few seconds to be sure the the winston logs are processed upstream.
     res
       .status(200)
       .send({ message: "All calls returned correctly", output: { errorOutputs, validOutputs, retriedOutputs } });
@@ -235,24 +240,29 @@ hub.post("/", async (req, res) => {
           try {
             return {
               spokeName: spokeName,
-              errorReported: errorOutput.errorOutputs[spokeName].execResponse
-                ? errorOutput.errorOutputs[spokeName].execResponse.stderr
-                : errorOutput.errorOutputs[spokeName],
+              errorReported:
+                errorOutput.errorOutputs[spokeName]?.execResponse?.stderr ??
+                errorOutput.errorOutputs[spokeName].message ??
+                errorOutput.errorOutputs[spokeName].reason ??
+                errorOutput.errorOutputs[spokeName],
             };
           } catch (err) {
-            // `errorMessages` is in an unexpected JSON shape.
-            return "Hub unable to parse error";
+            return "Hub unable to parse error"; // `errorMessages` is in an unexpected JSON shape.
           }
         }), // eslint-disable-line indent
         validOutputs: Object.keys(errorOutput.validOutputs), // eslint-disable-line indent
         notificationPath: "infrastructure-error",
       });
     }
-    await delay(2); // Wait a few seconds to be sure the the winston logs are processed upstream.
-    res.status(500).send({
-      message: errorOutput instanceof Error ? "A fatal error occurred in the hub" : "Some spoke calls returned errors",
-      output: errorOutput instanceof Error ? errorOutput.message : errorOutput,
-    });
+
+    await delay(waitForLoggerDelay); // Wait a few seconds to be sure the the winston logs are processed upstream.
+    res
+      .status(500)
+      .send({
+        message:
+          errorOutput instanceof Error ? "A fatal error occurred in the hub" : "Some spoke calls returned errors",
+        output: errorOutput instanceof Error ? errorOutput.message : errorOutput,
+      });
   }
 });
 
@@ -328,7 +338,7 @@ const _fetchConfig = async (bucket, file) => {
 // Save a the last blocknumber seen by the hub to GCP datastore. `BlockNumberLog` is the entity kind and
 // `configIdentifier` is the entity ID. Each entity has a column "<chainID>" which stores the latest block
 // seen for a network.
-async function _saveQueriedBlockNumber(configIdentifier, blockNumbersForChain) {
+async function _saveQueriedBlockNumber(configIdentifier, blockNumbersForChain, logger) {
   // Sometimes the GCP datastore can be flaky and return errors when fetching data. Use re-try logic to re-run on error.
   await retry(
     async () => {
@@ -364,7 +374,7 @@ async function _saveQueriedBlockNumber(configIdentifier, blockNumbersForChain) {
 // Query entity kind `BlockNumberLog` with unique entity ID of `configIdentifier`. Used to get the last block number
 // for a network ID recorded by the bot to inform where searches should start from. Each entity has a column for each
 // chain ID storing the last seen block number for the corresponding network.
-async function _getLastQueriedBlockNumber(configIdentifier, chainId) {
+async function _getLastQueriedBlockNumber(configIdentifier, chainId, logger) {
   // sometimes the GCP datastore can be flaky and return errors when saving data. Use re-try logic to re-run on error.
   return await retry(
     async () => {
@@ -373,7 +383,7 @@ async function _getLastQueriedBlockNumber(configIdentifier, chainId) {
         const [dataField] = await datastore.get(key);
         return dataField[chainId];
       } else if (hubConfig.saveQueriedBlock == "localStorage") {
-        return process.env[`lastQueriedBlockNumber-${chainId}-${configIdentifier}`];
+        return process.env[`lastQueriedBlockNumber-${chainId}-${configIdentifier}`] | 0;
       }
     },
     {
@@ -446,7 +456,7 @@ function _processSpokeResponse(botKey, spokeResponse, validOutputs, errorOutputs
     errorOutputs[botKey] = {
       status: spokeResponse.status,
       execResponse: spokeResponse.value && spokeResponse.value.execResponse,
-      reason: "empty stdout",
+      message: "empty stdout",
       botIdentifier: botKey,
     };
   } else if (
@@ -457,7 +467,7 @@ function _processSpokeResponse(botKey, spokeResponse, validOutputs, errorOutputs
     errorOutputs[botKey] = {
       status: spokeResponse.status,
       execResponse: spokeResponse.value && spokeResponse.value.execResponse,
-      reason: "missing `Started` keyword",
+      message: "missing `started` keyword",
       botIdentifier: botKey,
     };
   } else {
@@ -480,7 +490,8 @@ const _rejectAfterDelay = (seconds, childProcessIdentifier) =>
   });
 
 // Start the hub's async listening process. Enables injection of a logging instance & port for testing.
-async function Poll(_Logger = Logger, port = 8080, _spokeURL, _CustomNodeUrl, _hubConfig) {
+async function Poll(_customLogger, port = 8080, _spokeURL, _CustomNodeUrl, _hubConfig) {
+  customLogger = _customLogger;
   // The Serverless hub should have a configured URL to define the remote instance & a local node URL to boot.
   if (!_spokeURL || !_CustomNodeUrl) {
     throw new Error(
@@ -488,8 +499,10 @@ async function Poll(_Logger = Logger, port = 8080, _spokeURL, _CustomNodeUrl, _h
     );
   }
 
+  // Use custom logger if passed in. Otherwise, create a local logger.
+  const logger = customLogger || createNewLogger();
+
   // Set configs to be used in the sererless execution.
-  logger = _Logger;
   spokeUrl = _spokeURL;
   customNodeUrl = _CustomNodeUrl;
   if (_hubConfig) hubConfig = { ...defaultHubConfig, ..._hubConfig };
@@ -503,7 +516,7 @@ async function Poll(_Logger = Logger, port = 8080, _spokeURL, _CustomNodeUrl, _h
       customNodeUrl,
       hubConfig,
       port,
-      processEnvironment: process.env,
+      env: process.env,
     });
   });
 }
@@ -518,7 +531,7 @@ if (require.main === module) {
     process.exit(1);
   }
 
-  Poll(Logger, process.env.PORT, process.env.SPOKE_URL, process.env.CUSTOM_NODE_URL, hubConfig).then(() => {});
+  Poll(null, process.env.PORT, process.env.SPOKE_URL, process.env.CUSTOM_NODE_URL, hubConfig).then(() => {});
 }
 
 hub.Poll = Poll;

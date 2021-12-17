@@ -152,17 +152,6 @@ describe("InsuredBridgeL2Client", () => {
     assert.equal(JSON.stringify(client.getAllDeposits()), JSON.stringify(expectedDeposits));
   });
 
-  it("Correctly returns whitelisted token event information", async () => {
-    // Before updating, should return false for whitelisted token.
-    assert.isFalse(client.isWhitelistedToken(l1TokenAddress));
-
-    await client.update();
-    assert.isTrue(client.isWhitelistedToken(l1TokenAddress));
-
-    // Should return false if l1 token address is not whitelisted
-    assert.isFalse(client.isWhitelistedToken(l2Token.options.address));
-  });
-
   it("Fails to update if L2 rpcs disagree about contract state", async () => {
     // Construct new Web3 that will disagree with main Web3 provider about which events were emitted by DepositBox.
     const spy = sinon.spy();
@@ -186,7 +175,7 @@ describe("InsuredBridgeL2Client", () => {
     const eventSearchOptions = { fromBlock: 0, toBlock: "latest" };
     // WhitelistToken event search will fail since we've already whitelisted a token on the deposit box.
     try {
-      await clientWithFallbackWeb3s.getWhitelistTokenEvents(eventSearchOptions);
+      await clientWithFallbackWeb3s.getBridgeDepositBoxEvents(eventSearchOptions, "WhitelistToken");
       assert.isTrue(false);
     } catch (e) {
       assert.equal(lastSpyLogLevel(spy), "error");
@@ -196,7 +185,7 @@ describe("InsuredBridgeL2Client", () => {
     }
 
     // FundsDeposited event search will succeed since there have not been any such events emitted yet.
-    await clientWithFallbackWeb3s.getFundsDepositedEvents(eventSearchOptions);
+    await clientWithFallbackWeb3s.getBridgeDepositBoxEvents(eventSearchOptions, "FundsDeposited");
 
     // Now, deposit some tokens and check that FundsDeposited event search throws.
     await l2Token.methods.mint(user1, toWei("200")).send({ from: deployer });
@@ -207,7 +196,7 @@ describe("InsuredBridgeL2Client", () => {
       .deposit(user1, l2Token.options.address, depositAmount, slowRelayFeePct, instantRelayFeePct, quoteTimestamp)
       .send({ from: user1 });
     try {
-      await clientWithFallbackWeb3s.getFundsDepositedEvents(eventSearchOptions);
+      await clientWithFallbackWeb3s.getBridgeDepositBoxEvents(eventSearchOptions, "FundsDeposited");
       assert.isTrue(false);
     } catch (e) {
       assert.equal(lastSpyLogLevel(spy), "error");

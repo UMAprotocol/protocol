@@ -6,7 +6,6 @@ import Web3 from "web3";
 import type { EventData } from "web3-eth-contract";
 import { EventSearchOptions, getEventsForMultipleProviders } from "@uma/common";
 
-const { toChecksumAddress } = Web3.utils;
 import type { Logger } from "winston";
 
 export interface Deposit {
@@ -27,7 +26,6 @@ export class InsuredBridgeL2Client {
   public bridgeDepositBox: BridgeDepositBoxWeb3;
 
   private deposits: { [key: string]: Deposit } = {}; // DepositHash=>Deposit
-  private whitelistedTokens: { [key: string]: string } = {}; // L1Token=>L2Token
 
   private firstBlockToSearch: number;
 
@@ -56,10 +54,6 @@ export class InsuredBridgeL2Client {
     return this.getAllDeposits().filter((deposit: Deposit) => deposit.l1Token === l1TokenAddress);
   }
 
-  isWhitelistedToken(l1TokenAddress: string) {
-    return this.whitelistedTokens[toChecksumAddress(l1TokenAddress)] !== undefined;
-  }
-
   getDepositByHash(depositHash: string) {
     return this.deposits[depositHash];
   }
@@ -82,20 +76,7 @@ export class InsuredBridgeL2Client {
       return;
     }
 
-    // TODO: update this state retrieval to include looking for L2 liquidity in the deposit box that can be sent over
-    // the bridge. This should consider the minimumBridgingDelay and the lastBridgeTime for a respective L2Token.
-    const [fundsDepositedEvents, whitelistedTokenEvents] = await Promise.all([
-      this.getFundsDepositedEvents(blockSearchConfig),
-      this.getWhitelistTokenEvents(blockSearchConfig),
-    ]);
-
-    // We assume that whitelisted token events are searched from oldest to newest so we'll just store the most recently
-    // whitelisted token mappings.
-    for (const whitelistedTokenEvent of whitelistedTokenEvents) {
-      this.whitelistedTokens[toChecksumAddress(whitelistedTokenEvent.returnValues.l1Token)] = toChecksumAddress(
-        whitelistedTokenEvent.returnValues.l2Token
-      );
-    }
+    const fundsDepositedEvents = await this.getBridgeDepositBoxEvents(blockSearchConfig, "FundsDeposited");
 
     for (const fundsDepositedEvent of fundsDepositedEvents) {
       const depositData = {
@@ -124,48 +105,22 @@ export class InsuredBridgeL2Client {
     });
   }
 
-  async getFundsDepositedEvents(eventSearchOptions: EventSearchOptions): Promise<EventData[]> {
+  async getBridgeDepositBoxEvents(eventSearchOptions: EventSearchOptions, eventName: string): Promise<EventData[]> {
     const eventsData = await getEventsForMultipleProviders(
       [this.l2Web3].concat(this.fallbackL2Web3s),
       getAbi("BridgeDepositBox"),
       this.bridgeDepositAddress,
-      "FundsDeposited",
+      eventName,
       eventSearchOptions
     );
     if (eventsData.missingEvents.length > 0) {
-      const errorMessage = `L2 RPC endpoints disagree about L2 contract events, please manually investigate. L2 rpcs are described in NODE_URL and RETRY_CONFIG environment variables.`;
-      const error = new Error(errorMessage);
+      const error = new Error(
+        "L2 RPC endpoints disagree about L2 contract events, please manually investigate. L2 rpcs are described in NODE_URL and RETRY_CONFIG environment variables."
+      );
       this.logger.error({
         at: "InsuredBridgeL2Client",
         message: "L2 RPC endpoint state disagreement! 🤺",
-        eventName: "FundsDeposited",
-        eventSearchOptions,
-        countMissingEvents: eventsData.missingEvents.length,
-        countMatchingEvents: eventsData.events.length,
-        error,
-      });
-      throw error;
-    }
-
-    // All events were found in all providers, can return any of the event data arrays
-    return eventsData.events;
-  }
-
-  async getWhitelistTokenEvents(eventSearchOptions: EventSearchOptions): Promise<EventData[]> {
-    const eventsData = await getEventsForMultipleProviders(
-      [this.l2Web3].concat(this.fallbackL2Web3s),
-      getAbi("BridgeDepositBox"),
-      this.bridgeDepositAddress,
-      "WhitelistToken",
-      eventSearchOptions
-    );
-    if (eventsData.missingEvents.length > 0) {
-      const errorMessage = `L2 RPC endpoints disagree about L2 contract events, please manually investigate. L2 rpcs are described in NODE_URL and RETRY_CONFIG environment variables.`;
-      const error = new Error(errorMessage);
-      this.logger.error({
-        at: "InsuredBridgeL2Client",
-        message: "L2 RPC endpoint state disagreement! 🤺",
-        eventName: "WhitelistToken",
+        eventName,
         eventSearchOptions,
         countMissingEvents: eventsData.missingEvents.length,
         countMatchingEvents: eventsData.events.length,

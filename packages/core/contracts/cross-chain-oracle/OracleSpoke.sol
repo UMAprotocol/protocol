@@ -9,6 +9,7 @@ import "../common/implementation/AncillaryData.sol";
 import "../common/implementation/Lockable.sol";
 import "./interfaces/ChildMessengerInterface.sol";
 import "./interfaces/ChildMessengerConsumerInterface.sol";
+import "./SpokeBase.sol";
 
 /**
  * @title Cross-chain Oracle L2 Oracle Spoke.
@@ -22,19 +23,13 @@ import "./interfaces/ChildMessengerConsumerInterface.sol";
  */
 contract OracleSpoke is
     OracleBase,
+    SpokeBase,
     OracleAncillaryInterface,
     OracleInterface,
     ChildMessengerConsumerInterface,
     Lockable
 {
-    ChildMessengerInterface public messenger;
-
-    event SetChildMessenger(address indexed childMessenger);
-
-    constructor(address _finderAddress, ChildMessengerInterface _messengerAddress) OracleBase(_finderAddress) {
-        messenger = _messengerAddress;
-        emit SetChildMessenger(address(messenger));
-    }
+    constructor(address _finderAddress) OracleBase(_finderAddress) SpokeBase(_finderAddress) {}
 
     // This assumes that the local network has a Registry that resembles the mainnet registry.
     modifier onlyRegisteredContract() {
@@ -43,17 +38,14 @@ contract OracleSpoke is
         _;
     }
 
-    modifier onlyMessenger() {
-        require(msg.sender == address(messenger), "Caller must be messenger");
-        _;
-    }
-
     /**
      * @notice This is called to bridge a price request to mainnet. This method will enqueue a new price request
-     * or return silently if already requested. Price requests are relayed to mainnet (the "Parent" chain) via
-     * the ChildMessenger contract.
+     * or return silently if already requested. Price requests are relayed to mainnet (the "Parent" chain) via the
+     * ChildMessenger contract.
      * @dev Can be called only by a registered contract that is allowed to make DVM price requests. Will mark this
      * price request as Requested, and therefore able to receive the price resolution data from mainnet.
+     * @dev Contract registration enables the DVM to validate that the calling contract correctly pays final fees.
+     * Therefore, this function does not directly attempt to pull a final fee from the caller.
      * @param identifier Identifier of price request.
      * @param time Timestamp of price request.
      * @param ancillaryData extra data of price request.
@@ -65,7 +57,7 @@ contract OracleSpoke is
     ) public override nonReentrant() onlyRegisteredContract() {
         bool newPriceRequested = _requestPrice(identifier, time, _stampAncillaryData(ancillaryData));
         if (newPriceRequested) {
-            messenger.sendMessageToParent(abi.encode(identifier, time, _stampAncillaryData(ancillaryData)));
+            getChildMessenger().sendMessageToParent(abi.encode(identifier, time, _stampAncillaryData(ancillaryData)));
         }
     }
 
@@ -76,14 +68,14 @@ contract OracleSpoke is
     function requestPrice(bytes32 identifier, uint256 time) public override nonReentrant() onlyRegisteredContract() {
         bool newPriceRequested = _requestPrice(identifier, time, _stampAncillaryData(""));
         if (newPriceRequested) {
-            messenger.sendMessageToParent(abi.encode(identifier, time, _stampAncillaryData("")));
+            getChildMessenger().sendMessageToParent(abi.encode(identifier, time, _stampAncillaryData("")));
         }
     }
 
     /**
-     * @notice Resolves a price request originating from a message sent by the DVM on the parent chain. This method
-     * must be called by the ChildMessenger contract which is designed to communicate only with the ParentMessenger
-     * contract on Mainnet.
+     * @notice Resolves a price request originating from a message sent by the DVM on the parent chain.
+     * @dev Can only be called by the ChildMessenger contract which is designed to communicate only with the
+     * ParentMessenger contract on Mainnet. See the SpokeBase for the onlyMessenger modifier.
      * @param data ABI encoded params with which to call `_publishPrice`.
      */
     function processMessageFromParent(bytes memory data) public override nonReentrant() onlyMessenger() {
@@ -104,7 +96,7 @@ contract OracleSpoke is
         uint256 time,
         bytes memory ancillaryData
     ) public view override nonReentrantView() onlyRegisteredContract() returns (bool) {
-        bytes32 priceRequestId = _encodePriceRequest(identifier, time, ancillaryData);
+        bytes32 priceRequestId = _encodePriceRequest(identifier, time, _stampAncillaryData(ancillaryData));
         return prices[priceRequestId].state == RequestState.Resolved;
     }
 
@@ -136,7 +128,7 @@ contract OracleSpoke is
         uint256 time,
         bytes memory ancillaryData
     ) public view override nonReentrantView() onlyRegisteredContract() returns (int256) {
-        bytes32 priceRequestId = _encodePriceRequest(identifier, time, ancillaryData);
+        bytes32 priceRequestId = _encodePriceRequest(identifier, time, _stampAncillaryData(ancillaryData));
         Price storage lookup = prices[priceRequestId];
         require(lookup.state == RequestState.Resolved, "Price has not been resolved");
         return lookup.price;

@@ -410,7 +410,7 @@ export class Relayer {
     if (hasInstantRelayer && relayableDeposit.status == ClientRelayState.Pending) {
       this.logger.debug({
         at: "AcrossRelayer#Relayer",
-        message: "Relay pending and already sped up 😖",
+        message: "Relay pending and already sped up",
         realizedLpFeePct: realizedLpFeePct.toString(),
         relayState: relayableDeposit.status,
         hasInstantRelayer,
@@ -781,11 +781,11 @@ export class Relayer {
     return (
       "Relayed " +
       this._generateMrkdwnDepositIdNetworkSizeFromTo(deposit) +
-      "slowRelayFeePct " +
+      "slowRelayFee " +
       createFormatFunction(2, 4, false, 18)(toBN(deposit.slowRelayFeePct).muln(100)) +
-      "%, instantRelayFeePct " +
+      "%, instantRelayFee " +
       createFormatFunction(2, 4, false, 18)(toBN(deposit.instantRelayFeePct).muln(100)) +
-      "%, realizedLpFeePct " +
+      "%, realizedLpFee " +
       createFormatFunction(2, 4, false, 18)(realizedLpFeePct.muln(100)) +
       "%."
     );
@@ -821,7 +821,7 @@ export class Relayer {
       deposit.depositId +
       " on " +
       PublicNetworks[this.l2Client.chainId]?.name +
-      " of size " +
+      " of " +
       createFormatFunction(2, 4, false, collateralDecimals)(deposit.amount) +
       " " +
       collateralSymbol +
@@ -885,7 +885,10 @@ export class Relayer {
           lookback: this.l2LookbackWindow,
           relay,
         });
-        const fundsDepositedEvents = await this.l2Client.getFundsDepositedEvents(l2BlockSearchConfig);
+        const fundsDepositedEvents = await this.l2Client.getBridgeDepositBoxEvents(
+          l2BlockSearchConfig,
+          "FundsDeposited"
+        );
         // For any found deposits, try to match it with the relay:
         for (const fundsDepositedEvent of fundsDepositedEvents) {
           const _deposit: Deposit = {

@@ -5,7 +5,6 @@ const retry = require("async-retry");
 
 const {
   Logger,
-  waitForLogger,
   delay,
   FinancialContractFactoryClient,
   GasEstimator,
@@ -116,8 +115,8 @@ async function run({
           at: "PerpetualFundingRateProposer#index",
           message: "End of serverless execution loop - terminating process",
         });
-        await waitForLogger(logger);
-        await delay(2); // waitForLogger does not always work 100% correctly in serverless. add a delay to ensure logs are captured upstream.
+
+        await delay(5); // Set a delay to let the transports flush fully.
         break;
       }
       logger.debug({
@@ -171,7 +170,7 @@ async function Poll(callback) {
       message: "Perpetual funding rate proposer execution error🚨",
       error: typeof error === "string" ? new Error(error) : error,
     });
-    await waitForLogger(Logger);
+    await delay(5); // Set a delay to let the transports flush fully.
     callback(error);
   }
   callback();
