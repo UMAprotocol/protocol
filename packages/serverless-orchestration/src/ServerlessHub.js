@@ -256,13 +256,10 @@ hub.post("/", async (req, res) => {
     }
 
     await delay(waitForLoggerDelay); // Wait a few seconds to be sure the the winston logs are processed upstream.
-    res
-      .status(500)
-      .send({
-        message:
-          errorOutput instanceof Error ? "A fatal error occurred in the hub" : "Some spoke calls returned errors",
-        output: errorOutput instanceof Error ? errorOutput.message : errorOutput,
-      });
+    res.status(500).send({
+      message: errorOutput instanceof Error ? "A fatal error occurred in the hub" : "Some spoke calls returned errors",
+      output: errorOutput instanceof Error ? errorOutput.message : errorOutput,
+    });
   }
 });
 
