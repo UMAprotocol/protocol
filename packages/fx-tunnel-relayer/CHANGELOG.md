@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.1.4](https://github.com/UMAprotocol/protocol/compare/@uma/fx-tunnel-relayer@1.1.3...@uma/fx-tunnel-relayer@1.1.4) (2021-12-17)
+
+### Bug Fixes
+
+- [bots] remove wait for logger ([#3711](https://github.com/UMAprotocol/protocol/issues/3711)) ([a06c0f3](https://github.com/UMAprotocol/protocol/commit/a06c0f37dea6303b7f1c8b3ae5541982076dc1d8))
+
 ## [1.1.3](https://github.com/UMAprotocol/protocol/compare/@uma/fx-tunnel-relayer@1.1.2...@uma/fx-tunnel-relayer@1.1.3) (2021-12-13)
 
 **Note:** Version bump only for package @uma/fx-tunnel-relayer
