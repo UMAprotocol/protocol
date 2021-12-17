@@ -22,7 +22,7 @@ export class ArbitrumBridgeAdapter implements BridgeAdapterInterface {
     const l2EthersProvider = new providers.Web3Provider(this.l2Web3.currentProvider as any);
     const l2EthersVoidSigner = new VoidSigner(ZERO_ADDRESS, l2EthersProvider);
 
-    this.bridge = await Bridge.init(l1EthersVoidSigner, l2EthersVoidSigner);
+    this.bridge = await Bridge.init(l1EthersVoidSigner as any, l2EthersVoidSigner as any);
 
     this.logger.debug({ at: "ArbitrumBridgeAdapter", message: "Initialized Arbitrum Bridge Adapter" });
   }
