@@ -110,7 +110,7 @@ export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
       config.l2BlockLookback
     );
 
-    const canonicalBridgeAdapter = await createBridgeAdapter(logger, l1Web3, l2Web3);
+    const canonicalBridgeAdapter = createBridgeAdapter(logger, l1Web3, l2Web3, config.activatedChainIds[0]);
     if (config.botModes.l1FinalizerEnabled) await canonicalBridgeAdapter.initialize();
 
     const crossDomainFinalizer = new CrossDomainFinalizer(

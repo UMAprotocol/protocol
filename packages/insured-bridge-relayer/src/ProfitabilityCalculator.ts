@@ -62,8 +62,6 @@ export class ProfitabilityCalculator {
         await getAddress("VotingToken", this.l1ChainId),
         await getAddress("WETH9", this.l1ChainId),
       ]);
-      console.log("umaAddress", umaAddress);
-      console.log("wethAddress", wethAddress);
       for (const l1Token of this.l1Tokens) {
         this.l1TokenInfo[l1Token] = { tokenType: TokenType.ERC20, tokenEthPrice: toBNWei("1") };
         if (l1Token == toChecksumAddress(umaAddress)) this.l1TokenInfo[l1Token].tokenType = TokenType.UMA;
