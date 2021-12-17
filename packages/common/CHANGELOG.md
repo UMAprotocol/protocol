@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.15.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.14.3...@uma/common@2.15.0) (2021-12-17)
+
+### Features
+
+- **across-bots:** add ability to finalize L2->L1 transfers from arbitrum ([#3662](https://github.com/UMAprotocol/protocol/issues/3662)) ([8465428](https://github.com/UMAprotocol/protocol/commit/846542853e7bbad4fdf8ade66b8f231ed5c45902))
+- **across-bots:** add profitability module to only relay profitable relays ([#3656](https://github.com/UMAprotocol/protocol/issues/3656)) ([f9fb117](https://github.com/UMAprotocol/protocol/commit/f9fb1178894bb1b39b2969bd26ba435979059a19))
+- **cross-chain-oracle:** Enable GovernorHub to change child messenger on child network ([#3688](https://github.com/UMAprotocol/protocol/issues/3688)) ([7af4247](https://github.com/UMAprotocol/protocol/commit/7af4247f03102af6ab51dcbe51cccb13ccb1fd53))
+
 ## [2.14.3](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.14.2...@uma/common@2.14.3) (2021-12-13)
 
 ### Bug Fixes

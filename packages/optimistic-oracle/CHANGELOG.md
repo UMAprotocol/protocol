@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.8.8](https://github.com/UMAprotocol/protocol/compare/@uma/optimistic-oracle@2.8.7...@uma/optimistic-oracle@2.8.8) (2021-12-17)
+
+### Bug Fixes
+
+- [bots] remove wait for logger ([#3711](https://github.com/UMAprotocol/protocol/issues/3711)) ([a06c0f3](https://github.com/UMAprotocol/protocol/commit/a06c0f37dea6303b7f1c8b3ae5541982076dc1d8))
+
 ## [2.8.7](https://github.com/UMAprotocol/protocol/compare/@uma/optimistic-oracle@2.8.6...@uma/optimistic-oracle@2.8.7) (2021-12-13)
 
 **Note:** Version bump only for package @uma/optimistic-oracle

@@ -3,6 +3,15 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.5.16](https://github.com/UMAprotocol/protocol/compare/@uma/serverless-orchestration@2.5.15...@uma/serverless-orchestration@2.5.16) (2021-12-17)
+
+### Bug Fixes
+
+- [across] address issue log mapping ([#3705](https://github.com/UMAprotocol/protocol/issues/3705)) ([eef113b](https://github.com/UMAprotocol/protocol/commit/eef113b81c75f25bd0daa733421cdae963eb27ed))
+- [bots] remove wait for logger ([#3711](https://github.com/UMAprotocol/protocol/issues/3711)) ([a06c0f3](https://github.com/UMAprotocol/protocol/commit/a06c0f37dea6303b7f1c8b3ae5541982076dc1d8))
+- **serverless:** improve how hub and spoke logs interact ([#3699](https://github.com/UMAprotocol/protocol/issues/3699)) ([7bcdca3](https://github.com/UMAprotocol/protocol/commit/7bcdca3211440fc8ce57c1f07cf280203017b2fa))
+- harden logger waiting in serverless hub ([#3686](https://github.com/UMAprotocol/protocol/issues/3686)) ([5e2a3df](https://github.com/UMAprotocol/protocol/commit/5e2a3df68c56207655db4ab54f3dad096fa20822))
+
 ## [2.5.15](https://github.com/UMAprotocol/protocol/compare/@uma/serverless-orchestration@2.5.14...@uma/serverless-orchestration@2.5.15) (2021-12-13)
 
 **Note:** Version bump only for package @uma/serverless-orchestration

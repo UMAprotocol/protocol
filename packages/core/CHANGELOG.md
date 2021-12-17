@@ -3,6 +3,27 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.22.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.21.0...@uma/core@2.22.0) (2021-12-17)
+
+### Bug Fixes
+
+- [across] add optimism L2->L1 finalizer ([#3709](https://github.com/UMAprotocol/protocol/issues/3709)) ([f32dc4c](https://github.com/UMAprotocol/protocol/commit/f32dc4c342145ac7b64f36eddc2d7c83a06e0aba))
+- [C01] fixes issue where disputes are impossible in the OptimisticRewarder ([#3690](https://github.com/UMAprotocol/protocol/issues/3690)) ([6f12f32](https://github.com/UMAprotocol/protocol/commit/6f12f325275f918e6da432d537df5a1d70a8ed16))
+- [C02] Proposer cannot pay rewards out multiple times for the same proposal ([#3689](https://github.com/UMAprotocol/protocol/issues/3689)) ([f701df5](https://github.com/UMAprotocol/protocol/commit/f701df51365a0e1bc1cde4b52e97df3fed247342))
+- [L01] uses the declared Disputed event ([#3695](https://github.com/UMAprotocol/protocol/issues/3695)) ([a197f0e](https://github.com/UMAprotocol/protocol/commit/a197f0e183e92a78ac0965c7893600fb5ea3ae68))
+- [L06] fix Residual allowance ([#3698](https://github.com/UMAprotocol/protocol/issues/3698)) ([4329fea](https://github.com/UMAprotocol/protocol/commit/4329fea74e1d7bcfa45301309dd27f0508035821))
+- [M01] fixes incorrect event parameters ([#3694](https://github.com/UMAprotocol/protocol/issues/3694)) ([33cb2b3](https://github.com/UMAprotocol/protocol/commit/33cb2b3b1d93b669c2f07e4e45ea0092624d5bb0))
+- deployment scripts don't skip when already deployed ([#3696](https://github.com/UMAprotocol/protocol/issues/3696)) ([54f463a](https://github.com/UMAprotocol/protocol/commit/54f463a47c33ae38aa10a6f3dae463d5e3d7b179))
+- fix ci breakage from failed merge ([#3702](https://github.com/UMAprotocol/protocol/issues/3702)) ([09ab737](https://github.com/UMAprotocol/protocol/commit/09ab7373ec835084729369f6298d7ed55c60009f))
+
+### Features
+
+- add new LSPCreator deployment ([#3710](https://github.com/UMAprotocol/protocol/issues/3710)) ([3820a70](https://github.com/UMAprotocol/protocol/commit/3820a7032fcaf1b22532a4ac4ca19596c3c75977))
+- governor spoke is able to execute multiple transactions atomically ([#3703](https://github.com/UMAprotocol/protocol/issues/3703)) ([0d3cf20](https://github.com/UMAprotocol/protocol/commit/0d3cf208eaf390198400f6d69193885f45c1e90c))
+- **across-bots:** add profitability module to only relay profitable relays ([#3656](https://github.com/UMAprotocol/protocol/issues/3656)) ([f9fb117](https://github.com/UMAprotocol/protocol/commit/f9fb1178894bb1b39b2969bd26ba435979059a19))
+- **cross-chain-oracle:** Enable GovernorHub to change child messenger on child network ([#3688](https://github.com/UMAprotocol/protocol/issues/3688)) ([7af4247](https://github.com/UMAprotocol/protocol/commit/7af4247f03102af6ab51dcbe51cccb13ccb1fd53))
+- rinkeby deployments ([#3697](https://github.com/UMAprotocol/protocol/issues/3697)) ([d2086e7](https://github.com/UMAprotocol/protocol/commit/d2086e74ac3fe3c385c79fbfcc802cbf471e85a0))
+
 # [2.21.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.20.0...@uma/core@2.21.0) (2021-12-13)
 
 ### Bug Fixes
