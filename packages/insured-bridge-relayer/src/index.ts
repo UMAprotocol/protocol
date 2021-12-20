@@ -31,7 +31,7 @@ export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
 
     // The logger is having issues with logging nested BNs. Remove this for now. Is indirectly fixed in PR https://github.com/UMAprotocol/protocol/pull/3656
     /* eslint-disable @typescript-eslint/no-unused-vars */
-    const { rateModels, ...logableConfig } = config;
+    const { ...logableConfig } = config;
     logger[config.pollingDelay === 0 ? "debug" : "info"]({
       at: "AcrossRelayer#index",
       message: "Relayer started 🌉",
