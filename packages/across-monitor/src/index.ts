@@ -39,8 +39,8 @@ export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
           if (config.botModes.utilizationEnabled) await acrossMonitor.checkUtilization();
           else logger.debug({ at: "AcrossMonitor#Utilization", message: "Utilization monitor disabled" });
 
-          if (config.botModes.unknownRelaysEnabled) await acrossMonitor.checkUnknownRelays();
-          else logger.debug({ at: "AcrossMonitor#UnknownRelays", message: "UnknownRelays monitor disabled" });
+          if (config.botModes.unknownRelayersEnabled) await acrossMonitor.checkUnknownRelayers();
+          else logger.debug({ at: "AcrossMonitor#UnknownRelayers", message: "UnknownRelayers monitor disabled" });
         },
         {
           retries: config.errorRetries,

@@ -110,8 +110,8 @@ export class AcrossMonitor {
     return;
   }
 
-  async checkUnknownRelays(): Promise<void> {
-    this.logger.debug({ at: "AcrossMonitor#UnknownRelays", message: "Checking for unknown relays" });
+  async checkUnknownRelayers(): Promise<void> {
+    this.logger.debug({ at: "AcrossMonitor#UnknownRelayers", message: "Checking for unknown relayers" });
 
     const relayEvents: EventInfo[] = await this.relayEventProcessor.getRelayEventInfo(
       this.startingBlock,
@@ -124,8 +124,8 @@ export class AcrossMonitor {
       }
 
       this.logger.warn({
-        at: "UnknownRelays",
-        message: "Across bridge pool unknown relay event warning🥷",
+        at: "UnknownRelayers",
+        message: "Across bridge pool unknown relayer warning🥷",
         mrkdwn:
           createEtherscanLinkMarkdown(event.caller, this.monitorConfig.bridgeAdminChainId) +
           " " +

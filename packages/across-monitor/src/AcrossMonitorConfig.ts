@@ -7,7 +7,7 @@ export interface ProcessEnv {
 // Set modes to true that you want to enable in the AcrossMonitor bot.
 export interface BotModes {
   utilizationEnabled: boolean; // Monitors pool utilization ratio
-  unknownRelaysEnabled: boolean; // Monitors relay related events triggered by non-whitelisted addresses
+  unknownRelayersEnabled: boolean; // Monitors relay related events triggered by non-whitelisted addresses
 }
 
 export class AcrossMonitorConfig {
@@ -35,12 +35,12 @@ export class AcrossMonitorConfig {
       UTILIZATION_THRESHOLD,
       WHITELISTED_ADDRESSES,
       UTILIZATION_ENABLED,
-      UNKNOWN_RELAYS_ENABLED,
+      UNKNOWN_RELAYERS_ENABLED,
     } = env;
 
     this.botModes = {
       utilizationEnabled: UTILIZATION_ENABLED === "true" ? true : false,
-      unknownRelaysEnabled: UNKNOWN_RELAYS_ENABLED === "true" ? true : false,
+      unknownRelayersEnabled: UNKNOWN_RELAYERS_ENABLED === "true" ? true : false,
     };
 
     // Default pool utilization threshold at 90%.
