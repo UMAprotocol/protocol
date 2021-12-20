@@ -1,4 +1,3 @@
-import assert from "assert";
 import Web3 from "web3";
 const { toChecksumAddress } = Web3.utils;
 
@@ -48,8 +47,8 @@ export class AcrossMonitorConfig {
     // Default pool utilization threshold at 90%.
     this.utilizationThreshold = UTILIZATION_THRESHOLD ? Number(UTILIZATION_THRESHOLD) : 90;
 
-    assert(this.utilizationThreshold <= 100, "UTILIZATION_THRESHOLD must be <= 100");
-    assert(this.utilizationThreshold >= 0, "UTILIZATION_THRESHOLD must be >= 0");
+    if (this.utilizationThreshold > 100) throw new Error("UTILIZATION_THRESHOLD must be <= 100");
+    if (this.utilizationThreshold < 0) throw new Error("UTILIZATION_THRESHOLD must be >= 0");
 
     this.whitelistedAddresses = WHITELISTED_ADDRESSES ? JSON.parse(WHITELISTED_ADDRESSES) : [];
     for (let i = 0; i < this.whitelistedAddresses.length; i++) {
