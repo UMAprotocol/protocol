@@ -16,6 +16,7 @@ export const SPEED_UP_UMA_GAS = 227341;
 // Bots incur lower than expected costs due to batching mulitple transactions, this roughly estimates the savings
 export const DEFAULT_GAS_DISCOUNT = 25;
 
+export const expectedRateModelKeys = ["UBar", "R0", "R1", "R2"];
 export interface RateModel {
   UBar: string; // denote the utilization kink along the rate model where the slope of the interest rate model changes.
   R0: string; // is the interest rate charged at 0 utilization

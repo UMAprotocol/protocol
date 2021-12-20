@@ -4,7 +4,7 @@ const { toBN, soliditySha3, toChecksumAddress } = Web3.utils;
 import { BlockFinder } from "../price-feed/utils";
 import { getAbi } from "@uma/contracts-node";
 import { Deposit } from "./InsuredBridgeL2Client";
-import { RateModel, calculateRealizedLpFeePct, expectedRateModelKeys } from "../helpers/acrossFeesCalculator";
+import { across } from "@uma/sdk";
 import { isDefined } from "../types";
 
 import type { BridgeAdminInterfaceWeb3, BridgePoolWeb3, RateModelStoreWeb3 } from "@uma/contracts-node";
@@ -130,7 +130,7 @@ export class InsuredBridgeL1Client {
     return this.whitelistedTokens[chainId];
   }
 
-  getRateModelForBlockNumber(l1Token: string, blockNumber: number | undefined = undefined): RateModel {
+  getRateModelForBlockNumber(l1Token: string, blockNumber: number | undefined = undefined): across.RateModel {
     this._throwIfNotInitialized();
     const l1TokenNormalized = toChecksumAddress(l1Token);
 
@@ -141,16 +141,16 @@ export class InsuredBridgeL1Client {
       throw new Error(`No updated rate model events for L1 token: ${l1TokenNormalized}`);
 
     // Helper method that returns parsed rate model from event string, or throws.
-    const _parseAndReturnRateModelFromString = (rateModelString: string): RateModel => {
+    const _parseAndReturnRateModelFromString = (rateModelString: string): across.RateModel => {
       const rateModelFromEvent = JSON.parse(rateModelString);
 
       // Rate model must contain all keys in `expectedRateModelKeys`, and extra keys are OK.
-      for (const key in expectedRateModelKeys) {
+      for (const key in across.expectedRateModelKeys) {
         if (!(key in Object.keys(rateModelFromEvent))) {
           throw new Error(
-            `Rate model does not contain all expected keys. Expected keys: [${expectedRateModelKeys}], actual keys: [${Object.keys(
-              rateModelFromEvent
-            )}]`
+            `Rate model does not contain all expected keys. Expected keys: [${
+              across.expectedRateModelKeys
+            }], actual keys: [${Object.keys(rateModelFromEvent)}]`
           );
         }
       }
@@ -290,7 +290,7 @@ export class InsuredBridgeL1Client {
       rateModel: rateModelForBlockNumber,
     });
 
-    return calculateRealizedLpFeePct(
+    return across.calculateRealizedLpFeePct(
       rateModelForBlockNumber,
       toBN(liquidityUtilizationCurrent),
       toBN(liquidityUtilizationPostRelay)
