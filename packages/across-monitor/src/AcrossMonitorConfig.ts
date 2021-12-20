@@ -17,8 +17,8 @@ export class AcrossMonitorConfig {
   readonly errorRetries: number;
   readonly errorRetriesTimeout: number;
 
-  startingBlock: number | undefined;
-  endingBlock: number | undefined;
+  readonly startingBlock: number | undefined;
+  readonly endingBlock: number | undefined;
 
   readonly utilizationThreshold: number;
   readonly whitelistedAddresses: string[];
@@ -61,6 +61,7 @@ export class AcrossMonitorConfig {
     this.errorRetries = ERROR_RETRIES ? Number(ERROR_RETRIES) : 3;
     this.errorRetriesTimeout = ERROR_RETRIES_TIMEOUT ? Number(ERROR_RETRIES_TIMEOUT) : 1;
 
+    // In serverless mode use block range from environment to fetch for latest events.
     this.startingBlock = STARTING_BLOCK_NUMBER ? Number(STARTING_BLOCK_NUMBER) : undefined;
     this.endingBlock = ENDING_BLOCK_NUMBER ? Number(ENDING_BLOCK_NUMBER) : undefined;
   }
