@@ -130,10 +130,7 @@ export class InsuredBridgeL1Client {
     return this.whitelistedTokens[chainId];
   }
 
-  getRateModelForBlockNumber(
-    l1Token: string,
-    blockNumber: number | undefined = undefined
-  ): across.feeCalculator.RateModel {
+  getRateModelForBlockNumber(l1Token: string, blockNumber: number | undefined = undefined): across.constants.RateModel {
     this._throwIfNotInitialized();
     const l1TokenNormalized = toChecksumAddress(l1Token);
 
@@ -144,7 +141,7 @@ export class InsuredBridgeL1Client {
       throw new Error(`No updated rate model events for L1 token: ${l1TokenNormalized}`);
 
     // Helper method that returns parsed rate model from event string, or throws.
-    const _parseAndReturnRateModelFromString = (rateModelString: string): across.feeCalculator.RateModel => {
+    const _parseAndReturnRateModelFromString = (rateModelString: string): across.constants.RateModel => {
       const rateModelFromEvent = JSON.parse(rateModelString);
 
       // Rate model must contain all keys in `expectedRateModelKeys`, and extra keys are OK.
@@ -159,10 +156,10 @@ export class InsuredBridgeL1Client {
       }
 
       return {
-        UBar: across.utils.toBN(rateModelFromEvent.UBar),
-        R0: across.utils.toBN(rateModelFromEvent.R0),
-        R1: across.utils.toBN(rateModelFromEvent.R1),
-        R2: across.utils.toBN(rateModelFromEvent.R2),
+        UBar: rateModelFromEvent.UBar,
+        R0: rateModelFromEvent.R0,
+        R1: rateModelFromEvent.R1,
+        R2: rateModelFromEvent.R2,
       };
     };
 
