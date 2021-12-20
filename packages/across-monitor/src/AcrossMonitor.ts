@@ -125,7 +125,7 @@ export class AcrossMonitor {
 
       this.logger.warn({
         at: "UnknownRelayers",
-        message: "Across bridge pool unknown relayer warning🥷",
+        message: "Across bridge pool unknown relayer warning 🥷",
         mrkdwn:
           createEtherscanLinkMarkdown(event.caller, this.monitorConfig.bridgeAdminChainId) +
           " " +
