@@ -5,7 +5,6 @@ import { BlockFinder } from "../price-feed/utils";
 import { getAbi } from "@uma/contracts-node";
 import { Deposit } from "./InsuredBridgeL2Client";
 import { across } from "@uma/sdk";
-import { isDefined } from "../types";
 
 import type { BridgeAdminInterfaceWeb3, BridgePoolWeb3, RateModelStoreWeb3 } from "@uma/contracts-node";
 import type { Logger } from "winston";
@@ -333,9 +332,10 @@ export class InsuredBridgeL1Client {
       blockSearchConfig
     );
     for (const l1Token of Object.keys(newUpdatedRateModelEvents)) {
-      this.updatedRateModelEventsForToken[l1Token] = newUpdatedRateModelEvents[l1Token]
-        .concat(this.updatedRateModelEventsForToken[l1Token])
-        .filter(isDefined);
+      // Add new events to end of array or initialize array for L1 token.
+      this.updatedRateModelEventsForToken[l1Token] = this.updatedRateModelEventsForToken[l1Token]
+        ? this.updatedRateModelEventsForToken[l1Token].concat(newUpdatedRateModelEvents[l1Token])
+        : newUpdatedRateModelEvents[l1Token];
     }
 
     // Set the optimisticOracleLiveness. Note that if this value changes in the contract the bot will need to be
