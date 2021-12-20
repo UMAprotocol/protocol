@@ -127,12 +127,11 @@ export class InsuredBridgeL1Client {
     return this.whitelistedTokens[chainId];
   }
 
-  /**
-   * @notice Return all L1 tokens that had a rate model associated with it at the block number.
-   * @param blockNumber Returns l1 tokens that were mapped to a rate model at this block height. If undefined,
-   * this function will return all L1 tokens that have a block number as of the latest block height.
-   * @returns array of L1 token addresses.
-   */
+  getRateModelForBlockNumber(l1Token: string, blockNumber: number | undefined = undefined): across.constants.RateModel {
+    this._throwIfNotInitialized();
+    return across.rateModel.getRateModelForBlockNumber(this.updatedRateModelEventsForToken, l1Token, blockNumber);
+  }
+
   getL1TokensFromRateModel(blockNumber: number | undefined = undefined): string[] {
     this._throwIfNotInitialized();
 
