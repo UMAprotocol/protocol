@@ -5,6 +5,7 @@ import { BlockFinder } from "../price-feed/utils";
 import { getAbi } from "@uma/contracts-node";
 import { Deposit } from "./InsuredBridgeL2Client";
 import { RateModel, calculateRealizedLpFeePct, expectedRateModelKeys } from "../helpers/acrossFeesCalculator";
+import { isDefined } from "../types";
 
 import type { BridgeAdminInterfaceWeb3, BridgePoolWeb3, RateModelStoreWeb3 } from "@uma/contracts-node";
 import type { Logger } from "winston";
@@ -213,7 +214,7 @@ export class InsuredBridgeL1Client {
           return toChecksumAddress(l1Token);
         else return null;
       })
-      .filter((x) => x !== null) as string[];
+      .filter(isDefined);
   }
 
   hasInstantRelayer(l1Token: string, depositHash: string, realizedLpFeePct: string): boolean {
