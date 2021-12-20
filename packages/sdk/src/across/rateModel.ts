@@ -1,15 +1,20 @@
 import { expectedRateModelKeys, RateModel } from "./constants";
 import { exists } from "../utils";
 import type { RateModelStoreWeb3 } from "@uma/contracts-node";
-import Web3 from "web3";
-const { toChecksumAddress } = Web3.utils;
+import { ethers } from "ethers";
 
+// Maps L1 token to array of dictionaries mapping UpdatedRateModel event block numbers to the stringified rate model.
 export type RateModelEventsByBlock = {
   [l1TokenAddress: string]: { blockNumber: number; rateModel: string }[];
 };
 
-// Fetch all rate model events and map rate models to their L1 tokens. Each L1 token points to an array of rate models,
-// mapped by block height when the rate model was updated.
+/**
+ * Fetch all rate model events and map rate models to their L1 tokens. Each L1 token points to an array of rate models,
+ * mapped by block height when the rate model was updated.
+ * @param rateModelStore RateModel contract to fetch events from.
+ * @param blockSearchConfig Optional params to pass to event query.
+ * @returns Rate model event dictionary, keyed by l1 token.
+ */
 export const getAllRateModelEvents = async (
   rateModelStore: RateModelStoreWeb3,
   blockSearchConfig: any
@@ -23,7 +28,7 @@ export const getAllRateModelEvents = async (
   for (const updatedRateModelEvent of updatedRateModelEvents) {
     // The contract enforces that all rate models are mapped to addresses, therefore we do not need to check that
     // `l1Token` is a valid address.
-    const l1TokenNormalized = toChecksumAddress(updatedRateModelEvent.returnValues.l1Token);
+    const l1TokenNormalized = ethers.utils.getAddress(updatedRateModelEvent.returnValues.l1Token);
     if (!updatedRateModelEventsForToken[l1TokenNormalized]) updatedRateModelEventsForToken[l1TokenNormalized] = [];
 
     // We assume that events are returned from oldest to newest, so we can simply push events into the array and
@@ -35,7 +40,13 @@ export const getAllRateModelEvents = async (
   }
   return updatedRateModelEventsForToken;
 };
-// Helper method that returns parsed rate model from string, or throws.
+
+/**
+ * Helper method that returns parsed rate model from string, or throws.
+ * @param rateModelString Stringified rate model to parse.
+ * @returns Rate model object. Must conform to `expectedRateModelKeys` format.
+ */
+
 export const parseAndReturnRateModelFromString = (rateModelString: string): RateModel => {
   const rateModelFromEvent = JSON.parse(rateModelString);
 
@@ -58,13 +69,20 @@ export const parseAndReturnRateModelFromString = (rateModelString: string): Rate
   };
 };
 
-// Return the rate model for L1 token set at the block height.
+/**
+ * Return the rate model for L1 token set at the block height.
+ * @param rateModelEvents RateModels keyed by L1 token and block height. Designed to be the return value of
+ * `getAllRateModelEvents`.
+ * @param l1Token L1 token address to get rate model for.
+ * @param blockNumber Block height to get rate model for.
+ * @returns Rate model object.
+ */
 export const getRateModelForBlockNumber = (
   rateModelEvents: RateModelEventsByBlock,
   l1Token: string,
   blockNumber: number | undefined = undefined
 ): RateModel => {
-  const l1TokenNormalized = toChecksumAddress(l1Token);
+  const l1TokenNormalized = ethers.utils.getAddress(l1Token);
 
   if (!rateModelEvents[l1TokenNormalized] || rateModelEvents[l1TokenNormalized].length === 0)
     throw new Error(`No updated rate model events for L1 token: ${l1TokenNormalized}`);
@@ -97,6 +115,8 @@ export const getRateModelForBlockNumber = (
 
 /**
  * @notice Return all L1 tokens that had a rate model associated with it at the block number.
+ * @param rateModelEvents RateModels keyed by L1 token and block height. Designed to be the return value of
+ * `getAllRateModelEvents`.
  * @param blockNumber Returns l1 tokens that were mapped to a rate model at this block height. If undefined,
  * this function will return all L1 tokens that have a block number as of the latest block height.
  * @returns array of L1 token addresses.
@@ -107,13 +127,13 @@ export const getL1TokensFromRateModel = (
 ): string[] => {
   return Object.keys(rateModelEvents)
     .map((l1Token) => {
-      const l1TokenNormalized = toChecksumAddress(l1Token);
+      const l1TokenNormalized = ethers.utils.getAddress(l1Token);
 
       // Check that there is at least one UpdatedRateModel event before the provided block number, otherwise
       // this L1 token didn't exist in the RateModel at the block height and we shouldn't include it in the returned
       // array.
       if (!blockNumber || rateModelEvents[l1TokenNormalized].find((event) => event.blockNumber <= blockNumber))
-        return toChecksumAddress(l1Token);
+        return ethers.utils.getAddress(l1Token);
       else return null;
     })
     .filter(exists);
