@@ -5,7 +5,7 @@ import { config } from "dotenv";
 
 import { getWeb3 } from "@uma/common";
 import { getAddress } from "@uma/contracts-node";
-import { Logger, waitForLogger, delay, InsuredBridgeL1Client } from "@uma/financial-templates-lib";
+import { Logger, delay, InsuredBridgeL1Client } from "@uma/financial-templates-lib";
 
 import { AcrossMonitor } from "./AcrossMonitor";
 import { AcrossMonitorConfig } from "./AcrossMonitorConfig";
@@ -61,8 +61,7 @@ export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
           at: "AcrossMonitor#index",
           message: "End of serverless execution loop - terminating process",
         });
-        await waitForLogger(logger);
-        await delay(2);
+        await delay(5); // Set a delay to let the transports flush fully.
         break;
       }
       logger.debug({
