@@ -127,7 +127,7 @@ export class InsuredBridgeL1Client {
     return this.whitelistedTokens[chainId];
   }
 
-  getWhitelistedL2TokensForChainId(chainId: string) {
+  getWhitelistedL2TokensForChainId(chainId: string): string[] {
     this._throwIfNotInitialized();
     return Object.values(this.getWhitelistedTokensForChainId(chainId));
   }
