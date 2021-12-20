@@ -130,7 +130,10 @@ export class InsuredBridgeL1Client {
     return this.whitelistedTokens[chainId];
   }
 
-  getRateModelForBlockNumber(l1Token: string, blockNumber: number | undefined = undefined): across.RateModel {
+  getRateModelForBlockNumber(
+    l1Token: string,
+    blockNumber: number | undefined = undefined
+  ): across.feeCalculator.RateModel {
     this._throwIfNotInitialized();
     const l1TokenNormalized = toChecksumAddress(l1Token);
 
@@ -141,7 +144,7 @@ export class InsuredBridgeL1Client {
       throw new Error(`No updated rate model events for L1 token: ${l1TokenNormalized}`);
 
     // Helper method that returns parsed rate model from event string, or throws.
-    const _parseAndReturnRateModelFromString = (rateModelString: string): across.RateModel => {
+    const _parseAndReturnRateModelFromString = (rateModelString: string): across.feeCalculator.RateModel => {
       const rateModelFromEvent = JSON.parse(rateModelString);
 
       // Rate model must contain all keys in `expectedRateModelKeys`, and extra keys are OK.
@@ -156,10 +159,10 @@ export class InsuredBridgeL1Client {
       }
 
       return {
-        UBar: toBN(rateModelFromEvent.UBar),
-        R0: toBN(rateModelFromEvent.R0),
-        R1: toBN(rateModelFromEvent.R1),
-        R2: toBN(rateModelFromEvent.R2),
+        UBar: across.utils.toBN(rateModelFromEvent.UBar),
+        R0: across.utils.toBN(rateModelFromEvent.R0),
+        R1: across.utils.toBN(rateModelFromEvent.R1),
+        R2: across.utils.toBN(rateModelFromEvent.R2),
       };
     };
 
@@ -290,10 +293,14 @@ export class InsuredBridgeL1Client {
       rateModel: rateModelForBlockNumber,
     });
 
-    return across.feeCalculator.calculateRealizedLpFeePct(
-      rateModelForBlockNumber,
-      toBN(liquidityUtilizationCurrent),
-      toBN(liquidityUtilizationPostRelay)
+    return toBN(
+      across.feeCalculator
+        .calculateRealizedLpFeePct(
+          rateModelForBlockNumber,
+          liquidityUtilizationCurrent.toString(),
+          liquidityUtilizationPostRelay.toString()
+        )
+        .toString()
     );
   }
 
