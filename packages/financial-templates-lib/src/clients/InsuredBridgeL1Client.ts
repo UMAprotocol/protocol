@@ -122,13 +122,14 @@ export class InsuredBridgeL1Client {
     return this.relays[l1Token][deposit.depositHash];
   }
 
-  getWhitelistedL2TokensForChainId(chainId: string) {
-    this._throwIfNotInitialized();
-    return Object.values(this.getWhitelistedTokensForChainId(chainId));
-  }
   getWhitelistedTokensForChainId(chainId: string): { [l1TokenAddress: string]: string } {
     this._throwIfNotInitialized();
     return this.whitelistedTokens[chainId];
+  }
+
+  getWhitelistedL2TokensForChainId(chainId: string) {
+    this._throwIfNotInitialized();
+    return Object.values(this.getWhitelistedTokensForChainId(chainId));
   }
 
   getRateModelForBlockNumber(l1Token: string, blockNumber: number | undefined = undefined): across.constants.RateModel {
