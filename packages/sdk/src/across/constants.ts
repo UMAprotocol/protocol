@@ -16,6 +16,11 @@ export const SPEED_UP_UMA_GAS = 227341;
 // Bots incur lower than expected costs due to batching mulitple transactions, this roughly estimates the savings
 export const DEFAULT_GAS_DISCOUNT = 25;
 
+// Amount of blocks to wait following a `TokensBridged` L2 event until we check the L1 state commitment contracts. This
+// offset provides a buffer to allow for any time delay between L2 state changing and L1 state updating. For example,
+// Optimism has a several hour delay.
+export const L2_STATE_COMMITMENT_DELAY_BLOCKS = 5000;
+
 export interface RateModel {
   UBar: string; // denote the utilization kink along the rate model where the slope of the interest rate model changes.
   R0: string; // is the interest rate charged at 0 utilization

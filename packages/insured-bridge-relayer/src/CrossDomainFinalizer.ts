@@ -6,6 +6,7 @@ const argv = minimist(process.argv.slice(), {});
 
 import winston from "winston";
 
+import { across } from "@uma/sdk";
 import {
   createEtherscanLinkMarkdown,
   createFormatFunction,
@@ -238,7 +239,9 @@ export class CrossDomainFinalizer {
     // canonical L1 StateCommitmentChain. 5000 blocks is ~ 3 hours at current Optimism rate. This is only applied if we
     // are not running in test mode.
     const blockOffset =
-      argv._.indexOf("test") !== -1 || argv._.filter((arg) => arg.includes("mocha")).length > 0 ? 0 : 5000;
+      argv._.indexOf("test") !== -1 || argv._.filter((arg) => arg.includes("mocha")).length > 0
+        ? 0
+        : across.constants.L2_STATE_COMMITMENT_DELAY_BLOCKS;
     const tokensBridgedEvents = await this.l2Client.bridgeDepositBox.getPastEvents("TokensBridged", {
       fromBlock: this.l2DeployData[this.l2Client.chainId].blockNumber,
       toBlock: (await this.l2Client.l2Web3.eth.getBlockNumber()) - blockOffset,
