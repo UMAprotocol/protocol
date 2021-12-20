@@ -42,8 +42,10 @@ export class AcrossMonitor {
     this.bridgePools = this.l1Client.bridgePools;
     this.relayEventProcessor.bridgePools = this.l1Client.bridgePools;
 
-    // In serverless mode (pollingDelay === 0) use block range from environment (or just the latest block if not provided) to fetch for latest events.
-    // Else, if running in loop mode (pollingDelay != 0), start with the latest block and on next loops continue from where the last one ended.
+    // In serverless mode (pollingDelay === 0) use block range from environment (or just the latest block if not
+    // provided) to fetch for latest events.
+    // Else, if running in loop mode (pollingDelay != 0), start with the latest block and on next loops continue from
+    // where the last one ended.
     const latestL1BlockNumber = await this.l1Client.l1Web3.eth.getBlockNumber();
     if (this.monitorConfig.pollingDelay === 0) {
       this.startingBlock =
@@ -54,7 +56,8 @@ export class AcrossMonitor {
       this.startingBlock = this.endingBlock ? this.endingBlock + 1 : latestL1BlockNumber;
       this.endingBlock = latestL1BlockNumber;
     }
-    // Starting block should not be after the ending block (this could happen on short polling period or misconfiguration).
+    // Starting block should not be after the ending block (this could happen on short polling period or
+    // misconfiguration).
     this.startingBlock = Math.min(this.startingBlock, this.endingBlock);
 
     await this.relayEventProcessor.update(this.endingBlock);

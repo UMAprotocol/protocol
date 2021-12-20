@@ -44,7 +44,8 @@ export class RelayEventProcessor {
   }
 
   // update() should be called only after having populated bridgePools.
-  // This fetches all DepositRelayed events since lastRelayUpdate block in order to store deposit and relay hash mappings that could be referenced by other events.
+  // This fetches all DepositRelayed events since lastRelayUpdate block in order to store deposit and relay hash
+  // mappings that could be referenced by other events.
   async update(endingBlock: number): Promise<void> {
     // Only update if endingBlock is more recent than the lastRelayUpdate block from last update() call.
     const startingBlock = this.lastRelayUpdate + 1;
@@ -102,7 +103,8 @@ export class RelayEventProcessor {
         bridgePool.contract.getPastEvents("RelayCanceled", blockSearchConfig),
       ]);
 
-      // Process all relay related events, get caller, type and match with additional properties by depositHash that were cached on update().
+      // Process all relay related events, get caller, type and match with additional properties by depositHash that
+      // were cached on update().
       const allEvents = depositRelayedEvents
         .concat(relaySpedUpEvents)
         .concat(relaySettledEvents)
