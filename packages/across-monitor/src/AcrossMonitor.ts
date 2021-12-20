@@ -19,7 +19,7 @@ export class AcrossMonitor {
   private startingBlock: number | undefined = undefined;
   private endingBlock: number | undefined = undefined;
 
-  // relayEventProcessor Module used to fetch relay events.
+  // relayEventProcessor Module used to fetch and process relay events.
   private relayEventProcessor: RelayEventProcessor;
 
   /**
@@ -31,7 +31,6 @@ export class AcrossMonitor {
   constructor(
     readonly logger: winston.Logger,
     readonly monitorConfig: AcrossMonitorConfig,
-    // readonly relayEventProcessor: RelayEventProcessor,
     readonly l1Client: InsuredBridgeL1Client
   ) {
     this.relayEventProcessor = new RelayEventProcessor();
