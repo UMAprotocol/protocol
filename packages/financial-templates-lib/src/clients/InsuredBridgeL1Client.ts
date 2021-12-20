@@ -140,32 +140,9 @@ export class InsuredBridgeL1Client {
     )
       throw new Error(`No updated rate model events for L1 token: ${l1TokenNormalized}`);
 
-    // Helper method that returns parsed rate model from event string, or throws.
-    const _parseAndReturnRateModelFromString = (rateModelString: string): across.constants.RateModel => {
-      const rateModelFromEvent = JSON.parse(rateModelString);
-
-      // Rate model must contain all keys in `expectedRateModelKeys`, and extra keys are OK.
-      for (const key in across.constants.expectedRateModelKeys) {
-        if (!(key in Object.keys(rateModelFromEvent))) {
-          throw new Error(
-            `Rate model does not contain all expected keys. Expected keys: [${
-              across.constants.expectedRateModelKeys
-            }], actual keys: [${Object.keys(rateModelFromEvent)}]`
-          );
-        }
-      }
-
-      return {
-        UBar: rateModelFromEvent.UBar,
-        R0: rateModelFromEvent.R0,
-        R1: rateModelFromEvent.R1,
-        R2: rateModelFromEvent.R2,
-      };
-    };
-
     if (!blockNumber) {
       // If block number is undefined, use latest updated rate model.
-      return _parseAndReturnRateModelFromString(
+      return across.rateModel.parseAndReturnRateModelFromString(
         this.updatedRateModelEventsForToken[l1TokenNormalized].slice(-1)[0].rateModel
       );
     } else {
@@ -187,7 +164,7 @@ export class InsuredBridgeL1Client {
 
       if (!rateModel)
         throw new Error(`No updated rate model events before block #${blockNumber} for L1 token: ${l1TokenNormalized}`);
-      return _parseAndReturnRateModelFromString(rateModel?.rateModel);
+      return across.rateModel.parseAndReturnRateModelFromString(rateModel?.rateModel);
     }
   }
 
