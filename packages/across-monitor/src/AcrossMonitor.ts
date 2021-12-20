@@ -92,7 +92,7 @@ export class AcrossMonitor {
       ) {
         this.logger.warn({
           at: "UtilizationMonitor",
-          message: "Across bridge pool utilization warning🏊",
+          message: "Across bridge pool utilization warning 🏊",
           mrkdwn:
             bridgePool.poolCollateralSymbol +
             " bridge pool at " +
