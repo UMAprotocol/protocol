@@ -377,14 +377,14 @@ describe("InsuredBridgeL1Client", function () {
 
     // Rate model for block number after initial rate model update should return that rate model.
     const initialUpdatedRateModelEvent = (await rateModelStore.getPastEvents("UpdatedRateModel", { fromBlock: 0 }))[0];
-    let rateModel = client.getRateModelForBlockNumber(
+    let _rateModel = client.getRateModelForBlockNumber(
       l1Token.options.address,
       initialUpdatedRateModelEvent.blockNumber
     );
-    assert.equal(rateModel.UBar.toString(), rateModel.UBar);
-    assert.equal(rateModel.R0.toString(), rateModel.R0);
-    assert.equal(rateModel.R1.toString(), rateModel.R1);
-    assert.equal(rateModel.R2.toString(), rateModel.R2);
+    assert.equal(_rateModel.UBar.toString(), rateModel.UBar);
+    assert.equal(_rateModel.R0.toString(), rateModel.R0);
+    assert.equal(_rateModel.R1.toString(), rateModel.R1);
+    assert.equal(_rateModel.R2.toString(), rateModel.R2);
   });
   it("Fetch rate model for block number", async function () {
     // Update once to demonstrate that the rate model state is not deleted between iterations.
@@ -397,33 +397,33 @@ describe("InsuredBridgeL1Client", function () {
       .send({ from: owner });
     await client.update();
 
-    let rateModel = client.getRateModelForBlockNumber(l1Token.options.address, updatedRateModelTxn.blockNumber);
-    assert.equal(rateModel.UBar.toString(), newRateModel.UBar);
-    assert.equal(rateModel.R0.toString(), newRateModel.R0);
-    assert.equal(rateModel.R1.toString(), newRateModel.R1);
-    assert.equal(rateModel.R2.toString(), newRateModel.R2);
+    let _rateModel = client.getRateModelForBlockNumber(l1Token.options.address, updatedRateModelTxn.blockNumber);
+    assert.equal(_rateModel.UBar.toString(), newRateModel.UBar);
+    assert.equal(_rateModel.R0.toString(), newRateModel.R0);
+    assert.equal(_rateModel.R1.toString(), newRateModel.R1);
+    assert.equal(_rateModel.R2.toString(), newRateModel.R2);
 
     // Returns latest rate model when searching for block number far into future
-    rateModel = client.getRateModelForBlockNumber(l1Token.options.address, updatedRateModelTxn.blockNumber + 100);
-    assert.equal(rateModel.UBar.toString(), newRateModel.UBar);
-    assert.equal(rateModel.R0.toString(), newRateModel.R0);
-    assert.equal(rateModel.R1.toString(), newRateModel.R1);
-    assert.equal(rateModel.R2.toString(), newRateModel.R2);
+    _rateModel = client.getRateModelForBlockNumber(l1Token.options.address, updatedRateModelTxn.blockNumber + 100);
+    assert.equal(_rateModel.UBar.toString(), newRateModel.UBar);
+    assert.equal(_rateModel.R0.toString(), newRateModel.R0);
+    assert.equal(_rateModel.R1.toString(), newRateModel.R1);
+    assert.equal(_rateModel.R2.toString(), newRateModel.R2);
 
     // Returns latest rate model when block number is undefined
-    rateModel = client.getRateModelForBlockNumber(l1Token.options.address);
-    assert.equal(rateModel.UBar.toString(), newRateModel.UBar);
-    assert.equal(rateModel.R0.toString(), newRateModel.R0);
-    assert.equal(rateModel.R1.toString(), newRateModel.R1);
-    assert.equal(rateModel.R2.toString(), newRateModel.R2);
+    _rateModel = client.getRateModelForBlockNumber(l1Token.options.address);
+    assert.equal(_rateModel.UBar.toString(), newRateModel.UBar);
+    assert.equal(_rateModel.R0.toString(), newRateModel.R0);
+    assert.equal(_rateModel.R1.toString(), newRateModel.R1);
+    assert.equal(_rateModel.R2.toString(), newRateModel.R2);
 
     // Rate model returned for initial update block number should be initial rate model.
     const initialUpdatedRateModelEvent = (await rateModelStore.getPastEvents("UpdatedRateModel", { fromBlock: 0 }))[0];
-    rateModel = client.getRateModelForBlockNumber(l1Token.options.address, initialUpdatedRateModelEvent.blockNumber);
-    assert.equal(rateModel.UBar.toString(), rateModel.UBar);
-    assert.equal(rateModel.R0.toString(), rateModel.R0);
-    assert.equal(rateModel.R1.toString(), rateModel.R1);
-    assert.equal(rateModel.R2.toString(), rateModel.R2);
+    _rateModel = client.getRateModelForBlockNumber(l1Token.options.address, initialUpdatedRateModelEvent.blockNumber);
+    assert.equal(_rateModel.UBar.toString(), rateModel.UBar);
+    assert.equal(_rateModel.R0.toString(), rateModel.R0);
+    assert.equal(_rateModel.R1.toString(), rateModel.R1);
+    assert.equal(_rateModel.R2.toString(), rateModel.R2);
 
     // Fetching rate model for unknown L1 token throws error
     try {
@@ -441,17 +441,28 @@ describe("InsuredBridgeL1Client", function () {
       assert.isTrue(err.message.includes("before first UpdatedRateModel event"));
     }
 
-    // If rate model string is not parseable into expected keys, then update skips the event and the rate model is
-    // unchanged for the L1 token.
+    // If rate model string is not parseable into expected keys, then throws error
     await rateModelStore.methods
       .updateRateModel(l1Token.options.address, JSON.stringify({ key: "value" }))
       .send({ from: owner });
     await client.update();
-    rateModel = client.getRateModelForBlockNumber(l1Token.options.address);
-    assert.equal(rateModel.UBar.toString(), newRateModel.UBar);
-    assert.equal(rateModel.R0.toString(), newRateModel.R0);
-    assert.equal(rateModel.R1.toString(), newRateModel.R1);
-    assert.equal(rateModel.R2.toString(), newRateModel.R2);
+    try {
+      client.getRateModelForBlockNumber(l1Token.options.address);
+      assert(false);
+    } catch (err) {
+      assert.isTrue(err.message.includes("does not contain all expected keys"));
+    }
+
+    // If rate model string contains extra keys, they are ignored as long as all expected keys are contained.
+    await rateModelStore.methods
+      .updateRateModel(l1Token.options.address, JSON.stringify({ ...rateModel, key: "value" }))
+      .send({ from: owner });
+    await client.update();
+    _rateModel = client.getRateModelForBlockNumber(l1Token.options.address);
+    assert.equal(_rateModel.UBar.toString(), rateModel.UBar);
+    assert.equal(_rateModel.R0.toString(), rateModel.R0);
+    assert.equal(_rateModel.R1.toString(), rateModel.R1);
+    assert.equal(_rateModel.R2.toString(), rateModel.R2);
   });
   it("Fetch l1 tokens from rate model", async function () {
     // Add a new rate model at a different block height from original rate model update.
