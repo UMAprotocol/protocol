@@ -1,5 +1,5 @@
 import Web3 from "web3";
-const { toBN, toWei } = Web3.utils;
+const { toBN, toWei, toChecksumAddress } = Web3.utils;
 
 import winston from "winston";
 
@@ -119,7 +119,7 @@ export class AcrossMonitor {
     );
     for (const event of relayEvents) {
       // Skip notifications for known relay caller addresses.
-      if (this.monitorConfig.whitelistedAddresses.includes(event.caller.toLowerCase())) {
+      if (this.monitorConfig.whitelistedAddresses.includes(toChecksumAddress(event.caller))) {
         continue;
       }
 

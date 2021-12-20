@@ -1,4 +1,6 @@
 import assert from "assert";
+import Web3 from "web3";
+const { toChecksumAddress } = Web3.utils;
 
 export interface ProcessEnv {
   [key: string]: string | undefined;
@@ -51,7 +53,7 @@ export class AcrossMonitorConfig {
 
     this.whitelistedAddresses = WHITELISTED_ADDRESSES ? JSON.parse(WHITELISTED_ADDRESSES) : [];
     for (let i = 0; i < this.whitelistedAddresses.length; i++) {
-      this.whitelistedAddresses[i] = this.whitelistedAddresses[i].toLowerCase();
+      this.whitelistedAddresses[i] = toChecksumAddress(this.whitelistedAddresses[i]);
     }
 
     // Default bridge pools on mainnet.
