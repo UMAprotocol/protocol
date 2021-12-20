@@ -92,7 +92,7 @@ export class AcrossMonitor {
       ) {
         this.logger.warn({
           at: "UtilizationMonitor",
-          message: "Across bridge pool utilization warning⚠",
+          message: "Across bridge pool utilization warning🏊",
           mrkdwn:
             bridgePool.poolCollateralSymbol +
             " bridge pool at " +
@@ -124,7 +124,7 @@ export class AcrossMonitor {
 
       this.logger.warn({
         at: "UnknownRelays",
-        message: "Across bridge pool unknown relay event warning⚠",
+        message: "Across bridge pool unknown relay event warning🥷",
         mrkdwn:
           createEtherscanLinkMarkdown(event.caller, this.monitorConfig.bridgeAdminChainId) +
           " " +
