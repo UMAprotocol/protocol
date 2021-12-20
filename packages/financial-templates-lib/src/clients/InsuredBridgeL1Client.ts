@@ -5,6 +5,7 @@ import { BlockFinder } from "../price-feed/utils";
 import { getAbi } from "@uma/contracts-node";
 import { Deposit } from "./InsuredBridgeL2Client";
 import { across } from "@uma/sdk";
+import { isDefined } from "../types";
 
 import type { BridgeAdminInterfaceWeb3, BridgePoolWeb3, RateModelStoreWeb3 } from "@uma/contracts-node";
 import type { Logger } from "winston";
@@ -327,10 +328,15 @@ export class InsuredBridgeL1Client {
 
     // Fetch and store all rate model updated events, which the user of this client can use to fetch a rate model for a
     // specific deposit quote timestamp.
-    this.updatedRateModelEventsForToken = await across.rateModel.getAllRateModelEvents(
+    const newUpdatedRateModelEvents = await across.rateModel.getAllRateModelEvents(
       this.rateModelStore,
       blockSearchConfig
     );
+    for (const l1Token of Object.keys(newUpdatedRateModelEvents)) {
+      this.updatedRateModelEventsForToken[l1Token] = newUpdatedRateModelEvents[l1Token]
+        .concat(this.updatedRateModelEventsForToken[l1Token])
+        .filter(isDefined);
+    }
 
     // Set the optimisticOracleLiveness. Note that if this value changes in the contract the bot will need to be
     // restarted to get the latest value. This is a fine assumption as: a) our production bots run in serverless mode

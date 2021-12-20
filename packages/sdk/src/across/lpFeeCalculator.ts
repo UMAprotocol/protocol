@@ -14,6 +14,7 @@ export default class LpFeeCalculator {
     this.blockFinder = new BlockFinder<Block>(provider.getBlock.bind(provider));
   }
   async getLpFeePct(tokenAddress: string, bridgePoolAddress: string, amount: BigNumberish, timestamp?: number) {
+    // TODO: Use `./rateModel` methods here instead of hardcoded constant.
     const rateModel = RATE_MODELS[ethers.utils.getAddress(tokenAddress)];
     assert(rateModel, "No rate model for token: " + tokenAddress);
 

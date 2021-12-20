@@ -33,6 +33,7 @@ export const ADDRESSES = {
   USDC: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
 };
 
+// TODO: Deprecate this hardcoded mapping and read from RateModelStore contract via ./rateModel.ts helper methods.
 export const RATE_MODELS: Record<string, RateModel> = {
   "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2": {
     UBar: "650000000000000000",
