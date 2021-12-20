@@ -1,44 +1,10 @@
 import { expectedRateModelKeys, RateModel } from "./constants";
 import { exists } from "../utils";
-import type { RateModelStoreWeb3 } from "@uma/contracts-node";
 import { ethers } from "ethers";
 
 // Maps L1 token to array of dictionaries mapping UpdatedRateModel event block numbers to the stringified rate model.
 export type RateModelEventsByBlock = {
   [l1TokenAddress: string]: { blockNumber: number; rateModel: string }[];
-};
-
-/**
- * Fetch all rate model events and map rate models to their L1 tokens. Each L1 token points to an array of rate models,
- * mapped by block height when the rate model was updated.
- * @param rateModelStore RateModel contract to fetch events from.
- * @param blockSearchConfig Optional params to pass to event query.
- * @returns Rate model event dictionary, keyed by l1 token.
- */
-export const getAllRateModelEvents = async (
-  rateModelStore: RateModelStoreWeb3,
-  blockSearchConfig: any
-): Promise<RateModelEventsByBlock> => {
-  const updatedRateModelEventsForToken: {
-    [l1TokenAddress: string]: { blockNumber: number; rateModel: string }[];
-  } = {};
-  // Fetch and store all rate model updated events, which the user of this client can use to fetch a rate model for a
-  // specific deposit quote timestamp.
-  const updatedRateModelEvents = await rateModelStore.getPastEvents("UpdatedRateModel", blockSearchConfig);
-  for (const updatedRateModelEvent of updatedRateModelEvents) {
-    // The contract enforces that all rate models are mapped to addresses, therefore we do not need to check that
-    // `l1Token` is a valid address.
-    const l1TokenNormalized = ethers.utils.getAddress(updatedRateModelEvent.returnValues.l1Token);
-    if (!updatedRateModelEventsForToken[l1TokenNormalized]) updatedRateModelEventsForToken[l1TokenNormalized] = [];
-
-    // We assume that events are returned from oldest to newest, so we can simply push events into the array and
-    // and maintain their time order.
-    updatedRateModelEventsForToken[l1TokenNormalized].push({
-      blockNumber: updatedRateModelEvent.blockNumber,
-      rateModel: updatedRateModelEvent.returnValues.rateModel,
-    });
-  }
-  return updatedRateModelEventsForToken;
 };
 
 /**
@@ -71,8 +37,7 @@ export const parseAndReturnRateModelFromString = (rateModelString: string): Rate
 
 /**
  * Return the rate model for L1 token set at the block height.
- * @param rateModelEvents RateModels keyed by L1 token and block height. Designed to be the return value of
- * `getAllRateModelEvents`.
+ * @param rateModelEvents RateModels keyed by L1 token and block height.
  * @param l1Token L1 token address to get rate model for.
  * @param blockNumber Block height to get rate model for.
  * @returns Rate model object.
@@ -115,8 +80,7 @@ export const getRateModelForBlockNumber = (
 
 /**
  * @notice Return all L1 tokens that had a rate model associated with it at the block number.
- * @param rateModelEvents RateModels keyed by L1 token and block height. Designed to be the return value of
- * `getAllRateModelEvents`.
+ * @param rateModelEvents RateModels keyed by L1 token and block height.
  * @param blockNumber Returns l1 tokens that were mapped to a rate model at this block height. If undefined,
  * this function will return all L1 tokens that have a block number as of the latest block height.
  * @returns array of L1 token addresses.

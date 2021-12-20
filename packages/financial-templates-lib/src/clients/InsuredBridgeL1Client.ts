@@ -327,10 +327,8 @@ export class InsuredBridgeL1Client {
 
     // Fetch and store all rate model updated events, which the user of this client can use to fetch a rate model for a
     // specific deposit quote timestamp.
-    const newUpdatedRateModelEvents = await across.rateModel.getAllRateModelEvents(
-      this.rateModelStore,
-      blockSearchConfig
-    );
+    const newUpdatedRateModelEvents = await this._getAllRateModelEvents(blockSearchConfig);
+
     for (const l1Token of Object.keys(newUpdatedRateModelEvents)) {
       // Add new events to end of array or initialize array for L1 token.
       this.updatedRateModelEventsForToken[l1Token] = this.updatedRateModelEventsForToken[l1Token]
@@ -447,6 +445,35 @@ export class InsuredBridgeL1Client {
     this.firstBlockToSearch = blockSearchConfig.toBlock + 1;
 
     this.logger.debug({ at: "InsuredBridgeL1Client", message: "Insured bridge l1 client updated" });
+  }
+
+  /**
+   * Fetch all rate model events and map rate models to their L1 tokens. Each L1 token points to an array of rate models,
+   * mapped by block height when the rate model was updated.
+   * @param blockSearchConfig Optional params to pass to event query.
+   * @returns Rate model event dictionary, keyed by l1 token.
+   */
+  private async _getAllRateModelEvents(blockSearchConfig: any): Promise<across.rateModel.RateModelEventsByBlock> {
+    const updatedRateModelEventsForToken: {
+      [l1TokenAddress: string]: { blockNumber: number; rateModel: string }[];
+    } = {};
+    // Fetch and store all rate model updated events, which the user of this client can use to fetch a rate model for a
+    // specific deposit quote timestamp.
+    const updatedRateModelEvents = await this.rateModelStore.getPastEvents("UpdatedRateModel", blockSearchConfig);
+    for (const updatedRateModelEvent of updatedRateModelEvents) {
+      // The contract enforces that all rate models are mapped to addresses, therefore we do not need to check that
+      // `l1Token` is a valid address.
+      const l1TokenNormalized = toChecksumAddress(updatedRateModelEvent.returnValues.l1Token);
+      if (!updatedRateModelEventsForToken[l1TokenNormalized]) updatedRateModelEventsForToken[l1TokenNormalized] = [];
+
+      // We assume that events are returned from oldest to newest, so we can simply push events into the array and
+      // and maintain their time order.
+      updatedRateModelEventsForToken[l1TokenNormalized].push({
+        blockNumber: updatedRateModelEvent.blockNumber,
+        rateModel: updatedRateModelEvent.returnValues.rateModel,
+      });
+    }
+    return updatedRateModelEventsForToken;
   }
 
   private _getInstantRelayHash(depositHash: string, realizedLpFeePct: string): string | null {
