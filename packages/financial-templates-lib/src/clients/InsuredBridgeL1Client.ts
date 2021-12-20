@@ -145,11 +145,11 @@ export class InsuredBridgeL1Client {
       const rateModelFromEvent = JSON.parse(rateModelString);
 
       // Rate model must contain all keys in `expectedRateModelKeys`, and extra keys are OK.
-      for (const key in across.expectedRateModelKeys) {
+      for (const key in across.constants.expectedRateModelKeys) {
         if (!(key in Object.keys(rateModelFromEvent))) {
           throw new Error(
             `Rate model does not contain all expected keys. Expected keys: [${
-              across.expectedRateModelKeys
+              across.constants.expectedRateModelKeys
             }], actual keys: [${Object.keys(rateModelFromEvent)}]`
           );
         }
@@ -290,7 +290,7 @@ export class InsuredBridgeL1Client {
       rateModel: rateModelForBlockNumber,
     });
 
-    return across.calculateRealizedLpFeePct(
+    return across.feeCalculator.calculateRealizedLpFeePct(
       rateModelForBlockNumber,
       toBN(liquidityUtilizationCurrent),
       toBN(liquidityUtilizationPostRelay)
