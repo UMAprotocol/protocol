@@ -25,7 +25,7 @@ export interface EventInfo {
   logIndex: number;
 }
 
-export class RelayEventFetcher {
+export class RelayEventProcessor {
   public bridgePools: { [key: string]: BridgePoolData } = {};
 
   private lastRelayUpdate = -1; // DepositRelayed events are fetched from lastRelayUpdate + 1 block.

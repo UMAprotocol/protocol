@@ -5,11 +5,11 @@ import winston from "winston";
 
 import { createEtherscanLinkMarkdown, createFormatFunction, PublicNetworks } from "@uma/common";
 
-import { RelayEventFetcher } from "./RelayEventFetcher";
+import { RelayEventProcessor } from "./RelayEventProcessor";
 
 import type { BridgePoolData, InsuredBridgeL1Client } from "@uma/financial-templates-lib";
 import type { AcrossMonitorConfig } from "./AcrossMonitorConfig";
-import type { EventInfo } from "./RelayEventFetcher";
+import type { EventInfo } from "./RelayEventProcessor";
 
 export class AcrossMonitor {
   // Discovered bridge pools are populated after update().
@@ -19,8 +19,8 @@ export class AcrossMonitor {
   private startingBlock: number | undefined = undefined;
   private endingBlock: number | undefined = undefined;
 
-  // relayEventFetcher Module used to fetch relay events.
-  private relayEventFetcher: RelayEventFetcher;
+  // relayEventProcessor Module used to fetch relay events.
+  private relayEventProcessor: RelayEventProcessor;
 
   /**
    * @notice Constructs new AcrossMonitor Instance.
@@ -31,17 +31,17 @@ export class AcrossMonitor {
   constructor(
     readonly logger: winston.Logger,
     readonly monitorConfig: AcrossMonitorConfig,
-    // readonly relayEventFetcher: RelayEventFetcher,
+    // readonly relayEventProcessor: RelayEventProcessor,
     readonly l1Client: InsuredBridgeL1Client
   ) {
-    this.relayEventFetcher = new RelayEventFetcher();
+    this.relayEventProcessor = new RelayEventProcessor();
   }
 
   async update(): Promise<void> {
     // Update l1Client for bridge pool discovery.
     await this.l1Client.update();
     this.bridgePools = this.l1Client.bridgePools;
-    this.relayEventFetcher.bridgePools = this.l1Client.bridgePools;
+    this.relayEventProcessor.bridgePools = this.l1Client.bridgePools;
 
     // In serverless mode (pollingDelay === 0) use block range from environment (or just the latest block if not provided) to fetch for latest events.
     // Else, if running in loop mode (pollingDelay != 0), start with the latest block and on next loops continue from where the last one ended.
@@ -58,7 +58,7 @@ export class AcrossMonitor {
     // Starting block should not be after the ending block (this could happen on short polling period or misconfiguration).
     this.startingBlock = Math.min(this.startingBlock, this.endingBlock);
 
-    await this.relayEventFetcher.update(this.endingBlock);
+    await this.relayEventProcessor.update(this.endingBlock);
   }
 
   async checkUtilization(): Promise<void> {
@@ -110,7 +110,7 @@ export class AcrossMonitor {
   async checkUnknownRelays(): Promise<void> {
     this.logger.debug({ at: "AcrossMonitor#UnknownRelays", message: "Checking for unknown relays" });
 
-    const relayEvents: EventInfo[] = await this.relayEventFetcher.getRelayEventInfo(
+    const relayEvents: EventInfo[] = await this.relayEventProcessor.getRelayEventInfo(
       this.startingBlock,
       this.endingBlock
     );
