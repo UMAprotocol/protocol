@@ -5,7 +5,6 @@ import { BlockFinder } from "../price-feed/utils";
 import { getAbi } from "@uma/contracts-node";
 import { Deposit } from "./InsuredBridgeL2Client";
 import { across } from "@uma/sdk";
-import { isDefined } from "../types";
 
 import type { BridgeAdminInterfaceWeb3, BridgePoolWeb3, RateModelStoreWeb3 } from "@uma/contracts-node";
 import type { Logger } from "winston";
@@ -65,9 +64,7 @@ export class InsuredBridgeL1Client {
   public readonly rateModelStore: RateModelStoreWeb3;
   public bridgePools: { [key: string]: BridgePoolData }; // L1TokenAddress=>BridgePoolData
   private whitelistedTokens: { [chainId: string]: { [l1TokenAddress: string]: string } } = {};
-  private updatedRateModelEventsForToken: {
-    [l1TokenAddress: string]: { blockNumber: number; rateModel: string }[];
-  } = {};
+  private updatedRateModelEventsForToken: across.rateModel.RateModelEventsByBlock = {};
   public optimisticOracleLiveness = 0;
   public firstBlockToSearch: number;
 
@@ -130,44 +127,6 @@ export class InsuredBridgeL1Client {
     return this.whitelistedTokens[chainId];
   }
 
-  getRateModelForBlockNumber(l1Token: string, blockNumber: number | undefined = undefined): across.constants.RateModel {
-    this._throwIfNotInitialized();
-    const l1TokenNormalized = toChecksumAddress(l1Token);
-
-    if (
-      !this.updatedRateModelEventsForToken[l1TokenNormalized] ||
-      this.updatedRateModelEventsForToken[l1TokenNormalized].length === 0
-    )
-      throw new Error(`No updated rate model events for L1 token: ${l1TokenNormalized}`);
-
-    if (!blockNumber) {
-      // If block number is undefined, use latest updated rate model.
-      return across.rateModel.parseAndReturnRateModelFromString(
-        this.updatedRateModelEventsForToken[l1TokenNormalized].slice(-1)[0].rateModel
-      );
-    } else {
-      const firstEventBlockNumber = this.updatedRateModelEventsForToken[l1TokenNormalized][0].blockNumber;
-      if (blockNumber < firstEventBlockNumber) {
-        throw new Error(
-          `Block number #${blockNumber} is before first UpdatedRateModel event block ${firstEventBlockNumber}`
-        );
-      }
-
-      // We're looking for the latest rate model update that occurred at or before the block number.
-      // Rate model events are inserted into the array from oldest at index 0 to newest at index length-1, so we'll
-      // reverse the array so it goes from newest at index 0 to oldest at index length-1, and then find the first event
-      // who's block number is less than or equal to the target block number.
-      const rateModel = this.updatedRateModelEventsForToken[l1TokenNormalized]
-        .slice() // reverse() modifies memory in place so create a copy first.
-        .reverse()
-        .find((event) => event.blockNumber <= blockNumber);
-
-      if (!rateModel)
-        throw new Error(`No updated rate model events before block #${blockNumber} for L1 token: ${l1TokenNormalized}`);
-      return across.rateModel.parseAndReturnRateModelFromString(rateModel?.rateModel);
-    }
-  }
-
   /**
    * @notice Return all L1 tokens that had a rate model associated with it at the block number.
    * @param blockNumber Returns l1 tokens that were mapped to a rate model at this block height. If undefined,
@@ -177,21 +136,7 @@ export class InsuredBridgeL1Client {
   getL1TokensFromRateModel(blockNumber: number | undefined = undefined): string[] {
     this._throwIfNotInitialized();
 
-    return Object.keys(this.updatedRateModelEventsForToken)
-      .map((l1Token) => {
-        const l1TokenNormalized = toChecksumAddress(l1Token);
-
-        // Check that there is at least one UpdatedRateModel event before the provided block number, otherwise
-        // this L1 token didn't exist in the RateModel at the block height and we shouldn't include it in the returned
-        // array.
-        if (
-          !blockNumber ||
-          this.updatedRateModelEventsForToken[l1TokenNormalized].find((event) => event.blockNumber <= blockNumber)
-        )
-          return toChecksumAddress(l1Token);
-        else return null;
-      })
-      .filter(isDefined);
+    return across.rateModel.getL1TokensFromRateModel(this.updatedRateModelEventsForToken, blockNumber);
   }
 
   hasInstantRelayer(l1Token: string, depositHash: string, realizedLpFeePct: string): boolean {
@@ -246,10 +191,16 @@ export class InsuredBridgeL1Client {
   }
 
   async calculateRealizedLpFeePctForDeposit(deposit: Deposit): Promise<BN> {
+    this._throwIfNotInitialized(); // Note: Will fail if rate models are not fetched in update()
+
     // The block number must be exactly the one containing the deposit.quoteTimestamp, so we use the lowest block delta
     // of 1. Setting averageBlockTime to 14 increases the speed at the cost of more web3 requests.
     const quoteBlockNumber = (await this.blockFinder.getBlockForTimestamp(deposit.quoteTimestamp)).number;
-    const rateModelForBlockNumber = this.getRateModelForBlockNumber(deposit.l1Token, quoteBlockNumber);
+    const rateModelForBlockNumber = across.rateModel.getRateModelForBlockNumber(
+      this.updatedRateModelEventsForToken,
+      deposit.l1Token,
+      quoteBlockNumber
+    );
 
     const bridgePool = this.getBridgePoolForDeposit(deposit).contract;
     const [liquidityUtilizationCurrent, liquidityUtilizationPostRelay] = await Promise.all([
@@ -378,21 +329,10 @@ export class InsuredBridgeL1Client {
 
     // Fetch and store all rate model updated events, which the user of this client can use to fetch a rate model for a
     // specific deposit quote timestamp.
-    const updatedRateModelEvents = await this.rateModelStore.getPastEvents("UpdatedRateModel", blockSearchConfig);
-    for (const updatedRateModelEvent of updatedRateModelEvents) {
-      // The contract enforces that all rate models are mapped to addresses, therefore we do not need to check that
-      // `l1Token` is a valid address.
-      const l1TokenNormalized = toChecksumAddress(updatedRateModelEvent.returnValues.l1Token);
-      if (!this.updatedRateModelEventsForToken[l1TokenNormalized])
-        this.updatedRateModelEventsForToken[l1TokenNormalized] = [];
-
-      // We assume that events are returned from oldest to newest, so we can simply push events into the array and
-      // and maintain their time order.
-      this.updatedRateModelEventsForToken[l1TokenNormalized].push({
-        blockNumber: updatedRateModelEvent.blockNumber,
-        rateModel: updatedRateModelEvent.returnValues.rateModel,
-      });
-    }
+    this.updatedRateModelEventsForToken = await across.rateModel.getAllRateModelEvents(
+      this.rateModelStore,
+      blockSearchConfig
+    );
 
     // Set the optimisticOracleLiveness. Note that if this value changes in the contract the bot will need to be
     // restarted to get the latest value. This is a fine assumption as: a) our production bots run in serverless mode
