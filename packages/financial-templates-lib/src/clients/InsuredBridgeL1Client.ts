@@ -122,6 +122,10 @@ export class InsuredBridgeL1Client {
     return this.relays[l1Token][deposit.depositHash];
   }
 
+  getWhitelistedL2TokensForChainId(chainId: string) {
+    this._throwIfNotInitialized();
+    return Object.values(this.getWhitelistedTokensForChainId(chainId));
+  }
   getWhitelistedTokensForChainId(chainId: string): { [l1TokenAddress: string]: string } {
     this._throwIfNotInitialized();
     return this.whitelistedTokens[chainId];
@@ -190,16 +194,10 @@ export class InsuredBridgeL1Client {
   }
 
   async calculateRealizedLpFeePctForDeposit(deposit: Deposit): Promise<BN> {
-    this._throwIfNotInitialized(); // Note: Will fail if rate models are not fetched in update()
-
     // The block number must be exactly the one containing the deposit.quoteTimestamp, so we use the lowest block delta
     // of 1. Setting averageBlockTime to 14 increases the speed at the cost of more web3 requests.
     const quoteBlockNumber = (await this.blockFinder.getBlockForTimestamp(deposit.quoteTimestamp)).number;
-    const rateModelForBlockNumber = across.rateModel.getRateModelForBlockNumber(
-      this.updatedRateModelEventsForToken,
-      deposit.l1Token,
-      quoteBlockNumber
-    );
+    const rateModelForBlockNumber = this.getRateModelForBlockNumber(deposit.l1Token, quoteBlockNumber);
 
     const bridgePool = this.getBridgePoolForDeposit(deposit).contract;
     const [liquidityUtilizationCurrent, liquidityUtilizationPostRelay] = await Promise.all([
