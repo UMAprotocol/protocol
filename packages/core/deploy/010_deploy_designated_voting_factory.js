@@ -5,7 +5,12 @@ const func = async function (hre) {
   const { deployer } = await getNamedAccounts();
   const Finder = await deployments.get("Finder");
 
-  await deploy("DesignatedVotingFactory", { from: deployer, args: [Finder.address], log: true });
+  await deploy("DesignatedVotingFactory", {
+    from: deployer,
+    args: [Finder.address],
+    log: true,
+    skipIfAlreadyDeployed: true,
+  });
 };
 module.exports = func;
 func.tags = ["DesignatedVotingFactory", "dvm"];

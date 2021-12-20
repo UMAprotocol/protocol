@@ -3,6 +3,30 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.17.0](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.16.1...@uma/sdk@0.17.0) (2021-12-17)
+
+### Bug Fixes
+
+- **sdk:** fix pool withdraw validation ([#3693](https://github.com/UMAprotocol/protocol/issues/3693)) ([c9fecd5](https://github.com/UMAprotocol/protocol/commit/c9fecd53c3cb65b91ad058ff3a9af2d72e20d9bb))
+
+### Features
+
+- **across-bots:** add profitability module to only relay profitable relays ([#3656](https://github.com/UMAprotocol/protocol/issues/3656)) ([f9fb117](https://github.com/UMAprotocol/protocol/commit/f9fb1178894bb1b39b2969bd26ba435979059a19))
+- **sdk:** add detailed gas deposit fees for across ([#3713](https://github.com/UMAprotocol/protocol/issues/3713)) ([eb158a4](https://github.com/UMAprotocol/protocol/commit/eb158a49a16ce1061b676544ac238a92646e534a))
+
+- feat(sdk)!: add improved gas fee function (#3700) ([4eae69d](https://github.com/UMAprotocol/protocol/commit/4eae69d9814a220987b3011dd9d45b88e3962fbb)), closes [#3700](https://github.com/UMAprotocol/protocol/issues/3700)
+
+### BREAKING CHANGES
+
+- calls to previous gas estimator must migrate to new interface
+- improve(sdk): improve gas fee type, docs and e2e test
+
+## [0.16.1](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.16.0...@uma/sdk@0.16.1) (2021-12-13)
+
+### Bug Fixes
+
+- **sdk:** fix rate model address for uma ([#3691](https://github.com/UMAprotocol/protocol/issues/3691)) ([4492971](https://github.com/UMAprotocol/protocol/commit/4492971554f4deef3c400ac0c023d09d0fb8e37a))
+
 # [0.16.0](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.14.0...@uma/sdk@0.16.0) (2021-12-07)
 
 ### Features

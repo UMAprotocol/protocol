@@ -7,15 +7,20 @@ import {
   GasEstimator,
   Deposit,
   ClientRelayState,
-  RateModel,
-  calculateRealizedLpFeePct,
 } from "@uma/financial-templates-lib";
+import { across } from "@uma/sdk";
+
 import winston from "winston";
 import sinon from "sinon";
 import hre from "hardhat";
 const { assert } = require("chai");
 
 import { interfaceName, TokenRolesEnum, HRE, ZERO_ADDRESS } from "@uma/common";
+import { MockProfitabilityCalculator } from "./mocks/MockProfitabilityCalculator";
+import { TokenType } from "../src/ProfitabilityCalculator";
+
+// Tested file
+import { Relayer, RelaySubmitType } from "../src/Relayer";
 
 const { web3, getContract } = hre as HRE;
 const { toWei, toBN, utf8ToHex } = web3.utils;
@@ -69,11 +74,13 @@ const defaultRealizedLpFeePct = toWei("0.05");
 const minimumBridgingDelay = 60; // L2->L1 token bridging must wait at least this time.
 const initialPoolLiquidity = toWei("100");
 const depositAmount = toWei("1");
-const rateModel: RateModel = { UBar: toBNWei("0.65"), R0: toBNWei("0.00"), R1: toBNWei("0.08"), R2: toBNWei("1.00") };
+const rateModel: across.constants.RateModel = {
+  UBar: toWei("0.65"),
+  R0: toWei("0.00"),
+  R1: toWei("0.08"),
+  R2: toWei("1.00"),
+};
 const defaultLookbackWindow = 100;
-
-// Tested file
-import { Relayer, RelaySubmitType } from "../src/Relayer";
 
 describe("Relayer.ts", function () {
   let l1Accounts;
@@ -92,6 +99,7 @@ describe("Relayer.ts", function () {
   let l1Client: any;
   let l2Client: any;
   let gasEstimator: any;
+  let profitabilityCalculator: any;
 
   let l1DeployData: any;
   let l2DeployData: any;
@@ -236,11 +244,21 @@ describe("Relayer.ts", function () {
     l2Client = new InsuredBridgeL2Client(spyLogger, web3, bridgeDepositBox.options.address, chainId);
 
     gasEstimator = new GasEstimator(spyLogger);
+
+    // Create the profitabilityCalculator. Set the discount rate to 100% so that the calculator does not consider the
+    // cost of the l1 token. In doing so, we only test the relayer directly, ignoring profitability. The calculator will
+    // return the relay type that produces the most revenue, irrespective of cost.
+    profitabilityCalculator = new MockProfitabilityCalculator(spyLogger, [l1Token.options.address], 1, 100);
+    profitabilityCalculator.setL1TokenInfo({
+      [l1Token.options.address]: { tokenType: TokenType.ERC20, tokenEthPrice: toBNWei("0.1") },
+    });
+
     relayer = new Relayer(
       spyLogger,
       gasEstimator,
       l1Client,
       l2Client,
+      profitabilityCalculator,
       [l1Token.options.address],
       l1Relayer,
       whitelistedChainIds,
@@ -274,6 +292,9 @@ describe("Relayer.ts", function () {
 
       // Set the relay ability to any. This represents a deposit that has not had any data brought to L1 yet.
       clientRelayState = ClientRelayState.Uninitialized;
+
+      // Update the profitabilityCalculator so it has pricing information.
+      await profitabilityCalculator.update();
     });
     it("Correctly decides when to do nothing relay", async function () {
       // There are two cases where the relayer should do nothing: a) it does not have enough token balance and b) when
@@ -574,7 +595,7 @@ describe("Relayer.ts", function () {
             instantRelayFeePct: defaultInstantRelayFeePct,
             quoteTimestamp: currentBlockTime,
           },
-          calculateRealizedLpFeePct(rateModel, toBNWei("0"), toBNWei("0.01")) // compute the expected fee for 1% utilization
+          across.feeCalculator.calculateRealizedLpFeePct(rateModel, toWei("0"), toWei("0.01")) // compute the expected fee for 1% utilization
         )
         .send({ from: l1Owner });
 
@@ -715,7 +736,7 @@ describe("Relayer.ts", function () {
             instantRelayFeePct: defaultInstantRelayFeePct,
             quoteTimestamp: quoteTime,
           },
-          calculateRealizedLpFeePct(rateModel, toBNWei("0"), toBNWei("0.01")) // compute the expected fee for 1% utilization
+          across.feeCalculator.calculateRealizedLpFeePct(rateModel, toWei("0"), toWei("0.01")) // compute the expected fee for 1% utilization
         )
         .send({ from: l1Owner });
       await Promise.all([l1Client.update(), l2Client.update()]);
@@ -759,7 +780,7 @@ describe("Relayer.ts", function () {
             instantRelayFeePct: defaultInstantRelayFeePct,
             quoteTimestamp: quoteTime,
           },
-          calculateRealizedLpFeePct(rateModel, toBNWei("0"), toBNWei("0.01")) // compute the expected fee for 1% utilization
+          across.feeCalculator.calculateRealizedLpFeePct(rateModel, toWei("0"), toWei("0.01")) // compute the expected fee for 1% utilization
         )
         .send({ from: l1Owner });
       await Promise.all([l1Client.update(), l2Client.update()]);
@@ -1130,6 +1151,7 @@ describe("Relayer.ts", function () {
         gasEstimator,
         l1Client,
         l2Client,
+        profitabilityCalculator,
         [l1Token.options.address],
         l1Relayer,
         whitelistedChainIds,
@@ -1307,6 +1329,7 @@ describe("Relayer.ts", function () {
         gasEstimator,
         l1Client,
         l2Client,
+        profitabilityCalculator,
         [l1Token.options.address],
         l1Relayer,
         [],
@@ -1428,7 +1451,7 @@ describe("Relayer.ts", function () {
             instantRelayFeePct: defaultInstantRelayFeePct,
             quoteTimestamp: quoteTime,
           },
-          calculateRealizedLpFeePct(rateModel, toBNWei("0"), toBNWei("0.01")) // compute the expected fee for 1% utilization
+          across.feeCalculator.calculateRealizedLpFeePct(rateModel, toWei("0"), toWei("0.01")) // compute the expected fee for 1% utilization
         )
         .send({ from: l1Owner });
       await Promise.all([l1Client.update(), l2Client.update()]);
@@ -1477,7 +1500,7 @@ describe("Relayer.ts", function () {
             instantRelayFeePct: defaultInstantRelayFeePct,
             quoteTimestamp: quoteTime,
           },
-          calculateRealizedLpFeePct(rateModel, toBNWei("0"), toBNWei("0.01")) // This realized LP fee computation should
+          across.feeCalculator.calculateRealizedLpFeePct(rateModel, toWei("0"), toWei("0.01")) // This realized LP fee computation should
           // be impossible for the relayer to compute since its for a timestamp in the future, therefore the bot should
           // dispute.
         )
@@ -1513,7 +1536,7 @@ describe("Relayer.ts", function () {
             instantRelayFeePct: defaultInstantRelayFeePct,
             quoteTimestamp: quoteTime,
           },
-          calculateRealizedLpFeePct(rateModel, toBNWei("0"), toBNWei("0.01"))
+          across.feeCalculator.calculateRealizedLpFeePct(rateModel, toWei("0"), toWei("0.01"))
         )
         .send({ from: l1Owner });
       await bridgePool.methods
@@ -1528,7 +1551,7 @@ describe("Relayer.ts", function () {
             instantRelayFeePct: defaultInstantRelayFeePct,
             quoteTimestamp: quoteTime,
           },
-          calculateRealizedLpFeePct(rateModel, toBNWei("0"), toBNWei("0.01"))
+          across.feeCalculator.calculateRealizedLpFeePct(rateModel, toWei("0"), toWei("0.01"))
         )
         .send({ from: l1Owner });
       await bridgePool.methods
@@ -1543,7 +1566,7 @@ describe("Relayer.ts", function () {
             instantRelayFeePct: defaultInstantRelayFeePct,
             quoteTimestamp: quoteTime,
           },
-          calculateRealizedLpFeePct(rateModel, toBNWei("0"), toBNWei("0.01"))
+          across.feeCalculator.calculateRealizedLpFeePct(rateModel, toWei("0"), toWei("0.01"))
         )
         .send({ from: l1Owner });
 
@@ -1643,11 +1666,23 @@ describe("Relayer.ts", function () {
         rateModelStore.options.address
       );
       l2Client = new InsuredBridgeL2Client(spyLogger, web3, bridgeDepositBox.options.address, chainId);
+      // Add the token to the profitability calculator so it has sufficient info to quote the relay type.
+      profitabilityCalculator = new MockProfitabilityCalculator(
+        spyLogger,
+        [l1Token.options.address, newL1Token.options.address],
+        1,
+        100 // 100% discount (ignores profitability calculator)
+      );
+      profitabilityCalculator.setL1TokenInfo({
+        [l1Token.options.address]: { tokenType: TokenType.ERC20, tokenEthPrice: toBNWei("0.1") },
+        [newL1Token.options.address]: { tokenType: TokenType.ERC20, tokenEthPrice: toBNWei("0.1") },
+      });
       relayer = new Relayer(
         spyLogger,
         gasEstimator,
         l1Client,
         l2Client,
+        profitabilityCalculator,
         [l1Token.options.address, newL1Token.options.address],
         l1Relayer,
         whitelistedChainIds,

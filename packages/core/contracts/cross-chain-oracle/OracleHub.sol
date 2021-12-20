@@ -13,7 +13,6 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 /**
-
  * @title Cross-chain Oracle L1 Oracle Hub.
  * @notice Gatekeeper contract deployed on mainnet that validates and sends price requests from sidechain to the DVM on
  * mainnet. This is a "gate keeper" contract because it performs the final validation for any messages originating from
@@ -80,10 +79,6 @@ contract OracleHub is OracleBase, ParentMessengerConsumerInterface, Ownable, Loc
         int256 price = _getOracle().getPrice(identifier, time, ancillaryData);
         _publishPrice(identifier, time, ancillaryData, price);
 
-        // TODO: Consider storing all publishPrice events for each chainId, therefore we can limit the
-        // sendMessageToChild calls to one per chainId and not allow users to spam the bridge for this chainID
-        // with calls coming from this contract.
-
         // Require caller to include enough ETH to pass to Messenger so that caller cannot take advantage of excess
         // ETH held by the Messenger. Caller can easily query messenger to get exact amount of ETh to send.
         uint256 requiredL1CallValue = messengers[chainId].getL1CallValue();
@@ -143,8 +138,6 @@ contract OracleHub is OracleBase, ParentMessengerConsumerInterface, Ownable, Loc
     ) public nonReentrant() {
         bool newPriceRequested = _requestPrice(identifier, time, ancillaryData);
         if (newPriceRequested) {
-            // TODO: Decide whether to rebate the caller their final fee so that, in the worst case, they did not pay
-            // two final fees (one on child chain, one here).
             uint256 finalFee = _getStore().computeFinalFee(address(token)).rawValue;
             token.safeTransferFrom(msg.sender, address(_getStore()), finalFee);
             _getOracle().requestPrice(identifier, time, ancillaryData);

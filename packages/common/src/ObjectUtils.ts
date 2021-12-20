@@ -44,4 +44,18 @@ export const createObjectFromDefaultProps = (overrideProps: ObjectType, defaultP
   return newObject;
 };
 
-module.exports = { createObjectFromDefaultProps };
+/**
+ * @notice Given an`object`, and a `mapFn`, returns a new Object having applied the mapping function to each element in
+ * the `object`. Analogous to Array.prototype.map(), but for Objects.
+ * @param {object} the Object to map over.
+ * @param {mapFn} the mapping function to apply to each element in the `object`.
+ * @returns {object} new Object with the same keys as the `object`, but each value is the result of applying the mapFn.
+ */
+export const objectMap = <T, U>(object: T, mapFn: (arg: T[keyof T]) => U): { [Property in keyof T]: U } => {
+  return (Object.keys(object) as (keyof T)[]).reduce(function (result, key) {
+    result[key] = mapFn(object[key]);
+    return result;
+  }, {} as { [Property in keyof T]: U });
+};
+
+module.exports = { createObjectFromDefaultProps, objectMap };

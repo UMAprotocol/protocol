@@ -9,15 +9,16 @@ import { getWeb3, getWeb3ByChainId, processTransactionPromiseBatch, getRetryWeb3
 import {
   GasEstimator,
   Logger,
-  waitForLogger,
   delay,
   InsuredBridgeL1Client,
   InsuredBridgeL2Client,
 } from "@uma/financial-templates-lib";
 
-import { approveL1Tokens, pruneWhitelistedL1Tokens } from "./RelayerHelpers";
 import { Relayer } from "./Relayer";
+import { approveL1Tokens, pruneWhitelistedL1Tokens } from "./RelayerHelpers";
+import { ProfitabilityCalculator } from "./ProfitabilityCalculator";
 import { CrossDomainFinalizer } from "./CrossDomainFinalizer";
+import { createBridgeAdapter } from "./canonical-bridge-adapters/CreateBridgeAdapter";
 import { RelayerConfig } from "./RelayerConfig";
 config();
 
@@ -27,15 +28,19 @@ export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
 
     // If pollingDelay === 0 then the bot is running in serverless mode and should send a `debug` level log.
     // Else, if running in loop mode (pollingDelay != 0), then it should send a `info` level log.
+
+    // The logger is having issues with logging nested BNs. Remove this for now. Is indirectly fixed in PR https://github.com/UMAprotocol/protocol/pull/3656
+    /* eslint-disable @typescript-eslint/no-unused-vars */
+    const { rateModels, ...logableConfig } = config;
     logger[config.pollingDelay === 0 ? "debug" : "info"]({
       at: "AcrossRelayer#index",
       message: "Relayer started 🌉",
-      config,
+      logableConfig,
     });
 
-    const [accounts] = await Promise.all([l1Web3.eth.getAccounts()]);
+    const [accounts, l1ChainId] = await Promise.all([l1Web3.eth.getAccounts(), await l1Web3.eth.getChainId()]);
 
-    const gasEstimator = new GasEstimator(logger);
+    const gasEstimator = new GasEstimator(logger, 60, l1ChainId, l1Web3);
     await gasEstimator.update();
 
     // Create L1/L2 clients to pull data to inform the relayer.
@@ -79,11 +84,20 @@ export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
     // method will error if the bot runner has specified a L1 tokens that is not part of the Bridge Admin whitelist.
     await approveL1Tokens(logger, l1Web3, gasEstimator, accounts[0], config.bridgeAdmin, filteredL1Whitelist);
 
+    // Construct the profitability calculator based on the filteredL1Whitelist and relayerDiscount.
+    const profitabilityCalculator = new ProfitabilityCalculator(
+      logger,
+      filteredL1Whitelist,
+      l1ChainId,
+      config.relayerDiscount
+    );
+
     const relayer = new Relayer(
       logger,
       gasEstimator,
       l1Client,
       l2Client,
+      profitabilityCalculator,
       filteredL1Whitelist,
       accounts[0],
       config.whitelistedChainIds,
@@ -92,12 +106,17 @@ export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
       config.l2BlockLookback
     );
 
+    const canonicalBridgeAdapter = createBridgeAdapter(logger, l1Web3, l2Web3, config.activatedChainIds[0]);
+    if (config.botModes.l1FinalizerEnabled) await canonicalBridgeAdapter.initialize();
+
     const crossDomainFinalizer = new CrossDomainFinalizer(
       logger,
       gasEstimator,
       l1Client,
       l2Client,
+      canonicalBridgeAdapter,
       accounts[0],
+      config.l2DeployData,
       config.crossDomainFinalizationThreshold
     );
 
@@ -105,7 +124,12 @@ export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
       await retry(
         async () => {
           // Update state.
-          await Promise.all([gasEstimator.update(), l1Client.update(), l2Client.update()]);
+          await Promise.all([
+            gasEstimator.update(),
+            l1Client.update(),
+            l2Client.update(),
+            profitabilityCalculator.update(),
+          ]);
 
           // Start bots that are enabled.
           if (config.botModes.relayerEnabled) await relayer.checkForPendingDepositsAndRelay();
@@ -114,16 +138,22 @@ export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
           if (config.botModes.disputerEnabled) await relayer.checkForPendingRelaysAndDispute();
           else logger.debug({ at: "AcrossRelayer#Disputer", message: "Disputer disabled" });
 
-          if (config.botModes.finalizerEnabled) await relayer.checkforSettleableRelaysAndSettle();
-          else logger.debug({ at: "AcrossRelayer#Finalizer", message: "Finalizer disabled" });
+          if (config.botModes.settlerEnabled) await relayer.checkforSettleableRelaysAndSettle();
+          else logger.debug({ at: "AcrossRelayer#Finalizer", message: "Relay Settler disabled" });
+
+          if (config.botModes.l1FinalizerEnabled) await crossDomainFinalizer.checkForConfirmedL2ToL1RelaysAndFinalize();
+          else logger.debug({ at: "AcrossRelayer#CrossDomainFinalizer", message: "Confirmed L1 finalizer disabled" });
 
           if (config.botModes.l2FinalizerEnabled) await crossDomainFinalizer.checkForBridgeableL2TokensAndBridge();
-          else logger.debug({ at: "AcrossRelayer#CrossDomainFinalizer", message: "Cross domain finalizer disabled" });
+          else logger.debug({ at: "AcrossRelayer#CrossDomainFinalizer", message: "L2->L1 finalizer disabled" });
 
           // Each of the above code blocks could have produced transactions. If they did, their promises are stored
           // in the executed transactions array. The method below awaits all these transactions to ensure they are
           // correctly included in a block. if any submitted transactions contains an error then a log is produced.
-          await processTransactionPromiseBatch(relayer.getExecutedTransactions(), logger);
+          await processTransactionPromiseBatch(
+            [...relayer.getExecutedTransactions(), ...crossDomainFinalizer.getExecutedTransactions()],
+            logger
+          );
           relayer.resetExecutedTransactions(); // Purge the executed transactions array for next execution loop.
         },
 
@@ -146,8 +176,7 @@ export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
           at: "AcrossRelayer#index",
           message: "End of serverless execution loop - terminating process",
         });
-        await waitForLogger(logger);
-        await delay(2);
+        await delay(5); // Set a delay to let the transports flush fully.
         break;
       }
       logger.debug({

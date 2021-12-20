@@ -68,9 +68,11 @@ describe("Arbitrum_ChildMessenger", function () {
     await finder.methods
       .changeImplementationAddress(utf8ToHex(interfaceName.Registry), registry.options.address)
       .send({ from: l1Owner });
-    oracleSpoke = await OracleSpoke.new(finder.options.address, arbitrum_ChildMessenger.options.address).send({
-      from: l1Owner,
-    });
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.ChildMessenger), arbitrum_ChildMessenger.options.address)
+      .send({ from: l1Owner });
+
+    oracleSpoke = await OracleSpoke.new(finder.options.address).send({ from: l1Owner });
 
     crossDomainOwner = await getL2SignerFromL1(parentMessenger);
     await web3.eth.sendTransaction({ from: l1Owner, to: crossDomainOwner, value: toWei("1") });

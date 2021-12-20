@@ -3,6 +3,22 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.21.0](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.20.1...@uma/financial-templates-lib@2.21.0) (2021-12-17)
+
+### Bug Fixes
+
+- [across] address issue with nested BN ([#3704](https://github.com/UMAprotocol/protocol/issues/3704)) ([45bb833](https://github.com/UMAprotocol/protocol/commit/45bb83371587e78204fc0987e890fe6cb41395a7))
+- **serverless:** improve how hub and spoke logs interact ([#3699](https://github.com/UMAprotocol/protocol/issues/3699)) ([7bcdca3](https://github.com/UMAprotocol/protocol/commit/7bcdca3211440fc8ce57c1f07cf280203017b2fa))
+
+### Features
+
+- **across-bots:** add ability to finalize L2->L1 transfers from arbitrum ([#3662](https://github.com/UMAprotocol/protocol/issues/3662)) ([8465428](https://github.com/UMAprotocol/protocol/commit/846542853e7bbad4fdf8ade66b8f231ed5c45902))
+- **across-bots:** add profitability module to only relay profitable relays ([#3656](https://github.com/UMAprotocol/protocol/issues/3656)) ([f9fb117](https://github.com/UMAprotocol/protocol/commit/f9fb1178894bb1b39b2969bd26ba435979059a19))
+
+## [2.20.1](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.20.0...@uma/financial-templates-lib@2.20.1) (2021-12-13)
+
+**Note:** Version bump only for package @uma/financial-templates-lib
+
 # [2.20.0](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.19.0...@uma/financial-templates-lib@2.20.0) (2021-12-07)
 
 ### Features

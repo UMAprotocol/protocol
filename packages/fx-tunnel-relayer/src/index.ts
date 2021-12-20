@@ -5,7 +5,7 @@ import { config } from "dotenv";
 import MaticJs from "@maticnetwork/maticjs";
 import { averageBlockTimeSeconds, getWeb3 } from "@uma/common";
 import { getAddress, getAbi } from "@uma/contracts-node";
-import { GasEstimator, Logger, waitForLogger, delay } from "@uma/financial-templates-lib";
+import { GasEstimator, Logger, delay } from "@uma/financial-templates-lib";
 
 import { Relayer } from "./Relayer";
 import { RelayerConfig } from "./RelayerConfig";
@@ -102,8 +102,7 @@ export async function run(logger: winston.Logger, web3: Web3): Promise<void> {
           at: "FxTunnelRelayer#index",
           message: "End of serverless execution loop - terminating process",
         });
-        await waitForLogger(logger);
-        await delay(2);
+        await delay(5); // Set a delay to let the transports flush fully.
         break;
       }
       logger.debug({

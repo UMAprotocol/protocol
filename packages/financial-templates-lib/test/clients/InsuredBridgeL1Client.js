@@ -1004,7 +1004,6 @@ describe("InsuredBridgeL1Client", function () {
       );
 
       // If we set the quoteTimestamp to the current block time then the realizedLPFee should increase.
-
       assert.equal(
         (
           await client.calculateRealizedLpFeePctForDeposit({

@@ -6,7 +6,7 @@ const { assert } = require("chai");
 const Web3 = require("web3");
 const ganache = require("ganache-core");
 
-import { interfaceName, TokenRolesEnum, HRE, ZERO_ADDRESS } from "@uma/common";
+import { interfaceName, TokenRolesEnum, HRE, ZERO_ADDRESS, addGlobalHardhatTestingAddress } from "@uma/common";
 
 const { web3, getContract } = hre as HRE;
 const { toWei, utf8ToHex, toChecksumAddress, randomHex } = web3.utils;
@@ -98,6 +98,11 @@ describe("index.js", function () {
 
     // Other contract setup needed to relay deposit:
     await identifierWhitelist.methods.addSupportedIdentifier(defaultIdentifier).send({ from: owner });
+
+    // Set the addresses of $UMA and $WETH in the global hardhat testing environment. This enables the profitability
+    // module to update using the real world prices.
+    addGlobalHardhatTestingAddress("VotingToken", "0x04fa0d235c4abf4bcf4787af4cf447de572ef828");
+    addGlobalHardhatTestingAddress("WETH9", "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2");
   });
 
   beforeEach(async function () {

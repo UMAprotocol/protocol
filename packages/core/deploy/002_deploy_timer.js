@@ -9,7 +9,7 @@ const func = async function (hre) {
 
   // If live === false, don't deploy a timer.
   if (live === false) {
-    await deploy("Timer", { from: deployer, log: true });
+    await deploy("Timer", { from: deployer, log: true, skipIfAlreadyDeployed: true });
   }
 };
 module.exports = func;

@@ -3,6 +3,27 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.13.0](https://github.com/UMAprotocol/protocol/compare/@uma/insured-bridge-relayer@1.12.3...@uma/insured-bridge-relayer@1.13.0) (2021-12-17)
+
+### Bug Fixes
+
+- [across] add optimism L2->L1 finalizer ([#3709](https://github.com/UMAprotocol/protocol/issues/3709)) ([f32dc4c](https://github.com/UMAprotocol/protocol/commit/f32dc4c342145ac7b64f36eddc2d7c83a06e0aba))
+- [across] address issue log mapping ([#3707](https://github.com/UMAprotocol/protocol/issues/3707)) ([9e9392a](https://github.com/UMAprotocol/protocol/commit/9e9392a95bb4c7770a11a3a66b32c13900c9acc1))
+- [across] address issue log mapping ([#3708](https://github.com/UMAprotocol/protocol/issues/3708)) ([1ab1aed](https://github.com/UMAprotocol/protocol/commit/1ab1aed2a7606ea5d5c995026f3ada843d7f1a67))
+- [across] address issue with nested BN ([#3704](https://github.com/UMAprotocol/protocol/issues/3704)) ([45bb833](https://github.com/UMAprotocol/protocol/commit/45bb83371587e78204fc0987e890fe6cb41395a7))
+- [bots] remove wait for logger ([#3711](https://github.com/UMAprotocol/protocol/issues/3711)) ([a06c0f3](https://github.com/UMAprotocol/protocol/commit/a06c0f37dea6303b7f1c8b3ae5541982076dc1d8))
+
+### Features
+
+- **across-bots:** add ability to finalize L2->L1 transfers from arbitrum ([#3662](https://github.com/UMAprotocol/protocol/issues/3662)) ([8465428](https://github.com/UMAprotocol/protocol/commit/846542853e7bbad4fdf8ade66b8f231ed5c45902))
+- **across-bots:** add profitability module to only relay profitable relays ([#3656](https://github.com/UMAprotocol/protocol/issues/3656)) ([f9fb117](https://github.com/UMAprotocol/protocol/commit/f9fb1178894bb1b39b2969bd26ba435979059a19))
+
+## [1.12.3](https://github.com/UMAprotocol/protocol/compare/@uma/insured-bridge-relayer@1.12.2...@uma/insured-bridge-relayer@1.12.3) (2021-12-13)
+
+### Bug Fixes
+
+- **slack-logger/relay-logs:** small logger fixes ([#3685](https://github.com/UMAprotocol/protocol/issues/3685)) ([06ba1e4](https://github.com/UMAprotocol/protocol/commit/06ba1e40d04135b6f73e6ac4048cdd16d1b8ce54))
+
 ## [1.12.2](https://github.com/UMAprotocol/protocol/compare/@uma/insured-bridge-relayer@1.12.0...@uma/insured-bridge-relayer@1.12.2) (2021-12-07)
 
 **Note:** Version bump only for package @uma/insured-bridge-relayer

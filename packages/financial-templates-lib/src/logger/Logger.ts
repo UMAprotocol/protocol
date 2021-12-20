@@ -35,7 +35,7 @@ import { createTransports } from "./Transports";
 // This async function can be called by a bot if the log message is generated right before the process terminates.
 // By calling `await waitForLogger(Logger)`, with the local Logger instance, the process will wait for all upstream
 // transports to clear. This enables slower transports like slack to still send their messages before the process yields.
-// Note: typescript infers the return tyoe to be unknown. This is fine, as the return type should be void and unused.
+// Note: typescript infers the return type to be unknown. This is fine, as the return type should be void and unused.
 export async function waitForLogger(logger: _Logger): Promise<unknown> {
   const loggerDone = new Promise((resolve) => logger.on("finish", resolve));
   logger.end();

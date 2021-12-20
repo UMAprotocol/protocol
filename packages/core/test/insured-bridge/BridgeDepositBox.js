@@ -6,7 +6,7 @@ const hre = require("hardhat");
 const { getContract, assertEventEmitted } = hre;
 const { assert } = require("chai");
 const { web3 } = hre;
-const { toWei } = web3.utils;
+const { toWei, toChecksumAddress, randomHex } = web3.utils;
 const { didContractThrow } = require("@uma/common");
 
 // Tested contract
@@ -22,10 +22,10 @@ let depositBox, l2Token, timer;
 
 // As these tests are in the context of l2, we dont have the deployed notion of an "L1 Token". The L1 token is within
 // another domain (L1). To represent this, we can generate a random address to represent the L1 token.
-const l1TokenAddress = web3.utils.toChecksumAddress(web3.utils.randomHex(20));
+const l1TokenAddress = toChecksumAddress(randomHex(20));
 
 // Create a random address to represent WETH on L1.
-const l1WethAddress = web3.utils.toChecksumAddress(web3.utils.randomHex(20));
+const l1WethAddress = toChecksumAddress(randomHex(20));
 
 const minimumBridgingDelay = 60; // L2->L1 token bridging must wait at least this time.
 const depositAmount = toWei("50");

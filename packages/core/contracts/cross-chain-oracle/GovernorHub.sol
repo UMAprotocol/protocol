@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import "../common/implementation/Lockable.sol";
 import "../common/implementation/MultiCaller.sol";
 import "./interfaces/ParentMessengerInterface.sol";
+import "./GovernorSpoke.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 /**
@@ -20,8 +21,7 @@ contract GovernorHub is Ownable, Lockable, MultiCaller {
     event RelayedGovernanceRequest(
         uint256 indexed chainId,
         address indexed messenger,
-        address indexed to,
-        bytes dataFromGovernor,
+        GovernorSpoke.Call[] calls,
         bytes dataSentToChild
     );
     event SetParentMessenger(uint256 indexed chainId, address indexed parentMessenger);
@@ -41,17 +41,12 @@ contract GovernorHub is Ownable, Lockable, MultiCaller {
      * @notice This should be called in order to relay a governance request to the `GovernorSpoke` contract deployed to
      * the child chain associated with `chainId`.
      * @param chainId network that messenger contract will communicate with
-     * @param to Contract on child chain to send message to
-     * @param dataFromGovernor Message to send. Should contain the encoded function selector and params.
+     * @param calls the calls to be made by the GovernorSpoke. Should encode a `to` and `data` prop for each call.
      * @dev Only callable by the owner (presumably the UMA DVM Governor contract, on L1 Ethereum).
      */
-    function relayGovernance(
-        uint256 chainId,
-        address to,
-        bytes memory dataFromGovernor
-    ) external nonReentrant() onlyOwner {
-        bytes memory dataSentToChild = abi.encode(to, dataFromGovernor);
+    function relayGovernance(uint256 chainId, GovernorSpoke.Call[] memory calls) external nonReentrant() onlyOwner {
+        bytes memory dataSentToChild = abi.encode(calls);
         messengers[chainId].sendMessageToChild(dataSentToChild);
-        emit RelayedGovernanceRequest(chainId, address(messengers[chainId]), to, dataFromGovernor, dataSentToChild);
+        emit RelayedGovernanceRequest(chainId, address(messengers[chainId]), calls, dataSentToChild);
     }
 }

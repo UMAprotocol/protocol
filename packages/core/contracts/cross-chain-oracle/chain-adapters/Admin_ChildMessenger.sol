@@ -10,7 +10,7 @@ import "../../common/implementation/Lockable.sol";
  * @notice A version of the child messenger that allows an admin to relay messages on its behalf.
  * @dev No parent messenger is needed for this case, as the admin could be trusted to manually send DVM requests on
  * mainnet. This is intended to be used as a "beta" deployment compatible with any EVM-compatible chains before
- * impleenting a full bridge adapter. Put simply, it is meant as a stop-gap.
+ * implementing a full bridge adapter. Put simply, it is meant as a stop-gap.
  */
 contract Admin_ChildMessenger is Ownable, Lockable, ChildMessengerInterface {
     // The only child network contract that can send messages over the bridge via the messenger is the oracle spoke.

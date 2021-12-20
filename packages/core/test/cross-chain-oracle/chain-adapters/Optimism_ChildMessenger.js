@@ -48,9 +48,10 @@ describe("Optimism_ChildMessenger", function () {
     await finder.methods
       .changeImplementationAddress(utf8ToHex(interfaceName.Registry), registry.options.address)
       .send({ from: l1Owner });
-    oracleSpoke = await OracleSpoke.new(finder.options.address, optimism_ChildMessenger.options.address).send({
-      from: l1Owner,
-    });
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.ChildMessenger), optimism_ChildMessenger.options.address)
+      .send({ from: l1Owner });
+    oracleSpoke = await OracleSpoke.new(finder.options.address).send({ from: l1Owner });
 
     l2CrossDomainMessengerMock.smocked.xDomainMessageSender.will.return.with(() => parentMessenger);
     await optimism_ChildMessenger.methods

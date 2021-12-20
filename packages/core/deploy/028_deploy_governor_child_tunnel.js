@@ -21,7 +21,7 @@ const func = async function (hre) {
     args = [FxChildMock.address];
   }
 
-  await deploy("GovernorChildTunnel", { from: deployer, args, log: true });
+  await deploy("GovernorChildTunnel", { from: deployer, args, log: true, skipIfAlreadyDeployed: true });
 };
 module.exports = func;
 func.tags = ["GovernorChildTunnel", "l2-polygon"];
