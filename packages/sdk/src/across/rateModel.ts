@@ -81,7 +81,7 @@ const createRateModelEventDictionary = (rateModelEvents: RateModelEvent[]): Rate
 export const getRateModelForBlockNumber = (
   rateModelEvents: RateModelEvent[],
   l1Token: string,
-  blockNumber: number | undefined = undefined
+  blockNumber?: number
 ): RateModel => {
   const l1TokenNormalized = ethers.utils.getAddress(l1Token);
   const rateModelDictionary = createRateModelEventDictionary(rateModelEvents);
