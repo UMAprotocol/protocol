@@ -475,7 +475,6 @@ describe("Relayer.ts", function () {
       await Promise.all([l1Client.update(), l2Client.update()]);
       // As the relayer does not have enough token balance to do the relay (0 minted) should do nothing.
       await relayer.checkForPendingDepositsAndRelay();
-      // console.log(spy.getCalls())
       assert.isTrue(lastSpyLogIncludes(spy, "Not relaying"));
 
       // Mint the relayer some tokens and try again.

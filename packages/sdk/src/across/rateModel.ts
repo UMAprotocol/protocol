@@ -17,6 +17,84 @@ export type RateModelEvent = {
   l1Token: string;
 };
 
+export class RateModelDictionary {
+  public rateModelDictionary: RateModelEventsDictionary = {};
+
+  private _throwIfNotInitialized() {
+    if (Object.keys(this.rateModelDictionary).length == 0)
+      throw new Error("RateModelUtility method called before updating rate model dictionary!");
+  }
+
+  updateWithEvents(rateModelEvents: RateModelEvent[]): void {
+    this.rateModelDictionary = createRateModelEventDictionary(rateModelEvents);
+  }
+
+  /**
+   * Return the rate model for L1 token set at the block height.
+   * @param l1Token L1 token address to get rate model for.
+   * @param blockNumber Block height to get rate model for.
+   * @returns Rate model object.
+   */
+  getRateModelForBlockNumber(l1Token: string, blockNumber?: number): RateModel {
+    this._throwIfNotInitialized();
+
+    const l1TokenNormalized = ethers.utils.getAddress(l1Token);
+
+    if (!this.rateModelDictionary[l1TokenNormalized] || this.rateModelDictionary[l1TokenNormalized].length === 0)
+      throw new Error(`No updated rate model events for L1 token: ${l1TokenNormalized}`);
+
+    if (!blockNumber) {
+      // If block number is undefined, use latest updated rate model.
+      return parseAndReturnRateModelFromString(this.rateModelDictionary[l1TokenNormalized].slice(-1)[0].rateModel);
+    } else {
+      const firstEventBlockNumber = this.rateModelDictionary[l1TokenNormalized][0].blockNumber;
+      if (blockNumber < firstEventBlockNumber) {
+        throw new Error(
+          `Block number #${blockNumber} is before first UpdatedRateModel event block ${firstEventBlockNumber}`
+        );
+      }
+
+      // We're looking for the latest rate model update that occurred at or before the block number.
+      // Rate model events are inserted into the array from oldest at index 0 to newest at index length-1, so we'll
+      // reverse the array so it goes from newest at index 0 to oldest at index length-1, and then find the first event
+      // who's block number is less than or equal to the target block number.
+      const rateModel = this.rateModelDictionary[l1TokenNormalized]
+        .slice() // reverse() modifies memory in place so create a copy first.
+        .reverse()
+        .find((event) => event.blockNumber <= blockNumber);
+
+      if (!rateModel)
+        throw new Error(`No updated rate model events before block #${blockNumber} for L1 token: ${l1TokenNormalized}`);
+      return parseAndReturnRateModelFromString(rateModel?.rateModel);
+    }
+  }
+
+  /**
+   * @notice Return all L1 tokens that had a rate model associated with it at the block number.
+   * @param blockNumber Returns l1 tokens that were mapped to a rate model at this block height. If undefined,
+   * this function will return all L1 tokens that have a block number as of the latest block height.
+   * @returns array of L1 token addresses.
+   */
+  getL1TokensFromRateModel(blockNumber: number | undefined = undefined): string[] {
+    this._throwIfNotInitialized();
+
+    return Object.keys(this.rateModelDictionary)
+      .map((l1Token) => {
+        const l1TokenNormalized = ethers.utils.getAddress(l1Token);
+
+        // Check that there is at least one UpdatedRateModel event before the provided block number, otherwise
+        // this L1 token didn't exist in the RateModel at the block height and we shouldn't include it in the returned
+        // array.
+        if (
+          !blockNumber ||
+          this.rateModelDictionary[l1TokenNormalized].find((event) => event.blockNumber <= blockNumber)
+        )
+          return ethers.utils.getAddress(l1Token);
+        else return null;
+      })
+      .filter(exists);
+  }
+}
 /**
  * Helper method that returns parsed rate model from string, or throws.
  * @param rateModelString Stringified rate model to parse.
@@ -93,75 +171,4 @@ const createRateModelEventDictionary = (rateModelEvents: RateModelEvent[]): Rate
   }
 
   return updatedRateModelEventsForToken;
-};
-
-/**
- * Return the rate model for L1 token set at the block height.
- * @param rateModelEvents Reformatted unordered UpdatedRateModel events.
- * @param l1Token L1 token address to get rate model for.
- * @param blockNumber Block height to get rate model for.
- * @returns Rate model object.
- */
-export const getRateModelForBlockNumber = (
-  rateModelEvents: RateModelEvent[],
-  l1Token: string,
-  blockNumber?: number
-): RateModel => {
-  const l1TokenNormalized = ethers.utils.getAddress(l1Token);
-  const rateModelDictionary = createRateModelEventDictionary(rateModelEvents);
-
-  if (!rateModelDictionary[l1TokenNormalized] || rateModelDictionary[l1TokenNormalized].length === 0)
-    throw new Error(`No updated rate model events for L1 token: ${l1TokenNormalized}`);
-
-  if (!blockNumber) {
-    // If block number is undefined, use latest updated rate model.
-    return parseAndReturnRateModelFromString(rateModelDictionary[l1TokenNormalized].slice(-1)[0].rateModel);
-  } else {
-    const firstEventBlockNumber = rateModelDictionary[l1TokenNormalized][0].blockNumber;
-    if (blockNumber < firstEventBlockNumber) {
-      throw new Error(
-        `Block number #${blockNumber} is before first UpdatedRateModel event block ${firstEventBlockNumber}`
-      );
-    }
-
-    // We're looking for the latest rate model update that occurred at or before the block number.
-    // Rate model events are inserted into the array from oldest at index 0 to newest at index length-1, so we'll
-    // reverse the array so it goes from newest at index 0 to oldest at index length-1, and then find the first event
-    // who's block number is less than or equal to the target block number.
-    const rateModel = rateModelDictionary[l1TokenNormalized]
-      .slice() // reverse() modifies memory in place so create a copy first.
-      .reverse()
-      .find((event) => event.blockNumber <= blockNumber);
-
-    if (!rateModel)
-      throw new Error(`No updated rate model events before block #${blockNumber} for L1 token: ${l1TokenNormalized}`);
-    return parseAndReturnRateModelFromString(rateModel?.rateModel);
-  }
-};
-
-/**
- * @notice Return all L1 tokens that had a rate model associated with it at the block number.
- * @param rateModelEvents Reformatted unordered UpdatedRateModel events.
- * @param blockNumber Returns l1 tokens that were mapped to a rate model at this block height. If undefined,
- * this function will return all L1 tokens that have a block number as of the latest block height.
- * @returns array of L1 token addresses.
- */
-export const getL1TokensFromRateModel = (
-  rateModelEvents: RateModelEvent[],
-  blockNumber: number | undefined = undefined
-): string[] => {
-  const rateModelDictionary = createRateModelEventDictionary(rateModelEvents);
-
-  return Object.keys(rateModelDictionary)
-    .map((l1Token) => {
-      const l1TokenNormalized = ethers.utils.getAddress(l1Token);
-
-      // Check that there is at least one UpdatedRateModel event before the provided block number, otherwise
-      // this L1 token didn't exist in the RateModel at the block height and we shouldn't include it in the returned
-      // array.
-      if (!blockNumber || rateModelDictionary[l1TokenNormalized].find((event) => event.blockNumber <= blockNumber))
-        return ethers.utils.getAddress(l1Token);
-      else return null;
-    })
-    .filter(exists);
 };

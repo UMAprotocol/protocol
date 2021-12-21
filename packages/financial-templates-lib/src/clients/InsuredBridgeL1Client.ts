@@ -64,7 +64,12 @@ export class InsuredBridgeL1Client {
   public readonly rateModelStore: RateModelStoreWeb3;
   public bridgePools: { [key: string]: BridgePoolData }; // L1TokenAddress=>BridgePoolData
   private whitelistedTokens: { [chainId: string]: { [l1TokenAddress: string]: string } } = {};
+
+  // Accumulate updated rate model events after each update() call, which we'll use to update the rate model
+  // dictionary.
   private updatedRateModelEventsForToken: across.rateModel.RateModelEvent[] = [];
+  private rateModelDictionary: across.rateModel.RateModelDictionary;
+
   public optimisticOracleLiveness = 0;
   public firstBlockToSearch: number;
 
@@ -90,6 +95,8 @@ export class InsuredBridgeL1Client {
       getAbi("RateModelStore"),
       rateModelStoreAddress
     ) as unknown) as RateModelStoreWeb3;
+
+    this.rateModelDictionary = new across.rateModel.RateModelDictionary();
 
     this.bridgePools = {}; // Initialize the bridgePools with no pools yet. Will be populated in the _initialSetup.
 
@@ -134,13 +141,12 @@ export class InsuredBridgeL1Client {
 
   getRateModelForBlockNumber(l1Token: string, blockNumber: number | undefined = undefined): across.constants.RateModel {
     this._throwIfNotInitialized();
-    return across.rateModel.getRateModelForBlockNumber(this.updatedRateModelEventsForToken, l1Token, blockNumber);
+    return this.rateModelDictionary.getRateModelForBlockNumber(l1Token, blockNumber);
   }
 
   getL1TokensFromRateModel(blockNumber: number | undefined = undefined): string[] {
     this._throwIfNotInitialized();
-
-    return across.rateModel.getL1TokensFromRateModel(this.updatedRateModelEventsForToken, blockNumber);
+    return this.rateModelDictionary.getL1TokensFromRateModel(blockNumber);
   }
 
   hasInstantRelayer(l1Token: string, depositHash: string, realizedLpFeePct: string): boolean {
@@ -327,11 +333,12 @@ export class InsuredBridgeL1Client {
 
     // Fetch and store all rate model updated events, which will be used to fetch the rate model for a specific deposit
     // quote timestamp.
-    // Note: there is no need to sort these events chronologically, as they will be sorted when passed to any function
-    // in the `rateModel` sdk such as `getRateModelForBlockNumber`.
+    // Note: there is no need to sort these events chronologically, as they will be sorted upon calling
+    // `rateModel.updateRateModelEventDictionary`
     this.updatedRateModelEventsForToken = this.updatedRateModelEventsForToken.concat(
       await this._getAllRateModelEvents(blockSearchConfig)
     );
+    this.rateModelDictionary.updateWithEvents(this.updatedRateModelEventsForToken);
 
     // Set the optimisticOracleLiveness. Note that if this value changes in the contract the bot will need to be
     // restarted to get the latest value. This is a fine assumption as: a) our production bots run in serverless mode
