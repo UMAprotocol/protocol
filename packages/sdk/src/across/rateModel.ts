@@ -26,11 +26,20 @@ export type RateModelEvent = {
 export const parseAndReturnRateModelFromString = (rateModelString: string): RateModel => {
   const rateModelFromEvent = JSON.parse(rateModelString);
 
-  // Rate model must contain all keys in `expectedRateModelKeys`, and extra keys are OK.
+  // Rate model must contain the exact same keys in `expectedRateModelKeys`.
   for (const key of expectedRateModelKeys) {
     if (!Object.keys(rateModelFromEvent).includes(key)) {
       throw new Error(
         `Rate model does not contain all expected keys. Expected keys: [${expectedRateModelKeys}], actual keys: [${Object.keys(
+          rateModelFromEvent
+        )}]`
+      );
+    }
+  }
+  for (const key of Object.keys(rateModelFromEvent)) {
+    if (!expectedRateModelKeys.includes(key)) {
+      throw new Error(
+        `Rate model contains unexpected keys. Expected keys: [${expectedRateModelKeys}], actual keys: [${Object.keys(
           rateModelFromEvent
         )}]`
       );

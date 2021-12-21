@@ -453,16 +453,17 @@ describe("InsuredBridgeL1Client", function () {
       assert.isTrue(err.message.includes("does not contain all expected keys"));
     }
 
-    // If rate model string contains extra keys, they are ignored as long as all expected keys are contained.
+    // If rate model string contains extra keys, then throws error.
     await rateModelStore.methods
       .updateRateModel(l1Token.options.address, JSON.stringify({ ...rateModel, key: "value" }))
       .send({ from: owner });
     await client.update();
-    _rateModel = client.getRateModelForBlockNumber(l1Token.options.address);
-    assert.equal(_rateModel.UBar.toString(), rateModel.UBar);
-    assert.equal(_rateModel.R0.toString(), rateModel.R0);
-    assert.equal(_rateModel.R1.toString(), rateModel.R1);
-    assert.equal(_rateModel.R2.toString(), rateModel.R2);
+    try {
+      client.getRateModelForBlockNumber(l1Token.options.address);
+      assert(false);
+    } catch (err) {
+      assert.isTrue(err.message.includes("contains unexpected keys"));
+    }
   });
   it("Fetch l1 tokens from rate model", async function () {
     // Add a new rate model at a different block height from original rate model update.
