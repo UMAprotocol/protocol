@@ -15,9 +15,7 @@ export default class LpFeeCalculator {
   }
   async getLpFeePct(tokenAddress: string, bridgePoolAddress: string, amount: BigNumberish, timestamp?: number) {
     // TODO: Accept another param, rateModelStoreAddress, construct a RateModelStore contract instance, query all
-    // UpdatedRateModel events and parse them into a `across.rateModel.RateModelEventsByBlock` dictionary, and then
-    // grab the latest rate model for `tokenAddress` and `blockNumber` for timestamp using
-    // `across.rateModel.getRateModelForBlockNumber`.
+    // UpdatedRateModel events and parse the latest for `tokenAddress` using `across.rateModel.getRateModelForBlockNumber`.
 
     const rateModel = RATE_MODELS[ethers.utils.getAddress(tokenAddress)];
     assert(rateModel, "No rate model for token: " + tokenAddress);
