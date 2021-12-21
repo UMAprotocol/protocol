@@ -11,6 +11,8 @@ type RateModelEventsDictionary = {
 // Events should be reformatted into this shape to be used as input into methods in this file.
 export type RateModelEvent = {
   blockNumber: number;
+  transactionIndex: number;
+  logIndex: number;
   rateModel: string;
   l1Token: string;
 };
@@ -25,8 +27,8 @@ export const parseAndReturnRateModelFromString = (rateModelString: string): Rate
   const rateModelFromEvent = JSON.parse(rateModelString);
 
   // Rate model must contain all keys in `expectedRateModelKeys`, and extra keys are OK.
-  for (const key in expectedRateModelKeys) {
-    if (!(key in Object.keys(rateModelFromEvent))) {
+  for (const key of expectedRateModelKeys) {
+    if (!Object.keys(rateModelFromEvent).includes(key)) {
       throw new Error(
         `Rate model does not contain all expected keys. Expected keys: [${expectedRateModelKeys}], actual keys: [${Object.keys(
           rateModelFromEvent
@@ -53,6 +55,19 @@ export const parseAndReturnRateModelFromString = (rateModelString: string): Rate
  */
 const createRateModelEventDictionary = (rateModelEvents: RateModelEvent[]): RateModelEventsDictionary => {
   const updatedRateModelEventsForToken: RateModelEventsDictionary = {};
+
+  // Sort events in-place from oldest to newest:
+  rateModelEvents.sort((a, b) => {
+    if (a.blockNumber !== b.blockNumber) {
+      return a.blockNumber - b.blockNumber;
+    }
+
+    if (a.transactionIndex !== b.transactionIndex) {
+      return a.transactionIndex - b.transactionIndex;
+    }
+
+    return a.logIndex - b.logIndex;
+  });
 
   for (const updatedRateModelEvent of rateModelEvents) {
     // The contract enforces that all rate models are mapped to addresses, therefore we do not need to check that
