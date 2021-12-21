@@ -93,9 +93,13 @@ export function CollateralPrices(config: Config, dependencies: Dependencies) {
     const priceHistory = await coingecko.getHistoricContractPrices(tokenAddress, startMs, endMs, currency);
     await bluebird.map(priceHistory, async ([timestamp, price]: [number, string]) => {
       if (await table.hasByTimestamp(timestamp)) return;
-      // timestamp is returned as ms, even though other calls return in S, we must convert
+      // thre are some prices with more than 18 decimals, this causes an error when parsing with ethers, so
+      // we have to cast to number then use toFixed in order to limit to 18 decimals.
       // price returned in decimals, we want in in wei internally
-      return table.create({ timestamp: msToS(timestamp), price: parseUnits(price.toString()).toString() });
+      const parsedPrice = parseUnits(Number(price).toFixed(18)).toString();
+      // timestamp is returned as ms, even though other calls return in S, we must convert
+      const parsedTimestamp = msToS(timestamp);
+      return table.create({ timestamp: parsedTimestamp, price: parsedPrice });
     });
     return priceHistory;
   }

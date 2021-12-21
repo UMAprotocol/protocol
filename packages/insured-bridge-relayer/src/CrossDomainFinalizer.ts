@@ -1,8 +1,12 @@
 import Web3 from "web3";
 const { toBN } = Web3.utils;
 
+import minimist from "minimist";
+const argv = minimist(process.argv.slice(), {});
+
 import winston from "winston";
 
+import { across } from "@uma/sdk";
 import {
   createEtherscanLinkMarkdown,
   createFormatFunction,
@@ -230,9 +234,17 @@ export class CrossDomainFinalizer {
     // Note that the query below only works on particular RPC endpoints. Infura, for example, is limited to a 100k look
     // back. This means that to use this module you need to use an endpoint that supports longer lookbacks, such as
     // alchemy, which supports arbitrary long loobacks. In future, Infura will support arbitrary long lookbacks.
+    // Note2: the blockOffset is added to limit how far forward we look. We want to ideally ignore the newest blocks
+    // as these can causes errors in the Bridge Adapters if the L2 transactions are not yet checkpointed on the
+    // canonical L1 StateCommitmentChain. 5000 blocks is ~ 3 hours at current Optimism rate. This is only applied if we
+    // are not running in test mode.
+    const blockOffset =
+      argv._.indexOf("test") !== -1 || argv._.filter((arg) => arg.includes("mocha")).length > 0
+        ? 0
+        : across.constants.L2_STATE_COMMITMENT_DELAY_BLOCKS;
     const tokensBridgedEvents = await this.l2Client.bridgeDepositBox.getPastEvents("TokensBridged", {
       fromBlock: this.l2DeployData[this.l2Client.chainId].blockNumber,
-      toBlock: await this.l2Client.l2Web3.eth.getBlockNumber(),
+      toBlock: (await this.l2Client.l2Web3.eth.getBlockNumber()) - blockOffset,
     });
     for (const tokensBridgedEvent of tokensBridgedEvents) {
       // If this is the first time we are seeing this L2 token then create the array.
