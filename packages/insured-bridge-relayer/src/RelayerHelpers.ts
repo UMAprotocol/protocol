@@ -47,25 +47,30 @@ export async function pruneWhitelistedL1Tokens(
   await Promise.all([l2Client.update(), l1Client.update()]);
 
   // Fetch list of potential whitelisted L1 tokens from keys in the RateModelStore.
-  const whitelistedRelayL1Tokens = l1Client.getL1TokensFromRateModel();
+  const whitelistedRelayL1TokensInRateModel = l1Client.getL1TokensFromRateModel();
 
-  const whitelistedTokenMappings = await Promise.all(
-    whitelistedRelayL1Tokens.map((tokenAddress) =>
-      l1Client.bridgeAdmin.methods.whitelistedTokens(tokenAddress, l2Client.chainId.toString()).call()
-    )
+  // Compare tokens in rate model with whitelisted tokens for L2 chain ID. If the rate model doesn't include
+  // all whitelisted tokens in the BridgeAdmin, then throw an error.
+  const whitelistedRelayL1TokensInBridgeAdmin = l1Client.getWhitelistedTokensForChainId(l2Client.chainId.toString());
+  for (const l1Token of Object.keys(whitelistedRelayL1TokensInBridgeAdmin)) {
+    if (!whitelistedRelayL1TokensInRateModel.includes(l1Token))
+      throw new Error(`Rate model does not include whitelisted token ${l1Token}`);
+  }
+
+  // Remove L1 tokens derived from rate model list that are not whitelisted for this L2.
+  const prunedWhitelist = whitelistedRelayL1TokensInRateModel.filter((tokenAddress) =>
+    Object.keys(whitelistedRelayL1TokensInBridgeAdmin).includes(tokenAddress)
   );
-  const prunedWhitelist = whitelistedRelayL1Tokens.filter(
-    (_tokenAddress, i) => whitelistedTokenMappings[i].l2Token !== ZERO_ADDRESS
-  );
+
   if (prunedWhitelist.length === 0) {
     logger.error({
-      at: "AcrossRelayer#index",
+      at: "AcrossRelayer#RelayerHelper",
       message: "Filtered whitelist is empty",
       l2DepositBox: l2Client.bridgeDepositAddress,
     });
   } else {
     logger.debug({
-      at: "AcrossRelayer#index",
+      at: "AcrossRelayer#RelayerHelper",
       message: "Filtered out tokens that are not whitelisted on L2",
       l2DepositBox: l2Client.bridgeDepositAddress,
       prunedWhitelist,
