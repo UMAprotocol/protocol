@@ -26,7 +26,7 @@ contract Nomad_ChildMessenger is ChildMessengerInterface, Lockable {
      */
     modifier onlyReplica(address addressToCheck) {
         // Determine whether addressToCheck is an enrolled Replica from the xAppConnectionManager
-        require(getXAppConnectionManagerInterface().isReplica(addressToCheck), "msg.sender must be replica");
+        require(getXAppConnectionManager().isReplica(addressToCheck), "msg.sender must be replica");
         _;
     }
 
@@ -58,7 +58,7 @@ contract Nomad_ChildMessenger is ChildMessengerInterface, Lockable {
      */
     function sendMessageToParent(bytes memory data) public override nonReentrant() {
         require(msg.sender == getOracleSpoke(), "Only callable by oracleSpoke");
-        getXAppConnectionManagerInterface().home().dispatch(
+        getXAppConnectionManager().home().dispatch(
             parentChainDomain,
             // Note: idea for converting address to bytes32 from this post: https://ethereum.stackexchange.com/a/55963
             bytes32(abi.encodePacked(getParentMessenger())),
@@ -84,7 +84,7 @@ contract Nomad_ChildMessenger is ChildMessengerInterface, Lockable {
         emit MessageReceivedFromParent(target, dataToSendToTarget);
     }
 
-    function getXAppConnectionManagerInterface() public view returns (XAppConnectionManagerInterface) {
+    function getXAppConnectionManager() public view returns (XAppConnectionManagerInterface) {
         return XAppConnectionManagerInterface(finder.getImplementationAddress(OracleInterfaces.XAppConnectionManager));
     }
 
