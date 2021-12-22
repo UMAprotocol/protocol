@@ -11,12 +11,14 @@ import { interfaceName, TokenRolesEnum, HRE, ZERO_ADDRESS, addGlobalHardhatTesti
 const { web3, getContract } = hre as HRE;
 const { toWei, utf8ToHex, toChecksumAddress, randomHex } = web3.utils;
 
-let l2Web3: typeof Web3 = undefined;
+const web3Instances: { [key: number]: typeof web3 } = {};
+
 const startGanacheServer = (chainId: number, port: number) => {
-  if (l2Web3 !== undefined) return;
+  if (web3Instances[chainId]) return web3Instances[chainId];
   const node = ganache.server({ _chainIdRpc: chainId });
   node.listen(port);
-  l2Web3 = new Web3("http://127.0.0.1:" + port);
+  web3Instances[chainId] = new Web3("http://127.0.0.1:" + port);
+  return web3Instances[chainId];
 };
 
 // Helper contracts
@@ -25,7 +27,7 @@ const networks = [
     chainId: 10,
     port: 7777,
   },
-  { chainId: 11, port: 8888 },
+  { chainId: 42161, port: 8888 },
 ];
 const Messenger = getContract("MessengerMock");
 const BridgePool = getContract("BridgePool");
@@ -44,7 +46,6 @@ const MockOracle = getContract("MockOracleAncillary");
 let messenger: any;
 let bridgeAdmin: any;
 let bridgePool: any;
-let bridgeDepositBox: any;
 let finder: any;
 let store: any;
 let identifierWhitelist: any;
@@ -162,12 +163,12 @@ describe("index.js", function () {
 
     await Promise.all(
       networks.map(async ({ chainId, port }) => {
-        startGanacheServer(chainId, port);
+        const l2Web3 = startGanacheServer(chainId, port);
         const [l2Owner, l2BridgeAdminImpersonator] = await l2Web3.eth.getAccounts();
 
         // Deploy deposit box on L2 web3 so that L2 client can read its events.
         const L2BridgeDepositBox = new l2Web3.eth.Contract(BridgeDepositBox.abi);
-        bridgeDepositBox = await L2BridgeDepositBox.deploy({
+        const bridgeDepositBox = await L2BridgeDepositBox.deploy({
           data: BridgeDepositBox.bytecode,
           arguments: [l2BridgeAdminImpersonator, minimumBridgingDelay, ZERO_ADDRESS, ZERO_ADDRESS],
         }).send({
@@ -228,7 +229,7 @@ describe("index.js", function () {
     process.env.RATE_MODELS = JSON.stringify({
       [l1Token.options.address]: { UBar: toWei("0.65"), R0: toWei("0.00"), R1: toWei("0.08"), R2: toWei("1.00") },
     });
-    process.env.CHAIN_IDS = JSON.stringify([networks.map(({ chainId }) => chainId)]);
+    process.env.CHAIN_IDS = JSON.stringify(networks.map(({ chainId }) => chainId));
     networks.forEach(({ chainId, port }) => (process.env[`NODE_URL_${chainId}`] = `http://localhost:${port}`));
 
     // Must not throw.
