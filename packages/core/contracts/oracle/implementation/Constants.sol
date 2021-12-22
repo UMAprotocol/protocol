@@ -16,6 +16,7 @@ library OracleInterfaces {
     bytes32 public constant GenericHandler = "GenericHandler";
     bytes32 public constant SkinnyOptimisticOracle = "SkinnyOptimisticOracle";
     bytes32 public constant ChildMessenger = "ChildMessenger";
+    bytes32 public constant XAppConnectionManagerInterface = "XAppConnectionManagerInterface";
 }
 
 /**
