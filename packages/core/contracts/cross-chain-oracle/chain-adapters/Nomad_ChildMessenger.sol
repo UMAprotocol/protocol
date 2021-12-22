@@ -8,21 +8,16 @@ import "../../common/implementation/Lockable.sol";
 import "../../oracle/interfaces/FinderInterface.sol";
 import "../../oracle/implementation/Constants.sol";
 
+/**
+ * @notice Sends cross chain messages from any network where Nomad bridging infrastructure is deployed to L1. Both L1
+ * and the network where this contract is deployed need to have Nomad Home + Replica contracts to send and receive
+ * cross-chain messages.
+ */
 contract Nomad_ChildMessenger is ChildMessengerInterface, Lockable {
     FinderInterface public finder;
 
-    uint256 public parentChainId;
+    uint32 public parentChainDomain;
 
-    // Messenger contract on the other side of the L1<->L2 bridge.
-    address public parentMessenger;
-
-    // The only child network contract that can send messages over the bridge via the messenger is the OracleSpoke.
-    address public oracleSpoke;
-    // Store oracle hub address that OracleSpoke can send messages to via `sendMessageToParent`.
-    address public oracleHub;
-
-    event SetOracleSpoke(address newOracleSpoke);
-    event SetOracleHub(address newOracleHub);
     event MessageSentToParent(bytes data, address indexed targetHub, address indexed oracleSpoke);
     event MessageReceivedFromParent(address indexed targetSpoke, bytes dataToSendToTarget);
 
@@ -36,60 +31,49 @@ contract Nomad_ChildMessenger is ChildMessengerInterface, Lockable {
     }
 
     modifier onlyParentMessenger(bytes32 addressToCheck) {
-        // From solidity 8.10 docs: If you convert a type that uses a larger byte size to an address, for example
-        // bytes32, then the address is truncated. To reduce conversion ambiguity version 0.4.24 and higher of the
-        // compiler force you make the truncation explicit in the conversion. Take for example the 32-byte value
-        // 0x111122223333444455556666777788889999AAAABBBBCCCCDDDDEEEEFFFFCCCC. You can use address(uint160(bytes20(b))),
-        // which results in 0x111122223333444455556666777788889999aAaa, or you can use address(uint160(uint256(b))),
-        // which results in 0x777788889999AaAAbBbbCcccddDdeeeEfFFfCcCc.
-        address _addressToCheck = address(uint160(bytes20(addressToCheck)));
-        require(parentMessenger == _addressToCheck, "cross-domain sender must be child messenger");
+        // Note: idea for converting address to bytes32 from this post: https://ethereum.stackexchange.com/a/55963
+        require(
+            bytes32(abi.encodePacked(getParentMessenger())) == addressToCheck,
+            "cross-domain sender must be child messenger"
+        );
         _;
     }
 
-    constructor(
-        address _finderAddress,
-        uint256 _parentChainId,
-        address _parentMessenger
-    ) {
-        parentChainId = _parentChainId;
-        finder = FinderInterface(_finderAddress);
+    /**
+     * @notice Construct the ChildMessenger contract.
+     * @param _finder Used to locate XAppConnectionManager for this network.
+     * @param _parentChainDomain The Nomad "domain" where the connected parent messenger is deployed. Note that the Nomad
+     * domains do not always correspond to "chain ID's", but they are similarly unique identifiers for each network.
+     **/
+    constructor(address _finder, uint32 _parentChainDomain) {
+        finder = FinderInterface(_finder);
+        parentChainDomain = _parentChainDomain; // TODO: Figure out how to upgrade this value.
     }
 
     /**
-     * @notice Set OracleSpoke address, which is the only address that can call `sendMessageToParent`.
-     * @dev Can only reset this address once.
-     * @param _oracleSpoke address of the new OracleSpoke, deployed on this network.
+     * @notice Sends a message to the parent messenger via the Home contract.
+     * @dev The caller must be the OracleSpoke on L2. No other contract is permissioned to call this function.
+     * @dev The L1 target, the parent messenger, must implement processMessageFromChild to consume the message.
+     * @param data data message sent to the L1 messenger. Should be an encoded function call or packed data.
      */
-    function setOracleSpoke(address _oracleSpoke) public nonReentrant() {
-        require(oracleSpoke == address(0x0), "OracleSpoke already set");
-        oracleSpoke = _oracleSpoke;
-        emit SetOracleSpoke(oracleSpoke);
-    }
-
-    /**
-     * @notice Set OracleHub address, which is always the target address for messages sent from this network to
-     * the parent network.
-     * @dev Can only reset this address once.
-     * @param _oracleHub address of the new OracleHub, deployed on the parent network.
-     */
-    function setOracleHub(address _oracleHub) public nonReentrant() {
-        require(oracleHub == address(0x0), "OracleHub already set");
-        oracleHub = _oracleHub;
-        emit SetOracleHub(oracleHub);
-    }
-
     function sendMessageToParent(bytes memory data) public override nonReentrant() {
-        require(msg.sender == oracleSpoke, "Only callable by oracleSpoke");
-        // Note: idea for converting address to bytes32 from this post: https://ethereum.stackexchange.com/a/55963
+        require(msg.sender == getOracleSpoke(), "Only callable by oracleSpoke");
         getXAppConnectionManagerInterface().home().dispatch(
-            uint32(parentChainId),
-            bytes32(abi.encodePacked(oracleHub)),
-            abi.encode(data, oracleHub)
+            parentChainDomain,
+            // Note: idea for converting address to bytes32 from this post: https://ethereum.stackexchange.com/a/55963
+            bytes32(abi.encodePacked(getParentMessenger())),
+            data
         );
-        emit MessageSentToParent(data, oracleHub, oracleSpoke);
+        emit MessageSentToParent(data, getParentMessenger(), getOracleSpoke());
     }
 
+    /**
+     * @notice Process a received message from the parent messenger via the Nomad Replica contract.
+     * @dev The cross-chain caller must be the the parent messenger and the msg.sender on this network
+     * must be the Replica contract.
+     * @param _sender The address the message is coming from
+     * @param _message The message in the form of raw bytes
+     */
     function handle(
         uint32,
         bytes32 _sender,
@@ -105,5 +89,13 @@ contract Nomad_ChildMessenger is ChildMessengerInterface, Lockable {
             XAppConnectionManagerInterface(
                 finder.getImplementationAddress(OracleInterfaces.XAppConnectionManagerInterface)
             );
+    }
+
+    function getOracleSpoke() public view returns (address) {
+        return finder.getImplementationAddress(OracleInterfaces.OracleSpoke);
+    }
+
+    function getParentMessenger() public view returns (address) {
+        return finder.getImplementationAddress(OracleInterfaces.ParentMessenger);
     }
 }

@@ -30,6 +30,8 @@ contract Polygon_ChildMessenger is FxBaseChildTunnel, ChildMessengerInterface, L
      */
     constructor(address _fxChild) FxBaseChildTunnel(_fxChild) {}
 
+    // TODO: Remove the following setters which only allow an address to be reset once. We can read these addresses
+    // from the Finder instead.
     /**
      * @notice Set OracleSpoke address, which is the only address that can call `sendMessageToParent`.
      * @dev Can only reset this address once.
