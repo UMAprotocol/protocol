@@ -85,10 +85,7 @@ contract Nomad_ChildMessenger is ChildMessengerInterface, Lockable {
     }
 
     function getXAppConnectionManagerInterface() public view returns (XAppConnectionManagerInterface) {
-        return
-            XAppConnectionManagerInterface(
-                finder.getImplementationAddress(OracleInterfaces.XAppConnectionManagerInterface)
-            );
+        return XAppConnectionManagerInterface(finder.getImplementationAddress(OracleInterfaces.XAppConnectionManager));
     }
 
     function getOracleSpoke() public view returns (address) {

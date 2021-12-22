@@ -90,9 +90,6 @@ contract Nomad_ParentMessenger is ParentMessengerInterface, ParentMessengerBase,
     }
 
     function getXAppConnectionManagerInterface() public view returns (XAppConnectionManagerInterface) {
-        return
-            XAppConnectionManagerInterface(
-                finder.getImplementationAddress(OracleInterfaces.XAppConnectionManagerInterface)
-            );
+        return XAppConnectionManagerInterface(finder.getImplementationAddress(OracleInterfaces.XAppConnectionManager));
     }
 }
