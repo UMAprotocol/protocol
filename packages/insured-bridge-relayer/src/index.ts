@@ -58,10 +58,10 @@ export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
     const relayers = await Promise.all(
       config.activatedChainIds.map(async (chainId: number) => {
         // Construct a web3 instance running on L2.
-        const l2Web3 = getWeb3ByChainId(config.activatedChainIds[0]);
+        const l2Web3 = getWeb3ByChainId(chainId);
         const latestL2BlockNumber = await l2Web3.eth.getBlockNumber();
         const l2StartBlock = Math.max(0, latestL2BlockNumber - config.l2BlockLookback);
-        const fallbackL2Web3s = getRetryWeb3sByChainId(config.activatedChainIds[0]);
+        const fallbackL2Web3s = getRetryWeb3sByChainId(chainId);
         // Note: This will not construct duplicate Web3 objects for URL's in the Retry config that are the same as the
         // one used to construct l2Web3.
         logger.debug({
@@ -71,8 +71,8 @@ export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
         const l2Client = new InsuredBridgeL2Client(
           logger,
           l2Web3,
-          await l1Client.getL2DepositBoxAddress(config.activatedChainIds[0]),
-          config.activatedChainIds[0],
+          await l1Client.getL2DepositBoxAddress(chainId),
+          chainId,
           l2StartBlock,
           null,
           fallbackL2Web3s
@@ -108,7 +108,7 @@ export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
           config.l2BlockLookback
         );
 
-        const canonicalBridgeAdapter = createBridgeAdapter(logger, l1Web3, l2Web3, config.activatedChainIds[0]);
+        const canonicalBridgeAdapter = createBridgeAdapter(logger, l1Web3, l2Web3, chainId);
         if (config.botModes.l1FinalizerEnabled) await canonicalBridgeAdapter.initialize();
 
         const crossDomainFinalizer = new CrossDomainFinalizer(
