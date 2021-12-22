@@ -23,7 +23,7 @@ import { RelayerConfig } from "./RelayerConfig";
 config();
 
 function isErrorOutput<T>(input: PromiseSettledResult<T>): input is PromiseRejectedResult {
-  return "reason" in input;
+  return input.status === "rejected";
 }
 
 export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
