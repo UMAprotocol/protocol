@@ -114,8 +114,9 @@ export const runTransaction = async ({
       transaction.estimateGas({ from: transactionConfig.from }),
     ]);
   } catch (error) {
-    error.type = "call";
-    throw error;
+    const castedError = error as Error & { type?: string };
+    castedError.type = "call";
+    throw castedError;
   }
 
   // .call() succeeded, now broadcast transaction.
@@ -179,8 +180,9 @@ export const runTransaction = async ({
 
     return { receipt, transactionHash, returnValue, transactionConfig };
   } catch (error) {
-    error.type = "send";
-    throw error;
+    const castedError = error as Error & { type?: string };
+    castedError.type = "send";
+    throw castedError;
   }
 };
 
