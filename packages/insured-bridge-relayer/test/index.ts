@@ -11,16 +11,24 @@ import { interfaceName, TokenRolesEnum, HRE, ZERO_ADDRESS, addGlobalHardhatTesti
 const { web3, getContract } = hre as HRE;
 const { toWei, utf8ToHex, toChecksumAddress, randomHex } = web3.utils;
 
-let l2Web3: typeof Web3 = undefined;
+const web3Instances: { [key: number]: typeof web3 } = {};
+
 const startGanacheServer = (chainId: number, port: number) => {
-  if (l2Web3 !== undefined) return;
+  if (web3Instances[chainId]) return web3Instances[chainId];
   const node = ganache.server({ _chainIdRpc: chainId });
   node.listen(port);
-  l2Web3 = new Web3("http://127.0.0.1:" + port);
+  web3Instances[chainId] = new Web3("http://127.0.0.1:" + port);
+  return web3Instances[chainId];
 };
 
 // Helper contracts
-const chainId = 10;
+const networks = [
+  {
+    chainId: 10,
+    port: 7777,
+  },
+  { chainId: 42161, port: 8888 },
+];
 const Messenger = getContract("MessengerMock");
 const BridgePool = getContract("BridgePool");
 const BridgeDepositBox = getContract("BridgeDepositBoxMock");
@@ -38,7 +46,6 @@ const MockOracle = getContract("MockOracleAncillary");
 let messenger: any;
 let bridgeAdmin: any;
 let bridgePool: any;
-let bridgeDepositBox: any;
 let finder: any;
 let store: any;
 let identifierWhitelist: any;
@@ -154,44 +161,48 @@ describe("index.js", function () {
       transports: [new SpyTransport({ level: "debug" }, { spy: spy })],
     });
 
-    startGanacheServer(chainId, 7777);
-    const [l2Owner, l2BridgeAdminImpersonator] = await l2Web3.eth.getAccounts();
+    await Promise.all(
+      networks.map(async ({ chainId, port }) => {
+        const l2Web3 = startGanacheServer(chainId, port);
+        const [l2Owner, l2BridgeAdminImpersonator] = await l2Web3.eth.getAccounts();
 
-    // Deploy deposit box on L2 web3 so that L2 client can read its events.
-    const L2BridgeDepositBox = new l2Web3.eth.Contract(BridgeDepositBox.abi);
-    bridgeDepositBox = await L2BridgeDepositBox.deploy({
-      data: BridgeDepositBox.bytecode,
-      arguments: [l2BridgeAdminImpersonator, minimumBridgingDelay, ZERO_ADDRESS, ZERO_ADDRESS],
-    }).send({
-      from: l2Owner,
-      gas: 6000000,
-      gasPrice: toWei("1", "gwei"),
-    });
+        // Deploy deposit box on L2 web3 so that L2 client can read its events.
+        const L2BridgeDepositBox = new l2Web3.eth.Contract(BridgeDepositBox.abi);
+        const bridgeDepositBox = await L2BridgeDepositBox.deploy({
+          data: BridgeDepositBox.bytecode,
+          arguments: [l2BridgeAdminImpersonator, minimumBridgingDelay, ZERO_ADDRESS, ZERO_ADDRESS],
+        }).send({
+          from: l2Owner,
+          gas: 6000000,
+          gasPrice: toWei("1", "gwei"),
+        });
 
-    await bridgeAdmin.methods
-      .setDepositContract(chainId, bridgeDepositBox.options.address, messenger.options.address)
-      .send({ from: owner });
+        await bridgeAdmin.methods
+          .setDepositContract(chainId, bridgeDepositBox.options.address, messenger.options.address)
+          .send({ from: owner });
 
-    // Add L1-L2 token mapping after deposit box address is set.
-    await bridgeAdmin.methods
-      .whitelistToken(
-        chainId,
-        l1Token.options.address,
-        l2Token,
-        bridgePool.options.address,
-        0,
-        defaultGasLimit,
-        defaultGasPrice,
-        0
-      )
-      .send({ from: owner });
-    await bridgeDepositBox.methods
-      .whitelistToken(l1Token.options.address, l2Token, bridgePool.options.address)
-      .send({ from: l2BridgeAdminImpersonator });
+        // Add L1-L2 token mapping after deposit box address is set.
+        await bridgeAdmin.methods
+          .whitelistToken(
+            chainId,
+            l1Token.options.address,
+            l2Token,
+            bridgePool.options.address,
+            0,
+            defaultGasLimit,
+            defaultGasPrice,
+            0
+          )
+          .send({ from: owner });
+        await bridgeDepositBox.methods
+          .whitelistToken(l1Token.options.address, l2Token, bridgePool.options.address)
+          .send({ from: l2BridgeAdminImpersonator });
+      })
+    );
   });
   it("Runs with no errors and correctly sets approvals for whitelisted L1 tokens", async function () {
     process.env.BRIDGE_ADMIN_ADDRESS = bridgeAdmin.options.address;
-    process.env.WHITELISTED_CHAIN_IDS = JSON.stringify([chainId]);
+    process.env.WHITELISTED_CHAIN_IDS = JSON.stringify([networks[0].chainId]);
     process.env.RELAYER_ENABLED = "1";
     process.env.DISPUTER_ENABLED = "1";
     process.env.FINALIZER_ENABLED = "1";
@@ -199,8 +210,27 @@ describe("index.js", function () {
     process.env.RATE_MODELS = JSON.stringify({
       [l1Token.options.address]: { UBar: toWei("0.65"), R0: toWei("0.00"), R1: toWei("0.08"), R2: toWei("1.00") },
     });
-    process.env.CHAIN_IDS = JSON.stringify([chainId]);
-    process.env[`NODE_URL_${chainId}`] = "http://localhost:7777";
+    process.env.CHAIN_IDS = JSON.stringify([networks[0].chainId]);
+    process.env[`NODE_URL_${networks[0].chainId}`] = "http://localhost:7777";
+
+    // Must not throw.
+    await run(spyLogger, web3);
+
+    // Approvals are set correctly
+    assert.notEqual((await l1Token.methods.allowance(owner, bridgePool.options.address)).toString(), "0");
+  });
+  it("Runs multiple chainIds with no errors", async function () {
+    process.env.BRIDGE_ADMIN_ADDRESS = bridgeAdmin.options.address;
+    process.env.WHITELISTED_CHAIN_IDS = JSON.stringify(networks.map(({ chainId }) => chainId));
+    process.env.RELAYER_ENABLED = "1";
+    process.env.DISPUTER_ENABLED = "1";
+    process.env.FINALIZER_ENABLED = "1";
+    process.env.POLLING_DELAY = "0";
+    process.env.RATE_MODELS = JSON.stringify({
+      [l1Token.options.address]: { UBar: toWei("0.65"), R0: toWei("0.00"), R1: toWei("0.08"), R2: toWei("1.00") },
+    });
+    process.env.CHAIN_IDS = JSON.stringify(networks.map(({ chainId }) => chainId));
+    networks.forEach(({ chainId, port }) => (process.env[`NODE_URL_${chainId}`] = `http://localhost:${port}`));
 
     // Must not throw.
     await run(spyLogger, web3);
@@ -210,7 +240,7 @@ describe("index.js", function () {
   });
   it("Filters L1 token whitelist on L2 whitelist events", async function () {
     process.env.BRIDGE_ADMIN_ADDRESS = bridgeAdmin.options.address;
-    process.env.WHITELISTED_CHAIN_IDS = JSON.stringify([chainId]);
+    process.env.WHITELISTED_CHAIN_IDS = JSON.stringify([networks[0].chainId]);
     process.env.RELAYER_ENABLED = "1";
     process.env.DISPUTER_ENABLED = "1";
     process.env.FINALIZER_ENABLED = "1";
@@ -222,8 +252,8 @@ describe("index.js", function () {
       [l1Token.options.address]: { UBar: toWei("0.65"), R0: toWei("0.00"), R1: toWei("0.08"), R2: toWei("1.00") },
       [unWhitelistedL1Token]: { UBar: toWei("0.75"), R0: toWei("0.00"), R1: toWei("0.06"), R2: toWei("2.00") },
     });
-    process.env.CHAIN_IDS = JSON.stringify([chainId]);
-    process.env[`NODE_URL_${chainId}`] = "http://localhost:7777";
+    process.env.CHAIN_IDS = JSON.stringify([networks[0].chainId]);
+    process.env[`NODE_URL_${networks[0].chainId}`] = "http://localhost:7777";
 
     // Must not throw.
     await run(spyLogger, web3);
