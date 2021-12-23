@@ -22,9 +22,8 @@ contract Nomad_ParentMessenger is ParentMessengerInterface, ParentMessengerBase,
     event MessageReceivedFromChild(bytes data, address indexed childMessenger, address indexed targetHub);
 
     modifier onlyChildMessenger(bytes32 addressToCheck) {
-        // Note: idea for converting address to bytes32 from this post: https://ethereum.stackexchange.com/a/55963
         require(
-            bytes32(abi.encodePacked(childMessenger)) == addressToCheck,
+            bytes32(uint256(uint160(childMessenger))) == addressToCheck,
             "cross-domain sender must be child messenger"
         );
         _;
@@ -62,10 +61,9 @@ contract Nomad_ParentMessenger is ParentMessengerInterface, ParentMessengerBase,
     function sendMessageToChild(bytes memory data) public override onlyHubContract() nonReentrant() {
         address target = msg.sender == oracleHub ? oracleSpoke : governorSpoke;
         bytes memory dataToSendToChild = abi.encode(data, target);
-        // Note: idea for converting address to bytes32 from this post: https://ethereum.stackexchange.com/a/55963
         getXAppConnectionManager().home().dispatch(
             uint32(childChainId), // chain ID and the Nomad idea of a "domain" are used interchangeably.
-            bytes32(abi.encodePacked(target)),
+            bytes32(uint256(uint160(childMessenger))),
             dataToSendToChild
         );
         emit MessageSentToChild(dataToSendToChild, target, childMessenger);

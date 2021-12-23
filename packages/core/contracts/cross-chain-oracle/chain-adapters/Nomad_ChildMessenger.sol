@@ -31,9 +31,8 @@ contract Nomad_ChildMessenger is ChildMessengerInterface, Lockable {
     }
 
     modifier onlyParentMessenger(bytes32 addressToCheck) {
-        // Note: idea for converting address to bytes32 from this post: https://ethereum.stackexchange.com/a/55963
         require(
-            bytes32(abi.encodePacked(getParentMessenger())) == addressToCheck,
+            bytes32(uint256(uint160(getParentMessenger()))) == addressToCheck,
             "cross-domain sender must be child messenger"
         );
         _;
@@ -60,8 +59,7 @@ contract Nomad_ChildMessenger is ChildMessengerInterface, Lockable {
         require(msg.sender == getOracleSpoke(), "Only callable by oracleSpoke");
         getXAppConnectionManager().home().dispatch(
             parentChainDomain,
-            // Note: idea for converting address to bytes32 from this post: https://ethereum.stackexchange.com/a/55963
-            bytes32(abi.encodePacked(getParentMessenger())),
+            bytes32(uint256(uint160(getParentMessenger()))),
             data
         );
         emit MessageSentToParent(data, getParentMessenger(), getOracleSpoke());
