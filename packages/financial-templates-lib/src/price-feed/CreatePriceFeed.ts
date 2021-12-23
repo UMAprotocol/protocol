@@ -909,6 +909,9 @@ function getFinancialContractIdentifierAtAddress(web3: Web3, financialContractAd
   try {
     return new web3.eth.Contract(getAbi("ExpiringMultiParty"), financialContractAddress);
   } catch (error) {
-    throw new Error(`Something went wrong in fetching the financial contract identifier ${error?.stack || error}`);
+    const castedError = error as Error;
+    throw new Error(
+      `Something went wrong in fetching the financial contract identifier ${castedError?.stack || castedError}`
+    );
   }
 }
