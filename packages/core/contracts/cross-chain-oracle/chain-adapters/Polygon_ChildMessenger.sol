@@ -16,13 +16,7 @@ import "../../oracle/implementation/Constants.sol";
  */
 contract Polygon_ChildMessenger is FxBaseChildTunnel, ChildMessengerInterface, Lockable {
     FinderInterface public finder;
-    // The only child network contract that can send messages over the bridge via the messenger is the OracleSpoke.
-    address public oracleSpoke;
-    // Store oracle hub address that OracleSpoke can send messages to via `sendMessageToParent`.
-    address public oracleHub;
 
-    event SetOracleSpoke(address newOracleSpoke);
-    event SetOracleHub(address newOracleHub);
     event MessageSentToParent(bytes data, address indexed targetHub, address indexed oracleSpoke);
     event MessageReceivedFromParent(address indexed targetSpoke, bytes dataToSendToTarget);
 
@@ -44,9 +38,9 @@ contract Polygon_ChildMessenger is FxBaseChildTunnel, ChildMessengerInterface, L
      * @param data data message sent to the L1 messenger. Should be an encoded function call or packed data.
      */
     function sendMessageToParent(bytes memory data) public override nonReentrant() {
-        require(msg.sender == oracleSpoke, "Only callable by oracleSpoke");
-        _sendMessageToRoot(abi.encode(data, oracleHub));
-        emit MessageSentToParent(data, oracleHub, oracleSpoke);
+        require(msg.sender == getOracleSpoke(), "Only callable by oracleSpoke");
+        _sendMessageToRoot(abi.encode(data, getOracleHub()));
+        emit MessageSentToParent(data, getOracleHub(), getOracleSpoke());
     }
 
     /**
