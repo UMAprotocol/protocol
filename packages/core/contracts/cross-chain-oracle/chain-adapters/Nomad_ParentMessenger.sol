@@ -12,14 +12,24 @@ import "../../oracle/implementation/Constants.sol";
 /**
  * @notice Sends cross chain messages from Ethereum L1 to any other network where Nomad bridging infrastructure is
  * deployed. Both L1 and the network where the child messenger is deployed need to have Nomad Home + Replica contracts
- * to send and receive cross-chain messages.
+ * to send and receive cross-chain messages respectively.
  * @dev This contract is ownable and should be owned by the DVM governor.
  */
 contract Nomad_ParentMessenger is ParentMessengerInterface, ParentMessengerBase, Lockable {
     FinderInterface public finder;
 
-    event MessageSentToChild(bytes data, address indexed targetSpoke, address indexed childMessenger);
-    event MessageReceivedFromChild(bytes data, address indexed childMessenger, address indexed targetHub);
+    event MessageSentToChild(
+        bytes data,
+        address indexed targetSpoke,
+        uint32 indexed childChainDomain,
+        address indexed childMessenger
+    );
+    event MessageReceivedFromChild(
+        bytes data,
+        address indexed targetHub,
+        address indexed childMessenger,
+        uint32 indexed sourceDomain
+    );
 
     modifier onlyChildMessenger(bytes32 addressToCheck) {
         require(
@@ -40,7 +50,7 @@ contract Nomad_ParentMessenger is ParentMessengerInterface, ParentMessengerBase,
 
     /**
      * @notice Construct the ParentMessenger contract.
-     * @param _finder Used to locate XAppConnectionManager for this network.
+     * @param _finder Used to locate contracts for this network.
      * @param _childChainDomain The Nomad "domain" where the connected child messenger is deployed. Note that the Nomad
      * domains do not always correspond to "chain ID's", but they are similarly unique identifiers for each network.
      **/
@@ -66,25 +76,27 @@ contract Nomad_ParentMessenger is ParentMessengerInterface, ParentMessengerBase,
             bytes32(uint256(uint160(childMessenger))),
             dataToSendToChild
         );
-        emit MessageSentToChild(dataToSendToChild, target, childMessenger);
+        emit MessageSentToChild(dataToSendToChild, target, uint32(childChainId), childMessenger);
     }
 
     /**
      * @notice Process a received message from the child messenger via the Nomad Replica contract.
-     * @dev The cross-chain caller must be the the child messenger and the msg.sender on this network
+     * @dev The cross-chain caller must be the the child messenger and the msg.sender for this function
      * must be the Replica contract.
      * @dev Note that only the OracleHub can receive messages from the child messenger. Therefore we can always forward
      * these messages to this contract. The OracleHub must implement processMessageFromChild to handle this message.
-     * @param _sender The address the message is coming from
-     * @param _message The message in the form of raw bytes
+     * @param _domain The domain the message is coming from.
+     * @param _sender The address the message is coming from.
+     * @param _message The message in the form of raw bytes.
      */
     function handle(
-        uint32,
+        uint32 _domain,
         bytes32 _sender,
         bytes memory _message
     ) external onlyReplica(msg.sender) onlyChildMessenger(_sender) {
+        // TODO: Should we check that _domain == parentChainDomain?
         ParentMessengerConsumerInterface(oracleHub).processMessageFromChild(childChainId, _message);
-        emit MessageReceivedFromChild(_message, childMessenger, oracleHub);
+        emit MessageReceivedFromChild(_message, childMessenger, oracleHub, _domain);
     }
 
     function getXAppConnectionManager() public view returns (XAppConnectionManagerInterface) {

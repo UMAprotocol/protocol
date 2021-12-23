@@ -11,18 +11,29 @@ import "../../oracle/implementation/Constants.sol";
 /**
  * @notice Sends cross chain messages from any network where Nomad bridging infrastructure is deployed to L1. Both L1
  * and the network where this contract is deployed need to have Nomad Home + Replica contracts to send and receive
- * cross-chain messages.
+ * cross-chain messages respectively.
  */
 contract Nomad_ChildMessenger is ChildMessengerInterface, Lockable {
     FinderInterface public finder;
 
     uint32 public parentChainDomain;
 
-    event MessageSentToParent(bytes data, address indexed targetHub, address indexed oracleSpoke);
-    event MessageReceivedFromParent(address indexed targetSpoke, bytes dataToSendToTarget);
+    event MessageSentToParent(
+        bytes data,
+        address indexed targetHub,
+        address indexed oracleSpoke,
+        uint32 parentChainDomain,
+        address parentMessenger
+    );
+    event MessageReceivedFromParent(
+        address indexed targetSpoke,
+        bytes dataToSendToTarget,
+        uint32 sourceDomain,
+        address sourceSender
+    );
 
     /**
-     * @notice Only accept messages from an Nomad Replica contract
+     * @notice Only accept messages from a Nomad Replica contract
      */
     modifier onlyReplica(address addressToCheck) {
         // Determine whether addressToCheck is an enrolled Replica from the xAppConnectionManager
@@ -30,7 +41,7 @@ contract Nomad_ChildMessenger is ChildMessengerInterface, Lockable {
         _;
     }
 
-    modifier onlyParentMessenger(bytes32 addressToCheck) {
+    modifier crossChainSenderIsParentMessenger(bytes32 addressToCheck) {
         require(
             bytes32(uint256(uint160(getParentMessenger()))) == addressToCheck,
             "cross-domain sender must be child messenger"
@@ -40,9 +51,9 @@ contract Nomad_ChildMessenger is ChildMessengerInterface, Lockable {
 
     /**
      * @notice Construct the ChildMessenger contract.
-     * @param _finder Used to locate XAppConnectionManager for this network.
+     * @param _finder Used to locate contracts for this network.
      * @param _parentChainDomain The Nomad "domain" where the connected parent messenger is deployed. Note that the Nomad
-     * domains do not always correspond to "chain ID's", but they are similarly unique identifiers for each network.
+     * domains do not always correspond to "chain ID's", but they are unique identifiers for each network.
      **/
     constructor(address _finder, uint32 _parentChainDomain) {
         finder = FinderInterface(_finder);
@@ -62,24 +73,26 @@ contract Nomad_ChildMessenger is ChildMessengerInterface, Lockable {
             bytes32(uint256(uint160(getParentMessenger()))),
             data
         );
-        emit MessageSentToParent(data, getParentMessenger(), getOracleSpoke());
+        emit MessageSentToParent(data, getParentMessenger(), getOracleSpoke(), parentChainDomain, getParentMessenger());
     }
 
     /**
      * @notice Process a received message from the parent messenger via the Nomad Replica contract.
-     * @dev The cross-chain caller must be the the parent messenger and the msg.sender on this network
+     * @dev The cross-chain caller must be the the parent messenger and the msg.sender for this function
      * must be the Replica contract.
-     * @param _sender The address the message is coming from
-     * @param _message The message in the form of raw bytes
+     * @param _domain The domain the message is coming from.
+     * @param _sender The address the message is coming from.
+     * @param _message The message in the form of raw bytes.
      */
     function handle(
-        uint32,
+        uint32 _domain,
         bytes32 _sender,
         bytes memory _message
-    ) external onlyReplica(msg.sender) onlyParentMessenger(_sender) {
+    ) external onlyReplica(msg.sender) crossChainSenderIsParentMessenger(_sender) {
+        // TODO: Should we check that _domain == parentChainDomain?
         (bytes memory dataToSendToTarget, address target) = abi.decode(_message, (bytes, address));
         ChildMessengerConsumerInterface(target).processMessageFromParent(dataToSendToTarget);
-        emit MessageReceivedFromParent(target, dataToSendToTarget);
+        emit MessageReceivedFromParent(target, dataToSendToTarget, _domain, getParentMessenger());
     }
 
     function getXAppConnectionManager() public view returns (XAppConnectionManagerInterface) {
