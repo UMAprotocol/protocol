@@ -10,12 +10,17 @@ import "./SpokeBase.sol";
  * @notice Governor contract deployed on L2 that receives governance actions from Ethereum.
  */
 contract GovernorSpoke is Lockable, SpokeBase, ChildMessengerConsumerInterface {
+    // Added as a convenient view method to determine this contract's set Finder address. The finder address stored
+    // in the SpokeBase is private for reasons specific to that contract, see its comments.
+    address public finder;
     struct Call {
         address to;
         bytes data;
     }
 
-    constructor(address _finderAddress) SpokeBase(_finderAddress) {}
+    constructor(address _finderAddress) SpokeBase(_finderAddress) {
+        finder = _finderAddress;
+    }
 
     event ExecutedGovernanceTransaction(address indexed to, bytes data);
 

@@ -13,6 +13,8 @@ import "../oracle/implementation/Constants.sol";
  */
 
 contract SpokeBase {
+    // Note: This is private because `OracleSpoke` inherits both `OracleBase` and this contract and there cannot be
+    // two public `finder` global variables.
     FinderInterface private finder;
 
     constructor(address _finderAddress) {
