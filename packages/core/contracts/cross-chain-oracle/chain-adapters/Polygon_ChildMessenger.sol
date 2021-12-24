@@ -5,6 +5,8 @@ import "../../external/polygon/tunnel/FxBaseChildTunnel.sol";
 import "../interfaces/ChildMessengerInterface.sol";
 import "../interfaces/ChildMessengerConsumerInterface.sol";
 import "../../common/implementation/Lockable.sol";
+import "../../oracle/interfaces/FinderInterface.sol";
+import "../../oracle/implementation/Constants.sol";
 
 /**
  * @notice Sends cross chain messages from Polygon to Ethereum network.
@@ -13,44 +15,19 @@ import "../../common/implementation/Lockable.sol";
  * the internal `_processMessageFromRoot` function is only callable indirectly by the `Polygon_ParentMessenger`.
  */
 contract Polygon_ChildMessenger is FxBaseChildTunnel, ChildMessengerInterface, Lockable {
-    // The only child network contract that can send messages over the bridge via the messenger is the OracleSpoke.
-    address public oracleSpoke;
-    // Store oracle hub address that OracleSpoke can send messages to via `sendMessageToParent`.
-    address public oracleHub;
+    FinderInterface public finder;
 
-    event SetOracleSpoke(address newOracleSpoke);
-    event SetOracleHub(address newOracleHub);
     event MessageSentToParent(bytes data, address indexed targetHub, address indexed oracleSpoke);
     event MessageReceivedFromParent(address indexed targetSpoke, bytes dataToSendToTarget);
 
     /**
      * @notice Construct the Polygon_ChildMessenger contract.
+     * @param _finder Used to locate contracts for this network.
      * @param _fxChild Polygon system contract deployed on Mainnet, required to construct new FxBaseRootTunnel
      * that can send messages via native Polygon data tunnel.
      */
-    constructor(address _fxChild) FxBaseChildTunnel(_fxChild) {}
-
-    /**
-     * @notice Set OracleSpoke address, which is the only address that can call `sendMessageToParent`.
-     * @dev Can only reset this address once.
-     * @param _oracleSpoke address of the new OracleSpoke, deployed on this network.
-     */
-    function setOracleSpoke(address _oracleSpoke) public nonReentrant() {
-        require(oracleSpoke == address(0x0), "OracleSpoke already set");
-        oracleSpoke = _oracleSpoke;
-        emit SetOracleSpoke(oracleSpoke);
-    }
-
-    /**
-     * @notice Set OracleHub address, which is always the target address for messages sent from this network to
-     * the parent network.
-     * @dev Can only reset this address once.
-     * @param _oracleHub address of the new OracleHub, deployed on the parent network.
-     */
-    function setOracleHub(address _oracleHub) public nonReentrant() {
-        require(oracleHub == address(0x0), "OracleHub already set");
-        oracleHub = _oracleHub;
-        emit SetOracleHub(oracleHub);
+    constructor(address _fxChild, address _finder) FxBaseChildTunnel(_fxChild) {
+        finder = FinderInterface(_finder);
     }
 
     /**
@@ -61,9 +38,9 @@ contract Polygon_ChildMessenger is FxBaseChildTunnel, ChildMessengerInterface, L
      * @param data data message sent to the L1 messenger. Should be an encoded function call or packed data.
      */
     function sendMessageToParent(bytes memory data) public override nonReentrant() {
-        require(msg.sender == oracleSpoke, "Only callable by oracleSpoke");
-        _sendMessageToRoot(abi.encode(data, oracleHub));
-        emit MessageSentToParent(data, oracleHub, oracleSpoke);
+        require(msg.sender == getOracleSpoke(), "Only callable by oracleSpoke");
+        _sendMessageToRoot(abi.encode(data, getOracleHub()));
+        emit MessageSentToParent(data, getOracleHub(), getOracleSpoke());
     }
 
     /**
@@ -83,5 +60,13 @@ contract Polygon_ChildMessenger is FxBaseChildTunnel, ChildMessengerInterface, L
         (bytes memory dataToSendToTarget, address target) = abi.decode(data, (bytes, address));
         ChildMessengerConsumerInterface(target).processMessageFromParent(dataToSendToTarget);
         emit MessageReceivedFromParent(target, dataToSendToTarget);
+    }
+
+    function getOracleSpoke() public view returns (address) {
+        return finder.getImplementationAddress(OracleInterfaces.OracleSpoke);
+    }
+
+    function getOracleHub() public view returns (address) {
+        return finder.getImplementationAddress(OracleInterfaces.OracleHub);
     }
 }

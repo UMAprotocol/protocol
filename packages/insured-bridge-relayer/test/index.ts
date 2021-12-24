@@ -11,16 +11,24 @@ import { interfaceName, TokenRolesEnum, HRE, ZERO_ADDRESS, addGlobalHardhatTesti
 const { web3, getContract } = hre as HRE;
 const { toWei, utf8ToHex, toChecksumAddress, randomHex } = web3.utils;
 
-let l2Web3: typeof Web3 = undefined;
+const web3Instances: { [key: number]: typeof web3 } = {};
+
 const startGanacheServer = (chainId: number, port: number) => {
-  if (l2Web3 !== undefined) return;
+  if (web3Instances[chainId]) return web3Instances[chainId];
   const node = ganache.server({ _chainIdRpc: chainId });
   node.listen(port);
-  l2Web3 = new Web3("http://127.0.0.1:" + port);
+  web3Instances[chainId] = new Web3("http://127.0.0.1:" + port);
+  return web3Instances[chainId];
 };
 
 // Helper contracts
-const chainId = 10;
+const networks = [
+  {
+    chainId: 10,
+    port: 7777,
+  },
+  { chainId: 42161, port: 8888 },
+];
 const Messenger = getContract("MessengerMock");
 const BridgePool = getContract("BridgePool");
 const BridgeDepositBox = getContract("BridgeDepositBoxMock");
@@ -39,7 +47,6 @@ const RateModelStore = getContract("RateModelStore");
 let messenger: any;
 let bridgeAdmin: any;
 let bridgePool: any;
-let bridgeDepositBox: any;
 let finder: any;
 let store: any;
 let identifierWhitelist: any;
@@ -156,63 +163,84 @@ describe("index.js", function () {
       transports: [new SpyTransport({ level: "debug" }, { spy: spy })],
     });
 
-    startGanacheServer(chainId, 7777);
-    const [l2Owner, l2BridgeAdminImpersonator] = await l2Web3.eth.getAccounts();
+    await Promise.all(
+      networks.map(async ({ chainId, port }) => {
+        const l2Web3 = startGanacheServer(chainId, port);
+        const [l2Owner, l2BridgeAdminImpersonator] = await l2Web3.eth.getAccounts();
 
-    // Deploy deposit box on L2 web3 so that L2 client can read its events.
-    const L2BridgeDepositBox = new l2Web3.eth.Contract(BridgeDepositBox.abi);
-    bridgeDepositBox = await L2BridgeDepositBox.deploy({
-      data: BridgeDepositBox.bytecode,
-      arguments: [l2BridgeAdminImpersonator, minimumBridgingDelay, ZERO_ADDRESS, ZERO_ADDRESS],
-    }).send({
-      from: l2Owner,
-      gas: 6000000,
-      gasPrice: toWei("1", "gwei"),
-    });
+        // Deploy deposit box on L2 web3 so that L2 client can read its events.
+        const L2BridgeDepositBox = new l2Web3.eth.Contract(BridgeDepositBox.abi);
+        const bridgeDepositBox = await L2BridgeDepositBox.deploy({
+          data: BridgeDepositBox.bytecode,
+          arguments: [l2BridgeAdminImpersonator, minimumBridgingDelay, ZERO_ADDRESS, ZERO_ADDRESS],
+        }).send({
+          from: l2Owner,
+          gas: 6000000,
+          gasPrice: toWei("1", "gwei"),
+        });
 
-    // Bridge admin needs to set deposit contract so that L2 client can locate it via the L1 client.
-    await bridgeAdmin.methods
-      .setDepositContract(chainId, bridgeDepositBox.options.address, messenger.options.address)
-      .send({ from: owner });
+        // Bridge admin needs to set deposit contract so that L2 client can locate it via the L1 client.
+        await bridgeAdmin.methods
+          .setDepositContract(chainId, bridgeDepositBox.options.address, messenger.options.address)
+          .send({ from: owner });
 
-    // Whitelist L1 token after deposit box address is set in the BridgeAdmin. For this test, there is no need
-    // to whitelist the L2 token since there won't be any L2 deposits.
-    await bridgeAdmin.methods
-      .whitelistToken(
-        chainId,
-        l1Token.options.address,
-        l2Token,
-        bridgePool.options.address,
-        0,
-        defaultGasLimit,
-        defaultGasPrice,
-        0
-      )
-      .send({ from: owner });
+        // Whitelist L1 token after deposit box address is set in the BridgeAdmin. For this test, there is no need
+        // to whitelist the L2 token since there won't be any L2 deposits.
+        await bridgeAdmin.methods
+          .whitelistToken(
+            chainId,
+            l1Token.options.address,
+            l2Token,
+            bridgePool.options.address,
+            0,
+            defaultGasLimit,
+            defaultGasPrice,
+            0
+          )
+          .send({ from: owner });
 
-    rateModelStore = await RateModelStore.new().send({ from: owner });
-    await rateModelStore.methods
-      .updateRateModel(
-        l1Token.options.address,
-        JSON.stringify({
-          UBar: toWei("0.65"),
-          R0: toWei("0.00"),
-          R1: toWei("0.08"),
-          R2: toWei("1.00"),
-        })
-      )
-      .send({ from: owner });
+        rateModelStore = await RateModelStore.new().send({ from: owner });
+        await rateModelStore.methods
+          .updateRateModel(
+            l1Token.options.address,
+            JSON.stringify({
+              UBar: toWei("0.65"),
+              R0: toWei("0.00"),
+              R1: toWei("0.08"),
+              R2: toWei("1.00"),
+            })
+          )
+          .send({ from: owner });
+      })
+    );
   });
   it("Runs with no errors and correctly sets approvals for whitelisted L1 tokens", async function () {
     process.env.BRIDGE_ADMIN_ADDRESS = bridgeAdmin.options.address;
-    process.env.WHITELISTED_CHAIN_IDS = JSON.stringify([chainId]);
+    process.env.WHITELISTED_CHAIN_IDS = JSON.stringify([networks[0].chainId]);
     process.env.RELAYER_ENABLED = "1";
     process.env.DISPUTER_ENABLED = "1";
     process.env.FINALIZER_ENABLED = "1";
     process.env.POLLING_DELAY = "0";
     process.env.RATE_MODEL_ADDRESS = rateModelStore.options.address;
-    process.env.CHAIN_IDS = JSON.stringify([chainId]);
-    process.env[`NODE_URL_${chainId}`] = "http://localhost:7777";
+    process.env.CHAIN_IDS = JSON.stringify([networks[0].chainId]);
+    process.env[`NODE_URL_${networks[0].chainId}`] = "http://localhost:7777";
+
+    // Must not throw.
+    await run(spyLogger, web3);
+
+    // Approvals are set correctly
+    assert.notEqual((await l1Token.methods.allowance(owner, bridgePool.options.address)).toString(), "0");
+  });
+  it("Runs multiple chainIds with no errors", async function () {
+    process.env.BRIDGE_ADMIN_ADDRESS = bridgeAdmin.options.address;
+    process.env.WHITELISTED_CHAIN_IDS = JSON.stringify(networks.map(({ chainId }) => chainId));
+    process.env.RELAYER_ENABLED = "1";
+    process.env.DISPUTER_ENABLED = "1";
+    process.env.FINALIZER_ENABLED = "1";
+    process.env.POLLING_DELAY = "0";
+    process.env.RATE_MODEL_ADDRESS = rateModelStore.options.address;
+    process.env.CHAIN_IDS = JSON.stringify(networks.map(({ chainId }) => chainId));
+    networks.forEach(({ chainId, port }) => (process.env[`NODE_URL_${chainId}`] = `http://localhost:${port}`));
 
     // Must not throw.
     await run(spyLogger, web3);
@@ -222,14 +250,14 @@ describe("index.js", function () {
   });
   it("Filters L1 token whitelist on L2 whitelist events", async function () {
     process.env.BRIDGE_ADMIN_ADDRESS = bridgeAdmin.options.address;
+    process.env.WHITELISTED_CHAIN_IDS = JSON.stringify([networks[0].chainId]);
     process.env.RATE_MODEL_ADDRESS = rateModelStore.options.address;
-    process.env.WHITELISTED_CHAIN_IDS = JSON.stringify([chainId]);
     process.env.RELAYER_ENABLED = "1";
     process.env.DISPUTER_ENABLED = "1";
     process.env.FINALIZER_ENABLED = "1";
     process.env.POLLING_DELAY = "0";
-    process.env.CHAIN_IDS = JSON.stringify([chainId]);
-    process.env[`NODE_URL_${chainId}`] = "http://localhost:7777";
+    process.env.CHAIN_IDS = JSON.stringify([networks[0].chainId]);
+    process.env[`NODE_URL_${networks[0].chainId}`] = "http://localhost:7777";
 
     // Add another L1 token to rate model that is not whitelisted.
     const unWhitelistedL1Token = toChecksumAddress(randomHex(20));
@@ -244,7 +272,6 @@ describe("index.js", function () {
         })
       )
       .send({ from: owner });
-
     // Must not throw.
     await run(spyLogger, web3);
 
@@ -258,13 +285,13 @@ describe("index.js", function () {
   it("Throws error if rate model doesn't include all whitelisted tokens on bridge admin", async function () {
     process.env.BRIDGE_ADMIN_ADDRESS = bridgeAdmin.options.address;
     process.env.RATE_MODEL_ADDRESS = rateModelStore.options.address;
-    process.env.WHITELISTED_CHAIN_IDS = JSON.stringify([chainId]);
+    process.env.WHITELISTED_CHAIN_IDS = JSON.stringify([networks[0].chainId]);
     process.env.RELAYER_ENABLED = "1";
     process.env.DISPUTER_ENABLED = "1";
     process.env.FINALIZER_ENABLED = "1";
     process.env.POLLING_DELAY = "0";
-    process.env.CHAIN_IDS = JSON.stringify([chainId]);
-    process.env[`NODE_URL_${chainId}`] = "http://localhost:7777";
+    process.env.CHAIN_IDS = JSON.stringify([networks[0].chainId]);
+    process.env[`NODE_URL_${networks[0].chainId}`] = "http://localhost:7777";
 
     // whitelist new token
     const newWhitelistedL1Token = await ERC20.new("TESTERC20", "TESTERC20", 18).send({ from: owner });
@@ -280,7 +307,7 @@ describe("index.js", function () {
     ).send({ from: owner });
     await bridgeAdmin.methods
       .whitelistToken(
-        chainId,
+        networks[0].chainId,
         newWhitelistedL1Token.options.address,
         l2Token,
         newBridgePool.options.address,

@@ -20,7 +20,7 @@
     "prompt": "^1.1.0"
   },
   "devDependencies": {
-    "@openzeppelin/contracts": "4.3.3",
+    "@openzeppelin/contracts": "4.4.1",
     "@uma/core-1-2-0": "npm:@uma/core@1.2.0",
     "chai": "^4.3.4",
     "mocha": "^9.1.1",
