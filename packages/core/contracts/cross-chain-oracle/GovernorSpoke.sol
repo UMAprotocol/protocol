@@ -23,12 +23,12 @@ contract GovernorSpoke is Lockable, SpokeBase, ChildMessengerConsumerInterface {
      * @notice Executes governance transaction created on Ethereum.
      * @dev Can only be called by ChildMessenger contract that wants to execute governance action on this child chain
      * that originated from DVM voters on root chain. ChildMessenger should only receive communication from
-     * ParentMessenger on mainnet. See the SpokeBase for the onlyMessenger modifier.
+     * ParentMessenger on mainnet. See the SpokeBase for the onlyChildMessenger modifier.
 
      * @param data Contains the target address and the encoded function selector + ABI encoded params to include in
      * delegated transaction.
      */
-    function processMessageFromParent(bytes memory data) public override nonReentrant() onlyMessenger() {
+    function processMessageFromParent(bytes memory data) public override nonReentrant() onlyChildMessenger() {
         Call[] memory calls = abi.decode(data, (Call[]));
 
         for (uint256 i = 0; i < calls.length; i++) {

@@ -23,13 +23,12 @@ import "./SpokeBase.sol";
  */
 contract OracleSpoke is
     OracleBase,
-    SpokeBase,
     OracleAncillaryInterface,
     OracleInterface,
     ChildMessengerConsumerInterface,
     Lockable
 {
-    constructor(address _finderAddress) OracleBase(_finderAddress) SpokeBase(_finderAddress) {}
+    constructor(address _finderAddress) OracleBase(_finderAddress) {}
 
     // This assumes that the local network has a Registry that resembles the mainnet registry.
     modifier onlyRegisteredContract() {
@@ -75,10 +74,10 @@ contract OracleSpoke is
     /**
      * @notice Resolves a price request originating from a message sent by the DVM on the parent chain.
      * @dev Can only be called by the ChildMessenger contract which is designed to communicate only with the
-     * ParentMessenger contract on Mainnet. See the SpokeBase for the onlyMessenger modifier.
+     * ParentMessenger contract on Mainnet. See the SpokeBase for the onlyChildMessenger modifier.
      * @param data ABI encoded params with which to call `_publishPrice`.
      */
-    function processMessageFromParent(bytes memory data) public override nonReentrant() onlyMessenger() {
+    function processMessageFromParent(bytes memory data) public override nonReentrant() onlyChildMessenger() {
         (bytes32 identifier, uint256 time, bytes memory ancillaryData, int256 price) =
             abi.decode(data, (bytes32, uint256, bytes, int256));
         _publishPrice(identifier, time, ancillaryData, price);

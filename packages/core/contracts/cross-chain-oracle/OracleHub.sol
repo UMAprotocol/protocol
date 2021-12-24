@@ -37,7 +37,7 @@ contract OracleHub is OracleBase, ParentMessengerConsumerInterface, Ownable, Loc
         token = _token;
     }
 
-    modifier onlyMessenger(uint256 chainId) {
+    modifier onlyParentMessenger(uint256 chainId) {
         require(msg.sender == address(messengers[chainId]), "Caller must be messenger for network");
         _;
     }
@@ -108,7 +108,7 @@ contract OracleHub is OracleBase, ParentMessengerConsumerInterface, Ownable, Loc
         public
         override
         nonReentrant()
-        onlyMessenger(chainId)
+        onlyParentMessenger(chainId)
     {
         (bytes32 identifier, uint256 time, bytes memory ancillaryData) = abi.decode(data, (bytes32, uint256, bytes));
         bool newPriceRequested = _requestPrice(identifier, time, ancillaryData);

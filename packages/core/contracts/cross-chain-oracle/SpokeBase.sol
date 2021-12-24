@@ -13,13 +13,13 @@ import "../oracle/implementation/Constants.sol";
  */
 
 contract SpokeBase {
-    FinderInterface private finder;
+    FinderInterface public finder;
 
     constructor(address _finderAddress) {
         finder = FinderInterface(_finderAddress);
     }
 
-    modifier onlyMessenger() {
+    modifier onlyChildMessenger() {
         require(msg.sender == address(getChildMessenger()), "Caller must be messenger");
         _;
     }
