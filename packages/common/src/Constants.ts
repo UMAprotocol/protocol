@@ -14,6 +14,8 @@ export const interfaceName = {
   SinkOracle: "Oracle",
   SkinnyOptimisticOracle: "SkinnyOptimisticOracle",
   ChildMessenger: "ChildMessenger",
+  OracleSpoke: "OracleSpoke",
+  OracleHub: "OracleHub",
 };
 
 // These enforce the maximum number of transactions that can fit within one batch-commit and batch-reveal.
