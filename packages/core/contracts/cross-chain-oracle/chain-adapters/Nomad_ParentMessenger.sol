@@ -96,7 +96,7 @@ contract Nomad_ParentMessenger is ParentMessengerInterface, ParentMessengerBase,
     ) external onlyReplica(msg.sender) onlyChildMessenger(_sender) {
         // TODO: Should we check that _domain == parentChainDomain?
         ParentMessengerConsumerInterface(oracleHub).processMessageFromChild(childChainId, _message);
-        emit MessageReceivedFromChild(_message, childMessenger, oracleHub, _domain);
+        emit MessageReceivedFromChild(_message, oracleHub, childMessenger, _domain);
     }
 
     function getXAppConnectionManager() public view returns (XAppConnectionManagerInterface) {
