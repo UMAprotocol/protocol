@@ -3,13 +3,12 @@ pragma solidity ^0.8.0;
 
 import "../oracle/interfaces/FinderInterface.sol";
 import "../oracle/implementation/Constants.sol";
-import "./SpokeBase.sol";
 
 /**
  * @title Cross-chain Oracle L1 Oracle Base.
  * @notice Enforces lifecycle of price requests for deriving contract.
  */
-abstract contract OracleBase is SpokeBase {
+abstract contract OracleBase {
     enum RequestState { NeverRequested, Requested, Resolved }
 
     struct Price {
@@ -19,6 +18,9 @@ abstract contract OracleBase is SpokeBase {
 
     // Mapping of encoded price requests {identifier, time, ancillaryData} to Price objects.
     mapping(bytes32 => Price) internal prices;
+
+    // Finder to provide addresses for DVM system contracts.
+    FinderInterface public finder;
 
     event PriceRequestAdded(bytes32 indexed identifier, uint256 time, bytes ancillaryData, bytes32 indexed requestHash);
     event PushedPrice(
@@ -33,7 +35,9 @@ abstract contract OracleBase is SpokeBase {
      * @notice Constructor.
      * @param _finderAddress finder to use to get addresses of DVM contracts.
      */
-    constructor(address _finderAddress) SpokeBase(_finderAddress) {}
+    constructor(address _finderAddress) {
+        finder = FinderInterface(_finderAddress);
+    }
 
     /**
      * @notice Enqueues a request (if a request isn't already present) for the given (identifier, time,
