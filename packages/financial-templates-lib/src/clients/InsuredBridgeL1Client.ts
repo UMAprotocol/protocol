@@ -61,7 +61,8 @@ export interface BridgePoolData {
 
 export class InsuredBridgeL1Client {
   public readonly bridgeAdmin: BridgeAdminInterfaceWeb3;
-  public readonly rateModelStore: RateModelStoreWeb3;
+  public readonly rateModelStore: RateModelStoreWeb3 | null; // Can be null if user doesn't want to compute any realized
+  // LP fee %'s.
   public bridgePools: { [key: string]: BridgePoolData }; // L1TokenAddress=>BridgePoolData
   private whitelistedTokens: { [chainId: string]: { [l1TokenAddress: string]: string } } = {};
 
@@ -82,7 +83,7 @@ export class InsuredBridgeL1Client {
     private readonly logger: Logger,
     readonly l1Web3: Web3,
     readonly bridgeAdminAddress: string,
-    readonly rateModelStoreAddress: string,
+    readonly rateModelStoreAddress: string | null,
     readonly startingBlockNumber = 0,
     readonly endingBlockNumber: number | null = null
   ) {
@@ -91,10 +92,9 @@ export class InsuredBridgeL1Client {
       getAbi("BridgeAdminInterface"),
       bridgeAdminAddress
     ) as unknown) as BridgeAdminInterfaceWeb3;
-    this.rateModelStore = (new l1Web3.eth.Contract(
-      getAbi("RateModelStore"),
-      rateModelStoreAddress
-    ) as unknown) as RateModelStoreWeb3;
+    this.rateModelStore = rateModelStoreAddress
+      ? ((new l1Web3.eth.Contract(getAbi("RateModelStore"), rateModelStoreAddress) as unknown) as RateModelStoreWeb3)
+      : null;
 
     this.rateModelDictionary = new across.rateModel.RateModelDictionary();
 
@@ -452,18 +452,21 @@ export class InsuredBridgeL1Client {
   }
 
   private async _getAllRateModelEvents(blockSearchConfig: any): Promise<across.rateModel.RateModelEvent[]> {
-    const updatedRateModelEvents: across.rateModel.RateModelEvent[] = (
-      await this.rateModelStore.getPastEvents("UpdatedRateModel", blockSearchConfig)
-    ).map((rawEvent) => {
-      return {
-        blockNumber: rawEvent.blockNumber,
-        transactionIndex: rawEvent.transactionIndex,
-        logIndex: rawEvent.logIndex,
-        rateModel: rawEvent.returnValues.rateModel,
-        l1Token: rawEvent.returnValues.l1Token,
-      };
-    });
-    return updatedRateModelEvents;
+    if (this.rateModelStore === null) return [];
+    else {
+      const updatedRateModelEvents: across.rateModel.RateModelEvent[] = (
+        await this.rateModelStore.getPastEvents("UpdatedRateModel", blockSearchConfig)
+      ).map((rawEvent) => {
+        return {
+          blockNumber: rawEvent.blockNumber,
+          transactionIndex: rawEvent.transactionIndex,
+          logIndex: rawEvent.logIndex,
+          rateModel: rawEvent.returnValues.rateModel,
+          l1Token: rawEvent.returnValues.l1Token,
+        };
+      });
+      return updatedRateModelEvents;
+    }
   }
 
   private _getInstantRelayHash(depositHash: string, realizedLpFeePct: string): string | null {
