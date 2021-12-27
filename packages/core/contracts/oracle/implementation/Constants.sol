@@ -19,6 +19,8 @@ library OracleInterfaces {
     bytes32 public constant XAppConnectionManager = "XAppConnectionManager";
     bytes32 public constant OracleSpoke = "OracleSpoke";
     bytes32 public constant ParentMessenger = "ParentMessenger";
+    bytes32 public constant OracleHub = "OracleHub";
+    bytes32 public constant OracleSpoke = "OracleSpoke";
 }
 
 /**

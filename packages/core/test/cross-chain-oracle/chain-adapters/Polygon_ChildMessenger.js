@@ -1,11 +1,14 @@
 const hre = require("hardhat");
 const { web3, assertEventEmitted } = hre;
 const { getContract } = hre;
+const { utf8ToHex } = web3.utils;
 const { assert } = require("chai");
 
-const { didContractThrow } = require("@uma/common");
+const { didContractThrow, interfaceName } = require("@uma/common");
 
 const { deployContractMock } = require("../../helpers/SmockitHelper");
+
+const Finder = getContract("Finder");
 
 // Tested Contract
 const Polygon_ChildMessenger = getContract("Polygon_ChildMessengerMock");
@@ -16,6 +19,7 @@ let fxChildAddress, oracleHubAddress, fxRootTunnelAddress, oracleSpokeAddress;
 // Re-used variables
 let deployer;
 let messenger;
+let finder;
 let oracleSpokeSmocked;
 
 describe("Polygon_ChildMessenger", function () {
@@ -23,40 +27,26 @@ describe("Polygon_ChildMessenger", function () {
     const accounts = await hre.web3.eth.getAccounts();
     [deployer, fxChildAddress, oracleHubAddress, fxRootTunnelAddress, oracleSpokeAddress] = accounts;
 
+    finder = await Finder.new().send({ from: deployer });
     messenger = await Polygon_ChildMessenger.new(
-      fxChildAddress // FxChild is normally a Polygon system contract, but it is unused in this test and can be
+      fxChildAddress, // FxChild is normally a Polygon system contract, but it is unused in this test and can be
       // set to some arbitrary EOA.
+      finder.options.address
     ).send({ from: deployer });
     await messenger.methods.setFxRootTunnel(fxRootTunnelAddress).send({ from: deployer });
 
     // Child messenger calls `processMessageFromParent()` on this OracleSpoke, so we'll check that its called with the
     // correct input.
     oracleSpokeSmocked = await deployContractMock("OracleSpoke", {}, getContract("OracleSpoke"));
-  });
-  it("setOracleSpoke", async function () {
-    const setter = messenger.methods.setOracleSpoke(oracleSpokeAddress);
-    const txn = await setter.send({ from: deployer });
-    assert.equal(await messenger.methods.oracleSpoke().call(), oracleSpokeAddress);
-    // Cannot call more than once.
-    assert(await didContractThrow(setter.send({ from: deployer })));
-    await assertEventEmitted(txn, messenger, "SetOracleSpoke", (ev) => {
-      return ev.newOracleSpoke === oracleSpokeAddress;
-    });
-  });
-  it("setOracleHub", async function () {
-    const setter = messenger.methods.setOracleHub(oracleHubAddress);
-    const txn = await setter.send({ from: deployer });
-    assert.equal(await messenger.methods.oracleHub().call(), oracleHubAddress);
-    // Cannot call more than once.
-    assert(await didContractThrow(setter.send({ from: deployer })));
-    await assertEventEmitted(txn, messenger, "SetOracleHub", (ev) => {
-      return ev.newOracleHub === oracleHubAddress;
-    });
+
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.OracleSpoke), oracleSpokeAddress)
+      .send({ from: deployer });
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.OracleHub), oracleHubAddress)
+      .send({ from: deployer });
   });
   it("sendMessageToParent", async function () {
-    await messenger.methods.setOracleSpoke(oracleSpokeAddress).send({ from: deployer });
-    await messenger.methods.setOracleHub(oracleHubAddress).send({ from: deployer });
-
     const dataToSendToParent = "0xdeadbeef";
     const sendMessage = messenger.methods.sendMessageToParent(dataToSendToParent);
 
