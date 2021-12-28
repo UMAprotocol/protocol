@@ -6,7 +6,7 @@ const fixedPoint = toBNWei(1);
 
 import { objectMap } from "@uma/common";
 import { Coingecko, across } from "@uma/sdk";
-import { getAddress } from "@uma/contracts-node";
+import { getAddress, getAbi } from "@uma/contracts-node";
 
 import { RelaySubmitType } from "./Relayer";
 
@@ -26,7 +26,7 @@ const costConstants = {
 };
 
 export class ProfitabilityCalculator {
-  public l1TokenInfo: { [token: string]: { tokenType: TokenType; tokenEthPrice: BN } } = {};
+  public l1TokenInfo: { [token: string]: { tokenType: TokenType; tokenEthPrice: BN; tokenDecimals: BN } } = {};
 
   public relayerDiscount: BN;
 
@@ -44,6 +44,7 @@ export class ProfitabilityCalculator {
     readonly logger: winston.Logger,
     readonly l1Tokens: string[],
     readonly l1ChainId: number,
+    readonly l1Web3: Web3,
     readonly relayerDiscountNumber: number = 0
   ) {
     this.relayerDiscount = toBNWei(Math.floor(relayerDiscountNumber)).div(toBN("100"));
@@ -95,6 +96,14 @@ export class ProfitabilityCalculator {
         });
       }
     }
+
+    // Get decimals for each token.
+    const tokenDecimals = await Promise.all(
+      this.l1Tokens.map((l1Token) => new this.l1Web3.eth.Contract(getAbi("ERC20"), l1Token).methods.decimals().call())
+    );
+
+    tokenDecimals.forEach();
+
     this.logger.debug({
       at: "ProfitabilityCalculator",
       message: "Updated prices",
