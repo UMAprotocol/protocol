@@ -2,7 +2,7 @@
 
 // This script allows you to manually relay a particular across deposit.
 // Example:
-// ./src/DecodeTransactionData.js --chainId 10 --depositId 100
+// ./src/ManualRelay.js --chainId 10 --depositId 100
 // Optional env overrides:
 //   BRIDGE_ADMIN_ADDRESS
 //   BRIDGE_DEPOSIT_ADDRESS
