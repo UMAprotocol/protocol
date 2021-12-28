@@ -85,7 +85,7 @@ export class Relayer {
     } catch (error) {
       // If event block hasn't been checkpointed to Mainnet yet, then don't emit error level log.
       let logLevel = "error";
-      if (error.message.includes("transaction has not been checkpointed")) logLevel = "debug";
+      if ((error as Error)?.message.includes("transaction has not been checkpointed")) logLevel = "debug";
       this.logger[logLevel]({
         at: "Relayer#relayMessage",
         message: "Failed to derive proof for MessageSent transaction hash 📛",
@@ -118,7 +118,7 @@ export class Relayer {
     } catch (error) {
       // If the proof was already submitted, then don't emit an error level log.
       let logLevel = "error";
-      if (error.message.includes("EXIT_ALREADY_PROCESSED")) logLevel = "debug";
+      if ((error as Error)?.message.includes("EXIT_ALREADY_PROCESSED")) logLevel = "debug";
       this.logger[logLevel]({
         at: "Relayer#relayMessage",
         message: "Failed to submit proof to root tunnel🚨",
