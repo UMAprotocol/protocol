@@ -2,15 +2,21 @@
 
 // This script allows you to manually relay a particular across deposit.
 // Example:
-// ./src/ManualRelay.js --chainId 10 --depositId 100
+// NODE_URL_1=https://mainnet.infura.io/v3/SOME_PROJECT_ID NODE_URL_10=https://optimism-mainnet.infura.io/v3/SOME_PROJECT_ID \
+//   ./src/ManualRelay.js --chainId 10 --depositId 100 --network mainnet_mnemonic
 // Optional env overrides:
 //   BRIDGE_ADMIN_ADDRESS
 //   BRIDGE_DEPOSIT_ADDRESS
 //   L2_END_BLOCK_NUMBER
+//
+// Note: if you want to run with GCKMS keys, the command will look like this:
+// NODE_URL_1=https://mainnet.infura.io/v3/SOME_PROJECT_ID NODE_URL_10=https://optimism-mainnet.infura.io/v3/SOME_PROJECT_ID \
+//   GOOGLE_APPLICATION_CREDENTIALS=/your/credentials/file.json ./src/ManualRelay.js --chainId 10 --depositId 100 \
+//   --network mainnet_gckms --keys your_gckms_key_name
 
 const argv = require("minimist")(process.argv.slice(), { string: ["depositId", "chainId"] });
 
-const { getWeb3, getWeb3ByChainId } = require("@uma/common");
+const { getWeb3ByChainId } = require("@uma/common");
 const { InsuredBridgeL1Client, InsuredBridgeL2Client, Logger } = require("@uma/financial-templates-lib");
 const sdk = require("@uma/sdk");
 
@@ -27,15 +33,15 @@ async function main() {
     throw new Error("--depositId argument must be provided");
   }
 
-  const l1Web3 = getWeb3();
+  const l1Web3 = getWeb3ByChainId(1);
   const l2Web3 = getWeb3ByChainId(Number(argv.chainId));
-  const [account] = l1Web3.eth.getAccounts();
-  const latestL2BlockNumber = process.env.L2_END_BLOCK_NUMBER | (await l2Web3.eth.getBlockNumber());
+  const [account] = await l1Web3.eth.getAccounts();
+  const latestL2BlockNumber = process.env.L2_END_BLOCK_NUMBER || (await l2Web3.eth.getBlockNumber());
 
   const l1Client = new InsuredBridgeL1Client(
     Logger,
     l1Web3,
-    process.env.BRIDGE_ADMIN_ADDRESS | "0x30B44C676A05F1264d1dE9cC31dB5F2A945186b6",
+    process.env.BRIDGE_ADMIN_ADDRESS || "0x30B44C676A05F1264d1dE9cC31dB5F2A945186b6",
     sdk.across.constants.RATE_MODELS
   );
   await l1Client.update();
