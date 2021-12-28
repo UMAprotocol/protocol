@@ -96,6 +96,8 @@ export function getHardhatConfig(
     },
     namedAccounts: { deployer: 0 },
   } as unknown) as HardhatConfig; // Cast to allow extra properties.
+  
+  if (process.env.HARDHAT_CHAIN_ID) defaultConfig.networks.hardhat.chainId = parseInt(process.env.HARDHAT_CHAIN_ID);
 
   return { ...defaultConfig, ...configOverrides };
 }
