@@ -29,6 +29,7 @@ import { TraderMadePriceFeed } from "./TraderMadePriceFeed";
 import { UniswapV2PriceFeed, UniswapV3PriceFeed } from "./UniswapPriceFeed";
 import { VaultPriceFeed, HarvestVaultPriceFeed } from "./VaultPriceFeed";
 import { InsuredBridgePriceFeed } from "./InsuredBridgePriceFeed";
+import { USPACPriceFeed } from "./USPACPriceFeed";
 
 import type { Logger } from "winston";
 import { NetworkerInterface } from "./Networker";
@@ -514,6 +515,28 @@ export async function createPriceFeed(
       l1Client,
       l2Client,
     });
+  } else if (config.type === "uSPAC") {
+    const requiredFields = ["lookback", "symbols", "rapidApiKey", "correctionFactor"];
+
+    if (isMissingField(config, requiredFields, logger)) {
+      return null;
+    }
+
+    logger.debug({ at: "createPriceFeed", message: "Creating USPACPriceFeed", config });
+
+    return new USPACPriceFeed(
+      logger,
+      web3,
+      config.symbols,
+      config.correctionFactor,
+      config.rapidApiKey,
+      config.interval,
+      config.lookback,
+      networker,
+      getTime,
+      config.priceFeedDecimals,
+      config.minTimeBetweenUpdates
+    );
   }
 
   logger.error({ at: "createPriceFeed", message: "Invalid price feed type specified🚨", config });
