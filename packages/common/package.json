@@ -48,7 +48,7 @@
     "dotenv": "^9.0.0",
     "eth-crypto": "^1.7.0",
     "hardhat": "^2.5.0",
-    "hardhat-deploy": "^0.9.22",
+    "hardhat-deploy": "^0.8.11",
     "hardhat-gas-reporter": "^1.0.4",
     "hardhat-typechain": "^0.3.5",
     "lodash.uniqby": "^4.7.0",

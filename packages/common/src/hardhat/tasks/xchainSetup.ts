@@ -179,14 +179,41 @@ task("setup-l1-arbitrum-xchain", "Configures L1 cross chain smart contracts for 
   }
 );
 
-// task("setup-l2-arbitrum-xchain", "Configures L2 cross chain smart contracts for Arbitrum bridge")
-//   .setAction(async function (_, hre_) {
-//     const hre = hre_ as CombinedHRE;
-//     const { deployments, getNamedAccounts, web3, companionNetworks } = hre;
-//     const { toBN } = web3.utils
-//     const { deployer } = await getNamedAccounts();
+task("setup-l2-arbitrum-xchain", "Configures L2 cross chain smart contracts for Arbitrum bridge").setAction(
+  async function (_, hre_) {
+    const hre = hre_ as CombinedHRE;
+    const { deployments, getNamedAccounts, web3 } = hre;
+    const { utf8ToHex } = web3.utils;
+    const { deployer } = await getNamedAccounts();
 
-//     // Need to just set Finder addresses:
-//     // - Registry
-//     // - ChildMessenger
-//   });
+    const Finder = await deployments.get("Finder");
+    const finder = new web3.eth.Contract(Finder.abi, Finder.address);
+    const ChildMessenger = await deployments.get("Arbitrum_ChildMessenger");
+    const Registry = await deployments.get("Registry");
+
+    console.log(`Found Finder @ ${finder.options.address}`);
+
+    const [finderChildMessenger, finderRegistry, finderOwner] = await Promise.all([
+      finder.methods.interfacesImplemented(utf8ToHex("ChildMessenger")).call(),
+      finder.methods.interfacesImplemented(utf8ToHex("Registry")).call(),
+      finder.methods.owner().call(),
+    ]);
+
+    // Submit Finder transactions:
+    assert(finderOwner === deployer, `Accounts[0] (${deployer}) is not equal to finder owner (${finderOwner})`);
+    if (finderChildMessenger !== ChildMessenger.address) {
+      console.log(`Setting finder ChildMessenger to ${ChildMessenger.address}...`);
+      const setMessengerTxn = await finder.methods
+        .changeImplementationAddress(utf8ToHex("ChildMessenger"), ChildMessenger.address)
+        .send({ from: deployer });
+      console.log(`...txn: ${setMessengerTxn.transactionHash}`);
+    }
+    if (finderRegistry !== Registry.address) {
+      console.log(`Setting finder Registry to ${Registry.address}...`);
+      const setRegistryTxn = await finder.methods
+        .changeImplementationAddress(utf8ToHex("Registry"), Registry.address)
+        .send({ from: deployer });
+      console.log(`...txn: ${setRegistryTxn.transactionHash}`);
+    }
+  }
+);

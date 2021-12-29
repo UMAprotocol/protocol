@@ -41,7 +41,7 @@ yarn hardhat deploy --network mainnet --tags l1-arbitrum-xchain
 3. Deploy l2 contracts:
 
 ```sh
-yarn hardhat deploy --network arbitrum --tags l2-arbitrum-xchain
+yarn hardhat deploy --network arbitrum --tags l2-arbitrum-xchain,Registry
 ```
 
 4. Verify contracts:
@@ -62,5 +62,7 @@ yarn hardhat setup-l1-arbitrum-cross-chain --network mainnet
 6. Setup l2 contracts
 
 ```sh
-yarn hardhat setupL2ArbitrumCrossChain --network arbitrum
+yarn hardhat setup-l2-arbitrum-cross-chain --network arbitrum
 ```
+
+7. At this point, the minimum set up is complete and further integration tests can be executed. Additionally, an OptimisticOracle can now be deployed to Arbitrum that can communicate back to mainnet via the newly deployed contracts.
