@@ -161,14 +161,15 @@ export function SyntheticPrices(config: Config, appState: Dependencies, appClien
     // this gets raw synth price without regard to currency, stores them in table. not really useful until converted to usd.
     await updateLatestSynthPrices(empAddresses).then((results) => {
       results.forEach((result) => {
-        if (result.status === "rejected") console.error("Error updating synthetic price: " + result.reason.message);
+        if (result.status === "rejected")
+          console.error("Error updating synthetic price: " + (result.reason as Error).message);
       });
     });
     // this converts latest synth prices to a currency price, based on collateral price relationship
     await updateLatestPrices(empAddresses).then((results) => {
       results.forEach((result) => {
         if (result.status === "rejected")
-          console.error(`Error updating synthetic ${currency} price: ${result.reason.message}`);
+          console.error(`Error updating synthetic ${currency} price: ${(result.reason as Error).message}`);
       });
     });
     // this takes converted prices and creates a historical record

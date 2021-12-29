@@ -1,4 +1,4 @@
-import Axios, { AxiosInstance } from "axios";
+import Axios, { AxiosInstance, AxiosRequestConfig } from "axios";
 
 type ValidationError = {
   field: string;
@@ -14,13 +14,6 @@ type Response = {
     reason: string;
     validationErrors: ValidationError[];
   };
-};
-
-// describes valid axios config, might be a way to get this from axios
-type AxiosConfig = {
-  method: string;
-  url: string;
-  params: { [key: string]: any };
 };
 
 // 0x api client, maintains raw responses when possible, parses errors to be human readable.
@@ -46,19 +39,20 @@ export default class Client {
     return errorMessage;
   }
   // general call function which does some common parsing
-  private async call(config: AxiosConfig) {
+  private async call(config: AxiosRequestConfig) {
     try {
       const response = await this.axios(config);
       return response.data;
     } catch (err) {
-      if (err.response == null) throw err;
-      throw new Error(this.stringifyErrorResponse(err.response));
+      const axiosError = err as { response?: Response };
+      if (!axiosError.response) throw err;
+      throw new Error(this.stringifyErrorResponse(axiosError.response));
     }
   }
   // get a price quote: swap/v1/price?sellToken=WETH&buyToken=DAI&sellAmount=1000000000000000000
   // this call requires one of sellAmount or buyAmount, but not both or neither
   public price(params: { sellToken: string; buyToken: string; sellAmount?: string; buyAmount?: string }) {
-    const config = {
+    const config: AxiosRequestConfig = {
       method: "GET",
       url: "/swap/v1/price",
       params,

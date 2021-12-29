@@ -18,6 +18,7 @@ const { assert } = require("chai");
 import { interfaceName, TokenRolesEnum, HRE, ZERO_ADDRESS } from "@uma/common";
 import { MockProfitabilityCalculator } from "./mocks/MockProfitabilityCalculator";
 import { TokenType } from "../src/ProfitabilityCalculator";
+import { MulticallBundler } from "../src/MulticallBundler";
 
 // Tested file
 import { Relayer, RelaySubmitType } from "../src/Relayer";
@@ -101,6 +102,8 @@ describe("Relayer.ts", function () {
 
   let l1DeployData: any;
   let l2DeployData: any;
+
+  let multicallBundler: MulticallBundler | undefined;
 
   before(async function () {
     l1Accounts = await web3.eth.getAccounts();
@@ -238,6 +241,8 @@ describe("Relayer.ts", function () {
       [l1Token.options.address]: { tokenType: TokenType.ERC20, tokenEthPrice: toBNWei("0.1") },
     });
 
+    multicallBundler = new MulticallBundler(spyLogger, gasEstimator, web3, l1Relayer);
+
     relayer = new Relayer(
       spyLogger,
       gasEstimator,
@@ -249,7 +254,8 @@ describe("Relayer.ts", function () {
       whitelistedChainIds,
       l1DeployData,
       l2DeployData,
-      defaultLookbackWindow
+      defaultLookbackWindow,
+      multicallBundler
     );
   });
   it("Initialization is correct", async function () {
@@ -1141,8 +1147,9 @@ describe("Relayer.ts", function () {
         whitelistedChainIds,
         l1DeployData,
         l2DeployData,
-        1 // Use small lookback window to test that the back up block search loop runs at least a few times before
+        1, // Use small lookback window to test that the back up block search loop runs at least a few times before
         // finding the deposit.
+        multicallBundler!
       );
       await Promise.all([l1Client.update(), l2Client.update()]);
       await relayer.checkForPendingDepositsAndRelay();
@@ -1319,7 +1326,8 @@ describe("Relayer.ts", function () {
         [],
         l1DeployData,
         l2DeployData,
-        defaultLookbackWindow
+        defaultLookbackWindow,
+        multicallBundler!
       );
 
       // Make a deposit on L2 and relay it with valid relay params.
@@ -1655,7 +1663,8 @@ describe("Relayer.ts", function () {
         whitelistedChainIds,
         l1DeployData,
         l2DeployData,
-        defaultLookbackWindow
+        defaultLookbackWindow,
+        multicallBundler!
       );
 
       // Mint and approve tokens for depositor:
