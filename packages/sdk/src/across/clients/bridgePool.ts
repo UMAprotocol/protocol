@@ -93,7 +93,13 @@ class PoolState {
       address: this.address,
       l1Token: this.l1Token,
       exchangeRatePrevious,
-      ...(await this.batchRead([
+      ...(await this.batchRead<{
+        exchangeRateCurrent: BigNumber;
+        liquidityUtilizationCurrent: BigNumber;
+        liquidReserves: BigNumber;
+        pendingReserves: BigNumber;
+        utilizedReserves: BigNumber;
+      }>([
         // its important exchangeRateCurrent is called first, as it calls _sync under the hood which updates the contract
         // and gives more accurate values for the following properties.
         ["exchangeRateCurrent"],
