@@ -1,7 +1,5 @@
 import { ethers } from "ethers";
 
-export const MULTICALL2_ADDRESS = "0x5ba1e12693dc8f9c48aad8770482f4739beed696";
-
 export enum ChainId {
   MAINNET = 1,
   RINKEBY = 4,
@@ -17,7 +15,7 @@ export const AddressZero = ethers.constants.AddressZero;
 
 export const Addresses = {
   [ChainId.MAINNET]: {
-    multicall2: "0x5ba1e12693dc8f9c48aad8770482f4739beed696",
+    multicall2: "0x5BA1e12693Dc8F9c48aAD8770482f4739bEeD696",
     optimisticOracle: "0xC43767F4592DF265B4a9F1a398B97fF24F38C6A6",
     erc20: {
       ETH: AddressZero,
