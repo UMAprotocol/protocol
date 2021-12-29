@@ -3,6 +3,8 @@ import { HardhatConfig } from "hardhat/types";
 import { getNodeUrl, getMnemonic } from "./ProviderUtils";
 import { HRE } from "./hardhat/plugins/ExtendedWeb3";
 export type { HRE };
+import dotenv from "dotenv";
+dotenv.config();
 
 export function getHardhatConfig(
   configOverrides: any,
@@ -73,22 +75,31 @@ export function getHardhatConfig(
       },
       mainnet: {
         chainId: 1,
-        url: getNodeUrl("mainnet", true),
+        url: getNodeUrl("mainnet", true, 1),
         accounts: { mnemonic },
         companionNetworks: { arbitrum: "arbitrum" },
       },
-      rinkeby: { chainId: 4, url: getNodeUrl("rinkeby", true), accounts: { mnemonic } },
-      goerli: { chainId: 5, url: getNodeUrl("goerli", true), accounts: { mnemonic } },
-      kovan: { chainId: 42, url: getNodeUrl("kovan", true), accounts: { mnemonic } },
+      rinkeby: { chainId: 4, url: getNodeUrl("rinkeby", true, 4), accounts: { mnemonic } },
+      goerli: { chainId: 5, url: getNodeUrl("goerli", true, 5), accounts: { mnemonic } },
+      kovan: { chainId: 42, url: getNodeUrl("kovan", true, 42), accounts: { mnemonic } },
       arbitrum: {
         chainId: 42161,
-        url: getNodeUrl("arbitrum", true),
+        url: getNodeUrl("arbitrum", true, 42161),
         accounts: { mnemonic },
-        companionNetworks: { l1: getNodeUrl("mainnet", true) },
+        companionNetworks: { mainnet: "mainnet" },
       },
-      "arbitrum-rinkeby": { chainId: 421611, url: getNodeUrl("arbitrum-rinkeby", true), accounts: { mnemonic } },
-      optimism: { chainId: 10, url: getNodeUrl("optimism", true), accounts: { mnemonic } },
-      "optimism-kovan": { chainId: 69, url: getNodeUrl("optimism-kovan", true), accounts: { mnemonic } },
+      "arbitrum-rinkeby": {
+        chainId: 421611,
+        url: getNodeUrl("arbitrum-rinkeby", true, 421611),
+        accounts: { mnemonic },
+      },
+      optimism: {
+        chainId: 10,
+        url: getNodeUrl("optimism", true, 10),
+        accounts: { mnemonic },
+        companionNetworks: { mainnet: "mainnet" },
+      },
+      "optimism-kovan": { chainId: 69, url: getNodeUrl("optimism-kovan", true, 69), accounts: { mnemonic } },
       "optimism-test": {
         url: "http://127.0.0.1:8545",
         accounts: { mnemonic: "test test test test test test test test test test test junk" },
@@ -98,9 +109,19 @@ export function getHardhatConfig(
         testWhitelist: ["oracle/Finder"],
         testBlacklist,
       },
-      matic: { chainId: 137, url: getNodeUrl("polygon-matic", true), accounts: { mnemonic }, gasPrice: 30000000000 },
-      mumbai: { chainId: 80001, url: getNodeUrl("polygon-mumbai", true), accounts: { mnemonic } },
-      boba: { chainId: 288, url: getNodeUrl("boba", true), accounts: { mnemonic } },
+      matic: {
+        chainId: 137,
+        url: getNodeUrl("polygon-matic", true, 137),
+        accounts: { mnemonic },
+        gasPrice: 30000000000,
+      },
+      mumbai: { chainId: 80001, url: getNodeUrl("polygon-mumbai", true, 80001), accounts: { mnemonic } },
+      boba: {
+        chainId: 288,
+        url: getNodeUrl("boba", true, 288),
+        accounts: { mnemonic },
+        companionNetworks: { mainnet: "mainnet" },
+      },
     },
     mocha: { timeout: 1800000 },
     etherscan: {

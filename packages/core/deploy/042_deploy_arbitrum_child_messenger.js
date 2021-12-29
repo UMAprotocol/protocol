@@ -4,7 +4,7 @@ const func = async function (hre) {
   const { deployer } = await getNamedAccounts();
 
   // Grab parent messenger address:
-  const { deployments: l1Deployments } = companionNetworks["l1"];
+  const { deployments: l1Deployments } = companionNetworks["mainnet"];
   const parentMessenger = await l1Deployments.get("Arbitrum_ParentMessenger");
   console.log(`Using l1 parent messenger @ ${parentMessenger.address}`);
 
