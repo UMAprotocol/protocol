@@ -2,5 +2,21 @@
   {
     "contractName": "AVM_BridgeDepositBox",
     "address": "0xd8c6dd978a3768f7ddfe3a9aad2c3fd75fa9b6fd"
+  },
+  {
+    "contractName": "Finder",
+    "address": "0xB0b9f73B424AD8dc58156C2AE0D7A1115D1EcCd1"
+  },
+  {
+    "contractName": "Arbitrum_ChildMessenger",
+    "address": "0xe0Fe15CF22B9b52B6aE309C7384e03244A6DD985"
+  },
+  {
+    "contractName": "OracleSpoke",
+    "address": "0x0A8933F89F2674C052CBd91ad4fE48a14D6f2Fc2"
+  },
+  {
+    "contractName": "GovernorSpoke",
+    "address": "0x7ba7db70aE338bA74dab72A29b740BC7AcD5AF1b"
   }
 ]

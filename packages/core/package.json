@@ -78,6 +78,7 @@
     "build-contracts": "yarn hardhat compile",
     "build": "yarn build-contracts && yarn load-addresses && yarn generate-contract-types && yarn compile-ts && yarn buildLatestHardhatVersionHashes",
     "buildLatestHardhatVersionHashes": "mkdir -p build && yarn hardhat run ./scripts/BuildContractVersionHashes.js",
+    "reset-deployments": "rm -rf deployments && yarn load-addresses",
     "compile-ts": "rm -rf types dist && mkdir -p types/contract-types && rsync -R contract-types/**/*.d.ts ./types && tsc",
     "generate-contract-types": "rm -rf contract-types && TYPECHAIN=web3 yarn hardhat typechain && TYPECHAIN=ethers yarn hardhat typechain",
     "prepublish": "yarn build"

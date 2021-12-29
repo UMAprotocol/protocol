@@ -16,4 +16,4 @@ const func = async function (hre) {
   });
 };
 module.exports = func;
-func.tags = ["ArbitrumChildMessenger"];
+func.tags = ["ArbitrumChildMessenger", "l2-arbitrum-xchain"];

@@ -2,16 +2,16 @@
 // - Sets up Arbitrum L1 contracts that enable cross chain Oracle and Governance communication.
 
 // Run:
-// - Start mainnet fork in one window with `yarn hardhat node --fork <ARCHIVAL_NODE_URL> --no-deploy --port 9545`
-// - In new window, run: `node ./packages/scripts/src/cross-chain/setupL1Arbitrum.js --network mainnet-fork`
+// - Start mainnet fork in one window with `HARDHAT_CHAIN_ID=1 yarn hardhat node --fork <ARCHIVAL_NODE_URL> --no-deploy --port <PORT>`
+// - Be sure to set `NODE_URL_1=<mainnet-provider-url>` and `NODE_URL_42161=<l2-provider-url>` environment variables.
+// - In new window, run: `node ./packages/scripts/src/cross-chain/setupL1Arbitrum.js --network mainnet`
 
 const hre = require("hardhat");
-const { getContract } = hre;
+const { getContract, deployments, companionNetworks } = hre;
 require("dotenv").config();
 const assert = require("assert");
 const { GasEstimator } = require("@uma/financial-templates-lib");
 const winston = require("winston");
-const { _getContractAddressByName } = require("../utils");
 const { getWeb3 } = require("@uma/common");
 
 async function run() {
@@ -42,12 +42,12 @@ async function run() {
     )} maxPriorityFeePerGas`
   );
 
-  const messenger = new web3.eth.Contract(
-    Arbitrum_ParentMessenger.abi,
-    await _getContractAddressByName("Arbitrum_ParentMessenger", 1)
-  );
-  const oracleHub = new web3.eth.Contract(OracleHub.abi, await _getContractAddressByName("OracleHub", 1));
-  const governorHub = new web3.eth.Contract(GovernorHub.abi, await _getContractAddressByName("GovernorHub", 1));
+  const deployedParentMessenger = await deployments.get("Arbitrum_ParentMessenger");
+  const messenger = new web3.eth.Contract(Arbitrum_ParentMessenger.abi, deployedParentMessenger.address);
+  const deployedOracleHub = await deployments.get("OracleHub");
+  const oracleHub = new web3.eth.Contract(OracleHub.abi, deployedOracleHub.address);
+  const deployedGovernorHub = await deployments.get("GovernorHub");
+  const governorHub = new web3.eth.Contract(GovernorHub.abi, deployedGovernorHub.address);
 
   console.group(
     "\nReading Arbitrum Inbox transaction params that will be used to send cross chain transactions to the ChildMessenger"
@@ -93,10 +93,10 @@ async function run() {
     messengerOwner === accounts[0],
     `Accounts[0] (${accounts[0]}) is not equal to parent messenger owner (${messengerOwner})`
   );
-  const oracleSpoke = await _getContractAddressByName("OracleSpoke", 42161);
-  console.log(`Setting oracle spoke address to ${oracleSpoke}...`);
+  const deployedOracleSpoke = await companionNetworks.arbitrum.deployments.get("OracleSpoke");
+  console.log(`Setting oracle spoke address to ${deployedOracleSpoke.address}...`);
   const setChildOracleSpokeTxn = await messenger.methods
-    .setChildOracleSpoke(oracleSpoke)
+    .setChildOracleSpoke(deployedOracleSpoke.address)
     .send({ from: accounts[0], value: requiredEth });
   console.log(`...txn: ${setChildOracleSpokeTxn.transactionHash}`);
   console.log(`Setting child parent messenger to ${messenger.options.address}...`);

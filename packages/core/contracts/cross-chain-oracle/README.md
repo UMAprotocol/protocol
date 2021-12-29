@@ -4,7 +4,7 @@
 
 Before running anything below, make sure you have run `yarn build` from the root of the repo.
 
-Note that the fork network instructions should be used as a test run prior to the public network
+Note that the fork network instructions can be used as a test run prior to the public network
 deployments.
 
 ## Starting a fork
@@ -12,12 +12,14 @@ deployments.
 To run a forked network deployment, run the following command:
 
 ```sh
-HARDHAT_CHAIN_ID=<FORKED_CHAIN_ID> yarn hardhat node --fork <URL> --no-deploy --port 9545
+HARDHAT_CHAIN_ID=<FORKED_CHAIN_ID> yarn hardhat node --fork <URL> --no-deploy --port <PORT>
 ```
 
 You'll need to run two forks in separate terminals on different ports to do the deployments below.
 
-Note: in the commands below, you'll need to replace your CUSTOM_NODE_URL with http://localhost:<PORT> to run against this local fork.
+Note: in the commands below, you'll need to set the relevant `NODE_URL_X` environment variable to the url of the locally forked network `http://localhost:<PORT>`.
+
+If you're having trouble redeploying contracts because `hardhat` wants to "reuse" contracts, then run `yarn reset-deployments` in the `core` package.
 
 ## Arbitrum
 
@@ -26,28 +28,38 @@ Note: in the commands below, you'll need to replace your CUSTOM_NODE_URL with ht
 ```sh
 export NODE_URL_1=<MAINNET_URL>
 export NODE_URL_42161=<ARBITRUM_URL>
+# When running against a forked network, set the URL to http://localhost:<PORT>
 export MNEMONIC="Your 12-word mnemonic here"
 ```
 
 2. Deploy mainnet contracts:
 
 ```sh
-yarn hardhat deploy --network mainnet --tags ArbitrumParentMessenger,OracleHub,GovernorHub
+yarn hardhat deploy --network mainnet --tags l1-arbitrum-xchain
 ```
 
 3. Deploy l2 contracts:
 
 ```sh
-yarn hardhat deploy --network arbitrum --tags ArbitrumChildMessenger,OracleSpoke,GovernorSpoke
+yarn hardhat deploy --network arbitrum --tags l2-arbitrum-xchain
 ```
 
-4. Setup mainnet contracts
+4. Verify contracts:
+
+```sh
+# mainnet
+yarn hardhat --network mainnet etherscan-verify --api-key <ETHERSCAN_KEY> --license GPL-3.0 --force-license
+# arbitrum
+yarn hardhat --network arbitrum etherscan-verify --api-key <ETHERSCAN_KEY> --license GPL-3.0 --force-license
+```
+
+5. Setup mainnet contracts
 
 ```sh
 yarn hardhat setup-l1-arbitrum-cross-chain --network mainnet
 ```
 
-5. Setup l2 contracts
+6. Setup l2 contracts
 
 ```sh
 yarn hardhat setupL2ArbitrumCrossChain --network arbitrum

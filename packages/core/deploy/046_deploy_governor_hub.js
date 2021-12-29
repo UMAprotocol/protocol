@@ -7,4 +7,4 @@ const func = async function (hre) {
   await deploy("GovernorHub", { from: deployer, args: [], log: true, skipIfAlreadyDeployed: true });
 };
 module.exports = func;
-func.tags = ["GovernorHub"];
+func.tags = ["GovernorHub", "l1-arbitrum-xchain"];
