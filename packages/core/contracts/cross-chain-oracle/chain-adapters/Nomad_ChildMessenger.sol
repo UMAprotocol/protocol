@@ -5,17 +5,15 @@ import "../../external/nomad/interfaces/XAppConnectionManagerInterface.sol";
 import "../interfaces/ChildMessengerInterface.sol";
 import "../interfaces/ChildMessengerConsumerInterface.sol";
 import "../../common/implementation/Lockable.sol";
-import "../../oracle/interfaces/FinderInterface.sol";
 import "../../oracle/implementation/Constants.sol";
+import "../../common/implementation/HasFinder.sol";
 
 /**
  * @notice Sends cross chain messages from any network where Nomad bridging infrastructure is deployed to L1. Both L1
  * and the network where this contract is deployed need to have Nomad Home + Replica contracts to send and receive
  * cross-chain messages respectively.
  */
-contract Nomad_ChildMessenger is ChildMessengerInterface, Lockable {
-    FinderInterface public finder;
-
+contract Nomad_ChildMessenger is ChildMessengerInterface, Lockable, HasFinder {
     uint32 public parentChainDomain;
 
     event MessageSentToParent(
@@ -55,8 +53,7 @@ contract Nomad_ChildMessenger is ChildMessengerInterface, Lockable {
      * @param _parentChainDomain The Nomad "domain" where the connected parent messenger is deployed. Note that the Nomad
      * domains do not always correspond to "chain ID's", but they are unique identifiers for each network.
      **/
-    constructor(address _finder, uint32 _parentChainDomain) {
-        finder = FinderInterface(_finder);
+    constructor(address _finder, uint32 _parentChainDomain) HasFinder(_finder) {
         parentChainDomain = _parentChainDomain; // TODO: Figure out how to upgrade this value.
     }
 

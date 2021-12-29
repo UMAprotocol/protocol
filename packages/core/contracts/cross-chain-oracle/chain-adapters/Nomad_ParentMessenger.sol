@@ -6,8 +6,8 @@ import "../interfaces/ParentMessengerInterface.sol";
 import "../interfaces/ParentMessengerConsumerInterface.sol";
 import "./ParentMessengerBase.sol";
 import "../../common/implementation/Lockable.sol";
-import "../../oracle/interfaces/FinderInterface.sol";
 import "../../oracle/implementation/Constants.sol";
+import "../../common/implementation/HasFinder.sol";
 
 /**
  * @notice Sends cross chain messages from Ethereum L1 to any other network where Nomad bridging infrastructure is
@@ -15,9 +15,7 @@ import "../../oracle/implementation/Constants.sol";
  * to send and receive cross-chain messages respectively.
  * @dev This contract is ownable and should be owned by the DVM governor.
  */
-contract Nomad_ParentMessenger is ParentMessengerInterface, ParentMessengerBase, Lockable {
-    FinderInterface public finder;
-
+contract Nomad_ParentMessenger is ParentMessengerInterface, ParentMessengerBase, Lockable, HasFinder {
     event MessageSentToChild(
         bytes data,
         address indexed targetSpoke,
@@ -54,9 +52,7 @@ contract Nomad_ParentMessenger is ParentMessengerInterface, ParentMessengerBase,
      * @param _childChainDomain The Nomad "domain" where the connected child messenger is deployed. Note that the Nomad
      * domains do not always correspond to "chain ID's", but they are similarly unique identifiers for each network.
      **/
-    constructor(address _finder, uint256 _childChainDomain) ParentMessengerBase(_childChainDomain) {
-        finder = FinderInterface(_finder);
-    }
+    constructor(address _finder, uint256 _childChainDomain) ParentMessengerBase(_childChainDomain) HasFinder(_finder) {}
 
     /**
      * @notice Sends a message to the child messenger via the Nomad Home contract.

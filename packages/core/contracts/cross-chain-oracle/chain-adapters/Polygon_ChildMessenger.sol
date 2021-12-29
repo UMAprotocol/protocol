@@ -5,7 +5,6 @@ import "../../external/polygon/tunnel/FxBaseChildTunnel.sol";
 import "../interfaces/ChildMessengerInterface.sol";
 import "../interfaces/ChildMessengerConsumerInterface.sol";
 import "../../common/implementation/Lockable.sol";
-import "../../oracle/interfaces/FinderInterface.sol";
 import "../../oracle/implementation/Constants.sol";
 import "../../common/implementation/HasFinder.sol";
 
