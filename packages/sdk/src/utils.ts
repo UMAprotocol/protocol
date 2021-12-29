@@ -72,9 +72,12 @@ export async function loop(fn: (...args: any[]) => any, delay: number, ...args: 
   } while (true);
 }
 
-type Call = [string, ...any[]];
-type Calls = Call[];
-export const BatchReadWithErrors = (multicall2: Multicall2) => (contract: Contract) => async (calls: Calls) => {
+export type Call = [string, ...BigNumberish[]];
+export type Calls = Call[];
+export type BatchReadWithErrorsType = ReturnType<ReturnType<typeof BatchReadWithErrors>>;
+export const BatchReadWithErrors = (multicall2: Multicall2) => (contract: Contract) => async <R>(
+  calls: Calls
+): Promise<R> => {
   // multicall batch takes array of {method} objects
   const results = await multicall2
     .batch(
