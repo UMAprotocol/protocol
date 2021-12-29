@@ -13,14 +13,14 @@
   },
   {
     "contractName": "Registry",
-    "address": "0x969b945CBb8B762f6F747E0c0eA8F8De51c5cB7b"
+    "address": "0xCdb25d0A6FfFE639BC591a565F2D99507837f2b7"
   },
   {
     "contractName": "GovernorSpoke",
-    "address": "0xA0747016cBD78302A1d35f15640528eDAc1C203a"
+    "address": "0x1771c470d41b8c39338450C380bf2C080a2CEdD8"
   },
   {
     "contractName": "OracleSpoke",
-    "address": "0x98A9703310D1fD0E268AB67917b0e581D295A086"
+    "address": "0x196767568F848fF7607145A7C1f3CDE44bb4Ce98"
   }
 ]

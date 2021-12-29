@@ -19,7 +19,7 @@ You'll need to run two forks in separate terminals on different ports to do the 
 
 Note: in the commands below, you'll need to set the relevant `NODE_URL_X` environment variable to the url of the locally forked network `http://localhost:<PORT>`.
 
-If you're having trouble redeploying contracts because `hardhat` wants to "reuse" contracts, then run `yarn reset-deployments` in the `core` package.
+If you're having trouble redeploying contracts because `hardhat` wants to "reuse" contracts, then run `yarn` in the `core` package to reset `deployments`.
 
 ## Arbitrum
 

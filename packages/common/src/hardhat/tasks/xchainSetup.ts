@@ -136,20 +136,20 @@ task("setup-l1-arbitrum-xchain", "Configures L1 cross chain smart contracts for 
       .send({ from: deployer });
     console.log(`...txn: ${setChildOracleSpokeTxn.transactionHash}`);
     messengerBalance = await web3.eth.getBalance(messenger.options.address);
-    if (toBN(messengerBalance.toString()).lt(requiredEthForOneTransaction)) {
-      console.log(`Sending ${requiredEthForOneTransaction.toString()} ETH to the messenger`);
-      const sendEthTxn = await web3.eth.sendTransaction({
-        to: messenger.options.address,
-        from: deployer,
-        value: requiredEthForOneTransaction.toString(),
-      });
-      console.log(`...txn: ${sendEthTxn.transactionHash}`);
-    }
-    console.log(`Setting child parent messenger to ${messenger.options.address}...`);
-    const setChildParentMessengerTxn = await messenger.methods
-      .setChildParentMessenger(messenger.options.address)
-      .send({ from: deployer });
-    console.log(`...txn: ${setChildParentMessengerTxn.transactionHash}`);
+    // if (toBN(messengerBalance.toString()).lt(requiredEthForOneTransaction)) {
+    //   console.log(`Sending ${requiredEthForOneTransaction.toString()} ETH to the messenger`);
+    //   const sendEthTxn = await web3.eth.sendTransaction({
+    //     to: messenger.options.address,
+    //     from: deployer,
+    //     value: requiredEthForOneTransaction.toString(),
+    //   });
+    //   console.log(`...txn: ${sendEthTxn.transactionHash}`);
+    // }
+    // console.log(`Setting child parent messenger to ${messenger.options.address}...`);
+    // const setChildParentMessengerTxn = await messenger.methods
+    //   .setChildParentMessenger(messenger.options.address)
+    //   .send({ from: deployer });
+    // console.log(`...txn: ${setChildParentMessengerTxn.transactionHash}`);
 
     // Submit oracle hub transactions:
     assert(
