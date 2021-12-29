@@ -6,6 +6,32 @@ export type { HRE };
 import dotenv from "dotenv";
 dotenv.config();
 
+// This prunes the config of companion networks that don't have corresponding nodes urls.
+function pruneCompanionNetworks(config: {
+  networks: { [name: string]: { companionNetworks?: { [name: string]: string }; chainId?: number } };
+}) {
+  // Loops over all the networks and extracts the companion networks object for each.
+  Object.values(config.networks).forEach(({ companionNetworks }) => {
+    // If the companion networks object doesn't exist, do nothing.
+    if (companionNetworks) {
+      // Loop over each companion network to check if it has a provided node.
+      Object.entries(companionNetworks).forEach(([key, value]) => {
+        // If the companion networks declaration points to a network that doesn't exist, throw.
+        if (!config.networks[value]) throw new Error(`Companion network ${value} not found`);
+
+        // Extract the chainId from the configured companion network.
+        const chainId = config.networks[value].chainId;
+
+        // If the chainId doesn't exist, do nothing since this means the node url is probably hardcoded.
+        if (!chainId) return;
+
+        // Remove the companion network if NODE_URL_<chainId> isn't provided.
+        if (!process.env[`NODE_URL_${chainId}`]) delete companionNetworks[key];
+      });
+    }
+  });
+}
+
 export function getHardhatConfig(
   configOverrides: any,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -77,7 +103,7 @@ export function getHardhatConfig(
         chainId: 1,
         url: getNodeUrl("mainnet", true, 1),
         accounts: { mnemonic },
-        companionNetworks: { arbitrum: "arbitrum" },
+        companionNetworks: { arbitrum: "arbitrum", optimism: "optimism", boba: "boba" },
       },
       rinkeby: { chainId: 4, url: getNodeUrl("rinkeby", true, 4), accounts: { mnemonic } },
       goerli: { chainId: 5, url: getNodeUrl("goerli", true, 5), accounts: { mnemonic } },
@@ -131,6 +157,9 @@ export function getHardhatConfig(
     },
     namedAccounts: { deployer: 0 },
   } as unknown) as HardhatConfig; // Cast to allow extra properties.
+
+  // Prune any companion networks that don't have the correct env variables.
+  pruneCompanionNetworks(defaultConfig);
 
   // To allow customizing the chain id when forking, allow the user to provide an env variable.
   if (process.env.HARDHAT_CHAIN_ID) defaultConfig.networks.hardhat.chainId = parseInt(process.env.HARDHAT_CHAIN_ID);
