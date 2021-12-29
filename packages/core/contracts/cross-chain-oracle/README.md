@@ -26,7 +26,7 @@ Note: in the commands below, you'll need to replace your CUSTOM_NODE_URL with ht
 ```sh
 export NODE_URL_1=<MAINNET_URL>
 export NODE_URL_42161=<ARBITRUM_URL>
-export MNEMONIC="Your 12-work mnemonic here"
+export MNEMONIC="Your 12-word mnemonic here"
 ```
 
 2. Deploy mainnet contracts:
