@@ -13801,17 +13801,16 @@ hard-rejection@^2.1.0:
   resolved "https://registry.yarnpkg.com/hard-rejection/-/hard-rejection-2.1.0.tgz#1c6eda5c1685c63942766d79bb40ae773cecd883"
   integrity sha512-VIZB+ibDhx7ObhAe7OVtoEbuP4h/MuOTHJ+J8h/eBXotJYl0fBgR72xDFCKgIh22OJZIOVNxBMWuhAr10r8HdA==
 
-hardhat-deploy@^0.9.1:
-  version "0.9.22"
-  resolved "https://registry.yarnpkg.com/hardhat-deploy/-/hardhat-deploy-0.9.22.tgz#d2d540e608ca6dc942a42622c9df26e1a1bc4a27"
-  integrity sha512-qaQIRIn6oAHew4PRX8TttMQWwccydNxhy9x/dSX3e5Xg9xmSokvKnNNCoMs8jdwxl2/PED0HxUBbWJtfw9XFXw==
+hardhat-deploy@0.9.1:
+  version "0.9.1"
+  resolved "https://registry.yarnpkg.com/hardhat-deploy/-/hardhat-deploy-0.9.1.tgz#878bb10ef1bfcfee892477c2133295a250721672"
+  integrity sha512-GUrLlsBKZqWJ2isFDnpnlnyLuIDqES7mEFGm4P7GutG2jeBebvTg2wCNh3RTW/rpHUtU66yCZXfy+LeD0QXFbg==
   dependencies:
     "@ethersproject/abi" "^5.4.0"
     "@ethersproject/abstract-signer" "^5.4.1"
     "@ethersproject/address" "^5.4.0"
     "@ethersproject/bignumber" "^5.4.1"
     "@ethersproject/bytes" "^5.4.0"
-    "@ethersproject/constants" "^5.4.0"
     "@ethersproject/contracts" "^5.4.1"
     "@ethersproject/providers" "^5.4.4"
     "@ethersproject/solidity" "^5.4.0"
