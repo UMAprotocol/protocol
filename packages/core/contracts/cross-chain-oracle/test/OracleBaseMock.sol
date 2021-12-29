@@ -7,7 +7,7 @@ import "../OracleBase.sol";
  * @title Test implementation of OracleBase enabling unit tests on internal methods.
  */
 contract OracleBaseMock is OracleBase {
-    constructor(address _finderAddress) OracleBase(_finderAddress) {}
+    constructor(address _finderAddress) HasFinder(_finderAddress) {}
 
     function requestPrice(
         bytes32 identifier,

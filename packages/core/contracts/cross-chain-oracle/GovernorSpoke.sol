@@ -15,7 +15,7 @@ contract GovernorSpoke is Lockable, SpokeBase, ChildMessengerConsumerInterface {
         bytes data;
     }
 
-    constructor(address _finderAddress) SpokeBase(_finderAddress) {}
+    constructor(address _finderAddress) HasFinder(_finderAddress) {}
 
     event ExecutedGovernanceTransaction(address indexed to, bytes data);
 

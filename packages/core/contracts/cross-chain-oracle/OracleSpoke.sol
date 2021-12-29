@@ -29,7 +29,7 @@ contract OracleSpoke is
     ChildMessengerConsumerInterface,
     Lockable
 {
-    constructor(address _finderAddress) OracleBase(_finderAddress) SpokeBase(_finderAddress) {}
+    constructor(address _finderAddress) HasFinder(_finderAddress) {}
 
     // This assumes that the local network has a Registry that resembles the mainnet registry.
     modifier onlyRegisteredContract() {

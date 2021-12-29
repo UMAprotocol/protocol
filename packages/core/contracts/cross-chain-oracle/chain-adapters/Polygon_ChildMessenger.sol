@@ -7,6 +7,7 @@ import "../interfaces/ChildMessengerConsumerInterface.sol";
 import "../../common/implementation/Lockable.sol";
 import "../../oracle/interfaces/FinderInterface.sol";
 import "../../oracle/implementation/Constants.sol";
+import "../../common/implementation/HasFinder.sol";
 
 /**
  * @notice Sends cross chain messages from Polygon to Ethereum network.
@@ -14,9 +15,7 @@ import "../../oracle/implementation/Constants.sol";
  * `FxBaseRootTunnel` extended by the `Polygon_ParentMessenger` contract deployed on Polygon. This mapping ensures that
  * the internal `_processMessageFromRoot` function is only callable indirectly by the `Polygon_ParentMessenger`.
  */
-contract Polygon_ChildMessenger is FxBaseChildTunnel, ChildMessengerInterface, Lockable {
-    FinderInterface public finder;
-
+contract Polygon_ChildMessenger is FxBaseChildTunnel, ChildMessengerInterface, Lockable, HasFinder {
     event MessageSentToParent(bytes data, address indexed targetHub, address indexed oracleSpoke);
     event MessageReceivedFromParent(address indexed targetSpoke, bytes dataToSendToTarget);
 
@@ -26,9 +25,7 @@ contract Polygon_ChildMessenger is FxBaseChildTunnel, ChildMessengerInterface, L
      * @param _fxChild Polygon system contract deployed on Mainnet, required to construct new FxBaseRootTunnel
      * that can send messages via native Polygon data tunnel.
      */
-    constructor(address _fxChild, address _finder) FxBaseChildTunnel(_fxChild) {
-        finder = FinderInterface(_finder);
-    }
+    constructor(address _fxChild, address _finder) FxBaseChildTunnel(_fxChild) HasFinder(_finder) {}
 
     /**
      * @notice Sends a message to the OracleSpoke via the parent messenger and the canonical message bridge.

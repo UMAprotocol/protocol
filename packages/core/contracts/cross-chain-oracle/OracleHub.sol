@@ -33,7 +33,7 @@ contract OracleHub is OracleBase, ParentMessengerConsumerInterface, Ownable, Loc
 
     event SetParentMessenger(uint256 indexed chainId, address indexed parentMessenger);
 
-    constructor(address _finderAddress, IERC20 _token) OracleBase(_finderAddress) {
+    constructor(address _finderAddress, IERC20 _token) HasFinder(_finderAddress) {
         token = _token;
     }
 
