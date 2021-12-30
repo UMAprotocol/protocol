@@ -1,6 +1,21 @@
 import { task } from "hardhat/config";
+import { Contract } from "web3-eth-contract";
 import { CombinedHRE } from "./types";
 const assert = require("assert");
+
+async function setupHub(hub: Contract, deployer: string, parentMessenger: string, childChainId: number) {
+  const [owner, existingParentMessenger] = await Promise.all([
+    hub.methods.owner().call(),
+    hub.methods.messengers(childChainId).call(),
+  ]);
+
+  assert(owner === deployer, `Accounts[0] (${deployer}) is not equal to hub owner (${owner})`);
+  if (existingParentMessenger !== parentMessenger) {
+    console.log(`Setting hub messenger for ID ${childChainId} to ${parentMessenger}...`);
+    const setMessengerTxn = await hub.methods.setMessenger(childChainId, parentMessenger).send({ from: deployer });
+    console.log(`...txn: ${setMessengerTxn.transactionHash}`);
+  }
+}
 
 task("setup-l1-arbitrum-xchain", "Configures L1 cross chain smart contracts for Arbitrum bridge").setAction(
   async function (_, hre_) {
@@ -34,15 +49,11 @@ task("setup-l1-arbitrum-xchain", "Configures L1 cross chain smart contracts for 
       defaultMaxSubmissionCost,
       requiredL1CallValue,
       messengerOwner,
-      oracleHubOwner,
-      governorHubOwner,
       messengerChildMessenger,
       messengerOracleHub,
       messengerOracleSpoke,
       messengerGovernorHub,
       messengerGovernorSpoke,
-      oracleHubParentMessenger,
-      governorHubParentMessenger,
     ] = await Promise.all([
       messenger.methods.refundL2Address().call(),
       messenger.methods.defaultGasLimit().call(),
@@ -50,15 +61,11 @@ task("setup-l1-arbitrum-xchain", "Configures L1 cross chain smart contracts for 
       messenger.methods.defaultMaxSubmissionCost().call(),
       messenger.methods.getL1CallValue().call(),
       messenger.methods.owner().call(),
-      oracleHub.methods.owner().call(),
-      governorHub.methods.owner().call(),
       messenger.methods.childMessenger().call(),
       messenger.methods.oracleHub().call(),
       messenger.methods.oracleSpoke().call(),
       messenger.methods.governorHub().call(),
       messenger.methods.governorSpoke().call(),
-      oracleHub.methods.messengers(42161).call(),
-      governorHub.methods.messengers(42161).call(),
     ]);
     console.log(`- Refund L2 address: ${refundL2Address}`);
     console.log(`- Default L2 gas limit: ${defaultL2GasLimit.toString()}`);
@@ -152,30 +159,10 @@ task("setup-l1-arbitrum-xchain", "Configures L1 cross chain smart contracts for 
     console.log(`...txn: ${setChildParentMessengerTxn.transactionHash}`);
 
     // Submit oracle hub transactions:
-    assert(
-      oracleHubOwner === deployer,
-      `Accounts[0] (${deployer}) is not equal to oracle hub owner (${oracleHubOwner})`
-    );
-    if (oracleHubParentMessenger !== messenger.options.address) {
-      console.log(`Setting oracle hub messenger for ID 42161 to ${messenger.options.address}...`);
-      const setMessengerTxn = await oracleHub.methods
-        .setMessenger(42161, messenger.options.address)
-        .send({ from: deployer });
-      console.log(`...txn: ${setMessengerTxn.transactionHash}`);
-    }
+    await setupHub(oracleHub, deployer, messenger.options.address, 42161);
 
     // Submit governor hub transactions:
-    assert(
-      governorHubOwner === deployer,
-      `Accounts[0] (${deployer}) is not equal to governor hub owner (${governorHubOwner})`
-    );
-    if (governorHubParentMessenger !== messenger.options.address) {
-      console.log(`Setting governor hub messenger for ID 42161 to ${messenger.options.address}...`);
-      const setMessengerTxn2 = await governorHub.methods
-        .setMessenger(42161, messenger.options.address)
-        .send({ from: deployer });
-      console.log(`...txn: ${setMessengerTxn2.transactionHash}`);
-    }
+    await setupHub(governorHub, deployer, messenger.options.address, 42161);
   }
 );
 
