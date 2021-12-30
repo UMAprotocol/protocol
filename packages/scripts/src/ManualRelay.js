@@ -4,6 +4,8 @@
 // Example:
 // NODE_URL_1=https://mainnet.infura.io/v3/SOME_PROJECT_ID NODE_URL_10=https://optimism-mainnet.infura.io/v3/SOME_PROJECT_ID \
 //   ./src/ManualRelay.js --chainId 10 --depositId 100 --network mainnet_mnemonic
+// Note: the NODE_URL_<chainId> environment variable must be provided for the chain id of the deposit and mainnet so
+// the script can retrieve information from both networks.
 // Optional env overrides:
 //   BRIDGE_ADMIN_ADDRESS
 //   BRIDGE_DEPOSIT_ADDRESS
