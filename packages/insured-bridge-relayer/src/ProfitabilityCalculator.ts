@@ -137,6 +137,7 @@ export class ProfitabilityCalculator {
       l1Token,
       tokenType: TokenType[tokenType],
       tokenEthPrice: fromWei(tokenEthPrice),
+      tokenDecimals: decimals.toString(),
       cumulativeGasPrice: cumulativeGasPrice.toString(),
       relayerDiscount: fromWei(this.relayerDiscount),
       slowRevenue: slowRevenue.toString(),

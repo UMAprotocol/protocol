@@ -1642,8 +1642,8 @@ describe("Relayer.ts", function () {
         100 // 100% discount (ignores profitability calculator)
       );
       profitabilityCalculator.setL1TokenInfo({
-        [l1Token.options.address]: { tokenType: TokenType.ERC20, tokenEthPrice: toBNWei("0.1") },
-        [newL1Token.options.address]: { tokenType: TokenType.ERC20, tokenEthPrice: toBNWei("0.1") },
+        [l1Token.options.address]: { tokenType: TokenType.ERC20, tokenEthPrice: toBNWei("0.1"), decimals: toBN(18) },
+        [newL1Token.options.address]: { tokenType: TokenType.ERC20, tokenEthPrice: toBNWei("0.1"), decimals: toBN(18) },
       });
       relayer = new Relayer(
         spyLogger,
