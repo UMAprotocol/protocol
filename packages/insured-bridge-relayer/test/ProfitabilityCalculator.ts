@@ -37,7 +37,31 @@ const mockUmaPriceInEth = toBNWei(0.002);
 const mockWethPriceInEth = toBNWei(1);
 const mockUSDCPriceInEth = toBNWei(0.0002);
 
+// Decimals
+const umaDecimals = toBN(18);
+const wethDecimals = toBN(18);
+const usdcDecimals = toBN(6);
+
 const sampleCumulativeGasPrice = toBN(100e9); // A gas price of 100 Gwei.
+
+class Contract {
+  public methods = {
+    decimals: () => ({
+      call: () => {
+        if (this.address === usdcAddress) return "6";
+        return "18";
+      },
+    }),
+  };
+
+  constructor(abi: any, readonly address: string) {}
+}
+
+const mockWeb3 = ({
+  eth: {
+    Contract: Contract,
+  },
+} as unknown) as Web3;
 
 describe("ProfitabilityCalculator.ts", function () {
   beforeEach(async function () {
@@ -50,6 +74,7 @@ describe("ProfitabilityCalculator.ts", function () {
         spyLogger,
         [umaAddress, wethAddress, usdcAddress],
         mainnetChainId,
+        mockWeb3,
         relayerDiscount
       );
 
@@ -86,6 +111,7 @@ describe("ProfitabilityCalculator.ts", function () {
         spyLogger,
         [ZERO_ADDRESS], // Not a token with a price
         mainnetChainId,
+        mockWeb3,
         relayerDiscount
       );
 
@@ -104,12 +130,13 @@ describe("ProfitabilityCalculator.ts", function () {
         spyLogger,
         [umaAddress, wethAddress, usdcAddress],
         mainnetChainId,
+        mockWeb3,
         relayerDiscount
       );
       profitabilityCalculator.setL1TokenInfo({
-        [umaAddress]: { tokenType: TokenType.UMA, tokenEthPrice: mockUmaPriceInEth },
-        [wethAddress]: { tokenType: TokenType.WETH, tokenEthPrice: mockWethPriceInEth },
-        [usdcAddress]: { tokenType: TokenType.ERC20, tokenEthPrice: mockUSDCPriceInEth },
+        [umaAddress]: { tokenType: TokenType.UMA, tokenEthPrice: mockUmaPriceInEth, decimals: umaDecimals },
+        [wethAddress]: { tokenType: TokenType.WETH, tokenEthPrice: mockWethPriceInEth, decimals: wethDecimals },
+        [usdcAddress]: { tokenType: TokenType.ERC20, tokenEthPrice: mockUSDCPriceInEth, decimals: usdcDecimals },
       });
     });
     it("Correctly errors if attempt to relay a token that has no price", async function () {
@@ -217,10 +244,14 @@ describe("ProfitabilityCalculator.ts", function () {
           (gasUsed, index) => {
             const tokenAddress = [umaAddress, wethAddress, usdcAddress][index];
             const tokenPrice = [mockUmaPriceInEth, mockWethPriceInEth, mockUSDCPriceInEth][index];
+            const tokenDecimals = [umaDecimals, wethDecimals, usdcDecimals][index];
 
             // Compute exact expected cost for a slow relay, in the token. At this exact price the relayer will be
             // breaking even. right above this, the relayer is making money.
-            const slowRelayCostInToken = toBN(gasUsed).mul(sampleCumulativeGasPrice).mul(toBNWei(1)).div(tokenPrice);
+            const slowRelayCostInToken = toBN(gasUsed)
+              .mul(sampleCumulativeGasPrice)
+              .mul(toBN(10).pow(tokenDecimals))
+              .div(tokenPrice);
 
             // set revenue right below cost. should ignore.
             assert.equal(
@@ -249,19 +280,20 @@ describe("ProfitabilityCalculator.ts", function () {
             // it was ignored.
             assert.isTrue(lastSpyLogIncludes(spy, `"slowEthProfit":"0"`));
 
+            // Note: this can be zero if a wei of the token is worth more than a wei of ETH.
+            const amountToAdd = toBN(10).pow(tokenDecimals).div(tokenPrice);
+
             // Finally, set the revenue right above cost (by an amount of 1 wei). This should be profitable and relayed.
             assert.equal(
               profitabilityCalculator.getRelaySubmitTypeBasedOnProfitability(
                 tokenAddress,
                 sampleCumulativeGasPrice,
-                slowRelayCostInToken.add(toBNWei(1).div(tokenPrice)),
+                slowRelayCostInToken.add(amountToAdd.isZero() ? toBN(1) : amountToAdd),
                 toBNWei(0),
                 toBNWei(0)
               ),
               RelaySubmitType.Slow
             );
-            // The log should show that there is exactly 1 wei, in eth, worth of profit expected for this relay.
-            assert.isTrue(lastSpyLogIncludes(spy, `slowEthProfit":"0.000000000000000001"`));
           }
         );
       });
@@ -271,12 +303,13 @@ describe("ProfitabilityCalculator.ts", function () {
           spyLogger,
           [umaAddress, wethAddress, usdcAddress],
           mainnetChainId,
+          mockWeb3,
           50 // 50% discount factor.
         );
         profitabilityCalculator.setL1TokenInfo({
-          [umaAddress]: { tokenType: TokenType.UMA, tokenEthPrice: mockUmaPriceInEth },
-          [wethAddress]: { tokenType: TokenType.WETH, tokenEthPrice: mockWethPriceInEth },
-          [usdcAddress]: { tokenType: TokenType.ERC20, tokenEthPrice: mockUSDCPriceInEth },
+          [umaAddress]: { tokenType: TokenType.UMA, tokenEthPrice: mockUmaPriceInEth, decimals: umaDecimals },
+          [wethAddress]: { tokenType: TokenType.WETH, tokenEthPrice: mockWethPriceInEth, decimals: wethDecimals },
+          [usdcAddress]: { tokenType: TokenType.ERC20, tokenEthPrice: mockUSDCPriceInEth, decimals: usdcDecimals },
         });
 
         // calculate the amount of eth relayed that would make a relay exactly profitable.

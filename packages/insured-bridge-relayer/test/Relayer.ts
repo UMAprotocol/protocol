@@ -233,7 +233,7 @@ describe("Relayer.ts", function () {
     // Create the profitabilityCalculator. Set the discount rate to 100% so that the calculator does not consider the
     // cost of the l1 token. In doing so, we only test the relayer directly, ignoring profitability. The calculator will
     // return the relay type that produces the most revenue, irrespective of cost.
-    profitabilityCalculator = new MockProfitabilityCalculator(spyLogger, [l1Token.options.address], 1, 100);
+    profitabilityCalculator = new MockProfitabilityCalculator(spyLogger, [l1Token.options.address], 1, web3, 100);
     profitabilityCalculator.setL1TokenInfo({
       [l1Token.options.address]: { tokenType: TokenType.ERC20, tokenEthPrice: toBNWei("0.1") },
     });
@@ -1638,6 +1638,7 @@ describe("Relayer.ts", function () {
         spyLogger,
         [l1Token.options.address, newL1Token.options.address],
         1,
+        web3,
         100 // 100% discount (ignores profitability calculator)
       );
       profitabilityCalculator.setL1TokenInfo({

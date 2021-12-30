@@ -91,6 +91,7 @@ export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
           logger,
           filteredL1Whitelist,
           l1ChainId,
+          l1Web3,
           config.relayerDiscount
         );
 
