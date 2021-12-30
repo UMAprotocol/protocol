@@ -26,9 +26,9 @@ If you're having trouble redeploying contracts because `hardhat` wants to "reuse
 1. Start by exporting some environment variables (or storing them in a .env):
 
 ```sh
+# When running against a forked network, set the URL to http://localhost:<PORT>
 export NODE_URL_1=<MAINNET_URL>
 export NODE_URL_42161=<ARBITRUM_URL>
-# When running against a forked network, set the URL to http://localhost:<PORT>
 export MNEMONIC="Your 12-word mnemonic here"
 ```
 
