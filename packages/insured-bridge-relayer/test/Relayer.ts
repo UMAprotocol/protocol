@@ -235,7 +235,7 @@ describe("Relayer.ts", function () {
     // return the relay type that produces the most revenue, irrespective of cost.
     profitabilityCalculator = new MockProfitabilityCalculator(spyLogger, [l1Token.options.address], 1, web3, 100);
     profitabilityCalculator.setL1TokenInfo({
-      [l1Token.options.address]: { tokenType: TokenType.ERC20, tokenEthPrice: toBNWei("0.1") },
+      [l1Token.options.address]: { tokenType: TokenType.ERC20, tokenEthPrice: toBNWei("0.1"), decimals: toBN(18) },
     });
 
     relayer = new Relayer(
