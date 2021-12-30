@@ -472,7 +472,12 @@ describe("Relayer.ts", function () {
       await l1Token.methods.mint(l1Relayer, toBN(depositAmount).muln(2)).send({ from: l1Owner });
       await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Relayer });
       await relayer.checkForPendingDepositsAndRelay();
+      assert.isTrue(lastSpyLogIncludes(spy, "Slow relaying deposit"));
+
+      // Send transactions.
+      await multicallBundler?.send();
       assert.isTrue(lastSpyLogIncludes(spy, "Slow Relay executed"));
+      await multicallBundler?.waitForMine();
 
       // Advance time such that relay has expired and check that bot correctly identifies it as expired.
       const expirationTime = Number(relayTime.toString()) + defaultLiveness;
@@ -537,13 +542,13 @@ describe("Relayer.ts", function () {
       await l1Token.methods.mint(l1Relayer, toBN(depositAmount).muln(4)).send({ from: l1Owner });
       await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Relayer });
       await relayer.checkForPendingDepositsAndRelay();
+      await multicallBundler?.send();
 
-      // Logs should reflect that the batch of transactions failed and so they were sent individually. Expect two logs
-      // for the two individual transactions being re-sent
+      // Should send out a single log informing the user that the batch is being split up.
       assert.equal(
         spy.getCalls().filter((_log: any) => _log.lastArg.message.includes("Sending batched transactions individually"))
           .length,
-        2
+        1
       );
 
       // Logs should reflect one slow relay executed and one that errored.
@@ -553,7 +558,10 @@ describe("Relayer.ts", function () {
       );
 
       // The final log should be an error from the failed second transaction in the bundle.
-      assert.isTrue(lastSpyLogIncludes(spy, "Something errored sending a transaction"));
+      assert.isTrue(lastSpyLogIncludes(spy, "Errors sending transactions individually"));
+
+      // Ensure transactions got mined.
+      await multicallBundler?.waitForMine();
     });
     it("Can correctly detect and produce speedup relays", async function () {
       // Make a deposit on L2 and relay it. Then, check the relayer picks this up and speeds up the relay.
@@ -600,6 +608,8 @@ describe("Relayer.ts", function () {
       await l1Token.methods.mint(l1Relayer, toBN(depositAmount).muln(2)).send({ from: l1Owner });
       await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Relayer });
       await relayer.checkForPendingDepositsAndRelay();
+      await multicallBundler?.send();
+      await multicallBundler?.waitForMine();
       assert.isTrue(lastSpyLogIncludes(spy, "Slow relay sped up"));
 
       // Running relayer again ignores and sends appropriate message
@@ -633,6 +643,8 @@ describe("Relayer.ts", function () {
       await l1Token.methods.mint(l1Relayer, toBN(depositAmount).muln(2)).send({ from: l1Owner });
       await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Relayer });
       await relayer.checkForPendingDepositsAndRelay();
+      await multicallBundler?.send();
+      await multicallBundler?.waitForMine();
       assert.isTrue(lastSpyLogIncludes(spy, "Relay instantly sent"));
     });
     it("Does not speedup relays with invalid relay data", async function () {
@@ -815,6 +827,8 @@ describe("Relayer.ts", function () {
       await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Relayer });
       await Promise.all([l1Client.update(), l2Client.update()]);
       await relayer.checkForPendingDepositsAndRelay();
+      await multicallBundler?.send();
+      await multicallBundler?.waitForMine();
       assert.isTrue(lastSpyLogIncludes(spy, "Slow Relay executed"));
 
       // Advance time to get the relay into a settable state.
@@ -824,6 +838,8 @@ describe("Relayer.ts", function () {
 
       await Promise.all([l1Client.update(), l2Client.update()]);
       await relayer.checkforSettleableRelaysAndSettle();
+      await multicallBundler?.send();
+      await multicallBundler?.waitForMine();
       assert.isTrue(lastSpyLogIncludes(spy, "Relay settled"));
     });
     it("Can correctly detect and settleable relays from other relayers and settle them", async function () {
@@ -892,6 +908,8 @@ describe("Relayer.ts", function () {
 
       await Promise.all([l1Client.update(), l2Client.update()]);
       await relayer.checkforSettleableRelaysAndSettle();
+      await multicallBundler?.send();
+      await multicallBundler?.waitForMine();
       assert.isTrue(lastSpyLogIncludes(spy, "Relay settled"));
     });
   });
@@ -953,6 +971,8 @@ describe("Relayer.ts", function () {
       await l1Token.methods.mint(l1Relayer, toBN(depositAmount).muln(2)).send({ from: l1Owner });
       await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Relayer });
       await relayer.checkForPendingRelaysAndDispute();
+      await multicallBundler?.send();
+      await multicallBundler?.waitForMine();
       assert.isTrue(lastSpyLogIncludes(spy, "Disputed pending relay"));
       const disputeEvents = await bridgePool.getPastEvents("RelayDisputed", { fromBlock: 0 });
       assert.equal(disputeEvents.length, 1);
@@ -1012,6 +1032,8 @@ describe("Relayer.ts", function () {
       await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Relayer });
       await Promise.all([l1Client.update(), l2Client.update()]);
       await relayer.checkForPendingRelaysAndDispute();
+      await multicallBundler?.send();
+      await multicallBundler?.waitForMine();
 
       // Logs should reflect one dispute executed and one that errored.
       assert.equal(
@@ -1067,6 +1089,8 @@ describe("Relayer.ts", function () {
       await l1Token.methods.mint(l1Relayer, toBN(depositAmount).muln(2)).send({ from: l1Owner });
       await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Relayer });
       await relayer.checkForPendingRelaysAndDispute();
+      await multicallBundler?.send();
+      await multicallBundler?.waitForMine();
       assert.isTrue(lastSpyLogIncludes(spy, "Disputed pending relay"));
 
       // Add back identifier to restore state for other tests.
@@ -1102,6 +1126,8 @@ describe("Relayer.ts", function () {
       await l1Token.methods.mint(l1Relayer, toBN(depositAmount).muln(2)).send({ from: l1Owner });
       await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Relayer });
       await relayer.checkForPendingRelaysAndDispute();
+      await multicallBundler?.send();
+      await multicallBundler?.waitForMine();
       assert.isTrue(lastSpyLogIncludes(spy, "Disputed pending relay"));
       const disputeEvents = await bridgePool.getPastEvents("RelayDisputed", { fromBlock: 0 });
       assert.equal(disputeEvents.length, 1);
@@ -1186,6 +1212,8 @@ describe("Relayer.ts", function () {
       await l1Token.methods.mint(l1Relayer, toBN(depositAmount).muln(2)).send({ from: l1Owner });
       await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Relayer });
       await relayer.checkForPendingRelaysAndDispute();
+      await multicallBundler?.send();
+      await multicallBundler?.waitForMine();
       const targetLog = spy.getCalls().filter((_log: any) => {
         return _log.lastArg.message.includes("Matched deposit using relay quote time to run new block search");
       });
@@ -1311,6 +1339,8 @@ describe("Relayer.ts", function () {
 
       await l1Client.update();
       await relayer.checkForPendingRelaysAndDispute();
+      await multicallBundler?.send();
+      await multicallBundler?.waitForMine();
       assert.isTrue(lastSpyLogIncludes(spy, "Disputed pending relay"));
     });
     it("Disputes non-whitelisted chainIDs", async function () {
@@ -1373,6 +1403,8 @@ describe("Relayer.ts", function () {
       await l1Token.methods.mint(l1Relayer, toBN(depositAmount).muln(2)).send({ from: l1Owner });
       await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Relayer });
       await _relayer.checkForPendingRelaysAndDispute();
+      await multicallBundler?.send();
+      await multicallBundler?.waitForMine();
       assert.isTrue(lastSpyLogIncludes(spy, "Disputed pending relay"));
 
       // This time, submit a relay for a chain ID that isn't used by the L2 client and also isn't on the list of
@@ -1405,6 +1437,8 @@ describe("Relayer.ts", function () {
       await l1Token.methods.mint(l1Relayer, toBN(depositAmount).muln(2)).send({ from: l1Owner });
       await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Relayer });
       await _relayer.checkForPendingRelaysAndDispute();
+      await multicallBundler?.send();
+      await multicallBundler?.waitForMine();
       assert.isTrue(lastSpyLogIncludes(spy, "Disputed pending relay"));
 
       const disputeEvents = await bridgePool.getPastEvents("RelayDisputed", { fromBlock: 0 });
@@ -1450,6 +1484,8 @@ describe("Relayer.ts", function () {
       await l1Token.methods.mint(l1Relayer, toBN(depositAmount).muln(2)).send({ from: l1Owner });
       await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Relayer });
       await relayer.checkForPendingRelaysAndDispute();
+      await multicallBundler?.send();
+      await multicallBundler?.waitForMine();
       const targetLog = spy.getCalls().filter((_log: any) => {
         return _log.lastArg.message.includes("Deposit quote time < bridge pool deployment");
       });
@@ -1501,6 +1537,8 @@ describe("Relayer.ts", function () {
       await l1Token.methods.mint(l1Relayer, toBN(depositAmount).muln(2)).send({ from: l1Owner });
       await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Relayer });
       await relayer.checkForPendingRelaysAndDispute();
+      await multicallBundler?.send();
+      await multicallBundler?.waitForMine();
       const targetLog = spy.getCalls().filter((_log: any) => {
         return _log.lastArg.message.includes("> relay block time");
       });
@@ -1572,6 +1610,8 @@ describe("Relayer.ts", function () {
       await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(5)).send({ from: l1Relayer });
 
       await relayer.checkForPendingRelaysAndDispute();
+      await multicallBundler?.send();
+      await multicallBundler?.waitForMine();
 
       const disputeEvents = await bridgePool.getPastEvents("RelayDisputed", { fromBlock: 0 });
       // All three should be disputed.
@@ -1720,6 +1760,8 @@ describe("Relayer.ts", function () {
       // Update and run the relayer
       await Promise.all([l1Client.update(), l2Client.update()]);
       await relayer.checkForPendingDepositsAndRelay();
+      await multicallBundler?.send();
+      await multicallBundler?.waitForMine();
 
       assert.equal((await bridgePool.methods.numberOfRelays().call()).toString(), "1");
       assert.equal((await newBridgePool.methods.numberOfRelays().call()).toString(), "1");
@@ -1731,6 +1773,8 @@ describe("Relayer.ts", function () {
 
       await Promise.all([l1Client.update(), l2Client.update()]);
       await relayer.checkforSettleableRelaysAndSettle();
+      await multicallBundler?.send();
+      await multicallBundler?.waitForMine();
       assert.equal((await bridgePool.getPastEvents("RelaySettled", { fromBlock: 0 })).length, 1);
       assert.equal((await newBridgePool.getPastEvents("RelaySettled", { fromBlock: 0 })).length, 1);
     });
@@ -1776,6 +1820,8 @@ describe("Relayer.ts", function () {
       // Update and run the relayer
       await Promise.all([l1Client.update(), l2Client.update()]);
       await relayer.checkForPendingRelaysAndDispute();
+      await multicallBundler?.send();
+      await multicallBundler?.waitForMine();
 
       assert.equal((await bridgePool.getPastEvents("RelayDisputed", { fromBlock: 0 })).length, 1);
       assert.equal((await newBridgePool.getPastEvents("RelayDisputed", { fromBlock: 0 })).length, 1);
@@ -1834,6 +1880,8 @@ describe("Relayer.ts", function () {
       await l1Token.methods.mint(l1Relayer, toBN(depositAmount).muln(4)).send({ from: l1Owner });
       await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(4)).send({ from: l1Relayer });
       await relayer.checkForPendingDepositsAndRelay();
+      await multicallBundler?.send();
+      await multicallBundler?.waitForMine();
 
       // The log should also inform that this is a multicall batch.
       assert.isTrue(lastSpyLogIncludes(spy, "Multicall batch sent"));
@@ -1849,6 +1897,8 @@ describe("Relayer.ts", function () {
 
       // Finally, settle. We should be able to do both of these in one tx.
       await relayer.checkforSettleableRelaysAndSettle();
+      await multicallBundler?.send();
+      await multicallBundler?.waitForMine();
 
       assert.isTrue(lastSpyLogIncludes(spy, "Multicall batch sent"));
       // There should be two "Relay settled" transactions within the batch.
@@ -1903,6 +1953,8 @@ describe("Relayer.ts", function () {
       await Promise.all([l1Client.update(), l2Client.update()]);
 
       await relayer.checkForPendingRelaysAndDispute();
+      await multicallBundler?.send();
+      await multicallBundler?.waitForMine();
 
       // The log should also inform that this is a multicall batch.
       assert.isTrue(lastSpyLogIncludes(spy, "Multicall batch sent"));
