@@ -30,7 +30,7 @@ export default function Table<I, D, S extends stores.Store<I, D>>(
   }
   async function get(id: I) {
     assert(await store.has(id), `${type} does not exist`);
-    return (await store.get(id)) as D & { id: I };
+    return ((await store.get(id)) as unknown) as D & { id: I };
   }
   async function has(id: I) {
     return store.has(id);
