@@ -201,7 +201,7 @@ export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
         throw new Error(
           `Multiple errors: ${outputs
             .filter(isErrorOutput)
-            .map((output) => output.reason)
+            .map((output) => output.reason.message)
             .join("\n")}`
         );
 
