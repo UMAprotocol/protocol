@@ -315,6 +315,9 @@ task("load-addresses", "Load addresses from the networks folder into the hardhat
         const abi = hre.artifacts.readArtifactSync(contractName).abi;
 
         // Save the deployment using hardhat deploy's built-in function.
+        // WARNING: Some version of `hardhat-deploy` between 0.9.1 and 0.9.22 introduces a breaking change to the
+        // following `save()` method, causing `yarn load-addresses` to throw the following error:
+        // "no such file or directory, unlink './deployments/mainnet/.chainId'"
         await hre.deployments.save(saveName, { address, abi });
       }
 
