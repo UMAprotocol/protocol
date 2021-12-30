@@ -47,7 +47,7 @@ export class UniswapV2Trader implements ExchangeAdapterInterface {
     try {
       return await this.dsProxyManager.callFunctionOnNewlyDeployedLibrary(callCode, callData);
     } catch (error) {
-      return error;
+      return error as Error;
     }
   }
 }

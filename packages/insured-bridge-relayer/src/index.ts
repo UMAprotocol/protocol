@@ -20,11 +20,9 @@ import { ProfitabilityCalculator } from "./ProfitabilityCalculator";
 import { CrossDomainFinalizer } from "./CrossDomainFinalizer";
 import { createBridgeAdapter } from "./canonical-bridge-adapters/CreateBridgeAdapter";
 import { RelayerConfig } from "./RelayerConfig";
+import { MulticallBundler } from "./MulticallBundler";
+import { isErrorOutput } from "./helpers";
 config();
-
-function isErrorOutput<T>(input: PromiseSettledResult<T>): input is PromiseRejectedResult {
-  return input.status === "rejected";
-}
 
 export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
   try {
@@ -46,6 +44,8 @@ export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
 
     const gasEstimator = new GasEstimator(logger, 60, l1ChainId, l1Web3);
     await gasEstimator.update();
+
+    const multicallBundler = new MulticallBundler(logger, gasEstimator, l1Web3, accounts[0]);
 
     // Create L1/L2 clients to pull data to inform the relayer.
     // todo: add in start and ending block numbers (if need be).
@@ -106,7 +106,8 @@ export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
           config.whitelistedChainIds,
           config.l1DeployData,
           config.l2DeployData,
-          config.l2BlockLookback
+          config.l2BlockLookback,
+          multicallBundler
         );
 
         const canonicalBridgeAdapter = createBridgeAdapter(logger, l1Web3, l2Web3, chainId);
@@ -171,14 +172,16 @@ export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
               if (config.botModes.l2FinalizerEnabled) await crossDomainFinalizer.checkForBridgeableL2TokensAndBridge();
               else logger.debug({ at: "AcrossRelayer#CrossDomainFinalizer", message: "L2->L1 finalizer disabled" });
 
+              // The multicall bundler likely accrued transactions over the course of the run.
+              // This call fires off those transactions, but does not wait on them to be mined.
+              // Note: we wait until this point to actually send off the transactions to
+              await multicallBundler.send();
+
               // Each of the above code blocks could have produced transactions. If they did, their promises are stored
               // in the executed transactions array. The method below awaits all these transactions to ensure they are
               // correctly included in a block. if any submitted transactions contains an error then a log is produced.
-              await processTransactionPromiseBatch(
-                [...relayer.getExecutedTransactions(), ...crossDomainFinalizer.getExecutedTransactions()],
-                logger
-              );
-              relayer.resetExecutedTransactions(); // Purge the executed transactions array for next execution loop.
+              await processTransactionPromiseBatch(crossDomainFinalizer.getExecutedTransactions(), logger);
+              await multicallBundler.waitForMine();
             },
 
             {
@@ -196,6 +199,20 @@ export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
           );
         })
       );
+
+      // The multicall bundler may have accrued transactions over the course of the run.
+      // This call fires off those transactions, but does not wait on them to be mined.
+      // Note: we wait until this point to actually send off the transactions to make bundles as large as possible.
+      await multicallBundler.send();
+
+      // Each of the above code blocks could have produced transactions. If they did, their promises are stored
+      // in the executed transactions array. The method below awaits all these transactions to ensure they are
+      // correctly included in a block. if any submitted transactions contains an error then a log is produced.
+      const allCrossDomainTxns = relayers
+        .map(({ crossDomainFinalizer }) => crossDomainFinalizer.getExecutedTransactions())
+        .flat();
+      await processTransactionPromiseBatch(allCrossDomainTxns, logger);
+      await multicallBundler.waitForMine();
 
       if (outputs.some(isErrorOutput))
         throw new Error(
