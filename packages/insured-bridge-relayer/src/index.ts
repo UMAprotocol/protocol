@@ -21,11 +21,8 @@ import { CrossDomainFinalizer } from "./CrossDomainFinalizer";
 import { createBridgeAdapter } from "./canonical-bridge-adapters/CreateBridgeAdapter";
 import { RelayerConfig } from "./RelayerConfig";
 import { MulticallBundler } from "./MulticallBundler";
+import { isErrorOutput } from "./helpers";
 config();
-
-function isErrorOutput<T>(input: PromiseSettledResult<T>): input is PromiseRejectedResult {
-  return input.status === "rejected";
-}
 
 export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
   try {

@@ -4,6 +4,7 @@ import Web3 from "web3";
 import { runTransaction, createEtherscanLinkMarkdown } from "@uma/common";
 import { MultiCallerWeb3 } from "@uma/contracts-node";
 import { GasEstimator } from "@uma/financial-templates-lib";
+import { isErrorOutput } from "./helpers";
 
 import type { TransactionType, ExecutedTransaction } from "@uma/common";
 import type { Contract } from "web3-eth-contract";
@@ -22,14 +23,10 @@ type Call = BaseCall<TransactionType>;
 type ExtendedTransasction = TransactionType & { _parent: Contract };
 type ExtendedCall = BaseCall<ExtendedTransasction>;
 
-function isErrorSettlement<T>(input: PromiseSettledResult<T>): input is PromiseRejectedResult {
-  return input.status === "rejected";
-}
-
 async function allSettledOrError<T>(promises: T[], errorPrefix: string): Promise<Awaited<T>[]> {
   // Allow all transactions to finish before propagating any errors.
   const results = await Promise.allSettled(promises);
-  const errors = results.filter(isErrorSettlement).map((errorResult) => errorResult.reason);
+  const errors = results.filter(isErrorOutput).map((errorResult) => errorResult.reason);
 
   // Throw if there are any errors.
   if (errors.length > 0) throw new Error(`${errorPrefix}:\n${errors.join("\n")}`);
