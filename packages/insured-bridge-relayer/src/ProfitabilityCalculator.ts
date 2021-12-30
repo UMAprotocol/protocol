@@ -6,7 +6,7 @@ const fixedPoint = toBNWei(1);
 
 import { objectMap } from "@uma/common";
 import { Coingecko, across } from "@uma/sdk";
-import { getAddress } from "@uma/contracts-node";
+import { getAddress, getAbi } from "@uma/contracts-node";
 
 import { RelaySubmitType } from "./Relayer";
 
@@ -26,7 +26,7 @@ const costConstants = {
 };
 
 export class ProfitabilityCalculator {
-  public l1TokenInfo: { [token: string]: { tokenType: TokenType; tokenEthPrice: BN } } = {};
+  public l1TokenInfo: { [token: string]: { tokenType: TokenType; tokenEthPrice: BN; decimals: BN } } = {};
 
   public relayerDiscount: BN;
 
@@ -44,6 +44,7 @@ export class ProfitabilityCalculator {
     readonly logger: winston.Logger,
     readonly l1Tokens: string[],
     readonly l1ChainId: number,
+    readonly l1Web3: Web3,
     readonly relayerDiscountNumber: number = 0
   ) {
     this.relayerDiscount = toBNWei(Math.floor(relayerDiscountNumber)).div(toBN("100"));
@@ -63,7 +64,7 @@ export class ProfitabilityCalculator {
         await getAddress("WETH9", this.l1ChainId),
       ]);
       for (const l1Token of this.l1Tokens) {
-        this.l1TokenInfo[l1Token] = { tokenType: TokenType.ERC20, tokenEthPrice: toBNWei("1") };
+        this.l1TokenInfo[l1Token] = { tokenType: TokenType.ERC20, tokenEthPrice: toBNWei("1"), decimals: toBN("18") };
         if (l1Token == toChecksumAddress(umaAddress)) this.l1TokenInfo[l1Token].tokenType = TokenType.UMA;
         else if (l1Token == toChecksumAddress(wethAddress)) this.l1TokenInfo[l1Token].tokenType = TokenType.WETH;
       }
@@ -95,6 +96,16 @@ export class ProfitabilityCalculator {
         });
       }
     }
+
+    // Set decimals for each token.
+    await Promise.all(
+      this.l1Tokens.map(async (l1Token) => {
+        const erc20 = new this.l1Web3.eth.Contract(getAbi("ERC20"), l1Token);
+        const decimals = await erc20.methods.decimals().call();
+        this.l1TokenInfo[l1Token].decimals = toBN(decimals.toString());
+      })
+    );
+
     this.logger.debug({
       at: "ProfitabilityCalculator",
       message: "Updated prices",
@@ -113,7 +124,7 @@ export class ProfitabilityCalculator {
   ): RelaySubmitType {
     this._throwIfNotInitialized();
     if (!this.l1TokenInfo[l1Token]) throw new Error("Token info not found. Ensure to construct correctly");
-    const { tokenType, tokenEthPrice } = this.l1TokenInfo[l1Token];
+    const { tokenType, tokenEthPrice, decimals } = this.l1TokenInfo[l1Token];
 
     // If the relayer discount is 100% then we can relay tokens with a price of 0. Else, if the price is zero then there
     // is no way that this is a profitable relay. In this case, error out.
@@ -126,6 +137,7 @@ export class ProfitabilityCalculator {
       l1Token,
       tokenType: TokenType[tokenType],
       tokenEthPrice: fromWei(tokenEthPrice),
+      tokenDecimals: decimals.toString(),
       cumulativeGasPrice: cumulativeGasPrice.toString(),
       relayerDiscount: fromWei(this.relayerDiscount),
       slowRevenue: slowRevenue.toString(),
@@ -138,7 +150,7 @@ export class ProfitabilityCalculator {
     const ethSubmissionCost = this.getRelayEthSubmissionCost(cumulativeGasPrice, tokenType);
 
     // Calculate the expected revenue, in ETH, based on the amount of tokens being offered in fees.
-    const ethRevenue = this.getEthRevenue(tokenEthPrice, slowRevenue, speedUpRevenue, instantRevenue);
+    const ethRevenue = this.getEthRevenue(tokenEthPrice, slowRevenue, speedUpRevenue, instantRevenue, decimals);
 
     // Calculate the relay profitability as the difference between revenue and cost.
     const ethProfitability = this.getProfit(ethSubmissionCost, ethRevenue);
@@ -189,16 +201,18 @@ export class ProfitabilityCalculator {
     tokenPrice: BN,
     slowRevenue: BN,
     speedUpRevenue: BN,
-    instantRevenue: BN
+    instantRevenue: BN,
+    tokenDecimals: BN
   ): {
     slowEthRevenue: BN;
     speedUpEthRevenue: BN;
     instantEthRevenue: BN;
   } {
+    const tokenDecimalMultiplier = toBN(10).pow(tokenDecimals);
     return {
-      slowEthRevenue: slowRevenue.mul(tokenPrice).div(fixedPoint),
-      speedUpEthRevenue: speedUpRevenue.mul(tokenPrice).div(fixedPoint),
-      instantEthRevenue: instantRevenue.mul(tokenPrice).div(fixedPoint),
+      slowEthRevenue: slowRevenue.mul(tokenPrice).div(tokenDecimalMultiplier),
+      speedUpEthRevenue: speedUpRevenue.mul(tokenPrice).div(tokenDecimalMultiplier),
+      instantEthRevenue: instantRevenue.mul(tokenPrice).div(tokenDecimalMultiplier),
     };
   }
 
