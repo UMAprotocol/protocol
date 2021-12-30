@@ -19,12 +19,7 @@ const argv = require("minimist")(process.argv.slice(), { string: ["depositId", "
 const { getWeb3ByChainId } = require("@uma/common");
 const { InsuredBridgeL1Client, InsuredBridgeL2Client, Logger } = require("@uma/financial-templates-lib");
 const sdk = require("@uma/sdk");
-
-const depositBoxMapping = {
-  10: "0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96",
-  42161: "0xD8c6dD978a3768F7DDfE3A9aAD2c3Fd75Fa9B6Fd",
-  288: "0xCD43CEa89DF8fE39031C03c24BC24480e942470B",
-};
+const { getAddress } = require("@uma/contracts-node");
 
 async function main() {
   if (!argv.chainId) {
@@ -32,6 +27,12 @@ async function main() {
   } else if (!argv.depositId) {
     throw new Error("--depositId argument must be provided");
   }
+
+  const defaultDepositBoxMapping = {
+    10: await getAddress("OVM_OETH_BridgeDepositBox", 10),
+    42161: await getAddress("AVM_BridgeDepositBox", 42161),
+    288: await getAddress("OVM_OETH_BridgeDepositBox", 288),
+  };
 
   const l1Web3 = getWeb3ByChainId(1);
   const l2Web3 = getWeb3ByChainId(Number(argv.chainId));
@@ -41,7 +42,7 @@ async function main() {
   const l1Client = new InsuredBridgeL1Client(
     Logger,
     l1Web3,
-    process.env.BRIDGE_ADMIN_ADDRESS || "0x30B44C676A05F1264d1dE9cC31dB5F2A945186b6",
+    process.env.BRIDGE_ADMIN_ADDRESS || (await getAddress("BridgeAdmin", 1)),
     sdk.across.constants.RATE_MODELS
   );
   await l1Client.update();
@@ -49,7 +50,7 @@ async function main() {
   const l2Client = new InsuredBridgeL2Client(
     Logger,
     l2Web3,
-    process.env.BRIDGE_DEPOSIT_ADDRESS || depositBoxMapping[Number(argv.chainId)],
+    process.env.BRIDGE_DEPOSIT_ADDRESS || defaultDepositBoxMapping[Number(argv.chainId)],
     Number(argv.chainId),
     latestL2BlockNumber - 9900,
     latestL2BlockNumber
