@@ -3,6 +3,34 @@ import { HardhatConfig } from "hardhat/types";
 import { getNodeUrl, getMnemonic } from "./ProviderUtils";
 import { HRE } from "./hardhat/plugins/ExtendedWeb3";
 export type { HRE };
+import dotenv from "dotenv";
+dotenv.config();
+
+// This prunes the config of companion networks that don't have corresponding nodes urls.
+function pruneCompanionNetworks(config: {
+  networks: { [name: string]: { companionNetworks?: { [name: string]: string }; chainId?: number } };
+}) {
+  // Loops over all the networks and extracts the companion networks object for each.
+  Object.values(config.networks).forEach(({ companionNetworks }) => {
+    // If the companion networks object doesn't exist, do nothing.
+    if (companionNetworks) {
+      // Loop over each companion network to check if it has a provided node.
+      Object.entries(companionNetworks).forEach(([key, value]) => {
+        // If the companion networks declaration points to a network that doesn't exist, throw.
+        if (!config.networks[value]) throw new Error(`Companion network ${value} not found`);
+
+        // Extract the chainId from the configured companion network.
+        const chainId = config.networks[value].chainId;
+
+        // If the chainId doesn't exist, do nothing since this means the node url is probably hardcoded.
+        if (!chainId) return;
+
+        // Remove the companion network if NODE_URL_<chainId> isn't provided.
+        if (!process.env[`NODE_URL_${chainId}`]) delete companionNetworks[key];
+      });
+    }
+  });
+}
 
 export function getHardhatConfig(
   configOverrides: any,
@@ -66,15 +94,38 @@ export function getHardhatConfig(
         timeout: 1800000,
         testBlacklist,
       },
-      localhost: { url: "http://127.0.0.1:9545", timeout: 1800000, testBlacklist },
-      mainnet: { chainId: 1, url: getNodeUrl("mainnet", true), accounts: { mnemonic } },
-      rinkeby: { chainId: 4, url: getNodeUrl("rinkeby", true), accounts: { mnemonic } },
-      goerli: { chainId: 5, url: getNodeUrl("goerli", true), accounts: { mnemonic } },
-      kovan: { chainId: 42, url: getNodeUrl("kovan", true), accounts: { mnemonic } },
-      arbitrum: { chainId: 42161, url: getNodeUrl("arbitrum", true), accounts: { mnemonic } },
-      "arbitrum-rinkeby": { chainId: 421611, url: getNodeUrl("arbitrum-rinkeby", true), accounts: { mnemonic } },
-      optimism: { chainId: 10, url: getNodeUrl("optimism", true), accounts: { mnemonic } },
-      "optimism-kovan": { chainId: 69, url: getNodeUrl("optimism-kovan", true), accounts: { mnemonic } },
+      localhost: {
+        url: "http://127.0.0.1:9545",
+        timeout: 1800000,
+        testBlacklist,
+      },
+      mainnet: {
+        chainId: 1,
+        url: getNodeUrl("mainnet", true, 1),
+        accounts: { mnemonic },
+        companionNetworks: { arbitrum: "arbitrum", optimism: "optimism", boba: "boba" },
+      },
+      rinkeby: { chainId: 4, url: getNodeUrl("rinkeby", true, 4), accounts: { mnemonic } },
+      goerli: { chainId: 5, url: getNodeUrl("goerli", true, 5), accounts: { mnemonic } },
+      kovan: { chainId: 42, url: getNodeUrl("kovan", true, 42), accounts: { mnemonic } },
+      arbitrum: {
+        chainId: 42161,
+        url: getNodeUrl("arbitrum", true, 42161),
+        accounts: { mnemonic },
+        companionNetworks: { mainnet: "mainnet" },
+      },
+      "arbitrum-rinkeby": {
+        chainId: 421611,
+        url: getNodeUrl("arbitrum-rinkeby", true, 421611),
+        accounts: { mnemonic },
+      },
+      optimism: {
+        chainId: 10,
+        url: getNodeUrl("optimism", true, 10),
+        accounts: { mnemonic },
+        companionNetworks: { mainnet: "mainnet" },
+      },
+      "optimism-kovan": { chainId: 69, url: getNodeUrl("optimism-kovan", true, 69), accounts: { mnemonic } },
       "optimism-test": {
         url: "http://127.0.0.1:8545",
         accounts: { mnemonic: "test test test test test test test test test test test junk" },
@@ -84,9 +135,19 @@ export function getHardhatConfig(
         testWhitelist: ["oracle/Finder"],
         testBlacklist,
       },
-      matic: { chainId: 137, url: getNodeUrl("polygon-matic", true), accounts: { mnemonic }, gasPrice: 30000000000 },
-      mumbai: { chainId: 80001, url: getNodeUrl("polygon-mumbai", true), accounts: { mnemonic } },
-      boba: { chainId: 288, url: getNodeUrl("boba", true), accounts: { mnemonic } },
+      matic: {
+        chainId: 137,
+        url: getNodeUrl("polygon-matic", true, 137),
+        accounts: { mnemonic },
+        gasPrice: 30000000000,
+      },
+      mumbai: { chainId: 80001, url: getNodeUrl("polygon-mumbai", true, 80001), accounts: { mnemonic } },
+      boba: {
+        chainId: 288,
+        url: getNodeUrl("boba", true, 288),
+        accounts: { mnemonic },
+        companionNetworks: { mainnet: "mainnet" },
+      },
     },
     mocha: { timeout: 1800000 },
     etherscan: {
@@ -96,6 +157,12 @@ export function getHardhatConfig(
     },
     namedAccounts: { deployer: 0 },
   } as unknown) as HardhatConfig; // Cast to allow extra properties.
+
+  // Prune any companion networks that don't have the correct env variables.
+  pruneCompanionNetworks(defaultConfig);
+
+  // To allow customizing the chain id when forking, allow the user to provide an env variable.
+  if (process.env.HARDHAT_CHAIN_ID) defaultConfig.networks.hardhat.chainId = parseInt(process.env.HARDHAT_CHAIN_ID);
 
   return { ...defaultConfig, ...configOverrides };
 }
