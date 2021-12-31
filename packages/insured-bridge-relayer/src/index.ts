@@ -171,17 +171,6 @@ export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
 
               if (config.botModes.l2FinalizerEnabled) await crossDomainFinalizer.checkForBridgeableL2TokensAndBridge();
               else logger.debug({ at: "AcrossRelayer#CrossDomainFinalizer", message: "L2->L1 finalizer disabled" });
-
-              // The multicall bundler likely accrued transactions over the course of the run.
-              // This call fires off those transactions, but does not wait on them to be mined.
-              // Note: we wait until this point to actually send off the transactions to
-              await multicallBundler.send();
-
-              // Each of the above code blocks could have produced transactions. If they did, their promises are stored
-              // in the executed transactions array. The method below awaits all these transactions to ensure they are
-              // correctly included in a block. if any submitted transactions contains an error then a log is produced.
-              await processTransactionPromiseBatch(crossDomainFinalizer.getExecutedTransactions(), logger);
-              await multicallBundler.waitForMine();
             },
 
             {
