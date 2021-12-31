@@ -14358,6 +14358,11 @@ immediate@~3.2.3:
   resolved "https://registry.yarnpkg.com/immediate/-/immediate-3.2.3.tgz#d140fa8f614659bd6541233097ddaac25cdd991c"
   integrity sha1-0UD6j2FGWb1lQSMwl92qwlzdmRw=
 
+immer@^9.0.7:
+  version "9.0.7"
+  resolved "https://registry.yarnpkg.com/immer/-/immer-9.0.7.tgz#b6156bd7db55db7abc73fd2fdadf4e579a701075"
+  integrity sha512-KGllzpbamZDvOIxnmJ0jI840g7Oikx58lBPWV0hUh7dtAyZpFqqrBZdKka5GlTwMTZ1Tjc/bKKW4VSFAt6BqMA==
+
 immutable@^4.0.0-rc.12:
   version "4.0.0-rc.14"
   resolved "https://registry.yarnpkg.com/immutable/-/immutable-4.0.0-rc.14.tgz#29ba96631ec10867d1348515ac4e6bdba462f071"

@@ -3,11 +3,11 @@ import assert from "assert";
 import { ethers } from "ethers";
 import { Provider } from "@ethersproject/providers";
 import { factory, Erc20 } from "../erc20";
-import { MULTICALL2_ADDRESS } from "../../constants";
 
 dotenv.config();
 
 const wethAddress = "0x7355Efc63Ae731f584380a9838292c7046c1e433";
+const multicall2Address = process.env.multicall2Address;
 
 describe("Erc20 E2E", function () {
   let provider: Provider;
@@ -30,7 +30,7 @@ describe("Erc20 E2E", function () {
   });
   describe("Erc20Multicall", function () {
     beforeAll(async () => {
-      erc20 = factory(provider, wethAddress, MULTICALL2_ADDRESS);
+      erc20 = factory(provider, wethAddress, multicall2Address);
     });
     test("getProps", async function () {
       jest.setTimeout(30000);
