@@ -21,7 +21,7 @@ export default class Store<S> {
    *
    * @param {WriteCallback} cb
    */
-  write(cb: WriteCallback<S>) {
+  write(cb: WriteCallback<S>): void {
     const prevState = this.state;
 
     // immer's produce method, takes an object, and passes a draft of that object to the callback. Any changes to the draft
@@ -31,5 +31,8 @@ export default class Store<S> {
 
     // Once state is changed, an event is emitted, this is how we get changes out of the client and also allow for change detection.
     this.emit(this.state, prevState);
+  }
+  read(): S {
+    return this.state;
   }
 }

@@ -37,7 +37,7 @@ export class Erc20Multicall extends Erc20 {
     return this.batchRead<Props>(batchProps);
   }
 }
-export function factory(provider: Provider, address: string, multicallAddress?: string) {
+export function factory(provider: Provider, address: string, multicallAddress?: string): Erc20 {
   if (!multicallAddress) return new Erc20(provider, address);
   return new Erc20Multicall(provider, address, multicallAddress);
 }

@@ -43,4 +43,12 @@ describe("Oracle Store", function () {
     });
     store.write((write) => write.chains(1).erc20s("test").allowance("user1", "oracle", BigNumber.from(1)));
   });
+  test("get chainId", function () {
+    const result = store.read().chainId();
+    assert.equal(result, 1);
+  });
+  test("get inputRequest", function () {
+    const result = store.read().inputRequest();
+    assert.deepEqual(result, { requester: "a", identifier: "b", timestamp: 1, ancillaryData: "d" });
+  });
 });

@@ -24,6 +24,7 @@ export type Erc20Props = {
   decimals: string;
   totalSupply: string;
 };
+
 export type Erc20 = {
   props: Partial<Erc20Props>;
   allowances: Record<string, Balances>;
