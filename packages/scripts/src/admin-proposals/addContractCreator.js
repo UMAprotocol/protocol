@@ -2,9 +2,12 @@
 // - Add new Contract Creator on Ethereum and/or Polygon.
 
 // Run:
-// - For testing, start mainnet fork in one window with `yarn hardhat node --fork <ARCHIVAL_NODE_URL> --no-deploy --port 9545`
-// - (optional, or required if --polygon is not undefined) set POLYGON_NODE_URL to a Polygon mainnet node. This will
+// - For testing, start mainnet fork in one window with `HARDHAT_CHAIN_ID=1 yarn hardhat node --fork <ARCHIVAL_NODE_URL> --no-deploy --port 9545`
+// - Set NODE_URL_1 to mainnet node URL or if using a forked network, http://localhost:9545
+// - (optional, or required if --polygon is not undefined) set NODE_URL_137 to a Polygon mainnet node. This will
 //   be used to query contract data from Polygon when relaying proposals through the GovernorRootTunnel.
+// - (optional, or required if --arbitrum is not undefined) set NODE_URL_42161 to an Arbitrum mainnet node. This will
+//   be used to query contract data from Arbitrum when relaying proposals through the GovernorHub.
 // - Next, open another terminal window and run `./packages/scripts/setupFork.sh` to unlock
 //   accounts on the local node that we'll need to run this script.
 // - Propose: node ./packages/scripts/src/admin-proposals/addContractCreator.js --ethereum 0xabc --polygon 0xdef --network mainnet-fork
@@ -14,8 +17,9 @@
 //   `--network` flag (along with other params like --keys) like so: `node ... --network mainnet_gckms --keys deployer`
 
 // Customizations:
-// - --polygon param can be omitted, in which case transactions will only take place on Ethereum.
-// - --ethereum flag can also be omitted, in which case transactions will only be relayed to Polygon
+// - --polygon param is optional.
+// - --arbitrum param is optional.
+// - --ethereum flag is optional, in which case transactions will only be relayed to other specified networks.
 // - If --verify flag is set, script is assumed to be running after a Vote Simulation and updated contract state is
 // verified.
 
@@ -27,22 +31,23 @@
 // - Add contract creator on both:
 //    - `node ./packages/scripts/src/admin-proposals/addContractCreator.js --ethereum 0xabc --polygon 0xdef --network mainnet-fork`
 
-const hre = require("hardhat");
-const { getContract } = hre;
 const assert = require("assert");
+const Web3 = require("Web3");
+const { fromWei } = Web3.utils;
 require("dotenv").config();
 const { GasEstimator } = require("@uma/financial-templates-lib");
-const Web3 = require("web3");
 const winston = require("winston");
-const { RegistryRolesEnum, interfaceName } = require("@uma/common");
-const { _getContractAddressByName, _setupWeb3 } = require("../utils");
+const { RegistryRolesEnum, getWeb3ByChainId } = require("@uma/common");
+const { setupNetwork, validateNetworks, setupMainnet } = require("./utils");
 const { REQUIRED_SIGNER_ADDRESSES } = require("../utils/constants");
 const argv = require("minimist")(process.argv.slice(), {
   string: [
-    // address to add on Ethereum. Required if --polygon is omitted.
+    // address to add on Ethereum.
     "ethereum",
-    // address to add on Polygon. Required if --ethereum is omitted
+    // address to add on Polygon.
     "polygon",
+    // address to add on arbitrum.
+    "arbitrum",
   ],
   boolean: [
     // set True if verifying, False for proposing.
@@ -52,82 +57,51 @@ const argv = require("minimist")(process.argv.slice(), {
 });
 
 async function run() {
-  const { ethereum, polygon, verify } = argv;
-  const { web3, netId } = await _setupWeb3();
-
-  // Contract ABI's
-  const Registry = getContract("Registry");
-  const GovernorRootTunnel = getContract("GovernorRootTunnel");
-  const GovernorChildTunnel = getContract("GovernorChildTunnel");
-  const Governor = getContract("Governor");
-  const Finder = getContract("Finder");
-  const Voting = getContract("Voting");
+  const { ethereum, polygon, arbitrum, verify } = argv;
+  if (!(polygon || ethereum || arbitrum)) throw new Error("Must specify either --ethereum, --polygon or --arbitrum");
 
   // Parse comma-delimited CLI params into arrays
-  let ethereumContractToRegister = ethereum;
-  let polygonContractToRegister = polygon;
-  let crossChainWeb3;
+  const networksToAdministrate = [];
+  if (polygon) networksToAdministrate.push(137);
+  if (arbitrum) networksToAdministrate.push(42161);
+  validateNetworks(networksToAdministrate);
+  let web3Providers = { 1: getWeb3ByChainId(1) }; // netID => Web3
 
-  // If polygon address is specified, initialize Governance relay infrastructure contracts
-  let polygon_netId;
-  let polygon_registry;
-  let polygon_governor;
-  if (!(polygonContractToRegister || ethereumContractToRegister))
-    throw new Error("Must specify either --ethereum or --polygon or both");
-  else if (polygonContractToRegister) {
-    if (!process.env.POLYGON_NODE_URL)
-      throw new Error("If --polygon is defined, you must set a POLYGON_NODE_URL environment variable");
-    crossChainWeb3 = new Web3(process.env.POLYGON_NODE_URL);
-    polygon_netId = await crossChainWeb3.eth.net.getId();
-    polygon_registry = new crossChainWeb3.eth.Contract(
-      Registry.abi,
-      await _getContractAddressByName("Registry", polygon_netId)
+  // Construct all mainnet contract instances we'll need using the mainnet web3 provider.
+  const mainnetContracts = await setupMainnet(web3Providers[1]);
+
+  // Store contract instances for specified L2 networks
+  let contractsByNetId = {}; // netId => contracts
+  for (let netId of networksToAdministrate) {
+    const networkData = await setupNetwork(netId);
+    web3Providers[netId] = networkData.web3;
+    contractsByNetId[netId] = networkData.contracts;
+    console.group(`\nℹ️  Relayer infrastructure for network ${netId}:`);
+    console.log(`- Registry @ ${contractsByNetId[netId].registry.options.address}`);
+    console.log(
+      `- ${netId === 137 ? "GovernorRootTunnel" : "GovernorHub"} @ ${
+        contractsByNetId[netId].l1Governor.options.address
+      }`
     );
-    polygon_governor = new crossChainWeb3.eth.Contract(
-      GovernorChildTunnel.abi,
-      await _getContractAddressByName("GovernorChildTunnel", polygon_netId)
-    );
+    console.groupEnd();
   }
 
-  // Initialize Eth contracts by grabbing deployed addresses from networks/1.json file.
-  const registry = new web3.eth.Contract(Registry.abi, await _getContractAddressByName("Registry", netId));
+  // GasEstimator only needs to be connected to mainnet since we're only deploying contracts to mainnet:
   const gasEstimator = new GasEstimator(
     winston.createLogger({ silent: true }),
     60, // Time between updates.
-    netId
+    1
   );
   await gasEstimator.update();
   console.log(
-    `⛽️ Current fast gas price for Ethereum: ${web3.utils.fromWei(
+    `⛽️ Current fast gas price for Ethereum: ${fromWei(
       gasEstimator.getCurrentFastPrice().maxFeePerGas.toString(),
       "gwei"
-    )} maxFeePerGas and ${web3.utils.fromWei(
+    )} maxFeePerGas and ${fromWei(
       gasEstimator.getCurrentFastPrice().maxPriorityFeePerGas.toString(),
       "gwei"
     )} maxPriorityFeePerGas`
   );
-  const governor = new web3.eth.Contract(Governor.abi, await _getContractAddressByName("Governor", netId));
-  const governorRootTunnel = new web3.eth.Contract(
-    GovernorRootTunnel.abi,
-    await _getContractAddressByName("GovernorRootTunnel", netId)
-  );
-  const finder = new web3.eth.Contract(Finder.abi, await _getContractAddressByName("Finder", netId));
-  const oracleAddress = await finder.methods
-    .getImplementationAddress(web3.utils.utf8ToHex(interfaceName.Oracle))
-    .call();
-  const oracle = new web3.eth.Contract(Voting.abi, oracleAddress);
-
-  if (polygonContractToRegister) {
-    console.group("\nℹ️  Relayer infrastructure for Polygon transactions:");
-    console.log(`- Registry @ ${polygon_registry.options.address}`);
-    console.log(`- GovernorRootTunnel @ ${governorRootTunnel.options.address}`);
-    console.log(`- GovernorChildTunnel @ ${polygon_governor.options.address}`);
-    console.groupEnd();
-  }
-  console.group("\nℹ️  DVM infrastructure for Ethereum transactions:");
-  console.log(`- Registry @ ${registry.options.address}`);
-  console.log(`- Governor @ ${governor.options.address}`);
-  console.groupEnd();
 
   if (!verify) {
     console.group("\n🌠 Proposing new Admin Proposal");
@@ -135,63 +109,113 @@ async function run() {
     const adminProposalTransactions = [];
     console.group("\n Key to understand the following logs:");
     console.log(
-      "- 🟣 = Transactions to be submitted to the Polygon contracts are relayed via the GovernorRootTunnel on Etheruem. Look at this test for an example:"
+      "- 🟣 = Transactions to be submitted to the Polygon contracts are relayed via the GovernorRootTunnel on Ethereum. Look at this test for an example:"
     );
     console.log(
       "    - https://github.com/UMAprotocol/protocol/blob/349401a869e89f9b5583d34c1f282407dca021ac/packages/core/test/polygon/e2e.js#L221"
     );
+    console.log(
+      "- 🔴 = Transactions to be submitted to the Arbitrum contracts are relayed via the GovernorHub on Ethereum. Look at this test for an example:"
+    );
+    console.log(
+      "    - https://github.com/UMAprotocol/protocol/blob/0d3cf208eaf390198400f6d69193885f45c1e90c/packages/core/test/cross-chain-oracle/chain-adapters/Arbitrum_ParentMessenger.js#L253"
+    );
     console.log("- 🟢 = Transactions to be submitted directly to Ethereum contracts.");
     console.groupEnd();
-    if (ethereumContractToRegister) {
-      console.group(`\n🟢 Adding new contract creator @ ${ethereumContractToRegister}`);
-      if (!(await registry.methods.holdsRole(RegistryRolesEnum.CONTRACT_CREATOR, ethereumContractToRegister).call())) {
-        const addMemberData = registry.methods
-          .addMember(RegistryRolesEnum.CONTRACT_CREATOR, ethereumContractToRegister)
+
+    if (ethereum) {
+      console.group(`\n🟢 Adding new contract creator @ ${ethereum}`);
+      if (!(await mainnetContracts.registry.methods.holdsRole(RegistryRolesEnum.CONTRACT_CREATOR, ethereum).call())) {
+        const addMemberData = mainnetContracts.registry.methods
+          .addMember(RegistryRolesEnum.CONTRACT_CREATOR, ethereum)
           .encodeABI();
         console.log("- addMemberData", addMemberData);
-        adminProposalTransactions.push({ to: registry.options.address, value: 0, data: addMemberData });
+        adminProposalTransactions.push({
+          to: mainnetContracts.registry.options.address,
+          value: 0,
+          data: addMemberData,
+        });
       } else {
-        console.log("- Contract @ ", ethereumContractToRegister, "is already a contract creator. Nothing to do.");
+        console.log("- Contract @ ", ethereum, "is already a contract creator. Nothing to do.");
       }
 
       console.groupEnd();
     }
 
-    if (polygonContractToRegister) {
-      console.group(`\n🟣 (Polygon) Adding new contract creator @ ${polygonContractToRegister}`);
+    if (polygon) {
+      console.group(`\n🟣 (Polygon) Adding new contract creator @ ${polygon}`);
 
       if (
-        !(await polygon_registry.methods
-          .holdsRole(RegistryRolesEnum.CONTRACT_CREATOR, polygonContractToRegister)
-          .call())
+        !(await contractsByNetId[137].registry.methods.holdsRole(RegistryRolesEnum.CONTRACT_CREATOR, polygon).call())
       ) {
-        const addMemberData = polygon_registry.methods
-          .addMember(RegistryRolesEnum.CONTRACT_CREATOR, polygonContractToRegister)
+        const addMemberData = contractsByNetId[137].registry.methods
+          .addMember(RegistryRolesEnum.CONTRACT_CREATOR, polygon)
           .encodeABI();
         console.log("- addMemberData", addMemberData);
-        let relayGovernanceData = governorRootTunnel.methods
-          .relayGovernance(polygon_registry.options.address, addMemberData)
+        let relayGovernanceData = contractsByNetId[137].l1Governor.methods
+          .relayGovernance(contractsByNetId[137].registry.options.address, addMemberData)
           .encodeABI();
         console.log("- relayGovernanceData", relayGovernanceData);
-        adminProposalTransactions.push({ to: governorRootTunnel.options.address, value: 0, data: relayGovernanceData });
+        adminProposalTransactions.push({
+          to: contractsByNetId[137].l1Governor.options.address,
+          value: 0,
+          data: relayGovernanceData,
+        });
       } else {
-        console.log("- Contract @ ", polygonContractToRegister, "is already a contract creator. Nothing to do.");
+        console.log("- Contract @ ", polygon, "is already a contract creator. Nothing to do.");
+      }
+
+      console.groupEnd();
+    }
+
+    if (arbitrum) {
+      console.group(`\n🔴 (Arbitrum) Adding new contract creator @ ${arbitrum}`);
+
+      if (
+        !(await contractsByNetId[42161].registry.methods.holdsRole(RegistryRolesEnum.CONTRACT_CREATOR, arbitrum).call())
+      ) {
+        const addMemberData = contractsByNetId[42161].registry.methods
+          .addMember(RegistryRolesEnum.CONTRACT_CREATOR, arbitrum)
+          .encodeABI();
+        console.log("- addMemberData", addMemberData);
+        const calls = [{ to: contractsByNetId[42161].registry.options.address, data: addMemberData }];
+        let relayGovernanceData = contractsByNetId[42161].l1Governor.methods.relayGovernance(42161, calls).encodeABI();
+        console.log("- relayGovernanceData", relayGovernanceData);
+        adminProposalTransactions.push({
+          to: contractsByNetId[42161].l1Governor.options.address,
+          value: 0,
+          data: relayGovernanceData,
+        });
+
+        // Transaction will fail unless Arbitrum messenger has enough ETH to pay for message:
+        const l1CallValue = await mainnetContracts.arbitrumParentMessenger.methods.getL1CallValue().call();
+        console.log(
+          `Arbitrum xchain messages require that the Arbitrum_ParentMessenger has at least a ${l1CallValue.toString()} ETH balance.`
+        );
+        const sendEthTxn = await web3Providers[1].eth.sendTransaction({
+          from: REQUIRED_SIGNER_ADDRESSES["deployer"],
+          to: mainnetContracts.arbitrumParentMessenger.options.address,
+          value: l1CallValue.toString(),
+        });
+        console.log(`Sent ETH txn: ${sendEthTxn.transactionHash}`);
+      } else {
+        console.log("- Contract @ ", arbitrum, "is already a contract creator. Nothing to do.");
       }
 
       console.groupEnd();
     }
 
     // Send the proposal
-    console.group(`\n📨 Sending to governor @ ${governor.options.address}`);
+    console.group(`\n📨 Sending to governor @ ${mainnetContracts.governor.options.address}`);
     console.log(`- Admin proposal contains ${adminProposalTransactions.length} transactions`);
     if (adminProposalTransactions.length > 0) {
-      const txn = await governor.methods
+      const txn = await mainnetContracts.governor.methods
         .propose(adminProposalTransactions)
         .send({ from: REQUIRED_SIGNER_ADDRESSES["deployer"], ...gasEstimator.getCurrentFastPrice() });
       console.log("- Transaction: ", txn?.transactionHash);
 
       // Print out details about new Admin proposal
-      const priceRequests = await oracle.getPastEvents("PriceRequestAdded");
+      const priceRequests = await mainnetContracts.oracle.getPastEvents("PriceRequestAdded");
       const newAdminRequest = priceRequests[priceRequests.length - 1];
       console.log(
         `- New admin request {identifier: ${
@@ -204,40 +228,61 @@ async function run() {
     console.groupEnd();
   } else {
     console.group("\n🔎 Verifying execution of Admin Proposal");
-    if (ethereumContractToRegister) {
+    if (ethereum) {
       assert(
-        await registry.methods.holdsRole(RegistryRolesEnum.CONTRACT_CREATOR, ethereumContractToRegister),
+        await mainnetContracts.registry.methods.holdsRole(RegistryRolesEnum.CONTRACT_CREATOR, ethereum),
         "Contract does not hold creator role"
       );
-      console.log(`- Contract @ ${ethereumContractToRegister} holds creator role on Ethereum`);
+      console.log(`- Contract @ ${ethereum} holds creator role on Ethereum`);
     }
 
-    if (polygonContractToRegister) {
+    if (polygon) {
       if (
-        !(await polygon_registry.methods
-          .holdsRole(RegistryRolesEnum.CONTRACT_CREATOR, polygonContractToRegister)
-          .call())
+        !(await contractsByNetId[137].registry.methods.holdsRole(RegistryRolesEnum.CONTRACT_CREATOR, polygon).call())
       ) {
-        const addMemberData = polygon_registry.methods
-          .addMember(RegistryRolesEnum.CONTRACT_CREATOR, polygonContractToRegister)
+        const addMemberData = contractsByNetId[137].registry.methods
+          .addMember(RegistryRolesEnum.CONTRACT_CREATOR, polygon)
           .encodeABI();
-        const relayedRegistryTransactions = await governorRootTunnel.getPastEvents("RelayedGovernanceRequest", {
-          filter: { to: polygon_registry.options.address },
-          fromBlock: 0,
-        });
+        const relayedRegistryTransactions = await contractsByNetId[137].l1Governor.getPastEvents(
+          "RelayedGovernanceRequest",
+          { filter: { to: contractsByNetId[137].registry.options.address }, fromBlock: 0 }
+        );
         assert(
           relayedRegistryTransactions.find((e) => e.returnValues.data === addMemberData),
           "Could not find RelayedGovernanceRequest matching expected relayed addMemberData transaction"
         );
         console.log(
-          `- GovernorRootTunnel correctly emitted events to registry ${polygon_registry.options.address} containing addMember data`
+          `- GovernorRootTunnel correctly emitted events to registry ${contractsByNetId[137].registry.options.address} containing addMember data`
         );
       } else {
-        console.log(
-          "- Contract @ ",
-          polygonContractToRegister,
-          "is already a contract creator on Polygon. Nothing to check."
+        console.log("- Contract @ ", polygon, "is already a contract creator on Polygon. Nothing to check.");
+      }
+    }
+
+    if (arbitrum) {
+      if (
+        !(await contractsByNetId[42161].registry.methods.holdsRole(RegistryRolesEnum.CONTRACT_CREATOR, arbitrum).call())
+      ) {
+        const addMemberData = contractsByNetId[42161].registry.methods
+          .addMember(RegistryRolesEnum.CONTRACT_CREATOR, arbitrum)
+          .encodeABI();
+        const calls = [{ to: contractsByNetId[42161].registry.options.address, data: addMemberData }];
+        const relayedRegistryTransactions = await contractsByNetId[42161].l1Governor.getPastEvents(
+          "RelayedGovernanceRequest",
+          {
+            filter: { chainId: "42161", messenger: mainnetContracts.arbitrumParentMessenger.options.address },
+            fromBlock: 0,
+          }
         );
+        assert(
+          relayedRegistryTransactions.find((e) => e.returnValues.calls === calls),
+          "Could not find RelayedGovernanceRequest matching expected relayed addMemberData transaction"
+        );
+        console.log(
+          `- GovernorHub correctly emitted events to registry ${contractsByNetId[42161].registry.options.address} containing addMember data`
+        );
+      } else {
+        console.log("- Contract @ ", arbitrum, "is already a contract creator on Arbitrum. Nothing to check.");
       }
     }
   }

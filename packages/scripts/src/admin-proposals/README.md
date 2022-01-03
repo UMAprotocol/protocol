@@ -4,19 +4,26 @@ This folder contains scripts that facilitate the testing of proposing admin pric
 
 ## Mainnet fork
 
-These scripts are expected by default to run against a local (hardhat) [Mainnet fork](https://hardhat.org/guides/mainnet-forking.html) in order to test that the DVM contract state is modified as expected following a [simulated vote](https://docs.umaproject.org/uma-tokenholders/uma-holders#voting-on-price-requests). The local node should be set to run on port `9545`.
+These scripts can be easily run against a local (hardhat) [Mainnet fork](https://hardhat.org/guides/mainnet-forking.html) in order to test that the DVM contract state is modified as expected following a [simulated vote](https://docs.umaproject.org/uma-tokenholders/uma-holders#voting-on-price-requests). The local node should be set to run on port `9545`.
 
-## Relaying governance to Polygon
+## Relaying governance to another non-mainnet network
 
-Admin proposals can be relayed from Ethereum to Polygon like in [this example](https://github.com/UMAprotocol/protocol/blob/349401a869e89f9b5583d34c1f282407dca021ac/packages/core/test/polygon/e2e.js#L221). This just requires that the `POLYGON_NODE_URL` is set so that the script can also query network information from Polygon.
+Admin proposals can be relayed from Ethereum to another network like Polygon like in [this example](https://github.com/UMAprotocol/protocol/blob/349401a869e89f9b5583d34c1f282407dca021ac/packages/core/test/polygon/e2e.js#L221). This just requires that the `NODE_URL_[netId]` is set so that the script can also query network information from the other network.
+
+Valid networks that can be administrated this way are those that have governance channels set up to communicate from the network to L1. The following networks are currently supported:
+
+- Arbitrum, net ID 42161
+- Polygon, net ID 137
 
 ## Full example: simulating submitting an Admin proposal to whitelist collateral on Ethereum and Polygon
 
 1. Open a terminal window and start a mainnet fork node locally:
 
 ```sh
-yarn hardhat node --fork https://mainnet.infura.io/v3/YOUR-INFURA-KEY --no-deploy --port 9545
+HARDHAT_CHAIN_ID=1 yarn hardhat node --fork https://mainnet.infura.io/v3/YOUR-INFURA-KEY --no-deploy --port 9545
 ```
+
+Be sure to set `NODE_URL_1=http://localhost:9545` in your environment if you want to continue running scripts against the forked mainnet network.
 
 2. Request to impersonate accounts we'll need to propose and vote on admin proposals:
 
@@ -25,6 +32,8 @@ yarn hardhat node --fork https://mainnet.infura.io/v3/YOUR-INFURA-KEY --no-deplo
 ```
 
 3. Propose the admin proposal to whitelist 9 new collateral types on Ethereum and 2 on polygon:
+
+Make sure that `NODE_URL_1` and `NODE_URL_137` are set in the environment.
 
 ```sh
 node ./packages/scripts/admin-proposals/collateral.js \
