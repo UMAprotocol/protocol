@@ -15,6 +15,7 @@ const Arbitrum_ParentMessenger = getContract("Arbitrum_ParentMessenger");
 const Governor = getContract("Governor");
 const Finder = getContract("Finder");
 const Voting = getContract("Voting");
+const VotingInterface = getContract("VotingInterface");
 const AddressWhitelist = getContract("AddressWhitelist");
 const Store = getContract("Store");
 
@@ -52,6 +53,7 @@ const setupMainnet = async (web3) => {
     .getImplementationAddress(web3.utils.utf8ToHex(interfaceName.Oracle))
     .call();
   const oracle = new web3.eth.Contract(Voting.abi, oracleAddress);
+  const votingInterface = new web3.eth.Contract(VotingInterface.abi, oracleAddress);
   const arbitrumParentMessenger = new web3.eth.Contract(
     Arbitrum_ParentMessenger.abi,
     await _getContractAddressByName("Arbitrum_ParentMessenger", 1)
@@ -70,7 +72,8 @@ const setupMainnet = async (web3) => {
   const store = new web3.eth.Contract(Store.abi, await _getContractAddressByName("Store", 1));
   console.group("\nℹ️  DVM infrastructure on L1:");
   console.log(`- Finder @ ${finder.options.address}`);
-  console.log(`- DVM @ ${oracle.options.address}`);
+  console.log(`- Voting @ ${oracle.options.address}`);
+  console.log(`- VotingInterface @ ${votingInterface.options.address}`);
   console.log(`- Registry @ ${registry.options.address}`);
   console.log(`- Governor @ ${governor.options.address}`);
   console.log(`- AddressWhitelist @ ${addressWhitelist.options.address}`);
@@ -82,6 +85,7 @@ const setupMainnet = async (web3) => {
   return {
     finder,
     oracle,
+    votingInterface,
     arbitrumParentMessenger,
     governorRootTunnel,
     governorHub,
