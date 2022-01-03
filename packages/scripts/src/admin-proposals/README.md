@@ -37,7 +37,7 @@ Make sure that `NODE_URL_1` and `NODE_URL_137` are set in the environment.
 
 ```sh
 node ./packages/scripts/admin-proposals/collateral.js \
-    --collateral 0x3472a5a71965499acd81997a54bba8d852c6e53d,0x383518188c0c6d7730d91b2c03a03c837814a899,0x875773784af8135ea0ef43b5a374aad105c5d39e,0x6810e776880c02933d47db1b9fc05908e5386b96,,0x0cec1a9154ff802e7934fc916ed7ca50bde6844e,0xad32A8e6220741182940c5aBF610bDE99E737b2D,0x956F47F50A910163D8BF957Cf5846D573E7f87CA,0xc7283b66Eb1EB5FB86327f08e1B5816b0720212B,0xc770eefad204b5180df6a14ee197d99d808ee52d \
+    --ethereum 0x3472a5a71965499acd81997a54bba8d852c6e53d,0x383518188c0c6d7730d91b2c03a03c837814a899,0x875773784af8135ea0ef43b5a374aad105c5d39e,0x6810e776880c02933d47db1b9fc05908e5386b96,,0x0cec1a9154ff802e7934fc916ed7ca50bde6844e,0xad32A8e6220741182940c5aBF610bDE99E737b2D,0x956F47F50A910163D8BF957Cf5846D573E7f87CA,0xc7283b66Eb1EB5FB86327f08e1B5816b0720212B,0xc770eefad204b5180df6a14ee197d99d808ee52d \
     --polygon 0x1fcbe5937b0cc2adf69772d228fa4205acf4d9b2,,,,0x580a84c73811e1839f75d86d75d88cca0c241ff4,,,,, \
     --fee 60,0.8,130,3,500,45,1100,400,800,670 \
     --network mainnet-fork
@@ -53,9 +53,13 @@ node ./packages/scripts/src/admin-proposals/simulateVote.js --network mainnet-fo
 
 ```sh
 node ./packages/scripts/src/admin-proposals/collateral.js \
-    --collateral 0x3472a5a71965499acd81997a54bba8d852c6e53d,0x383518188c0c6d7730d91b2c03a03c837814a899,0x875773784af8135ea0ef43b5a374aad105c5d39e,0x6810e776880c02933d47db1b9fc05908e5386b96,,0x0cec1a9154ff802e7934fc916ed7ca50bde6844e,0xad32A8e6220741182940c5aBF610bDE99E737b2D,0x956F47F50A910163D8BF957Cf5846D573E7f87CA,0xc7283b66Eb1EB5FB86327f08e1B5816b0720212B,0xc770eefad204b5180df6a14ee197d99d808ee52d \
+    --ethereum 0x3472a5a71965499acd81997a54bba8d852c6e53d,0x383518188c0c6d7730d91b2c03a03c837814a899,0x875773784af8135ea0ef43b5a374aad105c5d39e,0x6810e776880c02933d47db1b9fc05908e5386b96,,0x0cec1a9154ff802e7934fc916ed7ca50bde6844e,0xad32A8e6220741182940c5aBF610bDE99E737b2D,0x956F47F50A910163D8BF957Cf5846D573E7f87CA,0xc7283b66Eb1EB5FB86327f08e1B5816b0720212B,0xc770eefad204b5180df6a14ee197d99d808ee52d \
     --polygon 0x1fcbe5937b0cc2adf69772d228fa4205acf4d9b2,,,,0x580a84c73811e1839f75d86d75d88cca0c241ff4,,,,, \
     --fee 60,0.8,130,3,500,45,1100,400,800,670 \
     --verify \
     --network mainnet-fork
 ```
+
+## Running on a public network in production mode
+
+For production, simply run the script with a production network passed to the `--network` flag (along with other params like --keys) like so: `node ... --network mainnet_gckms --keys deployer`.

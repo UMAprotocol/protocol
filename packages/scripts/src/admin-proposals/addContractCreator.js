@@ -1,44 +1,22 @@
 // Description:
-// - Add new Contract Creator on Ethereum and/or Polygon.
+// - Adds new Contract Creator to Registry.
 
 // Run:
-// - For testing, start mainnet fork in one window with `HARDHAT_CHAIN_ID=1 yarn hardhat node --fork <ARCHIVAL_NODE_URL> --no-deploy --port 9545`
-// - Set NODE_URL_1 to mainnet node URL or if using a forked network, http://localhost:9545
-// - (optional, or required if --polygon is not undefined) set NODE_URL_137 to a Polygon mainnet node. This will
-//   be used to query contract data from Polygon when relaying proposals through the GovernorRootTunnel.
-// - (optional, or required if --arbitrum is not undefined) set NODE_URL_42161 to an Arbitrum mainnet node. This will
-//   be used to query contract data from Arbitrum when relaying proposals through the GovernorHub.
-// - Next, open another terminal window and run `./packages/scripts/setupFork.sh` to unlock
-//   accounts on the local node that we'll need to run this script.
+// - Check out README.md in this folder for setup instructions and simulating votes between the Propose and Verify
+//   steps.
 // - Propose: node ./packages/scripts/src/admin-proposals/addContractCreator.js --ethereum 0xabc --polygon 0xdef --network mainnet-fork
-// - Vote Simulate: node ./packages/src/scripts/admin-proposals/simulateVote.js --network mainnet-fork
-// - Verify: node ./packages/scripts/src/admin-proposals/addContractCreator.js --verify --ethereum 0xabc --polygon 0xdef --network mainnet-fork
-// - For production, set the CUSTOM_NODE_URL environment, run the script with a production network passed to the
-//   `--network` flag (along with other params like --keys) like so: `node ... --network mainnet_gckms --keys deployer`
-
-// Customizations:
-// - --polygon param is optional.
-// - --arbitrum param is optional.
-// - --ethereum flag is optional, in which case transactions will only be relayed to other specified networks.
-// - If --verify flag is set, script is assumed to be running after a Vote Simulation and updated contract state is
-// verified.
-
-// Examples:
-// - Add contract creator on Ethereum only:
-//    - `node ./packages/scripts/src/admin-proposals/addContractCreator.js --ethereum 0xabc --network mainnet-fork`
-// - Add contract creator on Polygon only:
-//    - `node ./packages/scripts/src/admin-proposals/addContractCreator.js --polygon 0xabc --network mainnet-fork`
-// - Add contract creator on both:
-//    - `node ./packages/scripts/src/admin-proposals/addContractCreator.js --ethereum 0xabc --polygon 0xdef --network mainnet-fork`
+// - Verify: Add --verify flag to Propose command.
 
 const assert = require("assert");
-const Web3 = require("Web3");
-const { fromWei } = Web3.utils;
 require("dotenv").config();
-const { GasEstimator } = require("@uma/financial-templates-lib");
-const winston = require("winston");
 const { RegistryRolesEnum, getWeb3ByChainId } = require("@uma/common");
-const { setupNetwork, validateNetworks, setupMainnet } = require("./utils");
+const {
+  setupNetwork,
+  validateNetworks,
+  setupMainnet,
+  fundArbitrumParentMessengerForOneTransaction,
+  setupGasEstimator,
+} = require("./utils");
 const { REQUIRED_SIGNER_ADDRESSES } = require("../utils/constants");
 const argv = require("minimist")(process.argv.slice(), {
   string: [
@@ -86,22 +64,7 @@ async function run() {
     console.groupEnd();
   }
 
-  // GasEstimator only needs to be connected to mainnet since we're only deploying contracts to mainnet:
-  const gasEstimator = new GasEstimator(
-    winston.createLogger({ silent: true }),
-    60, // Time between updates.
-    1
-  );
-  await gasEstimator.update();
-  console.log(
-    `⛽️ Current fast gas price for Ethereum: ${fromWei(
-      gasEstimator.getCurrentFastPrice().maxFeePerGas.toString(),
-      "gwei"
-    )} maxFeePerGas and ${fromWei(
-      gasEstimator.getCurrentFastPrice().maxPriorityFeePerGas.toString(),
-      "gwei"
-    )} maxPriorityFeePerGas`
-  );
+  const gasEstimator = await setupGasEstimator();
 
   if (!verify) {
     console.group("\n🌠 Proposing new Admin Proposal");
@@ -186,18 +149,11 @@ async function run() {
           value: 0,
           data: relayGovernanceData,
         });
-
-        // Transaction will fail unless Arbitrum messenger has enough ETH to pay for message:
-        const l1CallValue = await mainnetContracts.arbitrumParentMessenger.methods.getL1CallValue().call();
-        console.log(
-          `Arbitrum xchain messages require that the Arbitrum_ParentMessenger has at least a ${l1CallValue.toString()} ETH balance.`
+        await fundArbitrumParentMessengerForOneTransaction(
+          mainnetContracts.arbitrumParentMessenger,
+          web3Providers[1],
+          REQUIRED_SIGNER_ADDRESSES["deployer"]
         );
-        const sendEthTxn = await web3Providers[1].eth.sendTransaction({
-          from: REQUIRED_SIGNER_ADDRESSES["deployer"],
-          to: mainnetContracts.arbitrumParentMessenger.options.address,
-          value: l1CallValue.toString(),
-        });
-        console.log(`Sent ETH txn: ${sendEthTxn.transactionHash}`);
       } else {
         console.log("- Contract @ ", arbitrum, "is already a contract creator. Nothing to do.");
       }
