@@ -17,6 +17,7 @@ const Finder = getContract("Finder");
 const Voting = getContract("Voting");
 const VotingInterface = getContract("VotingInterface");
 const AddressWhitelist = getContract("AddressWhitelist");
+const IdentifierWhitelist = getContract("IdentifierWhitelist");
 const Store = getContract("Store");
 
 const L2_ADMIN_NETWORKS = [137, 42161];
@@ -41,6 +42,10 @@ const setupNetwork = async (netId) => {
       addressWhitelist: new l2Web3.eth.Contract(
         AddressWhitelist.abi,
         await _getContractAddressByName("AddressWhitelist", netId)
+      ),
+      identifierWhitelist: new l2Web3.eth.Contract(
+        IdentifierWhitelist.abi,
+        await _getContractAddressByName("IdentifierWhitelist", netId)
       ),
       store: new l2Web3.eth.Contract(Store.abi, await _getContractAddressByName("Store", netId)),
     },
@@ -69,6 +74,11 @@ const setupMainnet = async (web3) => {
     AddressWhitelist.abi,
     await _getContractAddressByName("AddressWhitelist", 1)
   );
+  const identifierWhitelist = new web3.eth.Contract(
+    IdentifierWhitelist.abi,
+    await _getContractAddressByName("IdentifierWhitelist", 1)
+  );
+
   const store = new web3.eth.Contract(Store.abi, await _getContractAddressByName("Store", 1));
   console.group("\nℹ️  DVM infrastructure on L1:");
   console.log(`- Finder @ ${finder.options.address}`);
@@ -77,6 +87,7 @@ const setupMainnet = async (web3) => {
   console.log(`- Registry @ ${registry.options.address}`);
   console.log(`- Governor @ ${governor.options.address}`);
   console.log(`- AddressWhitelist @ ${addressWhitelist.options.address}`);
+  console.log(`- IdentifierWhitelist @ ${identifierWhitelist.options.address}`);
   console.log(`- Store @ ${store.options.address}`);
   console.log(`- GovernorHub @ ${governorHub.options.address}`);
   console.log(`- GovernorRootTunnel @ ${governorRootTunnel.options.address}`);
@@ -92,6 +103,7 @@ const setupMainnet = async (web3) => {
     registry,
     governor,
     addressWhitelist,
+    identifierWhitelist,
     store,
   };
 };
