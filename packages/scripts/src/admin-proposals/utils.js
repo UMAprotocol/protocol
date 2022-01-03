@@ -48,6 +48,7 @@ const setupNetwork = async (netId) => {
         await _getContractAddressByName("IdentifierWhitelist", netId)
       ),
       store: new l2Web3.eth.Contract(Store.abi, await _getContractAddressByName("Store", netId)),
+      finder: new l2Web3.eth.Contract(Finder.abi, await _getContractAddressByName("Finder", netId)),
     },
   };
 };

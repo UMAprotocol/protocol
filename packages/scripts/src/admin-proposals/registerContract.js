@@ -1,51 +1,33 @@
 // Description:
-// - Register new contract on Ethereum and/or Polygon that can submit price requests to the DVM.
+// - Register new contract that can submit price requests to the DVM.
 
 // Run:
-// - For testing, start mainnet fork in one window with `yarn hardhat node --fork <ARCHIVAL_NODE_URL> --no-deploy --port 9545`
-// - (optional, or required if --polygon is not undefined) set POLYGON_NODE_URL to a Polygon mainnet node. This will
-//   be used to query contract data from Polygon when relaying proposals through the GovernorRootTunnel.
-// - Next, open another terminal window and run `./packages/scripts/setupFork.sh` to unlock
-//   accounts on the local node that we'll need to run this script.
+// - Check out README.md in this folder for setup instructions and simulating votes between the Propose and Verify
+//   steps.
 // - Propose: node ./packages/scripts/src/admin-proposals/registerContract.js --ethereum 0xabc --polygon 0xdef --network mainnet-fork
-// - Vote Simulate: node ./packages/scripts/src/admin-proposals/simulateVote.js --network mainnet-fork
-// - Verify: node ./packages/scripts/src/admin-proposals/registerContract.js --verify --ethereum 0xabc --polygon 0xdef --network mainnet-fork
-// - For production, set the CUSTOM_NODE_URL environment, run the script with a production network passed to the
-//   `--network` flag (along with other params like --keys) like so: `node ... --network mainnet_gckms --keys deployer`
+// - Verify: Add --verify flag to Propose command.
 
-// Customizations:
-// - --polygon param can be omitted, in which case transactions will only take place on Ethereum.
-// - --ethereum flag can also be omitted, in which case transactions will only be relayed to Polygon
-// - If --verify flag is set, script is assumed to be running after a Vote Simulation and updated contract state is
-// verified.
-// - --finderName <CONTRACT> param can be included which will set the registered contract as the CONTRACT in the finder.
-// for example, adding --finder SkinnyOptimisticOracle will set the registered contract as the "SkinnyOptimisticOracle"
-// in the Finder.
-
-// Examples:
-// - Register contract on Ethereum only:
-//    - `node ./packages/scripts/src/admin-proposals/registerContract.js --ethereum 0xabc --network mainnet-fork`
-// - Register contract on Polygon only:
-//    - `node ./packages/scripts/src/admin-proposals/registerContract.js --polygon 0xabc --network mainnet-fork`
-// - Register contract on both:
-//    - `node ./packages/scripts/src/admin-proposals/registerContract.js --ethereum 0xabc --polygon 0xdef --network mainnet-fork`
-
-const hre = require("hardhat");
-const { getContract } = hre;
 require("dotenv").config();
 const assert = require("assert");
-const { GasEstimator } = require("@uma/financial-templates-lib");
 const Web3 = require("web3");
-const winston = require("winston");
-const { RegistryRolesEnum, interfaceName } = require("@uma/common");
-const { _getContractAddressByName, _setupWeb3 } = require("../utils");
+const { utf8ToHex, toChecksumAddress } = Web3.utils;
+const { getWeb3ByChainId, interfaceName, RegistryRolesEnum } = require("@uma/common");
+const {
+  setupNetwork,
+  validateNetworks,
+  setupMainnet,
+  fundArbitrumParentMessengerForOneTransaction,
+  setupGasEstimator,
+} = require("./utils");
 const { REQUIRED_SIGNER_ADDRESSES } = require("../utils/constants");
 const argv = require("minimist")(process.argv.slice(), {
   string: [
-    // address to register on Ethereum. Required if --polygon is omitted.
+    // address to register on Ethereum.
     "ethereum",
-    // address to register on Polygon. Required if --ethereum is omitted
+    // address to register on Polygon.
     "polygon",
+    // address to register on Arbitrum.
+    "arbitrum",
     // contract name in Finder to set newly registered contract to.
     "finderName",
   ],
@@ -57,94 +39,41 @@ const argv = require("minimist")(process.argv.slice(), {
 });
 
 async function run() {
-  const { ethereum, polygon, finderName, verify } = argv;
-  const { web3, netId } = await _setupWeb3();
+  const { ethereum, polygon, arbitrum, finderName, verify } = argv;
+  if (!(polygon || ethereum || arbitrum)) throw new Error("Must specify either --ethereum, --polygon or --arbitrum");
+
+  // Parse comma-delimited CLI params into arrays
+  const networksToAdministrate = [];
+  if (polygon) networksToAdministrate.push(137);
+  if (arbitrum) networksToAdministrate.push(42161);
+  validateNetworks(networksToAdministrate);
+  let web3Providers = { 1: getWeb3ByChainId(1) }; // netID => Web3
 
   // Verify argv params:
   if (finderName !== undefined) {
     assert(Object.keys(interfaceName).includes(finderName), "finderName must be valid interface name");
   }
 
-  // Contract ABI's
-  const Registry = getContract("Registry");
-  const GovernorRootTunnel = getContract("GovernorRootTunnel");
-  const GovernorChildTunnel = getContract("GovernorChildTunnel");
-  const Governor = getContract("Governor");
-  const Finder = getContract("Finder");
-  const Voting = getContract("Voting");
+  // Construct all mainnet contract instances we'll need using the mainnet web3 provider.
+  const mainnetContracts = await setupMainnet(web3Providers[1]);
 
-  // Parse comma-delimited CLI params into arrays
-  let ethereumContractToRegister = ethereum;
-  let polygonContractToRegister = polygon;
-  let crossChainWeb3;
-
-  // If polygon address is specified, initialize Governance relay infrastructure contracts
-  let polygon_netId;
-  let polygon_registry;
-  let polygon_governor;
-  let polygon_finder;
-  if (!(polygonContractToRegister || ethereumContractToRegister))
-    throw new Error("Must specify either --ethereum or --polygon or both");
-  else if (polygonContractToRegister) {
-    if (!process.env.POLYGON_NODE_URL)
-      throw new Error("If --polygon is defined, you must set a POLYGON_NODE_URL environment variable");
-    crossChainWeb3 = new Web3(process.env.POLYGON_NODE_URL);
-    polygon_netId = await crossChainWeb3.eth.net.getId();
-    polygon_registry = new crossChainWeb3.eth.Contract(
-      Registry.abi,
-      await _getContractAddressByName("Registry", polygon_netId)
+  // Store contract instances for specified L2 networks
+  let contractsByNetId = {}; // netId => contracts
+  for (let netId of networksToAdministrate) {
+    const networkData = await setupNetwork(netId);
+    web3Providers[netId] = networkData.web3;
+    contractsByNetId[netId] = networkData.contracts;
+    console.group(`\nℹ️  Relayer infrastructure for network ${netId}:`);
+    console.log(`- Registry @ ${contractsByNetId[netId].registry.options.address}`);
+    console.log(
+      `- ${netId === 137 ? "GovernorRootTunnel" : "GovernorHub"} @ ${
+        contractsByNetId[netId].l1Governor.options.address
+      }`
     );
-    polygon_governor = new crossChainWeb3.eth.Contract(
-      GovernorChildTunnel.abi,
-      await _getContractAddressByName("GovernorChildTunnel", polygon_netId)
-    );
-    polygon_finder = new crossChainWeb3.eth.Contract(
-      Finder.abi,
-      await _getContractAddressByName("Finder", polygon_netId)
-    );
-  }
-
-  // Initialize Eth contracts by grabbing deployed addresses from networks/1.json file.
-  const registry = new web3.eth.Contract(Registry.abi, await _getContractAddressByName("Registry", netId));
-  const gasEstimator = new GasEstimator(
-    winston.createLogger({ silent: true }),
-    60, // Time between updates.
-    netId
-  );
-  await gasEstimator.update();
-  console.log(
-    `⛽️ Current fast gas price for Ethereum: ${web3.utils.fromWei(
-      gasEstimator.getCurrentFastPrice().maxFeePerGas.toString(),
-      "gwei"
-    )} maxFeePerGas and ${web3.utils.fromWei(
-      gasEstimator.getCurrentFastPrice().maxPriorityFeePerGas.toString(),
-      "gwei"
-    )} maxPriorityFeePerGas`
-  );
-  const governor = new web3.eth.Contract(Governor.abi, await _getContractAddressByName("Governor", netId));
-  const governorRootTunnel = new web3.eth.Contract(
-    GovernorRootTunnel.abi,
-    await _getContractAddressByName("GovernorRootTunnel", netId)
-  );
-  const finder = new web3.eth.Contract(Finder.abi, await _getContractAddressByName("Finder", netId));
-  const oracleAddress = await finder.methods
-    .getImplementationAddress(web3.utils.utf8ToHex(interfaceName.Oracle))
-    .call();
-  const oracle = new web3.eth.Contract(Voting.abi, oracleAddress);
-
-  if (polygonContractToRegister) {
-    console.group("\nℹ️  Relayer infrastructure for Polygon transactions:");
-    console.log(`- Finder @ ${polygon_finder.options.address}`);
-    console.log(`- Registry @ ${polygon_registry.options.address}`);
-    console.log(`- GovernorRootTunnel @ ${governorRootTunnel.options.address}`);
-    console.log(`- GovernorChildTunnel @ ${polygon_governor.options.address}`);
     console.groupEnd();
   }
-  console.group("\nℹ️  DVM infrastructure for Ethereum transactions:");
-  console.log(`- Finder @ ${finder.options.address}`);
-  console.log(`- Registry @ ${registry.options.address}`);
-  console.log(`- Governor @ ${governor.options.address}`);
-  console.groupEnd();
+
+  const gasEstimator = await setupGasEstimator();
 
   if (!verify) {
     console.group("\n🌠 Proposing new Admin Proposal");
@@ -157,108 +86,242 @@ async function run() {
     console.log(
       "    - https://github.com/UMAprotocol/protocol/blob/349401a869e89f9b5583d34c1f282407dca021ac/packages/core/test/polygon/e2e.js#L221"
     );
+    console.log(
+      "- 🔴 = Transactions to be submitted to the Arbitrum contracts are relayed via the GovernorHub on Ethereum. Look at this test for an example:"
+    );
+    console.log(
+      "    - https://github.com/UMAprotocol/protocol/blob/0d3cf208eaf390198400f6d69193885f45c1e90c/packages/core/test/cross-chain-oracle/chain-adapters/Arbitrum_ParentMessenger.js#L253"
+    );
     console.log("- 🟢 = Transactions to be submitted directly to Ethereum contracts.");
     console.groupEnd();
-    if (ethereumContractToRegister) {
-      console.group(`\n🟢 Registering new contract @ ${ethereumContractToRegister}`);
-      if (!(await registry.methods.isContractRegistered(ethereumContractToRegister).call())) {
+    if (ethereum) {
+      console.group(`\n🟢 Registering new contract @ ${ethereum}`);
+      if (!(await mainnetContracts.registry.methods.isContractRegistered(ethereum).call())) {
         // 1. Temporarily add the Governor as a contract creator.
-        const addMemberData = registry.methods
-          .addMember(RegistryRolesEnum.CONTRACT_CREATOR, governor.options.address)
+        const addMemberData = mainnetContracts.registry.methods
+          .addMember(RegistryRolesEnum.CONTRACT_CREATOR, mainnetContracts.governor.options.address)
           .encodeABI();
         console.log("- addMemberData", addMemberData);
-        adminProposalTransactions.push({ to: registry.options.address, value: 0, data: addMemberData });
+        adminProposalTransactions.push({
+          to: mainnetContracts.registry.options.address,
+          value: 0,
+          data: addMemberData,
+        });
 
         // 2. Register the contract as a verified contract.
-        const registerContractData = registry.methods.registerContract([], ethereumContractToRegister).encodeABI();
+        const registerContractData = mainnetContracts.registry.methods.registerContract([], ethereum).encodeABI();
         console.log("- registerContractData", registerContractData);
-        adminProposalTransactions.push({ to: registry.options.address, value: 0, data: registerContractData });
+        adminProposalTransactions.push({
+          to: mainnetContracts.registry.options.address,
+          value: 0,
+          data: registerContractData,
+        });
 
         // 3. Remove the Governor from being a contract creator.
-        const removeMemberData = registry.methods
-          .removeMember(RegistryRolesEnum.CONTRACT_CREATOR, governor.options.address)
+        const removeMemberData = mainnetContracts.registry.methods
+          .removeMember(RegistryRolesEnum.CONTRACT_CREATOR, mainnetContracts.governor.options.address)
           .encodeABI();
         console.log("- removeMemberData", removeMemberData);
-        adminProposalTransactions.push({ to: registry.options.address, value: 0, data: removeMemberData });
+        adminProposalTransactions.push({
+          to: mainnetContracts.registry.options.address,
+          value: 0,
+          data: removeMemberData,
+        });
 
         // 4. Set contract in finder.
         if (finderName !== undefined) {
-          const setFinderData = finder.methods
-            .changeImplementationAddress(Web3.utils.utf8ToHex(interfaceName[finderName]), ethereumContractToRegister)
+          const setFinderData = mainnetContracts.finder.methods
+            .changeImplementationAddress(utf8ToHex(interfaceName[finderName]), ethereum)
             .encodeABI();
           console.log("- changeImplementationAddressData", setFinderData);
-          adminProposalTransactions.push({ to: finder.options.address, value: 0, data: setFinderData });
+          adminProposalTransactions.push({
+            to: mainnetContracts.finder.options.address,
+            value: 0,
+            data: setFinderData,
+          });
         }
       } else {
-        console.log("- Contract @ ", ethereumContractToRegister, "is already registered. Nothing to do.");
+        console.log("- Contract @ ", ethereum, "is already registered. Nothing to do.");
       }
 
       console.groupEnd();
     }
 
-    if (polygonContractToRegister) {
-      console.group(`\n🟣 (Polygon) Registering new contract @ ${polygonContractToRegister}`);
+    if (polygon) {
+      console.group(`\n🟣 (Polygon) Registering new contract @ ${polygon}`);
 
-      if (!(await polygon_registry.methods.isContractRegistered(polygonContractToRegister).call())) {
+      if (!(await contractsByNetId[137].registry.methods.isContractRegistered(polygon).call())) {
         // 1. Temporarily add the GovernorChildTunnel as a contract creator.
-        const addMemberData = polygon_registry.methods
-          .addMember(RegistryRolesEnum.CONTRACT_CREATOR, polygon_governor.options.address)
+        const addMemberData = contractsByNetId[137].registry.methods
+          .addMember(RegistryRolesEnum.CONTRACT_CREATOR, contractsByNetId[137].l1Governor.options.address)
           .encodeABI();
         console.log("- addMemberData", addMemberData);
-        let relayGovernanceData = governorRootTunnel.methods
-          .relayGovernance(polygon_registry.options.address, addMemberData)
+        let relayGovernanceData = contractsByNetId[137].l1Governor.methods
+          .relayGovernance(contractsByNetId[137].registry.options.address, addMemberData)
           .encodeABI();
         console.log("- relayGovernanceData", relayGovernanceData);
-        adminProposalTransactions.push({ to: governorRootTunnel.options.address, value: 0, data: relayGovernanceData });
+        adminProposalTransactions.push({
+          to: contractsByNetId[137].l1Governor.options.address,
+          value: 0,
+          data: relayGovernanceData,
+        });
 
         // 2. Register the contract as a verified contract.
-        const registerContractData = polygon_registry.methods
-          .registerContract([], polygonContractToRegister)
-          .encodeABI();
+        const registerContractData = contractsByNetId[137].registry.methods.registerContract([], polygon).encodeABI();
         console.log("- registerContractData", registerContractData);
-        relayGovernanceData = governorRootTunnel.methods
-          .relayGovernance(polygon_registry.options.address, registerContractData)
+        relayGovernanceData = contractsByNetId[137].l1Governor.methods
+          .relayGovernance(contractsByNetId[137].registry.options.address, registerContractData)
           .encodeABI();
         console.log("- relayGovernanceData", relayGovernanceData);
-        adminProposalTransactions.push({ to: governorRootTunnel.options.address, value: 0, data: relayGovernanceData });
+        adminProposalTransactions.push({
+          to: contractsByNetId[137].l1Governor.options.address,
+          value: 0,
+          data: relayGovernanceData,
+        });
 
         // 3. Remove the GovernorChildTunnel from being a contract creator.
-        const removeMemberData = polygon_registry.methods
-          .removeMember(RegistryRolesEnum.CONTRACT_CREATOR, polygon_governor.options.address)
+        const removeMemberData = contractsByNetId[137].registry.methods
+          .removeMember(RegistryRolesEnum.CONTRACT_CREATOR, contractsByNetId[137].l1Governor.options.address)
           .encodeABI();
         console.log("- removeMemberData", removeMemberData);
-        relayGovernanceData = governorRootTunnel.methods
-          .relayGovernance(polygon_registry.options.address, removeMemberData)
+        relayGovernanceData = contractsByNetId[137].l1Governor.methods
+          .relayGovernance(contractsByNetId[137].registry.options.address, removeMemberData)
           .encodeABI();
         console.log("- relayGovernanceData", relayGovernanceData);
-        adminProposalTransactions.push({ to: governorRootTunnel.options.address, value: 0, data: relayGovernanceData });
+        adminProposalTransactions.push({
+          to: contractsByNetId[137].l1Governor.options.address,
+          value: 0,
+          data: relayGovernanceData,
+        });
 
         // 4. Set contract in finder.
         if (finderName !== undefined) {
-          const setFinderData = polygon_finder.methods
-            .changeImplementationAddress(Web3.utils.utf8ToHex(interfaceName[finderName]), polygonContractToRegister)
+          const setFinderData = contractsByNetId[137].finder.methods
+            .changeImplementationAddress(utf8ToHex(interfaceName[finderName]), polygon)
             .encodeABI();
           console.log("- changeImplementationAddressData", setFinderData);
-          adminProposalTransactions.push({ to: polygon_finder.options.address, value: 0, data: setFinderData });
+          relayGovernanceData = contractsByNetId[137].l1Governor.methods
+            .relayGovernance(contractsByNetId[137].finder.options.address, setFinderData)
+            .encodeABI();
+          console.log("- relayGovernanceData", relayGovernanceData);
+          adminProposalTransactions.push({
+            to: contractsByNetId[137].l1Governor.options.address,
+            value: 0,
+            data: relayGovernanceData,
+          });
         }
       } else {
-        console.log("- Contract @ ", polygonContractToRegister, "is already registered. Nothing to do.");
+        console.log("- Contract @ ", polygon, "is already registered. Nothing to do.");
+      }
+
+      console.groupEnd();
+    }
+
+    if (arbitrum) {
+      console.group(`\n🔴 (Arbitrum) Registering new contract @ ${arbitrum}`);
+
+      if (!(await contractsByNetId[42161].registry.methods.isContractRegistered(arbitrum).call())) {
+        // 1. Temporarily add the GovernorChildTunnel as a contract creator.
+        const addMemberData = contractsByNetId[42161].registry.methods
+          .addMember(RegistryRolesEnum.CONTRACT_CREATOR, contractsByNetId[42161].l1Governor.options.address)
+          .encodeABI();
+        console.log("- addMemberData", addMemberData);
+        let relayGovernanceData = contractsByNetId[42161].l1Governor.methods
+          .relayGovernance(42161, [{ to: contractsByNetId[42161].registry.options.address, data: addMemberData }])
+          .encodeABI();
+        console.log("- relayGovernanceData", relayGovernanceData);
+        adminProposalTransactions.push({
+          to: contractsByNetId[42161].l1Governor.options.address,
+          value: 0,
+          data: relayGovernanceData,
+        });
+        await fundArbitrumParentMessengerForOneTransaction(
+          mainnetContracts.arbitrumParentMessenger,
+          web3Providers[1],
+          REQUIRED_SIGNER_ADDRESSES["deployer"]
+        );
+
+        // 2. Register the contract as a verified contract.
+        const registerContractData = contractsByNetId[42161].registry.methods
+          .registerContract([], arbitrum)
+          .encodeABI();
+        console.log("- registerContractData", registerContractData);
+        relayGovernanceData = contractsByNetId[42161].l1Governor.methods
+          .relayGovernance(42161, [
+            { to: contractsByNetId[42161].registry.options.address, data: registerContractData },
+          ])
+          .encodeABI();
+        console.log("- relayGovernanceData", relayGovernanceData);
+        adminProposalTransactions.push({
+          to: contractsByNetId[42161].l1Governor.options.address,
+          value: 0,
+          data: relayGovernanceData,
+        });
+        await fundArbitrumParentMessengerForOneTransaction(
+          mainnetContracts.arbitrumParentMessenger,
+          web3Providers[1],
+          REQUIRED_SIGNER_ADDRESSES["deployer"]
+        );
+
+        // 3. Remove the GovernorChildTunnel from being a contract creator.
+        const removeMemberData = contractsByNetId[42161].registry.methods
+          .removeMember(RegistryRolesEnum.CONTRACT_CREATOR, contractsByNetId[42161].l1Governor.options.address)
+          .encodeABI();
+        console.log("- removeMemberData", removeMemberData);
+        relayGovernanceData = contractsByNetId[42161].l1Governor.methods
+          .relayGovernance(42161, [{ to: contractsByNetId[42161].registry.options.address, data: removeMemberData }])
+          .encodeABI();
+        console.log("- relayGovernanceData", relayGovernanceData);
+        adminProposalTransactions.push({
+          to: contractsByNetId[42161].l1Governor.options.address,
+          value: 0,
+          data: relayGovernanceData,
+        });
+        await fundArbitrumParentMessengerForOneTransaction(
+          mainnetContracts.arbitrumParentMessenger,
+          web3Providers[1],
+          REQUIRED_SIGNER_ADDRESSES["deployer"]
+        );
+
+        // 4. Set contract in finder.
+        if (finderName !== undefined) {
+          const setFinderData = contractsByNetId[42161].finder.methods
+            .changeImplementationAddress(utf8ToHex(interfaceName[finderName]), arbitrum)
+            .encodeABI();
+          console.log("- changeImplementationAddressData", setFinderData);
+          relayGovernanceData = contractsByNetId[42161].l1Governor.methods
+            .relayGovernance(42161, [{ to: contractsByNetId[42161].finder.options.address, data: setFinderData }])
+            .encodeABI();
+          console.log("- relayGovernanceData", relayGovernanceData);
+          adminProposalTransactions.push({
+            to: contractsByNetId[42161].l1Governor.options.address,
+            value: 0,
+            data: relayGovernanceData,
+          });
+          await fundArbitrumParentMessengerForOneTransaction(
+            mainnetContracts.arbitrumParentMessenger,
+            web3Providers[1],
+            REQUIRED_SIGNER_ADDRESSES["deployer"]
+          );
+        }
+      } else {
+        console.log("- Contract @ ", arbitrum, "is already registered. Nothing to do.");
       }
 
       console.groupEnd();
     }
 
     // Send the proposal
-    console.group(`\n📨 Sending to governor @ ${governor.options.address}`);
+    console.group(`\n📨 Sending to governor @ ${mainnetContracts.governor.options.address}`);
     console.log(`- Admin proposal contains ${adminProposalTransactions.length} transactions`);
     if (adminProposalTransactions.length > 0) {
-      const txn = await governor.methods
+      const txn = await mainnetContracts.governor.methods
         .propose(adminProposalTransactions)
         .send({ from: REQUIRED_SIGNER_ADDRESSES["deployer"], ...gasEstimator.getCurrentFastPrice() });
       console.log("- Transaction: ", txn?.transactionHash);
 
       // Print out details about new Admin proposal
-      const priceRequests = await oracle.getPastEvents("PriceRequestAdded");
+      const priceRequests = await mainnetContracts.oracle.getPastEvents("PriceRequestAdded");
       const newAdminRequest = priceRequests[priceRequests.length - 1];
       console.log(
         `- New admin request {identifier: ${
@@ -271,40 +334,40 @@ async function run() {
     console.groupEnd();
   } else {
     console.group("\n🔎 Verifying execution of Admin Proposal");
-    if (ethereumContractToRegister) {
+    if (ethereum) {
       assert(
-        await registry.methods.isContractRegistered(ethereumContractToRegister).call(),
+        await mainnetContracts.registry.methods.isContractRegistered(ethereum).call(),
         "Contract is not registered"
       );
       assert(
-        !(await registry.methods.holdsRole(RegistryRolesEnum.CONTRACT_CREATOR, governor.options.address).call()),
+        !(await mainnetContracts.registry.methods
+          .holdsRole(RegistryRolesEnum.CONTRACT_CREATOR, mainnetContracts.governor.options.address)
+          .call()),
         "Governor still holds creator role"
       );
       if (finderName !== undefined) {
         assert.equal(
-          await finder.methods.getImplementationAddress(Web3.utils.utf8ToHex(interfaceName[finderName])).call(),
-          web3.utils.toChecksumAddress(ethereumContractToRegister),
+          await mainnetContracts.finder.methods.getImplementationAddress(utf8ToHex(interfaceName[finderName])).call(),
+          toChecksumAddress(ethereum),
           "Finder contract not set"
         );
       }
-      console.log(`- Contract @ ${ethereumContractToRegister} is registered on Ethereum`);
+      console.log(`- Contract @ ${ethereum} is registered on Ethereum`);
     }
 
-    if (polygonContractToRegister) {
-      if (!(await polygon_registry.methods.isContractRegistered(polygonContractToRegister).call())) {
-        const addMemberData = polygon_registry.methods
-          .addMember(RegistryRolesEnum.CONTRACT_CREATOR, polygon_governor.options.address)
+    if (polygon) {
+      if (!(await contractsByNetId[137].registry.methods.isContractRegistered(polygon).call())) {
+        const addMemberData = contractsByNetId[137].registry.methods
+          .addMember(RegistryRolesEnum.CONTRACT_CREATOR, contractsByNetId[137].l1Governor.options.address)
           .encodeABI();
-        const registerContractData = polygon_registry.methods
-          .registerContract([], polygonContractToRegister)
+        const registerContractData = contractsByNetId[137].registry.methods.registerContract([], polygon).encodeABI();
+        const removeMemberData = contractsByNetId[137].registry.methods
+          .removeMember(RegistryRolesEnum.CONTRACT_CREATOR, contractsByNetId[137].l1Governor.options.address)
           .encodeABI();
-        const removeMemberData = polygon_registry.methods
-          .removeMember(RegistryRolesEnum.CONTRACT_CREATOR, polygon_governor.options.address)
-          .encodeABI();
-        const relayedRegistryTransactions = await governorRootTunnel.getPastEvents("RelayedGovernanceRequest", {
-          filter: { to: polygon_registry.options.address },
-          fromBlock: 0,
-        });
+        const relayedRegistryTransactions = await contractsByNetId[137].l1Governor.getPastEvents(
+          "RelayedGovernanceRequest",
+          { filter: { to: contractsByNetId[137].registry.options.address }, fromBlock: 0 }
+        );
         const relayedRegisterContractEvent = relayedRegistryTransactions.find(
           (e) => e.returnValues.data === registerContractData
         );
@@ -312,38 +375,120 @@ async function run() {
         // governance transactions could have been executed many blocks before and after the registerContract
         // transaction respectively. For now, we'll make the loose assumption that they were executed within a
         // reasonable range of blocks, which will be true when testing against a Mainnet fork.
-        const beforeRelayedRegistryTransactions = await governorRootTunnel.getPastEvents("RelayedGovernanceRequest", {
-          filter: { to: polygon_registry.options.address },
-          fromBlock: relayedRegisterContractEvent.blockNumber - 1,
-          toBlock: relayedRegisterContractEvent.blockNumber,
-        });
+        const beforeRelayedRegistryTransactions = await contractsByNetId[137].l1Governor.getPastEvents(
+          "RelayedGovernanceRequest",
+          {
+            filter: { to: contractsByNetId[137].registry.options.address },
+            fromBlock: relayedRegisterContractEvent.blockNumber - 1,
+            toBlock: relayedRegisterContractEvent.blockNumber,
+          }
+        );
         assert(
           beforeRelayedRegistryTransactions.find((e) => e.returnValues.data === addMemberData),
           "Could not find RelayedGovernanceRequest matching expected relayed addMemberData transaction"
         );
-        const afterRelayedRegistryTransactions = await governorRootTunnel.getPastEvents("RelayedGovernanceRequest", {
-          filter: { to: polygon_registry.options.address },
-          fromBlock: relayedRegisterContractEvent.blockNumber,
-          toBlock: relayedRegisterContractEvent.blockNumber + 1,
-        });
+        const afterRelayedRegistryTransactions = await contractsByNetId[137].l1Governor.getPastEvents(
+          "RelayedGovernanceRequest",
+          {
+            filter: { to: contractsByNetId[137].registry.options.address },
+            fromBlock: relayedRegisterContractEvent.blockNumber,
+            toBlock: relayedRegisterContractEvent.blockNumber + 1,
+          }
+        );
         assert(
           afterRelayedRegistryTransactions.find((e) => e.returnValues.data === removeMemberData),
           "Could not find RelayedGovernanceRequest matching expected relayed removeMemberData transaction"
         );
         if (finderName !== undefined) {
+          const setFinderData = contractsByNetId[137].finder.methods
+            .changeImplementationAddress(utf8ToHex(interfaceName[finderName]), polygon)
+            .encodeABI();
+          const relayedFinderTransactions = await contractsByNetId[137].l1Governor.getPastEvents(
+            "RelayedGovernanceRequest",
+            { filter: { to: contractsByNetId[137].finder.options.address }, fromBlock: 0 }
+          );
+          assert(
+            relayedFinderTransactions.find((e) => e.returnValues.data === setFinderData),
+            "Could not find RelayedGovernanceRequest matching expected relayed setFinderData transaction"
+          );
+        }
+        console.log(
+          `- GovernorRootTunnel correctly emitted events to registry ${contractsByNetId[137].registry.options.address} preceded and followed by addMember and removeMember respectively`
+        );
+      } else {
+        console.log("- Contract @ ", polygon, "is already registered on Polygon. Nothing to check.");
+      }
+    }
+
+    if (arbitrum) {
+      if (!(await contractsByNetId[42161].registry.methods.isContractRegistered(arbitrum).call())) {
+        const addMemberData = contractsByNetId[42161].registry.methods
+          .addMember(RegistryRolesEnum.CONTRACT_CREATOR, contractsByNetId[42161].l1Governor.options.address)
+          .encodeABI();
+        const registerContractData = contractsByNetId[42161].registry.methods
+          .registerContract([], arbitrum)
+          .encodeABI();
+        const removeMemberData = contractsByNetId[42161].registry.methods
+          .removeMember(RegistryRolesEnum.CONTRACT_CREATOR, contractsByNetId[42161].l1Governor.options.address)
+          .encodeABI();
+        const relayedTransactions = await contractsByNetId[42161].l1Governor.getPastEvents("RelayedGovernanceRequest", {
+          filter: { chainId: "42161", messenger: mainnetContracts.arbitrumParentMessenger.options.address },
+          fromBlock: 0,
+        });
+        const relayedRegisterContractEvent = relayedTransactions.find(
+          (e) =>
+            e.returnValues.calls ===
+            [{ to: contractsByNetId[42161].registry.options.address, data: registerContractData }]
+        );
+        // It's hard to test whether the addMember and removeMember transactions were relayed as well, since those
+        // governance transactions could have been executed many blocks before and after the registerContract
+        // transaction respectively. For now, we'll make the loose assumption that they were executed within a
+        // reasonable range of blocks, which will be true when testing against a Mainnet fork.
+        const beforeRelayedRegistryTransactions = await contractsByNetId[42161].l1Governor.getPastEvents(
+          "RelayedGovernanceRequest",
+          {
+            filter: { chainId: "42161", messenger: mainnetContracts.arbitrumParentMessenger.options.address },
+            fromBlock: relayedRegisterContractEvent.blockNumber - 1,
+            toBlock: relayedRegisterContractEvent.blockNumber,
+          }
+        );
+        assert(
+          beforeRelayedRegistryTransactions.find(
+            (e) =>
+              e.returnValues.calls === [{ to: contractsByNetId[42161].registry.options.address, data: addMemberData }]
+          ),
+          "Could not find RelayedGovernanceRequest matching expected relayed addMemberData transaction"
+        );
+        const afterRelayedRegistryTransactions = await contractsByNetId[42161].l1Governor.getPastEvents(
+          "RelayedGovernanceRequest",
+          {
+            filter: { chainId: "42161", messenger: mainnetContracts.arbitrumParentMessenger.options.address },
+            fromBlock: relayedRegisterContractEvent.blockNumber,
+            toBlock: relayedRegisterContractEvent.blockNumber + 1,
+          }
+        );
+        assert(
+          afterRelayedRegistryTransactions.find(
+            (e) =>
+              e.returnValues.calls ===
+              [{ to: contractsByNetId[42161].registry.options.address, data: removeMemberData }]
+          ),
+          "Could not find RelayedGovernanceRequest matching expected relayed removeMemberData transaction"
+        );
+        if (finderName !== undefined) {
           assert.equal(
-            await polygon_finder.methods
-              .getImplementationAddress(Web3.utils.utf8ToHex(interfaceName[finderName]))
+            await contractsByNetId[42161].finder.methods
+              .getImplementationAddress(utf8ToHex(interfaceName[finderName]))
               .call(),
-            web3.utils.toChecksumAddress(polygonContractToRegister),
+            toChecksumAddress(arbitrum),
             "Finder contract not set"
           );
         }
         console.log(
-          `- GovernorRootTunnel correctly emitted events to registry ${polygon_registry.options.address} preceded and followed by addMember and removeMember respectively`
+          `- GovernorRootTunnel correctly emitted events to registry ${contractsByNetId[42161].registry.options.address} preceded and followed by addMember and removeMember respectively`
         );
       } else {
-        console.log("- Contract @ ", polygonContractToRegister, "is already registered on Polygon. Nothing to check.");
+        console.log("- Contract @ ", arbitrum, "is already registered on Arbitrum. Nothing to check.");
       }
     }
   }
