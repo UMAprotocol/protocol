@@ -293,7 +293,7 @@ describe("Relayer.ts", function () {
 
       // a) Dont add any tokens to the relayer. The relayer does not have enough to do any action and should do nothing.
       assert.equal(
-        await relayer.shouldRelay(deposit, clientRelayState, toBN(defaultRealizedLpFeePct), false),
+        (await relayer.shouldRelay(deposit, clientRelayState, toBN(defaultRealizedLpFeePct), false)).relaySubmitType,
         RelaySubmitType.Ignore
       );
 
@@ -303,14 +303,14 @@ describe("Relayer.ts", function () {
       await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Relayer });
       clientRelayState = ClientRelayState.Finalized;
       assert.equal(
-        await relayer.shouldRelay(deposit, clientRelayState, toBN(defaultRealizedLpFeePct), false),
+        (await relayer.shouldRelay(deposit, clientRelayState, toBN(defaultRealizedLpFeePct), false)).relaySubmitType,
         RelaySubmitType.Ignore
       );
 
       // c) Relay is pending and already spedup
       clientRelayState = ClientRelayState.Pending;
       assert.equal(
-        await relayer.shouldRelay(deposit, clientRelayState, toBN(defaultRealizedLpFeePct), true),
+        (await relayer.shouldRelay(deposit, clientRelayState, toBN(defaultRealizedLpFeePct), true)).relaySubmitType,
         RelaySubmitType.Ignore
       );
     });
@@ -324,7 +324,7 @@ describe("Relayer.ts", function () {
       clientRelayState = ClientRelayState.Uninitialized;
       deposit.instantRelayFeePct = "0";
       assert.equal(
-        await relayer.shouldRelay(deposit, clientRelayState, toBN(defaultRealizedLpFeePct), false),
+        (await relayer.shouldRelay(deposit, clientRelayState, toBN(defaultRealizedLpFeePct), false)).relaySubmitType,
         RelaySubmitType.Slow
       );
 
@@ -334,14 +334,14 @@ describe("Relayer.ts", function () {
       // even if the relay is instantly profitable the relayer should choose to slow relay as it's all it can afford.
       deposit.instantRelayFeePct = toWei("0.05");
       assert.equal(
-        await relayer.shouldRelay(deposit, clientRelayState, toBN(defaultRealizedLpFeePct), false),
+        (await relayer.shouldRelay(deposit, clientRelayState, toBN(defaultRealizedLpFeePct), false)).relaySubmitType,
         RelaySubmitType.Slow
       );
 
       // b) If the relayer is sent more tokens and instantRelayFeePct is anything greater than zero with the relay this.state.// set to any then the relayer should not propose a slow relay.
       await l1Token.methods.mint(l1Relayer, toBN(depositAmount).muln(2)).send({ from: l1Owner });
       assert.notEqual(
-        await relayer.shouldRelay(deposit, clientRelayState, toBN(defaultRealizedLpFeePct), false),
+        (await relayer.shouldRelay(deposit, clientRelayState, toBN(defaultRealizedLpFeePct), false)).relaySubmitType,
         RelaySubmitType.Slow
       );
     });
@@ -356,7 +356,7 @@ describe("Relayer.ts", function () {
       await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Relayer });
       clientRelayState = ClientRelayState.Uninitialized;
       assert.equal(
-        await relayer.shouldRelay(deposit, clientRelayState, toBN(defaultRealizedLpFeePct), false),
+        (await relayer.shouldRelay(deposit, clientRelayState, toBN(defaultRealizedLpFeePct), false)).relaySubmitType,
         RelaySubmitType.Instant
       );
 
@@ -364,14 +364,14 @@ describe("Relayer.ts", function () {
 
       // a) There already exists an instant relayer for this relay.
       assert.notEqual(
-        await relayer.shouldRelay(deposit, clientRelayState, toBN(defaultRealizedLpFeePct), true),
+        (await relayer.shouldRelay(deposit, clientRelayState, toBN(defaultRealizedLpFeePct), true)).relaySubmitType,
         RelaySubmitType.Instant
       );
 
       // b) ClientRelayState set to SpeedUpOnly
       clientRelayState = ClientRelayState.Pending;
       assert.notEqual(
-        await relayer.shouldRelay(deposit, clientRelayState, toBN(defaultRealizedLpFeePct), false),
+        (await relayer.shouldRelay(deposit, clientRelayState, toBN(defaultRealizedLpFeePct), false)).relaySubmitType,
         RelaySubmitType.Instant
       );
 
@@ -379,7 +379,7 @@ describe("Relayer.ts", function () {
       clientRelayState = ClientRelayState.Uninitialized;
       deposit.instantRelayFeePct = "0";
       assert.notEqual(
-        await relayer.shouldRelay(deposit, clientRelayState, toBN(defaultRealizedLpFeePct), false),
+        (await relayer.shouldRelay(deposit, clientRelayState, toBN(defaultRealizedLpFeePct), false)).relaySubmitType,
         RelaySubmitType.Instant
       );
 
@@ -387,7 +387,7 @@ describe("Relayer.ts", function () {
       deposit.instantRelayFeePct = defaultInstantRelayFeePct;
       await l1Token.methods.transfer(l1Owner, toBN(depositAmount).muln(1.5)).send({ from: l1Relayer });
       assert.notEqual(
-        await relayer.shouldRelay(deposit, clientRelayState, toBN(defaultRealizedLpFeePct), false),
+        (await relayer.shouldRelay(deposit, clientRelayState, toBN(defaultRealizedLpFeePct), false)).relaySubmitType,
         RelaySubmitType.Instant
       );
     });
@@ -399,7 +399,7 @@ describe("Relayer.ts", function () {
       await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Relayer });
       clientRelayState = ClientRelayState.Pending;
       assert.equal(
-        await relayer.shouldRelay(deposit, clientRelayState, toBN(defaultRealizedLpFeePct), false),
+        (await relayer.shouldRelay(deposit, clientRelayState, toBN(defaultRealizedLpFeePct), false)).relaySubmitType,
         RelaySubmitType.SpeedUp
       );
 
@@ -408,7 +408,7 @@ describe("Relayer.ts", function () {
       // a) not in SpeedUpOnly State
       clientRelayState = ClientRelayState.Uninitialized;
       assert.notEqual(
-        await relayer.shouldRelay(deposit, clientRelayState, toBN(defaultRealizedLpFeePct), false),
+        (await relayer.shouldRelay(deposit, clientRelayState, toBN(defaultRealizedLpFeePct), false)).relaySubmitType,
         RelaySubmitType.SpeedUp
       );
 
@@ -416,7 +416,7 @@ describe("Relayer.ts", function () {
       clientRelayState = ClientRelayState.Pending;
       await l1Token.methods.transfer(l1Owner, toBN(depositAmount).muln(1.5)).send({ from: l1Relayer });
       assert.notEqual(
-        await relayer.shouldRelay(deposit, clientRelayState, toBN(defaultRealizedLpFeePct), false),
+        (await relayer.shouldRelay(deposit, clientRelayState, toBN(defaultRealizedLpFeePct), false)).relaySubmitType,
         RelaySubmitType.SpeedUp
       );
     });

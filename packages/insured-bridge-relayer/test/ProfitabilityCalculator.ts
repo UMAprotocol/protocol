@@ -1,7 +1,7 @@
 import winston from "winston";
 import sinon from "sinon";
 import Web3 from "web3";
-const { toWei, toBN, toChecksumAddress, randomHex } = Web3.utils;
+const { toWei, fromWei, toBN, toChecksumAddress, randomHex } = Web3.utils;
 const toBNWei = (number: string | number) => toBN(toWei(number.toString()).toString());
 
 const { ZERO_ADDRESS } = require("@uma/common");
@@ -10,6 +10,8 @@ const { across } = require("@uma/sdk");
 import { SpyTransport, lastSpyLogIncludes } from "@uma/financial-templates-lib";
 
 import { assert } from "chai";
+
+import type { BN } from "@uma/common";
 
 // Tested module
 import { ProfitabilityCalculator, TokenType } from "../src/ProfitabilityCalculator";
@@ -140,14 +142,15 @@ describe("ProfitabilityCalculator.ts", function () {
       });
     });
     it("Correctly errors if attempt to relay a token that has no price", async function () {
-      assert.throws(() =>
-        profitabilityCalculator.getRelaySubmitTypeBasedOnProfitability(
-          toChecksumAddress(randomHex(20)), // some address the calculator doesn't know about.
-          sampleCumulativeGasPrice,
-          toBNWei(1),
-          toBNWei(1),
-          toBNWei(1)
-        )
+      assert.throws(
+        () =>
+          profitabilityCalculator.getRelaySubmitTypeBasedOnProfitability(
+            toChecksumAddress(randomHex(20)), // some address the calculator doesn't know about.
+            sampleCumulativeGasPrice,
+            toBNWei(1),
+            toBNWei(1),
+            toBNWei(1)
+          ).relaySubmitType
       );
     });
     describe("Correctly selects relay type", function () {
@@ -161,9 +164,24 @@ describe("ProfitabilityCalculator.ts", function () {
             toBNWei(1), // Set speedUp and instant revenue to 0. Set slow revenue to 1 WETH. Should be a slow relay.
             toBNWei(0),
             toBNWei(0)
-          ),
+          ).relaySubmitType,
           RelaySubmitType.Slow
         );
+
+        // Validate the relay profitability message message is produced correctly.
+        const expectedProfit = toBNWei(1).sub(sampleCumulativeGasPrice.mul(toBN(across.constants.SLOW_ETH_GAS)));
+        assert.equal(
+          profitabilityCalculator.getRelaySubmitTypeBasedOnProfitability(
+            wethAddress,
+            sampleCumulativeGasPrice,
+            toBNWei(1), // Set speedUp and instant revenue to 0. Set slow revenue to 1 WETH. Should be a slow relay.
+            toBNWei(0),
+            toBNWei(0)
+          ).profitabilityInformation,
+          `Expected relay profit of ${fromWei(expectedProfit)} ETH for Slow relay.`
+        );
+
+        // Correctly selects the most profitable option.
         assert.equal(
           profitabilityCalculator.getRelaySubmitTypeBasedOnProfitability(
             wethAddress,
@@ -171,30 +189,8 @@ describe("ProfitabilityCalculator.ts", function () {
             toBNWei(1.1), // Set instant revenue to 1. Set slow revenue to 1.1 WETH. Should be a slow relay.
             toBNWei(0),
             toBNWei(1)
-          ),
+          ).relaySubmitType,
           RelaySubmitType.Slow
-        );
-      });
-      it("Correctly decides when to instant relay", async function () {
-        assert.equal(
-          profitabilityCalculator.getRelaySubmitTypeBasedOnProfitability(
-            wethAddress,
-            sampleCumulativeGasPrice,
-            toBNWei(0), // set slow revenue and instant to 0. Set speed up to to 1 WETH. Relay should be sped up.
-            toBNWei(1),
-            toBNWei(0)
-          ),
-          RelaySubmitType.SpeedUp
-        );
-        assert.equal(
-          profitabilityCalculator.getRelaySubmitTypeBasedOnProfitability(
-            wethAddress,
-            sampleCumulativeGasPrice,
-            toBNWei(1), // set slow revenue and instant to 1. Set speed up to to 1.1 WETH. Relay should be sped up.
-            toBNWei(1.1),
-            toBNWei(1)
-          ),
-          RelaySubmitType.SpeedUp
         );
       });
       it("Correctly decides when to speed up a relay", async function () {
@@ -202,12 +198,63 @@ describe("ProfitabilityCalculator.ts", function () {
           profitabilityCalculator.getRelaySubmitTypeBasedOnProfitability(
             wethAddress,
             sampleCumulativeGasPrice,
+            toBNWei(0), // set slow revenue and instant to 0. Set speed up to to 1 WETH. Relay should be sped up.
+            toBNWei(1),
+            toBNWei(0)
+          ).relaySubmitType,
+          RelaySubmitType.SpeedUp
+        );
+        // Validate the relay profitability message message is produced correctly.
+        const expectedProfit = toBNWei(1).sub(sampleCumulativeGasPrice.mul(toBN(across.constants.SPEED_UP_ETH_GAS)));
+        assert.equal(
+          profitabilityCalculator.getRelaySubmitTypeBasedOnProfitability(
+            wethAddress,
+            sampleCumulativeGasPrice,
+            toBNWei(0), // set slow revenue and instant to 0. Set speed up to to 1 WETH. Relay should be sped up.
+            toBNWei(1),
+            toBNWei(0)
+          ).profitabilityInformation,
+          `Expected relay profit of ${fromWei(expectedProfit)} ETH for SpeedUp relay.`
+        );
+
+        // Correctly selects the most profitable option.
+        assert.equal(
+          profitabilityCalculator.getRelaySubmitTypeBasedOnProfitability(
+            wethAddress,
+            sampleCumulativeGasPrice,
+            toBNWei(1), // set slow revenue and instant to 1. Set speed up to to 1.1 WETH. Relay should be sped up.
+            toBNWei(1.1),
+            toBNWei(1)
+          ).relaySubmitType,
+          RelaySubmitType.SpeedUp
+        );
+      });
+      it("Correctly decides when to instant relay", async function () {
+        assert.equal(
+          profitabilityCalculator.getRelaySubmitTypeBasedOnProfitability(
+            wethAddress,
+            sampleCumulativeGasPrice,
             toBNWei(0), // set slow and speed up to 0. Set instant to 1 WETH. Should be instant relayed.
             toBNWei(0),
             toBNWei(1)
-          ),
+          ).relaySubmitType,
           RelaySubmitType.Instant
         );
+
+        // Validate the relay profitability message message is produced correctly.
+        const expectedProfit = toBNWei(1).sub(sampleCumulativeGasPrice.mul(toBN(across.constants.FAST_ETH_GAS)));
+        assert.equal(
+          profitabilityCalculator.getRelaySubmitTypeBasedOnProfitability(
+            wethAddress,
+            sampleCumulativeGasPrice,
+            toBNWei(0), // set slow revenue and instant to 0. Set speed up to to 1 WETH. Relay should be sped up.
+            toBNWei(0),
+            toBNWei(1)
+          ).profitabilityInformation,
+          `Expected relay profit of ${fromWei(expectedProfit)} ETH for Instant relay.`
+        );
+
+        // Correctly selects the most profitable option.
         assert.equal(
           profitabilityCalculator.getRelaySubmitTypeBasedOnProfitability(
             wethAddress,
@@ -215,12 +262,13 @@ describe("ProfitabilityCalculator.ts", function () {
             toBNWei(1), // set slow up to 1. Set instant to 1.1 WETH. Should be instant relayed.
             toBNWei(0),
             toBNWei(1.1)
-          ),
+          ).relaySubmitType,
           RelaySubmitType.Instant
         );
       });
 
       it("Correctly decides when to ignore a relay", async function () {
+        // Zero revenue relay.
         assert.equal(
           profitabilityCalculator.getRelaySubmitTypeBasedOnProfitability(
             wethAddress,
@@ -228,8 +276,52 @@ describe("ProfitabilityCalculator.ts", function () {
             toBNWei(0), // Set all forms of revenue to 0. Relay should be ignored.
             toBNWei(0),
             toBNWei(0)
-          ),
+          ).relaySubmitType,
           RelaySubmitType.Ignore
+        );
+        // Under pay for each kind of relay and check the logs are produced correctly. Choose a reward of 0.02 for both
+        // slow and instant relay types.
+        const reward = toBNWei(0.02);
+        // At 100 Gwei gas price:
+        //  - slow cost is: 100e9 * 243177 / 1e18= 0.0243177 ETH.
+        //  - instant cost is: 100e9 * 273519 / 1e18= 0.0273519 ETH.
+        // If we set the reward for slow and instant to 0.02 we are underpaying for the relay. The expected profit for
+        // each relay type is the difference between the above costs and the revenue of 0.02.
+        const slowProfit = fromWei(reward.sub(sampleCumulativeGasPrice.mul(toBN(across.constants.SLOW_ETH_GAS))));
+        const fastProfit = fromWei(reward.sub(sampleCumulativeGasPrice.mul(toBN(across.constants.FAST_ETH_GAS))));
+        const speedUpProfit = fromWei(
+          toBN(0).sub(sampleCumulativeGasPrice.mul(toBN(across.constants.SPEED_UP_ETH_GAS)))
+        );
+
+        // Equally, there is a gas price at which the revenue of 0.02 for slow & fast relays becomes profitable.
+        const formatGwei = (number: string | number | BN) => Math.ceil(Number(fromWei(number.toString(), "gwei")));
+
+        const breakEvenSlowGasPrice = formatGwei(reward.div(toBN(across.constants.SLOW_ETH_GAS)));
+        const breakEvenFastGasPrice = formatGwei(reward.div(toBN(across.constants.FAST_ETH_GAS)));
+
+        // Validate the log contains the correct information given our independent calculations.
+        assert.equal(
+          profitabilityCalculator.getRelaySubmitTypeBasedOnProfitability(
+            wethAddress,
+            sampleCumulativeGasPrice,
+            reward, // set slow and instant rewards to 0.02, below the cost of the relay.
+            toBNWei(0),
+            reward
+          ).profitabilityInformation,
+          `Relay is not profitable. SlowRelay profit: ${slowProfit}, SpeedUpRelay profit: ${speedUpProfit}, InstantRelay profit: ${fastProfit}. Relay would be break even at gas price of slow: ${breakEvenSlowGasPrice} Gwei, speedup: 0 Gwei and instant: ${breakEvenFastGasPrice} Gwei.`
+        );
+
+        // Validate the relay profitability message message is produced correctly.
+        const expectedProfit = toBNWei(1).sub(sampleCumulativeGasPrice.mul(toBN(across.constants.FAST_ETH_GAS)));
+        assert.equal(
+          profitabilityCalculator.getRelaySubmitTypeBasedOnProfitability(
+            wethAddress,
+            sampleCumulativeGasPrice,
+            toBNWei(0), // set slow revenue and instant to 0. Set speed up to to 1 WETH. Relay should be sped up.
+            toBNWei(0),
+            toBNWei(1)
+          ).profitabilityInformation,
+          `Expected relay profit of ${fromWei(expectedProfit)} ETH for Instant relay.`
         );
       });
     });
@@ -261,7 +353,7 @@ describe("ProfitabilityCalculator.ts", function () {
                 slowRelayCostInToken.subn(1),
                 toBNWei(0),
                 toBNWei(0)
-              ),
+              ).relaySubmitType,
               RelaySubmitType.Ignore
             );
 
@@ -273,7 +365,7 @@ describe("ProfitabilityCalculator.ts", function () {
                 slowRelayCostInToken,
                 toBNWei(0),
                 toBNWei(0)
-              ),
+              ).relaySubmitType,
               RelaySubmitType.Ignore
             );
             // The log should show that there is exactly 0 wei, in eth, worth of profit expected for this relay, hence
@@ -291,7 +383,7 @@ describe("ProfitabilityCalculator.ts", function () {
                 slowRelayCostInToken.add(amountToAdd.isZero() ? toBN(1) : amountToAdd),
                 toBNWei(0),
                 toBNWei(0)
-              ),
+              ).relaySubmitType,
               RelaySubmitType.Slow
             );
           }
@@ -324,7 +416,7 @@ describe("ProfitabilityCalculator.ts", function () {
             slowRelayCostInEth.divn(2).subn(1), // set the revenue to just below half the cost. Should not relay.
             toBNWei(0),
             toBNWei(0)
-          ),
+          ).relaySubmitType,
           RelaySubmitType.Ignore
         );
 
@@ -335,7 +427,7 @@ describe("ProfitabilityCalculator.ts", function () {
             slowRelayCostInEth.divn(2), // set the revenue to exactly half the cost. Should not relay.
             toBNWei(0),
             toBNWei(0)
-          ),
+          ).relaySubmitType,
           RelaySubmitType.Ignore
         );
 
@@ -346,7 +438,7 @@ describe("ProfitabilityCalculator.ts", function () {
             slowRelayCostInEth.divn(2).addn(1), // set the revenue to just above half the cost. Should now relay.
             toBNWei(0),
             toBNWei(0)
-          ),
+          ).relaySubmitType,
           RelaySubmitType.Slow
         );
       });

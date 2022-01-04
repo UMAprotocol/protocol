@@ -407,7 +407,7 @@ export class Relayer {
       });
       return;
     }
-    const shouldRelay = await this.shouldRelay(
+    const { relaySubmitType, profitabilityInformation } = await this.shouldRelay(
       relayableDeposit.deposit,
       relayableDeposit.status,
       realizedLpFeePct,
@@ -416,11 +416,11 @@ export class Relayer {
 
     // Depending on value of `shouldRelay`, send correct type of relay.
     return await this._generateRelayTransaction(
-      shouldRelay,
+      relaySubmitType,
+      profitabilityInformation,
       realizedLpFeePct,
       relayableDeposit,
-      pendingRelay,
-      hasInstantRelayer
+      pendingRelay
     );
   }
 
@@ -461,7 +461,7 @@ export class Relayer {
     clientRelayState: ClientRelayState,
     realizedLpFeePct: BN,
     hasInstantRelayer: boolean
-  ): Promise<RelaySubmitType> {
+  ): Promise<{ relaySubmitType: RelaySubmitType; profitabilityInformation: string }> {
     const [l1TokenBalance, proposerBondPct] = await Promise.all([
       getTokenBalance(this.l1Client.l1Web3, deposit.l1Token, this.account),
       this.l1Client.getProposerBondPct(),
@@ -603,11 +603,11 @@ export class Relayer {
 
   // Send correct type of relay along with parameters to submit transaction.
   private async _generateRelayTransaction(
-    shouldRelay: RelaySubmitType,
+    relaySubmitType: RelaySubmitType,
+    profitabilityInformation: string,
     realizedLpFeePct: BN,
     relayableDeposit: RelayableDeposit,
-    pendingRelay: Relay | undefined,
-    hasInstantRelayer: boolean
+    pendingRelay: Relay | undefined
   ): Promise<
     | {
         transaction: ContractSendMethod;
@@ -617,16 +617,13 @@ export class Relayer {
       }
     | undefined
   > {
-    const mrkdwn = this._generateMarkdownForRelay(relayableDeposit.deposit, realizedLpFeePct);
-    switch (shouldRelay) {
+    const mrkdwn = this._generateMarkdownForRelay(relayableDeposit.deposit, realizedLpFeePct, profitabilityInformation);
+    switch (relaySubmitType) {
       case RelaySubmitType.Ignore:
         this.logger.warn({
           at: "AcrossRelayer#Relayer",
           message: "Not relaying potentially unprofitable deposit, or insufficient balance 😖",
-          realizedLpFeePct: realizedLpFeePct.toString(),
-          relayState: relayableDeposit.status,
-          hasInstantRelayer,
-          relayableDeposit,
+          mrkdwn: profitabilityInformation,
         });
         return;
       case RelaySubmitType.Slow:
@@ -677,7 +674,7 @@ export class Relayer {
     }
   }
 
-  private _generateMarkdownForRelay(deposit: Deposit, realizedLpFeePct: BN) {
+  private _generateMarkdownForRelay(deposit: Deposit, realizedLpFeePct: BN, profitabilityInformation: string): string {
     return (
       "Relayed " +
       this._generateMrkdwnDepositIdNetworkSizeFromTo(deposit) +
@@ -687,7 +684,8 @@ export class Relayer {
       createFormatFunction(2, 4, false, 18)(toBN(deposit.instantRelayFeePct).muln(100)) +
       "%, realizedLpFee " +
       createFormatFunction(2, 4, false, 18)(realizedLpFeePct.muln(100)) +
-      "%."
+      "%." +
+      profitabilityInformation
     );
   }
 
