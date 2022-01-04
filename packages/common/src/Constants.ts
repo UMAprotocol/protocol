@@ -18,15 +18,6 @@ export const interfaceName = {
   OracleHub: "OracleHub",
 };
 
-// Updated addresses can be found here: https://github.com/makerdao/multicall
-export const MULTICALL2_DEPLOYMENTS: { [chainId: number]: string } = {
-  1: "0x5ba1e12693dc8f9c48aad8770482f4739beed696",
-  42: "0x5ba1e12693dc8f9c48aad8770482f4739beed696",
-  4: "0x5ba1e12693dc8f9c48aad8770482f4739beed696",
-  5: "0x5ba1e12693dc8f9c48aad8770482f4739beed696",
-  3: "0x5ba1e12693dc8f9c48aad8770482f4739beed696",
-};
-
 // These enforce the maximum number of transactions that can fit within one batch-commit and batch-reveal.
 // Based off the current gas limit from Etherscan over the last 6 months of 9950000,
 // the following maximum batchCommit, batchReveal and retrieveRewards are possible:
