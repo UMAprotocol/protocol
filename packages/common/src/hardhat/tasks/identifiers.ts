@@ -5,7 +5,7 @@ import dotenv from "dotenv";
 import type { Contract } from "web3-eth-contract";
 import type { TransactionReceipt } from "web3-core";
 import type { CombinedHRE } from "./types";
-import { getAddress } from "@uma/contracts-node";
+import { getMulticallAddress } from "../../Constants";
 dotenv.config();
 
 const _whitelistIdentifier = async (
@@ -38,33 +38,27 @@ async function checkIfIdentifiersAreSupported(
   console.log(
     `Checking whitelist status of ${identifiersToCheck.length} identifiers on the whitelist @ ${whitelistToCheck.options.address} on network ID ${networkId} `
   );
-  let whitelistedIdentifiers: boolean[] = [];
-  let multicallAddress;
   try {
-    multicallAddress = await getAddress("Multicall2", networkId);
+    const multicallAddress = getMulticallAddress(networkId);
+    console.log(`Using multicall contract @ ${multicallAddress} to reduce web3 requests`);
+    const Multicall2 = hre.getContract("Multicall2");
+    const multicall = new web3.eth.Contract(Multicall2.abi, multicallAddress);
+    const calls = identifiersToCheck.map((id) => ({
+      target: whitelistToCheck.options.address,
+      callData: whitelistToCheck.methods.isIdentifierSupported(id).encodeABI(),
+    }));
+    const result = await multicall.methods.aggregate(calls).call();
+    return result.returnData.map((_result: string) => {
+      // Multicall contract returns results as bytes, so we need to check return value against bytes representation of
+      // Boolean value.
+      return _result === "0x0000000000000000000000000000000000000000000000000000000000000001";
+    });
   } catch (err) {
     console.log(
       `No multicall contract found for network ${networkId}, submitting ${identifiersToCheck.length} web3 requests, sit tight`
     );
-    whitelistedIdentifiers = await Promise.all(
-      identifiersToCheck.map((id) => whitelistToCheck.methods.isIdentifierSupported(id).call())
-    );
+    return await Promise.all(identifiersToCheck.map((id) => whitelistToCheck.methods.isIdentifierSupported(id).call()));
   }
-  console.log(`Using multicall contract @ ${multicallAddress} to reduce web3 requests`);
-  const Multicall2 = hre.getContract("Multicall2");
-  const multicall = new web3.eth.Contract(Multicall2.abi, multicallAddress);
-  const calls = identifiersToCheck.map((id) => ({
-    target: whitelistToCheck.options.address,
-    callData: whitelistToCheck.methods.isIdentifierSupported(id).encodeABI(),
-  }));
-  const result = await multicall.methods.aggregate(calls).call();
-  return result.returnData.map((_result: string) => {
-    // Multicall contract returns results as bytes, so we need to check return value against bytes representation of
-    // Boolean value.
-    return _result === "0x0000000000000000000000000000000000000000000000000000000000000001";
-  });
-
-  return whitelistedIdentifiers;
 }
 
 task("whitelist-identifiers", "Whitelist identifiers from JSON file")
