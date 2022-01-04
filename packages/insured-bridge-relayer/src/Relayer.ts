@@ -622,8 +622,8 @@ export class Relayer {
       case RelaySubmitType.Ignore:
         this.logger.warn({
           at: "AcrossRelayer#Relayer",
-          message: "Not relaying potentially unprofitable deposit, or insufficient balance 😖",
-          mrkdwn: profitabilityInformation,
+          message: "Not relaying unprofitable deposit 😖",
+          mrkdwn: this._generateMarkdownForNonProfitableRelay(relayableDeposit.deposit, profitabilityInformation),
         });
         return;
       case RelaySubmitType.Slow:
@@ -674,6 +674,14 @@ export class Relayer {
     }
   }
 
+  private _generateMarkdownForNonProfitableRelay(deposit: Deposit, profitabilityInformation: string): string {
+    return (
+      "Deposit " +
+      this._generateMrkdwnDepositIdNetworkSizeFromTo(deposit) +
+      " is not profitable. " +
+      profitabilityInformation
+    );
+  }
   private _generateMarkdownForRelay(deposit: Deposit, realizedLpFeePct: BN, profitabilityInformation: string): string {
     return (
       "Relayed " +
@@ -726,8 +734,7 @@ export class Relayer {
       " sent from " +
       createEtherscanLinkMarkdown(deposit.l2Sender, this.l2Client.chainId) +
       " to " +
-      createEtherscanLinkMarkdown(deposit.l1Recipient) +
-      ". "
+      createEtherscanLinkMarkdown(deposit.l1Recipient)
     );
   }
 

@@ -4,7 +4,7 @@ const { toWei, toBN, fromWei, toChecksumAddress } = Web3.utils;
 const toBNWei = (number: string | number) => toBN(toWei(number.toString()).toString());
 const fixedPoint = toBNWei(1);
 
-import { objectMap } from "@uma/common";
+import { objectMap, createFormatFunction } from "@uma/common";
 import { Coingecko, across } from "@uma/sdk";
 import { getAddress, getAbi } from "@uma/contracts-node";
 
@@ -169,6 +169,8 @@ export class ProfitabilityCalculator {
     const profitabilityInformation = this._generateProfitabilityInformation(
       relaySubmitType,
       tokenType,
+      this.relayerDiscount,
+      cumulativeGasPrice,
       ethProfitability,
       ethRevenue
     );
@@ -278,6 +280,8 @@ export class ProfitabilityCalculator {
   private _generateProfitabilityInformation(
     relaySubmitType: RelaySubmitType,
     tokenType: TokenType,
+    relayerDiscount: BN,
+    cumulativeGasPrice: BN,
     ethProfitability: { slowEthProfit: BN; speedUpEthProfit: BN; instantEthProfit: BN },
     ethRevenue: { slowEthRevenue: BN; speedUpEthRevenue: BN; instantEthRevenue: BN }
   ): string {
@@ -295,24 +299,31 @@ export class ProfitabilityCalculator {
           break;
       }
 
-      return `Expected relay profit of ${profitInEth} ETH for ${RelaySubmitType[relaySubmitType]} relay.`;
+      return `Expected relay profit of ${profitInEth} ETH for ${
+        RelaySubmitType[relaySubmitType]
+      } relay, with a relayerDiscount of ${fromWei(relayerDiscount.muln(100))}%.`;
     } else {
       const relayBreakEvenGasPrice = this.getRelayBreakEvenGasPrice(tokenType, ethRevenue);
 
+      const formatWei = createFormatFunction(2, 4, false, 18);
       const formatGwei = (number: string | number | BN) => Math.ceil(Number(fromWei(number.toString(), "gwei")));
 
       return (
-        "Relay is not profitable. SlowRelay profit: " +
-        fromWei(ethProfitability.slowEthProfit) +
-        ", SpeedUpRelay profit: " +
-        fromWei(ethProfitability.speedUpEthProfit) +
-        ", InstantRelay profit: " +
-        fromWei(ethProfitability.instantEthProfit) +
-        ". Relay would be break even at gas price of slow: " +
+        "SlowRelay profit " +
+        formatWei(ethProfitability.slowEthProfit) +
+        " ETH, SpeedUpRelay profit " +
+        formatWei(ethProfitability.speedUpEthProfit) +
+        " ETH and InstantRelay profit " +
+        formatWei(ethProfitability.instantEthProfit) +
+        " ETH, with a relayerDiscount of " +
+        fromWei(relayerDiscount.muln(100)) +
+        "%. Current cumulativeGasPrice is " +
+        formatGwei(cumulativeGasPrice) +
+        " Gwei. Relay would be break even at gas price of SlowRelay " +
         formatGwei(relayBreakEvenGasPrice.slowBreakEvenGasPrice) +
-        " Gwei, speedup: " +
+        " Gwei, SpeedUpRelay " +
         formatGwei(relayBreakEvenGasPrice.speedUpBreakEvenGasPrice) +
-        " Gwei and instant: " +
+        " Gwei and InstantRelay " +
         formatGwei(relayBreakEvenGasPrice.instantBreakEvenGasPrice) +
         " Gwei."
       );

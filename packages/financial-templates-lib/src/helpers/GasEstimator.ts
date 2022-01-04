@@ -101,7 +101,7 @@ export class GasEstimator {
     // Set the initial values to the defaults.
     this.lastFastPriceGwei = this.defaultFastPriceGwei;
     this.latestMaxFeePerGasGwei = this.defaultMaxFeePerGasGwei;
-    this.latestBaseFee = this.defaultMaxFeePerGasGwei;
+    this.latestBaseFee = this.defaultMaxFeePerGasGwei * 1e9;
     this.latestMaxPriorityFeePerGasGwei = this.defaultMaxPriorityFeePerGasGwei;
   }
 
@@ -156,7 +156,7 @@ export class GasEstimator {
   // network then you will pay the prevailing base fee + the max priority fee. if not london then pay the latest fast
   // gas price.
   getExpectedCumulativeGasPrice(): number {
-    if (this.type == NetworkType.London) return this.latestBaseFee + this.latestMaxPriorityFeePerGasGwei;
+    if (this.type == NetworkType.London) return this.latestBaseFee + this.latestMaxPriorityFeePerGasGwei * 1e9;
     else return this.lastFastPriceGwei;
   }
 
@@ -170,8 +170,9 @@ export class GasEstimator {
     if (this.type == NetworkType.London) {
       this.latestMaxFeePerGasGwei = (gasInfo as LondonGasData).maxFeePerGas;
       this.latestMaxPriorityFeePerGasGwei = (gasInfo as LondonGasData).maxPriorityFeePerGas;
-      // Extract the base fee from the most recent block. If the block is not available or errored then is set to 0.
-      this.latestBaseFee = Number((latestBlock as any)?.baseFeePerGas) || 0;
+      // Extract the base fee from the most recent block. If the block is not available or errored then is set to the
+      // latest max fee per gas so we still have some value in the right ballpark to return to the client implementer.
+      this.latestBaseFee = Number((latestBlock as any)?.baseFeePerGas) || this.latestMaxFeePerGasGwei;
     } else this.lastFastPriceGwei = (gasInfo as LegacyGasData).gasPrice;
   }
 
