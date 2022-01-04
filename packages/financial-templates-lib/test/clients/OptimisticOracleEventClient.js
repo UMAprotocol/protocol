@@ -138,10 +138,7 @@ describe("OptimisticOracleEventClient.js", function () {
     startTime = parseInt(await timer.methods.getCurrentTime().call());
     requestTime = startTime - 10;
 
-    // The Event client does not emit any info `level` events.  Therefore no need to test Winston outputs.
-    // DummyLogger will not print anything to console as only capture `info` level events.
     dummyLogger = winston.createLogger({ level: "info", transports: [new winston.transports.Console()] });
-
     spy = sinon.spy();
 
     client = new OptimisticOracleEventClient(
