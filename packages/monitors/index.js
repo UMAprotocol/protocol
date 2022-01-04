@@ -49,7 +49,7 @@ const {
  *     from. If 0 will look for all events back to deployment of the Financial Contract. If set to null uses current block number.
  * @param {Number} endingBlock Termination block number to define where the monitor bot should end searching for events.
  *     If `null` then will search up until the latest block number in each loop.
- * @param {Number} lookbackBlocks Amount of blocks to search per web3 request.
+ * @param {Number} blocksPerEventSearch Amount of blocks to search per web3 request.
  * @param {Object} monitorConfig Configuration object to parameterize all monitor modules.
  * @param {Object} tokenPriceFeedConfig Configuration to construct the tokenPriceFeed (balancer or uniswap) price feed object.
  * @param {Object} medianizerPriceFeedConfig Configuration to construct the reference price feed object.
@@ -67,7 +67,7 @@ async function run({
   errorRetriesTimeout,
   startingBlock,
   endingBlock,
-  lookbackBlocks,
+  blocksPerEventSearch,
   monitorConfig,
   tokenPriceFeedConfig,
   medianizerPriceFeedConfig,
@@ -89,7 +89,7 @@ async function run({
       errorRetriesTimeout,
       startingBlock,
       endingBlock,
-      lookbackBlocks,
+      blocksPerEventSearch,
       monitorConfig,
       tokenPriceFeedConfig,
       medianizerPriceFeedConfig,
@@ -223,7 +223,7 @@ async function run({
         eventsFromBlockNumber,
         endingBlock,
         monitorConfig.contractType
-        // TODO: Should use `lookbackBlocks` in this event client as well, but this is not added currently as only the
+        // TODO: Should use `blocksPerEventSearch` in this event client as well, but this is not added currently as only the
         // Arbitrum Infura provider requires this chunking logic and the FinancialContractEventClient won't be used on
         // Arbitrum initially.
       );
@@ -338,7 +338,7 @@ async function run({
         optimisticOracleType,
         eventsFromBlockNumber,
         endingBlock,
-        lookbackBlocks
+        blocksPerEventSearch
       );
 
       const contractProps = { networkId };
@@ -439,7 +439,7 @@ async function Poll(callback) {
       // Amount of blocks to search per web3 request to fetch events. This can be used with providers that limit the
       // amount of blocks that can be fetched per request, including Arbitrum Infura nodes. Defaults to null which
       // searches the maximum amount of blocks.
-      lookbackBlocks: process.env.LOOKBACK_BLOCKS,
+      blocksPerEventSearch: process.env.MAX_BLOCKS_PER_EVENT_SEARCH,
       // Monitor config contains all configuration settings for all monitor modules. This includes the following:
       // MONITOR_CONFIG={
       //  "botsToMonitor": [{ name: "Liquidator Bot",       // Friendly bot name

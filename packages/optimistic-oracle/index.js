@@ -38,6 +38,7 @@ const OracleType = {
  * @param {Number} errorRetries The number of times the execution loop will re-try before throwing if an error occurs.
  * @param {Number} errorRetriesTimeout The amount of milliseconds to wait between re-try iterations on failed loops.
  * @param {Object} [commonPriceFeedConfig] Common configuration to pass to all PriceFeeds constructed by proposer.
+ * @param {Number} [blocksPerEventSearch] Amount of blocks to search per web3 request.
  * @param {Object} [optimisticOracleProposerConfig] Configuration to construct the OptimisticOracle proposer.
  * @param {OracleType} [oracleType] Type of "Oracle" for this network, defaults to "Voting"
  * @param {OptimisticOracleType} [optimisticOracleType] Type of "OptimisticOracle" for this network, defaults to "OptimisticOracle"
@@ -50,6 +51,7 @@ async function run({
   errorRetries,
   errorRetriesTimeout,
   commonPriceFeedConfig,
+  blocksPerEventSearch,
   optimisticOracleProposerConfig,
   oracleType = OracleType.Voting,
   optimisticOracleType = OptimisticOracleType.OptimisticOracle,
@@ -68,6 +70,7 @@ async function run({
       errorRetries,
       errorRetriesTimeout,
       commonPriceFeedConfig,
+      blocksPerEventSearch,
       optimisticOracleProposerConfig,
       oracleType,
       optimisticOracleType,
@@ -83,7 +86,8 @@ async function run({
       optimisticOracleAddress,
       await getAddress(oracleType, networkId),
       604800, // default lookback setting for this client
-      optimisticOracleType
+      optimisticOracleType,
+      blocksPerEventSearch
     );
     const gasEstimator = new GasEstimator(logger, 60, networkId);
 
@@ -156,6 +160,10 @@ async function Poll(callback) {
       errorRetries: process.env.ERROR_RETRIES ? Number(process.env.ERROR_RETRIES) : 3,
       // Default to 10 seconds in between error re-tries.
       errorRetriesTimeout: process.env.ERROR_RETRIES_TIMEOUT ? Number(process.env.ERROR_RETRIES_TIMEOUT) : 1,
+      // Amount of blocks to search per web3 request to fetch events. This can be used with providers that limit the
+      // amount of blocks that can be fetched per request, including Arbitrum Infura nodes. Defaults to null which
+      // searches the maximum amount of blocks.
+      blocksPerEventSearch: process.env.MAX_BLOCKS_PER_EVENT_SEARCH,
       // Common price feed configuration passed along to all those constructed by proposer.
       commonPriceFeedConfig: process.env.COMMON_PRICE_FEED_CONFIG
         ? JSON.parse(process.env.COMMON_PRICE_FEED_CONFIG)

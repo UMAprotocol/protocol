@@ -2,6 +2,8 @@ const { web3, getContract } = require("hardhat");
 const { assert } = require("chai");
 
 const winston = require("winston");
+const sinon = require("sinon");
+const { SpyTransport } = require("../../dist/logger/SpyTransport");
 
 const { toWei, hexToUtf8, utf8ToHex } = web3.utils;
 
@@ -32,6 +34,7 @@ describe("OptimisticOracleClient.js", function () {
   let client;
   let dummyLogger;
   let mockOracle;
+  let spy;
 
   let finder;
   let timer;
@@ -113,12 +116,13 @@ describe("OptimisticOracleClient.js", function () {
     startTime = parseInt(await optimisticOracle.methods.getCurrentTime().call());
     requestTime = startTime - 10;
 
-    // The OptimisticOracleClient does not emit any info `level` events.  Therefore no need to test Winston outputs.
-    // DummyLogger will not print anything to console as only capture `info` level events.
+    // The OptimisticOracleClient does not emit any info `level` events. DummyLogger will not print anything to console
+    // as only capture `info` level events. The spy logger is used to test for `debug` level events.
     dummyLogger = winston.createLogger({ level: "info", transports: [new winston.transports.Console()] });
+    spy = sinon.spy();
 
     client = new OptimisticOracleClient(
-      dummyLogger,
+      winston.createLogger({ level: "debug", transports: [new SpyTransport({ level: "debug" }, { spy: spy })] }),
       OptimisticOracle.abi,
       MockOracle.abi,
       web3,
@@ -128,6 +132,131 @@ describe("OptimisticOracleClient.js", function () {
   });
 
   describe("Default OptimisticOracle contract", function () {
+    it("Update with no max blocks per search set", async function () {
+      await optimisticRequester.methods
+        .requestPrice(identifier, requestTime, "0x", collateral.options.address, 0)
+        .send({ from: accounts[0] });
+      await client.update();
+
+      // There should have been exactly 1 search.
+      const blockSearchConfigLogs = spy
+        .getCalls()
+        .filter((log) => log.lastArg.message.includes("Fetching events with block search config"));
+      assert.equal(blockSearchConfigLogs.length, 1);
+    });
+    it("If max blocks per search is set, makes multiple web3 requests to fetch all events", async function () {
+      const chunkedClient = new OptimisticOracleClient(
+        winston.createLogger({ level: "debug", transports: [new SpyTransport({ level: "debug" }, { spy: spy })] }),
+        OptimisticOracle.abi,
+        MockOracle.abi,
+        web3,
+        optimisticOracle.options.address,
+        mockOracle.options.address,
+        604800,
+        OptimisticOracleType.OptimisticOracle,
+        2 // 2 blocks per search
+      );
+
+      // Initially, no proposals and no price requests.
+      let result = chunkedClient.getUndisputedProposals();
+      objectsInArrayInclude(result, []);
+      result = chunkedClient.getUnproposedPriceRequests();
+      objectsInArrayInclude(result, []);
+      result = chunkedClient.getSettleableProposals(proposer);
+      objectsInArrayInclude(result, []);
+
+      // Request and update again, should show no proposals.
+      await optimisticRequester.methods
+        .requestPrice(identifier, requestTime, "0x", collateral.options.address, 0)
+        .send({ from: accounts[0] });
+      await chunkedClient.update();
+
+      // There should have been > 1 searches.
+      const blockSearchConfigLogs = spy
+        .getCalls()
+        .filter((log) => log.lastArg.message.includes("Fetching events with block search config"));
+      assert.isTrue(blockSearchConfigLogs.length > 1);
+
+      result = chunkedClient.getUndisputedProposals();
+      objectsInArrayInclude(result, []);
+      result = chunkedClient.getSettleableProposals(proposer);
+      objectsInArrayInclude(result, []);
+
+      // Should have one price request.
+      result = chunkedClient.getUnproposedPriceRequests();
+      objectsInArrayInclude(result, [
+        {
+          requester: optimisticRequester.options.address,
+          identifier: hexToUtf8(identifier),
+          ancillaryData: "0x",
+          timestamp: requestTime.toString(),
+          currency: collateral.options.address,
+          reward: "0",
+          finalFee,
+        },
+      ]);
+
+      // Make a proposal and update, should now show one proposal, 0 unproposed requests, and 0 expired proposals:
+      await collateral.methods.approve(optimisticOracle.options.address, totalDefaultBond).send({ from: proposer });
+      const currentContractTime = await optimisticOracle.methods.getCurrentTime().call();
+      await optimisticOracle.methods
+        .proposePrice(optimisticRequester.options.address, identifier, requestTime, "0x", correctPrice)
+        .send({ from: proposer });
+
+      await chunkedClient.update();
+      result = chunkedClient.getUndisputedProposals();
+      objectsInArrayInclude(result, [
+        {
+          requester: optimisticRequester.options.address,
+          proposer: proposer,
+          identifier: hexToUtf8(identifier),
+          ancillaryData: "0x",
+          currency: collateral.options.address,
+          timestamp: requestTime.toString(),
+          proposedPrice: correctPrice,
+          expirationTimestamp: (Number(currentContractTime) + liveness).toString(),
+        },
+      ]);
+      result = chunkedClient.getUnproposedPriceRequests();
+      objectsInArrayInclude(result, []);
+      result = chunkedClient.getSettleableProposals(proposer);
+      objectsInArrayInclude(result, []);
+
+      // Now, advance time so that the proposal expires and check that the client detects the new state:
+      await optimisticOracle.methods
+        .setCurrentTime((Number(currentContractTime) + liveness).toString())
+        .send({ from: accounts[0] });
+      await chunkedClient.update();
+      result = chunkedClient.getUndisputedProposals();
+      objectsInArrayInclude(result, []);
+      result = chunkedClient.getUnproposedPriceRequests();
+      objectsInArrayInclude(result, []);
+      // Note: `getSettleableProposals` only returns proposals where the `proposer` is involved
+      result = chunkedClient.getSettleableProposals(rando);
+      objectsInArrayInclude(result, []);
+      result = chunkedClient.getSettleableProposals(proposer);
+      objectsInArrayInclude(result, [
+        {
+          requester: optimisticRequester.options.address,
+          proposer: proposer,
+          identifier: hexToUtf8(identifier),
+          ancillaryData: "0x",
+          currency: collateral.options.address,
+          timestamp: requestTime.toString(),
+          proposedPrice: correctPrice,
+          expirationTimestamp: (Number(currentContractTime) + liveness).toString(),
+        },
+      ]);
+
+      // Once proposals are settled they no longer appear as settleable in the client.
+      await optimisticOracle.methods
+        .settle(optimisticRequester.options.address, identifier, requestTime, "0x")
+        .send({ from: accounts[0] });
+      await chunkedClient.update();
+      result = chunkedClient.getSettleableProposals(proposer);
+      objectsInArrayInclude(result, []);
+    });
+
     it("Basic proposal lifecycle: request, propose, expire without dispute", async function () {
       // Initial update.
       await client.update();

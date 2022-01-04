@@ -138,6 +138,8 @@ describe("OptimisticOracleEventClient.js", function () {
     startTime = parseInt(await timer.methods.getCurrentTime().call());
     requestTime = startTime - 10;
 
+    // The OptimisticOracleEventClient does not emit any info `level` events. DummyLogger will not print anything
+    // to console as only capture `info` level events. The spy logger is used to test for `debug` level events.
     dummyLogger = winston.createLogger({ level: "info", transports: [new winston.transports.Console()] });
     spy = sinon.spy();
 
@@ -791,7 +793,7 @@ describe("OptimisticOracleEventClient.js", function () {
     objectsInArrayInclude([], offSetClient.getAllDisputePriceEvents());
     objectsInArrayInclude([], offSetClient.getAllSettlementEvents());
   });
-  it("Update with no lookback blocks set", async function () {
+  it("Update with no max blocks per search set", async function () {
     await client.clearState();
     await client.update();
 
@@ -801,7 +803,7 @@ describe("OptimisticOracleEventClient.js", function () {
       .filter((log) => log.lastArg.message.includes("Fetching events with block search config"));
     assert.equal(blockSearchConfigLogs.length, 1);
   });
-  it("If lookback blocks is set, makes multiple web3 requests to fetch all events", async function () {
+  it("If max blocks per search is set, makes multiple web3 requests to fetch all events", async function () {
     const chunkedClient = new OptimisticOracleEventClient(
       winston.createLogger({ level: "debug", transports: [new SpyTransport({ level: "debug" }, { spy: spy })] }),
       OptimisticOracle.abi,

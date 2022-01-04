@@ -43,7 +43,7 @@ export class OptimisticOracleEventClient {
   // Last block number to end the searching for events at.
   private lastBlockToSearchUntil: number | null;
 
-  private lookbackBlocks: number | null;
+  private blocksPerEventSearch: number | null;
 
   private lastUpdateTimestamp = 0;
 
@@ -59,7 +59,7 @@ export class OptimisticOracleEventClient {
    * "OptimisticOracle".
    * @param {Integer} startingBlockNumber Offset block number to index events from.
    * @param {Integer} endingBlockNumber Termination block number to index events until. If not defined runs to `latest`.
-   * @param {Integer} lookbackBlocks Amount of blocks to search per query. If not defined, then searches the max amount
+   * @param {Integer} blocksPerEventSearch Amount of blocks to search per query. If not defined, then searches the max amount
    * of blocks.
    * @return None or throws an Error.
    */
@@ -71,7 +71,7 @@ export class OptimisticOracleEventClient {
     public readonly oracleType: OptimisticOracleType = OptimisticOracleType.OptimisticOracle,
     startingBlockNumber = 0,
     endingBlockNumber: number | null = null,
-    lookbackBlocks: number | null = null
+    blocksPerEventSearch: number | null = null
   ) {
     this.optimisticOracleContract = (new this.web3.eth.Contract(
       optimisticOracleAbi,
@@ -79,7 +79,7 @@ export class OptimisticOracleEventClient {
     ) as unknown) as OptimisticOracleContract;
     this.firstBlockToSearch = startingBlockNumber;
     this.lastBlockToSearchUntil = endingBlockNumber;
-    this.lookbackBlocks = lookbackBlocks;
+    this.blocksPerEventSearch = blocksPerEventSearch;
   }
   // Delete all events within the client
   async clearState(): Promise<void> {
@@ -134,9 +134,9 @@ export class OptimisticOracleEventClient {
     let settlementEventsObj: (OptimisticOracleWeb3Events.Settle | SkinnyOptimisticOracleWeb3Events.Settle)[] = [];
 
     // If lookback blocks is defined, send multiple web3 requests, otherwise search all block history in one search.
-    let blockSearchConfig = { fromBlock: this.firstBlockToSearch, toBlock: lastBlockToSearch };
-    if (this.lookbackBlocks !== null) {
-      blockSearchConfig.toBlock = this.firstBlockToSearch + this.lookbackBlocks;
+    let blockSearchConfig = { fromBlock: Number(this.firstBlockToSearch), toBlock: Number(lastBlockToSearch) };
+    if (this.blocksPerEventSearch !== null) {
+      blockSearchConfig.toBlock = Number(this.firstBlockToSearch) + Number(this.blocksPerEventSearch);
     }
 
     while (blockSearchConfig.fromBlock <= lastBlockToSearch) {
@@ -168,7 +168,7 @@ export class OptimisticOracleEventClient {
       // cause the `while` loop to exit.
       blockSearchConfig = {
         fromBlock: blockSearchConfig.toBlock + 1,
-        toBlock: blockSearchConfig.toBlock + 1 + (this.lookbackBlocks ? this.lookbackBlocks : 0),
+        toBlock: blockSearchConfig.toBlock + 1 + (this.blocksPerEventSearch ? Number(this.blocksPerEventSearch) : 0),
       };
     }
 

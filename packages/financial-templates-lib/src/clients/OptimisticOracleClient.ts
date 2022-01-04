@@ -80,6 +80,7 @@ export class OptimisticOracleClient {
    * Used to limit the web3 requests made by this client.
    * @param {OptimisticOracleType} oracleType Type of OptimisticOracle to query state for. Defaults to
    * "OptimisticOracle".
+   * @param {Number} blocksPerEventSearch Amount of blocks to search per web3 event search.
    * @return None or throws an Error.
    */
   constructor(
@@ -90,7 +91,8 @@ export class OptimisticOracleClient {
     oracleAddress: string,
     votingAddress: string,
     public readonly lookback: number = 604800, // 1 Week
-    public readonly oracleType: OptimisticOracleType = OptimisticOracleType.OptimisticOracle
+    public readonly oracleType: OptimisticOracleType = OptimisticOracleType.OptimisticOracle,
+    public readonly blocksPerEventSearch: number | null = null
   ) {
     // Optimistic Oracle contract:
     this.oracle = (new web3.eth.Contract(oracleAbi, oracleAddress) as unknown) as OptimisticOracleContract;
@@ -154,32 +156,56 @@ export class OptimisticOracleClient {
 
   public async update(): Promise<void> {
     // Determine earliest block to query events for based on lookback window:
+    const netId = await this.web3.eth.getChainId();
     const [averageBlockTime, currentBlock] = await Promise.all([
-      averageBlockTimeSeconds(),
+      averageBlockTimeSeconds(netId),
       this.web3.eth.getBlock("latest"),
     ]);
     const lookbackBlocks = Math.ceil(this.lookback / averageBlockTime);
     const earliestBlockToQuery = Math.max(currentBlock.number - lookbackBlocks, 0);
 
-    // Fetch contract state variables in parallel.
-    // Note: We can treat all events by default as normal OptimisticOracle events because in most cases we only
-    // need to read the requester, identifier, timestamp, and ancillary data which are emitted in both Skinny
-    // and normal OptimisticOracle events.
-    const [requestEvents, proposalEvents, disputeEvents, settleEvents, currentTime] = await Promise.all([
-      (this.oracle.getPastEvents("RequestPrice", { fromBlock: earliestBlockToQuery }) as unknown) as Promise<
-        RequestPrice[] | SkinnyRequestPrice[]
-      >,
-      (this.oracle.getPastEvents("ProposePrice", { fromBlock: earliestBlockToQuery }) as unknown) as Promise<
-        ProposePrice[] | SkinnyProposePrice[]
-      >,
-      (this.oracle.getPastEvents("DisputePrice", { fromBlock: earliestBlockToQuery }) as unknown) as Promise<
-        DisputePrice[] | SkinnyDisputePrice[]
-      >,
-      (this.oracle.getPastEvents("Settle", { fromBlock: earliestBlockToQuery }) as unknown) as Promise<
-        Settle[] | SkinnySettle[]
-      >,
-      this.oracle.methods.getCurrentTime().call(),
-    ]);
+    // If max blocks to search is defined, send multiple web3 requests, otherwise search all block history in one search.
+    let blockSearchConfig = { fromBlock: earliestBlockToQuery, toBlock: currentBlock.number };
+    if (this.blocksPerEventSearch !== null) {
+      blockSearchConfig.toBlock = Number(earliestBlockToQuery) + Number(this.blocksPerEventSearch);
+    }
+
+    const currentTime = await this.oracle.methods.getCurrentTime().call();
+    let requestEvents: (RequestPrice | SkinnyRequestPrice)[] = [];
+    let proposalEvents: (ProposePrice | SkinnyProposePrice)[] = [];
+    let disputeEvents: (DisputePrice | SkinnyDisputePrice)[] = [];
+    let settleEvents: (Settle | SkinnySettle)[] = [];
+
+    while (blockSearchConfig.fromBlock <= currentBlock.number) {
+      this.logger.debug({
+        at: "OptimisticOracleClient",
+        message: "Fetching events with block search config",
+        blockSearchConfig,
+      });
+      const eventSearchResults = await Promise.all([
+        (this.oracle.getPastEvents("RequestPrice", blockSearchConfig) as unknown) as Promise<
+          RequestPrice[] | SkinnyRequestPrice[]
+        >,
+        (this.oracle.getPastEvents("ProposePrice", blockSearchConfig) as unknown) as Promise<
+          ProposePrice[] | SkinnyProposePrice[]
+        >,
+        (this.oracle.getPastEvents("DisputePrice", blockSearchConfig) as unknown) as Promise<
+          DisputePrice[] | SkinnyDisputePrice[]
+        >,
+        (this.oracle.getPastEvents("Settle", blockSearchConfig) as unknown) as Promise<Settle[] | SkinnySettle[]>,
+      ]);
+      requestEvents = requestEvents.concat(eventSearchResults[0]);
+      proposalEvents = proposalEvents.concat(eventSearchResults[1]);
+      disputeEvents = disputeEvents.concat(eventSearchResults[2]);
+      settleEvents = settleEvents.concat(eventSearchResults[3]);
+
+      // Increment block search config. If `blocksPerEventSearch` is undefined, simply increment toBlock by 1, which should
+      // cause the `while` loop to exit.
+      blockSearchConfig = {
+        fromBlock: blockSearchConfig.toBlock + 1,
+        toBlock: blockSearchConfig.toBlock + 1 + (this.blocksPerEventSearch ? Number(this.blocksPerEventSearch) : 0),
+      };
+    }
 
     // Store price requests that have NOT been proposed to yet:
     const unproposedPriceRequests = (requestEvents as RequestPrice[]).filter((event) => {

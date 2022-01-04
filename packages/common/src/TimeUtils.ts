@@ -7,7 +7,7 @@ dotenv.config();
  * @notice Return average block-time for a period.
  */
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-export async function averageBlockTimeSeconds(lookbackSeconds?: number, networkId?: number): Promise<number> {
+export async function averageBlockTimeSeconds(networkId?: number): Promise<number> {
   // TODO: Call an external API to get this data. Currently this value is a hard-coded estimate
   // based on the data from https://etherscan.io/chart/blocktime. ~13.5 seconds has been the average
   // since April 2016, although this value seems to spike periodically for a relatively short period of time.
@@ -17,9 +17,13 @@ export async function averageBlockTimeSeconds(lookbackSeconds?: number, networkI
   }
 
   switch (networkId) {
+    // Block time is irrelevant on Arbitrum since one transaction ~= 1 block, so this time value is based on empirical
+    // observation as of January 4 2022 of Arbitrum block propogation.
+    case 42161:
+      return 2.2;
     // Source: https://polygonscan.com/chart/blocktime
     case 137:
-      return 2.5;
+      return 2.2;
     case 1:
       return defaultBlockTimeSeconds;
     default:
