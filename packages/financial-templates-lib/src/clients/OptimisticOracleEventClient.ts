@@ -43,6 +43,8 @@ export class OptimisticOracleEventClient {
   // Last block number to end the searching for events at.
   private lastBlockToSearchUntil: number | null;
 
+  private lookbackBlocks: number | null;
+
   private lastUpdateTimestamp = 0;
 
   private hexToUtf8 = Web3.utils.hexToUtf8;
@@ -57,6 +59,8 @@ export class OptimisticOracleEventClient {
    * "OptimisticOracle".
    * @param {Integer} startingBlockNumber Offset block number to index events from.
    * @param {Integer} endingBlockNumber Termination block number to index events until. If not defined runs to `latest`.
+   * @param {Integer} lookbackBlocks Amount of blocks to search per query. If not defined, then searches the max amount
+   * of blocks.
    * @return None or throws an Error.
    */
   constructor(
@@ -66,7 +70,8 @@ export class OptimisticOracleEventClient {
     optimisticOracleAddress: string,
     public readonly oracleType: OptimisticOracleType = OptimisticOracleType.OptimisticOracle,
     startingBlockNumber = 0,
-    endingBlockNumber: number | null = null
+    endingBlockNumber: number | null = null,
+    lookbackBlocks: number | null = null
   ) {
     this.optimisticOracleContract = (new this.web3.eth.Contract(
       optimisticOracleAbi,
@@ -74,6 +79,7 @@ export class OptimisticOracleEventClient {
     ) as unknown) as OptimisticOracleContract;
     this.firstBlockToSearch = startingBlockNumber;
     this.lastBlockToSearchUntil = endingBlockNumber;
+    this.lookbackBlocks = lookbackBlocks;
   }
   // Delete all events within the client
   async clearState(): Promise<void> {
@@ -112,31 +118,60 @@ export class OptimisticOracleEventClient {
       ? this.lastBlockToSearchUntil
       : await this.web3.eth.getBlockNumber();
 
-    // Define a config to bound the queries by.
-    const blockSearchConfig = { fromBlock: this.firstBlockToSearch, toBlock: lastBlockToSearch };
+    const currentTime = await this.optimisticOracleContract.methods.getCurrentTime().call();
+    let requestPriceEventsObj: (
+      | OptimisticOracleWeb3Events.RequestPrice
+      | SkinnyOptimisticOracleWeb3Events.RequestPrice
+    )[] = [];
+    let proposePriceEventsObj: (
+      | OptimisticOracleWeb3Events.ProposePrice
+      | SkinnyOptimisticOracleWeb3Events.ProposePrice
+    )[] = [];
+    let disputePriceEventsObj: (
+      | OptimisticOracleWeb3Events.DisputePrice
+      | SkinnyOptimisticOracleWeb3Events.DisputePrice
+    )[] = [];
+    let settlementEventsObj: (OptimisticOracleWeb3Events.Settle | SkinnyOptimisticOracleWeb3Events.Settle)[] = [];
 
-    // Look for events on chain from the previous seen block number to the current block number.
-    const [
-      currentTime,
-      requestPriceEventsObj,
-      proposePriceEventsObj,
-      disputePriceEventsObj,
-      settlementEventsObj,
-    ] = await Promise.all([
-      this.optimisticOracleContract.methods.getCurrentTime().call(),
-      (this.optimisticOracleContract.getPastEvents("RequestPrice", blockSearchConfig) as unknown) as Promise<
-        OptimisticOracleWeb3Events.RequestPrice[] | SkinnyOptimisticOracleWeb3Events.RequestPrice[]
-      >,
-      (this.optimisticOracleContract.getPastEvents("ProposePrice", blockSearchConfig) as unknown) as Promise<
-        OptimisticOracleWeb3Events.ProposePrice[] | SkinnyOptimisticOracleWeb3Events.ProposePrice[]
-      >,
-      (this.optimisticOracleContract.getPastEvents("DisputePrice", blockSearchConfig) as unknown) as Promise<
-        OptimisticOracleWeb3Events.DisputePrice[] | SkinnyOptimisticOracleWeb3Events.DisputePrice[]
-      >,
-      (this.optimisticOracleContract.getPastEvents("Settle", blockSearchConfig) as unknown) as Promise<
-        OptimisticOracleWeb3Events.Settle[] | SkinnyOptimisticOracleWeb3Events.Settle[]
-      >,
-    ]);
+    // If lookback blocks is defined, send multiple web3 requests, otherwise search all block history in one search.
+    let blockSearchConfig = { fromBlock: this.firstBlockToSearch, toBlock: lastBlockToSearch };
+    if (this.lookbackBlocks !== null) {
+      blockSearchConfig.toBlock = this.firstBlockToSearch + this.lookbackBlocks;
+    }
+
+    while (blockSearchConfig.fromBlock <= lastBlockToSearch) {
+      this.logger.debug({
+        at: "OptimisticOracleEventClient",
+        message: "Fetching events with block search config",
+        blockSearchConfig,
+      });
+      const eventSearchResults = await Promise.all([
+        (this.optimisticOracleContract.getPastEvents("RequestPrice", blockSearchConfig) as unknown) as Promise<
+          OptimisticOracleWeb3Events.RequestPrice[] | SkinnyOptimisticOracleWeb3Events.RequestPrice[]
+        >,
+        (this.optimisticOracleContract.getPastEvents("ProposePrice", blockSearchConfig) as unknown) as Promise<
+          OptimisticOracleWeb3Events.ProposePrice[] | SkinnyOptimisticOracleWeb3Events.ProposePrice[]
+        >,
+        (this.optimisticOracleContract.getPastEvents("DisputePrice", blockSearchConfig) as unknown) as Promise<
+          OptimisticOracleWeb3Events.DisputePrice[] | SkinnyOptimisticOracleWeb3Events.DisputePrice[]
+        >,
+        (this.optimisticOracleContract.getPastEvents("Settle", blockSearchConfig) as unknown) as Promise<
+          OptimisticOracleWeb3Events.Settle[] | SkinnyOptimisticOracleWeb3Events.Settle[]
+        >,
+      ]);
+      requestPriceEventsObj = requestPriceEventsObj.concat(eventSearchResults[0]);
+      proposePriceEventsObj = proposePriceEventsObj.concat(eventSearchResults[1]);
+      disputePriceEventsObj = disputePriceEventsObj.concat(eventSearchResults[2]);
+      settlementEventsObj = settlementEventsObj.concat(eventSearchResults[3]);
+
+      // Increment block search config. If lookback blocks is undefined, simply increment toBlock by 1, which should
+      // cause the `while` loop to exit.
+      blockSearchConfig = {
+        fromBlock: blockSearchConfig.toBlock + 1,
+        toBlock: blockSearchConfig.toBlock + 1 + (this.lookbackBlocks ? this.lookbackBlocks : 0),
+      };
+    }
+
     // Set the current contract time as the last update timestamp from the contract.
     this.lastUpdateTimestamp = parseInt(currentTime);
 

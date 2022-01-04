@@ -21,10 +21,12 @@ const { getAbi, getAddress } = require("@uma/contracts-node");
 // as input into getAbi and getAddress.
 const OracleType = {
   Voting: "Voting", // Used on mainnet when optimistic oracle directly submits price requests to Voting.
-  OracleChildTunnel: "OracleChildTunnel", // Used in production when running proposer bot on sidechain that needs to
+  OracleChildTunnel: "OracleChildTunnel", // Used in production when running proposer bot on Polygon that needs to
   // bridge price requests back to L1.
   MockOracleAncillary: "MockOracleAncillary", // Used for testing when caller wants to be able to manually push prices
-  // to resolve requests
+  // to resolve requests.
+  OracleSpoke: "OracleSpoke", // Used in production for non-Polygon L2s to bridge price requests to L1.
+  SkinnyOptimisticOracle: "SkinnyOptimisticOracle", // Gas-lite version of Optimistic oracle.
 };
 
 /**
@@ -52,6 +54,7 @@ async function run({
   oracleType = OracleType.Voting,
   optimisticOracleType = OptimisticOracleType.OptimisticOracle,
 }) {
+  if (!Object.keys(OracleType).includes(oracleType)) throw new Error("Unexpected OracleType");
   try {
     const [accounts, networkId] = await Promise.all([web3.eth.getAccounts(), web3.eth.net.getId()]);
     const optimisticOracleAddress = await getAddress(optimisticOracleType, networkId);

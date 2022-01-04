@@ -2,6 +2,8 @@ const { web3, getContract } = require("hardhat");
 const { assert } = require("chai");
 
 const winston = require("winston");
+const sinon = require("sinon");
+const { SpyTransport } = require("../../dist/logger/SpyTransport");
 
 const { toWei, hexToUtf8, utf8ToHex, toBN } = web3.utils;
 
@@ -44,6 +46,7 @@ describe("OptimisticOracleEventClient.js", function () {
   let client;
   let skinnyClient;
   let dummyLogger;
+  let spy;
 
   // Timestamps that we'll use throughout the test.
   let requestTime;
@@ -139,8 +142,10 @@ describe("OptimisticOracleEventClient.js", function () {
     // DummyLogger will not print anything to console as only capture `info` level events.
     dummyLogger = winston.createLogger({ level: "info", transports: [new winston.transports.Console()] });
 
+    spy = sinon.spy();
+
     client = new OptimisticOracleEventClient(
-      dummyLogger,
+      winston.createLogger({ level: "debug", transports: [new SpyTransport({ level: "debug" }, { spy: spy })] }),
       OptimisticOracle.abi,
       web3,
       optimisticOracle.options.address,
@@ -149,7 +154,7 @@ describe("OptimisticOracleEventClient.js", function () {
       null // endingBlockNumber
     );
     skinnyClient = new OptimisticOracleEventClient(
-      dummyLogger,
+      winston.createLogger({ level: "debug", transports: [new SpyTransport({ level: "debug" }, { spy: spy })] }),
       SkinnyOptimisticOracle.abi,
       web3,
       skinnyOptimisticOracle.options.address,
@@ -260,6 +265,7 @@ describe("OptimisticOracleEventClient.js", function () {
     // State is empty before update().
     objectsInArrayInclude([], client.getAllRequestPriceEvents());
     await client.update();
+
     objectsInArrayInclude(client.getAllRequestPriceEvents(), [
       {
         transactionHash: requestTxn1.transactionHash,
@@ -787,5 +793,142 @@ describe("OptimisticOracleEventClient.js", function () {
     objectsInArrayInclude([], offSetClient.getAllProposePriceEvents());
     objectsInArrayInclude([], offSetClient.getAllDisputePriceEvents());
     objectsInArrayInclude([], offSetClient.getAllSettlementEvents());
+  });
+  it("Update with no lookback blocks set", async function () {
+    await client.clearState();
+    await client.update();
+
+    // There should have been exactly 1 search.
+    const blockSearchConfigLogs = spy
+      .getCalls()
+      .filter((log) => log.lastArg.message.includes("Fetching events with block search config"));
+    assert.equal(blockSearchConfigLogs.length, 1);
+  });
+  it("If lookback blocks is set, makes multiple web3 requests to fetch all events", async function () {
+    const chunkedClient = new OptimisticOracleEventClient(
+      winston.createLogger({ level: "debug", transports: [new SpyTransport({ level: "debug" }, { spy: spy })] }),
+      OptimisticOracle.abi,
+      web3,
+      optimisticOracle.options.address,
+      OptimisticOracleType.OptimisticOracle,
+      0, // startingBlockNumber
+      null, // endingBlockNumber
+      10 // Search 2 blocks at a time
+    );
+
+    await chunkedClient.clearState();
+    await chunkedClient.update();
+
+    // There should have been > 1 searches.
+    const blockSearchConfigLogs = spy
+      .getCalls()
+      .filter((log) => log.lastArg.message.includes("Fetching events with block search config"));
+    assert.isTrue(blockSearchConfigLogs.length > 1);
+
+    // Now check that the events are stored correctly and exactly the same as in previous tests.
+    objectsInArrayInclude(chunkedClient.getAllRequestPriceEvents(), [
+      {
+        transactionHash: requestTxn1.transactionHash,
+        blockNumber: requestTxn1.blockNumber,
+        requester: requester,
+        identifier: hexToUtf8(identifier),
+        ancillaryData: defaultAncillaryData,
+        timestamp: requestTime.toString(),
+        currency: collateral.options.address,
+        reward: "0",
+        finalFee,
+      },
+      {
+        transactionHash: requestTxn2.transactionHash,
+        blockNumber: requestTxn2.blockNumber,
+        requester: requester,
+        identifier: hexToUtf8(identifier),
+        ancillaryData: defaultAncillaryData,
+        timestamp: (requestTime + 1).toString(),
+        currency: collateral.options.address,
+        reward: "0",
+        finalFee,
+      },
+    ]);
+    objectsInArrayInclude(chunkedClient.getAllProposePriceEvents(), [
+      {
+        transactionHash: proposalTxn1.transactionHash,
+        blockNumber: proposalTxn1.blockNumber,
+        requester: requester,
+        proposer,
+        identifier: hexToUtf8(identifier),
+        ancillaryData: defaultAncillaryData,
+        timestamp: requestTime.toString(),
+        currency: collateral.options.address,
+        proposedPrice: correctPrice,
+        expirationTimestamp: (Number(proposalTime) + liveness).toString(),
+      },
+      {
+        transactionHash: proposalTxn2.transactionHash,
+        blockNumber: proposalTxn2.blockNumber,
+        requester: requester,
+        proposer,
+        identifier: hexToUtf8(identifier),
+        ancillaryData: defaultAncillaryData,
+        timestamp: (requestTime + 1).toString(),
+        currency: collateral.options.address,
+        proposedPrice: correctPrice,
+        expirationTimestamp: (Number(proposalTime) + liveness).toString(),
+      },
+    ]);
+    objectsInArrayInclude(chunkedClient.getAllDisputePriceEvents(), [
+      {
+        transactionHash: disputeTxn1.transactionHash,
+        blockNumber: disputeTxn1.blockNumber,
+        requester: requester,
+        proposer,
+        disputer,
+        identifier: hexToUtf8(identifier),
+        ancillaryData: defaultAncillaryData,
+        timestamp: requestTime.toString(),
+        proposedPrice: correctPrice,
+        currency: collateral.options.address,
+      },
+      {
+        transactionHash: disputeTxn2.transactionHash,
+        blockNumber: disputeTxn2.blockNumber,
+        requester: requester,
+        proposer,
+        disputer,
+        identifier: hexToUtf8(identifier),
+        ancillaryData: defaultAncillaryData,
+        timestamp: (requestTime + 1).toString(),
+        proposedPrice: correctPrice,
+        currency: collateral.options.address,
+      },
+    ]);
+    objectsInArrayInclude(chunkedClient.getAllSettlementEvents(), [
+      {
+        transactionHash: settlementTxn1.transactionHash,
+        blockNumber: settlementTxn1.blockNumber,
+        requester: requester,
+        proposer,
+        disputer,
+        identifier: hexToUtf8(identifier),
+        ancillaryData: defaultAncillaryData,
+        timestamp: requestTime.toString(),
+        price: correctPrice,
+        payout: disputePayout,
+        currency: collateral.options.address,
+      },
+      {
+        transactionHash: settlementTxn2.transactionHash,
+        blockNumber: settlementTxn2.blockNumber,
+        requester: requester,
+        proposer,
+        disputer,
+        identifier: hexToUtf8(identifier),
+        ancillaryData: defaultAncillaryData,
+        timestamp: (requestTime + 1).toString(),
+        price: correctPrice,
+        payout: disputePayout,
+        currency: collateral.options.address,
+      },
+    ]);
   });
 });
