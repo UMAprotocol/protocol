@@ -3,7 +3,7 @@ import Web3 from "web3";
 import retry from "async-retry";
 import { config } from "dotenv";
 import MaticJs from "@maticnetwork/maticjs";
-import { averageBlockTimeSeconds, getWeb3 } from "@uma/common";
+import { averageBlockTimeSeconds, getWeb3, getWeb3ByChainId } from "@uma/common";
 import { getAddress, getAbi } from "@uma/contracts-node";
 import { GasEstimator, Logger, delay } from "@uma/financial-templates-lib";
 
@@ -20,8 +20,8 @@ export async function run(logger: winston.Logger, web3: Web3): Promise<void> {
 
     // Set up polygon web3. If polygon node URL is undefined, then default to setting it equal to the web3 instance.
     // This facilitates local testing where contracts are deployed to the same local network.
-    const polygonNodeUrl = config.polygonNodeUrl;
-    const polygonWeb3 = polygonNodeUrl !== "" ? new Web3(polygonNodeUrl) : web3;
+    const polygonChainId = config.chainId;
+    const polygonWeb3 = polygonChainId !== "" ? getWeb3ByChainId(Number(polygonChainId)) : web3;
     const polygonNetworkId = await polygonWeb3.eth.net.getId();
     const [polygonAverageBlockTime, polygonCurrentBlock] = await Promise.all([
       averageBlockTimeSeconds(undefined, polygonNetworkId),
