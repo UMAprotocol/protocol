@@ -299,9 +299,15 @@ export class ProfitabilityCalculator {
           break;
       }
 
-      return `Expected relay profit of ${profitInEth} ETH for ${
-        RelaySubmitType[relaySubmitType]
-      } relay, with a relayerDiscount of ${fromWei(relayerDiscount.muln(100))}%.`;
+      return (
+        "Expected relay profit of " +
+        profitInEth +
+        " ETH for " +
+        RelaySubmitType[relaySubmitType] +
+        " relay, with a relayerDiscount of " +
+        fromWei(relayerDiscount.muln(100)) +
+        "%."
+      );
     } else {
       const relayBreakEvenGasPrice = this.getRelayBreakEvenGasPrice(tokenType, ethRevenue);
 
