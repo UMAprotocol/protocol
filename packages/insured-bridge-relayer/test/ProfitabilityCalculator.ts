@@ -5,6 +5,10 @@ const { toWei, fromWei, toBN, toChecksumAddress, randomHex } = Web3.utils;
 const toBNWei = (number: string | number) => toBN(toWei(number.toString()).toString());
 
 const { ZERO_ADDRESS, createFormatFunction } = require("@uma/common");
+
+const formatWei = createFormatFunction(2, 4, false, 18);
+const formatGwei = (number: string | number | BN) => Math.ceil(Number(fromWei(number.toString(), "gwei")));
+
 const { across } = require("@uma/sdk");
 
 import { SpyTransport, lastSpyLogIncludes } from "@uma/financial-templates-lib";
@@ -178,7 +182,7 @@ describe("ProfitabilityCalculator.ts", function () {
             toBNWei(0),
             toBNWei(0)
           ).profitabilityInformation,
-          `Expected relay profit of ${fromWei(expectedProfit)} ETH for Slow relay, with a relayerDiscount of 0%.`
+          `Expected relay profit of ${formatWei(expectedProfit)} ETH for Slow relay, with a relayerDiscount of 0%.`
         );
 
         // Correctly selects the most profitable option.
@@ -214,7 +218,7 @@ describe("ProfitabilityCalculator.ts", function () {
             toBNWei(1),
             toBNWei(0)
           ).profitabilityInformation,
-          `Expected relay profit of ${fromWei(expectedProfit)} ETH for SpeedUp relay, with a relayerDiscount of 0%.`
+          `Expected relay profit of ${formatWei(expectedProfit)} ETH for SpeedUp relay, with a relayerDiscount of 0%.`
         );
 
         // Correctly selects the most profitable option.
@@ -251,7 +255,7 @@ describe("ProfitabilityCalculator.ts", function () {
             toBNWei(0),
             toBNWei(1)
           ).profitabilityInformation,
-          `Expected relay profit of ${fromWei(expectedProfit)} ETH for Instant relay, with a relayerDiscount of 0%.`
+          `Expected relay profit of ${formatWei(expectedProfit)} ETH for Instant relay, with a relayerDiscount of 0%.`
         );
 
         // Correctly selects the most profitable option.
@@ -287,7 +291,6 @@ describe("ProfitabilityCalculator.ts", function () {
         //  - instant cost is: 100e9 * 273519 / 1e18= 0.0273519 ETH.
         // If we set the reward for slow and instant to 0.02 we are underpaying for the relay. The expected profit for
         // each relay type is the difference between the above costs and the revenue of 0.02.
-        const formatWei = createFormatFunction(2, 4, false, 18);
         const slowProfit = formatWei(reward.sub(sampleCumulativeGasPrice.mul(toBN(across.constants.SLOW_ETH_GAS))));
         const fastProfit = formatWei(reward.sub(sampleCumulativeGasPrice.mul(toBN(across.constants.FAST_ETH_GAS))));
         const speedUpProfit = formatWei(
@@ -295,7 +298,6 @@ describe("ProfitabilityCalculator.ts", function () {
         );
 
         // Equally, there is a gas price at which the revenue of 0.02 for slow & fast relays becomes profitable.
-        const formatGwei = (number: string | number | BN) => Math.ceil(Number(fromWei(number.toString(), "gwei")));
         const breakEvenSlowGasPrice = formatGwei(reward.div(toBN(across.constants.SLOW_ETH_GAS)));
         const breakEvenFastGasPrice = formatGwei(reward.div(toBN(across.constants.FAST_ETH_GAS)));
 

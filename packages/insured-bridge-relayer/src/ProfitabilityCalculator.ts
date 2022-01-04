@@ -285,6 +285,9 @@ export class ProfitabilityCalculator {
     ethProfitability: { slowEthProfit: BN; speedUpEthProfit: BN; instantEthProfit: BN },
     ethRevenue: { slowEthRevenue: BN; speedUpEthRevenue: BN; instantEthRevenue: BN }
   ): string {
+    const formatWei = createFormatFunction(2, 4, false, 18);
+    const formatGwei = (number: string | number | BN) => Math.ceil(Number(fromWei(number.toString(), "gwei")));
+
     if (relaySubmitType != RelaySubmitType.Ignore) {
       let profitInEth = "0";
       switch (relaySubmitType) {
@@ -301,7 +304,7 @@ export class ProfitabilityCalculator {
 
       return (
         "Expected relay profit of " +
-        profitInEth +
+        formatWei(profitInEth) +
         " ETH for " +
         RelaySubmitType[relaySubmitType] +
         " relay, with a relayerDiscount of " +
@@ -310,9 +313,6 @@ export class ProfitabilityCalculator {
       );
     } else {
       const relayBreakEvenGasPrice = this.getRelayBreakEvenGasPrice(tokenType, ethRevenue);
-
-      const formatWei = createFormatFunction(2, 4, false, 18);
-      const formatGwei = (number: string | number | BN) => Math.ceil(Number(fromWei(number.toString(), "gwei")));
 
       return (
         "SlowRelay profit " +
