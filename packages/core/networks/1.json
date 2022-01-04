@@ -154,5 +154,9 @@
   {
     "contractName": "GovernorHub",
     "address": "0x94520d90A4EBaA98e5A7B8D6809463f65198C104"
+  },
+  {
+    "contractName": "Multicall2",
+    "address": "0x5ba1e12693dc8f9c48aad8770482f4739beed696"
   }
 ]

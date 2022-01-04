@@ -22,5 +22,17 @@
   {
     "contractName": "OracleSpoke",
     "address": "0x196767568F848fF7607145A7C1f3CDE44bb4Ce98"
+  },
+  {
+    "contractName": "IdentifierWhitelist",
+    "address": "0x2914BE6CD56276d208299D2062848b059FC10588"
+  },
+  {
+    "contractName": "AddressWhitelist",
+    "address": "0x02D65fb01d3d88127dF19838902ba42c6239c0Fd"
+  },
+  {
+    "contractName": "OptimisticOracle",
+    "address": "0x031A7882cE3e8b4462b057EBb0c3F23Cd731D234"
   }
 ]

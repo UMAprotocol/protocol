@@ -118,5 +118,9 @@
   {
     "contractName": "SuccessTokenLongShortPairFinancialProductLibrary",
     "address": "0x62AfB7C96c9DC17A103e7999Ac1bad64427227fb"
+  },
+  {
+    "contractName": "Multicall2",
+    "address": "0x5ba1e12693dc8f9c48aad8770482f4739beed696"
   }
 ]

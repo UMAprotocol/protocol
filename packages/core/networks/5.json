@@ -34,5 +34,9 @@
   {
     "contractName": "Polygon_ParentMessenger",
     "address": "0x56e58Ff5bd2A73eA80bBe365fc26048507f6DdF7"
+  },
+  {
+    "contractName": "Multicall2",
+    "address": "0x5ba1e12693dc8f9c48aad8770482f4739beed696"
   }
 ]
