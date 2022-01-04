@@ -1,15 +1,9 @@
-import dotenv from "dotenv";
 import assert from "assert";
 import { ethers } from "ethers";
 import { Provider } from "@ethersproject/providers";
 import { OptimisticOracle } from "../optimisticOracle";
 
-dotenv.config();
-
-assert(process.env.multicall2Address);
-assert(process.env.optimisticOracleAddress);
-const ooAddress = process.env.optimisticOracleAddress;
-
+const ooAddress = "0xC43767F4592DF265B4a9F1a398B97fF24F38C6A6";
 const request: [string, string, number, string] = [
   "0x863E77B0bFC12193d2f5D41cdcacE81f1bb5a09F",
   "0x47656e6572616c5f4b5049000000000000000000000000000000000000000000",

@@ -1,13 +1,10 @@
-import dotenv from "dotenv";
 import assert from "assert";
 import { ethers } from "ethers";
 import { Provider } from "@ethersproject/providers";
 import { factory, Erc20 } from "../erc20";
 
-dotenv.config();
-
 const wethAddress = "0x7355Efc63Ae731f584380a9838292c7046c1e433";
-const multicall2Address = process.env.multicall2Address;
+const multicall2Address = "0x5BA1e12693Dc8F9c48aAD8770482f4739bEeD696";
 
 describe("Erc20 E2E", function () {
   let provider: Provider;

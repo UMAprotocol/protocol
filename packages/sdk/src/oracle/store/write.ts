@@ -85,7 +85,11 @@ export class Inputs {
   }
 }
 
-export default class Writer {
+/**
+ * Write. The main writer class for this applications global state object. Composes classes that initialize, validate
+ * and simplify changes to the global state. This class modifies state directly, and really is only useful in combination with immer.
+ */
+export default class Write {
   constructor(private state: state.State) {}
   chains(chainId: number): Chain {
     if (!this.state?.chains) this.state.chains = {};

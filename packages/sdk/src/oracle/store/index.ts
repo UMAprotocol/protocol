@@ -1,18 +1,23 @@
-import type { State } from "../types/state";
 import Write from "./write";
-import produce from "immer";
+import Store, { WriteCallback, Emit } from "./store";
+import { State } from "../types/state";
 
-export type WriteCallback = (write: Write) => void;
-export type Store = {
-  write: (cb: WriteCallback) => void;
-};
+export { Write, Store };
 
-export function factory(emit: (state: State, prev: State) => void = () => ({}), state: State = {}): Store {
-  return {
-    write(cb: WriteCallback) {
-      const prevState = state;
-      state = produce(state, (draft: State) => cb(new Write(draft)));
-      emit(state, prevState);
-    },
-  };
+/**
+ * OracleStore. Wraps the store with a specific state shape and passes the Write client through to end user.
+ */
+export default class OracleStore {
+  private store: Store<State>;
+  constructor(private emit: Emit<State>, private state: State = {}) {
+    this.store = new Store(emit, state);
+  }
+  /**
+   * write - Function for updating state.
+   *
+   * @param {WriteCallback} cb - Sends a write client to the caller for safer and easier state mutations rather than the raw object.
+   */
+  write(cb: WriteCallback<Write>) {
+    this.store.write((state) => cb(new Write(state)));
+  }
 }

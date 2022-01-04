@@ -1,5 +1,5 @@
 import assert from "assert";
-import { Store, factory } from "..";
+import Store from "..";
 import Events from "events";
 import { BigNumber } from "ethers";
 
@@ -8,7 +8,7 @@ describe("Oracle Store", function () {
   let events: Events;
   beforeAll(function () {
     events = new Events();
-    store = factory(events.emit.bind(events, "change"), { chains: {} });
+    store = new Store(events.emit.bind(events, "change"));
   });
 
   test("set user", function (done) {
