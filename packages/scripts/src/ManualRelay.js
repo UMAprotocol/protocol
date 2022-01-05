@@ -67,11 +67,17 @@ async function main() {
     await l1Client.calculateRealizedLpFeePctForDeposit(deposit)
   );
 
+  console.log("Simulating relay transaction...");
+
   // Verify the txn goes through.
   await txn.call({ from: account });
 
+  console.log("Simulation successful. Sending relay...");
+
   // Send to network.
-  await txn.send({ from: account });
+  const receipt = await txn.send({ from: account });
+
+  console.log(`Relay sent. Txn hash: ${receipt.transactionHash}`);
 }
 
 main().then(
@@ -80,6 +86,9 @@ main().then(
   },
   (error) => {
     console.error(error);
+    console.error(
+      "Make sure you double check that your chain id is supported by the script or you are setting BRIDGE_DEPOSIT_ADDRESS."
+    );
     process.exit(1);
   }
 );
