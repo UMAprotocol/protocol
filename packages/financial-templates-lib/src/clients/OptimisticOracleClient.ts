@@ -61,6 +61,7 @@ export class OptimisticOracleClient {
   // Store the last on-chain time the clients were updated to inform price request information.
   private lastUpdateTimestamp = 0;
   private hexToUtf8 = Web3.utils.hexToUtf8;
+  private chainId = -1;
 
   // Oracle Data structures & values to enable synchronous returns of the state seen by the client.
   private unproposedPriceRequests: RequestPriceReturnValues[] = [];
@@ -156,9 +157,9 @@ export class OptimisticOracleClient {
 
   public async update(): Promise<void> {
     // Determine earliest block to query events for based on lookback window:
-    const netId = await this.web3.eth.getChainId();
+    if (this.chainId === -1) this.chainId = await this.web3.eth.getChainId();
     const [averageBlockTime, currentBlock] = await Promise.all([
-      averageBlockTimeSeconds(netId),
+      averageBlockTimeSeconds(this.chainId),
       this.web3.eth.getBlock("latest"),
     ]);
     const lookbackBlocks = Math.ceil(this.lookback / averageBlockTime);
