@@ -2,6 +2,15 @@
 # yarn lockfile v1
 
 
+"@across-protocol/contracts@0.1.2", "@across-protocol/contracts@^0.1.2":
+  version "0.1.2"
+  resolved "https://registry.yarnpkg.com/@across-protocol/contracts/-/contracts-0.1.2.tgz#8c5b424956344ba91134f5fb1ba55d57fde114cb"
+  integrity sha512-5Ep2Tm8tXWafx+DBVZr0NKLCj0vEm7sqCfI1ZPmldqE8STJud/l8c2rRgg+hFfuQWxhYMhpk3ygv3gBJ8VRISA==
+  dependencies:
+    "@eth-optimism/contracts" "^0.5.5"
+    "@openzeppelin/contracts" "4.1.0"
+    "@uma/core" "^2.18.0"
+
 "@antora/asciidoc-loader@2.3.4":
   version "2.3.4"
   resolved "https://registry.yarnpkg.com/@antora/asciidoc-loader/-/asciidoc-loader-2.3.4.tgz#b5c4b6447981e191cea8438226a8e76904fc1e7d"
@@ -1216,7 +1225,7 @@
     pino-sentry "^0.7.0"
     prom-client "^13.1.0"
 
-"@eth-optimism/contracts@0.5.7", "@eth-optimism/contracts@^0.5.7":
+"@eth-optimism/contracts@0.5.7", "@eth-optimism/contracts@^0.5.5", "@eth-optimism/contracts@^0.5.7":
   version "0.5.7"
   resolved "https://registry.yarnpkg.com/@eth-optimism/contracts/-/contracts-0.5.7.tgz#1e0b59d0a0f689ab947ed9aced2ea514a104b0af"
   integrity sha512-/+qsYTuHSvSbmqBwakmxjmh1X2z7A3Q/bpv8YN/Mu/wNvehXD7RrmEpd6UMrI5Rov4Fsaa8LSS7D1IXpZzso7w==
@@ -4453,6 +4462,11 @@
   version "3.4.1-solc-0.7-2"
   resolved "https://registry.yarnpkg.com/@openzeppelin/contracts/-/contracts-3.4.1-solc-0.7-2.tgz#371c67ebffe50f551c3146a9eec5fe6ffe862e92"
   integrity sha512-tAG9LWg8+M2CMu7hIsqHPaTyG4uDzjr6mhvH96LvOpLZZj6tgzTluBt+LsCf1/QaYrlis6pITvpIaIhE+iZB+Q==
+
+"@openzeppelin/contracts@4.1.0":
+  version "4.1.0"
+  resolved "https://registry.yarnpkg.com/@openzeppelin/contracts/-/contracts-4.1.0.tgz#baec89a7f5f73e3d8ea582a78f1980134b605375"
+  integrity sha512-TihZitscnaHNcZgXGj9zDLDyCqjziytB4tMCwXq0XimfWkAjBYyk5/pOsDbbwcavhlc79HhpTEpQcrMnPVa1mw==
 
 "@openzeppelin/contracts@4.4.1":
   version "4.4.1"

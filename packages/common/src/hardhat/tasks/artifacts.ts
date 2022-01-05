@@ -4,6 +4,7 @@ import uniqBy from "lodash.uniqby";
 import { task, types } from "hardhat/config";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { CombinedHRE } from "./types";
+import acrossArtifacts from "@across-protocol/contracts/build/artifacts.json";
 
 function removeFileIfExists(filename: string): void {
   try {
@@ -18,16 +19,31 @@ function normalizeClassName(name: string): string {
   return capitalizedName.replace(/_/g, ""); // Remove underscores.
 }
 
+function getAcrossBasePath() {
+  return path.dirname(require.resolve("@across-protocol/contracts/package.json"));
+}
+
 async function getArtifactPathList(hre: HardhatRuntimeEnvironment, relativeTo: string) {
   const artifactPaths = await hre.artifacts.getArtifactPaths();
+
+  // Get the absolute path to the across protocol dep directory.
+  const acrossBasePath = getAcrossBasePath();
 
   // Generate a unique list of artifacts and paths to them. Unique is necessary because there are some redundantly
   // named contracts.
   return uniqBy(
-    artifactPaths.map((artifactPath: string) => ({
-      contractName: path.basename(artifactPath).split(".")[0],
-      relativePath: `./${path.relative(path.dirname(relativeTo), artifactPath)}`,
-    })),
+    [
+      ...artifactPaths.map((artifactPath: string) => ({
+        contractName: path.basename(artifactPath).split(".")[0],
+        relativePath: `./${path.relative(path.dirname(relativeTo), artifactPath)}`,
+      })),
+      ...acrossArtifacts.map(({ contractName, relativePath }) => ({
+        // Since this path is relative to the base across path, we need to join that path to the artifact path to get the full path.
+        // Then we need to perform the relative path operation to get the relative path to that file.
+        relativePath: path.relative(path.dirname(relativeTo), path.join(acrossBasePath, relativePath)),
+        contractName,
+      })),
+    ],
     "contractName"
   );
 }
@@ -37,14 +53,20 @@ function getCorePath(hre: HardhatRuntimeEnvironment, relativeTo: string): string
   return `./${path.relative(relativeTo, artifactPath)}`;
 }
 
+function getFilesForNetworkFolder(folderPath: string): string[] {
+  return fs.readdirSync(folderPath).map((filename) => path.join(folderPath, filename));
+}
+
 function getAddressesMap(hre: HardhatRuntimeEnvironment) {
   // Generate a map of name => chain id => address.
-  const networksPath = path.join(getCorePath(hre, "./"), "networks");
-  const dirs = fs.readdirSync(networksPath);
+
+  const coreNetworksPath = path.join(getCorePath(hre, "./"), "networks");
+  const acrossNetworksPath = path.join(getAcrossBasePath(), "networks");
+  const files = [...getFilesForNetworkFolder(coreNetworksPath), ...fs.readdirSync(acrossNetworksPath)];
   const addresses: { [name: string]: { [chainId: number]: string } } = {};
-  for (const dir of dirs) {
-    const chainId = parseInt(dir.split(".")[0]);
-    const deployments = JSON.parse(fs.readFileSync(path.join(networksPath, dir), "utf8"));
+  for (const file of files) {
+    const chainId = parseInt(file.split(".")[0]);
+    const deployments = JSON.parse(fs.readFileSync(file, "utf8"));
 
     // Loop over the deployments in the file and save each one.
     for (const { contractName, address, deploymentName } of deployments) {
