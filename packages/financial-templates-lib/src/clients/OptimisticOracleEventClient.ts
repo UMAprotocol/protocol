@@ -5,6 +5,7 @@ import {
   OptimisticOracleWeb3Events,
   SkinnyOptimisticOracleWeb3Events,
 } from "@uma/contracts-node";
+import { getEventsWithPaginatedBlockSearch, EventSearchOptions } from "@uma/common";
 import { Abi } from "../types";
 import { OptimisticOracleContract, OptimisticOracleType } from "./OptimisticOracleClient";
 
@@ -118,61 +119,49 @@ export class OptimisticOracleEventClient {
       ? this.lastBlockToSearchUntil
       : await this.web3.eth.getBlockNumber();
 
-    const currentTime = await this.optimisticOracleContract.methods.getCurrentTime().call();
-    let requestPriceEventsObj: (
+    const eventResults = await getEventsWithPaginatedBlockSearch(
+      [
+        (_blockSearchConfig: EventSearchOptions) =>
+          this.optimisticOracleContract.getPastEvents("RequestPrice", _blockSearchConfig),
+        (_blockSearchConfig: EventSearchOptions) =>
+          this.optimisticOracleContract.getPastEvents("ProposePrice", _blockSearchConfig),
+        (_blockSearchConfig: EventSearchOptions) =>
+          this.optimisticOracleContract.getPastEvents("DisputePrice", _blockSearchConfig),
+        (_blockSearchConfig: EventSearchOptions) =>
+          this.optimisticOracleContract.getPastEvents("Settle", _blockSearchConfig),
+      ],
+      this.firstBlockToSearch,
+      lastBlockToSearch,
+      this.blocksPerEventSearch
+    );
+    const requestPriceEventsObj = (eventResults.eventData[0] as unknown) as (
       | OptimisticOracleWeb3Events.RequestPrice
       | SkinnyOptimisticOracleWeb3Events.RequestPrice
-    )[] = [];
-    let proposePriceEventsObj: (
+    )[];
+    const proposePriceEventsObj = (eventResults.eventData[1] as unknown) as (
       | OptimisticOracleWeb3Events.ProposePrice
       | SkinnyOptimisticOracleWeb3Events.ProposePrice
-    )[] = [];
-    let disputePriceEventsObj: (
+    )[];
+    const disputePriceEventsObj = (eventResults.eventData[2] as unknown) as (
       | OptimisticOracleWeb3Events.DisputePrice
       | SkinnyOptimisticOracleWeb3Events.DisputePrice
-    )[] = [];
-    let settlementEventsObj: (OptimisticOracleWeb3Events.Settle | SkinnyOptimisticOracleWeb3Events.Settle)[] = [];
+    )[];
+    const settlementEventsObj = (eventResults.eventData[3] as unknown) as (
+      | OptimisticOracleWeb3Events.Settle
+      | SkinnyOptimisticOracleWeb3Events.Settle
+    )[];
 
-    // If lookback blocks is defined, send multiple web3 requests, otherwise search all block history in one search.
-    let blockSearchConfig = { fromBlock: Number(this.firstBlockToSearch), toBlock: Number(lastBlockToSearch) };
-    if (this.blocksPerEventSearch !== null) {
-      blockSearchConfig.toBlock = Number(this.firstBlockToSearch) + Number(this.blocksPerEventSearch);
-    }
-
-    while (blockSearchConfig.fromBlock <= lastBlockToSearch) {
-      this.logger.debug({
-        at: "OptimisticOracleEventClient",
-        message: "Fetching events with block search config",
-        blockSearchConfig,
-      });
-      const eventSearchResults = await Promise.all([
-        (this.optimisticOracleContract.getPastEvents("RequestPrice", blockSearchConfig) as unknown) as Promise<
-          OptimisticOracleWeb3Events.RequestPrice[] | SkinnyOptimisticOracleWeb3Events.RequestPrice[]
-        >,
-        (this.optimisticOracleContract.getPastEvents("ProposePrice", blockSearchConfig) as unknown) as Promise<
-          OptimisticOracleWeb3Events.ProposePrice[] | SkinnyOptimisticOracleWeb3Events.ProposePrice[]
-        >,
-        (this.optimisticOracleContract.getPastEvents("DisputePrice", blockSearchConfig) as unknown) as Promise<
-          OptimisticOracleWeb3Events.DisputePrice[] | SkinnyOptimisticOracleWeb3Events.DisputePrice[]
-        >,
-        (this.optimisticOracleContract.getPastEvents("Settle", blockSearchConfig) as unknown) as Promise<
-          OptimisticOracleWeb3Events.Settle[] | SkinnyOptimisticOracleWeb3Events.Settle[]
-        >,
-      ]);
-      requestPriceEventsObj = requestPriceEventsObj.concat(eventSearchResults[0]);
-      proposePriceEventsObj = proposePriceEventsObj.concat(eventSearchResults[1]);
-      disputePriceEventsObj = disputePriceEventsObj.concat(eventSearchResults[2]);
-      settlementEventsObj = settlementEventsObj.concat(eventSearchResults[3]);
-
-      // Increment block search config. If lookback blocks is undefined, simply increment toBlock by 1, which should
-      // cause the `while` loop to exit.
-      blockSearchConfig = {
-        fromBlock: blockSearchConfig.toBlock + 1,
-        toBlock: blockSearchConfig.toBlock + 1 + (this.blocksPerEventSearch ? Number(this.blocksPerEventSearch) : 0),
-      };
-    }
+    this.logger.debug({
+      at: "OptimisticOracleEventClient",
+      message: "Queried past event requests",
+      eventRequestCount: eventResults.web3RequestCount,
+      earliestBlockToQuery: this.firstBlockToSearch,
+      latestBlockToQuery: lastBlockToSearch,
+      blocksPerEventSearch: this.blocksPerEventSearch,
+    });
 
     // Set the current contract time as the last update timestamp from the contract.
+    const currentTime = await this.optimisticOracleContract.methods.getCurrentTime().call();
     this.lastUpdateTimestamp = parseInt(currentTime);
 
     // Process the responses into clean objects.

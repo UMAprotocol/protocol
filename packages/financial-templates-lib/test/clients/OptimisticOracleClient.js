@@ -138,11 +138,11 @@ describe("OptimisticOracleClient.js", function () {
         .send({ from: accounts[0] });
       await client.update();
 
-      // There should have been exactly 1 search.
+      // There should have been exactly 1 search each for the 4 events, so 4 web3 requests total.
       const blockSearchConfigLogs = spy
         .getCalls()
-        .filter((log) => log.lastArg.message.includes("Fetching events with block search config"));
-      assert.equal(blockSearchConfigLogs.length, 1);
+        .filter((log) => log.lastArg.message.includes("Queried past event requests"));
+      assert.equal(blockSearchConfigLogs[0].lastArg.eventRequestCount, 4);
     });
     it("If max blocks per search is set, makes multiple web3 requests to fetch all events", async function () {
       const chunkedClient = new OptimisticOracleClient(
@@ -171,11 +171,11 @@ describe("OptimisticOracleClient.js", function () {
         .send({ from: accounts[0] });
       await chunkedClient.update();
 
-      // There should have been > 1 searches.
+      // There should have been > 1 search each for the 4 events, so > 4 web3 requests total.
       const blockSearchConfigLogs = spy
         .getCalls()
-        .filter((log) => log.lastArg.message.includes("Fetching events with block search config"));
-      assert.isTrue(blockSearchConfigLogs.length > 1);
+        .filter((log) => log.lastArg.message.includes("Queried past event requests"));
+      assert.isTrue(blockSearchConfigLogs[0].lastArg.eventRequestCount > 4);
 
       result = chunkedClient.getUndisputedProposals();
       objectsInArrayInclude(result, []);

@@ -1,6 +1,11 @@
 // A thick client for getting information about an OptimisticOracle. Used to get price requests and
 // proposals, which can be disputed and settled.
-import { averageBlockTimeSeconds, revertWrapper } from "@uma/common";
+import {
+  averageBlockTimeSeconds,
+  revertWrapper,
+  getEventsWithPaginatedBlockSearch,
+  EventSearchOptions,
+} from "@uma/common";
 import Web3 from "web3";
 import type { Logger } from "winston";
 import { Abi, isDefined } from "../types";
@@ -165,48 +170,30 @@ export class OptimisticOracleClient {
     const lookbackBlocks = Math.ceil(this.lookback / averageBlockTime);
     const earliestBlockToQuery = Math.max(currentBlock.number - lookbackBlocks, 0);
 
-    // If max blocks to search is defined, send multiple web3 requests, otherwise search all block history in one search.
-    let blockSearchConfig = { fromBlock: earliestBlockToQuery, toBlock: currentBlock.number };
-    if (this.blocksPerEventSearch !== null) {
-      blockSearchConfig.toBlock = Number(earliestBlockToQuery) + Number(this.blocksPerEventSearch);
-    }
+    const eventResults = await getEventsWithPaginatedBlockSearch(
+      [
+        (_blockSearchConfig: EventSearchOptions) => this.oracle.getPastEvents("RequestPrice", _blockSearchConfig),
+        (_blockSearchConfig: EventSearchOptions) => this.oracle.getPastEvents("ProposePrice", _blockSearchConfig),
+        (_blockSearchConfig: EventSearchOptions) => this.oracle.getPastEvents("DisputePrice", _blockSearchConfig),
+        (_blockSearchConfig: EventSearchOptions) => this.oracle.getPastEvents("Settle", _blockSearchConfig),
+      ],
+      earliestBlockToQuery,
+      currentBlock.number,
+      this.blocksPerEventSearch
+    );
+    const requestEvents = (eventResults.eventData[0] as unknown) as (RequestPrice | SkinnyRequestPrice)[];
+    const proposalEvents = (eventResults.eventData[1] as unknown) as (ProposePrice | SkinnyProposePrice)[];
+    const disputeEvents = (eventResults.eventData[2] as unknown) as (DisputePrice | SkinnyDisputePrice)[];
+    const settleEvents = (eventResults.eventData[3] as unknown) as (Settle | SkinnySettle)[];
 
-    const currentTime = await this.oracle.methods.getCurrentTime().call();
-    let requestEvents: (RequestPrice | SkinnyRequestPrice)[] = [];
-    let proposalEvents: (ProposePrice | SkinnyProposePrice)[] = [];
-    let disputeEvents: (DisputePrice | SkinnyDisputePrice)[] = [];
-    let settleEvents: (Settle | SkinnySettle)[] = [];
-
-    while (blockSearchConfig.fromBlock <= currentBlock.number) {
-      this.logger.debug({
-        at: "OptimisticOracleClient",
-        message: "Fetching events with block search config",
-        blockSearchConfig,
-      });
-      const eventSearchResults = await Promise.all([
-        (this.oracle.getPastEvents("RequestPrice", blockSearchConfig) as unknown) as Promise<
-          RequestPrice[] | SkinnyRequestPrice[]
-        >,
-        (this.oracle.getPastEvents("ProposePrice", blockSearchConfig) as unknown) as Promise<
-          ProposePrice[] | SkinnyProposePrice[]
-        >,
-        (this.oracle.getPastEvents("DisputePrice", blockSearchConfig) as unknown) as Promise<
-          DisputePrice[] | SkinnyDisputePrice[]
-        >,
-        (this.oracle.getPastEvents("Settle", blockSearchConfig) as unknown) as Promise<Settle[] | SkinnySettle[]>,
-      ]);
-      requestEvents = requestEvents.concat(eventSearchResults[0]);
-      proposalEvents = proposalEvents.concat(eventSearchResults[1]);
-      disputeEvents = disputeEvents.concat(eventSearchResults[2]);
-      settleEvents = settleEvents.concat(eventSearchResults[3]);
-
-      // Increment block search config. If `blocksPerEventSearch` is undefined, simply increment toBlock by 1, which should
-      // cause the `while` loop to exit.
-      blockSearchConfig = {
-        fromBlock: blockSearchConfig.toBlock + 1,
-        toBlock: blockSearchConfig.toBlock + 1 + (this.blocksPerEventSearch ? Number(this.blocksPerEventSearch) : 0),
-      };
-    }
+    this.logger.debug({
+      at: "OptimisticOracleClient",
+      message: "Queried past event requests",
+      eventRequestCount: eventResults.web3RequestCount,
+      earliestBlockToQuery,
+      latestBlockToQuery: currentBlock.number,
+      blocksPerEventSearch: this.blocksPerEventSearch,
+    });
 
     // Store price requests that have NOT been proposed to yet:
     const unproposedPriceRequests = (requestEvents as RequestPrice[]).filter((event) => {
@@ -248,6 +235,7 @@ export class OptimisticOracleClient {
       .filter(isDefined);
 
     // Filter proposals based on their expiration timestamp:
+    const currentTime = await this.oracle.methods.getCurrentTime().call();
     const isExpired = (proposal: ProposePriceReturnValues): boolean => {
       if (this.oracleType === OptimisticOracleType.SkinnyOptimisticOracle) {
         return (

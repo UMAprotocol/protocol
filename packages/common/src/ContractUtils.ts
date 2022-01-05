@@ -89,6 +89,64 @@ export type EventSearchOptions = {
 };
 
 /**
+ * Return all events between block range. Will paginate the event search using the `pageSize` if specified. Takes as
+ * input a list of async callbacks that are used to make event requests. This means that different event types and
+ * and contracts can be queried in this function.
+ * @param contractEventQueryCallbacks Array of functions that take in `EventSearchOptions` and return promises that will
+ * resolve to arrays of EventData.
+ * Example of one such callback: (blockSearchConfig) => return this.oracle.getPastEvents("RequestPrice", blockSearchConfig)
+ * @param earliestBlockToQuery First block to query.
+ * @param latestBlockToQuery Latest block to query.
+ * @param pageSize Number of blocks to search for in each query. Determines how many web3 requests are sent to fetch
+ * data for all blocks between `earliestBlockToQuery` and `latestBlockToQuery`.
+ * @return array of event data. Array size is equal to size of `contractEventQueryCallbacks`. Also returns number of
+ * web3 requests sent.
+ */
+export async function getEventsWithPaginatedBlockSearch(
+  contractEventQueryCallbacks: ((blockSearchConfig: EventSearchOptions) => Promise<EventData[]>)[],
+  earliestBlockToQuery: number,
+  latestBlockToQuery: number,
+  pageSize: number | null = null
+): Promise<{ eventData: EventData[][]; web3RequestCount: number }> {
+  const blockSearchConfig = {
+    fromBlock: earliestBlockToQuery,
+    toBlock: latestBlockToQuery,
+  };
+  // If pageSize is defined, we will send multiple web3 requests, otherwise will search all block history in one search.
+  if (pageSize !== null) blockSearchConfig.toBlock = Math.min(latestBlockToQuery, earliestBlockToQuery + pageSize);
+
+  // Construct promise array of event searches to send in parallel
+  const promisesToSend = [];
+  while (blockSearchConfig.fromBlock <= latestBlockToQuery) {
+    for (let i = 0; i < contractEventQueryCallbacks.length; i++) {
+      promisesToSend.push(contractEventQueryCallbacks[i](blockSearchConfig));
+    }
+
+    // Increment block search config. If `pageSize` is undefined, there is no need to set the `toBlock` since we're
+    // already increasing the `fromBlock` such that the `while` loop will exit on the next iteration.
+    blockSearchConfig.fromBlock = blockSearchConfig.toBlock + 1;
+    if (pageSize !== null)
+      blockSearchConfig.toBlock = Math.min(latestBlockToQuery, blockSearchConfig.toBlock + 1 + pageSize);
+  }
+
+  // Send promises in parallel and sort results according to type of contract event query.
+  const eventSearchResults = await Promise.all(promisesToSend);
+  const contractEventQueryResults = [];
+  for (let i = 0; i < eventSearchResults.length; i++) {
+    const contractEventQueryIndex = i % contractEventQueryCallbacks.length;
+    if (contractEventQueryResults[contractEventQueryIndex] === undefined)
+      contractEventQueryResults[contractEventQueryIndex] = [] as EventData[];
+    contractEventQueryResults[contractEventQueryIndex] = contractEventQueryResults[contractEventQueryIndex].concat(
+      eventSearchResults[i]
+    );
+  }
+
+  return {
+    eventData: contractEventQueryResults,
+    web3RequestCount: promisesToSend.length,
+  };
+}
+/**
  * Fetches specified contract event data for all input web3 providers. Returns false if any of the events found with
  * one provider are NOT matched exactly in ALL of the other providers' event arrays.
  * @param web3s Web3 providers to check for target event.
