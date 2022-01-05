@@ -87,7 +87,7 @@ async function run({
       await getAddress(oracleType, networkId),
       604800, // default lookback setting for this client
       optimisticOracleType,
-      Number(blocksPerEventSearch)
+      blocksPerEventSearch ? Number(blocksPerEventSearch) : null
     );
     const gasEstimator = new GasEstimator(logger, 60, networkId);
 

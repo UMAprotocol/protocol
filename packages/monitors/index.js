@@ -337,8 +337,8 @@ async function run({
         optimisticOracleAddress,
         optimisticOracleType,
         Number(eventsFromBlockNumber),
-        Number(endingBlock),
-        Number(blocksPerEventSearch)
+        endingBlock ? Number(endingBlock) : null,
+        blocksPerEventSearch ? Number(blocksPerEventSearch) : null
       );
 
       const contractProps = { networkId };
