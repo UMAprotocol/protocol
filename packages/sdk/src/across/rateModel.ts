@@ -59,8 +59,8 @@ export class RateModelDictionary {
       // reverse the array so it goes from newest at index 0 to oldest at index length-1, and then find the first event
       // who's block number is less than or equal to the target block number.
       const rateModel = this.rateModelDictionary[l1TokenNormalized]
-        .slice() // reverse() modifies memory in place so create a copy first.
-        .reverse()
+        .slice()
+        .reverse() // reverse() modifies memory in place so create a copy first.
         .find((event) => event.blockNumber <= blockNumber);
 
       if (!rateModel)
