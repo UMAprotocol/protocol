@@ -12,6 +12,9 @@ import { RelaySubmitType } from "./Relayer";
 
 import type { BN } from "@uma/common";
 
+const formatWei = createFormatFunction(2, 4, false, 18);
+const formatGwei = (number: string | number | BN) => Math.ceil(Number(fromWei(number.toString(), "gwei")));
+
 export enum TokenType {
   WETH,
   ERC20,
@@ -285,22 +288,13 @@ export class ProfitabilityCalculator {
     ethProfitability: { slowEthProfit: BN; speedUpEthProfit: BN; instantEthProfit: BN },
     ethRevenue: { slowEthRevenue: BN; speedUpEthRevenue: BN; instantEthRevenue: BN }
   ): string {
-    const formatWei = createFormatFunction(2, 4, false, 18);
-    const formatGwei = (number: string | number | BN) => Math.ceil(Number(fromWei(number.toString(), "gwei")));
-
     if (relaySubmitType != RelaySubmitType.Ignore) {
-      let profitInEth = "0";
-      switch (relaySubmitType) {
-        case RelaySubmitType.Slow:
-          profitInEth = fromWei(ethProfitability.slowEthProfit);
-          break;
-        case RelaySubmitType.SpeedUp:
-          profitInEth = fromWei(ethProfitability.speedUpEthProfit);
-          break;
-        case RelaySubmitType.Instant:
-          profitInEth = fromWei(ethProfitability.instantEthProfit);
-          break;
-      }
+      const profitInEth =
+        relaySubmitType == RelaySubmitType.Slow
+          ? ethProfitability.slowEthProfit
+          : relaySubmitType == RelaySubmitType.SpeedUp
+          ? ethProfitability.speedUpEthProfit
+          : ethProfitability.instantEthProfit;
 
       return (
         "Expected relay profit of " +
