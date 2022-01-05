@@ -87,7 +87,7 @@ main().then(
   (error) => {
     console.error(error);
     console.error(
-      "Make sure you double check that your chain id is supported by the script or you are setting BRIDGE_DEPOSIT_ADDRESS."
+      "Script failed due to the error above. Please double check that your chain id is supported by the script or you are setting BRIDGE_DEPOSIT_ADDRESS as this is a common source of errors."
     );
     process.exit(1);
   }
