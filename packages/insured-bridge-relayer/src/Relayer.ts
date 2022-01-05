@@ -693,7 +693,9 @@ export class Relayer {
       "%, realizedLpFee " +
       createFormatFunction(2, 4, false, 18)(realizedLpFeePct.muln(100)) +
       "%." +
-      profitabilityInformation
+      profitabilityInformation +
+      " Deposit tx " +
+      createEtherscanLinkMarkdown(deposit.depositHash, this.l2Client.chainId)
     );
   }
 
