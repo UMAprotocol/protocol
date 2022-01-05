@@ -37,12 +37,14 @@ const Store = getContract("Store");
 const ERC20 = getContract("ExpandedERC20");
 const Timer = getContract("Timer");
 const MockOracle = getContract("MockOracleAncillary");
+const RateModelStore = getContract("RateModelStore");
 
 // Contract objects
 let messenger: any;
 let bridgeAdmin: any;
 let bridgePool: any;
 let bridgeDepositBox: any;
+let rateModelStore: any;
 let finder: any;
 let store: any;
 let identifierWhitelist: any;
@@ -218,7 +220,20 @@ describe("CrossDomainFinalizer.ts", function () {
 
     // Create the rate models for the one and only l1Token, set to the single rateModel defined in the constants.
     const rateModels = { [l1Token.options.address]: rateModel };
-    l1Client = new InsuredBridgeL1Client(spyLogger, web3, bridgeAdmin.options.address, rateModels);
+    rateModelStore = await RateModelStore.new().send({ from: l1Owner });
+    await rateModelStore.methods
+      .updateRateModel(
+        l1Token.options.address,
+        JSON.stringify({
+          UBar: rateModels[l1Token.options.address].UBar.toString(),
+          R0: rateModels[l1Token.options.address].R0.toString(),
+          R1: rateModels[l1Token.options.address].R1.toString(),
+          R2: rateModels[l1Token.options.address].R2.toString(),
+        })
+      )
+      .send({ from: l1Owner });
+
+    l1Client = new InsuredBridgeL1Client(spyLogger, web3, bridgeAdmin.options.address, rateModelStore.options.address);
     l2Client = new InsuredBridgeL2Client(spyLogger, web3, bridgeDepositBox.options.address, chainId);
 
     gasEstimator = new GasEstimator(spyLogger);

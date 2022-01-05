@@ -1,5 +1,4 @@
 import { getPrecisionForIdentifier } from "@uma/common";
-import { across } from "@uma/sdk";
 
 // Default price feed configs for currently approved identifiers.
 // TODO: maybe add a more well-specified type that defines precisely what configs are possible/allowed.
@@ -982,7 +981,7 @@ export const defaultConfigs: { [name: string]: { type: string; [key: string]: an
     l2BlockLookback: 99000, // Arbitrum only supports lookbacks of 100,000 blocks
     l2NetId: 42161,
     bridgeAdminAddress: "0x30B44C676A05F1264d1dE9cC31dB5F2A945186b6",
-    rateModels: across.constants.RATE_MODELS,
+    rateModelAddress: "0xd18fFeb5fdd1F2e122251eA7Bf357D8Af0B60B50",
   },
   CVXUSD: {
     type: "expression",

@@ -1,11 +1,7 @@
 import Web3 from "web3";
-const { isAddress, toChecksumAddress } = Web3.utils;
+const { toChecksumAddress } = Web3.utils;
 
 import { replaceAddressCase } from "@uma/common";
-import { across } from "@uma/sdk";
-
-// Check each token rate model contains the expected data.
-const expectedRateModelKeys = ["UBar", "R0", "R1", "R2"];
 
 // This struct is a hack right now but prevents an edge case bug where a deposit.quoteTime < bridgePool.deployment time.
 // The deposit.quoteTime is used to call bridgePool.liquidityUtilizationCurrent at a specific block height. This call
@@ -47,6 +43,7 @@ export interface BotModes {
 }
 export class RelayerConfig {
   readonly bridgeAdmin: string;
+  readonly rateModelStore: string;
 
   readonly pollingDelay: number;
   readonly errorRetries: number;
@@ -54,7 +51,6 @@ export class RelayerConfig {
 
   readonly whitelistedRelayL1Tokens: string[] = [];
   readonly whitelistedChainIds: number[] = [];
-  readonly rateModels: { [key: string]: across.constants.RateModel } = {};
   readonly activatedChainIds: number[];
   readonly l2BlockLookback: number;
 
@@ -71,7 +67,7 @@ export class RelayerConfig {
       POLLING_DELAY,
       ERROR_RETRIES,
       ERROR_RETRIES_TIMEOUT,
-      RATE_MODELS,
+      RATE_MODEL_ADDRESS,
       CHAIN_IDS,
       L2_BLOCK_LOOKBACK,
       CROSS_DOMAIN_FINALIZATION_THRESHOLD,
@@ -88,6 +84,9 @@ export class RelayerConfig {
 
     if (!BRIDGE_ADMIN_ADDRESS) throw new Error("BRIDGE_ADMIN_ADDRESS required");
     this.bridgeAdmin = toChecksumAddress(BRIDGE_ADMIN_ADDRESS);
+
+    if (!RATE_MODEL_ADDRESS) throw new Error("RATE_MODEL_ADDRESS required");
+    this.rateModelStore = toChecksumAddress(RATE_MODEL_ADDRESS);
 
     this.botModes = {
       relayerEnabled: RELAYER_ENABLED === "true" ? true : false,
@@ -126,30 +125,6 @@ export class RelayerConfig {
 
     this.l1DeployData = replaceAddressCase(L1_DEPLOY_DATA ? JSON.parse(L1_DEPLOY_DATA) : bridgePoolDeployData);
     this.l2DeployData = L2_DEPLOY_DATA ? JSON.parse(L2_DEPLOY_DATA) : bridgeDepositBoxDeployData;
-    const processingRateModels = RATE_MODELS ? JSON.parse(RATE_MODELS) : across.constants.RATE_MODELS;
-
-    for (const l1Token of Object.keys(processingRateModels)) {
-      // Check the keys in the rate model provided are addresses.
-      if (!isAddress(l1Token)) throw new Error("Bad l1Token provided in rate model!");
-
-      // Append this key to the whitelistedRelayL1Tokens array.
-      this.whitelistedRelayL1Tokens.push(toChecksumAddress(l1Token)); // ensure case is converted correctly
-
-      if (
-        !expectedRateModelKeys.every((item) =>
-          Object.prototype.hasOwnProperty.call(processingRateModels[l1Token], item)
-        )
-      )
-        throw new Error(
-          `${toChecksumAddress(l1Token)} does not contain the required rate model keys ${expectedRateModelKeys}`
-        );
-      this.rateModels[toChecksumAddress(l1Token)] = {
-        UBar: processingRateModels[l1Token].UBar.toString(),
-        R0: processingRateModels[l1Token].R0.toString(),
-        R1: processingRateModels[l1Token].R1.toString(),
-        R2: processingRateModels[l1Token].R2.toString(),
-      };
-    }
 
     // CHAIN_IDS sets the active chain ID's for this bot. Note how this is distinct from WHITELISTED_CHAIN_IDS which
     // sets all valid chain ID's. Any relays for chain ID's outside of this whitelist will be disputed.
