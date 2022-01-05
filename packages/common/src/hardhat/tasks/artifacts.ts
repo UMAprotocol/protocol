@@ -62,7 +62,7 @@ function getAddressesMap(hre: HardhatRuntimeEnvironment) {
 
   const coreNetworksPath = path.join(getCorePath(hre, "./"), "networks");
   const acrossNetworksPath = path.join(getAcrossBasePath(), "networks");
-  const files = [...getFilesForNetworkFolder(coreNetworksPath), ...fs.readdirSync(acrossNetworksPath)];
+  const files = [...getFilesForNetworkFolder(acrossNetworksPath), ...fs.readdirSync(coreNetworksPath)];
   const addresses: { [name: string]: { [chainId: number]: string } } = {};
   for (const file of files) {
     const chainId = parseInt(file.split(".")[0]);
