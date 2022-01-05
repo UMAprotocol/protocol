@@ -36,6 +36,11 @@ async function main() {
     288: await getAddress("OVM_OETH_BridgeDepositBox", 288),
   };
 
+  if (!(Number(argv.chainId) in defaultDepositBoxMapping) && !process.env.BRIDGE_DEPOSIT_ADDRESS)
+    throw new Error(
+      `chainId ${argv.chainId} has no default deposit box address and a custom BRIDGE_DEPOSIT_ADDRESS is not set.`
+    );
+
   const l1Web3 = getWeb3ByChainId(1);
   const l2Web3 = getWeb3ByChainId(Number(argv.chainId));
   const [account] = await l1Web3.eth.getAccounts();
@@ -86,9 +91,6 @@ main().then(
   },
   (error) => {
     console.error(error);
-    console.error(
-      "Script failed due to the error above. Please double check that your chain id is supported by the script or you are setting BRIDGE_DEPOSIT_ADDRESS as this is a common source of errors."
-    );
     process.exit(1);
   }
 );
