@@ -337,6 +337,11 @@ export class InsuredBridgeL1Client {
       await this._getAllRateModelEvents(blockSearchConfig)
     );
     this.rateModelDictionary.updateWithEvents(this.updatedRateModelEventsForToken);
+    this.logger.debug({
+      at: "InsuredBridgeL1Client",
+      message: "Constructed rate model dictionary",
+      l1Tokens: Object.keys(this.rateModelDictionary.rateModelDictionary),
+    });
 
     // Set the optimisticOracleLiveness. Note that if this value changes in the contract the bot will need to be
     // restarted to get the latest value. This is a fine assumption as: a) our production bots run in serverless mode
