@@ -333,8 +333,6 @@ export class InsuredBridgeL1Client {
 
     // Fetch and store all rate model updated events, which will be used to fetch the rate model for a specific deposit
     // quote timestamp.
-    // Note: there is no need to sort these events chronologically, as they will be sorted upon calling
-    // `rateModel.updateRateModelEventDictionary`
     this.updatedRateModelEventsForToken = this.updatedRateModelEventsForToken.concat(
       await this._getAllRateModelEvents(blockSearchConfig)
     );
