@@ -48,6 +48,7 @@ export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
     // todo: add in start and ending block numbers (if need be).
     // todo: grab bridge admin from `getAddress`.
     const l1Client = new InsuredBridgeL1Client(logger, l1Web3, config.bridgeAdmin, config.rateModelStore);
+    await l1Client.update();
 
     // TODO: Add a method to fetch all registered chainIDs from bridge admin to let the bot default to all chains when
     // the config does not include activatedChainIds.
@@ -74,6 +75,7 @@ export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
           null,
           fallbackL2Web3s
         );
+        await l2Client.update();
 
         // Update the clients and filter out tokens that are not whitelisted on the L2 from the whitelisted
         // L1 relay list. Whitelisted tokens are fetched from the L1 RateModelStore contract.

@@ -44,8 +44,6 @@ export async function pruneWhitelistedL1Tokens(
   l1Client: InsuredBridgeL1Client,
   l2Client: InsuredBridgeL2Client
 ): Promise<string[]> {
-  await Promise.all([l2Client.update(), l1Client.update()]);
-
   // Fetch list of potential whitelisted L1 tokens from keys in the RateModelStore.
   const whitelistedRelayL1TokensInRateModel = l1Client.getL1TokensFromRateModel();
 
