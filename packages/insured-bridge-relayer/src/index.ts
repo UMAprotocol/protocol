@@ -31,13 +31,10 @@ export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
     // If pollingDelay === 0 then the bot is running in serverless mode and should send a `debug` level log.
     // Else, if running in loop mode (pollingDelay != 0), then it should send a `info` level log.
 
-    // The logger is having issues with logging nested BNs. Remove this for now. Is indirectly fixed in PR https://github.com/UMAprotocol/protocol/pull/3656
-    /* eslint-disable @typescript-eslint/no-unused-vars */
-    const { rateModels, ...logableConfig } = config;
     logger[config.pollingDelay === 0 ? "debug" : "info"]({
       at: "AcrossRelayer#index",
       message: "Relayer started 🌉",
-      logableConfig,
+      config,
     });
 
     const [accounts, l1ChainId] = await Promise.all([l1Web3.eth.getAccounts(), await l1Web3.eth.getChainId()]);
@@ -50,7 +47,8 @@ export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
     // Create L1/L2 clients to pull data to inform the relayer.
     // todo: add in start and ending block numbers (if need be).
     // todo: grab bridge admin from `getAddress`.
-    const l1Client = new InsuredBridgeL1Client(logger, l1Web3, config.bridgeAdmin, config.rateModels);
+    const l1Client = new InsuredBridgeL1Client(logger, l1Web3, config.bridgeAdmin, config.rateModelStore);
+    await l1Client.update();
 
     // TODO: Add a method to fetch all registered chainIDs from bridge admin to let the bot default to all chains when
     // the config does not include activatedChainIds.
@@ -77,14 +75,11 @@ export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
           null,
           fallbackL2Web3s
         );
+        await l2Client.update();
 
-        // Update the L2 client and filter out tokens that are not whitelisted on the L2 from the whitelisted L1 relay list.
-        const filteredL1Whitelist = await pruneWhitelistedL1Tokens(
-          logger,
-          l1Client,
-          l2Client,
-          config.whitelistedRelayL1Tokens
-        );
+        // Update the clients and filter out tokens that are not whitelisted on the L2 from the whitelisted
+        // L1 relay list. Whitelisted tokens are fetched from the L1 RateModelStore contract.
+        const filteredL1Whitelist = await pruneWhitelistedL1Tokens(logger, l1Client, l2Client);
 
         // Construct the profitability calculator based on the filteredL1Whitelist and relayerDiscount.
         const profitabilityCalculator = new ProfitabilityCalculator(

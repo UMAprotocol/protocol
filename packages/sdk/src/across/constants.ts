@@ -16,6 +16,8 @@ export const SPEED_UP_UMA_GAS = 227341;
 // Bots incur lower than expected costs due to batching mulitple transactions, this roughly estimates the savings
 export const DEFAULT_GAS_DISCOUNT = 25;
 
+export const expectedRateModelKeys = ["UBar", "R0", "R1", "R2"];
+
 // Amount of blocks to wait following a `TokensBridged` L2 event until we check the L1 state commitment contracts. This
 // offset provides a buffer to allow for any time delay between L2 state changing and L1 state updating. For example,
 // Optimism has a several hour delay.
@@ -37,6 +39,8 @@ export const ADDRESSES = {
   USDC: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
 };
 
+// TODO: Deprecate this hardcoded mapping as all clients should now read from the RateModelStore contract. I'm not
+// removing this now because I'm not sure if any external packages import this constant.
 export const RATE_MODELS: Record<string, RateModel> = {
   "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2": {
     UBar: "650000000000000000",
