@@ -1,11 +1,6 @@
 // A thick client for getting information about an OptimisticOracle. Used to get price requests and
 // proposals, which can be disputed and settled.
-import {
-  averageBlockTimeSeconds,
-  revertWrapper,
-  getEventsWithPaginatedBlockSearch,
-  EventSearchOptions,
-} from "@uma/common";
+import { averageBlockTimeSeconds, revertWrapper, getEventsWithPaginatedBlockSearch, Web3Contract } from "@uma/common";
 import Web3 from "web3";
 import type { Logger } from "winston";
 import { Abi, isDefined } from "../types";
@@ -170,26 +165,45 @@ export class OptimisticOracleClient {
     const lookbackBlocks = Math.ceil(this.lookback / averageBlockTime);
     const earliestBlockToQuery = Math.max(currentBlock.number - lookbackBlocks, 0);
 
-    const eventResults = await getEventsWithPaginatedBlockSearch(
-      [
-        (_blockSearchConfig: EventSearchOptions) => this.oracle.getPastEvents("RequestPrice", _blockSearchConfig),
-        (_blockSearchConfig: EventSearchOptions) => this.oracle.getPastEvents("ProposePrice", _blockSearchConfig),
-        (_blockSearchConfig: EventSearchOptions) => this.oracle.getPastEvents("DisputePrice", _blockSearchConfig),
-        (_blockSearchConfig: EventSearchOptions) => this.oracle.getPastEvents("Settle", _blockSearchConfig),
-      ],
-      earliestBlockToQuery,
-      currentBlock.number,
-      this.blocksPerEventSearch
-    );
-    const requestEvents = (eventResults.eventData[0] as unknown) as (RequestPrice | SkinnyRequestPrice)[];
-    const proposalEvents = (eventResults.eventData[1] as unknown) as (ProposePrice | SkinnyProposePrice)[];
-    const disputeEvents = (eventResults.eventData[2] as unknown) as (DisputePrice | SkinnyDisputePrice)[];
-    const settleEvents = (eventResults.eventData[3] as unknown) as (Settle | SkinnySettle)[];
+    const eventResults = await Promise.all([
+      getEventsWithPaginatedBlockSearch(
+        (this.oracle as unknown) as Web3Contract,
+        "RequestPrice",
+        earliestBlockToQuery,
+        currentBlock.number,
+        this.blocksPerEventSearch
+      ),
+      getEventsWithPaginatedBlockSearch(
+        (this.oracle as unknown) as Web3Contract,
+        "ProposePrice",
+        earliestBlockToQuery,
+        currentBlock.number,
+        this.blocksPerEventSearch
+      ),
+      getEventsWithPaginatedBlockSearch(
+        (this.oracle as unknown) as Web3Contract,
+        "DisputePrice",
+        earliestBlockToQuery,
+        currentBlock.number,
+        this.blocksPerEventSearch
+      ),
+      getEventsWithPaginatedBlockSearch(
+        (this.oracle as unknown) as Web3Contract,
+        "Settle",
+        earliestBlockToQuery,
+        currentBlock.number,
+        this.blocksPerEventSearch
+      ),
+    ]);
+    const requestEvents = (eventResults[0].eventData as unknown) as (RequestPrice | SkinnyRequestPrice)[];
+    const proposalEvents = (eventResults[1].eventData as unknown) as (ProposePrice | SkinnyProposePrice)[];
+    const disputeEvents = (eventResults[2].eventData as unknown) as (DisputePrice | SkinnyDisputePrice)[];
+    const settleEvents = (eventResults[3].eventData as unknown) as (Settle | SkinnySettle)[];
 
     this.logger.debug({
       at: "OptimisticOracleClient",
       message: "Queried past event requests",
-      eventRequestCount: eventResults.web3RequestCount,
+      eventRequestCount: eventResults.map((e) => e.web3RequestCount).reduce((x, y) => x + y),
       earliestBlockToQuery,
       latestBlockToQuery: currentBlock.number,
       blocksPerEventSearch: this.blocksPerEventSearch,

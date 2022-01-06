@@ -4,7 +4,7 @@ import type truffleContract_ from "@truffle/contract";
 import type { BN } from "./types";
 import Web3 from "web3";
 import type { provider as Provider } from "web3-core";
-import { EventData } from "web3-eth-contract";
+import { EventData, Contract } from "web3-eth-contract";
 
 // Truffle library types aren't specified correctly. Cast and modify to correct for this.
 export interface TruffleInstance {
@@ -88,26 +88,25 @@ export type EventSearchOptions = {
   // filters all events where "myNumber" is 12 or 13.
 };
 
+export type Web3Contract = Contract;
+
 /**
- * Return all events between block range. Will paginate the event search using the `pageSize` if specified. Takes as
- * input a list of async callbacks that are used to make event requests. This means that different event types and
- * and contracts can be queried in this function.
- * @param contractEventQueryCallbacks Array of functions that take in `EventSearchOptions` and return promises that will
- * resolve to arrays of EventData.
- * Example of one such callback: (blockSearchConfig) => return this.oracle.getPastEvents("RequestPrice", blockSearchConfig)
+ * Return all events between block range. Will paginate the event search using the `pageSize` if specified.
+ * @param contract Contract to query.
+ * @param eventName Event to query.
  * @param earliestBlockToQuery First block to query.
  * @param latestBlockToQuery Latest block to query.
  * @param pageSize Number of blocks to search for in each query. Determines how many web3 requests are sent to fetch
  * data for all blocks between `earliestBlockToQuery` and `latestBlockToQuery`.
- * @return array of event data. Array size is equal to size of `contractEventQueryCallbacks`. Also returns number of
- * web3 requests sent.
+ * @return array of event data.
  */
 export async function getEventsWithPaginatedBlockSearch(
-  contractEventQueryCallbacks: ((blockSearchConfig: EventSearchOptions) => Promise<EventData[]>)[],
+  contract: Web3Contract,
+  eventName: string,
   earliestBlockToQuery: number,
   latestBlockToQuery: number,
   pageSize: number | null = null
-): Promise<{ eventData: EventData[][]; web3RequestCount: number }> {
+): Promise<{ eventData: EventData[]; web3RequestCount: number }> {
   const blockSearchConfig = {
     fromBlock: earliestBlockToQuery,
     toBlock: latestBlockToQuery,
@@ -118,9 +117,7 @@ export async function getEventsWithPaginatedBlockSearch(
   // Construct promise array of event searches to send in parallel
   const promisesToSend = [];
   while (blockSearchConfig.fromBlock <= latestBlockToQuery) {
-    for (let i = 0; i < contractEventQueryCallbacks.length; i++) {
-      promisesToSend.push(contractEventQueryCallbacks[i](blockSearchConfig));
-    }
+    promisesToSend.push(contract.getPastEvents(eventName, blockSearchConfig));
 
     // Increment block search config. If `pageSize` is undefined, there is no need to set the `toBlock` since we're
     // already increasing the `fromBlock` such that the `while` loop will exit on the next iteration.
@@ -131,14 +128,9 @@ export async function getEventsWithPaginatedBlockSearch(
 
   // Send promises in parallel and sort results according to type of contract event query.
   const eventSearchResults = await Promise.all(promisesToSend);
-  const contractEventQueryResults = [];
+  let contractEventQueryResults: EventData[] = [];
   for (let i = 0; i < eventSearchResults.length; i++) {
-    const contractEventQueryIndex = i % contractEventQueryCallbacks.length;
-    if (contractEventQueryResults[contractEventQueryIndex] === undefined)
-      contractEventQueryResults[contractEventQueryIndex] = [] as EventData[];
-    contractEventQueryResults[contractEventQueryIndex] = contractEventQueryResults[contractEventQueryIndex].concat(
-      eventSearchResults[i]
-    );
+    contractEventQueryResults = contractEventQueryResults.concat(eventSearchResults[i]);
   }
 
   return {

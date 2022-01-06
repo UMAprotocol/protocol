@@ -5,7 +5,7 @@ import {
   OptimisticOracleWeb3Events,
   SkinnyOptimisticOracleWeb3Events,
 } from "@uma/contracts-node";
-import { getEventsWithPaginatedBlockSearch, EventSearchOptions } from "@uma/common";
+import { getEventsWithPaginatedBlockSearch, Web3Contract } from "@uma/common";
 import { Abi } from "../types";
 import { OptimisticOracleContract, OptimisticOracleType } from "./OptimisticOracleClient";
 
@@ -119,34 +119,49 @@ export class OptimisticOracleEventClient {
       ? this.lastBlockToSearchUntil
       : await this.web3.eth.getBlockNumber();
 
-    const eventResults = await getEventsWithPaginatedBlockSearch(
-      [
-        (_blockSearchConfig: EventSearchOptions) =>
-          this.optimisticOracleContract.getPastEvents("RequestPrice", _blockSearchConfig),
-        (_blockSearchConfig: EventSearchOptions) =>
-          this.optimisticOracleContract.getPastEvents("ProposePrice", _blockSearchConfig),
-        (_blockSearchConfig: EventSearchOptions) =>
-          this.optimisticOracleContract.getPastEvents("DisputePrice", _blockSearchConfig),
-        (_blockSearchConfig: EventSearchOptions) =>
-          this.optimisticOracleContract.getPastEvents("Settle", _blockSearchConfig),
-      ],
-      this.firstBlockToSearch,
-      lastBlockToSearch,
-      this.blocksPerEventSearch
-    );
-    const requestPriceEventsObj = (eventResults.eventData[0] as unknown) as (
+    const eventResults = await Promise.all([
+      getEventsWithPaginatedBlockSearch(
+        (this.optimisticOracleContract as unknown) as Web3Contract,
+        "RequestPrice",
+        this.firstBlockToSearch,
+        lastBlockToSearch,
+        this.blocksPerEventSearch
+      ),
+      getEventsWithPaginatedBlockSearch(
+        (this.optimisticOracleContract as unknown) as Web3Contract,
+        "ProposePrice",
+        this.firstBlockToSearch,
+        lastBlockToSearch,
+        this.blocksPerEventSearch
+      ),
+      getEventsWithPaginatedBlockSearch(
+        (this.optimisticOracleContract as unknown) as Web3Contract,
+        "DisputePrice",
+        this.firstBlockToSearch,
+        lastBlockToSearch,
+        this.blocksPerEventSearch
+      ),
+      getEventsWithPaginatedBlockSearch(
+        (this.optimisticOracleContract as unknown) as Web3Contract,
+        "Settle",
+        this.firstBlockToSearch,
+        lastBlockToSearch,
+        this.blocksPerEventSearch
+      ),
+    ]);
+    const requestPriceEventsObj = (eventResults[0].eventData as unknown) as (
       | OptimisticOracleWeb3Events.RequestPrice
       | SkinnyOptimisticOracleWeb3Events.RequestPrice
     )[];
-    const proposePriceEventsObj = (eventResults.eventData[1] as unknown) as (
+    const proposePriceEventsObj = (eventResults[1].eventData as unknown) as (
       | OptimisticOracleWeb3Events.ProposePrice
       | SkinnyOptimisticOracleWeb3Events.ProposePrice
     )[];
-    const disputePriceEventsObj = (eventResults.eventData[2] as unknown) as (
+    const disputePriceEventsObj = (eventResults[2].eventData as unknown) as (
       | OptimisticOracleWeb3Events.DisputePrice
       | SkinnyOptimisticOracleWeb3Events.DisputePrice
     )[];
-    const settlementEventsObj = (eventResults.eventData[3] as unknown) as (
+    const settlementEventsObj = (eventResults[3].eventData as unknown) as (
       | OptimisticOracleWeb3Events.Settle
       | SkinnyOptimisticOracleWeb3Events.Settle
     )[];
@@ -154,7 +169,7 @@ export class OptimisticOracleEventClient {
     this.logger.debug({
       at: "OptimisticOracleEventClient",
       message: "Queried past event requests",
-      eventRequestCount: eventResults.web3RequestCount,
+      eventRequestCount: eventResults.map((e) => e.web3RequestCount).reduce((x, y) => x + y),
       earliestBlockToQuery: this.firstBlockToSearch,
       latestBlockToQuery: lastBlockToSearch,
       blocksPerEventSearch: this.blocksPerEventSearch,
