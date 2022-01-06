@@ -503,7 +503,7 @@ export class Relayer {
     // Finally, decide what action to do based on the relative profits.
     return this.profitabilityCalculator.getRelaySubmitTypeBasedOnProfitability(
       deposit.l1Token,
-      toBN(Math.ceil(this.gasEstimator.getExpectedCumulativeGasPrice())),
+      toBN(Math.round(this.gasEstimator.getExpectedCumulativeGasPrice())),
       slowRevenue,
       speedUpRevenue,
       instantRevenue
@@ -743,7 +743,8 @@ export class Relayer {
       " sent from " +
       createEtherscanLinkMarkdown(deposit.l2Sender, this.l2Client.chainId) +
       " to " +
-      createEtherscanLinkMarkdown(deposit.l1Recipient)
+      createEtherscanLinkMarkdown(deposit.l1Recipient) +
+      ". "
     );
   }
 
