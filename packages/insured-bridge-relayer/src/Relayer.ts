@@ -699,7 +699,7 @@ export class Relayer {
       createFormatFunction(2, 4, false, 18)(toBN(deposit.instantRelayFeePct).muln(100)) +
       "%, realizedLpFee " +
       createFormatFunction(2, 4, false, 18)(realizedLpFeePct.muln(100)) +
-      "%." +
+      "%. " +
       profitabilityInformation +
       " Deposit tx " +
       createEtherscanLinkMarkdown(deposit.depositHash, this.l2Client.chainId)
