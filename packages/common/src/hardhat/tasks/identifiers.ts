@@ -177,7 +177,6 @@ task(
     // are a lot of transactions to send or the gas price to send with is too low.
     for (let i = 0; i < isIdentifierSupportedOnNewWhitelist.length; i++) {
       if (!isIdentifierSupportedOnNewWhitelist[i]) {
-        console.log(identifiersToWhitelist[i]);
         const receipt = (await newWhitelist.methods
           .addSupportedIdentifier(identifiersToWhitelist[i])
           .send({ from: deployer })) as TransactionReceipt;
