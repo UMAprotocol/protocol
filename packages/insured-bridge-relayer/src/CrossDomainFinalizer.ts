@@ -41,7 +41,7 @@ export class CrossDomainFinalizer {
     readonly crossDomainFinalizationThreshold: number = 5
   ) {}
   async checkForBridgeableL2TokensAndBridge() {
-    this.logger.debug({ at: "AcrossRelayer#CrossDomainFinalizer", message: "Checking bridgeable L2 tokens" });
+    this.logger.debug({ at: "CrossDomainFinalizer", message: "Checking bridgeable L2 tokens" });
 
     // Fetch all whitelisted tokens on the particular l2 chainId.
     const whitelistedL2Tokens = this.l1Client.getWhitelistedL2TokensForChainId(this.l2Client.chainId.toString());
@@ -57,7 +57,7 @@ export class CrossDomainFinalizer {
 
     // Finally, iterate over the bridgeable l2Tokens and bridge them.
     if (bridgeableL2Tokens.length == 0) {
-      this.logger.debug({ at: "AcrossRelayer#CrossDomainFinalizer", message: "No bridgeable L2 tokens" });
+      this.logger.debug({ at: "CrossDomainFinalizer", message: "No bridgeable L2 tokens" });
       return;
     }
     // Track the account nonce and manually increment on each TX. We need to do this because the L2 transactions
@@ -73,7 +73,7 @@ export class CrossDomainFinalizer {
 
         if (l2PoolBalance.gt(toBN(this.crossDomainFinalizationThreshold).mul(l1PoolReserves).div(toBN(100)))) {
           this.logger.debug({
-            at: "AcrossRelayer#CrossDomainFinalizer",
+            at: "CrossDomainFinalizer",
             message: "L2 balance > cross domain finalization threshold % of L1 pool reserves, bridging",
             l2Token,
             l2PoolBalance: l2PoolBalance.toString(),
@@ -84,7 +84,7 @@ export class CrossDomainFinalizer {
           nonce++; // increment the nonce for the next transaction.
         } else {
           this.logger.debug({
-            at: "AcrossRelayer#CrossDomainFinalizer",
+            at: "CrossDomainFinalizer",
             message: "L2 balance <= cross domain finalization threshold % of L1 pool reserves, skipping",
             l2Token,
             l2PoolBalance: l2PoolBalance.toString(),
@@ -94,7 +94,7 @@ export class CrossDomainFinalizer {
         }
       } catch (error) {
         this.logger.error({
-          at: "AcrossRelayer#CrossDomainFinalizer",
+          at: "CrossDomainFinalizer",
           message: "Something errored sending tokens over the canonical bridge!",
           error,
         });
@@ -174,8 +174,8 @@ export class CrossDomainFinalizer {
     if (receipt.events) {
       const tokensSent = receipt.events.TokensBridged.returnValues.numberOfTokensBridged;
       this.logger.info({
-        at: "AcrossRelayer#CrossDomainFinalizer",
-        message: `${symbol} sent over ${PublicNetworks[this.l2Client.chainId]?.name} bridge! 🌁`,
+        at: "CrossDomainFinalizer",
+        message: `Canonical bridge initiated! 🌁`,
         mrkdwn:
           createFormatFunction(2, 4, false, decimals)(tokensSent) +
           " " +
@@ -206,7 +206,7 @@ export class CrossDomainFinalizer {
       });
 
       this.logger.info({
-        at: "AcrossRelayer#CrossDomainFinalizer",
+        at: "CrossDomainFinalizer",
         message: `Canonical relay finalized 🪄`,
         mrkdwn:
           "Canonical L2->L1 transfer over the " +
@@ -223,7 +223,7 @@ export class CrossDomainFinalizer {
       this.executedL1Transactions.push(executionResult);
     } catch (error) {
       this.logger.error({
-        at: "AcrossRelayer#CrossDomainFinalizer",
+        at: "CrossDomainFinalizer",
         message: "Something errored sending a transaction",
         error,
       });
