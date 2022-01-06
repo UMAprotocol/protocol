@@ -2,7 +2,7 @@ import { Deployment } from "hardhat-deploy/types";
 import { task } from "hardhat/config";
 import { Contract } from "web3-eth-contract";
 import { CombinedHRE } from "./types";
-import Web3 from "Web3";
+import Web3 from "web3";
 const { utf8ToHex, toBN } = Web3.utils;
 const assert = require("assert");
 
