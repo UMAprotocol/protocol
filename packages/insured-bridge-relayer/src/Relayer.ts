@@ -18,7 +18,7 @@ import {
 import { getTokenBalance } from "./RelayerHelpers";
 import { ProfitabilityCalculator } from "./ProfitabilityCalculator";
 
-import type { BN, TransactionType, ExecutedTransaction } from "@uma/common";
+import type { BN, TransactionType } from "@uma/common";
 import { MulticallBundler } from "./MulticallBundler";
 
 // Stores state of Relay (i.e. Pending, Uninitialized, Finalized) and linked L2 deposit parameters.
@@ -34,8 +34,7 @@ export enum RelaySubmitType {
 }
 
 export class Relayer {
-  executedTransactions: Array<ExecutedTransaction> = []; // store all submitted transactions during execution lifecycle.
-
+  private chainName;
   /**
    * @notice Constructs new Relayer Instance.
    * @param {Object} logger Module used to send logs.
@@ -66,16 +65,18 @@ export class Relayer {
     readonly l2DeployData: { [key: string]: { blockNumber: number } },
     readonly l2LookbackWindow: number,
     readonly multicallBundler: MulticallBundler
-  ) {}
+  ) {
+    this.chainName = PublicNetworks[this.l2Client.chainId]?.name;
+  }
 
   async checkForPendingDepositsAndRelay(): Promise<void> {
-    this.logger.debug({ at: "AcrossRelayer#Relayer", message: "Checking for pending deposits and relaying" });
+    this.logger.debug({ at: `Relayer#${this.chainName}`, message: "Checking for pending deposits and relaying" });
 
     // Build dictionary of relayable deposits keyed by L1 tokens. getRelayableDeposits() filters out Finalized relays.
     const relayableDeposits: RelayableDeposits = this._getRelayableDeposits();
     if (Object.keys(relayableDeposits).length == 0) {
       this.logger.debug({
-        at: "AcrossRelayer#Relayer",
+        at: `Relayer#${this.chainName}`,
         message: "No relayable deposits for any whitelisted tokens",
       });
       return;
@@ -85,7 +86,7 @@ export class Relayer {
     // type of relay) or dispute. Build an array of transactions which are batch sent after the fact for each pool.
     for (const l1Token of Object.keys(relayableDeposits)) {
       this.logger.debug({
-        at: "AcrossRelayer#Relayer",
+        at: `Relayer#${this.chainName}`,
         message: `Processing ${relayableDeposits[l1Token].length} relayable deposits for L1Token`,
         l1Token,
       });
@@ -111,24 +112,24 @@ export class Relayer {
           const transaction = await this._generateRelayTransactionForPendingDeposit(l1Token, relayableDeposit);
           if (transaction) this.multicallBundler.addTransactions(transaction);
         } catch (error) {
-          this.logger.error({ at: "AcrossRelayer#Relayer", message: "Unexpected error processing deposit", error });
+          this.logger.error({ at: `Relayer#${this.chainName}`, message: "Unexpected error processing deposit", error });
         }
       }
     }
   }
 
   async checkForPendingRelaysAndDispute(): Promise<void> {
-    this.logger.debug({ at: "AcrossRelayer#Disputer", message: "Checking for pending relays and disputing" });
+    this.logger.debug({ at: `Disputer#${this.chainName}`, message: "Checking for pending relays and disputing" });
 
     // Build dictionary of pending relays keyed by l1 token and deposit hash. getPendingRelayedDepositsGroupedByL1Token
     // filters out Finalized relays and orders by the relay size so we dispute the most dangerous relays first.
     const pendingRelays: { [key: string]: Relay[] } = this.l1Client.getPendingRelayedDepositsGroupedByL1Token();
     if (Object.keys(pendingRelays).length == 0) {
-      this.logger.debug({ at: "AcrossRelayer#Disputer", message: "No pending relays" });
+      this.logger.debug({ at: `Disputer#${this.chainName}`, message: "No pending relays" });
       return;
     }
     this.logger.debug({
-      at: "AcrossRelayer#Disputer",
+      at: `Disputer#${this.chainName}`,
       message: `Processing pending relays for ${Object.keys(pendingRelays).length} l1 tokens`,
       // Log # of relays for each L1 token:
       pendingRelayCounts: Object.keys(pendingRelays).map((l1Token) => ({
@@ -141,16 +142,16 @@ export class Relayer {
           const transaction = await this._generateDisputeTransactionForPendingRelayIfDisputable(relay);
           if (transaction) this.multicallBundler.addTransactions(transaction);
         } catch (error) {
-          this.logger.error({ at: "AcrossRelayer#Disputer", message: "Unexpected error processing dispute", error });
+          this.logger.error({ at: `Disputer#${this.chainName}`, message: "Error processing dispute", error });
         }
       }
     }
   }
 
   async checkforSettleableRelaysAndSettle(): Promise<void> {
-    this.logger.debug({ at: "AcrossRelayer#Finalizer", message: "Checking for settleable relays and settling" });
+    this.logger.debug({ at: `Finalizer#${this.chainName}`, message: "Checking for settleable relays and settling" });
     for (const l1Token of this.whitelistedRelayL1Tokens) {
-      this.logger.debug({ at: "AcrossRelayer#Finalizer", message: "Checking settleable relays for token", l1Token });
+      this.logger.debug({ at: `Finalizer#${this.chainName}`, message: "Checking settleable relays", l1Token });
 
       // Either this bot is the slow relayer for this relay OR the relay is past 15 mins and is settleable by anyone.
       const settleableRelays = this.l1Client
@@ -163,7 +164,7 @@ export class Relayer {
         );
 
       if (settleableRelays.length == 0) {
-        this.logger.debug({ at: "AcrossRelayer#Finalizer", message: "No settleable relays" });
+        this.logger.debug({ at: `Finalizer#${this.chainName}`, message: "No settleable relays" });
         continue;
       }
 
@@ -180,7 +181,7 @@ export class Relayer {
           );
           if (transaction) this.multicallBundler.addTransactions(transaction);
         } catch (error) {
-          this.logger.error({ at: "AcrossRelayer#Finalizer", message: "Unexpected error processing relay", error });
+          this.logger.error({ at: `Finalizer#${this.chainName}`, message: "Unexpected error processing relay", error });
         }
       }
     }
@@ -202,7 +203,7 @@ export class Relayer {
     const relayExpired = await this._isRelayExpired(relay, relay.l1Token);
     if (relayExpired.isExpired) {
       this.logger.debug({
-        at: "AcrossRelayer#Disputer",
+        at: `Disputer#${this.chainName}`,
         message: "Pending relay has expired, ignoring",
         relay,
         expirationTime: relayExpired.expirationTime,
@@ -214,7 +215,7 @@ export class Relayer {
     // If relay's chain ID is not whitelisted then dispute it.
     if (!this.whitelistedChainIds.includes(relay.chainId)) {
       this.logger.debug({
-        at: "AcrossRelayer#Disputer",
+        at: `Disputer#${this.chainName}`,
         message: "Disputing pending relay with non-whitelisted chainID",
         relay,
       });
@@ -294,7 +295,7 @@ export class Relayer {
       const relayDisputable = await this._isPendingRelayDisputable(relay, deposit, realizedLpFeePct);
       if (relayDisputable.canDispute) {
         this.logger.debug({
-          at: "AcrossRelayer#Disputer",
+          at: `Disputer#${this.chainName}`,
           message: "Disputing pending relay with invalid params",
           relay,
           deposit,
@@ -303,7 +304,7 @@ export class Relayer {
         return await this._generateDisputeRelayTransaction(deposit, relay);
       } else {
         this.logger.debug({
-          at: "AcrossRelayer#Disputer",
+          at: `Disputer#${this.chainName}`,
           message: "Skipping; relay matched with deposit and params are valid",
           relay,
           deposit,
@@ -327,7 +328,7 @@ export class Relayer {
         depositContract: (await this.l1Client.bridgeAdmin.methods.depositContracts(relay.chainId).call())[0],
       };
       this.logger.debug({
-        at: "AcrossRelayer#Disputer",
+        at: `Disputer#${this.chainName}`,
         message: "Disputing pending relay with no matching deposit",
         missingDeposit,
         relay,
@@ -360,7 +361,7 @@ export class Relayer {
       const relayExpired = await this._isRelayExpired(pendingRelay, pendingRelay.l1Token);
       if (relayExpired.isExpired) {
         this.logger.debug({
-          at: "AcrossRelayer#Relayer",
+          at: `Relayer#${this.chainName}`,
           message: "Pending relay has expired, ignoring",
           pendingRelay,
           relayableDeposit,
@@ -376,7 +377,7 @@ export class Relayer {
         );
         if (relayDisputable.canDispute) {
           this.logger.debug({
-            at: "AcrossRelayer#Relayer",
+            at: `Relayer#${this.chainName}`,
             message: "Pending relay is invalid",
             pendingRelay,
             relayableDeposit,
@@ -398,7 +399,7 @@ export class Relayer {
     // If relay cannot occur because its pending and already sped up, then exit early.
     if (hasInstantRelayer && relayableDeposit.status == ClientRelayState.Pending) {
       this.logger.debug({
-        at: "AcrossRelayer#Relayer",
+        at: `Relayer#${this.chainName}`,
         message: "Relay pending and already sped up",
         realizedLpFeePct: realizedLpFeePct.toString(),
         relayState: relayableDeposit.status,
@@ -588,7 +589,7 @@ export class Relayer {
   private _getRelayableDeposits(): RelayableDeposits {
     const relayableDeposits: RelayableDeposits = {};
     for (const l1Token of this.whitelistedRelayL1Tokens) {
-      this.logger.debug({ at: "AcrossRelayer#Relayer", message: "Checking relays for token", l1Token });
+      this.logger.debug({ at: `Relayer#${this.chainName}`, message: "Checking relays for token", l1Token });
       const l2Deposits = this.l2Client.getAllDepositsForL1Token(l1Token);
       l2Deposits.forEach((deposit) => {
         const status = this.l1Client.getDepositRelayState(deposit);
@@ -621,14 +622,14 @@ export class Relayer {
     switch (relaySubmitType) {
       case RelaySubmitType.Ignore:
         this.logger.warn({
-          at: "AcrossRelayer#Relayer",
+          at: `Relayer#${this.chainName}`,
           message: "Not relaying unprofitable deposit 😖",
           mrkdwn: this._generateMarkdownForNonProfitableRelay(relayableDeposit.deposit, profitabilityInformation),
         });
         return;
       case RelaySubmitType.Slow:
         this.logger.debug({
-          at: "AcrossRelayer#Relayer",
+          at: `Relayer#${this.chainName}`,
           message: "Slow relaying deposit",
           realizedLpFeePct: realizedLpFeePct.toString(),
           relayableDeposit,
@@ -642,7 +643,7 @@ export class Relayer {
 
       case RelaySubmitType.SpeedUp:
         this.logger.debug({
-          at: "AcrossRelayer#Relayer",
+          at: `Relayer#${this.chainName}`,
           message: "Speeding up existing relayed deposit",
           realizedLpFeePct: realizedLpFeePct.toString(),
           relayableDeposit,
@@ -650,7 +651,7 @@ export class Relayer {
         if (pendingRelay === undefined) {
           // The `pendingRelay` should never be undefined if shouldRelay returns SpeedUp, but we have to catch the
           // undefined type that is returned by the L1 client method.
-          this.logger.error({ at: "AcrossRelayer#Relayer", message: "speedUpRelay: undefined relay" });
+          this.logger.error({ at: `Relayer#${this.chainName}`, message: "speedUpRelay: undefined relay" });
           return;
         } else
           return {
@@ -661,7 +662,7 @@ export class Relayer {
 
       case RelaySubmitType.Instant:
         this.logger.debug({
-          at: "AcrossRelayer#Relayer",
+          at: `Relayer#${this.chainName}`,
           message: "Instant relaying deposit",
           realizedLpFeePct: realizedLpFeePct.toString(),
           relayableDeposit,
@@ -730,7 +731,7 @@ export class Relayer {
       "depositId " +
       deposit.depositId +
       " on " +
-      PublicNetworks[this.l2Client.chainId]?.name +
+      this.chainName +
       " of " +
       createFormatFunction(2, 4, false, collateralDecimals)(deposit.amount) +
       " " +
@@ -787,7 +788,7 @@ export class Relayer {
       // Look up all blocks from contract deployment time to latest to ensure that a deposit, if it exists, is found.
       while (deposit === undefined) {
         this.logger.debug({
-          at: "AcrossRelayer#Disputer",
+          at: `Disputer#${this.chainName}`,
           message: "Searching through all L2 block history for matching deposit event for relay",
           l2BlockSearchConfig,
           latestBlock,
@@ -817,7 +818,7 @@ export class Relayer {
           if (_deposit.depositHash === relay.depositHash) {
             deposit = _deposit;
             this.logger.debug({
-              at: "AcrossRelayer#Disputer",
+              at: `Disputer#${this.chainName}`,
               message: "Matched deposit using relay quote time to run new block search",
               l2BlockSearchConfig,
               deposit,

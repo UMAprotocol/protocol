@@ -56,8 +56,9 @@ hub.post("/", async (req, res) => {
   // Use a custom logger if provided. Otherwise, initialize a local logger.
   // Note: no reason to put this into the try-catch since a logger is required to throw the error.
   const logger = customLogger || createNewLogger();
+  const configName = req.body.configFile.substring(0, req.body.configFile.length - 5); // remove .json from the end of the file name.
   try {
-    logger.debug({ at: "ServerlessHub", message: "Running Serverless hub query", reqBody: req.body, hubConfig });
+    logger.debug({ at: "ServerlessHub", message: "Running Serverless hub query", configName, hubConfig });
 
     // Validate the post request has both the `bucket` and `configFile` params.
     if (!req.body.bucket || !req.body.configFile) {
@@ -72,6 +73,7 @@ hub.post("/", async (req, res) => {
     logger.debug({
       at: "ServerlessHub",
       message: "Executing Serverless query from config file",
+      configName,
       spokeUrl,
       botsExecuted: Object.keys(configObject),
       configObject: hubConfig.printHubConfig ? configObject : "REDACTED",
@@ -100,7 +102,7 @@ hub.post("/", async (req, res) => {
       if (blockNumbersForChain[chainId]) continue;
 
       // Fetch last seen block for this chain:
-      let lastQueriedBlockNumber = await _getLastQueriedBlockNumber(req.body.configFile, chainId, logger);
+      let lastQueriedBlockNumber = await _getLastQueriedBlockNumber(req.body.configFile, chainId, logger, configName);
 
       // Next, get the head block for the chosen chain, which we'll use to override the last queried block number
       // stored in GCP at the end of this hub execution.
@@ -127,6 +129,7 @@ hub.post("/", async (req, res) => {
     logger.debug({
       at: "ServerlessHub",
       message: "Updated block numbers for networks",
+      configName,
       nodeUrlToChainIdCache,
       blockNumbersForChain,
     });
@@ -134,7 +137,7 @@ hub.post("/", async (req, res) => {
     // Now, that we've precomputed all of the last seen blocks for each chain, we can update their values in the
     // GCP Data Store. These will all be the fetched as the "lastQueriedBlockNumber" in the next iteration when the
     // hub is called again.
-    await _saveQueriedBlockNumber(req.body.configFile, blockNumbersForChain, logger);
+    await _saveQueriedBlockNumber(req.body.configFile, blockNumbersForChain, logger, configName);
 
     // Finally, loop over all config objects in the config file and for each append a call promise to the promiseArray.
     // Note that each promise is a race between the serverlessSpoke command and a `_rejectAfterDelay`. This places an
@@ -157,7 +160,7 @@ hub.post("/", async (req, res) => {
         ])
       );
     }
-    logger.debug({ at: "ServerlessHub", message: "Executing Serverless spokes", botConfigs });
+    logger.debug({ at: "ServerlessHub", message: "Executing Serverless spokes", configName, botConfigs });
 
     // Loop through promise array and submit all in parallel. `allSettled` does not fail early if a promise is rejected.
     // This `results` object will contain all information sent back from the spokes. This contains the process exit code,
@@ -183,6 +186,7 @@ hub.post("/", async (req, res) => {
       logger.debug({
         at: "ServerlessHub",
         message: "One or more spoke calls were rejected - Retrying",
+        configName,
         retriedOutputs,
       });
       let rejectedRetryPromiseArray = [];
@@ -208,6 +212,7 @@ hub.post("/", async (req, res) => {
     logger.debug({
       at: "ServerlessHub",
       message: "All calls returned correctly",
+      configName,
       output: { errorOutputs, validOutputs, retriedOutputs },
     });
 
@@ -235,6 +240,7 @@ hub.post("/", async (req, res) => {
       logger.error({
         at: "ServerlessHub",
         message: "Some spoke calls returned errors 🚨",
+        configName,
         retriedSpokes: errorOutput.retriedOutputs,
         errorOutputs: Object.keys(errorOutput.errorOutputs).map((spokeName) => {
           try {
@@ -256,10 +262,13 @@ hub.post("/", async (req, res) => {
     }
 
     await delay(waitForLoggerDelay); // Wait a few seconds to be sure the the winston logs are processed upstream.
-    res.status(500).send({
-      message: errorOutput instanceof Error ? "A fatal error occurred in the hub" : "Some spoke calls returned errors",
-      output: errorOutput instanceof Error ? errorOutput.message : errorOutput,
-    });
+    res
+      .status(500)
+      .send({
+        message:
+          errorOutput instanceof Error ? "A fatal error occurred in the hub" : "Some spoke calls returned errors",
+        output: errorOutput instanceof Error ? errorOutput.message : errorOutput,
+      });
   }
 });
 
@@ -335,7 +344,7 @@ const _fetchConfig = async (bucket, file) => {
 // Save a the last blocknumber seen by the hub to GCP datastore. `BlockNumberLog` is the entity kind and
 // `configIdentifier` is the entity ID. Each entity has a column "<chainID>" which stores the latest block
 // seen for a network.
-async function _saveQueriedBlockNumber(configIdentifier, blockNumbersForChain, logger) {
+async function _saveQueriedBlockNumber(configIdentifier, blockNumbersForChain, logger, configName) {
   // Sometimes the GCP datastore can be flaky and return errors when fetching data. Use re-try logic to re-run on error.
   await retry(
     async () => {
@@ -361,6 +370,7 @@ async function _saveQueriedBlockNumber(configIdentifier, blockNumbersForChain, l
         logger.debug({
           at: "serverlessHub",
           message: "An error was thrown when saving the previously queried block number - retrying",
+          configName,
           error: typeof error === "string" ? new Error(error) : error,
         });
       },
@@ -371,7 +381,7 @@ async function _saveQueriedBlockNumber(configIdentifier, blockNumbersForChain, l
 // Query entity kind `BlockNumberLog` with unique entity ID of `configIdentifier`. Used to get the last block number
 // for a network ID recorded by the bot to inform where searches should start from. Each entity has a column for each
 // chain ID storing the last seen block number for the corresponding network.
-async function _getLastQueriedBlockNumber(configIdentifier, chainId, logger) {
+async function _getLastQueriedBlockNumber(configIdentifier, chainId, logger, configName) {
   // sometimes the GCP datastore can be flaky and return errors when saving data. Use re-try logic to re-run on error.
   return await retry(
     async () => {
@@ -390,6 +400,7 @@ async function _getLastQueriedBlockNumber(configIdentifier, chainId, logger) {
         logger.debug({
           at: "serverlessHub",
           message: "An error was thrown when fetching the most recent block number - retrying",
+          configName,
           error: typeof error === "string" ? new Error(error) : error,
         });
       },
