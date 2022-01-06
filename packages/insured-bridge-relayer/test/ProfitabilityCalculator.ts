@@ -323,7 +323,7 @@ describe("ProfitabilityCalculator.ts", function () {
             toBNWei(0),
             toBNWei(1)
           ).profitabilityInformation,
-          `Expected relay profit of ${fromWei(expectedProfit)} ETH for Instant relay, with a relayerDiscount of 0%.`
+          `Expected relay profit of ${formatWei(expectedProfit)} ETH for Instant relay, with a relayerDiscount of 0%.`
         );
       });
     });
