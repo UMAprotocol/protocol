@@ -1,0 +1,27 @@
+[
+  {
+    "contractName": "OVM_OETH_BridgeDepositBox",
+    "address": "0xCD43CEa89DF8fE39031C03c24BC24480e942470B"
+  },
+  {
+    "contractName": "Finder",
+    "address": "0xad8fD1f418FB860A383c9D4647880af7f043Ef39"
+  },
+  {
+    "contractName": "Optimism_ChildMessenger",
+    "deploymentName": "Boba_ChildMessenger",
+    "address": "0x62530b7D3DcbCb0699480094E29Cec181eC3ea6a"
+  },
+  {
+    "contractName": "Registry",
+    "address": "0xCdb25d0A6FfFE639BC591a565F2D99507837f2b7"
+  },
+  {
+    "contractName": "GovernorSpoke",
+    "address": "0x175b7d1D8F0c818ACb01874B43CA26A6258AaFe1"
+  },
+  {
+    "contractName": "OracleSpoke",
+    "address": "0x119e9008882C4f6beCB42Eaf2C2502fBDb9D405A"
+  }
+]
