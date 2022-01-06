@@ -77,7 +77,7 @@ yarn hardhat setup-l2-xchain --network [arbitrum/boba]
 7. At this point, the cross chain contract suite setup is complete. We will now deploy the `OptimisticOracle` and required contracts to the L2.
 
 ```sh
-yarn hardhat deploy --network [arbitrum/boba] --tags OptimisticOracle,IdentifierWhitelist,AddressWhitelist
+yarn hardhat deploy --network [arbitrum/boba] --tags OptimisticOracle,IdentifierWhitelist,AddressWhitelist,Store
 ```
 
 8. Verify contracts:
@@ -95,7 +95,7 @@ yarn hardhat --network boba sourcify
 # Seed IdentifierWhitelist with all identifiers already approved on mainnet. Note the --from address is the IdentifierWhitelist deployed on mainnet.
 CROSS_CHAIN_NODE_URL=<MAINNET_URL> yarn hardhat migrate-identifiers --network [arbitrum/boba] --from 0xcF649d9Da4D1362C4DAEa67573430Bd6f945e570 --crosschain true
 # Point L2 Finder to remaining Optimistic Oracle system contracts.
-yarn hardhat setup-finder --identifierwhitelist --addresswhitelist --optimisticoracle --network [arbitrum/boba]
+yarn hardhat setup-finder --identifierwhitelist --addresswhitelist --optimisticoracle --store --network [arbitrum/boba]
 ```
 
-10. There is no script at the moment that facilitates seeding the `AddressWhitelist` with approved collateral currencies, so be sure to manually whitelist tokens such as `WETH/ETH`, `USDC`, `UMA`, etc.
+10. There is no script at the moment that facilitates seeding the `AddressWhitelist` with approved collateral currencies, so be sure to manually whitelist tokens such as `WETH/ETH`, `USDC`, `UMA`, etc. Similarly, set final fees for whitelisted collateral in the `Store`.
