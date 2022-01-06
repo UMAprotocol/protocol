@@ -310,7 +310,7 @@ describe("ProfitabilityCalculator.ts", function () {
             toBNWei(0),
             reward
           ).profitabilityInformation,
-          `SlowRelay profit ${slowProfit} ETH, SpeedUpRelay profit ${speedUpProfit} ETH and InstantRelay profit ${fastProfit} ETH, with a relayerDiscount of 0%. Current cumulativeGasPrice is 100 Gwei. Relay would be break even at gas price of SlowRelay ${breakEvenSlowGasPrice} Gwei, SpeedUpRelay 0 Gwei and InstantRelay ${breakEvenFastGasPrice} Gwei.`
+          `SlowRelay profit ${slowProfit} ETH, SpeedUpRelay profit ${speedUpProfit} ETH and InstantRelay profit ${fastProfit} ETH, with a relayerDiscount of 0%. Current cumulativeGasPrice is 100.00 Gwei. Relay would be break even at gas price of SlowRelay ${breakEvenSlowGasPrice} Gwei, SpeedUpRelay 0.000 Gwei and InstantRelay ${breakEvenFastGasPrice} Gwei.`
         );
 
         // Validate the relay profitability message message is produced correctly.
