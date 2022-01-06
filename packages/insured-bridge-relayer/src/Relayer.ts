@@ -18,6 +18,8 @@ import {
 import { getTokenBalance } from "./RelayerHelpers";
 import { ProfitabilityCalculator } from "./ProfitabilityCalculator";
 
+import { previouslySentUnprofitableLog, saveUnprofitableLog } from "./LogHelper";
+
 import type { BN, TransactionType, ExecutedTransaction } from "@uma/common";
 import { MulticallBundler } from "./MulticallBundler";
 
@@ -620,7 +622,7 @@ export class Relayer {
     const mrkdwn = this._generateMarkdownForRelay(relayableDeposit.deposit, realizedLpFeePct);
     switch (shouldRelay) {
       case RelaySubmitType.Ignore:
-        this.logger.warn({
+        this.logger[(await previouslySentUnprofitableLog(relayableDeposit.deposit.depositHash)) ? "debug" : "warn"]({
           at: "AcrossRelayer#Relayer",
           message: "Not relaying potentially unprofitable deposit, or insufficient balance 😖",
           realizedLpFeePct: realizedLpFeePct.toString(),
@@ -628,6 +630,7 @@ export class Relayer {
           hasInstantRelayer,
           relayableDeposit,
         });
+        await saveUnprofitableLog(relayableDeposit.deposit.depositHash);
         return;
       case RelaySubmitType.Slow:
         this.logger.debug({
