@@ -2,6 +2,7 @@ import Store, { Emit } from "./store";
 import type { state } from "./types";
 import { Inputs } from "./types/state";
 import { Signer } from "./types/ethers";
+import * as utils from "./utils";
 
 export class Client {
   public readonly update: Update;
@@ -14,6 +15,9 @@ export class Client {
   setActiveRequest(params: Inputs["request"]): void {
     const { requester, identifier, timestamp, ancillaryData, chainId } = params;
     this.store.write((write) => write.inputs().request(requester, identifier, timestamp, ancillaryData, chainId));
+  }
+  previewProposal() {
+    return utils.previewProposal(this.store.get());
   }
 }
 
