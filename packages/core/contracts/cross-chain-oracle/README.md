@@ -95,7 +95,9 @@ yarn hardhat --network boba sourcify
 # Seed IdentifierWhitelist with all identifiers already approved on mainnet. Note the --from address is the IdentifierWhitelist deployed on mainnet.
 CROSS_CHAIN_NODE_URL=<MAINNET_URL> yarn hardhat migrate-identifiers --network [arbitrum/boba] --from 0xcF649d9Da4D1362C4DAEa67573430Bd6f945e570 --crosschain true
 # Point L2 Finder to remaining Optimistic Oracle system contracts.
-yarn hardhat setup-finder --identifierwhitelist --addresswhitelist --optimisticoracle --store --network [arbitrum/boba]
+yarn hardhat setup-finder --oraclespoke --identifierwhitelist --addresswhitelist --optimisticoracle --store --network [arbitrum/boba]
+# Register OptimisticOracle as registered contract.
+yarn hardhat register-accounts --network [arbitrum/boba] --account <OPTIMISTIC_ORACLE_ADDRESS>
 ```
 
 10. There is no script at the moment that facilitates seeding the `AddressWhitelist` with approved collateral currencies, so be sure to manually whitelist tokens such as `WETH/ETH`, `USDC`, `UMA`, etc. Similarly, set final fees for whitelisted collateral in the `Store`.

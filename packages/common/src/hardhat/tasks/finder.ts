@@ -1,6 +1,5 @@
 import { task } from "hardhat/config";
 import { interfaceName } from "../../Constants";
-import assert from "assert";
 import type { CombinedHRE } from "./types";
 
 type InterfaceName = keyof typeof interfaceName;
@@ -17,6 +16,7 @@ task("setup-finder", "Points Finder to DVM system contracts")
   .addFlag("financialcontractsadmin", "Use if you want to set FinancialContractsAdmin")
   .addFlag("optimisticoracle", "Use if you want to set OptimisticOracle")
   .addFlag("store", "Use if you want to set Store")
+  .addFlag("oraclespoke", "Use if you want to set OracleSpoke as the Oracle")
   .addFlag("mockoracle", "Use if you want to set MockOracle as the Oracle")
   .addFlag("sinkoracle", "Use if you want to set SinkOracle as the Oracle")
   .addFlag("prod", "Configure production setup in Finder")
@@ -32,6 +32,7 @@ task("setup-finder", "Points Finder to DVM system contracts")
       bridge,
       identifierwhitelist,
       mockoracle,
+      oraclespoke,
       addresswhitelist,
       financialcontractsadmin,
       store,
@@ -40,8 +41,6 @@ task("setup-finder", "Points Finder to DVM system contracts")
       prod,
       test,
     } = taskArguments;
-
-    assert(!(sinkoracle && mockoracle), "Cannot set both SinkOracle and MockOracle to Oracle in Finder");
 
     // Determine based on task inputs which contracts to set in finder
     const contractsToSet = [];
@@ -60,11 +59,7 @@ task("setup-finder", "Points Finder to DVM system contracts")
     // MUST BE SPECIFICALLY SET:
     // e.g. `yarn hardhat setup-finder --prod --sinkoracle`
     if (sinkoracle) contractsToSet.push("SinkOracle");
-
-    assert(
-      !(contractsToSet.includes("SinkOracle") && contractsToSet.includes("MockOracleAncillary")),
-      "Cannot set both SinkOracle and MockOracle to Oracle in Finder"
-    );
+    if (oraclespoke) contractsToSet.push("OracleSpoke");
 
     // Synchronously send a transaction to add each contract to the Finder:
     const Finder = await deployments.get("Finder");
