@@ -13,7 +13,7 @@ import { RelaySubmitType } from "./Relayer";
 import type { BN } from "@uma/common";
 
 const formatWei = createFormatFunction(2, 4, false, 18);
-const formatGwei = (number: string | number | BN) => Math.ceil(Number(fromWei(number.toString(), "gwei")));
+const formatGwei = (number: string | number | BN) => createFormatFunction(2, 4, false, 9)(number.toString());
 
 export enum TokenType {
   WETH,
