@@ -8,6 +8,7 @@ const func = async function (hre) {
   const parentMessenger = await l1Deployments.get("Boba_ParentMessenger");
   console.log(`Using l1 parent messenger @ ${parentMessenger.address}`);
 
+  // Note: Boba is a fork of Optimism, so we can deploy the same messenger contracts on Boba as we would on Optimism.
   await deploy("Boba_ChildMessenger", {
     contract: "Optimism_ChildMessenger",
     from: deployer,

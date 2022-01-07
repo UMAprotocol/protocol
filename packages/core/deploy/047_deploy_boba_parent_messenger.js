@@ -4,6 +4,7 @@ const func = async function (hre) {
 
   const { deployer } = await getNamedAccounts();
 
+  // Note: Boba is a fork of Optimism, so we can deploy the same messenger contracts on Boba as we would on Optimism.
   await deploy("Boba_ParentMessenger", {
     contract: "Optimism_ParentMessenger",
     from: deployer,
