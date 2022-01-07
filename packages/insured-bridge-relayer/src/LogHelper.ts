@@ -1,5 +1,4 @@
 import fs from "fs";
-import path from "path";
 import { Datastore } from "@google-cloud/datastore";
 const datastore = new Datastore();
 
@@ -8,9 +7,9 @@ enum LogHelperMode {
   Local,
 }
 
-const logHelperMode = process.env.LOG_SILENCER_MODE == "gcp" ? LogHelperMode.Gcp : LogHelperMode.Local;
+const logHelperMode = process.env.LOG_SILENCER_MODE === "gcp" ? LogHelperMode.Gcp : LogHelperMode.Local;
 
-const localSaveFilePath = `${path.resolve(__dirname)}/relayer-unprofitable-logs`;
+const localSaveFilePath = `${__dirname}/relayer-unprofitable-logs`;
 
 // Saves the provided depositHash to either a local file or a GCP data store database depending on the mode.
 export async function saveUnprofitableLog(depositHash: string) {
@@ -39,6 +38,6 @@ export async function previouslySentUnprofitableLog(depositHash: string) {
   } else if (logHelperMode == LogHelperMode.Gcp) {
     const key = datastore.key(["RelayerUnprofitableLogs", depositHash]);
     const [dataField] = await datastore.get(key);
-    return dataField != undefined;
+    return !!dataField;
   }
 }
