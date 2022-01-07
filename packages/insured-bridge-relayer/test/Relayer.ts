@@ -24,7 +24,7 @@ import { MulticallBundler } from "../src/MulticallBundler";
 import { Relayer, RelaySubmitType } from "../src/Relayer";
 
 const { web3, getContract } = hre as HRE;
-const { toWei, fromWei, toBN, utf8ToHex } = web3.utils;
+const { toWei, toBN, utf8ToHex } = web3.utils;
 const toBNWei = (number: string | number) => toBN(toWei(number.toString()).toString());
 
 import type { BN } from "@uma/common";
@@ -887,7 +887,7 @@ describe("Relayer.ts", function () {
       assert.isTrue(lastSpyLogIncludes(spy, `SpeedUpRelay profit ${speedUpProfit}`));
 
       // Finally, check the log contains the correct break even data.
-      const formatGwei = (number: string | number | BN) => Math.ceil(Number(fromWei(number.toString(), "gwei")));
+      const formatGwei = (number: string | number | BN) => createFormatFunction(2, 4, false, 9)(number.toString());
       const breakEvenSlowGasPrice = formatGwei(slowReward.div(toBN(across.constants.SLOW_ETH_GAS)));
       const breakEvenFastGasPrice = formatGwei(slowReward.add(fastReward).div(toBN(across.constants.FAST_ETH_GAS)));
       const breakEvenSpeedUpGasPrice = formatGwei(fastReward.div(toBN(across.constants.SPEED_UP_ETH_GAS)));
