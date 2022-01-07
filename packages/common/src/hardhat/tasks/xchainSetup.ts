@@ -246,10 +246,7 @@ task("setup-l1-boba-xchain", "Configures L1 cross chain smart contracts for Boba
   await setupHub(governorHub, deployer, messenger.options.address, 288);
 });
 
-task("setup-l2-xchain", "Configures L2 cross chain smart contracts for Arbitrum bridge").setAction(async function (
-  _,
-  hre_
-) {
+task("setup-l2-xchain", "Configures L2 cross chain smart contracts").setAction(async function (_, hre_) {
   const hre = hre_ as CombinedHRE;
   const { deployments, getNamedAccounts, web3, getChainId } = hre;
   const { deployer } = await getNamedAccounts();
