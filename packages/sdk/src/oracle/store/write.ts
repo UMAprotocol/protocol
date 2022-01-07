@@ -1,5 +1,10 @@
-import type * as ethers from "../types/ethers";
+import { ethers } from "ethers";
+import type * as ethersTypes from "../types/ethers";
 import type * as state from "../types/state";
+
+import { factory as Erc20Factory } from "../services/erc20";
+import { OptimisticOracle as OptimisticOracleService } from "../services/optimisticOracle";
+import Multicall2 from "../../multicall2";
 
 // This file contains composable and type safe state writers which mirror the state in types/state.
 // Each component takes in 1 parameters, state and you can include any number of functions to operate on the state.
@@ -22,13 +27,13 @@ export class User {
   address(address: string): void {
     this.state.address = address;
   }
-  signer(signer: ethers.Signer): void {
+  signer(signer: ethersTypes.Signer): void {
     this.state.signer = signer;
   }
 }
 export class Balances {
   constructor(private state: Partial<state.Balances>) {}
-  set(address: string, amount: ethers.BigNumber): void {
+  set(address: string, amount: ethersTypes.BigNumber): void {
     this.state[address] = amount;
   }
 }
@@ -37,11 +42,11 @@ export class Erc20 {
   props(data: state.Erc20["props"]): void {
     this.state.props = data;
   }
-  balance(account: string, amount: ethers.BigNumber): void {
+  balance(account: string, amount: ethersTypes.BigNumber): void {
     if (!this.state.balances) this.state.balances = {};
     new Balances(this.state.balances).set(account, amount);
   }
-  allowance(account: string, spender: string, amount: ethers.BigNumber): void {
+  allowance(account: string, spender: string, amount: ethersTypes.BigNumber): void {
     if (!this.state.allowances) this.state.allowances = {};
     if (!this.state.allowances[spender]) this.state.allowances[spender] = {};
     new Balances(this.state.allowances[spender]).set(account, amount);
@@ -62,7 +67,7 @@ export class OptimisticOracle {
     if (!this.state.requests) this.state.requests = {};
     this.state.requests[id] = request;
   }
-  defaultLiveness(defaultLiveness: ethers.BigNumber): void {
+  defaultLiveness(defaultLiveness: ethersTypes.BigNumber): void {
     this.state.defaultLiveness = defaultLiveness;
   }
 }
@@ -80,8 +85,34 @@ export class Chain {
 }
 export class Inputs {
   constructor(private state: Partial<state.Inputs>) {}
-  request(requester: string, identifier: string, timestamp: number, ancillaryData: string): void {
-    this.state.request = { requester, identifier, timestamp, ancillaryData };
+  request(requester: string, identifier: string, timestamp: number, ancillaryData: string, chainId: number): void {
+    this.state.request = { requester, identifier, timestamp, ancillaryData, chainId };
+  }
+}
+
+export class Services {
+  constructor(private state: Partial<state.ChainServices>) {}
+  provider(providerUrl: string): void {
+    if (this.state?.provider) return;
+    this.state.provider = ethers.getDefaultProvider(providerUrl);
+  }
+  erc20s(address: string): void {
+    if (!this.state?.provider) return;
+    if (!this.state?.erc20s) this.state.erc20s = {};
+    // only add this once
+    if (this.state?.erc20s[address]) return;
+    this.state.erc20s[address] = Erc20Factory(this.state.provider, address, this.state.multicall2);
+  }
+  optimisticOracle(address: string): void {
+    if (this.state.optimisticOracle) return;
+    if (!this.state.provider) return;
+    this.state.optimisticOracle = new OptimisticOracleService(this.state.provider, address);
+  }
+  multicall2(multicall2Address?: string) {
+    if (!multicall2Address) return;
+    if (this.state.multicall2) return;
+    if (!this.state.provider) return;
+    this.state.multicall2 = new Multicall2(multicall2Address, this.state.provider);
   }
 }
 
@@ -103,5 +134,17 @@ export default class Write {
   inputs(): Inputs {
     if (!this.state.inputs) this.state.inputs = {};
     return new Inputs(this.state.inputs);
+  }
+  config(config: state.Config): void {
+    this.state.config = config;
+  }
+  services(chainId: number): Services {
+    if (!this.state.services) this.state.services = {};
+    if (!this.state.services.chains) this.state.services.chains = {};
+    if (!this.state.services.chains[chainId]) this.state.services.chains[chainId] = {};
+    return new Services(this.state.services.chains[chainId]);
+  }
+  error(error?: Error): void {
+    this.state.error = error;
   }
 }
