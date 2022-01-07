@@ -1,5 +1,5 @@
 import assert from "assert";
-import { calculateGasFees, percent, BigNumberish, toBNWei, fixedPointAdjustment } from "./utils";
+import { calculateGasFees, percent, BigNumberish, toBNWei, fixedPointAdjustment, toWei } from "./utils";
 import { exists } from "../utils";
 import { Provider } from "@ethersproject/providers";
 import { connect as erc20Connect } from "../clients/erc20";
@@ -29,7 +29,7 @@ export async function getGasFee(
   if (baseFeePerGas) {
     const priorityFeePerGas = (await new Etherchain().getGasPrice()).fastest;
     // transform priority fee from gwei (eg 4.1) to wei
-    const priorityFeePerGasWei = Math.round(priorityFeePerGas * 10 ** 9);
+    const priorityFeePerGasWei = toWei(priorityFeePerGas, 9);
     gasPrice = baseFeePerGas.add(priorityFeePerGasWei);
   } else {
     // fallback in case baseFeePerGas is undefined / null
@@ -53,7 +53,7 @@ function makeSlowGasTable(): GasTable {
   return {
     [constants.ADDRESSES.UMA]: constants.SLOW_UMA_GAS,
     [constants.ADDRESSES.ETH]: constants.SLOW_ETH_GAS,
-    [constants.ADDRESSES.WETH]: constants.SLOW_ERC_GAS,
+    [constants.ADDRESSES.WETH]: constants.SLOW_ETH_GAS,
     DEFAULT: constants.SLOW_ERC_GAS,
   };
 }
@@ -62,7 +62,7 @@ function makeInstantGasTable(): GasTable {
   return {
     [constants.ADDRESSES.UMA]: constants.FAST_UMA_GAS - constants.SLOW_UMA_GAS,
     [constants.ADDRESSES.ETH]: constants.FAST_ETH_GAS - constants.SLOW_ETH_GAS,
-    [constants.ADDRESSES.WETH]: constants.FAST_ERC_GAS - constants.SLOW_ERC_GAS,
+    [constants.ADDRESSES.WETH]: constants.FAST_ETH_GAS - constants.SLOW_ETH_GAS,
     DEFAULT: constants.FAST_ERC_GAS - constants.SLOW_ERC_GAS,
   };
 }
