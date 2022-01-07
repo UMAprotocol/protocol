@@ -684,9 +684,7 @@ export class Relayer {
       "Deposit " +
       this._generateMrkdwnDepositIdNetworkSizeFromTo(deposit) +
       " is not profitable. " +
-      profitabilityInformation +
-      " Deposit tx " +
-      createEtherscanLinkMarkdown(deposit.depositHash, this.l2Client.chainId)
+      profitabilityInformation
     );
   }
   private _generateMarkdownForRelay(deposit: Deposit, realizedLpFeePct: BN, profitabilityInformation: string): string {
@@ -700,9 +698,7 @@ export class Relayer {
       "%, realizedLpFee " +
       createFormatFunction(2, 4, false, 18)(realizedLpFeePct.muln(100)) +
       "%. " +
-      profitabilityInformation +
-      " Deposit tx " +
-      createEtherscanLinkMarkdown(deposit.depositHash, this.l2Client.chainId)
+      profitabilityInformation
     );
   }
 
