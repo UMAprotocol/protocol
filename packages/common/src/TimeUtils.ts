@@ -21,6 +21,9 @@ export async function averageBlockTimeSeconds(chainId?: number): Promise<number>
     // observation as of January 4 2022 of Arbitrum block propogation.
     case 42161:
       return 2.2;
+    // Source: https://blockexplorer.boba.network/
+    case 288:
+      return 3.8;
     // Source: https://polygonscan.com/chart/blocktime
     case 137:
       return 2.2;
