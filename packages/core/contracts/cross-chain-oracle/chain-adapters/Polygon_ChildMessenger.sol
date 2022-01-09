@@ -60,7 +60,9 @@ contract Polygon_ChildMessenger is FxBaseChildTunnel, ChildMessengerInterface, L
     }
 
     function getOracleSpoke() public view returns (address) {
-        return finder.getImplementationAddress(OracleInterfaces.OracleSpoke);
+        // Note: On this network, the "Oracle" in the Finder should be set to an OracleSpoke contract so that it can
+        // send price requests to L1.
+        return finder.getImplementationAddress(OracleInterfaces.Oracle);
     }
 
     function getOracleHub() public view returns (address) {

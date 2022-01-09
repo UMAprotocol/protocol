@@ -17,7 +17,6 @@ library OracleInterfaces {
     bytes32 public constant SkinnyOptimisticOracle = "SkinnyOptimisticOracle";
     bytes32 public constant ChildMessenger = "ChildMessenger";
     bytes32 public constant OracleHub = "OracleHub";
-    bytes32 public constant OracleSpoke = "Oracle";
 }
 
 /**
