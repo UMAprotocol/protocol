@@ -14,7 +14,7 @@ export const interfaceName = {
   SinkOracle: "Oracle",
   SkinnyOptimisticOracle: "SkinnyOptimisticOracle",
   ChildMessenger: "ChildMessenger",
-  OracleSpoke: "Oracle",
+  OracleSpoke: "OracleSpoke",
   OracleHub: "OracleHub",
 };
 
