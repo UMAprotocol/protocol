@@ -19,7 +19,7 @@ async function run() {
   const l2Web3 = getWeb3ByChainId(l2ChainId);
   const l1Account = (await l1Web3.eth.getAccounts())[0];
 
-  console.log(`Running OVM Batch Collateral whitelister from ${l1ChainId}->${l2ChainId} with`);
+  console.log(`Running Batch Collateral whitelister from ${l1ChainId}->${l2ChainId} with`);
 
   console.log("Finding L1 whitelist...");
   const l1TokenWhitelistArray = await fetchFullL1Whitelist(l1Web3, l1ChainId);
@@ -42,21 +42,39 @@ async function run() {
   console.log("Found the following L1->L1 mapping and the associated final fees");
   console.table(combineSet);
 
-  console.log("Adding these tokens the the L2 token whitelist...");
+  console.log("Removing any tokens that are already on the L2 whitelist...");
   const l2TokenWhitelist = new l2Web3.eth.Contract(
     getAbi("AddressWhitelist"),
     await getAddress("AddressWhitelist", l2ChainId)
   );
+
+  const l2AddedToWhitelistTokens = (
+    await l2TokenWhitelist.getPastEvents("AddedToWhitelist", { fromBlock: 0, toBlock: "latest" })
+  ).map((event) => event.returnValues.addedAddress);
+
+  const l2RemovedFromWhitelistTokens = (
+    await l2TokenWhitelist.getPastEvents("RemovedFromWhitelist", { fromBlock: 0, toBlock: "latest" })
+  ).map((event) => event.returnValues.removedAddress);
+
+  const l2WhitelistedAddressArray = l2AddedToWhitelistTokens.filter((address) => {
+    return !l2RemovedFromWhitelistTokens.includes(address);
+  });
+
+  const filteredCombinedSet = combineSet.filter((element) => {
+    return !l2WhitelistedAddressArray.includes(element.l2TokenAddress);
+  });
+
+  console.log(`Adding ${filteredCombinedSet.length} tokens the the L2 token whitelist...`);
   const l2Store = new l2Web3.eth.Contract(getAbi("Store"), await getAddress("Store", l2ChainId));
 
   for (let index = 0; index < combineSet.length; index++) {
     console.log(
       `Whitelisting ${combineSet[index].symbol} at ${combineSet[index].l1TokenAddress} with fee ${combineSet[index].finalFee}`
     );
-    await l2TokenWhitelist.methods.addToWhitelist(combineSet[index].l2TokenAddress).send({ from: l1Account });
-    await l2Store.methods
-      .setFinalFee(combineSet[index].l2TokenAddress, { fixedPoint: combineSet[index].finalFee })
-      .send({ from: l1Account });
+    // await l2TokenWhitelist.methods.addToWhitelist(combineSet[index].l2TokenAddress).send({ from: l1Account });
+    // await l2Store.methods
+    //   .setFinalFee(combineSet[index].l2TokenAddress, { fixedPoint: combineSet[index].finalFee })
+    //   .send({ from: l1Account });
   }
   console.log("DONE!");
 }
