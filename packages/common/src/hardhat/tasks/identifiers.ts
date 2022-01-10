@@ -54,7 +54,6 @@ async function checkIfIdentifiersAreSupported(
       return _result === "0x0000000000000000000000000000000000000000000000000000000000000001";
     });
   } catch (err) {
-    console.log("Err", err);
     console.log(
       `No multicall contract found for network ${networkId}, submitting ${identifiersToCheck.length} web3 requests, sit tight`
     );
