@@ -4,7 +4,6 @@ import assert from "assert";
 import Web3 from "web3";
 import dotenv from "dotenv";
 import { getEventsWithPaginatedBlockSearch, ZERO_ADDRESS } from "../../index";
-import { getAbi, getAddress } from "@uma/contracts-node";
 import fetch from "node-fetch";
 
 import type { CombinedHRE } from "./types";
@@ -16,7 +15,7 @@ task("migrate-collateral-whitelist", "Migrate collateral whitelist, extracted fr
   .addParam("l2chainid", "Chain Id of the destination chain to write the new whitelist to", "", types.string)
   .setAction(async function (taskArguments, hre_) {
     const hre = hre_ as CombinedHRE;
-    const { getNamedAccounts, web3 } = hre;
+    const { deployments, getNamedAccounts, web3, companionNetworks } = hre;
 
     assert(
       process.env[`NODE_URL_${taskArguments.l1chainid}`],
@@ -38,7 +37,7 @@ task("migrate-collateral-whitelist", "Migrate collateral whitelist, extracted fr
     console.log(`Running Batch Collateral whitelister from ${l1ChainId}->${l2ChainId} on account ${deployer}`);
 
     console.log("Finding L1 whitelist...");
-    const l1TokenWhitelistArray = await fetchFullL1Whitelist(l1Web3, l1ChainId);
+    const l1TokenWhitelistArray = await fetchFullL1Whitelist(l1Web3, companionNetworks);
     console.log("found a total of " + l1TokenWhitelistArray.length + " L1 tokens on the whitelist");
 
     console.log("Finding associated L2 tokens for whitelisted l1 tokens...");
@@ -59,10 +58,8 @@ task("migrate-collateral-whitelist", "Migrate collateral whitelist, extracted fr
     console.table(combineSet);
 
     console.log("Removing any tokens that are already on the L2 whitelist...");
-    const l2TokenWhitelist = new l2Web3.eth.Contract(
-      getAbi("AddressWhitelist"),
-      await getAddress("AddressWhitelist", l2ChainId)
-    );
+    const l2TokenWhitelistContract = await deployments.get("AddressWhitelist");
+    const l2TokenWhitelist = new l2Web3.eth.Contract(l2TokenWhitelistContract.abi, l2TokenWhitelistContract.address);
     const currentBlock = await l2Web3.eth.getBlockNumber();
     const blockLookBack = 99999; // We need to use paginated query on L2 as some L2s limit how far you can look back
     // such as arbitrum which has a 100k block lookback restriction.
@@ -99,7 +96,8 @@ task("migrate-collateral-whitelist", "Migrate collateral whitelist, extracted fr
       `Adding ${filteredCombinedSet.length} tokens the the L2 token whitelist on ${l2TokenWhitelist.options.address}...`
     );
     console.table(filteredCombinedSet);
-    const l2Store = new l2Web3.eth.Contract(getAbi("Store"), await getAddress("Store", l2ChainId));
+    const l2StoreContract = await deployments.get("AddressWhitelist");
+    const l2Store = new l2Web3.eth.Contract(l2StoreContract.abi, l2StoreContract.address);
 
     let nonce = await l2Web3.eth.getTransactionCount(deployer);
     for (let index = 0; index < filteredCombinedSet.length; index++) {
@@ -119,11 +117,10 @@ task("migrate-collateral-whitelist", "Migrate collateral whitelist, extracted fr
     console.log("DONE!");
   });
 
-async function fetchFullL1Whitelist(l1Web3: Web3, l1chainid: number) {
-  const l1TokenWhitelist = new l1Web3.eth.Contract(
-    getAbi("AddressWhitelist"),
-    await getAddress("AddressWhitelist", l1chainid)
-  );
+async function fetchFullL1Whitelist(l1Web3: Web3, companionNetworks: any) {
+  const l1TokenWhitelistContract = await companionNetworks.mainnet.deployments.get("AddressWhitelist");
+  console.log("l1TokenWhitelistContract", l1TokenWhitelistContract.address);
+  const l1TokenWhitelist = new l1Web3.eth.Contract(l1TokenWhitelistContract.abi, l1TokenWhitelistContract.address);
 
   const [l1whitelistEvents, removeL1WhitelistEvents] = await Promise.all([
     l1TokenWhitelist.getPastEvents("AddedToWhitelist", { fromBlock: 0, toBlock: "latest" }),
@@ -137,16 +134,33 @@ async function fetchFullL1Whitelist(l1Web3: Web3, l1chainid: number) {
     return !l1RemovedFromWhitelistTokens.includes(address);
   });
 
-  const l1Store = new l1Web3.eth.Contract(getAbi("Store"), await getAddress("Store", l1chainid));
+  const l1StoreContract = await companionNetworks.mainnet.deployments.get("Store");
+  const l1Store = new l1Web3.eth.Contract(l1StoreContract.abi, l1StoreContract.address);
 
   const finalFeesArray = await Promise.all(
     whitelistedAddressArray.map((address) => l1Store.methods.finalFees(address).call())
   );
 
+  const tokenAbi = [
+    {
+      inputs: [],
+      name: "symbol",
+      outputs: [
+        {
+          internalType: "string",
+          name: "",
+          type: "string",
+        },
+      ],
+      stateMutability: "view",
+      type: "function",
+    },
+  ];
+
   const symbols = (
     await Promise.allSettled(
       whitelistedAddressArray.map((address) =>
-        new l1Web3.eth.Contract(getAbi("ERC20"), address).methods.symbol().call()
+        new l1Web3.eth.Contract(tokenAbi as any, address).methods.symbol().call()
       )
     )
   ).map((result) => {
