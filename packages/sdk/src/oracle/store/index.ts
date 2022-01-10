@@ -1,25 +1,28 @@
 import Write from "./write";
 import Read from "./read";
 
-import Store, { WriteCallback, Emit } from "./store";
+import Store, { WriteCallback as GenericWriteCallback, Emit as GenericEmit } from "./store";
 import { State } from "../types/state";
 
-export { Write, Store, Read };
+type WriteCallback = GenericWriteCallback<Write>;
+type Emit = GenericEmit<State>;
+
+export { Write, Store, Read, Emit, WriteCallback };
 
 /**
  * OracleStore. Wraps the store with a specific state shape and passes the Write client through to end user.
  */
 export default class OracleStore {
   private store: Store<State>;
-  constructor(private emit: Emit<State> = () => undefined, private state: State = {}) {
-    this.store = new Store(emit, state);
+  constructor(private emit: Emit = () => undefined, private state: State = {}) {
+    this.store = new Store<State>(emit, state);
   }
   /**
    * write - Function for updating state.
    *
    * @param {WriteCallback} cb - Sends a write client to the caller for safer and easier state mutations rather than the raw object.
    */
-  write = (cb: WriteCallback<Write>): void => {
+  write = (cb: WriteCallback): void => {
     this.store.write((state) => cb(new Write(state)));
   };
   /**

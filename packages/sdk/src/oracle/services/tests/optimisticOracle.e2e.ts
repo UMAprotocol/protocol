@@ -1,7 +1,10 @@
+import dotenv from "dotenv";
 import assert from "assert";
 import { ethers } from "ethers";
 import { Provider } from "@ethersproject/providers";
 import { OptimisticOracle } from "../optimisticOracle";
+
+dotenv.config();
 
 const ooAddress = "0xC43767F4592DF265B4a9F1a398B97fF24F38C6A6";
 const request: [string, string, number, string] = [

@@ -1,13 +1,13 @@
 import winston from "winston";
 import sinon from "sinon";
 import Web3 from "web3";
-const { toWei, fromWei, toBN, toChecksumAddress, randomHex } = Web3.utils;
+const { toWei, toBN, toChecksumAddress, randomHex } = Web3.utils;
 const toBNWei = (number: string | number) => toBN(toWei(number.toString()).toString());
 
 const { ZERO_ADDRESS, createFormatFunction } = require("@uma/common");
 
 const formatWei = createFormatFunction(2, 4, false, 18);
-const formatGwei = (number: string | number | BN) => Math.ceil(Number(fromWei(number.toString(), "gwei")));
+const formatGwei = (number: string | number | BN) => createFormatFunction(2, 4, false, 9)(number.toString());
 
 const { across } = require("@uma/sdk");
 
@@ -310,7 +310,7 @@ describe("ProfitabilityCalculator.ts", function () {
             toBNWei(0),
             reward
           ).profitabilityInformation,
-          `SlowRelay profit ${slowProfit} ETH, SpeedUpRelay profit ${speedUpProfit} ETH and InstantRelay profit ${fastProfit} ETH, with a relayerDiscount of 0%. Current cumulativeGasPrice is 100 Gwei. Relay would be break even at gas price of SlowRelay ${breakEvenSlowGasPrice} Gwei, SpeedUpRelay 0 Gwei and InstantRelay ${breakEvenFastGasPrice} Gwei.`
+          `SlowRelay profit ${slowProfit} ETH, SpeedUpRelay profit ${speedUpProfit} ETH and InstantRelay profit ${fastProfit} ETH, with a relayerDiscount of 0%. Current cumulativeGasPrice is 100.00 Gwei. Relay would be break even at gas price of SlowRelay ${breakEvenSlowGasPrice} Gwei, SpeedUpRelay 0.000 Gwei and InstantRelay ${breakEvenFastGasPrice} Gwei.`
         );
 
         // Validate the relay profitability message message is produced correctly.

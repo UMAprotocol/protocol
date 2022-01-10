@@ -1,6 +1,9 @@
+import { Deployment } from "hardhat-deploy/types";
 import { task } from "hardhat/config";
 import { Contract } from "web3-eth-contract";
 import { CombinedHRE } from "./types";
+import Web3 from "web3";
+const { utf8ToHex, toBN } = Web3.utils;
 const assert = require("assert");
 
 async function setupHub(hub: Contract, deployer: string, parentMessenger: string, childChainId: number) {
@@ -17,11 +20,103 @@ async function setupHub(hub: Contract, deployer: string, parentMessenger: string
   }
 }
 
+async function setupParentMessenger(
+  messenger: Contract,
+  deployer: string,
+  childMessenger: Deployment,
+  oracleHub: Deployment,
+  governorHub: Deployment,
+  oracleSpoke: Deployment,
+  governorSpoke: Deployment
+) {
+  const contractState = await Promise.all([
+    messenger.methods.getL1CallValue().call(),
+    messenger.methods.owner().call(),
+    messenger.methods.childMessenger().call(),
+    messenger.methods.oracleHub().call(),
+    messenger.methods.oracleSpoke().call(),
+    messenger.methods.governorHub().call(),
+    messenger.methods.governorSpoke().call(),
+  ]);
+  const messengerOwner = contractState[1];
+  const messengerChildMessenger = contractState[2];
+  const messengerOracleHub = contractState[3];
+  const messengerOracleSpoke = contractState[4];
+  const messengerGovernorHub = contractState[5];
+  const messengerGovernorSpoke = contractState[6];
+
+  // Submit parent messenger local transactions:
+  assert(
+    messengerOwner === deployer,
+    `Accounts[0] (${deployer}) is not equal to parent messenger owner (${messengerOwner})`
+  );
+  if (messengerChildMessenger !== childMessenger.address) {
+    console.log(`Setting child messenger to ${childMessenger.address}...`);
+    const setChildMessengerTxn = await messenger.methods
+      .setChildMessenger(childMessenger.address)
+      .send({ from: deployer });
+    console.log(`...txn: ${setChildMessengerTxn.transactionHash}`);
+  }
+  if (messengerOracleHub !== oracleHub.address) {
+    console.log(`Setting oracle hub to ${oracleHub.address}...`);
+    const setOracleHubTxn = await messenger.methods.setOracleHub(oracleHub.address).send({ from: deployer });
+    console.log(`...txn: ${setOracleHubTxn.transactionHash}`);
+  }
+  if (messengerGovernorHub !== governorHub.address) {
+    console.log(`Setting governor hub to ${governorHub.address}...`);
+    const setGovernorHubTxn = await messenger.methods.setGovernorHub(governorHub.address).send({ from: deployer });
+    console.log(`...txn: ${setGovernorHubTxn.transactionHash}`);
+  }
+  if (messengerOracleSpoke !== oracleSpoke.address) {
+    console.log(`Setting oracle spoke to ${oracleSpoke.address}...`);
+    const setOracleSpokeTxn = await messenger.methods.setOracleSpoke(oracleSpoke.address).send({ from: deployer });
+    console.log(`...txn: ${setOracleSpokeTxn.transactionHash}`);
+  }
+  if (messengerGovernorSpoke !== governorSpoke.address) {
+    console.log(`Setting governor spoke to ${governorSpoke.address}...`);
+    const setGovernorSpokeTxn = await messenger.methods
+      .setGovernorSpoke(governorSpoke.address)
+      .send({ from: deployer });
+    console.log(`...txn: ${setGovernorSpokeTxn.transactionHash}`);
+  }
+
+  return contractState;
+}
+
+async function setupChildMessenger(
+  finder: Contract,
+  deployer: string,
+  childMessenger: Deployment,
+  registry: Deployment
+) {
+  const [finderChildMessenger, finderRegistry, finderOwner] = await Promise.all([
+    finder.methods.interfacesImplemented(utf8ToHex("ChildMessenger")).call(),
+    finder.methods.interfacesImplemented(utf8ToHex("Registry")).call(),
+    finder.methods.owner().call(),
+  ]);
+
+  // Submit Finder transactions:
+  assert(finderOwner === deployer, `Accounts[0] (${deployer}) is not equal to finder owner (${finderOwner})`);
+  if (finderChildMessenger !== childMessenger.address) {
+    console.log(`Setting finder ChildMessenger to ${childMessenger.address}...`);
+    const setMessengerTxn = await finder.methods
+      .changeImplementationAddress(utf8ToHex("ChildMessenger"), childMessenger.address)
+      .send({ from: deployer });
+    console.log(`...txn: ${setMessengerTxn.transactionHash}`);
+  }
+  if (finderRegistry !== registry.address) {
+    console.log(`Setting finder Registry to ${registry.address}...`);
+    const setRegistryTxn = await finder.methods
+      .changeImplementationAddress(utf8ToHex("Registry"), registry.address)
+      .send({ from: deployer });
+    console.log(`...txn: ${setRegistryTxn.transactionHash}`);
+  }
+}
+
 task("setup-l1-arbitrum-xchain", "Configures L1 cross chain smart contracts for Arbitrum bridge").setAction(
   async function (_, hre_) {
     const hre = hre_ as CombinedHRE;
     const { deployments, getNamedAccounts, web3, companionNetworks } = hre;
-    const { toBN } = web3.utils;
     const { deployer } = await getNamedAccounts();
 
     const ParentMessenger = await deployments.get("Arbitrum_ParentMessenger");
@@ -39,40 +134,16 @@ task("setup-l1-arbitrum-xchain", "Configures L1 cross chain smart contracts for 
     const ChildMessenger = await companionNetworks.arbitrum.deployments.get("Arbitrum_ChildMessenger");
     const GovernorSpoke = await companionNetworks.arbitrum.deployments.get("GovernorSpoke");
 
-    console.group(
-      "\nReading Arbitrum Inbox transaction params that will be used to send cross chain transactions to the ChildMessenger"
+    const contractState = await setupParentMessenger(
+      messenger,
+      deployer,
+      ChildMessenger,
+      OracleHub,
+      GovernorHub,
+      OracleSpoke,
+      GovernorSpoke
     );
-    const [
-      refundL2Address,
-      defaultL2GasLimit,
-      defaultL2GasPrice,
-      defaultMaxSubmissionCost,
-      requiredL1CallValue,
-      messengerOwner,
-      messengerChildMessenger,
-      messengerOracleHub,
-      messengerOracleSpoke,
-      messengerGovernorHub,
-      messengerGovernorSpoke,
-    ] = await Promise.all([
-      messenger.methods.refundL2Address().call(),
-      messenger.methods.defaultGasLimit().call(),
-      messenger.methods.defaultGasPrice().call(),
-      messenger.methods.defaultMaxSubmissionCost().call(),
-      messenger.methods.getL1CallValue().call(),
-      messenger.methods.owner().call(),
-      messenger.methods.childMessenger().call(),
-      messenger.methods.oracleHub().call(),
-      messenger.methods.oracleSpoke().call(),
-      messenger.methods.governorHub().call(),
-      messenger.methods.governorSpoke().call(),
-    ]);
-    console.log(`- Refund L2 address: ${refundL2Address}`);
-    console.log(`- Default L2 gas limit: ${defaultL2GasLimit.toString()}`);
-    console.log(`- Default L2 gas price: ${defaultL2GasPrice.toString()}`);
-    console.log(`- Default L2 max submission cost: ${defaultMaxSubmissionCost.toString()}`);
-    console.log(`- Required L1 call value: ${requiredL1CallValue.toString()}`);
-    console.groupEnd();
+    const requiredL1CallValue = contractState[0];
 
     // The following calls require that the caller has enough gas to cover each cross chain transaction, which requires
     // at most (l2GasLimit * l2GasPrice + maxSubmissionCost) ETH to be included in the transaction. What will happen
@@ -89,41 +160,6 @@ task("setup-l1-arbitrum-xchain", "Configures L1 cross chain smart contracts for 
       toBN(userEthBalance).gt(requiredEth),
       "User has insufficient ETH balance to pay for cross chain transactions"
     );
-
-    // Submit parent messenger local transactions:
-    assert(
-      messengerOwner === deployer,
-      `Accounts[0] (${deployer}) is not equal to parent messenger owner (${messengerOwner})`
-    );
-    if (messengerChildMessenger !== ChildMessenger.address) {
-      console.log(`Setting child messenger to ${ChildMessenger.address}...`);
-      const setChildMessengerTxn = await messenger.methods
-        .setChildMessenger(ChildMessenger.address)
-        .send({ from: deployer });
-      console.log(`...txn: ${setChildMessengerTxn.transactionHash}`);
-    }
-    if (messengerOracleHub !== OracleHub.address) {
-      console.log(`Setting oracle hub to ${OracleHub.address}...`);
-      const setOracleHubTxn = await messenger.methods.setOracleHub(OracleHub.address).send({ from: deployer });
-      console.log(`...txn: ${setOracleHubTxn.transactionHash}`);
-    }
-    if (messengerGovernorHub !== GovernorHub.address) {
-      console.log(`Setting governor hub to ${GovernorHub.address}...`);
-      const setGovernorHubTxn = await messenger.methods.setGovernorHub(GovernorHub.address).send({ from: deployer });
-      console.log(`...txn: ${setGovernorHubTxn.transactionHash}`);
-    }
-    if (messengerOracleSpoke !== OracleSpoke.address) {
-      console.log(`Setting oracle spoke to ${OracleSpoke.address}...`);
-      const setOracleSpokeTxn = await messenger.methods.setOracleSpoke(OracleSpoke.address).send({ from: deployer });
-      console.log(`...txn: ${setOracleSpokeTxn.transactionHash}`);
-    }
-    if (messengerGovernorSpoke !== GovernorSpoke.address) {
-      console.log(`Setting governor spoke to ${GovernorSpoke.address}...`);
-      const setGovernorSpokeTxn = await messenger.methods
-        .setGovernorSpoke(GovernorSpoke.address)
-        .send({ from: deployer });
-      console.log(`...txn: ${setGovernorSpokeTxn.transactionHash}`);
-    }
 
     // Submit parent messenger cross-chain transactions:
     // First, send ETH to the parent messenger to cover both transactions.
@@ -166,41 +202,72 @@ task("setup-l1-arbitrum-xchain", "Configures L1 cross chain smart contracts for 
   }
 );
 
-task("setup-l2-arbitrum-xchain", "Configures L2 cross chain smart contracts for Arbitrum bridge").setAction(
-  async function (_, hre_) {
-    const hre = hre_ as CombinedHRE;
-    const { deployments, getNamedAccounts, web3 } = hre;
-    const { utf8ToHex } = web3.utils;
-    const { deployer } = await getNamedAccounts();
+task("setup-l1-boba-xchain", "Configures L1 cross chain smart contracts for Boba bridge").setAction(async function (
+  _,
+  hre_
+) {
+  const hre = hre_ as CombinedHRE;
+  const { deployments, getNamedAccounts, web3, companionNetworks } = hre;
+  const { deployer } = await getNamedAccounts();
 
-    const Finder = await deployments.get("Finder");
-    const finder = new web3.eth.Contract(Finder.abi, Finder.address);
-    const ChildMessenger = await deployments.get("Arbitrum_ChildMessenger");
-    const Registry = await deployments.get("Registry");
+  const ParentMessenger = await deployments.get("Boba_ParentMessenger");
+  const messenger = new web3.eth.Contract(ParentMessenger.abi, ParentMessenger.address);
+  const OracleHub = await deployments.get("OracleHub");
+  const oracleHub = new web3.eth.Contract(OracleHub.abi, OracleHub.address);
+  const GovernorHub = await deployments.get("GovernorHub");
+  const governorHub = new web3.eth.Contract(GovernorHub.abi, GovernorHub.address);
 
-    console.log(`Found Finder @ ${finder.options.address}`);
+  console.log(`Found ParentMessenger @ ${messenger.options.address}`);
+  console.log(`Found OracleHub @ ${oracleHub.options.address}`);
+  console.log(`Found GovernorHub @ ${governorHub.options.address}`);
 
-    const [finderChildMessenger, finderRegistry, finderOwner] = await Promise.all([
-      finder.methods.interfacesImplemented(utf8ToHex("ChildMessenger")).call(),
-      finder.methods.interfacesImplemented(utf8ToHex("Registry")).call(),
-      finder.methods.owner().call(),
-    ]);
+  const OracleSpoke = await companionNetworks.boba.deployments.get("OracleSpoke");
+  const ChildMessenger = await companionNetworks.boba.deployments.get("Boba_ChildMessenger");
+  const GovernorSpoke = await companionNetworks.boba.deployments.get("GovernorSpoke");
 
-    // Submit Finder transactions:
-    assert(finderOwner === deployer, `Accounts[0] (${deployer}) is not equal to finder owner (${finderOwner})`);
-    if (finderChildMessenger !== ChildMessenger.address) {
-      console.log(`Setting finder ChildMessenger to ${ChildMessenger.address}...`);
-      const setMessengerTxn = await finder.methods
-        .changeImplementationAddress(utf8ToHex("ChildMessenger"), ChildMessenger.address)
-        .send({ from: deployer });
-      console.log(`...txn: ${setMessengerTxn.transactionHash}`);
-    }
-    if (finderRegistry !== Registry.address) {
-      console.log(`Setting finder Registry to ${Registry.address}...`);
-      const setRegistryTxn = await finder.methods
-        .changeImplementationAddress(utf8ToHex("Registry"), Registry.address)
-        .send({ from: deployer });
-      console.log(`...txn: ${setRegistryTxn.transactionHash}`);
-    }
+  await setupParentMessenger(messenger, deployer, ChildMessenger, OracleHub, GovernorHub, OracleSpoke, GovernorSpoke);
+
+  // Submit parent messenger cross-chain transactions:
+  console.log(`Setting child oracle spoke address to ${OracleSpoke.address}...`);
+  const setChildOracleSpokeTxn = await messenger.methods
+    .setChildOracleSpoke(OracleSpoke.address)
+    .send({ from: deployer });
+  console.log(`...txn: ${setChildOracleSpokeTxn.transactionHash}`);
+  console.log(`Setting child parent messenger to ${messenger.options.address}...`);
+  const setChildParentMessengerTxn = await messenger.methods
+    .setChildParentMessenger(messenger.options.address)
+    .send({ from: deployer });
+  console.log(`...txn: ${setChildParentMessengerTxn.transactionHash}`);
+
+  // Submit oracle hub transactions:
+  await setupHub(oracleHub, deployer, messenger.options.address, 288);
+
+  // Submit governor hub transactions:
+  await setupHub(governorHub, deployer, messenger.options.address, 288);
+});
+
+task("setup-l2-xchain", "Configures L2 cross chain smart contracts").setAction(async function (_, hre_) {
+  const hre = hre_ as CombinedHRE;
+  const { deployments, getNamedAccounts, web3, getChainId } = hre;
+  const { deployer } = await getNamedAccounts();
+
+  const Finder = await deployments.get("Finder");
+  const finder = new web3.eth.Contract(Finder.abi, Finder.address);
+  const chainId = await getChainId();
+  let ChildMessenger;
+  switch (chainId) {
+    case "42161":
+      ChildMessenger = await deployments.get("Arbitrum_ChildMessenger");
+      break;
+    case "288":
+      ChildMessenger = await deployments.get("Boba_ChildMessenger");
+      break;
+    default:
+      throw new Error("Unimplemented L2");
   }
-);
+  const Registry = await deployments.get("Registry");
+
+  console.log(`Found Finder @ ${finder.options.address}`);
+
+  await setupChildMessenger(finder, deployer, ChildMessenger, Registry);
+});

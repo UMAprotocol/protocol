@@ -1,4 +1,30 @@
 import { Signer, BigNumber } from "./ethers";
+import type { erc20, optimisticOracle } from "../services";
+import type Multicall2 from "../../multicall2";
+import { Provider } from "./ethers";
+
+export type ChainServices = {
+  multicall2: Multicall2;
+  provider: Provider;
+  erc20s: Record<string, erc20.Erc20>;
+  optimisticOracle: optimisticOracle.OptimisticOracle;
+};
+
+export type Services = {
+  chains?: Record<number, Partial<ChainServices>>;
+};
+
+export type ChainConfig = {
+  chainId: number;
+  multicall2Address?: string;
+  optimisticOracleAddress: string;
+  providerUrl: string;
+};
+
+// config definition
+export type Config = {
+  chains: Record<number, ChainConfig>;
+};
 
 export type Balances = Record<string, BigNumber>;
 
@@ -14,6 +40,7 @@ export type Inputs = {
     identifier: string;
     timestamp: number;
     ancillaryData: string;
+    chainId: number;
   };
 };
 
@@ -21,8 +48,8 @@ export type Erc20Props = {
   address: string;
   symbol: string;
   name: string;
-  decimals: string;
-  totalSupply: string;
+  decimals: number;
+  totalSupply: BigNumber;
 };
 
 export type Erc20 = {
@@ -44,6 +71,7 @@ export type Request = {
   finalFee: BigNumber;
   bond: BigNumber;
   customLiveness: BigNumber;
+  state: number;
 };
 
 export type OptimisticOracle = {
@@ -58,7 +86,10 @@ export type Chain = {
 };
 
 export type State = Partial<{
+  error?: Error;
   inputs: Partial<Inputs>;
   user: Partial<User>;
   chains: Record<number, Partial<Chain>>;
+  config: Config;
+  services: Services;
 }>;
