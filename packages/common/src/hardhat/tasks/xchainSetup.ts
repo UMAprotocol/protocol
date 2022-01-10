@@ -2,6 +2,7 @@ import { Deployment } from "hardhat-deploy/types";
 import { task } from "hardhat/config";
 import { Contract } from "web3-eth-contract";
 import { CombinedHRE } from "./types";
+import { PublicNetworks } from "../../index";
 import Web3 from "web3";
 const { utf8ToHex, toBN } = Web3.utils;
 const assert = require("assert");
@@ -113,7 +114,8 @@ async function setupChildMessenger(
   }
 }
 
-async function setupOvmBasedL1Chain(hre_: any, chainName: string, chainId: number) {
+async function setupOvmBasedL1Chain(hre_: any, chainId: number) {
+  const chainName = PublicNetworks[chainId].name[0].toUpperCase() + PublicNetworks[chainId].name.substring(1);
   const hre = hre_ as CombinedHRE;
   const { deployments, getNamedAccounts, web3, companionNetworks } = hre;
   const { deployer } = await getNamedAccounts();
@@ -247,12 +249,12 @@ task("setup-l1-boba-xchain", "Configures L1 cross chain smart contracts for Boba
   _,
   hre_
 ) {
-  await setupOvmBasedL1Chain(hre_, "Boba", 288);
+  await setupOvmBasedL1Chain(hre_, 288);
 });
 
 task("setup-l1-optimism-xchain", "Configures L1 cross chain smart contracts for Optimism bridge").setAction(
   async function (_, hre_) {
-    await setupOvmBasedL1Chain(hre_, "Optimism", 10);
+    await setupOvmBasedL1Chain(hre_, 10);
   }
 );
 
