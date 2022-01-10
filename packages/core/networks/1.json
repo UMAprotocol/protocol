@@ -168,5 +168,10 @@
     "contractName": "Optimism_ParentMessenger",
     "deploymentName": "Boba_ParentMessenger",
     "address": "0x7Fc15F642B66D07BB0641cbCcA28cf624448B52B"
+  },
+  {
+    "contractName": "Optimism_ParentMessenger",
+    "deploymentName": "Optimism_ParentMessenger",
+    "address": "0x6455D800D1Dbf9B1C3a63c67CcF22B9308728dC4"
   }
 ]

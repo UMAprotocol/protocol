@@ -2,5 +2,45 @@
   {
     "contractName": "OVM_OETH_BridgeDepositBox",
     "address": "0x3bad7ad0728f9917d1bf08af5782dcbd516cdd96"
+  },
+  {
+    "contractName": "Registry",
+    "address": "0xa4199d73ae206d49c966cF16c58436851f87d47F"
+  },
+  {
+    "contractName": "Finder",
+    "address": "0x278d6b1aA37d09769E519f05FcC5923161A8536D"
+  },
+  {
+    "contractName": "OracleSpoke",
+    "address": "0x55743451B0921B555B4AeAf878c2f3E37aA41755"
+  },
+  {
+    "contractName": "GovernorSpoke",
+    "address": "0xEF8b46765ae805537053C59f826C3aD61924Db45"
+  },
+  {
+    "contractName": "Optimism_ChildMessenger",
+    "address": "0x09AFD24Acc170c16f4fF64BDf2A4818C515440e8"
+  },
+  {
+    "contractName": "IdentifierWhitelist",
+    "address": "0xd90A27EaF88c81F50e30e0E0333036838814181e"
+  },
+  {
+    "contractName": "Store",
+    "address": "0x5be04e53b465c6fD89ECfF3d36dDf666D198e31a"
+  },
+  {
+    "contractName": "AddressWhitelist",
+    "address": "0xad7c5516b25661e0A204646b08024cD82ffe6C48"
+  },
+  {
+    "contractName": "OptimisticOracle",
+    "address": "0x56e2d1b8C7dE8D11B282E1b4C924C32D91f9102B"
+  },
+  {
+    "contractName": "Multicall2",
+    "address": "0x35A6Cdb2C9AD4a45112df4a04147EB07dFA01aB7"
   }
 ]

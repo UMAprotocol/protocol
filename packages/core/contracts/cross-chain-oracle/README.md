@@ -36,22 +36,28 @@ If you're having trouble redeploying contracts because `hardhat` wants to "reuse
 export NODE_URL_1=<MAINNET_URL>
 export NODE_URL_42161=<ARBITRUM_URL>
 export NODE_URL_288=<BOBA_URL>
+export NODE_URL_10=<OPTIMISM_URL>
 export MNEMONIC="Your 12-word mnemonic here"
 ```
 
 2. Deploy mainnet contracts. Note that the following commands are slightly different based on which L2 you're deploying to.
 
 ```sh
-yarn hardhat deploy --network mainnet --tags [l1-arbitrum-xchain/l1-boba-xchain]
+yarn hardhat deploy --network mainnet --tags [l1-arbitrum-xchain/l1-boba-xchain/l1-optimism-xchain]
 ```
+
+Add the deployed [Arbitrum/Boba/Optimism]\_ParentMessenger contract to the associated networks file.
 
 3. Deploy l2 contracts:
 
 ```sh
-yarn hardhat deploy --network [arbitrum/boba] --tags [l2-arbitrum-xchain/l2-boba-xchain],Registry
+yarn hardhat deploy --network [arbitrum/boba/optimism] --tags [l2-arbitrum-xchain/l2-boba-xchain/l2-optimism-xchain],Registry
+
 ```
 
-4. Verify contracts:
+Add the deployed [Arbitrum/Boba/Optimism] Registry, finder, OracleSpoke, GovernorSpoke and x_ChildMessenger **contracts** to the associated networks file.
+
+1. Verify contracts:
 
 ```sh
 # mainnet
@@ -60,24 +66,26 @@ yarn hardhat --network mainnet etherscan-verify --api-key <ETHERSCAN_KEY> --lice
 yarn hardhat --network arbitrum etherscan-verify --api-key <ETHERSCAN_KEY> --license GPL-3.0 --force-license
 # boba
 yarn hardhat --network boba sourcify
+#optimism (etherscan-verify does not work on Optimism so we use hardhat verify)
+yarn hardhat --network optimism verify <EACH-DEPLOYED ADDRESS IN STEP 3> <ASSOCIATED CONSTRUCTOR PARAMS FROM 3>
 ```
 
 5. Setup mainnet contracts
 
 ```sh
-yarn hardhat [setup-l1-arbitrum-xchain/setup-l1-boba-xchain] --network mainnet
+yarn hardhat [setup-l1-arbitrum-xchain/setup-l1-boba-xchain/setup-l1-optimism-xchain] --network mainnet
 ```
 
 6. Setup l2 contracts
 
 ```sh
-yarn hardhat setup-l2-xchain --network [arbitrum/boba]
+yarn hardhat setup-l2-xchain --network [arbitrum/boba/optimism]
 ```
 
 7. At this point, the cross chain contract suite setup is complete. We will now deploy the `OptimisticOracle` and required contracts to the L2.
 
 ```sh
-yarn hardhat deploy --network [arbitrum/boba] --tags OptimisticOracle,IdentifierWhitelist,AddressWhitelist,Store
+yarn hardhat deploy --network [arbitrum/boba/optimism] --tags OptimisticOracle,IdentifierWhitelist,AddressWhitelist,Store
 ```
 
 8. Verify contracts:
@@ -87,13 +95,15 @@ yarn hardhat deploy --network [arbitrum/boba] --tags OptimisticOracle,Identifier
 yarn hardhat --network arbitrum etherscan-verify --api-key <ETHERSCAN_KEY> --license GPL-3.0 --force-license
 # boba
 yarn hardhat --network boba sourcify
+#optimism (etherscan-verify does not work on **Optimism** so we use hardhat verify)
+yarn hardhat --network optimism verify <EACH-DEPLOYED ADDRESS IN STEP 7> <ASSOCIATED CONSTRUCTOR PARAMS FROM 7>
 ```
 
 9. Setup l2 optimistic oracle:
 
 ```sh
 # Seed IdentifierWhitelist with all identifiers already approved on mainnet. Note the --from address is the IdentifierWhitelist deployed on mainnet.
-CROSS_CHAIN_NODE_URL=<MAINNET_URL> yarn hardhat migrate-identifiers --network [arbitrum/boba] --from 0xcF649d9Da4D1362C4DAEa67573430Bd6f945e570 --crosschain true
+CROSS_CHAIN_NODE_URL=<MAINNET_URL> yarn hardhat migrate-identifiers --network [arbitrum/boba/optimism] --from 0xcF649d9Da4D1362C4DAEa67573430Bd6f945e570 --crosschain true
 
 # Seed Collateral whitelist with all collaterals already approved on Mainnet. This will also pull the final fee from the L1 store and set it in the L2 Store.
 yarn hardhat --network [arbitrum/boba]  migrate-collateral-whitelist --l1chainid 1 --l2chainid [288/42161]
