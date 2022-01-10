@@ -96,7 +96,7 @@ task("migrate-collateral-whitelist", "Migrate collateral whitelist, extracted fr
       `Adding ${filteredCombinedSet.length} tokens the the L2 token whitelist on ${l2TokenWhitelist.options.address}...`
     );
     console.table(filteredCombinedSet);
-    const l2StoreContract = await deployments.get("AddressWhitelist");
+    const l2StoreContract = await deployments.get("Store");
     const l2Store = new l2Web3.eth.Contract(l2StoreContract.abi, l2StoreContract.address);
 
     let nonce = await l2Web3.eth.getTransactionCount(deployer);

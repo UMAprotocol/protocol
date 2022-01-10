@@ -38,9 +38,5 @@
   {
     "contractName": "OptimisticOracle",
     "address": "0x56e2d1b8C7dE8D11B282E1b4C924C32D91f9102B"
-  },
-  {
-    "contractName": "Multicall2",
-    "address": "0x35A6Cdb2C9AD4a45112df4a04147EB07dFA01aB7"
   }
 ]
