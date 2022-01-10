@@ -55,7 +55,7 @@ yarn hardhat deploy --network [arbitrum/boba/optimism] --tags [l2-arbitrum-xchai
 
 ```
 
-Add the deployed [Arbitrum/Boba/Optimism] Registry, finder, OracleSpoke, GovernorSpoke and x_ChildMessenger **contracts** to the associated networks file.
+Add the deployed [Arbitrum/Boba/Optimism] Registry, finder, OracleSpoke, GovernorSpoke and x_ChildMessenger contracts to the associated networks file.
 
 1. Verify contracts:
 
@@ -66,7 +66,7 @@ yarn hardhat --network mainnet etherscan-verify --api-key <ETHERSCAN_KEY> --lice
 yarn hardhat --network arbitrum etherscan-verify --api-key <ETHERSCAN_KEY> --license GPL-3.0 --force-license
 # boba
 yarn hardhat --network boba sourcify
-#optimism (etherscan-verify does not work on Optimism so we use hardhat verify)
+#Optimism (etherscan-verify does not work on Optimism so we use hardhat verify)
 yarn hardhat --network optimism verify <EACH-DEPLOYED ADDRESS IN STEP 3> <ASSOCIATED CONSTRUCTOR PARAMS FROM 3>
 ```
 
@@ -95,7 +95,7 @@ yarn hardhat deploy --network [arbitrum/boba/optimism] --tags OptimisticOracle,I
 yarn hardhat --network arbitrum etherscan-verify --api-key <ETHERSCAN_KEY> --license GPL-3.0 --force-license
 # boba
 yarn hardhat --network boba sourcify
-#optimism (etherscan-verify does not work on **Optimism** so we use hardhat verify)
+#Optimism (etherscan-verify does not work on Optimism so we use hardhat verify)
 yarn hardhat --network optimism verify <EACH-DEPLOYED ADDRESS IN STEP 7> <ASSOCIATED CONSTRUCTOR PARAMS FROM 7>
 ```
 
