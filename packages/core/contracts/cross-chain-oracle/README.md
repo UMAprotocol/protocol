@@ -26,27 +26,29 @@ Note: in the commands below, you'll need to set the relevant `NODE_URL_X` enviro
 
 If you're having trouble redeploying contracts because `hardhat` wants to "reuse" contracts, then run `yarn clean && yarn` in the `core` package to reset `deployments`.
 
-## Arbitrum
+## Step-by-step guide to deployments
 
 1. Start by exporting some environment variables (or storing them in a .env):
 
 ```sh
+# Set only the following environment variables based on which L2 you're deploying to. For example, if you're deploying to mainnet and arbitrum, set NODE_URL_1 and NODE_URL_42161.
 # When running against a forked network, set the URL to http://localhost:<PORT>
 export NODE_URL_1=<MAINNET_URL>
 export NODE_URL_42161=<ARBITRUM_URL>
+export NODE_URL_288=<BOBA_URL>
 export MNEMONIC="Your 12-word mnemonic here"
 ```
 
-2. Deploy mainnet contracts:
+2. Deploy mainnet contracts. Note that the following commands are slightly different based on which L2 you're deploying to.
 
 ```sh
-yarn hardhat deploy --network mainnet --tags l1-arbitrum-xchain
+yarn hardhat deploy --network mainnet --tags [l1-arbitrum-xchain/l1-boba-xchain]
 ```
 
 3. Deploy l2 contracts:
 
 ```sh
-yarn hardhat deploy --network arbitrum --tags l2-arbitrum-xchain,Registry
+yarn hardhat deploy --network [arbitrum/boba] --tags [l2-arbitrum-xchain/l2-boba-xchain],Registry
 ```
 
 4. Verify contracts:
@@ -56,42 +58,47 @@ yarn hardhat deploy --network arbitrum --tags l2-arbitrum-xchain,Registry
 yarn hardhat --network mainnet etherscan-verify --api-key <ETHERSCAN_KEY> --license GPL-3.0 --force-license
 # arbitrum
 yarn hardhat --network arbitrum etherscan-verify --api-key <ETHERSCAN_KEY> --license GPL-3.0 --force-license
+# boba
+yarn hardhat --network boba sourcify
 ```
 
 5. Setup mainnet contracts
 
 ```sh
-yarn hardhat setup-l1-arbitrum-cross-chain --network mainnet
+yarn hardhat [setup-l1-arbitrum-xchain/setup-l1-boba-xchain] --network mainnet
 ```
 
 6. Setup l2 contracts
 
 ```sh
-yarn hardhat setup-l2-arbitrum-cross-chain --network arbitrum
+yarn hardhat setup-l2-xchain --network [arbitrum/boba]
 ```
 
 7. At this point, the cross chain contract suite setup is complete. We will now deploy the `OptimisticOracle` and required contracts to the L2.
 
 ```sh
-yarn hardhat deploy --network arbitrum --tags OptimisticOracle,IdentifierWhitelist,AddressWhitelist
+yarn hardhat deploy --network [arbitrum/boba] --tags OptimisticOracle,IdentifierWhitelist,AddressWhitelist,Store
 ```
 
 8. Verify contracts:
 
 ```sh
+# arbitrum
 yarn hardhat --network arbitrum etherscan-verify --api-key <ETHERSCAN_KEY> --license GPL-3.0 --force-license
+# boba
+yarn hardhat --network boba sourcify
 ```
 
 9. Setup l2 optimistic oracle:
 
 ```sh
 # Seed IdentifierWhitelist with all identifiers already approved on mainnet. Note the --from address is the IdentifierWhitelist deployed on mainnet.
-CROSS_CHAIN_NODE_URL=<MAINNET_URL> yarn hardhat migrate-identifiers --network arbitrum --from 0xcF649d9Da4D1362C4DAEa67573430Bd6f945e570 --crosschain true
+CROSS_CHAIN_NODE_URL=<MAINNET_URL> yarn hardhat migrate-identifiers --network [arbitrum/boba] --from 0xcF649d9Da4D1362C4DAEa67573430Bd6f945e570 --crosschain true
 # Point L2 Finder to remaining Optimistic Oracle system contracts.
-yarn hardhat setup-finder --identifierwhitelist --addresswhitelist --optimisticoracle --network arbitrum
+yarn hardhat setup-finder --identifierwhitelist --addresswhitelist --optimisticoracle --store --network [arbitrum/boba]
 ```
 
-10. There is no script at the moment that facilitates seeding the `AddressWhitelist` with approved collateral currencies, so be sure to manually whitelist tokens such as `WETH/ETH`, `USDC`, `UMA`, etc.
+10. There is no script at the moment that facilitates seeding the `AddressWhitelist` with approved collateral currencies, so be sure to manually whitelist tokens such as `WETH/ETH`, `USDC`, `UMA`, etc. Similarly, set final fees for whitelisted collateral in the `Store`.
 
 # L2->L1 Message passing and finalization
 

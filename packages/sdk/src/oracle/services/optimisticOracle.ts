@@ -24,4 +24,7 @@ export class OptimisticOracle {
       defaultLiveness: await this.contract.defaultLiveness(),
     };
   }
+  async getState(requester: string, identifier: string, timestamp: BigNumberish, ancillaryData: string) {
+    return this.contract.callStatic.getState(requester, identifier, timestamp, ancillaryData);
+  }
 }
