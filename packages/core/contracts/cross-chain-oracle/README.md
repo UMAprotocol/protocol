@@ -99,7 +99,9 @@ CROSS_CHAIN_NODE_URL=<MAINNET_URL> yarn hardhat migrate-identifiers --network [a
 yarn hardhat --network [arbitrum/boba]  migrate-collateral-whitelist --l1chainid 1 --l2chainid [288/42161]
 
 # Point L2 Finder to remaining Optimistic Oracle system contracts.
-yarn hardhat setup-finder --identifierwhitelist --addresswhitelist --optimisticoracle --store --network [arbitrum/boba]
+yarn hardhat setup-finder --oraclespoke --identifierwhitelist --addresswhitelist --optimisticoracle --store --network [arbitrum/boba]
+# Register OptimisticOracle as registered contract.
+yarn hardhat register-accounts --network [arbitrum/boba] --account <OPTIMISTIC_ORACLE_ADDRESS>
 ```
 
 # L2->L1 Message passing and finalization
