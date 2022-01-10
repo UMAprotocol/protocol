@@ -96,7 +96,7 @@ yarn hardhat --network boba sourcify
 CROSS_CHAIN_NODE_URL=<MAINNET_URL> yarn hardhat migrate-identifiers --network [arbitrum/boba] --from 0xcF649d9Da4D1362C4DAEa67573430Bd6f945e570 --crosschain true
 
 # Seed Collateral whitelist with all collaterals already approved on Mainnet. This will also pull the final fee from the L1 store and set it in the L2 Store.
-yarn hardhat --network [arbitrum/boba]  migrate-collateral-whitelist --l1chainid 1 --l2chainid [288/42161]
+yarn hardhat --network [arbitrum/boba]  migrate-collateral-whitelist --l1chainid 1 --l2chainid [42161/288]
 
 # Point L2 Finder to remaining Optimistic Oracle system contracts.
 yarn hardhat setup-finder --identifierwhitelist --addresswhitelist --optimisticoracle --store --network [arbitrum/boba]
