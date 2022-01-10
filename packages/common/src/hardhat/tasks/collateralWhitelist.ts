@@ -61,7 +61,7 @@ task("migrate-collateral-whitelist", "Migrate collateral whitelist, extracted fr
     const l2TokenWhitelistContract = await deployments.get("AddressWhitelist");
     const l2TokenWhitelist = new l2Web3.eth.Contract(l2TokenWhitelistContract.abi, l2TokenWhitelistContract.address);
     const currentBlock = await l2Web3.eth.getBlockNumber();
-    const blockLookBack = 99999; // We need to use paginated query on L2 as some L2s limit how far you can look back
+    const blockLookBack = 99900; // We need to use paginated query on L2 as some L2s limit how far you can look back
     // such as arbitrum which has a 100k block lookback restriction.
 
     const eventResults = await Promise.all([
