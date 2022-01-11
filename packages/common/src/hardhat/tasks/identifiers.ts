@@ -175,11 +175,13 @@ task(
 
     // Send transactions sequentially to avoid nonce collisions. Note that this might fail due to timeout if there
     // are a lot of transactions to send or the gas price to send with is too low.
+    let nonce = await web3.eth.getTransactionCount(deployer);
     for (let i = 0; i < isIdentifierSupportedOnNewWhitelist.length; i++) {
       if (!isIdentifierSupportedOnNewWhitelist[i]) {
         const receipt = (await newWhitelist.methods
           .addSupportedIdentifier(identifiersToWhitelist[i])
-          .send({ from: deployer })) as TransactionReceipt;
+          .send({ from: deployer, nonce })) as TransactionReceipt;
+        nonce++;
         console.log(
           `${i}: Added new identifier ${web3.utils.hexToUtf8(identifiersToWhitelist[i])} (${receipt.transactionHash})`
         );
