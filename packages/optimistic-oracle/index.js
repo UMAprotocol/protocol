@@ -64,7 +64,7 @@ async function run({
     // Else, if running in loop mode (pollingDelay != 0), then it should send a `info` level log.
     logger[pollingDelay === 0 ? "debug" : "info"]({
       at: "OptimisticOracle#index",
-      message: "OptimisticOracle proposer started 🌊",
+      message: "OptimisticOracle proposer started 🔮",
       optimisticOracleAddress,
       pollingDelay,
       errorRetries,
