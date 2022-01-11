@@ -84,7 +84,7 @@ export class Update {
   }
 }
 
-export default function factory(config: state.Config, emit: Emit): Client {
+export function factory(config: state.Config, emit: Emit): Client {
   const store = new Store(emit);
   store.write((write) => {
     write.config(config);
