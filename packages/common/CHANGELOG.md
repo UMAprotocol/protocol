@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.16.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.15.0...@uma/common@2.16.0) (2022-01-11)
+
+### Features
+
+- **core:** Add cross-chain-oracle deployment scripts for Arbitrum ([#3733](https://github.com/UMAprotocol/protocol/issues/3733)) ([e8d8b9f](https://github.com/UMAprotocol/protocol/commit/e8d8b9fdd9dba86b3e05111cd9d37e3b46150d16))
+- **core:** Add OO deployment instructions ([#3735](https://github.com/UMAprotocol/protocol/issues/3735)) ([0560290](https://github.com/UMAprotocol/protocol/commit/056029005f880b9fdaf72694fa289deb14af6aa7))
+- **core:** Deploy + Setup Boba OptimisticOracle and Bridge contracts ([#3750](https://github.com/UMAprotocol/protocol/issues/3750)) ([496037f](https://github.com/UMAprotocol/protocol/commit/496037f15b521cc61cdd30a6793ea1888ff8e5f1))
+- **scripts:** add script to seed new address whitelist ([#3753](https://github.com/UMAprotocol/protocol/issues/3753)) ([ec3058b](https://github.com/UMAprotocol/protocol/commit/ec3058b492a5fb9ec56ca8916bbad015ad72c073))
+- add transaction bundler to relayer for better batching ([#3723](https://github.com/UMAprotocol/protocol/issues/3723)) ([51902a8](https://github.com/UMAprotocol/protocol/commit/51902a8cfbbb60dc30b868c5fd3e9fd0f31d48b4))
+
 # [2.15.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.14.3...@uma/common@2.15.0) (2021-12-17)
 
 ### Features
