@@ -49,7 +49,6 @@ export class RelayerConfig {
   readonly errorRetries: number;
   readonly errorRetriesTimeout: number;
 
-  readonly whitelistedRelayL1Tokens: string[] = [];
   readonly whitelistedChainIds: number[] = [];
   readonly activatedChainIds: number[];
   readonly l2BlockLookback: number;

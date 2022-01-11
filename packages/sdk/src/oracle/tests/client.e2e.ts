@@ -4,6 +4,7 @@ import assert from "assert";
 import factory, { Client } from "../client";
 import Store from "../store";
 import * as types from "../types";
+import { ProposalFlags } from "../utils";
 
 dotenv.config();
 assert(process.env.CUSTOM_NODE_URL, "requires CUSTOM_NODE_URL");
@@ -60,5 +61,10 @@ describe("Oracle Client", function () {
     assert.ok(store.read().userCollateralAllowance());
     assert.ok(store.read().collateralProps());
     assert.ok(store.read().request());
+  });
+  test("previewProposal", function () {
+    const result = client.previewProposal();
+    assert.ok(result[ProposalFlags.InvalidContractState]);
+    assert.ok(result[ProposalFlags.InsufficientApproval]);
   });
 });

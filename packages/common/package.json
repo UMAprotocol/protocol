@@ -33,7 +33,7 @@
     "@google-cloud/kms": "^2.3.1",
     "@google-cloud/storage": "^5.8.5",
     "@nomiclabs/hardhat-ethers": "^2.0.2",
-    "@nomiclabs/hardhat-etherscan": "^2.1.6",
+    "@nomiclabs/hardhat-etherscan": "^3.0.0",
     "@nomiclabs/hardhat-truffle5": "^2.0.0",
     "@nomiclabs/hardhat-web3": "^2.0.0",
     "@truffle/contract": "^4.3.38",

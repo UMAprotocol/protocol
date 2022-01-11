@@ -3,6 +3,7 @@ import { interfaceName } from "../../Constants";
 import { task } from "hardhat/config";
 import { Contract } from "web3-eth-contract";
 import { CombinedHRE } from "./types";
+import { PublicNetworks } from "../../index";
 import Web3 from "web3";
 const { utf8ToHex, toBN } = Web3.utils;
 const assert = require("assert");
@@ -135,6 +136,48 @@ async function setupChildMessenger(
   }
 }
 
+async function setupOvmBasedL1Chain(hre_: any, chainId: number) {
+  const chainName = PublicNetworks[chainId].name[0].toUpperCase() + PublicNetworks[chainId].name.substring(1);
+  const hre = hre_ as CombinedHRE;
+  const { deployments, getNamedAccounts, web3, companionNetworks } = hre;
+  const { deployer } = await getNamedAccounts();
+
+  const ParentMessenger = await deployments.get(`${chainName}_ParentMessenger`);
+  const messenger = new web3.eth.Contract(ParentMessenger.abi, ParentMessenger.address);
+  const OracleHub = await deployments.get("OracleHub");
+  const oracleHub = new web3.eth.Contract(OracleHub.abi, OracleHub.address);
+  const GovernorHub = await deployments.get("GovernorHub");
+  const governorHub = new web3.eth.Contract(GovernorHub.abi, GovernorHub.address);
+
+  console.log(`Found ParentMessenger @ ${messenger.options.address}`);
+  console.log(`Found OracleHub @ ${oracleHub.options.address}`);
+  console.log(`Found GovernorHub @ ${governorHub.options.address}`);
+
+  const OracleSpoke = await companionNetworks.optimism.deployments.get("OracleSpoke");
+  const ChildMessenger = await companionNetworks.optimism.deployments.get(`${chainName}_ChildMessenger`);
+  const GovernorSpoke = await companionNetworks.optimism.deployments.get("GovernorSpoke");
+
+  await setupParentMessenger(messenger, deployer, ChildMessenger, OracleHub, GovernorHub, OracleSpoke, GovernorSpoke);
+
+  // Submit parent messenger cross-chain transactions:
+  console.log(`Setting child oracle spoke address to ${OracleSpoke.address}...`);
+  const setChildOracleSpokeTxn = await messenger.methods
+    .setChildOracleSpoke(OracleSpoke.address)
+    .send({ from: deployer });
+  console.log(`...txn: ${setChildOracleSpokeTxn.transactionHash}`);
+  console.log(`Setting child parent messenger to ${messenger.options.address}...`);
+  const setChildParentMessengerTxn = await messenger.methods
+    .setChildParentMessenger(messenger.options.address)
+    .send({ from: deployer });
+  console.log(`...txn: ${setChildParentMessengerTxn.transactionHash}`);
+
+  // Submit oracle hub transactions:
+  await setupHub(oracleHub, deployer, messenger.options.address, chainId);
+
+  // Submit governor hub transactions:
+  await setupHub(governorHub, deployer, messenger.options.address, chainId);
+}
+
 task("setup-l1-arbitrum-xchain", "Configures L1 cross chain smart contracts for Arbitrum bridge").setAction(
   async function (_, hre_) {
     const hre = hre_ as CombinedHRE;
@@ -228,45 +271,14 @@ task("setup-l1-boba-xchain", "Configures L1 cross chain smart contracts for Boba
   _,
   hre_
 ) {
-  const hre = hre_ as CombinedHRE;
-  const { deployments, getNamedAccounts, web3, companionNetworks } = hre;
-  const { deployer } = await getNamedAccounts();
-
-  const ParentMessenger = await deployments.get("Boba_ParentMessenger");
-  const messenger = new web3.eth.Contract(ParentMessenger.abi, ParentMessenger.address);
-  const OracleHub = await deployments.get("OracleHub");
-  const oracleHub = new web3.eth.Contract(OracleHub.abi, OracleHub.address);
-  const GovernorHub = await deployments.get("GovernorHub");
-  const governorHub = new web3.eth.Contract(GovernorHub.abi, GovernorHub.address);
-
-  console.log(`Found ParentMessenger @ ${messenger.options.address}`);
-  console.log(`Found OracleHub @ ${oracleHub.options.address}`);
-  console.log(`Found GovernorHub @ ${governorHub.options.address}`);
-
-  const OracleSpoke = await companionNetworks.boba.deployments.get("OracleSpoke");
-  const ChildMessenger = await companionNetworks.boba.deployments.get("Boba_ChildMessenger");
-  const GovernorSpoke = await companionNetworks.boba.deployments.get("GovernorSpoke");
-
-  await setupParentMessenger(messenger, deployer, ChildMessenger, OracleHub, GovernorHub, OracleSpoke, GovernorSpoke);
-
-  // Submit parent messenger cross-chain transactions:
-  console.log(`Setting child oracle spoke address to ${OracleSpoke.address}...`);
-  const setChildOracleSpokeTxn = await messenger.methods
-    .setChildOracleSpoke(OracleSpoke.address)
-    .send({ from: deployer });
-  console.log(`...txn: ${setChildOracleSpokeTxn.transactionHash}`);
-  console.log(`Setting child parent messenger to ${messenger.options.address}...`);
-  const setChildParentMessengerTxn = await messenger.methods
-    .setChildParentMessenger(messenger.options.address)
-    .send({ from: deployer });
-  console.log(`...txn: ${setChildParentMessengerTxn.transactionHash}`);
-
-  // Submit oracle hub transactions:
-  await setupHub(oracleHub, deployer, messenger.options.address, 288);
-
-  // Submit governor hub transactions:
-  await setupHub(governorHub, deployer, messenger.options.address, 288);
+  await setupOvmBasedL1Chain(hre_, 288);
 });
+
+task("setup-l1-optimism-xchain", "Configures L1 cross chain smart contracts for Optimism bridge").setAction(
+  async function (_, hre_) {
+    await setupOvmBasedL1Chain(hre_, 10);
+  }
+);
 
 task("setup-l2-xchain", "Configures L2 cross chain smart contracts").setAction(async function (_, hre_) {
   const hre = hre_ as CombinedHRE;
