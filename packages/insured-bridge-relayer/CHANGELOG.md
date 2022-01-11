@@ -3,6 +3,24 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.14.0](https://github.com/UMAprotocol/protocol/compare/@uma/insured-bridge-relayer@1.13.0...@uma/insured-bridge-relayer@1.14.0) (2022-01-11)
+
+### Bug Fixes
+
+- fix bug in multicall bundler ([#3736](https://github.com/UMAprotocol/protocol/issues/3736)) ([99a04d4](https://github.com/UMAprotocol/protocol/commit/99a04d4264d59369a45c73c8399e86581747c879))
+- fix profitability module ([#3734](https://github.com/UMAprotocol/protocol/issues/3734)) ([455e6ae](https://github.com/UMAprotocol/protocol/commit/455e6aec808a46d538844f9e4f564abeae8e0985))
+- **across-relayer:** Fix error log ([#3732](https://github.com/UMAprotocol/protocol/issues/3732)) ([4a79838](https://github.com/UMAprotocol/protocol/commit/4a798381e3957e656843e2bc7c907deca7cc47a7))
+- **bots:** correct optimism toBlock issue ([#3718](https://github.com/UMAprotocol/protocol/issues/3718)) ([3fff1c9](https://github.com/UMAprotocol/protocol/commit/3fff1c94ccd75a7a643cd926bcd142a1f1aa5533))
+
+### Features
+
+- **across-bots:** improve profitability log detail ([#3741](https://github.com/UMAprotocol/protocol/issues/3741)) ([bfc8abf](https://github.com/UMAprotocol/protocol/commit/bfc8abfda29d7efd3671ff9abc7836b9fb08d402))
+- **across-bots:** modify profitability model to only log once on unprofitable relay ([#3748](https://github.com/UMAprotocol/protocol/issues/3748)) ([6d5728a](https://github.com/UMAprotocol/protocol/commit/6d5728a279a35060bfe558cd096e9f7d211bcfbc))
+- **across-docs:** small nit relayer config ([#3759](https://github.com/UMAprotocol/protocol/issues/3759)) ([8384185](https://github.com/UMAprotocol/protocol/commit/8384185fdde23128d4f3a7b628fb6c6a11e30d51))
+- **across-relayer:** Fetch rate model from contract instead of SDK constant ([#3673](https://github.com/UMAprotocol/protocol/issues/3673)) ([4adff3d](https://github.com/UMAprotocol/protocol/commit/4adff3de6e24f6e60620d47321e95e8f07902964))
+- add functionality for relayer to run on multiple chainIds ([#3720](https://github.com/UMAprotocol/protocol/issues/3720)) ([456c777](https://github.com/UMAprotocol/protocol/commit/456c777af6d2c983809388aa295e6e98a0ecf75c))
+- add transaction bundler to relayer for better batching ([#3723](https://github.com/UMAprotocol/protocol/issues/3723)) ([51902a8](https://github.com/UMAprotocol/protocol/commit/51902a8cfbbb60dc30b868c5fd3e9fd0f31d48b4))
+
 # [1.13.0](https://github.com/UMAprotocol/protocol/compare/@uma/insured-bridge-relayer@1.12.3...@uma/insured-bridge-relayer@1.13.0) (2021-12-17)
 
 ### Bug Fixes

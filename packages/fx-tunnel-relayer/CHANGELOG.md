@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.2.0](https://github.com/UMAprotocol/protocol/compare/@uma/fx-tunnel-relayer@1.1.4...@uma/fx-tunnel-relayer@1.2.0) (2022-01-11)
+
+### Features
+
+- add transaction bundler to relayer for better batching ([#3723](https://github.com/UMAprotocol/protocol/issues/3723)) ([51902a8](https://github.com/UMAprotocol/protocol/commit/51902a8cfbbb60dc30b868c5fd3e9fd0f31d48b4))
+- make fx-tunnel-relayer consistent with other bots ([#3744](https://github.com/UMAprotocol/protocol/issues/3744)) ([384af5b](https://github.com/UMAprotocol/protocol/commit/384af5bbd0c8387bd1e75845a2cb4b4b06b31037))
+
 ## [1.1.4](https://github.com/UMAprotocol/protocol/compare/@uma/fx-tunnel-relayer@1.1.3...@uma/fx-tunnel-relayer@1.1.4) (2021-12-17)
 
 ### Bug Fixes
