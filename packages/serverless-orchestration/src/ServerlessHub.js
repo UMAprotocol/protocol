@@ -57,7 +57,7 @@ hub.post("/", async (req, res) => {
   // Use a custom logger if provided. Otherwise, initialize a local logger.
   // Note: no reason to put this into the try-catch since a logger is required to throw the error.
   const logger = customLogger || createNewLogger();
-  const configName = req.body.configFile.substring(0, req.body.configFile.length - 5); // remove .json from the end of the file name.
+  const configName = req?.body?.configFile.substring(0, req?.body?.configFile.length - 5); // remove .json from the end of the file name.
   try {
     logger.debug({ at: "ServerlessHub", message: "Running Serverless hub query", configName, hubConfig });
 
@@ -263,13 +263,10 @@ hub.post("/", async (req, res) => {
     }
 
     await delay(waitForLoggerDelay); // Wait a few seconds to be sure the the winston logs are processed upstream.
-    res
-      .status(500)
-      .send({
-        message:
-          errorOutput instanceof Error ? "A fatal error occurred in the hub" : "Some spoke calls returned errors",
-        output: errorOutput instanceof Error ? errorOutput.message : errorOutput,
-      });
+    res.status(500).send({
+      message: errorOutput instanceof Error ? "A fatal error occurred in the hub" : "Some spoke calls returned errors",
+      output: errorOutput instanceof Error ? errorOutput.message : errorOutput,
+    });
   }
 });
 

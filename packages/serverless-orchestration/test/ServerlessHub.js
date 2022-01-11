@@ -182,7 +182,7 @@ describe("ServerlessHub.js", function () {
     // read in hub configs and previous block numbers from the local storage of machine. This execution mode would be
     // used by a user running the hub-spoke on their local machine.
     const testBucket = "test-bucket"; // name of the config bucket.
-    const testConfigFile = "test-config-file"; // name of the config file.
+    const testConfigFile = "test-config-file.json"; // name of the config file.
     const startingBlockNumber = await web3.eth.getBlockNumber(); // block number to search from for monitor
 
     const hubConfig = {
@@ -218,7 +218,7 @@ describe("ServerlessHub.js", function () {
   it("ServerlessHub correctly deals with rejected spoke calls", async function () {
     // valid config to send but set the spoke to be off-line
     const testBucket = "test-bucket"; // name of the config bucket.
-    const testConfigFile = "test-config-file"; // name of the config file.
+    const testConfigFile = "test-config-file.json"; // name of the config file.
     const startingBlockNumber = await web3.eth.getBlockNumber(); // block number to search from for monitor
 
     const hubConfig = {
@@ -263,7 +263,7 @@ describe("ServerlessHub.js", function () {
   it("ServerlessHub correctly deals with timeout spoke calls", async function () {
     // valid config to send but set the spoke to be off-line.
     const testBucket = "test-bucket"; // name of the config bucket.
-    const testConfigFile = "test-config-file"; // name of the config file.
+    const testConfigFile = "test-config-file.json"; // name of the config file.
     const startingBlockNumber = await web3.eth.getBlockNumber(); // block number to search from for monitor
 
     const hubConfig = {
@@ -317,7 +317,7 @@ describe("ServerlessHub.js", function () {
     // read in hub configs and previous block numbers from the local storage of machine. This execution mode would be
     // used by a user running the hub-spoke on their local machine.
     const testBucket = "test-bucket"; // name of the config bucket.
-    const testConfigFile = "test-config-file"; // name of the config file.
+    const testConfigFile = "test-config-file.json"; // name of the config file.
     const startingBlockNumber = await web3.eth.getBlockNumber(); // block number to search from for monitor
 
     const hubConfig = {
@@ -383,7 +383,7 @@ describe("ServerlessHub.js", function () {
     // read in hub configs and previous block numbers from the local storage of machine. This execution mode would be
     // used by a user running the hub-spoke on their local machine.
     const testBucket = "test-bucket"; // name of the config bucket.
-    const testConfigFile = "test-config-file"; // name of the config file.
+    const testConfigFile = "test-config-file.json"; // name of the config file.
     const startingBlockNumber = await web3.eth.getBlockNumber(); // block number to search from for monitor
 
     const hubConfig = {
@@ -470,7 +470,7 @@ describe("ServerlessHub.js", function () {
   });
   it("ServerlessHub can correctly inject common config into child configs", async function () {
     const testBucket = "test-bucket"; // name of the config bucket.
-    const testConfigFile = "test-config-file"; // name of the config file.
+    const testConfigFile = "test-config-file.json"; // name of the config file.
     const startingBlockNumber = await web3.eth.getBlockNumber(); // block number to search from for monitor
 
     const hubConfig = {
@@ -552,7 +552,7 @@ describe("ServerlessHub.js", function () {
   });
   it("ServerlessHub can correctly deal with multiple providers", async function () {
     const testBucket = "test-bucket"; // name of the config bucket.
-    const testConfigFile = "test-config-file"; // name of the config file.
+    const testConfigFile = "test-config-file.json"; // name of the config file.
     const startingBlockNumber = await web3.eth.getBlockNumber(); // block number to search from for monitor
 
     // Temporarily spin up a new web3 provider with an overridden chain ID. The hub should be able to detect the
@@ -613,7 +613,7 @@ describe("ServerlessHub.js", function () {
     // read in hub configs and previous block numbers from the local storage of machine. This execution mode would be
     // used by a user running the hub-spoke on their local machine.
     const testBucket = "test-bucket"; // name of the config bucket.
-    const testConfigFile = "test-config-file"; // name of the config file.
+    const testConfigFile = "test-config-file.json"; // name of the config file.
     const startingBlockNumber = await web3.eth.getBlockNumber(); // block number to search from for monitor
 
     const hubConfig = {
