@@ -57,10 +57,8 @@ hub.post("/", async (req, res) => {
   // Use a custom logger if provided. Otherwise, initialize a local logger.
   // Note: no reason to put this into the try-catch since a logger is required to throw the error.
   const logger = customLogger || createNewLogger();
-  const configName = req?.body?.configFile.substring(0, req?.body?.configFile.length - 5); // remove .json from the end of the file name.
+  const configName = req?.body?.configFile.substring(0, req?.body?.configFile.length - 5) || "NO-NAME"; // remove .json from the end of the file name.
   try {
-    logger.debug({ at: "ServerlessHub", message: "Running Serverless hub query", configName, hubConfig });
-
     // Validate the post request has both the `bucket` and `configFile` params.
     if (!req.body.bucket || !req.body.configFile) {
       throw new Error("Body missing json bucket or file parameters!");
