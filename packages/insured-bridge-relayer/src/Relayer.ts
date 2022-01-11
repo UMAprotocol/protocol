@@ -18,6 +18,7 @@ import {
 import { getTokenBalance } from "./RelayerHelpers";
 import { ProfitabilityCalculator } from "./ProfitabilityCalculator";
 
+import { previouslySentUnprofitableLog, saveUnprofitableLog } from "./LogHelper";
 import type { BN, TransactionType } from "@uma/common";
 import { MulticallBundler } from "./MulticallBundler";
 
@@ -502,7 +503,7 @@ export class Relayer {
     // Finally, decide what action to do based on the relative profits.
     return this.profitabilityCalculator.getRelaySubmitTypeBasedOnProfitability(
       deposit.l1Token,
-      toBN(Math.ceil(this.gasEstimator.getExpectedCumulativeGasPrice())),
+      toBN(Math.round(this.gasEstimator.getExpectedCumulativeGasPrice())),
       slowRevenue,
       speedUpRevenue,
       instantRevenue
@@ -621,11 +622,14 @@ export class Relayer {
     const mrkdwn = this._generateMarkdownForRelay(relayableDeposit.deposit, realizedLpFeePct, profitabilityInformation);
     switch (relaySubmitType) {
       case RelaySubmitType.Ignore:
-        this.logger.warn({
+        // Only send warning of unprofitable log once. Check if the bot has previously sent the warning for a given
+        // depositHash. If it has, then set the log level to debug, else send a warning.
+        this.logger[(await previouslySentUnprofitableLog(relayableDeposit.deposit.depositHash)) ? "debug" : "error"]({
           at: `Relayer#${this.chainName}`,
           message: "Not relaying unprofitable deposit 😖",
           mrkdwn: this._generateMarkdownForNonProfitableRelay(relayableDeposit.deposit, profitabilityInformation),
         });
+        await saveUnprofitableLog(relayableDeposit.deposit.depositHash); // Save that the depositHash has sent a warning.
         return;
       case RelaySubmitType.Slow:
         this.logger.debug({
@@ -680,9 +684,7 @@ export class Relayer {
       "Deposit " +
       this._generateMrkdwnDepositIdNetworkSizeFromTo(deposit) +
       " is not profitable. " +
-      profitabilityInformation +
-      " Deposit tx " +
-      createEtherscanLinkMarkdown(deposit.depositHash, this.l2Client.chainId)
+      profitabilityInformation
     );
   }
   private _generateMarkdownForRelay(deposit: Deposit, realizedLpFeePct: BN, profitabilityInformation: string): string {
@@ -695,10 +697,8 @@ export class Relayer {
       createFormatFunction(2, 4, false, 18)(toBN(deposit.instantRelayFeePct).muln(100)) +
       "%, realizedLpFee " +
       createFormatFunction(2, 4, false, 18)(realizedLpFeePct.muln(100)) +
-      "%." +
-      profitabilityInformation +
-      " Deposit tx " +
-      createEtherscanLinkMarkdown(deposit.depositHash, this.l2Client.chainId)
+      "%. " +
+      profitabilityInformation
     );
   }
 
@@ -739,7 +739,8 @@ export class Relayer {
       " sent from " +
       createEtherscanLinkMarkdown(deposit.l2Sender, this.l2Client.chainId) +
       " to " +
-      createEtherscanLinkMarkdown(deposit.l1Recipient)
+      createEtherscanLinkMarkdown(deposit.l1Recipient) +
+      ". "
     );
   }
 

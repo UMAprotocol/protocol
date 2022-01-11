@@ -33,6 +33,7 @@ const { Storage } = require("@google-cloud/storage"); // Used to get global conf
 const storage = new Storage();
 const { Datastore } = require("@google-cloud/datastore"); // Used to read/write the last block number the monitor used.
 const datastore = new Datastore();
+const { createBasicProvider } = require("@uma/common");
 
 // Web3 instance to get current block numbers of polling loops.
 const Web3 = require("web3");
@@ -94,8 +95,8 @@ hub.post("/", async (req, res) => {
     };
     for (const botName in configObject) {
       // Check if bot is running on a non-default chain, and fetch last block number seen on this or the default chain.
-      const spokeCustomNodeUrl = configObject[botName]?.environmentVariables?.CUSTOM_NODE_URL;
-      const chainId = await _getChainId(spokeCustomNodeUrl);
+      const [botWeb3, spokeCustomNodeUrl] = _getWeb3AndUrlForBot(configObject[botName]);
+      const chainId = await _getChainId(botWeb3);
       nodeUrlToChainIdCache[spokeCustomNodeUrl] = chainId;
 
       // If we've seen this chain ID already we can skip it:
@@ -106,7 +107,7 @@ hub.post("/", async (req, res) => {
 
       // Next, get the head block for the chosen chain, which we'll use to override the last queried block number
       // stored in GCP at the end of this hub execution.
-      let latestBlockNumber = await _getLatestBlockNumber(spokeCustomNodeUrl);
+      let latestBlockNumber = await _getLatestBlockNumber(botWeb3);
 
       // If the last queried block number stored on GCP Data Store is undefined, then its possible that this is
       // the first time that the hub is being run for this chain. Therefore, try setting it to the head block number
@@ -145,7 +146,7 @@ hub.post("/", async (req, res) => {
     let promiseArray = [];
     let botConfigs = {};
     for (const botName in configObject) {
-      const spokeCustomNodeUrl = configObject[botName]?.environmentVariables?.CUSTOM_NODE_URL;
+      const [, spokeCustomNodeUrl] = _getWeb3AndUrlForBot(configObject[botName]);
       const chainId = nodeUrlToChainIdCache[spokeCustomNodeUrl];
       const lastQueriedBlockNumber = blockNumbersForChain[chainId].lastQueriedBlockNumber;
       const latestBlockNumber = blockNumbersForChain[chainId].latestBlockNumber;
@@ -262,10 +263,13 @@ hub.post("/", async (req, res) => {
     }
 
     await delay(waitForLoggerDelay); // Wait a few seconds to be sure the the winston logs are processed upstream.
-    res.status(500).send({
-      message: errorOutput instanceof Error ? "A fatal error occurred in the hub" : "Some spoke calls returned errors",
-      output: errorOutput instanceof Error ? errorOutput.message : errorOutput,
-    });
+    res
+      .status(500)
+      .send({
+        message:
+          errorOutput instanceof Error ? "A fatal error occurred in the hub" : "Some spoke calls returned errors",
+        output: errorOutput instanceof Error ? errorOutput.message : errorOutput,
+      });
   }
 });
 
@@ -405,15 +409,23 @@ async function _getLastQueriedBlockNumber(configIdentifier, chainId, logger, con
   );
 }
 
+function _getWeb3AndUrlForBot(botConfig) {
+  const retryConfig = botConfig?.environmentVariables?.NODE_RETRY_CONFIG;
+  if (retryConfig) {
+    return [new Web3(createBasicProvider(retryConfig)), retryConfig[0].url];
+  } else {
+    const url = botConfig?.environmentVariables?.CUSTOM_NODE_URL || customNodeUrl;
+    return [new Web3(url), url];
+  }
+}
+
 // Get the latest block number from either `overrideNodeUrl` or `CUSTOM_NODE_URL`. Used to update the `
 // lastSeenBlockNumber` after each run.
-async function _getLatestBlockNumber(overrideNodeUrl) {
-  const web3 = new Web3(overrideNodeUrl || customNodeUrl);
+async function _getLatestBlockNumber(web3) {
   return await web3.eth.getBlockNumber();
 }
 
-async function _getChainId(overrideNodeUrl) {
-  const web3 = new Web3(overrideNodeUrl || customNodeUrl);
+async function _getChainId(web3) {
   return await web3.eth.getChainId();
 }
 

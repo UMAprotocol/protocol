@@ -24,7 +24,7 @@ import { MulticallBundler } from "../src/MulticallBundler";
 import { Relayer, RelaySubmitType } from "../src/Relayer";
 
 const { web3, getContract } = hre as HRE;
-const { toWei, fromWei, toBN, utf8ToHex } = web3.utils;
+const { toWei, toBN, utf8ToHex } = web3.utils;
 const toBNWei = (number: string | number) => toBN(toWei(number.toString()).toString());
 
 import type { BN } from "@uma/common";
@@ -484,6 +484,12 @@ describe("Relayer.ts", function () {
       // As the relayer does not have enough token balance to do the relay (0 minted) should do nothing.
       await relayer.checkForPendingDepositsAndRelay();
       assert.isTrue(lastSpyLogIncludes(spy, "Not relaying"));
+      assert.equal(lastSpyLogLevel(spy), "error");
+
+      // Running a second time should decrease the log level to "debug" as logs should not be produced multiple times.
+      await relayer.checkForPendingDepositsAndRelay();
+      assert.isTrue(lastSpyLogIncludes(spy, "Not relaying"));
+      assert.equal(lastSpyLogLevel(spy), "debug");
 
       // Mint the relayer some tokens and try again.
       await l1Token.methods.mint(l1Relayer, toBN(depositAmount).muln(2)).send({ from: l1Owner });
@@ -881,7 +887,7 @@ describe("Relayer.ts", function () {
       assert.isTrue(lastSpyLogIncludes(spy, `SpeedUpRelay profit ${speedUpProfit}`));
 
       // Finally, check the log contains the correct break even data.
-      const formatGwei = (number: string | number | BN) => Math.ceil(Number(fromWei(number.toString(), "gwei")));
+      const formatGwei = (number: string | number | BN) => createFormatFunction(2, 4, false, 9)(number.toString());
       const breakEvenSlowGasPrice = formatGwei(slowReward.div(toBN(across.constants.SLOW_ETH_GAS)));
       const breakEvenFastGasPrice = formatGwei(slowReward.add(fastReward).div(toBN(across.constants.FAST_ETH_GAS)));
       const breakEvenSpeedUpGasPrice = formatGwei(fastReward.div(toBN(across.constants.SPEED_UP_ETH_GAS)));

@@ -19,10 +19,11 @@ export const interfaceName = {
 };
 
 // Updated multicall deployments can be found here: https://github.com/makerdao/multicall
-const NETWORKS_WITH_MULTICALL_DEPLOYMENTS = [1, 3, 4, 5, 42];
+const NETWORKS_WITH_MULTICALL_DEPLOYMENTS = [1, 3, 4, 5, 10, 42];
 export const getMulticallAddress = (netId: number): string => {
+  // Most Multicall2 addresses are the same except for some edge cases which cause this function to return early
   if (!NETWORKS_WITH_MULTICALL_DEPLOYMENTS.includes(netId)) throw new Error("No Multicall2 deployment for netId");
-  // All Multicall2 addresses are the same.
+  if (netId == 10) return "0x35A6Cdb2C9AD4a45112df4a04147EB07dFA01aB7";
   return "0x5ba1e12693dc8f9c48aad8770482f4739beed696";
 };
 

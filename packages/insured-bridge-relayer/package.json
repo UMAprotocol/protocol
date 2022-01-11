@@ -5,6 +5,7 @@
   "dependencies": {
     "@eth-optimism/contracts": "^0.5.7",
     "@eth-optimism/message-relayer": "^0.2.10",
+    "@google-cloud/datastore": "^6.0.0",
     "@uma/common": "^2.15.0",
     "@uma/contracts-node": "^0.1.17",
     "@uma/financial-templates-lib": "^2.21.0",
