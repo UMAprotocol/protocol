@@ -1,30 +1,33 @@
 import { Deployment } from "hardhat-deploy/types";
 import { interfaceName } from "../../Constants";
+import { isPublicNetwork, PublicNetworks } from "../../PublicNetworks";
 import { task } from "hardhat/config";
 import { Contract } from "web3-eth-contract";
 import { CombinedHRE } from "./types";
-import { PublicNetworks } from "../../index";
 import Web3 from "web3";
 const { utf8ToHex, toBN } = Web3.utils;
 const assert = require("assert");
 
-// Note: Make sure that the following chain names are all lower case.
-const L2_CHAIN_NAMES: { [key: string]: number } = {
-  arbitrum: 42161,
-  optimism: 10,
-  boba: 288,
-  polygon: 137,
-};
+const L2_CHAIN_NAMES = ["arbitrum", "optimism", "boba"];
+L2_CHAIN_NAMES.forEach((chainName) =>
+  assert(isPublicNetwork(chainName), "L2_CHAIN_NAMES contains invalid public network name")
+);
+
 const getChainNameForId = (chainId: number): string => {
-  const name = Object.keys(L2_CHAIN_NAMES).find((key) => L2_CHAIN_NAMES[key.toLowerCase()] === chainId);
-  if (name === undefined) throw new Error("Cannot find chain name with ID");
+  const network = PublicNetworks[chainId];
+  if (!network || !network.name) throw new Error("Cannot find chain name with ID");
   function capitalizeFirstLetter(_string: string): string {
     return _string.charAt(0).toUpperCase() + _string.slice(1);
   }
-  return capitalizeFirstLetter(name);
+  return capitalizeFirstLetter(network.name);
 };
 const getChainIdForName = (chainName: string): number => {
-  const id = L2_CHAIN_NAMES[chainName.toLowerCase()];
+  let id: number | undefined = undefined;
+  Object.keys(PublicNetworks).map((chainId: string) => {
+    if (PublicNetworks[Number(chainId)].name === chainName) {
+      id = Number(chainId);
+    }
+  });
   if (id === undefined) throw new Error("Cannot find chain ID for name");
   return id;
 };
@@ -137,7 +140,7 @@ async function setupChildMessenger(
 }
 
 async function setupOvmBasedL1Chain(hre_: any, chainId: number) {
-  const chainName = PublicNetworks[chainId].name[0].toUpperCase() + PublicNetworks[chainId].name.substring(1);
+  const chainName = getChainNameForId(chainId);
   const hre = hre_ as CombinedHRE;
   const { deployments, getNamedAccounts, web3, companionNetworks } = hre;
   const { deployer } = await getNamedAccounts();
@@ -304,15 +307,14 @@ task("verify-xchain", "Checks ownership state of cross chain smart contracts")
     const { deployments, web3, companionNetworks } = hre;
     const { l2 } = taskArguments;
 
-    assert(Object.keys(L2_CHAIN_NAMES).includes(l2), "Invalid L2 chain name");
-    // Each parent/child messenger has a different setup, so alert user if their specified L2 is implemented in this verification script. For example,
-    // Polygon might be included L2_CHAIN_NAMES but its specific setup is not yet implemented in this verification script.
-    if (!["arbitrum", "optimism", "boba"].includes(l2)) throw new Error("Unimplemented verification for l2 chain name");
+    assert(L2_CHAIN_NAMES.includes(l2), "Unsupported L2 chain name");
     const l2ChainId = getChainIdForName(l2);
     const l2ChainName = getChainNameForId(l2ChainId);
     assert(process.env[`NODE_URL_${l2ChainId}`], `Must set NODE_URL_${l2ChainId} in the environment`);
     const l1Web3 = web3;
     const l2Web3 = new Web3(process.env[`NODE_URL_${l2ChainId}`] as string);
+    const companionNetworkGet = (contractName: string) =>
+      companionNetworks[l2ChainName.toLowerCase()].deployments.get(contractName);
 
     const [
       governorHub,
@@ -334,16 +336,16 @@ task("verify-xchain", "Checks ownership state of cross chain smart contracts")
       deployments.get("OracleHub"),
       deployments.get("Governor"),
       deployments.get(`${l2ChainName}_ParentMessenger`),
-      companionNetworks[l2ChainName.toLowerCase()].deployments.get(`${l2ChainName}_ChildMessenger`),
-      companionNetworks[l2ChainName.toLowerCase()].deployments.get(`OracleSpoke`),
-      companionNetworks[l2ChainName.toLowerCase()].deployments.get(`GovernorSpoke`),
+      companionNetworkGet(`${l2ChainName}_ChildMessenger`),
+      companionNetworkGet(`OracleSpoke`),
+      companionNetworkGet(`GovernorSpoke`),
       deployments.get("Registry"),
-      companionNetworks[l2ChainName.toLowerCase()].deployments.get(`Registry`),
-      companionNetworks[l2ChainName.toLowerCase()].deployments.get(`Store`),
-      companionNetworks[l2ChainName.toLowerCase()].deployments.get(`IdentifierWhitelist`),
-      companionNetworks[l2ChainName.toLowerCase()].deployments.get(`AddressWhitelist`),
-      companionNetworks[l2ChainName.toLowerCase()].deployments.get(`OptimisticOracle`),
-      companionNetworks[l2ChainName.toLowerCase()].deployments.get(`Finder`),
+      companionNetworkGet(`Registry`),
+      companionNetworkGet(`Store`),
+      companionNetworkGet(`IdentifierWhitelist`),
+      companionNetworkGet(`AddressWhitelist`),
+      companionNetworkGet(`OptimisticOracle`),
+      companionNetworkGet(`Finder`),
     ]);
 
     /** ***********************************
