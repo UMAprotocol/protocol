@@ -37,11 +37,11 @@ async function getArtifactPathList(hre: HardhatRuntimeEnvironment, relativeTo: s
         contractName: path.basename(artifactPath).split(".")[0],
         relativePath: `./${path.relative(path.dirname(relativeTo), artifactPath)}`,
       })),
-      ...acrossArtifacts.map(({ contractName, relativePath }) => ({
+      ...acrossArtifacts.map(({ relativePath }) => ({
         // Since this path is relative to the base across path, we need to join that path to the artifact path to get the full path.
         // Then we need to perform the relative path operation to get the relative path to that file.
         relativePath: path.relative(path.dirname(relativeTo), path.join(acrossBasePath, relativePath)),
-        contractName,
+        contractName: path.basename(relativePath).split(".")[0],
       })),
     ],
     "contractName"

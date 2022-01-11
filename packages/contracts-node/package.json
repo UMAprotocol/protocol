@@ -33,7 +33,7 @@
   "scripts": {
     "test": "echo 'No tests configured'",
     "clean": "rm -rf dist generated typechain",
-    "copy-across-types": "rsync -a $(dirname $(node -p 'require.resolve(\"@across-protocol/contracts/package.json\")'))/ typechain",
+    "copy-across-types": "rsync -a $(dirname $(node -p 'require.resolve(\"@across-protocol/contracts/package.json\")'))/contract-types/ typechain",
     "generate-ts": "yarn clean && mkdir generated typechain && cp -R ../core/contract-types/* typechain/ && yarn copy-across-types && yarn hardhat generate-contracts-node --out ./generated/index.ts",
     "build": "yarn generate-ts && yarn tsc && rsync -R ./typechain/**/*.d.ts ./dist/contracts-node",
     "prepublish": "yarn build"
