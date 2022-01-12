@@ -296,7 +296,12 @@ class OptimisticOracleContractMonitor {
       // Return the decoded ancillary data as a string. The `replace` syntax removes any escaped quotes from the string.
       return "Ancillary data: " + JSON.stringify(parseAncillaryData(ancillaryData)).replace(/"/g, "");
     } catch (_) {
-      return `Could not decode ancillary data: ${ancillaryData || "0x"}`;
+      try {
+        // If that fails, try to return the ancillary data UTF-8 decoded.
+        return "Ancillary could not be parsed. UTF-8 decoded data: " + this.web3.utils.hexToUtf8(ancillaryData);
+      } catch (error) {
+        return `Could not parse ancillary data nor UTF-8 decode: ${ancillaryData || "0x"}`;
+      }
     }
   }
 }
