@@ -300,7 +300,7 @@ class OptimisticOracleContractMonitor {
         // If that fails, try to return the ancillary data UTF-8 decoded.
         return "Ancillary could not be parsed. UTF-8 decoded data: " + this.web3.utils.hexToUtf8(ancillaryData);
       } catch (_) {
-        return `Could not parse ancillary data nor UTF-8 decode: ${ancillaryData || "0x"}`;
+        return "Could not parse ancillary data nor UTF-8 decode: " + ancillaryData || "0x";
       }
     }
   }
