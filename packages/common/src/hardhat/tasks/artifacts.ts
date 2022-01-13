@@ -145,7 +145,7 @@ task("generate-contracts-frontend", "Generate typescipt for the contracts-fronte
 
     // Write Web3 contract types.
     artifacts.forEach(({ contractName, packageName }) => {
-      if (fs.existsSync(`typechain/web3/${contractName}.d.ts`))
+      if (fs.existsSync(`typechain/${packageName}/web3/${contractName}.d.ts`))
         fs.appendFileSync(
           out,
           `export type { ${normalizeClassName(contractName)} as ${normalizeClassName(
