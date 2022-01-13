@@ -41,8 +41,9 @@ export function getNodeUrl(networkName: string, useHttps = false, chainId: numbe
     const chainSpecificUrl = chainId !== null ? process.env[`NODE_URL_${chainId}`] : null;
     const overrideUrl = chainSpecificUrl || process.env.CUSTOM_NODE_URL;
 
-    // Note: boba currently has no infura support.
+    // Note: Neither Boba nor xDai currently has no infura support.
     if (name === "boba") return overrideUrl || "https://mainnet.boba.network/";
+    if (name === "xdai") return overrideUrl || "https://rpc.xdaichain.com/";
     return (
       overrideUrl ||
       (useHttps ? `https://${name}.infura.io/v3/${infuraApiKey}` : `wss://${name}.infura.io/ws/v3/${infuraApiKey}`)

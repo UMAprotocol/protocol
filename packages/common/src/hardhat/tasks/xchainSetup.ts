@@ -277,6 +277,9 @@ task("setup-l2-xchain", "Configures L2 cross chain smart contracts").setAction(a
     case "10":
       ChildMessenger = await deployments.get("Optimism_ChildMessenger");
       break;
+    case "100":
+      ChildMessenger = await deployments.get("Admin_ChildMessenger");
+      break;
     default:
       throw new Error("Unimplemented L2");
   }
