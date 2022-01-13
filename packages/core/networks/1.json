@@ -175,27 +175,27 @@
     "address": "0x6455D800D1Dbf9B1C3a63c67CcF22B9308728dC4"
   },
   {
-    "contractName": "BridgePool",
+    "contractName": "BridgePoolProd",
     "deploymentName": "WETH_BridgePool",
     "address": "0x7355Efc63Ae731f584380a9838292c7046c1e433"
   },
   {
-    "contractName": "BridgePool",
+    "contractName": "BridgePoolProd",
     "deploymentName": "USDC_BridgePool",
     "address": "0x256C8919CE1AB0e33974CF6AA9c71561Ef3017b6 "
   },
   {
-    "contractName": "BridgePool",
+    "contractName": "BridgePoolProd",
     "deploymentName": "UMA_BridgePool",
     "address": "0xdfe0ec39291e3b60ACa122908f86809c9eE64E90"
   },
   {
-    "contractName": "BridgePool",
+    "contractName": "BridgePoolProd",
     "deploymentName": "BADGER_BridgePool",
     "address": "0x43298F9f91a4545dF64748e78a2c777c580573d6"
   },
   {
-    "contractName": "BridgePool",
+    "contractName": "BridgePoolProd",
     "deploymentName": "WBTC_BridgePool",
     "address": "0x02fbb64517E1c6ED69a6FAa3ABf37Db0482f1152"
   }
