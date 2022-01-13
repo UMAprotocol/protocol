@@ -114,6 +114,12 @@ yarn hardhat setup-finder --oraclespoke --identifierwhitelist --addresswhitelist
 yarn hardhat register-accounts --network [arbitrum/boba/optimism] --account <OPTIMISTIC_ORACLE_ADDRESS>
 ```
 
+10. Perform other set up when appropriate such as transferring ownership to the Governor and Governor spokes. Run the following script to check all required steps:
+
+```sh
+yarn hardhat verify-xchain --network mainnet --l2 [arbitrum/boba/optimism]
+```
+
 ## L2->L1 Message passing and finalization
 
 The cross-chain-oracle contracts send messages from L1<->L2 under different situations. L1->L2 transactions are auto finalized on all recipient chains currently supported by the cross-chain oracle. However, L2->L1 transactions are not auto finalized on L1 in most cases. For example, when sending transactions from Optimism or Arbitrum back to Ethereum L1 the transaction needs to be executed manually on L1 after the 7 day liveness. In other UMA infrastructure, such as Across, there is an automatic finalizer bot that that picks up L2->L1 token transfers and automatically finalizes them on L1. This kind of infrastructure has not yet been built out for the cross-chain-oracle and therefore will need to be done manually if the situation arrives. Both Optimism and Arbitrum provide their own sets of scripts to facilitate this:
