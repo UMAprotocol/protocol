@@ -3,7 +3,7 @@
   "version": "2.23.0",
   "description": "UMA smart contracts and unit tests",
   "dependencies": {
-    "@openzeppelin/contracts": "4.4.1",
+    "@openzeppelin/contracts": "4.4.2",
     "@uma/common": "^2.16.0",
     "@uniswap/lib": "4.0.1-alpha",
     "@uniswap/v2-core": "1.0.0",

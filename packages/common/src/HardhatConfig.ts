@@ -103,7 +103,7 @@ export function getHardhatConfig(
         chainId: 1,
         url: getNodeUrl("mainnet", true, 1),
         accounts: { mnemonic },
-        companionNetworks: { arbitrum: "arbitrum", optimism: "optimism", boba: "boba" },
+        companionNetworks: { arbitrum: "arbitrum", optimism: "optimism", boba: "boba", xdai: "xdai" },
       },
       rinkeby: { chainId: 4, url: getNodeUrl("rinkeby", true, 4), accounts: { mnemonic } },
       goerli: { chainId: 5, url: getNodeUrl("goerli", true, 5), accounts: { mnemonic } },

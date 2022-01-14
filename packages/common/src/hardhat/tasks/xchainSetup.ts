@@ -1,11 +1,36 @@
 import { Deployment } from "hardhat-deploy/types";
+import { interfaceName } from "../../Constants";
+import { isPublicNetwork, PublicNetworks } from "../../PublicNetworks";
 import { task } from "hardhat/config";
 import { Contract } from "web3-eth-contract";
 import { CombinedHRE } from "./types";
-import { PublicNetworks } from "../../index";
 import Web3 from "web3";
 const { utf8ToHex, toBN } = Web3.utils;
 const assert = require("assert");
+
+const L2_CHAIN_NAMES = ["arbitrum", "optimism", "boba"];
+L2_CHAIN_NAMES.forEach((chainName) =>
+  assert(isPublicNetwork(chainName), "L2_CHAIN_NAMES contains invalid public network name")
+);
+
+const getChainNameForId = (chainId: number): string => {
+  const network = PublicNetworks[chainId];
+  if (!network || !network.name) throw new Error("Cannot find chain name with ID");
+  function capitalizeFirstLetter(_string: string): string {
+    return _string.charAt(0).toUpperCase() + _string.slice(1);
+  }
+  return capitalizeFirstLetter(network.name);
+};
+const getChainIdForName = (chainName: string): number => {
+  let id: number | undefined = undefined;
+  Object.keys(PublicNetworks).map((chainId: string) => {
+    if (PublicNetworks[Number(chainId)].name === chainName) {
+      id = Number(chainId);
+    }
+  });
+  if (id === undefined) throw new Error("Cannot find chain ID for name");
+  return id;
+};
 
 async function setupHub(hub: Contract, deployer: string, parentMessenger: string, childChainId: number) {
   const [owner, existingParentMessenger] = await Promise.all([
@@ -115,7 +140,7 @@ async function setupChildMessenger(
 }
 
 async function setupOvmBasedL1Chain(hre_: any, chainId: number) {
-  const chainName = PublicNetworks[chainId].name[0].toUpperCase() + PublicNetworks[chainId].name.substring(1);
+  const chainName = getChainNameForId(chainId);
   const hre = hre_ as CombinedHRE;
   const { deployments, getNamedAccounts, web3, companionNetworks } = hre;
   const { deployer } = await getNamedAccounts();
@@ -265,27 +290,238 @@ task("setup-l2-xchain", "Configures L2 cross chain smart contracts").setAction(a
 
   const Finder = await deployments.get("Finder");
   const finder = new web3.eth.Contract(Finder.abi, Finder.address);
-  const chainId = await getChainId();
-  let ChildMessenger;
-  switch (chainId) {
-    case "42161":
-      ChildMessenger = await deployments.get("Arbitrum_ChildMessenger");
-      break;
-    case "288":
-      ChildMessenger = await deployments.get("Boba_ChildMessenger");
-      break;
-    case "10":
-      ChildMessenger = await deployments.get("Optimism_ChildMessenger");
-      break;
-    case "100":
-      ChildMessenger = await deployments.get("Admin_ChildMessenger");
-      break;
-    default:
-      throw new Error("Unimplemented L2");
-  }
+  const chainId = Number(await getChainId());
+  const chainName = getChainNameForId(chainId);
+  const ChildMessenger = await deployments.get(`${chainName}_ChildMessenger`);
   const Registry = await deployments.get("Registry");
 
   console.log(`Found Finder @ ${finder.options.address}`);
 
   await setupChildMessenger(finder, deployer, ChildMessenger, Registry);
 });
+
+task("verify-xchain", "Checks ownership state of cross chain smart contracts")
+  .addParam("l2", "Chain name of the child messenger to check")
+  .setAction(async function (taskArguments, hre_) {
+    const hre = hre_ as CombinedHRE;
+    const { deployments, web3, companionNetworks } = hre;
+    const { l2 } = taskArguments;
+
+    assert(L2_CHAIN_NAMES.includes(l2), "Unsupported L2 chain name");
+    const l2ChainId = getChainIdForName(l2);
+    const l2ChainName = getChainNameForId(l2ChainId);
+    assert(process.env[`NODE_URL_${l2ChainId}`], `Must set NODE_URL_${l2ChainId} in the environment`);
+    const l1Web3 = web3;
+    const l2Web3 = new Web3(process.env[`NODE_URL_${l2ChainId}`] as string);
+    const companionNetworkGet = (contractName: string) =>
+      companionNetworks[l2ChainName.toLowerCase()].deployments.get(contractName);
+
+    const [
+      governorHub,
+      oracleHub,
+      governor,
+      parentMessenger,
+      childMessenger,
+      oracleSpoke,
+      governorSpoke,
+      l1Registry,
+      l2Registry,
+      l2Store,
+      l2IdentifierWhitelist,
+      l2AddressWhitelist,
+      l2OptimisticOracle,
+      l2Finder,
+    ] = await Promise.all([
+      deployments.get("GovernorHub"),
+      deployments.get("OracleHub"),
+      deployments.get("Governor"),
+      deployments.get(`${l2ChainName}_ParentMessenger`),
+      companionNetworkGet(`${l2ChainName}_ChildMessenger`),
+      companionNetworkGet(`OracleSpoke`),
+      companionNetworkGet(`GovernorSpoke`),
+      deployments.get("Registry"),
+      companionNetworkGet(`Registry`),
+      companionNetworkGet(`Store`),
+      companionNetworkGet(`IdentifierWhitelist`),
+      companionNetworkGet(`AddressWhitelist`),
+      companionNetworkGet(`OptimisticOracle`),
+      companionNetworkGet(`Finder`),
+    ]);
+
+    /** ***********************************
+     * Begin: Checking L1 State
+     *************************************/
+    console.group("\n🌕 Verifying L1 contract state 🌕");
+
+    console.group("GovernorHub");
+    const governorHubContract = new l1Web3.eth.Contract(governorHub.abi, governorHub.address);
+    const [governorHubOwner, governorHubMessenger] = await Promise.all([
+      governorHubContract.methods.owner().call(),
+      governorHubContract.methods.messengers(l2ChainId).call(),
+    ]);
+    console.log(`- Owner set to Governor: ${governorHubOwner === governor.address ? "✅" : "❌"}`);
+    console.log(
+      `- Messenger for chain ID ${l2ChainId} set to ParentMessenger: ${
+        governorHubMessenger === parentMessenger.address ? "✅" : "❌"
+      }`
+    );
+    console.groupEnd();
+
+    console.group("OracleHub");
+    const oracleHubContract = new l1Web3.eth.Contract(oracleHub.abi, oracleHub.address);
+    const [oracleHubOwner, oracleHubMessenger] = await Promise.all([
+      oracleHubContract.methods.owner().call(),
+      oracleHubContract.methods.messengers(l2ChainId).call(),
+    ]);
+    console.log(`- Owner set to Governor: ${oracleHubOwner === governor.address ? "✅" : "❌"}`);
+    console.log(
+      `- Messenger for chain ID ${l2ChainId} set to ParentMessenger: ${
+        oracleHubMessenger === parentMessenger.address ? "✅" : "❌"
+      }`
+    );
+    console.groupEnd();
+
+    console.group(`${l2ChainName}_ParentMessenger`);
+    const parentMessengerContract = new l1Web3.eth.Contract(parentMessenger.abi, parentMessenger.address);
+    const [
+      parentMessengerOwner,
+      parentMessengerChildChainId,
+      parentMessengerChildMessenger,
+      parentMessengerOracleHub,
+      parentMessengerGovernorHub,
+      parentMessengerOracleSpoke,
+      parentMessengerGovernorSpoke,
+    ] = await Promise.all([
+      parentMessengerContract.methods.owner().call(),
+      parentMessengerContract.methods.childChainId().call(),
+      parentMessengerContract.methods.childMessenger().call(),
+      parentMessengerContract.methods.oracleHub().call(),
+      parentMessengerContract.methods.governorHub().call(),
+      parentMessengerContract.methods.oracleSpoke().call(),
+      parentMessengerContract.methods.governorSpoke().call(),
+    ]);
+    console.log(`- Owner set to Governor: ${parentMessengerOwner === governor.address ? "✅" : "❌"}`);
+    console.log(
+      `- Child chain ID set to ${l2ChainId}: ${Number(parentMessengerChildChainId) === l2ChainId ? "✅" : "❌"}`
+    );
+    console.log(
+      `- Set childMessenger address: ${parentMessengerChildMessenger === childMessenger.address ? "✅" : "❌"}`
+    );
+    console.log(`- Set oracleHub address: ${parentMessengerOracleHub === oracleHub.address ? "✅" : "❌"}`);
+    console.log(`- Set governorHub address: ${parentMessengerGovernorHub === governorHub.address ? "✅" : "❌"}`);
+    console.log(`- Set oracleSpoke address: ${parentMessengerOracleSpoke === oracleSpoke.address ? "✅" : "❌"}`);
+    console.log(`- Set governorSpoke address: ${parentMessengerGovernorSpoke === governorSpoke.address ? "✅" : "❌"}`);
+    console.groupEnd();
+
+    console.group("Registry");
+    const l1RegistryContract = new l1Web3.eth.Contract(l1Registry.abi, l1Registry.address);
+    const [oracleHubRegistered] = await Promise.all([
+      l1RegistryContract.methods.isContractRegistered(oracleHub.address).call(),
+    ]);
+    console.log(`- OracleHub registered: ${oracleHubRegistered ? "✅" : "❌"}`);
+    console.groupEnd();
+
+    console.groupEnd();
+    /** ***********************************
+     * End: Checking L1 State
+     *************************************/
+
+    /** ***********************************
+     * Begin: Checking L2 State
+     *************************************/
+    console.group("\n🌚 Verifying L2 contract state 🌚");
+
+    console.group("Registry");
+    const l2RegistryContract = new l2Web3.eth.Contract(l2Registry.abi, l2Registry.address);
+    const [optimisticOracleRegistered, l2RegistryOwner] = await Promise.all([
+      l2RegistryContract.methods.isContractRegistered(l2OptimisticOracle.address).call(),
+      l2RegistryContract.methods.getMember(0).call(),
+    ]);
+    console.log(`- OptimisticOracle registered: ${optimisticOracleRegistered ? "✅" : "❌"}`);
+    console.log(`- Owned by GovernorSpoke: ${l2RegistryOwner === governorSpoke.address ? "✅" : "❌"}`);
+    console.groupEnd();
+
+    console.group("Store");
+    const l2StoreContract = new l2Web3.eth.Contract(l2Store.abi, l2Store.address);
+    const [l2StoreOwner] = await Promise.all([l2StoreContract.methods.getMember(0).call()]);
+    console.log(`- Owned by GovernorSpoke: ${l2StoreOwner === governorSpoke.address ? "✅" : "❌"}`);
+    console.groupEnd();
+
+    console.group("IdentifierWhitelist");
+    const l2IdentifierWhitelistContract = new l2Web3.eth.Contract(
+      l2IdentifierWhitelist.abi,
+      l2IdentifierWhitelist.address
+    );
+    const [l2IdentifierWhitelistOwner] = await Promise.all([l2IdentifierWhitelistContract.methods.owner().call()]);
+    console.log(`- Owned by GovernorSpoke: ${l2IdentifierWhitelistOwner === governorSpoke.address ? "✅" : "❌"}`);
+    console.groupEnd();
+
+    console.group("AddressWhitelist");
+    const l2AddressWhitelistContract = new l2Web3.eth.Contract(l2AddressWhitelist.abi, l2AddressWhitelist.address);
+    const [l2AddressWhitelistOwner] = await Promise.all([l2AddressWhitelistContract.methods.owner().call()]);
+    console.log(`- Owned by GovernorSpoke: ${l2AddressWhitelistOwner === governorSpoke.address ? "✅" : "❌"}`);
+    console.groupEnd();
+
+    console.group(`${l2ChainName}_ChildMessenger`);
+    const childMessengerContract = new l2Web3.eth.Contract(childMessenger.abi, childMessenger.address);
+    const [childMessengerOracleSpoke, childMessengerParentMessenger] = await Promise.all([
+      childMessengerContract.methods.oracleSpoke().call(),
+      childMessengerContract.methods.parentMessenger().call(),
+    ]);
+    console.log(`- Set oracleSpoke: ${childMessengerOracleSpoke === oracleSpoke.address ? "✅" : "❌"}`);
+    console.log(`- Set parentMessenger: ${childMessengerParentMessenger === parentMessenger.address ? "✅" : "❌"}`);
+    console.groupEnd();
+
+    console.group("Finder");
+    const l2FinderContract = new l2Web3.eth.Contract(l2Finder.abi, l2Finder.address);
+    const [
+      l2FinderOwner,
+      l2FinderStore,
+      l2FinderIdentifierWhitelist,
+      l2FinderAddressWhitelist,
+      l2FinderOracle,
+      l2FinderOptimisticOracle,
+      l2FinderChildMessenger,
+    ] = await Promise.all([
+      l2FinderContract.methods.owner().call(),
+      l2FinderContract.methods.interfacesImplemented(utf8ToHex(interfaceName.Store)).call(),
+      l2FinderContract.methods.interfacesImplemented(utf8ToHex(interfaceName.IdentifierWhitelist)).call(),
+      l2FinderContract.methods.interfacesImplemented(utf8ToHex(interfaceName.CollateralWhitelist)).call(),
+      l2FinderContract.methods.interfacesImplemented(utf8ToHex(interfaceName.Oracle)).call(),
+      l2FinderContract.methods.interfacesImplemented(utf8ToHex(interfaceName.OptimisticOracle)).call(),
+      l2FinderContract.methods.interfacesImplemented(utf8ToHex(interfaceName.ChildMessenger)).call(),
+    ]);
+    console.log(`- Owned by GovernorSpoke: ${l2FinderOwner === governorSpoke.address ? "✅" : "❌"}`);
+    console.log(`- Set "${interfaceName.Store}" in Finder: ${l2FinderStore === l2Store.address ? "✅" : "❌"}`);
+    console.log(
+      `- Set "${interfaceName.IdentifierWhitelist}": ${
+        l2FinderIdentifierWhitelist === l2IdentifierWhitelist.address ? "✅" : "❌"
+      }`
+    );
+    console.log(
+      `- Set "${interfaceName.CollateralWhitelist}" in Finder: ${
+        l2FinderAddressWhitelist === l2AddressWhitelist.address ? "✅" : "❌"
+      }`
+    );
+    console.log(
+      `- Set "${interfaceName.Oracle}" in Finder (to OracleSpoke): ${
+        l2FinderOracle === oracleSpoke.address ? "✅" : "❌"
+      }`
+    );
+    console.log(
+      `- Set "${interfaceName.OptimisticOracle}" in Finder: ${
+        l2FinderOptimisticOracle === l2OptimisticOracle.address ? "✅" : "❌"
+      }`
+    );
+    console.log(
+      `- Set "${interfaceName.ChildMessenger}" in Finder: ${
+        l2FinderChildMessenger === childMessenger.address ? "✅" : "❌"
+      }`
+    );
+    console.groupEnd();
+
+    console.groupEnd();
+    /** ***********************************
+     * End: Checking L2 State
+     *************************************/
+  });

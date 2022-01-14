@@ -61,11 +61,15 @@ task("setup-finder", "Points Finder to DVM system contracts")
       const contract = new web3.eth.Contract(deployed.abi, deployed.address);
       if (!isInterfaceName(contractName)) throw new Error(`No mapped interface name for contract name ${contractName}`);
 
-      // Handle special cases where a contract should be set to multiple names in the Finder
+      // Handle special cases where a contract should be set to different names in the Finder
       // - OracleSpoke: can be set to both an OracleSpoke and an Oracle on the network.
+      // - AddressWhitelist: should only be set as "CollateralWhitelist"
       const namesInFinder = [interfaceName[contractName]];
       if (contractName === "OracleSpoke") {
         namesInFinder.push("Oracle");
+      }
+      if (contractName === "AddressWhitelist") {
+        namesInFinder[0] = "CollateralWhitelist";
       }
 
       for (const name of namesInFinder) {
