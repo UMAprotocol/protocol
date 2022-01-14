@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.22.0](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.21.0...@uma/financial-templates-lib@2.22.0) (2022-01-11)
+
+### Features
+
+- **across-bots:** improve profitability log detail ([#3741](https://github.com/UMAprotocol/protocol/issues/3741)) ([bfc8abf](https://github.com/UMAprotocol/protocol/commit/bfc8abfda29d7efd3671ff9abc7836b9fb08d402))
+- **across-relayer:** Fetch rate model from contract instead of SDK constant ([#3673](https://github.com/UMAprotocol/protocol/issues/3673)) ([4adff3d](https://github.com/UMAprotocol/protocol/commit/4adff3de6e24f6e60620d47321e95e8f07902964))
+- add transaction bundler to relayer for better batching ([#3723](https://github.com/UMAprotocol/protocol/issues/3723)) ([51902a8](https://github.com/UMAprotocol/protocol/commit/51902a8cfbbb60dc30b868c5fd3e9fd0f31d48b4))
+- **pf-configs:** Add default pf config for CVXUSD and USDCVX ([#3730](https://github.com/UMAprotocol/protocol/issues/3730)) ([16e8f66](https://github.com/UMAprotocol/protocol/commit/16e8f669e69a7d7e5350e26f70504b541ee41dc4))
+- **price-feeds:** add price feed implementation for uSPAC10 price identifier ([#3602](https://github.com/UMAprotocol/protocol/issues/3602)) ([be421de](https://github.com/UMAprotocol/protocol/commit/be421de9e8d9772c00bddafefdf5149778e3b0c9))
+
 # [2.21.0](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.20.1...@uma/financial-templates-lib@2.21.0) (2021-12-17)
 
 ### Bug Fixes

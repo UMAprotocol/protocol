@@ -114,7 +114,7 @@ export class MulticallBundler {
 
     if (!executionResult.receipt) throw new Error("MulticallBundler#sendTransaction: No receipt returned");
 
-    const receiptMarkdown = `tx: ${createEtherscanLinkMarkdown(executionResult.transactionHash)}`;
+    const receiptMarkdown = `tx ${createEtherscanLinkMarkdown(executionResult.transactionHash)}`;
     this.logger.log({
       at: "MulticallBundler#sendTransaction",
       message: call.message || "No message",

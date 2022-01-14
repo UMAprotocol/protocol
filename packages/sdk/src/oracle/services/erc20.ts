@@ -1,23 +1,19 @@
 import { erc20 } from "../../clients";
 import Multicall2 from "../../multicall2";
 import { BatchReadWithErrors, BatchReadWithErrorsType, Calls } from "../../utils";
-import { BigNumber, Provider } from "../types/ethers";
+import { Provider } from "../types/ethers";
+import { Erc20Props } from "../types/state";
 
 const batchProps: Calls = [["symbol"], ["name"], ["decimals"], ["totalSupply"]];
-type Props = {
-  symbol: string;
-  name: string;
-  decimals: number;
-  totalSupply: BigNumber;
-};
 export class Erc20 {
   public contract: erc20.Instance;
-  constructor(protected provider: Provider, protected address: string) {
+  constructor(protected provider: Provider, public readonly address: string) {
     this.contract = erc20.connect(address, provider);
   }
-  async getProps(): Promise<Props> {
+  async getProps(): Promise<Erc20Props> {
     const { contract } = this;
     return {
+      address: this.address,
       symbol: await contract.callStatic.symbol(),
       name: await contract.callStatic.name(),
       decimals: await contract.callStatic.decimals(),
@@ -26,18 +22,19 @@ export class Erc20 {
   }
 }
 export class Erc20Multicall extends Erc20 {
-  private multicall: Multicall2;
   private batchRead: BatchReadWithErrorsType;
-  constructor(provider: Provider, address: string, private multicallAddress: string) {
+  constructor(provider: Provider, address: string, private multicall2: Multicall2) {
     super(provider, address);
-    this.multicall = new Multicall2(multicallAddress, this.provider);
-    this.batchRead = BatchReadWithErrors(this.multicall)(this.contract);
+    this.batchRead = BatchReadWithErrors(multicall2)(this.contract);
   }
-  async getProps(): Promise<Props> {
-    return this.batchRead<Props>(batchProps);
+  async getProps(): Promise<Erc20Props> {
+    return {
+      ...(await this.batchRead<Erc20Props>(batchProps)),
+      address: this.address,
+    };
   }
 }
-export function factory(provider: Provider, address: string, multicallAddress?: string) {
-  if (!multicallAddress) return new Erc20(provider, address);
-  return new Erc20Multicall(provider, address, multicallAddress);
+export function factory(provider: Provider, address: string, multicall2?: Multicall2): Erc20 {
+  if (!multicall2) return new Erc20(provider, address);
+  return new Erc20Multicall(provider, address, multicall2);
 }

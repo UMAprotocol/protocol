@@ -8,3 +8,4 @@ export * as lsp from "./lsp";
 export * as bridgeDepositBox from "./bridgeDepositBox";
 export * as bridgePool from "./bridgePool";
 export * as etherchain from "./etherchain";
+export * as rateModelStore from "./rateModelStore";

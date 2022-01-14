@@ -128,6 +128,11 @@
     "address": "0xe59283f44c29c43c0c23e71c906077e49df714b5 "
   },
   {
+    "contractName": "Optimism_Messenger",
+    "deploymentName": "Boba_Messenger",
+    "address": "0x0cd4998978F6cd06f8DbD227A802018A3c227ACC"
+  },
+  {
     "contractName": "Optimism_Wrapper",
     "address": "0xcffb47dc5bd4f6dc475e98ff92647a583389ee08"
   },
@@ -154,5 +159,19 @@
   {
     "contractName": "GovernorHub",
     "address": "0x94520d90A4EBaA98e5A7B8D6809463f65198C104"
+  },
+  {
+    "contractName": "Multicall2",
+    "address": "0x5ba1e12693dc8f9c48aad8770482f4739beed696"
+  },
+  {
+    "contractName": "Optimism_ParentMessenger",
+    "deploymentName": "Boba_ParentMessenger",
+    "address": "0x7Fc15F642B66D07BB0641cbCcA28cf624448B52B"
+  },
+  {
+    "contractName": "Optimism_ParentMessenger",
+    "deploymentName": "Optimism_ParentMessenger",
+    "address": "0x6455D800D1Dbf9B1C3a63c67CcF22B9308728dC4"
   }
 ]

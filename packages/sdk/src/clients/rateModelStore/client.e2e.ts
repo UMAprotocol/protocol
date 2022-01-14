@@ -1,0 +1,3 @@
+describe("RateModelStore", function () {
+  // TODO:
+});

@@ -92,7 +92,7 @@ export class AcrossMonitor {
       ) {
         this.logger.warn({
           at: "UtilizationMonitor",
-          message: "Across bridge pool utilization warning 🏊",
+          message: "High pool utilization warning 🏊",
           mrkdwn:
             bridgePool.poolCollateralSymbol +
             " bridge pool at " +
@@ -148,7 +148,8 @@ export class AcrossMonitor {
           createFormatFunction(2, 4, false, 18)(toBN(event.relay.instantRelayFeePct).muln(100)) +
           "%, realizedLpFee " +
           createFormatFunction(2, 4, false, 18)(toBN(event.relay.realizedLpFeePct).muln(100)) +
-          "%.",
+          "%. tx: " +
+          createEtherscanLinkMarkdown(event.transactionHash, this.monitorConfig.bridgeAdminChainId),
         notificationPath: "risk-management",
       });
     }

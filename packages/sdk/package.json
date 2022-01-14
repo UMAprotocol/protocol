@@ -1,5 +1,5 @@
 {
-  "version": "0.17.0",
+  "version": "0.18.0",
   "license": "MIT",
   "name": "@uma/sdk",
   "author": "David Adams",
@@ -37,14 +37,14 @@
   "dependencies": {
     "@google-cloud/datastore": "^6.6.0",
     "@types/lodash-es": "^4.17.5",
-    "@uma/contracts-frontend": "^0.1.17",
-    "@uma/contracts-node": "^0.1.17",
+    "@uma/contracts-frontend": "^0.1.18",
+    "@uma/contracts-node": "^0.1.18",
     "axios": "^0.24.0",
     "bn.js": "^4.11.9",
     "decimal.js": "^10.3.1",
     "highland": "^2.13.5",
-    "lodash-es": "^4.17.21",
-    "web3": "^1.6.0"
+    "immer": "^9.0.7",
+    "lodash-es": "^4.17.21"
   },
   "peerDependencies": {
     "@eth-optimism/contracts": "^0.5.5",

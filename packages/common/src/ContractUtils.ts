@@ -4,7 +4,7 @@ import type truffleContract_ from "@truffle/contract";
 import type { BN } from "./types";
 import Web3 from "web3";
 import type { provider as Provider } from "web3-core";
-import { EventData } from "web3-eth-contract";
+import { EventData, Contract } from "web3-eth-contract";
 
 // Truffle library types aren't specified correctly. Cast and modify to correct for this.
 export interface TruffleInstance {
@@ -88,6 +88,56 @@ export type EventSearchOptions = {
   // filters all events where "myNumber" is 12 or 13.
 };
 
+export type Web3Contract = Contract;
+
+/**
+ * Return all events between block range. Will paginate the event search using the `pageSize` if specified.
+ * @param contract Contract to query.
+ * @param eventName Event to query.
+ * @param earliestBlockToQuery First block to query.
+ * @param latestBlockToQuery Latest block to query.
+ * @param pageSize Number of blocks to search for in each query. Determines how many web3 requests are sent to fetch
+ * data for all blocks between `earliestBlockToQuery` and `latestBlockToQuery`.
+ * @return array of event data.
+ */
+export async function getEventsWithPaginatedBlockSearch(
+  contract: Web3Contract,
+  eventName: string,
+  earliestBlockToQuery: number,
+  latestBlockToQuery: number,
+  pageSize: number | null = null
+): Promise<{ eventData: EventData[]; web3RequestCount: number }> {
+  const blockSearchConfig = {
+    fromBlock: earliestBlockToQuery,
+    toBlock: latestBlockToQuery,
+  };
+  // If pageSize is defined, we will send multiple web3 requests, otherwise will search all block history in one search.
+  if (pageSize !== null) blockSearchConfig.toBlock = Math.min(latestBlockToQuery, earliestBlockToQuery + pageSize);
+
+  // Construct promise array of event searches to send in parallel
+  const promisesToSend = [];
+  while (blockSearchConfig.fromBlock <= latestBlockToQuery) {
+    promisesToSend.push(contract.getPastEvents(eventName, blockSearchConfig));
+
+    // Increment block search config. If `pageSize` is undefined, there is no need to set the `toBlock` since we're
+    // already increasing the `fromBlock` such that the `while` loop will exit on the next iteration.
+    blockSearchConfig.fromBlock = blockSearchConfig.toBlock + 1;
+    if (pageSize !== null)
+      blockSearchConfig.toBlock = Math.min(latestBlockToQuery, blockSearchConfig.toBlock + 1 + pageSize);
+  }
+
+  // Send promises in parallel and sort results according to type of contract event query.
+  const eventSearchResults = await Promise.all(promisesToSend);
+  let contractEventQueryResults: EventData[] = [];
+  for (let i = 0; i < eventSearchResults.length; i++) {
+    contractEventQueryResults = contractEventQueryResults.concat(eventSearchResults[i]);
+  }
+
+  return {
+    eventData: contractEventQueryResults,
+    web3RequestCount: promisesToSend.length,
+  };
+}
 /**
  * Fetches specified contract event data for all input web3 providers. Returns false if any of the events found with
  * one provider are NOT matched exactly in ALL of the other providers' event arrays.

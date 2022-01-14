@@ -25,7 +25,7 @@ export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
 
     // l1Client uses bridgeAdmin contract for bridge pool discovery.
     const bridgeAdminAddress = await getAddress("BridgeAdmin", config.bridgeAdminChainId);
-    const l1Client = new InsuredBridgeL1Client(logger, l1Web3, bridgeAdminAddress, {});
+    const l1Client = new InsuredBridgeL1Client(logger, l1Web3, bridgeAdminAddress, null);
 
     const acrossMonitor = new AcrossMonitor(logger, config, l1Client);
 

@@ -18,6 +18,8 @@ import {
 import { getTokenBalance } from "./RelayerHelpers";
 import { ProfitabilityCalculator } from "./ProfitabilityCalculator";
 
+import { previouslySentUnprofitableLog, saveUnprofitableLog } from "./LogHelper";
+
 import type { BN, TransactionType, ExecutedTransaction } from "@uma/common";
 import { MulticallBundler } from "./MulticallBundler";
 
@@ -407,7 +409,7 @@ export class Relayer {
       });
       return;
     }
-    const shouldRelay = await this.shouldRelay(
+    const { relaySubmitType, profitabilityInformation } = await this.shouldRelay(
       relayableDeposit.deposit,
       relayableDeposit.status,
       realizedLpFeePct,
@@ -416,11 +418,11 @@ export class Relayer {
 
     // Depending on value of `shouldRelay`, send correct type of relay.
     return await this._generateRelayTransaction(
-      shouldRelay,
+      relaySubmitType,
+      profitabilityInformation,
       realizedLpFeePct,
       relayableDeposit,
-      pendingRelay,
-      hasInstantRelayer
+      pendingRelay
     );
   }
 
@@ -461,7 +463,7 @@ export class Relayer {
     clientRelayState: ClientRelayState,
     realizedLpFeePct: BN,
     hasInstantRelayer: boolean
-  ): Promise<RelaySubmitType> {
+  ): Promise<{ relaySubmitType: RelaySubmitType; profitabilityInformation: string }> {
     const [l1TokenBalance, proposerBondPct] = await Promise.all([
       getTokenBalance(this.l1Client.l1Web3, deposit.l1Token, this.account),
       this.l1Client.getProposerBondPct(),
@@ -501,7 +503,7 @@ export class Relayer {
     // Finally, decide what action to do based on the relative profits.
     return this.profitabilityCalculator.getRelaySubmitTypeBasedOnProfitability(
       deposit.l1Token,
-      toBN(Math.ceil(this.gasEstimator.getExpectedCumulativeGasPrice())),
+      toBN(Math.round(this.gasEstimator.getExpectedCumulativeGasPrice())),
       slowRevenue,
       speedUpRevenue,
       instantRevenue
@@ -603,11 +605,11 @@ export class Relayer {
 
   // Send correct type of relay along with parameters to submit transaction.
   private async _generateRelayTransaction(
-    shouldRelay: RelaySubmitType,
+    relaySubmitType: RelaySubmitType,
+    profitabilityInformation: string,
     realizedLpFeePct: BN,
     relayableDeposit: RelayableDeposit,
-    pendingRelay: Relay | undefined,
-    hasInstantRelayer: boolean
+    pendingRelay: Relay | undefined
   ): Promise<
     | {
         transaction: ContractSendMethod;
@@ -617,17 +619,17 @@ export class Relayer {
       }
     | undefined
   > {
-    const mrkdwn = this._generateMarkdownForRelay(relayableDeposit.deposit, realizedLpFeePct);
-    switch (shouldRelay) {
+    const mrkdwn = this._generateMarkdownForRelay(relayableDeposit.deposit, realizedLpFeePct, profitabilityInformation);
+    switch (relaySubmitType) {
       case RelaySubmitType.Ignore:
-        this.logger.warn({
+        // Only send warning of unprofitable log once. Check if the bot has previously sent the warning for a given
+        // depositHash. If it has, then set the log level to debug, else send a warning.
+        this.logger[(await previouslySentUnprofitableLog(relayableDeposit.deposit.depositHash)) ? "debug" : "error"]({
           at: "AcrossRelayer#Relayer",
-          message: "Not relaying potentially unprofitable deposit, or insufficient balance 😖",
-          realizedLpFeePct: realizedLpFeePct.toString(),
-          relayState: relayableDeposit.status,
-          hasInstantRelayer,
-          relayableDeposit,
+          message: "Not relaying unprofitable deposit 😖",
+          mrkdwn: this._generateMarkdownForNonProfitableRelay(relayableDeposit.deposit, profitabilityInformation),
         });
+        await saveUnprofitableLog(relayableDeposit.deposit.depositHash); // Save that the depositHash has sent a warning.
         return;
       case RelaySubmitType.Slow:
         this.logger.debug({
@@ -677,7 +679,15 @@ export class Relayer {
     }
   }
 
-  private _generateMarkdownForRelay(deposit: Deposit, realizedLpFeePct: BN) {
+  private _generateMarkdownForNonProfitableRelay(deposit: Deposit, profitabilityInformation: string): string {
+    return (
+      "Deposit " +
+      this._generateMrkdwnDepositIdNetworkSizeFromTo(deposit) +
+      " is not profitable. " +
+      profitabilityInformation
+    );
+  }
+  private _generateMarkdownForRelay(deposit: Deposit, realizedLpFeePct: BN, profitabilityInformation: string): string {
     return (
       "Relayed " +
       this._generateMrkdwnDepositIdNetworkSizeFromTo(deposit) +
@@ -687,7 +697,8 @@ export class Relayer {
       createFormatFunction(2, 4, false, 18)(toBN(deposit.instantRelayFeePct).muln(100)) +
       "%, realizedLpFee " +
       createFormatFunction(2, 4, false, 18)(realizedLpFeePct.muln(100)) +
-      "%."
+      "%. " +
+      profitabilityInformation
     );
   }
 

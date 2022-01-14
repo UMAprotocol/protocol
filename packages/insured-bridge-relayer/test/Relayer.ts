@@ -15,7 +15,7 @@ import sinon from "sinon";
 import hre from "hardhat";
 const { assert } = require("chai");
 
-import { interfaceName, TokenRolesEnum, HRE, ZERO_ADDRESS } from "@uma/common";
+import { interfaceName, TokenRolesEnum, HRE, ZERO_ADDRESS, createFormatFunction } from "@uma/common";
 import { MockProfitabilityCalculator } from "./mocks/MockProfitabilityCalculator";
 import { TokenType } from "../src/ProfitabilityCalculator";
 import { MulticallBundler } from "../src/MulticallBundler";
@@ -26,6 +26,8 @@ import { Relayer, RelaySubmitType } from "../src/Relayer";
 const { web3, getContract } = hre as HRE;
 const { toWei, toBN, utf8ToHex } = web3.utils;
 const toBNWei = (number: string | number) => toBN(toWei(number.toString()).toString());
+
+import type { BN } from "@uma/common";
 
 // Helper contracts
 const Messenger = getContract("MessengerMock");
@@ -40,6 +42,7 @@ const Store = getContract("Store");
 const ERC20 = getContract("ExpandedERC20");
 const Timer = getContract("Timer");
 const MockOracle = getContract("MockOracleAncillary");
+const RateModelStore = getContract("RateModelStore");
 
 // Contract objects
 let messenger: any;
@@ -56,6 +59,7 @@ let optimisticOracle: any;
 let l1Token: any;
 let l2Token: any;
 let mockOracle: any;
+let rateModelStore: any;
 
 // Hard-coded test params:
 const chainId = 10;
@@ -99,11 +103,10 @@ describe("Relayer.ts", function () {
   let l2Client: any;
   let gasEstimator: any;
   let profitabilityCalculator: any;
+  let multicallBundler: any;
 
   let l1DeployData: any;
   let l2DeployData: any;
-
-  let multicallBundler: MulticallBundler | undefined;
 
   before(async function () {
     l1Accounts = await web3.eth.getAccounts();
@@ -228,7 +231,20 @@ describe("Relayer.ts", function () {
 
     // Create the rate models for the one and only l1Token, set to the single rateModel defined in the constants.
     const rateModels = { [l1Token.options.address]: rateModel };
-    l1Client = new InsuredBridgeL1Client(spyLogger, web3, bridgeAdmin.options.address, rateModels);
+    rateModelStore = await RateModelStore.new().send({ from: l1Owner });
+    await rateModelStore.methods
+      .updateRateModel(
+        l1Token.options.address,
+        JSON.stringify({
+          UBar: rateModels[l1Token.options.address].UBar.toString(),
+          R0: rateModels[l1Token.options.address].R0.toString(),
+          R1: rateModels[l1Token.options.address].R1.toString(),
+          R2: rateModels[l1Token.options.address].R2.toString(),
+        })
+      )
+      .send({ from: l1Owner });
+
+    l1Client = new InsuredBridgeL1Client(spyLogger, web3, bridgeAdmin.options.address, rateModelStore.options.address);
     l2Client = new InsuredBridgeL2Client(spyLogger, web3, bridgeDepositBox.options.address, chainId);
 
     gasEstimator = new GasEstimator(spyLogger);
@@ -287,30 +303,30 @@ describe("Relayer.ts", function () {
       // Update the profitabilityCalculator so it has pricing information.
       await profitabilityCalculator.update();
     });
-    it("Correctly decides when to do nothing relay", async function () {
+    it("Correctly decides when to do nothing", async function () {
       // There are two cases where the relayer should do nothing: a) it does not have enough token balance and b) when
       // the relay is already finalized. test each:
 
       // a) Dont add any tokens to the relayer. The relayer does not have enough to do any action and should do nothing.
       assert.equal(
-        await relayer.shouldRelay(deposit, clientRelayState, toBN(defaultRealizedLpFeePct), false),
+        (await relayer.shouldRelay(deposit, clientRelayState, toBN(defaultRealizedLpFeePct), false)).relaySubmitType,
         RelaySubmitType.Ignore
       );
 
       // b) Mint tokens to the relayer BUT set the ClientRelayState to Finalized. This is the case once the Relay has
-      // already been finalized by another relayer and there is nothing to do. Again, the return should be Ignore.
+      // already been finalized by another relayer and there is nothing to do. Again, the return value should be Ignore.
       await l1Token.methods.mint(l1Relayer, toBN(depositAmount).muln(2)).send({ from: l1Owner });
       await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Relayer });
       clientRelayState = ClientRelayState.Finalized;
       assert.equal(
-        await relayer.shouldRelay(deposit, clientRelayState, toBN(defaultRealizedLpFeePct), false),
+        (await relayer.shouldRelay(deposit, clientRelayState, toBN(defaultRealizedLpFeePct), false)).relaySubmitType,
         RelaySubmitType.Ignore
       );
 
       // c) Relay is pending and already spedup
       clientRelayState = ClientRelayState.Pending;
       assert.equal(
-        await relayer.shouldRelay(deposit, clientRelayState, toBN(defaultRealizedLpFeePct), true),
+        (await relayer.shouldRelay(deposit, clientRelayState, toBN(defaultRealizedLpFeePct), true)).relaySubmitType,
         RelaySubmitType.Ignore
       );
     });
@@ -324,7 +340,7 @@ describe("Relayer.ts", function () {
       clientRelayState = ClientRelayState.Uninitialized;
       deposit.instantRelayFeePct = "0";
       assert.equal(
-        await relayer.shouldRelay(deposit, clientRelayState, toBN(defaultRealizedLpFeePct), false),
+        (await relayer.shouldRelay(deposit, clientRelayState, toBN(defaultRealizedLpFeePct), false)).relaySubmitType,
         RelaySubmitType.Slow
       );
 
@@ -334,14 +350,15 @@ describe("Relayer.ts", function () {
       // even if the relay is instantly profitable the relayer should choose to slow relay as it's all it can afford.
       deposit.instantRelayFeePct = toWei("0.05");
       assert.equal(
-        await relayer.shouldRelay(deposit, clientRelayState, toBN(defaultRealizedLpFeePct), false),
+        (await relayer.shouldRelay(deposit, clientRelayState, toBN(defaultRealizedLpFeePct), false)).relaySubmitType,
         RelaySubmitType.Slow
       );
 
-      // b) If the relayer is sent more tokens and instantRelayFeePct is anything greater than zero with the relay this.state.// set to any then the relayer should not propose a slow relay.
+      // b) If the relayer is sent more tokens and instantRelayFeePct is anything greater than zero with the relay this
+      // set to any then the relayer should not propose a slow relay.
       await l1Token.methods.mint(l1Relayer, toBN(depositAmount).muln(2)).send({ from: l1Owner });
       assert.notEqual(
-        await relayer.shouldRelay(deposit, clientRelayState, toBN(defaultRealizedLpFeePct), false),
+        (await relayer.shouldRelay(deposit, clientRelayState, toBN(defaultRealizedLpFeePct), false)).relaySubmitType,
         RelaySubmitType.Slow
       );
     });
@@ -356,7 +373,7 @@ describe("Relayer.ts", function () {
       await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Relayer });
       clientRelayState = ClientRelayState.Uninitialized;
       assert.equal(
-        await relayer.shouldRelay(deposit, clientRelayState, toBN(defaultRealizedLpFeePct), false),
+        (await relayer.shouldRelay(deposit, clientRelayState, toBN(defaultRealizedLpFeePct), false)).relaySubmitType,
         RelaySubmitType.Instant
       );
 
@@ -364,14 +381,14 @@ describe("Relayer.ts", function () {
 
       // a) There already exists an instant relayer for this relay.
       assert.notEqual(
-        await relayer.shouldRelay(deposit, clientRelayState, toBN(defaultRealizedLpFeePct), true),
+        (await relayer.shouldRelay(deposit, clientRelayState, toBN(defaultRealizedLpFeePct), true)).relaySubmitType,
         RelaySubmitType.Instant
       );
 
       // b) ClientRelayState set to SpeedUpOnly
       clientRelayState = ClientRelayState.Pending;
       assert.notEqual(
-        await relayer.shouldRelay(deposit, clientRelayState, toBN(defaultRealizedLpFeePct), false),
+        (await relayer.shouldRelay(deposit, clientRelayState, toBN(defaultRealizedLpFeePct), false)).relaySubmitType,
         RelaySubmitType.Instant
       );
 
@@ -379,7 +396,7 @@ describe("Relayer.ts", function () {
       clientRelayState = ClientRelayState.Uninitialized;
       deposit.instantRelayFeePct = "0";
       assert.notEqual(
-        await relayer.shouldRelay(deposit, clientRelayState, toBN(defaultRealizedLpFeePct), false),
+        (await relayer.shouldRelay(deposit, clientRelayState, toBN(defaultRealizedLpFeePct), false)).relaySubmitType,
         RelaySubmitType.Instant
       );
 
@@ -387,7 +404,7 @@ describe("Relayer.ts", function () {
       deposit.instantRelayFeePct = defaultInstantRelayFeePct;
       await l1Token.methods.transfer(l1Owner, toBN(depositAmount).muln(1.5)).send({ from: l1Relayer });
       assert.notEqual(
-        await relayer.shouldRelay(deposit, clientRelayState, toBN(defaultRealizedLpFeePct), false),
+        (await relayer.shouldRelay(deposit, clientRelayState, toBN(defaultRealizedLpFeePct), false)).relaySubmitType,
         RelaySubmitType.Instant
       );
     });
@@ -399,7 +416,7 @@ describe("Relayer.ts", function () {
       await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Relayer });
       clientRelayState = ClientRelayState.Pending;
       assert.equal(
-        await relayer.shouldRelay(deposit, clientRelayState, toBN(defaultRealizedLpFeePct), false),
+        (await relayer.shouldRelay(deposit, clientRelayState, toBN(defaultRealizedLpFeePct), false)).relaySubmitType,
         RelaySubmitType.SpeedUp
       );
 
@@ -408,7 +425,7 @@ describe("Relayer.ts", function () {
       // a) not in SpeedUpOnly State
       clientRelayState = ClientRelayState.Uninitialized;
       assert.notEqual(
-        await relayer.shouldRelay(deposit, clientRelayState, toBN(defaultRealizedLpFeePct), false),
+        (await relayer.shouldRelay(deposit, clientRelayState, toBN(defaultRealizedLpFeePct), false)).relaySubmitType,
         RelaySubmitType.SpeedUp
       );
 
@@ -416,7 +433,7 @@ describe("Relayer.ts", function () {
       clientRelayState = ClientRelayState.Pending;
       await l1Token.methods.transfer(l1Owner, toBN(depositAmount).muln(1.5)).send({ from: l1Relayer });
       assert.notEqual(
-        await relayer.shouldRelay(deposit, clientRelayState, toBN(defaultRealizedLpFeePct), false),
+        (await relayer.shouldRelay(deposit, clientRelayState, toBN(defaultRealizedLpFeePct), false)).relaySubmitType,
         RelaySubmitType.SpeedUp
       );
     });
@@ -467,6 +484,12 @@ describe("Relayer.ts", function () {
       // As the relayer does not have enough token balance to do the relay (0 minted) should do nothing.
       await relayer.checkForPendingDepositsAndRelay();
       assert.isTrue(lastSpyLogIncludes(spy, "Not relaying"));
+      assert.equal(lastSpyLogLevel(spy), "error");
+
+      // Running a second time should decrease the log level to "debug" as logs should not be produced multiple times.
+      await relayer.checkForPendingDepositsAndRelay();
+      assert.isTrue(lastSpyLogIncludes(spy, "Not relaying"));
+      assert.equal(lastSpyLogLevel(spy), "debug");
 
       // Mint the relayer some tokens and try again.
       await l1Token.methods.mint(l1Relayer, toBN(depositAmount).muln(2)).send({ from: l1Owner });
@@ -788,6 +811,90 @@ describe("Relayer.ts", function () {
       await Promise.all([l1Client.update(), l2Client.update()]);
       await relayer.checkForPendingDepositsAndRelay();
       assert.isTrue(lastSpyLogIncludes(spy, "> latest block time"));
+    });
+    it("Correctly produces logs when deciding to not relay due to low profitability", async function () {
+      // Validate the logs produced when deciding to not relay due to low profitability. The relayer is initialized with
+      // a gas estimator that is never updated. For l1 the estimator defaults to 500 Gwei as the maxFeePerGas and 5 as
+      // the max priority fee. If not updated, the latest base fee per gas is set to the maxFeePerGas. Therefore this
+      // test will use a expected cumulative gas price of 505 gwei. Also, create a new profitability calculator with
+      //  discount set to 0. Seed the L1 token price at 1 in ETH (consider this to be eth for this test).
+      profitabilityCalculator = new MockProfitabilityCalculator(spyLogger, [l1Token.options.address], 1, web3, 0);
+      profitabilityCalculator.setL1TokenInfo({
+        [l1Token.options.address]: { tokenType: TokenType.WETH, tokenEthPrice: toBNWei("1"), decimals: toBN(18) },
+      });
+
+      relayer = new Relayer(
+        spyLogger,
+        gasEstimator,
+        l1Client,
+        l2Client,
+        profitabilityCalculator,
+        [l1Token.options.address],
+        l1Relayer,
+        whitelistedChainIds,
+        l1DeployData,
+        l2DeployData,
+        defaultLookbackWindow,
+        multicallBundler
+      );
+
+      await l2Token.methods.approve(bridgeDepositBox.options.address, depositAmount).send({ from: l2Depositor });
+      const quoteTime = (await web3.eth.getBlock("latest")).timestamp;
+      // Set the slow relay reward to 5% and instant reward to 1%. With a relay size of 1 ETH and the default fee per gas
+      // of 505 gwei, this is unprofitable given the current cost of each relay action.
+      const depositData = {
+        chainId,
+        depositId: "0",
+        l1Recipient: l2Depositor,
+        l2Sender: l2Depositor,
+        amount: depositAmount,
+        slowRelayFeePct: toWei("0.05"),
+        instantRelayFeePct: toWei("0.01"),
+        quoteTimestamp: quoteTime,
+      };
+      await bridgeDepositBox.methods
+        .deposit(
+          depositData.l1Recipient,
+          l2Token.options.address,
+          depositData.amount,
+          depositData.slowRelayFeePct,
+          depositData.instantRelayFeePct, // set to zero to force slow relay for this test.
+          depositData.quoteTimestamp
+        )
+        .send({ from: l2Depositor });
+      // Mint tokens to the relayer
+      await l1Token.methods.mint(l1Relayer, toBN(depositAmount).muln(2)).send({ from: l1Owner });
+      await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Relayer });
+      await Promise.all([l1Client.update(), l2Client.update()]);
+
+      await relayer.checkForPendingDepositsAndRelay();
+
+      // Check the output of the last log.
+      assert.isTrue(lastSpyLogIncludes(spy, "Not relaying unprofitable deposit")); // not relaying log
+      assert.isTrue(lastSpyLogIncludes(spy, "Deposit depositId 0 on optimism of 1.00 TESTERC20 sent from")); // associated meta data
+      // check profitability logs:
+      const slowReward = toBNWei(0.05);
+      const fastReward = toBNWei(0.01);
+      const cumulativeGasPrice = toBN(505e9);
+      const formatWei = createFormatFunction(2, 4, false, 18);
+      const slowProfit = formatWei(slowReward.sub(cumulativeGasPrice.mul(toBN(across.constants.SLOW_ETH_GAS))));
+      const fastProfit = formatWei(
+        slowReward.add(fastReward).sub(cumulativeGasPrice.mul(toBN(across.constants.FAST_ETH_GAS)))
+      );
+      const speedUpProfit = formatWei(fastReward.sub(cumulativeGasPrice.mul(toBN(across.constants.SPEED_UP_ETH_GAS))));
+      assert.isTrue(lastSpyLogIncludes(spy, `SlowRelay profit ${slowProfit}`));
+      assert.isTrue(lastSpyLogIncludes(spy, `InstantRelay profit ${fastProfit}`));
+      assert.isTrue(lastSpyLogIncludes(spy, `SpeedUpRelay profit ${speedUpProfit}`));
+
+      // Finally, check the log contains the correct break even data.
+      const formatGwei = (number: string | number | BN) => createFormatFunction(2, 4, false, 9)(number.toString());
+      const breakEvenSlowGasPrice = formatGwei(slowReward.div(toBN(across.constants.SLOW_ETH_GAS)));
+      const breakEvenFastGasPrice = formatGwei(slowReward.add(fastReward).div(toBN(across.constants.FAST_ETH_GAS)));
+      const breakEvenSpeedUpGasPrice = formatGwei(fastReward.div(toBN(across.constants.SPEED_UP_ETH_GAS)));
+
+      assert.isTrue(lastSpyLogIncludes(spy, `SlowRelay ${breakEvenSlowGasPrice} Gwei`));
+      assert.isTrue(lastSpyLogIncludes(spy, `InstantRelay ${breakEvenFastGasPrice} Gwei`));
+      assert.isTrue(lastSpyLogIncludes(spy, `SpeedUpRelay ${breakEvenSpeedUpGasPrice} Gwei`));
     });
   });
   describe("Settle Relay transaction functionality", () => {
@@ -1679,7 +1786,24 @@ describe("Relayer.ts", function () {
 
       // Create new Relayer that is aware of new L1 token:
       const rateModels = { [l1Token.options.address]: rateModel, [newL1Token.options.address]: rateModel };
-      l1Client = new InsuredBridgeL1Client(spyLogger, web3, bridgeAdmin.options.address, rateModels);
+      await rateModelStore.methods
+        .updateRateModel(
+          newL1Token.options.address,
+          JSON.stringify({
+            UBar: rateModels[l1Token.options.address].UBar.toString(),
+            R0: rateModels[l1Token.options.address].R0.toString(),
+            R1: rateModels[l1Token.options.address].R1.toString(),
+            R2: rateModels[l1Token.options.address].R2.toString(),
+          })
+        )
+        .send({ from: l1Owner });
+
+      l1Client = new InsuredBridgeL1Client(
+        spyLogger,
+        web3,
+        bridgeAdmin.options.address,
+        rateModelStore.options.address
+      );
       l2Client = new InsuredBridgeL2Client(spyLogger, web3, bridgeDepositBox.options.address, chainId);
       // Add the token to the profitability calculator so it has sufficient info to quote the relay type.
       profitabilityCalculator = new MockProfitabilityCalculator(
