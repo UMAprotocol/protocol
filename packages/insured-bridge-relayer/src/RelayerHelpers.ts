@@ -39,11 +39,11 @@ export async function approveL1Tokens(
 // The Relayer will use this whitelist to determine which deposits to relay. By default, the whitelist will be set
 // to the list of all possible tokens provided in the on-chain RateModels dictionary. However, not all L1 tokens in this
 // dictionary will be whitelisted for all L2 deposit boxes.
-export async function pruneWhitelistedL1Tokens(
+export function pruneWhitelistedL1Tokens(
   logger: winston.Logger,
   l1Client: InsuredBridgeL1Client,
   l2Client: InsuredBridgeL2Client
-): Promise<string[]> {
+): string[] {
   // Fetch list of potential whitelisted L1 tokens from keys in the RateModelStore.
   const whitelistedRelayL1TokensInRateModel = l1Client.getL1TokensFromRateModel();
 

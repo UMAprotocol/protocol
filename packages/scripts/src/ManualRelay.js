@@ -9,6 +9,7 @@
 // Optional env overrides:
 //   BRIDGE_ADMIN_ADDRESS
 //   BRIDGE_DEPOSIT_ADDRESS
+//   RATE_MODEL_ADDRESS
 //   L2_END_BLOCK_NUMBER
 //
 // Note: if you want to run with GCKMS keys, the command will look like this:
@@ -20,7 +21,6 @@ const argv = require("minimist")(process.argv.slice(), { string: ["depositId", "
 
 const { getWeb3ByChainId } = require("@uma/common");
 const { InsuredBridgeL1Client, InsuredBridgeL2Client, Logger } = require("@uma/financial-templates-lib");
-const sdk = require("@uma/sdk");
 const { getAddress } = require("@uma/contracts-node");
 
 async function main() {
@@ -50,7 +50,7 @@ async function main() {
     Logger,
     l1Web3,
     process.env.BRIDGE_ADMIN_ADDRESS || (await getAddress("BridgeAdmin", 1)),
-    sdk.across.constants.RATE_MODELS
+    process.env.RATE_MODEL_ADDRESS || (await getAddress("RateModelStore", 1))
   );
   await l1Client.update();
 
@@ -59,7 +59,7 @@ async function main() {
     l2Web3,
     process.env.BRIDGE_DEPOSIT_ADDRESS || defaultDepositBoxMapping[Number(argv.chainId)],
     Number(argv.chainId),
-    latestL2BlockNumber - 9900,
+    latestL2BlockNumber - 99900,
     latestL2BlockNumber
   );
   await l2Client.update();
