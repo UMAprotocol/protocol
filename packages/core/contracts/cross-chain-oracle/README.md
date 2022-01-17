@@ -26,7 +26,9 @@ Note: in the commands below, you'll need to set the relevant `NODE_URL_X` enviro
 
 If you're having trouble redeploying contracts because `hardhat` wants to "reuse" contracts, then run `yarn clean && yarn` in the `core` package to reset `deployments`.
 
-## Step-by-step guide to deployments
+## Step-by-step guide to deployments on rollups: Arbitrum, Boba and Optimism
+
+The steps below explain how to deploy the cross-chain oracle onto supported rollups.
 
 1. Start by exporting some environment variables (or storing them in a .env):
 
@@ -57,7 +59,7 @@ yarn hardhat deploy --network [arbitrum/boba/optimism] --tags [l2-arbitrum-xchai
 
 Add the deployed [Arbitrum/Boba/Optimism] Registry, finder, OracleSpoke, GovernorSpoke and x_ChildMessenger contracts to the associated networks file.
 
-1. Verify contracts:
+4. Verify contracts:
 
 ```sh
 # mainnet
@@ -103,7 +105,7 @@ yarn hardhat --network optimism verify <EACH-DEPLOYED ADDRESS IN STEP 7> <ASSOCI
 
 ```sh
 # Seed IdentifierWhitelist with all identifiers already approved on mainnet. Note the --from address is the IdentifierWhitelist deployed on mainnet.
-CROSS_CHAIN_NODE_URL=<MAINNET_URL> yarn hardhat migrate-identifiers --network [arbitrum/boba] --from 0xcF649d9Da4D1362C4DAEa67573430Bd6f945e570 --crosschain true
+CROSS_CHAIN_NODE_URL=<MAINNET_URL> yarn hardhat migrate-identifiers --network [arbitrum/boba/optimism] --from 0xcF649d9Da4D1362C4DAEa67573430Bd6f945e570 --crosschain true
 
 # Seed Collateral whitelist with all collaterals already approved on Mainnet. This will also pull the final fee from the L1 store and set it in the L2 Store.
 yarn hardhat --network [arbitrum/boba/optimism]  migrate-collateral-whitelist --l1chainid 1 --l2chainid [42161/288/10]
@@ -129,3 +131,65 @@ To finalize **Arbitrum** transactions see the docs [here](https://github.com/Off
 To finalize **Optimism** transactions see the equivalent script [here](https://github.com/ethereum-optimism/optimism/blob/develop/packages/message-relayer/src/exec/withdraw.ts). Optimism's Etherscan also provides a UI, similar to Arbitrum, which can be found [here](https://optimistic.etherscan.io/txsExit).
 
 **Boba** at present auto-finalizes all L2->L1 transactions without any required user intervention.
+
+## Step-by-step guide to deployments for Non-rollup chains
+
+The steps below explain how to deploy the cross-chain oracle onto non-rollup chains using the `Admin_ChildMessenger`. This enables a multisig to act as the "messenger" thereby enabling the UMA Optimistic oracle to be deployed onto chains that do not have a supporting canonical bridge.
+
+1. Start by exporting some environment variables (or storing them in a .env):
+
+```sh
+# Set only the following environment variables based on which L2 you're deploying to. For example, if you're deploying to xDAI, set NODE_URL_100.
+# When running against a forked network, set the URL to http://localhost:<PORT>
+export NODE_URL_100=<XDAI_URL>
+export MNEMONIC="Your 12-word mnemonic here"
+```
+
+2. Deploy l2 Contracts
+
+```sh
+yarn hardhat deploy --network [xdai] --tags l2-admin-xchain,Registry
+```
+
+Add the deployed [xdai] Registry, finder, OracleSpoke, GovernorSpoke and Admin_ChildMessenger contracts to the associated networks file.
+
+3. Verify contracts:
+
+```sh
+# xDai (etherscan-verify does not work on xdai so we use hardhat verify)
+yarn hardhat --network [xdai] verify <EACH-DEPLOYED ADDRESS IN STEP 2> <ASSOCIATED CONSTRUCTOR PARAMS FROM 2>
+```
+
+3. Setup l2 contracts
+
+```sh
+yarn hardhat setup-l2-xchain --network [xdai]
+```
+
+4. At this point, the cross chain contract suite setup is complete. We will now deploy the `OptimisticOracle` and required contracts to the L2.
+
+```sh
+yarn hardhat deploy --network [xdai] --tags OptimisticOracle,IdentifierWhitelist,AddressWhitelist,Store
+```
+
+8. Verify contracts:
+
+```sh
+# xDai (etherscan-verify does not work on xdai so we use hardhat verify)
+yarn hardhat --network xdai verify <EACH-DEPLOYED ADDRESS IN STEP 4> <ASSOCIATED CONSTRUCTOR PARAMS FROM 4>
+```
+
+9. Setup l2 optimistic oracle:
+
+```sh
+# Seed IdentifierWhitelist with all identifiers already approved on mainnet. Note the --from address is the IdentifierWhitelist deployed on mainnet.
+CROSS_CHAIN_NODE_URL=<MAINNET_URL> yarn hardhat migrate-identifiers --network [xdai] --from 0xcF649d9Da4D1362C4DAEa67573430Bd6f945e570 --crosschain true
+
+# Seed Collateral whitelist with all collaterals already approved on Mainnet. This will also pull the final fee from the L1 store and set it in the L2 Store.
+yarn hardhat --network [xdai]  migrate-collateral-whitelist --l1chainid 1 --l2chainid [100]
+
+# Point L2 Finder to remaining Optimistic Oracle system contracts.
+yarn hardhat setup-finder --oraclespoke --identifierwhitelist --addresswhitelist --optimisticoracle --store --network [xdai]
+# Register OptimisticOracle as registered contract.
+yarn hardhat register-accounts --network [xdai] --account <OPTIMISTIC_ORACLE_ADDRESS>
+```

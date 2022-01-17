@@ -103,22 +103,11 @@ export function getHardhatConfig(
         chainId: 1,
         url: getNodeUrl("mainnet", true, 1),
         accounts: { mnemonic },
-        companionNetworks: { arbitrum: "arbitrum", optimism: "optimism", boba: "boba" },
+        companionNetworks: { arbitrum: "arbitrum", optimism: "optimism", boba: "boba", xdai: "xdai" },
       },
       rinkeby: { chainId: 4, url: getNodeUrl("rinkeby", true, 4), accounts: { mnemonic } },
       goerli: { chainId: 5, url: getNodeUrl("goerli", true, 5), accounts: { mnemonic } },
       kovan: { chainId: 42, url: getNodeUrl("kovan", true, 42), accounts: { mnemonic } },
-      arbitrum: {
-        chainId: 42161,
-        url: getNodeUrl("arbitrum", true, 42161),
-        accounts: { mnemonic },
-        companionNetworks: { mainnet: "mainnet" },
-      },
-      "arbitrum-rinkeby": {
-        chainId: 421611,
-        url: getNodeUrl("arbitrum-rinkeby", true, 421611),
-        accounts: { mnemonic },
-      },
       optimism: {
         chainId: 10,
         url: getNodeUrl("optimism", true, 10),
@@ -126,14 +115,13 @@ export function getHardhatConfig(
         companionNetworks: { mainnet: "mainnet" },
       },
       "optimism-kovan": { chainId: 69, url: getNodeUrl("optimism-kovan", true, 69), accounts: { mnemonic } },
-      "optimism-test": {
-        url: "http://127.0.0.1:8545",
-        accounts: { mnemonic: "test test test test test test test test test test test junk" },
-        // This sets the gas price to 0 for all transactions on L2. We do this because account balances are not yet
-        // automatically initiated with an ETH balance.
-        gasPrice: 0,
-        testWhitelist: ["oracle/Finder"],
-        testBlacklist,
+      xdai: {
+        chainId: 100,
+        url: getNodeUrl("xdai", true, 100),
+        gas: 500000,
+        gasPrice: 1000000000,
+        accounts: { mnemonic },
+        companionNetworks: { mainnet: "mainnet" },
       },
       matic: {
         chainId: 137,
@@ -147,6 +135,17 @@ export function getHardhatConfig(
         url: getNodeUrl("boba", true, 288),
         accounts: { mnemonic },
         companionNetworks: { mainnet: "mainnet" },
+      },
+      arbitrum: {
+        chainId: 42161,
+        url: getNodeUrl("arbitrum", true, 42161),
+        accounts: { mnemonic },
+        companionNetworks: { mainnet: "mainnet" },
+      },
+      "arbitrum-rinkeby": {
+        chainId: 421611,
+        url: getNodeUrl("arbitrum-rinkeby", true, 421611),
+        accounts: { mnemonic },
       },
     },
     mocha: { timeout: 1800000 },

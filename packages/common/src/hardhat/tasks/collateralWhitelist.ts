@@ -10,6 +10,38 @@ import type { CombinedHRE } from "./types";
 
 dotenv.config();
 
+const tokenAbi = [
+  {
+    inputs: [],
+    name: "symbol",
+    outputs: [
+      {
+        internalType: "string",
+        name: "",
+        type: "string",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+];
+
+const L2StandardBridgeAbi = [
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "address", name: "_l1Token", type: "address" },
+      { indexed: true, internalType: "address", name: "_l2Token", type: "address" },
+      { indexed: true, internalType: "address", name: "_from", type: "address" },
+      { indexed: false, internalType: "address", name: "_to", type: "address" },
+      { indexed: false, internalType: "uint256", name: "_amount", type: "uint256" },
+      { indexed: false, internalType: "bytes", name: "_data", type: "bytes" },
+    ],
+    name: "DepositFinalized",
+    type: "event",
+  },
+];
+
 task("migrate-collateral-whitelist", "Migrate collateral whitelist, extracted from one EVM chain to another")
   .addParam("l1chainid", "Chain Id of the origin chain (normally 1 for L1 ethereum)", "1", types.string)
   .addParam("l2chainid", "Chain Id of the destination chain to write the new whitelist to", "", types.string)
@@ -43,7 +75,7 @@ task("migrate-collateral-whitelist", "Migrate collateral whitelist, extracted fr
     console.log("Finding associated L2 tokens for whitelisted l1 tokens...");
     const associatedL2Tokens = await Promise.all(
       l1TokenWhitelistArray.map((l1TokenWhitelist: any) =>
-        findL2TokenForL1Token(l2Web3, l2ChainId, l1TokenWhitelist.l1TokenAddress)
+        findL2TokenForL1Token(l1Web3, l2Web3, l2ChainId, l1TokenWhitelist.l1TokenAddress)
       )
     );
 
@@ -141,22 +173,6 @@ async function fetchFullL1Whitelist(l1Web3: Web3, companionNetworks: any) {
     whitelistedAddressArray.map((address) => l1Store.methods.finalFees(address).call())
   );
 
-  const tokenAbi = [
-    {
-      inputs: [],
-      name: "symbol",
-      outputs: [
-        {
-          internalType: "string",
-          name: "",
-          type: "string",
-        },
-      ],
-      stateMutability: "view",
-      type: "function",
-    },
-  ];
-
   const symbols = (
     await Promise.allSettled(
       whitelistedAddressArray.map((address) =>
@@ -172,22 +188,26 @@ async function fetchFullL1Whitelist(l1Web3: Web3, companionNetworks: any) {
   });
 }
 
-async function findL2TokenForL1Token(l2Web3: Web3, l2chainid: number, l1TokenAddress: string) {
+async function findL2TokenForL1Token(l1Web3: Web3, l2Web3: Web3, l2chainid: number, l1TokenAddress: string) {
   if (l2chainid == 10) {
     const foundOnChain = await _findL2TokenForOvmChain(l2Web3, l1TokenAddress);
     if (foundOnChain != ZERO_ADDRESS) return foundOnChain;
-    else return await _findL2TokenFromTokenList(l2chainid, l1TokenAddress);
+    else return await _findL2TokenFromTokenList(l1Web3, l2chainid, l1TokenAddress);
   }
   if (l2chainid == 288) {
     return await _findL2TokenForOvmChain(l2Web3, l1TokenAddress);
   }
 
   if (l2chainid == 42161) {
-    return await _findL2TokenFromTokenList(l2chainid, l1TokenAddress);
+    return await _findL2TokenFromTokenList(l1Web3, l2chainid, l1TokenAddress);
+  }
+
+  if (l2chainid == 100) {
+    return await _findL2TokenFromTokenList(l1Web3, l2chainid, l1TokenAddress);
   }
 }
 
-async function _findL2TokenFromTokenList(l2chainid: number, l1TokenAddress: string) {
+async function _findL2TokenFromTokenList(l1Web3: Web3, l2chainid: number, l1TokenAddress: string) {
   if (l2chainid == 10) {
     const response = await fetch("https://static.optimism.io/optimism.tokenlist.json");
     const body = await response.text();
@@ -205,26 +225,26 @@ async function _findL2TokenFromTokenList(l2chainid: number, l1TokenAddress: stri
       ?.address;
     return l2Address ?? ZERO_ADDRESS;
   }
+  if (l2chainid == 100) {
+    try {
+      const tokenContract = new l1Web3.eth.Contract(tokenAbi as any, l1TokenAddress);
+      const tokenSymbol = await tokenContract.methods.symbol().call();
+      const response = await fetch("https://tokens.honeyswap.org");
+      const body = await response.text();
+      const tokenList = JSON.parse(body).tokens;
+      const l2Address = tokenList.find((element: any) => element.chainId == 100 && element.symbol == tokenSymbol)
+        .address;
+      return l2Address ?? ZERO_ADDRESS;
+    } catch (error) {
+      return ZERO_ADDRESS;
+    }
+  }
   return ZERO_ADDRESS;
 }
 
 async function _findL2TokenForOvmChain(l2Web3: Web3, l1TokenAddress: string) {
   const optimismL2StandardERC20 = "0x4200000000000000000000000000000000000010";
-  const L2StandardBridgeAbi = [
-    {
-      anonymous: false,
-      inputs: [
-        { indexed: true, internalType: "address", name: "_l1Token", type: "address" },
-        { indexed: true, internalType: "address", name: "_l2Token", type: "address" },
-        { indexed: true, internalType: "address", name: "_from", type: "address" },
-        { indexed: false, internalType: "address", name: "_to", type: "address" },
-        { indexed: false, internalType: "uint256", name: "_amount", type: "uint256" },
-        { indexed: false, internalType: "bytes", name: "_data", type: "bytes" },
-      ],
-      name: "DepositFinalized",
-      type: "event",
-    },
-  ];
+
   const l2Bridge = new l2Web3.eth.Contract(L2StandardBridgeAbi as any, optimismL2StandardERC20);
 
   const depositFinalizedEvents = await l2Bridge.getPastEvents("DepositFinalized", {

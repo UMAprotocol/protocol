@@ -10,5 +10,5 @@ const func = async function (hre) {
   await deploy("OracleSpoke", { from: deployer, args: [finder.address], log: true, skipIfAlreadyDeployed: true });
 };
 module.exports = func;
-func.tags = ["OracleSpoke", "l2-arbitrum-xchain", "l2-boba-xchain", "l2-optimism-xchain"];
+func.tags = ["OracleSpoke", "l2-arbitrum-xchain", "l2-boba-xchain", "l2-optimism-xchain", "l2-admin-xchain"];
 func.dependencies = ["Finder"];
