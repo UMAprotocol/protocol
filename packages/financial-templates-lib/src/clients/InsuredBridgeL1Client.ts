@@ -310,7 +310,16 @@ export class InsuredBridgeL1Client {
     // Check for new bridgePools deployed. This acts as the initial setup and acts to more pools if they are deployed
     // while the bot is running.
     const whitelistedTokenEvents = await this.bridgeAdmin.getPastEvents("WhitelistToken", blockSearchConfig);
-    for (const whitelistedTokenEvent of whitelistedTokenEvents) {
+
+    // Lookup timestamp for each event block number in parallel instead of once per loop. We are ok fetching these
+    // upfront because there shouldn't be that many WhitelistToken events in production, so the max number of web3
+    // requests to send is anticipated to be low to lookup block numbers.
+    const getWhitelistedTokenEventBlockPromises = whitelistedTokenEvents.map((e) =>
+      this.l1Web3.eth.getBlock(e.blockNumber)
+    );
+    const whitelistedTokenBlocks = await Promise.all(getWhitelistedTokenEventBlockPromises);
+    for (let i = 0; i < whitelistedTokenEvents.length; i++) {
+      const whitelistedTokenEvent = whitelistedTokenEvents[i];
       // Add L1=>L2 token mapping to whitelisted dictionary for this chain ID.
       const whitelistedTokenMappingsForChainId = this.whitelistedTokens[whitelistedTokenEvent.returnValues.chainId];
       this.whitelistedTokens[whitelistedTokenEvent.returnValues.chainId] = {
@@ -330,7 +339,7 @@ export class InsuredBridgeL1Client {
       const earliestValidDepositQuoteTime =
         whitelistedTokenEvent.returnValues.bridgePool === this.bridgePools[l1Token]?.contract.options.address
           ? this.bridgePools[l1Token].earliestValidDepositQuoteTime
-          : Number((await this.l1Web3.eth.getBlock(whitelistedTokenEvent.blockNumber)).timestamp);
+          : Number(whitelistedTokenBlocks[i].timestamp);
       this.bridgePools[l1Token] = {
         l2Token: l2Tokens, // Re-use existing L2 token array and update after resetting other state.
         contract: (new this.l1Web3.eth.Contract(
