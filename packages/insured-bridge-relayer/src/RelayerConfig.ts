@@ -3,26 +3,12 @@ const { toChecksumAddress } = Web3.utils;
 
 import { replaceAddressCase } from "@uma/common";
 
-// This struct is a hack right now but prevents an edge case bug where a deposit.quoteTime < bridgePool.deployment time.
-// The deposit.quoteTime is used to call bridgePool.liquidityUtilizationCurrent at a specific block height. This call
-// always reverts if the quote time is before the bridge pool's deployment time. This causes the disputer to error out
-// because it cannot validate a relay's realizedLpFeePct properly. We need to therefore know which deposit quote times
-// are off-limits and need to either be ignored or auto-disputed. This is a hack because ideally the bridgePool sets
-// a timestamp on construction. Then we can easily query on-chain whether a deposit.quoteTime is before this timestamp.
-// The alternative to using this hard-coded mapping is to call `web3.eth.getCode(bridgePoolAddress, blockNumber)` but
-// making a web3 call per relay is expensive. Therefore this mapping is also a runtime optimization where we can
-// eliminate web3 calls.
-// Note: keyed by L1 token.
-const bridgePoolDeployData = {
-  "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2": { timestamp: 1635962805 }, // WETH
-  "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48": { timestamp: 1635964115 }, // USDC
-  "0x04Fa0d235C4abf4BcF4787aF4CF447DE572eF828": { timestamp: 1635964053 }, // UMA
-  "0x3472a5a71965499acd81997a54bba8d852c6e53d": { timestamp: 1636750354 }, // BADGER
-};
-
-// For similar reasons to why we store BridgePool deployment times, we store BridgeDepositBox times for each L2 network
-// here. We use this in the fallback search for a FundsDeposited L2 event to optimize how we search for the event. We
-// don't need to search for events earlier than the BridgeDepositBox's deployment block.
+// These are the block heights at which deposit box contracts were deployed on-chain. We use this in the fallback
+// search for a FundsDeposited L2 event to optimize how we search for the event. We don't need to search for events
+// earlier than the BridgeDepositBox's deployment block. We could try to automatically fetch this from on-chain
+// state via an event that is emitted in the contract's constructor such as in the SetMinimumBridgingDelay event,
+// but some L2 node providers don't allow long lookbacks (e.g. Infura Arbitrum) so hardcoding this mapping is an
+// optimization that saves having to make extra web3 requests per bot run.
 export const bridgeDepositBoxDeployData = {
   42161: { blockNumber: 2811998 },
   10: { blockNumber: 204576 },
