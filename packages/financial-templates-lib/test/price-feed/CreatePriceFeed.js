@@ -14,6 +14,7 @@ const Timer = getContract("Timer");
 const Store = getContract("Store");
 const AddressWhitelist = getContract("AddressWhitelist");
 const BridgeAdmin = getContract("BridgeAdmin");
+const RateModelStore = getContract("RateModelStore");
 
 const {
   createPriceFeed,
@@ -54,6 +55,7 @@ describe("CreatePriceFeed.js", function () {
   let store;
   let timer;
   let finder;
+  let rateModelStore;
   let identifierWhitelist;
   let addressWhitelist;
   let bridgeAdmin;
@@ -98,6 +100,7 @@ describe("CreatePriceFeed.js", function () {
       "0",
       padRight(utf8ToHex("ETH/BTC")) // Identifier shouldn't matter for these tests as we don't test any relays.
     ).send({ from: accounts[0] });
+    rateModelStore = await RateModelStore.new().send({ from: accounts[0] });
     process.env[nodeUrlEnvVar] = "https://cloudflare-eth.com";
   });
 
@@ -1348,6 +1351,7 @@ describe("CreatePriceFeed.js", function () {
       rateModels: {},
       l2NetId: chainId,
       bridgeAdminAddress: bridgeAdmin.options.address,
+      rateModelAddress: rateModelStore.options.address,
       type: "insuredbridge",
     });
 

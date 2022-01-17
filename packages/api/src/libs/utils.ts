@@ -1,7 +1,7 @@
 import lodash from "lodash";
 import { Obj } from "../types";
 import * as uma from "@uma/sdk";
-import { utils, BigNumber, Contract } from "ethers";
+import { utils, BigNumber, Contract, ethers } from "ethers";
 import assert from "assert";
 import Web3 from "web3";
 const { parseUnits, parseBytes32String } = utils;
@@ -203,6 +203,13 @@ export function getWeb3(url: string, options: Obj = {}) {
   if (url.startsWith("http")) return getWeb3Http(url);
 
   throw new Error("Web3 provider URLs not supported");
+}
+
+export function getEthers(url: string) {
+  if (url.startsWith("ws")) return new ethers.providers.WebSocketProvider(url);
+  if (url.startsWith("http")) return new ethers.providers.JsonRpcProvider(url);
+
+  throw new Error("Unsupported ethers provider url");
 }
 
 // this just maintains the start/endblock given sporadic updates with a latest block number

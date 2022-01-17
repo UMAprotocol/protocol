@@ -21,10 +21,12 @@ const { getAbi, getAddress } = require("@uma/contracts-node");
 // as input into getAbi and getAddress.
 const OracleType = {
   Voting: "Voting", // Used on mainnet when optimistic oracle directly submits price requests to Voting.
-  OracleChildTunnel: "OracleChildTunnel", // Used in production when running proposer bot on sidechain that needs to
+  OracleChildTunnel: "OracleChildTunnel", // Used in production when running proposer bot on Polygon that needs to
   // bridge price requests back to L1.
   MockOracleAncillary: "MockOracleAncillary", // Used for testing when caller wants to be able to manually push prices
-  // to resolve requests
+  // to resolve requests.
+  OracleSpoke: "OracleSpoke", // Used in production for non-Polygon L2s to bridge price requests to L1.
+  SkinnyOptimisticOracle: "SkinnyOptimisticOracle", // Gas-lite version of Optimistic oracle.
 };
 
 /**
@@ -36,6 +38,7 @@ const OracleType = {
  * @param {Number} errorRetries The number of times the execution loop will re-try before throwing if an error occurs.
  * @param {Number} errorRetriesTimeout The amount of milliseconds to wait between re-try iterations on failed loops.
  * @param {Object} [commonPriceFeedConfig] Common configuration to pass to all PriceFeeds constructed by proposer.
+ * @param {Number} [blocksPerEventSearch] Amount of blocks to search per web3 request.
  * @param {Object} [optimisticOracleProposerConfig] Configuration to construct the OptimisticOracle proposer.
  * @param {OracleType} [oracleType] Type of "Oracle" for this network, defaults to "Voting"
  * @param {OptimisticOracleType} [optimisticOracleType] Type of "OptimisticOracle" for this network, defaults to "OptimisticOracle"
@@ -48,10 +51,12 @@ async function run({
   errorRetries,
   errorRetriesTimeout,
   commonPriceFeedConfig,
+  blocksPerEventSearch,
   optimisticOracleProposerConfig,
   oracleType = OracleType.Voting,
   optimisticOracleType = OptimisticOracleType.OptimisticOracle,
 }) {
+  if (!Object.keys(OracleType).includes(oracleType)) throw new Error("Unexpected OracleType");
   try {
     const [accounts, networkId] = await Promise.all([web3.eth.getAccounts(), web3.eth.net.getId()]);
     const optimisticOracleAddress = await getAddress(optimisticOracleType, networkId);
@@ -59,12 +64,13 @@ async function run({
     // Else, if running in loop mode (pollingDelay != 0), then it should send a `info` level log.
     logger[pollingDelay === 0 ? "debug" : "info"]({
       at: "OptimisticOracle#index",
-      message: "OptimisticOracle proposer started 🌊",
+      message: "OptimisticOracle proposer started 🔮",
       optimisticOracleAddress,
       pollingDelay,
       errorRetries,
       errorRetriesTimeout,
       commonPriceFeedConfig,
+      blocksPerEventSearch,
       optimisticOracleProposerConfig,
       oracleType,
       optimisticOracleType,
@@ -80,7 +86,8 @@ async function run({
       optimisticOracleAddress,
       await getAddress(oracleType, networkId),
       604800, // default lookback setting for this client
-      optimisticOracleType
+      optimisticOracleType,
+      blocksPerEventSearch ? Number(blocksPerEventSearch) : null
     );
     const gasEstimator = new GasEstimator(logger, 60, networkId);
 
@@ -153,6 +160,10 @@ async function Poll(callback) {
       errorRetries: process.env.ERROR_RETRIES ? Number(process.env.ERROR_RETRIES) : 3,
       // Default to 10 seconds in between error re-tries.
       errorRetriesTimeout: process.env.ERROR_RETRIES_TIMEOUT ? Number(process.env.ERROR_RETRIES_TIMEOUT) : 1,
+      // Amount of blocks to search per web3 request to fetch events. This can be used with providers that limit the
+      // amount of blocks that can be fetched per request, including Arbitrum Infura nodes. Defaults to null which
+      // searches the maximum amount of blocks.
+      blocksPerEventSearch: process.env.MAX_BLOCKS_PER_EVENT_SEARCH,
       // Common price feed configuration passed along to all those constructed by proposer.
       commonPriceFeedConfig: process.env.COMMON_PRICE_FEED_CONFIG
         ? JSON.parse(process.env.COMMON_PRICE_FEED_CONFIG)

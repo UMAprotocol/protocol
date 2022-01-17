@@ -24,7 +24,7 @@ export async function run(logger: winston.Logger, web3: Web3): Promise<void> {
     const polygonWeb3 = polygonChainId !== "" ? getWeb3ByChainId(Number(polygonChainId)) : web3;
     const polygonNetworkId = await polygonWeb3.eth.net.getId();
     const [polygonAverageBlockTime, polygonCurrentBlock] = await Promise.all([
-      averageBlockTimeSeconds(undefined, polygonNetworkId),
+      averageBlockTimeSeconds(polygonNetworkId),
       polygonWeb3.eth.getBlock("latest"),
     ]);
     const polygonLookbackBlocks = Math.ceil(config.lookback / polygonAverageBlockTime);

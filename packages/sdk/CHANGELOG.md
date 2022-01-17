@@ -3,6 +3,25 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.18.0](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.17.0...@uma/sdk@0.18.0) (2022-01-11)
+
+### Bug Fixes
+
+- **bots:** correct optimism toBlock issue ([#3718](https://github.com/UMAprotocol/protocol/issues/3718)) ([3fff1c9](https://github.com/UMAprotocol/protocol/commit/3fff1c94ccd75a7a643cd926bcd142a1f1aa5533))
+- **sdk:** properly export oo client factory ([#3761](https://github.com/UMAprotocol/protocol/issues/3761)) ([a4e8167](https://github.com/UMAprotocol/protocol/commit/a4e8167edfbaa4e6bc8ea46cc3d5f87ca3d552da))
+- **sdk:** update gas calculation for across ([#3755](https://github.com/UMAprotocol/protocol/issues/3755)) ([822c9c4](https://github.com/UMAprotocol/protocol/commit/822c9c4a01df6e82e9930f4896ef6a5f93e75006))
+
+### Features
+
+- **across-relayer:** Fetch rate model from contract instead of SDK constant ([#3673](https://github.com/UMAprotocol/protocol/issues/3673)) ([4adff3d](https://github.com/UMAprotocol/protocol/commit/4adff3de6e24f6e60620d47321e95e8f07902964))
+- **sdk:** add basic optimistic oracle client for getting requests ([#3729](https://github.com/UMAprotocol/protocol/issues/3729)) ([f645058](https://github.com/UMAprotocol/protocol/commit/f64505854b7dd2b929eee67c00e5baee325700d0))
+- **sdk:** add basic state reader to oo client ([#3739](https://github.com/UMAprotocol/protocol/issues/3739)) ([819c3ea](https://github.com/UMAprotocol/protocol/commit/819c3ea12238df69be84e4a2d6bcdbc8fbb5a0a0))
+- **sdk:** add oo global store and writing ([#3738](https://github.com/UMAprotocol/protocol/issues/3738)) ([2f10482](https://github.com/UMAprotocol/protocol/commit/2f10482b466695413d7d23a01f0368b495ec7320))
+- **sdk:** add preview flags for proposing for oo ([#3751](https://github.com/UMAprotocol/protocol/issues/3751)) ([e46016b](https://github.com/UMAprotocol/protocol/commit/e46016b4b0d27b83fc1827a1e414e85a0148da6a))
+- **sdk:** basic erc20 and erc20 multicall client ([#3728](https://github.com/UMAprotocol/protocol/issues/3728)) ([e82bcc0](https://github.com/UMAprotocol/protocol/commit/e82bcc03f11ec943a2c80f0498d6faf01351593f))
+- **sdk:** expose basic oo client interface ([#3746](https://github.com/UMAprotocol/protocol/issues/3746)) ([194e3a5](https://github.com/UMAprotocol/protocol/commit/194e3a553731ac837c853b84e0bdbc876714db02))
+- add transaction bundler to relayer for better batching ([#3723](https://github.com/UMAprotocol/protocol/issues/3723)) ([51902a8](https://github.com/UMAprotocol/protocol/commit/51902a8cfbbb60dc30b868c5fd3e9fd0f31d48b4))
+
 # [0.17.0](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.16.1...@uma/sdk@0.17.0) (2021-12-17)
 
 ### Bug Fixes

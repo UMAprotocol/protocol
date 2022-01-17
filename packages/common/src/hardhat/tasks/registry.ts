@@ -14,7 +14,7 @@ const _registerAccount = async (account: string, registry: Contract, deployer: s
   }
 };
 
-task("register-accounts", "Register deployer plus custom account with Registry capable of making price requests")
+task("register-accounts", "Register custom account with Registry capable of making price requests")
   .addOptionalParam("account", "Custom account to register", "", types.string)
   .setAction(async function (taskArguments, hre_) {
     const hre = hre_ as CombinedHRE;
@@ -42,6 +42,10 @@ task("register-accounts", "Register deployer plus custom account with Registry c
       await _registerAccount(account, registry, deployer);
     }
 
-    // Register deployer by default.
-    await _registerAccount(deployer, registry, deployer);
+    // Remove deployer from contract creator role.
+    console.log("Removing deployer as Contract Creator...");
+    const txn = await registry.methods
+      .removeMember(RegistryRolesEnum.CONTRACT_CREATOR, deployer)
+      .send({ from: deployer });
+    console.log(`...Receipt: ${txn.transactionHash}`);
   });

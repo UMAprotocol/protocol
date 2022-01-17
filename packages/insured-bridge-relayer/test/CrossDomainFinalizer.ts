@@ -37,12 +37,14 @@ const Store = getContract("Store");
 const ERC20 = getContract("ExpandedERC20");
 const Timer = getContract("Timer");
 const MockOracle = getContract("MockOracleAncillary");
+const RateModelStore = getContract("RateModelStore");
 
 // Contract objects
 let messenger: any;
 let bridgeAdmin: any;
 let bridgePool: any;
 let bridgeDepositBox: any;
+let rateModelStore: any;
 let finder: any;
 let store: any;
 let identifierWhitelist: any;
@@ -218,7 +220,20 @@ describe("CrossDomainFinalizer.ts", function () {
 
     // Create the rate models for the one and only l1Token, set to the single rateModel defined in the constants.
     const rateModels = { [l1Token.options.address]: rateModel };
-    l1Client = new InsuredBridgeL1Client(spyLogger, web3, bridgeAdmin.options.address, rateModels);
+    rateModelStore = await RateModelStore.new().send({ from: l1Owner });
+    await rateModelStore.methods
+      .updateRateModel(
+        l1Token.options.address,
+        JSON.stringify({
+          UBar: rateModels[l1Token.options.address].UBar.toString(),
+          R0: rateModels[l1Token.options.address].R0.toString(),
+          R1: rateModels[l1Token.options.address].R1.toString(),
+          R2: rateModels[l1Token.options.address].R2.toString(),
+        })
+      )
+      .send({ from: l1Owner });
+
+    l1Client = new InsuredBridgeL1Client(spyLogger, web3, bridgeAdmin.options.address, rateModelStore.options.address);
     l2Client = new InsuredBridgeL2Client(spyLogger, web3, bridgeDepositBox.options.address, chainId);
 
     gasEstimator = new GasEstimator(spyLogger);
@@ -304,7 +319,7 @@ describe("CrossDomainFinalizer.ts", function () {
 
       // Now, when running the cross-domain finalizer, should send the L2->L1 transfer via the bridgeTokens method.
       await crossDomainFinalizer.checkForBridgeableL2TokensAndBridge();
-      assert.isTrue(lastSpyLogIncludes(spy, "L2ERC20 sent over optimism bridge"));
+      assert.isTrue(lastSpyLogIncludes(spy, "Canonical bridge initiated"));
       assert.isFalse(await bridgeDepositBox.methods.canBridge(l2Token.options.address).call());
     });
   });
@@ -415,8 +430,10 @@ describe("CrossDomainFinalizer.ts", function () {
       assert.isTrue(await bridgeDepositBox.methods.canBridge(l2Token.options.address).call());
       assert.isTrue(await bridgeDepositBox.methods.canBridge(l2Token2.options.address).call());
       await crossDomainFinalizer.checkForBridgeableL2TokensAndBridge();
-      assert.isTrue(spyLogIncludes(spy, -1, "L2ERC202 sent over optimism bridge"));
-      assert.isTrue(spyLogIncludes(spy, -3, "L2ERC20 sent over optimism bridge"));
+      assert.isTrue(spyLogIncludes(spy, -1, "Canonical bridge initiated"));
+      assert.isTrue(spyLogIncludes(spy, -1, "L2ERC202"));
+      assert.isTrue(spyLogIncludes(spy, -3, "Canonical bridge initiated"));
+      assert.isTrue(spyLogIncludes(spy, -3, "L2ERC20"));
       assert.isFalse(await bridgeDepositBox.methods.canBridge(l2Token.options.address).call());
       assert.isFalse(await bridgeDepositBox.methods.canBridge(l2Token2.options.address).call());
     });
@@ -461,7 +478,8 @@ describe("CrossDomainFinalizer.ts", function () {
       assert.isTrue(await bridgeDepositBox.methods.canBridge(l2Token2.options.address).call());
       await crossDomainFinalizer.checkForBridgeableL2TokensAndBridge();
       // Logs should indicate that L2ERC202 was bridged but not L2ERC20
-      assert.isTrue(spyLogIncludes(spy, -1, "L2ERC202 sent over optimism bridge"));
+      assert.isTrue(spyLogIncludes(spy, -1, "Canonical bridge initiated"));
+      assert.isTrue(spyLogIncludes(spy, -1, "L2ERC202"));
       assert.isTrue(spyLogIncludes(spy, -3, "L2 balance <= cross domain finalization threshold % of L1 pool reserves"));
       assert.isTrue(await bridgeDepositBox.methods.canBridge(l2Token.options.address).call());
       assert.isFalse(await bridgeDepositBox.methods.canBridge(l2Token2.options.address).call());
@@ -514,7 +532,8 @@ describe("CrossDomainFinalizer.ts", function () {
       await crossDomainFinalizer.checkForBridgeableL2TokensAndBridge();
       // Logs should indicate that L2ERC202 can be and was bridged, while L2ERC20 cannot be bridged so its threshold
       // is not even considered.
-      assert.isTrue(spyLogIncludes(spy, -1, "L2ERC202 sent over optimism bridge"));
+      assert.isTrue(spyLogIncludes(spy, -1, "Canonical bridge initiated"));
+      assert.isTrue(spyLogIncludes(spy, -1, "L2ERC202"));
       assert.isTrue(spyLogIncludes(spy, -3, "Checking bridgeable L2 tokens"));
       assert.isFalse(await bridgeDepositBox.methods.canBridge(l2Token.options.address).call());
       assert.isFalse(await bridgeDepositBox.methods.canBridge(l2Token2.options.address).call());
