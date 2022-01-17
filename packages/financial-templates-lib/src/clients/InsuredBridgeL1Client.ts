@@ -327,20 +327,17 @@ export class InsuredBridgeL1Client {
       // through this bridge pool. If any relays have a quote time that is before the bridge pool was whitelisted,
       // then it is by default invalid.
       // Note: Only update this deployment time if the bridge pool address is reset.
-      const existingBridgePoolAddress = this.bridgePools[l1Token]?.contract.options.address;
-      const earliestValidDepositQuoteTime = Number(
-        (await this.l1Web3.eth.getBlock(whitelistedTokenEvent.blockNumber)).timestamp
-      );
+      const earliestValidDepositQuoteTime =
+        whitelistedTokenEvent.returnValues.bridgePool === this.bridgePools[l1Token]?.contract.options.address
+          ? this.bridgePools[l1Token].earliestValidDepositQuoteTime
+          : Number((await this.l1Web3.eth.getBlock(whitelistedTokenEvent.blockNumber)).timestamp);
       this.bridgePools[l1Token] = {
         l2Token: l2Tokens, // Re-use existing L2 token array and update after resetting other state.
         contract: (new this.l1Web3.eth.Contract(
           getAbi("BridgePool"),
           whitelistedTokenEvent.returnValues.bridgePool
         ) as unknown) as BridgePoolWeb3,
-        earliestValidDepositQuoteTime:
-          whitelistedTokenEvent.returnValues.bridgePool === existingBridgePoolAddress
-            ? this.bridgePools[l1Token].earliestValidDepositQuoteTime
-            : earliestValidDepositQuoteTime,
+        earliestValidDepositQuoteTime,
         // We'll set the following params when fetching bridge pool state in parallel.
         currentTime: 0,
         relayNonce: 0,
