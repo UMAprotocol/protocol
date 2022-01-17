@@ -198,5 +198,9 @@
     "contractName": "BridgePoolProd",
     "deploymentName": "WBTC_BridgePool",
     "address": "0x02fbb64517E1c6ED69a6FAa3ABf37Db0482f1152"
+  },
+  {
+    "contractName": "Proposer",
+    "address": "0x226726Ac52e6e948D1B7eA9168F9Ff2E27DbcbB5"
   }
 ]
