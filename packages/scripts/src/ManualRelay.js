@@ -60,6 +60,7 @@ async function main() {
     process.env.BRIDGE_DEPOSIT_ADDRESS || defaultDepositBoxMapping[Number(argv.chainId)],
     Number(argv.chainId),
     latestL2BlockNumber - 99900,
+    // Note: magic number inspired by this comment: https://github.com/UMAprotocol/protocol/blob/8384185fdde23128d4f3a7b628fb6c6a11e30d51/packages/insured-bridge-relayer/src/RelayerConfig.ts#L109
     latestL2BlockNumber
   );
   await l2Client.update();
