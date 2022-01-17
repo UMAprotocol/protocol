@@ -89,7 +89,8 @@ function getAddressesMap(hre: HardhatRuntimeEnvironment) {
   ];
   const addresses: { [name: string]: { [chainId: number]: string } } = {};
   for (const file of files) {
-    const chainId = parseInt(file.split(".")[0]);
+    // Grabs the basename of the file without the extension.
+    const chainId = parseInt(path.basename(file).split(".")[0]);
     const deployments = JSON.parse(fs.readFileSync(file, "utf8"));
 
     // Loop over the deployments in the file and save each one.
