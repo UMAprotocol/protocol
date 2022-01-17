@@ -32,6 +32,12 @@ export default class Store<S> {
     // Once state is changed, an event is emitted, this is how we get changes out of the client and also allow for change detection.
     this.emit(this.state, prevState);
   }
+  // same as write
+  async writeAsync(cb: WriteCallback<S>): Promise<void> {
+    const prevState = this.state;
+    this.state = await produce(this.state, cb);
+    this.emit(this.state, prevState);
+  }
   read(): S {
     return this.state;
   }
