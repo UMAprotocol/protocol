@@ -39,7 +39,7 @@ export class StateMachine<P = undefined, M extends Memory = undefined> {
     try {
       assert(this.handlers[context.state], "No handler for state: " + context.state);
       const handler = this.handlers[context.state];
-      // handlers take in params and return a new state or nothin
+      // handlers take in params and return a new state or nothing
       const state = await handler(context.params, context.memory);
 
       // update context state
