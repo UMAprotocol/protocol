@@ -1,8 +1,6 @@
 import Web3 from "web3";
 const { toChecksumAddress } = Web3.utils;
 
-import { replaceAddressCase } from "@uma/common";
-
 // These are the block heights at which deposit box contracts were deployed on-chain. We use this in the fallback
 // search for a FundsDeposited L2 event to optimize how we search for the event. We don't need to search for events
 // earlier than the BridgeDepositBox's deployment block. We could try to automatically fetch this from on-chain
@@ -43,7 +41,6 @@ export class RelayerConfig {
   readonly relayerDiscount: number;
   readonly botModes: BotModes;
 
-  readonly l1DeployData: { [key: string]: { timestamp: number } };
   readonly l2DeployData: { [key: string]: { blockNumber: number } };
 
   constructor(env: ProcessEnv) {
@@ -63,7 +60,6 @@ export class RelayerConfig {
       L1_FINALIZER_ENABLED,
       L2_FINALIZER_ENABLED,
       WHITELISTED_CHAIN_IDS,
-      L1_DEPLOY_DATA,
       L2_DEPLOY_DATA,
     } = env;
 
@@ -108,7 +104,6 @@ export class RelayerConfig {
     this.errorRetries = ERROR_RETRIES ? Number(ERROR_RETRIES) : 3;
     this.errorRetriesTimeout = ERROR_RETRIES_TIMEOUT ? Number(ERROR_RETRIES_TIMEOUT) : 1;
 
-    this.l1DeployData = replaceAddressCase(L1_DEPLOY_DATA ? JSON.parse(L1_DEPLOY_DATA) : bridgePoolDeployData);
     this.l2DeployData = L2_DEPLOY_DATA ? JSON.parse(L2_DEPLOY_DATA) : bridgeDepositBoxDeployData;
 
     // CHAIN_IDS sets the active chain ID's for this bot. Note how this is distinct from WHITELISTED_CHAIN_IDS which
