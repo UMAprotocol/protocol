@@ -25,9 +25,9 @@
   "files": [
     "dist/**/*"
   ],
-  "main": "dist/contracts-node/generated/index.js",
-  "module": "dist/contracts-node/generated/index.js",
-  "types": "dist/contracts-node/generated/index.d.ts",
+  "main": "dist/packages/contracts-node/generated/index.js",
+  "module": "dist/packages/contracts-node/generated/index.js",
+  "types": "dist/packages/contracts-node/generated/index.d.ts",
   "sideEffects": false,
   "side-effects": false,
   "scripts": {
@@ -35,7 +35,7 @@
     "clean": "rm -rf dist generated typechain",
     "copy-across-types": "mkdir -p typechain/@across-protocol/contracts && rsync -a $(dirname $(node -p 'require.resolve(\"@across-protocol/contracts/package.json\")'))/contract-types/ typechain/@across-protocol/contracts",
     "generate-ts": "yarn clean && mkdir -p generated typechain/core && cp -R ../core/contract-types/* typechain/core/ && yarn copy-across-types && yarn hardhat generate-contracts-node --out ./generated/index.ts",
-    "build": "yarn generate-ts && yarn tsc && rsync -R ./typechain/**/**/*.d.ts ./dist/contracts-node",
+    "build": "yarn generate-ts && yarn tsc && rsync -R ./typechain/**/**/*.d.ts ./dist/packages/contracts-node",
     "prepublish": "yarn build"
   },
   "bugs": {
