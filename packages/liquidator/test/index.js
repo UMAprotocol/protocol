@@ -234,9 +234,9 @@ describe("index.js", function () {
         // Sixth log, which prints the decimal info, should include # of decimals for the price feed, collateral and synthetic.
         // The "7th" log is pretty arbitrary. This is simply the log message that is produced at the end of initialization
         // under `Liquidator initialized`. It does however contain the decimal info, which is what we really care about.
-        assert.isTrue(spyLogIncludes(spy, 7, '"collateralDecimals":8'));
-        assert.isTrue(spyLogIncludes(spy, 7, '"syntheticDecimals":18'));
-        assert.isTrue(spyLogIncludes(spy, 7, '"priceFeedDecimals":8'));
+        assert.isTrue(spyLogIncludes(spy, 8, '"collateralDecimals":8'));
+        assert.isTrue(spyLogIncludes(spy, 8, '"syntheticDecimals":18'));
+        assert.isTrue(spyLogIncludes(spy, 8, '"priceFeedDecimals":8'));
       });
 
       it("Financial Contract is expired or emergency shutdown, liquidator exits early without throwing", async function () {
@@ -448,9 +448,9 @@ describe("index.js", function () {
         }
 
         // To verify contract type detection is correct for a standard feed, check the fifth log to see it matches expected.
-        assert.isTrue(spyLogIncludes(spy, 5, '"collateralDecimals":18'));
-        assert.isTrue(spyLogIncludes(spy, 5, '"syntheticDecimals":18'));
-        assert.isTrue(spyLogIncludes(spy, 5, '"priceFeedDecimals":18'));
+        assert.isTrue(spyLogIncludes(spy, 6, '"collateralDecimals":18'));
+        assert.isTrue(spyLogIncludes(spy, 6, '"syntheticDecimals":18'));
+        assert.isTrue(spyLogIncludes(spy, 6, '"priceFeedDecimals":18'));
       });
       it("Correctly detects contract type and rejects unknown contract types", async function () {
         spy = sinon.spy();
@@ -474,8 +474,8 @@ describe("index.js", function () {
         }
 
         // To verify decimal detection is correct for a standard feed, check the fifth log to see it matches expected.
-        assert.isTrue(spyLogIncludes(spy, 5, `"contractVersion":"${contractVersion.contractVersion}"`));
-        assert.isTrue(spyLogIncludes(spy, 5, `"contractType":"${contractVersion.contractType}"`));
+        assert.isTrue(spyLogIncludes(spy, 6, `"contractVersion":"${contractVersion.contractVersion}"`));
+        assert.isTrue(spyLogIncludes(spy, 6, `"contractType":"${contractVersion.contractType}"`));
 
         // There should be no DSProxy deployed as we did not parametrize the bot to use one.
         assert.equal((await dsProxyFactory.getPastEvents("Created")).length, 0);
@@ -551,16 +551,16 @@ describe("index.js", function () {
         }
 
         // A log of a deployed DSProxy should be included.
-        assert.isTrue(spyLogIncludes(spy, 6, "No DSProxy found for EOA. Deploying new DSProxy"));
-        assert.isTrue(spyLogIncludes(spy, 8, "DSProxy deployed for your EOA"));
+        assert.isTrue(spyLogIncludes(spy, 7, "No DSProxy found for EOA. Deploying new DSProxy"));
+        assert.isTrue(spyLogIncludes(spy, 9, "DSProxy deployed for your EOA"));
         const createdEvents = await dsProxyFactory.getPastEvents("Created");
 
         assert.equal(createdEvents.length, 1);
         assert.equal(createdEvents[0].returnValues.owner, liquidator);
         // To verify contract type detection is correct for a standard feed, check the fifth log to see it matches expected.
-        assert.isTrue(spyLogIncludes(spy, 9, '"collateralDecimals":18'));
-        assert.isTrue(spyLogIncludes(spy, 9, '"syntheticDecimals":18'));
-        assert.isTrue(spyLogIncludes(spy, 9, '"priceFeedDecimals":18'));
+        assert.isTrue(spyLogIncludes(spy, 10, '"collateralDecimals":18'));
+        assert.isTrue(spyLogIncludes(spy, 10, '"syntheticDecimals":18'));
+        assert.isTrue(spyLogIncludes(spy, 10, '"priceFeedDecimals":18'));
       });
       it("Correctly detects contract type and rejects unknown contract types", async function () {
         spy = sinon.spy();
@@ -584,8 +584,8 @@ describe("index.js", function () {
         }
 
         // To verify decimal detection is correct for a standard feed, check the fifth log to see it matches expected.
-        assert.isTrue(spyLogIncludes(spy, 5, `"contractVersion":"${contractVersion.contractVersion}"`));
-        assert.isTrue(spyLogIncludes(spy, 5, `"contractType":"${contractVersion.contractType}"`));
+        assert.isTrue(spyLogIncludes(spy, 6, `"contractVersion":"${contractVersion.contractVersion}"`));
+        assert.isTrue(spyLogIncludes(spy, 6, `"contractType":"${contractVersion.contractType}"`));
 
         // There should be no DSProxy deployed as we did not parametrize the bot to use one.
         assert.equal((await dsProxyFactory.getPastEvents("Created")).length, 0);
@@ -717,8 +717,8 @@ describe("index.js", function () {
         });
 
         // 5th log should list the liquidatorConfig with the expected starting and ending block.
-        assert.equal(spy.getCall(5).lastArg.liquidatorConfig.startingBlock, startingBlock);
-        assert.equal(spy.getCall(5).lastArg.liquidatorConfig.endingBlock, endingBlock);
+        assert.equal(spy.getCall(6).lastArg.liquidatorConfig.startingBlock, startingBlock);
+        assert.equal(spy.getCall(6).lastArg.liquidatorConfig.endingBlock, endingBlock);
       });
     });
   });
