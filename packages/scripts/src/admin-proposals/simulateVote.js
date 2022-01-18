@@ -223,11 +223,14 @@ async function run() {
           continue;
         }
       }
+      console.groupEnd();
     }
+    console.groupEnd();
     console.groupEnd();
   }
 
   console.log("\n😇 Success!");
+  console.groupEnd();
 }
 
 function main() {
@@ -241,4 +244,9 @@ function main() {
       console.log(`Done in ${(timeElapsed / 1000).toFixed(2)}s`);
     });
 }
-main();
+
+if (require.main === module) {
+  main();
+}
+
+module.exports = { run };
