@@ -44,6 +44,7 @@ async function run() {
   validateArgvNetworks(argv);
   const { verify, fee } = argv;
   const { ethereum, polygon, governorHubNetworks, chainIds } = getNetworksToAdministrateFromArgv(argv);
+  validateNetworks(chainIds);
 
   // Parse comma-delimited CLI params into arrays
   const networksToAdministrate = [];
@@ -60,7 +61,6 @@ async function run() {
     networksToAdministrate.push(network.chainId);
     collateralsByNetId[network.chainId] = network.value.split(",");
   }
-  validateNetworks(chainIds);
   let web3Providers = { 1: getWeb3ByChainId(1) }; // netID => Web3
 
   // Construct all mainnet contract instances we'll need using the mainnet web3 provider.
