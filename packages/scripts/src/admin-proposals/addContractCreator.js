@@ -112,10 +112,6 @@ async function run() {
           .addMember(RegistryRolesEnum.CONTRACT_CREATOR, polygon)
           .encodeABI();
         console.log("- addMemberData", addMemberData);
-        let relayGovernanceData = contractsByNetId[137].l1Governor.methods
-          .relayGovernance(contractsByNetId[137].registry.options.address, addMemberData)
-          .encodeABI();
-        console.log("- relayGovernanceData", relayGovernanceData);
         adminProposalTransactions.push(
           await relayGovernanceRootTunnelMessage(
             contractsByNetId[137].registry.options.address,
@@ -150,7 +146,7 @@ async function run() {
               network.chainId
             )
           );
-          if (network.chainId === 137) {
+          if (network.chainId === 42161) {
             await fundArbitrumParentMessengerForOneTransaction(web3Providers[1], REQUIRED_SIGNER_ADDRESSES["deployer"]);
           }
         } else {

@@ -216,7 +216,7 @@ async function run() {
                 network.chainId
               )
             );
-            if (network.chainId === 137) {
+            if (network.chainId === 42161) {
               await fundArbitrumParentMessengerForOneTransaction(
                 web3Providers[1],
                 REQUIRED_SIGNER_ADDRESSES["deployer"]
@@ -240,7 +240,7 @@ async function run() {
                 network.chainId
               )
             );
-            if (network.chainId === 137) {
+            if (network.chainId === 42161) {
               await fundArbitrumParentMessengerForOneTransaction(
                 web3Providers[1],
                 REQUIRED_SIGNER_ADDRESSES["deployer"]

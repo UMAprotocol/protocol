@@ -12,6 +12,8 @@ const assert = require("assert");
 const Registry = getContract("Registry");
 const GovernorRootTunnel = getContract("GovernorRootTunnel");
 const GovernorHub = getContract("GovernorHub");
+const GovernorChildTunnel = getContract("GovernorChildTunnel");
+const GovernorSpoke = getContract("GovernorSpoke");
 const Arbitrum_ParentMessenger = getContract("Arbitrum_ParentMessenger");
 const Governor = getContract("Governor");
 const Finder = getContract("Finder");
@@ -99,6 +101,13 @@ const setupNetwork = async (netId) => {
         netId === 137
           ? new l1Web3.eth.Contract(GovernorRootTunnel.abi, await _getContractAddressByName("GovernorRootTunnel", 1))
           : new l1Web3.eth.Contract(GovernorHub.abi, await _getContractAddressByName("GovernorHub", 1)),
+      l2Governor:
+        netId === 137
+          ? new l2Web3.eth.Contract(
+              GovernorChildTunnel.abi,
+              await _getContractAddressByName("GovernorChildTunnel", netId)
+            )
+          : new l2Web3.eth.Contract(GovernorSpoke.abi, await _getContractAddressByName("GovernorSpoke", netId)),
       addressWhitelist: new l2Web3.eth.Contract(
         AddressWhitelist.abi,
         await _getContractAddressByName("AddressWhitelist", netId)
@@ -222,13 +231,13 @@ const verifyGovernanceHubMessage = async (targetAddress, message, governorHub, c
   );
 };
 
-const relayGovernanceRootTunnelMessage = async (targetAddress, message, governorHub) => {
-  const relayGovernanceData = governorHub.methods.relayGovernance(targetAddress, message).encodeABI();
+const relayGovernanceRootTunnelMessage = async (targetAddress, message, governorRootTunnel) => {
+  const relayGovernanceData = governorRootTunnel.methods.relayGovernance(targetAddress, message).encodeABI();
   console.log("- relayGovernanceData", relayGovernanceData);
-  return { to: governorHub.options.address, value: 0, data: relayGovernanceData };
+  return { to: governorRootTunnel.options.address, value: 0, data: relayGovernanceData };
 };
-const verifyGovernanceRootTunnelMessage = async (targetAddress, message, governorHub) => {
-  const relayedTransactions = await governorHub.getPastEvents("RelayedGovernanceRequest", {
+const verifyGovernanceRootTunnelMessage = async (targetAddress, message, governorRootTunnel) => {
+  const relayedTransactions = await governorRootTunnel.getPastEvents("RelayedGovernanceRequest", {
     filter: { to: targetAddress },
     fromBlock: 0,
   });
