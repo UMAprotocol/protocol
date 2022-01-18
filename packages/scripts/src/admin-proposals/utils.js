@@ -6,6 +6,7 @@ const { GasEstimator } = require("@uma/financial-templates-lib");
 const winston = require("winston");
 const Web3 = require("Web3");
 const { fromWei } = Web3.utils;
+const assert = require("assert");
 
 // Contract ABI's
 const Registry = getContract("Registry");
@@ -20,7 +21,66 @@ const AddressWhitelist = getContract("AddressWhitelist");
 const IdentifierWhitelist = getContract("IdentifierWhitelist");
 const Store = getContract("Store");
 
-const L2_ADMIN_NETWORKS = [137, 42161];
+const L2_ADMIN_NETWORKS = [137, 42161, 10, 288];
+
+const L2_ADMIN_NETWORK_NAMES = [
+  // address to add on Ethereum.
+  "ethereum",
+  // address to add on Polygon.
+  "polygon",
+  // address to add on arbitrum.
+  "arbitrum",
+  // address to add on optimism.
+  "optimism",
+  // address to add on boba.
+  "boba",
+];
+
+const validateArgvNetworks = (argv) => {
+  let networksIncluded = 0;
+  for (const network of L2_ADMIN_NETWORK_NAMES) {
+    if (Object.keys(argv).includes(network)) networksIncluded++;
+  }
+  if (networksIncluded === 0)
+    throw new Error("Must specify either --ethereum, --polygon, --arbitrum, --optimism, or --boba");
+};
+
+const getNetworksToAdministrateFromArgv = (argv) => {
+  const networksToAdministrate = {
+    ethereum: argv.ethereum,
+    polygon: argv.polygon,
+    governorHubNetworks: [],
+    chainIds: [],
+  };
+  for (const networkName of L2_ADMIN_NETWORK_NAMES) {
+    if (Object.keys(argv).includes(networkName) && argv[networkName] !== undefined) {
+      switch (networkName) {
+        case "polygon":
+          networksToAdministrate.chainIds.push(137);
+          break;
+        case "arbitrum":
+          networksToAdministrate.governorHubNetworks.push({
+            chainId: 42161,
+            name: "arbitrum",
+            value: argv["arbitrum"],
+          });
+          networksToAdministrate.chainIds.push(42161);
+          break;
+        case "boba":
+          networksToAdministrate.governorHubNetworks.push({ chainId: 288, name: "boba", value: argv["boba"] });
+          networksToAdministrate.chainIds.push(288);
+          break;
+        case "optimism":
+          networksToAdministrate.governorHubNetworks.push({ chainId: 10, name: "optimism", value: argv["optimism"] });
+          networksToAdministrate.chainIds.push(10);
+          break;
+        default:
+          break;
+      }
+    }
+  }
+  return networksToAdministrate;
+};
 
 const validateNetworks = (netIds) => {
   netIds.forEach((_id) => {
@@ -60,10 +120,6 @@ const setupMainnet = async (web3) => {
     .call();
   const oracle = new web3.eth.Contract(Voting.abi, oracleAddress);
   const votingInterface = new web3.eth.Contract(VotingInterface.abi, oracleAddress);
-  const arbitrumParentMessenger = new web3.eth.Contract(
-    Arbitrum_ParentMessenger.abi,
-    await _getContractAddressByName("Arbitrum_ParentMessenger", 1)
-  );
   const governorRootTunnel = new web3.eth.Contract(
     GovernorRootTunnel.abi,
     await _getContractAddressByName("GovernorRootTunnel", 1)
@@ -92,13 +148,11 @@ const setupMainnet = async (web3) => {
   console.log(`- Store @ ${store.options.address}`);
   console.log(`- GovernorHub @ ${governorHub.options.address}`);
   console.log(`- GovernorRootTunnel @ ${governorRootTunnel.options.address}`);
-  console.log(`- ArbitrumParentMessenger @ ${arbitrumParentMessenger.options.address}`);
   console.groupEnd();
   return {
     finder,
     oracle,
     votingInterface,
-    arbitrumParentMessenger,
     governorRootTunnel,
     governorHub,
     registry,
@@ -109,8 +163,12 @@ const setupMainnet = async (web3) => {
   };
 };
 
-const fundArbitrumParentMessengerForOneTransaction = async (arbitrumParentMessenger, web3Provider, from) => {
+const fundArbitrumParentMessengerForOneTransaction = async (web3Provider, from) => {
   // Sending a xchain transaction to Arbitrum will fail unless Arbitrum messenger has enough ETH to pay for message:
+  const arbitrumParentMessenger = new web3Provider.eth.Contract(
+    Arbitrum_ParentMessenger.abi,
+    await _getContractAddressByName("Arbitrum_ParentMessenger", 1)
+  );
   const l1CallValue = await arbitrumParentMessenger.methods.getL1CallValue().call();
   console.log(
     `Arbitrum xchain messages require that the Arbitrum_ParentMessenger has at least a ${l1CallValue.toString()} ETH balance.`
@@ -143,11 +201,37 @@ const setupGasEstimator = async () => {
   return gasEstimator;
 };
 
+// Returns transaction object to send to the GovernorHub on L1 in order to relay a message
+// to the targetAddress on the network specified by the networkId.
+const relayGovernanceHubMessage = async (targetAddress, message, governorHub, chainId) => {
+  const calls = [{ to: targetAddress, data: message }];
+  let relayGovernanceData = governorHub.methods.relayGovernance(chainId, calls).encodeABI();
+  console.log("- relayGovernanceData", relayGovernanceData);
+  return { to: governorHub.options.address, value: 0, data: relayGovernanceData };
+};
+const verifyGovernanceHubMessage = async (targetAddress, message, governorHub, chainId) => {
+  const relayedTransactions = await governorHub.getPastEvents("RelayedGovernanceRequest", {
+    filter: { chainId },
+    fromBlock: 0,
+  });
+  assert(
+    relayedTransactions.find(
+      (e) => e.returnValues.calls[0].to === targetAddress && e.returnValues.calls[0].data === message
+    ),
+    "Could not find RelayedGovernanceRequest matching expected relayed message"
+  );
+};
+
 module.exports = {
+  L2_ADMIN_NETWORK_NAMES,
   L2_ADMIN_NETWORKS,
+  validateArgvNetworks,
   validateNetworks,
+  getNetworksToAdministrateFromArgv,
   setupNetwork,
   setupMainnet,
   setupGasEstimator,
   fundArbitrumParentMessengerForOneTransaction,
+  relayGovernanceHubMessage,
+  verifyGovernanceHubMessage,
 };
