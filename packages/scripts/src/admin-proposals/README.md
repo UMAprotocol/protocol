@@ -13,6 +13,8 @@ Admin proposals can be relayed from Ethereum to another network like Polygon lik
 Valid networks that can be administrated this way are those that have governance channels set up to communicate from the network to L1. The following networks are currently supported:
 
 - Arbitrum, net ID 42161
+- Optimism, net ID 10
+- Boba, net ID 288
 - Polygon, net ID 137
 
 ## Full example: simulating submitting an Admin proposal to whitelist collateral on Ethereum and Polygon
