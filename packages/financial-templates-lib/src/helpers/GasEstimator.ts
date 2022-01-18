@@ -194,19 +194,11 @@ export class GasEstimator {
 
     if (!url) {
       // If no URL specified, use default.
-      if (MAPPING_BY_NETWORK[_networkId].defaultFastPriceGwei)
-        return {
-          gasPrice: MAPPING_BY_NETWORK[_networkId].defaultFastPriceGwei,
-        } as LegacyGasData;
-      else if (
-        MAPPING_BY_NETWORK[_networkId].defaultMaxFeePerGasGwei &&
-        MAPPING_BY_NETWORK[_networkId].defaultMaxPriorityFeePerGasGwei
-      )
-        return {
-          maxFeePerGas: this.defaultMaxFeePerGasGwei,
-          maxPriorityFeePerGas: this.defaultMaxPriorityFeePerGasGwei,
-        } as LondonGasData;
-      else throw new Error("Missing URL and missing default gas price value");
+      return {
+        gasPrice: this.defaultFastPriceGwei,
+        maxFeePerGas: this.defaultMaxFeePerGasGwei,
+        maxPriorityFeePerGas: this.defaultMaxPriorityFeePerGasGwei,
+      };
     }
 
     try {
