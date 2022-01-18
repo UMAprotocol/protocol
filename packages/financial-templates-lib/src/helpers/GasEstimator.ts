@@ -92,7 +92,16 @@ export class GasEstimator {
 
     // If the script fails or the API response fails default to these value. If the network ID provided is not in the
     // mapping, then use the default ID.
-    if (!Object.keys(MAPPING_BY_NETWORK).includes(networkId.toString())) this.networkId = DEFAULT_NETWORK_ID;
+    if (!Object.keys(MAPPING_BY_NETWORK).includes(networkId.toString())) {
+      logger.debug({
+        at: "GasEstimator",
+        message: "Unrecognized network ID, defaulting to default",
+        defaultNetworkId: DEFAULT_NETWORK_ID,
+        unrecognizedNetworkId: networkId.toString(),
+        defaultNetworkMapping: MAPPING_BY_NETWORK[DEFAULT_NETWORK_ID],
+      });
+      this.networkId = DEFAULT_NETWORK_ID;
+    }
 
     this.defaultFastPriceGwei = MAPPING_BY_NETWORK[this.networkId].defaultFastPriceGwei || 0;
     this.defaultMaxFeePerGasGwei = MAPPING_BY_NETWORK[this.networkId].defaultMaxFeePerGasGwei || 0;
