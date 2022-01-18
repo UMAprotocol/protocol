@@ -477,10 +477,10 @@ async function run() {
           console.log(
             `- GovernorRootTunnel correctly emitted events to registry ${
               contractsByNetId[network.chainId].registry.options.address
-            } preceded and followed by addMember and removeMember respectively`
+            } preceded and followed by addMember and removeMember respectively on network ${network.name}`
           );
         } else {
-          console.log("- Contract @ ", network.name, "is already registered on Arbitrum. Nothing to check.");
+          console.log("- Contract @ ", network.value, `is already registered on ${network.name}. Nothing to check.`);
         }
       }
     }

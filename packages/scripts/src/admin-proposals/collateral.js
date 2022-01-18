@@ -319,7 +319,7 @@ async function run() {
             addToWhitelistData,
             contractsByNetId[137].l1Governor
           );
-          console.log(`- GovernorRootTunnel correctly emitted events to whitelist collateral ${polygon[i]}`);
+          console.log(`- GovernorRootTunnel correctly emitted events to whitelist collateral ${collateral}`);
         } else {
           console.log("- Polygon collateral is on the whitelist. Nothing to check.");
         }
@@ -366,7 +366,7 @@ async function run() {
               } containing addToWhitelistData data`
             );
           } else {
-            console.log("- collateral is on the whitelist. Nothing to check.");
+            console.log(`- Collateral ${collateral} is on the whitelist for ${network.name}. Nothing to check.`);
           }
         }
       }

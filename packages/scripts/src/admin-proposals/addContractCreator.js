@@ -230,7 +230,11 @@ async function run() {
             } containing addMember data`
           );
         } else {
-          console.log("- Contract @ ", network.value, "is already a contract creator. Nothing to check.");
+          console.log(
+            "- Contract @ ",
+            network.value,
+            `is already a contract creator on ${network.name}. Nothing to check.`
+          );
         }
       }
     }
