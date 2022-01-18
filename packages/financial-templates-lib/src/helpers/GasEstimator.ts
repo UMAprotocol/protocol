@@ -54,7 +54,7 @@ export const MAPPING_BY_NETWORK: GasEstimatorMapping = {
     type: NetworkType.London,
   },
   137: { url: "https://gasstation-mainnet.matic.network", defaultFastPriceGwei: 10, type: NetworkType.Legacy },
-  288: { defaultFastPriceGwei: 10, type: NetworkType.Legacy },
+  288: { defaultFastPriceGwei: 1, type: NetworkType.Legacy },
   80001: { url: "https://gasstation-mumbai.matic.today", defaultFastPriceGwei: 20, type: NetworkType.Legacy },
 };
 
