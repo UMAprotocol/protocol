@@ -13,11 +13,11 @@ type LegacyGasData = { gasPrice: number };
 
 interface GasEstimatorMapping {
   [networkId: number]: {
-    url: string;
+    type: NetworkType;
+    url?: string;
     defaultFastPriceGwei?: number;
     defaultMaxFeePerGasGwei?: number;
     defaultMaxPriorityFeePerGasGwei?: number;
-    type: NetworkType;
     backupUrl?: string;
   };
 }
@@ -54,6 +54,7 @@ export const MAPPING_BY_NETWORK: GasEstimatorMapping = {
     type: NetworkType.London,
   },
   137: { url: "https://gasstation-mainnet.matic.network", defaultFastPriceGwei: 10, type: NetworkType.Legacy },
+  288: { defaultFastPriceGwei: 10, type: NetworkType.Legacy },
   80001: { url: "https://gasstation-mumbai.matic.today", defaultFastPriceGwei: 20, type: NetworkType.Legacy },
 };
 
@@ -182,7 +183,22 @@ export class GasEstimator {
     const url = MAPPING_BY_NETWORK[_networkId].url;
     const backupUrl = MAPPING_BY_NETWORK[_networkId].backupUrl;
 
-    if (!url) throw new Error(`Missing URL for network ID ${_networkId}`);
+    if (!url) {
+      // If no URL specified, use default.
+      if (MAPPING_BY_NETWORK[_networkId].defaultFastPriceGwei)
+        return {
+          gasPrice: MAPPING_BY_NETWORK[_networkId].defaultFastPriceGwei,
+        } as LegacyGasData;
+      else if (
+        MAPPING_BY_NETWORK[_networkId].defaultMaxFeePerGasGwei &&
+        MAPPING_BY_NETWORK[_networkId].defaultMaxPriorityFeePerGasGwei
+      )
+        return {
+          maxFeePerGas: this.defaultMaxFeePerGasGwei,
+          maxPriorityFeePerGas: this.defaultMaxPriorityFeePerGasGwei,
+        } as LondonGasData;
+      else throw new Error("Missing URL and missing default gas price value");
+    }
 
     try {
       // Primary URL expected response structure for London.
