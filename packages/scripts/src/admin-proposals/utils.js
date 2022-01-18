@@ -222,6 +222,22 @@ const verifyGovernanceHubMessage = async (targetAddress, message, governorHub, c
   );
 };
 
+const relayGovernanceRootTunnelMessage = async (targetAddress, message, governorHub) => {
+  const relayGovernanceData = governorHub.methods.relayGovernance(targetAddress, message).encodeABI();
+  console.log("- relayGovernanceData", relayGovernanceData);
+  return { to: governorHub.options.address, value: 0, data: relayGovernanceData };
+};
+const verifyGovernanceRootTunnelMessage = async (targetAddress, message, governorHub) => {
+  const relayedTransactions = await governorHub.getPastEvents("RelayedGovernanceRequest", {
+    filter: { to: targetAddress },
+    fromBlock: 0,
+  });
+  assert(
+    relayedTransactions.find((e) => e.returnValues.data === message),
+    "Could not find RelayedGovernanceRequest matching expected relayed transaction"
+  );
+};
+
 module.exports = {
   L2_ADMIN_NETWORK_NAMES,
   L2_ADMIN_NETWORKS,
@@ -234,4 +250,6 @@ module.exports = {
   fundArbitrumParentMessengerForOneTransaction,
   relayGovernanceHubMessage,
   verifyGovernanceHubMessage,
+  relayGovernanceRootTunnelMessage,
+  verifyGovernanceRootTunnelMessage,
 };

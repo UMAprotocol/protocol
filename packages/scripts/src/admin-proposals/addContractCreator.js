@@ -18,6 +18,8 @@ const {
   setupGasEstimator,
   relayGovernanceHubMessage,
   verifyGovernanceHubMessage,
+  relayGovernanceRootTunnelMessage,
+  verifyGovernanceRootTunnelMessage,
   L2_ADMIN_NETWORK_NAMES,
   validateArgvNetworks,
   getNetworksToAdministrateFromArgv,
@@ -114,11 +116,13 @@ async function run() {
           .relayGovernance(contractsByNetId[137].registry.options.address, addMemberData)
           .encodeABI();
         console.log("- relayGovernanceData", relayGovernanceData);
-        adminProposalTransactions.push({
-          to: contractsByNetId[137].l1Governor.options.address,
-          value: 0,
-          data: relayGovernanceData,
-        });
+        adminProposalTransactions.push(
+          await relayGovernanceRootTunnelMessage(
+            contractsByNetId[137].registry.options.address,
+            addMemberData,
+            contractsByNetId[137].l1Governor
+          )
+        );
       } else {
         console.log("- Contract @ ", polygon, "is already a contract creator. Nothing to do.");
       }
@@ -195,13 +199,10 @@ async function run() {
         const addMemberData = contractsByNetId[137].registry.methods
           .addMember(RegistryRolesEnum.CONTRACT_CREATOR, polygon)
           .encodeABI();
-        const relayedRegistryTransactions = await contractsByNetId[137].l1Governor.getPastEvents(
-          "RelayedGovernanceRequest",
-          { filter: { to: contractsByNetId[137].registry.options.address }, fromBlock: 0 }
-        );
-        assert(
-          relayedRegistryTransactions.find((e) => e.returnValues.data === addMemberData),
-          "Could not find RelayedGovernanceRequest matching expected relayed addMemberData transaction"
+        await verifyGovernanceRootTunnelMessage(
+          contractsByNetId[137].registry.options.address,
+          addMemberData,
+          contractsByNetId[137].l1Governor
         );
         console.log(
           `- GovernorRootTunnel correctly emitted events to registry ${contractsByNetId[137].registry.options.address} containing addMember data`
