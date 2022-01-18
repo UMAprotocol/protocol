@@ -57,7 +57,7 @@ async function run() {
   }
   for (let network of governorHubNetworks) {
     networksToAdministrate.push(network.chainId);
-    identifiersByNetId[network.chainId] = network.value.split(",");
+    identifiersByNetId[network.chainId] = network.value.split(",").map((id) => (id ? utf8ToHex(id) : null));
     if (!count) count = identifiersByNetId[network.chainId].length;
   }
   let web3Providers = { 1: getWeb3ByChainId(1) }; // netID => Web3
@@ -176,7 +176,7 @@ async function run() {
                 network.chainId
               )
             );
-            if (network.chainId === 137) {
+            if (network.chainId === 42161) {
               await fundArbitrumParentMessengerForOneTransaction(
                 web3Providers[1],
                 REQUIRED_SIGNER_ADDRESSES["deployer"]
@@ -235,7 +235,7 @@ async function run() {
             contractsByNetId[137].l1Governor
           );
           console.log(
-            `- GovernorRootTunnel correctly emitted events to whitelist identifier ${identifier} (UTF8: ${hexToUtf8(
+            `- polygon GovernorRootTunnel correctly emitted events to whitelist identifier ${identifier} (UTF8: ${hexToUtf8(
               identifier
             )})`
           );
@@ -257,20 +257,22 @@ async function run() {
               .addSupportedIdentifier(identifier)
               .encodeABI();
             await verifyGovernanceHubMessage(
-              contractsByNetId[network.chainId].store.options.address,
+              contractsByNetId[network.chainId].identifierWhitelist.options.address,
               addSupportedIdentifierData,
               contractsByNetId[network.chainId].l1Governor
             );
             console.log(
-              `- GovernorRootTunnel correctly emitted events to whitelist identifier ${identifier} (UTF8: ${hexToUtf8(
+              `- ${
+                network.name
+              } GovernorHub on correctly emitted events to whitelist identifier ${identifier} (UTF8: ${hexToUtf8(
                 identifier
               )})`
             );
           } else {
             console.log(
-              `- Identifier ${identifier} (UTF8: ${hexToUtf8(
-                identifier
-              )}) is whitelisted on arbitrum. Nothing to check.`
+              `- Identifier ${identifier} (UTF8: ${hexToUtf8(identifier)}) is whitelisted on ${
+                network.name
+              }. Nothing to check.`
             );
           }
         }
