@@ -17,6 +17,11 @@ const {
   setupMainnet,
   fundArbitrumParentMessengerForOneTransaction,
   setupGasEstimator,
+  relayGovernanceHubMessage,
+  verifyGovernanceHubMessage,
+  L2_ADMIN_NETWORK_NAMES,
+  validateArgvNetworks,
+  getNetworksToAdministrateFromArgv,
 } = require("./utils");
 const { _getDecimals } = require("../utils");
 const { REQUIRED_SIGNER_ADDRESSES } = require("../utils/constants");
@@ -24,12 +29,7 @@ const argv = require("minimist")(process.argv.slice(), {
   string: [
     // comma-delimited list of final fees to set for whitelisted collateral, set for all networks.
     "fee",
-    // comma-delimited list of collateral addresses to whitelist.
-    "ethereum",
-    // comma-delimited list of Polygon collateral addresses to whitelist.
-    "polygon",
-    // comma-delimited list of Arbitrum collateral addresses to whitelist.
-    "arbitrum",
+    ...L2_ADMIN_NETWORK_NAMES,
   ],
   boolean: [
     // set True if verifying, False for proposing.
@@ -39,8 +39,9 @@ const argv = require("minimist")(process.argv.slice(), {
 });
 
 async function run() {
-  const { ethereum, fee, polygon, arbitrum, verify } = argv;
-  if (!(polygon || ethereum || arbitrum)) throw new Error("Must specify either --ethereum, --polygon or --arbitrum");
+  validateArgvNetworks(argv);
+  const { verify, fee } = argv;
+  const { ethereum, polygon, governorHubNetworks, chainIds } = getNetworksToAdministrateFromArgv(argv);
 
   // Parse comma-delimited CLI params into arrays
   const networksToAdministrate = [];
@@ -53,11 +54,11 @@ async function run() {
     networksToAdministrate.push(137);
     collateralsByNetId[137] = polygon.split(",");
   }
-  if (arbitrum) {
-    networksToAdministrate.push(42161);
-    collateralsByNetId[42161] = arbitrum.split(",");
+  for (let network of governorHubNetworks) {
+    networksToAdministrate.push(network.chainId);
+    collateralsByNetId[network.chainId] = network.value.split(",");
   }
-  validateNetworks(networksToAdministrate);
+  validateNetworks(chainIds);
   let web3Providers = { 1: getWeb3ByChainId(1) }; // netID => Web3
 
   // Construct all mainnet contract instances we'll need using the mainnet web3 provider.
@@ -65,27 +66,25 @@ async function run() {
 
   // Store contract instances for specified L2 networks
   let contractsByNetId = {}; // netId => contracts
-  for (let netId of networksToAdministrate) {
-    const networkData = await setupNetwork(netId);
-    web3Providers[netId] = networkData.web3;
-    contractsByNetId[netId] = networkData.contracts;
-    console.group(`\nℹ️  Relayer infrastructure for network ${netId}:`);
-    console.log(`- AddressWhitelist @ ${contractsByNetId[netId].addressWhitelist.options.address}`);
-    console.log(`- Store @ ${contractsByNetId[netId].store.options.address}`);
+  for (let chainId of chainIds) {
+    const networkData = await setupNetwork(chainId);
+    web3Providers[chainId] = networkData.web3;
+    contractsByNetId[chainId] = networkData.contracts;
+    console.group(`\nℹ️  Relayer infrastructure for network ${chainId}:`);
+    console.log(`- AddressWhitelist @ ${contractsByNetId[chainId].addressWhitelist.options.address}`);
+    console.log(`- Store @ ${contractsByNetId[chainId].store.options.address}`);
     console.log(
-      `- ${netId === 137 ? "GovernorRootTunnel" : "GovernorHub"} @ ${
-        contractsByNetId[netId].l1Governor.options.address
+      `- ${chainId === 137 ? "GovernorRootTunnel" : "GovernorHub"} @ ${
+        contractsByNetId[chainId].l1Governor.options.address
       }`
     );
     console.groupEnd();
   }
 
-  if (
-    (collateralsByNetId[1] && collateralsByNetId[1].length !== fees.length) ||
-    (collateralsByNetId[137] && collateralsByNetId[137].length !== fees.length) ||
-    (collateralsByNetId[42161] && collateralsByNetId[42161].length !== fees.length)
-  ) {
-    throw new Error("all comma-delimited input strings should result in equal length arrays");
+  for (let chainId of Object.keys(collateralsByNetId)) {
+    if (collateralsByNetId[chainId] && collateralsByNetId[chainId].length !== fees.length) {
+      throw new Error("all comma-delimited input strings should result in equal length arrays");
+    }
   }
 
   const gasEstimator = await setupGasEstimator();
@@ -102,7 +101,7 @@ async function run() {
       "    - https://github.com/UMAprotocol/protocol/blob/349401a869e89f9b5583d34c1f282407dca021ac/packages/core/test/polygon/e2e.js#L221"
     );
     console.log(
-      "- 🔴 = Transactions to be submitted to the Arbitrum contracts are relayed via the GovernorHub on Ethereum. Look at this test for an example:"
+      "- 🔴 = Transactions to be submitted to networks with GovernorSpokes are relayed via the GovernorHub on Ethereum. Look at this test for an example:"
     );
     console.log(
       "    - https://github.com/UMAprotocol/protocol/blob/0d3cf208eaf390198400f6d69193885f45c1e90c/packages/core/test/cross-chain-oracle/chain-adapters/Arbitrum_ParentMessenger.js#L253"
@@ -110,7 +109,7 @@ async function run() {
     console.log("- 🟢 = Transactions to be submitted directly to Ethereum contracts.");
     console.groupEnd();
     for (let i = 0; i < fees.length; i++) {
-      if (collateralsByNetId[1] && collateralsByNetId[1][i]) {
+      if (ethereum && collateralsByNetId[1][i]) {
         const collateralDecimals = await _getDecimals(web3Providers[1], collateralsByNetId[1][i]);
         const convertedFeeAmount = parseUnits(fees[i], collateralDecimals).toString();
         console.group(`\n🟢 Updating final fee for collateral @ ${collateralsByNetId[1][i]} to: ${convertedFeeAmount}`);
@@ -147,9 +146,7 @@ async function run() {
           console.log("- Collateral is on the whitelist. Nothing to do.");
         }
         console.groupEnd();
-      }
-
-      if (collateralsByNetId[137] && collateralsByNetId[137][i]) {
+      } else if (polygon && collateralsByNetId[137][i]) {
         const collateralDecimals = await _getDecimals(web3Providers[137], collateralsByNetId[137][i]);
         const convertedFeeAmount = parseUnits(fees[i], collateralDecimals).toString();
         console.group(
@@ -198,65 +195,74 @@ async function run() {
         console.groupEnd();
       }
 
-      if (collateralsByNetId[42161] && collateralsByNetId[42161][i]) {
-        const collateralDecimals = await _getDecimals(web3Providers[42161], collateralsByNetId[42161][i]);
-        const convertedFeeAmount = parseUnits(fees[i], collateralDecimals).toString();
-        console.group(
-          `\n🔴 (Arbitrum) Updating Final Fee for collateral @ ${collateralsByNetId[42161][i]} to: ${convertedFeeAmount}`
-        );
-
-        const currentFinalFee = await contractsByNetId[42161].store.methods.computeFinalFee(polygon[i]).call();
-        if (currentFinalFee.toString() !== convertedFeeAmount) {
-          const setFinalFeeData = contractsByNetId[42161].store.methods
-            .setFinalFee(collateralsByNetId[42161][i], { rawValue: convertedFeeAmount })
-            .encodeABI();
-          console.log("- setFinalFeeData", setFinalFeeData);
-          const calls = [{ to: contractsByNetId[42161].store.options.address, data: setFinalFeeData }];
-          const relayGovernanceData = contractsByNetId[42161].l1Governor.methods
-            .relayGovernance(42161, calls)
-            .encodeABI();
-          console.log("- relayGovernanceData", relayGovernanceData);
-          adminProposalTransactions.push({
-            to: contractsByNetId[42161].l1Governor.options.address,
-            value: 0,
-            data: relayGovernanceData,
-          });
-          await fundArbitrumParentMessengerForOneTransaction(
-            mainnetContracts.arbitrumParentMessenger,
-            web3Providers[1],
-            REQUIRED_SIGNER_ADDRESSES["deployer"]
+      for (const network of governorHubNetworks) {
+        if (collateralsByNetId[network.chainId][i]) {
+          const collateralDecimals = await _getDecimals(
+            web3Providers[network.chainId],
+            collateralsByNetId[network.chainId][i]
           );
-        } else {
-          console.log(`- Final fee for is already equal to ${convertedFeeAmount}. Nothing to do.`);
-        }
-
-        // The proposal will then add the currency to the whitelist if it isn't already there.
-        if (
-          !(await contractsByNetId[42161].addressWhitelist.methods.isOnWhitelist(collateralsByNetId[42161][i]).call())
-        ) {
-          const addToWhitelistData = contractsByNetId[42161].addressWhitelist.methods
-            .addToWhitelist(collateralsByNetId[42161][i])
-            .encodeABI();
-          console.log("- addToWhitelistData", addToWhitelistData);
-          const calls = [{ to: contractsByNetId[42161].store.options.address, data: addToWhitelistData }];
-          const relayGovernanceData = contractsByNetId[42161].l1Governor.methods
-            .relayGovernance(42161, calls)
-            .encodeABI();
-          console.log("- relayGovernanceData", relayGovernanceData);
-          adminProposalTransactions.push({
-            to: contractsByNetId[42161].l1Governor.options.address,
-            value: 0,
-            data: relayGovernanceData,
-          });
-          await fundArbitrumParentMessengerForOneTransaction(
-            mainnetContracts.arbitrumParentMessenger,
-            web3Providers[1],
-            REQUIRED_SIGNER_ADDRESSES["deployer"]
+          const convertedFeeAmount = parseUnits(fees[i], collateralDecimals).toString();
+          console.group(
+            `\n🔴 (${network.name}) Updating Final Fee for collateral @ ${
+              collateralsByNetId[network.chainId][i]
+            } to: ${convertedFeeAmount}`
           );
-        } else {
-          console.log("- Collateral is on the whitelist. Nothing to do.");
+
+          const currentFinalFee = await contractsByNetId[network.chainId].store.methods
+            .computeFinalFee(collateralsByNetId[network.chainId])
+            .call();
+          if (currentFinalFee.toString() !== convertedFeeAmount) {
+            const setFinalFeeData = contractsByNetId[network.chainId].store.methods
+              .setFinalFee(collateralsByNetId[network.chainId][i], { rawValue: convertedFeeAmount })
+              .encodeABI();
+            console.log("- setFinalFeeData", setFinalFeeData);
+            adminProposalTransactions.push(
+              await relayGovernanceHubMessage(
+                contractsByNetId[network.chainId].store.options.address,
+                setFinalFeeData,
+                contractsByNetId[network.chainId].l1Governor,
+                network.chainId
+              )
+            );
+            if (network.chainId === 137) {
+              await fundArbitrumParentMessengerForOneTransaction(
+                web3Providers[1],
+                REQUIRED_SIGNER_ADDRESSES["deployer"]
+              );
+            }
+          } else {
+            console.log(`- Final fee for is already equal to ${convertedFeeAmount}. Nothing to do.`);
+          }
+
+          // The proposal will then add the currency to the whitelist if it isn't already there.
+          if (
+            !(await contractsByNetId[network.chainId].addressWhitelist.methods
+              .isOnWhitelist(collateralsByNetId[network.chainId][i])
+              .call())
+          ) {
+            const addToWhitelistData = contractsByNetId[network.chainId].addressWhitelist.methods
+              .addToWhitelist(collateralsByNetId[network.chainId][i])
+              .encodeABI();
+            console.log("- addToWhitelistData", addToWhitelistData);
+            adminProposalTransactions.push(
+              await relayGovernanceHubMessage(
+                contractsByNetId[network.chainId].addressWhitelist.options.address,
+                addToWhitelistData,
+                contractsByNetId[network.chainId].l1Governor,
+                network.chainId
+              )
+            );
+            if (network.chainId === 137) {
+              await fundArbitrumParentMessengerForOneTransaction(
+                web3Providers[1],
+                REQUIRED_SIGNER_ADDRESSES["deployer"]
+              );
+            }
+          } else {
+            console.log("- Collateral is on the whitelist. Nothing to do.");
+          }
+          console.groupEnd();
         }
-        console.groupEnd();
       }
     }
 
@@ -284,7 +290,7 @@ async function run() {
   } else {
     console.group("\n🔎 Verifying execution of Admin Proposal");
     for (let i = 0; i < fees.length; i++) {
-      if (collateralsByNetId[1] && collateralsByNetId[1][i]) {
+      if (ethereum && collateralsByNetId[1][i]) {
         const collateralDecimals = await _getDecimals(web3Providers[1], collateralsByNetId[1][i]);
         const convertedFeeAmount = parseUnits(fees[i], collateralDecimals).toString();
         const currentFinalFee = await mainnetContracts.store.methods.computeFinalFee(collateralsByNetId[1][i]).call();
@@ -295,7 +301,7 @@ async function run() {
         );
         console.log(`- Collateral @ ${collateralsByNetId[1][i]} has correct final fee and is whitelisted on Ethereum`);
       }
-      if (collateralsByNetId[137] && collateralsByNetId[137][i]) {
+      if (polygon && collateralsByNetId[137][i]) {
         const collateralDecimals = await _getDecimals(web3Providers[137], collateralsByNetId[137][i]);
         const convertedFeeAmount = parseUnits(fees[i], collateralDecimals).toString();
         const currentFinalFee = await contractsByNetId[137].store.methods
@@ -336,55 +342,56 @@ async function run() {
           console.log("- Polygon collateral is on the whitelist. Nothing to check.");
         }
       }
-      if (collateralsByNetId[42161] && collateralsByNetId[42161][i]) {
-        const collateralDecimals = await _getDecimals(web3Providers[42161], collateralsByNetId[42161][i]);
-        const convertedFeeAmount = parseUnits(fees[i], collateralDecimals).toString();
-        const currentFinalFee = await contractsByNetId[42161].store.methods.computeFinalFee(polygon[i]).call();
-        if (currentFinalFee.toString() !== convertedFeeAmount) {
-          const setFinalFeeData = contractsByNetId[42161].store.methods
-            .setFinalFee(collateralsByNetId[42161][i], { rawValue: convertedFeeAmount })
-            .encodeABI();
-          const calls = [{ to: contractsByNetId[42161].store.options.address, data: setFinalFeeData }];
-          const relayedStoreTransactions = await contractsByNetId[42161].l1Governor.getPastEvents(
-            "RelayedGovernanceRequest",
-            {
-              filter: { chainId: "42161", messenger: mainnetContracts.arbitrumParentMessenger.options.address },
-              fromBlock: 0,
-            }
+      for (const network of governorHubNetworks) {
+        if (collateralsByNetId[network.chainId][i]) {
+          const collateralDecimals = await _getDecimals(
+            web3Providers[network.chainId],
+            collateralsByNetId[network.chainId][i]
           );
-
-          assert(
-            relayedStoreTransactions.find((e) => e.returnValues.calls === calls),
-            "Could not find RelayedGovernanceRequest matching expected relayed setFinalFee transaction"
-          );
-          console.log(
-            `- GovernorRootTunnel correctly emitted events to set final fee for collateral @ ${collateralsByNetId[42161][i]} with final fee set to ${convertedFeeAmount}`
-          );
-        } else {
-          console.log(`- Final fee for is already equal to ${convertedFeeAmount}. Nothing to check.`);
-        }
-        if (
-          !(await contractsByNetId[42161].addressWhitelist.methods.isOnWhitelist(collateralsByNetId[42161][i]).call())
-        ) {
-          const addToWhitelistData = contractsByNetId[42161].addressWhitelist.methods
-            .addToWhitelist(collateralsByNetId[42161][i])
-            .encodeABI();
-          const calls = [{ to: contractsByNetId[42161].store.options.address, data: addToWhitelistData }];
-          const relayedWhitelistTransactions = await contractsByNetId[42161].l1Governor.getPastEvents(
-            "RelayedGovernanceRequest",
-            {
-              filter: { chainId: "42161", messenger: mainnetContracts.arbitrumParentMessenger.options.address },
-              fromBlock: 0,
-            }
-          );
-
-          assert(
-            relayedWhitelistTransactions.find((e) => e.returnValues.calls === calls),
-            "Could not find RelayedGovernanceRequest matching expected relayed addToWhitelist transaction"
-          );
-          console.log(`- GovernorRootTunnel correctly emitted events to whitelist collateral ${arbitrum[i]}`);
-        } else {
-          console.log("- Arbitrum collateral is on the whitelist. Nothing to check.");
+          const convertedFeeAmount = parseUnits(fees[i], collateralDecimals).toString();
+          const currentFinalFee = await contractsByNetId[network.chainId].store.methods
+            .computeFinalFee(polygon[i])
+            .call();
+          if (currentFinalFee.toString() !== convertedFeeAmount) {
+            const setFinalFeeData = contractsByNetId[network.chainId].store.methods
+              .setFinalFee(collateralsByNetId[network.chainId][i], { rawValue: convertedFeeAmount })
+              .encodeABI();
+            await verifyGovernanceHubMessage(
+              contractsByNetId[network.chainId].store.options.address,
+              setFinalFeeData,
+              contractsByNetId[network.chainId].l1Governor,
+              network.chainId
+            );
+            console.log(
+              `- GovernorHub for ${network.name} correctly emitted events to store ${
+                contractsByNetId[network.chainId].store.options.address
+              } containing setFinalFeeData data`
+            );
+          } else {
+            console.log(`- Final fee for is already equal to ${convertedFeeAmount}. Nothing to check.`);
+          }
+          if (
+            !(await contractsByNetId[network.chaindId].addressWhitelist.methods
+              .isOnWhitelist(collateralsByNetId[network.chaindId][i])
+              .call())
+          ) {
+            const addToWhitelistData = contractsByNetId[network.chaindId].addressWhitelist.methods
+              .addToWhitelist(collateralsByNetId[network.chaindId][i])
+              .encodeABI();
+            await verifyGovernanceHubMessage(
+              contractsByNetId[network.chainId].addressWhitelist.options.address,
+              addToWhitelistData,
+              contractsByNetId[network.chainId].l1Governor,
+              network.chainId
+            );
+            console.log(
+              `- GovernorHub for ${network.name} correctly emitted events to address whitelist ${
+                contractsByNetId[network.chainId].addressWhitelist.options.address
+              } containing addToWhitelistData data`
+            );
+          } else {
+            console.log("- collateral is on the whitelist. Nothing to check.");
+          }
         }
       }
     }

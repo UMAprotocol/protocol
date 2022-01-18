@@ -146,7 +146,9 @@ async function run() {
               network.chainId
             )
           );
-          await fundArbitrumParentMessengerForOneTransaction(web3Providers[1], REQUIRED_SIGNER_ADDRESSES["deployer"]);
+          if (network.chainId === 137) {
+            await fundArbitrumParentMessengerForOneTransaction(web3Providers[1], REQUIRED_SIGNER_ADDRESSES["deployer"]);
+          }
         } else {
           console.log("- Contract @ ", network.value, "is already a contract creator. Nothing to do.");
         }
