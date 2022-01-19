@@ -3,7 +3,7 @@
   "version": "0.1.18",
   "description": "UMA smart contracts and unit tests",
   "devDependencies": {
-    "@across-protocol/contracts": "^0.1.2",
+    "@across-protocol/contracts": "^0.1.4",
     "@ethersproject/abi": "^5.4.0",
     "@ethersproject/abstract-provider": "^5.4.0",
     "@ethersproject/contracts": "^5.4.0",

@@ -1,9 +1,5 @@
 [
   {
-    "contractName": "OVM_OETH_BridgeDepositBox",
-    "address": "0xCD43CEa89DF8fE39031C03c24BC24480e942470B"
-  },
-  {
     "contractName": "Finder",
     "address": "0xad8fD1f418FB860A383c9D4647880af7f043Ef39"
   },

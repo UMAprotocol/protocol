@@ -2,10 +2,10 @@
 # yarn lockfile v1
 
 
-"@across-protocol/contracts@^0.1.2":
-  version "0.1.2"
-  resolved "https://registry.yarnpkg.com/@across-protocol/contracts/-/contracts-0.1.2.tgz#8c5b424956344ba91134f5fb1ba55d57fde114cb"
-  integrity sha512-5Ep2Tm8tXWafx+DBVZr0NKLCj0vEm7sqCfI1ZPmldqE8STJud/l8c2rRgg+hFfuQWxhYMhpk3ygv3gBJ8VRISA==
+"@across-protocol/contracts@^0.1.4":
+  version "0.1.4"
+  resolved "https://registry.yarnpkg.com/@across-protocol/contracts/-/contracts-0.1.4.tgz#64b3d91e639d2bb120ea94ddef3d160967047fa5"
+  integrity sha512-y9FVRSFdPgEdGWBcf8rUmmzdYhzGdy0752HwpaAFtMJ1pn+HFgNaI0EZc/UudMKIPOkk+/BxPIHYPy7tKad5/A==
   dependencies:
     "@eth-optimism/contracts" "^0.5.5"
     "@openzeppelin/contracts" "4.1.0"

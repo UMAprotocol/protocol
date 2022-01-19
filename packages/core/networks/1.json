@@ -133,20 +133,8 @@
     "address": "0x0cd4998978F6cd06f8DbD227A802018A3c227ACC"
   },
   {
-    "contractName": "Optimism_Wrapper",
-    "address": "0xcffb47dc5bd4f6dc475e98ff92647a583389ee08"
-  },
-  {
-    "contractName": "BridgeAdmin",
-    "address": "0x30B44C676A05F1264d1dE9cC31dB5F2A945186b6"
-  },
-  {
     "contractName": "SkinnyOptimisticOracle",
     "address": "0xeE3Afe347D5C74317041E2618C49534dAf887c24"
-  },
-  {
-    "contractName": "RateModelStore",
-    "address": "0xd18fFeb5fdd1F2e122251eA7Bf357D8Af0B60B50"
   },
   {
     "contractName": "Arbitrum_ParentMessenger",
@@ -173,31 +161,6 @@
     "contractName": "Optimism_ParentMessenger",
     "deploymentName": "Optimism_ParentMessenger",
     "address": "0x6455D800D1Dbf9B1C3a63c67CcF22B9308728dC4"
-  },
-  {
-    "contractName": "BridgePoolProd",
-    "deploymentName": "WETH_BridgePool",
-    "address": "0x7355Efc63Ae731f584380a9838292c7046c1e433"
-  },
-  {
-    "contractName": "BridgePoolProd",
-    "deploymentName": "USDC_BridgePool",
-    "address": "0x256C8919CE1AB0e33974CF6AA9c71561Ef3017b6 "
-  },
-  {
-    "contractName": "BridgePoolProd",
-    "deploymentName": "UMA_BridgePool",
-    "address": "0xdfe0ec39291e3b60ACa122908f86809c9eE64E90"
-  },
-  {
-    "contractName": "BridgePoolProd",
-    "deploymentName": "BADGER_BridgePool",
-    "address": "0x43298F9f91a4545dF64748e78a2c777c580573d6"
-  },
-  {
-    "contractName": "BridgePoolProd",
-    "deploymentName": "WBTC_BridgePool",
-    "address": "0x02fbb64517E1c6ED69a6FAa3ABf37Db0482f1152"
   },
   {
     "contractName": "Proposer",
