@@ -1,0 +1,101 @@
+import { Context, Memory, ContextType } from "../../types/statemachine";
+import type Store from "../../store";
+import { ContextManager, shouldStep } from "./utils";
+
+// context types, import new ones here
+import * as setUser from "./setUser";
+import * as setActiveRequest from "./setActiveRequest";
+
+/**
+ * StateMachine. This class will be used to handle all change requests by the user, including setting state which
+ * may require triggering fetching data from chain, or initiating transactions that require tracking.
+ *
+ * This class is meant to step through states of a Context object. This object can have variable
+ * parameters and memory. There are several concepts to understand before using this class:
+ *
+ * 1. Handlers - This is the state machine state handlers, it is an objected keyed by each state, with a function handler.
+ * 2. Params - These are common parameters set by the caller, passed into each handler function.
+ * 3. Memory - This is a writing space within the state machine handlers that accumulates through states.
+ * 4. Context - This is the sum of all data needed to transition through the state machine states. It includes params, memory and metadata about the runtime.
+ * 5. Context.done - This is a special property on context.done which represents that the state machine is done transitioning this context.
+ * 6. Context.state = "done" - This is a reserved state on context.state, if set to "done" its the same thing as done = true.
+ * 7. Context.state = "error" - This is a reserved state on context.state, if set to "error" it means the context is done, but also there is an context.error object.
+ * 8. Interval - This is a property on the context which specifies the maximum rate in MS this context will transition, based on the current timestamp.
+ */
+export class StateMachine {
+  private pending: Context<unknown, unknown & Memory>[] = [];
+  // this needs to be updated when adding new context type
+  public types: {
+    [ContextType.setUser]: ContextManager<setUser.Params, setUser.Memory>;
+    [ContextType.setActiveRequest]: ContextManager<setActiveRequest.Params, setActiveRequest.Memory>;
+  };
+  constructor(private store: Store) {
+    // need to initizlie state types here manually for each new context type
+    this.types = {
+      [ContextType.setUser]: new ContextManager<setUser.Params, setUser.Memory>(
+        ContextType.setUser,
+        setUser.Handlers(store),
+        setUser.initMemory,
+        this.handleCreate
+      ),
+      [ContextType.setActiveRequest]: new ContextManager<setActiveRequest.Params, setActiveRequest.Memory>(
+        ContextType.setActiveRequest,
+        setActiveRequest.Handlers(store),
+        setActiveRequest.initMemory,
+        this.handleCreate
+      ),
+    };
+  }
+  private saveContext(context: Context<unknown, unknown & Memory>) {
+    this.store.write((w) => w.command(context));
+  }
+  private handleCreate = (context: Context<unknown, unknown & Memory>) => {
+    this.pending.push(context);
+    this.saveContext(context);
+  };
+
+  private pop(): Context<unknown, unknown & Memory> | undefined {
+    return this.pending.pop();
+  }
+  private size(): number {
+    return this.pending.length;
+  }
+  private push(context: Context<unknown, unknown & Memory>): void {
+    this.pending.push(context);
+  }
+  /**
+   * tick. Process all pending contexts, move them to done if needed
+   *
+   * @param {} now - Specify the timestamp this tick is running on.
+   * @returns {Promise<boolean>} - Returns if there are still any pending contexts to run.
+   */
+  tick = async (now = Date.now()): Promise<boolean> => {
+    const context = this.pop();
+    if (shouldStep(context, now)) {
+      let next;
+      switch (context.type) {
+        // need to update this function with the new context processor
+        case ContextType.setUser: {
+          next = await this.types[context.type].step(
+            (context as unknown) as Context<setUser.Params, setUser.Memory>,
+            now
+          );
+          break;
+        }
+        case ContextType.setActiveRequest: {
+          next = await this.types[context.type].step(
+            (context as unknown) as Context<setActiveRequest.Params, setActiveRequest.Memory>,
+            now
+          );
+          break;
+        }
+        default: {
+          throw new Error("Unable to handle type: " + context.type);
+        }
+      }
+      if (!next.done) this.push(next);
+      this.saveContext(next);
+    }
+    return this.size() > 0;
+  };
+}

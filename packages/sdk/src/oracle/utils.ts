@@ -1,39 +1,91 @@
-import { State } from "./types/state";
+import { State, RequestState, Flag } from "./types/state";
 import { Read } from "./store";
 
-export enum RequestState {
-  Invalid = 0, // Never requested.
-  Requested, // Requested, no other actions taken.
-  Proposed, // Proposed, but not expired or disputed yet.
-  Expired, // Proposed, not disputed, past liveness.
-  Disputed, // Disputed, but no DVM price returned yet.
-  Resolved, // Disputed and DVM price is available.
-  Settled, // Final price has been set in the contract (can get here from Expired or Resolved).
+export function initFlags() {
+  return {
+    [Flag.MissingRequest]: true,
+    [Flag.MissingUser]: true,
+    [Flag.WrongChain]: true,
+    [Flag.InvalidStateForPropose]: true,
+    [Flag.InvalidStateForDispute]: true,
+    [Flag.InsufficientBalance]: true,
+    [Flag.InsufficientApproval]: true,
+    [Flag.ProposalInProgress]: true,
+    [Flag.ApprovalInProgress]: true,
+    [Flag.DisputeInProgress]: true,
+  };
 }
 
-export enum ProposalFlags {
-  WrongChain = 0,
-  InvalidContractState,
-  InsufficientBalance,
-  InsufficientApproval,
-  TransactionInProgress,
-}
-export function previewProposal(state: State) {
+export function getFlags(state: State) {
   const read = new Read(state);
-  const flags = [false, false, false, false, false];
-  if (read.userChainId() != read.requestChainId()) {
-    flags[ProposalFlags.WrongChain] = true;
-  }
-  if (read.request()?.state !== RequestState.Requested) {
-    flags[ProposalFlags.InvalidContractState] = true;
-  }
-  const totalBond = read.request().bond.add(read.request().finalFee);
+  const flags = initFlags();
 
-  if (read.userCollateralBalance().lt(totalBond)) {
-    flags[ProposalFlags.InsufficientBalance] = true;
+  try {
+    if (read.userAddress()) {
+      flags[Flag.MissingUser] = false;
+    } else {
+      flags[Flag.MissingUser] = true;
+    }
+  } catch (err) {
+    // ignore
   }
-  if (read.userCollateralAllowance().lt(totalBond)) {
-    flags[ProposalFlags.InsufficientApproval] = true;
+
+  try {
+    if (read.inputRequest()) {
+      flags[Flag.MissingRequest] = false;
+    } else {
+      flags[Flag.MissingRequest] = true;
+    }
+  } catch (err) {
+    // ignore
   }
+
+  try {
+    if (read.userChainId() != read.requestChainId()) {
+      flags[Flag.WrongChain] = true;
+    } else {
+      flags[Flag.WrongChain] = false;
+    }
+  } catch (err) {
+    // ignore
+  }
+
+  try {
+    if (read.request()?.state !== RequestState.Requested) {
+      flags[Flag.InvalidStateForPropose] = true;
+    } else {
+      flags[Flag.InvalidStateForPropose] = false;
+    }
+    if (read.request()?.state !== RequestState.Proposed) {
+      flags[Flag.InvalidStateForDispute] = true;
+    } else {
+      flags[Flag.InvalidStateForDispute] = false;
+    }
+  } catch (err) {
+    // ignore
+  }
+
+  try {
+    const totalBond = read.request().bond.add(read.request().finalFee);
+
+    if (read.userCollateralBalance().lt(totalBond)) {
+      flags[Flag.InsufficientBalance] = true;
+    } else {
+      flags[Flag.InsufficientBalance] = false;
+    }
+    if (read.userCollateralAllowance().lt(totalBond)) {
+      flags[Flag.InsufficientApproval] = true;
+    } else {
+      flags[Flag.InsufficientApproval] = false;
+    }
+  } catch (err) {
+    // ignore
+  }
+
+  // TODO: add logic for these
+  flags[Flag.ProposalInProgress] = false;
+  flags[Flag.DisputeInProgress] = false;
+  flags[Flag.ApprovalInProgress] = false;
+
   return flags;
 }

@@ -1,10 +1,9 @@
 import dotenv from "dotenv";
 import assert from "assert";
 
-import factory, { Client } from "../client";
+import { factory, Client } from "../client";
 import Store from "../store";
 import * as types from "../types";
-import { ProposalFlags } from "../utils";
 
 dotenv.config();
 assert(process.env.CUSTOM_NODE_URL, "requires CUSTOM_NODE_URL");
@@ -42,29 +41,44 @@ describe("Oracle Client", function () {
   beforeAll(function () {
     client = factory(config, () => undefined);
     store = client.store;
+    client.startInterval();
   });
-  test("setRequest", function () {
-    client.setActiveRequest(request);
+  afterAll(function () {
+    client.stopInterval();
+  });
+  test("setRequest", async function () {
+    const id = client.setActiveRequest(request);
+    await client.sm.tick();
+    const state = store.get();
     const input = store.read().inputRequest();
     assert.ok(input);
+    assert.ok(state.flags);
+    assert.ok(store.read().command(id));
   });
-  test("setUser", function () {
-    client.setUser(account, chainId, signer);
+  test("setUser", async function () {
+    const id = client.setUser(account, chainId, signer);
+    await client.sm.tick();
     const state = store.get();
-    assert.ok(state.user);
-    assert.equal(state.user.address, account);
-    assert.equal(state.user.chainId, chainId);
+    assert.ok(state?.inputs?.user);
+    assert.equal(state?.inputs?.user?.address, account);
+    assert.equal(state?.inputs?.user.chainId, chainId);
+    assert.ok(state?.flags);
+    assert.ok(store.read().command(id));
   });
-  test("update.all", async function () {
-    await client.update.all();
-    assert.ok(store.read().userCollateralBalance());
-    assert.ok(store.read().userCollateralAllowance());
-    assert.ok(store.read().collateralProps());
-    assert.ok(store.read().request());
+  test("read", function () {
+    store.read().request();
+    store.read().oracleAddress();
+    store.read().userCollateralBalance();
+    store.read().userCollateralAllowance();
   });
-  test("previewProposal", function () {
-    const result = client.previewProposal();
-    assert.ok(result[ProposalFlags.InvalidContractState]);
-    assert.ok(result[ProposalFlags.InsufficientApproval]);
+  test("flags", function () {
+    const result = store.read().flags();
+    assert.ok(result);
+    assert.ok(!result[types.state.Flag.WrongChain]);
+    assert.ok(!result[types.state.Flag.MissingRequest]);
+    assert.ok(!result[types.state.Flag.MissingUser]);
+    assert.ok(result[types.state.Flag.InvalidStateForPropose]);
+    assert.ok(result[types.state.Flag.InvalidStateForDispute]);
+    assert.ok(result[types.state.Flag.InsufficientApproval]);
   });
 });
