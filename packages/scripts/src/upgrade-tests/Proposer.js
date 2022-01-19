@@ -22,7 +22,7 @@ const argv = require("minimist")(process.argv.slice(), {
   ],
 });
 
-const { run: simulateVote } = require("../admin-proposals/simulateVote");
+const { simulateVote } = require("../admin-proposals/simulateVote");
 
 async function main() {
   // Note: there are no default accounts, so all must be impersonated.
@@ -36,7 +36,7 @@ async function main() {
   const Proposer = getContract("Proposer");
   const VotingToken = getContract("VotingToken");
   const Finder = getContract("Finder");
-  const ERC20 = getContract("ERC20");
+  const IdentifierWhitelist = getContract("IdentifierWhitelist");
 
   const governor = await Governor.deployed();
   const votingToken = await VotingToken.deployed();
@@ -79,19 +79,20 @@ async function main() {
   // Approve the proposal contract to take 10k tokens from the default wallet.
   await votingToken.methods.approve(proposer.options.address, web3.utils.toWei("10000")).send({ from: defaultAccount });
 
-  // Create arbitrary transaction to test that the proposal system works for vanilla requests.
-  const usdc = await ERC20.at("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48");
-  const approveTxnData = usdc.methods.approve(defaultAccount, 100).encodeABI();
+  // Create whitelist transaction as a test.
+  const identifierWhitelist = await IdentifierWhitelist.deployed();
+  const identifier = web3.utils.padRight(web3.utils.utf8ToHex("TestIdentifier"), 64);
+  const whitelistTxnData = identifierWhitelist.methods.addSupportedIdentifier(identifier).encodeABI();
 
   // Propose the sample transaction and simulate a vote.
   await proposer.methods
-    .propose([{ to: usdc.options.address, value: 0, data: approveTxnData }])
+    .propose([{ to: identifierWhitelist.options.address, value: 0, data: whitelistTxnData }])
     .send({ from: defaultAccount });
   await simulateVote();
 
   // Verify that the transaction went through.
   assert(
-    (await usdc.methods.allowance(governor.options.address, defaultAccount).call()).toString() === "100",
+    await identifierWhitelist.methods.isIdentifierSupported(identifier).call(),
     "❌ Initial test transaction didn't go through!"
   );
 

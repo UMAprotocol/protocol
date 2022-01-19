@@ -33,7 +33,7 @@ const argv = require("minimist")(process.argv.slice(), {
   default: { skipExecute: false },
 });
 
-async function run() {
+async function simulateVote() {
   // Set up provider so that we can sign from special wallets. This script is designed to only run against local mainnet
   // forks.
   const { netId, web3 } = await _setupWeb3();
@@ -235,7 +235,7 @@ async function run() {
 
 function main() {
   const startTime = Date.now();
-  run()
+  simulateVote()
     .catch((err) => {
       console.error(err);
     })
@@ -249,4 +249,4 @@ if (require.main === module) {
   main();
 }
 
-module.exports = { run };
+module.exports = { simulateVote };
