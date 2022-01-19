@@ -102,7 +102,7 @@ export class AcrossMonitor {
             " is at " +
             createFormatFunction(0, 2)(toBN(bridgePool.utilization).mul(toBN(100))) +
             "% utilization!",
-          notificationPath: "risk-management",
+          notificationPath: "across-monitor",
         });
       }
     }
@@ -150,7 +150,7 @@ export class AcrossMonitor {
           createFormatFunction(2, 4, false, 18)(toBN(event.relay.realizedLpFeePct).muln(100)) +
           "%. tx: " +
           createEtherscanLinkMarkdown(event.transactionHash, this.monitorConfig.bridgeAdminChainId),
-        notificationPath: "risk-management",
+        notificationPath: "across-monitor",
       });
     }
   }
