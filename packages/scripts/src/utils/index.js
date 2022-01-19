@@ -1,10 +1,13 @@
 const { getWeb3 } = require("@uma/common");
 const { getAddress } = require("@uma/contracts-node");
 const { PROD_NET_ID } = require("./constants");
+const hre = require("hardhat");
+const { getContract } = hre;
+const ERC20 = getContract("ERC20");
 
 // Resolves the decimals for a collateral token. A decimals override is optionally passed in to override
 // the contract's decimal value.
-async function _getDecimals(web3, collateralAddress, ERC20) {
+async function _getDecimals(web3, collateralAddress) {
   const collateral = new web3.eth.Contract(ERC20.abi, collateralAddress);
   try {
     return (await collateral.methods.decimals().call()).toString();

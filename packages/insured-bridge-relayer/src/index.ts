@@ -79,7 +79,7 @@ export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
 
         // Update the clients and filter out tokens that are not whitelisted on the L2 from the whitelisted
         // L1 relay list. Whitelisted tokens are fetched from the L1 RateModelStore contract.
-        const filteredL1Whitelist = await pruneWhitelistedL1Tokens(logger, l1Client, l2Client);
+        const filteredL1Whitelist = pruneWhitelistedL1Tokens(logger, l1Client, l2Client);
 
         // Construct the profitability calculator based on the filteredL1Whitelist and relayerDiscount.
         const profitabilityCalculator = new ProfitabilityCalculator(

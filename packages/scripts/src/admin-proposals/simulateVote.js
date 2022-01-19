@@ -2,28 +2,25 @@
 // - Simulate voting affirmatively on any pending Admin Proposals
 
 // Run:
-// - Start mainnet fork in one window with `yarn hardhat node --fork <ARCHIVAL_NODE_URL> --no-deploy --port 9545`
-// - Next, open another terminal window and run `./packages/scripts/setupFork.sh` to unlock
-//   accounts on the local node that we'll need to run this script.
+// - Check out README.md in this folder for setup instructions and simulating votes between the Propose and Verify
+//   steps.
 // - This script should be run after any Admin proposal UMIP script against a local Mainnet fork. It allows the tester
 //   to simulate what would happen if the proposal were to pass and to verify that contract state changes as expected.
-// - Vote Simulate: node ./packages/scripts/src/admin-proposals/simulateVote.js --network mainnet-fork
+// - Vote Simulate: NODE_URL_1=http://localhost:9545 node ./packages/scripts/src/admin-proposals/simulateVote.js --network mainnet-fork
 
-const hre = require("hardhat");
-const { getContract } = hre;
+const Web3 = require("Web3");
+const { toWei } = Web3.utils;
 require("dotenv").config();
 const assert = require("assert");
-const { GasEstimator } = require("@uma/financial-templates-lib");
-const winston = require("winston");
+const { setupMainnet, setupGasEstimator } = require("./utils");
 const {
-  interfaceName,
   advanceBlockAndSetTime,
   isAdminRequest,
   getRandomSignedInt,
   computeVoteHash,
   signMessage,
+  getWeb3ByChainId,
 } = require("@uma/common");
-const { _getContractAddressByName, _setupWeb3 } = require("../utils");
 const { REQUIRED_SIGNER_ADDRESSES, YES_VOTE, SECONDS_PER_DAY, SNAPSHOT_MESSAGE } = require("../utils/constants");
 const argv = require("minimist")(process.argv.slice(), {
   boolean: [
@@ -34,60 +31,29 @@ const argv = require("minimist")(process.argv.slice(), {
 });
 
 async function simulateVote() {
-  // Set up provider so that we can sign from special wallets. This script is designed to only run against local mainnet
-  // forks.
-  const { netId, web3 } = await _setupWeb3();
+  const web3 = getWeb3ByChainId(1);
   const accounts = await web3.eth.getAccounts();
 
-  // Contract ABI's
-  const Governor = getContract("Governor");
-  const Finder = getContract("Finder");
-  const Voting = getContract("Voting");
-  const VotingInterface = getContract("VotingInterface");
-
   // Initialize Eth contracts by grabbing deployed addresses from networks/1.json file.
-  const gasEstimator = new GasEstimator(
-    winston.createLogger({ silent: true }),
-    60, // Time between updates.
-    netId
-  );
-  await gasEstimator.update();
-  console.log(
-    `⛽️ Current fast gas price for Ethereum: ${web3.utils.fromWei(
-      gasEstimator.getCurrentFastPrice().maxFeePerGas.toString(),
-      "gwei"
-    )} maxFeePerGas and ${web3.utils.fromWei(
-      gasEstimator.getCurrentFastPrice().maxPriorityFeePerGas.toString(),
-      "gwei"
-    )} maxPriorityFeePerGas`
-  );
-  const governor = new web3.eth.Contract(Governor.abi, await _getContractAddressByName("Governor", netId));
-  const finder = new web3.eth.Contract(Finder.abi, await _getContractAddressByName("Finder", netId));
-  const oracleAddress = await finder.methods
-    .getImplementationAddress(web3.utils.utf8ToHex(interfaceName.Oracle))
-    .call();
-  const oracle = new web3.eth.Contract(Voting.abi, oracleAddress);
-  const votingInterface = new web3.eth.Contract(VotingInterface.abi, oracleAddress);
-  console.group("\nℹ️  DVM infrastructure for Ethereum transactions:");
-  console.log(`- Finder @ ${finder.options.address}`);
-  console.log(`- Oracle @ ${oracle.options.address}`);
-  console.log(`- Governor @ ${governor.options.address}`);
-  console.groupEnd();
+  const mainnetContracts = await setupMainnet(web3);
+  const gasEstimator = await setupGasEstimator();
 
   console.group("\n🗳 Simulating Admin Proposal Vote");
-  let numProposals = Number(await governor.methods.numProposals().call());
+  let numProposals = Number(await mainnetContracts.governor.methods.numProposals().call());
   assert(numProposals >= 1, "Must be at least 1 pending proposal");
 
   // Fetch current voting round statistics to determine how much time to advance the EVM forward.
   async function _getAndDisplayVotingRoundStats() {
-    const numProposals = Number(await governor.methods.numProposals().call());
+    const numProposals = Number(await mainnetContracts.governor.methods.numProposals().call());
     assert(numProposals >= 1, "Must be at least 1 pending proposal");
-    const pendingRequests = (await votingInterface.methods.getPendingRequests().call()).filter((req) => {
-      return isAdminRequest(web3.utils.hexToUtf8(req.identifier));
-    });
-    const currentTime = Number(await oracle.methods.getCurrentTime().call());
-    const votingPhase = Number(await votingInterface.methods.getVotePhase().call());
-    const roundId = Number(await oracle.methods.getCurrentRoundId().call());
+    const pendingRequests = (await mainnetContracts.votingInterface.methods.getPendingRequests().call()).filter(
+      (req) => {
+        return isAdminRequest(web3.utils.hexToUtf8(req.identifier));
+      }
+    );
+    const currentTime = Number(await mainnetContracts.oracle.methods.getCurrentTime().call());
+    const votingPhase = Number(await mainnetContracts.votingInterface.methods.getVotePhase().call());
+    const roundId = Number(await mainnetContracts.oracle.methods.getCurrentRoundId().call());
     console.group(`\n[Round #${roundId}] Voting round stats`);
     console.log(`- Current time: ${currentTime}`);
     console.log(`- Active Admin price requests: ${pendingRequests.length}`);
@@ -120,7 +86,7 @@ async function simulateVote() {
     const request = votingStats.pendingRequests[i];
     const identifier = request.identifier.toString();
     const time = request.time.toString();
-    const price = web3.utils.toWei(YES_VOTE);
+    const price = toWei(YES_VOTE);
     const salt = getRandomSignedInt();
     // Main net DVM uses the commit reveal scheme of hashed concatenation of price and salt
     const voteHashData = {
@@ -155,7 +121,7 @@ async function simulateVote() {
   });
   for (let i = 0; i < requestsToVoteOn.length; i++) {
     const request = requestsToVoteOn[i];
-    const txn = await votingInterface.methods
+    const txn = await mainnetContracts.votingInterface.methods
       .commitVote(request.identifier, request.time, request.voteHash)
       .send({ from: REQUIRED_SIGNER_ADDRESSES["foundation"], ...gasEstimator.getCurrentFastPrice() });
     console.log(`- [${i + 1}/${requestsToVoteOn.length}] Commit transaction hash: ${txn.transactionHash}`);
@@ -169,7 +135,7 @@ async function simulateVote() {
 
   console.group("\n📸 Generating a voting token snapshot.");
   let signature = await signMessage(web3, SNAPSHOT_MESSAGE, accounts[0]);
-  let snapshotTxn = await votingInterface.methods
+  let snapshotTxn = await mainnetContracts.votingInterface.methods
     .snapshotCurrentRound(signature)
     .send({ from: accounts[0], ...gasEstimator.getCurrentFastPrice() });
   console.log(`Snapshot transaction hash: ${snapshotTxn.transactionHash}`);
@@ -178,7 +144,7 @@ async function simulateVote() {
   console.group(`\n✅ Reveal ${requestsToVoteOn.length} Admin requests`);
   for (let i = 0; i < requestsToVoteOn.length; i++) {
     const request = requestsToVoteOn[i];
-    const txn = await votingInterface.methods
+    const txn = await mainnetContracts.votingInterface.methods
       .revealVote(request.identifier, request.time, request.price, request.salt)
       .send({ from: REQUIRED_SIGNER_ADDRESSES["foundation"], ...gasEstimator.getCurrentFastPrice() });
     console.log(`- [${i + 1}/${requestsToVoteOn.length}] Reveal transaction hash: ${txn.transactionHash}`);
@@ -193,9 +159,9 @@ async function simulateVote() {
 
   // Sanity check that prices are available now for Admin requests
   for (let i = 0; i < requestsToVoteOn.length; i++) {
-    const hasPrice = await oracle.methods
+    const hasPrice = await mainnetContracts.oracle.methods
       .hasPrice(requestsToVoteOn[i].identifier, requestsToVoteOn[i].time)
-      .call({ from: governor.options.address });
+      .call({ from: mainnetContracts.governor.options.address });
     assert(
       hasPrice,
       `Request with identifier ${requestsToVoteOn[i].identifier} and time ${requestsToVoteOn[i].time} has no price`
@@ -208,13 +174,13 @@ async function simulateVote() {
     console.group("\nNumber of proposals:", requestsToVoteOn.length);
     for (let i = requestsToVoteOn.length; i > 0; i--) {
       // Set `proposalId` to index of most recent proposal in voting.sol
-      const proposalId = Number(await governor.methods.numProposals().call()) - i;
+      const proposalId = Number(await mainnetContracts.governor.methods.numProposals().call()) - i;
       console.group("\nProposal ID:", proposalId.toString());
-      const proposal = await governor.methods.getProposal(proposalId.toString()).call();
+      const proposal = await mainnetContracts.governor.methods.getProposal(proposalId.toString()).call();
       for (let j = 0; j < proposal.transactions.length; j++) {
         console.log(`- Submitting transaction #${j + 1} from proposal #${proposalId}`);
         try {
-          let txn = await governor.methods
+          let txn = await mainnetContracts.governor.methods
             .executeProposal(proposalId.toString(), j.toString())
             .send({ from: accounts[0], ...gasEstimator.getCurrentFastPrice() });
           console.log(`    - Success, receipt: ${txn.transactionHash}`);

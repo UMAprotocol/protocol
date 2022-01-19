@@ -13,11 +13,11 @@ type LegacyGasData = { gasPrice: number };
 
 interface GasEstimatorMapping {
   [networkId: number]: {
-    url: string;
+    type: NetworkType;
+    url?: string;
     defaultFastPriceGwei?: number;
     defaultMaxFeePerGasGwei?: number;
     defaultMaxPriorityFeePerGasGwei?: number;
-    type: NetworkType;
     backupUrl?: string;
   };
 }
@@ -54,6 +54,7 @@ export const MAPPING_BY_NETWORK: GasEstimatorMapping = {
     type: NetworkType.London,
   },
   137: { url: "https://gasstation-mainnet.matic.network", defaultFastPriceGwei: 10, type: NetworkType.Legacy },
+  288: { defaultFastPriceGwei: 1, type: NetworkType.Legacy },
   80001: { url: "https://gasstation-mumbai.matic.today", defaultFastPriceGwei: 20, type: NetworkType.Legacy },
 };
 
@@ -91,7 +92,16 @@ export class GasEstimator {
 
     // If the script fails or the API response fails default to these value. If the network ID provided is not in the
     // mapping, then use the default ID.
-    if (!Object.keys(MAPPING_BY_NETWORK).includes(networkId.toString())) this.networkId = DEFAULT_NETWORK_ID;
+    if (!Object.keys(MAPPING_BY_NETWORK).includes(networkId.toString())) {
+      logger.debug({
+        at: "GasEstimator",
+        message: "Unrecognized network ID, defaulting to default",
+        defaultNetworkId: DEFAULT_NETWORK_ID,
+        unrecognizedNetworkId: networkId.toString(),
+        defaultNetworkMapping: MAPPING_BY_NETWORK[DEFAULT_NETWORK_ID],
+      });
+      this.networkId = DEFAULT_NETWORK_ID;
+    }
 
     this.defaultFastPriceGwei = MAPPING_BY_NETWORK[this.networkId].defaultFastPriceGwei || 0;
     this.defaultMaxFeePerGasGwei = MAPPING_BY_NETWORK[this.networkId].defaultMaxFeePerGasGwei || 0;
@@ -182,7 +192,14 @@ export class GasEstimator {
     const url = MAPPING_BY_NETWORK[_networkId].url;
     const backupUrl = MAPPING_BY_NETWORK[_networkId].backupUrl;
 
-    if (!url) throw new Error(`Missing URL for network ID ${_networkId}`);
+    if (!url) {
+      // If no URL specified, use default.
+      return {
+        gasPrice: this.defaultFastPriceGwei,
+        maxFeePerGas: this.defaultMaxFeePerGasGwei,
+        maxPriorityFeePerGas: this.defaultMaxPriorityFeePerGasGwei,
+      };
+    }
 
     try {
       // Primary URL expected response structure for London.
