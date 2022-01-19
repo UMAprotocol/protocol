@@ -1,50 +1,34 @@
 // Description:
-// - Propose or verify Admin Proposal whitelisting new identifiers to Ethereum and/or Polygon
+// - Whitelist new identifiers.
+
 // Run:
-// - For testing, start mainnet fork in one window with `yarn hardhat node --fork <ARCHIVAL_NODE_URL> --no-deploy --port 9545`
-// - (optional, or required if --polygon is not undefined) set POLYGON_NODE_URL to a Polygon mainnet node. This will
-// be used to query contract data from Polygon when relaying proposals through the GovernorRootTunnel.
-// - Next, open another terminal window and run `./packages/scripts/setupFork.sh` to unlock
-//   accounts on the local node that we'll need to run this script.
-// - Propose: node ./packages/scripts/src/admin-proposals/identifier.js --identifier ABC,DEF --polygon ABC,DEF --network mainnet-fork
-// - Vote Simulate: node ./packages/scripts/src/admin-proposals/simulateVote.js --network mainnet-fork
-// - Verify: node ./packages/scripts/src/admin-proposals/identifier.js --verify --polygon ABC,DEF --identifier ABC,DEF --network mainnet-fork
-// - For production, set the CUSTOM_NODE_URL environment, run the script with a production network passed to the
-//   `--network` flag (along with other params like --keys) like so: `node ... --network mainnet_gckms --keys deployer`
+// - Check out README.md in this folder for setup instructions and simulating votes between the Propose and Verify
+//   steps.
+// - Propose: node ./packages/scripts/src/admin-proposals/identifier.js --ethereum ABC,DEF --polygon ABC,DEF --network mainnet-fork
+// - Verify: Add --verify flag to Propose command.
 
-// Customizations:
-// - --polygon param can be omitted, in which case transactions will only take place on Ethereum.
-// - --identifier flag can also be omitted, in which case transactions will only be relayed to Polygon
-// - --identifier and --polygon params must be comma delimited strings producing equal length array of identifiers to approve
-// - Specific identifier or polygon-identifiers can be skipped to conform with the above constraint like so: --identifier ,, --polygon 0xab,,
-// - If --verify flag is set, script is assumed to be running after a Vote Simulation and updated contract state is
-// verified.
-
-// Examples:
-// - Whitelist identifiers on Ethereum only:
-//    - `node ./packages/scripts/src/admin-proposals/identifier.js --identifier "POOL/USD","USD/POOL" --network mainnet-fork`
-// - Whitelist identifiers on Polygon only:
-//    - `node ./packages/scripts/src/admin-proposals/identifier.js --polygon "POOL/USD","USD/POOL" --network mainnet-fork`
-// - Whitelist identifiers on both (some on Ethereum, some on Polygon):
-//    - `node ./packages/scripts/src/admin-proposals/identifier.js --identifier "POOL/USD","USD/POOL" --polygon "POOL/USD", --network mainnet-fork`
-
-const hre = require("hardhat");
-const { getContract } = hre;
 require("dotenv").config();
+const Web3 = require("Web3");
+const { utf8ToHex, hexToUtf8 } = Web3.utils;
 const assert = require("assert");
-const { GasEstimator } = require("@uma/financial-templates-lib");
-const Web3 = require("web3");
-const winston = require("winston");
-const { interfaceName } = require("@uma/common");
-const { _getContractAddressByName, _setupWeb3 } = require("../utils");
+const { getWeb3ByChainId } = require("@uma/common");
+const {
+  setupNetwork,
+  validateNetworks,
+  setupMainnet,
+  fundArbitrumParentMessengerForOneTransaction,
+  setupGasEstimator,
+  relayGovernanceHubMessage,
+  verifyGovernanceHubMessage,
+  relayGovernanceRootTunnelMessage,
+  verifyGovernanceRootTunnelMessage,
+  L2_ADMIN_NETWORK_NAMES,
+  validateArgvNetworks,
+  getNetworksToAdministrateFromArgv,
+} = require("./utils");
 const { REQUIRED_SIGNER_ADDRESSES } = require("../utils/constants");
 const argv = require("minimist")(process.argv.slice(), {
-  string: [
-    // comma-delimited list of identifiers to whitelist on Ethereum. Required if --polygon is omitted.
-    "identifier",
-    // comma-delimited list of identifiers to whitelist on Polygon. Required if --identifier is omitted.
-    "polygon",
-  ],
+  string: L2_ADMIN_NETWORK_NAMES,
   boolean: [
     // set True if verifying, False for proposing.
     "verify",
@@ -53,90 +37,54 @@ const argv = require("minimist")(process.argv.slice(), {
 });
 
 async function run() {
-  const { identifier, polygon, verify } = argv;
-  const { web3, netId } = await _setupWeb3();
-
-  // Contract ABI's
-  const IdentifierWhitelist = getContract("IdentifierWhitelist");
-  const GovernorRootTunnel = getContract("GovernorRootTunnel");
-  const Governor = getContract("Governor");
-  const Finder = getContract("Finder");
-  const Voting = getContract("Voting");
+  validateArgvNetworks(argv);
+  const { verify } = argv;
+  const { ethereum, polygon, governorHubNetworks, chainIds } = getNetworksToAdministrateFromArgv(argv);
+  validateNetworks(chainIds);
 
   // Parse comma-delimited CLI params into arrays
-  let identifiers;
-  let polygonIdentifiers;
-  let crossChainWeb3;
+  const networksToAdministrate = [];
+  const identifiersByNetId = {};
   let count;
-
-  // If polygon identifiers are specified, initialize Governance relay infrastructure contracts
-  let polygon_netId;
-  let polygon_whitelist;
+  if (ethereum) {
+    identifiersByNetId[1] = ethereum.split(",").map((id) => (id ? utf8ToHex(id) : null));
+    count = identifiersByNetId[1].length;
+  }
   if (polygon) {
-    if (identifier) identifiers = identifier.split(",").map((id) => (id ? web3.utils.utf8ToHex(id) : null));
-    polygonIdentifiers = polygon.split(",").map((id) => (id ? web3.utils.utf8ToHex(id) : null));
-    if (!process.env.POLYGON_NODE_URL)
-      throw new Error("If --polygon is defined, you must set a POLYGON_NODE_URL environment variable");
-    crossChainWeb3 = new Web3(process.env.POLYGON_NODE_URL);
-    polygon_netId = await crossChainWeb3.eth.net.getId();
-    polygon_whitelist = new crossChainWeb3.eth.Contract(
-      IdentifierWhitelist.abi,
-      await _getContractAddressByName("IdentifierWhitelist", polygon_netId)
+    networksToAdministrate.push(137);
+    identifiersByNetId[137] = polygon.split(",").map((id) => (id ? utf8ToHex(id) : null));
+    if (!count) count = identifiersByNetId[137].length;
+  }
+  for (let network of governorHubNetworks) {
+    networksToAdministrate.push(network.chainId);
+    identifiersByNetId[network.chainId] = network.value.split(",").map((id) => (id ? utf8ToHex(id) : null));
+    if (!count) count = identifiersByNetId[network.chainId].length;
+  }
+  let web3Providers = { 1: getWeb3ByChainId(1) }; // netID => Web3
+
+  for (let id of Object.keys(identifiersByNetId)) {
+    if (identifiersByNetId[id].length !== count)
+      throw new Error("all comma-delimited input strings should result in equal length arrays");
+  }
+  // Construct all mainnet contract instances we'll need using the mainnet web3 provider.
+  const mainnetContracts = await setupMainnet(web3Providers[1]);
+  const gasEstimator = await setupGasEstimator();
+
+  // Store contract instances for specified L2 networks
+  let contractsByNetId = {}; // netId => contracts
+  for (let netId of networksToAdministrate) {
+    const networkData = await setupNetwork(netId);
+    web3Providers[netId] = networkData.web3;
+    contractsByNetId[netId] = networkData.contracts;
+    console.group(`\nℹ️  Relayer infrastructure for network ${netId}:`);
+    console.log(`- IdentifierWhitelist @ ${contractsByNetId[netId].identifierWhitelist.options.address}`);
+    console.log(
+      `- ${netId === 137 ? "GovernorRootTunnel" : "GovernorHub"} @ ${
+        contractsByNetId[netId].l1Governor.options.address
+      }`
     );
-    count = polygonIdentifiers.length;
-  } else if (identifier) {
-    identifiers = identifier.split(",").map((id) => (id ? web3.utils.utf8ToHex(id) : null));
-    count = identifiers.length;
-  } else {
-    throw new Error("Must specify either --polygon or --identifier or both");
-  }
-
-  if (polygonIdentifiers && identifiers && polygonIdentifiers.length !== identifiers.length) {
-    throw new Error("all comma-delimited input strings should result in equal length arrays");
-  }
-
-  // Initialize Eth contracts by grabbing deployed addresses from networks/1.json file.
-  const whitelist = new web3.eth.Contract(
-    IdentifierWhitelist.abi,
-    await _getContractAddressByName("IdentifierWhitelist", netId)
-  );
-  const gasEstimator = new GasEstimator(
-    winston.createLogger({ silent: true }),
-    60, // Time between updates.
-    netId
-  );
-  await gasEstimator.update();
-  console.log(
-    `⛽️ Current fast gas price for Ethereum: ${web3.utils.fromWei(
-      gasEstimator.getCurrentFastPrice().maxFeePerGas.toString(),
-      "gwei"
-    )} maxFeePerGas and ${web3.utils.fromWei(
-      gasEstimator.getCurrentFastPrice().maxPriorityFeePerGas.toString(),
-      "gwei"
-    )} maxPriorityFeePerGas`
-  );
-  const governor = new web3.eth.Contract(Governor.abi, await _getContractAddressByName("Governor", netId));
-  const finder = new web3.eth.Contract(Finder.abi, await _getContractAddressByName("Finder", netId));
-  const oracleAddress = await finder.methods
-    .getImplementationAddress(web3.utils.utf8ToHex(interfaceName.Oracle))
-    .call();
-  const oracle = new web3.eth.Contract(Voting.abi, oracleAddress);
-  const governorRootTunnel = new web3.eth.Contract(
-    GovernorRootTunnel.abi,
-    await _getContractAddressByName("GovernorRootTunnel", netId)
-  );
-  if (polygonIdentifiers) {
-    console.group("\nℹ️  Relayer infrastructure for Polygon transactions:");
-    console.log(`- IdentifierWhitelist @ ${polygon_whitelist.options.address}`);
-    console.log(`- GovernorRootTunnel @ ${governorRootTunnel.options.address}`);
     console.groupEnd();
   }
-  console.group("\nℹ️  DVM infrastructure for Ethereum transactions:");
-  console.log(`- IdentifierWhitelist @ ${whitelist.options.address}`);
-  console.log(`- Finder @ ${finder.options.address}`);
-  console.log(`- Oracle @ ${oracle.options.address}`);
-  console.log(`- Governor @ ${governor.options.address}`);
-  console.groupEnd();
 
   if (!verify) {
     console.group("\n🌠 Proposing new Admin Proposal");
@@ -149,64 +97,110 @@ async function run() {
     console.log(
       "    - https://github.com/UMAprotocol/protocol/blob/349401a869e89f9b5583d34c1f282407dca021ac/packages/core/test/polygon/e2e.js#L221"
     );
+    console.log(
+      "- 🔴 = Transactions to be submitted to networks with GovernorSpokes are relayed via the GovernorHub on Ethereum. Look at this test for an example:"
+    );
+    console.log(
+      "    - https://github.com/UMAprotocol/protocol/blob/0d3cf208eaf390198400f6d69193885f45c1e90c/packages/core/test/cross-chain-oracle/chain-adapters/Arbitrum_ParentMessenger.js#L253"
+    );
     console.log("- 🟢 = Transactions to be submitted directly to Ethereum contracts.");
     console.groupEnd();
 
     for (let i = 0; i < count; i++) {
-      if (identifiers && identifiers[i]) {
-        console.group(`\n🟢 Whitelisting identifier ${identifiers[i]} (UTF8: ${web3.utils.hexToUtf8(identifiers[i])})`);
+      if (ethereum && identifiersByNetId[1][i]) {
+        const identifier = identifiersByNetId[1][i];
+        console.group(`\n🟢 Whitelisting identifier ${identifier} (UTF8: ${hexToUtf8(identifier)})`);
 
         // The proposal will only whitelist a new identifier if it isn't already whitelisted.
-        if (!(await whitelist.methods.isIdentifierSupported(identifiers[i]).call())) {
-          const addSupportedIdentifierData = whitelist.methods.addSupportedIdentifier(identifiers[i]).encodeABI();
-          console.log("- addSupportedIdentifierData", addSupportedIdentifierData);
-          adminProposalTransactions.push({ to: whitelist.options.address, value: 0, data: addSupportedIdentifierData });
-        } else {
-          console.log("- Identifier is already on whitelist. Nothing to do.");
-        }
-        console.groupEnd();
-      }
-
-      if (polygonIdentifiers && polygonIdentifiers[i]) {
-        console.group(
-          `\n🟣 (Polygon) Whitelisting identifier ${polygonIdentifiers[i]} (UTF8: ${web3.utils.hexToUtf8(
-            polygonIdentifiers[i]
-          )})`
-        );
-
-        // The proposal will only whitelist a new identifier if it isn't already whitelisted.
-        if (!(await polygon_whitelist.methods.isIdentifierSupported(polygonIdentifiers[i]).call())) {
-          const addSupportedIdentifierData = polygon_whitelist.methods
-            .addSupportedIdentifier(polygonIdentifiers[i])
+        if (!(await mainnetContracts.identifierWhitelist.methods.isIdentifierSupported(identifier).call())) {
+          const addSupportedIdentifierData = mainnetContracts.identifierWhitelist.methods
+            .addSupportedIdentifier(identifier)
             .encodeABI();
           console.log("- addSupportedIdentifierData", addSupportedIdentifierData);
-          const relayGovernanceData = governorRootTunnel.methods
-            .relayGovernance(polygon_whitelist.options.address, addSupportedIdentifierData)
-            .encodeABI();
-          console.log("- relayGovernanceData", relayGovernanceData);
           adminProposalTransactions.push({
-            to: governorRootTunnel.options.address,
+            to: mainnetContracts.identifierWhitelist.options.address,
             value: 0,
-            data: relayGovernanceData,
+            data: addSupportedIdentifierData,
           });
         } else {
           console.log("- Identifier is already on whitelist. Nothing to do.");
         }
         console.groupEnd();
       }
+
+      if (polygon && identifiersByNetId[137][i]) {
+        const identifier = identifiersByNetId[137][i];
+        console.group(`\n🟣 (Polygon) Whitelisting identifier ${identifier} (UTF8: ${hexToUtf8(identifier)})`);
+
+        // The proposal will only whitelist a new identifier if it isn't already whitelisted.
+        if (!(await contractsByNetId[137].identifierWhitelist.methods.isIdentifierSupported(identifier).call())) {
+          const addSupportedIdentifierData = contractsByNetId[137].identifierWhitelist.methods
+            .addSupportedIdentifier(identifier)
+            .encodeABI();
+          console.log("- addSupportedIdentifierData", addSupportedIdentifierData);
+          adminProposalTransactions.push(
+            await relayGovernanceRootTunnelMessage(
+              contractsByNetId[137].identifierWhitelist.options.address,
+              addSupportedIdentifierData,
+              contractsByNetId[137].l1Governor
+            )
+          );
+        } else {
+          console.log("- Identifier is already on whitelist. Nothing to do.");
+        }
+        console.groupEnd();
+      }
+
+      for (const network of governorHubNetworks) {
+        if (identifiersByNetId[network.chainId][i]) {
+          const identifier = identifiersByNetId[network.chainId][i];
+          console.group(
+            `\n🔴  (${network.name}) Whitelisting identifier ${identifier} (UTF8: ${hexToUtf8(identifier)})`
+          );
+
+          // The proposal will only whitelist a new identifier if it isn't already whitelisted.
+          if (
+            !(await contractsByNetId[network.chainId].identifierWhitelist.methods
+              .isIdentifierSupported(identifiersByNetId[network.chainId][i])
+              .call())
+          ) {
+            const addSupportedIdentifierData = contractsByNetId[network.chainId].identifierWhitelist.methods
+              .addSupportedIdentifier(identifier)
+              .encodeABI();
+            console.log("- addSupportedIdentifierData", addSupportedIdentifierData);
+            adminProposalTransactions.push(
+              await relayGovernanceHubMessage(
+                contractsByNetId[network.chainId].identifierWhitelist.options.address,
+                addSupportedIdentifierData,
+                contractsByNetId[network.chainId].l1Governor,
+                network.chainId
+              )
+            );
+            if (network.chainId === 42161) {
+              await fundArbitrumParentMessengerForOneTransaction(
+                web3Providers[1],
+                REQUIRED_SIGNER_ADDRESSES["deployer"]
+              );
+            }
+          } else {
+            console.log("- Identifier is already on whitelist. Nothing to do.");
+          }
+          console.groupEnd();
+        }
+      }
     }
 
     // Send the proposal
-    console.group(`\n📨 Sending to governor @ ${governor.options.address}`);
+    console.group(`\n📨 Sending to governor @ ${mainnetContracts.governor.options.address}`);
     console.log(`- Admin proposal contains ${adminProposalTransactions.length} transactions`);
     if (adminProposalTransactions.length > 0) {
-      const txn = await governor.methods
+      const txn = await mainnetContracts.governor.methods
         .propose(adminProposalTransactions)
         .send({ from: REQUIRED_SIGNER_ADDRESSES["deployer"], ...gasEstimator.getCurrentFastPrice() });
       console.log("- Transaction: ", txn?.transactionHash);
 
       // Print out details about new Admin proposal
-      const priceRequests = await oracle.getPastEvents("PriceRequestAdded");
+      const priceRequests = await mainnetContracts.oracle.getPastEvents("PriceRequestAdded");
       const newAdminRequest = priceRequests[priceRequests.length - 1];
       console.log(
         `- New admin request {identifier: ${
@@ -220,38 +214,67 @@ async function run() {
   } else {
     console.group("\n🔎 Verifying execution of Admin Proposal");
     for (let i = 0; i < count; i++) {
-      if (identifiers && identifiers[i]) {
-        assert(await whitelist.methods.isIdentifierSupported(identifiers[i]).call(), "Identifier is not whitelisted");
-        console.log(
-          `- Identifier ${identifiers[i]} (UTF8: ${web3.utils.hexToUtf8(identifiers[i])}) is whitelisted on Ethereum`
+      if (ethereum && identifiersByNetId[1][i]) {
+        const identifier = identifiersByNetId[1][i];
+        assert(
+          await mainnetContracts.identifierWhitelist.methods.isIdentifierSupported(identifier).call(),
+          "Identifier is not whitelisted"
         );
+        console.log(`- Identifier ${identifier} (UTF8: ${hexToUtf8(identifier)}) is whitelisted on Ethereum`);
       }
 
-      if (polygonIdentifiers && polygonIdentifiers[i]) {
-        if (!(await polygon_whitelist.methods.isIdentifierSupported(polygonIdentifiers[i]).call())) {
-          // Construct expected data to be relayed to Polygon contracts
-          const addSupportedIdentifierData = polygon_whitelist.methods
-            .addSupportedIdentifier(polygonIdentifiers[i])
+      if (polygon && identifiersByNetId[137][i]) {
+        const identifier = identifiersByNetId[137][i];
+        if (!(await contractsByNetId[137].identifierWhitelist.methods.isIdentifierSupported(identifier).call())) {
+          const addSupportedIdentifierData = contractsByNetId[137].identifierWhitelist.methods
+            .addSupportedIdentifier(identifier)
             .encodeABI();
-          const relayedWhitelistTransactions = await governorRootTunnel.getPastEvents("RelayedGovernanceRequest", {
-            filter: { to: polygon_whitelist.options.address },
-            fromBlock: 0,
-          });
-          assert(
-            relayedWhitelistTransactions.find((e) => e.returnValues.data === addSupportedIdentifierData),
-            "Could not find RelayedGovernanceRequest matching expected relayed addSupportedIdentifier transaction"
+          await verifyGovernanceRootTunnelMessage(
+            contractsByNetId[137].identifierWhitelist.options.address,
+            addSupportedIdentifierData,
+            contractsByNetId[137].l1Governor
           );
           console.log(
-            `- GovernorRootTunnel correctly emitted events to whitelist identifier ${
-              polygonIdentifiers[i]
-            } (UTF8: ${web3.utils.hexToUtf8(polygonIdentifiers[i])})`
+            `- polygon GovernorRootTunnel correctly emitted events to whitelist identifier ${identifier} (UTF8: ${hexToUtf8(
+              identifier
+            )})`
           );
         } else {
           console.log(
-            `- Identifier ${identifiers[i]} (UTF8: ${web3.utils.hexToUtf8(
-              polygonIdentifiers[i]
-            )}) is whitelisted on Polygon. Nothing to check.`
+            `- Identifier ${identifier} (UTF8: ${hexToUtf8(identifier)}) is whitelisted on polygon. Nothing to check.`
           );
+        }
+      }
+      for (const network of governorHubNetworks) {
+        if (identifiersByNetId[network.chainId][i]) {
+          const identifier = identifiersByNetId[network.chainId][i];
+          if (
+            !(await contractsByNetId[network.chainId].identifierWhitelist.methods
+              .isIdentifierSupported(identifier)
+              .call())
+          ) {
+            const addSupportedIdentifierData = contractsByNetId[network.chainId].identifierWhitelist.methods
+              .addSupportedIdentifier(identifier)
+              .encodeABI();
+            await verifyGovernanceHubMessage(
+              contractsByNetId[network.chainId].identifierWhitelist.options.address,
+              addSupportedIdentifierData,
+              contractsByNetId[network.chainId].l1Governor
+            );
+            console.log(
+              `- ${
+                network.name
+              } GovernorHub on correctly emitted events to whitelist identifier ${identifier} (UTF8: ${hexToUtf8(
+                identifier
+              )})`
+            );
+          } else {
+            console.log(
+              `- Identifier ${identifier} (UTF8: ${hexToUtf8(identifier)}) is whitelisted on ${
+                network.name
+              }. Nothing to check.`
+            );
+          }
         }
       }
     }
