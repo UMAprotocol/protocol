@@ -1,5 +1,5 @@
 {
-  "include": ["generated/index.ts"],
+  "include": ["generated/index.ts", "typechain/**/*"],
   "compilerOptions": {
     "outDir": "./dist",
     "declaration": true,
