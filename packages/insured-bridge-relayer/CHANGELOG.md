@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.14.1](https://github.com/UMAprotocol/protocol/compare/@uma/insured-bridge-relayer@1.14.0...@uma/insured-bridge-relayer@1.14.1) (2022-01-20)
+
+### Bug Fixes
+
+- **across-relayer:** Fix various bugs in relayer and manual relay script ([#3769](https://github.com/UMAprotocol/protocol/issues/3769)) ([31cdd90](https://github.com/UMAprotocol/protocol/commit/31cdd9082979c288001af17c487a89ebcc9672f0))
+
 # [1.14.0](https://github.com/UMAprotocol/protocol/compare/@uma/insured-bridge-relayer@1.13.0...@uma/insured-bridge-relayer@1.14.0) (2022-01-11)
 
 ### Bug Fixes

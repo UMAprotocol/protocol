@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.19.0](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.18.0...@uma/sdk@0.19.0) (2022-01-20)
+
+### Bug Fixes
+
+- **sdk:** use on chain rate model in pool client ([#3781](https://github.com/UMAprotocol/protocol/issues/3781)) ([382bba4](https://github.com/UMAprotocol/protocol/commit/382bba4b31d257b346a717d4706f0c68eed96448))
+
+### Features
+
+- **sdk:** add generic state machine runner ([#3764](https://github.com/UMAprotocol/protocol/issues/3764)) ([3ab2fff](https://github.com/UMAprotocol/protocol/commit/3ab2fffc76cc3201d2d7e2a91745ec77ba0aebfb))
+
 # [0.18.0](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.17.0...@uma/sdk@0.18.0) (2022-01-11)
 
 ### Bug Fixes

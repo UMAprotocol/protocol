@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.17.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.16.0...@uma/common@2.17.0) (2022-01-20)
+
+### Bug Fixes
+
+- fix [#3747](https://github.com/UMAprotocol/protocol/issues/3747) ([#3772](https://github.com/UMAprotocol/protocol/issues/3772)) ([7eb1697](https://github.com/UMAprotocol/protocol/commit/7eb1697bb35739bc5dc8229f099dad9b20adac26))
+
+### Features
+
+- **deployments:** Add xDai deploys ([#3766](https://github.com/UMAprotocol/protocol/issues/3766)) ([f23f081](https://github.com/UMAprotocol/protocol/commit/f23f081f6d2600c086bbac85c25f5e7de03bc2f6))
+- add across artifacts to contracts-node and contracts-frontend ([#3747](https://github.com/UMAprotocol/protocol/issues/3747)) ([d0f2d9b](https://github.com/UMAprotocol/protocol/commit/d0f2d9bca6c3344468a5bc69832cb40319c8da95))
+- **cross-chain-oracle:** Add verification script to cross chain oracle setup ([#3758](https://github.com/UMAprotocol/protocol/issues/3758)) ([8ad8291](https://github.com/UMAprotocol/protocol/commit/8ad82915d534d062c90f6f2b89ab4b4798b83a2b))
+
 # [2.16.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.15.0...@uma/common@2.16.0) (2022-01-11)
 
 ### Features

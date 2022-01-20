@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.6.1](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.6.0...@uma/scripts@1.6.1) (2022-01-20)
+
+### Bug Fixes
+
+- **across-relayer:** Fix various bugs in relayer and manual relay script ([#3769](https://github.com/UMAprotocol/protocol/issues/3769)) ([31cdd90](https://github.com/UMAprotocol/protocol/commit/31cdd9082979c288001af17c487a89ebcc9672f0))
+
 # [1.6.0](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.5.5...@uma/scripts@1.6.0) (2022-01-11)
 
 ### Features
