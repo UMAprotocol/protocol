@@ -30,7 +30,7 @@ const argv = require("minimist")(process.argv.slice(), {
   default: { skipExecute: false },
 });
 
-async function run() {
+async function simulateVote() {
   const web3 = getWeb3ByChainId(1);
   const accounts = await web3.eth.getAccounts();
 
@@ -189,16 +189,19 @@ async function run() {
           continue;
         }
       }
+      console.groupEnd();
     }
+    console.groupEnd();
     console.groupEnd();
   }
 
   console.log("\n😇 Success!");
+  console.groupEnd();
 }
 
 function main() {
   const startTime = Date.now();
-  run()
+  simulateVote()
     .catch((err) => {
       console.error(err);
     })
@@ -207,4 +210,9 @@ function main() {
       console.log(`Done in ${(timeElapsed / 1000).toFixed(2)}s`);
     });
 }
-main();
+
+if (require.main === module) {
+  main();
+}
+
+module.exports = { simulateVote };
