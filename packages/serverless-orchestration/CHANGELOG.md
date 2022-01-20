@@ -3,6 +3,10 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.6.1](https://github.com/UMAprotocol/protocol/compare/@uma/serverless-orchestration@2.6.0...@uma/serverless-orchestration@2.6.1) (2022-01-20)
+
+**Note:** Version bump only for package @uma/serverless-orchestration
+
 # [2.6.0](https://github.com/UMAprotocol/protocol/compare/@uma/serverless-orchestration@2.5.16...@uma/serverless-orchestration@2.6.0) (2022-01-11)
 
 ### Features
