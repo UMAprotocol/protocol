@@ -99,7 +99,7 @@ export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
           filteredL1Whitelist,
           accounts[0],
           config.whitelistedChainIds,
-          config.l1DeployData,
+          l1Client.getBridgePoolDeployData(),
           config.l2DeployData,
           config.l2BlockLookback,
           multicallBundler

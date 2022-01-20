@@ -52,11 +52,16 @@ export interface InstantRelay {
 
 export interface BridgePoolData {
   contract: BridgePoolWeb3;
+  earliestValidDepositQuoteTime: number;
   l2Token: { [chainId: string]: string }; // chainID=>L2TokenAddress
   currentTime: number;
   relayNonce: number;
   poolCollateralDecimals: number;
   poolCollateralSymbol: string;
+}
+
+export interface BridgePoolDeploymentData {
+  [key: string]: { timestamp: number };
 }
 
 export class InsuredBridgeL1Client {
@@ -129,6 +134,14 @@ export class InsuredBridgeL1Client {
     return this.relays[l1Token][deposit.depositHash];
   }
 
+  getBridgePoolDeployData(): BridgePoolDeploymentData {
+    this._throwIfNotInitialized();
+    const deployTimestamps: BridgePoolDeploymentData = {};
+    Object.keys(this.bridgePools).map((l1Token: string) => {
+      deployTimestamps[l1Token] = { timestamp: this.bridgePools[l1Token].earliestValidDepositQuoteTime };
+    });
+    return deployTimestamps;
+  }
   getWhitelistedTokensForChainId(chainId: string): { [l1TokenAddress: string]: string } {
     this._throwIfNotInitialized();
     return this.whitelistedTokens[chainId];
@@ -297,7 +310,15 @@ export class InsuredBridgeL1Client {
     // Check for new bridgePools deployed. This acts as the initial setup and acts to more pools if they are deployed
     // while the bot is running.
     const whitelistedTokenEvents = await this.bridgeAdmin.getPastEvents("WhitelistToken", blockSearchConfig);
-    for (const whitelistedTokenEvent of whitelistedTokenEvents) {
+
+    // Lookup timestamp for each event block number in parallel instead of once per loop. We are ok fetching these
+    // upfront because there shouldn't be that many WhitelistToken events in production, so the max number of web3
+    // requests to send is anticipated to be low to lookup block numbers.
+    const whitelistedTokenBlocks = await Promise.all(
+      whitelistedTokenEvents.map((e) => this.l1Web3.eth.getBlock(e.blockNumber))
+    );
+    for (let i = 0; i < whitelistedTokenEvents.length; i++) {
+      const whitelistedTokenEvent = whitelistedTokenEvents[i];
       // Add L1=>L2 token mapping to whitelisted dictionary for this chain ID.
       const whitelistedTokenMappingsForChainId = this.whitelistedTokens[whitelistedTokenEvent.returnValues.chainId];
       this.whitelistedTokens[whitelistedTokenEvent.returnValues.chainId] = {
@@ -309,12 +330,22 @@ export class InsuredBridgeL1Client {
 
       const l1Token = toChecksumAddress(whitelistedTokenEvent.returnValues.l1Token);
       const l2Tokens = this.bridgePools[l1Token]?.l2Token;
+
+      // Store the WhitelistToken event timestamp as the earliest allowable deposit quote time for relays that will go
+      // through this bridge pool. If any relays have a quote time that is before the bridge pool was whitelisted,
+      // then it is by default invalid.
+      // Note: Only update this deployment time if the bridge pool address is reset.
+      const earliestValidDepositQuoteTime =
+        whitelistedTokenEvent.returnValues.bridgePool === this.bridgePools[l1Token]?.contract.options.address
+          ? this.bridgePools[l1Token].earliestValidDepositQuoteTime
+          : Number(whitelistedTokenBlocks[i].timestamp);
       this.bridgePools[l1Token] = {
         l2Token: l2Tokens, // Re-use existing L2 token array and update after resetting other state.
         contract: (new this.l1Web3.eth.Contract(
           getAbi("BridgePool"),
           whitelistedTokenEvent.returnValues.bridgePool
         ) as unknown) as BridgePoolWeb3,
+        earliestValidDepositQuoteTime,
         // We'll set the following params when fetching bridge pool state in parallel.
         currentTime: 0,
         relayNonce: 0,
