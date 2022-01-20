@@ -1,91 +1,88 @@
-import { State, RequestState, Flag } from "./types/state";
+import { State, RequestState, Flag, Flags } from "./types/state";
+import { ContextType } from "./types/statemachine";
 import { Read } from "./store";
 
-export function initFlags() {
+export function initFlags(): Flags {
   return {
-    [Flag.MissingRequest]: true,
-    [Flag.MissingUser]: true,
-    [Flag.WrongChain]: true,
-    [Flag.InvalidStateForPropose]: true,
-    [Flag.InvalidStateForDispute]: true,
-    [Flag.InsufficientBalance]: true,
-    [Flag.InsufficientApproval]: true,
-    [Flag.ProposalInProgress]: true,
-    [Flag.ApprovalInProgress]: true,
-    [Flag.DisputeInProgress]: true,
+    [Flag.MissingRequest]: false,
+    [Flag.MissingUser]: false,
+    [Flag.WrongChain]: false,
+    [Flag.InProposeState]: false,
+    [Flag.InDisputeState]: false,
+    [Flag.InsufficientBalance]: false,
+    [Flag.InsufficientApproval]: false,
+    [Flag.ProposalInProgress]: false,
+    [Flag.ApprovalInProgress]: false,
+    [Flag.DisputeInProgress]: false,
+    [Flag.ChainChangeInProgress]: false,
   };
 }
 
-export function getFlags(state: State) {
+export function getFlags(state: State): Record<Flag, boolean> {
   const read = new Read(state);
   const flags = initFlags();
 
   try {
-    if (read.userAddress()) {
-      flags[Flag.MissingUser] = false;
-    } else {
-      flags[Flag.MissingUser] = true;
-    }
+    read.userAddress();
+    flags[Flag.MissingUser] = false;
   } catch (err) {
-    // ignore
+    flags[Flag.MissingUser] = true;
   }
 
   try {
-    if (read.inputRequest()) {
-      flags[Flag.MissingRequest] = false;
-    } else {
-      flags[Flag.MissingRequest] = true;
-    }
+    read.inputRequest();
+    flags[Flag.MissingRequest] = false;
   } catch (err) {
-    // ignore
+    flags[Flag.MissingRequest] = true;
   }
 
   try {
-    if (read.userChainId() != read.requestChainId()) {
-      flags[Flag.WrongChain] = true;
-    } else {
-      flags[Flag.WrongChain] = false;
-    }
+    flags[Flag.WrongChain] = read.userChainId() !== read.requestChainId();
   } catch (err) {
-    // ignore
+    flags[Flag.WrongChain] = false;
   }
 
   try {
-    if (read.request()?.state !== RequestState.Requested) {
-      flags[Flag.InvalidStateForPropose] = true;
-    } else {
-      flags[Flag.InvalidStateForPropose] = false;
-    }
-    if (read.request()?.state !== RequestState.Proposed) {
-      flags[Flag.InvalidStateForDispute] = true;
-    } else {
-      flags[Flag.InvalidStateForDispute] = false;
-    }
+    flags[Flag.InProposeState] = read.request()?.state === RequestState.Requested;
   } catch (err) {
-    // ignore
+    flags[Flag.InProposeState] = false;
+  }
+
+  try {
+    flags[Flag.InDisputeState] = read.request()?.state === RequestState.Proposed;
+  } catch (err) {
+    flags[Flag.InDisputeState] = false;
   }
 
   try {
     const totalBond = read.request().bond.add(read.request().finalFee);
-
-    if (read.userCollateralBalance().lt(totalBond)) {
-      flags[Flag.InsufficientBalance] = true;
-    } else {
-      flags[Flag.InsufficientBalance] = false;
-    }
-    if (read.userCollateralAllowance().lt(totalBond)) {
-      flags[Flag.InsufficientApproval] = true;
-    } else {
-      flags[Flag.InsufficientApproval] = false;
-    }
+    flags[Flag.InsufficientBalance] = read.userCollateralBalance().lt(totalBond);
+    flags[Flag.InsufficientApproval] = read.userCollateralAllowance().lt(totalBond);
   } catch (err) {
     // ignore
   }
 
-  // TODO: add logic for these
-  flags[Flag.ProposalInProgress] = false;
-  flags[Flag.DisputeInProgress] = false;
-  flags[Flag.ApprovalInProgress] = false;
+  try {
+    // get all active commands
+    const commands = read.filterCommands({ done: false, user: read.userAddress() });
+    // go through each command, look at the type and if it exists, we know a tx for this user is in progress
+    commands.forEach((command) => {
+      if (!flags[Flag.ProposalInProgress] && command.type === ContextType.proposePrice) {
+        flags[Flag.ProposalInProgress] = true;
+      }
+      if (!flags[Flag.DisputeInProgress] && command.type === ContextType.disputePrice) {
+        flags[Flag.DisputeInProgress] = true;
+      }
+      if (!flags[Flag.ApprovalInProgress] && command.type === ContextType.approve) {
+        flags[Flag.ApprovalInProgress] = true;
+      }
+      if (!flags[Flag.ChainChangeInProgress] && command.type === ContextType.switchOrAddChain) {
+        flags[Flag.ChainChangeInProgress] = true;
+      }
+    });
+  } catch (err) {
+    // ignore
+  }
 
   return flags;
 }

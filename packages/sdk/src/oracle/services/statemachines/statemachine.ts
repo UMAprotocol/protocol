@@ -4,7 +4,12 @@ import { ContextManager, shouldStep } from "./utils";
 
 // context types, import new ones here
 import * as setUser from "./setUser";
+import * as clearUser from "./clearUser";
 import * as setActiveRequest from "./setActiveRequest";
+import * as approve from "./approve";
+import * as disputePrice from "./disputePrice";
+import * as proposePrice from "./proposePrice";
+import * as switchOrAddChain from "./switchOrAddChain";
 
 /**
  * StateMachine. This class will be used to handle all change requests by the user, including setting state which
@@ -27,7 +32,12 @@ export class StateMachine {
   // this needs to be updated when adding new context type
   public types: {
     [ContextType.setUser]: ContextManager<setUser.Params, setUser.Memory>;
+    [ContextType.clearUser]: ContextManager<clearUser.Params, clearUser.Memory>;
     [ContextType.setActiveRequest]: ContextManager<setActiveRequest.Params, setActiveRequest.Memory>;
+    [ContextType.approve]: ContextManager<approve.Params, approve.Memory>;
+    [ContextType.disputePrice]: ContextManager<disputePrice.Params, disputePrice.Memory>;
+    [ContextType.proposePrice]: ContextManager<proposePrice.Params, proposePrice.Memory>;
+    [ContextType.switchOrAddChain]: ContextManager<switchOrAddChain.Params, switchOrAddChain.Memory>;
   };
   constructor(private store: Store) {
     // need to initizlie state types here manually for each new context type
@@ -38,10 +48,40 @@ export class StateMachine {
         setUser.initMemory,
         this.handleCreate
       ),
+      [ContextType.clearUser]: new ContextManager<clearUser.Params, clearUser.Memory>(
+        ContextType.clearUser,
+        clearUser.Handlers(store),
+        clearUser.initMemory,
+        this.handleCreate
+      ),
       [ContextType.setActiveRequest]: new ContextManager<setActiveRequest.Params, setActiveRequest.Memory>(
         ContextType.setActiveRequest,
         setActiveRequest.Handlers(store),
         setActiveRequest.initMemory,
+        this.handleCreate
+      ),
+      [ContextType.approve]: new ContextManager<approve.Params, approve.Memory>(
+        ContextType.approve,
+        approve.Handlers(store),
+        approve.initMemory,
+        this.handleCreate
+      ),
+      [ContextType.disputePrice]: new ContextManager<disputePrice.Params, disputePrice.Memory>(
+        ContextType.disputePrice,
+        disputePrice.Handlers(store),
+        disputePrice.initMemory,
+        this.handleCreate
+      ),
+      [ContextType.proposePrice]: new ContextManager<proposePrice.Params, proposePrice.Memory>(
+        ContextType.proposePrice,
+        proposePrice.Handlers(store),
+        proposePrice.initMemory,
+        this.handleCreate
+      ),
+      [ContextType.switchOrAddChain]: new ContextManager<switchOrAddChain.Params, switchOrAddChain.Memory>(
+        ContextType.switchOrAddChain,
+        switchOrAddChain.Handlers(store),
+        switchOrAddChain.initMemory,
         this.handleCreate
       ),
     };
@@ -50,7 +90,7 @@ export class StateMachine {
     this.store.write((w) => w.command(context));
   }
   private handleCreate = (context: Context<unknown, unknown & Memory>) => {
-    this.pending.push(context);
+    this.push(context);
     this.saveContext(context);
   };
 
@@ -82,9 +122,44 @@ export class StateMachine {
           );
           break;
         }
+        case ContextType.clearUser: {
+          next = await this.types[context.type].step(
+            (context as unknown) as Context<clearUser.Params, clearUser.Memory>,
+            now
+          );
+          break;
+        }
         case ContextType.setActiveRequest: {
           next = await this.types[context.type].step(
             (context as unknown) as Context<setActiveRequest.Params, setActiveRequest.Memory>,
+            now
+          );
+          break;
+        }
+        case ContextType.approve: {
+          next = await this.types[context.type].step(
+            (context as unknown) as Context<approve.Params, approve.Memory>,
+            now
+          );
+          break;
+        }
+        case ContextType.disputePrice: {
+          next = await this.types[context.type].step(
+            (context as unknown) as Context<disputePrice.Params, disputePrice.Memory>,
+            now
+          );
+          break;
+        }
+        case ContextType.proposePrice: {
+          next = await this.types[context.type].step(
+            (context as unknown) as Context<proposePrice.Params, proposePrice.Memory>,
+            now
+          );
+          break;
+        }
+        case ContextType.switchOrAddChain: {
+          next = await this.types[context.type].step(
+            (context as unknown) as Context<switchOrAddChain.Params, switchOrAddChain.Memory>,
             now
           );
           break;

@@ -1,3 +1,4 @@
 export type { Signer, BigNumber, BigNumberish, Contract } from "ethers";
 export type { Overrides } from "@ethersproject/contracts";
-export { Provider } from "@ethersproject/providers";
+export { Provider, JsonRpcSigner, JsonRpcProvider, Web3Provider } from "@ethersproject/providers";
+export { TransactionRequest, TransactionReceipt, TransactionResponse } from "@ethersproject/abstract-provider";

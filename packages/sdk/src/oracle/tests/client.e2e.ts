@@ -24,8 +24,9 @@ export const config: types.state.Config = {
   },
 };
 
-const account = "0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D";
-const signer = {} as types.ethers.Signer;
+const address = "0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D";
+const signer = {} as types.ethers.JsonRpcSigner;
+const provider = {} as types.ethers.Web3Provider;
 
 const request = {
   requester: "0xb8b3583f143b3a4c2aa052828d8809b0818a16e9",
@@ -56,11 +57,11 @@ describe("Oracle Client", function () {
     assert.ok(store.read().command(id));
   });
   test("setUser", async function () {
-    const id = client.setUser(account, chainId, signer);
+    const id = client.setUser({ address, chainId, signer, provider });
     await client.sm.tick();
     const state = store.get();
     assert.ok(state?.inputs?.user);
-    assert.equal(state?.inputs?.user?.address, account);
+    assert.equal(state?.inputs?.user?.address, address);
     assert.equal(state?.inputs?.user.chainId, chainId);
     assert.ok(state?.flags);
     assert.ok(store.read().command(id));

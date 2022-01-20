@@ -1,5 +1,6 @@
 import Store from "../store";
-import { getFlags } from "../utils";
+import { InputRequest } from "../types/state";
+import { TransactionReceipt } from "../types/ethers";
 
 export class Update {
   private read: Store["read"];
@@ -8,17 +9,17 @@ export class Update {
     this.read = store.read;
     this.write = store.write;
   }
-  async all() {
+  async all(): Promise<void> {
     await this.oracle();
     await this.request();
     await this.collateralProps();
     await this.userCollateralBalance();
     await this.oracleAllowance();
   }
-  async request() {
-    const request = this.read().inputRequest();
+  async request(params?: InputRequest): Promise<void> {
+    const request = params || this.read().inputRequest();
     const chainId = request.chainId;
-    const oo = this.read().oracleService();
+    const oo = this.read().oracleService(chainId);
     const fullRequest = await oo.getRequest(
       request.requester,
       request.identifier,
@@ -35,26 +36,26 @@ export class Update {
         .request(request, { ...fullRequest, state });
     });
   }
-  async oracle() {
+  async oracle(): Promise<void> {
     const chainId = this.read().requestChainId();
     const oo = this.read().oracleService();
     const { defaultLiveness } = await oo.getProps();
     this.write((write) => write.chains(chainId).optimisticOracle().defaultLiveness(defaultLiveness));
   }
-  async userCollateralBalance() {
+  async userCollateralBalance(): Promise<void> {
     const chainId = this.read().requestChainId();
     const account = this.read().userAddress();
     const token = this.read().collateralService();
     const result = await token.contract.balanceOf(account);
     this.write((write) => write.chains(chainId).erc20s(token.address).balance(account, result));
   }
-  async collateralProps() {
+  async collateralProps(): Promise<void> {
     const chainId = this.read().requestChainId();
     const token = this.read().collateralService();
     const props = await token.getProps();
     this.write((write) => write.chains(chainId).erc20s(token.address).props(props));
   }
-  async oracleAllowance() {
+  async oracleAllowance(): Promise<void> {
     const chainId = this.read().requestChainId();
     const account = this.read().userAddress();
     const oracleAddress = this.read().oracleAddress();
@@ -62,7 +63,18 @@ export class Update {
     const result = await token.contract.allowance(account, oracleAddress);
     this.write((write) => write.chains(chainId).erc20s(token.address).allowance(account, oracleAddress, result));
   }
-  flags() {
-    this.write((w, s) => w.flags(getFlags(s)));
+  async balance(chainId: number, token: string, account: string): Promise<void> {
+    const tokenService = this.read().tokenService(chainId, token);
+    const result = await tokenService.contract.balanceOf(account);
+    this.write((write) => write.chains(chainId).erc20s(token).balance(account, result));
+  }
+  async allowance(chainId: number, token: string, account: string, spender: string): Promise<void> {
+    const tokenService = this.read().tokenService(chainId, token);
+    const result = await tokenService.contract.allowance(account, spender);
+    this.write((write) => write.chains(chainId).erc20s(token).allowance(account, spender, result));
+  }
+  async isConfirmed(chainId: number, hash: string, confirmations: number): Promise<boolean | TransactionReceipt> {
+    const txService = this.read().transactionService(chainId);
+    return txService.isConfirmed(hash, confirmations);
   }
 }

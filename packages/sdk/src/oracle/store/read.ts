@@ -1,7 +1,11 @@
 import assert from "assert";
+import filter from "lodash/filter";
 
-import type { State, Chain, Inputs, Request, Erc20Props, ChainConfig, Flag, Context, Memory } from "../types/state";
-import type { Signer, BigNumber } from "../types/ethers";
+import type { State, Chain, Inputs, Request, Erc20Props, ChainConfig, Context, Memory, User } from "../types/state";
+import type { JsonRpcSigner, BigNumber, Provider } from "../types/ethers";
+import { Transaction } from "../services/transaction";
+import { OptimisticOracle } from "../services/optimisticOracle";
+import { Erc20 } from "../services/erc20";
 
 // This is a typescript compatible way of pulling out values from the global state object, essentially
 // forming a basic API. Most calls are parameterless, requiring first setting state which determines, the
@@ -19,6 +23,11 @@ export default class Read {
     const chainId = this.state?.inputs?.request?.chainId;
     assert(chainId, "ChainId is not set on request");
     return chainId;
+  }
+  user(): Partial<User> {
+    const result = this.state?.inputs?.user;
+    assert(result, "user not set");
+    return result;
   }
   userChainId(): number {
     const chainId = this.state?.inputs?.user?.chainId;
@@ -42,7 +51,7 @@ export default class Read {
     assert(address, "Optimistic oracle address not set");
     return address;
   }
-  signer(): Signer {
+  signer(): JsonRpcSigner {
     const signer = this.state?.inputs?.user?.signer;
     assert(signer, "Signer is not set");
     return signer;
@@ -84,23 +93,45 @@ export default class Read {
     assert(allowance, "Allowance not set on user on collateral token for oracle");
     return allowance;
   }
-  oracleService() {
-    const chainId = this.requestChainId();
+  oracleService(optionalChainId?: number): OptimisticOracle {
+    const chainId = optionalChainId || this.requestChainId();
     const result = this.state?.services?.chains?.[chainId]?.optimisticOracle;
     assert(result, "Optimistic Oracle Not found on chain " + chainId);
     return result;
   }
-  collateralService() {
+  collateralService(): Erc20 {
     const chainId = this.requestChainId();
     const request = this.request();
     const result = this.state?.services?.chains?.[chainId]?.erc20s?.[request.currency];
     assert(result, "Token not supported on chain " + chainId);
     return result;
   }
-  flags(): Record<Flag, boolean> | undefined {
-    return this.state?.flags;
-  }
   command(id: string): Context<unknown, unknown & Memory> | undefined {
     return this.state?.commands?.[id];
+  }
+  tokenService(chainId: number, address: string): Erc20 {
+    const result = this.state?.services?.chains?.[chainId]?.erc20s?.[address];
+    assert(result, "Token service not found: " + [chainId, address].join("."));
+    return result;
+  }
+  provider(chainId: number): Provider {
+    const result = this.state?.services?.chains?.[chainId]?.provider;
+    assert(result, "Provider not found on chainid: " + chainId);
+    return result;
+  }
+  transactionService(chainId: number): Transaction {
+    const provider = this.provider(chainId);
+    return new Transaction(provider);
+  }
+  listCommands(): Context<unknown, unknown & Memory>[] {
+    return Object.values(this.state?.commands || []);
+  }
+  filterCommands(search: { user?: string; done?: boolean }): Context<unknown, unknown & Memory>[] {
+    return filter(this.listCommands(), search) as Context<unknown, unknown & Memory>[];
+  }
+  chainMetadata(chainId: number) {
+    const result = this.state?.config?.chains?.[chainId]?.metadata;
+    assert(result, "Missing chain metadata for: " + chainId);
+    return result;
   }
 }
