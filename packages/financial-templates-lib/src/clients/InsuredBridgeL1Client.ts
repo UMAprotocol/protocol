@@ -314,10 +314,9 @@ export class InsuredBridgeL1Client {
     // Lookup timestamp for each event block number in parallel instead of once per loop. We are ok fetching these
     // upfront because there shouldn't be that many WhitelistToken events in production, so the max number of web3
     // requests to send is anticipated to be low to lookup block numbers.
-    const getWhitelistedTokenEventBlockPromises = whitelistedTokenEvents.map((e) =>
-      this.l1Web3.eth.getBlock(e.blockNumber)
+    const whitelistedTokenBlocks = await Promise.all(
+      whitelistedTokenEvents.map((e) => this.l1Web3.eth.getBlock(e.blockNumber))
     );
-    const whitelistedTokenBlocks = await Promise.all(getWhitelistedTokenEventBlockPromises);
     for (let i = 0; i < whitelistedTokenEvents.length; i++) {
       const whitelistedTokenEvent = whitelistedTokenEvents[i];
       // Add L1=>L2 token mapping to whitelisted dictionary for this chain ID.
