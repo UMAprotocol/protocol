@@ -38,5 +38,29 @@
   {
     "contractName": "Store",
     "address": "0x2d6FAD39059f5FCe80bFf691F8f0Bb30D5d4f214"
+  },
+  {
+    "contractName": "TokenFactory",
+    "address": "0xcA5BcA331b8137fD15c2fa6BA34655FA58de5a0B"
+  },
+  {
+    "contractName": "LongShortPairCreator",
+    "address": "0xEfd7eE5FC0BC42e41d800C4D9db912bC42A4530F"
+  },
+  {
+    "contractName": "CoveredCallLongShortPairFinancialProductLibrary",
+    "address": "0xBbc6009fEfFc27ce705322832Cb2068F8C1e0A58"
+  },
+  {
+    "contractName": "RangeBondLongShortPairFinancialProductLibrary",
+    "address": "0x129B61ce378B2B4b5Ebeac648019E2427b74527e"
+  },
+  {
+    "contractName": "BinaryOptionLongShortPairFinancialProductLibrary",
+    "address": "0xd2Aa779253c0Ab194d8c3e6708e5EB4697F13941"
+  },
+  {
+    "contractName": "LinearLongShortPairFinancialProductLibrary",
+    "address": "0x85F46e5aCf6309345D0d6cfe22fbBAF7c349fF84"
   }
 ]
