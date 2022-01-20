@@ -533,7 +533,8 @@ export class Client {
       const rateModelRaw = await this.rateModelInstance.callStatic.l1TokenRateModels(state.l1Token);
       rateModel = parseAndReturnRateModelFromString(rateModelRaw);
     } catch (err) {
-      // caller can optionally listen error but we can continue
+      // we could swallow this error or just log it since getting the rate model is optional,
+      // but we will just emit it to the caller and let them decide what to do with it.
       this.emit(["error"], err);
     }
 
