@@ -10,7 +10,7 @@ export enum ContextType {
 export type ContextProps = {
   id: string;
   type: ContextType;
-  state: string;
+  state: "done" | "error" | string;
   done: boolean;
   created: number;
   updated: number | undefined;
