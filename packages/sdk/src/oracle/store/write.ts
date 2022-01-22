@@ -1,10 +1,12 @@
 import { ethers } from "ethers";
 import type * as ethersTypes from "../types/ethers";
-import type * as state from "../types/state";
+import * as state from "../types/state";
+import * as statemachine from "../types/statemachine";
 
 import { factory as Erc20Factory } from "../services/erc20";
 import { OptimisticOracle as OptimisticOracleService } from "../services/optimisticOracle";
 import Multicall2 from "../../multicall2";
+import { initFlags } from "../utils";
 
 // This file contains composable and type safe state writers which mirror the state in types/state.
 // Each component takes in 1 parameters, state and you can include any number of functions to operate on the state.
@@ -20,6 +22,11 @@ export class User {
     if (data.chainId) this.chainId(data.chainId);
     if (data.address) this.address(data.address);
     if (data.signer) this.signer(data.signer);
+  }
+  clear(): void {
+    delete this.state.chainId;
+    delete this.state.address;
+    delete this.state.signer;
   }
   chainId(chainId: number): void {
     this.state.chainId = chainId;
@@ -85,8 +92,12 @@ export class Chain {
 }
 export class Inputs {
   constructor(private state: Partial<state.Inputs>) {}
-  request(requester: string, identifier: string, timestamp: number, ancillaryData: string, chainId: number): void {
-    this.state.request = { requester, identifier, timestamp, ancillaryData, chainId };
+  request(params: state.Inputs["request"]): void {
+    this.state.request = params;
+  }
+  user(): User {
+    if (!this.state.user) this.state.user = {};
+    return new User(this.state.user);
   }
 }
 
@@ -127,10 +138,6 @@ export default class Write {
     if (!this.state?.chains?.[chainId]) this.state.chains[chainId] = {};
     return new Chain(this.state.chains[chainId]);
   }
-  user(): User {
-    if (!this.state.user) this.state.user = {};
-    return new User(this.state.user);
-  }
   inputs(): Inputs {
     if (!this.state.inputs) this.state.inputs = {};
     return new Inputs(this.state.inputs);
@@ -146,5 +153,16 @@ export default class Write {
   }
   error(error?: Error): void {
     this.state.error = error;
+  }
+  flag(flag: state.Flag, on: boolean) {
+    if (!this.state.flags) this.state.flags = initFlags();
+    this.state.flags[flag] = on;
+  }
+  flags(flags: Record<state.Flag, boolean>) {
+    this.state.flags = { ...(this.state.flags || initFlags()), ...flags };
+  }
+  command(context: statemachine.Context<unknown, unknown & statemachine.Memory>) {
+    if (!this.state.commands) this.state.commands = {};
+    this.state.commands[context.id] = context;
   }
 }

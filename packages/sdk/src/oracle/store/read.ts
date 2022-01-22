@@ -1,6 +1,6 @@
 import assert from "assert";
 
-import type { State, Chain, Inputs, Request, Erc20Props, ChainConfig } from "../types/state";
+import type { State, Chain, Inputs, Request, Erc20Props, ChainConfig, Flag, Context, Memory } from "../types/state";
 import type { Signer, BigNumber } from "../types/ethers";
 
 // This is a typescript compatible way of pulling out values from the global state object, essentially
@@ -21,7 +21,7 @@ export default class Read {
     return chainId;
   }
   userChainId(): number {
-    const chainId = this.state?.user?.chainId;
+    const chainId = this.state?.inputs?.user?.chainId;
     assert(chainId, "ChainId is not set");
     return chainId;
   }
@@ -32,7 +32,7 @@ export default class Read {
     return chain;
   }
   userAddress(): string {
-    const address = this.state?.user?.address;
+    const address = this.state?.inputs?.user?.address;
     assert(address, "User address is not set");
     return address;
   }
@@ -43,7 +43,7 @@ export default class Read {
     return address;
   }
   signer(): Signer {
-    const signer = this.state?.user?.signer;
+    const signer = this.state?.inputs?.user?.signer;
     assert(signer, "Signer is not set");
     return signer;
   }
@@ -96,5 +96,11 @@ export default class Read {
     const result = this.state?.services?.chains?.[chainId]?.erc20s?.[request.currency];
     assert(result, "Token not supported on chain " + chainId);
     return result;
+  }
+  flags(): Record<Flag, boolean> | undefined {
+    return this.state?.flags;
+  }
+  command(id: string): Context<unknown, unknown & Memory> | undefined {
+    return this.state?.commands?.[id];
   }
 }

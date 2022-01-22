@@ -1,86 +1,36 @@
+import assert from "assert";
 import Store, { Emit } from "./store";
 import type { state } from "./types";
 import { Inputs } from "./types/state";
 import { Signer } from "./types/ethers";
-import * as utils from "./utils";
+import { Update } from "./services/update";
+import { StateMachine } from "./services/statemachines/statemachine";
+import { loop } from "../utils";
 
 export class Client {
-  public readonly update: Update;
-  constructor(public readonly store: Store) {
-    this.update = new Update(store);
+  private intervalStarted = false;
+  constructor(public readonly store: Store, public readonly update: Update, public readonly sm: StateMachine) {}
+  setUser(address: string, chainId: number, signer: Signer): string {
+    return this.sm.types.setUser.create({ address, chainId, signer });
   }
-  setUser(address: string, chainId: number, signer: Signer): void {
-    this.store.write((write) => write.user().set({ address, chainId, signer }));
+  setActiveRequest(params: Inputs["request"]): string {
+    return this.sm.types.setActiveRequest.create(params);
   }
-  setActiveRequest(params: Inputs["request"]): void {
-    const { requester, identifier, timestamp, ancillaryData, chainId } = params;
-    this.store.write((write) => write.inputs().request(requester, identifier, timestamp, ancillaryData, chainId));
-  }
-  previewProposal() {
-    return utils.previewProposal(this.store.get());
-  }
-}
-
-export class Update {
-  private read: Store["read"];
-  private write: Store["write"];
-  constructor(private store: Store) {
-    this.read = store.read;
-    this.write = store.write;
-  }
-  async all() {
-    await this.oracle();
-    await this.request();
-    await this.collateralProps();
-    await this.userCollateralBalance();
-    await this.oracleAllowance();
-  }
-  async request() {
-    const request = this.read().inputRequest();
-    const chainId = request.chainId;
-    const oo = this.read().oracleService();
-    const fullRequest = await oo.getRequest(
-      request.requester,
-      request.identifier,
-      request.timestamp,
-      request.ancillaryData
-    );
-    const state = await oo.getState(request.requester, request.identifier, request.timestamp, request.ancillaryData);
-    this.write((write) => {
-      // create the erc20 service to handle currency
-      write.services(chainId).erc20s(fullRequest.currency);
-      write
-        .chains(chainId)
-        .optimisticOracle()
-        .request(request, { ...fullRequest, state });
+  // runs statemachine step loop pretty fast by default.
+  startInterval(delayMs = 10) {
+    assert(!this.intervalStarted, "Interval already started, try stopping first");
+    this.intervalStarted = true;
+    loop(async () => {
+      assert(this.intervalStarted, "Interval Stopped");
+      await this.sm.tick();
+    }, delayMs).catch((err) => {
+      this.intervalStarted = false;
+      this.store.write((w) => w.error(err));
     });
   }
-  async oracle() {
-    const chainId = this.read().requestChainId();
-    const oo = this.read().oracleService();
-    const { defaultLiveness } = await oo.getProps();
-    this.write((write) => write.chains(chainId).optimisticOracle().defaultLiveness(defaultLiveness));
-  }
-  async userCollateralBalance() {
-    const chainId = this.read().requestChainId();
-    const account = this.read().userAddress();
-    const token = this.read().collateralService();
-    const result = await token.contract.balanceOf(account);
-    this.write((write) => write.chains(chainId).erc20s(token.address).balance(account, result));
-  }
-  async collateralProps() {
-    const chainId = this.read().requestChainId();
-    const token = this.read().collateralService();
-    const props = await token.getProps();
-    this.write((write) => write.chains(chainId).erc20s(token.address).props(props));
-  }
-  async oracleAllowance() {
-    const chainId = this.read().requestChainId();
-    const account = this.read().userAddress();
-    const oracleAddress = this.read().oracleAddress();
-    const token = this.read().collateralService();
-    const result = await token.contract.allowance(account, oracleAddress);
-    this.write((write) => write.chains(chainId).erc20s(token.address).allowance(account, oracleAddress, result));
+  stopInterval() {
+    assert(!this.intervalStarted, "Interval already stopped");
+    this.intervalStarted = false;
   }
 }
 
@@ -95,5 +45,7 @@ export function factory(config: state.Config, emit: Emit): Client {
       write.services(chain.chainId).optimisticOracle(chain.optimisticOracleAddress);
     }
   });
-  return new Client(store);
+  const update = new Update(store);
+  const sm = new StateMachine(store);
+  return new Client(store, update, sm);
 }

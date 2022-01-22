@@ -2,6 +2,9 @@ import { Signer, BigNumber } from "./ethers";
 import type { erc20, optimisticOracle } from "../services";
 import type Multicall2 from "../../multicall2";
 import { Provider } from "./ethers";
+import { Context, Memory } from "./statemachine";
+
+export { Context, Memory };
 
 export type ChainServices = {
   multicall2: Multicall2;
@@ -34,6 +37,29 @@ export type User = {
   signer: Signer;
 };
 
+export enum RequestState {
+  Invalid = 0, // Never requested.
+  Requested, // Requested, no other actions taken.
+  Proposed, // Proposed, but not expired or disputed yet.
+  Expired, // Proposed, not disputed, past liveness.
+  Disputed, // Disputed, but no DVM price returned yet.
+  Resolved, // Disputed and DVM price is available.
+  Settled, // Final price has been set in the contract (can get here from Expired or Resolved).
+}
+
+export enum Flag {
+  MissingRequest = "MissingRequest",
+  MissingUser = "MissingUser",
+  WrongChain = "WrongChain",
+  InvalidStateForPropose = "InvalidStateForPropose",
+  InvalidStateForDispute = "InvalidStateForDispute",
+  InsufficientBalance = "InsufficientBalance",
+  InsufficientApproval = "InsufficientApproval",
+  ProposalInProgress = "ProposalInProgress",
+  ApprovalInProgress = "ApprovalInProgress",
+  DisputeInProgress = "DisputeInProgress",
+}
+
 export type Inputs = {
   request: {
     requester: string;
@@ -42,6 +68,7 @@ export type Inputs = {
     ancillaryData: string;
     chainId: number;
   };
+  user: Partial<User>;
 };
 
 export type Erc20Props = {
@@ -88,8 +115,9 @@ export type Chain = {
 export type State = Partial<{
   error?: Error;
   inputs: Partial<Inputs>;
-  user: Partial<User>;
   chains: Record<number, Partial<Chain>>;
   config: Config;
   services: Services;
+  flags?: Record<Flag, boolean>;
+  commands?: Record<string, Context<unknown, any>>;
 }>;

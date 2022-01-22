@@ -13,11 +13,11 @@ describe("Oracle Store", function () {
 
   test("set user", function (done) {
     events.once("change", (state) => {
-      assert.equal(state.user.address, "test");
-      assert.equal(state.user.chainId, 1);
+      assert.equal(state.inputs.user.address, "test");
+      assert.equal(state.inputs.user.chainId, 1);
       done();
     });
-    store.write((write) => write.user().set({ address: "test", chainId: 1 }));
+    store.write((write) => write.inputs().user().set({ address: "test", chainId: 1 }));
   });
   test("set input", function (done) {
     events.once("change", (state) => {
@@ -27,7 +27,9 @@ describe("Oracle Store", function () {
       assert.equal(state.inputs.request.ancillaryData, "d");
       done();
     });
-    store.write((write) => write.inputs().request("a", "b", 1, "d", 1));
+    store.write((write) =>
+      write.inputs().request({ requester: "a", identifier: "b", timestamp: 1, ancillaryData: "d", chainId: 1 })
+    );
   });
   test("set balance", function (done) {
     events.once("change", (state) => {
