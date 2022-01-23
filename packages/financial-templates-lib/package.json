@@ -18,7 +18,7 @@
     "minimist": "^1.2.0",
     "moment": "^2.29.1",
     "moment-timezone": "^0.5.33",
-    "node-fetch": "^2.6.0",
+    "node-fetch": "^3.1.1",
     "node-pagerduty": "^1.2.0",
     "web3": "^1.6.0",
     "winston": "^3.2.1",

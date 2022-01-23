@@ -10,7 +10,7 @@
     "ethers": "^5.4.2",
     "ipfs-http-client": "^49.0.2",
     "mocha": "^8.3.0",
-    "node-fetch": "^2.6.1"
+    "node-fetch": "^3.1.1"
   },
   "devDependencies": {
     "@types/commander": "^2.12.2",
