@@ -190,7 +190,7 @@ export class CryptoWatchPriceFeed extends PriceFeedInterface {
     // its close price. We prefer prices that occurred before the target time.
     else {
       // Use period close price when request time matches close time. In all other cases use open price instead.
-      const matchedPrice = time == match.closeTime ? match.closePrice : match.openPrice;
+      const matchedPrice = time === match.closeTime ? match.closePrice : match.openPrice;
       returnPrice = this.invertPrice ? this._invertPriceSafely(matchedPrice) : matchedPrice;
       if (!returnPrice) throw new Error(`${this.uuid} -- invalid price returned`);
       if (verbose) await this._printVerbose(match, returnPrice);
