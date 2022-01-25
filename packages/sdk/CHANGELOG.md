@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.20.0](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.19.0...@uma/sdk@0.20.0) (2022-01-25)
+
+### Features
+
+- **sdk:** add commands to for approve/propose/dispute ([#3784](https://github.com/UMAprotocol/protocol/issues/3784)) ([c69e910](https://github.com/UMAprotocol/protocol/commit/c69e9104b10ce2cde61f28c165f26f0220bec57c))
+- **sdk:** move set user and set request to statemachine ([#3778](https://github.com/UMAprotocol/protocol/issues/3778)) ([f2d7df7](https://github.com/UMAprotocol/protocol/commit/f2d7df7b4aff8836820f1b028e70f697cc22457e))
+
 # [0.19.0](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.18.0...@uma/sdk@0.19.0) (2022-01-20)
 
 ### Bug Fixes

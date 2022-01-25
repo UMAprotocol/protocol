@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.10.0](https://github.com/UMAprotocol/protocol/compare/@uma/optimistic-oracle@2.9.1...@uma/optimistic-oracle@2.10.0) (2022-01-25)
+
+### Features
+
+- allow bot to settle on behalf of other accounts ([#3786](https://github.com/UMAprotocol/protocol/issues/3786)) ([524e16d](https://github.com/UMAprotocol/protocol/commit/524e16d38afce459f0d3d029d712bbf8145867ae))
+
 ## [2.9.1](https://github.com/UMAprotocol/protocol/compare/@uma/optimistic-oracle@2.9.0...@uma/optimistic-oracle@2.9.1) (2022-01-20)
 
 **Note:** Version bump only for package @uma/optimistic-oracle

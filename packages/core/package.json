@@ -1,6 +1,6 @@
 {
   "name": "@uma/core",
-  "version": "2.24.0",
+  "version": "2.24.1",
   "description": "UMA smart contracts and unit tests",
   "dependencies": {
     "@openzeppelin/contracts": "4.4.2",
