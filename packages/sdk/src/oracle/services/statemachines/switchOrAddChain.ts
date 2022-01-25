@@ -26,18 +26,19 @@ export function Handlers(store: Store): GenericHandlers<Params, Memory> {
         ]);
         return "done";
       } catch (err) {
-        if (err.code === -32603 || err.code === 4902) {
+        const error = (err as unknown) as Error & { code: number };
+        if (error.code === -32603 || error.code === 4902) {
           return "addAndSwitch";
         }
-        throw err;
+        throw error;
       }
     },
     async addAndSwitch(params: Params) {
       const { chainId, provider } = params;
-      const metadata = store.read().chainMetadata(chainId);
+      const config = store.read().chainConfig(chainId);
       await provider.send("wallet_addEthereumChain", [
         {
-          ...metadata,
+          ...config,
           chainId: ethers.utils.hexValue(chainId),
         },
       ]);

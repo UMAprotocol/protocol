@@ -7,23 +7,21 @@ import { Update } from "./services/update";
 import { StateMachine } from "./services/statemachines/statemachine";
 import { loop } from "../utils";
 import { toWei } from "../across/utils";
+import { defaultConfig } from "./utils";
 
 export class Client {
   private intervalStarted = false;
   constructor(public readonly store: Store, public readonly update: Update, public readonly sm: StateMachine) {}
   setUser(params: Partial<User>): string {
-    params.address &&
-      assert(
-        ethers.utils.getAddress(params.address) === params.address,
-        "Must specify user address as checkum address"
-      );
-    return this.sm.types.setUser.create(params);
+    const address = params.address && ethers.utils.getAddress(params.address);
+    return this.sm.types.setUser.create({ ...params, address });
   }
   clearUser(): string {
     return this.sm.types.clearUser.create(undefined);
   }
   setActiveRequest(params: InputRequest): string {
-    return this.sm.types.setActiveRequest.create(params);
+    const requester = ethers.utils.getAddress(params.requester);
+    return this.sm.types.setActiveRequest.create({ ...params, requester });
   }
   approveCollateral(): string {
     const request = this.store.read().request();
@@ -113,13 +111,14 @@ export class Client {
   }
 }
 
-export function factory(config: state.Config, emit: Emit): Client {
+export function factory(config: state.PartialConfig, emit: Emit): Client {
   const store = new Store(emit);
   store.write((write) => {
-    write.config(config);
-    for (const chain of Object.values(config.chains)) {
+    const fullConfig = defaultConfig(config);
+    write.config(fullConfig);
+    for (const chain of Object.values(fullConfig.chains)) {
       write.chains(chain.chainId).optimisticOracle().address(chain.optimisticOracleAddress);
-      write.services(chain.chainId).provider(chain.providerUrl);
+      write.services(chain.chainId).provider(chain.rpcUrls);
       write.services(chain.chainId).multicall2(chain.multicall2Address);
       write.services(chain.chainId).optimisticOracle(chain.optimisticOracleAddress);
     }

@@ -1,14 +1,17 @@
-import { JsonRpcSigner, BigNumber, Web3Provider } from "./ethers";
+import { JsonRpcSigner, BigNumber, Web3Provider, FallbackProvider } from "./ethers";
 import type { erc20, optimisticOracle } from "../services";
 import type Multicall2 from "../../multicall2";
-import { Provider } from "./ethers";
 import { Context, Memory } from "./statemachine";
+
+// create partial picker: https://stackoverflow.com/questions/43159887/make-a-single-property-optional-in-typescript
+type Omit<T, K extends keyof T> = Pick<T, Exclude<keyof T, K>>;
+type PartialBy<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>;
 
 export { Context, Memory };
 
 export type ChainServices = {
   multicall2: Multicall2;
-  provider: Provider;
+  provider: FallbackProvider;
   erc20s: Record<string, erc20.Erc20>;
   optimisticOracle: optimisticOracle.OptimisticOracle;
 };
@@ -17,11 +20,13 @@ export type Services = {
   chains?: Record<number, Partial<ChainServices>>;
 };
 
+// this is required data in order to add a new chain to users wallet
 export type ChainMetadata = {
-  chainName: string;
   chainId: number;
-  rpcUrls: string[];
-  blockExplorerUrls: string[];
+  chainName: string;
+  // require at least 1 url
+  rpcUrls: [string, ...string[]];
+  blockExplorerUrls: [string, ...string[]];
   nativeCurrency: {
     name: string;
     symbol: string;
@@ -29,17 +34,21 @@ export type ChainMetadata = {
   };
 };
 
-export type ChainConfig = {
-  chainId: number;
+export type ChainConfig = ChainMetadata & {
   multicall2Address?: string;
   optimisticOracleAddress: string;
-  providerUrl: string;
-  metadata?: ChainMetadata;
 };
+
+// partial config lets user omit some fields which we can infer internally using contracts-frontend
+export type PartialChainConfig = PartialBy<ChainConfig, "optimisticOracleAddress" | "chainId">;
 
 // config definition
 export type Config = {
   chains: Record<number, ChainConfig>;
+};
+
+export type PartialConfig = {
+  chains: Record<number, PartialChainConfig>;
 };
 
 export type Balances = Record<string, BigNumber>;

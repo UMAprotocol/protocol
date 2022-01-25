@@ -107,9 +107,10 @@ export class Inputs {
 
 export class Services {
   constructor(private state: Partial<state.ChainServices>) {}
-  provider(providerUrl: string): void {
+  provider(rpcUrls: string[]): void {
     if (this.state?.provider) return;
-    this.state.provider = ethers.getDefaultProvider(providerUrl);
+    const providers = rpcUrls.map((url) => ethers.getDefaultProvider(url));
+    this.state.provider = new ethers.providers.FallbackProvider(providers, 1);
   }
   erc20s(address: string): void {
     if (!this.state?.provider) return;

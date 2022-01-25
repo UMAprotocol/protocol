@@ -68,8 +68,8 @@ const account = "0x9A8f92a830A5cB89a3816e3D267CB791c16b04D";
 const chainId = 1
 
 // currently the order of calls is important
-client.setActiveRequest({requester,identifier,timestamp,ancillaryData,chainId})
-client.setUser({address:account,chainId,signer:rpcSigner,provider:web3Provider})
+client.setActiveRequest({ requester, identifier, timestamp, ancillaryData, chainId })
+client.setUser({ address:account, chainId, signer:rpcSigner, provider:web3Provider })
 
 // global state will be updated with the needed information
 // you can also manually fetch from store using array paths, but this isnt recommended.
@@ -211,3 +211,19 @@ There will be times you need to read data from global state. There are a couple 
 You should instance this reader every time you want to make a query, as it can become stale as state changes.
 The reader will throw errors currently if values do not exist, this makes it inconvenient to use at times.
 For a full list of queries, see `oracle/store/read.ts`
+
+or
+
+```js
+import { oracle } from "@uma/sdk"
+const Read = oracle.store.Read
+
+// reads directly from the current state
+const read = new Read(state)
+
+try {
+  const user = read.user()
+} catch (err) {
+  // the reader will throw an error if user has not been set
+}
+```
