@@ -8,6 +8,7 @@ import {
   PartialConfig,
   Config,
 } from "./types/state";
+import type { Provider, TransactionReceipt } from "./types/ethers";
 import { ContextType } from "./types/statemachine";
 import { Read } from "./store";
 import { ethers } from "ethers";
@@ -171,4 +172,20 @@ export function defaultConfig(config: PartialConfig): Config {
     },
     { chains: {} }
   );
+}
+
+export class TransactionConfirmer {
+  constructor(private provider: Provider) {}
+  async getReceipt(hash: string): Promise<TransactionReceipt> {
+    return this.provider.getTransactionReceipt(hash);
+  }
+  async isConfirmed(hash: string, confirmations = 1): Promise<boolean | TransactionReceipt> {
+    try {
+      const receipt = await this.getReceipt(hash);
+      if (receipt.confirmations >= confirmations) return receipt;
+    } catch (err) {
+      // do nothing
+    }
+    return false;
+  }
 }

@@ -3,7 +3,7 @@ import filter from "lodash/filter";
 
 import type { State, Chain, Inputs, Request, Erc20Props, ChainConfig, Context, Memory, User } from "../types/state";
 import type { JsonRpcSigner, BigNumber, Provider } from "../types/ethers";
-import { Transaction } from "../services/transaction";
+import { TransactionConfirmer } from "../utils";
 import { OptimisticOracle } from "../services/optimisticOracle";
 import { Erc20 } from "../services/erc20";
 
@@ -125,9 +125,9 @@ export default class Read {
     assert(result, "Provider not found on chainid: " + chainId);
     return result;
   };
-  transactionService = (chainId: number): Transaction => {
+  transactionService = (chainId: number): TransactionConfirmer => {
     const provider = this.provider(chainId);
-    return new Transaction(provider);
+    return new TransactionConfirmer(provider);
   };
   listCommands = (): Context<unknown, unknown & Memory>[] => {
     return Object.values(this.state?.commands || []);
