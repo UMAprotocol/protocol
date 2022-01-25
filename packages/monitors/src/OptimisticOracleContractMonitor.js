@@ -93,10 +93,9 @@ class OptimisticOracleContractMonitor {
       );
       const mrkdwn =
         createEtherscanLinkMarkdown(event.requester, this.contractProps.networkId) +
-        ` requested a price at the timestamp ${event.timestamp} for the identifier: ${event.identifier}. ` +
+        ` requested a price at the timestamp ${event.timestamp} for the identifier: ${event.identifier}.\n` +
         this._formatAncillaryData(event.ancillaryData) +
-        ". " +
-        `Collateral currency address is ${
+        `. \nCollateral currency address is ${
           this.oracleType === OptimisticOracleType.OptimisticOracle ? event.currency : event.request.currency
         }. Reward amount is ${this.formatDecimalString(
           convertCollateralDecimals(
@@ -106,8 +105,7 @@ class OptimisticOracleContractMonitor {
           convertCollateralDecimals(
             this.oracleType === OptimisticOracleType.OptimisticOracle ? event.finalFee : event.request.finalFee
           )
-        )}. ` +
-        `tx: ${createEtherscanLinkMarkdown(event.transactionHash, this.contractProps.networkId)}`;
+        )}. tx: ${createEtherscanLinkMarkdown(event.transactionHash, this.contractProps.networkId)}`;
 
       // The default log level should be reduced to "debug" for funding rate identifiers:
       this.logger[
@@ -142,16 +140,15 @@ class OptimisticOracleContractMonitor {
           this.contractProps.networkId
         ) +
         ` proposed a price for the request made by ${event.requester} at the timestamp ${event.timestamp} for the identifier: ${event.identifier}. ` +
-        `The proposal price of ${this.formatDecimalString(
+        `\nThe proposal price of ${this.formatDecimalString(
           this.oracleType === OptimisticOracleType.OptimisticOracle ? event.proposedPrice : event.request.proposedPrice
         )} will expire at ${
           this.oracleType === OptimisticOracleType.OptimisticOracle
             ? event.expirationTimestamp
             : event.request.expirationTime
-        }. ` +
+        }.\n` +
         this._formatAncillaryData(event.ancillaryData) +
-        ". " +
-        `Collateral currency address is ${
+        +`.\n Collateral currency address is ${
           this.oracleType === OptimisticOracleType.OptimisticOracle ? event.currency : event.request.currency
         }. ` +
         `tx: ${createEtherscanLinkMarkdown(event.transactionHash, this.contractProps.networkId)}`;
@@ -193,10 +190,9 @@ class OptimisticOracleContractMonitor {
           this.oracleType === OptimisticOracleType.OptimisticOracle ? event.proposer : event.request.proposer
         } proposed a price of ${this.formatDecimalString(
           this.oracleType === OptimisticOracleType.OptimisticOracle ? event.proposedPrice : event.request.proposedPrice
-        )}. ` +
+        )}.\n` +
         this._formatAncillaryData(event.ancillaryData) +
-        ". " +
-        `tx: ${createEtherscanLinkMarkdown(event.transactionHash, this.contractProps.networkId)}`;
+        `. tx: ${createEtherscanLinkMarkdown(event.transactionHash, this.contractProps.networkId)}`;
 
       this.logger[this.logOverrides.disputedPrice || "error"]({
         at: "OptimisticOracleContractMonitor",
@@ -253,10 +249,9 @@ class OptimisticOracleContractMonitor {
         )}. ` +
         `The payout was ${this.formatDecimalString(convertCollateralDecimals(payout))} made to the ${
           isDispute ? "winner of the dispute" : "proposer"
-        }. ` +
+        }.\n` +
         this._formatAncillaryData(event.ancillaryData) +
-        ". " +
-        `tx: ${createEtherscanLinkMarkdown(event.transactionHash, this.contractProps.networkId)}`;
+        `. tx: ${createEtherscanLinkMarkdown(event.transactionHash, this.contractProps.networkId)}`;
 
       // The default log level should be reduced to "debug" for funding rate identifiers:
       this.logger[
@@ -298,7 +293,7 @@ class OptimisticOracleContractMonitor {
     } catch (_) {
       try {
         // If that fails, try to return the ancillary data UTF-8 decoded.
-        return "Ancillary could not be parsed. UTF-8 decoded data: " + this.web3.utils.hexToUtf8(ancillaryData);
+        return "Ancillary data: " + this.web3.utils.hexToUtf8(ancillaryData);
       } catch (_) {
         return "Could not parse ancillary data nor UTF-8 decode: " + ancillaryData || "0x";
       }
