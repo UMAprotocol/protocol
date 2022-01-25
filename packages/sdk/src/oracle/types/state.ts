@@ -1,14 +1,17 @@
-import { Signer, BigNumber } from "./ethers";
+import { JsonRpcSigner, BigNumber, Web3Provider, FallbackProvider } from "./ethers";
 import type { erc20, optimisticOracle } from "../services";
 import type Multicall2 from "../../multicall2";
-import { Provider } from "./ethers";
 import { Context, Memory } from "./statemachine";
+
+// create partial picker: https://stackoverflow.com/questions/43159887/make-a-single-property-optional-in-typescript
+type Omit<T, K extends keyof T> = Pick<T, Exclude<keyof T, K>>;
+type PartialBy<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>;
 
 export { Context, Memory };
 
 export type ChainServices = {
   multicall2: Multicall2;
-  provider: Provider;
+  provider: FallbackProvider;
   erc20s: Record<string, erc20.Erc20>;
   optimisticOracle: optimisticOracle.OptimisticOracle;
 };
@@ -17,16 +20,36 @@ export type Services = {
   chains?: Record<number, Partial<ChainServices>>;
 };
 
-export type ChainConfig = {
+// this is required data in order to add a new chain to users wallet
+export type ChainMetadata = {
   chainId: number;
+  chainName: string;
+  // require at least 1 url
+  rpcUrls: [string, ...string[]];
+  blockExplorerUrls: [string, ...string[]];
+  nativeCurrency: {
+    name: string;
+    symbol: string;
+    decimals: number;
+  };
+};
+
+export type ChainConfig = ChainMetadata & {
+  checkTxIntervalSec: number;
   multicall2Address?: string;
   optimisticOracleAddress: string;
-  providerUrl: string;
 };
+
+// partial config lets user omit some fields which we can infer internally using contracts-frontend
+export type PartialChainConfig = PartialBy<ChainConfig, "optimisticOracleAddress" | "chainId" | "checkTxIntervalSec">;
 
 // config definition
 export type Config = {
   chains: Record<number, ChainConfig>;
+};
+
+export type PartialConfig = {
+  chains: Record<number, PartialChainConfig>;
 };
 
 export type Balances = Record<string, BigNumber>;
@@ -34,7 +57,8 @@ export type Balances = Record<string, BigNumber>;
 export type User = {
   address: string;
   chainId: number;
-  signer: Signer;
+  signer: JsonRpcSigner;
+  provider: Web3Provider;
 };
 
 export enum RequestState {
@@ -48,26 +72,30 @@ export enum RequestState {
 }
 
 export enum Flag {
-  MissingRequest = "MissingRequest",
-  MissingUser = "MissingUser",
-  WrongChain = "WrongChain",
-  InvalidStateForPropose = "InvalidStateForPropose",
-  InvalidStateForDispute = "InvalidStateForDispute",
-  InsufficientBalance = "InsufficientBalance",
-  InsufficientApproval = "InsufficientApproval",
-  ProposalInProgress = "ProposalInProgress",
-  ApprovalInProgress = "ApprovalInProgress",
-  DisputeInProgress = "DisputeInProgress",
+  MissingRequest = "MissingRequest", // the client does not know the request, use client.setActiveRequest
+  MissingUser = "MissingUser", // client does not have user data, use client.setUser
+  WrongChain = "WrongChain", // user and request chain ids do not match, switch chains with client.switchOrAddChain
+  InProposeState = "InProposeState", // The on chain request is in a state where someone could propose, use client.proposePrice
+  InDisputeState = "InDisputeState", // The on chain request is in a stae where someone could dispute, use client.disputePrice
+  InsufficientBalance = "InsufficientBalance", // The user does not have enough balance to cover bond collateral for dispute/propose
+  InsufficientApproval = "InsufficientApproval", // The oracle contract does not have enough approval to cover bond for dispute/propose, use client.approve
+  ChainChangeInProgress = "ChainChangeInProgress", // The user is changing his chain
+  ProposalInProgress = "ProposalInProgress", // The user is sending a proposal tx
+  ApprovalInProgress = "ApprovalInProgress", // The user is sending an approval tx
+  DisputeInProgress = "DisputeInProgress", // The user is sending a dispute tx
 }
+export type Flags = Record<Flag, boolean>;
+
+export type InputRequest = {
+  requester: string;
+  identifier: string;
+  timestamp: number;
+  ancillaryData: string;
+  chainId: number;
+};
 
 export type Inputs = {
-  request: {
-    requester: string;
-    identifier: string;
-    timestamp: number;
-    ancillaryData: string;
-    chainId: number;
-  };
+  request: InputRequest;
   user: Partial<User>;
 };
 
@@ -118,6 +146,5 @@ export type State = Partial<{
   chains: Record<number, Partial<Chain>>;
   config: Config;
   services: Services;
-  flags?: Record<Flag, boolean>;
-  commands?: Record<string, Context<unknown, any>>;
+  commands?: Record<string, Context<unknown, unknown & Memory>>;
 }>;
