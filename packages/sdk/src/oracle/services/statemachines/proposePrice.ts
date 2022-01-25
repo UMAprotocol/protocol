@@ -12,6 +12,7 @@ export type Params = InputRequest & {
   currency: string;
   account: string;
   proposedPrice: string;
+  checkTxIntervalSec: number;
 };
 
 export type Memory = { hash?: string };
@@ -32,14 +33,14 @@ export function Handlers(store: Store): GenericHandlers<Params, Memory> {
       return "confirm";
     },
     async confirm(params: Params, memory: Memory, context: ContextClient) {
-      const { chainId, confirmations } = params;
+      const { chainId, confirmations, checkTxIntervalSec } = params;
       const { hash } = memory;
       assert(hash, "requires hash");
       if (await update.isConfirmed(chainId, hash, confirmations)) {
         return "update";
       }
       // wait x seconds before running this state again
-      return context.sleep(10000);
+      return context.sleep(checkTxIntervalSec * 1000);
     },
     async update(params: Params) {
       const { chainId, currency, account } = params;

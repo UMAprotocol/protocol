@@ -16,24 +16,23 @@ type Config = oracle.types.state.Config
 export const config = {
   chains: {
     1:{
-      chainId: 1,
-      multicall2Address: "0x5BA1e12693Dc8F9c48aAD8770482f4739bEeD696",
-      optimisticOracleAddress: "0xC43767F4592DF265B4a9F1a398B97fF24F38C6A6",
-      providerUrl: process.env.CUSTOM_NODE_URL,
-      metadata:{
-        chainId: 1,
-        rpcUrls: [],
-        nativeCurrency: {
-          name: "Ether",
-          symbol: "ETH",
-          decimals: 18,
-        },
-        chainName: "Ethereum",
-        blockExplorerUrls: "https://etherscan.io"
-      }
+      chainName: "Ethereum",
+      rpcUrls: [process.env.CUSTOM_NODE_URL],
+      blockExplorerUrls: ["https://etherscan.io"],
+      nativeCurrency: {
+        name: "Ether",
+        symbol: "ETH",
+        decimals: 18,
+      },
+      // additional params you can override per chain
+      checkTxIntervalSec: number; // how fast transactions are checked for confirmation, default 5
+      multicall2Address?: string; // optional multicall address for more efficient calls
+      optimisticOracleAddress: string; // override default oracle address, or provide one if we cannot look it up, ie with testing
     },
   },
 };
+
+
 
 let state:oracle.types.state.State = {}
 function changeHandler(nextState:oracle.types.state.State, prevState:oracle.types.state.State){

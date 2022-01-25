@@ -152,12 +152,14 @@ export function defaultChainConfig(chainId: number, chainConfig: PartialChainCon
 
   // dont ignore error, oracle required
   const optimisticOracleAddress = chainConfig.optimisticOracleAddress || getOptimisticOracleAddress(chainId);
+  const checkTxIntervalSec = chainConfig.checkTxIntervalSec || 5;
 
   return {
     ...chainConfig,
     chainId,
     multicall2Address,
     optimisticOracleAddress,
+    checkTxIntervalSec,
   };
 }
 

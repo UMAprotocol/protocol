@@ -24,6 +24,7 @@ export class Client {
     return this.sm.types.setActiveRequest.create({ ...params, requester });
   }
   approveCollateral(): string {
+    const { checkTxIntervalSec } = this.store.read().chainConfig();
     const request = this.store.read().request();
     const inputRequest = this.store.read().inputRequest();
     const user = this.store.read().user();
@@ -40,11 +41,13 @@ export class Client {
         spender: oracleAddress,
         amount: ethers.constants.MaxUint256.toString(),
         confirmations: 1,
+        checkTxIntervalSec,
       },
       user.address
     );
   }
   proposePrice(proposedPriceDecimals: string | number): string {
+    const { checkTxIntervalSec } = this.store.read().chainConfig();
     const proposedPrice = toWei(proposedPriceDecimals);
     const inputRequest = this.store.read().inputRequest();
     const request = this.store.read().request();
@@ -60,11 +63,13 @@ export class Client {
         account: user.address,
         currency: request.currency,
         confirmations: 1,
+        checkTxIntervalSec,
       },
       user.address
     );
   }
   disputePrice(): string {
+    const { checkTxIntervalSec } = this.store.read().chainConfig();
     const inputRequest = this.store.read().inputRequest();
     const user = this.store.read().user();
     const request = this.store.read().request();
@@ -78,6 +83,7 @@ export class Client {
         signer: user.signer,
         account: user.address,
         currency: request.currency,
+        checkTxIntervalSec,
       },
       user.address
     );

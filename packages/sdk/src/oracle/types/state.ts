@@ -35,12 +35,13 @@ export type ChainMetadata = {
 };
 
 export type ChainConfig = ChainMetadata & {
+  checkTxIntervalSec: number;
   multicall2Address?: string;
   optimisticOracleAddress: string;
 };
 
 // partial config lets user omit some fields which we can infer internally using contracts-frontend
-export type PartialChainConfig = PartialBy<ChainConfig, "optimisticOracleAddress" | "chainId">;
+export type PartialChainConfig = PartialBy<ChainConfig, "optimisticOracleAddress" | "chainId" | "checkTxIntervalSec">;
 
 // config definition
 export type Config = {
