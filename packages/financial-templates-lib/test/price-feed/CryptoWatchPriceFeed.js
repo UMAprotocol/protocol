@@ -166,8 +166,8 @@ describe("CryptoWatchPriceFeed.js", function () {
     // During period 2.
     assert.equal((await cryptoWatchPriceFeed.getHistoricalPrice(1588376405)).toString(), toWei("1.2"));
 
-    // Matches both period 2's close price and period 3's open price, should pick earlier period by default.
-    assert.equal((await cryptoWatchPriceFeed.getHistoricalPrice(1588376460)).toString(), toWei("1.2"));
+    // Matches exactly period 2's close time, should pick its close price.
+    assert.equal((await cryptoWatchPriceFeed.getHistoricalPrice(1588376460)).toString(), toWei("1.3"));
 
     // During period 3.
     assert.equal((await cryptoWatchPriceFeed.getHistoricalPrice(1588376515)).toString(), toWei("1.3"));
@@ -460,11 +460,11 @@ describe("CryptoWatchPriceFeed.js", function () {
     );
 
     // When passing in ancillary data that doesn't specify TWAP length, pricefeed default twapLength is used. In this
-    // case, the default TWAP length is 0 so it should return the current price for the timestamp.
-    assert.equal((await cryptoWatchPriceFeed.getHistoricalPrice(1588376460, "")).toString(), web3.utils.toWei("1.2"));
+    // case, the default TWAP length is 0 so it should return the closing price as it matches close timestamp.
+    assert.equal((await cryptoWatchPriceFeed.getHistoricalPrice(1588376460, "")).toString(), web3.utils.toWei("1.3"));
     assert.equal(
       (await cryptoWatchPriceFeed.getHistoricalPrice(1588376460, utf8ToHex("key:value"))).toString(),
-      web3.utils.toWei("1.2")
+      web3.utils.toWei("1.3")
     );
 
     // If ancillary data can't be parsed to UTF8, then it should throw.
