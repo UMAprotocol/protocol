@@ -73,6 +73,14 @@ class OptimisticOracleProposer {
           // of `isDeviationOutsideErrorMargin()`
         },
       },
+      otherAccountsToSettle: {
+        // `otherAccountsToSettle`: array of other accounts whose requests should be settled automatically.
+        value: [],
+        isValid: (x) => {
+          // Must be a string array.
+          return Array.isArray(x) && x.every((value) => typeof value === "string");
+        },
+      },
     };
 
     // Validate and set config settings to class state.
@@ -125,9 +133,16 @@ class OptimisticOracleProposer {
       message: "Checking for proposals and disputes to settle",
     });
 
-    for (let priceRequest of this.optimisticOracleClient
-      .getSettleableProposals(this.account)
-      .concat(this.optimisticOracleClient.getSettleableDisputes(this.account))) {
+    const settleableAccounts = [this.account, ...this.otherAccountsToSettle];
+    const settleableRequests = settleableAccounts
+      .map((account) =>
+        this.optimisticOracleClient
+          .getSettleableProposals(account)
+          .concat(this.optimisticOracleClient.getSettleableDisputes(account))
+      )
+      .flat();
+
+    for (let priceRequest of settleableRequests) {
       await this._settleRequest(priceRequest);
     }
   }
