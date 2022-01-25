@@ -7,5 +7,5 @@ cat << EOF
             - tests-required
           filters:
             branches:
-              only: ci-dockerhub-build
+              only: evaldofelipe/ci-dockerhub-build
 EOF
