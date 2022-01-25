@@ -10,6 +10,7 @@ cat << EOF
       - run:
           name: Build Docker image
           command: |
+            cd /home/circleci/protocol
             docker build -t umaprotocol/protocol:latest .
       - run:
           name: Publish Docker Image to Docker Hub
