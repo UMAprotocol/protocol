@@ -57,9 +57,6 @@ class OptimisticOracleProposer {
     this.utf8ToHex = this.web3.utils.utf8ToHex;
     this.hexToUtf8 = this.web3.utils.hexToUtf8;
 
-    // Default config settings. Bot deployer can override these settings by passing in new
-    // values via the `optimisticOracleProposerConfig` input object. The `isValid` property is a function that should be called
-    // before resetting any config settings. `isValid` must return a Boolean.
     const defaultConfig = {
       disputePriceErrorPercent: {
         // `disputePricePrecisionOfError`: Proposal prices that differ from the dispute price
