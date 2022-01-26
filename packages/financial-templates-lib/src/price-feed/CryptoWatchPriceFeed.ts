@@ -189,7 +189,9 @@ export class CryptoWatchPriceFeed extends PriceFeedInterface {
     // why we prefer `before` periods to `after` ones. Similar reasoning is why we default to a period's open price to
     // its close price. We prefer prices that occurred before the target time.
     else {
-      returnPrice = this.invertPrice ? this._invertPriceSafely(match.openPrice) : match.openPrice;
+      // Use period close price when request time matches close time. In all other cases use open price instead.
+      const matchedPrice = time === match.closeTime ? match.closePrice : match.openPrice;
+      returnPrice = this.invertPrice ? this._invertPriceSafely(matchedPrice) : matchedPrice;
       if (!returnPrice) throw new Error(`${this.uuid} -- invalid price returned`);
       if (verbose) await this._printVerbose(match, returnPrice);
     }
