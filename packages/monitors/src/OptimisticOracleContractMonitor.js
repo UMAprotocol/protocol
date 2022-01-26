@@ -148,10 +148,10 @@ class OptimisticOracleContractMonitor {
             : event.request.expirationTime
         }.\n` +
         this._formatAncillaryData(event.ancillaryData) +
-        +`.\n Collateral currency address is ${
+        `.\n Collateral currency address is ${
           this.oracleType === OptimisticOracleType.OptimisticOracle ? event.currency : event.request.currency
         }. ` +
-        `tx: ${createEtherscanLinkMarkdown(event.transactionHash, this.contractProps.networkId)}`;
+        `tx ${createEtherscanLinkMarkdown(event.transactionHash, this.contractProps.networkId)}`;
 
       // The default log level should be reduced to "info" for funding rate identifiers:
       this.logger[
