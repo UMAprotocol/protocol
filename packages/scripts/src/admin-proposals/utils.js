@@ -254,6 +254,8 @@ const verifyGovernanceRootTunnelMessage = async (targetAddress, message, governo
 };
 
 const proposeAdminTransactions = async (web3, adminProposalTransactions, caller, gasPriceObj) => {
+  await resolveProposals(web3, caller);
+
   const proposer = new web3.eth.Contract(Proposer.abi, await _getContractAddressByName("Proposer", 1));
   console.group(`\n📨 Sending to proposer @ ${proposer.options.address}`);
   console.log(`- Admin proposal contains ${adminProposalTransactions.length} transactions`);
@@ -296,6 +298,36 @@ const proposeAdminTransactions = async (web3, adminProposalTransactions, caller,
   } else {
     console.log("- 0 Transactions in Admin proposal. Nothing to do");
   }
+  console.groupEnd();
+};
+
+const resolveProposals = async (web3, caller, proposalsToLookback = 10) => {
+  const proposer = new web3.eth.Contract(Proposer.abi, await _getContractAddressByName("Proposer", 1));
+  const governor = new web3.eth.Contract(Governor.abi, await _getContractAddressByName("Governor", 1));
+
+  console.group(`\nResolving the latest ${proposalsToLookback} proposals`);
+  const totalProposals = Number(await governor.methods.numProposals().call());
+  const bondedProposals = await Promise.all(
+    [...Array(totalProposals).keys()].map((i) => proposer.methods.bondedProposals(i).call())
+  );
+  for (let i = bondedProposals.length - 1; i >= bondedProposals.length - 1 - proposalsToLookback; i--) {
+    const bondedProposal = bondedProposals[i];
+    if (toBN(bondedProposal.lockedBond.toString()).gt(toBN(0))) {
+      console.log(
+        `- Proposal #${i} has a locked bond of ${bondedProposal.lockedBond.toString()} UMA, proposer was @ ${
+          bondedProposal.sender
+        }`
+      );
+      try {
+        const txn = await proposer.methods.resolveProposal(i).send({ from: caller });
+        console.log("- Transaction: ", txn?.transactionHash);
+      } catch (err) {
+        console.log("- Resolution failed, has price been resolved for admin proposal?", err);
+        continue;
+      }
+    }
+  }
+  console.log("- No more proposals to resolve");
   console.groupEnd();
 };
 

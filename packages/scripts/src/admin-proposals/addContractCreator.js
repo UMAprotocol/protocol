@@ -167,7 +167,7 @@ async function run() {
       web3Providers[1],
       adminProposalTransactions,
       REQUIRED_SIGNER_ADDRESSES["deployer"],
-      ...gasEstimator.getCurrentFastPrice()
+      gasEstimator.getCurrentFastPrice()
     );
   } else {
     console.group("\n🔎 Verifying execution of Admin Proposal");
