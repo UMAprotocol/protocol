@@ -6,6 +6,7 @@ import {
   PartialChainConfig,
   ChainConfig,
   PartialConfig,
+  ChainMetadata,
   Config,
 } from "./types/state";
 import type { Provider, TransactionReceipt } from "./types/ethers";
@@ -14,6 +15,7 @@ import { Read } from "./store";
 import { ethers } from "ethers";
 
 export const getAddress = ethers.utils.getAddress;
+export const hexValue = ethers.utils.hexValue;
 
 export function initFlags(): Flags {
   return {
@@ -188,4 +190,9 @@ export class TransactionConfirmer {
     }
     return false;
   }
+}
+
+export function chainConfigToChainMetadata(config: ChainConfig): ChainMetadata {
+  const { checkTxIntervalSec, multicall2Address, optimisticOracleAddress, ...chainMetadata } = config;
+  return chainMetadata;
 }
