@@ -448,17 +448,25 @@ class OptimisticOracleProposer {
         transaction: settle,
         transactionConfig: { ...this.gasEstimator.getCurrentFastPrice(), from: this.account },
       });
+      console.log("receipt", receipt.events.Settle.returnValues);
+      console.log("skinny", this.optimisticOracleClient.oracleType);
+      console.log(
+        "select",
+        this.optimisticOracleClient.oracleType === OptimisticOracleType.SkinnyOptimisticOracle
+          ? receipt.events.Settle.returnValues.request.proposer
+          : receipt.events.Settle.returnValues.proposer
+      );
       const mrkdwn =
         createEtherscanLinkMarkdown(
-          this.oracleType === OptimisticOracleType.SkinnyOptimisticOracle
+          this.optimisticOracleClient.oracleType === OptimisticOracleType.SkinnyOptimisticOracle
             ? receipt.events.Settle.returnValues.request.proposer
             : receipt.events.Settle.returnValues.proposer,
           this.chainId
         ) +
         " proposed a price of " +
         this.formatDecimalString(
-          this.oracleType === OptimisticOracleType.SkinnyOptimisticOracle
-            ? receipt.events.Settle.returnValues.request.price
+          this.optimisticOracleClient.oracleType === OptimisticOracleType.SkinnyOptimisticOracle
+            ? receipt.events.Settle.returnValues.request.proposedPrice
             : receipt.events.Settle.returnValues.price
         ) +
         " proposal for " +
@@ -484,6 +492,7 @@ class OptimisticOracleProposer {
         notificationPath: "optimistic-oracle",
       });
     } catch (error) {
+      console.log("error", error);
       const message =
         error.type === "call" ? "Cannot settle for unknown reason☹️" : "Failed to settle proposal or dispute🚨";
       this.logger.error({ at: "OptimisticOracleProposer#settleRequests", message, priceRequest, error });
