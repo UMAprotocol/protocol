@@ -1,7 +1,7 @@
-import { ethers } from "ethers";
 import Store from "../../store";
 import { Web3Provider } from "../../types/ethers";
 import { Handlers as GenericHandlers } from "../../types/statemachine";
+import { chainConfigToChainMetadata, hexValue } from "../../utils";
 
 export type Params = {
   chainId: number;
@@ -21,7 +21,7 @@ export function Handlers(store: Store): GenericHandlers<Params, Memory> {
       try {
         await provider.send("wallet_switchEthereumChain", [
           {
-            chainId: ethers.utils.hexValue(chainId),
+            chainId: hexValue(chainId),
           },
         ]);
         return "done";
@@ -36,15 +36,16 @@ export function Handlers(store: Store): GenericHandlers<Params, Memory> {
     async addAndSwitch(params: Params) {
       const { chainId, provider } = params;
       const config = store.read().chainConfig(chainId);
+      const chainMetadata = chainConfigToChainMetadata(config);
       await provider.send("wallet_addEthereumChain", [
         {
-          ...config,
-          chainId: ethers.utils.hexValue(chainId),
+          ...chainMetadata,
+          chainId: hexValue(chainId),
         },
       ]);
       await provider.send("wallet_switchEthereumChain", [
         {
-          chainId: ethers.utils.hexValue(chainId),
+          chainId: hexValue(chainId),
         },
       ]);
       return "done";
