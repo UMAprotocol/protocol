@@ -103,7 +103,11 @@ async function run({
      * Set variables common to all monitors
      *
      ***************************************/
-    const [networkId, latestBlock] = await Promise.all([web3.eth.net.getId(), web3.eth.getBlock("latest")]);
+    const [networkId, latestBlock, chainId] = await Promise.all([
+      web3.eth.net.getId(),
+      web3.eth.getBlock("latest"),
+      web3.eth.getChainId(),
+    ]);
     const networkName = PublicNetworks[Number(networkId)] ? PublicNetworks[Number(networkId)].name : null; // If startingBlock is set to null then use the `latest` block number for the `eventsFromBlockNumber` and leave the
     // `endingBlock` as null.
     const eventsFromBlockNumber = startingBlock ? startingBlock : latestBlock.number;
@@ -341,7 +345,7 @@ async function run({
         blocksPerEventSearch ? Number(blocksPerEventSearch) : null
       );
 
-      const contractProps = { networkId };
+      const contractProps = { networkId, chainId };
       const contractMonitor = new OptimisticOracleContractMonitor({
         logger,
         optimisticOracleContractEventClient,
@@ -469,7 +473,8 @@ async function Poll(callback) {
       //       "disputedPrice":"info"                        // OptimisticOracleContractMonitor price disputed
       //       "settledPrice":"warn"                         // OptimisticOracleContractMonitor price settled
       //       "requestedPrice":"info"                       // OptimisticOracleContractMonitor price requested
-      //   }
+      //   },
+      //  "optimisticOracleUIBaseUrl": "https://example.com/" // This is the base URL for the Optimistic Oracle UI.
       // }
       monitorConfig: process.env.MONITOR_CONFIG ? JSON.parse(process.env.MONITOR_CONFIG) : {},
       // Read price feed configuration from an environment variable. Uniswap price feed contains information about the
