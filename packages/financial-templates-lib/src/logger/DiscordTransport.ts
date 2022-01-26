@@ -46,7 +46,7 @@ export class DiscordTransport extends Transport {
     const startIndexes: any = [];
     const endIndexes: any = [];
     for (let i = 0; i < msg.length; i++) {
-      const startIndex = msg.indexOf("<http", i);
+      const startIndex = msg.indexOf("<", i);
       if (!startIndexes.includes(startIndex) && startIndex != -1) startIndexes.push(startIndex);
 
       const endIndex = msg.indexOf(">", i);
