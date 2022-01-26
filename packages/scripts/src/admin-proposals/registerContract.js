@@ -308,15 +308,12 @@ async function run() {
     }
 
     // Send the proposal
-    console.group(`\n📨 Sending to proposer @ ${mainnetContracts.proposer.options.address}`);
-    console.log(`- Admin proposal contains ${adminProposalTransactions.length} transactions`);
     await proposeAdminTransactions(
       web3Providers[1],
       adminProposalTransactions,
       REQUIRED_SIGNER_ADDRESSES["deployer"],
       ...gasEstimator.getCurrentFastPrice()
     );
-    console.groupEnd();
   } else {
     console.group("\n🔎 Verifying execution of Admin Proposal");
     if (ethereum) {

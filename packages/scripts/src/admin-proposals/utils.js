@@ -254,8 +254,10 @@ const verifyGovernanceRootTunnelMessage = async (targetAddress, message, governo
 };
 
 const proposeAdminTransactions = async (web3, adminProposalTransactions, caller, gasPriceObj) => {
+  const proposer = new web3.eth.Contract(Proposer.abi, await _getContractAddressByName("Proposer", 1));
+  console.group(`\n📨 Sending to proposer @ ${proposer.options.address}`);
+  console.log(`- Admin proposal contains ${adminProposalTransactions.length} transactions`);
   if (adminProposalTransactions.length > 0) {
-    const proposer = new web3.eth.Contract(Proposer.abi, await _getContractAddressByName("Proposer", 1));
     const finder = new web3.eth.Contract(Finder.abi, await _getContractAddressByName("Finder", 1));
     const oracleAddress = await finder.methods
       .getImplementationAddress(web3.utils.utf8ToHex(interfaceName.Oracle))
@@ -294,6 +296,7 @@ const proposeAdminTransactions = async (web3, adminProposalTransactions, caller,
   } else {
     console.log("- 0 Transactions in Admin proposal. Nothing to do");
   }
+  console.groupEnd();
 };
 
 module.exports = {
