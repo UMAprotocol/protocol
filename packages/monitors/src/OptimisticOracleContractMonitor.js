@@ -192,9 +192,9 @@ class OptimisticOracleContractMonitor {
           this.contractProps.networkId
         ) +
         ` disputed a price for the request made by ${event.requester} at the timestamp ${event.timestamp} for the identifier: ${event.identifier}. ` +
-        `The proposer ${
+        `The proposer ${createEtherscanLinkMarkdown(
           this.oracleType === OptimisticOracleType.OptimisticOracle ? event.proposer : event.request.proposer
-        } proposed a price of ${this.formatDecimalString(
+        )} proposed a price of ${this.formatDecimalString(
           this.oracleType === OptimisticOracleType.OptimisticOracle ? event.proposedPrice : event.request.proposedPrice
         )}. ` +
         this._formatAncillaryData(event.ancillaryData) +
@@ -245,12 +245,14 @@ class OptimisticOracleContractMonitor {
           .toString();
       }
       const mrkdwn =
-        `Detected a price request settlement for the request made by ${event.requester} at the timestamp ${event.timestamp} for the identifier: ${event.identifier}. ` +
-        `The proposer was ${
+        `Detected a price request settlement for the request made by ${createEtherscanLinkMarkdown(
+          event.requester
+        )} at the timestamp ${event.timestamp} for the identifier: ${event.identifier}. ` +
+        `The proposer was ${createEtherscanLinkMarkdown(
           this.oracleType === OptimisticOracleType.OptimisticOracle ? event.proposer : event.request.proposer
-        } and the disputer was ${
+        )} and the disputer was ${createEtherscanLinkMarkdown(
           this.oracleType === OptimisticOracleType.OptimisticOracle ? event.disputer : event.request.disputer
-        }. ` +
+        )}. ` +
         `The settlement price is ${this.formatDecimalString(
           this.oracleType === OptimisticOracleType.OptimisticOracle ? event.price : event.request.resolvedPrice
         )}. ` +
