@@ -1,15 +1,16 @@
 const hre = require("hardhat");
 const { getContract } = hre;
-const { getWeb3ByChainId, interfaceName } = require("@uma/common");
+const { getWeb3ByChainId, interfaceName, MAX_UINT_VAL } = require("@uma/common");
 const { _getContractAddressByName } = require("../utils");
 const { GasEstimator } = require("@uma/financial-templates-lib");
 const winston = require("winston");
 const Web3 = require("Web3");
-const { fromWei } = Web3.utils;
+const { fromWei, toBN } = Web3.utils;
 const assert = require("assert");
 
 // Contract ABI's
 const Registry = getContract("Registry");
+const Proposer = getContract("Proposer");
 const GovernorRootTunnel = getContract("GovernorRootTunnel");
 const GovernorHub = getContract("GovernorHub");
 const GovernorChildTunnel = getContract("GovernorChildTunnel");
@@ -18,6 +19,7 @@ const Arbitrum_ParentMessenger = getContract("Arbitrum_ParentMessenger");
 const Governor = getContract("Governor");
 const Finder = getContract("Finder");
 const Voting = getContract("Voting");
+const ExpandedERC20 = getContract("ExpandedERC20");
 const VotingInterface = getContract("VotingInterface");
 const AddressWhitelist = getContract("AddressWhitelist");
 const IdentifierWhitelist = getContract("IdentifierWhitelist");
@@ -136,6 +138,7 @@ const setupMainnet = async (web3) => {
   const governorHub = new web3.eth.Contract(GovernorHub.abi, await _getContractAddressByName("GovernorHub", 1));
   const registry = new web3.eth.Contract(Registry.abi, await _getContractAddressByName("Registry", 1));
   const governor = new web3.eth.Contract(Governor.abi, await _getContractAddressByName("Governor", 1));
+  const proposer = new web3.eth.Contract(Proposer.abi, await _getContractAddressByName("Proposer", 1));
   const addressWhitelist = new web3.eth.Contract(
     AddressWhitelist.abi,
     await _getContractAddressByName("AddressWhitelist", 1)
@@ -151,6 +154,7 @@ const setupMainnet = async (web3) => {
   console.log(`- Voting @ ${oracle.options.address}`);
   console.log(`- VotingInterface @ ${votingInterface.options.address}`);
   console.log(`- Registry @ ${registry.options.address}`);
+  console.log(`- Proposer @ ${proposer.options.address}`);
   console.log(`- Governor @ ${governor.options.address}`);
   console.log(`- AddressWhitelist @ ${addressWhitelist.options.address}`);
   console.log(`- IdentifierWhitelist @ ${identifierWhitelist.options.address}`);
@@ -169,6 +173,7 @@ const setupMainnet = async (web3) => {
     addressWhitelist,
     identifierWhitelist,
     store,
+    proposer,
   };
 };
 
@@ -248,6 +253,49 @@ const verifyGovernanceRootTunnelMessage = async (targetAddress, message, governo
   );
 };
 
+const proposeAdminTransactions = async (web3, adminProposalTransactions, caller, gasPriceObj) => {
+  if (adminProposalTransactions.length > 0) {
+    const proposer = new web3.eth.Contract(Proposer.abi, await _getContractAddressByName("Proposer", 1));
+    const finder = new web3.eth.Contract(Finder.abi, await _getContractAddressByName("Finder", 1));
+    const oracleAddress = await finder.methods
+      .getImplementationAddress(web3.utils.utf8ToHex(interfaceName.Oracle))
+      .call();
+    const oracle = new web3.eth.Contract(Voting.abi, oracleAddress);
+    const votingToken = new web3.eth.Contract(ExpandedERC20.abi, await _getContractAddressByName("VotingToken", 1));
+
+    // Caller must have 5000 voting token in wallet and have approved proposer contract to pull them.
+    const votingTokenBalance = toBN(await votingToken.methods.balanceOf(caller).call());
+    const requiredVotingTokenBalance = toBN(await proposer.methods.bond().call());
+    if (votingTokenBalance.lt(requiredVotingTokenBalance)) {
+      throw new Error(
+        `Caller only has ${votingTokenBalance.toString()} UMA, but submitting a proposal requires ${requiredVotingTokenBalance.toString()} UMA.`
+      );
+    }
+    const votingTokenAllowance = toBN(await votingToken.methods.allowance(caller, proposer.options.address).call());
+    if (votingTokenAllowance.lt(requiredVotingTokenBalance)) {
+      console.log(`- Approving proposer @ ${proposer.options.address} to spend unlimited UMA from caller...`);
+      const approvalTxn = await votingToken.methods
+        .approve(proposer.options.address, MAX_UINT_VAL)
+        .send({ from: caller, ...gasPriceObj });
+      console.log(`- Transaction: ${approvalTxn?.transactionHash}`);
+    }
+
+    const txn = await proposer.methods.propose(adminProposalTransactions).send({ from: caller, ...gasPriceObj });
+    console.log("- Transaction: ", txn?.transactionHash);
+
+    // Print out details about new Admin proposal
+    const priceRequests = await oracle.getPastEvents("PriceRequestAdded");
+    const newAdminRequest = priceRequests[priceRequests.length - 1];
+    console.log(
+      `- New admin request {identifier: ${
+        newAdminRequest.returnValues.identifier
+      }, timestamp: ${newAdminRequest.returnValues.time.toString()}}`
+    );
+  } else {
+    console.log("- 0 Transactions in Admin proposal. Nothing to do");
+  }
+};
+
 module.exports = {
   L2_ADMIN_NETWORK_NAMES,
   L2_ADMIN_NETWORKS,
@@ -262,4 +310,5 @@ module.exports = {
   verifyGovernanceHubMessage,
   relayGovernanceRootTunnelMessage,
   verifyGovernanceRootTunnelMessage,
+  proposeAdminTransactions,
 };

@@ -23,6 +23,7 @@ const {
   L2_ADMIN_NETWORK_NAMES,
   validateArgvNetworks,
   getNetworksToAdministrateFromArgv,
+  proposeAdminTransactions,
 } = require("./utils");
 const { REQUIRED_SIGNER_ADDRESSES } = require("../utils/constants");
 const argv = require("minimist")(process.argv.slice(), {
@@ -162,25 +163,14 @@ async function run() {
     }
 
     // Send the proposal
-    console.group(`\n📨 Sending to governor @ ${mainnetContracts.governor.options.address}`);
+    console.group(`\n📨 Sending to proposer @ ${mainnetContracts.proposer.options.address}`);
     console.log(`- Admin proposal contains ${adminProposalTransactions.length} transactions`);
-    if (adminProposalTransactions.length > 0) {
-      const txn = await mainnetContracts.governor.methods
-        .propose(adminProposalTransactions)
-        .send({ from: REQUIRED_SIGNER_ADDRESSES["deployer"], ...gasEstimator.getCurrentFastPrice() });
-      console.log("- Transaction: ", txn?.transactionHash);
-
-      // Print out details about new Admin proposal
-      const priceRequests = await mainnetContracts.oracle.getPastEvents("PriceRequestAdded");
-      const newAdminRequest = priceRequests[priceRequests.length - 1];
-      console.log(
-        `- New admin request {identifier: ${
-          newAdminRequest.returnValues.identifier
-        }, timestamp: ${newAdminRequest.returnValues.time.toString()}}`
-      );
-    } else {
-      console.log("- 0 Transactions in Admin proposal. Nothing to do");
-    }
+    await proposeAdminTransactions(
+      web3Providers[1],
+      adminProposalTransactions,
+      REQUIRED_SIGNER_ADDRESSES["deployer"],
+      ...gasEstimator.getCurrentFastPrice()
+    );
     console.groupEnd();
   } else {
     console.group("\n🔎 Verifying execution of Admin Proposal");
