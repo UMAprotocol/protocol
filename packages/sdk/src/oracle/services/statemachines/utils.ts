@@ -80,11 +80,11 @@ export class ContextManager<P, M extends Memory> {
   constructor(
     private type: ContextType,
     private handlers: Handlers<P, M>,
-    private initMemory: () => M,
+    private initMemory: (params: P) => M,
     private emit: (ctx: Context<P, M>) => void
   ) {}
   create = (params: P, user?: string): string => {
-    const context = create<P, M>(this.type, params, this.initMemory(), { user });
+    const context = create<P, M>(this.type, params, this.initMemory(params), { user });
     this.emit(context);
     return context.id;
   };

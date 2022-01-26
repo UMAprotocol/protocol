@@ -2,6 +2,14 @@ import { JsonRpcSigner, BigNumber, Web3Provider, FallbackProvider } from "./ethe
 import type { erc20, optimisticOracle } from "../services";
 import type Multicall2 from "../../multicall2";
 import { Context, Memory } from "./statemachine";
+import {
+  RequestState,
+  RequestKey,
+  RequestPrice,
+  ProposePrice,
+  DisputePrice,
+  Settle,
+} from "../../clients/optimisticOracle";
 
 // create partial picker: https://stackoverflow.com/questions/43159887/make-a-single-property-optional-in-typescript
 type Omit<T, K extends keyof T> = Pick<T, Exclude<keyof T, K>>;
@@ -38,10 +46,16 @@ export type ChainConfig = ChainMetadata & {
   checkTxIntervalSec: number;
   multicall2Address?: string;
   optimisticOracleAddress: string;
+  // specify a block number which we do not care about blocks before this. This effectively prevents listing
+  // requests older than this. If not specified, we will lookback to block 0 when considering request history.
+  earliestBlockNumber?: number;
 };
 
 // partial config lets user omit some fields which we can infer internally using contracts-frontend
-export type PartialChainConfig = PartialBy<ChainConfig, "optimisticOracleAddress" | "chainId" | "checkTxIntervalSec">;
+export type PartialChainConfig = PartialBy<
+  ChainConfig,
+  "optimisticOracleAddress" | "chainId" | "checkTxIntervalSec" | "earliestBlockNumber"
+>;
 
 // config definition
 export type Config = {
@@ -61,16 +75,6 @@ export type User = {
   provider: Web3Provider;
 };
 
-export enum RequestState {
-  Invalid = 0, // Never requested.
-  Requested, // Requested, no other actions taken.
-  Proposed, // Proposed, but not expired or disputed yet.
-  Expired, // Proposed, not disputed, past liveness and price is available to settle.
-  Disputed, // Disputed, but no DVM price returned yet.
-  Resolved, // Disputed and DVM price is available to settle.
-  Settled, // Final price has been set in the contract (can get here from Expired or Resolved).
-}
-
 export enum Flag {
   MissingRequest = "MissingRequest", // the client does not know the request, use client.setActiveRequest
   MissingUser = "MissingUser", // client does not have user data, use client.setUser
@@ -89,13 +93,7 @@ export enum Flag {
 }
 export type Flags = Record<Flag, boolean>;
 
-export type InputRequest = {
-  requester: string;
-  identifier: string;
-  timestamp: number;
-  ancillaryData: string;
-  chainId: number;
-};
+export type InputRequest = RequestKey & { chainId: number };
 
 export type Inputs = {
   request: InputRequest;
@@ -116,6 +114,8 @@ export type Erc20 = {
   balances: Balances;
 };
 
+export { RequestState };
+
 export type Request = {
   proposer: string;
   disputer: string;
@@ -129,13 +129,18 @@ export type Request = {
   finalFee: BigNumber;
   bond: BigNumber;
   customLiveness: BigNumber;
-  state: number;
+  state: RequestState;
 };
+
+export type OptimisticOracleEvent = RequestPrice | ProposePrice | DisputePrice | Settle;
+
+export type { RequestPrice, ProposePrice, DisputePrice, Settle };
 
 export type OptimisticOracle = {
   address: string;
   defaultLiveness: BigNumber;
   requests: Record<string, Request>;
+  events: OptimisticOracleEvent[];
 };
 
 export type Chain = {

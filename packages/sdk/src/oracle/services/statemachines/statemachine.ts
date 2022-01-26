@@ -12,6 +12,8 @@ import * as proposePrice from "./proposePrice";
 import * as switchOrAddChain from "./switchOrAddChain";
 import * as pollActiveRequest from "./pollActiveRequest";
 import * as pollActiveUser from "./pollActiveUser";
+import * as fetchPastEvents from "./fetchPastEvents";
+import * as pollNewEvents from "./pollNewEvents";
 
 /**
  * StateMachine. This class will be used to handle all change requests by the user, including setting state which
@@ -42,6 +44,8 @@ export class StateMachine {
     [ContextType.switchOrAddChain]: ContextManager<switchOrAddChain.Params, switchOrAddChain.Memory>;
     [ContextType.pollActiveRequest]: ContextManager<pollActiveRequest.Params, pollActiveRequest.Memory>;
     [ContextType.pollActiveUser]: ContextManager<pollActiveUser.Params, pollActiveUser.Memory>;
+    [ContextType.fetchPastEvents]: ContextManager<fetchPastEvents.Params, fetchPastEvents.Memory>;
+    [ContextType.pollNewEvents]: ContextManager<pollNewEvents.Params, pollNewEvents.Memory>;
   };
   constructor(private store: Store) {
     // need to initizlie state types here manually for each new context type
@@ -98,6 +102,18 @@ export class StateMachine {
         ContextType.pollActiveUser,
         pollActiveUser.Handlers(store),
         pollActiveUser.initMemory,
+        this.handleCreate
+      ),
+      [ContextType.fetchPastEvents]: new ContextManager<fetchPastEvents.Params, fetchPastEvents.Memory>(
+        ContextType.fetchPastEvents,
+        fetchPastEvents.Handlers(store),
+        fetchPastEvents.initMemory,
+        this.handleCreate
+      ),
+      [ContextType.pollNewEvents]: new ContextManager<pollNewEvents.Params, pollNewEvents.Memory>(
+        ContextType.pollNewEvents,
+        pollNewEvents.Handlers(store),
+        pollNewEvents.initMemory,
         this.handleCreate
       ),
     };
@@ -199,6 +215,20 @@ export class StateMachine {
         case ContextType.pollActiveUser: {
           next = await this.types[context.type].step(
             (context as unknown) as Context<pollActiveUser.Params, pollActiveUser.Memory>,
+            now
+          );
+          break;
+        }
+        case ContextType.fetchPastEvents: {
+          next = await this.types[context.type].step(
+            (context as unknown) as Context<fetchPastEvents.Params, fetchPastEvents.Memory>,
+            now
+          );
+          break;
+        }
+        case ContextType.pollNewEvents: {
+          next = await this.types[context.type].step(
+            (context as unknown) as Context<pollNewEvents.Params, pollNewEvents.Memory>,
             now
           );
           break;

@@ -3,6 +3,7 @@ import type * as ethersTypes from "../types/ethers";
 import * as state from "../types/state";
 import * as statemachine from "../types/statemachine";
 
+import { requestId, insertOrderedAscending, eventKey } from "../utils";
 import { factory as Erc20Factory } from "../services/erc20";
 import { OptimisticOracle as OptimisticOracleService } from "../services/optimisticOracle";
 import Multicall2 from "../../multicall2";
@@ -68,18 +69,17 @@ export class OptimisticOracle {
   address(address: string): void {
     this.state.address = address;
   }
-  request(inputRequest: state.Inputs["request"], request: state.Request): void {
-    const id = [
-      inputRequest.requester,
-      inputRequest.identifier,
-      inputRequest.timestamp,
-      inputRequest.ancillaryData,
-    ].join("!");
+  request(inputRequest: state.InputRequest, request: state.Request): void {
+    const id = requestId(inputRequest);
     if (!this.state.requests) this.state.requests = {};
     this.state.requests[id] = request;
   }
   defaultLiveness(defaultLiveness: ethersTypes.BigNumber): void {
     this.state.defaultLiveness = defaultLiveness;
+  }
+  event(event: state.OptimisticOracleEvent): void {
+    if (!this.state.events) this.state.events = [];
+    insertOrderedAscending(this.state.events, event, eventKey);
   }
 }
 export class Chain {
