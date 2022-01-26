@@ -54,14 +54,15 @@ export class DiscordTransport extends Transport {
     }
 
     // For each markdown link, build the new link with the discord format. Replace the original link with the new one.
+    let modifiedMessage = msg;
     for (let i = 0; i < startIndexes.length; i++) {
       const originalUrl = msg.substring(startIndexes[i], endIndexes[i] + 1);
       const pipeIndex = originalUrl.indexOf("|");
       const markdownUrl =
         `[${originalUrl.substring(pipeIndex + 1, originalUrl.length - 1)}]` + // hyperlink
         `(${originalUrl.substring(1, pipeIndex)})`; // url
-      msg = msg.replace(originalUrl, markdownUrl);
+      modifiedMessage = modifiedMessage.replace(originalUrl, markdownUrl);
     }
-    return msg;
+    return modifiedMessage;
   }
 }
