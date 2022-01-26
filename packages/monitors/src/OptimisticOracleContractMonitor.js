@@ -141,7 +141,10 @@ class OptimisticOracleContractMonitor {
           this.oracleType === OptimisticOracleType.OptimisticOracle ? event.proposer : event.request.proposer,
           this.contractProps.networkId
         ) +
-        ` proposed a price for the request made by ${event.requester} at the timestamp ${event.timestamp} for the identifier: ${event.identifier}. ` +
+        ` proposed a price for the request made by ${createEtherscanLinkMarkdown(
+          event.requester,
+          this.contractProps.networkId
+        )} at the timestamp ${event.timestamp} for the identifier: ${event.identifier}. ` +
         `The proposal price of ${this.formatDecimalString(
           this.oracleType === OptimisticOracleType.OptimisticOracle ? event.proposedPrice : event.request.proposedPrice
         )} will expire at ${
