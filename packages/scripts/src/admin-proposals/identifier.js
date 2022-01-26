@@ -179,7 +179,8 @@ async function run() {
             if (network.chainId === 42161) {
               await fundArbitrumParentMessengerForOneTransaction(
                 web3Providers[1],
-                REQUIRED_SIGNER_ADDRESSES["deployer"]
+                REQUIRED_SIGNER_ADDRESSES["deployer"],
+                gasEstimator.getCurrentFastPrice()
               );
             }
           } else {

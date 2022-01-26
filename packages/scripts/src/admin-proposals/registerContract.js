@@ -224,7 +224,11 @@ async function run() {
             )
           );
           if (network.chainId === 42161) {
-            await fundArbitrumParentMessengerForOneTransaction(web3Providers[1], REQUIRED_SIGNER_ADDRESSES["deployer"]);
+            await fundArbitrumParentMessengerForOneTransaction(
+              web3Providers[1],
+              REQUIRED_SIGNER_ADDRESSES["deployer"],
+              gasEstimator.getCurrentFastPrice()
+            );
           }
 
           // 2. Register the contract as a verified contract.
@@ -241,7 +245,11 @@ async function run() {
             )
           );
           if (network.chainId === 42161) {
-            await fundArbitrumParentMessengerForOneTransaction(web3Providers[1], REQUIRED_SIGNER_ADDRESSES["deployer"]);
+            await fundArbitrumParentMessengerForOneTransaction(
+              web3Providers[1],
+              REQUIRED_SIGNER_ADDRESSES["deployer"],
+              gasEstimator.getCurrentFastPrice()
+            );
           }
 
           // 3. Remove the GovernorSpoke from being a contract creator.
@@ -261,7 +269,11 @@ async function run() {
             )
           );
           if (network.chainId === 42161) {
-            await fundArbitrumParentMessengerForOneTransaction(web3Providers[1], REQUIRED_SIGNER_ADDRESSES["deployer"]);
+            await fundArbitrumParentMessengerForOneTransaction(
+              web3Providers[1],
+              REQUIRED_SIGNER_ADDRESSES["deployer"],
+              gasEstimator.getCurrentFastPrice()
+            );
           }
 
           // 4. Set contract in finder.
@@ -281,7 +293,8 @@ async function run() {
             if (network.chainId === 42161) {
               await fundArbitrumParentMessengerForOneTransaction(
                 web3Providers[1],
-                REQUIRED_SIGNER_ADDRESSES["deployer"]
+                REQUIRED_SIGNER_ADDRESSES["deployer"],
+                gasEstimator.getCurrentFastPrice()
               );
             }
           }

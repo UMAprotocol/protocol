@@ -147,7 +147,11 @@ async function run() {
             )
           );
           if (network.chainId === 42161) {
-            await fundArbitrumParentMessengerForOneTransaction(web3Providers[1], REQUIRED_SIGNER_ADDRESSES["deployer"]);
+            await fundArbitrumParentMessengerForOneTransaction(
+              web3Providers[1],
+              REQUIRED_SIGNER_ADDRESSES["deployer"],
+              gasEstimator.getCurrentFastPrice()
+            );
           }
         } else {
           console.log("- Contract @ ", network.value, "is already a contract creator. Nothing to do.");

@@ -172,7 +172,7 @@ const setupMainnet = async (web3) => {
   };
 };
 
-const fundArbitrumParentMessengerForOneTransaction = async (web3Provider, from) => {
+const fundArbitrumParentMessengerForOneTransaction = async (web3Provider, from, gasPriceObj) => {
   // Sending a xchain transaction to Arbitrum will fail unless Arbitrum messenger has enough ETH to pay for message:
   const arbitrumParentMessenger = new web3Provider.eth.Contract(
     Arbitrum_ParentMessenger.abi,
@@ -186,6 +186,7 @@ const fundArbitrumParentMessengerForOneTransaction = async (web3Provider, from) 
     from: from,
     to: arbitrumParentMessenger.options.address,
     value: l1CallValue.toString(),
+    ...gasPriceObj,
   });
   console.log(`Sent ETH txn: ${sendEthTxn.transactionHash}`);
 };
