@@ -193,8 +193,6 @@ export class TransactionConfirmer {
 }
 
 export function chainConfigToChainMetadata(config: ChainConfig): ChainMetadata {
-  // linters hate this, but we just need to strip out these vars for valid chain metadata
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { checkTxIntervalSec, multicall2Address, optimisticOracleAddress, ...chainMetadata } = config;
   return chainMetadata;
 }
