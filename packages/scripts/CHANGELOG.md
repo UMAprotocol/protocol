@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.7.0](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.6.1...@uma/scripts@1.7.0) (2022-01-25)
+
+### Features
+
+- add proposer upgrade verification script ([#3774](https://github.com/UMAprotocol/protocol/issues/3774)) ([9530a73](https://github.com/UMAprotocol/protocol/commit/9530a7371076dd1354d3467d08cd8bd8fadb2d74))
+
 ## [1.6.1](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.6.0...@uma/scripts@1.6.1) (2022-01-20)
 
 ### Bug Fixes

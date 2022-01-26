@@ -6,7 +6,6 @@ import * as statemachine from "../types/statemachine";
 import { factory as Erc20Factory } from "../services/erc20";
 import { OptimisticOracle as OptimisticOracleService } from "../services/optimisticOracle";
 import Multicall2 from "../../multicall2";
-import { initFlags } from "../utils";
 
 // This file contains composable and type safe state writers which mirror the state in types/state.
 // Each component takes in 1 parameters, state and you can include any number of functions to operate on the state.
@@ -22,11 +21,13 @@ export class User {
     if (data.chainId) this.chainId(data.chainId);
     if (data.address) this.address(data.address);
     if (data.signer) this.signer(data.signer);
+    if (data.provider) this.provider(data.provider);
   }
   clear(): void {
     delete this.state.chainId;
     delete this.state.address;
     delete this.state.signer;
+    delete this.state.provider;
   }
   chainId(chainId: number): void {
     this.state.chainId = chainId;
@@ -34,8 +35,11 @@ export class User {
   address(address: string): void {
     this.state.address = address;
   }
-  signer(signer: ethersTypes.Signer): void {
+  signer(signer: ethersTypes.JsonRpcSigner): void {
     this.state.signer = signer;
+  }
+  provider(provider: ethersTypes.Web3Provider): void {
+    this.state.provider = provider;
   }
 }
 export class Balances {
@@ -103,9 +107,10 @@ export class Inputs {
 
 export class Services {
   constructor(private state: Partial<state.ChainServices>) {}
-  provider(providerUrl: string): void {
+  provider(rpcUrls: string[]): void {
     if (this.state?.provider) return;
-    this.state.provider = ethers.getDefaultProvider(providerUrl);
+    const providers = rpcUrls.map((url) => ethers.getDefaultProvider(url));
+    this.state.provider = new ethers.providers.FallbackProvider(providers, 1);
   }
   erc20s(address: string): void {
     if (!this.state?.provider) return;
@@ -119,7 +124,7 @@ export class Services {
     if (!this.state.provider) return;
     this.state.optimisticOracle = new OptimisticOracleService(this.state.provider, address);
   }
-  multicall2(multicall2Address?: string) {
+  multicall2(multicall2Address?: string): void {
     if (!multicall2Address) return;
     if (this.state.multicall2) return;
     if (!this.state.provider) return;
@@ -154,14 +159,7 @@ export default class Write {
   error(error?: Error): void {
     this.state.error = error;
   }
-  flag(flag: state.Flag, on: boolean) {
-    if (!this.state.flags) this.state.flags = initFlags();
-    this.state.flags[flag] = on;
-  }
-  flags(flags: Record<state.Flag, boolean>) {
-    this.state.flags = { ...(this.state.flags || initFlags()), ...flags };
-  }
-  command(context: statemachine.Context<unknown, unknown & statemachine.Memory>) {
+  command(context: statemachine.Context<unknown, unknown & statemachine.Memory>): void {
     if (!this.state.commands) this.state.commands = {};
     this.state.commands[context.id] = context;
   }

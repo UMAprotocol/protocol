@@ -28,9 +28,6 @@ export function Handlers(store: Store): GenericHandlers<Params, Memory> {
         // its ok to ignore these errors
         memory.error = (err as unknown) as Error;
       }
-
-      // set state flags after everything updates
-      update.flags();
       return "done";
     },
   };
