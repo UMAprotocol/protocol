@@ -118,13 +118,7 @@ class OptimisticOracleContractMonitor {
             this.oracleType === OptimisticOracleType.OptimisticOracle ? event.finalFee : event.request.finalFee
           )
         )}. tx: ${createEtherscanLinkMarkdown(event.transactionHash, this.contractProps.networkId)}\n` +
-        `${this._generateUILink(
-          "View this request in the UI.",
-          event.requester,
-          event.identifier,
-          event.timestamp,
-          event.ancillaryData
-        )}`;
+        `${this._generateUILink(event.requester, event.identifier, event.timestamp, event.ancillaryData)}`;
 
       // The default log level should be reduced to "debug" for funding rate identifiers:
       this.logger[
@@ -171,13 +165,7 @@ class OptimisticOracleContractMonitor {
           this.oracleType === OptimisticOracleType.OptimisticOracle ? event.currency : event.request.currency
         }. ` +
         `tx ${createEtherscanLinkMarkdown(event.transactionHash, this.contractProps.networkId)}\n` +
-        `${this._generateUILink(
-          "View this request in the UI.",
-          event.requester,
-          event.identifier,
-          event.timestamp,
-          event.ancillaryData
-        )}`;
+        `${this._generateUILink(event.requester, event.identifier, event.timestamp, event.ancillaryData)}`;
 
       // The default log level should be reduced to "info" for funding rate identifiers:
       this.logger[
@@ -219,13 +207,7 @@ class OptimisticOracleContractMonitor {
         )}.\n` +
         this._formatAncillaryData(event.ancillaryData) +
         `. tx: ${createEtherscanLinkMarkdown(event.transactionHash, this.contractProps.networkId)}\n` +
-        `${this._generateUILink(
-          "View this request in the UI.",
-          event.requester,
-          event.identifier,
-          event.timestamp,
-          event.ancillaryData
-        )}`;
+        `${this._generateUILink(event.requester, event.identifier, event.timestamp, event.ancillaryData)}`;
 
       this.logger[this.logOverrides.disputedPrice || "error"]({
         at: "OptimisticOracleContractMonitor",
@@ -285,13 +267,7 @@ class OptimisticOracleContractMonitor {
         }.\n` +
         this._formatAncillaryData(event.ancillaryData) +
         `. tx: ${createEtherscanLinkMarkdown(event.transactionHash, this.contractProps.networkId)}\n` +
-        `${this._generateUILink(
-          "View this request in the UI.",
-          event.requester,
-          event.identifier,
-          event.timestamp,
-          event.ancillaryData
-        )}`;
+        `${this._generateUILink(event.requester, event.identifier, event.timestamp, event.ancillaryData)}`;
 
       // The default log level should be reduced to "debug" for funding rate identifiers:
       this.logger[
@@ -340,11 +316,11 @@ class OptimisticOracleContractMonitor {
     }
   }
 
-  _generateUILink(linkText, requester, identifier, timestamp, ancillaryData) {
+  _generateUILink(requester, identifier, timestamp, ancillaryData) {
     const hexIdentifier = this.padRight(this.utf8ToHex(identifier), 64);
     return `<${this.optimisticOracleUIBaseUrl}?chainId=${this.contractProps.chainId}&requester=${this.toChecksumAddress(
       requester
-    )}&identifier=${hexIdentifier}&timestamp=${timestamp}&ancillaryData=${ancillaryData}|${linkText}>`;
+    )}&identifier=${hexIdentifier}&timestamp=${timestamp}&ancillaryData=${ancillaryData}|View this request in the UI.>`;
   }
 }
 
