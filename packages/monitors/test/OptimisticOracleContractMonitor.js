@@ -256,8 +256,6 @@ describe("OptimisticOracleContractMonitor.js", function () {
       )
     );
 
-    // ?chainId=${contractProps.chainId}&requester=${requester}&identifier=${identifier}&timestamp=${requestTime}&ancillaryData=${defaultAncillaryData}));
-
     // should contain the correct request information.
     assert.isTrue(lastSpyLogIncludes(spy, hexToUtf8(identifier))); // Identifier
     assert.isTrue(lastSpyLogIncludes(spy, requestTime)); // Timestamp
