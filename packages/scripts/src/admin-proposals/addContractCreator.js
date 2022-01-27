@@ -23,6 +23,7 @@ const {
   L2_ADMIN_NETWORK_NAMES,
   validateArgvNetworks,
   getNetworksToAdministrateFromArgv,
+  proposeAdminTransactions,
 } = require("./utils");
 const { REQUIRED_SIGNER_ADDRESSES } = require("../utils/constants");
 const argv = require("minimist")(process.argv.slice(), {
@@ -147,7 +148,11 @@ async function run() {
             )
           );
           if (network.chainId === 42161) {
-            await fundArbitrumParentMessengerForOneTransaction(web3Providers[1], REQUIRED_SIGNER_ADDRESSES["deployer"]);
+            await fundArbitrumParentMessengerForOneTransaction(
+              web3Providers[1],
+              REQUIRED_SIGNER_ADDRESSES["deployer"],
+              gasEstimator.getCurrentFastPrice()
+            );
           }
         } else {
           console.log("- Contract @ ", network.value, "is already a contract creator. Nothing to do.");
@@ -158,26 +163,12 @@ async function run() {
     }
 
     // Send the proposal
-    console.group(`\n📨 Sending to governor @ ${mainnetContracts.governor.options.address}`);
-    console.log(`- Admin proposal contains ${adminProposalTransactions.length} transactions`);
-    if (adminProposalTransactions.length > 0) {
-      const txn = await mainnetContracts.governor.methods
-        .propose(adminProposalTransactions)
-        .send({ from: REQUIRED_SIGNER_ADDRESSES["deployer"], ...gasEstimator.getCurrentFastPrice() });
-      console.log("- Transaction: ", txn?.transactionHash);
-
-      // Print out details about new Admin proposal
-      const priceRequests = await mainnetContracts.oracle.getPastEvents("PriceRequestAdded");
-      const newAdminRequest = priceRequests[priceRequests.length - 1];
-      console.log(
-        `- New admin request {identifier: ${
-          newAdminRequest.returnValues.identifier
-        }, timestamp: ${newAdminRequest.returnValues.time.toString()}}`
-      );
-    } else {
-      console.log("- 0 Transactions in Admin proposal. Nothing to do");
-    }
-    console.groupEnd();
+    await proposeAdminTransactions(
+      web3Providers[1],
+      adminProposalTransactions,
+      REQUIRED_SIGNER_ADDRESSES["deployer"],
+      gasEstimator.getCurrentFastPrice()
+    );
   } else {
     console.group("\n🔎 Verifying execution of Admin Proposal");
     if (ethereum) {

@@ -24,6 +24,7 @@ const {
   L2_ADMIN_NETWORK_NAMES,
   validateArgvNetworks,
   getNetworksToAdministrateFromArgv,
+  proposeAdminTransactions,
 } = require("./utils");
 const { _getDecimals } = require("../utils");
 const { REQUIRED_SIGNER_ADDRESSES } = require("../utils/constants");
@@ -219,7 +220,8 @@ async function run() {
             if (network.chainId === 42161) {
               await fundArbitrumParentMessengerForOneTransaction(
                 web3Providers[1],
-                REQUIRED_SIGNER_ADDRESSES["deployer"]
+                REQUIRED_SIGNER_ADDRESSES["deployer"],
+                gasEstimator.getCurrentFastPrice()
               );
             }
           } else {
@@ -243,7 +245,8 @@ async function run() {
             if (network.chainId === 42161) {
               await fundArbitrumParentMessengerForOneTransaction(
                 web3Providers[1],
-                REQUIRED_SIGNER_ADDRESSES["deployer"]
+                REQUIRED_SIGNER_ADDRESSES["deployer"],
+                gasEstimator.getCurrentFastPrice()
               );
             }
           } else {
@@ -255,26 +258,12 @@ async function run() {
     }
 
     // Send the proposal
-    console.group(`\n📨 Sending to governor @ ${mainnetContracts.governor.options.address}`);
-    console.log(`- Admin proposal contains ${adminProposalTransactions.length} transactions`);
-    if (adminProposalTransactions.length > 0) {
-      const txn = await mainnetContracts.governor.methods
-        .propose(adminProposalTransactions)
-        .send({ from: REQUIRED_SIGNER_ADDRESSES["deployer"], ...gasEstimator.getCurrentFastPrice() });
-      console.log("- Transaction: ", txn?.transactionHash);
-
-      // Print out details about new Admin proposal
-      const priceRequests = await mainnetContracts.oracle.getPastEvents("PriceRequestAdded");
-      const newAdminRequest = priceRequests[priceRequests.length - 1];
-      console.log(
-        `- New admin request {identifier: ${
-          newAdminRequest.returnValues.identifier
-        }, timestamp: ${newAdminRequest.returnValues.time.toString()}}`
-      );
-    } else {
-      console.log("- 0 Transactions in Admin proposal. Nothing to do");
-    }
-    console.groupEnd();
+    await proposeAdminTransactions(
+      web3Providers[1],
+      adminProposalTransactions,
+      REQUIRED_SIGNER_ADDRESSES["deployer"],
+      gasEstimator.getCurrentFastPrice()
+    );
   } else {
     console.group("\n🔎 Verifying execution of Admin Proposal");
     for (let i = 0; i < fees.length; i++) {
@@ -351,7 +340,7 @@ async function run() {
             console.log(`- Final fee for is already equal to ${convertedFeeAmount}. Nothing to check.`);
           }
           if (!(await contractsByNetId[network.chainId].addressWhitelist.methods.isOnWhitelist(collateral).call())) {
-            const addToWhitelistData = contractsByNetId[network.chaindId].addressWhitelist.methods
+            const addToWhitelistData = contractsByNetId[network.chainId].addressWhitelist.methods
               .addToWhitelist(collateral)
               .encodeABI();
             await verifyGovernanceHubMessage(
