@@ -2,7 +2,7 @@ const hre = require("hardhat");
 const { getContract } = hre;
 const { getWeb3ByChainId, interfaceName, MAX_UINT_VAL } = require("@uma/common");
 const { _getContractAddressByName } = require("../utils");
-const { GasEstimator } = require("@uma/financial-templates-lib");
+const { GasEstimator, aggregateTransactionsAndCall, multicallAddressMap } = require("@uma/financial-templates-lib");
 const winston = require("winston");
 const Web3 = require("Web3");
 const { fromWei, toBN } = Web3.utils;
@@ -311,12 +311,17 @@ const resolveProposals = async (web3, caller, proposalsToLookback = 10) => {
 
   console.group(`\nResolving the latest ${proposalsToLookback} proposals`);
   const totalProposals = Number(await governor.methods.numProposals().call());
-  const bondedProposals = await Promise.all(
-    [...Array(totalProposals).keys()].map((i) => proposer.methods.bondedProposals(i).call())
+  const bondedProposalTransactions = [...Array(totalProposals).keys()].map((i) => {
+    return { target: proposer.options.address, callData: proposer.methods.bondedProposals(i).encodeABI() };
+  });
+  const bondedProposals = await aggregateTransactionsAndCall(
+    multicallAddressMap.mainnet.multicall,
+    web3,
+    bondedProposalTransactions
   );
   for (let i = bondedProposals.length - 1; i >= bondedProposals.length - 1 - proposalsToLookback; i--) {
     const bondedProposal = bondedProposals[i];
-    if (toBN(bondedProposal.lockedBond.toString()).gt(toBN(0))) {
+    if (bondedProposal.sender === caller && toBN(bondedProposal.lockedBond.toString()).gt(toBN(0))) {
       console.log(
         `- Proposal #${i} has a locked bond of ${bondedProposal.lockedBond.toString()} UMA, proposer was @ ${
           bondedProposal.sender
