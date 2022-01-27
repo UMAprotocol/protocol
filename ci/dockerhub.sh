@@ -2,8 +2,8 @@
 
 cat << EOF
   docker-publish-latest:
-    docker:
-      - image: circleci/buildpack-deps:stretch
+    machine:
+      image: ubuntu-2004:202010-01
     steps:
       - restore_cache:
           key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
