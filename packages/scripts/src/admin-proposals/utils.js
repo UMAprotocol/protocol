@@ -274,6 +274,8 @@ const proposeAdminTransactions = async (web3, adminProposalTransactions, caller,
       throw new Error(
         `Caller only has ${votingTokenBalance.toString()} UMA, but submitting a proposal requires ${requiredVotingTokenBalance.toString()} UMA.`
       );
+    } else {
+      console.log("- Proposer has sufficient UMA balance");
     }
     const votingTokenAllowance = toBN(await votingToken.methods.allowance(caller, proposer.options.address).call());
     if (votingTokenAllowance.lt(requiredVotingTokenBalance)) {
@@ -282,6 +284,8 @@ const proposeAdminTransactions = async (web3, adminProposalTransactions, caller,
         .approve(proposer.options.address, MAX_UINT_VAL)
         .send({ from: caller, ...gasPriceObj });
       console.log(`- Transaction: ${approvalTxn?.transactionHash}`);
+    } else {
+      console.log("- Proposer has sufficient allowance");
     }
 
     const txn = await proposer.methods.propose(adminProposalTransactions).send({ from: caller, ...gasPriceObj });

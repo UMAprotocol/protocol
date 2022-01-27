@@ -340,7 +340,7 @@ async function run() {
             console.log(`- Final fee for is already equal to ${convertedFeeAmount}. Nothing to check.`);
           }
           if (!(await contractsByNetId[network.chainId].addressWhitelist.methods.isOnWhitelist(collateral).call())) {
-            const addToWhitelistData = contractsByNetId[network.chaindId].addressWhitelist.methods
+            const addToWhitelistData = contractsByNetId[network.chainId].addressWhitelist.methods
               .addToWhitelist(collateral)
               .encodeABI();
             await verifyGovernanceHubMessage(
