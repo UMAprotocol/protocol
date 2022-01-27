@@ -285,7 +285,7 @@ export class CryptoWatchPriceFeed extends PriceFeedInterface {
     console.log(`- historicalTimestampBuffer: ${this.historicalTimestampBuffer}`);
     console.log(`- ✅ Matched Price: ${formatFixed(returnPrice.toString(), this.priceFeedDecimals)}`);
     console.log(
-      `- ⚠️  If you want to manually verify the specific exchange prices, you can make a GET request to: \n- https://api.cryptowat.ch/markets/${this.exchange}/${this.pair}/ohlc?after=${pricePeriod.openTime}&before=${pricePeriod.closeTime}&periods=60`
+      `- ⚠️  If you want to manually verify the specific exchange prices, you can make a GET request to: \n- https://api.cryptowat.ch/markets/${this.exchange}/${this.pair}/ohlc?after=${pricePeriod.openTime}&before=${pricePeriod.closeTime}&periods=${this.ohlcPeriod}`
     );
     console.log(
       '- This will return an OHLC data packet as "result", which contains in order: \n- [CloseTime, OpenPrice, HighPrice, LowPrice, ClosePrice, Volume, QuoteVolume].'

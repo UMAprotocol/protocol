@@ -71,6 +71,7 @@ describe("OptimisticOracleContractMonitor.js", function () {
   const defaultAncillaryData = "0x";
   const alternativeAncillaryRaw = "someRandomKey:alaValue42069";
   const alternativeAncillaryData = utf8ToHex(alternativeAncillaryRaw);
+  const sampleBaseUIUrl = "https://sampleurl.com/";
 
   const pushPrice = async (price) => {
     const [lastQuery] = (await mockOracle.methods.getPendingQueries().call()).slice(-1);
@@ -164,8 +165,8 @@ describe("OptimisticOracleContractMonitor.js", function () {
       null // endingBlockNumber
     );
 
-    monitorConfig = {};
-    contractProps = { networkId: await web3.eth.net.getId() };
+    monitorConfig = { optimisticOracleUIBaseUrl: sampleBaseUIUrl };
+    contractProps = { networkId: await web3.eth.net.getId(), chainId: await web3.eth.getChainId() };
 
     contractMonitor = new OptimisticOracleContractMonitor({
       logger: spyLogger,
@@ -243,6 +244,18 @@ describe("OptimisticOracleContractMonitor.js", function () {
     assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/address/${optimisticRequester.options.address}`));
     assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/tx/${requestTxn.transactionHash}`));
 
+    assert.isTrue(
+      lastSpyLogIncludes(
+        spy,
+        `${sampleBaseUIUrl}?chainId=${contractProps.chainId}&requester=${
+          optimisticRequester.options.address
+        }&identifier=${web3.utils.padRight(
+          identifier,
+          64
+        )}&timestamp=${requestTime}&ancillaryData=${defaultAncillaryData}`
+      )
+    );
+
     // should contain the correct request information.
     assert.isTrue(lastSpyLogIncludes(spy, hexToUtf8(identifier))); // Identifier
     assert.isTrue(lastSpyLogIncludes(spy, requestTime)); // Timestamp
@@ -273,6 +286,18 @@ describe("OptimisticOracleContractMonitor.js", function () {
     // Should contain etherscan addresses for the proposer and transaction
     assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/address/${proposer}`));
     assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/tx/${proposalTxn.transactionHash}`));
+
+    assert.isTrue(
+      lastSpyLogIncludes(
+        spy,
+        `${sampleBaseUIUrl}?chainId=${contractProps.chainId}&requester=${
+          optimisticRequester.options.address
+        }&identifier=${web3.utils.padRight(
+          identifier,
+          64
+        )}&timestamp=${requestTime}&ancillaryData=${defaultAncillaryData}`
+      )
+    );
 
     // should contain the correct proposal information.
     assert.isTrue(lastSpyLogIncludes(spy, optimisticRequester.options.address)); // Requester
@@ -315,6 +340,18 @@ describe("OptimisticOracleContractMonitor.js", function () {
     assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/address/${disputer}`));
     assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/tx/${disputeTxn.transactionHash}`));
 
+    assert.isTrue(
+      lastSpyLogIncludes(
+        spy,
+        `${sampleBaseUIUrl}?chainId=${contractProps.chainId}&requester=${
+          optimisticRequester.options.address
+        }&identifier=${web3.utils.padRight(
+          identifier,
+          64
+        )}&timestamp=${requestTime}&ancillaryData=${defaultAncillaryData}`
+      )
+    );
+
     // should contain the correct dispute information.
     assert.isTrue(lastSpyLogIncludes(spy, optimisticRequester.options.address)); // Requester
     assert.isTrue(lastSpyLogIncludes(spy, proposer)); // Proposer
@@ -356,6 +393,18 @@ describe("OptimisticOracleContractMonitor.js", function () {
 
     // Should contain etherscan addresses for the transaction
     assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/tx/${settlementTxn.transactionHash}`));
+
+    assert.isTrue(
+      lastSpyLogIncludes(
+        spy,
+        `${sampleBaseUIUrl}?chainId=${contractProps.chainId}&requester=${
+          optimisticRequester.options.address
+        }&identifier=${web3.utils.padRight(
+          identifier,
+          64
+        )}&timestamp=${requestTime}&ancillaryData=${defaultAncillaryData}`
+      )
+    );
 
     // should contain the correct settlement information.
     assert.isTrue(lastSpyLogIncludes(spy, optimisticRequester.options.address)); // Requester
@@ -408,7 +457,7 @@ describe("OptimisticOracleContractMonitor.js", function () {
       contractMonitor = new OptimisticOracleContractMonitor({
         logger: spyLogger,
         optimisticOracleContractEventClient: eventClient,
-        monitorConfig: {},
+        monitorConfig: { optimisticOracleUIBaseUrl: "https://sampleurl.com/" },
         contractProps,
       });
       await contractMonitor.checkForRequests();

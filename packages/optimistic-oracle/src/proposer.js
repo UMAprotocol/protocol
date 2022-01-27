@@ -6,10 +6,14 @@ const {
   OptimisticOracleType,
 } = require("@uma/financial-templates-lib");
 const {
+  createFormatFunction,
+  createEtherscanLinkMarkdown,
+  parseAncillaryData,
   createObjectFromDefaultProps,
   runTransaction,
   OPTIMISTIC_ORACLE_IGNORE_POST_EXPIRY,
   OPTIMISTIC_ORACLE_IGNORE,
+  ZERO_ADDRESS,
 } = require("@uma/common");
 const { getAbi } = require("@uma/contracts-node");
 
@@ -36,6 +40,7 @@ class OptimisticOracleProposer {
     this.optimisticOracleClient = optimisticOracleClient;
     this.web3 = this.optimisticOracleClient.web3;
     this.commonPriceFeedConfig = commonPriceFeedConfig;
+    this.chainId = optimisticOracleClient.chainId;
 
     // Gas Estimator to calculate the current Fast gas rate.
     this.gasEstimator = gasEstimator;
@@ -43,6 +48,9 @@ class OptimisticOracleProposer {
     this.createEmpContract = (empAddress) => {
       return new this.web3.eth.Contract(getAbi("ExpiringMultiParty"), empAddress);
     };
+
+    // Formats an 18 decimal point string with a define number of decimals and precision for use in message generation.
+    this.formatDecimalString = createFormatFunction(2, 4, false);
 
     this.optimisticOracleContract = this.optimisticOracleClient.oracle;
 
@@ -435,32 +443,56 @@ class OptimisticOracleProposer {
       priceRequest,
     });
     try {
-      const { receipt, returnValue, transactionConfig } = await runTransaction({
+      const { receipt, returnValue } = await runTransaction({
         web3: this.web3,
         transaction: settle,
         transactionConfig: { ...this.gasEstimator.getCurrentFastPrice(), from: this.account },
       });
-
-      const logResult = {
-        tx: receipt.transactionHash,
-        // This is undefined unless the oracle type is SkinnyOptimisticOracle.
-        ...receipt.events.Settle.returnValues.request,
-        ...receipt.events.Settle.returnValues,
-        identifier: this.hexToUtf8(receipt.events.Settle.returnValues.identifier),
-        ancillaryData: receipt.events.Settle.returnValues.ancillaryData || "0x",
-      };
-      this.logger.info({
-        at: "OptimisticOracleProposer#settleRequests",
-        message: "Settled proposal or dispute!⛑",
-        priceRequest,
-        payout:
+      console.log("receipt", receipt.events.Settle.returnValues);
+      console.log("skinny", this.optimisticOracleClient.oracleType);
+      console.log(
+        "select",
+        this.optimisticOracleClient.oracleType === OptimisticOracleType.SkinnyOptimisticOracle
+          ? receipt.events.Settle.returnValues.request.proposer
+          : receipt.events.Settle.returnValues.proposer
+      );
+      const mrkdwn =
+        createEtherscanLinkMarkdown(
+          this.optimisticOracleClient.oracleType === OptimisticOracleType.SkinnyOptimisticOracle
+            ? receipt.events.Settle.returnValues.request.proposer
+            : receipt.events.Settle.returnValues.proposer,
+          this.chainId
+        ) +
+        " proposed a price of " +
+        this.formatDecimalString(
+          this.optimisticOracleClient.oracleType === OptimisticOracleType.SkinnyOptimisticOracle
+            ? receipt.events.Settle.returnValues.request.proposedPrice
+            : receipt.events.Settle.returnValues.price
+        ) +
+        " proposal for " +
+        this.hexToUtf8(receipt.events.Settle.returnValues.identifier) +
+        " at timestamp " +
+        receipt.events.Settle.returnValues.timestamp +
+        " with " +
+        this._formatAncillaryData(receipt.events.Settle.returnValues.ancillaryData) +
+        " which has been settled! proposer payout is " +
+        this.formatDecimalString(
           this.optimisticOracleClient.oracleType === OptimisticOracleType.SkinnyOptimisticOracle
             ? returnValue.payout.toString()
-            : returnValue.toString(),
-        settleResult: logResult,
-        transactionConfig,
+            : returnValue.toString()
+        ) +
+        " tx: " +
+        createEtherscanLinkMarkdown(receipt.transactionHash, this.chainId);
+      this.logger.info({
+        at: "OptimisticOracleProposer#settleRequests",
+        message: `Settled ${
+          receipt.events.Settle.returnValues.disputer === ZERO_ADDRESS ? "proposal 💍!" : "dispute ⛑!"
+        }`,
+        mrkdwn,
+        notificationPath: "optimistic-oracle",
       });
     } catch (error) {
+      console.log("error", error);
       const message =
         error.type === "call" ? "Cannot settle for unknown reason☹️" : "Failed to settle proposal or dispute🚨";
       this.logger.error({ at: "OptimisticOracleProposer#settleRequests", message, priceRequest, error });
@@ -530,6 +562,20 @@ class OptimisticOracleProposer {
     );
     if (newPriceFeed) this.priceFeedCache[identifier] = newPriceFeed;
     return newPriceFeed;
+  }
+
+  _formatAncillaryData(ancillaryData) {
+    try {
+      // Return the decoded ancillary data as a string. The `replace` syntax removes any escaped quotes from the string.
+      return "Ancillary data: " + JSON.stringify(parseAncillaryData(ancillaryData)).replace(/"/g, "");
+    } catch (_) {
+      try {
+        // If that fails, try to return the ancillary data UTF-8 decoded.
+        return "Ancillary data: " + this.web3.utils.hexToUtf8(ancillaryData);
+      } catch (_) {
+        return "Could not parse ancillary data nor UTF-8 decode: " + ancillaryData || "0x";
+      }
+    }
   }
 }
 

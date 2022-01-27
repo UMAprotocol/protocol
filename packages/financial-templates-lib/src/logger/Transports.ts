@@ -7,6 +7,7 @@ import { createConsoleTransport } from "./ConsoleTransport";
 import { createJsonTransport } from "./JsonTransport";
 import { createSlackTransport } from "./SlackTransport";
 import { PagerDutyTransport } from "./PagerDutyTransport";
+import { DiscordTransport } from "./DiscordTransport";
 import type Transport from "winston-transport";
 import dotenv from "dotenv";
 import minimist from "minimist";
@@ -15,12 +16,14 @@ dotenv.config();
 const argv = minimist(process.argv.slice(), {});
 
 type SlackConfig = Parameters<typeof createSlackTransport>[0];
+type DiscordConfig = ConstructorParameters<typeof DiscordTransport>[1];
 type PagerDutyConfig = ConstructorParameters<typeof PagerDutyTransport>[1];
 
 interface TransportsConfig {
   environment?: string;
   createConsoleTransport?: boolean;
   slackConfig?: SlackConfig;
+  discordConfig?: DiscordConfig;
   pdApiToken?: string;
   pagerDutyConfig?: PagerDutyConfig;
 }
@@ -47,12 +50,22 @@ export function createTransports(transportsConfig: TransportsConfig = {}): Trans
     transports.push(createConsoleTransport());
   }
 
-  // If there is "test" in the environment then skip the slack and pagerduty.
+  // If there is "test" in the environment then skip the slack, pagerduty and discord.
   if (argv._.indexOf("test") == -1) {
     // If there is a slack web hook, add to the transports array to enable slack messages.
     const slackConfig: SlackConfig = transportsConfig.slackConfig ?? JSON.parse(process.env.SLACK_CONFIG || "null");
     if (slackConfig) {
       transports.push(createSlackTransport(slackConfig));
+    }
+
+    // If there is a discord config, create a new transport.
+    if (transportsConfig.discordConfig || process.env.DISCORD_CONFIG) {
+      transports.push(
+        new DiscordTransport(
+          { level: "info" },
+          transportsConfig.discordConfig ?? JSON.parse(process.env.DISCORD_CONFIG || "null")
+        )
+      );
     }
 
     // If there is a Pagerduty API key then add the pagerduty winston transport.
