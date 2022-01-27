@@ -489,7 +489,6 @@ class OptimisticOracleProposer {
           receipt.events.Settle.returnValues.disputer === ZERO_ADDRESS ? "proposal 💍!" : "dispute ⛑!"
         }`,
         mrkdwn,
-        notificationPath: "optimistic-oracle",
       });
     } catch (error) {
       console.log("error", error);
