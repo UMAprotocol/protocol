@@ -14,12 +14,12 @@ import uma from '@uma/sdk'
 const provider = new ethers.providers.WebSocketProvider(env.CUSTOM_NODE_URL)
 
 // get the contract instance
-const contractAddress:string = // assume you have an lsp address you want to connect to
+const contractAddress:string = // assume you have an optimistic oracle address you want to connect to
 const client:uma.clients.optimisticOracle.Instance = uma.clients.optimisticOracle.connect(contractAddress,provider)
 // gets all events using etheres query filter api
 const events = await client.queryFilter({})
 
-// returns EventState, defined in the lsp client
+// returns EventState, defined in the optimistic oracle client
 const state:uma.clients.optimisticOracle.EventState = uma.clients.optimisticOracle.getEventState(events)
 // see all requests given even details
 console.log(state.requests)

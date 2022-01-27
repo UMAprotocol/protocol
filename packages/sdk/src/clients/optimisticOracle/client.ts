@@ -27,7 +27,7 @@ export enum RequestState {
 export type RequestKey = {
   requester: string;
   identifier: string;
-  timestamp: string;
+  timestamp: number;
   ancillaryData: string;
 };
 export type Request = RequestKey & {
@@ -63,7 +63,7 @@ export function reduceEvents(state: EventState, event: Event): EventState {
       const { requester, identifier, timestamp, ancillaryData, currency, reward, finalFee } = typedEvent.args;
       const id = requestId(typedEvent.args);
       if (!state.requests) state.requests = {};
-      const request = state.requests[id] || { requester, identifier, timestamp: timestamp.toString(), ancillaryData };
+      const request = state.requests[id] || { requester, identifier, timestamp: timestamp.toNumber(), ancillaryData };
       state.requests[id] = {
         ...request,
         currency,
@@ -87,7 +87,7 @@ export function reduceEvents(state: EventState, event: Event): EventState {
       } = typedEvent.args;
       const id = requestId(typedEvent.args);
       if (!state.requests) state.requests = {};
-      const request = state.requests[id] || { requester, identifier, timestamp: timestamp.toString(), ancillaryData };
+      const request = state.requests[id] || { requester, identifier, timestamp: timestamp.toNumber(), ancillaryData };
       state.requests[id] = {
         ...request,
         currency,
@@ -103,7 +103,7 @@ export function reduceEvents(state: EventState, event: Event): EventState {
       const { requester, identifier, timestamp, ancillaryData, proposer, disputer, proposedPrice } = typedEvent.args;
       const id = requestId(typedEvent.args);
       if (!state.requests) state.requests = {};
-      const request = state.requests[id] || { requester, identifier, timestamp: timestamp.toString(), ancillaryData };
+      const request = state.requests[id] || { requester, identifier, timestamp: timestamp.toNumber(), ancillaryData };
       state.requests[id] = {
         ...request,
         proposer,
@@ -118,7 +118,7 @@ export function reduceEvents(state: EventState, event: Event): EventState {
       const { requester, identifier, timestamp, ancillaryData, proposer, disputer, price, payout } = typedEvent.args;
       const id = requestId(typedEvent.args);
       if (!state.requests) state.requests = {};
-      const request = state.requests[id] || { requester, identifier, timestamp: timestamp.toString(), ancillaryData };
+      const request = state.requests[id] || { requester, identifier, timestamp: timestamp.toNumber(), ancillaryData };
       state.requests[id] = {
         ...request,
         requester,
