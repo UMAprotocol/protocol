@@ -4,7 +4,7 @@ const hre = require("hardhat");
 const { getContract } = hre;
 const { assert } = require("chai");
 
-const { toWei, hexToUtf8, utf8ToHex, toBN, padRight } = web3.utils;
+const { toWei, hexToUtf8, utf8ToHex, padRight } = web3.utils;
 
 const {
   OptimisticOracleClient,
@@ -487,9 +487,9 @@ describe("SkinnyOptimisticOracle: proposer.js", function () {
         );
       }
       assert.equal(lastSpyLogLevel(spy), "info");
-      assert.isTrue(spyLogIncludes(spy, -1, "Settled proposal or dispute"));
-      assert.equal(spy.getCall(-1).lastArg.payout, totalDefaultBond);
-      assert.ok(spy.getCall(-1).lastArg.settleResult.tx);
+      assert.isTrue(spyLogIncludes(spy, -1, "Settled dispute"));
+      assert.isTrue(spyLogIncludes(spy, -1, "2.00")); // total default bond of 2e18, scaled by wei
+      assert.isTrue(spyLogIncludes(spy, -1, "tx")); // contains a tx hash
       assert.equal(spy.callCount, spyCountPreSettle + (identifiersToTest.length - 1));
 
       // Finally resolve the dispute and check that the bot settles the dispute.
@@ -508,10 +508,10 @@ describe("SkinnyOptimisticOracle: proposer.js", function () {
         latestPriceSettlement.returnValues.request
       );
       assert.equal(lastSpyLogLevel(spy), "info");
-      assert.isTrue(spyLogIncludes(spy, -1, "Settled proposal or dispute"));
+      assert.isTrue(spyLogIncludes(spy, -1, "Settled dispute"));
       // Note: payout is equal to original default bond + 1/2 of loser's dispute bond (not including loser's final fee)
-      assert.equal(spy.getCall(-1).lastArg.payout, toBN(totalDefaultBond).add(toBN(finalFee).divn(2)));
-      assert.ok(spy.getCall(-1).lastArg.settleResult.tx);
+      assert.isTrue(spyLogIncludes(spy, -1, "2.50")); // total default bond of 2e18 + half looser bond of 0.5e18, scaled by wei
+      assert.isTrue(spyLogIncludes(spy, -1, "tx")); // contains a tx hash
       assert.equal(spy.callCount, spyCountPreSettle + 1);
     });
 

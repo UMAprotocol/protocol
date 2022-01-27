@@ -152,7 +152,9 @@ class OptimisticOracleContractMonitor {
           this.oracleType === OptimisticOracleType.OptimisticOracle ? event.proposer : event.request.proposer,
           this.contractProps.networkId
         ) +
-        ` proposed a price for the request made by ${event.requester} at the timestamp ${event.timestamp} for the identifier: ${event.identifier}. ` +
+        ` proposed a price for the request made by ${createEtherscanLinkMarkdown(event.requester)} at the timestamp ${
+          event.timestamp
+        } for the identifier: ${event.identifier}. ` +
         `\nThe proposal price of ${this.formatDecimalString(
           this.oracleType === OptimisticOracleType.OptimisticOracle ? event.proposedPrice : event.request.proposedPrice
         )} will expire at ${
@@ -161,9 +163,9 @@ class OptimisticOracleContractMonitor {
             : event.request.expirationTime
         }.\n` +
         this._formatAncillaryData(event.ancillaryData) +
-        `.\n Collateral currency address is ${
+        `.\n Collateral currency address is ${createEtherscanLinkMarkdown(
           this.oracleType === OptimisticOracleType.OptimisticOracle ? event.currency : event.request.currency
-        }. ` +
+        )}. ` +
         `tx ${createEtherscanLinkMarkdown(event.transactionHash, this.contractProps.networkId)}\n` +
         `${this._generateUILink(event.requester, event.identifier, event.timestamp, event.ancillaryData)}`;
 
@@ -199,10 +201,12 @@ class OptimisticOracleContractMonitor {
           this.oracleType === OptimisticOracleType.OptimisticOracle ? event.disputer : event.request.disputer,
           this.contractProps.networkId
         ) +
-        ` disputed a price for the request made by ${event.requester} at the timestamp ${event.timestamp} for the identifier: ${event.identifier}. ` +
-        `The proposer ${
+        ` disputed a price for the request made by ${createEtherscanLinkMarkdown(event.requester)} at the timestamp ${
+          event.timestamp
+        } for the identifier: ${event.identifier}. ` +
+        `The proposer ${createEtherscanLinkMarkdown(
           this.oracleType === OptimisticOracleType.OptimisticOracle ? event.proposer : event.request.proposer
-        } proposed a price of ${this.formatDecimalString(
+        )} proposed a price of ${this.formatDecimalString(
           this.oracleType === OptimisticOracleType.OptimisticOracle ? event.proposedPrice : event.request.proposedPrice
         )}.\n` +
         this._formatAncillaryData(event.ancillaryData) +
@@ -253,12 +257,14 @@ class OptimisticOracleContractMonitor {
           .toString();
       }
       const mrkdwn =
-        `Detected a price request settlement for the request made by ${event.requester} at the timestamp ${event.timestamp} for the identifier: ${event.identifier}. ` +
-        `The proposer was ${
+        `Detected a price request settlement for the request made by ${createEtherscanLinkMarkdown(
+          event.requester
+        )} at the timestamp ${event.timestamp} for the identifier: ${event.identifier}. ` +
+        `The proposer was ${createEtherscanLinkMarkdown(
           this.oracleType === OptimisticOracleType.OptimisticOracle ? event.proposer : event.request.proposer
-        } and the disputer was ${
+        )} and the disputer was ${createEtherscanLinkMarkdown(
           this.oracleType === OptimisticOracleType.OptimisticOracle ? event.disputer : event.request.disputer
-        }. ` +
+        )}. ` +
         `The settlement price is ${this.formatDecimalString(
           this.oracleType === OptimisticOracleType.OptimisticOracle ? event.price : event.request.resolvedPrice
         )}. ` +
