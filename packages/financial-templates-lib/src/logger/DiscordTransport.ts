@@ -7,13 +7,19 @@ type TransportOptions = ConstructorParameters<typeof Transport>[0];
 export class DiscordTransport extends Transport {
   private readonly defaultWebHookUrl: string;
   private readonly escalationPathWebhookUrls: { [key: string]: string };
+  private readonly postOnNonEscalationPaths: boolean;
   constructor(
     winstonOpts: TransportOptions,
-    ops: { defaultWebHookUrl: string; escalationPathWebhookUrls: { [key: string]: string } }
+    ops: {
+      defaultWebHookUrl: string;
+      escalationPathWebhookUrls: { [key: string]: string };
+      postOnNonEscalationPaths: boolean;
+    }
   ) {
     super(winstonOpts);
     this.defaultWebHookUrl = ops.defaultWebHookUrl;
     this.escalationPathWebhookUrls = ops.escalationPathWebhookUrls || {};
+    this.postOnNonEscalationPaths = ops.postOnNonEscalationPaths || true;
   }
 
   // Note: info must be any because that's what the base class uses.
@@ -25,11 +31,15 @@ export class DiscordTransport extends Transport {
         embeds: [{ title: `${info.at}: ${info.message}`, description: this.formatLinks(info.mrkdwn), color: 9696729 }],
       };
 
-      // Select webhook url based on escalation path. if escalation path is not found, use default webhook url.
-      const webHook = this.escalationPathWebhookUrls[info.notificationPath] ?? this.defaultWebHookUrl;
+      // Select webhook from escalation path. If no escalation, use default webhook url, if postOnNonEscalationPaths is
+      // true.Else, if postOnNonEscalationPaths is false and there is no escalation path, do not post. This enables the
+      // transport to be configured to only send messages that have a specific escalation path.
+      if (this.postOnNonEscalationPaths && this.escalationPathWebhookUrls[info.notificationPath] != undefined) {
+        const webHook = this.escalationPathWebhookUrls[info.notificationPath] ?? this.defaultWebHookUrl;
 
-      // Send webhook request. This posts the message on discord.
-      await axios.post(webHook, body);
+        // Send webhook request. This posts the message on discord.
+        await axios.post(webHook, body);
+      }
     } catch (error) {
       console.error("Discord error", error);
     }
