@@ -1,6 +1,6 @@
 #!/bin/bash
 
-cat << EOF
+cat << 'EOF'
   docker-publish-latest:
     machine:
       image: ubuntu-2004:202010-01
@@ -15,6 +15,6 @@ cat << EOF
       - run:
           name: Publish Docker Image to Docker Hub
           command: |
-            echo {{ .Environment.DOCKERHUB_PASS }} | docker login -u {{ .Environment.DOCKERHUB_USERNAME }} --password-stdin
+            echo $DOCKERHUB_PASS | docker login -u $DOCKERHUB_USERNAME --password-stdin
             docker push umaprotocol/protocol:latest
 EOF
