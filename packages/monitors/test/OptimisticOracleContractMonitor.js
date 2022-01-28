@@ -278,8 +278,8 @@ describe("OptimisticOracleContractMonitor.js", function () {
     assert.isTrue(secondSpyLogIncludes(spy, `https://etherscan.io/tx/${newTxn.transactionHash}`));
     assert.isTrue(secondSpyLogIncludes(spy, alternativeAncillaryRaw)); // Ancillary Data
 
-    // Check that only one extra event was emitted since we already "checked" the original events.
-    assert.equal(spy.callCount, spyCount + 1);
+    // Check that only two extra events were emitted since we already "checked" the original events.
+    assert.equal(spy.callCount, spyCount + 2);
   });
   it("Winston correctly emits price proposal message", async function () {
     await eventClient.update();
@@ -331,8 +331,8 @@ describe("OptimisticOracleContractMonitor.js", function () {
     assert.isTrue(secondSpyLogIncludes(spy, `https://etherscan.io/tx/${newTxn.transactionHash}`));
     assert.isTrue(secondSpyLogIncludes(spy, alternativeAncillaryRaw)); // Ancillary Data
 
-    // Check that only one extra event was emitted since we already "checked" the original events.
-    assert.equal(spy.callCount, spyCount + 1);
+    // Check that only two extra events were emitted since we already "checked" the original events.
+    assert.equal(spy.callCount, spyCount + 2);
   });
   it("Winston correctly emits price dispute message", async function () {
     await eventClient.update();
@@ -386,8 +386,8 @@ describe("OptimisticOracleContractMonitor.js", function () {
     assert.isTrue(secondSpyLogIncludes(spy, `https://etherscan.io/tx/${newTxn.transactionHash}`));
     assert.isTrue(secondSpyLogIncludes(spy, alternativeAncillaryRaw)); // Ancillary Data
 
-    // Check that only one extra event was emitted since we already "checked" the original events.
-    assert.equal(spy.callCount, spyCount + 1);
+    // Check that only two extra events were emitted since we already "checked" the original events.
+    assert.equal(spy.callCount, spyCount + 2);
   });
   it("Winston correctly emits price settlement message", async function () {
     await eventClient.update();
@@ -451,8 +451,8 @@ describe("OptimisticOracleContractMonitor.js", function () {
     // Proposer reward equals: default bond (2x final fee) + proposal reward
     // = (2 * 1) + 3 = 5
     assert.isTrue(secondSpyLogIncludes(spy, "payout was 5.00 made to the proposer"));
-    // Check that only one extra event was emitted since we already "checked" the original events.
-    assert.equal(spy.callCount, spyCount + 1);
+    // Check that only twp extra events were emitted since we already "checked" the original events.
+    assert.equal(spy.callCount, spyCount + 2);
   });
   it("Can correctly create contract monitor with no config provided", async function () {
     let errorThrown;
@@ -511,8 +511,8 @@ describe("OptimisticOracleContractMonitor.js", function () {
       assert.isTrue(secondSpyLogIncludes(spy, `https://etherscan.io/tx/${newTxn.transactionHash}`));
       assert.isTrue(secondSpyLogIncludes(spy, alternativeAncillaryRaw)); // Ancillary Data
 
-      // Check that only one extra event was emitted since we already "checked" the original events.
-      assert.equal(spy.callCount, spyCount + 1);
+      // Check that only two extra events were emitted since we already "checked" the original events.
+      assert.equal(spy.callCount, spyCount + 2);
     });
     it("Winston correctly emits price proposal message", async function () {
       await skinnyEventClient.update();
@@ -564,8 +564,8 @@ describe("OptimisticOracleContractMonitor.js", function () {
       assert.isTrue(secondSpyLogIncludes(spy, `https://etherscan.io/tx/${newTxn.transactionHash}`));
       assert.isTrue(secondSpyLogIncludes(spy, alternativeAncillaryRaw)); // Ancillary Data
 
-      // Check that only one extra event was emitted since we already "checked" the original events.
-      assert.equal(spy.callCount, spyCount + 1);
+      // Check that only two extra events were emitted since we already "checked" the original events.
+      assert.equal(spy.callCount, spyCount + 2);
     });
     it("Winston correctly emits price dispute message", async function () {
       await skinnyEventClient.update();
@@ -628,8 +628,8 @@ describe("OptimisticOracleContractMonitor.js", function () {
       assert.isTrue(secondSpyLogIncludes(spy, `https://etherscan.io/tx/${newTxn.transactionHash}`));
       assert.isTrue(secondSpyLogIncludes(spy, alternativeAncillaryRaw)); // Ancillary Data
 
-      // Check that only one extra event was emitted since we already "checked" the original events.
-      assert.equal(spy.callCount, spyCount + 1);
+      // Check that only two extra events were emitted since we already "checked" the original events.
+      assert.equal(spy.callCount, spyCount + 2);
     });
     it("Winston correctly emits price settlement message", async function () {
       await skinnyEventClient.update();
@@ -696,8 +696,8 @@ describe("OptimisticOracleContractMonitor.js", function () {
       // Proposer reward equals: default bond (2x final fee) + proposal reward
       // = (2 * 1) + 3 = 5
       assert.isTrue(secondSpyLogIncludes(spy, "payout was 5.00 made to the proposer"));
-      // Check that only one extra event was emitted since we already "checked" the original events.
-      assert.equal(spy.callCount, spyCount + 1);
+      // Check that only two extra events were emitted since we already "checked" the original events.
+      assert.equal(spy.callCount, spyCount + 2);
     });
   });
 });
