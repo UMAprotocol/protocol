@@ -135,4 +135,17 @@ export default class Read {
   filterCommands = (search: { user?: string; done?: boolean }): Context<unknown, unknown & Memory>[] => {
     return filter(this.listCommands(), search) as Context<unknown, unknown & Memory>[];
   };
+  chain = (optionalChainId?: number): Partial<Chain> => {
+    const chainId = optionalChainId || this.requestChainId();
+    const chain = this.state?.chains?.[chainId];
+    assert(chain, "No chain for chainId: " + chainId);
+    return chain;
+  };
+  currentTime = (optionalChainId?: number): BigNumber => {
+    const chainId = optionalChainId || this.requestChainId();
+    const chain = this.chain(chainId);
+    const time = chain?.currentTime;
+    assert(time, "Current time not available on chain: " + chainId);
+    return time;
+  };
 }

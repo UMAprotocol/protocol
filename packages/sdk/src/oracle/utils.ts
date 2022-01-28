@@ -17,86 +17,84 @@ import { ethers } from "ethers";
 export const getAddress = ethers.utils.getAddress;
 export const hexValue = ethers.utils.hexValue;
 
+export function ignoreError<X extends () => any>(call: X): ReturnType<X> | undefined {
+  try {
+    return call();
+  } catch (err) {
+    return undefined;
+  }
+}
+
 export function initFlags(): Flags {
   return {
     [Flag.MissingRequest]: false,
     [Flag.MissingUser]: false,
     [Flag.WrongChain]: false,
-    [Flag.InProposeState]: false,
-    [Flag.InDisputeState]: false,
+    [Flag.CanPropose]: false,
+    [Flag.CanDispute]: false,
+    [Flag.CanSettle]: false,
+    [Flag.InDvmVote]: false,
+    [Flag.RequestSettled]: false,
     [Flag.InsufficientBalance]: false,
     [Flag.InsufficientApproval]: false,
-    [Flag.ProposalInProgress]: false,
-    [Flag.ApprovalInProgress]: false,
-    [Flag.DisputeInProgress]: false,
+    [Flag.ProposalTxInProgress]: false,
+    [Flag.ApprovalTxInProgress]: false,
+    [Flag.DisputeTxInProgress]: false,
     [Flag.ChainChangeInProgress]: false,
   };
 }
 
+export const nowS = (now = Date.now()): number => Math.floor(now / 1000);
+
+// reduce global state into important UI boolean states. this should never throw errors.
 export function getFlags(state: State): Record<Flag, boolean> {
   const read = new Read(state);
   const flags = initFlags();
 
-  try {
-    read.userAddress();
-    flags[Flag.MissingUser] = false;
-  } catch (err) {
-    flags[Flag.MissingUser] = true;
+  const signer = ignoreError(read.signer);
+  flags[Flag.MissingUser] = signer ? false : true;
+
+  const inputRequest = ignoreError(read.inputRequest);
+  flags[Flag.MissingRequest] = inputRequest ? false : true;
+
+  const userChainId = ignoreError(read.userChainId);
+  const requestChainId = ignoreError(read.requestChainId);
+  flags[Flag.WrongChain] = userChainId && requestChainId ? userChainId !== requestChainId : false;
+
+  const request = ignoreError(read.request);
+
+  // these are a bit redundant with request state, but just an alternate way to see current request state
+  flags[Flag.CanPropose] = request?.state === RequestState.Requested;
+  flags[Flag.CanDispute] = request?.state === RequestState.Proposed;
+  flags[Flag.CanSettle] = request?.state === RequestState.Resolved;
+  flags[Flag.InDvmVote] = request?.state === RequestState.Disputed;
+  flags[Flag.RequestSettled] = request?.state === RequestState.Settled;
+
+  if (request && request.bond && request.finalFee) {
+    const totalBond = request.bond.add(request.finalFee);
+    const userCollateralBalance = ignoreError(read.userCollateralBalance);
+    const userCollateralAllowance = ignoreError(read.userCollateralAllowance);
+    flags[Flag.InsufficientBalance] = userCollateralBalance ? userCollateralBalance.lt(totalBond) : false;
+    flags[Flag.InsufficientApproval] = userCollateralAllowance ? userCollateralAllowance.lt(totalBond) : false;
   }
 
-  try {
-    read.inputRequest();
-    flags[Flag.MissingRequest] = false;
-  } catch (err) {
-    flags[Flag.MissingRequest] = true;
-  }
-
-  try {
-    flags[Flag.WrongChain] = read.userChainId() !== read.requestChainId();
-  } catch (err) {
-    flags[Flag.WrongChain] = false;
-  }
-
-  try {
-    flags[Flag.InProposeState] = read.request()?.state === RequestState.Requested;
-  } catch (err) {
-    flags[Flag.InProposeState] = false;
-  }
-
-  try {
-    flags[Flag.InDisputeState] = read.request()?.state === RequestState.Proposed;
-  } catch (err) {
-    flags[Flag.InDisputeState] = false;
-  }
-
-  try {
-    const totalBond = read.request().bond.add(read.request().finalFee);
-    flags[Flag.InsufficientBalance] = read.userCollateralBalance().lt(totalBond);
-    flags[Flag.InsufficientApproval] = read.userCollateralAllowance().lt(totalBond);
-  } catch (err) {
-    // ignore
-  }
-
-  try {
-    // get all active commands
-    const commands = read.filterCommands({ done: false, user: read.userAddress() });
-    // go through each command, look at the type and if it exists, we know a tx for this user is in progress
+  const userAddress = ignoreError(read.userAddress);
+  const commands = ignoreError(() => read.filterCommands({ done: false, user: userAddress }));
+  if (userAddress && commands) {
     commands.forEach((command) => {
-      if (!flags[Flag.ProposalInProgress] && command.type === ContextType.proposePrice) {
-        flags[Flag.ProposalInProgress] = true;
+      if (!flags[Flag.ProposalTxInProgress] && command.type === ContextType.proposePrice) {
+        flags[Flag.ProposalTxInProgress] = true;
       }
-      if (!flags[Flag.DisputeInProgress] && command.type === ContextType.disputePrice) {
-        flags[Flag.DisputeInProgress] = true;
+      if (!flags[Flag.DisputeTxInProgress] && command.type === ContextType.disputePrice) {
+        flags[Flag.DisputeTxInProgress] = true;
       }
-      if (!flags[Flag.ApprovalInProgress] && command.type === ContextType.approve) {
-        flags[Flag.ApprovalInProgress] = true;
+      if (!flags[Flag.ApprovalTxInProgress] && command.type === ContextType.approve) {
+        flags[Flag.ApprovalTxInProgress] = true;
       }
       if (!flags[Flag.ChainChangeInProgress] && command.type === ContextType.switchOrAddChain) {
         flags[Flag.ChainChangeInProgress] = true;
       }
     });
-  } catch (err) {
-    // ignore
   }
 
   return flags;
