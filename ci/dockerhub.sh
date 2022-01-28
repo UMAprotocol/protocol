@@ -4,7 +4,7 @@ cat << 'EOF'
   docker-publish-latest:
     machine:
       image: ubuntu-2004:202010-01
-    resource_class: 2xlarge
+    resource_class: large
     steps:
       - restore_cache:
           key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
