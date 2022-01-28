@@ -33,3 +33,5 @@ declare module "node-metamask" {
     };
 
 }
+
+// test comment
