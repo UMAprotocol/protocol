@@ -61,7 +61,7 @@ export class OptimisticOracleClient {
   // Store the last on-chain time the clients were updated to inform price request information.
   private lastUpdateTimestamp = 0;
   private hexToUtf8 = Web3.utils.hexToUtf8;
-  private chainId = -1;
+  public chainId = -1;
 
   // Oracle Data structures & values to enable synchronous returns of the state seen by the client.
   private unproposedPriceRequests: RequestPriceReturnValues[] = [];
