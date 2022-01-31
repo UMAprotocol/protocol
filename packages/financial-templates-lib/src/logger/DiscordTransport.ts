@@ -34,7 +34,7 @@ export class DiscordTransport extends Transport {
       // Select webhook from escalation path. If no escalation, use default webhook url, if postOnNonEscalationPaths is
       // true.Else, if postOnNonEscalationPaths is false and there is no escalation path, do not post. This enables the
       // transport to be configured to only send messages that have a specific escalation path.
-      if (this.postOnNonEscalationPaths && this.escalationPathWebhookUrls[info.notificationPath] != undefined) {
+      if (this.postOnNonEscalationPaths && this.escalationPathWebhookUrls[info.notificationPath]) {
         const webHook = this.escalationPathWebhookUrls[info.notificationPath] ?? this.defaultWebHookUrl;
 
         // Send webhook request. This posts the message on discord.
