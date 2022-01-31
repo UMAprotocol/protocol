@@ -1,5 +1,6 @@
 import Web3 from "web3";
-const { toBN } = Web3.utils;
+const { toBN, toWei } = Web3.utils;
+const toBNWei = (number: string | number) => toBN(toWei(number.toString()).toString());
 
 import minimist from "minimist";
 const argv = minimist(process.argv.slice(), {});
@@ -65,13 +66,20 @@ export class CrossDomainFinalizer {
     let nonce = await this.l2Client.l2Web3.eth.getTransactionCount(this.account);
     for (const l2Token of bridgeableL2Tokens) {
       // For each bridgeable L2Token, check the balance in the deposit box. If it is greater than
-      // crossDomainFinalizationThreshold, as a percentage, then we can bridge it.
+      // crossDomainFinalizationThreshold, as a percentage, then we can bridge it. if the liquidity utilization is
+      // greater than 75% then half the crossDomainFinalizationThreshold to send funds more aggressively over the
+      // bridge at high utilizations.
 
       try {
         const { symbol, decimals, l2PoolBalance } = await this._getL2TokenInfo(l2Token);
         const l1PoolReserves = await this._getL1PoolReserves(l2Token);
+        const l1PoolUtilization = await this._getL1PoolUtilization(l2Token);
 
-        if (l2PoolBalance.gt(toBN(this.crossDomainFinalizationThreshold).mul(l1PoolReserves).div(toBN(100)))) {
+        const scaledCrossDomainFinalizationThreshold = l1PoolUtilization.gt(toBNWei("0.75"))
+          ? toBNWei(this.crossDomainFinalizationThreshold.toString()).divn(2)
+          : toBNWei(this.crossDomainFinalizationThreshold.toString());
+
+        if (l2PoolBalance.gt(scaledCrossDomainFinalizationThreshold.mul(l1PoolReserves).div(toBNWei("100")))) {
           this.logger.debug({
             at: "CrossDomainFinalizer",
             message: "L2 balance > cross domain finalization threshold % of L1 pool reserves, bridging",
@@ -293,6 +301,13 @@ export class CrossDomainFinalizer {
       bridgePool.methods.utilizedReserves().call(),
     ]);
     return toBN(liquidReserves).add(toBN(utilizedReserves));
+  }
+
+  // Fetch L1 pool reserves for a given l2Token.
+  private async _getL1PoolUtilization(l2Token: string): Promise<BN> {
+    const bridgePool = this.l1Client.getBridgePoolForL2Token(l2Token, this.l2Client.chainId.toString()).contract;
+
+    return toBN(await bridgePool.methods.liquidityUtilizationCurrent().call());
   }
 
   private _getL2TokenForTokensBridgedTransactionHash(tokensBridgedTransaction: string) {
