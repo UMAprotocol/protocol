@@ -34,6 +34,7 @@ else
 
   /bin/bash $TESTS_PATH/test-required.sh >> $CI_CONFIG_FILE
 
+  /bin/bash ci/dockerhub.sh >> $CI_CONFIG_FILE
 
   printf "\n\nworkflows:\n  version: 2.1\n  build_and_test:\n    jobs:\n" >> $CI_CONFIG_FILE
 
@@ -76,5 +77,6 @@ EOF
   done
 
   # printf "            - test-integration" >> $CI_CONFIG_FILE
+  /bin/bash ci/dockerhub_workflow.sh >> $CI_CONFIG_FILE
 
 fi
