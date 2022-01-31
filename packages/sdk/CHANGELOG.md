@@ -3,6 +3,26 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.21.0](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.20.0...@uma/sdk@0.21.0) (2022-01-31)
+
+### Bug Fixes
+
+- **sdk:** fix chain metadata shape when adding new chain for user ([#3794](https://github.com/UMAprotocol/protocol/issues/3794)) ([8205cab](https://github.com/UMAprotocol/protocol/commit/8205cabd28f01f5176a095e61f08b01149acb651))
+
+### Features
+
+- **sdk:** add typechain oo event decoder ([#3790](https://github.com/UMAprotocol/protocol/issues/3790)) ([75bb67c](https://github.com/UMAprotocol/protocol/commit/75bb67c3ed01270cb8582ca827aa347baf16cc55))
+
+### improve
+
+- **sdk:** fix request state flags, poll for request changes ([#3803](https://github.com/UMAprotocol/protocol/issues/3803)) ([cc11647](https://github.com/UMAprotocol/protocol/commit/cc11647599f2cdd5d437f3686d54c3eac8ff675f))
+
+### BREAKING CHANGES
+
+- **sdk:** oo flags have changed names for clarity
+
+Signed-off-by: David <david@umaproject.org>
+
 # [0.20.0](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.19.0...@uma/sdk@0.20.0) (2022-01-25)
 
 ### Features

@@ -93,6 +93,9 @@ export class Chain {
     if (!this.state?.optimisticOracle) this.state.optimisticOracle = {};
     return new OptimisticOracle(this.state.optimisticOracle);
   }
+  currentTime(currentTime: ethersTypes.BigNumber): void {
+    this.state.currentTime = currentTime;
+  }
 }
 export class Inputs {
   constructor(private state: Partial<state.Inputs>) {}

@@ -19,6 +19,8 @@ export function Handlers(store: Store): GenericHandlers<Params, Memory> {
         // these could fail at any point if user isnt set, but thats ok, state machine will catch error, and use can inspect.
         // this will rerun when user is set.
         await update.oracle();
+        // get current time of chain when switching request
+        await update.currentTime();
         await update.request();
         await update.collateralProps();
         // order is important, these should be last because they depend on user being set

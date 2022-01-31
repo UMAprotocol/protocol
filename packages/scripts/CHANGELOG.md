@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.7.1](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.7.0...@uma/scripts@1.7.1) (2022-01-31)
+
+### Bug Fixes
+
+- **admin-scripts:** Work with decentralized proposer ([#3796](https://github.com/UMAprotocol/protocol/issues/3796)) ([0d3f9e8](https://github.com/UMAprotocol/protocol/commit/0d3f9e83172aec9fe1a38e48dc1abae2a896e448))
+- **pf:** use close price for matching cryptowatch close timestamps ([#3791](https://github.com/UMAprotocol/protocol/issues/3791)) ([c738d4b](https://github.com/UMAprotocol/protocol/commit/c738d4b512d69eb6aa88826ea5302f577af69ffc))
+
 # [1.7.0](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.6.1...@uma/scripts@1.7.0) (2022-01-25)
 
 ### Features

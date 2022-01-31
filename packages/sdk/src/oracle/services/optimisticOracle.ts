@@ -39,6 +39,9 @@ export class OptimisticOracle {
       defaultLiveness: await this.contract.defaultLiveness(),
     };
   }
+  async getCurrentTime(): Promise<BigNumber> {
+    return this.contract.getCurrentTime();
+  }
   async getState(
     requester: string,
     identifier: string,

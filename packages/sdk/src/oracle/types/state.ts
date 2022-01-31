@@ -75,14 +75,17 @@ export enum Flag {
   MissingRequest = "MissingRequest", // the client does not know the request, use client.setActiveRequest
   MissingUser = "MissingUser", // client does not have user data, use client.setUser
   WrongChain = "WrongChain", // user and request chain ids do not match, switch chains with client.switchOrAddChain
-  InProposeState = "InProposeState", // The on chain request is in a state where someone could propose, use client.proposePrice
-  InDisputeState = "InDisputeState", // The on chain request is in a stae where someone could dispute, use client.disputePrice
+  CanPropose = "CanPropose", // The on chain request is in a state where someone could propose, use client.proposePrice
+  CanDispute = "CanDispute", // The on chain request is in a state where someone could dispute, use client.disputePrice
+  CanSettle = "CanSettle", // The on chain request is in a stae where someone could settle the request.
+  InDvmVote = "InDvmVote", // Proposed answer has been disputed and passed to dvm for full vote.
+  RequestSettled = "RequestSettled", // Request is finalized, no more changes.
   InsufficientBalance = "InsufficientBalance", // The user does not have enough balance to cover bond collateral for dispute/propose
   InsufficientApproval = "InsufficientApproval", // The oracle contract does not have enough approval to cover bond for dispute/propose, use client.approve
   ChainChangeInProgress = "ChainChangeInProgress", // The user is changing his chain
-  ProposalInProgress = "ProposalInProgress", // The user is sending a proposal tx
-  ApprovalInProgress = "ApprovalInProgress", // The user is sending an approval tx
-  DisputeInProgress = "DisputeInProgress", // The user is sending a dispute tx
+  ProposalTxInProgress = "ProposalTxInProgress", // The user is sending a proposal tx
+  ApprovalTxInProgress = "ApprovalTxInProgress", // The user is sending an approval tx
+  DisputeTxInProgress = "DisputeTxInProgress", // The user is sending a dispute tx
 }
 export type Flags = Record<Flag, boolean>;
 
@@ -138,6 +141,7 @@ export type OptimisticOracle = {
 export type Chain = {
   erc20s: Record<string, Partial<Erc20>>;
   optimisticOracle: Partial<OptimisticOracle>;
+  currentTime: BigNumber;
 };
 
 export type State = Partial<{
