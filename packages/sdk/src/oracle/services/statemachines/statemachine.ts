@@ -10,6 +10,7 @@ import * as approve from "./approve";
 import * as disputePrice from "./disputePrice";
 import * as proposePrice from "./proposePrice";
 import * as switchOrAddChain from "./switchOrAddChain";
+import * as pollActiveRequest from "./pollActiveRequest";
 
 /**
  * StateMachine. This class will be used to handle all change requests by the user, including setting state which
@@ -38,6 +39,7 @@ export class StateMachine {
     [ContextType.disputePrice]: ContextManager<disputePrice.Params, disputePrice.Memory>;
     [ContextType.proposePrice]: ContextManager<proposePrice.Params, proposePrice.Memory>;
     [ContextType.switchOrAddChain]: ContextManager<switchOrAddChain.Params, switchOrAddChain.Memory>;
+    [ContextType.pollActiveRequest]: ContextManager<pollActiveRequest.Params, pollActiveRequest.Memory>;
   };
   constructor(private store: Store) {
     // need to initizlie state types here manually for each new context type
@@ -84,6 +86,12 @@ export class StateMachine {
         switchOrAddChain.initMemory,
         this.handleCreate
       ),
+      [ContextType.pollActiveRequest]: new ContextManager<pollActiveRequest.Params, pollActiveRequest.Memory>(
+        ContextType.pollActiveRequest,
+        pollActiveRequest.Handlers(store),
+        pollActiveRequest.initMemory,
+        this.handleCreate
+      ),
     };
   }
   private saveContext(context: Context<unknown, unknown & Memory>) {
@@ -111,7 +119,11 @@ export class StateMachine {
    */
   tick = async (now = Date.now()): Promise<boolean> => {
     const context = this.pop();
-    if (shouldStep(context, now)) {
+    // if this cant step, then push it to back of queue
+    if (!shouldStep(context, now)) {
+      context && !context.done && this.push(context);
+      // if we can step, then step it and push result into queue
+    } else {
       let next;
       switch (context.type) {
         // need to update this function with the new context processor
@@ -164,6 +176,13 @@ export class StateMachine {
           );
           break;
         }
+        case ContextType.pollActiveRequest: {
+          next = await this.types[context.type].step(
+            (context as unknown) as Context<pollActiveRequest.Params, pollActiveRequest.Memory>,
+            now
+          );
+          break;
+        }
         default: {
           throw new Error("Unable to handle type: " + context.type);
         }
@@ -171,6 +190,7 @@ export class StateMachine {
       if (!next.done) this.push(next);
       this.saveContext(next);
     }
+
     return this.size() > 0;
   };
 }

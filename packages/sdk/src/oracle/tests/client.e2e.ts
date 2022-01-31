@@ -81,8 +81,10 @@ describe("Oracle Client", function () {
     assert.ok(!result[types.state.Flag.WrongChain]);
     assert.ok(!result[types.state.Flag.MissingRequest]);
     assert.ok(!result[types.state.Flag.MissingUser]);
-    assert.ok(!result[types.state.Flag.InProposeState]);
-    assert.ok(!result[types.state.Flag.InDisputeState]);
+    assert.ok(!result[types.state.Flag.CanPropose]);
+    assert.ok(!result[types.state.Flag.CanDispute]);
+    assert.ok(!result[types.state.Flag.CanSettle]);
+    assert.ok(result[types.state.Flag.RequestSettled]);
     assert.ok(result[types.state.Flag.InsufficientApproval]);
   });
 });

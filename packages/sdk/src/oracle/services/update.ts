@@ -77,4 +77,11 @@ export class Update {
     const txService = this.read().transactionService(chainId);
     return txService.isConfirmed(hash, confirmations);
   }
+  // this could use provider blocktime, but the oracle has a handle to get time also
+  async currentTime(optionalChainId?: number): Promise<void> {
+    const chainId = optionalChainId || this.read().requestChainId();
+    const oo = this.read().oracleService(chainId);
+    const currentTime = await oo.getCurrentTime();
+    this.write((write) => write.chains(chainId).currentTime(currentTime));
+  }
 }

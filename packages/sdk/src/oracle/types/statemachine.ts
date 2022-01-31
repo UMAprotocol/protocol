@@ -12,6 +12,7 @@ export enum ContextType {
   disputePrice = "disputePrice",
   proposePrice = "proposePrice",
   switchOrAddChain = "switchOrAddChain",
+  pollActiveRequest = "pollActiveRequest",
 }
 
 export type ContextProps = {

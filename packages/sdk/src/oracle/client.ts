@@ -11,7 +11,10 @@ import { defaultConfig } from "./utils";
 
 export class Client {
   private intervalStarted = false;
-  constructor(public readonly store: Store, public readonly update: Update, public readonly sm: StateMachine) {}
+  constructor(public readonly store: Store, public readonly update: Update, public readonly sm: StateMachine) {
+    // create active request poller for all chains. Should only have one of these
+    sm.types.pollActiveRequest.create(undefined);
+  }
   setUser(params: Partial<User>): string {
     const address = params.address && ethers.utils.getAddress(params.address);
     return this.sm.types.setUser.create({ ...params, address });
