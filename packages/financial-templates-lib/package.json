@@ -1,6 +1,6 @@
 {
   "name": "@uma/financial-templates-lib",
-  "version": "2.22.2",
+  "version": "2.23.0",
   "description": "Arbitrage automation and libraries for UMA financial templates",
   "dependencies": {
     "@ethersproject/bignumber": "^5.4.2",
@@ -8,7 +8,7 @@
     "@google-cloud/trace-agent": "^5.1.6",
     "@uma/common": "^2.17.0",
     "@uma/contracts-node": "^0.2.1",
-    "@uma/sdk": "^0.20.0",
+    "@uma/sdk": "^0.21.0",
     "@uniswap/sdk": "^2.0.5",
     "bluebird": "^3.7.2",
     "bn.js": "^4.11.9",
