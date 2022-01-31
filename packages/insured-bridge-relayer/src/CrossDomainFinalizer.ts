@@ -67,8 +67,8 @@ export class CrossDomainFinalizer {
     for (const l2Token of bridgeableL2Tokens) {
       // For each bridgeable L2Token, check the balance in the deposit box. If it is greater than
       // crossDomainFinalizationThreshold, as a percentage, then we can bridge it. If the liquidity utilization is
-      // greater than 75% then half the crossDomainFinalizationThreshold to send funds more aggressively over the
-      // bridge at high utilizations.
+      // greater than 75% then set the crossDomainFinalizationThreshold to half its set value to send funds more
+      // aggressively over the bridge at high utilizations.
 
       try {
         const { symbol, decimals, l2PoolBalance } = await this._getL2TokenInfo(l2Token);
