@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.11.0](https://github.com/UMAprotocol/protocol/compare/@uma/optimistic-oracle@2.10.0...@uma/optimistic-oracle@2.11.0) (2022-01-31)
+
+### Features
+
+- **OO-bot:** Improve settlement logs ([#3793](https://github.com/UMAprotocol/protocol/issues/3793)) ([a95c6ea](https://github.com/UMAprotocol/protocol/commit/a95c6ea80dbfb6a792a02e9231e6c5661fa706ea))
+
 # [2.10.0](https://github.com/UMAprotocol/protocol/compare/@uma/optimistic-oracle@2.9.1...@uma/optimistic-oracle@2.10.0) (2022-01-25)
 
 ### Features
