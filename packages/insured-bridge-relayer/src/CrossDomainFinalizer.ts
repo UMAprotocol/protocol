@@ -66,7 +66,7 @@ export class CrossDomainFinalizer {
     let nonce = await this.l2Client.l2Web3.eth.getTransactionCount(this.account);
     for (const l2Token of bridgeableL2Tokens) {
       // For each bridgeable L2Token, check the balance in the deposit box. If it is greater than
-      // crossDomainFinalizationThreshold, as a percentage, then we can bridge it. if the liquidity utilization is
+      // crossDomainFinalizationThreshold, as a percentage, then we can bridge it. If the liquidity utilization is
       // greater than 75% then half the crossDomainFinalizationThreshold to send funds more aggressively over the
       // bridge at high utilizations.
 
