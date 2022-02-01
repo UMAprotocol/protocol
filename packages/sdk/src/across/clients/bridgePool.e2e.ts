@@ -11,6 +11,8 @@ dotenv.config();
 
 const multicall2Address = "0x5BA1e12693Dc8F9c48aAD8770482f4739bEeD696";
 const wethAddress = "0x7355Efc63Ae731f584380a9838292c7046c1e433";
+const badgerAddress = "0x43298F9f91a4545dF64748e78a2c777c580573d6";
+const wbtcAddress = "0x02fbb64517E1c6ED69a6FAa3ABf37Db0482f1152";
 const users = [
   "0x06d8aeb52f99f8542429df3009ed26535c22d5aa",
   "0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D",
@@ -127,9 +129,19 @@ describe("Client", function () {
       assert.ok(user);
     }
   });
-  test("read pool", async function () {
+  test("read weth pool", async function () {
     await client.updatePool(wethAddress);
     const result = get(state, ["pools", wethAddress]);
+    assert.ok(result);
+  });
+  test("read badger pool", async function () {
+    await client.updatePool(badgerAddress);
+    const result = get(state, ["pools", badgerAddress]);
+    assert.ok(result);
+  });
+  test("read wbtc pool", async function () {
+    await client.updatePool(wbtcAddress);
+    const result = get(state, ["pools", wbtcAddress]);
     assert.ok(result);
   });
 });

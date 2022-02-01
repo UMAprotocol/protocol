@@ -42,6 +42,7 @@ export type Pool = {
   blocksElapsed: number;
   secondsElapsed: number;
   liquidityUtilizationCurrent: string;
+  utilizedReserves: string;
   projectedApr: string;
 };
 export type User = {
@@ -286,6 +287,7 @@ function joinPoolState(
     secondsElapsed,
     liquidityUtilizationCurrent: poolState.liquidityUtilizationCurrent.toString(),
     projectedApr,
+    utilizedReserves: poolState.utilizedReserves.toString(),
   };
 }
 export class ReadPoolClient {
