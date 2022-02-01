@@ -5,8 +5,8 @@ import axios from "axios";
 type TransportOptions = ConstructorParameters<typeof Transport>[0];
 
 export class DiscordTransport extends Transport {
-  private readonly defaultWebHookUrl: string;
-  private readonly escalationPathWebhookUrls: { [key: string]: string };
+  private readonly defaultWebHookUrl: string | string[];
+  private readonly escalationPathWebhookUrls: { [key: string]: string | string[] };
   private readonly postOnNonEscalationPaths: boolean;
   constructor(
     winstonOpts: TransportOptions,
@@ -18,8 +18,8 @@ export class DiscordTransport extends Transport {
   ) {
     super(winstonOpts);
     this.defaultWebHookUrl = ops.defaultWebHookUrl;
-    this.escalationPathWebhookUrls = ops.escalationPathWebhookUrls || {};
-    this.postOnNonEscalationPaths = ops.postOnNonEscalationPaths || true;
+    this.escalationPathWebhookUrls = ops.escalationPathWebhookUrls ?? {};
+    this.postOnNonEscalationPaths = ops.postOnNonEscalationPaths ?? true;
   }
 
   // Note: info must be any because that's what the base class uses.
@@ -28,18 +28,23 @@ export class DiscordTransport extends Transport {
       const body = {
         username: "UMA Infrastructure",
         avatar_url: "https://i.imgur.com/RCcxxEZ.png",
-        embeds: [{ title: `${info.at}: ${info.message}`, description: this.formatLinks(info.mrkdwn), color: 9696729 }],
+        embeds: [{ title: `${info.message}`, description: this.formatLinks(info.mrkdwn), color: 9696729 }],
       };
 
-      // Select webhook from escalation path. If no escalation, use default webhook url, if postOnNonEscalationPaths is
-      // true.Else, if postOnNonEscalationPaths is false and there is no escalation path, do not post. This enables the
-      // transport to be configured to only send messages that have a specific escalation path.
-      if (this.postOnNonEscalationPaths && this.escalationPathWebhookUrls[info.notificationPath]) {
+      // Either the transport is configured to send on undefined escalation paths (will use default path if path does
+      // not exist) or the transport has a defined escalation path for the given message's notification path.
+      let webHooks: string[] = [];
+      if (this.postOnNonEscalationPaths || this.escalationPathWebhookUrls[info.notificationPath]) {
+        // The webhook is preferentially set to the defined escalation path, or the default webhook.
         const webHook = this.escalationPathWebhookUrls[info.notificationPath] ?? this.defaultWebHookUrl;
 
-        // Send webhook request. This posts the message on discord.
-        await axios.post(webHook, body);
+        // If the webHook is an object it can contain multiple hooks within it. Else, it must be a single hook.
+        if (Array.isArray(webHook)) webHooks = webHook;
+        else webHooks = [webHook];
       }
+
+      // Send webhook request to each of the configured webhooks upstream. This posts the messages on Discord.
+      if (webHooks.length) await Promise.all(webHooks.map((webHook: string) => axios.post(webHook, body)));
     } catch (error) {
       console.error("Discord error", error);
     }
