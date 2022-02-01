@@ -35,7 +35,7 @@
     "clean": "rm -rf dist generated typechain",
     "copy-across-types": "mkdir -p typechain/@across-protocol/contracts && rsync -a $(dirname $(node -p 'require.resolve(\"@across-protocol/contracts/package.json\")'))/contract-types/ typechain/@across-protocol/contracts",
     "generate-ts": "yarn clean && mkdir -p generated typechain/core && cp -R ../core/contract-types/* typechain/core/ && yarn copy-across-types && yarn hardhat generate-contracts-frontend --out ./generated/index.ts",
-    "build": "yarn generate-ts && yarn tsc && rsync -a --include '*/' --include '*.d.ts' --exclude '*' ./typechain ./dist/packages/contracts-node/",
+    "build": "yarn generate-ts && yarn tsc && rsync -a --include '*/' --include '*.d.ts' --exclude '*' ./typechain ./dist/packages/contracts-frontend/",
     "prepublish": "yarn build"
   },
   "bugs": {
