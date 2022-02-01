@@ -66,7 +66,7 @@ export function getFlags(state: State): Record<Flag, boolean> {
   // these are a bit redundant with request state, but just an alternate way to see current request state
   flags[Flag.CanPropose] = request?.state === RequestState.Requested;
   flags[Flag.CanDispute] = request?.state === RequestState.Proposed;
-  flags[Flag.CanSettle] = request?.state === RequestState.Resolved;
+  flags[Flag.CanSettle] = request?.state === RequestState.Resolved || request?.state === RequestState.Expired;
   flags[Flag.InDvmVote] = request?.state === RequestState.Disputed;
   flags[Flag.RequestSettled] = request?.state === RequestState.Settled;
 
