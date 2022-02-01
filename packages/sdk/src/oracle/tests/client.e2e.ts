@@ -1,32 +1,38 @@
 import dotenv from "dotenv";
 import assert from "assert";
 
-import factory, { Client } from "../client";
+import { factory, Client } from "../client";
+import { getFlags } from "../utils";
 import Store from "../store";
 import * as types from "../types";
-import { ProposalFlags } from "../utils";
 
 dotenv.config();
 assert(process.env.CUSTOM_NODE_URL, "requires CUSTOM_NODE_URL");
 
-const multicall2Address = "0x5BA1e12693Dc8F9c48aAD8770482f4739bEeD696";
-const optimisticOracleAddress = "0xC43767F4592DF265B4a9F1a398B97fF24F38C6A6";
+// const multicall2Address = "0x5BA1e12693Dc8F9c48aAD8770482f4739bEeD696";
+// const optimisticOracleAddress = "0xC43767F4592DF265B4a9F1a398B97fF24F38C6A6";
 const providerUrl = process.env.CUSTOM_NODE_URL;
 const chainId = 1;
 
-export const config: types.state.Config = {
+export const config = {
   chains: {
     [chainId]: {
-      chainId,
-      multicall2Address,
-      optimisticOracleAddress,
-      providerUrl,
+      chainName: "eth",
+      // dont know why typescript cant figure this out
+      rpcUrls: [providerUrl] as [string],
+      blockExplorerUrls: ["a"] as [string],
+      nativeCurrency: {
+        name: "Eth",
+        symbol: "Eth",
+        decimals: 18,
+      },
     },
   },
 };
 
-const account = "0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D";
-const signer = {} as types.ethers.Signer;
+const address = "0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D";
+const signer = {} as types.ethers.JsonRpcSigner;
+const provider = {} as types.ethers.Web3Provider;
 
 const request = {
   requester: "0xb8b3583f143b3a4c2aa052828d8809b0818a16e9",
@@ -42,29 +48,43 @@ describe("Oracle Client", function () {
   beforeAll(function () {
     client = factory(config, () => undefined);
     store = client.store;
+    client.startInterval();
   });
-  test("setRequest", function () {
-    client.setActiveRequest(request);
+  afterAll(function () {
+    client.stopInterval();
+  });
+  test("setRequest", async function () {
+    const id = client.setActiveRequest(request);
+    await client.sm.tick();
     const input = store.read().inputRequest();
     assert.ok(input);
+    assert.ok(store.read().command(id));
   });
-  test("setUser", function () {
-    client.setUser(account, chainId, signer);
+  test("setUser", async function () {
+    const id = client.setUser({ address, chainId, signer, provider });
+    await client.sm.tick();
     const state = store.get();
-    assert.ok(state.user);
-    assert.equal(state.user.address, account);
-    assert.equal(state.user.chainId, chainId);
+    assert.ok(state?.inputs?.user);
+    assert.equal(state?.inputs?.user?.address, address);
+    assert.equal(state?.inputs?.user.chainId, chainId);
+    assert.ok(store.read().command(id));
   });
-  test("update.all", async function () {
-    await client.update.all();
-    assert.ok(store.read().userCollateralBalance());
-    assert.ok(store.read().userCollateralAllowance());
-    assert.ok(store.read().collateralProps());
-    assert.ok(store.read().request());
+  test("read", function () {
+    store.read().request();
+    store.read().oracleAddress();
+    store.read().userCollateralBalance();
+    store.read().userCollateralAllowance();
   });
-  test("previewProposal", function () {
-    const result = client.previewProposal();
-    assert.ok(result[ProposalFlags.InvalidContractState]);
-    assert.ok(result[ProposalFlags.InsufficientApproval]);
+  test("flags", function () {
+    const result = getFlags(store.get());
+    assert.ok(result);
+    assert.ok(!result[types.state.Flag.WrongChain]);
+    assert.ok(!result[types.state.Flag.MissingRequest]);
+    assert.ok(!result[types.state.Flag.MissingUser]);
+    assert.ok(!result[types.state.Flag.CanPropose]);
+    assert.ok(!result[types.state.Flag.CanDispute]);
+    assert.ok(!result[types.state.Flag.CanSettle]);
+    assert.ok(result[types.state.Flag.RequestSettled]);
+    assert.ok(result[types.state.Flag.InsufficientApproval]);
   });
 });

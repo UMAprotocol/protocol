@@ -3,6 +3,43 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.21.0](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.20.0...@uma/sdk@0.21.0) (2022-01-31)
+
+### Bug Fixes
+
+- **sdk:** fix chain metadata shape when adding new chain for user ([#3794](https://github.com/UMAprotocol/protocol/issues/3794)) ([8205cab](https://github.com/UMAprotocol/protocol/commit/8205cabd28f01f5176a095e61f08b01149acb651))
+
+### Features
+
+- **sdk:** add typechain oo event decoder ([#3790](https://github.com/UMAprotocol/protocol/issues/3790)) ([75bb67c](https://github.com/UMAprotocol/protocol/commit/75bb67c3ed01270cb8582ca827aa347baf16cc55))
+
+### improve
+
+- **sdk:** fix request state flags, poll for request changes ([#3803](https://github.com/UMAprotocol/protocol/issues/3803)) ([cc11647](https://github.com/UMAprotocol/protocol/commit/cc11647599f2cdd5d437f3686d54c3eac8ff675f))
+
+### BREAKING CHANGES
+
+- **sdk:** oo flags have changed names for clarity
+
+Signed-off-by: David <david@umaproject.org>
+
+# [0.20.0](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.19.0...@uma/sdk@0.20.0) (2022-01-25)
+
+### Features
+
+- **sdk:** add commands to for approve/propose/dispute ([#3784](https://github.com/UMAprotocol/protocol/issues/3784)) ([c69e910](https://github.com/UMAprotocol/protocol/commit/c69e9104b10ce2cde61f28c165f26f0220bec57c))
+- **sdk:** move set user and set request to statemachine ([#3778](https://github.com/UMAprotocol/protocol/issues/3778)) ([f2d7df7](https://github.com/UMAprotocol/protocol/commit/f2d7df7b4aff8836820f1b028e70f697cc22457e))
+
+# [0.19.0](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.18.0...@uma/sdk@0.19.0) (2022-01-20)
+
+### Bug Fixes
+
+- **sdk:** use on chain rate model in pool client ([#3781](https://github.com/UMAprotocol/protocol/issues/3781)) ([382bba4](https://github.com/UMAprotocol/protocol/commit/382bba4b31d257b346a717d4706f0c68eed96448))
+
+### Features
+
+- **sdk:** add generic state machine runner ([#3764](https://github.com/UMAprotocol/protocol/issues/3764)) ([3ab2fff](https://github.com/UMAprotocol/protocol/commit/3ab2fffc76cc3201d2d7e2a91745ec77ba0aebfb))
+
 # [0.18.0](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.17.0...@uma/sdk@0.18.0) (2022-01-11)
 
 ### Bug Fixes

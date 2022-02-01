@@ -3,6 +3,19 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.24.1](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.24.0...@uma/core@2.24.1) (2022-01-25)
+
+**Note:** Version bump only for package @uma/core
+
+# [2.24.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.23.0...@uma/core@2.24.0) (2022-01-20)
+
+### Features
+
+- Deploy Boba LSP ([#3773](https://github.com/UMAprotocol/protocol/issues/3773)) ([f8398b3](https://github.com/UMAprotocol/protocol/commit/f8398b34f97745a9973ddd8a8566eb1892291d20))
+- **deployments:** Add xDai deploys ([#3766](https://github.com/UMAprotocol/protocol/issues/3766)) ([f23f081](https://github.com/UMAprotocol/protocol/commit/f23f081f6d2600c086bbac85c25f5e7de03bc2f6))
+- add proposer address and deployment script ([#3771](https://github.com/UMAprotocol/protocol/issues/3771)) ([09a3852](https://github.com/UMAprotocol/protocol/commit/09a38527e439be2072561a17400006d14dda19ca))
+- **cross-chain-oracle:** Add verification script to cross chain oracle setup ([#3758](https://github.com/UMAprotocol/protocol/issues/3758)) ([8ad8291](https://github.com/UMAprotocol/protocol/commit/8ad82915d534d062c90f6f2b89ab4b4798b83a2b))
+
 # [2.23.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.22.0...@uma/core@2.23.0) (2022-01-11)
 
 ### Features

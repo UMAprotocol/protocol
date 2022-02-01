@@ -189,7 +189,9 @@ export class CryptoWatchPriceFeed extends PriceFeedInterface {
     // why we prefer `before` periods to `after` ones. Similar reasoning is why we default to a period's open price to
     // its close price. We prefer prices that occurred before the target time.
     else {
-      returnPrice = this.invertPrice ? this._invertPriceSafely(match.openPrice) : match.openPrice;
+      // Use period close price when request time matches close time. In all other cases use open price instead.
+      const matchedPrice = time === match.closeTime ? match.closePrice : match.openPrice;
+      returnPrice = this.invertPrice ? this._invertPriceSafely(matchedPrice) : matchedPrice;
       if (!returnPrice) throw new Error(`${this.uuid} -- invalid price returned`);
       if (verbose) await this._printVerbose(match, returnPrice);
     }
@@ -283,7 +285,7 @@ export class CryptoWatchPriceFeed extends PriceFeedInterface {
     console.log(`- historicalTimestampBuffer: ${this.historicalTimestampBuffer}`);
     console.log(`- ✅ Matched Price: ${formatFixed(returnPrice.toString(), this.priceFeedDecimals)}`);
     console.log(
-      `- ⚠️  If you want to manually verify the specific exchange prices, you can make a GET request to: \n- https://api.cryptowat.ch/markets/${this.exchange}/${this.pair}/ohlc?after=${pricePeriod.openTime}&before=${pricePeriod.closeTime}&periods=60`
+      `- ⚠️  If you want to manually verify the specific exchange prices, you can make a GET request to: \n- https://api.cryptowat.ch/markets/${this.exchange}/${this.pair}/ohlc?after=${pricePeriod.openTime}&before=${pricePeriod.closeTime}&periods=${this.ohlcPeriod}`
     );
     console.log(
       '- This will return an OHLC data packet as "result", which contains in order: \n- [CloseTime, OpenPrice, HighPrice, LowPrice, ClosePrice, Volume, QuoteVolume].'

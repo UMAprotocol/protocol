@@ -1,7 +1,7 @@
 import { erc20 } from "../../clients";
 import Multicall2 from "../../multicall2";
 import { BatchReadWithErrors, BatchReadWithErrorsType, Calls } from "../../utils";
-import { Provider } from "../types/ethers";
+import { Provider, Signer, BigNumberish, TransactionResponse } from "../types/ethers";
 import { Erc20Props } from "../types/state";
 
 const batchProps: Calls = [["symbol"], ["name"], ["decimals"], ["totalSupply"]];
@@ -9,6 +9,10 @@ export class Erc20 {
   public contract: erc20.Instance;
   constructor(protected provider: Provider, public readonly address: string) {
     this.contract = erc20.connect(address, provider);
+  }
+  async approve(signer: Signer, spender: string, amount: BigNumberish): Promise<TransactionResponse> {
+    const contract = erc20.connect(this.address, signer);
+    return contract.approve(spender, amount);
   }
   async getProps(): Promise<Erc20Props> {
     const { contract } = this;

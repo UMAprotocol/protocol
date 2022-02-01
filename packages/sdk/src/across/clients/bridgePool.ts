@@ -1,5 +1,5 @@
 import assert from "assert";
-import { bridgePool } from "../../clients";
+import { bridgePool, rateModelStore } from "../../clients";
 import { toBNWei, fixedPointAdjustment, calcPeriodicCompoundInterest, calcApr, BigNumberish, fromWei } from "../utils";
 import { BatchReadWithErrors, loop, exists } from "../../utils";
 import Multicall2 from "../../multicall2";
@@ -12,7 +12,8 @@ import set from "lodash/set";
 import get from "lodash/get";
 import has from "lodash/has";
 import { calculateInstantaneousRate } from "../feeCalculator";
-import { RATE_MODELS, SECONDS_PER_YEAR, DEFAULT_BLOCK_DELTA } from "../constants";
+import { SECONDS_PER_YEAR, DEFAULT_BLOCK_DELTA, RateModel, ADDRESSES } from "../constants";
+import { parseAndReturnRateModelFromString } from "../rateModel";
 
 export type { Provider };
 export type BatchReadWithErrorsType = ReturnType<ReturnType<typeof BatchReadWithErrors>>;
@@ -21,6 +22,7 @@ export type Awaited<T> = T extends PromiseLike<infer U> ? U : T;
 
 export type Config = {
   multicall2Address: string;
+  rateModelStoreAddress?: string;
   confirmations?: number;
   blockDelta?: number;
 };
@@ -244,7 +246,8 @@ function joinUserState(
 function joinPoolState(
   poolState: Awaited<ReturnType<PoolState["read"]>>,
   latestBlock: Block,
-  previousBlock: Block
+  previousBlock: Block,
+  rateModel?: RateModel
 ): Pool {
   const totalPoolSize = poolState.liquidReserves.add(poolState.utilizedReserves);
   const secondsElapsed = latestBlock.timestamp - previousBlock.timestamp;
@@ -260,7 +263,7 @@ function joinPoolState(
   );
   const estimatedApr = calcApr(exchangeRatePrevious, exchangeRateCurrent, secondsElapsed, SECONDS_PER_YEAR);
   let projectedApr = "";
-  const rateModel = RATE_MODELS[poolState.l1Token];
+
   if (rateModel) {
     projectedApr = fromWei(
       calculateInstantaneousRate(rateModel, poolState.liquidityUtilizationCurrent)
@@ -319,9 +322,11 @@ export class Client {
   private batchRead: ReturnType<typeof BatchReadWithErrors>;
   private poolEvents: Record<string, PoolEventState> = {};
   private intervalStarted = false;
+  private rateModelInstance: rateModelStore.Instance;
   constructor(private config: Config, private deps: Dependencies, private emit: EmitState) {
     this.multicall = new Multicall2(config.multicall2Address, deps.provider);
     this.batchRead = BatchReadWithErrors(this.multicall);
+    this.rateModelInstance = rateModelStore.connect(config.rateModelStoreAddress || ADDRESSES.RateModel, deps.provider);
   }
   private getOrCreatePoolContract(address: string) {
     if (this.poolContracts[address]) return this.poolContracts[address];
@@ -522,7 +527,18 @@ export class Client {
     const latestBlock = await this.deps.provider.getBlock("latest");
     const previousBlock = await this.deps.provider.getBlock(latestBlock.number - blockDelta);
     const state = await pool.read(latestBlock.number, previousBlock.number);
-    this.state.pools[poolAddress] = joinPoolState(state, latestBlock, previousBlock);
+
+    let rateModel: RateModel | undefined = undefined;
+    try {
+      const rateModelRaw = await this.rateModelInstance.callStatic.l1TokenRateModels(state.l1Token);
+      rateModel = parseAndReturnRateModelFromString(rateModelRaw);
+    } catch (err) {
+      // we could swallow this error or just log it since getting the rate model is optional,
+      // but we will just emit it to the caller and let them decide what to do with it.
+      this.emit(["error"], err);
+    }
+
+    this.state.pools[poolAddress] = joinPoolState(state, latestBlock, previousBlock, rateModel);
     this.emit(["pools", poolAddress], this.state.pools[poolAddress]);
   }
   async updateTransactions() {

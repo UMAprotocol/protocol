@@ -3,6 +3,24 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.23.0](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.22.2...@uma/financial-templates-lib@2.23.0) (2022-01-31)
+
+### Bug Fixes
+
+- **pf:** use close price for matching cryptowatch close timestamps ([#3791](https://github.com/UMAprotocol/protocol/issues/3791)) ([c738d4b](https://github.com/UMAprotocol/protocol/commit/c738d4b512d69eb6aa88826ea5302f577af69ffc))
+
+### Features
+
+- **transports:** Add discord logger transport ([#3797](https://github.com/UMAprotocol/protocol/issues/3797)) ([7c76b90](https://github.com/UMAprotocol/protocol/commit/7c76b90f7e611bb4ff85ae2010f046de611d4ba0))
+
+## [2.22.2](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.22.1...@uma/financial-templates-lib@2.22.2) (2022-01-25)
+
+**Note:** Version bump only for package @uma/financial-templates-lib
+
+## [2.22.1](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.22.0...@uma/financial-templates-lib@2.22.1) (2022-01-20)
+
+**Note:** Version bump only for package @uma/financial-templates-lib
+
 # [2.22.0](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.21.0...@uma/financial-templates-lib@2.22.0) (2022-01-11)
 
 ### Features

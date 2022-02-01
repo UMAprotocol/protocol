@@ -37,35 +37,7 @@ export const ADDRESSES = {
   UMA: "0x04Fa0d235C4abf4BcF4787aF4CF447DE572eF828",
   WETH: "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
   USDC: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
-};
-
-// TODO: Deprecate this hardcoded mapping as all clients should now read from the RateModelStore contract. I'm not
-// removing this now because I'm not sure if any external packages import this constant.
-export const RATE_MODELS: Record<string, RateModel> = {
-  "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2": {
-    UBar: "650000000000000000",
-    R0: "0",
-    R1: "80000000000000000",
-    R2: "1000000000000000000",
-  },
-  "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48": {
-    UBar: "800000000000000000",
-    R0: "0",
-    R1: "40000000000000000",
-    R2: "600000000000000000",
-  },
-  "0x04Fa0d235C4abf4BcF4787aF4CF447DE572eF828": {
-    UBar: "500000000000000000",
-    R0: "0",
-    R1: "50000000000000000",
-    R2: "2000000000000000000",
-  },
-  "0x3472A5A71965499acd81997a54BBA8D852C6E53d": {
-    UBar: "500000000000000000",
-    R0: "25000000000000000",
-    R1: "25000000000000000",
-    R2: "2000000000000000000",
-  },
+  RateModel: "0xd18fFeb5fdd1F2e122251eA7Bf357D8Af0B60B50",
 };
 
 export const SECONDS_PER_YEAR = 31557600; // based on 365.25 days per year

@@ -1,5 +1,6 @@
 import { OptimisticOracleEthers, OptimisticOracleEthers__factory } from "@uma/contracts-node";
-import { BigNumberish, BigNumber, Provider } from "../types/ethers";
+import { BigNumberish, BigNumber, Provider, Signer, TransactionResponse } from "../types/ethers";
+import type { RequestState } from "../types/state";
 
 type Props = {
   defaultLiveness: BigNumber;
@@ -19,12 +20,34 @@ export class OptimisticOracle {
   ): Promise<Request> {
     return this.contract.callStatic.getRequest(requester, identifier, timestamp, ancillaryData);
   }
+  async disputePrice(
+    signer: Signer,
+    ...args: Parameters<OptimisticOracleEthers["disputePrice"]>
+  ): Promise<TransactionResponse> {
+    const contract = OptimisticOracleEthers__factory.connect(this.address, signer);
+    return contract.disputePrice(...args);
+  }
+  async proposePrice(
+    signer: Signer,
+    ...args: Parameters<OptimisticOracleEthers["proposePrice"]>
+  ): Promise<TransactionResponse> {
+    const contract = OptimisticOracleEthers__factory.connect(this.address, signer);
+    return contract.proposePrice(...args);
+  }
   async getProps(): Promise<Props> {
     return {
       defaultLiveness: await this.contract.defaultLiveness(),
     };
   }
-  async getState(requester: string, identifier: string, timestamp: BigNumberish, ancillaryData: string) {
+  async getCurrentTime(): Promise<BigNumber> {
+    return this.contract.getCurrentTime();
+  }
+  async getState(
+    requester: string,
+    identifier: string,
+    timestamp: BigNumberish,
+    ancillaryData: string
+  ): Promise<RequestState> {
     return this.contract.callStatic.getState(requester, identifier, timestamp, ancillaryData);
   }
 }

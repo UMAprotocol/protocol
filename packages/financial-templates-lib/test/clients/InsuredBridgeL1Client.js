@@ -375,6 +375,14 @@ describe("InsuredBridgeL1Client", function () {
     assert.equal(client.getBridgePoolForDeposit(depositData).l2Token[chainId], l2Token);
     assert.equal(client.getBridgePoolForDeposit(depositData).l2Token[chainId2], l2Token2);
 
+    // Deployment data for new bridgepool for l1 token is updated.
+    let whitelistEvents = await bridgeAdmin.getPastEvents("WhitelistToken", { fromBlock: 0 });
+    assert.deepEqual(client.getBridgePoolDeployData()[l1Token.options.address], {
+      timestamp: Number(
+        (await web3.eth.getBlock(whitelistEvents[1].blockNumber)).timestamp // Deployment time should match with newer Whitelist event.
+      ),
+    });
+
     // Rate model for block number after initial rate model update should return that rate model.
     const initialUpdatedRateModelEvent = (await rateModelStore.getPastEvents("UpdatedRateModel", { fromBlock: 0 }))[0];
     let _rateModel = client.getRateModelForBlockNumber(
@@ -490,6 +498,40 @@ describe("InsuredBridgeL1Client", function () {
     assert.equal(l1Tokens.length, 2);
     assert.equal(l1Tokens[0], l1Token.options.address);
     assert.equal(l1Tokens[1], newTokenAddress);
+  });
+  it("Fetch bridge pool deployment timestamps", async function () {
+    await client.update();
+
+    let whitelistEvents = await bridgeAdmin.getPastEvents("WhitelistToken", { fromBlock: 0 });
+
+    assert.deepEqual(client.getBridgePoolDeployData()[l1Token.options.address], {
+      timestamp: Number((await web3.eth.getBlock(whitelistEvents[0].blockNumber)).timestamp),
+    });
+
+    // Whitelist a new L2 token associated with this bridge pool and check that the deployment time doesn't change since
+    // the bridge pool address is the same.
+    const chainId2 = chainId + 1;
+    const l2Token2 = toChecksumAddress(randomHex(20));
+    await bridgeAdmin.methods
+      .setDepositContract(chainId2, depositContractImpersonator, messenger.options.address)
+      .send({ from: owner });
+
+    await bridgeAdmin.methods
+      .whitelistToken(
+        chainId2,
+        l1Token.options.address,
+        l2Token2,
+        bridgePool.options.address,
+        0,
+        defaultGasLimit,
+        defaultGasPrice,
+        0
+      )
+      .send({ from: owner });
+    await client.update();
+    assert.deepEqual(client.getBridgePoolDeployData()[l1Token.options.address], {
+      timestamp: Number((await web3.eth.getBlock(whitelistEvents[0].blockNumber)).timestamp),
+    });
   });
   describe("Lifecycle tests", function () {
     it("Relayed deposits: deposit, speedup finalize lifecycle", async function () {

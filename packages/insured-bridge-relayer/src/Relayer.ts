@@ -8,6 +8,7 @@ const fixedPointAdjustment = toBNWei(1);
 import { createEtherscanLinkMarkdown, createFormatFunction, PublicNetworks } from "@uma/common";
 import {
   InsuredBridgeL1Client,
+  BridgePoolDeploymentData,
   InsuredBridgeL2Client,
   GasEstimator,
   Deposit,
@@ -64,7 +65,7 @@ export class Relayer {
     readonly whitelistedRelayL1Tokens: string[],
     readonly account: string,
     readonly whitelistedChainIds: number[],
-    readonly l1DeployData: { [key: string]: { timestamp: number } },
+    readonly l1DeployData: BridgePoolDeploymentData,
     readonly l2DeployData: { [key: string]: { blockNumber: number } },
     readonly l2LookbackWindow: number,
     readonly multicallBundler: MulticallBundler

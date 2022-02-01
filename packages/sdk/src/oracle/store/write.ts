@@ -1,6 +1,7 @@
 import { ethers } from "ethers";
 import type * as ethersTypes from "../types/ethers";
-import type * as state from "../types/state";
+import * as state from "../types/state";
+import * as statemachine from "../types/statemachine";
 
 import { factory as Erc20Factory } from "../services/erc20";
 import { OptimisticOracle as OptimisticOracleService } from "../services/optimisticOracle";
@@ -20,6 +21,13 @@ export class User {
     if (data.chainId) this.chainId(data.chainId);
     if (data.address) this.address(data.address);
     if (data.signer) this.signer(data.signer);
+    if (data.provider) this.provider(data.provider);
+  }
+  clear(): void {
+    delete this.state.chainId;
+    delete this.state.address;
+    delete this.state.signer;
+    delete this.state.provider;
   }
   chainId(chainId: number): void {
     this.state.chainId = chainId;
@@ -27,8 +35,11 @@ export class User {
   address(address: string): void {
     this.state.address = address;
   }
-  signer(signer: ethersTypes.Signer): void {
+  signer(signer: ethersTypes.JsonRpcSigner): void {
     this.state.signer = signer;
+  }
+  provider(provider: ethersTypes.Web3Provider): void {
+    this.state.provider = provider;
   }
 }
 export class Balances {
@@ -82,19 +93,27 @@ export class Chain {
     if (!this.state?.optimisticOracle) this.state.optimisticOracle = {};
     return new OptimisticOracle(this.state.optimisticOracle);
   }
+  currentTime(currentTime: ethersTypes.BigNumber): void {
+    this.state.currentTime = currentTime;
+  }
 }
 export class Inputs {
   constructor(private state: Partial<state.Inputs>) {}
-  request(requester: string, identifier: string, timestamp: number, ancillaryData: string, chainId: number): void {
-    this.state.request = { requester, identifier, timestamp, ancillaryData, chainId };
+  request(params: state.Inputs["request"]): void {
+    this.state.request = params;
+  }
+  user(): User {
+    if (!this.state.user) this.state.user = {};
+    return new User(this.state.user);
   }
 }
 
 export class Services {
   constructor(private state: Partial<state.ChainServices>) {}
-  provider(providerUrl: string): void {
+  provider(rpcUrls: string[]): void {
     if (this.state?.provider) return;
-    this.state.provider = ethers.getDefaultProvider(providerUrl);
+    const providers = rpcUrls.map((url) => ethers.getDefaultProvider(url));
+    this.state.provider = new ethers.providers.FallbackProvider(providers, 1);
   }
   erc20s(address: string): void {
     if (!this.state?.provider) return;
@@ -108,7 +127,7 @@ export class Services {
     if (!this.state.provider) return;
     this.state.optimisticOracle = new OptimisticOracleService(this.state.provider, address);
   }
-  multicall2(multicall2Address?: string) {
+  multicall2(multicall2Address?: string): void {
     if (!multicall2Address) return;
     if (this.state.multicall2) return;
     if (!this.state.provider) return;
@@ -127,10 +146,6 @@ export default class Write {
     if (!this.state?.chains?.[chainId]) this.state.chains[chainId] = {};
     return new Chain(this.state.chains[chainId]);
   }
-  user(): User {
-    if (!this.state.user) this.state.user = {};
-    return new User(this.state.user);
-  }
   inputs(): Inputs {
     if (!this.state.inputs) this.state.inputs = {};
     return new Inputs(this.state.inputs);
@@ -146,5 +161,9 @@ export default class Write {
   }
   error(error?: Error): void {
     this.state.error = error;
+  }
+  command(context: statemachine.Context<unknown, unknown & statemachine.Memory>): void {
+    if (!this.state.commands) this.state.commands = {};
+    this.state.commands[context.id] = context;
   }
 }

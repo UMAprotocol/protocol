@@ -254,9 +254,9 @@ describe("CrossDomainFinalizer.ts", function () {
   describe("L2->L1 cross-domain transfers over the canonical bridge: single token", () => {
     beforeEach(async function () {
       // Add liquidity to the L1 pool to facilitate the relay action.
-      await l1Token.methods.mint(l1LiquidityProvider, initialPoolLiquidity).send({ from: l1Owner });
+      await l1Token.methods.mint(l1LiquidityProvider, toBN(initialPoolLiquidity).muln(2)).send({ from: l1Owner });
       await l1Token.methods
-        .approve(bridgePool.options.address, initialPoolLiquidity)
+        .approve(bridgePool.options.address, toBN(initialPoolLiquidity).muln(2))
         .send({ from: l1LiquidityProvider });
       await bridgePool.methods.addLiquidity(initialPoolLiquidity).send({ from: l1LiquidityProvider });
 
@@ -321,6 +321,61 @@ describe("CrossDomainFinalizer.ts", function () {
       await crossDomainFinalizer.checkForBridgeableL2TokensAndBridge();
       assert.isTrue(lastSpyLogIncludes(spy, "Canonical bridge initiated"));
       assert.isFalse(await bridgeDepositBox.methods.canBridge(l2Token.options.address).call());
+    });
+    it("At high utilization cross domain transfers happens more quickly", async function () {
+      // Do a relay to use 80% of the pools liquidity, pushing the utilization about the 75% threshold for higher L2->L1 transfers.
+      const relayParams = {
+        chainId: 10,
+        depositId: 0,
+        l1Recipient: l2Depositor,
+        l2Sender: l2Depositor,
+        amount: toBN(initialPoolLiquidity).muln(80).divn(100).toString(),
+        slowRelayFeePct: defaultSlowRelayFeePct,
+        instantRelayFeePct: defaultInstantRelayFeePct,
+        quoteTimestamp: (await bridgePool.methods.getCurrentTime().call()).toString(),
+      };
+      console.log("relayParams", relayParams);
+      await bridgePool.methods.relayDeposit(relayParams, toBNWei("0.1")).send({ from: l1LiquidityProvider });
+
+      const liquidityUtilization = await bridgePool.methods.liquidityUtilizationCurrent().call();
+      console.log("liquidityUtilization", liquidityUtilization.toString());
+
+      assert.equal(liquidityUtilization.toString(), toWei("0.8"));
+
+      // Now, add 1% of the total liquidity to the deposit box. No bridging should happen.
+      const depositTime = await bridgeDepositBox.methods.getCurrentTime().call();
+      await bridgeDepositBox.methods
+        .deposit(
+          l2Depositor,
+          l2Token.options.address,
+          depositAmount,
+          defaultSlowRelayFeePct,
+          defaultInstantRelayFeePct,
+          depositTime
+        )
+        .send({ from: l2Depositor });
+
+      await l2Timer.methods.setCurrentTime(Number(depositTime) + minimumBridgingDelay + 1).send({ from: l1Owner });
+      await Promise.all([l1Client.update(), l2Client.update()]);
+      await crossDomainFinalizer.checkForBridgeableL2TokensAndBridge();
+      assert.isTrue(lastSpyLogIncludes(spy, "L2 balance <= cross domain finalization threshold % of L1 pool reserves"));
+
+      // Next, if we increase the liquidity to be below the cross domain finalization threshold, but above the scaled
+      // cross domain finalization threshold, we should see the action cross-domain action. I.e when utilization is
+      // above 75%, we half the cross domain finalization threshold to send funds more aggressively when high util.
+      // send another 2x depositAmount, putting the total on L2 at 3 Ether.
+      await bridgeDepositBox.methods
+        .deposit(
+          l2Depositor,
+          l2Token.options.address,
+          depositAmount.muln(2),
+          defaultSlowRelayFeePct,
+          defaultInstantRelayFeePct,
+          depositTime
+        )
+        .send({ from: l2Depositor });
+      await crossDomainFinalizer.checkForBridgeableL2TokensAndBridge();
+      assert.isTrue(lastSpyLogIncludes(spy, "Canonical bridge initiated"));
     });
   });
   describe("L2->L1 cross-domain transfers over the canonical bridge multi token", () => {
