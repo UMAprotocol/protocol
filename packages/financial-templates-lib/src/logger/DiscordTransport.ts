@@ -39,7 +39,7 @@ export class DiscordTransport extends Transport {
         const webHook = this.escalationPathWebhookUrls[info.notificationPath] ?? this.defaultWebHookUrl;
 
         // If the webHook is an object it can contain multiple hooks within it. Else, it must be a single hook.
-        if (typeof webHook == "object") webHooks = webHook;
+        if (Array.isArray(webHook)) webHooks = webHook;
         else webHooks = [webHook];
       }
 
