@@ -102,6 +102,11 @@ export class StateMachine {
     this.saveContext(context);
   };
 
+  // remove element from front of queue
+  private shift(): Context<unknown, unknown & Memory> | undefined {
+    return this.pending.shift();
+  }
+  // remove element from back of queue
   private pop(): Context<unknown, unknown & Memory> | undefined {
     return this.pending.pop();
   }
@@ -118,7 +123,7 @@ export class StateMachine {
    * @returns {Promise<boolean>} - Returns if there are still any pending contexts to run.
    */
   tick = async (now = Date.now()): Promise<boolean> => {
-    const context = this.pop();
+    const context = this.shift();
     // if this cant step, then push it to back of queue
     if (!shouldStep(context, now)) {
       context && !context.done && this.push(context);
