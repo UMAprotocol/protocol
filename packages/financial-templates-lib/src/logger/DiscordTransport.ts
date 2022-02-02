@@ -25,6 +25,7 @@ export class DiscordTransport extends Transport {
   // Note: info must be any because that's what the base class uses.
   async log(info: any, callback: () => void): Promise<void> {
     try {
+      if (!info.mrkdwn) return; // We only ever want to send messages to Discord that have Markdown in them.
       const body = {
         username: "UMA Infrastructure",
         avatar_url: "https://i.imgur.com/RCcxxEZ.png",
