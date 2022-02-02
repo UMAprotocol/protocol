@@ -56,12 +56,14 @@ describe("Oracle Client", function () {
   test("setRequest", async function () {
     const id = client.setActiveRequest(request);
     await client.sm.tick();
+    await client.sm.tick();
     const input = store.read().inputRequest();
     assert.ok(input);
     assert.ok(store.read().command(id));
   });
   test("setUser", async function () {
     const id = client.setUser({ address, chainId, signer, provider });
+    await client.sm.tick();
     await client.sm.tick();
     const state = store.get();
     assert.ok(state?.inputs?.user);
