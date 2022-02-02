@@ -65,9 +65,9 @@ export enum RequestState {
   Invalid = 0, // Never requested.
   Requested, // Requested, no other actions taken.
   Proposed, // Proposed, but not expired or disputed yet.
-  Expired, // Proposed, not disputed, past liveness.
+  Expired, // Proposed, not disputed, past liveness and price is available to settle.
   Disputed, // Disputed, but no DVM price returned yet.
-  Resolved, // Disputed and DVM price is available.
+  Resolved, // Disputed and DVM price is available to settle.
   Settled, // Final price has been set in the contract (can get here from Expired or Resolved).
 }
 
