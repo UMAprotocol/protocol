@@ -24,36 +24,49 @@ export enum RequestState {
   Settled, // Final price has been set in the contract (can get here from Expired or Resolved).
 }
 
+// all events have these values
 export type RequestKey = {
   requester: string;
   identifier: string;
   timestamp: number;
   ancillaryData: string;
 };
-export type Request = RequestKey & {
-  proposer: string;
-  disputer: string;
-  currency: string;
-  settled: boolean;
-  refundOnDispute: boolean;
-  proposedPrice: string;
-  resolvedPrice: string;
-  expirationTime: string;
-  reward: string;
-  finalFee: string;
-  bond: string;
-  customLiveness: string;
-  price: string;
-  payout: string;
-  state: RequestState;
-};
+export type Request = RequestKey &
+  // this is partial since we dont know what events we have to populate parts of this
+  Partial<{
+    proposer: string;
+    disputer: string;
+    currency: string;
+    settled: boolean;
+    refundOnDispute: boolean;
+    proposedPrice: string;
+    resolvedPrice: string;
+    expirationTime: number;
+    reward: string;
+    finalFee: string;
+    bond: string;
+    customLiveness: string;
+    price: string;
+    payout: string;
+    state: RequestState;
+    // metadata about the transaction that triggered the state changes
+    requestTx: string;
+    proposeTx: string;
+    disputeTx: string;
+    settleTx: string;
+    requestBlockNumber: number;
+    proposeBlockNumber: number;
+    disputeBlockNumber: number;
+    settleBlockNumber: number;
+  }>;
 
 export interface EventState {
   requests?: Record<string, Request>;
 }
 
 export function requestId(request: Omit<RequestKey, "timestamp"> & { timestamp: BigNumberish }): string {
-  return [request.requester, request.identifier, request.timestamp.toString(), request.ancillaryData].join("!");
+  // if enabling sorting, put timestamp first
+  return [request.timestamp.toString(), request.identifier, request.requester, request.ancillaryData].join("!");
 }
 
 export function reduceEvents(state: EventState, event: Event): EventState {
@@ -63,13 +76,20 @@ export function reduceEvents(state: EventState, event: Event): EventState {
       const { requester, identifier, timestamp, ancillaryData, currency, reward, finalFee } = typedEvent.args;
       const id = requestId(typedEvent.args);
       if (!state.requests) state.requests = {};
-      const request = state.requests[id] || { requester, identifier, timestamp: timestamp.toNumber(), ancillaryData };
+      const request: Request = state.requests[id] || {
+        requester,
+        identifier,
+        timestamp: timestamp.toNumber(),
+        ancillaryData,
+      };
       state.requests[id] = {
         ...request,
         currency,
         reward: reward.toString(),
         finalFee: finalFee.toString(),
         state: RequestState.Requested,
+        requestTx: event.transactionHash,
+        requestBlockNumber: event.blockNumber,
       };
       break;
     }
@@ -87,14 +107,21 @@ export function reduceEvents(state: EventState, event: Event): EventState {
       } = typedEvent.args;
       const id = requestId(typedEvent.args);
       if (!state.requests) state.requests = {};
-      const request = state.requests[id] || { requester, identifier, timestamp: timestamp.toNumber(), ancillaryData };
+      const request: Request = state.requests[id] || {
+        requester,
+        identifier,
+        timestamp: timestamp.toNumber(),
+        ancillaryData,
+      };
       state.requests[id] = {
         ...request,
         currency,
         proposer,
         proposedPrice: proposedPrice.toString(),
-        expirationTime: expirationTimestamp.toString(),
+        expirationTime: expirationTimestamp.toNumber(),
         state: RequestState.Proposed,
+        proposeTx: event.transactionHash,
+        proposeBlockNumber: event.blockNumber,
       };
       break;
     }
@@ -103,13 +130,20 @@ export function reduceEvents(state: EventState, event: Event): EventState {
       const { requester, identifier, timestamp, ancillaryData, proposer, disputer, proposedPrice } = typedEvent.args;
       const id = requestId(typedEvent.args);
       if (!state.requests) state.requests = {};
-      const request = state.requests[id] || { requester, identifier, timestamp: timestamp.toNumber(), ancillaryData };
+      const request: Request = state.requests[id] || {
+        requester,
+        identifier,
+        timestamp: timestamp.toNumber(),
+        ancillaryData,
+      };
       state.requests[id] = {
         ...request,
         proposer,
         disputer,
         proposedPrice: proposedPrice.toString(),
         state: RequestState.Disputed,
+        disputeTx: event.transactionHash,
+        disputeBlockNumber: event.blockNumber,
       };
       break;
     }
@@ -118,7 +152,12 @@ export function reduceEvents(state: EventState, event: Event): EventState {
       const { requester, identifier, timestamp, ancillaryData, proposer, disputer, price, payout } = typedEvent.args;
       const id = requestId(typedEvent.args);
       if (!state.requests) state.requests = {};
-      const request = state.requests[id] || { requester, identifier, timestamp: timestamp.toNumber(), ancillaryData };
+      const request: Request = state.requests[id] || {
+        requester,
+        identifier,
+        timestamp: timestamp.toNumber(),
+        ancillaryData,
+      };
       state.requests[id] = {
         ...request,
         requester,
@@ -127,6 +166,8 @@ export function reduceEvents(state: EventState, event: Event): EventState {
         price: price.toString(),
         payout: payout.toString(),
         state: RequestState.Settled,
+        settleTx: event.transactionHash,
+        settleBlockNumber: event.blockNumber,
       };
       break;
     }

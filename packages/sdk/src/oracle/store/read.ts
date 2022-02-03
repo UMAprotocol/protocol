@@ -11,12 +11,14 @@ import type {
   Context,
   Memory,
   User,
+  RequestIndexes,
   OptimisticOracleEvent,
 } from "../types/state";
 import type { JsonRpcSigner, BigNumber, Provider } from "../types/ethers";
 import { TransactionConfirmer, requestId } from "../utils";
 import { OptimisticOracle } from "../services/optimisticOracle";
 import { Erc20 } from "../services/erc20";
+import { SortedRequests } from "../services/sortedRequests";
 
 // This is a typescript compatible way of pulling out values from the global state object, essentially
 // forming a basic API. Most calls are parameterless, requiring first setting state which determines, the
@@ -159,8 +161,19 @@ export default class Read {
     assert(time, "Current time not available on chain: " + chainId);
     return time;
   };
+  sortedRequestsService = (): SortedRequests => {
+    const result = this.state?.services?.sortedRequests;
+    assert(result, "Sorted request service not set");
+    return result;
+  };
   oracleEvents = (chainId: number): OptimisticOracleEvent[] => {
     const chain = this.state?.chains?.[chainId];
     return chain?.optimisticOracle?.events || [];
+  };
+  listChains = (): number[] => {
+    return Object.keys(this.state?.chains || {}).map(Number);
+  };
+  descendingRequests = (): RequestIndexes => {
+    return this.state.descendingRequests || [];
   };
 }

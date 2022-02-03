@@ -1,6 +1,7 @@
 import Store from "../store";
 import { InputRequest, OptimisticOracleEvent } from "../types/state";
 import { TransactionReceipt } from "../types/ethers";
+import { optimisticOracle } from "../../clients";
 
 export class Update {
   private read: Store["read"];
@@ -95,6 +96,24 @@ export class Update {
           .optimisticOracle()
           .event(event as OptimisticOracleEvent);
       });
+    });
+  }
+  async sortedRequests(chainId: number): Promise<void> {
+    // get all known events
+    const events = this.read().oracleEvents(chainId);
+    // this is expensive, it has to run through all events every update. consider optimizing after proven detrimental.
+    const { requests = {} } = optimisticOracle.getEventState(events);
+    const sortedRequestsService = this.read().sortedRequestsService();
+    Object.entries(requests).forEach(([key, value]) => {
+      // chains can have colliding keys ( mainly testnet forks), so we always need to append chain to to keep key unique across chains otherwise
+      // collisions will cause overwrites, removing ability to list identical requests across chains.
+      sortedRequestsService.set(key + "!" + chainId, { ...value, chainId });
+    });
+    // query all known requests and update our state with the entire list.
+    // this is expensive, consider optimizing after proven detrimental.
+    const descendingRequests = await sortedRequestsService.descending();
+    this.write((w) => {
+      w.descendingRequests(descendingRequests);
     });
   }
 }

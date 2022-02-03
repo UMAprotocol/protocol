@@ -39,10 +39,11 @@ export default function <Id, Data>(): SortedStore<Id, Data> {
     async set(id: Id, data: Data) {
       if (map.has(id)) {
         map.set(id, data);
+      } else {
+        const index = sortedIndex(ids, id);
+        ids.splice(index, 0, id);
+        map.set(id, data);
       }
-      const index = sortedIndex(ids, id);
-      ids.splice(index, 0, id);
-      map.set(id, data);
     },
     async get(id: Id) {
       return map.get(id);
