@@ -14,6 +14,8 @@ export class Client {
   constructor(public readonly store: Store, public readonly update: Update, public readonly sm: StateMachine) {
     // create active request poller for all chains. Should only have one of these
     sm.types.pollActiveRequest.create(undefined);
+    // polls user for balances/approvals on the current chain, in case it changes external to app
+    sm.types.pollActiveUser.create(undefined);
   }
   setUser(params: Partial<User>): string {
     const address = params.address && ethers.utils.getAddress(params.address);

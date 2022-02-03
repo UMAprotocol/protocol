@@ -11,6 +11,7 @@ import * as disputePrice from "./disputePrice";
 import * as proposePrice from "./proposePrice";
 import * as switchOrAddChain from "./switchOrAddChain";
 import * as pollActiveRequest from "./pollActiveRequest";
+import * as pollActiveUser from "./pollActiveUser";
 
 /**
  * StateMachine. This class will be used to handle all change requests by the user, including setting state which
@@ -40,6 +41,7 @@ export class StateMachine {
     [ContextType.proposePrice]: ContextManager<proposePrice.Params, proposePrice.Memory>;
     [ContextType.switchOrAddChain]: ContextManager<switchOrAddChain.Params, switchOrAddChain.Memory>;
     [ContextType.pollActiveRequest]: ContextManager<pollActiveRequest.Params, pollActiveRequest.Memory>;
+    [ContextType.pollActiveUser]: ContextManager<pollActiveUser.Params, pollActiveUser.Memory>;
   };
   constructor(private store: Store) {
     // need to initizlie state types here manually for each new context type
@@ -90,6 +92,12 @@ export class StateMachine {
         ContextType.pollActiveRequest,
         pollActiveRequest.Handlers(store),
         pollActiveRequest.initMemory,
+        this.handleCreate
+      ),
+      [ContextType.pollActiveUser]: new ContextManager<pollActiveUser.Params, pollActiveUser.Memory>(
+        ContextType.pollActiveUser,
+        pollActiveUser.Handlers(store),
+        pollActiveUser.initMemory,
         this.handleCreate
       ),
     };
@@ -184,6 +192,13 @@ export class StateMachine {
         case ContextType.pollActiveRequest: {
           next = await this.types[context.type].step(
             (context as unknown) as Context<pollActiveRequest.Params, pollActiveRequest.Memory>,
+            now
+          );
+          break;
+        }
+        case ContextType.pollActiveUser: {
+          next = await this.types[context.type].step(
+            (context as unknown) as Context<pollActiveUser.Params, pollActiveUser.Memory>,
             now
           );
           break;

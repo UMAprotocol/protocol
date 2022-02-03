@@ -52,7 +52,7 @@ export interface EventState {
   requests?: Record<string, Request>;
 }
 
-export function requestId(request: Omit<RequestKey, "timestamp"> & { timestamp: BigNumberish }) {
+export function requestId(request: Omit<RequestKey, "timestamp"> & { timestamp: BigNumberish }): string {
   return [request.requester, request.identifier, request.timestamp.toString(), request.ancillaryData].join("!");
 }
 
