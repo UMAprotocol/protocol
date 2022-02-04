@@ -41,7 +41,7 @@ export function Handlers(store: Store): GenericHandlers<Params, Memory> {
         }
       } catch (err) {
         // store an error for an iteration if we need to debug
-        memory.error = err;
+        memory.error = (err as unknown) as Error;
       }
       // just count how many iterations we do as a kind of sanity check
       memory.iterations++;

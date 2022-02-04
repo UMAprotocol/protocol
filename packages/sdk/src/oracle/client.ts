@@ -4,7 +4,7 @@ import Store, { Emit } from "./store";
 import type { state } from "./types";
 import { InputRequest, User } from "./types/state";
 import { Update } from "./services/update";
-import { StateMachine } from "./services/statemachines/statemachine";
+import { StateMachine, setActiveRequestByTransaction } from "./services/statemachines";
 import { loop } from "../utils";
 import { toWei } from "../across/utils";
 import { defaultConfig } from "./utils";
@@ -22,6 +22,9 @@ export class Client {
   setActiveRequest(params: InputRequest): string {
     const requester = ethers.utils.getAddress(params.requester);
     return this.sm.types.setActiveRequest.create({ ...params, requester });
+  }
+  setActiveRequestByTransaction(params: setActiveRequestByTransaction.Params): string {
+    return this.sm.types.setActiveRequestByTransaction.create(params);
   }
   approveCollateral(): string {
     const { checkTxIntervalSec } = this.store.read().chainConfig();

@@ -89,4 +89,36 @@ describe("Oracle Client", function () {
     assert.ok(result[types.state.Flag.RequestSettled]);
     assert.ok(result[types.state.Flag.InsufficientApproval]);
   });
+  test("setActiveRequestByTransaction", async function (done) {
+    const transactionHash = "0x91720719f4768e10849ebb5f41690488f7060e10534c5c4f15e69b7dc494502a";
+    const chainId = 1;
+    const id = client.setActiveRequestByTransaction({ transactionHash, chainId });
+    const expectedExpiration = 1630368843;
+
+    const stop = setInterval(() => {
+      const result = store.read().command(id);
+      if (result.done) {
+        assert.ok(!result.error);
+        assert.ok(store.read().request());
+        assert.equal(store.read().request().expirationTime, expectedExpiration);
+        clearInterval(stop);
+        done();
+      }
+    }, 1000);
+  });
+  test("setActiveRequestByTransaction failure", async function (done) {
+    const transactionHash = "0x91720719f4768e10849ebb5f41690488f7060e10534c5c4f15e69b7dc494502a";
+    const chainId = 1;
+    const eventIndex = 1;
+    const id = client.setActiveRequestByTransaction({ transactionHash, chainId, eventIndex });
+
+    const stop = setInterval(() => {
+      const result = store.read().command(id);
+      if (result.done) {
+        assert.ok(result.error);
+        clearInterval(stop);
+        done();
+      }
+    }, 1000);
+  });
 });
