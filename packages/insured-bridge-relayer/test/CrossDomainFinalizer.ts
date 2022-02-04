@@ -26,9 +26,6 @@ const toBNWei = (number: string | number) => toBN(toWei(number.toString()).toStr
 
 // Helper contracts
 const Messenger = getContract("MessengerMock");
-const BridgePool = getContract("BridgePool");
-const BridgeAdmin = getContract("BridgeAdmin");
-const BridgeDepositBox = getContract("BridgeDepositBoxMock");
 const Finder = getContract("Finder");
 const IdentifierWhitelist = getContract("IdentifierWhitelist");
 const AddressWhitelist = getContract("AddressWhitelist");
@@ -37,7 +34,29 @@ const Store = getContract("Store");
 const ERC20 = getContract("ExpandedERC20");
 const Timer = getContract("Timer");
 const MockOracle = getContract("MockOracleAncillary");
-const RateModelStore = getContract("RateModelStore");
+
+// Pull in contracts from contracts-node sourced from the across repo.
+const { getAbi, getBytecode } = require("@uma/contracts-node");
+
+const BridgeDepositBox = getContract("BridgeDepositBoxMock", {
+  abi: getAbi("BridgeDepositBoxMock"),
+  bytecode: getBytecode("BridgeDepositBoxMock"),
+});
+
+const BridgePool = getContract("BridgePool", {
+  abi: getAbi("BridgePool"),
+  bytecode: getBytecode("BridgePool"),
+});
+
+const BridgeAdmin = getContract("BridgeAdmin", {
+  abi: getAbi("BridgeAdmin"),
+  bytecode: getBytecode("BridgeAdmin"),
+});
+
+const RateModelStore = getContract("RateModelStore", {
+  abi: getAbi("RateModelStore"),
+  bytecode: getBytecode("RateModelStore"),
+});
 
 // Contract objects
 let messenger: any;
