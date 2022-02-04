@@ -1,3 +1,4 @@
+import assert from "assert";
 import {
   State,
   RequestState,
@@ -9,10 +10,12 @@ import {
   ChainMetadata,
   Config,
 } from "./types/state";
-import type { Provider, TransactionReceipt } from "./types/ethers";
+import type { Provider, TransactionReceipt, BigNumberish } from "./types/ethers";
 import { ContextType } from "./types/statemachine";
 import { Read } from "./store";
 import { ethers } from "ethers";
+export { requestId } from "../clients/optimisticOracle";
+import sortedLastIndexBy from "lodash/sortedLastIndexBy";
 
 export const getAddress = ethers.utils.getAddress;
 export const hexValue = ethers.utils.hexValue;
@@ -193,4 +196,128 @@ export class TransactionConfirmer {
 export function chainConfigToChainMetadata(config: ChainConfig): ChainMetadata {
   const { checkTxIntervalSec, multicall2Address, optimisticOracleAddress, ...chainMetadata } = config;
   return chainMetadata;
+}
+
+// This state is meant for adjusting a start/end block when querying events. Some apis will fail if the range
+// is too big, so the following functions will adjust range dynamically.
+export type RangeState = {
+  startBlock: number;
+  endBlock: number;
+  maxRange: number;
+  currentRange: number;
+  currentStart: number; // This is the start value you want for your query.
+  currentEnd: number; // this is the end value you want for your query.
+  done: boolean; // Signals we successfully queried the entire range.
+  multiplier?: number; // Multiplier increases or decreases range by this value, depending on success or failure
+};
+
+/**
+ * rangeStart. This starts a new range query and sets defaults for state.  Use this as the first call before starting your queries
+ *
+ * @param {Pick} state
+ * @returns {RangeState}
+ */
+export function rangeStart(state: Pick<RangeState, "startBlock" | "endBlock" | "multiplier">): RangeState {
+  const { startBlock, endBlock, multiplier = 2 } = state;
+  // the largest range we can have, since this is the users query for start and end
+  const maxRange = endBlock - startBlock;
+  assert(maxRange > 0, "End block must be higher than start block");
+  const currentStart = startBlock;
+  const currentEnd = endBlock;
+  const currentRange = maxRange;
+
+  return {
+    done: false,
+    startBlock,
+    endBlock,
+    maxRange,
+    currentRange,
+    currentStart,
+    currentEnd,
+    multiplier,
+  };
+}
+/**
+ * rangeSuccessDescending. We have 2 ways of querying events, from oldest to newest, or newest to oldest. Typically we want them in order, from
+ * oldest to newest, but for this particular case we want them newest to oldest, ie descending ( larger timestamp to smaller timestamp).
+ * This function will increase the range between start/end block and return a new start/end to use since by calling this you are signalling
+ * that the last range ended in a successful query.
+ *
+ * @param {RangeState} state
+ * @returns {RangeState}
+ */
+export function rangeSuccessDescending(state: RangeState): RangeState {
+  const { startBlock, currentStart, maxRange, currentRange, multiplier = 2 } = state;
+  // we are done if we succeeded querying where the currentStart matches are initial start block
+  const done = currentStart <= startBlock;
+  // increase range up to max range for every successful query
+  const nextRange = Math.min(Math.ceil(currentRange * multiplier), maxRange);
+  // move our end point to the previously successful start, ie moving from newest to oldest
+  const nextEnd = currentStart;
+  // move our start block to the next range down
+  const nextStart = Math.max(nextEnd - nextRange, startBlock);
+  return {
+    ...state,
+    currentStart: nextStart,
+    currentEnd: nextEnd,
+    currentRange: nextRange,
+    done,
+  };
+}
+/**
+ * rangeFailureDescending. Like the previous function, this will decrease the range between start/end for your query, because you are signalling
+ * that the last query failed. It will also keep the end of your range the same, while moving the start range up. This is why
+ * its considered descending, it will attempt to move from end to start, rather than start to end.
+ *
+ * @param {RangeState} state
+ * @returns {RangeState}
+ */
+export function rangeFailureDescending(state: RangeState): RangeState {
+  const { startBlock, currentEnd, currentRange, multiplier = 2 } = state;
+  const nextRange = Math.floor(currentRange / multiplier);
+  // this will eventually throw an error if you keep calling this function, which protects us against re-querying a broken api in a loop
+  assert(nextRange > 0, "Range must be above 0");
+  // we stay at the same end block
+  const nextEnd = currentEnd;
+  // move our start block closer to the end block, shrinking the range
+  const nextStart = Math.max(nextEnd - nextRange, startBlock);
+  return {
+    ...state,
+    currentStart: nextStart,
+    currentEnd: nextEnd,
+    currentRange: nextRange,
+  };
+}
+
+/**
+ * eventKey. Make a unique and sortable identifier string for an event
+ *
+ * @param {Event} event
+ * @returns {string} - the unique id
+ */
+export function eventKey(event: {
+  blockNumber: BigNumberish;
+  transactionIndex: BigNumberish;
+  logIndex: BigNumberish;
+}): string {
+  return [
+    // we pad these because numbers of varying lengths will not sort correctly, ie "10" will incorrectly sort before "9", but "09" will be correct.
+    event.blockNumber.toString().padStart(16, "0"),
+    event.transactionIndex.toString().padStart(16, "0"),
+    event.logIndex?.toString().padStart(16, "0"),
+    // ~ is the last printable ascii char, so it does not interfere with sorting
+  ].join("~");
+}
+/**
+ * insertOrdered. Inserts items in an array maintaining sorted order, in this case lowest to highest. Does not check duplicates.
+ * Mainly used for caching all known events, in order of oldest to newest.
+ *
+ * @param {T[]} array
+ * @param {T} element
+ * @param {Function} orderBy
+ */
+export function insertOrderedAscending<T>(array: T[], element: T, orderBy: (element: T) => string | number): T[] {
+  const index = sortedLastIndexBy(array, element, orderBy);
+  array.splice(index, 0, element);
+  return array;
 }

@@ -1,5 +1,5 @@
 import Store from "../store";
-import { InputRequest } from "../types/state";
+import { InputRequest, OptimisticOracleEvent } from "../types/state";
 import { TransactionReceipt } from "../types/ethers";
 
 export class Update {
@@ -83,5 +83,18 @@ export class Update {
     const oo = this.read().oracleService(chainId);
     const currentTime = await oo.getCurrentTime();
     this.write((write) => write.chains(chainId).currentTime(currentTime));
+  }
+  async oracleEvents(chainId: number, startBlock = 0, endBlock?: number): Promise<void> {
+    const provider = this.read().provider(chainId);
+    const oracle = this.read().oracleService(chainId);
+    endBlock = endBlock || (await provider.getBlockNumber());
+    const events = await oracle.contract.queryFilter({}, startBlock, endBlock);
+    this.write((w) => {
+      events.forEach((event) => {
+        w.chains(chainId)
+          .optimisticOracle()
+          .event(event as OptimisticOracleEvent);
+      });
+    });
   }
 }

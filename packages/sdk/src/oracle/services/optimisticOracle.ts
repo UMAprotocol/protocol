@@ -1,16 +1,16 @@
-import { OptimisticOracleEthers, OptimisticOracleEthers__factory } from "@uma/contracts-node";
+import { optimisticOracle } from "../../clients";
 import { BigNumberish, BigNumber, Provider, Signer, TransactionResponse } from "../types/ethers";
 import type { RequestState } from "../types/state";
 
 type Props = {
   defaultLiveness: BigNumber;
 };
-type Request = ReturnType<OptimisticOracleEthers["getRequest"]>;
+type Request = ReturnType<optimisticOracle.Instance["getRequest"]>;
 
 export class OptimisticOracle {
-  public readonly contract: OptimisticOracleEthers;
+  public readonly contract: optimisticOracle.Instance;
   constructor(protected provider: Provider, protected address: string) {
-    this.contract = OptimisticOracleEthers__factory.connect(address, provider);
+    this.contract = optimisticOracle.connect(address, provider);
   }
   async getRequest(
     requester: string,
@@ -22,16 +22,16 @@ export class OptimisticOracle {
   }
   async disputePrice(
     signer: Signer,
-    ...args: Parameters<OptimisticOracleEthers["disputePrice"]>
+    ...args: Parameters<optimisticOracle.Instance["disputePrice"]>
   ): Promise<TransactionResponse> {
-    const contract = OptimisticOracleEthers__factory.connect(this.address, signer);
+    const contract = optimisticOracle.connect(this.address, signer);
     return contract.disputePrice(...args);
   }
   async proposePrice(
     signer: Signer,
-    ...args: Parameters<OptimisticOracleEthers["proposePrice"]>
+    ...args: Parameters<optimisticOracle.Instance["proposePrice"]>
   ): Promise<TransactionResponse> {
-    const contract = OptimisticOracleEthers__factory.connect(this.address, signer);
+    const contract = optimisticOracle.connect(this.address, signer);
     return contract.proposePrice(...args);
   }
   async getProps(): Promise<Props> {

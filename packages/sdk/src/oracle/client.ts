@@ -11,12 +11,7 @@ import { defaultConfig } from "./utils";
 
 export class Client {
   private intervalStarted = false;
-  constructor(public readonly store: Store, public readonly update: Update, public readonly sm: StateMachine) {
-    // create active request poller for all chains. Should only have one of these
-    sm.types.pollActiveRequest.create(undefined);
-    // polls user for balances/approvals on the current chain, in case it changes external to app
-    sm.types.pollActiveUser.create(undefined);
-  }
+  constructor(public readonly store: Store, public readonly update: Update, public readonly sm: StateMachine) {}
   setUser(params: Partial<User>): string {
     const address = params.address && ethers.utils.getAddress(params.address);
     return this.sm.types.setUser.create({ ...params, address });
@@ -112,6 +107,7 @@ export class Client {
       assert(this.intervalStarted, "Interval Stopped");
       await this.sm.tick();
     }, delayMs).catch((err) => {
+      console.error(err);
       this.intervalStarted = false;
       this.store.write((w) => w.error(err));
     });
@@ -124,8 +120,8 @@ export class Client {
 
 export function factory(config: state.PartialConfig, emit: Emit): Client {
   const store = new Store(emit);
+  const fullConfig = defaultConfig(config);
   store.write((write) => {
-    const fullConfig = defaultConfig(config);
     write.config(fullConfig);
     for (const chain of Object.values(fullConfig.chains)) {
       write.chains(chain.chainId).optimisticOracle().address(chain.optimisticOracleAddress);
@@ -135,6 +131,29 @@ export function factory(config: state.PartialConfig, emit: Emit): Client {
     }
   });
   const update = new Update(store);
+  // we can create "threads" by introducing new state machine queues, the first one is user actions
   const sm = new StateMachine(store);
+  // this one is system actions used for long running commands independent of the user
+  const poller = new StateMachine(store);
+
+  // start the request list checkers
+  for (const [chainId, config] of Object.entries(fullConfig.chains)) {
+    poller.types.fetchPastEvents.create({ chainId: Number(chainId), startBlock: config.earliestBlockNumber }, "poller");
+    // long running poller which only looks for new events
+    poller.types.pollNewEvents.create({ chainId: Number(chainId) }, "poller");
+  }
+
+  // create active request poller for all chains. Should only have one of these
+  poller.types.pollActiveRequest.create(undefined, "poller");
+  // polls user for balances/approvals on the current chain, in case it changes external to app
+  poller.types.pollActiveUser.create(undefined, "poller");
+
+  // poller statemachine runs on its own loop
+  loop(async () => {
+    return poller.tick();
+  }, 10).catch((err) => {
+    console.error("poller error", err);
+    store.write((w) => w.error(err));
+  });
   return new Client(store, update, sm);
 }

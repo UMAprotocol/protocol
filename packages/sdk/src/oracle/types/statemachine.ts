@@ -14,6 +14,8 @@ export enum ContextType {
   switchOrAddChain = "switchOrAddChain",
   pollActiveRequest = "pollActiveRequest",
   pollActiveUser = "pollActiveUser",
+  fetchPastEvents = "fetchPastEvents",
+  pollNewEvents = "pollNewEvents",
 }
 
 export type ContextProps = {

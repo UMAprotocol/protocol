@@ -1,9 +1,20 @@
 import assert from "assert";
 import filter from "lodash/filter";
 
-import type { State, Chain, Inputs, Request, Erc20Props, ChainConfig, Context, Memory, User } from "../types/state";
+import type {
+  State,
+  Chain,
+  Inputs,
+  Request,
+  Erc20Props,
+  ChainConfig,
+  Context,
+  Memory,
+  User,
+  OptimisticOracleEvent,
+} from "../types/state";
 import type { JsonRpcSigner, BigNumber, Provider } from "../types/ethers";
-import { TransactionConfirmer } from "../utils";
+import { TransactionConfirmer, requestId } from "../utils";
 import { OptimisticOracle } from "../services/optimisticOracle";
 import { Erc20 } from "../services/erc20";
 
@@ -70,7 +81,7 @@ export default class Read {
   request = (): Request => {
     const chain = this.requestChain();
     const input = this.inputRequest();
-    const id = [input.requester, input.identifier, input.timestamp, input.ancillaryData].join("!");
+    const id = requestId(input);
     const request = chain?.optimisticOracle?.requests?.[id];
     assert(request, "Request has not been fetched");
     return request;
@@ -147,5 +158,9 @@ export default class Read {
     const time = chain?.currentTime;
     assert(time, "Current time not available on chain: " + chainId);
     return time;
+  };
+  oracleEvents = (chainId: number): OptimisticOracleEvent[] => {
+    const chain = this.state?.chains?.[chainId];
+    return chain?.optimisticOracle?.events || [];
   };
 }
