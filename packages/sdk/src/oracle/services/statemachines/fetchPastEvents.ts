@@ -41,6 +41,14 @@ export function Handlers(store: Store): GenericHandlers<Params, Memory> {
         await update.oracleEvents(chainId, currentStart, currentEnd);
         // reprocess all known events and create a table of requests from it
         await update.sortedRequests(chainId);
+
+        try {
+          // we can just try to update the current active request, we dont care if it fails, active request might not be set
+          await update.activeRequestFromEvents();
+        } catch (err) {
+          // do nothing
+        }
+
         // we signal that the current range was a success, now move currentStart, currentEnd accordingly
         // we set multiplier to 1 so we dont grow the range on success, this tends to create more errors and slow down querying
         memory.state = rangeSuccessDescending({ ...rangeState, multiplier: 1 });

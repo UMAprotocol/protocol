@@ -70,10 +70,11 @@ export class OptimisticOracle {
   address(address: string): void {
     this.state.address = address;
   }
-  request(inputRequest: state.InputRequest, request: state.Request): void {
-    const id = requestId(inputRequest);
+  request(request: state.FullRequest): void {
+    const id = requestId(request);
     if (!this.state.requests) this.state.requests = {};
-    this.state.requests[id] = request;
+    // merge data in rather than replace
+    this.state.requests[id] = { ...this.state.requests[id], ...request };
   }
   defaultLiveness(defaultLiveness: ethersTypes.BigNumber): void {
     this.state.defaultLiveness = defaultLiveness;

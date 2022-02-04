@@ -4,15 +4,16 @@ import filter from "lodash/filter";
 import type {
   State,
   Chain,
-  Inputs,
-  Request,
+  InputRequest,
   Erc20Props,
   ChainConfig,
   Context,
   Memory,
   User,
   RequestIndexes,
+  RequestIndex,
   OptimisticOracleEvent,
+  FullRequest,
 } from "../types/state";
 import type { JsonRpcSigner, BigNumber, Provider } from "../types/ethers";
 import { TransactionConfirmer, requestId } from "../utils";
@@ -69,7 +70,7 @@ export default class Read {
     assert(signer, "Signer is not set");
     return signer;
   };
-  inputRequest = (): Inputs["request"] => {
+  inputRequest = (): InputRequest => {
     const input = this.state?.inputs?.request;
     assert(input, "Input request is not set");
     return input;
@@ -80,7 +81,7 @@ export default class Read {
     assert(liveness, "Optimistic oracle defaultLiveness set");
     return liveness;
   };
-  request = (): Request => {
+  request = (): FullRequest => {
     const chain = this.requestChain();
     const input = this.inputRequest();
     const id = requestId(input);
@@ -90,6 +91,7 @@ export default class Read {
   };
   collateralProps = (): Partial<Erc20Props> => {
     const request = this.request();
+    assert(request.currency, "Request currency not set");
     const chain = this.requestChain();
     const props = chain.erc20s?.[request.currency]?.props;
     assert(props, "Props not set on collateral token");
@@ -97,6 +99,7 @@ export default class Read {
   };
   userCollateralBalance = (): BigNumber => {
     const request = this.request();
+    assert(request.currency, "Request currency not set");
     const chain = this.requestChain();
     const user = this.userAddress();
     const balance = chain?.erc20s?.[request.currency]?.balances?.[user];
@@ -105,6 +108,7 @@ export default class Read {
   };
   userCollateralAllowance = (): BigNumber => {
     const request = this.request();
+    assert(request.currency, "Request currency not set");
     const chain = this.requestChain();
     const user = this.userAddress();
     const oracle = this.oracleAddress();
@@ -121,6 +125,7 @@ export default class Read {
   collateralService = (): Erc20 => {
     const chainId = this.requestChainId();
     const request = this.request();
+    assert(request.currency, "Request currency not set");
     const result = this.state?.services?.chains?.[chainId]?.erc20s?.[request.currency];
     assert(result, "Token not supported on chain " + chainId);
     return result;
@@ -177,5 +182,12 @@ export default class Read {
   };
   descendingRequests = (): RequestIndexes => {
     return this.state.descendingRequests || [];
+  };
+  findRequest = (query: InputRequest): RequestIndex | undefined => {
+    const sortedRequestService = this.sortedRequestsService();
+    return sortedRequestService.getByRequest(query);
+  };
+  filterRequests = (query: Partial<RequestIndex>): RequestIndexes => {
+    return filter(this.descendingRequests(), query);
   };
 }

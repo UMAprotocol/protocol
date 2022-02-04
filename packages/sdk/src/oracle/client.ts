@@ -21,7 +21,12 @@ export class Client {
   }
   setActiveRequest(params: InputRequest): string {
     const requester = ethers.utils.getAddress(params.requester);
-    return this.sm.types.setActiveRequest.create({ ...params, requester });
+    // these are case and number senstive
+    const ancillaryData = params.ancillaryData.toLowerCase();
+    const identifier = params.identifier.toLowerCase();
+    const chainId = Number(params.chainId);
+    const timestamp = Number(params.timestamp);
+    return this.sm.types.setActiveRequest.create({ requester, ancillaryData, identifier, chainId, timestamp });
   }
   setActiveRequestByTransaction(params: setActiveRequestByTransaction.Params): string {
     return this.sm.types.setActiveRequestByTransaction.create(params);
@@ -35,6 +40,7 @@ export class Client {
     assert(user.address, "requires a user account address");
     assert(user.signer, "requires a user signer");
     assert(user.chainId === inputRequest.chainId, "On wrong chain");
+    assert(request.currency, "Request currency is unknown");
     return this.sm.types.approve.create(
       {
         currency: request.currency,
@@ -58,6 +64,7 @@ export class Client {
     assert(user.address, "requires a user account address");
     assert(user.signer, "requires a user signer");
     assert(user.chainId === inputRequest.chainId, "On wrong chain");
+    assert(request.currency, "Request currency is unknown");
     return this.sm.types.proposePrice.create(
       {
         ...inputRequest,
@@ -79,6 +86,7 @@ export class Client {
     assert(user.address, "requires a user account address");
     assert(user.signer, "requires a user signer");
     assert(user.chainId === inputRequest.chainId, "On wrong chain");
+    assert(request.currency, "Request currency is unknown");
     return this.sm.types.disputePrice.create(
       {
         ...inputRequest,

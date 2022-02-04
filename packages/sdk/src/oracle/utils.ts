@@ -1,4 +1,9 @@
 import assert from "assert";
+import { ethers } from "ethers";
+import sortedLastIndexBy from "lodash/sortedLastIndexBy";
+// this request id does not include chain id
+export { requestId } from "../clients/optimisticOracle";
+
 import {
   State,
   RequestState,
@@ -13,9 +18,6 @@ import {
 import type { Provider, TransactionReceipt, BigNumberish } from "./types/ethers";
 import { ContextType } from "./types/statemachine";
 import { Read } from "./store";
-import { ethers } from "ethers";
-export { requestId } from "../clients/optimisticOracle";
-import sortedLastIndexBy from "lodash/sortedLastIndexBy";
 
 export const getAddress = ethers.utils.getAddress;
 export const hexValue = ethers.utils.hexValue;
