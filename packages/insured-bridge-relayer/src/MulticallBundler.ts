@@ -78,6 +78,7 @@ export class MulticallBundler {
         at: "MulticallBundler#send",
         message: "One or more errors sending transaction batches",
         error,
+        notificationPath: "across-infrastructure",
       });
     });
 
@@ -120,6 +121,7 @@ export class MulticallBundler {
       message: call.message || "No message",
       mrkdwn: call.mrkdwn ? `${call.mrkdwn} ${receiptMarkdown}` : receiptMarkdown,
       level: call.level || "info",
+      notificationPath: "across-infrastructure",
     });
 
     // Just append the execution result. No need to return.
@@ -155,6 +157,7 @@ export class MulticallBundler {
         at: "MulticallBundler#batchTransactions",
         message: "Sending batched transactions individually😷",
         error,
+        notificationPath: "across-infrastructure",
       });
 
       // Allow all transactions to finish before propagating any errors.
