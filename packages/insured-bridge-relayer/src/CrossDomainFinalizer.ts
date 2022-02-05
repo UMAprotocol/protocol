@@ -105,6 +105,7 @@ export class CrossDomainFinalizer {
           at: "CrossDomainFinalizer",
           message: "Something errored sending tokens over the canonical bridge!",
           error,
+          notificationPath: "across-infrastructure",
         });
       }
     }
@@ -192,6 +193,7 @@ export class CrossDomainFinalizer {
           PublicNetworks[this.l2Client.chainId]?.name +
           " bridge. tx: " +
           createEtherscanLinkMarkdown(receipt.transactionHash, this.l2Client.chainId),
+        notificationPath: "across-infrastructure",
       });
     }
   }
@@ -227,6 +229,7 @@ export class CrossDomainFinalizer {
           createEtherscanLinkMarkdown(l2TransactionHash, this.l2Client.chainId) +
           ". tx: " +
           createEtherscanLinkMarkdown(executionResult.transactionHash),
+        notificationPath: "across-infrastructure",
       });
       this.executedL1Transactions.push(executionResult);
     } catch (error) {
@@ -234,6 +237,7 @@ export class CrossDomainFinalizer {
         at: "CrossDomainFinalizer",
         message: "Something errored sending a transaction",
         error,
+        notificationPath: "across-infrastructure",
       });
     }
   }

@@ -629,6 +629,7 @@ export class Relayer {
           at: "AcrossRelayer#Relayer",
           message: "Not relaying unprofitable deposit 😖",
           mrkdwn: this._generateMarkdownForNonProfitableRelay(relayableDeposit.deposit, profitabilityInformation),
+          notificationPath: "across-infrastructure",
         });
         await saveUnprofitableLog(relayableDeposit.deposit.depositHash); // Save that the depositHash has sent a warning.
         return;
