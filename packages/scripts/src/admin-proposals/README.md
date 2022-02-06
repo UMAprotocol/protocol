@@ -67,7 +67,7 @@ node ./packages/scripts/src/admin-proposals/collateral.js \
 
 ```
 node ./packages/scripts/src/admin-proposals/resolveProposal.js \
-    --id 1 \
+    --sender 0x2bAaA41d155ad8a4126184950B31F50A1513cE25 \
     --network mainnet-fork
 ```
 
