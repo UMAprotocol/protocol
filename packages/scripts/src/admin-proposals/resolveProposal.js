@@ -1,19 +1,25 @@
 // Description:
-// - Resolve specific proposal and retrieve bond.
+// - Resolve all possible proposals.
+
+// Usage:
+// NODE_URL_1=http://localhost:9545 \
+//  node ./packages/scripts/src/admin-proposals/resolveProposal.js \
+//  --network mainnet_mnemonic
 
 require("dotenv").config();
 const { getWeb3ByChainId } = require("@uma/common");
 const { setupGasEstimator } = require("./utils");
+const {
+  aggregateTransactionsAndSend,
+  multicallAddressMap,
+  aggregateTransactionsAndCall,
+} = require("@uma/financial-templates-lib");
 const { _getContractAddressByName } = require("../utils");
-const argv = require("minimist")(process.argv.slice(), {
-  string: [
-    // proposal ID to resolve
-    "id",
-  ],
-});
+
 const hre = require("hardhat");
 const { getContract } = hre;
 const Proposer = getContract("Proposer");
+const Governor = getContract("Governor");
 
 async function run() {
   const web3 = getWeb3ByChainId(1);
@@ -22,27 +28,53 @@ async function run() {
   // Initialize Eth contracts by grabbing deployed addresses from networks/1.json file.
   const gasEstimator = await setupGasEstimator();
 
-  // Execute the most recent admin vote that we haven't already executed.
-  const id = Number(argv.id);
-  console.group(`\n📢 Resolving Proposal ${id}`);
-
   const proposer = new web3.eth.Contract(Proposer.abi, await _getContractAddressByName("Proposer", 1));
-  const bondedProposal = await proposer.methods.bondedProposals(id.toString()).call();
-  console.log(
-    `- Proposal #${id} has a locked bond of ${bondedProposal.lockedBond.toString()} UMA, proposer was @ ${
-      bondedProposal.sender
-    }`
+  const governor = new web3.eth.Contract(Governor.abi, await _getContractAddressByName("Governor", 1));
+
+  // Query the state of all possible bonded proposals and determine which ones can be resolved. If the `lockedBond`
+  // property of the `bondedProposal` is 0 then the proposal cannot be resolved.
+  const totalProposals = Number(await governor.methods.numProposals().call());
+  const bondedProposalTransactions = [...Array(totalProposals).keys()].map((i) => {
+    return { target: proposer.options.address, callData: proposer.methods.bondedProposals(i).encodeABI() };
+  });
+
+  console.group(`\n📢 There are a total of ${totalProposals.length} possible resolvable proposals`);
+
+  // Read bonded proposal state in a single batched web3 call:
+  console.log("- Reading bondedProposals() state for all ids...");
+  const bondedProposals = await aggregateTransactionsAndCall(
+    multicallAddressMap.mainnet.multicall,
+    web3,
+    bondedProposalTransactions
   );
-  try {
-    const txn = await proposer.methods
-      .resolveProposal(id.toString())
-      .send({ from: accounts[0], ...gasEstimator.getCurrentFastPrice() });
-    console.log("- Transaction: ", txn?.transactionHash);
-  } catch (err) {
-    console.log("- Resolution failed, has price been resolved for admin proposal?", err);
+
+  const proposalToResolve = [];
+  for (let i = 0; i < bondedProposals.length; i++) {
+    if (web3.utils.toBN(bondedProposals[i].lockedBond.toString()).gt(web3.utils.toBN("0"))) {
+      console.log(
+        `- Proposal #${i} has a locked bond of ${bondedProposals[i].lockedBond.toString()} UMA, proposer was @ ${
+          bondedProposals[i].sender
+        }`
+      );
+      proposalToResolve.push(i);
+    }
   }
 
-  console.log("\n😇 Success!");
+  if (proposalToResolve.length === 0) {
+    console.groupEnd("No proposals to resolve.");
+  } else {
+    console.log(`- Resolving ${proposalToResolve.length} proposals: ${proposalToResolve}`);
+    const resolveProposalTransactions = proposalToResolve.map((i) => {
+      return { target: proposer.options.address, callData: proposer.methods.resolveProposal(i).encodeABI() };
+    });
+    const txn = await aggregateTransactionsAndSend(
+      multicallAddressMap.mainnet.multicall,
+      web3,
+      resolveProposalTransactions,
+      { from: accounts[0], ...gasEstimator.getCurrentFastPrice() }
+    );
+    console.groupEnd("Transaction: ", txn?.transactionHash);
+  }
 }
 
 function main() {

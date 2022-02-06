@@ -4,6 +4,7 @@ import type { MulticallWeb3 } from "@uma/contracts-node";
 import { TransactionDataDecoder } from "./AbiUtils";
 import assert from "assert";
 import type Web3 from "web3";
+import type { TransactionReceipt } from "web3-core";
 
 // Decode `returnData` into Javascript type using known contract ABI informtaion
 // from the `callData` originally used to produce `returnData`.
@@ -40,6 +41,22 @@ export const aggregateTransactionsAndCall = async (
       .call(undefined, blockNumber)
   ).returnData;
   return returnData.map((data, i) => _decodeOutput(transactions[i].callData, data, web3));
+};
+
+export const aggregateTransactionsAndSend = async (
+  multicallAddress: string,
+  web3: Web3,
+  transactions: Transaction[],
+  txnConfigObj: any
+): Promise<TransactionReceipt> => {
+  const multicallContract = (new web3.eth.Contract(getAbi("Multicall"), multicallAddress) as unknown) as MulticallWeb3;
+  for (let i = 0; i < transactions.length; i++) {
+    assert(
+      transactions[i].target && transactions[i].callData,
+      "transaction expected in form {target: address, callData: bytes}"
+    );
+  }
+  return await multicallContract.methods.aggregate((transactions as unknown) as [string, string][]).send(txnConfigObj);
 };
 
 export const multicallAddressMap: { [network: string]: { multicall: string } } = {
