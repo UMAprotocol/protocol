@@ -27,7 +27,8 @@ HARDHAT_CHAIN_ID=1 yarn hardhat node --fork https://mainnet.infura.io/v3/YOUR-IN
 
 Be sure to set `NODE_URL_1=http://localhost:9545` in your environment if you want to continue running scripts against the forked mainnet network.
 
-2. Request to impersonate accounts we'll need to propose and vote on admin proposals:
+2. Request to impersonate accounts we'll need to propose and vote on admin proposals. This script will also mint the
+   wallet enough UMA required to submit a new governance proposal.
 
 ```sh
 ./packages/scripts/setupFork.sh
@@ -59,6 +60,14 @@ node ./packages/scripts/src/admin-proposals/collateral.js \
     --polygon 0x1fcbe5937b0cc2adf69772d228fa4205acf4d9b2,,,,0x580a84c73811e1839f75d86d75d88cca0c241ff4,,,,, \
     --fee 60,0.8,130,3,500,45,1100,400,800,670 \
     --verify \
+    --network mainnet-fork
+```
+
+6. Retrieve bond staked for submitting proposal:
+
+```
+node ./packages/scripts/src/admin-proposals/resolveProposal.js \
+    --id 1 \
     --network mainnet-fork
 ```
 
