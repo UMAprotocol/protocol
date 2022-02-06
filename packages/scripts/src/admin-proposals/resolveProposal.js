@@ -1,10 +1,11 @@
 // Description:
-// - Resolve all possible proposals.
+// - Resolve all possible proposals for a specific sender.
 
 // Usage:
 // NODE_URL_1=http://localhost:9545 \
 //  node ./packages/scripts/src/admin-proposals/resolveProposal.js \
-//  --network mainnet_mnemonic
+//  --network mainnet_mnemonic \
+//  --sender <ADDRESS>
 
 require("dotenv").config();
 const { getWeb3ByChainId } = require("@uma/common");
@@ -20,10 +21,17 @@ const hre = require("hardhat");
 const { getContract } = hre;
 const Proposer = getContract("Proposer");
 const Governor = getContract("Governor");
+const argv = require("minimist")(process.argv.slice(), {
+  string: [
+    // proposer address to resolve proposals for
+    "sender",
+  ],
+});
 
 async function run() {
   const web3 = getWeb3ByChainId(1);
   const accounts = await web3.eth.getAccounts();
+  const sender = argv.sender;
 
   // Initialize Eth contracts by grabbing deployed addresses from networks/1.json file.
   const gasEstimator = await setupGasEstimator();
@@ -56,7 +64,11 @@ async function run() {
           bondedProposals[i].sender
         }`
       );
-      proposalToResolve.push(i);
+      if (bondedProposals[i].sender === sender) {
+        proposalToResolve.push(i);
+      } else {
+        console.log(`Skipping proposal #${i}, only resolving bonded proposals where sender is ${sender}`);
+      }
     }
   }
 
