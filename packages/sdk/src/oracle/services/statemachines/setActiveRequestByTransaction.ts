@@ -1,7 +1,6 @@
 import assert from "assert";
 import { Update } from "../update";
 import Store from "../../store";
-import { Log, LogDescription } from "../../types/ethers";
 import { Handlers as GenericHandlers } from "../../types/statemachine";
 import { optimisticOracle } from "../../../clients";
 
@@ -20,18 +19,14 @@ export function Handlers(store: Store): GenericHandlers<Params, Memory> {
       // have to do all of this to fetch the identifier, ancData, requester and timestamp from the request
       const provider = store.read().provider(chainId);
       const receipt = await provider.getTransactionReceipt(transactionHash);
-      const oracleLogs = receipt.logs.reduce((result: LogDescription[], log: Log) => {
-        try {
-          result.push(optimisticOracle.contractInterface.parseLog(log));
-        } catch (err) {
-          // we can ignore this error
-          memory.error = (err as unknown) as Error;
-        }
-        return result;
-      }, []);
+      const oracleAddress = store.read().oracleAddress(chainId);
+      // filter out logs that originate from oracle contract
+      const oracleLogs = receipt.logs.filter((log) => log.address.toLowerCase() === oracleAddress.toLowerCase());
+      // decode logs using abi
+      const decodedLogs = oracleLogs.map((log) => optimisticOracle.contractInterface.parseLog(log));
 
       // this is the event we care about, we index into the appropriate oracle event generated from this tx
-      const log = oracleLogs[eventIndex];
+      const log = decodedLogs[eventIndex];
       // we dont actually know the type of the log, so we need to do some validation before continuing
       assert(log, `Unable to find optimistic oracle event at ${transactionHash} eventIndex ${eventIndex}`);
       assert(log.args, `Unable to find optimistic oracle event args at ${transactionHash} eventIndex ${eventIndex}`);

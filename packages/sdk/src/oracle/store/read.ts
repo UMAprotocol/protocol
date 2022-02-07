@@ -47,8 +47,8 @@ export default class Read {
     assert(chainId, "ChainId is not set");
     return chainId;
   };
-  requestChain = (): Partial<Chain> => {
-    const chainId = this.requestChainId();
+  requestChain = (optionalChainId?: number): Partial<Chain> => {
+    const chainId = optionalChainId || this.requestChainId();
     const chain = this.state?.chains?.[chainId];
     assert(chain, "Chain not set");
     return chain;
@@ -58,8 +58,8 @@ export default class Read {
     assert(address, "User address is not set");
     return address;
   };
-  oracleAddress = (): string => {
-    const chain = this.requestChain();
+  oracleAddress = (optionalChainId?: number): string => {
+    const chain = this.requestChain(optionalChainId);
     const address = chain?.optimisticOracle?.address;
     assert(address, "Optimistic oracle address not set");
     return address;
