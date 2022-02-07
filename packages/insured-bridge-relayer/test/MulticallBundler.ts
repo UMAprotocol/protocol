@@ -40,7 +40,7 @@ describe("MulticallBundler.ts", function () {
   it("Sends single transaction", async function () {
     multicallBundler!.addTransactions({ transaction: txnCast(multicaller!.methods.add("1")) });
     await multicallBundler!.send();
-    console.log(await multicallBundler!.waitForMine());
+    await multicallBundler!.waitForMine();
     assert.equal((await multicaller!.methods.value().call()).toString(), "1");
   });
 

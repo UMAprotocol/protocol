@@ -3,7 +3,9 @@
   "esModuleInterop": true,
   "include": [
     "generated/index.ts",
+    "typechain/**/*",
     "../core/artifacts/**/*.json",
+    "../../node_modules/@across-protocol/contracts/artifacts/**/*.json",
     "../../node_modules/@across-protocol/contracts/artifacts/**/*.json"
   ],
   "exclude": [

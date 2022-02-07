@@ -129,7 +129,10 @@ task("generate-contracts-frontend", "Generate typescipt for the contracts-fronte
     );
 
     artifacts.forEach(({ contractName, packageName }) => {
-      if (fs.existsSync(`typechain/${packageName}/ethers/${contractName}.d.ts`))
+      if (
+        fs.existsSync(`typechain/${packageName}/ethers/${contractName}.d.ts`) ||
+        fs.existsSync(`typechain/${packageName}/ethers/${contractName}.ts`)
+      )
         fs.appendFileSync(
           out,
           `export type { ${contractName} as ${contractName}Ethers } from "../typechain/${packageName}/ethers";\n`
@@ -146,7 +149,10 @@ task("generate-contracts-frontend", "Generate typescipt for the contracts-fronte
 
     // Write Web3 contract types.
     artifacts.forEach(({ contractName, packageName }) => {
-      if (fs.existsSync(`typechain/${packageName}/web3/${contractName}.d.ts`))
+      if (
+        fs.existsSync(`typechain/${packageName}/web3/${contractName}.d.ts`) ||
+        fs.existsSync(`typechain/${packageName}/web3/${contractName}.ts`)
+      )
         fs.appendFileSync(
           out,
           `export type { ${normalizeClassName(contractName)} as ${normalizeClassName(
@@ -216,7 +222,10 @@ task("generate-contracts-node", "Generate typescipt for the contracts-node packa
     );
 
     artifacts.forEach(({ contractName, packageName }) => {
-      if (fs.existsSync(`typechain/${packageName}/ethers/${contractName}.d.ts`))
+      if (
+        fs.existsSync(`typechain/${packageName}/ethers/${contractName}.d.ts`) ||
+        fs.existsSync(`typechain/${packageName}/ethers/${contractName}.ts`)
+      )
         fs.appendFileSync(
           out,
           `export type { ${contractName} as ${contractName}Ethers } from "../typechain/${packageName}/ethers";\n`
@@ -233,7 +242,10 @@ task("generate-contracts-node", "Generate typescipt for the contracts-node packa
 
     // Write Web3 contract types.
     artifacts.forEach(({ contractName, packageName }) => {
-      if (fs.existsSync(`typechain/${packageName}/web3/${contractName}.d.ts`))
+      if (
+        fs.existsSync(`typechain/${packageName}/web3/${contractName}.d.ts`) ||
+        fs.existsSync(`typechain/${packageName}/web3/${contractName}.ts`)
+      )
         fs.appendFileSync(
           out,
           `export type { ${normalizeClassName(contractName)} as ${normalizeClassName(

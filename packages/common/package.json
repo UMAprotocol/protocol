@@ -28,7 +28,7 @@
     "/dist/**/*"
   ],
   "dependencies": {
-    "@across-protocol/contracts": "^0.1.2",
+    "@across-protocol/contracts": "^0.1.4",
     "@eth-optimism/hardhat-ovm": "^0.2.2",
     "@ethersproject/bignumber": "^5.0.5",
     "@google-cloud/kms": "^2.3.1",

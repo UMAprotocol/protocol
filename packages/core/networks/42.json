@@ -96,10 +96,6 @@
     "address": "0x09381C827438605B5ea3e760A27666Be3497602C"
   },
   {
-    "contractName": "BridgeAdmin",
-    "address": "0xf7241a1CF50540402C8e3e84Ab6F753bd7e6756a"
-  },
-  {
     "contractName": "SkinnyOptimisticOracle",
     "address": "0xAa04b5D40574Fb8C001249B24d1c6B35a207F0bD"
   },

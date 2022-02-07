@@ -96,7 +96,13 @@ extendEnvironment((_hre) => {
   const hre = _hre as HRE;
   hre._artifactCache = {};
   hre.getContract = (name, artifactOverrides = {}) => {
-    if (!hre._artifactCache[name]) hre._artifactCache[name] = hre.artifacts.readArtifactSync(name);
+    if (!hre._artifactCache[name]) {
+      // Allows for the caller to bypass the hardhat lookup.
+      // This is a bit of a hack and will not work for library linking unless linkReferences is provided.
+      if (artifactOverrides.abi && artifactOverrides.bytecode)
+        hre._artifactCache[name] = { contractName: name, ...artifactOverrides } as Artifact;
+      else hre._artifactCache[name] = hre.artifacts.readArtifactSync(name);
+    }
     const artifact = { ...hre._artifactCache[name], ...artifactOverrides };
 
     const deployed = async () => {

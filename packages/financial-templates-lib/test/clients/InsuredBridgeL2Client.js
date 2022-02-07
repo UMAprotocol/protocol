@@ -15,9 +15,16 @@ const { ZERO_ADDRESS } = require("@uma/common");
 
 // Helper contracts
 const chainId = 10;
-const BridgeDepositBox = getContract("BridgeDepositBoxMock");
 const Token = getContract("ExpandedERC20");
 const Timer = getContract("Timer");
+
+// Pull in contracts from contracts-node sourced from the across repo.
+const { getAbi, getBytecode } = require("@uma/contracts-node");
+
+const BridgeDepositBox = getContract("BridgeDepositBoxMock", {
+  abi: getAbi("BridgeDepositBoxMock"),
+  bytecode: getBytecode("BridgeDepositBoxMock"),
+});
 
 // Contract objects
 let depositBox, l1TokenAddress, l2Token, timer, client;
