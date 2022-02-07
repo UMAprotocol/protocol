@@ -195,6 +195,11 @@ Based on user and active request, propose a price for the request. The price pas
 Based on user and active request, dispute a price currently proposed for request.
 `disputePrice(): string`
 
+### settle
+
+Based on user and active request, settle a price available for the request. Can do this if flags.CanSettle is true.
+`settle(): string`
+
 ### switchOrAddChain
 
 If the user is on the wrong chain to interact with request, call this to get them on the right chain, or add the chain and switch.

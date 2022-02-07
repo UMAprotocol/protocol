@@ -99,6 +99,27 @@ export class Client {
       user.address
     );
   }
+  settle(): string {
+    const { checkTxIntervalSec } = this.store.read().chainConfig();
+    const inputRequest = this.store.read().inputRequest();
+    const user = this.store.read().user();
+    const request = this.store.read().request();
+    assert(user.address, "requires a user account address");
+    assert(user.signer, "requires a user signer");
+    assert(user.chainId === inputRequest.chainId, "On wrong chain");
+    assert(request.currency, "Request currency is unknown");
+    return this.sm.types.settle.create(
+      {
+        ...inputRequest,
+        confirmations: 1,
+        signer: user.signer,
+        account: user.address,
+        currency: request.currency,
+        checkTxIntervalSec,
+      },
+      user.address
+    );
+  }
   switchOrAddChain(): string {
     const inputRequest = this.store.read().inputRequest();
     const user = this.store.read().user();
