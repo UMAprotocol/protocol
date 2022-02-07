@@ -1,10 +1,11 @@
 import { JsonRpcSigner, BigNumber, Web3Provider, FallbackProvider } from "./ethers";
-import type { erc20, optimisticOracle } from "../services";
+import type { erc20, optimisticOracle, sortedRequests } from "../services";
 import type Multicall2 from "../../multicall2";
 import { Context, Memory } from "./statemachine";
 import {
   RequestState,
   RequestKey,
+  Request as RequestByEvent,
   RequestPrice,
   ProposePrice,
   DisputePrice,
@@ -25,6 +26,7 @@ export type ChainServices = {
 };
 
 export type Services = {
+  sortedRequests?: sortedRequests.SortedRequests;
   chains?: Record<number, Partial<ChainServices>>;
 };
 
@@ -134,6 +136,8 @@ export type Request = {
 
 export type OptimisticOracleEvent = RequestPrice | ProposePrice | DisputePrice | Settle;
 
+export type RequestIndex = RequestByEvent & { chainId: number };
+export type RequestIndexes = RequestIndex[];
 export type { RequestPrice, ProposePrice, DisputePrice, Settle };
 
 export type OptimisticOracle = {
@@ -150,10 +154,11 @@ export type Chain = {
 };
 
 export type State = Partial<{
-  error?: Error;
+  error: Error;
   inputs: Partial<Inputs>;
   chains: Record<number, Partial<Chain>>;
   config: Config;
   services: Services;
-  commands?: Record<string, Context<unknown, unknown & Memory>>;
+  commands: Record<string, Context<unknown, unknown & Memory>>;
+  descendingRequests: RequestIndexes;
 }>;

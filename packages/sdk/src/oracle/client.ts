@@ -123,6 +123,8 @@ export function factory(config: state.PartialConfig, emit: Emit): Client {
   const fullConfig = defaultConfig(config);
   store.write((write) => {
     write.config(fullConfig);
+    // maintains queryable ordered list of requests across all chains
+    write.sortedRequestsService();
     for (const chain of Object.values(fullConfig.chains)) {
       write.chains(chain.chainId).optimisticOracle().address(chain.optimisticOracleAddress);
       write.services(chain.chainId).provider(chain.rpcUrls);

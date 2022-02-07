@@ -34,6 +34,8 @@ export function Handlers(store: Store): GenericHandlers<Params, Memory> {
         if (latestBlock !== currentBlock) {
           // this pulls all events from current to latest block
           await update.oracleEvents(chainId, currentBlock, latestBlock);
+          // update our request table list with all known events
+          await update.sortedRequests(chainId);
           // reset our last block seen to the latest (end) block
           memory.lastBlock = latestBlock;
         }
