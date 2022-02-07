@@ -130,6 +130,7 @@ Commands on the client are currently:
 - proposePrice
 - disputePrice
 - switchOrAddChain
+- setActiveRequestByTransaction
 
 These functions are all syncronous and can throw errors, but on success will return a string which represents the id of the command issued.
 You can fetch a command through:
@@ -153,9 +154,11 @@ The oracle client is what manages state, emits state updates and lets you intera
 
 ### Contruction
 
-This uses a factory for construction.
+This uses a factory for construction.  
+See `oracle/types/state.PartialConfig` for your full configuration object.  
+See `oracle/types/state.State` for full application state object.
 
-`oracle.client.factory(config: oracle.types.state.Config, emit: oracle.services.store.Emit): Client`
+`oracle.client.factory(config: oracle.types.state.PartialConfig, emit: (state: oracle.types.state.State, prev: oracle.types.state.State) => void): Client`
 
 ### setUser
 
@@ -173,7 +176,7 @@ Clears the current user.
 
 Tell the client what request you want to interact with.
 
-`client.setActiveRequest(params: oracle.types.state.InputRequest): string`
+`client.setActiveRequest(params: {chainId:number, requester: string; identifier: string, timestamp: number, ancillaryData: string }): string`
 
 ### approveCollateral
 
@@ -198,6 +201,12 @@ If the user is on the wrong chain to interact with request, call this to get the
 This requires the `metadata` option on the config for each chain is set.
 
 `switchOrAddChain(): string`
+
+### setActiveRequestByTransaction
+
+Tell the client what request you want to interact with by specifying the transaction hash, chainId and optional eventIndex.
+
+`client.setActiveRequestByTransaction(params: { chainId: number; transactionHash: string; eventIndex?: number }): string`
 
 ## Types
 

@@ -47,8 +47,8 @@ export default class Read {
     assert(chainId, "ChainId is not set");
     return chainId;
   };
-  requestChain = (): Partial<Chain> => {
-    const chainId = this.requestChainId();
+  requestChain = (optionalChainId?: number): Partial<Chain> => {
+    const chainId = optionalChainId || this.requestChainId();
     const chain = this.state?.chains?.[chainId];
     assert(chain, "Chain not set");
     return chain;
@@ -58,8 +58,8 @@ export default class Read {
     assert(address, "User address is not set");
     return address;
   };
-  oracleAddress = (): string => {
-    const chain = this.requestChain();
+  oracleAddress = (optionalChainId?: number): string => {
+    const chain = this.requestChain(optionalChainId);
     const address = chain?.optimisticOracle?.address;
     assert(address, "Optimistic oracle address not set");
     return address;
@@ -125,8 +125,10 @@ export default class Read {
     assert(result, "Token not supported on chain " + chainId);
     return result;
   };
-  command = (id: string): Context<unknown, unknown & Memory> | undefined => {
-    return this.state?.commands?.[id];
+  command = (id: string): Context<unknown, unknown & Memory> => {
+    const result = this.state?.commands?.[id];
+    assert(result, "Unable to find command " + id);
+    return result;
   };
   tokenService = (chainId: number, address: string): Erc20 => {
     const result = this.state?.services?.chains?.[chainId]?.erc20s?.[address];

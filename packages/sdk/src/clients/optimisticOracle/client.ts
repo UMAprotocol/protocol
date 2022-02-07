@@ -1,6 +1,6 @@
-import { OptimisticOracleEthers, OptimisticOracleEthers__factory } from "@uma/contracts-node";
+import { OptimisticOracleEthers, OptimisticOracleEthers__factory, getOptimisticOracleAbi } from "@uma/contracts-node";
 import type { SignerOrProvider, GetEventType } from "../..";
-import { Event, BigNumberish } from "ethers";
+import { Event, BigNumberish, utils } from "ethers";
 
 export type Instance = OptimisticOracleEthers;
 const Factory = OptimisticOracleEthers__factory;
@@ -8,6 +8,8 @@ const Factory = OptimisticOracleEthers__factory;
 export function connect(address: string, provider: SignerOrProvider): Instance {
   return Factory.connect(address, provider);
 }
+
+export const contractInterface = new utils.Interface(getOptimisticOracleAbi());
 
 export type RequestPrice = GetEventType<Instance, "RequestPrice">;
 export type ProposePrice = GetEventType<Instance, "ProposePrice">;

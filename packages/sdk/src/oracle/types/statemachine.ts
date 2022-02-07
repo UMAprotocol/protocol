@@ -16,6 +16,7 @@ export enum ContextType {
   pollActiveUser = "pollActiveUser",
   fetchPastEvents = "fetchPastEvents",
   pollNewEvents = "pollNewEvents",
+  setActiveRequestByTransaction = "setActiveRequestByTransaction",
 }
 
 export type ContextProps = {

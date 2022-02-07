@@ -45,7 +45,7 @@ export function Handlers(store: Store): GenericHandlers<Params, Memory> {
         // we set multiplier to 1 so we dont grow the range on success, this tends to create more errors and slow down querying
         memory.state = rangeSuccessDescending({ ...rangeState, multiplier: 1 });
       } catch (err) {
-        memory.error = err;
+        memory.error = (err as unknown) as Error;
         // the provider threw an error so we will reduce our range by moving startblock closer to endblock next iteration
         memory.state = rangeFailureDescending(rangeState);
       }
