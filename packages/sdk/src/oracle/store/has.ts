@@ -1,5 +1,6 @@
 import Read from "./read";
-import { ignoreError } from "../utils";
+// we only ignore this specific error type explicitly emitted from reader class, meaning value is undefined
+import { ignoreExistenceError as ignoreError } from "../errors";
 import type { State } from "../types/state";
 
 // This class checks for existence for values you could potentially read. It mirrors the read interface but returns bools from functions.

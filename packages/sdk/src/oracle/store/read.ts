@@ -1,4 +1,3 @@
-import assert from "assert";
 import filter from "lodash/filter";
 
 import type {
@@ -20,6 +19,7 @@ import { TransactionConfirmer, requestId } from "../utils";
 import { OptimisticOracle } from "../services/optimisticOracle";
 import { Erc20 } from "../services/erc20";
 import { SortedRequests } from "../services/sortedRequests";
+import { assertExists as assert } from "../errors";
 
 // This is a typescript compatible way of pulling out values from the global state object, essentially
 // forming a basic API. Most calls are parameterless, requiring first setting state which determines, the
