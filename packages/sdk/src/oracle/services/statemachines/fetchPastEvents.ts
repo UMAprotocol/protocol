@@ -41,6 +41,13 @@ export function Handlers(store: Store): GenericHandlers<Params, Memory> {
         await update.oracleEvents(chainId, currentStart, currentEnd);
         // reprocess all known events and create a table of requests from it
         await update.sortedRequests(chainId);
+
+        // check if the user is viewing a request
+        if (store.has().inputRequest() && store.has().sortedRequestsService()) {
+          // try to update the active request by event data
+          await update.activeRequestFromEvents();
+        }
+
         // we signal that the current range was a success, now move currentStart, currentEnd accordingly
         // we set multiplier to 1 so we dont grow the range on success, this tends to create more errors and slow down querying
         memory.state = rangeSuccessDescending({ ...rangeState, multiplier: 1 });

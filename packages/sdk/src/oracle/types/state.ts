@@ -140,10 +140,20 @@ export type RequestIndex = RequestByEvent & { chainId: number };
 export type RequestIndexes = RequestIndex[];
 export type { RequestPrice, ProposePrice, DisputePrice, Settle };
 
+// combine all request data into a mega request object
+export type FullRequest = InputRequest &
+  // we cant assume any of these props will exist if we get event before query contract
+  Partial<Request> &
+  // take the more specific types from the Request type by omitting overlapping properties
+  Omit<
+    RequestIndex,
+    "proposedPrice" | "resolvedPrice" | "expirationTime" | "reward" | "finalFee" | "bond" | "customLiveness"
+  >;
+
 export type OptimisticOracle = {
   address: string;
   defaultLiveness: BigNumber;
-  requests: Record<string, Request>;
+  requests: Record<string, FullRequest>;
   events: OptimisticOracleEvent[];
 };
 
