@@ -42,11 +42,10 @@ export function Handlers(store: Store): GenericHandlers<Params, Memory> {
         // reprocess all known events and create a table of requests from it
         await update.sortedRequests(chainId);
 
-        try {
-          // we can just try to update the current active request, we dont care if it fails, active request might not be set
+        // check if the user is viewing a request
+        if (store.has().inputRequest() && store.has().sortedRequestsService()) {
+          // try to update the active request by event data
           await update.activeRequestFromEvents();
-        } catch (err) {
-          // do nothing
         }
 
         // we signal that the current range was a success, now move currentStart, currentEnd accordingly

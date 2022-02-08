@@ -1,5 +1,6 @@
 import Write from "./write";
 import Read from "./read";
+import Has from "./has";
 
 import Store, { Emit as GenericEmit } from "./store";
 import { State } from "../types/state";
@@ -7,7 +8,7 @@ import { State } from "../types/state";
 type WriteCallback = (write: Write, state: State) => void;
 type Emit = GenericEmit<State>;
 
-export { Write, Store, Read, Emit, WriteCallback };
+export { Write, Store, Read, Emit, WriteCallback, Has };
 
 /**
  * OracleStore. Wraps the store with a specific state shape and passes the Write client through to end user.
@@ -41,5 +42,13 @@ export default class OracleStore {
    */
   get = (): State => {
     return this.store.read();
+  };
+  /**
+   * has. Checks for existence. Mirrors the read interface, but instead of reading values returns true or false.
+   *
+   * @returns {Has}
+   */
+  has = (): Has => {
+    return new Has(this.store.read());
   };
 }
