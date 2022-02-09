@@ -24,3 +24,15 @@ export function ignoreExistenceError<X extends () => any>(call: X): ReturnType<X
     throw err;
   }
 }
+
+// same function but for async calls
+export async function ignoreExistenceErrorAsync<X extends () => any | Promise<any>>(
+  call: X
+): Promise<ReturnType<X> | undefined> {
+  try {
+    return await call();
+  } catch (err) {
+    if (err instanceof ExistenceError) return undefined;
+    throw err;
+  }
+}

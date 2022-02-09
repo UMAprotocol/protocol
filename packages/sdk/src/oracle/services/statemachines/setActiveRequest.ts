@@ -2,34 +2,32 @@ import { Update } from "../update";
 import Store from "../../store";
 import { Inputs } from "../../types/state";
 import { Handlers as GenericHandlers } from "../../types/statemachine";
+import { ignoreExistenceErrorAsync } from "../../errors";
 
 // required exports for state machine
 export type Params = Inputs["request"];
-export type Memory = { error?: Error };
+export type Memory = undefined;
 export function initMemory(): Memory {
-  return {};
+  return undefined;
 }
 export function Handlers(store: Store): GenericHandlers<Params, Memory> {
   const update = new Update(store);
   return {
-    async start(params: Params, memory: Memory) {
+    async start(params: Params) {
       store.write((write) => write.inputs().request(params));
 
-      try {
-        // these could fail at any point if user isnt set, but thats ok, state machine will catch error, and use can inspect.
-        // this will rerun when user is set.
-        await update.oracle();
-        // get current time of chain when switching request
-        await update.currentTime();
-        await update.request();
-        await update.collateralProps();
-        // order is important, these should be last because they depend on user being set
-        await update.userCollateralBalance();
-        await update.oracleAllowance();
-      } catch (err) {
-        // its ok to ignore these errors
-        memory.error = (err as unknown) as Error;
-      }
+      // we can ignore errors where reads fail, but all other errors will propogate
+      // this will rerun when user is set.
+      await ignoreExistenceErrorAsync(update.oracle);
+
+      // get current time of chain when switching request
+      await ignoreExistenceErrorAsync(update.currentTime);
+      await ignoreExistenceErrorAsync(update.request);
+      await ignoreExistenceErrorAsync(update.collateralProps);
+      // order is important, these should be last because they depend on user being set
+      await ignoreExistenceErrorAsync(update.userCollateralBalance);
+      await ignoreExistenceErrorAsync(update.oracleAllowance);
+
       return "done";
     },
   };
