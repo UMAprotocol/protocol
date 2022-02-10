@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.12.0](https://github.com/UMAprotocol/protocol/compare/@uma/optimistic-oracle@2.11.0...@uma/optimistic-oracle@2.12.0) (2022-02-10)
+
+### Features
+
+- **OO bot:** Moved log back to #infrasctructure ([#3801](https://github.com/UMAprotocol/protocol/issues/3801)) ([c470120](https://github.com/UMAprotocol/protocol/commit/c470120829eba5d24b62d3e848d516c7abbe0d0c))
+
 # [2.11.0](https://github.com/UMAprotocol/protocol/compare/@uma/optimistic-oracle@2.10.0...@uma/optimistic-oracle@2.11.0) (2022-01-31)
 
 ### Features

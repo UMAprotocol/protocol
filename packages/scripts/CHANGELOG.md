@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.8.0](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.7.1...@uma/scripts@1.8.0) (2022-02-10)
+
+### Features
+
+- Add resolveProposal script to retrieve all possible UMA bonds ([#3821](https://github.com/UMAprotocol/protocol/issues/3821)) ([4b2ff2f](https://github.com/UMAprotocol/protocol/commit/4b2ff2f312fa78c83b439fb4791433a70fb4f096))
+
 ## [1.7.1](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.7.0...@uma/scripts@1.7.1) (2022-01-31)
 
 ### Bug Fixes
