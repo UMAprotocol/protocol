@@ -10,14 +10,14 @@ export class Update {
     this.read = store.read;
     this.write = store.write;
   }
-  async all(): Promise<void> {
+  all = async (): Promise<void> => {
     await this.oracle();
     await this.request();
     await this.collateralProps();
     await this.userCollateralBalance();
     await this.oracleAllowance();
-  }
-  async request(params?: InputRequest): Promise<void> {
+  };
+  request = async (params?: InputRequest): Promise<void> => {
     const request = params || this.read().inputRequest();
     const chainId = request.chainId;
     const oo = this.read().oracleService(chainId);
@@ -42,57 +42,57 @@ export class Update {
         // we want to prioritize latest state pulled from contract.
         .request({ ...requestIndexData, ...request, ...contractRequest, state });
     });
-  }
-  async oracle(): Promise<void> {
+  };
+  oracle = async (): Promise<void> => {
     const chainId = this.read().requestChainId();
     const oo = this.read().oracleService();
     const { defaultLiveness } = await oo.getProps();
     this.write((write) => write.chains(chainId).optimisticOracle().defaultLiveness(defaultLiveness));
-  }
-  async userCollateralBalance(): Promise<void> {
+  };
+  userCollateralBalance = async (): Promise<void> => {
     const chainId = this.read().requestChainId();
     const account = this.read().userAddress();
     const token = this.read().collateralService();
     const result = await token.contract.balanceOf(account);
     this.write((write) => write.chains(chainId).erc20s(token.address).balance(account, result));
-  }
-  async collateralProps(): Promise<void> {
+  };
+  collateralProps = async (): Promise<void> => {
     const chainId = this.read().requestChainId();
     const token = this.read().collateralService();
     const props = await token.getProps();
     this.write((write) => write.chains(chainId).erc20s(token.address).props(props));
-  }
-  async oracleAllowance(): Promise<void> {
+  };
+  oracleAllowance = async (): Promise<void> => {
     const chainId = this.read().requestChainId();
     const account = this.read().userAddress();
     const oracleAddress = this.read().oracleAddress();
     const token = this.read().collateralService();
     const result = await token.contract.allowance(account, oracleAddress);
     this.write((write) => write.chains(chainId).erc20s(token.address).allowance(account, oracleAddress, result));
-  }
-  async balance(chainId: number, token: string, account: string): Promise<void> {
+  };
+  balance = async (chainId: number, token: string, account: string): Promise<void> => {
     const tokenService = this.read().tokenService(chainId, token);
     const result = await tokenService.contract.balanceOf(account);
     this.write((write) => write.chains(chainId).erc20s(token).balance(account, result));
-  }
-  async allowance(chainId: number, token: string, account: string, spender: string): Promise<void> {
+  };
+  allowance = async (chainId: number, token: string, account: string, spender: string): Promise<void> => {
     const tokenService = this.read().tokenService(chainId, token);
     const result = await tokenService.contract.allowance(account, spender);
     this.write((write) => write.chains(chainId).erc20s(token).allowance(account, spender, result));
-  }
-  async isConfirmed(chainId: number, hash: string, confirmations: number): Promise<boolean | TransactionReceipt> {
+  };
+  isConfirmed = async (chainId: number, hash: string, confirmations: number): Promise<boolean | TransactionReceipt> => {
     const txService = this.read().transactionService(chainId);
     return txService.isConfirmed(hash, confirmations);
-  }
+  };
   // this could use provider blocktime, but the oracle has a handle to get time also
-  async currentTime(optionalChainId?: number): Promise<void> {
+  currentTime = async (optionalChainId?: number): Promise<void> => {
     const chainId = optionalChainId || this.read().requestChainId();
     const oo = this.read().oracleService(chainId);
     const currentTime = await oo.getCurrentTime();
     this.write((write) => write.chains(chainId).currentTime(currentTime));
-  }
+  };
   // update new events from this range query, will accumulate new events
-  async oracleEvents(chainId: number, startBlock = 0, endBlock?: number): Promise<void> {
+  oracleEvents = async (chainId: number, startBlock = 0, endBlock?: number): Promise<void> => {
     const provider = this.read().provider(chainId);
     const oracle = this.read().oracleService(chainId);
     endBlock = endBlock || (await provider.getBlockNumber());
@@ -104,9 +104,9 @@ export class Update {
           .event(event as OptimisticOracleEvent);
       });
     });
-  }
+  };
   // takes all known events, decodes them into requests and puts them into a sorted table. then updates the sorted list.
-  sortedRequests(chainId: number): void {
+  sortedRequests = (chainId: number): void => {
     // get all known events
     const events = this.read().oracleEvents(chainId);
     // this is expensive, it has to run through all events every update. consider optimizing after proven detrimental.
@@ -123,10 +123,10 @@ export class Update {
     this.write((w) => {
       w.descendingRequests(descendingRequests);
     });
-  }
+  };
   // this updates the current active request object used in the details page, as new properties might come in from events
   // current request needs access to things like transation hash, only available through events.
-  activeRequestFromEvents(params?: InputRequest): void {
+  activeRequestFromEvents = (params?: InputRequest): void => {
     const request = params || this.read().inputRequest();
     const chainId = request.chainId;
     // pull in request data generated from events
@@ -159,5 +159,5 @@ export class Update {
     this.write((write) => {
       write.chains(chainId).optimisticOracle().request(update);
     });
-  }
+  };
 }

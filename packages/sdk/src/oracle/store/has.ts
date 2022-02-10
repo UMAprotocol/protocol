@@ -23,4 +23,13 @@ export default class Has {
   sortedRequestsService = (): boolean => {
     return exists(ignoreExistenceError(this.read.sortedRequestsService));
   };
+  requestChainId = (): boolean => {
+    return exists(ignoreExistenceError(this.read.requestChainId));
+  };
+  userAddress = (): boolean => {
+    return exists(ignoreExistenceError(this.read.userAddress));
+  };
+  request = (): boolean => {
+    return exists(ignoreExistenceError(this.read.request));
+  };
 }

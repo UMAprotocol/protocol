@@ -9,6 +9,7 @@ import { Handlers as GenericHandlers } from "../../types/statemachine";
 import { ContextClient } from "./utils";
 import { Update } from "../update";
 import { rangeStart, rangeSuccessDescending, rangeFailureDescending, RangeState } from "../../utils";
+import { ignoreExistenceErrorAsync } from "../../errors";
 
 export type Params = {
   chainId: number;
@@ -42,11 +43,8 @@ export function Handlers(store: Store): GenericHandlers<Params, Memory> {
         // reprocess all known events and create a table of requests from it
         await update.sortedRequests(chainId);
 
-        // check if the user is viewing a request
-        if (store.has().inputRequest() && store.has().sortedRequestsService()) {
-          // try to update the active request by event data
-          await update.activeRequestFromEvents();
-        }
+        // try to update the active request by event data
+        await ignoreExistenceErrorAsync(update.activeRequestFromEvents);
 
         // we signal that the current range was a success, now move currentStart, currentEnd accordingly
         // we set multiplier to 1 so we dont grow the range on success, this tends to create more errors and slow down querying

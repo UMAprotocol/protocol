@@ -39,4 +39,26 @@ describe("Oracle Errors", function () {
     }
     assert.equal(plan, 1);
   });
+  test("ignoreExistenceErrorAsync", async function () {
+    const a = await errors.ignoreExistenceErrorAsync(async () => {
+      throw new errors.ExistenceError();
+    });
+    assert.equal(a, undefined);
+    const b = await errors.ignoreExistenceErrorAsync(async () => 1);
+    assert.equal(b, 1);
+
+    const c = await errors.ignoreExistenceErrorAsync(() => 1);
+    assert.equal(c, 1);
+
+    let plan = 0;
+    try {
+      await errors.ignoreExistenceErrorAsync(async () => {
+        throw new Error("dont ignore me");
+      });
+    } catch (err) {
+      assert.ok(err);
+      plan++;
+    }
+    assert.equal(plan, 1);
+  });
 });

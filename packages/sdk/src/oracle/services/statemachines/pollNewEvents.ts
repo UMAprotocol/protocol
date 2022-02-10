@@ -5,6 +5,7 @@ import Store from "../../store";
 import { Handlers as GenericHandlers } from "../../types/statemachine";
 import { ContextClient } from "./utils";
 import { Update } from "../update";
+import { ignoreExistenceErrorAsync } from "../../errors";
 
 export type Params = {
   chainId: number;
@@ -38,12 +39,8 @@ export function Handlers(store: Store): GenericHandlers<Params, Memory> {
           // update our request table list with all known events
           await update.sortedRequests(chainId);
 
-          try {
-            // we can just try to update the current active request, we dont care if it fails, active request might not be set
-            await update.activeRequestFromEvents();
-          } catch (err) {
-            // do nothing
-          }
+          // we can just try to update the current active request, we dont care if it fails, active request might not be set
+          await ignoreExistenceErrorAsync(update.activeRequestFromEvents);
 
           // reset our last block seen to the latest (end) block
           memory.lastBlock = latestBlock;
@@ -51,7 +48,7 @@ export function Handlers(store: Store): GenericHandlers<Params, Memory> {
           memory.iterations++;
         }
       } catch (err) {
-        // store an error for an iteration if we need to debug
+        // store an error for an iteration if we need to debug. we want to keep polling though.
         memory.error = (err as unknown) as Error;
       }
 

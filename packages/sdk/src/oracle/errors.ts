@@ -16,9 +16,19 @@ export function assertExists<T>(condition: T, message = ""): asserts condition i
 }
 
 // Ignore only existence errors. If thrown properly this can be used to convert a non existent value to undefined.
-export function ignoreExistenceError<X extends () => any>(call: X): ReturnType<X> | undefined {
+export function ignoreExistenceError<X>(call: () => X): X | undefined {
   try {
     return call();
+  } catch (err) {
+    if (err instanceof ExistenceError) return undefined;
+    throw err;
+  }
+}
+
+// same function but for async calls
+export async function ignoreExistenceErrorAsync<X>(call: () => X): Promise<X | undefined> {
+  try {
+    return await call();
   } catch (err) {
     if (err instanceof ExistenceError) return undefined;
     throw err;

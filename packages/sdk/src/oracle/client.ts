@@ -11,7 +11,12 @@ import { defaultConfig } from "./utils";
 
 export class Client {
   private intervalStarted = false;
-  constructor(public readonly store: Store, public readonly update: Update, public readonly sm: StateMachine) {}
+  constructor(
+    public readonly store: Store,
+    public readonly update: Update,
+    public readonly sm: StateMachine,
+    public readonly poller: StateMachine
+  ) {}
   setUser(params: Partial<User>): string {
     const address = params.address && ethers.utils.getAddress(params.address);
     return this.sm.types.setUser.create({ ...params, address });
@@ -132,12 +137,15 @@ export class Client {
     );
   }
   // runs statemachine step loop pretty fast by default.
-  startInterval(delayMs = 10): void {
+  startInterval(delayMs = 1): void {
     assert(!this.intervalStarted, "Interval already started, try stopping first");
     this.intervalStarted = true;
     loop(async () => {
       assert(this.intervalStarted, "Interval Stopped");
+      // it turns out since these 2 state machines share the same immer state, they need to be run serially and
+      // cant be run concurrently or you get wierd state oscillations. For now keep them in the same timing loop.
       await this.sm.tick();
+      await this.poller.tick();
     }, delayMs).catch((err) => {
       console.error(err);
       this.intervalStarted = false;
@@ -165,7 +173,8 @@ export function factory(config: state.PartialConfig, emit: Emit): Client {
     }
   });
   const update = new Update(store);
-  // we can create "threads" by introducing new state machine queues, the first one is user actions
+
+  // this first state machine is for user actions
   const sm = new StateMachine(store);
   // this one is system actions used for long running commands independent of the user
   const poller = new StateMachine(store);
@@ -182,12 +191,5 @@ export function factory(config: state.PartialConfig, emit: Emit): Client {
   // polls user for balances/approvals on the current chain, in case it changes external to app
   poller.types.pollActiveUser.create(undefined, "poller");
 
-  // poller statemachine runs on its own loop
-  loop(async () => {
-    return poller.tick();
-  }, 10).catch((err) => {
-    console.error("poller error", err);
-    store.write((w) => w.error(err));
-  });
-  return new Client(store, update, sm);
+  return new Client(store, update, sm, poller);
 }

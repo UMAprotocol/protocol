@@ -1,6 +1,7 @@
 import assert from "assert";
 import { ethers } from "ethers";
 import sortedLastIndexBy from "lodash/sortedLastIndexBy";
+import { ignoreExistenceError } from "./errors";
 // this request id does not include chain id
 export { requestId } from "../clients/optimisticOracle";
 
@@ -21,14 +22,6 @@ import { Read } from "./store";
 
 export const getAddress = ethers.utils.getAddress;
 export const hexValue = ethers.utils.hexValue;
-
-export function ignoreError<X extends () => any>(call: X): ReturnType<X> | undefined {
-  try {
-    return call();
-  } catch (err) {
-    return undefined;
-  }
-}
 
 export function initFlags(): Flags {
   return {
@@ -56,17 +49,17 @@ export function getFlags(state: State): Record<Flag, boolean> {
   const read = new Read(state);
   const flags = initFlags();
 
-  const signer = ignoreError(read.signer);
+  const signer = ignoreExistenceError(read.signer);
   flags[Flag.MissingUser] = signer ? false : true;
 
-  const inputRequest = ignoreError(read.inputRequest);
+  const inputRequest = ignoreExistenceError(read.inputRequest);
   flags[Flag.MissingRequest] = inputRequest ? false : true;
 
-  const userChainId = ignoreError(read.userChainId);
-  const requestChainId = ignoreError(read.requestChainId);
+  const userChainId = ignoreExistenceError(read.userChainId);
+  const requestChainId = ignoreExistenceError(read.requestChainId);
   flags[Flag.WrongChain] = userChainId && requestChainId ? userChainId !== requestChainId : false;
 
-  const request = ignoreError(read.request);
+  const request = ignoreExistenceError(read.request);
 
   // these are a bit redundant with request state, but just an alternate way to see current request state
   flags[Flag.CanPropose] = request?.state === RequestState.Requested;
@@ -77,14 +70,14 @@ export function getFlags(state: State): Record<Flag, boolean> {
 
   if (request && request.bond && request.finalFee) {
     const totalBond = request.bond.add(request.finalFee);
-    const userCollateralBalance = ignoreError(read.userCollateralBalance);
-    const userCollateralAllowance = ignoreError(read.userCollateralAllowance);
+    const userCollateralBalance = ignoreExistenceError(read.userCollateralBalance);
+    const userCollateralAllowance = ignoreExistenceError(read.userCollateralAllowance);
     flags[Flag.InsufficientBalance] = userCollateralBalance ? userCollateralBalance.lt(totalBond) : false;
     flags[Flag.InsufficientApproval] = userCollateralAllowance ? userCollateralAllowance.lt(totalBond) : false;
   }
 
-  const userAddress = ignoreError(read.userAddress);
-  const commands = ignoreError(() => read.filterCommands({ done: false, user: userAddress }));
+  const userAddress = ignoreExistenceError(read.userAddress);
+  const commands = ignoreExistenceError(() => read.filterCommands({ done: false, user: userAddress }));
   if (userAddress && commands) {
     commands.forEach((command) => {
       if (!flags[Flag.ProposalTxInProgress] && command.type === ContextType.proposePrice) {
