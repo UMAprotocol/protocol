@@ -48,10 +48,11 @@ export class DiscordTransport extends Transport {
 
       // Send webhook request to each of the configured webhooks upstream. This posts the messages on Discord. Execute
       // these sequentially with a soft delay of 2 seconds between calls to avoid hitting the discord rate limit.
-      for (const webHook of webHooks) {
-        await axios.post(webHook, body);
-        await delay(2);
-      }
+      if (webHooks.length)
+        for (const webHook of webHooks) {
+          await axios.post(webHook, body);
+          await delay(2);
+        }
     } catch (error) {
       console.error("Discord error", error);
     }
