@@ -34,6 +34,10 @@ export class OptimisticOracle {
     const contract = optimisticOracle.connect(this.address, signer);
     return contract.proposePrice(...args);
   }
+  async settle(signer: Signer, ...args: Parameters<optimisticOracle.Instance["settle"]>): Promise<TransactionResponse> {
+    const contract = optimisticOracle.connect(this.address, signer);
+    return contract.settle(...args);
+  }
   async getProps(): Promise<Props> {
     return {
       defaultLiveness: await this.contract.defaultLiveness(),

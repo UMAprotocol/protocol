@@ -15,6 +15,7 @@ import * as pollActiveUser from "./pollActiveUser";
 import * as fetchPastEvents from "./fetchPastEvents";
 import * as pollNewEvents from "./pollNewEvents";
 import * as setActiveRequestByTransaction from "./setActiveRequestByTransaction";
+import * as settle from "./settle";
 
 /**
  * StateMachine. This class will be used to handle all change requests by the user, including setting state which
@@ -51,6 +52,7 @@ export class StateMachine {
       setActiveRequestByTransaction.Params,
       setActiveRequestByTransaction.Memory
     >;
+    [ContextType.settle]: ContextManager<settle.Params, settle.Memory>;
   };
   constructor(private store: Store) {
     // need to initizlie state types here manually for each new context type
@@ -128,6 +130,12 @@ export class StateMachine {
         ContextType.setActiveRequestByTransaction,
         setActiveRequestByTransaction.Handlers(store),
         setActiveRequestByTransaction.initMemory,
+        this.handleCreate
+      ),
+      [ContextType.settle]: new ContextManager<settle.Params, settle.Memory>(
+        ContextType.settle,
+        settle.Handlers(store),
+        settle.initMemory,
         this.handleCreate
       ),
     };
@@ -250,6 +258,13 @@ export class StateMachine {
         case ContextType.setActiveRequestByTransaction: {
           next = await this.types[context.type].step(
             (context as unknown) as Context<setActiveRequestByTransaction.Params, setActiveRequestByTransaction.Memory>,
+            now
+          );
+          break;
+        }
+        case ContextType.settle: {
+          next = await this.types[context.type].step(
+            (context as unknown) as Context<settle.Params, settle.Memory>,
             now
           );
           break;

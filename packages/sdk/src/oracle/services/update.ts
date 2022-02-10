@@ -21,20 +21,26 @@ export class Update {
     const request = params || this.read().inputRequest();
     const chainId = request.chainId;
     const oo = this.read().oracleService(chainId);
-    const fullRequest = await oo.getRequest(
+    // pull in data from contract on chain
+    const contractRequest = await oo.getRequest(
       request.requester,
       request.identifier,
       request.timestamp,
       request.ancillaryData
     );
+    // pull in latest request state
     const state = await oo.getState(request.requester, request.identifier, request.timestamp, request.ancillaryData);
+    // pull in request data generated from events
+    const requestIndexData = this.read().sortedRequestsService().getByRequest(request);
     this.write((write) => {
       // create the erc20 service to handle currency
-      write.services(chainId).erc20s(fullRequest.currency);
+      write.services(chainId).erc20s(contractRequest.currency);
       write
         .chains(chainId)
         .optimisticOracle()
-        .request(request, { ...fullRequest, state });
+        // update request object with all the data we have about it. order is important,
+        // we want to prioritize latest state pulled from contract.
+        .request({ ...requestIndexData, ...request, ...contractRequest, state });
     });
   }
   async oracle(): Promise<void> {
@@ -85,6 +91,7 @@ export class Update {
     const currentTime = await oo.getCurrentTime();
     this.write((write) => write.chains(chainId).currentTime(currentTime));
   }
+  // update new events from this range query, will accumulate new events
   async oracleEvents(chainId: number, startBlock = 0, endBlock?: number): Promise<void> {
     const provider = this.read().provider(chainId);
     const oracle = this.read().oracleService(chainId);
@@ -98,22 +105,59 @@ export class Update {
       });
     });
   }
-  async sortedRequests(chainId: number): Promise<void> {
+  // takes all known events, decodes them into requests and puts them into a sorted table. then updates the sorted list.
+  sortedRequests(chainId: number): void {
     // get all known events
     const events = this.read().oracleEvents(chainId);
     // this is expensive, it has to run through all events every update. consider optimizing after proven detrimental.
     const { requests = {} } = optimisticOracle.getEventState(events);
     const sortedRequestsService = this.read().sortedRequestsService();
-    Object.entries(requests).forEach(([key, value]) => {
+    Object.values(requests).forEach((value) => {
       // chains can have colliding keys ( mainly testnet forks), so we always need to append chain to to keep key unique across chains otherwise
       // collisions will cause overwrites, removing ability to list identical requests across chains.
-      sortedRequestsService.set(key + "!" + chainId, { ...value, chainId });
+      sortedRequestsService.setByRequest({ ...value, chainId });
     });
     // query all known requests and update our state with the entire list.
     // this is expensive, consider optimizing after proven detrimental.
-    const descendingRequests = await sortedRequestsService.descending();
+    const descendingRequests = sortedRequestsService.descending();
     this.write((w) => {
       w.descendingRequests(descendingRequests);
+    });
+  }
+  // this updates the current active request object used in the details page, as new properties might come in from events
+  // current request needs access to things like transation hash, only available through events.
+  activeRequestFromEvents(params?: InputRequest): void {
+    const request = params || this.read().inputRequest();
+    const chainId = request.chainId;
+    // pull in request data generated from events
+    const requestIndexData = this.read().sortedRequestsService().getByRequest(request);
+    // we really only care about a handful of props from event based requests. We also dont want to override
+    // any properties that might overlap with the data queried from the contract.
+    const {
+      requestTx,
+      proposeTx,
+      disputeTx,
+      settleTx,
+      requestBlockNumber,
+      proposeBlockNumber,
+      disputeBlockNumber,
+      settleBlockNumber,
+    } = requestIndexData;
+
+    const update = {
+      ...request,
+      requestTx,
+      proposeTx,
+      disputeTx,
+      settleTx,
+      requestBlockNumber,
+      proposeBlockNumber,
+      disputeBlockNumber,
+      settleBlockNumber,
+    };
+
+    this.write((write) => {
+      write.chains(chainId).optimisticOracle().request(update);
     });
   }
 }

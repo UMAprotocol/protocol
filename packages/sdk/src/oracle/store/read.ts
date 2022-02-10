@@ -1,24 +1,25 @@
-import assert from "assert";
 import filter from "lodash/filter";
 
 import type {
   State,
   Chain,
-  Inputs,
-  Request,
+  InputRequest,
   Erc20Props,
   ChainConfig,
   Context,
   Memory,
   User,
   RequestIndexes,
+  RequestIndex,
   OptimisticOracleEvent,
+  FullRequest,
 } from "../types/state";
 import type { JsonRpcSigner, BigNumber, Provider } from "../types/ethers";
 import { TransactionConfirmer, requestId } from "../utils";
 import { OptimisticOracle } from "../services/optimisticOracle";
 import { Erc20 } from "../services/erc20";
 import { SortedRequests } from "../services/sortedRequests";
+import { assertExists } from "../errors";
 
 // This is a typescript compatible way of pulling out values from the global state object, essentially
 // forming a basic API. Most calls are parameterless, requiring first setting state which determines, the
@@ -29,115 +30,119 @@ export default class Read {
   chainConfig = (optionalChainId?: number): ChainConfig => {
     const chainId = optionalChainId || this.requestChainId();
     const config = this.state?.config?.chains?.[chainId];
-    assert(config, "No config set for chain: " + chainId);
+    assertExists(config, "No config set for chain: " + chainId);
     return config;
   };
   requestChainId = (): number => {
     const chainId = this.state?.inputs?.request?.chainId;
-    assert(chainId, "ChainId is not set on request");
+    assertExists(chainId, "ChainId is not set on request");
     return chainId;
   };
   user = (): Partial<User> => {
     const result = this.state?.inputs?.user;
-    assert(result, "user not set");
+    assertExists(result, "user not set");
     return result;
   };
   userChainId = (): number => {
     const chainId = this.state?.inputs?.user?.chainId;
-    assert(chainId, "ChainId is not set");
+    assertExists(chainId, "ChainId is not set");
     return chainId;
   };
   requestChain = (optionalChainId?: number): Partial<Chain> => {
     const chainId = optionalChainId || this.requestChainId();
     const chain = this.state?.chains?.[chainId];
-    assert(chain, "Chain not set");
+    assertExists(chain, "Chain not set");
     return chain;
   };
   userAddress = (): string => {
     const address = this.state?.inputs?.user?.address;
-    assert(address, "User address is not set");
+    assertExists(address, "User address is not set");
     return address;
   };
   oracleAddress = (optionalChainId?: number): string => {
     const chain = this.requestChain(optionalChainId);
     const address = chain?.optimisticOracle?.address;
-    assert(address, "Optimistic oracle address not set");
+    assertExists(address, "Optimistic oracle address not set");
     return address;
   };
   signer = (): JsonRpcSigner => {
     const signer = this.state?.inputs?.user?.signer;
-    assert(signer, "Signer is not set");
+    assertExists(signer, "Signer is not set");
     return signer;
   };
-  inputRequest = (): Inputs["request"] => {
+  inputRequest = (): InputRequest => {
     const input = this.state?.inputs?.request;
-    assert(input, "Input request is not set");
+    assertExists(input, "Input request is not set");
     return input;
   };
   defaultLiveness = (): BigNumber => {
     const chain = this.requestChain();
     const liveness = chain?.optimisticOracle?.defaultLiveness;
-    assert(liveness, "Optimistic oracle defaultLiveness set");
+    assertExists(liveness, "Optimistic oracle defaultLiveness set");
     return liveness;
   };
-  request = (): Request => {
+  request = (): FullRequest => {
     const chain = this.requestChain();
     const input = this.inputRequest();
     const id = requestId(input);
     const request = chain?.optimisticOracle?.requests?.[id];
-    assert(request, "Request has not been fetched");
+    assertExists(request, "Request has not been fetched");
     return request;
   };
   collateralProps = (): Partial<Erc20Props> => {
     const request = this.request();
+    assertExists(request.currency, "Request currency not set");
     const chain = this.requestChain();
     const props = chain.erc20s?.[request.currency]?.props;
-    assert(props, "Props not set on collateral token");
+    assertExists(props, "Props not set on collateral token");
     return props;
   };
   userCollateralBalance = (): BigNumber => {
     const request = this.request();
+    assertExists(request.currency, "Request currency not set");
     const chain = this.requestChain();
     const user = this.userAddress();
     const balance = chain?.erc20s?.[request.currency]?.balances?.[user];
-    assert(balance, "Balance not set on collateral token for user");
+    assertExists(balance, "Balance not set on collateral token for user");
     return balance;
   };
   userCollateralAllowance = (): BigNumber => {
     const request = this.request();
+    assertExists(request.currency, "Request currency not set");
     const chain = this.requestChain();
     const user = this.userAddress();
     const oracle = this.oracleAddress();
     const allowance = chain?.erc20s?.[request.currency]?.allowances?.[oracle]?.[user];
-    assert(allowance, "Allowance not set on user on collateral token for oracle");
+    assertExists(allowance, "Allowance not set on user on collateral token for oracle");
     return allowance;
   };
   oracleService = (optionalChainId?: number): OptimisticOracle => {
     const chainId = optionalChainId || this.requestChainId();
     const result = this.state?.services?.chains?.[chainId]?.optimisticOracle;
-    assert(result, "Optimistic Oracle Not found on chain " + chainId);
+    assertExists(result, "Optimistic Oracle Not found on chain " + chainId);
     return result;
   };
   collateralService = (): Erc20 => {
     const chainId = this.requestChainId();
     const request = this.request();
+    assertExists(request.currency, "Request currency not set");
     const result = this.state?.services?.chains?.[chainId]?.erc20s?.[request.currency];
-    assert(result, "Token not supported on chain " + chainId);
+    assertExists(result, "Token not supported on chain " + chainId);
     return result;
   };
   command = (id: string): Context<unknown, unknown & Memory> => {
     const result = this.state?.commands?.[id];
-    assert(result, "Unable to find command " + id);
+    assertExists(result, "Unable to find command " + id);
     return result;
   };
   tokenService = (chainId: number, address: string): Erc20 => {
     const result = this.state?.services?.chains?.[chainId]?.erc20s?.[address];
-    assert(result, "Token service not found: " + [chainId, address].join("."));
+    assertExists(result, "Token service not found: " + [chainId, address].join("."));
     return result;
   };
   provider = (chainId: number): Provider => {
     const result = this.state?.services?.chains?.[chainId]?.provider;
-    assert(result, "Provider not found on chainid: " + chainId);
+    assertExists(result, "Provider not found on chainid: " + chainId);
     return result;
   };
   transactionService = (chainId: number): TransactionConfirmer => {
@@ -153,19 +158,19 @@ export default class Read {
   chain = (optionalChainId?: number): Partial<Chain> => {
     const chainId = optionalChainId || this.requestChainId();
     const chain = this.state?.chains?.[chainId];
-    assert(chain, "No chain for chainId: " + chainId);
+    assertExists(chain, "No chain for chainId: " + chainId);
     return chain;
   };
   currentTime = (optionalChainId?: number): BigNumber => {
     const chainId = optionalChainId || this.requestChainId();
     const chain = this.chain(chainId);
     const time = chain?.currentTime;
-    assert(time, "Current time not available on chain: " + chainId);
+    assertExists(time, "Current time not available on chain: " + chainId);
     return time;
   };
   sortedRequestsService = (): SortedRequests => {
     const result = this.state?.services?.sortedRequests;
-    assert(result, "Sorted request service not set");
+    assertExists(result, "Sorted request service not set");
     return result;
   };
   oracleEvents = (chainId: number): OptimisticOracleEvent[] => {
@@ -177,5 +182,12 @@ export default class Read {
   };
   descendingRequests = (): RequestIndexes => {
     return this.state.descendingRequests || [];
+  };
+  findRequest = (query: InputRequest): RequestIndex | undefined => {
+    const sortedRequestService = this.sortedRequestsService();
+    return sortedRequestService.getByRequest(query);
+  };
+  filterRequests = (query: Partial<RequestIndex>): RequestIndexes => {
+    return filter(this.descendingRequests(), query);
   };
 }

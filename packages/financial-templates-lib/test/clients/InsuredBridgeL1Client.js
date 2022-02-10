@@ -8,8 +8,6 @@ const winston = require("winston");
 const { assert } = require("chai");
 const chainId = 10;
 const Messenger = getContract("MessengerMock");
-const BridgeAdmin = getContract("BridgeAdmin");
-const BridgePool = getContract("BridgePool");
 const Finder = getContract("Finder");
 const IdentifierWhitelist = getContract("IdentifierWhitelist");
 const AddressWhitelist = getContract("AddressWhitelist");
@@ -18,7 +16,16 @@ const Store = getContract("Store");
 const ERC20 = getContract("ExpandedERC20");
 const Timer = getContract("Timer");
 const MockOracle = getContract("MockOracleAncillary");
-const RateModelStore = getContract("RateModelStore");
+
+// Pull in contracts from contracts-node sourced from the across repo.
+const { getAbi, getBytecode } = require("@uma/contracts-node");
+
+const RateModelStore = getContract("RateModelStore", {
+  abi: getAbi("RateModelStore"),
+  bytecode: getBytecode("RateModelStore"),
+});
+const BridgePool = getContract("BridgePool", { abi: getAbi("BridgePool"), bytecode: getBytecode("BridgePool") });
+const BridgeAdmin = getContract("BridgeAdmin", { abi: getAbi("BridgeAdmin"), bytecode: getBytecode("BridgeAdmin") });
 
 // Client to test
 const {
