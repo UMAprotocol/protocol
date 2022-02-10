@@ -3,6 +3,24 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.22.0](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.21.0...@uma/sdk@0.22.0) (2022-02-10)
+
+### Bug Fixes
+
+- **sdk:** expose more across pool values and add badger/wbtc to e2e tests ([#3814](https://github.com/UMAprotocol/protocol/issues/3814)) ([d0e2352](https://github.com/UMAprotocol/protocol/commit/d0e2352143a644f9e878d7951e0432fc8ff03e55))
+- **sdk:** fix can settle flag to include expied state ([#3810](https://github.com/UMAprotocol/protocol/issues/3810)) ([254c08c](https://github.com/UMAprotocol/protocol/commit/254c08cf59d86fc258ebc7e81a2ea169c6f65118))
+- **sdk:** fix properly unqueuing commands from statemachine queue ([#3813](https://github.com/UMAprotocol/protocol/issues/3813)) ([f363bc8](https://github.com/UMAprotocol/protocol/commit/f363bc857ddf2ac174b63404cdf2d36154baeea2))
+
+### Features
+
+- **sdk:** add oo settle ability ([#3825](https://github.com/UMAprotocol/protocol/issues/3825)) ([623fb93](https://github.com/UMAprotocol/protocol/commit/623fb938b712ee86addcf38ecdc6a9f9a6d24604))
+- **sdk:** use events to populate transaction/block numbers for state ([#3822](https://github.com/UMAprotocol/protocol/issues/3822)) ([baa9d9b](https://github.com/UMAprotocol/protocol/commit/baa9d9b6b3a032b8f7fba03fb26825dd2ed27c00))
+- remove across contracts ([#3775](https://github.com/UMAprotocol/protocol/issues/3775)) ([84c053b](https://github.com/UMAprotocol/protocol/commit/84c053b4d9e758f0f5c21886cafa063427843f2b))
+- **sdk:** add request list populated by oo events from newest to oldest ([#3818](https://github.com/UMAprotocol/protocol/issues/3818)) ([34afe1c](https://github.com/UMAprotocol/protocol/commit/34afe1cca1eeb9a6531b9832f0864582d33f9043))
+- **sdk:** allow oo client to fetch request by transaction and option… ([#3819](https://github.com/UMAprotocol/protocol/issues/3819)) ([5cd7e7b](https://github.com/UMAprotocol/protocol/commit/5cd7e7b845e6d7106332767d703c394e16d08e63))
+- **sdk:** poll user balance and approval for oo client ([#3815](https://github.com/UMAprotocol/protocol/issues/3815)) ([99850d3](https://github.com/UMAprotocol/protocol/commit/99850d3b77820dd89da62334c5f42e9d6be818e4))
+- **sdk:** request list checker using events ([#3812](https://github.com/UMAprotocol/protocol/issues/3812)) ([9319b11](https://github.com/UMAprotocol/protocol/commit/9319b11ecbca3c46fdbed4cb0967c8975f826d50))
+
 # [0.21.0](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.20.0...@uma/sdk@0.21.0) (2022-01-31)
 
 ### Bug Fixes

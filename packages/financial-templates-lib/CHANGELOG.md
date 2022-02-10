@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.24.0](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.23.0...@uma/financial-templates-lib@2.24.0) (2022-02-10)
+
+### Features
+
+- Add resolveProposal script to retrieve all possible UMA bonds ([#3821](https://github.com/UMAprotocol/protocol/issues/3821)) ([4b2ff2f](https://github.com/UMAprotocol/protocol/commit/4b2ff2f312fa78c83b439fb4791433a70fb4f096))
+- remove across contracts ([#3775](https://github.com/UMAprotocol/protocol/issues/3775)) ([84c053b](https://github.com/UMAprotocol/protocol/commit/84c053b4d9e758f0f5c21886cafa063427843f2b))
+- **Discord-transport:** Only send discord logs if the message contains mrkdwn ([#3817](https://github.com/UMAprotocol/protocol/issues/3817)) ([f896c89](https://github.com/UMAprotocol/protocol/commit/f896c8902e592cf35afb6ab0a493077e4629db81))
+- **Discord-Transport:** Add ability to send to multiple discord channels at once and refine default log format ([#3811](https://github.com/UMAprotocol/protocol/issues/3811)) ([dd6cbd7](https://github.com/UMAprotocol/protocol/commit/dd6cbd749644e228ef0179ea0a43f6f91d358b44))
+- **OO-proposer:** make chainId a public varible to enable the proposer to correctly pull the value ([#3807](https://github.com/UMAprotocol/protocol/issues/3807)) ([bbcb5db](https://github.com/UMAprotocol/protocol/commit/bbcb5dbb433b9fde436dc18fc2e48b28e5e20aec))
+- **transports:** Modify discord transport config ([#3800](https://github.com/UMAprotocol/protocol/issues/3800)) ([f169c8f](https://github.com/UMAprotocol/protocol/commit/f169c8f1442e0e2ebb8b7efadf505eea9bfed7da))
+
 # [2.23.0](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.22.2...@uma/financial-templates-lib@2.23.0) (2022-01-31)
 
 ### Bug Fixes

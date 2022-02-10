@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.18.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.17.0...@uma/common@2.18.0) (2022-02-10)
+
+### Features
+
+- remove across contracts ([#3775](https://github.com/UMAprotocol/protocol/issues/3775)) ([84c053b](https://github.com/UMAprotocol/protocol/commit/84c053b4d9e758f0f5c21886cafa063427843f2b))
+
 # [2.17.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.16.0...@uma/common@2.17.0) (2022-01-20)
 
 ### Bug Fixes
