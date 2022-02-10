@@ -4,7 +4,7 @@ import Web3 from "web3";
 const { toWei, toBN, toChecksumAddress, randomHex } = Web3.utils;
 const toBNWei = (number: string | number) => toBN(toWei(number.toString()).toString());
 
-const { ZERO_ADDRESS, createFormatFunction } = require("@uma/common");
+const { ZERO_ADDRESS, createFormatFunction, MAX_SAFE_ALLOWANCE } = require("@uma/common");
 
 const formatWei = createFormatFunction(2, 4, false, 18);
 const formatGwei = (number: string | number | BN) => createFormatFunction(2, 4, false, 9)(number.toString());
@@ -123,10 +123,10 @@ describe("ProfitabilityCalculator.ts", function () {
 
       await profitabilityCalculator.update();
 
-      assert.isTrue(profitabilityCalculator.l1TokenInfo[ZERO_ADDRESS].tokenEthPrice.eq(toBN(0)));
+      assert.isTrue(profitabilityCalculator.l1TokenInfo[ZERO_ADDRESS].tokenEthPrice.eq(toBN(MAX_SAFE_ALLOWANCE)));
       const lastLog = spy.getCall(-2).lastArg;
       assert.equal(lastLog.level, "warn");
-      assert.equal(lastLog.message, "Could not find token price!");
+      assert.isTrue(lastLog.message.includes("Could not find token price!"));
     });
   });
   describe("Profitability calculation", function () {
