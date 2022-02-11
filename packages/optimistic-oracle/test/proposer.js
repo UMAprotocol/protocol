@@ -490,6 +490,43 @@ describe("OptimisticOracle: proposer.js", function () {
       await verifyState(OptimisticOracleRequestStatesEnum.SETTLED, identifiersToTest[0], ancillaryDataAddresses[0]);
     });
 
+    it("Can settle other anyone's proposals", async function () {
+      // Create new proposer to inject a custom config.
+      proposer = new OptimisticOracleProposer({
+        logger: spyLogger,
+        optimisticOracleClient: client,
+        gasEstimator,
+        account: botRunner,
+        commonPriceFeedConfig,
+        optimisticOracleProposerConfig: { disputePriceErrorPercent: 0.1, settleAllRequests: true },
+      });
+
+      // Make one proposal for bot to settle.
+      let collateralCurrency = collateralCurrenciesForIdentifier[0];
+      await collateralCurrency.methods
+        .approve(optimisticOracle.options.address, totalDefaultBond)
+        .send({ from: randoProposer });
+      await optimisticOracle.methods
+        .proposePrice(
+          requester,
+          identifiersToTest[0],
+          requestTime,
+          ancillaryDataAddresses[0],
+          toWei("1") // Arbitrary price that bot will dispute
+        )
+        .send({ from: randoProposer });
+
+      // Now, advance time so that the proposals expire and check that the bot can settle the proposals
+      await optimisticOracle.methods.setCurrentTime((Number(startTime) + liveness).toString()).send({ from: owner });
+
+      // Now make the bot settle the requests.
+      await proposer.update();
+      await proposer.settleRequests();
+
+      // Check that the requests are in the correct state.
+      await verifyState(OptimisticOracleRequestStatesEnum.SETTLED, identifiersToTest[0], ancillaryDataAddresses[0]);
+    });
+
     it("Correctly caches created price feeds", async function () {
       // Call `sendProposals` which should create a new pricefeed for each identifier.
       await proposer.sendProposals();
