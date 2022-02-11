@@ -121,27 +121,31 @@ export class OptimisticOracleClient {
 
   // Returns an array of expired Price Proposals that can be settled and that involved
   // the caller as the proposer
-  public getSettleableProposals(caller: string): ProposePriceReturnValues[] {
+  public getSettleableProposals(callers?: string[]): ProposePriceReturnValues[] {
+    if (!callers) return this.expiredProposals;
+
     if (this.oracleType === OptimisticOracleType.SkinnyOptimisticOracle) {
       return (this.expiredProposals as SkinnyProposePrice["returnValues"][]).filter((event) => {
-        return ((event.request as unknown) as SkinnyRequest).proposer === caller;
+        return callers.includes(((event.request as unknown) as SkinnyRequest).proposer);
       });
     } else {
       return ((this.expiredProposals as unknown) as ProposePrice["returnValues"][]).filter((event) => {
-        return event.proposer === caller;
+        return callers.includes(event.proposer);
       });
     }
   }
 
   // Returns disputes that can be settled and that involved the caller as the disputer
-  public getSettleableDisputes(caller: string): DisputePriceReturnValues[] {
+  public getSettleableDisputes(callers?: string[]): DisputePriceReturnValues[] {
+    if (!callers) return this.settleableDisputes;
+
     if (this.oracleType === OptimisticOracleType.SkinnyOptimisticOracle) {
       return (this.settleableDisputes as SkinnyDisputePrice["returnValues"][]).filter((event) => {
-        return ((event.request as unknown) as SkinnyRequest).disputer === caller;
+        return callers.includes(((event.request as unknown) as SkinnyRequest).disputer);
       });
     } else {
       return (this.settleableDisputes as DisputePrice["returnValues"][]).filter((event) => {
-        return event.disputer === caller;
+        return callers.includes(event.disputer);
       });
     }
   }

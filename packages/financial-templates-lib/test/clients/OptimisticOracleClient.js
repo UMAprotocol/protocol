@@ -162,7 +162,7 @@ describe("OptimisticOracleClient.js", function () {
       objectsInArrayInclude(result, []);
       result = chunkedClient.getUnproposedPriceRequests();
       objectsInArrayInclude(result, []);
-      result = chunkedClient.getSettleableProposals(proposer);
+      result = chunkedClient.getSettleableProposals([proposer]);
       objectsInArrayInclude(result, []);
 
       // Request and update again, should show no proposals.
@@ -179,7 +179,7 @@ describe("OptimisticOracleClient.js", function () {
 
       result = chunkedClient.getUndisputedProposals();
       objectsInArrayInclude(result, []);
-      result = chunkedClient.getSettleableProposals(proposer);
+      result = chunkedClient.getSettleableProposals([proposer]);
       objectsInArrayInclude(result, []);
 
       // Should have one price request.
@@ -219,7 +219,7 @@ describe("OptimisticOracleClient.js", function () {
       ]);
       result = chunkedClient.getUnproposedPriceRequests();
       objectsInArrayInclude(result, []);
-      result = chunkedClient.getSettleableProposals(proposer);
+      result = chunkedClient.getSettleableProposals([proposer]);
       objectsInArrayInclude(result, []);
 
       // Now, advance time so that the proposal expires and check that the client detects the new state:
@@ -232,9 +232,9 @@ describe("OptimisticOracleClient.js", function () {
       result = chunkedClient.getUnproposedPriceRequests();
       objectsInArrayInclude(result, []);
       // Note: `getSettleableProposals` only returns proposals where the `proposer` is involved
-      result = chunkedClient.getSettleableProposals(rando);
+      result = chunkedClient.getSettleableProposals([rando]);
       objectsInArrayInclude(result, []);
-      result = chunkedClient.getSettleableProposals(proposer);
+      result = chunkedClient.getSettleableProposals([proposer]);
       objectsInArrayInclude(result, [
         {
           requester: optimisticRequester.options.address,
@@ -253,7 +253,7 @@ describe("OptimisticOracleClient.js", function () {
         .settle(optimisticRequester.options.address, identifier, requestTime, "0x")
         .send({ from: accounts[0] });
       await chunkedClient.update();
-      result = chunkedClient.getSettleableProposals(proposer);
+      result = chunkedClient.getSettleableProposals([proposer]);
       objectsInArrayInclude(result, []);
     });
 
@@ -266,7 +266,7 @@ describe("OptimisticOracleClient.js", function () {
       objectsInArrayInclude(result, []);
       result = client.getUnproposedPriceRequests();
       objectsInArrayInclude(result, []);
-      result = client.getSettleableProposals(proposer);
+      result = client.getSettleableProposals([proposer]);
       objectsInArrayInclude(result, []);
 
       // Request and update again, should show no proposals.
@@ -276,7 +276,7 @@ describe("OptimisticOracleClient.js", function () {
       await client.update();
       result = client.getUndisputedProposals();
       objectsInArrayInclude(result, []);
-      result = client.getSettleableProposals(proposer);
+      result = client.getSettleableProposals([proposer]);
       objectsInArrayInclude(result, []);
 
       // Should have one price request.
@@ -316,7 +316,7 @@ describe("OptimisticOracleClient.js", function () {
       ]);
       result = client.getUnproposedPriceRequests();
       objectsInArrayInclude(result, []);
-      result = client.getSettleableProposals(proposer);
+      result = client.getSettleableProposals([proposer]);
       objectsInArrayInclude(result, []);
 
       // Now, advance time so that the proposal expires and check that the client detects the new state:
@@ -329,9 +329,9 @@ describe("OptimisticOracleClient.js", function () {
       result = client.getUnproposedPriceRequests();
       objectsInArrayInclude(result, []);
       // Note: `getSettleableProposals` only returns proposals where the `proposer` is involved
-      result = client.getSettleableProposals(rando);
+      result = client.getSettleableProposals([rando]);
       objectsInArrayInclude(result, []);
-      result = client.getSettleableProposals(proposer);
+      result = client.getSettleableProposals([proposer]);
       objectsInArrayInclude(result, [
         {
           requester: optimisticRequester.options.address,
@@ -350,7 +350,7 @@ describe("OptimisticOracleClient.js", function () {
         .settle(optimisticRequester.options.address, identifier, requestTime, "0x")
         .send({ from: accounts[0] });
       await client.update();
-      result = client.getSettleableProposals(proposer);
+      result = client.getSettleableProposals([proposer]);
       objectsInArrayInclude(result, []);
     });
 
@@ -359,7 +359,7 @@ describe("OptimisticOracleClient.js", function () {
       await client.update();
 
       // Initially, no settleable disputes:
-      let result = client.getSettleableDisputes(disputer);
+      let result = client.getSettleableDisputes([disputer]);
       objectsInArrayInclude(result, []);
 
       // Request a price:
@@ -367,7 +367,7 @@ describe("OptimisticOracleClient.js", function () {
         .requestPrice(identifier, requestTime, "0x", collateral.options.address, 0)
         .send({ from: accounts[0] });
       await client.update();
-      result = client.getSettleableDisputes(disputer);
+      result = client.getSettleableDisputes([disputer]);
       objectsInArrayInclude(result, []);
 
       // Make a proposal:
@@ -377,7 +377,7 @@ describe("OptimisticOracleClient.js", function () {
         .send({ from: proposer });
 
       await client.update();
-      result = client.getSettleableDisputes(disputer);
+      result = client.getSettleableDisputes([disputer]);
       objectsInArrayInclude(result, []);
 
       // Dispute the proposal:
@@ -385,16 +385,16 @@ describe("OptimisticOracleClient.js", function () {
       await optimisticOracle.methods
         .disputePrice(optimisticRequester.options.address, identifier, requestTime, "0x")
         .send({ from: disputer });
-      result = client.getSettleableDisputes(disputer);
+      result = client.getSettleableDisputes([disputer]);
       objectsInArrayInclude(result, []);
 
       // Resolve the dispute and check that the client detects the new state:
       await pushPrice(correctPrice);
       await client.update();
       // Note: `getSettleableDisputes` only returns proposals where the `disputer` is involved
-      result = client.getSettleableDisputes(rando);
+      result = client.getSettleableDisputes([rando]);
       objectsInArrayInclude(result, []);
-      result = client.getSettleableDisputes(disputer);
+      result = client.getSettleableDisputes([disputer]);
       objectsInArrayInclude(result, [
         {
           requester: optimisticRequester.options.address,
@@ -411,7 +411,7 @@ describe("OptimisticOracleClient.js", function () {
         .settle(optimisticRequester.options.address, identifier, requestTime, "0x")
         .send({ from: accounts[0] });
       await client.update();
-      result = client.getSettleableDisputes(disputer);
+      result = client.getSettleableDisputes([disputer]);
       objectsInArrayInclude(result, []);
     });
 
@@ -484,7 +484,7 @@ describe("OptimisticOracleClient.js", function () {
       objectsInArrayInclude(result, []);
       result = client.getUnproposedPriceRequests();
       objectsInArrayInclude(result, []);
-      result = client.getSettleableProposals(proposer);
+      result = client.getSettleableProposals([proposer]);
       objectsInArrayInclude(result, []);
 
       // Request and update again, should show no proposals.
@@ -494,7 +494,7 @@ describe("OptimisticOracleClient.js", function () {
       await client.update();
       result = client.getUndisputedProposals();
       objectsInArrayInclude(result, []);
-      result = client.getSettleableProposals(proposer);
+      result = client.getSettleableProposals([proposer]);
       objectsInArrayInclude(result, []);
 
       // Should have one price request.
@@ -530,7 +530,7 @@ describe("OptimisticOracleClient.js", function () {
       ]);
       result = client.getUnproposedPriceRequests();
       objectsInArrayInclude(result, []);
-      result = client.getSettleableProposals(proposer);
+      result = client.getSettleableProposals([proposer]);
       objectsInArrayInclude(result, []);
 
       // Now, advance time so that the proposal expires and check that the client detects the new state:
@@ -542,10 +542,20 @@ describe("OptimisticOracleClient.js", function () {
       objectsInArrayInclude(result, []);
       result = client.getUnproposedPriceRequests();
       objectsInArrayInclude(result, []);
-      // Note: `getSettleableProposals` only returns proposals where the `proposer` is involved
-      result = client.getSettleableProposals(rando);
+      // Note: `getSettleableProposals` only returns proposals where the `proposer` is involved unless no argument is provided for callers.
+      result = client.getSettleableProposals([rando]);
       objectsInArrayInclude(result, []);
-      result = client.getSettleableProposals(proposer);
+      result = client.getSettleableProposals();
+      objectsInArrayInclude(result, [
+        {
+          requester: accounts[0],
+          identifier: hexToUtf8(identifier),
+          ancillaryData: "0x",
+          timestamp: requestTime.toString(),
+          request: priceProposal.returnValues.request,
+        },
+      ]);
+      result = client.getSettleableProposals([proposer]);
       objectsInArrayInclude(result, [
         {
           requester: accounts[0],
@@ -561,7 +571,7 @@ describe("OptimisticOracleClient.js", function () {
         .settle(accounts[0], identifier, requestTime, "0x", priceProposal.returnValues.request)
         .send({ from: accounts[0] });
       await client.update();
-      result = client.getSettleableProposals(proposer);
+      result = client.getSettleableProposals([proposer]);
       objectsInArrayInclude(result, []);
     });
 
@@ -570,7 +580,7 @@ describe("OptimisticOracleClient.js", function () {
       await client.update();
 
       // Initially, no settleable disputes:
-      let result = client.getSettleableDisputes(disputer);
+      let result = client.getSettleableDisputes([disputer]);
       objectsInArrayInclude(result, []);
 
       // Request a price:
@@ -578,7 +588,7 @@ describe("OptimisticOracleClient.js", function () {
         .requestPrice(identifier, requestTime, "0x", collateral.options.address, 0, finalFee, 0)
         .send({ from: accounts[0] });
       await client.update();
-      result = client.getSettleableDisputes(disputer);
+      result = client.getSettleableDisputes([disputer]);
       objectsInArrayInclude(result, []);
 
       // Make a proposal:
@@ -590,7 +600,7 @@ describe("OptimisticOracleClient.js", function () {
       const priceProposal = (await optimisticOracle.getPastEvents("ProposePrice", { fromBlock: 0 }))[0];
 
       await client.update();
-      result = client.getSettleableDisputes(disputer);
+      result = client.getSettleableDisputes([disputer]);
       objectsInArrayInclude(result, []);
 
       // Dispute the proposal:
@@ -599,16 +609,26 @@ describe("OptimisticOracleClient.js", function () {
         .disputePrice(accounts[0], identifier, requestTime, "0x", priceProposal.returnValues.request)
         .send({ from: disputer });
       const priceDispute = (await optimisticOracle.getPastEvents("DisputePrice", { fromBlock: 0 }))[0];
-      result = client.getSettleableDisputes(disputer);
+      result = client.getSettleableDisputes([disputer]);
       objectsInArrayInclude(result, []);
 
       // Resolve the dispute and check that the client detects the new state:
       await pushPrice(correctPrice);
       await client.update();
-      // Note: `getSettleableDisputes` only returns proposals where the `disputer` is involved
-      result = client.getSettleableDisputes(rando);
+      // Note: `getSettleableDisputes` only returns proposals where the `disputer` is involved unless no argument is passed in.
+      result = client.getSettleableDisputes([rando]);
       objectsInArrayInclude(result, []);
-      result = client.getSettleableDisputes(disputer);
+      result = client.getSettleableDisputes();
+      objectsInArrayInclude(result, [
+        {
+          requester: accounts[0],
+          identifier: hexToUtf8(identifier),
+          ancillaryData: "0x",
+          timestamp: requestTime.toString(),
+          request: priceDispute.returnValues.request,
+        },
+      ]);
+      result = client.getSettleableDisputes([disputer]);
       objectsInArrayInclude(result, [
         {
           requester: accounts[0],
@@ -624,7 +644,7 @@ describe("OptimisticOracleClient.js", function () {
         .settle(accounts[0], identifier, requestTime, "0x", priceDispute.returnValues.request)
         .send({ from: accounts[0] });
       await client.update();
-      result = client.getSettleableDisputes(disputer);
+      result = client.getSettleableDisputes([disputer]);
       objectsInArrayInclude(result, []);
     });
 
