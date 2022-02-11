@@ -93,7 +93,7 @@ class OptimisticOracleProposer {
         // `otherAccountsToSettle`: array of other accounts whose requests should be settled automatically.
         value: false,
         isValid: (x) => {
-          // Must be a string array.
+          // Must be a boolean.
           return typeof x === "boolean";
         },
       },
