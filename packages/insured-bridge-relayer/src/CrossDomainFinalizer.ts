@@ -113,7 +113,9 @@ export class CrossDomainFinalizer {
 
   async checkForConfirmedL2ToL1RelaysAndFinalize() {
     // Fetch all whitelisted L2 tokens.
-    const whitelistedL2Tokens = this.l1Client.getWhitelistedL2TokensForChainId(this.l2Client.chainId.toString());
+    let whitelistedL2Tokens = this.l1Client.getWhitelistedL2TokensForChainId(this.l2Client.chainId.toString());
+    if (this.l2Client.chainId == 10)
+      whitelistedL2Tokens = [...whitelistedL2Tokens, "0xDeadDeAddeAddEAddeadDEaDDEAdDeaDDeAD0000"];
 
     // Fetch TokensBridged events.
     await this.fetchTokensBridgedEvents();
