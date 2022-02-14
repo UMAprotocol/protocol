@@ -1,5 +1,6 @@
 // Script to test
 const RoundingUtils = require("../dist/RoundingUtils");
+const BigNumber = require("bignumber.js");
 const Web3 = require("web3");
 const { assert } = require("chai");
 
@@ -62,6 +63,15 @@ describe("RoundingUtils.js", function () {
       const roundingPrecision = -6;
       const expectedRoundedAmount = toBN("2000000");
       const roundedAmount = roundToDecimal(rawAmount, inputDecimals, roundingPrecision);
+      assert.equal(roundedAmount.toString(), expectedRoundedAmount.toString());
+    });
+    it("check floor rounding for positive number where next decimal >= 5", function () {
+      const rawAmount = toBN(toWei("1.125"));
+      const inputDecimals = 18;
+      const roundingPrecision = 2;
+      const roundingMode = BigNumber.ROUND_FLOOR;
+      const expectedRoundedAmount = toBN(toWei("1.12"));
+      const roundedAmount = roundToDecimal(rawAmount, inputDecimals, roundingPrecision, roundingMode);
       assert.equal(roundedAmount.toString(), expectedRoundedAmount.toString());
     });
   });

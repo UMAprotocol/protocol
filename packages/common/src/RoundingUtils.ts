@@ -4,16 +4,27 @@ import { BN } from "./types";
 
 const { toBN } = Web3.utils;
 
-// Takes inputAmount scaled up to inputDecimals, scales it down, rounds to roundingPrecision decimals
-// and returns the rounded amount scaled up to the same inputDecimals.
-// If roundingPrecision is negative then round to the nearest 10 to the power of absolute roundingPrecision value.
-export function roundToDecimal(inputAmount: BN, inputDecimals: number, roundingPrecision: number): BN {
+/**
+ * @title Utility function for rounding BN values.
+ * @param {BN} inputAmount that is scaled up.
+ * @param {Number} inputDecimals specifies decimal scaling for processed value.
+ * @param {Number} roundingPrecision specifies amount of decimals left after rounding.
+ *      Negative value would round to the nearest 10 to the power of absolute roundingPrecision value.
+ * @param {RoundingMode} roundingMode is optional rounding mode documented in
+ *      https://mikemcl.github.io/bignumber.js/#constructor-properties
+ */
+export function roundToDecimal(
+  inputAmount: BN,
+  inputDecimals: number,
+  roundingPrecision: number,
+  roundingMode: BigNumber.RoundingMode = BigNumber.ROUND_HALF_UP
+): BN {
   if (inputDecimals < 0) throw new Error("decimal precision should be non-negative");
 
   return toBN(
     new BigNumber(inputAmount.toString())
       .shiftedBy(roundingPrecision - inputDecimals)
-      .decimalPlaces(0)
+      .decimalPlaces(0, roundingMode)
       .shiftedBy(inputDecimals - roundingPrecision)
       .toFixed()
   );
