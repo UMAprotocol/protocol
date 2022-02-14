@@ -114,7 +114,11 @@ export class CrossDomainFinalizer {
   async checkForConfirmedL2ToL1RelaysAndFinalize() {
     // Fetch all whitelisted L2 tokens.
     let whitelistedL2Tokens = this.l1Client.getWhitelistedL2TokensForChainId(this.l2Client.chainId.toString());
-    if (this.l2Client.chainId == 10)
+
+    // If the l2Client ChainId is set to 10 then this is connected to optimism. Optimism is a special case where we are
+    // bridging ETH over the canonical bridge, not WETH. As a result, we must consider ETH transfers as bridgeable and
+    // search for them, if they are finalizable over the canonical bridge.
+    if (this.l2Client.chainId === 10)
       whitelistedL2Tokens = [...whitelistedL2Tokens, "0xDeadDeAddeAddEAddeadDEaDDEAdDeaDDeAD0000"];
 
     // Fetch TokensBridged events.
