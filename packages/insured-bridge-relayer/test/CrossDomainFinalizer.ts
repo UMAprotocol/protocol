@@ -80,7 +80,7 @@ let bridgePool2: any;
 let l2DeployData: any;
 
 // Hard-coded test params:
-const chainId = 10;
+const chainId = 1337;
 const defaultGasLimit = 1_000_000;
 const defaultGasPrice = toWei("1", "gwei");
 const defaultIdentifier = utf8ToHex("IS_CROSS_CHAIN_RELAY_VALID");
@@ -668,7 +668,7 @@ describe("CrossDomainFinalizer.ts", function () {
       await Promise.all([l1Client.update(), l2Client.update()]);
       await crossDomainFinalizer.checkForConfirmedL2ToL1RelaysAndFinalize();
       assert.isTrue(spyLogIncludes(spy, -2, "Checking for confirmed L2->L1 canonical bridge actions"));
-      assert.isTrue(spyLogIncludes(spy, -2, `whitelistedL2Tokens":["${l2Token.options.address}"]`));
+      assert.isTrue(spyLogIncludes(spy, -2, `whitelistedL2Tokens":["${l2Token.options.address}`));
       assert.isTrue(spyLogIncludes(spy, -2, "Checking for confirmed L2->L1 canonical bridge actions"));
       assert.isTrue(spyLogIncludes(spy, -2, `l2TokensBridgedTransactions":[]`));
       assert.isTrue(spyLogIncludes(spy, -1, `No L2->L1 relays to finalize`));
@@ -712,7 +712,7 @@ describe("CrossDomainFinalizer.ts", function () {
       assert.isTrue(spyLogIncludes(spy, -3, "Found L2->L1 relays to finalize"));
       assert.isTrue(spyLogIncludes(spy, -3, `confirmedL2TransactionsToExecute":["${bridgeTx.transactionHash}"]`));
       assert.isTrue(spyLogIncludes(spy, -2, "Gas estimator updated"));
-      assert.isTrue(spyLogIncludes(spy, -1, "Canonical L2->L1 transfer over the optimism bridge"));
+      assert.isTrue(spyLogIncludes(spy, -1, "Canonical L2->L1 transfer over"));
       assert.isTrue(spyLogIncludes(spy, -1, "A total of 4.00 L2ERC20 was bridged")); // depositAmount.muln(4) is 4.
     });
   });
