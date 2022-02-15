@@ -668,7 +668,7 @@ describe("CrossDomainFinalizer.ts", function () {
       await Promise.all([l1Client.update(), l2Client.update()]);
       await crossDomainFinalizer.checkForConfirmedL2ToL1RelaysAndFinalize();
       assert.isTrue(spyLogIncludes(spy, -2, "Checking for confirmed L2->L1 canonical bridge actions"));
-      assert.isTrue(spyLogIncludes(spy, -2, `whitelistedL2Tokens":["${l2Token.options.address}"]`));
+      assert.isTrue(spyLogIncludes(spy, -2, `whitelistedL2Tokens":["${l2Token.options.address}`));
       assert.isTrue(spyLogIncludes(spy, -2, "Checking for confirmed L2->L1 canonical bridge actions"));
       assert.isTrue(spyLogIncludes(spy, -2, `l2TokensBridgedTransactions":[]`));
       assert.isTrue(spyLogIncludes(spy, -1, `No L2->L1 relays to finalize`));
