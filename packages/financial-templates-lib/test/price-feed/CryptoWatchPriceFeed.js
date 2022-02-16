@@ -239,6 +239,64 @@ describe("CryptoWatchPriceFeed.js", function () {
     assert.isTrue(await invertedCryptoWatchPriceFeed.getHistoricalRoundedPrice(1588376521).catch(() => true));
   });
 
+  it("Inverted historical floor rounded price", async function () {
+    // Create new pricefeed with custom floor rounding mode.
+    invertedCryptoWatchPriceFeed = new CryptoWatchPriceFeed(
+      spyLogger,
+      web3,
+      apiKey,
+      exchange,
+      pair,
+      lookback,
+      networker,
+      getTime,
+      minTimeBetweenUpdates,
+      true,
+      10, // Add arbitrary decimal conversion and prove this works.
+      undefined, // Default OHLC period
+      undefined, // Default TWAP period
+      undefined, // Default historicalTimestampBuffer
+      roundingPrecision,
+      3 // Corresponds to ROUND_FLOOR as documented in https://mikemcl.github.io/bignumber.js/#round-floor
+    );
+
+    networker.getJsonReturns = [...validResponses];
+    await invertedCryptoWatchPriceFeed.update();
+
+    // Before period 1 should fail.
+    assert.isTrue(await invertedCryptoWatchPriceFeed.getHistoricalRoundedPrice(1588376339).catch(() => true));
+
+    // During period 1.
+    assert.equal(
+      // Should be equal to: toWei(0.9) as 1/1.1 floor rounded to 1 decimal is 0.9
+      (await invertedCryptoWatchPriceFeed.getHistoricalRoundedPrice(1588376340)).toString(),
+      toBN(toWei("0.9"))
+        .div(toBN("10").pow(toBN(18 - 10)))
+        .toString()
+    );
+
+    // During period 2.
+    assert.equal(
+      // Should be equal to: toWei(0.8) as 1/1.2 floor rounded to 1 decimal is 0.8
+      (await invertedCryptoWatchPriceFeed.getHistoricalRoundedPrice(1588376405)).toString(),
+      toBN(toWei("0.8"))
+        .div(toBN("10").pow(toBN(18 - 10)))
+        .toString()
+    );
+
+    // During period 3.
+    assert.equal(
+      // Should be equal to: toWei(0.7) as 1/1.3 floor rounded to 1 decimal is 0.7
+      (await invertedCryptoWatchPriceFeed.getHistoricalRoundedPrice(1588376515)).toString(),
+      toBN(toWei("0.7"))
+        .div(toBN("10").pow(toBN(18 - 10)))
+        .toString()
+    );
+
+    // After period 3 should error.
+    assert.isTrue(await invertedCryptoWatchPriceFeed.getHistoricalRoundedPrice(1588376521).catch(() => true));
+  });
+
   it("No update", async function () {
     assert.equal(cryptoWatchPriceFeed.getCurrentPrice(), undefined);
     assert.isTrue(await cryptoWatchPriceFeed.getHistoricalPrice(1000).catch(() => true));
