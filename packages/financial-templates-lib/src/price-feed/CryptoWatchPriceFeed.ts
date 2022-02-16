@@ -1,10 +1,11 @@
 import { PriceFeedInterface } from "./PriceFeedInterface";
-import { parseFixed, formatFixed, parseAncillaryData } from "@uma/common";
+import { parseFixed, formatFixed, parseAncillaryData, roundToDecimal } from "@uma/common";
 import { computeTWAP } from "./utils";
 import type { Logger } from "winston";
 import Web3 from "web3";
 import { NetworkerInterface } from "./Networker";
 import { BN } from "../types";
+import { BigNumber } from "bignumber.js";
 
 interface PricePeriod {
   openTime: number;
@@ -47,6 +48,8 @@ export class CryptoWatchPriceFeed extends PriceFeedInterface {
    * @param {Number} twapLength Number of seconds to use for TWAP window when computing prices.
    * @param {Number} historicalTimestampBuffer Number of seconds +/- beyond a price period's open and close window
    * that determines whether a historical timestamp falls "within" that price period.
+   * @param {Number} roundingPrecision Number of rounding decimals from price identifier UMIP.
+   * @param {RoundingMode} roundingMode enumerated bignumber.js RoundingMode from price identifier UMIP.
    */
   constructor(
     private readonly logger: Logger,
@@ -62,7 +65,9 @@ export class CryptoWatchPriceFeed extends PriceFeedInterface {
     private readonly priceFeedDecimals = 18,
     private readonly ohlcPeriod = 60, // One minute is CryptoWatch's most granular option.
     private readonly twapLength = 0, // No TWAP by default.
-    private readonly historicalTimestampBuffer = 0 // Buffer of 0 means that historical timestamp must fall strictly within a price // period's open and close time.
+    private readonly historicalTimestampBuffer = 0, // Buffer of 0 means that historical timestamp must fall strictly within a price // period's open and close time.
+    private readonly roundingPrecision = 18,
+    private readonly roundingMode = BigNumber.ROUND_HALF_UP
   ) {
     super();
     this.uuid = `Cryptowatch-${exchange}-${pair}`;
@@ -80,6 +85,15 @@ export class CryptoWatchPriceFeed extends PriceFeedInterface {
       return this._invertPriceSafely(this.currentPrice);
     } else {
       return this.currentPrice;
+    }
+  }
+
+  public getCurrentRoundedPrice(): null | BN {
+    const rawPrice = this.getCurrentPrice();
+    if (rawPrice !== null) {
+      return roundToDecimal(rawPrice, this.priceFeedDecimals, this.roundingPrecision, this.roundingMode);
+    } else {
+      return null;
     }
   }
 
@@ -197,6 +211,11 @@ export class CryptoWatchPriceFeed extends PriceFeedInterface {
     }
 
     return returnPrice;
+  }
+
+  public async getHistoricalRoundedPrice(time: number, ancillaryData?: string, verbose = false): Promise<BN> {
+    const rawPrice = await this.getHistoricalPrice(time, ancillaryData, verbose);
+    return roundToDecimal(rawPrice, this.priceFeedDecimals, this.roundingPrecision, this.roundingMode);
   }
 
   public getHistoricalPricePeriods(): [number, BN | null][] {

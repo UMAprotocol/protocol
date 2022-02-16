@@ -20,6 +20,7 @@ describe("CryptoWatchPriceFeed.js", function () {
   const lookback = 120; // 2 minutes.
   const getTime = () => mockTime;
   const minTimeBetweenUpdates = 60;
+  const roundingPrecision = 1;
 
   const { toBN, toWei, utf8ToHex } = web3.utils;
 
@@ -65,7 +66,12 @@ describe("CryptoWatchPriceFeed.js", function () {
         getTime,
         minTimeBetweenUpdates,
         false,
-        18 // Prove that this will not break existing functionality
+        18, // Prove that this will not break existing functionality
+        undefined, // Default OHLC period
+        undefined, // Default TWAP period
+        undefined, // Default historicalTimestampBuffer
+        roundingPrecision,
+        undefined // Default rounding mode
       ));
     invertedCryptoWatchPriceFeed = new CryptoWatchPriceFeed(
       spyLogger,
@@ -78,7 +84,12 @@ describe("CryptoWatchPriceFeed.js", function () {
       getTime,
       minTimeBetweenUpdates,
       true,
-      10 // Add arbitrary decimal conversion and prove this works.
+      10, // Add arbitrary decimal conversion and prove this works.
+      undefined, // Default OHLC period
+      undefined, // Default TWAP period
+      undefined, // Default historicalTimestampBuffer
+      roundingPrecision,
+      undefined // Default rounding mode
     );
   });
 
@@ -95,6 +106,52 @@ describe("CryptoWatchPriceFeed.js", function () {
         // we need this last division to convert final result to correct decimals
         // in this case its from 18 decimals to 10 decimals.
         // You will see this in the rest of the inverted tests.
+        .div(toBN("10").pow(toBN(18 - 10)))
+        .toString()
+    );
+  });
+
+  it("Inverted current rounded price", async function () {
+    networker.getJsonReturns = [...validResponses];
+    await invertedCryptoWatchPriceFeed.update();
+
+    assert.equal(
+      // Should be equal to: toWei(0.7) as 1/1.5 rounded to 1 decimal is 0.7
+      invertedCryptoWatchPriceFeed.getCurrentRoundedPrice().toString(),
+      toBN(toWei("0.7"))
+        .div(toBN("10").pow(toBN(18 - 10)))
+        .toString()
+    );
+  });
+
+  it("Inverted current floor rounded price", async function () {
+    // Create new pricefeed with custom floor rounding mode.
+    invertedCryptoWatchPriceFeed = new CryptoWatchPriceFeed(
+      spyLogger,
+      web3,
+      apiKey,
+      exchange,
+      pair,
+      lookback,
+      networker,
+      getTime,
+      minTimeBetweenUpdates,
+      true,
+      10, // Add arbitrary decimal conversion and prove this works.
+      undefined, // Default OHLC period
+      undefined, // Default TWAP period
+      undefined, // Default historicalTimestampBuffer
+      roundingPrecision,
+      3 // Corresponds to ROUND_FLOOR as documented in https://mikemcl.github.io/bignumber.js/#round-floor
+    );
+
+    networker.getJsonReturns = [...validResponses];
+    await invertedCryptoWatchPriceFeed.update();
+
+    assert.equal(
+      // Should be equal to: toWei(0.6) as 1/1.5 floor rounded to 1 decimal is 0.6
+      invertedCryptoWatchPriceFeed.getCurrentRoundedPrice().toString(),
+      toBN(toWei("0.6"))
         .div(toBN("10").pow(toBN(18 - 10)))
         .toString()
     );
@@ -144,6 +201,44 @@ describe("CryptoWatchPriceFeed.js", function () {
     assert.isTrue(await invertedCryptoWatchPriceFeed.getHistoricalPrice(1588376521).catch(() => true));
   });
 
+  it("Inverted historical rounded price", async function () {
+    networker.getJsonReturns = [...validResponses];
+    await invertedCryptoWatchPriceFeed.update();
+
+    // Before period 1 should fail.
+    assert.isTrue(await invertedCryptoWatchPriceFeed.getHistoricalRoundedPrice(1588376339).catch(() => true));
+
+    // During period 1.
+    assert.equal(
+      // Should be equal to: toWei(0.9) as 1/1.1 rounded to 1 decimal is 0.9
+      (await invertedCryptoWatchPriceFeed.getHistoricalRoundedPrice(1588376340)).toString(),
+      toBN(toWei("0.9"))
+        .div(toBN("10").pow(toBN(18 - 10)))
+        .toString()
+    );
+
+    // During period 2.
+    assert.equal(
+      // Should be equal to: toWei(0.8) as 1/1.2 rounded to 1 decimal is 0.8
+      (await invertedCryptoWatchPriceFeed.getHistoricalRoundedPrice(1588376405)).toString(),
+      toBN(toWei("0.8"))
+        .div(toBN("10").pow(toBN(18 - 10)))
+        .toString()
+    );
+
+    // During period 3.
+    assert.equal(
+      // Should be equal to: toWei(0.8) as 1/1.3 rounded to 1 decimal is 0.8
+      (await invertedCryptoWatchPriceFeed.getHistoricalRoundedPrice(1588376515)).toString(),
+      toBN(toWei("0.8"))
+        .div(toBN("10").pow(toBN(18 - 10)))
+        .toString()
+    );
+
+    // After period 3 should error.
+    assert.isTrue(await invertedCryptoWatchPriceFeed.getHistoricalRoundedPrice(1588376521).catch(() => true));
+  });
+
   it("No update", async function () {
     assert.equal(cryptoWatchPriceFeed.getCurrentPrice(), undefined);
     assert.isTrue(await cryptoWatchPriceFeed.getHistoricalPrice(1000).catch(() => true));
@@ -174,6 +269,20 @@ describe("CryptoWatchPriceFeed.js", function () {
 
     // After period 3 should error.
     assert.isTrue(await cryptoWatchPriceFeed.getHistoricalPrice(1588376521).catch(() => true));
+  });
+
+  it("Basic historical rounded price", async function () {
+    networker.getJsonReturns = [...validResponses];
+    await cryptoWatchPriceFeed.update();
+
+    // Before period 1 should fail.
+    assert.isTrue(await cryptoWatchPriceFeed.getHistoricalRoundedPrice(1588376339).catch(() => true));
+
+    // During period 1 rounded to 1 decimal.
+    assert.equal((await cryptoWatchPriceFeed.getHistoricalRoundedPrice(1588376340)).toString(), toWei("1.1"));
+
+    // After period 3 should error.
+    assert.isTrue(await cryptoWatchPriceFeed.getHistoricalRoundedPrice(1588376521).catch(() => true));
   });
 
   it("Basic historical price with historicalTimestampBuffer > 0: matching single price period", async function () {
@@ -595,6 +704,14 @@ describe("CryptoWatchPriceFeed.js", function () {
 
     // Should return the current price in the data.
     assert.equal(cryptoWatchPriceFeed.getCurrentPrice().toString(), toWei("1.5"));
+  });
+
+  it("Basic current rounded price", async function () {
+    networker.getJsonReturns = [...validResponses];
+    await cryptoWatchPriceFeed.update();
+
+    // Should return the current price rounded to 1 decimal from the data.
+    assert.equal(cryptoWatchPriceFeed.getCurrentRoundedPrice().toString(), toWei("1.5"));
   });
 
   it("Last update time", async function () {

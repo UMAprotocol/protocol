@@ -5,5 +5,6 @@ export * from "./MetaMaskTruffleProvider";
 export * from "./ProviderUtils";
 export * from "./HardhatConfig";
 export * from "./RetryProvider";
+export * from "./RoundingUtils";
 export * from "./UniswapV3Helpers";
 export * from "./types";
