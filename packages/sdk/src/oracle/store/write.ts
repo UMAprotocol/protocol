@@ -114,8 +114,15 @@ export class Services {
   constructor(private state: Partial<state.ChainServices>) {}
   provider(rpcUrls: string[]): void {
     if (this.state?.provider) return;
-    const providers = rpcUrls.map((url) => ethers.getDefaultProvider(url));
+    const providers = rpcUrls.map((url) => {
+      const provider = ethers.getDefaultProvider(url);
+      // turn off all polling, we will poll manually
+      provider.polling = false;
+      return provider;
+    });
     this.state.provider = new ethers.providers.FallbackProvider(providers, 1);
+    // turn off all polling, we will poll manually
+    this.state.provider.polling = false;
   }
   erc20s(address: string): void {
     if (!this.state?.provider) return;
