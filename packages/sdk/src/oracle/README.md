@@ -170,7 +170,7 @@ Sets the currently logged in user. This allows partial updates. Returns a string
 
 Clears the current user.
 
-`client.clearUser(): string `
+`client.clearUser(): string`
 
 ### setActiveRequest
 

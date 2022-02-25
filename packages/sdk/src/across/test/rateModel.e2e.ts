@@ -46,7 +46,7 @@ describe("rateModel", function () {
           blockSearchConfig.fromBlock
         );
         assert.fail("Should throw error");
-      } catch (err: any) {
+      } catch (err) {
         assert.equal(err.message.includes("method called before updating"), true);
       }
       rateModelDictionary.updateWithEvents(filteredEvents);
@@ -58,7 +58,7 @@ describe("rateModel", function () {
           blockSearchConfig.fromBlock - 1
         );
         assert.fail("Should throw error");
-      } catch (err: any) {
+      } catch (err) {
         assert.equal(err.message.includes("before first UpdatedRateModel event"), true);
       }
 
@@ -66,7 +66,7 @@ describe("rateModel", function () {
       try {
         await rateModelDictionary.getRateModelForBlockNumber(rateModelStore.address, blockSearchConfig.fromBlock - 1);
         assert.fail("Should throw error");
-      } catch (err: any) {
+      } catch (err) {
         assert.equal(err.message.includes("No updated rate model events for L1 token"), true);
       }
 
@@ -113,7 +113,7 @@ describe("rateModel", function () {
       try {
         await rateModelDictionary.getL1TokensFromRateModel(blockSearchConfig.fromBlock);
         assert.fail("Should throw error");
-      } catch (err: any) {
+      } catch (err) {
         assert.equal(err.message.includes("method called before updating"), true);
       }
       rateModelDictionary.updateWithEvents(filteredEvents);
@@ -139,7 +139,7 @@ describe("rateModel", function () {
     try {
       rateModel.parseAndReturnRateModelFromString("not a JSON");
       assert.fail("Should throw error");
-    } catch (err: any) {
+    } catch (err) {
       assert.equal(err.message.includes("JSON"), true);
     }
 
@@ -154,7 +154,7 @@ describe("rateModel", function () {
     try {
       rateModel.parseAndReturnRateModelFromString(JSON.stringify(rateModelWithMissingKeys));
       assert.fail("Should throw error");
-    } catch (err: any) {
+    } catch (err) {
       assert.equal(err.message.includes("does not contain all expected keys"), true);
     }
 
@@ -165,7 +165,7 @@ describe("rateModel", function () {
     try {
       rateModel.parseAndReturnRateModelFromString(JSON.stringify(rateModelWithExtraKeys));
       assert.fail("Should throw error");
-    } catch (err: any) {
+    } catch (err) {
       assert.equal(err.message.includes("contains unexpected keys"), true);
     }
 

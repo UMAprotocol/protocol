@@ -27,8 +27,8 @@ Create a new folder named after the type of data you are storing in the tables d
 
 - README.md: Add some notes on what the table is for and any stores it can use
 - index.ts: Expose your tables based on the name type of store it uses, for example `export {default as JsMap} from './js-map'`
-- ${store-type}.ts: Create a table file named for the store its compatible with, for example `js-map.ts`
-- ${store-type}.test.ts: Any tests you want to run
+- \${store-type}.ts: Create a table file named for the store its compatible with, for example `js-map.ts`
+- \${store-type}.test.ts: Any tests you want to run
 
 See the [blocks table](./blocks/README.md) as an example.
 

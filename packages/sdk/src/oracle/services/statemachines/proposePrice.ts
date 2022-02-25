@@ -42,10 +42,17 @@ export function Handlers(store: Store): GenericHandlers<Params, Memory> {
       // wait x seconds before running this state again
       return context.sleep(checkTxIntervalSec * 1000);
     },
-    async update(params: Params) {
-      const { chainId, currency, account } = params;
+    async update(params: Params, memory: Memory) {
+      const { chainId, currency, account, requester, identifier, timestamp, ancillaryData } = params;
+      const { hash } = memory;
       await update.balance(chainId, currency, account);
       await update.request(params);
+      store.write((w) =>
+        w
+          .chains(chainId)
+          .optimisticOracle()
+          .request({ chainId, requester, identifier, timestamp, ancillaryData, proposeTx: hash })
+      );
       return "done";
     },
   };
