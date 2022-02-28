@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.25.0](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.24.0...@uma/financial-templates-lib@2.25.0) (2022-02-28)
+
+### Features
+
+- **discordTransport:** Add in a delay between sequential restful calls to discord API to work around rate limits ([#3827](https://github.com/UMAprotocol/protocol/issues/3827)) ([6bd28e5](https://github.com/UMAprotocol/protocol/commit/6bd28e5d19acc2bbe2cf95c5fb622cd7d62e3482))
+
 # [2.24.0](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.23.0...@uma/financial-templates-lib@2.24.0) (2022-02-10)
 
 ### Features

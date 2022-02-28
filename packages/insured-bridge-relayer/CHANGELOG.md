@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.16.0](https://github.com/UMAprotocol/protocol/compare/@uma/insured-bridge-relayer@1.15.0...@uma/insured-bridge-relayer@1.16.0) (2022-02-28)
+
+### Features
+
+- **CrossDomainFinalizer:** Fix issue finalizing OP L2->L1 transfers ([#3831](https://github.com/UMAprotocol/protocol/issues/3831)) ([0901f18](https://github.com/UMAprotocol/protocol/commit/0901f187de90d2011e760977e544e36a1948624e))
+
 # [1.15.0](https://github.com/UMAprotocol/protocol/compare/@uma/insured-bridge-relayer@1.14.3...@uma/insured-bridge-relayer@1.15.0) (2022-02-10)
 
 ### Features
