@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.22.1](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.22.0...@uma/sdk@0.22.1) (2022-02-28)
+
+### Bug Fixes
+
+- **sdk:** add tx hashes to dispute, settle, propose ([#3834](https://github.com/UMAprotocol/protocol/issues/3834)) ([36dd4e3](https://github.com/UMAprotocol/protocol/commit/36dd4e31718959cead653782cc4e8891c6daca09))
+- **sdk:** disable provider polling and correctly check done for past events ([#3833](https://github.com/UMAprotocol/protocol/issues/3833)) ([0a4ce9a](https://github.com/UMAprotocol/protocol/commit/0a4ce9af96481bec0c0eb2ab2ccd8da4dc87ccd5))
+
 # [0.22.0](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.21.0...@uma/sdk@0.22.0) (2022-02-10)
 
 ### Bug Fixes

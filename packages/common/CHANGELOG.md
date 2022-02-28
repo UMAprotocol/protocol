@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.19.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.18.0...@uma/common@2.19.0) (2022-02-28)
+
+### Features
+
+- **common:** implement rounding utils ([#3830](https://github.com/UMAprotocol/protocol/issues/3830)) ([c2e1225](https://github.com/UMAprotocol/protocol/commit/c2e1225560f095031133cd5268ce3e9b5417278c))
+
 # [2.18.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.17.0...@uma/common@2.18.0) (2022-02-10)
 
 ### Features
