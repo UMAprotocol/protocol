@@ -868,7 +868,7 @@ describe("Relayer.ts", function () {
         l2Sender: l2Depositor,
         amount: depositAmount,
         slowRelayFeePct: toWei("0.05"),
-        instantRelayFeePct: toWei("0.01"),
+        instantRelayFeePct: "0",
         quoteTimestamp: quoteTime,
       };
       await bridgeDepositBox.methods
@@ -893,14 +893,14 @@ describe("Relayer.ts", function () {
       assert.isTrue(lastSpyLogIncludes(spy, "Deposit depositId 0 on optimism of 1.00 TESTERC20 sent from")); // associated meta data
       // check profitability logs:
       const slowReward = toBNWei(0.05);
-      const fastReward = toBNWei(0.01);
+      const fastReward = toBNWei(0);
       const cumulativeGasPrice = toBN(505e9);
       const formatWei = createFormatFunction(2, 4, false, 18);
       const slowProfit = formatWei(slowReward.sub(cumulativeGasPrice.mul(toBN(across.constants.SLOW_ETH_GAS))));
       const fastProfit = formatWei(
         slowReward.add(fastReward).sub(cumulativeGasPrice.mul(toBN(across.constants.FAST_ETH_GAS)))
       );
-      const speedUpProfit = formatWei(fastReward.sub(cumulativeGasPrice.mul(toBN(across.constants.SPEED_UP_ETH_GAS))));
+      const speedUpProfit = formatWei(fastReward);
       assert.isTrue(lastSpyLogIncludes(spy, `SlowRelay profit ${slowProfit}`));
       assert.isTrue(lastSpyLogIncludes(spy, `InstantRelay profit ${fastProfit}`));
       assert.isTrue(lastSpyLogIncludes(spy, `SpeedUpRelay profit ${speedUpProfit}`));
