@@ -209,7 +209,7 @@ describe("ProfitabilityCalculator.ts", function () {
           RelaySubmitType.SpeedUp
         );
         // Validate the relay profitability message message is produced correctly.
-        const expectedProfit = toBNWei(1).sub(sampleCumulativeGasPrice.mul(toBN(across.constants.SPEED_UP_ETH_GAS)));
+        const expectedProfit = toBNWei(1); // note that we set the cost for speedup to 0 to ensure we always speedup.
         assert.equal(
           profitabilityCalculator.getRelaySubmitTypeBasedOnProfitability(
             wethAddress,
@@ -293,9 +293,7 @@ describe("ProfitabilityCalculator.ts", function () {
         // each relay type is the difference between the above costs and the revenue of 0.02.
         const slowProfit = formatWei(reward.sub(sampleCumulativeGasPrice.mul(toBN(across.constants.SLOW_ETH_GAS))));
         const fastProfit = formatWei(reward.sub(sampleCumulativeGasPrice.mul(toBN(across.constants.FAST_ETH_GAS))));
-        const speedUpProfit = formatWei(
-          toBN(0).sub(sampleCumulativeGasPrice.mul(toBN(across.constants.SPEED_UP_ETH_GAS)))
-        );
+        const speedUpProfit = formatWei("0");
 
         // Equally, there is a gas price at which the revenue of 0.02 for slow & fast relays becomes profitable.
         const breakEvenSlowGasPrice = formatGwei(reward.div(toBN(across.constants.SLOW_ETH_GAS)));

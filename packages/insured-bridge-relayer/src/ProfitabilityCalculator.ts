@@ -210,7 +210,7 @@ export class ProfitabilityCalculator {
     const discount = fixedPoint.sub(this.relayerDiscount);
     return {
       slowEThCost: cumulativeGasPrice.mul(toBN(costConstants[tokenType].slow)).mul(discount).div(fixedPoint),
-      speedUpEthCost: cumulativeGasPrice.mul(toBN(costConstants[tokenType].speedUp)).mul(discount).div(fixedPoint),
+      speedUpEthCost: toBN("0"), // set to 0 to always make speedups done, without considering the cost.
       instantEthCost: cumulativeGasPrice.mul(toBN(costConstants[tokenType].instant)).mul(discount).div(fixedPoint),
     };
   }
