@@ -96,8 +96,8 @@ describe("Nomad_ChildMessenger", function () {
         ["bytes", "address"],
         [dataToSendToSpoke, oracleSpokeSmocked.options.address]
       );
-      const handleTxn = (sender) => {
-        return nomad_ChildMessenger.methods.handle(parentChainDomain, addressToBytes32(sender), messageToHandle);
+      const handleTxn = (sender, originDomain = parentChainDomain) => {
+        return nomad_ChildMessenger.methods.handle(originDomain, addressToBytes32(sender), messageToHandle);
       };
 
       // Fails if `isReplica` returns false, so we'll set the smocked XAppConnectionManager to always return false for
@@ -108,9 +108,12 @@ describe("Nomad_ChildMessenger", function () {
 
       // Sender must be parent messenger
       assert(await didContractThrow(handleTxn(rando).send({ from: replica })));
-      const txn = await handleTxn(parentMessenger).send({ from: replica });
+
+      // Origin domain must be parent domain
+      assert(await didContractThrow(handleTxn(parentMessenger, parentChainDomain + 1).send({ from: replica })));
 
       // Check if data is sent correctly to target, which checks that `handle()` correctly decodes the message.
+      const txn = await handleTxn(parentMessenger).send({ from: replica });
       const smockedMessage = oracleSpokeSmocked.smocked.processMessageFromParent.calls;
       assert.equal(smockedMessage.length, 1); // there should be only one call
       assert.equal(smockedMessage[0].data, dataToSendToSpoke);

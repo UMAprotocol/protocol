@@ -4,4 +4,4 @@ Any modifications to original source code can be found in this document. Origina
 
 ## interfaces
 
-Interfaces are based on contract implementations in [this commit](https://github.com/celo-org/optics-monorepo/tree/5ba0bed73af4f09c50cd7ed7201455bf17d4b6fd).
+Interfaces are based on contract implementations in [this commit](https://github.com/nomad-xyz/nomad-monorepo/tree/2111a1d4756a26dfd01a5fb2b1784479e54a2886/solidity/nomad-core).

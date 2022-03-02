@@ -5,10 +5,7 @@ import "./HomeInterface.sol";
 
 /**
  * @title XAppConnectionManager
- * @author Celo Labs Inc.
- * @notice Manages a registry of local Replica contracts
- * for remote Home domains. Accepts Watcher signatures
- * to un-enroll Replicas attached to fraudulent remote Homes
+ * @notice Inspired from https://github.com/nomad-xyz/nomad-monorepo/blob/9294161dffa27ddd26d37462404ba294d31f73ad/solidity/nomad-core/contracts/XAppConnectionManager.sol
  */
 interface XAppConnectionManagerInterface {
     // ============ Public Storage ============

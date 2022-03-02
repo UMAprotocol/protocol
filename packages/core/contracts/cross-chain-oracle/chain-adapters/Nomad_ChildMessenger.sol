@@ -30,9 +30,7 @@ contract Nomad_ChildMessenger is ChildMessengerInterface, Lockable, HasFinder {
         address sourceSender
     );
 
-    /**
-     * @notice Only accept messages from a Nomad Replica contract
-     */
+    // @notice Only accept messages from a Nomad Replica contract
     modifier onlyReplica(address addressToCheck) {
         // Determine whether addressToCheck is an enrolled Replica from the xAppConnectionManager
         require(getXAppConnectionManager().isReplica(addressToCheck), "msg.sender must be replica");
@@ -54,7 +52,7 @@ contract Nomad_ChildMessenger is ChildMessengerInterface, Lockable, HasFinder {
      * domains do not always correspond to "chain ID's", but they are unique identifiers for each network.
      **/
     constructor(address _finder, uint32 _parentChainDomain) HasFinder(_finder) {
-        parentChainDomain = _parentChainDomain; // TODO: Figure out how to upgrade this value.
+        parentChainDomain = _parentChainDomain;
     }
 
     /**
@@ -86,7 +84,7 @@ contract Nomad_ChildMessenger is ChildMessengerInterface, Lockable, HasFinder {
         bytes32 _sender,
         bytes memory _message
     ) external onlyReplica(msg.sender) crossChainSenderIsParentMessenger(_sender) {
-        // TODO: Should we check that _domain == parentChainDomain?
+        require(_domain == parentChainDomain, "Invalid origin domain");
         (bytes memory dataToSendToTarget, address target) = abi.decode(_message, (bytes, address));
         ChildMessengerConsumerInterface(target).processMessageFromParent(dataToSendToTarget);
         emit MessageReceivedFromParent(target, dataToSendToTarget, _domain, getParentMessenger());

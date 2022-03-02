@@ -90,7 +90,7 @@ contract Nomad_ParentMessenger is ParentMessengerInterface, ParentMessengerBase,
         bytes32 _sender,
         bytes memory _message
     ) external onlyReplica(msg.sender) onlyChildMessenger(_sender) {
-        // TODO: Should we check that _domain == parentChainDomain?
+        require(_domain == uint32(childChainId), "Invalid origin domain");
         ParentMessengerConsumerInterface(oracleHub).processMessageFromChild(childChainId, _message);
         emit MessageReceivedFromChild(_message, oracleHub, childMessenger, _domain);
     }

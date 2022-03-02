@@ -3,13 +3,7 @@ pragma solidity ^0.8.0;
 
 /**
  * @title Home
- * @author Celo Labs Inc.
- * @notice Accepts messages to be dispatched to remote chains,
- * constructs a Merkle tree of the messages,
- * and accepts signatures from a bonded Updater
- * which notarize the Merkle tree roots.
- * Accepts submissions of fraudulent signatures
- * by the Updater and slashes the Updater in this case.
+ * @notice Inspired from https://github.com/nomad-xyz/nomad-monorepo/blob/9294161dffa27ddd26d37462404ba294d31f73ad/solidity/nomad-core/contracts/Home.sol
  */
 interface HomeInterface {
     /**

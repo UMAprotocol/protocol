@@ -110,8 +110,8 @@ describe("Nomad_ParentMessenger", function () {
       await nomad_ParentMessenger.methods.setOracleHub(oracleHubSmocked.options.address).send({ from: l1Owner });
 
       const dataToSendToHub = "0x1234";
-      const handleTxn = (sender) => {
-        return nomad_ParentMessenger.methods.handle(childChainDomain, addressToBytes32(sender), dataToSendToHub);
+      const handleTxn = (sender, originDomain = childChainDomain) => {
+        return nomad_ParentMessenger.methods.handle(originDomain, addressToBytes32(sender), dataToSendToHub);
       };
 
       // Fails if `isReplica` returns false, so we'll set the smocked XAppConnectionManager to always return false for
@@ -122,9 +122,12 @@ describe("Nomad_ParentMessenger", function () {
 
       // Sender must be parent messenger
       assert(await didContractThrow(handleTxn(rando).send({ from: replica })));
-      const txn = await handleTxn(childMessenger).send({ from: replica });
+
+      // Origin domain must be child domain
+      assert(await didContractThrow(handleTxn(childMessenger, childChainDomain + 1).send({ from: replica })));
 
       // Check if data is sent correctly to target, which checks that `handle()` correctly decodes the message.
+      const txn = await handleTxn(childMessenger).send({ from: replica });
       const smockedMessage = oracleHubSmocked.smocked.processMessageFromChild.calls;
       assert.equal(smockedMessage.length, 1); // there should be only one call
       assert.equal(smockedMessage[0].data, dataToSendToHub);
