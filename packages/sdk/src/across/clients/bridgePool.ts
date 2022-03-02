@@ -49,6 +49,7 @@ export type User = {
   address: string;
   poolAddress: string;
   lpTokens: string;
+  lpTransfers: string;
   positionValue: string;
   totalDeposited: string;
   feesEarned: string;
@@ -146,6 +147,7 @@ export class PoolEventState {
       await Promise.all([
         ...(await this.contract.queryFilter(this.contract.filters.LiquidityAdded(), this.startBlock, endBlock)),
         ...(await this.contract.queryFilter(this.contract.filters.LiquidityRemoved(), this.startBlock, endBlock)),
+        ...(await this.contract.queryFilter(this.contract.filters.Transfer(), this.startBlock, endBlock)),
       ])
     )
       .filter(this.filterSeen)
@@ -234,7 +236,11 @@ function joinUserState(
     .mul(userState.balanceOf)
     .div(fixedPointAdjustment);
   const totalDeposited = BigNumber.from(eventState.tokens[userState.address] || "0");
-  const feesEarned = positionValue.sub(totalDeposited);
+  const totalTransferred = BigNumber.from(eventState.lpTransfers[userState.address] || "0");
+  const totalTransferredValue = BigNumber.from(poolState.exchangeRateCurrent)
+    .mul(totalTransferred)
+    .div(fixedPointAdjustment);
+  const feesEarned = positionValue.sub(totalDeposited.add(totalTransferredValue));
   return {
     address: userState.address,
     poolAddress: poolState.address,
@@ -242,6 +248,7 @@ function joinUserState(
     positionValue: positionValue.toString(),
     totalDeposited: totalDeposited.toString(),
     feesEarned: feesEarned.toString(),
+    lpTransfers: totalTransferred.toString(),
   };
 }
 function joinPoolState(

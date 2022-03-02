@@ -13,10 +13,12 @@ const multicall2Address = "0x5BA1e12693Dc8F9c48aAD8770482f4739bEeD696";
 const wethAddress = "0x7355Efc63Ae731f584380a9838292c7046c1e433";
 const badgerAddress = "0x43298F9f91a4545dF64748e78a2c777c580573d6";
 const wbtcAddress = "0x02fbb64517E1c6ED69a6FAa3ABf37Db0482f1152";
+const usdcAddress = "0x256C8919CE1AB0e33974CF6AA9c71561Ef3017b6";
 const users = [
   "0x06d8aeb52f99f8542429df3009ed26535c22d5aa",
   "0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D",
   "0x718648C8c531F91b528A7757dD2bE813c3940608",
+  "0x67eb87fA6f2a81F864575B3930292A322B5Cf9FA",
 ];
 const txReceipt = {
   to: "0x7355Efc63Ae731f584380a9838292c7046c1e433",
@@ -122,9 +124,9 @@ describe("Client", function () {
   });
   test("read users", async function () {
     for (const userAddress of users) {
-      await client.updateUser(userAddress, wethAddress);
-      const user = get(state, ["users", userAddress, wethAddress]);
-      const pool = get(state, ["pools", wethAddress]);
+      await client.updateUser(userAddress, usdcAddress);
+      const user = get(state, ["users", userAddress, usdcAddress]);
+      const pool = get(state, ["pools", usdcAddress]);
       assert.ok(pool);
       assert.ok(user);
     }
@@ -142,6 +144,11 @@ describe("Client", function () {
   test("read wbtc pool", async function () {
     await client.updatePool(wbtcAddress);
     const result = get(state, ["pools", wbtcAddress]);
+    assert.ok(result);
+  });
+  test("read usdc pool", async function () {
+    await client.updatePool(usdcAddress);
+    const result = get(state, ["pools", usdcAddress]);
     assert.ok(result);
   });
 });

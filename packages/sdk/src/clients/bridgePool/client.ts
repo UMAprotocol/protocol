@@ -22,6 +22,7 @@ export type RelayDisputed = GetEventType<Instance, "RelayDisputed">;
 export type RelayCanceled = GetEventType<Instance, "RelayCanceled">;
 export type RelaySettled = GetEventType<Instance, "RelaySettled">;
 export type BridgePoolAdminTransferred = GetEventType<Instance, "BridgePoolAdminTransferred">;
+export type Transfer = GetEventType<Instance, "Transfer">;
 
 export type DepositData = {
   chainId: BigNumber;
@@ -47,6 +48,7 @@ export interface EventState {
   newAdmin?: string;
   tokens: Balances;
   lpTokens: Balances;
+  lpTransfers: Balances;
   deposits: Record<string, DepositData>;
   relays: Record<string, RelayData>;
   instantRelays: Record<string, string>;
@@ -58,12 +60,29 @@ export function eventStateDefaults() {
     lpTokens: {},
     deposits: {},
     relays: {},
+    // non address 0 transfers, ie account to account lp token transfers
+    lpTransfers: {},
     instantRelays: {},
   };
 }
 
 export function reduceEvents(state: EventState, event: SerializableEvent): EventState {
   switch (event.event) {
+    case "Transfer": {
+      const typedEvent = event as Transfer;
+      const { from, to, value } = typedEvent.args;
+      const lpTransfers = Balances(state.lpTransfers || {});
+      if (from != "0x0000000000000000000000000000000000000000" && to != "0x0000000000000000000000000000000000000000") {
+        lpTransfers.add(to, value.toString());
+        lpTransfers.sub(from, value.toString());
+      }
+      return {
+        ...state,
+        lpTransfers: {
+          ...lpTransfers.balances,
+        },
+      };
+    }
     // event LiquidityAdded(address indexed token, uint256 amount, uint256 lpTokensMinted, address liquidityProvider);
     case "LiquidityAdded": {
       const typedEvent = event as LiquidityAdded;
