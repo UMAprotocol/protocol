@@ -35,7 +35,7 @@ export function Handlers(store: Store): GenericHandlers<Params, Memory> {
       // we want to move start block closer to endblock to reduce the range until it stops erroring. These range functions
       // will do that for us.
       const rangeState = memory.state || rangeStart({ startBlock, endBlock });
-      const { currentStart, currentEnd, done } = rangeState;
+      const { currentStart, currentEnd } = rangeState;
 
       try {
         // this just queries events between start and end
@@ -54,11 +54,11 @@ export function Handlers(store: Store): GenericHandlers<Params, Memory> {
         // the provider threw an error so we will reduce our range by moving startblock closer to endblock next iteration
         memory.state = rangeFailureDescending(rangeState);
       }
-      // the range functions will tell us when we have successfully queried the entire range of blocks.
-      if (done) return "done";
       memory.iterations++;
+      // the range functions will tell us when we have successfully queried the entire range of blocks.
+      if (memory?.state?.done) return "done";
       // sleep to let other contexts run, but just resume right after.
-      return ctx.sleep(10);
+      return ctx.sleep(100);
     },
   };
 }
