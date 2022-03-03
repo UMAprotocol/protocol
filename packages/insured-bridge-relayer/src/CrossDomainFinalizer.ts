@@ -44,8 +44,11 @@ export class CrossDomainFinalizer {
   async checkForBridgeableL2TokensAndBridge() {
     this.logger.debug({ at: "CrossDomainFinalizer", message: "Checking bridgeable L2 tokens" });
 
-    // Fetch all whitelisted tokens on the particular l2 chainId.
-    const whitelistedL2Tokens = this.l1Client.getWhitelistedL2TokensForChainId(this.l2Client.chainId.toString());
+    // Fetch all whitelisted tokens on the particular l2 chainId. Remove the DAI Optimism address from the whitelist as
+    // we don't want to finalize DAI actions due to this not working over the canonical Optimism bridge.
+    const whitelistedL2Tokens = this.l1Client
+      .getWhitelistedL2TokensForChainId(this.l2Client.chainId.toString())
+      .filter((address) => address !== "0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1"); // Remove DAI on Optimism address.
 
     // Check if any of the whitelisted l2Tokens are bridgeable. Do this in one parallel call. Returns an array of bool
     // for each l2Token, describing if it can be bridged from L2->L1.
@@ -114,10 +117,11 @@ export class CrossDomainFinalizer {
   async checkForConfirmedL2ToL1RelaysAndFinalize() {
     // Fetch all whitelisted L2 tokens. Append the ETH address on Optimism to the whitelist to enable finalization of
     // Optimism -> Ethereum bridging actions. This is needed as we send ETH over the Optimism bridge, not WETH.
+    // Also, remove the DAI Optimism address from the whitelist as we don't want to finalize DAI transfer.
     const whitelistedL2Tokens = [
       ...this.l1Client.getWhitelistedL2TokensForChainId(this.l2Client.chainId.toString()),
-      "0xDeadDeAddeAddEAddeadDEaDDEAdDeaDDeAD0000",
-    ];
+      "0xDeadDeAddeAddEAddeadDEaDDEAdDeaDDeAD0000", // Append L2ETH on Optimism address.
+    ].filter((address) => address !== "0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1"); // Remove DAI on Optimism address.
 
     // Fetch TokensBridged events.
     await this.fetchTokensBridgedEvents();
