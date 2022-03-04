@@ -24,4 +24,4 @@ const configOverride = {
   typechain,
 };
 
-module.exports = getHardhatConfig(configOverride, __dirname, false);
+module.exports = getHardhatConfig(configOverride, __dirname);

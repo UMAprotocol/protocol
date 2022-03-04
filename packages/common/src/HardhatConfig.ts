@@ -35,13 +35,9 @@ function pruneCompanionNetworks(config: {
 export function getHardhatConfig(
   configOverrides: any,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  _workingDir = "./",
-  includeTruffle = true
+  _workingDir = "./"
 ): Partial<HardhatConfig> {
   const mnemonic = getMnemonic();
-  // Hardhat plugins. These are imported inside `getHardhatConfig` so that other packages importing this function
-  // get access to the plugins as well.
-  if (includeTruffle) require("@nomiclabs/hardhat-truffle5");
   require("@nomiclabs/hardhat-web3");
   require("@nomiclabs/hardhat-etherscan");
   require("@nomiclabs/hardhat-ethers");
