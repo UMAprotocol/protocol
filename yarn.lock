@@ -6167,22 +6167,6 @@
     "@uma/common" "^1.1.0"
     "@uma/core-1-1-0" "npm:@uma/core@1.1.0"
 
-"@uma/sdk@^0.22.1":
-  version "0.22.1"
-  resolved "https://registry.yarnpkg.com/@uma/sdk/-/sdk-0.22.1.tgz#6104e93f8fc757f47d6b295cf02471e4e85c5f51"
-  integrity sha512-/CNRPTMjxOr5YZCF6yPjWjTESpzJwS0TehEUup8HGd50ps6pZXQkXjRErwFLaq3Crp3OTOqTKPZaUQHVhMXV9A==
-  dependencies:
-    "@google-cloud/datastore" "^6.6.0"
-    "@types/lodash-es" "^4.17.5"
-    "@uma/contracts-frontend" "^0.3.1"
-    "@uma/contracts-node" "^0.3.1"
-    axios "^0.24.0"
-    bn.js "^4.11.9"
-    decimal.js "^10.3.1"
-    highland "^2.13.5"
-    immer "^9.0.7"
-    lodash-es "^4.17.21"
-
 "@umaprotocol/truffle-ledger-provider@^1.0.3", "@umaprotocol/truffle-ledger-provider@^1.0.5":
   version "1.0.5"
   resolved "https://registry.yarnpkg.com/@umaprotocol/truffle-ledger-provider/-/truffle-ledger-provider-1.0.5.tgz#e30025c4ecc2f2540825c46788ef1291474080be"
@@ -8822,19 +8806,6 @@ chai@^4.2.0, chai@^4.3.0, chai@^4.3.4:
     check-error "^1.0.2"
     deep-eql "^3.0.1"
     get-func-name "^2.0.0"
-    pathval "^1.1.1"
-    type-detect "^4.0.5"
-
-chai@^4.3.6:
-  version "4.3.6"
-  resolved "https://registry.yarnpkg.com/chai/-/chai-4.3.6.tgz#ffe4ba2d9fa9d6680cc0b370adae709ec9011e9c"
-  integrity sha512-bbcp3YfHCUzMOvKqsztczerVgBKSsEijCySNlHHbX3VG1nskvqjz5Rfso1gGwD6w6oOV3eI60pKuMOV5MV7p3Q==
-  dependencies:
-    assertion-error "^1.1.0"
-    check-error "^1.0.2"
-    deep-eql "^3.0.1"
-    get-func-name "^2.0.0"
-    loupe "^2.3.1"
     pathval "^1.1.1"
     type-detect "^4.0.5"
 
@@ -17397,13 +17368,6 @@ loud-rejection@^1.0.0:
   dependencies:
     currently-unhandled "^0.4.1"
     signal-exit "^3.0.0"
-
-loupe@^2.3.1:
-  version "2.3.4"
-  resolved "https://registry.yarnpkg.com/loupe/-/loupe-2.3.4.tgz#7e0b9bffc76f148f9be769cb1321d3dcf3cb25f3"
-  integrity sha512-OvKfgCC2Ndby6aSTREl5aCCPTNIzlDfQZvZxNUrBrihDhL3xcrYegTblhmEiCrg2kKQz4XsFIaemE5BF4ybSaQ==
-  dependencies:
-    get-func-name "^2.0.0"
 
 lower-case-first@^1.0.0:
   version "1.0.2"
