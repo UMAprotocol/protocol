@@ -2039,6 +2039,13 @@
   dependencies:
     "@ethersproject/logger" "^5.5.0"
 
+"@ethersproject/networks@5.5.2":
+  version "5.5.2"
+  resolved "https://registry.yarnpkg.com/@ethersproject/networks/-/networks-5.5.2.tgz#784c8b1283cd2a931114ab428dae1bd00c07630b"
+  integrity sha512-NEqPxbGBfy6O3x4ZTISb90SjEDkWYDUbEeIFhJly0F7sZjoQMnj5KYzMSkMkLKZ+1fGpx00EDpHQCy6PrDupkQ==
+  dependencies:
+    "@ethersproject/logger" "^5.5.0"
+
 "@ethersproject/pbkdf2@5.0.9":
   version "5.0.9"
   resolved "https://registry.yarnpkg.com/@ethersproject/pbkdf2/-/pbkdf2-5.0.9.tgz#be39c7f0a66c0d3cb1ad1dbb12a78e9bcdf9b5ae"
@@ -2184,6 +2191,31 @@
     bech32 "1.1.4"
     ws "7.4.6"
 
+"@ethersproject/providers@5.5.3":
+  version "5.5.3"
+  resolved "https://registry.yarnpkg.com/@ethersproject/providers/-/providers-5.5.3.tgz#56c2b070542ac44eb5de2ed3cf6784acd60a3130"
+  integrity sha512-ZHXxXXXWHuwCQKrgdpIkbzMNJMvs+9YWemanwp1fA7XZEv7QlilseysPvQe0D7Q7DlkJX/w/bGA1MdgK2TbGvA==
+  dependencies:
+    "@ethersproject/abstract-provider" "^5.5.0"
+    "@ethersproject/abstract-signer" "^5.5.0"
+    "@ethersproject/address" "^5.5.0"
+    "@ethersproject/basex" "^5.5.0"
+    "@ethersproject/bignumber" "^5.5.0"
+    "@ethersproject/bytes" "^5.5.0"
+    "@ethersproject/constants" "^5.5.0"
+    "@ethersproject/hash" "^5.5.0"
+    "@ethersproject/logger" "^5.5.0"
+    "@ethersproject/networks" "^5.5.0"
+    "@ethersproject/properties" "^5.5.0"
+    "@ethersproject/random" "^5.5.0"
+    "@ethersproject/rlp" "^5.5.0"
+    "@ethersproject/sha2" "^5.5.0"
+    "@ethersproject/strings" "^5.5.0"
+    "@ethersproject/transactions" "^5.5.0"
+    "@ethersproject/web" "^5.5.0"
+    bech32 "1.1.4"
+    ws "7.4.6"
+
 "@ethersproject/random@5.0.9":
   version "5.0.9"
   resolved "https://registry.yarnpkg.com/@ethersproject/random/-/random-5.0.9.tgz#1903d4436ba66e4c8ac77968b16f756abea3a0d0"
@@ -2204,6 +2236,14 @@
   version "5.5.0"
   resolved "https://registry.yarnpkg.com/@ethersproject/random/-/random-5.5.0.tgz#305ed9e033ca537735365ac12eed88580b0f81f9"
   integrity sha512-egGYZwZ/YIFKMHcoBUo8t3a8Hb/TKYX8BCBoLjudVCZh892welR3jOxgOmb48xznc9bTcMm7Tpwc1gHC1PFNFQ==
+  dependencies:
+    "@ethersproject/bytes" "^5.5.0"
+    "@ethersproject/logger" "^5.5.0"
+
+"@ethersproject/random@5.5.1":
+  version "5.5.1"
+  resolved "https://registry.yarnpkg.com/@ethersproject/random/-/random-5.5.1.tgz#7cdf38ea93dc0b1ed1d8e480ccdaf3535c555415"
+  integrity sha512-YaU2dQ7DuhL5Au7KbcQLHxcRHfgyNgvFV4sQOo0HrtW3Zkrc9ctWNz8wXQ4uCSfSDsqX2vcjhroxU5RQRV0nqA==
   dependencies:
     "@ethersproject/bytes" "^5.5.0"
     "@ethersproject/logger" "^5.5.0"
@@ -2639,6 +2679,31 @@
     tar "^4.4.10"
     unique-filename "^1.1.1"
     which "^1.3.1"
+
+"@gnosis.pm/mock-contract@^4.0.0":
+  version "4.0.0"
+  resolved "https://registry.yarnpkg.com/@gnosis.pm/mock-contract/-/mock-contract-4.0.0.tgz#eaf500fddcab81b5f6c22280a7b22ff891dd6f87"
+  integrity sha512-SkRq2KwPx6vo0LAjSc8JhgQstrQFXRyn2yqquIfub7r2WHi5nUbF8beeSSXsd36hvBcQxQfmOIYNYRpj9JOhrQ==
+
+"@gnosis.pm/safe-contracts@1.3.0":
+  version "1.3.0"
+  resolved "https://registry.yarnpkg.com/@gnosis.pm/safe-contracts/-/safe-contracts-1.3.0.tgz#316741a7690d8751a1f701538cfc9ec80866eedc"
+  integrity sha512-1p+1HwGvxGUVzVkFjNzglwHrLNA67U/axP0Ct85FzzH8yhGJb4t9jDjPYocVMzLorDoWAfKicGy1akPY9jXRVw==
+
+"@gnosis.pm/zodiac@^1.0.3":
+  version "1.0.3"
+  resolved "https://registry.yarnpkg.com/@gnosis.pm/zodiac/-/zodiac-1.0.3.tgz#6deac371ed78db790044cf9d3826e4836e1f5ae6"
+  integrity sha512-AKEv9Mos4hgaMqWkp3RKKqAAocXvd8brVCDmcUc+Mz4r9g15CP0W+bmpnP+C6Q4UGnKl3ry9SHzp+gvq7pBQEw==
+  dependencies:
+    "@gnosis.pm/mock-contract" "^4.0.0"
+    "@gnosis.pm/safe-contracts" "1.3.0"
+    "@openzeppelin/contracts" "^4.3.2"
+    "@openzeppelin/contracts-upgradeable" "^4.2.0"
+    argv "^0.0.2"
+    dotenv "^8.0.0"
+    ethers "^5.4.6"
+    solc "^0.8.6"
+    yargs "^16.1.1"
 
 "@google-cloud/bigquery@^5.3.0":
   version "5.7.0"
@@ -4031,58 +4096,6 @@
   resolved "https://registry.yarnpkg.com/@multiformats/base-x/-/base-x-4.0.1.tgz#95ff0fa58711789d53aefb2590a8b7a4e715d121"
   integrity sha512-eMk0b9ReBbV23xXU693TAIrLyeO5iTgBZGSJfpqriG8UkYvr/hC9u9pyMlAakDNHWmbhMZCDs6KQO0jzKD8OTw==
 
-"@napi-rs/triples@^1.1.0":
-  version "1.1.0"
-  resolved "https://registry.yarnpkg.com/@napi-rs/triples/-/triples-1.1.0.tgz#88c35b72e79a20b79bb4c9b3e2817241a1c9f4f9"
-  integrity sha512-XQr74QaLeMiqhStEhLn1im9EOMnkypp7MZOwQhGzqp2Weu5eQJbpPxWxixxlYRKWPOmJjsk6qYfYH9kq43yc2w==
-
-"@node-rs/crc32-android-arm64@^1.0.0":
-  version "1.4.3"
-  resolved "https://registry.yarnpkg.com/@node-rs/crc32-android-arm64/-/crc32-android-arm64-1.4.3.tgz#eea433a9bace8b6e7c3a649ff2746c76dbd10e9e"
-  integrity sha512-jLPYQwETjPrb8xeuaj8PpGMk/Utvjlrp0XQvA25NCmgecsov5oTB+QS4I5Hi5GM0Iu00hfw7ddJg31jX/mOPHg==
-
-"@node-rs/crc32-darwin-arm64@^1.0.0":
-  version "1.4.3"
-  resolved "https://registry.yarnpkg.com/@node-rs/crc32-darwin-arm64/-/crc32-darwin-arm64-1.4.3.tgz#26bcd0d345bd03f092d8449e3fda88fb7f0658b1"
-  integrity sha512-S2VofrKRGaKf03WPjeoVzHTt10SE8DuTJD+NuCYxfthLKx5qehefq0u+32cCvJVf1E7kCcq/8lO0nEPKVpsIJA==
-
-"@node-rs/crc32-darwin-x64@^1.0.0":
-  version "1.4.3"
-  resolved "https://registry.yarnpkg.com/@node-rs/crc32-darwin-x64/-/crc32-darwin-x64-1.4.3.tgz#882ca6ce9605dc43890ed2d3a2c0d4c99d9f357c"
-  integrity sha512-0spHlxLtImsGRZHSUYopzOKxRU9fMQ9TYXffP/TMkzS7bs0SF3jjOaSWZ4FZBH17qSdkS5v1ddhd/B2Z0lJTxQ==
-
-"@node-rs/crc32-linux-arm-gnueabihf@^1.0.0":
-  version "1.4.3"
-  resolved "https://registry.yarnpkg.com/@node-rs/crc32-linux-arm-gnueabihf/-/crc32-linux-arm-gnueabihf-1.4.3.tgz#a5fc5bfc79d9f555ad814e81205af4c3fc194cfd"
-  integrity sha512-dNYURWb63UiJR+o8IJh9aNmJ71EeI7RAElirvHhgrcR7ykuu+SpFhoqVe9leT/nOD1FBYz/PV2eVqaR/XsEK6Q==
-
-"@node-rs/crc32-linux-arm64-gnu@^1.0.0":
-  version "1.4.3"
-  resolved "https://registry.yarnpkg.com/@node-rs/crc32-linux-arm64-gnu/-/crc32-linux-arm64-gnu-1.4.3.tgz#c24ec98a3fd8828d11a109b13414dc6996256890"
-  integrity sha512-yBxrHMSJjN1q6GOB9HUQyy1/4tm0xAQqbwQO8LLlGaXy/DM7Em+WX+3HsbfgMM6y0eFAwbB7RpuArj6RVFmmDw==
-
-"@node-rs/crc32-linux-x64-gnu@^1.0.0":
-  version "1.4.3"
-  resolved "https://registry.yarnpkg.com/@node-rs/crc32-linux-x64-gnu/-/crc32-linux-x64-gnu-1.4.3.tgz#b2ddfebd49369d79d1b4e7d2a9dd009a7e034c99"
-  integrity sha512-K8fDgYOuS7Q64qzzSKAu3sBAc6CJFdNbLFpxUZi2N81mtZJWzlcSDM+l5Sv1x4ZcTGa/zdtiOQoAT5T2XvrczA==
-
-"@node-rs/crc32-linux-x64-musl@^1.0.0":
-  version "1.4.3"
-  resolved "https://registry.yarnpkg.com/@node-rs/crc32-linux-x64-musl/-/crc32-linux-x64-musl-1.4.3.tgz#2692bbfa99a19fa3b7e046b18bf01bb4118a1f38"
-  integrity sha512-LdKnbWKRIXHlzvujrjSoxMBaJM8qJcfKdZbpCpm2Zdj9psSTIgWS69wBXrwPDHM2vQdKT6Vxgz7A1DLg0nuM2Q==
-
-"@node-rs/crc32-win32-x64-msvc@^1.0.0":
-  version "1.4.3"
-  resolved "https://registry.yarnpkg.com/@node-rs/crc32-win32-x64-msvc/-/crc32-win32-x64-msvc-1.4.3.tgz#03d06d8f6a1d868f9678985c26ae90b1b569511c"
-  integrity sha512-XQ5+y/XU2/F3eigicrbd4aiFr+gweC4HINRCWkmBGglI66VpWsZI2GQCNYeNXeJLBODxQdtprParsLlGHvMMQA==
-
-"@node-rs/helper@^1.0.0":
-  version "1.3.3"
-  resolved "https://registry.yarnpkg.com/@node-rs/helper/-/helper-1.3.3.tgz#2b1953846ddba31bfb7ecf4ba57e7b1359fcdedc"
-  integrity sha512-p4OdfQObGN9YFy5WZaGwlPYICQSe7xZYyXB0sxREmvj1HzGKp5bPg2PlfgfMZEfnjIA882B9ZrnagYzZihIwjA==
-  dependencies:
-    "@napi-rs/triples" "^1.1.0"
-
 "@nodelib/fs.scandir@2.1.5":
   version "2.1.5"
   resolved "https://registry.yarnpkg.com/@nodelib/fs.scandir/-/fs.scandir-2.1.5.tgz#7619c2eb21b25483f6d167548b4cfd5a7488c3d5"
@@ -4458,6 +4471,11 @@
     hex2dec "^1.0.1"
     uuid "^8.0.0"
 
+"@openzeppelin/contracts-upgradeable@^4.2.0":
+  version "4.5.2"
+  resolved "https://registry.yarnpkg.com/@openzeppelin/contracts-upgradeable/-/contracts-upgradeable-4.5.2.tgz#90d9e47bacfd8693bfad0ac8a394645575528d05"
+  integrity sha512-xgWZYaPlrEOQo3cBj97Ufiuv79SPd8Brh4GcFYhPgb6WvAq4ppz8dWKL6h+jLAK01rUqMRp/TS9AdXgAeNvCLA==
+
 "@openzeppelin/contracts@3.4.1-solc-0.7-2":
   version "3.4.1-solc-0.7-2"
   resolved "https://registry.yarnpkg.com/@openzeppelin/contracts/-/contracts-3.4.1-solc-0.7-2.tgz#371c67ebffe50f551c3146a9eec5fe6ffe862e92"
@@ -4472,6 +4490,11 @@
   version "4.4.2"
   resolved "https://registry.yarnpkg.com/@openzeppelin/contracts/-/contracts-4.4.2.tgz#4e889c9c66e736f7de189a53f8ba5b8d789425c2"
   integrity sha512-NyJV7sJgoGYqbtNUWgzzOGW4T6rR19FmX1IJgXGdapGPWsuMelGJn9h03nos0iqfforCbCB0iYIR0MtIuIFLLw==
+
+"@openzeppelin/contracts@^4.3.2":
+  version "4.5.0"
+  resolved "https://registry.yarnpkg.com/@openzeppelin/contracts/-/contracts-4.5.0.tgz#3fd75d57de172b3743cdfc1206883f56430409cc"
+  integrity sha512-fdkzKPYMjrRiPK6K4y64e6GzULR7R7RwxSigHS8DDp7aWDeoReqsQI+cxHV1UuhAqX69L1lAaWDxenfP+xiqzA==
 
 "@polka/url@^1.0.0-next.15":
   version "1.0.0-next.15"
@@ -6858,6 +6881,11 @@ argparse@^2.0.1:
   version "2.0.1"
   resolved "https://registry.yarnpkg.com/argparse/-/argparse-2.0.1.tgz#246f50f3ca78a3240f6c997e8a9bd1eac49e4b38"
   integrity sha512-8+9WqebbFzpX9OR+Wa6O29asIogeRMzcGtAINdpMHHyAg10f05aSFVBbcEqGf/PXw1EjAZ+q2/bEBg3DvurK3Q==
+
+argv@^0.0.2:
+  version "0.0.2"
+  resolved "https://registry.yarnpkg.com/argv/-/argv-0.0.2.tgz#ecbd16f8949b157183711b1bda334f37840185ab"
+  integrity sha1-7L0W+JSbFXGDcRsb2jNPN4QBhas=
 
 aria-query@^4.2.2:
   version "4.2.2"
@@ -9301,6 +9329,11 @@ commander@^7.1.0, commander@^7.2.0:
   resolved "https://registry.yarnpkg.com/commander/-/commander-7.2.0.tgz#a36cb57d0b501ce108e4d20559a150a391d97ab7"
   integrity sha512-QrWXB+ZQSVPmIWIhtEO9H+gwHaMGYiF5ChvoJ+K9ZGHG/sVsa6yiesAD1GC/x46sET00Xlwo1u49RVVVzvcSkw==
 
+commander@^8.1.0:
+  version "8.3.0"
+  resolved "https://registry.yarnpkg.com/commander/-/commander-8.3.0.tgz#4837ea1b2da67b9c616a67afbb0fafee567bca66"
+  integrity sha512-OkTL9umf+He2DZkUq8f8J9of7yL6RJKI24dVITBmNfZBmri9zYZQrKkuXiKhyfPSu8tUhnVBB1iKXevvnlR4Ww==
+
 commander@~6.1:
   version "6.1.0"
   resolved "https://registry.yarnpkg.com/commander/-/commander-6.1.0.tgz#f8d722b78103141006b66f4c7ba1e97315ba75bc"
@@ -10496,7 +10529,7 @@ dotenv@^6.2.0:
   resolved "https://registry.yarnpkg.com/dotenv/-/dotenv-6.2.0.tgz#941c0410535d942c8becf28d3f357dbd9d476064"
   integrity sha512-HygQCKUBSFl8wKQZBSemMywRWcEDNidvNbjGVyZu3nbZ8qq9ubiPoGLMdRDpfSrpkkm9BXYFkpKxxFX38o/76w==
 
-dotenv@^8.2.0:
+dotenv@^8.0.0, dotenv@^8.2.0:
   version "8.6.0"
   resolved "https://registry.yarnpkg.com/dotenv/-/dotenv-8.6.0.tgz#061af664d19f7f4d8fc6e4ff9b584ce237adcb8b"
   integrity sha512-IrPdXQsk2BbzvCBGBOTmmSH5SodmqZNt4ERAZDmW4CT+tL8VtvinqywuANaFu4bOMWki16nqf0e4oC0QIaDr/g==
@@ -12010,6 +12043,42 @@ ethers@^5.4.5:
     "@ethersproject/units" "5.5.0"
     "@ethersproject/wallet" "5.5.0"
     "@ethersproject/web" "5.5.0"
+    "@ethersproject/wordlists" "5.5.0"
+
+ethers@^5.4.6:
+  version "5.5.4"
+  resolved "https://registry.yarnpkg.com/ethers/-/ethers-5.5.4.tgz#e1155b73376a2f5da448e4a33351b57a885f4352"
+  integrity sha512-N9IAXsF8iKhgHIC6pquzRgPBJEzc9auw3JoRkaKe+y4Wl/LFBtDDunNe7YmdomontECAcC5APaAgWZBiu1kirw==
+  dependencies:
+    "@ethersproject/abi" "5.5.0"
+    "@ethersproject/abstract-provider" "5.5.1"
+    "@ethersproject/abstract-signer" "5.5.0"
+    "@ethersproject/address" "5.5.0"
+    "@ethersproject/base64" "5.5.0"
+    "@ethersproject/basex" "5.5.0"
+    "@ethersproject/bignumber" "5.5.0"
+    "@ethersproject/bytes" "5.5.0"
+    "@ethersproject/constants" "5.5.0"
+    "@ethersproject/contracts" "5.5.0"
+    "@ethersproject/hash" "5.5.0"
+    "@ethersproject/hdnode" "5.5.0"
+    "@ethersproject/json-wallets" "5.5.0"
+    "@ethersproject/keccak256" "5.5.0"
+    "@ethersproject/logger" "5.5.0"
+    "@ethersproject/networks" "5.5.2"
+    "@ethersproject/pbkdf2" "5.5.0"
+    "@ethersproject/properties" "5.5.0"
+    "@ethersproject/providers" "5.5.3"
+    "@ethersproject/random" "5.5.1"
+    "@ethersproject/rlp" "5.5.0"
+    "@ethersproject/sha2" "5.5.0"
+    "@ethersproject/signing-key" "5.5.0"
+    "@ethersproject/solidity" "5.5.0"
+    "@ethersproject/strings" "5.5.0"
+    "@ethersproject/transactions" "5.5.0"
+    "@ethersproject/units" "5.5.0"
+    "@ethersproject/wallet" "5.5.0"
+    "@ethersproject/web" "5.5.1"
     "@ethersproject/wordlists" "5.5.0"
 
 ethers@^5.5.0:
@@ -22333,6 +22402,19 @@ solc@^0.6.3:
     semver "^5.5.0"
     tmp "0.0.33"
 
+solc@^0.8.6:
+  version "0.8.12"
+  resolved "https://registry.yarnpkg.com/solc/-/solc-0.8.12.tgz#3002ed3092ee2f7672f1a2ab80c0d8df8df3ef2b"
+  integrity sha512-TU3anAhKWBQ/WrerJ9EcHrNwGOA1y5vIk5Flz7dBNamLDkX9VQTIwcKd3FiZsT0Ew8rSU7RTmJyGNHRGzP5TBA==
+  dependencies:
+    command-exists "^1.2.8"
+    commander "^8.1.0"
+    follow-redirects "^1.12.1"
+    js-sha3 "0.8.0"
+    memorystream "^0.3.1"
+    semver "^5.5.0"
+    tmp "0.0.33"
+
 solidity-comments-extractor@^0.0.7:
   version "0.0.7"
   resolved "https://registry.yarnpkg.com/solidity-comments-extractor/-/solidity-comments-extractor-0.0.7.tgz#99d8f1361438f84019795d928b931f4e5c39ca19"
@@ -22532,22 +22614,6 @@ sprintf-js@~1.0.2:
   version "1.0.3"
   resolved "https://registry.yarnpkg.com/sprintf-js/-/sprintf-js-1.0.3.tgz#04e6926f662895354f3dd015203633b857297e2c"
   integrity sha1-BOaSb2YolTVPPdAVIDYzuFcpfiw=
-
-"sse4_crc32@npm:@node-rs/crc32@1.0.0":
-  version "1.0.0"
-  resolved "https://registry.yarnpkg.com/@node-rs/crc32/-/crc32-1.0.0.tgz#b5038542a754f85d340b7c6c316853ee8c76a079"
-  integrity sha512-0Y5VP0f4vFuEujP3G2j+wd5bdTJg/pzj7ILq0K7PyUeGuI0iGQwg1iYSGIjQg0OU+xp987P7XCQaMpNt0+DcDg==
-  dependencies:
-    "@node-rs/helper" "^1.0.0"
-  optionalDependencies:
-    "@node-rs/crc32-android-arm64" "^1.0.0"
-    "@node-rs/crc32-darwin-arm64" "^1.0.0"
-    "@node-rs/crc32-darwin-x64" "^1.0.0"
-    "@node-rs/crc32-linux-arm-gnueabihf" "^1.0.0"
-    "@node-rs/crc32-linux-arm64-gnu" "^1.0.0"
-    "@node-rs/crc32-linux-x64-gnu" "^1.0.0"
-    "@node-rs/crc32-linux-x64-musl" "^1.0.0"
-    "@node-rs/crc32-win32-x64-msvc" "^1.0.0"
 
 sshpk@^1.7.0:
   version "1.16.1"
