@@ -2,7 +2,7 @@ import winston from "winston";
 import sinon from "sinon";
 import hre from "hardhat";
 import type { HRE } from "@uma/common";
-const { web3, getContract } = hre as HRE;
+const { web3, getContract } = (hre as unknown) as HRE;
 import { assert } from "chai";
 const { toWei, toBN, fromWei } = web3.utils;
 
