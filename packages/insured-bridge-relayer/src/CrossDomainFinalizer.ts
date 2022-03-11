@@ -50,11 +50,9 @@ export class CrossDomainFinalizer {
 
     // Fetch all whitelisted tokens on the particular l2 chainId. Remove the DAI Optimism address from the whitelist as
     // we don't want to finalize DAI actions due to this not working over the canonical Optimism bridge.
-    const whitelistedL2Tokens = this.l1Client
-      .getWhitelistedL2TokensForChainId(this.l2Client.chainId.toString())
-      .filter((address) =>
-        this.l2Client.chainId != 10 ? true : address !== "0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1"
-      ); // Remove DAI on Optimism address. If chainId is not 10 then do no filtering.
+    const whitelistedL2Tokens = this.filterL2Addresses(
+      this.l1Client.getWhitelistedL2TokensForChainId(this.l2Client.chainId.toString())
+    );
 
     // Check if any of the whitelisted l2Tokens are bridgeable. Do this in one parallel call. Returns an array of bool
     // for each l2Token, describing if it can be bridged from L2->L1.
@@ -128,12 +126,10 @@ export class CrossDomainFinalizer {
     // Fetch all whitelisted L2 tokens. Append the ETH address on Optimism to the whitelist to enable finalization of
     // Optimism -> Ethereum bridging actions. This is needed as we send ETH over the Optimism bridge, not WETH.
     // Also, remove the DAI Optimism address from the whitelist as we don't want to finalize DAI transfer.
-    const whitelistedL2Tokens = [
+    const whitelistedL2Tokens = this.filterL2Addresses([
       ...this.l1Client.getWhitelistedL2TokensForChainId(this.l2Client.chainId.toString()),
       "0xDeadDeAddeAddEAddeadDEaDDEAdDeaDDeAD0000", // Append L2ETH on Optimism address.
-    ].filter((address) =>
-      this.l2Client.chainId != 10 ? true : address !== "0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1"
-    ); // Remove DAI on Optimism address. If chainId is not 10 then do no filtering.
+    ]);
 
     // Fetch TokensBridged events.
     await this.fetchTokensBridgedEvents();
@@ -191,6 +187,12 @@ export class CrossDomainFinalizer {
 
   resetExecutedTransactions() {
     this.executedL1Transactions = [];
+  }
+
+  private filterL2Addresses(list: string[]): string[] {
+    return list.filter((address) =>
+      this.l2Client.chainId !== 10 ? true : address !== "0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1"
+    ); // Remove DAI on Optimism address. If chainId is not 10 then do no filtering.
   }
 
   // Bridged L2 tokens and returns the current account nonce after the transaction.
