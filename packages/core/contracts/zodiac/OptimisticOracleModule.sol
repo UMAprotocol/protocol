@@ -34,6 +34,7 @@ contract OptimisticOracleModule is Module {
         address to;
         uint256 value;
         bytes data;
+        Enum.Operation operation;
     }
 
     struct Proposal {
@@ -102,7 +103,10 @@ contract OptimisticOracleModule is Module {
         liveness = _liveness;
     }
 
-    function proposeTransactions(Transaction[] memory transactions, bytes memory ancillaryData) public nonReentrant() {
+    function proposeTransactions(Transaction[] memory _transactions, bytes memory _ancillaryData)
+        public
+        nonReentrant()
+    {
         // create a proposal with a bundle of transactions
         // note: based in part on the UMA Governor contract
         // https://github.com/UMAprotocol/protocol/blob/master/packages/core/contracts/oracle/implementation/Governor.sol
@@ -114,16 +118,16 @@ contract OptimisticOracleModule is Module {
         // Add a zero-initialized element to the proposals array.
         Proposal storage proposal = proposals.push();
         proposal.requestTime = time;
-        proposal.ancillaryData = ancillaryData;
+        proposal.ancillaryData = _ancillaryData;
 
         // Initialize the transaction array.
-        for (uint256 i = 0; i < transactions.length; i++) {
-            require(transactions[i].to != address(0), "The `to` address cannot be 0x0");
+        for (uint256 i = 0; i < _transactions.length; i++) {
+            require(_transactions[i].to != address(0), "The `to` address cannot be 0x0");
             // If the transaction has any data with it the recipient must be a contract, not an EOA.
-            if (transactions[i].data.length > 0) {
-                require(_isContract(transactions[i].to), "EOA can't accept tx with data");
+            if (_transactions[i].data.length > 0) {
+                require(_isContract(_transactions[i].to), "EOA can't accept tx with data");
             }
-            proposal.transactions.push(transactions[i]);
+            proposal.transactions.push(_transactions[i]);
         }
 
         // Propose a set of transactions to the OO. If not disputed, they can be executed with executeProposal().
@@ -131,7 +135,7 @@ contract OptimisticOracleModule is Module {
         optimisticOracle.requestAndProposePriceFor(
             identifier,
             uint32(time),
-            ancillaryData,
+            proposal.ancillaryData,
             collateral,
             0,
             bond,
@@ -144,11 +148,7 @@ contract OptimisticOracleModule is Module {
         emit TransactionsProposed(id, proposer, time);
     }
 
-    function executeProposal(
-        uint256 _proposalId,
-        uint256 _transactionIndex,
-        Enum.Operation _operation
-    ) public payable nonReentrant() {
+    function executeProposal(uint256 _proposalId, uint256 _transactionIndex) public payable nonReentrant() {
         // execute transactions in an approved proposal using exec() function
         Proposal storage proposal = proposals[_proposalId];
 
@@ -169,7 +169,7 @@ contract OptimisticOracleModule is Module {
         delete proposal.transactions[_transactionIndex];
 
         require(
-            exec(transaction.to, transaction.value, transaction.data, _operation),
+            exec(transaction.to, transaction.value, transaction.data, transaction.operation),
             "Failed to execute the transaction"
         );
         emit TransactionExecuted(_proposalId, _transactionIndex);
@@ -188,7 +188,7 @@ contract OptimisticOracleModule is Module {
         // this will revert if the price has not settled
         int256 price = _getOracle().getPrice(identifier, proposal.requestTime, proposal.ancillaryData);
 
-        // Check that proposal was rejected
+        // check that proposal was rejected
         require(price == 0, "Proposal was not rejected");
 
         // Delete the proposal
