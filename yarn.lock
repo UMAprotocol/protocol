@@ -4096,6 +4096,58 @@
   resolved "https://registry.yarnpkg.com/@multiformats/base-x/-/base-x-4.0.1.tgz#95ff0fa58711789d53aefb2590a8b7a4e715d121"
   integrity sha512-eMk0b9ReBbV23xXU693TAIrLyeO5iTgBZGSJfpqriG8UkYvr/hC9u9pyMlAakDNHWmbhMZCDs6KQO0jzKD8OTw==
 
+"@napi-rs/triples@^1.1.0":
+  version "1.1.0"
+  resolved "https://registry.yarnpkg.com/@napi-rs/triples/-/triples-1.1.0.tgz#88c35b72e79a20b79bb4c9b3e2817241a1c9f4f9"
+  integrity sha512-XQr74QaLeMiqhStEhLn1im9EOMnkypp7MZOwQhGzqp2Weu5eQJbpPxWxixxlYRKWPOmJjsk6qYfYH9kq43yc2w==
+
+"@node-rs/crc32-android-arm64@^1.0.0":
+  version "1.5.0"
+  resolved "https://registry.yarnpkg.com/@node-rs/crc32-android-arm64/-/crc32-android-arm64-1.5.0.tgz#a0dc87d3744909eeae12e9c9c117b11c6e916a96"
+  integrity sha512-2uJD7muLg6wXjPhcuuS+HZBgXGX8HsxJzDjVoe51uAoGx+Az0hyH2I6p/ObOIYzcW4xFML0rzlYM9XkMglJhfw==
+
+"@node-rs/crc32-darwin-arm64@^1.0.0":
+  version "1.5.0"
+  resolved "https://registry.yarnpkg.com/@node-rs/crc32-darwin-arm64/-/crc32-darwin-arm64-1.5.0.tgz#72db177eac09e8992903c2dbbbef10eaa3fbec0d"
+  integrity sha512-E3dWA/fKu7FeDGBYB20/YEz28Fw/8sj4iuXgE4n1aoh8994AdbXdsJlmNip6/AkcEynC8Q9RdPS4HdfM7kBPiw==
+
+"@node-rs/crc32-darwin-x64@^1.0.0":
+  version "1.5.0"
+  resolved "https://registry.yarnpkg.com/@node-rs/crc32-darwin-x64/-/crc32-darwin-x64-1.5.0.tgz#021d17ecfc1996135c18fb9afd97c9673a8986e2"
+  integrity sha512-YjQ6y/3L1D2kOrNguB42sPf6HdEkqXcL2jxJ41QOfuIRV18lp7/5sM9OWRdjmLpQUUvmpqSSWxZFQ/2P/35EXw==
+
+"@node-rs/crc32-linux-arm-gnueabihf@^1.0.0":
+  version "1.5.0"
+  resolved "https://registry.yarnpkg.com/@node-rs/crc32-linux-arm-gnueabihf/-/crc32-linux-arm-gnueabihf-1.5.0.tgz#6b8272d796fef243a0da239725e9fa17d488d04d"
+  integrity sha512-MFwJlcIAmgtnWAluthAY2gyTbKIu5/+6PUSlOZ4xlSZIddb3ra3M/AQ0BkDSvEoDeQQ5ZdkcnVWzpqoCdUOe4Q==
+
+"@node-rs/crc32-linux-arm64-gnu@^1.0.0":
+  version "1.5.0"
+  resolved "https://registry.yarnpkg.com/@node-rs/crc32-linux-arm64-gnu/-/crc32-linux-arm64-gnu-1.5.0.tgz#95ca479e2d074918a3eb23ab1efb7b235ac4fd27"
+  integrity sha512-7JYsJXRUE6yrK/mt7uLX91ARLS3HOCggTSGD3Kw52lhJRPXTyJVVIhuLj8/neW8ENTgH3zgpQdeId0sKQtKrDg==
+
+"@node-rs/crc32-linux-x64-gnu@^1.0.0":
+  version "1.5.0"
+  resolved "https://registry.yarnpkg.com/@node-rs/crc32-linux-x64-gnu/-/crc32-linux-x64-gnu-1.5.0.tgz#2b3bff47d0a2eb36fa648f79945fd3cedc76ebac"
+  integrity sha512-KOevSXLbgs2htznP8jlsN6tZ4kmpGloBj00lo4X4H4Lm6eKeWyG9txbCGD0yK4ZX/XhrL6Qs4VIMCaVFpxFIsw==
+
+"@node-rs/crc32-linux-x64-musl@^1.0.0":
+  version "1.5.0"
+  resolved "https://registry.yarnpkg.com/@node-rs/crc32-linux-x64-musl/-/crc32-linux-x64-musl-1.5.0.tgz#2bbcf10b21fa9fb96108fc7680c0be9a59a37212"
+  integrity sha512-e6ivD6MWVMp/FP6VVq3EBjiBXKN/qBsTn8bOsHtIf+Et6dEkITbEk26m5+w9TFHIHKJGvwytH7+RigK7N7o5VQ==
+
+"@node-rs/crc32-win32-x64-msvc@^1.0.0":
+  version "1.5.0"
+  resolved "https://registry.yarnpkg.com/@node-rs/crc32-win32-x64-msvc/-/crc32-win32-x64-msvc-1.5.0.tgz#0eeb42d95d1a7d3ad3eb23da8233d67a585d3a26"
+  integrity sha512-FvgItAuN6eRHZDAPVlBZbzQjiRO0DFFFLgy2KFUjx+vLx20Auf5Hi0/D+dFLmH9jdESaoZqwZC5FpB7nfit1lQ==
+
+"@node-rs/helper@^1.0.0":
+  version "1.3.3"
+  resolved "https://registry.yarnpkg.com/@node-rs/helper/-/helper-1.3.3.tgz#2b1953846ddba31bfb7ecf4ba57e7b1359fcdedc"
+  integrity sha512-p4OdfQObGN9YFy5WZaGwlPYICQSe7xZYyXB0sxREmvj1HzGKp5bPg2PlfgfMZEfnjIA882B9ZrnagYzZihIwjA==
+  dependencies:
+    "@napi-rs/triples" "^1.1.0"
+
 "@nodelib/fs.scandir@2.1.5":
   version "2.1.5"
   resolved "https://registry.yarnpkg.com/@nodelib/fs.scandir/-/fs.scandir-2.1.5.tgz#7619c2eb21b25483f6d167548b4cfd5a7488c3d5"
@@ -22614,6 +22666,22 @@ sprintf-js@~1.0.2:
   version "1.0.3"
   resolved "https://registry.yarnpkg.com/sprintf-js/-/sprintf-js-1.0.3.tgz#04e6926f662895354f3dd015203633b857297e2c"
   integrity sha1-BOaSb2YolTVPPdAVIDYzuFcpfiw=
+
+"sse4_crc32@npm:@node-rs/crc32@1.0.0":
+  version "1.0.0"
+  resolved "https://registry.yarnpkg.com/@node-rs/crc32/-/crc32-1.0.0.tgz#b5038542a754f85d340b7c6c316853ee8c76a079"
+  integrity sha512-0Y5VP0f4vFuEujP3G2j+wd5bdTJg/pzj7ILq0K7PyUeGuI0iGQwg1iYSGIjQg0OU+xp987P7XCQaMpNt0+DcDg==
+  dependencies:
+    "@node-rs/helper" "^1.0.0"
+  optionalDependencies:
+    "@node-rs/crc32-android-arm64" "^1.0.0"
+    "@node-rs/crc32-darwin-arm64" "^1.0.0"
+    "@node-rs/crc32-darwin-x64" "^1.0.0"
+    "@node-rs/crc32-linux-arm-gnueabihf" "^1.0.0"
+    "@node-rs/crc32-linux-arm64-gnu" "^1.0.0"
+    "@node-rs/crc32-linux-x64-gnu" "^1.0.0"
+    "@node-rs/crc32-linux-x64-musl" "^1.0.0"
+    "@node-rs/crc32-win32-x64-msvc" "^1.0.0"
 
 sshpk@^1.7.0:
   version "1.16.1"

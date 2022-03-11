@@ -9,6 +9,7 @@ import "../oracle/implementation/Constants.sol";
 import "../oracle/interfaces/FinderInterface.sol";
 import "../oracle/interfaces/SkinnyOptimisticOracleInterface.sol";
 import "../oracle/interfaces/OracleAncillaryInterface.sol";
+import "../common/implementation/Lockable.sol";
 
 contract OptimisticOracleModule is Module {
     event OptimisticOracleModuleDeployed(address indexed owner, address indexed avatar, address target);
@@ -20,13 +21,14 @@ contract OptimisticOracleModule is Module {
     event ProposalDeleted(uint256 indexed proposalId);
 
     FinderInterface public finder;
-    SkinnyOptimisticOracleInterface optimisticOracle;
+    SkinnyOptimisticOracleInterface public optimisticOracle;
 
     IERC20 public collateral;
+    uint64 public liveness;
+    // extra bond in addition to the final fee for the collateral type
     uint256 public bond;
     string public rules;
-    uint256 public liveness;
-    bytes32 public identifier = "ZODIAC";
+    bytes32 public immutable identifier = "ZODIAC";
 
     struct Transaction {
         address to;
@@ -100,7 +102,7 @@ contract OptimisticOracleModule is Module {
         liveness = _liveness;
     }
 
-    function proposeTransactions(Transaction[] memory transactions, bytes memory ancillaryData) public {
+    function proposeTransactions(Transaction[] memory transactions, bytes memory ancillaryData) public nonReentrant() {
         // create a proposal with a bundle of transactions
         // note: based in part on the UMA Governor contract
         // https://github.com/UMAprotocol/protocol/blob/master/packages/core/contracts/oracle/implementation/Governor.sol
@@ -110,10 +112,7 @@ contract OptimisticOracleModule is Module {
         address proposer = msg.sender;
 
         // Add a zero-initialized element to the proposals array.
-        proposals.push();
-
-        // Initialize the new proposal.
-        Proposal storage proposal = proposals[id];
+        Proposal storage proposal = proposals.push();
         proposal.requestTime = time;
         proposal.ancillaryData = ancillaryData;
 
@@ -149,7 +148,7 @@ contract OptimisticOracleModule is Module {
         uint256 _proposalId,
         uint256 _transactionIndex,
         Enum.Operation _operation
-    ) public payable {
+    ) public payable nonReentrant() {
         // execute transactions in an approved proposal using exec() function
         Proposal storage proposal = proposals[_proposalId];
 
@@ -178,6 +177,21 @@ contract OptimisticOracleModule is Module {
 
     function deleteProposal(uint256 _proposalId) public onlyOwner {
         // delete a proposal that governance decided not to execute
+        delete proposals[_proposalId];
+        emit ProposalDeleted(_proposalId);
+    }
+
+    function deleteRejectedProposal(uint256 _proposalId) public {
+        // execute transactions in an approved proposal using exec() function
+        Proposal storage proposal = proposals[_proposalId];
+
+        // this will revert if the price has not settled
+        int256 price = _getOracle().getPrice(identifier, proposal.requestTime, proposal.ancillaryData);
+
+        // Check that proposal was rejected
+        require(price == 0, "Proposal was not rejected");
+
+        // Delete the proposal
         delete proposals[_proposalId];
         emit ProposalDeleted(_proposalId);
     }
