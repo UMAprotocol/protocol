@@ -11,7 +11,7 @@ import "../oracle/interfaces/SkinnyOptimisticOracleInterface.sol";
 import "../oracle/interfaces/OracleAncillaryInterface.sol";
 import "../common/implementation/Lockable.sol";
 
-contract OptimisticOracleModule is Module {
+contract OptimisticOracleModule is Module, Lockable {
     event OptimisticOracleModuleDeployed(address indexed owner, address indexed avatar, address target);
 
     event TransactionsProposed(uint256 indexed proposalId, address indexed proposer, uint256 indexed proposalTime);
@@ -98,7 +98,7 @@ contract OptimisticOracleModule is Module {
         rules = _rules;
     }
 
-    function setLiveness(uint256 _liveness) public onlyOwner {
+    function setLiveness(uint64 _liveness) public onlyOwner {
         // set liveness for disputing proposed transactions
         liveness = _liveness;
     }
@@ -139,7 +139,7 @@ contract OptimisticOracleModule is Module {
             collateral,
             0,
             bond,
-            liveness,
+            uint256(liveness),
             proposer,
             // Canonical value representing "True"; i.e. the transactions are valid.
             int256(1e18)
