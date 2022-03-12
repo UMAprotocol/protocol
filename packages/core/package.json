@@ -3,7 +3,8 @@
   "version": "2.25.1",
   "description": "UMA smart contracts and unit tests",
   "dependencies": {
-    "@gnosis.pm/zodiac": "^1.0.3",
+    "@gnosis.pm/safe-contracts": "1.3.0",
+    "@gnosis.pm/zodiac": "1.0.3",
     "@openzeppelin/contracts": "4.4.2",
     "@uma/common": "^2.19.0",
     "@uniswap/lib": "4.0.1-alpha",
