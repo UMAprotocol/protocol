@@ -187,13 +187,17 @@ const fundArbitrumParentMessengerForOneTransaction = async (web3Provider, from, 
   console.log(
     `Arbitrum xchain messages require that the Arbitrum_ParentMessenger has at least a ${l1CallValue.toString()} ETH balance.`
   );
-  const sendEthTxn = await web3Provider.eth.sendTransaction({
-    from: from,
-    to: arbitrumParentMessenger.options.address,
-    value: l1CallValue.toString(),
-    ...gasPriceObj,
-  });
-  console.log(`Sent ETH txn: ${sendEthTxn.transactionHash}`);
+  if (toBN(await web3Provider.eth.getBalance(arbitrumParentMessenger.options.address)) < toBN(l1CallValue)) {
+    const sendEthTxn = await web3Provider.eth.sendTransaction({
+      from: from,
+      to: arbitrumParentMessenger.options.address,
+      value: l1CallValue.toString(),
+      ...gasPriceObj,
+    });
+    console.log(`Sent ETH txn: ${sendEthTxn.transactionHash}`);
+  } else {
+    console.log("Arbitrum messenger has enough ETH");
+  }
 };
 
 const setupGasEstimator = async () => {
