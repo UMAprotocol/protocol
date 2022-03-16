@@ -54,7 +54,7 @@ class OptimisticOracleContractMonitor {
       },
       optimisticOracleUIBaseUrl: {
         // Base URL for the Optimistic Oracle UI.
-        value: "https://placeholder.umaproject.org/",
+        value: "https://oracle.umaproject.org",
         isValid: (x) => typeof x === "string",
       },
     };
@@ -117,24 +117,19 @@ class OptimisticOracleContractMonitor {
           convertCollateralDecimals(
             this.oracleType === OptimisticOracleType.OptimisticOracle ? event.finalFee : event.request.finalFee
           )
-        )}. tx: ${createEtherscanLinkMarkdown(event.transactionHash, this.contractProps.networkId)}`;
-
-      const logLevel =
-        this.logOverrides.requestedPrice || (this._isFundingRateIdentifier(event.identifier) ? "debug" : "error");
+        )}. tx: ${createEtherscanLinkMarkdown(
+          event.transactionHash,
+          this.contractProps.networkId
+        )}. ${this._generateUILink(event.transactionHash, this.contractProps.networkId)}.`;
 
       // The default log level should be reduced to "debug" for funding rate identifiers:
-      this.logger[logLevel]({
+      this.logger[
+        this.logOverrides.requestedPrice || (this._isFundingRateIdentifier(event.identifier) ? "debug" : "error")
+      ]({
         at: "OptimisticOracleContractMonitor",
         message: `${this.oracleType}: Price Request Alert 👮🏻!`,
         mrkdwn,
-        notificationPath: "optimistic-oracle",
-      });
-
-      // UI link is sent separately because it can break slack message limits.
-      this.logger[logLevel === "error" ? "info" : logLevel]({
-        at: "OptimisticOracleContractMonitor",
-        message: `${this.oracleType}: Price Request Alert 👮🏻!`,
-        mrkdwn: this._generateUILink(event.requester, event.identifier, event.timestamp, event.ancillaryData),
+        discordSettings: ["oo-events"],
         notificationPath: "optimistic-oracle",
       });
     }
@@ -174,24 +169,19 @@ class OptimisticOracleContractMonitor {
         `.\n Collateral currency address is ${createEtherscanLinkMarkdown(
           this.oracleType === OptimisticOracleType.OptimisticOracle ? event.currency : event.request.currency
         )}. ` +
-        `tx ${createEtherscanLinkMarkdown(event.transactionHash, this.contractProps.networkId)}`;
-
-      const logLevel =
-        this.logOverrides.proposedPrice || (this._isFundingRateIdentifier(event.identifier) ? "info" : "error");
+        `tx ${createEtherscanLinkMarkdown(event.transactionHash, this.contractProps.networkId)}. ${this._generateUILink(
+          event.transactionHash,
+          this.contractProps.networkId
+        )}.`;
 
       // The default log level should be reduced to "info" for funding rate identifiers:
-      this.logger[logLevel]({
+      this.logger[
+        this.logOverrides.proposedPrice || (this._isFundingRateIdentifier(event.identifier) ? "info" : "error")
+      ]({
         at: "OptimisticOracleContractMonitor",
         message: `${this.oracleType}: Price Proposal Alert 🧞‍♂️!`,
         mrkdwn,
-        notificationPath: "optimistic-oracle",
-      });
-
-      // UI link is sent separately because it can break slack message limits.
-      this.logger[logLevel === "error" ? "info" : logLevel]({
-        at: "OptimisticOracleContractMonitor",
-        message: `${this.oracleType}: Price Proposal Alert 🧞‍♂️!`,
-        mrkdwn: this._generateUILink(event.requester, event.identifier, event.timestamp, event.ancillaryData),
+        discordSettings: ["oo-fact-checking", "oo-events"],
         notificationPath: "optimistic-oracle",
       });
     }
@@ -226,22 +216,15 @@ class OptimisticOracleContractMonitor {
           this.oracleType === OptimisticOracleType.OptimisticOracle ? event.proposedPrice : event.request.proposedPrice
         )}.\n` +
         this._formatAncillaryData(event.ancillaryData) +
-        `. tx: ${createEtherscanLinkMarkdown(event.transactionHash, this.contractProps.networkId)}`;
+        `. tx: ${createEtherscanLinkMarkdown(
+          event.transactionHash,
+          this.contractProps.networkId
+        )}. ${this._generateUILink(event.transactionHash, this.contractProps.networkId)}.`;
 
-      const logLevel = this.logOverrides.disputedPrice || "error";
-
-      this.logger[logLevel]({
+      this.logger[this.logOverrides.disputedPrice || "error"]({
         at: "OptimisticOracleContractMonitor",
         message: `${this.oracleType}: Price Dispute Alert ⛔️!`,
         mrkdwn,
-        notificationPath: "optimistic-oracle",
-      });
-
-      // UI link is sent separately because it can break slack message limits.
-      this.logger[logLevel === "error" ? "info" : logLevel]({
-        at: "OptimisticOracleContractMonitor",
-        message: `${this.oracleType}: Price Dispute Alert ⛔️!`,
-        mrkdwn: this._generateUILink(event.requester, event.identifier, event.timestamp, event.ancillaryData),
         notificationPath: "optimistic-oracle",
       });
     }
@@ -297,25 +280,20 @@ class OptimisticOracleContractMonitor {
           isDispute ? "winner of the dispute" : "proposer"
         }.\n` +
         this._formatAncillaryData(event.ancillaryData) +
-        `. tx: ${createEtherscanLinkMarkdown(event.transactionHash, this.contractProps.networkId)}`;
-
-      const logLevel =
-        this.logOverrides.settledPrice || (this._isFundingRateIdentifier(event.identifier) ? "debug" : "info");
+        `. tx: ${createEtherscanLinkMarkdown(
+          event.transactionHash,
+          this.contractProps.networkId
+        )}. ${this._generateUILink(event.transactionHash, this.contractProps.networkId)}.`;
 
       // The default log level should be reduced to "debug" for funding rate identifiers:
-      this.logger[logLevel]({
+      this.logger[
+        this.logOverrides.settledPrice || (this._isFundingRateIdentifier(event.identifier) ? "debug" : "info")
+      ]({
         at: "OptimisticOracleContractMonitor",
         message: `${this.oracleType}: Price Settlement Alert 🏧!`,
         mrkdwn,
         notificationPath: "optimistic-oracle",
-      });
-
-      // UI link is sent separately because it can break slack message limits.
-      this.logger[logLevel === "error" ? "info" : logLevel]({
-        at: "OptimisticOracleContractMonitor",
-        message: `${this.oracleType}: Price Settlement Alert 🏧!`,
-        mrkdwn: this._generateUILink(event.requester, event.identifier, event.timestamp, event.ancillaryData),
-        notificationPath: "optimistic-oracle",
+        discordSettings: ["noPost"],
       });
     }
     this.lastSettlementBlockNumber = this._getLastSeenBlockNumber(latestEvents);
@@ -355,11 +333,8 @@ class OptimisticOracleContractMonitor {
     }
   }
 
-  _generateUILink(requester, identifier, timestamp, ancillaryData) {
-    const hexIdentifier = this.padRight(this.utf8ToHex(identifier), 64);
-    return `<${this.optimisticOracleUIBaseUrl}?chainId=${this.contractProps.chainId}&requester=${this.toChecksumAddress(
-      requester
-    )}&identifier=${hexIdentifier}&timestamp=${timestamp}&ancillaryData=${ancillaryData}|View this request in the UI.>`;
+  _generateUILink(transactionHash, chainId) {
+    return `<${this.optimisticOracleUIBaseUrl}/request?transactionHash=${transactionHash}&chainId=${chainId}|View in UI>`;
   }
 }
 
