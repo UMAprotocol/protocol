@@ -59,22 +59,24 @@ contract OptimisticOracleModule is Module, Lockable {
         address _owner,
         address _collateral,
         uint256 _bond,
-        string memory _rules
+        string memory _rules,
+        uint64 _liveness
     ) {
-        bytes memory initializeParams = abi.encode(_finder, _owner, _collateral, _bond, _rules);
+        bytes memory initializeParams = abi.encode(_finder, _owner, _collateral, _bond, _rules, _liveness);
         setUp(initializeParams);
     }
 
     function setUp(bytes memory initializeParams) public override initializer {
         __Ownable_init();
-        (address _finder, address _owner, address _collateral, uint256 _bond, string memory _rules) =
-            abi.decode(initializeParams, (address, address, address, uint256, string));
+        (address _finder, address _owner, address _collateral, uint256 _bond, string memory _rules, uint64 _liveness) =
+            abi.decode(initializeParams, (address, address, address, uint256, string, uint64));
         finder = FinderInterface(_finder);
         // check collateral is whitelisted
         collateral = IERC20(_collateral);
         // check bond amount is large enough
         bond = _bond;
         rules = _rules;
+        liveness = _liveness;
         setAvatar(_owner);
         setTarget(_owner);
         transferOwnership(_owner);
