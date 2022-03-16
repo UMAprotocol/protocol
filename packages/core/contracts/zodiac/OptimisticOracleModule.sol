@@ -11,6 +11,7 @@ import "../oracle/interfaces/SkinnyOptimisticOracleInterface.sol";
 import "../oracle/interfaces/OracleAncillaryInterface.sol";
 import "../common/implementation/Lockable.sol";
 import "../common/interfaces/AddressWhitelistInterface.sol";
+import "../common/implementation/AncillaryData.sol";
 
 contract OptimisticOracleModule is Module, Lockable {
     event OptimisticOracleModuleDeployed(address indexed owner, address indexed avatar, address target);
@@ -121,6 +122,15 @@ contract OptimisticOracleModule is Module, Lockable {
         // Add a zero-initialized element to the proposals array.
         Proposal storage proposal = proposals.push();
         proposal.requestTime = time;
+        require(
+            _getOptimisticOracle()
+                .stampAncillaryData(
+                AncillaryData.appendKeyValueBytes32(_ancillaryData, "redemptionId", bytes32(0)),
+                address(this)
+            )
+                .length <= _getOptimisticOracle().ancillaryBytesLimit(),
+            "ancillary data too long"
+        );
         proposal.ancillaryData = _ancillaryData;
 
         // Initialize the transaction array.
