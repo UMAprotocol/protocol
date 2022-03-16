@@ -107,14 +107,11 @@ contract OptimisticOracleModule is Module, Lockable {
         liveness = _liveness;
     }
 
-    function proposeTransactions(Transaction[] memory _transactions, bytes memory _ancillaryData)
-        public
-        nonReentrant()
-    {
+    function proposeTransactions(Transaction[] memory _transactions, bytes memory _explanation) public nonReentrant() {
         // create a proposal with a bundle of transactions
         // note: based in part on the UMA Governor contract
         // https://github.com/UMAprotocol/protocol/blob/master/packages/core/contracts/oracle/implementation/Governor.sol
-        // note: optional ancillaryData explains the intent of the transactions to make comprehension easier
+        // note: optional explanation explains the intent of the transactions to make comprehension easier
         uint256 id = proposals.length;
         uint256 time = block.timestamp;
         address proposer = msg.sender;
@@ -122,16 +119,11 @@ contract OptimisticOracleModule is Module, Lockable {
         // Add a zero-initialized element to the proposals array.
         Proposal storage proposal = proposals.push();
         proposal.requestTime = time;
-        require(
-            _getOptimisticOracle()
-                .stampAncillaryData(
-                AncillaryData.appendKeyValueBytes32(_ancillaryData, "redemptionId", bytes32(0)),
-                address(this)
-            )
-                .length <= _getOptimisticOracle().ancillaryBytesLimit(),
-            "ancillary data too long"
-        );
-        proposal.ancillaryData = _ancillaryData;
+        proposal.ancillaryData = _explanation;
+
+        // Construct the ancillary data.
+        AncillaryData.appendKeyValueUint(proposal.ancillaryData, "id", id);
+        AncillaryData.appendKeyValueAddress(proposal.ancillaryData, "module", this);
 
         // Initialize the transaction array.
         for (uint256 i = 0; i < _transactions.length; i++) {
