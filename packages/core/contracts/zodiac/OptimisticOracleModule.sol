@@ -31,6 +31,7 @@ contract OptimisticOracleModule is Module, Lockable {
     uint256 public bond;
     string public rules;
     bytes32 public immutable identifier = "ZODIAC";
+    SkinnyOptimisticOracleInterface public skinnyOptimisticOracle;
 
     struct Transaction {
         address to;
@@ -80,6 +81,7 @@ contract OptimisticOracleModule is Module, Lockable {
         rules = _rules;
         require(_liveness > 0, "liveness can't be 0");
         liveness = _liveness;
+        skinnyOptimisticOracle = _getOptimisticOracle();
         setAvatar(_owner);
         setTarget(_owner);
         transferOwnership(_owner);
@@ -88,12 +90,13 @@ contract OptimisticOracleModule is Module, Lockable {
     }
 
     function setBond(uint256 _bond) public onlyOwner {
-        // value of the bond required for proposals (must be greater than optimistic oracle final fee)
+        // value of the bond required for proposals, in addition to the final fee
         bond = _bond;
     }
 
-    function setCollateral(IERC20 _collateral) public onlyOwner {
+    function setCollateral(IERC20 _collateral) public onlyOwner nonReentrant() {
         // ERC20 token to be used as collateral (must be approved by UMA Store contract).
+        require(_getCollateralWhitelist().isOnWhitelist(address(_collateral)), "bond token not supported");
         collateral = _collateral;
     }
 
@@ -104,7 +107,12 @@ contract OptimisticOracleModule is Module, Lockable {
 
     function setLiveness(uint64 _liveness) public onlyOwner {
         // set liveness for disputing proposed transactions
+        require(_liveness > 0, "liveness can't be 0");
         liveness = _liveness;
+    }
+
+    function sync() public nonReentrant {
+        _sync();
     }
 
     function proposeTransactions(Transaction[] memory _transactions, bytes memory _explanation) public nonReentrant() {
@@ -216,5 +224,9 @@ contract OptimisticOracleModule is Module, Lockable {
 
     function _getCollateralWhitelist() internal view returns (AddressWhitelistInterface) {
         return AddressWhitelistInterface(finder.getImplementationAddress(OracleInterfaces.CollateralWhitelist));
+    }
+
+    function _sync() internal {
+        skinnyOptimisticOracle = _getOptimisticOracle();
     }
 }
