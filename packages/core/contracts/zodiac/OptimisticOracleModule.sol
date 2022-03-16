@@ -20,8 +20,8 @@ contract OptimisticOracleModule is Module, Lockable {
 
     event ProposalDeleted(uint256 indexed proposalId);
 
+    // Since finder is set during setUp, you will need to deploy a new Optimistic Oracle module if this address need to be changed in the future
     FinderInterface public finder;
-    SkinnyOptimisticOracleInterface public optimisticOracle;
 
     IERC20 public collateral;
     uint64 public liveness;
@@ -70,7 +70,6 @@ contract OptimisticOracleModule is Module, Lockable {
         (address _finder, address _owner, address _collateral, uint256 _bond, string memory _rules) =
             abi.decode(initializeParams, (address, address, address, uint256, string));
         finder = FinderInterface(_finder);
-        optimisticOracle = _getOptimisticOracle();
         // check collateral is whitelisted
         collateral = IERC20(_collateral);
         // check bond amount is large enough
@@ -132,7 +131,7 @@ contract OptimisticOracleModule is Module, Lockable {
 
         // Propose a set of transactions to the OO. If not disputed, they can be executed with executeProposal().
         // docs: https://github.com/UMAprotocol/protocol/blob/master/packages/core/contracts/oracle/interfaces/SkinnyOptimisticOracleInterface.sol
-        optimisticOracle.requestAndProposePriceFor(
+        _getOptimisticOracle().requestAndProposePriceFor(
             identifier,
             uint32(time),
             proposal.ancillaryData,
