@@ -34,16 +34,15 @@ export class DiscordTransport extends Transport {
         embeds: [{ title: `${info.message}`, description: this.formatLinks(info.mrkdwn), color: 9696729 }],
       };
 
-      // A log message can conditionally contain additional Discord specific settings. Validate these first.
-
+      // A log message can conditionally contain additional Discord specific paths. Validate these first.
       let webHooks: string[] = [];
-      if (info.discordSettings) {
+      if (info.discordPaths) {
         // If it contains "noPost" then this is a noop message for Discord and the log should be skipped.
-        if (info.discordSettings == ["noPost"]) return;
+        if (info.discordPaths == ["noPost"]) return;
 
-        // Else, Assign a webhook for each escalationPathWebHook defined for the provided discordSettings. This lets
+        // Else, Assign a webhook for each escalationPathWebHook defined for the provided discordPaths. This lets
         // the logger define exactly which logs should go to which discord channel.
-        webHooks = info.discordSettings.map((discordSetting: string) => this.escalationPathWebhookUrls[discordSetting]);
+        webHooks = info.discordPaths.map((discordPath: string) => this.escalationPathWebhookUrls[discordPath]);
       }
 
       // Else, There are no discord specific settings. In this case, we treat this like a normal log. Either the

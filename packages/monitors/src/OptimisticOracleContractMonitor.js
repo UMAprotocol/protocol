@@ -129,7 +129,7 @@ class OptimisticOracleContractMonitor {
         at: "OptimisticOracleContractMonitor",
         message: `${this.oracleType}: Price Request Alert 👮🏻!`,
         mrkdwn,
-        discordSettings: ["oo-events"],
+        discordPaths: ["oo-events"],
         notificationPath: "optimistic-oracle",
       });
     }
@@ -181,7 +181,7 @@ class OptimisticOracleContractMonitor {
         at: "OptimisticOracleContractMonitor",
         message: `${this.oracleType}: Price Proposal Alert 🧞‍♂️!`,
         mrkdwn,
-        discordSettings: ["oo-fact-checking", "oo-events"],
+        discordPaths: ["oo-fact-checking", "oo-events"],
         notificationPath: "optimistic-oracle",
       });
     }
@@ -293,7 +293,7 @@ class OptimisticOracleContractMonitor {
         message: `${this.oracleType}: Price Settlement Alert 🏧!`,
         mrkdwn,
         notificationPath: "optimistic-oracle",
-        discordSettings: ["noPost"],
+        discordPaths: ["noPost"],
       });
     }
     this.lastSettlementBlockNumber = this._getLastSeenBlockNumber(latestEvents);
