@@ -123,7 +123,7 @@ contract OptimisticOracleModule is Module, Lockable {
 
         // Construct the ancillary data.
         AncillaryData.appendKeyValueUint(proposal.ancillaryData, "id", id);
-        AncillaryData.appendKeyValueAddress(proposal.ancillaryData, "module", this);
+        AncillaryData.appendKeyValueAddress(proposal.ancillaryData, "module", address(this));
 
         // Initialize the transaction array.
         for (uint256 i = 0; i < _transactions.length; i++) {
