@@ -10,6 +10,7 @@ import "../oracle/interfaces/FinderInterface.sol";
 import "../oracle/interfaces/SkinnyOptimisticOracleInterface.sol";
 import "../oracle/interfaces/OracleAncillaryInterface.sol";
 import "../common/implementation/Lockable.sol";
+import "../common/interfaces/AddressWhitelistInterface.sol";
 
 contract OptimisticOracleModule is Module, Lockable {
     event OptimisticOracleModuleDeployed(address indexed owner, address indexed avatar, address target);
@@ -72,10 +73,11 @@ contract OptimisticOracleModule is Module, Lockable {
             abi.decode(initializeParams, (address, address, address, uint256, string, uint64));
         finder = FinderInterface(_finder);
         // check collateral is whitelisted
+        require(_getCollateralWhitelist().isOnWhitelist(address(_collateral)), "bond token not supported");
         collateral = IERC20(_collateral);
-        // check bond amount is large enough
         bond = _bond;
         rules = _rules;
+        require(_liveness > 0, "liveness can't be 0");
         liveness = _liveness;
         setAvatar(_owner);
         setTarget(_owner);
@@ -208,5 +210,9 @@ contract OptimisticOracleModule is Module, Lockable {
 
     function _isContract(address addr) private view returns (bool isContract) {
         return addr.code.length > 0;
+    }
+
+    function _getCollateralWhitelist() internal view returns (AddressWhitelistInterface) {
+        return AddressWhitelistInterface(finder.getImplementationAddress(OracleInterfaces.CollateralWhitelist));
     }
 }
