@@ -94,7 +94,7 @@ contract OptimisticOracleModule is Module, Lockable {
         bond = _bond;
     }
 
-    function setCollateral(IERC20 _collateral) public onlyOwner nonReentrant() {
+    function setCollateral(IERC20 _collateral) public onlyOwner nonReentrant {
         // ERC20 token to be used as collateral (must be approved by UMA Store contract).
         require(_getCollateralWhitelist().isOnWhitelist(address(_collateral)), "bond token not supported");
         collateral = _collateral;
@@ -115,7 +115,7 @@ contract OptimisticOracleModule is Module, Lockable {
         _sync();
     }
 
-    function proposeTransactions(Transaction[] memory _transactions, bytes memory _explanation) public nonReentrant() {
+    function proposeTransactions(Transaction[] memory _transactions, bytes memory _explanation) public nonReentrant {
         // create a proposal with a bundle of transactions
         // note: based in part on the UMA Governor contract
         // https://github.com/UMAprotocol/protocol/blob/master/packages/core/contracts/oracle/implementation/Governor.sol
@@ -161,7 +161,7 @@ contract OptimisticOracleModule is Module, Lockable {
         emit TransactionsProposed(id, proposer, time);
     }
 
-    function executeProposal(uint256 _proposalId, uint256 _transactionIndex) public payable nonReentrant() {
+    function executeProposal(uint256 _proposalId, uint256 _transactionIndex) public payable nonReentrant {
         // execute transactions in an approved proposal using exec() function
         Proposal storage proposal = proposals[_proposalId];
 
