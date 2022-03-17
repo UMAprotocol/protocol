@@ -12,6 +12,7 @@ import "../oracle/interfaces/OracleAncillaryInterface.sol";
 import "../common/implementation/Lockable.sol";
 import "../common/interfaces/AddressWhitelistInterface.sol";
 import "../common/implementation/AncillaryData.sol";
+import "../oracle/interfaces/StoreInterface.sol";
 
 contract OptimisticOracleModule is Module, Lockable {
     event OptimisticOracleModuleDeployed(address indexed owner, address indexed avatar, address target);
@@ -22,16 +23,18 @@ contract OptimisticOracleModule is Module, Lockable {
 
     event ProposalDeleted(uint256 indexed proposalId);
 
-    // Since finder is set during setUp, you will need to deploy a new Optimistic Oracle module if this address need to be changed in the future
+    // Since finder is set during setUp, you will need to deploy a new Optimistic Oracle module if this address need to be changed in the future.
     FinderInterface public finder;
 
     IERC20 public collateral;
     uint64 public liveness;
+    uint256 public finalFee;
     // Extra bond in addition to the final fee for the collateral type.
     uint256 public bond;
     string public rules;
     bytes32 public immutable identifier = "ZODIAC";
     SkinnyOptimisticOracleInterface public skinnyOptimisticOracle;
+    StoreInterface public store;
 
     struct Transaction {
         address to;
@@ -80,10 +83,10 @@ contract OptimisticOracleModule is Module, Lockable {
         rules = _rules;
         require(_liveness > 0, "liveness can't be 0");
         liveness = _liveness;
-        skinnyOptimisticOracle = _getOptimisticOracle();
         setAvatar(_owner);
         setTarget(_owner);
         transferOwnership(_owner);
+        _sync();
 
         emit OptimisticOracleModuleDeployed(_owner, avatar, target);
     }
@@ -225,7 +228,13 @@ contract OptimisticOracleModule is Module, Lockable {
         return AddressWhitelistInterface(finder.getImplementationAddress(OracleInterfaces.CollateralWhitelist));
     }
 
+    function _getStore() internal view returns (StoreInterface) {
+        return StoreInterface(finder.getImplementationAddress(OracleInterfaces.Store));
+    }
+
     function _sync() internal {
+        store = _getStore();
         skinnyOptimisticOracle = _getOptimisticOracle();
+        finalFee = store.computeFinalFee(address(collateral)).rawValue;
     }
 }
