@@ -27,7 +27,7 @@ contract OptimisticOracleModule is Module, Lockable {
 
     IERC20 public collateral;
     uint64 public liveness;
-    // extra bond in addition to the final fee for the collateral type
+    // Extra bond in addition to the final fee for the collateral type.
     uint256 public bond;
     string public rules;
     bytes32 public immutable identifier = "ZODIAC";
@@ -74,7 +74,6 @@ contract OptimisticOracleModule is Module, Lockable {
         (address _finder, address _owner, address _collateral, uint256 _bond, string memory _rules, uint64 _liveness) =
             abi.decode(initializeParams, (address, address, address, uint256, string, uint64));
         finder = FinderInterface(_finder);
-        // check collateral is whitelisted
         require(_getCollateralWhitelist().isOnWhitelist(address(_collateral)), "bond token not supported");
         collateral = IERC20(_collateral);
         bond = _bond;
@@ -90,7 +89,7 @@ contract OptimisticOracleModule is Module, Lockable {
     }
 
     function setBond(uint256 _bond) public onlyOwner {
-        // value of the bond required for proposals, in addition to the final fee
+        // Value of the bond required for proposals, in addition to the final fee.
         bond = _bond;
     }
 
@@ -101,12 +100,12 @@ contract OptimisticOracleModule is Module, Lockable {
     }
 
     function setRules(string memory _rules) public onlyOwner {
-        // set reference to the rules for the avatar (e.g. an IPFS hash or URI)
+        // Set reference to the rules for the avatar (e.g. an IPFS hash or URI).
         rules = _rules;
     }
 
     function setLiveness(uint64 _liveness) public onlyOwner {
-        // set liveness for disputing proposed transactions
+        // Set liveness for disputing proposed transactions.
         require(_liveness > 0, "liveness can't be 0");
         liveness = _liveness;
     }
@@ -116,10 +115,10 @@ contract OptimisticOracleModule is Module, Lockable {
     }
 
     function proposeTransactions(Transaction[] memory _transactions, bytes memory _explanation) public nonReentrant {
-        // create a proposal with a bundle of transactions
-        // note: based in part on the UMA Governor contract
+        // Create a proposal with a bundle of transactions.
+        // note: Based in part on the UMA Governor contract.
         // https://github.com/UMAprotocol/protocol/blob/master/packages/core/contracts/oracle/implementation/Governor.sol
-        // note: optional explanation explains the intent of the transactions to make comprehension easier
+        // note: Pptional explanation explains the intent of the transactions to make comprehension easier.
         uint256 id = proposals.length;
         uint256 time = block.timestamp;
         address proposer = msg.sender;
@@ -162,10 +161,10 @@ contract OptimisticOracleModule is Module, Lockable {
     }
 
     function executeProposal(uint256 _proposalId, uint256 _transactionIndex) public payable nonReentrant {
-        // execute transactions in an approved proposal using exec() function
+        // Execute transactions in an approved proposal using exec() function.
         Proposal storage proposal = proposals[_proposalId];
 
-        // this will revert if the price has not settled
+        // This will revert if the price has not settled.
         int256 price = _getOracle().getPrice(identifier, proposal.requestTime, proposal.ancillaryData);
 
         Transaction memory transaction = proposal.transactions[_transactionIndex];
@@ -189,22 +188,22 @@ contract OptimisticOracleModule is Module, Lockable {
     }
 
     function deleteProposal(uint256 _proposalId) public onlyOwner {
-        // delete a proposal that governance decided not to execute
+        // Delete a proposal that governance decided not to execute.
         delete proposals[_proposalId];
         emit ProposalDeleted(_proposalId);
     }
 
     function deleteRejectedProposal(uint256 _proposalId) public {
-        // execute transactions in an approved proposal using exec() function
+        // Execute transactions in an approved proposal using exec() function.
         Proposal storage proposal = proposals[_proposalId];
 
-        // this will revert if the price has not settled
+        // This will revert if the price has not settled.
         int256 price = _getOracle().getPrice(identifier, proposal.requestTime, proposal.ancillaryData);
 
-        // check that proposal was rejected
+        // Check that proposal was rejected.
         require(price == 0, "Proposal was not rejected");
 
-        // Delete the proposal
+        // Delete the proposal.
         delete proposals[_proposalId];
         emit ProposalDeleted(_proposalId);
     }
