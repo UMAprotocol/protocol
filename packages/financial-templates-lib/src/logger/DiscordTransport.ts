@@ -37,8 +37,8 @@ export class DiscordTransport extends Transport {
       // A log message can conditionally contain additional Discord specific paths. Validate these first.
       let webHooks: string[] = [];
       if (info.discordPaths) {
-        // If it contains "noPost" then this is a noop message for Discord and the log should be skipped.
-        if (info.discordPaths == ["noPost"]) return;
+        // If it is null then this is a noop message for Discord and the log should be skipped.
+        if (info.discordPaths === null) return;
 
         // Else, Assign a webhook for each escalationPathWebHook defined for the provided discordPaths. This lets
         // the logger define exactly which logs should go to which discord channel.

@@ -293,7 +293,7 @@ class OptimisticOracleContractMonitor {
         message: `${this.oracleType}: Price Settlement Alert 🏧!`,
         mrkdwn,
         notificationPath: "optimistic-oracle",
-        discordPaths: ["noPost"],
+        discordPaths: null,
       });
     }
     this.lastSettlementBlockNumber = this._getLastSeenBlockNumber(latestEvents);
