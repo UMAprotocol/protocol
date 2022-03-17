@@ -4,6 +4,7 @@ pragma solidity ^0.8.6;
 import "@gnosis.pm/zodiac/contracts/core/Module.sol";
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import "../oracle/implementation/Constants.sol";
 import "../oracle/interfaces/FinderInterface.sol";
@@ -15,6 +16,8 @@ import "../common/implementation/AncillaryData.sol";
 import "../oracle/interfaces/StoreInterface.sol";
 
 contract OptimisticOracleModule is Module, Lockable {
+    using SafeERC20 for IERC20;
+
     event OptimisticOracleModuleDeployed(address indexed owner, address indexed avatar, address target);
 
     event TransactionsProposed(uint256 indexed proposalId, address indexed proposer, uint256 indexed proposalTime);
@@ -114,6 +117,7 @@ contract OptimisticOracleModule is Module, Lockable {
     }
 
     function sync() public nonReentrant {
+        // Sync the store and oracle contract addresses as well as the final fee.
         _sync();
     }
 
@@ -145,9 +149,14 @@ contract OptimisticOracleModule is Module, Lockable {
             proposal.transactions.push(_transactions[i]);
         }
 
+        // Get the bond from the proposer and approve the bond and final fee to be used by the oracle.
+        uint256 totalBond = finalFee + bond;
+        collateral.safeTransferFrom(msg.sender, address(this), totalBond);
+        collateral.safeIncreaseAllowance(address(skinnyOptimisticOracle), totalBond * 2);
+
         // Propose a set of transactions to the OO. If not disputed, they can be executed with executeProposal().
         // docs: https://github.com/UMAprotocol/protocol/blob/master/packages/core/contracts/oracle/interfaces/SkinnyOptimisticOracleInterface.sol
-        _getOptimisticOracle().requestAndProposePriceFor(
+        skinnyOptimisticOracle.requestAndProposePriceFor(
             identifier,
             uint32(time),
             proposal.ancillaryData,
