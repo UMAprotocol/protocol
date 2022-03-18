@@ -127,7 +127,7 @@ contract OptimisticOracleModule is Module, Lockable {
         // https://github.com/UMAprotocol/protocol/blob/master/packages/core/contracts/oracle/implementation/Governor.sol
         // note: Pptional explanation explains the intent of the transactions to make comprehension easier.
         uint256 id = proposals.length;
-        uint256 time = block.timestamp;
+        uint256 time = getCurrentTime();
         address proposer = msg.sender;
 
         // Add a zero-initialized element to the proposals array.
@@ -152,7 +152,7 @@ contract OptimisticOracleModule is Module, Lockable {
         // Get the bond from the proposer and approve the bond and final fee to be used by the oracle.
         uint256 totalBond = finalFee + bond;
         collateral.safeTransferFrom(msg.sender, address(this), totalBond);
-        collateral.safeIncreaseAllowance(address(skinnyOptimisticOracle), totalBond * 2);
+        collateral.safeIncreaseAllowance(address(skinnyOptimisticOracle), totalBond);
 
         // Propose a set of transactions to the OO. If not disputed, they can be executed with executeProposal().
         // docs: https://github.com/UMAprotocol/protocol/blob/master/packages/core/contracts/oracle/interfaces/SkinnyOptimisticOracleInterface.sol
@@ -218,6 +218,11 @@ contract OptimisticOracleModule is Module, Lockable {
         // Delete the proposal.
         delete proposals[_proposalId];
         emit ProposalDeleted(_proposalId);
+    }
+
+    // Can be overriden for testing.
+    function getCurrentTime() public view virtual returns (uint256) {
+        return block.timestamp;
     }
 
     function _getOptimisticOracle() private view returns (SkinnyOptimisticOracleInterface) {
