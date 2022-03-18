@@ -60,9 +60,9 @@ export const aggregateTransactionsAndSend = async (
 };
 
 export const multicallAddressMap: { [network: string]: { multicall: string } } = {
-  mainnet: { multicall: "0xeefba1e63905ef1d7acba5a8513c70307c1ce441" },
-  kovan: { multicall: "0x2cc8688c5f75e365aaeeb4ea8d6a480405a48d2a" },
-  rinkeby: { multicall: "0x42ad527de7d4e9d9d011ac45b31d8551f8fe9821" },
-  goerli: { multicall: "0x77dca2c955b15e9de4dbbcf1246b4b85b651e50e" },
-  xdai: { multicall: "0xb5b692a88bdfc81ca69dcb1d924f59f0413a602a" },
+  mainnet: { multicall: "0xcA11bde05977b3631167028862bE2a173976CA11" },
+  kovan: { multicall: "0xcA11bde05977b3631167028862bE2a173976CA11" },
+  rinkeby: { multicall: "0xcA11bde05977b3631167028862bE2a173976CA11" },
+  goerli: { multicall: "0xcA11bde05977b3631167028862bE2a173976CA11" },
+  xdai: { multicall: "0xcA11bde05977b3631167028862bE2a173976CA11" },
 };
