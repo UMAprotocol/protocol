@@ -9,7 +9,7 @@ The Polymarket notifier looks for ProposePrice events related to the Polymarket 
 The Polymarket notifier uses the following environment variables:
 
 - `NOTIFIER_CONFIG` is a JSON object containing-application specific parameters:
-  - `maxTimeAfterProposal` is the maximum time in seconds after the proposal timestamp for the contract to be included in the notification. This should be set based on the liveness period for Polymarket contracts.
+  - `maxTimeAfterProposal` is the maximum time in seconds after the proposal timestamp for the contract to be included in the notification. The default is set to 7200 seconds (2 hours) based on the liveness period for Polymarket contracts.
   - `apiEndpoint` sets API to fetch Polymarket contract information, defaulting to https://strapi-matic.poly.market/markets
 - `POLLING_DELAY` is value in seconds for the delay between consecutive runs, defaults to 10 minutes. If set to 0 then running in serverless mode will exit after the loop.
 - `BOT_IDENTIFIER` identifies the application name in the logs.
@@ -23,5 +23,5 @@ The Polymarket notifier uses the following environment variables:
 The simplest way to run the Polymarket monitor bot is from UMA [protocol repository](https://github.com/UMAprotocol/protocol/) run (if running locally, make sure you have `GOOGLE_APPLICATION_CREDENTIALS` as an environment variable):
 
 ```
-CUSTOM_NODE_URL=https://your.node.url.io yarn polymarket-notifier
+CUSTOM_NODE_URL=https://your.node.url.io yarn polymarket-notifier --network polygon-matic
 ```

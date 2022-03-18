@@ -3,16 +3,10 @@
 const { Datastore } = require("@google-cloud/datastore");
 const datastore = new Datastore();
 const abi = require("./abi/abi");
-const Web3 = require("web3");
-const ethers = require("ethers");
-const uma = require("@uma/sdk");
-const { getAddress } = require("@uma/contracts-node");
-
-const web3 = new Web3(process.env.CUSTOM_NODE_URL);
-const provider = new ethers.providers.WebSocketProvider(process.env.CUSTOM_NODE_URL);
+const { getAddress, getAbi } = require("@uma/contracts-node");
+const { MIN_INT_VALUE } = require("@uma/common");
 
 const polymarketContract = "0xCB1822859cEF82Cd2Eb4E6276C7916e692995130";
-const earlyExpiryResponse = "-57896044618658097711785492504343953926634992332820282019728792003956564819968";
 
 class PolymarketNotifier {
   /**
@@ -22,8 +16,9 @@ class PolymarketNotifier {
    * @param {String} apiEndpoint API endpoint to monitor.
    * @param {Integer} maxTimeAfterProposal Period in seconds to look for past proposals.
    */
-  constructor({ logger, networker, getTime, apiEndpoint, maxTimeAfterProposal }) {
+  constructor({ logger, web3, networker, getTime, apiEndpoint, maxTimeAfterProposal }) {
     this.logger = logger;
+    this.web3 = web3;
     this.networker = networker;
     this.getTime = getTime;
     this.apiEndpoint = apiEndpoint;
@@ -38,42 +33,36 @@ class PolymarketNotifier {
       apiEndpoint: this.apiEndpoint,
       maxTimeAfterProposal: this.maxTimeAfterProposal,
     });
-
-    const proposalEvents = [];
-    const proposalData = [];
     const currentTime = await this.getTime();
     const notifiedProposals = await this.getNotifiedProposals();
     const questionData = await this.getQuestionData();
 
     // gets the most updated OO contract
-    const contractAddress = getAddress("OptimisticOracle", 137);
-    const client = uma.clients.optimisticOracle.connect(contractAddress, provider);
+    const optimisticOracleAddress = await getAddress("OptimisticOracle", 137);
+    const optimisticOracleAbi = await getAbi("OptimisticOracle");
+    const contract = await new this.web3.eth.Contract(optimisticOracleAbi, optimisticOracleAddress);
 
     // gets all ProposePrice events using ethers query filter api
-    const events = await client.queryFilter("ProposePrice");
+    const events = await contract.getPastEvents("ProposePrice", { fromBlock: 0 });
 
     // creates array for each event
-    events.forEach((request) =>
-      proposalEvents.push({
-        txHash: request.transactionHash,
-        requester: request.args.requester,
-        proposer: request.args.proposer,
-        timestamp: Number(request.args.timestamp),
-        identifier: request.args.identifier,
-        ancillaryData: request.args.ancillaryData,
-        proposedPrice: request.args.proposedPrice.toString(),
-      })
-    );
+    const proposalEvents = events.map((request) => ({
+      txHash: request.transactionHash,
+      requester: request.returnValues["requester"],
+      proposer: request.returnValues["proposer"],
+      timestamp: Number(request.returnValues["timestamp"]),
+      identifier: request.returnValues["identifier"],
+      ancillaryData: request.returnValues["ancillaryData"],
+      proposedPrice: this.web3.utils.fromWei(request.returnValues["proposedPrice"]).toString(),
+    }));
 
     // combines data from the Polymarket API data to the proposal event based on ancillaryData
-    for (let i = 0; i < proposalEvents.length; i++) {
-      if (proposalEvents[i].timestamp > currentTime - this.maxTimeAfterProposal) {
-        proposalData.push({
-          ...proposalEvents[i],
-          ...questionData.find((proposalEvent) => proposalEvent.ancillaryData === proposalEvents[i].ancillaryData),
-        });
-      }
-    }
+    const proposalData = proposalEvents
+      .filter((proposalEvent) => proposalEvent.timestamp > currentTime - this.maxTimeAfterProposal)
+      .map((proposalEvent) => ({
+        ...proposalEvent,
+        ...questionData.find((proposals) => proposals.ancillaryData === proposalEvent.ancillaryData),
+      }));
 
     // checks the proposed price against the Polymarket API data
     const recentProposals = proposalData
@@ -84,7 +73,7 @@ class PolymarketNotifier {
           return null;
         }
         // ensures the API price is greater than 0.95 when a 1 is proposed
-        if (contract.proposedPrice === "1000000000000000000" && contract.outcome1Price > 0.95) {
+        if (contract.proposedPrice === "1" && contract.outcome1Price > 0.95) {
           return null;
         }
         // ensures the API price is greater than 0.95 when a 1 is proposed
@@ -92,9 +81,7 @@ class PolymarketNotifier {
           return null;
         }
         // the bot currently is not optimized for earlyExpirations but can be updated later
-        if (contract.proposedPrice === earlyExpiryResponse) {
-          return null;
-        }
+        if (contract.proposedPrice === this.web3.utils.fromWei(MIN_INT_VALUE)) return null;
 
         const expirationUtcString = new Date(contract.timestamp * 1000).toUTCString();
 
@@ -105,7 +92,7 @@ class PolymarketNotifier {
           requester: contract.requester,
           identifier: contract.identifier,
           ancillaryData: contract.ancillaryData,
-          proposedPrice: Number(ethers.utils.formatEther(contract.proposedPrice)),
+          proposedPrice: contract.proposedPrice,
           proposeTimestamp: contract.timestamp,
           outcome1: contract.outcome1,
           outcome1Price: contract.outcome1Price,
@@ -134,17 +121,11 @@ class PolymarketNotifier {
         `\n- ${contract.question}` +
         `\n- The Polymarket API reports prices of ${contract.outcome1}:${contract.outcome1Price} and ${contract.outcome2}:${contract.outcome2Price}` +
         "\n-" +
-        this._generateUILink(
-          contract.requester,
-          contract.identifier,
-          contract.proposeTimestamp,
-          contract.ancillaryData,
-          contract.chainId
-        );
+        this._generateUILink(contract.txHash, contract.chainId);
     }
     if (recentProposals.length) {
       this.logger.warn({
-        at: "ExpirationsNotifier",
+        at: "PolymarketNotifier",
         message: "Difference between proposed price and Polymarket API!",
         mrkdwn,
         notificationPath: "dev-x",
@@ -156,28 +137,29 @@ class PolymarketNotifier {
 
   // gets Polymarket API data that can be used to compare against proposals
   async getQuestionData() {
-    const ancillaryData = [];
-    const polymarketConditionalContract = await new web3.eth.Contract(abi, polymarketContract);
+    const polymarketConditionalContract = await new this.web3.eth.Contract(abi, polymarketContract);
 
     // Polymarket API
-    const apiUrl = this.apiEndpoint + "?_limit=750&active=true&_sort=created_at:desc";
+    const apiUrl = this.apiEndpoint + "?_limit=950&active=true&_sort=created_at:desc";
     const polymarketContracts = await this.networker.getJson(apiUrl, { method: "get" });
 
     // Since the Polymarket API doesn't have ancillaryData included, calls questions method using questionId as argument to link PM and event data
-    for (let i = 0; i < polymarketContracts.length; i++) {
-      const ancillaryDataContract = await polymarketConditionalContract.methods
-        .questions(polymarketContracts[i].questionID)
-        .call();
-      ancillaryData.push({
-        questionID: polymarketContracts[i].questionID,
-        question: polymarketContracts[i].question,
-        ancillaryData: ancillaryDataContract.ancillaryData,
-        outcome1: polymarketContracts[i].outcomes[0],
-        outcome1Price: Number(polymarketContracts[i].outcomePrices[0]),
-        outcome2: polymarketContracts[i].outcomes[1],
-        outcome2Price: Number(polymarketContracts[i].outcomePrices[1]),
-      });
-    }
+    const ancillaryData = await Promise.all(
+      polymarketContracts.map(async (polymarketContract) => {
+        const ancillaryDataContract = await polymarketConditionalContract.methods
+          .questions(polymarketContract.questionID)
+          .call();
+        return {
+          questionID: polymarketContract.questionID,
+          question: polymarketContract.question,
+          ancillaryData: ancillaryDataContract.ancillaryData,
+          outcome1: polymarketContract.outcomes[0],
+          outcome1Price: Number(polymarketContract.outcomePrices[0]),
+          outcome2: polymarketContract.outcomes[1],
+          outcome2Price: Number(polymarketContract.outcomePrices[1]),
+        };
+      })
+    );
     return ancillaryData;
   }
 
@@ -215,8 +197,8 @@ class PolymarketNotifier {
     await Promise.all(promises);
   }
 
-  _generateUILink(requester, identifier, timestamp, ancillaryData, chainId) {
-    return `<https://oracle.umaproject.org/request?requester=${requester}&identifier=${identifier}&timestamp=${timestamp}&ancillaryData=${ancillaryData}&chainId=${chainId} | View in the Oracle UI.>`;
+  _generateUILink(transactionHash, chainId) {
+    return `<https://oracle.umaproject.org/request?transactionHash=${transactionHash}&chainId=${chainId} | View in the Oracle UI.>`;
   }
 }
 

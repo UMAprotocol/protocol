@@ -8,9 +8,12 @@ const { Networker, Logger, delay } = require("@uma/financial-templates-lib");
 
 const { PolymarketNotifier } = require("./src/polymarketNotifier");
 
+const { getWeb3 } = require("@uma/common");
+
 /**
  * @notice Continuously attempts to monitor OO contract proposals and sends notifications.
  * @param {Object} logger Module responsible for sending logs.
+ * @param {Object} web3 web3.js instance with unlocked wallets used for all on-chain connections.
  * @param {Number} pollingDelay The amount of seconds to wait between iterations. If set to 0 then running in serverless
  *     mode which will exit after the loop.
  * @param {Number} errorRetries The number of times the execution loop will re-try before throwing if an error occurs.
@@ -18,7 +21,7 @@ const { PolymarketNotifier } = require("./src/polymarketNotifier");
  * @param {Object} notifierConfig Configuration object to parameterize the contract notifier.
  * @return None or throws an Error.
  */
-async function run({ logger, pollingDelay, errorRetries, errorRetriesTimeout, notifierConfig }) {
+async function run({ logger, web3, pollingDelay, errorRetries, errorRetriesTimeout, notifierConfig }) {
   try {
     // If pollingDelay === 0 then the bot is running in serverless mode and should send a `debug` level log.
     // Else, if running in loop mode (pollingDelay != 0), then it should send a `info` level log.
@@ -39,6 +42,7 @@ async function run({ logger, pollingDelay, errorRetries, errorRetriesTimeout, no
 
     const polymarketNotifier = new PolymarketNotifier({
       logger,
+      web3,
       networker,
       getTime,
       apiEndpoint,
@@ -112,7 +116,7 @@ async function Poll(callback) {
       ...executionParameters.notifierConfig,
     };
 
-    await run({ logger: Logger, ...executionParameters });
+    await run({ logger: Logger, web3: getWeb3(), ...executionParameters });
   } catch (error) {
     Logger.error({
       at: "PolymarketNotifier#index",
