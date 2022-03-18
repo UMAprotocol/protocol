@@ -140,7 +140,7 @@ class PolymarketNotifier {
     const polymarketConditionalContract = await new this.web3.eth.Contract(abi, polymarketContract);
 
     // Polymarket API
-    const apiUrl = this.apiEndpoint + "?_limit=950&active=true&_sort=created_at:desc";
+    const apiUrl = this.apiEndpoint + "?_limit=-1&active=true&closed=false&_sort=created_at:desc";
     const polymarketContracts = await this.networker.getJson(apiUrl, { method: "get" });
 
     // Since the Polymarket API doesn't have ancillaryData included, calls questions method using questionId as argument to link PM and event data
