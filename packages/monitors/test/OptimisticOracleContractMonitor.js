@@ -13,7 +13,6 @@ const {
   OptimisticOracleEventClient,
   SpyTransport,
   lastSpyLogIncludes,
-  spyLogIncludes,
   spyLogLevel,
   OptimisticOracleType,
 } = require("@uma/financial-templates-lib");
@@ -28,9 +27,6 @@ const AddressWhitelist = getContract("AddressWhitelist");
 const Timer = getContract("Timer");
 const Store = getContract("Store");
 const MockOracle = getContract("MockOracleAncillary");
-
-const secondSpyLogIncludes = (spy, value) => spyLogIncludes(spy, -2, value);
-const secondSpyLogLevel = (spy) => spyLogLevel(spy, -2);
 
 describe("OptimisticOracleContractMonitor.js", function () {
   let accounts;
@@ -75,7 +71,7 @@ describe("OptimisticOracleContractMonitor.js", function () {
   const defaultAncillaryData = "0x";
   const alternativeAncillaryRaw = "someRandomKey:alaValue42069";
   const alternativeAncillaryData = utf8ToHex(alternativeAncillaryRaw);
-  const sampleBaseUIUrl = "https://sampleurl.com/";
+  const sampleBaseUIUrl = "https://oracle.umaproject.org";
 
   const pushPrice = async (price) => {
     const [lastQuery] = (await mockOracle.methods.getPendingQueries().call()).slice(-1);
@@ -242,31 +238,30 @@ describe("OptimisticOracleContractMonitor.js", function () {
     await eventClient.update();
     await contractMonitor.checkForRequests();
 
-    assert.equal(secondSpyLogLevel(spy), "error");
+    assert.equal(spyLogLevel(spy, -1), "error");
 
     // Should contain etherscan addresses for the requester and transaction
-    assert.isTrue(secondSpyLogIncludes(spy, `https://etherscan.io/address/${optimisticRequester.options.address}`));
-    assert.isTrue(secondSpyLogIncludes(spy, `https://etherscan.io/tx/${requestTxn.transactionHash}`));
+    assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/address/${optimisticRequester.options.address}`));
+    assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/tx/${requestTxn.transactionHash}`));
 
+    console.log(
+      "TARGET",
+      `${sampleBaseUIUrl}/request?transactionHash=${requestTxn.transactionHash}&chainId=${contractProps.chainId}`
+    );
     assert.isTrue(
       lastSpyLogIncludes(
         spy,
-        `${sampleBaseUIUrl}?chainId=${contractProps.chainId}&requester=${
-          optimisticRequester.options.address
-        }&identifier=${web3.utils.padRight(
-          identifier,
-          64
-        )}&timestamp=${requestTime}&ancillaryData=${defaultAncillaryData}`
+        `${sampleBaseUIUrl}/request?transactionHash=${requestTxn.transactionHash}&chainId=${contractProps.chainId}`
       )
     );
 
     // should contain the correct request information.
-    assert.isTrue(secondSpyLogIncludes(spy, hexToUtf8(identifier))); // Identifier
-    assert.isTrue(secondSpyLogIncludes(spy, requestTime)); // Timestamp
-    assert.isTrue(secondSpyLogIncludes(spy, defaultAncillaryData)); // Ancillary Data
-    assert.isTrue(secondSpyLogIncludes(spy, collateral.options.address)); // Currency
-    assert.isTrue(secondSpyLogIncludes(spy, "3.00")); // Reward, formatted correctly
-    assert.isTrue(secondSpyLogIncludes(spy, "1.00")); // Final Fee
+    assert.isTrue(lastSpyLogIncludes(spy, hexToUtf8(identifier))); // Identifier
+    assert.isTrue(lastSpyLogIncludes(spy, requestTime)); // Timestamp
+    assert.isTrue(lastSpyLogIncludes(spy, defaultAncillaryData)); // Ancillary Data
+    assert.isTrue(lastSpyLogIncludes(spy, collateral.options.address)); // Currency
+    assert.isTrue(lastSpyLogIncludes(spy, "3.00")); // Reward, formatted correctly
+    assert.isTrue(lastSpyLogIncludes(spy, "1.00")); // Final Fee
     let spyCount = spy.callCount;
 
     // Make another request with different ancillary data.
@@ -275,42 +270,36 @@ describe("OptimisticOracleContractMonitor.js", function () {
       .send({ from: owner });
     await eventClient.update();
     await contractMonitor.checkForRequests();
-    assert.isTrue(secondSpyLogIncludes(spy, `https://etherscan.io/tx/${newTxn.transactionHash}`));
-    assert.isTrue(secondSpyLogIncludes(spy, alternativeAncillaryRaw)); // Ancillary Data
+    assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/tx/${newTxn.transactionHash}`));
+    assert.isTrue(lastSpyLogIncludes(spy, alternativeAncillaryRaw)); // Ancillary Data
 
     // Check that only two extra events were emitted since we already "checked" the original events.
-    assert.equal(spy.callCount, spyCount + 2);
+    assert.equal(spy.callCount, spyCount + 1);
   });
   it("Winston correctly emits price proposal message", async function () {
     await eventClient.update();
     await contractMonitor.checkForProposals();
 
-    assert.equal(secondSpyLogLevel(spy), "error");
+    assert.equal(spyLogLevel(spy, -1), "error");
 
     // Should contain etherscan addresses for the proposer and transaction
-    assert.isTrue(secondSpyLogIncludes(spy, `https://etherscan.io/address/${proposer}`));
-    assert.isTrue(secondSpyLogIncludes(spy, `https://etherscan.io/tx/${proposalTxn.transactionHash}`));
-
+    assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/address/${proposer}`));
+    assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/tx/${proposalTxn.transactionHash}`));
     assert.isTrue(
       lastSpyLogIncludes(
         spy,
-        `${sampleBaseUIUrl}?chainId=${contractProps.chainId}&requester=${
-          optimisticRequester.options.address
-        }&identifier=${web3.utils.padRight(
-          identifier,
-          64
-        )}&timestamp=${requestTime}&ancillaryData=${defaultAncillaryData}`
+        `${sampleBaseUIUrl}/request?transactionHash=${proposalTxn.transactionHash}&chainId=${contractProps.chainId}`
       )
     );
 
     // should contain the correct proposal information.
-    assert.isTrue(secondSpyLogIncludes(spy, optimisticRequester.options.address)); // Requester
-    assert.isTrue(secondSpyLogIncludes(spy, hexToUtf8(identifier))); // Identifier
-    assert.isTrue(secondSpyLogIncludes(spy, requestTime)); // Timestamp
-    assert.isTrue(secondSpyLogIncludes(spy, defaultAncillaryData)); // Ancillary Data
-    assert.isTrue(secondSpyLogIncludes(spy, collateral.options.address)); // Currency
-    assert.isTrue(secondSpyLogIncludes(spy, "-17.00")); // Proposed Price
-    assert.isTrue(secondSpyLogIncludes(spy, (Number(proposalTime) + liveness).toString())); // Expiration time
+    assert.isTrue(lastSpyLogIncludes(spy, optimisticRequester.options.address)); // Requester
+    assert.isTrue(lastSpyLogIncludes(spy, hexToUtf8(identifier))); // Identifier
+    assert.isTrue(lastSpyLogIncludes(spy, requestTime)); // Timestamp
+    assert.isTrue(lastSpyLogIncludes(spy, defaultAncillaryData)); // Ancillary Data
+    assert.isTrue(lastSpyLogIncludes(spy, collateral.options.address)); // Currency
+    assert.isTrue(lastSpyLogIncludes(spy, "-17.00")); // Proposed Price
+    assert.isTrue(lastSpyLogIncludes(spy, (Number(proposalTime) + liveness).toString())); // Expiration time
     let spyCount = spy.callCount;
 
     // Make another proposal with different ancillary data.
@@ -328,41 +317,36 @@ describe("OptimisticOracleContractMonitor.js", function () {
       .send({ from: proposer });
     await eventClient.update();
     await contractMonitor.checkForProposals();
-    assert.isTrue(secondSpyLogIncludes(spy, `https://etherscan.io/tx/${newTxn.transactionHash}`));
-    assert.isTrue(secondSpyLogIncludes(spy, alternativeAncillaryRaw)); // Ancillary Data
+    assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/tx/${newTxn.transactionHash}`));
+    assert.isTrue(lastSpyLogIncludes(spy, alternativeAncillaryRaw)); // Ancillary Data
 
     // Check that only two extra events were emitted since we already "checked" the original events.
-    assert.equal(spy.callCount, spyCount + 2);
+    assert.equal(spy.callCount, spyCount + 1);
   });
   it("Winston correctly emits price dispute message", async function () {
     await eventClient.update();
     await contractMonitor.checkForDisputes();
 
-    assert.equal(secondSpyLogLevel(spy), "error");
+    assert.equal(spyLogLevel(spy, -1), "error");
 
     // Should contain etherscan addresses for the disputer and transaction
-    assert.isTrue(secondSpyLogIncludes(spy, `https://etherscan.io/address/${disputer}`));
-    assert.isTrue(secondSpyLogIncludes(spy, `https://etherscan.io/tx/${disputeTxn.transactionHash}`));
+    assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/address/${disputer}`));
+    assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/tx/${disputeTxn.transactionHash}`));
 
     assert.isTrue(
       lastSpyLogIncludes(
         spy,
-        `${sampleBaseUIUrl}?chainId=${contractProps.chainId}&requester=${
-          optimisticRequester.options.address
-        }&identifier=${web3.utils.padRight(
-          identifier,
-          64
-        )}&timestamp=${requestTime}&ancillaryData=${defaultAncillaryData}`
+        `${sampleBaseUIUrl}/request?transactionHash=${disputeTxn.transactionHash}&chainId=${contractProps.chainId}`
       )
     );
 
     // should contain the correct dispute information.
-    assert.isTrue(secondSpyLogIncludes(spy, optimisticRequester.options.address)); // Requester
-    assert.isTrue(secondSpyLogIncludes(spy, proposer)); // Proposer
-    assert.isTrue(secondSpyLogIncludes(spy, hexToUtf8(identifier))); // Identifier
-    assert.isTrue(secondSpyLogIncludes(spy, requestTime)); // Timestamp
-    assert.isTrue(secondSpyLogIncludes(spy, defaultAncillaryData)); // Ancillary Data
-    assert.isTrue(secondSpyLogIncludes(spy, "-17.00")); // Proposed Price
+    assert.isTrue(lastSpyLogIncludes(spy, optimisticRequester.options.address)); // Requester
+    assert.isTrue(lastSpyLogIncludes(spy, proposer)); // Proposer
+    assert.isTrue(lastSpyLogIncludes(spy, hexToUtf8(identifier))); // Identifier
+    assert.isTrue(lastSpyLogIncludes(spy, requestTime)); // Timestamp
+    assert.isTrue(lastSpyLogIncludes(spy, defaultAncillaryData)); // Ancillary Data
+    assert.isTrue(lastSpyLogIncludes(spy, "-17.00")); // Proposed Price
     let spyCount = spy.callCount;
 
     // Make another dispute with different ancillary data.
@@ -383,45 +367,40 @@ describe("OptimisticOracleContractMonitor.js", function () {
       .send({ from: disputer });
     await eventClient.update();
     await contractMonitor.checkForDisputes();
-    assert.isTrue(secondSpyLogIncludes(spy, `https://etherscan.io/tx/${newTxn.transactionHash}`));
-    assert.isTrue(secondSpyLogIncludes(spy, alternativeAncillaryRaw)); // Ancillary Data
+    assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/tx/${newTxn.transactionHash}`));
+    assert.isTrue(lastSpyLogIncludes(spy, alternativeAncillaryRaw)); // Ancillary Data
 
     // Check that only two extra events were emitted since we already "checked" the original events.
-    assert.equal(spy.callCount, spyCount + 2);
+    assert.equal(spy.callCount, spyCount + 1);
   });
   it("Winston correctly emits price settlement message", async function () {
     await eventClient.update();
     await contractMonitor.checkForSettlements();
 
-    assert.equal(secondSpyLogLevel(spy), "info");
+    assert.equal(spyLogLevel(spy, -1), "info");
 
     // Should contain etherscan addresses for the transaction
-    assert.isTrue(secondSpyLogIncludes(spy, `https://etherscan.io/tx/${settlementTxn.transactionHash}`));
+    assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/tx/${settlementTxn.transactionHash}`));
 
     assert.isTrue(
       lastSpyLogIncludes(
         spy,
-        `${sampleBaseUIUrl}?chainId=${contractProps.chainId}&requester=${
-          optimisticRequester.options.address
-        }&identifier=${web3.utils.padRight(
-          identifier,
-          64
-        )}&timestamp=${requestTime}&ancillaryData=${defaultAncillaryData}`
+        `${sampleBaseUIUrl}/request?transactionHash=${settlementTxn.transactionHash}&chainId=${contractProps.chainId}`
       )
     );
 
     // should contain the correct settlement information.
-    assert.isTrue(secondSpyLogIncludes(spy, optimisticRequester.options.address)); // Requester
-    assert.isTrue(secondSpyLogIncludes(spy, proposer)); // Proposer
-    assert.isTrue(secondSpyLogIncludes(spy, disputer)); // Disputer
-    assert.isTrue(secondSpyLogIncludes(spy, hexToUtf8(identifier))); // Identifier
-    assert.isTrue(secondSpyLogIncludes(spy, requestTime)); // Timestamp
-    assert.isTrue(secondSpyLogIncludes(spy, defaultAncillaryData)); // Ancillary Data
-    assert.isTrue(secondSpyLogIncludes(spy, "17.00")); // Price
+    assert.isTrue(lastSpyLogIncludes(spy, optimisticRequester.options.address)); // Requester
+    assert.isTrue(lastSpyLogIncludes(spy, proposer)); // Proposer
+    assert.isTrue(lastSpyLogIncludes(spy, disputer)); // Disputer
+    assert.isTrue(lastSpyLogIncludes(spy, hexToUtf8(identifier))); // Identifier
+    assert.isTrue(lastSpyLogIncludes(spy, requestTime)); // Timestamp
+    assert.isTrue(lastSpyLogIncludes(spy, defaultAncillaryData)); // Ancillary Data
+    assert.isTrue(lastSpyLogIncludes(spy, "17.00")); // Price
     // Proposal was disputed, payout made to winner of disputer
     // Dispute reward equals: default bond (2x final fee) + proposal reward + 1/2 of loser's final fee
     // = (2 * 1) + 3 + (0.5 * 1) = 5.5
-    assert.isTrue(secondSpyLogIncludes(spy, "payout was 5.50 made to the winner of the dispute"));
+    assert.isTrue(lastSpyLogIncludes(spy, "payout was 5.50 made to the winner of the dispute"));
     let spyCount = spy.callCount;
 
     // Make another settlement without a dispute, with different ancillary data.
@@ -446,13 +425,13 @@ describe("OptimisticOracleContractMonitor.js", function () {
       .send({ from: owner });
     await eventClient.update();
     await contractMonitor.checkForSettlements();
-    assert.isTrue(secondSpyLogIncludes(spy, `https://etherscan.io/tx/${newTxn.transactionHash}`));
+    assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/tx/${newTxn.transactionHash}`));
     // Proposal this time was not disputed so payout to the proposer.
     // Proposer reward equals: default bond (2x final fee) + proposal reward
     // = (2 * 1) + 3 = 5
-    assert.isTrue(secondSpyLogIncludes(spy, "payout was 5.00 made to the proposer"));
+    assert.isTrue(lastSpyLogIncludes(spy, "payout was 5.00 made to the proposer"));
     // Check that only twp extra events were emitted since we already "checked" the original events.
-    assert.equal(spy.callCount, spyCount + 2);
+    assert.equal(spy.callCount, spyCount + 1);
   });
   it("Can correctly create contract monitor with no config provided", async function () {
     let errorThrown;
@@ -479,19 +458,19 @@ describe("OptimisticOracleContractMonitor.js", function () {
       await skinnyEventClient.update();
       await skinnyContractMonitor.checkForRequests();
 
-      assert.equal(secondSpyLogLevel(spy), "error");
+      assert.equal(spyLogLevel(spy, -1), "error");
 
       // Should contain etherscan addresses for the requester and transaction
-      assert.isTrue(secondSpyLogIncludes(spy, `https://etherscan.io/address/${requester}`));
-      assert.isTrue(secondSpyLogIncludes(spy, `https://etherscan.io/tx/${skinnyRequestTxn.transactionHash}`));
+      assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/address/${requester}`));
+      assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/tx/${skinnyRequestTxn.transactionHash}`));
 
       // should contain the correct request information.
-      assert.isTrue(secondSpyLogIncludes(spy, hexToUtf8(identifier))); // Identifier
-      assert.isTrue(secondSpyLogIncludes(spy, requestTime)); // Timestamp
-      assert.isTrue(secondSpyLogIncludes(spy, defaultAncillaryData)); // Ancillary Data
-      assert.isTrue(secondSpyLogIncludes(spy, collateral.options.address)); // Currency
-      assert.isTrue(secondSpyLogIncludes(spy, "3.00")); // Reward, formatted correctly
-      assert.isTrue(secondSpyLogIncludes(spy, "1.00")); // Final Fee
+      assert.isTrue(lastSpyLogIncludes(spy, hexToUtf8(identifier))); // Identifier
+      assert.isTrue(lastSpyLogIncludes(spy, requestTime)); // Timestamp
+      assert.isTrue(lastSpyLogIncludes(spy, defaultAncillaryData)); // Ancillary Data
+      assert.isTrue(lastSpyLogIncludes(spy, collateral.options.address)); // Currency
+      assert.isTrue(lastSpyLogIncludes(spy, "3.00")); // Reward, formatted correctly
+      assert.isTrue(lastSpyLogIncludes(spy, "1.00")); // Final Fee
       let spyCount = spy.callCount;
 
       // Make another request with different ancillary data.
@@ -508,30 +487,30 @@ describe("OptimisticOracleContractMonitor.js", function () {
         .send({ from: requester });
       await skinnyEventClient.update();
       await skinnyContractMonitor.checkForRequests();
-      assert.isTrue(secondSpyLogIncludes(spy, `https://etherscan.io/tx/${newTxn.transactionHash}`));
-      assert.isTrue(secondSpyLogIncludes(spy, alternativeAncillaryRaw)); // Ancillary Data
+      assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/tx/${newTxn.transactionHash}`));
+      assert.isTrue(lastSpyLogIncludes(spy, alternativeAncillaryRaw)); // Ancillary Data
 
       // Check that only two extra events were emitted since we already "checked" the original events.
-      assert.equal(spy.callCount, spyCount + 2);
+      assert.equal(spy.callCount, spyCount + 1);
     });
     it("Winston correctly emits price proposal message", async function () {
       await skinnyEventClient.update();
       await skinnyContractMonitor.checkForProposals();
 
-      assert.equal(secondSpyLogLevel(spy), "error");
+      assert.equal(spyLogLevel(spy, -1), "error");
 
       // Should contain etherscan addresses for the proposer and transaction
-      assert.isTrue(secondSpyLogIncludes(spy, `https://etherscan.io/address/${skinnyProposer}`));
-      assert.isTrue(secondSpyLogIncludes(spy, `https://etherscan.io/tx/${skinnyProposalTxn.transactionHash}`));
+      assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/address/${skinnyProposer}`));
+      assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/tx/${skinnyProposalTxn.transactionHash}`));
 
       // should contain the correct proposal information.
-      assert.isTrue(secondSpyLogIncludes(spy, requester)); // Requester
-      assert.isTrue(secondSpyLogIncludes(spy, hexToUtf8(identifier))); // Identifier
-      assert.isTrue(secondSpyLogIncludes(spy, requestTime)); // Timestamp
-      assert.isTrue(secondSpyLogIncludes(spy, defaultAncillaryData)); // Ancillary Data
-      assert.isTrue(secondSpyLogIncludes(spy, collateral.options.address)); // Currency
-      assert.isTrue(secondSpyLogIncludes(spy, "-17.00")); // Proposed Price
-      assert.isTrue(secondSpyLogIncludes(spy, (Number(proposalTime) + liveness).toString())); // Expiration time
+      assert.isTrue(lastSpyLogIncludes(spy, requester)); // Requester
+      assert.isTrue(lastSpyLogIncludes(spy, hexToUtf8(identifier))); // Identifier
+      assert.isTrue(lastSpyLogIncludes(spy, requestTime)); // Timestamp
+      assert.isTrue(lastSpyLogIncludes(spy, defaultAncillaryData)); // Ancillary Data
+      assert.isTrue(lastSpyLogIncludes(spy, collateral.options.address)); // Currency
+      assert.isTrue(lastSpyLogIncludes(spy, "-17.00")); // Proposed Price
+      assert.isTrue(lastSpyLogIncludes(spy, (Number(proposalTime) + liveness).toString())); // Expiration time
       let spyCount = spy.callCount;
 
       // Make another proposal with different ancillary data.
@@ -561,29 +540,29 @@ describe("OptimisticOracleContractMonitor.js", function () {
         .send({ from: skinnyProposer });
       await skinnyEventClient.update();
       await skinnyContractMonitor.checkForProposals();
-      assert.isTrue(secondSpyLogIncludes(spy, `https://etherscan.io/tx/${newTxn.transactionHash}`));
-      assert.isTrue(secondSpyLogIncludes(spy, alternativeAncillaryRaw)); // Ancillary Data
+      assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/tx/${newTxn.transactionHash}`));
+      assert.isTrue(lastSpyLogIncludes(spy, alternativeAncillaryRaw)); // Ancillary Data
 
       // Check that only two extra events were emitted since we already "checked" the original events.
-      assert.equal(spy.callCount, spyCount + 2);
+      assert.equal(spy.callCount, spyCount + 1);
     });
     it("Winston correctly emits price dispute message", async function () {
       await skinnyEventClient.update();
       await skinnyContractMonitor.checkForDisputes();
 
-      assert.equal(secondSpyLogLevel(spy), "error");
+      assert.equal(spyLogLevel(spy, -1), "error");
 
       // Should contain etherscan addresses for the disputer and transaction
-      assert.isTrue(secondSpyLogIncludes(spy, `https://etherscan.io/address/${disputer}`));
-      assert.isTrue(secondSpyLogIncludes(spy, `https://etherscan.io/tx/${skinnyDisputeTxn.transactionHash}`));
+      assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/address/${disputer}`));
+      assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/tx/${skinnyDisputeTxn.transactionHash}`));
 
       // should contain the correct dispute information.
-      assert.isTrue(secondSpyLogIncludes(spy, requester)); // Requester
-      assert.isTrue(secondSpyLogIncludes(spy, skinnyProposer)); // Proposer
-      assert.isTrue(secondSpyLogIncludes(spy, hexToUtf8(identifier))); // Identifier
-      assert.isTrue(secondSpyLogIncludes(spy, requestTime)); // Timestamp
-      assert.isTrue(secondSpyLogIncludes(spy, defaultAncillaryData)); // Ancillary Data
-      assert.isTrue(secondSpyLogIncludes(spy, "-17.00")); // Proposed Price
+      assert.isTrue(lastSpyLogIncludes(spy, requester)); // Requester
+      assert.isTrue(lastSpyLogIncludes(spy, skinnyProposer)); // Proposer
+      assert.isTrue(lastSpyLogIncludes(spy, hexToUtf8(identifier))); // Identifier
+      assert.isTrue(lastSpyLogIncludes(spy, requestTime)); // Timestamp
+      assert.isTrue(lastSpyLogIncludes(spy, defaultAncillaryData)); // Ancillary Data
+      assert.isTrue(lastSpyLogIncludes(spy, "-17.00")); // Proposed Price
       let spyCount = spy.callCount;
 
       // Make another dispute with different ancillary data.
@@ -625,33 +604,33 @@ describe("OptimisticOracleContractMonitor.js", function () {
         .send({ from: disputer });
       await skinnyEventClient.update();
       await skinnyContractMonitor.checkForDisputes();
-      assert.isTrue(secondSpyLogIncludes(spy, `https://etherscan.io/tx/${newTxn.transactionHash}`));
-      assert.isTrue(secondSpyLogIncludes(spy, alternativeAncillaryRaw)); // Ancillary Data
+      assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/tx/${newTxn.transactionHash}`));
+      assert.isTrue(lastSpyLogIncludes(spy, alternativeAncillaryRaw)); // Ancillary Data
 
       // Check that only two extra events were emitted since we already "checked" the original events.
-      assert.equal(spy.callCount, spyCount + 2);
+      assert.equal(spy.callCount, spyCount + 1);
     });
     it("Winston correctly emits price settlement message", async function () {
       await skinnyEventClient.update();
       await skinnyContractMonitor.checkForSettlements();
 
-      assert.equal(secondSpyLogLevel(spy), "info");
+      assert.equal(spyLogLevel(spy, -1), "info");
 
       // Should contain etherscan addresses for the transaction
-      assert.isTrue(secondSpyLogIncludes(spy, `https://etherscan.io/tx/${skinnySettlementTxn.transactionHash}`));
+      assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/tx/${skinnySettlementTxn.transactionHash}`));
 
       // should contain the correct settlement information.
-      assert.isTrue(secondSpyLogIncludes(spy, requester)); // Requester
-      assert.isTrue(secondSpyLogIncludes(spy, skinnyProposer)); // Proposer
-      assert.isTrue(secondSpyLogIncludes(spy, disputer)); // Disputer
-      assert.isTrue(secondSpyLogIncludes(spy, hexToUtf8(identifier))); // Identifier
-      assert.isTrue(secondSpyLogIncludes(spy, requestTime)); // Timestamp
-      assert.isTrue(secondSpyLogIncludes(spy, defaultAncillaryData)); // Ancillary Data
-      assert.isTrue(secondSpyLogIncludes(spy, "17.00")); // Price
+      assert.isTrue(lastSpyLogIncludes(spy, requester)); // Requester
+      assert.isTrue(lastSpyLogIncludes(spy, skinnyProposer)); // Proposer
+      assert.isTrue(lastSpyLogIncludes(spy, disputer)); // Disputer
+      assert.isTrue(lastSpyLogIncludes(spy, hexToUtf8(identifier))); // Identifier
+      assert.isTrue(lastSpyLogIncludes(spy, requestTime)); // Timestamp
+      assert.isTrue(lastSpyLogIncludes(spy, defaultAncillaryData)); // Ancillary Data
+      assert.isTrue(lastSpyLogIncludes(spy, "17.00")); // Price
       // Proposal was disputed, payout made to winner of disputer
       // Dispute reward equals: default bond (2x final fee) + proposal reward + 1/2 of loser's final fee
       // = (2 * 1) + 3 + (0.5 * 1) = 5.5
-      assert.isTrue(secondSpyLogIncludes(spy, "payout was 5.50 made to the winner of the dispute"));
+      assert.isTrue(lastSpyLogIncludes(spy, "payout was 5.50 made to the winner of the dispute"));
       let spyCount = spy.callCount;
 
       // Make another settlement without a dispute, with different ancillary data.
@@ -691,13 +670,13 @@ describe("OptimisticOracleContractMonitor.js", function () {
         .send({ from: owner });
       await skinnyEventClient.update();
       await skinnyContractMonitor.checkForSettlements();
-      assert.isTrue(secondSpyLogIncludes(spy, `https://etherscan.io/tx/${newTxn.transactionHash}`));
+      assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/tx/${newTxn.transactionHash}`));
       // Proposal this time was not disputed so payout to the proposer.
       // Proposer reward equals: default bond (2x final fee) + proposal reward
       // = (2 * 1) + 3 = 5
-      assert.isTrue(secondSpyLogIncludes(spy, "payout was 5.00 made to the proposer"));
+      assert.isTrue(lastSpyLogIncludes(spy, "payout was 5.00 made to the proposer"));
       // Check that only two extra events were emitted since we already "checked" the original events.
-      assert.equal(spy.callCount, spyCount + 2);
+      assert.equal(spy.callCount, spyCount + 1);
     });
   });
 });
