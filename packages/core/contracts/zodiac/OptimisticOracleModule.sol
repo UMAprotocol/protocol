@@ -186,7 +186,7 @@ contract OptimisticOracleModule is Module, Lockable {
             "Previous tx not yet executed"
         );
         require(transaction.to != address(0), "Tx already executed");
-        require(price != 0, "Proposal was rejected");
+        require(price == 1e18, "Proposal was rejected");
         require(msg.value == transaction.value, "Must send exact amount of ETH");
 
         // Delete the transaction before execution to avoid any potential re-entrancy issues.
