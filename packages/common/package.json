@@ -25,7 +25,8 @@
     "url": "https://github.com/UMAprotocol/protocol/issues"
   },
   "files": [
-    "/dist/**/*"
+    "/dist/**/*",
+    "/types/**/*"
   ],
   "dependencies": {
     "@across-protocol/contracts": "^0.1.4",
@@ -35,10 +36,10 @@
     "@google-cloud/storage": "^5.8.5",
     "@nomiclabs/hardhat-ethers": "^2.0.2",
     "@nomiclabs/hardhat-etherscan": "^3.0.0",
-    "@nomiclabs/hardhat-truffle5": "^2.0.0",
     "@nomiclabs/hardhat-web3": "^2.0.0",
     "@truffle/contract": "^4.3.38",
     "@truffle/hdwallet-provider": "eip1559-beta",
+    "@types/ethereum-protocol": "^1.0.0",
     "@umaprotocol/truffle-ledger-provider": "^1.0.5",
     "@uniswap/v3-core": "^1.0.0-rc.2",
     "abi-decoder": "github:UMAprotocol/abi-decoder",
@@ -57,11 +58,11 @@
     "require-context": "^1.1.0",
     "solidity-coverage": "^0.7.13",
     "truffle-deploy-registry": "^0.5.1",
-    "web3": "^1.6.0"
+    "web3": "^1.6.0",
+    "winston": "^3.2.1"
   },
   "devDependencies": {
     "@tsconfig/node14": "^1.0.0",
-    "@types/ethereum-protocol": "^1.0.0",
     "@types/lodash.uniqby": "^4.7.6",
     "@types/mocha": "^5.2.7",
     "ethers": "^5.4.2",

@@ -1,5 +1,4 @@
 import "@nomiclabs/hardhat-web3";
-import "@nomiclabs/hardhat-truffle5";
 
 import { getHardhatConfig } from "@uma/common";
 import path from "path";
@@ -17,4 +16,4 @@ const configOverride = {
   },
 };
 
-module.exports = getHardhatConfig(configOverride, coreWkdir, false);
+module.exports = getHardhatConfig(configOverride, coreWkdir);
