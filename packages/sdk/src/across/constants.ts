@@ -21,7 +21,7 @@ export const expectedRateModelKeys = ["UBar", "R0", "R1", "R2"];
 // Amount of blocks to wait following a `TokensBridged` L2 event until we check the L1 state commitment contracts. This
 // offset provides a buffer to allow for any time delay between L2 state changing and L1 state updating. For example,
 // Optimism has a several hour delay.
-export const L2_STATE_COMMITMENT_DELAY_BLOCKS = 20000;
+export const L2_STATE_COMMITMENT_DELAY_BLOCKS = 25000;
 
 export interface RateModel {
   UBar: string; // denote the utilization kink along the rate model where the slope of the interest rate model changes.
