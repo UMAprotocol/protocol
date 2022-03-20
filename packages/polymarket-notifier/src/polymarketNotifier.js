@@ -15,14 +15,16 @@ class PolymarketNotifier {
    * @param {Function} getTime Returns the current time.
    * @param {String} apiEndpoint API endpoint to monitor.
    * @param {Integer} maxTimeAfterProposal Period in seconds to look for past proposals.
+   * @param {Integer} minAcceptedPrice API price that determines if alert is sent.
    */
-  constructor({ logger, web3, networker, getTime, apiEndpoint, maxTimeAfterProposal }) {
+  constructor({ logger, web3, networker, getTime, apiEndpoint, maxTimeAfterProposal, minAcceptedPrice }) {
     this.logger = logger;
     this.web3 = web3;
     this.networker = networker;
     this.getTime = getTime;
     this.apiEndpoint = apiEndpoint;
     this.maxTimeAfterProposal = maxTimeAfterProposal;
+    this.minAcceptedPrice = minAcceptedPrice;
   }
 
   // Main function to check recent proposals against Polymarket API data.
@@ -32,6 +34,7 @@ class PolymarketNotifier {
       message: "Checking for past proposals",
       apiEndpoint: this.apiEndpoint,
       maxTimeAfterProposal: this.maxTimeAfterProposal,
+      minAcceptedPrice: this.minAcceptedPrice,
     });
     const currentTime = await this.getTime();
     const notifiedProposals = await this.getNotifiedProposals();
@@ -73,11 +76,11 @@ class PolymarketNotifier {
           return null;
         }
         // ensures the API price is greater than 0.95 when a 1 is proposed
-        if (contract.proposedPrice === "1" && contract.outcome1Price > 0.95) {
+        if (contract.proposedPrice === "1" && contract.outcome1Price > this.minAcceptedPrice) {
           return null;
         }
         // ensures the API price is greater than 0.95 when a 1 is proposed
-        if (contract.proposedPrice === "0" && contract.outcome2Price > 0.95) {
+        if (contract.proposedPrice === "0" && contract.outcome2Price > this.minAcceptedPrice) {
           return null;
         }
         // the bot currently is not optimized for earlyExpirations but can be updated later

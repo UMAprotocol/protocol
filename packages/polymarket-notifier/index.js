@@ -38,6 +38,7 @@ async function run({ logger, web3, pollingDelay, errorRetries, errorRetriesTimeo
 
     const apiEndpoint = notifierConfig.apiEndpoint;
     const maxTimeAfterProposal = notifierConfig.maxTimeAfterProposal;
+    const minAcceptedPrice = notifierConfig.minAcceptedPrice;
     const networker = new Networker(logger);
 
     const polymarketNotifier = new PolymarketNotifier({
@@ -47,6 +48,7 @@ async function run({ logger, web3, pollingDelay, errorRetries, errorRetriesTimeo
       getTime,
       apiEndpoint,
       maxTimeAfterProposal,
+      minAcceptedPrice,
     });
 
     // Create a execution loop that will run indefinitely (or yield early if in serverless mode)
@@ -105,6 +107,7 @@ async function Poll(callback) {
       // Notifier config contains all configuration settings for the notifier. This includes the following:
       // NOTIFIER_CONFIG={
       //  "maxTimeAfterProposal": 7200,                   // If time till expiration (in seconds) is below this fire the alert.
+      //  "minAcceptedPrice": 0.99,                         // If the Polymarket API price is below this value at the time of a proposal an alert is sent.
       //  "apiEndpoint": "https://strapi-matic.poly.market/markets"   // API endpoint to check for Polymarket information.
       // }
       notifierConfig: process.env.NOTIFIER_CONFIG ? JSON.parse(process.env.NOTIFIER_CONFIG) : {},
@@ -113,6 +116,7 @@ async function Poll(callback) {
     executionParameters.notifierConfig = {
       maxTimeAfterProposal: 7200,
       apiEndpoint: "https://strapi-matic.poly.market/markets",
+      minAcceptedPrice: 0.99,
       ...executionParameters.notifierConfig,
     };
 
