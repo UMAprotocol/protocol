@@ -14,4 +14,4 @@ const configOverride = {
   },
 };
 
-export default getHardhatConfig(configOverride, coreWkdir, false);
+export default getHardhatConfig(configOverride, coreWkdir);

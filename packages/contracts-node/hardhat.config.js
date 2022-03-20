@@ -6,4 +6,4 @@ const configOverride = {
   paths: { sources: `${coreWkdir}/contracts`, artifacts: `${coreWkdir}/artifacts`, cache: `${coreWkdir}/cache` },
 };
 
-module.exports = getHardhatConfig(configOverride, __dirname, false);
+module.exports = getHardhatConfig(configOverride, __dirname);

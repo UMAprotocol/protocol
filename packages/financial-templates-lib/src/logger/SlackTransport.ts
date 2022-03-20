@@ -68,7 +68,14 @@ function slackFormatter(info: any): SlackFormatterResponse {
     // sub points. This is also expanded as a sub indented section.
     for (const key in info) {
       // these keys have been printed in the previous block or should not be included in slack messages.
-      if (key == "at" || key == "level" || key == "message" || key == "bot-identifier" || key == "notificationPath")
+      if (
+        key == "at" ||
+        key == "level" ||
+        key == "message" ||
+        key == "bot-identifier" ||
+        key == "notificationPath" ||
+        key == "discordPaths"
+      )
         continue;
 
       // If the key is `mrkdwn` then simply return only the markdown as the txt object. This assumes all formatting has

@@ -34,10 +34,21 @@ export class DiscordTransport extends Transport {
         embeds: [{ title: `${info.message}`, description: this.formatLinks(info.mrkdwn), color: 9696729 }],
       };
 
-      // Either the transport is configured to send on undefined escalation paths (will use default path if path does
-      // not exist) or the transport has a defined escalation path for the given message's notification path.
+      // A log message can conditionally contain additional Discord specific paths. Validate these first.
       let webHooks: string[] = [];
-      if (this.postOnNonEscalationPaths || this.escalationPathWebhookUrls[info.notificationPath]) {
+      if (info.discordPaths) {
+        // If it is null then this is a noop message for Discord and the log should be skipped.
+        if (info.discordPaths === null) return;
+
+        // Else, Assign a webhook for each escalationPathWebHook defined for the provided discordPaths. This lets
+        // the logger define exactly which logs should go to which discord channel.
+        webHooks = info.discordPaths.map((discordPath: string) => this.escalationPathWebhookUrls[discordPath]);
+      }
+
+      // Else, There are no discord specific settings. In this case, we treat this like a normal log. Either the
+      // transport is configured to send on undefined escalation paths (will use default path if path does
+      // not exist) or the transport has a defined escalation path for the given message's notification path.
+      else if (this.postOnNonEscalationPaths || this.escalationPathWebhookUrls[info.notificationPath]) {
         // The webhook is preferentially set to the defined escalation path, or the default webhook.
         const webHook = this.escalationPathWebhookUrls[info.notificationPath] ?? this.defaultWebHookUrl;
 
