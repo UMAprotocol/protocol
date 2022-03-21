@@ -487,7 +487,7 @@ export class Relayer {
     if (
       !hasInstantRelayer &&
       l1TokenBalance.gte(relayTokenRequirement.instant) &&
-      clientRelayState !== ClientRelayState.Finalized
+      clientRelayState === ClientRelayState.Pending
     )
       speedUpRevenue = toBN(deposit.amount).mul(toBN(deposit.instantRelayFeePct)).div(fixedPointAdjustment);
 
@@ -496,10 +496,13 @@ export class Relayer {
     if (
       l1TokenBalance.gte(relayTokenRequirement.slow.add(relayTokenRequirement.instant)) &&
       clientRelayState == ClientRelayState.Uninitialized
-    )
+    ) {
+      // speedUpRevenue is recomputed here because the conditions in this if differ from the one for speed up.
+      const _speedUpRevenue = toBN(deposit.amount).mul(toBN(deposit.instantRelayFeePct)).div(fixedPointAdjustment);
       // If the relay has an instant relayer than the instant revenue is zero. Else, the instant revenue is the sum of
       // the slow and speed up revenues as the instant relayer will capture both.
-      instantRevenue = hasInstantRelayer ? toBN(0) : slowRevenue.add(speedUpRevenue);
+      instantRevenue = hasInstantRelayer ? toBN(0) : slowRevenue.add(_speedUpRevenue);
+    }
 
     // Finally, decide what action to do based on the relative profits.
     return this.profitabilityCalculator.getRelaySubmitTypeBasedOnProfitability(
