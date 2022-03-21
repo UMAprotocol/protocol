@@ -36,7 +36,7 @@ export class InsuredBridgeL2Client {
     readonly chainId: number = 0,
     readonly startingBlockNumber: number = 0,
     readonly endingBlockNumber: number | null = null,
-    readonly fallbackL2Web3s: Web3[] = []
+    readonly redundantL2Web3s: Web3[] = []
   ) {
     this.bridgeDepositBox = (new l2Web3.eth.Contract(
       getAbi("BridgeDepositBox"),
@@ -107,7 +107,7 @@ export class InsuredBridgeL2Client {
 
   async getBridgeDepositBoxEvents(eventSearchOptions: EventSearchOptions, eventName: string): Promise<EventData[]> {
     const eventsData = await getEventsForMultipleProviders(
-      [this.l2Web3].concat(this.fallbackL2Web3s),
+      this.redundantL2Web3s,
       getAbi("BridgeDepositBox"),
       this.bridgeDepositAddress,
       eventName,
