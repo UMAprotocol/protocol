@@ -35,7 +35,8 @@ contract OptimisticOracleModule is Module, Lockable {
     // Extra bond in addition to the final fee for the collateral type.
     uint256 public bond;
     string public rules;
-    bytes32 public immutable identifier = "ZODIAC";
+    // This will usually be "ZODIAC" but a deployer may want to create a more specific identifier.
+    bytes32 public identifier;
     SkinnyOptimisticOracleInterface public skinnyOptimisticOracle;
     StoreInterface public store;
 
@@ -62,6 +63,8 @@ contract OptimisticOracleModule is Module, Lockable {
      * @param _collateral Address of the ERC20 collateral used for bonds.
      * @param _bond Bond required (must be at least as large as final fee for collateral type).
      * @param _rules Reference to the rules for the Gnosis Safe (e.g., IPFS hash or URI).
+     * @param _identifier The approved identifier to be used with the contract, usually "ZODIAC".
+     * @param _liveness The period, in seconds, in which a proposal can be disputed.
      */
     constructor(
         address _finder,
@@ -69,21 +72,30 @@ contract OptimisticOracleModule is Module, Lockable {
         address _collateral,
         uint256 _bond,
         string memory _rules,
+        bytes32 _identifier,
         uint64 _liveness
     ) {
-        bytes memory initializeParams = abi.encode(_finder, _owner, _collateral, _bond, _rules, _liveness);
+        bytes memory initializeParams = abi.encode(_finder, _owner, _collateral, _bond, _rules, _identifier, _liveness);
         setUp(initializeParams);
     }
 
     function setUp(bytes memory initializeParams) public override initializer {
         __Ownable_init();
-        (address _finder, address _owner, address _collateral, uint256 _bond, string memory _rules, uint64 _liveness) =
-            abi.decode(initializeParams, (address, address, address, uint256, string, uint64));
+        (
+            address _finder,
+            address _owner,
+            address _collateral,
+            uint256 _bond,
+            string memory _rules,
+            bytes32 _identifier,
+            uint64 _liveness
+        ) = abi.decode(initializeParams, (address, address, address, uint256, string, bytes32, uint64));
         finder = FinderInterface(_finder);
         require(_getCollateralWhitelist().isOnWhitelist(address(_collateral)), "bond token not supported");
         collateral = IERC20(_collateral);
         bond = _bond;
         rules = _rules;
+        identifier = _identifier;
         require(_liveness > 0, "liveness can't be 0");
         liveness = _liveness;
         setAvatar(_owner);
@@ -114,6 +126,11 @@ contract OptimisticOracleModule is Module, Lockable {
         // Set liveness for disputing proposed transactions.
         require(_liveness > 0, "liveness can't be 0");
         liveness = _liveness;
+    }
+
+    function setIdentifier(bytes32 _identifier) public onlyOwner {
+        // Set identifier which is used along with the rules to determine if transactions are valid.
+        identifier = _identifier;
     }
 
     function sync() public nonReentrant {
