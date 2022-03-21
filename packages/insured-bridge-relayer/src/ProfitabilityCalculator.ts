@@ -102,11 +102,12 @@ export class ProfitabilityCalculator {
       } else {
         // Set the price to something very large. This means that the bot will default to continue sending transactions
         // even if it cant find a price for the given l1Token.
-        this.l1TokenInfo[this.l1Tokens[index]].tokenEthPrice = toBN(MAX_SAFE_ALLOWANCE);
+        this.l1TokenInfo[this.l1Tokens[index]].tokenEthPrice = toBNWei(MAX_SAFE_ALLOWANCE);
         this.logger.warn({
           at: "ProfitabilityCalculator",
           message: "Could not find token price! 💵",
           mrkdwn: `The CoinGecko price API for the profitability calculator could not find a price for ${this.l1Tokens[index]}. Price defaulting to a high price to ensure the relayer continue running.`,
+          apiError: priceResponse,
           notificationPath: "across-infrastructure",
         });
       }
