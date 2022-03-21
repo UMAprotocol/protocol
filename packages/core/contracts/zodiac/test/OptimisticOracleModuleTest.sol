@@ -12,9 +12,13 @@ contract OptimisticOracleModuleTest is OptimisticOracleModule, Testable {
         address _collateral,
         uint256 _bond,
         string memory _rules,
+        bytes32 _identifier,
         uint64 _liveness,
         address _timerAddress
-    ) Testable(_timerAddress) OptimisticOracleModule(_finder, _owner, _collateral, _bond, _rules, _liveness) {}
+    )
+        Testable(_timerAddress)
+        OptimisticOracleModule(_finder, _owner, _collateral, _bond, _rules, _identifier, _liveness)
+    {}
 
     function getCurrentTime() public view override(OptimisticOracleModule, Testable) returns (uint256) {
         return Testable.getCurrentTime();
