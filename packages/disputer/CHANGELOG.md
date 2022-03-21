@@ -3,6 +3,30 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.6.22](https://github.com/UMAprotocol/protocol/compare/@uma/disputer@2.6.21...@uma/disputer@2.6.22) (2022-02-28)
+
+**Note:** Version bump only for package @uma/disputer
+
+## [2.6.21](https://github.com/UMAprotocol/protocol/compare/@uma/disputer@2.6.20...@uma/disputer@2.6.21) (2022-02-10)
+
+**Note:** Version bump only for package @uma/disputer
+
+## [2.6.20](https://github.com/UMAprotocol/protocol/compare/@uma/disputer@2.6.19...@uma/disputer@2.6.20) (2022-01-31)
+
+**Note:** Version bump only for package @uma/disputer
+
+## [2.6.19](https://github.com/UMAprotocol/protocol/compare/@uma/disputer@2.6.18...@uma/disputer@2.6.19) (2022-01-25)
+
+**Note:** Version bump only for package @uma/disputer
+
+## [2.6.18](https://github.com/UMAprotocol/protocol/compare/@uma/disputer@2.6.17...@uma/disputer@2.6.18) (2022-01-20)
+
+**Note:** Version bump only for package @uma/disputer
+
+## [2.6.17](https://github.com/UMAprotocol/protocol/compare/@uma/disputer@2.6.16...@uma/disputer@2.6.17) (2022-01-11)
+
+**Note:** Version bump only for package @uma/disputer
+
 ## [2.6.16](https://github.com/UMAprotocol/protocol/compare/@uma/disputer@2.6.15...@uma/disputer@2.6.16) (2021-12-17)
 
 ### Bug Fixes

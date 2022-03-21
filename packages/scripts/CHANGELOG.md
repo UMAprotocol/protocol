@@ -3,6 +3,41 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.8.1](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.8.0...@uma/scripts@1.8.1) (2022-02-28)
+
+**Note:** Version bump only for package @uma/scripts
+
+# [1.8.0](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.7.1...@uma/scripts@1.8.0) (2022-02-10)
+
+### Features
+
+- Add resolveProposal script to retrieve all possible UMA bonds ([#3821](https://github.com/UMAprotocol/protocol/issues/3821)) ([4b2ff2f](https://github.com/UMAprotocol/protocol/commit/4b2ff2f312fa78c83b439fb4791433a70fb4f096))
+
+## [1.7.1](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.7.0...@uma/scripts@1.7.1) (2022-01-31)
+
+### Bug Fixes
+
+- **admin-scripts:** Work with decentralized proposer ([#3796](https://github.com/UMAprotocol/protocol/issues/3796)) ([0d3f9e8](https://github.com/UMAprotocol/protocol/commit/0d3f9e83172aec9fe1a38e48dc1abae2a896e448))
+- **pf:** use close price for matching cryptowatch close timestamps ([#3791](https://github.com/UMAprotocol/protocol/issues/3791)) ([c738d4b](https://github.com/UMAprotocol/protocol/commit/c738d4b512d69eb6aa88826ea5302f577af69ffc))
+
+# [1.7.0](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.6.1...@uma/scripts@1.7.0) (2022-01-25)
+
+### Features
+
+- add proposer upgrade verification script ([#3774](https://github.com/UMAprotocol/protocol/issues/3774)) ([9530a73](https://github.com/UMAprotocol/protocol/commit/9530a7371076dd1354d3467d08cd8bd8fadb2d74))
+
+## [1.6.1](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.6.0...@uma/scripts@1.6.1) (2022-01-20)
+
+### Bug Fixes
+
+- **across-relayer:** Fix various bugs in relayer and manual relay script ([#3769](https://github.com/UMAprotocol/protocol/issues/3769)) ([31cdd90](https://github.com/UMAprotocol/protocol/commit/31cdd9082979c288001af17c487a89ebcc9672f0))
+
+# [1.6.0](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.5.5...@uma/scripts@1.6.0) (2022-01-11)
+
+### Features
+
+- add manual relay script ([#3731](https://github.com/UMAprotocol/protocol/issues/3731)) ([ade5ad6](https://github.com/UMAprotocol/protocol/commit/ade5ad63718e15e83d4789ffe7b7814e31c6f07d))
+
 ## [1.5.5](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.5.4...@uma/scripts@1.5.5) (2021-12-17)
 
 **Note:** Version bump only for package @uma/scripts

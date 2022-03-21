@@ -35,34 +35,40 @@ export async function approveL1Tokens(
   }
 }
 
-// Iterate over provided list of whitelisted L1 tokens and remove any that are not whitelisted on a specific L2.
+// Iterate over queried list of whitelisted L1 tokens and remove any that are not whitelisted on a specific L2.
 // The Relayer will use this whitelist to determine which deposits to relay. By default, the whitelist will be set
-// to the list of all possible tokens provided in the RateModels dictionary. However, not all L1 tokens in this
+// to the list of all possible tokens provided in the on-chain RateModels dictionary. However, not all L1 tokens in this
 // dictionary will be whitelisted for all L2 deposit boxes.
-export async function pruneWhitelistedL1Tokens(
+export function pruneWhitelistedL1Tokens(
   logger: winston.Logger,
   l1Client: InsuredBridgeL1Client,
-  l2Client: InsuredBridgeL2Client,
-  whitelistedRelayL1Tokens: string[]
-): Promise<string[]> {
-  await Promise.all([l2Client.update(), l1Client.update()]);
-  const whitelistedTokenMappings = await Promise.all(
-    whitelistedRelayL1Tokens.map((tokenAddress) =>
-      l1Client.bridgeAdmin.methods.whitelistedTokens(tokenAddress, l2Client.chainId.toString()).call()
-    )
+  l2Client: InsuredBridgeL2Client
+): string[] {
+  // Fetch list of potential whitelisted L1 tokens from keys in the RateModelStore.
+  const whitelistedRelayL1TokensInRateModel = l1Client.getL1TokensFromRateModel();
+
+  // Compare tokens in rate model with whitelisted tokens for L2 chain ID. If the rate model doesn't include
+  // all whitelisted tokens in the BridgeAdmin, then throw an error.
+  const whitelistedRelayL1TokensInBridgeAdmin = l1Client.getWhitelistedTokensForChainId(l2Client.chainId.toString());
+  for (const l1Token of Object.keys(whitelistedRelayL1TokensInBridgeAdmin)) {
+    if (!whitelistedRelayL1TokensInRateModel.includes(l1Token))
+      throw new Error(`Rate model does not include whitelisted token ${l1Token}`);
+  }
+
+  // Remove L1 tokens derived from rate model list that are not whitelisted for this L2.
+  const prunedWhitelist = whitelistedRelayL1TokensInRateModel.filter((tokenAddress) =>
+    Object.keys(whitelistedRelayL1TokensInBridgeAdmin).includes(tokenAddress)
   );
-  const prunedWhitelist = whitelistedRelayL1Tokens.filter(
-    (_tokenAddress, i) => whitelistedTokenMappings[i].l2Token !== ZERO_ADDRESS
-  );
+
   if (prunedWhitelist.length === 0) {
     logger.error({
-      at: "AcrossRelayer#index",
+      at: "AcrossRelayer#RelayerHelper",
       message: "Filtered whitelist is empty",
       l2DepositBox: l2Client.bridgeDepositAddress,
     });
   } else {
     logger.debug({
-      at: "AcrossRelayer#index",
+      at: "AcrossRelayer#RelayerHelper",
       message: "Filtered out tokens that are not whitelisted on L2",
       l2DepositBox: l2Client.bridgeDepositAddress,
       prunedWhitelist,

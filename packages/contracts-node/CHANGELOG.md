@@ -3,6 +3,30 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.3.1](https://github.com/UMAprotocol/protocol/compare/@uma/contracts-node@0.3.0...@uma/contracts-node@0.3.1) (2022-02-28)
+
+**Note:** Version bump only for package @uma/contracts-node
+
+# [0.3.0](https://github.com/UMAprotocol/protocol/compare/@uma/contracts-node@0.2.1...@uma/contracts-node@0.3.0) (2022-02-10)
+
+### Features
+
+- remove across contracts ([#3775](https://github.com/UMAprotocol/protocol/issues/3775)) ([84c053b](https://github.com/UMAprotocol/protocol/commit/84c053b4d9e758f0f5c21886cafa063427843f2b))
+
+## [0.2.1](https://github.com/UMAprotocol/protocol/compare/@uma/contracts-node@0.2.0...@uma/contracts-node@0.2.1) (2022-01-25)
+
+**Note:** Version bump only for package @uma/contracts-node
+
+# [0.2.0](https://github.com/UMAprotocol/protocol/compare/@uma/contracts-node@0.1.18...@uma/contracts-node@0.2.0) (2022-01-20)
+
+### Features
+
+- add across artifacts to contracts-node and contracts-frontend ([#3747](https://github.com/UMAprotocol/protocol/issues/3747)) ([d0f2d9b](https://github.com/UMAprotocol/protocol/commit/d0f2d9bca6c3344468a5bc69832cb40319c8da95))
+
+## [0.1.18](https://github.com/UMAprotocol/protocol/compare/@uma/contracts-node@0.1.17...@uma/contracts-node@0.1.18) (2022-01-11)
+
+**Note:** Version bump only for package @uma/contracts-node
+
 ## [0.1.17](https://github.com/UMAprotocol/protocol/compare/@uma/contracts-node@0.1.16...@uma/contracts-node@0.1.17) (2021-12-17)
 
 **Note:** Version bump only for package @uma/contracts-node

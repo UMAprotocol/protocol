@@ -13,11 +13,11 @@ type LegacyGasData = { gasPrice: number };
 
 interface GasEstimatorMapping {
   [networkId: number]: {
-    url: string;
+    type: NetworkType;
+    url?: string;
     defaultFastPriceGwei?: number;
     defaultMaxFeePerGasGwei?: number;
     defaultMaxPriorityFeePerGasGwei?: number;
-    type: NetworkType;
     backupUrl?: string;
   };
 }
@@ -53,7 +53,10 @@ export const MAPPING_BY_NETWORK: GasEstimatorMapping = {
     defaultMaxPriorityFeePerGasGwei: 5,
     type: NetworkType.London,
   },
+  10: { defaultFastPriceGwei: 1, type: NetworkType.Legacy },
   137: { url: "https://gasstation-mainnet.matic.network", defaultFastPriceGwei: 10, type: NetworkType.Legacy },
+  288: { defaultFastPriceGwei: 1, type: NetworkType.Legacy },
+  42161: { defaultFastPriceGwei: 10, type: NetworkType.Legacy },
   80001: { url: "https://gasstation-mumbai.matic.today", defaultFastPriceGwei: 20, type: NetworkType.Legacy },
 };
 
@@ -63,7 +66,7 @@ export class GasEstimator {
   private lastFastPriceGwei = 0;
   private latestMaxFeePerGasGwei: number;
   private latestMaxPriorityFeePerGasGwei: number;
-  private latestBaseFee: number;
+  private latestBaseFeeGwei: number;
 
   private defaultFastPriceGwei = 0;
   private defaultMaxFeePerGasGwei = 0;
@@ -91,7 +94,16 @@ export class GasEstimator {
 
     // If the script fails or the API response fails default to these value. If the network ID provided is not in the
     // mapping, then use the default ID.
-    if (!Object.keys(MAPPING_BY_NETWORK).includes(networkId.toString())) this.networkId = DEFAULT_NETWORK_ID;
+    if (!Object.keys(MAPPING_BY_NETWORK).includes(networkId.toString())) {
+      logger.debug({
+        at: "GasEstimator",
+        message: "Unrecognized network ID, defaulting to default",
+        defaultNetworkId: DEFAULT_NETWORK_ID,
+        unrecognizedNetworkId: networkId.toString(),
+        defaultNetworkMapping: MAPPING_BY_NETWORK[DEFAULT_NETWORK_ID],
+      });
+      this.networkId = DEFAULT_NETWORK_ID;
+    }
 
     this.defaultFastPriceGwei = MAPPING_BY_NETWORK[this.networkId].defaultFastPriceGwei || 0;
     this.defaultMaxFeePerGasGwei = MAPPING_BY_NETWORK[this.networkId].defaultMaxFeePerGasGwei || 0;
@@ -101,7 +113,7 @@ export class GasEstimator {
     // Set the initial values to the defaults.
     this.lastFastPriceGwei = this.defaultFastPriceGwei;
     this.latestMaxFeePerGasGwei = this.defaultMaxFeePerGasGwei;
-    this.latestBaseFee = this.defaultMaxFeePerGasGwei;
+    this.latestBaseFeeGwei = this.defaultMaxFeePerGasGwei;
     this.latestMaxPriorityFeePerGasGwei = this.defaultMaxPriorityFeePerGasGwei;
   }
 
@@ -119,7 +131,7 @@ export class GasEstimator {
         currentMaxFeePerGas: this.latestMaxFeePerGasGwei,
         currentMaxPriorityFeePerGas: this.latestMaxPriorityFeePerGasGwei,
         lastFastPriceGwei: this.lastFastPriceGwei,
-        lastBaseFee: this.latestBaseFee,
+        lastBaseFee: this.latestBaseFeeGwei,
         timeRemainingUntilUpdate: this.lastUpdateTimestamp + this.updateThreshold - currentTime,
       });
       return;
@@ -135,7 +147,7 @@ export class GasEstimator {
         currentMaxFeePerGas: this.latestMaxFeePerGasGwei,
         currentMaxPriorityFeePerGas: this.latestMaxPriorityFeePerGasGwei,
         lastFastPriceGwei: this.lastFastPriceGwei,
-        latestBaseFee: this.latestBaseFee,
+        latestBaseFeeGwei: this.latestBaseFeeGwei,
       });
     }
   }
@@ -156,8 +168,9 @@ export class GasEstimator {
   // network then you will pay the prevailing base fee + the max priority fee. if not london then pay the latest fast
   // gas price.
   getExpectedCumulativeGasPrice(): number {
-    if (this.type == NetworkType.London) return this.latestBaseFee + this.latestMaxPriorityFeePerGasGwei;
-    else return this.lastFastPriceGwei;
+    if (this.type == NetworkType.London)
+      return this.latestBaseFeeGwei * 1e9 + this.latestMaxPriorityFeePerGasGwei * 1e9;
+    else return this.lastFastPriceGwei * 1e9;
   }
 
   async _update() {
@@ -170,8 +183,10 @@ export class GasEstimator {
     if (this.type == NetworkType.London) {
       this.latestMaxFeePerGasGwei = (gasInfo as LondonGasData).maxFeePerGas;
       this.latestMaxPriorityFeePerGasGwei = (gasInfo as LondonGasData).maxPriorityFeePerGas;
-      // Extract the base fee from the most recent block. If the block is not available or errored then is set to 0.
-      this.latestBaseFee = Number((latestBlock as any)?.baseFeePerGas) || 0;
+      // Extract the base fee from the most recent block. If the block is not available or errored then is set to the
+      // latest max fee per gas so we still have some value in the right ballpark to return to the client implementer.
+      // Base fee is represented in Wei so we convert to Gwei to be consistent with other variables in this class.
+      this.latestBaseFeeGwei = Number((latestBlock as any)?.baseFeePerGas) / 1e9 || this.latestMaxFeePerGasGwei;
     } else this.lastFastPriceGwei = (gasInfo as LegacyGasData).gasPrice;
   }
 
@@ -179,7 +194,14 @@ export class GasEstimator {
     const url = MAPPING_BY_NETWORK[_networkId].url;
     const backupUrl = MAPPING_BY_NETWORK[_networkId].backupUrl;
 
-    if (!url) throw new Error(`Missing URL for network ID ${_networkId}`);
+    if (!url) {
+      // If no URL specified, use default.
+      return {
+        gasPrice: this.defaultFastPriceGwei,
+        maxFeePerGas: this.defaultMaxFeePerGasGwei,
+        maxPriorityFeePerGas: this.defaultMaxPriorityFeePerGasGwei,
+      };
+    }
 
     try {
       // Primary URL expected response structure for London.

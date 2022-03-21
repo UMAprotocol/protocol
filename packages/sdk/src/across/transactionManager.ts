@@ -39,7 +39,7 @@ export default (config: Config, signer: Signer, emit: Emit = () => null) => {
       submissions.set(key, sent.hash);
       emit("submitted", key, sent.hash);
     } catch (err) {
-      emit("error", key, err);
+      emit("error", key, err as Error);
     }
   }
   async function processSubmission(key: string) {

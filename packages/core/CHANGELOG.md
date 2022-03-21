@@ -3,6 +3,41 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.25.1](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.25.0...@uma/core@2.25.1) (2022-02-28)
+
+**Note:** Version bump only for package @uma/core
+
+# [2.25.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.24.1...@uma/core@2.25.0) (2022-02-10)
+
+### Features
+
+- remove across contracts ([#3775](https://github.com/UMAprotocol/protocol/issues/3775)) ([84c053b](https://github.com/UMAprotocol/protocol/commit/84c053b4d9e758f0f5c21886cafa063427843f2b))
+
+## [2.24.1](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.24.0...@uma/core@2.24.1) (2022-01-25)
+
+**Note:** Version bump only for package @uma/core
+
+# [2.24.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.23.0...@uma/core@2.24.0) (2022-01-20)
+
+### Features
+
+- Deploy Boba LSP ([#3773](https://github.com/UMAprotocol/protocol/issues/3773)) ([f8398b3](https://github.com/UMAprotocol/protocol/commit/f8398b34f97745a9973ddd8a8566eb1892291d20))
+- **deployments:** Add xDai deploys ([#3766](https://github.com/UMAprotocol/protocol/issues/3766)) ([f23f081](https://github.com/UMAprotocol/protocol/commit/f23f081f6d2600c086bbac85c25f5e7de03bc2f6))
+- add proposer address and deployment script ([#3771](https://github.com/UMAprotocol/protocol/issues/3771)) ([09a3852](https://github.com/UMAprotocol/protocol/commit/09a38527e439be2072561a17400006d14dda19ca))
+- **cross-chain-oracle:** Add verification script to cross chain oracle setup ([#3758](https://github.com/UMAprotocol/protocol/issues/3758)) ([8ad8291](https://github.com/UMAprotocol/protocol/commit/8ad82915d534d062c90f6f2b89ab4b4798b83a2b))
+
+# [2.23.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.22.0...@uma/core@2.23.0) (2022-01-11)
+
+### Features
+
+- **core:** Add cross-chain-oracle deployment scripts for Arbitrum ([#3733](https://github.com/UMAprotocol/protocol/issues/3733)) ([e8d8b9f](https://github.com/UMAprotocol/protocol/commit/e8d8b9fdd9dba86b3e05111cd9d37e3b46150d16))
+- **core:** Add OO deployment instructions ([#3735](https://github.com/UMAprotocol/protocol/issues/3735)) ([0560290](https://github.com/UMAprotocol/protocol/commit/056029005f880b9fdaf72694fa289deb14af6aa7))
+- **core:** Deploy + Setup Boba OptimisticOracle and Bridge contracts ([#3750](https://github.com/UMAprotocol/protocol/issues/3750)) ([496037f](https://github.com/UMAprotocol/protocol/commit/496037f15b521cc61cdd30a6793ea1888ff8e5f1))
+- **scripts:** add script to seed new address whitelist ([#3753](https://github.com/UMAprotocol/protocol/issues/3753)) ([ec3058b](https://github.com/UMAprotocol/protocol/commit/ec3058b492a5fb9ec56ca8916bbad015ad72c073))
+- add manual relay script ([#3731](https://github.com/UMAprotocol/protocol/issues/3731)) ([ade5ad6](https://github.com/UMAprotocol/protocol/commit/ade5ad63718e15e83d4789ffe7b7814e31c6f07d))
+- add transaction bundler to relayer for better batching ([#3723](https://github.com/UMAprotocol/protocol/issues/3723)) ([51902a8](https://github.com/UMAprotocol/protocol/commit/51902a8cfbbb60dc30b868c5fd3e9fd0f31d48b4))
+- update mumbai lsp creator and add rinkeby fpl addresses ([#3721](https://github.com/UMAprotocol/protocol/issues/3721)) ([391214b](https://github.com/UMAprotocol/protocol/commit/391214b05a85b2d47ebc4b252bf88f6084b8ff22))
+
 # [2.22.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.21.0...@uma/core@2.22.0) (2021-12-17)
 
 ### Bug Fixes

@@ -1,5 +1,6 @@
 import Web3 from "web3";
-const { toBN } = Web3.utils;
+const { toBN, toWei } = Web3.utils;
+const toBNWei = (number: string | number) => toBN(toWei(number.toString()).toString());
 
 import minimist from "minimist";
 const argv = minimist(process.argv.slice(), {});
@@ -30,6 +31,8 @@ export class CrossDomainFinalizer {
 
   private tokensBridgedTransactions: { [key: string]: TokensBridged[] } = {}; // L2Token=>BridgeTransactionHash[]
 
+  private chainId: number;
+
   constructor(
     readonly logger: winston.Logger,
     readonly gasEstimator: GasEstimator,
@@ -39,12 +42,17 @@ export class CrossDomainFinalizer {
     readonly account: string,
     readonly l2DeployData: { [key: string]: { blockNumber: number } },
     readonly crossDomainFinalizationThreshold: number = 5
-  ) {}
+  ) {
+    this.chainId = l2Client.chainId;
+  }
   async checkForBridgeableL2TokensAndBridge() {
-    this.logger.debug({ at: "AcrossRelayer#CrossDomainFinalizer", message: "Checking bridgeable L2 tokens" });
+    this.logger.debug({ at: "L2Finalizer", message: "Checking bridgeable L2 tokens", chainId: this.chainId });
 
-    // Fetch all whitelisted tokens on the particular l2 chainId.
-    const whitelistedL2Tokens = this.l1Client.getWhitelistedL2TokensForChainId(this.l2Client.chainId.toString());
+    // Fetch all whitelisted tokens on the particular l2 chainId. Remove the DAI Optimism address from the whitelist as
+    // we don't want to finalize DAI actions due to this not working over the canonical Optimism bridge.
+    const whitelistedL2Tokens = this.filterL2Addresses(
+      this.l1Client.getWhitelistedL2TokensForChainId(this.l2Client.chainId.toString())
+    );
 
     // Check if any of the whitelisted l2Tokens are bridgeable. Do this in one parallel call. Returns an array of bool
     // for each l2Token, describing if it can be bridged from L2->L1.
@@ -57,7 +65,7 @@ export class CrossDomainFinalizer {
 
     // Finally, iterate over the bridgeable l2Tokens and bridge them.
     if (bridgeableL2Tokens.length == 0) {
-      this.logger.debug({ at: "AcrossRelayer#CrossDomainFinalizer", message: "No bridgeable L2 tokens" });
+      this.logger.debug({ at: "L2Finalizer", message: "No bridgeable L2 tokens", chainId: this.chainId });
       return;
     }
     // Track the account nonce and manually increment on each TX. We need to do this because the L2 transactions
@@ -65,17 +73,25 @@ export class CrossDomainFinalizer {
     let nonce = await this.l2Client.l2Web3.eth.getTransactionCount(this.account);
     for (const l2Token of bridgeableL2Tokens) {
       // For each bridgeable L2Token, check the balance in the deposit box. If it is greater than
-      // crossDomainFinalizationThreshold, as a percentage, then we can bridge it.
+      // crossDomainFinalizationThreshold, as a percentage, then we can bridge it. If the liquidity utilization is
+      // greater than 75% then set the crossDomainFinalizationThreshold to half its set value to send funds more
+      // aggressively over the bridge at high utilizations.
 
       try {
         const { symbol, decimals, l2PoolBalance } = await this._getL2TokenInfo(l2Token);
         const l1PoolReserves = await this._getL1PoolReserves(l2Token);
+        const l1PoolUtilization = await this._getL1PoolUtilization(l2Token);
 
-        if (l2PoolBalance.gt(toBN(this.crossDomainFinalizationThreshold).mul(l1PoolReserves).div(toBN(100)))) {
+        const scaledCrossDomainFinalizationThreshold = l1PoolUtilization.gt(toBNWei("0.75"))
+          ? toBNWei(this.crossDomainFinalizationThreshold.toString()).divn(2)
+          : toBNWei(this.crossDomainFinalizationThreshold.toString());
+
+        if (l2PoolBalance.gt(scaledCrossDomainFinalizationThreshold.mul(l1PoolReserves).div(toBNWei("100")))) {
           this.logger.debug({
-            at: "AcrossRelayer#CrossDomainFinalizer",
+            at: "L2Finalizer",
             message: "L2 balance > cross domain finalization threshold % of L1 pool reserves, bridging",
             l2Token,
+            chainId: this.chainId,
             l2PoolBalance: l2PoolBalance.toString(),
             l1PoolReserves: l1PoolReserves.toString(),
             crossDomainFinalizationThresholdPercent: this.crossDomainFinalizationThreshold,
@@ -84,9 +100,10 @@ export class CrossDomainFinalizer {
           nonce++; // increment the nonce for the next transaction.
         } else {
           this.logger.debug({
-            at: "AcrossRelayer#CrossDomainFinalizer",
+            at: "L2Finalizer",
             message: "L2 balance <= cross domain finalization threshold % of L1 pool reserves, skipping",
             l2Token,
+            chainId: this.chainId,
             l2PoolBalance: l2PoolBalance.toString(),
             l1PoolReserves: l1PoolReserves.toString(),
             crossDomainFinalizationThresholdPercent: this.crossDomainFinalizationThreshold,
@@ -94,17 +111,25 @@ export class CrossDomainFinalizer {
         }
       } catch (error) {
         this.logger.error({
-          at: "AcrossRelayer#CrossDomainFinalizer",
+          at: "L2Finalizer",
           message: "Something errored sending tokens over the canonical bridge!",
+          l2Token,
+          chainId: this.chainId,
           error,
+          notificationPath: "across-infrastructure",
         });
       }
     }
   }
 
   async checkForConfirmedL2ToL1RelaysAndFinalize() {
-    // Fetch all whitelisted L2 tokens.
-    const whitelistedL2Tokens = this.l1Client.getWhitelistedL2TokensForChainId(this.l2Client.chainId.toString());
+    // Fetch all whitelisted L2 tokens. Append the ETH address on Optimism to the whitelist to enable finalization of
+    // Optimism -> Ethereum bridging actions. This is needed as we send ETH over the Optimism bridge, not WETH.
+    // Also, remove the DAI Optimism address from the whitelist as we don't want to finalize DAI transfer.
+    const whitelistedL2Tokens = this.filterL2Addresses([
+      ...this.l1Client.getWhitelistedL2TokensForChainId(this.l2Client.chainId.toString()),
+      "0xDeadDeAddeAddEAddeadDEaDDEAdDeaDDeAD0000", // Append L2ETH on Optimism address.
+    ]);
 
     // Fetch TokensBridged events.
     await this.fetchTokensBridgedEvents();
@@ -117,8 +142,9 @@ export class CrossDomainFinalizer {
       .filter((transaction: string) => transaction); // filter out undefined or null values. this'll happen if there has never been a token bridging action.
 
     this.logger.debug({
-      at: "CrossDomainFinalizer",
+      at: "L1Finalizer",
       message: `Checking for confirmed L2->L1 canonical bridge actions`,
+      chainId: this.chainId,
       whitelistedL2Tokens,
       l2TokensBridgedTransactions,
     });
@@ -135,13 +161,13 @@ export class CrossDomainFinalizer {
     const confirmedFinalizationTransactions = finalizationTransactions.filter((tx) => tx.finalizationTransaction);
 
     if (confirmedFinalizationTransactions.length == 0) {
-      this.logger.debug({ at: "CrossDomainFinalizer", message: `No L2->L1 relays to finalize` });
+      this.logger.debug({ at: "L1Finalizer", message: `No L2->L1 relays to finalize`, chainId: this.chainId });
       return;
     }
 
     // If there are confirmed finalization transactions, then we can execute them.
     this.logger.debug({
-      at: "CrossDomainFinalizer",
+      at: "L1Finalizer",
       message: `Found L2->L1 relays to finalize`,
       confirmedL2TransactionsToExecute: confirmedFinalizationTransactions.map((tx) => tx.l2TransactionHash),
     });
@@ -163,6 +189,12 @@ export class CrossDomainFinalizer {
     this.executedL1Transactions = [];
   }
 
+  private filterL2Addresses(list: string[]): string[] {
+    return list.filter((address) =>
+      this.l2Client.chainId !== 10 ? true : address !== "0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1"
+    ); // Remove DAI on Optimism address. If chainId is not 10 then do no filtering.
+  }
+
   // Bridged L2 tokens and returns the current account nonce after the transaction.
   private async _bridgeL2Token(l2Token: string, nonce: number, symbol: string, decimals: number) {
     // Note that this tx sending method is NOT using TransactionUtils runTransaction as it is not required on L2.
@@ -174,8 +206,8 @@ export class CrossDomainFinalizer {
     if (receipt.events) {
       const tokensSent = receipt.events.TokensBridged.returnValues.numberOfTokensBridged;
       this.logger.info({
-        at: "AcrossRelayer#CrossDomainFinalizer",
-        message: `${symbol} sent over ${PublicNetworks[this.l2Client.chainId]?.name} bridge! 🌁`,
+        at: "L2Finalizer",
+        message: `Canonical bridge initiated! 🌁`,
         mrkdwn:
           createFormatFunction(2, 4, false, decimals)(tokensSent) +
           " " +
@@ -184,6 +216,7 @@ export class CrossDomainFinalizer {
           PublicNetworks[this.l2Client.chainId]?.name +
           " bridge. tx: " +
           createEtherscanLinkMarkdown(receipt.transactionHash, this.l2Client.chainId),
+        notificationPath: "across-infrastructure",
       });
     }
   }
@@ -206,7 +239,7 @@ export class CrossDomainFinalizer {
       });
 
       this.logger.info({
-        at: "AcrossRelayer#CrossDomainFinalizer",
+        at: "L1Finalizer",
         message: `Canonical relay finalized 🪄`,
         mrkdwn:
           "Canonical L2->L1 transfer over the " +
@@ -219,13 +252,16 @@ export class CrossDomainFinalizer {
           createEtherscanLinkMarkdown(l2TransactionHash, this.l2Client.chainId) +
           ". tx: " +
           createEtherscanLinkMarkdown(executionResult.transactionHash),
+        notificationPath: "across-infrastructure",
       });
       this.executedL1Transactions.push(executionResult);
     } catch (error) {
       this.logger.error({
-        at: "AcrossRelayer#CrossDomainFinalizer",
+        at: "L1Finalizer",
         message: "Something errored sending a transaction",
+        chain: this.l2Client.chainId,
         error,
+        notificationPath: "across-infrastructure",
       });
     }
   }
@@ -293,6 +329,13 @@ export class CrossDomainFinalizer {
       bridgePool.methods.utilizedReserves().call(),
     ]);
     return toBN(liquidReserves).add(toBN(utilizedReserves));
+  }
+
+  // Fetch L1 pool reserves for a given l2Token.
+  private async _getL1PoolUtilization(l2Token: string): Promise<BN> {
+    const bridgePool = this.l1Client.getBridgePoolForL2Token(l2Token, this.l2Client.chainId.toString()).contract;
+
+    return toBN(await bridgePool.methods.liquidityUtilizationCurrent().call());
   }
 
   private _getL2TokenForTokensBridgedTransactionHash(tokensBridgedTransaction: string) {

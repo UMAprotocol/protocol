@@ -4,13 +4,16 @@ const { toWei, toBN, fromWei, toChecksumAddress } = Web3.utils;
 const toBNWei = (number: string | number) => toBN(toWei(number.toString()).toString());
 const fixedPoint = toBNWei(1);
 
-import { objectMap } from "@uma/common";
+import { objectMap, createFormatFunction, MAX_SAFE_ALLOWANCE } from "@uma/common";
 import { Coingecko, across } from "@uma/sdk";
-import { getAddress } from "@uma/contracts-node";
+import { getAddress, getAbi } from "@uma/contracts-node";
 
 import { RelaySubmitType } from "./Relayer";
 
 import type { BN } from "@uma/common";
+
+const formatWei = createFormatFunction(2, 4, false, 18);
+const formatGwei = (number: string | number | BN) => createFormatFunction(2, 4, false, 9)(number.toString());
 
 export enum TokenType {
   WETH,
@@ -20,13 +23,13 @@ export enum TokenType {
 
 const costs = across.constants;
 const costConstants = {
-  [TokenType.WETH]: { slow: costs.SLOW_ETH_GAS, SpeedUp: costs.SPEED_UP_ETH_GAS, instant: costs.FAST_ETH_GAS },
-  [TokenType.ERC20]: { slow: costs.SLOW_ERC_GAS, SpeedUp: costs.SPEED_UP_ERC_GAS, instant: costs.FAST_ERC_GAS },
-  [TokenType.UMA]: { slow: costs.SLOW_UMA_GAS, SpeedUp: costs.SPEED_UP_UMA_GAS, instant: costs.FAST_UMA_GAS },
+  [TokenType.WETH]: { slow: costs.SLOW_ETH_GAS, speedUp: costs.SPEED_UP_ETH_GAS, instant: costs.FAST_ETH_GAS },
+  [TokenType.ERC20]: { slow: costs.SLOW_ERC_GAS, speedUp: costs.SPEED_UP_ERC_GAS, instant: costs.FAST_ERC_GAS },
+  [TokenType.UMA]: { slow: costs.SLOW_UMA_GAS, speedUp: costs.SPEED_UP_UMA_GAS, instant: costs.FAST_UMA_GAS },
 };
 
 export class ProfitabilityCalculator {
-  public l1TokenInfo: { [token: string]: { tokenType: TokenType; tokenEthPrice: BN } } = {};
+  public l1TokenInfo: { [token: string]: { tokenType: TokenType; tokenEthPrice: BN; decimals: BN } } = {};
 
   public relayerDiscount: BN;
 
@@ -44,6 +47,7 @@ export class ProfitabilityCalculator {
     readonly logger: winston.Logger,
     readonly l1Tokens: string[],
     readonly l1ChainId: number,
+    readonly l1Web3: Web3,
     readonly relayerDiscountNumber: number = 0
   ) {
     this.relayerDiscount = toBNWei(Math.floor(relayerDiscountNumber)).div(toBN("100"));
@@ -63,10 +67,19 @@ export class ProfitabilityCalculator {
         await getAddress("WETH9", this.l1ChainId),
       ]);
       for (const l1Token of this.l1Tokens) {
-        this.l1TokenInfo[l1Token] = { tokenType: TokenType.ERC20, tokenEthPrice: toBNWei("1") };
+        this.l1TokenInfo[l1Token] = { tokenType: TokenType.ERC20, tokenEthPrice: toBNWei("1"), decimals: toBN("18") };
         if (l1Token == toChecksumAddress(umaAddress)) this.l1TokenInfo[l1Token].tokenType = TokenType.UMA;
         else if (l1Token == toChecksumAddress(wethAddress)) this.l1TokenInfo[l1Token].tokenType = TokenType.WETH;
       }
+
+      // Set decimals for each token. Only run if l1TokenInfo is empty (i.e first run).
+      await Promise.all(
+        this.l1Tokens.map(async (l1Token) => {
+          const erc20 = new this.l1Web3.eth.Contract(getAbi("ERC20"), l1Token);
+          const decimals = await erc20.methods.decimals().call();
+          this.l1TokenInfo[l1Token].decimals = toBN(decimals.toString());
+        })
+      );
     }
 
     // Fetch the prices of each token, denominated in ETH. If coingecko does not have the price or is down then this
@@ -87,14 +100,18 @@ export class ProfitabilityCalculator {
             ? toBNWei("1")
             : toBNWei(priceResponse.value[1]);
       } else {
-        this.l1TokenInfo[this.l1Tokens[index]].tokenEthPrice = toBNWei("0");
+        // Set the price to something very large. This means that the bot will default to continue sending transactions
+        // even if it cant find a price for the given l1Token.
+        this.l1TokenInfo[this.l1Tokens[index]].tokenEthPrice = toBN(MAX_SAFE_ALLOWANCE);
         this.logger.warn({
           at: "ProfitabilityCalculator",
-          message: "Could not find token price!",
-          token: this.l1Tokens[index],
+          message: "Could not find token price! 💵",
+          mrkdwn: `The CoinGecko price API for the profitability calculator could not find a price for ${this.l1Tokens[index]}. Price defaulting to a high price to ensure the relayer continue running.`,
+          notificationPath: "across-infrastructure",
         });
       }
     }
+
     this.logger.debug({
       at: "ProfitabilityCalculator",
       message: "Updated prices",
@@ -110,10 +127,10 @@ export class ProfitabilityCalculator {
     slowRevenue: BN,
     speedUpRevenue: BN,
     instantRevenue: BN
-  ): RelaySubmitType {
+  ): { relaySubmitType: RelaySubmitType; profitabilityInformation: string } {
     this._throwIfNotInitialized();
     if (!this.l1TokenInfo[l1Token]) throw new Error("Token info not found. Ensure to construct correctly");
-    const { tokenType, tokenEthPrice } = this.l1TokenInfo[l1Token];
+    const { tokenType, tokenEthPrice, decimals } = this.l1TokenInfo[l1Token];
 
     // If the relayer discount is 100% then we can relay tokens with a price of 0. Else, if the price is zero then there
     // is no way that this is a profitable relay. In this case, error out.
@@ -126,6 +143,7 @@ export class ProfitabilityCalculator {
       l1Token,
       tokenType: TokenType[tokenType],
       tokenEthPrice: fromWei(tokenEthPrice),
+      tokenDecimals: decimals.toString(),
       cumulativeGasPrice: cumulativeGasPrice.toString(),
       relayerDiscount: fromWei(this.relayerDiscount),
       slowRevenue: slowRevenue.toString(),
@@ -138,7 +156,7 @@ export class ProfitabilityCalculator {
     const ethSubmissionCost = this.getRelayEthSubmissionCost(cumulativeGasPrice, tokenType);
 
     // Calculate the expected revenue, in ETH, based on the amount of tokens being offered in fees.
-    const ethRevenue = this.getEthRevenue(tokenEthPrice, slowRevenue, speedUpRevenue, instantRevenue);
+    const ethRevenue = this.getEthRevenue(tokenEthPrice, slowRevenue, speedUpRevenue, instantRevenue, decimals);
 
     // Calculate the relay profitability as the difference between revenue and cost.
     const ethProfitability = this.getProfit(ethSubmissionCost, ethRevenue);
@@ -154,6 +172,15 @@ export class ProfitabilityCalculator {
     else if (ethProfitability.slowEthProfit.gt(toBN(0))) relaySubmitType = RelaySubmitType.Slow;
     else relaySubmitType = RelaySubmitType.Ignore;
 
+    const profitabilityInformation = this._generateProfitabilityInformation(
+      relaySubmitType,
+      tokenType,
+      this.relayerDiscount,
+      cumulativeGasPrice,
+      ethProfitability,
+      ethRevenue
+    );
+
     this.logger.debug({
       at: "ProfitabilityCalculator",
       message: "Considered relay profitability",
@@ -166,12 +193,14 @@ export class ProfitabilityCalculator {
       ethRevenue: objectMap(ethRevenue, (value: BN) => fromWei(value)),
       ethProfitability: objectMap(ethProfitability, (value: BN) => fromWei(value)),
       relaySubmitType: RelaySubmitType[relaySubmitType],
+      profitabilityInformation,
     });
-    return relaySubmitType;
+
+    return { relaySubmitType, profitabilityInformation };
   }
 
   getRelayEthSubmissionCost(
-    gasPrice: BN,
+    cumulativeGasPrice: BN,
     tokenType: TokenType
   ): {
     slowEThCost: BN;
@@ -180,25 +209,49 @@ export class ProfitabilityCalculator {
   } {
     const discount = fixedPoint.sub(this.relayerDiscount);
     return {
-      slowEThCost: gasPrice.mul(toBN(costConstants[tokenType].slow)).mul(discount).div(fixedPoint),
-      speedUpEthCost: gasPrice.mul(toBN(costConstants[tokenType].SpeedUp)).mul(discount).div(fixedPoint),
-      instantEthCost: gasPrice.mul(toBN(costConstants[tokenType].instant)).mul(discount).div(fixedPoint),
+      slowEThCost: cumulativeGasPrice.mul(toBN(costConstants[tokenType].slow)).mul(discount).div(fixedPoint),
+      speedUpEthCost: toBN("0"), // set to 0 to always make speedups done, without considering the cost.
+      instantEthCost: cumulativeGasPrice.mul(toBN(costConstants[tokenType].instant)).mul(discount).div(fixedPoint),
+    };
+  }
+
+  getRelayBreakEvenGasPrice(
+    tokenType: TokenType,
+    ethRevenue: { slowEthRevenue: BN; speedUpEthRevenue: BN; instantEthRevenue: BN }
+  ): {
+    slowBreakEvenGasPrice: BN;
+    speedUpBreakEvenGasPrice: BN;
+    instantBreakEvenGasPrice: BN;
+  } {
+    const discount = fixedPoint.sub(this.relayerDiscount);
+    return {
+      slowBreakEvenGasPrice: ethRevenue.slowEthRevenue.eq(toBN("0"))
+        ? toBN("0")
+        : ethRevenue.slowEthRevenue.div(toBN(costConstants[tokenType].slow).mul(discount).div(fixedPoint)),
+      speedUpBreakEvenGasPrice: ethRevenue.speedUpEthRevenue.eq(toBN("0"))
+        ? toBN("0")
+        : ethRevenue.speedUpEthRevenue.div(toBN(costConstants[tokenType].speedUp).mul(discount).div(fixedPoint)),
+      instantBreakEvenGasPrice: ethRevenue.instantEthRevenue.eq(toBN("0"))
+        ? toBN("0")
+        : ethRevenue.instantEthRevenue.div(toBN(costConstants[tokenType].instant).mul(discount).div(fixedPoint)),
     };
   }
   getEthRevenue(
     tokenPrice: BN,
     slowRevenue: BN,
     speedUpRevenue: BN,
-    instantRevenue: BN
+    instantRevenue: BN,
+    tokenDecimals: BN
   ): {
     slowEthRevenue: BN;
     speedUpEthRevenue: BN;
     instantEthRevenue: BN;
   } {
+    const tokenDecimalMultiplier = toBN(10).pow(tokenDecimals);
     return {
-      slowEthRevenue: slowRevenue.mul(tokenPrice).div(fixedPoint),
-      speedUpEthRevenue: speedUpRevenue.mul(tokenPrice).div(fixedPoint),
-      instantEthRevenue: instantRevenue.mul(tokenPrice).div(fixedPoint),
+      slowEthRevenue: slowRevenue.mul(tokenPrice).div(tokenDecimalMultiplier),
+      speedUpEthRevenue: speedUpRevenue.mul(tokenPrice).div(tokenDecimalMultiplier),
+      instantEthRevenue: instantRevenue.mul(tokenPrice).div(tokenDecimalMultiplier),
     };
   }
 
@@ -228,5 +281,55 @@ export class ProfitabilityCalculator {
   private _throwIfNotInitialized() {
     if (Object.keys(this.l1TokenInfo).length != this.l1Tokens.length)
       throw new Error("ProfitabilityCalculator method called before initialization! Call `update` first.");
+  }
+
+  private _generateProfitabilityInformation(
+    relaySubmitType: RelaySubmitType,
+    tokenType: TokenType,
+    relayerDiscount: BN,
+    cumulativeGasPrice: BN,
+    ethProfitability: { slowEthProfit: BN; speedUpEthProfit: BN; instantEthProfit: BN },
+    ethRevenue: { slowEthRevenue: BN; speedUpEthRevenue: BN; instantEthRevenue: BN }
+  ): string {
+    if (relaySubmitType != RelaySubmitType.Ignore) {
+      const profitInEth =
+        relaySubmitType == RelaySubmitType.Slow
+          ? ethProfitability.slowEthProfit
+          : relaySubmitType == RelaySubmitType.SpeedUp
+          ? ethProfitability.speedUpEthProfit
+          : ethProfitability.instantEthProfit;
+
+      return (
+        "Expected relay profit of " +
+        formatWei(profitInEth) +
+        " ETH for " +
+        RelaySubmitType[relaySubmitType] +
+        " relay, with a relayerDiscount of " +
+        fromWei(relayerDiscount.muln(100)) +
+        "%."
+      );
+    } else {
+      const relayBreakEvenGasPrice = this.getRelayBreakEvenGasPrice(tokenType, ethRevenue);
+
+      return (
+        "SlowRelay profit " +
+        formatWei(ethProfitability.slowEthProfit) +
+        " ETH, SpeedUpRelay profit " +
+        formatWei(ethProfitability.speedUpEthProfit) +
+        " ETH and InstantRelay profit " +
+        formatWei(ethProfitability.instantEthProfit) +
+        " ETH, with a relayerDiscount of " +
+        fromWei(relayerDiscount.muln(100)) +
+        "%. Current cumulativeGasPrice is " +
+        formatGwei(cumulativeGasPrice) +
+        " Gwei. Relay would be break even at gas price of SlowRelay " +
+        formatGwei(relayBreakEvenGasPrice.slowBreakEvenGasPrice) +
+        " Gwei, SpeedUpRelay " +
+        formatGwei(relayBreakEvenGasPrice.speedUpBreakEvenGasPrice) +
+        " Gwei and InstantRelay " +
+        formatGwei(relayBreakEvenGasPrice.instantBreakEvenGasPrice) +
+        " Gwei."
+      );
+    }
   }
 }

@@ -3,6 +3,38 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.12.1](https://github.com/UMAprotocol/protocol/compare/@uma/optimistic-oracle@2.12.0...@uma/optimistic-oracle@2.12.1) (2022-02-28)
+
+**Note:** Version bump only for package @uma/optimistic-oracle
+
+# [2.12.0](https://github.com/UMAprotocol/protocol/compare/@uma/optimistic-oracle@2.11.0...@uma/optimistic-oracle@2.12.0) (2022-02-10)
+
+### Features
+
+- **OO bot:** Moved log back to #infrasctructure ([#3801](https://github.com/UMAprotocol/protocol/issues/3801)) ([c470120](https://github.com/UMAprotocol/protocol/commit/c470120829eba5d24b62d3e848d516c7abbe0d0c))
+
+# [2.11.0](https://github.com/UMAprotocol/protocol/compare/@uma/optimistic-oracle@2.10.0...@uma/optimistic-oracle@2.11.0) (2022-01-31)
+
+### Features
+
+- **OO-bot:** Improve settlement logs ([#3793](https://github.com/UMAprotocol/protocol/issues/3793)) ([a95c6ea](https://github.com/UMAprotocol/protocol/commit/a95c6ea80dbfb6a792a02e9231e6c5661fa706ea))
+
+# [2.10.0](https://github.com/UMAprotocol/protocol/compare/@uma/optimistic-oracle@2.9.1...@uma/optimistic-oracle@2.10.0) (2022-01-25)
+
+### Features
+
+- allow bot to settle on behalf of other accounts ([#3786](https://github.com/UMAprotocol/protocol/issues/3786)) ([524e16d](https://github.com/UMAprotocol/protocol/commit/524e16d38afce459f0d3d029d712bbf8145867ae))
+
+## [2.9.1](https://github.com/UMAprotocol/protocol/compare/@uma/optimistic-oracle@2.9.0...@uma/optimistic-oracle@2.9.1) (2022-01-20)
+
+**Note:** Version bump only for package @uma/optimistic-oracle
+
+# [2.9.0](https://github.com/UMAprotocol/protocol/compare/@uma/optimistic-oracle@2.8.8...@uma/optimistic-oracle@2.9.0) (2022-01-11)
+
+### Features
+
+- **across-docs:** small nit relayer config ([#3759](https://github.com/UMAprotocol/protocol/issues/3759)) ([8384185](https://github.com/UMAprotocol/protocol/commit/8384185fdde23128d4f3a7b628fb6c6a11e30d51))
+
 ## [2.8.8](https://github.com/UMAprotocol/protocol/compare/@uma/optimistic-oracle@2.8.7...@uma/optimistic-oracle@2.8.8) (2021-12-17)
 
 ### Bug Fixes

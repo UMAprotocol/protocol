@@ -3,6 +3,51 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.25.0](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.24.0...@uma/financial-templates-lib@2.25.0) (2022-02-28)
+
+### Features
+
+- **discordTransport:** Add in a delay between sequential restful calls to discord API to work around rate limits ([#3827](https://github.com/UMAprotocol/protocol/issues/3827)) ([6bd28e5](https://github.com/UMAprotocol/protocol/commit/6bd28e5d19acc2bbe2cf95c5fb622cd7d62e3482))
+
+# [2.24.0](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.23.0...@uma/financial-templates-lib@2.24.0) (2022-02-10)
+
+### Features
+
+- Add resolveProposal script to retrieve all possible UMA bonds ([#3821](https://github.com/UMAprotocol/protocol/issues/3821)) ([4b2ff2f](https://github.com/UMAprotocol/protocol/commit/4b2ff2f312fa78c83b439fb4791433a70fb4f096))
+- remove across contracts ([#3775](https://github.com/UMAprotocol/protocol/issues/3775)) ([84c053b](https://github.com/UMAprotocol/protocol/commit/84c053b4d9e758f0f5c21886cafa063427843f2b))
+- **Discord-transport:** Only send discord logs if the message contains mrkdwn ([#3817](https://github.com/UMAprotocol/protocol/issues/3817)) ([f896c89](https://github.com/UMAprotocol/protocol/commit/f896c8902e592cf35afb6ab0a493077e4629db81))
+- **Discord-Transport:** Add ability to send to multiple discord channels at once and refine default log format ([#3811](https://github.com/UMAprotocol/protocol/issues/3811)) ([dd6cbd7](https://github.com/UMAprotocol/protocol/commit/dd6cbd749644e228ef0179ea0a43f6f91d358b44))
+- **OO-proposer:** make chainId a public varible to enable the proposer to correctly pull the value ([#3807](https://github.com/UMAprotocol/protocol/issues/3807)) ([bbcb5db](https://github.com/UMAprotocol/protocol/commit/bbcb5dbb433b9fde436dc18fc2e48b28e5e20aec))
+- **transports:** Modify discord transport config ([#3800](https://github.com/UMAprotocol/protocol/issues/3800)) ([f169c8f](https://github.com/UMAprotocol/protocol/commit/f169c8f1442e0e2ebb8b7efadf505eea9bfed7da))
+
+# [2.23.0](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.22.2...@uma/financial-templates-lib@2.23.0) (2022-01-31)
+
+### Bug Fixes
+
+- **pf:** use close price for matching cryptowatch close timestamps ([#3791](https://github.com/UMAprotocol/protocol/issues/3791)) ([c738d4b](https://github.com/UMAprotocol/protocol/commit/c738d4b512d69eb6aa88826ea5302f577af69ffc))
+
+### Features
+
+- **transports:** Add discord logger transport ([#3797](https://github.com/UMAprotocol/protocol/issues/3797)) ([7c76b90](https://github.com/UMAprotocol/protocol/commit/7c76b90f7e611bb4ff85ae2010f046de611d4ba0))
+
+## [2.22.2](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.22.1...@uma/financial-templates-lib@2.22.2) (2022-01-25)
+
+**Note:** Version bump only for package @uma/financial-templates-lib
+
+## [2.22.1](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.22.0...@uma/financial-templates-lib@2.22.1) (2022-01-20)
+
+**Note:** Version bump only for package @uma/financial-templates-lib
+
+# [2.22.0](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.21.0...@uma/financial-templates-lib@2.22.0) (2022-01-11)
+
+### Features
+
+- **across-bots:** improve profitability log detail ([#3741](https://github.com/UMAprotocol/protocol/issues/3741)) ([bfc8abf](https://github.com/UMAprotocol/protocol/commit/bfc8abfda29d7efd3671ff9abc7836b9fb08d402))
+- **across-relayer:** Fetch rate model from contract instead of SDK constant ([#3673](https://github.com/UMAprotocol/protocol/issues/3673)) ([4adff3d](https://github.com/UMAprotocol/protocol/commit/4adff3de6e24f6e60620d47321e95e8f07902964))
+- add transaction bundler to relayer for better batching ([#3723](https://github.com/UMAprotocol/protocol/issues/3723)) ([51902a8](https://github.com/UMAprotocol/protocol/commit/51902a8cfbbb60dc30b868c5fd3e9fd0f31d48b4))
+- **pf-configs:** Add default pf config for CVXUSD and USDCVX ([#3730](https://github.com/UMAprotocol/protocol/issues/3730)) ([16e8f66](https://github.com/UMAprotocol/protocol/commit/16e8f669e69a7d7e5350e26f70504b541ee41dc4))
+- **price-feeds:** add price feed implementation for uSPAC10 price identifier ([#3602](https://github.com/UMAprotocol/protocol/issues/3602)) ([be421de](https://github.com/UMAprotocol/protocol/commit/be421de9e8d9772c00bddafefdf5149778e3b0c9))
+
 # [2.21.0](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.20.1...@uma/financial-templates-lib@2.21.0) (2021-12-17)
 
 ### Bug Fixes

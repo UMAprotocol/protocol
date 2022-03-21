@@ -6,7 +6,7 @@ import { getAbi } from "@uma/contracts-node";
 import { Deposit } from "./InsuredBridgeL2Client";
 import { across } from "@uma/sdk";
 
-import type { BridgeAdminInterfaceWeb3, BridgePoolWeb3 } from "@uma/contracts-node";
+import type { BridgeAdminInterfaceWeb3, BridgePoolWeb3, RateModelStoreWeb3 } from "@uma/contracts-node";
 import type { Logger } from "winston";
 import type { BN } from "@uma/common";
 import type { BlockTransactionBase } from "web3-eth";
@@ -52,6 +52,7 @@ export interface InstantRelay {
 
 export interface BridgePoolData {
   contract: BridgePoolWeb3;
+  earliestValidDepositQuoteTime: number;
   l2Token: { [chainId: string]: string }; // chainID=>L2TokenAddress
   currentTime: number;
   relayNonce: number;
@@ -59,10 +60,22 @@ export interface BridgePoolData {
   poolCollateralSymbol: string;
 }
 
+export interface BridgePoolDeploymentData {
+  [key: string]: { timestamp: number };
+}
+
 export class InsuredBridgeL1Client {
   public readonly bridgeAdmin: BridgeAdminInterfaceWeb3;
+  public readonly rateModelStore: RateModelStoreWeb3 | null; // Can be null if user doesn't want to compute any realized
+  // LP fee %'s.
   public bridgePools: { [key: string]: BridgePoolData }; // L1TokenAddress=>BridgePoolData
-  private whitelistedTokens: { [chainId: string]: { [l1TokenAddress: string]: string } } = {}; // chainId => L1TokenAddress => L2TokenAddress
+  private whitelistedTokens: { [chainId: string]: { [l1TokenAddress: string]: string } } = {};
+
+  // Accumulate updated rate model events after each update() call, which we'll use to update the rate model
+  // dictionary.
+  private updatedRateModelEventsForToken: across.rateModel.RateModelEvent[] = [];
+  private rateModelDictionary: across.rateModel.RateModelDictionary;
+
   public optimisticOracleLiveness = 0;
   public firstBlockToSearch: number;
 
@@ -75,14 +88,20 @@ export class InsuredBridgeL1Client {
     private readonly logger: Logger,
     readonly l1Web3: Web3,
     readonly bridgeAdminAddress: string,
-    readonly rateModels: { [key: string]: across.constants.RateModel },
+    readonly rateModelStoreAddress: string | null,
     readonly startingBlockNumber = 0,
     readonly endingBlockNumber: number | null = null
   ) {
+    // Cast the following contracts to web3-specific type
     this.bridgeAdmin = (new l1Web3.eth.Contract(
       getAbi("BridgeAdminInterface"),
       bridgeAdminAddress
-    ) as unknown) as BridgeAdminInterfaceWeb3; // Cast to web3-specific type
+    ) as unknown) as BridgeAdminInterfaceWeb3;
+    this.rateModelStore = rateModelStoreAddress
+      ? ((new l1Web3.eth.Contract(getAbi("RateModelStore"), rateModelStoreAddress) as unknown) as RateModelStoreWeb3)
+      : null;
+
+    this.rateModelDictionary = new across.rateModel.RateModelDictionary();
 
     this.bridgePools = {}; // Initialize the bridgePools with no pools yet. Will be populated in the _initialSetup.
 
@@ -115,14 +134,32 @@ export class InsuredBridgeL1Client {
     return this.relays[l1Token][deposit.depositHash];
   }
 
+  getBridgePoolDeployData(): BridgePoolDeploymentData {
+    this._throwIfNotInitialized();
+    const deployTimestamps: BridgePoolDeploymentData = {};
+    Object.keys(this.bridgePools).map((l1Token: string) => {
+      deployTimestamps[l1Token] = { timestamp: this.bridgePools[l1Token].earliestValidDepositQuoteTime };
+    });
+    return deployTimestamps;
+  }
   getWhitelistedTokensForChainId(chainId: string): { [l1TokenAddress: string]: string } {
     this._throwIfNotInitialized();
     return this.whitelistedTokens[chainId];
   }
 
-  getWhitelistedL2TokensForChainId(chainId: string) {
+  getWhitelistedL2TokensForChainId(chainId: string): string[] {
     this._throwIfNotInitialized();
     return Object.values(this.getWhitelistedTokensForChainId(chainId));
+  }
+
+  getRateModelForBlockNumber(l1Token: string, blockNumber: number | undefined = undefined): across.constants.RateModel {
+    this._throwIfNotInitialized();
+    return this.rateModelDictionary.getRateModelForBlockNumber(l1Token, blockNumber);
+  }
+
+  getL1TokensFromRateModel(blockNumber: number | undefined = undefined): string[] {
+    this._throwIfNotInitialized();
+    return this.rateModelDictionary.getL1TokensFromRateModel(blockNumber);
   }
 
   hasInstantRelayer(l1Token: string, depositHash: string, realizedLpFeePct: string): boolean {
@@ -177,12 +214,11 @@ export class InsuredBridgeL1Client {
   }
 
   async calculateRealizedLpFeePctForDeposit(deposit: Deposit): Promise<BN> {
-    if (this.rateModels === undefined || this.rateModels[deposit.l1Token] === undefined)
-      throw new Error("No rate model for l1Token");
-
     // The block number must be exactly the one containing the deposit.quoteTimestamp, so we use the lowest block delta
     // of 1. Setting averageBlockTime to 14 increases the speed at the cost of more web3 requests.
     const quoteBlockNumber = (await this.blockFinder.getBlockForTimestamp(deposit.quoteTimestamp)).number;
+    const rateModelForBlockNumber = this.getRateModelForBlockNumber(deposit.l1Token, quoteBlockNumber);
+
     const bridgePool = this.getBridgePoolForDeposit(deposit).contract;
     const [liquidityUtilizationCurrent, liquidityUtilizationPostRelay] = await Promise.all([
       bridgePool.methods.liquidityUtilizationCurrent().call(undefined, quoteBlockNumber),
@@ -196,12 +232,13 @@ export class InsuredBridgeL1Client {
       quoteBlockNumber,
       liquidityUtilizationCurrent: liquidityUtilizationCurrent.toString(),
       liquidityUtilizationPostRelay: liquidityUtilizationPostRelay.toString(),
+      rateModel: rateModelForBlockNumber,
     });
 
     return toBN(
       across.feeCalculator
         .calculateRealizedLpFeePct(
-          this.rateModels[deposit.l1Token],
+          rateModelForBlockNumber,
           liquidityUtilizationCurrent.toString(),
           liquidityUtilizationPostRelay.toString()
         )
@@ -273,7 +310,15 @@ export class InsuredBridgeL1Client {
     // Check for new bridgePools deployed. This acts as the initial setup and acts to more pools if they are deployed
     // while the bot is running.
     const whitelistedTokenEvents = await this.bridgeAdmin.getPastEvents("WhitelistToken", blockSearchConfig);
-    for (const whitelistedTokenEvent of whitelistedTokenEvents) {
+
+    // Lookup timestamp for each event block number in parallel instead of once per loop. We are ok fetching these
+    // upfront because there shouldn't be that many WhitelistToken events in production, so the max number of web3
+    // requests to send is anticipated to be low to lookup block numbers.
+    const whitelistedTokenBlocks = await Promise.all(
+      whitelistedTokenEvents.map((e) => this.l1Web3.eth.getBlock(e.blockNumber))
+    );
+    for (let i = 0; i < whitelistedTokenEvents.length; i++) {
+      const whitelistedTokenEvent = whitelistedTokenEvents[i];
       // Add L1=>L2 token mapping to whitelisted dictionary for this chain ID.
       const whitelistedTokenMappingsForChainId = this.whitelistedTokens[whitelistedTokenEvent.returnValues.chainId];
       this.whitelistedTokens[whitelistedTokenEvent.returnValues.chainId] = {
@@ -285,12 +330,22 @@ export class InsuredBridgeL1Client {
 
       const l1Token = toChecksumAddress(whitelistedTokenEvent.returnValues.l1Token);
       const l2Tokens = this.bridgePools[l1Token]?.l2Token;
+
+      // Store the WhitelistToken event timestamp as the earliest allowable deposit quote time for relays that will go
+      // through this bridge pool. If any relays have a quote time that is before the bridge pool was whitelisted,
+      // then it is by default invalid.
+      // Note: Only update this deployment time if the bridge pool address is reset.
+      const earliestValidDepositQuoteTime =
+        whitelistedTokenEvent.returnValues.bridgePool === this.bridgePools[l1Token]?.contract.options.address
+          ? this.bridgePools[l1Token].earliestValidDepositQuoteTime
+          : Number(whitelistedTokenBlocks[i].timestamp);
       this.bridgePools[l1Token] = {
         l2Token: l2Tokens, // Re-use existing L2 token array and update after resetting other state.
         contract: (new this.l1Web3.eth.Contract(
           getAbi("BridgePool"),
           whitelistedTokenEvent.returnValues.bridgePool
         ) as unknown) as BridgePoolWeb3,
+        earliestValidDepositQuoteTime,
         // We'll set the following params when fetching bridge pool state in parallel.
         currentTime: 0,
         relayNonce: 0,
@@ -306,6 +361,13 @@ export class InsuredBridgeL1Client {
       this.relays[l1Token] = {};
       this.instantRelays[l1Token] = {};
     }
+
+    // Fetch and store all rate model updated events, which will be used to fetch the rate model for a specific deposit
+    // quote timestamp.
+    this.updatedRateModelEventsForToken = this.updatedRateModelEventsForToken.concat(
+      await this._getAllRateModelEvents(blockSearchConfig)
+    );
+    this.rateModelDictionary.updateWithEvents(this.updatedRateModelEventsForToken);
 
     // Set the optimisticOracleLiveness. Note that if this value changes in the contract the bot will need to be
     // restarted to get the latest value. This is a fine assumption as: a) our production bots run in serverless mode
@@ -415,7 +477,29 @@ export class InsuredBridgeL1Client {
     }
     this.firstBlockToSearch = blockSearchConfig.toBlock + 1;
 
-    this.logger.debug({ at: "InsuredBridgeL1Client", message: "Insured bridge l1 client updated" });
+    this.logger.debug({
+      at: "InsuredBridgeL1Client",
+      message: "Insured bridge l1 client updated",
+      l1TokensInRateModelDictionary: Object.keys(this.rateModelDictionary.rateModelDictionary),
+    });
+  }
+
+  private async _getAllRateModelEvents(blockSearchConfig: any): Promise<across.rateModel.RateModelEvent[]> {
+    if (this.rateModelStore === null) return [];
+    else {
+      const updatedRateModelEvents: across.rateModel.RateModelEvent[] = (
+        await this.rateModelStore.getPastEvents("UpdatedRateModel", blockSearchConfig)
+      ).map((rawEvent) => {
+        return {
+          blockNumber: rawEvent.blockNumber,
+          transactionIndex: rawEvent.transactionIndex,
+          logIndex: rawEvent.logIndex,
+          rateModel: rawEvent.returnValues.rateModel,
+          l1Token: rawEvent.returnValues.l1Token,
+        };
+      });
+      return updatedRateModelEvents;
+    }
   }
 
   private _getInstantRelayHash(depositHash: string, realizedLpFeePct: string): string | null {

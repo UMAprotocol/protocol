@@ -124,7 +124,8 @@ export function CollateralPrices(config: Config, dependencies: Dependencies) {
     const addresses = await collateralAddresses.keys();
     await backfillHistories(addresses, startMs).then((results) => {
       results.forEach((result) => {
-        if (result.status === "rejected") console.error("Error backfilling prices: " + result.reason.message);
+        if (result.status === "rejected")
+          console.error("Error backfilling prices: " + (result.reason as Error).message);
       });
     });
   }

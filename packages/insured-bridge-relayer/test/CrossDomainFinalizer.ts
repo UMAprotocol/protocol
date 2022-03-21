@@ -26,9 +26,6 @@ const toBNWei = (number: string | number) => toBN(toWei(number.toString()).toStr
 
 // Helper contracts
 const Messenger = getContract("MessengerMock");
-const BridgePool = getContract("BridgePool");
-const BridgeAdmin = getContract("BridgeAdmin");
-const BridgeDepositBox = getContract("BridgeDepositBoxMock");
 const Finder = getContract("Finder");
 const IdentifierWhitelist = getContract("IdentifierWhitelist");
 const AddressWhitelist = getContract("AddressWhitelist");
@@ -38,11 +35,35 @@ const ERC20 = getContract("ExpandedERC20");
 const Timer = getContract("Timer");
 const MockOracle = getContract("MockOracleAncillary");
 
+// Pull in contracts from contracts-node sourced from the across repo.
+const { getAbi, getBytecode } = require("@uma/contracts-node");
+
+const BridgeDepositBox = getContract("BridgeDepositBoxMock", {
+  abi: getAbi("BridgeDepositBoxMock"),
+  bytecode: getBytecode("BridgeDepositBoxMock"),
+});
+
+const BridgePool = getContract("BridgePool", {
+  abi: getAbi("BridgePool"),
+  bytecode: getBytecode("BridgePool"),
+});
+
+const BridgeAdmin = getContract("BridgeAdmin", {
+  abi: getAbi("BridgeAdmin"),
+  bytecode: getBytecode("BridgeAdmin"),
+});
+
+const RateModelStore = getContract("RateModelStore", {
+  abi: getAbi("RateModelStore"),
+  bytecode: getBytecode("RateModelStore"),
+});
+
 // Contract objects
 let messenger: any;
 let bridgeAdmin: any;
 let bridgePool: any;
 let bridgeDepositBox: any;
+let rateModelStore: any;
 let finder: any;
 let store: any;
 let identifierWhitelist: any;
@@ -59,7 +80,7 @@ let bridgePool2: any;
 let l2DeployData: any;
 
 // Hard-coded test params:
-const chainId = 10;
+const chainId = 1337;
 const defaultGasLimit = 1_000_000;
 const defaultGasPrice = toWei("1", "gwei");
 const defaultIdentifier = utf8ToHex("IS_CROSS_CHAIN_RELAY_VALID");
@@ -218,7 +239,20 @@ describe("CrossDomainFinalizer.ts", function () {
 
     // Create the rate models for the one and only l1Token, set to the single rateModel defined in the constants.
     const rateModels = { [l1Token.options.address]: rateModel };
-    l1Client = new InsuredBridgeL1Client(spyLogger, web3, bridgeAdmin.options.address, rateModels);
+    rateModelStore = await RateModelStore.new().send({ from: l1Owner });
+    await rateModelStore.methods
+      .updateRateModel(
+        l1Token.options.address,
+        JSON.stringify({
+          UBar: rateModels[l1Token.options.address].UBar.toString(),
+          R0: rateModels[l1Token.options.address].R0.toString(),
+          R1: rateModels[l1Token.options.address].R1.toString(),
+          R2: rateModels[l1Token.options.address].R2.toString(),
+        })
+      )
+      .send({ from: l1Owner });
+
+    l1Client = new InsuredBridgeL1Client(spyLogger, web3, bridgeAdmin.options.address, rateModelStore.options.address);
     l2Client = new InsuredBridgeL2Client(spyLogger, web3, bridgeDepositBox.options.address, chainId);
 
     gasEstimator = new GasEstimator(spyLogger);
@@ -239,9 +273,9 @@ describe("CrossDomainFinalizer.ts", function () {
   describe("L2->L1 cross-domain transfers over the canonical bridge: single token", () => {
     beforeEach(async function () {
       // Add liquidity to the L1 pool to facilitate the relay action.
-      await l1Token.methods.mint(l1LiquidityProvider, initialPoolLiquidity).send({ from: l1Owner });
+      await l1Token.methods.mint(l1LiquidityProvider, toBN(initialPoolLiquidity).muln(2)).send({ from: l1Owner });
       await l1Token.methods
-        .approve(bridgePool.options.address, initialPoolLiquidity)
+        .approve(bridgePool.options.address, toBN(initialPoolLiquidity).muln(2))
         .send({ from: l1LiquidityProvider });
       await bridgePool.methods.addLiquidity(initialPoolLiquidity).send({ from: l1LiquidityProvider });
 
@@ -304,8 +338,63 @@ describe("CrossDomainFinalizer.ts", function () {
 
       // Now, when running the cross-domain finalizer, should send the L2->L1 transfer via the bridgeTokens method.
       await crossDomainFinalizer.checkForBridgeableL2TokensAndBridge();
-      assert.isTrue(lastSpyLogIncludes(spy, "L2ERC20 sent over optimism bridge"));
+      assert.isTrue(lastSpyLogIncludes(spy, "Canonical bridge initiated"));
       assert.isFalse(await bridgeDepositBox.methods.canBridge(l2Token.options.address).call());
+    });
+    it("At high utilization cross domain transfers happens more quickly", async function () {
+      // Do a relay to use 80% of the pools liquidity, pushing the utilization about the 75% threshold for higher L2->L1 transfers.
+      const relayParams = {
+        chainId: 10,
+        depositId: 0,
+        l1Recipient: l2Depositor,
+        l2Sender: l2Depositor,
+        amount: toBN(initialPoolLiquidity).muln(80).divn(100).toString(),
+        slowRelayFeePct: defaultSlowRelayFeePct,
+        instantRelayFeePct: defaultInstantRelayFeePct,
+        quoteTimestamp: (await bridgePool.methods.getCurrentTime().call()).toString(),
+      };
+      console.log("relayParams", relayParams);
+      await bridgePool.methods.relayDeposit(relayParams, toBNWei("0.1")).send({ from: l1LiquidityProvider });
+
+      const liquidityUtilization = await bridgePool.methods.liquidityUtilizationCurrent().call();
+      console.log("liquidityUtilization", liquidityUtilization.toString());
+
+      assert.equal(liquidityUtilization.toString(), toWei("0.8"));
+
+      // Now, add 1% of the total liquidity to the deposit box. No bridging should happen.
+      const depositTime = await bridgeDepositBox.methods.getCurrentTime().call();
+      await bridgeDepositBox.methods
+        .deposit(
+          l2Depositor,
+          l2Token.options.address,
+          depositAmount,
+          defaultSlowRelayFeePct,
+          defaultInstantRelayFeePct,
+          depositTime
+        )
+        .send({ from: l2Depositor });
+
+      await l2Timer.methods.setCurrentTime(Number(depositTime) + minimumBridgingDelay + 1).send({ from: l1Owner });
+      await Promise.all([l1Client.update(), l2Client.update()]);
+      await crossDomainFinalizer.checkForBridgeableL2TokensAndBridge();
+      assert.isTrue(lastSpyLogIncludes(spy, "L2 balance <= cross domain finalization threshold % of L1 pool reserves"));
+
+      // Next, if we increase the liquidity to be below the cross domain finalization threshold, but above the scaled
+      // cross domain finalization threshold, we should see the action cross-domain action. I.e when utilization is
+      // above 75%, we half the cross domain finalization threshold to send funds more aggressively when high util.
+      // send another 2x depositAmount, putting the total on L2 at 3 Ether.
+      await bridgeDepositBox.methods
+        .deposit(
+          l2Depositor,
+          l2Token.options.address,
+          depositAmount.muln(2),
+          defaultSlowRelayFeePct,
+          defaultInstantRelayFeePct,
+          depositTime
+        )
+        .send({ from: l2Depositor });
+      await crossDomainFinalizer.checkForBridgeableL2TokensAndBridge();
+      assert.isTrue(lastSpyLogIncludes(spy, "Canonical bridge initiated"));
     });
   });
   describe("L2->L1 cross-domain transfers over the canonical bridge multi token", () => {
@@ -415,8 +504,10 @@ describe("CrossDomainFinalizer.ts", function () {
       assert.isTrue(await bridgeDepositBox.methods.canBridge(l2Token.options.address).call());
       assert.isTrue(await bridgeDepositBox.methods.canBridge(l2Token2.options.address).call());
       await crossDomainFinalizer.checkForBridgeableL2TokensAndBridge();
-      assert.isTrue(spyLogIncludes(spy, -1, "L2ERC202 sent over optimism bridge"));
-      assert.isTrue(spyLogIncludes(spy, -3, "L2ERC20 sent over optimism bridge"));
+      assert.isTrue(spyLogIncludes(spy, -1, "Canonical bridge initiated"));
+      assert.isTrue(spyLogIncludes(spy, -1, "L2ERC202"));
+      assert.isTrue(spyLogIncludes(spy, -3, "Canonical bridge initiated"));
+      assert.isTrue(spyLogIncludes(spy, -3, "L2ERC20"));
       assert.isFalse(await bridgeDepositBox.methods.canBridge(l2Token.options.address).call());
       assert.isFalse(await bridgeDepositBox.methods.canBridge(l2Token2.options.address).call());
     });
@@ -461,7 +552,8 @@ describe("CrossDomainFinalizer.ts", function () {
       assert.isTrue(await bridgeDepositBox.methods.canBridge(l2Token2.options.address).call());
       await crossDomainFinalizer.checkForBridgeableL2TokensAndBridge();
       // Logs should indicate that L2ERC202 was bridged but not L2ERC20
-      assert.isTrue(spyLogIncludes(spy, -1, "L2ERC202 sent over optimism bridge"));
+      assert.isTrue(spyLogIncludes(spy, -1, "Canonical bridge initiated"));
+      assert.isTrue(spyLogIncludes(spy, -1, "L2ERC202"));
       assert.isTrue(spyLogIncludes(spy, -3, "L2 balance <= cross domain finalization threshold % of L1 pool reserves"));
       assert.isTrue(await bridgeDepositBox.methods.canBridge(l2Token.options.address).call());
       assert.isFalse(await bridgeDepositBox.methods.canBridge(l2Token2.options.address).call());
@@ -514,7 +606,8 @@ describe("CrossDomainFinalizer.ts", function () {
       await crossDomainFinalizer.checkForBridgeableL2TokensAndBridge();
       // Logs should indicate that L2ERC202 can be and was bridged, while L2ERC20 cannot be bridged so its threshold
       // is not even considered.
-      assert.isTrue(spyLogIncludes(spy, -1, "L2ERC202 sent over optimism bridge"));
+      assert.isTrue(spyLogIncludes(spy, -1, "Canonical bridge initiated"));
+      assert.isTrue(spyLogIncludes(spy, -1, "L2ERC202"));
       assert.isTrue(spyLogIncludes(spy, -3, "Checking bridgeable L2 tokens"));
       assert.isFalse(await bridgeDepositBox.methods.canBridge(l2Token.options.address).call());
       assert.isFalse(await bridgeDepositBox.methods.canBridge(l2Token2.options.address).call());
@@ -575,7 +668,7 @@ describe("CrossDomainFinalizer.ts", function () {
       await Promise.all([l1Client.update(), l2Client.update()]);
       await crossDomainFinalizer.checkForConfirmedL2ToL1RelaysAndFinalize();
       assert.isTrue(spyLogIncludes(spy, -2, "Checking for confirmed L2->L1 canonical bridge actions"));
-      assert.isTrue(spyLogIncludes(spy, -2, `whitelistedL2Tokens":["${l2Token.options.address}"]`));
+      assert.isTrue(spyLogIncludes(spy, -2, `whitelistedL2Tokens":["${l2Token.options.address}`));
       assert.isTrue(spyLogIncludes(spy, -2, "Checking for confirmed L2->L1 canonical bridge actions"));
       assert.isTrue(spyLogIncludes(spy, -2, `l2TokensBridgedTransactions":[]`));
       assert.isTrue(spyLogIncludes(spy, -1, `No L2->L1 relays to finalize`));
@@ -619,7 +712,7 @@ describe("CrossDomainFinalizer.ts", function () {
       assert.isTrue(spyLogIncludes(spy, -3, "Found L2->L1 relays to finalize"));
       assert.isTrue(spyLogIncludes(spy, -3, `confirmedL2TransactionsToExecute":["${bridgeTx.transactionHash}"]`));
       assert.isTrue(spyLogIncludes(spy, -2, "Gas estimator updated"));
-      assert.isTrue(spyLogIncludes(spy, -1, "Canonical L2->L1 transfer over the optimism bridge"));
+      assert.isTrue(spyLogIncludes(spy, -1, "Canonical L2->L1 transfer over"));
       assert.isTrue(spyLogIncludes(spy, -1, "A total of 4.00 L2ERC20 was bridged")); // depositAmount.muln(4) is 4.
     });
   });

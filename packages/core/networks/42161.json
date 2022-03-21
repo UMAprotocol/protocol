@@ -1,6 +1,62 @@
 [
   {
-    "contractName": "AVM_BridgeDepositBox",
-    "address": "0xd8c6dd978a3768f7ddfe3a9aad2c3fd75fa9b6fd"
+    "contractName": "Finder",
+    "address": "0xB0b9f73B424AD8dc58156C2AE0D7A1115D1EcCd1"
+  },
+  {
+    "contractName": "Arbitrum_ChildMessenger",
+    "address": "0xe0Fe15CF22B9b52B6aE309C7384e03244A6DD985"
+  },
+  {
+    "contractName": "Registry",
+    "address": "0xCdb25d0A6FfFE639BC591a565F2D99507837f2b7"
+  },
+  {
+    "contractName": "GovernorSpoke",
+    "address": "0x1771c470d41b8c39338450C380bf2C080a2CEdD8"
+  },
+  {
+    "contractName": "OracleSpoke",
+    "address": "0x196767568F848fF7607145A7C1f3CDE44bb4Ce98"
+  },
+  {
+    "contractName": "IdentifierWhitelist",
+    "address": "0x2914BE6CD56276d208299D2062848b059FC10588"
+  },
+  {
+    "contractName": "AddressWhitelist",
+    "address": "0x02D65fb01d3d88127dF19838902ba42c6239c0Fd"
+  },
+  {
+    "contractName": "OptimisticOracle",
+    "address": "0x031A7882cE3e8b4462b057EBb0c3F23Cd731D234"
+  },
+  {
+    "contractName": "Store",
+    "address": "0x2d6FAD39059f5FCe80bFf691F8f0Bb30D5d4f214"
+  },
+  {
+    "contractName": "TokenFactory",
+    "address": "0xcA5BcA331b8137fD15c2fa6BA34655FA58de5a0B"
+  },
+  {
+    "contractName": "LongShortPairCreator",
+    "address": "0xEfd7eE5FC0BC42e41d800C4D9db912bC42A4530F"
+  },
+  {
+    "contractName": "CoveredCallLongShortPairFinancialProductLibrary",
+    "address": "0xBbc6009fEfFc27ce705322832Cb2068F8C1e0A58"
+  },
+  {
+    "contractName": "RangeBondLongShortPairFinancialProductLibrary",
+    "address": "0x129B61ce378B2B4b5Ebeac648019E2427b74527e"
+  },
+  {
+    "contractName": "BinaryOptionLongShortPairFinancialProductLibrary",
+    "address": "0xd2Aa779253c0Ab194d8c3e6708e5EB4697F13941"
+  },
+  {
+    "contractName": "LinearLongShortPairFinancialProductLibrary",
+    "address": "0x85F46e5aCf6309345D0d6cfe22fbBAF7c349fF84"
   }
 ]

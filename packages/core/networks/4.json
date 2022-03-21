@@ -64,10 +64,6 @@
     "address": "0x110009DB52a1AcA1A885F494ff5717017D0A8257"
   },
   {
-    "contractName": "BridgeAdmin",
-    "address": "0x5e01469f733a47CA50e7b4366Ef601fD0FE05Dd1"
-  },
-  {
     "contractName": "Arbitrum_ParentMessenger",
     "address": "0x0fe9C5A29d79e928B41642EEbB9590dB4667eD70"
   },
@@ -90,5 +86,37 @@
   {
     "contractName": "LongShortPairCreator",
     "address": "0x8f584beEd8371757d520f7CEC06fF07de225371D"
+  },
+  {
+    "contractName": "BinaryOptionLongShortPairFinancialProductLibrary",
+    "address": "0x7a974Eb1F7D4bB49170aaed39C693A8daFe9E5B5"
+  },
+  {
+    "contractName": "CoveredCallLongShortPairFinancialProductLibrary",
+    "address": "0x01E5AD9B4Bc39504510C13C7A3B8352714011355"
+  },
+  {
+    "contractName": "LinearLongShortPairFinancialProductLibrary",
+    "address": "0x55e6CDd418F5Cf9Ba34f967c0Edc90E6dA606f2D"
+  },
+  {
+    "contractName": "RangeBondLongShortPairFinancialProductLibrary",
+    "address": "0x03f4600858CABa1ccff9c12351B984d956F1bA76"
+  },
+  {
+    "contractName": "SimpleSuccessTokenLongShortPairFinancialProductLibrary",
+    "address": "0x46130BF31fde58587392396dAA11aBe7dE80Ea02"
+  },
+  {
+    "contractName": "CappedYieldDollarLongShortPairFinancialProductLibrary",
+    "address": "0xBDed7E526fC0D581D6F62796118e64D885Cdf07d"
+  },
+  {
+    "contractName": "SuccessTokenLongShortPairFinancialProductLibrary",
+    "address": "0x40CD7eEc067279bDeb1a5069615569b5d43a3F0A"
+  },
+  {
+    "contractName": "Multicall2",
+    "address": "0x5ba1e12693dc8f9c48aad8770482f4739beed696"
   }
 ]

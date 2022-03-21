@@ -1,6 +1,6 @@
 // A thick client for getting information about an OptimisticOracle. Used to get price requests and
 // proposals, which can be disputed and settled.
-import { averageBlockTimeSeconds, revertWrapper } from "@uma/common";
+import { averageBlockTimeSeconds, revertWrapper, getEventsWithPaginatedBlockSearch, Web3Contract } from "@uma/common";
 import Web3 from "web3";
 import type { Logger } from "winston";
 import { Abi, isDefined } from "../types";
@@ -61,6 +61,7 @@ export class OptimisticOracleClient {
   // Store the last on-chain time the clients were updated to inform price request information.
   private lastUpdateTimestamp = 0;
   private hexToUtf8 = Web3.utils.hexToUtf8;
+  public chainId = -1;
 
   // Oracle Data structures & values to enable synchronous returns of the state seen by the client.
   private unproposedPriceRequests: RequestPriceReturnValues[] = [];
@@ -80,6 +81,7 @@ export class OptimisticOracleClient {
    * Used to limit the web3 requests made by this client.
    * @param {OptimisticOracleType} oracleType Type of OptimisticOracle to query state for. Defaults to
    * "OptimisticOracle".
+   * @param {Number} blocksPerEventSearch Amount of blocks to search per web3 event search.
    * @return None or throws an Error.
    */
   constructor(
@@ -90,7 +92,8 @@ export class OptimisticOracleClient {
     oracleAddress: string,
     votingAddress: string,
     public readonly lookback: number = 604800, // 1 Week
-    public readonly oracleType: OptimisticOracleType = OptimisticOracleType.OptimisticOracle
+    public readonly oracleType: OptimisticOracleType = OptimisticOracleType.OptimisticOracle,
+    public readonly blocksPerEventSearch: number | null = null
   ) {
     // Optimistic Oracle contract:
     this.oracle = (new web3.eth.Contract(oracleAbi, oracleAddress) as unknown) as OptimisticOracleContract;
@@ -118,27 +121,31 @@ export class OptimisticOracleClient {
 
   // Returns an array of expired Price Proposals that can be settled and that involved
   // the caller as the proposer
-  public getSettleableProposals(caller: string): ProposePriceReturnValues[] {
+  public getSettleableProposals(callers?: string[]): ProposePriceReturnValues[] {
+    if (!callers) return this.expiredProposals;
+
     if (this.oracleType === OptimisticOracleType.SkinnyOptimisticOracle) {
       return (this.expiredProposals as SkinnyProposePrice["returnValues"][]).filter((event) => {
-        return ((event.request as unknown) as SkinnyRequest).proposer === caller;
+        return callers.includes(((event.request as unknown) as SkinnyRequest).proposer);
       });
     } else {
       return ((this.expiredProposals as unknown) as ProposePrice["returnValues"][]).filter((event) => {
-        return event.proposer === caller;
+        return callers.includes(event.proposer);
       });
     }
   }
 
   // Returns disputes that can be settled and that involved the caller as the disputer
-  public getSettleableDisputes(caller: string): DisputePriceReturnValues[] {
+  public getSettleableDisputes(callers?: string[]): DisputePriceReturnValues[] {
+    if (!callers) return this.settleableDisputes;
+
     if (this.oracleType === OptimisticOracleType.SkinnyOptimisticOracle) {
       return (this.settleableDisputes as SkinnyDisputePrice["returnValues"][]).filter((event) => {
-        return ((event.request as unknown) as SkinnyRequest).disputer === caller;
+        return callers.includes(((event.request as unknown) as SkinnyRequest).disputer);
       });
     } else {
       return (this.settleableDisputes as DisputePrice["returnValues"][]).filter((event) => {
-        return event.disputer === caller;
+        return callers.includes(event.disputer);
       });
     }
   }
@@ -154,32 +161,57 @@ export class OptimisticOracleClient {
 
   public async update(): Promise<void> {
     // Determine earliest block to query events for based on lookback window:
+    if (this.chainId === -1) this.chainId = await this.web3.eth.getChainId();
     const [averageBlockTime, currentBlock] = await Promise.all([
-      averageBlockTimeSeconds(),
+      averageBlockTimeSeconds(this.chainId),
       this.web3.eth.getBlock("latest"),
     ]);
     const lookbackBlocks = Math.ceil(this.lookback / averageBlockTime);
     const earliestBlockToQuery = Math.max(currentBlock.number - lookbackBlocks, 0);
 
-    // Fetch contract state variables in parallel.
-    // Note: We can treat all events by default as normal OptimisticOracle events because in most cases we only
-    // need to read the requester, identifier, timestamp, and ancillary data which are emitted in both Skinny
-    // and normal OptimisticOracle events.
-    const [requestEvents, proposalEvents, disputeEvents, settleEvents, currentTime] = await Promise.all([
-      (this.oracle.getPastEvents("RequestPrice", { fromBlock: earliestBlockToQuery }) as unknown) as Promise<
-        RequestPrice[] | SkinnyRequestPrice[]
-      >,
-      (this.oracle.getPastEvents("ProposePrice", { fromBlock: earliestBlockToQuery }) as unknown) as Promise<
-        ProposePrice[] | SkinnyProposePrice[]
-      >,
-      (this.oracle.getPastEvents("DisputePrice", { fromBlock: earliestBlockToQuery }) as unknown) as Promise<
-        DisputePrice[] | SkinnyDisputePrice[]
-      >,
-      (this.oracle.getPastEvents("Settle", { fromBlock: earliestBlockToQuery }) as unknown) as Promise<
-        Settle[] | SkinnySettle[]
-      >,
-      this.oracle.methods.getCurrentTime().call(),
+    const eventResults = await Promise.all([
+      getEventsWithPaginatedBlockSearch(
+        (this.oracle as unknown) as Web3Contract,
+        "RequestPrice",
+        earliestBlockToQuery,
+        currentBlock.number,
+        this.blocksPerEventSearch
+      ),
+      getEventsWithPaginatedBlockSearch(
+        (this.oracle as unknown) as Web3Contract,
+        "ProposePrice",
+        earliestBlockToQuery,
+        currentBlock.number,
+        this.blocksPerEventSearch
+      ),
+      getEventsWithPaginatedBlockSearch(
+        (this.oracle as unknown) as Web3Contract,
+        "DisputePrice",
+        earliestBlockToQuery,
+        currentBlock.number,
+        this.blocksPerEventSearch
+      ),
+      getEventsWithPaginatedBlockSearch(
+        (this.oracle as unknown) as Web3Contract,
+        "Settle",
+        earliestBlockToQuery,
+        currentBlock.number,
+        this.blocksPerEventSearch
+      ),
     ]);
+    const requestEvents = (eventResults[0].eventData as unknown) as (RequestPrice | SkinnyRequestPrice)[];
+    const proposalEvents = (eventResults[1].eventData as unknown) as (ProposePrice | SkinnyProposePrice)[];
+    const disputeEvents = (eventResults[2].eventData as unknown) as (DisputePrice | SkinnyDisputePrice)[];
+    const settleEvents = (eventResults[3].eventData as unknown) as (Settle | SkinnySettle)[];
+
+    this.logger.debug({
+      at: "OptimisticOracleClient",
+      message: "Queried past event requests",
+      eventRequestCount: eventResults.map((e) => e.web3RequestCount).reduce((x, y) => x + y),
+      earliestBlockToQuery,
+      latestBlockToQuery: currentBlock.number,
+      blocksPerEventSearch: this.blocksPerEventSearch,
+    });
 
     // Store price requests that have NOT been proposed to yet:
     const unproposedPriceRequests = (requestEvents as RequestPrice[]).filter((event) => {
@@ -221,6 +253,7 @@ export class OptimisticOracleClient {
       .filter(isDefined);
 
     // Filter proposals based on their expiration timestamp:
+    const currentTime = await this.oracle.methods.getCurrentTime().call();
     const isExpired = (proposal: ProposePriceReturnValues): boolean => {
       if (this.oracleType === OptimisticOracleType.SkinnyOptimisticOracle) {
         return (

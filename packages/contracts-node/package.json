@@ -1,14 +1,15 @@
 {
   "name": "@uma/contracts-node",
-  "version": "0.1.17",
+  "version": "0.3.1",
   "description": "UMA smart contracts and unit tests",
   "devDependencies": {
+    "@across-protocol/contracts": "^0.1.4",
     "@ethersproject/abi": "^5.4.0",
     "@ethersproject/abstract-provider": "^5.4.0",
     "@ethersproject/contracts": "^5.4.0",
     "@ethersproject/providers": "^5.4.2",
-    "@uma/common": "^2.15.0",
-    "@uma/core": "^2.22.0",
+    "@uma/common": "^2.19.0",
+    "@uma/core": "^2.25.1",
     "ethers": "^5.4.2"
   },
   "homepage": "https://umaproject.org",
@@ -24,16 +25,17 @@
   "files": [
     "dist/**/*"
   ],
-  "main": "dist/contracts-node/generated/index.js",
-  "module": "dist/contracts-node/generated/index.js",
-  "types": "dist/contracts-node/generated/index.d.ts",
+  "main": "dist/packages/contracts-node/generated/index.js",
+  "module": "dist/packages/contracts-node/generated/index.js",
+  "types": "dist/packages/contracts-node/generated/index.d.ts",
   "sideEffects": false,
   "side-effects": false,
   "scripts": {
     "test": "echo 'No tests configured'",
     "clean": "rm -rf dist generated typechain",
-    "generate-ts": "yarn clean && mkdir generated typechain && cp -R ../core/contract-types/* typechain/ && yarn hardhat generate-contracts-node --out ./generated/index.ts",
-    "build": "yarn generate-ts && yarn tsc && rsync -R ./typechain/**/*.d.ts ./dist/contracts-node",
+    "copy-across-types": "mkdir -p typechain/@across-protocol/contracts && rsync -a $(dirname $(node -p 'require.resolve(\"@across-protocol/contracts/package.json\")'))/contract-types/ typechain/@across-protocol/contracts",
+    "generate-ts": "yarn clean && mkdir -p generated typechain/core && cp -R ../core/contract-types/* typechain/core/ && yarn copy-across-types && yarn hardhat generate-contracts-node --out ./generated/index.ts",
+    "build": "yarn generate-ts && yarn tsc && rsync -a --include '*/' --include '*.d.ts' --exclude '*' ./typechain ./dist/packages/contracts-node/",
     "prepublish": "yarn build"
   },
   "bugs": {

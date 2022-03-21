@@ -99,3 +99,32 @@ await hre.deployments.deploy("Voting", { args: YOUR_ARGS, from: YOUR_ADDRESS });
 // Address should be pulled out as expected.
 const address = getAddress("Voting", parseInt(await hre.getChainId()));
 ```
+
+## Adding contracts from external packages
+
+To add external package contracts, the external package must be set up in a particular way. Most of it is standard
+hardhat, but a few exports must be added specifically.
+
+### Requirements
+
+The external package must export:
+
+- All hardhat artifacts that it wants this package to re-export.
+- Typechain types under `/typechain`. It must include web3 and ethers typechain exports.
+- A special json file at the path `/build/artifacts.json` that describes the location of all hardhat artifacts. This
+  JSON file is a simple json array of objects, each object having a field called `relativePath` that is the path from the
+  root to each hardhat artifact. The artifact's filename must match the contract name.
+- A folder at `/networks` following the same structure as `/packages/core/networks` in this repository for any
+  contract addresses that it wants to add.
+
+### Adding an external package
+
+To add an external package:
+
+- Add the external package name to the `EXTERNAL_PACKAGES` array in `/packages/common/hardhat/tasks/artifacts.ts`.
+- Add the external package to this package as a `devDependency`.
+- Copy the `copy-across-types` package.json script in this package replacing the name and `@across-protocol/contracts`
+  with the new package.
+- Add your new package.json script to the `generate-ts` script in package.json similar to how `copy-across-types` is.
+- Add similar `include` and `exclude` paths for your package's artifacts in the `tsconfig.json` as exist for
+  `@across-protocol/contracts`.

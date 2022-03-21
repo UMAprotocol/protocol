@@ -14,6 +14,18 @@ export const interfaceName = {
   SinkOracle: "Oracle",
   SkinnyOptimisticOracle: "SkinnyOptimisticOracle",
   ChildMessenger: "ChildMessenger",
+  OracleSpoke: "OracleSpoke",
+  OracleHub: "OracleHub",
+};
+
+// Updated multicall deployments can be found here: https://github.com/makerdao/multicall
+const NETWORKS_WITH_MULTICALL_DEPLOYMENTS = [1, 3, 4, 5, 10, 42, 100];
+export const getMulticallAddress = (netId: number): string => {
+  // Most Multicall2 addresses are the same except for some edge cases which cause this function to return early
+  if (!NETWORKS_WITH_MULTICALL_DEPLOYMENTS.includes(netId)) throw new Error("No Multicall2 deployment for netId");
+  if (netId == 10) return "0x35A6Cdb2C9AD4a45112df4a04147EB07dFA01aB7";
+  if (netId == 100) return "0xb5b692a88bdfc81ca69dcb1d924f59f0413a602a";
+  return "0x5ba1e12693dc8f9c48aad8770482f4739beed696";
 };
 
 // These enforce the maximum number of transactions that can fit within one batch-commit and batch-reveal.

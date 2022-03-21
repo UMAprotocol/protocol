@@ -8,7 +8,7 @@ export async function didContractThrow<T>(promise: Promise<T>): Promise<boolean>
   try {
     await promise;
   } catch (error) {
-    return error.message.match(/[invalid opcode|out of gas|revert]/, "Expected throw, got '" + error + "' instead");
+    return !!(error as Error).message.match(/[invalid opcode|out of gas|revert]/);
   }
   return false;
 }

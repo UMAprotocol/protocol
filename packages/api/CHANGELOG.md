@@ -3,6 +3,37 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.10.5](https://github.com/UMAprotocol/protocol/compare/@uma/api@0.10.4...@uma/api@0.10.5) (2022-02-28)
+
+**Note:** Version bump only for package @uma/api
+
+## [0.10.4](https://github.com/UMAprotocol/protocol/compare/@uma/api@0.10.3...@uma/api@0.10.4) (2022-02-10)
+
+**Note:** Version bump only for package @uma/api
+
+## [0.10.3](https://github.com/UMAprotocol/protocol/compare/@uma/api@0.10.2...@uma/api@0.10.3) (2022-01-31)
+
+**Note:** Version bump only for package @uma/api
+
+## [0.10.2](https://github.com/UMAprotocol/protocol/compare/@uma/api@0.10.1...@uma/api@0.10.2) (2022-01-25)
+
+**Note:** Version bump only for package @uma/api
+
+## [0.10.1](https://github.com/UMAprotocol/protocol/compare/@uma/api@0.10.0...@uma/api@0.10.1) (2022-01-20)
+
+**Note:** Version bump only for package @uma/api
+
+# [0.10.0](https://github.com/UMAprotocol/protocol/compare/@uma/api@0.9.9...@uma/api@0.10.0) (2022-01-11)
+
+### Bug Fixes
+
+- **api:** allow both http and ws providers ([#3752](https://github.com/UMAprotocol/protocol/issues/3752)) ([c6729e9](https://github.com/UMAprotocol/protocol/commit/c6729e94d65be2ccd9bf748bce278e20a4ed73ad))
+- **api:** limit decimals when calling ethers.parseUnits ([#3719](https://github.com/UMAprotocol/protocol/issues/3719)) ([855318e](https://github.com/UMAprotocol/protocol/commit/855318e08db2391d6f9185ed87b0588c3404ed66))
+
+### Features
+
+- add transaction bundler to relayer for better batching ([#3723](https://github.com/UMAprotocol/protocol/issues/3723)) ([51902a8](https://github.com/UMAprotocol/protocol/commit/51902a8cfbbb60dc30b868c5fd3e9fd0f31d48b4))
+
 ## [0.9.9](https://github.com/UMAprotocol/protocol/compare/@uma/api@0.9.8...@uma/api@0.9.9) (2021-12-17)
 
 **Note:** Version bump only for package @uma/api

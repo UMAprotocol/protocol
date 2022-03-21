@@ -68,7 +68,7 @@ async function _executeBot(
 
     return { financialContractAddress, botIdentifier, logs };
   } catch (error) {
-    return { financialContractAddress, botIdentifier, logs, error: error.toString() };
+    return { financialContractAddress, botIdentifier, logs, error: (error as Error).toString() };
   }
 }
 

@@ -7,7 +7,7 @@ export type BigNumberish = number | string | BigNumber;
 // check if a value is not null or undefined, useful for numbers which could be 0.
 // "is" syntax: https://stackoverflow.com/questions/40081332/what-does-the-is-keyword-do-in-typescript
 /* eslint-disable-next-line @typescript-eslint/ban-types */
-export function exists<T>(value: T | null | undefined): value is T {
+export function exists<T>(value: T | null | undefined): value is NonNullable<T> {
   return value !== null && value !== undefined;
 }
 
@@ -72,9 +72,12 @@ export async function loop(fn: (...args: any[]) => any, delay: number, ...args: 
   } while (true);
 }
 
-type Call = [string, ...any[]];
-type Calls = Call[];
-export const BatchReadWithErrors = (multicall2: Multicall2) => (contract: Contract) => async (calls: Calls) => {
+export type Call = [string, ...BigNumberish[]];
+export type Calls = Call[];
+export type BatchReadWithErrorsType = ReturnType<ReturnType<typeof BatchReadWithErrors>>;
+export const BatchReadWithErrors = (multicall2: Multicall2) => (contract: Contract) => async <R>(
+  calls: Calls
+): Promise<R> => {
   // multicall batch takes array of {method} objects
   const results = await multicall2
     .batch(

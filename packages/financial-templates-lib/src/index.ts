@@ -14,6 +14,7 @@ export * from "./helpers/GasEstimator";
 export * from "./helpers/AbiUtils";
 export * from "./logger/Logger";
 export * from "./logger/SpyTransport";
+export * from "./logger/ConsoleTransport";
 export * from "./price-feed/UniswapPriceFeed";
 export * from "./price-feed/CreatePriceFeed";
 export * from "./price-feed/Networker";

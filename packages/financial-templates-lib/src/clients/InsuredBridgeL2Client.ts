@@ -120,6 +120,7 @@ export class InsuredBridgeL2Client {
       this.logger.error({
         at: "InsuredBridgeL2Client",
         message: "L2 RPC endpoint state disagreement! 🤺",
+        chainId: this.chainId,
         eventName,
         eventSearchOptions,
         countMissingEvents: eventsData.missingEvents.length,

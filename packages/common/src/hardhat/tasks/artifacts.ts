@@ -5,6 +5,12 @@ import { task, types } from "hardhat/config";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { CombinedHRE } from "./types";
 
+// Assumes these packages have the following structure:
+// /build/artifacts.json -> JSON file with [relativePath] where each relativePath points to a hardhat artifact json file.
+// /networks/[CHAIN_ID].json that matches the structure in core.
+// /typechain
+const EXTERNAL_PACKAGES: string[] = ["@across-protocol/contracts"];
+
 function removeFileIfExists(filename: string): void {
   try {
     fs.unlinkSync(filename);
@@ -18,16 +24,45 @@ function normalizeClassName(name: string): string {
   return capitalizedName.replace(/_/g, ""); // Remove underscores.
 }
 
+// Gets the base path for an external package.
+function getPackageBasePath(packageName: string) {
+  return path.dirname(require.resolve(`${packageName}/package.json`));
+}
+
 async function getArtifactPathList(hre: HardhatRuntimeEnvironment, relativeTo: string) {
   const artifactPaths = await hre.artifacts.getArtifactPaths();
+
+  // Get the absolute path to the external packages.
+  const externalPackageBasePaths = EXTERNAL_PACKAGES.map(getPackageBasePath);
+  const packageArtifacts = externalPackageBasePaths.map((basePath, i) => ({
+    artifacts: JSON.parse(fs.readFileSync(path.join(basePath, "build/artifacts.json")).toString()) as {
+      relativePath: string;
+    }[],
+    basePath,
+    packageName: EXTERNAL_PACKAGES[i],
+  }));
 
   // Generate a unique list of artifacts and paths to them. Unique is necessary because there are some redundantly
   // named contracts.
   return uniqBy(
-    artifactPaths.map((artifactPath: string) => ({
-      contractName: path.basename(artifactPath).split(".")[0],
-      relativePath: `./${path.relative(path.dirname(relativeTo), artifactPath)}`,
-    })),
+    [
+      ...artifactPaths.map((artifactPath: string) => ({
+        contractName: path.basename(artifactPath).split(".")[0],
+        relativePath: `./${path.relative(path.dirname(relativeTo), artifactPath)}`,
+        packageName: "core",
+      })),
+      ...packageArtifacts
+        .map(({ artifacts, basePath, packageName }) =>
+          artifacts.map(({ relativePath }) => ({
+            // Since this path is relative to the base across path, we need to join that path to the artifact path to get the full path.
+            // Then we need to perform the relative path operation to get the relative path to that file.
+            relativePath: path.relative(path.dirname(relativeTo), path.join(basePath, relativePath)),
+            contractName: path.basename(relativePath).split(".")[0],
+            packageName,
+          }))
+        )
+        .flat(),
+    ],
     "contractName"
   );
 }
@@ -37,14 +72,26 @@ function getCorePath(hre: HardhatRuntimeEnvironment, relativeTo: string): string
   return `./${path.relative(relativeTo, artifactPath)}`;
 }
 
+function getFilesForNetworkFolder(folderPath: string): string[] {
+  return fs.readdirSync(folderPath).map((filename) => path.join(folderPath, filename));
+}
+
 function getAddressesMap(hre: HardhatRuntimeEnvironment) {
   // Generate a map of name => chain id => address.
-  const networksPath = path.join(getCorePath(hre, "./"), "networks");
-  const dirs = fs.readdirSync(networksPath);
+
+  const coreNetworksPath = path.join(getCorePath(hre, "./"), "networks");
+  const externalPackageNetworksPaths = EXTERNAL_PACKAGES.map((packageName) =>
+    path.join(getPackageBasePath(packageName), "networks")
+  );
+  const files = [
+    ...externalPackageNetworksPaths.map(getFilesForNetworkFolder).flat(),
+    ...getFilesForNetworkFolder(coreNetworksPath),
+  ];
   const addresses: { [name: string]: { [chainId: number]: string } } = {};
-  for (const dir of dirs) {
-    const chainId = parseInt(dir.split(".")[0]);
-    const deployments = JSON.parse(fs.readFileSync(path.join(networksPath, dir), "utf8"));
+  for (const file of files) {
+    // Grabs the basename of the file without the extension.
+    const chainId = parseInt(path.basename(file).split(".")[0]);
+    const deployments = JSON.parse(fs.readFileSync(file, "utf8"));
 
     // Loop over the deployments in the file and save each one.
     for (const { contractName, address, deploymentName } of deployments) {
@@ -78,32 +125,40 @@ task("generate-contracts-frontend", "Generate typescipt for the contracts-fronte
   GetARGsTypeFromFactory as GetARGsTypeFromFactoryEthers,
   TypedEventFilter as TypedEventFilterEthers,
   TypedEvent as TypedEventEthers,
-} from "../typechain/ethers/commons";\n`
+} from "../typechain/core/ethers/commons";\n`
     );
 
-    fs.appendFileSync(out, "export type {\n");
-    artifacts.forEach(({ contractName }) => {
-      if (fs.existsSync(`typechain/ethers/${contractName}.d.ts`))
-        fs.appendFileSync(out, `  ${contractName} as ${contractName}Ethers,\n`);
+    artifacts.forEach(({ contractName, packageName }) => {
+      if (
+        fs.existsSync(`typechain/${packageName}/ethers/${contractName}.d.ts`) ||
+        fs.existsSync(`typechain/${packageName}/ethers/${contractName}.ts`)
+      )
+        fs.appendFileSync(
+          out,
+          `export type { ${contractName} as ${contractName}Ethers } from "../typechain/${packageName}/ethers";\n`
+        );
     });
-    fs.appendFileSync(out, '} from "../typechain/ethers";\n');
 
-    fs.appendFileSync(out, "export {\n");
-    artifacts.forEach(({ contractName }) => {
-      if (fs.existsSync(`typechain/ethers/factories/${contractName}__factory.ts`))
-        fs.appendFileSync(out, `  ${contractName}__factory as ${contractName}Ethers__factory,\n`);
+    artifacts.forEach(({ contractName, packageName }) => {
+      if (fs.existsSync(`typechain/${packageName}/ethers/factories/${contractName}__factory.ts`))
+        fs.appendFileSync(
+          out,
+          `export { ${contractName}__factory as ${contractName}Ethers__factory } from "../typechain/${packageName}/ethers";\n`
+        );
     });
-    fs.appendFileSync(out, '} from "../typechain/ethers";\n');
 
     // Write Web3 contract types.
-    artifacts.forEach(({ contractName }) => {
-      if (fs.existsSync(`typechain/web3/${contractName}.d.ts`))
+    artifacts.forEach(({ contractName, packageName }) => {
+      if (
+        fs.existsSync(`typechain/${packageName}/web3/${contractName}.d.ts`) ||
+        fs.existsSync(`typechain/${packageName}/web3/${contractName}.ts`)
+      )
         fs.appendFileSync(
           out,
           `export type { ${normalizeClassName(contractName)} as ${normalizeClassName(
             contractName
-          )}Web3 } from "../typechain/web3/${contractName}";
-import type * as ${normalizeClassName(contractName)}Web3Events from "../typechain/web3/${contractName}";
+          )}Web3 } from "../typechain/${packageName}/web3/${contractName}";
+import type * as ${normalizeClassName(contractName)}Web3Events from "../typechain/${packageName}/web3/${contractName}";
 export type { ${normalizeClassName(contractName)}Web3Events };\n`
         );
     });
@@ -163,32 +218,40 @@ task("generate-contracts-node", "Generate typescipt for the contracts-node packa
   GetARGsTypeFromFactory as GetARGsTypeFromFactoryEthers,
   TypedEventFilter as TypedEventFilterEthers,
   TypedEvent as TypedEventEthers,
-} from "../typechain/ethers/commons";\n`
+} from "../typechain/core/ethers/commons";\n`
     );
 
-    fs.appendFileSync(out, "export type {\n");
-    artifacts.forEach(({ contractName }) => {
-      if (fs.existsSync(`typechain/ethers/${contractName}.d.ts`))
-        fs.appendFileSync(out, `  ${contractName} as ${contractName}Ethers,\n`);
+    artifacts.forEach(({ contractName, packageName }) => {
+      if (
+        fs.existsSync(`typechain/${packageName}/ethers/${contractName}.d.ts`) ||
+        fs.existsSync(`typechain/${packageName}/ethers/${contractName}.ts`)
+      )
+        fs.appendFileSync(
+          out,
+          `export type { ${contractName} as ${contractName}Ethers } from "../typechain/${packageName}/ethers";\n`
+        );
     });
-    fs.appendFileSync(out, '} from "../typechain/ethers";\n');
 
-    fs.appendFileSync(out, "export {\n");
-    artifacts.forEach(({ contractName }) => {
-      if (fs.existsSync(`typechain/ethers/factories/${contractName}__factory.ts`))
-        fs.appendFileSync(out, `  ${contractName}__factory as ${contractName}Ethers__factory,\n`);
+    artifacts.forEach(({ contractName, packageName }) => {
+      if (fs.existsSync(`typechain/${packageName}/ethers/factories/${contractName}__factory.ts`))
+        fs.appendFileSync(
+          out,
+          `export { ${contractName}__factory as ${contractName}Ethers__factory } from "../typechain/${packageName}/ethers";\n`
+        );
     });
-    fs.appendFileSync(out, '} from "../typechain/ethers";\n');
 
     // Write Web3 contract types.
-    artifacts.forEach(({ contractName }) => {
-      if (fs.existsSync(`typechain/web3/${contractName}.d.ts`))
+    artifacts.forEach(({ contractName, packageName }) => {
+      if (
+        fs.existsSync(`typechain/${packageName}/web3/${contractName}.d.ts`) ||
+        fs.existsSync(`typechain/${packageName}/web3/${contractName}.ts`)
+      )
         fs.appendFileSync(
           out,
           `export type { ${normalizeClassName(contractName)} as ${normalizeClassName(
             contractName
-          )}Web3 } from "../typechain/web3/${contractName}";
-import type * as ${normalizeClassName(contractName)}Web3Events from "../typechain/web3/${contractName}";
+          )}Web3 } from "../typechain/${packageName}/web3/${contractName}";
+import type * as ${normalizeClassName(contractName)}Web3Events from "../typechain/${packageName}/web3/${contractName}";
 export type { ${normalizeClassName(contractName)}Web3Events };\n`
         );
     });
@@ -315,6 +378,9 @@ task("load-addresses", "Load addresses from the networks folder into the hardhat
         const abi = hre.artifacts.readArtifactSync(contractName).abi;
 
         // Save the deployment using hardhat deploy's built-in function.
+        // WARNING: Some version of `hardhat-deploy` between 0.9.1 and 0.9.22 introduces a breaking change to the
+        // following `save()` method, causing `yarn load-addresses` to throw the following error:
+        // "no such file or directory, unlink './deployments/mainnet/.chainId'"
         await hre.deployments.save(saveName, { address, abi });
       }
 

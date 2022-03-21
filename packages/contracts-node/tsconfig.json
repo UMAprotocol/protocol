@@ -1,8 +1,18 @@
 {
   "extends": "@tsconfig/node14/tsconfig.json",
   "esModuleInterop": true,
-  "include": ["generated/index.ts", "../core/artifacts/**/*.json"],
-  "exclude": ["../core/artifacts/build-info/**/*.json", "../core/artifacts/**/*.dbg.json"],
+  "include": [
+    "generated/index.ts",
+    "typechain/**/*",
+    "../core/artifacts/**/*.json",
+    "../../node_modules/@across-protocol/contracts/artifacts/**/*.json",
+    "../../node_modules/@across-protocol/contracts/artifacts/**/*.json"
+  ],
+  "exclude": [
+    "../core/artifacts/build-info/**/*.json",
+    "../core/artifacts/**/*.dbg.json",
+    "../../node_modules/@across-protocol/artifacts/**/*.dbg.json"
+  ],
   "compilerOptions": {
     "outDir": "./dist",
     "declaration": true,

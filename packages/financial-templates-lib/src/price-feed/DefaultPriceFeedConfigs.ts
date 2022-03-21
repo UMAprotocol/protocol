@@ -1,5 +1,4 @@
 import { getPrecisionForIdentifier } from "@uma/common";
-import { across } from "@uma/sdk";
 
 // Default price feed configs for currently approved identifiers.
 // TODO: maybe add a more well-specified type that defines precisely what configs are possible/allowed.
@@ -982,7 +981,41 @@ export const defaultConfigs: { [name: string]: { type: string; [key: string]: an
     l2BlockLookback: 99000, // Arbitrum only supports lookbacks of 100,000 blocks
     l2NetId: 42161,
     bridgeAdminAddress: "0x30B44C676A05F1264d1dE9cC31dB5F2A945186b6",
-    rateModels: across.constants.RATE_MODELS,
+    rateModelAddress: "0xd18fFeb5fdd1F2e122251eA7Bf357D8Af0B60B50",
+  },
+  CVXUSD: {
+    type: "expression",
+    expression: ` 
+      convex_usd_sushi = ETHUSD * CVX_WETH_SUSHI;
+      convex_usd_uni = ETHUSD * CVX_WETH_UNI;
+      median( convex_usd_sushi, convex_usd_uni, CVX_USD_OKEX )
+    `,
+    lookback: 7200,
+    minTimeBetweenUpdates: 60,
+    customFeeds: {
+      CVX_WETH_SUSHI: {
+        type: "uniswap",
+        uniswapAddress: "0x05767d9EF41dC40689678fFca0608878fb3dE906",
+        twapLength: 300,
+      },
+      CVX_WETH_UNI: {
+        type: "uniswap",
+        version: "v3",
+        uniswapAddress: "0x2E4784446A0a06dF3D1A040b03e1680Ee266c35a",
+        twapLength: 300,
+      },
+      CVX_USD_OKEX: { type: "cryptowatch", exchange: "okex", pair: "cvxusdt", twapLength: 300 },
+    },
+  },
+  USDCVX: {
+    type: "expression",
+    expression: "1 / CVXUSD",
+  },
+  uSPAC10: {
+    type: "uSPAC",
+    lookback: 7200,
+    correctionFactor: "1.0",
+    symbols: ["DWAC", "IRDM", "PRIM", "TGLS", "MP", "LCID", "GDYN", "SMPL", "ENVX", "QS"],
   },
 };
 

@@ -3,6 +3,32 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.3.5](https://github.com/UMAprotocol/protocol/compare/@uma/bot-strategy-runner@1.3.4...@uma/bot-strategy-runner@1.3.5) (2022-02-28)
+
+**Note:** Version bump only for package @uma/bot-strategy-runner
+
+## [1.3.4](https://github.com/UMAprotocol/protocol/compare/@uma/bot-strategy-runner@1.3.3...@uma/bot-strategy-runner@1.3.4) (2022-02-10)
+
+**Note:** Version bump only for package @uma/bot-strategy-runner
+
+## [1.3.3](https://github.com/UMAprotocol/protocol/compare/@uma/bot-strategy-runner@1.3.2...@uma/bot-strategy-runner@1.3.3) (2022-01-31)
+
+**Note:** Version bump only for package @uma/bot-strategy-runner
+
+## [1.3.2](https://github.com/UMAprotocol/protocol/compare/@uma/bot-strategy-runner@1.3.1...@uma/bot-strategy-runner@1.3.2) (2022-01-25)
+
+**Note:** Version bump only for package @uma/bot-strategy-runner
+
+## [1.3.1](https://github.com/UMAprotocol/protocol/compare/@uma/bot-strategy-runner@1.3.0...@uma/bot-strategy-runner@1.3.1) (2022-01-20)
+
+**Note:** Version bump only for package @uma/bot-strategy-runner
+
+# [1.3.0](https://github.com/UMAprotocol/protocol/compare/@uma/bot-strategy-runner@1.2.16...@uma/bot-strategy-runner@1.3.0) (2022-01-11)
+
+### Features
+
+- add transaction bundler to relayer for better batching ([#3723](https://github.com/UMAprotocol/protocol/issues/3723)) ([51902a8](https://github.com/UMAprotocol/protocol/commit/51902a8cfbbb60dc30b868c5fd3e9fd0f31d48b4))
+
 ## [1.2.16](https://github.com/UMAprotocol/protocol/compare/@uma/bot-strategy-runner@1.2.15...@uma/bot-strategy-runner@1.2.16) (2021-12-17)
 
 ### Bug Fixes

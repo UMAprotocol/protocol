@@ -3,6 +3,87 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.22.1](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.22.0...@uma/sdk@0.22.1) (2022-02-28)
+
+### Bug Fixes
+
+- **sdk:** add tx hashes to dispute, settle, propose ([#3834](https://github.com/UMAprotocol/protocol/issues/3834)) ([36dd4e3](https://github.com/UMAprotocol/protocol/commit/36dd4e31718959cead653782cc4e8891c6daca09))
+- **sdk:** disable provider polling and correctly check done for past events ([#3833](https://github.com/UMAprotocol/protocol/issues/3833)) ([0a4ce9a](https://github.com/UMAprotocol/protocol/commit/0a4ce9af96481bec0c0eb2ab2ccd8da4dc87ccd5))
+
+# [0.22.0](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.21.0...@uma/sdk@0.22.0) (2022-02-10)
+
+### Bug Fixes
+
+- **sdk:** expose more across pool values and add badger/wbtc to e2e tests ([#3814](https://github.com/UMAprotocol/protocol/issues/3814)) ([d0e2352](https://github.com/UMAprotocol/protocol/commit/d0e2352143a644f9e878d7951e0432fc8ff03e55))
+- **sdk:** fix can settle flag to include expied state ([#3810](https://github.com/UMAprotocol/protocol/issues/3810)) ([254c08c](https://github.com/UMAprotocol/protocol/commit/254c08cf59d86fc258ebc7e81a2ea169c6f65118))
+- **sdk:** fix properly unqueuing commands from statemachine queue ([#3813](https://github.com/UMAprotocol/protocol/issues/3813)) ([f363bc8](https://github.com/UMAprotocol/protocol/commit/f363bc857ddf2ac174b63404cdf2d36154baeea2))
+
+### Features
+
+- **sdk:** add oo settle ability ([#3825](https://github.com/UMAprotocol/protocol/issues/3825)) ([623fb93](https://github.com/UMAprotocol/protocol/commit/623fb938b712ee86addcf38ecdc6a9f9a6d24604))
+- **sdk:** use events to populate transaction/block numbers for state ([#3822](https://github.com/UMAprotocol/protocol/issues/3822)) ([baa9d9b](https://github.com/UMAprotocol/protocol/commit/baa9d9b6b3a032b8f7fba03fb26825dd2ed27c00))
+- remove across contracts ([#3775](https://github.com/UMAprotocol/protocol/issues/3775)) ([84c053b](https://github.com/UMAprotocol/protocol/commit/84c053b4d9e758f0f5c21886cafa063427843f2b))
+- **sdk:** add request list populated by oo events from newest to oldest ([#3818](https://github.com/UMAprotocol/protocol/issues/3818)) ([34afe1c](https://github.com/UMAprotocol/protocol/commit/34afe1cca1eeb9a6531b9832f0864582d33f9043))
+- **sdk:** allow oo client to fetch request by transaction and option… ([#3819](https://github.com/UMAprotocol/protocol/issues/3819)) ([5cd7e7b](https://github.com/UMAprotocol/protocol/commit/5cd7e7b845e6d7106332767d703c394e16d08e63))
+- **sdk:** poll user balance and approval for oo client ([#3815](https://github.com/UMAprotocol/protocol/issues/3815)) ([99850d3](https://github.com/UMAprotocol/protocol/commit/99850d3b77820dd89da62334c5f42e9d6be818e4))
+- **sdk:** request list checker using events ([#3812](https://github.com/UMAprotocol/protocol/issues/3812)) ([9319b11](https://github.com/UMAprotocol/protocol/commit/9319b11ecbca3c46fdbed4cb0967c8975f826d50))
+
+# [0.21.0](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.20.0...@uma/sdk@0.21.0) (2022-01-31)
+
+### Bug Fixes
+
+- **sdk:** fix chain metadata shape when adding new chain for user ([#3794](https://github.com/UMAprotocol/protocol/issues/3794)) ([8205cab](https://github.com/UMAprotocol/protocol/commit/8205cabd28f01f5176a095e61f08b01149acb651))
+
+### Features
+
+- **sdk:** add typechain oo event decoder ([#3790](https://github.com/UMAprotocol/protocol/issues/3790)) ([75bb67c](https://github.com/UMAprotocol/protocol/commit/75bb67c3ed01270cb8582ca827aa347baf16cc55))
+
+### improve
+
+- **sdk:** fix request state flags, poll for request changes ([#3803](https://github.com/UMAprotocol/protocol/issues/3803)) ([cc11647](https://github.com/UMAprotocol/protocol/commit/cc11647599f2cdd5d437f3686d54c3eac8ff675f))
+
+### BREAKING CHANGES
+
+- **sdk:** oo flags have changed names for clarity
+
+Signed-off-by: David <david@umaproject.org>
+
+# [0.20.0](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.19.0...@uma/sdk@0.20.0) (2022-01-25)
+
+### Features
+
+- **sdk:** add commands to for approve/propose/dispute ([#3784](https://github.com/UMAprotocol/protocol/issues/3784)) ([c69e910](https://github.com/UMAprotocol/protocol/commit/c69e9104b10ce2cde61f28c165f26f0220bec57c))
+- **sdk:** move set user and set request to statemachine ([#3778](https://github.com/UMAprotocol/protocol/issues/3778)) ([f2d7df7](https://github.com/UMAprotocol/protocol/commit/f2d7df7b4aff8836820f1b028e70f697cc22457e))
+
+# [0.19.0](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.18.0...@uma/sdk@0.19.0) (2022-01-20)
+
+### Bug Fixes
+
+- **sdk:** use on chain rate model in pool client ([#3781](https://github.com/UMAprotocol/protocol/issues/3781)) ([382bba4](https://github.com/UMAprotocol/protocol/commit/382bba4b31d257b346a717d4706f0c68eed96448))
+
+### Features
+
+- **sdk:** add generic state machine runner ([#3764](https://github.com/UMAprotocol/protocol/issues/3764)) ([3ab2fff](https://github.com/UMAprotocol/protocol/commit/3ab2fffc76cc3201d2d7e2a91745ec77ba0aebfb))
+
+# [0.18.0](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.17.0...@uma/sdk@0.18.0) (2022-01-11)
+
+### Bug Fixes
+
+- **bots:** correct optimism toBlock issue ([#3718](https://github.com/UMAprotocol/protocol/issues/3718)) ([3fff1c9](https://github.com/UMAprotocol/protocol/commit/3fff1c94ccd75a7a643cd926bcd142a1f1aa5533))
+- **sdk:** properly export oo client factory ([#3761](https://github.com/UMAprotocol/protocol/issues/3761)) ([a4e8167](https://github.com/UMAprotocol/protocol/commit/a4e8167edfbaa4e6bc8ea46cc3d5f87ca3d552da))
+- **sdk:** update gas calculation for across ([#3755](https://github.com/UMAprotocol/protocol/issues/3755)) ([822c9c4](https://github.com/UMAprotocol/protocol/commit/822c9c4a01df6e82e9930f4896ef6a5f93e75006))
+
+### Features
+
+- **across-relayer:** Fetch rate model from contract instead of SDK constant ([#3673](https://github.com/UMAprotocol/protocol/issues/3673)) ([4adff3d](https://github.com/UMAprotocol/protocol/commit/4adff3de6e24f6e60620d47321e95e8f07902964))
+- **sdk:** add basic optimistic oracle client for getting requests ([#3729](https://github.com/UMAprotocol/protocol/issues/3729)) ([f645058](https://github.com/UMAprotocol/protocol/commit/f64505854b7dd2b929eee67c00e5baee325700d0))
+- **sdk:** add basic state reader to oo client ([#3739](https://github.com/UMAprotocol/protocol/issues/3739)) ([819c3ea](https://github.com/UMAprotocol/protocol/commit/819c3ea12238df69be84e4a2d6bcdbc8fbb5a0a0))
+- **sdk:** add oo global store and writing ([#3738](https://github.com/UMAprotocol/protocol/issues/3738)) ([2f10482](https://github.com/UMAprotocol/protocol/commit/2f10482b466695413d7d23a01f0368b495ec7320))
+- **sdk:** add preview flags for proposing for oo ([#3751](https://github.com/UMAprotocol/protocol/issues/3751)) ([e46016b](https://github.com/UMAprotocol/protocol/commit/e46016b4b0d27b83fc1827a1e414e85a0148da6a))
+- **sdk:** basic erc20 and erc20 multicall client ([#3728](https://github.com/UMAprotocol/protocol/issues/3728)) ([e82bcc0](https://github.com/UMAprotocol/protocol/commit/e82bcc03f11ec943a2c80f0498d6faf01351593f))
+- **sdk:** expose basic oo client interface ([#3746](https://github.com/UMAprotocol/protocol/issues/3746)) ([194e3a5](https://github.com/UMAprotocol/protocol/commit/194e3a553731ac837c853b84e0bdbc876714db02))
+- add transaction bundler to relayer for better batching ([#3723](https://github.com/UMAprotocol/protocol/issues/3723)) ([51902a8](https://github.com/UMAprotocol/protocol/commit/51902a8cfbbb60dc30b868c5fd3e9fd0f31d48b4))
+
 # [0.17.0](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.16.1...@uma/sdk@0.17.0) (2021-12-17)
 
 ### Bug Fixes

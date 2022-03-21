@@ -31,7 +31,6 @@ interface PublicNetworksType {
 export const PublicNetworks: PublicNetworksType = {
   1: {
     name: "mainnet",
-    ethFaucet: null,
     etherscan: "https://etherscan.io/",
     daiAddress: "0x6B175474E89094C44Da98b954EedeAC495271d0F",
     wethAddress: "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
@@ -60,28 +59,20 @@ export const PublicNetworks: PublicNetworksType = {
     wethAddress: "0xd0A1E359811322d97991E03f863a0C30C2cF029C",
   },
   69: { name: "optimism-kovan", etherscan: "https://kovan-optimistic.etherscan.io/" },
+  100: { name: "xdai", etherscan: "https://blockscout.com/xdai/mainnet" },
   137: {
     name: "polygon-matic",
     etherscan: "https://polygonscan.com/",
     customTruffleConfig: { confirmations: 2, timeoutBlocks: 200 },
   },
+  288: { name: "boba", etherscan: "https://blockexplorer.boba.network/" },
   80001: {
     name: "polygon-mumbai",
     etherscan: "https://mumbai.polygonscan.com/",
     customTruffleConfig: { confirmations: 2, timeoutBlocks: 200 },
   },
-  42161: {
-    name: "arbitrum",
-    etherscan: "https://arbiscan.io/",
-  },
-  421611: {
-    name: "arbitrum-rinkeby",
-    etherscan: "https://testnet.arbiscan.io/",
-  },
-  288: {
-    name: "boba",
-    etherscan: "https://blockexplorer.boba.network/",
-  },
+  42161: { name: "arbitrum", etherscan: "https://arbiscan.io/" },
+  421611: { name: "arbitrum-rinkeby", etherscan: "https://testnet.arbiscan.io/" },
 };
 
 export function isPublicNetwork(name: string): boolean {

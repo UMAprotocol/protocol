@@ -29,6 +29,7 @@ import { TraderMadePriceFeed } from "./TraderMadePriceFeed";
 import { UniswapV2PriceFeed, UniswapV3PriceFeed } from "./UniswapPriceFeed";
 import { VaultPriceFeed, HarvestVaultPriceFeed } from "./VaultPriceFeed";
 import { InsuredBridgePriceFeed } from "./InsuredBridgePriceFeed";
+import { USPACPriceFeed } from "./USPACPriceFeed";
 
 import type { Logger } from "winston";
 import { NetworkerInterface } from "./Networker";
@@ -464,7 +465,7 @@ export async function createPriceFeed(
       blockFinder: getSharedBlockFinder(web3),
     });
   } else if (config.type === "insuredbridge") {
-    const requiredFields = ["bridgeAdminAddress", "rateModels", "l2NetId"];
+    const requiredFields = ["bridgeAdminAddress", "rateModelAddress", "l2NetId"];
 
     if (isMissingField(config, requiredFields, logger)) {
       return null;
@@ -476,29 +477,12 @@ export async function createPriceFeed(
     // Infura only allows lookbacks 100,000 blocks into the past.
     const l2BlockLookback = config.l2BlockLookback ? Number(config.l2BlockLookback) : 99999;
 
-    // Clean up rate model.
-    // - Check each token rate model contains the expected data.
-    const expectedRateModelKeys = ["UBar", "R0", "R1", "R2"];
-    interface RateModel {
-      [key: string]: any;
-    }
-    const processingRateModels: RateModel = {};
-    for (const l1Token of Object.keys(config.rateModels)) {
-      assert(
-        expectedRateModelKeys.every((item) => Object.prototype.hasOwnProperty.call(config.rateModels[l1Token], item)),
-        `${web3.utils.toChecksumAddress(
-          l1Token
-        )} does not contain the required rate model keys ${expectedRateModelKeys}`
-      );
-      processingRateModels[web3.utils.toChecksumAddress(l1Token)] = {
-        UBar: web3.utils.toBN(config.rateModels[l1Token].UBar),
-        R0: web3.utils.toBN(config.rateModels[l1Token].R0),
-        R1: web3.utils.toBN(config.rateModels[l1Token].R1),
-        R2: web3.utils.toBN(config.rateModels[l1Token].R2),
-      };
-    }
-
-    const l1Client = new InsuredBridgeL1Client(logger, providedWeb3, config.bridgeAdminAddress, processingRateModels);
+    const l1Client = new InsuredBridgeL1Client(
+      logger,
+      providedWeb3,
+      config.bridgeAdminAddress,
+      config.rateModelAddress
+    );
     const l2Web3 = getWeb3ByChainId(config.l2NetId);
     const currentL2Block = await l2Web3.eth.getBlockNumber();
     const l2Client = new InsuredBridgeL2Client(
@@ -514,6 +498,28 @@ export async function createPriceFeed(
       l1Client,
       l2Client,
     });
+  } else if (config.type === "uSPAC") {
+    const requiredFields = ["lookback", "symbols", "rapidApiKey", "correctionFactor"];
+
+    if (isMissingField(config, requiredFields, logger)) {
+      return null;
+    }
+
+    logger.debug({ at: "createPriceFeed", message: "Creating USPACPriceFeed", config });
+
+    return new USPACPriceFeed(
+      logger,
+      web3,
+      config.symbols,
+      config.correctionFactor,
+      config.rapidApiKey,
+      config.interval,
+      config.lookback,
+      networker,
+      getTime,
+      config.priceFeedDecimals,
+      config.minTimeBetweenUpdates
+    );
   }
 
   logger.error({ at: "createPriceFeed", message: "Invalid price feed type specified🚨", config });
@@ -909,6 +915,8 @@ function getFinancialContractIdentifierAtAddress(web3: Web3, financialContractAd
   try {
     return new web3.eth.Contract(getAbi("ExpiringMultiParty"), financialContractAddress);
   } catch (error) {
-    throw new Error(`Something went wrong in fetching the financial contract identifier ${error?.stack || error}`);
+    throw new Error(
+      `Something went wrong in fetching the financial contract identifier ${(error as Error)?.stack || error}`
+    );
   }
 }

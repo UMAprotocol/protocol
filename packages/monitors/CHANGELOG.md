@@ -3,6 +3,35 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.11.2](https://github.com/UMAprotocol/protocol/compare/@uma/monitors@2.11.1...@uma/monitors@2.11.2) (2022-02-28)
+
+**Note:** Version bump only for package @uma/monitors
+
+## [2.11.1](https://github.com/UMAprotocol/protocol/compare/@uma/monitors@2.11.0...@uma/monitors@2.11.1) (2022-02-10)
+
+**Note:** Version bump only for package @uma/monitors
+
+# [2.11.0](https://github.com/UMAprotocol/protocol/compare/@uma/monitors@2.10.7...@uma/monitors@2.11.0) (2022-01-31)
+
+### Features
+
+- **monitors:** split UI link from other log messages due to length ([#3804](https://github.com/UMAprotocol/protocol/issues/3804)) ([523aef4](https://github.com/UMAprotocol/protocol/commit/523aef41fb5a50159db64e3dbec7d05d327533ca))
+- **OO-bot:** Improve settlement logs ([#3793](https://github.com/UMAprotocol/protocol/issues/3793)) ([a95c6ea](https://github.com/UMAprotocol/protocol/commit/a95c6ea80dbfb6a792a02e9231e6c5661fa706ea))
+- add optimistic oracle UI link to bot logs ([#3795](https://github.com/UMAprotocol/protocol/issues/3795)) ([cb64bf8](https://github.com/UMAprotocol/protocol/commit/cb64bf8ab7bba1bb911c32d3e8d70872f4959d4c))
+- **OO-bot:** Add additional line breaks to logs ([#3789](https://github.com/UMAprotocol/protocol/issues/3789)) ([a42f181](https://github.com/UMAprotocol/protocol/commit/a42f1819f63f166b34749edde526b5086009d592))
+
+## [2.10.7](https://github.com/UMAprotocol/protocol/compare/@uma/monitors@2.10.6...@uma/monitors@2.10.7) (2022-01-25)
+
+**Note:** Version bump only for package @uma/monitors
+
+## [2.10.6](https://github.com/UMAprotocol/protocol/compare/@uma/monitors@2.10.5...@uma/monitors@2.10.6) (2022-01-20)
+
+**Note:** Version bump only for package @uma/monitors
+
+## [2.10.5](https://github.com/UMAprotocol/protocol/compare/@uma/monitors@2.10.4...@uma/monitors@2.10.5) (2022-01-11)
+
+**Note:** Version bump only for package @uma/monitors
+
 ## [2.10.4](https://github.com/UMAprotocol/protocol/compare/@uma/monitors@2.10.3...@uma/monitors@2.10.4) (2021-12-17)
 
 ### Bug Fixes

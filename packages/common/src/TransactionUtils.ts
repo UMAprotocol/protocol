@@ -1,6 +1,5 @@
 import util from "util";
 import minimist from "minimist";
-import ynatm from "@umaprotocol/ynatm";
 import winston from "winston";
 
 import type Web3 from "web3";
@@ -114,20 +113,15 @@ export const runTransaction = async ({
       transaction.estimateGas({ from: transactionConfig.from }),
     ]);
   } catch (error) {
-    error.type = "call";
-    throw error;
+    const castedError = error as Error & { type?: string };
+    castedError.type = "call";
+    throw castedError;
   }
 
   // .call() succeeded, now broadcast transaction.
   try {
     transactionConfig = { ...transactionConfig, gas: Math.floor(estimatedGas * GAS_LIMIT_BUFFER) };
 
-    // ynatm doubles gasPrice or maxPriorityFeePerGas every retry depending if the transaction is a legacy or London.
-    // Tries every minute(and increases gas price according to DOUBLE method) if tx hasn't mined. Min Gas price starts
-    // at caller's transactionConfig.gasPrice or, with transactionConfig.maxPriorityFeePerGas a max gasPrice of x6.
-    const gasPriceScalingFunction = ynatm.DOUBLES;
-    const retryDelay = 60000;
-    const maximumGasPriceMultiple = 2 * 3;
     // Pre-London transactions require `gasPrice`, London transactions require `maxFeePerGas` and `maxPriorityFeePerGas`
 
     let receipt: TransactionReceipt | PromiEvent<TransactionReceipt>;
@@ -163,24 +157,18 @@ export const runTransaction = async ({
 
       // Else this is a legacy tx.
     } else if (transactionConfig.gasPrice) {
-      const minGasPrice = transactionConfig.gasPrice;
-      const maxGasPrice = maximumGasPriceMultiple * parseInt(minGasPrice.toString());
-
-      receipt = ((await ynatm.send({
-        sendTransactionFunction: (gasPrice: number) =>
-          transaction.send({ ...transactionConfig, gasPrice: gasPrice.toString() } as any),
-        minGasPrice,
-        maxGasPrice,
-        gasPriceScalingFunction,
-        delay: retryDelay,
+      receipt = ((await transaction.send({
+        ...transactionConfig,
+        gasPrice: transactionConfig.gasPrice.toString(),
       })) as unknown) as TransactionReceipt;
       transactionHash = receipt.transactionHash;
     } else throw new Error("No gas information provided");
 
     return { receipt, transactionHash, returnValue, transactionConfig };
   } catch (error) {
-    error.type = "send";
-    throw error;
+    const castedError = error as Error & { type?: string };
+    castedError.type = "send";
+    throw castedError;
   }
 };
 

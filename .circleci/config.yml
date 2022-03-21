@@ -24,6 +24,7 @@ jobs:
     docker:
       - image: circleci/node:lts
     working_directory: ~/protocol
+    resource_class: large
     steps:
       - restore_cache:
           key: protocol-{{ .Environment.CIRCLE_SHA1 }}

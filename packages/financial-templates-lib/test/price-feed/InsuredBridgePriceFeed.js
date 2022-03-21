@@ -19,9 +19,6 @@ const toBNWei = (number) => toBN(toWei(number.toString()).toString());
 
 const chainId = 10;
 const Messenger = getContract("MessengerMock");
-const BridgeAdmin = getContract("BridgeAdmin");
-const BridgePool = getContract("BridgePool");
-const BridgeDepositBox = getContract("BridgeDepositBoxMock");
 const Finder = getContract("Finder");
 const IdentifierWhitelist = getContract("IdentifierWhitelist");
 const AddressWhitelist = getContract("AddressWhitelist");
@@ -29,6 +26,23 @@ const OptimisticOracle = getContract("SkinnyOptimisticOracle");
 const Store = getContract("Store");
 const ERC20 = getContract("ExpandedERC20");
 const Timer = getContract("Timer");
+
+// Pull in contracts from contracts-node sourced from the across repo.
+const { getAbi, getBytecode } = require("@uma/contracts-node");
+
+const BridgeDepositBox = getContract("BridgeDepositBoxMock", {
+  abi: getAbi("BridgeDepositBoxMock"),
+  bytecode: getBytecode("BridgeDepositBoxMock"),
+});
+
+const BridgePool = getContract("BridgePool", { abi: getAbi("BridgePool"), bytecode: getBytecode("BridgePool") });
+
+const BridgeAdmin = getContract("BridgeAdmin", { abi: getAbi("BridgeAdmin"), bytecode: getBytecode("BridgeAdmin") });
+
+const RateModelStore = getContract("RateModelStore", {
+  abi: getAbi("RateModelStore"),
+  bytecode: getBytecode("RateModelStore"),
+});
 
 // Pricefeed to test
 const { InsuredBridgePriceFeed } = require("../../dist/price-feed/InsuredBridgePriceFeed");
@@ -56,6 +70,7 @@ let finder,
   l1Token,
   l2Token,
   depositData,
+  rateModelStore,
   relayData,
   relayAncillaryData,
   rateModels;
@@ -254,11 +269,23 @@ describe("InsuredBridgePriceFeed", function () {
     });
 
     // Construct L1 and L2 clients that we'll need to construct the pricefeed:
+    rateModelStore = await RateModelStore.new().send({ from: owner });
     rateModels = {
       [l1Token.options.address]: { UBar: toWei("0.65"), R0: toWei("0.00"), R1: toWei("0.08"), R2: toWei("1.00") },
     };
+    await rateModelStore.methods
+      .updateRateModel(
+        l1Token.options.address,
+        JSON.stringify({
+          UBar: rateModels[l1Token.options.address].UBar.toString(),
+          R0: rateModels[l1Token.options.address].R0.toString(),
+          R1: rateModels[l1Token.options.address].R1.toString(),
+          R2: rateModels[l1Token.options.address].R2.toString(),
+        })
+      )
+      .send({ from: owner });
 
-    l1Client = new InsuredBridgeL1Client(spyLogger, web3, bridgeAdmin.options.address, rateModels);
+    l1Client = new InsuredBridgeL1Client(spyLogger, web3, bridgeAdmin.options.address, rateModelStore.options.address);
 
     l2Client = new InsuredBridgeL2Client(spyLogger, web3, depositBox.options.address);
 

@@ -3,6 +3,40 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.19.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.18.0...@uma/common@2.19.0) (2022-02-28)
+
+### Features
+
+- **common:** implement rounding utils ([#3830](https://github.com/UMAprotocol/protocol/issues/3830)) ([c2e1225](https://github.com/UMAprotocol/protocol/commit/c2e1225560f095031133cd5268ce3e9b5417278c))
+
+# [2.18.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.17.0...@uma/common@2.18.0) (2022-02-10)
+
+### Features
+
+- remove across contracts ([#3775](https://github.com/UMAprotocol/protocol/issues/3775)) ([84c053b](https://github.com/UMAprotocol/protocol/commit/84c053b4d9e758f0f5c21886cafa063427843f2b))
+
+# [2.17.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.16.0...@uma/common@2.17.0) (2022-01-20)
+
+### Bug Fixes
+
+- fix [#3747](https://github.com/UMAprotocol/protocol/issues/3747) ([#3772](https://github.com/UMAprotocol/protocol/issues/3772)) ([7eb1697](https://github.com/UMAprotocol/protocol/commit/7eb1697bb35739bc5dc8229f099dad9b20adac26))
+
+### Features
+
+- **deployments:** Add xDai deploys ([#3766](https://github.com/UMAprotocol/protocol/issues/3766)) ([f23f081](https://github.com/UMAprotocol/protocol/commit/f23f081f6d2600c086bbac85c25f5e7de03bc2f6))
+- add across artifacts to contracts-node and contracts-frontend ([#3747](https://github.com/UMAprotocol/protocol/issues/3747)) ([d0f2d9b](https://github.com/UMAprotocol/protocol/commit/d0f2d9bca6c3344468a5bc69832cb40319c8da95))
+- **cross-chain-oracle:** Add verification script to cross chain oracle setup ([#3758](https://github.com/UMAprotocol/protocol/issues/3758)) ([8ad8291](https://github.com/UMAprotocol/protocol/commit/8ad82915d534d062c90f6f2b89ab4b4798b83a2b))
+
+# [2.16.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.15.0...@uma/common@2.16.0) (2022-01-11)
+
+### Features
+
+- **core:** Add cross-chain-oracle deployment scripts for Arbitrum ([#3733](https://github.com/UMAprotocol/protocol/issues/3733)) ([e8d8b9f](https://github.com/UMAprotocol/protocol/commit/e8d8b9fdd9dba86b3e05111cd9d37e3b46150d16))
+- **core:** Add OO deployment instructions ([#3735](https://github.com/UMAprotocol/protocol/issues/3735)) ([0560290](https://github.com/UMAprotocol/protocol/commit/056029005f880b9fdaf72694fa289deb14af6aa7))
+- **core:** Deploy + Setup Boba OptimisticOracle and Bridge contracts ([#3750](https://github.com/UMAprotocol/protocol/issues/3750)) ([496037f](https://github.com/UMAprotocol/protocol/commit/496037f15b521cc61cdd30a6793ea1888ff8e5f1))
+- **scripts:** add script to seed new address whitelist ([#3753](https://github.com/UMAprotocol/protocol/issues/3753)) ([ec3058b](https://github.com/UMAprotocol/protocol/commit/ec3058b492a5fb9ec56ca8916bbad015ad72c073))
+- add transaction bundler to relayer for better batching ([#3723](https://github.com/UMAprotocol/protocol/issues/3723)) ([51902a8](https://github.com/UMAprotocol/protocol/commit/51902a8cfbbb60dc30b868c5fd3e9fd0f31d48b4))
+
 # [2.15.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.14.3...@uma/common@2.15.0) (2021-12-17)
 
 ### Features

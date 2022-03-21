@@ -41,7 +41,7 @@ describe("gasFeeCalculator", function () {
       const address = ADDRESSES.ETH;
       const amount = toWei("1");
       const discount = 0;
-      const feeLimit = 5;
+      const feeLimit = 1;
       const result = await across.gasFeeCalculator.getDepositFeesDetails(provider, amount, address, feeLimit, discount);
       assert.ok(result.isAmountTooLow);
     });

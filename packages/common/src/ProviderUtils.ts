@@ -33,15 +33,19 @@ const { NODE_RETRY_CONFIG } = process.env;
 // Set web3 to null
 let web3: Web3 | null = null;
 
-export function getNodeUrl(networkName: string, useHttps = false): string {
+export function getNodeUrl(networkName: string, useHttps = false, chainId: number | null = null): string {
   if (isPublicNetwork(networkName) && !networkName.includes("fork")) {
     const infuraApiKey = process.env.INFURA_API_KEY || "e34138b2db5b496ab5cc52319d2f0299";
     const name = networkName.split("_")[0];
 
-    // Note: boba currently has no infura support.
-    if (name === "boba") return process.env.CUSTOM_NODE_URL || "https://mainnet.boba.network/";
+    const chainSpecificUrl = chainId !== null ? process.env[`NODE_URL_${chainId}`] : null;
+    const overrideUrl = chainSpecificUrl || process.env.CUSTOM_NODE_URL;
+
+    // Note: Neither Boba nor xDai currently has no infura support.
+    if (name === "boba") return overrideUrl || "https://mainnet.boba.network/";
+    if (name === "xdai") return overrideUrl || "https://rpc.xdaichain.com/";
     return (
-      process.env.CUSTOM_NODE_URL ||
+      overrideUrl ||
       (useHttps ? `https://${name}.infura.io/v3/${infuraApiKey}` : `wss://${name}.infura.io/ws/v3/${infuraApiKey}`)
     );
   }

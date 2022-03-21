@@ -69,7 +69,7 @@ async function main() {
       `Optional '--time' flag not specified, defaulting to the current Unix timestamp (in seconds): ${queryTime}`
     );
   } else {
-    queryTime = argv.time;
+    queryTime = Number(argv.time);
   }
   console.log(`⏰ Fetching nearest prices for the timestamp: ${new Date(queryTime * 1000).toUTCString()}`);
   const lookback = Math.round(Math.max(getTime() - queryTime, 1800));
