@@ -51,7 +51,7 @@ yarn hardhat node --no-deploy --port 9545
 Run the base contract deployment:
 
 ```sh
-yarn hardhat deploy --network localhost --tags dvm
+yarn hardhat deploy --network localhost
 ```
 
 Run the fixture script to set up the contracts:
