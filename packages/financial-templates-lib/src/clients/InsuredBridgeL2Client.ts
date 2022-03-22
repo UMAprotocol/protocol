@@ -36,7 +36,7 @@ export class InsuredBridgeL2Client {
     readonly chainId: number = 0,
     readonly startingBlockNumber: number = 0,
     readonly endingBlockNumber: number | null = null,
-    readonly redundantL2Web3s: Web3[] = []
+    readonly redundantL2Web3s: Web3[] = [l2Web3]
   ) {
     this.bridgeDepositBox = (new l2Web3.eth.Contract(
       getAbi("BridgeDepositBox"),
@@ -106,6 +106,8 @@ export class InsuredBridgeL2Client {
   }
 
   async getBridgeDepositBoxEvents(eventSearchOptions: EventSearchOptions, eventName: string): Promise<EventData[]> {
+    // Note: the primary l2Web3 is not used here because the main l2Web3 usually uses a combination of the list of
+    // redundant providers. Including both would mean calling the same provider(s) twice.
     const eventsData = await getEventsForMultipleProviders(
       this.redundantL2Web3s,
       getAbi("BridgeDepositBox"),
