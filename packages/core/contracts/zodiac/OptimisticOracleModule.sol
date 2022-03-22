@@ -223,7 +223,6 @@ contract OptimisticOracleModule is Module, Lockable {
     }
 
     function deleteRejectedProposal(uint256 _proposalId) public {
-        // Execute transactions in an approved proposal using exec() function.
         Proposal storage proposal = proposals[_proposalId];
 
         // This will revert if the price has not settled.
