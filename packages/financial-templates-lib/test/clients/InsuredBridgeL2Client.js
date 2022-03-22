@@ -175,7 +175,7 @@ describe("InsuredBridgeL2Client", () => {
       chainId,
       0,
       null,
-      [new Web3(ganache.provider())] // Ganache provider will be different from hardhat provider that is already
+      [web3, new Web3(ganache.provider())] // Ganache provider will be different from hardhat provider that is already
       // connected to the BridgeDepositBox.
     );
 
