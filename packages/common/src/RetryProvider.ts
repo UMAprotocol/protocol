@@ -129,9 +129,9 @@ export class RetryProvider {
         throw new Error(
           `Multiple Errors: \n${errors
             .map(
-              (error, index) =>
+              (error: Error, index) =>
                 `Provider ${index} at ${this.providerCaches[index]?.url || "unknown"}: ${
-                  error.stack || error.toString()
+                  error.stack || error.message || JSON.stringify(error)
                 }`
             )
             .join("\n\n")}`
@@ -139,7 +139,7 @@ export class RetryProvider {
       if (!shouldMoveToNextProvider) await new Promise((resolve) => setTimeout(resolve, delay * 1000)); // Delay only if not moving to a new provider.
 
       // Run function again with a different provider or retry index.
-      return await this._runRetry(fn, nextProviderIndex, nextRetryIndex);
+      return await this._runRetry(fn, nextProviderIndex, nextRetryIndex, errors);
     }
   }
 }
