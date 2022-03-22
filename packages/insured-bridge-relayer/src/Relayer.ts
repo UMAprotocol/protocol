@@ -628,7 +628,7 @@ export class Relayer {
       case RelaySubmitType.Ignore:
         // Only send warning of unprofitable log once. Check if the bot has previously sent the warning for a given
         // depositHash. If it has, then set the log level to debug, else send a warning.
-        this.logger[(await previouslySentUnprofitableLog(relayableDeposit.deposit.depositHash)) ? "debug" : "error"]({
+        this.logger[(await previouslySentUnprofitableLog(relayableDeposit.deposit.depositHash)) ? "debug" : "info"]({
           at: "AcrossRelayer#Relayer",
           message: "Not relaying unprofitable deposit 😖",
           mrkdwn: this._generateMarkdownForNonProfitableRelay(relayableDeposit.deposit, profitabilityInformation),

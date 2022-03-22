@@ -503,7 +503,7 @@ describe("Relayer.ts", function () {
       // As the relayer does not have enough token balance to do the relay (0 minted) should do nothing.
       await relayer.checkForPendingDepositsAndRelay();
       assert.isTrue(lastSpyLogIncludes(spy, "Not relaying"));
-      assert.equal(lastSpyLogLevel(spy), "error");
+      assert.equal(lastSpyLogLevel(spy), "info");
 
       // Running a second time should decrease the log level to "debug" as logs should not be produced multiple times.
       await relayer.checkForPendingDepositsAndRelay();
