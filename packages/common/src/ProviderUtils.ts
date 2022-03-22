@@ -164,9 +164,14 @@ export function getWeb3ByChainId(chainId: number): Web3 {
 export function getRetryWeb3sByChainId(chainId: number): Web3[] {
   const retryConfigJson = process.env[`RETRY_CONFIG_${chainId}`] || "[]";
   const retryConfig: RetryConfig[] = JSON.parse(retryConfigJson);
-  const nodeUrl = process.env[`NODE_URL_${chainId}`];
-  // Construct a new web3 object for each URL that isn't a duplicate of NODE_URL_{chainId}.
-  return retryConfig.filter((config) => config.url !== nodeUrl).map((config) => new Web3(config.url));
+
+  if (retryConfig.length === 0) {
+    const providerUrl = process.env[`NODE_URL_${chainId}`];
+    if (!providerUrl) throw new Error(`No providers found for chain id ${chainId}`);
+    return [new Web3(providerUrl)];
+  }
+
+  return retryConfig.map((config) => new Web3(createBasicProvider([config])));
 }
 
 /**

@@ -107,17 +107,35 @@ export class RetryProvider {
   }
 
   // Returns a Promise that resolves to the wrapped provider.
-  async _runRetry<T>(fn: (provider: Web3Provider) => Promise<T>, providerIndex = 0, retryIndex = 0): Promise<T> {
+  async _runRetry<T>(
+    fn: (provider: Web3Provider) => Promise<T>,
+    providerIndex = 0,
+    retryIndex = 0,
+    previousErrors: Error[] = []
+  ): Promise<T> {
     const provider = this._constructOrGetProvider(providerIndex);
     try {
       return await fn(provider);
-    } catch (error) {
+    } catch (error: any) {
       const { delay, retries } = this.providerCaches[providerIndex];
       // If out of retries, move to next provider.
       const shouldMoveToNextProvider = retries <= retryIndex + 1;
       const nextRetryIndex = shouldMoveToNextProvider ? 0 : retryIndex + 1;
       const nextProviderIndex = shouldMoveToNextProvider ? providerIndex + 1 : providerIndex;
-      if (nextProviderIndex >= this.providerCaches.length) throw error; // No more providers to try.
+      const errors = shouldMoveToNextProvider ? [...previousErrors, error] : previousErrors;
+
+      // If this is the last provider, concatenate all errors and throw them.
+      if (nextProviderIndex >= this.providerCaches.length)
+        throw new Error(
+          `Multiple Errors: \n${errors
+            .map(
+              (error, index) =>
+                `Provider ${index} at ${this.providerCaches[index]?.url || "unknown"}: ${
+                  error.stack || error.toString()
+                }`
+            )
+            .join("\n\n")}`
+        ); // No more providers to try.
       if (!shouldMoveToNextProvider) await new Promise((resolve) => setTimeout(resolve, delay * 1000)); // Delay only if not moving to a new provider.
 
       // Run function again with a different provider or retry index.
