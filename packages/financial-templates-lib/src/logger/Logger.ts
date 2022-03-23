@@ -75,7 +75,7 @@ export function createNewLogger(
   transportsConfig = {},
   botIdentifier = process.env.BOT_IDENTIFIER || "NO_BOT_ID"
 ): AugmentedLogger {
-  const _logger = winston.createLogger({
+  const logger = winston.createLogger({
     level: "debug",
     format: winston.format.combine(
       winston.format(botIdentifyFormatter(botIdentifier))(),
@@ -85,8 +85,7 @@ export function createNewLogger(
     ),
     transports: [...createTransports(transportsConfig), ...injectedTransports],
     exitOnError: !!process.env.EXIT_ON_ERROR,
-  });
-  const logger = _logger as AugmentedLogger;
+  }) as AugmentedLogger;
   logger.isFlushed = true; // The logger should start off in a flushed state of "true". i.e it is ready to be close.
   return logger;
 }
