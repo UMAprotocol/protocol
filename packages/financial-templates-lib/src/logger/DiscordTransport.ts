@@ -10,6 +10,11 @@ export class DiscordTransport extends Transport {
   private readonly defaultWebHookUrl: string | string[];
   private readonly escalationPathWebhookUrls: { [key: string]: string | string[] };
   private readonly postOnNonEscalationPaths: boolean;
+
+  private logQueue: any = [];
+  private backOffDuration = 0;
+  private isQueueBeingExecuted = false;
+
   constructor(
     winstonOpts: TransportOptions,
     ops: {
@@ -59,16 +64,55 @@ export class DiscordTransport extends Transport {
 
       // Send webhook request to each of the configured webhooks upstream. This posts the messages on Discord. Execute
       // these sequentially with a soft delay of 2 seconds between calls to avoid hitting the discord rate limit.
-      if (webHooks.length)
-        for (const webHook of webHooks) {
-          await axios.post(webHook, body);
-          await delay(2);
-        }
+      if (webHooks.length) for (const webHook of webHooks) this.logQueue.push({ webHook, body });
+
+      await this.executeLogQueue(); // Start processing the log que.
     } catch (error) {
       console.error("Discord error", error);
     }
 
     callback();
+  }
+
+  // Processes a queue of logs produced by the transport. Executes sequentially and listens to the response from the
+  // Discord API to back off and sleep if we are exceeding their rate limiting. Sets the parent transports isFlushed
+  // variable to block the bot from closing until the whole queue has been flushed.
+  async executeLogQueue(): Promise<void> {
+    if (this.isQueueBeingExecuted) return; // If the queue is currently being executed, return.
+    this.isQueueBeingExecuted = true; // Set the queue to being executed.
+    // Set the parent isFlushed to false to prevent the logger from closing while the queue is being executed. Note this
+    // is separate variable from the isQueueBeingExecuted flag as this isFlushed is global for the logger instance.
+    (this as any).parent.isFlushed = false;
+
+    // If the previous iteration set a backOffDuration then wait for this duration.
+    if (this.backOffDuration != 0) await delay(this.backOffDuration);
+
+    this.backOffDuration = 0; // Once we've waited the backoff duration it can be set back to 0.
+    while (this.logQueue.length) {
+      let webHook, body;
+      try {
+        // Pop off the first element (oldest) and try send it to discord. If this errors then we are being rate limited.
+        ({ webHook, body } = this.logQueue.shift());
+        await axios.post(webHook, body);
+      } catch (error: any) {
+        // Extract the retry_after from the response. This is the Discord API telling us how long to back off for.
+        this.backOffDuration = error?.response?.data.retry_after;
+        // If they tell us to back off for more than a minute then ignore it and cap at 1 min. This is enough time in
+        // practice to recover from a rate limit while not making the bot hang indefinitely.
+        if (this.backOffDuration > 60) this.backOffDuration = 60;
+        // We removed the element in the shift above, push it back on to the start of the queue to not drop any message.
+        this.logQueue.unshift({ webHook, body });
+        // As we have errored we now need to re-enter the executeLogQuery method. Set isQueueBeingExecuted to false and
+        // re-call the executeLogQuery. This will initiate the backoff delay and then continue to process the queue.
+        this.isQueueBeingExecuted = false;
+        await this.executeLogQueue();
+      }
+    }
+
+    // Only if we get to the end of the function (no errors) then we can set isQueueBeingExecuted to false and can
+    // set the parent isFlushed to true, enabling the bot to close out.
+    this.isQueueBeingExecuted = false;
+    (this as any).parent.isFlushed = true;
   }
 
   // Discord URLS are formatted differently to markdown links produced upstream in the bots. For example, slack links
