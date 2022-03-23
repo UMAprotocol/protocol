@@ -36,7 +36,8 @@ export class InsuredBridgeL2Client {
     readonly chainId: number = 0,
     readonly startingBlockNumber: number = 0,
     readonly endingBlockNumber: number | null = null,
-    readonly redundantL2Web3s: Web3[] = [l2Web3]
+    readonly redundantL2Web3s: Web3[] = [l2Web3],
+    readonly maxBlockTimestampVariance: number = 300 // 5 minutes
   ) {
     this.bridgeDepositBox = (new l2Web3.eth.Contract(
       getAbi("BridgeDepositBox"),
@@ -106,7 +107,27 @@ export class InsuredBridgeL2Client {
   }
 
   async getLatestBlockNumber(): Promise<number> {
-    return Math.min(...(await Promise.all(this.redundantL2Web3s.map((web3) => web3.eth.getBlockNumber()))));
+    const blocks = await Promise.all(this.redundantL2Web3s.map((web3) => web3.eth.getBlock("latest")));
+
+    // Sorts from smallest to largest.
+    const timestamps = blocks.map((block) => Number(block.timestamp));
+
+    // Throw if one of the blocks is too far back in time. This is used to detect providers that are hanging or blocked.
+    if (Math.max(...timestamps) - Math.min(...timestamps) > this.maxBlockTimestampVariance) {
+      const error = new Error(`Timestamps for chainId ${this.chainId} differ by too much time.`);
+
+      this.logger.error({
+        at: "InsuredBridgeL2Client",
+        message: "Timestamps from providers differ by too much time ⏰",
+        chainId: this.chainId,
+        error,
+      });
+      throw error;
+    }
+
+    const blockNumbers = blocks.map((block) => block.number);
+
+    return Math.min(...blockNumbers);
   }
 
   async getBridgeDepositBoxEvents(eventSearchOptions: EventSearchOptions, eventName: string): Promise<EventData[]> {
