@@ -20,7 +20,12 @@ contract OptimisticOracleModule is Module, Lockable {
 
     event OptimisticOracleModuleDeployed(address indexed owner, address indexed avatar, address target);
 
-    event TransactionsProposed(uint256 indexed proposalId, address indexed proposer, uint256 indexed proposalTime);
+    event TransactionsProposed(
+        uint256 indexed proposalId,
+        address indexed proposer,
+        uint256 indexed proposalTime,
+        Proposal proposal
+    );
 
     event TransactionExecuted(uint256 indexed proposalId, uint256 indexed transactionIndex);
 
@@ -186,7 +191,7 @@ contract OptimisticOracleModule is Module, Lockable {
             int256(1e18)
         );
 
-        emit TransactionsProposed(id, proposer, time);
+        emit TransactionsProposed(id, proposer, time, proposal);
     }
 
     function executeProposal(uint256 _proposalId, uint256 _transactionIndex) public payable nonReentrant {
