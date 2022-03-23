@@ -65,7 +65,7 @@ export class InsuredBridgeL2Client {
     // Define a config to bound the queries by.
     const blockSearchConfig = {
       fromBlock: this.firstBlockToSearch,
-      toBlock: this.endingBlockNumber || (await this.l2Web3.eth.getBlockNumber()),
+      toBlock: this.endingBlockNumber || (await this.getLatestBlockNumber()),
     };
     if (blockSearchConfig.fromBlock > blockSearchConfig.toBlock) {
       this.logger.debug({
@@ -103,6 +103,10 @@ export class InsuredBridgeL2Client {
       message: "Insured bridge l2 client updated",
       chainId: this.chainId,
     });
+  }
+
+  async getLatestBlockNumber(): Promise<number> {
+    return Math.min(...(await Promise.all(this.redundantL2Web3s.map((web3) => web3.eth.getBlockNumber()))));
   }
 
   async getBridgeDepositBoxEvents(eventSearchOptions: EventSearchOptions, eventName: string): Promise<EventData[]> {
