@@ -59,7 +59,10 @@ contract OptimisticOracleModule is Module, Lockable {
         bool status;
     }
 
-    Proposal[] public proposals;
+    mapping(uint256 => bytes32) proposalHashes;
+    uint256[] public proposalIds;
+
+    // Proposal[] public proposals;
 
     /**
      * @notice Construct Optimistic Oracle Module.
@@ -144,24 +147,24 @@ contract OptimisticOracleModule is Module, Lockable {
     }
 
     function proposeTransactions(Transaction[] memory _transactions, bytes memory _explanation) public nonReentrant {
-        // Create a proposal with a bundle of transactions.
-        // note: Based in part on the UMA Governor contract.
-        // https://github.com/UMAprotocol/protocol/blob/master/packages/core/contracts/oracle/implementation/Governor.sol
-        // note: Pptional explanation explains the intent of the transactions to make comprehension easier.
-        uint256 id = proposals.length;
+        // note: Optional explanation explains the intent of the transactions to make comprehension easier.
+        uint256 id = proposalIds.length;
         uint256 time = getCurrentTime();
         address proposer = msg.sender;
 
-        // Add a zero-initialized element to the proposals array.
-        Proposal storage proposal = proposals.push();
+        // Set up ancillary data in
+        bytes memory ancillaryData = _explanation;
+
+        // Create proposal in memory to emit in an event.
+        Proposal memory proposal;
         proposal.requestTime = time;
-        proposal.ancillaryData = _explanation;
 
         // Construct the ancillary data.
-        AncillaryData.appendKeyValueUint(proposal.ancillaryData, "id", id);
-        AncillaryData.appendKeyValueAddress(proposal.ancillaryData, "module", address(this));
+        AncillaryData.appendKeyValueUint(ancillaryData, "id", id);
+        AncillaryData.appendKeyValueAddress(ancillaryData, "module", address(this));
+        proposal.ancillaryData = ancillaryData;
 
-        // Initialize the transaction array.
+        // Add transactions to proposal in memory.
         for (uint256 i = 0; i < _transactions.length; i++) {
             require(_transactions[i].to != address(0), "The `to` address cannot be 0x0");
             // If the transaction has any data with it the recipient must be a contract, not an EOA.
@@ -170,6 +173,18 @@ contract OptimisticOracleModule is Module, Lockable {
             }
             proposal.transactions.push(_transactions[i]);
         }
+
+        // Add transaction data to the proposal data to be hashed and stored in the contract.
+        bytes memory proposalData = abi.encodePacked(ancillaryData);
+
+        for (uint256 i = 0; i < _transactions.length; i++) {
+            proposalData = bytes.concat(abi.encodePacked(_transactions[i].to));
+            proposalData = bytes.concat(abi.encodePacked(_transactions[i].value));
+            proposalData = bytes.concat(abi.encodePacked(_transactions[i].data));
+            proposalData = bytes.concat(abi.encodePacked(_transactions[i].operation));
+        }
+
+        proposalHashes[id] = keccak256(abi.encodePacked(proposalData));
 
         // Get the bond from the proposer and approve the bond and final fee to be used by the oracle.
         uint256 totalBond = finalFee + bond;
@@ -181,7 +196,7 @@ contract OptimisticOracleModule is Module, Lockable {
         skinnyOptimisticOracle.requestAndProposePriceFor(
             identifier,
             uint32(time),
-            proposal.ancillaryData,
+            ancillaryData,
             collateral,
             0,
             bond,
