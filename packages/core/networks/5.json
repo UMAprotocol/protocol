@@ -38,5 +38,13 @@
   {
     "contractName": "Multicall2",
     "address": "0x5ba1e12693dc8f9c48aad8770482f4739beed696"
+  },
+  {
+    "contractName": "Store",
+    "address": "0xb1860c8C8B8d20FC2f84dF12B7905C6f11fe050D"
+  },
+  {
+    "contractName": "AddressWhitelist",
+    "address": "0xb06C61fcc074Efb8cf7Fd707bC3bd8ab1Aa5A4E9"
   }
 ]
