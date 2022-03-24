@@ -89,7 +89,7 @@ export class DiscordTransport extends Transport {
   // Processes a queue of logs produced by the transport. Executes sequentially and listens to the response from the
   // Discord API to back off and sleep if we are exceeding their rate limiting. Sets the parent transports isFlushed
   // variable to block the bot from closing until the whole queue has been flushed.
-  async executeLogQueue(): Promise<void> {
+  async executeLogQueue(backOffDuration = 0): Promise<void> {
     if (this.isQueueBeingExecuted) return; // If the queue is currently being executed, return.
     this.isQueueBeingExecuted = true; // Set the queue to being executed.
     // Set the parent isFlushed to false to prevent the logger from closing while the queue is being executed. Note this
@@ -97,9 +97,8 @@ export class DiscordTransport extends Transport {
     (this as any).parent.isFlushed = false;
 
     // If the previous iteration set a backOffDuration then wait for this duration.
-    if (this.backOffDuration != 0) await delay(this.backOffDuration);
+    if (backOffDuration != 0) await delay(backOffDuration);
 
-    this.backOffDuration = 0; // Once we've waited the backoff duration it can be set back to 0.
     while (this.logQueue.length) {
       try {
         // Pop off the first element (oldest) and try send it to discord. If this errors then we are being rate limited.
@@ -107,15 +106,15 @@ export class DiscordTransport extends Transport {
         this.logQueue.shift(); // If the request does not fail remove it from the log queue as having been executed.
       } catch (error: any) {
         // Extract the retry_after from the response. This is the Discord API telling us how long to back off for.
-        this.backOffDuration = error?.response?.data.retry_after;
+        let _backOffDuration = error?.response?.data.retry_after;
         // If they tell us to back off for more than a minute then ignore it and cap at 1 min. This is enough time in
         // practice to recover from a rate limit while not making the bot hang indefinitely.
-        if (this.backOffDuration > 60) this.backOffDuration = 60;
+        if (_backOffDuration > 60) _backOffDuration = 60;
         // We removed the element in the shift above, push it back on to the start of the queue to not drop any message.
         // As we have errored we now need to re-enter the executeLogQuery method. Set isQueueBeingExecuted to false and
         // re-call the executeLogQuery. This will initiate the backoff delay and then continue to process the queue.
         this.isQueueBeingExecuted = false;
-        await this.executeLogQueue();
+        await this.executeLogQueue(_backOffDuration);
       }
     }
 
