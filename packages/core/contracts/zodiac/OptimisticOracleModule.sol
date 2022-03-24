@@ -169,7 +169,7 @@ contract OptimisticOracleModule is Module, Lockable {
             if (_transactions[i].data.length > 0) {
                 require(_isContract(_transactions[i].to), "EOA can't accept tx with data");
             }
-            proposal.transactions.push(_transactions[i]);
+            proposal.transactions[i] = _transactions[i];
         }
 
         // Add transaction data to the proposal data to be hashed and stored in the contract.
@@ -294,7 +294,7 @@ contract OptimisticOracleModule is Module, Lockable {
         bytes memory _ancillaryData
     ) public {
         // This will revert if the price has not settled.
-        int256 price = _getOracle().getPrice(identifier, proposal.requestTime, proposal.ancillaryData);
+        int256 price = _getOracle().getPrice(identifier, _originalTime, _ancillaryData);
 
         // Check that proposal was rejected.
         require(price == 0, "Proposal was not rejected");
