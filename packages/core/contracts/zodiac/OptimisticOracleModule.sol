@@ -62,8 +62,6 @@ contract OptimisticOracleModule is Module, Lockable {
     mapping(uint256 => bytes32) proposalHashes;
     uint256 prevProposalId;
 
-    // Proposal[] public proposals;
-
     /**
      * @notice Construct Optimistic Oracle Module.
      * @param _finder Finder address.
