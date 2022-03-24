@@ -208,11 +208,43 @@ contract OptimisticOracleModule is Module, Lockable {
     function executeProposal(
         uint256 _proposalId,
         Transaction[] memory _transactions,
-        bytes memory _ancillaryData,
+        bytes memory _explanation,
         uint256 _originalTime
     ) public payable nonReentrant {
+        // Recreate the proposal hash from the inputs and check that it matches the stored proposal hash.
+        uint256 id = _proposalId;
+        uint256 time = _originalTime;
+
+        // Create proposal in memory.
+        Proposal memory proposal;
+        proposal.requestTime = time;
+
+        // Construct the ancillary data.
+        bytes memory ancillaryData = _explanation;
+        AncillaryData.appendKeyValueUint(ancillaryData, "id", id);
+        AncillaryData.appendKeyValueAddress(ancillaryData, "module", address(this));
+        proposal.ancillaryData = ancillaryData;
+
+        // Add transactions to proposal in memory.
+        for (uint256 i = 0; i < _transactions.length; i++) {
+            proposal.transactions[i] = _transactions[i];
+        }
+
+        // Add transaction data to the proposal data to be hashed and stored in the contract.
+        bytes memory proposalData = abi.encodePacked(ancillaryData);
+
+        for (uint256 i = 0; i < _transactions.length; i++) {
+            proposalData = bytes.concat(abi.encodePacked(_transactions[i].to));
+            proposalData = bytes.concat(abi.encodePacked(_transactions[i].value));
+            proposalData = bytes.concat(abi.encodePacked(_transactions[i].data));
+            proposalData = bytes.concat(abi.encodePacked(_transactions[i].operation));
+        }
+
+        // This will reject the transaction if the proposal hash generated from the inputs does not match the stored proposal hash.
+        require(proposalHashes[id] == keccak256(abi.encodePacked(proposalData)), "proposal hash does not match");
+
         // This will revert if the price has not settled.
-        int256 price = _getOracle().getPrice(identifier, _originalTime, _ancillaryData);
+        int256 price = _getOracle().getPrice(identifier, _originalTime, ancillaryData);
         require(price == 1e18, "Proposal was rejected");
 
         for (uint256 i = 0; i < _transactions.length; i++) {
