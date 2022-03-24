@@ -207,39 +207,11 @@ contract OptimisticOracleModule is Module, Lockable {
         emit TransactionsProposed(id, proposer, time, proposal);
     }
 
-    // function executeProposal(uint256 _proposalId, uint256 _transactionIndex) public payable nonReentrant {
-    //     // Execute transactions in an approved proposal using exec() function.
-    //     Proposal storage proposal = proposals[_proposalId];
-
-    //     // This will revert if the price has not settled.
-    //     int256 price = _getOracle().getPrice(identifier, proposal.requestTime, proposal.ancillaryData);
-
-    //     Transaction memory transaction = proposal.transactions[_transactionIndex];
-
-    //     require(
-    //         _transactionIndex == 0 || proposal.transactions[_transactionIndex - 1].to == address(0),
-    //         "Previous tx not yet executed"
-    //     );
-    //     require(transaction.to != address(0), "Tx already executed");
-    //     require(price == 1e18, "Proposal was rejected");
-    //     require(msg.value == transaction.value, "Must send exact amount of ETH");
-
-    //     // Delete the transaction before execution to avoid any potential re-entrancy issues.
-    //     delete proposal.transactions[_transactionIndex];
-
-    //     require(
-    //         exec(transaction.to, transaction.value, transaction.data, transaction.operation),
-    //         "Failed to execute the transaction"
-    //     );
-    //     emit TransactionExecuted(_proposalId, _transactionIndex);
-    // }
-
     function executeProposal(
         uint256 _proposalId,
         Transaction[] memory _transactions,
         bytes memory _ancillaryData,
-        uint256 _originalTime,
-        address _originalProposer
+        uint256 _originalTime
     ) public payable nonReentrant {
         // This will revert if the price has not settled.
         int256 price = _getOracle().getPrice(identifier, _originalTime, _ancillaryData);
@@ -262,31 +234,11 @@ contract OptimisticOracleModule is Module, Lockable {
         }
     }
 
-    // function deleteProposal(uint256 _proposalId) public onlyOwner {
-    //     // Delete a proposal that governance decided not to execute.
-    //     delete proposals[_proposalId];
-    //     emit ProposalDeleted(_proposalId);
-    // }
-
     function deleteProposal(uint256 _proposalId) public onlyOwner {
         // Delete a proposal that governance decided not to execute.
         delete proposalHashes[_proposalId];
         emit ProposalDeleted(_proposalId);
     }
-
-    // function deleteRejectedProposal(uint256 _proposalId) public {
-    //     Proposal storage proposal = proposals[_proposalId];
-
-    //     // This will revert if the price has not settled.
-    //     int256 price = _getOracle().getPrice(identifier, proposal.requestTime, proposal.ancillaryData);
-
-    //     // Check that proposal was rejected.
-    //     require(price == 0, "Proposal was not rejected");
-
-    //     // Delete the proposal.
-    //     delete proposals[_proposalId];
-    //     emit ProposalDeleted(_proposalId);
-    // }
 
     function deleteRejectedProposal(
         uint256 _proposalId,
