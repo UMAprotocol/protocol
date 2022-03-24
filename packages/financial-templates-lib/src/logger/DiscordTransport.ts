@@ -101,12 +101,10 @@ export class DiscordTransport extends Transport {
 
     this.backOffDuration = 0; // Once we've waited the backoff duration it can be set back to 0.
     while (this.logQueue.length) {
-      let webHook, body;
       try {
         // Pop off the first element (oldest) and try send it to discord. If this errors then we are being rate limited.
-        // @ts-ignore: Object is possibly 'undefined'.
-        ({ webHook, body } = this.logQueue.shift());
-        await axios.post(webHook, body);
+        await axios.post(this.logQueue[0].webHook, this.logQueue[0].body);
+        this.logQueue.shift(); // If the request does not fail remove it from the log queue as having been executed.
       } catch (error: any) {
         // Extract the retry_after from the response. This is the Discord API telling us how long to back off for.
         this.backOffDuration = error?.response?.data.retry_after;
@@ -114,7 +112,6 @@ export class DiscordTransport extends Transport {
         // practice to recover from a rate limit while not making the bot hang indefinitely.
         if (this.backOffDuration > 60) this.backOffDuration = 60;
         // We removed the element in the shift above, push it back on to the start of the queue to not drop any message.
-        this.logQueue.unshift({ webHook, body });
         // As we have errored we now need to re-enter the executeLogQuery method. Set isQueueBeingExecuted to false and
         // re-call the executeLogQuery. This will initiate the backoff delay and then continue to process the queue.
         this.isQueueBeingExecuted = false;
