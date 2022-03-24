@@ -22,7 +22,6 @@ export class DiscordTransport extends Transport {
   private readonly postOnNonEscalationPaths: boolean;
 
   private logQueue: QueueElement[];
-  private backOffDuration = 0;
   private isQueueBeingExecuted = false;
 
   constructor(
