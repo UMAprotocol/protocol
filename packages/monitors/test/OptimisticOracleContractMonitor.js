@@ -244,10 +244,6 @@ describe("OptimisticOracleContractMonitor.js", function () {
     assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/address/${optimisticRequester.options.address}`));
     assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/tx/${requestTxn.transactionHash}`));
 
-    console.log(
-      "TARGET",
-      `${sampleBaseUIUrl}/request?transactionHash=${requestTxn.transactionHash}&chainId=${contractProps.chainId}`
-    );
     assert.isTrue(
       lastSpyLogIncludes(
         spy,

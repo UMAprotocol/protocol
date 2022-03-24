@@ -6,12 +6,22 @@ import axios from "axios";
 
 type TransportOptions = ConstructorParameters<typeof Transport>[0];
 
+interface Body {
+  username: string;
+  avatar_url: string;
+  embeds: { title: string; description: string; color: number }[];
+}
+interface QueueElement {
+  body: Body;
+  webHook: string;
+}
+
 export class DiscordTransport extends Transport {
   private readonly defaultWebHookUrl: string | string[];
   private readonly escalationPathWebhookUrls: { [key: string]: string | string[] };
   private readonly postOnNonEscalationPaths: boolean;
 
-  private logQueue: any = [];
+  private logQueue: QueueElement[];
   private backOffDuration = 0;
   private isQueueBeingExecuted = false;
 
@@ -27,6 +37,8 @@ export class DiscordTransport extends Transport {
     this.defaultWebHookUrl = ops.defaultWebHookUrl;
     this.escalationPathWebhookUrls = ops.escalationPathWebhookUrls ?? {};
     this.postOnNonEscalationPaths = ops.postOnNonEscalationPaths ?? true;
+
+    this.logQueue = [];
   }
 
   // Note: info must be any because that's what the base class uses.
@@ -92,6 +104,7 @@ export class DiscordTransport extends Transport {
       let webHook, body;
       try {
         // Pop off the first element (oldest) and try send it to discord. If this errors then we are being rate limited.
+        // @ts-ignore: Object is possibly 'undefined'.
         ({ webHook, body } = this.logQueue.shift());
         await axios.post(webHook, body);
       } catch (error: any) {

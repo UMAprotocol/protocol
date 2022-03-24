@@ -128,6 +128,7 @@ describe("index.js", function () {
           level: "debug",
           transports: [new SpyTransport({ level: "debug" }, { spy: spy })],
         });
+        spyLogger.isFlushed = true; // exit instantly when requested to do so.
 
         // Create a new synthetic token
         syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", 18).send({ from: contractCreator });
