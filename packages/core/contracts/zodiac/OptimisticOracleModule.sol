@@ -60,7 +60,7 @@ contract OptimisticOracleModule is Module, Lockable {
     }
 
     mapping(uint256 => bytes32) proposalHashes;
-    uint256[] public proposalIds;
+    uint256 prevProposalId;
 
     // Proposal[] public proposals;
 
@@ -148,7 +148,7 @@ contract OptimisticOracleModule is Module, Lockable {
 
     function proposeTransactions(Transaction[] memory _transactions, bytes memory _explanation) public nonReentrant {
         // note: Optional explanation explains the intent of the transactions to make comprehension easier.
-        uint256 id = proposalIds.length;
+        uint256 id = prevProposalId + 1;
         uint256 time = getCurrentTime();
         address proposer = msg.sender;
 
