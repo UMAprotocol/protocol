@@ -12,6 +12,7 @@ import "../oracle/interfaces/SkinnyOptimisticOracleInterface.sol";
 import "../oracle/interfaces/OracleAncillaryInterface.sol";
 import "../common/implementation/Lockable.sol";
 import "../common/interfaces/AddressWhitelistInterface.sol";
+import "../oracle/interfaces/IdentifierWhitelistInterface.sol";
 import "../common/implementation/AncillaryData.sol";
 import "../oracle/interfaces/StoreInterface.sol";
 
@@ -101,6 +102,7 @@ contract OptimisticOracleModule is Module, Lockable {
         collateral = IERC20(_collateral);
         bond = _bond;
         rules = _rules;
+        require(_getIdentifierWhitelist().isIdentifierSupported(bytes32(_identifier)), "identifier not supported");
         identifier = _identifier;
         require(_liveness > 0, "liveness can't be 0");
         liveness = _liveness;
@@ -306,6 +308,10 @@ contract OptimisticOracleModule is Module, Lockable {
 
     function _getCollateralWhitelist() internal view returns (AddressWhitelistInterface) {
         return AddressWhitelistInterface(finder.getImplementationAddress(OracleInterfaces.CollateralWhitelist));
+    }
+
+    function _getIdentifierWhitelist() internal view returns (IdentifierWhitelistInterface) {
+        return IdentifierWhitelistInterface(finder.getImplementationAddress(OracleInterfaces.CollateralWhitelist));
     }
 
     function _getStore() internal view returns (StoreInterface) {
