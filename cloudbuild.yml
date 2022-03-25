@@ -1,7 +1,7 @@
 steps:
   - name: "gcr.io/cloud-builders/docker"
-    args: ["build", "-t", "gcr.io/build-protocol-6815/protocol", "."]
+    args: ["build", "-t", "gcr.io/images-protocol-6450/protocol", "."]
 options:
   machineType: "E2_HIGHCPU_32"
 timeout: 3600s
-images: ["gcr.io/build-protocol-6815/protocol"]
+images: ["gcr.io/images-protocol-6450/protocol"]
