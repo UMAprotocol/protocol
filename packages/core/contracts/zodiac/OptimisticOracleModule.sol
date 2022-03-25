@@ -102,7 +102,7 @@ contract OptimisticOracleModule is Module, Lockable {
         collateral = IERC20(_collateral);
         bond = _bond;
         rules = _rules;
-        require(_getIdentifierWhitelist().isIdentifierSupported(bytes32(_identifier)), "identifier not supported");
+        require(_getIdentifierWhitelist().isIdentifierSupported(_identifier), "identifier not supported");
         identifier = _identifier;
         require(_liveness > 0, "liveness can't be 0");
         liveness = _liveness;
@@ -311,7 +311,7 @@ contract OptimisticOracleModule is Module, Lockable {
     }
 
     function _getIdentifierWhitelist() internal view returns (IdentifierWhitelistInterface) {
-        return IdentifierWhitelistInterface(finder.getImplementationAddress(OracleInterfaces.CollateralWhitelist));
+        return IdentifierWhitelistInterface(finder.getImplementationAddress(OracleInterfaces.IdentifierWhitelist));
     }
 
     function _getStore() internal view returns (StoreInterface) {

@@ -138,7 +138,7 @@ describe("OptimisticOracleModule", () => {
           utf8ToHex("Unapproved"),
           liveness,
           timer.options.address
-        )
+        ).send({ from: owner })
       )
     );
   });
