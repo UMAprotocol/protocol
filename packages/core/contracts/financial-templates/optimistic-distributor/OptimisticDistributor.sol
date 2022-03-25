@@ -143,6 +143,7 @@ abstract contract OptimisticDistributor is Lockable {
 
     /**
      * @notice Allows any caller to delete distribution that was rejected by the Optimistic Oracle.
+     */
     function deleteRejectedDistribution(uint256 proposalIndex) external virtual;
 
     /********************************************
