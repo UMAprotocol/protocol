@@ -142,4 +142,20 @@ describe("OptimisticOracleModule", () => {
       )
     );
   });
+
+  it("Valid proposals should be hashed and stored", async function () {});
+
+  it("Invalid proposals should revert", async function () {});
+
+  it("Owner can update stored contract parameters", async function () {});
+
+  it("Non-owners can not update stored contract parameters", async function () {});
+
+  it("Proposals can be disputed", async function () {});
+
+  it("Approved proposals can be executed by any address", async function () {});
+
+  it("Rejected proposals can not be executed", async function () {});
+
+  it("Rejected proposals can be deleted by any address", async function () {});
 });

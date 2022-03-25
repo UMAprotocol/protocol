@@ -138,6 +138,7 @@ contract OptimisticOracleModule is Module, Lockable {
 
     function setIdentifier(bytes32 _identifier) public onlyOwner {
         // Set identifier which is used along with the rules to determine if transactions are valid.
+        require(_getIdentifierWhitelist().isIdentifierSupported(_identifier), "identifier not supported");
         identifier = _identifier;
     }
 
