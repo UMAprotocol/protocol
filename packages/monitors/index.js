@@ -16,6 +16,7 @@ const {
   delay,
   multicallAddressMap,
   OptimisticOracleType,
+  waitForLogger,
 } = require("@uma/financial-templates-lib");
 
 // Monitor modules to report on client state changes.
@@ -395,6 +396,7 @@ async function run({
       if (pollingDelay === 0) {
         logger.debug({ at: "Monitor#index", message: "End of serverless execution loop - terminating process" });
         await delay(5); // Set a delay to let the transports flush fully.
+        await waitForLogger(logger); // Blocks exiting until the Discord transport is fully flushed.
         break;
       }
       logger.debug({ at: "Monitor#index", message: "End of execution loop - waiting polling delay" });

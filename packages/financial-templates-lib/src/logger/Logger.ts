@@ -31,15 +31,14 @@ import winston from "winston";
 import type { Logger as _Logger, LogEntry } from "winston";
 import type * as Transport from "winston-transport";
 import { createTransports } from "./Transports";
+import { delay } from "../helpers/delay";
 
 // This async function can be called by a bot if the log message is generated right before the process terminates.
-// By calling `await waitForLogger(Logger)`, with the local Logger instance, the process will wait for all upstream
-// transports to clear. This enables slower transports like slack to still send their messages before the process yields.
-// Note: typescript infers the return type to be unknown. This is fine, as the return type should be void and unused.
-export async function waitForLogger(logger: _Logger): Promise<unknown> {
-  const loggerDone = new Promise((resolve) => logger.on("finish", resolve));
-  logger.end();
-  return await loggerDone;
+// This method will check if the AugmentedLogger's isFlushed is set to true. If not, it will block until such time
+// that it has been set to true. Note that each blocking transport should implement this isFlushed bool to prevent
+// the logger from closing before all logs have been propagated.
+export async function waitForLogger(logger: AugmentedLogger) {
+  while (!logger.isFlushed) await delay(0.5); // While the logger is not flushed, wait for it to be flushed.
 }
 
 // If the log entry contains an error then extract the stack trace as the error message.
@@ -67,12 +66,16 @@ function botIdentifyFormatter(botIdentifier: string) {
   };
 }
 
+export interface AugmentedLogger extends _Logger {
+  isFlushed: boolean;
+}
+
 export function createNewLogger(
   injectedTransports: Transport[] = [],
   transportsConfig = {},
   botIdentifier = process.env.BOT_IDENTIFIER || "NO_BOT_ID"
-): _Logger {
-  return winston.createLogger({
+): AugmentedLogger {
+  const logger = winston.createLogger({
     level: "debug",
     format: winston.format.combine(
       winston.format(botIdentifyFormatter(botIdentifier))(),
@@ -82,7 +85,9 @@ export function createNewLogger(
     ),
     transports: [...createTransports(transportsConfig), ...injectedTransports],
     exitOnError: !!process.env.EXIT_ON_ERROR,
-  });
+  }) as AugmentedLogger;
+  logger.isFlushed = true; // The logger should start off in a flushed state of "true". i.e it is ready to be close.
+  return logger;
 }
 
-export const Logger = createNewLogger();
+export const Logger: AugmentedLogger = createNewLogger();
