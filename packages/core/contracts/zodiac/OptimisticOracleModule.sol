@@ -56,12 +56,11 @@ contract OptimisticOracleModule is Module, Lockable {
     struct Proposal {
         Transaction[] transactions;
         uint256 requestTime;
-        bytes ancillaryData;
-        bool status;
+        bytes explanation;
     }
 
     mapping(uint256 => bytes32) proposalHashes;
-    uint256 prevProposalId;
+    uint256 public prevProposalId;
 
     /**
      * @notice Construct Optimistic Oracle Module.
@@ -159,9 +158,9 @@ contract OptimisticOracleModule is Module, Lockable {
 
         // Construct the ancillary data.
         bytes memory ancillaryData = _explanation;
+        proposal.explanation = _explanation;
         AncillaryData.appendKeyValueUint(ancillaryData, "id", id);
         AncillaryData.appendKeyValueAddress(ancillaryData, "module", address(this));
-        proposal.ancillaryData = ancillaryData;
 
         // Add transactions to proposal in memory.
         for (uint256 i = 0; i < _transactions.length; i++) {
@@ -226,7 +225,6 @@ contract OptimisticOracleModule is Module, Lockable {
         bytes memory ancillaryData = _explanation;
         AncillaryData.appendKeyValueUint(ancillaryData, "id", id);
         AncillaryData.appendKeyValueAddress(ancillaryData, "module", address(this));
-        proposal.ancillaryData = ancillaryData;
 
         // Add transactions to proposal in memory.
         for (uint256 i = 0; i < _transactions.length; i++) {

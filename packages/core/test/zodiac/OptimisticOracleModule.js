@@ -1,6 +1,6 @@
 const { assert } = require("chai");
 const hre = require("hardhat");
-const { web3, getContract /* assertEventEmitted, findEvent */ } = hre;
+const { web3, getContract, assertEventEmitted /* , findEvent */ } = hre;
 const {
   didContractThrow,
   interfaceName,
@@ -21,6 +21,7 @@ const MockOracle = getContract("MockOracleAncillary");
 const Timer = getContract("Timer");
 const Store = getContract("Store");
 const ERC20 = getContract("ExpandedERC20");
+const TestnetERC20 = getContract("TestnetERC20");
 
 const finalFee = toWei("100");
 const liveness = 7200;
@@ -30,7 +31,7 @@ const totalBond = toBN(finalFee).add(toBN(bond)).toString();
 const rules = "https://insert.gist.text.url";
 
 describe("OptimisticOracleModule", () => {
-  let accounts, owner, proposer, disputer /* , executor*/;
+  let accounts, owner, proposer, disputer, rando /* , executor*/;
 
   let timer,
     finder,
@@ -40,7 +41,13 @@ describe("OptimisticOracleModule", () => {
     bondToken,
     mockOracle,
     // optimisticOracle,
-    optimisticOracleModule;
+    optimisticOracleModule,
+    testToken,
+    testToken2;
+
+  const constructTransferTransaction = (destination, amount) => {
+    return testToken.methods.transfer(destination, amount).encodeABI();
+  };
 
   // const advanceTime = async (timeIncrease) => {
   //   await timer.methods
@@ -50,7 +57,7 @@ describe("OptimisticOracleModule", () => {
 
   before(async function () {
     accounts = await web3.eth.getAccounts();
-    [owner, proposer, disputer /* , executor*/] = accounts;
+    [owner, proposer, disputer, rando /* , executor*/] = accounts;
 
     await runDefaultFixture(hre);
 
@@ -60,6 +67,8 @@ describe("OptimisticOracleModule", () => {
     store = await Store.deployed();
     identifierWhitelist = await IdentifierWhitelist.deployed();
     // optimisticOracle = await OptimisticOracle.deployed();
+    testToken = await TestnetERC20.new("Test", "TEST", 18).send({ from: accounts[0] });
+    testToken2 = await TestnetERC20.new("Test2", "TEST2", 18).send({ from: accounts[0] });
 
     // Deploy new MockOracle so that OptimisticOracle disputes can make price requests to it:
     mockOracle = await MockOracle.new(finder.options.address, timer.options.address).send({ from: owner });
@@ -143,9 +152,68 @@ describe("OptimisticOracleModule", () => {
     );
   });
 
-  it("Valid proposals should be hashed and stored", async function () {});
+  it("Valid proposals should be hashed and stored", async function () {
+    // Issue some test tokens to the governor address.
+    await testToken.methods.allocateTo(owner, toWei("1")).send({ from: accounts[0] });
+    await testToken2.methods.allocateTo(owner, toWei("4")).send({ from: accounts[0] });
 
-  it("Invalid proposals should revert", async function () {});
+    // Construct the transaction data to send the newly minted tokens to proposer and another address.
+    const txnData1 = constructTransferTransaction(proposer, toWei("1"));
+    const txnData2 = constructTransferTransaction(proposer, toWei("2"));
+    const txnData3 = constructTransferTransaction(rando, toWei("2"));
+
+    // Send the proposal with multiple transactions.
+    const prevProposalId = await optimisticOracleModule.methods.prevProposalId().call();
+    const id = prevProposalId + 1;
+
+    const transactions = [
+      { to: testToken.options.address, value: 0, data: txnData1 },
+      { to: testToken.options.address, value: 0, data: txnData2 },
+      { to: testToken.options.address, value: 0, data: txnData3 },
+    ];
+
+    const explanation = "These transactions were approved by majority vote on Snapshot.";
+
+    let receipt = await optimisticOracleModule.methods
+      .proposeTransactions(transactions, explanation)
+      .send({ from: proposer });
+
+    const proposalTime = parseInt(await optimisticOracleModule.methods.getCurrentTime().call());
+    // const expiryTime = proposalTime + liveness;
+
+    await assertEventEmitted(
+      receipt,
+      optimisticOracleModule,
+      "TransactionsProposed",
+      (event) =>
+        event.id === id &&
+        event.proposer === proposer &&
+        event.time === proposalTime &&
+        event.proposal === { transactions, proposalTime, explanation }
+    );
+
+    // Check to make sure that the tokens get transferred at the time of each successive execution.
+    // const startingBalance1 = toBN(await testToken.methods.balanceOf(proposer).call());
+    // const startingBalance2 = toBN(await testToken.methods.balanceOf(rando).call());
+    // await optimisticOracleModule.methods.executeProposal(
+    //     id,
+    //     transactions,
+    //     explanation,
+    //     proposalTime
+    //   ).send({ from: executor });
+    // assert.equal(
+    //   (await testToken.methods.balanceOf(proposer).call()).toString(),
+    //   startingBalance1.add(toBN(toWei("3"))).toString()
+    // );
+    // assert.equal(
+    //   (await testToken.methods.balanceOf(rando).call()).toString(),
+    //   startingBalance2.add(toBN(toWei("2"))).toString()
+    // );
+  });
+
+  it("Can not send transactions to the 0x0 address", async function () {});
+
+  it("Can not send transactions with data to an EOA", async function () {});
 
   it("Owner can update stored contract parameters", async function () {});
 
