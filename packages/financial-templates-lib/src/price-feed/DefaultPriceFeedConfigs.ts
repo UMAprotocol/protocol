@@ -708,8 +708,7 @@ export const defaultConfigs: { [name: string]: { type: string; [key: string]: an
     historicalTimestampBuffer: 60,
     medianizedFeeds: [
       { type: "cryptowatch", exchange: "binance", pair: "oceanusdt" },
-      { type: "cryptowatch", exchange: "kraken", pair: "oceanusd" },
-      { type: "cryptowatch", exchange: "bitz", pair: "oceanusdt" },
+      { type: "cryptowatch", exchange: "gateio", pair: "oceanusdt" },
     ],
   },
   OCEANUSD: {
@@ -718,8 +717,7 @@ export const defaultConfigs: { [name: string]: { type: string; [key: string]: an
     historicalTimestampBuffer: 60,
     medianizedFeeds: [
       { type: "cryptowatch", exchange: "binance", pair: "oceanusdt" },
-      { type: "cryptowatch", exchange: "kraken", pair: "oceanusd" },
-      { type: "cryptowatch", exchange: "bitz", pair: "oceanusdt" },
+      { type: "cryptowatch", exchange: "gateio", pair: "oceanusdt" },
     ],
   },
   USDBTC_18DEC: {
