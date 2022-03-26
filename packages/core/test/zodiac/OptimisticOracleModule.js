@@ -152,7 +152,7 @@ describe("OptimisticOracleModule", () => {
     );
   });
 
-  it("Valid proposals should be hashed and stored", async function () {
+  it("Valid proposals should be hashed and stored and emit event", async function () {
     // Issue some test tokens to the governor address.
     await testToken.methods.allocateTo(owner, toWei("3")).send({ from: accounts[0] });
     await testToken2.methods.allocateTo(owner, toWei("2")).send({ from: accounts[0] });
@@ -164,8 +164,8 @@ describe("OptimisticOracleModule", () => {
     const operation = 0; // 0 for call, 1 for delegatecall
 
     // Send the proposal with multiple transactions.
-    // const prevProposalId = await optimisticOracleModule.methods.prevProposalId().call();
-    // const id = prevProposalId + 1;
+    const prevProposalId = parseInt(await optimisticOracleModule.methods.prevProposalId().call());
+    const id = prevProposalId + 1;
 
     const transactions = [
       { to: testToken.options.address, value: 0, data: txnData1, operation },
@@ -180,6 +180,10 @@ describe("OptimisticOracleModule", () => {
       .send({ from: proposer });
 
     console.log(receipt);
+
+    const proposalHash = await optimisticOracleModule.methods.proposalHashes(id).call();
+
+    console.log("Proposal hash:", proposalHash);
 
     // const proposalTime = parseInt(await optimisticOracleModule.methods.getCurrentTime().call());
     // const expiryTime = proposalTime + liveness;

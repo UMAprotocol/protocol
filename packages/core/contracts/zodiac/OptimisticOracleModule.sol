@@ -59,7 +59,7 @@ contract OptimisticOracleModule is Module, Lockable {
         bytes explanation;
     }
 
-    mapping(uint256 => bytes32) proposalHashes;
+    mapping(uint256 => bytes32) public proposalHashes;
     uint256 public prevProposalId;
 
     /**
