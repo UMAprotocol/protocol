@@ -7,6 +7,7 @@ const {
   runDefaultFixture,
   TokenRolesEnum /* ZERO_ADDRESS */,
 } = require("@uma/common");
+// const { isEmpty } = require("lodash");
 const { utf8ToHex, toWei, toBN /* randomHex, toChecksumAddress */ } = web3.utils;
 
 // Tested contracts
@@ -182,8 +183,9 @@ describe("OptimisticOracleModule", () => {
     console.log(receipt);
 
     const proposalHash = await optimisticOracleModule.methods.proposalHashes(id).call();
-
-    console.log("Proposal hash:", proposalHash);
+    assert.notEqual(proposalHash, "0x0000000000000000000000000000000000000000000000000000000000000000");
+    const futureProposalHash = await optimisticOracleModule.methods.proposalHashes(id + 1).call();
+    assert.equal(futureProposalHash, "0x0000000000000000000000000000000000000000000000000000000000000000");
 
     // const proposalTime = parseInt(await optimisticOracleModule.methods.getCurrentTime().call());
     // const expiryTime = proposalTime + liveness;
