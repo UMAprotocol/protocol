@@ -169,8 +169,8 @@ contract OptimisticOracleModule is Module, Lockable {
             if (_transactions[i].data.length > 0) {
                 require(_isContract(_transactions[i].to), "EOA can't accept tx with data");
             }
-            proposal.transactions[i] = _transactions[i];
         }
+        proposal.transactions = _transactions;
 
         // Add transaction data to the proposal data to be hashed and stored in the contract.
         bytes memory proposalData = abi.encodePacked(ancillaryData);
