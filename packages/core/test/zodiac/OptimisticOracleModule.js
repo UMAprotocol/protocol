@@ -1,6 +1,6 @@
 const { assert } = require("chai");
 const hre = require("hardhat");
-const { web3, getContract /* , assertEventEmitted, findEvent */ } = hre;
+const { web3, getContract, assertEventEmitted /* , findEvent */ } = hre;
 const {
   didContractThrow,
   interfaceName,
@@ -154,7 +154,7 @@ describe("OptimisticOracleModule", () => {
   });
 
   it("Valid proposals should be hashed and stored and emit event", async function () {
-    // Issue some test tokens to the governor address.
+    // Issue some test tokens to the avatar address.
     await testToken.methods.allocateTo(owner, toWei("3")).send({ from: accounts[0] });
     await testToken2.methods.allocateTo(owner, toWei("2")).send({ from: accounts[0] });
 
@@ -180,26 +180,95 @@ describe("OptimisticOracleModule", () => {
       .proposeTransactions(transactions, explanation)
       .send({ from: proposer });
 
-    console.log(receipt);
+    const proposalHash = await optimisticOracleModule.methods.proposalHashes(id).call();
+    assert.notEqual(proposalHash, "0x0000000000000000000000000000000000000000000000000000000000000000");
+    const futureProposalHash = await optimisticOracleModule.methods.proposalHashes(id + 1).call();
+    assert.equal(futureProposalHash, "0x0000000000000000000000000000000000000000000000000000000000000000");
+
+    const proposalTime = parseInt(await optimisticOracleModule.methods.getCurrentTime().call());
+
+    await assertEventEmitted(
+      receipt,
+      optimisticOracleModule,
+      "TransactionsProposed",
+      (event) =>
+        event.proposalId == id &&
+        event.proposer == proposer &&
+        event.proposalTime == proposalTime &&
+        event.proposal.requestTime == proposalTime &&
+        event.proposal.explanation == explanation &&
+        event.proposal.transactions[0].to == testToken.options.address &&
+        event.proposal.transactions[0].value == 0 &&
+        event.proposal.transactions[0].data == txnData1 &&
+        event.proposal.transactions[0].operation == 0 &&
+        event.proposal.transactions[1].to == testToken.options.address &&
+        event.proposal.transactions[1].value == 0 &&
+        event.proposal.transactions[1].data == txnData2 &&
+        event.proposal.transactions[1].operation == 0 &&
+        event.proposal.transactions[2].to == testToken2.options.address &&
+        event.proposal.transactions[2].value == 0 &&
+        event.proposal.transactions[2].data == txnData3 &&
+        event.proposal.transactions[2].operation == 0
+    );
+  });
+
+  it("Approved proposals can be executed by any address", async function () {
+    // Issue some test tokens to the avatar address.
+    await testToken.methods.allocateTo(owner, toWei("3")).send({ from: accounts[0] });
+    await testToken2.methods.allocateTo(owner, toWei("2")).send({ from: accounts[0] });
+
+    // Construct the transaction data to send the newly minted tokens to proposer and another address.
+    const txnData1 = constructTransferTransaction(proposer, toWei("1"));
+    const txnData2 = constructTransferTransaction(rando, toWei("2"));
+    const txnData3 = constructTransferTransaction(proposer, toWei("2"));
+    const operation = 0; // 0 for call, 1 for delegatecall
+
+    // Send the proposal with multiple transactions.
+    const prevProposalId = parseInt(await optimisticOracleModule.methods.prevProposalId().call());
+    const id = prevProposalId + 1;
+
+    const transactions = [
+      { to: testToken.options.address, value: 0, data: txnData1, operation },
+      { to: testToken.options.address, value: 0, data: txnData2, operation },
+      { to: testToken2.options.address, value: 0, data: txnData3, operation },
+    ];
+
+    const explanation = utf8ToHex("These transactions were approved by majority vote on Snapshot.");
+
+    let receipt = await optimisticOracleModule.methods
+      .proposeTransactions(transactions, explanation)
+      .send({ from: proposer });
 
     const proposalHash = await optimisticOracleModule.methods.proposalHashes(id).call();
     assert.notEqual(proposalHash, "0x0000000000000000000000000000000000000000000000000000000000000000");
     const futureProposalHash = await optimisticOracleModule.methods.proposalHashes(id + 1).call();
     assert.equal(futureProposalHash, "0x0000000000000000000000000000000000000000000000000000000000000000");
 
-    // const proposalTime = parseInt(await optimisticOracleModule.methods.getCurrentTime().call());
-    // const expiryTime = proposalTime + liveness;
+    const proposalTime = parseInt(await optimisticOracleModule.methods.getCurrentTime().call());
 
-    // await assertEventEmitted(
-    //   receipt,
-    //   optimisticOracleModule,
-    //   "TransactionsProposed",
-    //   (event) =>
-    //     event.id === id &&
-    //     event.proposer === proposer &&
-    //     event.time === proposalTime &&
-    //     event.proposal === { transactions, proposalTime, explanation }
-    // );
+    await assertEventEmitted(
+      receipt,
+      optimisticOracleModule,
+      "TransactionsProposed",
+      (event) =>
+        event.proposalId == id &&
+        event.proposer == proposer &&
+        event.proposalTime == proposalTime &&
+        event.proposal.requestTime == proposalTime &&
+        event.proposal.explanation == explanation &&
+        event.proposal.transactions[0].to == testToken.options.address &&
+        event.proposal.transactions[0].value == 0 &&
+        event.proposal.transactions[0].data == txnData1 &&
+        event.proposal.transactions[0].operation == 0 &&
+        event.proposal.transactions[1].to == testToken.options.address &&
+        event.proposal.transactions[1].value == 0 &&
+        event.proposal.transactions[1].data == txnData2 &&
+        event.proposal.transactions[1].operation == 0 &&
+        event.proposal.transactions[2].to == testToken2.options.address &&
+        event.proposal.transactions[2].value == 0 &&
+        event.proposal.transactions[2].data == txnData3 &&
+        event.proposal.transactions[2].operation == 0
+    );
 
     // // Check to make sure that the tokens get transferred at the time of each successive execution.
     // const startingBalance1 = toBN(await testToken.methods.balanceOf(proposer).call());
@@ -217,7 +286,6 @@ describe("OptimisticOracleModule", () => {
     // assert.equal(
     //   (await testToken.methods.balanceOf(rando).call()).toString(),
     //   startingBalance2.add(toBN(toWei("2"))).toString()
-    // );
   });
 
   it("Can not send transactions to the 0x0 address", async function () {});
@@ -229,8 +297,6 @@ describe("OptimisticOracleModule", () => {
   it("Non-owners can not update stored contract parameters", async function () {});
 
   it("Proposals can be disputed", async function () {});
-
-  it("Approved proposals can be executed by any address", async function () {});
 
   it("Rejected proposals can not be executed", async function () {});
 
