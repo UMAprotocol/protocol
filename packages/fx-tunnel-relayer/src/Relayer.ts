@@ -63,6 +63,19 @@ export class Relayer {
   // by passing in the proof as input.
   async _relayMessage(messageEvent: EventData): Promise<void> {
     const transactionHash = messageEvent.transactionHash;
+
+    const isCheckpointed = await this.maticPosClient.exitUtil.isCheckPointed(transactionHash);
+    if (!isCheckpointed) {
+      // Polygon block containing MessageSent event hasn't been checkpointed to Mainnet yet. Checkpoints
+      // happen roughly every hour.
+      this.logger.debug({
+        at: "Relayer#relayMessage",
+        message: "Failed to derive proof for MessageSent transaction hash 📛",
+        transactionHash,
+      });
+      return;
+    }
+
     this.logger.debug({
       at: "Relayer#relayMessage",
       message: "Deriving proof for transaction that emitted MessageSent",
@@ -70,8 +83,6 @@ export class Relayer {
       blockNumber: messageEvent.blockNumber,
     });
 
-    // This method will fail if the Polygon transaction hash has not been checkpointed to Mainnet yet. Checkpoints
-    // happen roughly every hour.
     let proof;
     try {
       // Proof construction logic copied from:
@@ -83,10 +94,7 @@ export class Relayer {
       );
       if (!proof) throw new Error("Proof construction succeeded but returned undefined");
     } catch (error) {
-      // If event block hasn't been checkpointed to Mainnet yet, then don't emit error level log.
-      let logLevel = "error";
-      if ((error as Error)?.message.includes("transaction has not been checkpointed")) logLevel = "debug";
-      this.logger[logLevel]({
+      this.logger.error({
         at: "Relayer#relayMessage",
         message: "Failed to derive proof for MessageSent transaction hash 📛",
         messageEvent,
