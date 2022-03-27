@@ -22,8 +22,8 @@ const FxRoot = getContract("FxRootMock");
 // This function should return a bytes string.
 type customPayloadFn = () => Promise<string>;
 interface MaticPosClient {
-  posRootChainManager: {
-    customPayload: customPayloadFn;
+  exitUtil: {
+    buildPayloadForExit: customPayloadFn;
   };
 }
 describe("Relayer unit tests", function () {
@@ -103,8 +103,8 @@ describe("Relayer unit tests", function () {
     await gasEstimator.update();
     // Construct Matic PoS client that always successfully constructs a proof
     maticPosClient = {
-      posRootChainManager: {
-        customPayload: async () =>
+      exitUtil: {
+        buildPayloadForExit: async () =>
           new Promise((resolve) => {
             resolve(utf8ToHex("Test proof"));
           }),
@@ -173,8 +173,8 @@ describe("Relayer unit tests", function () {
   it("logs error when it fails to construct a proof", async function () {
     // Construct PosClient that always fails to construct a proof.
     const _maticPosClient: MaticPosClient = {
-      posRootChainManager: {
-        customPayload: async () =>
+      exitUtil: {
+        buildPayloadForExit: async () =>
           new Promise((resolve, reject) => {
             reject(new Error("This error is always thrown"));
           }),
@@ -203,8 +203,8 @@ describe("Relayer unit tests", function () {
     // Relayer emit DEBUG level logs for any errors thrown on proof construction that reference the transaction not
     // being checkpointed yet.
     const _maticPosClient: MaticPosClient = {
-      posRootChainManager: {
-        customPayload: async () =>
+      exitUtil: {
+        buildPayloadForExit: async () =>
           new Promise((resolve, reject) => {
             reject(new Error("transaction has not been checkpointed"));
           }),

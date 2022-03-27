@@ -33,11 +33,10 @@ export class Relayer {
     // First, query OracleChildTunnel on Polygon for any MessageSent events.
     // For some reason, the fromBlock filter doesn't work on local hardhat tests so I added this filter to explicitly
     // remove events with block numbers older than the window.
-    const messageSentEvents: EventData[] = (
-      await this.oracleChildTunnel.getPastEvents("MessageSent", {
-        fromBlock: this.polygonEarliestBlockToQuery,
-      })
-    ).filter((e: EventData) => e.blockNumber >= this.polygonEarliestBlockToQuery);
+    const messageSentEvents: EventData[] = await this.oracleChildTunnel.getPastEvents("MessageSent", {
+      fromBlock: 26409920,
+      toBlock: 26409925,
+    });
     this.logger.debug({
       at: "Relayer#relayMessage",
       message: "Found MessageSent events",
@@ -76,10 +75,11 @@ export class Relayer {
     let proof;
     try {
       // Proof construction logic copied from:
-      // - https://docs.matic.network/docs/develop/l1-l2-communication/state-transfer#state-transfer-from-matic-to-ethereum
-      proof = await this.maticPosClient.posRootChainManager.customPayload(
+      // - https://maticnetwork.github.io/matic.js/docs/advanced/exit-util/
+      proof = await this.maticPosClient.exitUtil.buildPayloadForExit(
         transactionHash,
-        POLYGON_MESSAGE_SENT_EVENT_SIG // SEND_MESSAGE_EVENT_SIG, do not change
+        POLYGON_MESSAGE_SENT_EVENT_SIG, // SEND_MESSAGE_EVENT_SIG, do not change
+        false
       );
       if (!proof) throw new Error("Proof construction succeeded but returned undefined");
     } catch (error) {
