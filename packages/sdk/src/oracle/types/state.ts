@@ -51,6 +51,7 @@ export type ChainConfig = ChainMetadata & {
   // specify a block number which we do not care about blocks before this. This effectively prevents listing
   // requests older than this. If not specified, we will lookback to block 0 when considering request history.
   earliestBlockNumber?: number;
+  maxEventRangeQuery?: number;
 };
 
 // partial config lets user omit some fields which we can infer internally using contracts-frontend

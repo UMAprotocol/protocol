@@ -28,6 +28,8 @@ export const config = {
       checkTxIntervalSec: number; // how fast transactions are checked for confirmation, default 5
       multicall2Address?: string; // optional multicall address for more efficient calls
       optimisticOracleAddress: string; // override default oracle address, or provide one if we cannot look it up, ie with testing
+      earliestBlockNumber?: number;  // ignore blocks before this block number if specified
+      maxEventRangeQuery?: number;  // optimize how quickly the first batch of requests are fetched by restricting the max number of events queried.
     },
   },
 };

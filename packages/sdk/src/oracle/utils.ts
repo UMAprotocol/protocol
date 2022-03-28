@@ -212,25 +212,45 @@ export type RangeState = {
  * @param {Pick} state
  * @returns {RangeState}
  */
-export function rangeStart(state: Pick<RangeState, "startBlock" | "endBlock" | "multiplier">): RangeState {
+export function rangeStart(
+  state: Pick<RangeState, "startBlock" | "endBlock" | "multiplier"> & { maxRange?: number }
+): RangeState {
   const { startBlock, endBlock, multiplier = 2 } = state;
-  // the largest range we can have, since this is the users query for start and end
-  const maxRange = endBlock - startBlock;
-  assert(maxRange > 0, "End block must be higher than start block");
-  const currentStart = startBlock;
-  const currentEnd = endBlock;
-  const currentRange = maxRange;
+  if (state.maxRange && state.maxRange > 0) {
+    const range = endBlock - startBlock;
+    assert(range > 0, "End block must be higher than start block");
+    const currentRange = Math.min(state.maxRange, range);
+    const currentStart = endBlock - currentRange;
+    const currentEnd = endBlock;
+    return {
+      done: false,
+      startBlock,
+      endBlock,
+      maxRange: state.maxRange,
+      currentRange,
+      currentStart,
+      currentEnd,
+      multiplier,
+    };
+  } else {
+    // the largest range we can have, since this is the users query for start and end
+    const maxRange = endBlock - startBlock;
+    assert(maxRange > 0, "End block must be higher than start block");
+    const currentStart = startBlock;
+    const currentEnd = endBlock;
+    const currentRange = maxRange;
 
-  return {
-    done: false,
-    startBlock,
-    endBlock,
-    maxRange,
-    currentRange,
-    currentStart,
-    currentEnd,
-    multiplier,
-  };
+    return {
+      done: false,
+      startBlock,
+      endBlock,
+      maxRange,
+      currentRange,
+      currentStart,
+      currentEnd,
+      multiplier,
+    };
+  }
 }
 /**
  * rangeSuccessDescending. We have 2 ways of querying events, from oldest to newest, or newest to oldest. Typically we want them in order, from
