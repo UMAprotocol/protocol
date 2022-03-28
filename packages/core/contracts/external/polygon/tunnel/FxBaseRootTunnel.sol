@@ -6,6 +6,7 @@ pragma solidity ^0.8.0;
 import "../lib/RLPReader.sol";
 import "../lib/MerklePatriciaProof.sol";
 import "../lib/Merkle.sol";
+import "../lib/ExitPayloadReader.sol";
 
 interface IFxStateSender {
     function sendMessageToChild(address _receiver, bytes calldata _data) external;
@@ -28,9 +29,13 @@ contract ICheckpointManager {
 }
 
 abstract contract FxBaseRootTunnel {
-    using RLPReader for bytes;
     using RLPReader for RLPReader.RLPItem;
     using Merkle for bytes32;
+    using ExitPayloadReader for bytes;
+    using ExitPayloadReader for ExitPayloadReader.ExitPayload;
+    using ExitPayloadReader for ExitPayloadReader.Log;
+    using ExitPayloadReader for ExitPayloadReader.LogTopics;
+    using ExitPayloadReader for ExitPayloadReader.Receipt;
 
     // keccak256(MessageSent(bytes))
     bytes32 public constant SEND_MESSAGE_EVENT_SIG = 0x8c5261668696ce22758910d05bab8f186d6eb247ceac2af2e82c7dc17669b036;
@@ -69,66 +74,58 @@ abstract contract FxBaseRootTunnel {
     }
 
     function _validateAndExtractMessage(bytes memory inputData) internal returns (bytes memory) {
-        RLPReader.RLPItem[] memory inputDataRLPList = inputData.toRlpItem().toList();
+        ExitPayloadReader.ExitPayload memory payload = inputData.toExitPayload();
 
+        bytes memory branchMaskBytes = payload.getBranchMaskAsBytes();
+        uint256 blockNumber = payload.getBlockNumber();
         // checking if exit has already been processed
         // unique exit is identified using hash of (blockNumber, branchMask, receiptLogIndex)
         bytes32 exitHash =
             keccak256(
                 abi.encodePacked(
-                    inputDataRLPList[2].toUint(), // blockNumber
+                    blockNumber,
                     // first 2 nibbles are dropped while generating nibble array
                     // this allows branch masks that are valid but bypass exitHash check (changing first 2 nibbles only)
                     // so converting to nibble array and then hashing it
-                    MerklePatriciaProof._getNibbleArray(inputDataRLPList[8].toBytes()), // branchMask
-                    inputDataRLPList[9].toUint() // receiptLogIndex
+                    MerklePatriciaProof._getNibbleArray(branchMaskBytes),
+                    payload.getReceiptLogIndex()
                 )
             );
         require(processedExits[exitHash] == false, "FxRootTunnel: EXIT_ALREADY_PROCESSED");
         processedExits[exitHash] = true;
 
-        RLPReader.RLPItem[] memory receiptRLPList = inputDataRLPList[6].toBytes().toRlpItem().toList();
-        RLPReader.RLPItem memory logRLP =
-            receiptRLPList[3].toList()[
-                inputDataRLPList[9].toUint() // receiptLogIndex
-            ];
-
-        RLPReader.RLPItem[] memory logRLPList = logRLP.toList();
+        ExitPayloadReader.Receipt memory receipt = payload.getReceipt();
+        ExitPayloadReader.Log memory log = receipt.getLog();
 
         // check child tunnel
-        require(fxChildTunnel == RLPReader.toAddress(logRLPList[0]), "FxRootTunnel: INVALID_FX_CHILD_TUNNEL");
+        require(fxChildTunnel == log.getEmitter(), "FxRootTunnel: INVALID_FX_CHILD_TUNNEL");
 
+        bytes32 receiptRoot = payload.getReceiptRoot();
         // verify receipt inclusion
         require(
-            MerklePatriciaProof.verify(
-                inputDataRLPList[6].toBytes(), // receipt
-                inputDataRLPList[8].toBytes(), // branchMask
-                inputDataRLPList[7].toBytes(), // receiptProof
-                bytes32(inputDataRLPList[5].toUint()) // receiptRoot
-            ),
+            MerklePatriciaProof.verify(receipt.toBytes(), branchMaskBytes, payload.getReceiptProof(), receiptRoot),
             "FxRootTunnel: INVALID_RECEIPT_PROOF"
         );
 
         // verify checkpoint inclusion
         _checkBlockMembershipInCheckpoint(
-            inputDataRLPList[2].toUint(), // blockNumber
-            inputDataRLPList[3].toUint(), // blockTime
-            bytes32(inputDataRLPList[4].toUint()), // txRoot
-            bytes32(inputDataRLPList[5].toUint()), // receiptRoot
-            inputDataRLPList[0].toUint(), // headerNumber
-            inputDataRLPList[1].toBytes() // blockProof
+            blockNumber,
+            payload.getBlockTime(),
+            payload.getTxRoot(),
+            receiptRoot,
+            payload.getHeaderNumber(),
+            payload.getBlockProof()
         );
 
-        RLPReader.RLPItem[] memory logTopicRLPList = logRLPList[1].toList(); // topics
+        ExitPayloadReader.LogTopics memory topics = log.getTopics();
 
         require(
-            bytes32(logTopicRLPList[0].toUint()) == SEND_MESSAGE_EVENT_SIG, // topic0 is event sig
+            bytes32(topics.getField(0).toUint()) == SEND_MESSAGE_EVENT_SIG, // topic0 is event sig
             "FxRootTunnel: INVALID_SIGNATURE"
         );
 
         // received message data
-        bytes memory receivedData = logRLPList[2].toBytes();
-        bytes memory message = abi.decode(receivedData, (bytes)); // event decodes params again, so decoding bytes to get message
+        bytes memory message = abi.decode(log.getData(), (bytes)); // event decodes params again, so decoding bytes to get message
         return message;
     }
 

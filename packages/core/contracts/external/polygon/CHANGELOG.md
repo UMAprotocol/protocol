@@ -12,13 +12,16 @@ Any modifications to original source code can be found in this document. Origina
   - Changed version from from `0.7.3` --> `0.8`
   - Cannot convert directly from `uint256` --> `address` in Solidity v8, apply intermediate cast to `uint160` [here](https://github.com/fx-portal/contracts/blob/2b064b1d8d40493c78682e9afc40ea20dc882356/contracts/lib/RLPReader.sol#L95). More details [here](https://docs.soliditylang.org/en/v0.8.0/080-breaking-changes.html#new-restrictions)
   - Cannot rely on wrapping arithmetic in Solidity v8, must explicitly catch underflow/overflow with an `unchecked {...}` statement around [this code block](https://github.com/fx-portal/contracts/blob/2b064b1d8d40493c78682e9afc40ea20dc882356/contracts/lib/RLPReader.sol#L251)
+- **[ExitPayloadReader.sol](https://github.com/fx-portal/contracts/blob/baed24d22178201bca33140c303e0925661ec0ac/contracts/lib/ExitPayloadReader.sol):**
+  - Added to handle Type 1 transactions emitting `MessageSent` events on Polygon network.
 
 ## tunnel
 
 - **[FxBaseChildTunnel.sol](https://github.com/fx-portal/contracts/blob/2b064b1d8d40493c78682e9afc40ea20dc882356/contracts/tunnel/FxBaseChildTunnel.sol):**
   - Changed version from from `0.7.3` --> `0.8`
-- **[FxBaseRootTunnel.sol](https://github.com/fx-portal/contracts/blob/2b064b1d8d40493c78682e9afc40ea20dc882356/contracts/tunnel/FxBaseRootTunnel.sol):**
+- **[FxBaseRootTunnel.sol](https://github.com/fx-portal/contracts/blob/baed24d22178201bca33140c303e0925661ec0ac/contracts/tunnel/FxBaseRootTunnel.sol):**
   - Changed version from from `0.7.3` --> `0.8`
+  - Upgraded to use `ExitPayloadReader` to handle Type 1 transactions, as shown [here](https://github.com/fx-portal/contracts/commit/a3637b4eca9ef5019d4336f7af6b3b20953c52ee)
 
 # test
 
