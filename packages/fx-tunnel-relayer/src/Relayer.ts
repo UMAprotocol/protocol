@@ -33,10 +33,11 @@ export class Relayer {
     // First, query OracleChildTunnel on Polygon for any MessageSent events.
     // For some reason, the fromBlock filter doesn't work on local hardhat tests so I added this filter to explicitly
     // remove events with block numbers older than the window.
-    const messageSentEvents: EventData[] = await this.oracleChildTunnel.getPastEvents("MessageSent", {
-      fromBlock: 26409920,
-      toBlock: 26409925,
-    });
+    const messageSentEvents: EventData[] = (
+      await this.oracleChildTunnel.getPastEvents("MessageSent", {
+        fromBlock: this.polygonEarliestBlockToQuery,
+      })
+    ).filter((e: EventData) => e.blockNumber >= this.polygonEarliestBlockToQuery);
     this.logger.debug({
       at: "Relayer#relayMessage",
       message: "Found MessageSent events",
@@ -63,6 +64,7 @@ export class Relayer {
   // by passing in the proof as input.
   async _relayMessage(messageEvent: EventData): Promise<void> {
     const transactionHash = messageEvent.transactionHash;
+    const blockNumber = messageEvent.blockNumber;
 
     const isCheckpointed = await this.maticPosClient.exitUtil.isCheckPointed(transactionHash);
     if (!isCheckpointed) {
@@ -70,8 +72,9 @@ export class Relayer {
       // happen roughly every hour.
       this.logger.debug({
         at: "Relayer#relayMessage",
-        message: "Failed to derive proof for MessageSent transaction hash 📛",
+        message: "MessageSent event block not checkpointed to mainnet yet ⚠️",
         transactionHash,
+        blockNumber,
       });
       return;
     }
@@ -80,7 +83,7 @@ export class Relayer {
       at: "Relayer#relayMessage",
       message: "Deriving proof for transaction that emitted MessageSent",
       transactionHash: transactionHash,
-      blockNumber: messageEvent.blockNumber,
+      blockNumber,
     });
 
     let proof;

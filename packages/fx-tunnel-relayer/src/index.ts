@@ -37,8 +37,8 @@ export async function run(logger: winston.Logger, web3: Web3): Promise<void> {
     MaticJs.use(Web3ClientPlugin);
     const maticPOSClient = new MaticJs.POSClient();
     await maticPOSClient.init({
-      network: "mainnet",
-      version: "v1",
+      network: polygonNetworkId === 137 ? "mainnet" : "testnet",
+      version: polygonNetworkId === 137 ? "v1" : "mumbai",
       parent: {
         provider: web3.currentProvider,
         defaultConfig: {
@@ -122,6 +122,7 @@ export async function run(logger: winston.Logger, web3: Web3): Promise<void> {
       await delay(Number(config.pollingDelay));
     }
   } catch (error) {
+    console.error(error);
     // If any error is thrown, catch it and bubble up to the main try-catch for error processing in the Poll function.
     throw typeof error === "string" ? new Error(error) : error;
   }
