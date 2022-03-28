@@ -122,7 +122,6 @@ export async function run(logger: winston.Logger, web3: Web3): Promise<void> {
       await delay(Number(config.pollingDelay));
     }
   } catch (error) {
-    console.error(error);
     // If any error is thrown, catch it and bubble up to the main try-catch for error processing in the Poll function.
     throw typeof error === "string" ? new Error(error) : error;
   }
