@@ -195,7 +195,7 @@ async function run() {
     console.group("\n🔎 Verifying execution of Admin Proposal");
     if (ethereum) {
       assert.equal(
-        await mainnetContracts.finder.methods.getImplementationAddress(utf8ToHex(contract)),
+        await mainnetContracts.finder.methods.getImplementationAddress(utf8ToHex(contract)).call(),
         toChecksumAddress(ethereum),
         "Contract not set in Finder"
       );
@@ -204,7 +204,7 @@ async function run() {
 
     if (polygon) {
       if (
-        (await contractsByNetId[137].finder.methods.getImplementationAddress(utf8ToHex(contract))).call() !==
+        (await contractsByNetId[137].finder.methods.getImplementationAddress(utf8ToHex(contract)).call()) !==
         toChecksumAddress(polygon)
       ) {
         const data = contractsByNetId[137].finder.methods
@@ -226,9 +226,9 @@ async function run() {
     if (governorHubNetworks.length > 0) {
       for (const network of governorHubNetworks) {
         if (
-          (
-            await contractsByNetId[network.chainId].finder.methods.getImplementationAddress(utf8ToHex(contract))
-          ).call() !== toChecksumAddress(network.value)
+          (await contractsByNetId[network.chainId].finder.methods
+            .getImplementationAddress(utf8ToHex(contract))
+            .call()) !== toChecksumAddress(network.value)
         ) {
           const data = contractsByNetId[network.chainId].finder.methods
             .changeImplementationAddress(utf8ToHex(contract), network.value)
