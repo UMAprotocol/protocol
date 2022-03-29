@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
+import "../../common/implementation/AncillaryData.sol";
 import "../../common/implementation/Lockable.sol";
 import "../../common/interfaces/AddressWhitelistInterface.sol";
 import "../../merkle-distributor/interfaces/MerkleDistributorInterface.sol";
@@ -45,9 +46,19 @@ abstract contract OptimisticDistributor is Lockable {
         bytes32 merkleRoot;
     }
 
-    // Constants.
-    FinderInterface public finder;
-    IERC20 public bondToken;
+    /********************************************
+     *      INTERNAL VARIABLES AND STORAGE      *
+     ********************************************/
+
+    // Reserve for bytes appended to ancillary data (e.g. OracleSpoke) when resolving price from non-mainnet chains.
+    uint256 private constant ANCILLARY_BYTES_RESERVE = 512;
+
+    // Restrict Optimistic Oracle liveness to less than ~100 years.
+    uint256 public constant LIVENESS_LIMIT = 5200 weeks;
+
+    // Immutable variables provided at deployment.
+    FinderInterface public immutable finder;
+    IERC20 public bondToken; // This cannot be declared immutable as bondToken needs to be checked against whitelist.
 
     // Merkle Distributor can be set only once.
     MerkleDistributorInterface public merkleDistributor;
@@ -107,7 +118,38 @@ abstract contract OptimisticDistributor is Lockable {
         bytes calldata customAncillaryData,
         uint256 optimisticOracleProposerBond,
         uint256 optimisticOracleLivenessTime
-    ) external virtual;
+    ) external nonReentrant() {
+        require(_getIdentifierWhitelist().isIdentifierSupported(priceIdentifier), "Identifier not registered");
+        require(
+            optimisticOracle
+                .stampAncillaryData(
+                AncillaryData.appendKeyValueUint(customAncillaryData, "proposalIndex", 0),
+                address(this)
+            )
+                .length +
+                ANCILLARY_BYTES_RESERVE <=
+                optimisticOracle.ancillaryBytesLimit(),
+            "ancillary data too long"
+        );
+        require(optimisticOracleLivenessTime > 0, "OO liveness cannot be 0");
+        require(optimisticOracleLivenessTime < LIVENESS_LIMIT, "OO liveness too large");
+
+        // Pull maximum rewards from the sponsor.
+        rewardToken.safeTransferFrom(msg.sender, address(this), maximumRewardAmount);
+
+        // Store funded reward and bump nextCreatedReward index.
+        rewards[nextCreatedReward] = Reward({
+            sponsor: msg.sender,
+            rewardToken: rewardToken,
+            maximumRewardAmount: maximumRewardAmount,
+            proposalTimestamp: proposalTimestamp,
+            priceIdentifier: priceIdentifier,
+            customAncillaryData: customAncillaryData,
+            optimisticOracleProposerBond: optimisticOracleProposerBond,
+            optimisticOracleLivenessTime: optimisticOracleLivenessTime
+        });
+        nextCreatedReward = nextCreatedReward.add(1);
+    }
 
     /**
      * @notice Allows existing sponsor to deposit additional rewards for distribution before `proposalTimestamp`.
