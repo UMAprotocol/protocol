@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "../../common/implementation/AncillaryData.sol";
 import "../../common/implementation/Lockable.sol";
 import "../../common/interfaces/AddressWhitelistInterface.sol";
-import "../../merkle-distributor/interfaces/MerkleDistributorInterface.sol";
+import "../../merkle-distributor/implementation/MerkleDistributor.sol";
 import "../../oracle/implementation/Constants.sol";
 import "../../oracle/interfaces/FinderInterface.sol";
 import "../../oracle/interfaces/IdentifierWhitelistInterface.sol";
@@ -61,7 +61,7 @@ abstract contract OptimisticDistributor is Lockable {
     IERC20 public bondToken; // This cannot be declared immutable as bondToken needs to be checked against whitelist.
 
     // Merkle Distributor can be set only once.
-    MerkleDistributorInterface public merkleDistributor;
+    MerkleDistributor public merkleDistributor;
 
     // Parameters that can be synced and stored in the contract.
     uint256 public finalFee;
@@ -200,7 +200,7 @@ abstract contract OptimisticDistributor is Lockable {
      * on now owned MekleDistributor contract.
      * @param _merkleDistributor Address of the owned MerkleDistributor contract.
      */
-    function setMerkleDistributor(MerkleDistributorInterface _merkleDistributor) external nonReentrant() {
+    function setMerkleDistributor(MerkleDistributor _merkleDistributor) external nonReentrant() {
         require(address(merkleDistributor) == address(0), "merkleDistributor already set");
 
         // TODO: Add call to MerkleDistributor to check that it is indeed owned by this OptimisticDistributor.
