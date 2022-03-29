@@ -81,6 +81,7 @@ abstract contract OptimisticDistributor is Lockable {
      ********************************************/
 
     event RewardCreated(uint256 rewardIndex, Reward reward);
+    event RewardIncreased(uint256 rewardIndex, uint256 newMaximumRewardAmount);
     event MerkleDistributorSet(address merkleDistributor);
 
     /**
@@ -163,7 +164,17 @@ abstract contract OptimisticDistributor is Lockable {
      * @param rewardIndex Index for identifying existing rewards object that should receive additional funding.
      * @param additionalRewardAmount Additional reward amount that the sponsor is posting for distribution.
      */
-    function increaseReward(uint256 rewardIndex, uint256 additionalRewardAmount) external virtual;
+    function increaseReward(uint256 rewardIndex, uint256 additionalRewardAmount) external nonReentrant() {
+        require(rewards[rewardIndex].sponsor == msg.sender, "rewards have not been created");
+        require(getCurrentTime() < rewards[rewardIndex].proposalTimestamp, "no more funding from proposalTimestamp");
+
+        // Pull additional rewards from the sponsor.
+        rewards[rewardIndex].rewardToken.safeTransferFrom(msg.sender, address(this), additionalRewardAmount);
+
+        // Update maximumRewardAmount and log new amount.
+        rewards[rewardIndex].maximumRewardAmount = rewards[rewardIndex].maximumRewardAmount.add(additionalRewardAmount);
+        emit RewardIncreased(rewardIndex, rewards[rewardIndex].maximumRewardAmount);
+    }
 
     /********************************************
      *          DISTRIBUTION FUNCTIONS          *
@@ -224,6 +235,11 @@ abstract contract OptimisticDistributor is Lockable {
         store = _getStore();
         finalFee = store.computeFinalFee(address(bondToken)).rawValue;
         optimisticOracle = _getOptimisticOracle();
+    }
+
+    // Can be overriden for testing.
+    function getCurrentTime() public view virtual returns (uint256) {
+        return block.timestamp;
     }
 
     /********************************************
