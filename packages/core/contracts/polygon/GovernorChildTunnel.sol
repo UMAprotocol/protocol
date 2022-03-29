@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import "../external/polygon/tunnel/FxBaseChildTunnel.sol";
+import "@maticnetwork/fx-portal/contracts/tunnel/FxBaseChildTunnel.sol";
 
 /**
  * @title Governor contract deployed on sidechain that receives governance actions from Ethereum.
