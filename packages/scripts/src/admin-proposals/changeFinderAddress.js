@@ -92,7 +92,7 @@ async function run() {
 
     if (ethereum) {
       console.group(`\n🟢 Pointing Finder for "${contract}" to ${ethereum}`);
-      let skip;
+      let skip = false;
       try {
         const implementationAddress = await mainnetContracts.finder.methods
           .getImplementationAddress(utf8ToHex(contract))
@@ -102,7 +102,9 @@ async function run() {
           console.log("- Contract @ ", ethereum, `is already set to ${contract} in the Finder. Nothing to do.`);
         }
       } catch (err) {
-        // eslint-disable-line prettier/prettier
+        // If `getImplementationAddress` reverts, then implementation is not set yet so we shouldn't skip this
+        // proposal. Not having an implementation set is an expected situation for this script so we should ignore this
+        // error.
       }
       if (!skip) {
         const data = mainnetContracts.finder.methods
@@ -126,7 +128,9 @@ async function run() {
           console.log("- Contract @ ", polygon, `is already set to ${contract} in the Finder. Nothing to do.`);
         }
       } catch (err) {
-        // eslint-disable-line prettier/prettier
+        // If `getImplementationAddress` reverts, then implementation is not set yet so we shouldn't skip this
+        // proposal. Not having an implementation set is an expected situation for this script so we should ignore this
+        // error.
       }
       if (!skip) {
         const data = contractsByNetId[137].finder.methods
@@ -157,7 +161,9 @@ async function run() {
             console.log("- Contract @ ", network.value, `is already set to ${contract} in the Finder. Nothing to do.`);
           }
         } catch (err) {
-          // eslint-disable-line prettier/prettier
+          // If `getImplementationAddress` reverts, then implementation is not set yet so we shouldn't skip this
+          // proposal. Not having an implementation set is an expected situation for this script so we should ignore this
+          // error.
         }
         if (!skip) {
           const data = contractsByNetId[network.chainId].finder.methods
