@@ -4063,44 +4063,44 @@
   integrity sha512-XQr74QaLeMiqhStEhLn1im9EOMnkypp7MZOwQhGzqp2Weu5eQJbpPxWxixxlYRKWPOmJjsk6qYfYH9kq43yc2w==
 
 "@node-rs/crc32-android-arm64@^1.0.0":
-  version "1.4.3"
-  resolved "https://registry.yarnpkg.com/@node-rs/crc32-android-arm64/-/crc32-android-arm64-1.4.3.tgz#eea433a9bace8b6e7c3a649ff2746c76dbd10e9e"
-  integrity sha512-jLPYQwETjPrb8xeuaj8PpGMk/Utvjlrp0XQvA25NCmgecsov5oTB+QS4I5Hi5GM0Iu00hfw7ddJg31jX/mOPHg==
+  version "1.5.0"
+  resolved "https://registry.yarnpkg.com/@node-rs/crc32-android-arm64/-/crc32-android-arm64-1.5.0.tgz#a0dc87d3744909eeae12e9c9c117b11c6e916a96"
+  integrity sha512-2uJD7muLg6wXjPhcuuS+HZBgXGX8HsxJzDjVoe51uAoGx+Az0hyH2I6p/ObOIYzcW4xFML0rzlYM9XkMglJhfw==
 
 "@node-rs/crc32-darwin-arm64@^1.0.0":
-  version "1.4.3"
-  resolved "https://registry.yarnpkg.com/@node-rs/crc32-darwin-arm64/-/crc32-darwin-arm64-1.4.3.tgz#26bcd0d345bd03f092d8449e3fda88fb7f0658b1"
-  integrity sha512-S2VofrKRGaKf03WPjeoVzHTt10SE8DuTJD+NuCYxfthLKx5qehefq0u+32cCvJVf1E7kCcq/8lO0nEPKVpsIJA==
+  version "1.5.0"
+  resolved "https://registry.yarnpkg.com/@node-rs/crc32-darwin-arm64/-/crc32-darwin-arm64-1.5.0.tgz#72db177eac09e8992903c2dbbbef10eaa3fbec0d"
+  integrity sha512-E3dWA/fKu7FeDGBYB20/YEz28Fw/8sj4iuXgE4n1aoh8994AdbXdsJlmNip6/AkcEynC8Q9RdPS4HdfM7kBPiw==
 
 "@node-rs/crc32-darwin-x64@^1.0.0":
-  version "1.4.3"
-  resolved "https://registry.yarnpkg.com/@node-rs/crc32-darwin-x64/-/crc32-darwin-x64-1.4.3.tgz#882ca6ce9605dc43890ed2d3a2c0d4c99d9f357c"
-  integrity sha512-0spHlxLtImsGRZHSUYopzOKxRU9fMQ9TYXffP/TMkzS7bs0SF3jjOaSWZ4FZBH17qSdkS5v1ddhd/B2Z0lJTxQ==
+  version "1.5.0"
+  resolved "https://registry.yarnpkg.com/@node-rs/crc32-darwin-x64/-/crc32-darwin-x64-1.5.0.tgz#021d17ecfc1996135c18fb9afd97c9673a8986e2"
+  integrity sha512-YjQ6y/3L1D2kOrNguB42sPf6HdEkqXcL2jxJ41QOfuIRV18lp7/5sM9OWRdjmLpQUUvmpqSSWxZFQ/2P/35EXw==
 
 "@node-rs/crc32-linux-arm-gnueabihf@^1.0.0":
-  version "1.4.3"
-  resolved "https://registry.yarnpkg.com/@node-rs/crc32-linux-arm-gnueabihf/-/crc32-linux-arm-gnueabihf-1.4.3.tgz#a5fc5bfc79d9f555ad814e81205af4c3fc194cfd"
-  integrity sha512-dNYURWb63UiJR+o8IJh9aNmJ71EeI7RAElirvHhgrcR7ykuu+SpFhoqVe9leT/nOD1FBYz/PV2eVqaR/XsEK6Q==
+  version "1.5.0"
+  resolved "https://registry.yarnpkg.com/@node-rs/crc32-linux-arm-gnueabihf/-/crc32-linux-arm-gnueabihf-1.5.0.tgz#6b8272d796fef243a0da239725e9fa17d488d04d"
+  integrity sha512-MFwJlcIAmgtnWAluthAY2gyTbKIu5/+6PUSlOZ4xlSZIddb3ra3M/AQ0BkDSvEoDeQQ5ZdkcnVWzpqoCdUOe4Q==
 
 "@node-rs/crc32-linux-arm64-gnu@^1.0.0":
-  version "1.4.3"
-  resolved "https://registry.yarnpkg.com/@node-rs/crc32-linux-arm64-gnu/-/crc32-linux-arm64-gnu-1.4.3.tgz#c24ec98a3fd8828d11a109b13414dc6996256890"
-  integrity sha512-yBxrHMSJjN1q6GOB9HUQyy1/4tm0xAQqbwQO8LLlGaXy/DM7Em+WX+3HsbfgMM6y0eFAwbB7RpuArj6RVFmmDw==
+  version "1.5.0"
+  resolved "https://registry.yarnpkg.com/@node-rs/crc32-linux-arm64-gnu/-/crc32-linux-arm64-gnu-1.5.0.tgz#95ca479e2d074918a3eb23ab1efb7b235ac4fd27"
+  integrity sha512-7JYsJXRUE6yrK/mt7uLX91ARLS3HOCggTSGD3Kw52lhJRPXTyJVVIhuLj8/neW8ENTgH3zgpQdeId0sKQtKrDg==
 
 "@node-rs/crc32-linux-x64-gnu@^1.0.0":
-  version "1.4.3"
-  resolved "https://registry.yarnpkg.com/@node-rs/crc32-linux-x64-gnu/-/crc32-linux-x64-gnu-1.4.3.tgz#b2ddfebd49369d79d1b4e7d2a9dd009a7e034c99"
-  integrity sha512-K8fDgYOuS7Q64qzzSKAu3sBAc6CJFdNbLFpxUZi2N81mtZJWzlcSDM+l5Sv1x4ZcTGa/zdtiOQoAT5T2XvrczA==
+  version "1.5.0"
+  resolved "https://registry.yarnpkg.com/@node-rs/crc32-linux-x64-gnu/-/crc32-linux-x64-gnu-1.5.0.tgz#2b3bff47d0a2eb36fa648f79945fd3cedc76ebac"
+  integrity sha512-KOevSXLbgs2htznP8jlsN6tZ4kmpGloBj00lo4X4H4Lm6eKeWyG9txbCGD0yK4ZX/XhrL6Qs4VIMCaVFpxFIsw==
 
 "@node-rs/crc32-linux-x64-musl@^1.0.0":
-  version "1.4.3"
-  resolved "https://registry.yarnpkg.com/@node-rs/crc32-linux-x64-musl/-/crc32-linux-x64-musl-1.4.3.tgz#2692bbfa99a19fa3b7e046b18bf01bb4118a1f38"
-  integrity sha512-LdKnbWKRIXHlzvujrjSoxMBaJM8qJcfKdZbpCpm2Zdj9psSTIgWS69wBXrwPDHM2vQdKT6Vxgz7A1DLg0nuM2Q==
+  version "1.5.0"
+  resolved "https://registry.yarnpkg.com/@node-rs/crc32-linux-x64-musl/-/crc32-linux-x64-musl-1.5.0.tgz#2bbcf10b21fa9fb96108fc7680c0be9a59a37212"
+  integrity sha512-e6ivD6MWVMp/FP6VVq3EBjiBXKN/qBsTn8bOsHtIf+Et6dEkITbEk26m5+w9TFHIHKJGvwytH7+RigK7N7o5VQ==
 
 "@node-rs/crc32-win32-x64-msvc@^1.0.0":
-  version "1.4.3"
-  resolved "https://registry.yarnpkg.com/@node-rs/crc32-win32-x64-msvc/-/crc32-win32-x64-msvc-1.4.3.tgz#03d06d8f6a1d868f9678985c26ae90b1b569511c"
-  integrity sha512-XQ5+y/XU2/F3eigicrbd4aiFr+gweC4HINRCWkmBGglI66VpWsZI2GQCNYeNXeJLBODxQdtprParsLlGHvMMQA==
+  version "1.5.0"
+  resolved "https://registry.yarnpkg.com/@node-rs/crc32-win32-x64-msvc/-/crc32-win32-x64-msvc-1.5.0.tgz#0eeb42d95d1a7d3ad3eb23da8233d67a585d3a26"
+  integrity sha512-FvgItAuN6eRHZDAPVlBZbzQjiRO0DFFFLgy2KFUjx+vLx20Auf5Hi0/D+dFLmH9jdESaoZqwZC5FpB7nfit1lQ==
 
 "@node-rs/helper@^1.0.0":
   version "1.3.3"
@@ -17700,9 +17700,9 @@ minimist-options@^3.0.1:
     is-plain-obj "^1.1.0"
 
 minimist@^1.1.1, minimist@^1.1.3, minimist@^1.2.0, minimist@^1.2.3, minimist@^1.2.5, minimist@~1.2.5:
-  version "1.2.5"
-  resolved "https://registry.yarnpkg.com/minimist/-/minimist-1.2.5.tgz#67d66014b66a6a8aaa0c083c5fd58df4e4e97602"
-  integrity sha512-FM9nNUYrRBAELZQT3xeZQ7fmMOBg6nWNmJKTcgsJeaLstP/UODVpGsr5OhXhhXg6f+qtJ8uiZ+PUxkDWcgIXLw==
+  version "1.2.6"
+  resolved "https://registry.yarnpkg.com/minimist/-/minimist-1.2.6.tgz#8637a5b759ea0d6e98702cfb3a9283323c93af44"
+  integrity sha512-Jsjnk4bw3YJqYzbdyBiNsPWHPfO++UGG749Cxs6peCu5Xg4nrena6OVxOYxrQTqww0Jmwt+Ref8rggumkTLz9Q==
 
 minimisted@^2.0.0:
   version "2.0.1"

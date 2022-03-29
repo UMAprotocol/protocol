@@ -28,11 +28,12 @@
 // });
 
 import winston from "winston";
-import type { Logger as _Logger } from "winston";
-import type * as Transport from "winston-transport";
 import { createTransports } from "./Transports";
 import { botIdentifyFormatter, errorStackTracerFormatter, bigNumberFormatter } from "./Formatters";
 import { delay } from "../helpers/delay";
+
+import type { Logger as _Logger } from "winston";
+import type * as Transport from "winston-transport";
 
 // This async function can be called by a bot if the log message is generated right before the process terminates.
 // This method will check if the AugmentedLogger's isFlushed is set to true. If not, it will block until such time
@@ -40,6 +41,10 @@ import { delay } from "../helpers/delay";
 // the logger from closing before all logs have been propagated.
 export async function waitForLogger(logger: AugmentedLogger) {
   while (!logger.isFlushed) await delay(0.5); // While the logger is not flushed, wait for it to be flushed.
+}
+
+export interface AugmentedLogger extends _Logger {
+  isFlushed: boolean;
 }
 
 export interface AugmentedLogger extends _Logger {

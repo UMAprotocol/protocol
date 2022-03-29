@@ -21,6 +21,11 @@ let customLogger;
 
 const waitForLoggerDelay = process.env.WAIT_FOR_LOGGER_DELAY || 5;
 
+// To be used with exec to override the default input output buffer size.
+// 1024 * 1024 is the default.
+// This is 1024 * 1024 * 8.
+const maxBuffer = 8388608;
+
 spoke.post("/", async (req, res) => {
   // Use a custom logger if provided. Otherwise, initialize a local logger.
   // Note: no reason to put this into the try-catch since a logger is required to throw the error.
@@ -67,11 +72,13 @@ spoke.post("/", async (req, res) => {
     });
     await delay(waitForLoggerDelay); // Wait a few seconds to be sure the the winston logs are processed upstream.
 
-    res.status(200).send({
-      message: "Process exited with no error",
-      childProcessIdentifier: _getChildProcessIdentifier(req),
-      execResponse,
-    });
+    res
+      .status(200)
+      .send({
+        message: "Process exited with no error",
+        childProcessIdentifier: _getChildProcessIdentifier(req),
+        execResponse,
+      });
   } catch (execResponse) {
     // If there is an error, send a debug log to the winston transport to capture in GCP. We dont want to trigger a
     // `logger.error` here as this will be dealt with one layer up in the Hub implementation.
@@ -83,11 +90,13 @@ spoke.post("/", async (req, res) => {
       execResponse: execResponse instanceof Error ? execResponse.message : execResponse,
     });
     await delay(waitForLoggerDelay); // Wait a few seconds to be sure the the winston logs are processed upstream.
-    res.status(500).send({
-      message: "Process exited with error",
-      childProcessIdentifier: _getChildProcessIdentifier(req),
-      execResponse: execResponse instanceof Error ? execResponse.message : execResponse,
-    });
+    res
+      .status(500)
+      .send({
+        message: "Process exited with error",
+        childProcessIdentifier: _getChildProcessIdentifier(req),
+        execResponse: execResponse instanceof Error ? execResponse.message : execResponse,
+      });
   }
 });
 
@@ -95,7 +104,7 @@ function _execShellCommand(cmd, inputEnv, strategyRunnerSpoke = false) {
   return new Promise((resolve) => {
     const { stdout, stderr } = exec(
       cmd,
-      { env: { ...process.env, ...inputEnv }, stdio: "inherit" },
+      { env: { ...process.env, ...inputEnv }, stdio: "inherit", maxBuffer },
       (error, stdout, stderr) => {
         // The output from the process execution contains punctuation marks and escape chars that should be stripped.
         stdout = _stripExecStdout(stdout, strategyRunnerSpoke);

@@ -11,7 +11,7 @@ const sinon = require("sinon");
 
 // Client to test
 const { InsuredBridgeL2Client } = require("../../dist/clients/InsuredBridgeL2Client");
-const { ZERO_ADDRESS } = require("@uma/common");
+const { ZERO_ADDRESS, advanceBlockAndSetTime } = require("@uma/common");
 
 // Helper contracts
 const chainId = 10;
@@ -167,15 +167,17 @@ describe("InsuredBridgeL2Client", () => {
       transports: [new SpyTransport({ level: "debug" }, { spy: spy })],
     });
 
+    const ganacheWeb3 = new Web3(ganache.provider());
+
     // Construct new client where we pass in a fallback L2 web3.
-    const clientWithFallbackWeb3s = new InsuredBridgeL2Client(
+    let clientWithFallbackWeb3s = new InsuredBridgeL2Client(
       spyLogger,
       web3,
       depositBox.options.address,
       chainId,
       0,
       null,
-      [web3, new Web3(ganache.provider())] // Ganache provider will be different from hardhat provider that is already
+      [web3, ganacheWeb3] // Ganache provider will be different from hardhat provider that is already
       // connected to the BridgeDepositBox.
     );
 
@@ -211,6 +213,17 @@ describe("InsuredBridgeL2Client", () => {
       assert.equal(spy.getCall(-1).lastArg.eventName, "FundsDeposited");
     }
 
+    clientWithFallbackWeb3s = new InsuredBridgeL2Client(
+      spyLogger,
+      web3,
+      depositBox.options.address,
+      chainId,
+      0,
+      (await web3.eth.getBlock("latest")).number, // Ensure that we query to the end.
+      [web3, ganacheWeb3] // Ganache provider will be different from hardhat provider that is already
+      // connected to the BridgeDepositBox.
+    );
+
     // Update will throw an error.
     try {
       await clientWithFallbackWeb3s.update();
@@ -218,6 +231,29 @@ describe("InsuredBridgeL2Client", () => {
     } catch (e) {
       assert.equal(lastSpyLogLevel(spy), "error");
       assert.isTrue(lastSpyLogIncludes(spy, "L2 RPC endpoint state disagreement"));
+    }
+
+    // Set the ganache time past the latest block time to generate a different error.
+    await advanceBlockAndSetTime(ganacheWeb3, Number((await web3.eth.getBlock("latest")).timestamp + 1000));
+
+    clientWithFallbackWeb3s = new InsuredBridgeL2Client(
+      spyLogger,
+      web3,
+      depositBox.options.address,
+      chainId,
+      0,
+      null, // Allow the client to determine how far we query.
+      [web3, ganacheWeb3] // Ganache provider will be different from hardhat provider that is already
+      // connected to the BridgeDepositBox.
+    );
+
+    // Update will throw an error.
+    try {
+      await clientWithFallbackWeb3s.update();
+      assert.isTrue(false);
+    } catch (e) {
+      assert.equal(lastSpyLogLevel(spy), "error");
+      assert.isTrue(lastSpyLogIncludes(spy, "differ by too much time."));
     }
   });
 });
