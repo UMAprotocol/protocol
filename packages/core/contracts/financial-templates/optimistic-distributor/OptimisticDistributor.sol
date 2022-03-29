@@ -80,6 +80,7 @@ abstract contract OptimisticDistributor is Lockable {
      *                  EVENTS                  *
      ********************************************/
 
+    event RewardCreated(uint256 rewardIndex, Reward reward);
     event MerkleDistributorSet(address merkleDistributor);
 
     /**
@@ -139,7 +140,7 @@ abstract contract OptimisticDistributor is Lockable {
         // Pull maximum rewards from the sponsor.
         rewardToken.safeTransferFrom(msg.sender, address(this), maximumRewardAmount);
 
-        // Store funded reward and bump nextCreatedReward index.
+        // Store funded reward and log created reward.
         rewards[nextCreatedReward] = Reward({
             sponsor: msg.sender,
             rewardToken: rewardToken,
@@ -150,6 +151,9 @@ abstract contract OptimisticDistributor is Lockable {
             optimisticOracleProposerBond: optimisticOracleProposerBond,
             optimisticOracleLivenessTime: optimisticOracleLivenessTime
         });
+        emit RewardCreated(nextCreatedReward, rewards[nextCreatedReward]);
+
+        // Bump nextCreatedReward index.
         nextCreatedReward = nextCreatedReward.add(1);
     }
 
