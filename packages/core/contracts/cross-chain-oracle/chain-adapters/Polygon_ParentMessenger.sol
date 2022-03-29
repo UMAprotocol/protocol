@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import "../../external/polygon/tunnel/FxBaseRootTunnel.sol";
+import "@maticnetwork/fx-portal/contracts/tunnel/FxBaseRootTunnel.sol";
 import "../interfaces/ParentMessengerInterface.sol";
 import "../interfaces/ParentMessengerConsumerInterface.sol";
 import "./ParentMessengerBase.sol";
