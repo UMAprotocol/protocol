@@ -80,6 +80,8 @@ abstract contract OptimisticDistributor is Lockable {
      *                  EVENTS                  *
      ********************************************/
 
+    event MerkleDistributorSet(address merkleDistributor);
+
     /**
      * @notice Constructor.
      * @param _bondToken ERC20 token that the bond is paid in.
@@ -202,9 +204,10 @@ abstract contract OptimisticDistributor is Lockable {
      */
     function setMerkleDistributor(MerkleDistributor _merkleDistributor) external nonReentrant() {
         require(address(merkleDistributor) == address(0), "merkleDistributor already set");
+        require(_merkleDistributor.owner() == address(this), "merkleDistributor not owned");
 
-        // TODO: Add call to MerkleDistributor to check that it is indeed owned by this OptimisticDistributor.
         merkleDistributor = _merkleDistributor;
+        emit MerkleDistributorSet(address(_merkleDistributor));
     }
 
     /**
