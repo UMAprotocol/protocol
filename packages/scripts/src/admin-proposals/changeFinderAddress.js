@@ -97,10 +97,7 @@ async function run() {
         const implementationAddress = await mainnetContracts.finder.methods
           .getImplementationAddress(utf8ToHex(contract))
           .call();
-        if (implementationAddress === toChecksumAddress(ethereum)) {
-          skip = true;
-          console.log("- Contract @ ", ethereum, `is already set to ${contract} in the Finder. Nothing to do.`);
-        }
+        skip = implementationAddress === toChecksumAddress(ethereum);
       } catch (err) {
         // If `getImplementationAddress` reverts, then implementation is not set yet so we shouldn't skip this
         // proposal. Not having an implementation set is an expected situation for this script so we should ignore this
@@ -112,21 +109,20 @@ async function run() {
           .encodeABI();
         console.log("- data", data);
         adminProposalTransactions.push({ to: mainnetContracts.finder.options.address, value: 0, data });
+      } else {
+        console.log("- Contract @ ", ethereum, `is already set to ${contract} in the Finder. Nothing to do.`);
       }
       console.groupEnd();
     }
 
     if (polygon) {
       console.group(`\n🟣 (Polygon) Pointing Finder for "${contract}" to ${polygon}`);
-      let skip;
+      let skip = false;
       try {
         const implementationAddress = await contractsByNetId[137].finder.methods
           .getImplementationAddress(utf8ToHex(contract))
           .call();
-        if (implementationAddress === toChecksumAddress(polygon)) {
-          skip = true;
-          console.log("- Contract @ ", polygon, `is already set to ${contract} in the Finder. Nothing to do.`);
-        }
+        skip = implementationAddress === toChecksumAddress(polygon);
       } catch (err) {
         // If `getImplementationAddress` reverts, then implementation is not set yet so we shouldn't skip this
         // proposal. Not having an implementation set is an expected situation for this script so we should ignore this
@@ -144,6 +140,8 @@ async function run() {
             contractsByNetId[137].l1Governor
           )
         );
+      } else {
+        console.log("- Contract @ ", polygon, `is already set to ${contract} in the Finder. Nothing to do.`);
       }
       console.groupEnd();
     }
@@ -151,15 +149,12 @@ async function run() {
     if (governorHubNetworks.length > 0) {
       for (const network of governorHubNetworks) {
         console.group(`\n🔴 (${network.name}) Pointing Finder for "${contract}" to ${network.value}`);
-        let skip;
+        let skip = false;
         try {
           const implementationAddress = await contractsByNetId[network.chainId].finder.methods
             .getImplementationAddress(utf8ToHex(contract))
             .call();
-          if (implementationAddress === toChecksumAddress(network.value)) {
-            skip = true;
-            console.log("- Contract @ ", network.value, `is already set to ${contract} in the Finder. Nothing to do.`);
-          }
+          skip = implementationAddress === toChecksumAddress(network.value);
         } catch (err) {
           // If `getImplementationAddress` reverts, then implementation is not set yet so we shouldn't skip this
           // proposal. Not having an implementation set is an expected situation for this script so we should ignore this
@@ -185,6 +180,8 @@ async function run() {
               gasEstimator.getCurrentFastPrice()
             );
           }
+        } else {
+          console.log("- Contract @ ", network.value, `is already set to ${contract} in the Finder. Nothing to do.`);
         }
         console.groupEnd();
       }
