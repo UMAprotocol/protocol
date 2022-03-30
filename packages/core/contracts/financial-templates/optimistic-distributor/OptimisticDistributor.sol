@@ -89,7 +89,7 @@ abstract contract OptimisticDistributor is Lockable {
      * @param _bondToken ERC20 token that the bond is paid in.
      * @param _finder Finder to look up UMA contract addresses.
      */
-    constructor(IERC20 _bondToken, FinderInterface _finder) {
+    constructor(FinderInterface _finder, IERC20 _bondToken) {
         finder = _finder;
         require(_getCollateralWhitelist().isOnWhitelist(address(_bondToken)), "bond token not supported");
         bondToken = _bondToken;
