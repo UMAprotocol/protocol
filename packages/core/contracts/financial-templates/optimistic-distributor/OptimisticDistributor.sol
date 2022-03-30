@@ -123,6 +123,7 @@ abstract contract OptimisticDistributor is Lockable {
         uint256 optimisticOracleProposerBond,
         uint256 optimisticOracleLivenessTime
     ) external nonReentrant() {
+        require(address(merkleDistributor) != address(0), "merkleDistributor not set");
         require(_getIdentifierWhitelist().isIdentifierSupported(priceIdentifier), "Identifier not registered");
         require(
             optimisticOracle
