@@ -3,22 +3,6 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
-# [2.26.0](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.25.0...@uma/financial-templates-lib@2.26.0) (2022-03-29)
-
-### Bug Fixes
-
-- Address Discord transport rate limiting issues ([cc49f8a](https://github.com/UMAprotocol/protocol/commit/cc49f8a9bbea1d207e90bc8ac6b3e3e56aec287d))
-- Address Discord transport rate limiting issues ([#3858](https://github.com/UMAprotocol/protocol/issues/3858)) ([dc4cf55](https://github.com/UMAprotocol/protocol/commit/dc4cf55f739377b98e3301d8d02892fd7083acf9))
-- clean up a few missing and lingering dependencies in the common package ([#3841](https://github.com/UMAprotocol/protocol/issues/3841)) ([e16ab00](https://github.com/UMAprotocol/protocol/commit/e16ab00bcb18fbadc08805c4793215539a741c67))
-- Update OCEANUSD markets ([#3862](https://github.com/UMAprotocol/protocol/issues/3862)) ([e8bb1bc](https://github.com/UMAprotocol/protocol/commit/e8bb1bc22925fe142ab774878517ed52ed359376))
-- **across-relayer:** more accurately determine a safe last block number to query ([#3856](https://github.com/UMAprotocol/protocol/issues/3856)) ([02ea4c4](https://github.com/UMAprotocol/protocol/commit/02ea4c4c73faf6e57ae57db7b473a11c9c085a40))
-- **discord-transport:** Remove extra log messages for links and refine discord config to be more granular on where messages are sent ([#3848](https://github.com/UMAprotocol/protocol/issues/3848)) ([e5c1289](https://github.com/UMAprotocol/protocol/commit/e5c128971dafb4ecfcf4c96cce62ad8ca6715d10))
-
-### Features
-
-- add better provider logging and retries to redundant event calls ([#3852](https://github.com/UMAprotocol/protocol/issues/3852)) ([dabce64](https://github.com/UMAprotocol/protocol/commit/dabce643f6a2936d06d5273ef7861884ddd542d0))
-- added more robust bignumber formatting to winston transport ([d86fef5](https://github.com/UMAprotocol/protocol/commit/d86fef5666d60400b6b6be062c8aaebf0a266150))
-
 # [2.25.0](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.24.0...@uma/financial-templates-lib@2.25.0) (2022-02-28)
 
 ### Features

@@ -3,13 +3,6 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
-## [2.6.6](https://github.com/UMAprotocol/protocol/compare/@uma/serverless-orchestration@2.6.5...@uma/serverless-orchestration@2.6.6) (2022-03-29)
-
-### Bug Fixes
-
-- **serverless-spoke:** extend stdout buffer to avoid process being killed ([#3857](https://github.com/UMAprotocol/protocol/issues/3857)) ([4f67e4d](https://github.com/UMAprotocol/protocol/commit/4f67e4d07fb0a6c2823241ebae5fb16fc15628ed))
-- clean up a few missing and lingering dependencies in the common package ([#3841](https://github.com/UMAprotocol/protocol/issues/3841)) ([e16ab00](https://github.com/UMAprotocol/protocol/commit/e16ab00bcb18fbadc08805c4793215539a741c67))
-
 ## [2.6.5](https://github.com/UMAprotocol/protocol/compare/@uma/serverless-orchestration@2.6.4...@uma/serverless-orchestration@2.6.5) (2022-02-28)
 
 **Note:** Version bump only for package @uma/serverless-orchestration

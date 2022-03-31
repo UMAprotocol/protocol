@@ -3,14 +3,6 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
-## [1.8.2](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.8.1...@uma/scripts@1.8.2) (2022-03-29)
-
-### Bug Fixes
-
-- clean up a few missing and lingering dependencies in the common package ([#3841](https://github.com/UMAprotocol/protocol/issues/3841)) ([e16ab00](https://github.com/UMAprotocol/protocol/commit/e16ab00bcb18fbadc08805c4793215539a741c67))
-- fix voter dapp scripts ([#3853](https://github.com/UMAprotocol/protocol/issues/3853)) ([c9af0d1](https://github.com/UMAprotocol/protocol/commit/c9af0d18aa2e314cfff3eb99cc8ff4273052d91e))
-- **admin-proposal-script:** Only send ETH to Arbitrum_ParentMessenger if balance is low ([#3844](https://github.com/UMAprotocol/protocol/issues/3844)) ([0d6040e](https://github.com/UMAprotocol/protocol/commit/0d6040e662da255625a9d8e3ae7e0ea89a1f4826))
-
 ## [1.8.1](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.8.0...@uma/scripts@1.8.1) (2022-02-28)
 
 **Note:** Version bump only for package @uma/scripts

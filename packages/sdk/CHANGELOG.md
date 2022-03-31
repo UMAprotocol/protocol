@@ -3,12 +3,6 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
-## [0.22.2](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.22.1...@uma/sdk@0.22.2) (2022-03-29)
-
-### Bug Fixes
-
-- **across-cross-domain-finalizer:** increase Optimism State commitment delay constant ([#3849](https://github.com/UMAprotocol/protocol/issues/3849)) ([0b294df](https://github.com/UMAprotocol/protocol/commit/0b294df2083c31e87eafa071ad1ca97cd3e4745a))
-
 ## [0.22.1](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.22.0...@uma/sdk@0.22.1) (2022-02-28)
 
 ### Bug Fixes
