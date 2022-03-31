@@ -1,7 +1,7 @@
 # UMA Protocol
 
 <p align="center">
-  <img alt="UMA Logo" src="https://umaproject.org/assets/images/logo.svg" width="440">
+  <img alt="UMA Logo" src="https://raw.githubusercontent.com/UMAprotocol/website/master/documents/press-kit/logos/02_SVG/Orange.svg" width="440">
 </p>
 
 [![<UMAprotocol>](https://circleci.com/gh/UMAprotocol/protocol.svg?style=shield)](https://app.circleci.com/pipelines/github/UMAprotocol/protocol)

@@ -64,29 +64,40 @@ export class Relayer {
   // by passing in the proof as input.
   async _relayMessage(messageEvent: EventData): Promise<void> {
     const transactionHash = messageEvent.transactionHash;
+    const blockNumber = messageEvent.blockNumber;
+
+    const isCheckpointed = await this.maticPosClient.exitUtil.isCheckPointed(transactionHash);
+    if (!isCheckpointed) {
+      // Polygon block containing MessageSent event hasn't been checkpointed to Mainnet yet. Checkpoints
+      // happen roughly every hour.
+      this.logger.debug({
+        at: "Relayer#relayMessage",
+        message: "MessageSent event block not checkpointed to mainnet yet ⚠️",
+        transactionHash,
+        blockNumber,
+      });
+      return;
+    }
+
     this.logger.debug({
       at: "Relayer#relayMessage",
       message: "Deriving proof for transaction that emitted MessageSent",
       transactionHash: transactionHash,
-      blockNumber: messageEvent.blockNumber,
+      blockNumber,
     });
 
-    // This method will fail if the Polygon transaction hash has not been checkpointed to Mainnet yet. Checkpoints
-    // happen roughly every hour.
     let proof;
     try {
       // Proof construction logic copied from:
-      // - https://docs.matic.network/docs/develop/l1-l2-communication/state-transfer#state-transfer-from-matic-to-ethereum
-      proof = await this.maticPosClient.posRootChainManager.customPayload(
+      // - https://maticnetwork.github.io/matic.js/docs/advanced/exit-util/
+      proof = await this.maticPosClient.exitUtil.buildPayloadForExit(
         transactionHash,
-        POLYGON_MESSAGE_SENT_EVENT_SIG // SEND_MESSAGE_EVENT_SIG, do not change
+        POLYGON_MESSAGE_SENT_EVENT_SIG, // SEND_MESSAGE_EVENT_SIG, do not change
+        false
       );
       if (!proof) throw new Error("Proof construction succeeded but returned undefined");
     } catch (error) {
-      // If event block hasn't been checkpointed to Mainnet yet, then don't emit error level log.
-      let logLevel = "error";
-      if ((error as Error)?.message.includes("transaction has not been checkpointed")) logLevel = "debug";
-      this.logger[logLevel]({
+      this.logger.error({
         at: "Relayer#relayMessage",
         message: "Failed to derive proof for MessageSent transaction hash 📛",
         messageEvent,
@@ -118,10 +129,12 @@ export class Relayer {
     } catch (error) {
       // If the proof was already submitted, then don't emit an error level log.
       let logLevel = "error";
-      if ((error as Error)?.message.includes("EXIT_ALREADY_PROCESSED")) logLevel = "debug";
+      const exitAlreadyProcessed = (error as Error)?.message.includes("EXIT_ALREADY_PROCESSED");
+      if (exitAlreadyProcessed) logLevel = "debug";
       this.logger[logLevel]({
         at: "Relayer#relayMessage",
         message: "Failed to submit proof to root tunnel🚨",
+        exitAlreadyProcessed,
         error,
       });
       return;

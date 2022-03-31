@@ -22,8 +22,9 @@ const FxRoot = getContract("FxRootMock");
 // This function should return a bytes string.
 type customPayloadFn = () => Promise<string>;
 interface MaticPosClient {
-  posRootChainManager: {
-    customPayload: customPayloadFn;
+  exitUtil: {
+    buildPayloadForExit: customPayloadFn;
+    isCheckPointed: () => Promise<boolean>;
   };
 }
 describe("Relayer unit tests", function () {
@@ -103,11 +104,12 @@ describe("Relayer unit tests", function () {
     await gasEstimator.update();
     // Construct Matic PoS client that always successfully constructs a proof
     maticPosClient = {
-      posRootChainManager: {
-        customPayload: async () =>
+      exitUtil: {
+        buildPayloadForExit: async () =>
           new Promise((resolve) => {
             resolve(utf8ToHex("Test proof"));
           }),
+        isCheckPointed: async () => new Promise((resolve) => resolve(true)),
       },
     };
 
@@ -173,11 +175,12 @@ describe("Relayer unit tests", function () {
   it("logs error when it fails to construct a proof", async function () {
     // Construct PosClient that always fails to construct a proof.
     const _maticPosClient: MaticPosClient = {
-      posRootChainManager: {
-        customPayload: async () =>
-          new Promise((resolve, reject) => {
+      exitUtil: {
+        buildPayloadForExit: async () =>
+          new Promise((_, reject) => {
             reject(new Error("This error is always thrown"));
           }),
+        isCheckPointed: async () => new Promise((resolve) => resolve(true)),
       },
     };
     const _relayer: any = new Relayer(
@@ -199,15 +202,14 @@ describe("Relayer unit tests", function () {
     assert.equal(nonDebugEvents.length, 1);
     assert.isTrue(lastSpyLogIncludes(spy, "Failed to derive proof for MessageSent transaction hash"));
   });
-  it("does not log error when proof fails to be constructed because it has not been checkpointed to mainnet yet", async function () {
-    // Relayer emit DEBUG level logs for any errors thrown on proof construction that reference the transaction not
-    // being checkpointed yet.
+  it("block is not checkpointed yet", async function () {
     const _maticPosClient: MaticPosClient = {
-      posRootChainManager: {
-        customPayload: async () =>
-          new Promise((resolve, reject) => {
-            reject(new Error("transaction has not been checkpointed"));
+      exitUtil: {
+        buildPayloadForExit: async () =>
+          new Promise((resolve) => {
+            resolve(utf8ToHex("Test proof"));
           }),
+        isCheckPointed: async () => new Promise((resolve) => resolve(false)),
       },
     };
     const _relayer: any = new Relayer(
@@ -227,7 +229,7 @@ describe("Relayer unit tests", function () {
     await _relayer.fetchAndRelayMessages();
     const nonDebugEvents = spy.getCalls().filter((log: any) => log.lastArg.level !== "debug");
     assert.equal(nonDebugEvents.length, 0);
-    assert.isTrue(lastSpyLogIncludes(spy, "Failed to derive proof for MessageSent transaction hash"));
+    assert.isTrue(lastSpyLogIncludes(spy, "block not checkpointed"));
   });
   it("logs error when submitting proof to RootTunnel reverts unexpectedly", async function () {
     // Manually override RootTunnelMock such that receiveMessage() always reverts.
