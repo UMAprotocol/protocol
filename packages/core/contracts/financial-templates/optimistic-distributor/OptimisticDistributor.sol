@@ -32,7 +32,7 @@ abstract contract OptimisticDistributor is Lockable {
         address sponsor;
         IERC20 rewardToken;
         uint256 maximumRewardAmount;
-        uint256 proposalTimestamp;
+        uint256 earliestProposalTimestamp;
         bytes32 priceIdentifier;
         bytes customAncillaryData;
         uint256 optimisticOracleProposerBond;
@@ -82,6 +82,13 @@ abstract contract OptimisticDistributor is Lockable {
 
     event RewardCreated(uint256 rewardIndex, Reward reward);
     event RewardIncreased(uint256 rewardIndex, uint256 newMaximumRewardAmount);
+    event ProposalCreated(
+        uint256 rewardIndex,
+        uint256 proposalIndex,
+        uint256 proposalTimestamp,
+        bytes32 merkleRoot,
+        Reward reward
+    );
     event MerkleDistributorSet(address merkleDistributor);
 
     /**
@@ -105,7 +112,7 @@ abstract contract OptimisticDistributor is Lockable {
      * @dev The caller must approve this contract to transfer `maximumRewardAmount` amount of `rewardToken`.
      * @param rewardToken ERC20 token that the rewards will be paid in.
      * @param maximumRewardAmount Maximum reward amount that the sponsor is posting for distribution.
-     * @param proposalTimestamp Starting timestamp when proposals for distribution can be made.
+     * @param earliestProposalTimestamp Starting timestamp when proposals for distribution can be made.
      * @param priceIdentifier Identifier that should be passed to the Optimistic Oracle on proposed distribution.
      * @param customAncillaryData Custom ancillary data that should be sent to the Optimistic Oracle on proposed
      * distribution.
@@ -117,7 +124,7 @@ abstract contract OptimisticDistributor is Lockable {
     function createReward(
         IERC20 rewardToken,
         uint256 maximumRewardAmount,
-        uint256 proposalTimestamp,
+        uint256 earliestProposalTimestamp,
         bytes32 priceIdentifier,
         bytes calldata customAncillaryData,
         uint256 optimisticOracleProposerBond,
@@ -147,7 +154,7 @@ abstract contract OptimisticDistributor is Lockable {
             sponsor: msg.sender,
             rewardToken: rewardToken,
             maximumRewardAmount: maximumRewardAmount,
-            proposalTimestamp: proposalTimestamp,
+            earliestProposalTimestamp: earliestProposalTimestamp,
             priceIdentifier: priceIdentifier,
             customAncillaryData: customAncillaryData,
             optimisticOracleProposerBond: optimisticOracleProposerBond,
@@ -160,14 +167,17 @@ abstract contract OptimisticDistributor is Lockable {
     }
 
     /**
-     * @notice Allows existing sponsor to deposit additional rewards for distribution before `proposalTimestamp`.
+     * @notice Allows existing sponsor to deposit additional rewards for distribution before `earliestProposalTimestamp`.
      * @dev The caller must approve this contract to transfer `additionalRewardAmount` amount of `rewardToken`.
      * @param rewardIndex Index for identifying existing rewards object that should receive additional funding.
      * @param additionalRewardAmount Additional reward amount that the sponsor is posting for distribution.
      */
     function increaseReward(uint256 rewardIndex, uint256 additionalRewardAmount) external nonReentrant() {
         require(rewards[rewardIndex].sponsor == msg.sender, "rewards have not been created");
-        require(getCurrentTime() < rewards[rewardIndex].proposalTimestamp, "no more funding from proposalTimestamp");
+        require(
+            getCurrentTime() < rewards[rewardIndex].earliestProposalTimestamp,
+            "no more funding from earliestProposalTimestamp"
+        );
 
         // Pull additional rewards from the sponsor.
         rewards[rewardIndex].rewardToken.safeTransferFrom(msg.sender, address(this), additionalRewardAmount);
@@ -182,7 +192,7 @@ abstract contract OptimisticDistributor is Lockable {
      ********************************************/
 
     /**
-     * @notice Allows any caller to propose distribution for funded reward starting from `proposalTimestamp`.
+     * @notice Allows any caller to propose distribution for funded reward starting from `earliestProposalTimestamp`.
      * @dev The caller must approve this contract to transfer `optimisticOracleProposerBond` + final fee amount
      * of `bondToken`.
      * @param rewardIndex Index for identifying existing rewards object that should be proposed for distribution.
@@ -193,7 +203,57 @@ abstract contract OptimisticDistributor is Lockable {
         uint256 rewardIndex,
         bytes32 merkleRoot,
         string calldata ipfsHash
-    ) external virtual;
+    ) external nonReentrant() {
+        Reward memory reward = rewards[rewardIndex];
+        // TODO: Does below check is sufficient or also need require msg.sender != in `createReward`?
+        require(reward.sponsor != address(0), "no associated reward");
+
+        uint256 timestamp = getCurrentTime();
+        require(timestamp >= reward.earliestProposalTimestamp, "proposal timestamp not reached");
+
+        // Append proposal index to ancillary data.
+        uint256 proposalIndex = nextCreatedProposal;
+        bytes memory ancillaryData =
+            AncillaryData.appendKeyValueUint(reward.customAncillaryData, "proposalIndex", proposalIndex);
+
+        // Request price from Optimistic Oracle.
+        optimisticOracle.requestPrice(reward.priceIdentifier, timestamp, ancillaryData, bondToken, 0);
+
+        // Set proposal liveness and bond and calculate total bond amount.
+        optimisticOracle.setCustomLiveness(
+            reward.priceIdentifier,
+            timestamp,
+            ancillaryData,
+            reward.optimisticOracleLivenessTime
+        );
+        uint256 totalBond =
+            optimisticOracle.setBond(
+                reward.priceIdentifier,
+                timestamp,
+                ancillaryData,
+                reward.optimisticOracleProposerBond
+            );
+
+        // Pull proposal bond and final fee from the proposer.
+        bondToken.safeTransferFrom(msg.sender, address(this), totalBond);
+
+        // Propose canonical value representing "True"; i.e. the proposed distribution is valid.
+        optimisticOracle.proposePriceFor(
+            msg.sender,
+            address(this),
+            reward.priceIdentifier,
+            timestamp,
+            ancillaryData,
+            int256(1e18)
+        );
+
+        // Store and log proposed distribution.
+        proposals[proposalIndex] = Proposal({ rewardIndex: rewardIndex, timestamp: timestamp, merkleRoot: merkleRoot });
+        emit ProposalCreated(rewardIndex, proposalIndex, timestamp, merkleRoot, reward);
+
+        // Bump nextCreatedProposal index.
+        nextCreatedProposal = proposalIndex.add(1);
+    }
 
     /**
      * @notice Allows any caller to execute distribution that has been validated by the Optimistic Oracle.
