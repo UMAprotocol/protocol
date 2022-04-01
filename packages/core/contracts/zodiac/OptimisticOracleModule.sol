@@ -44,6 +44,7 @@ contract OptimisticOracleModule is Module, Lockable {
     // This will usually be "ZODIAC" but a deployer may want to create a more specific identifier.
     bytes32 public identifier;
     SkinnyOptimisticOracleInterface public skinnyOptimisticOracle;
+    OracleAncillaryInterface public oracle;
     StoreInterface public store;
 
     struct Transaction {
@@ -211,15 +212,15 @@ contract OptimisticOracleModule is Module, Lockable {
         uint256 _proposalId,
         Transaction[] memory _transactions,
         bytes memory _explanation,
-        uint256 _originalTime
+        uint32 _originalTime,
+        SkinnyOptimisticOracleInterface.Request memory _request
     ) public payable nonReentrant {
         // Recreate the proposal hash from the inputs and check that it matches the stored proposal hash.
         uint256 id = _proposalId;
-        uint256 time = _originalTime;
 
         // Create proposal in memory.
         Proposal memory proposal;
-        proposal.requestTime = time;
+        proposal.requestTime = _originalTime;
 
         // Construct the ancillary data.
         bytes memory ancillaryData = _explanation;
@@ -243,8 +244,9 @@ contract OptimisticOracleModule is Module, Lockable {
         require(proposalHashes[id] == keccak256(abi.encodePacked(proposalData)), "proposal hash does not match");
 
         // This will revert if the price has not settled.
-        // int256 price = _getOracle().getPrice(identifier, _originalTime, ancillaryData);
-        // require(price == 1e18, "Proposal was rejected");
+        (, int256 price) =
+            skinnyOptimisticOracle.settle(address(this), identifier, _originalTime, ancillaryData, _request);
+        require(price == 1e18, "Proposal was rejected");
 
         for (uint256 i = 0; i < _transactions.length; i++) {
             require(i == 0 || _transactions[i - 1].to == address(0), "Previous tx not yet executed");
@@ -275,7 +277,7 @@ contract OptimisticOracleModule is Module, Lockable {
         bytes memory _ancillaryData
     ) public {
         // This will revert if the price has not settled.
-        int256 price = _getOracle().getPrice(identifier, _originalTime, _ancillaryData);
+        int256 price = oracle.getPrice(identifier, _originalTime, _ancillaryData);
 
         // Check that proposal was rejected.
         require(price == 0, "Proposal was not rejected");
@@ -317,6 +319,7 @@ contract OptimisticOracleModule is Module, Lockable {
 
     function _sync() internal {
         store = _getStore();
+        oracle = _getOracle();
         skinnyOptimisticOracle = _getOptimisticOracle();
         finalFee = store.computeFinalFee(address(collateral)).rawValue;
     }
