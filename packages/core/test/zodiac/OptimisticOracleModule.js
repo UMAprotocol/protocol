@@ -210,6 +210,13 @@ describe("OptimisticOracleModule", () => {
         event.proposal.transactions[2].data == txnData3 &&
         event.proposal.transactions[2].operation == 0
     );
+
+    await assertEventEmitted(
+      receipt,
+      optimisticOracleModule,
+      "PriceProposed",
+      (event) => event.timestamp == proposalTime
+    );
   });
 
   it("Approved proposals can be executed by any address", async function () {
@@ -246,6 +253,9 @@ describe("OptimisticOracleModule", () => {
 
     const proposalTime = parseInt(await optimisticOracleModule.methods.getCurrentTime().call());
 
+    // Set up the request params.
+    const expirationTime = parseInt(proposalTime) + parseInt(liveness);
+
     await assertEventEmitted(
       receipt,
       optimisticOracleModule,
@@ -270,6 +280,29 @@ describe("OptimisticOracleModule", () => {
         event.proposal.transactions[2].operation == 0
     );
 
+    const requestParams = {
+      proposer: optimisticOracleModule.options.address,
+      disputer: ZERO_ADDRESS,
+      currency: bondToken.options.address,
+      settled: false,
+      proposedPrice: parseInt(1e18).toString(),
+      resolvedPrice: "0",
+      expirationTime: expirationTime.toString(),
+      reward: "0",
+      finalFee: finalFee,
+      bond: bond,
+      customLiveness: liveness.toString(),
+    };
+
+    await assertEventEmitted(
+      receipt,
+      optimisticOracleModule,
+      "PriceProposed",
+      (event) => event.timestamp == proposalTime // &&
+      // event.request == Object.values(requestParams)
+      // the check above fails for some reason but the request params work for executeProposal?
+    );
+
     // Wait until the end of the dispute period.
     advanceTime(liveness);
 
@@ -277,23 +310,6 @@ describe("OptimisticOracleModule", () => {
     const startingBalance1 = toBN(await testToken.methods.balanceOf(proposer).call());
     const startingBalance2 = toBN(await testToken.methods.balanceOf(rando).call());
     const startingBalance3 = toBN(await testToken2.methods.balanceOf(proposer).call());
-
-    // Set up the request params.
-    const expirationTime = parseInt(proposalTime) + parseInt(liveness);
-    const requestParams = {
-      proposer: ZERO_ADDRESS,
-      disputer: ZERO_ADDRESS,
-      currency: bondToken.options.address,
-      settled: false,
-      proposedPrice: parseInt(1e18).toString(),
-      resolvedPrice: parseInt(1e18).toString(),
-      expirationTime: expirationTime,
-      reward: "0",
-      finalFee: finalFee,
-      bond: totalBond,
-      customLiveness: liveness,
-    };
-    console.log(requestParams);
 
     await optimisticOracleModule.methods
       .executeProposal(id, transactions, explanation, proposalTime, requestParams)

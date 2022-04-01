@@ -9,6 +9,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../oracle/implementation/Constants.sol";
 import "../oracle/interfaces/FinderInterface.sol";
 import "../oracle/interfaces/SkinnyOptimisticOracleInterface.sol";
+import "../oracle/implementation/SkinnyOptimisticOracle.sol";
 import "../oracle/interfaces/OracleAncillaryInterface.sol";
 import "../common/implementation/Lockable.sol";
 import "../common/interfaces/AddressWhitelistInterface.sol";
@@ -26,6 +27,13 @@ contract OptimisticOracleModule is Module, Lockable {
         address indexed proposer,
         uint256 indexed proposalTime,
         Proposal proposal
+    );
+
+    event PriceProposed(
+        bytes32 indexed identifier,
+        uint256 indexed timestamp,
+        bytes ancillaryData,
+        SkinnyOptimisticOracleInterface.Request request
     );
 
     event TransactionExecuted(uint256 indexed proposalId, uint256 indexed transactionIndex);
@@ -114,6 +122,15 @@ contract OptimisticOracleModule is Module, Lockable {
         emit OptimisticOracleModuleDeployed(_owner, avatar, target);
     }
 
+    function priceProposed(
+        bytes32 _identifier,
+        uint32 _timestamp,
+        bytes memory _ancillaryData,
+        SkinnyOptimisticOracleInterface.Request memory _request
+    ) external {
+        emit PriceProposed(_identifier, _timestamp, _ancillaryData, _request);
+    }
+
     function setBond(uint256 _bond) public onlyOwner {
         // Value of the bond required for proposals, in addition to the final fee.
         bond = _bond;
@@ -200,7 +217,7 @@ contract OptimisticOracleModule is Module, Lockable {
             0,
             bond,
             uint256(liveness),
-            proposer,
+            address(this),
             // Canonical value representing "True"; i.e. the transactions are valid.
             int256(1e18)
         );
