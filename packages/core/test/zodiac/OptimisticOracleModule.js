@@ -246,15 +246,23 @@ describe("OptimisticOracleModule", () => {
       .proposeTransactions(transactions, explanation)
       .send({ from: proposer });
 
-    const proposalHash = await optimisticOracleModule.methods.proposalHashes(id).call();
-    assert.notEqual(proposalHash, "0x0000000000000000000000000000000000000000000000000000000000000000");
-    const futureProposalHash = await optimisticOracleModule.methods.proposalHashes(id + 1).call();
-    assert.equal(futureProposalHash, "0x0000000000000000000000000000000000000000000000000000000000000000");
-
     const proposalTime = parseInt(await optimisticOracleModule.methods.getCurrentTime().call());
 
     // Set up the request params.
     const expirationTime = parseInt(proposalTime) + parseInt(liveness);
+    const requestParams = {
+      proposer: optimisticOracleModule.options.address,
+      disputer: ZERO_ADDRESS,
+      currency: bondToken.options.address,
+      settled: false,
+      proposedPrice: parseInt(1e18).toString(),
+      resolvedPrice: "0",
+      expirationTime: expirationTime.toString(),
+      reward: "0",
+      finalFee: finalFee,
+      bond: bond,
+      customLiveness: liveness.toString(),
+    };
 
     await assertEventEmitted(
       receipt,
@@ -279,20 +287,6 @@ describe("OptimisticOracleModule", () => {
         event.proposal.transactions[2].data == txnData3 &&
         event.proposal.transactions[2].operation == 0
     );
-
-    const requestParams = {
-      proposer: optimisticOracleModule.options.address,
-      disputer: ZERO_ADDRESS,
-      currency: bondToken.options.address,
-      settled: false,
-      proposedPrice: parseInt(1e18).toString(),
-      resolvedPrice: "0",
-      expirationTime: expirationTime.toString(),
-      reward: "0",
-      finalFee: finalFee,
-      bond: bond,
-      customLiveness: liveness.toString(),
-    };
 
     await assertEventEmitted(
       receipt,
@@ -328,6 +322,59 @@ describe("OptimisticOracleModule", () => {
     );
   });
 
+  it("Proposals can not be executed until after liveness", async function () {
+    // Issue some test tokens to the avatar address.
+    await testToken.methods.allocateTo(avatar.options.address, toWei("3")).send({ from: accounts[0] });
+    await testToken2.methods.allocateTo(avatar.options.address, toWei("2")).send({ from: accounts[0] });
+
+    // Construct the transaction data to send the newly minted tokens to proposer and another address.
+    const txnData1 = constructTransferTransaction(proposer, toWei("1"));
+    const txnData2 = constructTransferTransaction(rando, toWei("2"));
+    const txnData3 = constructTransferTransaction(proposer, toWei("2"));
+    const operation = 0; // 0 for call, 1 for delegatecall
+
+    // Send the proposal with multiple transactions.
+    const prevProposalId = parseInt(await optimisticOracleModule.methods.prevProposalId().call());
+    const id = prevProposalId + 1;
+
+    const transactions = [
+      { to: testToken.options.address, value: 0, data: txnData1, operation },
+      { to: testToken.options.address, value: 0, data: txnData2, operation },
+      { to: testToken2.options.address, value: 0, data: txnData3, operation },
+    ];
+
+    const explanation = utf8ToHex("These transactions were approved by majority vote on Snapshot.");
+    const proposalTime = parseInt(await optimisticOracleModule.methods.getCurrentTime().call());
+
+    // Set up the request params.
+    const expirationTime = parseInt(proposalTime) + parseInt(liveness);
+    const requestParams = {
+      proposer: optimisticOracleModule.options.address,
+      disputer: ZERO_ADDRESS,
+      currency: bondToken.options.address,
+      settled: false,
+      proposedPrice: parseInt(1e18).toString(),
+      resolvedPrice: "0",
+      expirationTime: expirationTime.toString(),
+      reward: "0",
+      finalFee: finalFee,
+      bond: bond,
+      customLiveness: liveness.toString(),
+    };
+
+    // Wait until the end of the dispute period.
+    const tooEarly = liveness - 1;
+    advanceTime(tooEarly);
+
+    assert(
+      await didContractThrow(
+        optimisticOracleModule.methods
+          .executeProposal(id, transactions, explanation, proposalTime, requestParams)
+          .send({ from: executor })
+      )
+    );
+  });
+
   it("Can not send transactions to the 0x0 address", async function () {});
 
   it("Can not send transactions with data to an EOA", async function () {});
@@ -338,7 +385,11 @@ describe("OptimisticOracleModule", () => {
 
   it("Proposals can be disputed", async function () {});
 
-  it("Rejected proposals can not be executed", async function () {});
+  it("Disputed proposals can not be settled until DVM vote resolves", async function () {});
+
+  it("Disputed proposals can be executed if approved by the DVM", async function () {});
+
+  it("Disputed proposals can not be executed if rejected by the DVM", async function () {});
 
   it("Rejected proposals can be deleted by any address", async function () {});
 });
