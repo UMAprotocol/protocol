@@ -1,12 +1,7 @@
 const { assert } = require("chai");
 const hre = require("hardhat");
 const { web3, getContract, assertEventEmitted /* , findEvent */ } = hre;
-const {
-  didContractThrow,
-  interfaceName,
-  runDefaultFixture,
-  TokenRolesEnum /* ZERO_ADDRESS */,
-} = require("@uma/common");
+const { didContractThrow, interfaceName, runDefaultFixture, TokenRolesEnum, ZERO_ADDRESS } = require("@uma/common");
 // const { isEmpty } = require("lodash");
 const { utf8ToHex, toWei, toBN /* randomHex, toChecksumAddress */ } = web3.utils;
 
@@ -52,11 +47,11 @@ describe("OptimisticOracleModule", () => {
     return testToken.methods.transfer(destination, amount).encodeABI();
   };
 
-  // const advanceTime = async (timeIncrease) => {
-  //   await timer.methods
-  //     .setCurrentTime(Number(await timer.methods.getCurrentTime().call()) + timeIncrease)
-  //     .send({ from: owner });
-  // };
+  const advanceTime = async (timeIncrease) => {
+    await timer.methods
+      .setCurrentTime(Number(await timer.methods.getCurrentTime().call()) + timeIncrease)
+      .send({ from: owner });
+  };
 
   before(async function () {
     accounts = await web3.eth.getAccounts();
@@ -275,12 +270,33 @@ describe("OptimisticOracleModule", () => {
         event.proposal.transactions[2].operation == 0
     );
 
-    // Check to make sure that the tokens get transferred at the time of each successive execution.
+    // Wait until the end of the dispute period.
+    advanceTime(liveness);
+
+    // Set starting balances of tokens to be transferred.
     const startingBalance1 = toBN(await testToken.methods.balanceOf(proposer).call());
     const startingBalance2 = toBN(await testToken.methods.balanceOf(rando).call());
     const startingBalance3 = toBN(await testToken2.methods.balanceOf(proposer).call());
+
+    // Set up the request params.
+    const expirationTime = parseInt(proposalTime) + parseInt(liveness);
+    const requestParams = {
+      proposer: ZERO_ADDRESS,
+      disputer: ZERO_ADDRESS,
+      currency: bondToken.options.address,
+      settled: false,
+      proposedPrice: parseInt(1e18).toString(),
+      resolvedPrice: parseInt(1e18).toString(),
+      expirationTime: expirationTime,
+      reward: "0",
+      finalFee: finalFee,
+      bond: totalBond,
+      customLiveness: liveness,
+    };
+    console.log(requestParams);
+
     await optimisticOracleModule.methods
-      .executeProposal(id, transactions, explanation, proposalTime)
+      .executeProposal(id, transactions, explanation, proposalTime, requestParams)
       .send({ from: executor });
     assert.equal(
       (await testToken.methods.balanceOf(proposer).call()).toString(),
