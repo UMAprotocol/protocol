@@ -290,11 +290,13 @@ contract OptimisticOracleModule is Module, Lockable {
 
     function deleteRejectedProposal(
         uint256 _proposalId,
-        uint256 _originalTime,
-        bytes memory _ancillaryData
+        uint32 _originalTime,
+        bytes memory _ancillaryData,
+        SkinnyOptimisticOracleInterface.Request memory _request
     ) public {
         // This will revert if the price has not settled.
-        int256 price = oracle.getPrice(identifier, _originalTime, _ancillaryData);
+        (, int256 price) =
+            skinnyOptimisticOracle.settle(address(this), identifier, _originalTime, _ancillaryData, _request);
 
         // Check that proposal was rejected.
         require(price == 0, "Proposal was not rejected");
