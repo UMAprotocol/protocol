@@ -3,6 +3,20 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.17.0](https://github.com/UMAprotocol/protocol/compare/@uma/insured-bridge-relayer@1.16.0...@uma/insured-bridge-relayer@1.17.0) (2022-04-01)
+
+### Bug Fixes
+
+- changed log lvl of unprofitable relays from error to info ([#3851](https://github.com/UMAprotocol/protocol/issues/3851)) ([039db50](https://github.com/UMAprotocol/protocol/commit/039db5053628740ecc63eadd0e458e0ea19dd073))
+- clean up a few missing and lingering dependencies in the common package ([#3841](https://github.com/UMAprotocol/protocol/issues/3841)) ([e16ab00](https://github.com/UMAprotocol/protocol/commit/e16ab00bcb18fbadc08805c4793215539a741c67))
+- fix bug in relayer where speedup is attempted when impossible ([#3850](https://github.com/UMAprotocol/protocol/issues/3850)) ([da523d6](https://github.com/UMAprotocol/protocol/commit/da523d66c3f14344401bf8ef2902b1809abcd55e))
+- **across-relayer:** Bot should always speed up slow relay ([#3837](https://github.com/UMAprotocol/protocol/issues/3837)) ([ff92a84](https://github.com/UMAprotocol/protocol/commit/ff92a84432fa4274f1794abf630b5df6c796aa5a))
+
+### Features
+
+- fix dai on Arbitrum L2->L1 Cross Domain Finalizer ([#3845](https://github.com/UMAprotocol/protocol/issues/3845)) ([ceb5a46](https://github.com/UMAprotocol/protocol/commit/ceb5a468d6cfb9cf1996fb6ad058ac36d5f7db65))
+- **across-relayer:** filter out DAI in cross domain finalizer ([#3840](https://github.com/UMAprotocol/protocol/issues/3840)) ([556c236](https://github.com/UMAprotocol/protocol/commit/556c236fa9f6b300344df3f767528366600e9210))
+
 # [1.16.0](https://github.com/UMAprotocol/protocol/compare/@uma/insured-bridge-relayer@1.15.0...@uma/insured-bridge-relayer@1.16.0) (2022-02-28)
 
 ### Features

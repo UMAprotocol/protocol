@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.3.0](https://github.com/UMAprotocol/protocol/compare/@uma/fx-tunnel-relayer@1.2.5...@uma/fx-tunnel-relayer@1.3.0) (2022-04-01)
+
+### Bug Fixes
+
+- clean up a few missing and lingering dependencies in the common package ([#3841](https://github.com/UMAprotocol/protocol/issues/3841)) ([e16ab00](https://github.com/UMAprotocol/protocol/commit/e16ab00bcb18fbadc08805c4793215539a741c67))
+
+### Features
+
+- **core:** Upgrade FxBaseRootTunnel contracts to be compatible with Polygon events emitted by EIP-1559 transactions ([#3863](https://github.com/UMAprotocol/protocol/issues/3863)) ([7b70d39](https://github.com/UMAprotocol/protocol/commit/7b70d39638e158a7c87babdb25e5d8bc42dec718))
+
 ## [1.2.5](https://github.com/UMAprotocol/protocol/compare/@uma/fx-tunnel-relayer@1.2.4...@uma/fx-tunnel-relayer@1.2.5) (2022-02-28)
 
 **Note:** Version bump only for package @uma/fx-tunnel-relayer
