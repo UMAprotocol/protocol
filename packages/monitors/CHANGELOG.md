@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.11.3](https://github.com/UMAprotocol/protocol/compare/@uma/monitors@2.11.2...@uma/monitors@2.11.3) (2022-04-01)
+
+### Bug Fixes
+
+- Address Discord transport rate limiting issues ([#3858](https://github.com/UMAprotocol/protocol/issues/3858)) ([dc4cf55](https://github.com/UMAprotocol/protocol/commit/dc4cf55f739377b98e3301d8d02892fd7083acf9))
+- clean up a few missing and lingering dependencies in the common package ([#3841](https://github.com/UMAprotocol/protocol/issues/3841)) ([e16ab00](https://github.com/UMAprotocol/protocol/commit/e16ab00bcb18fbadc08805c4793215539a741c67))
+- **discord-transport:** Remove extra log messages for links and refine discord config to be more granular on where messages are sent ([#3848](https://github.com/UMAprotocol/protocol/issues/3848)) ([e5c1289](https://github.com/UMAprotocol/protocol/commit/e5c128971dafb4ecfcf4c96cce62ad8ca6715d10))
+
 ## [2.11.2](https://github.com/UMAprotocol/protocol/compare/@uma/monitors@2.11.1...@uma/monitors@2.11.2) (2022-02-28)
 
 **Note:** Version bump only for package @uma/monitors

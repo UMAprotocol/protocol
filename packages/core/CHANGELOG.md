@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.26.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.25.1...@uma/core@2.26.0) (2022-04-01)
+
+### Bug Fixes
+
+- clean up a few missing and lingering dependencies in the common package ([#3841](https://github.com/UMAprotocol/protocol/issues/3841)) ([e16ab00](https://github.com/UMAprotocol/protocol/commit/e16ab00bcb18fbadc08805c4793215539a741c67))
+- fix voter dapp scripts ([#3853](https://github.com/UMAprotocol/protocol/issues/3853)) ([c9af0d1](https://github.com/UMAprotocol/protocol/commit/c9af0d18aa2e314cfff3eb99cc8ff4273052d91e))
+
+### Features
+
+- **core:** Upgrade FxBaseRootTunnel contracts to be compatible with Polygon events emitted by EIP-1559 transactions ([#3863](https://github.com/UMAprotocol/protocol/issues/3863)) ([7b70d39](https://github.com/UMAprotocol/protocol/commit/7b70d39638e158a7c87babdb25e5d8bc42dec718))
+- **hardhat-deploy-scripts:** add missing FPL deploy scripts ([#3722](https://github.com/UMAprotocol/protocol/issues/3722)) ([88b02ad](https://github.com/UMAprotocol/protocol/commit/88b02ad23f531937779ef5847ef6bd69ba5787b3))
+
 ## [2.25.1](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.25.0...@uma/core@2.25.1) (2022-02-28)
 
 **Note:** Version bump only for package @uma/core
