@@ -275,19 +275,25 @@ describe("OptimisticOracleModule", () => {
         event.proposal.transactions[2].operation == 0
     );
 
-    // // Check to make sure that the tokens get transferred at the time of each successive execution.
-    // const startingBalance1 = toBN(await testToken.methods.balanceOf(proposer).call());
-    // const startingBalance2 = toBN(await testToken.methods.balanceOf(rando).call());
+    // Check to make sure that the tokens get transferred at the time of each successive execution.
+    const startingBalance1 = toBN(await testToken.methods.balanceOf(proposer).call());
+    const startingBalance2 = toBN(await testToken.methods.balanceOf(rando).call());
+    const startingBalance3 = toBN(await testToken2.methods.balanceOf(proposer).call());
     await optimisticOracleModule.methods
       .executeProposal(id, transactions, explanation, proposalTime)
       .send({ from: executor });
-    // assert.equal(
-    //   (await testToken.methods.balanceOf(proposer).call()).toString(),
-    //   startingBalance1.add(toBN(toWei("3"))).toString()
-    // );
-    // assert.equal(
-    //   (await testToken.methods.balanceOf(rando).call()).toString(),
-    //   startingBalance2.add(toBN(toWei("2"))).toString()
+    assert.equal(
+      (await testToken.methods.balanceOf(proposer).call()).toString(),
+      startingBalance1.add(toBN(toWei("1"))).toString()
+    );
+    assert.equal(
+      (await testToken.methods.balanceOf(rando).call()).toString(),
+      startingBalance2.add(toBN(toWei("2"))).toString()
+    );
+    assert.equal(
+      (await testToken2.methods.balanceOf(proposer).call()).toString(),
+      startingBalance3.add(toBN(toWei("2"))).toString()
+    );
   });
 
   it("Can not send transactions to the 0x0 address", async function () {});
