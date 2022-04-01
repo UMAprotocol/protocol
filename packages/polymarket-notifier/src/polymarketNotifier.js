@@ -127,9 +127,9 @@ class PolymarketNotifier {
         this._generateUILink(contract.txHash, contract.chainId);
     }
     if (recentProposals.length) {
-      this.logger.warn({
+      this.logger.error({
         at: "PolymarketNotifier",
-        message: "Difference between proposed price and Polymarket API!",
+        message: "Difference between proposed price and Polymarket API!🚨",
         mrkdwn,
         notificationPath: "dev-x",
       });
@@ -157,9 +157,9 @@ class PolymarketNotifier {
           question: polymarketContract.question,
           ancillaryData: ancillaryDataContract.ancillaryData,
           outcome1: polymarketContract.outcomes[0],
-          outcome1Price: Number(polymarketContract.outcomePrices[0]),
+          outcome1Price: Number(polymarketContract.outcomePrices[0]).toFixed(4),
           outcome2: polymarketContract.outcomes[1],
-          outcome2Price: Number(polymarketContract.outcomePrices[1]),
+          outcome2Price: Number(polymarketContract.outcomePrices[1]).toFixed(4),
         };
       })
     );
