@@ -461,7 +461,72 @@ describe("OptimisticOracleModule", () => {
     );
   });
 
-  it("Disputed proposals can not be settled until DVM vote resolves", async function () {});
+  it("Disputed proposals can not be settled until DVM vote resolves", async function () {
+    // Issue some test tokens to the avatar address.
+    await testToken.methods.allocateTo(avatar.options.address, toWei("3")).send({ from: accounts[0] });
+    await testToken2.methods.allocateTo(avatar.options.address, toWei("2")).send({ from: accounts[0] });
+
+    // Construct the transaction data to send the newly minted tokens to proposer and another address.
+    const txnData1 = constructTransferTransaction(proposer, toWei("1"));
+    const txnData2 = constructTransferTransaction(rando, toWei("2"));
+    const txnData3 = constructTransferTransaction(proposer, toWei("2"));
+    const operation = 0; // 0 for call, 1 for delegatecall
+
+    // Send the proposal with multiple transactions.
+    const prevProposalId = parseInt(await optimisticOracleModule.methods.prevProposalId().call());
+    const id = prevProposalId + 1;
+
+    const transactions = [
+      { to: testToken.options.address, value: 0, data: txnData1, operation },
+      { to: testToken.options.address, value: 0, data: txnData2, operation },
+      { to: testToken2.options.address, value: 0, data: txnData3, operation },
+    ];
+
+    const explanation = utf8ToHex("These transactions were approved by majority vote on Snapshot.");
+
+    let receipt = await optimisticOracleModule.methods
+      .proposeTransactions(transactions, explanation)
+      .send({ from: proposer });
+
+    const ancillaryData = receipt.events.PriceProposed.returnValues.ancillaryData;
+
+    const proposalTime = parseInt(await optimisticOracleModule.methods.getCurrentTime().call());
+
+    // Set up the request params.
+    const expirationTime = parseInt(proposalTime) + parseInt(liveness);
+    const requestParams = {
+      proposer: optimisticOracleModule.options.address,
+      disputer: ZERO_ADDRESS,
+      currency: bondToken.options.address,
+      settled: false,
+      proposedPrice: parseInt(1e18).toString(),
+      resolvedPrice: "0",
+      expirationTime: expirationTime.toString(),
+      reward: "0",
+      finalFee: finalFee,
+      bond: bond,
+      customLiveness: liveness.toString(),
+    };
+
+    // Advance time to one second before end of the dispute period.
+    const stillOpen = liveness - 1;
+    advanceTime(stillOpen);
+
+    await optimisticOracle.methods
+      .disputePrice(optimisticOracleModule.options.address, identifier, proposalTime, ancillaryData, requestParams)
+      .send({ from: disputer });
+
+    // Advance time past end of liveness window.
+    advanceTime(2);
+
+    assert(
+      await didContractThrow(
+        optimisticOracleModule.methods
+          .executeProposal(id, transactions, explanation, proposalTime, requestParams)
+          .send({ from: executor })
+      )
+    );
+  });
 
   it("Disputed proposals can be executed if approved by the DVM", async function () {});
 
