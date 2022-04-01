@@ -10,9 +10,9 @@
 //    collateralization ratio of a given account moves below a threshold. Viewable on GCE logs, send a slack message to
 //    the appropriate channel and initiates a PagerDuty incident with urgency set ‘low’.
 // -> Error. Used to report system failure or situations that require an immediate response from appropriate team members.
-//    For example, an error level message is generated when a liquidation/dispute/dispute settlement transaction from a UMA
-//    bot reverts, token price deviates significantly from the target price or a bot crashes. Viewable on GCE logs, send a
-//    slack message to the appropriate channel and initiates a PagerDuty incident with urgency setting ‘high’.
+//    For example, an error level message is generated when a liquidation/dispute/dispute settlement transaction from a
+//    UMA bot reverts, token price deviates significantly from the target price or a bot crashes. Viewable on GCE logs,
+//    send a slack message to the appropriate channel and initiates a PagerDuty incident with urgency setting ‘high’.
 
 // calling debug/info/error logging requires an specificity formatted json object as a param for the logger.
 // All objects must have an `at`, `message` as a minimum to describe where the error was logged from
@@ -28,10 +28,12 @@
 // });
 
 import winston from "winston";
-import type { Logger as _Logger, LogEntry } from "winston";
-import type * as Transport from "winston-transport";
 import { createTransports } from "./Transports";
+import { botIdentifyFormatter, errorStackTracerFormatter, bigNumberFormatter } from "./Formatters";
 import { delay } from "../helpers/delay";
+
+import type { Logger as _Logger } from "winston";
+import type * as Transport from "winston-transport";
 
 // This async function can be called by a bot if the log message is generated right before the process terminates.
 // This method will check if the AugmentedLogger's isFlushed is set to true. If not, it will block until such time
@@ -41,29 +43,8 @@ export async function waitForLogger(logger: AugmentedLogger) {
   while (!logger.isFlushed) await delay(0.5); // While the logger is not flushed, wait for it to be flushed.
 }
 
-// If the log entry contains an error then extract the stack trace as the error message.
-function errorStackTracerFormatter(logEntry: LogEntry) {
-  if (logEntry.error) {
-    logEntry.error = handleRecursiveErrorArray(logEntry.error);
-  }
-  return logEntry;
-}
-
-// Handle case where `error` is an array of errors and we want to display all of the error stacks recursively.
-// i.e. `error` is in the shape: [[Error, Error], [Error], [Error, Error]]
-function handleRecursiveErrorArray(error: Error | any[]): string | any[] {
-  // If error is not an array, then just return error information for there is no need to recurse further.
-  if (!Array.isArray(error)) return error.stack || error.message || error.toString() || "could not extract error info";
-  // Recursively add all errors to an array and flatten the output.
-  return error.map(handleRecursiveErrorArray).flat();
-}
-
-// This formatter checks if the `BOT_IDENTIFIER` env variable is present. If it is, the name is appended to the message.
-function botIdentifyFormatter(botIdentifier: string) {
-  return function (logEntry: LogEntry) {
-    if (botIdentifier) logEntry["bot-identifier"] = botIdentifier;
-    return logEntry;
-  };
+export interface AugmentedLogger extends _Logger {
+  isFlushed: boolean;
 }
 
 export interface AugmentedLogger extends _Logger {
@@ -81,6 +62,7 @@ export function createNewLogger(
       winston.format(botIdentifyFormatter(botIdentifier))(),
       winston.format((logEntry) => logEntry)(),
       winston.format(errorStackTracerFormatter)(),
+      winston.format(bigNumberFormatter)(),
       winston.format.json()
     ),
     transports: [...createTransports(transportsConfig), ...injectedTransports],
