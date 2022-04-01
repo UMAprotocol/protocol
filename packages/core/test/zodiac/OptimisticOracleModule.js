@@ -12,7 +12,7 @@ const OptimisticOracleModule = getContract("OptimisticOracleModuleTest");
 const Finder = getContract("Finder");
 const IdentifierWhitelist = getContract("IdentifierWhitelist");
 const AddressWhitelist = getContract("AddressWhitelist");
-// const OptimisticOracle = getContract("SkinnyOptimisticOracle");
+const OptimisticOracle = getContract("SkinnyOptimisticOracle");
 const MockOracle = getContract("MockOracleAncillary");
 const Timer = getContract("Timer");
 const Store = getContract("Store");
@@ -37,7 +37,7 @@ describe("OptimisticOracleModule", () => {
     identifierWhitelist,
     bondToken,
     mockOracle,
-    // optimisticOracle,
+    optimisticOracle,
     optimisticOracleModule,
     testToken,
     testToken2,
@@ -64,7 +64,7 @@ describe("OptimisticOracleModule", () => {
     collateralWhitelist = await AddressWhitelist.deployed();
     store = await Store.deployed();
     identifierWhitelist = await IdentifierWhitelist.deployed();
-    // optimisticOracle = await OptimisticOracle.deployed();
+    optimisticOracle = await OptimisticOracle.deployed();
     testToken = await TestnetERC20.new("Test", "TEST", 18).send({ from: accounts[0] });
     testToken2 = await TestnetERC20.new("Test2", "TEST2", 18).send({ from: accounts[0] });
 
@@ -100,7 +100,7 @@ describe("OptimisticOracleModule", () => {
     await bondToken.methods.mint(proposer, totalBond).send({ from: owner });
     await bondToken.methods.approve(optimisticOracleModule.options.address, totalBond).send({ from: proposer });
     await bondToken.methods.mint(disputer, totalBond).send({ from: owner });
-    await bondToken.methods.approve(optimisticOracleModule.options.address, totalBond).send({ from: disputer });
+    await bondToken.methods.approve(optimisticOracle.options.address, totalBond).send({ from: disputer });
   });
 
   it("Constructor validation", async function () {
@@ -388,7 +388,7 @@ describe("OptimisticOracleModule", () => {
       customLiveness: liveness.toString(),
     };
 
-    // Wait until the end of the dispute period.
+    // Advance time to one second before end of the dispute period.
     const tooEarly = liveness - 1;
     advanceTime(tooEarly);
 
@@ -401,15 +401,65 @@ describe("OptimisticOracleModule", () => {
     );
   });
 
-  it("Owner can update stored contract parameters", async function () {});
+  it("Proposals can be disputed", async function () {
+    // Issue some test tokens to the avatar address.
+    await testToken.methods.allocateTo(avatar.options.address, toWei("3")).send({ from: accounts[0] });
+    await testToken2.methods.allocateTo(avatar.options.address, toWei("2")).send({ from: accounts[0] });
 
-  it("Non-owners can not update stored contract parameters", async function () {});
+    // Construct the transaction data to send the newly minted tokens to proposer and another address.
+    const txnData1 = constructTransferTransaction(proposer, toWei("1"));
+    const txnData2 = constructTransferTransaction(rando, toWei("2"));
+    const txnData3 = constructTransferTransaction(proposer, toWei("2"));
+    const operation = 0; // 0 for call, 1 for delegatecall
 
-  it("Owner can delete unexecuted proposals", async function () {});
+    // Send the proposal with multiple transactions.
+    const transactions = [
+      { to: testToken.options.address, value: 0, data: txnData1, operation },
+      { to: testToken.options.address, value: 0, data: txnData2, operation },
+      { to: testToken2.options.address, value: 0, data: txnData3, operation },
+    ];
 
-  it("Non-owners can not delete unexecuted proposals", async function () {});
+    const explanation = utf8ToHex("These transactions were approved by majority vote on Snapshot.");
 
-  it("Proposals can be disputed", async function () {});
+    let receipt = await optimisticOracleModule.methods
+      .proposeTransactions(transactions, explanation)
+      .send({ from: proposer });
+
+    const ancillaryData = receipt.events.PriceProposed.returnValues.ancillaryData;
+
+    const proposalTime = parseInt(await optimisticOracleModule.methods.getCurrentTime().call());
+
+    // Set up the request params.
+    const expirationTime = parseInt(proposalTime) + parseInt(liveness);
+    const requestParams = {
+      proposer: optimisticOracleModule.options.address,
+      disputer: ZERO_ADDRESS,
+      currency: bondToken.options.address,
+      settled: false,
+      proposedPrice: parseInt(1e18).toString(),
+      resolvedPrice: "0",
+      expirationTime: expirationTime.toString(),
+      reward: "0",
+      finalFee: finalFee,
+      bond: bond,
+      customLiveness: liveness.toString(),
+    };
+
+    // Advance time to one second before end of the dispute period.
+    const stillOpen = liveness - 1;
+    advanceTime(stillOpen);
+
+    let disputeReceipt = await optimisticOracle.methods
+      .disputePrice(optimisticOracleModule.options.address, identifier, proposalTime, ancillaryData, requestParams)
+      .send({ from: disputer });
+
+    await assertEventEmitted(
+      disputeReceipt,
+      optimisticOracle,
+      "DisputePrice",
+      (event) => event.requester == optimisticOracleModule.options.address && event.ancillaryData == ancillaryData
+    );
+  });
 
   it("Disputed proposals can not be settled until DVM vote resolves", async function () {});
 
@@ -418,4 +468,12 @@ describe("OptimisticOracleModule", () => {
   it("Disputed proposals can not be executed if rejected by the DVM", async function () {});
 
   it("Rejected proposals can be deleted by any address", async function () {});
+
+  it("Owner can update stored contract parameters", async function () {});
+
+  it("Non-owners can not update stored contract parameters", async function () {});
+
+  it("Owner can delete unexecuted proposals", async function () {});
+
+  it("Non-owners can not delete unexecuted proposals", async function () {});
 });
