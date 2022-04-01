@@ -227,9 +227,7 @@ contract OptimisticOracleModule is Module, Lockable {
         AncillaryData.appendKeyValueAddress(ancillaryData, "module", address(this));
 
         // Add transactions to proposal in memory.
-        for (uint256 i = 0; i < _transactions.length; i++) {
-            proposal.transactions[i] = _transactions[i];
-        }
+        proposal.transactions = _transactions;
 
         // Add transaction data to the proposal data to be hashed and stored in the contract.
         bytes memory proposalData = abi.encodePacked(ancillaryData);
@@ -245,8 +243,8 @@ contract OptimisticOracleModule is Module, Lockable {
         require(proposalHashes[id] == keccak256(abi.encodePacked(proposalData)), "proposal hash does not match");
 
         // This will revert if the price has not settled.
-        int256 price = _getOracle().getPrice(identifier, _originalTime, ancillaryData);
-        require(price == 1e18, "Proposal was rejected");
+        // int256 price = _getOracle().getPrice(identifier, _originalTime, ancillaryData);
+        // require(price == 1e18, "Proposal was rejected");
 
         for (uint256 i = 0; i < _transactions.length; i++) {
             require(i == 0 || _transactions[i - 1].to == address(0), "Previous tx not yet executed");

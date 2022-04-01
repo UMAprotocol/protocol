@@ -23,6 +23,7 @@ const Timer = getContract("Timer");
 const Store = getContract("Store");
 const ERC20 = getContract("ExpandedERC20");
 const TestnetERC20 = getContract("TestnetERC20");
+const TestAvatar = getContract("TestAvatar");
 
 const finalFee = toWei("100");
 const liveness = 7200;
@@ -32,7 +33,7 @@ const totalBond = toBN(finalFee).add(toBN(bond)).toString();
 const rules = "https://insert.gist.text.url";
 
 describe("OptimisticOracleModule", () => {
-  let accounts, owner, proposer, disputer, rando /* , executor*/;
+  let accounts, owner, proposer, disputer, rando, executor;
 
   let timer,
     finder,
@@ -44,7 +45,8 @@ describe("OptimisticOracleModule", () => {
     // optimisticOracle,
     optimisticOracleModule,
     testToken,
-    testToken2;
+    testToken2,
+    avatar;
 
   const constructTransferTransaction = (destination, amount) => {
     return testToken.methods.transfer(destination, amount).encodeABI();
@@ -58,7 +60,7 @@ describe("OptimisticOracleModule", () => {
 
   before(async function () {
     accounts = await web3.eth.getAccounts();
-    [owner, proposer, disputer, rando /* , executor*/] = accounts;
+    [owner, proposer, disputer, rando, executor] = accounts;
 
     await runDefaultFixture(hre);
 
@@ -81,6 +83,7 @@ describe("OptimisticOracleModule", () => {
 
   beforeEach(async function () {
     // Deploy new contracts with clean state and perform setup:
+    avatar = await TestAvatar.new().send({ from: owner });
     bondToken = await ERC20.new("BOND", "BOND", 18).send({ from: owner });
     await bondToken.methods.addMember(TokenRolesEnum.MINTER, owner).send({ from: owner });
     await collateralWhitelist.methods.addToWhitelist(bondToken.options.address).send({ from: owner });
@@ -88,7 +91,7 @@ describe("OptimisticOracleModule", () => {
 
     optimisticOracleModule = await OptimisticOracleModule.new(
       finder.options.address,
-      owner,
+      avatar.options.address,
       bondToken.options.address,
       bond,
       rules,
@@ -96,6 +99,8 @@ describe("OptimisticOracleModule", () => {
       liveness,
       timer.options.address
     ).send({ from: owner });
+
+    avatar.methods.setModule(optimisticOracleModule.options.address).send({ from: owner });
 
     await bondToken.methods.mint(proposer, totalBond).send({ from: owner });
     await bondToken.methods.approve(optimisticOracleModule.options.address, totalBond).send({ from: proposer });
@@ -109,7 +114,7 @@ describe("OptimisticOracleModule", () => {
       await didContractThrow(
         OptimisticOracleModule.new(
           finder.options.address,
-          owner,
+          avatar.options.address,
           bondToken.options.address,
           bond,
           rules,
@@ -125,7 +130,7 @@ describe("OptimisticOracleModule", () => {
       await didContractThrow(
         OptimisticOracleModule.new(
           finder.options.address,
-          owner,
+          avatar.options.address,
           (await ERC20.new("BOND", "BOND", 18).send({ from: owner })).options.address,
           bond,
           rules,
@@ -141,7 +146,7 @@ describe("OptimisticOracleModule", () => {
       await didContractThrow(
         OptimisticOracleModule.new(
           finder.options.address,
-          owner,
+          avatar.options.address,
           bondToken.options.address,
           bond,
           rules,
@@ -155,8 +160,8 @@ describe("OptimisticOracleModule", () => {
 
   it("Valid proposals should be hashed and stored and emit event", async function () {
     // Issue some test tokens to the avatar address.
-    await testToken.methods.allocateTo(owner, toWei("3")).send({ from: accounts[0] });
-    await testToken2.methods.allocateTo(owner, toWei("2")).send({ from: accounts[0] });
+    await testToken.methods.allocateTo(avatar.options.address, toWei("3")).send({ from: accounts[0] });
+    await testToken2.methods.allocateTo(avatar.options.address, toWei("2")).send({ from: accounts[0] });
 
     // Construct the transaction data to send the newly minted tokens to proposer and another address.
     const txnData1 = constructTransferTransaction(proposer, toWei("1"));
@@ -214,8 +219,8 @@ describe("OptimisticOracleModule", () => {
 
   it("Approved proposals can be executed by any address", async function () {
     // Issue some test tokens to the avatar address.
-    await testToken.methods.allocateTo(owner, toWei("3")).send({ from: accounts[0] });
-    await testToken2.methods.allocateTo(owner, toWei("2")).send({ from: accounts[0] });
+    await testToken.methods.allocateTo(avatar.options.address, toWei("3")).send({ from: accounts[0] });
+    await testToken2.methods.allocateTo(avatar.options.address, toWei("2")).send({ from: accounts[0] });
 
     // Construct the transaction data to send the newly minted tokens to proposer and another address.
     const txnData1 = constructTransferTransaction(proposer, toWei("1"));
@@ -273,12 +278,9 @@ describe("OptimisticOracleModule", () => {
     // // Check to make sure that the tokens get transferred at the time of each successive execution.
     // const startingBalance1 = toBN(await testToken.methods.balanceOf(proposer).call());
     // const startingBalance2 = toBN(await testToken.methods.balanceOf(rando).call());
-    // await optimisticOracleModule.methods.executeProposal(
-    //     id,
-    //     transactions,
-    //     explanation,
-    //     proposalTime
-    //   ).send({ from: executor });
+    await optimisticOracleModule.methods
+      .executeProposal(id, transactions, explanation, proposalTime)
+      .send({ from: executor });
     // assert.equal(
     //   (await testToken.methods.balanceOf(proposer).call()).toString(),
     //   startingBalance1.add(toBN(toWei("3"))).toString()
