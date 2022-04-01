@@ -53,6 +53,13 @@ describe("OptimisticOracleModule", () => {
       .send({ from: owner });
   };
 
+  const pushPrice = async (price) => {
+    const [lastQuery] = (await mockOracle.methods.getPendingQueries().call()).slice(-1);
+    await mockOracle.methods
+      .pushPrice(lastQuery.identifier, lastQuery.time, lastQuery.ancillaryData, price)
+      .send({ from: accounts[0] });
+  };
+
   before(async function () {
     accounts = await web3.eth.getAccounts();
     [owner, proposer, disputer, rando, executor] = accounts;
@@ -528,7 +535,102 @@ describe("OptimisticOracleModule", () => {
     );
   });
 
-  it("Disputed proposals can be executed if approved by the DVM", async function () {});
+  it("Disputed proposals can be executed if approved by the DVM", async function () {
+    // Issue some test tokens to the avatar address.
+    await testToken.methods.allocateTo(avatar.options.address, toWei("3")).send({ from: accounts[0] });
+    await testToken2.methods.allocateTo(avatar.options.address, toWei("2")).send({ from: accounts[0] });
+
+    // Construct the transaction data to send the newly minted tokens to proposer and another address.
+    const txnData1 = constructTransferTransaction(proposer, toWei("1"));
+    const txnData2 = constructTransferTransaction(rando, toWei("2"));
+    const txnData3 = constructTransferTransaction(proposer, toWei("2"));
+    const operation = 0; // 0 for call, 1 for delegatecall
+
+    // Send the proposal with multiple transactions.
+    const prevProposalId = parseInt(await optimisticOracleModule.methods.prevProposalId().call());
+    const id = prevProposalId + 1;
+
+    const transactions = [
+      { to: testToken.options.address, value: 0, data: txnData1, operation },
+      { to: testToken.options.address, value: 0, data: txnData2, operation },
+      { to: testToken2.options.address, value: 0, data: txnData3, operation },
+    ];
+
+    const explanation = utf8ToHex("These transactions were approved by majority vote on Snapshot.");
+
+    const receipt = await optimisticOracleModule.methods
+      .proposeTransactions(transactions, explanation)
+      .send({ from: proposer });
+
+    const ancillaryData = receipt.events.PriceProposed.returnValues.ancillaryData;
+
+    const proposalTime = parseInt(await optimisticOracleModule.methods.getCurrentTime().call());
+
+    // Set up the request params.
+    const expirationTime = parseInt(proposalTime) + parseInt(liveness);
+    const requestParams = {
+      proposer: optimisticOracleModule.options.address,
+      disputer: ZERO_ADDRESS,
+      currency: bondToken.options.address,
+      settled: false,
+      proposedPrice: parseInt(1e18).toString(),
+      resolvedPrice: "0",
+      expirationTime: expirationTime.toString(),
+      reward: "0",
+      finalFee: finalFee,
+      bond: bond,
+      customLiveness: liveness.toString(),
+    };
+
+    // Advance time to one second before end of the dispute period.
+    const stillOpen = liveness - 1;
+    advanceTime(stillOpen);
+
+    // Dispute.
+    await optimisticOracle.methods
+      .disputePrice(optimisticOracleModule.options.address, identifier, proposalTime, ancillaryData, requestParams)
+      .send({ from: disputer });
+
+    // DVM approves the proposal.
+    await pushPrice(toWei("1"));
+
+    // Update params for execution.
+    const disputedRequestParams = {
+      proposer: optimisticOracleModule.options.address,
+      disputer: disputer, // this changed
+      currency: bondToken.options.address,
+      settled: false,
+      proposedPrice: parseInt(1e18).toString(),
+      resolvedPrice: "0",
+      expirationTime: expirationTime.toString(),
+      reward: "0",
+      finalFee: finalFee,
+      bond: bond,
+      customLiveness: liveness.toString(),
+    };
+
+    // Set starting balances of tokens to be transferred.
+    const startingBalance1 = toBN(await testToken.methods.balanceOf(proposer).call());
+    const startingBalance2 = toBN(await testToken.methods.balanceOf(rando).call());
+    const startingBalance3 = toBN(await testToken2.methods.balanceOf(proposer).call());
+
+    // Execute proposal and test results.
+    await optimisticOracleModule.methods
+      .executeProposal(id, transactions, explanation, proposalTime, disputedRequestParams)
+      .send({ from: executor });
+    assert.equal(
+      (await testToken.methods.balanceOf(proposer).call()).toString(),
+      startingBalance1.add(toBN(toWei("1"))).toString()
+    );
+    assert.equal(
+      (await testToken.methods.balanceOf(rando).call()).toString(),
+      startingBalance2.add(toBN(toWei("2"))).toString()
+    );
+    assert.equal(
+      (await testToken2.methods.balanceOf(proposer).call()).toString(),
+      startingBalance3.add(toBN(toWei("2"))).toString()
+    );
+  });
 
   it("Disputed proposals can not be executed if rejected by the DVM", async function () {});
 
