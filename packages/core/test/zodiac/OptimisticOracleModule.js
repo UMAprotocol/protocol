@@ -219,6 +219,32 @@ describe("OptimisticOracleModule", () => {
     );
   });
 
+  it("Can not send transactions to the 0x0 address", async function () {
+    const txnData1 = constructTransferTransaction(proposer, toWei("1"));
+    const operation = 0; // 0 for call, 1 for delegatecall
+    const transactions = [{ to: ZERO_ADDRESS, value: 0, data: txnData1, operation }];
+    const explanation = utf8ToHex("These transactions were approved by majority vote on Snapshot.");
+
+    assert(
+      await didContractThrow(
+        optimisticOracleModule.methods.proposeTransactions(transactions, explanation).send({ from: proposer })
+      )
+    );
+  });
+
+  it("Can not send transactions with data to an EOA", async function () {
+    const txnData1 = constructTransferTransaction(proposer, toWei("1"));
+    const operation = 0; // 0 for call, 1 for delegatecall
+    const transactions = [{ to: executor, value: 0, data: txnData1, operation }];
+    const explanation = utf8ToHex("These transactions were approved by majority vote on Snapshot.");
+
+    assert(
+      await didContractThrow(
+        optimisticOracleModule.methods.proposeTransactions(transactions, explanation).send({ from: proposer })
+      )
+    );
+  });
+
   it("Approved proposals can be executed by any address", async function () {
     // Issue some test tokens to the avatar address.
     await testToken.methods.allocateTo(avatar.options.address, toWei("3")).send({ from: accounts[0] });
@@ -375,13 +401,13 @@ describe("OptimisticOracleModule", () => {
     );
   });
 
-  it("Can not send transactions to the 0x0 address", async function () {});
-
-  it("Can not send transactions with data to an EOA", async function () {});
-
   it("Owner can update stored contract parameters", async function () {});
 
   it("Non-owners can not update stored contract parameters", async function () {});
+
+  it("Owner can delete unexecuted proposals", async function () {});
+
+  it("Non-owners can not delete unexecuted proposals", async function () {});
 
   it("Proposals can be disputed", async function () {});
 
