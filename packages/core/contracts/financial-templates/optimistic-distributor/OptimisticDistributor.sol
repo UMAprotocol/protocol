@@ -19,7 +19,7 @@ import "../../oracle/interfaces/StoreInterface.sol";
  * @title  OptimisticDistributor contract.
  * @notice Allows sponsors to distribute rewards through MerkleDistributor contract secured by UMA Optimistic Oracle.
  */
-abstract contract OptimisticDistributor is Lockable {
+contract OptimisticDistributor is Lockable {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
@@ -259,12 +259,12 @@ abstract contract OptimisticDistributor is Lockable {
      * @notice Allows any caller to execute distribution that has been validated by the Optimistic Oracle.
      * @param proposalIndex Index for identifying existing rewards distribution proposal.
      */
-    function executeDistribution(uint256 proposalIndex) external virtual;
+    function executeDistribution(uint256 proposalIndex) external nonReentrant() {}
 
     /**
      * @notice Allows any caller to delete distribution that was rejected by the Optimistic Oracle.
      */
-    function deleteRejectedDistribution(uint256 proposalIndex) external virtual;
+    function deleteRejectedDistribution(uint256 proposalIndex) external nonReentrant() {}
 
     /********************************************
      *          MAINTENANCE FUNCTIONS           *
