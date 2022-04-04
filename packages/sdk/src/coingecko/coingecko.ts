@@ -13,6 +13,12 @@ type CoinGeckoAssetPlatform = {
   shortname: string;
 };
 
+type CoinGeckoPrice = {
+  address: string;
+  timestamp: number;
+  price: number;
+};
+
 class Coingecko {
   private host: string;
   constructor(host = "https://api.coingecko.com/api/v3") {
@@ -45,7 +51,11 @@ class Coingecko {
   }
   // Return an array of spot prices for an array of collateral addresses in one async call. Note we might in future
   // This was adapted from packages/merkle-distributor/kpi-options-helpers/calculate-uma-tvl.ts
-  async getContractPrices(addresses: Array<string>, currency = "usd", platform_id = "ethereum") {
+  async getContractPrices(
+    addresses: Array<string>,
+    currency = "usd",
+    platform_id = "ethereum"
+  ): Promise<CoinGeckoPrice[]> {
     // Generate a unique set with no repeated. join the set with the required coingecko delimiter.
     const contract_addresses = Array.from(new Set(addresses.filter((n) => n).values()));
     assert(contract_addresses.length > 0, "Must supply at least 1 contract address");

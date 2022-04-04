@@ -1,9 +1,9 @@
 import * as uma from "@uma/sdk";
 import bluebird from "bluebird";
 import assert from "assert";
-import { AppState, CurrencySymbol, BaseConfig, AppClients } from "../types";
+import { AppState, CurrencySymbol, BaseConfig, AppClients, ChainId, CHAIN_IDs } from "../types";
 interface Config extends BaseConfig {
-  network: number;
+  network: ChainId;
   currency?: CurrencySymbol;
 }
 import { parseUnits, msToS } from "../libs/utils";
@@ -11,6 +11,18 @@ import { parseUnits, msToS } from "../libs/utils";
 type Dependencies = {
   tables: Pick<AppState, "prices" | "collateralAddresses">;
   appClients: AppClients;
+};
+
+const tokenAddressesMap = {
+  uma: {
+    [CHAIN_IDs.mainnet]: "0x04Fa0d235C4abf4BcF4787aF4CF447DE572eF828",
+    [CHAIN_IDs.polygon_matic]: "0x3066818837c5e6eD6601bd5a91B0762877A6B731",
+  },
+};
+
+const getTokenAddressFromOtherChain = (chainId: ChainId, address: string, toChainId: ChainId) => {
+  const addressesObj = Object.values(tokenAddressesMap).find((addressesObj) => addressesObj[chainId] === address);
+  return addressesObj ? addressesObj[toChainId] : undefined;
 };
 
 export function CollateralPrices(config: Config, dependencies: Dependencies) {
@@ -67,12 +79,47 @@ export function CollateralPrices(config: Config, dependencies: Dependencies) {
   }
 
   async function updateLatestPrices(addresses: string[]) {
-    const platforms = (await coingecko.getPlatforms()).filter(
-      (platform) => platform.chain_identifier === config.network
-    );
-    if (platforms.length === 0) throw new Error("Platform not found on CoinGecko");
-    const prices = await coingecko.getContractPrices(addresses, currency, platforms[0].id);
+    const platforms = await coingecko.getPlatforms();
+    const chainPlatform = platforms.find((platform) => platform.chain_identifier === config.network);
+
+    if (!chainPlatform) throw new Error("Platform not found on CoinGecko");
+    const prices = await coingecko.getContractPrices(addresses, currency, chainPlatform.id);
+
+    const addressesWithPrice = prices.map((priceItem) => priceItem.address);
+    const addressesWithoutPrice = addresses.filter((address) => !addressesWithPrice.includes(address));
+
+    if (config.network !== CHAIN_IDs.mainnet && addressesWithoutPrice.length > 0) {
+      console.error(`Couldn't find prices for ${addressesWithoutPrice} on platform ${platforms[0].id}`);
+      // get the prices of the mainnet tokens if the prices for L2 addresses are not returned by CoinGecko
+      const mainnetPlatform = platforms.find((platform) => platform.chain_identifier === CHAIN_IDs.mainnet);
+      if (mainnetPlatform) {
+        const mainnetPrices = await getMainnetPricesAsFallback(mainnetPlatform.id, addressesWithoutPrice);
+        prices.push(...mainnetPrices);
+      }
+    }
+
     return prices.map(updateLatestPrice);
+  }
+
+  async function getMainnetPricesAsFallback(mainnetChainIdentifier: string, addressesWithoutPrice: string[]) {
+    const prices = [];
+    const mainnetAddresses = addressesWithoutPrice
+      .map((address) => getTokenAddressFromOtherChain(config.network, address, CHAIN_IDs.mainnet))
+      .filter((address) => address !== undefined);
+    const mainnetPrices = await coingecko.getContractPrices(
+      mainnetAddresses as string[],
+      currency,
+      mainnetChainIdentifier
+    );
+    prices.push(
+      ...mainnetPrices.map((price) => ({
+        ...price,
+        // the price from CoinGecko contains the mainnet address, so it's replaced back with the L2 address
+        address: getTokenAddressFromOtherChain(CHAIN_IDs.mainnet, price.address, config.network) || "",
+      }))
+    );
+
+    return prices;
   }
 
   // Currently we just care about collateral prices
