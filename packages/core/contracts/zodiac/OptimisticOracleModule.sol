@@ -122,6 +122,15 @@ contract OptimisticOracleModule is Module, Lockable {
         emit OptimisticOracleModuleDeployed(_owner, avatar, target);
     }
 
+    function priceProposed(
+        bytes32 _identifier,
+        uint32 _timestamp,
+        bytes memory _ancillaryData,
+        SkinnyOptimisticOracleInterface.Request memory _request
+    ) external {
+        emit PriceProposed(_identifier, _timestamp, _ancillaryData, _request);
+    }
+
     function setBond(uint256 _bond) public onlyOwner {
         // Value of the bond required for proposals, in addition to the final fee.
         bond = _bond;
