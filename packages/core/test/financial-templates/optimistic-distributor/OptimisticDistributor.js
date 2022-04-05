@@ -99,11 +99,17 @@ describe("OptimisticDistributor", async function () {
     const newOptimisticOracle = await OptimisticOracle.new(7200, finder.options.address, timer.options.address).send({
       from: deployer,
     });
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.Store), newStore.options.address)
+      .send({ from: deployer });
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.OptimisticOracle), newOptimisticOracle.options.address)
+      .send({ from: deployer });
 
     // Check that OptimisticDistributor can fetch new parameters.
     await optimisticDistributor.methods.syncUmaEcosystemParams().send({ from: maintainer });
     assert.equal(await optimisticDistributor.methods.store().call(), newStore.options.address);
     assert.equal(await optimisticDistributor.methods.finalFee().call(), newFinalFee);
-    assert.equal(await optimisticDistributor.methods.optimisticOracle().call(), newOptimisticOracle);
+    assert.equal(await optimisticDistributor.methods.optimisticOracle().call(), newOptimisticOracle.options.address);
   });
 });
