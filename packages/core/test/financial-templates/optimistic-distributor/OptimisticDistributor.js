@@ -308,6 +308,17 @@ describe("OptimisticDistributor", async function () {
       )
       .send({ from: sponsor });
   });
+  it("Initial rewards are transfered to OptimisticDistributor", async function () {
+    await setupMerkleDistributor();
+
+    await optimisticDistributor.methods.createReward(...defaultRewardParameters).send({ from: sponsor });
+
+    // Sponsor should have 0 remaining balance.
+    assert.equal(await rewardToken.methods.balanceOf(sponsor).call(), toWei("0"));
+
+    // OptimisticDistributor should have reward balance.
+    assert.equal(await rewardToken.methods.balanceOf(optimisticDistributor.options.address).call(), rewardAmount);
+  });
   it("Rewards are stored on chain", async function () {
     await setupMerkleDistributor();
 
