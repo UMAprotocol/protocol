@@ -2,7 +2,7 @@ const { assert } = require("chai");
 const hre = require("hardhat");
 const { web3, getContract } = hre;
 const { didContractThrow, interfaceName, runDefaultFixture, TokenRolesEnum } = require("@uma/common");
-const { utf8ToHex, toWei } = web3.utils;
+const { utf8ToHex, toWei, randomHex } = web3.utils;
 
 // Tested contracts
 const OptimisticDistributor = getContract("OptimisticDistributorTest");
@@ -25,6 +25,7 @@ const zeroRawValue = { rawValue: "0" };
 const rewardAmount = toWei("10000");
 const bondAmount = toWei("500");
 const liveness = 7200;
+const ancillaryBytesReserve = 512;
 
 let accounts, deployer, maintainer, sponsor;
 
@@ -192,5 +193,45 @@ describe("OptimisticDistributor", async function () {
           .send({ from: sponsor })
       )
     );
+  });
+  it("Test ancillary data size limits", async function () {
+    await setupMerkleDistributor();
+
+    // Get max length from contract.
+    const maxLength = parseInt(await optimisticOracle.methods.ancillaryBytesLimit().call());
+
+    // Remove the OO bytes.
+    const ooAncillary = await optimisticOracle.methods.stampAncillaryData(customAncillaryData, randomHex(20)).call();
+    const remainingLength = maxLength - (ooAncillary.length - customAncillaryData.length) / 2; // Divide by 2 to get bytes.
+
+    // Adding 1 byte to ancillary data should push it just over the limit (less ANCILLARY_BYTES_RESERVE of 512).
+    assert(
+      await didContractThrow(
+        optimisticDistributor.methods
+          .createReward(
+            rewardToken.options.address,
+            rewardAmount,
+            0,
+            identifier,
+            randomHex(remainingLength - ancillaryBytesReserve + 1),
+            bondAmount,
+            liveness
+          )
+          .send({ from: sponsor })
+      )
+    );
+
+    // Ancillary data exactly at the limit should be accepted.
+    await optimisticDistributor.methods
+      .createReward(
+        rewardToken.options.address,
+        rewardAmount,
+        0,
+        identifier,
+        randomHex(remainingLength - ancillaryBytesReserve),
+        bondAmount,
+        liveness
+      )
+      .send({ from: sponsor });
   });
 });
