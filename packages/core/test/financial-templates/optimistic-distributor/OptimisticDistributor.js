@@ -20,9 +20,13 @@ const MerkleDistributor = getContract("MerkleDistributor");
 
 const finalFee = toWei("100");
 const identifier = utf8ToHex("TESTID");
+const customAncillaryData = utf8ToHex("ABC123");
 const zeroRawValue = { rawValue: "0" };
+const rewardAmount = toWei("10000");
+const bondAmount = toWei("500");
+const liveness = 7200;
 
-let accounts, deployer, maintainer;
+let accounts, deployer, maintainer, sponsor;
 
 let timer,
   finder,
@@ -33,7 +37,8 @@ let timer,
   mockOracle,
   optimisticDistributor,
   optimisticOracle,
-  merkleDistributor;
+  merkleDistributor,
+  rewardToken;
 
 async function setupMerkleDistributor() {
   merkleDistributor = await MerkleDistributor.new().send({ from: deployer });
@@ -44,7 +49,7 @@ async function setupMerkleDistributor() {
 describe("OptimisticDistributor", async function () {
   before(async function () {
     accounts = await web3.eth.getAccounts();
-    [deployer, maintainer] = accounts;
+    [deployer, maintainer, sponsor] = accounts;
 
     await runDefaultFixture(hre);
 
@@ -74,6 +79,11 @@ describe("OptimisticDistributor", async function () {
       bondToken.options.address,
       timer.options.address
     ).send({ from: deployer });
+
+    rewardToken = await ERC20.new("REWARD", "REWARD", 18).send({ from: deployer });
+    await rewardToken.methods.addMember(TokenRolesEnum.MINTER, deployer).send({ from: deployer });
+    await rewardToken.methods.mint(sponsor, rewardAmount).send({ from: deployer });
+    await rewardToken.methods.approve(optimisticDistributor.options.address, rewardAmount).send({ from: sponsor });
   });
   it("Constructor parameters validation", async function () {
     // Unapproved token.
@@ -142,6 +152,23 @@ describe("OptimisticDistributor", async function () {
     assert(
       await didContractThrow(
         optimisticDistributor.methods.setMerkleDistributor(merkleDistributor.options.address).send({ from: deployer })
+      )
+    );
+  });
+  it("Cannot deposit rewards without MerkleDistributor", async function () {
+    assert(
+      await didContractThrow(
+        optimisticDistributor.methods
+          .createReward(
+            rewardToken.options.address,
+            rewardAmount,
+            0,
+            identifier,
+            customAncillaryData,
+            bondAmount,
+            liveness
+          )
+          .send({ from: sponsor })
       )
     );
   });
