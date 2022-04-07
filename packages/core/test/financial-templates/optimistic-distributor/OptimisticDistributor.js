@@ -16,24 +16,32 @@ const MockOracle = getContract("MockOracleAncillary");
 const Timer = getContract("Timer");
 const Store = getContract("Store");
 const ERC20 = getContract("ExpandedERC20");
+const MerkleDistributor = getContract("MerkleDistributor");
 
 const finalFee = toWei("100");
 const identifier = utf8ToHex("TESTID");
 const zeroRawValue = { rawValue: "0" };
 
+let accounts, deployer, maintainer;
+
+let timer,
+  finder,
+  collateralWhitelist,
+  store,
+  identifierWhitelist,
+  bondToken,
+  mockOracle,
+  optimisticDistributor,
+  optimisticOracle,
+  merkleDistributor;
+
+async function setupMerkleDistributor() {
+  merkleDistributor = await MerkleDistributor.new().send({ from: deployer });
+  await merkleDistributor.methods.transferOwnership(optimisticDistributor.options.address).send({ from: deployer });
+  await optimisticDistributor.methods.setMerkleDistributor(merkleDistributor.options.address).send({ from: deployer });
+}
+
 describe("OptimisticDistributor", async function () {
-  let accounts, deployer, maintainer;
-
-  let timer,
-    finder,
-    collateralWhitelist,
-    store,
-    identifierWhitelist,
-    bondToken,
-    mockOracle,
-    optimisticDistributor,
-    optimisticOracle;
-
   before(async function () {
     accounts = await web3.eth.getAccounts();
     [deployer, maintainer] = accounts;
@@ -111,5 +119,21 @@ describe("OptimisticDistributor", async function () {
     assert.equal(await optimisticDistributor.methods.store().call(), newStore.options.address);
     assert.equal(await optimisticDistributor.methods.finalFee().call(), newFinalFee);
     assert.equal(await optimisticDistributor.methods.optimisticOracle().call(), newOptimisticOracle.options.address);
+  });
+  it("MerkleDistributor can be set only once", async function () {
+    await setupMerkleDistributor();
+
+    // Deploy new MerkleDistributor and try to link it to existing optimisticDistributor.
+    const newMerkleDistributor = await MerkleDistributor.new().send({ from: deployer });
+    await newMerkleDistributor.methods
+      .transferOwnership(optimisticDistributor.options.address)
+      .send({ from: deployer });
+    assert(
+      await didContractThrow(
+        optimisticDistributor.methods
+          .setMerkleDistributor(newMerkleDistributor.options.address)
+          .send({ from: deployer })
+      )
+    );
   });
 });
