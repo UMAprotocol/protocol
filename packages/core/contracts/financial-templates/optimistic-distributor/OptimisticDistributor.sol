@@ -54,8 +54,9 @@ contract OptimisticDistributor is Lockable {
     // This also covers appending proposalIndex by this contract.
     uint256 private constant ANCILLARY_BYTES_RESERVE = 512;
 
-    // Restrict Optimistic Oracle liveness to less than ~100 years.
-    uint256 public constant LIVENESS_LIMIT = 5200 weeks;
+    // Restrict Optimistic Oracle liveness to between 10 minutes and 100 years.
+    uint256 public constant MINIMUM_LIVENESS = 10 minutes;
+    uint256 public constant MAXIMUM_LIVENESS = 5200 weeks;
 
     // Immutable variables provided at deployment.
     FinderInterface public immutable finder;
@@ -141,8 +142,8 @@ contract OptimisticDistributor is Lockable {
                 optimisticOracle.ancillaryBytesLimit(),
             "ancillary data too long"
         );
-        require(optimisticOracleLivenessTime > 0, "OO liveness cannot be 0");
-        require(optimisticOracleLivenessTime < LIVENESS_LIMIT, "OO liveness too large");
+        require(optimisticOracleLivenessTime >= MINIMUM_LIVENESS, "OO liveness too small");
+        require(optimisticOracleLivenessTime < MAXIMUM_LIVENESS, "OO liveness too large");
 
         // Pull maximum rewards from the sponsor.
         rewardToken.safeTransferFrom(msg.sender, address(this), maximumRewardAmount);
