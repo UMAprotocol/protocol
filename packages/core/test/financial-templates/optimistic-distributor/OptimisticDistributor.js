@@ -136,4 +136,13 @@ describe("OptimisticDistributor", async function () {
       )
     );
   });
+  it("MerkleDistributor should be owned by OptimisticDistributor", async function () {
+    // Deploy MerkleDistributor and try to link it without transferring ownership first.
+    merkleDistributor = await MerkleDistributor.new().send({ from: deployer });
+    assert(
+      await didContractThrow(
+        optimisticDistributor.methods.setMerkleDistributor(merkleDistributor.options.address).send({ from: deployer })
+      )
+    );
+  });
 });
