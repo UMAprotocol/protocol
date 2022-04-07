@@ -51,6 +51,7 @@ contract OptimisticDistributor is Lockable {
      ********************************************/
 
     // Reserve for bytes appended to ancillary data (e.g. OracleSpoke) when resolving price from non-mainnet chains.
+    // This also covers appending proposalIndex by this contract.
     uint256 private constant ANCILLARY_BYTES_RESERVE = 512;
 
     // Restrict Optimistic Oracle liveness to less than ~100 years.
@@ -132,14 +133,11 @@ contract OptimisticDistributor is Lockable {
     ) external nonReentrant() {
         require(address(merkleDistributor) != address(0), "merkleDistributor not set");
         require(_getIdentifierWhitelist().isIdentifierSupported(priceIdentifier), "Identifier not registered");
+
+        // Since proposalIndex has variable length as string, it is not appended here and is assumed
+        // to be included in ANCILLARY_BYTES_RESERVE.
         require(
-            optimisticOracle
-                .stampAncillaryData(
-                AncillaryData.appendKeyValueUint(customAncillaryData, "proposalIndex", 0),
-                address(this)
-            )
-                .length +
-                ANCILLARY_BYTES_RESERVE <=
+            optimisticOracle.stampAncillaryData(customAncillaryData, address(this)).length + ANCILLARY_BYTES_RESERVE <=
                 optimisticOracle.ancillaryBytesLimit(),
             "ancillary data too long"
         );
