@@ -30,34 +30,36 @@ const ancillaryBytesReserve = 512;
 const minimumLiveness = 10 * 60; // 10 minutes
 const maximumLiveness = 5200 * 7 * 24 * 60 * 60; // 5200 weeks
 
-let accounts, deployer, anyAddress, sponsor;
-
-let timer,
-  finder,
-  collateralWhitelist,
-  store,
-  identifierWhitelist,
-  bondToken,
-  mockOracle,
-  optimisticDistributor,
-  optimisticOracle,
-  merkleDistributor,
-  rewardToken,
-  earliestProposalTimestamp,
-  defaultRewardParameters;
-
-async function mintAndApprove(token, owner, spender, amount, minter) {
-  await token.methods.mint(owner, amount).send({ from: minter });
-  await token.methods.approve(spender, amount).send({ from: owner });
-}
-
-async function setupMerkleDistributor() {
-  merkleDistributor = await MerkleDistributor.new().send({ from: deployer });
-  await merkleDistributor.methods.transferOwnership(optimisticDistributor.options.address).send({ from: deployer });
-  await optimisticDistributor.methods.setMerkleDistributor(merkleDistributor.options.address).send({ from: deployer });
-}
-
 describe("OptimisticDistributor", async function () {
+  let accounts, deployer, anyAddress, sponsor;
+
+  let timer,
+    finder,
+    collateralWhitelist,
+    store,
+    identifierWhitelist,
+    bondToken,
+    mockOracle,
+    optimisticDistributor,
+    optimisticOracle,
+    merkleDistributor,
+    rewardToken,
+    earliestProposalTimestamp,
+    defaultRewardParameters;
+
+  const mintAndApprove = async (token, owner, spender, amount, minter) => {
+    await token.methods.mint(owner, amount).send({ from: minter });
+    await token.methods.approve(spender, amount).send({ from: owner });
+  };
+
+  const setupMerkleDistributor = async () => {
+    merkleDistributor = await MerkleDistributor.new().send({ from: deployer });
+    await merkleDistributor.methods.transferOwnership(optimisticDistributor.options.address).send({ from: deployer });
+    await optimisticDistributor.methods
+      .setMerkleDistributor(merkleDistributor.options.address)
+      .send({ from: deployer });
+  };
+
   before(async function () {
     accounts = await web3.eth.getAccounts();
     [deployer, anyAddress, sponsor] = accounts;
