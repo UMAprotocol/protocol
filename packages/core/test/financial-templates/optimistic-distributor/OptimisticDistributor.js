@@ -2,7 +2,7 @@ const { assert } = require("chai");
 const hre = require("hardhat");
 const { web3, getContract } = hre;
 const { didContractThrow, interfaceName, runDefaultFixture, TokenRolesEnum } = require("@uma/common");
-const { utf8ToHex, hexToUtf8, toWei, randomHex } = web3.utils;
+const { utf8ToHex, hexToUtf8, toWei, toBN, randomHex } = web3.utils;
 
 // Tested contracts
 const OptimisticDistributor = getContract("OptimisticDistributorTest");
@@ -356,8 +356,11 @@ describe("OptimisticDistributor", async function () {
     await setupMerkleDistributor();
 
     // As no rewards have been posted zero index rewards struct will point to zero address.
+    const rewardIndex = 0;
     assert(
-      await didContractThrow(optimisticDistributor.methods.increaseReward(0, rewardAmount).send({ from: sponsor }))
+      await didContractThrow(
+        optimisticDistributor.methods.increaseReward(rewardIndex, rewardAmount).send({ from: sponsor })
+      )
     );
   });
   it("Anyone can post additional rewards", async function () {
@@ -365,16 +368,18 @@ describe("OptimisticDistributor", async function () {
 
     // Expected rewardIndex = 0.
     await optimisticDistributor.methods.createReward(...defaultRewardParameters).send({ from: sponsor });
+    const rewardIndex = 0;
 
     // Fund another wallet and post additional rewards.
     await mintAndApprove(rewardToken, anyAddress, optimisticDistributor.options.address, rewardAmount, deployer);
-    await optimisticDistributor.methods.increaseReward("0", rewardAmount).send({ from: anyAddress });
+    await optimisticDistributor.methods.increaseReward(rewardIndex, rewardAmount).send({ from: anyAddress });
   });
   it("No additional rewards accepted from earliestProposalTimestamp", async function () {
     await setupMerkleDistributor();
 
     // Expected rewardIndex = 0.
     await optimisticDistributor.methods.createReward(...defaultRewardParameters).send({ from: sponsor });
+    const rewardIndex = 0;
 
     // Fund sponsor for additional rewards.
     await mintAndApprove(rewardToken, sponsor, optimisticDistributor.options.address, rewardAmount, deployer);
@@ -384,7 +389,44 @@ describe("OptimisticDistributor", async function () {
     await advanceTime(fundingPeriod);
 
     assert(
-      await didContractThrow(optimisticDistributor.methods.increaseReward("0", rewardAmount).send({ from: sponsor }))
+      await didContractThrow(
+        optimisticDistributor.methods.increaseReward(rewardIndex, rewardAmount).send({ from: sponsor })
+      )
     );
+  });
+  it("Additional rewards balances stored", async function () {
+    await setupMerkleDistributor();
+
+    // Expected rewardIndex = 0.
+    await optimisticDistributor.methods.createReward(...defaultRewardParameters).send({ from: sponsor });
+    const rewardIndex = 0;
+
+    // Fund sponsor for additional rewards.
+    await mintAndApprove(rewardToken, sponsor, optimisticDistributor.options.address, rewardAmount, deployer);
+
+    // Fetch balances before additional funding.
+    const sponsorBalanceBefore = toBN(await rewardToken.methods.balanceOf(sponsor).call());
+    const contractBalanceBefore = toBN(
+      await rewardToken.methods.balanceOf(optimisticDistributor.options.address).call()
+    );
+    const contractRewardBefore = toBN(
+      (await optimisticDistributor.methods.rewards(rewardIndex).call()).maximumRewardAmount
+    );
+
+    await optimisticDistributor.methods.increaseReward(rewardIndex, rewardAmount).send({ from: sponsor });
+
+    // Fetch balances after additional funding.
+    const sponsorBalanceAfter = toBN(await rewardToken.methods.balanceOf(sponsor).call());
+    const contractBalanceAfter = toBN(
+      await rewardToken.methods.balanceOf(optimisticDistributor.options.address).call()
+    );
+    const contractRewardAfter = toBN(
+      (await optimisticDistributor.methods.rewards(rewardIndex).call()).maximumRewardAmount
+    );
+
+    // Check for correct change in balances.
+    assert.equal(sponsorBalanceBefore.sub(sponsorBalanceAfter).toString(), rewardAmount);
+    assert.equal(contractBalanceAfter.sub(contractBalanceBefore).toString(), rewardAmount);
+    assert.equal(contractRewardAfter.sub(contractRewardBefore).toString(), rewardAmount);
   });
 });
