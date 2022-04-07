@@ -156,6 +156,8 @@ describe("OptimisticDistributor", async function () {
     );
   });
   it("Cannot deposit rewards without MerkleDistributor", async function () {
+    // await setupMerkleDistributor() skipped here.
+
     assert(
       await didContractThrow(
         optimisticDistributor.methods
@@ -164,6 +166,25 @@ describe("OptimisticDistributor", async function () {
             rewardAmount,
             0,
             identifier,
+            customAncillaryData,
+            bondAmount,
+            liveness
+          )
+          .send({ from: sponsor })
+      )
+    );
+  });
+  it("Cannot deposit rewards for unregistered price identifier", async function () {
+    await setupMerkleDistributor();
+
+    assert(
+      await didContractThrow(
+        optimisticDistributor.methods
+          .createReward(
+            rewardToken.options.address,
+            rewardAmount,
+            0,
+            utf8ToHex("UNREGISTERED"),
             customAncillaryData,
             bondAmount,
             liveness
