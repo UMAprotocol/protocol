@@ -26,6 +26,8 @@ const rewardAmount = toWei("10000");
 const bondAmount = toWei("500");
 const liveness = 7200;
 const ancillaryBytesReserve = 512;
+const minimumLiveness = 10 * 60; // 10 minutes
+const maximumLiveness = 5200 * 7 * 24 * 60 * 60; // 5200 weeks
 
 let accounts, deployer, maintainer, sponsor;
 
@@ -231,6 +233,72 @@ describe("OptimisticDistributor", async function () {
         randomHex(remainingLength - ancillaryBytesReserve),
         bondAmount,
         liveness
+      )
+      .send({ from: sponsor });
+  });
+  it("Test minimum liveness", async function () {
+    await setupMerkleDistributor();
+
+    // Below MINIMUM_LIVENESS should revert.
+    assert(
+      await didContractThrow(
+        optimisticDistributor.methods
+          .createReward(
+            rewardToken.options.address,
+            rewardAmount,
+            0,
+            identifier,
+            customAncillaryData,
+            bondAmount,
+            minimumLiveness - 1
+          )
+          .send({ from: sponsor })
+      )
+    );
+
+    // Exactly at MINIMUM_LIVENESS should be accepted.
+    await optimisticDistributor.methods
+      .createReward(
+        rewardToken.options.address,
+        rewardAmount,
+        0,
+        identifier,
+        customAncillaryData,
+        bondAmount,
+        minimumLiveness
+      )
+      .send({ from: sponsor });
+  });
+  it("Test maximum liveness", async function () {
+    await setupMerkleDistributor();
+
+    // Exactly at MAXIMUM_LIVENESS should revert.
+    assert(
+      await didContractThrow(
+        optimisticDistributor.methods
+          .createReward(
+            rewardToken.options.address,
+            rewardAmount,
+            0,
+            identifier,
+            customAncillaryData,
+            bondAmount,
+            maximumLiveness
+          )
+          .send({ from: sponsor })
+      )
+    );
+
+    // Just below MAXIMUM_LIVENESS should be accepted.
+    await optimisticDistributor.methods
+      .createReward(
+        rewardToken.options.address,
+        rewardAmount,
+        0,
+        identifier,
+        customAncillaryData,
+        bondAmount,
+        maximumLiveness - 1
       )
       .send({ from: sponsor });
   });
