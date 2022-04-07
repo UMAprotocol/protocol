@@ -2,7 +2,7 @@ const { assert } = require("chai");
 const hre = require("hardhat");
 const { web3, getContract } = hre;
 const { didContractThrow, interfaceName, runDefaultFixture, TokenRolesEnum } = require("@uma/common");
-const { utf8ToHex, toWei, randomHex } = web3.utils;
+const { utf8ToHex, hexToUtf8, toWei, randomHex } = web3.utils;
 
 // Tested contracts
 const OptimisticDistributor = getContract("OptimisticDistributorTest");
@@ -307,5 +307,25 @@ describe("OptimisticDistributor", async function () {
         maximumLiveness - 1
       )
       .send({ from: sponsor });
+  });
+  it("Rewards are stored on chain", async function () {
+    await setupMerkleDistributor();
+
+    const rewardIndex = parseInt(await optimisticDistributor.methods.nextCreatedReward().call());
+    await optimisticDistributor.methods.createReward(...defaultRewardParameters).send({ from: sponsor });
+
+    // Compare stored rewards with provided inputs.
+    const storedRewards = await optimisticDistributor.methods.rewards(rewardIndex).call();
+    assert.equal(storedRewards.sponsor, sponsor);
+    assert.equal(storedRewards.rewardToken, rewardToken.options.address);
+    assert.equal(storedRewards.maximumRewardAmount, rewardAmount);
+    assert.equal(storedRewards.earliestProposalTimestamp, 0);
+    assert.equal(hexToUtf8(storedRewards.priceIdentifier), hexToUtf8(identifier));
+    assert.equal(storedRewards.customAncillaryData, customAncillaryData);
+    assert.equal(storedRewards.optimisticOracleProposerBond, bondAmount);
+    assert.equal(storedRewards.optimisticOracleLivenessTime, liveness);
+
+    // Check that nextCreatedReward index got bumped.
+    assert.equal(parseInt(await optimisticDistributor.methods.nextCreatedReward().call()), rewardIndex + 1);
   });
 });
