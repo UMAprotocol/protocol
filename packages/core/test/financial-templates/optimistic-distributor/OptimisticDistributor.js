@@ -24,12 +24,13 @@ const customAncillaryData = utf8ToHex("ABC123");
 const zeroRawValue = { rawValue: "0" };
 const rewardAmount = toWei("10000");
 const bondAmount = toWei("500");
-const liveness = 7200;
+const proposalLiveness = 7200;
+const fundingPeriod = 24 * 60 * 60; // 1 day period for posting additional rewards.
 const ancillaryBytesReserve = 512;
 const minimumLiveness = 10 * 60; // 10 minutes
 const maximumLiveness = 5200 * 7 * 24 * 60 * 60; // 5200 weeks
 
-let accounts, deployer, maintainer, sponsor;
+let accounts, deployer, anyAddress, sponsor;
 
 let timer,
   finder,
@@ -42,6 +43,7 @@ let timer,
   optimisticOracle,
   merkleDistributor,
   rewardToken,
+  earliestProposalTimestamp,
   defaultRewardParameters;
 
 async function mintAndApprove(token, owner, spender, amount, minter) {
@@ -58,7 +60,7 @@ async function setupMerkleDistributor() {
 describe("OptimisticDistributor", async function () {
   before(async function () {
     accounts = await web3.eth.getAccounts();
-    [deployer, maintainer, sponsor] = accounts;
+    [deployer, anyAddress, sponsor] = accounts;
 
     await runDefaultFixture(hre);
 
@@ -93,15 +95,19 @@ describe("OptimisticDistributor", async function () {
     await rewardToken.methods.addMember(TokenRolesEnum.MINTER, deployer).send({ from: deployer });
     await mintAndApprove(rewardToken, sponsor, optimisticDistributor.options.address, rewardAmount, deployer);
 
+    // Get current time and set default earliestProposalTimestamp.
+    const currentTime = parseInt(await timer.methods.getCurrentTime().call());
+    earliestProposalTimestamp = currentTime + fundingPeriod;
+
     // Populate reward parameters that will be used in multiple tests.
     defaultRewardParameters = [
       rewardToken.options.address,
       rewardAmount,
-      0, // earliestProposalTimestamp
+      earliestProposalTimestamp,
       identifier,
       customAncillaryData,
       bondAmount,
-      liveness,
+      proposalLiveness,
     ];
   });
   it("Constructor parameters validation", async function () {
@@ -144,7 +150,7 @@ describe("OptimisticDistributor", async function () {
       .send({ from: deployer });
 
     // Check that OptimisticDistributor can fetch new parameters.
-    await optimisticDistributor.methods.syncUmaEcosystemParams().send({ from: maintainer });
+    await optimisticDistributor.methods.syncUmaEcosystemParams().send({ from: anyAddress });
     assert.equal(await optimisticDistributor.methods.store().call(), newStore.options.address);
     assert.equal(await optimisticDistributor.methods.finalFee().call(), newFinalFee);
     assert.equal(await optimisticDistributor.methods.optimisticOracle().call(), newOptimisticOracle.options.address);
@@ -192,11 +198,11 @@ describe("OptimisticDistributor", async function () {
           .createReward(
             rewardToken.options.address,
             rewardAmount,
-            0,
+            earliestProposalTimestamp,
             utf8ToHex("UNREGISTERED"),
             customAncillaryData,
             bondAmount,
-            liveness
+            proposalLiveness
           )
           .send({ from: sponsor })
       )
@@ -219,11 +225,11 @@ describe("OptimisticDistributor", async function () {
           .createReward(
             rewardToken.options.address,
             rewardAmount,
-            0,
+            earliestProposalTimestamp,
             identifier,
             randomHex(remainingLength - ancillaryBytesReserve + 1),
             bondAmount,
-            liveness
+            proposalLiveness
           )
           .send({ from: sponsor })
       )
@@ -234,11 +240,11 @@ describe("OptimisticDistributor", async function () {
       .createReward(
         rewardToken.options.address,
         rewardAmount,
-        0,
+        earliestProposalTimestamp,
         identifier,
         randomHex(remainingLength - ancillaryBytesReserve),
         bondAmount,
-        liveness
+        proposalLiveness
       )
       .send({ from: sponsor });
   });
@@ -252,7 +258,7 @@ describe("OptimisticDistributor", async function () {
           .createReward(
             rewardToken.options.address,
             rewardAmount,
-            0,
+            earliestProposalTimestamp,
             identifier,
             customAncillaryData,
             bondAmount,
@@ -267,7 +273,7 @@ describe("OptimisticDistributor", async function () {
       .createReward(
         rewardToken.options.address,
         rewardAmount,
-        0,
+        earliestProposalTimestamp,
         identifier,
         customAncillaryData,
         bondAmount,
@@ -285,7 +291,7 @@ describe("OptimisticDistributor", async function () {
           .createReward(
             rewardToken.options.address,
             rewardAmount,
-            0,
+            earliestProposalTimestamp,
             identifier,
             customAncillaryData,
             bondAmount,
@@ -300,7 +306,7 @@ describe("OptimisticDistributor", async function () {
       .createReward(
         rewardToken.options.address,
         rewardAmount,
-        0,
+        earliestProposalTimestamp,
         identifier,
         customAncillaryData,
         bondAmount,
@@ -330,11 +336,11 @@ describe("OptimisticDistributor", async function () {
     assert.equal(storedRewards.sponsor, sponsor);
     assert.equal(storedRewards.rewardToken, rewardToken.options.address);
     assert.equal(storedRewards.maximumRewardAmount, rewardAmount);
-    assert.equal(storedRewards.earliestProposalTimestamp, 0);
+    assert.equal(storedRewards.earliestProposalTimestamp, earliestProposalTimestamp);
     assert.equal(hexToUtf8(storedRewards.priceIdentifier), hexToUtf8(identifier));
     assert.equal(storedRewards.customAncillaryData, customAncillaryData);
     assert.equal(storedRewards.optimisticOracleProposerBond, bondAmount);
-    assert.equal(storedRewards.optimisticOracleLivenessTime, liveness);
+    assert.equal(storedRewards.optimisticOracleLivenessTime, proposalLiveness);
 
     // Check that nextCreatedReward index got bumped.
     assert.equal(parseInt(await optimisticDistributor.methods.nextCreatedReward().call()), rewardIndex + 1);
@@ -346,5 +352,15 @@ describe("OptimisticDistributor", async function () {
     assert(
       await didContractThrow(optimisticDistributor.methods.increaseReward(0, rewardAmount).send({ from: sponsor }))
     );
+  });
+  it("Anyone can post additional rewards", async function () {
+    await setupMerkleDistributor();
+
+    // Expected rewardIndex = 0.
+    await optimisticDistributor.methods.createReward(...defaultRewardParameters).send({ from: sponsor });
+
+    // Fund another wallet and post additional rewards.
+    await mintAndApprove(rewardToken, anyAddress, optimisticDistributor.options.address, rewardAmount, deployer);
+    await optimisticDistributor.methods.increaseReward("0", rewardAmount).send({ from: anyAddress });
   });
 });
