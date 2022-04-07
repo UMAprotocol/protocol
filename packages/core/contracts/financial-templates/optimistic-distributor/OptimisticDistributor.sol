@@ -172,7 +172,7 @@ contract OptimisticDistributor is Lockable {
      * @param additionalRewardAmount Additional reward amount that the sponsor is posting for distribution.
      */
     function increaseReward(uint256 rewardIndex, uint256 additionalRewardAmount) external nonReentrant() {
-        require(rewards[rewardIndex].sponsor == msg.sender, "rewards have not been created");
+        require(rewards[rewardIndex].sponsor != address(0), "rewards have not been created");
         require(
             getCurrentTime() < rewards[rewardIndex].earliestProposalTimestamp,
             "no more funding from earliestProposalTimestamp"
