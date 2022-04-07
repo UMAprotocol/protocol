@@ -339,4 +339,12 @@ describe("OptimisticDistributor", async function () {
     // Check that nextCreatedReward index got bumped.
     assert.equal(parseInt(await optimisticDistributor.methods.nextCreatedReward().call()), rewardIndex + 1);
   });
+  it("increaseReward should revert if initial rewards have not been posted", async function () {
+    await setupMerkleDistributor();
+
+    // As no rewards have been posted zero index rewards struct will point to zero address.
+    assert(
+      await didContractThrow(optimisticDistributor.methods.increaseReward(0, rewardAmount).send({ from: sponsor }))
+    );
+  });
 });
