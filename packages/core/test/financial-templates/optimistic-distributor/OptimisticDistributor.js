@@ -60,6 +60,11 @@ describe("OptimisticDistributor", async function () {
       .send({ from: deployer });
   };
 
+  const advanceTime = async (timeIncrease) => {
+    const currentTime = parseInt(await timer.methods.getCurrentTime().call());
+    await timer.methods.setCurrentTime(currentTime + timeIncrease).send({ from: deployer });
+  };
+
   before(async function () {
     accounts = await web3.eth.getAccounts();
     [deployer, anyAddress, sponsor] = accounts;
@@ -364,5 +369,22 @@ describe("OptimisticDistributor", async function () {
     // Fund another wallet and post additional rewards.
     await mintAndApprove(rewardToken, anyAddress, optimisticDistributor.options.address, rewardAmount, deployer);
     await optimisticDistributor.methods.increaseReward("0", rewardAmount).send({ from: anyAddress });
+  });
+  it("No additional rewards accepted from earliestProposalTimestamp", async function () {
+    await setupMerkleDistributor();
+
+    // Expected rewardIndex = 0.
+    await optimisticDistributor.methods.createReward(...defaultRewardParameters).send({ from: sponsor });
+
+    // Fund sponsor for additional rewards.
+    await mintAndApprove(rewardToken, sponsor, optimisticDistributor.options.address, rewardAmount, deployer);
+
+    // Advancing time by fundingPeriod should reach exactly earliestProposalTimestamp as it was calculated
+    // by adding fundingPeriod to current time when initial rewards were created.
+    await advanceTime(fundingPeriod);
+
+    assert(
+      await didContractThrow(optimisticDistributor.methods.increaseReward("0", rewardAmount).send({ from: sponsor }))
+    );
   });
 });
