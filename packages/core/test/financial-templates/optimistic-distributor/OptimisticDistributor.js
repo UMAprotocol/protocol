@@ -41,7 +41,13 @@ let timer,
   optimisticDistributor,
   optimisticOracle,
   merkleDistributor,
-  rewardToken;
+  rewardToken,
+  defaultRewardParameters;
+
+async function mintAndApprove(token, owner, spender, amount, minter) {
+  await token.methods.mint(owner, amount).send({ from: minter });
+  await token.methods.approve(spender, amount).send({ from: owner });
+}
 
 async function setupMerkleDistributor() {
   merkleDistributor = await MerkleDistributor.new().send({ from: deployer });
@@ -85,8 +91,18 @@ describe("OptimisticDistributor", async function () {
 
     rewardToken = await ERC20.new("REWARD", "REWARD", 18).send({ from: deployer });
     await rewardToken.methods.addMember(TokenRolesEnum.MINTER, deployer).send({ from: deployer });
-    await rewardToken.methods.mint(sponsor, rewardAmount).send({ from: deployer });
-    await rewardToken.methods.approve(optimisticDistributor.options.address, rewardAmount).send({ from: sponsor });
+    await mintAndApprove(rewardToken, sponsor, optimisticDistributor.options.address, rewardAmount, deployer);
+
+    // Populate reward parameters that will be used in multiple tests.
+    defaultRewardParameters = [
+      rewardToken.options.address,
+      rewardAmount,
+      0, // earliestProposalTimestamp
+      identifier,
+      customAncillaryData,
+      bondAmount,
+      liveness,
+    ];
   });
   it("Constructor parameters validation", async function () {
     // Unapproved token.
@@ -163,17 +179,7 @@ describe("OptimisticDistributor", async function () {
 
     assert(
       await didContractThrow(
-        optimisticDistributor.methods
-          .createReward(
-            rewardToken.options.address,
-            rewardAmount,
-            0,
-            identifier,
-            customAncillaryData,
-            bondAmount,
-            liveness
-          )
-          .send({ from: sponsor })
+        optimisticDistributor.methods.createReward(...defaultRewardParameters).send({ from: sponsor })
       )
     );
   });
