@@ -1013,7 +1013,7 @@ export const defaultConfigs: { [name: string]: { type: string; [key: string]: an
     type: "uSPAC",
     lookback: 7200,
     correctionFactor: "1.0",
-    symbols: ["DWAC", "IRDM", "PRIM", "TGLS", "MP", "LCID", "GDYN", "SMPL", "ENVX", "QS"],
+    symbols: ["DWAC", "IRDM", "MP", "PRIM", "WSC", "SMPL", "TGLS", "CERE", "KW", "ROIC"],
   },
 };
 
