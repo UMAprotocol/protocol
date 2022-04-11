@@ -1,6 +1,6 @@
 const { assert } = require("chai");
 const hre = require("hardhat");
-const { web3, getContract } = hre;
+const { web3, getContract, assertEventEmitted } = hre;
 const { didContractThrow, interfaceName, runDefaultFixture, TokenRolesEnum } = require("@uma/common");
 const { utf8ToHex, hexToUtf8, toWei, toBN, randomHex } = web3.utils;
 
@@ -24,14 +24,15 @@ const customAncillaryData = utf8ToHex("ABC123");
 const zeroRawValue = { rawValue: "0" };
 const rewardAmount = toWei("10000");
 const bondAmount = toWei("500");
-const proposalLiveness = 7200;
+const proposalLiveness = 24 * 60 * 60; // 1 day period for disputing distribution proposal.
 const fundingPeriod = 24 * 60 * 60; // 1 day period for posting additional rewards.
+const ipfsHash = utf8ToHex("IPFS HASH");
 const ancillaryBytesReserve = 512;
 const minimumLiveness = 10 * 60; // 10 minutes
 const maximumLiveness = 5200 * 7 * 24 * 60 * 60; // 5200 weeks
 
 describe("OptimisticDistributor", async function () {
-  let accounts, deployer, anyAddress, sponsor;
+  let accounts, deployer, anyAddress, sponsor, proposer;
 
   let timer,
     finder,
@@ -65,9 +66,18 @@ describe("OptimisticDistributor", async function () {
     await timer.methods.setCurrentTime(currentTime + timeIncrease).send({ from: deployer });
   };
 
+  const didContractRevertWith = async (promise, expectedMessage) => {
+    try {
+      await promise;
+    } catch (error) {
+      return !!error.message.match(/revert/) && !!error.message.match(new RegExp(expectedMessage));
+    }
+    return false;
+  };
+
   before(async function () {
     accounts = await web3.eth.getAccounts();
-    [deployer, anyAddress, sponsor] = accounts;
+    [deployer, anyAddress, sponsor, proposer] = accounts;
 
     await runDefaultFixture(hre);
 
@@ -439,5 +449,129 @@ describe("OptimisticDistributor", async function () {
     assert.equal(sponsorBalanceBefore.sub(sponsorBalanceAfter).toString(), rewardAmount);
     assert.equal(contractBalanceAfter.sub(contractBalanceBefore).toString(), rewardAmount);
     assert.equal(contractRewardAfter.sub(contractRewardBefore).toString(), rewardAmount);
+  });
+  it("Submitting proposal", async function () {
+    await setupMerkleDistributor();
+
+    // Fund proposer wallet.
+    const totalBond = toBN(bondAmount).add(toBN(finalFee)).toString();
+    await mintAndApprove(bondToken, proposer, optimisticDistributor.options.address, totalBond, deployer);
+
+    // Fetch bond token balances before proposal.
+    const proposerBalanceBefore = toBN(await bondToken.methods.balanceOf(proposer).call());
+    const contractBalanceBefore = toBN(await bondToken.methods.balanceOf(optimisticDistributor.options.address).call());
+    const oracleBalanceBefore = toBN(await bondToken.methods.balanceOf(optimisticOracle.options.address).call());
+
+    const merkleRoot = randomHex(32);
+
+    // Proposing on non existing reward (rewardIndex = 0) should revert.
+    assert(
+      await didContractRevertWith(
+        optimisticDistributor.methods.proposeDistribution(0, merkleRoot, ipfsHash).send({ from: proposer }),
+        "no associated reward"
+      )
+    );
+
+    // Expected rewardIndex = 0.
+    await optimisticDistributor.methods.createReward(...defaultRewardParameters).send({ from: sponsor });
+    const rewardIndex = 0;
+
+    // Proposing before earliestProposalTimestamp should revert.
+    assert(
+      await didContractRevertWith(
+        optimisticDistributor.methods.proposeDistribution(rewardIndex, merkleRoot, ipfsHash).send({ from: proposer }),
+        "proposal timestamp not reached"
+      )
+    );
+
+    // Advancing time by fundingPeriod should reach exactly earliestProposalTimestamp as it was calculated
+    // by adding fundingPeriod to current time when initial rewards were created.
+    await advanceTime(fundingPeriod);
+
+    // Expected proposalIndex = 0.
+    let receipt = await optimisticDistributor.methods
+      .proposeDistribution(rewardIndex, merkleRoot, ipfsHash)
+      .send({ from: proposer });
+    const proposalIndex = 0;
+    const proposalTimestamp = parseInt(await timer.methods.getCurrentTime().call());
+
+    // Check all fields emitted by OptimisticDistributor in ProposalCreated event.
+    await assertEventEmitted(
+      receipt,
+      optimisticDistributor,
+      "ProposalCreated",
+      (event) =>
+        event.rewardIndex === rewardIndex.toString() &&
+        event.proposalIndex === proposalIndex.toString() &&
+        event.proposalTimestamp === proposalTimestamp.toString() &&
+        event.merkleRoot === merkleRoot &&
+        event.reward.sponsor === sponsor &&
+        event.reward.rewardToken === rewardToken.options.address &&
+        event.reward.maximumRewardAmount === rewardAmount &&
+        event.reward.earliestProposalTimestamp === earliestProposalTimestamp.toString() &&
+        hexToUtf8(event.reward.priceIdentifier) === hexToUtf8(identifier) &&
+        event.reward.customAncillaryData === customAncillaryData &&
+        event.reward.optimisticOracleProposerBond === bondAmount &&
+        event.reward.optimisticOracleLivenessTime === proposalLiveness.toString()
+    );
+
+    // Ancillary data in OptimisticOracle should have proposalIndex appended.
+    const ancillaryData = utf8ToHex(hexToUtf8(customAncillaryData) + ",proposalIndex:" + proposalIndex);
+
+    // Check all fields emitted by OptimisticOracle in RequestPrice event.
+    await assertEventEmitted(
+      receipt,
+      optimisticOracle,
+      "RequestPrice",
+      (event) =>
+        event.requester === optimisticDistributor.options.address &&
+        hexToUtf8(event.identifier) === hexToUtf8(identifier) &&
+        event.timestamp === proposalTimestamp.toString() &&
+        event.ancillaryData === ancillaryData &&
+        event.currency === bondToken.options.address &&
+        event.reward === "0" &&
+        event.finalFee === finalFee.toString()
+    );
+
+    // Check all fields emitted by OptimisticOracle in ProposePrice event.
+    await assertEventEmitted(
+      receipt,
+      optimisticOracle,
+      "ProposePrice",
+      (event) =>
+        event.requester === optimisticDistributor.options.address &&
+        event.proposer === proposer &&
+        hexToUtf8(event.identifier) === hexToUtf8(identifier) &&
+        event.timestamp === proposalTimestamp.toString() &&
+        event.ancillaryData === ancillaryData &&
+        event.proposedPrice === toWei("1") &&
+        event.expirationTimestamp === (proposalTimestamp + proposalLiveness).toString() &&
+        event.currency === bondToken.options.address
+    );
+
+    // OptimisticOracle does not emit event on setBond, thus need to fetch it from stored request.
+    const request = await optimisticOracle.methods
+      .getRequest(optimisticDistributor.options.address, identifier, proposalTimestamp, ancillaryData)
+      .call();
+    assert.equal(request.bond, bondAmount);
+
+    // Fetch bond token balances after proposal.
+    const proposerBalanceAfter = toBN(await bondToken.methods.balanceOf(proposer).call());
+    const contractBalanceAfter = toBN(await bondToken.methods.balanceOf(optimisticDistributor.options.address).call());
+    const oracleBalanceAfter = toBN(await bondToken.methods.balanceOf(optimisticOracle.options.address).call());
+
+    // Check for correct change in balances.
+    assert.equal(proposerBalanceBefore.sub(proposerBalanceAfter).toString(), totalBond);
+    assert.equal(contractBalanceAfter.toString(), contractBalanceBefore.toString());
+    assert.equal(oracleBalanceAfter.sub(oracleBalanceBefore).toString(), totalBond);
+
+    // Check stored proposal.
+    const storedProposal = await optimisticDistributor.methods.proposals(proposalIndex).call();
+    assert.equal(storedProposal.rewardIndex, rewardIndex);
+    assert.equal(storedProposal.timestamp, proposalTimestamp);
+    assert.equal(storedProposal.merkleRoot, merkleRoot);
+
+    // Check that nextCreatedProposal index got bumped.
+    assert.equal(parseInt(await optimisticDistributor.methods.nextCreatedProposal().call()), proposalIndex + 1);
   });
 });
