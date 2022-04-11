@@ -373,56 +373,26 @@ describe("OptimisticDistributor", async function () {
     // Check that nextCreatedReward index got bumped.
     assert.equal(parseInt(await optimisticDistributor.methods.nextCreatedReward().call()), rewardIndex + 1);
   });
-  it("increaseReward should revert if initial rewards have not been posted", async function () {
+  it("Increasing rewards", async function () {
     await setupMerkleDistributor();
 
-    // As no rewards have been posted zero index rewards struct will point to zero address.
+    // As no rewards have been posted increaseReward should revert.
     const rewardIndex = 0;
     assert(
-      await didContractThrow(
-        optimisticDistributor.methods.increaseReward(rewardIndex, rewardAmount).send({ from: sponsor })
+      await didContractRevertWith(
+        optimisticDistributor.methods.increaseReward(rewardIndex, rewardAmount).send({ from: sponsor }),
+        "rewards have not been created"
       )
     );
-  });
-  it("Anyone can post additional rewards", async function () {
-    await setupMerkleDistributor();
 
-    // Expected rewardIndex = 0.
+    // Create initial rewards, rewardIndex will be 0.
     await optimisticDistributor.methods.createReward(...defaultRewardParameters).send({ from: sponsor });
-    const rewardIndex = 0;
 
     // Fund another wallet and post additional rewards.
     await mintAndApprove(rewardToken, anyAddress, optimisticDistributor.options.address, rewardAmount, deployer);
     await optimisticDistributor.methods.increaseReward(rewardIndex, rewardAmount).send({ from: anyAddress });
-  });
-  it("No additional rewards accepted from earliestProposalTimestamp", async function () {
-    await setupMerkleDistributor();
 
-    // Expected rewardIndex = 0.
-    await optimisticDistributor.methods.createReward(...defaultRewardParameters).send({ from: sponsor });
-    const rewardIndex = 0;
-
-    // Fund sponsor for additional rewards.
-    await mintAndApprove(rewardToken, sponsor, optimisticDistributor.options.address, rewardAmount, deployer);
-
-    // Advancing time by fundingPeriod should reach exactly earliestProposalTimestamp as it was calculated
-    // by adding fundingPeriod to current time when initial rewards were created.
-    await advanceTime(fundingPeriod);
-
-    assert(
-      await didContractThrow(
-        optimisticDistributor.methods.increaseReward(rewardIndex, rewardAmount).send({ from: sponsor })
-      )
-    );
-  });
-  it("Additional rewards balances stored", async function () {
-    await setupMerkleDistributor();
-
-    // Expected rewardIndex = 0.
-    await optimisticDistributor.methods.createReward(...defaultRewardParameters).send({ from: sponsor });
-    const rewardIndex = 0;
-
-    // Fund sponsor for additional rewards.
+    // Fund original sponsor for additional rewards.
     await mintAndApprove(rewardToken, sponsor, optimisticDistributor.options.address, rewardAmount, deployer);
 
     // Fetch balances before additional funding.
@@ -434,6 +404,7 @@ describe("OptimisticDistributor", async function () {
       (await optimisticDistributor.methods.rewards(rewardIndex).call()).maximumRewardAmount
     );
 
+    // Increase rewards funding.
     await optimisticDistributor.methods.increaseReward(rewardIndex, rewardAmount).send({ from: sponsor });
 
     // Fetch balances after additional funding.
@@ -449,6 +420,18 @@ describe("OptimisticDistributor", async function () {
     assert.equal(sponsorBalanceBefore.sub(sponsorBalanceAfter).toString(), rewardAmount);
     assert.equal(contractBalanceAfter.sub(contractBalanceBefore).toString(), rewardAmount);
     assert.equal(contractRewardAfter.sub(contractRewardBefore).toString(), rewardAmount);
+
+    // Advancing time by fundingPeriod should reach exactly earliestProposalTimestamp as it was calculated
+    // by adding fundingPeriod to current time when initial rewards were created.
+    await advanceTime(fundingPeriod);
+
+    // It should not be possible to post additional rewards after fundingPeriod.
+    assert(
+      await didContractRevertWith(
+        optimisticDistributor.methods.increaseReward(rewardIndex, rewardAmount).send({ from: sponsor }),
+        "no more funding from earliestProposalTimestamp"
+      )
+    );
   });
   it("Submitting proposal", async function () {
     await setupMerkleDistributor();
