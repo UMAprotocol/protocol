@@ -34,11 +34,11 @@ class Coingecko {
     if (result.prices) return result.prices;
     throw new Error("Something went wrong fetching coingecko prices!");
   }
-  async getContractDetails(contract_address: string, id = "ethereum") {
-    return this.call(`coins/${id}/contract/${contract_address.toLowerCase()}`);
+  async getContractDetails(contract_address: string, platform_id = "ethereum") {
+    return this.call(`coins/${platform_id}/contract/${contract_address.toLowerCase()}`);
   }
-  async getCurrentPriceByContract(contract_address: string, currency = "usd") {
-    const result = await this.getContractDetails(contract_address);
+  async getCurrentPriceByContract(contract_address: string, currency = "usd", platform_id = "ethereum") {
+    const result = await this.getContractDetails(contract_address, platform_id);
     const price = get(result, ["market_data", "current_price", currency], null);
     assert(price !== null, "No current price available for: " + contract_address);
     return [result.last_updated, price];
