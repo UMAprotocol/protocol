@@ -164,6 +164,14 @@ describe("OptimisticDistributor", async function () {
     assert.equal(await optimisticDistributor.methods.store().call(), newStore.options.address);
     assert.equal(await optimisticDistributor.methods.finalFee().call(), newFinalFee);
     assert.equal(await optimisticDistributor.methods.optimisticOracle().call(), newOptimisticOracle.options.address);
+
+    // Revert back Store and OptimisticOracle implementation in Finder for other tests to use.
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.Store), store.options.address)
+      .send({ from: deployer });
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.OptimisticOracle), optimisticOracle.options.address)
+      .send({ from: deployer });
   });
   it("MerkleDistributor can be set only once", async function () {
     await setupMerkleDistributor();
