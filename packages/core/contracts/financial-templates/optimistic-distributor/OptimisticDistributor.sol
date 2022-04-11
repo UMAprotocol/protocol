@@ -233,8 +233,9 @@ contract OptimisticDistributor is Lockable {
                 reward.optimisticOracleProposerBond
             );
 
-        // Pull proposal bond and final fee from the proposer.
+        // Pull proposal bond and final fee from the proposer, and approve it for Optimistic Oracle.
         bondToken.safeTransferFrom(msg.sender, address(this), totalBond);
+        bondToken.safeApprove(address(optimisticOracle), totalBond);
 
         // Propose canonical value representing "True"; i.e. the proposed distribution is valid.
         optimisticOracle.proposePriceFor(
