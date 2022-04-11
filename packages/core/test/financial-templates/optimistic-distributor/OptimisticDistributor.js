@@ -130,16 +130,19 @@ describe("OptimisticDistributor", async function () {
     );
   });
   it("Initial paremeters set", async function () {
-    // Finder address.
-    assert.equal(await optimisticDistributor.methods.finder().call(), finder.options.address);
-    // Bond token address.
-    assert.equal(await optimisticDistributor.methods.bondToken().call(), bondToken.options.address);
-    // Store address.
-    assert.equal(await optimisticDistributor.methods.store().call(), store.options.address);
-    // Final fee.
-    assert.equal(await optimisticDistributor.methods.finalFee().call(), finalFee);
-    // Optimistic Oracle address.
-    assert.equal(await optimisticDistributor.methods.optimisticOracle().call(), optimisticOracle.options.address);
+    // Deploy new OptimisticDistributor contract to isolate from other tests.
+    const testOptimisticDistributor = await OptimisticDistributor.new(
+      finder.options.address,
+      bondToken.options.address,
+      timer.options.address
+    ).send({ from: deployer });
+
+    // Verify all parameters have been set correctly.
+    assert.equal(await testOptimisticDistributor.methods.finder().call(), finder.options.address);
+    assert.equal(await testOptimisticDistributor.methods.bondToken().call(), bondToken.options.address);
+    assert.equal(await testOptimisticDistributor.methods.store().call(), store.options.address);
+    assert.equal(await testOptimisticDistributor.methods.finalFee().call(), finalFee);
+    assert.equal(await testOptimisticDistributor.methods.optimisticOracle().call(), optimisticOracle.options.address);
   });
   it("UMA ecosystem parameters updated", async function () {
     // Deploy new UMA contracts with updated final fee.
