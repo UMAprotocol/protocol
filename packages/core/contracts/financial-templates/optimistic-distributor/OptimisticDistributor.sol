@@ -85,9 +85,9 @@ contract OptimisticDistributor is Lockable, MultiCaller {
      ********************************************/
 
     event RewardCreated(
-        address sponsor,
+        address indexed sponsor,
         IERC20 rewardToken,
-        uint256 rewardIndex,
+        uint256 indexed rewardIndex,
         uint256 maximumRewardAmount,
         uint256 earliestProposalTimestamp,
         uint256 optimisticOracleProposerBond,
@@ -95,19 +95,19 @@ contract OptimisticDistributor is Lockable, MultiCaller {
         bytes32 priceIdentifier,
         bytes customAncillaryData
     );
-    event RewardIncreased(uint256 rewardIndex, uint256 newMaximumRewardAmount);
+    event RewardIncreased(uint256 indexed rewardIndex, uint256 newMaximumRewardAmount);
     event ProposalCreated(
-        address sponsor,
+        address indexed sponsor,
         IERC20 rewardToken,
-        uint256 rewardIndex,
-        uint256 proposalIndex,
+        uint256 indexed rewardIndex,
+        uint256 indexed proposalIndex,
         uint256 proposalTimestamp,
         uint256 maximumRewardAmount,
         bytes32 merkleRoot,
         string ipfsHash
     );
     event RewardDistributed(
-        address sponsor,
+        address indexed sponsor,
         IERC20 rewardToken,
         uint256 indexed rewardIndex,
         uint256 indexed proposalIndex,
@@ -117,7 +117,7 @@ contract OptimisticDistributor is Lockable, MultiCaller {
     );
     event ProposalRejected(uint256 indexed rewardIndex, uint256 indexed proposalIndex);
     event ProposalDeleted(uint256 indexed rewardIndex, uint256 indexed proposalIndex);
-    event MerkleDistributorSet(address merkleDistributor);
+    event MerkleDistributorSet(address indexed merkleDistributor);
 
     /**
      * @notice Constructor.
