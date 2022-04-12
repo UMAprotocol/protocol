@@ -132,13 +132,13 @@ describe("OptimisticDistributor", async function () {
 
     // Populate reward parameters that will be used in multiple tests.
     defaultRewardParameters = [
-      rewardToken.options.address,
       rewardAmount,
       earliestProposalTimestamp,
-      identifier,
-      customAncillaryData,
       bondAmount,
       proposalLiveness,
+      identifier,
+      rewardToken.options.address,
+      customAncillaryData,
     ];
   });
   it("Constructor parameters validation", async function () {
@@ -250,13 +250,13 @@ describe("OptimisticDistributor", async function () {
       await didContractRevertWith(
         optimisticDistributor.methods
           .createReward(
-            rewardToken.options.address,
             rewardAmount,
             earliestProposalTimestamp,
-            utf8ToHex("UNREGISTERED"),
-            customAncillaryData,
             bondAmount,
-            proposalLiveness
+            proposalLiveness,
+            utf8ToHex("UNREGISTERED"),
+            rewardToken.options.address,
+            customAncillaryData
           )
           .send({ from: sponsor }),
         "Identifier not registered"
@@ -275,13 +275,13 @@ describe("OptimisticDistributor", async function () {
       await didContractRevertWith(
         optimisticDistributor.methods
           .createReward(
-            rewardToken.options.address,
             rewardAmount,
             earliestProposalTimestamp,
-            identifier,
-            randomHex(remainingLength - ancillaryBytesReserve + 1),
             bondAmount,
-            proposalLiveness
+            proposalLiveness,
+            identifier,
+            rewardToken.options.address,
+            randomHex(remainingLength - ancillaryBytesReserve + 1)
           )
           .send({ from: sponsor }),
         "Ancillary data too long"
@@ -291,13 +291,13 @@ describe("OptimisticDistributor", async function () {
     // Ancillary data exactly at the limit should be accepted.
     await optimisticDistributor.methods
       .createReward(
-        rewardToken.options.address,
         rewardAmount,
         earliestProposalTimestamp,
-        identifier,
-        randomHex(remainingLength - ancillaryBytesReserve),
         bondAmount,
-        proposalLiveness
+        proposalLiveness,
+        identifier,
+        rewardToken.options.address,
+        randomHex(remainingLength - ancillaryBytesReserve)
       )
       .send({ from: sponsor });
 
@@ -309,13 +309,13 @@ describe("OptimisticDistributor", async function () {
       await didContractRevertWith(
         optimisticDistributor.methods
           .createReward(
-            rewardToken.options.address,
             rewardAmount,
             earliestProposalTimestamp,
-            identifier,
-            customAncillaryData,
             bondAmount,
-            minimumLiveness - 1
+            minimumLiveness - 1,
+            identifier,
+            rewardToken.options.address,
+            customAncillaryData
           )
           .send({ from: sponsor }),
         "OO liveness too small"
@@ -325,13 +325,13 @@ describe("OptimisticDistributor", async function () {
     // optimisticOracleLivenessTime exactly at MINIMUM_LIVENESS should be accepted.
     await optimisticDistributor.methods
       .createReward(
-        rewardToken.options.address,
         rewardAmount,
         earliestProposalTimestamp,
-        identifier,
-        customAncillaryData,
         bondAmount,
-        minimumLiveness
+        minimumLiveness,
+        identifier,
+        rewardToken.options.address,
+        customAncillaryData
       )
       .send({ from: sponsor });
 
@@ -343,13 +343,13 @@ describe("OptimisticDistributor", async function () {
       await didContractRevertWith(
         optimisticDistributor.methods
           .createReward(
-            rewardToken.options.address,
             rewardAmount,
             earliestProposalTimestamp,
-            identifier,
-            customAncillaryData,
             bondAmount,
-            maximumLiveness
+            maximumLiveness,
+            identifier,
+            rewardToken.options.address,
+            customAncillaryData
           )
           .send({ from: sponsor }),
         "OO liveness too large"
@@ -359,13 +359,13 @@ describe("OptimisticDistributor", async function () {
     // optimisticOracleLivenessTime just below MAXIMUM_LIVENESS should be accepted.
     await optimisticDistributor.methods
       .createReward(
-        rewardToken.options.address,
         rewardAmount,
         earliestProposalTimestamp,
-        identifier,
-        customAncillaryData,
         bondAmount,
-        maximumLiveness - 1
+        maximumLiveness - 1,
+        identifier,
+        rewardToken.options.address,
+        customAncillaryData
       )
       .send({ from: sponsor });
 
@@ -419,10 +419,10 @@ describe("OptimisticDistributor", async function () {
     assert.equal(storedRewards.rewardToken, rewardToken.options.address);
     assert.equal(storedRewards.maximumRewardAmount, rewardAmount);
     assert.equal(storedRewards.earliestProposalTimestamp, earliestProposalTimestamp);
-    assert.equal(hexToUtf8(storedRewards.priceIdentifier), hexToUtf8(identifier));
-    assert.equal(storedRewards.customAncillaryData, customAncillaryData);
     assert.equal(storedRewards.optimisticOracleProposerBond, bondAmount);
     assert.equal(storedRewards.optimisticOracleLivenessTime, proposalLiveness);
+    assert.equal(hexToUtf8(storedRewards.priceIdentifier), hexToUtf8(identifier));
+    assert.equal(storedRewards.customAncillaryData, customAncillaryData);
 
     // Check that nextCreatedReward index got bumped.
     assert.equal(parseInt(await optimisticDistributor.methods.nextCreatedReward().call()), rewardIndex + 1);

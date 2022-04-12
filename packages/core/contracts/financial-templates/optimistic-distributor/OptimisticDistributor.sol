@@ -32,10 +32,10 @@ contract OptimisticDistributor is Lockable, MultiCaller {
         IERC20 rewardToken;
         uint256 maximumRewardAmount;
         uint256 earliestProposalTimestamp;
-        bytes32 priceIdentifier;
-        bytes customAncillaryData;
         uint256 optimisticOracleProposerBond;
         uint256 optimisticOracleLivenessTime;
+        bytes32 priceIdentifier;
+        bytes customAncillaryData;
     }
 
     // Represents proposed rewards distribution.
@@ -58,6 +58,17 @@ contract OptimisticDistributor is Lockable, MultiCaller {
     uint256 public constant MINIMUM_LIVENESS = 10 minutes;
     uint256 public constant MAXIMUM_LIVENESS = 5200 weeks;
 
+    // Final fee can be synced and stored in the contract.
+    uint256 public finalFee;
+
+    // Index of next created reward or proposal.
+    uint256 public nextCreatedReward;
+    uint256 public nextCreatedProposal;
+
+    // Rewards and proposals are mapped to their indices.
+    mapping(uint256 => Reward) public rewards;
+    mapping(uint256 => Proposal) public proposals;
+
     // Immutable variables provided at deployment.
     FinderInterface public immutable finder;
     IERC20 public bondToken; // This cannot be declared immutable as bondToken needs to be checked against whitelist.
@@ -65,18 +76,9 @@ contract OptimisticDistributor is Lockable, MultiCaller {
     // Merkle Distributor can be set only once.
     MerkleDistributor public merkleDistributor;
 
-    // Parameters that can be synced and stored in the contract.
-    uint256 public finalFee;
+    // Interface parameters that can be synced and stored in the contract.
     StoreInterface public store;
     OptimisticOracleInterface public optimisticOracle;
-
-    // Rewards and proposals are mapped to their indices.
-    mapping(uint256 => Reward) public rewards;
-    mapping(uint256 => Proposal) public proposals;
-
-    // Index of next created reward or proposal.
-    uint256 public nextCreatedReward;
-    uint256 public nextCreatedProposal;
 
     /********************************************
      *                  EVENTS                  *
@@ -134,13 +136,13 @@ contract OptimisticDistributor is Lockable, MultiCaller {
      * disputed through Optimistic Oracle.
      */
     function createReward(
-        IERC20 rewardToken,
         uint256 maximumRewardAmount,
         uint256 earliestProposalTimestamp,
-        bytes32 priceIdentifier,
-        bytes calldata customAncillaryData,
         uint256 optimisticOracleProposerBond,
-        uint256 optimisticOracleLivenessTime
+        uint256 optimisticOracleLivenessTime,
+        bytes32 priceIdentifier,
+        IERC20 rewardToken,
+        bytes calldata customAncillaryData
     ) external nonReentrant() {
         require(address(merkleDistributor) != address(0), "Missing MerkleDistributor");
         require(_getIdentifierWhitelist().isIdentifierSupported(priceIdentifier), "Identifier not registered");
@@ -164,10 +166,10 @@ contract OptimisticDistributor is Lockable, MultiCaller {
             rewardToken: rewardToken,
             maximumRewardAmount: maximumRewardAmount,
             earliestProposalTimestamp: earliestProposalTimestamp,
-            priceIdentifier: priceIdentifier,
-            customAncillaryData: customAncillaryData,
             optimisticOracleProposerBond: optimisticOracleProposerBond,
-            optimisticOracleLivenessTime: optimisticOracleLivenessTime
+            optimisticOracleLivenessTime: optimisticOracleLivenessTime,
+            priceIdentifier: priceIdentifier,
+            customAncillaryData: customAncillaryData
         });
         emit RewardCreated(nextCreatedReward, rewards[nextCreatedReward]);
 
