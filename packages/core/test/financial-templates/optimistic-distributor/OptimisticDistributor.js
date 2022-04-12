@@ -367,7 +367,9 @@ describe("OptimisticDistributor", async function () {
     const rewardIndex = parseInt(await optimisticDistributor.methods.nextCreatedReward().call());
 
     // Create new reward.
-    await optimisticDistributor.methods.createReward(...defaultRewardParameters).send({ from: sponsor });
+    const receipt = await optimisticDistributor.methods
+      .createReward(...defaultRewardParameters)
+      .send({ from: sponsor });
 
     // Fetch balances after creating new reward.
     const sponsorBalanceAfter = toBN(await rewardToken.methods.balanceOf(sponsor).call());
@@ -378,6 +380,23 @@ describe("OptimisticDistributor", async function () {
     // Check for correct change in balances.
     assert.equal(sponsorBalanceBefore.sub(sponsorBalanceAfter).toString(), rewardAmount);
     assert.equal(contractBalanceAfter.sub(contractBalanceBefore).toString(), rewardAmount);
+
+    // Check that created rewards are emitted.
+    await assertEventEmitted(
+      receipt,
+      optimisticDistributor,
+      "RewardCreated",
+      (event) =>
+        event.rewardIndex === rewardIndex.toString() &&
+        event.reward.sponsor === sponsor &&
+        event.reward.rewardToken === rewardToken.options.address &&
+        event.reward.maximumRewardAmount === rewardAmount &&
+        event.reward.earliestProposalTimestamp === earliestProposalTimestamp.toString() &&
+        hexToUtf8(event.reward.priceIdentifier) === hexToUtf8(identifier) &&
+        event.reward.customAncillaryData === customAncillaryData &&
+        event.reward.optimisticOracleProposerBond === bondAmount &&
+        event.reward.optimisticOracleLivenessTime === proposalLiveness.toString()
+    );
 
     // Compare stored rewards with provided inputs.
     const storedRewards = await optimisticDistributor.methods.rewards(rewardIndex).call();
