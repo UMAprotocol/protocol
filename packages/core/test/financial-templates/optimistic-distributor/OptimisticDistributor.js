@@ -32,7 +32,7 @@ const minimumLiveness = 10 * 60; // 10 minutes
 const maximumLiveness = 5200 * 7 * 24 * 60 * 60; // 5200 weeks
 
 describe("OptimisticDistributor", async function () {
-  let accounts, deployer, anyAddress, sponsor, proposer;
+  let accounts, deployer, anyAddress, sponsor, proposer, disputer;
 
   let timer,
     finder,
@@ -61,6 +61,18 @@ describe("OptimisticDistributor", async function () {
       .send({ from: deployer });
   };
 
+  const createProposeRewards = async (rewardIndex, proposalIndex) => {
+    await optimisticDistributor.methods.createReward(...defaultRewardParameters).send({ from: sponsor });
+    await advanceTime(fundingPeriod);
+    const totalBond = toBN(bondAmount).add(toBN(finalFee)).toString();
+    await mintAndApprove(bondToken, proposer, optimisticDistributor.options.address, totalBond, deployer);
+    const merkleRoot = randomHex(32);
+    const ancillaryData = utf8ToHex(hexToUtf8(customAncillaryData) + ",proposalIndex:" + proposalIndex);
+    const proposalTimestamp = parseInt(await timer.methods.getCurrentTime().call());
+    await optimisticDistributor.methods.proposeDistribution(rewardIndex, merkleRoot, ipfsHash).send({ from: proposer });
+    return [totalBond, ancillaryData, proposalTimestamp, merkleRoot];
+  };
+
   const advanceTime = async (timeIncrease) => {
     const currentTime = parseInt(await timer.methods.getCurrentTime().call());
     await timer.methods.setCurrentTime(currentTime + timeIncrease).send({ from: deployer });
@@ -77,7 +89,7 @@ describe("OptimisticDistributor", async function () {
 
   before(async function () {
     accounts = await web3.eth.getAccounts();
-    [deployer, anyAddress, sponsor, proposer] = accounts;
+    [deployer, anyAddress, sponsor, proposer, disputer] = accounts;
 
     await runDefaultFixture(hre);
 
@@ -93,6 +105,8 @@ describe("OptimisticDistributor", async function () {
     await finder.methods
       .changeImplementationAddress(utf8ToHex(interfaceName.Oracle), mockOracle.options.address)
       .send({ from: deployer });
+
+    // Add indentifier to whitelist.
     await identifierWhitelist.methods.addSupportedIdentifier(identifier).send({ from: deployer });
   });
   beforeEach(async function () {
@@ -610,5 +624,285 @@ describe("OptimisticDistributor", async function () {
 
     // Check that nextCreatedProposal index got bumped.
     assert.equal(parseInt(await optimisticDistributor.methods.nextCreatedProposal().call()), proposalIndex + 1);
+  });
+  it("Executing distribution, undisputed", async function () {
+    await setupMerkleDistributor();
+
+    // Executing distribution for non-exisiting proposal should revert.
+    const proposalIndex = 0;
+    assert(
+      await didContractRevertWith(
+        optimisticDistributor.methods.executeDistribution(proposalIndex).send({ from: anyAddress }),
+        "No matching proposal found"
+      )
+    );
+
+    // Perform create-propose rewards cycle.
+    const rewardIndex = 0;
+    const [totalBond, , , merkleRoot] = await createProposeRewards(rewardIndex, proposalIndex);
+
+    // Execute distribution 1 second before OO liveness ends should revert.
+    await advanceTime(proposalLiveness - 1);
+    assert(
+      await didContractRevertWith(
+        optimisticDistributor.methods.executeDistribution(proposalIndex).send({ from: anyAddress })
+      ),
+      "_settle: not settleable"
+    );
+
+    // Fetch token balances before executing proposal.
+    const proposerBondBalanceBefore = toBN(await bondToken.methods.balanceOf(proposer).call());
+    const contractRewardBalanceBefore = toBN(
+      await rewardToken.methods.balanceOf(optimisticDistributor.options.address).call()
+    );
+    const merkleRewardBalancesBefore = toBN(
+      await rewardToken.methods.balanceOf(merkleDistributor.options.address).call()
+    );
+
+    // Execute undisputed distribution after OO liveness should succeed.
+    await advanceTime(1);
+    const receipt = await optimisticDistributor.methods.executeDistribution(proposalIndex).send({ from: anyAddress });
+
+    // Fetch token balances after executing proposal.
+    const proposerBondBalanceAfter = toBN(await bondToken.methods.balanceOf(proposer).call());
+    const contractRewardBalanceAfter = toBN(
+      await rewardToken.methods.balanceOf(optimisticDistributor.options.address).call()
+    );
+    const merkleRewardBalancesAfter = toBN(
+      await rewardToken.methods.balanceOf(merkleDistributor.options.address).call()
+    );
+
+    // Check for correct change in balances (bond returned to proposer and rewards transfered from
+    // optimisticDistributor to merkleDistributor contract).
+    assert.equal(proposerBondBalanceAfter.sub(proposerBondBalanceBefore).toString(), totalBond);
+    assert.equal(contractRewardBalanceBefore.sub(contractRewardBalanceAfter).toString(), rewardAmount);
+    assert.equal(merkleRewardBalancesAfter.sub(merkleRewardBalancesBefore).toString(), rewardAmount);
+
+    // Check all fields (except for rewards struct) emitted by optimisticDistributor in RewardDistributed event.
+    await assertEventEmitted(
+      receipt,
+      optimisticDistributor,
+      "RewardDistributed",
+      (event) =>
+        event.rewardIndex === rewardIndex.toString() &&
+        event.proposalIndex === proposalIndex.toString() &&
+        event.merkleRoot === merkleRoot &&
+        hexToUtf8(event.ipfsHash) === hexToUtf8(ipfsHash)
+    );
+
+    // Check all fields emitted by optimisticDistributor in ProposalDeleted event.
+    await assertEventEmitted(
+      receipt,
+      optimisticDistributor,
+      "ProposalDeleted",
+      (event) => event.rewardIndex === rewardIndex.toString() && event.proposalIndex === proposalIndex.toString()
+    );
+
+    // Check fields emitted by merkleDistributor in CreatedWindow event.
+    await assertEventEmitted(
+      receipt,
+      merkleDistributor,
+      "CreatedWindow",
+      (event) =>
+        event.rewardsDeposited === rewardAmount &&
+        event.rewardToken === rewardToken.options.address &&
+        event.owner === optimisticDistributor.options.address
+    );
+
+    // Proposal struct should be deleted now and repeated execution should revert.
+    assert(
+      await didContractRevertWith(
+        optimisticDistributor.methods.executeDistribution(proposalIndex).send({ from: anyAddress }),
+        "No matching proposal found"
+      )
+    );
+  });
+  it("Executing distribution, rejected by DVM", async function () {
+    await setupMerkleDistributor();
+
+    // Perform create-propose rewards cycle.
+    const rewardIndex = 0;
+    const proposalIndex = 0;
+    const [totalBond, ancillaryData, proposalTimestamp] = await createProposeRewards(rewardIndex, proposalIndex);
+
+    // Dispute the proposal at the OptimisticOracle.
+    await mintAndApprove(bondToken, disputer, optimisticOracle.options.address, totalBond, deployer);
+    await optimisticOracle.methods
+      .disputePrice(optimisticDistributor.options.address, identifier, proposalTimestamp, ancillaryData)
+      .send({ from: disputer });
+
+    // Execute distribution should revert as proposal was disputed and has not been resolved by DVM.
+    assert(
+      await didContractRevertWith(
+        optimisticDistributor.methods.executeDistribution(proposalIndex).send({ from: anyAddress }),
+        "_settle: not settleable"
+      )
+    );
+
+    // Resolve price request invalid at DVM.
+    const dvmAncillaryData = await optimisticOracle.methods
+      .stampAncillaryData(ancillaryData, optimisticDistributor.options.address)
+      .call();
+    await mockOracle.methods
+      .pushPrice(identifier, proposalTimestamp, dvmAncillaryData, toWei("0"))
+      .send({ from: deployer });
+
+    // Fetch token balances before executing proposal.
+    const proposerBondBalanceBefore = toBN(await bondToken.methods.balanceOf(proposer).call());
+    const disputerBondBalanceBefore = toBN(await bondToken.methods.balanceOf(disputer).call());
+    const contractRewardBalanceBefore = toBN(
+      await rewardToken.methods.balanceOf(optimisticDistributor.options.address).call()
+    );
+    const merkleRewardBalancesBefore = toBN(
+      await rewardToken.methods.balanceOf(merkleDistributor.options.address).call()
+    );
+
+    // Executing rejected distribution does not revert, but we check events and balances below.
+    const receipt = await optimisticDistributor.methods.executeDistribution(proposalIndex).send({ from: anyAddress });
+
+    // Fetch token balances after executing proposal.
+    const proposerBondBalanceAfter = toBN(await bondToken.methods.balanceOf(proposer).call());
+    const disputerBondBalanceAfter = toBN(await bondToken.methods.balanceOf(disputer).call());
+    const contractRewardBalanceAfter = toBN(
+      await rewardToken.methods.balanceOf(optimisticDistributor.options.address).call()
+    );
+    const merkleRewardBalancesAfter = toBN(
+      await rewardToken.methods.balanceOf(merkleDistributor.options.address).call()
+    );
+
+    // Check for correct change in balances (disputer should receive back its posted final fee (100) + bond (500)
+    // + half of proposers bond (250) = 850, rewards not moved out of optimisticDistributor).
+    assert.equal(proposerBondBalanceAfter.toString(), proposerBondBalanceBefore.toString());
+    assert.equal(
+      disputerBondBalanceAfter.sub(disputerBondBalanceBefore).toString(),
+      toBN(totalBond)
+        .add(toBN(bondAmount).div(toBN("2")))
+        .toString()
+    );
+    assert.equal(contractRewardBalanceAfter.toString(), contractRewardBalanceBefore.toString());
+    assert.equal(merkleRewardBalancesAfter.toString(), merkleRewardBalancesBefore.toString());
+
+    // Check all fields emitted by optimisticDistributor in ProposalRejected event.
+    await assertEventEmitted(
+      receipt,
+      optimisticDistributor,
+      "ProposalRejected",
+      (event) => event.rewardIndex === rewardIndex.toString() && event.proposalIndex === proposalIndex.toString()
+    );
+
+    // Check all fields emitted by optimisticDistributor in ProposalDeleted event.
+    await assertEventEmitted(
+      receipt,
+      optimisticDistributor,
+      "ProposalDeleted",
+      (event) => event.rewardIndex === rewardIndex.toString() && event.proposalIndex === proposalIndex.toString()
+    );
+
+    // Proposal struct should be deleted now and repeated execution should revert.
+    assert(
+      await didContractRevertWith(
+        optimisticDistributor.methods.executeDistribution(proposalIndex).send({ from: anyAddress }),
+        "No matching proposal found"
+      )
+    );
+  });
+  it("Executing distribution, confirmed by DVM", async function () {
+    await setupMerkleDistributor();
+
+    // Perform create-propose rewards cycle.
+    const rewardIndex = 0;
+    const proposalIndex = 0;
+    const [totalBond, ancillaryData, proposalTimestamp, merkleRoot] = await createProposeRewards(
+      rewardIndex,
+      proposalIndex
+    );
+
+    // Dispute the proposal at the OptimisticOracle.
+    await mintAndApprove(bondToken, disputer, optimisticOracle.options.address, totalBond, deployer);
+    await optimisticOracle.methods
+      .disputePrice(optimisticDistributor.options.address, identifier, proposalTimestamp, ancillaryData)
+      .send({ from: disputer });
+
+    // Resolve price request as valid at DVM.
+    const dvmAncillaryData = await optimisticOracle.methods
+      .stampAncillaryData(ancillaryData, optimisticDistributor.options.address)
+      .call();
+    await mockOracle.methods
+      .pushPrice(identifier, proposalTimestamp, dvmAncillaryData, toWei("1"))
+      .send({ from: deployer });
+
+    // Fetch token balances before executing proposal.
+    const proposerBondBalanceBefore = toBN(await bondToken.methods.balanceOf(proposer).call());
+    const disputerBondBalanceBefore = toBN(await bondToken.methods.balanceOf(disputer).call());
+    const contractRewardBalanceBefore = toBN(
+      await rewardToken.methods.balanceOf(optimisticDistributor.options.address).call()
+    );
+    const merkleRewardBalancesBefore = toBN(
+      await rewardToken.methods.balanceOf(merkleDistributor.options.address).call()
+    );
+
+    // Executing confirmed distribution should be accepted.
+    const receipt = await optimisticDistributor.methods.executeDistribution(proposalIndex).send({ from: anyAddress });
+
+    // Fetch token balances after executing proposal.
+    const proposerBondBalanceAfter = toBN(await bondToken.methods.balanceOf(proposer).call());
+    const disputerBondBalanceAfter = toBN(await bondToken.methods.balanceOf(disputer).call());
+    const contractRewardBalanceAfter = toBN(
+      await rewardToken.methods.balanceOf(optimisticDistributor.options.address).call()
+    );
+    const merkleRewardBalancesAfter = toBN(
+      await rewardToken.methods.balanceOf(merkleDistributor.options.address).call()
+    );
+
+    // Check for correct change in balances (proposer should receive back its posted final fee (100) + bond (500)
+    // + half of disputers bond (250) = 850, rewards moved out of optimisticDistributor to merkleDistributor).
+    assert.equal(
+      proposerBondBalanceAfter.sub(proposerBondBalanceBefore).toString(),
+      toBN(totalBond)
+        .add(toBN(bondAmount).div(toBN("2")))
+        .toString()
+    );
+    assert.equal(disputerBondBalanceAfter.toString(), disputerBondBalanceBefore.toString());
+    assert.equal(contractRewardBalanceBefore.sub(contractRewardBalanceAfter).toString(), rewardAmount);
+    assert.equal(merkleRewardBalancesAfter.sub(merkleRewardBalancesBefore).toString(), rewardAmount);
+
+    // Check all fields (except for rewards struct) emitted by optimisticDistributor in RewardDistributed event.
+    await assertEventEmitted(
+      receipt,
+      optimisticDistributor,
+      "RewardDistributed",
+      (event) =>
+        event.rewardIndex === rewardIndex.toString() &&
+        event.proposalIndex === proposalIndex.toString() &&
+        event.merkleRoot === merkleRoot &&
+        hexToUtf8(event.ipfsHash) === hexToUtf8(ipfsHash)
+    );
+
+    // Check all fields emitted by optimisticDistributor in ProposalDeleted event.
+    await assertEventEmitted(
+      receipt,
+      optimisticDistributor,
+      "ProposalDeleted",
+      (event) => event.rewardIndex === rewardIndex.toString() && event.proposalIndex === proposalIndex.toString()
+    );
+
+    // Check fields emitted by merkleDistributor in CreatedWindow event.
+    await assertEventEmitted(
+      receipt,
+      merkleDistributor,
+      "CreatedWindow",
+      (event) =>
+        event.rewardsDeposited === rewardAmount &&
+        event.rewardToken === rewardToken.options.address &&
+        event.owner === optimisticDistributor.options.address
+    );
+
+    // Proposal struct should be deleted now and repeated execution should revert.
+    assert(
+      await didContractRevertWith(
+        optimisticDistributor.methods.executeDistribution(proposalIndex).send({ from: anyAddress }),
+        "No matching proposal found"
+      )
+    );
   });
 });
