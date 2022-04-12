@@ -208,20 +208,20 @@ describe("OptimisticDistributor", async function () {
       )
     );
   });
-  it("Cannot deposit rewards without MerkleDistributor", async function () {
-    // await setupMerkleDistributor() skipped here.
-
+  it("Creating initial rewards", async function () {
+    // Cannot deposit rewards without MerkleDistributor.
     assert(
-      await didContractThrow(
-        optimisticDistributor.methods.createReward(...defaultRewardParameters).send({ from: sponsor })
+      await didContractRevertWith(
+        optimisticDistributor.methods.createReward(...defaultRewardParameters).send({ from: sponsor }),
+        "merkleDistributor not set"
       )
     );
-  });
-  it("Cannot deposit rewards for unregistered price identifier", async function () {
+
     await setupMerkleDistributor();
 
+    // Cannot deposit rewards for unregistered price identifier.
     assert(
-      await didContractThrow(
+      await didContractRevertWith(
         optimisticDistributor.methods
           .createReward(
             rewardToken.options.address,
@@ -232,14 +232,12 @@ describe("OptimisticDistributor", async function () {
             bondAmount,
             proposalLiveness
           )
-          .send({ from: sponsor })
+          .send({ from: sponsor }),
+        "Identifier not registered"
       )
     );
-  });
-  it("Test ancillary data size limits", async function () {
-    await setupMerkleDistributor();
 
-    // Get max length from contract.
+    // Get max length from contract for testing ancillary data size limits.
     const maxLength = parseInt(await optimisticOracle.methods.ancillaryBytesLimit().call());
 
     // Remove the OO bytes.
@@ -248,7 +246,7 @@ describe("OptimisticDistributor", async function () {
 
     // Adding 1 byte to ancillary data should push it just over the limit (less ANCILLARY_BYTES_RESERVE of 512).
     assert(
-      await didContractThrow(
+      await didContractRevertWith(
         optimisticDistributor.methods
           .createReward(
             rewardToken.options.address,
@@ -259,7 +257,8 @@ describe("OptimisticDistributor", async function () {
             bondAmount,
             proposalLiveness
           )
-          .send({ from: sponsor })
+          .send({ from: sponsor }),
+        "ancillary data too long"
       )
     );
 
@@ -275,13 +274,13 @@ describe("OptimisticDistributor", async function () {
         proposalLiveness
       )
       .send({ from: sponsor });
-  });
-  it("Test minimum liveness", async function () {
-    await setupMerkleDistributor();
 
-    // Below MINIMUM_LIVENESS should revert.
+    // Fund sponsor for creating new rewards.
+    await mintAndApprove(rewardToken, sponsor, optimisticDistributor.options.address, rewardAmount, deployer);
+
+    // optimisticOracleLivenessTime below MINIMUM_LIVENESS should revert.
     assert(
-      await didContractThrow(
+      await didContractRevertWith(
         optimisticDistributor.methods
           .createReward(
             rewardToken.options.address,
@@ -292,11 +291,12 @@ describe("OptimisticDistributor", async function () {
             bondAmount,
             minimumLiveness - 1
           )
-          .send({ from: sponsor })
+          .send({ from: sponsor }),
+        "OO liveness too small"
       )
     );
 
-    // Exactly at MINIMUM_LIVENESS should be accepted.
+    // optimisticOracleLivenessTime exactly at MINIMUM_LIVENESS should be accepted.
     await optimisticDistributor.methods
       .createReward(
         rewardToken.options.address,
@@ -308,13 +308,13 @@ describe("OptimisticDistributor", async function () {
         minimumLiveness
       )
       .send({ from: sponsor });
-  });
-  it("Test maximum liveness", async function () {
-    await setupMerkleDistributor();
 
-    // Exactly at MAXIMUM_LIVENESS should revert.
+    // Fund sponsor for creating new rewards.
+    await mintAndApprove(rewardToken, sponsor, optimisticDistributor.options.address, rewardAmount, deployer);
+
+    // optimisticOracleLivenessTime exactly at MAXIMUM_LIVENESS should revert.
     assert(
-      await didContractThrow(
+      await didContractRevertWith(
         optimisticDistributor.methods
           .createReward(
             rewardToken.options.address,
@@ -325,11 +325,12 @@ describe("OptimisticDistributor", async function () {
             bondAmount,
             maximumLiveness
           )
-          .send({ from: sponsor })
+          .send({ from: sponsor }),
+        "OO liveness too large"
       )
     );
 
-    // Just below MAXIMUM_LIVENESS should be accepted.
+    // optimisticOracleLivenessTime just below MAXIMUM_LIVENESS should be accepted.
     await optimisticDistributor.methods
       .createReward(
         rewardToken.options.address,
@@ -341,23 +342,31 @@ describe("OptimisticDistributor", async function () {
         maximumLiveness - 1
       )
       .send({ from: sponsor });
-  });
-  it("Initial rewards are transfered to OptimisticDistributor", async function () {
-    await setupMerkleDistributor();
 
-    await optimisticDistributor.methods.createReward(...defaultRewardParameters).send({ from: sponsor });
+    // Fund sponsor for creating new rewards.
+    await mintAndApprove(rewardToken, sponsor, optimisticDistributor.options.address, rewardAmount, deployer);
 
-    // Sponsor should have 0 remaining balance.
-    assert.equal(await rewardToken.methods.balanceOf(sponsor).call(), toWei("0"));
+    // Fetch balances before creating new reward.
+    const sponsorBalanceBefore = toBN(await rewardToken.methods.balanceOf(sponsor).call());
+    const contractBalanceBefore = toBN(
+      await rewardToken.methods.balanceOf(optimisticDistributor.options.address).call()
+    );
 
-    // OptimisticDistributor should have reward balance.
-    assert.equal(await rewardToken.methods.balanceOf(optimisticDistributor.options.address).call(), rewardAmount);
-  });
-  it("Rewards are stored on chain", async function () {
-    await setupMerkleDistributor();
-
+    // Fetch expected next rewardIndex.
     const rewardIndex = parseInt(await optimisticDistributor.methods.nextCreatedReward().call());
+
+    // Create new reward.
     await optimisticDistributor.methods.createReward(...defaultRewardParameters).send({ from: sponsor });
+
+    // Fetch balances after creating new reward.
+    const sponsorBalanceAfter = toBN(await rewardToken.methods.balanceOf(sponsor).call());
+    const contractBalanceAfter = toBN(
+      await rewardToken.methods.balanceOf(optimisticDistributor.options.address).call()
+    );
+
+    // Check for correct change in balances.
+    assert.equal(sponsorBalanceBefore.sub(sponsorBalanceAfter).toString(), rewardAmount);
+    assert.equal(contractBalanceAfter.sub(contractBalanceBefore).toString(), rewardAmount);
 
     // Compare stored rewards with provided inputs.
     const storedRewards = await optimisticDistributor.methods.rewards(rewardIndex).call();
