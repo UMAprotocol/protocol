@@ -84,7 +84,17 @@ contract OptimisticDistributor is Lockable, MultiCaller {
      *                  EVENTS                  *
      ********************************************/
 
-    event RewardCreated(uint256 rewardIndex, Reward reward);
+    event RewardCreated(
+        address sponsor,
+        IERC20 rewardToken,
+        uint256 rewardIndex,
+        uint256 maximumRewardAmount,
+        uint256 earliestProposalTimestamp,
+        uint256 optimisticOracleProposerBond,
+        uint256 optimisticOracleLivenessTime,
+        bytes32 priceIdentifier,
+        bytes customAncillaryData
+    );
     event RewardIncreased(uint256 rewardIndex, uint256 newMaximumRewardAmount);
     event ProposalCreated(
         uint256 rewardIndex,
@@ -161,17 +171,30 @@ contract OptimisticDistributor is Lockable, MultiCaller {
         rewardToken.safeTransferFrom(msg.sender, address(this), maximumRewardAmount);
 
         // Store funded reward and log created reward.
-        rewards[nextCreatedReward] = Reward({
-            sponsor: msg.sender,
-            rewardToken: rewardToken,
-            maximumRewardAmount: maximumRewardAmount,
-            earliestProposalTimestamp: earliestProposalTimestamp,
-            optimisticOracleProposerBond: optimisticOracleProposerBond,
-            optimisticOracleLivenessTime: optimisticOracleLivenessTime,
-            priceIdentifier: priceIdentifier,
-            customAncillaryData: customAncillaryData
-        });
-        emit RewardCreated(nextCreatedReward, rewards[nextCreatedReward]);
+        Reward memory reward =
+            Reward({
+                sponsor: msg.sender,
+                rewardToken: rewardToken,
+                maximumRewardAmount: maximumRewardAmount,
+                earliestProposalTimestamp: earliestProposalTimestamp,
+                optimisticOracleProposerBond: optimisticOracleProposerBond,
+                optimisticOracleLivenessTime: optimisticOracleLivenessTime,
+                priceIdentifier: priceIdentifier,
+                customAncillaryData: customAncillaryData
+            });
+        uint256 rewardIndex = nextCreatedReward;
+        rewards[rewardIndex] = reward;
+        emit RewardCreated(
+            reward.sponsor,
+            reward.rewardToken,
+            rewardIndex,
+            reward.maximumRewardAmount,
+            reward.earliestProposalTimestamp,
+            reward.optimisticOracleProposerBond,
+            reward.optimisticOracleLivenessTime,
+            reward.priceIdentifier,
+            reward.customAncillaryData
+        );
 
         // Bump nextCreatedReward index.
         nextCreatedReward++;

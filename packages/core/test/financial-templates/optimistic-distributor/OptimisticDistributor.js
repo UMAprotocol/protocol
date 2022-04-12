@@ -402,15 +402,15 @@ describe("OptimisticDistributor", async function () {
       optimisticDistributor,
       "RewardCreated",
       (event) =>
+        event.sponsor === sponsor &&
+        event.rewardToken === rewardToken.options.address &&
         event.rewardIndex === rewardIndex.toString() &&
-        event.reward.sponsor === sponsor &&
-        event.reward.rewardToken === rewardToken.options.address &&
-        event.reward.maximumRewardAmount === rewardAmount &&
-        event.reward.earliestProposalTimestamp === earliestProposalTimestamp.toString() &&
-        hexToUtf8(event.reward.priceIdentifier) === hexToUtf8(identifier) &&
-        event.reward.customAncillaryData === customAncillaryData &&
-        event.reward.optimisticOracleProposerBond === bondAmount &&
-        event.reward.optimisticOracleLivenessTime === proposalLiveness.toString()
+        event.maximumRewardAmount === rewardAmount &&
+        event.earliestProposalTimestamp === earliestProposalTimestamp.toString() &&
+        event.optimisticOracleProposerBond === bondAmount &&
+        event.optimisticOracleLivenessTime === proposalLiveness.toString() &&
+        hexToUtf8(event.priceIdentifier) === hexToUtf8(identifier) &&
+        event.customAncillaryData === customAncillaryData
     );
 
     // Compare stored rewards with provided inputs.
