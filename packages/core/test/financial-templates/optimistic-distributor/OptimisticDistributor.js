@@ -56,7 +56,7 @@ describe("OptimisticDistributor", async function () {
   const setupMerkleDistributor = async () => {
     merkleDistributor = await MerkleDistributor.new().send({ from: deployer });
     await merkleDistributor.methods.transferOwnership(optimisticDistributor.options.address).send({ from: deployer });
-    await optimisticDistributor.methods
+    return await optimisticDistributor.methods
       .setMerkleDistributor(merkleDistributor.options.address)
       .send({ from: deployer });
   };
@@ -194,7 +194,16 @@ describe("OptimisticDistributor", async function () {
     );
 
     // Setting MerkleDistributor with transferred ownership should work.
-    await setupMerkleDistributor();
+    const receipt = await setupMerkleDistributor();
+
+    // Check that MerkleDistributor address is emitted and stored.
+    await assertEventEmitted(
+      receipt,
+      optimisticDistributor,
+      "MerkleDistributorSet",
+      (event) => event.merkleDistributor === merkleDistributor.options.address
+    );
+    assert.equal(await optimisticDistributor.methods.merkleDistributor().call(), merkleDistributor.options.address);
 
     // Deploy new MerkleDistributor and try to link it to existing optimisticDistributor should revert.
     const newMerkleDistributor = await MerkleDistributor.new().send({ from: deployer });
