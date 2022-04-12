@@ -160,14 +160,7 @@ contract OptimisticDistributor is Lockable, MultiCaller {
     ) external nonReentrant() {
         require(address(merkleDistributor) != address(0), "Missing MerkleDistributor");
         require(_getIdentifierWhitelist().isIdentifierSupported(priceIdentifier), "Identifier not registered");
-
-        // Since proposalIndex has variable length as string, it is not appended here and is assumed
-        // to be included in ANCILLARY_BYTES_RESERVE.
-        require(
-            optimisticOracle.stampAncillaryData(customAncillaryData, address(this)).length + ANCILLARY_BYTES_RESERVE <=
-                optimisticOracle.ancillaryBytesLimit(),
-            "Ancillary data too long"
-        );
+        require(_ancillaryDataWithinLimits(customAncillaryData), "Ancillary data too long");
         require(optimisticOracleLivenessTime >= MINIMUM_LIVENESS, "OO liveness too small");
         require(optimisticOracleLivenessTime < MAXIMUM_LIVENESS, "OO liveness too large");
 
@@ -415,5 +408,13 @@ contract OptimisticDistributor is Lockable, MultiCaller {
         returns (bytes memory)
     {
         return AncillaryData.appendKeyValueUint(customAncillaryData, "proposalIndex", proposalIndex);
+    }
+
+    function _ancillaryDataWithinLimits(bytes memory customAncillaryData) internal view returns (bool) {
+        // Since proposalIndex has variable length as string, it is not appended here and is assumed
+        // to be included in ANCILLARY_BYTES_RESERVE.
+        return
+            optimisticOracle.stampAncillaryData(customAncillaryData, address(this)).length + ANCILLARY_BYTES_RESERVE <=
+            optimisticOracle.ancillaryBytesLimit();
     }
 }
