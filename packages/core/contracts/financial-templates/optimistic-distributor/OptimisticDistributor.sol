@@ -54,7 +54,7 @@ contract OptimisticDistributor is Lockable, MultiCaller {
 
     // Reserve for bytes appended to ancillary data (e.g. OracleSpoke) when resolving price from non-mainnet chains.
     // This also covers appending proposalIndex by this contract.
-    uint256 private constant ANCILLARY_BYTES_RESERVE = 512;
+    uint256 public constant ANCILLARY_BYTES_RESERVE = 512;
 
     // Restrict Optimistic Oracle liveness to between 10 minutes and 100 years.
     uint256 public constant MINIMUM_LIVENESS = 10 minutes;
