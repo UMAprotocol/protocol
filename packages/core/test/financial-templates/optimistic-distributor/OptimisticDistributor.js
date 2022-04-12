@@ -444,7 +444,19 @@ describe("OptimisticDistributor", async function () {
     );
 
     // Increase rewards funding.
-    await optimisticDistributor.methods.increaseReward(rewardIndex, rewardAmount).send({ from: sponsor });
+    const receipt = await optimisticDistributor.methods
+      .increaseReward(rewardIndex, rewardAmount)
+      .send({ from: sponsor });
+
+    // Check that increased rewards are emitted.
+    await assertEventEmitted(
+      receipt,
+      optimisticDistributor,
+      "RewardIncreased",
+      (event) =>
+        event.rewardIndex === rewardIndex.toString() &&
+        event.newMaximumRewardAmount === contractRewardBefore.add(toBN(rewardAmount)).toString()
+    );
 
     // Fetch balances after additional funding.
     const sponsorBalanceAfter = toBN(await rewardToken.methods.balanceOf(sponsor).call());
