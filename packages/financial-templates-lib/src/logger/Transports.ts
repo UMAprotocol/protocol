@@ -45,7 +45,11 @@ export function createTransports(transportsConfig: TransportsConfig = {}): Trans
     const { LoggingWinston } = require("@google-cloud/logging-winston");
     transports.push(new LoggingWinston());
     if (!require("@google-cloud/trace-agent").get().enabled) require("@google-cloud/trace-agent").start();
-  } else if (transportsConfig.createConsoleTransport != undefined ? transportsConfig.createConsoleTransport : true) {
+  } else if (
+    transportsConfig.createConsoleTransport != undefined
+      ? transportsConfig.createConsoleTransport
+      : true || process.env.LOG_TO_CONSOLE == "true"
+  ) {
     // Add a console transport to log to the console.
     transports.push(createConsoleTransport());
   }
