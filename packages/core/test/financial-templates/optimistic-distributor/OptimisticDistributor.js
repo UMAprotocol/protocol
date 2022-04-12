@@ -183,28 +183,30 @@ describe("OptimisticDistributor", async function () {
       .changeImplementationAddress(utf8ToHex(interfaceName.OptimisticOracle), optimisticOracle.options.address)
       .send({ from: deployer });
   });
-  it("MerkleDistributor can be set only once", async function () {
+  it("Setting MerkleDistributor", async function () {
+    // Deploy MerkleDistributor and try to link it without transferring ownership first.
+    merkleDistributor = await MerkleDistributor.new().send({ from: deployer });
+    assert(
+      await didContractRevertWith(
+        optimisticDistributor.methods.setMerkleDistributor(merkleDistributor.options.address).send({ from: deployer }),
+        "merkleDistributor not owned"
+      )
+    );
+
+    // Setting MerkleDistributor with transferred ownership should work.
     await setupMerkleDistributor();
 
-    // Deploy new MerkleDistributor and try to link it to existing optimisticDistributor.
+    // Deploy new MerkleDistributor and try to link it to existing optimisticDistributor should revert.
     const newMerkleDistributor = await MerkleDistributor.new().send({ from: deployer });
     await newMerkleDistributor.methods
       .transferOwnership(optimisticDistributor.options.address)
       .send({ from: deployer });
     assert(
-      await didContractThrow(
+      await didContractRevertWith(
         optimisticDistributor.methods
           .setMerkleDistributor(newMerkleDistributor.options.address)
-          .send({ from: deployer })
-      )
-    );
-  });
-  it("MerkleDistributor should be owned by OptimisticDistributor", async function () {
-    // Deploy MerkleDistributor and try to link it without transferring ownership first.
-    merkleDistributor = await MerkleDistributor.new().send({ from: deployer });
-    assert(
-      await didContractThrow(
-        optimisticDistributor.methods.setMerkleDistributor(merkleDistributor.options.address).send({ from: deployer })
+          .send({ from: deployer }),
+        "merkleDistributor already set"
       )
     );
   });
