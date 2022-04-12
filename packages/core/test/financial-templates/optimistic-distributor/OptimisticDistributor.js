@@ -672,14 +672,17 @@ describe("OptimisticDistributor", async function () {
     assert.equal(contractRewardBalanceBefore.sub(contractRewardBalanceAfter).toString(), rewardAmount);
     assert.equal(merkleRewardBalancesAfter.sub(merkleRewardBalancesBefore).toString(), rewardAmount);
 
-    // Check all fields (except for rewards struct) emitted by optimisticDistributor in RewardDistributed event.
+    // Check all fields emitted by optimisticDistributor in RewardDistributed event.
     await assertEventEmitted(
       receipt,
       optimisticDistributor,
       "RewardDistributed",
       (event) =>
+        event.sponsor === sponsor &&
+        event.rewardToken === rewardToken.options.address &&
         event.rewardIndex === rewardIndex.toString() &&
         event.proposalIndex === proposalIndex.toString() &&
+        event.maximumRewardAmount === rewardAmount &&
         event.merkleRoot === merkleRoot &&
         hexToUtf8(event.ipfsHash) === hexToUtf8(ipfsHash)
     );
@@ -860,14 +863,17 @@ describe("OptimisticDistributor", async function () {
     assert.equal(contractRewardBalanceBefore.sub(contractRewardBalanceAfter).toString(), rewardAmount);
     assert.equal(merkleRewardBalancesAfter.sub(merkleRewardBalancesBefore).toString(), rewardAmount);
 
-    // Check all fields (except for rewards struct) emitted by optimisticDistributor in RewardDistributed event.
+    // Check all fields emitted by optimisticDistributor in RewardDistributed event.
     await assertEventEmitted(
       receipt,
       optimisticDistributor,
       "RewardDistributed",
       (event) =>
+        event.sponsor === sponsor &&
+        event.rewardToken === rewardToken.options.address &&
         event.rewardIndex === rewardIndex.toString() &&
         event.proposalIndex === proposalIndex.toString() &&
+        event.maximumRewardAmount === rewardAmount &&
         event.merkleRoot === merkleRoot &&
         hexToUtf8(event.ipfsHash) === hexToUtf8(ipfsHash)
     );

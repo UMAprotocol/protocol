@@ -107,11 +107,13 @@ contract OptimisticDistributor is Lockable, MultiCaller {
         string ipfsHash
     );
     event RewardDistributed(
+        address sponsor,
+        IERC20 rewardToken,
         uint256 indexed rewardIndex,
         uint256 indexed proposalIndex,
+        uint256 maximumRewardAmount,
         bytes32 merkleRoot,
-        string ipfsHash,
-        Reward reward
+        string ipfsHash
     );
     event ProposalRejected(uint256 indexed rewardIndex, uint256 indexed proposalIndex);
     event ProposalDeleted(uint256 indexed rewardIndex, uint256 indexed proposalIndex);
@@ -331,7 +333,15 @@ contract OptimisticDistributor is Lockable, MultiCaller {
                 proposal.merkleRoot,
                 proposal.ipfsHash
             );
-            emit RewardDistributed(proposal.rewardIndex, proposalIndex, proposal.merkleRoot, proposal.ipfsHash, reward);
+            emit RewardDistributed(
+                reward.sponsor,
+                reward.rewardToken,
+                proposal.rewardIndex,
+                proposalIndex,
+                reward.maximumRewardAmount,
+                proposal.merkleRoot,
+                proposal.ipfsHash
+            );
         } else emit ProposalRejected(proposal.rewardIndex, proposalIndex);
 
         // Delete resolved proposal from storage. This also avoids double-spend for approved proposals.
