@@ -247,8 +247,7 @@ contract OptimisticDistributor is Lockable, MultiCaller {
 
         // Append proposal index to ancillary data.
         uint256 proposalIndex = nextCreatedProposal;
-        bytes memory ancillaryData =
-            AncillaryData.appendKeyValueUint(reward.customAncillaryData, "proposalIndex", proposalIndex);
+        bytes memory ancillaryData = _appendProposalIndex(proposalIndex, reward.customAncillaryData);
 
         // Request price from Optimistic Oracle.
         optimisticOracle.requestPrice(reward.priceIdentifier, timestamp, ancillaryData, bondToken, 0);
@@ -317,8 +316,7 @@ contract OptimisticDistributor is Lockable, MultiCaller {
 
         // Append proposal index to ancillary data.
         Reward memory reward = rewards[proposal.rewardIndex];
-        bytes memory ancillaryData =
-            AncillaryData.appendKeyValueUint(reward.customAncillaryData, "proposalIndex", proposalIndex);
+        bytes memory ancillaryData = _appendProposalIndex(proposalIndex, reward.customAncillaryData);
 
         // Get resolved price. Reverts if the request is not settled or settleable.
         int256 resolvedPrice =
@@ -409,5 +407,13 @@ contract OptimisticDistributor is Lockable, MultiCaller {
 
     function _getCollateralWhitelist() internal view returns (AddressWhitelistInterface) {
         return AddressWhitelistInterface(finder.getImplementationAddress(OracleInterfaces.CollateralWhitelist));
+    }
+
+    function _appendProposalIndex(uint256 proposalIndex, bytes memory customAncillaryData)
+        internal
+        view
+        returns (bytes memory)
+    {
+        return AncillaryData.appendKeyValueUint(customAncillaryData, "proposalIndex", proposalIndex);
     }
 }
