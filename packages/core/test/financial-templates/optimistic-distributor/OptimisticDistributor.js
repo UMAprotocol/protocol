@@ -540,6 +540,7 @@ describe("OptimisticDistributor", async function () {
         event.proposalIndex === proposalIndex.toString() &&
         event.proposalTimestamp === proposalTimestamp.toString() &&
         event.merkleRoot === merkleRoot &&
+        hexToUtf8(event.ipfsHash) === hexToUtf8(ipfsHash) &&
         event.reward.sponsor === sponsor &&
         event.reward.rewardToken === rewardToken.options.address &&
         event.reward.maximumRewardAmount === rewardAmount &&
@@ -605,6 +606,7 @@ describe("OptimisticDistributor", async function () {
     assert.equal(storedProposal.rewardIndex, rewardIndex);
     assert.equal(storedProposal.timestamp, proposalTimestamp);
     assert.equal(storedProposal.merkleRoot, merkleRoot);
+    assert.equal(hexToUtf8(storedProposal.ipfsHash), hexToUtf8(ipfsHash));
 
     // Check that nextCreatedProposal index got bumped.
     assert.equal(parseInt(await optimisticDistributor.methods.nextCreatedProposal().call()), proposalIndex + 1);
