@@ -550,7 +550,8 @@ describe("OptimisticDistributor", async function () {
       optimisticDistributor,
       "ProposalCreated",
       (event) =>
-        event.rewardIndex === rewardIndex.toString() &&
+        event.sponsor === sponsor &&
+        event.rewardToken === rewardToken.options.address &&
         event.proposalIndex === proposalIndex.toString() &&
         event.proposalTimestamp === proposalTimestamp.toString() &&
         event.maximumRewardAmount === rewardAmount &&

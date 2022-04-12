@@ -97,6 +97,8 @@ contract OptimisticDistributor is Lockable, MultiCaller {
     );
     event RewardIncreased(uint256 rewardIndex, uint256 newMaximumRewardAmount);
     event ProposalCreated(
+        address sponsor,
+        IERC20 rewardToken,
         uint256 rewardIndex,
         uint256 proposalIndex,
         uint256 proposalTimestamp,
@@ -285,7 +287,16 @@ contract OptimisticDistributor is Lockable, MultiCaller {
             merkleRoot: merkleRoot,
             ipfsHash: ipfsHash
         });
-        emit ProposalCreated(rewardIndex, proposalIndex, timestamp, reward.maximumRewardAmount, merkleRoot, ipfsHash);
+        emit ProposalCreated(
+            reward.sponsor,
+            reward.rewardToken,
+            rewardIndex,
+            proposalIndex,
+            timestamp,
+            reward.maximumRewardAmount,
+            merkleRoot,
+            ipfsHash
+        );
 
         // Bump nextCreatedProposal index.
         nextCreatedProposal++;
