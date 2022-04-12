@@ -553,16 +553,9 @@ describe("OptimisticDistributor", async function () {
         event.rewardIndex === rewardIndex.toString() &&
         event.proposalIndex === proposalIndex.toString() &&
         event.proposalTimestamp === proposalTimestamp.toString() &&
+        event.maximumRewardAmount === rewardAmount &&
         event.merkleRoot === merkleRoot &&
-        hexToUtf8(event.ipfsHash) === hexToUtf8(ipfsHash) &&
-        event.reward.sponsor === sponsor &&
-        event.reward.rewardToken === rewardToken.options.address &&
-        event.reward.maximumRewardAmount === rewardAmount &&
-        event.reward.earliestProposalTimestamp === earliestProposalTimestamp.toString() &&
-        hexToUtf8(event.reward.priceIdentifier) === hexToUtf8(identifier) &&
-        event.reward.customAncillaryData === customAncillaryData &&
-        event.reward.optimisticOracleProposerBond === bondAmount &&
-        event.reward.optimisticOracleLivenessTime === proposalLiveness.toString()
+        hexToUtf8(event.ipfsHash) === hexToUtf8(ipfsHash)
     );
 
     // Ancillary data in OptimisticOracle should have proposalIndex appended.
