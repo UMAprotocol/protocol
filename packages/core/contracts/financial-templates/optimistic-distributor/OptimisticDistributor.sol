@@ -93,6 +93,15 @@ contract OptimisticDistributor is Lockable {
         string ipfsHash,
         Reward reward
     );
+    event RewardDistributed(
+        uint256 indexed rewardIndex,
+        uint256 indexed proposalIndex,
+        bytes32 merkleRoot,
+        string ipfsHash,
+        Reward reward
+    );
+    event ProposalRejected(uint256 indexed rewardIndex, uint256 indexed proposalIndex);
+    event ProposalDeleted(uint256 indexed rewardIndex, uint256 indexed proposalIndex);
     event MerkleDistributorSet(address merkleDistributor);
 
     /**
@@ -265,8 +274,39 @@ contract OptimisticDistributor is Lockable {
     /**
      * @notice Allows any caller to execute distribution that has been validated by the Optimistic Oracle.
      * @param proposalIndex Index for identifying existing rewards distribution proposal.
+     * @dev Calling this for unresolved proposals will revert. Both accepted and rejected distribution
+     * proposals will be deleted from storage.
      */
-    function executeDistribution(uint256 proposalIndex) external nonReentrant() {}
+    function executeDistribution(uint256 proposalIndex) external nonReentrant() {
+        // All valid proposals should have non-zero proposal timestamp.
+        Proposal memory proposal = proposals[proposalIndex];
+        require(proposal.timestamp != 0, "No matching proposal found");
+
+        // Append proposal index to ancillary data.
+        Reward memory reward = rewards[proposal.rewardIndex];
+        bytes memory ancillaryData =
+            AncillaryData.appendKeyValueUint(reward.customAncillaryData, "proposalIndex", proposalIndex);
+
+        // Get resolved price. Reverts if the request is not settled or settleable.
+        int256 resolvedPrice =
+            optimisticOracle.settleAndGetPrice(reward.priceIdentifier, proposal.timestamp, ancillaryData);
+
+        // Transfer rewards to MerkleDistributor for accepted proposal.
+        if (resolvedPrice == 1e18) {
+            reward.rewardToken.safeApprove(address(merkleDistributor), reward.maximumRewardAmount);
+            merkleDistributor.setWindow(
+                reward.maximumRewardAmount,
+                address(reward.rewardToken),
+                proposal.merkleRoot,
+                proposal.ipfsHash
+            );
+            emit RewardDistributed(proposal.rewardIndex, proposalIndex, proposal.merkleRoot, proposal.ipfsHash, reward);
+        } else emit ProposalRejected(proposal.rewardIndex, proposalIndex);
+
+        // Delete resolved proposal from storage. This also avoids double-spend for approved proposals.
+        delete proposals[proposalIndex];
+        emit ProposalDeleted(proposal.rewardIndex, proposalIndex);
+    }
 
     /**
      * @notice Allows any caller to delete distribution that was rejected by the Optimistic Oracle.
