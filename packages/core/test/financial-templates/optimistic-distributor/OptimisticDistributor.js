@@ -1,7 +1,7 @@
 const { assert } = require("chai");
 const hre = require("hardhat");
 const { web3, getContract, assertEventEmitted } = hre;
-const { didContractThrow, interfaceName, runDefaultFixture, TokenRolesEnum } = require("@uma/common");
+const { interfaceName, runDefaultFixture, TokenRolesEnum } = require("@uma/common");
 const { utf8ToHex, hexToUtf8, toWei, toBN, randomHex } = web3.utils;
 
 // Tested contracts
@@ -130,12 +130,13 @@ describe("OptimisticDistributor", async function () {
   it("Constructor parameters validation", async function () {
     // Unapproved token.
     assert(
-      await didContractThrow(
+      await didContractRevertWith(
         OptimisticDistributor.new(
           finder.options.address,
           (await ERC20.new("BOND", "BOND", 18).send({ from: deployer })).options.address,
           timer.options.address
-        ).send({ from: deployer })
+        ).send({ from: deployer }),
+        "bond token not supported"
       )
     );
   });
