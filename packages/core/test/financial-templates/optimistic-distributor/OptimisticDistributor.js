@@ -645,9 +645,9 @@ describe("OptimisticDistributor", async function () {
     await advanceTime(proposalLiveness - 1);
     assert(
       await didContractRevertWith(
-        optimisticDistributor.methods.executeDistribution(proposalIndex).send({ from: anyAddress })
-      ),
-      "_settle: not settleable"
+        optimisticDistributor.methods.executeDistribution(proposalIndex).send({ from: anyAddress }),
+        "_settle: not settleable"
+      )
     );
 
     // Fetch token balances before executing proposal.
