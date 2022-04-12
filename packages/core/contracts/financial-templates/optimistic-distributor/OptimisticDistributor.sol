@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import "../../common/implementation/AncillaryData.sol";
 import "../../common/implementation/Lockable.sol";
+import "../../common/implementation/MultiCaller.sol";
 import "../../common/interfaces/AddressWhitelistInterface.sol";
 import "../../merkle-distributor/implementation/MerkleDistributor.sol";
 import "../../oracle/implementation/Constants.sol";
@@ -19,7 +20,7 @@ import "@openzeppelin/contracts/utils/math/SafeMath.sol";
  * @title  OptimisticDistributor contract.
  * @notice Allows sponsors to distribute rewards through MerkleDistributor contract secured by UMA Optimistic Oracle.
  */
-contract OptimisticDistributor is Lockable {
+contract OptimisticDistributor is Lockable, MultiCaller {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
