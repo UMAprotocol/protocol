@@ -44,6 +44,7 @@ contract OptimisticDistributor is Lockable {
         uint256 rewardIndex;
         uint256 timestamp;
         bytes32 merkleRoot;
+        string ipfsHash;
     }
 
     /********************************************
@@ -89,6 +90,7 @@ contract OptimisticDistributor is Lockable {
         uint256 proposalIndex,
         uint256 proposalTimestamp,
         bytes32 merkleRoot,
+        string ipfsHash,
         Reward reward
     );
     event MerkleDistributorSet(address merkleDistributor);
@@ -248,8 +250,13 @@ contract OptimisticDistributor is Lockable {
         );
 
         // Store and log proposed distribution.
-        proposals[proposalIndex] = Proposal({ rewardIndex: rewardIndex, timestamp: timestamp, merkleRoot: merkleRoot });
-        emit ProposalCreated(rewardIndex, proposalIndex, timestamp, merkleRoot, reward);
+        proposals[proposalIndex] = Proposal({
+            rewardIndex: rewardIndex,
+            timestamp: timestamp,
+            merkleRoot: merkleRoot,
+            ipfsHash: ipfsHash
+        });
+        emit ProposalCreated(rewardIndex, proposalIndex, timestamp, merkleRoot, ipfsHash, reward);
 
         // Bump nextCreatedProposal index.
         nextCreatedProposal = proposalIndex.add(1);
