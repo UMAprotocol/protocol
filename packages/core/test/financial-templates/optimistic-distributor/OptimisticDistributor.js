@@ -150,7 +150,7 @@ describe("OptimisticDistributor", async function () {
           (await ERC20.new("BOND", "BOND", 18).send({ from: deployer })).options.address,
           timer.options.address
         ).send({ from: deployer }),
-        "bond token not supported"
+        "Bond token not supported"
       )
     );
   });
@@ -204,7 +204,7 @@ describe("OptimisticDistributor", async function () {
     assert(
       await didContractRevertWith(
         optimisticDistributor.methods.setMerkleDistributor(merkleDistributor.options.address).send({ from: deployer }),
-        "merkleDistributor not owned"
+        "MerkleDistributor not owned"
       )
     );
 
@@ -230,7 +230,7 @@ describe("OptimisticDistributor", async function () {
         optimisticDistributor.methods
           .setMerkleDistributor(newMerkleDistributor.options.address)
           .send({ from: deployer }),
-        "merkleDistributor already set"
+        "MerkleDistributor already set"
       )
     );
   });
@@ -239,7 +239,7 @@ describe("OptimisticDistributor", async function () {
     assert(
       await didContractRevertWith(
         optimisticDistributor.methods.createReward(...defaultRewardParameters).send({ from: sponsor }),
-        "merkleDistributor not set"
+        "Missing MerkleDistributor"
       )
     );
 
@@ -284,7 +284,7 @@ describe("OptimisticDistributor", async function () {
             proposalLiveness
           )
           .send({ from: sponsor }),
-        "ancillary data too long"
+        "Ancillary data too long"
       )
     );
 
@@ -435,7 +435,7 @@ describe("OptimisticDistributor", async function () {
     assert(
       await didContractRevertWith(
         optimisticDistributor.methods.increaseReward(rewardIndex, rewardAmount).send({ from: sponsor }),
-        "rewards have not been created"
+        "Invalid rewardIndex"
       )
     );
 
@@ -495,7 +495,7 @@ describe("OptimisticDistributor", async function () {
     assert(
       await didContractRevertWith(
         optimisticDistributor.methods.increaseReward(rewardIndex, rewardAmount).send({ from: sponsor }),
-        "no more funding from earliestProposalTimestamp"
+        "Funding period ended"
       )
     );
   });
@@ -517,7 +517,7 @@ describe("OptimisticDistributor", async function () {
     assert(
       await didContractRevertWith(
         optimisticDistributor.methods.proposeDistribution(0, merkleRoot, ipfsHash).send({ from: proposer }),
-        "no associated reward"
+        "Invalid rewardIndex"
       )
     );
 
@@ -529,7 +529,7 @@ describe("OptimisticDistributor", async function () {
     assert(
       await didContractRevertWith(
         optimisticDistributor.methods.proposeDistribution(rewardIndex, merkleRoot, ipfsHash).send({ from: proposer }),
-        "proposal timestamp not reached"
+        "No proposals in funding period"
       )
     );
 
@@ -633,7 +633,7 @@ describe("OptimisticDistributor", async function () {
     assert(
       await didContractRevertWith(
         optimisticDistributor.methods.executeDistribution(proposalIndex).send({ from: anyAddress }),
-        "No matching proposal found"
+        "Invalid proposalIndex"
       )
     );
 
@@ -713,7 +713,7 @@ describe("OptimisticDistributor", async function () {
     assert(
       await didContractRevertWith(
         optimisticDistributor.methods.executeDistribution(proposalIndex).send({ from: anyAddress }),
-        "No matching proposal found"
+        "Invalid proposalIndex"
       )
     );
   });
@@ -802,7 +802,7 @@ describe("OptimisticDistributor", async function () {
     assert(
       await didContractRevertWith(
         optimisticDistributor.methods.executeDistribution(proposalIndex).send({ from: anyAddress }),
-        "No matching proposal found"
+        "Invalid proposalIndex"
       )
     );
   });
@@ -901,7 +901,7 @@ describe("OptimisticDistributor", async function () {
     assert(
       await didContractRevertWith(
         optimisticDistributor.methods.executeDistribution(proposalIndex).send({ from: anyAddress }),
-        "No matching proposal found"
+        "Invalid proposalIndex"
       )
     );
   });

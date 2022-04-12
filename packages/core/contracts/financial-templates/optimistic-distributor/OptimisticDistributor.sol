@@ -112,7 +112,7 @@ contract OptimisticDistributor is Lockable, MultiCaller {
      */
     constructor(FinderInterface _finder, IERC20 _bondToken) {
         finder = _finder;
-        require(_getCollateralWhitelist().isOnWhitelist(address(_bondToken)), "bond token not supported");
+        require(_getCollateralWhitelist().isOnWhitelist(address(_bondToken)), "Bond token not supported");
         bondToken = _bondToken;
         syncUmaEcosystemParams();
     }
@@ -144,7 +144,7 @@ contract OptimisticDistributor is Lockable, MultiCaller {
         uint256 optimisticOracleProposerBond,
         uint256 optimisticOracleLivenessTime
     ) external nonReentrant() {
-        require(address(merkleDistributor) != address(0), "merkleDistributor not set");
+        require(address(merkleDistributor) != address(0), "Missing MerkleDistributor");
         require(_getIdentifierWhitelist().isIdentifierSupported(priceIdentifier), "Identifier not registered");
 
         // Since proposalIndex has variable length as string, it is not appended here and is assumed
@@ -152,7 +152,7 @@ contract OptimisticDistributor is Lockable, MultiCaller {
         require(
             optimisticOracle.stampAncillaryData(customAncillaryData, address(this)).length + ANCILLARY_BYTES_RESERVE <=
                 optimisticOracle.ancillaryBytesLimit(),
-            "ancillary data too long"
+            "Ancillary data too long"
         );
         require(optimisticOracleLivenessTime >= MINIMUM_LIVENESS, "OO liveness too small");
         require(optimisticOracleLivenessTime < MAXIMUM_LIVENESS, "OO liveness too large");
@@ -184,11 +184,8 @@ contract OptimisticDistributor is Lockable, MultiCaller {
      * @param additionalRewardAmount Additional reward amount that the sponsor is posting for distribution.
      */
     function increaseReward(uint256 rewardIndex, uint256 additionalRewardAmount) external nonReentrant() {
-        require(rewards[rewardIndex].sponsor != address(0), "rewards have not been created");
-        require(
-            getCurrentTime() < rewards[rewardIndex].earliestProposalTimestamp,
-            "no more funding from earliestProposalTimestamp"
-        );
+        require(rewards[rewardIndex].sponsor != address(0), "Invalid rewardIndex");
+        require(getCurrentTime() < rewards[rewardIndex].earliestProposalTimestamp, "Funding period ended");
 
         // Pull additional rewards from the sponsor.
         rewards[rewardIndex].rewardToken.safeTransferFrom(msg.sender, address(this), additionalRewardAmount);
@@ -216,11 +213,10 @@ contract OptimisticDistributor is Lockable, MultiCaller {
         string calldata ipfsHash
     ) external nonReentrant() {
         Reward memory reward = rewards[rewardIndex];
-        // TODO: Does below check is sufficient or also need require msg.sender != in `createReward`?
-        require(reward.sponsor != address(0), "no associated reward");
+        require(reward.sponsor != address(0), "Invalid rewardIndex");
 
         uint256 timestamp = getCurrentTime();
-        require(timestamp >= reward.earliestProposalTimestamp, "proposal timestamp not reached");
+        require(timestamp >= reward.earliestProposalTimestamp, "No proposals in funding period");
 
         // Append proposal index to ancillary data.
         uint256 proposalIndex = nextCreatedProposal;
@@ -281,7 +277,7 @@ contract OptimisticDistributor is Lockable, MultiCaller {
     function executeDistribution(uint256 proposalIndex) external nonReentrant() {
         // All valid proposals should have non-zero proposal timestamp.
         Proposal memory proposal = proposals[proposalIndex];
-        require(proposal.timestamp != 0, "No matching proposal found");
+        require(proposal.timestamp != 0, "Invalid proposalIndex");
 
         // Append proposal index to ancillary data.
         Reward memory reward = rewards[proposal.rewardIndex];
@@ -327,8 +323,8 @@ contract OptimisticDistributor is Lockable, MultiCaller {
      * @param _merkleDistributor Address of the owned MerkleDistributor contract.
      */
     function setMerkleDistributor(MerkleDistributor _merkleDistributor) external nonReentrant() {
-        require(address(merkleDistributor) == address(0), "merkleDistributor already set");
-        require(_merkleDistributor.owner() == address(this), "merkleDistributor not owned");
+        require(address(merkleDistributor) == address(0), "MerkleDistributor already set");
+        require(_merkleDistributor.owner() == address(this), "MerkleDistributor not owned");
 
         merkleDistributor = _merkleDistributor;
         emit MerkleDistributorSet(address(_merkleDistributor));
