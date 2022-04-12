@@ -178,7 +178,7 @@ contract OptimisticDistributor is Lockable, MultiCaller {
     }
 
     /**
-     * @notice Allows existing sponsor to deposit additional rewards for distribution before `earliestProposalTimestamp`.
+     * @notice Allows anyone to deposit additional rewards for distribution before `earliestProposalTimestamp`.
      * @dev The caller must approve this contract to transfer `additionalRewardAmount` amount of `rewardToken`.
      * @param rewardIndex Index for identifying existing rewards object that should receive additional funding.
      * @param additionalRewardAmount Additional reward amount that the sponsor is posting for distribution.
