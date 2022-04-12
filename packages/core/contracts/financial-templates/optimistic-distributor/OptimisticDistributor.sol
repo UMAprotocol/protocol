@@ -14,14 +14,12 @@ import "../../oracle/interfaces/StoreInterface.sol";
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
 /**
  * @title  OptimisticDistributor contract.
  * @notice Allows sponsors to distribute rewards through MerkleDistributor contract secured by UMA Optimistic Oracle.
  */
 contract OptimisticDistributor is Lockable, MultiCaller {
-    using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
     /********************************************
@@ -174,7 +172,7 @@ contract OptimisticDistributor is Lockable, MultiCaller {
         emit RewardCreated(nextCreatedReward, rewards[nextCreatedReward]);
 
         // Bump nextCreatedReward index.
-        nextCreatedReward = nextCreatedReward.add(1);
+        nextCreatedReward++;
     }
 
     /**
@@ -191,7 +189,7 @@ contract OptimisticDistributor is Lockable, MultiCaller {
         rewards[rewardIndex].rewardToken.safeTransferFrom(msg.sender, address(this), additionalRewardAmount);
 
         // Update maximumRewardAmount and log new amount.
-        rewards[rewardIndex].maximumRewardAmount = rewards[rewardIndex].maximumRewardAmount.add(additionalRewardAmount);
+        rewards[rewardIndex].maximumRewardAmount += additionalRewardAmount;
         emit RewardIncreased(rewardIndex, rewards[rewardIndex].maximumRewardAmount);
     }
 
@@ -265,7 +263,7 @@ contract OptimisticDistributor is Lockable, MultiCaller {
         emit ProposalCreated(rewardIndex, proposalIndex, timestamp, merkleRoot, ipfsHash, reward);
 
         // Bump nextCreatedProposal index.
-        nextCreatedProposal = proposalIndex.add(1);
+        nextCreatedProposal++;
     }
 
     /**
