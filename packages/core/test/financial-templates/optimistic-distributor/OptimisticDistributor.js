@@ -533,7 +533,7 @@ describe("OptimisticDistributor", async function () {
     assert(
       await didContractRevertWith(
         optimisticDistributor.methods.proposeDistribution(rewardIndex, merkleRoot, ipfsHash).send({ from: proposer }),
-        "No proposals in funding period"
+        "Cannot propose in funding period"
       )
     );
 

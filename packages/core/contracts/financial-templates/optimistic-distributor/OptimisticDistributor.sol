@@ -245,7 +245,7 @@ contract OptimisticDistributor is Lockable, MultiCaller, Testable {
         require(reward.sponsor != address(0), "Invalid rewardIndex");
 
         uint256 timestamp = getCurrentTime();
-        require(timestamp >= reward.earliestProposalTimestamp, "No proposals in funding period");
+        require(timestamp >= reward.earliestProposalTimestamp, "Cannot propose in funding period");
 
         // Append proposal index to ancillary data.
         uint256 proposalIndex = nextCreatedProposal;
