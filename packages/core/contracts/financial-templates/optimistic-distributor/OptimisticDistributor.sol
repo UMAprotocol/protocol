@@ -96,7 +96,7 @@ contract OptimisticDistributor is Lockable, MultiCaller, Testable {
         uint256 earliestProposalTimestamp,
         uint256 optimisticOracleProposerBond,
         uint256 optimisticOracleLivenessTime,
-        bytes32 priceIdentifier,
+        bytes32 indexed priceIdentifier,
         bytes customAncillaryData
     );
     event RewardIncreased(uint256 indexed rewardIndex, uint256 newMaximumRewardAmount);
