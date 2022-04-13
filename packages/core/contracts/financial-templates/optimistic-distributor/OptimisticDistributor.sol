@@ -62,6 +62,9 @@ contract OptimisticDistributor is Lockable, MultiCaller, Testable {
     // Final fee can be synced and stored in the contract.
     uint256 public finalFee;
 
+    // Ancillary data length limit can be synced and stored in the contract.
+    uint256 public ancillaryBytesLimit;
+
     // Index of next created reward or proposal.
     uint256 public nextCreatedReward;
     uint256 public nextCreatedProposal;
@@ -381,6 +384,7 @@ contract OptimisticDistributor is Lockable, MultiCaller, Testable {
         store = _getStore();
         finalFee = store.computeFinalFee(address(bondToken)).rawValue;
         optimisticOracle = _getOptimisticOracle();
+        ancillaryBytesLimit = optimisticOracle.ancillaryBytesLimit();
     }
 
     /********************************************
@@ -416,6 +420,6 @@ contract OptimisticDistributor is Lockable, MultiCaller, Testable {
         // to be included in ANCILLARY_BYTES_RESERVE.
         return
             optimisticOracle.stampAncillaryData(customAncillaryData, address(this)).length + ANCILLARY_BYTES_RESERVE <=
-            optimisticOracle.ancillaryBytesLimit();
+            ancillaryBytesLimit;
     }
 }

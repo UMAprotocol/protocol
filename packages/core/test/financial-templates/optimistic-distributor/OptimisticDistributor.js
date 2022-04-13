@@ -168,6 +168,10 @@ describe("OptimisticDistributor", async function () {
     assert.equal(await testOptimisticDistributor.methods.store().call(), store.options.address);
     assert.equal(await testOptimisticDistributor.methods.finalFee().call(), finalFee);
     assert.equal(await testOptimisticDistributor.methods.optimisticOracle().call(), optimisticOracle.options.address);
+    assert.equal(
+      await testOptimisticDistributor.methods.ancillaryBytesLimit().call(),
+      await optimisticOracle.methods.ancillaryBytesLimit().call()
+    );
   });
   it("UMA ecosystem parameters updated", async function () {
     // Deploy new UMA contracts with updated final fee.
