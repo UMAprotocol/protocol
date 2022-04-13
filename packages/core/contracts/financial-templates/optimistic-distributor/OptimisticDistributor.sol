@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import "../../common/implementation/AncillaryData.sol";
 import "../../common/implementation/Lockable.sol";
 import "../../common/implementation/MultiCaller.sol";
+import "../../common/implementation/Testable.sol";
 import "../../common/interfaces/AddressWhitelistInterface.sol";
 import "../../merkle-distributor/implementation/MerkleDistributor.sol";
 import "../../oracle/implementation/Constants.sol";
@@ -19,7 +20,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
  * @title  OptimisticDistributor contract.
  * @notice Allows sponsors to distribute rewards through MerkleDistributor contract secured by UMA Optimistic Oracle.
  */
-contract OptimisticDistributor is Lockable, MultiCaller {
+contract OptimisticDistributor is Lockable, MultiCaller, Testable {
     using SafeERC20 for IERC20;
 
     /********************************************
@@ -123,8 +124,13 @@ contract OptimisticDistributor is Lockable, MultiCaller {
      * @notice Constructor.
      * @param _bondToken ERC20 token that the bond is paid in.
      * @param _finder Finder to look up UMA contract addresses.
+     * @param _timer Contract that stores the current time in a testing environment.
      */
-    constructor(FinderInterface _finder, IERC20 _bondToken) {
+    constructor(
+        FinderInterface _finder,
+        IERC20 _bondToken,
+        address _timer
+    ) Testable(_timer) {
         finder = _finder;
         require(_getCollateralWhitelist().isOnWhitelist(address(_bondToken)), "Bond token not supported");
         bondToken = _bondToken;
@@ -375,11 +381,6 @@ contract OptimisticDistributor is Lockable, MultiCaller {
         store = _getStore();
         finalFee = store.computeFinalFee(address(bondToken)).rawValue;
         optimisticOracle = _getOptimisticOracle();
-    }
-
-    // Can be overriden for testing.
-    function getCurrentTime() public view virtual returns (uint256) {
-        return block.timestamp;
     }
 
     /********************************************

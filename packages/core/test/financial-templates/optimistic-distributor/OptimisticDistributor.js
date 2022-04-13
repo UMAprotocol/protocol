@@ -5,7 +5,7 @@ const { interfaceName, runDefaultFixture, TokenRolesEnum } = require("@uma/commo
 const { utf8ToHex, hexToUtf8, toWei, toBN, randomHex } = web3.utils;
 
 // Tested contracts
-const OptimisticDistributor = getContract("OptimisticDistributorTest");
+const OptimisticDistributor = getContract("OptimisticDistributor");
 
 // Helper contracts
 const Finder = getContract("Finder");
