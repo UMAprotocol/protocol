@@ -361,7 +361,7 @@ describe("OptimisticDistributor", async function () {
     );
 
     // optimisticOracleLivenessTime just below MAXIMUM_LIVENESS should be accepted.
-    await optimisticDistributor.methods
+    let receipt = await optimisticDistributor.methods
       .createReward(
         rewardAmount,
         earliestProposalTimestamp,
@@ -382,13 +382,11 @@ describe("OptimisticDistributor", async function () {
       await rewardToken.methods.balanceOf(optimisticDistributor.options.address).call()
     );
 
-    // Fetch expected next rewardIndex.
-    const rewardIndex = parseInt(await optimisticDistributor.methods.nextCreatedReward().call());
+    // Calculate expected next rewardIndex from the previous successful createReward transaction.
+    const rewardIndex = parseInt(receipt.events.RewardCreated.returnValues.rewardIndex) + 1;
 
     // Create new reward.
-    const receipt = await optimisticDistributor.methods
-      .createReward(...defaultRewardParameters)
-      .send({ from: sponsor });
+    receipt = await optimisticDistributor.methods.createReward(...defaultRewardParameters).send({ from: sponsor });
 
     // Fetch balances after creating new reward.
     const sponsorBalanceAfter = toBN(await rewardToken.methods.balanceOf(sponsor).call());
@@ -427,9 +425,6 @@ describe("OptimisticDistributor", async function () {
     assert.equal(storedRewards.optimisticOracleLivenessTime, proposalLiveness);
     assert.equal(hexToUtf8(storedRewards.priceIdentifier), hexToUtf8(identifier));
     assert.equal(storedRewards.customAncillaryData, customAncillaryData);
-
-    // Check that nextCreatedReward index got bumped.
-    assert.equal(parseInt(await optimisticDistributor.methods.nextCreatedReward().call()), rewardIndex + 1);
   });
   it("Increasing rewards", async function () {
     await setupMerkleDistributor();
@@ -619,9 +614,6 @@ describe("OptimisticDistributor", async function () {
     assert.equal(storedProposal.timestamp, proposalTimestamp);
     assert.equal(storedProposal.merkleRoot, merkleRoot);
     assert.equal(hexToUtf8(storedProposal.ipfsHash), hexToUtf8(ipfsHash));
-
-    // Check that nextCreatedProposal index got bumped.
-    assert.equal(parseInt(await optimisticDistributor.methods.nextCreatedProposal().call()), proposalIndex + 1);
   });
   it("Executing distribution, undisputed", async function () {
     await setupMerkleDistributor();

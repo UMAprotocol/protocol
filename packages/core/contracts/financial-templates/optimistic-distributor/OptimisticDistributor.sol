@@ -65,13 +65,9 @@ contract OptimisticDistributor is Lockable, MultiCaller, Testable {
     // Ancillary data length limit can be synced and stored in the contract.
     uint256 public ancillaryBytesLimit;
 
-    // Index of next created reward or proposal.
-    uint256 public nextCreatedReward;
-    uint256 public nextCreatedProposal;
-
-    // Rewards and proposals are mapped to their indices.
-    mapping(uint256 => Reward) public rewards;
-    mapping(uint256 => Proposal) public proposals;
+    // Rewards and proposals are stored in dynamic arrays.
+    Reward[] public rewards;
+    Proposal[] public proposals;
 
     // Immutable variables provided at deployment.
     FinderInterface public immutable finder;
@@ -188,8 +184,8 @@ contract OptimisticDistributor is Lockable, MultiCaller, Testable {
                 priceIdentifier: priceIdentifier,
                 customAncillaryData: customAncillaryData
             });
-        uint256 rewardIndex = nextCreatedReward;
-        rewards[rewardIndex] = reward;
+        uint256 rewardIndex = rewards.length;
+        rewards.push() = reward;
         emit RewardCreated(
             reward.sponsor,
             reward.rewardToken,
@@ -201,9 +197,6 @@ contract OptimisticDistributor is Lockable, MultiCaller, Testable {
             reward.priceIdentifier,
             reward.customAncillaryData
         );
-
-        // Bump nextCreatedReward index.
-        nextCreatedReward++;
     }
 
     /**
@@ -213,7 +206,7 @@ contract OptimisticDistributor is Lockable, MultiCaller, Testable {
      * @param additionalRewardAmount Additional reward amount that the sponsor is posting for distribution.
      */
     function increaseReward(uint256 rewardIndex, uint256 additionalRewardAmount) external nonReentrant() {
-        require(rewards[rewardIndex].sponsor != address(0), "Invalid rewardIndex");
+        require(rewardIndex < rewards.length, "Invalid rewardIndex");
         require(getCurrentTime() < rewards[rewardIndex].earliestProposalTimestamp, "Funding period ended");
 
         // Pull additional rewards from the sponsor.
@@ -241,14 +234,14 @@ contract OptimisticDistributor is Lockable, MultiCaller, Testable {
         bytes32 merkleRoot,
         string calldata ipfsHash
     ) external nonReentrant() {
-        Reward memory reward = rewards[rewardIndex];
-        require(reward.sponsor != address(0), "Invalid rewardIndex");
+        require(rewardIndex < rewards.length, "Invalid rewardIndex");
 
         uint256 timestamp = getCurrentTime();
+        Reward memory reward = rewards[rewardIndex];
         require(timestamp >= reward.earliestProposalTimestamp, "Cannot propose in funding period");
 
         // Append proposal index to ancillary data.
-        uint256 proposalIndex = nextCreatedProposal;
+        uint256 proposalIndex = proposals.length;
         bytes memory ancillaryData = _appendProposalIndex(proposalIndex, reward.customAncillaryData);
 
         // Request price from Optimistic Oracle.
@@ -284,7 +277,7 @@ contract OptimisticDistributor is Lockable, MultiCaller, Testable {
         );
 
         // Store and log proposed distribution.
-        proposals[proposalIndex] = Proposal({
+        proposals.push() = Proposal({
             rewardIndex: rewardIndex,
             timestamp: timestamp,
             merkleRoot: merkleRoot,
@@ -300,9 +293,6 @@ contract OptimisticDistributor is Lockable, MultiCaller, Testable {
             merkleRoot,
             ipfsHash
         );
-
-        // Bump nextCreatedProposal index.
-        nextCreatedProposal++;
     }
 
     /**
@@ -312,6 +302,8 @@ contract OptimisticDistributor is Lockable, MultiCaller, Testable {
      * proposals will be deleted from storage.
      */
     function executeDistribution(uint256 proposalIndex) external nonReentrant() {
+        require(proposalIndex < proposals.length, "Invalid proposalIndex");
+
         // All valid proposals should have non-zero proposal timestamp.
         Proposal memory proposal = proposals[proposalIndex];
         require(proposal.timestamp != 0, "Invalid proposalIndex");
