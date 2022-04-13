@@ -48,7 +48,7 @@ contract OptimisticDistributor is Lockable, MultiCaller, Testable {
     }
 
     /********************************************
-     *      INTERNAL VARIABLES AND STORAGE      *
+     *      STATE VARIABLES AND CONSTANTS       *
      ********************************************/
 
     // Reserve for bytes appended to ancillary data (e.g. OracleSpoke) when resolving price from non-mainnet chains.
