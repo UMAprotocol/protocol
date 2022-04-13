@@ -145,7 +145,7 @@ contract OptimisticDistributor is Lockable, MultiCaller, Testable {
      ********************************************/
 
     /**
-     * @notice Allows any caller to create a rewards object and deposit tokens that are linked to these rewards.
+     * @notice Allows any caller to create a Reward struct and deposit tokens that are linked to these rewards.
      * @dev The caller must approve this contract to transfer `maximumRewardAmount` amount of `rewardToken`.
      * @param rewardToken ERC20 token that the rewards will be paid in.
      * @param maximumRewardAmount Maximum reward amount that the sponsor is posting for distribution.
@@ -209,7 +209,7 @@ contract OptimisticDistributor is Lockable, MultiCaller, Testable {
     /**
      * @notice Allows anyone to deposit additional rewards for distribution before `earliestProposalTimestamp`.
      * @dev The caller must approve this contract to transfer `additionalRewardAmount` amount of `rewardToken`.
-     * @param rewardIndex Index for identifying existing rewards object that should receive additional funding.
+     * @param rewardIndex Index for identifying existing Reward struct that should receive additional funding.
      * @param additionalRewardAmount Additional reward amount that the sponsor is posting for distribution.
      */
     function increaseReward(uint256 rewardIndex, uint256 additionalRewardAmount) external nonReentrant() {
@@ -232,7 +232,7 @@ contract OptimisticDistributor is Lockable, MultiCaller, Testable {
      * @notice Allows any caller to propose distribution for funded reward starting from `earliestProposalTimestamp`.
      * @dev The caller must approve this contract to transfer `optimisticOracleProposerBond` + final fee amount
      * of `bondToken`.
-     * @param rewardIndex Index for identifying existing rewards object that should be proposed for distribution.
+     * @param rewardIndex Index for identifying existing Reward struct that should be proposed for distribution.
      * @param merkleRoot Merkle root describing allocation of proposed rewards distribution.
      * @param ipfsHash Hash of IPFS object, conveniently stored for clients to verify proposed distribution.
      */
