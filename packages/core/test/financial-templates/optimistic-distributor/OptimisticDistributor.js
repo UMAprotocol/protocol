@@ -30,6 +30,7 @@ const ipfsHash = utf8ToHex("IPFS HASH");
 const ancillaryBytesReserve = 512;
 const minimumLiveness = 10 * 60; // 10 minutes
 const maximumLiveness = 5200 * 7 * 24 * 60 * 60; // 5200 weeks
+const DistributionProposed = { None: 0, Pending: 1, Accepted: 2 };
 
 describe("OptimisticDistributor", async function () {
   let accounts, deployer, anyAddress, sponsor, proposer, disputer;
@@ -423,8 +424,9 @@ describe("OptimisticDistributor", async function () {
         event.customAncillaryData === customAncillaryData
     );
 
-    // Compare stored rewards with provided inputs.
+    // Compare stored rewards with expected results.
     const storedRewards = await optimisticDistributor.methods.rewards(rewardIndex).call();
+    assert.equal(storedRewards.distributionProposed, DistributionProposed.None);
     assert.equal(storedRewards.sponsor, sponsor);
     assert.equal(storedRewards.rewardToken, rewardToken.options.address);
     assert.equal(storedRewards.maximumRewardAmount, rewardAmount);
@@ -545,7 +547,7 @@ describe("OptimisticDistributor", async function () {
     await advanceTime(fundingPeriod);
 
     // Distribution proposal should bow be accepted.
-    let receipt = await optimisticDistributor.methods
+    const receipt = await optimisticDistributor.methods
       .proposeDistribution(rewardIndex, merkleRoot, ipfsHash)
       .send({ from: proposer });
 
@@ -624,6 +626,26 @@ describe("OptimisticDistributor", async function () {
     assert.equal(storedProposal.timestamp, proposalTimestamp);
     assert.equal(storedProposal.merkleRoot, merkleRoot);
     assert.equal(hexToUtf8(storedProposal.ipfsHash), hexToUtf8(ipfsHash));
+
+    // Any further proposals should now be blocked till disputed.
+    await advanceTime(100);
+    await mintAndApprove(bondToken, proposer, optimisticDistributor.options.address, totalBond, deployer);
+    assert(
+      await didContractRevertWith(
+        optimisticDistributor.methods.proposeDistribution(rewardIndex, merkleRoot, ipfsHash).send({ from: proposer }),
+        "New proposals blocked"
+      )
+    );
+
+    // Dispute the proposal at the OptimisticOracle.
+    await advanceTime(100);
+    await mintAndApprove(bondToken, disputer, optimisticOracle.options.address, totalBond, deployer);
+    await optimisticOracle.methods
+      .disputePrice(optimisticDistributor.options.address, identifier, proposalTimestamp, ancillaryData)
+      .send({ from: disputer });
+
+    // New proposals should now be unblocked as a result of disputing previous proposal.
+    await optimisticDistributor.methods.proposeDistribution(rewardIndex, merkleRoot, ipfsHash).send({ from: proposer });
   });
   it("Executing distribution, undisputed", async function () {
     await setupMerkleDistributor();
@@ -694,14 +716,6 @@ describe("OptimisticDistributor", async function () {
         hexToUtf8(event.ipfsHash) === hexToUtf8(ipfsHash)
     );
 
-    // Check all fields emitted by optimisticDistributor in ProposalDeleted event.
-    await assertEventEmitted(
-      receipt,
-      optimisticDistributor,
-      "ProposalDeleted",
-      (event) => event.rewardIndex === rewardIndex.toString() && event.proposalId === proposalId
-    );
-
     // Check fields emitted by merkleDistributor in CreatedWindow event.
     await assertEventEmitted(
       receipt,
@@ -713,11 +727,21 @@ describe("OptimisticDistributor", async function () {
         event.owner === optimisticDistributor.options.address
     );
 
-    // Proposal struct should be deleted now and repeated execution should revert.
+    // Reward struct should now be flagged as Accepted and repeated execution should revert.
     assert(
       await didContractRevertWith(
         optimisticDistributor.methods.executeDistribution(proposalId).send({ from: anyAddress }),
-        "Invalid proposalId"
+        "Reward already distributed"
+      )
+    );
+
+    // Any further proposals should now be blocked.
+    await advanceTime(100);
+    await mintAndApprove(bondToken, proposer, optimisticDistributor.options.address, totalBond, deployer);
+    assert(
+      await didContractRevertWith(
+        optimisticDistributor.methods.proposeDistribution(rewardIndex, merkleRoot, ipfsHash).send({ from: proposer }),
+        "New proposals blocked"
       )
     );
   });
@@ -793,22 +817,6 @@ describe("OptimisticDistributor", async function () {
       "ProposalRejected",
       (event) => event.rewardIndex === rewardIndex.toString() && event.proposalId === proposalId
     );
-
-    // Check all fields emitted by optimisticDistributor in ProposalDeleted event.
-    await assertEventEmitted(
-      receipt,
-      optimisticDistributor,
-      "ProposalDeleted",
-      (event) => event.rewardIndex === rewardIndex.toString() && event.proposalId === proposalId
-    );
-
-    // Proposal struct should be deleted now and repeated execution should revert.
-    assert(
-      await didContractRevertWith(
-        optimisticDistributor.methods.executeDistribution(proposalId).send({ from: anyAddress }),
-        "Invalid proposalId"
-      )
-    );
   });
   it("Executing distribution, confirmed by DVM", async function () {
     await setupMerkleDistributor();
@@ -882,14 +890,6 @@ describe("OptimisticDistributor", async function () {
         hexToUtf8(event.ipfsHash) === hexToUtf8(ipfsHash)
     );
 
-    // Check all fields emitted by optimisticDistributor in ProposalDeleted event.
-    await assertEventEmitted(
-      receipt,
-      optimisticDistributor,
-      "ProposalDeleted",
-      (event) => event.rewardIndex === rewardIndex.toString() && event.proposalId === proposalId
-    );
-
     // Check fields emitted by merkleDistributor in CreatedWindow event.
     await assertEventEmitted(
       receipt,
@@ -901,11 +901,32 @@ describe("OptimisticDistributor", async function () {
         event.owner === optimisticDistributor.options.address
     );
 
-    // Proposal struct should be deleted now and repeated execution should revert.
+    // Reward struct should now be flagged as Accepted and repeated execution should revert.
     assert(
       await didContractRevertWith(
         optimisticDistributor.methods.executeDistribution(proposalId).send({ from: anyAddress }),
-        "Invalid proposalId"
+        "Reward already distributed"
+      )
+    );
+
+    // Any further proposals should now be blocked.
+    await advanceTime(100);
+    await mintAndApprove(bondToken, proposer, optimisticDistributor.options.address, totalBond, deployer);
+    assert(
+      await didContractRevertWith(
+        optimisticDistributor.methods.proposeDistribution(rewardIndex, merkleRoot, ipfsHash).send({ from: proposer }),
+        "New proposals blocked"
+      )
+    );
+  });
+  it("Callback function cannot be called directly", async function () {
+    const timestamp = parseInt(await timer.methods.getCurrentTime().call());
+    assert(
+      await didContractRevertWith(
+        optimisticDistributor.methods
+          .priceDisputed(identifier, timestamp, customAncillaryData, 0)
+          .send({ from: anyAddress }),
+        "Not authorized"
       )
     );
   });

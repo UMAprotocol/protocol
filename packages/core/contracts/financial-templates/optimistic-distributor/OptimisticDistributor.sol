@@ -27,8 +27,16 @@ contract OptimisticDistributor is Lockable, MultiCaller, Testable {
      *  OPTIMISTIC DISTRIBUTOR DATA STRUCTURES  *
      ********************************************/
 
+    // Enum controlling acceptance of distribution payout proposals and their execution.
+    enum DistributionProposed {
+        None, // New proposal can be submitted (either there have been no proposals or the prior one was disputed).
+        Pending, // Proposal is not yet resolved.
+        Accepted // Proposal has been confirmed through Optimistic Oracle and rewards transferred to MerkleDistributor.
+    }
+
     // Represents reward posted by a sponsor.
     struct Reward {
+        DistributionProposed distributionProposed;
         address sponsor;
         IERC20 rewardToken;
         uint256 maximumRewardAmount;
@@ -119,7 +127,6 @@ contract OptimisticDistributor is Lockable, MultiCaller, Testable {
         string ipfsHash
     );
     event ProposalRejected(uint256 indexed rewardIndex, bytes32 indexed proposalId);
-    event ProposalDeleted(uint256 indexed rewardIndex, bytes32 indexed proposalId);
     event MerkleDistributorSet(address indexed merkleDistributor);
 
     /**
@@ -178,6 +185,7 @@ contract OptimisticDistributor is Lockable, MultiCaller, Testable {
         // Store funded reward and log created reward.
         Reward memory reward =
             Reward({
+                distributionProposed: DistributionProposed.None,
                 sponsor: msg.sender,
                 rewardToken: rewardToken,
                 maximumRewardAmount: maximumRewardAmount,
@@ -226,6 +234,7 @@ contract OptimisticDistributor is Lockable, MultiCaller, Testable {
 
     /**
      * @notice Allows any caller to propose distribution for funded reward starting from `earliestProposalTimestamp`.
+     * Only one undisputed proposal at a time is allowed.
      * @dev The caller must approve this contract to transfer `optimisticOracleProposerBond` + final fee amount
      * of `bondToken`.
      * @param rewardIndex Index for identifying existing Reward struct that should be proposed for distribution.
@@ -242,6 +251,10 @@ contract OptimisticDistributor is Lockable, MultiCaller, Testable {
         uint256 timestamp = getCurrentTime();
         Reward memory reward = rewards[rewardIndex];
         require(timestamp >= reward.earliestProposalTimestamp, "Cannot propose in funding period");
+        require(reward.distributionProposed == DistributionProposed.None, "New proposals blocked");
+
+        // Flag reward as proposed so that any subsequent proposals are blocked till dispute.
+        rewards[rewardIndex].distributionProposed = DistributionProposed.Pending;
 
         // Append rewardIndex to ancillary data.
         bytes memory ancillaryData = _appendRewardIndex(rewardIndex, reward.customAncillaryData);
@@ -303,24 +316,28 @@ contract OptimisticDistributor is Lockable, MultiCaller, Testable {
     /**
      * @notice Allows any caller to execute distribution that has been validated by the Optimistic Oracle.
      * @param proposalId Hash for identifying existing rewards distribution proposal.
-     * @dev Calling this for unresolved proposals will revert. Both accepted and rejected distribution
-     * proposals will be deleted from storage.
+     * @dev Calling this for unresolved proposals will revert.
      */
     function executeDistribution(bytes32 proposalId) external nonReentrant() {
         // All valid proposals should have non-zero proposal timestamp.
         Proposal memory proposal = proposals[proposalId];
         require(proposal.timestamp != 0, "Invalid proposalId");
 
-        // Append reward index to ancillary data.
+        // Only one validated proposal per reward can be executed for distribution.
         Reward memory reward = rewards[proposal.rewardIndex];
+        require(reward.distributionProposed != DistributionProposed.Accepted, "Reward already distributed");
+
+        // Append reward index to ancillary data.
         bytes memory ancillaryData = _appendRewardIndex(proposal.rewardIndex, reward.customAncillaryData);
 
         // Get resolved price. Reverts if the request is not settled or settleable.
         int256 resolvedPrice =
             optimisticOracle.settleAndGetPrice(reward.priceIdentifier, proposal.timestamp, ancillaryData);
 
-        // Transfer rewards to MerkleDistributor for accepted proposal.
+        // Transfer rewards to MerkleDistributor for accepted proposal and flag distributionProposed Accepted.
         if (resolvedPrice == 1e18) {
+            rewards[proposal.rewardIndex].distributionProposed = DistributionProposed.Accepted;
+
             reward.rewardToken.safeApprove(address(merkleDistributor), reward.maximumRewardAmount);
             merkleDistributor.setWindow(
                 reward.maximumRewardAmount,
@@ -338,16 +355,7 @@ contract OptimisticDistributor is Lockable, MultiCaller, Testable {
                 proposal.ipfsHash
             );
         } else emit ProposalRejected(proposal.rewardIndex, proposalId);
-
-        // Delete resolved proposal from storage. This also avoids double-spend for approved proposals.
-        delete proposals[proposalId];
-        emit ProposalDeleted(proposal.rewardIndex, proposalId);
     }
-
-    /**
-     * @notice Allows any caller to delete distribution that was rejected by the Optimistic Oracle.
-     */
-    function deleteRejectedDistribution(bytes32 proposalId) external nonReentrant() {}
 
     /********************************************
      *          MAINTENANCE FUNCTIONS           *
@@ -380,6 +388,33 @@ contract OptimisticDistributor is Lockable, MultiCaller, Testable {
         finalFee = store.computeFinalFee(address(bondToken)).rawValue;
         optimisticOracle = _getOptimisticOracle();
         ancillaryBytesLimit = optimisticOracle.ancillaryBytesLimit();
+    }
+
+    /********************************************
+     *            CALLBACK FUNCTIONS            *
+     ********************************************/
+
+    /**
+     * @notice Unblocks new distribution proposals when there is a dispute posted on OptimisticOracle.
+     * @dev Only accessable as callback through OptimisticOracle on disputes.
+     * @param identifier Price identifier from original proposal.
+     * @param timestamp Timestamp when distribution proposal was posted.
+     * @param ancillaryData Ancillary data of the price being requested (includes stamped rewardIndex).
+     * @param refund Refund received (not used in this contract).
+     */
+    function priceDisputed(
+        bytes32 identifier,
+        uint256 timestamp,
+        bytes memory ancillaryData,
+        uint256 refund
+    ) public nonReentrant() {
+        require(msg.sender == address(optimisticOracle), "Not authorized");
+
+        // Identify the proposed distribution from callback parameters.
+        bytes32 proposalId = _getProposalId(identifier, timestamp, ancillaryData);
+
+        // Flag the associated reward unblocked for new distribution proposals.
+        rewards[proposals[proposalId].rewardIndex].distributionProposed = DistributionProposed.None;
     }
 
     /********************************************
