@@ -52,7 +52,7 @@ contract OptimisticDistributor is Lockable, MultiCaller, Testable {
      ********************************************/
 
     // Reserve for bytes appended to ancillary data (e.g. OracleSpoke) when resolving price from non-mainnet chains.
-    // This also covers appending proposalIndex by this contract.
+    // This also covers appending rewardIndex by this contract.
     uint256 public constant ANCILLARY_BYTES_RESERVE = 512;
 
     // Restrict Optimistic Oracle liveness to between 10 minutes and 100 years.
@@ -65,9 +65,12 @@ contract OptimisticDistributor is Lockable, MultiCaller, Testable {
     // Ancillary data length limit can be synced and stored in the contract.
     uint256 public ancillaryBytesLimit;
 
-    // Rewards and proposals are stored in dynamic arrays.
+    // Rewards are stored in dynamic array.
     Reward[] public rewards;
-    Proposal[] public proposals;
+
+    // Proposals are mapped to hash of their identifier, timestamp and ancillaryData, so that they can be addressed
+    // from OptimisticOracle callback function.
+    mapping(bytes32 => Proposal) public proposals;
 
     // Immutable variables provided at deployment.
     FinderInterface public immutable finder;
@@ -100,9 +103,9 @@ contract OptimisticDistributor is Lockable, MultiCaller, Testable {
         address indexed sponsor,
         IERC20 rewardToken,
         uint256 indexed rewardIndex,
-        uint256 indexed proposalIndex,
         uint256 proposalTimestamp,
         uint256 maximumRewardAmount,
+        bytes32 indexed proposalId,
         bytes32 merkleRoot,
         string ipfsHash
     );
@@ -110,13 +113,13 @@ contract OptimisticDistributor is Lockable, MultiCaller, Testable {
         address indexed sponsor,
         IERC20 rewardToken,
         uint256 indexed rewardIndex,
-        uint256 indexed proposalIndex,
         uint256 maximumRewardAmount,
+        bytes32 indexed proposalId,
         bytes32 merkleRoot,
         string ipfsHash
     );
-    event ProposalRejected(uint256 indexed rewardIndex, uint256 indexed proposalIndex);
-    event ProposalDeleted(uint256 indexed rewardIndex, uint256 indexed proposalIndex);
+    event ProposalRejected(uint256 indexed rewardIndex, bytes32 indexed proposalId);
+    event ProposalDeleted(uint256 indexed rewardIndex, bytes32 indexed proposalId);
     event MerkleDistributorSet(address indexed merkleDistributor);
 
     /**
@@ -240,9 +243,11 @@ contract OptimisticDistributor is Lockable, MultiCaller, Testable {
         Reward memory reward = rewards[rewardIndex];
         require(timestamp >= reward.earliestProposalTimestamp, "Cannot propose in funding period");
 
-        // Append proposal index to ancillary data.
-        uint256 proposalIndex = proposals.length;
-        bytes memory ancillaryData = _appendProposalIndex(proposalIndex, reward.customAncillaryData);
+        // Append rewardIndex to ancillary data.
+        bytes memory ancillaryData = _appendRewardIndex(rewardIndex, reward.customAncillaryData);
+
+        // Generate hash for proposalId.
+        bytes32 proposalId = _getProposalId(reward.priceIdentifier, timestamp, ancillaryData);
 
         // Request price from Optimistic Oracle.
         optimisticOracle.requestPrice(reward.priceIdentifier, timestamp, ancillaryData, bondToken, 0);
@@ -277,7 +282,7 @@ contract OptimisticDistributor is Lockable, MultiCaller, Testable {
         );
 
         // Store and log proposed distribution.
-        proposals.push() = Proposal({
+        proposals[proposalId] = Proposal({
             rewardIndex: rewardIndex,
             timestamp: timestamp,
             merkleRoot: merkleRoot,
@@ -287,9 +292,9 @@ contract OptimisticDistributor is Lockable, MultiCaller, Testable {
             reward.sponsor,
             reward.rewardToken,
             rewardIndex,
-            proposalIndex,
             timestamp,
             reward.maximumRewardAmount,
+            proposalId,
             merkleRoot,
             ipfsHash
         );
@@ -297,20 +302,18 @@ contract OptimisticDistributor is Lockable, MultiCaller, Testable {
 
     /**
      * @notice Allows any caller to execute distribution that has been validated by the Optimistic Oracle.
-     * @param proposalIndex Index for identifying existing rewards distribution proposal.
+     * @param proposalId Hash for identifying existing rewards distribution proposal.
      * @dev Calling this for unresolved proposals will revert. Both accepted and rejected distribution
      * proposals will be deleted from storage.
      */
-    function executeDistribution(uint256 proposalIndex) external nonReentrant() {
-        require(proposalIndex < proposals.length, "Invalid proposalIndex");
-
+    function executeDistribution(bytes32 proposalId) external nonReentrant() {
         // All valid proposals should have non-zero proposal timestamp.
-        Proposal memory proposal = proposals[proposalIndex];
-        require(proposal.timestamp != 0, "Invalid proposalIndex");
+        Proposal memory proposal = proposals[proposalId];
+        require(proposal.timestamp != 0, "Invalid proposalId");
 
-        // Append proposal index to ancillary data.
+        // Append reward index to ancillary data.
         Reward memory reward = rewards[proposal.rewardIndex];
-        bytes memory ancillaryData = _appendProposalIndex(proposalIndex, reward.customAncillaryData);
+        bytes memory ancillaryData = _appendRewardIndex(proposal.rewardIndex, reward.customAncillaryData);
 
         // Get resolved price. Reverts if the request is not settled or settleable.
         int256 resolvedPrice =
@@ -329,22 +332,22 @@ contract OptimisticDistributor is Lockable, MultiCaller, Testable {
                 reward.sponsor,
                 reward.rewardToken,
                 proposal.rewardIndex,
-                proposalIndex,
                 reward.maximumRewardAmount,
+                proposalId,
                 proposal.merkleRoot,
                 proposal.ipfsHash
             );
-        } else emit ProposalRejected(proposal.rewardIndex, proposalIndex);
+        } else emit ProposalRejected(proposal.rewardIndex, proposalId);
 
         // Delete resolved proposal from storage. This also avoids double-spend for approved proposals.
-        delete proposals[proposalIndex];
-        emit ProposalDeleted(proposal.rewardIndex, proposalIndex);
+        delete proposals[proposalId];
+        emit ProposalDeleted(proposal.rewardIndex, proposalId);
     }
 
     /**
      * @notice Allows any caller to delete distribution that was rejected by the Optimistic Oracle.
      */
-    function deleteRejectedDistribution(uint256 proposalIndex) external nonReentrant() {}
+    function deleteRejectedDistribution(bytes32 proposalId) external nonReentrant() {}
 
     /********************************************
      *          MAINTENANCE FUNCTIONS           *
@@ -399,19 +402,27 @@ contract OptimisticDistributor is Lockable, MultiCaller, Testable {
         return AddressWhitelistInterface(finder.getImplementationAddress(OracleInterfaces.CollateralWhitelist));
     }
 
-    function _appendProposalIndex(uint256 proposalIndex, bytes memory customAncillaryData)
+    function _appendRewardIndex(uint256 rewardIndex, bytes memory customAncillaryData)
         internal
         view
         returns (bytes memory)
     {
-        return AncillaryData.appendKeyValueUint(customAncillaryData, "proposalIndex", proposalIndex);
+        return AncillaryData.appendKeyValueUint(customAncillaryData, "rewardIndex", rewardIndex);
     }
 
     function _ancillaryDataWithinLimits(bytes memory customAncillaryData) internal view returns (bool) {
-        // Since proposalIndex has variable length as string, it is not appended here and is assumed
+        // Since rewardIndex has variable length as string, it is not appended here and is assumed
         // to be included in ANCILLARY_BYTES_RESERVE.
         return
             optimisticOracle.stampAncillaryData(customAncillaryData, address(this)).length + ANCILLARY_BYTES_RESERVE <=
             ancillaryBytesLimit;
+    }
+
+    function _getProposalId(
+        bytes32 identifier,
+        uint256 timestamp,
+        bytes memory ancillaryData
+    ) internal view returns (bytes32) {
+        return keccak256(abi.encode(identifier, timestamp, ancillaryData));
     }
 }
