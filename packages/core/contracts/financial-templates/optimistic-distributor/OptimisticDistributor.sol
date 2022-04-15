@@ -413,8 +413,9 @@ contract OptimisticDistributor is Lockable, MultiCaller, Testable {
         // Identify the proposed distribution from callback parameters.
         bytes32 proposalId = _getProposalId(identifier, timestamp, ancillaryData);
 
-        // Flag the associated reward unblocked for new distribution proposals.
-        rewards[proposals[proposalId].rewardIndex].distributionProposed = DistributionProposed.None;
+        // Flag the associated reward unblocked for new distribution proposals unless rewards already distributed.
+        if (rewards[proposals[proposalId].rewardIndex].distributionProposed != DistributionProposed.Accepted)
+            rewards[proposals[proposalId].rewardIndex].distributionProposed = DistributionProposed.None;
     }
 
     /********************************************

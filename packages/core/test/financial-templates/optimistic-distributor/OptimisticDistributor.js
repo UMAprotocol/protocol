@@ -930,4 +930,62 @@ describe("OptimisticDistributor", async function () {
       )
     );
   });
+  it("Cannot distribute rewards twice", async function () {
+    await setupMerkleDistributor();
+
+    // Perform create-propose rewards cycle.
+    let rewardIndex = 0;
+    const [totalBond, ancillaryData, firstProposalTimestamp, merkleRoot] = await createProposeRewards(rewardIndex);
+    const firstProposalId = generateProposalId(identifier, firstProposalTimestamp, ancillaryData);
+
+    // Dispute the first proposal at the OptimisticOracle.
+    await advanceTime(100);
+    await mintAndApprove(bondToken, disputer, optimisticOracle.options.address, totalBond, deployer);
+    await optimisticOracle.methods
+      .disputePrice(optimisticDistributor.options.address, identifier, firstProposalTimestamp, ancillaryData)
+      .send({ from: disputer });
+
+    // Post second proposal with same data.
+    await advanceTime(100);
+    await mintAndApprove(bondToken, proposer, optimisticDistributor.options.address, totalBond, deployer);
+    const secondProposalTimestamp = parseInt(await timer.methods.getCurrentTime().call());
+    await optimisticDistributor.methods.proposeDistribution(rewardIndex, merkleRoot, ipfsHash).send({ from: proposer });
+
+    // DVM confirms the first disputed proposal as valid.
+    const dvmAncillaryData = await optimisticOracle.methods
+      .stampAncillaryData(ancillaryData, optimisticDistributor.options.address)
+      .call();
+    await mockOracle.methods
+      .pushPrice(identifier, firstProposalTimestamp, dvmAncillaryData, toWei("1"))
+      .send({ from: deployer });
+
+    // Executing the first distribution proposal.
+    await optimisticDistributor.methods.executeDistribution(firstProposalId).send({ from: anyAddress });
+
+    // Dispute the second proposal at the OptimisticOracle.
+    await advanceTime(100);
+    await mintAndApprove(bondToken, disputer, optimisticOracle.options.address, totalBond, deployer);
+    await optimisticOracle.methods
+      .disputePrice(optimisticDistributor.options.address, identifier, secondProposalTimestamp, ancillaryData)
+      .send({ from: disputer });
+
+    // Confirm that callback function did not reset distributionProposed to None.
+    assert.equal(
+      (await optimisticDistributor.methods.rewards(rewardIndex).call()).distributionProposed,
+      DistributionProposed.Accepted
+    );
+
+    // Fund another set of rewards.
+    rewardIndex++;
+    await mintAndApprove(rewardToken, sponsor, optimisticDistributor.options.address, rewardAmount, deployer);
+    await createProposeRewards(rewardIndex);
+
+    // Confirm that repeated distribution is blocked.
+    assert(
+      await didContractRevertWith(
+        optimisticDistributor.methods.executeDistribution(firstProposalId).send({ from: anyAddress }),
+        "Reward already distributed"
+      )
+    );
+  });
 });
