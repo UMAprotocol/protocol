@@ -335,6 +335,8 @@ contract OptimisticDistributor is Lockable, MultiCaller, Testable {
             optimisticOracle.settleAndGetPrice(reward.priceIdentifier, proposal.timestamp, ancillaryData);
 
         // Transfer rewards to MerkleDistributor for accepted proposal and flag distributionProposed Accepted.
+        // This does not revert on rejected proposals so that disputer could receive back its bond and winning
+        // in the same transaction when settleAndGetPrice is called above.
         if (resolvedPrice == 1e18) {
             rewards[proposal.rewardIndex].distributionProposed = DistributionProposed.Accepted;
 
@@ -354,7 +356,9 @@ contract OptimisticDistributor is Lockable, MultiCaller, Testable {
                 proposal.merkleRoot,
                 proposal.ipfsHash
             );
-        } else emit ProposalRejected(proposal.rewardIndex, proposalId);
+        }
+        // ProposalRejected can be emitted multiple times whenever someone tries to execute the same rejected proposal.
+        else emit ProposalRejected(proposal.rewardIndex, proposalId);
     }
 
     /********************************************
