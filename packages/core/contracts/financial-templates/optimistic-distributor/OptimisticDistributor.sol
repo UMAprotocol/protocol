@@ -411,7 +411,7 @@ contract OptimisticDistributor is Lockable, MultiCaller, Testable {
         uint256 timestamp,
         bytes memory ancillaryData,
         uint256 refund
-    ) public nonReentrant() {
+    ) external nonReentrant() {
         require(msg.sender == address(optimisticOracle), "Not authorized");
 
         // Identify the proposed distribution from callback parameters.
