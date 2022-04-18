@@ -190,17 +190,8 @@ contract OptimisticOracleModule is Module, Lockable {
         }
         proposal.transactions = _transactions;
 
-        // Add transaction data to the proposal data to be hashed and stored in the contract.
-        bytes memory proposalData = abi.encodePacked(ancillaryData);
-
-        for (uint256 i = 0; i < _transactions.length; i++) {
-            proposalData = bytes.concat(abi.encodePacked(_transactions[i].to));
-            proposalData = bytes.concat(abi.encodePacked(_transactions[i].value));
-            proposalData = bytes.concat(abi.encodePacked(_transactions[i].data));
-            proposalData = bytes.concat(abi.encodePacked(_transactions[i].operation));
-        }
-
-        proposalHashes[id] = keccak256(abi.encodePacked(proposalData));
+        // proposalHashes[id] = keccak256(abi.encodePacked(proposalData));
+        proposalHashes[id] = keccak256(abi.encode(_transactions));
 
         // Get the bond from the proposer and approve the bond and final fee to be used by the oracle.
         uint256 totalBond = finalFee + bond;
@@ -235,30 +226,14 @@ contract OptimisticOracleModule is Module, Lockable {
         // Recreate the proposal hash from the inputs and check that it matches the stored proposal hash.
         uint256 id = _proposalId;
 
-        // Create proposal in memory.
-        Proposal memory proposal;
-        proposal.requestTime = _originalTime;
-
         // Construct the ancillary data.
         bytes memory ancillaryData = _explanation;
         AncillaryData.appendKeyValueUint(ancillaryData, "id", id);
         AncillaryData.appendKeyValueAddress(ancillaryData, "module", address(this));
 
-        // Add transactions to proposal in memory.
-        proposal.transactions = _transactions;
-
-        // Add transaction data to the proposal data to be hashed and stored in the contract.
-        bytes memory proposalData = abi.encodePacked(ancillaryData);
-
-        for (uint256 i = 0; i < _transactions.length; i++) {
-            proposalData = bytes.concat(abi.encodePacked(_transactions[i].to));
-            proposalData = bytes.concat(abi.encodePacked(_transactions[i].value));
-            proposalData = bytes.concat(abi.encodePacked(_transactions[i].data));
-            proposalData = bytes.concat(abi.encodePacked(_transactions[i].operation));
-        }
-
         // This will reject the transaction if the proposal hash generated from the inputs does not match the stored proposal hash.
-        require(proposalHashes[id] == keccak256(abi.encodePacked(proposalData)), "proposal hash does not match");
+        // require(proposalHashes[id] == keccak256(abi.encodePacked(proposalData)), "proposal hash does not match");
+        require(proposalHashes[id] == keccak256(abi.encode(_transactions)), "proposal hash does not match");
 
         // Remove proposal hash so transactions can not be executed again.
         proposalHashes[id] = 0;

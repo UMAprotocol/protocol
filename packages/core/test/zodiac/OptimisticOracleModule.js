@@ -360,6 +360,8 @@ describe("OptimisticOracleModule", () => {
     );
   });
 
+  it("Proposals can not be executed twice", async function () {});
+
   it("Proposals can not be executed until after liveness", async function () {
     // Issue some test tokens to the avatar address.
     await testToken.methods.allocateTo(avatar.options.address, toWei("3")).send({ from: accounts[0] });
