@@ -40,7 +40,7 @@ contract OptimisticGovernor is Module, Lockable {
 
     event ProposalDeleted(uint256 indexed proposalId);
 
-    // Since finder is set during setUp, you will need to deploy a new Optimistic Oracle module if this address need to be changed in the future.
+    // Since finder is set during setUp, you will need to deploy a new Optimistic Governor module if this address need to be changed in the future.
     FinderInterface public finder;
 
     IERC20 public collateral;
@@ -178,7 +178,6 @@ contract OptimisticGovernor is Module, Lockable {
         bytes memory ancillaryData = _explanation;
         proposal.explanation = _explanation;
         AncillaryData.appendKeyValueUint(ancillaryData, "id", id);
-        AncillaryData.appendKeyValueAddress(ancillaryData, "module", address(this));
 
         // Add transactions to proposal in memory.
         for (uint256 i = 0; i < _transactions.length; i++) {
@@ -229,7 +228,6 @@ contract OptimisticGovernor is Module, Lockable {
         // Construct the ancillary data.
         bytes memory ancillaryData = _explanation;
         AncillaryData.appendKeyValueUint(ancillaryData, "id", id);
-        AncillaryData.appendKeyValueAddress(ancillaryData, "module", address(this));
 
         // This will reject the transaction if the proposal hash generated from the inputs does not match the stored proposal hash.
         // require(proposalHashes[id] == keccak256(abi.encodePacked(proposalData)), "proposal hash does not match");
