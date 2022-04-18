@@ -260,6 +260,9 @@ contract OptimisticOracleModule is Module, Lockable {
         // This will reject the transaction if the proposal hash generated from the inputs does not match the stored proposal hash.
         require(proposalHashes[id] == keccak256(abi.encodePacked(proposalData)), "proposal hash does not match");
 
+        // Remove proposal hash so transactions can not be executed again.
+        proposalHashes[id] = 0;
+
         // This will revert if the price has not settled.
         (, int256 price) =
             skinnyOptimisticOracle.settle(address(this), identifier, _originalTime, ancillaryData, _request);
