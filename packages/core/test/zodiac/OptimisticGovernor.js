@@ -6,7 +6,7 @@ const { didContractThrow, interfaceName, runDefaultFixture, TokenRolesEnum, ZERO
 const { utf8ToHex, toWei, toBN /* randomHex, toChecksumAddress */ } = web3.utils;
 
 // Tested contracts
-const OptimisticOracleModule = getContract("OptimisticOracleModuleTest");
+const OptimisticGovernor = getContract("OptimisticGovernorTest");
 
 // Helper contracts
 const Finder = getContract("Finder");
@@ -28,7 +28,7 @@ const totalBond = toBN(finalFee).add(toBN(bond)).toString();
 const doubleTotalBond = toBN(totalBond).mul(toBN(2)).toString();
 const rules = "https://insert.gist.text.url";
 
-describe("OptimisticOracleModule", () => {
+describe("OptimisticGovernor", () => {
   let accounts, owner, proposer, disputer, rando, executor;
 
   let timer,
@@ -96,7 +96,7 @@ describe("OptimisticOracleModule", () => {
     await collateralWhitelist.methods.addToWhitelist(bondToken.options.address).send({ from: owner });
     await store.methods.setFinalFee(bondToken.options.address, { rawValue: finalFee }).send({ from: owner });
 
-    optimisticOracleModule = await OptimisticOracleModule.new(
+    optimisticOracleModule = await OptimisticGovernor.new(
       finder.options.address,
       avatar.options.address,
       bondToken.options.address,
@@ -119,7 +119,7 @@ describe("OptimisticOracleModule", () => {
     // 0 liveness.
     assert(
       await didContractThrow(
-        OptimisticOracleModule.new(
+        OptimisticGovernor.new(
           finder.options.address,
           avatar.options.address,
           bondToken.options.address,
@@ -135,7 +135,7 @@ describe("OptimisticOracleModule", () => {
     // Unapproved token.
     assert(
       await didContractThrow(
-        OptimisticOracleModule.new(
+        OptimisticGovernor.new(
           finder.options.address,
           avatar.options.address,
           (await ERC20.new("BOND", "BOND", 18).send({ from: owner })).options.address,
@@ -151,7 +151,7 @@ describe("OptimisticOracleModule", () => {
     // Unapproved identifier.
     assert(
       await didContractThrow(
-        OptimisticOracleModule.new(
+        OptimisticGovernor.new(
           finder.options.address,
           avatar.options.address,
           bondToken.options.address,

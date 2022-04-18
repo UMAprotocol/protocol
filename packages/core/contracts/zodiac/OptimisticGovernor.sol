@@ -17,10 +17,10 @@ import "../oracle/interfaces/IdentifierWhitelistInterface.sol";
 import "../common/implementation/AncillaryData.sol";
 import "../oracle/interfaces/StoreInterface.sol";
 
-contract OptimisticOracleModule is Module, Lockable {
+contract OptimisticGovernor is Module, Lockable {
     using SafeERC20 for IERC20;
 
-    event OptimisticOracleModuleDeployed(address indexed owner, address indexed avatar, address target);
+    event OptimisticGovernorDeployed(address indexed owner, address indexed avatar, address target);
 
     event TransactionsProposed(
         uint256 indexed proposalId,
@@ -72,7 +72,7 @@ contract OptimisticOracleModule is Module, Lockable {
     uint256 public prevProposalId;
 
     /**
-     * @notice Construct Optimistic Oracle Module.
+     * @notice Construct Optimistic Governor module.
      * @param _finder Finder address.
      * @param _owner Address of the owner.
      * @param _collateral Address of the ERC20 collateral used for bonds.
@@ -119,7 +119,7 @@ contract OptimisticOracleModule is Module, Lockable {
         transferOwnership(_owner);
         _sync();
 
-        emit OptimisticOracleModuleDeployed(_owner, avatar, target);
+        emit OptimisticGovernorDeployed(_owner, avatar, target);
     }
 
     function priceProposed(
