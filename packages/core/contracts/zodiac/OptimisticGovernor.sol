@@ -167,6 +167,7 @@ contract OptimisticGovernor is Module, Lockable {
     function proposeTransactions(Transaction[] memory _transactions, bytes memory _explanation) public nonReentrant {
         // note: Optional explanation explains the intent of the transactions to make comprehension easier.
         uint256 id = prevProposalId + 1;
+        prevProposalId = id;
         uint256 time = getCurrentTime();
         address proposer = msg.sender;
 
@@ -234,7 +235,7 @@ contract OptimisticGovernor is Module, Lockable {
         require(proposalHashes[id] == keccak256(abi.encode(_transactions)), "proposal hash does not match");
 
         // Remove proposal hash so transactions can not be executed again.
-        proposalHashes[id] = 0;
+        delete proposalHashes[id];
 
         // This will revert if the price has not settled.
         (, int256 price) =
@@ -275,7 +276,7 @@ contract OptimisticGovernor is Module, Lockable {
             skinnyOptimisticOracle.settle(address(this), identifier, _originalTime, _ancillaryData, _request);
 
         // Check that proposal was rejected.
-        require(price == 0, "Proposal was not rejected");
+        require(price != 1, "Proposal was not rejected");
 
         // Delete the proposal.
         delete proposalHashes[_proposalId];
