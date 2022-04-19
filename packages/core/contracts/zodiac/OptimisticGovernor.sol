@@ -55,7 +55,6 @@ contract OptimisticGovernor is Module, Lockable {
     bytes32 public identifier;
     SkinnyOptimisticOracleInterface public skinnyOptimisticOracle;
     OracleAncillaryInterface public oracle;
-    StoreInterface public store;
 
     struct Transaction {
         address to;
@@ -161,7 +160,7 @@ contract OptimisticGovernor is Module, Lockable {
     }
 
     function sync() public nonReentrant {
-        // Sync the store and oracle contract addresses as well as the final fee.
+        // Sync the oracle contract addresses as well as the final fee.
         _sync();
     }
 
@@ -284,10 +283,6 @@ contract OptimisticGovernor is Module, Lockable {
             SkinnyOptimisticOracleInterface(finder.getImplementationAddress(OracleInterfaces.SkinnyOptimisticOracle));
     }
 
-    function _getOracle() private view returns (OracleAncillaryInterface) {
-        return OracleAncillaryInterface(finder.getImplementationAddress(OracleInterfaces.Oracle));
-    }
-
     function _isContract(address addr) private view returns (bool isContract) {
         return addr.code.length > 0;
     }
@@ -305,9 +300,7 @@ contract OptimisticGovernor is Module, Lockable {
     }
 
     function _sync() internal {
-        store = _getStore();
-        oracle = _getOracle();
         skinnyOptimisticOracle = _getOptimisticOracle();
-        finalFee = store.computeFinalFee(address(collateral)).rawValue;
+        finalFee = _getStore().computeFinalFee(address(collateral)).rawValue;
     }
 }
