@@ -22,12 +22,17 @@ RUN yarn clean
 RUN yarn qbuild
 
 # Set up additional UMA packages installed in this docker container.
+# Configuer the across v2 relayer as a "across-relayer" base package.
 WORKDIR /across-relayer
+
+# Clode the relayer code and copy it to the across-relayer directory. Remove the package directory.
 RUN git https://github.com/across-protocol/relayer-v2.git
 WORKDIR /across-relayer/relayer-v2
 RUN mv * ..
 WORKDIR /across-relayer
 RUN rm -rf relayer-v2
+
+# Install depdencies.
 RUN yarn && yarn build
 
 # Set back the working directory to the protocol directory to default to that package.
