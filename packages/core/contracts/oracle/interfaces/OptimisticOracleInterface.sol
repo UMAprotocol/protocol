@@ -33,6 +33,7 @@ abstract contract OptimisticOracleInterface {
         uint256 finalFee; // Final fee to pay to the Store upon request to the DVM.
         uint256 bond; // Bond that the proposer and disputer must pay on top of the final fee.
         uint256 customLiveness; // Custom liveness value set by the requester.
+        bool eventBased;
     }
 
     // This value must be <= the Voting contract's `ancillaryBytesLimit` value otherwise it is possible

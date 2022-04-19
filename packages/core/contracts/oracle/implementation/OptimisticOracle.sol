@@ -76,6 +76,7 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
     using Address for address;
+    using AncillaryData for bytes;
 
     event RequestPrice(
         address indexed requester,
@@ -163,8 +164,11 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
         require(_getIdentifierWhitelist().isIdentifierSupported(identifier), "Unsupported identifier");
         require(_getCollateralWhitelist().isOnWhitelist(address(currency)), "Unsupported currency");
         require(timestamp <= getCurrentTime(), "Timestamp in future");
+
+        // TODO: to make this cheaper, we should just compute the max length of the stamping and add it to the
+        // ancillary data length.
         require(
-            _stampAncillaryData(ancillaryData, msg.sender).length <= ancillaryBytesLimit,
+            _stampAncillaryDataEventBased(ancillaryData, msg.sender, type(uint256).max).length <= ancillaryBytesLimit,
             "Ancillary Data too long"
         );
         uint256 finalFee = _getStore().computeFinalFee(address(currency)).rawValue;
@@ -180,7 +184,8 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
             reward: reward,
             finalFee: finalFee,
             bond: finalFee,
-            customLiveness: 0
+            customLiveness: 0,
+            eventBased: false
         });
 
         if (reward > 0) {
@@ -259,6 +264,21 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
         _getRequest(msg.sender, identifier, timestamp, ancillaryData).customLiveness = customLiveness;
     }
 
+    // Allows the requester to set the request to be an "event based" request.
+    // This means that "too early" values are disallowed in proposals and the
+    // proposal timestamp is appended to the ancillary data.
+    function setEventBased(
+        bytes32 identifier,
+        uint256 timestamp,
+        bytes memory ancillaryData
+    ) external nonReentrant() {
+        require(
+            _getState(msg.sender, identifier, timestamp, ancillaryData) == State.Requested,
+            "setEventBased: Requested"
+        );
+        _getRequest(msg.sender, identifier, timestamp, ancillaryData).eventBased = true;
+    }
+
     /**
      * @notice Proposes a price value on another address' behalf. Note: this address will receive any rewards that come
      * from this proposal. However, any bonds are pulled from the caller.
@@ -285,6 +305,7 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
             "proposePriceFor: Requested"
         );
         Request storage request = _getRequest(requester, identifier, timestamp, ancillaryData);
+        if (request.eventBased) require(proposedPrice != type(int256).min, "Cannot propose 'too early'");
         request.proposer = proposer;
         request.proposedPrice = proposedPrice;
 
@@ -386,7 +407,11 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
             }
         }
 
-        _getOracle().requestPrice(identifier, timestamp, _stampAncillaryData(ancillaryData, requester));
+        _getOracle().requestPrice(
+            identifier,
+            timestamp,
+            _stampAncillaryDataForRequest(ancillaryData, requester, request)
+        );
 
         // Compute refund.
         uint256 refund = 0;
@@ -567,7 +592,7 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
             request.resolvedPrice = _getOracle().getPrice(
                 identifier,
                 timestamp,
-                _stampAncillaryData(ancillaryData, requester)
+                _stampAncillaryDataForRequest(ancillaryData, requester, request)
             );
             bool disputeSuccess = request.resolvedPrice != request.proposedPrice;
             uint256 bond = request.bond;
@@ -667,6 +692,32 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
 
     function _getIdentifierWhitelist() internal view returns (IdentifierWhitelistInterface) {
         return IdentifierWhitelistInterface(finder.getImplementationAddress(OracleInterfaces.IdentifierWhitelist));
+    }
+
+    function _stampAncillaryDataForRequest(
+        bytes memory ancillaryData,
+        address requester,
+        Request storage request
+    ) internal returns (bytes memory) {
+        if (request.eventBased) {
+            uint256 liveness = request.customLiveness != 0 ? request.customLiveness : defaultLiveness;
+            uint256 proposalTimestamp = request.expirationTime.sub(liveness);
+            return _stampAncillaryDataEventBased(ancillaryData, requester, proposalTimestamp);
+        } else {
+            return _stampAncillaryData(ancillaryData, requester);
+        }
+    }
+
+    function _stampAncillaryDataEventBased(
+        bytes memory ancillaryData,
+        address requester,
+        uint256 proposalTimestamp
+    ) internal pure returns (bytes memory out) {
+        return
+            ancillaryData.appendKeyValueUint("proposalTimestamp", proposalTimestamp).appendKeyValueAddress(
+                "ooRequester",
+                requester
+            );
     }
 
     /**
