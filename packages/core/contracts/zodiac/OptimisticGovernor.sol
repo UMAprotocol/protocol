@@ -267,7 +267,7 @@ contract OptimisticGovernor is Module, Lockable {
             skinnyOptimisticOracle.settle(address(this), identifier, _originalTime, _ancillaryData, _request);
 
         // Check that proposal was rejected.
-        require(price != 1, "Proposal was not rejected");
+        require(price != 1e18, "Proposal was not rejected");
 
         // Delete the proposal.
         delete proposalHashes[_proposalId];
