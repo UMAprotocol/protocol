@@ -26,7 +26,8 @@ contract OptimisticGovernor is Module, Lockable {
         uint256 indexed proposalId,
         address indexed proposer,
         uint256 indexed proposalTime,
-        Proposal proposal
+        Proposal proposal,
+        bytes explanation
     );
 
     event PriceProposed(
@@ -65,7 +66,6 @@ contract OptimisticGovernor is Module, Lockable {
     struct Proposal {
         Transaction[] transactions;
         uint256 requestTime;
-        bytes explanation;
     }
 
     mapping(uint256 => bytes32) public proposalHashes;
@@ -176,9 +176,7 @@ contract OptimisticGovernor is Module, Lockable {
         proposal.requestTime = time;
 
         // Construct the ancillary data.
-        bytes memory ancillaryData = _explanation;
-        proposal.explanation = _explanation;
-        AncillaryData.appendKeyValueUint(ancillaryData, "id", id);
+        bytes memory ancillaryData = bytes.concat(bytes("id:"), AncillaryData.toUtf8BytesUint(id));
 
         // Add transactions to proposal in memory.
         for (uint256 i = 0; i < _transactions.length; i++) {
@@ -213,13 +211,12 @@ contract OptimisticGovernor is Module, Lockable {
             int256(1e18)
         );
 
-        emit TransactionsProposed(id, proposer, time, proposal);
+        emit TransactionsProposed(id, proposer, time, proposal, _explanation);
     }
 
     function executeProposal(
         uint256 _proposalId,
         Transaction[] memory _transactions,
-        bytes memory _explanation,
         uint32 _originalTime,
         SkinnyOptimisticOracleInterface.Request memory _request
     ) public payable nonReentrant {
@@ -227,8 +224,7 @@ contract OptimisticGovernor is Module, Lockable {
         uint256 id = _proposalId;
 
         // Construct the ancillary data.
-        bytes memory ancillaryData = _explanation;
-        AncillaryData.appendKeyValueUint(ancillaryData, "id", id);
+        bytes memory ancillaryData = bytes.concat(bytes("id:"), AncillaryData.toUtf8BytesUint(id));
 
         // This will reject the transaction if the proposal hash generated from the inputs does not match the stored proposal hash.
         // require(proposalHashes[id] == keccak256(abi.encodePacked(proposalData)), "proposal hash does not match");

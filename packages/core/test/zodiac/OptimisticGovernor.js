@@ -207,8 +207,8 @@ describe("OptimisticGovernor", () => {
         event.proposalId == id &&
         event.proposer == proposer &&
         event.proposalTime == proposalTime &&
+        event.explanation == explanation &&
         event.proposal.requestTime == proposalTime &&
-        event.proposal.explanation == explanation &&
         event.proposal.transactions[0].to == testToken.options.address &&
         event.proposal.transactions[0].value == 0 &&
         event.proposal.transactions[0].data == txnData1 &&
@@ -310,8 +310,8 @@ describe("OptimisticGovernor", () => {
         event.proposalId == id &&
         event.proposer == proposer &&
         event.proposalTime == proposalTime &&
+        event.explanation == explanation &&
         event.proposal.requestTime == proposalTime &&
-        event.proposal.explanation == explanation &&
         event.proposal.transactions[0].to == testToken.options.address &&
         event.proposal.transactions[0].value == 0 &&
         event.proposal.transactions[0].data == txnData1 &&
@@ -344,7 +344,7 @@ describe("OptimisticGovernor", () => {
     const startingBalance3 = toBN(await testToken2.methods.balanceOf(proposer).call());
 
     await optimisticOracleModule.methods
-      .executeProposal(id, transactions, explanation, proposalTime, requestParams)
+      .executeProposal(id, transactions, proposalTime, requestParams)
       .send({ from: executor });
     assert.equal(
       (await testToken.methods.balanceOf(proposer).call()).toString(),
@@ -383,7 +383,6 @@ describe("OptimisticGovernor", () => {
       { to: testToken2.options.address, value: 0, data: txnData3, operation },
     ];
 
-    const explanation = utf8ToHex("These transactions were approved by majority vote on Snapshot.");
     const proposalTime = parseInt(await optimisticOracleModule.methods.getCurrentTime().call());
 
     // Set up the request params.
@@ -409,7 +408,7 @@ describe("OptimisticGovernor", () => {
     assert(
       await didContractThrow(
         optimisticOracleModule.methods
-          .executeProposal(id, transactions, explanation, proposalTime, requestParams)
+          .executeProposal(id, transactions, proposalTime, requestParams)
           .send({ from: executor })
       )
     );
@@ -440,6 +439,8 @@ describe("OptimisticGovernor", () => {
       .send({ from: proposer });
 
     const ancillaryData = receipt.events.PriceProposed.returnValues.ancillaryData;
+
+    console.log(ancillaryData);
 
     const proposalTime = parseInt(await optimisticOracleModule.methods.getCurrentTime().call());
 
@@ -536,7 +537,7 @@ describe("OptimisticGovernor", () => {
     assert(
       await didContractThrow(
         optimisticOracleModule.methods
-          .executeProposal(id, transactions, explanation, proposalTime, requestParams)
+          .executeProposal(id, transactions, proposalTime, requestParams)
           .send({ from: executor })
       )
     );
@@ -623,7 +624,7 @@ describe("OptimisticGovernor", () => {
 
     // Execute proposal and test results.
     await optimisticOracleModule.methods
-      .executeProposal(id, transactions, explanation, proposalTime, disputedRequestParams)
+      .executeProposal(id, transactions, proposalTime, disputedRequestParams)
       .send({ from: executor });
     assert.equal(
       (await testToken.methods.balanceOf(proposer).call()).toString(),
@@ -717,7 +718,7 @@ describe("OptimisticGovernor", () => {
     assert(
       await didContractThrow(
         optimisticOracleModule.methods
-          .executeProposal(id, transactions, explanation, proposalTime, disputedRequestParams)
+          .executeProposal(id, transactions, proposalTime, disputedRequestParams)
           .send({ from: executor })
       )
     );
@@ -801,7 +802,7 @@ describe("OptimisticGovernor", () => {
     assert(
       await didContractThrow(
         optimisticOracleModule.methods
-          .executeProposal(id, transactions, explanation, proposalTime, disputedRequestParams)
+          .executeProposal(id, transactions, proposalTime, disputedRequestParams)
           .send({ from: executor })
       )
     );
@@ -889,7 +890,7 @@ describe("OptimisticGovernor", () => {
     // assert(
     //   await didContractThrow(
     //     optimisticOracleModule.methods
-    //       .executeProposal(proposalId, transactions, explanation, proposalTime, requestParams)
+    //       .executeProposal(proposalId, transactions, proposalTime, requestParams)
     //       .send({ from: executor })
     //   )
     // );
