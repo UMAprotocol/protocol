@@ -243,13 +243,8 @@ contract OptimisticGovernor is Module, Lockable {
         require(price == 1e18, "Proposal was rejected");
 
         for (uint256 i = 0; i < _transactions.length; i++) {
-            require(i == 0 || _transactions[i - 1].to == address(0), "Previous tx not yet executed");
             Transaction memory transaction = _transactions[i];
             require(transaction.to != address(0), "Tx already executed");
-            require(msg.value == transaction.value, "Must send exact amount of ETH");
-
-            // Delete the transaction before execution to avoid any potential re-entrancy issues.
-            delete _transactions[i];
 
             require(
                 exec(transaction.to, transaction.value, transaction.data, transaction.operation),
