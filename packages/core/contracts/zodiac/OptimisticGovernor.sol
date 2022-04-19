@@ -140,6 +140,7 @@ contract OptimisticGovernor is Module, Lockable {
         // ERC20 token to be used as collateral (must be approved by UMA Store contract).
         require(_getCollateralWhitelist().isOnWhitelist(address(_collateral)), "bond token not supported");
         collateral = _collateral;
+        _sync();
     }
 
     function setRules(string memory _rules) public onlyOwner {
