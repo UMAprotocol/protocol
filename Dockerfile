@@ -36,7 +36,7 @@ RUN rm -rf relayer-v2
 RUN yarn && yarn build
 
 # Set back the working directory to the protocol directory to default to that package.
-WORKDIR / protocol
+WORKDIR /protocol
 
 # Command to run any command provided by the COMMAND env variable.
 ENTRYPOINT ["/bin/bash", "scripts/runCommand.sh"]
