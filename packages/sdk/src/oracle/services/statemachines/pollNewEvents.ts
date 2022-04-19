@@ -46,6 +46,9 @@ export function Handlers(store: Store): GenericHandlers<Params, Memory> {
           memory.lastBlock = latestBlock;
           // just count how many successful iterations we do as a kind of sanity check
           memory.iterations++;
+        } else {
+          // if we dont have a lastblock set, set it to our current block
+          memory.lastBlock = memory.lastBlock || currentBlock;
         }
       } catch (err) {
         // store an error for an iteration if we need to debug. we want to keep polling though.

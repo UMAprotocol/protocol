@@ -1,5 +1,5 @@
 import { optimisticOracle } from "../../clients";
-import { BigNumberish, BigNumber, Provider, Signer, TransactionResponse } from "../types/ethers";
+import { BigNumberish, BigNumber, Provider, Signer, TransactionResponse, Log } from "../types/ethers";
 import type { RequestState } from "../types/state";
 
 type Props = {
@@ -54,4 +54,13 @@ export class OptimisticOracle {
   ): Promise<RequestState> {
     return this.contract.callStatic.getState(requester, identifier, timestamp, ancillaryData);
   }
+  makeEventFromLog = (log: Log) => {
+    const description = this.contract.interface.parseLog(log);
+    return {
+      ...log,
+      ...description,
+      event: description.name,
+      eventSignature: description.signature,
+    };
+  };
 }

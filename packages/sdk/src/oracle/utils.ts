@@ -177,7 +177,7 @@ export class TransactionConfirmer {
   async getReceipt(hash: string): Promise<TransactionReceipt> {
     return this.provider.getTransactionReceipt(hash);
   }
-  async isConfirmed(hash: string, confirmations = 1): Promise<boolean | TransactionReceipt> {
+  async isConfirmed(hash: string, confirmations = 1): Promise<false | TransactionReceipt> {
     try {
       const receipt = await this.getReceipt(hash);
       if (receipt.confirmations >= confirmations) return receipt;
@@ -315,4 +315,11 @@ export function insertOrderedAscending<T>(array: T[], element: T, orderBy: (elem
   const index = sortedLastIndexBy(array, element, orderBy);
   array.splice(index, 0, element);
   return array;
+}
+export function isUnique<T>(array: T[], element: T, id: (element: T) => string | number): boolean {
+  const elementId = id(element);
+  const found = array.find((next: T) => {
+    return id(next) === elementId;
+  });
+  return found === undefined;
 }
