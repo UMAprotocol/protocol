@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.6;
 
+// https://github.com/gnosis/zodiac/blob/master/contracts/core/Module.sol
 import "@gnosis.pm/zodiac/contracts/core/Module.sol";
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
