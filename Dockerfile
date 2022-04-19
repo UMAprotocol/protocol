@@ -26,11 +26,7 @@ RUN yarn qbuild
 WORKDIR /across-relayer
 
 # Clode the relayer code and copy it to the across-relayer directory. Remove the package directory.
-RUN git clone https://github.com/across-protocol/relayer-v2.git
-WORKDIR /across-relayer/relayer-v2
-RUN mv * ..
-WORKDIR /across-relayer
-RUN rm -rf relayer-v2
+RUN git clone https://github.com/across-protocol/relayer-v2.git /across-relayer/relayer-v2
 
 # Install depdencies.
 RUN yarn && yarn build
