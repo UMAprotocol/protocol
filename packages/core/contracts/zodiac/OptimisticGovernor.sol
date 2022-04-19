@@ -9,9 +9,8 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import "../oracle/implementation/Constants.sol";
 import "../oracle/interfaces/FinderInterface.sol";
-import "../oracle/interfaces/SkinnyOptimisticOracleInterface.sol";
-import "../oracle/implementation/SkinnyOptimisticOracle.sol";
-import "../oracle/interfaces/OracleAncillaryInterface.sol";
+import "../oracle/interfaces/OptimisticOracleInterface.sol";
+import "../oracle/implementation/OptimisticOracle.sol";
 import "../common/implementation/Lockable.sol";
 import "../common/interfaces/AddressWhitelistInterface.sol";
 import "../oracle/interfaces/IdentifierWhitelistInterface.sol";
@@ -35,7 +34,7 @@ contract OptimisticGovernor is Module, Lockable {
         bytes32 indexed identifier,
         uint256 indexed timestamp,
         bytes ancillaryData,
-        SkinnyOptimisticOracleInterface.Request request
+        OptimisticOracleInterface.Request request
     );
 
     event TransactionExecuted(uint256 indexed proposalId, uint256 indexed transactionIndex);
@@ -53,8 +52,7 @@ contract OptimisticGovernor is Module, Lockable {
     string public rules;
     // This will usually be "ZODIAC" but a deployer may want to create a more specific identifier.
     bytes32 public identifier;
-    SkinnyOptimisticOracleInterface public skinnyOptimisticOracle;
-    OracleAncillaryInterface public oracle;
+    OptimisticOracleInterface public optimisticOracle;
 
     struct Transaction {
         address to;
@@ -125,10 +123,9 @@ contract OptimisticGovernor is Module, Lockable {
     function priceProposed(
         bytes32 _identifier,
         uint32 _timestamp,
-        bytes memory _ancillaryData,
-        SkinnyOptimisticOracleInterface.Request memory _request
+        bytes memory _ancillaryData
     ) external {
-        emit PriceProposed(_identifier, _timestamp, _ancillaryData, _request);
+        emit PriceProposed(_identifier, _timestamp, _ancillaryData);
     }
 
     function setBond(uint256 _bond) public onlyOwner {
@@ -192,23 +189,35 @@ contract OptimisticGovernor is Module, Lockable {
         // proposalHashes[id] = keccak256(abi.encodePacked(proposalData));
         proposalHashes[id] = keccak256(abi.encode(_transactions));
 
-        // Get the bond from the proposer and approve the bond and final fee to be used by the oracle.
-        uint256 totalBond = finalFee + bond;
-        collateral.safeTransferFrom(msg.sender, address(this), totalBond);
-        collateral.safeIncreaseAllowance(address(skinnyOptimisticOracle), totalBond);
-
         // Propose a set of transactions to the OO. If not disputed, they can be executed with executeProposal().
-        // docs: https://github.com/UMAprotocol/protocol/blob/master/packages/core/contracts/oracle/interfaces/SkinnyOptimisticOracleInterface.sol
-        skinnyOptimisticOracle.requestAndProposePriceFor(
+        // docs: https://github.com/UMAprotocol/protocol/blob/master/packages/core/contracts/oracle/interfaces/OptimisticOracleInterface.sol
+
+        // optimisticOracle.requestAndProposePriceFor(
+        //     identifier,
+        //     uint32(time),
+        //     ancillaryData,
+        //     collateral,
+        //     0,
+        //     bond,
+        //     uint256(liveness),
+        //     address(this),
+        //     // Canonical value representing "True"; i.e. the transactions are valid.
+        //     int256(1e18)
+        // );
+        optimisticOracle.requestPrice(identifier, uint32(time), ancillaryData, collateral, 0);
+
+        uint256 totalBond = optimisticOracle.setBond(identifier, uint32(time), ancillaryData, bond);
+
+        // Get the bond from the proposer and approve the bond and final fee to be used by the oracle.
+        collateral.safeTransferFrom(msg.sender, address(this), totalBond);
+        collateral.safeIncreaseAllowance(address(optimisticOracle), totalBond);
+
+        optimisticOracle.proposePriceFor(
+            address(this),
+            address(this),
             identifier,
             uint32(time),
             ancillaryData,
-            collateral,
-            0,
-            bond,
-            uint256(liveness),
-            address(this),
-            // Canonical value representing "True"; i.e. the transactions are valid.
             int256(1e18)
         );
 
@@ -218,8 +227,7 @@ contract OptimisticGovernor is Module, Lockable {
     function executeProposal(
         uint256 _proposalId,
         Transaction[] memory _transactions,
-        uint32 _originalTime,
-        SkinnyOptimisticOracleInterface.Request memory _request
+        uint32 _originalTime
     ) public payable nonReentrant {
         // Recreate the proposal hash from the inputs and check that it matches the stored proposal hash.
         uint256 id = _proposalId;
@@ -235,9 +243,8 @@ contract OptimisticGovernor is Module, Lockable {
         delete proposalHashes[id];
 
         // This will revert if the price has not settled.
-        (, int256 price) =
-            skinnyOptimisticOracle.settle(address(this), identifier, _originalTime, ancillaryData, _request);
-        require(price == 1e18, "Proposal was rejected");
+        int256 price = optimisticOracle.settleAndGetPrice(identifier, _originalTime, ancillaryData);
+        require(price == int256(1e18), "Proposal was rejected");
 
         for (uint256 i = 0; i < _transactions.length; i++) {
             Transaction memory transaction = _transactions[i];
@@ -259,15 +266,13 @@ contract OptimisticGovernor is Module, Lockable {
     function deleteRejectedProposal(
         uint256 _proposalId,
         uint32 _originalTime,
-        bytes memory _ancillaryData,
-        SkinnyOptimisticOracleInterface.Request memory _request
+        bytes memory _ancillaryData
     ) public {
         // This will revert if the price has not settled.
-        (, int256 price) =
-            skinnyOptimisticOracle.settle(address(this), identifier, _originalTime, _ancillaryData, _request);
+        int256 price = optimisticOracle.settleAndGetPrice(identifier, _originalTime, _ancillaryData);
 
         // Check that proposal was rejected.
-        require(price != 1e18, "Proposal was not rejected");
+        require(price != int256(1e18), "Proposal was not rejected");
 
         // Delete the proposal.
         delete proposalHashes[_proposalId];
@@ -279,9 +284,8 @@ contract OptimisticGovernor is Module, Lockable {
         return block.timestamp;
     }
 
-    function _getOptimisticOracle() private view returns (SkinnyOptimisticOracleInterface) {
-        return
-            SkinnyOptimisticOracleInterface(finder.getImplementationAddress(OracleInterfaces.SkinnyOptimisticOracle));
+    function _getOptimisticOracle() private view returns (OptimisticOracleInterface) {
+        return OptimisticOracleInterface(finder.getImplementationAddress(OracleInterfaces.OptimisticOracle));
     }
 
     function _isContract(address addr) private view returns (bool isContract) {
@@ -301,7 +305,7 @@ contract OptimisticGovernor is Module, Lockable {
     }
 
     function _sync() internal {
-        skinnyOptimisticOracle = _getOptimisticOracle();
+        optimisticOracle = _getOptimisticOracle();
         finalFee = _getStore().computeFinalFee(address(collateral)).rawValue;
     }
 }
