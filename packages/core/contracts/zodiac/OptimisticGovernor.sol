@@ -241,7 +241,6 @@ contract OptimisticGovernor is Module, Lockable {
 
         for (uint256 i = 0; i < _transactions.length; i++) {
             Transaction memory transaction = _transactions[i];
-            require(transaction.to != address(0), "Tx already executed");
 
             require(
                 exec(transaction.to, transaction.value, transaction.data, transaction.operation),
