@@ -30,12 +30,7 @@ contract OptimisticGovernor is Module, Lockable {
         bytes explanation
     );
 
-    event PriceProposed(
-        bytes32 indexed identifier,
-        uint256 indexed timestamp,
-        bytes ancillaryData,
-        OptimisticOracleInterface.Request request
-    );
+    event PriceProposed(bytes32 indexed identifier, uint256 indexed timestamp, bytes ancillaryData);
 
     event TransactionExecuted(uint256 indexed proposalId, uint256 indexed transactionIndex);
 
@@ -46,7 +41,6 @@ contract OptimisticGovernor is Module, Lockable {
 
     IERC20 public collateral;
     uint64 public liveness;
-    uint256 public finalFee;
     // Extra bond in addition to the final fee for the collateral type.
     uint256 public bond;
     string public rules;
@@ -174,7 +168,7 @@ contract OptimisticGovernor is Module, Lockable {
         proposal.requestTime = time;
 
         // Construct the ancillary data.
-        bytes memory ancillaryData = bytes.concat(bytes("id:"), AncillaryData.toUtf8BytesUint(id));
+        bytes memory ancillaryData = AncillaryData.appendKeyValueUint("", "id", id);
 
         // Add transactions to proposal in memory.
         for (uint256 i = 0; i < _transactions.length; i++) {
@@ -205,15 +199,15 @@ contract OptimisticGovernor is Module, Lockable {
         //     int256(1e18)
         // );
         optimisticOracle.requestPrice(identifier, uint32(time), ancillaryData, collateral, 0);
-
         uint256 totalBond = optimisticOracle.setBond(identifier, uint32(time), ancillaryData, bond);
+        optimisticOracle.setCustomLiveness(identifier, uint32(time), ancillaryData, liveness);
 
         // Get the bond from the proposer and approve the bond and final fee to be used by the oracle.
         collateral.safeTransferFrom(msg.sender, address(this), totalBond);
         collateral.safeIncreaseAllowance(address(optimisticOracle), totalBond);
 
         optimisticOracle.proposePriceFor(
-            address(this),
+            msg.sender,
             address(this),
             identifier,
             uint32(time),
@@ -233,7 +227,7 @@ contract OptimisticGovernor is Module, Lockable {
         uint256 id = _proposalId;
 
         // Construct the ancillary data.
-        bytes memory ancillaryData = bytes.concat(bytes("id:"), AncillaryData.toUtf8BytesUint(id));
+        bytes memory ancillaryData = AncillaryData.appendKeyValueUint("", "id", id);
 
         // This will reject the transaction if the proposal hash generated from the inputs does not match the stored proposal hash.
         // require(proposalHashes[id] == keccak256(abi.encodePacked(proposalData)), "proposal hash does not match");
@@ -306,6 +300,5 @@ contract OptimisticGovernor is Module, Lockable {
 
     function _sync() internal {
         optimisticOracle = _getOptimisticOracle();
-        finalFee = _getStore().computeFinalFee(address(collateral)).rawValue;
     }
 }
