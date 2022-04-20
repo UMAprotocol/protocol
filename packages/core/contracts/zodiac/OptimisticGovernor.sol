@@ -116,7 +116,7 @@ contract OptimisticGovernor is Module, Lockable {
 
     function priceProposed(
         bytes32 _identifier,
-        uint32 _timestamp,
+        uint256 _timestamp,
         bytes memory _ancillaryData
     ) external {
         emit PriceProposed(_identifier, _timestamp, _ancillaryData);
@@ -198,22 +198,15 @@ contract OptimisticGovernor is Module, Lockable {
         //     // Canonical value representing "True"; i.e. the transactions are valid.
         //     int256(1e18)
         // );
-        optimisticOracle.requestPrice(identifier, uint32(time), ancillaryData, collateral, 0);
-        uint256 totalBond = optimisticOracle.setBond(identifier, uint32(time), ancillaryData, bond);
-        optimisticOracle.setCustomLiveness(identifier, uint32(time), ancillaryData, liveness);
+        optimisticOracle.requestPrice(identifier, time, ancillaryData, collateral, 0);
+        uint256 totalBond = optimisticOracle.setBond(identifier, time, ancillaryData, bond);
+        optimisticOracle.setCustomLiveness(identifier, time, ancillaryData, liveness);
 
         // Get the bond from the proposer and approve the bond and final fee to be used by the oracle.
         collateral.safeTransferFrom(msg.sender, address(this), totalBond);
         collateral.safeIncreaseAllowance(address(optimisticOracle), totalBond);
 
-        optimisticOracle.proposePriceFor(
-            msg.sender,
-            address(this),
-            identifier,
-            uint32(time),
-            ancillaryData,
-            int256(1e18)
-        );
+        optimisticOracle.proposePriceFor(msg.sender, address(this), identifier, time, ancillaryData, int256(1e18));
 
         emit TransactionsProposed(id, proposer, time, proposal, _explanation);
     }
@@ -221,7 +214,7 @@ contract OptimisticGovernor is Module, Lockable {
     function executeProposal(
         uint256 _proposalId,
         Transaction[] memory _transactions,
-        uint32 _originalTime
+        uint256 _originalTime
     ) public payable nonReentrant {
         // Recreate the proposal hash from the inputs and check that it matches the stored proposal hash.
         uint256 id = _proposalId;
@@ -259,7 +252,7 @@ contract OptimisticGovernor is Module, Lockable {
 
     function deleteRejectedProposal(
         uint256 _proposalId,
-        uint32 _originalTime,
+        uint256 _originalTime,
         bytes memory _ancillaryData
     ) public {
         // This will revert if the price has not settled.

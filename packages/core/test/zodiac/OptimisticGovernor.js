@@ -12,7 +12,7 @@ const OptimisticGovernor = getContract("OptimisticGovernorTest");
 const Finder = getContract("Finder");
 const IdentifierWhitelist = getContract("IdentifierWhitelist");
 const AddressWhitelist = getContract("AddressWhitelist");
-const OptimisticOracle = getContract("SkinnyOptimisticOracle");
+const OptimisticOracle = getContract("OptimisticOracle");
 const MockOracle = getContract("MockOracleAncillary");
 const Timer = getContract("Timer");
 const Store = getContract("Store");
@@ -286,22 +286,6 @@ describe("OptimisticGovernor", () => {
 
     const proposalTime = parseInt(await optimisticOracleModule.methods.getCurrentTime().call());
 
-    // Set up the request params.
-    const expirationTime = parseInt(proposalTime) + parseInt(liveness);
-    const requestParams = {
-      proposer: optimisticOracleModule.options.address,
-      disputer: ZERO_ADDRESS,
-      currency: bondToken.options.address,
-      settled: false,
-      proposedPrice: parseInt(1e18).toString(),
-      resolvedPrice: "0",
-      expirationTime: expirationTime.toString(),
-      reward: "0",
-      finalFee: finalFee,
-      bond: bond,
-      customLiveness: liveness.toString(),
-    };
-
     await assertEventEmitted(
       receipt,
       optimisticOracleModule,
@@ -330,9 +314,7 @@ describe("OptimisticGovernor", () => {
       receipt,
       optimisticOracleModule,
       "PriceProposed",
-      (event) => event.timestamp == proposalTime // &&
-      // event.request == Object.values(requestParams)
-      // the check above fails for some reason but the request params work for executeProposal?
+      (event) => event.timestamp == proposalTime
     );
 
     // Wait until the end of the dispute period.
@@ -343,9 +325,7 @@ describe("OptimisticGovernor", () => {
     const startingBalance2 = toBN(await testToken.methods.balanceOf(rando).call());
     const startingBalance3 = toBN(await testToken2.methods.balanceOf(proposer).call());
 
-    await optimisticOracleModule.methods
-      .executeProposal(id, transactions, proposalTime, requestParams)
-      .send({ from: executor });
+    await optimisticOracleModule.methods.executeProposal(id, transactions, proposalTime).send({ from: executor });
     assert.equal(
       (await testToken.methods.balanceOf(proposer).call()).toString(),
       startingBalance1.add(toBN(toWei("1"))).toString()
@@ -385,31 +365,13 @@ describe("OptimisticGovernor", () => {
 
     const proposalTime = parseInt(await optimisticOracleModule.methods.getCurrentTime().call());
 
-    // Set up the request params.
-    const expirationTime = parseInt(proposalTime) + parseInt(liveness);
-    const requestParams = {
-      proposer: optimisticOracleModule.options.address,
-      disputer: ZERO_ADDRESS,
-      currency: bondToken.options.address,
-      settled: false,
-      proposedPrice: parseInt(1e18).toString(),
-      resolvedPrice: "0",
-      expirationTime: expirationTime.toString(),
-      reward: "0",
-      finalFee: finalFee,
-      bond: bond,
-      customLiveness: liveness.toString(),
-    };
-
     // Advance time to one second before end of the dispute period.
     const tooEarly = liveness - 1;
     advanceTime(tooEarly);
 
     assert(
       await didContractThrow(
-        optimisticOracleModule.methods
-          .executeProposal(id, transactions, proposalTime, requestParams)
-          .send({ from: executor })
+        optimisticOracleModule.methods.executeProposal(id, transactions, proposalTime).send({ from: executor })
       )
     );
   });
@@ -440,32 +402,14 @@ describe("OptimisticGovernor", () => {
 
     const ancillaryData = receipt.events.PriceProposed.returnValues.ancillaryData;
 
-    console.log(ancillaryData);
-
     const proposalTime = parseInt(await optimisticOracleModule.methods.getCurrentTime().call());
-
-    // Set up the request params.
-    const expirationTime = parseInt(proposalTime) + parseInt(liveness);
-    const requestParams = {
-      proposer: optimisticOracleModule.options.address,
-      disputer: ZERO_ADDRESS,
-      currency: bondToken.options.address,
-      settled: false,
-      proposedPrice: parseInt(1e18).toString(),
-      resolvedPrice: "0",
-      expirationTime: expirationTime.toString(),
-      reward: "0",
-      finalFee: finalFee,
-      bond: bond,
-      customLiveness: liveness.toString(),
-    };
 
     // Advance time to one second before end of the dispute period.
     const stillOpen = liveness - 1;
     advanceTime(stillOpen);
 
     let disputeReceipt = await optimisticOracle.methods
-      .disputePrice(optimisticOracleModule.options.address, identifier, proposalTime, ancillaryData, requestParams)
+      .disputePrice(optimisticOracleModule.options.address, identifier, proposalTime, ancillaryData)
       .send({ from: disputer });
 
     await assertEventEmitted(
@@ -507,28 +451,12 @@ describe("OptimisticGovernor", () => {
 
     const proposalTime = parseInt(await optimisticOracleModule.methods.getCurrentTime().call());
 
-    // Set up the request params.
-    const expirationTime = parseInt(proposalTime) + parseInt(liveness);
-    const requestParams = {
-      proposer: optimisticOracleModule.options.address,
-      disputer: ZERO_ADDRESS,
-      currency: bondToken.options.address,
-      settled: false,
-      proposedPrice: parseInt(1e18).toString(),
-      resolvedPrice: "0",
-      expirationTime: expirationTime.toString(),
-      reward: "0",
-      finalFee: finalFee,
-      bond: bond,
-      customLiveness: liveness.toString(),
-    };
-
     // Advance time to one second before end of the dispute period.
     const stillOpen = liveness - 1;
     advanceTime(stillOpen);
 
     await optimisticOracle.methods
-      .disputePrice(optimisticOracleModule.options.address, identifier, proposalTime, ancillaryData, requestParams)
+      .disputePrice(optimisticOracleModule.options.address, identifier, proposalTime, ancillaryData)
       .send({ from: disputer });
 
     // Advance time past end of liveness window.
@@ -536,9 +464,7 @@ describe("OptimisticGovernor", () => {
 
     assert(
       await didContractThrow(
-        optimisticOracleModule.methods
-          .executeProposal(id, transactions, proposalTime, requestParams)
-          .send({ from: executor })
+        optimisticOracleModule.methods.executeProposal(id, transactions, proposalTime).send({ from: executor })
       )
     );
   });
@@ -574,48 +500,17 @@ describe("OptimisticGovernor", () => {
 
     const proposalTime = parseInt(await optimisticOracleModule.methods.getCurrentTime().call());
 
-    // Set up the request params.
-    const expirationTime = parseInt(proposalTime) + parseInt(liveness);
-    const requestParams = {
-      proposer: optimisticOracleModule.options.address,
-      disputer: ZERO_ADDRESS,
-      currency: bondToken.options.address,
-      settled: false,
-      proposedPrice: parseInt(1e18).toString(),
-      resolvedPrice: "0",
-      expirationTime: expirationTime.toString(),
-      reward: "0",
-      finalFee: finalFee,
-      bond: bond,
-      customLiveness: liveness.toString(),
-    };
-
     // Advance time to one second before end of the dispute period.
     const stillOpen = liveness - 1;
     advanceTime(stillOpen);
 
     // Dispute.
     await optimisticOracle.methods
-      .disputePrice(optimisticOracleModule.options.address, identifier, proposalTime, ancillaryData, requestParams)
+      .disputePrice(optimisticOracleModule.options.address, identifier, proposalTime, ancillaryData)
       .send({ from: disputer });
 
     // DVM approves the proposal.
     await pushPrice(toWei("1"));
-
-    // Update params for execution.
-    const disputedRequestParams = {
-      proposer: optimisticOracleModule.options.address,
-      disputer: disputer, // this changed
-      currency: bondToken.options.address,
-      settled: false,
-      proposedPrice: parseInt(1e18).toString(),
-      resolvedPrice: "0",
-      expirationTime: expirationTime.toString(),
-      reward: "0",
-      finalFee: finalFee,
-      bond: bond,
-      customLiveness: liveness.toString(),
-    };
 
     // Set starting balances of tokens to be transferred.
     const startingBalance1 = toBN(await testToken.methods.balanceOf(proposer).call());
@@ -623,9 +518,7 @@ describe("OptimisticGovernor", () => {
     const startingBalance3 = toBN(await testToken2.methods.balanceOf(proposer).call());
 
     // Execute proposal and test results.
-    await optimisticOracleModule.methods
-      .executeProposal(id, transactions, proposalTime, disputedRequestParams)
-      .send({ from: executor });
+    await optimisticOracleModule.methods.executeProposal(id, transactions, proposalTime).send({ from: executor });
     assert.equal(
       (await testToken.methods.balanceOf(proposer).call()).toString(),
       startingBalance1.add(toBN(toWei("1"))).toString()
@@ -671,55 +564,22 @@ describe("OptimisticGovernor", () => {
 
     const proposalTime = parseInt(await optimisticOracleModule.methods.getCurrentTime().call());
 
-    // Set up the request params.
-    const expirationTime = parseInt(proposalTime) + parseInt(liveness);
-    const requestParams = {
-      proposer: optimisticOracleModule.options.address,
-      disputer: ZERO_ADDRESS,
-      currency: bondToken.options.address,
-      settled: false,
-      proposedPrice: parseInt(1e18).toString(),
-      resolvedPrice: "0",
-      expirationTime: expirationTime.toString(),
-      reward: "0",
-      finalFee: finalFee,
-      bond: bond,
-      customLiveness: liveness.toString(),
-    };
-
     // Advance time to one second before end of the dispute period.
     const stillOpen = liveness - 1;
     advanceTime(stillOpen);
 
     // Dispute.
     await optimisticOracle.methods
-      .disputePrice(optimisticOracleModule.options.address, identifier, proposalTime, ancillaryData, requestParams)
+      .disputePrice(optimisticOracleModule.options.address, identifier, proposalTime, ancillaryData)
       .send({ from: disputer });
 
     // DVM rejects the proposal.
     await pushPrice(0);
 
-    // Update params for execution.
-    const disputedRequestParams = {
-      proposer: optimisticOracleModule.options.address,
-      disputer: disputer, // this changed
-      currency: bondToken.options.address,
-      settled: false,
-      proposedPrice: parseInt(1e18).toString(),
-      resolvedPrice: "0",
-      expirationTime: expirationTime.toString(),
-      reward: "0",
-      finalFee: finalFee,
-      bond: bond,
-      customLiveness: liveness.toString(),
-    };
-
     // Proposal should not be executed.
     assert(
       await didContractThrow(
-        optimisticOracleModule.methods
-          .executeProposal(id, transactions, proposalTime, disputedRequestParams)
-          .send({ from: executor })
+        optimisticOracleModule.methods.executeProposal(id, transactions, proposalTime).send({ from: executor })
       )
     );
   });
@@ -755,61 +615,28 @@ describe("OptimisticGovernor", () => {
 
     const proposalTime = parseInt(await optimisticOracleModule.methods.getCurrentTime().call());
 
-    // Set up the request params.
-    const expirationTime = parseInt(proposalTime) + parseInt(liveness);
-    const requestParams = {
-      proposer: optimisticOracleModule.options.address,
-      disputer: ZERO_ADDRESS,
-      currency: bondToken.options.address,
-      settled: false,
-      proposedPrice: parseInt(1e18).toString(),
-      resolvedPrice: "0",
-      expirationTime: expirationTime.toString(),
-      reward: "0",
-      finalFee: finalFee,
-      bond: bond,
-      customLiveness: liveness.toString(),
-    };
-
     // Advance time to one second before end of the dispute period.
     const stillOpen = liveness - 1;
     advanceTime(stillOpen);
 
     // Dispute.
     await optimisticOracle.methods
-      .disputePrice(optimisticOracleModule.options.address, identifier, proposalTime, ancillaryData, requestParams)
+      .disputePrice(optimisticOracleModule.options.address, identifier, proposalTime, ancillaryData)
       .send({ from: disputer });
 
     // DVM rejects the proposal.
     await pushPrice(0);
 
-    // Update params for execution.
-    const disputedRequestParams = {
-      proposer: optimisticOracleModule.options.address,
-      disputer: disputer, // this changed
-      currency: bondToken.options.address,
-      settled: false,
-      proposedPrice: parseInt(1e18).toString(),
-      resolvedPrice: "0",
-      expirationTime: expirationTime.toString(),
-      reward: "0",
-      finalFee: finalFee,
-      bond: bond,
-      customLiveness: liveness.toString(),
-    };
-
     // Proposal should not be executed.
     assert(
       await didContractThrow(
-        optimisticOracleModule.methods
-          .executeProposal(id, transactions, proposalTime, disputedRequestParams)
-          .send({ from: executor })
+        optimisticOracleModule.methods.executeProposal(id, transactions, proposalTime).send({ from: executor })
       )
     );
 
     // Proposal can be deleted by any address.
     const receipt2 = await optimisticOracleModule.methods
-      .deleteRejectedProposal(id, proposalTime, ancillaryData, disputedRequestParams)
+      .deleteRejectedProposal(id, proposalTime, ancillaryData)
       .send({ from: rando });
 
     await assertEventEmitted(receipt2, optimisticOracleModule, "ProposalDeleted", (event) => event.proposalId == id);
