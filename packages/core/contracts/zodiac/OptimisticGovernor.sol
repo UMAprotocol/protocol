@@ -185,19 +185,6 @@ contract OptimisticGovernor is Module, Lockable {
 
         // Propose a set of transactions to the OO. If not disputed, they can be executed with executeProposal().
         // docs: https://github.com/UMAprotocol/protocol/blob/master/packages/core/contracts/oracle/interfaces/OptimisticOracleInterface.sol
-
-        // optimisticOracle.requestAndProposePriceFor(
-        //     identifier,
-        //     uint32(time),
-        //     ancillaryData,
-        //     collateral,
-        //     0,
-        //     bond,
-        //     uint256(liveness),
-        //     address(this),
-        //     // Canonical value representing "True"; i.e. the transactions are valid.
-        //     int256(1e18)
-        // );
         optimisticOracle.requestPrice(identifier, time, ancillaryData, collateral, 0);
         uint256 totalBond = optimisticOracle.setBond(identifier, time, ancillaryData, bond);
         optimisticOracle.setCustomLiveness(identifier, time, ancillaryData, liveness);
