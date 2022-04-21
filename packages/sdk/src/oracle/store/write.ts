@@ -3,7 +3,7 @@ import type * as ethersTypes from "../types/ethers";
 import * as state from "../types/state";
 import * as statemachine from "../types/statemachine";
 
-import { requestId, insertOrderedAscending, eventKey } from "../utils";
+import { requestId, insertOrderedAscending, eventKey, isUnique } from "../utils";
 import { factory as Erc20Factory } from "../services/erc20";
 import { OptimisticOracle as OptimisticOracleService } from "../services/optimisticOracle";
 import Multicall2 from "../../multicall2";
@@ -81,7 +81,10 @@ export class OptimisticOracle {
   }
   event(event: state.OptimisticOracleEvent): void {
     if (!this.state.events) this.state.events = [];
-    insertOrderedAscending(this.state.events, event, eventKey);
+    // avoid duplicates
+    if (isUnique(this.state.events, event, eventKey)) {
+      insertOrderedAscending(this.state.events, event, eventKey);
+    }
   }
 }
 export class Chain {
