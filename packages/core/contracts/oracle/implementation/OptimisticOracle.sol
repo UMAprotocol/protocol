@@ -168,7 +168,7 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
         // TODO: to make this cheaper, we should just compute the max length of the stamping and add it to the
         // ancillary data length.
         require(
-            _stampAncillaryDataEventBased(ancillaryData, msg.sender, type(uint256).max).length <= ancillaryBytesLimit,
+            _stampAncillaryData(ancillaryData, msg.sender).length <= ancillaryBytesLimit,
             "Ancillary Data too long"
         );
         uint256 finalFee = _getStore().computeFinalFee(address(currency)).rawValue;
@@ -276,7 +276,9 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
             _getState(msg.sender, identifier, timestamp, ancillaryData) == State.Requested,
             "setEventBased: Requested"
         );
-        _getRequest(msg.sender, identifier, timestamp, ancillaryData).eventBased = true;
+        Request storage request = _getRequest(msg.sender, identifier, timestamp, ancillaryData);
+        request.eventBased = true;
+        request.refundOnDispute = true;
     }
 
     /**
@@ -330,6 +332,8 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
             address(request.currency)
         );
 
+        // End the re-entrancy guard early to allow the caller to potentially take OO-related actions inside this callback.
+        _notEntered = true;
         // Callback.
         if (address(requester).isContract())
             try OptimisticRequester(requester).priceProposed(identifier, timestamp, ancillaryData) {} catch {}
@@ -409,8 +413,8 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
 
         _getOracle().requestPrice(
             identifier,
-            timestamp,
-            _stampAncillaryDataForRequest(ancillaryData, requester, request)
+            _getDvmTimestamp(request, timestamp),
+            _stampAncillaryData(ancillaryData, requester)
         );
 
         // Compute refund.
@@ -431,6 +435,8 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
             request.proposedPrice
         );
 
+        // End the re-entrancy guard early to allow the caller to potentially re-request inside this callback.
+        _notEntered = true;
         // Callback.
         if (address(requester).isContract())
             try OptimisticRequester(requester).priceDisputed(identifier, timestamp, ancillaryData, refund) {} catch {}
@@ -591,8 +597,8 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
             // In the Resolved case, pay either the disputer or the proposer the entire payout (+ bond and reward).
             request.resolvedPrice = _getOracle().getPrice(
                 identifier,
-                timestamp,
-                _stampAncillaryDataForRequest(ancillaryData, requester, request)
+                _getDvmTimestamp(request, timestamp),
+                _stampAncillaryData(ancillaryData, requester)
             );
             bool disputeSuccess = request.resolvedPrice != request.proposedPrice;
             uint256 bond = request.bond;
@@ -622,11 +628,15 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
             payout
         );
 
+        // Temporarily disable the re-entrancy guard early to allow the caller to take an OO-related action inside this callback.
+        _notEntered = true;
         // Callback.
         if (address(requester).isContract())
             try
                 OptimisticRequester(requester).priceSettled(identifier, timestamp, ancillaryData, request.resolvedPrice)
             {} catch {}
+        // Re-enable this guard since the calling function may take other actions that need to be guarded after this.
+        _notEntered = false;
     }
 
     function _getRequest(
@@ -694,30 +704,13 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
         return IdentifierWhitelistInterface(finder.getImplementationAddress(OracleInterfaces.IdentifierWhitelist));
     }
 
-    function _stampAncillaryDataForRequest(
-        bytes memory ancillaryData,
-        address requester,
-        Request storage request
-    ) internal returns (bytes memory) {
+    function _getDvmTimestamp(Request storage request, uint256 requestTimestamp) internal view returns (uint256) {
         if (request.eventBased) {
             uint256 liveness = request.customLiveness != 0 ? request.customLiveness : defaultLiveness;
-            uint256 proposalTimestamp = request.expirationTime.sub(liveness);
-            return _stampAncillaryDataEventBased(ancillaryData, requester, proposalTimestamp);
+            return request.expirationTime.sub(liveness);
         } else {
-            return _stampAncillaryData(ancillaryData, requester);
+            return requestTimestamp;
         }
-    }
-
-    function _stampAncillaryDataEventBased(
-        bytes memory ancillaryData,
-        address requester,
-        uint256 proposalTimestamp
-    ) internal pure returns (bytes memory out) {
-        return
-            ancillaryData.appendKeyValueUint("proposalTimestamp", proposalTimestamp).appendKeyValueAddress(
-                "ooRequester",
-                requester
-            );
     }
 
     /**

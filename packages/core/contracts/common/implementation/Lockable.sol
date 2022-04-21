@@ -7,7 +7,7 @@ pragma solidity ^0.8.0;
  * and https://github.com/balancer-labs/balancer-core/blob/master/contracts/BPool.sol.
  */
 contract Lockable {
-    bool private _notEntered;
+    bool internal _notEntered;
 
     constructor() {
         // Storing an initial non-zero value makes deployment a bit more expensive, but in exchange the refund on every
