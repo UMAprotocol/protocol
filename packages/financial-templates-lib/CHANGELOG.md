@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.27.0](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.26.0...@uma/financial-templates-lib@2.27.0) (2022-04-22)
+
+### Features
+
+- add logger formatter to FPL release ([#3878](https://github.com/UMAprotocol/protocol/issues/3878)) ([adc471a](https://github.com/UMAprotocol/protocol/commit/adc471a34aa69d21bb783a91c67d3ea5f2f00b9e))
+
 # [2.26.0](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.25.0...@uma/financial-templates-lib@2.26.0) (2022-04-01)
 
 ### Bug Fixes

@@ -3,6 +3,10 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.14](https://github.com/UMAprotocol/protocol/compare/@uma/contract-notifier@1.0.13...@uma/contract-notifier@1.0.14) (2022-04-22)
+
+**Note:** Version bump only for package @uma/contract-notifier
+
 ## [1.0.13](https://github.com/UMAprotocol/protocol/compare/@uma/contract-notifier@1.0.12...@uma/contract-notifier@1.0.13) (2022-04-01)
 
 **Note:** Version bump only for package @uma/contract-notifier
