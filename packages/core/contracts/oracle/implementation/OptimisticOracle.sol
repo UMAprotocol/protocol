@@ -19,6 +19,8 @@ import "../../common/implementation/FixedPoint.sol";
 import "../../common/implementation/AncillaryData.sol";
 import "../../common/implementation/AddressWhitelist.sol";
 
+import "hardhat/console.sol";
+
 /**
  * @title Optimistic Requester.
  * @notice Optional interface that requesters can implement to receive callbacks.
@@ -697,7 +699,11 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
         }
 
         return
-            _getOracle().hasPrice(identifier, timestamp, _stampAncillaryData(ancillaryData, requester))
+            _getOracle().hasPrice(
+                identifier,
+                _getDvmTimestamp(request, timestamp),
+                _stampAncillaryData(ancillaryData, requester)
+            )
                 ? State.Resolved
                 : State.Disputed;
     }
