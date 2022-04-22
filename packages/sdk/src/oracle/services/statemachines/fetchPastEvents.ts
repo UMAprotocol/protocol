@@ -15,6 +15,7 @@ export type Params = {
   chainId: number;
   startBlock?: number;
   endBlock?: number;
+  maxRange?: number;
 };
 
 export type Memory = { error?: Error; state?: RangeState; iterations: number };
@@ -28,13 +29,13 @@ export function Handlers(store: Store): GenericHandlers<Params, Memory> {
   return {
     async start(params: Params, memory: Memory, ctx: ContextClient) {
       const provider = store.read().provider(params.chainId);
-      const { chainId, startBlock = 0, endBlock = await provider.getBlockNumber() } = params;
+      const { chainId, startBlock = 0, endBlock = await provider.getBlockNumber(), maxRange } = params;
 
       memory.error = undefined;
       // we use this wierd range thing because in the case we cant query the entire block range due to provider error
       // we want to move start block closer to endblock to reduce the range until it stops erroring. These range functions
       // will do that for us.
-      const rangeState = memory.state || rangeStart({ startBlock, endBlock });
+      const rangeState = memory.state || rangeStart({ startBlock, endBlock, maxRange });
       const { currentStart, currentEnd } = rangeState;
 
       try {

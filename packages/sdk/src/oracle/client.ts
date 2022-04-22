@@ -11,12 +11,7 @@ import { defaultConfig } from "./utils";
 
 export class Client {
   private intervalStarted = false;
-  constructor(
-    public readonly store: Store,
-    public readonly update: Update,
-    public readonly sm: StateMachine,
-    public readonly poller: StateMachine
-  ) {}
+  constructor(public readonly store: Store, public readonly update: Update, public readonly sm: StateMachine) {}
   setUser(params: Partial<User>): string {
     const address = params.address && ethers.utils.getAddress(params.address);
     return this.sm.types.setUser.create({ ...params, address });
@@ -145,7 +140,6 @@ export class Client {
       // it turns out since these 2 state machines share the same immer state, they need to be run serially and
       // cant be run concurrently or you get wierd state oscillations. For now keep them in the same timing loop.
       await this.sm.tick();
-      await this.poller.tick();
     }, delayMs).catch((err) => {
       console.error(err);
       this.intervalStarted = false;
@@ -176,20 +170,21 @@ export function factory(config: state.PartialConfig, emit: Emit): Client {
 
   // this first state machine is for user actions
   const sm = new StateMachine(store);
-  // this one is system actions used for long running commands independent of the user
-  const poller = new StateMachine(store);
 
   // start the request list checkers
   for (const [chainId, config] of Object.entries(fullConfig.chains)) {
-    poller.types.fetchPastEvents.create({ chainId: Number(chainId), startBlock: config.earliestBlockNumber }, "poller");
+    sm.types.fetchPastEvents.create(
+      { chainId: Number(chainId), startBlock: config.earliestBlockNumber, maxRange: config.maxEventRangeQuery },
+      "poller"
+    );
     // long running poller which only looks for new events
-    poller.types.pollNewEvents.create({ chainId: Number(chainId) }, "poller");
+    sm.types.pollNewEvents.create({ chainId: Number(chainId), pollRateSec: config.checkTxIntervalSec }, "poller");
   }
 
   // create active request poller for all chains. Should only have one of these
-  poller.types.pollActiveRequest.create(undefined, "poller");
+  sm.types.pollActiveRequest.create(undefined, "poller");
   // polls user for balances/approvals on the current chain, in case it changes external to app
-  poller.types.pollActiveUser.create(undefined, "poller");
+  sm.types.pollActiveUser.create(undefined, "poller");
 
-  return new Client(store, update, sm, poller);
+  return new Client(store, update, sm);
 }
