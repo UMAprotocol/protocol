@@ -125,6 +125,10 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
     // Default liveness value for all price requests.
     uint256 public defaultLiveness;
 
+    // This is effectively the extra ancillary data to add ",ooRequester:0000000000000000000000000000000000000000".
+    uint256 private constant MAX_ADDED_ANCILLARY_DATA = 53;
+    uint256 public constant OO_ANCILLARY_DATA_LIMIT = ancillaryBytesLimit - 53;
+
     /**
      * @notice Constructor.
      * @param _liveness default liveness applied to each price request.
@@ -165,12 +169,10 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
         require(_getCollateralWhitelist().isOnWhitelist(address(currency)), "Unsupported currency");
         require(timestamp <= getCurrentTime(), "Timestamp in future");
 
-        // TODO: to make this cheaper, we should just compute the max length of the stamping and add it to the
-        // ancillary data length.
-        require(
-            _stampAncillaryData(ancillaryData, msg.sender).length <= ancillaryBytesLimit,
-            "Ancillary Data too long"
-        );
+        // This ensures that the ancillary data is below the OO limit, which is lower than the DVM limit because the
+        // OO adds some data before sending to the DVM.
+        require(ancillaryData.length <= OO_ANCILLARY_DATA_LIMIT, "Ancillary Data too long");
+
         uint256 finalFee = _getStore().computeFinalFee(address(currency)).rawValue;
         requests[_getId(msg.sender, identifier, timestamp, ancillaryData)] = Request({
             proposer: address(0),
