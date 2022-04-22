@@ -264,9 +264,23 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
         _getRequest(msg.sender, identifier, timestamp, ancillaryData).customLiveness = customLiveness;
     }
 
-    // Allows the requester to set the request to be an "event based" request.
-    // This means that "too early" values are disallowed in proposals and the
-    // proposal timestamp is appended to the ancillary data.
+    /**
+     * @notice Sets the request to be an "event-based" request.
+     * @dev Calling this method has a few impacts on the request:
+     *
+     * 1. The timestamp at which the request is evaludated is the time of the proposal, not the timestamp associated
+     *    with the request.
+     *
+     * 2. The proposer cannot propose the "too early" value (type(int256).min). This is to ensure that a proposer who
+     *    prematurely proposes a response loses their bond.
+     *
+     * 3. RefundoOnDispute is automatically set, meaning disputes trigger the reward to be automatically refunded to
+     *    the requesting contract.
+     *
+     * @param identifier price identifier to identify the existing request.
+     * @param timestamp timestamp to identify the existing request.
+     * @param ancillaryData ancillary data of the price being requested.
+     */
     function setEventBased(
         bytes32 identifier,
         uint256 timestamp,

@@ -26,7 +26,7 @@ abstract contract OptimisticOracleInterface {
         IERC20 currency; // ERC20 token used to pay rewards and fees.
         bool settled; // True if the request is settled.
         bool refundOnDispute; // True if the requester should be refunded their reward on dispute.
-        bool eventBased;
+        bool eventBased; // True if the request is set to be event-based.
         int256 proposedPrice; // Price that the proposer submitted.
         int256 resolvedPrice; // Price resolved once the request is settled.
         uint256 expirationTime; // Time at which the request auto-settles without a dispute.
