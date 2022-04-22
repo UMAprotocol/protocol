@@ -270,7 +270,7 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
      * @notice Sets the request to be an "event-based" request.
      * @dev Calling this method has a few impacts on the request:
      *
-     * 1. The timestamp at which the request is evaludated is the time of the proposal, not the timestamp associated
+     * 1. The timestamp at which the request is evaluated is the time of the proposal, not the timestamp associated
      *    with the request.
      *
      * 2. The proposer cannot propose the "too early" value (type(int256).min). This is to ensure that a proposer who
