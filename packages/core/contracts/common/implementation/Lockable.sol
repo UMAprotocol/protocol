@@ -58,4 +58,20 @@ contract Lockable {
         // https://eips.ethereum.org/EIPS/eip-2200)
         _notEntered = true;
     }
+
+    // These functions are intended to be used by child contracts to temporarily disable and re-enable the guard.
+    // Intended use:
+    // _startReentrantGuardDisabled();
+    // ...
+    // _endReentrantGuardDisabled();
+    //
+    // IMPORTANT: these should NEVER be used in a method that isn't inside a nonReentrant block. Otherwise, it's
+    // possible to permanently lock your contract.
+    function _startReentrantGuardDisabled() internal {
+        _notEntered = true;
+    }
+
+    function _endReentrantGuardDisabled() internal {
+        _notEntered = false;
+    }
 }

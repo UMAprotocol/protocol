@@ -76,6 +76,7 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
     using Address for address;
+    using AncillaryData for bytes;
 
     event RequestPrice(
         address indexed requester,
@@ -124,6 +125,10 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
     // Default liveness value for all price requests.
     uint256 public defaultLiveness;
 
+    // This is effectively the extra ancillary data to add ",ooRequester:0000000000000000000000000000000000000000".
+    uint256 private constant MAX_ADDED_ANCILLARY_DATA = 53;
+    uint256 public constant OO_ANCILLARY_DATA_LIMIT = ancillaryBytesLimit - 53;
+
     /**
      * @notice Constructor.
      * @param _liveness default liveness applied to each price request.
@@ -163,10 +168,11 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
         require(_getIdentifierWhitelist().isIdentifierSupported(identifier), "Unsupported identifier");
         require(_getCollateralWhitelist().isOnWhitelist(address(currency)), "Unsupported currency");
         require(timestamp <= getCurrentTime(), "Timestamp in future");
-        require(
-            _stampAncillaryData(ancillaryData, msg.sender).length <= ancillaryBytesLimit,
-            "Ancillary Data too long"
-        );
+
+        // This ensures that the ancillary data is below the OO limit, which is lower than the DVM limit because the
+        // OO adds some data before sending to the DVM.
+        require(ancillaryData.length <= OO_ANCILLARY_DATA_LIMIT, "Ancillary Data too long");
+
         uint256 finalFee = _getStore().computeFinalFee(address(currency)).rawValue;
         requests[_getId(msg.sender, identifier, timestamp, ancillaryData)] = Request({
             proposer: address(0),
@@ -180,7 +186,8 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
             reward: reward,
             finalFee: finalFee,
             bond: finalFee,
-            customLiveness: 0
+            customLiveness: 0,
+            eventBased: false
         });
 
         if (reward > 0) {
@@ -260,6 +267,37 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
     }
 
     /**
+     * @notice Sets the request to be an "event-based" request.
+     * @dev Calling this method has a few impacts on the request:
+     *
+     * 1. The timestamp at which the request is evaluated is the time of the proposal, not the timestamp associated
+     *    with the request.
+     *
+     * 2. The proposer cannot propose the "too early" value (type(int256).min). This is to ensure that a proposer who
+     *    prematurely proposes a response loses their bond.
+     *
+     * 3. RefundoOnDispute is automatically set, meaning disputes trigger the reward to be automatically refunded to
+     *    the requesting contract.
+     *
+     * @param identifier price identifier to identify the existing request.
+     * @param timestamp timestamp to identify the existing request.
+     * @param ancillaryData ancillary data of the price being requested.
+     */
+    function setEventBased(
+        bytes32 identifier,
+        uint256 timestamp,
+        bytes memory ancillaryData
+    ) external nonReentrant() {
+        require(
+            _getState(msg.sender, identifier, timestamp, ancillaryData) == State.Requested,
+            "setEventBased: Requested"
+        );
+        Request storage request = _getRequest(msg.sender, identifier, timestamp, ancillaryData);
+        request.eventBased = true;
+        request.refundOnDispute = true;
+    }
+
+    /**
      * @notice Proposes a price value on another address' behalf. Note: this address will receive any rewards that come
      * from this proposal. However, any bonds are pulled from the caller.
      * @param proposer address to set as the proposer.
@@ -285,6 +323,7 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
             "proposePriceFor: Requested"
         );
         Request storage request = _getRequest(requester, identifier, timestamp, ancillaryData);
+        if (request.eventBased) require(proposedPrice != type(int256).min, "Cannot propose 'too early'");
         request.proposer = proposer;
         request.proposedPrice = proposedPrice;
 
@@ -309,9 +348,12 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
             address(request.currency)
         );
 
+        // End the re-entrancy guard early to allow the caller to potentially take OO-related actions inside this callback.
+        _startReentrantGuardDisabled();
         // Callback.
         if (address(requester).isContract())
             try OptimisticRequester(requester).priceProposed(identifier, timestamp, ancillaryData) {} catch {}
+        _endReentrantGuardDisabled();
     }
 
     /**
@@ -386,7 +428,11 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
             }
         }
 
-        _getOracle().requestPrice(identifier, timestamp, _stampAncillaryData(ancillaryData, requester));
+        _getOracle().requestPrice(
+            identifier,
+            _getTimestampForDvmRequest(request, timestamp),
+            _stampAncillaryData(ancillaryData, requester)
+        );
 
         // Compute refund.
         uint256 refund = 0;
@@ -406,9 +452,12 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
             request.proposedPrice
         );
 
+        // End the re-entrancy guard early to allow the caller to potentially re-request inside this callback.
+        _startReentrantGuardDisabled();
         // Callback.
         if (address(requester).isContract())
             try OptimisticRequester(requester).priceDisputed(identifier, timestamp, ancillaryData, refund) {} catch {}
+        _endReentrantGuardDisabled();
     }
 
     /**
@@ -566,7 +615,7 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
             // In the Resolved case, pay either the disputer or the proposer the entire payout (+ bond and reward).
             request.resolvedPrice = _getOracle().getPrice(
                 identifier,
-                timestamp,
+                _getTimestampForDvmRequest(request, timestamp),
                 _stampAncillaryData(ancillaryData, requester)
             );
             bool disputeSuccess = request.resolvedPrice != request.proposedPrice;
@@ -597,11 +646,14 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
             payout
         );
 
+        // Temporarily disable the re-entrancy guard early to allow the caller to take an OO-related action inside this callback.
+        _startReentrantGuardDisabled();
         // Callback.
         if (address(requester).isContract())
             try
                 OptimisticRequester(requester).priceSettled(identifier, timestamp, ancillaryData, request.resolvedPrice)
             {} catch {}
+        _endReentrantGuardDisabled();
     }
 
     function _getRequest(
@@ -648,7 +700,11 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
         }
 
         return
-            _getOracle().hasPrice(identifier, timestamp, _stampAncillaryData(ancillaryData, requester))
+            _getOracle().hasPrice(
+                identifier,
+                _getTimestampForDvmRequest(request, timestamp),
+                _stampAncillaryData(ancillaryData, requester)
+            )
                 ? State.Resolved
                 : State.Disputed;
     }
@@ -667,6 +723,19 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
 
     function _getIdentifierWhitelist() internal view returns (IdentifierWhitelistInterface) {
         return IdentifierWhitelistInterface(finder.getImplementationAddress(OracleInterfaces.IdentifierWhitelist));
+    }
+
+    function _getTimestampForDvmRequest(Request storage request, uint256 requestTimestamp)
+        internal
+        view
+        returns (uint256)
+    {
+        if (request.eventBased) {
+            uint256 liveness = request.customLiveness != 0 ? request.customLiveness : defaultLiveness;
+            return request.expirationTime.sub(liveness);
+        } else {
+            return requestTimestamp;
+        }
     }
 
     /**
