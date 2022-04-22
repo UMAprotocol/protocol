@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.23.0](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.22.2...@uma/sdk@0.23.0) (2022-04-22)
+
+### Bug Fixes
+
+- improve oracle data loading ([#3883](https://github.com/UMAprotocol/protocol/issues/3883)) ([1348aab](https://github.com/UMAprotocol/protocol/commit/1348aabb5693a225551473696bdd874863e78711))
+- **sdk:** syncronize oo client index and details page ([#3882](https://github.com/UMAprotocol/protocol/issues/3882)) ([39769a7](https://github.com/UMAprotocol/protocol/commit/39769a70767029c40cc7d21d3b5dce69c42d3d99))
+- fallback to mainnet prices for L2 ERC20 tokens ([#3872](https://github.com/UMAprotocol/protocol/issues/3872)) ([cde12d9](https://github.com/UMAprotocol/protocol/commit/cde12d92368aed64e7c4767c214f34c1b221eedc))
+
+### Features
+
+- add ability to define chains other than ethereum in calls ([#3876](https://github.com/UMAprotocol/protocol/issues/3876)) ([858331f](https://github.com/UMAprotocol/protocol/commit/858331ffabde7806283c968d773ea0d41a8e02b3))
+
 ## [0.22.2](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.22.1...@uma/sdk@0.22.2) (2022-04-01)
 
 ### Bug Fixes

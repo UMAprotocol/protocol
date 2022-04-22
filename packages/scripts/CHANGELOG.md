@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.10.0](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.9.0...@uma/scripts@1.10.0) (2022-04-22)
+
+### Features
+
+- Add script to manually propose a single admin transaction ([#3868](https://github.com/UMAprotocol/protocol/issues/3868)) ([872362a](https://github.com/UMAprotocol/protocol/commit/872362a1d0c07df535b846ed68d98a71f0592ee2))
+
 # [1.9.0](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.8.1...@uma/scripts@1.9.0) (2022-04-01)
 
 ### Bug Fixes

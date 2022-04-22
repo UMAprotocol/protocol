@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.10.7](https://github.com/UMAprotocol/protocol/compare/@uma/api@0.10.6...@uma/api@0.10.7) (2022-04-22)
+
+### Bug Fixes
+
+- fallback to mainnet prices for L2 ERC20 tokens ([#3872](https://github.com/UMAprotocol/protocol/issues/3872)) ([cde12d9](https://github.com/UMAprotocol/protocol/commit/cde12d92368aed64e7c4767c214f34c1b221eedc))
+
 ## [0.10.6](https://github.com/UMAprotocol/protocol/compare/@uma/api@0.10.5...@uma/api@0.10.6) (2022-04-01)
 
 **Note:** Version bump only for package @uma/api

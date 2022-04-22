@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.27.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.26.0...@uma/core@2.27.0) (2022-04-22)
+
+### Features
+
+- add OptimisticDistributor ([#3861](https://github.com/UMAprotocol/protocol/issues/3861)) ([bb8cc01](https://github.com/UMAprotocol/protocol/commit/bb8cc019cd0061324000479bf2b7fec2e1eb87bd))
+- Add Polygon tunnel addresses ([#3867](https://github.com/UMAprotocol/protocol/issues/3867)) ([88e1ee1](https://github.com/UMAprotocol/protocol/commit/88e1ee14c79997850e5cc183d36d9565308fde93))
+- add zodiac module ([#3843](https://github.com/UMAprotocol/protocol/issues/3843)) ([6368e90](https://github.com/UMAprotocol/protocol/commit/6368e90125c3b1ae445ff0ae3c3b38b63efaa72a))
+
 # [2.26.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.25.1...@uma/core@2.26.0) (2022-04-01)
 
 ### Bug Fixes
