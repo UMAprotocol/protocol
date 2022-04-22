@@ -7,7 +7,7 @@ pragma solidity ^0.8.0;
  * and https://github.com/balancer-labs/balancer-core/blob/master/contracts/BPool.sol.
  */
 contract Lockable {
-    bool internal _notEntered;
+    bool private _notEntered;
 
     constructor() {
         // Storing an initial non-zero value makes deployment a bit more expensive, but in exchange the refund on every
@@ -57,5 +57,21 @@ contract Lockable {
         // By storing the original value once again, a refund is triggered (see
         // https://eips.ethereum.org/EIPS/eip-2200)
         _notEntered = true;
+    }
+
+    // These functions are intended to be used by child contracts to temporarily disable and re-enable the guard.
+    // Intended use:
+    // _startReentrantGuardDisabled();
+    // ...
+    // _endReentrantGuardDisabled();
+    //
+    // IMPORTANT: these should NEVER be used in a method that isn't inside a nonReentrant block. Otherwise, it's
+    // possible to permanently lock your contract.
+    function _startReentrantGuardDisabled() internal {
+        _notEntered = true;
+    }
+
+    function _endReentrantGuardDisabled() internal {
+        _notEntered = false;
     }
 }

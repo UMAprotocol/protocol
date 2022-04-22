@@ -347,10 +347,11 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
         );
 
         // End the re-entrancy guard early to allow the caller to potentially take OO-related actions inside this callback.
-        _notEntered = true;
+        _startReentrantGuardDisabled();
         // Callback.
         if (address(requester).isContract())
             try OptimisticRequester(requester).priceProposed(identifier, timestamp, ancillaryData) {} catch {}
+        _endReentrantGuardDisabled();
     }
 
     /**
@@ -427,7 +428,7 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
 
         _getOracle().requestPrice(
             identifier,
-            _getDvmTimestamp(request, timestamp),
+            _getTimestampForDvmRequest(request, timestamp),
             _stampAncillaryData(ancillaryData, requester)
         );
 
@@ -450,10 +451,11 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
         );
 
         // End the re-entrancy guard early to allow the caller to potentially re-request inside this callback.
-        _notEntered = true;
+        _startReentrantGuardDisabled();
         // Callback.
         if (address(requester).isContract())
             try OptimisticRequester(requester).priceDisputed(identifier, timestamp, ancillaryData, refund) {} catch {}
+        _endReentrantGuardDisabled();
     }
 
     /**
@@ -611,7 +613,7 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
             // In the Resolved case, pay either the disputer or the proposer the entire payout (+ bond and reward).
             request.resolvedPrice = _getOracle().getPrice(
                 identifier,
-                _getDvmTimestamp(request, timestamp),
+                _getTimestampForDvmRequest(request, timestamp),
                 _stampAncillaryData(ancillaryData, requester)
             );
             bool disputeSuccess = request.resolvedPrice != request.proposedPrice;
@@ -643,14 +645,13 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
         );
 
         // Temporarily disable the re-entrancy guard early to allow the caller to take an OO-related action inside this callback.
-        _notEntered = true;
+        _startReentrantGuardDisabled();
         // Callback.
         if (address(requester).isContract())
             try
                 OptimisticRequester(requester).priceSettled(identifier, timestamp, ancillaryData, request.resolvedPrice)
             {} catch {}
-        // Re-enable this guard since the calling function may take other actions that need to be guarded after this.
-        _notEntered = false;
+        _endReentrantGuardDisabled();
     }
 
     function _getRequest(
@@ -699,7 +700,7 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
         return
             _getOracle().hasPrice(
                 identifier,
-                _getDvmTimestamp(request, timestamp),
+                _getTimestampForDvmRequest(request, timestamp),
                 _stampAncillaryData(ancillaryData, requester)
             )
                 ? State.Resolved
@@ -722,7 +723,11 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
         return IdentifierWhitelistInterface(finder.getImplementationAddress(OracleInterfaces.IdentifierWhitelist));
     }
 
-    function _getDvmTimestamp(Request storage request, uint256 requestTimestamp) internal view returns (uint256) {
+    function _getTimestampForDvmRequest(Request storage request, uint256 requestTimestamp)
+        internal
+        view
+        returns (uint256)
+    {
         if (request.eventBased) {
             uint256 liveness = request.customLiveness != 0 ? request.customLiveness : defaultLiveness;
             return request.expirationTime.sub(liveness);
