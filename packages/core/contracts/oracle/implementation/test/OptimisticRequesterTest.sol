@@ -76,6 +76,14 @@ contract OptimisticRequesterTest is OptimisticRequester {
         optimisticOracle.setCustomLiveness(_identifier, _timestamp, _ancillaryData, customLiveness);
     }
 
+    function setEventBased(
+        bytes32 _identifier,
+        uint256 _timestamp,
+        bytes memory _ancillaryData
+    ) external {
+        optimisticOracle.setEventBased(_identifier, _timestamp, _ancillaryData);
+    }
+
     function setRevert(bool _shouldRevert) external {
         shouldRevert = _shouldRevert;
     }

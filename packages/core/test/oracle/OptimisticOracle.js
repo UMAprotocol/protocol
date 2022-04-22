@@ -5,6 +5,7 @@ const { OptimisticOracleRequestStatesEnum, didContractThrow, interfaceName } = r
 const { assert } = require("chai");
 
 const { toWei, toBN, hexToUtf8, utf8ToHex } = web3.utils;
+const INT_MIN = toBN("2").pow(toBN("255")).mul(toBN("-1"));
 
 const OptimisticOracle = getContract("OptimisticOracle");
 const Finder = getContract("Finder");
@@ -351,6 +352,15 @@ describe("OptimisticOracle", function () {
       await verifyBalanceSum(optimisticOracle.options.address, reward, totalDefaultBond);
     });
 
+    it("INT_MIN proposal", async function () {
+      await collateral.methods.approve(optimisticOracle.options.address, totalDefaultBond).send({ from: proposer });
+      await optimisticOracle.methods
+        .proposePrice(optimisticRequester.options.address, identifier, requestTime, "0x", INT_MIN)
+        .send({ from: proposer });
+      await verifyState(OptimisticOracleRequestStatesEnum.PROPOSED);
+      await verifyBalanceSum(optimisticOracle.options.address, reward, totalDefaultBond);
+    });
+
     it("Custom bond proposal", async function () {
       await optimisticRequester.methods.setBond(identifier, requestTime, "0x", customBond).send({ from: accounts[0] });
       await collateral.methods.approve(optimisticOracle.options.address, totalCustomBond).send({ from: proposer });
@@ -515,6 +525,65 @@ describe("OptimisticOracle", function () {
 
       // Price should be unset as this callback has not been received yet.
       assert.equal((await optimisticRequester.methods.price().call()).toString(), "0");
+    });
+
+    it("Event-based", async function () {
+      await optimisticRequester.methods.setEventBased(identifier, requestTime, "0x").send({ from: accounts[0] });
+      await collateral.methods.approve(optimisticOracle.options.address, totalDefaultBond).send({ from: proposer });
+
+      // Contract should throw if INT_MIN is proposed.
+      assert(
+        await didContractThrow(
+          optimisticOracle.methods
+            .proposePrice(optimisticRequester.options.address, identifier, requestTime, "0x", INT_MIN)
+            .send({ from: proposer })
+        )
+      );
+
+      // Make sure the proposal time != request time.
+      const requestSubmissionTimestamp = await optimisticOracle.methods.getCurrentTime().call();
+      const proposalSubmissionTimestamp = parseInt(requestSubmissionTimestamp.toString()) + 100;
+      await optimisticOracle.methods.setCurrentTime(proposalSubmissionTimestamp).send({ from: accounts[0] });
+
+      await optimisticOracle.methods
+        .proposePrice(optimisticRequester.options.address, identifier, requestTime, "0x", correctPrice)
+        .send({ from: proposer });
+
+      const disputeSubmissionTimestamp = proposalSubmissionTimestamp + 100;
+      await optimisticOracle.methods.setCurrentTime(disputeSubmissionTimestamp).send({ from: accounts[0] });
+      await collateral.methods.approve(optimisticOracle.options.address, totalDefaultBond).send({ from: disputer });
+      await optimisticOracle.methods
+        .disputePrice(optimisticRequester.options.address, identifier, requestTime, "0x")
+        .send({ from: disputer });
+
+      // Verify that the balance checks out and the request can settle.
+      await verifyBalanceSum(optimisticRequester.options.address, reward);
+
+      // Verify that the DVM query was at the proposal time, not the request time or dispute time;
+      const [lastQuery] = (await mockOracle.methods.getPendingQueries().call()).slice(-1);
+      assert.equal(lastQuery.time.toString(), proposalSubmissionTimestamp.toString());
+      assert.notEqual(lastQuery.time.toString(), requestSubmissionTimestamp.toString());
+      assert.notEqual(lastQuery.time.toString(), requestTime.toString());
+      assert.notEqual(lastQuery.time.toString(), disputeSubmissionTimestamp.toString());
+      await pushPrice(correctPrice);
+      await optimisticOracle.methods
+        .settle(optimisticRequester.options.address, identifier, requestTime, "0x")
+        .send({ from: accounts[0] });
+
+      // Proposer should net half of the disputer's bond.
+      await verifyBalanceSum(proposer, initialUserBalance, halfDefaultBond);
+
+      // Disputer should have lost their bond.
+      await verifyBalanceSum(disputer, initialUserBalance, `-${totalDefaultBond}`);
+
+      // Contract should contain nothing.
+      await verifyBalanceSum(optimisticOracle.options.address);
+
+      // Store should have a final fee plus half of the bond (the burned portion).
+      await verifyBalanceSum(store.options.address, finalFee, halfDefaultBond);
+
+      // Check that the refund was included in the callback.
+      assert.equal((await optimisticRequester.methods.refund().call()).toString(), reward);
     });
   });
 
