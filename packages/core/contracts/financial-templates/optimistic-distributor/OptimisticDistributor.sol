@@ -67,9 +67,6 @@ contract OptimisticDistributor is Lockable, MultiCaller, Testable {
     uint256 public constant MINIMUM_LIVENESS = 10 minutes;
     uint256 public constant MAXIMUM_LIVENESS = 5200 weeks;
 
-    // Final fee can be synced and stored in the contract.
-    uint256 public finalFee;
-
     // Ancillary data length limit can be synced and stored in the contract.
     uint256 public ancillaryBytesLimit;
 
@@ -88,7 +85,6 @@ contract OptimisticDistributor is Lockable, MultiCaller, Testable {
     MerkleDistributor public merkleDistributor;
 
     // Interface parameters that can be synced and stored in the contract.
-    StoreInterface public store;
     OptimisticOracleInterface public optimisticOracle;
 
     /********************************************
@@ -388,8 +384,6 @@ contract OptimisticDistributor is Lockable, MultiCaller, Testable {
      * in this contract to map to the latest version in the Finder and store the latest final fee.
      */
     function syncUmaEcosystemParams() public nonReentrant() {
-        store = _getStore();
-        finalFee = store.computeFinalFee(address(bondToken)).rawValue;
         optimisticOracle = _getOptimisticOracle();
         ancillaryBytesLimit = optimisticOracle.ancillaryBytesLimit();
     }
