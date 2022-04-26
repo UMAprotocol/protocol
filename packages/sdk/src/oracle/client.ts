@@ -11,7 +11,12 @@ import { defaultConfig } from "./utils";
 
 export class Client {
   private intervalStarted = false;
-  constructor(public readonly store: Store, public readonly update: Update, public readonly sm: StateMachine) {}
+  constructor(
+    public readonly store: Store,
+    public readonly update: Update,
+    public readonly sm: StateMachine,
+    public readonly poller: StateMachine
+  ) {}
   setUser(params: Partial<User>): string {
     const address = params.address && ethers.utils.getAddress(params.address);
     return this.sm.types.setUser.create({ ...params, address });
@@ -26,10 +31,14 @@ export class Client {
     const identifier = params.identifier.toLowerCase();
     const chainId = Number(params.chainId);
     const timestamp = Number(params.timestamp);
-    return this.sm.types.setActiveRequest.create({ requester, ancillaryData, identifier, chainId, timestamp });
+    const result = this.sm.types.setActiveRequest.create({ requester, ancillaryData, identifier, chainId, timestamp });
+    this.sm.types.updateActiveRequest.create(undefined);
+    return result;
   }
   setActiveRequestByTransaction(params: setActiveRequestByTransaction.Params): string {
-    return this.sm.types.setActiveRequestByTransaction.create(params);
+    const result = this.sm.types.setActiveRequestByTransaction.create(params);
+    this.sm.types.updateActiveRequest.create(undefined);
+    return result;
   }
   approveCollateral(): string {
     const { checkTxIntervalSec } = this.store.read().chainConfig();
@@ -140,6 +149,7 @@ export class Client {
       // it turns out since these 2 state machines share the same immer state, they need to be run serially and
       // cant be run concurrently or you get wierd state oscillations. For now keep them in the same timing loop.
       await this.sm.tick();
+      await this.poller.tick();
     }, delayMs).catch((err) => {
       console.error(err);
       this.intervalStarted = false;
@@ -170,21 +180,22 @@ export function factory(config: state.PartialConfig, emit: Emit): Client {
 
   // this first state machine is for user actions
   const sm = new StateMachine(store);
+  // this one is system actions used for long running commands independent of the user
+  const poller = new StateMachine(store);
 
   // start the request list checkers
   for (const [chainId, config] of Object.entries(fullConfig.chains)) {
-    sm.types.fetchPastEvents.create(
+    poller.types.fetchPastEvents.create(
       { chainId: Number(chainId), startBlock: config.earliestBlockNumber, maxRange: config.maxEventRangeQuery },
       "poller"
     );
     // long running poller which only looks for new events
-    sm.types.pollNewEvents.create({ chainId: Number(chainId), pollRateSec: config.checkTxIntervalSec }, "poller");
+    poller.types.pollNewEvents.create({ chainId: Number(chainId), pollRateSec: config.checkTxIntervalSec }, "poller");
   }
-
   // create active request poller for all chains. Should only have one of these
-  sm.types.pollActiveRequest.create(undefined, "poller");
+  poller.types.pollActiveRequest.create(undefined, "poller");
   // polls user for balances/approvals on the current chain, in case it changes external to app
-  sm.types.pollActiveUser.create(undefined, "poller");
+  poller.types.pollActiveUser.create(undefined, "poller");
 
-  return new Client(store, update, sm);
+  return new Client(store, update, sm, poller);
 }
