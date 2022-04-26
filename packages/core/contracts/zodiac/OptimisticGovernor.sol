@@ -30,8 +30,6 @@ contract OptimisticGovernor is Module, Lockable {
         bytes explanation
     );
 
-    event PriceProposed(bytes32 indexed identifier, uint256 indexed timestamp, bytes ancillaryData);
-
     event TransactionExecuted(uint256 indexed proposalId, uint256 indexed transactionIndex);
 
     event ProposalDeleted(uint256 indexed proposalId);
