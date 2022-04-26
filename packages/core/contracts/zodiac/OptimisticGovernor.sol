@@ -30,8 +30,6 @@ contract OptimisticGovernor is Module, Lockable {
         bytes explanation
     );
 
-    event PriceProposed(bytes32 indexed identifier, uint256 indexed timestamp, bytes ancillaryData);
-
     event TransactionExecuted(uint256 indexed proposalId, uint256 indexed transactionIndex);
 
     event ProposalDeleted(uint256 indexed proposalId);
@@ -114,48 +112,71 @@ contract OptimisticGovernor is Module, Lockable {
         emit OptimisticGovernorDeployed(_owner, avatar, target);
     }
 
-    function priceProposed(
-        bytes32 _identifier,
-        uint256 _timestamp,
-        bytes memory _ancillaryData
-    ) external {
-        emit PriceProposed(_identifier, _timestamp, _ancillaryData);
-    }
-
+    /**
+     * @notice Sets the bond amount for proposals.
+     * @param _bond amount of the bond token that will need to be paid for future proposals.
+     */
     function setBond(uint256 _bond) public onlyOwner {
         // Value of the bond required for proposals, in addition to the final fee.
         bond = _bond;
     }
 
-    function setCollateral(IERC20 _collateral) public onlyOwner nonReentrant {
+    /**
+     * @notice Sets the collateral token (and bond token) for future proposals.
+     * @param _collateral token that will be used for all bonds for the contract.
+     */
+    function setCollateral(IERC20 _collateral) public onlyOwner {
         // ERC20 token to be used as collateral (must be approved by UMA Store contract).
         require(_getCollateralWhitelist().isOnWhitelist(address(_collateral)), "bond token not supported");
         collateral = _collateral;
-        _sync();
     }
 
+    /**
+     * @notice Sets the rules that will be used to evaluate future proposals.
+     * @param _rules string that outlines or references the location where the rules can be found.
+     */
     function setRules(string memory _rules) public onlyOwner {
         // Set reference to the rules for the avatar (e.g. an IPFS hash or URI).
         rules = _rules;
     }
 
+    /**
+     * @notice Sets the liveness for future proposals. This is the amount of delay before a proposal is approved by
+     * default.
+     * @param _liveness liveness to set in seconds.
+     */
     function setLiveness(uint64 _liveness) public onlyOwner {
         // Set liveness for disputing proposed transactions.
         require(_liveness > 0, "liveness can't be 0");
         liveness = _liveness;
     }
 
+    /**
+     * @notice Sets the identifier for future proposals.
+     * @dev Changing this after a proposal is made but before it is executed will make it unexecutable.
+     * @param _identifier identifier to set.
+     */
     function setIdentifier(bytes32 _identifier) public onlyOwner {
         // Set identifier which is used along with the rules to determine if transactions are valid.
         require(_getIdentifierWhitelist().isIdentifierSupported(_identifier), "identifier not supported");
         identifier = _identifier;
     }
 
+    /**
+     * @notice This pulls in the most up-to-date Optimistic Oracle.
+     * @dev If a new OptimisticOracle is added and this is run between a proposals introduction and execution, the
+     * proposal will become unexecutable.
+     */
     function sync() public nonReentrant {
         // Sync the oracle contract addresses as well as the final fee.
         _sync();
     }
 
+    /**
+     * @notice Makes a new proposal for transactions to be executed with an "explanation" argument.
+     * @param _transactions the transactions being proposed.
+     * @param _explanation Auxillary information that can be referenced to validate the proposal.
+     */
     function proposeTransactions(Transaction[] memory _transactions, bytes memory _explanation) public nonReentrant {
         // note: Optional explanation explains the intent of the transactions to make comprehension easier.
         uint256 id = prevProposalId + 1;
@@ -198,6 +219,12 @@ contract OptimisticGovernor is Module, Lockable {
         emit TransactionsProposed(id, proposer, time, proposal, _explanation);
     }
 
+    /**
+     * @notice Executes an approved proposal.
+     * @param _proposalId the id of the proposal being executed.
+     * @param _transactions the transactions being executed. These must exactly match those that were proposed.
+     * @param _originalTime the timestamp of the original proposal.
+     */
     function executeProposal(
         uint256 _proposalId,
         Transaction[] memory _transactions,
@@ -231,19 +258,26 @@ contract OptimisticGovernor is Module, Lockable {
         }
     }
 
+    /**
+     * @notice Method to allow the owner to delete a particular proposal.
+     * @param _proposalId the id of the proposal being deleted.
+     */
     function deleteProposal(uint256 _proposalId) public onlyOwner {
-        // Delete a proposal that governance decided not to execute.
         delete proposalHashes[_proposalId];
         emit ProposalDeleted(_proposalId);
     }
 
-    function deleteRejectedProposal(
-        uint256 _proposalId,
-        uint256 _originalTime,
-        bytes memory _ancillaryData
-    ) public {
+    /**
+     * @notice Method to allow anyone to delete a proposal that was rejected.
+     * @param _proposalId the id of the proposal being deleted.
+     * @param _originalTime the id of the proposal being deleted.
+     */
+    function deleteRejectedProposal(uint256 _proposalId, uint256 _originalTime) public {
+        // Construct the ancillary data.
+        bytes memory ancillaryData = AncillaryData.appendKeyValueUint("", "id", _proposalId);
+
         // This will revert if the price has not settled.
-        int256 price = optimisticOracle.settleAndGetPrice(identifier, _originalTime, _ancillaryData);
+        int256 price = optimisticOracle.settleAndGetPrice(identifier, _originalTime, ancillaryData);
 
         // Check that proposal was rejected.
         require(price != int256(1e18), "Proposal was not rejected");
@@ -253,7 +287,10 @@ contract OptimisticGovernor is Module, Lockable {
         emit ProposalDeleted(_proposalId);
     }
 
-    // Can be overriden for testing.
+    /**
+     * @notice Gets the current time for this contract.
+     * @dev This only exists so it can be overriden for testing.
+     */
     function getCurrentTime() public view virtual returns (uint256) {
         return block.timestamp;
     }

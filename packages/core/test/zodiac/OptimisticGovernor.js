@@ -1,6 +1,6 @@
 const { assert } = require("chai");
 const hre = require("hardhat");
-const { web3, getContract, assertEventEmitted /* , findEvent */ } = hre;
+const { web3, getContract, assertEventEmitted, findEvent } = hre;
 const { didContractThrow, interfaceName, runDefaultFixture, TokenRolesEnum, ZERO_ADDRESS } = require("@uma/common");
 // const { isEmpty } = require("lodash");
 const { utf8ToHex, toWei, toBN /* randomHex, toChecksumAddress */ } = web3.utils;
@@ -222,13 +222,6 @@ describe("OptimisticGovernor", () => {
         event.proposal.transactions[2].data == txnData3 &&
         event.proposal.transactions[2].operation == 0
     );
-
-    await assertEventEmitted(
-      receipt,
-      optimisticOracleModule,
-      "PriceProposed",
-      (event) => event.timestamp == proposalTime
-    );
   });
 
   it("Can not send transactions to the 0x0 address", async function () {
@@ -308,13 +301,6 @@ describe("OptimisticGovernor", () => {
         event.proposal.transactions[2].value == 0 &&
         event.proposal.transactions[2].data == txnData3 &&
         event.proposal.transactions[2].operation == 0
-    );
-
-    await assertEventEmitted(
-      receipt,
-      optimisticOracleModule,
-      "PriceProposed",
-      (event) => event.timestamp == proposalTime
     );
 
     // Wait until the end of the dispute period.
@@ -400,7 +386,7 @@ describe("OptimisticGovernor", () => {
       .proposeTransactions(transactions, explanation)
       .send({ from: proposer });
 
-    const ancillaryData = receipt.events.PriceProposed.returnValues.ancillaryData;
+    const { ancillaryData } = (await findEvent(receipt, optimisticOracle, "ProposePrice")).match.returnValues;
 
     const proposalTime = parseInt(await optimisticOracleModule.methods.getCurrentTime().call());
 
@@ -447,7 +433,7 @@ describe("OptimisticGovernor", () => {
       .proposeTransactions(transactions, explanation)
       .send({ from: proposer });
 
-    const ancillaryData = receipt.events.PriceProposed.returnValues.ancillaryData;
+    const { ancillaryData } = (await findEvent(receipt, optimisticOracle, "ProposePrice")).match.returnValues;
 
     const proposalTime = parseInt(await optimisticOracleModule.methods.getCurrentTime().call());
 
@@ -496,7 +482,7 @@ describe("OptimisticGovernor", () => {
       .proposeTransactions(transactions, explanation)
       .send({ from: proposer });
 
-    const ancillaryData = receipt.events.PriceProposed.returnValues.ancillaryData;
+    const { ancillaryData } = (await findEvent(receipt, optimisticOracle, "ProposePrice")).match.returnValues;
 
     const proposalTime = parseInt(await optimisticOracleModule.methods.getCurrentTime().call());
 
@@ -560,7 +546,7 @@ describe("OptimisticGovernor", () => {
       .proposeTransactions(transactions, explanation)
       .send({ from: proposer });
 
-    const ancillaryData = receipt.events.PriceProposed.returnValues.ancillaryData;
+    const { ancillaryData } = (await findEvent(receipt, optimisticOracle, "ProposePrice")).match.returnValues;
 
     const proposalTime = parseInt(await optimisticOracleModule.methods.getCurrentTime().call());
 
@@ -611,7 +597,7 @@ describe("OptimisticGovernor", () => {
       .proposeTransactions(transactions, explanation)
       .send({ from: proposer });
 
-    const ancillaryData = receipt.events.PriceProposed.returnValues.ancillaryData;
+    const { ancillaryData } = (await findEvent(receipt, optimisticOracle, "ProposePrice")).match.returnValues;
 
     const proposalTime = parseInt(await optimisticOracleModule.methods.getCurrentTime().call());
 
@@ -636,7 +622,7 @@ describe("OptimisticGovernor", () => {
 
     // Proposal can be deleted by any address.
     const receipt2 = await optimisticOracleModule.methods
-      .deleteRejectedProposal(id, proposalTime, ancillaryData)
+      .deleteRejectedProposal(id, proposalTime)
       .send({ from: rando });
 
     await assertEventEmitted(receipt2, optimisticOracleModule, "ProposalDeleted", (event) => event.proposalId == id);
