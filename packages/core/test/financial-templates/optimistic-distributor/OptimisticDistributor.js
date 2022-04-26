@@ -174,8 +174,6 @@ describe("OptimisticDistributor", async function () {
     // Verify all parameters have been set correctly.
     assert.equal(await testOptimisticDistributor.methods.finder().call(), finder.options.address);
     assert.equal(await testOptimisticDistributor.methods.bondToken().call(), bondToken.options.address);
-    assert.equal(await testOptimisticDistributor.methods.store().call(), store.options.address);
-    assert.equal(await testOptimisticDistributor.methods.finalFee().call(), finalFee);
     assert.equal(await testOptimisticDistributor.methods.optimisticOracle().call(), optimisticOracle.options.address);
     assert.equal(
       await testOptimisticDistributor.methods.ancillaryBytesLimit().call(),
@@ -199,8 +197,6 @@ describe("OptimisticDistributor", async function () {
 
     // Check that OptimisticDistributor can fetch new parameters.
     await optimisticDistributor.methods.syncUmaEcosystemParams().send({ from: anyAddress });
-    assert.equal(await optimisticDistributor.methods.store().call(), newStore.options.address);
-    assert.equal(await optimisticDistributor.methods.finalFee().call(), newFinalFee);
     assert.equal(await optimisticDistributor.methods.optimisticOracle().call(), newOptimisticOracle.options.address);
 
     // Revert back Store and OptimisticOracle implementation in Finder for other tests to use.
