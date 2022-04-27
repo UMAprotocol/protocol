@@ -32,5 +32,3 @@ export async function retrieveGckmsKeys(gckmsConfigs: KeyConfig[]): Promise<stri
     })
   );
 }
-
-module.exports = { retrieveGckmsKeys };
