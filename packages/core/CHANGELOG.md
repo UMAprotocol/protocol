@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.28.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.27.0...@uma/core@2.28.0) (2022-04-27)
+
+### Bug Fixes
+
+- fix minor issues with OG and OD ([#3885](https://github.com/UMAprotocol/protocol/issues/3885)) ([fca8e24](https://github.com/UMAprotocol/protocol/commit/fca8e24275e928f7ddf660b5651eb93b87f70afb))
+
+### Features
+
+- add event based request path for OO ([#3880](https://github.com/UMAprotocol/protocol/issues/3880)) ([f49b880](https://github.com/UMAprotocol/protocol/commit/f49b880a92c0047e07a07091a7608ab1c83f4ce8))
+- use regular oo instead of skinny oo ([#3881](https://github.com/UMAprotocol/protocol/issues/3881)) ([1aea5ac](https://github.com/UMAprotocol/protocol/commit/1aea5ac1901051ff43b4a577562cae0c6e666790))
+
 # [2.27.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.26.0...@uma/core@2.27.0) (2022-04-22)
 
 ### Features
