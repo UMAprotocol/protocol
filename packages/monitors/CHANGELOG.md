@@ -3,6 +3,10 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.11.5](https://github.com/UMAprotocol/protocol/compare/@uma/monitors@2.11.4...@uma/monitors@2.11.5) (2022-04-27)
+
+**Note:** Version bump only for package @uma/monitors
+
 ## [2.11.4](https://github.com/UMAprotocol/protocol/compare/@uma/monitors@2.11.3...@uma/monitors@2.11.4) (2022-04-22)
 
 **Note:** Version bump only for package @uma/monitors

@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.20.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.19.0...@uma/common@2.20.0) (2022-04-27)
+
+### Bug Fixes
+
+- add gckms utils to common export ([#3888](https://github.com/UMAprotocol/protocol/issues/3888)) ([053e4a5](https://github.com/UMAprotocol/protocol/commit/053e4a52effff025be364dd12d2873a585a8f23c))
+- clean up a few missing and lingering dependencies in the common package ([#3841](https://github.com/UMAprotocol/protocol/issues/3841)) ([e16ab00](https://github.com/UMAprotocol/protocol/commit/e16ab00bcb18fbadc08805c4793215539a741c67))
+- fix error printing bugs in [#3852](https://github.com/UMAprotocol/protocol/issues/3852) ([#3855](https://github.com/UMAprotocol/protocol/issues/3855)) ([06d4178](https://github.com/UMAprotocol/protocol/commit/06d41781f8ed665c4949aedc4bdbc8d419d31613))
+
+### Features
+
+- add better provider logging and retries to redundant event calls ([#3852](https://github.com/UMAprotocol/protocol/issues/3852)) ([dabce64](https://github.com/UMAprotocol/protocol/commit/dabce643f6a2936d06d5273ef7861884ddd542d0))
+
 # [2.19.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.18.0...@uma/common@2.19.0) (2022-02-28)
 
 ### Features

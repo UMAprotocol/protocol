@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.23.1](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.23.0...@uma/sdk@0.23.1) (2022-04-27)
+
+### Bug Fixes
+
+- **sdk:** replace rmSync for better compatibility ([#3887](https://github.com/UMAprotocol/protocol/issues/3887)) ([af7deb8](https://github.com/UMAprotocol/protocol/commit/af7deb86916fcb131363617b2a339b54b263c819))
+
 # [0.23.0](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.22.2...@uma/sdk@0.23.0) (2022-04-22)
 
 ### Bug Fixes
