@@ -6,7 +6,7 @@ import type { Logger } from "winston";
 import { Abi, isDefined } from "../types";
 import {
   SkinnyOptimisticOracleWeb3,
-  OptimisticOracleWeb3,
+  V1OptimisticOracleInterfaceWeb3 as OptimisticOracleWeb3,
   VotingAncillaryInterfaceTestingWeb3,
   OptimisticOracleWeb3Events,
   SkinnyOptimisticOracleWeb3Events,
@@ -51,7 +51,7 @@ interface SkinnyRequest {
 export type OptimisticOracleContract = SkinnyOptimisticOracleWeb3 | OptimisticOracleWeb3;
 
 export enum OptimisticOracleType {
-  OptimisticOracle = "OptimisticOracle",
+  OptimisticOracle = "V1OptimisticOracleInterface",
   SkinnyOptimisticOracle = "SkinnyOptimisticOracle",
 }
 export class OptimisticOracleClient {

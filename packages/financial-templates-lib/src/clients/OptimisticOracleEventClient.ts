@@ -1,8 +1,8 @@
 import Web3 from "web3";
 import { Logger } from "winston";
 import {
-  OptimisticOracleWeb3,
-  OptimisticOracleWeb3Events,
+  V1OptimisticOracleInterfaceWeb3 as OptimisticOracleWeb3,
+  V1OptimisticOracleInterfaceWeb3Events as OptimisticOracleWeb3Events,
   SkinnyOptimisticOracleWeb3Events,
 } from "@uma/contracts-node";
 import { getEventsWithPaginatedBlockSearch, Web3Contract } from "@uma/common";
