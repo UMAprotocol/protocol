@@ -69,7 +69,7 @@ export class OptimisticOracleEventClient {
     optimisticOracleAbi: Abi,
     public readonly web3: Web3,
     optimisticOracleAddress: string,
-    public readonly oracleType: OptimisticOracleType = OptimisticOracleType.OptimisticOracle,
+    public readonly oracleType: OptimisticOracleType = OptimisticOracleType.V1OptimisticOracle,
     startingBlockNumber = 0,
     endingBlockNumber: number | null = null,
     blocksPerEventSearch: number | null = null

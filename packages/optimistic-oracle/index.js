@@ -54,7 +54,7 @@ async function run({
   blocksPerEventSearch,
   optimisticOracleProposerConfig,
   oracleType = OracleType.Voting,
-  optimisticOracleType = OptimisticOracleType.OptimisticOracle,
+  optimisticOracleType = OptimisticOracleType.V1OptimisticOracle,
 }) {
   if (!Object.keys(OracleType).includes(oracleType)) throw new Error("Unexpected OracleType");
   try {
@@ -185,7 +185,7 @@ async function Poll(callback) {
       // exported in an enum from financial-templates-lib/OptimisticOracleClient.
       optimisticOracleType: process.env.OPTIMISTIC_ORACLE_TYPE
         ? process.env.OPTIMISTIC_ORACLE_TYPE
-        : OptimisticOracleType.OptimisticOracle,
+        : OptimisticOracleType.V1OptimisticOracle,
     };
 
     await run({ logger: Logger, web3: getWeb3(), ...executionParameters });

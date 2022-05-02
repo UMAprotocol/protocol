@@ -51,7 +51,8 @@ interface SkinnyRequest {
 export type OptimisticOracleContract = SkinnyOptimisticOracleWeb3 | OptimisticOracleWeb3;
 
 export enum OptimisticOracleType {
-  OptimisticOracle = "V1OptimisticOracleInterface",
+  V1OptimisticOracle = "V1OptimisticOracleInterface",
+  OptimisticOracle = "OptimisticOracle",
   SkinnyOptimisticOracle = "SkinnyOptimisticOracle",
 }
 export class OptimisticOracleClient {
@@ -92,7 +93,7 @@ export class OptimisticOracleClient {
     oracleAddress: string,
     votingAddress: string,
     public readonly lookback: number = 604800, // 1 Week
-    public readonly oracleType: OptimisticOracleType = OptimisticOracleType.OptimisticOracle,
+    public readonly oracleType: OptimisticOracleType = OptimisticOracleType.V1OptimisticOracle,
     public readonly blocksPerEventSearch: number | null = null
   ) {
     // Optimistic Oracle contract:
