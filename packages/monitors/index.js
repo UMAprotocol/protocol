@@ -428,7 +428,7 @@ async function Poll(callback) {
       // exported in an enum from financial-templates-lib/OptimisticOracleClient.
       optimisticOracleType: process.env.OPTIMISTIC_ORACLE_TYPE
         ? process.env.OPTIMISTIC_ORACLE_TYPE
-        : OptimisticOracleType.OptimisticOracle,
+        : OptimisticOracleType.V1OptimisticOracle,
       financialContractAddress: process.env.EMP_ADDRESS || process.env.FINANCIAL_CONTRACT_ADDRESS,
       // Default to 1 minute delay. If set to 0 in env variables then the script will exit after full execution.
       pollingDelay: process.env.POLLING_DELAY ? Number(process.env.POLLING_DELAY) : 60,
