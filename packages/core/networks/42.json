@@ -56,6 +56,10 @@
     "address": "0xB1d3A89333BBC3F5e98A991d6d4C1910802986BC"
   },
   {
+    "contractName": "V1OptimisticOracleInterface",
+    "address": "0xB1d3A89333BBC3F5e98A991d6d4C1910802986BC"
+  },
+  {
     "contractName": "ExpiringMultiPartyLib",
     "address": "0x89a469720D45ed82181cd6d5558d6E87855e9E96"
   },
