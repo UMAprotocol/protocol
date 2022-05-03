@@ -38,7 +38,7 @@
   "main": "dist/src/index.js",
   "scripts": {
     "build": "tsc -b",
-    "test": "mocha test 'test/**/*.ts'"
+    "test": "hardhat test"
   },
   "bugs": {
     "url": "https://github.com/UMAprotocol/protocol/issues"
