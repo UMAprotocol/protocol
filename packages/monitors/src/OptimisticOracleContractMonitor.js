@@ -152,22 +152,24 @@ class OptimisticOracleContractMonitor {
     for (let event of latestEvents) {
       const mrkdwn =
         createEtherscanLinkMarkdown(
-          this.oracleType === OptimisticOracleType.OptimisticOracle ? event.proposer : event.request.proposer,
+          this.oracleType !== OptimisticOracleType.SkinnyOptimisticOracle ? event.proposer : event.request.proposer,
           this.contractProps.networkId
         ) +
         ` proposed a price for the request made by ${createEtherscanLinkMarkdown(event.requester)} at the timestamp ${
           event.timestamp
         } for the identifier: ${event.identifier}. ` +
         `\nThe proposal price of ${this.formatDecimalString(
-          this.oracleType === OptimisticOracleType.OptimisticOracle ? event.proposedPrice : event.request.proposedPrice
+          this.oracleType !== OptimisticOracleType.SkinnyOptimisticOracle
+            ? event.proposedPrice
+            : event.request.proposedPrice
         )} will expire at ${
-          this.oracleType === OptimisticOracleType.OptimisticOracle
+          this.oracleType !== OptimisticOracleType.SkinnyOptimisticOracle
             ? event.expirationTimestamp
             : event.request.expirationTime
         }.\n` +
         this._formatAncillaryData(event.ancillaryData) +
         `.\n Collateral currency address is ${createEtherscanLinkMarkdown(
-          this.oracleType === OptimisticOracleType.OptimisticOracle ? event.currency : event.request.currency
+          this.oracleType !== OptimisticOracleType.SkinnyOptimisticOracle ? event.currency : event.request.currency
         )}. ` +
         `tx ${createEtherscanLinkMarkdown(event.transactionHash, this.contractProps.networkId)}. ${this._generateUILink(
           event.transactionHash,
@@ -204,16 +206,18 @@ class OptimisticOracleContractMonitor {
     for (let event of latestEvents) {
       const mrkdwn =
         createEtherscanLinkMarkdown(
-          this.oracleType === OptimisticOracleType.OptimisticOracle ? event.disputer : event.request.disputer,
+          this.oracleType !== OptimisticOracleType.SkinnyOptimisticOracle ? event.disputer : event.request.disputer,
           this.contractProps.networkId
         ) +
         ` disputed a price for the request made by ${createEtherscanLinkMarkdown(event.requester)} at the timestamp ${
           event.timestamp
         } for the identifier: ${event.identifier}. ` +
         `The proposer ${createEtherscanLinkMarkdown(
-          this.oracleType === OptimisticOracleType.OptimisticOracle ? event.proposer : event.request.proposer
+          this.oracleType !== OptimisticOracleType.SkinnyOptimisticOracle ? event.proposer : event.request.proposer
         )} proposed a price of ${this.formatDecimalString(
-          this.oracleType === OptimisticOracleType.OptimisticOracle ? event.proposedPrice : event.request.proposedPrice
+          this.oracleType !== OptimisticOracleType.SkinnyOptimisticOracle
+            ? event.proposedPrice
+            : event.request.proposedPrice
         )}.\n` +
         this._formatAncillaryData(event.ancillaryData) +
         `. tx: ${createEtherscanLinkMarkdown(
