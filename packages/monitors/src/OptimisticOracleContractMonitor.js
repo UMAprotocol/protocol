@@ -101,21 +101,21 @@ class OptimisticOracleContractMonitor {
 
     for (let event of latestEvents) {
       const convertCollateralDecimals = await this._getCollateralDecimalsConverted(
-        this.oracleType === OptimisticOracleType.OptimisticOracle ? event.currency : event.request.currency
+        this.oracleType !== OptimisticOracleType.SkinnyOptimisticOracle ? event.currency : event.request.currency
       );
       const mrkdwn =
         createEtherscanLinkMarkdown(event.requester, this.contractProps.networkId) +
         ` requested a price at the timestamp ${event.timestamp} for the identifier: ${event.identifier}.\n` +
         this._formatAncillaryData(event.ancillaryData) +
         `. \nCollateral currency address is ${
-          this.oracleType === OptimisticOracleType.OptimisticOracle ? event.currency : event.request.currency
+          this.oracleType !== OptimisticOracleType.SkinnyOptimisticOracle ? event.currency : event.request.currency
         }. Reward amount is ${this.formatDecimalString(
           convertCollateralDecimals(
-            this.oracleType === OptimisticOracleType.OptimisticOracle ? event.reward : event.request.reward
+            this.oracleType !== OptimisticOracleType.SkinnyOptimisticOracle ? event.reward : event.request.reward
           )
         )} and the final fee is ${this.formatDecimalString(
           convertCollateralDecimals(
-            this.oracleType === OptimisticOracleType.OptimisticOracle ? event.finalFee : event.request.finalFee
+            this.oracleType !== OptimisticOracleType.SkinnyOptimisticOracle ? event.finalFee : event.request.finalFee
           )
         )}. tx: ${createEtherscanLinkMarkdown(
           event.transactionHash,
@@ -250,10 +250,10 @@ class OptimisticOracleContractMonitor {
 
     for (let event of latestEvents) {
       const convertCollateralDecimals = await this._getCollateralDecimalsConverted(
-        this.oracleType === OptimisticOracleType.OptimisticOracle ? event.currency : event.request.currency
+        this.oracleType !== OptimisticOracleType.SkinnyOptimisticOracle ? event.currency : event.request.currency
       );
       let payout, isDispute;
-      if (this.oracleType === OptimisticOracleType.OptimisticOracle) {
+      if (this.oracleType !== OptimisticOracleType.SkinnyOptimisticOracle) {
         payout = event.payout;
         isDispute = Boolean(event.disputer !== ZERO_ADDRESS);
       } else {
@@ -273,12 +273,12 @@ class OptimisticOracleContractMonitor {
           event.requester
         )} at the timestamp ${event.timestamp} for the identifier: ${event.identifier}. ` +
         `The proposer was ${createEtherscanLinkMarkdown(
-          this.oracleType === OptimisticOracleType.OptimisticOracle ? event.proposer : event.request.proposer
+          this.oracleType !== OptimisticOracleType.SkinnyOptimisticOracle ? event.proposer : event.request.proposer
         )} and the disputer was ${createEtherscanLinkMarkdown(
-          this.oracleType === OptimisticOracleType.OptimisticOracle ? event.disputer : event.request.disputer
+          this.oracleType !== OptimisticOracleType.SkinnyOptimisticOracle ? event.disputer : event.request.disputer
         )}. ` +
         `The settlement price is ${this.formatDecimalString(
-          this.oracleType === OptimisticOracleType.OptimisticOracle ? event.price : event.request.resolvedPrice
+          this.oracleType !== OptimisticOracleType.SkinnyOptimisticOracle ? event.price : event.request.resolvedPrice
         )}. ` +
         `The payout was ${this.formatDecimalString(convertCollateralDecimals(payout))} made to the ${
           isDispute ? "winner of the dispute" : "proposer"
