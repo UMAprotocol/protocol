@@ -10,7 +10,7 @@ import "../interfaces/StoreInterface.sol";
 import "../interfaces/OracleAncillaryInterface.sol";
 import "../interfaces/FinderInterface.sol";
 import "../interfaces/IdentifierWhitelistInterface.sol";
-import "../interfaces/OptimisticOracleInterface.sol";
+import "../interfaces/V1OptimisticOracleInterface.sol";
 import "./Constants.sol";
 
 import "../../common/implementation/Testable.sol";
@@ -72,57 +72,16 @@ interface OptimisticRequester {
  * @title Optimistic Oracle.
  * @notice Pre-DVM escalation contract that allows faster settlement.
  */
-contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
+contract V1OptimisticOracle is V1OptimisticOracleInterface, Testable, Lockable {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
     using Address for address;
 
-    event RequestPrice(
-        address indexed requester,
-        bytes32 identifier,
-        uint256 timestamp,
-        bytes ancillaryData,
-        address currency,
-        uint256 reward,
-        uint256 finalFee
-    );
-    event ProposePrice(
-        address indexed requester,
-        address indexed proposer,
-        bytes32 identifier,
-        uint256 timestamp,
-        bytes ancillaryData,
-        int256 proposedPrice,
-        uint256 expirationTimestamp,
-        address currency
-    );
-    event DisputePrice(
-        address indexed requester,
-        address indexed proposer,
-        address indexed disputer,
-        bytes32 identifier,
-        uint256 timestamp,
-        bytes ancillaryData,
-        int256 proposedPrice
-    );
-    event Settle(
-        address indexed requester,
-        address indexed proposer,
-        address indexed disputer,
-        bytes32 identifier,
-        uint256 timestamp,
-        bytes ancillaryData,
-        int256 price,
-        uint256 payout
-    );
-
-    mapping(bytes32 => Request) public requests;
-
     // Finder to provide addresses for DVM contracts.
-    FinderInterface public finder;
+    FinderInterface public override finder;
 
     // Default liveness value for all price requests.
-    uint256 public defaultLiveness;
+    uint256 public override defaultLiveness;
 
     /**
      * @notice Constructor.
