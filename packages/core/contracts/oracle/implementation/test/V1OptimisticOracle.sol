@@ -638,4 +638,8 @@ contract V1OptimisticOracle is V1OptimisticOracleInterface, Testable, Lockable {
         // the original requester was.
         return AncillaryData.appendKeyValueAddress(ancillaryData, "ooRequester", requester);
     }
+
+    function getCurrentTime() public view override(Testable, V1OptimisticOracleInterface) returns (uint256) {
+        return Testable.getCurrentTime();
+    }
 }

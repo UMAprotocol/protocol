@@ -30,6 +30,7 @@ let configStore;
 let collateralWhitelist;
 let optimisticOracle;
 let skinnyOptimisticOracle;
+let v1OptimisticOracle;
 
 let constructorParams;
 let defaultMonitorConfig;
@@ -80,6 +81,7 @@ describe("index.js", function () {
     // Note: OptimisticOracle always uses "2.0.1"
     const OptimisticOracle = getContract("OptimisticOracle");
     const SkinnyOptimisticOracle = getContract("SkinnyOptimisticOracle");
+    const V1OptimisticOracle = getContract("V1OptimisticOracle");
 
     describe(`Tests running on smart contract version ${contractVersion.contractType} @ ${contractVersion.contractVersion}`, function () {
       before(async function () {
@@ -152,6 +154,9 @@ describe("index.js", function () {
           finder.options.address,
           timer.options.address
         ).send({ from: contractCreator });
+        v1OptimisticOracle = await V1OptimisticOracle.new(7200, finder.options.address, timer.options.address).send({
+          from: contractCreator,
+        });
         await finder.methods
           .changeImplementationAddress(utf8ToHex(interfaceName.OptimisticOracle), optimisticOracle.options.address)
           .send({ from: contractCreator });
@@ -257,6 +262,46 @@ describe("index.js", function () {
           assert.notEqual(spyLogLevel(spy, i), "error");
         }
         assert.equal(spy.getCall(0).lastArg.optimisticOracleType, OptimisticOracleType.SkinnyOptimisticOracle);
+      });
+      it("OptimisticOracle monitor: Completes one iteration without logging any errors", async function () {
+        await Poll.run({
+          logger: spyLogger,
+          web3,
+          optimisticOracleAddress: v1OptimisticOracle.options.address,
+          optimisticOracleType: OptimisticOracleType.V1OptimisticOracle,
+          pollingDelay,
+          errorRetries,
+          errorRetriesTimeout,
+          startingBlock: fromBlock,
+          endingBlock: toBlock,
+          monitorConfig: defaultMonitorConfig,
+          tokenPriceFeedConfig: defaultTokenPricefeedConfig,
+          medianizerPriceFeedConfig: defaultMedianizerPricefeedConfig,
+        });
+        for (let i = 0; i < spy.callCount; i++) {
+          assert.notEqual(spyLogLevel(spy, i), "error");
+        }
+        assert.equal(spy.getCall(0).lastArg.optimisticOracleType, OptimisticOracleType.V1OptimisticOracle);
+      });
+      it("OptimisticOracle monitor: Completes one iteration without logging any errors", async function () {
+        await Poll.run({
+          logger: spyLogger,
+          web3,
+          optimisticOracleAddress: optimisticOracle.options.address,
+          optimisticOracleType: OptimisticOracleType.V1OptimisticOracle,
+          pollingDelay,
+          errorRetries,
+          errorRetriesTimeout,
+          startingBlock: fromBlock,
+          endingBlock: toBlock,
+          monitorConfig: defaultMonitorConfig,
+          tokenPriceFeedConfig: defaultTokenPricefeedConfig,
+          medianizerPriceFeedConfig: defaultMedianizerPricefeedConfig,
+        });
+        for (let i = 0; i < spy.callCount; i++) {
+          assert.notEqual(spyLogLevel(spy, i), "error");
+        }
+        assert.equal(spy.getCall(0).lastArg.optimisticOracleType, OptimisticOracleType.OptimisticOracle);
       });
       it("Activating all monitors: Completes one iteration without logging any errors", async function () {
         await Poll.run({
