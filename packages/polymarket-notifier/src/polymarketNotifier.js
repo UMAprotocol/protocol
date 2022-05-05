@@ -156,7 +156,7 @@ class PolymarketNotifier {
     }));
 
     // Since the Polymarket API doesn't have ancillaryData included, calls questions method using questionId as argument to link PM and event data
-    const ancillaryData = (await aggregateTransactionsAndCall(multicallAddress, web3, transactions)).map(
+    const ancillaryData = (await aggregateTransactionsAndCall(multicallAddress, this.web3, transactions)).map(
       ({ ancillaryData }, i) => {
         const { questionID, question, outcomes, outcomePrices } = polymarketContracts[i];
         return {
