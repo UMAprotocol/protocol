@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.12.5](https://github.com/UMAprotocol/protocol/compare/@uma/optimistic-oracle@2.12.4...@uma/optimistic-oracle@2.12.5) (2022-05-05)
+
+### Bug Fixes
+
+- use v1 OO abi ([#3891](https://github.com/UMAprotocol/protocol/issues/3891)) ([92dfa43](https://github.com/UMAprotocol/protocol/commit/92dfa438d0cb7100393f7ea36fb32b9d3ccbac4c))
+
 ## [2.12.4](https://github.com/UMAprotocol/protocol/compare/@uma/optimistic-oracle@2.12.3...@uma/optimistic-oracle@2.12.4) (2022-04-27)
 
 **Note:** Version bump only for package @uma/optimistic-oracle
