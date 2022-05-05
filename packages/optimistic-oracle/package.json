@@ -1,11 +1,11 @@
 {
   "name": "@uma/optimistic-oracle",
-  "version": "2.12.4",
+  "version": "2.12.5",
   "description": "UMA Optimistic Oracle Keeper",
   "dependencies": {
     "@uma/common": "^2.20.0",
-    "@uma/contracts-node": "^0.3.4",
-    "@uma/financial-templates-lib": "^2.27.1",
+    "@uma/contracts-node": "^0.3.5",
+    "@uma/financial-templates-lib": "^2.27.2",
     "async-retry": "^1.3.1",
     "dotenv": "^6.2.0"
   },

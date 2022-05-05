@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.11.6](https://github.com/UMAprotocol/protocol/compare/@uma/monitors@2.11.5...@uma/monitors@2.11.6) (2022-05-05)
+
+### Bug Fixes
+
+- fix OO bot ([#3892](https://github.com/UMAprotocol/protocol/issues/3892)) ([3f1d11f](https://github.com/UMAprotocol/protocol/commit/3f1d11feabd26d63c9f3781a911193db74ef1a1b))
+- remaining Optimistic Oracle bot comparisons ([#3893](https://github.com/UMAprotocol/protocol/issues/3893)) ([00addcf](https://github.com/UMAprotocol/protocol/commit/00addcf041a0d6758620c72a5cfd65845c4f17bd))
+- use v1 OO abi ([#3891](https://github.com/UMAprotocol/protocol/issues/3891)) ([92dfa43](https://github.com/UMAprotocol/protocol/commit/92dfa438d0cb7100393f7ea36fb32b9d3ccbac4c))
+
 ## [2.11.5](https://github.com/UMAprotocol/protocol/compare/@uma/monitors@2.11.4...@uma/monitors@2.11.5) (2022-04-27)
 
 **Note:** Version bump only for package @uma/monitors

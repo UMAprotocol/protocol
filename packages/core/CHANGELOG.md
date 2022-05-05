@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.28.1](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.28.0...@uma/core@2.28.1) (2022-05-05)
+
+### Bug Fixes
+
+- add v1 OO interface for backcompat for downstream users ([#3890](https://github.com/UMAprotocol/protocol/issues/3890)) ([f258069](https://github.com/UMAprotocol/protocol/commit/f258069fff4080a1b1ad26b3efcb1fe628e3f1a7))
+- use v1 OO abi ([#3891](https://github.com/UMAprotocol/protocol/issues/3891)) ([92dfa43](https://github.com/UMAprotocol/protocol/commit/92dfa438d0cb7100393f7ea36fb32b9d3ccbac4c))
+
 # [2.28.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.27.0...@uma/core@2.28.0) (2022-04-27)
 
 ### Bug Fixes
