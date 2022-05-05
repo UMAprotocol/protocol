@@ -4,9 +4,11 @@ const { Datastore } = require("@google-cloud/datastore");
 const datastore = new Datastore();
 const abi = require("./abi/abi");
 const { getAddress, getAbi } = require("@uma/contracts-node");
+const { TransactionDataDecoder, aggregateTransactionsAndCall } = require("@uma/financial-templates-lib");
 const { MIN_INT_VALUE } = require("@uma/common");
 
 const polymarketContract = "0xCB1822859cEF82Cd2Eb4E6276C7916e692995130";
+const multicallAddress = "0x11ce4B23bD875D7F5C6a31084f55fDe1e9A87507";
 
 class PolymarketNotifier {
   /**
@@ -25,6 +27,8 @@ class PolymarketNotifier {
     this.apiEndpoint = apiEndpoint;
     this.maxTimeAfterProposal = maxTimeAfterProposal;
     this.minAcceptedPrice = minAcceptedPrice;
+    // Manually add polymarket abi to the abi decoder global so aggregateTransactionsAndCall will return the correctly decoded data.
+    TransactionDataDecoder.getInstance().abiDecoder.addABI(abi);
   }
 
   // Main function to check recent proposals against Polymarket API data.
@@ -146,23 +150,27 @@ class PolymarketNotifier {
     const apiUrl = this.apiEndpoint + "?_limit=-1&active=true&closed=false&_sort=created_at:desc";
     const polymarketContracts = await this.networker.getJson(apiUrl, { method: "get" });
 
+    const transactions = polymarketContracts.map((polymarketContract) => ({
+      target: polymarketConditionalContract.options.address,
+      callData: polymarketConditionalContract.methods.questions(polymarketContract.questionID).encodeABI(),
+    }));
+
     // Since the Polymarket API doesn't have ancillaryData included, calls questions method using questionId as argument to link PM and event data
-    const ancillaryData = await Promise.all(
-      polymarketContracts.map(async (polymarketContract) => {
-        const ancillaryDataContract = await polymarketConditionalContract.methods
-          .questions(polymarketContract.questionID)
-          .call();
+    const ancillaryData = (await aggregateTransactionsAndCall(multicallAddress, this.web3, transactions)).map(
+      ({ ancillaryData }, i) => {
+        const { questionID, question, outcomes, outcomePrices } = polymarketContracts[i];
         return {
-          questionID: polymarketContract.questionID,
-          question: polymarketContract.question,
-          ancillaryData: ancillaryDataContract.ancillaryData,
-          outcome1: polymarketContract.outcomes[0],
-          outcome1Price: Number(polymarketContract.outcomePrices[0]).toFixed(4),
-          outcome2: polymarketContract.outcomes[1],
-          outcome2Price: Number(polymarketContract.outcomePrices[1]).toFixed(4),
+          questionID,
+          question,
+          ancillaryData,
+          outcome1: outcomes[0],
+          outcome1Price: Number(outcomePrices[0]).toFixed(4),
+          outcome2: outcomes[1],
+          outcome2Price: Number(outcomePrices[1]).toFixed(4),
         };
-      })
+      }
     );
+
     return ancillaryData;
   }
 
