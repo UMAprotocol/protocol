@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.23.2](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.23.1...@uma/sdk@0.23.2) (2022-05-05)
+
+### Bug Fixes
+
+- add v1 OO interface for backcompat for downstream users ([#3890](https://github.com/UMAprotocol/protocol/issues/3890)) ([f258069](https://github.com/UMAprotocol/protocol/commit/f258069fff4080a1b1ad26b3efcb1fe628e3f1a7))
+
 ## [0.23.1](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.23.0...@uma/sdk@0.23.1) (2022-04-27)
 
 ### Bug Fixes
