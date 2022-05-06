@@ -1032,10 +1032,7 @@ describe("InsuredBridgeL1Client", function () {
       // jupiter notebook, this should be a rate of 0.000117987509354032.
 
       await client.update();
-      assert.equal(
-        (await client.calculateRealizedLpFeePctForDeposit(depositData)).toString(),
-        toWei("0.000117987509354032")
-      );
+      assert.equal((await client.calculateRealizedLpFeePctForDeposit(depositData)).toString(), toWei("0.000117"));
 
       // Next, relay a large deposit of 60 units. this takes the pool utilization from 0% to 60% (note we did not
       // actually relay the relay in `depositData` so utilization is still 0 before this action).
@@ -1048,10 +1045,7 @@ describe("InsuredBridgeL1Client", function () {
       // However, the quote at the time of the depositData should NOT increase relay was done after that quote
       // timestamp. Check that this has not moved.
       await client.update();
-      assert.equal(
-        (await client.calculateRealizedLpFeePctForDeposit(depositData)).toString(),
-        toWei("0.000117987509354032")
-      );
+      assert.equal((await client.calculateRealizedLpFeePctForDeposit(depositData)).toString(), toWei("0.000117"));
 
       // If we set the quoteTimestamp to the current block time then the realizedLPFee should increase.
       assert.equal(
@@ -1061,7 +1055,7 @@ describe("InsuredBridgeL1Client", function () {
             quoteTimestamp: (await web3.eth.getBlock("latest")).timestamp,
           })
         ).toString(),
-        toWei("0.002081296752280018")
+        toWei("0.002081")
       );
     });
   });
