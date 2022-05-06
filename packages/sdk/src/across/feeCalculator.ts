@@ -3,6 +3,7 @@
 // and ethers BNs in the main entry point function calculateRealizedLpFeePct.
 
 import Decimal from "decimal.js";
+import { BigNumber } from "ethers";
 import { BigNumberish, BN, toBN, toBNWei, fromWei, min, max, fixedPointAdjustment } from "./utils";
 
 // note a similar type exists in the constants file, but are strings only. This is a bit more permissive to allow
