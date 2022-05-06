@@ -3,7 +3,7 @@
 // and ethers BNs in the main entry point function calculateRealizedLpFeePct.
 
 import Decimal from "decimal.js";
-import { BigNumberish, BN, toBN, toBNWei, toWei, fromWei, min, max, fixedPointAdjustment } from "./utils";
+import { BigNumberish, BN, toBN, toBNWei, fromWei, min, max, fixedPointAdjustment } from "./utils";
 
 // note a similar type exists in the constants file, but are strings only. This is a bit more permissive to allow
 // backward compatibility for callers with a rate model defined with bignumbers and not strings.
@@ -82,9 +82,13 @@ export function calculateRealizedLpFeePct(
   utilizationAfterDeposit: BigNumberish
 ) {
   const apy = calculateApyFromUtilization(rateModel, toBN(utilizationBeforeDeposit), toBN(utilizationAfterDeposit));
-  const weeklyFee = convertApyToWeeklyFee(apy);
 
   // IS_RELAY_VALID UMIP requires that the realized fee percent is floor rounded as decimal to 6 decimals.
-  const [predec, postdec] = fromWei(weeklyFee.toString()).split(".");
-  return toBN(toWei(postdec ? [predec, postdec.slice(0, 6)].join(".") : predec));
+  return truncate18DecimalBN(convertApyToWeeklyFee(apy), 6);
+}
+
+function truncate18DecimalBN(input: BN, digits: number) {
+  const digitsToDrop = 18 - digits;
+  const multiplier = BigNumber.from(10).pow(digitsToDrop);
+  return input.div(multiplier).mul(multiplier);
 }
