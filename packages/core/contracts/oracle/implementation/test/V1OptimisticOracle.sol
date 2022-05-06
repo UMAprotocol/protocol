@@ -6,18 +6,18 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 
-import "../interfaces/StoreInterface.sol";
-import "../interfaces/OracleAncillaryInterface.sol";
-import "../interfaces/FinderInterface.sol";
-import "../interfaces/IdentifierWhitelistInterface.sol";
-import "../interfaces/V1OptimisticOracleInterface.sol";
-import "./Constants.sol";
+import "../../interfaces/StoreInterface.sol";
+import "../../interfaces/OracleAncillaryInterface.sol";
+import "../../interfaces/FinderInterface.sol";
+import "../../interfaces/IdentifierWhitelistInterface.sol";
+import "../../interfaces/V1OptimisticOracleInterface.sol";
+import "../Constants.sol";
 
-import "../../common/implementation/Testable.sol";
-import "../../common/implementation/Lockable.sol";
-import "../../common/implementation/FixedPoint.sol";
-import "../../common/implementation/AncillaryData.sol";
-import "../../common/implementation/AddressWhitelist.sol";
+import "../../../common/implementation/Testable.sol";
+import "../../../common/implementation/Lockable.sol";
+import "../../../common/implementation/FixedPoint.sol";
+import "../../../common/implementation/AncillaryData.sol";
+import "../../../common/implementation/AddressWhitelist.sol";
 
 /**
  * @title Optimistic Requester.

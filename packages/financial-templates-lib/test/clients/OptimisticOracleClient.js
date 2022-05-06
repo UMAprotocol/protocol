@@ -697,7 +697,7 @@ describe("OptimisticOracleClient.js", function () {
         from: accounts[0],
       });
       client = new OptimisticOracleClient(
-        dummyLogger,
+        winston.createLogger({ level: "debug", transports: [new SpyTransport({ level: "debug" }, { spy: spy })] }),
         V1OptimisticOracle.abi,
         MockOracle.abi,
         web3,
