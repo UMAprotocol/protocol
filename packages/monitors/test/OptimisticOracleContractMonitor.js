@@ -179,7 +179,7 @@ describe("OptimisticOracleContractMonitor.js", function () {
       spyLogger,
       V1OptimisticOracle.abi,
       web3,
-      optimisticOracle.options.address,
+      v1OptimisticOracle.options.address,
       OptimisticOracleType.V1OptimisticOracle,
       0, // startingBlockNumber
       null // endingBlockNumber
@@ -240,9 +240,9 @@ describe("OptimisticOracleContractMonitor.js", function () {
         correctPrice
       )
       .send({ from: skinnyProposer });
-    v1ProposalTxn = await v1OptimisticRequester.methods
-      .requestPrice(identifier, requestTime, defaultAncillaryData, collateral.options.address, reward)
-      .send({ from: owner });
+    v1ProposalTxn = await v1OptimisticOracle.methods
+      .proposePrice(v1OptimisticRequester.options.address, identifier, requestTime, defaultAncillaryData, correctPrice)
+      .send({ from: proposer });
 
     // Make disputes and resolve them
     await collateral.methods.approve(optimisticOracle.options.address, MAX_UINT_VAL).send({ from: disputer });

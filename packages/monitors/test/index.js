@@ -301,7 +301,7 @@ describe("index.js", function () {
         for (let i = 0; i < spy.callCount; i++) {
           assert.notEqual(spyLogLevel(spy, i), "error");
         }
-        assert.equal(spy.getCall(0).lastArg.optimisticOracleType, OptimisticOracleType.OptimisticOracle);
+        assert.equal(spy.getCall(0).lastArg.optimisticOracleType, OptimisticOracleType.V1OptimisticOracle);
       });
       it("Activating all monitors: Completes one iteration without logging any errors", async function () {
         await Poll.run({
