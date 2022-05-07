@@ -18,6 +18,7 @@ const {
 } = require("@uma/financial-templates-lib");
 
 const OptimisticOracle = getContract("OptimisticOracle");
+const V1OptimisticOracle = getContract("V1OptimisticOracle");
 const SkinnyOptimisticOracle = getContract("SkinnyOptimisticOracle");
 const OptimisticRequesterTest = getContract("OptimisticRequesterTest");
 const Finder = getContract("Finder");
@@ -37,12 +38,16 @@ describe("OptimisticOracleContractMonitor.js", function () {
   let disputer;
 
   let optimisticRequester;
+  let v1OptimisticRequester;
   let optimisticOracle;
   let skinnyOptimisticOracle;
+  let v1OptimisticOracle;
   let eventClient;
   let skinnyEventClient;
+  let v1EventClient;
   let contractMonitor;
   let skinnyContractMonitor;
+  let v1ContractMonitor;
   let spyLogger;
   let mockOracle;
   let contractProps;
@@ -106,6 +111,7 @@ describe("OptimisticOracleContractMonitor.js", function () {
 
   let requestTxn, proposalTxn, disputeTxn, settlementTxn;
   let skinnyRequestTxn, skinnyProposalTxn, skinnyDisputeTxn, skinnySettlementTxn;
+  let v1RequestTxn, v1ProposalTxn, v1DisputeTxn, v1SettlementTxn;
   beforeEach(async function () {
     mockOracle = await MockOracle.new(finder.options.address, timer.options.address).send({ from: owner });
     await finder.methods
@@ -133,10 +139,15 @@ describe("OptimisticOracleContractMonitor.js", function () {
       finder.options.address,
       timer.options.address
     ).send({ from: owner });
+    v1OptimisticOracle = await V1OptimisticOracle.new(liveness, finder.options.address, timer.options.address).send({
+      from: owner,
+    });
 
     // Contract used to make price requests. Mint it some collateral to pay rewards with.
     optimisticRequester = await OptimisticRequesterTest.new(optimisticOracle.options.address).send({ from: owner });
+    v1OptimisticRequester = await OptimisticRequesterTest.new(v1OptimisticOracle.options.address).send({ from: owner });
     await collateral.methods.mint(optimisticRequester.options.address, initialUserBalance).send({ from: owner });
+    await collateral.methods.mint(v1OptimisticRequester.options.address, initialUserBalance).send({ from: owner });
 
     startTime = parseInt(await optimisticOracle.methods.getCurrentTime().call());
     requestTime = startTime - 10;
@@ -164,6 +175,15 @@ describe("OptimisticOracleContractMonitor.js", function () {
       0, // startingBlockNumber
       null // endingBlockNumber
     );
+    v1EventClient = new OptimisticOracleEventClient(
+      spyLogger,
+      V1OptimisticOracle.abi,
+      web3,
+      v1OptimisticOracle.options.address,
+      OptimisticOracleType.V1OptimisticOracle,
+      0, // startingBlockNumber
+      null // endingBlockNumber
+    );
 
     monitorConfig = { optimisticOracleUIBaseUrl: sampleBaseUIUrl };
     contractProps = { networkId: await web3.eth.net.getId(), chainId: await web3.eth.getChainId() };
@@ -180,6 +200,12 @@ describe("OptimisticOracleContractMonitor.js", function () {
       monitorConfig,
       contractProps,
     });
+    v1ContractMonitor = new OptimisticOracleContractMonitor({
+      logger: spyLogger,
+      optimisticOracleContractEventClient: v1EventClient,
+      monitorConfig,
+      contractProps,
+    });
 
     // Make price requests
     requestTxn = await optimisticRequester.methods
@@ -189,12 +215,16 @@ describe("OptimisticOracleContractMonitor.js", function () {
     skinnyRequestTxn = await skinnyOptimisticOracle.methods
       .requestPrice(identifier, requestTime, defaultAncillaryData, collateral.options.address, reward, finalFee, 0)
       .send({ from: requester });
+    v1RequestTxn = await v1OptimisticRequester.methods
+      .requestPrice(identifier, requestTime, defaultAncillaryData, collateral.options.address, reward)
+      .send({ from: owner });
 
     // Make proposals
     await collateral.methods.approve(optimisticOracle.options.address, MAX_UINT_VAL).send({ from: proposer });
     await collateral.methods
       .approve(skinnyOptimisticOracle.options.address, MAX_UINT_VAL)
       .send({ from: skinnyProposer });
+    await collateral.methods.approve(v1OptimisticOracle.options.address, MAX_UINT_VAL).send({ from: proposer });
     proposalTime = await optimisticOracle.methods.getCurrentTime().call();
     proposalTxn = await optimisticOracle.methods
       .proposePrice(optimisticRequester.options.address, identifier, requestTime, defaultAncillaryData, correctPrice)
@@ -210,10 +240,14 @@ describe("OptimisticOracleContractMonitor.js", function () {
         correctPrice
       )
       .send({ from: skinnyProposer });
+    v1ProposalTxn = await v1OptimisticOracle.methods
+      .proposePrice(v1OptimisticRequester.options.address, identifier, requestTime, defaultAncillaryData, correctPrice)
+      .send({ from: proposer });
 
     // Make disputes and resolve them
     await collateral.methods.approve(optimisticOracle.options.address, MAX_UINT_VAL).send({ from: disputer });
     await collateral.methods.approve(skinnyOptimisticOracle.options.address, MAX_UINT_VAL).send({ from: disputer });
+    await collateral.methods.approve(v1OptimisticOracle.options.address, MAX_UINT_VAL).send({ from: disputer });
     disputeTxn = await optimisticOracle.methods
       .disputePrice(optimisticRequester.options.address, identifier, requestTime, defaultAncillaryData)
       .send({ from: disputer });
@@ -221,6 +255,10 @@ describe("OptimisticOracleContractMonitor.js", function () {
     const proposeEvents = await skinnyOptimisticOracle.getPastEvents("ProposePrice", { fromBlock: 0 });
     skinnyDisputeTxn = await skinnyOptimisticOracle.methods
       .disputePrice(requester, identifier, requestTime, defaultAncillaryData, proposeEvents[0].returnValues.request)
+      .send({ from: disputer });
+    await pushPrice(correctPrice);
+    v1DisputeTxn = await v1OptimisticOracle.methods
+      .disputePrice(v1OptimisticRequester.options.address, identifier, requestTime, defaultAncillaryData)
       .send({ from: disputer });
     await pushPrice(correctPrice);
 
@@ -231,6 +269,9 @@ describe("OptimisticOracleContractMonitor.js", function () {
     const disputeEvents = await skinnyOptimisticOracle.getPastEvents("DisputePrice", { fromBlock: 0 });
     skinnySettlementTxn = await skinnyOptimisticOracle.methods
       .settle(requester, identifier, requestTime, defaultAncillaryData, disputeEvents[0].returnValues.request)
+      .send({ from: owner });
+    v1SettlementTxn = await v1OptimisticOracle.methods
+      .settle(v1OptimisticRequester.options.address, identifier, requestTime, defaultAncillaryData)
       .send({ from: owner });
   });
 
@@ -672,6 +713,203 @@ describe("OptimisticOracleContractMonitor.js", function () {
       // = (2 * 1) + 3 = 5
       assert.isTrue(lastSpyLogIncludes(spy, "payout was 5.00 made to the proposer"));
       // Check that only two extra events were emitted since we already "checked" the original events.
+      assert.equal(spy.callCount, spyCount + 1);
+    });
+  });
+  describe("SkinnyOptimisticOracle", function () {
+    it("Winston correctly emits price request message", async function () {
+      await v1EventClient.update();
+      await v1ContractMonitor.checkForRequests();
+
+      assert.equal(spyLogLevel(spy, -1), "error");
+
+      // Should contain etherscan addresses for the requester and transaction
+      assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/address/${v1OptimisticRequester.options.address}`));
+      assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/tx/${v1RequestTxn.transactionHash}`));
+
+      assert.isTrue(
+        lastSpyLogIncludes(
+          spy,
+          `${sampleBaseUIUrl}/request?transactionHash=${v1RequestTxn.transactionHash}&chainId=${contractProps.chainId}`
+        )
+      );
+
+      // should contain the correct request information.
+      assert.isTrue(lastSpyLogIncludes(spy, hexToUtf8(identifier))); // Identifier
+      assert.isTrue(lastSpyLogIncludes(spy, requestTime)); // Timestamp
+      assert.isTrue(lastSpyLogIncludes(spy, defaultAncillaryData)); // Ancillary Data
+      assert.isTrue(lastSpyLogIncludes(spy, collateral.options.address)); // Currency
+      assert.isTrue(lastSpyLogIncludes(spy, "3.00")); // Reward, formatted correctly
+      assert.isTrue(lastSpyLogIncludes(spy, "1.00")); // Final Fee
+      let spyCount = spy.callCount;
+
+      // Make another request with different ancillary data.
+      const newTxn = await v1OptimisticRequester.methods
+        .requestPrice(identifier, requestTime, alternativeAncillaryData, collateral.options.address, reward)
+        .send({ from: owner });
+      await v1EventClient.update();
+      await v1ContractMonitor.checkForRequests();
+      assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/tx/${newTxn.transactionHash}`));
+      assert.isTrue(lastSpyLogIncludes(spy, alternativeAncillaryRaw)); // Ancillary Data
+
+      // Check that only two extra events were emitted since we already "checked" the original events.
+      assert.equal(spy.callCount, spyCount + 1);
+    });
+    it("Winston correctly emits price proposal message", async function () {
+      await v1EventClient.update();
+      await v1ContractMonitor.checkForProposals();
+
+      assert.equal(spyLogLevel(spy, -1), "error");
+
+      // Should contain etherscan addresses for the proposer and transaction
+      assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/address/${proposer}`));
+      assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/tx/${v1ProposalTxn.transactionHash}`));
+      assert.isTrue(
+        lastSpyLogIncludes(
+          spy,
+          `${sampleBaseUIUrl}/request?transactionHash=${v1ProposalTxn.transactionHash}&chainId=${contractProps.chainId}`
+        )
+      );
+
+      // should contain the correct proposal information.
+      assert.isTrue(lastSpyLogIncludes(spy, v1OptimisticRequester.options.address)); // Requester
+      assert.isTrue(lastSpyLogIncludes(spy, hexToUtf8(identifier))); // Identifier
+      assert.isTrue(lastSpyLogIncludes(spy, requestTime)); // Timestamp
+      assert.isTrue(lastSpyLogIncludes(spy, defaultAncillaryData)); // Ancillary Data
+      assert.isTrue(lastSpyLogIncludes(spy, collateral.options.address)); // Currency
+      assert.isTrue(lastSpyLogIncludes(spy, "-17.00")); // Proposed Price
+      assert.isTrue(lastSpyLogIncludes(spy, (Number(proposalTime) + liveness).toString())); // Expiration time
+      let spyCount = spy.callCount;
+
+      // Make another proposal with different ancillary data.
+      await v1OptimisticRequester.methods
+        .requestPrice(identifier, requestTime, alternativeAncillaryData, collateral.options.address, reward)
+        .send({ from: owner });
+      const newTxn = await v1OptimisticOracle.methods
+        .proposePrice(
+          v1OptimisticRequester.options.address,
+          identifier,
+          requestTime,
+          alternativeAncillaryData,
+          correctPrice
+        )
+        .send({ from: proposer });
+      await v1EventClient.update();
+      await v1ContractMonitor.checkForProposals();
+      assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/tx/${newTxn.transactionHash}`));
+      assert.isTrue(lastSpyLogIncludes(spy, alternativeAncillaryRaw)); // Ancillary Data
+
+      // Check that only two extra events were emitted since we already "checked" the original events.
+      assert.equal(spy.callCount, spyCount + 1);
+    });
+    it("Winston correctly emits price dispute message", async function () {
+      await v1EventClient.update();
+      await v1ContractMonitor.checkForDisputes();
+
+      assert.equal(spyLogLevel(spy, -1), "error");
+
+      // Should contain etherscan addresses for the disputer and transaction
+      assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/address/${disputer}`));
+      assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/tx/${v1DisputeTxn.transactionHash}`));
+
+      assert.isTrue(
+        lastSpyLogIncludes(
+          spy,
+          `${sampleBaseUIUrl}/request?transactionHash=${v1DisputeTxn.transactionHash}&chainId=${contractProps.chainId}`
+        )
+      );
+
+      // should contain the correct dispute information.
+      assert.isTrue(lastSpyLogIncludes(spy, v1OptimisticRequester.options.address)); // Requester
+      assert.isTrue(lastSpyLogIncludes(spy, proposer)); // Proposer
+      assert.isTrue(lastSpyLogIncludes(spy, hexToUtf8(identifier))); // Identifier
+      assert.isTrue(lastSpyLogIncludes(spy, requestTime)); // Timestamp
+      assert.isTrue(lastSpyLogIncludes(spy, defaultAncillaryData)); // Ancillary Data
+      assert.isTrue(lastSpyLogIncludes(spy, "-17.00")); // Proposed Price
+      let spyCount = spy.callCount;
+
+      // Make another dispute with different ancillary data.
+      await v1OptimisticRequester.methods
+        .requestPrice(identifier, requestTime, alternativeAncillaryData, collateral.options.address, reward)
+        .send({ from: owner });
+      await v1OptimisticOracle.methods
+        .proposePrice(
+          v1OptimisticRequester.options.address,
+          identifier,
+          requestTime,
+          alternativeAncillaryData,
+          correctPrice
+        )
+        .send({ from: proposer });
+      const newTxn = await v1OptimisticOracle.methods
+        .disputePrice(v1OptimisticRequester.options.address, identifier, requestTime, alternativeAncillaryData)
+        .send({ from: disputer });
+      await v1EventClient.update();
+      await v1ContractMonitor.checkForDisputes();
+      assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/tx/${newTxn.transactionHash}`));
+      assert.isTrue(lastSpyLogIncludes(spy, alternativeAncillaryRaw)); // Ancillary Data
+
+      // Check that only two extra events were emitted since we already "checked" the original events.
+      assert.equal(spy.callCount, spyCount + 1);
+    });
+    it("Winston correctly emits price settlement message", async function () {
+      await v1EventClient.update();
+      await v1ContractMonitor.checkForSettlements();
+
+      assert.equal(spyLogLevel(spy, -1), "info");
+
+      // Should contain etherscan addresses for the transaction
+      assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/tx/${v1SettlementTxn.transactionHash}`));
+
+      assert.isTrue(
+        lastSpyLogIncludes(
+          spy,
+          `${sampleBaseUIUrl}/request?transactionHash=${v1SettlementTxn.transactionHash}&chainId=${contractProps.chainId}`
+        )
+      );
+
+      // should contain the correct settlement information.
+      assert.isTrue(lastSpyLogIncludes(spy, v1OptimisticRequester.options.address)); // Requester
+      assert.isTrue(lastSpyLogIncludes(spy, proposer)); // Proposer
+      assert.isTrue(lastSpyLogIncludes(spy, disputer)); // Disputer
+      assert.isTrue(lastSpyLogIncludes(spy, hexToUtf8(identifier))); // Identifier
+      assert.isTrue(lastSpyLogIncludes(spy, requestTime)); // Timestamp
+      assert.isTrue(lastSpyLogIncludes(spy, defaultAncillaryData)); // Ancillary Data
+      assert.isTrue(lastSpyLogIncludes(spy, "17.00")); // Price
+      // Proposal was disputed, payout made to winner of disputer
+      // Dispute reward equals: default bond (2x final fee) + proposal reward + 1/2 of loser's final fee
+      // = (2 * 1) + 3 + (0.5 * 1) = 5.5
+      assert.isTrue(lastSpyLogIncludes(spy, "payout was 5.50 made to the winner of the dispute"));
+      let spyCount = spy.callCount;
+
+      // Make another settlement without a dispute, with different ancillary data.
+      await v1OptimisticRequester.methods
+        .requestPrice(identifier, requestTime, alternativeAncillaryData, collateral.options.address, reward)
+        .send({ from: owner });
+      const newProposalTime = await v1OptimisticOracle.methods.getCurrentTime().call();
+      await v1OptimisticOracle.methods
+        .proposePrice(
+          v1OptimisticRequester.options.address,
+          identifier,
+          requestTime,
+          alternativeAncillaryData,
+          correctPrice
+        )
+        .send({ from: proposer });
+      await v1OptimisticOracle.methods
+        .setCurrentTime((Number(newProposalTime) + liveness).toString())
+        .send({ from: owner });
+      const newTxn = await v1OptimisticOracle.methods
+        .settle(v1OptimisticRequester.options.address, identifier, requestTime, alternativeAncillaryData)
+        .send({ from: owner });
+      await v1EventClient.update();
+      await v1ContractMonitor.checkForSettlements();
+      assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/tx/${newTxn.transactionHash}`));
+      // Proposal this time was not disputed so payout to the proposer.
+      // Proposer reward equals: default bond (2x final fee) + proposal reward
+      // = (2 * 1) + 3 = 5
+      assert.isTrue(lastSpyLogIncludes(spy, "payout was 5.00 made to the proposer"));
+      // Check that only twp extra events were emitted since we already "checked" the original events.
       assert.equal(spy.callCount, spyCount + 1);
     });
   });
