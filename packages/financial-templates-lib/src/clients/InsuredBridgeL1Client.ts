@@ -381,6 +381,7 @@ export class InsuredBridgeL1Client {
     // TODO: consider optimizing this further. Right now it will make a series of sequential BlueBird calls for each pool.
     for (const [l1Token, bridgePool] of Object.entries(this.bridgePools)) {
       const l1TokenInstance = new this.l1Web3.eth.Contract(getAbi("ERC20"), l1Token);
+
       const [
         depositRelayedEvents,
         relaySpedUpEvents,
