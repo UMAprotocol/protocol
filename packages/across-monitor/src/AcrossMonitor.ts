@@ -33,7 +33,7 @@ export class AcrossMonitor {
     readonly monitorConfig: AcrossMonitorConfig,
     readonly l1Client: InsuredBridgeL1Client
   ) {
-    this.relayEventProcessor = new RelayEventProcessor();
+    this.relayEventProcessor = new RelayEventProcessor(l1Client);
   }
 
   async update(): Promise<void> {
@@ -110,13 +110,10 @@ export class AcrossMonitor {
     return;
   }
 
-  async checkUnknownRelayers(): Promise<void> {
+  checkUnknownRelayers(): void {
     this.logger.debug({ at: "AcrossMonitor#UnknownRelayers", message: "Checking for unknown relayers" });
 
-    const relayEvents: EventInfo[] = await this.relayEventProcessor.getRelayEventInfo(
-      this.startingBlock,
-      this.endingBlock
-    );
+    const relayEvents: EventInfo[] = this.relayEventProcessor.getRelayEventInfo(this.startingBlock, this.endingBlock);
     for (const event of relayEvents) {
       // Skip notifications for known relay caller addresses.
       if (this.monitorConfig.whitelistedAddresses.includes(toChecksumAddress(event.caller))) {

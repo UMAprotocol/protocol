@@ -11,6 +11,7 @@ import type { BridgeAdminInterfaceWeb3, BridgePoolWeb3, RateModelStoreWeb3 } fro
 import type { Logger } from "winston";
 import type { BN } from "@uma/common";
 import type { BlockTransactionBase } from "web3-eth";
+import { EventData } from "web3-eth-contract";
 
 export enum ClientRelayState {
   Uninitialized, // Deposit on L2, nothing yet on L1. Can be slow relayed and can be sped up to instantly relay.
@@ -82,6 +83,9 @@ export class InsuredBridgeL1Client {
 
   private relays: { [key: string]: { [key: string]: Relay } } = {}; // L1TokenAddress=>depositHash=>Relay.
   private instantRelays: { [key: string]: { [key: string]: InstantRelay } } = {}; // L1TokenAddress=>{depositHash, realizedLpFeePct}=>InstantRelay.
+
+  // Stored event raw data used by Across Mainnet monitor
+  public readonly allRelayEventData: { [bridgePoolAddress: string]: EventData[] } = {};
 
   private readonly blockFinder: BlockFinder<BlockTransactionBase>;
 
@@ -421,6 +425,14 @@ export class InsuredBridgeL1Client {
         l1TokenInstance.methods.decimals().call(),
         l1TokenInstance.methods.symbol().call(),
       ]);
+
+      this.allRelayEventData[bridgePool.contract.options.address] = [
+        ...depositRelayedEvents.eventData
+          .concat(relaySpedUpEvents.eventData)
+          .concat(relaySettledEvents.eventData)
+          .concat(relayDisputedEvents)
+          .concat(relayCanceledEvents),
+      ];
 
       this.logger.debug({
         at: "InsuredBridgeL1Client",
