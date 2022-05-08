@@ -374,48 +374,42 @@ export class InsuredBridgeL1Client {
     // (restarting all the time) and b) this value changes very infrequently.
     if (this.optimisticOracleLiveness == 0)
       this.optimisticOracleLiveness = Number(await this.bridgeAdmin.methods.optimisticOracleLiveness().call());
-    
-    // This is a hacked solution to fix the problem where there are too many instances of the following events returned by a Infura, which limits return values to 10,000. So, if there are more than 10,000 "DepositRelayed" events returned by the event search, then we need to split up the search at this block. This will not be a solution once we hit 20,000 events so this is just a temporary fix.
-    const paginateBlockNumber = Number(process.env.L1_SPLIT_BLOCK_NUMBER);
-    
-    if (process.env.L1_SPLIT_BLOCK_NUMBER) {
-      const paginateBlockNumber = Number(process.env.L1_SPLIT_BLOCK_NUMBER);
-      
-    } else {
 
     // Fetch event information
     // TODO: consider optimizing this further. Right now it will make a series of sequential BlueBird calls for each pool.
     for (const [l1Token, bridgePool] of Object.entries(this.bridgePools)) {
       const l1TokenInstance = new this.l1Web3.eth.Contract(getAbi("ERC20"), l1Token);
-        const paginateBlockNumber = process.env.L1_SPLIT_BLOCK_NUMBER || "0";
-        const [
-          depositRelayedEvents1,
-          depositRelayedEvents2,
-          relaySpedUpEvents1,
-          relaySpedUpEvents2,
-          relaySettledEvents1,
-          relaySettledEvents2,
-          relayDisputedEvents,
-          relayCanceledEvents,
-          contractTime,
-          relayNonce,
-          poolCollateralDecimals,
-          poolCollateralSymbol,
-        ] = await Promise.all([
-          bridgePool.contract.getPastEvents("DepositRelayed", { ...blockSearchConfig, toBlock: paginateBlockNumber }),
-          bridgePool.contract.getPastEvents("DepositRelayed", { ...blockSearchConfig, fromBlock: paginateBlockNumber }),
-          bridgePool.contract.getPastEvents("RelaySpedUp", { ...blockSearchConfig, toBlock: paginateBlockNumber }),
-          bridgePool.contract.getPastEvents("RelaySpedUp", { ...blockSearchConfig, fromBlock: paginateBlockNumber }),
-          bridgePool.contract.getPastEvents("RelaySettled", { ...blockSearchConfig, toBlock: paginateBlockNumber }),
-          bridgePool.contract.getPastEvents("RelaySettled", { ...blockSearchConfig, fromBlock: paginateBlockNumber }),
-          bridgePool.contract.getPastEvents("RelayDisputed", blockSearchConfig),
-          bridgePool.contract.getPastEvents("RelayCanceled", blockSearchConfig),
-          bridgePool.contract.methods.getCurrentTime().call(),
-          bridgePool.contract.methods.numberOfRelays().call(),
-          l1TokenInstance.methods.decimals().call(),
-          l1TokenInstance.methods.symbol().call(),
-        ]);
-      
+
+      // This is a hacked solution to fix the problem where there are too many instances of the following events returned by a Infura, which limits return values to 10,000. So, if there are more than 10,000 "DepositRelayed" events returned by the event search, then we need to split up the search at this block. This will not be a solution once we hit 20,000 events so this is just a temporary fix.
+      const paginateBlockNumber = process.env.L1_SPLIT_BLOCK_NUMBER || "0";
+      const [
+        depositRelayedEvents1,
+        depositRelayedEvents2,
+        relaySpedUpEvents1,
+        relaySpedUpEvents2,
+        relaySettledEvents1,
+        relaySettledEvents2,
+        relayDisputedEvents,
+        relayCanceledEvents,
+        contractTime,
+        relayNonce,
+        poolCollateralDecimals,
+        poolCollateralSymbol,
+      ] = await Promise.all([
+        bridgePool.contract.getPastEvents("DepositRelayed", { ...blockSearchConfig, toBlock: paginateBlockNumber }),
+        bridgePool.contract.getPastEvents("DepositRelayed", { ...blockSearchConfig, fromBlock: paginateBlockNumber }),
+        bridgePool.contract.getPastEvents("RelaySpedUp", { ...blockSearchConfig, toBlock: paginateBlockNumber }),
+        bridgePool.contract.getPastEvents("RelaySpedUp", { ...blockSearchConfig, fromBlock: paginateBlockNumber }),
+        bridgePool.contract.getPastEvents("RelaySettled", { ...blockSearchConfig, toBlock: paginateBlockNumber }),
+        bridgePool.contract.getPastEvents("RelaySettled", { ...blockSearchConfig, fromBlock: paginateBlockNumber }),
+        bridgePool.contract.getPastEvents("RelayDisputed", blockSearchConfig),
+        bridgePool.contract.getPastEvents("RelayCanceled", blockSearchConfig),
+        bridgePool.contract.methods.getCurrentTime().call(),
+        bridgePool.contract.methods.numberOfRelays().call(),
+        l1TokenInstance.methods.decimals().call(),
+        l1TokenInstance.methods.symbol().call(),
+      ]);
+
       const depositRelayedEvents = [...depositRelayedEvents1, ...depositRelayedEvents2];
       const relaySpedUpEvents = [...relaySpedUpEvents1, ...relaySpedUpEvents2];
       const relaySettledEvents = [...relaySettledEvents1, ...relaySettledEvents2];
