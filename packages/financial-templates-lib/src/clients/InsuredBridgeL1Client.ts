@@ -5,6 +5,7 @@ import { BlockFinder } from "../price-feed/utils";
 import { getAbi } from "@uma/contracts-node";
 import { Deposit } from "./InsuredBridgeL2Client";
 import { across } from "@uma/sdk";
+import { getEventsWithPaginatedBlockSearch, Web3Contract } from "@uma/common";
 
 import type { BridgeAdminInterfaceWeb3, BridgePoolWeb3, RateModelStoreWeb3 } from "@uma/contracts-node";
 import type { Logger } from "winston";
@@ -90,7 +91,8 @@ export class InsuredBridgeL1Client {
     readonly bridgeAdminAddress: string,
     readonly rateModelStoreAddress: string | null,
     readonly startingBlockNumber = 0,
-    readonly endingBlockNumber: number | null = null
+    readonly endingBlockNumber: number | null = null,
+    readonly blocksPerEventSearch: number | null = null
   ) {
     // Cast the following contracts to web3-specific type
     this.bridgeAdmin = (new l1Web3.eth.Contract(
@@ -390,9 +392,27 @@ export class InsuredBridgeL1Client {
         poolCollateralDecimals,
         poolCollateralSymbol,
       ] = await Promise.all([
-        bridgePool.contract.getPastEvents("DepositRelayed", blockSearchConfig),
-        bridgePool.contract.getPastEvents("RelaySpedUp", blockSearchConfig),
-        bridgePool.contract.getPastEvents("RelaySettled", blockSearchConfig),
+        getEventsWithPaginatedBlockSearch(
+          (bridgePool.contract as unknown) as Web3Contract,
+          "DepositRelayed",
+          blockSearchConfig.fromBlock,
+          blockSearchConfig.toBlock,
+          this.blocksPerEventSearch
+        ),
+        getEventsWithPaginatedBlockSearch(
+          (bridgePool.contract as unknown) as Web3Contract,
+          "RelaySpedUp",
+          blockSearchConfig.fromBlock,
+          blockSearchConfig.toBlock,
+          this.blocksPerEventSearch
+        ),
+        getEventsWithPaginatedBlockSearch(
+          (bridgePool.contract as unknown) as Web3Contract,
+          "RelaySettled",
+          blockSearchConfig.fromBlock,
+          blockSearchConfig.toBlock,
+          this.blocksPerEventSearch
+        ),
         bridgePool.contract.getPastEvents("RelayDisputed", blockSearchConfig),
         bridgePool.contract.getPastEvents("RelayCanceled", blockSearchConfig),
         bridgePool.contract.methods.getCurrentTime().call(),
@@ -400,6 +420,16 @@ export class InsuredBridgeL1Client {
         l1TokenInstance.methods.decimals().call(),
         l1TokenInstance.methods.symbol().call(),
       ]);
+
+      this.logger.debug({
+        at: "InsuredBridgeL1Client",
+        message: "Paginated event search results",
+        depositRelayedEventRequestCount: depositRelayedEvents.web3RequestCount,
+        relaySpedUpEventRequestCount: relaySpedUpEvents.web3RequestCount,
+        relaySettledEventRequestCount: relaySettledEvents.web3RequestCount,
+        blockSearchConfig,
+        blocksPerEventSearch: this.blocksPerEventSearch,
+      });
 
       // Store current contract time and relay nonce that user can use to send instant relays (where there is no pending
       // relay) for a deposit. Store the l1Token decimals and symbol to enhance logging.
@@ -409,7 +439,7 @@ export class InsuredBridgeL1Client {
       bridgePool.poolCollateralSymbol = poolCollateralSymbol;
 
       // Process events an set in state.
-      for (const depositRelayedEvent of depositRelayedEvents) {
+      for (const depositRelayedEvent of depositRelayedEvents.eventData) {
         const relayData: Relay = {
           relayId: Number(depositRelayedEvent.returnValues.relay.relayId),
           chainId: Number(depositRelayedEvent.returnValues.depositData.chainId),
@@ -436,7 +466,7 @@ export class InsuredBridgeL1Client {
       }
 
       // For all RelaySpedUp, set the instant relayer.
-      for (const relaySpedUpEvent of relaySpedUpEvents) {
+      for (const relaySpedUpEvent of relaySpedUpEvents.eventData) {
         const instantRelayDataHash = this._getInstantRelayHash(
           relaySpedUpEvent.returnValues.depositHash,
           relaySpedUpEvent.returnValues.relay.realizedLpFeePct
@@ -459,7 +489,7 @@ export class InsuredBridgeL1Client {
           delete this.relays[l1Token][relayDisputedEvent.returnValues.depositHash];
       }
 
-      for (const relaySettledEvent of relaySettledEvents) {
+      for (const relaySettledEvent of relaySettledEvents.eventData) {
         this.relays[l1Token][relaySettledEvent.returnValues.depositHash].relayState = ClientRelayState.Finalized;
         this.relays[l1Token][relaySettledEvent.returnValues.depositHash].settleable = SettleableRelay.CannotSettle;
       }
