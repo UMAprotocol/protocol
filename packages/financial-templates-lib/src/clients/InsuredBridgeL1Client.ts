@@ -379,10 +379,19 @@ export class InsuredBridgeL1Client {
     // TODO: consider optimizing this further. Right now it will make a series of sequential BlueBird calls for each pool.
     for (const [l1Token, bridgePool] of Object.entries(this.bridgePools)) {
       const l1TokenInstance = new this.l1Web3.eth.Contract(getAbi("ERC20"), l1Token);
+
+      // This is a hacked solution to fix the problem where there are too many instances of the following events
+      // returned by a Infura, which limits return values to 10,000. So, if there are more than 10,000
+      // "DepositRelayed" events returned by the event search, then we need to split up the search at this block. This
+      // will not be a solution once we hit 20,000 events so this is just a temporary fix.
+      const paginateBlockNumber = process.env.L1_SPLIT_BLOCK_NUMBER || "0";
       const [
-        depositRelayedEvents,
-        relaySpedUpEvents,
-        relaySettledEvents,
+        depositRelayedEvents1,
+        depositRelayedEvents2,
+        relaySpedUpEvents1,
+        relaySpedUpEvents2,
+        relaySettledEvents1,
+        relaySettledEvents2,
         relayDisputedEvents,
         relayCanceledEvents,
         contractTime,
@@ -390,9 +399,12 @@ export class InsuredBridgeL1Client {
         poolCollateralDecimals,
         poolCollateralSymbol,
       ] = await Promise.all([
-        bridgePool.contract.getPastEvents("DepositRelayed", blockSearchConfig),
-        bridgePool.contract.getPastEvents("RelaySpedUp", blockSearchConfig),
-        bridgePool.contract.getPastEvents("RelaySettled", blockSearchConfig),
+        bridgePool.contract.getPastEvents("DepositRelayed", { ...blockSearchConfig, toBlock: paginateBlockNumber }),
+        bridgePool.contract.getPastEvents("DepositRelayed", { ...blockSearchConfig, fromBlock: paginateBlockNumber }),
+        bridgePool.contract.getPastEvents("RelaySpedUp", { ...blockSearchConfig, toBlock: paginateBlockNumber }),
+        bridgePool.contract.getPastEvents("RelaySpedUp", { ...blockSearchConfig, fromBlock: paginateBlockNumber }),
+        bridgePool.contract.getPastEvents("RelaySettled", { ...blockSearchConfig, toBlock: paginateBlockNumber }),
+        bridgePool.contract.getPastEvents("RelaySettled", { ...blockSearchConfig, fromBlock: paginateBlockNumber }),
         bridgePool.contract.getPastEvents("RelayDisputed", blockSearchConfig),
         bridgePool.contract.getPastEvents("RelayCanceled", blockSearchConfig),
         bridgePool.contract.methods.getCurrentTime().call(),
@@ -400,6 +412,10 @@ export class InsuredBridgeL1Client {
         l1TokenInstance.methods.decimals().call(),
         l1TokenInstance.methods.symbol().call(),
       ]);
+
+      const depositRelayedEvents = [...depositRelayedEvents1, ...depositRelayedEvents2];
+      const relaySpedUpEvents = [...relaySpedUpEvents1, ...relaySpedUpEvents2];
+      const relaySettledEvents = [...relaySettledEvents1, ...relaySettledEvents2];
 
       // Store current contract time and relay nonce that user can use to send instant relays (where there is no pending
       // relay) for a deposit. Store the l1Token decimals and symbol to enhance logging.
