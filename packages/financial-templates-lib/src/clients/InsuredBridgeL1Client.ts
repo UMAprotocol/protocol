@@ -380,7 +380,10 @@ export class InsuredBridgeL1Client {
     for (const [l1Token, bridgePool] of Object.entries(this.bridgePools)) {
       const l1TokenInstance = new this.l1Web3.eth.Contract(getAbi("ERC20"), l1Token);
 
-      // This is a hacked solution to fix the problem where there are too many instances of the following events returned by a Infura, which limits return values to 10,000. So, if there are more than 10,000 "DepositRelayed" events returned by the event search, then we need to split up the search at this block. This will not be a solution once we hit 20,000 events so this is just a temporary fix.
+      // This is a hacked solution to fix the problem where there are too many instances of the following events
+      // returned by a Infura, which limits return values to 10,000. So, if there are more than 10,000
+      // "DepositRelayed" events returned by the event search, then we need to split up the search at this block. This
+      // will not be a solution once we hit 20,000 events so this is just a temporary fix.
       const paginateBlockNumber = process.env.L1_SPLIT_BLOCK_NUMBER || "0";
       const [
         depositRelayedEvents1,
