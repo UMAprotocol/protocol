@@ -243,6 +243,7 @@ describe("index.js", function () {
     process.env.RATE_MODEL_ADDRESS = rateModelStore.options.address;
     process.env.CHAIN_IDS = JSON.stringify([networks[0].chainId]);
     process.env[`NODE_URL_${networks[0].chainId}`] = "http://localhost:7777";
+    process.env.BRIDGE_POOL_EVENT_SEARCH_FROM_BLOCK = "0";
 
     // Must not throw.
     await run(spyLogger, web3);
@@ -260,6 +261,7 @@ describe("index.js", function () {
     process.env.RATE_MODEL_ADDRESS = rateModelStore.options.address;
     process.env.CHAIN_IDS = JSON.stringify(networks.map(({ chainId }) => chainId));
     networks.forEach(({ chainId, port }) => (process.env[`NODE_URL_${chainId}`] = `http://localhost:${port}`));
+    process.env.BRIDGE_POOL_EVENT_SEARCH_FROM_BLOCK = "0";
 
     // Must not throw.
     await run(spyLogger, web3);
@@ -277,6 +279,7 @@ describe("index.js", function () {
     process.env.POLLING_DELAY = "0";
     process.env.CHAIN_IDS = JSON.stringify([networks[0].chainId]);
     process.env[`NODE_URL_${networks[0].chainId}`] = "http://localhost:7777";
+    process.env.BRIDGE_POOL_EVENT_SEARCH_FROM_BLOCK = "0";
 
     // Add another L1 token to rate model that is not whitelisted.
     const unWhitelistedL1Token = toChecksumAddress(randomHex(20));
@@ -311,6 +314,7 @@ describe("index.js", function () {
     process.env.POLLING_DELAY = "0";
     process.env.CHAIN_IDS = JSON.stringify([networks[0].chainId]);
     process.env[`NODE_URL_${networks[0].chainId}`] = "http://localhost:7777";
+    process.env.BRIDGE_POOL_EVENT_SEARCH_FROM_BLOCK = "0";
 
     // whitelist new token
     const newWhitelistedL1Token = await ERC20.new("TESTERC20", "TESTERC20", 18).send({ from: owner });
