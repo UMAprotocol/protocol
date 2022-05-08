@@ -16,6 +16,10 @@ export const bridgeDepositBoxDeployData = {
 // Following settings can be overridden to optimize L1 client event search for select events. For example,
 // the "DepositRelayed" event search request could return > 10,000 return values so we need to shorten the block
 // search using these parameters because some node providers like Infura limit event search return values to 10,000.
+
+// This is set to the oldest SpokePool's deploy block height because we can assume that there will not be any
+// BridgePool events on any BridgePool at blocks lower than this height. This is specifically the WETH
+// BridgePool's deploy block.
 export const bridgePoolEarliestBlockToSearch = 13545377;
 export const bridgePoolMaxBlocksToSeach = 1_000_000;
 
