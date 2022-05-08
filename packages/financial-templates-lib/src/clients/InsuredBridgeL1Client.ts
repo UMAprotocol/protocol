@@ -414,6 +414,10 @@ export class InsuredBridgeL1Client {
           l1TokenInstance.methods.decimals().call(),
           l1TokenInstance.methods.symbol().call(),
         ]);
+      
+      const depositRelayedEvents = [...depositRelayedEvents1, ...depositRelayedEvents2];
+      const relaySpedUpEvents = [...relaySpedUpEvents1, ...relaySpedUpEvents2];
+      const relaySettledEvents = [...relaySettledEvents1, ...relaySettledEvents2];
 
       // Store current contract time and relay nonce that user can use to send instant relays (where there is no pending
       // relay) for a deposit. Store the l1Token decimals and symbol to enhance logging.
