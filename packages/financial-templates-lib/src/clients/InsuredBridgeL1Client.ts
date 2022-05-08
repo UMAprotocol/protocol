@@ -375,6 +375,7 @@ export class InsuredBridgeL1Client {
     if (this.optimisticOracleLiveness == 0)
       this.optimisticOracleLiveness = Number(await this.bridgeAdmin.methods.optimisticOracleLiveness().call());
     
+    // This is a hacked solution to fix the problem where there are too many instances of the following events returned by a Infura, which limits return values to 10,000. So, if there are more than 10,000 "DepositRelayed" events returned by the event search, then we need to split up the search at this block. This will not be a solution once we hit 20,000 events so this is just a temporary fix.
     const paginateBlockNumber = Number(process.env.L1_SPLIT_BLOCK_NUMBER);
     
     if (process.env.L1_SPLIT_BLOCK_NUMBER) {
