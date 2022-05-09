@@ -60,7 +60,7 @@ export class AcrossMonitor {
     // misconfiguration).
     this.startingBlock = Math.min(this.startingBlock, this.endingBlock);
 
-    await this.relayEventProcessor.update(this.endingBlock);
+    this.relayEventProcessor.update(this.endingBlock);
   }
 
   async checkUtilization(): Promise<void> {

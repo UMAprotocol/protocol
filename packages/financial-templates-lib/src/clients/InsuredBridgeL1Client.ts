@@ -437,6 +437,8 @@ export class InsuredBridgeL1Client {
       this.logger.debug({
         at: "InsuredBridgeL1Client",
         message: "Paginated event search results",
+        bridgePool: bridgePool.contract.options.address,
+        l1Token: poolCollateralSymbol,
         depositRelayedEventRequestCount: depositRelayedEvents.web3RequestCount,
         relaySpedUpEventRequestCount: relaySpedUpEvents.web3RequestCount,
         relaySettledEventRequestCount: relaySettledEvents.web3RequestCount,

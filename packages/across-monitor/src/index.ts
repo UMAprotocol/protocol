@@ -41,7 +41,7 @@ export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
       await retry(
         async () => {
           // Updating acrossMonitor also updates l1Client for pool discovery.
-          acrossMonitor.update();
+          await acrossMonitor.update();
 
           // Start bots that are enabled.
           if (config.botModes.utilizationEnabled) await acrossMonitor.checkUtilization();
