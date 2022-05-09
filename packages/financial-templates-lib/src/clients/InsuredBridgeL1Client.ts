@@ -27,7 +27,6 @@ export enum SettleableRelay {
 
 export interface Relay extends RelayedDeposit {
   relayId: number;
-  l1Token: string;
   slowRelayer: string;
   quoteTimestamp: number;
   priceRequestTime: number;
@@ -42,6 +41,7 @@ export interface Relay extends RelayedDeposit {
 export interface RelayedDeposit {
   chainId: number;
   depositId: number;
+  l1Token: string;
   l2Sender: string;
   l1Recipient: string;
   amount: string;
@@ -502,6 +502,7 @@ export class InsuredBridgeL1Client {
           depositId: relayData.depositId,
           l2Sender: relayData.l2Sender,
           l1Recipient: relayData.l1Recipient,
+          l1Token: relayData.l1Token,
           amount: relayData.amount,
           slowRelayFeePct: relayData.slowRelayFeePct,
           instantRelayFeePct: relayData.instantRelayFeePct,
