@@ -5,11 +5,13 @@ import { BlockFinder } from "../price-feed/utils";
 import { getAbi } from "@uma/contracts-node";
 import { Deposit } from "./InsuredBridgeL2Client";
 import { across } from "@uma/sdk";
+import { getEventsWithPaginatedBlockSearch, Web3Contract } from "@uma/common";
 
 import type { BridgeAdminInterfaceWeb3, BridgePoolWeb3, RateModelStoreWeb3 } from "@uma/contracts-node";
 import type { Logger } from "winston";
 import type { BN } from "@uma/common";
 import type { BlockTransactionBase } from "web3-eth";
+import { EventData } from "web3-eth-contract";
 
 export enum ClientRelayState {
   Uninitialized, // Deposit on L2, nothing yet on L1. Can be slow relayed and can be sped up to instantly relay.
@@ -23,27 +25,30 @@ export enum SettleableRelay {
   AnyoneCanSettle,
 }
 
-export interface Relay {
+export interface Relay extends RelayedDeposit {
   relayId: number;
-  chainId: number;
-  depositId: number;
-  l2Sender: string;
   slowRelayer: string;
-  l1Recipient: string;
-  l1Token: string;
-  amount: string;
-  slowRelayFeePct: string;
-  instantRelayFeePct: string;
   quoteTimestamp: number;
-  realizedLpFeePct: string;
   priceRequestTime: number;
-  depositHash: string;
   relayState: ClientRelayState;
   relayAncillaryDataHash: string;
   proposerBond: string;
   finalFee: string;
   settleable: SettleableRelay;
   blockNumber: number;
+}
+
+export interface RelayedDeposit {
+  chainId: number;
+  depositId: number;
+  l1Token: string;
+  l2Sender: string;
+  l1Recipient: string;
+  amount: string;
+  slowRelayFeePct: string;
+  instantRelayFeePct: string;
+  realizedLpFeePct: string;
+  depositHash: string;
 }
 
 export interface InstantRelay {
@@ -79,8 +84,15 @@ export class InsuredBridgeL1Client {
   public optimisticOracleLiveness = 0;
   public firstBlockToSearch: number;
 
+  // The main difference between `relays` and `deposits` is that `relayedDeposits` are deleted if they are disputed.
+  // Also, `relays` contain more props that track the Relay lifecycle.
   private relays: { [key: string]: { [key: string]: Relay } } = {}; // L1TokenAddress=>depositHash=>Relay.
+  private relayedDeposits: { [key: string]: { [key: string]: RelayedDeposit } } = {};
+
   private instantRelays: { [key: string]: { [key: string]: InstantRelay } } = {}; // L1TokenAddress=>{depositHash, realizedLpFeePct}=>InstantRelay.
+
+  // Stored event raw data used by Across Mainnet monitor
+  public readonly allRelayEventData: { [bridgePoolAddress: string]: EventData[] } = {};
 
   private readonly blockFinder: BlockFinder<BlockTransactionBase>;
 
@@ -90,7 +102,8 @@ export class InsuredBridgeL1Client {
     readonly bridgeAdminAddress: string,
     readonly rateModelStoreAddress: string | null,
     readonly startingBlockNumber = 0,
-    readonly endingBlockNumber: number | null = null
+    readonly endingBlockNumber: number | null = null,
+    readonly blocksPerEventSearch: number | null = null
   ) {
     // Cast the following contracts to web3-specific type
     this.bridgeAdmin = (new l1Web3.eth.Contract(
@@ -120,6 +133,17 @@ export class InsuredBridgeL1Client {
     return Object.keys(this.relays)
       .map((l1Token: string) =>
         Object.keys(this.relays[l1Token]).map((depositHash: string) => this.relays[l1Token][depositHash])
+      )
+      .flat();
+  }
+
+  getAllRelayedDepositsSimple(): RelayedDeposit[] {
+    this._throwIfNotInitialized();
+    return Object.keys(this.relayedDeposits)
+      .map((l1Token: string) =>
+        Object.keys(this.relayedDeposits[l1Token]).map(
+          (depositHash: string) => this.relayedDeposits[l1Token][depositHash]
+        )
       )
       .flat();
   }
@@ -358,6 +382,7 @@ export class InsuredBridgeL1Client {
         ...l2Tokens,
         [whitelistedTokenEvent.returnValues.chainId]: toChecksumAddress(whitelistedTokenEvent.returnValues.l2Token),
       };
+      this.relayedDeposits[l1Token] = {};
       this.relays[l1Token] = {};
       this.instantRelays[l1Token] = {};
     }
@@ -380,18 +405,10 @@ export class InsuredBridgeL1Client {
     for (const [l1Token, bridgePool] of Object.entries(this.bridgePools)) {
       const l1TokenInstance = new this.l1Web3.eth.Contract(getAbi("ERC20"), l1Token);
 
-      // This is a hacked solution to fix the problem where there are too many instances of the following events
-      // returned by a Infura, which limits return values to 10,000. So, if there are more than 10,000
-      // "DepositRelayed" events returned by the event search, then we need to split up the search at this block. This
-      // will not be a solution once we hit 20,000 events so this is just a temporary fix.
-      const paginateBlockNumber = process.env.L1_SPLIT_BLOCK_NUMBER || "0";
       const [
-        depositRelayedEvents1,
-        depositRelayedEvents2,
-        relaySpedUpEvents1,
-        relaySpedUpEvents2,
-        relaySettledEvents1,
-        relaySettledEvents2,
+        depositRelayedEvents,
+        relaySpedUpEvents,
+        relaySettledEvents,
         relayDisputedEvents,
         relayCanceledEvents,
         contractTime,
@@ -399,12 +416,27 @@ export class InsuredBridgeL1Client {
         poolCollateralDecimals,
         poolCollateralSymbol,
       ] = await Promise.all([
-        bridgePool.contract.getPastEvents("DepositRelayed", { ...blockSearchConfig, toBlock: paginateBlockNumber }),
-        bridgePool.contract.getPastEvents("DepositRelayed", { ...blockSearchConfig, fromBlock: paginateBlockNumber }),
-        bridgePool.contract.getPastEvents("RelaySpedUp", { ...blockSearchConfig, toBlock: paginateBlockNumber }),
-        bridgePool.contract.getPastEvents("RelaySpedUp", { ...blockSearchConfig, fromBlock: paginateBlockNumber }),
-        bridgePool.contract.getPastEvents("RelaySettled", { ...blockSearchConfig, toBlock: paginateBlockNumber }),
-        bridgePool.contract.getPastEvents("RelaySettled", { ...blockSearchConfig, fromBlock: paginateBlockNumber }),
+        getEventsWithPaginatedBlockSearch(
+          (bridgePool.contract as unknown) as Web3Contract,
+          "DepositRelayed",
+          blockSearchConfig.fromBlock,
+          blockSearchConfig.toBlock,
+          this.blocksPerEventSearch
+        ),
+        getEventsWithPaginatedBlockSearch(
+          (bridgePool.contract as unknown) as Web3Contract,
+          "RelaySpedUp",
+          blockSearchConfig.fromBlock,
+          blockSearchConfig.toBlock,
+          this.blocksPerEventSearch
+        ),
+        getEventsWithPaginatedBlockSearch(
+          (bridgePool.contract as unknown) as Web3Contract,
+          "RelaySettled",
+          blockSearchConfig.fromBlock,
+          blockSearchConfig.toBlock,
+          this.blocksPerEventSearch
+        ),
         bridgePool.contract.getPastEvents("RelayDisputed", blockSearchConfig),
         bridgePool.contract.getPastEvents("RelayCanceled", blockSearchConfig),
         bridgePool.contract.methods.getCurrentTime().call(),
@@ -413,9 +445,25 @@ export class InsuredBridgeL1Client {
         l1TokenInstance.methods.symbol().call(),
       ]);
 
-      const depositRelayedEvents = [...depositRelayedEvents1, ...depositRelayedEvents2];
-      const relaySpedUpEvents = [...relaySpedUpEvents1, ...relaySpedUpEvents2];
-      const relaySettledEvents = [...relaySettledEvents1, ...relaySettledEvents2];
+      this.allRelayEventData[bridgePool.contract.options.address] = [
+        ...depositRelayedEvents.eventData
+          .concat(relaySpedUpEvents.eventData)
+          .concat(relaySettledEvents.eventData)
+          .concat(relayDisputedEvents)
+          .concat(relayCanceledEvents),
+      ];
+
+      this.logger.debug({
+        at: "InsuredBridgeL1Client",
+        message: "Paginated event search results",
+        bridgePool: bridgePool.contract.options.address,
+        l1Token: poolCollateralSymbol,
+        depositRelayedEventRequestCount: depositRelayedEvents.web3RequestCount,
+        relaySpedUpEventRequestCount: relaySpedUpEvents.web3RequestCount,
+        relaySettledEventRequestCount: relaySettledEvents.web3RequestCount,
+        blockSearchConfig,
+        blocksPerEventSearch: this.blocksPerEventSearch,
+      });
 
       // Store current contract time and relay nonce that user can use to send instant relays (where there is no pending
       // relay) for a deposit. Store the l1Token decimals and symbol to enhance logging.
@@ -425,7 +473,7 @@ export class InsuredBridgeL1Client {
       bridgePool.poolCollateralSymbol = poolCollateralSymbol;
 
       // Process events an set in state.
-      for (const depositRelayedEvent of depositRelayedEvents) {
+      for (const depositRelayedEvent of depositRelayedEvents.eventData) {
         const relayData: Relay = {
           relayId: Number(depositRelayedEvent.returnValues.relay.relayId),
           chainId: Number(depositRelayedEvent.returnValues.depositData.chainId),
@@ -449,10 +497,22 @@ export class InsuredBridgeL1Client {
           blockNumber: depositRelayedEvent.blockNumber,
         };
         this.relays[l1Token][relayData.depositHash] = relayData;
+        this.relayedDeposits[l1Token][relayData.depositHash] = {
+          chainId: relayData.chainId,
+          depositId: relayData.depositId,
+          l2Sender: relayData.l2Sender,
+          l1Recipient: relayData.l1Recipient,
+          l1Token: relayData.l1Token,
+          amount: relayData.amount,
+          slowRelayFeePct: relayData.slowRelayFeePct,
+          instantRelayFeePct: relayData.instantRelayFeePct,
+          realizedLpFeePct: relayData.realizedLpFeePct,
+          depositHash: relayData.depositHash,
+        };
       }
 
       // For all RelaySpedUp, set the instant relayer.
-      for (const relaySpedUpEvent of relaySpedUpEvents) {
+      for (const relaySpedUpEvent of relaySpedUpEvents.eventData) {
         const instantRelayDataHash = this._getInstantRelayHash(
           relaySpedUpEvent.returnValues.depositHash,
           relaySpedUpEvent.returnValues.relay.realizedLpFeePct
@@ -475,7 +535,7 @@ export class InsuredBridgeL1Client {
           delete this.relays[l1Token][relayDisputedEvent.returnValues.depositHash];
       }
 
-      for (const relaySettledEvent of relaySettledEvents) {
+      for (const relaySettledEvent of relaySettledEvents.eventData) {
         this.relays[l1Token][relaySettledEvent.returnValues.depositHash].relayState = ClientRelayState.Finalized;
         this.relays[l1Token][relaySettledEvent.returnValues.depositHash].settleable = SettleableRelay.CannotSettle;
       }

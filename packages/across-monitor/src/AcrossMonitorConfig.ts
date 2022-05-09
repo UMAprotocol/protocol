@@ -11,6 +11,16 @@ export interface BotModes {
   unknownRelayersEnabled: boolean; // Monitors relay related events triggered by non-whitelisted addresses
 }
 
+// Following settings can be overridden to optimize L1 event search for select events. For example,
+// the "DepositRelayed" event search request could return > 10,000 return values so we need to shorten the block
+// search using these parameters because some node providers like Infura limit event search return values to 10,000.
+
+// This is set to the oldest SpokePool's deploy block height because we can assume that there will not be any
+// BridgePool events on any BridgePool at blocks lower than this height. This is specifically the WETH
+// BridgePool's deploy block.
+export const bridgePoolEarliestBlockToSearch = 13545377;
+export const bridgePoolMaxBlocksToSeach = 1_000_000;
+
 export class AcrossMonitorConfig {
   readonly bridgeAdminChainId: number;
 
@@ -20,6 +30,8 @@ export class AcrossMonitorConfig {
 
   readonly startingBlock: number | undefined;
   readonly endingBlock: number | undefined;
+  readonly bridgePoolEarliestBlockToSearch: number;
+  readonly bridgePoolMaxBlocksToSeach: number;
 
   readonly utilizationThreshold: number;
   readonly whitelistedAddresses: string[];
@@ -37,6 +49,8 @@ export class AcrossMonitorConfig {
       WHITELISTED_ADDRESSES,
       UTILIZATION_ENABLED,
       UNKNOWN_RELAYERS_ENABLED,
+      BRIDGE_POOL_EVENT_SEARCH_FROM_BLOCK,
+      BRIDGE_POOL_MAX_BLOCKS_TO_SEARCH,
     } = env;
 
     this.botModes = {
@@ -65,5 +79,12 @@ export class AcrossMonitorConfig {
     // In serverless mode use block range from environment to fetch for latest events.
     this.startingBlock = STARTING_BLOCK_NUMBER ? Number(STARTING_BLOCK_NUMBER) : undefined;
     this.endingBlock = ENDING_BLOCK_NUMBER ? Number(ENDING_BLOCK_NUMBER) : undefined;
+
+    this.bridgePoolEarliestBlockToSearch = BRIDGE_POOL_EVENT_SEARCH_FROM_BLOCK
+      ? Number(BRIDGE_POOL_EVENT_SEARCH_FROM_BLOCK)
+      : bridgePoolEarliestBlockToSearch;
+    this.bridgePoolMaxBlocksToSeach = BRIDGE_POOL_MAX_BLOCKS_TO_SEARCH
+      ? Number(BRIDGE_POOL_MAX_BLOCKS_TO_SEARCH)
+      : bridgePoolMaxBlocksToSeach;
   }
 }

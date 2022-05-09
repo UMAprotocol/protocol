@@ -1,23 +1,11 @@
-import type { BridgePoolData } from "@uma/financial-templates-lib";
-
-// Note that Relay parameters are narrower in this module than in @uma/financial-templates-lib.
-interface Relay {
-  chainId: number;
-  depositId: number;
-  l2Sender: string;
-  l1Recipient: string;
-  amount: string;
-  slowRelayFeePct: string;
-  instantRelayFeePct: string;
-  realizedLpFeePct: string;
-  depositHash: string;
-}
+import type { BridgePoolData, InsuredBridgeL1Client, RelayedDeposit } from "@uma/financial-templates-lib";
+import { EventData } from "web3-eth-contract";
 
 export interface EventInfo {
   l1Token: string;
   poolCollateralDecimals: number;
   poolCollateralSymbol: string;
-  relay: Relay;
+  relay: RelayedDeposit;
   caller: string;
   action: string;
   transactionHash: string;
@@ -30,7 +18,7 @@ export class RelayEventProcessor {
 
   private lastRelayUpdate = -1; // DepositRelayed events are fetched from lastRelayUpdate + 1 block.
 
-  private deposits: { [key: string]: { [key: string]: Relay } } = {}; // L1TokenAddress=>depositHash=>Relay.
+  private deposits: { [key: string]: { [key: string]: RelayedDeposit } } = {}; // L1TokenAddress=>depositHash=>Relay.
   private eventActions: { [key: string]: string } = {
     DepositRelayed: "slow relayed",
     RelaySpedUp: "sped up",
@@ -39,14 +27,14 @@ export class RelayEventProcessor {
     RelayCanceled: "canceled",
   };
 
-  constructor() {
+  constructor(readonly l1Client: InsuredBridgeL1Client) {
     // do nothing.
   }
 
-  // update() should be called only after having populated bridgePools.
+  // update() should be called only after having updated L1 client
   // This fetches all DepositRelayed events since lastRelayUpdate block in order to store deposit and relay hash
   // mappings that could be referenced by other events.
-  async update(endingBlock: number): Promise<void> {
+  update(endingBlock: number): void {
     // Only update if endingBlock is more recent than the lastRelayUpdate block from last update() call.
     const startingBlock = this.lastRelayUpdate + 1;
     if (startingBlock > endingBlock) {
@@ -58,58 +46,25 @@ export class RelayEventProcessor {
       this.deposits[l1TokenAddress] = this.deposits[l1TokenAddress] ? this.deposits[l1TokenAddress] : {};
     }
 
-    await Promise.all(
-      Object.keys(this.bridgePools).map(async (l1TokenAddress) => {
-        const depositRelayedEvents = await this.bridgePools[l1TokenAddress].contract.getPastEvents("DepositRelayed", {
-          fromBlock: startingBlock,
-          toBlock: endingBlock,
-        });
-        for (const depositRelayedEvent of depositRelayedEvents) {
-          const relayData: Relay = {
-            chainId: Number(depositRelayedEvent.returnValues.depositData.chainId),
-            depositId: Number(depositRelayedEvent.returnValues.depositData.depositId),
-            l2Sender: depositRelayedEvent.returnValues.depositData.l2Sender,
-            l1Recipient: depositRelayedEvent.returnValues.depositData.l1Recipient,
-            amount: depositRelayedEvent.returnValues.depositData.amount,
-            slowRelayFeePct: depositRelayedEvent.returnValues.depositData.slowRelayFeePct,
-            instantRelayFeePct: depositRelayedEvent.returnValues.depositData.instantRelayFeePct,
-            realizedLpFeePct: depositRelayedEvent.returnValues.relay.realizedLpFeePct,
-            depositHash: depositRelayedEvent.returnValues.depositHash,
-          };
-          this.deposits[l1TokenAddress][depositRelayedEvent.returnValues.depositHash] = relayData;
-        }
-      })
-    );
+    // This will return all relayed deposit data including disputed ones.
+    for (const relayData of this.l1Client.getAllRelayedDepositsSimple()) {
+      this.deposits[relayData.l1Token][relayData.depositHash] = relayData;
+    }
 
     this.lastRelayUpdate = endingBlock;
   }
 
-  async getRelayEventInfo(startingBlock: number | undefined, endingBlock: number | undefined): Promise<EventInfo[]> {
-    const blockSearchConfig = { fromBlock: startingBlock, toBlock: endingBlock };
+  getRelayEventInfo(startingBlock: number | undefined, endingBlock: number | undefined): EventInfo[] {
     const relayEvents: EventInfo[] = [];
     // Fetch all relay related events.
     for (const [l1TokenAddress, bridgePool] of Object.entries(this.bridgePools)) {
-      const [
-        depositRelayedEvents,
-        relaySpedUpEvents,
-        relaySettledEvents,
-        relayDisputedEvents,
-        relayCanceledEvents,
-      ] = await Promise.all([
-        bridgePool.contract.getPastEvents("DepositRelayed", blockSearchConfig),
-        bridgePool.contract.getPastEvents("RelaySpedUp", blockSearchConfig),
-        bridgePool.contract.getPastEvents("RelaySettled", blockSearchConfig),
-        bridgePool.contract.getPastEvents("RelayDisputed", blockSearchConfig),
-        bridgePool.contract.getPastEvents("RelayCanceled", blockSearchConfig),
-      ]);
-
       // Process all relay related events, get caller, type and match with additional properties by depositHash that
       // were cached on update().
-      const allEvents = depositRelayedEvents
-        .concat(relaySpedUpEvents)
-        .concat(relaySettledEvents)
-        .concat(relayDisputedEvents)
-        .concat(relayCanceledEvents);
+      const allEvents = this.l1Client.allRelayEventData[bridgePool.contract.options.address].filter(
+        (e: EventData) =>
+          (startingBlock === undefined || e.blockNumber >= startingBlock) &&
+          (endingBlock === undefined || e.blockNumber <= endingBlock)
+      );
       for (const event of allEvents) {
         const depositHash = event.returnValues.depositHash;
         if (!this.deposits[l1TokenAddress][depositHash]) {

@@ -13,6 +13,16 @@ export const bridgeDepositBoxDeployData = {
   288: { blockNumber: 223808 },
 };
 
+// Following settings can be overridden to optimize L1 client event search for select events. For example,
+// the "DepositRelayed" event search request could return > 10,000 return values so we need to shorten the block
+// search using these parameters because some node providers like Infura limit event search return values to 10,000.
+
+// This is set to the oldest SpokePool's deploy block height because we can assume that there will not be any
+// BridgePool events on any BridgePool at blocks lower than this height. This is specifically the WETH
+// BridgePool's deploy block.
+export const bridgePoolEarliestBlockToSearch = 13545377;
+export const bridgePoolMaxBlocksToSeach = 1_000_000;
+
 export interface ProcessEnv {
   [key: string]: string | undefined;
 }
@@ -42,6 +52,8 @@ export class RelayerConfig {
   readonly botModes: BotModes;
 
   readonly l2DeployData: { [key: string]: { blockNumber: number } };
+  readonly bridgePoolEarliestBlockToSearch: number;
+  readonly bridgePoolMaxBlocksToSeach: number;
 
   constructor(env: ProcessEnv) {
     const {
@@ -61,6 +73,8 @@ export class RelayerConfig {
       L2_FINALIZER_ENABLED,
       WHITELISTED_CHAIN_IDS,
       L2_DEPLOY_DATA,
+      BRIDGE_POOL_EVENT_SEARCH_FROM_BLOCK,
+      BRIDGE_POOL_MAX_BLOCKS_TO_SEARCH,
     } = env;
 
     if (!BRIDGE_ADMIN_ADDRESS) throw new Error("BRIDGE_ADMIN_ADDRESS required");
@@ -105,6 +119,13 @@ export class RelayerConfig {
     this.errorRetriesTimeout = ERROR_RETRIES_TIMEOUT ? Number(ERROR_RETRIES_TIMEOUT) : 1;
 
     this.l2DeployData = L2_DEPLOY_DATA ? JSON.parse(L2_DEPLOY_DATA) : bridgeDepositBoxDeployData;
+
+    this.bridgePoolEarliestBlockToSearch = BRIDGE_POOL_EVENT_SEARCH_FROM_BLOCK
+      ? Number(BRIDGE_POOL_EVENT_SEARCH_FROM_BLOCK)
+      : bridgePoolEarliestBlockToSearch;
+    this.bridgePoolMaxBlocksToSeach = BRIDGE_POOL_MAX_BLOCKS_TO_SEARCH
+      ? Number(BRIDGE_POOL_MAX_BLOCKS_TO_SEARCH)
+      : bridgePoolMaxBlocksToSeach;
 
     // CHAIN_IDS sets the active chain ID's for this bot. Note how this is distinct from WHITELISTED_CHAIN_IDS which
     // sets all valid chain ID's. Any relays for chain ID's outside of this whitelist will be disputed.

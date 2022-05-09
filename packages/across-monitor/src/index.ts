@@ -25,7 +25,15 @@ export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
 
     // l1Client uses bridgeAdmin contract for bridge pool discovery.
     const bridgeAdminAddress = await getAddress("BridgeAdmin", config.bridgeAdminChainId);
-    const l1Client = new InsuredBridgeL1Client(logger, l1Web3, bridgeAdminAddress, null);
+    const l1Client = new InsuredBridgeL1Client(
+      logger,
+      l1Web3,
+      bridgeAdminAddress,
+      null,
+      config.bridgePoolEarliestBlockToSearch,
+      null, // Use latest block as end block
+      config.bridgePoolMaxBlocksToSeach
+    );
 
     const acrossMonitor = new AcrossMonitor(logger, config, l1Client);
 
@@ -39,7 +47,7 @@ export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
           if (config.botModes.utilizationEnabled) await acrossMonitor.checkUtilization();
           else logger.debug({ at: "AcrossMonitor#Utilization", message: "Utilization monitor disabled" });
 
-          if (config.botModes.unknownRelayersEnabled) await acrossMonitor.checkUnknownRelayers();
+          if (config.botModes.unknownRelayersEnabled) acrossMonitor.checkUnknownRelayers();
           else logger.debug({ at: "AcrossMonitor#UnknownRelayers", message: "UnknownRelayers monitor disabled" });
         },
         {

@@ -47,7 +47,15 @@ export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
     // Create L1/L2 clients to pull data to inform the relayer.
     // todo: add in start and ending block numbers (if need be).
     // todo: grab bridge admin from `getAddress`.
-    const l1Client = new InsuredBridgeL1Client(logger, l1Web3, config.bridgeAdmin, config.rateModelStore);
+    const l1Client = new InsuredBridgeL1Client(
+      logger,
+      l1Web3,
+      config.bridgeAdmin,
+      config.rateModelStore,
+      config.bridgePoolEarliestBlockToSearch,
+      null, // Use latest block as end block
+      config.bridgePoolMaxBlocksToSeach
+    );
     await l1Client.update();
 
     // TODO: Add a method to fetch all registered chainIDs from bridge admin to let the bot default to all chains when
