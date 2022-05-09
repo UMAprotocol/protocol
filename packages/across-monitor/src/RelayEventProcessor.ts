@@ -1,24 +1,11 @@
-import type { BridgePoolData, InsuredBridgeL1Client } from "@uma/financial-templates-lib";
+import type { BridgePoolData, InsuredBridgeL1Client, RelayedDeposit } from "@uma/financial-templates-lib";
 import { EventData } from "web3-eth-contract";
-
-// Note that Relay parameters are narrower in this module than in @uma/financial-templates-lib.
-interface Relay {
-  chainId: number;
-  depositId: number;
-  l2Sender: string;
-  l1Recipient: string;
-  amount: string;
-  slowRelayFeePct: string;
-  instantRelayFeePct: string;
-  realizedLpFeePct: string;
-  depositHash: string;
-}
 
 export interface EventInfo {
   l1Token: string;
   poolCollateralDecimals: number;
   poolCollateralSymbol: string;
-  relay: Relay;
+  relay: RelayedDeposit;
   caller: string;
   action: string;
   transactionHash: string;
@@ -31,7 +18,7 @@ export class RelayEventProcessor {
 
   private lastRelayUpdate = -1; // DepositRelayed events are fetched from lastRelayUpdate + 1 block.
 
-  private deposits: { [key: string]: { [key: string]: Relay } } = {}; // L1TokenAddress=>depositHash=>Relay.
+  private deposits: { [key: string]: { [key: string]: RelayedDeposit } } = {}; // L1TokenAddress=>depositHash=>Relay.
   private eventActions: { [key: string]: string } = {
     DepositRelayed: "slow relayed",
     RelaySpedUp: "sped up",
@@ -59,7 +46,8 @@ export class RelayEventProcessor {
       this.deposits[l1TokenAddress] = this.deposits[l1TokenAddress] ? this.deposits[l1TokenAddress] : {};
     }
 
-    for (const relayData of this.l1Client.getAllRelayedDeposits()) {
+    // This will return all relayed deposit data including disputed ones.
+    for (const relayData of this.l1Client.getAllRelayedDepositsSimple()) {
       this.deposits[relayData.l1Token][relayData.depositHash] = relayData;
     }
 

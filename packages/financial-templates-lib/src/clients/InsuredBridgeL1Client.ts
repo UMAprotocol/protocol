@@ -25,27 +25,30 @@ export enum SettleableRelay {
   AnyoneCanSettle,
 }
 
-export interface Relay {
+export interface Relay extends RelayedDeposit {
   relayId: number;
-  chainId: number;
-  depositId: number;
-  l2Sender: string;
   slowRelayer: string;
-  l1Recipient: string;
-  l1Token: string;
-  amount: string;
-  slowRelayFeePct: string;
-  instantRelayFeePct: string;
   quoteTimestamp: number;
-  realizedLpFeePct: string;
   priceRequestTime: number;
-  depositHash: string;
   relayState: ClientRelayState;
   relayAncillaryDataHash: string;
   proposerBond: string;
   finalFee: string;
   settleable: SettleableRelay;
   blockNumber: number;
+}
+
+export interface RelayedDeposit {
+  chainId: number;
+  depositId: number;
+  l1Token: string;
+  l2Sender: string;
+  l1Recipient: string;
+  amount: string;
+  slowRelayFeePct: string;
+  instantRelayFeePct: string;
+  realizedLpFeePct: string;
+  depositHash: string;
 }
 
 export interface InstantRelay {
@@ -81,7 +84,11 @@ export class InsuredBridgeL1Client {
   public optimisticOracleLiveness = 0;
   public firstBlockToSearch: number;
 
+  // The main difference between `relays` and `deposits` is that `relayedDeposits` are deleted if they are disputed.
+  // Also, `relays` contain more props that track the Relay lifecycle.
   private relays: { [key: string]: { [key: string]: Relay } } = {}; // L1TokenAddress=>depositHash=>Relay.
+  private relayedDeposits: { [key: string]: { [key: string]: RelayedDeposit } } = {};
+
   private instantRelays: { [key: string]: { [key: string]: InstantRelay } } = {}; // L1TokenAddress=>{depositHash, realizedLpFeePct}=>InstantRelay.
 
   // Stored event raw data used by Across Mainnet monitor
@@ -126,6 +133,17 @@ export class InsuredBridgeL1Client {
     return Object.keys(this.relays)
       .map((l1Token: string) =>
         Object.keys(this.relays[l1Token]).map((depositHash: string) => this.relays[l1Token][depositHash])
+      )
+      .flat();
+  }
+
+  getAllRelayedDepositsSimple(): RelayedDeposit[] {
+    this._throwIfNotInitialized();
+    return Object.keys(this.relayedDeposits)
+      .map((l1Token: string) =>
+        Object.keys(this.relayedDeposits[l1Token]).map(
+          (depositHash: string) => this.relayedDeposits[l1Token][depositHash]
+        )
       )
       .flat();
   }
@@ -364,6 +382,7 @@ export class InsuredBridgeL1Client {
         ...l2Tokens,
         [whitelistedTokenEvent.returnValues.chainId]: toChecksumAddress(whitelistedTokenEvent.returnValues.l2Token),
       };
+      this.relayedDeposits[l1Token] = {};
       this.relays[l1Token] = {};
       this.instantRelays[l1Token] = {};
     }
@@ -455,21 +474,24 @@ export class InsuredBridgeL1Client {
 
       // Process events an set in state.
       for (const depositRelayedEvent of depositRelayedEvents.eventData) {
-        const relayData: Relay = {
-          relayId: Number(depositRelayedEvent.returnValues.relay.relayId),
+        const relayedDeposit: RelayedDeposit = {
           chainId: Number(depositRelayedEvent.returnValues.depositData.chainId),
           depositId: Number(depositRelayedEvent.returnValues.depositData.depositId),
-          l2Sender: depositRelayedEvent.returnValues.depositData.l2Sender,
-          slowRelayer: depositRelayedEvent.returnValues.relay.slowRelayer,
-          l1Recipient: depositRelayedEvent.returnValues.depositData.l1Recipient,
           l1Token: l1Token,
+          l2Sender: depositRelayedEvent.returnValues.depositData.l2Sender,
+          l1Recipient: depositRelayedEvent.returnValues.depositData.l1Recipient,
           amount: depositRelayedEvent.returnValues.depositData.amount,
           slowRelayFeePct: depositRelayedEvent.returnValues.depositData.slowRelayFeePct,
           instantRelayFeePct: depositRelayedEvent.returnValues.depositData.instantRelayFeePct,
-          quoteTimestamp: Number(depositRelayedEvent.returnValues.depositData.quoteTimestamp),
           realizedLpFeePct: depositRelayedEvent.returnValues.relay.realizedLpFeePct,
-          priceRequestTime: Number(depositRelayedEvent.returnValues.relay.priceRequestTime),
           depositHash: depositRelayedEvent.returnValues.depositHash,
+        };
+        const relayData: Relay = {
+          ...relayedDeposit,
+          relayId: Number(depositRelayedEvent.returnValues.relay.relayId),
+          slowRelayer: depositRelayedEvent.returnValues.relay.slowRelayer,
+          quoteTimestamp: Number(depositRelayedEvent.returnValues.depositData.quoteTimestamp),
+          priceRequestTime: Number(depositRelayedEvent.returnValues.relay.priceRequestTime),
           relayState: ClientRelayState.Pending, // Should be equal to depositRelayedEvent.returnValues.relay.relayState
           relayAncillaryDataHash: depositRelayedEvent.returnValues.relayAncillaryDataHash,
           proposerBond: depositRelayedEvent.returnValues.relay.proposerBond,
@@ -478,6 +500,7 @@ export class InsuredBridgeL1Client {
           blockNumber: depositRelayedEvent.blockNumber,
         };
         this.relays[l1Token][relayData.depositHash] = relayData;
+        this.relayedDeposits[l1Token][relayData.depositHash] = relayedDeposit;
       }
 
       // For all RelaySpedUp, set the instant relayer.
