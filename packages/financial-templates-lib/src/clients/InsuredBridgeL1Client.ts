@@ -27,6 +27,7 @@ export enum SettleableRelay {
 
 export interface Relay extends RelayedDeposit {
   relayId: number;
+  l1Token: string;
   slowRelayer: string;
   quoteTimestamp: number;
   priceRequestTime: number;
@@ -41,7 +42,6 @@ export interface Relay extends RelayedDeposit {
 export interface RelayedDeposit {
   chainId: number;
   depositId: number;
-  l1Token: string;
   l2Sender: string;
   l1Recipient: string;
   amount: string;
@@ -474,24 +474,21 @@ export class InsuredBridgeL1Client {
 
       // Process events an set in state.
       for (const depositRelayedEvent of depositRelayedEvents.eventData) {
-        const relayedDeposit: RelayedDeposit = {
+        const relayData: Relay = {
+          relayId: Number(depositRelayedEvent.returnValues.relay.relayId),
           chainId: Number(depositRelayedEvent.returnValues.depositData.chainId),
           depositId: Number(depositRelayedEvent.returnValues.depositData.depositId),
-          l1Token: l1Token,
           l2Sender: depositRelayedEvent.returnValues.depositData.l2Sender,
+          slowRelayer: depositRelayedEvent.returnValues.relay.slowRelayer,
           l1Recipient: depositRelayedEvent.returnValues.depositData.l1Recipient,
+          l1Token: l1Token,
           amount: depositRelayedEvent.returnValues.depositData.amount,
           slowRelayFeePct: depositRelayedEvent.returnValues.depositData.slowRelayFeePct,
           instantRelayFeePct: depositRelayedEvent.returnValues.depositData.instantRelayFeePct,
-          realizedLpFeePct: depositRelayedEvent.returnValues.relay.realizedLpFeePct,
-          depositHash: depositRelayedEvent.returnValues.depositHash,
-        };
-        const relayData: Relay = {
-          ...relayedDeposit,
-          relayId: Number(depositRelayedEvent.returnValues.relay.relayId),
-          slowRelayer: depositRelayedEvent.returnValues.relay.slowRelayer,
           quoteTimestamp: Number(depositRelayedEvent.returnValues.depositData.quoteTimestamp),
+          realizedLpFeePct: depositRelayedEvent.returnValues.relay.realizedLpFeePct,
           priceRequestTime: Number(depositRelayedEvent.returnValues.relay.priceRequestTime),
+          depositHash: depositRelayedEvent.returnValues.depositHash,
           relayState: ClientRelayState.Pending, // Should be equal to depositRelayedEvent.returnValues.relay.relayState
           relayAncillaryDataHash: depositRelayedEvent.returnValues.relayAncillaryDataHash,
           proposerBond: depositRelayedEvent.returnValues.relay.proposerBond,
@@ -500,7 +497,17 @@ export class InsuredBridgeL1Client {
           blockNumber: depositRelayedEvent.blockNumber,
         };
         this.relays[l1Token][relayData.depositHash] = relayData;
-        this.relayedDeposits[l1Token][relayData.depositHash] = relayedDeposit;
+        this.relayedDeposits[l1Token][relayData.depositHash] = {
+          chainId: relayData.chainId,
+          depositId: relayData.depositId,
+          l2Sender: relayData.l2Sender,
+          l1Recipient: relayData.l1Recipient,
+          amount: relayData.amount,
+          slowRelayFeePct: relayData.slowRelayFeePct,
+          instantRelayFeePct: relayData.instantRelayFeePct,
+          realizedLpFeePct: relayData.realizedLpFeePct,
+          depositHash: relayData.depositHash,
+        };
       }
 
       // For all RelaySpedUp, set the instant relayer.
