@@ -73,7 +73,7 @@
   },
   {
     "contractName": "MockOracleAncillary",
-    "address": "0xe1C367e2b576Ac421a9f46C9cC624935730c36aa"
+    "address": "0x2664447836a0d94Ed610cB76D85784Db291BFB5f"
   },
   {
     "contractName": "SuccessTokenLongShortPairFinancialProductLibrary",
