@@ -140,12 +140,20 @@ export class PoolEventState {
     if (!seen) this.addEvent(params);
     return !seen;
   };
-  public async read(endBlock: number) {
+  public async read(endBlock: number, userAddress?: string) {
     if (endBlock <= this.startBlock) return this.state;
     const events = (
       await Promise.all([
-        ...(await this.contract.queryFilter(this.contract.filters.LiquidityAdded(), this.startBlock, endBlock)),
-        ...(await this.contract.queryFilter(this.contract.filters.LiquidityRemoved(), this.startBlock, endBlock)),
+        ...(await this.contract.queryFilter(
+          this.contract.filters.LiquidityAdded(undefined, undefined, userAddress),
+          this.startBlock,
+          endBlock
+        )),
+        ...(await this.contract.queryFilter(
+          this.contract.filters.LiquidityRemoved(undefined, undefined, userAddress),
+          this.startBlock,
+          endBlock
+        )),
       ])
     )
       .filter(this.filterSeen)
@@ -517,7 +525,7 @@ export class Client {
     const getUserState = new UserState(contract);
     const getPoolEventState = this.getOrCreatePoolEvents(poolAddress);
     const userState = await getUserState.read(userAddress);
-    const eventState = await getPoolEventState.read(latestBlock);
+    const eventState = await getPoolEventState.read(latestBlock, userAddress);
     set(this.state, ["users", userAddress, poolAddress], joinUserState(poolState, eventState, userState));
     this.emit(["users", userAddress, poolAddress], this.state.users[userAddress][poolAddress]);
   }
