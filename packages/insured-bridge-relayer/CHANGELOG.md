@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.17.4](https://github.com/UMAprotocol/protocol/compare/@uma/insured-bridge-relayer@1.17.3...@uma/insured-bridge-relayer@1.17.4) (2022-05-13)
+
+### Bug Fixes
+
+- Paginate InsuredBridgeL1Client event search for select events ([#3902](https://github.com/UMAprotocol/protocol/issues/3902)) ([6fff88a](https://github.com/UMAprotocol/protocol/commit/6fff88a4be3bc9f55cca70b54f265435ef08a1cb))
+
 ## [1.17.3](https://github.com/UMAprotocol/protocol/compare/@uma/insured-bridge-relayer@1.17.2...@uma/insured-bridge-relayer@1.17.3) (2022-05-05)
 
 **Note:** Version bump only for package @uma/insured-bridge-relayer

@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.27.3](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.27.2...@uma/financial-templates-lib@2.27.3) (2022-05-13)
+
+### Bug Fixes
+
+- add tests for v1 OptimisticOracle bot interactions ([#3897](https://github.com/UMAprotocol/protocol/issues/3897)) ([3aef7dd](https://github.com/UMAprotocol/protocol/commit/3aef7dd159138805e83c02e275999a95a416de8a))
+- Paginate InsuredBridgeL1Client event search for select events ([#3902](https://github.com/UMAprotocol/protocol/issues/3902)) ([6fff88a](https://github.com/UMAprotocol/protocol/commit/6fff88a4be3bc9f55cca70b54f265435ef08a1cb))
+- split l1 block queries at specific block ([#3901](https://github.com/UMAprotocol/protocol/issues/3901)) ([18da1ad](https://github.com/UMAprotocol/protocol/commit/18da1ada8aa480b8042b1c9e11ba1d4ac54a1dca))
+
 ## [2.27.2](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.27.1...@uma/financial-templates-lib@2.27.2) (2022-05-05)
 
 ### Bug Fixes

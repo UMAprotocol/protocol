@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.11.7](https://github.com/UMAprotocol/protocol/compare/@uma/monitors@2.11.6...@uma/monitors@2.11.7) (2022-05-13)
+
+### Bug Fixes
+
+- add tests for v1 OptimisticOracle bot interactions ([#3897](https://github.com/UMAprotocol/protocol/issues/3897)) ([3aef7dd](https://github.com/UMAprotocol/protocol/commit/3aef7dd159138805e83c02e275999a95a416de8a))
+
 ## [2.11.6](https://github.com/UMAprotocol/protocol/compare/@uma/monitors@2.11.5...@uma/monitors@2.11.6) (2022-05-05)
 
 ### Bug Fixes

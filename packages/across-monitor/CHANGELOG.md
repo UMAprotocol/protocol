@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.1.10](https://github.com/UMAprotocol/protocol/compare/@uma/across-monitor@1.1.9...@uma/across-monitor@1.1.10) (2022-05-13)
+
+### Bug Fixes
+
+- Paginate InsuredBridgeL1Client event search for select events ([#3902](https://github.com/UMAprotocol/protocol/issues/3902)) ([6fff88a](https://github.com/UMAprotocol/protocol/commit/6fff88a4be3bc9f55cca70b54f265435ef08a1cb))
+
 ## [1.1.9](https://github.com/UMAprotocol/protocol/compare/@uma/across-monitor@1.1.8...@uma/across-monitor@1.1.9) (2022-05-05)
 
 **Note:** Version bump only for package @uma/across-monitor
