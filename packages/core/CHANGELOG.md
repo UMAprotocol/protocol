@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.28.2](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.28.1...@uma/core@2.28.2) (2022-05-13)
+
+### Bug Fixes
+
+- **core:** update MockOracle deployment address ([#3905](https://github.com/UMAprotocol/protocol/issues/3905)) ([80fc102](https://github.com/UMAprotocol/protocol/commit/80fc10212e518d42abe391dbc96fd72f270c32b5))
+- add tests for v1 OptimisticOracle bot interactions ([#3897](https://github.com/UMAprotocol/protocol/issues/3897)) ([3aef7dd](https://github.com/UMAprotocol/protocol/commit/3aef7dd159138805e83c02e275999a95a416de8a))
+
 ## [2.28.1](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.28.0...@uma/core@2.28.1) (2022-05-05)
 
 ### Bug Fixes

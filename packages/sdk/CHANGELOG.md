@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.23.3](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.23.2...@uma/sdk@0.23.3) (2022-05-13)
+
+### Bug Fixes
+
+- **sdk/across:** scope query events to user ([#3906](https://github.com/UMAprotocol/protocol/issues/3906)) ([b0c3ad2](https://github.com/UMAprotocol/protocol/commit/b0c3ad204271a290e526287d99157cd833bbbb71))
+
 ## [0.23.2](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.23.1...@uma/sdk@0.23.2) (2022-05-05)
 
 ### Bug Fixes

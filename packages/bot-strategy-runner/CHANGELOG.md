@@ -3,6 +3,10 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.3.10](https://github.com/UMAprotocol/protocol/compare/@uma/bot-strategy-runner@1.3.9...@uma/bot-strategy-runner@1.3.10) (2022-05-13)
+
+**Note:** Version bump only for package @uma/bot-strategy-runner
+
 ## [1.3.9](https://github.com/UMAprotocol/protocol/compare/@uma/bot-strategy-runner@1.3.8...@uma/bot-strategy-runner@1.3.9) (2022-05-05)
 
 **Note:** Version bump only for package @uma/bot-strategy-runner
