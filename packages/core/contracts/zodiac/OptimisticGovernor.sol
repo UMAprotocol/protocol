@@ -22,6 +22,14 @@ contract OptimisticGovernor is Module, Lockable {
 
     event OptimisticGovernorDeployed(address indexed owner, address indexed avatar, address target);
 
+    event SetCollateralAndBond(address indexed collateral, uint256 indexed bond);
+
+    event SetRules(string indexed rules);
+
+    event SetLiveness(uint64 indexed liveness);
+
+    event SetIdentifier(bytes32 indexed identifier);
+
     event TransactionsProposed(
         uint256 indexed proposalId,
         address indexed proposer,
@@ -96,14 +104,18 @@ contract OptimisticGovernor is Module, Lockable {
             uint64 _liveness
         ) = abi.decode(initializeParams, (address, address, address, uint256, string, bytes32, uint64));
         finder = FinderInterface(_finder);
-        require(_getCollateralWhitelist().isOnWhitelist(address(_collateral)), "bond token not supported");
-        collateral = IERC20(_collateral);
-        bond = _bond;
-        rules = _rules;
-        require(_getIdentifierWhitelist().isIdentifierSupported(_identifier), "identifier not supported");
-        identifier = _identifier;
-        require(_liveness > 0, "liveness can't be 0");
-        liveness = _liveness;
+        // require(_getCollateralWhitelist().isOnWhitelist(address(_collateral)), "bond token not supported");
+        // collateral = IERC20(_collateral);
+        // bond = _bond;
+        // rules = _rules;
+        // require(_getIdentifierWhitelist().isIdentifierSupported(_identifier), "identifier not supported");
+        // // identifier = _identifier;
+        // require(_liveness > 0, "liveness can't be 0");
+        // liveness = _liveness;
+        setCollateralAndBond(_collateral, _bond);
+        setRules(_rules);
+        setIdentifier(_identifier);
+        setLiveness(_liveness);
         setAvatar(_owner);
         setTarget(_owner);
         transferOwnership(_owner);
@@ -117,13 +129,15 @@ contract OptimisticGovernor is Module, Lockable {
      * @param _collateral token that will be used for all bonds for the contract.
      * @param _bond amount of the bond token that will need to be paid for future proposals.
      */
-    function setCollateralAndBond(IERC20 _collateral, uint256 _bond) public onlyOwner {
+    function setCollateralAndBond(address _collateral, uint256 _bond) public onlyOwner {
         // ERC20 token to be used as collateral (must be approved by UMA Store contract).
         require(_getCollateralWhitelist().isOnWhitelist(address(_collateral)), "bond token not supported");
-        collateral = _collateral;
+        collateral = IERC20(_collateral);
 
         // Value of the bond required for proposals, in addition to the final fee.
         bond = _bond;
+
+        emit SetCollateralAndBond(_collateral, _bond);
     }
 
     /**
@@ -133,6 +147,8 @@ contract OptimisticGovernor is Module, Lockable {
     function setRules(string memory _rules) public onlyOwner {
         // Set reference to the rules for the avatar (e.g. an IPFS hash or URI).
         rules = _rules;
+
+        emit SetRules(rules);
     }
 
     /**
@@ -144,6 +160,8 @@ contract OptimisticGovernor is Module, Lockable {
         // Set liveness for disputing proposed transactions.
         require(_liveness > 0, "liveness can't be 0");
         liveness = _liveness;
+
+        emit SetLiveness(liveness);
     }
 
     /**
@@ -155,6 +173,8 @@ contract OptimisticGovernor is Module, Lockable {
         // Set identifier which is used along with the rules to determine if transactions are valid.
         require(_getIdentifierWhitelist().isIdentifierSupported(_identifier), "identifier not supported");
         identifier = _identifier;
+
+        emit SetIdentifier(identifier);
     }
 
     /**
