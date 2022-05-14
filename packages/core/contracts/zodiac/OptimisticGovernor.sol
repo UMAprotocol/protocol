@@ -103,15 +103,8 @@ contract OptimisticGovernor is Module, Lockable {
             bytes32 _identifier,
             uint64 _liveness
         ) = abi.decode(initializeParams, (address, address, address, uint256, string, bytes32, uint64));
+        require(_finder != address(0), "finder address can not be empty");
         finder = FinderInterface(_finder);
-        // require(_getCollateralWhitelist().isOnWhitelist(address(_collateral)), "bond token not supported");
-        // collateral = IERC20(_collateral);
-        // bond = _bond;
-        // rules = _rules;
-        // require(_getIdentifierWhitelist().isIdentifierSupported(_identifier), "identifier not supported");
-        // // identifier = _identifier;
-        // require(_liveness > 0, "liveness can't be 0");
-        // liveness = _liveness;
         setCollateralAndBond(_collateral, _bond);
         setRules(_rules);
         setIdentifier(_identifier);
@@ -134,7 +127,8 @@ contract OptimisticGovernor is Module, Lockable {
         require(_getCollateralWhitelist().isOnWhitelist(address(_collateral)), "bond token not supported");
         collateral = IERC20(_collateral);
 
-        // Value of the bond required for proposals, in addition to the final fee.
+        // Value of the bond required for proposals, in addition to the final fee. A bond of zero is
+        // acceptable, in which case the Optimistic Oracle will require the final fee as the bond.
         bond = _bond;
 
         emit SetCollateralAndBond(_collateral, _bond);
@@ -146,6 +140,7 @@ contract OptimisticGovernor is Module, Lockable {
      */
     function setRules(string memory _rules) public onlyOwner {
         // Set reference to the rules for the avatar (e.g. an IPFS hash or URI).
+        require(bytes(_rules).length > 0, "rules can not be empty");
         rules = _rules;
 
         emit SetRules(rules);
@@ -159,6 +154,7 @@ contract OptimisticGovernor is Module, Lockable {
     function setLiveness(uint64 _liveness) public onlyOwner {
         // Set liveness for disputing proposed transactions.
         require(_liveness > 0, "liveness can't be 0");
+        require(_liveness < 3144960000, "liveness can't be longer than 5200 weeks");
         liveness = _liveness;
 
         emit SetLiveness(liveness);

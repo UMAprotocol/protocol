@@ -659,7 +659,6 @@ describe("OptimisticGovernor", () => {
     // Create new proposal to delete the old one.
     const txnData4 = constructProposalDeleteTransaction(proposalId);
     const deleteId = proposalId + 1;
-    console.log("deleteId:", deleteId);
     const deleteTransaction = [{ to: optimisticOracleModule.options.address, value: 0, data: txnData4, operation }];
     const deleteExplanation = utf8ToHex("Oops, we messed up the parameters on the other proposal.");
     await optimisticOracleModule.methods
