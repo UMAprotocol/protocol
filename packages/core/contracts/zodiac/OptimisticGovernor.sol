@@ -34,6 +34,10 @@ contract OptimisticGovernor is Module, Lockable {
 
     event ProposalDeleted(uint256 indexed proposalId);
 
+    event SetCollateral(IERC20 indexed collateral);
+
+    event SetBond(uint256 indexed bond);
+
     // Since finder is set during setUp, you will need to deploy a new Optimistic Governor module if this address need to be changed in the future.
     FinderInterface public finder;
 
@@ -96,14 +100,10 @@ contract OptimisticGovernor is Module, Lockable {
             uint64 _liveness
         ) = abi.decode(initializeParams, (address, address, address, uint256, string, bytes32, uint64));
         finder = FinderInterface(_finder);
-        require(_getCollateralWhitelist().isOnWhitelist(address(_collateral)), "bond token not supported");
-        collateral = IERC20(_collateral);
-        bond = _bond;
-        rules = _rules;
-        require(_getIdentifierWhitelist().isIdentifierSupported(_identifier), "identifier not supported");
-        identifier = _identifier;
-        require(_liveness > 0, "liveness can't be 0");
-        liveness = _liveness;
+        setCollateralAndBond(IERC20(_collateral), _bond);
+        setRules(_rules);
+        setIdentifier(_identifier);
+        setLiveness(_liveness);
         setAvatar(_owner);
         setTarget(_owner);
         transferOwnership(_owner);
@@ -113,22 +113,19 @@ contract OptimisticGovernor is Module, Lockable {
     }
 
     /**
-     * @notice Sets the bond amount for proposals.
+     * @notice Sets the collateral and bond amount for proposals.
+     * @param _collateral token that will be used for all bonds for the contract.
      * @param _bond amount of the bond token that will need to be paid for future proposals.
      */
-    function setBond(uint256 _bond) public onlyOwner {
-        // Value of the bond required for proposals, in addition to the final fee.
-        bond = _bond;
-    }
-
-    /**
-     * @notice Sets the collateral token (and bond token) for future proposals.
-     * @param _collateral token that will be used for all bonds for the contract.
-     */
-    function setCollateral(IERC20 _collateral) public onlyOwner {
+    function setCollateralAndBond(IERC20 _collateral, uint256 _bond) public onlyOwner {
         // ERC20 token to be used as collateral (must be approved by UMA Store contract).
         require(_getCollateralWhitelist().isOnWhitelist(address(_collateral)), "bond token not supported");
         collateral = _collateral;
+        emit SetCollateral(_collateral);
+
+        // Value of the bond required for proposals, in addition to the final fee.
+        bond = _bond;
+        emit SetBond(_bond);
     }
 
     /**
