@@ -34,6 +34,10 @@ contract OptimisticGovernor is Module, Lockable {
 
     event ProposalDeleted(uint256 indexed proposalId);
 
+    event SetCollateral(IERC20 indexed collateral);
+
+    event SetBond(uint256 indexed bond);
+
     // Since finder is set during setUp, you will need to deploy a new Optimistic Governor module if this address need to be changed in the future.
     FinderInterface public finder;
 
@@ -121,9 +125,11 @@ contract OptimisticGovernor is Module, Lockable {
         // ERC20 token to be used as collateral (must be approved by UMA Store contract).
         require(_getCollateralWhitelist().isOnWhitelist(address(_collateral)), "bond token not supported");
         collateral = _collateral;
+        emit SetCollateral(_collateral);
 
         // Value of the bond required for proposals, in addition to the final fee.
         bond = _bond;
+        emit SetBond(_bond);
     }
 
     /**
