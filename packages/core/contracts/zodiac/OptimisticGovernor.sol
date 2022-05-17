@@ -127,7 +127,8 @@ contract OptimisticGovernor is Module, Lockable {
         collateral = _collateral;
         emit SetCollateral(_collateral);
 
-        // Value of the bond required for proposals, in addition to the final fee.
+        // Value of the bond required for proposals, in addition to the final fee. A bond of zero is
+        // acceptable, in which case the Optimistic Oracle will require the final fee as the bond.
         bond = _bond;
         emit SetBond(_bond);
     }
