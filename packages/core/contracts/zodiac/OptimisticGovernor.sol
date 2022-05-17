@@ -34,6 +34,16 @@ contract OptimisticGovernor is Module, Lockable {
 
     event ProposalDeleted(uint256 indexed proposalId);
 
+    event SetCollateral(IERC20 indexed collateral);
+
+    event SetBond(uint256 indexed bond);
+
+    event SetRules(string indexed rules);
+
+    event SetLiveness(uint64 indexed liveness);
+
+    event SetIdentifier(bytes32 indexed identifier);
+
     // Since finder is set during setUp, you will need to deploy a new Optimistic Governor module if this address need to be changed in the future.
     FinderInterface public finder;
 
@@ -119,6 +129,7 @@ contract OptimisticGovernor is Module, Lockable {
     function setBond(uint256 _bond) public onlyOwner {
         // Value of the bond required for proposals, in addition to the final fee.
         bond = _bond;
+        emit SetBond(_bond);
     }
 
     /**
@@ -129,6 +140,7 @@ contract OptimisticGovernor is Module, Lockable {
         // ERC20 token to be used as collateral (must be approved by UMA Store contract).
         require(_getCollateralWhitelist().isOnWhitelist(address(_collateral)), "bond token not supported");
         collateral = _collateral;
+        emit SetCollateral(_collateral);
     }
 
     /**
@@ -138,6 +150,7 @@ contract OptimisticGovernor is Module, Lockable {
     function setRules(string memory _rules) public onlyOwner {
         // Set reference to the rules for the avatar (e.g. an IPFS hash or URI).
         rules = _rules;
+        emit SetRules(rules);
     }
 
     /**
@@ -149,6 +162,7 @@ contract OptimisticGovernor is Module, Lockable {
         // Set liveness for disputing proposed transactions.
         require(_liveness > 0, "liveness can't be 0");
         liveness = _liveness;
+        emit SetLiveness(liveness);
     }
 
     /**
@@ -160,6 +174,7 @@ contract OptimisticGovernor is Module, Lockable {
         // Set identifier which is used along with the rules to determine if transactions are valid.
         require(_getIdentifierWhitelist().isIdentifierSupported(_identifier), "identifier not supported");
         identifier = _identifier;
+        emit SetIdentifier(identifier);
     }
 
     /**
