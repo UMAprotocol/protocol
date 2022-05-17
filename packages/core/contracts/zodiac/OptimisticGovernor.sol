@@ -45,7 +45,7 @@ contract OptimisticGovernor is Module, Lockable {
     // This will usually be "ZODIAC" but a deployer may want to create a more specific identifier.
     bytes32 public identifier;
     OptimisticOracleInterface public optimisticOracle;
-    
+
     int256 public constant PROPOSAL_VALID_RESPONSE = int256(1e18);
 
     struct Transaction {
@@ -216,7 +216,14 @@ contract OptimisticGovernor is Module, Lockable {
         collateral.safeTransferFrom(msg.sender, address(this), totalBond);
         collateral.safeIncreaseAllowance(address(optimisticOracle), totalBond);
 
-        optimisticOracle.proposePriceFor(msg.sender, address(this), identifier, time, ancillaryData, PROPOSAL_VALID_RESPONSE);
+        optimisticOracle.proposePriceFor(
+            msg.sender,
+            address(this),
+            identifier,
+            time,
+            ancillaryData,
+            PROPOSAL_VALID_RESPONSE
+        );
 
         emit TransactionsProposed(id, proposer, time, proposal, _explanation);
     }
