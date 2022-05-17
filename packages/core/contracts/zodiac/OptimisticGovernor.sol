@@ -113,22 +113,17 @@ contract OptimisticGovernor is Module, Lockable {
     }
 
     /**
-     * @notice Sets the bond amount for proposals.
+     * @notice Sets the collateral and bond amount for proposals.
+     * @param _collateral token that will be used for all bonds for the contract.
      * @param _bond amount of the bond token that will need to be paid for future proposals.
      */
-    function setBond(uint256 _bond) public onlyOwner {
-        // Value of the bond required for proposals, in addition to the final fee.
-        bond = _bond;
-    }
-
-    /**
-     * @notice Sets the collateral token (and bond token) for future proposals.
-     * @param _collateral token that will be used for all bonds for the contract.
-     */
-    function setCollateral(IERC20 _collateral) public onlyOwner {
+    function setCollateralAndBond(IERC20 _collateral, uint256 _bond) public onlyOwner {
         // ERC20 token to be used as collateral (must be approved by UMA Store contract).
         require(_getCollateralWhitelist().isOnWhitelist(address(_collateral)), "bond token not supported");
         collateral = _collateral;
+
+        // Value of the bond required for proposals, in addition to the final fee.
+        bond = _bond;
     }
 
     /**
