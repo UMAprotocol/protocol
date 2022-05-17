@@ -76,7 +76,6 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
     using Address for address;
-    using AncillaryData for bytes;
 
     event RequestPrice(
         address indexed requester,
