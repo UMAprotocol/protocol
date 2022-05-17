@@ -34,6 +34,8 @@ contract OptimisticGovernor is Module, Lockable {
 
     event ProposalDeleted(uint256 indexed proposalId);
 
+    event DisputedProposalDeleted(uint256 indexed proposalId);
+
     // Since finder is set during setUp, you will need to deploy a new Optimistic Governor module if this address need to be changed in the future.
     FinderInterface public finder;
 
@@ -285,6 +287,27 @@ contract OptimisticGovernor is Module, Lockable {
         // Delete the proposal.
         delete proposalHashes[_proposalId];
         emit ProposalDeleted(_proposalId);
+    }
+
+    /**
+     * @notice Method to allow anyone to delete a proposal that was disputed.
+     * @param _proposalId the id of the proposal being deleted.
+     * @param _originalTime the id of the proposal being deleted.
+     */
+    function deleteDisputedProposal(uint256 _proposalId, uint256 _originalTime) public {
+        // Construct the ancillary data.
+        bytes memory ancillaryData = AncillaryData.appendKeyValueUint("", "id", _proposalId);
+
+        // Get the state of the proposal.
+        OptimisticOracleInterface.State state =
+            optimisticOracle.getState(address(this), identifier, _originalTime, ancillaryData);
+
+        // Check that proposal was disputed.
+        require(state == OptimisticOracleInterface.State.Disputed, "Proposal was not disputed");
+
+        // Delete the proposal.
+        delete proposalHashes[_proposalId];
+        emit DisputedProposalDeleted(_proposalId);
     }
 
     /**
