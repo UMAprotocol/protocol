@@ -298,7 +298,7 @@ contract OptimisticGovernor is Module, Lockable {
      * @param _proposalId the id of the proposal being deleted.
      * @param _originalTime the time the proposal was made.
      */
-    function deleteDisputedProposal(uint256 _proposalId, uint256 _originalTime) public {
+    function deleteDisputedProposal(uint256 _proposalId, uint256 _originalTime) external {
         // Check that proposal exists and was not already deleted.
         require(proposalHashes[_proposalId] != "", "Proposal does not exist");
 
