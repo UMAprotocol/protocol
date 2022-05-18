@@ -35,7 +35,7 @@ contract OptimisticGovernor is Module, Lockable {
     event ProposalDeleted(uint256 indexed proposalId);
 
     // Since finder is set during setUp, you will need to deploy a new Optimistic Governor module if this address need to be changed in the future.
-    FinderInterface public finder;
+    FinderInterface public immutable finder;
 
     IERC20 public collateral;
     uint64 public liveness;
@@ -80,22 +80,22 @@ contract OptimisticGovernor is Module, Lockable {
         bytes32 _identifier,
         uint64 _liveness
     ) {
-        bytes memory initializeParams = abi.encode(_finder, _owner, _collateral, _bond, _rules, _identifier, _liveness);
+        bytes memory initializeParams = abi.encode(_owner, _collateral, _bond, _rules, _identifier, _liveness);
+        require(_finder != address(0), "finder address can not be empty");
+        finder = FinderInterface(_finder);
         setUp(initializeParams);
     }
 
     function setUp(bytes memory initializeParams) public override initializer {
         __Ownable_init();
         (
-            address _finder,
             address _owner,
             address _collateral,
             uint256 _bond,
             string memory _rules,
             bytes32 _identifier,
             uint64 _liveness
-        ) = abi.decode(initializeParams, (address, address, address, uint256, string, bytes32, uint64));
-        finder = FinderInterface(_finder);
+        ) = abi.decode(initializeParams, (address, address, uint256, string, bytes32, uint64));
         require(_getCollateralWhitelist().isOnWhitelist(address(_collateral)), "bond token not supported");
         collateral = IERC20(_collateral);
         bond = _bond;
