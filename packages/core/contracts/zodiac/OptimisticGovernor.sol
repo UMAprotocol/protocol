@@ -34,7 +34,7 @@ contract OptimisticGovernor is Module, Lockable {
 
     event ProposalDeleted(uint256 indexed proposalId);
 
-    // Since finder is set during setUp, you will need to deploy a new Optimistic Governor module if this address need to be changed in the future.
+    // Since finder is set during setUp, you will need to deploy a new Optimistic Governor module if this address needs to be changed in the future.
     FinderInterface public finder;
 
     IERC20 public collateral;
@@ -164,7 +164,7 @@ contract OptimisticGovernor is Module, Lockable {
 
     /**
      * @notice This pulls in the most up-to-date Optimistic Oracle.
-     * @dev If a new OptimisticOracle is added and this is run between a proposals introduction and execution, the
+     * @dev If a new OptimisticOracle is added and this is run between a proposal's introduction and execution, the
      * proposal will become unexecutable.
      */
     function sync() public nonReentrant {
@@ -289,7 +289,7 @@ contract OptimisticGovernor is Module, Lockable {
 
     /**
      * @notice Gets the current time for this contract.
-     * @dev This only exists so it can be overriden for testing.
+     * @dev This only exists so it can be overridden for testing.
      */
     function getCurrentTime() public view virtual returns (uint256) {
         return block.timestamp;
