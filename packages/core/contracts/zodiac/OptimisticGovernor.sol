@@ -48,9 +48,9 @@ contract OptimisticGovernor is Module, Lockable {
 
     struct Transaction {
         address to;
+        Enum.Operation operation;
         uint256 value;
         bytes data;
-        Enum.Operation operation;
     }
 
     struct Proposal {
