@@ -295,14 +295,6 @@ contract OptimisticGovernor is Module, Lockable {
         return block.timestamp;
     }
 
-    function _getOptimisticOracle() private view returns (OptimisticOracleInterface) {
-        return OptimisticOracleInterface(finder.getImplementationAddress(OracleInterfaces.OptimisticOracle));
-    }
-
-    function _isContract(address addr) private view returns (bool isContract) {
-        return addr.code.length > 0;
-    }
-
     function _getCollateralWhitelist() internal view returns (AddressWhitelistInterface) {
         return AddressWhitelistInterface(finder.getImplementationAddress(OracleInterfaces.CollateralWhitelist));
     }
@@ -317,5 +309,13 @@ contract OptimisticGovernor is Module, Lockable {
 
     function _sync() internal {
         optimisticOracle = _getOptimisticOracle();
+    }
+
+    function _getOptimisticOracle() private view returns (OptimisticOracleInterface) {
+        return OptimisticOracleInterface(finder.getImplementationAddress(OracleInterfaces.OptimisticOracle));
+    }
+
+    function _isContract(address addr) private view returns (bool isContract) {
+        return addr.code.length > 0;
     }
 }
