@@ -46,6 +46,9 @@ contract OptimisticGovernor is Module, Lockable {
     bytes32 public identifier;
     OptimisticOracleInterface public optimisticOracle;
 
+    // This constant value signifies that the proposed transactions follow the rules.
+    int256 public constant valid = 1e18;
+
     struct Transaction {
         address to;
         uint256 value;
@@ -214,7 +217,7 @@ contract OptimisticGovernor is Module, Lockable {
         collateral.safeTransferFrom(msg.sender, address(this), totalBond);
         collateral.safeIncreaseAllowance(address(optimisticOracle), totalBond);
 
-        optimisticOracle.proposePriceFor(msg.sender, address(this), identifier, time, ancillaryData, int256(1e18));
+        optimisticOracle.proposePriceFor(msg.sender, address(this), identifier, time, ancillaryData, valid);
 
         emit TransactionsProposed(id, proposer, time, proposal, _explanation);
     }
@@ -245,7 +248,7 @@ contract OptimisticGovernor is Module, Lockable {
 
         // This will revert if the price has not settled.
         int256 price = optimisticOracle.settleAndGetPrice(identifier, _originalTime, ancillaryData);
-        require(price == int256(1e18), "Proposal was rejected");
+        require(price == valid, "Proposal was rejected");
 
         for (uint256 i = 0; i < _transactions.length; i++) {
             Transaction memory transaction = _transactions[i];
@@ -280,7 +283,7 @@ contract OptimisticGovernor is Module, Lockable {
         int256 price = optimisticOracle.settleAndGetPrice(identifier, _originalTime, ancillaryData);
 
         // Check that proposal was rejected.
-        require(price != int256(1e18), "Proposal was not rejected");
+        require(price != valid, "Proposal was not rejected");
 
         // Delete the proposal.
         delete proposalHashes[_proposalId];
