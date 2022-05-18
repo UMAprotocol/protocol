@@ -27,12 +27,13 @@ contract OptimisticGovernor is Module, Lockable {
         address indexed proposer,
         uint256 indexed proposalTime,
         Proposal proposal,
-        bytes explanation
+        bytes explanation,
+        uint256 challengeWindowEnds
     );
 
     event TransactionExecuted(uint256 indexed proposalId, uint256 indexed transactionIndex);
 
-    event ProposalDeleted(uint256 indexed proposalId);
+    event ProposalDeleted(uint256 indexed proposalId, address indexed sender, bytes32 indexed status);
 
     // Since finder is set during setUp, you will need to deploy a new Optimistic Governor module if this address need to be changed in the future.
     FinderInterface public finder;
@@ -216,7 +217,9 @@ contract OptimisticGovernor is Module, Lockable {
 
         optimisticOracle.proposePriceFor(msg.sender, address(this), identifier, time, ancillaryData, int256(1e18));
 
-        emit TransactionsProposed(id, proposer, time, proposal, _explanation);
+        uint256 challengeWindowEnds = time + liveness;
+
+        emit TransactionsProposed(id, proposer, time, proposal, _explanation, challengeWindowEnds);
     }
 
     /**
@@ -264,7 +267,7 @@ contract OptimisticGovernor is Module, Lockable {
      */
     function deleteProposal(uint256 _proposalId) public onlyOwner {
         delete proposalHashes[_proposalId];
-        emit ProposalDeleted(_proposalId);
+        emit ProposalDeleted(_proposalId, msg.sender, "DeletedByAdmin");
     }
 
     /**
@@ -284,7 +287,7 @@ contract OptimisticGovernor is Module, Lockable {
 
         // Delete the proposal.
         delete proposalHashes[_proposalId];
-        emit ProposalDeleted(_proposalId);
+        emit ProposalDeleted(_proposalId, msg.sender, "Rejected");
     }
 
     /**
