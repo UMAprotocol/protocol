@@ -270,7 +270,7 @@ contract OptimisticGovernor is Module, Lockable {
     /**
      * @notice Method to allow anyone to delete a proposal that was rejected.
      * @param _proposalId the id of the proposal being deleted.
-     * @param _originalTime the id of the proposal being deleted.
+     * @param _originalTime the time the proposal was made.
      */
     function deleteRejectedProposal(uint256 _proposalId, uint256 _originalTime) public {
         // Construct the ancillary data.
@@ -290,7 +290,7 @@ contract OptimisticGovernor is Module, Lockable {
     /**
      * @notice Method to allow anyone to delete a proposal that was disputed.
      * @param _proposalId the id of the proposal being deleted.
-     * @param _originalTime the id of the proposal being deleted.
+     * @param _originalTime the time the proposal was made.
      */
     function deleteDisputedProposal(uint256 _proposalId, uint256 _originalTime) public {
         // Construct the ancillary data.
