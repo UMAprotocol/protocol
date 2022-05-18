@@ -211,6 +211,8 @@ contract OptimisticGovernor is Module, Lockable {
         optimisticOracle.setCustomLiveness(identifier, time, ancillaryData, liveness);
 
         // Get the bond from the proposer and approve the bond and final fee to be used by the oracle.
+        // This will fail if the proposer has not granted the OptimisticGovernor contract an allowance
+        // of the collateral token equal to or greater than the totalBond.
         collateral.safeTransferFrom(msg.sender, address(this), totalBond);
         collateral.safeIncreaseAllowance(address(optimisticOracle), totalBond);
 
