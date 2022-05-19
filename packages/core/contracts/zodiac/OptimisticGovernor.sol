@@ -315,7 +315,7 @@ contract OptimisticGovernor is Module, Lockable {
         return OptimisticOracleInterface(finder.getImplementationAddress(OracleInterfaces.OptimisticOracle));
     }
 
-    function _isContract(address addr) private view returns (bool isContract) {
+    function _isContract(address addr) private view returns (bool) {
         return addr.code.length > 0;
     }
 }
