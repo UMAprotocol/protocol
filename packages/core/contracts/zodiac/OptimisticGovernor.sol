@@ -191,6 +191,7 @@ contract OptimisticGovernor is Module, Lockable {
      * @notice Makes a new proposal for transactions to be executed with an "explanation" argument.
      * @param _transactions the transactions being proposed.
      * @param _explanation Auxillary information that can be referenced to validate the proposal.
+     * @dev Proposer must grant the contract collateral allowance equal or greater than the totalBond.
      */
     function proposeTransactions(Transaction[] memory _transactions, bytes memory _explanation) external nonReentrant {
         // note: Optional explanation explains the intent of the transactions to make comprehension easier.
@@ -225,6 +226,8 @@ contract OptimisticGovernor is Module, Lockable {
         optimisticOracle.setCustomLiveness(identifier, time, ancillaryData, liveness);
 
         // Get the bond from the proposer and approve the bond and final fee to be used by the oracle.
+        // This will fail if the proposer has not granted the OptimisticGovernor contract an allowance
+        // of the collateral token equal to or greater than the totalBond.
         collateral.safeTransferFrom(msg.sender, address(this), totalBond);
         collateral.safeIncreaseAllowance(address(optimisticOracle), totalBond);
 
