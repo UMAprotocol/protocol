@@ -277,7 +277,7 @@ contract OptimisticGovernor is Module, Lockable {
      */
     function deleteRejectedProposal(uint256 _proposalId, uint256 _originalTime) public {
         // Check that proposal exists and was not already deleted.
-        require(proposalHashes[_proposalId] != "", "Proposal does not exist");
+        require(proposalHashes[_proposalId] != bytes32(0), "Proposal does not exist");
 
         // Construct the ancillary data.
         bytes memory ancillaryData = AncillaryData.appendKeyValueUint("", "id", _proposalId);
