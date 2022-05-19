@@ -150,7 +150,7 @@ contract OptimisticGovernor is Module, Lockable {
     function setRules(string memory _rules) public onlyOwner {
         // Set reference to the rules for the avatar (e.g. an IPFS hash or URI).
         rules = _rules;
-        emit SetRules(rules);
+        emit SetRules(_rules);
     }
 
     /**
@@ -162,7 +162,7 @@ contract OptimisticGovernor is Module, Lockable {
         // Set liveness for disputing proposed transactions.
         require(_liveness > 0, "liveness can't be 0");
         liveness = _liveness;
-        emit SetLiveness(liveness);
+        emit SetLiveness(_liveness);
     }
 
     /**
@@ -174,7 +174,7 @@ contract OptimisticGovernor is Module, Lockable {
         // Set identifier which is used along with the rules to determine if transactions are valid.
         require(_getIdentifierWhitelist().isIdentifierSupported(_identifier), "identifier not supported");
         identifier = _identifier;
-        emit SetIdentifier(identifier);
+        emit SetIdentifier(_identifier);
     }
 
     /**
