@@ -168,7 +168,7 @@ contract OptimisticGovernor is Module, Lockable {
      * @dev If a new OptimisticOracle is added and this is run between a proposal's introduction and execution, the
      * proposal will become unexecutable.
      */
-    function sync() public nonReentrant {
+    function sync() external nonReentrant {
         // Sync the oracle contract addresses as well as the final fee.
         _sync();
     }
@@ -178,7 +178,7 @@ contract OptimisticGovernor is Module, Lockable {
      * @param _transactions the transactions being proposed.
      * @param _explanation Auxillary information that can be referenced to validate the proposal.
      */
-    function proposeTransactions(Transaction[] memory _transactions, bytes memory _explanation) public nonReentrant {
+    function proposeTransactions(Transaction[] memory _transactions, bytes memory _explanation) external nonReentrant {
         // note: Optional explanation explains the intent of the transactions to make comprehension easier.
         uint256 id = prevProposalId + 1;
         prevProposalId = id;
@@ -237,7 +237,7 @@ contract OptimisticGovernor is Module, Lockable {
         uint256 _proposalId,
         Transaction[] memory _transactions,
         uint256 _originalTime
-    ) public payable nonReentrant {
+    ) external payable nonReentrant {
         // Recreate the proposal hash from the inputs and check that it matches the stored proposal hash.
         uint256 id = _proposalId;
 
@@ -270,7 +270,7 @@ contract OptimisticGovernor is Module, Lockable {
      * @notice Method to allow the owner to delete a particular proposal.
      * @param _proposalId the id of the proposal being deleted.
      */
-    function deleteProposal(uint256 _proposalId) public onlyOwner {
+    function deleteProposal(uint256 _proposalId) external onlyOwner {
         delete proposalHashes[_proposalId];
         emit ProposalDeleted(_proposalId);
     }
@@ -280,7 +280,7 @@ contract OptimisticGovernor is Module, Lockable {
      * @param _proposalId the id of the proposal being deleted.
      * @param _originalTime the id of the proposal being deleted.
      */
-    function deleteRejectedProposal(uint256 _proposalId, uint256 _originalTime) public {
+    function deleteRejectedProposal(uint256 _proposalId, uint256 _originalTime) external {
         // Construct the ancillary data.
         bytes memory ancillaryData = AncillaryData.appendKeyValueUint("", "id", _proposalId);
 
