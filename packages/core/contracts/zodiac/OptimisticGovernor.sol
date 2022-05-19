@@ -176,6 +176,7 @@ contract OptimisticGovernor is Module, Lockable {
      * @notice Makes a new proposal for transactions to be executed with an "explanation" argument.
      * @param _transactions the transactions being proposed.
      * @param _explanation Auxillary information that can be referenced to validate the proposal.
+     * @dev Proposer must grant the contract collateral allowance equal or greater than the totalBond.
      */
     function proposeTransactions(Transaction[] memory _transactions, bytes memory _explanation) public nonReentrant {
         // note: Optional explanation explains the intent of the transactions to make comprehension easier.
