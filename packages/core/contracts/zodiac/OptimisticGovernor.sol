@@ -264,7 +264,7 @@ contract OptimisticGovernor is Module, Lockable {
      */
     function deleteProposal(uint256 _proposalId) public onlyOwner {
         // Check that proposal exists and was not already deleted.
-        require(proposalHashes[_proposalId] != "", "Proposal does not exist");
+        require(proposalHashes[_proposalId] != bytes32(0), "Proposal does not exist");
 
         delete proposalHashes[_proposalId];
         emit ProposalDeleted(_proposalId);
