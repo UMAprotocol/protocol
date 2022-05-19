@@ -98,7 +98,7 @@ contract OptimisticGovernor is Module, Lockable {
             uint64 _liveness
         ) = abi.decode(initializeParams, (address, address, address, uint256, string, bytes32, uint64));
         finder = FinderInterface(_finder);
-        require(_getCollateralWhitelist().isOnWhitelist(address(_collateral)), "bond token not supported");
+        require(_getCollateralWhitelist().isOnWhitelist(_collateral), "bond token not supported");
         collateral = IERC20(_collateral);
         bond = _bond;
         rules = _rules;
