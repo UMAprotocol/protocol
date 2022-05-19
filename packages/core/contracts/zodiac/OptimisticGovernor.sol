@@ -202,7 +202,6 @@ contract OptimisticGovernor is Module, Lockable {
         }
         proposal.transactions = _transactions;
 
-        // proposalHashes[id] = keccak256(abi.encodePacked(proposalData));
         proposalHashes[id] = keccak256(abi.encode(_transactions));
 
         // Propose a set of transactions to the OO. If not disputed, they can be executed with executeProposal().
@@ -245,7 +244,6 @@ contract OptimisticGovernor is Module, Lockable {
         bytes memory ancillaryData = AncillaryData.appendKeyValueUint("", "id", id);
 
         // This will reject the transaction if the proposal hash generated from the inputs does not match the stored proposal hash.
-        // require(proposalHashes[id] == keccak256(abi.encodePacked(proposalData)), "proposal hash does not match");
         require(proposalHashes[id] == keccak256(abi.encode(_transactions)), "proposal hash does not match");
 
         // Remove proposal hash so transactions can not be executed again.
