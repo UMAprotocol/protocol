@@ -33,11 +33,19 @@ async function run({ logger, pollingDelay, errorRetries, errorRetriesTimeout, no
 
     const getTime = () => Math.round(new Date().getTime() / 1000);
 
+    const chainId = notifierConfig.chainId;
     const apiEndpoint = notifierConfig.apiEndpoint;
     const maxTimeTillExpiration = notifierConfig.maxTimeTillExpiration;
     const networker = new Networker(logger);
 
-    const contractNotifier = new ContractNotifier({ logger, networker, getTime, apiEndpoint, maxTimeTillExpiration });
+    const contractNotifier = new ContractNotifier({
+      logger,
+      networker,
+      getTime,
+      chainId,
+      apiEndpoint,
+      maxTimeTillExpiration,
+    });
 
     // Create a execution loop that will run indefinitely (or yield early if in serverless mode)
     for (;;) {
@@ -95,6 +103,7 @@ async function Poll(callback) {
       // Notifier config contains all configuration settings for the notifier. This includes the following:
       // NOTIFIER_CONFIG={
       //  "maxTimeTillExpiration": 604800,                   // If time till expiration (in seconds) is below this fire the alert.
+      //  "chainId": 1,                                      // Contracts deployment chain.
       //  "apiEndpoint": "https://prod.api.umaproject.org"   // API endpoint to check for contract information.
       // }
       notifierConfig: process.env.NOTIFIER_CONFIG ? JSON.parse(process.env.NOTIFIER_CONFIG) : {},
@@ -102,6 +111,7 @@ async function Poll(callback) {
     // Fill in notifierConfig defaults:
     executionParameters.notifierConfig = {
       maxTimeTillExpiration: 604800,
+      chainId: 1,
       apiEndpoint: "https://prod.api.umaproject.org",
       ...executionParameters.notifierConfig,
     };
