@@ -69,7 +69,7 @@ contract OptimisticGovernor is Module, Lockable {
      * @param _finder Finder address.
      * @param _owner Address of the owner.
      * @param _collateral Address of the ERC20 collateral used for bonds.
-     * @param _bond Additional bond required, beyond the final fee.
+     * @param _bondAmount Additional bond required, beyond the final fee.
      * @param _rules Reference to the rules for the Gnosis Safe (e.g., IPFS hash or URI).
      * @param _identifier The approved identifier to be used with the contract, usually "ZODIAC".
      * @param _liveness The period, in seconds, in which a proposal can be disputed.
@@ -78,12 +78,13 @@ contract OptimisticGovernor is Module, Lockable {
         address _finder,
         address _owner,
         address _collateral,
-        uint256 _bond,
+        uint256 _bondAmount,
         string memory _rules,
         bytes32 _identifier,
         uint64 _liveness
     ) {
-        bytes memory initializeParams = abi.encode(_finder, _owner, _collateral, _bond, _rules, _identifier, _liveness);
+        bytes memory initializeParams =
+            abi.encode(_finder, _owner, _collateral, _bondAmount, _rules, _identifier, _liveness);
         setUp(initializeParams);
     }
 
@@ -93,7 +94,7 @@ contract OptimisticGovernor is Module, Lockable {
             address _finder,
             address _owner,
             address _collateral,
-            uint256 _bond,
+            uint256 _bondAmount,
             string memory _rules,
             bytes32 _identifier,
             uint64 _liveness
@@ -101,7 +102,7 @@ contract OptimisticGovernor is Module, Lockable {
         finder = FinderInterface(_finder);
         require(_getCollateralWhitelist().isOnWhitelist(_collateral), "bond token not supported");
         collateral = IERC20(_collateral);
-        bond = _bond;
+        bond = _bondAmount;
         rules = _rules;
         require(_getIdentifierWhitelist().isIdentifierSupported(_identifier), "identifier not supported");
         identifier = _identifier;
@@ -118,7 +119,7 @@ contract OptimisticGovernor is Module, Lockable {
     /**
      * @notice Sets the collateral and bond amount for proposals.
      * @param _collateral token that will be used for all bonds for the contract.
-     * @param _bond amount of the bond token that will need to be paid for future proposals.
+     * @param _bondAmount amount of the bond token that will need to be paid for future proposals.
      */
     function setCollateralAndBond(IERC20 _collateral, uint256 _bondAmount) public onlyOwner {
         // ERC20 token to be used as collateral (must be approved by UMA Store contract).
