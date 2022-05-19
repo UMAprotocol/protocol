@@ -26,12 +26,13 @@ contract OptimisticGovernor is Module, Lockable {
         address indexed proposer,
         uint256 indexed proposalTime,
         Proposal proposal,
-        bytes explanation
+        bytes explanation,
+        uint256 challengeWindowEnds
     );
 
     event TransactionExecuted(uint256 indexed proposalId, uint256 indexed transactionIndex);
 
-    event ProposalDeleted(uint256 indexed proposalId);
+    event ProposalDeleted(uint256 indexed proposalId, address indexed sender, bytes32 indexed status);
 
     event SetCollateral(IERC20 indexed collateral);
 
@@ -240,7 +241,9 @@ contract OptimisticGovernor is Module, Lockable {
             PROPOSAL_VALID_RESPONSE
         );
 
-        emit TransactionsProposed(id, proposer, time, proposal, _explanation);
+        uint256 challengeWindowEnds = time + liveness;
+
+        emit TransactionsProposed(id, proposer, time, proposal, _explanation, challengeWindowEnds);
     }
 
     /**
@@ -287,7 +290,7 @@ contract OptimisticGovernor is Module, Lockable {
      */
     function deleteProposal(uint256 _proposalId) external onlyOwner {
         delete proposalHashes[_proposalId];
-        emit ProposalDeleted(_proposalId);
+        emit ProposalDeleted(_proposalId, msg.sender, "DeletedByAdmin");
     }
 
     /**
@@ -307,7 +310,7 @@ contract OptimisticGovernor is Module, Lockable {
 
         // Delete the proposal.
         delete proposalHashes[_proposalId];
-        emit ProposalDeleted(_proposalId);
+        emit ProposalDeleted(_proposalId, msg.sender, "Rejected");
     }
 
     /**
