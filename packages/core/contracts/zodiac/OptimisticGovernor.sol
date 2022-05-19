@@ -33,7 +33,7 @@ contract OptimisticGovernor is Module, Lockable {
 
     event ProposalDeleted(uint256 indexed proposalId);
 
-    event SetBond(IERC20 indexed collateral, uint256 indexed bond);
+    event SetBond(IERC20 indexed collateral, uint256 indexed bondAmount);
 
     // Since finder is set during setUp, you will need to deploy a new Optimistic Governor module if this address need to be changed in the future.
     FinderInterface public finder;
@@ -41,7 +41,7 @@ contract OptimisticGovernor is Module, Lockable {
     IERC20 public collateral;
     uint64 public liveness;
     // Extra bond in addition to the final fee for the collateral type.
-    uint256 public bond;
+    uint256 public bondAmount;
     string public rules;
     // This will usually be "ZODIAC" but a deployer may want to create a more specific identifier.
     bytes32 public identifier;
@@ -102,7 +102,7 @@ contract OptimisticGovernor is Module, Lockable {
         finder = FinderInterface(_finder);
         require(_getCollateralWhitelist().isOnWhitelist(_collateral), "bond token not supported");
         collateral = IERC20(_collateral);
-        bond = _bondAmount;
+        bondAmount = _bondAmount;
         rules = _rules;
         require(_getIdentifierWhitelist().isIdentifierSupported(_identifier), "identifier not supported");
         identifier = _identifier;
@@ -128,7 +128,7 @@ contract OptimisticGovernor is Module, Lockable {
 
         // Value of the bond required for proposals, in addition to the final fee. A bond of zero is
         // acceptable, in which case the Optimistic Oracle will require the final fee as the bond.
-        bond = _bondAmount;
+        bondAmount = _bondAmount;
         emit SetBond(_collateral, _bondAmount);
     }
 
@@ -206,7 +206,7 @@ contract OptimisticGovernor is Module, Lockable {
         // Propose a set of transactions to the OO. If not disputed, they can be executed with executeProposal().
         // docs: https://github.com/UMAprotocol/protocol/blob/master/packages/core/contracts/oracle/interfaces/OptimisticOracleInterface.sol
         optimisticOracle.requestPrice(identifier, time, ancillaryData, collateral, 0);
-        uint256 totalBond = optimisticOracle.setBond(identifier, time, ancillaryData, bond);
+        uint256 totalBond = optimisticOracle.setBond(identifier, time, ancillaryData, bondAmount);
         optimisticOracle.setCustomLiveness(identifier, time, ancillaryData, liveness);
 
         // Get the bond from the proposer and approve the bond and final fee to be used by the oracle.
