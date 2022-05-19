@@ -76,7 +76,6 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
     using Address for address;
-    using AncillaryData for bytes;
 
     event RequestPrice(
         address indexed requester,
@@ -127,7 +126,8 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
 
     // This is effectively the extra ancillary data to add ",ooRequester:0000000000000000000000000000000000000000".
     uint256 private constant MAX_ADDED_ANCILLARY_DATA = 53;
-    uint256 public constant OO_ANCILLARY_DATA_LIMIT = ancillaryBytesLimit - 53;
+    uint256 public constant OO_ANCILLARY_DATA_LIMIT = ancillaryBytesLimit - MAX_ADDED_ANCILLARY_DATA;
+    int256 public constant TOO_EARLY_RESPONSE = type(int256).min;
 
     /**
      * @notice Constructor.
@@ -169,7 +169,7 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
         require(_getCollateralWhitelist().isOnWhitelist(address(currency)), "Unsupported currency");
         require(timestamp <= getCurrentTime(), "Timestamp in future");
 
-        // This ensures that the ancillary data is below the OO limit, which is lower than the DVM limit because the
+        // This ensures that the ancillary data is <= the OO limit, which is lower than the DVM limit because the
         // OO adds some data before sending to the DVM.
         require(ancillaryData.length <= OO_ANCILLARY_DATA_LIMIT, "Ancillary Data too long");
 
@@ -273,7 +273,7 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
      * 1. The timestamp at which the request is evaluated is the time of the proposal, not the timestamp associated
      *    with the request.
      *
-     * 2. The proposer cannot propose the "too early" value (type(int256).min). This is to ensure that a proposer who
+     * 2. The proposer cannot propose the "too early" value (TOO_EARLY_RESPONSE). This is to ensure that a proposer who
      *    prematurely proposes a response loses their bond.
      *
      * 3. RefundoOnDispute is automatically set, meaning disputes trigger the reward to be automatically refunded to
@@ -323,7 +323,7 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
             "proposePriceFor: Requested"
         );
         Request storage request = _getRequest(requester, identifier, timestamp, ancillaryData);
-        if (request.eventBased) require(proposedPrice != type(int256).min, "Cannot propose 'too early'");
+        if (request.eventBased) require(proposedPrice != TOO_EARLY_RESPONSE, "Cannot propose 'too early'");
         request.proposer = proposer;
         request.proposedPrice = proposedPrice;
 
