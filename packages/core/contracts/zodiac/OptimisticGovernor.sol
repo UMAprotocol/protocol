@@ -67,7 +67,7 @@ contract OptimisticGovernor is Module, Lockable {
      * @param _finder Finder address.
      * @param _owner Address of the owner.
      * @param _collateral Address of the ERC20 collateral used for bonds.
-     * @param _bond Bond required (must be at least as large as final fee for collateral type).
+     * @param _bond Additional bond required, beyond the final fee.
      * @param _rules Reference to the rules for the Gnosis Safe (e.g., IPFS hash or URI).
      * @param _identifier The approved identifier to be used with the contract, usually "ZODIAC".
      * @param _liveness The period, in seconds, in which a proposal can be disputed.
@@ -169,7 +169,6 @@ contract OptimisticGovernor is Module, Lockable {
      * proposal will become unexecutable.
      */
     function sync() external nonReentrant {
-        // Sync the oracle contract addresses as well as the final fee.
         _sync();
     }
 
@@ -249,7 +248,7 @@ contract OptimisticGovernor is Module, Lockable {
         // Remove proposal hash so transactions can not be executed again.
         delete proposalHashes[id];
 
-        // This will revert if the price has not settled.
+        // This will revert if the price has not been settled and can not currently be settled.
         int256 price = optimisticOracle.settleAndGetPrice(identifier, _originalTime, ancillaryData);
         require(price == PROPOSAL_VALID_RESPONSE, "Proposal was rejected");
 
@@ -276,7 +275,7 @@ contract OptimisticGovernor is Module, Lockable {
     /**
      * @notice Method to allow anyone to delete a proposal that was rejected.
      * @param _proposalId the id of the proposal being deleted.
-     * @param _originalTime the id of the proposal being deleted.
+     * @param _originalTime the time the proposal was made.
      */
     function deleteRejectedProposal(uint256 _proposalId, uint256 _originalTime) external {
         // Construct the ancillary data.

@@ -169,7 +169,7 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
         require(_getCollateralWhitelist().isOnWhitelist(address(currency)), "Unsupported currency");
         require(timestamp <= getCurrentTime(), "Timestamp in future");
 
-        // This ensures that the ancillary data is below the OO limit, which is lower than the DVM limit because the
+        // This ensures that the ancillary data is <= the OO limit, which is lower than the DVM limit because the
         // OO adds some data before sending to the DVM.
         require(ancillaryData.length <= OO_ANCILLARY_DATA_LIMIT, "Ancillary Data too long");
 
