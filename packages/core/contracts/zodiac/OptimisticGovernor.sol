@@ -150,7 +150,7 @@ contract OptimisticGovernor is Module, Lockable {
     function setLiveness(uint64 _liveness) public onlyOwner {
         // Set liveness for disputing proposed transactions.
         require(_liveness > 0, "liveness can't be 0");
-        require(_liveness < 3144960000, "liveness can't be longer than 5200 weeks");
+        require(_liveness < 52 weeks, "liveness can't be longer than 5200 weeks");
         liveness = _liveness;
     }
 
