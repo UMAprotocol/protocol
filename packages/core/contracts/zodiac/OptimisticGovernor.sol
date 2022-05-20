@@ -22,7 +22,6 @@ contract OptimisticGovernor is Module, Lockable {
     event OptimisticGovernorDeployed(address indexed owner, address indexed avatar, address target);
 
     event TransactionsProposed(
-        uint256 indexed proposalId,
         address indexed proposer,
         uint256 indexed proposalTime,
         Proposal proposal,
@@ -30,9 +29,9 @@ contract OptimisticGovernor is Module, Lockable {
         uint256 challengeWindowEnds
     );
 
-    event TransactionExecuted(uint256 indexed proposalId, uint256 indexed transactionIndex);
+    event TransactionExecuted(bytes32 indexed proposalHash, uint256 indexed transactionIndex);
 
-    event ProposalDeleted(uint256 indexed proposalId, address indexed sender, bytes32 indexed status);
+    event ProposalDeleted(bytes32 indexed proposalHash, address indexed sender, bytes32 indexed status);
 
     event SetBond(IERC20 indexed collateral, uint256 indexed bondAmount);
 
@@ -70,8 +69,8 @@ contract OptimisticGovernor is Module, Lockable {
         uint256 requestTime;
     }
 
-    mapping(uint256 => bytes32) public proposalHashes;
-    uint256 public prevProposalId;
+    // This maps proposal hashes to the proposal timestamps.
+    mapping(bytes32 => uint256) public proposalHashes;
 
     /**
      * @notice Construct Optimistic Governor module.
@@ -190,17 +189,12 @@ contract OptimisticGovernor is Module, Lockable {
      */
     function proposeTransactions(Transaction[] memory _transactions, bytes memory _explanation) external nonReentrant {
         // note: Optional explanation explains the intent of the transactions to make comprehension easier.
-        uint256 id = prevProposalId + 1;
-        prevProposalId = id;
         uint256 time = getCurrentTime();
         address proposer = msg.sender;
 
         // Create proposal in memory to emit in an event.
         Proposal memory proposal;
         proposal.requestTime = time;
-
-        // Construct the ancillary data.
-        bytes memory ancillaryData = AncillaryData.appendKeyValueUint("", "id", id);
 
         // Add transactions to proposal in memory.
         for (uint256 i = 0; i < _transactions.length; i++) {
@@ -212,7 +206,17 @@ contract OptimisticGovernor is Module, Lockable {
         }
         proposal.transactions = _transactions;
 
-        proposalHashes[id] = keccak256(abi.encode(_transactions));
+        // Create the proposal hash.
+        bytes32 proposalHash = keccak256(abi.encode(_transactions));
+
+        // Add the proposal hash to ancillary data.
+        bytes memory ancillaryData = AncillaryData.appendKeyValueBytes32("", "proposalHash", proposalHash);
+
+        // Check that the proposal is not already mapped to a proposal time, i.e., is not a duplicate.
+        require(proposalHashes[proposalHash] == 0, "Duplicate proposals are not allowed");
+
+        // Map the proposal hash to the current time.
+        proposalHashes[proposalHash] = time;
 
         // Propose a set of transactions to the OO. If not disputed, they can be executed with executeProposal().
         // docs: https://github.com/UMAprotocol/protocol/blob/master/packages/core/contracts/oracle/interfaces/OptimisticOracleInterface.sol
@@ -237,31 +241,34 @@ contract OptimisticGovernor is Module, Lockable {
 
         uint256 challengeWindowEnds = time + liveness;
 
-        emit TransactionsProposed(id, proposer, time, proposal, _explanation, challengeWindowEnds);
+        emit TransactionsProposed(proposer, time, proposal, _explanation, challengeWindowEnds);
     }
 
     /**
      * @notice Executes an approved proposal.
-     * @param _proposalId the id of the proposal being executed.
      * @param _transactions the transactions being executed. These must exactly match those that were proposed.
-     * @param _originalTime the timestamp of the original proposal.
      */
-    function executeProposal(
-        uint256 _proposalId,
-        Transaction[] memory _transactions,
-        uint256 _originalTime
-    ) external payable nonReentrant {
+    function executeProposal(Transaction[] memory _transactions) external payable nonReentrant {
         // Recreate the proposal hash from the inputs and check that it matches the stored proposal hash.
-        uint256 id = _proposalId;
+        bytes32 _proposalHash = keccak256(abi.encode(_transactions));
 
-        // Construct the ancillary data.
-        bytes memory ancillaryData = AncillaryData.appendKeyValueUint("", "id", id);
+        // Add the proposal hash to ancillary data.
+        bytes memory ancillaryData = AncillaryData.appendKeyValueBytes32("", "proposalHash", _proposalHash);
 
         // This will reject the transaction if the proposal hash generated from the inputs does not match the stored proposal hash.
-        require(proposalHashes[id] == keccak256(abi.encode(_transactions)), "proposal hash does not match");
+        require(proposalHashes[_proposalHash] != 0, "proposal hash does not exist");
+
+        // Get the original proposal time.
+        uint256 _originalTime = proposalHashes[_proposalHash];
+
+        // You can not execute a proposal that has been disputed at some point in the past.
+        require(
+            optimisticOracle.getRequest(address(this), identifier, _originalTime, ancillaryData).disputer == address(0),
+            "Must call deleteDisputedProposal instead"
+        );
 
         // Remove proposal hash so transactions can not be executed again.
-        delete proposalHashes[id];
+        delete proposalHashes[_proposalHash];
 
         // This will revert if the price has not been settled and can not currently be settled.
         int256 price = optimisticOracle.settleAndGetPrice(identifier, _originalTime, ancillaryData);
@@ -274,32 +281,35 @@ contract OptimisticGovernor is Module, Lockable {
                 exec(transaction.to, transaction.value, transaction.data, transaction.operation),
                 "Failed to execute the transaction"
             );
-            emit TransactionExecuted(_proposalId, i);
+            emit TransactionExecuted(_proposalHash, i);
         }
     }
 
     /**
      * @notice Method to allow the owner to delete a particular proposal.
-     * @param _proposalId the id of the proposal being deleted.
+     * @param _proposalHash the hash of the proposal being deleted.
      */
-    function deleteProposal(uint256 _proposalId) external onlyOwner {
+    function deleteProposal(bytes32 _proposalHash) external onlyOwner {
         // Check that proposal exists and was not already deleted.
-        require(proposalHashes[_proposalId] != bytes32(0), "Proposal does not exist");
-        delete proposalHashes[_proposalId];
-        emit ProposalDeleted(_proposalId, msg.sender, "DeletedByAdmin");
+        require(proposalHashes[_proposalHash] != 0, "Proposal does not exist");
+
+        delete proposalHashes[_proposalHash];
+        emit ProposalDeleted(_proposalHash, msg.sender, "DeletedByOwner");
     }
 
     /**
      * @notice Method to allow anyone to delete a proposal that was rejected.
-     * @param _proposalId the id of the proposal being deleted.
-     * @param _originalTime the time the proposal was made.
+     * @param _proposalHash the hash of the proposal being deleted.
      */
-    function deleteRejectedProposal(uint256 _proposalId, uint256 _originalTime) external {
+    function deleteRejectedProposal(bytes32 _proposalHash) external {
         // Check that proposal exists and was not already deleted.
-        require(proposalHashes[_proposalId] != bytes32(0), "Proposal does not exist");
+        require(proposalHashes[_proposalHash] != 0, "Proposal does not exist");
 
-        // Construct the ancillary data.
-        bytes memory ancillaryData = AncillaryData.appendKeyValueUint("", "id", _proposalId);
+        // Add the proposal hash to ancillary data.
+        bytes memory ancillaryData = AncillaryData.appendKeyValueBytes32("", "proposalHash", _proposalHash);
+
+        // Get the original proposal time.
+        uint256 _originalTime = proposalHashes[_proposalHash];
 
         // This will revert if the price has not settled.
         int256 price = optimisticOracle.settleAndGetPrice(identifier, _originalTime, ancillaryData);
@@ -308,8 +318,34 @@ contract OptimisticGovernor is Module, Lockable {
         require(price != PROPOSAL_VALID_RESPONSE, "Proposal was not rejected");
 
         // Delete the proposal.
-        delete proposalHashes[_proposalId];
-        emit ProposalDeleted(_proposalId, msg.sender, "Rejected");
+        delete proposalHashes[_proposalHash];
+        emit ProposalDeleted(_proposalHash, msg.sender, "Rejected");
+    }
+
+    /**
+     * @notice Method to allow anyone to delete a proposal that was disputed.
+     * @param _proposalHash the hash of the proposal being deleted.
+     */
+    function deleteDisputedProposal(bytes32 _proposalHash) external {
+        // Check that proposal exists and was not already deleted.
+        require(proposalHashes[_proposalHash] != 0, "Proposal does not exist");
+
+        // Add the proposal hash to ancillary data.
+        bytes memory ancillaryData = AncillaryData.appendKeyValueBytes32("", "proposalHash", _proposalHash);
+
+        // Get the original proposal time.
+        uint256 _originalTime = proposalHashes[_proposalHash];
+
+        // Get the state of the proposal.
+        OptimisticOracleInterface.Request memory request =
+            optimisticOracle.getRequest(address(this), identifier, _originalTime, ancillaryData);
+
+        // Check that proposal was disputed.
+        require(request.disputer != address(0), "Proposal was not disputed");
+
+        // Delete the proposal.
+        delete proposalHashes[_proposalHash];
+        emit ProposalDeleted(_proposalHash, msg.sender, "Disputed");
     }
 
     /**
