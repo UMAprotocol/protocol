@@ -26,17 +26,28 @@ contract OptimisticGovernor is Module, Lockable {
         address indexed proposer,
         uint256 indexed proposalTime,
         Proposal proposal,
-        bytes explanation
+        bytes explanation,
+        uint256 challengeWindowEnds
     );
 
     event TransactionExecuted(uint256 indexed proposalId, uint256 indexed transactionIndex);
 
-    event ProposalDeleted(uint256 indexed proposalId);
+    event ProposalDeleted(uint256 indexed proposalId, address indexed sender, bytes32 indexed status);
 
     event SetBond(IERC20 indexed collateral, uint256 indexed bondAmount);
 
+    event SetCollateral(IERC20 indexed collateral);
+
+    event SetBond(uint256 indexed bond);
+
+    event SetRules(string indexed rules);
+
+    event SetLiveness(uint64 indexed liveness);
+
+    event SetIdentifier(bytes32 indexed identifier);
+
     // Since finder is set during setUp, you will need to deploy a new Optimistic Governor module if this address need to be changed in the future.
-    FinderInterface public finder;
+    FinderInterface public immutable finder;
 
     IERC20 public collateral;
     uint64 public liveness;
@@ -85,22 +96,22 @@ contract OptimisticGovernor is Module, Lockable {
     ) {
         bytes memory initializeParams =
             abi.encode(_finder, _owner, _collateral, _bondAmount, _rules, _identifier, _liveness);
+        require(_finder != address(0), "finder address can not be empty");
+        finder = FinderInterface(_finder);
         setUp(initializeParams);
     }
 
     function setUp(bytes memory initializeParams) public override initializer {
         __Ownable_init();
         (
-            address _finder,
             address _owner,
             address _collateral,
             uint256 _bondAmount,
             string memory _rules,
             bytes32 _identifier,
             uint64 _liveness
-        ) = abi.decode(initializeParams, (address, address, address, uint256, string, bytes32, uint64));
-        finder = FinderInterface(_finder);
-        require(_getCollateralWhitelist().isOnWhitelist(_collateral), "bond token not supported");
+        ) = abi.decode(initializeParams, (address, address, uint256, string, bytes32, uint64));
+        require(_getCollateralWhitelist().isOnWhitelist(address(_collateral)), "bond token not supported");
         collateral = IERC20(_collateral);
         bondAmount = _bondAmount;
         rules = _rules;
@@ -125,7 +136,7 @@ contract OptimisticGovernor is Module, Lockable {
         // ERC20 token to be used as collateral (must be approved by UMA Store contract).
         require(_getCollateralWhitelist().isOnWhitelist(address(_collateral)), "bond token not supported");
         collateral = _collateral;
-
+        
         // Value of the bond required for proposals, in addition to the final fee. A bond of zero is
         // acceptable, in which case the Optimistic Oracle will require the final fee as the bond.
         bondAmount = _bondAmount;
@@ -139,6 +150,7 @@ contract OptimisticGovernor is Module, Lockable {
     function setRules(string memory _rules) public onlyOwner {
         // Set reference to the rules for the avatar (e.g. an IPFS hash or URI).
         rules = _rules;
+        emit SetRules(_rules);
     }
 
     /**
@@ -150,6 +162,7 @@ contract OptimisticGovernor is Module, Lockable {
         // Set liveness for disputing proposed transactions.
         require(_liveness > 0, "liveness can't be 0");
         liveness = _liveness;
+        emit SetLiveness(_liveness);
     }
 
     /**
@@ -161,6 +174,7 @@ contract OptimisticGovernor is Module, Lockable {
         // Set identifier which is used along with the rules to determine if transactions are valid.
         require(_getIdentifierWhitelist().isIdentifierSupported(_identifier), "identifier not supported");
         identifier = _identifier;
+        emit SetIdentifier(_identifier);
     }
 
     /**
@@ -176,6 +190,7 @@ contract OptimisticGovernor is Module, Lockable {
      * @notice Makes a new proposal for transactions to be executed with an "explanation" argument.
      * @param _transactions the transactions being proposed.
      * @param _explanation Auxillary information that can be referenced to validate the proposal.
+     * @dev Proposer must grant the contract collateral allowance equal or greater than the totalBond.
      */
     function proposeTransactions(Transaction[] memory _transactions, bytes memory _explanation) external nonReentrant {
         // note: Optional explanation explains the intent of the transactions to make comprehension easier.
@@ -210,6 +225,8 @@ contract OptimisticGovernor is Module, Lockable {
         optimisticOracle.setCustomLiveness(identifier, time, ancillaryData, liveness);
 
         // Get the bond from the proposer and approve the bond and final fee to be used by the oracle.
+        // This will fail if the proposer has not granted the OptimisticGovernor contract an allowance
+        // of the collateral token equal to or greater than the totalBond.
         collateral.safeTransferFrom(msg.sender, address(this), totalBond);
         collateral.safeIncreaseAllowance(address(optimisticOracle), totalBond);
 
@@ -222,7 +239,9 @@ contract OptimisticGovernor is Module, Lockable {
             PROPOSAL_VALID_RESPONSE
         );
 
-        emit TransactionsProposed(id, proposer, time, proposal, _explanation);
+        uint256 challengeWindowEnds = time + liveness;
+
+        emit TransactionsProposed(id, proposer, time, proposal, _explanation, challengeWindowEnds);
     }
 
     /**
@@ -269,7 +288,7 @@ contract OptimisticGovernor is Module, Lockable {
      */
     function deleteProposal(uint256 _proposalId) external onlyOwner {
         delete proposalHashes[_proposalId];
-        emit ProposalDeleted(_proposalId);
+        emit ProposalDeleted(_proposalId, msg.sender, "DeletedByAdmin");
     }
 
     /**
@@ -289,7 +308,7 @@ contract OptimisticGovernor is Module, Lockable {
 
         // Delete the proposal.
         delete proposalHashes[_proposalId];
-        emit ProposalDeleted(_proposalId);
+        emit ProposalDeleted(_proposalId, msg.sender, "Rejected");
     }
 
     /**
@@ -298,14 +317,6 @@ contract OptimisticGovernor is Module, Lockable {
      */
     function getCurrentTime() public view virtual returns (uint256) {
         return block.timestamp;
-    }
-
-    function _getOptimisticOracle() private view returns (OptimisticOracleInterface) {
-        return OptimisticOracleInterface(finder.getImplementationAddress(OracleInterfaces.OptimisticOracle));
-    }
-
-    function _isContract(address addr) private view returns (bool isContract) {
-        return addr.code.length > 0;
     }
 
     function _getCollateralWhitelist() internal view returns (AddressWhitelistInterface) {
@@ -322,5 +333,13 @@ contract OptimisticGovernor is Module, Lockable {
 
     function _sync() internal {
         optimisticOracle = _getOptimisticOracle();
+    }
+
+    function _getOptimisticOracle() private view returns (OptimisticOracleInterface) {
+        return OptimisticOracleInterface(finder.getImplementationAddress(OracleInterfaces.OptimisticOracle));
+    }
+
+    function _isContract(address addr) private view returns (bool) {
+        return addr.code.length > 0;
     }
 }
