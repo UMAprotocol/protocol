@@ -1,5 +1,7 @@
 // Description:
 // - Transfer UMA tokens from the Governor to a specified address on Ethereum. The transfer amount and recipient are configurable.
+// Note: The verification logic only makes sense if the recipient did not previously have UMA tokens.
+// TODO: Write a better verification script and allow transfer of any token, not just UMA.
 
 // Run:
 // - Check out README.md in this folder for setup instructions and simulating votes between the Propose and Verify
@@ -52,6 +54,12 @@ async function run() {
     );
   } else {
     console.group("\n🔎 Verifying execution of Admin Proposal");
+    assert.equal(
+      await uma.methods.balanceOf(recipient).call(),
+      toWei(amount),
+      "Recipient balance is less than the amount meant to be transferred"
+    );
+    console.log(`- Recipient @ ${recipient} received ${amount} UMA`);
     console.groupEnd();
     console.log("\n😇 Success!");
   }
