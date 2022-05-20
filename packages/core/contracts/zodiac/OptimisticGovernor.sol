@@ -70,6 +70,7 @@ contract OptimisticGovernor is Module, Lockable {
      * @param _rules Reference to the rules for the Gnosis Safe (e.g., IPFS hash or URI).
      * @param _identifier The approved identifier to be used with the contract, usually "ZODIAC".
      * @param _liveness The period, in seconds, in which a proposal can be disputed.
+     * @dev if the bondAmount is zero, there will be no reward for disputers, reducing incentives to dispute invalid proposals.
      */
     constructor(
         address _finder,
