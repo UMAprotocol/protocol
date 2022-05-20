@@ -38,8 +38,6 @@ contract OptimisticGovernor is Module, Lockable {
 
     event SetCollateral(IERC20 indexed collateral);
 
-    event SetBond(uint256 indexed bond);
-
     event SetRules(string indexed rules);
 
     event SetLiveness(uint64 indexed liveness);
@@ -111,14 +109,10 @@ contract OptimisticGovernor is Module, Lockable {
             bytes32 _identifier,
             uint64 _liveness
         ) = abi.decode(initializeParams, (address, address, uint256, string, bytes32, uint64));
-        require(_getCollateralWhitelist().isOnWhitelist(address(_collateral)), "bond token not supported");
-        collateral = IERC20(_collateral);
-        bondAmount = _bondAmount;
-        rules = _rules;
-        require(_getIdentifierWhitelist().isIdentifierSupported(_identifier), "identifier not supported");
-        identifier = _identifier;
-        require(_liveness > 0, "liveness can't be 0");
-        liveness = _liveness;
+        setCollateralAndBond(IERC20(_collateral), _bondAmount);
+        setRules(_rules);
+        setIdentifier(_identifier);
+        setLiveness(_liveness);
         setAvatar(_owner);
         setTarget(_owner);
         transferOwnership(_owner);
