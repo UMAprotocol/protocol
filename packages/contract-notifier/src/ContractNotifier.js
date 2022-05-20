@@ -9,13 +9,15 @@ class ContractNotifier {
    * @param {Object} logger Winston module used to send logs.
    * @param {Object} networker Used to send the API requests.
    * @param {Function} getTime Returns the current time.
+   * @param {Integer} chainId Contracts deployment chain.
    * @param {String} apiEndpoint API endpoint to monitor.
    * @param {Integer} maxTimeTillExpiration Period in seconds to look for upcoming contract expirations.
    */
-  constructor({ logger, networker, getTime, apiEndpoint, maxTimeTillExpiration }) {
+  constructor({ logger, networker, getTime, chainId, apiEndpoint, maxTimeTillExpiration }) {
     this.logger = logger;
     this.networker = networker;
     this.getTime = getTime;
+    this.chainId = chainId;
     this.apiEndpoint = apiEndpoint;
     this.maxTimeTillExpiration = maxTimeTillExpiration;
   }
@@ -58,8 +60,7 @@ class ContractNotifier {
         }
         const expirationUtcString = new Date(contract.expirationTimestamp * 1000).toUTCString();
         return {
-          // UMA API currently supports only Ethereum mainnet, thus chainId of 1 is hardcoded here:
-          chainId: 1,
+          chainId: this.chainId,
           address: contract.address,
           expirationTimestamp: contract.expirationTimestamp,
           tokenName: tokenName,
