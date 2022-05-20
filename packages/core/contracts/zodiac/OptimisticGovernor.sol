@@ -94,8 +94,7 @@ contract OptimisticGovernor is Module, Lockable {
         bytes32 _identifier,
         uint64 _liveness
     ) {
-        bytes memory initializeParams =
-            abi.encode(_finder, _owner, _collateral, _bondAmount, _rules, _identifier, _liveness);
+        bytes memory initializeParams = abi.encode(_owner, _collateral, _bondAmount, _rules, _identifier, _liveness);
         require(_finder != address(0), "finder address can not be empty");
         finder = FinderInterface(_finder);
         setUp(initializeParams);
@@ -136,7 +135,7 @@ contract OptimisticGovernor is Module, Lockable {
         // ERC20 token to be used as collateral (must be approved by UMA Store contract).
         require(_getCollateralWhitelist().isOnWhitelist(address(_collateral)), "bond token not supported");
         collateral = _collateral;
-        
+
         // Value of the bond required for proposals, in addition to the final fee. A bond of zero is
         // acceptable, in which case the Optimistic Oracle will require the final fee as the bond.
         bondAmount = _bondAmount;
