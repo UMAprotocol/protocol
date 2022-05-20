@@ -1,0 +1,71 @@
+// Description:
+// - Transfer UMA tokens from the Governor to a specified address on Ethereum. The transfer amount and recipient are configurable.
+
+// Run:
+// - Check out README.md in this folder for setup instructions and simulating votes between the Propose and Verify
+//   steps.
+// - Propose: node ./packages/scripts/src/admin-proposals/transferTokensFromGovernor.js --amount 123 --recipient 0xdef --network mainnet-fork
+// - Verify: Add --verify flag to Propose command.
+
+const hre = require("hardhat");
+require("dotenv").config();
+const Web3 = require("Web3");
+const { toWei } = Web3.utils;
+const { getContract, web3 } = hre;
+const { _getContractAddressByName } = require("./index.js");
+const { setupGasEstimator, proposeAdminTransactions } = require("./utils");
+const { getWeb3ByChainId } = require("@uma/common");
+const { REQUIRED_SIGNER_ADDRESSES } = require("../utils/constants");
+const argv = require("minimist")(process.argv.slice(), {
+  string: ["amount", "recipient"],
+  boolean: [
+    // set True if verifying, False for proposing.
+    "verify",
+  ],
+  default: { verify: false },
+});
+
+const ExpandedERC20 = getContract("ExpandedERC20");
+
+async function run() {
+  const { recipient, amount, verify } = argv;
+  const uma = new web3.eth.Contract(ExpandedERC20.abi, await _getContractAddressByName("VotingToken", 1));
+
+  const gasEstimator = await setupGasEstimator();
+
+  let web3Providers = { 1: getWeb3ByChainId(1) }; // netID => Web3
+
+  if (!verify) {
+    console.group(`🟢 Proposing transfer of ${amount} UMA tokens to ${recipient}`);
+    const adminProposalTransactions = [];
+
+    const transferUmaData = uma.methods.transfer(recipient, toWei(amount)).encodeABI();
+    console.log("- transfer tokens", transferUmaData);
+    adminProposalTransactions.push({ to: uma.options.address, value: 0, data: transferUmaData });
+
+    // Send the proposal
+    await proposeAdminTransactions(
+      web3Providers[1],
+      adminProposalTransactions,
+      REQUIRED_SIGNER_ADDRESSES["deployer"],
+      gasEstimator.getCurrentFastPrice()
+    );
+  } else {
+    console.group("\n🔎 Verifying execution of Admin Proposal");
+    console.groupEnd();
+    console.log("\n😇 Success!");
+  }
+}
+
+function main() {
+  const startTime = Date.now();
+  run()
+    .catch((err) => {
+      console.error(err);
+    })
+    .finally(() => {
+      const timeElapsed = Date.now() - startTime;
+      console.log(`Done in ${(timeElapsed / 1000).toFixed(2)}s`);
+    });
+}
+main();
