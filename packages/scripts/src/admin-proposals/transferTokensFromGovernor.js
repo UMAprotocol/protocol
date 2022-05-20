@@ -9,12 +9,13 @@
 // - Propose: node ./packages/scripts/src/admin-proposals/transferTokensFromGovernor.js --amount 123 --recipient 0xdef --network mainnet-fork
 // - Verify: Add --verify flag to Propose command.
 
+const assert = require("assert");
 const hre = require("hardhat");
 require("dotenv").config();
 const Web3 = require("Web3");
 const { toWei } = Web3.utils;
 const { getContract, web3 } = hre;
-const { _getContractAddressByName } = require("./utils/index.js");
+const { _getContractAddressByName } = require("../utils/index.js");
 const { setupGasEstimator, proposeAdminTransactions } = require("./utils");
 const { getWeb3ByChainId } = require("@uma/common");
 const { REQUIRED_SIGNER_ADDRESSES } = require("../utils/constants");
