@@ -69,6 +69,7 @@ contract OptimisticGovernor is Module, Lockable {
         uint256 requestTime;
     }
 
+    // This maps proposal hashes to the proposal timestamps.
     mapping(bytes32 => uint256) public proposalHashes;
 
     /**
@@ -208,6 +209,9 @@ contract OptimisticGovernor is Module, Lockable {
         // Create the proposal hash.
         bytes32 proposalHash = keccak256(abi.encode(_transactions));
 
+        // Add the proposal hash to ancillary data.
+        bytes memory ancillaryData = AncillaryData.appendKeyValueBytes32("", "proposalHash", proposalHash);
+
         // Check that the proposal is not already mapped to a proposal time, i.e., is not a duplicate.
         require(proposalHashes[proposalHash] == 0, "Duplicate proposals are not allowed");
 
@@ -216,9 +220,9 @@ contract OptimisticGovernor is Module, Lockable {
 
         // Propose a set of transactions to the OO. If not disputed, they can be executed with executeProposal().
         // docs: https://github.com/UMAprotocol/protocol/blob/master/packages/core/contracts/oracle/interfaces/OptimisticOracleInterface.sol
-        optimisticOracle.requestPrice(identifier, time, "", collateral, 0);
-        uint256 totalBond = optimisticOracle.setBond(identifier, time, "", bondAmount);
-        optimisticOracle.setCustomLiveness(identifier, time, "", liveness);
+        optimisticOracle.requestPrice(identifier, time, ancillaryData, collateral, 0);
+        uint256 totalBond = optimisticOracle.setBond(identifier, time, ancillaryData, bondAmount);
+        optimisticOracle.setCustomLiveness(identifier, time, ancillaryData, liveness);
 
         // Get the bond from the proposer and approve the bond and final fee to be used by the oracle.
         // This will fail if the proposer has not granted the OptimisticGovernor contract an allowance
@@ -226,7 +230,14 @@ contract OptimisticGovernor is Module, Lockable {
         collateral.safeTransferFrom(msg.sender, address(this), totalBond);
         collateral.safeIncreaseAllowance(address(optimisticOracle), totalBond);
 
-        optimisticOracle.proposePriceFor(msg.sender, address(this), identifier, time, "", PROPOSAL_VALID_RESPONSE);
+        optimisticOracle.proposePriceFor(
+            msg.sender,
+            address(this),
+            identifier,
+            time,
+            ancillaryData,
+            PROPOSAL_VALID_RESPONSE
+        );
 
         uint256 challengeWindowEnds = time + liveness;
 
@@ -241,17 +252,26 @@ contract OptimisticGovernor is Module, Lockable {
         // Recreate the proposal hash from the inputs and check that it matches the stored proposal hash.
         bytes32 _proposalHash = keccak256(abi.encode(_transactions));
 
+        // Add the proposal hash to ancillary data.
+        bytes memory ancillaryData = AncillaryData.appendKeyValueBytes32("", "proposalHash", _proposalHash);
+
         // This will reject the transaction if the proposal hash generated from the inputs does not match the stored proposal hash.
         require(proposalHashes[_proposalHash] != 0, "proposal hash does not exist");
 
         // Get the original proposal time.
         uint256 _originalTime = proposalHashes[_proposalHash];
 
+        // You can not execute a proposal that has been disputed at some point in the past.
+        require(
+            optimisticOracle.getRequest(address(this), identifier, _originalTime, ancillaryData).disputer == address(0),
+            "Must call deleteRejectedProposal instead"
+        );
+
         // Remove proposal hash so transactions can not be executed again.
         delete proposalHashes[_proposalHash];
 
         // This will revert if the price has not been settled and can not currently be settled.
-        int256 price = optimisticOracle.settleAndGetPrice(identifier, _originalTime, "");
+        int256 price = optimisticOracle.settleAndGetPrice(identifier, _originalTime, ancillaryData);
         require(price == PROPOSAL_VALID_RESPONSE, "Proposal was rejected");
 
         for (uint256 i = 0; i < _transactions.length; i++) {
@@ -285,11 +305,14 @@ contract OptimisticGovernor is Module, Lockable {
         // Check that proposal exists and was not already deleted.
         require(proposalHashes[_proposalHash] != 0, "Proposal does not exist");
 
+        // Add the proposal hash to ancillary data.
+        bytes memory ancillaryData = AncillaryData.appendKeyValueBytes32("", "proposalHash", _proposalHash);
+
         // Get the original proposal time.
         uint256 _originalTime = proposalHashes[_proposalHash];
 
         // This will revert if the price has not settled.
-        int256 price = optimisticOracle.settleAndGetPrice(identifier, _originalTime, "");
+        int256 price = optimisticOracle.settleAndGetPrice(identifier, _originalTime, ancillaryData);
 
         // Check that proposal was rejected.
         require(price != PROPOSAL_VALID_RESPONSE, "Proposal was not rejected");
@@ -307,11 +330,15 @@ contract OptimisticGovernor is Module, Lockable {
         // Check that proposal exists and was not already deleted.
         require(proposalHashes[_proposalHash] != 0, "Proposal does not exist");
 
+        // Add the proposal hash to ancillary data.
+        bytes memory ancillaryData = AncillaryData.appendKeyValueBytes32("", "proposalHash", _proposalHash);
+
         // Get the original proposal time.
         uint256 _originalTime = proposalHashes[_proposalHash];
 
         // Get the state of the proposal.
-        OptimisticOracleInterface.State state = optimisticOracle.getState(address(this), identifier, _originalTime, "");
+        OptimisticOracleInterface.State state =
+            optimisticOracle.getState(address(this), identifier, _originalTime, ancillaryData);
 
         // Check that proposal was disputed.
         require(state == OptimisticOracleInterface.State.Disputed, "Proposal was not disputed");
