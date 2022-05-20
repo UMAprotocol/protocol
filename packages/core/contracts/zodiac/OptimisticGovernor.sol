@@ -108,9 +108,8 @@ contract OptimisticGovernor is Module, Lockable {
             string memory _rules,
             bytes32 _identifier,
             uint64 _liveness
-        ) = abi.decode(initializeParams, (address, address, address, uint256, string, bytes32, uint64));
-        finder = FinderInterface(_finder);
-        setCollateralAndBond(IERC20(_collateral), _bond);
+        ) = abi.decode(initializeParams, (address, address, uint256, string, bytes32, uint64));
+        setCollateralAndBond(IERC20(_collateral), _bondAmount);
         setRules(_rules);
         setIdentifier(_identifier);
         setLiveness(_liveness);
