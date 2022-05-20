@@ -82,6 +82,7 @@ contract OptimisticGovernor is Module, Lockable {
      * @param _rules Reference to the rules for the Gnosis Safe (e.g., IPFS hash or URI).
      * @param _identifier The approved identifier to be used with the contract, usually "ZODIAC".
      * @param _liveness The period, in seconds, in which a proposal can be disputed.
+     * @dev if the bondAmount is zero, there will be no reward for disputers, reducing incentives to dispute invalid proposals.
      */
     constructor(
         address _finder,
@@ -151,6 +152,7 @@ contract OptimisticGovernor is Module, Lockable {
      */
     function setRules(string memory _rules) public onlyOwner {
         // Set reference to the rules for the avatar (e.g. an IPFS hash or URI).
+        require(bytes(_rules).length > 0, "rules can not be empty");
         rules = _rules;
         emit SetRules(_rules);
     }
@@ -163,6 +165,7 @@ contract OptimisticGovernor is Module, Lockable {
     function setLiveness(uint64 _liveness) public onlyOwner {
         // Set liveness for disputing proposed transactions.
         require(_liveness > 0, "liveness can't be 0");
+        require(_liveness < 52 weeks, "liveness can't be longer than 5200 weeks");
         liveness = _liveness;
         emit SetLiveness(_liveness);
     }
