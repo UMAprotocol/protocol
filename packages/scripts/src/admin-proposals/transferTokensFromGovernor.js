@@ -32,7 +32,9 @@ const ExpandedERC20 = getContract("ExpandedERC20");
 
 async function run() {
   const { recipient, amount, verify } = argv;
-  const uma = new web3.eth.Contract(ExpandedERC20.abi, await _getContractAddressByName("VotingToken", 1));
+  const tokenAddress = await _getContractAddressByName("VotingToken", 1);
+  console.log("tokenAddress:", tokenAddress);
+  const uma = new web3.eth.Contract(ExpandedERC20.abi, tokenAddress);
 
   const gasEstimator = await setupGasEstimator();
 
@@ -55,11 +57,9 @@ async function run() {
     );
   } else {
     console.group("\n🔎 Verifying execution of Admin Proposal");
-    assert.equal(
-      await uma.methods.balanceOf(recipient).call(),
-      toWei(amount),
-      "Recipient balance is less than the amount meant to be transferred"
-    );
+    var balance = await uma.methods.balanceOf(recipient).call();
+    console.log("balance:", balance);
+    assert.equal(balance, toWei(amount), "Recipient balance is not the correct amount");
     console.log(`- Recipient @ ${recipient} received ${amount} UMA`);
     console.groupEnd();
     console.log("\n😇 Success!");
