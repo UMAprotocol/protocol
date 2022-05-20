@@ -337,7 +337,7 @@ contract OptimisticGovernor is Module, Lockable {
         uint256 _originalTime = proposalHashes[_proposalHash];
 
         // Get the state of the proposal.
-        OptimisticOracleInterface.Request request =
+        OptimisticOracleInterface.Request memory request =
             optimisticOracle.getRequest(address(this), identifier, _originalTime, ancillaryData);
 
         // Check that proposal was disputed.
