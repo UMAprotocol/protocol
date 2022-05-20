@@ -10,7 +10,6 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../oracle/implementation/Constants.sol";
 import "../oracle/interfaces/FinderInterface.sol";
 import "../oracle/interfaces/OptimisticOracleInterface.sol";
-import "../oracle/implementation/OptimisticOracle.sol";
 import "../common/implementation/Lockable.sol";
 import "../common/interfaces/AddressWhitelistInterface.sol";
 import "../oracle/interfaces/IdentifierWhitelistInterface.sol";
@@ -27,15 +26,26 @@ contract OptimisticGovernor is Module, Lockable {
         address indexed proposer,
         uint256 indexed proposalTime,
         Proposal proposal,
-        bytes explanation
+        bytes explanation,
+        uint256 challengeWindowEnds
     );
 
     event TransactionExecuted(uint256 indexed proposalId, uint256 indexed transactionIndex);
 
     event ProposalDeleted(uint256 indexed proposalId, address indexed sender, bytes32 indexed status);
 
+    event SetCollateral(IERC20 indexed collateral);
+
+    event SetBond(uint256 indexed bond);
+
+    event SetRules(string indexed rules);
+
+    event SetLiveness(uint64 indexed liveness);
+
+    event SetIdentifier(bytes32 indexed identifier);
+
     // Since finder is set during setUp, you will need to deploy a new Optimistic Governor module if this address need to be changed in the future.
-    FinderInterface public finder;
+    FinderInterface public immutable finder;
 
     IERC20 public collateral;
     uint64 public liveness;
@@ -46,11 +56,13 @@ contract OptimisticGovernor is Module, Lockable {
     bytes32 public identifier;
     OptimisticOracleInterface public optimisticOracle;
 
+    int256 public constant PROPOSAL_VALID_RESPONSE = int256(1e18);
+
     struct Transaction {
         address to;
+        Enum.Operation operation;
         uint256 value;
         bytes data;
-        Enum.Operation operation;
     }
 
     struct Proposal {
@@ -66,7 +78,7 @@ contract OptimisticGovernor is Module, Lockable {
      * @param _finder Finder address.
      * @param _owner Address of the owner.
      * @param _collateral Address of the ERC20 collateral used for bonds.
-     * @param _bond Bond required (must be at least as large as final fee for collateral type).
+     * @param _bond Additional bond required, beyond the final fee.
      * @param _rules Reference to the rules for the Gnosis Safe (e.g., IPFS hash or URI).
      * @param _identifier The approved identifier to be used with the contract, usually "ZODIAC".
      * @param _liveness The period, in seconds, in which a proposal can be disputed.
@@ -80,22 +92,22 @@ contract OptimisticGovernor is Module, Lockable {
         bytes32 _identifier,
         uint64 _liveness
     ) {
-        bytes memory initializeParams = abi.encode(_finder, _owner, _collateral, _bond, _rules, _identifier, _liveness);
+        bytes memory initializeParams = abi.encode(_owner, _collateral, _bond, _rules, _identifier, _liveness);
+        require(_finder != address(0), "finder address can not be empty");
+        finder = FinderInterface(_finder);
         setUp(initializeParams);
     }
 
     function setUp(bytes memory initializeParams) public override initializer {
         __Ownable_init();
         (
-            address _finder,
             address _owner,
             address _collateral,
             uint256 _bond,
             string memory _rules,
             bytes32 _identifier,
             uint64 _liveness
-        ) = abi.decode(initializeParams, (address, address, address, uint256, string, bytes32, uint64));
-        finder = FinderInterface(_finder);
+        ) = abi.decode(initializeParams, (address, address, uint256, string, bytes32, uint64));
         require(_getCollateralWhitelist().isOnWhitelist(address(_collateral)), "bond token not supported");
         collateral = IERC20(_collateral);
         bond = _bond;
@@ -119,6 +131,7 @@ contract OptimisticGovernor is Module, Lockable {
     function setBond(uint256 _bond) public onlyOwner {
         // Value of the bond required for proposals, in addition to the final fee.
         bond = _bond;
+        emit SetBond(_bond);
     }
 
     /**
@@ -129,6 +142,7 @@ contract OptimisticGovernor is Module, Lockable {
         // ERC20 token to be used as collateral (must be approved by UMA Store contract).
         require(_getCollateralWhitelist().isOnWhitelist(address(_collateral)), "bond token not supported");
         collateral = _collateral;
+        emit SetCollateral(_collateral);
     }
 
     /**
@@ -138,6 +152,7 @@ contract OptimisticGovernor is Module, Lockable {
     function setRules(string memory _rules) public onlyOwner {
         // Set reference to the rules for the avatar (e.g. an IPFS hash or URI).
         rules = _rules;
+        emit SetRules(_rules);
     }
 
     /**
@@ -149,6 +164,7 @@ contract OptimisticGovernor is Module, Lockable {
         // Set liveness for disputing proposed transactions.
         require(_liveness > 0, "liveness can't be 0");
         liveness = _liveness;
+        emit SetLiveness(_liveness);
     }
 
     /**
@@ -160,15 +176,15 @@ contract OptimisticGovernor is Module, Lockable {
         // Set identifier which is used along with the rules to determine if transactions are valid.
         require(_getIdentifierWhitelist().isIdentifierSupported(_identifier), "identifier not supported");
         identifier = _identifier;
+        emit SetIdentifier(_identifier);
     }
 
     /**
      * @notice This pulls in the most up-to-date Optimistic Oracle.
-     * @dev If a new OptimisticOracle is added and this is run between a proposals introduction and execution, the
+     * @dev If a new OptimisticOracle is added and this is run between a proposal's introduction and execution, the
      * proposal will become unexecutable.
      */
-    function sync() public nonReentrant {
-        // Sync the oracle contract addresses as well as the final fee.
+    function sync() external nonReentrant {
         _sync();
     }
 
@@ -176,8 +192,9 @@ contract OptimisticGovernor is Module, Lockable {
      * @notice Makes a new proposal for transactions to be executed with an "explanation" argument.
      * @param _transactions the transactions being proposed.
      * @param _explanation Auxillary information that can be referenced to validate the proposal.
+     * @dev Proposer must grant the contract collateral allowance equal or greater than the totalBond.
      */
-    function proposeTransactions(Transaction[] memory _transactions, bytes memory _explanation) public nonReentrant {
+    function proposeTransactions(Transaction[] memory _transactions, bytes memory _explanation) external nonReentrant {
         // note: Optional explanation explains the intent of the transactions to make comprehension easier.
         uint256 id = prevProposalId + 1;
         prevProposalId = id;
@@ -201,7 +218,6 @@ contract OptimisticGovernor is Module, Lockable {
         }
         proposal.transactions = _transactions;
 
-        // proposalHashes[id] = keccak256(abi.encodePacked(proposalData));
         proposalHashes[id] = keccak256(abi.encode(_transactions));
 
         // Propose a set of transactions to the OO. If not disputed, they can be executed with executeProposal().
@@ -211,12 +227,23 @@ contract OptimisticGovernor is Module, Lockable {
         optimisticOracle.setCustomLiveness(identifier, time, ancillaryData, liveness);
 
         // Get the bond from the proposer and approve the bond and final fee to be used by the oracle.
+        // This will fail if the proposer has not granted the OptimisticGovernor contract an allowance
+        // of the collateral token equal to or greater than the totalBond.
         collateral.safeTransferFrom(msg.sender, address(this), totalBond);
         collateral.safeIncreaseAllowance(address(optimisticOracle), totalBond);
 
-        optimisticOracle.proposePriceFor(msg.sender, address(this), identifier, time, ancillaryData, int256(1e18));
+        optimisticOracle.proposePriceFor(
+            msg.sender,
+            address(this),
+            identifier,
+            time,
+            ancillaryData,
+            PROPOSAL_VALID_RESPONSE
+        );
 
-        emit TransactionsProposed(id, proposer, time, proposal, _explanation);
+        uint256 challengeWindowEnds = time + liveness;
+
+        emit TransactionsProposed(id, proposer, time, proposal, _explanation, challengeWindowEnds);
     }
 
     /**
@@ -229,7 +256,7 @@ contract OptimisticGovernor is Module, Lockable {
         uint256 _proposalId,
         Transaction[] memory _transactions,
         uint256 _originalTime
-    ) public payable nonReentrant {
+    ) external payable nonReentrant {
         // Recreate the proposal hash from the inputs and check that it matches the stored proposal hash.
         uint256 id = _proposalId;
 
@@ -237,15 +264,14 @@ contract OptimisticGovernor is Module, Lockable {
         bytes memory ancillaryData = AncillaryData.appendKeyValueUint("", "id", id);
 
         // This will reject the transaction if the proposal hash generated from the inputs does not match the stored proposal hash.
-        // require(proposalHashes[id] == keccak256(abi.encodePacked(proposalData)), "proposal hash does not match");
         require(proposalHashes[id] == keccak256(abi.encode(_transactions)), "proposal hash does not match");
 
         // Remove proposal hash so transactions can not be executed again.
         delete proposalHashes[id];
 
-        // This will revert if the price has not settled.
+        // This will revert if the price has not been settled and can not currently be settled.
         int256 price = optimisticOracle.settleAndGetPrice(identifier, _originalTime, ancillaryData);
-        require(price == int256(1e18), "Proposal was rejected");
+        require(price == PROPOSAL_VALID_RESPONSE, "Proposal was rejected");
 
         for (uint256 i = 0; i < _transactions.length; i++) {
             Transaction memory transaction = _transactions[i];
@@ -286,7 +312,7 @@ contract OptimisticGovernor is Module, Lockable {
         int256 price = optimisticOracle.settleAndGetPrice(identifier, _originalTime, ancillaryData);
 
         // Check that proposal was rejected.
-        require(price != int256(1e18), "Proposal was not rejected");
+        require(price != PROPOSAL_VALID_RESPONSE, "Proposal was not rejected");
 
         // Delete the proposal.
         delete proposalHashes[_proposalId];
@@ -319,7 +345,7 @@ contract OptimisticGovernor is Module, Lockable {
 
     /**
      * @notice Gets the current time for this contract.
-     * @dev This only exists so it can be overriden for testing.
+     * @dev This only exists so it can be overridden for testing.
      */
     function getCurrentTime() public view virtual returns (uint256) {
         return block.timestamp;
