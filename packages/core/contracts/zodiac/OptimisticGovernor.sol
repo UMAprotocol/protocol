@@ -264,7 +264,7 @@ contract OptimisticGovernor is Module, Lockable {
         // You can not execute a proposal that has been disputed at some point in the past.
         require(
             optimisticOracle.getRequest(address(this), identifier, _originalTime, ancillaryData).disputer == address(0),
-            "Must call deleteRejectedProposal instead"
+            "Must call deleteDisputedProposal instead"
         );
 
         // Remove proposal hash so transactions can not be executed again.
