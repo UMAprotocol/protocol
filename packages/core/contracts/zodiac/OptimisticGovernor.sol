@@ -292,6 +292,8 @@ contract OptimisticGovernor is Module, Lockable {
      * @param _proposalId the id of the proposal being deleted.
      */
     function deleteProposal(uint256 _proposalId) external onlyOwner {
+        // Check that proposal exists and was not already deleted.
+        require(proposalHashes[_proposalId] != bytes32(0), "Proposal does not exist");
         delete proposalHashes[_proposalId];
         emit ProposalDeleted(_proposalId, msg.sender, "DeletedByAdmin");
     }
@@ -302,6 +304,9 @@ contract OptimisticGovernor is Module, Lockable {
      * @param _originalTime the time the proposal was made.
      */
     function deleteRejectedProposal(uint256 _proposalId, uint256 _originalTime) external {
+        // Check that proposal exists and was not already deleted.
+        require(proposalHashes[_proposalId] != bytes32(0), "Proposal does not exist");
+
         // Construct the ancillary data.
         bytes memory ancillaryData = AncillaryData.appendKeyValueUint("", "id", _proposalId);
 
