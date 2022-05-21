@@ -14,7 +14,7 @@ const hre = require("hardhat");
 require("dotenv").config();
 const Web3 = require("Web3");
 const { toWei } = Web3.utils;
-const { getContract, web3 } = hre;
+const { getContract } = hre;
 const { _getContractAddressByName } = require("../utils/index.js");
 const { setupGasEstimator, proposeAdminTransactions } = require("./utils");
 const { getWeb3ByChainId } = require("@uma/common");
@@ -32,13 +32,13 @@ const ExpandedERC20 = getContract("ExpandedERC20");
 
 async function run() {
   const { recipient, amount, verify } = argv;
+  const web3Providers = { 1: getWeb3ByChainId(1) }; // netID => Web3
+  const web3 = web3Providers[1];
   const tokenAddress = await _getContractAddressByName("VotingToken", 1);
   console.log("tokenAddress:", tokenAddress);
   const uma = new web3.eth.Contract(ExpandedERC20.abi, tokenAddress);
 
   const gasEstimator = await setupGasEstimator();
-
-  let web3Providers = { 1: getWeb3ByChainId(1) }; // netID => Web3
 
   if (!verify) {
     console.group(`🟢 Proposing transfer of ${amount} UMA tokens to ${recipient}`);
