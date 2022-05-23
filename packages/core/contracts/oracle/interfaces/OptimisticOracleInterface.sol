@@ -19,6 +19,13 @@ abstract contract OptimisticOracleInterface {
         Settled // Final price has been set in the contract (can get here from Expired or Resolved).
     }
 
+    // Struct representing which callbacks should be executed.
+    struct EnabledCallbacks {
+        bool priceProposed; // True if priceProposed callback is required.
+        bool priceDisputed; // True if priceDisputed callback is required.
+        bool priceSettled; // True if priceSettled callback is required.
+    }
+
     // Struct representing a price request.
     struct Request {
         address proposer; // Address of the proposer.
@@ -27,6 +34,7 @@ abstract contract OptimisticOracleInterface {
         bool settled; // True if the request is settled.
         bool refundOnDispute; // True if the requester should be refunded their reward on dispute.
         bool eventBased; // True if the request is set to be event-based.
+        EnabledCallbacks enabledCallbacks; // Struct elements set to True if corresponding callback is required.
         int256 proposedPrice; // Price that the proposer submitted.
         int256 resolvedPrice; // Price resolved once the request is settled.
         uint256 expirationTime; // Time at which the request auto-settles without a dispute.

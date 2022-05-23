@@ -187,7 +187,8 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
             finalFee: finalFee,
             bond: finalFee,
             customLiveness: 0,
-            eventBased: false
+            eventBased: false,
+            enabledCallbacks: EnabledCallbacks({ priceProposed: false, priceDisputed: false, priceSettled: false })
         });
 
         if (reward > 0) {
@@ -298,6 +299,23 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
     }
 
     /**
+     * @notice Sets which callbacks should be enabled for the request.
+     * @param enabledCallbacks EnabledCallbacks struct representing which callbacks should be executed.
+     */
+    function setCallbacks(
+        bytes32 identifier,
+        uint256 timestamp,
+        bytes memory ancillaryData,
+        EnabledCallbacks calldata enabledCallbacks
+    ) external nonReentrant() {
+        require(
+            _getState(msg.sender, identifier, timestamp, ancillaryData) == State.Requested,
+            "setCallbacks: Requested"
+        );
+        _getRequest(msg.sender, identifier, timestamp, ancillaryData).enabledCallbacks = enabledCallbacks;
+    }
+
+    /**
      * @notice Proposes a price value on another address' behalf. Note: this address will receive any rewards that come
      * from this proposal. However, any bonds are pulled from the caller.
      * @param proposer address to set as the proposer.
@@ -351,8 +369,8 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
         // End the re-entrancy guard early to allow the caller to potentially take OO-related actions inside this callback.
         _startReentrantGuardDisabled();
         // Callback.
-        if (address(requester).isContract())
-            try OptimisticRequester(requester).priceProposed(identifier, timestamp, ancillaryData) {} catch {}
+        if (address(requester).isContract() && request.enabledCallbacks.priceProposed)
+            OptimisticRequester(requester).priceProposed(identifier, timestamp, ancillaryData);
         _endReentrantGuardDisabled();
     }
 
@@ -455,8 +473,8 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
         // End the re-entrancy guard early to allow the caller to potentially re-request inside this callback.
         _startReentrantGuardDisabled();
         // Callback.
-        if (address(requester).isContract())
-            try OptimisticRequester(requester).priceDisputed(identifier, timestamp, ancillaryData, refund) {} catch {}
+        if (address(requester).isContract() && request.enabledCallbacks.priceDisputed)
+            OptimisticRequester(requester).priceDisputed(identifier, timestamp, ancillaryData, refund);
         _endReentrantGuardDisabled();
     }
 
@@ -649,10 +667,8 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
         // Temporarily disable the re-entrancy guard early to allow the caller to take an OO-related action inside this callback.
         _startReentrantGuardDisabled();
         // Callback.
-        if (address(requester).isContract())
-            try
-                OptimisticRequester(requester).priceSettled(identifier, timestamp, ancillaryData, request.resolvedPrice)
-            {} catch {}
+        if (address(requester).isContract() && request.enabledCallbacks.priceSettled)
+            OptimisticRequester(requester).priceSettled(identifier, timestamp, ancillaryData, request.resolvedPrice);
         _endReentrantGuardDisabled();
     }
 
