@@ -418,6 +418,65 @@ describe("MerkleDistributor.js", function () {
           merkleProof: invalidProof,
         });
       });
+      it("Underfunded window", async function () {
+        // Fund another rewards window with the same Merkle tree, but insufficient funding.
+        const insufficientTotalRewards = toBN(SamplePayouts.totalRewardsDistributed).sub(toBN("1"));
+        await merkleDistributor.methods
+          .setWindow(insufficientTotalRewards, rewardToken.options.address, merkleTree.getRoot(), sampleIpfsHash)
+          .send({ from: accounts[0] });
+        const underfundedWindowIndex = windowIndex + 1;
+
+        // Track claimed rewards and change in contract balance for the underfunded rewards window.
+        let claimedUnderfundedRewards = toBN("0");
+        const contractBalanceBefore = toBN(
+          await rewardToken.methods.balanceOf(merkleDistributor.options.address).call()
+        );
+        // Process all claims for the underfunded rewards window.
+        for (let i = 0; i < rewardLeafs.length; i++) {
+          leaf = rewardLeafs[i];
+          claimerProof = merkleTree.getProof(leaf.leaf);
+          const claim = {
+            windowIndex: underfundedWindowIndex,
+            account: leaf.account,
+            accountIndex: leaf.accountIndex,
+            amount: leaf.amount,
+            merkleProof: claimerProof,
+          };
+          // Verify that the claim from underfunded window is valid.
+          assert.isTrue(await merkleDistributor.methods.verifyClaim(claim).call());
+          const remainingAmount = insufficientTotalRewards.sub(claimedUnderfundedRewards);
+          if (remainingAmount.gte(toBN(leaf.amount))) {
+            // Claim on underfunded rewards window should succeed as individual claim amount does not
+            // yet exceed the `remainingAmount`.
+            await merkleDistributor.methods.claim(claim).send({ from: accounts[0] });
+            claimedUnderfundedRewards = claimedUnderfundedRewards.add(toBN(leaf.amount));
+          } else {
+            // `remainingAmount` is less than claim amount thus the claim should fail.
+            assert(await didContractThrow(merkleDistributor.methods.claim(claim).send({ from: accounts[0] })));
+          }
+        }
+        // Verify that tracked successful claimed rewards matches total decrease in contract balance.
+        assert.equal(
+          (await rewardToken.methods.balanceOf(merkleDistributor.options.address).call()).toString(),
+          contractBalanceBefore.sub(claimedUnderfundedRewards).toString()
+        );
+        // Verify that total claimed amount does not exceed total rewards for the underfunded reward window.
+        assert.isTrue(claimedUnderfundedRewards.lte(insufficientTotalRewards));
+
+        // It should be possible to claim all rewards from the original rewards window.
+        for (let i = 0; i < rewardLeafs.length; i++) {
+          leaf = rewardLeafs[i];
+          claimerProof = merkleTree.getProof(leaf.leaf);
+          const claim = {
+            windowIndex: windowIndex,
+            account: leaf.account,
+            accountIndex: leaf.accountIndex,
+            amount: leaf.amount,
+            merkleProof: claimerProof,
+          };
+          await merkleDistributor.methods.claim(claim).send({ from: accounts[0] });
+        }
+      });
     });
     describe("(claimMulti)", function () {
       // 3 Total Trees to test multiple combinations of (1) receiver accounts and (2) reward currencies.
