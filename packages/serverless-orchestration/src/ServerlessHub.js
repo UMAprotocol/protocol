@@ -116,8 +116,8 @@ hub.post("/", async (req, res) => {
           if (index % 2 !== 0) return;
           const chainId = multiChainIds[Math.floor(index / 2)];
           blockNumbersForChain[chainId] = {
-            lastQueriedBlockNumber: results[index],
-            latestBlockNumber: results[index + 1],
+            lastQueriedBlockNumber: results[index + 1],
+            latestBlockNumber: results[index],
           };
         });
       }
@@ -283,10 +283,13 @@ hub.post("/", async (req, res) => {
     }
 
     await delay(waitForLoggerDelay); // Wait a few seconds to be sure the the winston logs are processed upstream.
-    res.status(500).send({
-      message: errorOutput instanceof Error ? "A fatal error occurred in the hub" : "Some spoke calls returned errors",
-      output: errorOutput instanceof Error ? errorOutput.message : errorOutput,
-    });
+    res
+      .status(500)
+      .send({
+        message:
+          errorOutput instanceof Error ? "A fatal error occurred in the hub" : "Some spoke calls returned errors",
+        output: errorOutput instanceof Error ? errorOutput.message : errorOutput,
+      });
   }
 });
 
