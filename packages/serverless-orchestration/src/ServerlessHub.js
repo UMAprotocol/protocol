@@ -116,8 +116,8 @@ hub.post("/", async (req, res) => {
           if (index % 2 !== 0) return;
           const chainId = multiChainIds[Math.floor(index / 2)];
           blockNumbersForChain[chainId] = {
-            lastQueriedBlockNumber: results[index],
-            latestBlockNumber: results[index + 1],
+            lastQueriedBlockNumber: results[index + 1],
+            latestBlockNumber: results[index],
           };
         });
       }
