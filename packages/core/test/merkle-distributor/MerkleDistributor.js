@@ -905,6 +905,21 @@ describe("MerkleDistributor.js", function () {
 
       assert.equal((await merkleDistributor.methods.nextCreatedIndex().call()).toString(), "1");
     });
+    it("Reward amount stored in the contract", async function () {
+      await merkleDistributor.methods
+        .setWindow(
+          SamplePayouts.totalRewardsDistributed,
+          rewardToken.options.address,
+          merkleTree.getRoot(),
+          sampleIpfsHash
+        )
+        .send({ from: contractCreator });
+
+      assert.equal(
+        (await merkleDistributor.methods.merkleWindows("0").call()).remainingAmount.toString(),
+        SamplePayouts.totalRewardsDistributed
+      );
+    });
   });
   describe("Emergency admin functions", function () {
     beforeEach(async function () {
