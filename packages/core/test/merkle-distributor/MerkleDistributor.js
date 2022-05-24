@@ -118,6 +118,7 @@ describe("MerkleDistributor.js", function () {
       const windowState = await merkleDistributor.methods.merkleWindows(windowIndex).call();
 
       assert.equal(windowState.merkleRoot, "0x" + merkleTree.getRoot().toString("hex"));
+      assert.equal(windowState.remainingAmount, totalRewardAmount.toString());
       assert.equal(windowState.rewardToken, rewardToken.options.address);
       assert.equal(windowState.ipfsHash, sampleIpfsHash);
 
@@ -134,6 +135,9 @@ describe("MerkleDistributor.js", function () {
         const claimerBalanceBefore = toBN(await rewardToken.methods.balanceOf(leaf.account).call());
         const contractBalanceBefore = toBN(
           await rewardToken.methods.balanceOf(merkleDistributor.options.address).call()
+        );
+        const remainingAmountBefore = toBN(
+          (await merkleDistributor.methods.merkleWindows(windowIndex).call()).remainingAmount
         );
 
         // Claim the rewards, providing the information needed to re-build the tree & verify the proof.
@@ -167,6 +171,11 @@ describe("MerkleDistributor.js", function () {
         assert.equal(
           (await rewardToken.methods.balanceOf(merkleDistributor.options.address).call()).toString(),
           contractBalanceBefore.sub(toBN(leaf.amount)).toString()
+        );
+        // Contract should track remaining rewards.
+        assert.equal(
+          (await merkleDistributor.methods.merkleWindows(windowIndex).call()).remainingAmount,
+          remainingAmountBefore.sub(toBN(leaf.amount)).toString()
         );
         // User should be marked as claimed and cannot claim again.
         assert.isTrue(await merkleDistributor.methods.isClaimed(windowIndex, leaf.accountIndex).call());
