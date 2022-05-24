@@ -906,6 +906,9 @@ describe("MerkleDistributor.js", function () {
       assert.equal((await merkleDistributor.methods.nextCreatedIndex().call()).toString(), "1");
     });
     it("Reward amount stored in the contract", async function () {
+      // Expect this window to be at the first index.
+      windowIndex = 0;
+
       await merkleDistributor.methods
         .setWindow(
           SamplePayouts.totalRewardsDistributed,
@@ -916,7 +919,7 @@ describe("MerkleDistributor.js", function () {
         .send({ from: contractCreator });
 
       assert.equal(
-        (await merkleDistributor.methods.merkleWindows("0").call()).remainingAmount.toString(),
+        (await merkleDistributor.methods.merkleWindows(windowIndex).call()).remainingAmount.toString(),
         SamplePayouts.totalRewardsDistributed
       );
     });
