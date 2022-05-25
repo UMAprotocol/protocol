@@ -175,9 +175,6 @@ contract OptimisticDistributor is Lockable, MultiCaller, Testable {
         require(optimisticOracleLivenessTime >= MINIMUM_LIVENESS, "OO liveness too small");
         require(optimisticOracleLivenessTime < MAXIMUM_LIVENESS, "OO liveness too large");
 
-        // Pull maximum rewards from the sponsor.
-        rewardToken.safeTransferFrom(msg.sender, address(this), maximumRewardAmount);
-
         // Store funded reward and log created reward.
         Reward memory reward =
             Reward({
@@ -204,6 +201,9 @@ contract OptimisticDistributor is Lockable, MultiCaller, Testable {
             reward.priceIdentifier,
             reward.customAncillaryData
         );
+
+        // Pull maximum rewards from the sponsor.
+        rewardToken.safeTransferFrom(msg.sender, address(this), maximumRewardAmount);
     }
 
     /**
@@ -216,12 +216,12 @@ contract OptimisticDistributor is Lockable, MultiCaller, Testable {
         require(rewardIndex < rewards.length, "Invalid rewardIndex");
         require(getCurrentTime() < rewards[rewardIndex].earliestProposalTimestamp, "Funding period ended");
 
-        // Pull additional rewards from the sponsor.
-        rewards[rewardIndex].rewardToken.safeTransferFrom(msg.sender, address(this), additionalRewardAmount);
-
         // Update maximumRewardAmount and log new amount.
         rewards[rewardIndex].maximumRewardAmount += additionalRewardAmount;
         emit RewardIncreased(rewardIndex, rewards[rewardIndex].maximumRewardAmount);
+
+        // Pull additional rewards from the sponsor.
+        rewards[rewardIndex].rewardToken.safeTransferFrom(msg.sender, address(this), additionalRewardAmount);
     }
 
     /********************************************
