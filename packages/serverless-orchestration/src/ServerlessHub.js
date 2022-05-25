@@ -359,9 +359,8 @@ const _fetchConfig = async (bucket, file) => {
   return config;
 };
 
-// Save a the last blocknumber seen by the hub to GCP datastore. `BlockNumberLog` is the entity kind and
-// `configIdentifier` is the entity ID. Each entity has a column "<chainID>" which stores the latest block
-// seen for a network.
+// Save a the last blocknumber seen by the hub to GCP datastore. BlockNumberLog is the entity kind and configIdentifier
+// is the entity ID. Each entity has a column "<chainID>" which stores the latest block seen for a network.
 async function _saveQueriedBlockNumber(configIdentifier, blockNumbersForChain, logger) {
   // Sometimes the GCP datastore can be flaky and return errors when fetching data. Use re-try logic to re-run on error.
   await retry(
