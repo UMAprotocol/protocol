@@ -27,22 +27,16 @@ contract OptimisticDistributor is Lockable, MultiCaller, Testable {
      *  OPTIMISTIC DISTRIBUTOR DATA STRUCTURES  *
      ********************************************/
 
-    // Enum controlling acceptance of distribution payout proposals and their execution.
-    enum DistributionProposed {
-        None, // New proposal can be submitted (either there have been no proposals or the prior one was disputed).
-        Pending, // Proposal is not yet resolved.
-        Accepted // Proposal has been confirmed through Optimistic Oracle and rewards transferred to MerkleDistributor.
-    }
-
     // Represents reward posted by a sponsor.
     struct Reward {
-        DistributionProposed distributionProposed;
+        bool distributionExecuted;
         address sponsor;
         IERC20 rewardToken;
         uint256 maximumRewardAmount;
         uint256 earliestProposalTimestamp;
         uint256 optimisticOracleProposerBond;
         uint256 optimisticOracleLivenessTime;
+        uint256 blockingProposalTimestamp;
         bytes32 priceIdentifier;
         bytes customAncillaryData;
     }
@@ -73,8 +67,7 @@ contract OptimisticDistributor is Lockable, MultiCaller, Testable {
     // Rewards are stored in dynamic array.
     Reward[] public rewards;
 
-    // Proposals are mapped to hash of their identifier, timestamp and ancillaryData, so that they can be addressed
-    // from OptimisticOracle callback function.
+    // Proposals are mapped to hash of their identifier, timestamp and ancillaryData.
     mapping(bytes32 => Proposal) public proposals;
 
     // Immutable variables provided at deployment.
@@ -181,13 +174,14 @@ contract OptimisticDistributor is Lockable, MultiCaller, Testable {
         // Store funded reward and log created reward.
         Reward memory reward =
             Reward({
-                distributionProposed: DistributionProposed.None,
+                distributionExecuted: false,
                 sponsor: msg.sender,
                 rewardToken: rewardToken,
                 maximumRewardAmount: maximumRewardAmount,
                 earliestProposalTimestamp: earliestProposalTimestamp,
                 optimisticOracleProposerBond: optimisticOracleProposerBond,
                 optimisticOracleLivenessTime: optimisticOracleLivenessTime,
+                blockingProposalTimestamp: 0,
                 priceIdentifier: priceIdentifier,
                 customAncillaryData: customAncillaryData
             });
@@ -247,10 +241,11 @@ contract OptimisticDistributor is Lockable, MultiCaller, Testable {
         uint256 timestamp = getCurrentTime();
         Reward memory reward = rewards[rewardIndex];
         require(timestamp >= reward.earliestProposalTimestamp, "Cannot propose in funding period");
-        require(reward.distributionProposed == DistributionProposed.None, "New proposals blocked");
+        require(!reward.distributionExecuted, "Reward already distributed");
+        require(_noBlockingProposal(rewardIndex, reward), "New proposals blocked");
 
-        // Flag reward as proposed so that any subsequent proposals are blocked till dispute.
-        rewards[rewardIndex].distributionProposed = DistributionProposed.Pending;
+        // Store current timestamp at reward struct so that any subsequent proposals are blocked till dispute.
+        rewards[rewardIndex].blockingProposalTimestamp = timestamp;
 
         // Append rewardIndex to ancillary data.
         bytes memory ancillaryData = _appendRewardIndex(rewardIndex, reward.customAncillaryData);
@@ -321,7 +316,7 @@ contract OptimisticDistributor is Lockable, MultiCaller, Testable {
 
         // Only one validated proposal per reward can be executed for distribution.
         Reward memory reward = rewards[proposal.rewardIndex];
-        require(reward.distributionProposed != DistributionProposed.Accepted, "Reward already distributed");
+        require(!reward.distributionExecuted, "Reward already distributed");
 
         // Append reward index to ancillary data.
         bytes memory ancillaryData = _appendRewardIndex(proposal.rewardIndex, reward.customAncillaryData);
@@ -330,11 +325,11 @@ contract OptimisticDistributor is Lockable, MultiCaller, Testable {
         int256 resolvedPrice =
             optimisticOracle.settleAndGetPrice(reward.priceIdentifier, proposal.timestamp, ancillaryData);
 
-        // Transfer rewards to MerkleDistributor for accepted proposal and flag distributionProposed Accepted.
+        // Transfer rewards to MerkleDistributor for accepted proposal and flag distributionExecuted.
         // This does not revert on rejected proposals so that disputer could receive back its bond and winning
         // in the same transaction when settleAndGetPrice is called above.
         if (resolvedPrice == 1e18) {
-            rewards[proposal.rewardIndex].distributionProposed = DistributionProposed.Accepted;
+            rewards[proposal.rewardIndex].distributionExecuted = true;
 
             reward.rewardToken.safeApprove(address(merkleDistributor), reward.maximumRewardAmount);
             merkleDistributor.setWindow(
@@ -389,34 +384,6 @@ contract OptimisticDistributor is Lockable, MultiCaller, Testable {
     }
 
     /********************************************
-     *            CALLBACK FUNCTIONS            *
-     ********************************************/
-
-    /**
-     * @notice Unblocks new distribution proposals when there is a dispute posted on OptimisticOracle.
-     * @dev Only accessable as callback through OptimisticOracle on disputes.
-     * @param identifier Price identifier from original proposal.
-     * @param timestamp Timestamp when distribution proposal was posted.
-     * @param ancillaryData Ancillary data of the price being requested (includes stamped rewardIndex).
-     * @param refund Refund received (not used in this contract).
-     */
-    function priceDisputed(
-        bytes32 identifier,
-        uint256 timestamp,
-        bytes memory ancillaryData,
-        uint256 refund
-    ) external nonReentrant() {
-        require(msg.sender == address(optimisticOracle), "Not authorized");
-
-        // Identify the proposed distribution from callback parameters.
-        bytes32 proposalId = _getProposalId(identifier, timestamp, ancillaryData);
-
-        // Flag the associated reward unblocked for new distribution proposals unless rewards already distributed.
-        if (rewards[proposals[proposalId].rewardIndex].distributionProposed != DistributionProposed.Accepted)
-            rewards[proposals[proposalId].rewardIndex].distributionProposed = DistributionProposed.None;
-    }
-
-    /********************************************
      *            INTERNAL FUNCTIONS            *
      ********************************************/
 
@@ -458,5 +425,23 @@ contract OptimisticDistributor is Lockable, MultiCaller, Testable {
         bytes memory ancillaryData
     ) internal view returns (bytes32) {
         return keccak256(abi.encode(identifier, timestamp, ancillaryData));
+    }
+
+    // Returns true if there are no blocking proposals (eiter there were no prior proposals or they were disputed).
+    function _noBlockingProposal(uint256 rewardIndex, Reward memory reward) internal view returns (bool) {
+        // Valid proposal cannot have zero timestamp.
+        if (reward.blockingProposalTimestamp == 0) return true;
+
+        bytes memory ancillaryData = _appendRewardIndex(rewardIndex, reward.customAncillaryData);
+        OptimisticOracleInterface.Request memory blockingRequest =
+            optimisticOracle.getRequest(
+                address(this),
+                reward.priceIdentifier,
+                reward.blockingProposalTimestamp,
+                ancillaryData
+            );
+
+        // Previous proposal is blocking till disputed that can be detected by non-zero disputer address.
+        return blockingRequest.disputer != address(0);
     }
 }
