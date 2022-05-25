@@ -9,7 +9,6 @@
 // - Propose: node ./packages/scripts/src/admin-proposals/transferTokensFromGovernor.js --amount 123 --recipient 0xdef --network mainnet-fork
 // - Verify: Add --verify flag to Propose command.
 
-const assert = require("assert");
 const hre = require("hardhat");
 require("dotenv").config();
 const Web3 = require("Web3");
@@ -35,10 +34,16 @@ async function run() {
   const web3Providers = { 1: getWeb3ByChainId(1) }; // netID => Web3
   const web3 = web3Providers[1];
   const tokenAddress = await _getContractAddressByName("VotingToken", 1);
+  const governorAddress = await _getContractAddressByName("Governor", 1);
   console.log("tokenAddress:", tokenAddress);
   const uma = new web3.eth.Contract(ExpandedERC20.abi, tokenAddress);
 
   const gasEstimator = await setupGasEstimator();
+
+  var originalBalance = await uma.methods.balanceOf(recipient).call();
+  const originalGovernorBalance = await uma.methods.balanceOf(governorAddress).call();
+  console.log("Original balance of recipient:", originalBalance);
+  console.log("Original balance of Governor:", originalGovernorBalance);
 
   if (!verify) {
     console.group(`🟢 Proposing transfer of ${amount} UMA tokens to ${recipient}`);
@@ -57,9 +62,10 @@ async function run() {
     );
   } else {
     console.group("\n🔎 Verifying execution of Admin Proposal");
-    var balance = await uma.methods.balanceOf(recipient).call();
-    console.log("balance:", balance);
-    assert.equal(balance, toWei(amount), "Recipient balance is not the correct amount");
+    const balance = await uma.methods.balanceOf(recipient).call();
+    const governorBalance = await uma.methods.balanceOf(governorAddress).call();
+    console.log("New balance of recipient:", balance);
+    console.log("New balance of Governor:", governorBalance);
     console.log(`- Recipient @ ${recipient} received ${amount} UMA`);
     console.groupEnd();
     console.log("\n😇 Success!");
