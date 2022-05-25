@@ -30,7 +30,6 @@ const ipfsHash = utf8ToHex("IPFS HASH");
 const ancillaryBytesReserve = 512;
 const minimumLiveness = 10 * 60; // 10 minutes
 const maximumLiveness = 5200 * 7 * 24 * 60 * 60; // 5200 weeks
-const DistributionProposed = { None: 0, Pending: 1, Accepted: 2 };
 
 describe("OptimisticDistributor", async function () {
   let accounts, deployer, anyAddress, sponsor, proposer, disputer;
@@ -422,13 +421,14 @@ describe("OptimisticDistributor", async function () {
 
     // Compare stored rewards with expected results.
     const storedRewards = await optimisticDistributor.methods.rewards(rewardIndex).call();
-    assert.equal(storedRewards.distributionProposed, DistributionProposed.None);
+    assert.isFalse(storedRewards.distributionExecuted);
     assert.equal(storedRewards.sponsor, sponsor);
     assert.equal(storedRewards.rewardToken, rewardToken.options.address);
     assert.equal(storedRewards.maximumRewardAmount, rewardAmount);
     assert.equal(storedRewards.earliestProposalTimestamp, earliestProposalTimestamp);
     assert.equal(storedRewards.optimisticOracleProposerBond, bondAmount);
     assert.equal(storedRewards.optimisticOracleLivenessTime, proposalLiveness);
+    assert.equal(storedRewards.blockingProposalTimestamp, "0");
     assert.equal(hexToUtf8(storedRewards.priceIdentifier), hexToUtf8(identifier));
     assert.equal(storedRewards.customAncillaryData, customAncillaryData);
   });
@@ -723,7 +723,7 @@ describe("OptimisticDistributor", async function () {
         event.owner === optimisticDistributor.options.address
     );
 
-    // Reward struct should now be flagged as Accepted and repeated execution should revert.
+    // Repeated execution should revert.
     assert(
       await didContractRevertWith(
         optimisticDistributor.methods.executeDistribution(proposalId).send({ from: anyAddress }),
@@ -737,7 +737,7 @@ describe("OptimisticDistributor", async function () {
     assert(
       await didContractRevertWith(
         optimisticDistributor.methods.proposeDistribution(rewardIndex, merkleRoot, ipfsHash).send({ from: proposer }),
-        "New proposals blocked"
+        "Reward already distributed"
       )
     );
   });
@@ -897,7 +897,7 @@ describe("OptimisticDistributor", async function () {
         event.owner === optimisticDistributor.options.address
     );
 
-    // Reward struct should now be flagged as Accepted and repeated execution should revert.
+    // Repeated execution should revert.
     assert(
       await didContractRevertWith(
         optimisticDistributor.methods.executeDistribution(proposalId).send({ from: anyAddress }),
@@ -911,18 +911,7 @@ describe("OptimisticDistributor", async function () {
     assert(
       await didContractRevertWith(
         optimisticDistributor.methods.proposeDistribution(rewardIndex, merkleRoot, ipfsHash).send({ from: proposer }),
-        "New proposals blocked"
-      )
-    );
-  });
-  it("Callback function cannot be called directly", async function () {
-    const timestamp = parseInt(await timer.methods.getCurrentTime().call());
-    assert(
-      await didContractRevertWith(
-        optimisticDistributor.methods
-          .priceDisputed(identifier, timestamp, customAncillaryData, 0)
-          .send({ from: anyAddress }),
-        "Not authorized"
+        "Reward already distributed"
       )
     );
   });
@@ -964,12 +953,6 @@ describe("OptimisticDistributor", async function () {
     await optimisticOracle.methods
       .disputePrice(optimisticDistributor.options.address, identifier, secondProposalTimestamp, ancillaryData)
       .send({ from: disputer });
-
-    // Confirm that callback function did not reset distributionProposed to None.
-    assert.equal(
-      (await optimisticDistributor.methods.rewards(rewardIndex).call()).distributionProposed,
-      DistributionProposed.Accepted
-    );
 
     // Fund another set of rewards.
     rewardIndex++;
