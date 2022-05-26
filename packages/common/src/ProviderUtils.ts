@@ -44,6 +44,8 @@ export function getNodeUrl(networkName: string, useHttps = false, chainId: numbe
     // Note: Neither Boba nor xDai currently has no infura support.
     if (name === "boba") return overrideUrl || "https://mainnet.boba.network/";
     if (name === "xdai") return overrideUrl || "https://rpc.xdaichain.com/";
+    if (name === "sx") return overrideUrl || "https://rpc.sx.technology";
+    if (name === "avalanche") return overrideUrl || "https://api.avax.network/ext/bc/C/rpc";
     return (
       overrideUrl ||
       (useHttps ? `https://${name}.infura.io/v3/${infuraApiKey}` : `wss://${name}.infura.io/ws/v3/${infuraApiKey}`)
