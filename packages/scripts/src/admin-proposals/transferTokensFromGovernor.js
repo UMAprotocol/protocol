@@ -41,8 +41,16 @@ async function run() {
   const gasEstimator = await setupGasEstimator();
 
   if (!verify) {
-    const originalBalance = await uma.methods.balanceOf(recipient).call();
-    const originalGovernorBalance = await uma.methods.balanceOf(governorAddress).call();
+    let originalBalance, originalGovernorBalance;
+    try {
+      [originalBalance, originalGovernorBalance] = await Promise.all([
+        uma.methods.balanceOf(recipient).call(),
+        uma.methods.balanceOf(governorAddress).call(),
+      ]);
+    } catch (error) {
+      console.log("error fetching balances:", error);
+    }
+
     console.log("Original balance of recipient:", originalBalance);
     console.log("Original balance of Governor:", originalGovernorBalance);
 
@@ -62,8 +70,15 @@ async function run() {
     console.groupEnd();
     console.log("\nTransactions proposed!");
   } else {
-    const balance = await uma.methods.balanceOf(recipient).call();
-    const governorBalance = await uma.methods.balanceOf(governorAddress).call();
+    let balance, governorBalance;
+    try {
+      [balance, governorBalance] = await Promise.all([
+        uma.methods.balanceOf(recipient).call(),
+        uma.methods.balanceOf(governorAddress).call(),
+      ]);
+    } catch (error) {
+      console.log("error fetching balances:", error);
+    }
     console.log("New balance of recipient:", balance);
     console.log("New balance of Governor:", governorBalance);
 
