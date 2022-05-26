@@ -40,15 +40,14 @@ async function run() {
 
   const gasEstimator = await setupGasEstimator();
 
-  var originalBalance = await uma.methods.balanceOf(recipient).call();
-  const originalGovernorBalance = await uma.methods.balanceOf(governorAddress).call();
-  console.log("Original balance of recipient:", originalBalance);
-  console.log("Original balance of Governor:", originalGovernorBalance);
-
   if (!verify) {
+    const originalBalance = await uma.methods.balanceOf(recipient).call();
+    const originalGovernorBalance = await uma.methods.balanceOf(governorAddress).call();
+    console.log("Original balance of recipient:", originalBalance);
+    console.log("Original balance of Governor:", originalGovernorBalance);
+
     console.group(`🟢 Proposing transfer of ${amount} UMA tokens to ${recipient}`);
     const adminProposalTransactions = [];
-
     const transferUmaData = uma.methods.transfer(recipient, toWei(amount)).encodeABI();
     console.log("- transfer tokens", transferUmaData);
     adminProposalTransactions.push({ to: uma.options.address, value: 0, data: transferUmaData });
@@ -60,12 +59,15 @@ async function run() {
       REQUIRED_SIGNER_ADDRESSES["deployer"],
       gasEstimator.getCurrentFastPrice()
     );
+    console.groupEnd();
+    console.log("\nTransactions proposed!");
   } else {
-    console.group("\n🔎 Verifying execution of Admin Proposal");
     const balance = await uma.methods.balanceOf(recipient).call();
     const governorBalance = await uma.methods.balanceOf(governorAddress).call();
     console.log("New balance of recipient:", balance);
     console.log("New balance of Governor:", governorBalance);
+
+    console.group("\n🔎 Verifying execution of Admin Proposal");
     console.log(`- Recipient @ ${recipient} received ${amount} UMA`);
     console.groupEnd();
     console.log("\n😇 Success!");
