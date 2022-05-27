@@ -439,7 +439,7 @@ contract OptimisticDistributor is Lockable, MultiCaller, Testable {
         bytes32 identifier,
         uint256 timestamp,
         bytes memory ancillaryData
-    ) internal view returns (bytes32) {
+    ) internal pure returns (bytes32) {
         return keccak256(abi.encode(identifier, timestamp, ancillaryData));
     }
 }
