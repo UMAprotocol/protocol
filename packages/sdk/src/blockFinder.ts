@@ -58,9 +58,12 @@ export default class BlockFinder<T extends { number: number; timestamp: number |
 
   // Grabs the block for a particular number and caches it.
   private async getBlock(number: number) {
-    const index = sortedIndexBy(this.blocks, { number } as T, "number");
+    let index = sortedIndexBy(this.blocks, { number } as T, "number");
     if (this.blocks[index]?.number === number) return this.blocks[index]; // Return early if block already exists.
     const block = await this.requestBlock(number);
+    
+    // Recompute the index after the async call since the state of this.blocks could have changed!
+    index = sortedIndexBy(this.blocks, { number } as T, "number");
     this.blocks.splice(index, 0, block); // A simple insert at index.
     return block;
   }
