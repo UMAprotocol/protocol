@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.23.4](https://github.com/mrice32/protocol/compare/@uma/sdk@0.23.3...@uma/sdk@0.23.4) (2022-05-27)
+
+### Bug Fixes
+
+- fix BlockFinder concurrency issue ([#3948](https://github.com/mrice32/protocol/issues/3948)) ([e04ad54](https://github.com/mrice32/protocol/commit/e04ad54dc3e0f1f82ba0054b22229762132423ac))
+
 ## [0.23.3](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.23.2...@uma/sdk@0.23.3) (2022-05-13)
 
 ### Bug Fixes
