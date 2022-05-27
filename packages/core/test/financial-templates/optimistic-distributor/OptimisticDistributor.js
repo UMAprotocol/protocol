@@ -21,7 +21,6 @@ const MerkleDistributor = getContract("MerkleDistributor");
 const finalFee = toWei("100");
 const identifier = utf8ToHex("TESTID");
 const customAncillaryData = utf8ToHex("ABC123");
-const zeroRawValue = { rawValue: "0" };
 const rewardAmount = toWei("10000");
 const bondAmount = toWei("500");
 const proposalLiveness = 24 * 60 * 60; // 1 day period for disputing distribution proposal.
@@ -179,33 +178,6 @@ describe("OptimisticDistributor", async function () {
       await testOptimisticDistributor.methods.ancillaryBytesLimit().call(),
       await optimisticOracle.methods.ancillaryBytesLimit().call()
     );
-  });
-  it("UMA ecosystem parameters updated", async function () {
-    // Deploy new UMA contracts with updated final fee.
-    const newStore = await Store.new(zeroRawValue, zeroRawValue, timer.options.address).send({ from: deployer });
-    const newFinalFee = toWei("200");
-    await newStore.methods.setFinalFee(bondToken.options.address, { rawValue: newFinalFee }).send({ from: deployer });
-    const newOptimisticOracle = await OptimisticOracle.new(7200, finder.options.address, timer.options.address).send({
-      from: deployer,
-    });
-    await finder.methods
-      .changeImplementationAddress(utf8ToHex(interfaceName.Store), newStore.options.address)
-      .send({ from: deployer });
-    await finder.methods
-      .changeImplementationAddress(utf8ToHex(interfaceName.OptimisticOracle), newOptimisticOracle.options.address)
-      .send({ from: deployer });
-
-    // Check that OptimisticDistributor can fetch new parameters.
-    await optimisticDistributor.methods.syncUmaEcosystemParams().send({ from: anyAddress });
-    assert.equal(await optimisticDistributor.methods.optimisticOracle().call(), newOptimisticOracle.options.address);
-
-    // Revert back Store and OptimisticOracle implementation in Finder for other tests to use.
-    await finder.methods
-      .changeImplementationAddress(utf8ToHex(interfaceName.Store), store.options.address)
-      .send({ from: deployer });
-    await finder.methods
-      .changeImplementationAddress(utf8ToHex(interfaceName.OptimisticOracle), optimisticOracle.options.address)
-      .send({ from: deployer });
   });
   it("Setting MerkleDistributor", async function () {
     // Deploy MerkleDistributor and try to link it without transferring ownership first.
