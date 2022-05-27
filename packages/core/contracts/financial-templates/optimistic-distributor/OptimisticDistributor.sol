@@ -67,8 +67,8 @@ contract OptimisticDistributor is Lockable, MultiCaller, Testable {
     uint256 public constant MINIMUM_LIVENESS = 10 minutes;
     uint256 public constant MAXIMUM_LIVENESS = 5200 weeks;
 
-    // Ancillary data length limit can be synced and stored in the contract.
-    uint256 public ancillaryBytesLimit;
+    // Ancillary data length limit is synced from Optimistic Oracle on deployment.
+    uint256 public immutable ancillaryBytesLimit;
 
     // Rewards are stored in dynamic array.
     Reward[] public rewards;
@@ -84,8 +84,10 @@ contract OptimisticDistributor is Lockable, MultiCaller, Testable {
     // Merkle Distributor can be set only once.
     MerkleDistributor public merkleDistributor;
 
-    // Interface parameters that can be synced and stored in the contract.
-    OptimisticOracleInterface public optimisticOracle;
+    // Optimistic Oracle address is fetched at deployment and not upgradable from this contract.
+    // Any Optimistic Oracle upgrades would require redeployment of this contract while previosly funded rewards'
+    // distribution can still be verified through old Optimistic Oracle instance.
+    OptimisticOracleInterface public immutable optimisticOracle;
 
     /********************************************
      *                  EVENTS                  *
@@ -139,7 +141,8 @@ contract OptimisticDistributor is Lockable, MultiCaller, Testable {
         finder = _finder;
         require(_getCollateralWhitelist().isOnWhitelist(address(_bondToken)), "Bond token not supported");
         bondToken = _bondToken;
-        syncUmaEcosystemParams();
+        optimisticOracle = _getOptimisticOracle();
+        ancillaryBytesLimit = optimisticOracle.ancillaryBytesLimit();
     }
 
     /********************************************
@@ -375,17 +378,6 @@ contract OptimisticDistributor is Lockable, MultiCaller, Testable {
 
         merkleDistributor = _merkleDistributor;
         emit MerkleDistributorSet(address(_merkleDistributor));
-    }
-
-    /**
-     * @notice Updates the address stored in this contract for the OptimisticOracle and the Store to the latest
-     * versions set in the Finder. Also pull finalFee from Store contract.
-     * @dev There is no risk of leaving this function public for anyone to call as in all cases we want the addresses
-     * in this contract to map to the latest version in the Finder and store the latest final fee.
-     */
-    function syncUmaEcosystemParams() public nonReentrant() {
-        optimisticOracle = _getOptimisticOracle();
-        ancillaryBytesLimit = optimisticOracle.ancillaryBytesLimit();
     }
 
     /********************************************
