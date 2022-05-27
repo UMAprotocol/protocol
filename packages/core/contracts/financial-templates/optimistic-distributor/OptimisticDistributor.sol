@@ -421,7 +421,7 @@ contract OptimisticDistributor is Lockable, MultiCaller, Testable {
 
     function _appendRewardIndex(uint256 rewardIndex, bytes memory customAncillaryData)
         internal
-        view
+        pure
         returns (bytes memory)
     {
         return AncillaryData.appendKeyValueUint(customAncillaryData, "rewardIndex", rewardIndex);
