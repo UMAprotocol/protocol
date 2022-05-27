@@ -81,8 +81,8 @@ contract OptimisticDistributor is Lockable, MultiCaller, Testable {
     FinderInterface public immutable finder;
     IERC20 public bondToken; // This cannot be declared immutable as bondToken needs to be checked against whitelist.
 
-    // Merkle Distributor can be set only once.
-    MerkleDistributor public merkleDistributor;
+    // Merkle Distributor is automatically deployed on constructor and owned by this contract.
+    MerkleDistributor public immutable merkleDistributor;
 
     // Interface parameters that can be synced and stored in the contract.
     OptimisticOracleInterface public optimisticOracle;
@@ -123,7 +123,6 @@ contract OptimisticDistributor is Lockable, MultiCaller, Testable {
         string ipfsHash
     );
     event ProposalRejected(uint256 indexed rewardIndex, bytes32 indexed proposalId);
-    event MerkleDistributorSet(address indexed merkleDistributor);
 
     /**
      * @notice Constructor.
@@ -140,6 +139,7 @@ contract OptimisticDistributor is Lockable, MultiCaller, Testable {
         require(_getCollateralWhitelist().isOnWhitelist(address(_bondToken)), "Bond token not supported");
         bondToken = _bondToken;
         syncUmaEcosystemParams();
+        merkleDistributor = new MerkleDistributor();
     }
 
     /********************************************
@@ -169,7 +169,6 @@ contract OptimisticDistributor is Lockable, MultiCaller, Testable {
         IERC20 rewardToken,
         bytes calldata customAncillaryData
     ) external nonReentrant() {
-        require(address(merkleDistributor) != address(0), "Missing MerkleDistributor");
         require(_getIdentifierWhitelist().isIdentifierSupported(priceIdentifier), "Identifier not registered");
         require(_ancillaryDataWithinLimits(customAncillaryData), "Ancillary data too long");
         require(optimisticOracleLivenessTime >= MINIMUM_LIVENESS, "OO liveness too small");
@@ -360,22 +359,6 @@ contract OptimisticDistributor is Lockable, MultiCaller, Testable {
     /********************************************
      *          MAINTENANCE FUNCTIONS           *
      ********************************************/
-
-    /**
-     * @notice Sets address of MerkleDistributor contract that will be used for rewards distribution.
-     * MerkleDistributor address can only be set once.
-     * @dev It is expected that the deployer first deploys MekleDistributor contract and transfers its ownership to
-     * the OptimisticDistributor contract and then calls `setMerkleDistributor` on the OptimisticDistributor pointing
-     * on now owned MekleDistributor contract.
-     * @param _merkleDistributor Address of the owned MerkleDistributor contract.
-     */
-    function setMerkleDistributor(MerkleDistributor _merkleDistributor) external nonReentrant() {
-        require(address(merkleDistributor) == address(0), "MerkleDistributor already set");
-        require(_merkleDistributor.owner() == address(this), "MerkleDistributor not owned");
-
-        merkleDistributor = _merkleDistributor;
-        emit MerkleDistributorSet(address(_merkleDistributor));
-    }
 
     /**
      * @notice Updates the address stored in this contract for the OptimisticOracle and the Store to the latest
