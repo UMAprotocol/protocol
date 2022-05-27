@@ -16,7 +16,6 @@ const MockOracle = getContract("MockOracleAncillary");
 const Timer = getContract("Timer");
 const Store = getContract("Store");
 const ERC20 = getContract("ExpandedERC20");
-const MerkleDistributor = getContract("MerkleDistributor");
 
 const finalFee = toWei("100");
 const identifier = utf8ToHex("TESTID");
@@ -52,14 +51,6 @@ describe("OptimisticDistributor", async function () {
   const mintAndApprove = async (token, owner, spender, amount, minter) => {
     await token.methods.mint(owner, amount).send({ from: minter });
     await token.methods.approve(spender, amount).send({ from: owner });
-  };
-
-  const setupMerkleDistributor = async () => {
-    merkleDistributor = await MerkleDistributor.new().send({ from: deployer });
-    await merkleDistributor.methods.transferOwnership(optimisticDistributor.options.address).send({ from: deployer });
-    return await optimisticDistributor.methods
-      .setMerkleDistributor(merkleDistributor.options.address)
-      .send({ from: deployer });
   };
 
   const createProposeRewards = async (rewardIndex) => {
@@ -131,6 +122,10 @@ describe("OptimisticDistributor", async function () {
       timer.options.address
     ).send({ from: deployer });
 
+    // Merkle Distributor was deployed through Optimistic Distributor constructor.
+    const merkleDistributorAddress = await optimisticDistributor.methods.merkleDistributor().call();
+    merkleDistributor = getContract("MerkleDistributor").at(merkleDistributorAddress);
+
     rewardToken = await ERC20.new("REWARD", "REWARD", 18).send({ from: deployer });
     await rewardToken.methods.addMember(TokenRolesEnum.MINTER, deployer).send({ from: deployer });
     await mintAndApprove(rewardToken, sponsor, optimisticDistributor.options.address, rewardAmount, deployer);
@@ -179,6 +174,11 @@ describe("OptimisticDistributor", async function () {
       await testOptimisticDistributor.methods.ancillaryBytesLimit().call(),
       await optimisticOracle.methods.ancillaryBytesLimit().call()
     );
+
+    // Verify the linked Merkle Distributor contract is owned by Optimistic Distributor.
+    const merkleDistributorAddress = await testOptimisticDistributor.methods.merkleDistributor().call();
+    const testMerkleDistributor = getContract("MerkleDistributor").at(merkleDistributorAddress);
+    assert.equal(await testMerkleDistributor.methods.owner().call(), testOptimisticDistributor.options.address);
   });
   it("UMA ecosystem parameters updated", async function () {
     // Deploy new UMA contracts with updated final fee.
@@ -207,53 +207,7 @@ describe("OptimisticDistributor", async function () {
       .changeImplementationAddress(utf8ToHex(interfaceName.OptimisticOracle), optimisticOracle.options.address)
       .send({ from: deployer });
   });
-  it("Setting MerkleDistributor", async function () {
-    // Deploy MerkleDistributor and try to link it without transferring ownership first.
-    merkleDistributor = await MerkleDistributor.new().send({ from: deployer });
-    assert(
-      await didContractRevertWith(
-        optimisticDistributor.methods.setMerkleDistributor(merkleDistributor.options.address).send({ from: deployer }),
-        "MerkleDistributor not owned"
-      )
-    );
-
-    // Setting MerkleDistributor with transferred ownership should work.
-    const receipt = await setupMerkleDistributor();
-
-    // Check that MerkleDistributor address is emitted and stored.
-    await assertEventEmitted(
-      receipt,
-      optimisticDistributor,
-      "MerkleDistributorSet",
-      (event) => event.merkleDistributor === merkleDistributor.options.address
-    );
-    assert.equal(await optimisticDistributor.methods.merkleDistributor().call(), merkleDistributor.options.address);
-
-    // Deploy new MerkleDistributor and try to link it to existing optimisticDistributor should revert.
-    const newMerkleDistributor = await MerkleDistributor.new().send({ from: deployer });
-    await newMerkleDistributor.methods
-      .transferOwnership(optimisticDistributor.options.address)
-      .send({ from: deployer });
-    assert(
-      await didContractRevertWith(
-        optimisticDistributor.methods
-          .setMerkleDistributor(newMerkleDistributor.options.address)
-          .send({ from: deployer }),
-        "MerkleDistributor already set"
-      )
-    );
-  });
   it("Creating initial rewards", async function () {
-    // Cannot deposit rewards without MerkleDistributor.
-    assert(
-      await didContractRevertWith(
-        optimisticDistributor.methods.createReward(...defaultRewardParameters).send({ from: sponsor }),
-        "Missing MerkleDistributor"
-      )
-    );
-
-    await setupMerkleDistributor();
-
     // Cannot deposit rewards for unregistered price identifier.
     assert(
       await didContractRevertWith(
@@ -433,8 +387,6 @@ describe("OptimisticDistributor", async function () {
     assert.equal(storedRewards.customAncillaryData, customAncillaryData);
   });
   it("Increasing rewards", async function () {
-    await setupMerkleDistributor();
-
     // As no rewards have been posted increaseReward should revert.
     const rewardIndex = 0;
     assert(
@@ -505,8 +457,6 @@ describe("OptimisticDistributor", async function () {
     );
   });
   it("Submitting proposal", async function () {
-    await setupMerkleDistributor();
-
     // Fund proposer wallet.
     const totalBond = toBN(bondAmount).add(toBN(finalFee)).toString();
     await mintAndApprove(bondToken, proposer, optimisticDistributor.options.address, totalBond, deployer);
@@ -644,8 +594,6 @@ describe("OptimisticDistributor", async function () {
     await optimisticDistributor.methods.proposeDistribution(rewardIndex, merkleRoot, ipfsHash).send({ from: proposer });
   });
   it("Executing distribution, undisputed", async function () {
-    await setupMerkleDistributor();
-
     // Executing distribution for non-exisiting proposal should revert.
     let proposalId = padRight("0x00", 64);
     assert(
@@ -742,8 +690,6 @@ describe("OptimisticDistributor", async function () {
     );
   });
   it("Executing distribution, rejected by DVM", async function () {
-    await setupMerkleDistributor();
-
     // Perform create-propose rewards cycle.
     const rewardIndex = 0;
     const [totalBond, ancillaryData, proposalTimestamp] = await createProposeRewards(rewardIndex);
@@ -815,8 +761,6 @@ describe("OptimisticDistributor", async function () {
     );
   });
   it("Executing distribution, confirmed by DVM", async function () {
-    await setupMerkleDistributor();
-
     // Perform create-propose rewards cycle.
     const rewardIndex = 0;
     const [totalBond, ancillaryData, proposalTimestamp, merkleRoot] = await createProposeRewards(rewardIndex);
@@ -927,8 +871,6 @@ describe("OptimisticDistributor", async function () {
     );
   });
   it("Cannot distribute rewards twice", async function () {
-    await setupMerkleDistributor();
-
     // Perform create-propose rewards cycle.
     let rewardIndex = 0;
     const [totalBond, ancillaryData, firstProposalTimestamp, merkleRoot] = await createProposeRewards(rewardIndex);
