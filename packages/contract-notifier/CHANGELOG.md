@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.1.0](https://github.com/UMAprotocol/protocol/compare/@uma/contract-notifier@1.0.17...@uma/contract-notifier@1.1.0) (2022-05-27)
+
+### Features
+
+- **contract-notifier:** add multichain support ([#3929](https://github.com/UMAprotocol/protocol/issues/3929)) ([7174dd9](https://github.com/UMAprotocol/protocol/commit/7174dd94c3cfe75328645358341588d916a26755))
+
 ## [1.0.17](https://github.com/UMAprotocol/protocol/compare/@uma/contract-notifier@1.0.16...@uma/contract-notifier@1.0.17) (2022-05-13)
 
 **Note:** Version bump only for package @uma/contract-notifier

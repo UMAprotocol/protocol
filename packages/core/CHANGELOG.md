@@ -3,6 +3,30 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.28.3](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.28.2...@uma/core@2.28.3) (2022-05-27)
+
+### Bug Fixes
+
+- [N09] Unexplained and unused constants ([#3909](https://github.com/UMAprotocol/protocol/issues/3909)) ([dae2e7f](https://github.com/UMAprotocol/protocol/commit/dae2e7f320048f93f201a0e546525bc27baf5766))
+- [N12] Unused "using for" directive ([#3910](https://github.com/UMAprotocol/protocol/issues/3910)) ([6650588](https://github.com/UMAprotocol/protocol/commit/66505888e5f913c0048edff05d22bb7b9683656a))
+- add ability to delete disputed proposals ([#3911](https://github.com/UMAprotocol/protocol/issues/3911)) ([8ceab93](https://github.com/UMAprotocol/protocol/commit/8ceab93ddde85ef0ce60e93b711985805c0e8302))
+- L-01, Events lacking information ([#3916](https://github.com/UMAprotocol/protocol/issues/3916)) ([9d6551c](https://github.com/UMAprotocol/protocol/commit/9d6551cd796373bcc14c6de3da35603dfaece55d))
+- L-02, Duplicated code ([#3914](https://github.com/UMAprotocol/protocol/issues/3914)) ([bd86f7b](https://github.com/UMAprotocol/protocol/commit/bd86f7b6221b76f6f656e7a9b6bdbfe695009bf6))
+- L-03, Misleading inline documentation ([#3917](https://github.com/UMAprotocol/protocol/issues/3917)) ([ebb4cab](https://github.com/UMAprotocol/protocol/commit/ebb4cab2347e1ff3d64b9c973aeeda6fc6e8f96e))
+- L-04, Proposals can be deleted repeatedly ([#3918](https://github.com/UMAprotocol/protocol/issues/3918)) ([e7ec38c](https://github.com/UMAprotocol/protocol/commit/e7ec38c27f9e597e7e03c6db2714f68a1cd336d1))
+- M-01 Change of collateral could result in unintended bond value ([#3912](https://github.com/UMAprotocol/protocol/issues/3912)) ([cbb5648](https://github.com/UMAprotocol/protocol/commit/cbb56486bb56fd1493e51849ba7fb934a927518d))
+- M-02, lack of event emission after sensitive actions ([#3913](https://github.com/UMAprotocol/protocol/issues/3913)) ([8ab340d](https://github.com/UMAprotocol/protocol/commit/8ab340d1557852e218567c548ca0f17234b98caa))
+- M-03, Lack of input validation ([#3915](https://github.com/UMAprotocol/protocol/issues/3915)) ([632859c](https://github.com/UMAprotocol/protocol/commit/632859c95c83adf72408c8b51042f3a03b2cbd72))
+- N-01, Commented out code ([#3919](https://github.com/UMAprotocol/protocol/issues/3919)) ([91941de](https://github.com/UMAprotocol/protocol/commit/91941dea4d18e8b8d9ce87d937fc5ce19480987c))
+- N-02, Coding style deviates from Solidity Style Guide ([#3920](https://github.com/UMAprotocol/protocol/issues/3920)) ([dfe0238](https://github.com/UMAprotocol/protocol/commit/dfe0238ab3c703b77326dbf1c8d2e1810ac3d5b7))
+- N-04, immutable value could be used ([#3921](https://github.com/UMAprotocol/protocol/issues/3921)) ([34343ca](https://github.com/UMAprotocol/protocol/commit/34343ca0bb425ce14ed62236c13eae1894644b14))
+- N-05, Some public functions could be external ([#3922](https://github.com/UMAprotocol/protocol/issues/3922)) ([73bc88a](https://github.com/UMAprotocol/protocol/commit/73bc88a8cfb86cd642673f02ab7f019ccc7146c2))
+- N-06, Suboptimal struct packing ([#3923](https://github.com/UMAprotocol/protocol/issues/3923)) ([527ebfb](https://github.com/UMAprotocol/protocol/commit/527ebfb4ce6e629291cdec40504c3a0879e90b11))
+- N-07, Typographical errors ([#3924](https://github.com/UMAprotocol/protocol/issues/3924)) ([5b21392](https://github.com/UMAprotocol/protocol/commit/5b213920835e850c3185d2537d66c190bd4f500d))
+- N-08, Undocumented implicit approval requirements ([#3925](https://github.com/UMAprotocol/protocol/issues/3925)) ([7250172](https://github.com/UMAprotocol/protocol/commit/7250172a3730b23fc80d418af53e6aa46e354305))
+- N-10, Unnecessary cast ([#3928](https://github.com/UMAprotocol/protocol/issues/3928)) ([b32bb25](https://github.com/UMAprotocol/protocol/commit/b32bb25699c5ebfb5ea3b7e1f1933af077e9566d))
+- N-11, Unnecessary imports ([#3927](https://github.com/UMAprotocol/protocol/issues/3927)) ([1782ecc](https://github.com/UMAprotocol/protocol/commit/1782ecc972ae7d177e1359e9e1f951c04b137504))
+
 ## [2.28.2](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.28.1...@uma/core@2.28.2) (2022-05-13)
 
 ### Bug Fixes
