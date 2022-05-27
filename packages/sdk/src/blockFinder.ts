@@ -64,6 +64,9 @@ export default class BlockFinder<T extends { number: number; timestamp: number |
     
     // Recompute the index after the async call since the state of this.blocks could have changed!
     index = sortedIndexBy(this.blocks, { number } as T, "number");
+    
+    // Rerun this check to avoid duplicate insertion.
+    if (this.blocks[index]?.number === number) return this.blocks[index];
     this.blocks.splice(index, 0, block); // A simple insert at index.
     return block;
   }
