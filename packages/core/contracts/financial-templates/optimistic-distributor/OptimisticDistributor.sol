@@ -377,7 +377,7 @@ contract OptimisticDistributor is Lockable, MultiCaller, Testable {
 
     /**
      * @notice Unblocks new distribution proposals when there is a dispute posted on OptimisticOracle.
-     * @dev Only accessable as callback through OptimisticOracle on disputes.
+     * @dev Only accessible as callback through OptimisticOracle on disputes.
      * @param identifier Price identifier from original proposal.
      * @param timestamp Timestamp when distribution proposal was posted.
      * @param ancillaryData Ancillary data of the price being requested (includes stamped rewardIndex).
