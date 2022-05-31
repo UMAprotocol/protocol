@@ -240,8 +240,6 @@ contract MerkleDistributor is Ownable {
 
     // Verify claim is valid and mark it as completed in this contract.
     function _verifyAndMarkClaimed(Claim memory _claim) private {
-        // Check claimed rewards do not exceed remaining funding for the window.
-        require(_claim.amount <= merkleWindows[_claim.windowIndex].remainingAmount, "Insufficient funding for window");
         // Check claimed proof against merkle window at given index.
         require(verifyClaim(_claim), "Incorrect merkle proof");
         // Check the account has not yet claimed for this window.
