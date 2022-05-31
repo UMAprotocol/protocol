@@ -134,7 +134,8 @@ contract MerkleDistributor is Ownable {
      *         if any individual claims within the batch would fail.
      * @dev    Optimistically tries to batch together consecutive claims for the same account and same
      *         reward token to reduce gas. Therefore, the most gas-cost-optimal way to use this method
-     *         is to pass in an array of claims sorted by account and reward currency.
+     *         is to pass in an array of claims sorted by account and reward currency. It also reverts
+     *         when any of individual `_claim`'s `amount` exceeds `remainingAmount` for its window.
      * @param claims array of claims to claim.
      */
     function claimMulti(Claim[] memory claims) external {
@@ -157,6 +158,7 @@ contract MerkleDistributor is Ownable {
                 address(merkleWindows[claims[nextI].windowIndex].rewardToken) != currentRewardToken
                 // Next claim reward token is different than current one.
             ) {
+                merkleWindows[_claim.windowIndex].remainingAmount -= _claim.amount;
                 IERC20(currentRewardToken).safeTransfer(_claim.account, batchedAmount);
                 batchedAmount = 0;
             }
