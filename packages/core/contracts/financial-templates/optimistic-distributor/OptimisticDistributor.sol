@@ -11,7 +11,6 @@ import "../../oracle/implementation/Constants.sol";
 import "../../oracle/interfaces/FinderInterface.sol";
 import "../../oracle/interfaces/IdentifierWhitelistInterface.sol";
 import "../../oracle/interfaces/OptimisticOracleInterface.sol";
-import "../../oracle/interfaces/StoreInterface.sol";
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -378,10 +377,10 @@ contract OptimisticDistributor is Lockable, MultiCaller, Testable {
     }
 
     /**
-     * @notice Updates the address stored in this contract for the OptimisticOracle and the Store to the latest
-     * versions set in the Finder. Also pull finalFee from Store contract.
-     * @dev There is no risk of leaving this function public for anyone to call as in all cases we want the addresses
-     * in this contract to map to the latest version in the Finder and store the latest final fee.
+     * @notice Updates the address stored in this contract for the OptimisticOracle to the latest version set
+     * in the Finder.
+     * @dev There is no risk of leaving this function public for anyone to call as in all cases we want the address of
+     * OptimisticOracle in this contract to map to the latest version in the Finder.
      */
     function syncUmaEcosystemParams() public nonReentrant() {
         optimisticOracle = _getOptimisticOracle();
@@ -419,10 +418,6 @@ contract OptimisticDistributor is Lockable, MultiCaller, Testable {
     /********************************************
      *            INTERNAL FUNCTIONS            *
      ********************************************/
-
-    function _getStore() internal view returns (StoreInterface) {
-        return StoreInterface(finder.getImplementationAddress(OracleInterfaces.Store));
-    }
 
     function _getOptimisticOracle() internal view returns (OptimisticOracleInterface) {
         return OptimisticOracleInterface(finder.getImplementationAddress(OracleInterfaces.OptimisticOracle));
