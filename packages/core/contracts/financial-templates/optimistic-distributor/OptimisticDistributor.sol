@@ -36,7 +36,7 @@ contract OptimisticDistributor is Lockable, MultiCaller, Testable {
         uint256 earliestProposalTimestamp;
         uint256 optimisticOracleProposerBond;
         uint256 optimisticOracleLivenessTime;
-        uint256 blockingProposalTimestamp;
+        uint256 previousProposalTimestamp;
         bytes32 priceIdentifier;
         bytes customAncillaryData;
     }
@@ -181,7 +181,7 @@ contract OptimisticDistributor is Lockable, MultiCaller, Testable {
                 earliestProposalTimestamp: earliestProposalTimestamp,
                 optimisticOracleProposerBond: optimisticOracleProposerBond,
                 optimisticOracleLivenessTime: optimisticOracleLivenessTime,
-                blockingProposalTimestamp: 0,
+                previousProposalTimestamp: 0,
                 priceIdentifier: priceIdentifier,
                 customAncillaryData: customAncillaryData
             });
@@ -245,7 +245,7 @@ contract OptimisticDistributor is Lockable, MultiCaller, Testable {
         require(_noBlockingProposal(rewardIndex, reward), "New proposals blocked");
 
         // Store current timestamp at reward struct so that any subsequent proposals are blocked till dispute.
-        rewards[rewardIndex].blockingProposalTimestamp = timestamp;
+        rewards[rewardIndex].previousProposalTimestamp = timestamp;
 
         // Append rewardIndex to ancillary data.
         bytes memory ancillaryData = _appendRewardIndex(rewardIndex, reward.customAncillaryData);
@@ -430,14 +430,14 @@ contract OptimisticDistributor is Lockable, MultiCaller, Testable {
     // Returns true if there are no blocking proposals (eiter there were no prior proposals or they were disputed).
     function _noBlockingProposal(uint256 rewardIndex, Reward memory reward) internal view returns (bool) {
         // Valid proposal cannot have zero timestamp.
-        if (reward.blockingProposalTimestamp == 0) return true;
+        if (reward.previousProposalTimestamp == 0) return true;
 
         bytes memory ancillaryData = _appendRewardIndex(rewardIndex, reward.customAncillaryData);
         OptimisticOracleInterface.Request memory blockingRequest =
             optimisticOracle.getRequest(
                 address(this),
                 reward.priceIdentifier,
-                reward.blockingProposalTimestamp,
+                reward.previousProposalTimestamp,
                 ancillaryData
             );
 

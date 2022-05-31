@@ -428,7 +428,7 @@ describe("OptimisticDistributor", async function () {
     assert.equal(storedRewards.earliestProposalTimestamp, earliestProposalTimestamp);
     assert.equal(storedRewards.optimisticOracleProposerBond, bondAmount);
     assert.equal(storedRewards.optimisticOracleLivenessTime, proposalLiveness);
-    assert.equal(storedRewards.blockingProposalTimestamp, "0");
+    assert.equal(storedRewards.previousProposalTimestamp, "0");
     assert.equal(hexToUtf8(storedRewards.priceIdentifier), hexToUtf8(identifier));
     assert.equal(storedRewards.customAncillaryData, customAncillaryData);
   });
