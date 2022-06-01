@@ -78,7 +78,7 @@ contract OptimisticDistributor is Lockable, MultiCaller, Testable {
 
     // Immutable variables provided at deployment.
     FinderInterface public immutable finder;
-    IERC20 public bondToken; // This cannot be declared immutable as bondToken needs to be checked against whitelist.
+    IERC20 public immutable bondToken;
 
     // Merkle Distributor can be set only once.
     MerkleDistributor public merkleDistributor;
