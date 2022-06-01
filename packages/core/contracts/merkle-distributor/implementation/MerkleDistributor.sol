@@ -106,7 +106,7 @@ contract MerkleDistributor is Ownable {
         uint256 rewardsToDeposit,
         address rewardToken,
         bytes32 merkleRoot,
-        string memory ipfsHash
+        string calldata ipfsHash
     ) external onlyOwner {
         uint256 indexToSet = nextCreatedIndex;
         nextCreatedIndex = indexToSet + 1;
@@ -148,7 +148,7 @@ contract MerkleDistributor is Ownable {
      * @param claims array of claims to claim.
      */
     function claimMulti(Claim[] memory claims) external {
-        uint256 batchedAmount = 0;
+        uint256 batchedAmount;
         uint256 claimCount = claims.length;
         for (uint256 i = 0; i < claimCount; i++) {
             Claim memory _claim = claims[i];
@@ -180,7 +180,7 @@ contract MerkleDistributor is Ownable {
      *         will revert.
      * @param _claim claim object describing amount, accountIndex, account, window index, and merkle proof.
      */
-    function claim(Claim memory _claim) public {
+    function claim(Claim memory _claim) external {
         _verifyAndMarkClaimed(_claim);
         merkleWindows[_claim.windowIndex].rewardToken.safeTransfer(_claim.account, _claim.amount);
     }
