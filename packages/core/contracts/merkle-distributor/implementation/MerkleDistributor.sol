@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
@@ -19,7 +18,6 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
  * @dev    The Merkle trees are not validated in any way, so the system assumes the contract owner behaves honestly.
  */
 contract MerkleDistributor is Ownable {
-    using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
     // A Window maps a Merkle root to a reward token address.
@@ -111,7 +109,7 @@ contract MerkleDistributor is Ownable {
         string memory ipfsHash
     ) external onlyOwner {
         uint256 indexToSet = nextCreatedIndex;
-        nextCreatedIndex = indexToSet.add(1);
+        nextCreatedIndex = indexToSet + 1;
 
         _setWindow(indexToSet, rewardsToDeposit, rewardToken, merkleRoot, ipfsHash);
     }
@@ -155,7 +153,7 @@ contract MerkleDistributor is Ownable {
         for (uint256 i = 0; i < claimCount; i++) {
             Claim memory _claim = claims[i];
             _verifyAndMarkClaimed(_claim);
-            batchedAmount = batchedAmount.add(_claim.amount);
+            batchedAmount += _claim.amount;
 
             // If the next claim is NOT the same account or the same token (or this claim is the last one),
             // then disburse the `batchedAmount` to the current claim's account for the current claim's reward token.
