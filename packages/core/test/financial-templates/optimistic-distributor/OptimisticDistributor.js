@@ -18,6 +18,8 @@ const Store = getContract("Store");
 const ERC20 = getContract("ExpandedERC20");
 const MerkleDistributor = getContract("MerkleDistributor");
 
+const maximumFundingPeriod = 24 * 60 * 60 * 365; // 1 year maximum allowed funding period.
+const maximumProposerBond = toWei("1000000"); // 1M maximum allowed proposer bond.
 const finalFee = toWei("100");
 const identifier = utf8ToHex("TESTID");
 const customAncillaryData = utf8ToHex("ABC123");
@@ -128,7 +130,9 @@ describe("OptimisticDistributor", async function () {
     optimisticDistributor = await OptimisticDistributor.new(
       finder.options.address,
       bondToken.options.address,
-      timer.options.address
+      timer.options.address,
+      maximumFundingPeriod,
+      maximumProposerBond
     ).send({ from: deployer });
 
     rewardToken = await ERC20.new("REWARD", "REWARD", 18).send({ from: deployer });
@@ -157,7 +161,9 @@ describe("OptimisticDistributor", async function () {
         OptimisticDistributor.new(
           finder.options.address,
           (await ERC20.new("BOND", "BOND", 18).send({ from: deployer })).options.address,
-          timer.options.address
+          timer.options.address,
+          maximumFundingPeriod,
+          maximumProposerBond
         ).send({ from: deployer }),
         "Bond token not supported"
       )
@@ -168,12 +174,16 @@ describe("OptimisticDistributor", async function () {
     const testOptimisticDistributor = await OptimisticDistributor.new(
       finder.options.address,
       bondToken.options.address,
-      timer.options.address
+      timer.options.address,
+      maximumFundingPeriod,
+      maximumProposerBond
     ).send({ from: deployer });
 
     // Verify all parameters have been set correctly.
     assert.equal(await testOptimisticDistributor.methods.finder().call(), finder.options.address);
     assert.equal(await testOptimisticDistributor.methods.bondToken().call(), bondToken.options.address);
+    assert.equal(await testOptimisticDistributor.methods.maximumFundingPeriod().call(), maximumFundingPeriod);
+    assert.equal(await testOptimisticDistributor.methods.maximumProposerBond().call(), maximumProposerBond);
     assert.equal(await testOptimisticDistributor.methods.optimisticOracle().call(), optimisticOracle.options.address);
     assert.equal(
       await testOptimisticDistributor.methods.ancillaryBytesLimit().call(),
@@ -253,6 +263,43 @@ describe("OptimisticDistributor", async function () {
     );
 
     await setupMerkleDistributor();
+
+    // Cannot deposit rewards with earliestProposalTimestamp beyond the maximum funding period limit.
+    const currentTimestamp = parseInt(await timer.methods.getCurrentTime().call());
+    assert(
+      await didContractRevertWith(
+        optimisticDistributor.methods
+          .createReward(
+            rewardAmount,
+            currentTimestamp + maximumFundingPeriod + 1,
+            bondAmount,
+            proposalLiveness,
+            identifier,
+            rewardToken.options.address,
+            customAncillaryData
+          )
+          .send({ from: sponsor }),
+        "Too long till proposal opening"
+      )
+    );
+
+    // Cannot deposit rewards with too high Optimistic Oracle proposer bond.
+    assert(
+      await didContractRevertWith(
+        optimisticDistributor.methods
+          .createReward(
+            rewardAmount,
+            earliestProposalTimestamp,
+            toBN(maximumProposerBond).add(toBN("1")).toString(),
+            proposalLiveness,
+            identifier,
+            rewardToken.options.address,
+            customAncillaryData
+          )
+          .send({ from: sponsor }),
+        "OO proposer bond too high"
+      )
+    );
 
     // Cannot deposit rewards for unregistered price identifier.
     assert(

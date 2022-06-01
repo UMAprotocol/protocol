@@ -72,6 +72,10 @@ contract OptimisticDistributor is Lockable, MultiCaller, Testable {
     // Rewards are stored in dynamic array.
     Reward[] public rewards;
 
+    // Immutable variables used to validate input parameters when funding new rewards.
+    uint256 public immutable maximumFundingPeriod;
+    uint256 public immutable maximumProposerBond;
+
     // Proposals are mapped to hash of their identifier, timestamp and ancillaryData, so that they can be addressed
     // from OptimisticOracle callback function.
     mapping(bytes32 => Proposal) public proposals;
@@ -126,19 +130,25 @@ contract OptimisticDistributor is Lockable, MultiCaller, Testable {
 
     /**
      * @notice Constructor.
-     * @param _bondToken ERC20 token that the bond is paid in.
      * @param _finder Finder to look up UMA contract addresses.
+     * @param _bondToken ERC20 token that the bond is paid in.
      * @param _timer Contract that stores the current time in a testing environment.
+     * @param _maximumFundingPeriod Maximum period for reward funding (proposals allowed only afterwards).
+     * @param _maximumProposerBond Maximum allowed Optimistic Oracle proposer bond amount.
      */
     constructor(
         FinderInterface _finder,
         IERC20 _bondToken,
-        address _timer
+        address _timer,
+        uint256 _maximumFundingPeriod,
+        uint256 _maximumProposerBond
     ) Testable(_timer) {
         finder = _finder;
         require(_getCollateralWhitelist().isOnWhitelist(address(_bondToken)), "Bond token not supported");
         bondToken = _bondToken;
         syncUmaEcosystemParams();
+        maximumFundingPeriod = _maximumFundingPeriod;
+        maximumProposerBond = _maximumProposerBond;
     }
 
     /********************************************
@@ -169,6 +179,8 @@ contract OptimisticDistributor is Lockable, MultiCaller, Testable {
         bytes calldata customAncillaryData
     ) external nonReentrant() {
         require(address(merkleDistributor) != address(0), "Missing MerkleDistributor");
+        require(earliestProposalTimestamp <= getCurrentTime() + maximumFundingPeriod, "Too long till proposal opening");
+        require(optimisticOracleProposerBond <= maximumProposerBond, "OO proposer bond too high");
         require(_getIdentifierWhitelist().isIdentifierSupported(priceIdentifier), "Identifier not registered");
         require(_ancillaryDataWithinLimits(customAncillaryData), "Ancillary data too long");
         require(optimisticOracleLivenessTime >= MINIMUM_LIVENESS, "OO liveness too small");
