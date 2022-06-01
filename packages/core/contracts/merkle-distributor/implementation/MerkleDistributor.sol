@@ -130,9 +130,9 @@ contract MerkleDistributor is Ownable {
      * @param rewardCurrency rewards to withdraw from contract.
      * @param amount amount of rewards to withdraw.
      */
-    function withdrawRewards(address rewardCurrency, uint256 amount) external onlyOwner {
-        IERC20(rewardCurrency).safeTransfer(msg.sender, amount);
-        emit WithdrawRewards(msg.sender, amount, rewardCurrency);
+    function withdrawRewards(IERC20 rewardCurrency, uint256 amount) external onlyOwner {
+        rewardCurrency.safeTransfer(msg.sender, amount);
+        emit WithdrawRewards(msg.sender, amount, address(rewardCurrency));
     }
 
     /****************************
@@ -158,16 +158,16 @@ contract MerkleDistributor is Ownable {
             // If the next claim is NOT the same account or the same token (or this claim is the last one),
             // then disburse the `batchedAmount` to the current claim's account for the current claim's reward token.
             uint256 nextI = i + 1;
-            address currentRewardToken = address(merkleWindows[_claim.windowIndex].rewardToken);
+            IERC20 currentRewardToken = merkleWindows[_claim.windowIndex].rewardToken;
             if (
                 nextI == claimCount ||
                 // This claim is last claim.
                 claims[nextI].account != _claim.account ||
                 // Next claim account is different than current one.
-                address(merkleWindows[claims[nextI].windowIndex].rewardToken) != currentRewardToken
+                merkleWindows[claims[nextI].windowIndex].rewardToken != currentRewardToken
                 // Next claim reward token is different than current one.
             ) {
-                IERC20(currentRewardToken).safeTransfer(_claim.account, batchedAmount);
+                currentRewardToken.safeTransfer(_claim.account, batchedAmount);
                 batchedAmount = 0;
             }
         }
