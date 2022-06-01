@@ -1,0 +1,38 @@
+[
+  {
+    "contractName": "Finder",
+    "address": "0xCFdC4d6FdeC25e339ef07e25C35a482A6bedcfE0"
+  },
+  {
+    "contractName": "Registry",
+    "address": "0x1340229DCF6e0bed7D9c2356929987C2A720F836"
+  },
+  {
+    "contractName": "OracleSpoke",
+    "address": "0xc5E1687895A563a43d956EE1D71B4c9Fe9425a34"
+  },
+  {
+    "contractName": "GovernorSpoke",
+    "address": "0x39f9311F2DaB49147F3078a81212531D9507feDF"
+  },
+  {
+    "contractName": "Admin_ChildMessenger",
+    "address": "0xBA13E7a43E71F6beCeB1Ff3dB1e870190c60e707"
+  },
+  {
+    "contractName": "IdentifierWhitelist",
+    "address": "0xbB8f0CAFf20a4775b422407Da6016B487aF6c5E9"
+  },
+  {
+    "contractName": "Store",
+    "address": "0x93097B6d282a0BA755042a66Cf287843cADBCb53"
+  },
+  {
+    "contractName": "AddressWhitelist",
+    "address": "0x6Ff461b854F5349857c2Ad41e0f558C19953DF89"
+  },
+  {
+    "contractName": "OptimisticOracle",
+    "address": "0xB0D89D3218374BD8FE60f5748a880e9E373fB818"
+  }
+]

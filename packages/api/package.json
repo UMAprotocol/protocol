@@ -1,6 +1,6 @@
 {
   "name": "@uma/api",
-  "version": "0.10.10",
+  "version": "0.10.11",
   "author": "David Adams",
   "license": "AGPL-3.0-or-later",
   "main": "build/index.js",
@@ -19,8 +19,8 @@
   "dependencies": {
     "@google-cloud/datastore": "^6.6.0",
     "@types/express": "^4.17.11",
-    "@uma/financial-templates-lib": "^2.27.3",
-    "@uma/sdk": "^0.23.3",
+    "@uma/financial-templates-lib": "^2.27.4",
+    "@uma/sdk": "^0.23.4",
     "body-parser": "^1.19.0",
     "cors": "^2.8.5",
     "ethers": "^5.4.2",
