@@ -1,0 +1,21 @@
+import { interfaces } from "../../types";
+import { Handlers as GenericHandlers } from "../../types/statemachine";
+
+// require exports for a new context handler
+export type Params = undefined;
+export type Memory = undefined;
+
+export function initMemory(): Memory {
+  return undefined;
+}
+
+export function Handlers<S, O, E>(store: interfaces.Store<S, O, E>): GenericHandlers<Params, Memory> {
+  return {
+    async start() {
+      store.write((write) => {
+        write.inputs().user().clear();
+      });
+      return "done";
+    },
+  };
+}

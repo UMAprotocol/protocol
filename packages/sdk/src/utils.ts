@@ -13,29 +13,39 @@ export function exists<T>(value: T | null | undefined): value is NonNullable<T> 
 
 // useful for maintaining balances from events
 export type Balances = { [key: string]: string };
-export function Balances(balances: Balances = {}) {
-  function create(id: string, amount = "0") {
+export interface BalanceUtil {
+  create: (id: string, amount: string) => string;
+  has: (id: string) => boolean;
+  set: (id: string, amount: string) => string;
+  add: (id: string, amount: BigNumberish) => string;
+  sub: (id: string, amount: BigNumberish) => string;
+  get: (id: string) => string;
+  getOrCreate: (id: string) => string;
+  balances: Balances;
+}
+export function Balances(balances: Balances = {}): BalanceUtil {
+  function create(id: string, amount = "0"): string {
     assert(!has(id), "balance already exists");
     return set(id, amount);
   }
-  function has(id: string) {
+  function has(id: string): boolean {
     return exists(balances[id]);
   }
-  function set(id: string, amount: string) {
+  function set(id: string, amount: string): string {
     balances[id] = amount;
     return amount;
   }
-  function add(id: string, amount: BigNumberish) {
+  function add(id: string, amount: BigNumberish): string {
     return set(id, BigNumber.from(amount).add(getOrCreate(id)).toString());
   }
-  function sub(id: string, amount: BigNumberish) {
+  function sub(id: string, amount: BigNumberish): string {
     return set(id, BigNumber.from(getOrCreate(id)).sub(amount).toString());
   }
-  function get(id: string) {
+  function get(id: string): string {
     assert(has(id), "balance does not exist");
     return balances[id];
   }
-  function getOrCreate(id: string) {
+  function getOrCreate(id: string): string {
     if (has(id)) return get(id);
     return create(id);
   }
@@ -43,7 +53,7 @@ export function Balances(balances: Balances = {}) {
 }
 
 // Copied from common, but modified for ethers Bignumber
-export const ConvertDecimals = (fromDecimals: number, toDecimals: number) => {
+export const ConvertDecimals = (fromDecimals: number, toDecimals: number): ((amount: BigNumberish) => string) => {
   assert(fromDecimals >= 0, "requires fromDecimals as an integer >= 0");
   assert(toDecimals >= 0, "requires toDecimals as an integer >= 0");
   // amount: string, BN, number - integer amount in fromDecimals smallest unit that want to convert toDecimals
@@ -60,11 +70,11 @@ export const ConvertDecimals = (fromDecimals: number, toDecimals: number) => {
 };
 
 // async sleep
-export const sleep = (delay = 0) => new Promise((res) => setTimeout(res, delay));
+export const sleep = (delay = 0): Promise<void> => new Promise((res) => setTimeout(res, delay));
 
 // Loop forever but wait until execution is finished before starting next timer. Throw an error to break this
 // or add another utlity function if you need it to end on condition.
-export async function loop(fn: (...args: any[]) => any, delay: number, ...args: any[]) {
+export async function loop(fn: (...args: unknown[]) => unknown, delay: number, ...args: unknown[]): Promise<void> {
   do {
     await fn(...args);
     await sleep(delay);
