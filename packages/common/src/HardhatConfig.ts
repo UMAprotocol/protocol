@@ -143,6 +143,17 @@ export function getHardhatConfig(
         url: getNodeUrl("arbitrum-rinkeby", true, 421611),
         accounts: { mnemonic },
       },
+      sx: {
+        chainId: 416,
+        url: getNodeUrl("sx", true, 416),
+        accounts: { mnemonic },
+        companionNetworks: { mainnet: "matic" },
+      },
+      avalanche: {
+        chainId: 43114,
+        url: getNodeUrl("avalanche", true, 416),
+        accounts: { mnemonic },
+      },
     },
     mocha: { timeout: 1800000 },
     etherscan: {

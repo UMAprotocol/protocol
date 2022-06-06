@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.11.0](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.10.3...@uma/scripts@1.11.0) (2022-05-27)
+
+### Bug Fixes
+
+- improvements to the uma transfer script ([#3937](https://github.com/UMAprotocol/protocol/issues/3937)) ([7137dd3](https://github.com/UMAprotocol/protocol/commit/7137dd33c9ec7580c4c5a51599b1059a4c36b163))
+
+### Features
+
+- add script for transferring uma tokens from governor ([#3930](https://github.com/UMAprotocol/protocol/issues/3930)) ([93a287b](https://github.com/UMAprotocol/protocol/commit/93a287b6f85fe731a577463feba4ac5c75fb25fe))
+
 ## [1.10.3](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.10.2...@uma/scripts@1.10.3) (2022-05-13)
 
 **Note:** Version bump only for package @uma/scripts

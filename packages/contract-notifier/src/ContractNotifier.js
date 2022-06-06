@@ -96,7 +96,7 @@ class ContractNotifier {
         at: "ExpirationsNotifier",
         message: "Expiring contracts reminder 🔔",
         mrkdwn,
-        notificationPath: "dev-x",
+        notificationPath: "outcome-expirations",
       });
     }
 

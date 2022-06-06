@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
@@ -19,7 +18,6 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
  * @dev    The Merkle trees are not validated in any way, so the system assumes the contract owner behaves honestly.
  */
 contract MerkleDistributor is Ownable {
-    using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
     // A Window maps a Merkle root to a reward token address.
@@ -108,10 +106,10 @@ contract MerkleDistributor is Ownable {
         uint256 rewardsToDeposit,
         address rewardToken,
         bytes32 merkleRoot,
-        string memory ipfsHash
+        string calldata ipfsHash
     ) external onlyOwner {
         uint256 indexToSet = nextCreatedIndex;
-        nextCreatedIndex = indexToSet.add(1);
+        nextCreatedIndex = indexToSet + 1;
 
         _setWindow(indexToSet, rewardsToDeposit, rewardToken, merkleRoot, ipfsHash);
     }
@@ -132,9 +130,9 @@ contract MerkleDistributor is Ownable {
      * @param rewardCurrency rewards to withdraw from contract.
      * @param amount amount of rewards to withdraw.
      */
-    function withdrawRewards(address rewardCurrency, uint256 amount) external onlyOwner {
-        IERC20(rewardCurrency).safeTransfer(msg.sender, amount);
-        emit WithdrawRewards(msg.sender, amount, rewardCurrency);
+    function withdrawRewards(IERC20 rewardCurrency, uint256 amount) external onlyOwner {
+        rewardCurrency.safeTransfer(msg.sender, amount);
+        emit WithdrawRewards(msg.sender, amount, address(rewardCurrency));
     }
 
     /****************************
@@ -150,26 +148,26 @@ contract MerkleDistributor is Ownable {
      * @param claims array of claims to claim.
      */
     function claimMulti(Claim[] memory claims) external {
-        uint256 batchedAmount = 0;
+        uint256 batchedAmount;
         uint256 claimCount = claims.length;
         for (uint256 i = 0; i < claimCount; i++) {
             Claim memory _claim = claims[i];
             _verifyAndMarkClaimed(_claim);
-            batchedAmount = batchedAmount.add(_claim.amount);
+            batchedAmount += _claim.amount;
 
             // If the next claim is NOT the same account or the same token (or this claim is the last one),
             // then disburse the `batchedAmount` to the current claim's account for the current claim's reward token.
             uint256 nextI = i + 1;
-            address currentRewardToken = address(merkleWindows[_claim.windowIndex].rewardToken);
+            IERC20 currentRewardToken = merkleWindows[_claim.windowIndex].rewardToken;
             if (
                 nextI == claimCount ||
                 // This claim is last claim.
                 claims[nextI].account != _claim.account ||
                 // Next claim account is different than current one.
-                address(merkleWindows[claims[nextI].windowIndex].rewardToken) != currentRewardToken
+                merkleWindows[claims[nextI].windowIndex].rewardToken != currentRewardToken
                 // Next claim reward token is different than current one.
             ) {
-                IERC20(currentRewardToken).safeTransfer(_claim.account, batchedAmount);
+                currentRewardToken.safeTransfer(_claim.account, batchedAmount);
                 batchedAmount = 0;
             }
         }
@@ -182,7 +180,7 @@ contract MerkleDistributor is Ownable {
      *         will revert.
      * @param _claim claim object describing amount, accountIndex, account, window index, and merkle proof.
      */
-    function claim(Claim memory _claim) public {
+    function claim(Claim memory _claim) external {
         _verifyAndMarkClaimed(_claim);
         merkleWindows[_claim.windowIndex].rewardToken.safeTransfer(_claim.account, _claim.amount);
     }
