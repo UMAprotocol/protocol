@@ -19,11 +19,14 @@ abstract contract OptimisticOracleInterface {
         Settled // Final price has been set in the contract (can get here from Expired or Resolved).
     }
 
-    // Struct representing which callbacks should be executed.
-    struct EnabledCallbacks {
-        bool priceProposed; // True if priceProposed callback is required.
-        bool priceDisputed; // True if priceDisputed callback is required.
-        bool priceSettled; // True if priceSettled callback is required.
+    struct RequestSettings {
+        bool eventBased; // True if the request is set to be event-based.
+        bool refundOnDispute; // True if the requester should be refunded their reward on dispute.
+        bool callbackOnPriceProposed; // True if callbackOnPriceProposed callback is required.
+        bool callbackOnPriceDisputed; // True if callbackOnPriceDisputed callback is required.
+        bool callbackOnPriceSettled; // True if callbackOnPriceSettled callback is required.
+        uint256 bond; // Bond that the proposer and disputer must pay on top of the final fee.
+        uint256 customLiveness; // Custom liveness value set by the requester.
     }
 
     // Struct representing a price request.
@@ -32,16 +35,12 @@ abstract contract OptimisticOracleInterface {
         address disputer; // Address of the disputer.
         IERC20 currency; // ERC20 token used to pay rewards and fees.
         bool settled; // True if the request is settled.
-        bool refundOnDispute; // True if the requester should be refunded their reward on dispute.
-        bool eventBased; // True if the request is set to be event-based.
-        EnabledCallbacks enabledCallbacks; // Struct elements set to True if corresponding callback is required.
+        RequestSettings requestSettings; // Custom settings associated with a request.
         int256 proposedPrice; // Price that the proposer submitted.
         int256 resolvedPrice; // Price resolved once the request is settled.
         uint256 expirationTime; // Time at which the request auto-settles without a dispute.
         uint256 reward; // Amount of the currency to pay to the proposer on settlement.
         uint256 finalFee; // Final fee to pay to the Store upon request to the DVM.
-        uint256 bond; // Bond that the proposer and disputer must pay on top of the final fee.
-        uint256 customLiveness; // Custom liveness value set by the requester.
     }
 
     // This value must be <= the Voting contract's `ancillaryBytesLimit` value otherwise it is possible

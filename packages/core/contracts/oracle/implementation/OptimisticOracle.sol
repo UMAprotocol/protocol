@@ -179,16 +179,20 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
             disputer: address(0),
             currency: currency,
             settled: false,
-            refundOnDispute: false,
+            requestSettings: RequestSettings({
+                eventBased: false,
+                refundOnDispute: false,
+                callbackOnPriceProposed: false,
+                callbackOnPriceDisputed: false,
+                callbackOnPriceSettled: false,
+                bond: finalFee,
+                customLiveness: 0
+            }),
             proposedPrice: 0,
             resolvedPrice: 0,
             expirationTime: 0,
             reward: reward,
-            finalFee: finalFee,
-            bond: finalFee,
-            customLiveness: 0,
-            eventBased: false,
-            enabledCallbacks: EnabledCallbacks({ priceProposed: false, priceDisputed: false, priceSettled: false })
+            finalFee: finalFee
         });
 
         if (reward > 0) {
@@ -219,7 +223,7 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
     ) external override nonReentrant() returns (uint256 totalBond) {
         require(_getState(msg.sender, identifier, timestamp, ancillaryData) == State.Requested, "setBond: Requested");
         Request storage request = _getRequest(msg.sender, identifier, timestamp, ancillaryData);
-        request.bond = bond;
+        request.requestSettings.bond = bond;
 
         // Total bond is the final fee + the newly set bond.
         return bond.add(request.finalFee);
@@ -242,7 +246,7 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
             _getState(msg.sender, identifier, timestamp, ancillaryData) == State.Requested,
             "setRefundOnDispute: Requested"
         );
-        _getRequest(msg.sender, identifier, timestamp, ancillaryData).refundOnDispute = true;
+        _getRequest(msg.sender, identifier, timestamp, ancillaryData).requestSettings.refundOnDispute = true;
     }
 
     /**
@@ -264,7 +268,7 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
             "setCustomLiveness: Requested"
         );
         _validateLiveness(customLiveness);
-        _getRequest(msg.sender, identifier, timestamp, ancillaryData).customLiveness = customLiveness;
+        _getRequest(msg.sender, identifier, timestamp, ancillaryData).requestSettings.customLiveness = customLiveness;
     }
 
     /**
@@ -294,25 +298,35 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
             "setEventBased: Requested"
         );
         Request storage request = _getRequest(msg.sender, identifier, timestamp, ancillaryData);
-        request.eventBased = true;
-        request.refundOnDispute = true;
+        request.requestSettings.eventBased = true;
+        request.requestSettings.refundOnDispute = true;
     }
 
     /**
      * @notice Sets which callbacks should be enabled for the request.
-     * @param enabledCallbacks EnabledCallbacks struct representing which callbacks should be executed.
+     * @param identifier price identifier to identify the existing request.
+     * @param timestamp timestamp to identify the existing request.
+     * @param ancillaryData ancillary data of the price being requested.
+     * @param callbackOnPriceProposed whether to enable the callback onPriceProposed.
+     * @param callbackOnPriceDisputed whether to enable the callback onPriceDisputed.
+     * @param callbackOnPriceSettled whether to enable the callback onPriceSettled.
      */
     function setCallbacks(
         bytes32 identifier,
         uint256 timestamp,
         bytes memory ancillaryData,
-        EnabledCallbacks calldata enabledCallbacks
+        bool callbackOnPriceProposed,
+        bool callbackOnPriceDisputed,
+        bool callbackOnPriceSettled
     ) external nonReentrant() {
         require(
             _getState(msg.sender, identifier, timestamp, ancillaryData) == State.Requested,
             "setCallbacks: Requested"
         );
-        _getRequest(msg.sender, identifier, timestamp, ancillaryData).enabledCallbacks = enabledCallbacks;
+        Request storage request = _getRequest(msg.sender, identifier, timestamp, ancillaryData);
+        request.requestSettings.callbackOnPriceProposed = callbackOnPriceProposed;
+        request.requestSettings.callbackOnPriceDisputed = callbackOnPriceDisputed;
+        request.requestSettings.callbackOnPriceSettled = callbackOnPriceSettled;
     }
 
     /**
@@ -341,19 +355,18 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
             "proposePriceFor: Requested"
         );
         Request storage request = _getRequest(requester, identifier, timestamp, ancillaryData);
-        if (request.eventBased) require(proposedPrice != TOO_EARLY_RESPONSE, "Cannot propose 'too early'");
+        if (request.requestSettings.eventBased)
+            require(proposedPrice != TOO_EARLY_RESPONSE, "Cannot propose 'too early'");
         request.proposer = proposer;
         request.proposedPrice = proposedPrice;
 
         // If a custom liveness has been set, use it instead of the default.
         request.expirationTime = getCurrentTime().add(
-            request.customLiveness != 0 ? request.customLiveness : defaultLiveness
+            request.requestSettings.customLiveness != 0 ? request.requestSettings.customLiveness : defaultLiveness
         );
 
-        totalBond = request.bond.add(request.finalFee);
-        if (totalBond > 0) {
-            request.currency.safeTransferFrom(msg.sender, address(this), totalBond);
-        }
+        totalBond = request.requestSettings.bond.add(request.finalFee);
+        if (totalBond > 0) request.currency.safeTransferFrom(msg.sender, address(this), totalBond);
 
         emit ProposePrice(
             requester,
@@ -369,7 +382,7 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
         // End the re-entrancy guard early to allow the caller to potentially take OO-related actions inside this callback.
         _startReentrantGuardDisabled();
         // Callback.
-        if (address(requester).isContract() && request.enabledCallbacks.priceProposed)
+        if (address(requester).isContract() && request.requestSettings.callbackOnPriceProposed)
             OptimisticRequester(requester).priceProposed(identifier, timestamp, ancillaryData);
         _endReentrantGuardDisabled();
     }
@@ -422,7 +435,7 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
         request.disputer = disputer;
 
         uint256 finalFee = request.finalFee;
-        uint256 bond = request.bond;
+        uint256 bond = request.requestSettings.bond;
         totalBond = bond.add(finalFee);
         if (totalBond > 0) {
             request.currency.safeTransferFrom(msg.sender, address(this), totalBond);
@@ -431,19 +444,16 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
         StoreInterface store = _getStore();
 
         // Avoids stack too deep compilation error.
-        {
-            // Along with the final fee, "burn" part of the loser's bond to ensure that a larger bond always makes it
-            // proportionally more expensive to delay the resolution even if the proposer and disputer are the same
-            // party.
-            uint256 burnedBond = _computeBurnedBond(request);
 
-            // The total fee is the burned bond and the final fee added together.
-            uint256 totalFee = finalFee.add(burnedBond);
+        // Along with the final fee, "burn" part of the loser's bond to ensure that a larger bond always makes it
+        // proportionally more expensive to delay the resolution even if the proposer and disputer are the same
+        // party.
 
-            if (totalFee > 0) {
-                request.currency.safeIncreaseAllowance(address(store), totalFee);
-                _getStore().payOracleFeesErc20(address(request.currency), FixedPoint.Unsigned(totalFee));
-            }
+        // The total fee is the burned bond and the final fee added together.
+        uint256 totalFee = finalFee.add(_computeBurnedBond(request));
+        if (totalFee > 0) {
+            request.currency.safeIncreaseAllowance(address(store), totalFee);
+            _getStore().payOracleFeesErc20(address(request.currency), FixedPoint.Unsigned(totalFee));
         }
 
         _getOracle().requestPrice(
@@ -454,11 +464,9 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
 
         // Compute refund.
         uint256 refund = 0;
-        if (request.reward > 0 && request.refundOnDispute) {
-            refund = request.reward;
-            request.reward = 0;
-            request.currency.safeTransfer(requester, refund);
-        }
+        if (request.reward > 0 && request.requestSettings.refundOnDispute) refund = request.reward;
+        request.reward = 0;
+        request.currency.safeTransfer(requester, refund);
 
         emit DisputePrice(
             requester,
@@ -473,7 +481,7 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
         // End the re-entrancy guard early to allow the caller to potentially re-request inside this callback.
         _startReentrantGuardDisabled();
         // Callback.
-        if (address(requester).isContract() && request.enabledCallbacks.priceDisputed)
+        if (address(requester).isContract() && request.requestSettings.callbackOnPriceDisputed)
             OptimisticRequester(requester).priceDisputed(identifier, timestamp, ancillaryData, refund);
         _endReentrantGuardDisabled();
     }
@@ -627,7 +635,7 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
         if (state == State.Expired) {
             // In the expiry case, just pay back the proposer's bond and final fee along with the reward.
             request.resolvedPrice = request.proposedPrice;
-            payout = request.bond.add(request.finalFee).add(request.reward);
+            payout = request.requestSettings.bond.add(request.finalFee).add(request.reward);
             request.currency.safeTransfer(request.proposer, payout);
         } else if (state == State.Resolved) {
             // In the Resolved case, pay either the disputer or the proposer the entire payout (+ bond and reward).
@@ -637,7 +645,7 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
                 _stampAncillaryData(ancillaryData, requester)
             );
             bool disputeSuccess = request.resolvedPrice != request.proposedPrice;
-            uint256 bond = request.bond;
+            uint256 bond = request.requestSettings.bond;
 
             // Unburned portion of the loser's bond = 1 - burned bond.
             uint256 unburnedBond = bond.sub(_computeBurnedBond(request));
@@ -649,9 +657,7 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
             // - The request reward (if not already refunded -- if refunded, it will be set to 0).
             payout = bond.add(unburnedBond).add(request.finalFee).add(request.reward);
             request.currency.safeTransfer(disputeSuccess ? request.disputer : request.proposer, payout);
-        } else {
-            revert("_settle: not settleable");
-        }
+        } else revert("_settle: not settleable");
 
         emit Settle(
             requester,
@@ -667,7 +673,7 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
         // Temporarily disable the re-entrancy guard early to allow the caller to take an OO-related action inside this callback.
         _startReentrantGuardDisabled();
         // Callback.
-        if (address(requester).isContract() && request.enabledCallbacks.priceSettled)
+        if (address(requester).isContract() && request.requestSettings.callbackOnPriceSettled)
             OptimisticRequester(requester).priceSettled(identifier, timestamp, ancillaryData, request.resolvedPrice);
         _endReentrantGuardDisabled();
     }
@@ -683,7 +689,7 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
 
     function _computeBurnedBond(Request storage request) private view returns (uint256) {
         // burnedBond = floor(bond / 2)
-        return request.bond.div(2);
+        return request.requestSettings.bond.div(2);
     }
 
     function _validateLiveness(uint256 _liveness) private pure {
@@ -699,21 +705,14 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
     ) internal view returns (State) {
         Request storage request = _getRequest(requester, identifier, timestamp, ancillaryData);
 
-        if (address(request.currency) == address(0)) {
-            return State.Invalid;
-        }
+        if (address(request.currency) == address(0)) return State.Invalid;
 
-        if (request.proposer == address(0)) {
-            return State.Requested;
-        }
+        if (request.proposer == address(0)) return State.Requested;
 
-        if (request.settled) {
-            return State.Settled;
-        }
+        if (request.settled) return State.Settled;
 
-        if (request.disputer == address(0)) {
+        if (request.disputer == address(0))
             return request.expirationTime <= getCurrentTime() ? State.Expired : State.Proposed;
-        }
 
         return
             _getOracle().hasPrice(
@@ -746,8 +745,9 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
         view
         returns (uint256)
     {
-        if (request.eventBased) {
-            uint256 liveness = request.customLiveness != 0 ? request.customLiveness : defaultLiveness;
+        if (request.requestSettings.eventBased) {
+            uint256 liveness =
+                request.requestSettings.customLiveness != 0 ? request.requestSettings.customLiveness : defaultLiveness;
             return request.expirationTime.sub(liveness);
         } else {
             return requestTimestamp;
