@@ -135,7 +135,7 @@ class PolymarketNotifier {
         at: "PolymarketNotifier",
         message: "Difference between proposed price and Polymarket API!🚨",
         mrkdwn,
-        notificationPath: "dev-x",
+        notificationPath: "polymarket-notifier",
       });
     }
     // Update google datastore on notified proposals.
