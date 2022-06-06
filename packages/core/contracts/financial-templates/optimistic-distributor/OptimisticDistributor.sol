@@ -11,7 +11,6 @@ import "../../oracle/implementation/Constants.sol";
 import "../../oracle/interfaces/FinderInterface.sol";
 import "../../oracle/interfaces/IdentifierWhitelistInterface.sol";
 import "../../oracle/interfaces/OptimisticOracleInterface.sol";
-import "../../oracle/interfaces/StoreInterface.sol";
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -67,15 +66,19 @@ contract OptimisticDistributor is Lockable, MultiCaller, Testable {
     // Rewards are stored in dynamic array.
     Reward[] public rewards;
 
+    // Immutable variables used to validate input parameters when funding new rewards.
+    uint256 public immutable maximumFundingPeriod;
+    uint256 public immutable maximumProposerBond;
+
     // Proposals are mapped to hash of their identifier, timestamp and ancillaryData.
     mapping(bytes32 => Proposal) public proposals;
 
     // Immutable variables provided at deployment.
     FinderInterface public immutable finder;
-    IERC20 public bondToken; // This cannot be declared immutable as bondToken needs to be checked against whitelist.
+    IERC20 public immutable bondToken;
 
-    // Merkle Distributor can be set only once.
-    MerkleDistributor public merkleDistributor;
+    // Merkle Distributor is automatically deployed on constructor and owned by this contract.
+    MerkleDistributor public immutable merkleDistributor;
 
     // Interface parameters that can be synced and stored in the contract.
     OptimisticOracleInterface public optimisticOracle;
@@ -116,23 +119,29 @@ contract OptimisticDistributor is Lockable, MultiCaller, Testable {
         string ipfsHash
     );
     event ProposalRejected(uint256 indexed rewardIndex, bytes32 indexed proposalId);
-    event MerkleDistributorSet(address indexed merkleDistributor);
 
     /**
      * @notice Constructor.
-     * @param _bondToken ERC20 token that the bond is paid in.
      * @param _finder Finder to look up UMA contract addresses.
+     * @param _bondToken ERC20 token that the bond is paid in.
      * @param _timer Contract that stores the current time in a testing environment.
+     * @param _maximumFundingPeriod Maximum period for reward funding (proposals allowed only afterwards).
+     * @param _maximumProposerBond Maximum allowed Optimistic Oracle proposer bond amount.
      */
     constructor(
         FinderInterface _finder,
         IERC20 _bondToken,
-        address _timer
+        address _timer,
+        uint256 _maximumFundingPeriod,
+        uint256 _maximumProposerBond
     ) Testable(_timer) {
         finder = _finder;
         require(_getCollateralWhitelist().isOnWhitelist(address(_bondToken)), "Bond token not supported");
         bondToken = _bondToken;
         syncUmaEcosystemParams();
+        maximumFundingPeriod = _maximumFundingPeriod;
+        maximumProposerBond = _maximumProposerBond;
+        merkleDistributor = new MerkleDistributor();
     }
 
     /********************************************
@@ -162,14 +171,12 @@ contract OptimisticDistributor is Lockable, MultiCaller, Testable {
         IERC20 rewardToken,
         bytes calldata customAncillaryData
     ) external nonReentrant() {
-        require(address(merkleDistributor) != address(0), "Missing MerkleDistributor");
+        require(earliestProposalTimestamp <= getCurrentTime() + maximumFundingPeriod, "Too long till proposal opening");
+        require(optimisticOracleProposerBond <= maximumProposerBond, "OO proposer bond too high");
         require(_getIdentifierWhitelist().isIdentifierSupported(priceIdentifier), "Identifier not registered");
         require(_ancillaryDataWithinLimits(customAncillaryData), "Ancillary data too long");
         require(optimisticOracleLivenessTime >= MINIMUM_LIVENESS, "OO liveness too small");
         require(optimisticOracleLivenessTime < MAXIMUM_LIVENESS, "OO liveness too large");
-
-        // Pull maximum rewards from the sponsor.
-        rewardToken.safeTransferFrom(msg.sender, address(this), maximumRewardAmount);
 
         // Store funded reward and log created reward.
         Reward memory reward =
@@ -198,6 +205,9 @@ contract OptimisticDistributor is Lockable, MultiCaller, Testable {
             reward.priceIdentifier,
             reward.customAncillaryData
         );
+
+        // Pull maximum rewards from the sponsor.
+        rewardToken.safeTransferFrom(msg.sender, address(this), maximumRewardAmount);
     }
 
     /**
@@ -210,12 +220,12 @@ contract OptimisticDistributor is Lockable, MultiCaller, Testable {
         require(rewardIndex < rewards.length, "Invalid rewardIndex");
         require(getCurrentTime() < rewards[rewardIndex].earliestProposalTimestamp, "Funding period ended");
 
-        // Pull additional rewards from the sponsor.
-        rewards[rewardIndex].rewardToken.safeTransferFrom(msg.sender, address(this), additionalRewardAmount);
-
         // Update maximumRewardAmount and log new amount.
         rewards[rewardIndex].maximumRewardAmount += additionalRewardAmount;
         emit RewardIncreased(rewardIndex, rewards[rewardIndex].maximumRewardAmount);
+
+        // Pull additional rewards from the sponsor.
+        rewards[rewardIndex].rewardToken.safeTransferFrom(msg.sender, address(this), additionalRewardAmount);
     }
 
     /********************************************
@@ -357,26 +367,10 @@ contract OptimisticDistributor is Lockable, MultiCaller, Testable {
      ********************************************/
 
     /**
-     * @notice Sets address of MerkleDistributor contract that will be used for rewards distribution.
-     * MerkleDistributor address can only be set once.
-     * @dev It is expected that the deployer first deploys MekleDistributor contract and transfers its ownership to
-     * the OptimisticDistributor contract and then calls `setMerkleDistributor` on the OptimisticDistributor pointing
-     * on now owned MekleDistributor contract.
-     * @param _merkleDistributor Address of the owned MerkleDistributor contract.
-     */
-    function setMerkleDistributor(MerkleDistributor _merkleDistributor) external nonReentrant() {
-        require(address(merkleDistributor) == address(0), "MerkleDistributor already set");
-        require(_merkleDistributor.owner() == address(this), "MerkleDistributor not owned");
-
-        merkleDistributor = _merkleDistributor;
-        emit MerkleDistributorSet(address(_merkleDistributor));
-    }
-
-    /**
-     * @notice Updates the address stored in this contract for the OptimisticOracle and the Store to the latest
-     * versions set in the Finder. Also pull finalFee from Store contract.
-     * @dev There is no risk of leaving this function public for anyone to call as in all cases we want the addresses
-     * in this contract to map to the latest version in the Finder and store the latest final fee.
+     * @notice Updates the address stored in this contract for the OptimisticOracle to the latest version set
+     * in the Finder.
+     * @dev There is no risk of leaving this function public for anyone to call as in all cases we want the address of
+     * OptimisticOracle in this contract to map to the latest version in the Finder.
      */
     function syncUmaEcosystemParams() public nonReentrant() {
         optimisticOracle = _getOptimisticOracle();
@@ -386,10 +380,6 @@ contract OptimisticDistributor is Lockable, MultiCaller, Testable {
     /********************************************
      *            INTERNAL FUNCTIONS            *
      ********************************************/
-
-    function _getStore() internal view returns (StoreInterface) {
-        return StoreInterface(finder.getImplementationAddress(OracleInterfaces.Store));
-    }
 
     function _getOptimisticOracle() internal view returns (OptimisticOracleInterface) {
         return OptimisticOracleInterface(finder.getImplementationAddress(OracleInterfaces.OptimisticOracle));
@@ -405,7 +395,7 @@ contract OptimisticDistributor is Lockable, MultiCaller, Testable {
 
     function _appendRewardIndex(uint256 rewardIndex, bytes memory customAncillaryData)
         internal
-        view
+        pure
         returns (bytes memory)
     {
         return AncillaryData.appendKeyValueUint(customAncillaryData, "rewardIndex", rewardIndex);
@@ -423,7 +413,7 @@ contract OptimisticDistributor is Lockable, MultiCaller, Testable {
         bytes32 identifier,
         uint256 timestamp,
         bytes memory ancillaryData
-    ) internal view returns (bytes32) {
+    ) internal pure returns (bytes32) {
         return keccak256(abi.encode(identifier, timestamp, ancillaryData));
     }
 

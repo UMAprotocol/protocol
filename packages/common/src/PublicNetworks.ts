@@ -66,12 +66,14 @@ export const PublicNetworks: PublicNetworksType = {
     customTruffleConfig: { confirmations: 2, timeoutBlocks: 200 },
   },
   288: { name: "boba", etherscan: "https://blockexplorer.boba.network/" },
+  416: { name: "sx", etherscan: "https://explorer.sx.technology/" },
   80001: {
     name: "polygon-mumbai",
     etherscan: "https://mumbai.polygonscan.com/",
     customTruffleConfig: { confirmations: 2, timeoutBlocks: 200 },
   },
   42161: { name: "arbitrum", etherscan: "https://arbiscan.io/" },
+  43114: { name: "avalanche", etherscan: "https://snowtrace.io/" },
   421611: { name: "arbitrum-rinkeby", etherscan: "https://testnet.arbiscan.io/" },
 };
 
