@@ -464,9 +464,11 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
 
         // Compute refund.
         uint256 refund = 0;
-        if (request.reward > 0 && request.requestSettings.refundOnDispute) refund = request.reward;
-        request.reward = 0;
-        request.currency.safeTransfer(requester, refund);
+        if (request.reward > 0 && request.requestSettings.refundOnDispute) {
+            refund = request.reward;
+            request.reward = 0;
+            request.currency.safeTransfer(requester, refund);
+        }
 
         emit DisputePrice(
             requester,
