@@ -635,6 +635,56 @@ describe("MerkleDistributor.js", function () {
         });
         assert(await didContractThrow(merkleDistributor.methods.claimMulti(batchedClaims).send({ from: accounts[0] })));
       });
+      it("Underfunded window fails", async function () {
+        // Claims will be batched separately for the underfunded reward window.
+        const underfundedBatchedClaims = [];
+        const underfundedWindowIndex = rewardLeafs.length;
+
+        // Underfunded reward set recipients and amounts are same as for the first set.
+        rewardRecipients.push(createRewardRecipientsFromSampleData(SamplePayouts));
+
+        // Generate leafs for each recipient for the underfunded reward set.
+        rewardLeafs.push(rewardRecipients[underfundedWindowIndex].map((item) => ({ ...item, leaf: createLeaf(item) })));
+        merkleTrees.push(new MerkleTree(rewardLeafs[underfundedWindowIndex].map((item) => item.leaf)));
+
+        // Fund rewards window with the same Merkle tree, but insufficient funding.
+        const insufficientTotalRewards = toBN(SamplePayouts.totalRewardsDistributed).sub(toBN("1"));
+        await merkleDistributor.methods
+          .setWindow(
+            insufficientTotalRewards,
+            rewardToken.options.address,
+            merkleTrees[underfundedWindowIndex].getRoot(),
+            sampleIpfsHash
+          )
+          .send({ from: accounts[0] });
+
+        // Construct claims for the underfunded rewards set.
+        rewardLeafs[underfundedWindowIndex].forEach((leaf) => {
+          underfundedBatchedClaims.push({
+            windowIndex: underfundedWindowIndex,
+            account: leaf.account,
+            accountIndex: leaf.accountIndex,
+            amount: leaf.amount,
+            merkleProof: merkleTrees[underfundedWindowIndex].getProof(leaf.leaf),
+          });
+        });
+
+        // Track contract balance for primary reward token.
+        const contractBalanceBefore = toBN(
+          await rewardToken.methods.balanceOf(merkleDistributor.options.address).call()
+        );
+
+        // Claiming underfunded rewards should revert and contract balance should remain the same.
+        assert(
+          await didContractThrow(
+            merkleDistributor.methods.claimMulti(underfundedBatchedClaims).send({ from: accounts[0] })
+          )
+        );
+        assert.equal(
+          contractBalanceBefore.toString(),
+          await rewardToken.methods.balanceOf(merkleDistributor.options.address).call()
+        );
+      });
     });
   });
   describe("Real tree size", function () {
