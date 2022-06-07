@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
+// WARNING: This contract has been deprecated! It is left in the UMA Protocol repo for backwards compatibility reasons.
+// You should refer to the latest implementation of the Optimistic Oracle which is named OptimisticOracleV1_1 and can
+// be found in the UMA Finder under the same name.
+
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
