@@ -8,7 +8,7 @@ const { assert } = require("chai");
 const FundingRateApplier = getContract("FundingRateApplierTest");
 
 // Helper contracts
-const OptimisticOracle = getContract("OptimisticOracleV1_1");
+const OptimisticOracle = getContract("OptimisticOracle");
 const MockOracle = getContract("MockOracleAncillary");
 const Finder = getContract("Finder");
 const Timer = getContract("Timer");

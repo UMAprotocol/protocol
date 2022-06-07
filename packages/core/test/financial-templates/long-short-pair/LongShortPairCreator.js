@@ -17,7 +17,7 @@ const AddressWhitelist = getContract("AddressWhitelist");
 const IdentifierWhitelist = getContract("IdentifierWhitelist");
 const Finder = getContract("Finder");
 const Timer = getContract("Timer");
-const OptimisticOracle = getContract("OptimisticOracleV1_1");
+const OptimisticOracle = getContract("OptimisticOracle");
 const Token = getContract("ExpandedERC20");
 const TokenFactory = getContract("TokenFactory");
 
