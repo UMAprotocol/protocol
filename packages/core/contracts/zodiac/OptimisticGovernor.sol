@@ -311,7 +311,7 @@ contract OptimisticGovernor is Module, Lockable {
         // Get the original proposal time.
         uint256 _originalTime = proposalHashes[_proposalHash];
 
-        // This will revert if the price has not settled.
+        // This will revert if the price has not been settled and can not currently be settled.
         int256 price = optimisticOracle.settleAndGetPrice(identifier, _originalTime, ancillaryData);
 
         // Check that proposal was rejected.
