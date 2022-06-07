@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
  * @title Financial contract facing Oracle interface.
  * @dev Interface used by financial contracts to interact with the Oracle. Voters will use a different interface.
  */
-abstract contract OptimisticOracleInterface {
+abstract contract V1_1OptimisticOracleInterface {
     // Struct representing the state of a price request.
     enum State {
         Invalid, // Never requested.
@@ -111,6 +111,47 @@ abstract contract OptimisticOracleInterface {
         uint256 timestamp,
         bytes memory ancillaryData,
         uint256 customLiveness
+    ) external virtual;
+
+    /**
+     * @notice Sets the request to be an "event-based" request.
+     * @dev Calling this method has a few impacts on the request:
+     *
+     * 1. The timestamp at which the request is evaluated is the time of the proposal, not the timestamp associated
+     *    with the request.
+     *
+     * 2. The proposer cannot propose the "too early" value (TOO_EARLY_RESPONSE). This is to ensure that a proposer who
+     *    prematurely proposes a response loses their bond.
+     *
+     * 3. RefundoOnDispute is automatically set, meaning disputes trigger the reward to be automatically refunded to
+     *    the requesting contract.
+     *
+     * @param identifier price identifier to identify the existing request.
+     * @param timestamp timestamp to identify the existing request.
+     * @param ancillaryData ancillary data of the price being requested.
+     */
+    function setEventBased(
+        bytes32 identifier,
+        uint256 timestamp,
+        bytes memory ancillaryData
+    ) external virtual;
+
+    /**
+     * @notice Sets which callbacks should be enabled for the request.
+     * @param identifier price identifier to identify the existing request.
+     * @param timestamp timestamp to identify the existing request.
+     * @param ancillaryData ancillary data of the price being requested.
+     * @param callbackOnPriceProposed whether to enable the callback onPriceProposed.
+     * @param callbackOnPriceDisputed whether to enable the callback onPriceDisputed.
+     * @param callbackOnPriceSettled whether to enable the callback onPriceSettled.
+     */
+    function setCallbacks(
+        bytes32 identifier,
+        uint256 timestamp,
+        bytes memory ancillaryData,
+        bool callbackOnPriceProposed,
+        bool callbackOnPriceDisputed,
+        bool callbackOnPriceSettled
     ) external virtual;
 
     /**

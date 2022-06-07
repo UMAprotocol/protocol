@@ -72,7 +72,7 @@ interface OptimisticRequester {
  * @title Optimistic Oracle.
  * @notice Pre-DVM escalation contract that allows faster settlement.
  */
-contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
+contract V1_1OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
     using Address for address;
@@ -292,7 +292,7 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
         bytes32 identifier,
         uint256 timestamp,
         bytes memory ancillaryData
-    ) external nonReentrant() {
+    ) external override nonReentrant() {
         require(
             _getState(msg.sender, identifier, timestamp, ancillaryData) == State.Requested,
             "setEventBased: Requested"
@@ -318,7 +318,7 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
         bool callbackOnPriceProposed,
         bool callbackOnPriceDisputed,
         bool callbackOnPriceSettled
-    ) external nonReentrant() {
+    ) external override nonReentrant() {
         require(
             _getState(msg.sender, identifier, timestamp, ancillaryData) == State.Requested,
             "setCallbacks: Requested"
