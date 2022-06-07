@@ -500,31 +500,8 @@ describe("OptimisticOracle", function () {
       // Store should have a final fee plus half of the bond (the burned portion).
       await verifyBalanceSum(store.options.address, finalFee, halfDefaultBond);
 
-      // Check that the refund was included in the callback.
-      assert.equal((await optimisticRequester.methods.refund().call()).toString(), reward);
-    });
-
-    it("Verify dispute callback", async function () {
-      await optimisticRequester.methods.setRefundOnDispute(identifier, requestTime, "0x").send({ from: accounts[0] });
-      await collateral.methods.approve(optimisticOracle.options.address, totalDefaultBond).send({ from: proposer });
-      await optimisticOracle.methods
-        .proposePrice(optimisticRequester.options.address, identifier, requestTime, "0x", correctPrice)
-        .send({ from: proposer });
-      await collateral.methods.approve(optimisticOracle.options.address, totalDefaultBond).send({ from: disputer });
-
-      // Clear any previous callback info and call dispute.
-      await optimisticRequester.methods.clearState().send({ from: accounts[0] });
-      await optimisticOracle.methods
-        .disputePrice(optimisticRequester.options.address, identifier, requestTime, "0x")
-        .send({ from: disputer });
-
-      // Timestamp, identifier, and refund should be set.
-      assert.equal(hexToUtf8(await optimisticRequester.methods.identifier().call()), hexToUtf8(identifier));
-      assert.equal((await optimisticRequester.methods.timestamp().call()).toString(), requestTime.toString());
-      assert.equal((await optimisticRequester.methods.refund().call()).toString(), reward);
-
-      // Price should be unset as this callback has not been received yet.
-      assert.equal((await optimisticRequester.methods.price().call()).toString(), "0");
+      // Check that the reward was refunded to the requester.
+      await verifyBalanceSum(optimisticRequester.options.address, reward);
     });
 
     it("Event-based", async function () {
@@ -582,8 +559,192 @@ describe("OptimisticOracle", function () {
       // Store should have a final fee plus half of the bond (the burned portion).
       await verifyBalanceSum(store.options.address, finalFee, halfDefaultBond);
 
-      // Check that the refund was included in the callback.
+      // Check that the reward was refunded to the requester.
+      await verifyBalanceSum(optimisticRequester.options.address, reward);
+    });
+
+    it("Callback on priceProposed not enabled", async function () {
+      // Callbacks are disabled by default, so setting callbacks to revert would not affect price proposal.
+      await optimisticRequester.methods.setRevert(true).send({ from: accounts[0] });
+
+      // Propose price.
+      await collateral.methods.approve(optimisticOracle.options.address, totalDefaultBond).send({ from: proposer });
+      await optimisticOracle.methods
+        .proposePrice(optimisticRequester.options.address, identifier, requestTime, "0x", correctPrice)
+        .send({ from: proposer });
+
+      // No state variables should be set.
+      assert.equal(hexToUtf8(await optimisticRequester.methods.identifier().call()), "");
+      assert.equal((await optimisticRequester.methods.timestamp().call()).toString(), "0");
+      assert.equal((await optimisticRequester.methods.price().call()).toString(), "0");
+      assert.equal((await optimisticRequester.methods.refund().call()).toString(), "0");
+    });
+
+    it("Callback on priceProposed enabled", async function () {
+      // Enable only priceProposed callback.
+      const [callbackOnPriceProposed, callbackOnPriceDisputed, callbackOnPriceSettled] = [true, false, false];
+      await optimisticRequester.methods
+        .setCallbacks(
+          identifier,
+          requestTime,
+          "0x",
+          callbackOnPriceProposed,
+          callbackOnPriceDisputed,
+          callbackOnPriceSettled
+        )
+        .send({ from: accounts[0] });
+
+      // Propose price.
+      await collateral.methods.approve(optimisticOracle.options.address, totalDefaultBond).send({ from: proposer });
+      await optimisticOracle.methods
+        .proposePrice(optimisticRequester.options.address, identifier, requestTime, "0x", correctPrice)
+        .send({ from: proposer });
+
+      // Only timestamp and identifier should be set.
+      assert.equal(hexToUtf8(await optimisticRequester.methods.identifier().call()), hexToUtf8(identifier));
+      assert.equal((await optimisticRequester.methods.timestamp().call()).toString(), requestTime.toString());
+
+      // Price and refund should be unset as these callbacks have not been received yet.
+      assert.equal((await optimisticRequester.methods.price().call()).toString(), "0");
+      assert.equal((await optimisticRequester.methods.refund().call()).toString(), "0");
+    });
+
+    it("Callback on priceDisputed not enabled", async function () {
+      // Callbacks are disabled by default, so setting callbacks to revert would not affect price dispute.
+      await optimisticRequester.methods.setRevert(true).send({ from: accounts[0] });
+
+      // Enabling refund on dispute would have set refund state variable if callback was enabled.
+      await optimisticRequester.methods.setRefundOnDispute(identifier, requestTime, "0x").send({ from: accounts[0] });
+
+      // Propose price and dispute.
+      await collateral.methods.approve(optimisticOracle.options.address, totalDefaultBond).send({ from: proposer });
+      await optimisticOracle.methods
+        .proposePrice(optimisticRequester.options.address, identifier, requestTime, "0x", correctPrice)
+        .send({ from: proposer });
+      await collateral.methods.approve(optimisticOracle.options.address, totalDefaultBond).send({ from: disputer });
+      await optimisticOracle.methods
+        .disputePrice(optimisticRequester.options.address, identifier, requestTime, "0x")
+        .send({ from: disputer });
+
+      // No state variables should be set.
+      assert.equal(hexToUtf8(await optimisticRequester.methods.identifier().call()), "");
+      assert.equal((await optimisticRequester.methods.timestamp().call()).toString(), "0");
+      assert.equal((await optimisticRequester.methods.price().call()).toString(), "0");
+      assert.equal((await optimisticRequester.methods.refund().call()).toString(), "0");
+    });
+
+    it("Callback on priceDisputed enabled", async function () {
+      // Enable only priceDisputed callback.
+      const [callbackOnPriceProposed, callbackOnPriceDisputed, callbackOnPriceSettled] = [false, true, false];
+      await optimisticRequester.methods
+        .setCallbacks(
+          identifier,
+          requestTime,
+          "0x",
+          callbackOnPriceProposed,
+          callbackOnPriceDisputed,
+          callbackOnPriceSettled
+        )
+        .send({ from: accounts[0] });
+
+      // Enable refund on dispute so that it can be detected in callback.
+      await optimisticRequester.methods.setRefundOnDispute(identifier, requestTime, "0x").send({ from: accounts[0] });
+
+      // Propose price.
+      await collateral.methods.approve(optimisticOracle.options.address, totalDefaultBond).send({ from: proposer });
+      await optimisticOracle.methods
+        .proposePrice(optimisticRequester.options.address, identifier, requestTime, "0x", correctPrice)
+        .send({ from: proposer });
+
+      // No state variables should be set before the dispute as priceProposed is not enabled.
+      assert.equal(hexToUtf8(await optimisticRequester.methods.identifier().call()), "");
+      assert.equal((await optimisticRequester.methods.timestamp().call()).toString(), "0");
+      assert.equal((await optimisticRequester.methods.price().call()).toString(), "0");
+      assert.equal((await optimisticRequester.methods.refund().call()).toString(), "0");
+
+      // Dispute proposal.
+      await collateral.methods.approve(optimisticOracle.options.address, totalDefaultBond).send({ from: disputer });
+      await optimisticOracle.methods
+        .disputePrice(optimisticRequester.options.address, identifier, requestTime, "0x")
+        .send({ from: disputer });
+
+      // Timestamp, identifier, and refund should be set.
+      assert.equal(hexToUtf8(await optimisticRequester.methods.identifier().call()), hexToUtf8(identifier));
+      assert.equal((await optimisticRequester.methods.timestamp().call()).toString(), requestTime.toString());
       assert.equal((await optimisticRequester.methods.refund().call()).toString(), reward);
+
+      // Price should be unset as this callback has not been received yet.
+      assert.equal((await optimisticRequester.methods.price().call()).toString(), "0");
+    });
+
+    it("Callback on priceSettled not enabled", async function () {
+      // Callbacks are disabled by default, so setting callbacks to revert would not affect price settlement.
+      await optimisticRequester.methods.setRevert(true).send({ from: accounts[0] });
+
+      // Propose price, dispute, push price and settle.
+      await collateral.methods.approve(optimisticOracle.options.address, totalDefaultBond).send({ from: proposer });
+      await optimisticOracle.methods
+        .proposePrice(optimisticRequester.options.address, identifier, requestTime, "0x", correctPrice)
+        .send({ from: proposer });
+      await collateral.methods.approve(optimisticOracle.options.address, totalDefaultBond).send({ from: disputer });
+      await optimisticOracle.methods
+        .disputePrice(optimisticRequester.options.address, identifier, requestTime, "0x")
+        .send({ from: disputer });
+      await pushPrice(correctPrice);
+      await optimisticOracle.methods
+        .settle(optimisticRequester.options.address, identifier, requestTime, "0x")
+        .send({ from: accounts[0] });
+
+      // No state variables should be set.
+      assert.equal(hexToUtf8(await optimisticRequester.methods.identifier().call()), "");
+      assert.equal((await optimisticRequester.methods.timestamp().call()).toString(), "0");
+      assert.equal((await optimisticRequester.methods.price().call()).toString(), "0");
+      assert.equal((await optimisticRequester.methods.refund().call()).toString(), "0");
+    });
+
+    it("Callback on priceSettled enabled", async function () {
+      // Enable only priceSettled callback.
+      const [callbackOnPriceProposed, callbackOnPriceDisputed, callbackOnPriceSettled] = [false, false, true];
+      await optimisticRequester.methods
+        .setCallbacks(
+          identifier,
+          requestTime,
+          "0x",
+          callbackOnPriceProposed,
+          callbackOnPriceDisputed,
+          callbackOnPriceSettled
+        )
+        .send({ from: accounts[0] });
+
+      // Propose price and dispute.
+      await collateral.methods.approve(optimisticOracle.options.address, totalDefaultBond).send({ from: proposer });
+      await optimisticOracle.methods
+        .proposePrice(optimisticRequester.options.address, identifier, requestTime, "0x", correctPrice)
+        .send({ from: proposer });
+      await collateral.methods.approve(optimisticOracle.options.address, totalDefaultBond).send({ from: disputer });
+      await optimisticOracle.methods
+        .disputePrice(optimisticRequester.options.address, identifier, requestTime, "0x")
+        .send({ from: disputer });
+
+      // No state variables should be set.
+      assert.equal(hexToUtf8(await optimisticRequester.methods.identifier().call()), "");
+      assert.equal((await optimisticRequester.methods.timestamp().call()).toString(), "0");
+      assert.equal((await optimisticRequester.methods.price().call()).toString(), "0");
+      assert.equal((await optimisticRequester.methods.refund().call()).toString(), "0");
+
+      // Push price and settle.
+      await pushPrice(correctPrice);
+      await optimisticOracle.methods
+        .settle(optimisticRequester.options.address, identifier, requestTime, "0x")
+        .send({ from: accounts[0] });
+
+      // Timestamp, identifier, and price should be set.
+      assert.equal(hexToUtf8(await optimisticRequester.methods.identifier().call()), hexToUtf8(identifier));
+      assert.equal((await optimisticRequester.methods.timestamp().call()).toString(), requestTime.toString());
+      assert.equal((await optimisticRequester.methods.price().call()).toString(), correctPrice);
+
+      // Refund should be unset as this callback has not been received.
+      assert.equal((await optimisticRequester.methods.refund().call()).toString(), "0");
     });
   });
 
@@ -624,16 +785,6 @@ describe("OptimisticOracle", function () {
             .send({ from: accounts[0] })
         )
       );
-    });
-
-    it("Verify proposal callback", async function () {
-      // Only timestamp and identifier should be set.
-      assert.equal(hexToUtf8(await optimisticRequester.methods.identifier().call()), hexToUtf8(identifier));
-      assert.equal((await optimisticRequester.methods.timestamp().call()).toString(), requestTime.toString());
-
-      // Price and refund should be unset as these callbacks have not been received yet.
-      assert.equal((await optimisticRequester.methods.price().call()).toString(), "0");
-      assert.equal((await optimisticRequester.methods.refund().call()).toString(), "0");
     });
 
     it("Disputed", async function () {
@@ -714,30 +865,6 @@ describe("OptimisticOracle", function () {
       await verifyBalanceSum(store.options.address, finalFee, halfDefaultBond);
     });
 
-    it("Verify settlement callback", async function () {
-      await collateral.methods.approve(optimisticOracle.options.address, totalDefaultBond).send({ from: disputer });
-      await optimisticOracle.methods
-        .disputePrice(optimisticRequester.options.address, identifier, requestTime, "0x")
-        .send({ from: disputer });
-
-      // Clear previous callback state.
-      await optimisticRequester.methods.clearState().send({ from: accounts[0] });
-
-      // Push price and settle.
-      await pushPrice(correctPrice);
-      await optimisticOracle.methods
-        .settle(optimisticRequester.options.address, identifier, requestTime, "0x")
-        .send({ from: accounts[0] });
-
-      // Timestamp, identifier, and price should be set.
-      assert.equal(hexToUtf8(await optimisticRequester.methods.identifier().call()), hexToUtf8(identifier));
-      assert.equal((await optimisticRequester.methods.timestamp().call()).toString(), requestTime.toString());
-      assert.equal((await optimisticRequester.methods.price().call()).toString(), correctPrice);
-
-      // Refund should be unset as this callback has not been received.
-      assert.equal((await optimisticRequester.methods.refund().call()).toString(), "0");
-    });
-
     it("Should Revert When Dispute For With 0 Address", async function () {
       await collateral.methods.approve(optimisticOracle.options.address, totalDefaultBond).send({ from: proposer });
       const request = optimisticOracle.methods
@@ -801,6 +928,19 @@ describe("OptimisticOracle", function () {
         .requestPrice(identifier, requestTime, ancillaryData, collateral.options.address, reward)
         .send({ from: accounts[0] });
       await verifyState(OptimisticOracleRequestStatesEnum.REQUESTED, ancillaryData);
+
+      // Enable all callbacks to detect updating ancillaryData state variable in requester.
+      const [callbackOnPriceProposed, callbackOnPriceDisputed, callbackOnPriceSettled] = [true, true, true];
+      await optimisticRequester.methods
+        .setCallbacks(
+          identifier,
+          requestTime,
+          ancillaryData,
+          callbackOnPriceProposed,
+          callbackOnPriceDisputed,
+          callbackOnPriceSettled
+        )
+        .send({ from: accounts[0] });
 
       // Proposed.
       await collateral.methods.approve(optimisticOracle.options.address, totalDefaultBond).send({ from: proposer });

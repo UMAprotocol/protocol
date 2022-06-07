@@ -84,6 +84,24 @@ contract OptimisticRequesterTest is OptimisticRequester {
         optimisticOracle.setEventBased(_identifier, _timestamp, _ancillaryData);
     }
 
+    function setCallbacks(
+        bytes32 _identifier,
+        uint256 _timestamp,
+        bytes memory _ancillaryData,
+        bool _callbackOnPriceProposed,
+        bool _callbackOnPriceDisputed,
+        bool _callbackOnPriceSettled
+    ) external {
+        optimisticOracle.setCallbacks(
+            _identifier,
+            _timestamp,
+            _ancillaryData,
+            _callbackOnPriceProposed,
+            _callbackOnPriceDisputed,
+            _callbackOnPriceSettled
+        );
+    }
+
     function setRevert(bool _shouldRevert) external {
         shouldRevert = _shouldRevert;
     }
