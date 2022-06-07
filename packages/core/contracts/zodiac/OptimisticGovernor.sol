@@ -25,6 +25,7 @@ contract OptimisticGovernor is Module, Lockable {
         address indexed proposer,
         uint256 indexed proposalTime,
         Proposal proposal,
+        bytes32 proposalHash,
         bytes explanation,
         uint256 challengeWindowEnds
     );
@@ -56,6 +57,8 @@ contract OptimisticGovernor is Module, Lockable {
     OptimisticOracleInterface public optimisticOracle;
 
     int256 public constant PROPOSAL_VALID_RESPONSE = int256(1e18);
+
+    bytes public constant PROPOSAL_HASH_KEY = "proposalHash";
 
     struct Transaction {
         address to;
@@ -210,7 +213,7 @@ contract OptimisticGovernor is Module, Lockable {
         bytes32 proposalHash = keccak256(abi.encode(_transactions));
 
         // Add the proposal hash to ancillary data.
-        bytes memory ancillaryData = AncillaryData.appendKeyValueBytes32("", "proposalHash", proposalHash);
+        bytes memory ancillaryData = AncillaryData.appendKeyValueBytes32("", PROPOSAL_HASH_KEY, proposalHash);
 
         // Check that the proposal is not already mapped to a proposal time, i.e., is not a duplicate.
         require(proposalHashes[proposalHash] == 0, "Duplicate proposals are not allowed");
@@ -241,7 +244,7 @@ contract OptimisticGovernor is Module, Lockable {
 
         uint256 challengeWindowEnds = time + liveness;
 
-        emit TransactionsProposed(proposer, time, proposal, _explanation, challengeWindowEnds);
+        emit TransactionsProposed(proposer, time, proposal, proposalHash, _explanation, challengeWindowEnds);
     }
 
     /**
@@ -253,7 +256,7 @@ contract OptimisticGovernor is Module, Lockable {
         bytes32 _proposalHash = keccak256(abi.encode(_transactions));
 
         // Add the proposal hash to ancillary data.
-        bytes memory ancillaryData = AncillaryData.appendKeyValueBytes32("", "proposalHash", _proposalHash);
+        bytes memory ancillaryData = AncillaryData.appendKeyValueBytes32("", PROPOSAL_HASH_KEY, _proposalHash);
 
         // This will reject the transaction if the proposal hash generated from the inputs does not match the stored proposal hash.
         require(proposalHashes[_proposalHash] != 0, "proposal hash does not exist");
@@ -306,7 +309,7 @@ contract OptimisticGovernor is Module, Lockable {
         require(proposalHashes[_proposalHash] != 0, "Proposal does not exist");
 
         // Add the proposal hash to ancillary data.
-        bytes memory ancillaryData = AncillaryData.appendKeyValueBytes32("", "proposalHash", _proposalHash);
+        bytes memory ancillaryData = AncillaryData.appendKeyValueBytes32("", PROPOSAL_HASH_KEY, _proposalHash);
 
         // Get the original proposal time.
         uint256 _originalTime = proposalHashes[_proposalHash];
@@ -331,7 +334,7 @@ contract OptimisticGovernor is Module, Lockable {
         require(proposalHashes[_proposalHash] != 0, "Proposal does not exist");
 
         // Add the proposal hash to ancillary data.
-        bytes memory ancillaryData = AncillaryData.appendKeyValueBytes32("", "proposalHash", _proposalHash);
+        bytes memory ancillaryData = AncillaryData.appendKeyValueBytes32("", PROPOSAL_HASH_KEY, _proposalHash);
 
         // Get the original proposal time.
         uint256 _originalTime = proposalHashes[_proposalHash];
