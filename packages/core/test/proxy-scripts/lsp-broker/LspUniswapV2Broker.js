@@ -30,7 +30,7 @@ const AddressWhitelist = getContract("AddressWhitelist");
 const IdentifierWhitelist = getContract("IdentifierWhitelist");
 const Finder = getContract("Finder");
 const Timer = getContract("Timer");
-const OptimisticOracle = getContract("OptimisticOracle");
+const OptimisticOracle = getContract("OptimisticOracleV1_1");
 
 // Uniswap contracts
 let factory;

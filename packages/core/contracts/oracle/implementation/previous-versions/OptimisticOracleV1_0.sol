@@ -72,7 +72,7 @@ interface OptimisticRequester {
  * @title Optimistic Oracle.
  * @notice Pre-DVM escalation contract that allows faster settlement.
  */
-contract V1OptimisticOracle is V1OptimisticOracleInterface, Testable, Lockable {
+contract OptimisticOracleV1_0 is V1OptimisticOracleInterface, Testable, Lockable {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
     using Address for address;

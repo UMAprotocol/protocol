@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
  * @title Financial contract facing Oracle interface.
  * @dev Interface used by financial contracts to interact with the Oracle. Voters will use a different interface.
  */
-abstract contract V1_1OptimisticOracleInterface {
+abstract contract OptimisticOracleV1_1Interface {
     // Struct representing the state of a price request.
     enum State {
         Invalid, // Never requested.

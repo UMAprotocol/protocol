@@ -24,7 +24,7 @@ const IdentifierWhitelist = getContract("IdentifierWhitelist");
 const Finder = getContract("Finder");
 const Store = getContract("Store");
 const Timer = getContract("Timer");
-const OptimisticOracle = getContract("OptimisticOracle");
+const OptimisticOracle = getContract("OptimisticOracleV1_1");
 const Token = getContract("ExpandedERC20");
 
 // Contracts

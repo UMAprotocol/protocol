@@ -12,7 +12,7 @@
 // const Finder = getContract("Finder");
 // const IdentifierWhitelist = getContract("IdentifierWhitelist");
 // const AddressWhitelist = getContract("AddressWhitelist");
-// const OptimisticOracle = getContract("OptimisticOracle");
+// const OptimisticOracle = getContract("OptimisticOracleV1_1");
 // const MockOracle = getContract("MockOracleAncillary");
 // const Timer = getContract("Timer");
 // const Store = getContract("Store");

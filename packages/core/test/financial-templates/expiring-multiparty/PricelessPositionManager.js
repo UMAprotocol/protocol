@@ -12,7 +12,7 @@ const PricelessPositionManager = getContract("PricelessPositionManager");
 // Other UMA related contracts and mocks
 const Store = getContract("Store");
 const Finder = getContract("Finder");
-const OptimisticOracle = getContract("OptimisticOracle");
+const OptimisticOracle = getContract("OptimisticOracleV1_1");
 const MockOracle = getContract("MockOracleAncillary");
 const AddressWhitelist = getContract("AddressWhitelist");
 const IdentifierWhitelist = getContract("IdentifierWhitelist");
