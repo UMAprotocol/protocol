@@ -10,7 +10,7 @@ import "../interfaces/StoreInterface.sol";
 import "../interfaces/OracleAncillaryInterface.sol";
 import "../interfaces/FinderInterface.sol";
 import "../interfaces/IdentifierWhitelistInterface.sol";
-import "../interfaces/OptimisticOracleV1_1Interface.sol";
+import "../interfaces/OptimisticOracleV2Interface.sol";
 import "./Constants.sol";
 
 import "../../common/implementation/Testable.sol";
@@ -72,7 +72,7 @@ interface OptimisticRequester {
  * @title Optimistic Oracle.
  * @notice Pre-DVM escalation contract that allows faster settlement.
  */
-contract OptimisticOracleV1_1 is OptimisticOracleV1_1Interface, Testable, Lockable {
+contract OptimisticOracleV2 is OptimisticOracleV2Interface, Testable, Lockable {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
     using Address for address;

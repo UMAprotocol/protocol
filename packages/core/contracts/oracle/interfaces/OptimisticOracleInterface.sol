@@ -8,7 +8,7 @@ import "./FinderInterface.sol";
  * @title Financial contract facing Oracle interface.
  * @dev Interface used by financial contracts to interact with the Oracle. Voters will use a different interface.
  */
-abstract contract V1OptimisticOracleInterface {
+abstract contract OptimisticOracleInterface {
     event RequestPrice(
         address indexed requester,
         bytes32 identifier,

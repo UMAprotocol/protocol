@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 // WARNING: This contract has been deprecated! It is left in the UMA Protocol repo for backwards compatibility reasons.
-// You should refer to the latest implementation of the Optimistic Oracle which is named OptimisticOracleV1_1 and can
+// You should refer to the latest implementation of the Optimistic Oracle which is named OptimisticOracleV2 and can
 // be found in the UMA Finder under the same name.
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -76,7 +76,7 @@ interface OptimisticRequester {
  * @title Optimistic Oracle.
  * @notice Pre-DVM escalation contract that allows faster settlement.
  */
-contract OptimisticOracle is V1OptimisticOracleInterface, Testable, Lockable {
+contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
     using Address for address;
@@ -643,7 +643,7 @@ contract OptimisticOracle is V1OptimisticOracleInterface, Testable, Lockable {
         return AncillaryData.appendKeyValueAddress(ancillaryData, "ooRequester", requester);
     }
 
-    function getCurrentTime() public view override(Testable, V1OptimisticOracleInterface) returns (uint256) {
+    function getCurrentTime() public view override(Testable, OptimisticOracleInterface) returns (uint256) {
         return Testable.getCurrentTime();
     }
 }
