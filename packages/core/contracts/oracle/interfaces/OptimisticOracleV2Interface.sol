@@ -92,6 +92,9 @@ abstract contract OptimisticOracleV2Interface {
 
     function getCurrentTime() external view virtual returns (uint256);
 
+    // Note: this is required so that typechain generates a return value with named fields.
+    mapping(bytes32 => Request) public requests;
+
     /**
      * @notice Requests a new price.
      * @param identifier price identifier being requested.
