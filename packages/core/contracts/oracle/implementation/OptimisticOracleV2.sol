@@ -77,52 +77,11 @@ contract OptimisticOracleV2 is OptimisticOracleV2Interface, Testable, Lockable {
     using SafeERC20 for IERC20;
     using Address for address;
 
-    event RequestPrice(
-        address indexed requester,
-        bytes32 identifier,
-        uint256 timestamp,
-        bytes ancillaryData,
-        address currency,
-        uint256 reward,
-        uint256 finalFee
-    );
-    event ProposePrice(
-        address indexed requester,
-        address indexed proposer,
-        bytes32 identifier,
-        uint256 timestamp,
-        bytes ancillaryData,
-        int256 proposedPrice,
-        uint256 expirationTimestamp,
-        address currency
-    );
-    event DisputePrice(
-        address indexed requester,
-        address indexed proposer,
-        address indexed disputer,
-        bytes32 identifier,
-        uint256 timestamp,
-        bytes ancillaryData,
-        int256 proposedPrice
-    );
-    event Settle(
-        address indexed requester,
-        address indexed proposer,
-        address indexed disputer,
-        bytes32 identifier,
-        uint256 timestamp,
-        bytes ancillaryData,
-        int256 price,
-        uint256 payout
-    );
-
-    mapping(bytes32 => Request) public requests;
-
     // Finder to provide addresses for DVM contracts.
-    FinderInterface public finder;
+    FinderInterface public override finder;
 
     // Default liveness value for all price requests.
-    uint256 public defaultLiveness;
+    uint256 public override defaultLiveness;
 
     // This is effectively the extra ancillary data to add ",ooRequester:0000000000000000000000000000000000000000".
     uint256 private constant MAX_ADDED_ANCILLARY_DATA = 53;
@@ -763,5 +722,9 @@ contract OptimisticOracleV2 is OptimisticOracleV2Interface, Testable, Lockable {
         // Since this contract will be the one to formally submit DVM price requests, its useful for voters to know who
         // the original requester was.
         return AncillaryData.appendKeyValueAddress(ancillaryData, "ooRequester", requester);
+    }
+
+    function getCurrentTime() public view override(Testable, OptimisticOracleV2Interface) returns (uint256) {
+        return Testable.getCurrentTime();
     }
 }
