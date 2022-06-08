@@ -60,8 +60,8 @@
     "address": "0xc43767f4592df265b4a9f1a398b97ff24f38c6a6"
   },
   {
-    "contractName": "V1OptimisticOracleInterface",
-    "address": "0xc43767f4592df265b4a9f1a398b97ff24f38c6a6"
+    "contractName": "OptimisticOracleV2",
+    "address": "0xA0Ae6609447e57a42c51B50EAe921D701823FFAe"
   },
   {
     "contractName": "PerpetualLib",
