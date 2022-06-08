@@ -86,6 +86,12 @@ abstract contract OptimisticOracleV2Interface {
     // to accept a price request made with ancillary data length over a certain size.
     uint256 public constant ancillaryBytesLimit = 8192;
 
+    function defaultLiveness() external view virtual returns (uint256);
+
+    function finder() external view virtual returns (FinderInterface);
+
+    function getCurrentTime() external view virtual returns (uint256);
+
     /**
      * @notice Requests a new price.
      * @param identifier price identifier being requested.
