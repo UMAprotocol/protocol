@@ -8,6 +8,44 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
  * @dev Interface used by financial contracts to interact with the Oracle. Voters will use a different interface.
  */
 abstract contract OptimisticOracleV2Interface {
+    event RequestPrice(
+        address indexed requester,
+        bytes32 identifier,
+        uint256 timestamp,
+        bytes ancillaryData,
+        address currency,
+        uint256 reward,
+        uint256 finalFee
+    );
+    event ProposePrice(
+        address indexed requester,
+        address indexed proposer,
+        bytes32 identifier,
+        uint256 timestamp,
+        bytes ancillaryData,
+        int256 proposedPrice,
+        uint256 expirationTimestamp,
+        address currency
+    );
+    event DisputePrice(
+        address indexed requester,
+        address indexed proposer,
+        address indexed disputer,
+        bytes32 identifier,
+        uint256 timestamp,
+        bytes ancillaryData,
+        int256 proposedPrice
+    );
+    event Settle(
+        address indexed requester,
+        address indexed proposer,
+        address indexed disputer,
+        bytes32 identifier,
+        uint256 timestamp,
+        bytes ancillaryData,
+        int256 price,
+        uint256 payout
+    );
     // Struct representing the state of a price request.
     enum State {
         Invalid, // Never requested.
