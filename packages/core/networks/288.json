@@ -33,10 +33,6 @@
     "address": "0x7da554228555C8Bf3748403573d48a2138C6b848"
   },
   {
-    "contractName": "V1OptimisticOracleInterface",
-    "address": "0x7da554228555C8Bf3748403573d48a2138C6b848"
-  },
-  {
     "contractName": "Store",
     "address": "0x21331016f2020B77528B690986ca0b7C6BE012e4"
   },
