@@ -2,7 +2,6 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "./FinderInterface.sol";
 
 /**
  * @title Financial contract facing Oracle interface.
@@ -89,7 +88,7 @@ abstract contract OptimisticOracleV2Interface {
 
     function defaultLiveness() external view virtual returns (uint256);
 
-    function finder() external view virtual returns (FinderInterface);
+    function finder() external view virtual returns (address);
 
     function getCurrentTime() external view virtual returns (uint256);
 
