@@ -646,8 +646,8 @@ describe("LongShortPair", function () {
       assert.equal(request.proposedPrice, "0");
       assert.equal(request.resolvedPrice, "0");
       assert.equal(request.reward, proposerReward);
-      assert.equal(request.requestSettings.bond, optimisticOracleProposerBond);
-      assert.equal(request.requestSettings.customLiveness, optimisticOracleLivenessTime);
+      assert.equal(request.bond, optimisticOracleProposerBond);
+      assert.equal(request.customLiveness, optimisticOracleLivenessTime);
 
       // Proposing a price without approving the proposal bond should revert.
       assert(
