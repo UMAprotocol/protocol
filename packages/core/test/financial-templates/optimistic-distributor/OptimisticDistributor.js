@@ -956,4 +956,52 @@ describe("OptimisticDistributor", async function () {
       )
     );
   });
+  it("Optimistic Oracle upgrade unblocks proposal", async function () {
+    // Deploy new Optimistic Oracle and update in Finder.
+    const newOptimisticOracle = await OptimisticOracle.new(7200, finder.options.address, timer.options.address).send({
+      from: deployer,
+    });
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.OptimisticOracle), newOptimisticOracle.options.address)
+      .send({ from: deployer });
+
+    // Perform create-propose rewards cycle.
+    const rewardIndex = 0;
+    const [totalBond, ancillaryData, previousProposalTimestamp, merkleRoot] = await createProposeRewards(rewardIndex);
+    const previousProposalId = generateProposalId(identifier, previousProposalTimestamp, ancillaryData);
+
+    // New proposal should be blocked before OO upgrade sync.
+    assert(
+      await didContractRevertWith(
+        optimisticDistributor.methods.proposeDistribution(rewardIndex, merkleRoot, ipfsHash).send({ from: proposer }),
+        "New proposals blocked"
+      )
+    );
+
+    // Sync upgraded Optimistic Oracle.
+    await optimisticDistributor.methods.syncUmaEcosystemParams().send({ from: anyAddress });
+
+    // Execute distribution once reached OO liveness should revert as original request was in old OO.
+    await advanceTime(proposalLiveness);
+    assert(
+      await didContractRevertWith(
+        optimisticDistributor.methods.executeDistribution(previousProposalId).send({ from: anyAddress }),
+        "_settle: not settleable"
+      )
+    );
+
+    // New proposal should now be unblocked as OO has been updated.
+    await mintAndApprove(bondToken, proposer, optimisticDistributor.options.address, totalBond, deployer);
+    await optimisticDistributor.methods.proposeDistribution(rewardIndex, merkleRoot, ipfsHash).send({ from: proposer });
+
+    // Proposer can recover previous bond by settling on old instance of Optimistic Oracle.
+    const balanceBeforeSettle = toBN(await bondToken.methods.balanceOf(proposer).call());
+    await optimisticOracle.methods
+      .settle(optimisticDistributor.options.address, identifier, previousProposalTimestamp, ancillaryData)
+      .send({ from: proposer });
+    assert.equal(
+      await bondToken.methods.balanceOf(proposer).call(),
+      balanceBeforeSettle.add(toBN(totalBond)).toString()
+    );
+  });
 });
