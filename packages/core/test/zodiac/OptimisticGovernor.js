@@ -226,7 +226,7 @@ describe("OptimisticGovernor", () => {
   it("Can not send transactions to the 0x0 address", async function () {
     const txnData1 = constructTransferTransaction(proposer, toWei("1"));
     const operation = 0; // 0 for call, 1 for delegatecall
-    const transactions = [{ to: ZERO_ADDRESS, value: 0, data: txnData1, operation }];
+    const transactions = [{ to: ZERO_ADDRESS, operation, value: 0, data: txnData1 }];
     const explanation = utf8ToHex("These transactions were approved by majority vote on Snapshot.");
 
     assert(
@@ -239,7 +239,7 @@ describe("OptimisticGovernor", () => {
   it("Can not send transactions with data to an EOA", async function () {
     const txnData1 = constructTransferTransaction(proposer, toWei("1"));
     const operation = 0; // 0 for call, 1 for delegatecall
-    const transactions = [{ to: executor, value: 0, data: txnData1, operation }];
+    const transactions = [{ to: executor, operation, value: 0, data: txnData1 }];
     const explanation = utf8ToHex("These transactions were approved by majority vote on Snapshot.");
 
     assert(
