@@ -80,10 +80,6 @@
     "address": "0x3746badD4d6002666dacd5d7bEE19f60019A8433"
   },
   {
-    "contractName": "V1OptimisticOracleInterface",
-    "address": "0x3746badD4d6002666dacd5d7bEE19f60019A8433"
-  },
-  {
     "contractName": "TokenFactory",
     "address": "0xcB69d8dAb9b1F1D9dF8A42a1001fd0ce7A8fFB5B"
   },

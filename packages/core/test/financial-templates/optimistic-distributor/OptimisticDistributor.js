@@ -601,7 +601,7 @@ describe("OptimisticDistributor", async function () {
     const request = await optimisticOracle.methods
       .getRequest(optimisticDistributor.options.address, identifier, proposalTimestamp, ancillaryData)
       .call();
-    assert.equal(request.requestSettings.bond, bondAmount);
+    assert.equal(request.bond, bondAmount);
 
     // Fetch bond token balances after proposal.
     const proposerBalanceAfter = toBN(await bondToken.methods.balanceOf(proposer).call());
