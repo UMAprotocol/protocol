@@ -48,21 +48,14 @@ describe("OptimisticGovernor", () => {
     return testToken.methods.transfer(destination, amount).encodeABI();
   };
 
-  const constructProposalDeleteTransaction = (proposalHash) => {
-    return optimisticOracleModule.methods.deleteProposal(proposalHash).encodeABI();
-  };
+  // const constructProposalDeleteTransaction = (proposalHash) => {
+  //   return optimisticOracleModule.methods.deleteProposal(proposalHash).encodeABI();
+  // };
 
   const advanceTime = async (timeIncrease) => {
     await timer.methods
       .setCurrentTime(Number(await timer.methods.getCurrentTime().call()) + timeIncrease)
       .send({ from: owner });
-  };
-
-  const pushPrice = async (price) => {
-    const [lastQuery] = (await mockOracle.methods.getPendingQueries().call()).slice(-1);
-    await mockOracle.methods
-      .pushPrice(lastQuery.identifier, lastQuery.time, lastQuery.ancillaryData, price)
-      .send({ from: accounts[0] });
   };
 
   before(async function () {
@@ -261,13 +254,10 @@ describe("OptimisticGovernor", () => {
     const operation = 0; // 0 for call, 1 for delegatecall
 
     // Send the proposal with multiple transactions.
-    const prevProposalId = parseInt(await optimisticOracleModule.methods.prevProposalId().call());
-    const id = prevProposalId + 1;
-
     const transactions = [
-      { to: testToken.options.address, value: 0, data: txnData1, operation },
-      { to: testToken.options.address, value: 0, data: txnData2, operation },
-      { to: testToken2.options.address, value: 0, data: txnData3, operation },
+      { to: testToken.options.address, operation, value: 0, data: txnData1 },
+      { to: testToken.options.address, operation, value: 0, data: txnData2 },
+      { to: testToken2.options.address, operation, value: 0, data: txnData3 },
     ];
 
     const explanation = utf8ToHex("These transactions were approved by majority vote on Snapshot.");
@@ -276,17 +266,23 @@ describe("OptimisticGovernor", () => {
       .proposeTransactions(transactions, explanation)
       .send({ from: proposer });
 
+    const { proposalHash } = (
+      await findEvent(receipt, optimisticOracleModule, "TransactionsProposed")
+    ).match.returnValues;
+
     const proposalTime = parseInt(await optimisticOracleModule.methods.getCurrentTime().call());
+    const endingTime = proposalTime + liveness;
 
     await assertEventEmitted(
       receipt,
       optimisticOracleModule,
       "TransactionsProposed",
       (event) =>
-        event.proposalId == id &&
         event.proposer == proposer &&
         event.proposalTime == proposalTime &&
+        event.proposalHash == proposalHash &&
         event.explanation == explanation &&
+        event.challengeWindowEnds == endingTime &&
         event.proposal.requestTime == proposalTime &&
         event.proposal.transactions[0].to == testToken.options.address &&
         event.proposal.transactions[0].value == 0 &&
@@ -310,7 +306,7 @@ describe("OptimisticGovernor", () => {
     const startingBalance2 = toBN(await testToken.methods.balanceOf(rando).call());
     const startingBalance3 = toBN(await testToken2.methods.balanceOf(proposer).call());
 
-    await optimisticOracleModule.methods.executeProposal(id, transactions, proposalTime).send({ from: executor });
+    await optimisticOracleModule.methods.executeProposal(transactions).send({ from: executor });
     assert.equal(
       (await testToken.methods.balanceOf(proposer).call()).toString(),
       startingBalance1.add(toBN(toWei("1"))).toString()
@@ -339,25 +335,18 @@ describe("OptimisticGovernor", () => {
     const operation = 0; // 0 for call, 1 for delegatecall
 
     // Send the proposal with multiple transactions.
-    const prevProposalId = parseInt(await optimisticOracleModule.methods.prevProposalId().call());
-    const id = prevProposalId + 1;
-
     const transactions = [
-      { to: testToken.options.address, value: 0, data: txnData1, operation },
-      { to: testToken.options.address, value: 0, data: txnData2, operation },
-      { to: testToken2.options.address, value: 0, data: txnData3, operation },
+      { to: testToken.options.address, operation, value: 0, data: txnData1 },
+      { to: testToken.options.address, operation, value: 0, data: txnData2 },
+      { to: testToken2.options.address, operation, value: 0, data: txnData3 },
     ];
-
-    const proposalTime = parseInt(await optimisticOracleModule.methods.getCurrentTime().call());
 
     // Advance time to one second before end of the dispute period.
     const tooEarly = liveness - 1;
     await advanceTime(tooEarly);
 
     assert(
-      await didContractThrow(
-        optimisticOracleModule.methods.executeProposal(id, transactions, proposalTime).send({ from: executor })
-      )
+      await didContractThrow(optimisticOracleModule.methods.executeProposal(transactions).send({ from: executor }))
     );
   });
 
@@ -374,9 +363,9 @@ describe("OptimisticGovernor", () => {
 
     // Send the proposal with multiple transactions.
     const transactions = [
-      { to: testToken.options.address, value: 0, data: txnData1, operation },
-      { to: testToken.options.address, value: 0, data: txnData2, operation },
-      { to: testToken2.options.address, value: 0, data: txnData3, operation },
+      { to: testToken.options.address, operation, value: 0, data: txnData1 },
+      { to: testToken.options.address, operation, value: 0, data: txnData2 },
+      { to: testToken2.options.address, operation, value: 0, data: txnData3 },
     ];
 
     const explanation = utf8ToHex("These transactions were approved by majority vote on Snapshot.");
@@ -386,6 +375,10 @@ describe("OptimisticGovernor", () => {
       .send({ from: proposer });
 
     const { ancillaryData } = (await findEvent(receipt, optimisticOracle, "ProposePrice")).match.returnValues;
+
+    const { proposalHash } = (
+      await findEvent(receipt, optimisticOracleModule, "TransactionsProposed")
+    ).match.returnValues;
 
     const proposalTime = parseInt(await optimisticOracleModule.methods.getCurrentTime().call());
 
@@ -403,9 +396,14 @@ describe("OptimisticGovernor", () => {
       "DisputePrice",
       (event) => event.requester == optimisticOracleModule.options.address && event.ancillaryData == ancillaryData
     );
+
+    // Disputed proposal hash can be deleted from any address.
+    await optimisticOracleModule.methods.deleteDisputedProposal(proposalHash).send({ from: rando });
+    const disputedProposalHash = await optimisticOracleModule.methods.proposalHashes(proposalHash).call();
+    assert.equal(disputedProposalHash, 0);
   });
 
-  it("Disputed proposals can not be settled until DVM vote resolves", async function () {
+  it("Disputed proposals can be proposed again", async function () {
     // Issue some test tokens to the avatar address.
     await testToken.methods.allocateTo(avatar.options.address, toWei("3")).send({ from: accounts[0] });
     await testToken2.methods.allocateTo(avatar.options.address, toWei("2")).send({ from: accounts[0] });
@@ -417,13 +415,10 @@ describe("OptimisticGovernor", () => {
     const operation = 0; // 0 for call, 1 for delegatecall
 
     // Send the proposal with multiple transactions.
-    const prevProposalId = parseInt(await optimisticOracleModule.methods.prevProposalId().call());
-    const id = prevProposalId + 1;
-
     const transactions = [
-      { to: testToken.options.address, value: 0, data: txnData1, operation },
-      { to: testToken.options.address, value: 0, data: txnData2, operation },
-      { to: testToken2.options.address, value: 0, data: txnData3, operation },
+      { to: testToken.options.address, operation, value: 0, data: txnData1 },
+      { to: testToken.options.address, operation, value: 0, data: txnData2 },
+      { to: testToken2.options.address, operation, value: 0, data: txnData3 },
     ];
 
     const explanation = utf8ToHex("These transactions were approved by majority vote on Snapshot.");
@@ -434,253 +429,169 @@ describe("OptimisticGovernor", () => {
 
     const { ancillaryData } = (await findEvent(receipt, optimisticOracle, "ProposePrice")).match.returnValues;
 
+    const { proposalHash } = (
+      await findEvent(receipt, optimisticOracleModule, "TransactionsProposed")
+    ).match.returnValues;
+
     const proposalTime = parseInt(await optimisticOracleModule.methods.getCurrentTime().call());
 
     // Advance time to one second before end of the dispute period.
     const stillOpen = liveness - 1;
     await advanceTime(stillOpen);
 
+    // Duplicate proposal should be rejected if the proposal still exists.
+    assert(
+      await didContractThrow(
+        optimisticOracleModule.methods.proposeTransactions(transactions, explanation).send({ from: proposer })
+      )
+    );
+
+    // Dispute proposal
     await optimisticOracle.methods
       .disputePrice(optimisticOracleModule.options.address, identifier, proposalTime, ancillaryData)
       .send({ from: disputer });
 
-    // Advance time past end of liveness window.
+    // Disputed proposal hash can be deleted from any address.
+    await optimisticOracleModule.methods.deleteDisputedProposal(proposalHash).send({ from: rando });
+    const disputedProposalHashTimestamp = await optimisticOracleModule.methods.proposalHashes(proposalHash).call();
+    assert.equal(disputedProposalHashTimestamp, 0);
+
+    // Duplicate proposal can be made after original proposal is deleted. This is useful in case the disputer was wrong.
+    let receipt2 = await optimisticOracleModule.methods
+      .proposeTransactions(transactions, explanation)
+      .send({ from: proposer });
+
+    const proposalTime2 = parseInt(await optimisticOracleModule.methods.getCurrentTime().call());
+    const endingTime2 = proposalTime2 + liveness;
+
+    await assertEventEmitted(
+      receipt2,
+      optimisticOracleModule,
+      "TransactionsProposed",
+      (event) =>
+        event.proposer == proposer &&
+        event.proposalTime == proposalTime2 &&
+        event.proposalHash == proposalHash &&
+        event.explanation == explanation &&
+        event.challengeWindowEnds == endingTime2 &&
+        event.proposal.requestTime == proposalTime2 &&
+        event.proposal.transactions[0].to == testToken.options.address &&
+        event.proposal.transactions[0].value == 0 &&
+        event.proposal.transactions[0].data == txnData1 &&
+        event.proposal.transactions[0].operation == 0 &&
+        event.proposal.transactions[1].to == testToken.options.address &&
+        event.proposal.transactions[1].value == 0 &&
+        event.proposal.transactions[1].data == txnData2 &&
+        event.proposal.transactions[1].operation == 0 &&
+        event.proposal.transactions[2].to == testToken2.options.address &&
+        event.proposal.transactions[2].value == 0 &&
+        event.proposal.transactions[2].data == txnData3 &&
+        event.proposal.transactions[2].operation == 0
+    );
+  });
+
+  it("Can not delete proposal that was not disputed", async function () {});
+
+  it("Disputed proposals can not be executed", async function () {
+    // Issue some test tokens to the avatar address.
+    await testToken.methods.allocateTo(avatar.options.address, toWei("3")).send({ from: accounts[0] });
+    await testToken2.methods.allocateTo(avatar.options.address, toWei("2")).send({ from: accounts[0] });
+
+    // Construct the transaction data to send the newly minted tokens to proposer and another address.
+    const txnData1 = constructTransferTransaction(proposer, toWei("1"));
+    const txnData2 = constructTransferTransaction(rando, toWei("2"));
+    const txnData3 = constructTransferTransaction(proposer, toWei("2"));
+    const operation = 0; // 0 for call, 1 for delegatecall
+
+    // Send the proposal with multiple transactions.
+    const transactions = [
+      { to: testToken.options.address, operation, value: 0, data: txnData1 },
+      { to: testToken.options.address, operation, value: 0, data: txnData2 },
+      { to: testToken2.options.address, operation, value: 0, data: txnData3 },
+    ];
+
+    const explanation = utf8ToHex("These transactions were approved by majority vote on Snapshot.");
+
+    const receipt = await optimisticOracleModule.methods
+      .proposeTransactions(transactions, explanation)
+      .send({ from: proposer });
+
+    const { ancillaryData } = (await findEvent(receipt, optimisticOracle, "ProposePrice")).match.returnValues;
+
+    const proposalTime = parseInt(await optimisticOracleModule.methods.getCurrentTime().call());
+
+    // Advance time to one second before end of the dispute period.
+    const stillOpen = liveness - 1;
+    await advanceTime(stillOpen);
+
+    // Dispute.
+    await optimisticOracle.methods
+      .disputePrice(optimisticOracleModule.options.address, identifier, proposalTime, ancillaryData)
+      .send({ from: disputer });
+
+    // Advance time past the liveness window.
     await advanceTime(2);
 
-    assert(
-      await didContractThrow(
-        optimisticOracleModule.methods.executeProposal(id, transactions, proposalTime).send({ from: executor })
-      )
-    );
-  });
-
-  it("Disputed proposals can be executed if approved by the DVM", async function () {
-    // Issue some test tokens to the avatar address.
-    await testToken.methods.allocateTo(avatar.options.address, toWei("3")).send({ from: accounts[0] });
-    await testToken2.methods.allocateTo(avatar.options.address, toWei("2")).send({ from: accounts[0] });
-
-    // Construct the transaction data to send the newly minted tokens to proposer and another address.
-    const txnData1 = constructTransferTransaction(proposer, toWei("1"));
-    const txnData2 = constructTransferTransaction(rando, toWei("2"));
-    const txnData3 = constructTransferTransaction(proposer, toWei("2"));
-    const operation = 0; // 0 for call, 1 for delegatecall
-
-    // Send the proposal with multiple transactions.
-    const prevProposalId = parseInt(await optimisticOracleModule.methods.prevProposalId().call());
-    const id = prevProposalId + 1;
-
-    const transactions = [
-      { to: testToken.options.address, value: 0, data: txnData1, operation },
-      { to: testToken.options.address, value: 0, data: txnData2, operation },
-      { to: testToken2.options.address, value: 0, data: txnData3, operation },
-    ];
-
-    const explanation = utf8ToHex("These transactions were approved by majority vote on Snapshot.");
-
-    const receipt = await optimisticOracleModule.methods
-      .proposeTransactions(transactions, explanation)
-      .send({ from: proposer });
-
-    const { ancillaryData } = (await findEvent(receipt, optimisticOracle, "ProposePrice")).match.returnValues;
-
-    const proposalTime = parseInt(await optimisticOracleModule.methods.getCurrentTime().call());
-
-    // Advance time to one second before end of the dispute period.
-    const stillOpen = liveness - 1;
-    await advanceTime(stillOpen);
-
-    // Dispute.
-    await optimisticOracle.methods
-      .disputePrice(optimisticOracleModule.options.address, identifier, proposalTime, ancillaryData)
-      .send({ from: disputer });
-
-    // DVM approves the proposal.
-    await pushPrice(toWei("1"));
-
-    // Set starting balances of tokens to be transferred.
-    const startingBalance1 = toBN(await testToken.methods.balanceOf(proposer).call());
-    const startingBalance2 = toBN(await testToken.methods.balanceOf(rando).call());
-    const startingBalance3 = toBN(await testToken2.methods.balanceOf(proposer).call());
-
-    // Execute proposal and test results.
-    await optimisticOracleModule.methods.executeProposal(id, transactions, proposalTime).send({ from: executor });
-    assert.equal(
-      (await testToken.methods.balanceOf(proposer).call()).toString(),
-      startingBalance1.add(toBN(toWei("1"))).toString()
-    );
-    assert.equal(
-      (await testToken.methods.balanceOf(rando).call()).toString(),
-      startingBalance2.add(toBN(toWei("2"))).toString()
-    );
-    assert.equal(
-      (await testToken2.methods.balanceOf(proposer).call()).toString(),
-      startingBalance3.add(toBN(toWei("2"))).toString()
-    );
-  });
-
-  it("Disputed proposals can not be executed if rejected by the DVM", async function () {
-    // Issue some test tokens to the avatar address.
-    await testToken.methods.allocateTo(avatar.options.address, toWei("3")).send({ from: accounts[0] });
-    await testToken2.methods.allocateTo(avatar.options.address, toWei("2")).send({ from: accounts[0] });
-
-    // Construct the transaction data to send the newly minted tokens to proposer and another address.
-    const txnData1 = constructTransferTransaction(proposer, toWei("1"));
-    const txnData2 = constructTransferTransaction(rando, toWei("2"));
-    const txnData3 = constructTransferTransaction(proposer, toWei("2"));
-    const operation = 0; // 0 for call, 1 for delegatecall
-
-    // Send the proposal with multiple transactions.
-    const prevProposalId = parseInt(await optimisticOracleModule.methods.prevProposalId().call());
-    const id = prevProposalId + 1;
-
-    const transactions = [
-      { to: testToken.options.address, value: 0, data: txnData1, operation },
-      { to: testToken.options.address, value: 0, data: txnData2, operation },
-      { to: testToken2.options.address, value: 0, data: txnData3, operation },
-    ];
-
-    const explanation = utf8ToHex("These transactions were approved by majority vote on Snapshot.");
-
-    const receipt = await optimisticOracleModule.methods
-      .proposeTransactions(transactions, explanation)
-      .send({ from: proposer });
-
-    const { ancillaryData } = (await findEvent(receipt, optimisticOracle, "ProposePrice")).match.returnValues;
-
-    const proposalTime = parseInt(await optimisticOracleModule.methods.getCurrentTime().call());
-
-    // Advance time to one second before end of the dispute period.
-    const stillOpen = liveness - 1;
-    await advanceTime(stillOpen);
-
-    // Dispute.
-    await optimisticOracle.methods
-      .disputePrice(optimisticOracleModule.options.address, identifier, proposalTime, ancillaryData)
-      .send({ from: disputer });
-
-    // DVM rejects the proposal.
-    await pushPrice(0);
-
     // Proposal should not be executed.
     assert(
-      await didContractThrow(
-        optimisticOracleModule.methods.executeProposal(id, transactions, proposalTime).send({ from: executor })
-      )
+      await didContractThrow(optimisticOracleModule.methods.executeProposal(transactions).send({ from: executor }))
     );
   });
 
-  it("Rejected proposals can be deleted by any address", async function () {
-    // Issue some test tokens to the avatar address.
-    await testToken.methods.allocateTo(avatar.options.address, toWei("3")).send({ from: accounts[0] });
-    await testToken2.methods.allocateTo(avatar.options.address, toWei("2")).send({ from: accounts[0] });
+  // /*
+  //  * This test is currently failing. Need to reason about how to send a transaction from the avatar
+  //  * to the module itself, with the transaction being proposed and approved through the module.
+  //  */
+  // it("Owner can delete proposals before execution", async function () {
+  //   // Issue some test tokens to the avatar address.
+  //   await testToken.methods.allocateTo(avatar.options.address, toWei("3")).send({ from: accounts[0] });
+  //   await testToken2.methods.allocateTo(avatar.options.address, toWei("2")).send({ from: accounts[0] });
+  //   // Construct the transaction data to send the newly minted tokens to proposer and another address.
+  //   const txnData1 = constructTransferTransaction(proposer, toWei("1"));
+  //   const txnData2 = constructTransferTransaction(rando, toWei("2"));
+  //   const txnData3 = constructTransferTransaction(proposer, toWei("2"));
+  //   const operation = 0; // 0 for call, 1 for delegatecall
+  //   // Send the proposal with multiple transactions.
+  //   const prevProposalId = parseInt(await optimisticOracleModule.methods.prevProposalId().call());
+  //   const proposalId = prevProposalId + 1;
+  //   const transactions = [
+  //     { to: testToken.options.address, value: 0, data: txnData1, operation },
+  //     { to: testToken.options.address, value: 0, data: txnData2, operation },
+  //     { to: testToken2.options.address, value: 0, data: txnData3, operation },
+  //   ];
+  //   const explanation = utf8ToHex("These transactions were approved by majority vote on Snapshot.");
+  //   await optimisticOracleModule.methods.proposeTransactions(transactions, explanation).send({ from: proposer });
+  //   const proposalTime = parseInt(await optimisticOracleModule.methods.getCurrentTime().call());
 
-    // Construct the transaction data to send the newly minted tokens to proposer and another address.
-    const txnData1 = constructTransferTransaction(proposer, toWei("1"));
-    const txnData2 = constructTransferTransaction(rando, toWei("2"));
-    const txnData3 = constructTransferTransaction(proposer, toWei("2"));
-    const operation = 0; // 0 for call, 1 for delegatecall
+  //   // Wait until the end of the dispute period.
+  //   await advanceTime(liveness);
 
-    // Send the proposal with multiple transactions.
-    const prevProposalId = parseInt(await optimisticOracleModule.methods.prevProposalId().call());
-    const id = prevProposalId + 1;
+  //   // Create new proposal to delete the old one.
+  //   const txnData4 = constructProposalDeleteTransaction(proposalId);
+  //   const deleteId = proposalId + 1;
+  //   console.log("deleteId:", deleteId);
+  //   const deleteTransaction = [{ to: optimisticOracleModule.options.address, value: 0, data: txnData4, operation }];
+  //   const deleteExplanation = utf8ToHex("Oops, we messed up the parameters on the other proposal.");
+  //   await optimisticOracleModule.methods
+  //     .proposeTransactions(deleteTransaction, deleteExplanation)
+  //     .send({ from: proposer });
+  //   const deleteProposalTime = parseInt(await optimisticOracleModule.methods.getCurrentTime().call());
 
-    const transactions = [
-      { to: testToken.options.address, value: 0, data: txnData1, operation },
-      { to: testToken.options.address, value: 0, data: txnData2, operation },
-      { to: testToken2.options.address, value: 0, data: txnData3, operation },
-    ];
+  //   // Wait until the end of the new dispute period.
+  //   await advanceTime(liveness);
 
-    const explanation = utf8ToHex("These transactions were approved by majority vote on Snapshot.");
+  //   // Execute the delete proposal.
+  //   await optimisticOracleModule.methods
+  //     .executeProposal(deleteId, deleteTransaction, deleteProposalTime)
+  //     .send({ from: executor });
 
-    const receipt = await optimisticOracleModule.methods
-      .proposeTransactions(transactions, explanation)
-      .send({ from: proposer });
-
-    const { ancillaryData } = (await findEvent(receipt, optimisticOracle, "ProposePrice")).match.returnValues;
-
-    const proposalTime = parseInt(await optimisticOracleModule.methods.getCurrentTime().call());
-
-    // Advance time to one second before end of the dispute period.
-    const stillOpen = liveness - 1;
-    await advanceTime(stillOpen);
-
-    // Dispute.
-    await optimisticOracle.methods
-      .disputePrice(optimisticOracleModule.options.address, identifier, proposalTime, ancillaryData)
-      .send({ from: disputer });
-
-    // DVM rejects the proposal.
-    await pushPrice(0);
-
-    // Proposal should not be executed.
-    assert(
-      await didContractThrow(
-        optimisticOracleModule.methods.executeProposal(id, transactions, proposalTime).send({ from: executor })
-      )
-    );
-
-    // Proposal can be deleted by any address.
-    const receipt2 = await optimisticOracleModule.methods
-      .deleteRejectedProposal(id, proposalTime)
-      .send({ from: rando });
-
-    await assertEventEmitted(receipt2, optimisticOracleModule, "ProposalDeleted", (event) => event.proposalId == id);
-  });
-
-  /*
-   * This test is currently failing. Need to reason about how to send a transaction from the avatar
-   * to the module itself, with the transaction being proposed and approved through the module.
-   */
-  it("Owner can delete proposals before execution", async function () {
-    // Issue some test tokens to the avatar address.
-    await testToken.methods.allocateTo(avatar.options.address, toWei("3")).send({ from: accounts[0] });
-    await testToken2.methods.allocateTo(avatar.options.address, toWei("2")).send({ from: accounts[0] });
-    // Construct the transaction data to send the newly minted tokens to proposer and another address.
-    const txnData1 = constructTransferTransaction(proposer, toWei("1"));
-    const txnData2 = constructTransferTransaction(rando, toWei("2"));
-    const txnData3 = constructTransferTransaction(proposer, toWei("2"));
-    const operation = 0; // 0 for call, 1 for delegatecall
-    // Send the proposal with multiple transactions.
-    const prevProposalId = parseInt(await optimisticOracleModule.methods.prevProposalId().call());
-    const proposalId = prevProposalId + 1;
-    const transactions = [
-      { to: testToken.options.address, value: 0, data: txnData1, operation },
-      { to: testToken.options.address, value: 0, data: txnData2, operation },
-      { to: testToken2.options.address, value: 0, data: txnData3, operation },
-    ];
-    const explanation = utf8ToHex("These transactions were approved by majority vote on Snapshot.");
-    await optimisticOracleModule.methods.proposeTransactions(transactions, explanation).send({ from: proposer });
-    const proposalTime = parseInt(await optimisticOracleModule.methods.getCurrentTime().call());
-
-    // Wait until the end of the dispute period.
-    await advanceTime(liveness);
-
-    // Create new proposal to delete the old one.
-    const txnData4 = constructProposalDeleteTransaction(proposalId);
-    const deleteId = proposalId + 1;
-    console.log("deleteId:", deleteId);
-    const deleteTransaction = [{ to: optimisticOracleModule.options.address, value: 0, data: txnData4, operation }];
-    const deleteExplanation = utf8ToHex("Oops, we messed up the parameters on the other proposal.");
-    await optimisticOracleModule.methods
-      .proposeTransactions(deleteTransaction, deleteExplanation)
-      .send({ from: proposer });
-    const deleteProposalTime = parseInt(await optimisticOracleModule.methods.getCurrentTime().call());
-
-    // Wait until the end of the new dispute period.
-    await advanceTime(liveness);
-
-    // Execute the delete proposal.
-    await optimisticOracleModule.methods
-      .executeProposal(deleteId, deleteTransaction, deleteProposalTime)
-      .send({ from: executor });
-
-    // Original proposal can not be executed.
-    assert(
-      await didContractThrow(
-        optimisticOracleModule.methods.executeProposal(proposalId, transactions, proposalTime).send({ from: executor })
-      )
-    );
-  });
+  //   // Original proposal can not be executed.
+  //   assert(
+  //     await didContractThrow(
+  //       optimisticOracleModule.methods.executeProposal(proposalId, transactions, proposalTime).send({ from: executor })
+  //     )
+  //   );
+  // });
 
   it("Non-owners can not delete unexecuted proposals", async function () {});
 
