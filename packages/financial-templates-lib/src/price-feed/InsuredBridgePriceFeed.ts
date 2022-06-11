@@ -1,7 +1,7 @@
 import { PriceFeedInterface } from "./PriceFeedInterface";
 import Web3 from "web3";
 import { getAbi } from "@uma/contracts-node";
-import { parseAncillaryData } from "@uma/common";
+import { getEventsWithPaginatedBlockSearch, parseAncillaryData, Web3Contract } from "@uma/common";
 import { BN } from "../types";
 import type { Logger } from "winston";
 import { InsuredBridgeL1Client, Relay } from "../clients/InsuredBridgeL1Client";
@@ -69,10 +69,13 @@ export class InsuredBridgePriceFeed extends PriceFeedInterface {
       depositHash: string;
     }
     let matchedRelay: MatchedRelay | undefined;
+    const latestL1Block = await this.l1Client.l1Web3.eth.getBlockNumber()
     for (const bridgePoolAddress of this.l1Client.getBridgePoolsAddresses()) {
       const bridgePool = new this.l1Client.l1Web3.eth.Contract(getAbi("BridgePool"), bridgePoolAddress);
-      const relays = await bridgePool.getPastEvents("DepositRelayed", { fromBlock: 0 });
-      const relay = relays.find((_relay) => _relay.returnValues.relayAncillaryDataHash === relayAncillaryDataHash);
+      const relays = await getEventsWithPaginatedBlockSearch(bridgePool, "DepositRelayed", 0, latestL1Block, 20000);
+      const relay = relays.eventData.find(
+        (_relay) => _relay.returnValues.relayAncillaryDataHash === relayAncillaryDataHash
+      );
       if (relay) {
         matchedRelay = {
           relayData: {

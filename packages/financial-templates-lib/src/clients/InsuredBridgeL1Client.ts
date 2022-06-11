@@ -103,7 +103,7 @@ export class InsuredBridgeL1Client {
     readonly rateModelStoreAddress: string | null,
     readonly startingBlockNumber = 0,
     readonly endingBlockNumber: number | null = null,
-    readonly blocksPerEventSearch: number | null = null
+    readonly blocksPerEventSearch: number | null = 20000
   ) {
     // Cast the following contracts to web3-specific type
     this.bridgeAdmin = (new l1Web3.eth.Contract(
