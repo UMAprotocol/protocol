@@ -151,6 +151,8 @@ contract Staker is Voting {
 
     function _updateAccountSlashingTrackers(address voterAddress) internal {
         VoterStake storage voterStake = stakingBalances[voterAddress];
+        // Note the method below can hit a gas limit of there are a LOT of requests from the last time this was run.
+        // A future version of this should bound how many requests to look at per call to avoid gas limit issues.
         for (uint256 i = voterStake.lastRequestIndexConsidered; i < priceRequestIds.length; i++) {
             PriceRequest storage priceRequest = priceRequests[priceRequestIds[i].requestId];
             VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
@@ -181,6 +183,8 @@ contract Staker is Voting {
     }
 
     function _updateCumulativeSlashingTrackers() internal {
+        // Note the method below can hit a gas limit of there are a LOT of requests from the last time this was run.
+        // A future version of this should bound how many requests to look at per call to avoid gas limit issues.
         for (uint256 i = lastRequestIndexConsidered; i < priceRequestIds.length; i++) {
             PriceRequest storage priceRequest = priceRequests[priceRequestIds[i].requestId];
             VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
