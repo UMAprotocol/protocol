@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import "../../common/implementation/FixedPoint.sol";
+import "../../common/implementation/FixedPoint.sol"; // TODO: remove this from this contract.
 import "../../common/implementation/Testable.sol";
 import "../interfaces/FinderInterface.sol";
 import "../interfaces/OracleInterface.sol";
@@ -23,6 +23,9 @@ import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
  * @title Voting system for Oracle.
  * @dev Handles receiving and resolving price requests via a commit-reveal voting scheme.
  */
+// TODO: right now there are multiple interfaces (OracleInterface & OracleAncillaryInterface). We should only have one
+// which should be done by removing the overloaded interfaces.
+
 contract Voting is
     Testable,
     Ownable,
@@ -42,6 +45,9 @@ contract Voting is
 
     // Identifies a unique price request for which the Oracle will always return the same value.
     // Tracks ongoing votes as well as the result of the vote.
+
+    //TODO: a lot of the structures below can be removed/joined. in particular the `Round` structure now contains
+    // somewhat redundant data as inflationRate is part of Staker and rewardExpirationTime is being removed.
     struct PriceRequest {
         bytes32 identifier;
         uint256 time;
@@ -100,7 +106,14 @@ contract Voting is
     mapping(uint256 => Round) public rounds;
 
     // Maps price request IDs to the PriceRequest struct.
-    mapping(bytes32 => PriceRequest) private priceRequests;
+    mapping(bytes32 => PriceRequest) internal priceRequests;
+
+    struct Request {
+        bytes32 requestId;
+        uint256 roundId;
+    }
+
+    Request[] internal priceRequestIds;
 
     // Price request ids for price requests that haven't yet been marked as resolved.
     // These requests may be for future rounds.
@@ -268,6 +281,7 @@ contract Voting is
         bytes32 priceRequestId = _encodePriceRequest(identifier, time, ancillaryData);
         PriceRequest storage priceRequest = priceRequests[priceRequestId];
         uint256 currentRoundId = voteTiming.computeCurrentRoundId(blockTime);
+        priceRequestIds.push(Request(priceRequestId, currentRoundId));
 
         RequestStatus requestStatus = _getRequestStatus(priceRequest, currentRoundId);
 
@@ -310,6 +324,7 @@ contract Voting is
         return _hasPrice;
     }
 
+    // TODO: remove all overriden functions that miss ancillary data. DVM2.0 should only accept ancillary data requests.
     // Overloaded method to enable short term backwards compatibility. Will be deprecated in the next DVM version.
     function hasPrice(bytes32 identifier, uint256 time) public view override returns (bool) {
         return hasPrice(identifier, time, "");
@@ -629,6 +644,7 @@ contract Voting is
         batchReveal(revealsAncillary);
     }
 
+    // TODO: remove this function and the interfaces
     /**
      * @notice Retrieves rewards owed for a set of resolved price requests.
      * @dev Can only retrieve rewards if calling for a valid round and if the call is done within the timeout threshold
