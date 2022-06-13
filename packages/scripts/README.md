@@ -2,6 +2,20 @@
 
 This folder contains scripts that either fetch or modify state from the `core` UMA contracts.
 
+## Before you start
+
+Before starting, you will need to install dependencies and build the entire repository. You can do this by running the following command from the top level directory `protocol/`:
+
+```sh
+yarn && yarn build
+```
+
+If you run into any problems with the examples below, the first thing you should do is try clearing the local build artifacts and packages and reinstalling by running the following commands from the top level directory `protocol/`:
+
+```sh
+yarn clean-packages && rm -rf packages/core/artifacts packages/core/cache && yarn && yarn build
+```
+
 ## Mainnet fork
 
 The caller might find it useful to run these scripts against a local (hardhat) [Mainnet fork](https://hardhat.org/guides/mainnet-forking.html) in order to test that the contract state is modified as expected. The local node should be set to run on port `9545`.
