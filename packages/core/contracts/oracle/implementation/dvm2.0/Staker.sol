@@ -164,14 +164,13 @@ contract Staker is Voting {
                     voterStake.cumulativeStaked * requestSlashTrackers[i].noVoteSlashPerToken
                 );
 
-                // The voter voted wrong. Slash at wrongVote rate.
+                // The voter did not vote with the majority. Slash at wrongVote rate.
             else if (!voteInstance.resultComputation.wasVoteCorrect(revealHash))
                 voterStake.unrealizedSlash -= int256(
                     voterStake.cumulativeStaked * requestSlashTrackers[i].wrongVoteSlashPerToken
                 );
 
-                // Else, the voter voted correctly. In this case they receive a pro-rate share of the other voters slashed
-                // amounts as a reward.
+                // The voter voted correctly.Receive a pro-rate share of the other voters slashed amounts as a reward.
             else {
                 uint256 roundId = rounds[priceRequestIds[i].roundId].snapshotId;
                 uint256 totalStaked = votingToken.balanceOfAt(address(this), roundId);
