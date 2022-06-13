@@ -3,29 +3,28 @@
 // transactions. To run this on the localhost first fork mainnet into a local hardhat node by running:
 // HARDHAT_CHAIN_ID=1 yarn hardhat node --fork https://mainnet.infura.io/v3/<YOUR-INFURA-KEY> --port 9545 --no-deploy
 // Then execute the script from core:
-// yarn hardhat run ./scripts/simulations/optimistic-oracle-umip/1_Propose.ts --network localhost --deployedAddress 0xOPTIMISTIC_ORACLE_ADDRESS
+// yarn hardhat run ./test/optimistic-oracle-umip/1_Propose.ts --network mainnet-fork
 
 const hre = require("hardhat");
 
 const { RegistryRolesEnum } = require("@uma/common");
+const { getAddress } = require("@uma/contracts-node");
 
 import { Signer } from "ethers/lib/ethers";
-import { OptimisticOracleV2, Proposer, Governor, Finder, Registry } from "../../../contract-types/ethers";
+import { Proposer, Governor, Finder, Registry } from "@uma/core/contract-types/ethers";
+require("dotenv").config();
 
 // PARAMETERS
 const proposerWallet = "0x2bAaA41d155ad8a4126184950B31F50A1513cE25";
+const deployed_optimistic_oracle_address = "0xA0Ae6609447e57a42c51B50EAe921D701823FFAe";
 
 const OPTIMISTIC_ORACLE_V2 = "OptimisticOracleV2"; // TODO use interfaceName.OptimisticOracle
 
-const getAddress = async (contractName: string): Promise<string> => {
-  const networkId = await hre.getChainId();
-  const addresses = require(`../../../networks/${networkId}.json`);
-  return addresses.find((a: { [k: string]: string }) => a.contractName === contractName).address;
-};
-
 const getContractInstance = async <T>(contractName: string): Promise<T> => {
+  const networkId = await hre.getChainId();
   const factory = await hre.ethers.getContractFactory(contractName);
-  return (await factory.attach(await getAddress(contractName))) as T;
+  const contractAddress = await getAddress(contractName, Number(networkId));
+  return (await factory.attach(contractAddress)) as T;
 };
 
 async function impersonateAccount(account: string): Promise<Signer> {
@@ -36,7 +35,6 @@ async function impersonateAccount(account: string): Promise<Signer> {
 async function main() {
   const proposerSigner = await impersonateAccount(proposerWallet);
 
-  const optimisticOracleV2 = await getContractInstance<OptimisticOracleV2>("OptimisticOracleV2");
   const finder = await getContractInstance<Finder>("Finder");
   const governor = await getContractInstance<Governor>("Governor");
   const registry = await getContractInstance<Registry>("Registry");
@@ -53,7 +51,7 @@ async function main() {
   // 2. Register the OptimisticOracle as a verified contract.
   const registerOptimisticOracleTx = await registry.populateTransaction.registerContract(
     [],
-    optimisticOracleV2.address
+    deployed_optimistic_oracle_address
   );
 
   console.log("registerOptimisticOracleTx", registerOptimisticOracleTx);
@@ -69,7 +67,7 @@ async function main() {
   // 4. Add the OptimisticOracle to the Finder.
   const addOptimisticOracleToFinderTx = await finder.populateTransaction.changeImplementationAddress(
     hre.ethers.utils.formatBytes32String(OPTIMISTIC_ORACLE_V2),
-    optimisticOracleV2.address
+    deployed_optimistic_oracle_address
   );
 
   console.log("addOptimisticOracleToFinderTx", addOptimisticOracleToFinderTx);
