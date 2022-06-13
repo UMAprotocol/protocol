@@ -1,9 +1,9 @@
-// This script generates and submits an upgrade transaction to add/upgrade the optimistic oracle in the DVM. It can be
+// This script verify that the upgrade was executed correctly. It can be
 // run on a local hardhat node fork of the mainnet or can be run directly on the mainnet to execute the upgrade
 // transactions. To run this on the localhost first fork mainnet into a local hardhat node by running:
 // HARDHAT_CHAIN_ID=1 yarn hardhat node --fork https://mainnet.infura.io/v3/<YOUR-INFURA-KEY> --port 9545 --no-deploy
 // Then execute the script from core:
-// yarn hardhat run ./scripts/simulations/optimistic-oracle-umip/1_Propose.ts --network localhost --deployedAddress 0xOPTIMISTIC_ORACLE_ADDRESS
+// yarn hardhat run ./scripts/simulations/optimistic-oracle-umip/3_Verify.ts --network localhost --deployedAddress 0xOPTIMISTIC_ORACLE_ADDRESS
 
 const hre = require("hardhat");
 
