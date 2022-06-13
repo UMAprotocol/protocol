@@ -1,3 +1,10 @@
+// This script generates and submits an upgrade transaction to add/upgrade the optimistic oracle in the DVM. It can be
+// run on a local hardhat node fork of the mainnet or can be run directly on the mainnet to execute the upgrade
+// transactions. To run this on the localhost first fork mainnet into a local hardhat node by running:
+// npx hardhat node --fork https://mainnet.infura.io/v3/<INFURA_KEY> --port 9545
+// Then execute the script from core:
+// yarn hardhat run ./scripts/simulations/optimistic-oracle-umip/1_Propose.ts --network localhost --deployedAddress 0xOPTIMISTIC_ORACLE_ADDRESS
+
 const hre = require("hardhat");
 
 const { RegistryRolesEnum } = require("@uma/common");
@@ -22,13 +29,13 @@ const getContractInstance = async <T>(contractName: string): Promise<T> => {
   return (await factory.attach(await getAddress(contractName))) as T;
 };
 
-async function impersonateAccount(account: string) {
+async function impersonateAccount(account: string): Promise<Signer> {
   await hre.network.provider.request({ method: "hardhat_impersonateAccount", params: [account] });
+  return hre.ethers.getSigner(account);
 }
 
 async function main() {
-  await impersonateAccount(proposerWallet);
-  const proposerSigner: Signer = await hre.ethers.getSigner(proposerWallet);
+  const proposerSigner = await impersonateAccount(proposerWallet);
 
   const optimisticOracleV2 = await getContractInstance<OptimisticOracleV2>("OptimisticOracleV2");
   const finder = await getContractInstance<Finder>("Finder");
