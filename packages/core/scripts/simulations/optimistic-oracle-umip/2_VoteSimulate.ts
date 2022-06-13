@@ -1,7 +1,7 @@
 // This script simulates a vote from a large token holder to ratify the proposal from script 1_Propose.ts.
 // It is intended to be run on a main-net Hardhat fork. Leading on from the previous script run a hardhat node
 // instance as:
-// npx hardhat node --fork https://mainnet.infura.io/v3/<INFURA_KEY> --port 9545
+// HARDHAT_CHAIN_ID=1 yarn hardhat node --fork https://mainnet.infura.io/v3/<YOUR-INFURA-KEY> --port 9545 --no-deploy
 // then run the script as:
 // yarn hardhat run ./scripts/simulations/optimistic-oracle-umip/2_VoteSimulate.ts --network localhost
 
@@ -22,13 +22,11 @@ const {
 
 const argv = require("minimist")(process.argv.slice(), { boolean: ["revert"] });
 
-// PARAMETERS
-const NETWORK = 1;
 // Address which holds a lot of UMA tokens to mock a majority vote
 const foundationWallet = "0x7a3A1c2De64f20EB5e916F40D11B01C441b2A8Dc";
 
 const getAddress = async (contractName: string): Promise<string> => {
-  const networkId = NETWORK;
+  const networkId = await hre.getChainId();
   const addresses = require(`../../../networks/${networkId}.json`);
   return addresses.find((a: { [k: string]: string }) => a.contractName === contractName).address;
 };
