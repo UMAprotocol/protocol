@@ -3,20 +3,19 @@
 // transactions. To run this on the localhost first fork mainnet into a local hardhat node by running:
 // HARDHAT_CHAIN_ID=1 yarn hardhat node --fork https://mainnet.infura.io/v3/<YOUR-INFURA-KEY> --port 9545 --no-deploy
 // Then execute the script from core:
-// yarn hardhat run ./test/optimistic-oracle-umip/1_Propose.ts --network mainnet-fork
+// OPTIMISTC_ORACLE_V2=<OPTIMISTC_ORACLE_V2_ADDRESS> yarn workspace @uma/scripts hardhat run ./test/optimistic-oracle-umip/1_Propose.ts --network localhost
 
 const hre = require("hardhat");
 
 const { RegistryRolesEnum } = require("@uma/common");
 const { getAddress } = require("@uma/contracts-node");
 
-import { Signer } from "ethers/lib/ethers";
-import { Proposer, Governor, Finder, Registry } from "@uma/core/contract-types/ethers";
+import { Finder, Governor, Proposer, Registry } from "@uma/core/contract-types/ethers";
 require("dotenv").config();
 
 // PARAMETERS
 const proposerWallet = "0x2bAaA41d155ad8a4126184950B31F50A1513cE25";
-const deployed_optimistic_oracle_address = "0xA0Ae6609447e57a42c51B50EAe921D701823FFAe";
+const deployed_optimistic_oracle_address = process.env["OPTIMISTC_ORACLE_V2"];
 
 const OPTIMISTIC_ORACLE_V2 = "OptimisticOracleV2"; // TODO use interfaceName.OptimisticOracle
 
@@ -27,13 +26,10 @@ const getContractInstance = async <T>(contractName: string): Promise<T> => {
   return (await factory.attach(contractAddress)) as T;
 };
 
-async function impersonateAccount(account: string): Promise<Signer> {
-  await hre.network.provider.request({ method: "hardhat_impersonateAccount", params: [account] });
-  return hre.ethers.getSigner(account);
-}
-
 async function main() {
-  const proposerSigner = await impersonateAccount(proposerWallet);
+  if (!deployed_optimistic_oracle_address) throw new Error("OPTIMISTC_ORACLE_V2 environment variable not set");
+
+  const proposerSigner = await hre.ethers.getSigner(proposerWallet);
 
   const finder = await getContractInstance<Finder>("Finder");
   const governor = await getContractInstance<Governor>("Governor");

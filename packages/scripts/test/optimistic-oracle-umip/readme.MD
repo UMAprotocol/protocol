@@ -6,16 +6,16 @@ HARDHAT_CHAIN_ID=1 yarn hardhat node --fork https://mainnet.infura.io/v3/<YOUR-I
 
 2.Run the simulation scripts:
 
-In a new terminal:
+Optional: Set up the fork by impersonating the required accounts.
 
 ```
-cd packages/scripts
+./packages/scripts/setupFork.sh
 ```
 
 2.1 Propose actions:
 
 ```
-yarn hardhat run ./test/optimistic-oracle-umip/1_Propose.ts --network mainnet-fork
+OPTIMISTC_ORACLE_V2=<OPTIMISTC-ORACLE-V2-ADDRESS> yarn workspace @uma/scripts hardhat run ./test/optimistic-oracle-umip/1_Propose.ts --network localhost
 ```
 
 2.2 Simulate votes:
@@ -27,11 +27,11 @@ NODE_URL_1=http://127.0.0.1:9545/ node ./packages/scripts/src/admin-proposals/si
 2.3 Execute proposal:
 
 ```
-NODE_URL_1=http://127.0.0.1:9545/ node ./src/admin-proposals/executeProposal.js --network mainnet-fork --id <PROPOSAL-ID-FROM-2.2>
+NODE_URL_1=http://127.0.0.1:9545/ node ./packages/scripts/src/admin-proposals/executeProposal.js --network mainnet-fork --id <PROPOSAL-ID-FROM-2.2>
 ```
 
 2.4 Verify the result:
 
 ```
-yarn hardhat run ./test/optimistic-oracle-umip/3_Verify.ts --network mainnet-fork
+OPTIMISTC_ORACLE_V2=<OPTIMISTC-ORACLE-V2-ADDRESS> yarn workspace @uma/scripts hardhat run ./test/optimistic-oracle-umip/3_Verify.ts --network localhost
 ```
