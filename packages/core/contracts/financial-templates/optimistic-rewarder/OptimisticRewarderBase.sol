@@ -221,13 +221,8 @@ abstract contract OptimisticRewarderBase is Lockable, MultiCaller {
                     ancillaryData,
                     bondToken,
                     0, // Reward = 0
-                    SkinnyOptimisticOracleInterface.RequestSettings({
-                        bond: bond, // Bond (on top of the final fee) for the proposer and disputer.
-                        customLiveness: liveness,
-                        callbackOnPriceProposed: false,
-                        callbackOnPriceDisputed: false,
-                        callbackOnPriceSettled: false
-                    }),
+                    bond, // Bond (on top of the final fee) for the proposer and disputer.
+                    liveness,
                     proposer,
                     int256(1e18) // Canonical value representing "True"; i.e. the proposed redemption is valid.
                 )
@@ -257,13 +252,8 @@ abstract contract OptimisticRewarderBase is Lockable, MultiCaller {
                     expirationTime: currentTime + liveness,
                     reward: 0,
                     finalFee: redemption.finalFee,
-                    requestSettings: SkinnyOptimisticOracleInterface.RequestSettings({
-                        bond: bond,
-                        customLiveness: liveness,
-                        callbackOnPriceProposed: false,
-                        callbackOnPriceDisputed: false,
-                        callbackOnPriceSettled: false
-                    })
+                    bond: bond,
+                    customLiveness: liveness
                 });
 
             // Note: don't pull funds until here to avoid any transfers that aren't needed.
