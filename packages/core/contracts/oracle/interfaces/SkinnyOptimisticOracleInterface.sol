@@ -20,6 +20,14 @@ import "../interfaces/OptimisticOracleInterface.sol";
  * @dev Interface used by financial contracts to interact with the Oracle. Voters will use a different interface.
  */
 abstract contract SkinnyOptimisticOracleInterface {
+    struct RequestSettings {
+        bool callbackOnPriceProposed; // True if callbackOnPriceProposed callback is required.
+        bool callbackOnPriceDisputed; // True if callbackOnPriceDisputed callback is required.
+        bool callbackOnPriceSettled; // True if callbackOnPriceSettled callback is required.
+        uint256 bond; // Bond that the proposer and disputer must pay on top of the final fee.
+        uint256 customLiveness; // Custom liveness value set by the requester.
+    }
+
     // Struct representing a price request. Note that this differs from the OptimisticOracleInterface's Request struct
     // in that refundOnDispute is removed.
     struct Request {
@@ -32,8 +40,7 @@ abstract contract SkinnyOptimisticOracleInterface {
         uint256 expirationTime; // Time at which the request auto-settles without a dispute.
         uint256 reward; // Amount of the currency to pay to the proposer on settlement.
         uint256 finalFee; // Final fee to pay to the Store upon request to the DVM.
-        uint256 bond; // Bond that the proposer and disputer must pay on top of the final fee.
-        uint256 customLiveness; // Custom liveness value set by the requester.
+        RequestSettings requestSettings; // Custom settings associated with a request.
     }
 
     // This value must be <= the Voting contract's `ancillaryBytesLimit` value otherwise it is possible
@@ -50,8 +57,7 @@ abstract contract SkinnyOptimisticOracleInterface {
      * @param reward reward offered to a successful proposer. Will be pulled from the caller. Note: this can be 0,
      *               which could make sense if the contract requests and proposes the value in the same call or
      *               provides its own reward system.
-     * @param bond custom proposal bond to set for request. If set to 0, defaults to the final fee.
-     * @param customLiveness custom proposal liveness to set for request.
+     * @param requestSettings settings for the request.
      * @return totalBond default bond + final fee that the proposer and disputer will be required to pay.
      */
     function requestPrice(
@@ -60,8 +66,7 @@ abstract contract SkinnyOptimisticOracleInterface {
         bytes memory ancillaryData,
         IERC20 currency,
         uint256 reward,
-        uint256 bond,
-        uint256 customLiveness
+        RequestSettings memory requestSettings
     ) external virtual returns (uint256 totalBond);
 
     /**
@@ -121,8 +126,7 @@ abstract contract SkinnyOptimisticOracleInterface {
      * @param reward reward offered to a successful proposer. Will be pulled from the caller. Note: this can be 0,
      *               which could make sense if the contract requests and proposes the value in the same call or
      *               provides its own reward system.
-     * @param bond custom proposal bond to set for request. If set to 0, defaults to the final fee.
-     * @param customLiveness custom proposal liveness to set for request.
+     * @param requestSettings settings for the request.
      * @param proposer address to set as the proposer.
      * @param proposedPrice price being proposed.
      * @return totalBond the amount that's pulled from the caller's wallet as a bond. The bond will be returned to
@@ -134,8 +138,7 @@ abstract contract SkinnyOptimisticOracleInterface {
         bytes memory ancillaryData,
         IERC20 currency,
         uint256 reward,
-        uint256 bond,
-        uint256 customLiveness,
+        RequestSettings memory requestSettings,
         address proposer,
         int256 proposedPrice
     ) external virtual returns (uint256 totalBond);
