@@ -1323,7 +1323,7 @@ describe("SkinnyOptimisticOracle", function () {
       const totalStake = toBN(reward).add(toBN(totalDefaultBond)).toString();
       await collateral.methods.transfer(optimisticRequester.options.address, totalStake).send({ from: accounts[0] });
     });
-    describe("Verify propose callback", function () {
+    describe("Verify propose callback enabled and disabled", function () {
       it("Returns data to requesting contract", async function () {
         await optimisticRequester.methods
           .requestAndProposePriceFor(
@@ -1387,8 +1387,31 @@ describe("SkinnyOptimisticOracle", function () {
           )
         );
       });
+      it("Reverting callback implementation doesn't cause dispute to revert if callback disabled", async function () {
+        await optimisticRequester.methods.setRevert(true).send({ from: accounts[0] });
+        assert.ok(
+          optimisticRequester.methods
+            .requestAndProposePriceFor(
+              identifier,
+              requestTime,
+              "0x01",
+              collateral.options.address,
+              reward,
+              {
+                bond: finalFee,
+                customLiveness: 0,
+                callbackOnPriceProposed: false,
+                callbackOnPriceDisputed: false,
+                callbackOnPriceSettled: false,
+              },
+              proposer,
+              correctPrice
+            )
+            .send({ from: requester })
+        );
+      });
     });
-    describe("Verify dispute callback", function () {
+    describe("Verify dispute callback enabled", function () {
       beforeEach(async function () {
         this.requestParamsWithDisputeCallback = deepCopy(requestParams);
         this.requestParamsWithDisputeCallback.requestSettings.callbackOnPriceDisputed = true;
@@ -1460,7 +1483,45 @@ describe("SkinnyOptimisticOracle", function () {
       });
     });
 
-    describe("Verify settle callback", function () {
+    describe("Verify dispute callback disabled", function () {
+      beforeEach(async function () {
+        await optimisticRequester.methods
+          .requestAndProposePriceFor(
+            identifier,
+            requestTime,
+            "0x01",
+            collateral.options.address,
+            reward,
+            {
+              bond: finalFee,
+              customLiveness: 0,
+              callbackOnPriceProposed: false,
+              callbackOnPriceDisputed: false,
+              callbackOnPriceSettled: false,
+            },
+            proposer,
+            correctPrice
+          )
+          .send({ from: requester });
+        await collateral.methods.approve(optimisticOracle.options.address, totalDefaultBond).send({ from: disputer });
+      });
+      it("Reverting callback implementation doesn't cause dispute to revert if callback disabled", async function () {
+        await optimisticRequester.methods.setRevert(true).send({ from: accounts[0] });
+        assert.ok(
+          await optimisticOracle.methods
+            .disputePrice(
+              optimisticRequester.options.address,
+              identifier,
+              requestTime,
+              "0x01",
+              postProposalParams(requestParams)
+            )
+            .send({ from: disputer })
+        );
+      });
+    });
+
+    describe("Verify settle callback enabled", function () {
       beforeEach(async function () {
         this.requestParamsWithSettleCallback = deepCopy(requestParams);
         this.requestParamsWithSettleCallback.requestSettings.callbackOnPriceSettled = true;
@@ -1514,7 +1575,7 @@ describe("SkinnyOptimisticOracle", function () {
             savedRequest.requestSettings.customLiveness === "0"
         );
       });
-      it("Reverting callback implementation cause dispute to revert33", async function () {
+      it("Reverting callback implementation cause dispute to revert", async function () {
         await optimisticRequester.methods.setRevert(true).send({ from: accounts[0] });
         assert(
           await didContractThrow(
@@ -1528,6 +1589,44 @@ describe("SkinnyOptimisticOracle", function () {
               )
               .send({ from: accounts[0] })
           )
+        );
+      });
+    });
+
+    describe("Verify settle callback disabled", function () {
+      beforeEach(async function () {
+        await optimisticRequester.methods
+          .requestAndProposePriceFor(
+            identifier,
+            requestTime,
+            "0x01",
+            collateral.options.address,
+            reward,
+            {
+              bond: finalFee,
+              customLiveness: 0,
+              callbackOnPriceProposed: false,
+              callbackOnPriceDisputed: false,
+              callbackOnPriceSettled: false,
+            },
+            proposer,
+            correctPrice
+          )
+          .send({ from: requester });
+        await optimisticOracle.methods.setCurrentTime(defaultExpiryTime).send({ from: accounts[0] });
+      });
+      it("Reverting callback implementation doesn't cause dispute to revert if callback disabled", async function () {
+        await optimisticRequester.methods.setRevert(true).send({ from: accounts[0] });
+        assert.ok(
+          await optimisticOracle.methods
+            .settle(
+              optimisticRequester.options.address,
+              identifier,
+              requestTime,
+              "0x01",
+              postProposalParams(requestParams)
+            )
+            .send({ from: accounts[0] })
         );
       });
     });
