@@ -26,7 +26,7 @@ const func = async function (hre) {
   // Set phase length to one day.
   const phaseLength = "86400";
 
-  await deploy("Staker", {
+  await deploy("Voting", {
     from: deployer,
     args: [
       emissionRate,
