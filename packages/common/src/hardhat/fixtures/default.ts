@@ -48,7 +48,7 @@ export async function runDefaultFixture(
     };
 
     await addToFinder("FinancialContractsAdmin", interfaceName.FinancialContractsAdmin);
-    await addToFinder("Staker", interfaceName.Oracle);
+    await addToFinder("Voting", interfaceName.Oracle);
     await addToFinder("Registry", interfaceName.Registry);
     await addToFinder("Store", interfaceName.Store);
     await addToFinder("IdentifierWhitelist", interfaceName.IdentifierWhitelist);
@@ -66,7 +66,7 @@ export async function runDefaultFixture(
     await votingToken.methods.removeMember(minterRoleEnumValue, deployer).send({ from: deployer });
 
     // Set the minter to be the Voting contract.
-    const { address: votingAddress } = await deployments.get("Staker");
+    const { address: votingAddress } = await deployments.get("Voting");
     await votingToken.methods.addMember(minterRoleEnumValue, votingAddress).send({ from: deployer });
 
     // Setup Registry.
