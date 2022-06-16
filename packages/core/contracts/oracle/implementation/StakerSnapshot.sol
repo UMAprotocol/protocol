@@ -96,34 +96,43 @@ contract StakerSnapshot is Ownable, Testable {
 
     // Note there is no way to cancel your unstake; you must wait until after unstakeTime and re-stake.
 
-    // If: a) staker requested an unstake and b) time > unstakeTime then send funds to staker of size requestUnstake
-    // - any slashing amount is taken from the staker.
+    // If: a staker requested an unstake and time > unstakeTime then send funds to staker. If the staker currently
+    // has an unslashed amount greater than their outstanding rewards then we remove the unrealized slash amount from
+    // their balance and send it back to them. They've effectively paid the outstanding slashing amount with their
+    // balance. The point of doing it this way is to keep the rewards untouched.
     function executeUnstake() public {
         _updateTrackers(msg.sender);
         VoterStake storage voterStake = stakingBalances[msg.sender];
         require(voterStake.unstakeTime != 0 && getCurrentTime() >= voterStake.unstakeTime, "Unstake time not passed");
         int256 tokensToSend = int256(voterStake.requestUnstake);
-        if (voterStake.unrealizedSlash < 0) tokensToSend += voterStake.unrealizedSlash;
+        if (int256(voterStake.outstandingRewards) + voterStake.unrealizedSlash < 0)
+            tokensToSend += voterStake.unrealizedSlash;
 
         if (tokensToSend > 0) {
-            stakingBalances[msg.sender].cumulativeStaked -= voterStake.requestUnstake;
+            voterStake.cumulativeStaked -= voterStake.requestUnstake;
+            voterStake.requestUnstake = 0;
+            if (tokensToSend != (int256(voterStake.requestUnstake))) voterStake.unrealizedSlash = 0;
             cumulativeStaked -= voterStake.requestUnstake;
-            voterStake.unrealizedSlash = 0;
             votingToken.transfer(msg.sender, uint256(tokensToSend));
         }
     }
 
-    // Send accumulated rewards to the voter. If the total slashing amount is larger than the outstanding rewards
-    // then this method does nothing.
+    // Send accumulated rewards to the voter. If the voter has gained rewards from others slashing then this is included
+    // here. If the total slashing is larger than the outstanding rewards then this method does nothing.
     function withdrawRewards() public {
         _updateTrackers(msg.sender);
         VoterStake storage voterStake = stakingBalances[msg.sender];
-        uint256 rewardsToSend = voterStake.outstandingRewards;
+        int256 rewardsToSend = int256(voterStake.outstandingRewards) + voterStake.unrealizedSlash;
         if (rewardsToSend > 0) {
             voterStake.outstandingRewards = 0;
             voterStake.unrealizedSlash = 0;
-            require(votingToken.mint(msg.sender, rewardsToSend), "Voting token issuance failed");
+            require(votingToken.mint(msg.sender, uint256(rewardsToSend)), "Voting token issuance failed");
         }
+    }
+
+    function exit() public {
+        executeUnstake();
+        withdrawRewards();
     }
 
     function _updateTrackers(address voterAddress) internal {
@@ -136,30 +145,28 @@ contract StakerSnapshot is Ownable, Testable {
         lastUpdateTime = getCurrentTime();
         if (voterAddress != address(0)) {
             VoterStake storage voterStake = stakingBalances[voterAddress];
-            voterStake.outstandingRewards = outstandingRewards(voterAddress);
+            voterStake.outstandingRewards = outstandingRewardsWithoutSlashing(voterAddress);
             voterStake.rewardsPaidPerToken = rewardPerTokenStored;
         }
     }
 
-    //TODO: we should consider some of the numerical operations here. right now we track the notion of "cumulativeStaked"
-    // separately from the unrealizedSlash and then effectively four the rewards at 0 if the resulting rewards go negative
-    // due to the slash. Another implementation would be to slash by decreasing the users cumaltive stake and then not
-    // change the outstanding rewards computation. I think the main reason to not do this as its easier to think about
-    // the slashing if they are subtracted from your rewards first and then after that point they are taken from your
-    // staked when you withdraw. in both implementations we correctly consider slashing amounts within the "voting power"
-    // contribution within the Voting.sol contract.
-    function outstandingRewards(address voterAddress) public view returns (uint256) {
+    function outstandingRewardsWithoutSlashing(address voterAddress) public view returns (uint256) {
         VoterStake storage voterStake = stakingBalances[voterAddress];
 
-        uint256 outstandingRewards =
+        return
             ((voterStake.cumulativeStaked * (rewardPerToken() - voterStake.rewardsPaidPerToken)) / 1e18) +
-                voterStake.outstandingRewards;
+            voterStake.outstandingRewards;
+    }
+
+    function claimableOutstandingRewards(address voterAddress) public view returns (uint256) {
         // Consider the unrealized slashing amount. If this number is negative if the voter has been slashed and
         // positive if they have gained rewards from others slashing. This number will be negative if the voter has
         // lost more due to slashing then their total outstanding rewards. In this case, their outstanding rewards is
         // 0 and the loss of their token balance is captured when unstaking.
-        int256 outstandingRewardsConsideringSlashing = int256(outstandingRewards) + voterStake.unrealizedSlash;
-        if (outstandingRewardsConsideringSlashing > 0) return uint256(outstandingRewardsConsideringSlashing);
+        VoterStake storage voterStake = stakingBalances[voterAddress];
+        int256 outstandingRewardsWithSlashing =
+            int256(outstandingRewardsWithoutSlashing(voterAddress)) + voterStake.unrealizedSlash;
+        if (outstandingRewardsWithSlashing > 0) return uint256(outstandingRewardsWithSlashing);
         else return 0;
     }
 
