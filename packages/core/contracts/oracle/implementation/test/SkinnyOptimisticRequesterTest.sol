@@ -42,7 +42,7 @@ contract SkinnyOptimisticRequesterTest {
         SkinnyOptimisticOracleV2Interface.RequestSettings memory requestSettings,
         address proposer,
         int256 proposedPrice
-    ) external {
+    ) public {
         uint256 finalFee = _getStore().computeFinalFee(address(currency)).rawValue;
 
         currency.approve(address(optimisticOracle), reward.add(requestSettings.bond).add(finalFee));
@@ -58,6 +58,37 @@ contract SkinnyOptimisticRequesterTest {
         );
     }
 
+    // Overload this method to enable backwards compatibility for dependent tests. Set Request settings to enable
+    // callbacks to maintain the previous functionality of this test contract.
+    function requestAndProposePriceFor(
+        bytes32 _identifier,
+        uint32 _timestamp,
+        bytes memory _ancillaryData,
+        IERC20 currency,
+        uint256 reward,
+        uint256 bond,
+        uint256 customLiveness,
+        address proposer,
+        int256 proposedPrice
+    ) external {
+        requestAndProposePriceFor(
+            _identifier,
+            _timestamp,
+            _ancillaryData,
+            currency,
+            reward,
+            SkinnyOptimisticOracleV2Interface.RequestSettings({
+                callbackOnPriceProposed: true,
+                callbackOnPriceDisputed: true,
+                callbackOnPriceSettled: true,
+                bond: bond,
+                customLiveness: customLiveness
+            }),
+            proposer,
+            proposedPrice
+        );
+    }
+
     function requestPrice(
         bytes32 _identifier,
         uint32 _timestamp,
@@ -65,9 +96,36 @@ contract SkinnyOptimisticRequesterTest {
         IERC20 currency,
         uint256 reward,
         SkinnyOptimisticOracleV2Interface.RequestSettings memory requestSettings
-    ) external {
+    ) public {
         currency.approve(address(optimisticOracle), reward);
         optimisticOracle.requestPrice(_identifier, _timestamp, _ancillaryData, currency, reward, requestSettings);
+    }
+
+    // Overload this method to enable backwards compatibility for dependent tests. Set Request settings to enable
+    // callbacks to maintain the previous functionality of this test contract.
+    function requestPrice(
+        bytes32 _identifier,
+        uint32 _timestamp,
+        bytes memory _ancillaryData,
+        IERC20 currency,
+        uint256 reward,
+        uint256 bond,
+        uint256 customLiveness
+    ) external {
+        requestPrice(
+            _identifier,
+            _timestamp,
+            _ancillaryData,
+            currency,
+            reward,
+            SkinnyOptimisticOracleV2Interface.RequestSettings({
+                callbackOnPriceProposed: true,
+                callbackOnPriceDisputed: true,
+                callbackOnPriceSettled: true,
+                bond: bond,
+                customLiveness: customLiveness
+            })
+        );
     }
 
     function setExpirationTimestamp(uint256 _expirationTimestamp) external {
