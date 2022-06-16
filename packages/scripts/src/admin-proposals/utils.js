@@ -187,7 +187,7 @@ const fundArbitrumParentMessengerForOneTransaction = async (web3Provider, from, 
   console.log(
     `Arbitrum xchain messages require that the Arbitrum_ParentMessenger has at least a ${l1CallValue.toString()} ETH balance.`
   );
-  if (toBN(await web3Provider.eth.getBalance(arbitrumParentMessenger.options.address)) < toBN(l1CallValue)) {
+  if (toBN(await web3Provider.eth.getBalance(arbitrumParentMessenger.options.address)) < toBN(l1CallValue * 10)) {
     const sendEthTxn = await web3Provider.eth.sendTransaction({
       from: from,
       to: arbitrumParentMessenger.options.address,
