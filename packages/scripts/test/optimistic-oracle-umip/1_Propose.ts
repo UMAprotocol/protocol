@@ -8,23 +8,15 @@
 const hre = require("hardhat");
 
 const { RegistryRolesEnum } = require("@uma/common");
-const { getAddress } = require("@uma/contracts-node");
 
-import { Finder, Governor, Proposer, Registry } from "@uma/core/contract-types/ethers";
-require("dotenv").config();
+import { Finder, Governor, Proposer, Registry } from "@uma/contracts-node/typechain/core/ethers";
+import { getContractInstance } from "../../src/utils/typedUtils";
 
 // PARAMETERS
 const proposerWallet = "0x2bAaA41d155ad8a4126184950B31F50A1513cE25";
 const deployed_optimistic_oracle_address = process.env["OPTIMISTC_ORACLE_V2"];
 
 const OPTIMISTIC_ORACLE_V2 = "OptimisticOracleV2"; // TODO use interfaceName.OptimisticOracle
-
-const getContractInstance = async <T>(contractName: string): Promise<T> => {
-  const networkId = await hre.getChainId();
-  const factory = await hre.ethers.getContractFactory(contractName);
-  const contractAddress = await getAddress(contractName, Number(networkId));
-  return (await factory.attach(contractAddress)) as T;
-};
 
 async function main() {
   if (!deployed_optimistic_oracle_address) throw new Error("OPTIMISTC_ORACLE_V2 environment variable not set");
