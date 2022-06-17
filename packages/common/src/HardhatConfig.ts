@@ -154,6 +154,11 @@ export function getHardhatConfig(
         url: getNodeUrl("avalanche", true, 416),
         accounts: { mnemonic },
       },
+      evmos: {
+        chainId: 9001,
+        url: getNodeUrl("evmos", true, 9001),
+        accounts: { mnemonic },
+      },
     },
     mocha: { timeout: 1800000 },
     etherscan: {
