@@ -34,8 +34,6 @@ contract StakerSnapshot is Ownable, Testable {
         uint256 requestUnstake;
         // Slashing trackers.
         uint256 lastRequestIndexConsidered;
-        // Negative represents loss due to slashing. Positive represents gains due to voting right and capturing others slashed amounts.
-        int256 unrealizedSlash;
         Snapshots snapshots;
     }
 
@@ -96,24 +94,21 @@ contract StakerSnapshot is Ownable, Testable {
 
     // Note there is no way to cancel your unstake; you must wait until after unstakeTime and re-stake.
 
-    // If: a staker requested an unstake and time > unstakeTime then send funds to staker. If the staker currently
-    // has an unslashed amount greater than their outstanding rewards then we remove the unrealized slash amount from
-    // their balance and send it back to them. They've effectively paid the outstanding slashing amount with their
-    // balance. The point of doing it this way is to keep the rewards untouched.
+    // If: a staker requested an unstake and time > unstakeTime then send funds to staker. Note that this method assumes
+    // that the `updateTrackers()
     function executeUnstake() public {
         _updateTrackers(msg.sender);
         VoterStake storage voterStake = stakingBalances[msg.sender];
         require(voterStake.unstakeTime != 0 && getCurrentTime() >= voterStake.unstakeTime, "Unstake time not passed");
-        int256 tokensToSend = int256(voterStake.requestUnstake);
-        if (int256(voterStake.outstandingRewards) + voterStake.unrealizedSlash < 0)
-            tokensToSend += voterStake.unrealizedSlash;
+        uint256 tokensToSend = voterStake.requestUnstake;
+        if (tokensToSend > voterStake.cumulativeStaked) tokensToSend = voterStake.cumulativeStaked;
 
         if (tokensToSend > 0) {
-            voterStake.cumulativeStaked -= voterStake.requestUnstake;
+            voterStake.cumulativeStaked -= tokensToSend;
             voterStake.requestUnstake = 0;
-            if (tokensToSend != (int256(voterStake.requestUnstake))) voterStake.unrealizedSlash = 0;
             cumulativeStaked -= voterStake.requestUnstake;
-            votingToken.transfer(msg.sender, uint256(tokensToSend));
+            votingToken.transfer(msg.sender, tokensToSend);
+            voterStake.unstakeTime = 0;
         }
     }
 
@@ -122,11 +117,9 @@ contract StakerSnapshot is Ownable, Testable {
     function withdrawRewards() public {
         _updateTrackers(msg.sender);
         VoterStake storage voterStake = stakingBalances[msg.sender];
-        int256 rewardsToSend = int256(voterStake.outstandingRewards) + voterStake.unrealizedSlash;
-        if (rewardsToSend > 0) {
+        if (voterStake.outstandingRewards > 0) {
             voterStake.outstandingRewards = 0;
-            voterStake.unrealizedSlash = 0;
-            require(votingToken.mint(msg.sender, uint256(rewardsToSend)), "Voting token issuance failed");
+            require(votingToken.mint(msg.sender, voterStake.outstandingRewards), "Voting token issuance failed");
         }
     }
 
@@ -145,29 +138,17 @@ contract StakerSnapshot is Ownable, Testable {
         lastUpdateTime = getCurrentTime();
         if (voterAddress != address(0)) {
             VoterStake storage voterStake = stakingBalances[voterAddress];
-            voterStake.outstandingRewards = outstandingRewardsWithoutSlashing(voterAddress);
+            voterStake.outstandingRewards = outstandingRewards(voterAddress);
             voterStake.rewardsPaidPerToken = rewardPerTokenStored;
         }
     }
 
-    function outstandingRewardsWithoutSlashing(address voterAddress) public view returns (uint256) {
+    function outstandingRewards(address voterAddress) public view returns (uint256) {
         VoterStake storage voterStake = stakingBalances[voterAddress];
 
         return
             ((voterStake.cumulativeStaked * (rewardPerToken() - voterStake.rewardsPaidPerToken)) / 1e18) +
             voterStake.outstandingRewards;
-    }
-
-    function claimableOutstandingRewards(address voterAddress) public view returns (uint256) {
-        // Consider the unrealized slashing amount. If this number is negative if the voter has been slashed and
-        // positive if they have gained rewards from others slashing. This number will be negative if the voter has
-        // lost more due to slashing then their total outstanding rewards. In this case, their outstanding rewards is
-        // 0 and the loss of their token balance is captured when unstaking.
-        VoterStake storage voterStake = stakingBalances[voterAddress];
-        int256 outstandingRewardsWithSlashing =
-            int256(outstandingRewardsWithoutSlashing(voterAddress)) + voterStake.unrealizedSlash;
-        if (outstandingRewardsWithSlashing > 0) return uint256(outstandingRewardsWithSlashing);
-        else return 0;
     }
 
     function rewardPerToken() public view returns (uint256) {

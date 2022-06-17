@@ -284,13 +284,13 @@ contract Voting is
 
             // The voter did not reveal or did not commit. Slash at noVote rate.
             if (revealHash == 0)
-                voterStake.unrealizedSlash -= int256(
+                voterStake.cumulativeStaked -= int256(
                     voterStake.cumulativeStaked * requestSlashTrackers[i].noVoteSlashPerToken
                 );
 
                 // The voter did not vote with the majority. Slash at wrongVote rate.
             else if (!voteInstance.resultComputation.wasVoteCorrect(revealHash))
-                voterStake.unrealizedSlash -= int256(
+                voterStake.cumulativeStaked -= int256(
                     voterStake.cumulativeStaked * requestSlashTrackers[i].wrongVoteSlashPerToken
                 );
 
@@ -298,7 +298,7 @@ contract Voting is
             else {
                 uint256 roundId = rounds[priceRequestIds[i].roundId].snapshotId;
                 uint256 totalStaked = votingToken.balanceOfAt(address(this), roundId);
-                voterStake.unrealizedSlash += int256(
+                voterStake.cumulativeStaked += int256(
                     ((voterStake.cumulativeStaked * 1e18) / totalStaked) * requestSlashTrackers[i].totalSlashed
                 );
             }
