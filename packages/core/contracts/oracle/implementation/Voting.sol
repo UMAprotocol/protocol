@@ -168,7 +168,7 @@ contract Voting is
         uint256 totalSlashed;
     }
 
-    SlashingTracker[] public requestSlashTrackers;
+    SlashingTracker[] public requestSlashingTrackers;
 
     /****************************************
      *                EVENTS                *
@@ -283,25 +283,25 @@ contract Voting is
             bytes32 revealHash = voteInstance.voteSubmissions[voterAddress].revealHash;
 
             // The voter did not reveal or did not commit. Slash at noVote rate.
+            int256 slashed = 0;
             if (revealHash == 0)
-                voterStake.cumulativeStaked -= int256(
-                    voterStake.cumulativeStaked * requestSlashTrackers[i].noVoteSlashPerToken
-                );
+                slashed = -1 * int256(voterStake.cumulativeStaked * requestSlashingTrackers[i].noVoteSlashPerToken);
 
                 // The voter did not vote with the majority. Slash at wrongVote rate.
             else if (!voteInstance.resultComputation.wasVoteCorrect(revealHash))
-                voterStake.cumulativeStaked -= int256(
-                    voterStake.cumulativeStaked * requestSlashTrackers[i].wrongVoteSlashPerToken
-                );
+                slashed = -1 * int256(voterStake.cumulativeStaked * requestSlashingTrackers[i].wrongVoteSlashPerToken);
 
                 // The voter voted correctly.Receive a pro-rate share of the other voters slashed amounts as a reward.
             else {
                 uint256 roundId = rounds[priceRequestIds[i].roundId].snapshotId;
                 uint256 totalStaked = votingToken.balanceOfAt(address(this), roundId);
-                voterStake.cumulativeStaked += int256(
-                    ((voterStake.cumulativeStaked * 1e18) / totalStaked) * requestSlashTrackers[i].totalSlashed
+                slashed = int256(
+                    ((voterStake.cumulativeStaked * 1e18) / totalStaked) * requestSlashingTrackers[i].totalSlashed
                 );
             }
+            if (slashed + int256(voterStake.cumulativeStaked) > 0)
+                voterStake.cumulativeStaked = uint256(int256(voterStake.cumulativeStaked) + slashed);
+            else voterStake.cumulativeStaked = 0;
         }
     }
 
@@ -321,7 +321,7 @@ contract Voting is
             uint256 noVoteSlashPerToken = calcNoVoteSlashPerToken(totalStaked, totalVotes, totalCorrectVotes);
 
             uint256 totalSlashed = ((noVoteSlashPerToken + wrongVoteSlashPerToken) * totalStaked) / 1e18;
-            requestSlashTrackers.push(SlashingTracker(wrongVoteSlashPerToken, noVoteSlashPerToken, totalSlashed));
+            requestSlashingTrackers.push(SlashingTracker(wrongVoteSlashPerToken, noVoteSlashPerToken, totalSlashed));
         }
         lastRequestIndexConsidered = priceRequestIds.length;
     }

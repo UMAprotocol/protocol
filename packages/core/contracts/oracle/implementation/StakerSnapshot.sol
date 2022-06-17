@@ -42,7 +42,6 @@ contract StakerSnapshot is Ownable, Testable {
     struct Snapshots {
         uint256[] ids;
         uint256[] values;
-        // TODO: snapsnot the unrealizedSlash amount so this can be factored into your voting power.
     }
 
     Snapshots private _totalStakedSnapshots;
@@ -157,7 +156,6 @@ contract StakerSnapshot is Ownable, Testable {
     }
 
     // Owner methods
-
     function setEmissionRate(uint256 _emissionRate) public onlyOwner {
         emissionRate = _emissionRate;
     }
@@ -167,7 +165,6 @@ contract StakerSnapshot is Ownable, Testable {
     }
 
     // Snapshot methods
-
     function _snapshot() internal virtual returns (uint256) {
         _currentSnapshotId.increment();
 

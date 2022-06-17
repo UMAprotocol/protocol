@@ -73,7 +73,7 @@ describe("StakerSnapshot", function () {
       // Advance time forward 1000 seconds. At an emission rate of 0.64 per second we should see the accumulation of
       // all rewards equal to the amount staked * 1000 * 0.64 = 640.
       await advanceTime(1000);
-      assert.equal(await staker.methods.outstandingRewardsWithoutSlashing(account1).call(), toWei("640"));
+      assert.equal(await staker.methods.outstandingRewards(account1).call(), toWei("640"));
 
       // Claim the rewards and ensure balances update accordingly.
       const balanceBefore = await votingToken.methods.balanceOf(account1).call();
@@ -87,8 +87,8 @@ describe("StakerSnapshot", function () {
       // Advance time forward 1000 seconds. At an emission rate of 0.64 per second we should see the accumulation of
       // 1/4*640=160 to account1 and 2/3*640=480 to account2.
       await advanceTime(1000);
-      assert.equal(await staker.methods.outstandingRewardsWithoutSlashing(account1).call(), toWei("160"));
-      assert.equal(await staker.methods.outstandingRewardsWithoutSlashing(account2).call(), toWei("480"));
+      assert.equal(await staker.methods.outstandingRewards(account1).call(), toWei("160"));
+      assert.equal(await staker.methods.outstandingRewards(account2).call(), toWei("480"));
 
       // Next, stake 2x the original amount of tokens from another account. This should result in a prorata split of
       // rewards with account1 staking 1/6th, account2 staking 3/6 and account3 staking 2/6. Subsequent rewards should
@@ -101,9 +101,9 @@ describe("StakerSnapshot", function () {
       //    Account2: 480 + 3/6 * 960 = 960
       //    Account3: 0   + 2/6 * 960 = 320
       await advanceTime(1500);
-      assert.equal(await staker.methods.outstandingRewardsWithoutSlashing(account1).call(), toWei("320"));
-      assert.equal(await staker.methods.outstandingRewardsWithoutSlashing(account2).call(), toWei("960"));
-      assert.equal(await staker.methods.outstandingRewardsWithoutSlashing(account3).call(), toWei("320"));
+      assert.equal(await staker.methods.outstandingRewards(account1).call(), toWei("320"));
+      assert.equal(await staker.methods.outstandingRewards(account2).call(), toWei("960"));
+      assert.equal(await staker.methods.outstandingRewards(account3).call(), toWei("320"));
     });
 
     it.only("Unstaking is correctly blocked for unlock time", async function () {
@@ -126,14 +126,14 @@ describe("StakerSnapshot", function () {
 
       // Accumulated rewards over the interval should be the full 0.64 percent, grown over 30 days + 1000 seconds.
       // This should be 0.64 * (60 * 60 * 24 * 30 + 1000) = 1659520.
-      assert.equal(await staker.methods.outstandingRewardsWithoutSlashing(account1).call(), toWei("1659520"));
+      assert.equal(await staker.methods.outstandingRewards(account1).call(), toWei("1659520"));
       await staker.methods.withdrawRewards().send({ from: account1 });
       assert.equal(await votingToken.methods.balanceOf(account1).call(), toBN(balanceAfter).add(toWei("1659520")));
 
       // No further rewards should accumulate to the staker as they have claimed and unstked the full amount.
-      assert.equal(await staker.methods.outstandingRewardsWithoutSlashing(account1).call(), toWei("0"));
+      assert.equal(await staker.methods.outstandingRewards(account1).call(), toWei("0"));
       await advanceTime(1000);
-      assert.equal(await staker.methods.outstandingRewardsWithoutSlashing(account1).call(), toWei("0"));
+      assert.equal(await staker.methods.outstandingRewards(account1).call(), toWei("0"));
     });
     it.only("Re-requesting to unstake resets the timer", async function () {
       await staker.methods.stake(amountToStake).send({ from: account1 });
@@ -147,7 +147,7 @@ describe("StakerSnapshot", function () {
       // reset the unlock timer forward again.
       await advanceTime(1000);
       await staker.methods.requestUnstake(amountToStake.div(2)).send({ from: account1 });
-      assert((await staker.methods.stakingBalance(account1).call()).unstakeTime, requestTime + unstakeCoolDown+1000);
+      assert((await staker.methods.stakingBalance(account1).call()).unstakeTime, requestTime + unstakeCoolDown + 1000);
       assert((await staker.methods.stakingBalance(account1).call()).requestUnstake, amountToStake.div(2));
 
       assert(await didContractThrow(staker.methods.executeUnstake().send({ from: account1 })));
@@ -161,14 +161,14 @@ describe("StakerSnapshot", function () {
 
       // Accumulated rewards over the interval should be the full 0.64 percent, grown over 30 days + 1000 seconds.
       // This should be 0.64 * (60 * 60 * 24 * 30 + 1000) = 1659520.
-      assert.equal(await staker.methods.outstandingRewardsWithoutSlashing(account1).call(), toWei("1659520"));
+      assert.equal(await staker.methods.outstandingRewards(account1).call(), toWei("1659520"));
       await staker.methods.withdrawRewards().send({ from: account1 });
       assert.equal(await votingToken.methods.balanceOf(account1).call(), toBN(balanceAfter).add(toWei("1659520")));
 
       // No further rewards should accumulate to the staker as they have claimed and unstked the full amount.
-      assert.equal(await staker.methods.outstandingRewardsWithoutSlashing(account1).call(), toWei("0"));
+      assert.equal(await staker.methods.outstandingRewards(account1).call(), toWei("0"));
       await advanceTime(1000);
-      assert.equal(await staker.methods.outstandingRewardsWithoutSlashing(account1).call(), toWei("0"));
+      assert.equal(await staker.methods.outstandingRewards(account1).call(), toWei("0"));
     });
   });
   describe("Slashing: unrealizedSlash consideration", function () {
@@ -177,10 +177,9 @@ describe("StakerSnapshot", function () {
       await staker.methods.stake(amountToStake).send({ from: account1 }); // stake 1/4th
       await staker.methods.stake(amountToStake.muln(3)).send({ from: account2 }); // stake 3/4ths
       await advanceTime(1000);
-      assert.equal(await staker.methods.outstandingRewardsWithoutSlashing(account1).call(), toWei("160")); // 1000 * 0.64 * 1/4 = 160
-      assert.equal(await staker.methods.claimableOutstandingRewards(account1).call(), toWei("160")); // 160 + 0
-      assert.equal(await staker.methods.outstandingRewardsWithoutSlashing(account2).call(), toWei("480")); // 1000 * 0.64 * 3/4 = 480
-      assert.equal(await staker.methods.claimableOutstandingRewards(account2).call(), toWei("480")); // 480 + 0
+      assert.equal(await staker.methods.outstandingRewards(account1).call(), toWei("160")); // 1000 * 0.64 * 1/4 = 160
+
+      assert.equal(await staker.methods.outstandingRewards(account2).call(), toWei("480")); // 1000 * 0.64 * 3/4 = 480
 
       // Now assume that voter2 votes wrong. Assume for the case of this test the slashing amount is 69 Wei. they should
       // now have a total outstanding reward amount of 480 - 69 = 411. voter1 should now have should receive the slashed
@@ -188,18 +187,16 @@ describe("StakerSnapshot", function () {
       // contract; it is implemented(and tested) in the Voting contract. Here we mock this.
       await staker.methods.setStakerUnrealizedSlash(account1, toWei("69")).send({ from: account1 });
       await staker.methods.setStakerUnrealizedSlash(account2, toWei("-69")).send({ from: account1 });
-      assert.equal(await staker.methods.outstandingRewardsWithoutSlashing(account1).call(), toWei("160")); // 160
-      assert.equal(await staker.methods.claimableOutstandingRewards(account1).call(), toWei("229")); // 160 + 69 = 229.
-      assert.equal(await staker.methods.outstandingRewardsWithoutSlashing(account2).call(), toWei("480")); // 480
-      assert.equal(await staker.methods.claimableOutstandingRewards(account2).call(), toWei("411")); // 480 - 69 = 411.
+      assert.equal(await staker.methods.outstandingRewards(account1).call(), toWei("160")); // 160
+
+      assert.equal(await staker.methods.outstandingRewards(account2).call(), toWei("480")); // 480
 
       // Now, accumulate more rewards. Check that accumulation behaves as expected. Advance time forward another 1500
       // seconds. Now we should accumulate a total of 0.64 * 1500 = 960 rewards, split 1/4 3/4ths.
       await advanceTime(1500);
-      assert.equal(await staker.methods.outstandingRewardsWithoutSlashing(account1).call(), toWei("400")); // 160 + 960 * 1/4 = 400
-      assert.equal(await staker.methods.claimableOutstandingRewards(account1).call(), toWei("469")); // 400 + 69 = 469
-      assert.equal(await staker.methods.outstandingRewardsWithoutSlashing(account2).call(), toWei("1200")); // 480  + 960 * 3/4 = 1200
-      assert.equal(await staker.methods.claimableOutstandingRewards(account2).call(), toWei("1131")); // 1200 - 69 = 1131
+      assert.equal(await staker.methods.outstandingRewards(account1).call(), toWei("400")); // 160 + 960 * 1/4 = 400
+
+      assert.equal(await staker.methods.outstandingRewards(account2).call(), toWei("1200")); // 480  + 960 * 3/4 = 1200
 
       // Now, claim the rewards. Check that the claims are correctly attributed to the correct accounts.
       const account1BalBefore = await votingToken.methods.balanceOf(account1).call();
@@ -221,10 +218,9 @@ describe("StakerSnapshot", function () {
       // these rewards in turn.
       await staker.methods.setStakerUnrealizedSlash(account1, toWei("500")).send({ from: account1 });
       await staker.methods.setStakerUnrealizedSlash(account2, toWei("-500")).send({ from: account1 });
-      assert.equal(await staker.methods.outstandingRewardsWithoutSlashing(account1).call(), toWei("160")); // 1000 * 0.64 * 1/4 = 160
-      assert.equal(await staker.methods.claimableOutstandingRewards(account1).call(), toWei("660")); // 160 + 500 = 660
-      assert.equal(await staker.methods.outstandingRewardsWithoutSlashing(account2).call(), toWei("480")); // 1000 * 0.64 * 3/4 = 480
-      assert.equal(await staker.methods.claimableOutstandingRewards(account2).call(), toWei("0")); // min(0, 480-500) = 0
+      assert.equal(await staker.methods.outstandingRewards(account1).call(), toWei("160")); // 1000 * 0.64 * 1/4 = 160
+
+      assert.equal(await staker.methods.outstandingRewards(account2).call(), toWei("480")); // 1000 * 0.64 * 3/4 = 480
 
       // Now request to unstake tokens and unstake them. We'll also set the unstakeCoolDown to 0 to let the user instantly
       // unstake (just to make the math a bit easier to so we dont need to consider the accumulation of more rewards).
@@ -243,8 +239,8 @@ describe("StakerSnapshot", function () {
       // Account 2 should receive their stake amount + rewards minus the full slashed amount. This should amount to
       //  3000 + 480 - 500 =  2980. Note that they should now have 0 outstanding rewards as it's been captured in this
       // withdraw.
-      assert.equal(await staker.methods.claimableOutstandingRewards(account2).call(), toWei("0"));
-      assert.equal(await staker.methods.outstandingRewardsWithoutSlashing(account2).call(), toWei("0"));
+
+      assert.equal(await staker.methods.outstandingRewards(account2).call(), toWei("0"));
 
       assert.equal(
         await votingToken.methods.balanceOf(account2).call(),

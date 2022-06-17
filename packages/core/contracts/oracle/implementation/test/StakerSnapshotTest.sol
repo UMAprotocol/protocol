@@ -11,7 +11,8 @@ contract StakerSnapshotTest is StakerSnapshot {
         address _timer
     ) public StakerSnapshot(_emissionRate, _unstakeCoolDown, _votingToken, _timer) {}
 
-    function setStakerUnrealizedSlash(address voter, int256 amount) public {
-        stakingBalances[voter].unrealizedSlash = amount;
+    function applySlashingToCumulativeStaked(address voter, int256 amount) public {
+        require(int256(cumulativeStaked) + amount >= 0, "Cumulative staked cannot be negative");
+        stakingBalances[voter].cumulativeStaked = uint256(int256(stakingBalances[voter].cumulativeStaked) + amount);
     }
 }
