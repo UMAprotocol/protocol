@@ -6,8 +6,8 @@ const { assert } = require("chai");
 
 const { toWei, toBN, hexToUtf8, utf8ToHex } = web3.utils;
 
-const SkinnyOptimisticOracle = getContract("SkinnyOptimisticOracle");
-const OptimisticRequester = getContract("SkinnyOptimisticRequesterTest");
+const SkinnyOptimisticOracle = getContract("SkinnyOptimisticOracleV2");
+const OptimisticRequester = getContract("SkinnyOptimisticV2RequesterTest");
 const Finder = getContract("Finder");
 const Timer = getContract("Timer");
 const IdentifierWhitelist = getContract("IdentifierWhitelist");
@@ -16,7 +16,7 @@ const Token = getContract("ExpandedERC20");
 const Store = getContract("Store");
 const MockOracle = getContract("MockOracleAncillary");
 
-describe("SkinnyOptimisticOracle", function () {
+describe("SkinnyOptimisticOracleV2", function () {
   let optimisticOracle;
   let optimisticRequester;
   let finder;

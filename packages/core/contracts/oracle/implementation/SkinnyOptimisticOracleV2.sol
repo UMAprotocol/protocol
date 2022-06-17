@@ -27,7 +27,7 @@ import "../../common/implementation/AddressWhitelist.sol";
  * transfer(). Using an ERC777 token would allow a user to maliciously grief other participants (while also losing
  * money themselves).
  */
-interface OptimisticRequester {
+interface OptimisticRequesterV2 {
     /**
      * @notice Callback for proposals.
      * @param identifier price identifier being requested.
@@ -241,7 +241,7 @@ contract SkinnyOptimisticOracleV2 is SkinnyOptimisticOracleV2Interface, Testable
 
         // Callback.
         if (address(requester).isContract() && request.requestSettings.callbackOnPriceProposed)
-            OptimisticRequester(requester).priceProposed(identifier, timestamp, ancillaryData, proposedRequest);
+            OptimisticRequesterV2(requester).priceProposed(identifier, timestamp, ancillaryData, proposedRequest);
     }
 
     /**
@@ -333,7 +333,7 @@ contract SkinnyOptimisticOracleV2 is SkinnyOptimisticOracleV2Interface, Testable
 
         // Callback.
         if (address(msg.sender).isContract() && requestSettings.callbackOnPriceProposed)
-            OptimisticRequester(msg.sender).priceProposed(identifier, timestamp, ancillaryData, request);
+            OptimisticRequesterV2(msg.sender).priceProposed(identifier, timestamp, ancillaryData, request);
     }
 
     /**
@@ -409,7 +409,7 @@ contract SkinnyOptimisticOracleV2 is SkinnyOptimisticOracleV2Interface, Testable
 
         // Callback.
         if (address(requester).isContract() && request.requestSettings.callbackOnPriceDisputed)
-            OptimisticRequester(requester).priceDisputed(identifier, timestamp, ancillaryData, disputedRequest);
+            OptimisticRequesterV2(requester).priceDisputed(identifier, timestamp, ancillaryData, disputedRequest);
     }
 
     /**
@@ -598,7 +598,7 @@ contract SkinnyOptimisticOracleV2 is SkinnyOptimisticOracleV2Interface, Testable
 
         // Callback.
         if (address(requester).isContract() && request.requestSettings.callbackOnPriceSettled)
-            OptimisticRequester(requester).priceSettled(identifier, timestamp, ancillaryData, settledRequest);
+            OptimisticRequesterV2(requester).priceSettled(identifier, timestamp, ancillaryData, settledRequest);
     }
 
     function _computeBurnedBond(Request memory request) private pure returns (uint256) {
