@@ -3,7 +3,7 @@
 // transactions. To run this on the localhost first fork mainnet into a local hardhat node by running:
 // HARDHAT_CHAIN_ID=1 yarn hardhat node --fork https://mainnet.infura.io/v3/<YOUR-INFURA-KEY> --port 9545 --no-deploy
 // Then execute the script from core:
-// OPTIMISTC_ORACLE_V2=<OPTIMISTC_ORACLE_V2_ADDRESS> yarn workspace @uma/scripts hardhat run ./test/optimistic-oracle-umip/3_Verify.ts --network localhost
+// OPTIMISTC_ORACLE_V2=<OPTIMISTC-ORACLE-V2-ADDRESS> yarn hardhat run ./src/upgrade-tests/162/3_Verify.ts --network localhost
 
 const hre = require("hardhat");
 
@@ -13,7 +13,7 @@ const { RegistryRolesEnum, interfaceName } = require("@uma/common");
 const { getAddress } = require("@uma/contracts-node");
 
 import { Finder, Governor, Registry } from "@uma/contracts-node/typechain/core/ethers";
-import { getContractInstance } from "../../src/utils/typedUtils";
+import { getContractInstance } from "../../utils/typedUtils";
 
 const OPTIMISTIC_ORACLE_V2 = "OptimisticOracleV2"; // TODO use interfaceName.OptimisticOracle
 const deployed_optimistic_oracle_address = process.env["OPTIMISTC_ORACLE_V2"];

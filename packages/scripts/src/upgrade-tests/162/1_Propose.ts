@@ -3,14 +3,14 @@
 // transactions. To run this on the localhost first fork mainnet into a local hardhat node by running:
 // HARDHAT_CHAIN_ID=1 yarn hardhat node --fork https://mainnet.infura.io/v3/<YOUR-INFURA-KEY> --port 9545 --no-deploy
 // Then execute the script from core:
-// OPTIMISTC_ORACLE_V2=<OPTIMISTC_ORACLE_V2_ADDRESS> yarn workspace @uma/scripts hardhat run ./test/optimistic-oracle-umip/1_Propose.ts --network localhost
+// OPTIMISTC_ORACLE_V2=<OPTIMISTC-ORACLE-V2-ADDRESS> yarn hardhat run ./src/upgrade-tests/162/1_Propose.ts --network localhost
 
 const hre = require("hardhat");
 
 const { RegistryRolesEnum } = require("@uma/common");
 
 import { Finder, Governor, Proposer, Registry } from "@uma/contracts-node/typechain/core/ethers";
-import { getContractInstance } from "../../src/utils/typedUtils";
+import { getContractInstance } from "../../utils/typedUtils";
 
 // PARAMETERS
 const proposerWallet = "0x2bAaA41d155ad8a4126184950B31F50A1513cE25";
