@@ -13,7 +13,7 @@ const { RegistryRolesEnum, interfaceName } = require("@uma/common");
 const { getAddress } = require("@uma/contracts-node");
 
 import { Finder, Governor, Registry } from "@uma/contracts-node/typechain/core/ethers";
-import { getContractInstance } from "../../utils/typedUtils";
+import { getContractInstance } from "../../utils/contracts";
 
 const OPTIMISTIC_ORACLE_V2 = "OptimisticOracleV2"; // TODO use interfaceName.OptimisticOracle
 const deployed_optimistic_oracle_address = process.env["OPTIMISTC_ORACLE_V2"];

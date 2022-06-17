@@ -10,7 +10,7 @@ const hre = require("hardhat");
 const { RegistryRolesEnum } = require("@uma/common");
 
 import { Finder, Governor, Proposer, Registry } from "@uma/contracts-node/typechain/core/ethers";
-import { getContractInstance } from "../../utils/typedUtils";
+import { getContractInstance } from "../../utils/contracts";
 
 // PARAMETERS
 const proposerWallet = "0x2bAaA41d155ad8a4126184950B31F50A1513cE25";
