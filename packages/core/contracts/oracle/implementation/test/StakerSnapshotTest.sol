@@ -12,7 +12,12 @@ contract StakerSnapshotTest is StakerSnapshot {
     ) public StakerSnapshot(_emissionRate, _unstakeCoolDown, _votingToken, _timer) {}
 
     function applySlashingToCumulativeStaked(address voter, int256 amount) public {
+        _updateTrackers(voter); // apply any unaccumulated rewards before modifying the staked balances.
         require(int256(cumulativeStaked) + amount >= 0, "Cumulative staked cannot be negative");
-        stakingBalances[voter].cumulativeStaked = uint256(int256(stakingBalances[voter].cumulativeStaked) + amount);
+        voterStakes[voter].cumulativeStaked = uint256(int256(voterStakes[voter].cumulativeStaked) + amount);
+    }
+
+    function snapshot() public {
+        _snapshot();
     }
 }

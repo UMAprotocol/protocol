@@ -1,8 +1,9 @@
+// TODO: this whole /oracle/implementation directory should be restructured to seperate the DVM and the OO.
+
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import "../../common/implementation/FixedPoint.sol";
-import "../../common/implementation/Testable.sol";
+import "../../common/implementation/FixedPoint.sol"; // TODO: remove this from this contract.
 import "../interfaces/FinderInterface.sol";
 import "../interfaces/OracleInterface.sol";
 import "../interfaces/OracleAncillaryInterface.sol";
@@ -13,6 +14,7 @@ import "./Registry.sol";
 import "./ResultComputation.sol";
 import "./VoteTiming.sol";
 import "./VotingToken.sol";
+import "./StakerSnapshot.sol";
 import "./Constants.sol";
 
 import "@openzeppelin/contracts/access/Ownable.sol";
@@ -23,9 +25,11 @@ import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
  * @title Voting system for Oracle.
  * @dev Handles receiving and resolving price requests via a commit-reveal voting scheme.
  */
-contract Voting is
-    Testable,
-    Ownable,
+// TODO: right now there are multiple interfaces (OracleInterface & OracleAncillaryInterface). We should only have one
+// which should be done by removing the overloaded interfaces.
+
+contract VotingV2 is
+    StakerSnapshot,
     OracleInterface,
     OracleAncillaryInterface, // Interface to support ancillary data with price requests.
     VotingInterface,
@@ -42,6 +46,9 @@ contract Voting is
 
     // Identifies a unique price request for which the Oracle will always return the same value.
     // Tracks ongoing votes as well as the result of the vote.
+
+    //TODO: a lot of the structures below can be removed/joined. in particular the `Round` structure now contains
+    // somewhat redundant data as inflationRate is part of Staker and rewardExpirationTime is being removed.
     struct PriceRequest {
         bytes32 identifier;
         uint256 time;
@@ -100,7 +107,14 @@ contract Voting is
     mapping(uint256 => Round) public rounds;
 
     // Maps price request IDs to the PriceRequest struct.
-    mapping(bytes32 => PriceRequest) private priceRequests;
+    mapping(bytes32 => PriceRequest) internal priceRequests;
+
+    struct Request {
+        bytes32 requestId;
+        uint256 roundId;
+    }
+
+    Request[] internal priceRequestIds;
 
     // Price request ids for price requests that haven't yet been marked as resolved.
     // These requests may be for future rounds.
@@ -120,9 +134,6 @@ contract Voting is
     // Time in seconds from the end of the round in which a price request is
     // resolved that voters can still claim their rewards.
     uint256 public rewardsExpirationTimeout;
-
-    // Reference to the voting token.
-    VotingToken public votingToken;
 
     // Reference to the Finder.
     FinderInterface private finder;
@@ -145,7 +156,21 @@ contract Voting is
 
     bytes32 public snapshotMessageHash = ECDSA.toEthSignedMessageHash(keccak256(bytes("Sign For Snapshot")));
 
-    /***************************************
+    /****************************************
+     *          SLASHING TRACKERS           *
+     ****************************************/
+
+    uint256 public lastRequestIndexConsidered;
+
+    struct SlashingTracker {
+        uint256 wrongVoteSlashPerToken;
+        uint256 noVoteSlashPerToken;
+        uint256 totalSlashed;
+    }
+
+    SlashingTracker[] public requestSlashingTrackers;
+
+    /****************************************
      *                EVENTS                *
      ****************************************/
 
@@ -207,6 +232,8 @@ contract Voting is
      * Must be set to 0x0 for production environments that use live time.
      */
     constructor(
+        uint256 _emissionRate,
+        uint256 _unstakeCoolDown,
         uint256 _phaseLength,
         FixedPoint.Unsigned memory _gatPercentage,
         FixedPoint.Unsigned memory _inflationRate,
@@ -214,14 +241,13 @@ contract Voting is
         address _votingToken,
         address _finder,
         address _timerAddress
-    ) Testable(_timerAddress) {
+    ) StakerSnapshot(_emissionRate, _unstakeCoolDown, _votingToken, _timerAddress) {
         voteTiming.init(_phaseLength);
         require(_gatPercentage.isLessThanOrEqual(1), "GAT percentage must be <= 100%");
         gatPercentage = _gatPercentage;
         inflationRate = _inflationRate;
-        votingToken = VotingToken(_votingToken);
         finder = FinderInterface(_finder);
-        rewardsExpirationTimeout = _rewardsExpirationTimeout;
+        rewardsExpirationTimeout = _rewardsExpirationTimeout; // todo: remove this
     }
 
     /***************************************
@@ -241,6 +267,82 @@ contract Voting is
     modifier onlyIfNotMigrated() {
         require(migratedAddress == address(0), "Only call this if not migrated");
         _;
+    }
+
+    /****************************************
+     *          STAKING FUNCTIONS           *
+     ****************************************/
+
+    function _updateAccountSlashingTrackers(address voterAddress) internal {
+        VoterStake storage voterStake = voterStakes[voterAddress];
+        // Note the method below can hit a gas limit of there are a LOT of requests from the last time this was run.
+        // A future version of this should bound how many requests to look at per call to avoid gas limit issues.
+        for (uint256 i = voterStake.lastRequestIndexConsidered; i < priceRequestIds.length; i++) {
+            PriceRequest storage priceRequest = priceRequests[priceRequestIds[i].requestId];
+            VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
+            bytes32 revealHash = voteInstance.voteSubmissions[voterAddress].revealHash;
+
+            // The voter did not reveal or did not commit. Slash at noVote rate.
+            int256 slashed = 0;
+            if (revealHash == 0)
+                slashed = -1 * int256(voterStake.cumulativeStaked * requestSlashingTrackers[i].noVoteSlashPerToken);
+
+                // The voter did not vote with the majority. Slash at wrongVote rate.
+            else if (!voteInstance.resultComputation.wasVoteCorrect(revealHash))
+                slashed = -1 * int256(voterStake.cumulativeStaked * requestSlashingTrackers[i].wrongVoteSlashPerToken);
+
+                // The voter voted correctly.Receive a pro-rate share of the other voters slashed amounts as a reward.
+            else {
+                uint256 roundId = rounds[priceRequestIds[i].roundId].snapshotId;
+                uint256 totalStaked = votingToken.balanceOfAt(address(this), roundId);
+                slashed = int256(
+                    ((voterStake.cumulativeStaked * 1e18) / totalStaked) * requestSlashingTrackers[i].totalSlashed
+                );
+            }
+            if (slashed + int256(voterStake.cumulativeStaked) > 0)
+                voterStake.cumulativeStaked = uint256(int256(voterStake.cumulativeStaked) + slashed);
+            else voterStake.cumulativeStaked = 0;
+        }
+    }
+
+    function _updateCumulativeSlashingTrackers() internal {
+        // Note the method below can hit a gas limit of there are a LOT of requests from the last time this was run.
+        // A future version of this should bound how many requests to look at per call to avoid gas limit issues.
+        for (uint256 i = lastRequestIndexConsidered; i < priceRequestIds.length; i++) {
+            PriceRequest storage priceRequest = priceRequests[priceRequestIds[i].requestId];
+            VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
+            uint256 roundId = rounds[priceRequestIds[i].roundId].snapshotId;
+
+            uint256 totalStaked = votingToken.balanceOfAt(address(this), roundId);
+            uint256 totalVotes = voteInstance.resultComputation.totalVotes.rawValue;
+            uint256 totalCorrectVotes = voteInstance.resultComputation.getTotalCorrectlyVotedTokens().rawValue;
+
+            uint256 wrongVoteSlashPerToken = calcWrongVoteSlashPerToken(totalStaked, totalVotes, totalCorrectVotes);
+            uint256 noVoteSlashPerToken = calcNoVoteSlashPerToken(totalStaked, totalVotes, totalCorrectVotes);
+
+            uint256 totalSlashed = ((noVoteSlashPerToken + wrongVoteSlashPerToken) * totalStaked) / 1e18;
+            requestSlashingTrackers.push(SlashingTracker(wrongVoteSlashPerToken, noVoteSlashPerToken, totalSlashed));
+        }
+        lastRequestIndexConsidered = priceRequestIds.length;
+    }
+
+    // Note the functions below should be pulled out into an external library that is paramaterizable by each of the
+    // props passed in is uppdatable via governance.
+
+    function calcWrongVoteSlashPerToken(
+        uint256 totalStaked,
+        uint256 totalVotes,
+        uint256 totalCorrectVotes
+    ) public pure returns (uint256) {
+        return 1600000000000000;
+    }
+
+    function calcNoVoteSlashPerToken(
+        uint256 totalStaked,
+        uint256 totalVotes,
+        uint256 totalCorrectVotes
+    ) public pure returns (uint256) {
+        return 1600000000000000;
     }
 
     /****************************************
@@ -268,6 +370,7 @@ contract Voting is
         bytes32 priceRequestId = _encodePriceRequest(identifier, time, ancillaryData);
         PriceRequest storage priceRequest = priceRequests[priceRequestId];
         uint256 currentRoundId = voteTiming.computeCurrentRoundId(blockTime);
+        priceRequestIds.push(Request(priceRequestId, currentRoundId));
 
         RequestStatus requestStatus = _getRequestStatus(priceRequest, currentRoundId);
 
@@ -310,6 +413,7 @@ contract Voting is
         return _hasPrice;
     }
 
+    // TODO: remove all overriden functions that miss ancillary data. DVM2.0 should only accept ancillary data requests.
     // Overloaded method to enable short term backwards compatibility. Will be deprecated in the next DVM version.
     function hasPrice(bytes32 identifier, uint256 time) public view override returns (bool) {
         return hasPrice(identifier, time, "");
@@ -629,6 +733,7 @@ contract Voting is
         batchReveal(revealsAncillary);
     }
 
+    // TODO: remove this function and the interfaces
     /**
      * @notice Retrieves rewards owed for a set of resolved price requests.
      * @dev Can only retrieve rewards if calling for a valid round and if the call is done within the timeout threshold

@@ -37,14 +37,14 @@ contract StakerSnapshot is Ownable, Testable {
         Snapshots snapshots;
     }
 
-    mapping(address => VoterStake) public stakingBalances;
+    mapping(address => VoterStake) public voterStakes;
 
     struct Snapshots {
         uint256[] ids;
         uint256[] values;
     }
 
-    Snapshots private _totalStakedSnapshots;
+    Snapshots private _cumulativeStakedSnapshots;
 
     // Snapshot ids increase monotonically, with the first value being 1. An id of 0 is invalid.
     Counters.Counter private _currentSnapshotId;
@@ -68,14 +68,15 @@ contract StakerSnapshot is Ownable, Testable {
     // Pulls tokens from users wallet and stakes them.
     function stake(uint256 amount) public {
         _updateTrackers(msg.sender);
+        updateSnapshot(msg.sender);
 
-        stakingBalances[msg.sender].cumulativeStaked += amount;
+        voterStakes[msg.sender].cumulativeStaked += amount;
         cumulativeStaked += amount;
 
         votingToken.transferFrom(msg.sender, address(this), amount);
     }
 
-    function snapshotStake(address voterAddress) public {
+    function updateSnapshot(address voterAddress) public {
         _updateAccountSnapshot(voterAddress);
         _updateTotalStakedSnapshot();
     }
@@ -85,10 +86,10 @@ contract StakerSnapshot is Ownable, Testable {
         // Staker signals that they want to unstake. After signalling, their total voting balance is decreased by the
         // signaled amount. This amount is not vulnerable to being slashed but also does not accumulate rewards.
 
-        require(stakingBalances[msg.sender].cumulativeStaked >= amount, "Bad request amount");
+        require(voterStakes[msg.sender].cumulativeStaked >= amount, "Bad request amount");
 
-        stakingBalances[msg.sender].requestUnstake = amount;
-        stakingBalances[msg.sender].unstakeTime = getCurrentTime() + unstakeCoolDown;
+        voterStakes[msg.sender].requestUnstake = amount;
+        voterStakes[msg.sender].unstakeTime = getCurrentTime() + unstakeCoolDown;
     }
 
     // Note there is no way to cancel your unstake; you must wait until after unstakeTime and re-stake.
@@ -97,17 +98,18 @@ contract StakerSnapshot is Ownable, Testable {
     // that the `updateTrackers()
     function executeUnstake() public {
         _updateTrackers(msg.sender);
-        VoterStake storage voterStake = stakingBalances[msg.sender];
+        updateSnapshot(msg.sender);
+        VoterStake storage voterStake = voterStakes[msg.sender];
         require(voterStake.unstakeTime != 0 && getCurrentTime() >= voterStake.unstakeTime, "Unstake time not passed");
         uint256 tokensToSend = voterStake.requestUnstake;
         if (tokensToSend > voterStake.cumulativeStaked) tokensToSend = voterStake.cumulativeStaked;
 
         if (tokensToSend > 0) {
             voterStake.cumulativeStaked -= tokensToSend;
-            voterStake.requestUnstake = 0;
             cumulativeStaked -= voterStake.requestUnstake;
-            votingToken.transfer(msg.sender, tokensToSend);
+            voterStake.requestUnstake = 0;
             voterStake.unstakeTime = 0;
+            votingToken.transfer(msg.sender, tokensToSend);
         }
     }
 
@@ -115,10 +117,11 @@ contract StakerSnapshot is Ownable, Testable {
     // here. If the total slashing is larger than the outstanding rewards then this method does nothing.
     function withdrawRewards() public {
         _updateTrackers(msg.sender);
-        VoterStake storage voterStake = stakingBalances[msg.sender];
+        VoterStake storage voterStake = voterStakes[msg.sender];
+
         if (voterStake.outstandingRewards > 0) {
-            voterStake.outstandingRewards = 0;
             require(votingToken.mint(msg.sender, voterStake.outstandingRewards), "Voting token issuance failed");
+            voterStake.outstandingRewards = 0;
         }
     }
 
@@ -136,14 +139,14 @@ contract StakerSnapshot is Ownable, Testable {
         rewardPerTokenStored = rewardPerToken();
         lastUpdateTime = getCurrentTime();
         if (voterAddress != address(0)) {
-            VoterStake storage voterStake = stakingBalances[voterAddress];
+            VoterStake storage voterStake = voterStakes[voterAddress];
             voterStake.outstandingRewards = outstandingRewards(voterAddress);
             voterStake.rewardsPaidPerToken = rewardPerTokenStored;
         }
     }
 
     function outstandingRewards(address voterAddress) public view returns (uint256) {
-        VoterStake storage voterStake = stakingBalances[voterAddress];
+        VoterStake storage voterStake = voterStakes[voterAddress];
 
         return
             ((voterStake.cumulativeStaked * (rewardPerToken() - voterStake.rewardsPaidPerToken)) / 1e18) +
@@ -173,26 +176,22 @@ contract StakerSnapshot is Ownable, Testable {
         return currentId;
     }
 
-    /**
-     * @dev Get the current snapshotId
-     */
     function _getCurrentSnapshotId() internal view virtual returns (uint256) {
         return _currentSnapshotId.current();
     }
 
-    function stakedAt(address account, uint256 snapshotId) public view virtual returns (uint256) {
-        (bool snapshotted, uint256 value) = _valueAt(snapshotId, stakingBalances[account].snapshots);
-        require(snapshotted, "Snapshot not found");
-        return value;
+    function stakedAt(address voterAddress, uint256 snapshotId) public view virtual returns (uint256) {
+        (bool snapshotted, uint256 value) = _valueAt(snapshotId, voterStakes[voterAddress].snapshots);
+        // require(snapshotted, "Snapshot not found");
+        // return value;
+        return snapshotted ? value : voterStakes[voterAddress].cumulativeStaked;
     }
 
-    /**
-     * @dev Retrieves the total supply at the time `snapshotId` was created.
-     */
     function totalStakedAt(uint256 snapshotId) public view virtual returns (uint256) {
-        (bool snapshotted, uint256 value) = _valueAt(snapshotId, _totalStakedSnapshots);
-        require(snapshotted, "Snapshot not found");
-        return value;
+        (bool snapshotted, uint256 value) = _valueAt(snapshotId, _cumulativeStakedSnapshots);
+        // require(snapshotted, "Snapshot not found");
+        // return value;
+        return snapshotted ? value : cumulativeStaked;
     }
 
     function _valueAt(uint256 snapshotId, Snapshots storage snapshots) private view returns (bool, uint256) {
@@ -214,16 +213,20 @@ contract StakerSnapshot is Ownable, Testable {
         // exactly this.
 
         uint256 index = snapshots.ids.findUpperBound(snapshotId);
-        if (index == snapshots.ids.length) return (false, 0);
-        else return (true, snapshots.values[index]);
+
+        if (index == snapshots.ids.length) {
+            return (false, 0);
+        } else {
+            return (true, snapshots.values[index]);
+        }
     }
 
-    function _updateAccountSnapshot(address account) private {
-        _updateSnapshot(stakingBalances[account].snapshots, stakingBalances[account].cumulativeStaked);
+    function _updateAccountSnapshot(address voterAddress) private {
+        _updateSnapshot(voterStakes[voterAddress].snapshots, voterStakes[voterAddress].cumulativeStaked);
     }
 
     function _updateTotalStakedSnapshot() private {
-        _updateSnapshot(_totalStakedSnapshots, cumulativeStaked);
+        _updateSnapshot(_cumulativeStakedSnapshots, cumulativeStaked);
     }
 
     function _updateSnapshot(Snapshots storage snapshots, uint256 currentValue) private {
@@ -231,7 +234,6 @@ contract StakerSnapshot is Ownable, Testable {
         if (_lastSnapshotId(snapshots.ids) < currentId) {
             snapshots.ids.push(currentId);
             snapshots.values.push(currentValue);
-            // TODO: we need to add cumlative slashing trackers here.
         }
     }
 
