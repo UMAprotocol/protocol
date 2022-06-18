@@ -7,8 +7,6 @@ import "../../../common/implementation/FixedPoint.sol";
 // Test contract used to access internal variables in the Voting contract.
 contract VotingTest is Voting {
     constructor(
-        uint256 _emissionRate,
-        uint256 _unstakeCoolDown,
         uint256 _phaseLength,
         FixedPoint.Unsigned memory _gatPercentage,
         FixedPoint.Unsigned memory _inflationRate,
@@ -18,8 +16,6 @@ contract VotingTest is Voting {
         address _timerAddress
     )
         Voting(
-            _emissionRate,
-            _unstakeCoolDown,
             _phaseLength,
             _gatPercentage,
             _inflationRate,
