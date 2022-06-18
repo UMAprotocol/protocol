@@ -10,10 +10,6 @@ const func = async function (hre) {
   const VotingToken = await deployments.get("VotingToken");
   const Finder = await deployments.get("Finder");
 
-  const emissionRate = "640000000000000000"; // Approximately 20% APY with a total supply of 100mm tokens.
-
-  const unstakeCoolDown = 60 * 60 * 30; // 1 month.
-
   // Set the GAT percentage to 5%
   const gatPercentage = { rawValue: hre.web3.utils.toWei("0.05", "ether") };
 
@@ -29,8 +25,6 @@ const func = async function (hre) {
   await deploy("Voting", {
     from: deployer,
     args: [
-      emissionRate,
-      unstakeCoolDown,
       phaseLength,
       gatPercentage,
       inflationRate,
