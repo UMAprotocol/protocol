@@ -27,12 +27,10 @@ contract StakerSnapshot is Ownable, Testable {
 
     struct VoterStake {
         uint256 cumulativeStaked;
-        // Pro-rata trackers.
         uint256 rewardsPaidPerToken;
         uint256 outstandingRewards;
         uint256 unstakeTime;
         uint256 requestUnstake;
-        // Slashing trackers.
         uint256 lastRequestIndexConsidered;
         Snapshots snapshots;
     }
