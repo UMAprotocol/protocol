@@ -35,12 +35,12 @@ abstract contract SkinnyOptimisticOracleV2Interface {
         address disputer; // Address of the disputer.
         IERC20 currency; // ERC20 token used to pay rewards and fees.
         bool settled; // True if the request is settled.
+        RequestSettings requestSettings; // Custom settings associated with a request.
         int256 proposedPrice; // Price that the proposer submitted.
         int256 resolvedPrice; // Price resolved once the request is settled.
         uint256 expirationTime; // Time at which the request auto-settles without a dispute.
         uint256 reward; // Amount of the currency to pay to the proposer on settlement.
         uint256 finalFee; // Final fee to pay to the Store upon request to the DVM.
-        RequestSettings requestSettings; // Custom settings associated with a request.
     }
 
     // This value must be <= the Voting contract's `ancillaryBytesLimit` value otherwise it is possible
