@@ -6,8 +6,8 @@ const { assert } = require("chai");
 
 const { toWei, toBN, hexToUtf8, utf8ToHex } = web3.utils;
 
-const SkinnyOptimisticOracle = getContract("SkinnyOptimisticOracle");
-const OptimisticRequester = getContract("SkinnyOptimisticRequesterTest");
+const SkinnyOptimisticOracle = getContract("SkinnyOptimisticOracleV2");
+const OptimisticRequester = getContract("SkinnyOptimisticV2RequesterTest");
 const Finder = getContract("Finder");
 const Timer = getContract("Timer");
 const IdentifierWhitelist = getContract("IdentifierWhitelist");
@@ -16,7 +16,7 @@ const Token = getContract("ExpandedERC20");
 const Store = getContract("Store");
 const MockOracle = getContract("MockOracleAncillary");
 
-describe("SkinnyOptimisticOracle", function () {
+describe("SkinnyOptimisticOracleV2", function () {
   let optimisticOracle;
   let optimisticRequester;
   let finder;
@@ -83,6 +83,10 @@ describe("SkinnyOptimisticOracle", function () {
       .send({ from: accounts[0] });
   };
 
+  const deepCopy = (obj) => {
+    return JSON.parse(JSON.stringify(obj));
+  };
+
   before(async function () {
     accounts = await web3.eth.getAccounts();
     [owner, requester, proposer, disputer, rando] = accounts;
@@ -119,8 +123,13 @@ describe("SkinnyOptimisticOracle", function () {
       expirationTime: "0",
       reward: reward,
       finalFee: finalFee,
-      bond: finalFee,
-      customLiveness: "0",
+      requestSettings: {
+        bond: finalFee,
+        customLiveness: "0",
+        callbackOnPriceProposed: false,
+        callbackOnPriceDisputed: false,
+        callbackOnPriceSettled: false,
+      },
     };
 
     optimisticOracle = await SkinnyOptimisticOracle.new(liveness, finder.options.address, timer.options.address).send({
@@ -142,19 +151,19 @@ describe("SkinnyOptimisticOracle", function () {
     customExpiryTime = startTime + customLiveness;
 
     // These are request parameter structs that are reused in this file.
-    noFeeRequestParams = { ...requestParams, reward: "0" };
+    noFeeRequestParams = { ...deepCopy(requestParams), reward: "0" };
     postProposalParams = (
       _requestParams,
       _expirationTime = defaultExpiryTime.toString(),
       _proposedPrice = correctPrice
     ) => {
-      return { ..._requestParams, expirationTime: _expirationTime, proposer, proposedPrice: _proposedPrice };
+      return { ...deepCopy(_requestParams), expirationTime: _expirationTime, proposer, proposedPrice: _proposedPrice };
     };
     postDisputeParams = (_requestParams) => {
-      return { ..._requestParams, disputer };
+      return { ...deepCopy(_requestParams), disputer };
     };
     postSettleExpiryParams = (_requestParams, _resolvedPrice = correctPrice) => {
-      return { ..._requestParams, resolvedPrice: _resolvedPrice, settled: true };
+      return { ...deepCopy(_requestParams), resolvedPrice: _resolvedPrice, settled: true };
     };
   });
 
@@ -179,7 +188,7 @@ describe("SkinnyOptimisticOracle", function () {
   it("Initial invalid state", async function () {
     // Note: Need to set `currency=0x` to get this to return INVALID
     await verifyState(OptimisticOracleRequestStatesEnum.INVALID, requester, identifier, requestTime, "0x", {
-      ...requestParams,
+      ...deepCopy(requestParams),
       currency: ZERO_ADDRESS,
     });
   });
@@ -189,14 +198,26 @@ describe("SkinnyOptimisticOracle", function () {
 
     // Request for current time is okay.
     await optimisticOracle.methods
-      .requestPrice(identifier, currentTime, "0x", collateral.options.address, 0, 0, 0)
+      .requestPrice(identifier, currentTime, "0x", collateral.options.address, 0, {
+        bond: 0,
+        customLiveness: 0,
+        callbackOnPriceProposed: false,
+        callbackOnPriceDisputed: false,
+        callbackOnPriceSettled: false,
+      })
       .send({ from: accounts[0] });
 
     // 1 second in the future is not okay.
     assert(
       await didContractThrow(
         optimisticOracle.methods
-          .requestPrice(identifier, currentTime + 1, "0x", collateral.options.address, 0, 0, 0)
+          .requestPrice(identifier, currentTime + 1, "0x", collateral.options.address, 0, {
+            bond: 0,
+            customLiveness: 0,
+            callbackOnPriceProposed: false,
+            callbackOnPriceDisputed: false,
+            callbackOnPriceSettled: false,
+          })
           .send({ from: accounts[0] })
       )
     );
@@ -204,7 +225,13 @@ describe("SkinnyOptimisticOracle", function () {
 
   it("No fee request", async function () {
     await optimisticOracle.methods
-      .requestPrice(identifier, requestTime, "0x", collateral.options.address, 0, 0, 0)
+      .requestPrice(identifier, requestTime, "0x", collateral.options.address, 0, {
+        bond: 0,
+        customLiveness: 0,
+        callbackOnPriceProposed: false,
+        callbackOnPriceDisputed: false,
+        callbackOnPriceSettled: false,
+      })
       .send({ from: accounts[0] });
     await verifyState(
       OptimisticOracleRequestStatesEnum.REQUESTED,
@@ -220,7 +247,13 @@ describe("SkinnyOptimisticOracle", function () {
     assert(
       await didContractThrow(
         optimisticOracle.methods
-          .requestPrice(identifier, requestTime, "0x", collateral.options.address, reward, 0, 0)
+          .requestPrice(identifier, requestTime, "0x", collateral.options.address, reward, {
+            bond: 0,
+            customLiveness: 0,
+            callbackOnPriceProposed: false,
+            callbackOnPriceDisputed: false,
+            callbackOnPriceSettled: false,
+          })
           .send({ from: accounts[0] })
       )
     );
@@ -236,8 +269,13 @@ describe("SkinnyOptimisticOracle", function () {
       "0x",
       collateral.options.address,
       reward,
-      0,
-      0
+      {
+        bond: 0,
+        customLiveness: 0,
+        callbackOnPriceProposed: false,
+        callbackOnPriceDisputed: false,
+        callbackOnPriceSettled: false,
+      }
     );
     const returnValue = await requestTxn.call({ from: requester });
     assert.equal(returnValue, totalDefaultBond);
@@ -281,10 +319,16 @@ describe("SkinnyOptimisticOracle", function () {
 
     // Must set the bond because it defaults to the final fee, which is 0.
     await optimisticOracle.methods
-      .requestPrice(identifier, requestTime, "0x", collateral.options.address, reward, defaultBond, 0)
+      .requestPrice(identifier, requestTime, "0x", collateral.options.address, reward, {
+        bond: defaultBond,
+        customLiveness: 0,
+        callbackOnPriceProposed: false,
+        callbackOnPriceDisputed: false,
+        callbackOnPriceSettled: false,
+      })
       .send({ from: requester });
-    let modifiedRequestParams = { ...requestParams, finalFee: "0", bond: defaultBond };
-
+    const modifiedRequestParams = { ...deepCopy(requestParams), finalFee: "0" };
+    modifiedRequestParams.requestSettings.bond = defaultBond;
     // Note: defaultBond does _not_ include the final fee.
     await collateral.methods.approve(optimisticOracle.options.address, defaultBond).send({ from: proposer });
     await optimisticOracle.methods
@@ -318,7 +362,13 @@ describe("SkinnyOptimisticOracle", function () {
   describe("hasPrice", function () {
     beforeEach(async function () {
       await optimisticOracle.methods
-        .requestPrice(identifier, requestTime, "0x", collateral.options.address, 0, 0, 0)
+        .requestPrice(identifier, requestTime, "0x", collateral.options.address, 0, {
+          bond: 0,
+          customLiveness: 0,
+          callbackOnPriceProposed: false,
+          callbackOnPriceDisputed: false,
+          callbackOnPriceSettled: false,
+        })
         .send({ from: requester });
     });
 
@@ -442,7 +492,13 @@ describe("SkinnyOptimisticOracle", function () {
     describe("Default bond and liveness", function () {
       beforeEach(async function () {
         await optimisticOracle.methods
-          .requestPrice(identifier, requestTime, "0x", collateral.options.address, reward, 0, 0)
+          .requestPrice(identifier, requestTime, "0x", collateral.options.address, reward, {
+            bond: 0,
+            customLiveness: 0,
+            callbackOnPriceProposed: false,
+            callbackOnPriceDisputed: false,
+            callbackOnPriceSettled: false,
+          })
           .send({ from: requester });
       });
 
@@ -450,7 +506,13 @@ describe("SkinnyOptimisticOracle", function () {
         assert(
           await didContractThrow(
             optimisticOracle.methods
-              .requestPrice(identifier, requestTime, "0x", collateral.options.address, reward, 0, 0)
+              .requestPrice(identifier, requestTime, "0x", collateral.options.address, reward, {
+                bond: 0,
+                customLiveness: 0,
+                callbackOnPriceProposed: false,
+                callbackOnPriceDisputed: false,
+                callbackOnPriceSettled: false,
+              })
               .send({ from: requester })
           )
         );
@@ -539,17 +601,16 @@ describe("SkinnyOptimisticOracle", function () {
         const halfBondCeil = bond.divn(2).addn(1);
         const halfBondFloor = bond.divn(2);
 
-        let modifiedRequestParams = { ...requestParams, bond: bond.toString() };
+        const modifiedRequestParams = deepCopy(requestParams);
+        modifiedRequestParams.requestSettings.bond = bond.toString();
         await optimisticOracle.methods
-          .requestPrice(
-            identifier,
-            requestTime,
-            "0x",
-            collateral.options.address,
-            reward,
-            modifiedRequestParams.bond,
-            0
-          )
+          .requestPrice(identifier, requestTime, "0x", collateral.options.address, reward, {
+            bond: modifiedRequestParams.requestSettings.bond,
+            customLiveness: 0,
+            callbackOnPriceProposed: false,
+            callbackOnPriceDisputed: false,
+            callbackOnPriceSettled: false,
+          })
           .send({ from: requester });
         await collateral.methods.approve(optimisticOracle.options.address, totalBond).send({ from: proposer });
         await optimisticOracle.methods
@@ -594,17 +655,16 @@ describe("SkinnyOptimisticOracle", function () {
         await verifyBalanceSum(store.options.address, finalFee, halfBondFloor);
       });
       it("Custom liveness", async function () {
-        let modifiedRequestParams = { ...requestParams, customLiveness };
+        const modifiedRequestParams = deepCopy(requestParams);
+        modifiedRequestParams.requestSettings.customLiveness = customLiveness;
         await optimisticOracle.methods
-          .requestPrice(
-            identifier,
-            requestTime,
-            "0x",
-            collateral.options.address,
-            reward,
-            0,
-            modifiedRequestParams.customLiveness
-          )
+          .requestPrice(identifier, requestTime, "0x", collateral.options.address, reward, {
+            bond: 0,
+            customLiveness: modifiedRequestParams.requestSettings.customLiveness,
+            callbackOnPriceProposed: false,
+            callbackOnPriceDisputed: false,
+            callbackOnPriceSettled: false,
+          })
           .send({ from: requester });
 
         await collateral.methods.approve(optimisticOracle.options.address, totalDefaultBond).send({ from: proposer });
@@ -656,7 +716,13 @@ describe("SkinnyOptimisticOracle", function () {
       await collateral.methods.transfer(requester, reward).send({ from: accounts[0] });
       await collateral.methods.increaseAllowance(optimisticOracle.options.address, reward).send({ from: requester });
       await optimisticOracle.methods
-        .requestPrice(identifier, requestTime, "0x", collateral.options.address, reward, 0, 0)
+        .requestPrice(identifier, requestTime, "0x", collateral.options.address, reward, {
+          bond: 0,
+          customLiveness: 0,
+          callbackOnPriceProposed: false,
+          callbackOnPriceDisputed: false,
+          callbackOnPriceSettled: false,
+        })
         .send({ from: requester });
       await collateral.methods.approve(optimisticOracle.options.address, totalDefaultBond).send({ from: proposer });
       await optimisticOracle.methods
@@ -838,7 +904,13 @@ describe("SkinnyOptimisticOracle", function () {
       await collateral.methods.transfer(requester, reward).send({ from: accounts[0] });
       await collateral.methods.increaseAllowance(optimisticOracle.options.address, reward).send({ from: requester });
       await optimisticOracle.methods
-        .requestPrice(identifier, requestTime, "0x", collateral.options.address, reward, 0, 0)
+        .requestPrice(identifier, requestTime, "0x", collateral.options.address, reward, {
+          bond: 0,
+          customLiveness: 0,
+          callbackOnPriceProposed: false,
+          callbackOnPriceDisputed: false,
+          callbackOnPriceSettled: false,
+        })
         .send({ from: requester });
       await collateral.methods.approve(optimisticOracle.options.address, totalDefaultBond).send({ from: proposer });
       await optimisticOracle.methods
@@ -974,8 +1046,13 @@ describe("SkinnyOptimisticOracle", function () {
         "0x",
         collateral.options.address,
         reward,
-        0,
-        0,
+        {
+          bond: 0,
+          customLiveness: 0,
+          callbackOnPriceProposed: false,
+          callbackOnPriceDisputed: false,
+          callbackOnPriceSettled: false,
+        },
         proposer,
         correctPrice
       );
@@ -1043,8 +1120,13 @@ describe("SkinnyOptimisticOracle", function () {
           "0x",
           collateral.options.address,
           reward,
-          0,
-          0,
+          {
+            bond: 0,
+            customLiveness: 0,
+            callbackOnPriceProposed: false,
+            callbackOnPriceDisputed: false,
+            callbackOnPriceSettled: false,
+          },
           proposer,
           correctPrice
         )
@@ -1128,8 +1210,13 @@ describe("SkinnyOptimisticOracle", function () {
           "0x",
           collateral.options.address,
           reward,
-          0,
-          0,
+          {
+            bond: 0,
+            customLiveness: 0,
+            callbackOnPriceProposed: false,
+            callbackOnPriceDisputed: false,
+            callbackOnPriceSettled: false,
+          },
           proposer,
           correctPrice
         )
@@ -1236,7 +1323,7 @@ describe("SkinnyOptimisticOracle", function () {
       const totalStake = toBN(reward).add(toBN(totalDefaultBond)).toString();
       await collateral.methods.transfer(optimisticRequester.options.address, totalStake).send({ from: accounts[0] });
     });
-    describe("Verify propose callback", function () {
+    describe("Verify propose callback enabled and disabled", function () {
       it("Returns data to requesting contract", async function () {
         await optimisticRequester.methods
           .requestAndProposePriceFor(
@@ -1245,8 +1332,13 @@ describe("SkinnyOptimisticOracle", function () {
             "0x01",
             collateral.options.address,
             reward,
-            finalFee,
-            0,
+            {
+              bond: finalFee,
+              customLiveness: 0,
+              callbackOnPriceProposed: true,
+              callbackOnPriceDisputed: false,
+              callbackOnPriceSettled: false,
+            },
             proposer,
             correctPrice
           )
@@ -1265,23 +1357,53 @@ describe("SkinnyOptimisticOracle", function () {
             savedRequest.resolvedPrice === "0" &&
             savedRequest.expirationTime === defaultExpiryTime.toString() &&
             savedRequest.reward === reward &&
-            savedRequest.bond === finalFee &&
+            savedRequest.requestSettings.bond === finalFee &&
             savedRequest.finalFee === finalFee &&
-            savedRequest.customLiveness === "0"
+            savedRequest.requestSettings.customLiveness === "0"
         );
       });
-      it("Reverting callback implementation does not cause dispute to revert", async function () {
+      it("Reverting callback implementation cause dispute to revert", async function () {
+        await optimisticRequester.methods.setRevert(true).send({ from: accounts[0] });
+        assert(
+          await didContractThrow(
+            optimisticRequester.methods
+              .requestAndProposePriceFor(
+                identifier,
+                requestTime,
+                "0x01",
+                collateral.options.address,
+                reward,
+                {
+                  bond: finalFee,
+                  customLiveness: 0,
+                  callbackOnPriceProposed: true,
+                  callbackOnPriceDisputed: false,
+                  callbackOnPriceSettled: false,
+                },
+                proposer,
+                correctPrice
+              )
+              .send({ from: requester })
+          )
+        );
+      });
+      it("Reverting callback implementation doesn't cause dispute to revert if callback disabled", async function () {
         await optimisticRequester.methods.setRevert(true).send({ from: accounts[0] });
         assert.ok(
-          await optimisticRequester.methods
+          optimisticRequester.methods
             .requestAndProposePriceFor(
               identifier,
               requestTime,
               "0x01",
               collateral.options.address,
               reward,
-              finalFee,
-              0,
+              {
+                bond: finalFee,
+                customLiveness: 0,
+                callbackOnPriceProposed: false,
+                callbackOnPriceDisputed: false,
+                callbackOnPriceSettled: false,
+              },
               proposer,
               correctPrice
             )
@@ -1289,8 +1411,11 @@ describe("SkinnyOptimisticOracle", function () {
         );
       });
     });
-    describe("Verify dispute callback", function () {
+    describe("Verify dispute callback enabled", function () {
       beforeEach(async function () {
+        this.requestParamsWithDisputeCallback = deepCopy(requestParams);
+        this.requestParamsWithDisputeCallback.requestSettings.callbackOnPriceDisputed = true;
+
         await optimisticRequester.methods
           .requestAndProposePriceFor(
             identifier,
@@ -1298,8 +1423,13 @@ describe("SkinnyOptimisticOracle", function () {
             "0x01",
             collateral.options.address,
             reward,
-            finalFee,
-            0,
+            {
+              bond: finalFee,
+              customLiveness: 0,
+              callbackOnPriceProposed: false,
+              callbackOnPriceDisputed: true,
+              callbackOnPriceSettled: false,
+            },
             proposer,
             correctPrice
           )
@@ -1313,7 +1443,7 @@ describe("SkinnyOptimisticOracle", function () {
             identifier,
             requestTime,
             "0x01",
-            postProposalParams(requestParams)
+            postProposalParams(this.requestParamsWithDisputeCallback)
           )
           .send({ from: disputer });
 
@@ -1330,12 +1460,52 @@ describe("SkinnyOptimisticOracle", function () {
             savedRequest.resolvedPrice === "0" &&
             savedRequest.expirationTime === defaultExpiryTime.toString() &&
             savedRequest.reward === reward &&
-            savedRequest.bond === finalFee &&
+            savedRequest.requestSettings.bond === finalFee &&
             savedRequest.finalFee === finalFee &&
-            savedRequest.customLiveness === "0"
+            savedRequest.requestSettings.customLiveness === "0"
         );
       });
-      it("Reverting callback implementation does not cause dispute to revert", async function () {
+      it("Reverting callback implementation cause dispute to revert", async function () {
+        await optimisticRequester.methods.setRevert(true).send({ from: accounts[0] });
+        assert(
+          await didContractThrow(
+            optimisticOracle.methods
+              .disputePrice(
+                optimisticRequester.options.address,
+                identifier,
+                requestTime,
+                "0x01",
+                postProposalParams(this.requestParamsWithDisputeCallback)
+              )
+              .send({ from: disputer })
+          )
+        );
+      });
+    });
+
+    describe("Verify dispute callback disabled", function () {
+      beforeEach(async function () {
+        await optimisticRequester.methods
+          .requestAndProposePriceFor(
+            identifier,
+            requestTime,
+            "0x01",
+            collateral.options.address,
+            reward,
+            {
+              bond: finalFee,
+              customLiveness: 0,
+              callbackOnPriceProposed: false,
+              callbackOnPriceDisputed: false,
+              callbackOnPriceSettled: false,
+            },
+            proposer,
+            correctPrice
+          )
+          .send({ from: requester });
+        await collateral.methods.approve(optimisticOracle.options.address, totalDefaultBond).send({ from: disputer });
+      });
+      it("Reverting callback implementation doesn't cause dispute to revert if callback disabled", async function () {
         await optimisticRequester.methods.setRevert(true).send({ from: accounts[0] });
         assert.ok(
           await optimisticOracle.methods
@@ -1351,8 +1521,11 @@ describe("SkinnyOptimisticOracle", function () {
       });
     });
 
-    describe("Verify settle callback", function () {
+    describe("Verify settle callback enabled", function () {
       beforeEach(async function () {
+        this.requestParamsWithSettleCallback = deepCopy(requestParams);
+        this.requestParamsWithSettleCallback.requestSettings.callbackOnPriceSettled = true;
+
         await optimisticRequester.methods
           .requestAndProposePriceFor(
             identifier,
@@ -1360,8 +1533,13 @@ describe("SkinnyOptimisticOracle", function () {
             "0x01",
             collateral.options.address,
             reward,
-            finalFee,
-            0,
+            {
+              bond: finalFee,
+              customLiveness: 0,
+              callbackOnPriceProposed: false,
+              callbackOnPriceDisputed: false,
+              callbackOnPriceSettled: true,
+            },
             proposer,
             correctPrice
           )
@@ -1375,7 +1553,7 @@ describe("SkinnyOptimisticOracle", function () {
             identifier,
             requestTime,
             "0x01",
-            postProposalParams(requestParams)
+            postProposalParams(this.requestParamsWithSettleCallback)
           )
           .send({ from: accounts[0] });
 
@@ -1392,12 +1570,52 @@ describe("SkinnyOptimisticOracle", function () {
             savedRequest.resolvedPrice === correctPrice &&
             savedRequest.expirationTime === defaultExpiryTime.toString() &&
             savedRequest.reward === reward &&
-            savedRequest.bond === finalFee &&
+            savedRequest.requestSettings.bond === finalFee &&
             savedRequest.finalFee === finalFee &&
-            savedRequest.customLiveness === "0"
+            savedRequest.requestSettings.customLiveness === "0"
         );
       });
-      it("Reverting callback implementation does not cause dispute to revert", async function () {
+      it("Reverting callback implementation cause dispute to revert", async function () {
+        await optimisticRequester.methods.setRevert(true).send({ from: accounts[0] });
+        assert(
+          await didContractThrow(
+            optimisticOracle.methods
+              .settle(
+                optimisticRequester.options.address,
+                identifier,
+                requestTime,
+                "0x01",
+                postProposalParams(this.requestParamsWithSettleCallback)
+              )
+              .send({ from: accounts[0] })
+          )
+        );
+      });
+    });
+
+    describe("Verify settle callback disabled", function () {
+      beforeEach(async function () {
+        await optimisticRequester.methods
+          .requestAndProposePriceFor(
+            identifier,
+            requestTime,
+            "0x01",
+            collateral.options.address,
+            reward,
+            {
+              bond: finalFee,
+              customLiveness: 0,
+              callbackOnPriceProposed: false,
+              callbackOnPriceDisputed: false,
+              callbackOnPriceSettled: false,
+            },
+            proposer,
+            correctPrice
+          )
+          .send({ from: requester });
+        await optimisticOracle.methods.setCurrentTime(defaultExpiryTime).send({ from: accounts[0] });
+      });
+      it("Reverting callback implementation doesn't cause dispute to revert if callback disabled", async function () {
         await optimisticRequester.methods.setRevert(true).send({ from: accounts[0] });
         assert.ok(
           await optimisticOracle.methods
@@ -1428,7 +1646,7 @@ describe("SkinnyOptimisticOracle", function () {
 
       // Initial state.
       await verifyState(OptimisticOracleRequestStatesEnum.INVALID, requester, identifier, requestTime, ancillaryData, {
-        ...requestParams,
+        ...deepCopy(requestParams),
         currency: ZERO_ADDRESS,
       });
 
@@ -1436,7 +1654,13 @@ describe("SkinnyOptimisticOracle", function () {
       await collateral.methods.transfer(requester, reward).send({ from: accounts[0] });
       await collateral.methods.increaseAllowance(optimisticOracle.options.address, reward).send({ from: requester });
       await optimisticOracle.methods
-        .requestPrice(identifier, requestTime, ancillaryData, collateral.options.address, reward, 0, 0)
+        .requestPrice(identifier, requestTime, ancillaryData, collateral.options.address, reward, {
+          bond: 0,
+          customLiveness: 0,
+          callbackOnPriceProposed: false,
+          callbackOnPriceDisputed: false,
+          callbackOnPriceSettled: false,
+        })
         .send({ from: requester });
       await verifyState(
         OptimisticOracleRequestStatesEnum.REQUESTED,
@@ -1519,7 +1743,13 @@ describe("SkinnyOptimisticOracle", function () {
       await collateral.methods.transfer(requester, reward).send({ from: accounts[0] });
       await collateral.methods.increaseAllowance(optimisticOracle.options.address, reward).send({ from: requester });
       await optimisticOracle.methods
-        .requestPrice(identifier, requestTime, ancillaryData, collateral.options.address, reward, 0, 0)
+        .requestPrice(identifier, requestTime, ancillaryData, collateral.options.address, reward, {
+          bond: 0,
+          customLiveness: 0,
+          callbackOnPriceProposed: false,
+          callbackOnPriceDisputed: false,
+          callbackOnPriceSettled: false,
+        })
         .send({ from: requester });
 
       // Proposed.
@@ -1559,7 +1789,13 @@ describe("SkinnyOptimisticOracle", function () {
       await collateral.methods.transfer(requester, reward).send({ from: accounts[0] });
       await collateral.methods.increaseAllowance(optimisticOracle.options.address, reward).send({ from: requester });
       await optimisticOracle.methods
-        .requestPrice(identifier, requestTime, ancillaryData, collateral.options.address, reward, 0, 0)
+        .requestPrice(identifier, requestTime, ancillaryData, collateral.options.address, reward, {
+          bond: 0,
+          customLiveness: 0,
+          callbackOnPriceProposed: false,
+          callbackOnPriceDisputed: false,
+          callbackOnPriceSettled: false,
+        })
         .send({ from: requester });
 
       // Proposed.
@@ -1611,8 +1847,13 @@ describe("SkinnyOptimisticOracle", function () {
               web3.utils.randomHex(MAX_ANCILLARY_DATA_LENGTH + 1),
               collateral.options.address,
               reward,
-              0,
-              0
+              {
+                bond: 0,
+                customLiveness: 0,
+                callbackOnPriceProposed: false,
+                callbackOnPriceDisputed: false,
+                callbackOnPriceSettled: false,
+              }
             )
             .send({ from: requester })
         )
@@ -1626,8 +1867,13 @@ describe("SkinnyOptimisticOracle", function () {
           web3.utils.randomHex(MAX_ANCILLARY_DATA_LENGTH),
           collateral.options.address,
           reward,
-          0,
-          0
+          {
+            bond: 0,
+            customLiveness: 0,
+            callbackOnPriceProposed: false,
+            callbackOnPriceDisputed: false,
+            callbackOnPriceSettled: false,
+          }
         )
         .send({ from: requester });
     });

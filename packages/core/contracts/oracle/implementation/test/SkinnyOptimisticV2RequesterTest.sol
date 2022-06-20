@@ -6,14 +6,14 @@ import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
 import "../../interfaces/StoreInterface.sol";
 import "../../interfaces/FinderInterface.sol";
-import "../previous-versions/SkinnyOptimisticOracle.sol";
+import "../SkinnyOptimisticOracleV2.sol";
 import "../Constants.sol";
 
 // This is just a test contract to make requests to the optimistic oracle.
-contract SkinnyOptimisticRequesterTest {
+contract SkinnyOptimisticV2RequesterTest {
     using SafeMath for uint256;
 
-    SkinnyOptimisticOracle optimisticOracle;
+    SkinnyOptimisticOracleV2 optimisticOracle;
     bool public shouldRevert = false;
 
     // Finder to provide addresses for DVM contracts.
@@ -23,12 +23,12 @@ contract SkinnyOptimisticRequesterTest {
     bytes32 public identifier;
     uint32 public timestamp;
     bytes public ancillaryData;
-    SkinnyOptimisticOracle.Request public request;
+    SkinnyOptimisticOracleV2.Request public request;
 
     // Manually set an expiration timestamp to simulate expiry price requests
     uint256 public expirationTimestamp;
 
-    constructor(SkinnyOptimisticOracle _optimisticOracle, FinderInterface _finderAddress) {
+    constructor(SkinnyOptimisticOracleV2 _optimisticOracle, FinderInterface _finderAddress) {
         optimisticOracle = _optimisticOracle;
         finder = _finderAddress;
     }
@@ -39,22 +39,20 @@ contract SkinnyOptimisticRequesterTest {
         bytes memory _ancillaryData,
         IERC20 currency,
         uint256 reward,
-        uint256 bond,
-        uint256 customLiveness,
+        SkinnyOptimisticOracleV2Interface.RequestSettings memory requestSettings,
         address proposer,
         int256 proposedPrice
     ) external {
         uint256 finalFee = _getStore().computeFinalFee(address(currency)).rawValue;
 
-        currency.approve(address(optimisticOracle), reward.add(bond).add(finalFee));
+        currency.approve(address(optimisticOracle), reward.add(requestSettings.bond).add(finalFee));
         optimisticOracle.requestAndProposePriceFor(
             _identifier,
             _timestamp,
             _ancillaryData,
             currency,
             reward,
-            bond,
-            customLiveness,
+            requestSettings,
             proposer,
             proposedPrice
         );
@@ -66,11 +64,10 @@ contract SkinnyOptimisticRequesterTest {
         bytes memory _ancillaryData,
         IERC20 currency,
         uint256 reward,
-        uint256 bond,
-        uint256 customLiveness
+        SkinnyOptimisticOracleV2Interface.RequestSettings memory requestSettings
     ) external {
         currency.approve(address(optimisticOracle), reward);
-        optimisticOracle.requestPrice(_identifier, _timestamp, _ancillaryData, currency, reward, bond, customLiveness);
+        optimisticOracle.requestPrice(_identifier, _timestamp, _ancillaryData, currency, reward, requestSettings);
     }
 
     function setExpirationTimestamp(uint256 _expirationTimestamp) external {
@@ -85,7 +82,7 @@ contract SkinnyOptimisticRequesterTest {
         bytes32 _identifier,
         uint32 _timestamp,
         bytes memory _ancillaryData,
-        SkinnyOptimisticOracle.Request memory _request
+        SkinnyOptimisticOracleV2.Request memory _request
     ) external {
         require(!shouldRevert);
         identifier = _identifier;
@@ -98,7 +95,7 @@ contract SkinnyOptimisticRequesterTest {
         bytes32 _identifier,
         uint32 _timestamp,
         bytes memory _ancillaryData,
-        SkinnyOptimisticOracle.Request memory _request
+        SkinnyOptimisticOracleV2.Request memory _request
     ) external {
         require(!shouldRevert);
         identifier = _identifier;
@@ -111,7 +108,7 @@ contract SkinnyOptimisticRequesterTest {
         bytes32 _identifier,
         uint32 _timestamp,
         bytes memory _ancillaryData,
-        SkinnyOptimisticOracle.Request memory _request
+        SkinnyOptimisticOracleV2.Request memory _request
     ) external {
         require(!shouldRevert);
         identifier = _identifier;
