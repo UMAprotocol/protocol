@@ -1,6 +1,6 @@
 const hre = require("hardhat");
 const { web3 } = hre;
-const { runDefaultFixture } = require("@uma/common");
+const { runDefaultFixture, didContractThrow } = require("@uma/common");
 const { getContract } = hre;
 
 const { assert } = require("chai");
@@ -220,7 +220,7 @@ describe("StakerSnapshot", function () {
       assert.equal(await staker.methods.outstandingRewards(account1).call(), toWei("240")); // 160 + 80 = 240
       assert.equal(await staker.methods.outstandingRewards(account2).call(), toWei("1040")); // 480 + 560 = 1040
 
-      // Slash the remaining account1's balance. They should accumulate no more rewards and everyhing goes to account2.
+      // Slash the remaining account1's balance. They should accumulate no more rewards and everything goes to account2.
       await staker.methods.applySlashingToCumulativeStaked(account1, amountToStake.divn(-2)).send({ from: account1 });
       await staker.methods.applySlashingToCumulativeStaked(account2, amountToStake.divn(2)).send({ from: account1 });
 

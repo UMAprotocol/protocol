@@ -1,4 +1,4 @@
-// TODO: this whole /oracle/implementation directory should be restructured to seperate the DVM and the OO.
+// TODO: this whole /oracle/implementation directory should be restructured to separate the DVM and the OO.
 
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
@@ -7,19 +7,20 @@ import "../../common/implementation/FixedPoint.sol"; // TODO: remove this from t
 import "../interfaces/FinderInterface.sol";
 import "../interfaces/OracleInterface.sol";
 import "../interfaces/OracleAncillaryInterface.sol";
-import "../interfaces/VotingInterface.sol";
-import "../interfaces/VotingAncillaryInterface.sol";
+import "../interfaces/VotingV2Interface.sol";
+import "../interfaces/VotingAncillaryInterface.sol"; // TODO: remove this and simplify down to one v2 interface.
 import "../interfaces/IdentifierWhitelistInterface.sol";
 import "./Registry.sol";
 import "./ResultComputation.sol";
 import "./VoteTiming.sol";
-import "./VotingToken.sol";
 import "./StakerSnapshot.sol";
 import "./Constants.sol";
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+
+import "hardhat/console.sol";
 
 /**
  * @title Voting system for Oracle.
@@ -32,7 +33,7 @@ contract VotingV2 is
     StakerSnapshot,
     OracleInterface,
     OracleAncillaryInterface, // Interface to support ancillary data with price requests.
-    VotingInterface,
+    VotingV2Interface,
     VotingAncillaryInterface // Interface to support ancillary data with voting rounds.
 {
     using FixedPoint for FixedPoint.Unsigned;
@@ -82,7 +83,7 @@ contract VotingV2 is
         uint256 snapshotId; // Voting token snapshot ID for this round.  0 if no snapshot has been taken.
         FixedPoint.Unsigned inflationRate; // Inflation rate set for this round.
         FixedPoint.Unsigned gatPercentage; // Gat rate set for this round.
-        uint256 rewardsExpirationTime; // Time that rewards for this round can be claimed until.
+        uint256 rewardsExpirationTime; // Time that rewards for this round can be claimed until. //todo: this should be removed, along with the concept of of reward expiration in general.
     }
 
     // Represents the status a price request has.
@@ -220,24 +221,21 @@ contract VotingV2 is
         bytes ancillaryData
     );
 
-    /**
-     * @notice Construct the Voting contract.
-     * @param _phaseLength length of the commit and reveal phases in seconds.
-     * @param _gatPercentage of the total token supply that must be used in a vote to create a valid price resolution.
-     * @param _inflationRate percentage inflation per round used to increase token supply of correct voters.
-     * @param _rewardsExpirationTimeout timeout, in seconds, within which rewards must be claimed.
-     * @param _votingToken address of the UMA token contract used to commit votes.
-     * @param _finder keeps track of all contracts within the system based on their interfaceName.
-     * @param _timerAddress Contract that stores the current time in a testing environment.
-     * Must be set to 0x0 for production environments that use live time.
-     */
+    // /**
+    //  * @notice Construct the Voting contract.
+    //  * @param _phaseLength length of the commit and reveal phases in seconds.
+    //  * @param _gatPercentage of the total token supply that must be used in a vote to create a valid price resolution.
+    //  * @param _inflationRate percentage inflation per round used to increase token supply of correct voters.
+    //  * @param _votingToken address of the UMA token contract used to commit votes.
+    //  * @param _finder keeps track of all contracts within the system based on their interfaceName.
+    //  * @param _timerAddress Contract that stores the current time in a testing environment.
+    //  * Must be set to 0x0 for production environments that use live time.
+    //  */
     constructor(
         uint256 _emissionRate,
         uint256 _unstakeCoolDown,
         uint256 _phaseLength,
         FixedPoint.Unsigned memory _gatPercentage,
-        FixedPoint.Unsigned memory _inflationRate,
-        uint256 _rewardsExpirationTimeout,
         address _votingToken,
         address _finder,
         address _timerAddress
@@ -245,9 +243,9 @@ contract VotingV2 is
         voteTiming.init(_phaseLength);
         require(_gatPercentage.isLessThanOrEqual(1), "GAT percentage must be <= 100%");
         gatPercentage = _gatPercentage;
-        inflationRate = _inflationRate;
+        inflationRate = FixedPoint.fromUnscaledUint(0);
         finder = FinderInterface(_finder);
-        rewardsExpirationTimeout = _rewardsExpirationTimeout; // todo: remove this
+        rewardsExpirationTimeout = 1000000000; // todo: remove thisv
     }
 
     /***************************************
@@ -294,7 +292,7 @@ contract VotingV2 is
                 // The voter voted correctly.Receive a pro-rate share of the other voters slashed amounts as a reward.
             else {
                 uint256 roundId = rounds[priceRequestIds[i].roundId].snapshotId;
-                uint256 totalStaked = votingToken.balanceOfAt(address(this), roundId);
+                uint256 totalStaked = stakedAt(address(this), roundId);
                 slashed = int256(
                     ((voterStake.cumulativeStaked * 1e18) / totalStaked) * requestSlashingTrackers[i].totalSlashed
                 );
@@ -313,7 +311,7 @@ contract VotingV2 is
             VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
             uint256 roundId = rounds[priceRequestIds[i].roundId].snapshotId;
 
-            uint256 totalStaked = votingToken.balanceOfAt(address(this), roundId);
+            uint256 totalStaked = stakedAt(address(this), roundId);
             uint256 totalVotes = voteInstance.resultComputation.totalVotes.rawValue;
             uint256 totalCorrectVotes = voteInstance.resultComputation.getTotalCorrectlyVotedTokens().rawValue;
 
@@ -550,7 +548,7 @@ contract VotingV2 is
      */
     function snapshotCurrentRound(bytes calldata signature)
         external
-        override(VotingInterface, VotingAncillaryInterface)
+        override(VotingV2Interface, VotingAncillaryInterface)
         onlyIfNotMigrated()
     {
         uint256 blockTime = getCurrentTime();
@@ -607,7 +605,9 @@ contract VotingV2 is
 
         // Get the voter's snapshotted balance. Since balances are returned pre-scaled by 10**18, we can directly
         // initialize the Unsigned value with the returned uint.
-        FixedPoint.Unsigned memory balance = FixedPoint.Unsigned(votingToken.balanceOfAt(msg.sender, snapshotId));
+        FixedPoint.Unsigned memory balance = FixedPoint.Unsigned(stakedAt(msg.sender, snapshotId));
+        console.log("snapshotId", snapshotId);
+        console.log("stakedAt(msg.sender, snapshotId)", stakedAt(msg.sender, snapshotId));
 
         // Set the voter's submission.
         voteSubmission.revealHash = keccak256(abi.encode(price));
@@ -733,121 +733,6 @@ contract VotingV2 is
         batchReveal(revealsAncillary);
     }
 
-    // TODO: remove this function and the interfaces
-    /**
-     * @notice Retrieves rewards owed for a set of resolved price requests.
-     * @dev Can only retrieve rewards if calling for a valid round and if the call is done within the timeout threshold
-     * (not expired). Note that a named return value is used here to avoid a stack to deep error.
-     * @param voterAddress voter for which rewards will be retrieved. Does not have to be the caller.
-     * @param roundId the round from which voting rewards will be retrieved from.
-     * @param toRetrieve array of PendingRequests which rewards are retrieved from.
-     * @return totalRewardToIssue total amount of rewards returned to the voter.
-     */
-    function retrieveRewards(
-        address voterAddress,
-        uint256 roundId,
-        PendingRequestAncillary[] memory toRetrieve
-    ) public override returns (FixedPoint.Unsigned memory totalRewardToIssue) {
-        if (migratedAddress != address(0)) {
-            require(msg.sender == migratedAddress, "Can only call from migrated");
-        }
-        require(roundId < voteTiming.computeCurrentRoundId(getCurrentTime()), "Invalid roundId");
-
-        Round storage round = rounds[roundId];
-        bool isExpired = getCurrentTime() > round.rewardsExpirationTime;
-        FixedPoint.Unsigned memory snapshotBalance =
-            FixedPoint.Unsigned(votingToken.balanceOfAt(voterAddress, round.snapshotId));
-
-        // Compute the total amount of reward that will be issued for each of the votes in the round.
-        FixedPoint.Unsigned memory snapshotTotalSupply =
-            FixedPoint.Unsigned(votingToken.totalSupplyAt(round.snapshotId));
-        FixedPoint.Unsigned memory totalRewardPerVote = round.inflationRate.mul(snapshotTotalSupply);
-
-        // Keep track of the voter's accumulated token reward.
-        totalRewardToIssue = FixedPoint.Unsigned(0);
-
-        for (uint256 i = 0; i < toRetrieve.length; i++) {
-            PriceRequest storage priceRequest =
-                _getPriceRequest(toRetrieve[i].identifier, toRetrieve[i].time, toRetrieve[i].ancillaryData);
-            VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
-            // Only retrieve rewards for votes resolved in same round
-            require(priceRequest.lastVotingRound == roundId, "Retrieve for votes same round");
-
-            _resolvePriceRequest(priceRequest, voteInstance);
-
-            if (voteInstance.voteSubmissions[voterAddress].revealHash == 0) {
-                continue;
-            } else if (isExpired) {
-                // Emit a 0 token retrieval on expired rewards.
-                emit RewardsRetrieved(
-                    voterAddress,
-                    roundId,
-                    toRetrieve[i].identifier,
-                    toRetrieve[i].time,
-                    toRetrieve[i].ancillaryData,
-                    0
-                );
-            } else if (
-                voteInstance.resultComputation.wasVoteCorrect(voteInstance.voteSubmissions[voterAddress].revealHash)
-            ) {
-                // The price was successfully resolved during the voter's last voting round, the voter revealed
-                // and was correct, so they are eligible for a reward.
-                // Compute the reward and add to the cumulative reward.
-
-                FixedPoint.Unsigned memory reward =
-                    snapshotBalance.mul(totalRewardPerVote).div(
-                        voteInstance.resultComputation.getTotalCorrectlyVotedTokens()
-                    );
-                totalRewardToIssue = totalRewardToIssue.add(reward);
-
-                // Emit reward retrieval for this vote.
-                emit RewardsRetrieved(
-                    voterAddress,
-                    roundId,
-                    toRetrieve[i].identifier,
-                    toRetrieve[i].time,
-                    toRetrieve[i].ancillaryData,
-                    reward.rawValue
-                );
-            } else {
-                // Emit a 0 token retrieval on incorrect votes.
-                emit RewardsRetrieved(
-                    voterAddress,
-                    roundId,
-                    toRetrieve[i].identifier,
-                    toRetrieve[i].time,
-                    toRetrieve[i].ancillaryData,
-                    0
-                );
-            }
-
-            // Delete the submission to capture any refund and clean up storage.
-            delete voteInstance.voteSubmissions[voterAddress].revealHash;
-        }
-
-        // Issue any accumulated rewards.
-        if (totalRewardToIssue.isGreaterThan(0)) {
-            require(votingToken.mint(voterAddress, totalRewardToIssue.rawValue), "Voting token issuance failed");
-        }
-    }
-
-    // Overloaded method to enable short term backwards compatibility. Will be deprecated in the next DVM version.
-    function retrieveRewards(
-        address voterAddress,
-        uint256 roundId,
-        PendingRequest[] memory toRetrieve
-    ) public override returns (FixedPoint.Unsigned memory) {
-        PendingRequestAncillary[] memory toRetrieveAncillary = new PendingRequestAncillary[](toRetrieve.length);
-
-        for (uint256 i = 0; i < toRetrieve.length; i++) {
-            toRetrieveAncillary[i].identifier = toRetrieve[i].identifier;
-            toRetrieveAncillary[i].time = toRetrieve[i].time;
-            toRetrieveAncillary[i].ancillaryData = "";
-        }
-
-        return retrieveRewards(voterAddress, roundId, toRetrieveAncillary);
-    }
-
     /****************************************
      *        VOTING GETTER FUNCTIONS       *
      ****************************************/
@@ -860,7 +745,7 @@ contract VotingV2 is
     function getPendingRequests()
         external
         view
-        override(VotingInterface, VotingAncillaryInterface)
+        override(VotingV2Interface, VotingAncillaryInterface)
         returns (PendingRequestAncillary[] memory)
     {
         uint256 blockTime = getCurrentTime();
@@ -894,7 +779,7 @@ contract VotingV2 is
      * @notice Returns the current voting phase, as a function of the current time.
      * @return Phase to indicate the current phase. Either { Commit, Reveal, NUM_PHASES_PLACEHOLDER }.
      */
-    function getVotePhase() external view override(VotingInterface, VotingAncillaryInterface) returns (Phase) {
+    function getVotePhase() external view override(VotingV2Interface, VotingAncillaryInterface) returns (Phase) {
         return voteTiming.computeCurrentPhase(getCurrentTime());
     }
 
@@ -902,9 +787,16 @@ contract VotingV2 is
      * @notice Returns the current round ID, as a function of the current time.
      * @return uint256 representing the unique round ID.
      */
-    function getCurrentRoundId() external view override(VotingInterface, VotingAncillaryInterface) returns (uint256) {
+    function getCurrentRoundId() external view override(VotingV2Interface, VotingAncillaryInterface) returns (uint256) {
         return voteTiming.computeCurrentRoundId(getCurrentTime());
     }
+
+    // TODO: remove this function. it's just here to make the contract compile given the interfaces.
+    function retrieveRewards(
+        address voterAddress,
+        uint256 roundId,
+        PendingRequestAncillary[] memory toRetrieve
+    ) public override returns (FixedPoint.Unsigned memory) {}
 
     /****************************************
      *        OWNER ADMIN FUNCTIONS         *
@@ -917,7 +809,7 @@ contract VotingV2 is
      */
     function setMigrated(address newVotingAddress)
         external
-        override(VotingInterface, VotingAncillaryInterface)
+        override(VotingV2Interface, VotingAncillaryInterface)
         onlyOwner
     {
         migratedAddress = newVotingAddress;
@@ -930,7 +822,7 @@ contract VotingV2 is
      */
     function setInflationRate(FixedPoint.Unsigned memory newInflationRate)
         public
-        override(VotingInterface, VotingAncillaryInterface)
+        override(VotingV2Interface, VotingAncillaryInterface)
         onlyOwner
     {
         inflationRate = newInflationRate;
@@ -943,7 +835,7 @@ contract VotingV2 is
      */
     function setGatPercentage(FixedPoint.Unsigned memory newGatPercentage)
         public
-        override(VotingInterface, VotingAncillaryInterface)
+        override(VotingV2Interface, VotingAncillaryInterface)
         onlyOwner
     {
         require(newGatPercentage.isLessThan(1), "GAT percentage must be < 100%");
@@ -957,7 +849,7 @@ contract VotingV2 is
      */
     function setRewardsExpirationTimeout(uint256 NewRewardsExpirationTimeout)
         public
-        override(VotingInterface, VotingAncillaryInterface)
+        override(VotingV2Interface, VotingAncillaryInterface)
         onlyOwner
     {
         rewardsExpirationTimeout = NewRewardsExpirationTimeout;
@@ -1021,7 +913,7 @@ contract VotingV2 is
         // Only on the first reveal should the snapshot be captured for that round.
         if (round.snapshotId == 0) {
             // There is no snapshot ID set, so create one.
-            round.snapshotId = votingToken.snapshot();
+            round.snapshotId = _snapshot();
 
             // Set the round inflation rate to the current global inflation rate.
             rounds[roundId].inflationRate = inflationRate;
@@ -1070,7 +962,7 @@ contract VotingV2 is
 
         // Grab the snapshotted supply from the voting token. It's already scaled by 10**18, so we can directly
         // initialize the Unsigned value with the returned uint.
-        FixedPoint.Unsigned memory snapshottedSupply = FixedPoint.Unsigned(votingToken.totalSupplyAt(snapshotId));
+        FixedPoint.Unsigned memory snapshottedSupply = FixedPoint.Unsigned(totalStakedAt(snapshotId));
 
         // Multiply the total supply at the snapshot by the gatPercentage to get the GAT in number of tokens.
         return snapshottedSupply.mul(rounds[roundId].gatPercentage);

@@ -167,6 +167,7 @@ contract StakerSnapshot is Ownable, Testable {
 
     // Snapshot methods
     function _snapshot() internal virtual returns (uint256) {
+        console.log("SNAPSHOT");
         _currentSnapshotId.increment();
 
         uint256 currentId = _getCurrentSnapshotId();
