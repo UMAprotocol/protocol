@@ -181,6 +181,8 @@ async function main() {
     governorRootTunnel: [],
   };
 
+  if (!deployed_optimistic_oracle_address) throw new Error("No deployed_optimistic_oracle_address");
+
   for (const networkName in l2Networks) {
     const l2NetworkId = l2Networks[networkName as keyof typeof l2Networks];
     const l2NodeUrl = process.env[String(NODE_URL_ENV + l2NetworkId)];
@@ -290,8 +292,6 @@ async function main() {
 
   fs.writeFileSync(relayRecordsFile, relayRecordsJson);
   console.log(`Wrote relay records to ${relayRecordsFile}`);
-
-  if (!deployed_optimistic_oracle_address) throw new Error("No deployed_optimistic_oracle_address");
 
   if (!(await registry.isContractRegistered(deployed_optimistic_oracle_address))) {
     console.log(`Registering ${deployed_optimistic_oracle_address} on mainnet`);
