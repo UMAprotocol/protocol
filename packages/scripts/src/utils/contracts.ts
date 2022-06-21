@@ -10,7 +10,7 @@ export const getContractInstance = async <T>(contractName: string): Promise<T> =
   return (await factory.attach(contractAddress)) as T;
 };
 
-export const getContractInstanceNetwork = async <T extends Contract>(
+export const getContractInstanceByUrl = async <T extends Contract>(
   contractName: string,
   rpcUrl: string
 ): Promise<T> => {

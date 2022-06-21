@@ -37,7 +37,7 @@ import {
   Registry,
 } from "@uma/contracts-node/typechain/core/ethers";
 import { BaseContract, PopulatedTransaction, Signer } from "ethers";
-import { getContractInstance, getContractInstanceNetwork } from "../../utils/contracts";
+import { getContractInstance, getContractInstanceByUrl } from "../../utils/contracts";
 
 // PARAMETERS
 const proposerWallet = "0x2bAaA41d155ad8a4126184950B31F50A1513cE25";
@@ -191,14 +191,14 @@ async function main() {
     const isPolygon = l2NetworkId === POLYGON_ID;
     const isArbitrum = l2NetworkId === ARBITRUM_ID;
 
-    const l2Registry = await getContractInstanceNetwork<Registry>("Registry", l2NodeUrl);
+    const l2Registry = await getContractInstanceByUrl<Registry>("Registry", l2NodeUrl);
 
     // The l2Governor in polygon is the GovernorChildTunnel and in the rest of the l2's is the GovernorHub
-    const l2Governor = await getContractInstanceNetwork<BaseContract>(
+    const l2Governor = await getContractInstanceByUrl<BaseContract>(
       isPolygon ? "GovernorChildTunnel" : "GovernorSpoke",
       l2NodeUrl
     );
-    const l2Finder = await getContractInstanceNetwork<Finder>("Finder", l2NodeUrl);
+    const l2Finder = await getContractInstanceByUrl<Finder>("Finder", l2NodeUrl);
 
     if (await l2Registry.isContractRegistered(l2OptimisticOracleV2Address)) continue;
 
