@@ -186,7 +186,7 @@ async function main() {
     const l2NodeUrl = process.env[String(NODE_URL_ENV + l2NetworkId)];
     const l2OptimisticOracleV2Address = process.env[String(OPTIMISTIC_ORACLE_V2_ENV + l2NetworkId)];
 
-    if (!l2NodeUrl || !l2OptimisticOracleV2Address) continue;
+    if (!l2NodeUrl || !l2OptimisticOracleV2Address) throw new Error(`Missing ${networkName} network config`);
 
     const isPolygon = l2NetworkId === POLYGON_ID;
     const isArbitrum = l2NetworkId === ARBITRUM_ID;
@@ -291,10 +291,9 @@ async function main() {
   fs.writeFileSync(relayRecordsFile, relayRecordsJson);
   console.log(`Wrote relay records to ${relayRecordsFile}`);
 
-  if (
-    deployed_optimistic_oracle_address &&
-    !(await registry.isContractRegistered(deployed_optimistic_oracle_address))
-  ) {
+  if (!deployed_optimistic_oracle_address) throw new Error("No deployed_optimistic_oracle_address");
+
+  if (!(await registry.isContractRegistered(deployed_optimistic_oracle_address))) {
     console.log(`Registering ${deployed_optimistic_oracle_address} on mainnet`);
     // Mainnet
     // 1. Temporarily add the Governor as a contract creator.

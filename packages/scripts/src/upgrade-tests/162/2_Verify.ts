@@ -15,7 +15,7 @@ const { getAddress } = require("@uma/contracts-node");
 
 import { Finder, Governor, GovernorHub, GovernorRootTunnel, Registry } from "@uma/contracts-node/typechain/core/ethers";
 import { getContractInstance } from "../../utils/contracts";
-import { RelayProposal, RelayRecords } from "./2_Propose";
+import { RelayProposal, RelayRecords } from "./1_Propose";
 
 const OPTIMISTIC_ORACLE_V2 = "OptimisticOracleV2"; // TODO use interfaceName.OptimisticOracle
 const deployed_optimistic_oracle_address = process.env["OPTIMISTC_ORACLE_V2"];
