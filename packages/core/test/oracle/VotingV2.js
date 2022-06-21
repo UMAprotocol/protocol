@@ -1598,7 +1598,7 @@ describe("VotingV2", function () {
 
   // TODO: we are going to deprecate the backwards looking logic. this should be tested and updated.
   it("Mixing ancillary and no ancillary price requests is compatible", async function () {
-    // This test shows that the current DVM implementation is still compatable, when mixed with diffrent kinds of requests.
+    // This test shows that the current DVM implementation is still compatible, when mixed with different kinds of requests.
     // Also, this test shows that the overloading syntax operates as expected.
 
     // Price request 1 that includes ancillary data.
@@ -1780,6 +1780,88 @@ describe("VotingV2", function () {
         await voting.methods["getPrice(bytes32,uint256)"](identifier2, time2).call({ from: registeredContract })
       ).toString(),
       price2.toString()
+    );
+  });
+  it("Slashing correctly reallocates funds between voters", async function () {
+    const identifier = padRight(utf8ToHex("slash-test"), 64);
+    const time = "420";
+
+    // Make the Oracle support this identifier.
+    await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
+
+    // Request a price and move to the next round where that will be voted on.
+    await voting.methods.requestPrice(identifier, time).send({ from: registeredContract });
+    await moveToNextRound(voting, accounts[0]);
+    const roundId = (await voting.methods.getCurrentRoundId().call()).toString();
+
+    // Commit votes.
+    const losingPrice = 123;
+    const salt1 = getRandomSignedInt();
+    const hash1 = computeVoteHash({ price: losingPrice, salt: salt1, account: account1, time, roundId, identifier });
+    await voting.methods.commitVote(identifier, time, hash1).send({ from: account1 });
+
+    // Both account 2 and 3 vote for 456. Account4 did not vote.
+    const winningPrice = 456;
+
+    const salt2 = getRandomSignedInt();
+    const hash2 = computeVoteHash({ price: winningPrice, salt: salt2, account: account2, time, roundId, identifier });
+    await voting.methods.commitVote(identifier, time, hash2).send({ from: account2 });
+
+    const salt3 = getRandomSignedInt();
+    const hash3 = computeVoteHash({ price: winningPrice, salt: salt3, account: account3, time, roundId, identifier });
+    await voting.methods.commitVote(identifier, time, hash3).send({ from: account3 });
+
+    // Reveal the votes.
+    await moveToNextPhase(voting, accounts[0]);
+
+    await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
+
+    await voting.methods.revealVote(identifier, time, losingPrice, salt1).send({ from: account1 });
+    await voting.methods.revealVote(identifier, time, winningPrice, salt2).send({ from: account2 });
+    await voting.methods.revealVote(identifier, time, winningPrice, salt3).send({ from: account3 });
+
+    // Price should resolve to the one that 2 and 3 voted for.
+    await moveToNextRound(voting, accounts[0]);
+
+    // Now call updateTrackers to update the slashing metrics. We should see a cumulative slashing amount increment and
+    // the slash per wrong vote and slash per no vote set correctly.
+    await voting.methods.updateTrackers(account1).send({ from: account1 });
+
+    // The test configuration has a wrong vote and no vote slash per token set to 0.0016. This works out to ~ equal to
+    // the emission rate of the contract assuming 10 votes per month over a year. At this rate we should see two groups
+    // of slashing: 1) the wrong vote and 2) the no vote. for the wrong vote there was 32mm tokens voted wrong from
+    // account1. This should result in a slashing of 32mm*0.0016 = 51200. For the no vote Account4 has 4mm and did not
+    // vote. they should get slashed as 4mm*0.0016 = 6400. Total slashing of 51200 + 6400 = 57600.
+    const slashingTracker = await voting.methods.requestSlashingTrackers(0).call();
+    assert.equal(slashingTracker.wrongVoteSlashPerToken, toWei("0.0016"));
+    assert.equal(slashingTracker.noVoteSlashPerToken, toWei("0.0016"));
+    assert.equal(slashingTracker.totalSlashed, toWei("57600"));
+    assert.equal(slashingTracker.totalCorrectVotes, toWei("64000000"));
+
+    // These slashings should be removed from the slashed token holders and added pro-rata to the correct voters.
+    // Account 1 should loose 51200 tokens and account 2 should lose 6400 tokens.
+    assert.equal(
+      (await voting.methods.voterStakes(account1).call()).cumulativeStaked,
+      toWei("32000000").sub(toWei("51200")) // Their original stake amount of 32mm minus the slashing of 51200.
+    );
+
+    await voting.methods.updateTrackers(account4).send({ from: account1 });
+    assert.equal(
+      (await voting.methods.voterStakes(account4).call()).cumulativeStaked,
+      toWei("4000000").sub(toWei("6400")) // Their original stake amount of 4mm minus the slashing of 6400.
+    );
+
+    // Account2 and account3 should have their staked amounts increase by the positive slashing. As they both have the
+    // same staked amounts we should see their balances increase equally as half of the 57600/2 = 28800 for each.
+    await voting.methods.updateTrackers(account2).send({ from: account1 });
+    assert.equal(
+      (await voting.methods.voterStakes(account2).call()).cumulativeStaked,
+      toWei("32000000").add(toWei("28800")) // Their original stake amount of 32mm plus the positive slashing of 28800.
+    );
+    await voting.methods.updateTrackers(account3).send({ from: account1 });
+    assert.equal(
+      (await voting.methods.voterStakes(account3).call()).cumulativeStaked,
+      toWei("32000000").add(toWei("28800")) // Their original stake amount of 32mm plus the positive slashing of 28800.
     );
   });
 });

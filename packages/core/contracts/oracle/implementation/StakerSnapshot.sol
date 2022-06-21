@@ -8,8 +8,6 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Arrays.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 
-import "hardhat/console.sol";
-
 contract StakerSnapshot is Ownable, Testable {
     using Arrays for uint256[];
     using Counters for Counters.Counter;
@@ -118,7 +116,7 @@ contract StakerSnapshot is Ownable, Testable {
         VoterStake storage voterStake = voterStakes[msg.sender];
 
         if (voterStake.outstandingRewards > 0) {
-            require(votingToken.mint(msg.sender, voterStake.outstandingRewards), "Voting token issuance failed");
+            require(votingToken.mint(msg.sender, voterStake.outstandingRewards));
             voterStake.outstandingRewards = 0;
         }
     }
@@ -128,7 +126,7 @@ contract StakerSnapshot is Ownable, Testable {
         withdrawRewards();
     }
 
-    function _updateTrackers(address voterAddress) internal {
+    function _updateTrackers(address voterAddress) internal virtual {
         _updateReward(voterAddress);
     }
 
@@ -167,7 +165,6 @@ contract StakerSnapshot is Ownable, Testable {
 
     // Snapshot methods
     function _snapshot() internal virtual returns (uint256) {
-        console.log("SNAPSHOT");
         _currentSnapshotId.increment();
 
         uint256 currentId = _getCurrentSnapshotId();

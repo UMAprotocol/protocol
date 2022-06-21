@@ -167,6 +167,7 @@ contract VotingV2 is
         uint256 wrongVoteSlashPerToken;
         uint256 noVoteSlashPerToken;
         uint256 totalSlashed;
+        uint256 totalCorrectVotes;
     }
 
     SlashingTracker[] public requestSlashingTrackers;
@@ -271,6 +272,16 @@ contract VotingV2 is
      *          STAKING FUNCTIONS           *
      ****************************************/
 
+    function updateTrackers(address voterAddress) public {
+        _updateTrackers(voterAddress);
+    }
+
+    function _updateTrackers(address voterAddress) internal override {
+        _updateCumulativeSlashingTrackers();
+        _updateAccountSlashingTrackers(voterAddress);
+        _updateReward(voterAddress);
+    }
+
     function _updateAccountSlashingTrackers(address voterAddress) internal {
         VoterStake storage voterStake = voterStakes[voterAddress];
         // Note the method below can hit a gas limit of there are a LOT of requests from the last time this was run.
@@ -281,24 +292,27 @@ contract VotingV2 is
             bytes32 revealHash = voteInstance.voteSubmissions[voterAddress].revealHash;
 
             // The voter did not reveal or did not commit. Slash at noVote rate.
-            int256 slashed = 0;
+            int256 slash = 0;
             if (revealHash == 0)
-                slashed = -1 * int256(voterStake.cumulativeStaked * requestSlashingTrackers[i].noVoteSlashPerToken);
+                slash -= int256((voterStake.cumulativeStaked * requestSlashingTrackers[i].noVoteSlashPerToken) / 1e18);
 
                 // The voter did not vote with the majority. Slash at wrongVote rate.
             else if (!voteInstance.resultComputation.wasVoteCorrect(revealHash))
-                slashed = -1 * int256(voterStake.cumulativeStaked * requestSlashingTrackers[i].wrongVoteSlashPerToken);
+                slash -= int256(
+                    (voterStake.cumulativeStaked * requestSlashingTrackers[i].wrongVoteSlashPerToken) / 1e18
+                );
 
                 // The voter voted correctly.Receive a pro-rate share of the other voters slashed amounts as a reward.
             else {
-                uint256 roundId = rounds[priceRequestIds[i].roundId].snapshotId;
-                uint256 totalStaked = stakedAt(address(this), roundId);
-                slashed = int256(
-                    ((voterStake.cumulativeStaked * 1e18) / totalStaked) * requestSlashingTrackers[i].totalSlashed
+                uint256 totalStakedAt = totalStakedAt(rounds[priceRequestIds[i].roundId].snapshotId);
+                slash = int256(
+                    (((voterStake.cumulativeStaked * 1e18) / requestSlashingTrackers[i].totalCorrectVotes) *
+                        requestSlashingTrackers[i].totalSlashed) / 1e18
                 );
             }
-            if (slashed + int256(voterStake.cumulativeStaked) > 0)
-                voterStake.cumulativeStaked = uint256(int256(voterStake.cumulativeStaked) + slashed);
+
+            if (slash + int256(voterStake.cumulativeStaked) > 0)
+                voterStake.cumulativeStaked = uint256(int256(voterStake.cumulativeStaked) + slash);
             else voterStake.cumulativeStaked = 0;
         }
     }
@@ -309,17 +323,21 @@ contract VotingV2 is
         for (uint256 i = lastRequestIndexConsidered; i < priceRequestIds.length; i++) {
             PriceRequest storage priceRequest = priceRequests[priceRequestIds[i].requestId];
             VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
-            uint256 roundId = rounds[priceRequestIds[i].roundId].snapshotId;
+            uint256 snapshotId = rounds[priceRequestIds[i].roundId].snapshotId;
 
-            uint256 totalStaked = stakedAt(address(this), roundId);
+            uint256 totalStaked = totalStakedAt(snapshotId);
             uint256 totalVotes = voteInstance.resultComputation.totalVotes.rawValue;
             uint256 totalCorrectVotes = voteInstance.resultComputation.getTotalCorrectlyVotedTokens().rawValue;
 
             uint256 wrongVoteSlashPerToken = calcWrongVoteSlashPerToken(totalStaked, totalVotes, totalCorrectVotes);
             uint256 noVoteSlashPerToken = calcNoVoteSlashPerToken(totalStaked, totalVotes, totalCorrectVotes);
 
-            uint256 totalSlashed = ((noVoteSlashPerToken + wrongVoteSlashPerToken) * totalStaked) / 1e18;
-            requestSlashingTrackers.push(SlashingTracker(wrongVoteSlashPerToken, noVoteSlashPerToken, totalSlashed));
+            uint256 totalSlashed =
+                ((noVoteSlashPerToken * (totalStaked - totalVotes)) / 1e18) +
+                    ((wrongVoteSlashPerToken * (totalVotes - totalCorrectVotes)) / 1e18);
+            requestSlashingTrackers.push(
+                SlashingTracker(wrongVoteSlashPerToken, noVoteSlashPerToken, totalSlashed, totalCorrectVotes)
+            );
         }
         lastRequestIndexConsidered = priceRequestIds.length;
     }
@@ -368,7 +386,6 @@ contract VotingV2 is
         bytes32 priceRequestId = _encodePriceRequest(identifier, time, ancillaryData);
         PriceRequest storage priceRequest = priceRequests[priceRequestId];
         uint256 currentRoundId = voteTiming.computeCurrentRoundId(blockTime);
-        priceRequestIds.push(Request(priceRequestId, currentRoundId));
 
         RequestStatus requestStatus = _getRequestStatus(priceRequest, currentRoundId);
 
@@ -376,6 +393,7 @@ contract VotingV2 is
             // Price has never been requested.
             // Price requests always go in the next round, so add 1 to the computed current round.
             uint256 nextRoundId = currentRoundId.add(1);
+            priceRequestIds.push(Request(priceRequestId, nextRoundId));
 
             PriceRequest storage newPriceRequest = priceRequests[priceRequestId];
             newPriceRequest.identifier = identifier;
@@ -606,8 +624,6 @@ contract VotingV2 is
         // Get the voter's snapshotted balance. Since balances are returned pre-scaled by 10**18, we can directly
         // initialize the Unsigned value with the returned uint.
         FixedPoint.Unsigned memory balance = FixedPoint.Unsigned(stakedAt(msg.sender, snapshotId));
-        console.log("snapshotId", snapshotId);
-        console.log("stakedAt(msg.sender, snapshotId)", stakedAt(msg.sender, snapshotId));
 
         // Set the voter's submission.
         voteSubmission.revealHash = keccak256(abi.encode(price));
