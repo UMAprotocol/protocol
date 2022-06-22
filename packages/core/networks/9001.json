@@ -38,5 +38,41 @@
   {
     "contractName": "OptimisticOracleV2",
     "address": "0xd2ecb3afe598b746F8123CaE365a598DA831A449"
+  },
+  {
+    "contractName": "TokenFactory",
+    "address": "0xF321C1007730A815ED25433c1F9B96cEc90B1021"
+  },
+  {
+    "contractName": "CoveredCallLongShortPairFinancialProductLibrary",
+    "address": "0xaf10C33dE0aEE6DF661B9bfb25E829871ab87a41"
+  },
+  {
+    "contractName": "RangeBondLongShortPairFinancialProductLibrary",
+    "address": "0xEeF373Cb82aE3c3Df7e5B97aeceBcD12Df1086F6"
+  },
+  {
+    "contractName": "BinaryOptionLongShortPairFinancialProductLibrary",
+    "address": "0x6063B42C9f587FC02E21B57f5055962677BDa002"
+  },
+  {
+    "contractName": "LinearLongShortPairFinancialProductLibrary",
+    "address": "0x283c2fF4cc5BeEb28bBb5bcDF6aaAAdf0DD16531"
+  },
+  {
+    "contractName": "SimpleSuccessTokenLongShortPairFinancialProductLibrary",
+    "address": "0x9565B669Ff9CFB5803FF9CF1Df6954cCCb6BADB1"
+  },
+  {
+    "contractName": "SuccessTokenLongShortPairFinancialProductLibrary",
+    "address": "0x240c4B8DBC6bc563ccC76728F26b6f21F911883A"
+  },
+  {
+    "contractName": "CappedYieldDollarLongShortPairFinancialProductLibrary",
+    "address": "0xEC6E1527948a1d6Bb3FdCd528D75844020B20a1D"
+  },
+  {
+    "contractName": "LongShortPairCreator",
+    "address": "0x5ef6C01E11889d86803e0B23e3cB3F9E9d97B662"
   }
 ]
