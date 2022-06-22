@@ -1263,17 +1263,13 @@ describe("VotingV2", function () {
     await newVoting.methods.requestPrice(identifier, time2).send({ from: registeredContract });
     await moveToNextRound(newVoting, accounts[0]);
     const roundId = (await newVoting.methods.getCurrentRoundId().call()).toString();
-    console.log("roundId", roundId);
+    
     const price = 123;
     const salt = getRandomSignedInt();
     const hash = computeVoteHash({ price, salt, account: account1, time: time1, roundId, identifier });
-    console.log("A");
     await newVoting.methods.commitVote(identifier, time1, hash).send({ from: account1 });
-    console.log("B");
     await moveToNextPhase(newVoting, accounts[0]);
-
     await newVoting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
-
     await newVoting.methods.revealVote(identifier, time1, price, salt).send({ from: account1 });
     await moveToNextRound(newVoting, accounts[0]);
 
@@ -1863,5 +1859,96 @@ describe("VotingV2", function () {
       (await voting.methods.voterStakes(account3).call()).cumulativeStaked,
       toWei("32000000").add(toWei("28800")) // Their original stake amount of 32mm plus the positive slashing of 28800.
     );
+  });
+  it.only("Multiple votes in the same voting round slash cumulatively", async function () {
+    // Put two price requests into the same voting round.
+    const identifier = padRight(utf8ToHex("slash-test"), 64); // Use the same identifier for both.
+    const time1 = "420";
+    const time2 = "421";
+
+    await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
+    await voting.methods.requestPrice(identifier, time1).send({ from: registeredContract });
+    await voting.methods.requestPrice(identifier, time2).send({ from: registeredContract });
+    await moveToNextRound(voting, accounts[0]);
+    const roundId = (await voting.methods.getCurrentRoundId().call()).toString();
+
+    // Account1 and account4 votes correctly, account2 votes wrong in both votes and account3 does not vote in either.
+    // Commit votes.
+    const losingPrice = 123;
+    const salt = getRandomSignedInt(); // use the same salt for all votes. bad practice but wont impact anything.
+    const baseRequest = { salt, roundId, identifier };
+    const hash1 = computeVoteHash({ ...baseRequest, price: losingPrice, account: account2, time: time1 });
+    await voting.methods.commitVote(identifier, time1, hash1).send({ from: account2 });
+    const hash2 = computeVoteHash({ ...baseRequest, price: losingPrice, account: account2, time: time2 });
+    await voting.methods.commitVote(identifier, time2, hash2).send({ from: account2 });
+
+    const winningPrice = 456;
+    const hash3 = computeVoteHash({ ...baseRequest, price: winningPrice, account: account1, time: time1 });
+    await voting.methods.commitVote(identifier, time1, hash3).send({ from: account1 });
+    const hash4 = computeVoteHash({ ...baseRequest, price: winningPrice, account: account1, time: time2 });
+    await voting.methods.commitVote(identifier, time2, hash4).send({ from: account1 });
+
+    const hash5 = computeVoteHash({ ...baseRequest, price: winningPrice, account: account4, time: time1 });
+    await voting.methods.commitVote(identifier, time1, hash5).send({ from: account4 });
+    const hash6 = computeVoteHash({ ...baseRequest, price: winningPrice, account: account4, time: time2 });
+    await voting.methods.commitVote(identifier, time2, hash6).send({ from: account4 });
+
+    await moveToNextPhase(voting, accounts[0]); // Reveal the votes.
+    await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
+
+    await voting.methods.revealVote(identifier, time1, losingPrice, salt).send({ from: account2 });
+    await voting.methods.revealVote(identifier, time2, losingPrice, salt).send({ from: account2 });
+    
+    await voting.methods.revealVote(identifier, time1, winningPrice, salt).send({ from: account1 });
+    
+    await voting.methods.revealVote(identifier, time2, winningPrice, salt).send({ from: account1 });
+    
+    await voting.methods.revealVote(identifier, time1, winningPrice, salt).send({ from: account4 });
+    await voting.methods.revealVote(identifier, time2, winningPrice, salt).send({ from: account4 });
+    
+    await moveToNextRound(voting, accounts[0]);
+
+    // Now call updateTrackers to update the slashing metrics. We should see a cumulative slashing amount increment and
+    // the slash per wrong vote and slash per no vote set correctly.
+    await voting.methods.updateTrackers(account1).send({ from: account1 });
+
+    // Based off the votes in the batch we should see account2 slashed twice for voting wrong and account3 slashed twice
+    // for not voting, both at a rate of 0.0016 tokens per vote. We should be able to see two separate request slashing
+    // trackers. The totalSlashed should therefor be 32mm * 2 * 0.0016 = 102400 per slashing tracker. The total correct
+    // votes should be account1 (32mm) and account4(4mm) as 46mm.
+    const slashingTracker1 = await voting.methods.requestSlashingTrackers(0).call();
+    assert.equal(slashingTracker1.wrongVoteSlashPerToken, toWei("0.0016"));
+    assert.equal(slashingTracker1.noVoteSlashPerToken, toWei("0.0016"));
+    assert.equal(slashingTracker1.totalSlashed, toWei("102400"));
+    assert.equal(slashingTracker1.totalCorrectVotes, toWei("36000000"));
+    const slashingTracker2 = await voting.methods.requestSlashingTrackers(1).call();
+    assert.equal(slashingTracker2.wrongVoteSlashPerToken, toWei("0.0016"));
+    assert.equal(slashingTracker2.noVoteSlashPerToken, toWei("0.0016"));
+    assert.equal(slashingTracker2.totalSlashed, toWei("102400"));
+    assert.equal(slashingTracker2.totalCorrectVotes, toWei("36000000"));
+
+    // Now consider the impact on the individual voters cumulative staked amounts. First, let's consider the voters who
+    // were wrong and lost balance. Account2 and Account3 were both wrong with 32mm tokens, slashed twice. They should
+    // each loose 32mm * 2 * 0.0016 = 102400 tokens.
+    await voting.methods.updateTrackers(account2).send({ from: account1 });
+    assert.equal(
+      (await voting.methods.voterStakes(account2).call()).cumulativeStaked,
+      toWei("32000000").sub(toWei("102400")) // Their original stake amount of 32mm minus the slashing of 102400.
+    );
+
+    await voting.methods.updateTrackers(account3).send({ from: account1 });
+    assert.equal(
+      (await voting.methods.voterStakes(account3).call()).cumulativeStaked,
+      toWei("32000000").sub(toWei("102400")) // Their original stake amount of 32mm minus the slashing of 102400.
+    );
+
+    // Now consider the accounts that should have accrued positive slashing. Account1 has 32mm and should have gotten
+    // 32mm/(32mm+4mm) * 102400 * 2 = 182044.4444444444 (their fraction of the total slashed amount)
+    await voting.methods.updateTrackers(account1).send({ from: account1 });
+    assert.equal(
+      (await voting.methods.voterStakes(account1).call()).cumulativeStaked,
+      toWei("32000000").add(toBN("182044444444444444444444")) // Their original stake amount of 32mm plus the slash of 18244.4
+    );
+
   });
 });

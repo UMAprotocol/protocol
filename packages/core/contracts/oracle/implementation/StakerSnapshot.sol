@@ -151,7 +151,11 @@ contract StakerSnapshot is Ownable, Testable {
 
     function rewardPerToken() public view returns (uint256) {
         if (cumulativeStaked == 0) return rewardPerTokenStored;
-        return rewardPerTokenStored + ((getCurrentTime() - lastUpdateTime) * emissionRate * 1e18) / cumulativeStaked;
+        return rewardPerTokenStored + (timeFromLastUpdate() * emissionRate * 1e18) / cumulativeStaked;
+    }
+
+    function timeFromLastUpdate() public view returns (uint256) {
+        return getCurrentTime() - lastUpdateTime;
     }
 
     // Owner methods

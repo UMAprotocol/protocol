@@ -286,35 +286,39 @@ contract VotingV2 is
         VoterStake storage voterStake = voterStakes[voterAddress];
         // Note the method below can hit a gas limit of there are a LOT of requests from the last time this was run.
         // A future version of this should bound how many requests to look at per call to avoid gas limit issues.
+        int256 slash = 0;
         for (uint256 i = voterStake.lastRequestIndexConsidered; i < priceRequestIds.length; i++) {
+            console.log("i", i);
             PriceRequest storage priceRequest = priceRequests[priceRequestIds[i].requestId];
             VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
-            bytes32 revealHash = voteInstance.voteSubmissions[voterAddress].revealHash;
 
+            // Use the voters staked balance at the snapshotId. This ensures that each slashing event is independent
+            // i.e if you get slashed twice in one voting round the impact on your balance in the first slashing should
+            // not impact your balance in the second slashing; they should be independent events.
+            uint256 voterStakedAtRequest = stakedAt(voterAddress, rounds[priceRequestIds[i].roundId].snapshotId);
+
+            bytes32 revealHash = voteInstance.voteSubmissions[voterAddress].revealHash;
             // The voter did not reveal or did not commit. Slash at noVote rate.
-            int256 slash = 0;
             if (revealHash == 0)
-                slash -= int256((voterStake.cumulativeStaked * requestSlashingTrackers[i].noVoteSlashPerToken) / 1e18);
+                slash -= int256((voterStakedAtRequest * requestSlashingTrackers[i].noVoteSlashPerToken) / 1e18);
 
                 // The voter did not vote with the majority. Slash at wrongVote rate.
             else if (!voteInstance.resultComputation.wasVoteCorrect(revealHash))
-                slash -= int256(
-                    (voterStake.cumulativeStaked * requestSlashingTrackers[i].wrongVoteSlashPerToken) / 1e18
-                );
+                slash -= int256((voterStakedAtRequest * requestSlashingTrackers[i].wrongVoteSlashPerToken) / 1e18);
 
                 // The voter voted correctly.Receive a pro-rate share of the other voters slashed amounts as a reward.
-            else {
-                uint256 totalStakedAt = totalStakedAt(rounds[priceRequestIds[i].roundId].snapshotId);
+            else
                 slash = int256(
-                    (((voterStake.cumulativeStaked * 1e18) / requestSlashingTrackers[i].totalCorrectVotes) *
+                    (((voterStakedAtRequest * 1e18) / requestSlashingTrackers[i].totalCorrectVotes) *
                         requestSlashingTrackers[i].totalSlashed) / 1e18
                 );
-            }
-
-            if (slash + int256(voterStake.cumulativeStaked) > 0)
-                voterStake.cumulativeStaked = uint256(int256(voterStake.cumulativeStaked) + slash);
-            else voterStake.cumulativeStaked = 0;
+            console.log("slash", uint256(slash));
+            console.log("slash*-1", uint256(slash * -1));
         }
+        if (slash + int256(voterStake.cumulativeStaked) > 0)
+            voterStake.cumulativeStaked = uint256(int256(voterStake.cumulativeStaked) + slash);
+        else voterStake.cumulativeStaked = 0;
+        voterStake.lastRequestIndexConsidered = priceRequestIds.length;
     }
 
     function _updateCumulativeSlashingTrackers() internal {
