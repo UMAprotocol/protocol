@@ -21,8 +21,6 @@
 // yarn hardhat run ./src/upgrade-tests/162/1_Propose.ts  --network localhost
 
 const hre = require("hardhat");
-import path from "path";
-import fs from "fs";
 
 const { RegistryRolesEnum } = require("@uma/common");
 import { BigNumberish } from "@ethersproject/bignumber";
@@ -76,7 +74,7 @@ const relayGovernanceRootTunnelMessage = async (
 }> => {
   if (!tx.data) throw new Error("Transaction has no data");
   const relayGovernanceData = await governorRootTunnel.populateTransaction.relayGovernance(targetAddress, tx.data);
-  console.log("- relayGovernanceData", relayGovernanceData);
+  console.log("RelayGovernanceData", relayGovernanceData);
   const relay = await governorRootTunnel.populateTransaction.relayGovernance(targetAddress, tx.data);
   const relayMessage = relay.data;
   if (!relayMessage) throw new Error("Relay message is empty");
@@ -226,7 +224,7 @@ async function main() {
       )
     );
 
-    console.log("- addMemberData", addMemberDataTx);
+    console.log("AddMemberData", addMemberDataTx);
 
     // 2. Register the OptimisticOracle as a verified contract.
     const registerOptimisticOracleData = await l2Registry.populateTransaction.registerContract(
@@ -244,7 +242,7 @@ async function main() {
       )
     );
 
-    console.log("registerOptimisticOracleData", registerOptimisticOracleData);
+    console.log("RegisterOptimisticOracleData", registerOptimisticOracleData);
 
     // 3. Remove the l2Governor from being a contract creator.
     const removeMemberData = await l2Registry.populateTransaction.removeMember(
@@ -262,7 +260,7 @@ async function main() {
       )
     );
 
-    console.log("- removeMemberData", removeMemberData);
+    console.log("RemoveMemberData", removeMemberData);
 
     // 4. Set contract in finder.
     const setFinderData = await l2Finder.populateTransaction.changeImplementationAddress(
@@ -280,20 +278,8 @@ async function main() {
       )
     );
 
-    console.log("- changeImplementationAddressData", setFinderData);
+    console.log("ChangeImplementationAddressData", setFinderData);
   }
-
-  // store relayRecords
-  const relayRecordsJson = JSON.stringify(relayRecords, null, 2);
-  const relayRecordsFile = path.join(path.dirname(__filename), "response.json");
-
-  // delete file if exists
-  if (fs.existsSync(relayRecordsFile)) {
-    fs.unlinkSync(relayRecordsFile);
-  }
-
-  fs.writeFileSync(relayRecordsFile, relayRecordsJson);
-  console.log(`Wrote relay records to ${relayRecordsFile}`);
 
   if (!(await registry.isContractRegistered(deployed_optimistic_oracle_address))) {
     console.log(`Registering ${deployed_optimistic_oracle_address} on mainnet`);
@@ -304,7 +290,7 @@ async function main() {
       governor.address
     );
     if (!addGovernorToRegistryTx.data) throw new Error("addGovernorToRegistryTx.data is empty");
-    console.log("addGovernorToRegistryTx", addGovernorToRegistryTx);
+    console.log("AddGovernorToRegistryTx", addGovernorToRegistryTx);
     adminProposalTransactions.push({ to: registry.address, value: 0, data: addGovernorToRegistryTx.data });
 
     // 2. Register the OptimisticOracle as a verified contract.
@@ -313,7 +299,7 @@ async function main() {
       deployed_optimistic_oracle_address
     );
     if (!registerOptimisticOracleTx.data) throw new Error("registerOptimisticOracleTx.data is empty");
-    console.log("registerOptimisticOracleTx", registerOptimisticOracleTx);
+    console.log("RegisterOptimisticOracleTx", registerOptimisticOracleTx);
     adminProposalTransactions.push({ to: registry.address, value: 0, data: registerOptimisticOracleTx.data });
 
     // 3. Remove the Governor from being a contract creator.
@@ -322,7 +308,7 @@ async function main() {
       governor.address
     );
     if (!removeGovernorFromRegistryTx.data) throw new Error("removeGovernorFromRegistryTx.data is empty");
-    console.log("removeGovernorFromRegistryTx", removeGovernorFromRegistryTx);
+    console.log("RemoveGovernorFromRegistryTx", removeGovernorFromRegistryTx);
     adminProposalTransactions.push({ to: registry.address, value: 0, data: removeGovernorFromRegistryTx.data });
 
     // 4. Add the OptimisticOracle to the Finder.
@@ -331,17 +317,20 @@ async function main() {
       deployed_optimistic_oracle_address
     );
     if (!addOptimisticOracleToFinderTx.data) throw new Error("addOptimisticOracleToFinderTx.data is empty");
-    console.log("addOptimisticOracleToFinderTx", addOptimisticOracleToFinderTx);
+    console.log("AddOptimisticOracleToFinderTx", addOptimisticOracleToFinderTx);
     adminProposalTransactions.push({ to: finder.address, value: 0, data: addOptimisticOracleToFinderTx.data });
   }
 
   console.log("Proposing...");
 
-  await proposer.connect(proposerSigner).propose(adminProposalTransactions, {
+  const tx = await proposer.connect(proposerSigner).propose(adminProposalTransactions, {
     gasLimit: 10_000_000,
   });
 
   console.log("Proposal Done.");
+
+  console.log("PROPOSAL DATA:");
+  console.log(tx.data);
 }
 
 main().then(
