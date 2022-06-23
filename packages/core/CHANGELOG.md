@@ -3,6 +3,34 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.29.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.28.3...@uma/core@2.29.0) (2022-06-23)
+
+### Bug Fixes
+
+- **merkle-distributor:** reduce remainingAmount by batchedAmount in claimMulti ([#3973](https://github.com/UMAprotocol/protocol/issues/3973)) ([ea52fb0](https://github.com/UMAprotocol/protocol/commit/ea52fb022fb8e8b345a8e965a406bd3461cd5e8f))
+- get older optimistic governor tests working ([#3968](https://github.com/UMAprotocol/protocol/issues/3968)) ([321b00f](https://github.com/UMAprotocol/protocol/commit/321b00f5de813c3e82931c983c2322fe4903315e))
+- **optimistic-distributor:** handle optimistic oracle upgrades ([#3960](https://github.com/UMAprotocol/protocol/issues/3960)) ([288157f](https://github.com/UMAprotocol/protocol/commit/288157fc113a704d8e894c96723cc0f3db0b9740))
+- consistent comments ([#3963](https://github.com/UMAprotocol/protocol/issues/3963)) ([db89c4e](https://github.com/UMAprotocol/protocol/commit/db89c4ec763afc63d0bee268f515a41ab8e3220f))
+- correct comment on max liveness ([#3962](https://github.com/UMAprotocol/protocol/issues/3962)) ([20611e6](https://github.com/UMAprotocol/protocol/commit/20611e61cc3860d337f301e6fcb254327a8282ea))
+- **merkle-distributor:** [H12] track claimed rewards per window ([#3933](https://github.com/UMAprotocol/protocol/issues/3933)) ([273e5ab](https://github.com/UMAprotocol/protocol/commit/273e5ab6f630d1113f287e8493b6ea413ba109d1))
+- **merkle-distributor:** [N16] add gas optimizations ([#3944](https://github.com/UMAprotocol/protocol/issues/3944)) ([31fafb1](https://github.com/UMAprotocol/protocol/commit/31fafb1acd047f1990efd7dbabad31b36a7acf0b))
+- **merkle-distributor:** [N17] remove SafeMath import ([#3942](https://github.com/UMAprotocol/protocol/issues/3942)) ([4274b40](https://github.com/UMAprotocol/protocol/commit/4274b40ad3480e75d84dc71b771c2408dd49daef))
+- **merkle-distributor:** [N18] fix typographical errors ([#3943](https://github.com/UMAprotocol/protocol/issues/3943)) ([c06a7e7](https://github.com/UMAprotocol/protocol/commit/c06a7e73599b266aee754eb81e0a441b29de9d19))
+- **optimistic-distributor:** [M03] do not use priceDisputed callback ([#3935](https://github.com/UMAprotocol/protocol/issues/3935)) ([dc5b886](https://github.com/UMAprotocol/protocol/commit/dc5b886a5de98896237060cf2d9187937bb0ebe1))
+- **optimistic-distributor:** [N06] remove unused import ([#3939](https://github.com/UMAprotocol/protocol/issues/3939)) ([ca64303](https://github.com/UMAprotocol/protocol/commit/ca64303cccd6094509ef79994d74eaaf02ce6a94))
+- **optimistic-distributor:** [N07] bondToken made immutable ([#3938](https://github.com/UMAprotocol/protocol/issues/3938)) ([40a351c](https://github.com/UMAprotocol/protocol/commit/40a351c60cb2bdef0795fa6c20b7cee93e112db6))
+- **optimistic-distributor:** [N08] validate input parameters in createReward ([#3940](https://github.com/UMAprotocol/protocol/issues/3940)) ([befa400](https://github.com/UMAprotocol/protocol/commit/befa4006c418c44301f142fb8cb223adf08abd62))
+- **optimistic-distributor:** [N09] deploy merkle distributor in constructor ([#3946](https://github.com/UMAprotocol/protocol/issues/3946)) ([a94c204](https://github.com/UMAprotocol/protocol/commit/a94c204100d1f44323e35d98092ea403a22c0ca0))
+- **optimistic-distributor:** [N11] use checks-effects-interactions pattern ([#3941](https://github.com/UMAprotocol/protocol/issues/3941)) ([1f4bfc4](https://github.com/UMAprotocol/protocol/commit/1f4bfc4de0b61daeefb96cf6594ec31d8c9c48c1))
+- set max liveness to 5200 weeks ([#3950](https://github.com/UMAprotocol/protocol/issues/3950)) ([3cc673b](https://github.com/UMAprotocol/protocol/commit/3cc673bc891372b7cadad950ee1d26d09cbc9c47))
+
+### Features
+
+- **core:** add optional callbacks to skinny OO ([#3974](https://github.com/UMAprotocol/protocol/issues/3974)) ([9fabd6c](https://github.com/UMAprotocol/protocol/commit/9fabd6cd7d2f1d0508199f779f64957f950c5f42))
+- rename new OO contracts ([#3959](https://github.com/UMAprotocol/protocol/issues/3959)) ([f011a65](https://github.com/UMAprotocol/protocol/commit/f011a6531fbd7c09d22aa46ef04828cf98f7f854))
+- **core:** control oo callbacks from request ([#3936](https://github.com/UMAprotocol/protocol/issues/3936)) ([1373a90](https://github.com/UMAprotocol/protocol/commit/1373a90a48ec0b3235b2ae9932b40f05df8e111c))
+- add avalanche and sx to networks ([#3945](https://github.com/UMAprotocol/protocol/issues/3945)) ([9e8e00e](https://github.com/UMAprotocol/protocol/commit/9e8e00e09520949bfe88a16315451c67f9343164))
+
 ## [2.28.3](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.28.2...@uma/core@2.28.3) (2022-05-27)
 
 ### Bug Fixes

@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.12.0](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.11.0...@uma/scripts@1.12.0) (2022-06-23)
+
+### Features
+
+- add proposal simulation script and readme ([#3967](https://github.com/UMAprotocol/protocol/issues/3967)) ([d83a468](https://github.com/UMAprotocol/protocol/commit/d83a4685157407200d6dfbda40fb55c4de0734de))
+
 # [1.11.0](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.10.3...@uma/scripts@1.11.0) (2022-05-27)
 
 ### Bug Fixes

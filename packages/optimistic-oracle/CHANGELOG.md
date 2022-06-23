@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.13.0](https://github.com/UMAprotocol/protocol/compare/@uma/optimistic-oracle@2.12.7...@uma/optimistic-oracle@2.13.0) (2022-06-23)
+
+### Features
+
+- **core:** add optional callbacks to skinny OO ([#3974](https://github.com/UMAprotocol/protocol/issues/3974)) ([9fabd6c](https://github.com/UMAprotocol/protocol/commit/9fabd6cd7d2f1d0508199f779f64957f950c5f42))
+- rename new OO contracts ([#3959](https://github.com/UMAprotocol/protocol/issues/3959)) ([f011a65](https://github.com/UMAprotocol/protocol/commit/f011a6531fbd7c09d22aa46ef04828cf98f7f854))
+
 ## [2.12.7](https://github.com/UMAprotocol/protocol/compare/@uma/optimistic-oracle@2.12.6...@uma/optimistic-oracle@2.12.7) (2022-05-27)
 
 **Note:** Version bump only for package @uma/optimistic-oracle
