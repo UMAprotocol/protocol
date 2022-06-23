@@ -54,5 +54,5 @@ NODE_URL_1=http://127.0.0.1:9545/ node ./src/admin-proposals/simulateVote.js --n
 2.3 Verify the result:
 
 ```
-OPTIMISTC_ORACLE_V2=<MAINNET-OOV2-ADDRESS> yarn hardhat run ./src/upgrade-tests/162/2_Verify.ts --network localhost
+PROPOSAL_DATA=<PROPOSAL_DATA> yarn hardhat run ./src/upgrade-tests/162/2_Verify.ts --network localhost
 ```
