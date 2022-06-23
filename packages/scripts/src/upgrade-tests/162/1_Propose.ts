@@ -21,7 +21,7 @@
 // yarn hardhat run ./src/upgrade-tests/162/1_Propose.ts  --network localhost
 
 const hre = require("hardhat");
-import * as path from "path";
+import path from "path";
 import fs from "fs";
 
 const { RegistryRolesEnum } = require("@uma/common");
@@ -46,8 +46,8 @@ const deployed_optimistic_oracle_address = process.env["OPTIMISTC_ORACLE_V2"];
 const OPTIMISTIC_ORACLE_V2 = "OptimisticOracleV2"; // TODO use interfaceName.OptimisticOracle
 
 // CONSTANTS
-const POLYGON_ID = 137;
-const ARBITRUM_ID = 42161;
+const POLYGON_CHAIN_ID = 137;
+const ARBITRUM_CHAIN_ID = 42161;
 
 // Env vars
 const NODE_URL_ENV = "NODE_URL_";
@@ -94,6 +94,8 @@ const relayGovernanceHubMessage = async (
   data: BytesLike;
 }> => {
   if (!tx.data) throw new Error("Transaction has no data");
+  // TODO We should group the GovernorHub relays by chain id instead of running a relayGovernance per
+  // function call.
   const calls = [{ to: targetAddress, data: tx.data }];
   const relayGovernanceData = await governorHub.populateTransaction.relayGovernance(chainId, calls);
   const relayMessage = relayGovernanceData.data;
@@ -105,7 +107,7 @@ const relayGovernanceMessage = async (
   targetAddress: string,
   tx: PopulatedTransaction,
   l1Governor: GovernorHub | GovernorRootTunnel,
-  chainId: BigNumberish,
+  chainId: number,
   relayRecords: RelayRecords
 ): Promise<{
   to: string;
@@ -113,7 +115,7 @@ const relayGovernanceMessage = async (
   data: BytesLike;
 }> => {
   // The l1 governor for polygon is the GovernorRootTunnel and the l1 governor for the rest of l2's is the GovernorHub
-  const isPolygon = chainId === POLYGON_ID;
+  const isPolygon = chainId === POLYGON_CHAIN_ID;
   let proposal;
   if (isPolygon) {
     proposal = await relayGovernanceRootTunnelMessage(targetAddress, tx, l1Governor as GovernorRootTunnel);
@@ -184,14 +186,14 @@ async function main() {
   if (!deployed_optimistic_oracle_address) throw new Error("No deployed_optimistic_oracle_address");
 
   for (const networkName in l2Networks) {
-    const l2NetworkId = l2Networks[networkName as keyof typeof l2Networks];
-    const l2NodeUrl = process.env[String(NODE_URL_ENV + l2NetworkId)];
-    const l2OptimisticOracleV2Address = process.env[String(OPTIMISTIC_ORACLE_V2_ENV + l2NetworkId)];
+    const l2ChainId = l2Networks[networkName as keyof typeof l2Networks];
+    const l2NodeUrl = process.env[String(NODE_URL_ENV + l2ChainId)];
+    const l2OptimisticOracleV2Address = process.env[String(OPTIMISTIC_ORACLE_V2_ENV + l2ChainId)];
 
     if (!l2NodeUrl || !l2OptimisticOracleV2Address) throw new Error(`Missing ${networkName} network config`);
 
-    const isPolygon = l2NetworkId === POLYGON_ID;
-    const isArbitrum = l2NetworkId === ARBITRUM_ID;
+    const isPolygon = l2ChainId === POLYGON_CHAIN_ID;
+    const isArbitrum = l2ChainId === ARBITRUM_CHAIN_ID;
 
     const l2Registry = await getContractInstanceByUrl<Registry>("Registry", l2NodeUrl);
 
@@ -219,7 +221,7 @@ async function main() {
         l2Registry.address,
         addMemberDataTx,
         isPolygon ? governorRootTunnel : governorHub,
-        l2NetworkId,
+        l2ChainId,
         relayRecords
       )
     );
@@ -237,7 +239,7 @@ async function main() {
         l2Registry.address,
         registerOptimisticOracleData,
         isPolygon ? governorRootTunnel : governorHub,
-        l2NetworkId,
+        l2ChainId,
         relayRecords
       )
     );
@@ -255,7 +257,7 @@ async function main() {
         l2Registry.address,
         removeMemberData,
         isPolygon ? governorRootTunnel : governorHub,
-        l2NetworkId,
+        l2ChainId,
         relayRecords
       )
     );
@@ -273,7 +275,7 @@ async function main() {
         l2Finder.address,
         setFinderData,
         isPolygon ? governorRootTunnel : governorHub,
-        l2NetworkId,
+        l2ChainId,
         relayRecords
       )
     );
