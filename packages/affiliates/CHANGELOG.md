@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.13.0](https://github.com/UMAprotocol/protocol/compare/@uma/affiliates@1.12.1...@uma/affiliates@1.13.0) (2022-06-23)
+
+### Features
+
+- Gas rebate 21 ([#3954](https://github.com/UMAprotocol/protocol/issues/3954)) ([19f54ee](https://github.com/UMAprotocol/protocol/commit/19f54ee63266fa7e80e406a6a7783cccc9e8dd78))
+
 ## [1.12.1](https://github.com/UMAprotocol/protocol/compare/@uma/affiliates@1.12.0...@uma/affiliates@1.12.1) (2022-05-27)
 
 **Note:** Version bump only for package @uma/affiliates
