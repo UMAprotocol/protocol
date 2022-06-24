@@ -1975,9 +1975,8 @@ describe("VotingV2", function () {
     const salt = getRandomSignedInt(); // use the same salt for all votes. bad practice but wont impact anything.
     const baseRequest = { salt, roundId, identifier };
     const hash1 = computeVoteHash({ ...baseRequest, price: losingPrice, account: account2, time: time1 });
-    console.log("A");
+
     await voting.methods.commitVote(identifier, time1, hash1).send({ from: account2 });
-    console.log("B", await voting.methods.getCurrentRoundId().call());
 
     const winningPrice = 456;
     const hash2 = computeVoteHash({ ...baseRequest, price: winningPrice, account: account1, time: time1 });
@@ -2000,9 +1999,8 @@ describe("VotingV2", function () {
     // In this vote say that Account1 and account3 votes correctly, account4 votes wrong and account2 does not vote.
     const baseRequest2 = { salt, roundId: roundId2, identifier };
     const hash4 = computeVoteHash({ ...baseRequest2, price: losingPrice, account: account4, time: time2 });
-    console.log("C");
+
     await voting.methods.commitVote(identifier, time2, hash4).send({ from: account4 });
-    console.log("D");
 
     const hash5 = computeVoteHash({ ...baseRequest2, price: winningPrice, account: account1, time: time2 });
     await voting.methods.commitVote(identifier, time2, hash5).send({ from: account1 });
@@ -2016,7 +2014,7 @@ describe("VotingV2", function () {
     await voting.methods.revealVote(identifier, time2, losingPrice, salt).send({ from: account4 });
     await voting.methods.revealVote(identifier, time2, winningPrice, salt).send({ from: account1 });
     await voting.methods.revealVote(identifier, time2, winningPrice, salt).send({ from: account3 });
-    console.log("END");
+
     await moveToNextRound(voting, accounts[0]);
 
     // Now call updateTrackers to update the slashing metrics. We should see a cumulative slashing amount increment and
@@ -2080,7 +2078,7 @@ describe("VotingV2", function () {
     // Account4 has 4mm and voted correctly the first time and wrong the second time. On the first vote they should have
     // gotten 4mm/(32mm+4mm)*102400=11377.77 and on the second vote they should have lost (4mm+11377.77)*0.0016*57536.284
     // =6418.204432. Overall they should have gained 4959.56
-    console.log("account4", account4);
+
     await voting.methods.updateTrackers(account4).send({ from: account4 });
     assert.equal(
       (await voting.methods.voterStakes(account4).call()).cumulativeStaked,
