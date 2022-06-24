@@ -32,16 +32,11 @@ function pruneCompanionNetworks(config: {
   });
 }
 
-export function ok(
+export function getHardhatConfig(
   configOverrides: any,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   _workingDir = "./"
 ): Partial<HardhatConfig> {
-  require("./gckms/KeyInjectorPlugin");
-  setTimeout(() => {
-    console.log("World!");
-  }, 15000);
-
   const mnemonic = getMnemonic();
   require("@nomiclabs/hardhat-web3");
   require("@nomiclabs/hardhat-etherscan");
@@ -49,6 +44,7 @@ export function ok(
   require("hardhat-deploy");
   require("hardhat-gas-reporter");
   require("@eth-optimism/hardhat-ovm");
+  require("./gckms/KeyInjectorPlugin");
 
   // Custom tasks.
   require("./hardhat");
