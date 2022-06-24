@@ -24,10 +24,6 @@
     "address": "0xd2ecb3afe598b746F8123CaE365a598DA831A449"
   },
   {
-    "contractName": "V1OptimisticOracleInterface",
-    "address": "0xd2ecb3afe598b746F8123CaE365a598DA831A449"
-  },
-  {
     "contractName": "IdentifierWhitelist",
     "address": "0x3Db06DA8F0a24A525f314eeC954fC5c6a973d40E"
   },

@@ -3,11 +3,11 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import "../OptimisticOracle.sol";
+import "../OptimisticOracleV2.sol";
 
 // This is just a test contract to make requests to the optimistic oracle.
 contract OptimisticRequesterTest is OptimisticRequester {
-    OptimisticOracle optimisticOracle;
+    OptimisticOracleV2 optimisticOracle;
     bool public shouldRevert = false;
 
     // State variables to track incoming calls.
@@ -24,7 +24,7 @@ contract OptimisticRequesterTest is OptimisticRequester {
     // Manually set an expiration timestamp to simulate expiry price requests
     uint256 public expirationTimestamp;
 
-    constructor(OptimisticOracle _optimisticOracle) {
+    constructor(OptimisticOracleV2 _optimisticOracle) {
         optimisticOracle = _optimisticOracle;
     }
 

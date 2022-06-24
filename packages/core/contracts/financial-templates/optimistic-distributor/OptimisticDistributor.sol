@@ -432,6 +432,8 @@ contract OptimisticDistributor is Lockable, MultiCaller, Testable {
             );
 
         // Previous proposal is blocking till disputed that can be detected by non-zero disputer address.
-        return blockingRequest.disputer != address(0);
+        // In case Optimistic Oracle was upgraded since the previous proposal it needs to be unblocked for new proposal.
+        // This can be detected by uninitialized bonding currency for the previous proposal.
+        return blockingRequest.disputer != address(0) || address(blockingRequest.currency) == address(0);
     }
 }

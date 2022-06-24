@@ -156,7 +156,7 @@ contract MerkleDistributor is Ownable {
                 merkleWindows[claims[nextI].windowIndex].rewardToken != currentRewardToken
                 // Next claim reward token is different than current one.
             ) {
-                merkleWindows[_claim.windowIndex].remainingAmount -= _claim.amount;
+                merkleWindows[_claim.windowIndex].remainingAmount -= batchedAmount;
                 currentRewardToken.safeTransfer(_claim.account, batchedAmount);
                 batchedAmount = 0;
             }
