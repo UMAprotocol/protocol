@@ -48,8 +48,6 @@ contract VotingV2 is
     // Identifies a unique price request for which the Oracle will always return the same value.
     // Tracks ongoing votes as well as the result of the vote.
 
-    //TODO: a lot of the structures below can be removed/joined. in particular the `Round` structure now contains
-    // somewhat redundant data as inflationRate is part of Staker and rewardExpirationTime is being removed.
     struct PriceRequest {
         bytes32 identifier;
         uint256 time;
@@ -80,11 +78,8 @@ contract VotingV2 is
     }
 
     struct Round {
-        uint256 snapshotId; // Voting token snapshot ID for this round.  0 if no snapshot has been taken.
-        FixedPoint.Unsigned inflationRate; // Inflation rate set for this round.
         FixedPoint.Unsigned gatPercentage; // Gat rate set for this round.
-        uint256 rewardsExpirationTime; // Time that rewards for this round can be claimed until. //todo: this should be removed, along with the concept of of reward expiration in general.
-        uint256 cumulativeStakedAtRound;
+        uint256 cumulativeStakedAtRound; // Total staked tokens at the start of the round.
     }
 
     // Represents the status a price request has.
@@ -128,15 +123,6 @@ contract VotingV2 is
     // create a valid price resolution. 1 == 100%.
     FixedPoint.Unsigned public gatPercentage;
 
-    // Global setting for the rate of inflation per vote. This is the percentage of the snapshotted total supply that
-    // should be split among the correct voters.
-    // Note: this value is used to set per-round inflation at the beginning of each round. 1 = 100%.
-    FixedPoint.Unsigned public inflationRate;
-
-    // Time in seconds from the end of the round in which a price request is
-    // resolved that voters can still claim their rewards.
-    uint256 public rewardsExpirationTimeout;
-
     // Reference to the Finder.
     FinderInterface private finder;
 
@@ -155,8 +141,6 @@ contract VotingV2 is
     // - https://etherscan.io/chart/gaslimit
     // - https://github.com/djrtwo/evm-opcode-gas-costs
     uint256 public constant ancillaryBytesLimit = 8192;
-
-    bytes32 public snapshotMessageHash = ECDSA.toEthSignedMessageHash(keccak256(bytes("Sign For Snapshot")));
 
     /****************************************
      *          SLASHING TRACKERS           *
@@ -227,7 +211,6 @@ contract VotingV2 is
     //  * @notice Construct the Voting contract.
     //  * @param _phaseLength length of the commit and reveal phases in seconds.
     //  * @param _gatPercentage of the total token supply that must be used in a vote to create a valid price resolution.
-    //  * @param _inflationRate percentage inflation per round used to increase token supply of correct voters.
     //  * @param _votingToken address of the UMA token contract used to commit votes.
     //  * @param _finder keeps track of all contracts within the system based on their interfaceName.
     //  * @param _timerAddress Contract that stores the current time in a testing environment.
@@ -245,9 +228,7 @@ contract VotingV2 is
         voteTiming.init(_phaseLength);
         require(_gatPercentage.isLessThanOrEqual(1), "GAT percentage must be <= 100%");
         gatPercentage = _gatPercentage;
-        inflationRate = FixedPoint.fromUnscaledUint(0);
         finder = FinderInterface(_finder);
-        rewardsExpirationTimeout = 1000000000; // todo: remove thisv
     }
 
     /***************************************
@@ -284,7 +265,7 @@ contract VotingV2 is
     }
 
     function _updateAccountSlashingTrackers(address voterAddress) internal {
-        if (_getCurrentSnapshotId() == 0) return; // No slashing on the very first voting round.
+        // if (_getCurrentSnapshotId() == 0) return; // No slashing on the very first voting round.
         VoterStake storage voterStake = voterStakes[voterAddress];
         // Note the method below can hit a gas limit of there are a LOT of requests from the last time this was run.
         // A future version of this should bound how many requests to look at per call to avoid gas limit issues.
@@ -295,8 +276,7 @@ contract VotingV2 is
             VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
             uint256 roundId = priceRequestIds[i].roundId;
 
-            uint256 snapshotId = rounds[roundId].snapshotId;
-            if (snapshotId == 0) continue; // Cant slash for the current round.
+            if (roundId == voteTiming.computeCurrentRoundId(getCurrentTime())) continue; // Cant slash for the current round.
 
             bytes32 revealHash = voteInstance.voteSubmissions[voterAddress].revealHash;
             // The voter did not reveal or did not commit. Slash at noVote rate.
@@ -336,25 +316,24 @@ contract VotingV2 is
     }
 
     function _updateCumulativeSlashingTrackers() internal {
-        if (_getCurrentSnapshotId() == 0) return; // No slashing on the very first voting round.
+        // if (_getCurrentSnapshotId() == 0) return; // No slashing on the very first voting round.
         // Note the method below can hit a gas limit of there are a LOT of requests from the last time this was run.
         // A future version of this should bound how many requests to look at per call to avoid gas limit issues.
         for (uint256 i = lastRequestIndexConsidered; i < priceRequestIds.length; i++) {
             PriceRequest storage priceRequest = priceRequests[priceRequestIds[i].requestId];
             VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
             uint256 roundId = priceRequestIds[i].roundId;
-            uint256 snapshotId = rounds[priceRequestIds[i].roundId].snapshotId;
 
-            if (snapshotId == 0) continue; // Cant slash for the current round.
-            uint256 totalStaked = totalStakedAt(snapshotId);
+            if (roundId == voteTiming.computeCurrentRoundId(getCurrentTime())) continue; // Cant slash for the current round.
+            uint256 stakedAtRound = rounds[priceRequestIds[i].roundId].cumulativeStakedAtRound;
             uint256 totalVotes = voteInstance.resultComputation.totalVotes.rawValue;
             uint256 totalCorrectVotes = voteInstance.resultComputation.getTotalCorrectlyVotedTokens().rawValue;
 
-            uint256 wrongVoteSlashPerToken = calcWrongVoteSlashPerToken(totalStaked, totalVotes, totalCorrectVotes);
-            uint256 noVoteSlashPerToken = calcNoVoteSlashPerToken(totalStaked, totalVotes, totalCorrectVotes);
+            uint256 wrongVoteSlashPerToken = calcWrongVoteSlashPerToken(stakedAtRound, totalVotes, totalCorrectVotes);
+            uint256 noVoteSlashPerToken = calcNoVoteSlashPerToken(stakedAtRound, totalVotes, totalCorrectVotes);
 
             uint256 totalSlashed =
-                ((noVoteSlashPerToken * (totalStaked - totalVotes)) / 1e18) +
+                ((noVoteSlashPerToken * (stakedAtRound - totalVotes)) / 1e18) +
                     ((wrongVoteSlashPerToken * (totalVotes - totalCorrectVotes)) / 1e18);
             requestSlashingTrackers.push(
                 SlashingTracker(wrongVoteSlashPerToken, noVoteSlashPerToken, totalSlashed, totalCorrectVotes)
@@ -446,7 +425,7 @@ contract VotingV2 is
         uint256 time,
         bytes memory ancillaryData
     ) public view override onlyRegisteredContract() returns (bool) {
-        (bool _hasPrice, , ) = _getPriceOrError(identifier, time, ancillaryData);
+        (bool _hasPrice, , string memory message) = _getPriceOrError(identifier, time, ancillaryData);
         return _hasPrice;
     }
 
@@ -545,17 +524,17 @@ contract VotingV2 is
         bytes memory ancillaryData,
         bytes32 hash
     ) public override onlyIfNotMigrated() {
+        uint256 currentRoundId = voteTiming.computeCurrentRoundId(getCurrentTime());
+        _freezeRoundVariables(currentRoundId);
         _updateTrackers(msg.sender);
+        // At this point, the computed and last updated round ID should be equal.
+        uint256 blockTime = getCurrentTime();
         require(hash != bytes32(0), "Invalid provided hash");
         // Current time is required for all vote timing queries.
-        uint256 blockTime = getCurrentTime();
         require(
             voteTiming.computeCurrentPhase(blockTime) == VotingAncillaryInterface.Phase.Commit,
             "Cannot commit in reveal phase"
         );
-
-        // At this point, the computed and last updated round ID should be equal.
-        uint256 currentRoundId = voteTiming.computeCurrentRoundId(blockTime);
 
         PriceRequest storage priceRequest = _getPriceRequest(identifier, time, ancillaryData);
         require(
@@ -579,25 +558,12 @@ contract VotingV2 is
         commitVote(identifier, time, "", hash);
     }
 
-    /**
-     * @notice Snapshot the current round's token balances and lock in the inflation rate and GAT.
-     * @dev This function can be called multiple times, but only the first call per round into this function or `revealVote`
-     * will create the round snapshot. Any later calls will be a no-op. Will revert unless called during reveal period.
-     * @param signature  signature required to prove caller is an EOA to prevent flash loans from being included in the
-     * snapshot.
-     */
+    // TODO: only here for ABI support until removed.
     function snapshotCurrentRound(bytes calldata signature)
         external
         override(VotingV2Interface, VotingAncillaryInterface)
         onlyIfNotMigrated()
-    {
-        uint256 blockTime = getCurrentTime();
-        require(voteTiming.computeCurrentPhase(blockTime) == Phase.Reveal, "Only snapshot in reveal phase");
-        // Require public snapshot require signature to ensure caller is an EOA.
-        require(ECDSA.recover(snapshotMessageHash, signature) == msg.sender, "Signature must match sender");
-        uint256 roundId = voteTiming.computeCurrentRoundId(blockTime);
-        _freezeRoundVariables(roundId);
-    }
+    {}
 
     /**
      * @notice Reveal a previously committed vote for `identifier` at `time`.
@@ -634,12 +600,7 @@ contract VotingV2 is
                     voteSubmission.commit,
                 "Revealed data != commit hash"
             );
-            // To protect against flash loans, we require snapshot be validated as EOA.
-            require(rounds[roundId].snapshotId != 0, "Round has no snapshot");
         }
-
-        // Get the frozen snapshotId
-        uint256 snapshotId = rounds[roundId].snapshotId;
 
         delete voteSubmission.commit;
 
@@ -853,18 +814,12 @@ contract VotingV2 is
         migratedAddress = newVotingAddress;
     }
 
-    /**
-     * @notice Resets the inflation rate. Note: this change only applies to rounds that have not yet begun.
-     * @dev This method is public because calldata structs are not currently supported by solidity.
-     * @param newInflationRate sets the next round's inflation rate.
-     */
+    // here for abi compatibility. remove
     function setInflationRate(FixedPoint.Unsigned memory newInflationRate)
         public
         override(VotingV2Interface, VotingAncillaryInterface)
         onlyOwner
-    {
-        inflationRate = newInflationRate;
-    }
+    {}
 
     /**
      * @notice Resets the Gat percentage. Note: this change only applies to rounds that have not yet begun.
@@ -880,18 +835,12 @@ contract VotingV2 is
         gatPercentage = newGatPercentage;
     }
 
-    /**
-     * @notice Resets the rewards expiration timeout.
-     * @dev This change only applies to rounds that have not yet begun.
-     * @param NewRewardsExpirationTimeout how long a caller can wait before choosing to withdraw their rewards.
-     */
+    // Here for abi compatibility. to be removed.
     function setRewardsExpirationTimeout(uint256 NewRewardsExpirationTimeout)
         public
         override(VotingV2Interface, VotingAncillaryInterface)
         onlyOwner
-    {
-        rewardsExpirationTimeout = NewRewardsExpirationTimeout;
-    }
+    {}
 
     /****************************************
      *    PRIVATE AND INTERNAL FUNCTIONS    *
@@ -947,26 +896,21 @@ contract VotingV2 is
     }
 
     function _freezeRoundVariables(uint256 roundId) private {
-        Round storage round = rounds[roundId];
-        // Only on the first reveal should the snapshot be captured for that round.
-        if (round.snapshotId == 0) {
-            // There is no snapshot ID set, so create one.
-            round.snapshotId = _snapshot();
-
-            // Set the round inflation rate to the current global inflation rate.
-            rounds[roundId].inflationRate = inflationRate;
-
+        // Only freeze the round if this is the first request in the round.
+        console.log("_getLastPriceRequestRoundId()", _getLastPriceRequestRoundId());
+        console.log("roundId", roundId);
+        if (rounds[roundId].gatPercentage.rawValue == 0) {
             // Set the round gat percentage to the current global gat rate.
             rounds[roundId].gatPercentage = gatPercentage;
 
-            // Set the rewards expiration time based on end of time of this round and the current global timeout.
-            rounds[roundId].rewardsExpirationTime = voteTiming.computeRoundEndTime(roundId).add(
-                rewardsExpirationTimeout
-            );
-            
-            //
-            rounds[cumulativeStakedAtRound] = cumulativeStaked;
+            // Store the cumulativeStaked at this roundId to work out slashing and voting trackers.
+            rounds[roundId].cumulativeStakedAtRound = cumulativeStaked;
         }
+    }
+
+    function _getLastPriceRequestRoundId() internal returns (uint256) {
+        if (priceRequestIds.length == 0) return 0;
+        else return priceRequestIds[priceRequestIds.length - 1].roundId;
     }
 
     function _resolvePriceRequest(PriceRequest storage priceRequest, VoteInstance storage voteInstance) private {
@@ -995,18 +939,14 @@ contract VotingV2 is
     }
 
     function _computeGat(uint256 roundId) private view returns (FixedPoint.Unsigned memory) {
-        uint256 snapshotId = rounds[roundId].snapshotId;
-        if (snapshotId == 0) {
-            // No snapshot - return max value to err on the side of caution.
-            return FixedPoint.Unsigned(UINT_MAX);
-        }
+        // Nothing staked at the round  - return max value to err on the side of caution.
+        if (rounds[roundId].cumulativeStakedAtRound == 0) return FixedPoint.Unsigned(UINT_MAX);
 
-        // Grab the snapshotted supply from the voting token. It's already scaled by 10**18, so we can directly
-        // initialize the Unsigned value with the returned uint.
-        FixedPoint.Unsigned memory snapshottedSupply = FixedPoint.Unsigned(totalStakedAt(snapshotId));
+        // Grab the cumulative staked at the voting round.
+        FixedPoint.Unsigned memory stakedAtRound = FixedPoint.Unsigned(rounds[roundId].cumulativeStakedAtRound);
 
-        // Multiply the total supply at the snapshot by the gatPercentage to get the GAT in number of tokens.
-        return snapshottedSupply.mul(rounds[roundId].gatPercentage);
+        // Multiply the total supply at the cumulative staked by the gatPercentage to get the GAT in number of tokens.
+        return stakedAtRound.mul(rounds[roundId].gatPercentage);
     }
 
     function _getRequestStatus(PriceRequest storage priceRequest, uint256 currentRoundId)
@@ -1020,6 +960,7 @@ contract VotingV2 is
             VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
             (bool isResolved, ) =
                 voteInstance.resultComputation.getResolvedPrice(_computeGat(priceRequest.lastVotingRound));
+
             return isResolved ? RequestStatus.Resolved : RequestStatus.Active;
         } else if (priceRequest.lastVotingRound == currentRoundId) {
             return RequestStatus.Active;

@@ -13,7 +13,6 @@ const {
   computeVoteHash,
   computeVoteHashAncillary,
   getKeyGenMessage,
-  signMessage,
 } = require("@uma/common");
 const { moveToNextRound, moveToNextPhase } = require("../../utils/Voting.js");
 const { assert } = require("chai");
@@ -28,14 +27,13 @@ const IdentifierWhitelist = getContract("IdentifierWhitelist");
 const VotingToken = getContract("VotingToken");
 const VotingTest = getContract("VotingTest");
 const Timer = getContract("Timer");
-const snapshotMessage = "Sign For Snapshot";
 const { utf8ToHex, padRight } = web3.utils;
 
 const toWei = (value) => toBN(web3.utils.toWei(value, "ether"));
 
 describe("VotingV2", function () {
   let voting, votingToken, registry, supportedIdentifiers, registeredContract, unregisteredContract, migratedVoting;
-  let accounts, account1, account2, account3, account4, signature;
+  let accounts, account1, account2, account3, account4;
 
   const setNewGatPercentage = async (gatPercentage) => {
     await voting.methods.setGatPercentage({ rawValue: gatPercentage.toString() }).send({ from: accounts[0] });
@@ -77,7 +75,6 @@ describe("VotingV2", function () {
     // Register contract with Registry.
     await registry.methods.addMember(RegistryRolesEnum.CONTRACT_CREATOR, account1).send({ from: accounts[0] });
     await registry.methods.registerContract([], registeredContract).send({ from: account1 });
-    signature = await signMessage(web3, snapshotMessage, account1);
 
     // Reset the rounds.
     await moveToNextRound(voting, accounts[0]);
@@ -126,28 +123,6 @@ describe("VotingV2", function () {
     assert.equal((await voting.methods.getVotePhase().call()).toString(), VotePhasesEnum.COMMIT);
   });
 
-  it("Should snapshot only with valid EOA", async function () {
-    // Reset the rounds.
-    await moveToNextRound(voting, accounts[0]);
-    await moveToNextPhase(voting, accounts[0]);
-
-    // random bytes should fail
-    assert(
-      await didContractThrow(voting.methods.snapshotCurrentRound(web3.utils.randomHex(65)).send({ from: accounts[0] }))
-    );
-
-    // wrong signer
-    const badsig1 = await signMessage(web3, snapshotMessage, account2);
-    assert(await didContractThrow(voting.methods.snapshotCurrentRound(badsig1).send({ from: accounts[0] })));
-
-    // right signer, wrong message
-    const badsig2 = await signMessage(web3, snapshotMessage.toLowerCase(), account1);
-    assert(await didContractThrow(voting.methods.snapshotCurrentRound(badsig2).send({ from: accounts[0] })));
-
-    // this should not throw
-    await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
-  });
-
   it("One voter, one request", async function () {
     const identifier = padRight(utf8ToHex("one-voter"), 64);
     const time = "1000";
@@ -194,13 +169,7 @@ describe("VotingV2", function () {
     // Move to the reveal phase.
     await moveToNextPhase(voting, accounts[0]);
 
-    // Can't reveal if snapshot has not been taken yet, even if all data is correct
-    assert(
-      await didContractThrow(voting.methods.revealVote(identifier, time, newPrice, newSalt).send({ from: accounts[0] }))
-    );
-
     // This is now required before reveal
-    await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
 
     // Can't commit during the reveal phase.
     assert(await didContractThrow(voting.methods.commitVote(identifier, time, newHash).send({ from: accounts[0] })));
@@ -310,8 +279,6 @@ describe("VotingV2", function () {
       await didContractThrow(voting.methods.revealVote(identifier1, time1, price2, salt2).send({ from: accounts[0] }))
     );
 
-    await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
-
     // Can reveal the right combos.
     await voting.methods.revealVote(identifier1, time2, price1, salt1).send({ from: accounts[0] });
     await voting.methods.revealVote(identifier2, time1, price2, salt2).send({ from: accounts[0] });
@@ -376,7 +343,6 @@ describe("VotingV2", function () {
 
     // Move to the reveal phase of the voting period.
     await moveToNextPhase(voting, accounts[0]);
-    await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
 
     // Reveal both votes.
     await voting.methods.revealVote(identifier1, time1, price1, salt1).send({ from: accounts[0] });
@@ -442,8 +408,6 @@ describe("VotingV2", function () {
     // Move to reveal phase and reveal vote.
     await moveToNextPhase(voting, accounts[0]);
 
-    await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
-
     await voting.methods.revealVote(identifier, timeSucceed, price, salt).send({ from: accounts[0] });
   });
 
@@ -477,8 +441,6 @@ describe("VotingV2", function () {
 
     // Move to reveal phase and reveal vote.
     await moveToNextPhase(voting, accounts[0]);
-
-    await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
 
     await voting.methods.revealVote(identifier, time, price, salt).send({ from: accounts[0] });
 
@@ -563,7 +525,6 @@ describe("VotingV2", function () {
     await moveToNextPhase(voting, accounts[0]);
     assert.equal((await voting.methods.getPendingRequests().call()).length, 2);
 
-    await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
     // Reveal vote.
     await voting.methods.revealVote(identifier1, time1, price1, salt1).send({ from: accounts[0] });
     await voting.methods.revealVote(identifier2, time2, price2, salt2).send({ from: accounts[0] });
@@ -626,8 +587,6 @@ describe("VotingV2", function () {
     // Reveal the vote.
     await moveToNextPhase(voting, accounts[0]);
 
-    await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
-
     await voting.methods.revealVote(identifier, time, price, salt).send({ from: accounts[0] });
 
     // Should resolve to the selected price since there was only one voter (100% for the mode) and the voter had enough
@@ -665,8 +624,6 @@ describe("VotingV2", function () {
     // Reveal the votes.
     await moveToNextPhase(voting, accounts[0]);
 
-    await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
-
     await voting.methods.revealVote(identifier, time, price1, salt1).send({ from: account1 });
     await voting.methods.revealVote(identifier, time, price2, salt2).send({ from: account2 });
 
@@ -679,8 +636,6 @@ describe("VotingV2", function () {
     hash1 = computeVoteHash({ price: price1, salt: salt1, account: account1, time, roundId, identifier });
     await voting.methods.commitVote(identifier, time, hash1).send({ from: account1 });
     await moveToNextPhase(voting, accounts[0]);
-
-    await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
 
     await voting.methods.revealVote(identifier, time, price1, salt1).send({ from: account1 });
   });
@@ -717,8 +672,6 @@ describe("VotingV2", function () {
     // Reveal the votes.
     await moveToNextPhase(voting, accounts[0]);
 
-    await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
-
     await voting.methods.revealVote(identifier, time, losingPrice, salt1).send({ from: account1 });
     await voting.methods.revealVote(identifier, time, winningPrice, salt2).send({ from: account2 });
     await voting.methods.revealVote(identifier, time, winningPrice, salt3).send({ from: account3 });
@@ -754,7 +707,6 @@ describe("VotingV2", function () {
     // Reveal the vote.
     await moveToNextPhase(voting, accounts[0]);
 
-    await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
     await voting.methods.revealVote(identifier, time, price, salt).send({ from: account4 });
 
     // Since the GAT was not hit, the price should not resolve.
@@ -778,14 +730,12 @@ describe("VotingV2", function () {
 
     // Reveal votes.
     await moveToNextPhase(voting, accounts[0]);
-    await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
     await voting.methods.revealVote(identifier, time, price, salt).send({ from: account4 });
     await moveToNextRound(voting, accounts[0]);
     assert.equal(
       (await voting.methods.getPrice(identifier, time).call({ from: registeredContract })).toString(),
       price.toString()
     );
-
     // Set GAT back to 5% and test a larger vote. With more votes the GAT should be hit
     // and the price should resolve.
     await setNewGatPercentage(web3.utils.toWei("0.05", "ether"));
@@ -806,8 +756,6 @@ describe("VotingV2", function () {
 
     // Reveal votes.
     await moveToNextPhase(voting, accounts[0]);
-
-    await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
 
     await voting.methods.revealVote(identifier, time, price, salt).send({ from: account4 });
     await voting.methods.revealVote(identifier, time, price, salt).send({ from: account1 });
@@ -838,8 +786,6 @@ describe("VotingV2", function () {
     const hash = computeVoteHash({ price: winningPrice, salt, account: account1, time, roundId, identifier });
     await voting.methods.commitVote(identifier, time, hash).send({ from: account1 });
     await moveToNextPhase(voting, accounts[0]);
-
-    await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
 
     await voting.methods.revealVote(identifier, time, winningPrice, salt).send({ from: account1 });
     await moveToNextRound(voting, accounts[0]);
@@ -902,8 +848,6 @@ describe("VotingV2", function () {
     await voting.methods.commitVote(identifier, time, hash2).send({ from: account2 });
 
     await moveToNextPhase(voting, accounts[0]);
-
-    await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
 
     await voting.methods.revealVote(identifier, time, price, salt1).send({ from: account1 });
     await voting.methods.revealVote(identifier, time, price, salt2).send({ from: account2 });
@@ -971,8 +915,6 @@ describe("VotingV2", function () {
 
     await moveToNextPhase(voting, accounts[0]);
 
-    await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
-
     result = await voting.methods.revealVote(identifier, time, price, salt).send({ from: account4 });
     await assertEventEmitted(result, voting, "VoteRevealed", (ev) => {
       return (
@@ -996,7 +938,6 @@ describe("VotingV2", function () {
     await voting.methods.commitVote(identifier, time, hash1).send({ from: account1 });
     result = await voting.methods.commitVote(identifier, time, hash4).send({ from: account4 });
     await moveToNextPhase(voting, accounts[0]);
-    await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
 
     await voting.methods.revealVote(identifier, time, price, salt).send({ from: account1 });
     await voting.methods.revealVote(identifier, time, wrongPrice, salt).send({ from: account4 });
@@ -1048,8 +989,6 @@ describe("VotingV2", function () {
 
     const decryptedMessage = await decryptMessage(privateKey, retrievedEncryptedMessage);
     const retrievedVote = JSON.parse(decryptedMessage);
-
-    await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
 
     assert(
       await didContractThrow(
@@ -1192,8 +1131,6 @@ describe("VotingV2", function () {
 
     await moveToNextPhase(voting, accounts[0]);
 
-    await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
-
     // NOTE: Signed integers inside structs must be supplied as a string rather than a BN.
     const result = await voting.methods["batchReveal((bytes32,uint256,int256,int256)[])"]([
       { identifier, time: time1, price: price1.toString(), salt: salt1.toString() },
@@ -1269,7 +1206,7 @@ describe("VotingV2", function () {
     const hash = computeVoteHash({ price, salt, account: account1, time: time1, roundId, identifier });
     await newVoting.methods.commitVote(identifier, time1, hash).send({ from: account1 });
     await moveToNextPhase(newVoting, accounts[0]);
-    await newVoting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
+    // await newVoting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
     await newVoting.methods.revealVote(identifier, time1, price, salt).send({ from: account1 });
     await moveToNextRound(newVoting, accounts[0]);
 
@@ -1335,7 +1272,7 @@ describe("VotingV2", function () {
     // Reveal phase.
     await moveToNextPhase(votingTest, accounts[0]);
 
-    await votingTest.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
+    // await votingTest.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
     // Reveal vote.
     await votingTest.methods.revealVote(identifier, time, price, salt).send({ from: accounts[0] });
 
@@ -1463,8 +1400,6 @@ describe("VotingV2", function () {
     // Move to the reveal phase of the voting period.
     await moveToNextPhase(voting, accounts[0]);
 
-    await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
-
     // Reveal both votes.
     await voting.methods.revealVote(identifier1, time1, price1, ancillaryData1, salt1).send({ from: accounts[0] });
     await voting.methods.revealVote(identifier2, time2, price2, ancillaryData2, salt2).send({ from: accounts[0] });
@@ -1567,8 +1502,6 @@ describe("VotingV2", function () {
 
     // Move to the reveal phase of the voting period.
     await moveToNextPhase(voting, accounts[0]);
-
-    await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
 
     // Reveal votes.
     await voting.methods.revealVote(identifier, time, price, ancillaryData, salt).send({ from: accounts[0] });
@@ -1723,8 +1656,6 @@ describe("VotingV2", function () {
     // Move to the reveal phase of the voting period.
     await moveToNextPhase(voting, accounts[0]);
 
-    await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
-
     // Reveal both votes.
     await voting.methods.revealVote(identifier1, time1, price1, ancillaryData1, salt1).send({ from: accounts[0] });
     await voting.methods.revealVote(identifier2, time2, price2, salt2).send({ from: accounts[0] });
@@ -1810,8 +1741,6 @@ describe("VotingV2", function () {
     // Reveal the votes.
     await moveToNextPhase(voting, accounts[0]);
 
-    await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
-
     await voting.methods.revealVote(identifier, time, losingPrice, salt1).send({ from: account1 });
     await voting.methods.revealVote(identifier, time, winningPrice, salt2).send({ from: account2 });
     await voting.methods.revealVote(identifier, time, winningPrice, salt3).send({ from: account3 });
@@ -1865,7 +1794,6 @@ describe("VotingV2", function () {
     const identifier = padRight(utf8ToHex("slash-test"), 64); // Use the same identifier for both.
     const time1 = "420";
     const time2 = "421";
-
     await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
     await voting.methods.requestPrice(identifier, time1).send({ from: registeredContract });
     await voting.methods.requestPrice(identifier, time2).send({ from: registeredContract });
@@ -1881,7 +1809,6 @@ describe("VotingV2", function () {
     await voting.methods.commitVote(identifier, time1, hash1).send({ from: account2 });
     const hash2 = computeVoteHash({ ...baseRequest, price: losingPrice, account: account2, time: time2 });
     await voting.methods.commitVote(identifier, time2, hash2).send({ from: account2 });
-
     const winningPrice = 456;
     const hash3 = computeVoteHash({ ...baseRequest, price: winningPrice, account: account1, time: time1 });
     await voting.methods.commitVote(identifier, time1, hash3).send({ from: account1 });
@@ -1894,11 +1821,9 @@ describe("VotingV2", function () {
     await voting.methods.commitVote(identifier, time2, hash6).send({ from: account4 });
 
     await moveToNextPhase(voting, accounts[0]); // Reveal the votes.
-    await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
 
     await voting.methods.revealVote(identifier, time1, losingPrice, salt).send({ from: account2 });
     await voting.methods.revealVote(identifier, time2, losingPrice, salt).send({ from: account2 });
-
     await voting.methods.revealVote(identifier, time1, winningPrice, salt).send({ from: account1 });
 
     await voting.methods.revealVote(identifier, time2, winningPrice, salt).send({ from: account1 });
@@ -1907,11 +1832,9 @@ describe("VotingV2", function () {
     await voting.methods.revealVote(identifier, time2, winningPrice, salt).send({ from: account4 });
 
     await moveToNextRound(voting, accounts[0]);
-
     // Now call updateTrackers to update the slashing metrics. We should see a cumulative slashing amount increment and
     // the slash per wrong vote and slash per no vote set correctly.
     await voting.methods.updateTrackers(account1).send({ from: account1 });
-
     // Based off the votes in the batch we should see account2 slashed twice for voting wrong and account3 slashed twice
     // for not voting, both at a rate of 0.0016 tokens per vote. We should be able to see two separate request slashing
     // trackers. The totalSlashed should therefor be 32mm * 2 * 0.0016 = 102400 per slashing tracker. The total correct
@@ -1926,7 +1849,6 @@ describe("VotingV2", function () {
     assert.equal(slashingTracker2.noVoteSlashPerToken, toWei("0.0016"));
     assert.equal(slashingTracker2.totalSlashed, toWei("102400"));
     assert.equal(slashingTracker2.totalCorrectVotes, toWei("36000000"));
-
     // Now consider the impact on the individual voters cumulative staked amounts. First, let's consider the voters who
     // were wrong and lost balance. Account2 and Account3 were both wrong with 32mm tokens, slashed twice. They should
     // each loose 32mm * 2 * 0.0016 = 102400 tokens.
@@ -1986,7 +1908,6 @@ describe("VotingV2", function () {
     await voting.methods.commitVote(identifier, time1, hash3).send({ from: account4 });
 
     await moveToNextPhase(voting, accounts[0]); // Reveal the votes.
-    await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
 
     await voting.methods.revealVote(identifier, time1, losingPrice, salt).send({ from: account2 });
     await voting.methods.revealVote(identifier, time1, winningPrice, salt).send({ from: account1 });
@@ -2009,7 +1930,6 @@ describe("VotingV2", function () {
     await voting.methods.commitVote(identifier, time2, hash6).send({ from: account3 });
 
     await moveToNextPhase(voting, accounts[0]); // Reveal the votes.
-    await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
 
     await voting.methods.revealVote(identifier, time2, losingPrice, salt).send({ from: account4 });
     await voting.methods.revealVote(identifier, time2, winningPrice, salt).send({ from: account1 });
