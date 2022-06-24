@@ -6,7 +6,7 @@ const { getContract } = hre;
 const { assert } = require("chai");
 const { toBN } = web3.utils;
 
-const StakerSnapshotTest = getContract("StakerSnapshotTest");
+const StakerTest = getContract("StakerTest");
 const VotingToken = getContract("VotingToken");
 const Timer = getContract("Timer");
 
@@ -17,7 +17,7 @@ const unstakeCoolDown = 60 * 60 * 30; // 1 month.
 
 const amountToStake = toWei("1000");
 
-describe("StakerSnapshot", function () {
+describe("Staker", function () {
   let staker, votingToken, timer, accounts, account1, account2, account3;
 
   const advanceTime = async (time) => {
@@ -33,7 +33,7 @@ describe("StakerSnapshot", function () {
     votingToken = await VotingToken.deployed();
     timer = await Timer.deployed();
 
-    staker = await StakerSnapshotTest.new(
+    staker = await StakerTest.new(
       emissionRate,
       unstakeCoolDown,
       votingToken.options.address,
@@ -227,53 +227,6 @@ describe("StakerSnapshot", function () {
       await advanceTime(1000);
       assert.equal(await staker.methods.outstandingRewards(account1).call(), toWei("240")); // 240 + 0 = 240
       assert.equal(await staker.methods.outstandingRewards(account2).call(), toWei("1680")); // 1040 + 640 = 1680
-    });
-  });
-
-  describe("Snapshotting: Correctly snapshots staked and unrealized slashing amounts", function () {
-    it("Snapshot correctly captures staked balances at stake  and unstake time", async function () {
-      await staker.methods.stake(amountToStake).send({ from: account1 }); // stake 1/4th
-      await staker.methods.stake(amountToStake.muln(3)).send({ from: account2 }); // stake 3/4ths
-
-      // Capture the snapshot and validate the snapshot balances.
-      await staker.methods.snapshot().send({ from: account1 });
-      assert.equal(await staker.methods.stakedAt(account1, 1).call(), amountToStake);
-      assert.equal(await staker.methods.stakedAt(account2, 1).call(), amountToStake.muln(3));
-      assert.equal(await staker.methods.totalStakedAt(1).call(), amountToStake.muln(4));
-
-      // // Modify the balances. Should not update historic snapshots.
-      await staker.methods.stake(amountToStake).send({ from: account1 });
-      assert.equal(await staker.methods.stakedAt(account1, 1).call(), amountToStake);
-      assert.equal(await staker.methods.stakedAt(account2, 1).call(), amountToStake.muln(3));
-      assert.equal(await staker.methods.totalStakedAt(1).call(), amountToStake.muln(4));
-
-      await staker.methods.stake(amountToStake.muln(2)).send({ from: account2 });
-      assert.equal(await staker.methods.stakedAt(account1, 1).call(), amountToStake);
-      assert.equal(await staker.methods.stakedAt(account2, 1).call(), amountToStake.muln(3));
-      assert.equal(await staker.methods.totalStakedAt(1).call(), amountToStake.muln(4));
-
-      // Now snapshot again. Should get the most recent changes.
-      await staker.methods.snapshot().send({ from: account1 });
-      assert.equal(await staker.methods.stakedAt(account1, 2).call(), amountToStake.muln(2));
-      assert.equal(await staker.methods.stakedAt(account2, 2).call(), amountToStake.muln(5));
-      assert.equal(await staker.methods.totalStakedAt(2).call(), amountToStake.muln(7));
-
-      // now unstake from account2.
-      await staker.methods.requestUnstake(amountToStake.muln(5)).send({ from: account2 });
-
-      await advanceTime(60 * 60 * 24 * 30 + 1);
-      await staker.methods.executeUnstake().send({ from: account2 });
-
-      // Previous snapshot should still be the same.
-      assert.equal(await staker.methods.stakedAt(account1, 2).call(), amountToStake.muln(2));
-      assert.equal(await staker.methods.stakedAt(account2, 2).call(), amountToStake.muln(5));
-      assert.equal(await staker.methods.totalStakedAt(2).call(), amountToStake.muln(7));
-
-      // New snapshot should reflect the most recent balances.
-      await staker.methods.snapshot().send({ from: account1 });
-      assert.equal(await staker.methods.stakedAt(account1, 3).call(), amountToStake.muln(2));
-      assert.equal(await staker.methods.stakedAt(account2, 3).call(), toBN(0));
-      assert.equal(await staker.methods.totalStakedAt(3).call(), amountToStake.muln(2));
     });
   });
 });

@@ -13,7 +13,7 @@ import "../interfaces/IdentifierWhitelistInterface.sol";
 import "./Registry.sol";
 import "./ResultComputation.sol";
 import "./VoteTiming.sol";
-import "./StakerSnapshot.sol";
+import "./Staker.sol";
 import "./Constants.sol";
 
 import "@openzeppelin/contracts/access/Ownable.sol";
@@ -30,7 +30,7 @@ import "hardhat/console.sol";
 // which should be done by removing the overloaded interfaces.
 
 contract VotingV2 is
-    StakerSnapshot,
+    Staker,
     OracleInterface,
     OracleAncillaryInterface, // Interface to support ancillary data with price requests.
     VotingV2Interface,
@@ -224,7 +224,7 @@ contract VotingV2 is
         address _votingToken,
         address _finder,
         address _timerAddress
-    ) StakerSnapshot(_emissionRate, _unstakeCoolDown, _votingToken, _timerAddress) {
+    ) Staker(_emissionRate, _unstakeCoolDown, _votingToken, _timerAddress) {
         voteTiming.init(_phaseLength);
         require(_gatPercentage.isLessThanOrEqual(1), "GAT percentage must be <= 100%");
         gatPercentage = _gatPercentage;
@@ -897,8 +897,6 @@ contract VotingV2 is
 
     function _freezeRoundVariables(uint256 roundId) private {
         // Only freeze the round if this is the first request in the round.
-        console.log("_getLastPriceRequestRoundId()", _getLastPriceRequestRoundId());
-        console.log("roundId", roundId);
         if (rounds[roundId].gatPercentage.rawValue == 0) {
             // Set the round gat percentage to the current global gat rate.
             rounds[roundId].gatPercentage = gatPercentage;
