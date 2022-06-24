@@ -13,8 +13,15 @@ const SyntheticToken = getContract("SyntheticToken");
 const Timer = getContract("Timer");
 const Store = getContract("Store");
 const AddressWhitelist = getContract("AddressWhitelist");
-const BridgeAdmin = getContract("BridgeAdmin");
-const RateModelStore = getContract("RateModelStore");
+
+// Pull in contracts from contracts-node sourced from the across repo.
+const { getAbi, getBytecode } = require("@uma/contracts-node");
+
+const BridgeAdmin = getContract("BridgeAdmin", { abi: getAbi("BridgeAdmin"), bytecode: getBytecode("BridgeAdmin") });
+const RateModelStore = getContract("RateModelStore", {
+  abi: getAbi("RateModelStore"),
+  bytecode: getBytecode("RateModelStore"),
+});
 
 const {
   createPriceFeed,
