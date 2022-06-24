@@ -4,17 +4,20 @@ Interact with UMA's Optimistic Oracle using an eventful client designed for a fr
 
 # Quick Start
 
-Currently theres a single factory which creates the client and allows you to subscribe to state changes.
+In order to start a client, you need to know if you will be interfacing with the skinny optimistic oracle, or
+standard optimistic oracle. They have an identical interface, use the factory and specify the configuration for which type or
+types you intend to use.
 
 ```js
 import {oracle} from '@uma/sdk'
 
-// create your configuration object with known addresses
-type Config = oracle.types.state.Config
+type PartialConfig = oracle.types.state.PartialConfig
+type PartialConfigTable = oracle.types.state.PartialConfigTable
 
 // creating a config for mainnet usage add any additional chains you want following the same format
-export const config = {
+const config:PartialConfig = {
   chains: {
+    // adding a mainnet chain configuration
     1:{
       chainName: "Ethereum",
       rpcUrls: [process.env.CUSTOM_NODE_URL],
@@ -34,15 +37,29 @@ export const config = {
   },
 };
 
-
-
-let state:oracle.types.state.State = {}
-function changeHandler(nextState:oracle.types.state.State, prevState:oracle.types.state.State){
- // dispatch to state manager. Recommended to have its own slice of state.
- state = nextState
+// this starts both a skinny and optimistic oracle, you have to make sure to omit the oracle address
+// in the config to let them auto populate, or make sure you set the addresses differently for each type
+const configTable = {
+  [oracle.types.state.OracleType.Optimistic]:config,
+  [oracle.types.state.OracleType.Skinny]:config,
 }
 
-const client = Factory(config, changeHandler);
+const state = {
+  [oracle.types.state.OracleType.Optimistic]:{},
+  [oracle.types.state.OracleType.Skinny]:{},
+}
+function changeHandler(oracleType: oracle.types.state.OracleType, state: oracle.types.state.State, prev: oracle.types.state.State):void {
+  // update state for the particular oracle type
+  state[oracleType] = state
+}
+const clients = oracle.factory(configTable,changeHandler)
+
+// regular OO
+const optimistic = clients[oracle.types.state.OracleType.Optimistic]
+// skinny OO
+const skinny = clients[oracle.types.state.OracleType.Skinny]
+
+// both clients have the exact same interface and return the same data
 // client contains the following classes and calls:
 //{
 //  store: { read, write, get} // get and set all parts of state
@@ -58,7 +75,8 @@ const client = Factory(config, changeHandler);
 //}
 
 // you should always start this to kick off internal processing
-client.startInterval()
+optimistic.startInterval()
+skinny.startInterval()
 
 const requester = "0xb8b3583f143b3a4c2aa052828d8809b0818a16e9",
 const identifier = "0x554D415553440000000000000000000000000000000000000000000000000000"
@@ -69,20 +87,20 @@ const account = "0x9A8f92a830A5cB89a3816e3D267CB791c16b04D";
 const chainId = 1
 
 // currently the order of calls is important
-client.setActiveRequest({ requester, identifier, timestamp, ancillaryData, chainId })
-client.setUser({ address:account, chainId, signer:rpcSigner, provider:web3Provider })
+optimistic.setActiveRequest({ requester, identifier, timestamp, ancillaryData, chainId })
+optimistic.setUser({ address:account, chainId, signer:rpcSigner, provider:web3Provider })
 
 // global state will be updated with the needed information
 // you can also manually fetch from store using array paths, but this isnt recommended.
 // recommended way
 let userAddress = state?.input?.user?.address
 // you can also get it from the store
-userAddress = client.store.read().userAddress()
+userAddress = optimistic.store.read().userAddress()
 
 // fetched from contract
 let fullRequest = state.chains?.[chainId]?.optimisticOracle?.requests?.[requestId]
 // or get from store
-fullRequest = client.store.read().request()
+fullRequest = optimistic.store.read().request()
 
 // inspect types/state.ts for shape of state data.
 ```
