@@ -28,10 +28,6 @@
     "address": "0xBb1A8db2D4350976a11cdfA60A1d43f97710Da49"
   },
   {
-    "contractName": "V1OptimisticOracleInterface",
-    "address": "0xBb1A8db2D4350976a11cdfA60A1d43f97710Da49"
-  },
-  {
     "contractName": "OracleChildTunnel",
     "address": "0xBEd4c1FC0FD95A2020EC351379b22d8582B904e3"
   },

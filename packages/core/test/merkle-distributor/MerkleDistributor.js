@@ -640,8 +640,18 @@ describe("MerkleDistributor.js", function () {
         const underfundedBatchedClaims = [];
         const underfundedWindowIndex = rewardLeafs.length;
 
-        // Underfunded reward set recipients and amounts are same as for the first set.
-        rewardRecipients.push(createRewardRecipientsFromSampleData(SamplePayouts));
+        // Underfunded rewards set has amounts the same as for the first set, but all recipients are the same one
+        // address in order to check if remainingAmount is being tracked correctly.
+        const underfundedRewards = Object.keys(SamplePayouts.exampleRecipients).map(
+          (recipientAddress, i, recipients) => {
+            return {
+              account: recipients[0],
+              amount: SamplePayouts.exampleRecipients[recipientAddress],
+              accountIndex: i,
+            };
+          }
+        );
+        rewardRecipients.push(underfundedRewards);
 
         // Generate leafs for each recipient for the underfunded reward set.
         rewardLeafs.push(rewardRecipients[underfundedWindowIndex].map((item) => ({ ...item, leaf: createLeaf(item) })));

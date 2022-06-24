@@ -2,12 +2,52 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "./FinderInterface.sol";
 
 /**
  * @title Financial contract facing Oracle interface.
  * @dev Interface used by financial contracts to interact with the Oracle. Voters will use a different interface.
  */
 abstract contract OptimisticOracleInterface {
+    event RequestPrice(
+        address indexed requester,
+        bytes32 identifier,
+        uint256 timestamp,
+        bytes ancillaryData,
+        address currency,
+        uint256 reward,
+        uint256 finalFee
+    );
+    event ProposePrice(
+        address indexed requester,
+        address indexed proposer,
+        bytes32 identifier,
+        uint256 timestamp,
+        bytes ancillaryData,
+        int256 proposedPrice,
+        uint256 expirationTimestamp,
+        address currency
+    );
+    event DisputePrice(
+        address indexed requester,
+        address indexed proposer,
+        address indexed disputer,
+        bytes32 identifier,
+        uint256 timestamp,
+        bytes ancillaryData,
+        int256 proposedPrice
+    );
+    event Settle(
+        address indexed requester,
+        address indexed proposer,
+        address indexed disputer,
+        bytes32 identifier,
+        uint256 timestamp,
+        bytes ancillaryData,
+        int256 price,
+        uint256 payout
+    );
+
     // Struct representing the state of a price request.
     enum State {
         Invalid, // Never requested.
@@ -19,34 +59,35 @@ abstract contract OptimisticOracleInterface {
         Settled // Final price has been set in the contract (can get here from Expired or Resolved).
     }
 
-    struct RequestSettings {
-        bool eventBased; // True if the request is set to be event-based.
-        bool refundOnDispute; // True if the requester should be refunded their reward on dispute.
-        bool callbackOnPriceProposed; // True if callbackOnPriceProposed callback is required.
-        bool callbackOnPriceDisputed; // True if callbackOnPriceDisputed callback is required.
-        bool callbackOnPriceSettled; // True if callbackOnPriceSettled callback is required.
-        uint256 bond; // Bond that the proposer and disputer must pay on top of the final fee.
-        uint256 customLiveness; // Custom liveness value set by the requester.
-    }
-
     // Struct representing a price request.
     struct Request {
         address proposer; // Address of the proposer.
         address disputer; // Address of the disputer.
         IERC20 currency; // ERC20 token used to pay rewards and fees.
         bool settled; // True if the request is settled.
-        RequestSettings requestSettings; // Custom settings associated with a request.
+        bool refundOnDispute; // True if the requester should be refunded their reward on dispute.
         int256 proposedPrice; // Price that the proposer submitted.
         int256 resolvedPrice; // Price resolved once the request is settled.
         uint256 expirationTime; // Time at which the request auto-settles without a dispute.
         uint256 reward; // Amount of the currency to pay to the proposer on settlement.
         uint256 finalFee; // Final fee to pay to the Store upon request to the DVM.
+        uint256 bond; // Bond that the proposer and disputer must pay on top of the final fee.
+        uint256 customLiveness; // Custom liveness value set by the requester.
     }
 
     // This value must be <= the Voting contract's `ancillaryBytesLimit` value otherwise it is possible
     // that a price can be requested to this contract successfully, but cannot be disputed because the DVM refuses
     // to accept a price request made with ancillary data length over a certain size.
     uint256 public constant ancillaryBytesLimit = 8192;
+
+    function defaultLiveness() external view virtual returns (uint256);
+
+    function finder() external view virtual returns (FinderInterface);
+
+    function getCurrentTime() external view virtual returns (uint256);
+
+    // Note: this is required so that typechain generates a return value with named fields.
+    mapping(bytes32 => Request) public requests;
 
     /**
      * @notice Requests a new price.
