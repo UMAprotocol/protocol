@@ -2032,7 +2032,7 @@ describe("VotingV2", function () {
     assert.equal(slashingTracker1.totalCorrectVotes, toWei("36000000")); // 32mm + 4mm
 
     // After the first round of voting there was some slashing that happened which impacts the slashing trackers in the
-    //second round! This differs from the previous test as there has been some time evolution between the rounds in this
+    // second round! This differs from the previous test as there has been some time evolution between the rounds in this
     // test, which was not the case in the previous test where there were multiple votes in the same round. Expect:
     // account1 gains 32mm/(32mm+4mm)*102400. account2 looses 32mm/(32mm+32mm)*102400. account3 looses 32mm/(32mm+32mm)*102400
     // and account4 gains 4mm/(32mm+4mm)*102400. For the next round of votes, considering these balances, the total
