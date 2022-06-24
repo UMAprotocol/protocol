@@ -92,6 +92,7 @@ contract StakerSnapshot is Ownable, Testable {
 
     // If: a staker requested an unstake and time > unstakeTime then send funds to staker. Note that this method assumes
     // that the `updateTrackers()
+    // todo: consider blocking the execution of an unstake if we are in an active commit round.
     function executeUnstake() public {
         _updateTrackers(msg.sender);
         updateSnapshot(msg.sender);

@@ -283,19 +283,24 @@ contract VotingV2 is
     }
 
     function _updateAccountSlashingTrackers(address voterAddress) internal {
+        if (_getCurrentSnapshotId() == 0) return; // No slashing on the very first voting round.
         VoterStake storage voterStake = voterStakes[voterAddress];
         // Note the method below can hit a gas limit of there are a LOT of requests from the last time this was run.
         // A future version of this should bound how many requests to look at per call to avoid gas limit issues.
         int256 slash = 0;
+
         for (uint256 i = voterStake.lastRequestIndexConsidered; i < priceRequestIds.length; i++) {
-            console.log("i", i);
             PriceRequest storage priceRequest = priceRequests[priceRequestIds[i].requestId];
             VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
+            uint256 roundId = priceRequestIds[i].roundId;
+
+            uint256 snapshotId = rounds[roundId].snapshotId;
+            if (snapshotId == 0) continue; // Cant slash for the current round.
 
             // Use the voters staked balance at the snapshotId. This ensures that each slashing event is independent
             // i.e if you get slashed twice in one voting round the impact on your balance in the first slashing should
             // not impact your balance in the second slashing; they should be independent events.
-            uint256 voterStakedAtRequest = stakedAt(voterAddress, rounds[priceRequestIds[i].roundId].snapshotId);
+            uint256 voterStakedAtRequest = stakedAt(voterAddress, snapshotId);
 
             bytes32 revealHash = voteInstance.voteSubmissions[voterAddress].revealHash;
             // The voter did not reveal or did not commit. Slash at noVote rate.
@@ -306,29 +311,43 @@ contract VotingV2 is
             else if (!voteInstance.resultComputation.wasVoteCorrect(revealHash))
                 slash -= int256((voterStakedAtRequest * requestSlashingTrackers[i].wrongVoteSlashPerToken) / 1e18);
 
-                // The voter voted correctly.Receive a pro-rate share of the other voters slashed amounts as a reward.
+                // The voter voted correctly. Receive a pro-rate share of the other voters slashed amounts as a reward.
             else
-                slash = int256(
+                slash += int256(
                     (((voterStakedAtRequest * 1e18) / requestSlashingTrackers[i].totalCorrectVotes) *
                         requestSlashingTrackers[i].totalSlashed) / 1e18
                 );
-            console.log("slash", uint256(slash));
-            console.log("slash*-1", uint256(slash * -1));
+
+            if (priceRequestIds.length - i > 1) {
+                if (roundId != priceRequestIds[i + 1].roundId) {
+                    applySlashToVoter(slash, voterAddress);
+                    slash = 0;
+                }
+            }
+            voterStake.lastRequestIndexConsidered = i + 1;
         }
+
+        if (slash != 0) applySlashToVoter(slash, voterAddress);
+    }
+
+    function applySlashToVoter(int256 slash, address voterAddress) internal {
+        VoterStake storage voterStake = voterStakes[voterAddress];
         if (slash + int256(voterStake.cumulativeStaked) > 0)
             voterStake.cumulativeStaked = uint256(int256(voterStake.cumulativeStaked) + slash);
         else voterStake.cumulativeStaked = 0;
-        voterStake.lastRequestIndexConsidered = priceRequestIds.length;
     }
 
     function _updateCumulativeSlashingTrackers() internal {
+        if (_getCurrentSnapshotId() == 0) return; // No slashing on the very first voting round.
         // Note the method below can hit a gas limit of there are a LOT of requests from the last time this was run.
         // A future version of this should bound how many requests to look at per call to avoid gas limit issues.
         for (uint256 i = lastRequestIndexConsidered; i < priceRequestIds.length; i++) {
             PriceRequest storage priceRequest = priceRequests[priceRequestIds[i].requestId];
             VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
+            uint256 roundId = priceRequestIds[i].roundId;
             uint256 snapshotId = rounds[priceRequestIds[i].roundId].snapshotId;
 
+            if (snapshotId == 0) continue; // Cant slash for the current round.
             uint256 totalStaked = totalStakedAt(snapshotId);
             uint256 totalVotes = voteInstance.resultComputation.totalVotes.rawValue;
             uint256 totalCorrectVotes = voteInstance.resultComputation.getTotalCorrectlyVotedTokens().rawValue;
@@ -342,8 +361,8 @@ contract VotingV2 is
             requestSlashingTrackers.push(
                 SlashingTracker(wrongVoteSlashPerToken, noVoteSlashPerToken, totalSlashed, totalCorrectVotes)
             );
+            lastRequestIndexConsidered = i + 1;
         }
-        lastRequestIndexConsidered = priceRequestIds.length;
     }
 
     // Note the functions below should be pulled out into an external library that is paramaterizable by each of the
@@ -528,6 +547,7 @@ contract VotingV2 is
         bytes memory ancillaryData,
         bytes32 hash
     ) public override onlyIfNotMigrated() {
+        _updateTrackers(msg.sender);
         require(hash != bytes32(0), "Invalid provided hash");
         // Current time is required for all vote timing queries.
         uint256 blockTime = getCurrentTime();
