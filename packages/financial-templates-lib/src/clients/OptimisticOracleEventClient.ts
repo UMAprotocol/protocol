@@ -1,8 +1,8 @@
 import Web3 from "web3";
 import { Logger } from "winston";
 import {
-  V1OptimisticOracleInterfaceWeb3 as OptimisticOracleWeb3,
-  V1OptimisticOracleInterfaceWeb3Events as OptimisticOracleWeb3Events,
+  OptimisticOracleWeb3,
+  OptimisticOracleWeb3Events,
   SkinnyOptimisticOracleWeb3Events,
 } from "@uma/contracts-node";
 import { getEventsWithPaginatedBlockSearch, Web3Contract } from "@uma/common";
@@ -69,7 +69,7 @@ export class OptimisticOracleEventClient {
     optimisticOracleAbi: Abi,
     public readonly web3: Web3,
     optimisticOracleAddress: string,
-    public readonly oracleType: OptimisticOracleType = OptimisticOracleType.V1OptimisticOracle,
+    public readonly oracleType: OptimisticOracleType = OptimisticOracleType.OptimisticOracle,
     startingBlockNumber = 0,
     endingBlockNumber: number | null = null,
     blocksPerEventSearch: number | null = null

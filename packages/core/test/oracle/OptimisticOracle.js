@@ -7,7 +7,8 @@ const { assert } = require("chai");
 const { toWei, toBN, hexToUtf8, utf8ToHex } = web3.utils;
 const INT_MIN = toBN("2").pow(toBN("255")).mul(toBN("-1"));
 
-const OptimisticOracle = getContract("OptimisticOracle");
+// Note: these tests are set to work on the latest version of the Optimistic oracle.
+const OptimisticOracle = getContract("OptimisticOracleV2");
 const Finder = getContract("Finder");
 const Timer = getContract("Timer");
 const IdentifierWhitelist = getContract("IdentifierWhitelist");

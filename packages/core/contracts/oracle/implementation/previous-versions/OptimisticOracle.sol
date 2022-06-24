@@ -1,23 +1,27 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
+// WARNING: This contract has been deprecated! It is left in the UMA Protocol repo for backwards compatibility reasons.
+// You should refer to the latest implementation of the Optimistic Oracle which is named OptimisticOracleV2 and can
+// be found in the UMA Finder under the same name.
+
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 
-import "../interfaces/StoreInterface.sol";
-import "../interfaces/OracleAncillaryInterface.sol";
-import "../interfaces/FinderInterface.sol";
-import "../interfaces/IdentifierWhitelistInterface.sol";
-import "../interfaces/OptimisticOracleInterface.sol";
-import "./Constants.sol";
+import "../../interfaces/StoreInterface.sol";
+import "../../interfaces/OracleAncillaryInterface.sol";
+import "../../interfaces/FinderInterface.sol";
+import "../../interfaces/IdentifierWhitelistInterface.sol";
+import "../../interfaces/OptimisticOracleInterface.sol";
+import "../Constants.sol";
 
-import "../../common/implementation/Testable.sol";
-import "../../common/implementation/Lockable.sol";
-import "../../common/implementation/FixedPoint.sol";
-import "../../common/implementation/AncillaryData.sol";
-import "../../common/implementation/AddressWhitelist.sol";
+import "../../../common/implementation/Testable.sol";
+import "../../../common/implementation/Lockable.sol";
+import "../../../common/implementation/FixedPoint.sol";
+import "../../../common/implementation/AncillaryData.sol";
+import "../../../common/implementation/AddressWhitelist.sol";
 
 /**
  * @title Optimistic Requester.
@@ -77,57 +81,11 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
     using SafeERC20 for IERC20;
     using Address for address;
 
-    event RequestPrice(
-        address indexed requester,
-        bytes32 identifier,
-        uint256 timestamp,
-        bytes ancillaryData,
-        address currency,
-        uint256 reward,
-        uint256 finalFee
-    );
-    event ProposePrice(
-        address indexed requester,
-        address indexed proposer,
-        bytes32 identifier,
-        uint256 timestamp,
-        bytes ancillaryData,
-        int256 proposedPrice,
-        uint256 expirationTimestamp,
-        address currency
-    );
-    event DisputePrice(
-        address indexed requester,
-        address indexed proposer,
-        address indexed disputer,
-        bytes32 identifier,
-        uint256 timestamp,
-        bytes ancillaryData,
-        int256 proposedPrice
-    );
-    event Settle(
-        address indexed requester,
-        address indexed proposer,
-        address indexed disputer,
-        bytes32 identifier,
-        uint256 timestamp,
-        bytes ancillaryData,
-        int256 price,
-        uint256 payout
-    );
-
-    mapping(bytes32 => Request) public requests;
-
     // Finder to provide addresses for DVM contracts.
-    FinderInterface public finder;
+    FinderInterface public override finder;
 
     // Default liveness value for all price requests.
-    uint256 public defaultLiveness;
-
-    // This is effectively the extra ancillary data to add ",ooRequester:0000000000000000000000000000000000000000".
-    uint256 private constant MAX_ADDED_ANCILLARY_DATA = 53;
-    uint256 public constant OO_ANCILLARY_DATA_LIMIT = ancillaryBytesLimit - MAX_ADDED_ANCILLARY_DATA;
-    int256 public constant TOO_EARLY_RESPONSE = type(int256).min;
+    uint256 public override defaultLiveness;
 
     /**
      * @notice Constructor.
@@ -168,31 +126,24 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
         require(_getIdentifierWhitelist().isIdentifierSupported(identifier), "Unsupported identifier");
         require(_getCollateralWhitelist().isOnWhitelist(address(currency)), "Unsupported currency");
         require(timestamp <= getCurrentTime(), "Timestamp in future");
-
-        // This ensures that the ancillary data is <= the OO limit, which is lower than the DVM limit because the
-        // OO adds some data before sending to the DVM.
-        require(ancillaryData.length <= OO_ANCILLARY_DATA_LIMIT, "Ancillary Data too long");
-
+        require(
+            _stampAncillaryData(ancillaryData, msg.sender).length <= ancillaryBytesLimit,
+            "Ancillary Data too long"
+        );
         uint256 finalFee = _getStore().computeFinalFee(address(currency)).rawValue;
         requests[_getId(msg.sender, identifier, timestamp, ancillaryData)] = Request({
             proposer: address(0),
             disputer: address(0),
             currency: currency,
             settled: false,
-            requestSettings: RequestSettings({
-                eventBased: false,
-                refundOnDispute: false,
-                callbackOnPriceProposed: false,
-                callbackOnPriceDisputed: false,
-                callbackOnPriceSettled: false,
-                bond: finalFee,
-                customLiveness: 0
-            }),
+            refundOnDispute: false,
             proposedPrice: 0,
             resolvedPrice: 0,
             expirationTime: 0,
             reward: reward,
-            finalFee: finalFee
+            finalFee: finalFee,
+            bond: finalFee,
+            customLiveness: 0
         });
 
         if (reward > 0) {
@@ -223,7 +174,7 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
     ) external override nonReentrant() returns (uint256 totalBond) {
         require(_getState(msg.sender, identifier, timestamp, ancillaryData) == State.Requested, "setBond: Requested");
         Request storage request = _getRequest(msg.sender, identifier, timestamp, ancillaryData);
-        request.requestSettings.bond = bond;
+        request.bond = bond;
 
         // Total bond is the final fee + the newly set bond.
         return bond.add(request.finalFee);
@@ -246,7 +197,7 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
             _getState(msg.sender, identifier, timestamp, ancillaryData) == State.Requested,
             "setRefundOnDispute: Requested"
         );
-        _getRequest(msg.sender, identifier, timestamp, ancillaryData).requestSettings.refundOnDispute = true;
+        _getRequest(msg.sender, identifier, timestamp, ancillaryData).refundOnDispute = true;
     }
 
     /**
@@ -268,65 +219,7 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
             "setCustomLiveness: Requested"
         );
         _validateLiveness(customLiveness);
-        _getRequest(msg.sender, identifier, timestamp, ancillaryData).requestSettings.customLiveness = customLiveness;
-    }
-
-    /**
-     * @notice Sets the request to be an "event-based" request.
-     * @dev Calling this method has a few impacts on the request:
-     *
-     * 1. The timestamp at which the request is evaluated is the time of the proposal, not the timestamp associated
-     *    with the request.
-     *
-     * 2. The proposer cannot propose the "too early" value (TOO_EARLY_RESPONSE). This is to ensure that a proposer who
-     *    prematurely proposes a response loses their bond.
-     *
-     * 3. RefundoOnDispute is automatically set, meaning disputes trigger the reward to be automatically refunded to
-     *    the requesting contract.
-     *
-     * @param identifier price identifier to identify the existing request.
-     * @param timestamp timestamp to identify the existing request.
-     * @param ancillaryData ancillary data of the price being requested.
-     */
-    function setEventBased(
-        bytes32 identifier,
-        uint256 timestamp,
-        bytes memory ancillaryData
-    ) external nonReentrant() {
-        require(
-            _getState(msg.sender, identifier, timestamp, ancillaryData) == State.Requested,
-            "setEventBased: Requested"
-        );
-        Request storage request = _getRequest(msg.sender, identifier, timestamp, ancillaryData);
-        request.requestSettings.eventBased = true;
-        request.requestSettings.refundOnDispute = true;
-    }
-
-    /**
-     * @notice Sets which callbacks should be enabled for the request.
-     * @param identifier price identifier to identify the existing request.
-     * @param timestamp timestamp to identify the existing request.
-     * @param ancillaryData ancillary data of the price being requested.
-     * @param callbackOnPriceProposed whether to enable the callback onPriceProposed.
-     * @param callbackOnPriceDisputed whether to enable the callback onPriceDisputed.
-     * @param callbackOnPriceSettled whether to enable the callback onPriceSettled.
-     */
-    function setCallbacks(
-        bytes32 identifier,
-        uint256 timestamp,
-        bytes memory ancillaryData,
-        bool callbackOnPriceProposed,
-        bool callbackOnPriceDisputed,
-        bool callbackOnPriceSettled
-    ) external nonReentrant() {
-        require(
-            _getState(msg.sender, identifier, timestamp, ancillaryData) == State.Requested,
-            "setCallbacks: Requested"
-        );
-        Request storage request = _getRequest(msg.sender, identifier, timestamp, ancillaryData);
-        request.requestSettings.callbackOnPriceProposed = callbackOnPriceProposed;
-        request.requestSettings.callbackOnPriceDisputed = callbackOnPriceDisputed;
-        request.requestSettings.callbackOnPriceSettled = callbackOnPriceSettled;
+        _getRequest(msg.sender, identifier, timestamp, ancillaryData).customLiveness = customLiveness;
     }
 
     /**
@@ -355,18 +248,18 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
             "proposePriceFor: Requested"
         );
         Request storage request = _getRequest(requester, identifier, timestamp, ancillaryData);
-        if (request.requestSettings.eventBased)
-            require(proposedPrice != TOO_EARLY_RESPONSE, "Cannot propose 'too early'");
         request.proposer = proposer;
         request.proposedPrice = proposedPrice;
 
         // If a custom liveness has been set, use it instead of the default.
         request.expirationTime = getCurrentTime().add(
-            request.requestSettings.customLiveness != 0 ? request.requestSettings.customLiveness : defaultLiveness
+            request.customLiveness != 0 ? request.customLiveness : defaultLiveness
         );
 
-        totalBond = request.requestSettings.bond.add(request.finalFee);
-        if (totalBond > 0) request.currency.safeTransferFrom(msg.sender, address(this), totalBond);
+        totalBond = request.bond.add(request.finalFee);
+        if (totalBond > 0) {
+            request.currency.safeTransferFrom(msg.sender, address(this), totalBond);
+        }
 
         emit ProposePrice(
             requester,
@@ -379,12 +272,9 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
             address(request.currency)
         );
 
-        // End the re-entrancy guard early to allow the caller to potentially take OO-related actions inside this callback.
-        _startReentrantGuardDisabled();
         // Callback.
-        if (address(requester).isContract() && request.requestSettings.callbackOnPriceProposed)
-            OptimisticRequester(requester).priceProposed(identifier, timestamp, ancillaryData);
-        _endReentrantGuardDisabled();
+        if (address(requester).isContract())
+            try OptimisticRequester(requester).priceProposed(identifier, timestamp, ancillaryData) {} catch {}
     }
 
     /**
@@ -435,7 +325,7 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
         request.disputer = disputer;
 
         uint256 finalFee = request.finalFee;
-        uint256 bond = request.requestSettings.bond;
+        uint256 bond = request.bond;
         totalBond = bond.add(finalFee);
         if (totalBond > 0) {
             request.currency.safeTransferFrom(msg.sender, address(this), totalBond);
@@ -443,26 +333,27 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
 
         StoreInterface store = _getStore();
 
-        // Along with the final fee, "burn" part of the loser's bond to ensure that a larger bond always makes it
-        // proportionally more expensive to delay the resolution even if the proposer and disputer are the same
-        // party.
+        // Avoids stack too deep compilation error.
+        {
+            // Along with the final fee, "burn" part of the loser's bond to ensure that a larger bond always makes it
+            // proportionally more expensive to delay the resolution even if the proposer and disputer are the same
+            // party.
+            uint256 burnedBond = _computeBurnedBond(request);
 
-        // The total fee is the burned bond and the final fee added together.
-        uint256 totalFee = finalFee.add(_computeBurnedBond(request));
-        if (totalFee > 0) {
-            request.currency.safeIncreaseAllowance(address(store), totalFee);
-            _getStore().payOracleFeesErc20(address(request.currency), FixedPoint.Unsigned(totalFee));
+            // The total fee is the burned bond and the final fee added together.
+            uint256 totalFee = finalFee.add(burnedBond);
+
+            if (totalFee > 0) {
+                request.currency.safeIncreaseAllowance(address(store), totalFee);
+                _getStore().payOracleFeesErc20(address(request.currency), FixedPoint.Unsigned(totalFee));
+            }
         }
 
-        _getOracle().requestPrice(
-            identifier,
-            _getTimestampForDvmRequest(request, timestamp),
-            _stampAncillaryData(ancillaryData, requester)
-        );
+        _getOracle().requestPrice(identifier, timestamp, _stampAncillaryData(ancillaryData, requester));
 
         // Compute refund.
         uint256 refund = 0;
-        if (request.reward > 0 && request.requestSettings.refundOnDispute) {
+        if (request.reward > 0 && request.refundOnDispute) {
             refund = request.reward;
             request.reward = 0;
             request.currency.safeTransfer(requester, refund);
@@ -478,12 +369,9 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
             request.proposedPrice
         );
 
-        // End the re-entrancy guard early to allow the caller to potentially re-request inside this callback.
-        _startReentrantGuardDisabled();
         // Callback.
-        if (address(requester).isContract() && request.requestSettings.callbackOnPriceDisputed)
-            OptimisticRequester(requester).priceDisputed(identifier, timestamp, ancillaryData, refund);
-        _endReentrantGuardDisabled();
+        if (address(requester).isContract())
+            try OptimisticRequester(requester).priceDisputed(identifier, timestamp, ancillaryData, refund) {} catch {}
     }
 
     /**
@@ -635,17 +523,17 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
         if (state == State.Expired) {
             // In the expiry case, just pay back the proposer's bond and final fee along with the reward.
             request.resolvedPrice = request.proposedPrice;
-            payout = request.requestSettings.bond.add(request.finalFee).add(request.reward);
+            payout = request.bond.add(request.finalFee).add(request.reward);
             request.currency.safeTransfer(request.proposer, payout);
         } else if (state == State.Resolved) {
             // In the Resolved case, pay either the disputer or the proposer the entire payout (+ bond and reward).
             request.resolvedPrice = _getOracle().getPrice(
                 identifier,
-                _getTimestampForDvmRequest(request, timestamp),
+                timestamp,
                 _stampAncillaryData(ancillaryData, requester)
             );
             bool disputeSuccess = request.resolvedPrice != request.proposedPrice;
-            uint256 bond = request.requestSettings.bond;
+            uint256 bond = request.bond;
 
             // Unburned portion of the loser's bond = 1 - burned bond.
             uint256 unburnedBond = bond.sub(_computeBurnedBond(request));
@@ -657,7 +545,9 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
             // - The request reward (if not already refunded -- if refunded, it will be set to 0).
             payout = bond.add(unburnedBond).add(request.finalFee).add(request.reward);
             request.currency.safeTransfer(disputeSuccess ? request.disputer : request.proposer, payout);
-        } else revert("_settle: not settleable");
+        } else {
+            revert("_settle: not settleable");
+        }
 
         emit Settle(
             requester,
@@ -670,12 +560,11 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
             payout
         );
 
-        // Temporarily disable the re-entrancy guard early to allow the caller to take an OO-related action inside this callback.
-        _startReentrantGuardDisabled();
         // Callback.
-        if (address(requester).isContract() && request.requestSettings.callbackOnPriceSettled)
-            OptimisticRequester(requester).priceSettled(identifier, timestamp, ancillaryData, request.resolvedPrice);
-        _endReentrantGuardDisabled();
+        if (address(requester).isContract())
+            try
+                OptimisticRequester(requester).priceSettled(identifier, timestamp, ancillaryData, request.resolvedPrice)
+            {} catch {}
     }
 
     function _getRequest(
@@ -689,7 +578,7 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
 
     function _computeBurnedBond(Request storage request) private view returns (uint256) {
         // burnedBond = floor(bond / 2)
-        return request.requestSettings.bond.div(2);
+        return request.bond.div(2);
     }
 
     function _validateLiveness(uint256 _liveness) private pure {
@@ -705,21 +594,24 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
     ) internal view returns (State) {
         Request storage request = _getRequest(requester, identifier, timestamp, ancillaryData);
 
-        if (address(request.currency) == address(0)) return State.Invalid;
+        if (address(request.currency) == address(0)) {
+            return State.Invalid;
+        }
 
-        if (request.proposer == address(0)) return State.Requested;
+        if (request.proposer == address(0)) {
+            return State.Requested;
+        }
 
-        if (request.settled) return State.Settled;
+        if (request.settled) {
+            return State.Settled;
+        }
 
-        if (request.disputer == address(0))
+        if (request.disputer == address(0)) {
             return request.expirationTime <= getCurrentTime() ? State.Expired : State.Proposed;
+        }
 
         return
-            _getOracle().hasPrice(
-                identifier,
-                _getTimestampForDvmRequest(request, timestamp),
-                _stampAncillaryData(ancillaryData, requester)
-            )
+            _getOracle().hasPrice(identifier, timestamp, _stampAncillaryData(ancillaryData, requester))
                 ? State.Resolved
                 : State.Disputed;
     }
@@ -740,20 +632,6 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
         return IdentifierWhitelistInterface(finder.getImplementationAddress(OracleInterfaces.IdentifierWhitelist));
     }
 
-    function _getTimestampForDvmRequest(Request storage request, uint256 requestTimestamp)
-        internal
-        view
-        returns (uint256)
-    {
-        if (request.requestSettings.eventBased) {
-            uint256 liveness =
-                request.requestSettings.customLiveness != 0 ? request.requestSettings.customLiveness : defaultLiveness;
-            return request.expirationTime.sub(liveness);
-        } else {
-            return requestTimestamp;
-        }
-    }
-
     /**
      * @dev We don't handle specifically the case where `ancillaryData` is not already readily translateable in utf8.
      * For those cases, we assume that the client will be able to strip out the utf8-translateable part of the
@@ -763,5 +641,9 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
         // Since this contract will be the one to formally submit DVM price requests, its useful for voters to know who
         // the original requester was.
         return AncillaryData.appendKeyValueAddress(ancillaryData, "ooRequester", requester);
+    }
+
+    function getCurrentTime() public view override(Testable, OptimisticOracleInterface) returns (uint256) {
+        return Testable.getCurrentTime();
     }
 }
