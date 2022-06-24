@@ -110,7 +110,7 @@ describe("ProfitabilityCalculator.ts", function () {
       assert.equal(lastLog.message, "Updated prices");
       assert.equal(Object.keys(lastLog.tokenInfo).length, 3); // 3 tokens
     });
-    it("Warns and sets price to 0 if cant find token price", async function () {
+    it("Logs and sets price to 0 if cant find token price", async function () {
       // In the event that coingecko cant find the price should not blow up but rather set the token price to 0 and send
       // a warning message. This way, the bot will keep running but wont do any relays for that token type.
       profitabilityCalculator = new ProfitabilityCalculator(
@@ -125,7 +125,6 @@ describe("ProfitabilityCalculator.ts", function () {
 
       assert.isTrue(profitabilityCalculator.l1TokenInfo[ZERO_ADDRESS].tokenEthPrice.eq(toBN(MAX_SAFE_ALLOWANCE)));
       const lastLog = spy.getCall(-2).lastArg;
-      assert.equal(lastLog.level, "warn");
       assert.isTrue(lastLog.message.includes("Could not find token price!"));
     });
   });
