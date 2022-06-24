@@ -84,6 +84,7 @@ contract VotingV2 is
         FixedPoint.Unsigned inflationRate; // Inflation rate set for this round.
         FixedPoint.Unsigned gatPercentage; // Gat rate set for this round.
         uint256 rewardsExpirationTime; // Time that rewards for this round can be claimed until. //todo: this should be removed, along with the concept of of reward expiration in general.
+        uint256 cumulativeStakedAtRound;
     }
 
     // Represents the status a price request has.
@@ -297,24 +298,21 @@ contract VotingV2 is
             uint256 snapshotId = rounds[roundId].snapshotId;
             if (snapshotId == 0) continue; // Cant slash for the current round.
 
-            // Use the voters staked balance at the snapshotId. This ensures that each slashing event is independent
-            // i.e if you get slashed twice in one voting round the impact on your balance in the first slashing should
-            // not impact your balance in the second slashing; they should be independent events.
-            uint256 voterStakedAtRequest = stakedAt(voterAddress, snapshotId);
-
             bytes32 revealHash = voteInstance.voteSubmissions[voterAddress].revealHash;
             // The voter did not reveal or did not commit. Slash at noVote rate.
             if (revealHash == 0)
-                slash -= int256((voterStakedAtRequest * requestSlashingTrackers[i].noVoteSlashPerToken) / 1e18);
+                slash -= int256((voterStake.cumulativeStaked * requestSlashingTrackers[i].noVoteSlashPerToken) / 1e18);
 
                 // The voter did not vote with the majority. Slash at wrongVote rate.
             else if (!voteInstance.resultComputation.wasVoteCorrect(revealHash))
-                slash -= int256((voterStakedAtRequest * requestSlashingTrackers[i].wrongVoteSlashPerToken) / 1e18);
+                slash -= int256(
+                    (voterStake.cumulativeStaked * requestSlashingTrackers[i].wrongVoteSlashPerToken) / 1e18
+                );
 
                 // The voter voted correctly. Receive a pro-rate share of the other voters slashed amounts as a reward.
             else
                 slash += int256(
-                    (((voterStakedAtRequest * 1e18) / requestSlashingTrackers[i].totalCorrectVotes) *
+                    (((voterStake.cumulativeStaked * 1e18) / requestSlashingTrackers[i].totalCorrectVotes) *
                         requestSlashingTrackers[i].totalSlashed) / 1e18
                 );
 
@@ -647,7 +645,7 @@ contract VotingV2 is
 
         // Get the voter's snapshotted balance. Since balances are returned pre-scaled by 10**18, we can directly
         // initialize the Unsigned value with the returned uint.
-        FixedPoint.Unsigned memory balance = FixedPoint.Unsigned(stakedAt(msg.sender, snapshotId));
+        FixedPoint.Unsigned memory balance = FixedPoint.Unsigned(voterStakes[msg.sender].cumulativeStaked);
 
         // Set the voter's submission.
         voteSubmission.revealHash = keccak256(abi.encode(price));
@@ -965,6 +963,9 @@ contract VotingV2 is
             rounds[roundId].rewardsExpirationTime = voteTiming.computeRoundEndTime(roundId).add(
                 rewardsExpirationTimeout
             );
+            
+            //
+            rounds[cumulativeStakedAtRound] = cumulativeStaked;
         }
     }
 
