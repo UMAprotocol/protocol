@@ -1,6 +1,6 @@
 const hre = require("hardhat");
 const { web3 } = hre;
-const { runDefaultFixture } = require("@uma/common");
+const { runDefaultFixture, didContractThrow } = require("@uma/common");
 const { getContract } = hre;
 
 const { assert } = require("chai");
@@ -161,6 +161,31 @@ describe("StakerSnapshot", function () {
       assert.equal(await staker.methods.outstandingRewards(account1).call(), toWei("1659520"));
       await staker.methods.withdrawRewards().send({ from: account1 });
       assert.equal(await votingToken.methods.balanceOf(account1).call(), toBN(balanceAfter).add(toWei("1659520")));
+    });
+
+    it("Emission rate updates shouldn't be retroactive", async function () {
+      await staker.methods.stake(amountToStake).send({ from: account1 }); // stake 1/4th
+      await staker.methods.stake(amountToStake.muln(3)).send({ from: account2 }); // stake 3/4ths
+      await advanceTime(1000);
+
+      const account1Rewards = await staker.methods.outstandingRewards(account1).call();
+      const account2Rewards = await staker.methods.outstandingRewards(account2).call();
+
+      assert.equal(account1Rewards, toWei("160")); // 1000 * 0.64 * 1/4 = 160
+      assert.equal(account2Rewards, toWei("480")); // 1000 * 0.64 * 3/4 = 480
+
+      // Now change the emission rate: initialEmissionRate * 3
+      const oldEmissionRate = await staker.methods.emissionRate().call();
+      await staker.methods.setEmissionRate(toBN(oldEmissionRate).muln(3)).send({ from: account1 });
+
+      // Unclaimed rewards should keep the same
+      assert.equal(await staker.methods.outstandingRewards(account1).call(), account1Rewards);
+      assert.equal(await staker.methods.outstandingRewards(account2).call(), account2Rewards);
+
+      // New emission rate should be applied to NEW rewards.
+      await advanceTime(1000);
+      assert.equal(await staker.methods.outstandingRewards(account1).call(), toWei("160").add(toWei("480"))); // 160 + 1000 * 0.64 * 3 * 1/4  = 480
+      assert.equal(await staker.methods.outstandingRewards(account2).call(), toWei("480").add(toWei("1440"))); // 480 + 1000 * 0.64 * 3 * 3/4 = 1440
     });
   });
   describe("Slashing: unrealizedSlash consideration", function () {

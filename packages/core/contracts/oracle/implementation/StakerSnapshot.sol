@@ -158,6 +158,7 @@ contract StakerSnapshot is Ownable, Testable {
 
     // Owner methods
     function setEmissionRate(uint256 _emissionRate) public onlyOwner {
+        _updateReward(address(0));
         emissionRate = _emissionRate;
     }
 
