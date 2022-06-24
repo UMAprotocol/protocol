@@ -158,6 +158,7 @@ contract StakerSnapshot is Ownable, Testable {
 
     // Owner methods
     function setEmissionRate(uint256 _emissionRate) public onlyOwner {
+        _updateReward(address(0));
         emissionRate = _emissionRate;
     }
 
@@ -180,15 +181,11 @@ contract StakerSnapshot is Ownable, Testable {
 
     function stakedAt(address voterAddress, uint256 snapshotId) public view virtual returns (uint256) {
         (bool snapshotted, uint256 value) = _valueAt(snapshotId, voterStakes[voterAddress].snapshots);
-        // require(snapshotted, "Snapshot not found");
-        // return value;
         return snapshotted ? value : voterStakes[voterAddress].cumulativeStaked;
     }
 
     function totalStakedAt(uint256 snapshotId) public view virtual returns (uint256) {
         (bool snapshotted, uint256 value) = _valueAt(snapshotId, _cumulativeStakedSnapshots);
-        // require(snapshotted, "Snapshot not found");
-        // return value;
         return snapshotted ? value : cumulativeStaked;
     }
 
