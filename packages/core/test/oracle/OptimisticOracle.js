@@ -18,7 +18,7 @@ const Store = getContract("Store");
 const MockOracle = getContract("MockOracleAncillary");
 const OptimisticRequesterTest = getContract("OptimisticRequesterTest");
 
-describe("OptimisticOracle", function () {
+describe("OptimisticOracleV2", function () {
   let optimisticOracle;
   let finder;
   let timer;
