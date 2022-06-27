@@ -806,6 +806,9 @@ describe("VotingV2", function () {
     const newSlashingLibrary = ZERO_ADDRESS;
     await voting.methods.setSlashingLibrary(newSlashingLibrary).send({ from: accounts[0] });
 
+    // Only owner should be able to set the slashing library.
+    assert(await didContractThrow(voting.methods.setSlashingLibrary(newSlashingLibrary).send({ from: accounts[1] })));
+
     // Check that the slashing library was set.
     assert.equal(await voting.methods.slashingLibrary().call({ from: accounts[0] }), newSlashingLibrary);
   });
