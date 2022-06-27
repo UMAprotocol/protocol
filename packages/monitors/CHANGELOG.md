@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.13.0](https://github.com/UMAprotocol/protocol/compare/@uma/monitors@2.11.7...@uma/monitors@2.13.0) (2022-06-27)
+
+### Features
+
+- rename new OO contracts ([#3959](https://github.com/UMAprotocol/protocol/issues/3959)) ([f011a65](https://github.com/UMAprotocol/protocol/commit/f011a6531fbd7c09d22aa46ef04828cf98f7f854))
+
 # [2.12.0](https://github.com/UMAprotocol/protocol/compare/@uma/monitors@2.11.8...@uma/monitors@2.12.0) (2022-06-23)
 
 ### Features

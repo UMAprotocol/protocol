@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.22.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.20.0...@uma/common@2.22.0) (2022-06-27)
+
+### Features
+
+- add avalanche and sx to networks ([#3945](https://github.com/UMAprotocol/protocol/issues/3945)) ([9e8e00e](https://github.com/UMAprotocol/protocol/commit/9e8e00e09520949bfe88a16315451c67f9343164))
+- UMA2.0 Slashing mechanism ([#3981](https://github.com/UMAprotocol/protocol/issues/3981)) ([f415d66](https://github.com/UMAprotocol/protocol/commit/f415d6646ab68e132dbe6e7d208b90f77679b050))
+
 # [2.21.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.20.0...@uma/common@2.21.0) (2022-06-23)
 
 ### Features
