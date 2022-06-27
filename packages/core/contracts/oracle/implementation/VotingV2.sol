@@ -212,7 +212,7 @@ contract VotingV2 is
         uint256 numTokens
     );
 
-    event PriceRequestAdded(uint256 indexed roundId, bytes32 indexed identifier, uint256 time);
+    event PriceRequestAdded(uint256 indexed roundId, bytes32 indexed identifier, uint256 time, bytes ancillaryData);
 
     event PriceResolved(
         uint256 indexed roundId,
@@ -426,7 +426,7 @@ contract VotingV2 is
             newPriceRequest.ancillaryData = ancillaryData;
 
             pendingPriceRequests.push(priceRequestId);
-            emit PriceRequestAdded(nextRoundId, identifier, time);
+            emit PriceRequestAdded(nextRoundId, identifier, time, ancillaryData);
         }
     }
 
