@@ -8,8 +8,6 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Arrays.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 
-import "hardhat/console.sol";
-
 contract StakerSnapshot is Ownable, Testable {
     using Arrays for uint256[];
     using Counters for Counters.Counter;
@@ -94,6 +92,7 @@ contract StakerSnapshot is Ownable, Testable {
 
     // If: a staker requested an unstake and time > unstakeTime then send funds to staker. Note that this method assumes
     // that the `updateTrackers()
+    // todo: consider blocking the execution of an unstake if we are in an active commit round.
     function executeUnstake() public {
         _updateTrackers(msg.sender);
         updateSnapshot(msg.sender);
@@ -118,7 +117,7 @@ contract StakerSnapshot is Ownable, Testable {
         VoterStake storage voterStake = voterStakes[msg.sender];
 
         if (voterStake.outstandingRewards > 0) {
-            require(votingToken.mint(msg.sender, voterStake.outstandingRewards), "Voting token issuance failed");
+            require(votingToken.mint(msg.sender, voterStake.outstandingRewards));
             voterStake.outstandingRewards = 0;
         }
     }
@@ -128,7 +127,7 @@ contract StakerSnapshot is Ownable, Testable {
         withdrawRewards();
     }
 
-    function _updateTrackers(address voterAddress) internal {
+    function _updateTrackers(address voterAddress) internal virtual {
         _updateReward(voterAddress);
     }
 
@@ -153,12 +152,15 @@ contract StakerSnapshot is Ownable, Testable {
 
     function rewardPerToken() public view returns (uint256) {
         if (cumulativeStaked == 0) return rewardPerTokenStored;
-        return rewardPerTokenStored + ((getCurrentTime() - lastUpdateTime) * emissionRate * 1e18) / cumulativeStaked;
+        return rewardPerTokenStored + (timeFromLastUpdate() * emissionRate * 1e18) / cumulativeStaked;
+    }
+
+    function timeFromLastUpdate() public view returns (uint256) {
+        return getCurrentTime() - lastUpdateTime;
     }
 
     // Owner methods
     function setEmissionRate(uint256 _emissionRate) public onlyOwner {
-        _updateReward(address(0));
         emissionRate = _emissionRate;
     }
 
@@ -181,11 +183,15 @@ contract StakerSnapshot is Ownable, Testable {
 
     function stakedAt(address voterAddress, uint256 snapshotId) public view virtual returns (uint256) {
         (bool snapshotted, uint256 value) = _valueAt(snapshotId, voterStakes[voterAddress].snapshots);
+        // require(snapshotted, "Snapshot not found");
+        // return value;
         return snapshotted ? value : voterStakes[voterAddress].cumulativeStaked;
     }
 
     function totalStakedAt(uint256 snapshotId) public view virtual returns (uint256) {
         (bool snapshotted, uint256 value) = _valueAt(snapshotId, _cumulativeStakedSnapshots);
+        // require(snapshotted, "Snapshot not found");
+        // return value;
         return snapshotted ? value : cumulativeStaked;
     }
 
