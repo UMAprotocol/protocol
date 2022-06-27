@@ -9,6 +9,7 @@ const func = async function (hre) {
   const Timer = (await deployments.getOrNull("Timer")) || { address: ZERO_ADDRESS };
   const VotingToken = await deployments.get("VotingToken");
   const Finder = await deployments.get("Finder");
+  const SlashingLibrary = await deployments.get("SlashingLibrary");
 
   // Set the GAT percentage to 5%
   const gatPercentage = { rawValue: hre.web3.utils.toWei("0.05", "ether") };
@@ -31,6 +32,7 @@ const func = async function (hre) {
       VotingToken.address,
       Finder.address,
       Timer.address,
+      SlashingLibrary.address,
     ],
     log: true,
     skipIfAlreadyDeployed: true,
@@ -38,4 +40,4 @@ const func = async function (hre) {
 };
 module.exports = func;
 func.tags = ["dvmv2"];
-func.dependencies = ["VotingToken", "Finder", "Timer"];
+func.dependencies = ["VotingToken", "Finder", "Timer", "SlashingLibrary"];

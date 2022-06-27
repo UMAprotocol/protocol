@@ -1,6 +1,6 @@
 const hre = require("hardhat");
 const { web3 } = hre;
-const { runVotingV2Fixture } = require("@uma/common");
+const { runVotingV2Fixture, ZERO_ADDRESS } = require("@uma/common");
 const { getContract, assertEventEmitted, assertEventNotEmitted } = hre;
 const {
   RegistryRolesEnum,
@@ -27,6 +27,7 @@ const IdentifierWhitelist = getContract("IdentifierWhitelist");
 const VotingToken = getContract("VotingToken");
 const VotingTest = getContract("VotingTest");
 const Timer = getContract("Timer");
+const SlashingLibrary = getContract("SlashingLibrary");
 const { utf8ToHex, padRight } = web3.utils;
 
 const toWei = (value) => toBN(web3.utils.toWei(value, "ether"));
@@ -92,7 +93,8 @@ describe("VotingV2", function () {
           invalidGat, // GatPct
           votingToken.options.address, // voting token
           (await Finder.deployed()).options.address, // finder
-          (await Timer.deployed()).options.address // timer
+          (await Timer.deployed()).options.address, // timer
+          (await SlashingLibrary.deployed()).options.address // slashing library
         ).send({ from: accounts[0] })
       )
     );
@@ -799,6 +801,15 @@ describe("VotingV2", function () {
     assert(await didContractThrow(voting.methods.getPrice(identifier, time).send({ from: unregisteredContract })));
   });
 
+  it("Set slashing library", async function () {
+    // Set the slashing library to a new address.
+    const newSlashingLibrary = ZERO_ADDRESS;
+    await voting.methods.setSlashingLibrary(newSlashingLibrary).send({ from: accounts[0] });
+
+    // Check that the slashing library was set.
+    assert.equal(await voting.methods.slashingLibrary().call({ from: accounts[0] }), newSlashingLibrary);
+  });
+
   it("View methods", async function () {
     const identifier = padRight(utf8ToHex("view-methods"), 64);
     const time = "1000";
@@ -1168,7 +1179,8 @@ describe("VotingV2", function () {
       { rawValue: web3.utils.toWei("0.05") }, // 5% GAT
       votingToken.options.address, // voting token
       (await Finder.deployed()).options.address, // finder
-      (await Timer.deployed()).options.address // timer
+      (await Timer.deployed()).options.address, // timer
+      (await SlashingLibrary.deployed()).options.address // slashing library
     ).send({ from: accounts[0] });
 
     // todo: the below logic will be changed when we add migration suport to staked balances.
