@@ -265,7 +265,6 @@ contract VotingV2 is
     }
 
     function _updateAccountSlashingTrackers(address voterAddress) internal {
-        // if (_getCurrentSnapshotId() == 0) return; // No slashing on the very first voting round.
         VoterStake storage voterStake = voterStakes[voterAddress];
         // Note the method below can hit a gas limit of there are a LOT of requests from the last time this was run.
         // A future version of this should bound how many requests to look at per call to avoid gas limit issues.
@@ -320,7 +319,6 @@ contract VotingV2 is
     }
 
     function _updateCumulativeSlashingTrackers() internal {
-        // if (_getCurrentSnapshotId() == 0) return; // No slashing on the very first voting round.
         // Note the method below can hit a gas limit of there are a LOT of requests from the last time this was run.
         // A future version of this should bound how many requests to look at per call to avoid gas limit issues.
 
@@ -434,7 +432,7 @@ contract VotingV2 is
         uint256 time,
         bytes memory ancillaryData
     ) public view override onlyRegisteredContract() returns (bool) {
-        (bool _hasPrice, , string memory message) = _getPriceOrError(identifier, time, ancillaryData);
+        (bool _hasPrice, , ) = _getPriceOrError(identifier, time, ancillaryData);
         return _hasPrice;
     }
 
