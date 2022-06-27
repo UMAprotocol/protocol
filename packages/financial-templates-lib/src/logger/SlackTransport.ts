@@ -252,7 +252,7 @@ export function splitByNewLine(block: Block): Block[] {
     line += "\n";
     const newBlock = createSectionBlock(smallerBlocks[smallerBlocks.length - 1].text.text + line);
     if (JSON.stringify(newBlock).length + line.length > SLACK_MAX_CHAR_LIMIT) {
-      smallerBlocks.push(createSectionBlock(""));
+      smallerBlocks.push(createSectionBlock(line));
     } else {
       smallerBlocks[smallerBlocks.length - 1].text.text += line;
     }
