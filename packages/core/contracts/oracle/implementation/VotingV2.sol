@@ -271,6 +271,8 @@ contract VotingV2 is
         // A future version of this should bound how many requests to look at per call to avoid gas limit issues.
         int256 slash = 0;
 
+        // Traverse all requests from the last considered request. For each request see if the voter voted correctly or
+        // not. Based on the outcome, attribute the associated slash to the voter.
         for (uint256 i = voterStake.lastRequestIndexConsidered; i < priceRequestIds.length; i++) {
             PriceRequest storage priceRequest = priceRequests[priceRequestIds[i].requestId];
             VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
@@ -296,11 +298,13 @@ contract VotingV2 is
                         requestSlashingTrackers[i].totalSlashed) / 1e18
                 );
 
-            if (priceRequestIds.length - i > 1) {
-                if (roundId != priceRequestIds[i + 1].roundId) {
-                    applySlashToVoter(slash, voterAddress);
-                    slash = 0;
-                }
+            // If this is not the last price request to apply and the next request in the batch is from a subsequent
+            // round then apply the slashing now. Else, do nothing and apply the slashing after the loop concludes.
+            // This acts to apply slashing within a round as independent actions: multiple votes within the same round
+            // should not impact each other but subsequent rounds should impact each other.
+            if (priceRequestIds.length - i > 1 && roundId != priceRequestIds[i + 1].roundId) {
+                applySlashToVoter(slash, voterAddress);
+                slash = 0;
             }
             voterStake.lastRequestIndexConsidered = i + 1;
         }
@@ -319,6 +323,11 @@ contract VotingV2 is
         // if (_getCurrentSnapshotId() == 0) return; // No slashing on the very first voting round.
         // Note the method below can hit a gas limit of there are a LOT of requests from the last time this was run.
         // A future version of this should bound how many requests to look at per call to avoid gas limit issues.
+
+        // Traverse all price requests from the last time this method was called and for each request compute and store
+        // the associated slashing rates as a function of the total staked, total votes and total correct votes. Note
+        // that this method in almost all cases will only need to traverse one request as slashing trackers are updated
+        // on every commit and so it is not too computationally inefficient.
         for (uint256 i = lastRequestIndexConsidered; i < priceRequestIds.length; i++) {
             PriceRequest storage priceRequest = priceRequests[priceRequestIds[i].requestId];
             VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];

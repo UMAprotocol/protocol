@@ -2006,3 +2006,5 @@ describe("VotingV2", function () {
     );
   });
 });
+
+// TODO: add tests for staking/ustaking during a voting round. this can only be done once we've decided on this locking mechanism.
