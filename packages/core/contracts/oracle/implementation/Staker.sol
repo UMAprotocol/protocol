@@ -55,7 +55,6 @@ contract Staker is Ownable, Testable {
     }
 
     function requestUnstake(uint256 amount) public {
-        _updateTrackers(msg.sender);
         // Staker signals that they want to unstake. After signalling, their total voting balance is decreased by the
         // signaled amount. This amount is not vulnerable to being slashed but also does not accumulate rewards.
 
@@ -104,6 +103,7 @@ contract Staker is Ownable, Testable {
 
     function _updateTrackers(address voterAddress) internal virtual {
         _updateReward(voterAddress);
+        return false;
     }
 
     // Calculate the reward per token based on last time the reward was updated.

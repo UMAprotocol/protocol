@@ -133,6 +133,8 @@ contract VotingV2 is
     // Max value of an unsigned integer.
     uint256 private constant UINT_MAX = ~uint256(0);
 
+    uint256 MAX_ITERATION_CONSIDERED = 50;
+
     // Max length in bytes of ancillary data that can be appended to a price request.
     // As of December 2020, the current Ethereum gas limit is 12.5 million. This requestPrice function's gas primarily
     // comes from computing a Keccak-256 hash in _encodePriceRequest and writing a new PriceRequest to
@@ -258,26 +260,40 @@ contract VotingV2 is
         _updateTrackers(voterAddress);
     }
 
+    function updateTrackers(address voterAddress, uint256 maxRequestsToConsider) public {
+        _updateCumulativeSlashingTrackers(voterAddress, maxRequestsToConsider);
+        _updateTrackers(voterAddress, roundId);
+    }
+
     function _updateTrackers(address voterAddress) internal override {
-        _updateCumulativeSlashingTrackers();
-        _updateAccountSlashingTrackers(voterAddress);
+        _updateCumulativeSlashingTrackers(10000);
+        _updateAccountSlashingTrackers(voterAddress, 10000);
         _updateReward(voterAddress);
     }
 
-    function _updateAccountSlashingTrackers(address voterAddress) internal {
+    function _updateAccountSlashingTrackers(address voterAddress, uint256 maxRequestsToConsider) internal {
         VoterStake storage voterStake = voterStakes[voterAddress];
         // Note the method below can hit a gas limit of there are a LOT of requests from the last time this was run.
         // A future version of this should bound how many requests to look at per call to avoid gas limit issues.
         int256 slash = 0;
 
         // Traverse all requests from the last considered request. For each request see if the voter voted correctly or
-        // not. Based on the outcome, attribute the associated slash to the voter.
-        for (uint256 i = voterStake.lastRequestIndexConsidered; i < priceRequestIds.length; i++) {
+        // not. Based on the outcome, attribute the associated slash to the voter. It is possible that this method will
+        // spend a LOT of gas if the user has not updated their rewards for a long time (i.e stake and then not vote
+        // for many rounds). In this case we need to bound how much gas this method can use by limiting the size of the
+        // for loop. If the number of iterations to traverse exceeds the max iteration then limit the number of loops
+        // done and return fullyUpdated = true. This makes the implementing method execute a no-op and simply updates the
+        // slashing trackers for this account. The caller will need to re-call the implementing method again.
+        uint256 iterateToIndex = priceRequestIds.length;
+        if (priceRequestIds.length - voterStake.lastRequestIndexConsidered > maxRequestsToConsider)
+            iterateToIndex = voterStake.lastRequestIndexConsidered + maxRequestsToConsider;
+
+        for (uint256 i = voterStake.lastRequestIndexConsidered; i < iterateToIndex; i++) {
             PriceRequest storage priceRequest = priceRequests[priceRequestIds[i].requestId];
             VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
             uint256 roundId = priceRequestIds[i].roundId;
 
-            if (roundId == voteTiming.computeCurrentRoundId(getCurrentTime())) continue; // Cant slash for the current round.
+            if (roundId == voteTiming.computeCurrentRoundId(getCurrentTime())) break;
 
             bytes32 revealHash = voteInstance.voteSubmissions[voterAddress].revealHash;
             // The voter did not reveal or did not commit. Slash at noVote rate.
@@ -301,7 +317,7 @@ contract VotingV2 is
             // round then apply the slashing now. Else, do nothing and apply the slashing after the loop concludes.
             // This acts to apply slashing within a round as independent actions: multiple votes within the same round
             // should not impact each other but subsequent rounds should impact each other.
-            if (priceRequestIds.length - i > 1 && roundId != priceRequestIds[i + 1].roundId) {
+            if (iterateToIndex - i > 1 && roundId != priceRequestIds[i + 1].roundId) {
                 applySlashToVoter(slash, voterAddress);
                 slash = 0;
             }
@@ -318,20 +334,32 @@ contract VotingV2 is
         else voterStake.cumulativeStaked = 0;
     }
 
-    function _updateCumulativeSlashingTrackers() internal {
-        // Note the method below can hit a gas limit of there are a LOT of requests from the last time this was run.
-        // A future version of this should bound how many requests to look at per call to avoid gas limit issues.
-
+    function _updateCumulativeSlashingTrackers() internal returns (bool fullyUpdated) {
         // Traverse all price requests from the last time this method was called and for each request compute and store
-        // the associated slashing rates as a function of the total staked, total votes and total correct votes. Note
-        // that this method in almost all cases will only need to traverse one request as slashing trackers are updated
-        // on every commit and so it is not too computationally inefficient.
-        for (uint256 i = lastRequestIndexConsidered; i < priceRequestIds.length; i++) {
+        // the associated slashing rates as a function of the total staked, total votes and total correct votes. It is
+        // possible that this method will spend a LOT of gas if there are many requests in one voting rounds. In this
+        // case we need to bound how much gas this method can use by limiting the size of the for loop. If the number of
+        // iterations to traverse exceeds the max iteration then limit the number of loops done and return fullyUpdated =
+        // true. This makes the implementing method execute a no-op and simply updates the slashing trackers. The
+        // caller will need to re-call the implementing method again.
+
+        uint256 iterateToIndex = priceRequestIds.length;
+        if (priceRequestIds.length - lastRequestIndexConsidered > MAX_ITERATION_CONSIDERED) {
+            fullyUpdated = true;
+            iterateToIndex = lastRequestIndexConsidered + MAX_ITERATION_CONSIDERED;
+        }
+        console.log("lastRequestIndexConsidered", lastRequestIndexConsidered);
+        for (uint256 i = lastRequestIndexConsidered; i < iterateToIndex; i++) {
+            console.log("i", i);
+            console.log("iterateToIndex", iterateToIndex);
+
             PriceRequest storage priceRequest = priceRequests[priceRequestIds[i].requestId];
             VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
             uint256 roundId = priceRequestIds[i].roundId;
+            console.log("roundId", roundId);
+            console.log("current roundId", voteTiming.computeCurrentRoundId(getCurrentTime()));
 
-            if (roundId == voteTiming.computeCurrentRoundId(getCurrentTime())) continue; // Cant slash for the current round.
+            if (roundId == voteTiming.computeCurrentRoundId(getCurrentTime())) break; // Cant slash for the current round.
             uint256 stakedAtRound = rounds[priceRequestIds[i].roundId].cumulativeStakedAtRound;
             uint256 totalVotes = voteInstance.resultComputation.totalVotes.rawValue;
             uint256 totalCorrectVotes = voteInstance.resultComputation.getTotalCorrectlyVotedTokens().rawValue;
@@ -345,6 +373,7 @@ contract VotingV2 is
             requestSlashingTrackers.push(
                 SlashingTracker(wrongVoteSlashPerToken, noVoteSlashPerToken, totalSlashed, totalCorrectVotes)
             );
+
             lastRequestIndexConsidered = i + 1;
         }
     }
@@ -533,7 +562,7 @@ contract VotingV2 is
     ) public override onlyIfNotMigrated() {
         uint256 currentRoundId = voteTiming.computeCurrentRoundId(getCurrentTime());
         _freezeRoundVariables(currentRoundId);
-        _updateTrackers(msg.sender);
+        if (_updateTrackers(msg.sender)) return;
         // At this point, the computed and last updated round ID should be equal.
         uint256 blockTime = getCurrentTime();
         require(hash != bytes32(0), "Invalid provided hash");
