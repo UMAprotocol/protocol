@@ -67,6 +67,7 @@ export const PublicNetworks: PublicNetworksType = {
   },
   288: { name: "boba", etherscan: "https://blockexplorer.boba.network/" },
   416: { name: "sx", etherscan: "https://explorer.sx.technology/" },
+  9001: { name: "evmos", etherscan: "https://evm.evmos.org" },
   80001: {
     name: "polygon-mumbai",
     etherscan: "https://mumbai.polygonscan.com/",
