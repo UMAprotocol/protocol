@@ -15,6 +15,7 @@ import "./ResultComputation.sol";
 import "./VoteTiming.sol";
 import "./Staker.sol";
 import "./Constants.sol";
+import "./SlashingLibrary.sol";
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
@@ -126,6 +127,9 @@ contract VotingV2 is
     // Reference to the Finder.
     FinderInterface private finder;
 
+    // Reference to Slashing Library.
+    SlashingLibrary public slashingLibrary;
+
     // If non-zero, this contract has been migrated to this address. All voters and
     // financial contracts should query the new address only.
     address public migratedAddress;
@@ -223,12 +227,14 @@ contract VotingV2 is
         FixedPoint.Unsigned memory _gatPercentage,
         address _votingToken,
         address _finder,
-        address _timerAddress
+        address _timerAddress,
+        address _slashingLibrary
     ) Staker(_emissionRate, _unstakeCoolDown, _votingToken, _timerAddress) {
         voteTiming.init(_phaseLength);
         require(_gatPercentage.isLessThanOrEqual(1), "GAT percentage must be <= 100%");
         gatPercentage = _gatPercentage;
         finder = FinderInterface(_finder);
+        slashingLibrary = SlashingLibrary(_slashingLibrary);
     }
 
     /***************************************
@@ -336,8 +342,10 @@ contract VotingV2 is
             uint256 totalVotes = voteInstance.resultComputation.totalVotes.rawValue;
             uint256 totalCorrectVotes = voteInstance.resultComputation.getTotalCorrectlyVotedTokens().rawValue;
 
-            uint256 wrongVoteSlashPerToken = calcWrongVoteSlashPerToken(stakedAtRound, totalVotes, totalCorrectVotes);
-            uint256 noVoteSlashPerToken = calcNoVoteSlashPerToken(stakedAtRound, totalVotes, totalCorrectVotes);
+            uint256 wrongVoteSlashPerToken =
+                slashingLibrary.calcWrongVoteSlashPerToken(stakedAtRound, totalVotes, totalCorrectVotes);
+            uint256 noVoteSlashPerToken =
+                slashingLibrary.calcNoVoteSlashPerToken(stakedAtRound, totalVotes, totalCorrectVotes);
 
             uint256 totalSlashed =
                 ((noVoteSlashPerToken * (stakedAtRound - totalVotes)) / 1e18) +
@@ -347,25 +355,6 @@ contract VotingV2 is
             );
             lastRequestIndexConsidered = i + 1;
         }
-    }
-
-    // Note the functions below should be pulled out into an external library that is paramaterizable by each of the
-    // props passed in is uppdatable via governance.
-
-    function calcWrongVoteSlashPerToken(
-        uint256 totalStaked,
-        uint256 totalVotes,
-        uint256 totalCorrectVotes
-    ) public pure returns (uint256) {
-        return 1600000000000000;
-    }
-
-    function calcNoVoteSlashPerToken(
-        uint256 totalStaked,
-        uint256 totalVotes,
-        uint256 totalCorrectVotes
-    ) public pure returns (uint256) {
-        return 1600000000000000;
     }
 
     /****************************************
@@ -848,6 +837,14 @@ contract VotingV2 is
         override(VotingV2Interface, VotingAncillaryInterface)
         onlyOwner
     {}
+
+    /**
+     * @notice Changes the slashing library used by this contract.
+     * @param _newSlashingLibrary new slashing library address.
+     */
+    function setSlashingLibrary(address _newSlashingLibrary) public override(VotingV2Interface) onlyOwner {
+        slashingLibrary = SlashingLibrary(_newSlashingLibrary);
+    }
 
     /****************************************
      *    PRIVATE AND INTERNAL FUNCTIONS    *
