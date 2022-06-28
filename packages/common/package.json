@@ -1,6 +1,6 @@
 {
   "name": "@uma/common",
-  "version": "2.21.0",
+  "version": "2.22.0",
   "description": "Common js utilities used by other UMA packages",
   "homepage": "http://umaproject.org",
   "license": "AGPL-3.0-or-later",
