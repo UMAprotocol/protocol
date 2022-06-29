@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
+import "../interfaces/StakerInterface.sol";
+
 import "./VotingToken.sol";
 import "../../common/implementation/Testable.sol";
 
@@ -8,7 +10,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 
 import "hardhat/console.sol";
 
-contract Staker is Ownable, Testable {
+contract Staker is StakerInterface, Ownable, Testable {
     /****************************************
      *           STAKING TRACKERS           *
      ****************************************/
@@ -32,7 +34,7 @@ contract Staker is Ownable, Testable {
     mapping(address => VoterStake) public voterStakes;
 
     // Reference to the voting token.
-    VotingToken public votingToken;
+    VotingToken public override votingToken;
 
     constructor(
         uint256 _emissionRate,
@@ -46,7 +48,7 @@ contract Staker is Ownable, Testable {
     }
 
     // Pulls tokens from users wallet and stakes them.
-    function stake(uint256 amount) public {
+    function stake(uint256 amount) public override {
         _updateTrackers(msg.sender);
         voterStakes[msg.sender].cumulativeStaked += amount;
         cumulativeStaked += amount;
@@ -54,7 +56,7 @@ contract Staker is Ownable, Testable {
         votingToken.transferFrom(msg.sender, address(this), amount);
     }
 
-    function requestUnstake(uint256 amount) public {
+    function requestUnstake(uint256 amount) public override {
         _updateTrackers(msg.sender);
         // Staker signals that they want to unstake. After signalling, their total voting balance is decreased by the
         // signaled amount. This amount is not vulnerable to being slashed but also does not accumulate rewards.
@@ -69,7 +71,7 @@ contract Staker is Ownable, Testable {
 
     // If: a staker requested an unstake and time > unstakeTime then send funds to staker. Note that this method assumes
     // that the `updateTrackers()
-    function executeUnstake() public {
+    function executeUnstake() public override {
         _updateTrackers(msg.sender);
         VoterStake storage voterStake = voterStakes[msg.sender];
         require(voterStake.unstakeTime != 0 && getCurrentTime() >= voterStake.unstakeTime, "Unstake time not passed");
@@ -87,14 +89,16 @@ contract Staker is Ownable, Testable {
 
     // Send accumulated rewards to the voter. If the voter has gained rewards from others slashing then this is included
     // here. If the total slashing is larger than the outstanding rewards then this method does nothing.
-    function withdrawRewards() public {
+    function withdrawRewards() public override returns (uint256) {
         _updateTrackers(msg.sender);
         VoterStake storage voterStake = voterStakes[msg.sender];
 
-        if (voterStake.outstandingRewards > 0) {
-            require(votingToken.mint(msg.sender, voterStake.outstandingRewards), "Voting token issuance failed");
+        uint256 tokensToMint = voterStake.outstandingRewards;
+        if (tokensToMint > 0) {
             voterStake.outstandingRewards = 0;
+            require(votingToken.mint(msg.sender, tokensToMint), "Voting token issuance failed");
         }
+        return (tokensToMint);
     }
 
     function exit() public {
