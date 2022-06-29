@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
 import "../../interfaces/StoreInterface.sol";
 import "../../interfaces/FinderInterface.sol";
-import "../SkinnyOptimisticOracle.sol";
+import "../previous-versions/SkinnyOptimisticOracle.sol";
 import "../Constants.sol";
 
 // This is just a test contract to make requests to the optimistic oracle.

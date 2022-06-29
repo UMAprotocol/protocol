@@ -656,6 +656,7 @@ describe("SkinnyOptimisticOracle: proposer.js", function () {
     const identifierToIgnore = padRight(utf8ToHex(OPTIMISTIC_ORACLE_IGNORE_POST_EXPIRY[0]), 64);
     await identifierWhitelist.methods.addSupportedIdentifier(identifierToIgnore).send({ from: owner });
 
+    console.log("optimisticRequester.methods", optimisticRequester.methods);
     await optimisticRequester.methods
       .requestPrice(identifierToIgnore, requestTime, ancillaryData, collateralCurrency.options.address, 0, finalFee, 0)
       .send({ from: owner });

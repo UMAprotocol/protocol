@@ -76,6 +76,7 @@ export function getHardhatConfig(
         "contracts/financial-templates/perpetual-multiparty/PerpetualLiquidatable.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
         "contracts/financial-templates/expiring-multiparty/Liquidatable.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
         "contracts/oracle/implementation/Voting.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
+        "contracts/oracle/implementation/VotingV2.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
         "contracts/oracle/implementation/test/VotingTest.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
         "contracts/insured-bridge/BridgePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       },
@@ -152,6 +153,11 @@ export function getHardhatConfig(
       avalanche: {
         chainId: 43114,
         url: getNodeUrl("avalanche", true, 416),
+        accounts: { mnemonic },
+      },
+      evmos: {
+        chainId: 9001,
+        url: getNodeUrl("evmos", true, 9001),
         accounts: { mnemonic },
       },
     },

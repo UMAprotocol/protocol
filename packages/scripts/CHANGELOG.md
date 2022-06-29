@@ -3,6 +3,23 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.13.0](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.10.3...@uma/scripts@1.13.0) (2022-06-27)
+
+### Bug Fixes
+
+- improvements to the uma transfer script ([#3937](https://github.com/UMAprotocol/protocol/issues/3937)) ([7137dd3](https://github.com/UMAprotocol/protocol/commit/7137dd33c9ec7580c4c5a51599b1059a4c36b163))
+
+### Features
+
+- add proposal simulation script and readme ([#3967](https://github.com/UMAprotocol/protocol/issues/3967)) ([d83a468](https://github.com/UMAprotocol/protocol/commit/d83a4685157407200d6dfbda40fb55c4de0734de))
+- add script for transferring uma tokens from governor ([#3930](https://github.com/UMAprotocol/protocol/issues/3930)) ([93a287b](https://github.com/UMAprotocol/protocol/commit/93a287b6f85fe731a577463feba4ac5c75fb25fe))
+
+# [1.12.0](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.11.0...@uma/scripts@1.12.0) (2022-06-23)
+
+### Features
+
+- add proposal simulation script and readme ([#3967](https://github.com/UMAprotocol/protocol/issues/3967)) ([d83a468](https://github.com/UMAprotocol/protocol/commit/d83a4685157407200d6dfbda40fb55c4de0734de))
+
 # [1.11.0](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.10.3...@uma/scripts@1.11.0) (2022-05-27)
 
 ### Bug Fixes
