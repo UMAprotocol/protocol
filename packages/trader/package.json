@@ -38,7 +38,7 @@
   "main": "dist/src/index.js",
   "scripts": {
     "build": "tsc -b",
-    "test": "mocha test 'test/**/*.ts'"
+    "test": "--max-old-space-size=4096 mocha test 'test/**/*.ts'"
   },
   "bugs": {
     "url": "https://github.com/UMAprotocol/protocol/issues"
