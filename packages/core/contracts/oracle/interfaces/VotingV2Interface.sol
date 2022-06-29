@@ -163,4 +163,10 @@ abstract contract VotingV2Interface {
      * @param NewRewardsExpirationTimeout how long a caller can wait before choosing to withdraw their rewards.
      */
     function setRewardsExpirationTimeout(uint256 NewRewardsExpirationTimeout) public virtual;
+
+    /**
+     * @notice Changes the slashing library used by this contract.
+     * @param _newSlashingLibrary new slashing library address.
+     */
+    function setSlashingLibrary(address _newSlashingLibrary) public virtual;
 }
