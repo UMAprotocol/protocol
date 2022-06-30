@@ -774,7 +774,7 @@ contract VotingV2 is
      * @notice Returns the current voting phase, as a function of the current time.
      * @return Phase to indicate the current phase. Either { Commit, Reveal, NUM_PHASES_PLACEHOLDER }.
      */
-    function getVotePhase() external view override(VotingV2Interface, VotingAncillaryInterface) returns (Phase) {
+    function getVotePhase() public view override(VotingV2Interface, VotingAncillaryInterface) returns (Phase) {
         return voteTiming.computeCurrentPhase(getCurrentTime());
     }
 
@@ -782,7 +782,7 @@ contract VotingV2 is
      * @notice Returns the current round ID, as a function of the current time.
      * @return uint256 representing the unique round ID.
      */
-    function getCurrentRoundId() external view override(VotingV2Interface, VotingAncillaryInterface) returns (uint256) {
+    function getCurrentRoundId() public view override(VotingV2Interface, VotingAncillaryInterface) returns (uint256) {
         return voteTiming.computeCurrentRoundId(getCurrentTime());
     }
 
@@ -940,7 +940,7 @@ contract VotingV2 is
         );
     }
 
-    function _computeGat(uint256 roundId) private view returns (FixedPoint.Unsigned memory) {
+    function _computeGat(uint256 roundId) internal view returns (FixedPoint.Unsigned memory) {
         // Nothing staked at the round  - return max value to err on the side of caution.
         if (rounds[roundId].cumulativeStakedAtRound == 0) return FixedPoint.Unsigned(UINT_MAX);
 
