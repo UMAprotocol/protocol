@@ -16,7 +16,7 @@ import "@openzeppelin/contracts/utils/Address.sol";
 /**
  * @title Takes proposals for certain governance actions and allows UMA token holders to vote on them.
  */
-contract Governor is MultiRole, Testable {
+contract GovernorV2 is MultiRole, Testable {
     using SafeMath for uint256;
     using Address for address;
 
@@ -124,11 +124,7 @@ contract Governor is MultiRole, Testable {
 
         // Request a vote on this proposal in the DVM.
         OracleGovernanceInterface oracle = _getOracle();
-        IdentifierWhitelistInterface supportedIdentifiers = _getIdentifierWhitelist();
-        supportedIdentifiers.addSupportedIdentifier(identifier);
-
-        oracle.requestPrice(identifier, time);
-        supportedIdentifiers.removeSupportedIdentifier(identifier);
+        oracle.requestGovernanceAction(identifier, time);
 
         emit NewProposal(id, transactions);
     }

@@ -387,12 +387,7 @@ contract VotingV2 is
      * @param identifier uniquely identifies the price requested. eg BTC/USD (encoded as bytes32) could be requested.
      * @param time unix timestamp for the price request.
      */
-    function requestGovernanceAction(bytes32 identifier, uint256 time)
-        public
-        override
-        onlyRegisteredContract()
-        onlyOwner()
-    {
+    function requestGovernanceAction(bytes32 identifier, uint256 time) public override onlyOwner() {
         _requestPrice(identifier, time, "", true);
     }
 

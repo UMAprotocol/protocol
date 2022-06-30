@@ -13,7 +13,7 @@ const defaultFixtureWhitelist = [
   "Store",
   "IdentifierWhitelist",
   "AddressWhitelist",
-  "Governor",
+  "GovernorV2",
 ];
 
 export async function runVotingV2Fixture(
@@ -62,7 +62,7 @@ export async function runVotingV2Fixture(
     const registry = await getDeployment("Registry");
 
     // Add pre-registered contracts.
-    const { address: governorAddress } = await deployments.get("Governor");
+    const { address: governorAddress } = await deployments.get("GovernorV2");
     await registry.methods.addMember(RegistryRolesEnum.CONTRACT_CREATOR, deployer).send({ from: deployer });
     await registry.methods.registerContract([], governorAddress).send({ from: deployer });
     await registry.methods.removeMember(RegistryRolesEnum.CONTRACT_CREATOR, deployer).send({ from: deployer });
