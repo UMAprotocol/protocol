@@ -20,6 +20,21 @@ contract SlashingLibrary {
     }
 
     /**
+     * @notice Calculates the wrong vote slash per token for governance requests.
+     * @param totalStaked The total amount of tokens staked.
+     * @param totalVotes The total amount of votes.
+     * @param totalCorrectVotes The total amount of correct votes.
+     * @return uint256 The amount of tokens to slash.
+     */
+    function calcWrongVoteSlashPerTokenGovernance(
+        uint256 totalStaked,
+        uint256 totalVotes,
+        uint256 totalCorrectVotes
+    ) public pure returns (uint256) {
+        return 0;
+    }
+
+    /**
      * @notice Calculates the no vote slash per token.
      * @param totalStaked The total amount of tokens staked.
      * @param totalVotes The total amount of votes.
