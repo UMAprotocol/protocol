@@ -124,11 +124,11 @@ contract Governor is MultiRole, Testable {
 
         // Request a vote on this proposal in the DVM.
         OracleGovernanceInterface oracle = _getOracle();
-        IdentifierWhitelistInterface supportedIdentifiers = _getIdentifierWhitelist();
-        supportedIdentifiers.addSupportedIdentifier(identifier);
+        // IdentifierWhitelistInterface supportedIdentifiers = _getIdentifierWhitelist();
+        // supportedIdentifiers.addSupportedIdentifier(identifier);
 
         oracle.requestGovernanceAction(identifier, time);
-        supportedIdentifiers.removeSupportedIdentifier(identifier);
+        // supportedIdentifiers.removeSupportedIdentifier(identifier);
 
         emit NewProposal(id, transactions);
     }
