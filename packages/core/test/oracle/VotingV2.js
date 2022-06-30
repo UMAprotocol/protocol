@@ -28,6 +28,7 @@ const VotingToken = getContract("VotingToken");
 const VotingTest = getContract("VotingTest");
 const Timer = getContract("Timer");
 const SlashingLibrary = getContract("SlashingLibrary");
+
 const { utf8ToHex, padRight } = web3.utils;
 
 const toWei = (value) => toBN(web3.utils.toWei(value, "ether"));
@@ -2019,6 +2020,52 @@ describe("VotingV2", function () {
       (await voting.methods.voterStakes(account4).call()).cumulativeStaked,
       toWei("4000000").add(toBN("4959573333333333333333")) // Their original stake amount of 4mm plus the slash of 4959.56.
     );
+  });
+
+  it("governance requests don't slash wrong votes", async function () {
+    const identifier = padRight(utf8ToHex("governance-price-request"), 64); // Use the same identifier for both.
+    const time1 = "420";
+
+    // Register accounts[0] as a registered contract.
+    await registry.methods.registerContract([], accounts[0]).send({ from: accounts[0] });
+
+    await voting.methods.requestGovernanceAction(identifier, time1).send({ from: accounts[0] });
+    await moveToNextRound(voting, accounts[0]);
+    const roundId = (await voting.methods.getCurrentRoundId().call()).toString();
+
+    // Account1 and account4 votes correctly, account2 votes wrong and account3 does not vote..
+    // Commit votes.
+    const losingPrice = 1;
+    const salt = getRandomSignedInt(); // use the same salt for all votes. bad practice but wont impact anything.
+    const baseRequest = { salt, roundId, identifier };
+    const hash1 = computeVoteHash({ ...baseRequest, price: losingPrice, account: account2, time: time1 });
+
+    await voting.methods.commitVote(identifier, time1, hash1).send({ from: account2 });
+
+    const winningPrice = 0;
+    const hash2 = computeVoteHash({ ...baseRequest, price: winningPrice, account: account1, time: time1 });
+    await voting.methods.commitVote(identifier, time1, hash2).send({ from: account1 });
+
+    const hash3 = computeVoteHash({ ...baseRequest, price: winningPrice, account: account4, time: time1 });
+    await voting.methods.commitVote(identifier, time1, hash3).send({ from: account4 });
+
+    await moveToNextPhase(voting, accounts[0]); // Reveal the votes.
+
+    await voting.methods.revealVote(identifier, time1, losingPrice, salt).send({ from: account2 });
+    await voting.methods.revealVote(identifier, time1, winningPrice, salt).send({ from: account1 });
+    await voting.methods.revealVote(identifier, time1, winningPrice, salt).send({ from: account4 });
+
+    await moveToNextRound(voting, accounts[0]);
+
+    // Now call updateTrackers to update the slashing metrics. We should see a cumulative slashing amount increment and
+    // the slash per wrong vote and slash per no vote set correctly.
+    await voting.methods.updateTrackers(account1).send({ from: account1 });
+
+    const slashingTracker1 = await voting.methods.requestSlashingTrackers(0).call();
+    assert.equal(slashingTracker1.wrongVoteSlashPerToken, toWei("0")); // No wrong vote slashing.
+    assert.equal(slashingTracker1.noVoteSlashPerToken, toWei("0.0016"));
+    assert.equal(slashingTracker1.totalSlashed, toWei("51200")); // 32mm*0.0016=102400
+    assert.equal(slashingTracker1.totalCorrectVotes, toWei("36000000")); // 32mm + 4mm
   });
 });
 

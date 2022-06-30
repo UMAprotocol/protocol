@@ -6,7 +6,7 @@ import "../../common/implementation/FixedPoint.sol";
 import "../../common/implementation/Testable.sol";
 import "../interfaces/FinderInterface.sol";
 import "../interfaces/IdentifierWhitelistInterface.sol";
-import "../interfaces/OracleInterface.sol";
+import "../interfaces/OracleGovernanceInterface.sol";
 import "./Constants.sol";
 import "./AdminIdentifierLib.sol";
 
@@ -123,12 +123,12 @@ contract Governor is MultiRole, Testable {
         bytes32 identifier = AdminIdentifierLib._constructIdentifier(id);
 
         // Request a vote on this proposal in the DVM.
-        OracleInterface oracle = _getOracle();
-        IdentifierWhitelistInterface supportedIdentifiers = _getIdentifierWhitelist();
-        supportedIdentifiers.addSupportedIdentifier(identifier);
+        OracleGovernanceInterface oracle = _getOracle();
+        // IdentifierWhitelistInterface supportedIdentifiers = _getIdentifierWhitelist();
+        // supportedIdentifiers.addSupportedIdentifier(identifier);
 
-        oracle.requestPrice(identifier, time);
-        supportedIdentifiers.removeSupportedIdentifier(identifier);
+        oracle.requestGovernanceAction(identifier, time);
+        // supportedIdentifiers.removeSupportedIdentifier(identifier);
 
         emit NewProposal(id, transactions);
     }
@@ -206,8 +206,8 @@ contract Governor is MultiRole, Testable {
         return success;
     }
 
-    function _getOracle() private view returns (OracleInterface) {
-        return OracleInterface(finder.getImplementationAddress(OracleInterfaces.Oracle));
+    function _getOracle() private view returns (OracleGovernanceInterface) {
+        return OracleGovernanceInterface(finder.getImplementationAddress(OracleInterfaces.Oracle));
     }
 
     function _getIdentifierWhitelist() private view returns (IdentifierWhitelistInterface supportedIdentifiers) {
