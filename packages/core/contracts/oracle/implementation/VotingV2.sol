@@ -299,8 +299,8 @@ contract VotingV2 is
                 // The voter voted correctly. Receive a pro-rate share of the other voters slashed amounts as a reward.
             else
                 slash += int256(
-                    (((voterStake.cumulativeStaked * 1e18) / requestSlashingTrackers[i].totalCorrectVotes) *
-                        requestSlashingTrackers[i].totalSlashed) / 1e18
+                    (((voterStake.cumulativeStaked * requestSlashingTrackers[i].totalSlashed)) /
+                        requestSlashingTrackers[i].totalCorrectVotes)
                 );
 
             // If this is not the last price request to apply and the next request in the batch is from a subsequent
