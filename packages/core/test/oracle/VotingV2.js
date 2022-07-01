@@ -2064,8 +2064,30 @@ describe("VotingV2", function () {
     const slashingTracker1 = await voting.methods.requestSlashingTrackers(0).call();
     assert.equal(slashingTracker1.wrongVoteSlashPerToken, toWei("0")); // No wrong vote slashing.
     assert.equal(slashingTracker1.noVoteSlashPerToken, toWei("0.0016"));
-    assert.equal(slashingTracker1.totalSlashed, toWei("51200")); // 32mm*0.0016=102400
+    assert.equal(slashingTracker1.totalSlashed, toWei("51200")); // 32mm*0.0016=51200
     assert.equal(slashingTracker1.totalCorrectVotes, toWei("36000000")); // 32mm + 4mm
+
+    // Check that account3 is slashed for not voting.
+    await voting.methods.updateTrackers(account3).send({ from: account3 });
+    assert.equal(
+      (await voting.methods.voterStakes(account3).call()).cumulativeStaked,
+      toWei("32000000").sub(toWei("51200")) // Their original stake amount of 32mm minus the slash of 51200
+    );
+
+    // Check that account2 is not slashed for voting wrong.
+    await voting.methods.updateTrackers(account2).send({ from: account2 });
+    assert.equal(
+      (await voting.methods.voterStakes(account2).call()).cumulativeStaked,
+      toWei("32000000") // Their original stake amount of 32mm.
+    );
+
+    // Check that account 1 and account 4 received the correct amount of tokens.
+    // Account 1 should receive 32mm/(32mm+4mm)*51200=45511.111111111111111111
+    await voting.methods.updateTrackers(account1).send({ from: account1 });
+    assert.equal(
+      (await voting.methods.voterStakes(account1).call()).cumulativeStaked,
+      toWei("32000000").add(toBN("45511111111111111111111")) // Their original stake amount of 32mm.
+    );
   });
 });
 
