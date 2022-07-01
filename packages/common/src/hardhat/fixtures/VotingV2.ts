@@ -13,7 +13,6 @@ const defaultFixtureWhitelist = [
   "Store",
   "IdentifierWhitelist",
   "AddressWhitelist",
-  "GovernorV2",
 ];
 
 export async function runVotingV2Fixture(

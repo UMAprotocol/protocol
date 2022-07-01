@@ -4,8 +4,8 @@ pragma solidity ^0.8.0;
 import "./OracleInterface.sol";
 
 /**
- * @title Financial contract facing Oracle interface.
- * @dev Interface used by financial contracts to interact with the Oracle. Voters will use a different interface.
+ * @title Financial contract facing extending the Oracle interface with governance actions.
+ * @dev Interface used by financial contracts to interact with the Oracle extending governance actions. Voters will use a different interface.
  */
 abstract contract OracleGovernanceInterface is OracleInterface {
     /**

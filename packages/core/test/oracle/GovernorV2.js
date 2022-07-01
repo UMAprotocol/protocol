@@ -15,7 +15,6 @@ const { assert } = require("chai");
 const GovernorV2 = getContract("GovernorV2");
 const IdentifierWhitelist = getContract("IdentifierWhitelist");
 const VotingV2 = getContract("VotingV2");
-// const VotingInterfaceTesting = getContract("VotingInterfaceTesting");
 const VotingToken = getContract("VotingToken");
 const TestnetERC20 = getContract("TestnetERC20");
 const ReentrancyChecker = getContract("ReentrancyChecker");
