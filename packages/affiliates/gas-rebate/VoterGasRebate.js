@@ -547,25 +547,22 @@ async function getHistoricalGasPrice(startBlock, endBlock) {
   const startTime = (await web3.eth.getBlock(startBlock)).timestamp;
   const startTimeString = moment.unix(startTime).format("YYYY-MM-DD");
   const endTime = (await web3.eth.getBlock(endBlock)).timestamp;
-  const endTimeString =  moment.unix(endTime).format("YYYY-MM-DD");
+  const endTimeString = moment.unix(endTime).format("YYYY-MM-DD");
 
   // Construct list of days:
   const days = [];
-  let counter = moment.unix(startTime)
+  let counter = moment.unix(startTime);
   while (counter.isBefore(moment.unix(endTime))) {
-    days.push(moment(counter))
-    counter = counter.add(1, "days")
+    days.push(moment(counter));
+    counter = counter.add(1, "days");
   }
 
   const etherscanApiKey = process.env.ETHERSCAN_API_KEY;
   if (!etherscanApiKey) {
     console.error("Missing ETHERSCAN_API_KEY in your environment, falling back to default gas price");
-    return days.map(day => {
-      return {
-        timestamp: day.unix().toString(),
-        avgGwei: "100",
-      };
-  });
+    return days.map((day) => {
+      return { timestamp: day.unix().toString(), avgGwei: "100" };
+    });
   } else {
     const query = `https://api.etherscan.io/api?module=stats&action=dailyavggasprice&startdate=${startTimeString}&enddate=${endTimeString}&sort=asc&apikey=${etherscanApiKey}`;
     const response = await fetch(query, {
