@@ -1884,14 +1884,14 @@ describe("VotingV2", function () {
     // await voting.methods.updateTrackers(account1).send({ from: account1 });
     assert.equal(
       (await voting.methods.voterStakes(account1).call()).cumulativeStaked,
-      toWei("32000000").add(toBN("182044444444444444262400")) // Their original stake amount of 32mm plus the slash of 182044.4
+      toWei("32000000").add(toBN("182044444444444444444444")) // Their original stake amount of 32mm plus the slash of 182044.4
     );
 
     // Account4 has 4mm and should have gotten 4mm/(32mm+4mm) * 102400 * 2 = 22755.555 (their fraction of the total slashed)
     await voting.methods.updateTrackers(account4).send({ from: account4 });
     assert.equal(
       (await voting.methods.voterStakes(account4).call()).cumulativeStaked,
-      toWei("4000000").add(toBN("22755555555555555532800")) // Their original stake amount of 4mm plus the slash of 22755.555
+      toWei("4000000").add(toBN("22755555555555555555554")) // Their original stake amount of 4mm plus the slash of 22755.555
     );
   });
   it("votes slashed over multiple voting rounds with no claims in between", async function () {
@@ -1977,19 +1977,19 @@ describe("VotingV2", function () {
     const slashingTracker2 = await voting.methods.requestSlashingTrackers(1).call();
     assert.equal(slashingTracker2.wrongVoteSlashPerToken, toWei("0.0016"));
     assert.equal(slashingTracker2.noVoteSlashPerToken, toWei("0.0016"));
-    assert.equal(slashingTracker2.totalSlashed, toBN("57536284444444444444589"));
-    assert.equal(slashingTracker2.totalCorrectVotes, toBN("64039822222222222222131200"));
+    assert.equal(slashingTracker2.totalSlashed, toBN("57536284444444444444444"));
+    assert.equal(slashingTracker2.totalCorrectVotes, toBN("64039822222222222222222222"));
 
     // Now consider the impact on the individual voters cumulative staked amounts. This is a bit more complex than
     // previous tests as there was multiple voting rounds and voters were slashed between the rounds. Account1 voted
     // correctly both times. In the first voting round they should have accumulated 32mm/(36mm)*102400 = 91022.2222222
     // and in the second they accumulated (32mm+91022.2222222)/(64039822.222) * 57536.284432 = 28832.0316 (note here
     // we factored in the balance from round 1+ the rewards from round 1 and then took the their share of the total
-    // correct votes) resulting a a total positive slashing of 91022.2222222+28832.0316=119854.2538222
+    // correct votes) resulting a a total positive slashing of 91022.2222222+28832.0316=119854.2538959
     // await voting.methods.updateTrackers(account1).send({ from: account1 });
     assert.equal(
       (await voting.methods.voterStakes(account1).call()).cumulativeStaked,
-      toWei("32000000").add(toBN("119854253895946225951900")) // Their original stake amount of 32mm minus the slashing of 119822.22222.
+      toWei("32000000").add(toBN("119854253895946226051937")) // Their original stake amount of 32mm minus the slashing of 119822.22222.
     );
 
     // Account2 voted wrong the first time and did not vote the second time. They should get slashed at 32mm*0.0016=51200
@@ -2007,7 +2007,7 @@ describe("VotingV2", function () {
     await voting.methods.updateTrackers(account3).send({ from: account3 });
     assert.equal(
       (await voting.methods.voterStakes(account3).call()).cumulativeStaked,
-      toWei("32000000").sub(toBN("22495747229279559433648")) // Their original stake amount of 32mm minus the slash of 22495.7474
+      toWei("32000000").sub(toBN("22495747229279559385272")) // Their original stake amount of 32mm minus the slash of 22495.7474
     );
 
     // Account4 has 4mm and voted correctly the first time and wrong the second time. On the first vote they should have
@@ -2017,7 +2017,7 @@ describe("VotingV2", function () {
     await voting.methods.updateTrackers(account4).send({ from: account4 });
     assert.equal(
       (await voting.methods.voterStakes(account4).call()).cumulativeStaked,
-      toWei("4000000").add(toBN("4959573333333333321974")) // Their original stake amount of 4mm plus the slash of 4959.56.
+      toWei("4000000").add(toBN("4959573333333333333333")) // Their original stake amount of 4mm plus the slash of 4959.56.
     );
   });
 });
