@@ -1009,12 +1009,6 @@ export const defaultConfigs: { [name: string]: { type: string; [key: string]: an
     type: "expression",
     expression: "1 / CVXUSD",
   },
-  uSPAC10: {
-    type: "uSPAC",
-    lookback: 7200,
-    correctionFactor: "1.0",
-    symbols: ["DWAC", "IRDM", "MP", "PRIM", "WSC", "SMPL", "TGLS", "CERE", "KW", "ROIC"],
-  },
 };
 
 // Pull in the number of decimals for each identifier from the common getPrecisionForIdentifier. This is used within the
