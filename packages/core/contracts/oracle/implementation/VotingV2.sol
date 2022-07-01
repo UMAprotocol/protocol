@@ -2,6 +2,7 @@
 
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
+import "hardhat/console.sol";
 
 import "../../common/implementation/FixedPoint.sol"; // TODO: remove this from this contract.
 import "../interfaces/FinderInterface.sol";
