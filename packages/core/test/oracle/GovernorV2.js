@@ -43,10 +43,6 @@ describe("GovernorV2", function () {
   let account2;
   let account3;
 
-  const setNewInflationRate = async (inflationRate) => {
-    await voting.methods.setInflationRate({ rawValue: inflationRate.toString() }).send({ from: accounts[0] });
-  };
-
   const constructTransferTransaction = (destination, amount) => {
     return testToken.methods.transfer(destination, amount).encodeABI();
   };
@@ -55,8 +51,6 @@ describe("GovernorV2", function () {
     accounts = await web3.eth.getAccounts();
     [proposer, account2, account3] = accounts;
     await runVotingV2Fixture(hre);
-    // await runDefaultFixture(hre);
-    // voting = await VotingInterfaceTesting.at((await VotingV2.deployed()).options.address);
     voting = await VotingV2.deployed();
     supportedIdentifiers = await IdentifierWhitelist.deployed();
     governorV2 = await GovernorV2.deployed();
@@ -67,29 +61,21 @@ describe("GovernorV2", function () {
     const minterRole = 1;
     await votingToken.methods.addMember(minterRole, proposer).send({ from: accounts[0] });
 
-    // Mint 99 tokens to this account so it has 99% of the tokens.
-    await votingToken.methods.mint(proposer, toWei("99", "ether")).send({ from: accounts[0] });
-
-    // Mint 1 token to this account so it has 1% of the tokens (not enough to reach the GAT).
-    await votingToken.methods.mint(account2, toWei("1", "ether")).send({ from: accounts[0] });
-
-    await votingToken.methods.approve(voting.options.address, toWei("32000000")).send({ from: proposer });
-    await voting.methods.stake(toWei("32000000")).send({ from: proposer });
-    await votingToken.methods.transfer(account2, toWei("32000000")).send({ from: accounts[0] });
-    await votingToken.methods.approve(voting.options.address, toWei("32000000")).send({ from: account2 });
-    await voting.methods.stake(toWei("32000000")).send({ from: account2 });
+    // Proposer account has 100M voting tokens initially.
+    // The staked amount determines the voting power of the account.
+    await votingToken.methods.approve(voting.options.address, toWei("20000000")).send({ from: proposer });
+    await voting.methods.stake(toWei("20000000")).send({ from: proposer }); // 20MM
+    await votingToken.methods.transfer(account2, toWei("20000000")).send({ from: accounts[0] });
+    await votingToken.methods.approve(voting.options.address, toWei("20000000")).send({ from: account2 });
+    await voting.methods.stake(toWei("20000000")).send({ from: account2 }); // 20MM
     await votingToken.methods.transfer(account3, toWei("1000000")).send({ from: accounts[0] });
     await votingToken.methods.approve(voting.options.address, toWei("1000000")).send({ from: account3 });
     await voting.methods.stake(toWei("1000000")).send({ from: account3 }); // 1MM (can't reach the 5% GAT alone)
 
-    // Set the inflation rate to 0 by default, so the balances stay fixed.
-    await setNewInflationRate("0");
-
-    // To work, the governorV2 must be the owner of the IdentifierWhitelist contracts. This is not the default setup in the test
+    // To work, the governorV2 must be the owner of the VotingV2 contract. This is not the default setup in the test
     // environment, so ownership must be transferred.
-    await supportedIdentifiers.methods.transferOwnership(governorV2.options.address).send({ from: accounts[0] });
 
-    await (await VotingV2.deployed()).methods.transferOwnership(governorV2.options.address).send({ from: accounts[0] });
+    await voting.methods.transferOwnership(governorV2.options.address).send({ from: accounts[0] });
 
     signature = await signMessage(web3, snapshotMessage, proposer);
   });
@@ -725,12 +711,11 @@ describe("GovernorV2", function () {
       .changeImplementationAddress(utf8ToHex(interfaceName.Oracle), newVoting.options.address)
       .send({ from: accounts[0] });
 
-    await votingToken.methods.mint(proposer, toWei("640000000")).send({ from: accounts[0] });
-    await votingToken.methods.approve(newVoting.options.address, toWei("32000000")).send({ from: proposer });
-    await newVoting.methods.stake(toWei("32000000")).send({ from: proposer });
-    await votingToken.methods.transfer(account2, toWei("32000000")).send({ from: accounts[0] });
-    await votingToken.methods.approve(newVoting.options.address, toWei("32000000")).send({ from: account2 });
-    await newVoting.methods.stake(toWei("32000000")).send({ from: account2 });
+    await votingToken.methods.approve(newVoting.options.address, toWei("20000000")).send({ from: proposer });
+    await newVoting.methods.stake(toWei("20000000")).send({ from: proposer });
+    await votingToken.methods.transfer(account2, toWei("20000000")).send({ from: accounts[0] });
+    await votingToken.methods.approve(newVoting.options.address, toWei("20000000")).send({ from: account2 });
+    await newVoting.methods.stake(toWei("20000000")).send({ from: account2 });
 
     // Approve the new governorV2 in the Registry.
     const registry = await Registry.deployed();
