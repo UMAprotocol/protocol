@@ -2082,11 +2082,18 @@ describe("VotingV2", function () {
     );
 
     // Check that account 1 and account 4 received the correct amount of tokens.
-    // Account 1 should receive 32mm/(32mm+4mm)*51200=45511.111111111111111111
+    // Account 1 should receive 32mm/(32mm+4mm)*51200=45511.111...
     await voting.methods.updateTrackers(account1).send({ from: account1 });
     assert.equal(
       (await voting.methods.voterStakes(account1).call()).cumulativeStaked,
-      toWei("32000000").add(toBN("45511111111111111111111")) // Their original stake amount of 32mm.
+      toWei("32000000").add(toBN("45511111111111111111111"))
+    );
+
+    // Account 4 should receive 4mm/(32mm+4mm)*51200=5688.88...
+    await voting.methods.updateTrackers(account4).send({ from: account4 });
+    assert.equal(
+      (await voting.methods.voterStakes(account4).call()).cumulativeStaked,
+      toWei("4000000").add(toBN("5688888888888888888888")) // Their original stake amount of 32mm.
     );
   });
 });
