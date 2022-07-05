@@ -91,6 +91,7 @@ describe("VotingV2", function () {
           "42069", // emissionRate
           "420420", // Unstake cooldown
           69696969, // PhaseLength
+          7200, // minRollToNextRoundLength
           invalidGat, // GatPct
           votingToken.options.address, // voting token
           (await Finder.deployed()).options.address, // finder
@@ -1180,6 +1181,7 @@ describe("VotingV2", function () {
       "640000000000000000", // emission rate
       60 * 60 * 24 * 30, // unstakeCooldown
       "86400", // phase length
+      7200, // minRollToNextRoundLength
       { rawValue: web3.utils.toWei("0.05") }, // 5% GAT
       votingToken.options.address, // voting token
       (await Finder.deployed()).options.address, // finder
@@ -1249,6 +1251,7 @@ describe("VotingV2", function () {
           "696969", // emission rate
           "420420", // UnstakeCooldown
           "86400", // 1 day phase length
+          "7200", // 2 hours minRollToNextRoundLength
           { rawValue: web3.utils.toWei("0.05") }, // 5% GAT
           votingToken.options.address, // voting token
           (await Finder.deployed()).options.address, // finder
@@ -2070,3 +2073,4 @@ describe("VotingV2", function () {
 });
 
 // TODO: add tests for staking/ustaking during a voting round. this can only be done once we've decided on this locking mechanism.
+// TODO: add tests that validate rolled votes dont slash.

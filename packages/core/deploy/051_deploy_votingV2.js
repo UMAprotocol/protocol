@@ -22,12 +22,16 @@ const func = async function (hre) {
   // Set phase length to one day.
   const phaseLength = "86400";
 
+  // If a price request falls in the last 2 hours of the previous reveal phase then auto roll it to the next round.
+  const minRollToNextRoundLength = "7200";
+
   await deploy("VotingV2", {
     from: deployer,
     args: [
       emissionRate,
       unstakeCooldown,
       phaseLength,
+      minRollToNextRoundLength,
       gatPercentage,
       VotingToken.address,
       Finder.address,
