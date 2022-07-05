@@ -1989,7 +1989,7 @@ describe("VotingV2", function () {
     // await voting.methods.updateTrackers(account1).send({ from: account1 });
     assert.equal(
       (await voting.methods.voterStakes(account1).call()).cumulativeStaked,
-      toWei("32000000").add(toBN("119854253895946226051937")) // Their original stake amount of 32mm minus the slashing of 119822.22222.
+      toWei("32000000").add(toBN("119854253895946226051937")) // Their original stake amount of 32mm minus the slashing of 119854.25389.
     );
 
     // Account2 voted wrong the first time and did not vote the second time. They should get slashed at 32mm*0.0016=51200
