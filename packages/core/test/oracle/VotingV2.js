@@ -2142,9 +2142,6 @@ describe("VotingV2", function () {
     const hashAccTwo = computeVoteHash({ ...baseRequest2, price: losingPrice, account: account2, time: time2 });
     await voting.methods.commitVote(identifier, time2, hashAccTwo).send({ from: account2 });
 
-    // const hashAccThree = computeVoteHash({ ...baseRequest2, price: winningPrice, account: account3, time: time2 });
-    // await voting.methods.commitVote(identifier, time2, hashAccThree).send({ from: account3 });
-
     const hashAccFour = computeVoteHash({ ...baseRequest2, price: winningPrice, account: account4, time: time2 });
     await voting.methods.commitVote(identifier, time2, hashAccFour).send({ from: account4 });
 
@@ -2158,7 +2155,6 @@ describe("VotingV2", function () {
     // Non-governance request.
     await voting.methods.revealVote(identifier, time2, winningPrice, salt).send({ from: account1 });
     await voting.methods.revealVote(identifier, time2, losingPrice, salt).send({ from: account2 });
-    // await voting.methods.revealVote(identifier, time2, winningPrice, salt).send({ from: account3 });
     await voting.methods.revealVote(identifier, time2, winningPrice, salt).send({ from: account4 });
 
     await moveToNextRound(voting, accounts[0]);

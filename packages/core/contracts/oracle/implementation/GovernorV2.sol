@@ -123,8 +123,7 @@ contract GovernorV2 is MultiRole, Testable {
         bytes32 identifier = AdminIdentifierLib._constructIdentifier(id);
 
         // Request a vote on this proposal in the DVM.
-        OracleGovernanceInterface oracle = _getOracle();
-        oracle.requestGovernanceAction(identifier, time);
+        _getOracle().requestGovernanceAction(identifier, time);
 
         emit NewProposal(id, transactions);
     }
