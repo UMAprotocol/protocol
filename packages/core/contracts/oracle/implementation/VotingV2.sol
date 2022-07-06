@@ -7,6 +7,7 @@ import "../../common/implementation/FixedPoint.sol"; // TODO: remove this from t
 import "../interfaces/FinderInterface.sol";
 import "../interfaces/OracleInterface.sol";
 import "../interfaces/OracleAncillaryInterface.sol";
+import "../interfaces/OracleGovernanceInterface.sol";
 import "../interfaces/VotingV2Interface.sol";
 import "../interfaces/VotingAncillaryInterface.sol"; // TODO: remove this and simplify down to one v2 interface.
 import "../interfaces/IdentifierWhitelistInterface.sol";
@@ -21,8 +22,6 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
-import "hardhat/console.sol";
-
 /**
  * @title Voting system for Oracle.
  * @dev Handles receiving and resolving price requests via a commit-reveal voting scheme.
@@ -32,8 +31,8 @@ import "hardhat/console.sol";
 
 contract VotingV2 is
     Staker,
-    OracleInterface,
     OracleAncillaryInterface, // Interface to support ancillary data with price requests.
+    OracleGovernanceInterface, // Interface to support governance requests.
     VotingV2Interface,
     VotingAncillaryInterface // Interface to support ancillary data with voting rounds.
 {
@@ -60,6 +59,7 @@ contract VotingV2 is
         // The index in the `pendingPriceRequests` that references this PriceRequest. A value of UINT_MAX means that
         // this PriceRequest is resolved and has been cleaned up from `pendingPriceRequests`.
         uint256 index;
+        bool isGovernance;
         bytes ancillaryData;
     }
 
@@ -299,8 +299,8 @@ contract VotingV2 is
                 // The voter voted correctly. Receive a pro-rate share of the other voters slashed amounts as a reward.
             else
                 slash += int256(
-                    (((voterStake.cumulativeStaked * 1e18) / requestSlashingTrackers[i].totalCorrectVotes) *
-                        requestSlashingTrackers[i].totalSlashed) / 1e18
+                    (((voterStake.cumulativeStaked * requestSlashingTrackers[i].totalSlashed)) /
+                        requestSlashingTrackers[i].totalCorrectVotes)
                 );
 
             // If this is not the last price request to apply and the next request in the batch is from a subsequent
@@ -341,9 +341,10 @@ contract VotingV2 is
             uint256 stakedAtRound = rounds[priceRequestIds[i].roundId].cumulativeStakedAtRound;
             uint256 totalVotes = voteInstance.resultComputation.totalVotes.rawValue;
             uint256 totalCorrectVotes = voteInstance.resultComputation.getTotalCorrectlyVotedTokens().rawValue;
-
             uint256 wrongVoteSlashPerToken =
-                slashingLibrary.calcWrongVoteSlashPerToken(stakedAtRound, totalVotes, totalCorrectVotes);
+                priceRequest.isGovernance
+                    ? slashingLibrary.calcWrongVoteSlashPerTokenGovernance(stakedAtRound, totalVotes, totalCorrectVotes)
+                    : slashingLibrary.calcWrongVoteSlashPerToken(stakedAtRound, totalVotes, totalCorrectVotes);
             uint256 noVoteSlashPerToken =
                 slashingLibrary.calcNoVoteSlashPerToken(stakedAtRound, totalVotes, totalCorrectVotes);
 
@@ -374,9 +375,41 @@ contract VotingV2 is
         uint256 time,
         bytes memory ancillaryData
     ) public override onlyRegisteredContract() {
+        _requestPrice(identifier, time, ancillaryData, false);
+    }
+
+    /**
+     * @notice Enqueues a governance action request (if a request isn't already present) for the given `identifier`, `time` pair.
+     * @dev Time must be in the past and the identifier must be supported. The length of the ancillary data
+     * is limited such that this method abides by the EVM transaction gas limit.
+     * @param identifier uniquely identifies the price requested. eg BTC/USD (encoded as bytes32) could be requested.
+     * @param time unix timestamp for the price request.
+     */
+    function requestGovernanceAction(bytes32 identifier, uint256 time) public override onlyOwner() {
+        _requestPrice(identifier, time, "", true);
+    }
+
+    /**
+     * @notice Enqueues a request (if a request isn't already present) for the given `identifier`, `time` pair.
+     * @dev Time must be in the past and the identifier must be supported. The length of the ancillary data
+     * is limited such that this method abides by the EVM transaction gas limit.
+     * @param identifier uniquely identifies the price requested. eg BTC/USD (encoded as bytes32) could be requested.
+     * @param time unix timestamp for the price request.
+     * @param ancillaryData arbitrary data appended to a price request to give the voters more info from the caller.
+     * @param isGovernance indicates whether the request is for a governance action.
+     */
+    function _requestPrice(
+        bytes32 identifier,
+        uint256 time,
+        bytes memory ancillaryData,
+        bool isGovernance
+    ) internal {
         uint256 blockTime = getCurrentTime();
         require(time <= blockTime, "Can only request in past");
-        require(_getIdentifierWhitelist().isIdentifierSupported(identifier), "Unsupported identifier request");
+        require(
+            isGovernance || _getIdentifierWhitelist().isIdentifierSupported(identifier),
+            "Unsupported identifier request"
+        );
         require(ancillaryData.length <= ancillaryBytesLimit, "Invalid ancillary data");
 
         bytes32 priceRequestId = _encodePriceRequest(identifier, time, ancillaryData);
@@ -397,6 +430,7 @@ contract VotingV2 is
             newPriceRequest.lastVotingRound = nextRoundId;
             newPriceRequest.index = pendingPriceRequests.length;
             newPriceRequest.ancillaryData = ancillaryData;
+            newPriceRequest.isGovernance = isGovernance;
 
             pendingPriceRequests.push(priceRequestId);
             emit PriceRequestAdded(nextRoundId, identifier, time, ancillaryData);
