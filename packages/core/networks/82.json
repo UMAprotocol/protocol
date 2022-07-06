@@ -1,0 +1,78 @@
+[
+  {
+    "contractName": "Finder",
+    "address": "0x74f0D6b0Ea5B142052ca271f0087af20333304Bd"
+  },
+  {
+    "contractName": "OptimisticOracle",
+    "address": "0xd8343E437B946D40e4C53ce1e6fF39F64F334C36"
+  },
+  {
+    "contractName": "IdentifierWhitelist",
+    "address": "0xBDF9833DB18966fFdbAffAFA65361bEbdCB58031"
+  },
+  {
+    "contractName": "AddressWhitelist",
+    "address": "0x0a03D06B54EE0E027bA8533723EaFAa4F6116c3C"
+  },
+  {
+    "contractName": "Store",
+    "address": "0x93ceD74a6FC9789d5413D90fD14069DD2ED3e31e"
+  },
+  {
+    "contractName": "OracleSpoke",
+    "address": "0xa7bDa9CF96715a2967c19D929Cb1114EdB84846A"
+  },
+  {
+    "contractName": "GovernorSpoke",
+    "address": "0xC6a9f29E24d31dC8f29f75921A7ac173a211EB4a"
+  },
+  {
+    "contractName": "Admin_ChildMessenger",
+    "address": "0x32BdC966d58685EC6c771886421ee1528f21De4a"
+  },
+  {
+    "contractName": "Registry",
+    "address": "0x226Ff26cDD5C539a90d0b25E2F2720815E9bB596"
+  },
+  {
+    "contractName": "OptimisticOracleV2",
+    "address": "0x31C222e0D862827137ab5D4e8EE30c41Cc915a96"
+  },
+  {
+    "contractName": "TokenFactory",
+    "address": ""
+  },
+  {
+    "contractName": "CoveredCallLongShortPairFinancialProductLibrary",
+    "address": ""
+  },
+  {
+    "contractName": "RangeBondLongShortPairFinancialProductLibrary",
+    "address": ""
+  },
+  {
+    "contractName": "BinaryOptionLongShortPairFinancialProductLibrary",
+    "address": ""
+  },
+  {
+    "contractName": "LinearLongShortPairFinancialProductLibrary",
+    "address": ""
+  },
+  {
+    "contractName": "SimpleSuccessTokenLongShortPairFinancialProductLibrary",
+    "address": ""
+  },
+  {
+    "contractName": "SuccessTokenLongShortPairFinancialProductLibrary",
+    "address": ""
+  },
+  {
+    "contractName": "CappedYieldDollarLongShortPairFinancialProductLibrary",
+    "address": ""
+  },
+  {
+    "contractName": "LongShortPairCreator",
+    "address": ""
+  }
+]
