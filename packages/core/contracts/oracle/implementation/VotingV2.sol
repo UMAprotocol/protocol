@@ -550,8 +550,10 @@ contract VotingV2 is
 
         if (requestStatus == RequestStatus.NotRequested) {
             // Price has never been requested.
-            // Price requests always go in the next round, so add 1 to the computed current round.
-            uint256 roundIdToVoteRequest = voteTiming.computeRoundToVoteOnPriceRequest(blockTime);
+            // If the price request is a governance action then always place it in the following round. If the price
+            // request is a normal request then either place it in the next round or the following round based off
+            // the minRolllToNextRoundLength.
+            uint256 roundIdToVoteRequest = isGovernance? currentRoundId+1? voteTiming.computeRoundToVoteOnPriceRequest(blockTime);
 
             priceRequestIds.push(Request(priceRequestId, roundIdToVoteRequest));
 

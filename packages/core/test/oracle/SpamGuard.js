@@ -224,7 +224,6 @@ describe("SpamGuard", function () {
       toWei("60000000").sub(toWei("192000")) // Their original stake amount of 90mm sub the negative slash of 192k.
     );
   });
-  it("Blocks contract actions until spam has been deleted", async function () {});
   it("Correctly selects voting round based on request time", async function () {});
   it("Handles interspersed valid requests in deletion", async function () {});
   it("Correctly sends bond to store if voted down", async function () {});
