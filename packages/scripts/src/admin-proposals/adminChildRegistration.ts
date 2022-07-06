@@ -1,4 +1,9 @@
-// To run this on the localhost first fork mainnet into a local hardhat node by running:
+// This script can be used to register an arbitrary contract in a multi-sig (non-rollup) chain in
+// the network's Registry and Finder contracts deployments.
+// The scripts executes the required actions through the Admin_ChilMessenger of the target network.
+// Therefore the Wallet used need to be the owner of Admin_ChilMessenger.
+// The contract address and name to verify should be passed as environment variables: CONTRACT_ADDRESS and CONTRACT_NAME.
+// Run it with:
 // CONTRACT_ADDRESS=<CONTRACT_ADDRESS> \
 // CONTRACT_NAME=<CONTRACT_NAME> \
 // yarn hardhat run ./src/admin-proposals/adminChildRegistration.ts  --network <network>
@@ -39,7 +44,7 @@ async function main() {
     if (!addGovernorToRegistryTx.data) throw new Error("addGovernorToRegistryTx.data is empty");
     adminProposalTransactions.push({ to: registry.address, data: addGovernorToRegistryTx.data });
 
-    // 2. Register the CONTRACT_NAME as a verified contract.
+    // 2. Register the CONTRACT_ADDRESS as a verified contract.
     const registerNewContractTx = await registry.populateTransaction.registerContract([], newContractAddress);
     if (!registerNewContractTx.data) throw new Error("registerNewContractTx.data is empty");
     adminProposalTransactions.push({ to: registry.address, data: registerNewContractTx.data });
@@ -76,9 +81,11 @@ async function main() {
     [adminProposalTransactions]
   );
 
-  await adminChildMessenger.processMessageFromCrossChainParent(calldata, governor.address, {
+  const tx = await adminChildMessenger.processMessageFromCrossChainParent(calldata, governor.address, {
     gasLimit: 1_000_000,
   });
+
+  await tx.wait();
 
   console.log("Contract added to Registry and Finder successfully.");
 }
