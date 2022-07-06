@@ -40,6 +40,7 @@ contract DesignatedVotingV2 is Stakeable {
         _createExclusiveRole(uint256(Roles.Owner), uint256(Roles.Owner), ownerAddress);
         _createExclusiveRole(uint256(Roles.Voter), uint256(Roles.Owner), voterAddress);
         _setWithdrawRole(uint256(Roles.Owner));
+        _setStakeRole(uint256(Roles.Owner));
 
         finder = FinderInterface(finderAddress);
     }

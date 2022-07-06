@@ -104,7 +104,7 @@ describe("DesignatedVotingV2", function () {
       tokenBalance
     );
 
-    // only the token owner can request to unstake.
+    // Only the token owner can request to unstake.
     assert(
       await didContractThrow(
         designatedVoting.methods.requestUnstake(tokenBalance, voting.options.address).send({ from: voter })

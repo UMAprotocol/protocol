@@ -47,4 +47,14 @@ abstract contract Stakeable is Withdrawable {
         StakerInterface voting = StakerInterface(votingContract);
         voting.executeUnstake();
     }
+
+    /**
+     * @notice Internal method that allows derived contracts to choose the role for stakeable.
+     * @dev The role `setRoleId` must exist. Either this method or `_setStakeRole` must be
+     * called by the derived class for this contract to function properly.
+     * @param setRoleId ID corresponding to role whose members can stakeable.
+     */
+    function _setStakeRole(uint256 setRoleId) internal onlyValidRole(setRoleId) {
+        roleId = setRoleId;
+    }
 }
