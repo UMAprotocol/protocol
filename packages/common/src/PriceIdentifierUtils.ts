@@ -61,4 +61,5 @@ export const OPTIMISTIC_ORACLE_IGNORE = [
   "STABLESPREAD/USDC_18DEC",
   "DPI/ETH",
   "uSPAC10",
+  "ZODIAC",
 ];
