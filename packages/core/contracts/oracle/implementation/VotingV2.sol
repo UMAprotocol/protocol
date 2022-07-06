@@ -118,7 +118,7 @@ contract VotingV2 is
     }
 
     // TODO: consider replacing this structure with a linked list.
-    Request[] internal priceRequestIds;
+    Request[] public priceRequestIds;
 
     mapping(uint256 => uint256) public deletedRequestJumpMapping;
 
@@ -174,7 +174,6 @@ contract VotingV2 is
      ****************************************/
 
     uint256 spamDeletionProposalBond;
-    uint256 spamDeletionWindow = 7200; // A spam deletion proposal can be created in the first 2 hours of the commit phase.
 
     struct SpamDeletionRequest {
         uint256[2][] spamRequestIndices;
@@ -410,8 +409,6 @@ contract VotingV2 is
         votingToken.transferFrom(msg.sender, address(this), spamDeletionProposalBond);
         uint256 currentTime = getCurrentTime();
         uint256 currentRoundId = voteTiming.computeCurrentRoundId(currentTime);
-        uint256 commitStartTime = voteTiming.computeRoundEndTime(currentRoundId) - voteTiming.phaseLength;
-        require(currentTime < commitStartTime + spamDeletionWindow, "Must be in spamDeletionWindow");
         uint256 runningValidationIndex;
         for (uint256 i = 0; i < spamRequestIndices.length; i++) {
             // Check request end index is greater than start index.
@@ -469,6 +466,7 @@ contract VotingV2 is
             }
 
             // Return the spamDeletionProposalBond.
+            votingToken.transfer(spamDeletionProposals[proposalId].proposer, spamDeletionProposalBond);
         }
         // Else, the spam deletion request was voted down. In this case we send the spamDeletionProposalBond to the store.
         else {
@@ -511,12 +509,7 @@ contract VotingV2 is
      * @param identifier uniquely identifies the price requested. eg BTC/USD (encoded as bytes32) could be requested.
      * @param time unix timestamp for the price request.
      */
-    function requestGovernanceAction(bytes32 identifier, uint256 time)
-        public
-        override
-        onlyRegisteredContract()
-        onlyOwner()
-    {
+    function requestGovernanceAction(bytes32 identifier, uint256 time) public override onlyOwner() {
         _requestPrice(identifier, time, "", true);
     }
 
@@ -553,20 +546,21 @@ contract VotingV2 is
             // If the price request is a governance action then always place it in the following round. If the price
             // request is a normal request then either place it in the next round or the following round based off
             // the minRolllToNextRoundLength.
-            uint256 roundIdToVoteRequest = isGovernance? currentRoundId+1? voteTiming.computeRoundToVoteOnPriceRequest(blockTime);
+            uint256 roundIdToVoteOnPriceRequest =
+                isGovernance ? currentRoundId + 1 : voteTiming.computeRoundToVoteOnPriceRequest(blockTime);
 
-            priceRequestIds.push(Request(priceRequestId, roundIdToVoteRequest));
+            priceRequestIds.push(Request(priceRequestId, roundIdToVoteOnPriceRequest));
 
             PriceRequest storage newPriceRequest = priceRequests[priceRequestId];
             newPriceRequest.identifier = identifier;
             newPriceRequest.time = time;
-            newPriceRequest.lastVotingRound = roundIdToVoteRequest;
+            newPriceRequest.lastVotingRound = roundIdToVoteOnPriceRequest;
             newPriceRequest.index = pendingPriceRequests.length;
             newPriceRequest.ancillaryData = ancillaryData;
             newPriceRequest.isGovernance = isGovernance;
 
             pendingPriceRequests.push(priceRequestId);
-            emit PriceRequestAdded(roundIdToVoteRequest, identifier, time, ancillaryData);
+            emit PriceRequestAdded(roundIdToVoteOnPriceRequest, identifier, time, ancillaryData);
         }
     }
 
@@ -673,9 +667,9 @@ contract VotingV2 is
      * @notice Commit a vote for a price request for `identifier` at `time`.
      * @dev `identifier`, `time` must correspond to a price request that's currently in the commit phase.
      * Commits can be changed.
-     * @dev Since transaction data is public, the salt will be revealed with the vote. While this is the system’s expected behavior,
-     * voters should never reuse salts. If someone else is able to guess the voted price and knows that a salt will be reused, then
-     * they can determine the vote pre-reveal.
+     * @dev Since transaction data is public, the salt will be revealed with the vote. While this is the system’s
+     * expected behavior, voters should never reuse salts. If someone else is able to guess the voted price and knows
+     * that a salt will be reused, then they can determine the vote pre-reveal.
      * @param identifier uniquely identifies the committed vote. EG BTC/USD price pair.
      * @param time unix timestamp of the price being voted on.
      * @param ancillaryData arbitrary data appended to a price request to give the voters more info from the caller.
@@ -951,6 +945,10 @@ contract VotingV2 is
      */
     function getCurrentRoundId() public view override(VotingV2Interface, VotingAncillaryInterface) returns (uint256) {
         return voteTiming.computeCurrentRoundId(getCurrentTime());
+    }
+
+    function getRoundEndTime(uint256 roundId) public view returns (uint256) {
+        return voteTiming.computeRoundEndTime(roundId);
     }
 
     function getNumberOfPriceRequests() public view returns (uint256) {

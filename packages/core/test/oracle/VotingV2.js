@@ -2029,7 +2029,7 @@ describe("VotingV2", function () {
     const identifier = padRight(utf8ToHex("governance-price-request"), 64); // Use the same identifier for both.
     const time1 = "420";
 
-    // Register accounts[0] as a registered contract.
+    // Register accounts[0] as a the owner(mocks being the Governor.sol) contract.
     await registry.methods.registerContract([], accounts[0]).send({ from: accounts[0] });
 
     await voting.methods.requestGovernanceAction(identifier, time1).send({ from: accounts[0] });
@@ -2070,7 +2070,85 @@ describe("VotingV2", function () {
     assert.equal(slashingTracker1.totalSlashed, toWei("51200")); // 32mm*0.0016=102400
     assert.equal(slashingTracker1.totalCorrectVotes, toWei("36000000")); // 32mm + 4mm
   });
+  it("Correctly selects voting round based on request time", async function () {
+    // If requests are placed in the last minRollToNextRoundLength of a voting round then they should be placed in the
+    // subsequent voting round (auto rolled). minRollToNextRoundLength is set to 7200. i.e requests done 2 hours before
+    // the end of the reveal phase should be auto-rolled into the following round.
+
+    await moveToNextRound(voting, accounts[0]); // Move to the start of a voting round to be right at the beginning.
+    const startingVotingRoundId = Number(await voting.methods.getCurrentRoundId().call());
+
+    // Requesting prices now should place them in the following voting round (normal behaviour).
+    const identifier = padRight(utf8ToHex("slash-test"), 64); // Use the same identifier for both.
+    const time1 = "420";
+    await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
+    await voting.methods.requestPrice(identifier, time1).send({ from: registeredContract });
+
+    assert.equal((await voting.methods.priceRequestIds(0).call()).roundId, startingVotingRoundId + 1);
+
+    // Pending requests should return empty array as it only returns votes being voted on this round.
+    assert.equal((await voting.methods.getPendingRequests().call()).length, 0);
+
+    // If we move to the next phase we should now be able to vote on the requests and they should show up as active.
+    await moveToNextRound(voting, accounts[0]);
+    // Set the contract time to be exactly at the start of the current round.
+    const roundEndTime = Number(await voting.methods.getRoundEndTime(startingVotingRoundId + 1).call());
+    // Set time exactly 2 days before end of the current round to ensure we are aligned with the clock timers.
+    await voting.methods.setCurrentTime(roundEndTime - 60 * 60 * 24 * 2).send({ from: accounts[0] });
+    assert.equal(Number(await voting.methods.getCurrentRoundId().call()), startingVotingRoundId + 1);
+    const roundStartTime = Number(await voting.methods.getCurrentTime().call());
+
+    // There should now be one outstanding price request as we are in the active round. We can vote on it.
+    assert.equal((await voting.methods.getPendingRequests().call()).length, 1);
+    const salt = getRandomSignedInt(); // use the same salt for all votes. bad practice but wont impact anything.
+
+    let roundId = (await voting.methods.getCurrentRoundId().call()).toString();
+    const hash1 = computeVoteHash({ salt, roundId, identifier, price: 42069, account: account2, time: time1 });
+    await voting.methods.commitVote(identifier, time1, hash1).send({ from: account2 });
+    await moveToNextPhase(voting, accounts[0]);
+    assert.equal(Number(await voting.methods.getCurrentRoundId().call()), startingVotingRoundId + 1);
+    await voting.methods.revealVote(identifier, time1, 42069, salt).send({ from: account2 });
+
+    // Now, move to within the last minRollToNextRoundLength of the next round. If another price request happens in this
+    // period it should be place in the round after the next round as it's too close to the next round. To verify we are
+    // in time where we think we are we should be exactly 24 hours after the roundStartTime as we've done exactly one
+    // action of moveToNextPhase call. We can therefore advance the time to currentTime + 60 * 60 * 23 to be one hour
+    // before the end of the voting round.
+    const currentTime = Number(await voting.methods.getCurrentTime().call());
+    assert.equal(currentTime, roundStartTime + 60 * 60 * 24);
+    await voting.methods.setCurrentTime(currentTime + 60 * 60 * 23).send({ from: accounts[0] });
+    // We should still be in the same voting round.
+    assert.equal(Number(await voting.methods.getCurrentRoundId().call()), startingVotingRoundId + 1);
+
+    // now, when price requests happen they should be placed in the round after the current round.
+    const secondRequestRoundId = Number(await voting.methods.getCurrentRoundId().call());
+    await voting.methods.requestPrice(identifier, time1 + 1).send({ from: registeredContract });
+    assert.equal((await voting.methods.priceRequestIds(1).call()).roundId, secondRequestRoundId + 2);
+
+    // If we move to the next voting round you should not be able vote as the vote is not yet active (its only active
+    // in the subsequent round due to the roll).
+    await moveToNextRound(voting, accounts[0]);
+
+    // Commit call should revert as this can only be voted on in the next round due to the auto roll.
+    roundId = (await voting.methods.getCurrentRoundId().call()).toString();
+    const hash2 = computeVoteHash({ salt, roundId, identifier, price: 42069, account: account2, time: time1 + 1 });
+    assert(await didContractThrow(voting.methods.commitVote(identifier, time1 + 1, hash2).send({ from: account2 })));
+
+    // Move to the next voting phase and the next voting round. now, we should be able to vote on the second identifier.
+    await moveToNextPhase(voting, accounts[0]);
+    await moveToNextRound(voting, accounts[0]);
+    roundId = (await voting.methods.getCurrentRoundId().call()).toString();
+    const hash3 = computeVoteHash({ salt, roundId, identifier, price: 42069, account: account2, time: time1 + 1 });
+    await voting.methods.commitVote(identifier, time1 + 1, hash3).send({ from: account2 });
+    await moveToNextPhase(voting, accounts[0]);
+    await voting.methods.revealVote(identifier, time1 + 1, 42069, salt).send({ from: account2 });
+    await moveToNextRound(voting, accounts[0]);
+    assert.equal(
+      (await voting.methods.getPrice(identifier, time1 + 1).call({ from: registeredContract })).toString(),
+      "42069"
+    );
+  });
 });
 
 // TODO: add tests for staking/ustaking during a voting round. this can only be done once we've decided on this locking mechanism.
-// TODO: add tests that validate rolled votes dont slash.
+// TODO: test rolled votes behave as we'd expect.
