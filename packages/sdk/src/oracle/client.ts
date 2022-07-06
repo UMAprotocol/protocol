@@ -2,8 +2,10 @@ import assert from "assert";
 import { ethers } from "ethers";
 import Store, { Emit } from "./store";
 import type { state } from "./types";
+import type { FallbackProvider } from "./types/ethers";
 import { InputRequest, User } from "./types/state";
 import { Update } from "./services/update";
+import { OptimisticOracle } from "./services/optimisticOracle";
 import { StateMachine, setActiveRequestByTransaction } from "./services/statemachines";
 import { loop } from "../utils";
 import { toWei } from "../across/utils";
@@ -162,6 +164,19 @@ export class Client {
   }
 }
 
+function makeProvider(rpcUrls: string[]): FallbackProvider {
+  const providers = rpcUrls.map((url) => {
+    const provider = ethers.getDefaultProvider(url);
+    // turn off all polling, we will poll manually
+    provider.polling = false;
+    return provider;
+  });
+  const provider = new ethers.providers.FallbackProvider(providers, 1);
+  // turn off all polling, we will poll manually
+  provider.polling = false;
+  return provider;
+}
+
 export function factory(config: state.PartialConfig, emit: Emit): Client {
   const store = new Store(emit);
   const fullConfig = defaultConfig(config);
@@ -170,10 +185,13 @@ export function factory(config: state.PartialConfig, emit: Emit): Client {
     // maintains queryable ordered list of requests across all chains
     write.sortedRequestsService();
     for (const chain of Object.values(fullConfig.chains)) {
+      const provider = makeProvider(chain.rpcUrls);
       write.chains(chain.chainId).optimisticOracle().address(chain.optimisticOracleAddress);
-      write.services(chain.chainId).provider(chain.rpcUrls);
+      write.services(chain.chainId).provider(provider);
       write.services(chain.chainId).multicall2(chain.multicall2Address);
-      write.services(chain.chainId).optimisticOracle(chain.optimisticOracleAddress);
+      write
+        .services(chain.chainId)
+        .optimisticOracle(new OptimisticOracle(provider, chain.optimisticOracleAddress, chain.chainId));
     }
   });
   const update = new Update(store);

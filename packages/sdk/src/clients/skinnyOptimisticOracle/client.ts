@@ -93,12 +93,12 @@ export function parseRequest(request: SolidityRequest) {
   return {
     ...request,
     proposedPrice: request.proposedPrice.toString(),
-    resolvedPrice: request.proposedPrice.toString(),
-    expirationTime: Number(request.proposedPrice.toString()),
-    reward: request.proposedPrice.toString(),
-    finalFee: request.proposedPrice.toString(),
-    bond: request.proposedPrice.toString(),
-    customLiveness: request.proposedPrice.toString(),
+    resolvedPrice: request.resolvedPrice.toString(),
+    expirationTime: Number(request.expirationTime.toString()),
+    reward: request.reward.toString(),
+    finalFee: request.finalFee.toString(),
+    bond: request.bond.toString(),
+    customLiveness: request.customLiveness.toString(),
   };
 }
 
