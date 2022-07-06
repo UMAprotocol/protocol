@@ -25,8 +25,6 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
-import "hardhat/console.sol";
-
 /**
  * @title Voting system for Oracle.
  * @dev Handles receiving and resolving price requests via a commit-reveal voting scheme.
@@ -329,8 +327,8 @@ contract VotingV2 is
                 // The voter voted correctly. Receive a pro-rate share of the other voters slashed amounts as a reward.
             else
                 slash += int256(
-                    (((voterStake.cumulativeStaked * 1e18) / requestSlashingTrackers[i].totalCorrectVotes) *
-                        requestSlashingTrackers[i].totalSlashed) / 1e18
+                    (((voterStake.cumulativeStaked * requestSlashingTrackers[i].totalSlashed)) /
+                        requestSlashingTrackers[i].totalCorrectVotes)
                 );
 
             // If this is not the last price request to apply and the next request in the batch is from a subsequent
@@ -503,7 +501,7 @@ contract VotingV2 is
     }
 
     /**
-     * @notice Enqueues a request (if a request isn't already present) for the given `identifier`, `time` pair.
+     * @notice Enqueues a governance action request (if a request isn't already present) for the given `identifier`, `time` pair.
      * @dev Time must be in the past and the identifier must be supported. The length of the ancillary data
      * is limited such that this method abides by the EVM transaction gas limit.
      * @param identifier uniquely identifies the price requested. eg BTC/USD (encoded as bytes32) could be requested.
@@ -520,6 +518,7 @@ contract VotingV2 is
      * @param identifier uniquely identifies the price requested. eg BTC/USD (encoded as bytes32) could be requested.
      * @param time unix timestamp for the price request.
      * @param ancillaryData arbitrary data appended to a price request to give the voters more info from the caller.
+     * @param isGovernance indicates whether the request is for a governance action.
      */
     function _requestPrice(
         bytes32 identifier,

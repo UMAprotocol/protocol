@@ -32,6 +32,10 @@
     "address": "0x031A7882cE3e8b4462b057EBb0c3F23Cd731D234"
   },
   {
+    "contractName": "OptimisticOracleV2",
+    "address": "0x88Ad27C41AD06f01153E7Cd9b10cBEdF4616f4d5"
+  },
+  {
     "contractName": "Store",
     "address": "0x2d6FAD39059f5FCe80bFf691F8f0Bb30D5d4f214"
   },

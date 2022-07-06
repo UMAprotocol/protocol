@@ -1,3 +1,9 @@
+## UMIP 162 admin proposals
+
+This script generates and submits an upgrade transaction to add/upgrade the optimistic oracle in the DVM in
+the mainnet and layer 2 blockchains. It can be run on a local hardhat node fork of the mainnet or can be run
+directly on the mainnet to execute the upgrade transactions.
+
 1.Run a local forked node:
 
 ```
@@ -13,29 +19,40 @@ Optional: Set up the fork by impersonating the required accounts.
 ```
 
 2.1 Propose actions:
+Run:
 
 ```
 cd packages/scripts/
 ```
 
+Then run:
+
 ```
-OPTIMISTC_ORACLE_V2=<OPTIMISTC-ORACLE-V2-ADDRESS> yarn hardhat run ./src/upgrade-tests/162/1_Propose.ts --network localhost
+OPTIMISTIC_ORACLE_V2_10=<OPTIMISM-OOV2-ADDRESS> \
+NODE_URL_10=<OPTIMISM-NODE-URL> \
+\
+OPTIMISTIC_ORACLE_V2_288=<BOBA-OOV2-ADDRESS> \
+NODE_URL_288=<OPTIMISM-NODE-URL> \
+\
+OPTIMISTIC_ORACLE_V2_137=<POLYGON-OOV2-ADDRESS> \
+NODE_URL_137=<OPTIMISM-NODE-URL> \
+\
+OPTIMISTIC_ORACLE_V2_42161=<ARBITRUM-OOV2-ADDRESS> \
+NODE_URL_42161=<OPTIMISM-NODE-URL> \
+\
+OPTIMISTC_ORACLE_V2=<MAINNET-OOV2-ADDRESS> \
+\
+yarn hardhat run ./src/upgrade-tests/162/1_Propose.ts  --network localhost
 ```
 
-2.2 Simulate votes:
+2.2 Simulate votes and execute proposals:
 
 ```
 NODE_URL_1=http://127.0.0.1:9545/ node ./src/admin-proposals/simulateVote.js --network mainnet-fork
 ```
 
-2.3 Execute proposal:
+2.3 Verify the result:
 
 ```
-NODE_URL_1=http://127.0.0.1:9545/ node ./src/admin-proposals/executeProposal.js --network mainnet-fork --id <PROPOSAL-ID-FROM-2.2>
-```
-
-2.4 Verify the result:
-
-```
-OPTIMISTC_ORACLE_V2=<OPTIMISTC-ORACLE-V2-ADDRESS> yarn hardhat run ./src/upgrade-tests/162/3_Verify.ts --network localhost
+PROPOSAL_DATA=<PROPOSAL_DATA> yarn hardhat run ./src/upgrade-tests/162/2_Verify.ts --network localhost
 ```
