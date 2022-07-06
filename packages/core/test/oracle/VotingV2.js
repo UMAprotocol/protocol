@@ -28,6 +28,7 @@ const VotingToken = getContract("VotingToken");
 const VotingTest = getContract("VotingTest");
 const Timer = getContract("Timer");
 const SlashingLibrary = getContract("SlashingLibrary");
+
 const { utf8ToHex, padRight } = web3.utils;
 
 const toWei = (value) => toBN(web3.utils.toWei(value, "ether"));
@@ -1884,14 +1885,14 @@ describe("VotingV2", function () {
     // await voting.methods.updateTrackers(account1).send({ from: account1 });
     assert.equal(
       (await voting.methods.voterStakes(account1).call()).cumulativeStaked,
-      toWei("32000000").add(toBN("182044444444444444262400")) // Their original stake amount of 32mm plus the slash of 182044.4
+      toWei("32000000").add(toBN("182044444444444444444444")) // Their original stake amount of 32mm plus the slash of 182044.4
     );
 
     // Account4 has 4mm and should have gotten 4mm/(32mm+4mm) * 102400 * 2 = 22755.555 (their fraction of the total slashed)
     await voting.methods.updateTrackers(account4).send({ from: account4 });
     assert.equal(
       (await voting.methods.voterStakes(account4).call()).cumulativeStaked,
-      toWei("4000000").add(toBN("22755555555555555532800")) // Their original stake amount of 4mm plus the slash of 22755.555
+      toWei("4000000").add(toBN("22755555555555555555554")) // Their original stake amount of 4mm plus the slash of 22755.555
     );
   });
   it("votes slashed over multiple voting rounds with no claims in between", async function () {
@@ -1977,19 +1978,19 @@ describe("VotingV2", function () {
     const slashingTracker2 = await voting.methods.requestSlashingTrackers(1).call();
     assert.equal(slashingTracker2.wrongVoteSlashPerToken, toWei("0.0016"));
     assert.equal(slashingTracker2.noVoteSlashPerToken, toWei("0.0016"));
-    assert.equal(slashingTracker2.totalSlashed, toBN("57536284444444444444589"));
-    assert.equal(slashingTracker2.totalCorrectVotes, toBN("64039822222222222222131200"));
+    assert.equal(slashingTracker2.totalSlashed, toBN("57536284444444444444444"));
+    assert.equal(slashingTracker2.totalCorrectVotes, toBN("64039822222222222222222222"));
 
     // Now consider the impact on the individual voters cumulative staked amounts. This is a bit more complex than
     // previous tests as there was multiple voting rounds and voters were slashed between the rounds. Account1 voted
     // correctly both times. In the first voting round they should have accumulated 32mm/(36mm)*102400 = 91022.2222222
     // and in the second they accumulated (32mm+91022.2222222)/(64039822.222) * 57536.284432 = 28832.0316 (note here
     // we factored in the balance from round 1+ the rewards from round 1 and then took the their share of the total
-    // correct votes) resulting a a total positive slashing of 91022.2222222+28832.0316=119854.2538222
+    // correct votes) resulting a a total positive slashing of 91022.2222222+28832.0316=119854.2538959
     // await voting.methods.updateTrackers(account1).send({ from: account1 });
     assert.equal(
       (await voting.methods.voterStakes(account1).call()).cumulativeStaked,
-      toWei("32000000").add(toBN("119854253895946225951900")) // Their original stake amount of 32mm minus the slashing of 119822.22222.
+      toWei("32000000").add(toBN("119854253895946226051937")) // Their original stake amount of 32mm minus the slashing of 119854.25389.
     );
 
     // Account2 voted wrong the first time and did not vote the second time. They should get slashed at 32mm*0.0016=51200
@@ -2007,7 +2008,7 @@ describe("VotingV2", function () {
     await voting.methods.updateTrackers(account3).send({ from: account3 });
     assert.equal(
       (await voting.methods.voterStakes(account3).call()).cumulativeStaked,
-      toWei("32000000").sub(toBN("22495747229279559433648")) // Their original stake amount of 32mm minus the slash of 22495.7474
+      toWei("32000000").sub(toBN("22495747229279559385272")) // Their original stake amount of 32mm minus the slash of 22495.7474
     );
 
     // Account4 has 4mm and voted correctly the first time and wrong the second time. On the first vote they should have
@@ -2017,7 +2018,190 @@ describe("VotingV2", function () {
     await voting.methods.updateTrackers(account4).send({ from: account4 });
     assert.equal(
       (await voting.methods.voterStakes(account4).call()).cumulativeStaked,
-      toWei("4000000").add(toBN("4959573333333333321974")) // Their original stake amount of 4mm plus the slash of 4959.56.
+      toWei("4000000").add(toBN("4959573333333333333333")) // Their original stake amount of 4mm plus the slash of 4959.56.
+    );
+  });
+
+  it("governance requests don't slash wrong votes", async function () {
+    const identifier = padRight(utf8ToHex("governance-price-request"), 64); // Use the same identifier for both.
+    const time1 = "420";
+
+    // Register accounts[0] as a registered contract.
+    await registry.methods.registerContract([], accounts[0]).send({ from: accounts[0] });
+
+    await voting.methods.requestGovernanceAction(identifier, time1).send({ from: accounts[0] });
+    await moveToNextRound(voting, accounts[0]);
+    const roundId = (await voting.methods.getCurrentRoundId().call()).toString();
+
+    // Account1 and account4 votes correctly, account2 votes wrong and account3 does not vote..
+    // Commit votes.
+    const losingPrice = 1;
+    const salt = getRandomSignedInt(); // use the same salt for all votes. bad practice but wont impact anything.
+    const baseRequest = { salt, roundId, identifier };
+    const hash1 = computeVoteHash({ ...baseRequest, price: losingPrice, account: account2, time: time1 });
+
+    await voting.methods.commitVote(identifier, time1, hash1).send({ from: account2 });
+
+    const winningPrice = 0;
+    const hash2 = computeVoteHash({ ...baseRequest, price: winningPrice, account: account1, time: time1 });
+    await voting.methods.commitVote(identifier, time1, hash2).send({ from: account1 });
+
+    const hash3 = computeVoteHash({ ...baseRequest, price: winningPrice, account: account4, time: time1 });
+    await voting.methods.commitVote(identifier, time1, hash3).send({ from: account4 });
+
+    await moveToNextPhase(voting, accounts[0]); // Reveal the votes.
+
+    await voting.methods.revealVote(identifier, time1, losingPrice, salt).send({ from: account2 });
+    await voting.methods.revealVote(identifier, time1, winningPrice, salt).send({ from: account1 });
+    await voting.methods.revealVote(identifier, time1, winningPrice, salt).send({ from: account4 });
+
+    await moveToNextRound(voting, accounts[0]);
+
+    // Now call updateTrackers to update the slashing metrics. We should see a cumulative slashing amount increment and
+    // the slash per wrong vote and slash per no vote set correctly.
+    await voting.methods.updateTrackers(account1).send({ from: account1 });
+
+    const slashingTracker1 = await voting.methods.requestSlashingTrackers(0).call();
+    assert.equal(slashingTracker1.wrongVoteSlashPerToken, toWei("0")); // No wrong vote slashing.
+    assert.equal(slashingTracker1.noVoteSlashPerToken, toWei("0.0016"));
+    assert.equal(slashingTracker1.totalSlashed, toWei("51200")); // 32mm*0.0016=51200
+    assert.equal(slashingTracker1.totalCorrectVotes, toWei("36000000")); // 32mm + 4mm
+
+    // Check that account3 is slashed for not voting.
+    await voting.methods.updateTrackers(account3).send({ from: account3 });
+    assert.equal(
+      (await voting.methods.voterStakes(account3).call()).cumulativeStaked,
+      toWei("32000000").sub(toWei("51200")) // Their original stake amount of 32mm minus the slash of 51200
+    );
+
+    // Check that account2 is not slashed for voting wrong.
+    await voting.methods.updateTrackers(account2).send({ from: account2 });
+    assert.equal(
+      (await voting.methods.voterStakes(account2).call()).cumulativeStaked,
+      toWei("32000000") // Their original stake amount of 32mm.
+    );
+
+    // Check that account 1 and account 4 received the correct amount of tokens.
+    // Account 1 should receive 32mm/(32mm+4mm)*51200=45511.111...
+    await voting.methods.updateTrackers(account1).send({ from: account1 });
+    assert.equal(
+      (await voting.methods.voterStakes(account1).call()).cumulativeStaked,
+      toWei("32000000").add(toBN("45511111111111111111111"))
+    );
+
+    // Account 4 should receive 4mm/(32mm+4mm)*51200=5688.88...
+    await voting.methods.updateTrackers(account4).send({ from: account4 });
+    assert.equal(
+      (await voting.methods.voterStakes(account4).call()).cumulativeStaked,
+      toWei("4000000").add(toBN("5688888888888888888888")) // Their original stake amount of 32mm.
+    );
+  });
+
+  it("governance and non-governance requests work together well", async function () {
+    const identifier = padRight(utf8ToHex("gov-no-gov-combined-request"), 64); // Use the same identifier for both.
+    await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
+
+    const time1 = "420";
+
+    // Register accounts[0] as a registered contract.
+    await registry.methods.registerContract([], accounts[0]).send({ from: accounts[0] });
+
+    await voting.methods.requestGovernanceAction(identifier, time1).send({ from: accounts[0] });
+
+    const time2 = "690";
+    await voting.methods.requestPrice(identifier, time2).send({ from: registeredContract });
+
+    await moveToNextRound(voting, accounts[0]);
+    const roundId = (await voting.methods.getCurrentRoundId().call()).toString();
+
+    const winningPrice = 0;
+    const losingPrice = 1;
+
+    // Account1 and account4 votes correctly, account2 votes wrong and account3 does not vote..
+    // Commit votes.
+    // Governance request.
+
+    const salt = getRandomSignedInt(); // use the same salt for all votes. bad practice but wont impact anything.
+    const baseRequest = { salt, roundId, identifier };
+    const hash1 = computeVoteHash({ ...baseRequest, price: losingPrice, account: account2, time: time1 });
+
+    await voting.methods.commitVote(identifier, time1, hash1).send({ from: account2 });
+
+    const hash2 = computeVoteHash({ ...baseRequest, price: winningPrice, account: account1, time: time1 });
+    await voting.methods.commitVote(identifier, time1, hash2).send({ from: account1 });
+
+    const hash3 = computeVoteHash({ ...baseRequest, price: winningPrice, account: account4, time: time1 });
+    await voting.methods.commitVote(identifier, time1, hash3).send({ from: account4 });
+
+    // Non-governance request.
+    const baseRequest2 = { salt, roundId: roundId, identifier };
+
+    const hashAccOne = computeVoteHash({ ...baseRequest2, price: winningPrice, account: account1, time: time2 });
+    await voting.methods.commitVote(identifier, time2, hashAccOne).send({ from: account1 });
+
+    const hashAccTwo = computeVoteHash({ ...baseRequest2, price: losingPrice, account: account2, time: time2 });
+    await voting.methods.commitVote(identifier, time2, hashAccTwo).send({ from: account2 });
+
+    const hashAccFour = computeVoteHash({ ...baseRequest2, price: winningPrice, account: account4, time: time2 });
+    await voting.methods.commitVote(identifier, time2, hashAccFour).send({ from: account4 });
+
+    await moveToNextPhase(voting, accounts[0]); // Reveal the votes.
+
+    // Governance request.
+    await voting.methods.revealVote(identifier, time1, winningPrice, salt).send({ from: account1 });
+    await voting.methods.revealVote(identifier, time1, losingPrice, salt).send({ from: account2 });
+    await voting.methods.revealVote(identifier, time1, winningPrice, salt).send({ from: account4 });
+
+    // Non-governance request.
+    await voting.methods.revealVote(identifier, time2, winningPrice, salt).send({ from: account1 });
+    await voting.methods.revealVote(identifier, time2, losingPrice, salt).send({ from: account2 });
+    await voting.methods.revealVote(identifier, time2, winningPrice, salt).send({ from: account4 });
+
+    await moveToNextRound(voting, accounts[0]);
+
+    // Now call updateTrackers to update the slashing metrics. We should see a cumulative slashing amount increment and
+    // the slash per wrong vote and slash per no vote set correctly.
+    await voting.methods.updateTrackers(account1).send({ from: account1 });
+
+    const slashingTracker1 = await voting.methods.requestSlashingTrackers(0).call();
+    assert.equal(slashingTracker1.wrongVoteSlashPerToken, toWei("0")); // No wrong vote slashing.
+    assert.equal(slashingTracker1.noVoteSlashPerToken, toWei("0.0016"));
+    assert.equal(slashingTracker1.totalSlashed, toWei("51200")); // 32mm*0.0016=51200
+    assert.equal(slashingTracker1.totalCorrectVotes, toWei("36000000")); // 32mm + 4mm
+
+    const slashingTracker2 = await voting.methods.requestSlashingTrackers(1).call();
+    assert.equal(slashingTracker2.wrongVoteSlashPerToken, toWei("0.0016")); // One wrong vote slashing.
+    assert.equal(slashingTracker2.noVoteSlashPerToken, toWei("0.0016"));
+    assert.equal(slashingTracker2.totalSlashed, toWei("102400")); // 32mm*0.0016 + 32mm*0.0016=51200
+    assert.equal(slashingTracker1.totalCorrectVotes, toWei("36000000")); // 32mm + 4mm
+
+    // Check that account3 is slashed for not voting two times
+    await voting.methods.updateTrackers(account3).send({ from: account3 });
+    assert.equal(
+      (await voting.methods.voterStakes(account3).call()).cumulativeStaked,
+      toWei("32000000").sub(toWei("102400")) // Their original stake amount of 32mm minus the slash of 51200
+    );
+
+    // Check that account2 is only slashed for voting wrong in the second non-governance request.
+    await voting.methods.updateTrackers(account2).send({ from: account2 });
+    assert.equal(
+      (await voting.methods.voterStakes(account2).call()).cumulativeStaked,
+      toWei("32000000").sub(toWei("51200"))
+    );
+
+    // Check that account 1 and account 4 received the correct amount of tokens.
+    // Account 1 should receive 32mm/(32mm+4mm)*153600=136533.33...
+    await voting.methods.updateTrackers(account1).send({ from: account1 });
+    assert.equal(
+      (await voting.methods.voterStakes(account1).call()).cumulativeStaked,
+      toWei("32000000").add(toBN("136533333333333333333333"))
+    );
+
+    // Account 4 should receive 4mm/(32mm+4mm)*153600=17066.66...
+    await voting.methods.updateTrackers(account4).send({ from: account4 });
+    assert.equal(
+      (await voting.methods.voterStakes(account4).call()).cumulativeStaked,
+      toWei("4000000").add(toBN("17066666666666666666665"))
     );
   });
 });

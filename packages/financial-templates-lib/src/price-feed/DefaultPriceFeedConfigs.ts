@@ -337,6 +337,8 @@ export const defaultConfigs: { [name: string]: { type: string; [key: string]: an
   },
   BTCDOM: { type: "domfi", pair: "BTCDOM", minTimeBetweenUpdates: 60, lookback: 7200 },
   ALTDOM: { type: "domfi", pair: "ALTDOM", minTimeBetweenUpdates: 60, lookback: 7200 },
+  ETHDOM: { type: "domfi", pair: "ETHDOM", minTimeBetweenUpdates: 60, lookback: 7200 },
+  USDTDOM: { type: "domfi", pair: "USDTDOM", minTimeBetweenUpdates: 60, lookback: 7200 },
   AMPLUSD: {
     type: "medianizer",
     lookback: 7200,

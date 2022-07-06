@@ -64,6 +64,11 @@ hub.post("/", async (req, res) => {
     if (!req.body.bucket || !req.body.configFile) {
       throw new Error("Body missing json bucket or file parameters!");
     }
+
+    // Allow the request to override the spoke rejection timeout.
+    const spokeRejectionTimeout =
+      req.body.rejectSpokeDelay !== undefined ? parseInt(req.body.rejectSpokeDelay) : hubConfig.rejectSpokeDelay;
+
     // Get the config file from the GCP bucket if running in production mode. Else, pull the config from env.
     const configObject = await _fetchConfig(req.body.bucket, req.body.configFile);
     if (!configObject)
@@ -178,10 +183,7 @@ hub.post("/", async (req, res) => {
       );
       botConfigs[botName] = botConfig;
       promiseArray.push(
-        Promise.race([
-          _executeServerlessSpoke(spokeUrl, botConfig),
-          _rejectAfterDelay(hubConfig.rejectSpokeDelay, botName),
-        ])
+        Promise.race([_executeServerlessSpoke(spokeUrl, botConfig), _rejectAfterDelay(spokeRejectionTimeout, botName)])
       );
     }
     logger.debug({ at: "ServerlessHub", message: "Executing Serverless spokes", botConfigs });
@@ -217,7 +219,7 @@ hub.post("/", async (req, res) => {
         rejectedRetryPromiseArray.push(
           Promise.race([
             _executeServerlessSpoke(spokeUrl, botConfigs[botName]),
-            _rejectAfterDelay(hubConfig.rejectSpokeDelay, botName),
+            _rejectAfterDelay(spokeRejectionTimeout, botName),
           ])
         );
       });
