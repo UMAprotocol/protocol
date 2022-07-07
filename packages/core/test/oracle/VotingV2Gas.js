@@ -267,6 +267,27 @@ describe("VotingV2 gas usage", function () {
     assertGasVariation(gasUsed, expectedGas, this.test.title);
   });
 
+  it("Voter doesn't vote in 100 rounds", async function () {
+    const expectedGas = 7975738;
+    let receipt;
+    let gasUsed = 0;
+    const identifier = padRight(utf8ToHex("simple-vote"), 64);
+    let time = 1000;
+
+    await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
+
+    for (let i = 0; i < 100; i++) {
+      await voting.methods.requestPrice(identifier, time).send({ from: registeredContract });
+      await moveToNextRound(voting, accounts[0]);
+      time++;
+    }
+
+    receipt = await voting.methods.updateTrackers(account1).send({ from: account1 });
+    gasUsed += receipt.gasUsed;
+
+    assertGasVariation(gasUsed, expectedGas, this.test.title);
+  });
+
   // it("Multiple votes in the same voting round slash cumulatively", async function () {
   //   const expectedGas = 375150;
   //   let receipt;
