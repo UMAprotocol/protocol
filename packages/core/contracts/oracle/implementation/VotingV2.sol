@@ -278,7 +278,7 @@ contract VotingV2 is
 
         // Traverse all requests from the last considered request. For each request see if the voter voted correctly or
         // not. Based on the outcome, attribute the associated slash to the voter.
-        for (uint256 i = voterStake.lastRequestIndexConsidered; i < priceRequestIds.length; i++) {
+        for (uint256 i = voterStake.lastRequestIndexConsidered; i < priceRequestIds.length; i = unsafe_inc(i)) {
             PriceRequest storage priceRequest = priceRequests[priceRequestIds[i].requestId];
             VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
             uint256 roundId = priceRequestIds[i].roundId;
@@ -332,7 +332,7 @@ contract VotingV2 is
         // the associated slashing rates as a function of the total staked, total votes and total correct votes. Note
         // that this method in almost all cases will only need to traverse one request as slashing trackers are updated
         // on every commit and so it is not too computationally inefficient.
-        for (uint256 i = lastRequestIndexConsidered; i < priceRequestIds.length; i++) {
+        for (uint256 i = lastRequestIndexConsidered; i < priceRequestIds.length; i = unsafe_inc(i)) {
             PriceRequest storage priceRequest = priceRequests[priceRequestIds[i].requestId];
             VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
             uint256 roundId = priceRequestIds[i].roundId;
@@ -1004,6 +1004,10 @@ contract VotingV2 is
             // Means than priceRequest.lastVotingRound > currentRoundId
             return RequestStatus.Future;
         }
+    }
+
+    function unsafe_inc(uint256 x) internal pure returns (uint256) {
+        unchecked { return x + 1; }
     }
 
     function _getIdentifierWhitelist() private view returns (IdentifierWhitelistInterface supportedIdentifiers) {
