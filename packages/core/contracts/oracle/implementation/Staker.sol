@@ -94,7 +94,7 @@ contract Staker is Ownable, Testable {
         VoterStake storage voterStake = voterStakes[msg.sender];
 
         if (voterStake.outstandingRewards > 0) {
-            require(votingToken.mint(msg.sender, voterStake.outstandingRewards), "Voting token issuance failed");
+            require(votingToken.mint(msg.sender, voterStake.outstandingRewards));
             voterStake.outstandingRewards = 0;
         }
     }
