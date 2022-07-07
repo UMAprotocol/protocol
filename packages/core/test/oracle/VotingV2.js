@@ -2334,6 +2334,7 @@ describe("VotingV2", function () {
   it("Can delegate voting to another address to vote on your stakes behalf", async function () {
     // Delegate from account1 to rand.
     await voting.methods.delegateVoting(rand).send({ from: account1 });
+    await voting.methods.acceptDelegation(account1).send({ from: rand });
 
     // State variables should be set correctly.
     assert.equal((await voting.methods.voterStakes(account1).call()).delegateVoting, rand);
@@ -2375,11 +2376,38 @@ describe("VotingV2", function () {
     // Account1 has a staked balance so cant be used by account2 in delegation.
     assert(await didContractThrow(voting.methods.delegateVoting(account1).send({ from: account2 })));
 
-    // Equally, if rand is used as a delegator it cant ever stake tokens.
+    // Before the user accepts  the delegation they can stake but after they accept it they can no longer stake.
     await voting.methods.delegateVoting(rand).send({ from: account1 });
     await votingToken.methods.mint(rand, toWei("100")).send({ from: accounts[0] });
     await votingToken.methods.approve(voting.options.address, toWei("100")).send({ from: rand });
-    assert(await didContractThrow(voting.methods.stake(toWei("100")).send({ from: rand })));
+
+    // Should be able to stake before accepting the delegation.
+    await voting.methods.stake(toWei("50")).send({ from: rand });
+
+    // After accepting the delegation can no longer stake.
+    await voting.methods.acceptDelegation(account1).send({ from: rand });
+    assert(await didContractThrow(voting.methods.stake(toWei("50")).send({ from: rand })));
+  });
+
+  it("Stakers can revoke a delegate", async function () {
+    await voting.methods.delegateVoting(rand).send({ from: account1 });
+    await voting.methods.acceptDelegation(account1).send({ from: rand });
+    assert.equal((await voting.methods.voterStakes(account1).call()).delegateVoting, rand);
+    assert.equal(await voting.methods.delegateToStaker(rand).call(), account1);
+
+    // Cant try and remove a non-delegate.
+    assert(await didContractThrow(voting.methods.revokeDelegation(account1).send({ from: account2 })));
+
+    // Non-staker can't revoke a delegate.
+    assert(await didContractThrow(voting.methods.revokeDelegation(account1).send({ from: account2 })));
+
+    // Remove the delegation.
+    await voting.methods.revokeDelegation(rand).send({ from: account1 });
+    assert.equal((await voting.methods.voterStakes(account1).call()).delegateVoting, ZERO_ADDRESS);
+    assert.equal(await voting.methods.delegateToStaker(rand).call(), ZERO_ADDRESS);
+  });
+  it("Delegate must accept delegation", async function () {
+    // TODO: Add a test to verify the delegate can accept the delegation and the lack of this block actions.
   });
 });
 

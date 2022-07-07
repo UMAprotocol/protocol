@@ -890,10 +890,27 @@ contract VotingV2 is
         batchReveal(revealsAncillary);
     }
 
-    function delegateVoting(address newDelegate) public {
-        require(voterStakes[newDelegate].cumulativeStaked == 0, "Cant delegate to existing staker");
-        voterStakes[msg.sender].delegateVoting = newDelegate;
-        delegateToStaker[newDelegate] = msg.sender;
+    function delegateVoting(address delegate) public {
+        require(voterStakes[delegate].cumulativeStaked == 0, "Cant delegate to existing staker");
+        require(delegateToStaker[delegate] == address(0), "Delegate already used");
+        voterStakes[msg.sender].delegateVoting = delegate;
+    }
+
+    function acceptDelegation(address delegator) public {
+        require(voterStakes[delegator].delegateVoting == msg.sender, "Delegator didn't delegate to you");
+        require(delegateToStaker[msg.sender] == address(0), "Delegation already set");
+        delegateToStaker[msg.sender] = delegator;
+    }
+
+    function revokeDelegation(address existingDelegate) public {
+        require(
+            voterStakes[msg.sender].delegateVoting == existingDelegate &&
+                delegateToStaker[existingDelegate] == msg.sender,
+            "Bad staker existingDelegate"
+        );
+
+        voterStakes[msg.sender].delegateVoting = address(0);
+        delete delegateToStaker[existingDelegate];
     }
 
     /****************************************
