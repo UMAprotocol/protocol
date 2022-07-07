@@ -111,7 +111,7 @@ describe("AncillaryData", function () {
     // Test 3: ancillary data is utf8 decodeable but not key:value syntax:
     originalAncillaryData = utf8ToHex("ignore this syntax");
     assert.equal(
-      await ancillaryDataTest.methods.appendKeyValueAddress(originalAncillaryData, keyName, value).call(),arydata.sol
+      await ancillaryDataTest.methods.appendKeyValueAddress(originalAncillaryData, keyName, value).call(),
       utf8ToHex(`ignore this syntax,address:${value.substr(2).toLowerCase()}`),
       "Should be able to utf8-decode the entire ancillary data"
     );
