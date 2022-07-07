@@ -38,7 +38,7 @@
   "main": "dist/src/index.js",
   "scripts": {
     "build": "tsc -b",
-    "test": "hardhat test"
+    "test": "NODE_OPTIONS=--max-old-space-size=4096 hardhat test"
   },
   "bugs": {
     "url": "https://github.com/UMAprotocol/protocol/issues"
