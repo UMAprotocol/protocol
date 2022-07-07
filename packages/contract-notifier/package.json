@@ -6,6 +6,7 @@
   "license": "AGPL-3.0-or-later",
   "main": "index.js",
   "dependencies": {
+    "@google-cloud/datastore": "^7.0.0",
     "@uma/common": "^2.22.0",
     "@uma/financial-templates-lib": "^2.29.0",
     "async-retry": "^1.3.1",
