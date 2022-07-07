@@ -278,7 +278,8 @@ contract VotingV2 is
 
         // Traverse all requests from the last considered request. For each request see if the voter voted correctly or
         // not. Based on the outcome, attribute the associated slash to the voter.
-        for (uint256 i = voterStake.lastRequestIndexConsidered; i < priceRequestIds.length; i++) {
+        uint256 priceRequestIdsLength = priceRequestIds.length;
+        for (uint256 i = voterStake.lastRequestIndexConsidered; i < priceRequestIdsLength; i++) {
             PriceRequest storage priceRequest = priceRequests[priceRequestIds[i].requestId];
             VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
             uint256 roundId = priceRequestIds[i].roundId;
@@ -307,7 +308,7 @@ contract VotingV2 is
             // round then apply the slashing now. Else, do nothing and apply the slashing after the loop concludes.
             // This acts to apply slashing within a round as independent actions: multiple votes within the same round
             // should not impact each other but subsequent rounds should impact each other.
-            if (priceRequestIds.length - i > 1 && roundId != priceRequestIds[i + 1].roundId) {
+            if (priceRequestIdsLength - i > 1 && roundId != priceRequestIds[i + 1].roundId) {
                 applySlashToVoter(slash, voterAddress);
                 slash = 0;
             }
