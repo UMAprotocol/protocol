@@ -332,13 +332,14 @@ contract VotingV2 is
         // the associated slashing rates as a function of the total staked, total votes and total correct votes. Note
         // that this method in almost all cases will only need to traverse one request as slashing trackers are updated
         // on every commit and so it is not too computationally inefficient.
-        for (uint256 i = lastRequestIndexConsidered; i < priceRequestIds.length; i++) {
-            PriceRequest storage priceRequest = priceRequests[priceRequestIds[i].requestId];
+        Request[] memory priceRequestIdsMemo = priceRequestIds;
+        for (uint256 i = lastRequestIndexConsidered; i < priceRequestIdsMemo.length; i++) {
+            PriceRequest storage priceRequest = priceRequests[priceRequestIdsMemo[i].requestId];
             VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
-            uint256 roundId = priceRequestIds[i].roundId;
+            uint256 roundId = priceRequestIdsMemo[i].roundId;
 
             if (roundId == voteTiming.computeCurrentRoundId(getCurrentTime())) continue; // Cant slash for the current round.
-            uint256 stakedAtRound = rounds[priceRequestIds[i].roundId].cumulativeStakedAtRound;
+            uint256 stakedAtRound = rounds[priceRequestIdsMemo[i].roundId].cumulativeStakedAtRound;
             uint256 totalVotes = voteInstance.resultComputation.totalVotes.rawValue;
             uint256 totalCorrectVotes = voteInstance.resultComputation.getTotalCorrectlyVotedTokens().rawValue;
             uint256 wrongVoteSlashPerToken =
