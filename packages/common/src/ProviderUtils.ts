@@ -47,6 +47,7 @@ export function getNodeUrl(networkName: string, useHttps = false, chainId: numbe
     if (name === "sx") return overrideUrl || "https://rpc.sx.technology";
     if (name === "avalanche") return overrideUrl || "https://api.avax.network/ext/bc/C/rpc";
     if (name === "evmos") return overrideUrl || "https://evmos-json-rpc.stakely.io";
+    if (name === "meter") return overrideUrl || "https://rpc.meter.io";
     return (
       overrideUrl ||
       (useHttps ? `https://${name}.infura.io/v3/${infuraApiKey}` : `wss://${name}.infura.io/ws/v3/${infuraApiKey}`)

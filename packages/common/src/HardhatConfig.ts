@@ -160,6 +160,11 @@ export function getHardhatConfig(
         url: getNodeUrl("evmos", true, 9001),
         accounts: { mnemonic },
       },
+      meter: {
+        chainId: 82,
+        url: getNodeUrl("meter", true, 82),
+        accounts: { mnemonic },
+      },
     },
     mocha: { timeout: 1800000 },
     etherscan: {

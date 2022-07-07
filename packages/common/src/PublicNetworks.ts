@@ -59,6 +59,7 @@ export const PublicNetworks: PublicNetworksType = {
     wethAddress: "0xd0A1E359811322d97991E03f863a0C30C2cF029C",
   },
   69: { name: "optimism-kovan", etherscan: "https://kovan-optimistic.etherscan.io/" },
+  82: { name: "meter", etherscan: "https://scan.meter.io/" },
   100: { name: "xdai", etherscan: "https://blockscout.com/xdai/mainnet" },
   137: {
     name: "polygon-matic",
