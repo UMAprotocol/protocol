@@ -366,7 +366,6 @@ contract VotingV2 is
 
             PriceRequest storage priceRequest = priceRequests[priceRequestIds[i].requestId];
             VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
-            uint256 roundId = priceRequestIds[i].roundId;
 
             // Cant slash this or any subsequent requests if the request is not settled. TODO: this has implications for
             // rolled votes and should be considered closely.
@@ -403,7 +402,6 @@ contract VotingV2 is
     function signalRequestsAsSpamForDeletion(uint256[2][] memory spamRequestIndices) public {
         votingToken.transferFrom(msg.sender, address(this), spamDeletionProposalBond);
         uint256 currentTime = getCurrentTime();
-        uint256 currentRoundId = voteTiming.computeCurrentRoundId(currentTime);
         uint256 runningValidationIndex;
         for (uint256 i = 0; i < spamRequestIndices.length; i++) {
             // Check request end index is greater than start index.
@@ -743,14 +741,18 @@ contract VotingV2 is
         VoteInstance storage voteInstance = _getPriceRequest(identifier, time, ancillaryData).voteInstances[roundId];
         VoteSubmission storage voteSubmission = voteInstance.voteSubmissions[voter];
 
-        // Scoping to get rid of a stack too deep error.
+        // Scoping to get rid of a stack too deep errors for require messages.
         {
-        require(voteTiming.computeCurrentPhase(getCurrentTime()) == Phase.Reveal, "Cannot reveal in commit phase");
+            // Can only reveal in the reveal phase.
+            require(voteTiming.computeCurrentPhase(getCurrentTime()) == Phase.Reveal, "Cannot reveal in commit phase");
             // 0 hashes are disallowed in the commit phase, so they indicate a different error.
             // Cannot reveal an uncommitted or previously revealed hash
             require(voteSubmission.commit != bytes32(0), "Invalid hash reveal");
+
+            // Check that the hash that was committed matches to the one that was revealed. Note that if the voter had
+            // delegated this means that they must reveal with the same account they had committed with.
             require(
-                keccak256(abi.encodePacked(price, salt, voter, time, ancillaryData, roundId, identifier)) ==
+                keccak256(abi.encodePacked(price, salt, msg.sender, time, ancillaryData, roundId, identifier)) ==
                     voteSubmission.commit,
                 "Revealed data != commit hash"
             );
@@ -769,6 +771,7 @@ contract VotingV2 is
         // Add vote to the results.
         voteInstance.resultComputation.addVote(price, balance);
 
+        //TODO: update this event for the delegate information now included.
         emit VoteRevealed(voter, roundId, identifier, time, price, ancillaryData, balance.rawValue);
     }
 
@@ -888,6 +891,7 @@ contract VotingV2 is
     }
 
     function delegateVoting(address newDelegate) public {
+        require(voterStakes[newDelegate].cumulativeStaked == 0, "Cant delegate to existing staker");
         voterStakes[msg.sender].delegateVoting = newDelegate;
         delegateToStaker[newDelegate] = msg.sender;
     }

@@ -49,6 +49,7 @@ contract Staker is Ownable, Testable {
 
     // Pulls tokens from users wallet and stakes them.
     function stake(uint256 amount) public {
+        require(delegateToStaker[msg.sender] == address(0), "Staker cant be a delegate");
         _updateTrackers(msg.sender);
         voterStakes[msg.sender].cumulativeStaked += amount;
         cumulativeStaked += amount;
