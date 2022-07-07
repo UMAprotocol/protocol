@@ -4,7 +4,8 @@ import sortedLastIndex from "lodash/sortedLastIndex";
 import { exists } from "../../utils";
 import { requestId } from "../utils";
 
-import { RequestIndex, RequestIndexes, InputRequest } from "../types/state";
+import { Request, Requests } from "../types/interfaces";
+import { InputRequest } from "../types/state";
 
 // this was copied out of store and made to be 1. a class, and 2. sync.  Could not modify old implementation since
 // other services rely on this currently and it causes cascading refactors. This has been copied without modification to logic.
@@ -81,18 +82,19 @@ export class SortedStore<Id, Data> {
   };
 }
 
-export class SortedRequests extends SortedStore<string, RequestIndex> {
-  setByRequest(value: RequestIndex): void {
+// this sorts requests across all chains and oracles
+export class SortedRequests extends SortedStore<string, Request> {
+  setByRequest(value: InputRequest): void {
     return this.set(this.id(value), value);
   }
-  descending(): RequestIndexes {
+  descending(): Requests {
     // sadly you cannot control lodash sorting descending, so reverse is necessary
     return this.values().reverse();
   }
-  ascending(): RequestIndexes {
+  ascending(): Requests {
     return this.values();
   }
-  getByRequest(request: InputRequest): RequestIndex {
+  getByRequest(request: InputRequest): Request {
     // always return at least the original query data
     return this.get(this.id(request)) || request;
   }

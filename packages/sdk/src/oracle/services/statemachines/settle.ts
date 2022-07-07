@@ -28,7 +28,7 @@ export function Handlers(store: Store): GenericHandlers<Params, Memory> {
       assert(chainId === (await signer.getChainId()), "Signer on wrong chainid");
 
       const oracle = store.read().oracleService(chainId);
-      const tx = await oracle.settle(signer, requester, identifier, timestamp, ancillaryData);
+      const tx = await oracle.settle(signer, { requester, identifier, timestamp, ancillaryData });
       memory.hash = tx.hash;
       return "confirm";
     },
@@ -42,17 +42,14 @@ export function Handlers(store: Store): GenericHandlers<Params, Memory> {
       // wait x seconds before running this state again
       return context.sleep(checkTxIntervalSec * 1000);
     },
-    async update(params: Params, memory: Memory) {
-      const { chainId, currency, account, requester, identifier, timestamp, ancillaryData } = params;
-      const { hash } = memory;
+    async update(params: Params) {
+      const { chainId, currency, account } = params;
+      const oracle = store.read().oracleService(chainId);
       await update.balance(chainId, currency, account);
-      await update.request(params);
-      store.write((w) =>
-        w
-          .chains(chainId)
-          .optimisticOracle()
-          .request({ chainId, requester, identifier, timestamp, ancillaryData, settleTx: hash })
-      );
+      store.write((w) => {
+        w.chains(chainId).optimisticOracle().request(oracle.getRequest(params));
+      });
+      update.sortedRequests(chainId);
       return "done";
     },
   };

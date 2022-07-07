@@ -1,22 +1,9 @@
 import filter from "lodash/filter";
 
-import type {
-  State,
-  Chain,
-  InputRequest,
-  Erc20Props,
-  ChainConfig,
-  Context,
-  Memory,
-  User,
-  RequestIndexes,
-  RequestIndex,
-  OptimisticOracleEvent,
-  FullRequest,
-} from "../types/state";
+import type { State, Chain, InputRequest, Erc20Props, ChainConfig, Context, Memory, User } from "../types/state";
 import type { JsonRpcSigner, BigNumber, Provider } from "../types/ethers";
 import { TransactionConfirmer, requestId } from "../utils";
-import { OptimisticOracle } from "../services/optimisticOracle";
+import { OracleInterface, Request, Requests } from "../types/interfaces";
 import { Erc20 } from "../services/erc20";
 import { SortedRequests } from "../services/sortedRequests";
 import { assertExists } from "../errors";
@@ -81,7 +68,7 @@ export default class Read {
     assertExists(liveness, "Optimistic oracle defaultLiveness set");
     return liveness;
   };
-  request = (): FullRequest => {
+  request = (): Request => {
     const chain = this.requestChain();
     const input = this.inputRequest();
     const id = requestId(input);
@@ -116,7 +103,7 @@ export default class Read {
     assertExists(allowance, "Allowance not set on user on collateral token for oracle");
     return allowance;
   };
-  oracleService = (optionalChainId?: number): OptimisticOracle => {
+  oracleService = (optionalChainId?: number): OracleInterface => {
     const chainId = optionalChainId || this.requestChainId();
     const result = this.state?.services?.chains?.[chainId]?.optimisticOracle;
     assertExists(result, "Optimistic Oracle Not found on chain " + chainId);
@@ -173,21 +160,17 @@ export default class Read {
     assertExists(result, "Sorted request service not set");
     return result;
   };
-  oracleEvents = (chainId: number): OptimisticOracleEvent[] => {
-    const chain = this.state?.chains?.[chainId];
-    return chain?.optimisticOracle?.events || [];
-  };
   listChains = (): number[] => {
     return Object.keys(this.state?.chains || {}).map(Number);
   };
-  descendingRequests = (): RequestIndexes => {
+  descendingRequests = (): Requests => {
     return this.state.descendingRequests || [];
   };
-  findRequest = (query: InputRequest): RequestIndex | undefined => {
+  findRequest = (query: InputRequest): Request | undefined => {
     const sortedRequestService = this.sortedRequestsService();
     return sortedRequestService.getByRequest(query);
   };
-  filterRequests = (query: Partial<RequestIndex>): RequestIndexes => {
+  filterRequests = (query: Partial<Request>): Requests => {
     return filter(this.descendingRequests(), query);
   };
 }

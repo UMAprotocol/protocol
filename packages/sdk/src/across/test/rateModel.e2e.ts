@@ -47,7 +47,11 @@ describe("rateModel", function () {
         );
         assert.fail("Should throw error");
       } catch (err) {
-        assert.equal(err.message.includes("method called before updating"), true);
+        if (err instanceof Error) {
+          assert.equal(err.message.includes("method called before updating"), true);
+        } else {
+          throw err;
+        }
       }
       rateModelDictionary.updateWithEvents(filteredEvents);
 
@@ -59,7 +63,11 @@ describe("rateModel", function () {
         );
         assert.fail("Should throw error");
       } catch (err) {
-        assert.equal(err.message.includes("before first UpdatedRateModel event"), true);
+        if (err instanceof Error) {
+          assert.equal(err.message.includes("before first UpdatedRateModel event"), true);
+        } else {
+          throw err;
+        }
       }
 
       // Cannot fetch rate model when dictionary has no entries for L1 token.
@@ -67,7 +75,11 @@ describe("rateModel", function () {
         await rateModelDictionary.getRateModelForBlockNumber(rateModelStore.address, blockSearchConfig.fromBlock - 1);
         assert.fail("Should throw error");
       } catch (err) {
-        assert.equal(err.message.includes("No updated rate model events for L1 token"), true);
+        if (err instanceof Error) {
+          assert.equal(err.message.includes("No updated rate model events for L1 token"), true);
+        } else {
+          throw err;
+        }
       }
 
       // Test for expected rate models.
@@ -114,7 +126,11 @@ describe("rateModel", function () {
         await rateModelDictionary.getL1TokensFromRateModel(blockSearchConfig.fromBlock);
         assert.fail("Should throw error");
       } catch (err) {
-        assert.equal(err.message.includes("method called before updating"), true);
+        if (err instanceof Error) {
+          assert.equal(err.message.includes("method called before updating"), true);
+        } else {
+          throw err;
+        }
       }
       rateModelDictionary.updateWithEvents(filteredEvents);
 
@@ -140,7 +156,11 @@ describe("rateModel", function () {
       rateModel.parseAndReturnRateModelFromString("not a JSON");
       assert.fail("Should throw error");
     } catch (err) {
-      assert.equal(err.message.includes("JSON"), true);
+      if (err instanceof Error) {
+        assert.equal(err.message.includes("JSON"), true);
+      } else {
+        throw err;
+      }
     }
 
     const validRateModel = {
@@ -155,7 +175,11 @@ describe("rateModel", function () {
       rateModel.parseAndReturnRateModelFromString(JSON.stringify(rateModelWithMissingKeys));
       assert.fail("Should throw error");
     } catch (err) {
-      assert.equal(err.message.includes("does not contain all expected keys"), true);
+      if (err instanceof Error) {
+        assert.equal(err.message.includes("does not contain all expected keys"), true);
+      } else {
+        throw err;
+      }
     }
 
     const rateModelWithExtraKeys = {
@@ -166,7 +190,11 @@ describe("rateModel", function () {
       rateModel.parseAndReturnRateModelFromString(JSON.stringify(rateModelWithExtraKeys));
       assert.fail("Should throw error");
     } catch (err) {
-      assert.equal(err.message.includes("contains unexpected keys"), true);
+      if (err instanceof Error) {
+        assert.equal(err.message.includes("contains unexpected keys"), true);
+      } else {
+        throw err;
+      }
     }
 
     assert.deepStrictEqual(rateModel.parseAndReturnRateModelFromString(JSON.stringify(validRateModel)), validRateModel);

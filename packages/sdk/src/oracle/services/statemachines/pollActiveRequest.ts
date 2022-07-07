@@ -27,8 +27,6 @@ export function Handlers(store: Store): GenericHandlers<Params, Memory> {
         memory.iterations++;
       }
 
-      // might as well update block time on an interval
-      await ignoreExistenceErrorAsync(update.currentTime);
       const { checkTxIntervalSec = 30 } = (await ignoreExistenceErrorAsync(store.read().chainConfig)) || {};
       return ctx.sleep(checkTxIntervalSec * 1000);
     },
