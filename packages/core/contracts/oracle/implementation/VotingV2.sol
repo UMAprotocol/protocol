@@ -307,7 +307,7 @@ contract VotingV2 is
             if (deletedRequestJumpMapping[i] != 0) i = deletedRequestJumpMapping[i] + 1;
             PriceRequest storage priceRequest = priceRequests[priceRequestIds[i].requestId];
             VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
-            uint256 roundId = priceRequestIds[i].roundId;
+            uint256 roundId = priceRequestIdsMemo[i].roundId;
 
             // Cant slash this or any subsequent requests if the request is not settled. TODO: this has implications for
             // rolled votes and should be considered closely.
@@ -335,7 +335,7 @@ contract VotingV2 is
             // round then apply the slashing now. Else, do nothing and apply the slashing after the loop concludes.
             // This acts to apply slashing within a round as independent actions: multiple votes within the same round
             // should not impact each other but subsequent rounds should impact each other.
-            if (priceRequestIdsLength - i > 1 && roundId != priceRequestIds[i + 1].roundId) {
+            if (priceRequestIdsMemo.length - i > 1 && roundId != priceRequestIdsMemo[i + 1].roundId) {
                 applySlashToVoter(slash, voterAddress);
                 slash = 0;
             }
