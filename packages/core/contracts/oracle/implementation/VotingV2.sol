@@ -556,7 +556,8 @@ contract VotingV2 is
     ) public override onlyIfNotMigrated() {
         uint256 currentRoundId = voteTiming.computeCurrentRoundId(getCurrentTime());
         _freezeRoundVariables(currentRoundId);
-        _updateTrackers(msg.sender);
+        address voter = delegateToStaker[msg.sender] != address(0) ? delegateToStaker[msg.sender] : msg.sender;
+        _updateTrackers(voter);
         // At this point, the computed and last updated round ID should be equal.
         uint256 blockTime = getCurrentTime();
         require(hash != bytes32(0), "Invalid provided hash");
@@ -574,9 +575,9 @@ contract VotingV2 is
 
         priceRequest.lastVotingRound = currentRoundId;
         VoteInstance storage voteInstance = priceRequest.voteInstances[currentRoundId];
-        voteInstance.voteSubmissions[msg.sender].commit = hash;
+        voteInstance.voteSubmissions[voter].commit = hash;
 
-        emit VoteCommitted(msg.sender, currentRoundId, identifier, time, ancillaryData);
+        emit VoteCommitted(voter, currentRoundId, identifier, time, ancillaryData);
     }
 
     // Overloaded method to enable short term backwards compatibility. Will be deprecated in the next DVM version.
@@ -612,21 +613,21 @@ contract VotingV2 is
         bytes memory ancillaryData,
         int256 salt
     ) public override onlyIfNotMigrated() {
-        require(voteTiming.computeCurrentPhase(getCurrentTime()) == Phase.Reveal, "Cannot reveal in commit phase");
         // Note: computing the current round is required to disallow people from revealing an old commit after the round is over.
         uint256 roundId = voteTiming.computeCurrentRoundId(getCurrentTime());
+        address voter = delegateToStaker[msg.sender] != address(0) ? delegateToStaker[msg.sender] : msg.sender;
 
-        PriceRequest storage priceRequest = _getPriceRequest(identifier, time, ancillaryData);
-        VoteInstance storage voteInstance = priceRequest.voteInstances[roundId];
-        VoteSubmission storage voteSubmission = voteInstance.voteSubmissions[msg.sender];
+        VoteInstance storage voteInstance = _getPriceRequest(identifier, time, ancillaryData).voteInstances[roundId];
+        VoteSubmission storage voteSubmission = voteInstance.voteSubmissions[voter];
 
         // Scoping to get rid of a stack too deep error.
         {
+        require(voteTiming.computeCurrentPhase(getCurrentTime()) == Phase.Reveal, "Cannot reveal in commit phase");
             // 0 hashes are disallowed in the commit phase, so they indicate a different error.
             // Cannot reveal an uncommitted or previously revealed hash
             require(voteSubmission.commit != bytes32(0), "Invalid hash reveal");
             require(
-                keccak256(abi.encodePacked(price, salt, msg.sender, time, ancillaryData, roundId, identifier)) ==
+                keccak256(abi.encodePacked(price, salt, voter, time, ancillaryData, roundId, identifier)) ==
                     voteSubmission.commit,
                 "Revealed data != commit hash"
             );
@@ -636,7 +637,8 @@ contract VotingV2 is
 
         // Get the voter's snapshotted balance. Since balances are returned pre-scaled by 10**18, we can directly
         // initialize the Unsigned value with the returned uint.
-        FixedPoint.Unsigned memory balance = FixedPoint.Unsigned(voterStakes[msg.sender].cumulativeStaked);
+        // TODO: add comment on why this is ok to use due to balance being locked during pending votes.
+        FixedPoint.Unsigned memory balance = FixedPoint.Unsigned(voterStakes[voter].cumulativeStaked);
 
         // Set the voter's submission.
         voteSubmission.revealHash = keccak256(abi.encode(price));
@@ -644,7 +646,7 @@ contract VotingV2 is
         // Add vote to the results.
         voteInstance.resultComputation.addVote(price, balance);
 
-        emit VoteRevealed(msg.sender, roundId, identifier, time, price, ancillaryData, balance.rawValue);
+        emit VoteRevealed(voter, roundId, identifier, time, price, ancillaryData, balance.rawValue);
     }
 
     // Overloaded method to enable short term backwards compatibility. Will be deprecated in the next DVM version.
@@ -760,6 +762,11 @@ contract VotingV2 is
             revealsAncillary[i].salt = reveals[i].salt;
         }
         batchReveal(revealsAncillary);
+    }
+
+    function delegateVoting(address newDelegate) public {
+        voterStakes[msg.sender].delegateVoting = newDelegate;
+        delegateToStaker[newDelegate] = msg.sender;
     }
 
     /****************************************

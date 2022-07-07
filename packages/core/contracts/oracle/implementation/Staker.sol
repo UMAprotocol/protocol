@@ -25,9 +25,13 @@ contract Staker is Ownable, Testable {
         uint256 unstakeTime;
         uint256 requestUnstake;
         uint256 lastRequestIndexConsidered;
+        address delegateVoting;
     }
 
     mapping(address => VoterStake) public voterStakes;
+
+    // Mapping of delegates to the stakers (accounts who can vote on behalf of the stakers mapped to the staker).
+    mapping(address => address) public delegateToStaker;
 
     // Reference to the voting token.
     VotingToken public votingToken;
