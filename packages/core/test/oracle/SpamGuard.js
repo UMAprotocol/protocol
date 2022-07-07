@@ -125,7 +125,6 @@ describe("SpamGuard", function () {
       price: toWei("1"),
       salt,
       account,
-      time,
       roundId,
       time: signalDeleteTime,
       identifier: spamDeleteIdentifier,
@@ -187,7 +186,7 @@ describe("SpamGuard", function () {
     assert.equal((await voting.methods.requestSlashingTrackers(2).call()).totalCorrectVotes, toWei("0")); // 0 voted on this.
     assert.equal((await voting.methods.requestSlashingTrackers(3).call()).totalCorrectVotes, toWei("30000000")); // 30mm staked that voted correctly
 
-    //We should see cumulatively that account 1 lost two independent rounds of slashing at 0.0016 of their 60mm staked.
+    // We should see cumulatively that account 1 lost two independent rounds of slashing at 0.0016 of their 60mm staked.
     // This should be assigned to the second voter. 0.0016 * 60mm = 192000
     assert.equal(
       (await voting.methods.voterStakes(account2).call()).cumulativeStaked,
@@ -242,7 +241,6 @@ describe("SpamGuard", function () {
       price: toWei("1"), // 1 indicates we intend on executing the deletion.
       salt,
       account,
-      time,
       roundId,
       time: signalDeleteTime,
       identifier: spamDeleteIdentifier,
@@ -256,18 +254,18 @@ describe("SpamGuard", function () {
     await voting.methods.revealVote(validIdentifier, time + 4, price, salt).send({ from: account2 });
     await voting.methods.revealVote(spamDeleteIdentifier, signalDeleteTime, toWei("1"), salt).send({ from: account2 });
 
-    //Move to next voting round to ratify the vote.
+    // Move to next voting round to ratify the vote.
     await moveToNextRound(voting, accounts[0]);
     await voting.methods.executeSpamDeletion(0).send({ from: account1 });
     assert.equal((await voting.methods.getPendingRequests().call()).length, 0); // All requests either deleted or resolved.
     let statuses = await voting.methods
       .getPriceRequestStatuses([
-        { identifier: validIdentifier, time: time }, //0 should be resolved.
-        { identifier: spamIdentifier, time: time + 1 }, //1 should be deleted.
-        { identifier: validIdentifier, time: time + 2 }, //2 should be resolved.
-        { identifier: spamIdentifier, time: time + 3 }, //3 should be deleted.
-        { identifier: validIdentifier, time: time + 4 }, //4 should be resolved.
-        { identifier: spamDeleteIdentifier, time: signalDeleteTime }, //5 should be resolved.
+        { identifier: validIdentifier, time: time }, // 0 should be resolved.
+        { identifier: spamIdentifier, time: time + 1 }, // 1 should be deleted.
+        { identifier: validIdentifier, time: time + 2 }, // 2 should be resolved.
+        { identifier: spamIdentifier, time: time + 3 }, // 3 should be deleted.
+        { identifier: validIdentifier, time: time + 4 }, // 4 should be resolved.
+        { identifier: spamDeleteIdentifier, time: signalDeleteTime }, // 5 should be resolved.
       ])
       .call();
 
@@ -307,7 +305,7 @@ describe("SpamGuard", function () {
       toWei("30000000").add(toWei("384000")) // Their original stake amount of 60mm minus the slashing of 384k.
     );
   });
-  it.only("Can correctly create spam deletion requests even after the minRollToNextRoundLength period", async function () {
+  it("Can correctly create spam deletion requests even after the minRollToNextRoundLength period", async function () {
     // Consider that the spammer places the spam requests right before the end of the period that would place the requests
     // into the next round. We should be able to be able to use the spam deletion request to delete the spam request as
     // these kinds of requests bypass the minRollToNextRoundLength period.
@@ -344,11 +342,11 @@ describe("SpamGuard", function () {
     const spamDeletionIdentifier = padRight(utf8ToHex("SpamDeletionProposal 0"), 64);
     let statuses = await voting.methods
       .getPriceRequestStatuses([
-        { identifier: spamIdentifier, time: time }, //0 should be active.
-        { identifier: spamIdentifier, time: time + 1 }, //1 should be active.
-        { identifier: spamIdentifier, time: time + 2 }, //2 should be active.
-        { identifier: spamDeletionIdentifier, time: spamDeletionTime }, //3 should be active.
-        { identifier: validIdentifier, time: time }, //4 should in the future state.
+        { identifier: spamIdentifier, time: time }, // 0 should be active.
+        { identifier: spamIdentifier, time: time + 1 }, // 1 should be active.
+        { identifier: spamIdentifier, time: time + 2 }, // 2 should be active.
+        { identifier: spamDeletionIdentifier, time: spamDeletionTime }, // 3 should be active.
+        { identifier: validIdentifier, time: time }, // 4 should in the future state.
       ])
       .call();
 
@@ -391,11 +389,11 @@ describe("SpamGuard", function () {
 
     statuses = await voting.methods
       .getPriceRequestStatuses([
-        { identifier: spamIdentifier, time: time }, //0 should be deleted.
-        { identifier: spamIdentifier, time: time + 1 }, //1 should be deleted.
-        { identifier: spamIdentifier, time: time + 2 }, //2 should be deleted.
-        { identifier: spamDeletionIdentifier, time: spamDeletionTime }, //3 should be executed.
-        { identifier: validIdentifier, time: time }, //4 should in the active state as it can be voted on now due to moving into this round.
+        { identifier: spamIdentifier, time: time }, // 0 should be deleted.
+        { identifier: spamIdentifier, time: time + 1 }, // 1 should be deleted.
+        { identifier: spamIdentifier, time: time + 2 }, // 2 should be deleted.
+        { identifier: spamDeletionIdentifier, time: spamDeletionTime }, // 3 should be executed.
+        { identifier: validIdentifier, time: time }, // 4 should in the active state as it can be voted on now due to moving into this round.
       ])
       .call();
 
