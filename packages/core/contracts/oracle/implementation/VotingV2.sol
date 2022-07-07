@@ -125,7 +125,7 @@ contract VotingV2 is
     FixedPoint.Unsigned public gatPercentage;
 
     // Reference to the Finder.
-    FinderInterface private finder;
+    FinderInterface private immutable finder;
 
     // Reference to Slashing Library.
     SlashingLibrary public slashingLibrary;
