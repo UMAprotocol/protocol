@@ -335,7 +335,7 @@ contract VotingV2 is
             // round then apply the slashing now. Else, do nothing and apply the slashing after the loop concludes.
             // This acts to apply slashing within a round as independent actions: multiple votes within the same round
             // should not impact each other but subsequent rounds should impact each other.
-            if (priceRequestIds.length - i > 1 && roundId != priceRequestIds[i + 1].roundId) {
+            if (priceRequestIdsLength - i > 1 && roundId != priceRequestIds[i + 1].roundId) {
                 applySlashToVoter(slash, voterAddress);
                 slash = 0;
             }
