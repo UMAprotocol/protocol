@@ -307,7 +307,104 @@ describe("SpamGuard", function () {
       toWei("30000000").add(toWei("384000")) // Their original stake amount of 60mm minus the slashing of 384k.
     );
   });
-  it("Can correctly create spam deletion requests even after the minRollToNextRoundLength period", async function () {});
+  it.only("Can correctly create spam deletion requests even after the minRollToNextRoundLength period", async function () {
+    // Consider that the spammer places the spam requests right before the end of the period that would place the requests
+    // into the next round. We should be able to be able to use the spam deletion request to delete the spam request as
+    // these kinds of requests bypass the minRollToNextRoundLength period.
+
+    // Move to the next round and ensure we are right at the beginning of the commit phase.
+    await moveToNextRound(voting, accounts[0]); // Move to the start of a voting round to be right at the beginning.
+    const startingVotingRoundId = Number(await voting.methods.getCurrentRoundId().call());
+    const roundEndTime = Number(await voting.methods.getRoundEndTime(startingVotingRoundId + 1).call());
+
+    // Now move to right before the minRollToNextRoundLength period and make the spam requests.
+    await voting.methods.setCurrentTime(roundEndTime - 60 * 60 * 2 - 1).send({ from: accounts[0] });
+    const time = Number(await voting.methods.getCurrentTime().call()) - 10; // 10 seconds in the past.
+
+    await voting.methods.requestPrice(spamIdentifier, time).send({ from: registeredContract }); // index0
+    await voting.methods.requestPrice(spamIdentifier, time + 1).send({ from: registeredContract }); // index1
+    await voting.methods.requestPrice(spamIdentifier, time + 2).send({ from: registeredContract }); // index2
+
+    // Now, advance time after the minRollToNextRoundLength period and make the spam deletion request.
+    await voting.methods.setCurrentTime(roundEndTime - 60 * 60 * 2 + 1).send({ from: accounts[0] });
+    const spamDeletionTime = Number(await voting.methods.getCurrentTime().call());
+    await voting.methods.signalRequestsAsSpamForDeletion([[0, 2]]).send({ from: account1 });
+
+    // Make another legitimate request to verify that it is placed in the round after the next round as we are past the
+    // minRollToNextRoundLength period.
+    await voting.methods.requestPrice(validIdentifier, time).send({ from: registeredContract }); // index4
+
+    assert.equal(await voting.methods.getNumberOfPriceRequests().call(), 5);
+
+    // Now, move to the next round and ensure that all requests are votable within this round except for the valid request
+    // that landed after the minRollToNextRoundLength period.
+    await moveToNextRound(voting, accounts[0]);
+
+    // Check all price requests are in the correct states.
+    const spamDeletionIdentifier = padRight(utf8ToHex("SpamDeletionProposal 0"), 64);
+    let statuses = await voting.methods
+      .getPriceRequestStatuses([
+        { identifier: spamIdentifier, time: time }, //0 should be active.
+        { identifier: spamIdentifier, time: time + 1 }, //1 should be active.
+        { identifier: spamIdentifier, time: time + 2 }, //2 should be active.
+        { identifier: spamDeletionIdentifier, time: spamDeletionTime }, //3 should be active.
+        { identifier: validIdentifier, time: time }, //4 should in the future state.
+      ])
+      .call();
+
+    assert.equal(statuses[0].status, "1"); // spam request 0. active.
+    assert.equal(statuses[1].status, "1"); // spam request 1. active.
+    assert.equal(statuses[2].status, "1"); // spam request 2. active.
+    assert.equal(statuses[3].status, "1"); // spam deletion request. active.
+    assert.equal(statuses[4].status, "3"); // valid request. in the following voting round.
+
+    assert.equal((await voting.methods.getPendingRequests().call()).length, 4); // 4 of the 5 votes should be active now.
+
+    // There is only one vote we need to vote on now: the spam deletion request.
+
+    const account = account2;
+    const salt = getRandomSignedInt();
+    const roundId = (await voting.methods.getCurrentRoundId().call()).toString();
+    const hash1 = computeVoteHash({
+      price: toWei("1"),
+      salt,
+      account,
+      roundId,
+      time: spamDeletionTime,
+      identifier: spamDeletionIdentifier,
+    });
+    await voting.methods.commitVote(spamDeletionIdentifier, spamDeletionTime, hash1).send({ from: account2 });
+
+    // Can not vote on the valid request as this should be placed within the following voting round due to the
+    // minRollToNextRoundLength period. Note re-use the hash as we just need to check it reverts on the commit call.
+    assert(await didContractThrow(voting.methods.commitVote(validIdentifier, time, hash1).send({ from: account2 })));
+
+    // Move to next phase.
+    await moveToNextPhase(voting, accounts[0]);
+
+    // Reveal the votes and execute the spam deletion request.
+    await voting.methods
+      .revealVote(spamDeletionIdentifier, spamDeletionTime, toWei("1"), salt)
+      .send({ from: account2 });
+    await moveToNextPhase(voting, accounts[0]);
+    await voting.methods.executeSpamDeletion(0).send({ from: account2 });
+
+    statuses = await voting.methods
+      .getPriceRequestStatuses([
+        { identifier: spamIdentifier, time: time }, //0 should be deleted.
+        { identifier: spamIdentifier, time: time + 1 }, //1 should be deleted.
+        { identifier: spamIdentifier, time: time + 2 }, //2 should be deleted.
+        { identifier: spamDeletionIdentifier, time: spamDeletionTime }, //3 should be executed.
+        { identifier: validIdentifier, time: time }, //4 should in the active state as it can be voted on now due to moving into this round.
+      ])
+      .call();
+
+    assert.equal(statuses[0].status, "0"); // spam request 0. deleted
+    assert.equal(statuses[1].status, "0"); // spam request 1. deleted.
+    assert.equal(statuses[2].status, "0"); // spam request 2. deleted
+    assert.equal(statuses[3].status, "2"); // spam deletion request. resolved.
+    assert.equal(statuses[4].status, "1"); // valid request. now active in voting.
+  });
   it("Correctly sends bond to store if voted down", async function () {});
   it("Correctly handles rolled votes", async function () {});
 });

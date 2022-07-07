@@ -401,9 +401,6 @@ contract VotingV2 is
      ****************************************/
 
     function signalRequestsAsSpamForDeletion(uint256[2][] memory spamRequestIndices) public {
-        // The current round must be in the first two hours of the commit phase.
-        require(getVotePhase() == Phase.Commit, "Must be in the commit phase");
-
         votingToken.transferFrom(msg.sender, address(this), spamDeletionProposalBond);
         uint256 currentTime = getCurrentTime();
         uint256 currentRoundId = voteTiming.computeCurrentRoundId(currentTime);
