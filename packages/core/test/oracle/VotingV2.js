@@ -2331,7 +2331,7 @@ describe("VotingV2", function () {
       "42069"
     );
   });
-  it.only("Can delegate voting to another address to vote on your stakes behalf", async function () {
+  it("Can delegate voting to another address to vote on your stakes behalf", async function () {
     // Delegate from account1 to rand.
     await voting.methods.delegateVoting(rand).send({ from: account1 });
     await voting.methods.acceptDelegation(account1).send({ from: rand });
@@ -2372,7 +2372,7 @@ describe("VotingV2", function () {
     );
   });
 
-  it.only("Existing stakers cant become delegates and delegates cant stake", async function () {
+  it("Existing stakers cant become delegates and delegates cant stake", async function () {
     // Account1 has a staked balance so cant be used by account2 in delegation.
     assert(await didContractThrow(voting.methods.delegateVoting(account1).send({ from: account2 })));
 
@@ -2386,16 +2386,16 @@ describe("VotingV2", function () {
 
     // After staking should no longer be able to accept the delegation as staked accounts should not be able to be delegates.
     assert(await didContractThrow(voting.methods.acceptDelegation(account1).send({ from: rand })));
-    
+
     // Unstake and accept the delegation. After accepting the delegation can no longer stake.
-    await voting.methods.setUnstakeCoolDown(0).send({from:accounts[0]})
+    await voting.methods.setUnstakeCoolDown(0).send({ from: accounts[0] });
     await voting.methods.requestUnstake(toWei("50")).send({ from: rand });
     await voting.methods.executeUnstake().send({ from: rand });
     await voting.methods.acceptDelegation(account1).send({ from: rand });
     assert(await didContractThrow(voting.methods.stake(toWei("50")).send({ from: rand })));
   });
 
-  it.only("Stakers can revoke a delegate", async function () {
+  it("Stakers can revoke a delegate", async function () {
     await voting.methods.delegateVoting(rand).send({ from: account1 });
     await voting.methods.acceptDelegation(account1).send({ from: rand });
     assert.equal((await voting.methods.voterStakes(account1).call()).delegateVoting, rand);
