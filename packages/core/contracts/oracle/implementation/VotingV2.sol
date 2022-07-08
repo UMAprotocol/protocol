@@ -402,6 +402,7 @@ contract VotingV2 is
     function signalRequestsAsSpamForDeletion(uint256[2][] memory spamRequestIndices) public {
         votingToken.transferFrom(msg.sender, address(this), spamDeletionProposalBond);
         uint256 currentTime = getCurrentTime();
+        uint256 currentRoundId = voteTiming.computeCurrentRoundId(currentTime);
         uint256 runningValidationIndex;
         for (uint256 i = 0; i < spamRequestIndices.length; i++) {
             // Check request end index is greater than start index.
