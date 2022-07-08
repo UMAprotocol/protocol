@@ -401,22 +401,23 @@ contract VotingV2 is
      *       SPAM DELETION FUNCTIONS        *
      ****************************************/
 
-    function signalRequestsAsSpamForDeletion(uint256[2][] memory spamRequestIndices) public {
+    function signalRequestsAsSpamForDeletion(uint256[2][] calldata spamRequestIndices) public {
         votingToken.transferFrom(msg.sender, address(this), spamDeletionProposalBond);
         uint256 currentTime = getCurrentTime();
-        uint256 currentRoundId = voteTiming.computeCurrentRoundId(currentTime);
         uint256 runningValidationIndex;
-        for (uint256 i = 0; i < spamRequestIndices.length; i = unsafe_inc(i)) {
+        uint256 spamRequestIndicesLength = spamRequestIndices.length;
+        for (uint256 i = 0; i < spamRequestIndicesLength; i = unsafe_inc(i)) {
+            uint256[2] memory spamRequestIndex = spamRequestIndices[i];
             // Check request end index is greater than start index.
-            require(spamRequestIndices[i][0] <= spamRequestIndices[i][1], "Bad start index");
+            require(spamRequestIndex[0] <= spamRequestIndex[1], "Bad start index");
 
             // check the endIndex is less than the total number of requests.
-            require(spamRequestIndices[i][1] < priceRequestIds.length, "Bad end index");
+            require(spamRequestIndex[1] < priceRequestIds.length, "Bad end index");
 
             // Validate index continuity. This checks that each sequential element within the spamRequestIndices
             // array is sequently and increasing in size.
-            require(spamRequestIndices[i][1] > runningValidationIndex, "Bad index continuity");
-            runningValidationIndex = spamRequestIndices[i][1];
+            require(spamRequestIndex[1] > runningValidationIndex, "Bad index continuity");
+            runningValidationIndex = spamRequestIndex[1];
         }
         // todo: consider if we want to check if the most recent price request has been settled?
 
