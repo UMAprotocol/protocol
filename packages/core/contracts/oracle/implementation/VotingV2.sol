@@ -678,7 +678,7 @@ contract VotingV2 is
     ) public override onlyIfNotMigrated() {
         uint256 currentRoundId = voteTiming.computeCurrentRoundId(getCurrentTime());
         _freezeRoundVariables(currentRoundId);
-        address voter = delegateToStaker[msg.sender] != address(0) ? delegateToStaker[msg.sender] : msg.sender;
+        address voter = getVoterFromDelegate(msg.sender);
         _updateTrackers(voter);
         // At this point, the computed and last updated round ID should be equal.
         uint256 blockTime = getCurrentTime();
@@ -737,7 +737,7 @@ contract VotingV2 is
     ) public override onlyIfNotMigrated() {
         // Note: computing the current round is required to disallow people from revealing an old commit after the round is over.
         uint256 roundId = voteTiming.computeCurrentRoundId(getCurrentTime());
-        address voter = delegateToStaker[msg.sender] != address(0) ? delegateToStaker[msg.sender] : msg.sender;
+        address voter = getVoterFromDelegate(msg.sender);
 
         VoteInstance storage voteInstance = _getPriceRequest(identifier, time, ancillaryData).voteInstances[roundId];
         VoteSubmission storage voteSubmission = voteInstance.voteSubmissions[voter];
@@ -900,6 +900,7 @@ contract VotingV2 is
     function acceptDelegation(address delegator) public {
         require(voterStakes[delegator].delegateVoting == msg.sender, "Delegator didn't delegate to you");
         require(delegateToStaker[msg.sender] == address(0), "Delegation already set");
+        require(voterStakes[msg.sender].cumulativeStaked == 0, "Cant become delegate if staker");
         delegateToStaker[msg.sender] = delegator;
     }
 
@@ -978,6 +979,10 @@ contract VotingV2 is
 
     function getNumberOfPriceRequests() public view returns (uint256) {
         return priceRequestIds.length;
+    }
+
+    function getVoterFromDelegate(address) public view returns (address) {
+        return delegateToStaker[msg.sender] != address(0) ? delegateToStaker[msg.sender] : msg.sender;
     }
 
     // TODO: remove this function. it's just here to make the contract compile given the interfaces.
