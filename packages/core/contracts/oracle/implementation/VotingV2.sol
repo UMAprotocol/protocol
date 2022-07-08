@@ -303,12 +303,12 @@ contract VotingV2 is
 
         // Traverse all requests from the last considered request. For each request see if the voter voted correctly or
         // not. Based on the outcome, attribute the associated slash to the voter.
-        Request[] memory _priceRequestIds = priceRequestIds;
-        for (uint256 i = voterStake.lastRequestIndexConsidered; i < priceRequestIds.length; i = unsafe_inc(i)) {
+        uint256 priceRequestIdsLength = priceRequestIds.length;
+        for (uint256 i = voterStake.lastRequestIndexConsidered; i < priceRequestIdsLength; i = unsafe_inc(i)) {
             if (deletedRequestJumpMapping[i] != 0) i = deletedRequestJumpMapping[i] + 1;
-            PriceRequest storage priceRequest = priceRequests[_priceRequestIds[i].requestId];
+            PriceRequest storage priceRequest = priceRequests[priceRequestIds[i].requestId];
             VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
-            uint256 roundId = _priceRequestIds[i].roundId;
+            uint256 roundId = priceRequestIds[i].roundId;
 
             // Cant slash this or any subsequent requests if the request is not settled. TODO: this has implications for
             // rolled votes and should be considered closely.
@@ -336,7 +336,7 @@ contract VotingV2 is
             // round then apply the slashing now. Else, do nothing and apply the slashing after the loop concludes.
             // This acts to apply slashing within a round as independent actions: multiple votes within the same round
             // should not impact each other but subsequent rounds should impact each other.
-            if (_priceRequestIds.length - i > 1 && roundId != _priceRequestIds[i + 1].roundId) {
+            if (priceRequestIdsLength - i > 1 && roundId != priceRequestIds[i + 1].roundId) {
                 applySlashToVoter(slash, voterAddress);
                 slash = 0;
             }
@@ -362,17 +362,17 @@ contract VotingV2 is
         // the associated slashing rates as a function of the total staked, total votes and total correct votes. Note
         // that this method in almost all cases will only need to traverse one request as slashing trackers are updated
         // on every commit and so it is not too computationally inefficient.
-        for (uint256 i = lastRequestIndexConsidered; i < priceRequestIds.length; i = unsafe_inc(i)) {
+        uint256 priceRequestIdsLength = priceRequestIds.length;
+        for (uint256 i = lastRequestIndexConsidered; i < priceRequestIdsLength; i = unsafe_inc(i)) {
             if (deletedRequestJumpMapping[i] != 0) i = deletedRequestJumpMapping[i] + 1;
-
-            PriceRequest storage priceRequest = priceRequests[priceRequestIds[i].requestId];
+            Request memory request = priceRequestIds[i];
+            PriceRequest storage priceRequest = priceRequests[request.requestId];
             VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
-            uint256 roundId = priceRequestIds[i].roundId;
 
             // Cant slash this or any subsequent requests if the request is not settled. TODO: this has implications for
             // rolled votes and should be considered closely.
             if (_getRequestStatus(priceRequest, currentRoundId) != RequestStatus.Resolved) break;
-            uint256 stakedAtRound = rounds[roundId].cumulativeStakedAtRound;
+            uint256 stakedAtRound = rounds[request.roundId].cumulativeStakedAtRound;
             uint256 totalVotes = voteInstance.resultComputation.totalVotes.rawValue;
             uint256 totalCorrectVotes = voteInstance.resultComputation.getTotalCorrectlyVotedTokens().rawValue;
             uint256 wrongVoteSlashPerToken =
