@@ -8,10 +8,6 @@
     "address": "0xDC6b80D38004F495861E081e249213836a2F3217"
   },
   {
-    "contractName": "MockOracleAncillary",
-    "address": "0x20570E9e27920aC5E2601E0bef7244DeFf7F0B28"
-  },
-  {
     "contractName": "IdentifierWhitelist",
     "address": "0x622d59F3dbD28fcFE746E0d2f83ebdC286E89A3c"
   },
