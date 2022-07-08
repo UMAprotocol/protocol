@@ -362,18 +362,17 @@ contract VotingV2 is
         // the associated slashing rates as a function of the total staked, total votes and total correct votes. Note
         // that this method in almost all cases will only need to traverse one request as slashing trackers are updated
         // on every commit and so it is not too computationally inefficient.
-        Request[] memory _priceRequestIds = priceRequestIds;
-        for (uint256 i = lastRequestIndexConsidered; i < _priceRequestIds.length; i = unsafe_inc(i)) {
+        for (uint256 i = lastRequestIndexConsidered; i < priceRequestIds.length; i = unsafe_inc(i)) {
             if (deletedRequestJumpMapping[i] != 0) i = deletedRequestJumpMapping[i] + 1;
 
-            PriceRequest storage priceRequest = priceRequests[_priceRequestIds[i].requestId];
+            PriceRequest storage priceRequest = priceRequests[priceRequestIds[i].requestId];
             VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
-            uint256 roundId = _priceRequestIds[i].roundId;
+            uint256 roundId = priceRequestIds[i].roundId;
 
             // Cant slash this or any subsequent requests if the request is not settled. TODO: this has implications for
             // rolled votes and should be considered closely.
             if (_getRequestStatus(priceRequest, currentRoundId) != RequestStatus.Resolved) break;
-            uint256 stakedAtRound = rounds[_priceRequestIds[i].roundId].cumulativeStakedAtRound;
+            uint256 stakedAtRound = rounds[roundId].cumulativeStakedAtRound;
             uint256 totalVotes = voteInstance.resultComputation.totalVotes.rawValue;
             uint256 totalCorrectVotes = voteInstance.resultComputation.getTotalCorrectlyVotedTokens().rawValue;
             uint256 wrongVoteSlashPerToken =
