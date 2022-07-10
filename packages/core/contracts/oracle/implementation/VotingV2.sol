@@ -83,7 +83,7 @@ contract VotingV2 is
 
     struct Round {
         FixedPoint.Unsigned gatPercentage; // Gat rate set for this round.
-        uint256 cumulativeStakedAtRound; // Total staked tokens at the start of the round.
+        uint256 cumulativeActiveStakeAtRound; // Total staked tokens at the start of the round.
     }
 
     // Represents the status a price request has.
@@ -289,9 +289,15 @@ contract VotingV2 is
     }
 
     function _updateTrackers(address voterAddress) internal override {
+        // todo: the ordering of these functions is critical and should be though about more deeply + comments.
         _updateCumulativeSlashingTrackers();
         _updateAccountSlashingTrackers(voterAddress);
+        _updateActiveStake(voterAddress);
         _updateReward(voterAddress);
+    }
+
+    function inActiveReveal() internal override returns (bool) {
+        return (pendingPriceRequests.length > 0 && getVotePhase() == Phase.Reveal);
     }
 
     function _updateAccountSlashingTrackers(address voterAddress) internal {
@@ -316,18 +322,16 @@ contract VotingV2 is
             bytes32 revealHash = voteInstance.voteSubmissions[voterAddress].revealHash;
             // The voter did not reveal or did not commit. Slash at noVote rate.
             if (revealHash == 0)
-                slash -= int256((voterStake.cumulativeStaked * requestSlashingTrackers[i].noVoteSlashPerToken) / 1e18);
+                slash -= int256((voterStake.activeStake * requestSlashingTrackers[i].noVoteSlashPerToken) / 1e18);
 
                 // The voter did not vote with the majority. Slash at wrongVote rate.
             else if (!voteInstance.resultComputation.wasVoteCorrect(revealHash))
-                slash -= int256(
-                    (voterStake.cumulativeStaked * requestSlashingTrackers[i].wrongVoteSlashPerToken) / 1e18
-                );
+                slash -= int256((voterStake.activeStake * requestSlashingTrackers[i].wrongVoteSlashPerToken) / 1e18);
 
                 // The voter voted correctly. Receive a pro-rate share of the other voters slashed amounts as a reward.
             else
                 slash += int256(
-                    (((voterStake.cumulativeStaked * requestSlashingTrackers[i].totalSlashed)) /
+                    (((voterStake.activeStake * requestSlashingTrackers[i].totalSlashed)) /
                         requestSlashingTrackers[i].totalCorrectVotes)
                 );
 
@@ -347,9 +351,9 @@ contract VotingV2 is
 
     function applySlashToVoter(int256 slash, address voterAddress) internal {
         VoterStake storage voterStake = voterStakes[voterAddress];
-        if (slash + int256(voterStake.cumulativeStaked) > 0)
-            voterStake.cumulativeStaked = uint256(int256(voterStake.cumulativeStaked) + slash);
-        else voterStake.cumulativeStaked = 0;
+        if (slash + int256(voterStake.activeStake) > 0)
+            voterStake.activeStake = uint256(int256(voterStake.activeStake) + slash);
+        else voterStake.activeStake = 0;
     }
 
     function _updateCumulativeSlashingTrackers() internal {
@@ -371,7 +375,7 @@ contract VotingV2 is
             // Cant slash this or any subsequent requests if the request is not settled. TODO: this has implications for
             // rolled votes and should be considered closely.
             if (_getRequestStatus(priceRequest, currentRoundId) != RequestStatus.Resolved) break;
-            uint256 stakedAtRound = rounds[priceRequestIds[i].roundId].cumulativeStakedAtRound;
+            uint256 stakedAtRound = rounds[priceRequestIds[i].roundId].cumulativeActiveStakeAtRound;
             uint256 totalVotes = voteInstance.resultComputation.totalVotes.rawValue;
             uint256 totalCorrectVotes = voteInstance.resultComputation.getTotalCorrectlyVotedTokens().rawValue;
             uint256 wrongVoteSlashPerToken =
@@ -678,7 +682,6 @@ contract VotingV2 is
         bytes32 hash
     ) public override onlyIfNotMigrated() {
         uint256 currentRoundId = voteTiming.computeCurrentRoundId(getCurrentTime());
-        _freezeRoundVariables(currentRoundId);
         _updateTrackers(msg.sender);
         // At this point, the computed and last updated round ID should be equal.
         uint256 blockTime = getCurrentTime();
@@ -737,10 +740,11 @@ contract VotingV2 is
     ) public override onlyIfNotMigrated() {
         require(voteTiming.computeCurrentPhase(getCurrentTime()) == Phase.Reveal, "Cannot reveal in commit phase");
         // Note: computing the current round is required to disallow people from revealing an old commit after the round is over.
-        uint256 roundId = voteTiming.computeCurrentRoundId(getCurrentTime());
+        uint256 currentRoundId = voteTiming.computeCurrentRoundId(getCurrentTime());
+        _freezeRoundVariables(currentRoundId);
 
         PriceRequest storage priceRequest = _getPriceRequest(identifier, time, ancillaryData);
-        VoteInstance storage voteInstance = priceRequest.voteInstances[roundId];
+        VoteInstance storage voteInstance = priceRequest.voteInstances[currentRoundId];
         VoteSubmission storage voteSubmission = voteInstance.voteSubmissions[msg.sender];
 
         // Scoping to get rid of a stack too deep error.
@@ -749,7 +753,7 @@ contract VotingV2 is
             // Cannot reveal an uncommitted or previously revealed hash
             require(voteSubmission.commit != bytes32(0), "Invalid hash reveal");
             require(
-                keccak256(abi.encodePacked(price, salt, msg.sender, time, ancillaryData, roundId, identifier)) ==
+                keccak256(abi.encodePacked(price, salt, msg.sender, time, ancillaryData, currentRoundId, identifier)) ==
                     voteSubmission.commit,
                 "Revealed data != commit hash"
             );
@@ -759,7 +763,7 @@ contract VotingV2 is
 
         // Get the voter's snapshotted balance. Since balances are returned pre-scaled by 10**18, we can directly
         // initialize the Unsigned value with the returned uint.
-        FixedPoint.Unsigned memory balance = FixedPoint.Unsigned(voterStakes[msg.sender].cumulativeStaked);
+        FixedPoint.Unsigned memory balance = FixedPoint.Unsigned(voterStakes[msg.sender].activeStake);
 
         // Set the voter's submission.
         voteSubmission.revealHash = keccak256(abi.encode(price));
@@ -767,7 +771,7 @@ contract VotingV2 is
         // Add vote to the results.
         voteInstance.resultComputation.addVote(price, balance);
 
-        emit VoteRevealed(msg.sender, roundId, identifier, time, price, ancillaryData, balance.rawValue);
+        emit VoteRevealed(msg.sender, currentRoundId, identifier, time, price, ancillaryData, balance.rawValue);
     }
 
     // Overloaded method to enable short term backwards compatibility. Will be deprecated in the next DVM version.
@@ -1070,8 +1074,8 @@ contract VotingV2 is
             // Set the round gat percentage to the current global gat rate.
             rounds[roundId].gatPercentage = gatPercentage;
 
-            // Store the cumulativeStaked at this roundId to work out slashing and voting trackers.
-            rounds[roundId].cumulativeStakedAtRound = cumulativeStaked;
+            // Store the cumulativeActiveStake at this roundId to work out slashing and voting trackers.
+            rounds[roundId].cumulativeActiveStakeAtRound = cumulativeActiveStake;
         }
     }
 
@@ -1102,10 +1106,10 @@ contract VotingV2 is
 
     function _computeGat(uint256 roundId) internal view returns (FixedPoint.Unsigned memory) {
         // Nothing staked at the round  - return max value to err on the side of caution.
-        if (rounds[roundId].cumulativeStakedAtRound == 0) return FixedPoint.Unsigned(UINT_MAX);
+        if (rounds[roundId].cumulativeActiveStakeAtRound == 0) return FixedPoint.Unsigned(UINT_MAX);
 
         // Grab the cumulative staked at the voting round.
-        FixedPoint.Unsigned memory stakedAtRound = FixedPoint.Unsigned(rounds[roundId].cumulativeStakedAtRound);
+        FixedPoint.Unsigned memory stakedAtRound = FixedPoint.Unsigned(rounds[roundId].cumulativeActiveStakeAtRound);
 
         // Multiply the total supply at the cumulative staked by the gatPercentage to get the GAT in number of tokens.
         return stakedAtRound.mul(rounds[roundId].gatPercentage);
