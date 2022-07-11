@@ -12,7 +12,12 @@ abstract contract OracleGovernanceInterface is OracleInterface {
      * @notice Enqueues a request (if a request isn't already present) for the given `identifier`, `time` pair.
      * @dev Time must be in the past and the identifier must be supported.
      * @param identifier uniquely identifies the price requested. eg BTC/USD (encoded as bytes32) could be requested.
+     * @param ancillaryData arbitrary data appended to a price request to give the voters more info from the caller.
      * @param time unix timestamp for the price request.
      */
-    function requestGovernanceAction(bytes32 identifier, uint256 time) public virtual;
+    function requestGovernanceAction(
+        bytes32 identifier,
+        uint256 time,
+        bytes memory ancillaryData
+    ) public virtual;
 }
