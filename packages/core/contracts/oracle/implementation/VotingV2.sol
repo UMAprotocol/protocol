@@ -131,7 +131,7 @@ contract VotingV2 is
     FixedPoint.Unsigned public gatPercentage;
 
     // Reference to the Finder.
-    FinderInterface internal finder;
+    FinderInterface private immutable finder;
 
     // Reference to Slashing Library.
     SlashingLibrary public slashingLibrary;
@@ -303,7 +303,8 @@ contract VotingV2 is
 
         // Traverse all requests from the last considered request. For each request see if the voter voted correctly or
         // not. Based on the outcome, attribute the associated slash to the voter.
-        for (uint256 i = voterStake.lastRequestIndexConsidered; i < priceRequestIds.length; i++) {
+        uint256 priceRequestIdsLength = priceRequestIds.length;
+        for (uint256 i = voterStake.lastRequestIndexConsidered; i < priceRequestIdsLength; i = unsafe_inc(i)) {
             if (deletedRequestJumpMapping[i] != 0) i = deletedRequestJumpMapping[i] + 1;
             PriceRequest storage priceRequest = priceRequests[priceRequestIds[i].requestId];
             VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
@@ -335,7 +336,7 @@ contract VotingV2 is
             // round then apply the slashing now. Else, do nothing and apply the slashing after the loop concludes.
             // This acts to apply slashing within a round as independent actions: multiple votes within the same round
             // should not impact each other but subsequent rounds should impact each other.
-            if (priceRequestIds.length - i > 1 && roundId != priceRequestIds[i + 1].roundId) {
+            if (priceRequestIdsLength - i > 1 && roundId != priceRequestIds[i + 1].roundId) {
                 applySlashToVoter(slash, voterAddress);
                 slash = 0;
             }
@@ -361,17 +362,17 @@ contract VotingV2 is
         // the associated slashing rates as a function of the total staked, total votes and total correct votes. Note
         // that this method in almost all cases will only need to traverse one request as slashing trackers are updated
         // on every commit and so it is not too computationally inefficient.
-        for (uint256 i = lastRequestIndexConsidered; i < priceRequestIds.length; i++) {
+        uint256 priceRequestIdsLength = priceRequestIds.length;
+        for (uint256 i = lastRequestIndexConsidered; i < priceRequestIdsLength; i = unsafe_inc(i)) {
             if (deletedRequestJumpMapping[i] != 0) i = deletedRequestJumpMapping[i] + 1;
-
-            PriceRequest storage priceRequest = priceRequests[priceRequestIds[i].requestId];
+            Request memory request = priceRequestIds[i];
+            PriceRequest storage priceRequest = priceRequests[request.requestId];
             VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
-            uint256 roundId = priceRequestIds[i].roundId;
 
             // Cant slash this or any subsequent requests if the request is not settled. TODO: this has implications for
             // rolled votes and should be considered closely.
             if (_getRequestStatus(priceRequest, currentRoundId) != RequestStatus.Resolved) break;
-            uint256 stakedAtRound = rounds[priceRequestIds[i].roundId].cumulativeStakedAtRound;
+            uint256 stakedAtRound = rounds[request.roundId].cumulativeStakedAtRound;
             uint256 totalVotes = voteInstance.resultComputation.totalVotes.rawValue;
             uint256 totalCorrectVotes = voteInstance.resultComputation.getTotalCorrectlyVotedTokens().rawValue;
             uint256 wrongVoteSlashPerToken =
@@ -400,22 +401,23 @@ contract VotingV2 is
      *       SPAM DELETION FUNCTIONS        *
      ****************************************/
 
-    function signalRequestsAsSpamForDeletion(uint256[2][] memory spamRequestIndices) public {
+    function signalRequestsAsSpamForDeletion(uint256[2][] calldata spamRequestIndices) public {
         votingToken.transferFrom(msg.sender, address(this), spamDeletionProposalBond);
         uint256 currentTime = getCurrentTime();
-        uint256 currentRoundId = voteTiming.computeCurrentRoundId(currentTime);
         uint256 runningValidationIndex;
-        for (uint256 i = 0; i < spamRequestIndices.length; i++) {
+        uint256 spamRequestIndicesLength = spamRequestIndices.length;
+        for (uint256 i = 0; i < spamRequestIndicesLength; i = unsafe_inc(i)) {
+            uint256[2] memory spamRequestIndex = spamRequestIndices[i];
             // Check request end index is greater than start index.
-            require(spamRequestIndices[i][0] <= spamRequestIndices[i][1], "Bad start index");
+            require(spamRequestIndex[0] <= spamRequestIndex[1], "Bad start index");
 
             // check the endIndex is less than the total number of requests.
-            require(spamRequestIndices[i][1] < priceRequestIds.length, "Bad end index");
+            require(spamRequestIndex[1] < priceRequestIds.length, "Bad end index");
 
             // Validate index continuity. This checks that each sequential element within the spamRequestIndices
             // array is sequently and increasing in size.
-            require(spamRequestIndices[i][1] > runningValidationIndex, "Bad index continuity");
-            runningValidationIndex = spamRequestIndices[i][1];
+            require(spamRequestIndex[1] > runningValidationIndex, "Bad index continuity");
+            runningValidationIndex = spamRequestIndex[1];
         }
         // todo: consider if we want to check if the most recent price request has been settled?
 
@@ -439,7 +441,7 @@ contract VotingV2 is
         // If the price is 1e18 then the spam deletion request was correctly voted on to delete the requests.
         if (resolutionPrice == 1e18) {
             // Delete the price requests associated with the spam.
-            for (uint256 i = 0; i < spamDeletionProposals[proposalId].spamRequestIndices.length; i++) {
+            for (uint256 i = 0; i < spamDeletionProposals[proposalId].spamRequestIndices.length; i = unsafe_inc(i)) {
                 uint256 startIndex = spamDeletionProposals[proposalId].spamRequestIndices[uint256(i)][0];
                 uint256 endIndex = spamDeletionProposals[proposalId].spamRequestIndices[uint256(i)][1];
                 for (uint256 j = startIndex; j <= endIndex; j++) {
@@ -626,7 +628,7 @@ contract VotingV2 is
     {
         RequestState[] memory requestStates = new RequestState[](requests.length);
         uint256 currentRoundId = voteTiming.computeCurrentRoundId(getCurrentTime());
-        for (uint256 i = 0; i < requests.length; i++) {
+        for (uint256 i = 0; i < requests.length; i = unsafe_inc(i)) {
             PriceRequest storage priceRequest =
                 _getPriceRequest(requests[i].identifier, requests[i].time, requests[i].ancillaryData);
 
@@ -647,7 +649,7 @@ contract VotingV2 is
     function getPriceRequestStatuses(PendingRequest[] memory requests) public view returns (RequestState[] memory) {
         PendingRequestAncillary[] memory requestsAncillary = new PendingRequestAncillary[](requests.length);
 
-        for (uint256 i = 0; i < requests.length; i++) {
+        for (uint256 i = 0; i < requests.length; i = unsafe_inc(i)) {
             requestsAncillary[i].identifier = requests[i].identifier;
             requestsAncillary[i].time = requests[i].time;
             requestsAncillary[i].ancillaryData = "";
@@ -823,7 +825,7 @@ contract VotingV2 is
      * @param commits struct to encapsulate an `identifier`, `time`, `hash` and optional `encryptedVote`.
      */
     function batchCommit(CommitmentAncillary[] memory commits) public override {
-        for (uint256 i = 0; i < commits.length; i++) {
+        for (uint256 i = 0; i < commits.length; i = unsafe_inc(i)) {
             if (commits[i].encryptedVote.length == 0) {
                 commitVote(commits[i].identifier, commits[i].time, commits[i].ancillaryData, commits[i].hash);
             } else {
@@ -842,7 +844,7 @@ contract VotingV2 is
     function batchCommit(Commitment[] memory commits) public override {
         CommitmentAncillary[] memory commitsAncillary = new CommitmentAncillary[](commits.length);
 
-        for (uint256 i = 0; i < commits.length; i++) {
+        for (uint256 i = 0; i < commits.length; i = unsafe_inc(i)) {
             commitsAncillary[i].identifier = commits[i].identifier;
             commitsAncillary[i].time = commits[i].time;
             commitsAncillary[i].ancillaryData = "";
@@ -860,7 +862,7 @@ contract VotingV2 is
      * @param reveals array of the Reveal struct which contains an identifier, time, price and salt.
      */
     function batchReveal(RevealAncillary[] memory reveals) public override {
-        for (uint256 i = 0; i < reveals.length; i++) {
+        for (uint256 i = 0; i < reveals.length; i = unsafe_inc(i)) {
             revealVote(
                 reveals[i].identifier,
                 reveals[i].time,
@@ -875,7 +877,7 @@ contract VotingV2 is
     function batchReveal(Reveal[] memory reveals) public override {
         RevealAncillary[] memory revealsAncillary = new RevealAncillary[](reveals.length);
 
-        for (uint256 i = 0; i < reveals.length; i++) {
+        for (uint256 i = 0; i < reveals.length; i = unsafe_inc(i)) {
             revealsAncillary[i].identifier = reveals[i].identifier;
             revealsAncillary[i].time = reveals[i].time;
             revealsAncillary[i].price = reveals[i].price;
@@ -908,7 +910,7 @@ contract VotingV2 is
         PendingRequestAncillary[] memory unresolved = new PendingRequestAncillary[](pendingPriceRequests.length);
         uint256 numUnresolved = 0;
 
-        for (uint256 i = 0; i < pendingPriceRequests.length; i++) {
+        for (uint256 i = 0; i < pendingPriceRequests.length; i = unsafe_inc(i)) {
             PriceRequest storage priceRequest = priceRequests[pendingPriceRequests[i]];
             if (_getRequestStatus(priceRequest, currentRoundId) == RequestStatus.Active) {
                 unresolved[numUnresolved] = PendingRequestAncillary({
@@ -921,7 +923,7 @@ contract VotingV2 is
         }
 
         PendingRequestAncillary[] memory pendingRequests = new PendingRequestAncillary[](numUnresolved);
-        for (uint256 i = 0; i < numUnresolved; i++) {
+        for (uint256 i = 0; i < numUnresolved; i = unsafe_inc(i)) {
             pendingRequests[i] = unresolved[i];
         }
         return pendingRequests;
@@ -1130,6 +1132,10 @@ contract VotingV2 is
             // Means than priceRequest.lastVotingRound > currentRoundId
             return RequestStatus.Future;
         }
+    }
+
+    function unsafe_inc(uint256 x) internal pure returns (uint256) {
+        unchecked { return x + 1; }
     }
 
     function _getIdentifierWhitelist() private view returns (IdentifierWhitelistInterface supportedIdentifiers) {
