@@ -22,7 +22,7 @@ describe("ProposerV2", function () {
 
   let proposer;
   let bond = toWei("100");
-  let ancillaryDataSample = web3.utils.randomHex(3000);
+  const defaultAncillaryData = web3.utils.randomHex(3000);
 
   let mockOracle;
   let votingToken;
@@ -63,7 +63,7 @@ describe("ProposerV2", function () {
     const txData = proposer.methods.setBond(newBond).encodeABI();
     const proposalTx = proposer.methods.propose(
       [{ data: txData, value: 0, to: proposer.options.address }],
-      ancillaryDataSample
+      defaultAncillaryData
     );
     const id = await proposalTx.call({ from: submitter });
     await proposalTx.send({ from: submitter });
@@ -92,7 +92,7 @@ describe("ProposerV2", function () {
   });
 
   it("Bond must be paid", async function () {
-    const txn = proposer.methods.propose([], ancillaryDataSample);
+    const txn = proposer.methods.propose([], defaultAncillaryData);
 
     // No balance and bond isn't approved.
     await didContractThrow(txn.send({ from: submitter }));
@@ -117,7 +117,7 @@ describe("ProposerV2", function () {
     // Grab the proposal id and then send the proposal txn.
     const txn = proposer.methods.propose(
       [{ to: votingToken.options.address, value: 0, data: noOpTxnBytes }],
-      ancillaryDataSample
+      defaultAncillaryData
     );
     const id = await txn.call({ from: submitter });
     await txn.send({ from: submitter });
@@ -158,7 +158,7 @@ describe("ProposerV2", function () {
     // Grab the proposal id and then send the proposal txn.
     const txn = proposer.methods.propose(
       [{ to: votingToken.options.address, value: 0, data: noOpTxnBytes }],
-      ancillaryDataSample
+      defaultAncillaryData
     );
     const id = await txn.call({ from: submitter });
     await txn.send({ from: submitter });
@@ -201,7 +201,7 @@ describe("ProposerV2", function () {
     // Grab the proposal id and then send the proposal txn.
     const txn = proposer.methods.propose(
       [{ to: votingToken.options.address, value: 0, data: noOpTxnBytes }],
-      ancillaryDataSample
+      defaultAncillaryData
     );
     const id = await txn.call({ from: submitter });
     await txn.send({ from: submitter });
