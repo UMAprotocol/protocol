@@ -28,8 +28,6 @@ const SlashingLibrary = getContract("SlashingLibrary");
 const { toBN, toWei, hexToUtf8, utf8ToHex, padRight } = web3.utils;
 const snapshotMessage = "Sign For Snapshot";
 
-const ancillaryData = web3.utils.randomHex(2);
-
 describe("GovernorV2", function () {
   let voting;
   let governorV2;
@@ -40,6 +38,7 @@ describe("GovernorV2", function () {
   let signature;
   let votingToken;
   let registry;
+  const ancillaryData = web3.utils.randomHex(3000);
 
   let accounts;
   let proposer;

@@ -14,7 +14,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 /**
  * @title Proposer contract that allows anyone to make governance proposals with a bond.
  */
-contract Proposer is Ownable, Testable, Lockable {
+contract ProposerV2 is Ownable, Testable, Lockable {
     using SafeERC20 for IERC20;
     IERC20 public token;
     uint256 public bond;
@@ -26,6 +26,7 @@ contract Proposer is Ownable, Testable, Lockable {
         // 64 bits to save a storage slot.
         uint64 time;
         uint256 lockedBond;
+        bytes ancillaryData;
     }
     mapping(uint256 => BondedProposal) public bondedProposals;
 
@@ -68,7 +69,12 @@ contract Proposer is Ownable, Testable, Lockable {
     {
         id = governor.numProposals();
         token.safeTransferFrom(msg.sender, address(this), bond);
-        bondedProposals[id] = BondedProposal({ sender: msg.sender, lockedBond: bond, time: uint64(getCurrentTime()) });
+        bondedProposals[id] = BondedProposal({
+            sender: msg.sender,
+            lockedBond: bond,
+            time: uint64(getCurrentTime()),
+            ancillaryData: ancillaryData
+        });
         governor.propose(transactions, ancillaryData);
     }
 
@@ -78,13 +84,23 @@ contract Proposer is Ownable, Testable, Lockable {
      * @param id proposal id.
      */
     function resolveProposal(uint256 id) external nonReentrant() {
-        BondedProposal storage bondedProposal = bondedProposals[id];
+        BondedProposal memory bondedProposal = bondedProposals[id];
         Voting voting = Voting(finder.getImplementationAddress(OracleInterfaces.Oracle));
         require(
-            voting.hasPrice(AdminIdentifierLib._constructIdentifier(id), bondedProposal.time, ""),
+            voting.hasPrice(
+                AdminIdentifierLib._constructIdentifier(id),
+                bondedProposal.time,
+                bondedProposal.ancillaryData
+            ),
             "No price resolved"
         );
-        if (voting.getPrice(AdminIdentifierLib._constructIdentifier(id), bondedProposal.time, "") != 0) {
+        if (
+            voting.getPrice(
+                AdminIdentifierLib._constructIdentifier(id),
+                bondedProposal.time,
+                bondedProposal.ancillaryData
+            ) != 0
+        ) {
             token.safeTransfer(bondedProposal.sender, bondedProposal.lockedBond);
             emit ProposalResolved(id, true);
         } else {
