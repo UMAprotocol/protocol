@@ -38,7 +38,7 @@ contract GovernorV2 is MultiRole, Testable {
     struct Proposal {
         Transaction[] transactions;
         uint256 requestTime;
-        bytes32 ancillaryData;
+        bytes ancillaryData;
     }
 
     FinderInterface private finder;
@@ -114,6 +114,7 @@ contract GovernorV2 is MultiRole, Testable {
         // Initialize the new proposal.
         Proposal storage proposal = proposals[id];
         proposal.requestTime = time;
+        proposal.ancillaryData = ancillaryData;
 
         // Initialize the transaction array.
         for (uint256 i = 0; i < transactions.length; i++) {
@@ -141,7 +142,12 @@ contract GovernorV2 is MultiRole, Testable {
      */
     function executeProposal(uint256 id, uint256 transactionIndex) external payable {
         Proposal storage proposal = proposals[id];
-        int256 price = _getOracle().getPrice(AdminIdentifierLib._constructIdentifier(id), proposal.requestTime);
+        int256 price =
+            _getOracle().getPrice(
+                AdminIdentifierLib._constructIdentifier(id),
+                proposal.requestTime,
+                proposal.ancillaryData
+            );
 
         Transaction memory transaction = proposal.transactions[transactionIndex];
 
