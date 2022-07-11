@@ -292,8 +292,7 @@ contract VotingV2 is
         // todo: the ordering of these functions is critical and should be though about more deeply + comments.
         _updateCumulativeSlashingTrackers();
         _updateAccountSlashingTrackers(voterAddress);
-        _updateActiveStake(voterAddress);
-        _updateReward(voterAddress);
+        super._updateTrackers(voterAddress);
     }
 
     function inActiveReveal() internal override returns (bool) {
