@@ -186,7 +186,7 @@ describe("SpamGuard", function () {
     assert.equal((await voting.methods.requestSlashingTrackers(2).call()).totalCorrectVotes, toWei("0")); // 0 voted on this.
     assert.equal((await voting.methods.requestSlashingTrackers(3).call()).totalCorrectVotes, toWei("30000000")); // 30mm staked that voted correctly
 
-    // We should see cumulatively that account 1 lost two independent rounds of slashing at 0.0016 of their 60mm staked.
+    // We should see cumulatively that account1 lost two independent rounds of slashing at 0.0016 of their 60mm staked.
     // This should be assigned to the second voter. 0.0016 * 60mm = 192000
     assert.equal(
       (await voting.methods.voterStakes(account2).call()).activeStake,

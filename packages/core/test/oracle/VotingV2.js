@@ -2267,7 +2267,10 @@ describe("VotingV2", function () {
     await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
     await voting.methods.requestPrice(identifier, time1).send({ from: registeredContract });
 
-    assert.equal((await voting.methods.priceRequestIds(0).call()).roundId, startingVotingRoundId + 1);
+    assert.equal(
+      (await voting.methods.getPriceRequestStatuses([{ identifier, time: time1 }]).call())[0].lastVotingRound,
+      startingVotingRoundId + 1
+    );
 
     // Pending requests should return empty array as it only returns votes being voted on this round.
     assert.equal((await voting.methods.getPendingRequests().call()).length, 0);
@@ -2306,7 +2309,10 @@ describe("VotingV2", function () {
     // now, when price requests happen they should be placed in the round after the current round.
     const secondRequestRoundId = Number(await voting.methods.getCurrentRoundId().call());
     await voting.methods.requestPrice(identifier, time1 + 1).send({ from: registeredContract });
-    assert.equal((await voting.methods.priceRequestIds(1).call()).roundId, secondRequestRoundId + 2);
+    assert.equal(
+      (await voting.methods.getPriceRequestStatuses([{ identifier, time: time1 + 1 }]).call())[0].lastVotingRound,
+      secondRequestRoundId + 2
+    );
 
     // If we move to the next voting round you should not be able vote as the vote is not yet active (its only active
     // in the subsequent round due to the roll).
@@ -2594,13 +2600,15 @@ describe("VotingV2", function () {
     // Check account slashing trackers. We should see only account4 slashed and their slash allocated to account3. This
     // should equal to 0.0016 * 4mm = 6400.
 
-    await voting.methods.updateTrackers(account3).send({ from: account3 });
+    const tx1 = await voting.methods.updateTrackers(account3).send({ from: account3 });
+    console.log("tx1", tx1.gasUsed);
     assert.equal(
       (await voting.methods.voterStakes(account3).call()).activeStake,
       toWei("32000000").add(toWei("6400")) // Their original stake amount of 32mm plus the slashing of 6400
     );
 
-    await voting.methods.updateTrackers(account4).send({ from: account4 });
+    const tx2 = await voting.methods.updateTrackers(account4).send({ from: account4 });
+    console.log("tx2", tx2.gasUsed);
     assert.equal(
       (await voting.methods.voterStakes(account4).call()).activeStake,
       toWei("4000000").sub(toWei("6400")) // Their original stake amount of 4mm minus the slashing of 6400
@@ -2610,6 +2618,5 @@ describe("VotingV2", function () {
     assert.equal(slashingTracker1.totalSlashed, toWei("6400")); // 32mm*0.0016=51200
     assert.equal(slashingTracker1.totalCorrectVotes, toWei("32000000")); // 32mm + 4mm
   });
+  it("Requesting to unstake within a voting round excludes you from being slashed", async function () {});
 });
-
-// TODO: test rolled votes behave as we'd expect.
