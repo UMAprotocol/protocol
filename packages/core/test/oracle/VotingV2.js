@@ -2553,7 +2553,63 @@ describe("VotingV2", function () {
       toWei("32000000").add(toWei("28796.000199990000499975")) // 32mm  + 28796.00019999
     );
   });
+  it("Requesting to unstake within a voting round excludes you from being slashed", async function () {
+    // If a voter requests to unstake, even in the current commit phase a voting round, they should not be slashed for
+    // being "staked" (in unlock cooldown) but not active at that point in time.
+    const identifier = padRight(utf8ToHex("slash-test"), 64); // Use the same identifier for both.
+    const time = "420";
+    await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
+    await voting.methods.requestPrice(identifier, time).send({ from: registeredContract });
+
+    // Account1 will request to unstake before the start of the voting round.
+    await voting.methods.requestUnstake(toWei("32000000")).send({ from: account1 });
+    await moveToNextRound(voting, accounts[0]); // Move into the commit phase.
+
+    // Account 2 will request to unstake during the voting round.
+    await voting.methods.requestUnstake(toWei("32000000")).send({ from: account2 });
+
+    // Account 3 votes and account 4 does not vote.
+    const salt = getRandomSignedInt(); // use the same salt for all votes. bad practice but wont impact anything.
+    let roundId = (await voting.methods.getCurrentRoundId().call()).toString();
+    let baseRequest = { salt, roundId, identifier };
+    const price = "69696969";
+    const hash1 = computeVoteHash({ ...baseRequest, price, account: account3, time });
+    await voting.methods.commitVote(identifier, time, hash1).send({ from: account3 });
+
+    await moveToNextPhase(voting, accounts[0]); // Move into the reveal phase
+
+    // Account 3 reveals their vote.
+    await voting.methods.revealVote(identifier, time, price, salt).send({ from: account3 });
+
+    // We should see that the total number of active stakers for this round is 36mm (account3 and account4). Account1
+    // and account2 are in pending exit.
+    assert.equal(
+      (await voting.methods.rounds(await voting.methods.getCurrentRoundId().call()).call())
+        .cumulativeActiveStakeAtRound,
+      toWei("36000000")
+    );
+
+    await moveToNextRound(voting, accounts[0]); // Move to the next round to conclude the vote.
+
+    // Check account slashing trackers. We should see only account4 slashed and their slash allocated to account3. This
+    // should equal to 0.0016 * 4mm = 6400.
+
+    await voting.methods.updateTrackers(account3).send({ from: account3 });
+    assert.equal(
+      (await voting.methods.voterStakes(account3).call()).activeStake,
+      toWei("32000000").add(toWei("6400")) // Their original stake amount of 32mm plus the slashing of 6400
+    );
+
+    await voting.methods.updateTrackers(account4).send({ from: account4 });
+    assert.equal(
+      (await voting.methods.voterStakes(account4).call()).activeStake,
+      toWei("4000000").sub(toWei("6400")) // Their original stake amount of 4mm minus the slashing of 6400
+    );
+
+    const slashingTracker1 = await voting.methods.requestSlashingTrackers(0).call();
+    assert.equal(slashingTracker1.totalSlashed, toWei("6400")); // 32mm*0.0016=51200
+    assert.equal(slashingTracker1.totalCorrectVotes, toWei("32000000")); // 32mm + 4mm
+  });
 });
 
-// TODO: add tests for staking/ustaking during a voting round. this can only be done once we've decided on this locking mechanism.
 // TODO: test rolled votes behave as we'd expect.
