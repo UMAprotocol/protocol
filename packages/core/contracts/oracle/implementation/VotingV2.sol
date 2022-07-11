@@ -505,9 +505,14 @@ contract VotingV2 is
      * is limited such that this method abides by the EVM transaction gas limit.
      * @param identifier uniquely identifies the price requested. eg BTC/USD (encoded as bytes32) could be requested.
      * @param time unix timestamp for the price request.
+     * @param ancillaryData arbitrary data appended to a price request to give the voters more info from the caller.
      */
-    function requestGovernanceAction(bytes32 identifier, uint256 time) public override onlyOwner() {
-        _requestPrice(identifier, time, "", true);
+    function requestGovernanceAction(
+        bytes32 identifier,
+        uint256 time,
+        bytes memory ancillaryData
+    ) public override onlyOwner() {
+        _requestPrice(identifier, time, ancillaryData, true);
     }
 
     /**
