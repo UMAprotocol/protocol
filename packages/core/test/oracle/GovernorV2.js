@@ -37,7 +37,6 @@ describe("GovernorV2", function () {
   let timer;
   let signature;
   let votingToken;
-  let registry;
   const defaultAncillaryData = web3.utils.randomHex(3000);
 
   let accounts;
@@ -58,7 +57,6 @@ describe("GovernorV2", function () {
     governorV2 = await GovernorV2.deployed();
     testToken = await TestnetERC20.new("Test", "TEST", 18).send({ from: accounts[0] });
     votingToken = await VotingToken.deployed();
-    registry = await Registry.deployed();
 
     // Allow proposer to mint tokens.
     const minterRole = 1;
@@ -79,10 +77,6 @@ describe("GovernorV2", function () {
     // environment, so ownership must be transferred.
 
     await voting.methods.transferOwnership(governorV2.options.address).send({ from: accounts[0] });
-
-    // Register contract with Registry.
-    await registry.methods.addMember(RegistryRolesEnum.CONTRACT_CREATOR, accounts[0]).send({ from: accounts[0] });
-    await registry.methods.registerContract([], governorV2.options.address).send({ from: accounts[0] });
 
     signature = await signMessage(web3, snapshotMessage, proposer);
   });
