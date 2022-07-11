@@ -99,10 +99,7 @@ describe("DesignatedVotingV2", function () {
     assert.equal(await votingToken.methods.balanceOf(voting.options.address).call(), tokenBalance);
 
     // Voting contract should now have a stake balance for the designatedVoting contract.
-    assert.equal(
-      (await voting.methods.voterStakes(designatedVoting.options.address).call()).cumulativeStaked,
-      tokenBalance
-    );
+    assert.equal((await voting.methods.voterStakes(designatedVoting.options.address).call()).activeStake, tokenBalance);
 
     // Only the token owner can request to unstake.
     assert(
@@ -118,7 +115,7 @@ describe("DesignatedVotingV2", function () {
     await designatedVoting.methods.requestUnstake(tokenBalance, voting.options.address).send({ from: tokenOwner });
 
     assert.equal(
-      (await voting.methods.voterStakes(designatedVoting.options.address).call()).requestUnstake,
+      (await voting.methods.voterStakes(designatedVoting.options.address).call()).pendingUnstake,
       tokenBalance
     );
 
@@ -229,7 +226,7 @@ describe("DesignatedVotingV2", function () {
     const expectedReward = toBN(await voting.methods.emissionRate().call()).mul(toBN(retrievalTime - stakeTime));
 
     assert.equal(
-      (await voting.methods.voterStakes(designatedVoting.options.address).call()).cumulativeStaked,
+      (await voting.methods.voterStakes(designatedVoting.options.address).call()).activeStake,
       expectedReward.add(toBN(tokenBalance))
     );
   });
