@@ -3,8 +3,9 @@ pragma solidity ^0.8.0;
 
 import "../../common/implementation/MultiRole.sol";
 import "../../common/implementation/Stakeable.sol";
-import "../interfaces/VotingAncillaryInterface.sol";
+import "../interfaces/VotingV2Interface.sol";
 import "../interfaces/FinderInterface.sol";
+import "../../common/implementation/MultiCaller.sol";
 import "./Constants.sol";
 
 /**
@@ -68,11 +69,23 @@ contract DesignatedVotingV2 is Stakeable {
      * @notice Forwards a batch commit to Voting.
      * @param commits struct to encapsulate an `identifier`, `time`, `hash` and optional `encryptedVote`.
      */
-    function batchCommit(VotingAncillaryInterface.CommitmentAncillary[] calldata commits)
+    function batchCommit(VotingV2Interface.CommitmentAncillary[] calldata commits)
         external
         onlyRoleHolder(uint256(Roles.Voter))
     {
-        _getVotingContract().batchCommit(commits);
+        bytes[] memory data = new bytes[](commits.length);
+        for (uint256 i = 0; i < commits.length; i++) {
+            VotingV2Interface.CommitmentAncillary memory commit = commits[i];
+            data[i] = abi.encodeWithSignature(
+                "commitAndEmitEncryptedVote(bytes32,uint256,bytes,bytes32,bytes)",
+                commit.identifier,
+                commit.time,
+                commit.ancillaryData,
+                commit.hash,
+                commit.encryptedVote
+            );
+        }
+        MultiCaller(address(_getVotingContract())).multicall(data);
     }
 
     /**
@@ -96,11 +109,23 @@ contract DesignatedVotingV2 is Stakeable {
      * @notice Forwards a batch reveal to Voting.
      * @param reveals is an array of the Reveal struct which contains an identifier, time, price and salt.
      */
-    function batchReveal(VotingAncillaryInterface.RevealAncillary[] calldata reveals)
+    function batchReveal(VotingV2Interface.RevealAncillary[] calldata reveals)
         external
         onlyRoleHolder(uint256(Roles.Voter))
     {
-        _getVotingContract().batchReveal(reveals);
+        bytes[] memory data = new bytes[](reveals.length);
+        for (uint256 i = 0; i < reveals.length; i++) {
+            VotingV2Interface.RevealAncillary memory reveal = reveals[i];
+            data[i] = abi.encodeWithSignature(
+                "revealVote(bytes32,uint256,int256,bytes,int256)",
+                reveal.identifier,
+                reveal.time,
+                reveal.price,
+                reveal.ancillaryData,
+                reveal.salt
+            );
+        }
+        MultiCaller(address(_getVotingContract())).multicall(data);
     }
 
     /**
@@ -115,7 +140,7 @@ contract DesignatedVotingV2 is Stakeable {
         voting.stake(rewardsMinted);
     }
 
-    function _getVotingContract() private view returns (VotingAncillaryInterface) {
-        return VotingAncillaryInterface(finder.getImplementationAddress(OracleInterfaces.Oracle));
+    function _getVotingContract() private view returns (VotingV2Interface) {
+        return VotingV2Interface(finder.getImplementationAddress(OracleInterfaces.Oracle));
     }
 }

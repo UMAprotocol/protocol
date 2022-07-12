@@ -38,7 +38,7 @@ contract VotingV2 is
     OracleAncillaryInterface, // Interface to support ancillary data with price requests.
     OracleGovernanceInterface, // Interface to support governance requests.
     VotingV2Interface,
-    MultiCaller // Interface to support multiple calls.
+    MultiCaller
 {
     using FixedPoint for FixedPoint.Unsigned;
     using SafeMath for uint256;
@@ -684,7 +684,7 @@ contract VotingV2 is
         uint256 time,
         bytes memory ancillaryData,
         bytes32 hash
-    ) public onlyIfNotMigrated() {
+    ) public override onlyIfNotMigrated() {
         uint256 currentRoundId = voteTiming.computeCurrentRoundId(getCurrentTime());
         _freezeRoundVariables(currentRoundId);
         _updateTrackers(msg.sender);
@@ -735,7 +735,7 @@ contract VotingV2 is
         int256 price,
         bytes memory ancillaryData,
         int256 salt
-    ) public onlyIfNotMigrated() {
+    ) public override onlyIfNotMigrated() {
         require(voteTiming.computeCurrentPhase(getCurrentTime()) == Phase.Reveal, "Cannot reveal in commit phase");
         // Note: computing the current round is required to disallow people from revealing an old commit after the round is over.
         uint256 roundId = voteTiming.computeCurrentRoundId(getCurrentTime());

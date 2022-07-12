@@ -40,6 +40,28 @@ abstract contract VotingV2Interface {
         int256 salt;
     }
 
+    // Captures the necessary data for making a commitment.
+    // Used as a parameter when making batch commitments.
+    // Not used as a data structure for storage.
+    struct CommitmentAncillary {
+        bytes32 identifier;
+        uint256 time;
+        bytes ancillaryData;
+        bytes32 hash;
+        bytes encryptedVote;
+    }
+
+    // Captures the necessary data for revealing a vote.
+    // Used as a parameter when making batch reveals.
+    // Not used as a data structure for storage.
+    struct RevealAncillary {
+        bytes32 identifier;
+        uint256 time;
+        int256 price;
+        bytes ancillaryData;
+        int256 salt;
+    }
+
     // Note: the phases must be in order. Meaning the first enum value must be the first phase, etc.
     // `NUM_PHASES_PLACEHOLDER` is to get the number of phases. It isn't an actual phase, and it should always be last.
     enum Phase { Commit, Reveal, NUM_PHASES_PLACEHOLDER }
@@ -60,6 +82,25 @@ abstract contract VotingV2Interface {
         uint256 time,
         bytes32 hash
     ) external virtual;
+
+    /**
+     * @notice Commit a vote for a price request for `identifier` at `time`.
+     * @dev `identifier`, `time` must correspond to a price request that's currently in the commit phase.
+     * Commits can be changed.
+     * @dev Since transaction data is public, the salt will be revealed with the vote. While this is the system’s expected behavior,
+     * voters should never reuse salts. If someone else is able to guess the voted price and knows that a salt will be reused, then
+     * they can determine the vote pre-reveal.
+     * @param identifier uniquely identifies the committed vote. EG BTC/USD price pair.
+     * @param time unix timestamp of the price being voted on.
+     * @param ancillaryData arbitrary data appended to a price request to give the voters more info from the caller.
+     * @param hash keccak256 hash of the `price`, `salt`, voter `address`, `time`, current `roundId`, and `identifier`.
+     */
+    function commitVote(
+        bytes32 identifier,
+        uint256 time,
+        bytes memory ancillaryData,
+        bytes32 hash
+    ) public virtual;
 
     /**
      * @notice commits a vote and logs an event with a data blob, typically an encrypted version of the vote
@@ -99,6 +140,24 @@ abstract contract VotingV2Interface {
         bytes32 identifier,
         uint256 time,
         int256 price,
+        int256 salt
+    ) public virtual;
+
+    /**
+     * @notice Reveal a previously committed vote for `identifier` at `time`.
+     * @dev The revealed `price`, `salt`, `address`, `time`, `roundId`, and `identifier`, must hash to the latest `hash`
+     * that `commitVote()` was called with. Only the committer can reveal their vote.
+     * @param identifier voted on in the commit phase. EG BTC/USD price pair.
+     * @param time specifies the unix timestamp of the price is being voted on.
+     * @param price voted on during the commit phase.
+     * @param ancillaryData arbitrary data appended to a price request to give the voters more info from the caller.
+     * @param salt value used to hide the commitment price during the commit phase.
+     */
+    function revealVote(
+        bytes32 identifier,
+        uint256 time,
+        int256 price,
+        bytes memory ancillaryData,
         int256 salt
     ) public virtual;
 
