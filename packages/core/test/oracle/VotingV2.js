@@ -1069,17 +1069,24 @@ describe("VotingV2", function () {
 
     await moveToNextRound(voting, accounts[0]);
 
-    // Commit without emitting any encrypted messages
-    const result = await voting.methods
-      .batchCommit(
-        priceRequests.map((request) => ({
-          identifier: request.identifier,
-          time: request.time,
-          hash: request.hash,
-          encryptedVote: [],
-        }))
-      )
-      .send({ from: accounts[0] });
+    // // Commit without emitting any encrypted messages
+    // const result = await voting.methods
+    //   .batchCommit(
+    //     priceRequests.map((request) => ({
+    //       identifier: request.identifier,
+    //       time: request.time,
+    //       hash: request.hash,
+    //       encryptedVote: [],
+    //     }))
+    //   )
+    //   .send({ from: accounts[0] });
+
+    const calldatas = priceRequests.map((request) => {
+      return voting.methods.commitAndEmitEncryptedVote(request.identifier, request.time, request.hash, []).encodeABI();
+    });
+
+    const result = await voting.methods.multicall(calldatas).send({ from: accounts[0] });
+
     await assertEventNotEmitted(result, voting, "EncryptedVote");
 
     // This time we commit while storing the encrypted messages
