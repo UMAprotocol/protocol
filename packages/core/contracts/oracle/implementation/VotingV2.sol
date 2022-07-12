@@ -715,9 +715,6 @@ contract VotingV2 is
         commitVote(identifier, time, "", hash);
     }
 
-    // TODO: only here for ABI support until removed.
-    function snapshotCurrentRound(bytes calldata signature) external override(VotingV2Interface) onlyIfNotMigrated() {}
-
     /**
      * @notice Reveal a previously committed vote for `identifier` at `time`.
      * @dev The revealed `price`, `salt`, `address`, `time`, `roundId`, and `identifier`, must hash to the latest `hash`
