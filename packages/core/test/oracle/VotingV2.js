@@ -1069,28 +1069,22 @@ describe("VotingV2", function () {
 
     await moveToNextRound(voting, accounts[0]);
 
-    // // Commit without emitting any encrypted messages
-    // const result = await voting.methods
-    //   .batchCommit(
-    //     priceRequests.map((request) => ({
-    //       identifier: request.identifier,
-    //       time: request.time,
-    //       hash: request.hash,
-    //       encryptedVote: [],
-    //     }))
-    //   )
-    //   .send({ from: accounts[0] });
-
-    const calldatas = priceRequests.map((request) => {
-      return voting.methods.commitAndEmitEncryptedVote(request.identifier, request.time, request.hash, []).encodeABI();
+    const data = priceRequests.map((request) => {
+      return voting.methods.commitVote(request.identifier, request.time, request.hash).encodeABI();
     });
 
-    const result = await voting.methods.multicall(calldatas).send({ from: accounts[0] });
+    const result = await voting.methods.multicall(data).send({ from: accounts[0] });
 
     await assertEventNotEmitted(result, voting, "EncryptedVote");
 
     // This time we commit while storing the encrypted messages
-    await voting.methods.batchCommit(priceRequests).send({ from: accounts[0] });
+    const dataEncrypted = priceRequests.map((request) => {
+      return voting.methods
+        .commitAndEmitEncryptedVote(request.identifier, request.time, request.hash, request.encryptedVote)
+        .encodeABI();
+    });
+
+    await voting.methods.multicall(dataEncrypted).send({ from: accounts[0] });
 
     for (let i = 0; i < numRequests; i++) {
       let priceRequest = priceRequests[i];
@@ -1154,11 +1148,13 @@ describe("VotingV2", function () {
 
     await moveToNextPhase(voting, accounts[0]);
 
-    // NOTE: Signed integers inside structs must be supplied as a string rather than a BN.
-    const result = await voting.methods["batchReveal((bytes32,uint256,int256,int256)[])"]([
-      { identifier, time: time1, price: price1.toString(), salt: salt1.toString() },
-      { identifier, time: time2, price: price2.toString(), salt: salt2.toString() },
-    ]).send({ from: accounts[0] });
+    const data = [
+      voting.methods.revealVote(identifier, time1, price1, salt1).encodeABI(),
+      voting.methods.revealVote(identifier, time2, price2, salt2).encodeABI(),
+    ];
+
+    const result = await voting.methods.multicall(data).send({ from: accounts[0] });
+
     await assertEventEmitted(result, voting, "VoteRevealed", (ev) => {
       return (
         ev.voter.toString() == account1 &&
