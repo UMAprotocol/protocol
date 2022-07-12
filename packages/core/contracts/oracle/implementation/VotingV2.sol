@@ -5,7 +5,6 @@ pragma solidity ^0.8.0;
 
 import "../../common/implementation/AncillaryData.sol";
 import "../../common/implementation/FixedPoint.sol"; // TODO: remove this from this contract.
-
 import "../../common/implementation/MultiCaller.sol";
 
 import "../interfaces/FinderInterface.sol";
@@ -797,7 +796,7 @@ contract VotingV2 is
         bytes memory ancillaryData,
         bytes32 hash,
         bytes memory encryptedVote
-    ) public {
+    ) public override {
         commitVote(identifier, time, ancillaryData, hash);
 
         uint256 roundId = voteTiming.computeCurrentRoundId(getCurrentTime());

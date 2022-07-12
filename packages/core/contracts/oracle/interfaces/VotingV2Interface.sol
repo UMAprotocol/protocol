@@ -119,6 +119,24 @@ abstract contract VotingV2Interface {
     ) public virtual;
 
     /**
+     * @notice commits a vote and logs an event with a data blob, typically an encrypted version of the vote
+     * @dev An encrypted version of the vote is emitted in an event `EncryptedVote` to allow off-chain infrastructure to
+     * retrieve the commit. The contents of `encryptedVote` are never used on chain: it is purely for convenience.
+     * @param identifier unique price pair identifier. Eg: BTC/USD price pair.
+     * @param time unix timestamp of for the price request.
+     * @param ancillaryData  arbitrary data appended to a price request to give the voters more info from the caller.
+     * @param hash keccak256 hash of the price you want to vote for and a `int256 salt`.
+     * @param encryptedVote offchain encrypted blob containing the voters amount, time and salt.
+     */
+    function commitAndEmitEncryptedVote(
+        bytes32 identifier,
+        uint256 time,
+        bytes memory ancillaryData,
+        bytes32 hash,
+        bytes memory encryptedVote
+    ) public virtual;
+
+    /**
      * @notice snapshot the current round's token balances and lock in the inflation rate and GAT.
      * @dev This function can be called multiple times but each round will only every have one snapshot at the
      * time of calling `_freezeRoundVariables`.
