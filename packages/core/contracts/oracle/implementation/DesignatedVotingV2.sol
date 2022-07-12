@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import "../../common/implementation/MultiRole.sol";
 import "../../common/implementation/Stakeable.sol";
 import "../interfaces/VotingV2Interface.sol";
 import "../interfaces/FinderInterface.sol";
@@ -13,7 +12,7 @@ import "./Constants.sol";
  * @dev Allows a UMA token holder to designate another address to vote on their behalf.
  * Each voter must deploy their own instance of this contract.
  */
-contract DesignatedVotingV2 is Stakeable {
+contract DesignatedVotingV2 is Stakeable, MultiCaller {
     /****************************************
      *    INTERNAL VARIABLES AND STORAGE    *
      ****************************************/
@@ -66,26 +65,23 @@ contract DesignatedVotingV2 is Stakeable {
     }
 
     /**
-     * @notice Forwards a batch commit to Voting.
-     * @param commits struct to encapsulate an `identifier`, `time`, `hash` and optional `encryptedVote`.
+     * @notice commits a vote and logs an event with a data blob, typically an encrypted version of the vote
+     * @dev An encrypted version of the vote is emitted in an event `EncryptedVote` to allow off-chain infrastructure to
+     * retrieve the commit. The contents of `encryptedVote` are never used on chain: it is purely for convenience.
+     * @param identifier unique price pair identifier. Eg: BTC/USD price pair.
+     * @param time unix timestamp of for the price request.
+     * @param ancillaryData arbitrary data appended to a price request to give the voters more info from the caller.
+     * @param hash keccak256 hash of the price you want to vote for and a `int256 salt`.
+     * @param encryptedVote offchain encrypted blob containing the voters amount, time and salt.
      */
-    function batchCommit(VotingV2Interface.CommitmentAncillary[] calldata commits)
-        external
-        onlyRoleHolder(uint256(Roles.Voter))
-    {
-        bytes[] memory data = new bytes[](commits.length);
-        for (uint256 i = 0; i < commits.length; i++) {
-            VotingV2Interface.CommitmentAncillary memory commit = commits[i];
-            data[i] = abi.encodeWithSignature(
-                "commitAndEmitEncryptedVote(bytes32,uint256,bytes,bytes32,bytes)",
-                commit.identifier,
-                commit.time,
-                commit.ancillaryData,
-                commit.hash,
-                commit.encryptedVote
-            );
-        }
-        MultiCaller(address(_getVotingContract())).multicall(data);
+    function commitAndEmitEncryptedVote(
+        bytes32 identifier,
+        uint256 time,
+        bytes memory ancillaryData,
+        bytes32 hash,
+        bytes memory encryptedVote
+    ) external onlyRoleHolder(uint256(Roles.Voter)) {
+        _getVotingContract().commitAndEmitEncryptedVote(identifier, time, ancillaryData, hash, encryptedVote);
     }
 
     /**
@@ -103,29 +99,6 @@ contract DesignatedVotingV2 is Stakeable {
         int256 salt
     ) external onlyRoleHolder(uint256(Roles.Voter)) {
         _getVotingContract().revealVote(identifier, time, price, ancillaryData, salt);
-    }
-
-    /**
-     * @notice Forwards a batch reveal to Voting.
-     * @param reveals is an array of the Reveal struct which contains an identifier, time, price and salt.
-     */
-    function batchReveal(VotingV2Interface.RevealAncillary[] calldata reveals)
-        external
-        onlyRoleHolder(uint256(Roles.Voter))
-    {
-        bytes[] memory data = new bytes[](reveals.length);
-        for (uint256 i = 0; i < reveals.length; i++) {
-            VotingV2Interface.RevealAncillary memory reveal = reveals[i];
-            data[i] = abi.encodeWithSignature(
-                "revealVote(bytes32,uint256,int256,bytes,int256)",
-                reveal.identifier,
-                reveal.time,
-                reveal.price,
-                reveal.ancillaryData,
-                reveal.salt
-            );
-        }
-        MultiCaller(address(_getVotingContract())).multicall(data);
     }
 
     /**

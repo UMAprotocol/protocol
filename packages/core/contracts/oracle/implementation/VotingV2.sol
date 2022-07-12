@@ -821,7 +821,7 @@ contract VotingV2 is
      * @return pendingRequests array containing identifiers of type `PendingRequest`.
      * and timestamps for all pending requests.
      */
-    function getPendingRequests() external view override(VotingV2Interface) returns (PendingRequestAncillary[] memory) {
+    function getPendingRequests() external view override returns (PendingRequestAncillary[] memory) {
         uint256 blockTime = getCurrentTime();
         uint256 currentRoundId = voteTiming.computeCurrentRoundId(blockTime);
 
@@ -853,7 +853,7 @@ contract VotingV2 is
      * @notice Returns the current voting phase, as a function of the current time.
      * @return Phase to indicate the current phase. Either { Commit, Reveal, NUM_PHASES_PLACEHOLDER }.
      */
-    function getVotePhase() public view override(VotingV2Interface) returns (Phase) {
+    function getVotePhase() public view override returns (Phase) {
         return voteTiming.computeCurrentPhase(getCurrentTime());
     }
 
@@ -861,7 +861,7 @@ contract VotingV2 is
      * @notice Returns the current round ID, as a function of the current time.
      * @return uint256 representing the unique round ID.
      */
-    function getCurrentRoundId() public view override(VotingV2Interface) returns (uint256) {
+    function getCurrentRoundId() public view override returns (uint256) {
         return voteTiming.computeCurrentRoundId(getCurrentTime());
     }
 
@@ -882,43 +882,31 @@ contract VotingV2 is
      * @dev Can only be called by the contract owner.
      * @param newVotingAddress the newly migrated contract address.
      */
-    function setMigrated(address newVotingAddress) external override(VotingV2Interface) onlyOwner {
+    function setMigrated(address newVotingAddress) external override onlyOwner {
         migratedAddress = newVotingAddress;
     }
 
     // here for abi compatibility. remove
-    function setInflationRate(FixedPoint.Unsigned memory newInflationRate)
-        public
-        override(VotingV2Interface)
-        onlyOwner
-    {}
+    function setInflationRate(FixedPoint.Unsigned memory newInflationRate) public override onlyOwner {}
 
     /**
      * @notice Resets the Gat percentage. Note: this change only applies to rounds that have not yet begun.
      * @dev This method is public because calldata structs are not currently supported by solidity.
      * @param newGatPercentage sets the next round's Gat percentage.
      */
-    function setGatPercentage(FixedPoint.Unsigned memory newGatPercentage)
-        public
-        override(VotingV2Interface)
-        onlyOwner
-    {
+    function setGatPercentage(FixedPoint.Unsigned memory newGatPercentage) public override onlyOwner {
         require(newGatPercentage.isLessThan(1), "GAT percentage must be < 100%");
         gatPercentage = newGatPercentage;
     }
 
     // Here for abi compatibility. to be removed.
-    function setRewardsExpirationTimeout(uint256 NewRewardsExpirationTimeout)
-        public
-        override(VotingV2Interface)
-        onlyOwner
-    {}
+    function setRewardsExpirationTimeout(uint256 NewRewardsExpirationTimeout) public override onlyOwner {}
 
     /**
      * @notice Changes the slashing library used by this contract.
      * @param _newSlashingLibrary new slashing library address.
      */
-    function setSlashingLibrary(address _newSlashingLibrary) public override(VotingV2Interface) onlyOwner {
+    function setSlashingLibrary(address _newSlashingLibrary) public override onlyOwner {
         slashingLibrary = SlashingLibrary(_newSlashingLibrary);
     }
 
