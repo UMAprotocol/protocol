@@ -12,7 +12,7 @@ import "../interfaces/FinderInterface.sol";
 import "../interfaces/OracleInterface.sol";
 import "../interfaces/OracleAncillaryInterface.sol";
 import "../interfaces/OracleGovernanceInterface.sol";
-import "../interfaces/VotingV2Interface.sol"; // TODO: remove this and simplify down to one v2 interface.
+import "../interfaces/VotingV2Interface.sol";
 import "../interfaces/IdentifierWhitelistInterface.sol";
 import "./Registry.sol";
 import "./ResultComputation.sol";
