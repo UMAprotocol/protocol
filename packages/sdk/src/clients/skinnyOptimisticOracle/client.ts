@@ -4,7 +4,7 @@ import {
   getSkinnyOptimisticOracleAbi,
 } from "@uma/contracts-node";
 import type { SignerOrProvider, GetEventType } from "../..";
-import { Event, BigNumberish, utils } from "ethers";
+import { Event, BigNumberish, utils, BigNumber } from "ethers";
 
 export type Instance = SkinnyOptimisticOracleEthers;
 const Factory = SkinnyOptimisticOracleEthers__factory;
@@ -30,19 +30,19 @@ export enum RequestState {
   Settled, // Final price has been set in the contract (can get here from Expired or Resolved).
 }
 
-export type SolidityRequest = {
+export interface SolidityRequest {
   proposer: string; // Address of the proposer.
   disputer: string; // Address of the disputer.
   currency: string; // ERC20 token used to pay rewards and fees.
   settled: boolean; // True if the request is settled.
-  proposedPrice: BigNumberish; // Price that the proposer submitted.
-  resolvedPrice: BigNumberish; // Price resolved once the request is settled.
-  expirationTime: BigNumberish; // Time at which the request auto-settles without a dispute.
-  reward: BigNumberish; // Amount of the currency to pay to the proposer on settlement.
-  finalFee: BigNumberish; // Final fee to pay to the Store upon request to the DVM.
-  bond: BigNumberish; // Bond that the proposer and disputer must pay on top of the final fee.
-  customLiveness: BigNumberish; // Custom liveness value set by the requester.
-};
+  proposedPrice: BigNumber; // Price that the proposer submitted.
+  resolvedPrice: BigNumber; // Price resolved once the request is settled.
+  expirationTime: BigNumber; // Time at which the request auto-settles without a dispute.
+  reward: BigNumber; // Amount of the currency to pay to the proposer on settlement.
+  finalFee: BigNumber; // Final fee to pay to the Store upon request to the DVM.
+  bond: BigNumber; // Bond that the proposer and disputer must pay on top of the final fee.
+  customLiveness: BigNumber; // Custom liveness value set by the requester.
+}
 
 // all events have these values
 export type RequestKey = {
@@ -52,22 +52,10 @@ export type RequestKey = {
   ancillaryData: string;
 };
 export type Request = RequestKey &
+  SolidityRequest &
   // this is partial since we dont know what events we have to populate parts of this
   Partial<{
-    proposer: string;
-    disputer: string;
-    currency: string;
-    settled: boolean;
     refundOnDispute: boolean;
-    proposedPrice: string;
-    resolvedPrice: string;
-    expirationTime: number;
-    reward: string;
-    finalFee: string;
-    bond: string;
-    customLiveness: string;
-    price: string;
-    payout: string;
     state: RequestState;
     // metadata about the transaction that triggered the state changes
     requestTx: string;
@@ -88,20 +76,6 @@ export function requestId(request: Omit<RequestKey, "timestamp"> & { timestamp: 
   // if enabling sorting, put timestamp first
   return [request.timestamp.toString(), request.identifier, request.requester, request.ancillaryData].join("!");
 }
-
-export function parseRequest(request: SolidityRequest) {
-  return {
-    ...request,
-    proposedPrice: request.proposedPrice.toString(),
-    resolvedPrice: request.resolvedPrice.toString(),
-    expirationTime: Number(request.expirationTime.toString()),
-    reward: request.reward.toString(),
-    finalFee: request.finalFee.toString(),
-    bond: request.bond.toString(),
-    customLiveness: request.customLiveness.toString(),
-  };
-}
-
 export function reduceEvents(state: EventState, event: Event): EventState {
   switch (event.event) {
     case "RequestPrice": {
@@ -110,7 +84,7 @@ export function reduceEvents(state: EventState, event: Event): EventState {
       const id = requestId(typedEvent.args);
       if (!state.requests) state.requests = {};
       state.requests[id] = {
-        ...parseRequest(request),
+        ...request,
         requester,
         identifier,
         timestamp,
@@ -127,7 +101,7 @@ export function reduceEvents(state: EventState, event: Event): EventState {
       const id = requestId(typedEvent.args);
       if (!state.requests) state.requests = {};
       state.requests[id] = {
-        ...parseRequest(request),
+        ...request,
         requester,
         identifier,
         timestamp,
@@ -144,7 +118,7 @@ export function reduceEvents(state: EventState, event: Event): EventState {
       const id = requestId(typedEvent.args);
       if (!state.requests) state.requests = {};
       state.requests[id] = {
-        ...parseRequest(request),
+        ...request,
         requester,
         identifier,
         timestamp,
@@ -161,7 +135,7 @@ export function reduceEvents(state: EventState, event: Event): EventState {
       const id = requestId(typedEvent.args);
       if (!state.requests) state.requests = {};
       state.requests[id] = {
-        ...parseRequest(request),
+        ...request,
         requester,
         identifier,
         timestamp,

@@ -160,10 +160,10 @@ export default class Write {
     if (!this.state.commands) this.state.commands = {};
     this.state.commands[context.id] = context;
   }
-  sortedRequestsService(): void {
+  sortedRequestsService(sortedRequests: SortedRequests): void {
     if (this.state?.services?.sortedRequests) return;
     // only want to add this once
-    this.state.services = { sortedRequests: new SortedRequests() };
+    this.state.services = { sortedRequests };
   }
   descendingRequests(sortedRequests: Requests): void {
     this.state.descendingRequests = sortedRequests;
