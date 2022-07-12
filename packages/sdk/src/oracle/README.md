@@ -40,8 +40,8 @@ const config:PartialConfig = {
 // this starts both a skinny and optimistic oracle, you have to make sure to omit the oracle address
 // in the config to let them auto populate, or make sure you set the addresses differently for each type
 const configTable = {
-  [oracle.types.state.OracleType.Optimistic]:config,
-  [oracle.types.state.OracleType.Skinny]:config,
+  [oracle.types.state.OracleType.Optimistic]: config,
+  [oracle.types.state.OracleType.Skinny]: config,
 }
 
 const state = {

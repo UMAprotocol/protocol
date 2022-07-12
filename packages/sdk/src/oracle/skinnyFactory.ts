@@ -1,5 +1,5 @@
 import { Client, factory } from "./client";
-import { OptimisticOracle, getOptimisticOracleAddress } from "./services/skinnyOptimisticOracle";
+import { SkinnyOptimisticOracle, getOptimisticOracleAddress } from "./services/skinnyOptimisticOracle";
 import { SortedRequests } from "./services/sortedRequests";
 import { DefaultConfig, getMulticall2Address } from "./utils";
 import { state } from "./types";
@@ -14,5 +14,5 @@ export default (
     getMulticall2Address,
     getOptimisticOracleAddress,
   })({ ...config }, state.OracleType.Skinny);
-  return factory(fullConfig, emit, OptimisticOracle, sortedRequests);
+  return factory(fullConfig, emit, SkinnyOptimisticOracle, sortedRequests);
 };

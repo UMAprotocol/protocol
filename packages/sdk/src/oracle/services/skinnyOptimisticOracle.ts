@@ -58,7 +58,7 @@ function validateSolidityRequest(request: Request): SolidityRequest {
   };
 }
 
-export class OptimisticOracle implements OracleInterface {
+export class SkinnyOptimisticOracle implements OracleInterface {
   private readonly contract: optimisticOracle.Instance;
   private readonly events: OptimisticOracleEvent[] = [];
   private requests: Record<string, Request> = {};
