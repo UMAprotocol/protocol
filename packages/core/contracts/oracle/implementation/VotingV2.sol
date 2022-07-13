@@ -688,7 +688,7 @@ contract VotingV2 is
         bytes32 hash
     ) public override onlyIfNotMigrated() {
         uint256 currentRoundId = voteTiming.computeCurrentRoundId(getCurrentTime());
-        address voter = getVoterFromDelegate(msg.sender);
+        address voter = getVoterFromDelegate();
         _updateTrackers(voter);
         // At this point, the computed and last updated round ID should be equal.
         uint256 blockTime = getCurrentTime();
@@ -741,7 +741,7 @@ contract VotingV2 is
 
         VoteInstance storage voteInstance =
             _getPriceRequest(identifier, time, ancillaryData).voteInstances[currentRoundId];
-        address voter = getVoterFromDelegate(msg.sender);
+        address voter = getVoterFromDelegate();
         VoteSubmission storage voteSubmission = voteInstance.voteSubmissions[voter];
 
         // Scoping to get rid of a stack too deep errors for require messages.
@@ -823,12 +823,10 @@ contract VotingV2 is
     }
 
     function setDelegate(address delegate) public {
-        require(getVoterStake(delegate) == 0, "Cant delegate to existing staker");
         voterStakes[msg.sender].delegate = delegate;
     }
 
     function setDelegator(address delegator) public {
-        require(getVoterStake(msg.sender) == 0, "Cant become delegate if staker");
         delegateToStaker[msg.sender] = delegator;
     }
 
@@ -836,7 +834,7 @@ contract VotingV2 is
      *        VOTING GETTER FUNCTIONS       *
      ****************************************/
 
-    function getVoterFromDelegate(address) public view returns (address) {
+    function getVoterFromDelegate() public view returns (address) {
         if (
             delegateToStaker[msg.sender] != address(0) && // The delegate chose to be a delegate for the staker.
             voterStakes[delegateToStaker[msg.sender]].delegate == msg.sender // The staker chose the delegate.
