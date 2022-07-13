@@ -39,7 +39,7 @@ export class Relayer {
       "MessageSent",
       this.polygonEarliestBlockToQuery,
       this.polygonLatestBlockToQuery,
-      3490
+      3490 // Polygon Infura RPC limits you to 3500 blocks
     );
     this.logger.debug({
       at: "Relayer#relayMessage",
