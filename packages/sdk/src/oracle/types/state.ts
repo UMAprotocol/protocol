@@ -47,21 +47,32 @@ export type ChainConfig = ChainMetadata & {
   maxEventRangeQuery?: number;
 };
 
+export type InputRequestWithOracleType = InputRequest & { oracleType: OracleType };
+export type RequestWithOracleType = Request & { oracleType: OracleType };
+export type RequestsWithOracleType = RequestWithOracleType[];
 // partial config lets user omit some fields which we can infer internally using contracts-frontend
 export type PartialChainConfig = PartialBy<
   ChainConfig,
   "optimisticOracleAddress" | "chainId" | "checkTxIntervalSec" | "earliestBlockNumber"
 >;
 
+export enum OracleType {
+  Optimistic = "Optimistic",
+  Skinny = "Skinny",
+}
 // config definition
 export type Config = {
   chains: Record<number, ChainConfig>;
+  oracleType: OracleType;
 };
 
 export type PartialConfig = {
   chains: Record<number, PartialChainConfig>;
 };
 
+export type PartialConfigTable = {
+  [key in OracleType]?: PartialConfig;
+};
 export type Balances = Record<string, BigNumber>;
 
 export type User = {

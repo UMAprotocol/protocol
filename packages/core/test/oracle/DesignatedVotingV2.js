@@ -275,12 +275,16 @@ describe("DesignatedVotingV2", function () {
     const message2 = web3.utils.randomHex(4);
 
     // Batch commit.
-    const commits = [
-      { identifier, time: time1, ancillaryData: ancillaryData1, hash: hash1, encryptedVote: message1 },
-      { identifier, time: time2, ancillaryData: ancillaryData2, hash: hash2, encryptedVote: message2 },
+    const commitData = [
+      designatedVoting.methods
+        .commitAndEmitEncryptedVote(identifier, time1, ancillaryData1, hash1, message1)
+        .encodeABI(),
+      designatedVoting.methods
+        .commitAndEmitEncryptedVote(identifier, time2, ancillaryData2, hash2, message2)
+        .encodeABI(),
     ];
-    assert(await didContractThrow(designatedVoting.methods.batchCommit(commits).send({ from: tokenOwner })));
-    await designatedVoting.methods.batchCommit(commits).send({ from: voter });
+    assert(await didContractThrow(designatedVoting.methods.multicall(commitData).send({ from: tokenOwner })));
+    await designatedVoting.methods.multicall(commitData).send({ from: voter });
 
     // Move to the reveal phase.
     await moveToNextPhase(voting, accounts[0]);
@@ -291,12 +295,13 @@ describe("DesignatedVotingV2", function () {
     assert.equal(events[events.length - 1].returnValues.encryptedVote, message2);
 
     // Batch reveal.
-    const reveals = [
-      { identifier, time: time1, price: price1.toString(), ancillaryData: ancillaryData1, salt: salt1.toString() },
-      { identifier, time: time2, price: price2.toString(), ancillaryData: ancillaryData2, salt: salt2.toString() },
+    const revealData = [
+      designatedVoting.methods.revealVote(identifier, time1, price1, ancillaryData1, salt1).encodeABI(),
+      designatedVoting.methods.revealVote(identifier, time2, price2, ancillaryData2, salt2).encodeABI(),
     ];
-    assert(await didContractThrow(designatedVoting.methods.batchReveal(reveals).send({ from: tokenOwner })));
-    await designatedVoting.methods.batchReveal(reveals).send({ from: voter });
+
+    assert(await didContractThrow(designatedVoting.methods.multicall(revealData).send({ from: tokenOwner })));
+    await designatedVoting.methods.multicall(revealData).send({ from: voter });
 
     // Check the resolved price.
     await moveToNextRound(voting, accounts[0]);

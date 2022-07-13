@@ -1,5 +1,7 @@
-import { BigNumberish, BigNumber, Signer, TransactionResponse, TransactionReceipt } from "../types/ethers";
+import { BigNumberish, BigNumber, Signer, TransactionResponse, TransactionReceipt, Provider } from "../types/ethers";
 import { RequestState, RequestKey, Request as RequestFromEvent } from "../../clients/optimisticOracle";
+import { Client } from "../client";
+import { OracleType } from "../types/state";
 
 export { RequestState, RequestKey };
 
@@ -9,6 +11,10 @@ export interface OracleProps {
 
 export type Request = RequestFromEvent & { chainId: number };
 export type Requests = Request[];
+
+export interface NewOracle {
+  new (provider: Provider, address: string, chainId: number): OracleInterface;
+}
 
 export interface OracleInterface {
   // u se this to query on chain for request data given the key.
@@ -23,3 +29,7 @@ export interface OracleInterface {
   getProps: () => Promise<OracleProps>;
   listRequests: () => Requests;
 }
+
+export type ClientTable = {
+  [key in OracleType]?: Client;
+};

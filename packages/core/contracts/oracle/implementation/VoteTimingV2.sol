@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
-import "../interfaces/VotingInterface.sol";
+import "../interfaces/VotingV2Interface.sol";
 
 import "hardhat/console.sol";
 
@@ -41,7 +41,7 @@ library VoteTimingV2 {
      * @return roundId defined as a function of the currentTime and `phaseLength` from `data`.
      */
     function computeCurrentRoundId(Data storage data, uint256 currentTime) internal view returns (uint256) {
-        uint256 roundLength = data.phaseLength.mul(uint256(VotingAncillaryInterface.Phase.NUM_PHASES_PLACEHOLDER));
+        uint256 roundLength = data.phaseLength.mul(uint256(VotingV2Interface.Phase.NUM_PHASES_PLACEHOLDER));
         return currentTime.div(roundLength);
     }
 
@@ -52,7 +52,7 @@ library VoteTimingV2 {
      * @return timestamp unix time of when the current round will end.
      */
     function computeRoundEndTime(Data storage data, uint256 roundId) internal view returns (uint256) {
-        uint256 roundLength = data.phaseLength.mul(uint256(VotingAncillaryInterface.Phase.NUM_PHASES_PLACEHOLDER));
+        uint256 roundLength = data.phaseLength.mul(uint256(VotingV2Interface.Phase.NUM_PHASES_PLACEHOLDER));
         return roundLength.mul(roundId.add(1));
     }
 
@@ -65,12 +65,12 @@ library VoteTimingV2 {
     function computeCurrentPhase(Data storage data, uint256 currentTime)
         internal
         view
-        returns (VotingAncillaryInterface.Phase)
+        returns (VotingV2Interface.Phase)
     {
         // This employs some hacky casting. We could make this an if-statement if we're worried about type safety.
         return
-            VotingAncillaryInterface.Phase(
-                currentTime.div(data.phaseLength).mod(uint256(VotingAncillaryInterface.Phase.NUM_PHASES_PLACEHOLDER))
+            VotingV2Interface.Phase(
+                currentTime.div(data.phaseLength).mod(uint256(VotingV2Interface.Phase.NUM_PHASES_PLACEHOLDER))
             );
     }
 

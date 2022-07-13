@@ -1,13 +1,7 @@
 const hre = require("hardhat");
 const { runVotingV2Fixture } = require("@uma/common");
 const { getContract, assertEventEmitted } = hre;
-const {
-  RegistryRolesEnum,
-  didContractThrow,
-  getRandomSignedInt,
-  computeVoteHash,
-  signMessage,
-} = require("@uma/common");
+const { RegistryRolesEnum, didContractThrow, getRandomSignedInt, computeVoteHashAncillary } = require("@uma/common");
 const { moveToNextRound, moveToNextPhase } = require("../../utils/Voting.js");
 const { interfaceName } = require("@uma/common");
 const { assert } = require("chai");
@@ -26,7 +20,6 @@ const SlashingLibrary = getContract("SlashingLibrary");
 
 // Extract web3 functions into primary namespace.
 const { toBN, toWei, hexToUtf8, utf8ToHex, padRight } = web3.utils;
-const snapshotMessage = "Sign For Snapshot";
 
 describe("GovernorV2", function () {
   let voting;
@@ -35,8 +28,8 @@ describe("GovernorV2", function () {
   let supportedIdentifiers;
   let finder;
   let timer;
-  let signature;
   let votingToken;
+  const defaultAncillaryData = web3.utils.randomHex(3000);
 
   let accounts;
   let proposer;
@@ -76,8 +69,6 @@ describe("GovernorV2", function () {
     // environment, so ownership must be transferred.
 
     await voting.methods.transferOwnership(governorV2.options.address).send({ from: accounts[0] });
-
-    signature = await signMessage(web3, snapshotMessage, proposer);
   });
 
   beforeEach(async () => {
@@ -94,7 +85,7 @@ describe("GovernorV2", function () {
     assert(
       await didContractThrow(
         governorV2.methods
-          .propose([{ to: testToken.options.address, value: 0, data: txnData }])
+          .propose([{ to: testToken.options.address, value: 0, data: txnData }], defaultAncillaryData)
           .send({ from: account2 })
       )
     );
@@ -106,17 +97,22 @@ describe("GovernorV2", function () {
     const zeroAddress = "0x0000000000000000000000000000000000000000";
     assert(
       await didContractThrow(
-        governorV2.methods.propose([{ to: zeroAddress, value: 0, data: txnData }]).send({ from: accounts[0] })
+        governorV2.methods
+          .propose([{ to: zeroAddress, value: 0, data: txnData }], defaultAncillaryData)
+          .send({ from: accounts[0] })
       )
     );
 
     assert(
       await didContractThrow(
         governorV2.methods
-          .propose([
-            { to: testToken.options.address, value: 0, data: txnData },
-            { to: zeroAddress, value: 0, data: txnData },
-          ])
+          .propose(
+            [
+              { to: testToken.options.address, value: 0, data: txnData },
+              { to: zeroAddress, value: 0, data: txnData },
+            ],
+            defaultAncillaryData
+          )
           .send({ from: accounts[0] })
       )
     );
@@ -127,7 +123,9 @@ describe("GovernorV2", function () {
     // A proposal with data should not be able to be sent to an EOA as only a contract can process data in a tx.
     assert(
       await didContractThrow(
-        governorV2.methods.propose([{ to: account2, value: 0, data: txnData }]).send({ from: accounts[0] })
+        governorV2.methods
+          .propose([{ to: account2, value: 0, data: txnData }], defaultAncillaryData)
+          .send({ from: accounts[0] })
       )
     );
   });
@@ -141,13 +139,13 @@ describe("GovernorV2", function () {
 
     // Send the proposal.
     await governorV2.methods
-      .propose([{ to: testToken.options.address, value: 0, data: txnData }])
+      .propose([{ to: testToken.options.address, value: 0, data: txnData }], defaultAncillaryData)
       .send({ from: accounts[0] });
 
     // Send a second proposal. Note: a second proposal is necessary to ensure we test at least one nonzero id.
     const id2 = await governorV2.methods.numProposals().call();
     await governorV2.methods
-      .propose([{ to: testToken.options.address, value: 0, data: txnData }])
+      .propose([{ to: testToken.options.address, value: 0, data: txnData }], defaultAncillaryData)
       .send({ from: accounts[0] });
 
     // The proposals should show up in the pending requests in the *next* round.
@@ -165,28 +163,37 @@ describe("GovernorV2", function () {
     // Execute the proposals to clean up.
     const vote = toWei("1");
     const salt = getRandomSignedInt();
-    const hash1 = computeVoteHash({
+    const hash1 = computeVoteHashAncillary({
       price: vote,
       salt,
       account: proposer,
       time: request1.time,
       roundId,
       identifier: request1.identifier,
+      ancillaryData: defaultAncillaryData,
     });
-    const hash2 = computeVoteHash({
+    const hash2 = computeVoteHashAncillary({
       price: vote,
       salt,
       account: proposer,
       time: request2.time,
       roundId,
       identifier: request2.identifier,
+      ancillaryData: defaultAncillaryData,
     });
-    await voting.methods.commitVote(request1.identifier, request1.time, hash1).send({ from: accounts[0] });
-    await voting.methods.commitVote(request2.identifier, request2.time, hash2).send({ from: accounts[0] });
+    await voting.methods
+      .commitVote(request1.identifier, request1.time, defaultAncillaryData, hash1)
+      .send({ from: accounts[0] });
+    await voting.methods
+      .commitVote(request2.identifier, request2.time, defaultAncillaryData, hash2)
+      .send({ from: accounts[0] });
     await moveToNextPhase(voting, accounts[0]);
-    await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
-    await voting.methods.revealVote(request1.identifier, request1.time, vote, salt).send({ from: accounts[0] });
-    await voting.methods.revealVote(request2.identifier, request2.time, vote, salt).send({ from: accounts[0] });
+    await voting.methods
+      .revealVote(request1.identifier, request1.time, vote, defaultAncillaryData, salt)
+      .send({ from: accounts[0] });
+    await voting.methods
+      .revealVote(request2.identifier, request2.time, vote, defaultAncillaryData, salt)
+      .send({ from: accounts[0] });
     await moveToNextRound(voting, accounts[0]);
     await moveToNextRound(voting, accounts[0]);
     await governorV2.methods.executeProposal(id1, 0).send({ from: accounts[0] });
@@ -203,7 +210,7 @@ describe("GovernorV2", function () {
     // Send the proposal.
     const id = await governorV2.methods.numProposals().call();
     await governorV2.methods
-      .propose([{ to: testToken.options.address, value: 0, data: txnData }])
+      .propose([{ to: testToken.options.address, value: 0, data: txnData }], defaultAncillaryData)
       .send({ from: accounts[0] });
     await moveToNextRound(voting, accounts[0]);
     const roundId = await voting.methods.getCurrentRoundId().call();
@@ -213,18 +220,22 @@ describe("GovernorV2", function () {
     // Vote the proposal through.
     const vote = toWei("1");
     const salt = getRandomSignedInt();
-    const hash = computeVoteHash({
+    const hash = computeVoteHashAncillary({
       price: vote,
       salt,
       account: proposer,
       time: request.time,
       roundId,
       identifier: request.identifier,
+      ancillaryData: defaultAncillaryData,
     });
-    await voting.methods.commitVote(request.identifier, request.time, hash).send({ from: accounts[0] });
+    await voting.methods
+      .commitVote(request.identifier, request.time, defaultAncillaryData, hash)
+      .send({ from: accounts[0] });
     await moveToNextPhase(voting, accounts[0]);
-    await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
-    await voting.methods.revealVote(request.identifier, request.time, vote, salt).send({ from: accounts[0] });
+    await voting.methods
+      .revealVote(request.identifier, request.time, vote, defaultAncillaryData, salt)
+      .send({ from: accounts[0] });
     await moveToNextRound(voting, accounts[0]);
 
     // Cannot send ETH to execute a transaction that requires 0 ETH.
@@ -247,13 +258,16 @@ describe("GovernorV2", function () {
     // Send the proposal to send ETH to account2.
     const id = await governorV2.methods.numProposals().call();
     await governorV2.methods
-      .propose([
-        {
-          to: account2,
-          value: amountToDeposit,
-          data: web3.utils.hexToBytes("0x"), // "0x" is an empty bytes array to indicate no data tx.
-        },
-      ])
+      .propose(
+        [
+          {
+            to: account2,
+            value: amountToDeposit,
+            data: web3.utils.hexToBytes("0x"), // "0x" is an empty bytes array to indicate no data tx.
+          },
+        ],
+        defaultAncillaryData
+      )
       .send({ from: accounts[0] });
 
     await moveToNextRound(voting, accounts[0]);
@@ -264,18 +278,22 @@ describe("GovernorV2", function () {
     // Vote the proposal through.
     const vote = toWei("1");
     const salt = getRandomSignedInt();
-    const hash = computeVoteHash({
+    const hash = computeVoteHashAncillary({
       price: vote,
       salt,
       account: proposer,
       time: request.time,
       roundId,
       identifier: request.identifier,
+      ancillaryData: defaultAncillaryData,
     });
-    await voting.methods.commitVote(request.identifier, request.time, hash).send({ from: accounts[0] });
+    await voting.methods
+      .commitVote(request.identifier, request.time, defaultAncillaryData, hash)
+      .send({ from: accounts[0] });
     await moveToNextPhase(voting, accounts[0]);
-    await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
-    await voting.methods.revealVote(request.identifier, request.time, vote, salt).send({ from: accounts[0] });
+    await voting.methods
+      .revealVote(request.identifier, request.time, vote, defaultAncillaryData, salt)
+      .send({ from: accounts[0] });
     await moveToNextRound(voting, accounts[0]);
 
     // Execute the proposal and simultaneously deposit ETH to pay for the transaction.
@@ -291,7 +309,7 @@ describe("GovernorV2", function () {
     // Send the proposal to send ETH to account2.
     const id = await governorV2.methods.numProposals().call();
     await governorV2.methods
-      .propose([{ to: account2, value: amountToDeposit, data: web3.utils.hexToBytes("0x") }])
+      .propose([{ to: account2, value: amountToDeposit, data: web3.utils.hexToBytes("0x") }], defaultAncillaryData)
       .send({ from: accounts[0] });
 
     await moveToNextRound(voting, accounts[0]);
@@ -302,18 +320,22 @@ describe("GovernorV2", function () {
     // Vote the proposal through.
     const vote = toWei("1");
     const salt = getRandomSignedInt();
-    const hash = computeVoteHash({
+    const hash = computeVoteHashAncillary({
       price: vote,
       salt,
       account: proposer,
       time: request.time,
       roundId,
       identifier: request.identifier,
+      ancillaryData: defaultAncillaryData,
     });
-    await voting.methods.commitVote(request.identifier, request.time, hash).send({ from: accounts[0] });
+    await voting.methods
+      .commitVote(request.identifier, request.time, defaultAncillaryData, hash)
+      .send({ from: accounts[0] });
     await moveToNextPhase(voting, accounts[0]);
-    await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
-    await voting.methods.revealVote(request.identifier, request.time, vote, salt).send({ from: accounts[0] });
+    await voting.methods
+      .revealVote(request.identifier, request.time, vote, defaultAncillaryData, salt)
+      .send({ from: accounts[0] });
     await moveToNextRound(voting, accounts[0]);
 
     const startingBalance = await web3.eth.getBalance(account2);
@@ -339,10 +361,13 @@ describe("GovernorV2", function () {
     // Send the proposal with multiple transactions.
     const id = await governorV2.methods.numProposals().call();
     await governorV2.methods
-      .propose([
-        { to: testToken.options.address, value: 0, data: txnData1 },
-        { to: testToken.options.address, value: 0, data: txnData2 },
-      ])
+      .propose(
+        [
+          { to: testToken.options.address, value: 0, data: txnData1 },
+          { to: testToken.options.address, value: 0, data: txnData2 },
+        ],
+        defaultAncillaryData
+      )
       .send({ from: accounts[0] });
 
     await moveToNextRound(voting, accounts[0]);
@@ -353,18 +378,22 @@ describe("GovernorV2", function () {
     // Vote the proposal through.
     const vote = toWei("1");
     const salt = getRandomSignedInt();
-    const hash = computeVoteHash({
+    const hash = computeVoteHashAncillary({
       price: vote,
       salt,
       account: proposer,
       time: request.time,
       roundId,
       identifier: request.identifier,
+      ancillaryData: defaultAncillaryData,
     });
-    await voting.methods.commitVote(request.identifier, request.time, hash).send({ from: accounts[0] });
+    await voting.methods
+      .commitVote(request.identifier, request.time, defaultAncillaryData, hash)
+      .send({ from: accounts[0] });
     await moveToNextPhase(voting, accounts[0]);
-    await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
-    await voting.methods.revealVote(request.identifier, request.time, vote, salt).send({ from: accounts[0] });
+    await voting.methods
+      .revealVote(request.identifier, request.time, vote, defaultAncillaryData, salt)
+      .send({ from: accounts[0] });
     await moveToNextRound(voting, accounts[0]);
 
     // Check to make sure that the tokens get transferred at the time of each successive execution.
@@ -388,7 +417,7 @@ describe("GovernorV2", function () {
     const txnData = constructTransferTransaction(proposer, "0");
     const id = await governorV2.methods.numProposals().call();
     await governorV2.methods
-      .propose([{ to: testToken.options.address, value: 0, data: txnData }])
+      .propose([{ to: testToken.options.address, value: 0, data: txnData }], defaultAncillaryData)
       .send({ from: accounts[0] });
     await moveToNextRound(voting, accounts[0]);
     const roundId = await voting.methods.getCurrentRoundId().call();
@@ -398,18 +427,22 @@ describe("GovernorV2", function () {
     // Vote the proposal through.
     const vote = toWei("1");
     const salt = getRandomSignedInt();
-    const hash = computeVoteHash({
+    const hash = computeVoteHashAncillary({
       price: vote,
       salt,
       account: proposer,
       time: request.time,
       roundId,
       identifier: request.identifier,
+      ancillaryData: defaultAncillaryData,
     });
-    await voting.methods.commitVote(request.identifier, request.time, hash).send({ from: accounts[0] });
+    await voting.methods
+      .commitVote(request.identifier, request.time, defaultAncillaryData, hash)
+      .send({ from: accounts[0] });
     await moveToNextPhase(voting, accounts[0]);
-    await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
-    await voting.methods.revealVote(request.identifier, request.time, vote, salt).send({ from: accounts[0] });
+    await voting.methods
+      .revealVote(request.identifier, request.time, vote, defaultAncillaryData, salt)
+      .send({ from: accounts[0] });
     await moveToNextRound(voting, accounts[0]);
 
     // First execution should succeed.
@@ -424,10 +457,13 @@ describe("GovernorV2", function () {
     const txnData = constructTransferTransaction(proposer, "0");
     const id = await governorV2.methods.numProposals().call();
     await governorV2.methods
-      .propose([
-        { to: testToken.options.address, value: 0, data: txnData },
-        { to: testToken.options.address, value: 0, data: txnData },
-      ])
+      .propose(
+        [
+          { to: testToken.options.address, value: 0, data: txnData },
+          { to: testToken.options.address, value: 0, data: txnData },
+        ],
+        defaultAncillaryData
+      )
       .send({ from: accounts[0] });
     await moveToNextRound(voting, accounts[0]);
     const roundId = await voting.methods.getCurrentRoundId().call();
@@ -437,18 +473,22 @@ describe("GovernorV2", function () {
     // Vote the proposal through.
     const vote = toWei("1");
     const salt = getRandomSignedInt();
-    const hash = computeVoteHash({
+    const hash = computeVoteHashAncillary({
       price: vote,
       salt,
       account: proposer,
       time: request.time,
       roundId,
       identifier: request.identifier,
+      ancillaryData: defaultAncillaryData,
     });
-    await voting.methods.commitVote(request.identifier, request.time, hash).send({ from: accounts[0] });
+    await voting.methods
+      .commitVote(request.identifier, request.time, defaultAncillaryData, hash)
+      .send({ from: accounts[0] });
     await moveToNextPhase(voting, accounts[0]);
-    await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
-    await voting.methods.revealVote(request.identifier, request.time, vote, salt).send({ from: accounts[0] });
+    await voting.methods
+      .revealVote(request.identifier, request.time, vote, defaultAncillaryData, salt)
+      .send({ from: accounts[0] });
     await moveToNextRound(voting, accounts[0]);
 
     // Index 1 cannot be executed before index 0.
@@ -469,7 +509,7 @@ describe("GovernorV2", function () {
     // Send the proposal.
     const id = await governorV2.methods.numProposals().call();
     await governorV2.methods
-      .propose([{ to: testToken.options.address, value: 0, data: txnData }])
+      .propose([{ to: testToken.options.address, value: 0, data: txnData }], defaultAncillaryData)
       .send({ from: accounts[0] });
     await moveToNextRound(voting, accounts[0]);
     const roundId = await voting.methods.getCurrentRoundId().call();
@@ -479,18 +519,22 @@ describe("GovernorV2", function () {
     // Vote down the proposal.
     const vote = "0";
     const salt = getRandomSignedInt();
-    const hash = computeVoteHash({
+    const hash = computeVoteHashAncillary({
       price: vote,
       salt,
       account: proposer,
       time: request.time,
       roundId,
       identifier: request.identifier,
+      ancillaryData: defaultAncillaryData,
     });
-    await voting.methods.commitVote(request.identifier, request.time, hash).send({ from: accounts[0] });
+    await voting.methods
+      .commitVote(request.identifier, request.time, defaultAncillaryData, hash)
+      .send({ from: accounts[0] });
     await moveToNextPhase(voting, accounts[0]);
-    await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
-    await voting.methods.revealVote(request.identifier, request.time, vote, salt).send({ from: accounts[0] });
+    await voting.methods
+      .revealVote(request.identifier, request.time, vote, defaultAncillaryData, salt)
+      .send({ from: accounts[0] });
     await moveToNextRound(voting, accounts[0]);
 
     // Check to make sure that the execution fails and no tokens get transferred.
@@ -509,7 +553,7 @@ describe("GovernorV2", function () {
     // Send the proposal.
     const id = await governorV2.methods.numProposals().call();
     await governorV2.methods
-      .propose([{ to: testToken.options.address, value: 0, data: txnData }])
+      .propose([{ to: testToken.options.address, value: 0, data: txnData }], defaultAncillaryData)
       .send({ from: accounts[0] });
     await moveToNextRound(voting, accounts[0]);
     let roundId = await voting.methods.getCurrentRoundId().call();
@@ -519,18 +563,22 @@ describe("GovernorV2", function () {
     // Vote on the proposal, but don't reach the GAT.
     const vote = toWei("1");
     const salt = getRandomSignedInt();
-    const hash3 = computeVoteHash({
+    const hash3 = computeVoteHashAncillary({
       price: vote,
       salt,
       account: account3,
       time: request.time,
       roundId,
       identifier: request.identifier,
+      ancillaryData: defaultAncillaryData,
     });
-    await voting.methods.commitVote(request.identifier, request.time, hash3).send({ from: account3 });
+    await voting.methods
+      .commitVote(request.identifier, request.time, defaultAncillaryData, hash3)
+      .send({ from: account3 });
     await moveToNextPhase(voting, accounts[0]);
-    await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
-    await voting.methods.revealVote(request.identifier, request.time, vote, salt).send({ from: account3 });
+    await voting.methods
+      .revealVote(request.identifier, request.time, vote, defaultAncillaryData, salt)
+      .send({ from: account3 });
     await moveToNextRound(voting, accounts[0]);
 
     // Check to make sure that the execution fails and no tokens get transferred.
@@ -540,18 +588,22 @@ describe("GovernorV2", function () {
 
     // Resolve the vote to clean up.
     roundId = await voting.methods.getCurrentRoundId().call();
-    const hash1 = computeVoteHash({
+    const hash1 = computeVoteHashAncillary({
       price: vote,
       salt,
       account: proposer,
       time: request.time,
       roundId,
       identifier: request.identifier,
+      ancillaryData: defaultAncillaryData,
     });
-    await voting.methods.commitVote(request.identifier, request.time, hash1).send({ from: accounts[0] });
+    await voting.methods
+      .commitVote(request.identifier, request.time, defaultAncillaryData, hash1)
+      .send({ from: accounts[0] });
     await moveToNextPhase(voting, accounts[0]);
-    await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
-    await voting.methods.revealVote(request.identifier, request.time, vote, salt).send({ from: accounts[0] });
+    await voting.methods
+      .revealVote(request.identifier, request.time, vote, defaultAncillaryData, salt)
+      .send({ from: accounts[0] });
     await moveToNextRound(voting, accounts[0]);
   });
 
@@ -562,7 +614,7 @@ describe("GovernorV2", function () {
     // Send the proposal.
     const id = await governorV2.methods.numProposals().call();
     await governorV2.methods
-      .propose([{ to: testToken.options.address, value: 0, data: txnData }])
+      .propose([{ to: testToken.options.address, value: 0, data: txnData }], defaultAncillaryData)
       .send({ from: accounts[0] });
     await moveToNextRound(voting, accounts[0]);
     const roundId = await voting.methods.getCurrentRoundId().call();
@@ -572,18 +624,22 @@ describe("GovernorV2", function () {
     // Vote the proposal through.
     const vote = toWei("1");
     const salt = getRandomSignedInt();
-    const hash = computeVoteHash({
+    const hash = computeVoteHashAncillary({
       price: vote,
       salt,
       account: proposer,
       time: request.time,
       roundId,
       identifier: request.identifier,
+      ancillaryData: defaultAncillaryData,
     });
-    await voting.methods.commitVote(request.identifier, request.time, hash).send({ from: accounts[0] });
+    await voting.methods
+      .commitVote(request.identifier, request.time, defaultAncillaryData, hash)
+      .send({ from: accounts[0] });
     await moveToNextPhase(voting, accounts[0]);
-    await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
-    await voting.methods.revealVote(request.identifier, request.time, vote, salt).send({ from: accounts[0] });
+    await voting.methods
+      .revealVote(request.identifier, request.time, vote, defaultAncillaryData, salt)
+      .send({ from: accounts[0] });
     await moveToNextRound(voting, accounts[0]);
 
     // Check to make sure that the execution fails and no tokens get transferred.
@@ -599,7 +655,7 @@ describe("GovernorV2", function () {
     // Send the proposal and verify that an event is produced.
     const id = await governorV2.methods.numProposals().call();
     let receipt = await governorV2.methods
-      .propose([{ to: testToken.options.address, value: 0, data: txnData }])
+      .propose([{ to: testToken.options.address, value: 0, data: txnData }], defaultAncillaryData)
       .send({ from: accounts[0] });
     await assertEventEmitted(receipt, governorV2, "NewProposal", (ev) => {
       return (
@@ -618,18 +674,22 @@ describe("GovernorV2", function () {
     const request = { ...pendingRequests[0], identifier: padRight(pendingRequests[0].identifier, 64) };
     const vote = toWei("1");
     const salt = getRandomSignedInt();
-    const hash = computeVoteHash({
+    const hash = computeVoteHashAncillary({
       price: vote,
       salt,
       account: proposer,
       time: request.time,
       roundId,
       identifier: request.identifier,
+      ancillaryData: defaultAncillaryData,
     });
-    await voting.methods.commitVote(request.identifier, request.time, hash).send({ from: accounts[0] });
+    await voting.methods
+      .commitVote(request.identifier, request.time, defaultAncillaryData, hash)
+      .send({ from: accounts[0] });
     await moveToNextPhase(voting, accounts[0]);
-    await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
-    await voting.methods.revealVote(request.identifier, request.time, vote, salt).send({ from: accounts[0] });
+    await voting.methods
+      .revealVote(request.identifier, request.time, vote, defaultAncillaryData, salt)
+      .send({ from: accounts[0] });
     await moveToNextRound(voting, accounts[0]);
 
     // Verify execute event.
@@ -650,13 +710,16 @@ describe("GovernorV2", function () {
 
     // Propose the reentrant transaction.
     await governorV2.methods
-      .propose([
-        {
-          to: reentrancyChecker.options.address,
-          value: 0,
-          data: constructTransferTransaction(account2, toWei("0")), // Data doesn't since it will hit the fallback regardless.
-        },
-      ])
+      .propose(
+        [
+          {
+            to: reentrancyChecker.options.address,
+            value: 0,
+            data: constructTransferTransaction(account2, toWei("0")), // Data doesn't since it will hit the fallback regardless.
+          },
+        ],
+        defaultAncillaryData
+      )
       .send({ from: accounts[0] });
 
     // Vote the proposal through.
@@ -666,18 +729,22 @@ describe("GovernorV2", function () {
     const request = { ...pendingRequests[0], identifier: padRight(pendingRequests[0].identifier, 64) };
     const vote = toWei("1");
     const salt = getRandomSignedInt();
-    const hash = computeVoteHash({
+    const hash = computeVoteHashAncillary({
       price: vote,
       salt,
       account: proposer,
       time: request.time,
       roundId,
       identifier: request.identifier,
+      ancillaryData: defaultAncillaryData,
     });
-    await voting.methods.commitVote(request.identifier, request.time, hash).send({ from: accounts[0] });
+    await voting.methods
+      .commitVote(request.identifier, request.time, defaultAncillaryData, hash)
+      .send({ from: accounts[0] });
     await moveToNextPhase(voting, accounts[0]);
-    await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
-    await voting.methods.revealVote(request.identifier, request.time, vote, salt).send({ from: accounts[0] });
+    await voting.methods
+      .revealVote(request.identifier, request.time, vote, defaultAncillaryData, salt)
+      .send({ from: accounts[0] });
     await moveToNextRound(voting, accounts[0]);
 
     // Since we're using the reentrancy checker, this transaction should FAIL if the reentrancy is successful.
@@ -753,7 +820,7 @@ describe("GovernorV2", function () {
     const txnData = constructTransferTransaction(proposer, toWei("1"));
 
     await newGovernor.methods
-      .propose([{ to: testToken.options.address, value: 0, data: txnData }])
+      .propose([{ to: testToken.options.address, value: 0, data: txnData }], defaultAncillaryData)
       .send({ from: accounts[0] });
 
     // Check that the proposal is correct.
@@ -772,18 +839,22 @@ describe("GovernorV2", function () {
     // Vote the proposal through.
     const vote = toWei("1");
     const salt = getRandomSignedInt();
-    const hash = computeVoteHash({
+    const hash = computeVoteHashAncillary({
       price: vote,
       salt,
       account: proposer,
       time: request.time,
       roundId,
       identifier: request.identifier,
+      ancillaryData: defaultAncillaryData,
     });
-    await newVoting.methods.commitVote(request.identifier, request.time, hash).send({ from: accounts[0] });
+    await newVoting.methods
+      .commitVote(request.identifier, request.time, defaultAncillaryData, hash)
+      .send({ from: accounts[0] });
     await moveToNextPhase(newVoting, accounts[0]);
-    await newVoting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
-    await newVoting.methods.revealVote(request.identifier, request.time, vote, salt).send({ from: accounts[0] });
+    await newVoting.methods
+      .revealVote(request.identifier, request.time, vote, defaultAncillaryData, salt)
+      .send({ from: accounts[0] });
     await moveToNextRound(newVoting, accounts[0]);
 
     // Check to make sure that the tokens get transferred at the time of execution.

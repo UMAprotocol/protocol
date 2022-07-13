@@ -1,11 +1,12 @@
+// this is a special service that works across all oracles type, chains, etc, to give a combined
+// view of all requests across running instances.
 import sortedIndex from "lodash/sortedIndex";
 import sortedLastIndex from "lodash/sortedLastIndex";
 
 import { exists } from "../../utils";
 import { requestId } from "../utils";
 
-import { Request, Requests } from "../types/interfaces";
-import { InputRequest } from "../types/state";
+import { InputRequestWithOracleType, RequestWithOracleType, RequestsWithOracleType } from "../types/state";
 
 // this was copied out of store and made to be 1. a class, and 2. sync.  Could not modify old implementation since
 // other services rely on this currently and it causes cascading refactors. This has been copied without modification to logic.
@@ -83,22 +84,22 @@ export class SortedStore<Id, Data> {
 }
 
 // this sorts requests across all chains and oracles
-export class SortedRequests extends SortedStore<string, Request> {
-  setByRequest(value: InputRequest): void {
+export class SortedRequests extends SortedStore<string, RequestWithOracleType> {
+  setByRequest(value: InputRequestWithOracleType): void {
     return this.set(this.id(value), value);
   }
-  descending(): Requests {
+  descending(): RequestsWithOracleType {
     // sadly you cannot control lodash sorting descending, so reverse is necessary
     return this.values().reverse();
   }
-  ascending(): Requests {
+  ascending(): RequestsWithOracleType {
     return this.values();
   }
-  getByRequest(request: InputRequest): Request {
+  getByRequest(request: InputRequestWithOracleType): RequestWithOracleType {
     // always return at least the original query data
     return this.get(this.id(request)) || request;
   }
-  id(request: InputRequest): string {
-    return requestId(request) + "!" + request.chainId;
+  id(request: InputRequestWithOracleType): string {
+    return requestId(request) + "!" + request.chainId + "!" + request.oracleType;
   }
 }

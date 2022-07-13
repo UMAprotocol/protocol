@@ -17,7 +17,6 @@ contract Staker is StakerInterface, Ownable, Testable {
 
     uint256 public emissionRate;
     uint256 public cumulativeActiveStake;
-    uint256 public cumulativePendingUnstake;
     uint256 public cumulativePendingStake;
     uint256 public rewardPerTokenStored;
     uint256 public lastUpdateTime;
@@ -32,9 +31,13 @@ contract Staker is StakerInterface, Ownable, Testable {
         uint256 outstandingRewards;
         uint256 unstakeTime;
         uint256 lastRequestIndexConsidered;
+        address delegate;
     }
 
     mapping(address => VoterStake) public voterStakes;
+
+    // Mapping of delegates to the stakers (accounts who can vote on behalf of the stakers mapped to the staker).
+    mapping(address => address) public delegateToStaker;
 
     // Reference to the voting token.
     VotingToken public override votingToken;
@@ -52,6 +55,7 @@ contract Staker is StakerInterface, Ownable, Testable {
 
     // Pulls tokens from users wallet and stakes them.
     function stake(uint256 amount) public override {
+        require(delegateToStaker[msg.sender] == address(0), "Staker cant be a delegate");
         _updateTrackers(msg.sender);
         if (inActiveReveal()) {
             voterStakes[msg.sender].pendingStake += amount;
@@ -75,7 +79,6 @@ contract Staker is StakerInterface, Ownable, Testable {
         require(voterStakes[msg.sender].pendingUnstake == 0, "Have previous request unstake");
 
         cumulativeActiveStake -= amount;
-        cumulativePendingUnstake += amount;
         voterStakes[msg.sender].pendingUnstake = amount;
         voterStakes[msg.sender].activeStake -= amount;
         voterStakes[msg.sender].unstakeTime = getCurrentTime() + unstakeCoolDown;
@@ -92,7 +95,6 @@ contract Staker is StakerInterface, Ownable, Testable {
         uint256 tokensToSend = voterStake.pendingUnstake;
 
         if (tokensToSend > 0) {
-            cumulativePendingUnstake -= tokensToSend;
             voterStake.pendingUnstake = 0;
             voterStake.unstakeTime = 0;
             votingToken.transfer(msg.sender, tokensToSend);
