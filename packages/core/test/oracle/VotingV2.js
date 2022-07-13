@@ -35,7 +35,7 @@ const toWei = (value) => toBN(web3.utils.toWei(value, "ether"));
 
 describe("VotingV2", function () {
   let voting, votingToken, registry, supportedIdentifiers, registeredContract, unregisteredContract, migratedVoting;
-  let accounts, account1, account2, account3, account4;
+  let accounts, account1, account2, account3, account4, rand;
 
   const setNewGatPercentage = async (gatPercentage) => {
     await voting.methods.setGatPercentage({ rawValue: gatPercentage.toString() }).send({ from: accounts[0] });
@@ -43,7 +43,7 @@ describe("VotingV2", function () {
 
   beforeEach(async function () {
     accounts = await web3.eth.getAccounts();
-    [account1, account2, account3, account4, registeredContract, unregisteredContract, migratedVoting] = accounts;
+    [account1, account2, account3, account4, rand, registeredContract, unregisteredContract, migratedVoting] = accounts;
     await runVotingV2Fixture(hre);
     voting = await await VotingV2.deployed();
 
@@ -2028,7 +2028,7 @@ describe("VotingV2", function () {
     );
   });
 
-  it("governance requests don't slash wrong votes", async function () {
+  it("Governance requests don't slash wrong votes", async function () {
     const identifier = padRight(utf8ToHex("governance-price-request"), 64); // Use the same identifier for both.
     const time1 = "420";
     const DATA_LIMIT_BYTES = 8192;
@@ -2123,7 +2123,7 @@ describe("VotingV2", function () {
     );
   });
 
-  it("governance and non-governance requests work together well", async function () {
+  it("Governance and non-governance requests work together well", async function () {
     const identifier = padRight(utf8ToHex("gov-no-gov-combined-request"), 64); // Use the same identifier for both.
     await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
     const DATA_LIMIT_BYTES = 8192;
@@ -2607,6 +2607,84 @@ describe("VotingV2", function () {
     const slashingTracker1 = await voting.methods.requestSlashingTrackers(0).call();
     assert.equal(slashingTracker1.totalSlashed, toWei("6400")); // 32mm*0.0016=51200
     assert.equal(slashingTracker1.totalCorrectVotes, toWei("32000000")); // 32mm + 4mm
+  });
+  it("Can delegate voting to another address to vote on your stakes behalf", async function () {
+    // Delegate from account1 to rand.
+    await voting.methods.setDelegate(rand).send({ from: account1 });
+    await voting.methods.setDelegator(account1).send({ from: rand });
+
+    // State variables should be set correctly.
+    assert.equal((await voting.methods.voterStakes(account1).call()).delegate, rand);
+    assert.equal(await voting.methods.delegateToStaker(rand).call(), account1);
+
+    // Request a price and see that we can vote on it on behalf of the account1 from the delegate.
+    const identifier = padRight(utf8ToHex("delegated-voting"), 64); // Use the same identifier for both.
+    const time = "420";
+    await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
+    await voting.methods.requestPrice(identifier, time).send({ from: registeredContract });
+
+    await moveToNextRound(voting, accounts[0]);
+    const roundId = (await voting.methods.getCurrentRoundId().call()).toString();
+
+    const price = 1;
+
+    const salt = getRandomSignedInt(); // use the same salt for all votes. bad practice but wont impact anything.
+
+    // construct the vote hash. Note the account is the delegate.
+    const hash = computeVoteHash({ salt, roundId, identifier, price, account: rand, time });
+
+    // Commit the votes.
+    await voting.methods.commitVote(identifier, time, hash).send({ from: rand });
+    await moveToNextPhase(voting, accounts[0]); // Reveal the votes.
+    await voting.methods.revealVote(identifier, time, price, salt).send({ from: rand });
+    await moveToNextRound(voting, accounts[0]); // Move to the next round.
+
+    // The price should have settled as per usual and be recoverable. The original staker should have gained the positive
+    // slashing from being the oly correct voter. The total slashing should be 68mm * 0.0016 = 108800.
+    assert.equal(await voting.methods.getPrice(identifier, time).call({ from: registeredContract }), price);
+    await voting.methods.updateTrackers(account1).send({ from: account1 });
+    assert.equal(
+      (await voting.methods.voterStakes(account1).call()).activeStake,
+      toWei("32000000").add(toWei("108800"))
+    );
+  });
+
+  it("Existing stakers cant become delegates and delegates cant stake", async function () {
+    // Account1 has a staked balance so cant be used by account2 in delegation.
+    assert(await didContractThrow(voting.methods.setDelegate(account1).send({ from: account2 })));
+
+    // Before the user accepts  the delegation they can stake but after they accept it they can no longer stake.
+    await voting.methods.setDelegate(rand).send({ from: account1 });
+    await votingToken.methods.mint(rand, toWei("100")).send({ from: accounts[0] });
+    await votingToken.methods.approve(voting.options.address, toWei("100")).send({ from: rand });
+
+    // Should be able to stake before accepting the delegation.
+    await voting.methods.stake(toWei("50")).send({ from: rand });
+
+    // After staking should no longer be able to accept the delegation as staked accounts should not be able to be delegates.
+    assert(await didContractThrow(voting.methods.setDelegator(account1).send({ from: rand })));
+
+    // Unstake and accept the delegation. After accepting the delegation can no longer stake.
+    await voting.methods.setUnstakeCoolDown(0).send({ from: accounts[0] });
+    await voting.methods.requestUnstake(toWei("50")).send({ from: rand });
+    await voting.methods.executeUnstake().send({ from: rand });
+    await voting.methods.setDelegator(account1).send({ from: rand });
+    assert(await didContractThrow(voting.methods.stake(toWei("50")).send({ from: rand })));
+  });
+
+  it("Can revoke a delegate by unsetting the mapping", async function () {
+    await voting.methods.setDelegate(rand).send({ from: account1 });
+    await voting.methods.setDelegator(account1).send({ from: rand });
+    assert.equal((await voting.methods.voterStakes(account1).call()).delegate, rand);
+    assert.equal(await voting.methods.delegateToStaker(rand).call(), account1);
+
+    // Remove the delegation from the staker.
+    await voting.methods.setDelegate(ZERO_ADDRESS).send({ from: account1 });
+    assert.equal((await voting.methods.voterStakes(account1).call()).delegate, ZERO_ADDRESS);
+
+    // Remove the delegation from the delegate.
+    await voting.methods.setDelegator(ZERO_ADDRESS).send({ from: rand });
+    assert.equal(await voting.methods.delegateToStaker(rand).call(), ZERO_ADDRESS);
   });
 });
 

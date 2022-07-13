@@ -688,7 +688,8 @@ contract VotingV2 is
         bytes32 hash
     ) public override onlyIfNotMigrated() {
         uint256 currentRoundId = voteTiming.computeCurrentRoundId(getCurrentTime());
-        _updateTrackers(msg.sender);
+        address voter = getVoterFromDelegate(msg.sender);
+        _updateTrackers(voter);
         // At this point, the computed and last updated round ID should be equal.
         uint256 blockTime = getCurrentTime();
         require(hash != bytes32(0), "Invalid provided hash");
@@ -703,9 +704,9 @@ contract VotingV2 is
 
         priceRequest.lastVotingRound = currentRoundId;
         VoteInstance storage voteInstance = priceRequest.voteInstances[currentRoundId];
-        voteInstance.voteSubmissions[msg.sender].commit = hash;
+        voteInstance.voteSubmissions[voter].commit = hash;
 
-        emit VoteCommitted(msg.sender, currentRoundId, identifier, time, ancillaryData);
+        emit VoteCommitted(voter, currentRoundId, identifier, time, ancillaryData);
     }
 
     // Overloaded method to enable short term backwards compatibility. Will be deprecated in the next DVM version.
@@ -734,20 +735,25 @@ contract VotingV2 is
         bytes memory ancillaryData,
         int256 salt
     ) public override onlyIfNotMigrated() {
-        require(voteTiming.computeCurrentPhase(getCurrentTime()) == Phase.Reveal, "Cannot reveal in commit phase");
         // Note: computing the current round is required to disallow people from revealing an old commit after the round is over.
         uint256 currentRoundId = voteTiming.computeCurrentRoundId(getCurrentTime());
         _freezeRoundVariables(currentRoundId);
 
-        PriceRequest storage priceRequest = _getPriceRequest(identifier, time, ancillaryData);
-        VoteInstance storage voteInstance = priceRequest.voteInstances[currentRoundId];
-        VoteSubmission storage voteSubmission = voteInstance.voteSubmissions[msg.sender];
+        VoteInstance storage voteInstance =
+            _getPriceRequest(identifier, time, ancillaryData).voteInstances[currentRoundId];
+        address voter = getVoterFromDelegate(msg.sender);
+        VoteSubmission storage voteSubmission = voteInstance.voteSubmissions[voter];
 
-        // Scoping to get rid of a stack too deep error.
+        // Scoping to get rid of a stack too deep errors for require messages.
         {
+            // Can only reveal in the reveal phase.
+            require(voteTiming.computeCurrentPhase(getCurrentTime()) == Phase.Reveal, "Cannot reveal in commit phase");
             // 0 hashes are disallowed in the commit phase, so they indicate a different error.
             // Cannot reveal an uncommitted or previously revealed hash
             require(voteSubmission.commit != bytes32(0), "Invalid hash reveal");
+
+            // Check that the hash that was committed matches to the one that was revealed. Note that if the voter had
+            // delegated this means that they must reveal with the same account they had committed with.
             require(
                 keccak256(abi.encodePacked(price, salt, msg.sender, time, ancillaryData, currentRoundId, identifier)) ==
                     voteSubmission.commit,
@@ -759,7 +765,7 @@ contract VotingV2 is
 
         // Get the voter's snapshotted balance. Since balances are returned pre-scaled by 10**18, we can directly
         // initialize the Unsigned value with the returned uint.
-        FixedPoint.Unsigned memory balance = FixedPoint.Unsigned(voterStakes[msg.sender].activeStake);
+        FixedPoint.Unsigned memory balance = FixedPoint.Unsigned(voterStakes[voter].activeStake);
 
         // Set the voter's submission.
         voteSubmission.revealHash = keccak256(abi.encode(price));
@@ -767,6 +773,7 @@ contract VotingV2 is
         // Add vote to the results.
         voteInstance.resultComputation.addVote(price, balance);
 
+        // TODO: both this event and the commit event should indicate if there was vote delegation applied.
         emit VoteRevealed(msg.sender, currentRoundId, identifier, time, price, ancillaryData, balance.rawValue);
     }
 
@@ -815,9 +822,27 @@ contract VotingV2 is
         commitAndEmitEncryptedVote(identifier, time, "", hash, encryptedVote);
     }
 
+    function setDelegate(address delegate) public {
+        require(getVoterStake(delegate) == 0, "Cant delegate to existing staker");
+        voterStakes[msg.sender].delegate = delegate;
+    }
+
+    function setDelegator(address delegator) public {
+        require(getVoterStake(msg.sender) == 0, "Cant become delegate if staker");
+        delegateToStaker[msg.sender] = delegator;
+    }
+
     /****************************************
      *        VOTING GETTER FUNCTIONS       *
      ****************************************/
+
+    function getVoterFromDelegate(address) public view returns (address) {
+        if (
+            delegateToStaker[msg.sender] != address(0) && // The delegate chose to be a delegate for the staker.
+            voterStakes[delegateToStaker[msg.sender]].delegate == msg.sender // The staker chose the delegate.
+        ) return delegateToStaker[msg.sender];
+        else return msg.sender;
+    }
 
     /**
      * @notice Gets the queries that are being voted on this round.

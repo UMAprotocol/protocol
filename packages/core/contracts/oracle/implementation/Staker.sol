@@ -31,9 +31,13 @@ contract Staker is StakerInterface, Ownable, Testable {
         uint256 outstandingRewards;
         uint256 unstakeTime;
         uint256 lastRequestIndexConsidered;
+        address delegate;
     }
 
     mapping(address => VoterStake) public voterStakes;
+
+    // Mapping of delegates to the stakers (accounts who can vote on behalf of the stakers mapped to the staker).
+    mapping(address => address) public delegateToStaker;
 
     // Reference to the voting token.
     VotingToken public override votingToken;
@@ -51,6 +55,7 @@ contract Staker is StakerInterface, Ownable, Testable {
 
     // Pulls tokens from users wallet and stakes them.
     function stake(uint256 amount) public override {
+        require(delegateToStaker[msg.sender] == address(0), "Staker cant be a delegate");
         _updateTrackers(msg.sender);
         if (inActiveReveal()) {
             voterStakes[msg.sender].pendingStake += amount;
