@@ -46,7 +46,7 @@ contract Staker is StakerInterface, Ownable, Testable {
      *                EVENTS                *
      ****************************************/
 
-    event NewStake(address indexed staker, uint256 amount);
+    event Stake(address indexed staker, uint256 amount);
 
     event UnstakeRequested(address indexed staker, uint256 amount, uint256 unstakeTime);
 
@@ -83,7 +83,7 @@ contract Staker is StakerInterface, Ownable, Testable {
         }
 
         votingToken.transferFrom(msg.sender, address(this), amount);
-        emit NewStake(msg.sender, amount);
+        emit Stake(msg.sender, amount);
     }
 
     //You cant request to unstake during an active reveal phase.
