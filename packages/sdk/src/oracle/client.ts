@@ -5,11 +5,11 @@ import type { state } from "./types";
 import type { FallbackProvider } from "./types/ethers";
 import { InputRequest, User } from "./types/state";
 import { Update } from "./services/update";
-import { OptimisticOracle } from "./services/optimisticOracle";
+import { SortedRequests } from "./services/sortedRequests";
 import { StateMachine, setActiveRequestByTransaction } from "./services/statemachines";
 import { loop } from "../utils";
 import { toWei } from "../across/utils";
-import { defaultConfig } from "./utils";
+import { NewOracle } from "./types/interfaces";
 
 export class Client {
   private intervalStarted = false;
@@ -176,15 +176,18 @@ function makeProvider(rpcUrls: string[]): FallbackProvider {
   provider.polling = false;
   return provider;
 }
-
-export function factory(config: state.PartialConfig, emit: Emit): Client {
+export function factory(
+  config: state.Config,
+  emit: Emit,
+  OptimisticOracle: NewOracle,
+  sortedRequests: SortedRequests
+): Client {
   const store = new Store(emit);
-  const fullConfig = defaultConfig(config);
   store.write((write) => {
-    write.config(fullConfig);
+    write.config(config);
     // maintains queryable ordered list of requests across all chains
-    write.sortedRequestsService();
-    for (const chain of Object.values(fullConfig.chains)) {
+    write.sortedRequestsService(sortedRequests);
+    for (const chain of Object.values(config.chains)) {
       const provider = makeProvider(chain.rpcUrls);
       write.chains(chain.chainId).optimisticOracle().address(chain.optimisticOracleAddress);
       write.services(chain.chainId).provider(provider);
@@ -202,13 +205,20 @@ export function factory(config: state.PartialConfig, emit: Emit): Client {
   const poller = new StateMachine(store);
 
   // start the request list checkers
-  for (const [chainId, config] of Object.entries(fullConfig.chains)) {
+  for (const [chainId, chainConfig] of Object.entries(config.chains)) {
     poller.types.fetchPastEvents.create(
-      { chainId: Number(chainId), startBlock: config.earliestBlockNumber, maxRange: config.maxEventRangeQuery },
+      {
+        chainId: Number(chainId),
+        startBlock: chainConfig.earliestBlockNumber,
+        maxRange: chainConfig.maxEventRangeQuery,
+      },
       "poller"
     );
     // long running poller which only looks for new events
-    poller.types.pollNewEvents.create({ chainId: Number(chainId), pollRateSec: config.checkTxIntervalSec }, "poller");
+    poller.types.pollNewEvents.create(
+      { chainId: Number(chainId), pollRateSec: chainConfig.checkTxIntervalSec },
+      "poller"
+    );
   }
   // create active request poller for all chains. Should only have one of these
   poller.types.pollActiveRequest.create(undefined, "poller");

@@ -29,7 +29,7 @@ contract Staker is StakerInterface, Ownable, Testable {
         uint256 unstakeTime;
         uint256 requestUnstake;
         uint256 lastRequestIndexConsidered;
-        address delegateVoting;
+        address delegate;
     }
 
     mapping(address => VoterStake) public voterStakes;

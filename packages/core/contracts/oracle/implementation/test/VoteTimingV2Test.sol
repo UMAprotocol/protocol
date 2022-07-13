@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import "../../interfaces/VotingInterface.sol";
+import "../../interfaces/VotingV2Interface.sol";
 import "../VoteTimingV2.sol";
 
 // Wraps the library VoteTiming for testing purposes.
@@ -18,7 +18,7 @@ contract VoteTimingV2Test {
         return voteTiming.computeCurrentRoundId(currentTime);
     }
 
-    function wrapComputeCurrentPhase(uint256 currentTime) external view returns (VotingAncillaryInterface.Phase) {
+    function wrapComputeCurrentPhase(uint256 currentTime) external view returns (VotingV2Interface.Phase) {
         return voteTiming.computeCurrentPhase(currentTime);
     }
 

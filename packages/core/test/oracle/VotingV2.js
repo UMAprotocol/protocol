@@ -1069,21 +1069,22 @@ describe("VotingV2", function () {
 
     await moveToNextRound(voting, accounts[0]);
 
-    // Commit without emitting any encrypted messages
-    const result = await voting.methods
-      .batchCommit(
-        priceRequests.map((request) => ({
-          identifier: request.identifier,
-          time: request.time,
-          hash: request.hash,
-          encryptedVote: [],
-        }))
-      )
-      .send({ from: accounts[0] });
+    const data = priceRequests.map((request) => {
+      return voting.methods.commitVote(request.identifier, request.time, request.hash).encodeABI();
+    });
+
+    const result = await voting.methods.multicall(data).send({ from: accounts[0] });
+
     await assertEventNotEmitted(result, voting, "EncryptedVote");
 
     // This time we commit while storing the encrypted messages
-    await voting.methods.batchCommit(priceRequests).send({ from: accounts[0] });
+    const dataEncrypted = priceRequests.map((request) => {
+      return voting.methods
+        .commitAndEmitEncryptedVote(request.identifier, request.time, request.hash, request.encryptedVote)
+        .encodeABI();
+    });
+
+    await voting.methods.multicall(dataEncrypted).send({ from: accounts[0] });
 
     for (let i = 0; i < numRequests; i++) {
       let priceRequest = priceRequests[i];
@@ -1147,11 +1148,13 @@ describe("VotingV2", function () {
 
     await moveToNextPhase(voting, accounts[0]);
 
-    // NOTE: Signed integers inside structs must be supplied as a string rather than a BN.
-    const result = await voting.methods["batchReveal((bytes32,uint256,int256,int256)[])"]([
-      { identifier, time: time1, price: price1.toString(), salt: salt1.toString() },
-      { identifier, time: time2, price: price2.toString(), salt: salt2.toString() },
-    ]).send({ from: accounts[0] });
+    const data = [
+      voting.methods.revealVote(identifier, time1, price1, salt1).encodeABI(),
+      voting.methods.revealVote(identifier, time2, price2, salt2).encodeABI(),
+    ];
+
+    const result = await voting.methods.multicall(data).send({ from: accounts[0] });
+
     await assertEventEmitted(result, voting, "VoteRevealed", (ev) => {
       return (
         ev.voter.toString() == account1 &&
@@ -2028,11 +2031,13 @@ describe("VotingV2", function () {
   it("governance requests don't slash wrong votes", async function () {
     const identifier = padRight(utf8ToHex("governance-price-request"), 64); // Use the same identifier for both.
     const time1 = "420";
+    const DATA_LIMIT_BYTES = 8192;
+    const ancillaryData = web3.utils.randomHex(DATA_LIMIT_BYTES);
 
     // Register accounts[0] as a registered contract.
     await registry.methods.registerContract([], accounts[0]).send({ from: accounts[0] });
 
-    await voting.methods.requestGovernanceAction(identifier, time1).send({ from: accounts[0] });
+    await voting.methods.requestGovernanceAction(identifier, time1, ancillaryData).send({ from: accounts[0] });
     await moveToNextRound(voting, accounts[0]);
     const roundId = (await voting.methods.getCurrentRoundId().call()).toString();
 
@@ -2041,22 +2046,40 @@ describe("VotingV2", function () {
     const losingPrice = 1;
     const salt = getRandomSignedInt(); // use the same salt for all votes. bad practice but wont impact anything.
     const baseRequest = { salt, roundId, identifier };
-    const hash1 = computeVoteHash({ ...baseRequest, price: losingPrice, account: account2, time: time1 });
+    const hash1 = computeVoteHashAncillary({
+      ...baseRequest,
+      price: losingPrice,
+      account: account2,
+      time: time1,
+      ancillaryData,
+    });
 
-    await voting.methods.commitVote(identifier, time1, hash1).send({ from: account2 });
+    await voting.methods.commitVote(identifier, time1, ancillaryData, hash1).send({ from: account2 });
 
     const winningPrice = 0;
-    const hash2 = computeVoteHash({ ...baseRequest, price: winningPrice, account: account1, time: time1 });
-    await voting.methods.commitVote(identifier, time1, hash2).send({ from: account1 });
+    const hash2 = computeVoteHashAncillary({
+      ...baseRequest,
+      price: winningPrice,
+      account: account1,
+      time: time1,
+      ancillaryData,
+    });
+    await voting.methods.commitVote(identifier, time1, ancillaryData, hash2).send({ from: account1 });
 
-    const hash3 = computeVoteHash({ ...baseRequest, price: winningPrice, account: account4, time: time1 });
-    await voting.methods.commitVote(identifier, time1, hash3).send({ from: account4 });
+    const hash3 = computeVoteHashAncillary({
+      ...baseRequest,
+      price: winningPrice,
+      account: account4,
+      time: time1,
+      ancillaryData,
+    });
+    await voting.methods.commitVote(identifier, time1, ancillaryData, hash3).send({ from: account4 });
 
     await moveToNextPhase(voting, accounts[0]); // Reveal the votes.
 
-    await voting.methods.revealVote(identifier, time1, losingPrice, salt).send({ from: account2 });
-    await voting.methods.revealVote(identifier, time1, winningPrice, salt).send({ from: account1 });
-    await voting.methods.revealVote(identifier, time1, winningPrice, salt).send({ from: account4 });
+    await voting.methods.revealVote(identifier, time1, losingPrice, ancillaryData, salt).send({ from: account2 });
+    await voting.methods.revealVote(identifier, time1, winningPrice, ancillaryData, salt).send({ from: account1 });
+    await voting.methods.revealVote(identifier, time1, winningPrice, ancillaryData, salt).send({ from: account4 });
 
     await moveToNextRound(voting, accounts[0]);
 
@@ -2103,13 +2126,15 @@ describe("VotingV2", function () {
   it("governance and non-governance requests work together well", async function () {
     const identifier = padRight(utf8ToHex("gov-no-gov-combined-request"), 64); // Use the same identifier for both.
     await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
+    const DATA_LIMIT_BYTES = 8192;
+    const ancillaryData = web3.utils.randomHex(DATA_LIMIT_BYTES);
 
     const time1 = "420";
 
     // Register accounts[0] as a registered contract.
     await registry.methods.registerContract([], accounts[0]).send({ from: accounts[0] });
 
-    await voting.methods.requestGovernanceAction(identifier, time1).send({ from: accounts[0] });
+    await voting.methods.requestGovernanceAction(identifier, time1, ancillaryData).send({ from: accounts[0] });
 
     const time2 = "690";
     await voting.methods.requestPrice(identifier, time2).send({ from: registeredContract });
@@ -2126,15 +2151,33 @@ describe("VotingV2", function () {
 
     const salt = getRandomSignedInt(); // use the same salt for all votes. bad practice but wont impact anything.
     const baseRequest = { salt, roundId, identifier };
-    const hash1 = computeVoteHash({ ...baseRequest, price: losingPrice, account: account2, time: time1 });
+    const hash1 = computeVoteHashAncillary({
+      ...baseRequest,
+      price: losingPrice,
+      ancillaryData,
+      account: account2,
+      time: time1,
+    });
 
-    await voting.methods.commitVote(identifier, time1, hash1).send({ from: account2 });
+    await voting.methods.commitVote(identifier, time1, ancillaryData, hash1).send({ from: account2 });
 
-    const hash2 = computeVoteHash({ ...baseRequest, price: winningPrice, account: account1, time: time1 });
-    await voting.methods.commitVote(identifier, time1, hash2).send({ from: account1 });
+    const hash2 = computeVoteHashAncillary({
+      ...baseRequest,
+      price: winningPrice,
+      ancillaryData,
+      account: account1,
+      time: time1,
+    });
+    await voting.methods.commitVote(identifier, time1, ancillaryData, hash2).send({ from: account1 });
 
-    const hash3 = computeVoteHash({ ...baseRequest, price: winningPrice, account: account4, time: time1 });
-    await voting.methods.commitVote(identifier, time1, hash3).send({ from: account4 });
+    const hash3 = computeVoteHashAncillary({
+      ...baseRequest,
+      price: winningPrice,
+      ancillaryData,
+      account: account4,
+      time: time1,
+    });
+    await voting.methods.commitVote(identifier, time1, ancillaryData, hash3).send({ from: account4 });
 
     // Non-governance request.
     const baseRequest2 = { salt, roundId: roundId, identifier };
@@ -2151,9 +2194,9 @@ describe("VotingV2", function () {
     await moveToNextPhase(voting, accounts[0]); // Reveal the votes.
 
     // Governance request.
-    await voting.methods.revealVote(identifier, time1, winningPrice, salt).send({ from: account1 });
-    await voting.methods.revealVote(identifier, time1, losingPrice, salt).send({ from: account2 });
-    await voting.methods.revealVote(identifier, time1, winningPrice, salt).send({ from: account4 });
+    await voting.methods.revealVote(identifier, time1, winningPrice, ancillaryData, salt).send({ from: account1 });
+    await voting.methods.revealVote(identifier, time1, losingPrice, ancillaryData, salt).send({ from: account2 });
+    await voting.methods.revealVote(identifier, time1, winningPrice, ancillaryData, salt).send({ from: account4 });
 
     // Non-governance request.
     await voting.methods.revealVote(identifier, time2, winningPrice, salt).send({ from: account1 });
@@ -2208,51 +2251,6 @@ describe("VotingV2", function () {
     );
   });
 
-  it("governance requests don't slash wrong votes", async function () {
-    const identifier = padRight(utf8ToHex("governance-price-request"), 64); // Use the same identifier for both.
-    const time1 = "420";
-
-    // Register accounts[0] as a the owner(mocks being the Governor.sol) contract.
-    await registry.methods.registerContract([], accounts[0]).send({ from: accounts[0] });
-
-    await voting.methods.requestGovernanceAction(identifier, time1).send({ from: accounts[0] });
-    await moveToNextRound(voting, accounts[0]);
-    const roundId = (await voting.methods.getCurrentRoundId().call()).toString();
-
-    // Account1 and account4 votes correctly, account2 votes wrong and account3 does not vote..
-    // Commit votes.
-    const losingPrice = 1;
-    const salt = getRandomSignedInt(); // use the same salt for all votes. bad practice but wont impact anything.
-    const baseRequest = { salt, roundId, identifier };
-    const hash1 = computeVoteHash({ ...baseRequest, price: losingPrice, account: account2, time: time1 });
-
-    await voting.methods.commitVote(identifier, time1, hash1).send({ from: account2 });
-
-    const winningPrice = 0;
-    const hash2 = computeVoteHash({ ...baseRequest, price: winningPrice, account: account1, time: time1 });
-    await voting.methods.commitVote(identifier, time1, hash2).send({ from: account1 });
-
-    const hash3 = computeVoteHash({ ...baseRequest, price: winningPrice, account: account4, time: time1 });
-    await voting.methods.commitVote(identifier, time1, hash3).send({ from: account4 });
-
-    await moveToNextPhase(voting, accounts[0]); // Reveal the votes.
-
-    await voting.methods.revealVote(identifier, time1, losingPrice, salt).send({ from: account2 });
-    await voting.methods.revealVote(identifier, time1, winningPrice, salt).send({ from: account1 });
-    await voting.methods.revealVote(identifier, time1, winningPrice, salt).send({ from: account4 });
-
-    await moveToNextRound(voting, accounts[0]);
-
-    // Now call updateTrackers to update the slashing metrics. We should see a cumulative slashing amount increment and
-    // the slash per wrong vote and slash per no vote set correctly.
-    await voting.methods.updateTrackers(account1).send({ from: account1 });
-
-    const slashingTracker1 = await voting.methods.requestSlashingTrackers(0).call();
-    assert.equal(slashingTracker1.wrongVoteSlashPerToken, toWei("0")); // No wrong vote slashing.
-    assert.equal(slashingTracker1.noVoteSlashPerToken, toWei("0.0016"));
-    assert.equal(slashingTracker1.totalSlashed, toWei("51200")); // 32mm*0.0016=102400
-    assert.equal(slashingTracker1.totalCorrectVotes, toWei("36000000")); // 32mm + 4mm
-  });
   it("Correctly selects voting round based on request time", async function () {
     // If requests are placed in the last minRollToNextRoundLength of a voting round then they should be placed in the
     // subsequent voting round (auto rolled). minRollToNextRoundLength is set to 7200. i.e requests done 2 hours before
@@ -2333,11 +2331,11 @@ describe("VotingV2", function () {
   });
   it("Can delegate voting to another address to vote on your stakes behalf", async function () {
     // Delegate from account1 to rand.
-    await voting.methods.delegateVoting(rand).send({ from: account1 });
-    await voting.methods.acceptDelegation(account1).send({ from: rand });
+    await voting.methods.setDelegate(rand).send({ from: account1 });
+    await voting.methods.setDelegator(account1).send({ from: rand });
 
     // State variables should be set correctly.
-    assert.equal((await voting.methods.voterStakes(account1).call()).delegateVoting, rand);
+    assert.equal((await voting.methods.voterStakes(account1).call()).delegate, rand);
     assert.equal(await voting.methods.delegateToStaker(rand).call(), account1);
 
     // Request a price and see that we can vote on it on behalf of the account1 from the delegate.
@@ -2374,10 +2372,10 @@ describe("VotingV2", function () {
 
   it("Existing stakers cant become delegates and delegates cant stake", async function () {
     // Account1 has a staked balance so cant be used by account2 in delegation.
-    assert(await didContractThrow(voting.methods.delegateVoting(account1).send({ from: account2 })));
+    assert(await didContractThrow(voting.methods.setDelegate(account1).send({ from: account2 })));
 
     // Before the user accepts  the delegation they can stake but after they accept it they can no longer stake.
-    await voting.methods.delegateVoting(rand).send({ from: account1 });
+    await voting.methods.setDelegate(rand).send({ from: account1 });
     await votingToken.methods.mint(rand, toWei("100")).send({ from: accounts[0] });
     await votingToken.methods.approve(voting.options.address, toWei("100")).send({ from: rand });
 
@@ -2385,31 +2383,28 @@ describe("VotingV2", function () {
     await voting.methods.stake(toWei("50")).send({ from: rand });
 
     // After staking should no longer be able to accept the delegation as staked accounts should not be able to be delegates.
-    assert(await didContractThrow(voting.methods.acceptDelegation(account1).send({ from: rand })));
+    assert(await didContractThrow(voting.methods.setDelegator(account1).send({ from: rand })));
 
     // Unstake and accept the delegation. After accepting the delegation can no longer stake.
     await voting.methods.setUnstakeCoolDown(0).send({ from: accounts[0] });
     await voting.methods.requestUnstake(toWei("50")).send({ from: rand });
     await voting.methods.executeUnstake().send({ from: rand });
-    await voting.methods.acceptDelegation(account1).send({ from: rand });
+    await voting.methods.setDelegator(account1).send({ from: rand });
     assert(await didContractThrow(voting.methods.stake(toWei("50")).send({ from: rand })));
   });
 
-  it("Stakers can revoke a delegate", async function () {
-    await voting.methods.delegateVoting(rand).send({ from: account1 });
-    await voting.methods.acceptDelegation(account1).send({ from: rand });
-    assert.equal((await voting.methods.voterStakes(account1).call()).delegateVoting, rand);
+  it("Can revoke a delegate by unsetting the mapping", async function () {
+    await voting.methods.setDelegate(rand).send({ from: account1 });
+    await voting.methods.setDelegator(account1).send({ from: rand });
+    assert.equal((await voting.methods.voterStakes(account1).call()).delegate, rand);
     assert.equal(await voting.methods.delegateToStaker(rand).call(), account1);
 
-    // Cant try and remove a non-delegate.
-    assert(await didContractThrow(voting.methods.revokeDelegation(account1).send({ from: account2 })));
+    // Remove the delegation from the staker.
+    await voting.methods.setDelegate(ZERO_ADDRESS).send({ from: account1 });
+    assert.equal((await voting.methods.voterStakes(account1).call()).delegate, ZERO_ADDRESS);
 
-    // Non-staker can't revoke a delegate.
-    assert(await didContractThrow(voting.methods.revokeDelegation(account1).send({ from: account2 })));
-
-    // Remove the delegation.
-    await voting.methods.revokeDelegation(rand).send({ from: account1 });
-    assert.equal((await voting.methods.voterStakes(account1).call()).delegateVoting, ZERO_ADDRESS);
+    // Remove the delegation from the delegate.
+    await voting.methods.setDelegator(ZERO_ADDRESS).send({ from: rand });
     assert.equal(await voting.methods.delegateToStaker(rand).call(), ZERO_ADDRESS);
   });
 });

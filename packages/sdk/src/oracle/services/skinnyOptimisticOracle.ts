@@ -1,43 +1,64 @@
-import { optimisticOracle } from "../../clients";
+import assert from "assert";
+import { skinnyOptimisticOracle as optimisticOracle } from "../../clients";
 import { BigNumberish, Provider, Signer, TransactionResponse, Log, TransactionReceipt } from "../types/ethers";
 import type { OracleInterface, RequestKey, OracleProps, Request } from "../types/interfaces";
 import { requestId, insertOrderedAscending, eventKey, isUnique, getAddress } from "../utils";
 
-import { RequestPrice, ProposePrice, DisputePrice, Settle } from "../../clients/optimisticOracle";
+import {
+  RequestPrice,
+  ProposePrice,
+  DisputePrice,
+  Settle,
+  SolidityRequest,
+} from "../../clients/skinnyOptimisticOracle";
 
 export type OptimisticOracleEvent = RequestPrice | ProposePrice | DisputePrice | Settle;
 
 export type { RequestPrice, ProposePrice, DisputePrice, Settle };
 
-// this had to be copied in because interfaces in contracts-frontend and contracts-node are different
-// The frontend cant use contracts-node because async calls are required for addresses, when testing in node
-// we arent able to import contracts-frontend.
 export function getOptimisticOracleAddress(chainId: number): string {
   switch (chainId.toString()) {
     case "1":
-      return getAddress("0xc43767f4592df265b4a9f1a398b97ff24f38c6a6");
+      return getAddress("0xeE3Afe347D5C74317041E2618C49534dAf887c24");
     case "4":
-      return getAddress("0x3746badD4d6002666dacd5d7bEE19f60019A8433");
-    case "10":
-      return getAddress("0x56e2d1b8C7dE8D11B282E1b4C924C32D91f9102B");
+      return getAddress("0xAbE04Ace666294aefD65F991d78CE9F9218aFC67");
     case "42":
       return getAddress("0xB1d3A89333BBC3F5e98A991d6d4C1910802986BC");
     case "100":
-      return getAddress("0xd2ecb3afe598b746F8123CaE365a598DA831A449");
-    case "137":
-      return getAddress("0xBb1A8db2D4350976a11cdfA60A1d43f97710Da49");
-    case "288":
-      return getAddress("0x7da554228555C8Bf3748403573d48a2138C6b848");
-    case "42161":
-      return getAddress("0x031A7882cE3e8b4462b057EBb0c3F23Cd731D234");
-    case "80001":
-      return getAddress("0xAB75727d4e89A7f7F04f57C00234a35950527115");
+      return getAddress("0xAa04b5D40574Fb8C001249B24d1c6B35a207F0bD");
     default:
-      throw new Error(`No address found for deployment OptimisticOracle on chainId ${chainId}`);
+      throw new Error(`No address found for deployment Skinny Optimistic Oracle on chainId ${chainId}`);
   }
 }
 
-export class OptimisticOracle implements OracleInterface {
+function validateSolidityRequest(request: Request): SolidityRequest {
+  assert(request.proposer, "Missing proposer");
+  assert(request.disputer, "Missing disputer");
+  assert(request.currency, "Missing currency");
+  assert(request.settled, "Missing settled");
+  assert(request.proposedPrice, "Missing proposedPrice");
+  assert(request.resolvedPrice, "Missing resolvedPrice");
+  assert(request.expirationTime, "Missing expirationTime");
+  assert(request.reward, "Missing reward");
+  assert(request.finalFee, "Missing finalFee");
+  assert(request.bond, "Missing bond");
+  assert(request.customLiveness, "Missing customLiveness");
+  return {
+    proposer: request.proposer,
+    disputer: request.disputer,
+    currency: request.currency,
+    settled: request.settled,
+    proposedPrice: request.proposedPrice,
+    resolvedPrice: request.resolvedPrice,
+    expirationTime: request.expirationTime,
+    reward: request.reward,
+    finalFee: request.finalFee,
+    bond: request.bond,
+    customLiveness: request.customLiveness,
+  };
+}
+
+export class SkinnyOptimisticOracle implements OracleInterface {
   private readonly contract: optimisticOracle.Instance;
   private readonly events: OptimisticOracleEvent[] = [];
   private requests: Record<string, Request> = {};
@@ -78,10 +99,9 @@ export class OptimisticOracle implements OracleInterface {
     const { requests = {} } = optimisticOracle.getEventState(this.events);
     Object.values(requests).map((request) => this.upsertRequest(request));
   };
-  async fetchRequest({ requester, identifier, timestamp, ancillaryData }: RequestKey): Promise<Request> {
-    const request = await this.contract.callStatic.getRequest(requester, identifier, timestamp, ancillaryData);
-    const state = await this.contract.callStatic.getState(requester, identifier, timestamp, ancillaryData);
-    return this.upsertRequest({ ...request, state, requester, identifier, timestamp, ancillaryData });
+  async fetchRequest(key: RequestKey): Promise<Request> {
+    // skinny oo does not have a way to query request data from contract, can only find this though events.
+    return this.getRequest(key);
   }
 
   getRequest(key: RequestKey): Request {
@@ -93,8 +113,9 @@ export class OptimisticOracle implements OracleInterface {
     signer: Signer,
     { requester, identifier, timestamp, ancillaryData }: RequestKey
   ): Promise<TransactionResponse> {
+    const request = validateSolidityRequest(this.getRequest({ requester, identifier, timestamp, ancillaryData }));
     const contract = optimisticOracle.connect(this.address, signer);
-    const tx = await contract.disputePrice(requester, identifier, timestamp, ancillaryData);
+    const tx = await contract.disputePrice(requester, identifier, timestamp, ancillaryData, request);
     this.setDisputeHash({ requester, identifier, timestamp, ancillaryData }, tx.hash);
     return tx;
   }
@@ -103,8 +124,9 @@ export class OptimisticOracle implements OracleInterface {
     { requester, identifier, timestamp, ancillaryData }: RequestKey,
     price: BigNumberish
   ): Promise<TransactionResponse> {
+    const request = validateSolidityRequest(this.getRequest({ requester, identifier, timestamp, ancillaryData }));
     const contract = optimisticOracle.connect(this.address, signer);
-    const tx = await contract.proposePrice(requester, identifier, timestamp, ancillaryData, price);
+    const tx = await contract.proposePrice(requester, identifier, timestamp, ancillaryData, request, price);
     this.setProposeHash({ requester, identifier, timestamp, ancillaryData }, tx.hash);
     return tx;
   }
@@ -112,8 +134,9 @@ export class OptimisticOracle implements OracleInterface {
     signer: Signer,
     { requester, identifier, timestamp, ancillaryData }: RequestKey
   ): Promise<TransactionResponse> {
+    const request = validateSolidityRequest(this.getRequest({ requester, identifier, timestamp, ancillaryData }));
     const contract = optimisticOracle.connect(this.address, signer);
-    const tx = await contract.settle(requester, identifier, timestamp, ancillaryData);
+    const tx = await contract.settle(requester, identifier, timestamp, ancillaryData, request);
     this.setSettleHash({ requester, identifier, timestamp, ancillaryData }, tx.hash);
     return tx;
   }
