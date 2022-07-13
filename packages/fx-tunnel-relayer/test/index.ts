@@ -89,6 +89,7 @@ describe("index.ts", function () {
 
   it("Runs with no errors", async function () {
     process.env.POLLING_DELAY = "0";
+    process.env.CHAIN_ID = ""; // Leave empty so Relayer uses hardhat network web3
 
     // Must not throw.
     await run(spyLogger, web3);

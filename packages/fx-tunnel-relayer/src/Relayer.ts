@@ -34,13 +34,16 @@ export class Relayer {
     // First, query OracleChildTunnel on Polygon for any MessageSent events.
     // For some reason, the fromBlock filter doesn't work on local hardhat tests so I added this filter to explicitly
     // remove events with block numbers older than the window.
-    const { eventData: messageSentEvents, web3RequestCount } = await getEventsWithPaginatedBlockSearch(
+    const { eventData, web3RequestCount } = await getEventsWithPaginatedBlockSearch(
       this.oracleChildTunnel,
       "MessageSent",
       this.polygonEarliestBlockToQuery,
       this.polygonLatestBlockToQuery,
       3490 // Polygon Infura RPC limits you to 3500 blocks
     );
+    // This .filter shouldn't be neccessary and it isn't in prod (empirically) but for some reason without this it
+    // fails the test "ignores events older than earliest polygon block to query"
+    const messageSentEvents = eventData.filter((e: EventData) => e.blockNumber >= this.polygonEarliestBlockToQuery);
     this.logger.debug({
       at: "Relayer#relayMessage",
       message: "Found MessageSent events",
