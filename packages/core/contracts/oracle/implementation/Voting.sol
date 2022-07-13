@@ -474,7 +474,6 @@ contract Voting is
         bytes memory ancillaryData,
         int256 salt
     ) public override onlyIfNotMigrated() {
-        //TODO: should we prevent someone from revealing if their active staked balance is 0?
         require(voteTiming.computeCurrentPhase(getCurrentTime()) == Phase.Reveal, "Cannot reveal in commit phase");
         // Note: computing the current round is required to disallow people from revealing an old commit after the round is over.
         uint256 roundId = voteTiming.computeCurrentRoundId(getCurrentTime());
