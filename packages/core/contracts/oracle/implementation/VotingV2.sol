@@ -349,7 +349,7 @@ contract VotingV2 is
             uint256 nextRequestIndex =
                 deletedRequests[requestIndex + 1] != 0 ? deletedRequests[requestIndex + 1] + 1 : requestIndex + 1;
             if (
-                priceRequestIds.length - nextRequestIndex >= 1 &&
+                priceRequestIds.length > nextRequestIndex &&
                 priceRequest.lastVotingRound != priceRequests[priceRequestIds[nextRequestIndex]].lastVotingRound
             ) {
                 applySlashToVoter(slash, voterStake);
