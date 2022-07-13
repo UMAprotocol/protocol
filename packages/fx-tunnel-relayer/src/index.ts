@@ -71,6 +71,7 @@ export async function run(logger: winston.Logger, web3: Web3): Promise<void> {
       oracleChildTunnel: oracleChildTunnel.options.address,
       oracleRootTunnel: oracleRootTunnel.options.address,
       polygonEarliestBlockToQuery: polygonEarliestBlockToQuery,
+      polygonLatestBlockToQuery: polygonCurrentBlock.number,
     });
 
     const relayer = new Relayer(
@@ -81,7 +82,8 @@ export async function run(logger: winston.Logger, web3: Web3): Promise<void> {
       oracleChildTunnel,
       oracleRootTunnel,
       web3,
-      polygonEarliestBlockToQuery
+      polygonEarliestBlockToQuery,
+      polygonCurrentBlock.number
     );
 
     for (;;) {
