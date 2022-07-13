@@ -223,7 +223,13 @@ contract VotingV2 is
         uint256 numTokens
     );
 
-    event PriceRequestAdded(uint256 indexed roundId, bytes32 indexed identifier, uint256 time, bytes ancillaryData);
+    event PriceRequestAdded(
+        uint256 indexed roundId,
+        bytes32 indexed identifier,
+        uint256 time,
+        bytes ancillaryData,
+        bool isGovernance
+    );
 
     event PriceResolved(
         uint256 indexed roundId,
@@ -232,6 +238,22 @@ contract VotingV2 is
         int256 price,
         bytes ancillaryData
     );
+
+    event VotingContractMigrated(address newAddress);
+
+    event GatPercentageChanged(FixedPoint.Unsigned newGatPercentage);
+
+    event SlashingLibraryChanged(address newAddress);
+
+    event SpamDeletionProposalBondChanged(uint256 newBond);
+
+    event VoterSlashed(address indexed voter, int256 numTokens);
+
+    event CumulativeSlashingTrackersUpdated(uint256 lastRequestIndexConsidered, uint256 priceRequestIdsLength);
+
+    event SpamRequestsSignaled(uint256 indexed proposalId, address indexed sender, uint256[2][] spamRequestIndices);
+
+    event SpamRequestResolved(uint256 indexed proposalId, bool indexed executed);
 
     // /**
     //  * @notice Construct the Voting contract.
@@ -354,6 +376,7 @@ contract VotingV2 is
         if (slash + int256(voterStake.activeStake) > 0)
             voterStake.activeStake = uint256(int256(voterStake.activeStake) + slash);
         else voterStake.activeStake = 0;
+        emit VoterSlashed(voterAddress, slash);
     }
 
     function _updateCumulativeSlashingTrackers() internal {
@@ -398,6 +421,8 @@ contract VotingV2 is
 
             lastRequestIndexConsidered = i + 1;
         }
+
+        emit CumulativeSlashingTrackersUpdated(lastRequestIndexConsidered, priceRequestIdsLength);
     }
 
     /****************************************
@@ -430,6 +455,8 @@ contract VotingV2 is
         bytes32 identifier = SpamGuardIdentifierLib._constructIdentifier(proposalId);
 
         _requestPrice(identifier, currentTime, "", true);
+
+        emit SpamRequestsSignaled(proposalId, msg.sender, spamRequestIndices);
     }
 
     function executeSpamDeletion(uint256 proposalId) public {
@@ -467,15 +494,18 @@ contract VotingV2 is
 
             // Return the spamDeletionProposalBond.
             votingToken.transfer(spamDeletionProposals[proposalId].proposer, spamDeletionProposalBond);
+            emit SpamRequestResolved(proposalId, true);
         }
         // Else, the spam deletion request was voted down. In this case we send the spamDeletionProposalBond to the store.
         else {
             votingToken.transfer(finder.getImplementationAddress(OracleInterfaces.Store), spamDeletionProposalBond);
+            emit SpamRequestResolved(proposalId, false);
         }
     }
 
     function setSpamDeletionProposalBond(uint256 _spamDeletionProposalBond) public onlyOwner() {
         spamDeletionProposalBond = _spamDeletionProposalBond;
+        emit SpamDeletionProposalBondChanged(_spamDeletionProposalBond);
     }
 
     function getSpamDeletionRequest(uint256 spamDeletionRequestId) public view returns (SpamDeletionRequest memory) {
@@ -566,7 +596,7 @@ contract VotingV2 is
             newPriceRequest.isGovernance = isGovernance;
 
             pendingPriceRequests.push(priceRequestId);
-            emit PriceRequestAdded(roundIdToVoteOnPriceRequest, identifier, time, ancillaryData);
+            emit PriceRequestAdded(roundIdToVoteOnPriceRequest, identifier, time, ancillaryData, isGovernance);
         }
     }
 
@@ -910,6 +940,7 @@ contract VotingV2 is
      */
     function setMigrated(address newVotingAddress) external override onlyOwner {
         migratedAddress = newVotingAddress;
+        emit VotingContractMigrated(newVotingAddress);
     }
 
     // here for abi compatibility. remove
@@ -923,6 +954,7 @@ contract VotingV2 is
     function setGatPercentage(FixedPoint.Unsigned memory newGatPercentage) public override onlyOwner {
         require(newGatPercentage.isLessThan(1), "GAT percentage must be < 100%");
         gatPercentage = newGatPercentage;
+        emit GatPercentageChanged(newGatPercentage);
     }
 
     // Here for abi compatibility. to be removed.
@@ -934,6 +966,7 @@ contract VotingV2 is
      */
     function setSlashingLibrary(address _newSlashingLibrary) public override onlyOwner {
         slashingLibrary = SlashingLibrary(_newSlashingLibrary);
+        emit SlashingLibraryChanged(_newSlashingLibrary);
     }
 
     /****************************************
