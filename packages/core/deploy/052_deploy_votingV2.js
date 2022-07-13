@@ -17,7 +17,7 @@ const func = async function (hre) {
   // Set the inflation rate.
   const emissionRate = "640000000000000000";
 
-  const unstakeCooldown = 60 * 60 * 24 * 30; // 1 month.
+  const unstakeCooldown = 60 * 60 * 24 * 7; // 7 days
 
   // Set phase length to one day.
   const phaseLength = "86400";
