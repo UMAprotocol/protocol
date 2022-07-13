@@ -60,16 +60,16 @@ describe("VotingV2", function () {
     // 2: 32MM
     // 3: 32MM
     // 4: 4MM (can't reach the 5% GAT alone)
-    await votingToken.methods.approve(voting.options.address, toWei("32000000")).send({ from: account1 });
+    await votingToken.methods.approve(voting.options.address, toWei("3200000000")).send({ from: account1 });
     await voting.methods.stake(toWei("32000000")).send({ from: account1 });
     await votingToken.methods.transfer(account2, toWei("32000000")).send({ from: accounts[0] });
-    await votingToken.methods.approve(voting.options.address, toWei("32000000")).send({ from: account2 });
+    await votingToken.methods.approve(voting.options.address, toWei("3200000000")).send({ from: account2 });
     await voting.methods.stake(toWei("32000000")).send({ from: account2 });
     await votingToken.methods.transfer(account3, toWei("32000000")).send({ from: accounts[0] });
-    await votingToken.methods.approve(voting.options.address, toWei("32000000")).send({ from: account3 });
+    await votingToken.methods.approve(voting.options.address, toWei("3200000000")).send({ from: account3 });
     await voting.methods.stake(toWei("32000000")).send({ from: account3 });
     await votingToken.methods.transfer(account4, toWei("4000000")).send({ from: accounts[0] });
-    await votingToken.methods.approve(voting.options.address, toWei("4000000")).send({ from: account4 });
+    await votingToken.methods.approve(voting.options.address, toWei("400000000")).send({ from: account4 });
     await voting.methods.stake(toWei("4000000")).send({ from: account4 });
 
     // Set the inflation rate to 0 by default, so the balances stay fixed until inflation is tested.
@@ -1788,13 +1788,13 @@ describe("VotingV2", function () {
     // These slashings should be removed from the slashed token holders and added pro-rata to the correct voters.
     // Account 1 should loose 51200 tokens and account 2 should lose 6400 tokens.
     assert.equal(
-      (await voting.methods.voterStakes(account1).call()).cumulativeStaked,
+      (await voting.methods.voterStakes(account1).call()).activeStake,
       toWei("32000000").sub(toWei("51200")) // Their original stake amount of 32mm minus the slashing of 51200.
     );
 
     await voting.methods.updateTrackers(account4).send({ from: account1 });
     assert.equal(
-      (await voting.methods.voterStakes(account4).call()).cumulativeStaked,
+      (await voting.methods.voterStakes(account4).call()).activeStake,
       toWei("4000000").sub(toWei("6400")) // Their original stake amount of 4mm minus the slashing of 6400.
     );
 
@@ -1802,12 +1802,12 @@ describe("VotingV2", function () {
     // same staked amounts we should see their balances increase equally as half of the 57600/2 = 28800 for each.
     await voting.methods.updateTrackers(account2).send({ from: account1 });
     assert.equal(
-      (await voting.methods.voterStakes(account2).call()).cumulativeStaked,
+      (await voting.methods.voterStakes(account2).call()).activeStake,
       toWei("32000000").add(toWei("28800")) // Their original stake amount of 32mm plus the positive slashing of 28800.
     );
     await voting.methods.updateTrackers(account3).send({ from: account1 });
     assert.equal(
-      (await voting.methods.voterStakes(account3).call()).cumulativeStaked,
+      (await voting.methods.voterStakes(account3).call()).activeStake,
       toWei("32000000").add(toWei("28800")) // Their original stake amount of 32mm plus the positive slashing of 28800.
     );
   });
@@ -1876,13 +1876,13 @@ describe("VotingV2", function () {
     // each loose 32mm * 2 * 0.0016 = 102400 tokens.
     await voting.methods.updateTrackers(account2).send({ from: account1 });
     assert.equal(
-      (await voting.methods.voterStakes(account2).call()).cumulativeStaked,
+      (await voting.methods.voterStakes(account2).call()).activeStake,
       toWei("32000000").sub(toWei("102400")) // Their original stake amount of 32mm minus the slashing of 102400.
     );
 
     await voting.methods.updateTrackers(account3).send({ from: account1 });
     assert.equal(
-      (await voting.methods.voterStakes(account3).call()).cumulativeStaked,
+      (await voting.methods.voterStakes(account3).call()).activeStake,
       toWei("32000000").sub(toWei("102400")) // Their original stake amount of 32mm minus the slashing of 102400.
     );
 
@@ -1890,14 +1890,14 @@ describe("VotingV2", function () {
     // 32mm/(32mm+4mm) * 102400 * 2 = 182044.4444444444 (their fraction of the total slashed)
     // await voting.methods.updateTrackers(account1).send({ from: account1 });
     assert.equal(
-      (await voting.methods.voterStakes(account1).call()).cumulativeStaked,
+      (await voting.methods.voterStakes(account1).call()).activeStake,
       toWei("32000000").add(toBN("182044444444444444444444")) // Their original stake amount of 32mm plus the slash of 182044.4
     );
 
     // Account4 has 4mm and should have gotten 4mm/(32mm+4mm) * 102400 * 2 = 22755.555 (their fraction of the total slashed)
     await voting.methods.updateTrackers(account4).send({ from: account4 });
     assert.equal(
-      (await voting.methods.voterStakes(account4).call()).cumulativeStaked,
+      (await voting.methods.voterStakes(account4).call()).activeStake,
       toWei("4000000").add(toBN("22755555555555555555554")) // Their original stake amount of 4mm plus the slash of 22755.555
     );
   });
@@ -1995,7 +1995,7 @@ describe("VotingV2", function () {
     // correct votes) resulting a a total positive slashing of 91022.2222222+28832.0316=119854.2538959
     // await voting.methods.updateTrackers(account1).send({ from: account1 });
     assert.equal(
-      (await voting.methods.voterStakes(account1).call()).cumulativeStaked,
+      (await voting.methods.voterStakes(account1).call()).activeStake,
       toWei("32000000").add(toBN("119854253895946226051937")) // Their original stake amount of 32mm minus the slashing of 119854.25389.
     );
 
@@ -2004,7 +2004,7 @@ describe("VotingV2", function () {
 
     await voting.methods.updateTrackers(account2).send({ from: account2 });
     assert.equal(
-      (await voting.methods.voterStakes(account2).call()).cumulativeStaked,
+      (await voting.methods.voterStakes(account2).call()).activeStake,
       toWei("32000000").sub(toWei("102318.08")) // Their original stake amount of 32mm minus the slashing of 102318.08.
     );
 
@@ -2013,7 +2013,7 @@ describe("VotingV2", function () {
     // Overall they should have a resulting slash of -22495.7474
     await voting.methods.updateTrackers(account3).send({ from: account3 });
     assert.equal(
-      (await voting.methods.voterStakes(account3).call()).cumulativeStaked,
+      (await voting.methods.voterStakes(account3).call()).activeStake,
       toWei("32000000").sub(toBN("22495747229279559385272")) // Their original stake amount of 32mm minus the slash of 22495.7474
     );
 
@@ -2023,12 +2023,12 @@ describe("VotingV2", function () {
 
     await voting.methods.updateTrackers(account4).send({ from: account4 });
     assert.equal(
-      (await voting.methods.voterStakes(account4).call()).cumulativeStaked,
+      (await voting.methods.voterStakes(account4).call()).activeStake,
       toWei("4000000").add(toBN("4959573333333333333333")) // Their original stake amount of 4mm plus the slash of 4959.56.
     );
   });
 
-  it("governance requests don't slash wrong votes", async function () {
+  it("Governance requests don't slash wrong votes", async function () {
     const identifier = padRight(utf8ToHex("governance-price-request"), 64); // Use the same identifier for both.
     const time1 = "420";
     const DATA_LIMIT_BYTES = 8192;
@@ -2096,14 +2096,14 @@ describe("VotingV2", function () {
     // Check that account3 is slashed for not voting.
     await voting.methods.updateTrackers(account3).send({ from: account3 });
     assert.equal(
-      (await voting.methods.voterStakes(account3).call()).cumulativeStaked,
+      (await voting.methods.voterStakes(account3).call()).activeStake,
       toWei("32000000").sub(toWei("51200")) // Their original stake amount of 32mm minus the slash of 51200
     );
 
     // Check that account2 is not slashed for voting wrong.
     await voting.methods.updateTrackers(account2).send({ from: account2 });
     assert.equal(
-      (await voting.methods.voterStakes(account2).call()).cumulativeStaked,
+      (await voting.methods.voterStakes(account2).call()).activeStake,
       toWei("32000000") // Their original stake amount of 32mm.
     );
 
@@ -2111,19 +2111,19 @@ describe("VotingV2", function () {
     // Account 1 should receive 32mm/(32mm+4mm)*51200=45511.111...
     await voting.methods.updateTrackers(account1).send({ from: account1 });
     assert.equal(
-      (await voting.methods.voterStakes(account1).call()).cumulativeStaked,
+      (await voting.methods.voterStakes(account1).call()).activeStake,
       toWei("32000000").add(toBN("45511111111111111111111"))
     );
 
     // Account 4 should receive 4mm/(32mm+4mm)*51200=5688.88...
     await voting.methods.updateTrackers(account4).send({ from: account4 });
     assert.equal(
-      (await voting.methods.voterStakes(account4).call()).cumulativeStaked,
+      (await voting.methods.voterStakes(account4).call()).activeStake,
       toWei("4000000").add(toBN("5688888888888888888888")) // Their original stake amount of 32mm.
     );
   });
 
-  it("governance and non-governance requests work together well", async function () {
+  it("Governance and non-governance requests work together well", async function () {
     const identifier = padRight(utf8ToHex("gov-no-gov-combined-request"), 64); // Use the same identifier for both.
     await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
     const DATA_LIMIT_BYTES = 8192;
@@ -2224,14 +2224,14 @@ describe("VotingV2", function () {
     // Check that account3 is slashed for not voting two times
     await voting.methods.updateTrackers(account3).send({ from: account3 });
     assert.equal(
-      (await voting.methods.voterStakes(account3).call()).cumulativeStaked,
+      (await voting.methods.voterStakes(account3).call()).activeStake,
       toWei("32000000").sub(toWei("102400")) // Their original stake amount of 32mm minus the slash of 51200
     );
 
     // Check that account2 is only slashed for voting wrong in the second non-governance request.
     await voting.methods.updateTrackers(account2).send({ from: account2 });
     assert.equal(
-      (await voting.methods.voterStakes(account2).call()).cumulativeStaked,
+      (await voting.methods.voterStakes(account2).call()).activeStake,
       toWei("32000000").sub(toWei("51200"))
     );
 
@@ -2239,14 +2239,14 @@ describe("VotingV2", function () {
     // Account 1 should receive 32mm/(32mm+4mm)*153600=136533.33...
     await voting.methods.updateTrackers(account1).send({ from: account1 });
     assert.equal(
-      (await voting.methods.voterStakes(account1).call()).cumulativeStaked,
+      (await voting.methods.voterStakes(account1).call()).activeStake,
       toWei("32000000").add(toBN("136533333333333333333333"))
     );
 
     // Account 4 should receive 4mm/(32mm+4mm)*153600=17066.66...
     await voting.methods.updateTrackers(account4).send({ from: account4 });
     assert.equal(
-      (await voting.methods.voterStakes(account4).call()).cumulativeStaked,
+      (await voting.methods.voterStakes(account4).call()).activeStake,
       toWei("4000000").add(toBN("17066666666666666666665"))
     );
   });
@@ -2329,6 +2329,285 @@ describe("VotingV2", function () {
       "42069"
     );
   });
+  it("Can correctly handel unstaking within voting rounds", async function () {
+    // Start by setting the unstakeCooldown to 12 hours to enable us to execute the unstakes during the commit/reveal
+    // phases.
+    await voting.methods.setUnstakeCoolDown(60 * 60 * 12).send({ from: accounts[0] });
+
+    // Claim all rewards current entitled to all accounts to start from 0 at the time of the price request.
+    await voting.methods.withdrawRewards().send({ from: account1 });
+    const account1BalancePostClaim = await votingToken.methods.balanceOf(account1).call();
+
+    const identifier = padRight(utf8ToHex("slash-test"), 64); // Use the same identifier for both.
+    const time1 = "420";
+    const price = "69696969";
+    await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
+    await voting.methods.requestPrice(identifier, time1).send({ from: registeredContract });
+
+    // Account1 will request to unstake before the start of the voting round and execute in the commit phase.
+    await voting.methods.requestUnstake(toWei("32000000")).send({ from: account1 });
+
+    await moveToNextRound(voting, accounts[0]); // Move into the commit phase.
+
+    // Account2 unstakes during the commit phase.
+    await voting.methods.withdrawRewards().send({ from: account2 });
+    const account2BalancePostClaim = await votingToken.methods.balanceOf(account2).call();
+    await voting.methods.requestUnstake(toWei("32000000")).send({ from: account2 });
+
+    // Account3 and Account4 commits.
+    const salt = getRandomSignedInt(); // use the same salt for all votes. bad practice but wont impact anything.
+    let roundId = (await voting.methods.getCurrentRoundId().call()).toString();
+    const baseRequest = { salt, roundId, identifier };
+    const hash1 = computeVoteHash({ ...baseRequest, price, account: account3, time: time1 });
+    await voting.methods.commitVote(identifier, time1, hash1).send({ from: account3 });
+
+    const hash2 = computeVoteHash({ ...baseRequest, price, account: account4, time: time1 });
+    await voting.methods.commitVote(identifier, time1, hash2).send({ from: account4 });
+
+    // Move into the reveal phase.
+    await moveToNextPhase(voting, accounts[0]);
+
+    // Account3 can reveals. Check the snapshotting makes sense.
+    await voting.methods.revealVote(identifier, time1, price, salt).send({ from: account3 });
+    // cumulativeActiveStakeAtRound should be 36mm. two accounts of 32mm unstaked before the start of the round.
+    assert.equal((await voting.methods.rounds(roundId).call()).cumulativeActiveStakeAtRound, toWei("36000000"));
+
+    // Now, say account4 tries to request an unstake. They cant do this as it is during the current active reveal phase.
+    // As this user cant stake they end up doing nothing and just sit. They shall be slashed for non-participation.
+    assert(await didContractThrow(voting.methods.requestUnstake(4206969).send({ from: account4 })));
+
+    // Account1 should be able to execute their unstake at this point as it has passed enough time from when they
+    // requested. This should not impact the current vote in any way. Equally, they should have 0 outstanding rewards,
+    // even through time has evolved due to them being in the pending exit phase.
+    assert.equal((await voting.methods.voterStakes(account1).call()).pendingUnstake, toWei("32000000"));
+    assert.equal(await voting.methods.outstandingRewards(account1).call(), "0");
+    await voting.methods.executeUnstake().send({ from: account1 });
+    assert.equal(
+      await votingToken.methods.balanceOf(account1).call(),
+      toBN(account1BalancePostClaim).add(toWei("32000000"))
+    );
+    assert.equal((await voting.methods.voterStakes(account1).call()).activeStake, 0);
+    assert.equal((await voting.methods.voterStakes(account1).call()).pendingUnstake, 0);
+    assert.equal((await voting.methods.voterStakes(account1).call()).pendingStake, 0);
+
+    // Move to the next round to conclude the vote.
+    await moveToNextRound(voting, accounts[0]);
+
+    // The price should be resolved to the price that account3 voted on.
+    assert.equal(await voting.methods.getPrice(identifier, time1).call({ from: registeredContract }), price);
+
+    // Now consider the slashing. Only account4 should have been slashed as it was the only account actively staked that
+    // did not participate. Their slashing should be allocated to account3. account1 and account2 were in the pending
+    // exit phase and so should not have had any slashing done to them. Account4's slashing should be 0.0016 * 4mm = 6400
+
+    await voting.methods.updateTrackers(account4).send({ from: account4 });
+    assert.equal((await voting.methods.voterStakes(account4).call()).activeStake, toWei("4000000").sub(toWei("6400")));
+
+    await voting.methods.updateTrackers(account3).send({ from: account3 });
+    assert.equal((await voting.methods.voterStakes(account3).call()).activeStake, toWei("32000000").add(toWei("6400")));
+
+    // Validate that the slashing trackers worked as expected.
+    const slashingTracker = await voting.methods.requestSlashingTrackers(0).call();
+    assert.equal(slashingTracker.wrongVoteSlashPerToken, toWei("0.0016"));
+    assert.equal(slashingTracker.noVoteSlashPerToken, toWei("0.0016"));
+    assert.equal(slashingTracker.totalSlashed, toWei("6400")); // 4mm*0.0016=6400
+    assert.equal(slashingTracker.totalCorrectVotes, toWei("32000000")); // 32mm
+
+    // Account2 now executes their unstake.
+    assert.equal((await voting.methods.voterStakes(account2).call()).pendingUnstake, toWei("32000000"));
+    assert.equal(await voting.methods.outstandingRewards(account2).call(), "0");
+    await voting.methods.executeUnstake().send({ from: account2 });
+    assert.equal(
+      await votingToken.methods.balanceOf(account2).call(),
+      toBN(account2BalancePostClaim).add(toWei("32000000"))
+    );
+  });
+  it("Can correctly handel staking within voting rounds", async function () {
+    // Start by setting the unstakeCooldown to 0 hours to enable us to instantly pull out some funds from some voters
+    // to simplify some of the timing.
+    await voting.methods.setUnstakeCoolDown(0).send({ from: accounts[0] });
+
+    // Claim all rewards and unstake from account1 and account2.
+    await voting.methods.withdrawRewards().send({ from: account1 });
+    await voting.methods.requestUnstake(toWei("32000000")).send({ from: account1 });
+    await voting.methods.executeUnstake().send({ from: account1 });
+    await voting.methods.withdrawRewards().send({ from: account2 });
+    await voting.methods.requestUnstake(toWei("32000000")).send({ from: account2 });
+    await voting.methods.executeUnstake().send({ from: account2 });
+
+    const identifier = padRight(utf8ToHex("slash-test"), 64); // Use the same identifier for both.
+    const time = "420";
+    const price = "69696969";
+    await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
+    await voting.methods.requestPrice(identifier, time).send({ from: registeredContract });
+
+    await moveToNextRound(voting, accounts[0]); // Move into the commit phase.
+
+    // Account3 that has been staked the whole time commits.
+    const salt = getRandomSignedInt(); // use the same salt for all votes. bad practice but wont impact anything.
+    let roundId = (await voting.methods.getCurrentRoundId().call()).toString();
+    let baseRequest = { salt, roundId, identifier };
+    const hash1 = computeVoteHash({ ...baseRequest, price, account: account3, time });
+    await voting.methods.commitVote(identifier, time, hash1).send({ from: account3 });
+
+    // Advance time a small amount.
+    await voting.methods
+      .setCurrentTime(Number(await voting.methods.getCurrentTime().call()) + 7200)
+      .send({ from: accounts[0] });
+
+    // Now, the account1 re-stakes. they had unstaked before the round started. By staking now we show that you can
+    // enter during a voting round (but before the reveal phase) and still vote. Account4 does not vote.
+    await voting.methods.stake(toWei("32000000")).send({ from: account1 });
+    const hash2 = computeVoteHash({ ...baseRequest, price, account: account1, time });
+    await voting.methods.commitVote(identifier, time, hash2).send({ from: account1 });
+
+    await moveToNextPhase(voting, accounts[0]); // Move into the reveal phase.
+    await voting.methods.revealVote(identifier, time, price, salt).send({ from: account3 });
+    await voting.methods.revealVote(identifier, time, price, salt).send({ from: account1 });
+
+    // If an account tries to now stake their liquidity is not instantly activated for voting. They should start earning
+    // rewards instantly. Test this out with account2.
+    await voting.methods.stake(toWei("32000000")).send({ from: account2 });
+
+    assert.equal((await voting.methods.voterStakes(account2).call()).activeStake, "0"); // 0 active stake.
+    assert.equal((await voting.methods.voterStakes(account2).call()).pendingStake, toWei("32000000")); // 32mm pending.
+
+    // Check that the cumulativeActiveStakeAtRound is set to the 3 stakers who were in before the start of the round
+    // and not account2 who just staked now. we should see 32mm*2+4mm = 68mm
+    assert.equal(
+      (await voting.methods.rounds(await voting.methods.getCurrentRoundId().call()).call())
+        .cumulativeActiveStakeAtRound,
+      toWei("68000000")
+    );
+
+    // Request a price so we have another thing to vote on and move to the next round to conclude the vote.
+    await voting.methods.requestPrice(identifier, time + 1).send({ from: registeredContract });
+    await moveToNextRound(voting, accounts[0]);
+
+    // Now, consider the slashing. Only account4 should have been slashed as it was the only account actively staked
+    // during the round that did not vote (account1 and account3 voted correctly, account2 staked late). Their slashing
+    // should be 4mm * 0.0016 = 6400 allocated equally between account3 and account1.
+    await voting.methods.updateTrackers(account4).send({ from: account4 });
+    assert.equal((await voting.methods.voterStakes(account4).call()).activeStake, toWei("4000000").sub(toWei("6400")));
+
+    // Account 1 and 3 should have gotten half of the positive slashing amount each.
+    await voting.methods.updateTrackers(account1).send({ from: account1 });
+    assert.equal((await voting.methods.voterStakes(account1).call()).activeStake, toWei("32000000").add(toWei("3200")));
+    await voting.methods.updateTrackers(account3).send({ from: account3 });
+    assert.equal((await voting.methods.voterStakes(account3).call()).activeStake, toWei("32000000").add(toWei("3200")));
+
+    const slashingTracker = await voting.methods.requestSlashingTrackers(0).call();
+    assert.equal(slashingTracker.totalSlashed, toWei("6400")); // 4mm*0.0016=6400
+    assert.equal(slashingTracker.totalCorrectVotes, toWei("64000000")); // 32mm * 2
+
+    // Now, evaluate account2. If we update their trackers we should see their balance assigned to their active balance.
+    // They should also have accumulated some rewards due to being staked(even though their stake was inactive!).
+    // They should get the pro-rata share of 32mm/100mm grown from when they staked to now, which is 1 day. At the rate
+    // of 0.64 per second, with their share this is 32/100*0.64*60*60*24=1769.472
+    assert.equal(await voting.methods.outstandingRewards(account2).call(), toWei("17694.72"));
+
+    // Now, vote on the next price request to check that account2's liquidity is now activated and factored into the
+    // next voting round, as expected.
+    roundId = (await voting.methods.getCurrentRoundId().call()).toString();
+    baseRequest = { salt, roundId, identifier };
+    const hash3 = computeVoteHash({ ...baseRequest, price, account: account1, time: time + 1 });
+    await voting.methods.commitVote(identifier, time + 1, hash3).send({ from: account1 });
+
+    const hash4 = computeVoteHash({ ...baseRequest, price, account: account2, time: time + 1 });
+    await voting.methods.commitVote(identifier, time + 1, hash4).send({ from: account2 });
+
+    await moveToNextPhase(voting, accounts[0]); // Move into the reveal phase.
+    await voting.methods.revealVote(identifier, time + 1, price, salt).send({ from: account1 });
+    await voting.methods.revealVote(identifier, time + 1, price, salt).send({ from: account2 });
+
+    // Check that all 100mm are seen as active. (deposits over all stakers).
+    assert.equal(
+      (await voting.methods.rounds(await voting.methods.getCurrentRoundId().call()).call())
+        .cumulativeActiveStakeAtRound,
+      toWei("100000000")
+    );
+
+    // Move to the next round to conclude the vote.
+    await moveToNextRound(voting, accounts[0]);
+
+    // Check account slashing trackers. We should see account3 and account4 slashed. Considering their slashing from the
+    // previous round we should see account3 slashed as (32mm+3200)*0.0016=51205.12 and account4 slashed
+    // as (4mm-6400)*0.0016 = 6389.76. This totals slashing of 57594.88. This should be split between account1 and account2
+    // in the ratio: account1 has 32mm+3200 and account 2 has 32mm. so Account1 = 57594.88*(32mm+3200)/(64mm+3200)
+    // =28798.87980001 and account2 = 57594.88*(32mm)/(64mm+3200)=28796.00019999
+    await voting.methods.updateTrackers(account1).send({ from: account1 });
+    const slashingTracker2 = await voting.methods.requestSlashingTrackers(1).call();
+    assert.equal(slashingTracker2.totalCorrectVotes, toWei("64003200")); // 64mm + 3200
+    assert.equal(slashingTracker2.totalSlashed, toWei("57594.88")); // (4e6-6400+32e6+3200)*0.0016
+
+    assert.equal(
+      (await voting.methods.voterStakes(account1).call()).activeStake,
+      toWei("32000000").add(toWei("3200")).add(toWei("28798.879800009999500024")) // 32mm + 3200 + 28798.87980001
+    );
+
+    await voting.methods.updateTrackers(account2).send({ from: account2 });
+    assert.equal(
+      (await voting.methods.voterStakes(account2).call()).activeStake,
+      toWei("32000000").add(toWei("28796.000199990000499975")) // 32mm  + 28796.00019999
+    );
+  });
+  it("Requesting to unstake within a voting round excludes you from being slashed", async function () {
+    // If a voter requests to unstake, even in the current commit phase a voting round, they should not be slashed for
+    // being "staked" (in unlock cooldown) but not active at that point in time.
+    const identifier = padRight(utf8ToHex("slash-test"), 64); // Use the same identifier for both.
+    const time = "420";
+    await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
+    await voting.methods.requestPrice(identifier, time).send({ from: registeredContract });
+
+    // Account1 will request to unstake before the start of the voting round.
+    await voting.methods.requestUnstake(toWei("32000000")).send({ from: account1 });
+    await moveToNextRound(voting, accounts[0]); // Move into the commit phase.
+
+    // Account 2 will request to unstake during the voting round.
+    await voting.methods.requestUnstake(toWei("32000000")).send({ from: account2 });
+
+    // Account 3 votes and account 4 does not vote.
+    const salt = getRandomSignedInt(); // use the same salt for all votes. bad practice but wont impact anything.
+    let roundId = (await voting.methods.getCurrentRoundId().call()).toString();
+    let baseRequest = { salt, roundId, identifier };
+    const price = "69696969";
+    const hash1 = computeVoteHash({ ...baseRequest, price, account: account3, time });
+    await voting.methods.commitVote(identifier, time, hash1).send({ from: account3 });
+
+    await moveToNextPhase(voting, accounts[0]); // Move into the reveal phase
+
+    // Account 3 reveals their vote.
+    await voting.methods.revealVote(identifier, time, price, salt).send({ from: account3 });
+
+    // We should see that the total number of active stakers for this round is 36mm (account3 and account4). Account1
+    // and account2 are in pending exit.
+    assert.equal(
+      (await voting.methods.rounds(await voting.methods.getCurrentRoundId().call()).call())
+        .cumulativeActiveStakeAtRound,
+      toWei("36000000")
+    );
+
+    await moveToNextRound(voting, accounts[0]); // Move to the next round to conclude the vote.
+
+    // Check account slashing trackers. We should see only account4 slashed and their slash allocated to account3. This
+    // should equal to 0.0016 * 4mm = 6400.
+
+    await voting.methods.updateTrackers(account3).send({ from: account3 });
+    assert.equal(
+      (await voting.methods.voterStakes(account3).call()).activeStake,
+      toWei("32000000").add(toWei("6400")) // Their original stake amount of 32mm plus the slashing of 6400
+    );
+
+    await voting.methods.updateTrackers(account4).send({ from: account4 });
+    assert.equal(
+      (await voting.methods.voterStakes(account4).call()).activeStake,
+      toWei("4000000").sub(toWei("6400")) // Their original stake amount of 4mm minus the slashing of 6400
+    );
+
+    const slashingTracker1 = await voting.methods.requestSlashingTrackers(0).call();
+    assert.equal(slashingTracker1.totalSlashed, toWei("6400")); // 32mm*0.0016=51200
+    assert.equal(slashingTracker1.totalCorrectVotes, toWei("32000000")); // 32mm + 4mm
+  });
   it("Can delegate voting to another address to vote on your stakes behalf", async function () {
     // Delegate from account1 to rand.
     await voting.methods.setDelegate(rand).send({ from: account1 });
@@ -2365,7 +2644,7 @@ describe("VotingV2", function () {
     assert.equal(await voting.methods.getPrice(identifier, time).call({ from: registeredContract }), price);
     await voting.methods.updateTrackers(account1).send({ from: account1 });
     assert.equal(
-      (await voting.methods.voterStakes(account1).call()).cumulativeStaked,
+      (await voting.methods.voterStakes(account1).call()).activeStake,
       toWei("32000000").add(toWei("108800"))
     );
   });
@@ -2409,5 +2688,4 @@ describe("VotingV2", function () {
   });
 });
 
-// TODO: add tests for staking/ustaking during a voting round. this can only be done once we've decided on this locking mechanism.
 // TODO: test rolled votes behave as we'd expect.
