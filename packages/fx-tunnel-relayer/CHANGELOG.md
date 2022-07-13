@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.3.8](https://github.com/UMAprotocol/protocol/compare/@uma/fx-tunnel-relayer@1.3.7...@uma/fx-tunnel-relayer@1.3.8) (2022-07-13)
+
+### Bug Fixes
+
+- increase yarn test node process mem to fix ci ([#4015](https://github.com/UMAprotocol/protocol/issues/4015)) ([8e1dc1f](https://github.com/UMAprotocol/protocol/commit/8e1dc1ffa2fdf73eb8caf4380e7ed9f66f36fbcb))
+
 ## [1.3.7](https://github.com/UMAprotocol/protocol/compare/@uma/fx-tunnel-relayer@1.3.4...@uma/fx-tunnel-relayer@1.3.7) (2022-06-27)
 
 **Note:** Version bump only for package @uma/fx-tunnel-relayer
