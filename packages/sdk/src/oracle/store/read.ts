@@ -1,6 +1,16 @@
 import filter from "lodash/filter";
 
-import type { State, Chain, InputRequest, Erc20Props, ChainConfig, Context, Memory, User } from "../types/state";
+import type {
+  State,
+  Chain,
+  InputRequest,
+  Erc20Props,
+  ChainConfig,
+  Context,
+  Memory,
+  User,
+  OracleType,
+} from "../types/state";
 import type { JsonRpcSigner, BigNumber, Provider } from "../types/ethers";
 import { TransactionConfirmer, requestId } from "../utils";
 import { OracleInterface, Request, Requests } from "../types/interfaces";
@@ -19,6 +29,11 @@ export default class Read {
     const config = this.state?.config?.chains?.[chainId];
     assertExists(config, "No config set for chain: " + chainId);
     return config;
+  };
+  oracleType = (): OracleType => {
+    const source = this.state?.config?.oracleType;
+    assertExists(source, "No oracle name set on config");
+    return source;
   };
   requestChainId = (): number => {
     const chainId = this.state?.inputs?.request?.chainId;
@@ -165,10 +180,6 @@ export default class Read {
   };
   descendingRequests = (): Requests => {
     return this.state.descendingRequests || [];
-  };
-  findRequest = (query: InputRequest): Request | undefined => {
-    const sortedRequestService = this.sortedRequestsService();
-    return sortedRequestService.getByRequest(query);
   };
   filterRequests = (query: Partial<Request>): Requests => {
     return filter(this.descendingRequests(), query);

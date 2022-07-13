@@ -34,6 +34,7 @@ export class Update {
         // we want to prioritize latest state pulled from contract.
         .request({ ...contractRequest });
     });
+    this.sortedRequests(chainId);
   };
   oracle = async (): Promise<void> => {
     const chainId = this.read().requestChainId();
@@ -88,10 +89,11 @@ export class Update {
     const sortedRequestsService = this.read().sortedRequestsService();
     const oracle = this.read().oracleService(chainId);
     const requests = oracle.listRequests();
+    const oracleType = this.read().oracleType();
     Object.values(requests).forEach((value) => {
       // chains can have colliding keys ( mainly testnet forks), so we always need to append chain to to keep key unique across chains otherwise
       // collisions will cause overwrites, removing ability to list identical requests across chains.
-      sortedRequestsService.setByRequest({ ...value });
+      sortedRequestsService.setByRequest({ ...value, oracleType });
     });
     // query all known requests and update our state with the entire list.
     // this is expensive, consider optimizing after proven detrimental.
@@ -106,7 +108,7 @@ export class Update {
     const request = params || this.read().inputRequest();
     const chainId = request.chainId;
     // pull in request data generated from events
-    const requestIndexData = this.read().sortedRequestsService().getByRequest(request);
+    const requestIndexData = this.read().oracleService().getRequest(request);
     // we really only care about a handful of props from event based requests. We also dont want to override
     // any properties that might overlap with the data queried from the contract.
     const {

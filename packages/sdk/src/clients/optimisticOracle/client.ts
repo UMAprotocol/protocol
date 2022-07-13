@@ -47,7 +47,7 @@ export type Request = RequestKey &
     refundOnDispute: boolean;
     proposedPrice: BigNumber;
     resolvedPrice: BigNumber;
-    expirationTimestamp: BigNumber;
+    expirationTime: BigNumber;
     reward: BigNumber;
     finalFee: BigNumber;
     bond: BigNumber;
@@ -124,7 +124,7 @@ export function reduceEvents(state: EventState, event: Event): EventState {
         currency,
         proposer,
         proposedPrice,
-        expirationTimestamp,
+        expirationTime: expirationTimestamp,
         state: RequestState.Proposed,
         proposeTx: event.transactionHash,
         proposeBlockNumber: event.blockNumber,

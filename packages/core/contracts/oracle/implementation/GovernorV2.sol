@@ -38,6 +38,7 @@ contract GovernorV2 is MultiRole, Testable {
     struct Proposal {
         Transaction[] transactions;
         uint256 requestTime;
+        bytes ancillaryData;
     }
 
     FinderInterface private finder;
@@ -88,6 +89,7 @@ contract GovernorV2 is MultiRole, Testable {
     /**
      * @notice Proposes a new governance action. Can only be called by the holder of the Proposer role.
      * @param transactions list of transactions that are being proposed.
+     * @param ancillaryData arbitrary data appended to a price request to give the voters more info from the caller.
      * @dev You can create the data portion of each transaction by doing the following:
      * ```
      * const truffleContractInstance = await TruffleContract.deployed()
@@ -96,7 +98,10 @@ contract GovernorV2 is MultiRole, Testable {
      * Note: this method must be public because of a solidity limitation that
      * disallows structs arrays to be passed to external functions.
      */
-    function propose(Transaction[] memory transactions) public onlyRoleHolder(uint256(Roles.Proposer)) {
+    function propose(Transaction[] memory transactions, bytes memory ancillaryData)
+        public
+        onlyRoleHolder(uint256(Roles.Proposer))
+    {
         uint256 id = proposals.length;
         uint256 time = getCurrentTime();
 
@@ -109,6 +114,7 @@ contract GovernorV2 is MultiRole, Testable {
         // Initialize the new proposal.
         Proposal storage proposal = proposals[id];
         proposal.requestTime = time;
+        proposal.ancillaryData = ancillaryData;
 
         // Initialize the transaction array.
         for (uint256 i = 0; i < transactions.length; i++) {
@@ -123,7 +129,7 @@ contract GovernorV2 is MultiRole, Testable {
         bytes32 identifier = AdminIdentifierLib._constructIdentifier(id);
 
         // Request a vote on this proposal in the DVM.
-        _getOracle().requestGovernanceAction(identifier, time);
+        _getOracle().requestGovernanceAction(identifier, time, ancillaryData);
 
         emit NewProposal(id, transactions);
     }
@@ -136,7 +142,12 @@ contract GovernorV2 is MultiRole, Testable {
      */
     function executeProposal(uint256 id, uint256 transactionIndex) external payable {
         Proposal storage proposal = proposals[id];
-        int256 price = _getOracle().getPrice(AdminIdentifierLib._constructIdentifier(id), proposal.requestTime);
+        int256 price =
+            _getOracle().getPrice(
+                AdminIdentifierLib._constructIdentifier(id),
+                proposal.requestTime,
+                proposal.ancillaryData
+            );
 
         Transaction memory transaction = proposal.transactions[transactionIndex];
 

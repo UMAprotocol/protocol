@@ -5,13 +5,13 @@ pragma solidity ^0.8.0;
 
 import "../../common/implementation/AncillaryData.sol";
 import "../../common/implementation/FixedPoint.sol"; // TODO: remove this from this contract.
+import "../../common/implementation/MultiCaller.sol";
 
 import "../interfaces/FinderInterface.sol";
 import "../interfaces/OracleInterface.sol";
 import "../interfaces/OracleAncillaryInterface.sol";
 import "../interfaces/OracleGovernanceInterface.sol";
 import "../interfaces/VotingV2Interface.sol";
-import "../interfaces/VotingAncillaryInterface.sol"; // TODO: remove this and simplify down to one v2 interface.
 import "../interfaces/IdentifierWhitelistInterface.sol";
 import "./Registry.sol";
 import "./ResultComputation.sol";
@@ -37,7 +37,7 @@ contract VotingV2 is
     OracleAncillaryInterface, // Interface to support ancillary data with price requests.
     OracleGovernanceInterface, // Interface to support governance requests.
     VotingV2Interface,
-    VotingAncillaryInterface // Interface to support ancillary data with voting rounds.
+    MultiCaller
 {
     using FixedPoint for FixedPoint.Unsigned;
     using SafeMath for uint256;
@@ -131,7 +131,7 @@ contract VotingV2 is
     FixedPoint.Unsigned public gatPercentage;
 
     // Reference to the Finder.
-    FinderInterface internal finder;
+    FinderInterface private immutable finder;
 
     // Reference to Slashing Library.
     SlashingLibrary public slashingLibrary;
@@ -308,7 +308,8 @@ contract VotingV2 is
 
         // Traverse all requests from the last considered request. For each request see if the voter voted correctly or
         // not. Based on the outcome, attribute the associated slash to the voter.
-        for (uint256 i = voterStake.lastRequestIndexConsidered; i < priceRequestIds.length; i++) {
+        uint256 priceRequestIdsLength = priceRequestIds.length;
+        for (uint256 i = voterStake.lastRequestIndexConsidered; i < priceRequestIdsLength; i = unsafe_inc(i)) {
             if (deletedRequestJumpMapping[i] != 0) i = deletedRequestJumpMapping[i] + 1;
             PriceRequest storage priceRequest = priceRequests[priceRequestIds[i].requestId];
             VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
@@ -338,7 +339,7 @@ contract VotingV2 is
             // round then apply the slashing now. Else, do nothing and apply the slashing after the loop concludes.
             // This acts to apply slashing within a round as independent actions: multiple votes within the same round
             // should not impact each other but subsequent rounds should impact each other.
-            if (priceRequestIds.length - i > 1 && roundId != priceRequestIds[i + 1].roundId) {
+            if (priceRequestIdsLength - i > 1 && roundId != priceRequestIds[i + 1].roundId) {
                 applySlashToVoter(slash, voterAddress);
                 slash = 0;
             }
@@ -364,17 +365,17 @@ contract VotingV2 is
         // the associated slashing rates as a function of the total staked, total votes and total correct votes. Note
         // that this method in almost all cases will only need to traverse one request as slashing trackers are updated
         // on every commit and so it is not too computationally inefficient.
-        for (uint256 i = lastRequestIndexConsidered; i < priceRequestIds.length; i++) {
+        uint256 priceRequestIdsLength = priceRequestIds.length;
+        for (uint256 i = lastRequestIndexConsidered; i < priceRequestIdsLength; i = unsafe_inc(i)) {
             if (deletedRequestJumpMapping[i] != 0) i = deletedRequestJumpMapping[i] + 1;
-
-            PriceRequest storage priceRequest = priceRequests[priceRequestIds[i].requestId];
+            Request memory request = priceRequestIds[i];
+            PriceRequest storage priceRequest = priceRequests[request.requestId];
             VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
-            uint256 roundId = priceRequestIds[i].roundId;
 
             // Cant slash this or any subsequent requests if the request is not settled. TODO: this has implications for
             // rolled votes and should be considered closely.
             if (_getRequestStatus(priceRequest, currentRoundId) != RequestStatus.Resolved) break;
-            uint256 stakedAtRound = rounds[priceRequestIds[i].roundId].cumulativeActiveStakeAtRound;
+            uint256 stakedAtRound = rounds[request.roundId].cumulativeActiveStakeAtRound;
             uint256 totalVotes = voteInstance.resultComputation.totalVotes.rawValue;
             uint256 totalCorrectVotes = voteInstance.resultComputation.getTotalCorrectlyVotedTokens().rawValue;
             uint256 wrongVoteSlashPerToken =
@@ -403,22 +404,23 @@ contract VotingV2 is
      *       SPAM DELETION FUNCTIONS        *
      ****************************************/
 
-    function signalRequestsAsSpamForDeletion(uint256[2][] memory spamRequestIndices) public {
+    function signalRequestsAsSpamForDeletion(uint256[2][] calldata spamRequestIndices) public {
         votingToken.transferFrom(msg.sender, address(this), spamDeletionProposalBond);
         uint256 currentTime = getCurrentTime();
-        uint256 currentRoundId = voteTiming.computeCurrentRoundId(currentTime);
         uint256 runningValidationIndex;
-        for (uint256 i = 0; i < spamRequestIndices.length; i++) {
+        uint256 spamRequestIndicesLength = spamRequestIndices.length;
+        for (uint256 i = 0; i < spamRequestIndicesLength; i = unsafe_inc(i)) {
+            uint256[2] memory spamRequestIndex = spamRequestIndices[i];
             // Check request end index is greater than start index.
-            require(spamRequestIndices[i][0] <= spamRequestIndices[i][1], "Bad start index");
+            require(spamRequestIndex[0] <= spamRequestIndex[1], "Bad start index");
 
             // check the endIndex is less than the total number of requests.
-            require(spamRequestIndices[i][1] < priceRequestIds.length, "Bad end index");
+            require(spamRequestIndex[1] < priceRequestIds.length, "Bad end index");
 
             // Validate index continuity. This checks that each sequential element within the spamRequestIndices
             // array is sequently and increasing in size.
-            require(spamRequestIndices[i][1] > runningValidationIndex, "Bad index continuity");
-            runningValidationIndex = spamRequestIndices[i][1];
+            require(spamRequestIndex[1] > runningValidationIndex, "Bad index continuity");
+            runningValidationIndex = spamRequestIndex[1];
         }
         // todo: consider if we want to check if the most recent price request has been settled?
 
@@ -442,7 +444,7 @@ contract VotingV2 is
         // If the price is 1e18 then the spam deletion request was correctly voted on to delete the requests.
         if (resolutionPrice == 1e18) {
             // Delete the price requests associated with the spam.
-            for (uint256 i = 0; i < spamDeletionProposals[proposalId].spamRequestIndices.length; i++) {
+            for (uint256 i = 0; i < spamDeletionProposals[proposalId].spamRequestIndices.length; i = unsafe_inc(i)) {
                 uint256 startIndex = spamDeletionProposals[proposalId].spamRequestIndices[uint256(i)][0];
                 uint256 endIndex = spamDeletionProposals[proposalId].spamRequestIndices[uint256(i)][1];
                 for (uint256 j = startIndex; j <= endIndex; j++) {
@@ -506,9 +508,14 @@ contract VotingV2 is
      * is limited such that this method abides by the EVM transaction gas limit.
      * @param identifier uniquely identifies the price requested. eg BTC/USD (encoded as bytes32) could be requested.
      * @param time unix timestamp for the price request.
+     * @param ancillaryData arbitrary data appended to a price request to give the voters more info from the caller.
      */
-    function requestGovernanceAction(bytes32 identifier, uint256 time) public override onlyOwner() {
-        _requestPrice(identifier, time, "", true);
+    function requestGovernanceAction(
+        bytes32 identifier,
+        uint256 time,
+        bytes memory ancillaryData
+    ) public override onlyOwner() {
+        _requestPrice(identifier, time, ancillaryData, true);
     }
 
     /**
@@ -629,7 +636,7 @@ contract VotingV2 is
     {
         RequestState[] memory requestStates = new RequestState[](requests.length);
         uint256 currentRoundId = voteTiming.computeCurrentRoundId(getCurrentTime());
-        for (uint256 i = 0; i < requests.length; i++) {
+        for (uint256 i = 0; i < requests.length; i = unsafe_inc(i)) {
             PriceRequest storage priceRequest =
                 _getPriceRequest(requests[i].identifier, requests[i].time, requests[i].ancillaryData);
 
@@ -650,7 +657,7 @@ contract VotingV2 is
     function getPriceRequestStatuses(PendingRequest[] memory requests) public view returns (RequestState[] memory) {
         PendingRequestAncillary[] memory requestsAncillary = new PendingRequestAncillary[](requests.length);
 
-        for (uint256 i = 0; i < requests.length; i++) {
+        for (uint256 i = 0; i < requests.length; i = unsafe_inc(i)) {
             requestsAncillary[i].identifier = requests[i].identifier;
             requestsAncillary[i].time = requests[i].time;
             requestsAncillary[i].ancillaryData = "";
@@ -686,10 +693,7 @@ contract VotingV2 is
         uint256 blockTime = getCurrentTime();
         require(hash != bytes32(0), "Invalid provided hash");
         // Current time is required for all vote timing queries.
-        require(
-            voteTiming.computeCurrentPhase(blockTime) == VotingAncillaryInterface.Phase.Commit,
-            "Cannot commit in reveal phase"
-        );
+        require(voteTiming.computeCurrentPhase(blockTime) == Phase.Commit, "Cannot commit in reveal phase");
 
         PriceRequest storage priceRequest = _getPriceRequest(identifier, time, ancillaryData);
         require(
@@ -712,13 +716,6 @@ contract VotingV2 is
     ) public override onlyIfNotMigrated() {
         commitVote(identifier, time, "", hash);
     }
-
-    // TODO: only here for ABI support until removed.
-    function snapshotCurrentRound(bytes calldata signature)
-        external
-        override(VotingV2Interface, VotingAncillaryInterface)
-        onlyIfNotMigrated()
-    {}
 
     /**
      * @notice Reveal a previously committed vote for `identifier` at `time`.
@@ -818,76 +815,6 @@ contract VotingV2 is
         commitAndEmitEncryptedVote(identifier, time, "", hash, encryptedVote);
     }
 
-    /**
-     * @notice Submit a batch of commits in a single transaction.
-     * @dev Using `encryptedVote` is optional. If included then commitment is emitted in an event.
-     * Look at `project-root/common/Constants.js` for the tested maximum number of
-     * commitments that can fit in one transaction.
-     * @param commits struct to encapsulate an `identifier`, `time`, `hash` and optional `encryptedVote`.
-     */
-    function batchCommit(CommitmentAncillary[] memory commits) public override {
-        for (uint256 i = 0; i < commits.length; i++) {
-            if (commits[i].encryptedVote.length == 0) {
-                commitVote(commits[i].identifier, commits[i].time, commits[i].ancillaryData, commits[i].hash);
-            } else {
-                commitAndEmitEncryptedVote(
-                    commits[i].identifier,
-                    commits[i].time,
-                    commits[i].ancillaryData,
-                    commits[i].hash,
-                    commits[i].encryptedVote
-                );
-            }
-        }
-    }
-
-    // Overloaded method to enable short term backwards compatibility. Will be deprecated in the next DVM version.
-    function batchCommit(Commitment[] memory commits) public override {
-        CommitmentAncillary[] memory commitsAncillary = new CommitmentAncillary[](commits.length);
-
-        for (uint256 i = 0; i < commits.length; i++) {
-            commitsAncillary[i].identifier = commits[i].identifier;
-            commitsAncillary[i].time = commits[i].time;
-            commitsAncillary[i].ancillaryData = "";
-            commitsAncillary[i].hash = commits[i].hash;
-            commitsAncillary[i].encryptedVote = commits[i].encryptedVote;
-        }
-        batchCommit(commitsAncillary);
-    }
-
-    /**
-     * @notice Reveal multiple votes in a single transaction.
-     * Look at `project-root/common/Constants.js` for the tested maximum number of reveals.
-     * that can fit in one transaction.
-     * @dev For more info on reveals, review the comment for `revealVote`.
-     * @param reveals array of the Reveal struct which contains an identifier, time, price and salt.
-     */
-    function batchReveal(RevealAncillary[] memory reveals) public override {
-        for (uint256 i = 0; i < reveals.length; i++) {
-            revealVote(
-                reveals[i].identifier,
-                reveals[i].time,
-                reveals[i].price,
-                reveals[i].ancillaryData,
-                reveals[i].salt
-            );
-        }
-    }
-
-    // Overloaded method to enable short term backwards compatibility. Will be deprecated in the next DVM version.
-    function batchReveal(Reveal[] memory reveals) public override {
-        RevealAncillary[] memory revealsAncillary = new RevealAncillary[](reveals.length);
-
-        for (uint256 i = 0; i < reveals.length; i++) {
-            revealsAncillary[i].identifier = reveals[i].identifier;
-            revealsAncillary[i].time = reveals[i].time;
-            revealsAncillary[i].price = reveals[i].price;
-            revealsAncillary[i].ancillaryData = "";
-            revealsAncillary[i].salt = reveals[i].salt;
-        }
-        batchReveal(revealsAncillary);
-    }
-
     /****************************************
      *        VOTING GETTER FUNCTIONS       *
      ****************************************/
@@ -897,12 +824,7 @@ contract VotingV2 is
      * @return pendingRequests array containing identifiers of type `PendingRequest`.
      * and timestamps for all pending requests.
      */
-    function getPendingRequests()
-        external
-        view
-        override(VotingV2Interface, VotingAncillaryInterface)
-        returns (PendingRequestAncillary[] memory)
-    {
+    function getPendingRequests() external view override returns (PendingRequestAncillary[] memory) {
         uint256 blockTime = getCurrentTime();
         uint256 currentRoundId = voteTiming.computeCurrentRoundId(blockTime);
 
@@ -911,7 +833,7 @@ contract VotingV2 is
         PendingRequestAncillary[] memory unresolved = new PendingRequestAncillary[](pendingPriceRequests.length);
         uint256 numUnresolved = 0;
 
-        for (uint256 i = 0; i < pendingPriceRequests.length; i++) {
+        for (uint256 i = 0; i < pendingPriceRequests.length; i = unsafe_inc(i)) {
             PriceRequest storage priceRequest = priceRequests[pendingPriceRequests[i]];
             if (_getRequestStatus(priceRequest, currentRoundId) == RequestStatus.Active) {
                 unresolved[numUnresolved] = PendingRequestAncillary({
@@ -924,7 +846,7 @@ contract VotingV2 is
         }
 
         PendingRequestAncillary[] memory pendingRequests = new PendingRequestAncillary[](numUnresolved);
-        for (uint256 i = 0; i < numUnresolved; i++) {
+        for (uint256 i = 0; i < numUnresolved; i = unsafe_inc(i)) {
             pendingRequests[i] = unresolved[i];
         }
         return pendingRequests;
@@ -934,7 +856,7 @@ contract VotingV2 is
      * @notice Returns the current voting phase, as a function of the current time.
      * @return Phase to indicate the current phase. Either { Commit, Reveal, NUM_PHASES_PLACEHOLDER }.
      */
-    function getVotePhase() public view override(VotingV2Interface, VotingAncillaryInterface) returns (Phase) {
+    function getVotePhase() public view override returns (Phase) {
         return voteTiming.computeCurrentPhase(getCurrentTime());
     }
 
@@ -942,7 +864,7 @@ contract VotingV2 is
      * @notice Returns the current round ID, as a function of the current time.
      * @return uint256 representing the unique round ID.
      */
-    function getCurrentRoundId() public view override(VotingV2Interface, VotingAncillaryInterface) returns (uint256) {
+    function getCurrentRoundId() public view override returns (uint256) {
         return voteTiming.computeCurrentRoundId(getCurrentTime());
     }
 
@@ -954,13 +876,6 @@ contract VotingV2 is
         return priceRequestIds.length;
     }
 
-    // TODO: remove this function. it's just here to make the contract compile given the interfaces.
-    function retrieveRewards(
-        address voterAddress,
-        uint256 roundId,
-        PendingRequestAncillary[] memory toRetrieve
-    ) public override returns (FixedPoint.Unsigned memory) {}
-
     /****************************************
      *        OWNER ADMIN FUNCTIONS         *
      ****************************************/
@@ -970,47 +885,31 @@ contract VotingV2 is
      * @dev Can only be called by the contract owner.
      * @param newVotingAddress the newly migrated contract address.
      */
-    function setMigrated(address newVotingAddress)
-        external
-        override(VotingV2Interface, VotingAncillaryInterface)
-        onlyOwner
-    {
+    function setMigrated(address newVotingAddress) external override onlyOwner {
         migratedAddress = newVotingAddress;
     }
 
     // here for abi compatibility. remove
-    function setInflationRate(FixedPoint.Unsigned memory newInflationRate)
-        public
-        override(VotingV2Interface, VotingAncillaryInterface)
-        onlyOwner
-    {}
+    function setInflationRate(FixedPoint.Unsigned memory newInflationRate) public override onlyOwner {}
 
     /**
      * @notice Resets the Gat percentage. Note: this change only applies to rounds that have not yet begun.
      * @dev This method is public because calldata structs are not currently supported by solidity.
      * @param newGatPercentage sets the next round's Gat percentage.
      */
-    function setGatPercentage(FixedPoint.Unsigned memory newGatPercentage)
-        public
-        override(VotingV2Interface, VotingAncillaryInterface)
-        onlyOwner
-    {
+    function setGatPercentage(FixedPoint.Unsigned memory newGatPercentage) public override onlyOwner {
         require(newGatPercentage.isLessThan(1), "GAT percentage must be < 100%");
         gatPercentage = newGatPercentage;
     }
 
     // Here for abi compatibility. to be removed.
-    function setRewardsExpirationTimeout(uint256 NewRewardsExpirationTimeout)
-        public
-        override(VotingV2Interface, VotingAncillaryInterface)
-        onlyOwner
-    {}
+    function setRewardsExpirationTimeout(uint256 NewRewardsExpirationTimeout) public override onlyOwner {}
 
     /**
      * @notice Changes the slashing library used by this contract.
      * @param _newSlashingLibrary new slashing library address.
      */
-    function setSlashingLibrary(address _newSlashingLibrary) public override(VotingV2Interface) onlyOwner {
+    function setSlashingLibrary(address _newSlashingLibrary) public override onlyOwner {
         slashingLibrary = SlashingLibrary(_newSlashingLibrary);
     }
 
@@ -1133,6 +1032,10 @@ contract VotingV2 is
             // Means than priceRequest.lastVotingRound > currentRoundId
             return RequestStatus.Future;
         }
+    }
+
+    function unsafe_inc(uint256 x) internal pure returns (uint256) {
+        unchecked { return x + 1; }
     }
 
     function _getIdentifierWhitelist() private view returns (IdentifierWhitelistInterface supportedIdentifiers) {
