@@ -3,6 +3,19 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.23.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.22.0...@uma/common@2.23.0) (2022-07-13)
+
+### Bug Fixes
+
+- **common:** blacklist uSPAC10 ([#4007](https://github.com/UMAprotocol/protocol/issues/4007)) ([f3a7df5](https://github.com/UMAprotocol/protocol/commit/f3a7df571f96be7136dc1fb543e2b7185c5ac4a5))
+
+### Features
+
+- add meter network ([#4012](https://github.com/UMAprotocol/protocol/issues/4012)) ([cac209d](https://github.com/UMAprotocol/protocol/commit/cac209d288db5b852fb3e5148b200872471aaac0))
+- DVM2.0 add special governance price request tx flow ([#4000](https://github.com/UMAprotocol/protocol/issues/4000)) ([99b0e66](https://github.com/UMAprotocol/protocol/commit/99b0e66418e405241adf9f59e752399c3712e951))
+- **pid-utils:** Have OO bots ignore Zodiac identifier ([#3996](https://github.com/UMAprotocol/protocol/issues/3996)) ([dc5c118](https://github.com/UMAprotocol/protocol/commit/dc5c118482df826b27063f583b47d76178599ac6))
+- add evmos hardhat config and deployment addresses ([#3977](https://github.com/UMAprotocol/protocol/issues/3977)) ([28b17f5](https://github.com/UMAprotocol/protocol/commit/28b17f5d844c3ee8ca7f59a6e613ffc7101105db))
+
 # [2.22.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.20.0...@uma/common@2.22.0) (2022-06-27)
 
 ### Features

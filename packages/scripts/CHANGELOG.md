@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.14.0](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.13.0...@uma/scripts@1.14.0) (2022-07-13)
+
+### Features
+
+- umip 162 update simulation script to include l2 relays ([#3980](https://github.com/UMAprotocol/protocol/issues/3980)) ([b0c69ab](https://github.com/UMAprotocol/protocol/commit/b0c69abc7fb3db8f12b164a0005a5023a2735730))
+
 # [1.13.0](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.10.3...@uma/scripts@1.13.0) (2022-06-27)
 
 ### Bug Fixes
