@@ -688,7 +688,7 @@ contract VotingV2 is
         bytes32 hash
     ) public override onlyIfNotMigrated() {
         uint256 currentRoundId = voteTiming.computeCurrentRoundId(getCurrentTime());
-        address voter = getVoterFromDelegate();
+        address voter = getVoterFromDelegate(msg.sender);
         _updateTrackers(voter);
         // At this point, the computed and last updated round ID should be equal.
         uint256 blockTime = getCurrentTime();
@@ -741,7 +741,7 @@ contract VotingV2 is
 
         VoteInstance storage voteInstance =
             _getPriceRequest(identifier, time, ancillaryData).voteInstances[currentRoundId];
-        address voter = getVoterFromDelegate();
+        address voter = getVoterFromDelegate(msg.sender);
         VoteSubmission storage voteSubmission = voteInstance.voteSubmissions[voter];
 
         // Scoping to get rid of a stack too deep errors for require messages.
@@ -834,12 +834,12 @@ contract VotingV2 is
      *        VOTING GETTER FUNCTIONS       *
      ****************************************/
 
-    function getVoterFromDelegate() public view returns (address) {
+    function getVoterFromDelegate(address caller) public view returns (address) {
         if (
-            delegateToStaker[msg.sender] != address(0) && // The delegate chose to be a delegate for the staker.
-            voterStakes[delegateToStaker[msg.sender]].delegate == msg.sender // The staker chose the delegate.
-        ) return delegateToStaker[msg.sender];
-        else return msg.sender;
+            delegateToStaker[caller] != address(0) && // The delegate chose to be a delegate for the staker.
+            voterStakes[delegateToStaker[caller]].delegate == caller // The staker chose the delegate.
+        ) return delegateToStaker[caller];
+        else return caller;
     }
 
     /**
