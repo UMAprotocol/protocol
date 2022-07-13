@@ -3,6 +3,19 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.26.0](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.25.0...@uma/sdk@0.26.0) (2022-07-13)
+
+- feat(sdk)!: add skinny oo client and separate factories (#4009) ([2bc8ad7](https://github.com/UMAprotocol/protocol/commit/2bc8ad7827b843ae4769d0800b93e29f4036ed1e)), closes [#4009](https://github.com/UMAprotocol/protocol/issues/4009)
+- chore(sdk)!: create oracle client interface for new oo contract integrations (#3989) ([72e6235](https://github.com/UMAprotocol/protocol/commit/72e623575c667f864dd7cefa2ad2059a2779c082)), closes [#3989](https://github.com/UMAprotocol/protocol/issues/3989)
+
+### BREAKING CHANGES
+
+- instanciating oracle client now requires selecting skinny or optimistic
+- improve(sdk): changed naming and improved readme
+- this slightly changes the request type which is used by the UI, app will need to be
+  adjusted to accomodate.
+- fix: update failing tests
+
 # [0.25.0](https://github.com-uma/UMAprotocol/protocol/compare/@uma/sdk@0.23.3...@uma/sdk@0.25.0) (2022-06-27)
 
 ### Bug Fixes

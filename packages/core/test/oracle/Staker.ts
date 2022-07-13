@@ -58,7 +58,7 @@ describe("Staker", function () {
     it("Staking accumulates prorata rewards over time", async function () {
       await staker.methods.stake(amountToStake).send({ from: account1 });
       const stakingBalance = await staker.methods.voterStakes(account1).call();
-      assert.equal(stakingBalance.cumulativeStaked, amountToStake);
+      assert.equal(stakingBalance.activeStake, amountToStake);
 
       // Advance time forward 1000 seconds. At an emission rate of 0.64 per second we should see the accumulation of
       // all rewards equal to the amount staked * 1000 * 0.64 = 640.
@@ -121,46 +121,17 @@ describe("Staker", function () {
       const balanceAfter = await votingToken.methods.balanceOf(account1).call();
       assert.equal(balanceAfter, amountToStake.add(toBN(balanceBefore))); // Should get back the original amount staked.
 
-      // Accumulated rewards over the interval should be the full 0.64 percent, grown over 30 days + 1000 seconds.
-      // This should be 0.64 * (60 * 60 * 24 * 30 + 1000) = 1659520.
-      assert.equal(await staker.methods.outstandingRewards(account1).call(), toWei("1659520"));
-      await staker.methods.withdrawRewards().send({ from: account1 });
-      assert.equal(await votingToken.methods.balanceOf(account1).call(), toBN(balanceAfter).add(toWei("1659520")));
-
-      // No further rewards should accumulate to the staker as they have claimed and unstked the full amount.
-      assert.equal(await staker.methods.outstandingRewards(account1).call(), toWei("0"));
-      await advanceTime(1000);
+      // The account should have 0 outstanding rewards as they requested to unstake right at the beginning of the test.
       assert.equal(await staker.methods.outstandingRewards(account1).call(), toWei("0"));
     });
-    it("Re-requesting to unstake resets the timer", async function () {
+    it("Can not re-request to unstake", async function () {
       await staker.methods.stake(amountToStake).send({ from: account1 });
 
       const requestTime = Number(await staker.methods.getCurrentTime().call());
       await staker.methods.requestUnstake(amountToStake).send({ from: account1 });
       assert((await staker.methods.voterStakes(account1).call()).unstakeTime, requestTime + unstakeCoolDown);
-      assert((await staker.methods.voterStakes(account1).call()).requestUnstake, amountToStake);
-
-      // User can re-request to unstake with a new amount. This should set the request amount to the new amount and
-      // reset the unlock timer forward again.
-      await advanceTime(1000);
-      await staker.methods.requestUnstake(amountToStake.divn(2)).send({ from: account1 });
-      assert((await staker.methods.voterStakes(account1).call()).unstakeTime, requestTime + unstakeCoolDown + 1000);
-      assert((await staker.methods.voterStakes(account1).call()).requestUnstake, amountToStake.divn(2));
-
-      assert(await didContractThrow(staker.methods.executeUnstake().send({ from: account1 })));
-
-      // Now advance the 1 month required to unstake.
-      await advanceTime(60 * 60 * 24 * 30);
-      const balanceBefore = await votingToken.methods.balanceOf(account1).call();
-      await staker.methods.executeUnstake().send({ from: account1 });
-      const balanceAfter = await votingToken.methods.balanceOf(account1).call();
-      assert.equal(balanceAfter, amountToStake.divn(2).add(toBN(balanceBefore))); // Should get back the original amount staked.
-
-      // Accumulated rewards over the interval should be the full 0.64 percent, grown over 30 days + 1000 seconds.
-      // This should be 0.64 * (60 * 60 * 24 * 30 + 1000) = 1659520.
-      assert.equal(await staker.methods.outstandingRewards(account1).call(), toWei("1659520"));
-      await staker.methods.withdrawRewards().send({ from: account1 });
-      assert.equal(await votingToken.methods.balanceOf(account1).call(), toBN(balanceAfter).add(toWei("1659520")));
+      assert((await staker.methods.voterStakes(account1).call()).pendingUnstake, amountToStake);
+      assert(await didContractThrow(staker.methods.requestUnstake(420).send({ from: account1 })));
     });
   });
   describe("Slashing: unrealizedSlash consideration", function () {
@@ -179,8 +150,8 @@ describe("Staker", function () {
       await staker.methods.applySlashingToCumulativeStaked(account1, toWei("200")).send({ from: account1 });
       await staker.methods.applySlashingToCumulativeStaked(account2, toWei("-200")).send({ from: account1 });
       // Cumulative staked should have been shifted accordingly.
-      assert.equal((await staker.methods.voterStakes(account1).call()).cumulativeStaked, toWei("1200"));
-      assert.equal((await staker.methods.voterStakes(account2).call()).cumulativeStaked, toWei("2800"));
+      assert.equal((await staker.methods.voterStakes(account1).call()).activeStake, toWei("1200"));
+      assert.equal((await staker.methods.voterStakes(account2).call()).activeStake, toWei("2800"));
 
       // Outstanding rewards should be the same as before (not effected by slashing)
       assert.equal(await staker.methods.outstandingRewards(account1).call(), toWei("160")); // 160
