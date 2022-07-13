@@ -183,8 +183,6 @@ export class GasEstimator {
     if (this.type == NetworkType.London) {
       this.latestMaxFeePerGasGwei = (gasInfo as LondonGasData).maxFeePerGas;
       this.latestMaxPriorityFeePerGasGwei = (gasInfo as LondonGasData).maxPriorityFeePerGas;
-      if (this.latestMaxPriorityFeePerGasGwei > this.latestMaxFeePerGasGwei)
-        this.latestMaxFeePerGasGwei = this.latestMaxPriorityFeePerGasGwei / 1.5;
 
       // Extract the base fee from the most recent block. If the block is not available or errored then is set to the
       // latest max fee per gas so we still have some value in the right ballpark to return to the client implementer.
