@@ -296,7 +296,7 @@ contract VotingV2 is
     }
 
     function inActiveReveal() internal override returns (bool) {
-        return (pendingPriceRequests.length > 0 && getVotePhase() == Phase.Reveal);
+        return (getPendingRequests().length > 0 && getVotePhase() == Phase.Reveal);
     }
 
     function _updateAccountSlashingTrackers(address voterAddress) internal {
@@ -824,7 +824,7 @@ contract VotingV2 is
      * @return pendingRequests array containing identifiers of type `PendingRequest`.
      * and timestamps for all pending requests.
      */
-    function getPendingRequests() external view override returns (PendingRequestAncillary[] memory) {
+    function getPendingRequests() public view override returns (PendingRequestAncillary[] memory) {
         uint256 blockTime = getCurrentTime();
         uint256 currentRoundId = voteTiming.computeCurrentRoundId(blockTime);
 

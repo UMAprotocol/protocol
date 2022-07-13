@@ -17,7 +17,6 @@ contract Staker is StakerInterface, Ownable, Testable {
 
     uint256 public emissionRate;
     uint256 public cumulativeActiveStake;
-    uint256 public cumulativePendingUnstake;
     uint256 public cumulativePendingStake;
     uint256 public rewardPerTokenStored;
     uint256 public lastUpdateTime;
@@ -75,7 +74,6 @@ contract Staker is StakerInterface, Ownable, Testable {
         require(voterStakes[msg.sender].pendingUnstake == 0, "Have previous request unstake");
 
         cumulativeActiveStake -= amount;
-        cumulativePendingUnstake += amount;
         voterStakes[msg.sender].pendingUnstake = amount;
         voterStakes[msg.sender].activeStake -= amount;
         voterStakes[msg.sender].unstakeTime = getCurrentTime() + unstakeCoolDown;
@@ -92,7 +90,6 @@ contract Staker is StakerInterface, Ownable, Testable {
         uint256 tokensToSend = voterStake.pendingUnstake;
 
         if (tokensToSend > 0) {
-            cumulativePendingUnstake -= tokensToSend;
             voterStake.pendingUnstake = 0;
             voterStake.unstakeTime = 0;
             votingToken.transfer(msg.sender, tokensToSend);
