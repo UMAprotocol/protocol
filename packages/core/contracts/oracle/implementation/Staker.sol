@@ -42,6 +42,24 @@ contract Staker is StakerInterface, Ownable, Testable {
     // Reference to the voting token.
     VotingToken public override votingToken;
 
+    /****************************************
+     *                EVENTS                *
+     ****************************************/
+
+    event NewStake(address indexed staker, uint256 amount);
+
+    event UnstakeRequested(address indexed staker, uint256 amount, uint256 unstakeTime);
+
+    event StakeExecuted(address indexed staker, uint256 tokensSent);
+
+    event RewardsWithdrawn(address indexed staker, uint256 tokensWithdrawn);
+
+    event RewardUpdated(address indexed staker, uint256 newReward);
+
+    event NewEmissionRate(uint256 newEmissionRate);
+
+    event NewUnstakeCooldown(uint256 newUnstakeCooldown);
+
     constructor(
         uint256 _emissionRate,
         uint256 _unstakeCoolDown,
@@ -65,6 +83,7 @@ contract Staker is StakerInterface, Ownable, Testable {
         }
 
         votingToken.transferFrom(msg.sender, address(this), amount);
+        emit NewStake(msg.sender, amount);
     }
 
     //You cant request to unstake during an active reveal phase.
@@ -81,6 +100,7 @@ contract Staker is StakerInterface, Ownable, Testable {
         voterStakes[msg.sender].pendingUnstake = amount;
         voterStakes[msg.sender].activeStake -= amount;
         voterStakes[msg.sender].unstakeTime = getCurrentTime() + unstakeCoolDown;
+        emit UnstakeRequested(msg.sender, amount, voterStakes[msg.sender].unstakeTime);
     }
 
     // Note there is no way to cancel your unstake; you must wait until after unstakeTime and re-stake.
@@ -98,6 +118,8 @@ contract Staker is StakerInterface, Ownable, Testable {
             voterStake.unstakeTime = 0;
             votingToken.transfer(msg.sender, tokensToSend);
         }
+
+        emit StakeExecuted(msg.sender, tokensToSend);
     }
 
     // Send accumulated rewards to the voter. If the voter has gained rewards from others slashing then this is included
@@ -111,6 +133,8 @@ contract Staker is StakerInterface, Ownable, Testable {
             voterStake.outstandingRewards = 0;
             require(votingToken.mint(msg.sender, tokensToMint), "Voting token issuance failed");
         }
+        emit RewardsWithdrawn(msg.sender, tokensToMint);
+
         return (tokensToMint);
     }
 
@@ -130,13 +154,16 @@ contract Staker is StakerInterface, Ownable, Testable {
 
     // Calculate the reward per token based on last time the reward was updated.
     function _updateReward(address voterAddress) internal {
-        rewardPerTokenStored = rewardPerToken();
-        lastUpdateTime = getCurrentTime();
+        uint256 currentTime = getCurrentTime();
+        uint256 newRewardPerToken = rewardPerToken();
+        rewardPerTokenStored = newRewardPerToken;
+        lastUpdateTime = currentTime;
         if (voterAddress != address(0)) {
             VoterStake storage voterStake = voterStakes[voterAddress];
             voterStake.outstandingRewards = outstandingRewards(voterAddress);
-            voterStake.rewardsPaidPerToken = rewardPerTokenStored;
+            voterStake.rewardsPaidPerToken = newRewardPerToken;
         }
+        emit RewardUpdated(voterAddress, newRewardPerToken);
     }
 
     function _updateActiveStake(address voterAddress) internal {
@@ -173,9 +200,11 @@ contract Staker is StakerInterface, Ownable, Testable {
     function setEmissionRate(uint256 _emissionRate) public onlyOwner {
         _updateReward(address(0));
         emissionRate = _emissionRate;
+        emit NewEmissionRate(emissionRate);
     }
 
     function setUnstakeCoolDown(uint256 _unstakeCoolDown) public onlyOwner {
         unstakeCoolDown = _unstakeCoolDown;
+        emit NewUnstakeCooldown(unstakeCoolDown);
     }
 }
