@@ -47,7 +47,7 @@ contract Staker is StakerInterface, Ownable, Testable {
      ****************************************/
 
     event Staked(
-        address indexed staker,
+        address indexed voter,
         uint256 amount,
         uint256 voterCumulativeActiveStaked,
         uint256 voterCumulativePendingStaked,
@@ -56,7 +56,7 @@ contract Staker is StakerInterface, Ownable, Testable {
     );
 
     event RequestedUnstake(
-        address indexed staker,
+        address indexed voter,
         uint256 amount,
         uint256 unstakeTime,
         uint256 voterCumulativeActiveStaked,
@@ -64,19 +64,27 @@ contract Staker is StakerInterface, Ownable, Testable {
     );
 
     event ExecutedUnstake(
-        address indexed staker,
+        address indexed voter,
         uint256 tokensSent,
         uint256 voterCumulativeActiveStaked,
         uint256 voterCumulativePendingStaked
     );
 
-    event WithdrawnRewards(address indexed staker, uint256 tokensWithdrawn);
+    event WithdrawnRewards(address indexed voter, uint256 tokensWithdrawn);
 
-    event RewardUpdated(address indexed staker, uint256 newReward);
+    event UpdatedReward(address indexed voter, uint256 newReward);
+
+    event UpdatedActiveStake(
+        address indexed voter,
+        uint256 voterCumulativeActiveStaked,
+        uint256 voterCumulativePendingStaked,
+        uint256 cumulativeActiveStake,
+        uint256 cumulativePendingStake
+    );
 
     event SetNewEmissionRate(uint256 newEmissionRate);
 
-    event NewUnstakeCooldown(uint256 newUnstakeCooldown);
+    event SetNewUnstakeCooldown(uint256 newUnstakeCooldown);
 
     constructor(
         uint256 _emissionRate,
@@ -194,7 +202,7 @@ contract Staker is StakerInterface, Ownable, Testable {
             voterStake.outstandingRewards = outstandingRewards(voterAddress);
             voterStake.rewardsPaidPerToken = newRewardPerToken;
         }
-        emit RewardUpdated(voterAddress, newRewardPerToken);
+        emit UpdatedReward(voterAddress, newRewardPerToken);
     }
 
     function _updateActiveStake(address voterAddress) internal {
@@ -203,6 +211,13 @@ contract Staker is StakerInterface, Ownable, Testable {
         cumulativeActiveStake += voterStakes[voterAddress].pendingStake;
         cumulativePendingStake -= voterStakes[voterAddress].pendingStake;
         voterStakes[voterAddress].pendingStake = 0;
+        emit UpdatedActiveStake(
+            voterAddress,
+            voterStakes[voterAddress].activeStake,
+            voterStakes[voterAddress].pendingStake,
+            cumulativeActiveStake,
+            cumulativePendingStake
+        );
     }
 
     function outstandingRewards(address voterAddress) public view returns (uint256) {
@@ -236,6 +251,6 @@ contract Staker is StakerInterface, Ownable, Testable {
 
     function setUnstakeCoolDown(uint256 _unstakeCoolDown) public onlyOwner {
         unstakeCoolDown = _unstakeCoolDown;
-        emit NewUnstakeCooldown(unstakeCoolDown);
+        emit SetNewUnstakeCooldown(unstakeCoolDown);
     }
 }
