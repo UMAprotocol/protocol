@@ -226,7 +226,7 @@ contract VotingV2 is
     event PriceRequestAdded(
         uint256 indexed roundId,
         bytes32 indexed identifier,
-        uint256 time,
+        uint256 indexed time,
         bytes ancillaryData,
         bool isGovernance
     );
@@ -251,9 +251,13 @@ contract VotingV2 is
 
     event CumulativeSlashingTrackersUpdated(uint256 lastRequestIndexConsidered, uint256 priceRequestIdsLength);
 
-    event SpamRequestsSignaled(uint256 indexed proposalId, address indexed sender, uint256[2][] spamRequestIndices);
+    event SignaledRequestsAsSpamForDeletion(
+        uint256 indexed proposalId,
+        address indexed sender,
+        uint256[2][] spamRequestIndices
+    );
 
-    event SpamRequestResolved(uint256 indexed proposalId, bool indexed executed);
+    event ExecutedSpamDeletion(uint256 indexed proposalId, bool indexed executed);
 
     // /**
     //  * @notice Construct the Voting contract.
@@ -456,7 +460,7 @@ contract VotingV2 is
 
         _requestPrice(identifier, currentTime, "", true);
 
-        emit SpamRequestsSignaled(proposalId, msg.sender, spamRequestIndices);
+        emit SignaledRequestsAsSpamForDeletion(proposalId, msg.sender, spamRequestIndices);
     }
 
     function executeSpamDeletion(uint256 proposalId) public {
@@ -494,12 +498,12 @@ contract VotingV2 is
 
             // Return the spamDeletionProposalBond.
             votingToken.transfer(spamDeletionProposals[proposalId].proposer, spamDeletionProposalBond);
-            emit SpamRequestResolved(proposalId, true);
+            emit ExecutedSpamDeletion(proposalId, true);
         }
         // Else, the spam deletion request was voted down. In this case we send the spamDeletionProposalBond to the store.
         else {
             votingToken.transfer(finder.getImplementationAddress(OracleInterfaces.Store), spamDeletionProposalBond);
-            emit SpamRequestResolved(proposalId, false);
+            emit ExecutedSpamDeletion(proposalId, false);
         }
     }
 

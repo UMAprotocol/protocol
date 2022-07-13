@@ -46,17 +46,17 @@ contract Staker is StakerInterface, Ownable, Testable {
      *                EVENTS                *
      ****************************************/
 
-    event Stake(address indexed staker, uint256 amount);
+    event Staked(address indexed staker, uint256 amount, uint256 voterCumulativeStaked, uint256 cumulativeStaked);
 
-    event UnstakeRequested(address indexed staker, uint256 amount, uint256 unstakeTime);
+    event RequestedUnstake(address indexed staker, uint256 amount, uint256 unstakeTime, uint256 voterCumulativeStaked);
 
-    event StakeExecuted(address indexed staker, uint256 tokensSent);
+    event ExecutedUnstake(address indexed staker, uint256 tokensSent, uint256 voterCumulativeStaked);
 
-    event RewardsWithdrawn(address indexed staker, uint256 tokensWithdrawn);
+    event WithdrawnRewards(address indexed staker, uint256 tokensWithdrawn);
 
     event RewardUpdated(address indexed staker, uint256 newReward);
 
-    event NewEmissionRate(uint256 newEmissionRate);
+    event SetNewEmissionRate(uint256 newEmissionRate);
 
     event NewUnstakeCooldown(uint256 newUnstakeCooldown);
 
@@ -83,7 +83,7 @@ contract Staker is StakerInterface, Ownable, Testable {
         }
 
         votingToken.transferFrom(msg.sender, address(this), amount);
-        emit Stake(msg.sender, amount);
+        emit Staked(msg.sender, amount, voterStakes[msg.sender].cumulativeStaked, cumulativeStaked);
     }
 
     //You cant request to unstake during an active reveal phase.
@@ -100,7 +100,7 @@ contract Staker is StakerInterface, Ownable, Testable {
         voterStakes[msg.sender].pendingUnstake = amount;
         voterStakes[msg.sender].activeStake -= amount;
         voterStakes[msg.sender].unstakeTime = getCurrentTime() + unstakeCoolDown;
-        emit UnstakeRequested(msg.sender, amount, voterStakes[msg.sender].unstakeTime);
+        emit RequestedUnstake(msg.sender, amount, voterStakes[msg.sender].unstakeTime);
     }
 
     // Note there is no way to cancel your unstake; you must wait until after unstakeTime and re-stake.
@@ -119,7 +119,7 @@ contract Staker is StakerInterface, Ownable, Testable {
             votingToken.transfer(msg.sender, tokensToSend);
         }
 
-        emit StakeExecuted(msg.sender, tokensToSend);
+        emit ExecutedUnstake(msg.sender, tokensToSend, voterStake.cumulativeStaked);
     }
 
     // Send accumulated rewards to the voter. If the voter has gained rewards from others slashing then this is included
@@ -133,7 +133,7 @@ contract Staker is StakerInterface, Ownable, Testable {
             voterStake.outstandingRewards = 0;
             require(votingToken.mint(msg.sender, tokensToMint), "Voting token issuance failed");
         }
-        emit RewardsWithdrawn(msg.sender, tokensToMint);
+        emit WithdrawnRewards(msg.sender, tokensToMint);
 
         return (tokensToMint);
     }
@@ -200,7 +200,7 @@ contract Staker is StakerInterface, Ownable, Testable {
     function setEmissionRate(uint256 _emissionRate) public onlyOwner {
         _updateReward(address(0));
         emissionRate = _emissionRate;
-        emit NewEmissionRate(emissionRate);
+        emit SetNewEmissionRate(emissionRate);
     }
 
     function setUnstakeCoolDown(uint256 _unstakeCoolDown) public onlyOwner {
