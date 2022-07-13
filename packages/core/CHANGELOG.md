@@ -3,6 +3,26 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.31.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.30.0...@uma/core@2.31.0) (2022-07-13)
+
+### Features
+
+- add ancillary data to governance proposals ([#4027](https://github.com/UMAprotocol/protocol/issues/4027)) ([f427ff7](https://github.com/UMAprotocol/protocol/commit/f427ff7428926a05ba295868c0cbf71e4db6f6b1))
+- add evmos hardhat config and deployment addresses ([#3977](https://github.com/UMAprotocol/protocol/issues/3977)) ([28b17f5](https://github.com/UMAprotocol/protocol/commit/28b17f5d844c3ee8ca7f59a6e613ffc7101105db))
+- add gas tests for voting v1 and voting v2 ([#4029](https://github.com/UMAprotocol/protocol/issues/4029)) ([20fe41e](https://github.com/UMAprotocol/protocol/commit/20fe41e390bf94a2adb100a69427a7a3e236433c))
+- add meter network ([#4012](https://github.com/UMAprotocol/protocol/issues/4012)) ([cac209d](https://github.com/UMAprotocol/protocol/commit/cac209d288db5b852fb3e5148b200872471aaac0))
+- add missing ancilliary data to price events ([#3992](https://github.com/UMAprotocol/protocol/issues/3992)) ([650658d](https://github.com/UMAprotocol/protocol/commit/650658d8772b8e3e468392049e59e74358c3c52d))
+- add oov2 deployments in avalanche and sx ([#4011](https://github.com/UMAprotocol/protocol/issues/4011)) ([119d6ec](https://github.com/UMAprotocol/protocol/commit/119d6ec2ed8df311ea83a829ae31ae1696bbc065))
+- add slashing library ([#3993](https://github.com/UMAprotocol/protocol/issues/3993)) ([8c82e49](https://github.com/UMAprotocol/protocol/commit/8c82e49082e110843015093be997209eac745869))
+- DVM2.0 Add ability to delete spam requests from the DVM. ([#4010](https://github.com/UMAprotocol/protocol/issues/4010)) ([5703c4a](https://github.com/UMAprotocol/protocol/commit/5703c4abeb0093169bbcd047f9ef477e7063afb3))
+- DVM2.0 add special governance price request tx flow ([#4000](https://github.com/UMAprotocol/protocol/issues/4000)) ([99b0e66](https://github.com/UMAprotocol/protocol/commit/99b0e66418e405241adf9f59e752399c3712e951))
+- dvm2.0 votingv2 gas optimisations ([#4018](https://github.com/UMAprotocol/protocol/issues/4018)) ([fc48966](https://github.com/UMAprotocol/protocol/commit/fc4896675273763c435551db5d08c6d18e9b6b97))
+- replace batchCommit and batchReveal with multicall ([#4028](https://github.com/UMAprotocol/protocol/issues/4028)) ([d317ecc](https://github.com/UMAprotocol/protocol/commit/d317eccf6e5008f4b7cab65d7a5fd3b3ee07bce8))
+- simplify slash calculation ([#4006](https://github.com/UMAprotocol/protocol/issues/4006)) ([7958153](https://github.com/UMAprotocol/protocol/commit/79581535b75f89f30847de995d17a64d7acc98f0))
+- UMA2.0 Vote delegation mechanism ([#4019](https://github.com/UMAprotocol/protocol/issues/4019)) ([d5068ad](https://github.com/UMAprotocol/protocol/commit/d5068ad08a3c94620986ca6c1e68a5b0ebfb94f4))
+- UMA2.0: Add simple Designated votingV2 to support two key contracts for new DVM design. ([#3997](https://github.com/UMAprotocol/protocol/issues/3997)) ([440a1e8](https://github.com/UMAprotocol/protocol/commit/440a1e83ecacc3c3dec41782e08e26e26e3d717e))
+- **oo:** add optimistic oracle v2 deployments addresses ([#3965](https://github.com/UMAprotocol/protocol/issues/3965)) ([7365da4](https://github.com/UMAprotocol/protocol/commit/7365da41f9282cfa8deac1586ac0648fde27f0f8))
+
 # [2.30.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.28.2...@uma/core@2.30.0) (2022-06-27)
 
 ### Bug Fixes

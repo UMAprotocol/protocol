@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.30.0](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.29.0...@uma/financial-templates-lib@2.30.0) (2022-07-13)
+
+### Bug Fixes
+
+- **pf:** remove uSPAC10 from default price feed config ([#4005](https://github.com/UMAprotocol/protocol/issues/4005)) ([eb75a5d](https://github.com/UMAprotocol/protocol/commit/eb75a5d976016bec05af87e8d5d78b47941ec2fc))
+
+### Features
+
+- **pf-configs:** Add default price feed configs for ETHDOM and USDTDOM ([#4003](https://github.com/UMAprotocol/protocol/issues/4003)) ([8551f3f](https://github.com/UMAprotocol/protocol/commit/8551f3f9ea9b27602030cfc314fd8d4b8faa6052))
+
 # [2.29.0](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.27.3...@uma/financial-templates-lib@2.29.0) (2022-06-27)
 
 ### Bug Fixes
