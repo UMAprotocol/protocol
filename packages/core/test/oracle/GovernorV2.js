@@ -1,13 +1,7 @@
 const hre = require("hardhat");
 const { runVotingV2Fixture } = require("@uma/common");
 const { getContract, assertEventEmitted } = hre;
-const {
-  RegistryRolesEnum,
-  didContractThrow,
-  getRandomSignedInt,
-  computeVoteHashAncillary,
-  signMessage,
-} = require("@uma/common");
+const { RegistryRolesEnum, didContractThrow, getRandomSignedInt, computeVoteHashAncillary } = require("@uma/common");
 const { moveToNextRound, moveToNextPhase } = require("../../utils/Voting.js");
 const { interfaceName } = require("@uma/common");
 const { assert } = require("chai");
@@ -26,7 +20,6 @@ const SlashingLibrary = getContract("SlashingLibrary");
 
 // Extract web3 functions into primary namespace.
 const { toBN, toWei, hexToUtf8, utf8ToHex, padRight } = web3.utils;
-const snapshotMessage = "Sign For Snapshot";
 
 describe("GovernorV2", function () {
   let voting;
@@ -35,7 +28,6 @@ describe("GovernorV2", function () {
   let supportedIdentifiers;
   let finder;
   let timer;
-  let signature;
   let votingToken;
   const defaultAncillaryData = web3.utils.randomHex(3000);
 
@@ -77,8 +69,6 @@ describe("GovernorV2", function () {
     // environment, so ownership must be transferred.
 
     await voting.methods.transferOwnership(governorV2.options.address).send({ from: accounts[0] });
-
-    signature = await signMessage(web3, snapshotMessage, proposer);
   });
 
   beforeEach(async () => {
@@ -198,7 +188,6 @@ describe("GovernorV2", function () {
       .commitVote(request2.identifier, request2.time, defaultAncillaryData, hash2)
       .send({ from: accounts[0] });
     await moveToNextPhase(voting, accounts[0]);
-    await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
     await voting.methods
       .revealVote(request1.identifier, request1.time, vote, defaultAncillaryData, salt)
       .send({ from: accounts[0] });
@@ -244,7 +233,6 @@ describe("GovernorV2", function () {
       .commitVote(request.identifier, request.time, defaultAncillaryData, hash)
       .send({ from: accounts[0] });
     await moveToNextPhase(voting, accounts[0]);
-    await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
     await voting.methods
       .revealVote(request.identifier, request.time, vote, defaultAncillaryData, salt)
       .send({ from: accounts[0] });
@@ -303,7 +291,6 @@ describe("GovernorV2", function () {
       .commitVote(request.identifier, request.time, defaultAncillaryData, hash)
       .send({ from: accounts[0] });
     await moveToNextPhase(voting, accounts[0]);
-    await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
     await voting.methods
       .revealVote(request.identifier, request.time, vote, defaultAncillaryData, salt)
       .send({ from: accounts[0] });
@@ -346,7 +333,6 @@ describe("GovernorV2", function () {
       .commitVote(request.identifier, request.time, defaultAncillaryData, hash)
       .send({ from: accounts[0] });
     await moveToNextPhase(voting, accounts[0]);
-    await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
     await voting.methods
       .revealVote(request.identifier, request.time, vote, defaultAncillaryData, salt)
       .send({ from: accounts[0] });
@@ -405,7 +391,6 @@ describe("GovernorV2", function () {
       .commitVote(request.identifier, request.time, defaultAncillaryData, hash)
       .send({ from: accounts[0] });
     await moveToNextPhase(voting, accounts[0]);
-    await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
     await voting.methods
       .revealVote(request.identifier, request.time, vote, defaultAncillaryData, salt)
       .send({ from: accounts[0] });
@@ -455,7 +440,6 @@ describe("GovernorV2", function () {
       .commitVote(request.identifier, request.time, defaultAncillaryData, hash)
       .send({ from: accounts[0] });
     await moveToNextPhase(voting, accounts[0]);
-    await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
     await voting.methods
       .revealVote(request.identifier, request.time, vote, defaultAncillaryData, salt)
       .send({ from: accounts[0] });
@@ -502,7 +486,6 @@ describe("GovernorV2", function () {
       .commitVote(request.identifier, request.time, defaultAncillaryData, hash)
       .send({ from: accounts[0] });
     await moveToNextPhase(voting, accounts[0]);
-    await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
     await voting.methods
       .revealVote(request.identifier, request.time, vote, defaultAncillaryData, salt)
       .send({ from: accounts[0] });
@@ -549,7 +532,6 @@ describe("GovernorV2", function () {
       .commitVote(request.identifier, request.time, defaultAncillaryData, hash)
       .send({ from: accounts[0] });
     await moveToNextPhase(voting, accounts[0]);
-    await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
     await voting.methods
       .revealVote(request.identifier, request.time, vote, defaultAncillaryData, salt)
       .send({ from: accounts[0] });
@@ -594,7 +576,6 @@ describe("GovernorV2", function () {
       .commitVote(request.identifier, request.time, defaultAncillaryData, hash3)
       .send({ from: account3 });
     await moveToNextPhase(voting, accounts[0]);
-    await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
     await voting.methods
       .revealVote(request.identifier, request.time, vote, defaultAncillaryData, salt)
       .send({ from: account3 });
@@ -620,7 +601,6 @@ describe("GovernorV2", function () {
       .commitVote(request.identifier, request.time, defaultAncillaryData, hash1)
       .send({ from: accounts[0] });
     await moveToNextPhase(voting, accounts[0]);
-    await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
     await voting.methods
       .revealVote(request.identifier, request.time, vote, defaultAncillaryData, salt)
       .send({ from: accounts[0] });
@@ -657,7 +637,6 @@ describe("GovernorV2", function () {
       .commitVote(request.identifier, request.time, defaultAncillaryData, hash)
       .send({ from: accounts[0] });
     await moveToNextPhase(voting, accounts[0]);
-    await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
     await voting.methods
       .revealVote(request.identifier, request.time, vote, defaultAncillaryData, salt)
       .send({ from: accounts[0] });
@@ -708,7 +687,6 @@ describe("GovernorV2", function () {
       .commitVote(request.identifier, request.time, defaultAncillaryData, hash)
       .send({ from: accounts[0] });
     await moveToNextPhase(voting, accounts[0]);
-    await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
     await voting.methods
       .revealVote(request.identifier, request.time, vote, defaultAncillaryData, salt)
       .send({ from: accounts[0] });
@@ -764,7 +742,6 @@ describe("GovernorV2", function () {
       .commitVote(request.identifier, request.time, defaultAncillaryData, hash)
       .send({ from: accounts[0] });
     await moveToNextPhase(voting, accounts[0]);
-    await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
     await voting.methods
       .revealVote(request.identifier, request.time, vote, defaultAncillaryData, salt)
       .send({ from: accounts[0] });
@@ -875,7 +852,6 @@ describe("GovernorV2", function () {
       .commitVote(request.identifier, request.time, defaultAncillaryData, hash)
       .send({ from: accounts[0] });
     await moveToNextPhase(newVoting, accounts[0]);
-    await newVoting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
     await newVoting.methods
       .revealVote(request.identifier, request.time, vote, defaultAncillaryData, salt)
       .send({ from: accounts[0] });

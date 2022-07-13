@@ -5,13 +5,13 @@ pragma solidity ^0.8.0;
 
 import "../../common/implementation/AncillaryData.sol";
 import "../../common/implementation/FixedPoint.sol"; // TODO: remove this from this contract.
+import "../../common/implementation/MultiCaller.sol";
 
 import "../interfaces/FinderInterface.sol";
 import "../interfaces/OracleInterface.sol";
 import "../interfaces/OracleAncillaryInterface.sol";
 import "../interfaces/OracleGovernanceInterface.sol";
 import "../interfaces/VotingV2Interface.sol";
-import "../interfaces/VotingAncillaryInterface.sol"; // TODO: remove this and simplify down to one v2 interface.
 import "../interfaces/IdentifierWhitelistInterface.sol";
 import "./Registry.sol";
 import "./ResultComputation.sol";
@@ -37,7 +37,7 @@ contract VotingV2 is
     OracleAncillaryInterface, // Interface to support ancillary data with price requests.
     OracleGovernanceInterface, // Interface to support governance requests.
     VotingV2Interface,
-    VotingAncillaryInterface // Interface to support ancillary data with voting rounds.
+    MultiCaller
 {
     using FixedPoint for FixedPoint.Unsigned;
     using SafeMath for uint256;
@@ -691,10 +691,7 @@ contract VotingV2 is
         uint256 blockTime = getCurrentTime();
         require(hash != bytes32(0), "Invalid provided hash");
         // Current time is required for all vote timing queries.
-        require(
-            voteTiming.computeCurrentPhase(blockTime) == VotingAncillaryInterface.Phase.Commit,
-            "Cannot commit in reveal phase"
-        );
+        require(voteTiming.computeCurrentPhase(blockTime) == Phase.Commit, "Cannot commit in reveal phase");
 
         PriceRequest storage priceRequest = _getPriceRequest(identifier, time, ancillaryData);
         require(
@@ -717,13 +714,6 @@ contract VotingV2 is
     ) public override onlyIfNotMigrated() {
         commitVote(identifier, time, "", hash);
     }
-
-    // TODO: only here for ABI support until removed.
-    function snapshotCurrentRound(bytes calldata signature)
-        external
-        override(VotingV2Interface, VotingAncillaryInterface)
-        onlyIfNotMigrated()
-    {}
 
     /**
      * @notice Reveal a previously committed vote for `identifier` at `time`.
@@ -822,76 +812,6 @@ contract VotingV2 is
         commitAndEmitEncryptedVote(identifier, time, "", hash, encryptedVote);
     }
 
-    /**
-     * @notice Submit a batch of commits in a single transaction.
-     * @dev Using `encryptedVote` is optional. If included then commitment is emitted in an event.
-     * Look at `project-root/common/Constants.js` for the tested maximum number of
-     * commitments that can fit in one transaction.
-     * @param commits struct to encapsulate an `identifier`, `time`, `hash` and optional `encryptedVote`.
-     */
-    function batchCommit(CommitmentAncillary[] memory commits) public override {
-        for (uint256 i = 0; i < commits.length; i = unsafe_inc(i)) {
-            if (commits[i].encryptedVote.length == 0) {
-                commitVote(commits[i].identifier, commits[i].time, commits[i].ancillaryData, commits[i].hash);
-            } else {
-                commitAndEmitEncryptedVote(
-                    commits[i].identifier,
-                    commits[i].time,
-                    commits[i].ancillaryData,
-                    commits[i].hash,
-                    commits[i].encryptedVote
-                );
-            }
-        }
-    }
-
-    // Overloaded method to enable short term backwards compatibility. Will be deprecated in the next DVM version.
-    function batchCommit(Commitment[] memory commits) public override {
-        CommitmentAncillary[] memory commitsAncillary = new CommitmentAncillary[](commits.length);
-
-        for (uint256 i = 0; i < commits.length; i = unsafe_inc(i)) {
-            commitsAncillary[i].identifier = commits[i].identifier;
-            commitsAncillary[i].time = commits[i].time;
-            commitsAncillary[i].ancillaryData = "";
-            commitsAncillary[i].hash = commits[i].hash;
-            commitsAncillary[i].encryptedVote = commits[i].encryptedVote;
-        }
-        batchCommit(commitsAncillary);
-    }
-
-    /**
-     * @notice Reveal multiple votes in a single transaction.
-     * Look at `project-root/common/Constants.js` for the tested maximum number of reveals.
-     * that can fit in one transaction.
-     * @dev For more info on reveals, review the comment for `revealVote`.
-     * @param reveals array of the Reveal struct which contains an identifier, time, price and salt.
-     */
-    function batchReveal(RevealAncillary[] memory reveals) public override {
-        for (uint256 i = 0; i < reveals.length; i = unsafe_inc(i)) {
-            revealVote(
-                reveals[i].identifier,
-                reveals[i].time,
-                reveals[i].price,
-                reveals[i].ancillaryData,
-                reveals[i].salt
-            );
-        }
-    }
-
-    // Overloaded method to enable short term backwards compatibility. Will be deprecated in the next DVM version.
-    function batchReveal(Reveal[] memory reveals) public override {
-        RevealAncillary[] memory revealsAncillary = new RevealAncillary[](reveals.length);
-
-        for (uint256 i = 0; i < reveals.length; i = unsafe_inc(i)) {
-            revealsAncillary[i].identifier = reveals[i].identifier;
-            revealsAncillary[i].time = reveals[i].time;
-            revealsAncillary[i].price = reveals[i].price;
-            revealsAncillary[i].ancillaryData = "";
-            revealsAncillary[i].salt = reveals[i].salt;
-        }
-        batchReveal(revealsAncillary);
-    }
-
     /****************************************
      *        VOTING GETTER FUNCTIONS       *
      ****************************************/
@@ -901,12 +821,7 @@ contract VotingV2 is
      * @return pendingRequests array containing identifiers of type `PendingRequest`.
      * and timestamps for all pending requests.
      */
-    function getPendingRequests()
-        external
-        view
-        override(VotingV2Interface, VotingAncillaryInterface)
-        returns (PendingRequestAncillary[] memory)
-    {
+    function getPendingRequests() external view override returns (PendingRequestAncillary[] memory) {
         uint256 blockTime = getCurrentTime();
         uint256 currentRoundId = voteTiming.computeCurrentRoundId(blockTime);
 
@@ -938,7 +853,7 @@ contract VotingV2 is
      * @notice Returns the current voting phase, as a function of the current time.
      * @return Phase to indicate the current phase. Either { Commit, Reveal, NUM_PHASES_PLACEHOLDER }.
      */
-    function getVotePhase() public view override(VotingV2Interface, VotingAncillaryInterface) returns (Phase) {
+    function getVotePhase() public view override returns (Phase) {
         return voteTiming.computeCurrentPhase(getCurrentTime());
     }
 
@@ -946,7 +861,7 @@ contract VotingV2 is
      * @notice Returns the current round ID, as a function of the current time.
      * @return uint256 representing the unique round ID.
      */
-    function getCurrentRoundId() public view override(VotingV2Interface, VotingAncillaryInterface) returns (uint256) {
+    function getCurrentRoundId() public view override returns (uint256) {
         return voteTiming.computeCurrentRoundId(getCurrentTime());
     }
 
@@ -958,13 +873,6 @@ contract VotingV2 is
         return priceRequestIds.length;
     }
 
-    // TODO: remove this function. it's just here to make the contract compile given the interfaces.
-    function retrieveRewards(
-        address voterAddress,
-        uint256 roundId,
-        PendingRequestAncillary[] memory toRetrieve
-    ) public override returns (FixedPoint.Unsigned memory) {}
-
     /****************************************
      *        OWNER ADMIN FUNCTIONS         *
      ****************************************/
@@ -974,47 +882,31 @@ contract VotingV2 is
      * @dev Can only be called by the contract owner.
      * @param newVotingAddress the newly migrated contract address.
      */
-    function setMigrated(address newVotingAddress)
-        external
-        override(VotingV2Interface, VotingAncillaryInterface)
-        onlyOwner
-    {
+    function setMigrated(address newVotingAddress) external override onlyOwner {
         migratedAddress = newVotingAddress;
     }
 
     // here for abi compatibility. remove
-    function setInflationRate(FixedPoint.Unsigned memory newInflationRate)
-        public
-        override(VotingV2Interface, VotingAncillaryInterface)
-        onlyOwner
-    {}
+    function setInflationRate(FixedPoint.Unsigned memory newInflationRate) public override onlyOwner {}
 
     /**
      * @notice Resets the Gat percentage. Note: this change only applies to rounds that have not yet begun.
      * @dev This method is public because calldata structs are not currently supported by solidity.
      * @param newGatPercentage sets the next round's Gat percentage.
      */
-    function setGatPercentage(FixedPoint.Unsigned memory newGatPercentage)
-        public
-        override(VotingV2Interface, VotingAncillaryInterface)
-        onlyOwner
-    {
+    function setGatPercentage(FixedPoint.Unsigned memory newGatPercentage) public override onlyOwner {
         require(newGatPercentage.isLessThan(1), "GAT percentage must be < 100%");
         gatPercentage = newGatPercentage;
     }
 
     // Here for abi compatibility. to be removed.
-    function setRewardsExpirationTimeout(uint256 NewRewardsExpirationTimeout)
-        public
-        override(VotingV2Interface, VotingAncillaryInterface)
-        onlyOwner
-    {}
+    function setRewardsExpirationTimeout(uint256 NewRewardsExpirationTimeout) public override onlyOwner {}
 
     /**
      * @notice Changes the slashing library used by this contract.
      * @param _newSlashingLibrary new slashing library address.
      */
-    function setSlashingLibrary(address _newSlashingLibrary) public override(VotingV2Interface) onlyOwner {
+    function setSlashingLibrary(address _newSlashingLibrary) public override onlyOwner {
         slashingLibrary = SlashingLibrary(_newSlashingLibrary);
     }
 

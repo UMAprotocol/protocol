@@ -4,7 +4,6 @@
 pragma solidity ^0.8.0;
 
 import "../../common/implementation/FixedPoint.sol";
-import "./VotingAncillaryInterface.sol";
 
 /**
  * @title Interface that voters must use to Vote on price request resolutions.
@@ -13,6 +12,12 @@ abstract contract VotingV2Interface {
     struct PendingRequest {
         bytes32 identifier;
         uint256 time;
+    }
+
+    struct PendingRequestAncillary {
+        bytes32 identifier;
+        uint256 time;
+        bytes ancillaryData;
     }
 
     // Captures the necessary data for making a commitment.
@@ -35,6 +40,32 @@ abstract contract VotingV2Interface {
         int256 salt;
     }
 
+    // Captures the necessary data for making a commitment.
+    // Used as a parameter when making batch commitments.
+    // Not used as a data structure for storage.
+    struct CommitmentAncillary {
+        bytes32 identifier;
+        uint256 time;
+        bytes ancillaryData;
+        bytes32 hash;
+        bytes encryptedVote;
+    }
+
+    // Captures the necessary data for revealing a vote.
+    // Used as a parameter when making batch reveals.
+    // Not used as a data structure for storage.
+    struct RevealAncillary {
+        bytes32 identifier;
+        uint256 time;
+        int256 price;
+        bytes ancillaryData;
+        int256 salt;
+    }
+
+    // Note: the phases must be in order. Meaning the first enum value must be the first phase, etc.
+    // `NUM_PHASES_PLACEHOLDER` is to get the number of phases. It isn't an actual phase, and it should always be last.
+    enum Phase { Commit, Reveal, NUM_PHASES_PLACEHOLDER }
+
     /**
      * @notice Commit a vote for a price request for `identifier` at `time`.
      * @dev `identifier`, `time` must correspond to a price request that's currently in the commit phase.
@@ -53,13 +84,23 @@ abstract contract VotingV2Interface {
     ) external virtual;
 
     /**
-     * @notice Submit a batch of commits in a single transaction.
-     * @dev Using `encryptedVote` is optional. If included then commitment is stored on chain.
-     * Look at `project-root/common/Constants.js` for the tested maximum number of
-     * commitments that can fit in one transaction.
-     * @param commits array of structs that encapsulate an `identifier`, `time`, `hash` and optional `encryptedVote`.
+     * @notice Commit a vote for a price request for `identifier` at `time`.
+     * @dev `identifier`, `time` must correspond to a price request that's currently in the commit phase.
+     * Commits can be changed.
+     * @dev Since transaction data is public, the salt will be revealed with the vote. While this is the system’s expected behavior,
+     * voters should never reuse salts. If someone else is able to guess the voted price and knows that a salt will be reused, then
+     * they can determine the vote pre-reveal.
+     * @param identifier uniquely identifies the committed vote. EG BTC/USD price pair.
+     * @param time unix timestamp of the price being voted on.
+     * @param ancillaryData arbitrary data appended to a price request to give the voters more info from the caller.
+     * @param hash keccak256 hash of the `price`, `salt`, voter `address`, `time`, current `roundId`, and `identifier`.
      */
-    function batchCommit(Commitment[] memory commits) public virtual;
+    function commitVote(
+        bytes32 identifier,
+        uint256 time,
+        bytes memory ancillaryData,
+        bytes32 hash
+    ) public virtual;
 
     /**
      * @notice commits a vote and logs an event with a data blob, typically an encrypted version of the vote
@@ -78,13 +119,22 @@ abstract contract VotingV2Interface {
     ) public virtual;
 
     /**
-     * @notice snapshot the current round's token balances and lock in the inflation rate and GAT.
-     * @dev This function can be called multiple times but each round will only every have one snapshot at the
-     * time of calling `_freezeRoundVariables`.
-     * @param signature  signature required to prove caller is an EOA to prevent flash loans from being included in the
-     * snapshot.
+     * @notice commits a vote and logs an event with a data blob, typically an encrypted version of the vote
+     * @dev An encrypted version of the vote is emitted in an event `EncryptedVote` to allow off-chain infrastructure to
+     * retrieve the commit. The contents of `encryptedVote` are never used on chain: it is purely for convenience.
+     * @param identifier unique price pair identifier. Eg: BTC/USD price pair.
+     * @param time unix timestamp of for the price request.
+     * @param ancillaryData  arbitrary data appended to a price request to give the voters more info from the caller.
+     * @param hash keccak256 hash of the price you want to vote for and a `int256 salt`.
+     * @param encryptedVote offchain encrypted blob containing the voters amount, time and salt.
      */
-    function snapshotCurrentRound(bytes calldata signature) external virtual;
+    function commitAndEmitEncryptedVote(
+        bytes32 identifier,
+        uint256 time,
+        bytes memory ancillaryData,
+        bytes32 hash,
+        bytes memory encryptedVote
+    ) public virtual;
 
     /**
      * @notice Reveal a previously committed vote for `identifier` at `time`.
@@ -103,30 +153,35 @@ abstract contract VotingV2Interface {
     ) public virtual;
 
     /**
-     * @notice Reveal multiple votes in a single transaction.
-     * Look at `project-root/common/Constants.js` for the tested maximum number of reveals.
-     * that can fit in one transaction.
-     * @dev For more information on reveals, review the comment for `revealVote`.
-     * @param reveals array of the Reveal struct which contains an identifier, time, price and salt.
+     * @notice Reveal a previously committed vote for `identifier` at `time`.
+     * @dev The revealed `price`, `salt`, `address`, `time`, `roundId`, and `identifier`, must hash to the latest `hash`
+     * that `commitVote()` was called with. Only the committer can reveal their vote.
+     * @param identifier voted on in the commit phase. EG BTC/USD price pair.
+     * @param time specifies the unix timestamp of the price is being voted on.
+     * @param price voted on during the commit phase.
+     * @param ancillaryData arbitrary data appended to a price request to give the voters more info from the caller.
+     * @param salt value used to hide the commitment price during the commit phase.
      */
-    function batchReveal(Reveal[] memory reveals) public virtual;
+    function revealVote(
+        bytes32 identifier,
+        uint256 time,
+        int256 price,
+        bytes memory ancillaryData,
+        int256 salt
+    ) public virtual;
 
     /**
      * @notice Gets the queries that are being voted on this round.
      * @return pendingRequests `PendingRequest` array containing identifiers
      * and timestamps for all pending requests.
      */
-    function getPendingRequests()
-        external
-        view
-        virtual
-        returns (VotingAncillaryInterface.PendingRequestAncillary[] memory);
+    function getPendingRequests() external view virtual returns (PendingRequestAncillary[] memory);
 
     /**
      * @notice Returns the current voting phase, as a function of the current time.
      * @return Phase to indicate the current phase. Either { Commit, Reveal, NUM_PHASES_PLACEHOLDER }.
      */
-    function getVotePhase() external view virtual returns (VotingAncillaryInterface.Phase);
+    function getVotePhase() external view virtual returns (Phase);
 
     /**
      * @notice Returns the current round ID, as a function of the current time.
