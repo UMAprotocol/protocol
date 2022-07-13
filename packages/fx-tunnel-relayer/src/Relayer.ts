@@ -46,7 +46,7 @@ export class Relayer {
       message: "Found MessageSent events",
       polygonEarliestBlockToQuery: this.polygonEarliestBlockToQuery,
       eventCount: messageSentEvents.length,
-      web3RequestCount
+      web3RequestCount,
     });
     // For any found events, grab its block number and check whether it has been checkpointed yet to the
     // CheckpointManager on Ethereum.
