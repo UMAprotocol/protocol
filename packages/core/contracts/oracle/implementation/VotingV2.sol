@@ -66,7 +66,6 @@ contract VotingV2 is
         // the priceRequestIds array and is incremented on each request.
         uint256 priceRequestIndex;
         bool isGovernance;
-        bool rollPriceReEnqueued;
         bytes ancillaryData;
         // Stores the slashing trackers associated with this price request.
         SlashingTracker slashingTrackers;
