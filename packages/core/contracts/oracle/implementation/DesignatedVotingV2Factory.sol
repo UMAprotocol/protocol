@@ -12,6 +12,8 @@ contract DesignatedVotingV2Factory is Withdrawable {
     address private finder;
     mapping(address => DesignatedVotingV2) public designatedVotingContracts;
 
+    event NewDesignatedVoting(address indexed designatedVoter, address indexed designatedVoting);
+
     /**
      * @notice Construct the DesignatedVotingFactory contract.
      * @param finderAddress keeps track of all contracts within the system based on their interfaceName.
@@ -28,6 +30,8 @@ contract DesignatedVotingV2Factory is Withdrawable {
     function newDesignatedVoting(address ownerAddress) external returns (DesignatedVotingV2) {
         DesignatedVotingV2 designatedVoting = new DesignatedVotingV2(finder, ownerAddress, msg.sender);
         designatedVotingContracts[msg.sender] = designatedVoting;
+        emit NewDesignatedVoting(msg.sender, address(designatedVoting));
+
         return designatedVoting;
     }
 
@@ -39,5 +43,6 @@ contract DesignatedVotingV2Factory is Withdrawable {
      */
     function setDesignatedVoting(address designatedVotingAddress) external {
         designatedVotingContracts[msg.sender] = DesignatedVotingV2(designatedVotingAddress);
+        emit NewDesignatedVoting(msg.sender, designatedVotingAddress);
     }
 }
