@@ -2649,29 +2649,6 @@ describe("VotingV2", function () {
     );
   });
 
-  it("Existing stakers cant become delegates and delegates cant stake", async function () {
-    // Account1 has a staked balance so cant be used by account2 in delegation.
-    assert(await didContractThrow(voting.methods.setDelegate(account1).send({ from: account2 })));
-
-    // Before the user accepts  the delegation they can stake but after they accept it they can no longer stake.
-    await voting.methods.setDelegate(rand).send({ from: account1 });
-    await votingToken.methods.mint(rand, toWei("100")).send({ from: accounts[0] });
-    await votingToken.methods.approve(voting.options.address, toWei("100")).send({ from: rand });
-
-    // Should be able to stake before accepting the delegation.
-    await voting.methods.stake(toWei("50")).send({ from: rand });
-
-    // After staking should no longer be able to accept the delegation as staked accounts should not be able to be delegates.
-    assert(await didContractThrow(voting.methods.setDelegator(account1).send({ from: rand })));
-
-    // Unstake and accept the delegation. After accepting the delegation can no longer stake.
-    await voting.methods.setUnstakeCoolDown(0).send({ from: accounts[0] });
-    await voting.methods.requestUnstake(toWei("50")).send({ from: rand });
-    await voting.methods.executeUnstake().send({ from: rand });
-    await voting.methods.setDelegator(account1).send({ from: rand });
-    assert(await didContractThrow(voting.methods.stake(toWei("50")).send({ from: rand })));
-  });
-
   it("Can revoke a delegate by unsetting the mapping", async function () {
     await voting.methods.setDelegate(rand).send({ from: account1 });
     await voting.methods.setDelegator(account1).send({ from: rand });
