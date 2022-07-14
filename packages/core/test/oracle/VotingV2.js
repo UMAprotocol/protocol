@@ -2664,7 +2664,7 @@ describe("VotingV2", function () {
     assert.equal(await voting.methods.delegateToStaker(rand).call(), ZERO_ADDRESS);
   });
 
-  it("Simple vote resolution events", async function () {
+  it("Emit events", async function () {
     const identifier = padRight(utf8ToHex("simple-vote"), 64);
     const time = "1000";
     let events;
