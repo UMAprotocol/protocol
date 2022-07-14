@@ -135,13 +135,10 @@ export class Relayer {
       });
     } catch (error) {
       // If the proof was already submitted, then don't emit an error level log.
-      let logLevel = "error";
-      const exitAlreadyProcessed = (error as Error)?.message.includes("EXIT_ALREADY_PROCESSED");
-      if (exitAlreadyProcessed) logLevel = "debug";
-      this.logger[logLevel]({
+      if ((error as Error)?.message.includes("EXIT_ALREADY_PROCESSED")) return;
+      this.logger.error({
         at: "Relayer#relayMessage",
         message: "Failed to submit proof to root tunnel🚨",
-        exitAlreadyProcessed,
         error,
       });
       return;
