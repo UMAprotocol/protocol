@@ -84,6 +84,11 @@ describe("SpamGuard", function () {
     // Construct the request to delete the spam votes.
     // There should be no unexecutedSpamDeletionProposalIds.
     await voting.methods.signalRequestsAsSpamForDeletion([[1, 2]]).send({ from: account1 });
+    const signalSpamEvents = await voting.getPastEvents("SignaledRequestsAsSpamForDeletion", {
+      fromBlock: 0,
+      filter: { proposalId: 0 },
+    });
+    assert.equal(signalSpamEvents[signalSpamEvents.length - 1].returnValues.spamRequestIndices[0].length, 2);
     const signalDeleteTime = await voting.methods.getCurrentTime().call();
 
     // There should now be 4 requests as the signal to delete votes as spam creates another vote.
@@ -139,6 +144,12 @@ describe("SpamGuard", function () {
     // Execute the spam deletion call.
     await moveToNextRound(voting, accounts[0]);
     await voting.methods.executeSpamDeletion(0).send({ from: account1 });
+
+    const executeSpamEvents = await voting.getPastEvents("ExecutedSpamDeletion", {
+      fromBlock: 0,
+      filter: { proposalId: 0 },
+    });
+    assert.equal(executeSpamEvents[executeSpamEvents.length - 1].returnValues.executed, true);
     // Account 1 should have gotten their bond back.
     assert.equal(await votingToken.methods.balanceOf(account1).call(), toWei("10000000")); // 10mm.
 
