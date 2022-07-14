@@ -2905,5 +2905,89 @@ describe("VotingV2", function () {
     assert.equal(slashingTracker4.totalSlashed, toWei("101909.004288"));
     assert.equal(slashingTracker4.totalCorrectVotes, toWei("36306872.32")); // Account1 + account4.
   });
-  // TODO: add a much more itterative rolling test to validate a many rolled round is correctly tracked.
+  it("Can partially sync account trackers", async function () {
+    // It should be able to partially update an accounts trackers from any account over some range of requests. This
+    // enables you to always traverse all slashing rounds, even if it would not be possible within one block. It also lets
+    // someone else pay for the slashing gas on your behalf, which might be required in the event there are many many
+    // valid requests in a particular round.
+    const identifier = padRight(utf8ToHex("slash-test"), 64);
+    const time = "420";
+    await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
+    const salt = getRandomSignedInt();
+    const price = "69696969";
+    let baseRequest = { salt, roundId: "0", identifier };
+
+    // Do one price request and resolution before hand to get an account to have out dated slashing trackers over the
+    // subsequent requests. Then, do 5 follow on votes but dont vote from this account. This account is now far behind
+    // with their slashing tracker updates. we should be able to update over a given range. Vote from account2 in the loop.
+    await voting.methods.requestPrice(identifier, time).send({ from: registeredContract });
+    await moveToNextRound(voting, accounts[0]); // Move into the commit phase.
+
+    baseRequest.roundId = (await voting.methods.getCurrentRoundId().call()).toString();
+    const hash1 = computeVoteHash({ ...baseRequest, price, account: account1, time: time });
+    await voting.methods.commitVote(identifier, time, hash1).send({ from: account1 });
+
+    await moveToNextPhase(voting, accounts[0]);
+    await voting.methods.revealVote(identifier, time, price, salt).send({ from: account1 });
+
+    await moveToNextRound(voting, accounts[0]);
+
+    for (let round = 1; round < 6; round++) {
+      await voting.methods.requestPrice(identifier, time + round).send({ from: registeredContract });
+      await moveToNextRound(voting, accounts[0]); // Move into the commit phase.
+      baseRequest.roundId = (await voting.methods.getCurrentRoundId().call()).toString();
+      const hash1 = computeVoteHash({ ...baseRequest, price, account: account2, time: time + round });
+      await voting.methods.commitVote(identifier, time + round, hash1).send({ from: account2 });
+      await moveToNextPhase(voting, accounts[0]);
+      await voting.methods.revealVote(identifier, time + round, price, salt).send({ from: account2 });
+      await moveToNextRound(voting, accounts[0]);
+    }
+
+    // The account1 who participated in the first round should should have their slashing tracker stuck at index 0 (they
+    // committed and revealed but never did anything again so have not updated) and account2 should be at 5 (missing)
+    // the last request number as they've not updated their trackers.
+    assert.equal((await voting.methods.voterStakes(account1).call()).lastRequestIndexConsidered, 0);
+    assert.equal((await voting.methods.voterStakes(account2).call()).lastRequestIndexConsidered, 5);
+
+    // Now, check we can partially sync their trackers.
+    await voting.methods.updateTrackersRange(account1, 0, 3).send({ from: account1 });
+    assert.equal((await voting.methods.voterStakes(account1).call()).lastRequestIndexConsidered, 3);
+
+    // We can consider the account1 activeStake by looking at the partial update to their slashing trackers. They were
+    // the only account to vote correctly the first time and we've updated to request index 3. They should have received
+    // 68mm * 0.0016 on the first request then progressively lost 0.0016 for the following 2 requests such that
+    // (32mm + 68mm * 0.0016) * (1 - 0.0016) * (1 - 0.0016) = 32006134.038528
+    assert.equal((await voting.methods.voterStakes(account1).call()).activeStake, toWei("32006134.038528"));
+
+    // Now, try sync an invalid index. We should not be able to sync below the current fromIndex. try 2 (2<3)
+    assert(await didContractThrow(voting.methods.updateTrackersRange(account1, 2, 5).send({ from: accounts[0] })));
+    // You should not be able to make the start index smaller (or even equal to) the end index.
+    assert(await didContractThrow(voting.methods.updateTrackersRange(account1, 5, 3).send({ from: accounts[0] })));
+    assert(await didContractThrow(voting.methods.updateTrackersRange(account1, 3, 3).send({ from: accounts[0] })));
+    // Equally, should revert on an invalid toIndex.
+    assert(await didContractThrow(voting.methods.updateTrackersRange(account1, 3, 8).send({ from: accounts[0] })));
+
+    // However, we can update just one index.
+    await voting.methods.updateTrackersRange(account1, 3, 4).send({ from: account1 });
+    assert.equal((await voting.methods.voterStakes(account1).call()).lastRequestIndexConsidered, 4);
+
+    // Slashing should now be 32006134.0385 slashed again at 0.0016 = 32006134.0385 * (1 - 0.0016) = 31954924.2240663552
+    assert.equal((await voting.methods.voterStakes(account1).call()).activeStake, toWei("31954924.2240663552"));
+
+    // Finally, can update the entire remaining range.
+    await voting.methods.updateTrackersRange(account1, 4, 6).send({ from: account1 });
+
+    // Slashing should now be 31954924.2240663552 (1 - 0.0016) * (1 - 0.0016)= 31852750.2712.
+    assert.equal((await voting.methods.voterStakes(account1).call()).activeStake, toBN("31852750271155356473229312"));
+
+    // Finally, test updating the other voter who is short exactly one tracker.
+    const activeStakeBefore = (await voting.methods.voterStakes(account2).call()).activeStake;
+    await voting.methods.updateTrackersRange(account2, 5, 6).send({ from: account2 });
+    assert.equal(
+      (await voting.methods.voterStakes(account2).call()).activeStake,
+      toBN(activeStakeBefore)
+        .add(toWei("100000000").sub(toBN(activeStakeBefore)).mul(toWei("0.0016")).div(toWei("1")))
+        .toString()
+    );
+  });
 });
