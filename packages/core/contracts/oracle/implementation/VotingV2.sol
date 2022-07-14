@@ -4,7 +4,6 @@
 pragma solidity ^0.8.0;
 
 import "../../common/implementation/AncillaryData.sol";
-import "../../common/implementation/FixedPoint.sol"; // TODO: remove this from this contract.
 import "../../common/implementation/MultiCaller.sol";
 
 import "../interfaces/FinderInterface.sol";
@@ -14,7 +13,7 @@ import "../interfaces/OracleGovernanceInterface.sol";
 import "../interfaces/VotingV2Interface.sol";
 import "../interfaces/IdentifierWhitelistInterface.sol";
 import "./Registry.sol";
-import "./ResultComputation.sol";
+import "./ResultComputationV2.sol";
 import "./VoteTimingV2.sol";
 import "./Staker.sol";
 import "./Constants.sol";
@@ -39,10 +38,9 @@ contract VotingV2 is
     VotingV2Interface,
     MultiCaller
 {
-    using FixedPoint for FixedPoint.Unsigned;
     using SafeMath for uint256;
     using VoteTimingV2 for VoteTimingV2.Data;
-    using ResultComputation for ResultComputation.Data;
+    using ResultComputationV2 for ResultComputationV2.Data;
 
     /****************************************
      *        VOTING DATA STRUCTURES        *
@@ -75,7 +73,7 @@ contract VotingV2 is
         // Maps (voterAddress) to their submission.
         mapping(address => VoteSubmission) voteSubmissions;
         // The data structure containing the computed voting results.
-        ResultComputation.Data resultComputation;
+        ResultComputationV2.Data resultComputation;
     }
 
     struct VoteSubmission {
@@ -87,7 +85,7 @@ contract VotingV2 is
     }
 
     struct Round {
-        FixedPoint.Unsigned gatPercentage; // Gat rate set for this round.
+        uint256 gatPercentage; // Gat rate set for this round.
         uint256 cumulativeActiveStakeAtRound; // Total staked tokens at the start of the round.
     }
 
@@ -127,7 +125,7 @@ contract VotingV2 is
 
     // Percentage of the total token supply that must be used in a vote to
     // create a valid price resolution. 1 == 100%.
-    FixedPoint.Unsigned public gatPercentage;
+    uint256 public gatPercentage;
 
     // Reference to the Finder.
     FinderInterface private immutable finder;
@@ -244,14 +242,14 @@ contract VotingV2 is
         uint256 _unstakeCoolDown,
         uint256 _phaseLength,
         uint256 _minRollToNextRoundLength,
-        FixedPoint.Unsigned memory _gatPercentage,
+        uint256 _gatPercentage,
         address _votingToken,
         address _finder,
         address _timerAddress,
         address _slashingLibrary
     ) Staker(_emissionRate, _unstakeCoolDown, _votingToken, _timerAddress) {
         voteTiming.init(_phaseLength, _minRollToNextRoundLength);
-        require(_gatPercentage.isLessThanOrEqual(1), "GAT percentage must be <= 100%");
+        require(_gatPercentage <= 1e18, "GAT percentage must be <= 100%");
         gatPercentage = _gatPercentage;
         finder = FinderInterface(_finder);
         slashingLibrary = SlashingLibrary(_slashingLibrary);
@@ -315,7 +313,7 @@ contract VotingV2 is
             uint256 priceRequestIdsLength = priceRequestIds.length;
             PriceRequest storage priceRequest = priceRequests[priceRequestIds[requestIndex]];
 
-            // If the request status is not resolved then we are currently in the voting round assoicated with this
+            // If the request status is not resolved then we are currently in the voting round associated with this
             // request and cant apply any slashing to this request. Note that we dont need to worry about rolled votes
             // here as this is deal with in the _updateCumulativeSlashingTrackers function by adding the request index
             // to the deletedRequests and so we'd have skipped it for free from this mapping.
@@ -376,7 +374,11 @@ contract VotingV2 is
         // the associated slashing rates as a function of the total staked, total votes and total correct votes. Note
         // that this method in almost all cases will only need to traverse one request as slashing trackers are updated
         // on every commit and so it is not too computationally inefficient.
-        for (uint256 requestIndex = lastRequestIndexConsidered; requestIndex < priceRequestIds.length; requestIndex++) {
+        for (
+            uint256 requestIndex = lastRequestIndexConsidered;
+            requestIndex < priceRequestIds.length;
+            requestIndex = unsafe_inc(requestIndex)
+        ) {
             if (deletedRequests[requestIndex] != 0) requestIndex = deletedRequests[requestIndex] + 1;
             if (requestIndex > priceRequestIds.length - 1) break; // This happens if the last element was a rolled vote.
 
@@ -402,24 +404,20 @@ contract VotingV2 is
                 break;
             }
 
-            uint256 totalVotes = voteInstance.resultComputation.totalVotes.rawValue;
-            uint256 totalCorrectVotes = voteInstance.resultComputation.getTotalCorrectlyVotedTokens().rawValue;
+            uint256 totalVotes = voteInstance.resultComputation.totalVotes;
+            uint256 totalCorrectVotes = voteInstance.resultComputation.getTotalCorrectlyVotedTokens();
             uint256 stakedAtRound = rounds[priceRequest.lastVotingRound].cumulativeActiveStakeAtRound;
 
-            uint256 wrongVoteSlashPerToken =
-                priceRequest.isGovernance
-                    ? slashingLibrary.calcWrongVoteSlashPerTokenGovernance(stakedAtRound, totalVotes, totalCorrectVotes)
-                    : slashingLibrary.calcWrongVoteSlashPerToken(stakedAtRound, totalVotes, totalCorrectVotes);
-            uint256 noVoteSlashPerToken =
-                slashingLibrary.calcNoVoteSlashPerToken(stakedAtRound, totalVotes, totalCorrectVotes);
+            (uint256 wrongVoteSlash, uint256 noVoteSlash) =
+                slashingLibrary.calcSlashing(stakedAtRound, totalVotes, totalCorrectVotes, priceRequest.isGovernance);
 
             uint256 totalSlashed =
-                ((noVoteSlashPerToken * (stakedAtRound - totalVotes)) / 1e18) +
-                    ((wrongVoteSlashPerToken * (totalVotes - totalCorrectVotes)) / 1e18);
+                ((noVoteSlash * (stakedAtRound - totalVotes)) / 1e18) +
+                    ((wrongVoteSlash * (totalVotes - totalCorrectVotes)) / 1e18);
 
             priceRequest.slashingTrackers = SlashingTracker(
-                wrongVoteSlashPerToken,
-                noVoteSlashPerToken,
+                wrongVoteSlash,
+                noVoteSlash,
                 totalSlashed,
                 totalCorrectVotes
             );
@@ -792,7 +790,7 @@ contract VotingV2 is
 
         // Get the voter's snapshotted balance. Since balances are returned pre-scaled by 10**18, we can directly
         // initialize the Unsigned value with the returned uint.
-        FixedPoint.Unsigned memory balance = FixedPoint.Unsigned(voterStakes[voter].activeStake);
+        uint256 balance = voterStakes[voter].activeStake;
 
         // Set the voter's submission.
         voteSubmission.revealHash = keccak256(abi.encode(price));
@@ -801,7 +799,7 @@ contract VotingV2 is
         voteInstance.resultComputation.addVote(price, balance);
 
         // TODO: both this event and the commit event should indicate if there was vote delegation applied.
-        emit VoteRevealed(msg.sender, currentRoundId, identifier, time, price, ancillaryData, balance.rawValue);
+        emit VoteRevealed(msg.sender, currentRoundId, identifier, time, price, ancillaryData, balance);
     }
 
     // Overloaded method to enable short term backwards compatibility. Will be deprecated in the next DVM version.
@@ -945,16 +943,13 @@ contract VotingV2 is
         migratedAddress = newVotingAddress;
     }
 
-    // here for abi compatibility. remove
-    function setInflationRate(FixedPoint.Unsigned memory newInflationRate) public override onlyOwner {}
-
     /**
      * @notice Resets the Gat percentage. Note: this change only applies to rounds that have not yet begun.
      * @dev This method is public because calldata structs are not currently supported by solidity.
      * @param newGatPercentage sets the next round's Gat percentage.
      */
-    function setGatPercentage(FixedPoint.Unsigned memory newGatPercentage) public override onlyOwner {
-        require(newGatPercentage.isLessThan(1), "GAT percentage must be < 100%");
+    function setGatPercentage(uint256 newGatPercentage) public override onlyOwner {
+        require(newGatPercentage < 1e18, "GAT percentage must be < 100%");
         gatPercentage = newGatPercentage;
     }
 
@@ -1024,7 +1019,7 @@ contract VotingV2 is
 
     function _freezeRoundVariables(uint256 roundId) private {
         // Only freeze the round if this is the first request in the round.
-        if (rounds[roundId].gatPercentage.rawValue == 0) {
+        if (rounds[roundId].gatPercentage == 0) {
             // Set the round gat percentage to the current global gat rate.
             rounds[roundId].gatPercentage = gatPercentage;
 
@@ -1058,15 +1053,15 @@ contract VotingV2 is
         );
     }
 
-    function _computeGat(uint256 roundId) internal view returns (FixedPoint.Unsigned memory) {
+    function _computeGat(uint256 roundId) internal view returns (uint256) {
         // Nothing staked at the round  - return max value to err on the side of caution.
-        if (rounds[roundId].cumulativeActiveStakeAtRound == 0) return FixedPoint.Unsigned(UINT_MAX);
+        if (rounds[roundId].cumulativeActiveStakeAtRound == 0) return type(uint256).max;
 
         // Grab the cumulative staked at the voting round.
-        FixedPoint.Unsigned memory stakedAtRound = FixedPoint.Unsigned(rounds[roundId].cumulativeActiveStakeAtRound);
+        uint256 stakedAtRound = rounds[roundId].cumulativeActiveStakeAtRound;
 
         // Multiply the total supply at the cumulative staked by the gatPercentage to get the GAT in number of tokens.
-        return stakedAtRound.mul(rounds[roundId].gatPercentage);
+        return (stakedAtRound * rounds[roundId].gatPercentage) / 1e18;
     }
 
     function _getRequestStatus(PriceRequest storage priceRequest, uint256 currentRoundId)
