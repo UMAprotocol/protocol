@@ -38,7 +38,7 @@ describe("VotingV2", function () {
   let accounts, account1, account2, account3, account4, rand;
 
   const setNewGatPercentage = async (gatPercentage) => {
-    await voting.methods.setGatPercentage({ rawValue: gatPercentage.toString() }).send({ from: accounts[0] });
+    return await voting.methods.setGatPercentage({ rawValue: gatPercentage.toString() }).send({ from: accounts[0] });
   };
 
   beforeEach(async function () {
@@ -908,6 +908,18 @@ describe("VotingV2", function () {
       );
     });
 
+    await assertEventEmitted(
+      await setNewGatPercentage(web3.utils.toWei("0.06", "ether")),
+      voting,
+      "GatPercentageChanged"
+    );
+
+    await assertEventEmitted(
+      await voting.methods.setSpamDeletionProposalBond(toWei("0.1")).send({ from: accounts[0] }),
+      voting,
+      "SpamDeletionProposalBondChanged"
+    );
+
     await moveToNextRound(voting, accounts[0]);
     currentRoundId = await voting.methods.getCurrentRoundId().call();
 
@@ -958,6 +970,22 @@ describe("VotingV2", function () {
     await voting.methods.revealVote(identifier, time, price, salt).send({ from: account1 });
     await voting.methods.revealVote(identifier, time, wrongPrice, salt).send({ from: account4 });
     await moveToNextRound(voting, accounts[0]);
+
+    result = await voting.methods.updateTrackers(account1).send({ from: account1 });
+
+    await assertEventEmitted(result, voting, "VoterSlashed", (ev) => {
+      return ev.numTokens > 0;
+    });
+
+    await assertEventEmitted(result, voting, "CumulativeSlashingTrackersUpdated");
+
+    result = await voting.methods.setMigrated(migratedVoting).send({ from: accounts[0] });
+    await assertEventEmitted(result, voting, "VotingContractMigrated", (ev) => {
+      return ev.newAddress == migratedVoting;
+    });
+
+    result = await voting.methods.setSlashingLibrary(ZERO_ADDRESS).send({ from: accounts[0] });
+    await assertEventEmitted(result, voting, "SlashingLibraryChanged");
   });
 
   it("Commit and persist the encrypted price", async function () {
@@ -2662,93 +2690,6 @@ describe("VotingV2", function () {
     // Remove the delegation from the delegate.
     await voting.methods.setDelegator(ZERO_ADDRESS).send({ from: rand });
     assert.equal(await voting.methods.delegateToStaker(rand).call(), ZERO_ADDRESS);
-  });
-
-  it("Emit events", async function () {
-    const identifier = padRight(utf8ToHex("simple-vote"), 64);
-    const time = "1000";
-    let events;
-
-    const assertVotingEventEmitted = async (eventName, filters) => {
-      const evts = await voting.getPastEvents(eventName, { fromBlock: 0, filter: filters });
-      assert(evts.length > 0);
-      return evts;
-    };
-
-    await assertVotingEventEmitted("Staked", { voter: account1 });
-
-    // Make the Oracle support this identifier.
-    await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
-
-    // Request a price and move to the next round where that will be voted on.
-    await voting.methods.requestPrice(identifier, time).send({ from: registeredContract });
-
-    events = await assertVotingEventEmitted("PriceRequestAdded", { identifier, time });
-
-    assert.equal(events[events.length - 1].returnValues.isGovernance, false);
-
-    await setNewGatPercentage(web3.utils.toWei("0.06", "ether"));
-    events = await assertVotingEventEmitted("GatPercentageChanged", { identifier, time });
-    assert(events[events.length - 1].returnValues.newGatPercentage.rawValue === web3.utils.toWei("0.06"));
-
-    await voting.methods.setSpamDeletionProposalBond(toWei("0.1")).send({ from: accounts[0] });
-    events = await assertVotingEventEmitted("SpamDeletionProposalBondChanged", { identifier, time });
-    assert(events[events.length - 1].returnValues.newBond === web3.utils.toWei("0.1"));
-
-    const price = 123;
-    const salt = getRandomSignedInt();
-
-    await moveToNextRound(voting, accounts[0]);
-    const roundId = (await voting.methods.getCurrentRoundId().call()).toString();
-
-    // Commit vote.
-    const hash = computeVoteHash({ price, salt, account: account1, time, roundId, identifier });
-    await voting.methods.commitVote(identifier, time, hash).send({ from: accounts[0] });
-
-    // Reveal the vote.
-    await moveToNextPhase(voting, accounts[0]);
-
-    await voting.methods.revealVote(identifier, time, price, salt).send({ from: accounts[0] });
-
-    // Should resolve to the selected price since there was only one voter (100% for the mode) and the voter had enough
-    // tokens to exceed the GAT.
-    await moveToNextRound(voting, accounts[0]);
-    assert.equal(
-      (await voting.methods.getPrice(identifier, time).call({ from: registeredContract })).toString(),
-      price.toString()
-    );
-
-    await voting.methods.updateTrackers(account1).send({ from: account1 });
-
-    events = await assertVotingEventEmitted("VoterSlashed");
-    assert(Number(events[events.length - 1].returnValues.numTokens) > 0);
-
-    await assertVotingEventEmitted("CumulativeSlashingTrackersUpdated");
-
-    await voting.methods.setUnstakeCoolDown(0).send({ from: account1 });
-    events = await assertVotingEventEmitted("SetNewUnstakeCooldown");
-    assert(events[0].returnValues.newUnstakeCooldown === "0");
-
-    await voting.methods.setSlashingLibrary(ZERO_ADDRESS).send({ from: accounts[0] });
-    await assertVotingEventEmitted("SlashingLibraryChanged");
-
-    await voting.methods.withdrawRewards().send({ from: account1 });
-    await voting.methods.requestUnstake(toWei("32000000")).send({ from: account1 });
-    await voting.methods.executeUnstake().send({ from: account1 });
-
-    // Staker
-    await voting.methods.setEmissionRate(toWei("0.1")).send({ from: accounts[0] });
-    await assertVotingEventEmitted("RequestedUnstake", { voter: account1 });
-    await assertVotingEventEmitted("ExecutedUnstake", { voter: account1 });
-    await assertVotingEventEmitted("WithdrawnRewards", { voter: account1 });
-    await assertVotingEventEmitted("UpdatedReward", { voter: account1 });
-    await assertVotingEventEmitted("UpdatedActiveStake", { voter: account1 });
-    await assertVotingEventEmitted("SetNewEmissionRate", { voter: account1 });
-
-    // Migration
-    await voting.methods.setMigrated(migratedVoting).send({ from: accounts[0] });
-    const migrationEvents = await assertVotingEventEmitted("VotingContractMigrated");
-    assert.equal(migrationEvents[migrationEvents.length - 1].returnValues.newAddress, migratedVoting);
   });
 });
 
