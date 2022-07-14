@@ -142,9 +142,9 @@ contract Staker is StakerInterface, Ownable, Testable {
 
     function _updateActiveStake(address voterAddress) internal {
         if (inActiveReveal()) return;
-        voterStakes[voterAddress].activeStake += voterStakes[voterAddress].pendingStake;
         cumulativeActiveStake += voterStakes[voterAddress].pendingStake;
         cumulativePendingStake -= voterStakes[voterAddress].pendingStake;
+        voterStakes[voterAddress].activeStake += voterStakes[voterAddress].pendingStake;
         voterStakes[voterAddress].pendingStake = 0;
     }
 
