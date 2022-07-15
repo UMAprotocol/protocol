@@ -286,7 +286,7 @@ contract VotingV2 is
      ****************************************/
 
     /**
-     * @notice Updates the voter's trackers for staking and voting.
+     * @notice Updates the voter's trackers for staking and slashing.
      * @dev This function can be called by anyone, but it is not necessary for the contract to work because
      * it is automatically run in the other functions.
      * @param voterAddress address of the voter to update the trackers for.
