@@ -89,6 +89,7 @@ describe("VotingV2", function () {
       await didContractThrow(
         VotingV2.new(
           "42069", // emissionRate
+          toWei("10000"), // spamDeletionProposalBond
           "420420", // Unstake cooldown
           69696969, // PhaseLength
           7200, // minRollToNextRoundLength
@@ -1180,6 +1181,7 @@ describe("VotingV2", function () {
     // Deploy our own voting because this test case will migrate it.
     const newVoting = await VotingV2.new(
       "640000000000000000", // emission rate
+      toWei("10000"), // spamDeletionProposalBond
       60 * 60 * 24 * 30, // unstakeCooldown
       "86400", // phase length
       7200, // minRollToNextRoundLength
