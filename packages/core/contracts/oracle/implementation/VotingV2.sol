@@ -319,7 +319,7 @@ contract VotingV2 is
         return priceRequestIds.length - (inActiveReveal() ? 0 : pendingPriceRequests.length);
     }
 
-    // Checks if we are in a voting reveal phase.
+    // Checks if we are in an active voting reveal phase (currently revealing votes).
     function inActiveReveal() public view override returns (bool) {
         return (currentActiveRequests() && getVotePhase() == Phase.Reveal);
     }
