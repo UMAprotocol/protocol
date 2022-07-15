@@ -908,9 +908,12 @@ describe("VotingV2", function () {
     });
 
     await assertEventEmitted(
-      await setNewGatPercentage(web3.utils.toWei("0.06", "ether")),
+      await voting.methods.setGatPercentage(web3.utils.toWei("0.06", "ether")).send({ from: accounts[0] }),
       voting,
-      "GatPercentageChanged"
+      "GatPercentageChanged",
+      (ev) => {
+        return ev.newGatPercentage == web3.utils.toWei("0.06", "ether");
+      }
     );
 
     await assertEventEmitted(
@@ -973,10 +976,8 @@ describe("VotingV2", function () {
     result = await voting.methods.updateTrackers(account1).send({ from: account1 });
 
     await assertEventEmitted(result, voting, "VoterSlashed", (ev) => {
-      return ev.numTokens > 0;
+      return ev.slashedTokens != "0" && ev.postActiveStake != "0" && ev.voter != "";
     });
-
-    await assertEventEmitted(result, voting, "CumulativeSlashingTrackersUpdated");
 
     result = await voting.methods.setMigrated(migratedVoting).send({ from: accounts[0] });
     await assertEventEmitted(result, voting, "VotingContractMigrated", (ev) => {
@@ -1014,7 +1015,7 @@ describe("VotingV2", function () {
       .send({ from: accounts[0] });
     await assertEventEmitted(result, voting, "EncryptedVote", (ev) => {
       return (
-        ev.voter.toString() === account1 &&
+        ev.caller.toString() === account1 &&
         ev.roundId.toString() === roundId.toString() &&
         web3.utils.hexToUtf8(ev.identifier) == web3.utils.hexToUtf8(identifier) &&
         ev.time.toString() == time &&
@@ -2547,6 +2548,7 @@ describe("VotingV2", function () {
     let roundId = (await voting.methods.getCurrentRoundId().call()).toString();
     let baseRequest = { salt, roundId, identifier };
     const hash1 = computeVoteHash({ ...baseRequest, price, account: account3, time });
+    console.log("1");
     await voting.methods.commitVote(identifier, time, hash1).send({ from: account3 });
 
     // Advance time a small amount.
@@ -2558,6 +2560,7 @@ describe("VotingV2", function () {
     // enter during a voting round (but before the reveal phase) and still vote. Account4 does not vote.
     await voting.methods.stake(toWei("32000000")).send({ from: account1 });
     const hash2 = computeVoteHash({ ...baseRequest, price, account: account1, time });
+    console.log("1");
     await voting.methods.commitVote(identifier, time, hash2).send({ from: account1 });
 
     await moveToNextPhase(voting, accounts[0]); // Move into the reveal phase.
@@ -2610,9 +2613,11 @@ describe("VotingV2", function () {
     roundId = (await voting.methods.getCurrentRoundId().call()).toString();
     baseRequest = { salt, roundId, identifier };
     const hash3 = computeVoteHash({ ...baseRequest, price, account: account1, time: time + 1 });
+    console.log("1");
     await voting.methods.commitVote(identifier, time + 1, hash3).send({ from: account1 });
 
     const hash4 = computeVoteHash({ ...baseRequest, price, account: account2, time: time + 1 });
+    console.log("1");
     await voting.methods.commitVote(identifier, time + 1, hash4).send({ from: account2 });
 
     await moveToNextPhase(voting, accounts[0]); // Move into the reveal phase.

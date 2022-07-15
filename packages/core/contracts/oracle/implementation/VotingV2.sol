@@ -229,13 +229,13 @@ contract VotingV2 is
 
     event VotingContractMigrated(address newAddress);
 
-    event GatPercentageChanged(FixedPoint.Unsigned newGatPercentage);
+    event GatPercentageChanged(uint256 newGatPercentage);
 
     event SlashingLibraryChanged(address newAddress);
 
     event SpamDeletionProposalBondChanged(uint256 newBond);
 
-    event VoterSlashed(address indexed voter, int256 numTokens);
+    event VoterSlashed(address indexed voter, int256 slashedTokens, uint256 postActiveStake);
 
     event SignaledRequestsAsSpamForDeletion(
         uint256 indexed proposalId,
@@ -344,7 +344,7 @@ contract VotingV2 is
             // case break the loop and stop iterating (all subsequent requests will be in the same state by default) or
             // b) we have gotten to a rolled vote in which case we need to update some internal trackers for this vote
             // and set this within the deletedRequests mapping so the next time we hit this it is skipped.
-            if (!_resolvePriceRequest(priceRequest, voteInstance, currentRoundId)) {
+            if (!_priceRequestResolved(priceRequest, voteInstance, currentRoundId)) {
                 // If the request is not resolved and the lastVotingRound less than the current round then the vote
                 // must have been rolled. In this case, update the internal trackers for this vote.
                 if (priceRequest.lastVotingRound < currentRoundId) {
@@ -401,20 +401,24 @@ contract VotingV2 is
                 indexTo > nextRequestIndex &&
                 priceRequest.lastVotingRound != priceRequests[priceRequestIds[nextRequestIndex]].lastVotingRound
             ) {
-                applySlashToVoter(slash, voterStake);
+                applySlashToVoter(slash, voterStake, voterAddress);
                 slash = 0;
             }
             voterStake.lastRequestIndexConsidered = requestIndex + 1;
         }
 
-        if (slash != 0) applySlashToVoter(slash, voterStake);
+        if (slash != 0) applySlashToVoter(slash, voterStake, voterAddress);
     }
 
-    function applySlashToVoter(int256 slash, VoterStake storage voterStake) internal {
+    function applySlashToVoter(
+        int256 slash,
+        VoterStake storage voterStake,
+        address voterAddress
+    ) internal {
         if (slash + int256(voterStake.activeStake) > 0)
             voterStake.activeStake = uint256(int256(voterStake.activeStake) + slash);
         else voterStake.activeStake = 0;
-        emit VoterSlashed(voterAddress, slash);
+        emit VoterSlashed(voterAddress, slash, voterStake.activeStake);
     }
 
     /****************************************
@@ -1054,7 +1058,7 @@ contract VotingV2 is
         }
     }
 
-    function _resolvePriceRequest(
+    function _priceRequestResolved(
         PriceRequest storage priceRequest,
         VoteInstance storage voteInstance,
         uint256 currentRoundId
