@@ -827,12 +827,10 @@ contract VotingV2 is
     }
 
     function setDelegate(address delegate) public {
-        require(getVoterStake(delegate) == 0, "Cant delegate to existing staker");
         voterStakes[msg.sender].delegate = delegate;
     }
 
     function setDelegator(address delegator) public {
-        require(getVoterStake(msg.sender) == 0, "Cant become delegate if staker");
         delegateToStaker[msg.sender] = delegator;
     }
 
@@ -840,12 +838,12 @@ contract VotingV2 is
      *        VOTING GETTER FUNCTIONS       *
      ****************************************/
 
-    function getVoterFromDelegate(address) public view returns (address) {
+    function getVoterFromDelegate(address caller) public view returns (address) {
         if (
-            delegateToStaker[msg.sender] != address(0) && // The delegate chose to be a delegate for the staker.
-            voterStakes[delegateToStaker[msg.sender]].delegate == msg.sender // The staker chose the delegate.
-        ) return delegateToStaker[msg.sender];
-        else return msg.sender;
+            delegateToStaker[caller] != address(0) && // The delegate chose to be a delegate for the staker.
+            voterStakes[delegateToStaker[caller]].delegate == caller // The staker chose the delegate.
+        ) return delegateToStaker[caller];
+        else return caller;
     }
 
     /**
