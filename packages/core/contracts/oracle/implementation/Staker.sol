@@ -55,7 +55,6 @@ contract Staker is StakerInterface, Ownable, Testable {
 
     // Pulls tokens from users wallet and stakes them.
     function stake(uint256 amount) public override {
-        require(delegateToStaker[msg.sender] == address(0), "Staker cant be a delegate");
         _updateTrackers(msg.sender);
         if (inActiveReveal()) {
             voterStakes[msg.sender].pendingStake += amount;

@@ -118,38 +118,33 @@ Total For All Voters: ${sum}
     const winningPrice = 456;
     const salt = getRandomSignedInt();
 
-    const commitVoteCosts = (
-      await Promise.all(
-        voters.map((voter) =>
-          Promise.all(
-            requests.map(async ({ identifier, time }) => {
-              const hash = computeVoteHash({ price: winningPrice, salt, account: voter, time, roundId, identifier });
-              const { gasUsed } = await voting.methods.commitVote(identifier, time, hash).send({ from: voter });
-              return gasUsed;
-            })
-          )
-        )
-      )
-    ).flat();
+    const commitVoteCosts = await Promise.all(
+      voters.map(async (voter) => {
+        const commits = requests.map(({ identifier, time }) => {
+          const hash = computeVoteHash({ price: winningPrice, salt, account: voter, time, roundId, identifier });
+          return { hash, identifier, time, encryptedVote: "0x" };
+        });
+        const { gasUsed } = await voting.methods.batchCommit(commits).send({ from: voter });
+        return gasUsed;
+      })
+    );
 
     // Reveal the votes.
     await moveToNextPhase(voting, accounts[0]);
     await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
 
-    const revealVoteCosts = (
-      await Promise.all(
-        voters.map((voter) =>
-          Promise.all(
-            requests.map(async ({ identifier, time }) => {
-              const { gasUsed } = await voting.methods
-                .revealVote(identifier, time, winningPrice, salt)
-                .send({ from: voter });
-              return gasUsed;
-            })
-          )
-        )
-      )
-    ).flat();
+    const revealVoteCosts = await Promise.all(
+      voters.map(async (voter) => {
+        const reveals = requests.map(({ identifier, time }) => ({
+          identifier,
+          time,
+          price: winningPrice,
+          salt: salt.toString(),
+        }));
+        const { gasUsed } = await voting.methods.batchReveal(reveals).send({ from: voter });
+        return gasUsed;
+      })
+    );
 
     // Price should resolve to the one that 2 and 3 voted for.
     await moveToNextRound(voting, accounts[0]);

@@ -324,7 +324,7 @@ contract VotingV2 is
         int256 slash = 0;
         for (uint256 requestIndex = indexFrom; requestIndex < indexTo; requestIndex = unsafe_inc(requestIndex)) {
             if (deletedRequests[requestIndex] != 0) requestIndex = deletedRequests[requestIndex] + 1;
-            if (requestIndex > priceRequestIds.length - 1) break; // This happens if the last element was a rolled vote.
+            if (requestIndex > indexTo - 1) break; // This happens if the last element was a rolled vote.
             PriceRequest storage priceRequest = priceRequests[priceRequestIds[requestIndex]];
             VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
 
@@ -347,11 +347,13 @@ contract VotingV2 is
                 break;
             }
 
+            uint256 totalCorrectVotes = voteInstance.resultComputation.getTotalCorrectlyVotedTokens();
+
             (uint256 wrongVoteSlash, uint256 noVoteSlash) =
                 slashingLibrary.calcSlashing(
                     rounds[priceRequest.lastVotingRound].cumulativeActiveStakeAtRound,
                     voteInstance.resultComputation.totalVotes,
-                    voteInstance.resultComputation.getTotalCorrectlyVotedTokens(),
+                    totalCorrectVotes,
                     priceRequest.isGovernance
                 );
 
@@ -359,9 +361,7 @@ contract VotingV2 is
                 ((noVoteSlash *
                     (rounds[priceRequest.lastVotingRound].cumulativeActiveStakeAtRound -
                         voteInstance.resultComputation.totalVotes)) / 1e18) +
-                    ((wrongVoteSlash *
-                        (voteInstance.resultComputation.totalVotes -
-                            voteInstance.resultComputation.getTotalCorrectlyVotedTokens())) / 1e18);
+                    ((wrongVoteSlash * (voteInstance.resultComputation.totalVotes - totalCorrectVotes)) / 1e18);
 
             // The voter did not reveal or did not commit. Slash at noVote rate.
             if (voteInstance.voteSubmissions[voterAddress].revealHash == 0)
@@ -374,11 +374,7 @@ contract VotingV2 is
                 slash -= int256((voterStake.activeStake * wrongVoteSlash) / 1e18);
 
                 // The voter voted correctly. Receive a pro-rate share of the other voters slashed amounts as a reward.
-            else
-                slash += int256(
-                    (((voterStake.activeStake * totalSlashed)) /
-                        voteInstance.resultComputation.getTotalCorrectlyVotedTokens())
-                );
+            else slash += int256((((voterStake.activeStake * totalSlashed)) / totalCorrectVotes));
 
             // If this is not the last price request to apply and the next request in the batch is from a subsequent
             // round then apply the slashing now. Else, do nothing and apply the slashing after the loop concludes.
@@ -390,7 +386,7 @@ contract VotingV2 is
                 deletedRequests[requestIndex + 1] != 0 ? deletedRequests[requestIndex + 1] + 1 : requestIndex + 1;
             if (
                 slash != 0 &&
-                priceRequestIds.length > nextRequestIndex &&
+                indexTo > nextRequestIndex &&
                 priceRequest.lastVotingRound != priceRequests[priceRequestIds[nextRequestIndex]].lastVotingRound
             ) {
                 applySlashToVoter(slash, voterStake);
@@ -824,12 +820,10 @@ contract VotingV2 is
     }
 
     function setDelegate(address delegate) public {
-        require(getVoterStake(delegate) == 0, "Cant delegate to existing staker");
         voterStakes[msg.sender].delegate = delegate;
     }
 
     function setDelegator(address delegator) public {
-        require(getVoterStake(msg.sender) == 0, "Cant become delegate if staker");
         delegateToStaker[msg.sender] = delegator;
     }
 
@@ -837,12 +831,12 @@ contract VotingV2 is
      *        VOTING GETTER FUNCTIONS       *
      ****************************************/
 
-    function getVoterFromDelegate(address) public view returns (address) {
+    function getVoterFromDelegate(address caller) public view returns (address) {
         if (
-            delegateToStaker[msg.sender] != address(0) && // The delegate chose to be a delegate for the staker.
-            voterStakes[delegateToStaker[msg.sender]].delegate == msg.sender // The staker chose the delegate.
-        ) return delegateToStaker[msg.sender];
-        else return msg.sender;
+            delegateToStaker[caller] != address(0) && // The delegate chose to be a delegate for the staker.
+            voterStakes[delegateToStaker[caller]].delegate == caller // The staker chose the delegate.
+        ) return delegateToStaker[caller];
+        else return caller;
     }
 
     /**
