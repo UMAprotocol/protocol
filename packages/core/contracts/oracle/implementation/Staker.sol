@@ -57,10 +57,10 @@ contract Staker is StakerInterface, Ownable, Testable {
     function stake(uint256 amount) public override {
         // If the staker has a cumulative staked balance of 0 then we can shortcut their lastRequestIndexConsidered to
         // the most recent index. This means we don't need to traverse requests where the staker was not staked.
-        if (getVoterStake(msg.sender) + voterStakes[msg.sender].pendingStake == 0)
+        if (getVoterStake(msg.sender) + voterStakes[msg.sender].pendingUnstake == 0)
             voterStakes[msg.sender].lastRequestIndexConsidered = getStartingIndexForStaker();
-
         _updateTrackers(msg.sender);
+
         if (inActiveReveal()) {
             voterStakes[msg.sender].pendingStake += amount;
             cumulativePendingStake += amount;
@@ -72,6 +72,8 @@ contract Staker is StakerInterface, Ownable, Testable {
         votingToken.transferFrom(msg.sender, address(this), amount);
     }
 
+    // todo: add claim rewards and re-stake full amount.
+
     //You cant request to unstake during an active reveal phase.
     function requestUnstake(uint256 amount) public override {
         require(!inActiveReveal(), "In an active reveal phase");
@@ -80,6 +82,7 @@ contract Staker is StakerInterface, Ownable, Testable {
         // Staker signals that they want to unstake. After signalling, their total voting balance is decreased by the
         // signaled amount. This amount is not vulnerable to being slashed but also does not accumulate rewards.
         require(voterStakes[msg.sender].activeStake >= amount, "Bad request amount");
+        // Note there is no way to cancel your unstake; you must wait until after unstakeRequestTime and re-stake.
         require(voterStakes[msg.sender].pendingUnstake == 0, "Have previous request unstake");
 
         cumulativeActiveStake -= amount;
@@ -88,12 +91,9 @@ contract Staker is StakerInterface, Ownable, Testable {
         voterStakes[msg.sender].unstakeRequestTime = getCurrentTime();
     }
 
-    // Note there is no way to cancel your unstake; you must wait until after unstakeRequestTime and re-stake.
-
     // If: a staker requested an unstake and time > unstakeRequestTime then send funds to staker. Note that this method assumes
     // that the `updateTrackers()
     function executeUnstake() public override {
-        _updateTrackers(msg.sender);
         VoterStake storage voterStake = voterStakes[msg.sender];
         require(
             voterStake.unstakeRequestTime != 0 && getCurrentTime() >= voterStake.unstakeRequestTime + unstakeCoolDown,
@@ -122,11 +122,6 @@ contract Staker is StakerInterface, Ownable, Testable {
         return (tokensToMint);
     }
 
-    function exit() public {
-        executeUnstake();
-        withdrawRewards();
-    }
-
     function _updateTrackers(address voterAddress) internal virtual {
         _updateReward(voterAddress);
         _updateActiveStake(voterAddress);
@@ -152,7 +147,7 @@ contract Staker is StakerInterface, Ownable, Testable {
     }
 
     function _updateActiveStake(address voterAddress) internal {
-        if (inActiveReveal()) return;
+        if (voterStakes[voterAddress].pendingStake == 0 || inActiveReveal()) return;
         cumulativeActiveStake += voterStakes[voterAddress].pendingStake;
         cumulativePendingStake -= voterStakes[voterAddress].pendingStake;
         voterStakes[voterAddress].activeStake += voterStakes[voterAddress].pendingStake;

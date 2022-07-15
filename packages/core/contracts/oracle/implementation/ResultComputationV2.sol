@@ -58,7 +58,7 @@ library ResultComputationV2 {
         view
         returns (bool isResolved, int256 price)
     {
-        uint256 modeThreshold = 5e17;
+        uint256 modeThreshold = 5e17 + 1;
 
         if (
             data.totalVotes > minVoteThreshold &&
