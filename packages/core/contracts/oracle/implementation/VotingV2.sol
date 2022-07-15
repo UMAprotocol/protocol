@@ -28,11 +28,10 @@ import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
  * @title Voting system for Oracle.
  * @dev Handles receiving and resolving price requests via a commit-reveal voting scheme.
  */
-// TODO: right now there are multiple interfaces (OracleInterface & OracleAncillaryInterface). We should only have one
-// which should be done by removing the overloaded interfaces.
 
 contract VotingV2 is
     Staker,
+    OracleInterface,
     OracleAncillaryInterface, // Interface to support ancillary data with price requests.
     OracleGovernanceInterface, // Interface to support governance requests.
     VotingV2Interface,
@@ -183,7 +182,8 @@ contract VotingV2 is
 
     event VoteCommitted(
         address indexed voter,
-        uint256 indexed roundId,
+        address indexed caller,
+        uint256 roundId,
         bytes32 indexed identifier,
         uint256 time,
         bytes ancillaryData
@@ -200,7 +200,8 @@ contract VotingV2 is
 
     event VoteRevealed(
         address indexed voter,
-        uint256 indexed roundId,
+        address indexed caller,
+        uint256 roundId,
         bytes32 indexed identifier,
         uint256 time,
         int256 price,
@@ -238,6 +239,7 @@ contract VotingV2 is
     //  */
     constructor(
         uint256 _emissionRate,
+        uint256 _spamDeletionProposalBond,
         uint256 _unstakeCoolDown,
         uint256 _phaseLength,
         uint256 _minRollToNextRoundLength,
@@ -252,7 +254,7 @@ contract VotingV2 is
         gatPercentage = _gatPercentage;
         finder = FinderInterface(_finder);
         slashingLibrary = SlashingLibrary(_slashingLibrary);
-        setSpamDeletionProposalBond(10000e18); // Set the spam deletion proposal bond to 10,000 UMA. // TODO: make constructor param.
+        setSpamDeletionProposalBond(_spamDeletionProposalBond);
     }
 
     /***************************************
@@ -282,36 +284,27 @@ contract VotingV2 is
         _updateTrackers(voterAddress);
     }
 
-    function updateTrackersRange(
-        address voterAddress,
-        uint256 indexFrom,
-        uint256 indexTo
-    ) public {
-        require(indexFrom < indexTo, "indexFrom must be < indexTo");
-        require(indexFrom >= voterStakes[voterAddress].lastRequestIndexConsidered, "Bad indexFrom");
+    function updateTrackersRange(address voterAddress, uint256 indexTo) public {
+        require(voterStakes[voterAddress].lastRequestIndexConsidered < indexTo, "IndexTo not after last request");
         require(indexTo <= priceRequestIds.length, "Bad indexTo");
 
-        _updateAccountSlashingTrackers(voterAddress, indexFrom, indexTo);
+        _updateAccountSlashingTrackers(voterAddress, indexTo);
     }
 
     function _updateTrackers(address voterAddress) internal override {
-        _updateAccountSlashingTrackers(
-            voterAddress,
-            voterStakes[voterAddress].lastRequestIndexConsidered,
-            priceRequestIds.length
-        );
+        _updateAccountSlashingTrackers(voterAddress, priceRequestIds.length);
         super._updateTrackers(voterAddress);
     }
 
-    function inActiveReveal() internal override returns (bool) {
+    function getStartingIndexForStaker() internal view override returns (uint256) {
+        return priceRequestIds.length - (inActiveReveal() ? 0 : pendingPriceRequests.length);
+    }
+
+    function inActiveReveal() public view override returns (bool) {
         return (currentActiveRequests() && getVotePhase() == Phase.Reveal);
     }
 
-    function _updateAccountSlashingTrackers(
-        address voterAddress,
-        uint256 indexFrom,
-        uint256 indexTo
-    ) internal {
+    function _updateAccountSlashingTrackers(address voterAddress, uint256 indexTo) internal {
         uint256 currentRoundId = voteTiming.computeCurrentRoundId(getCurrentTime());
         VoterStake storage voterStake = voterStakes[voterAddress];
         // Note the method below can hit a gas limit of there are a LOT of requests from the last time this was run.
@@ -320,17 +313,21 @@ contract VotingV2 is
         // Traverse all requests from the last considered request. For each request see if the voter voted correctly or
         // not. Based on the outcome, attribute the associated slash to the voter.
         int256 slash = 0;
-        for (uint256 requestIndex = indexFrom; requestIndex < indexTo; requestIndex = unsafe_inc(requestIndex)) {
+        for (
+            uint256 requestIndex = voterStake.lastRequestIndexConsidered;
+            requestIndex < indexTo;
+            requestIndex = unsafe_inc(requestIndex)
+        ) {
             if (deletedRequests[requestIndex] != 0) requestIndex = deletedRequests[requestIndex] + 1;
             if (requestIndex > indexTo - 1) break; // This happens if the last element was a rolled vote.
             PriceRequest storage priceRequest = priceRequests[priceRequestIds[requestIndex]];
+            VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
 
-            // If the request status is not resolved then we are currently in the voting round associated with this
-            // request and cant apply any slashing to this request. Note that we dont need to worry about rolled votes
-            // here as this is deal with in the _updateCumulativeSlashingTrackers function by adding the request index
-            // to the deletedRequests and so we'd have skipped it for free from this mapping.
-
-            if (_getRequestStatus(priceRequest, currentRoundId) != RequestStatus.Resolved) {
+            // If the request status is not resolved then: a) Either we are still in the current voting round, in which
+            // case break the loop and stop iterating (all subsequent requests will be in the same state by default) or
+            // b) we have gotten to a rolled vote in which case we need to update some internal trackers for this vote
+            // and set this within the deletedRequests mapping so the next time we hit this it is skipped.
+            if (!_resolvePriceRequest(priceRequest, voteInstance, currentRoundId)) {
                 // If the request is not resolved and the lastVotingRound less than the current round then the vote
                 // must have been rolled. In this case, update the internal trackers for this vote.
                 if (priceRequest.lastVotingRound < currentRoundId) {
@@ -338,14 +335,13 @@ contract VotingV2 is
                     deletedRequests[requestIndex] = requestIndex;
                     priceRequest.priceRequestIndex = priceRequestIds.length;
                     priceRequestIds.push(priceRequestIds[requestIndex]);
-                    _updateAccountSlashingTrackers(voterAddress, requestIndex + 1, priceRequestIds.length);
+                    _updateAccountSlashingTrackers(voterAddress, priceRequestIds.length);
                 }
                 // Else, we are simply evaluating a request that is still actively being voted on. In this case, break as
                 // all subsequent requests within the array must be in the same state and cant have any slashing applied.
                 break;
             }
 
-            VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
             uint256 totalCorrectVotes = voteInstance.resultComputation.getTotalCorrectlyVotedTokens();
 
             (uint256 wrongVoteSlash, uint256 noVoteSlash) =
@@ -425,7 +421,6 @@ contract VotingV2 is
             require(spamRequestIndex[1] > runningValidationIndex, "Bad index continuity");
             runningValidationIndex = spamRequestIndex[1];
         }
-        // todo: consider if we want to check if the most recent price request has been settled?
 
         spamDeletionProposals.push(SpamDeletionRequest(spamRequestIndices, currentTime, false, msg.sender));
         uint256 proposalId = spamDeletionProposals.length - 1;
@@ -596,7 +591,6 @@ contract VotingV2 is
         return _hasPrice;
     }
 
-    // TODO: remove all overriden functions that miss ancillary data. DVM2.0 should only accept ancillary data requests.
     // Overloaded method to enable short term backwards compatibility. Will be deprecated in the next DVM version.
     function hasPrice(bytes32 identifier, uint256 time) public view override returns (bool) {
         return hasPrice(identifier, time, "");
@@ -706,7 +700,7 @@ contract VotingV2 is
         VoteInstance storage voteInstance = priceRequest.voteInstances[currentRoundId];
         voteInstance.voteSubmissions[voter].commit = hash;
 
-        emit VoteCommitted(voter, currentRoundId, identifier, time, ancillaryData);
+        emit VoteCommitted(voter, msg.sender, currentRoundId, identifier, time, ancillaryData);
     }
 
     // Overloaded method to enable short term backwards compatibility. Will be deprecated in the next DVM version.
@@ -772,8 +766,7 @@ contract VotingV2 is
         // Add vote to the results.
         voteInstance.resultComputation.addVote(price, balance);
 
-        // TODO: both this event and the commit event should indicate if there was vote delegation applied.
-        emit VoteRevealed(msg.sender, currentRoundId, identifier, time, price, ancillaryData, balance);
+        emit VoteRevealed(voter, msg.sender, currentRoundId, identifier, time, price, ancillaryData, balance);
     }
 
     // Overloaded method to enable short term backwards compatibility. Will be deprecated in the next DVM version.
@@ -1029,15 +1022,26 @@ contract VotingV2 is
         }
     }
 
-    function _resolvePriceRequest(PriceRequest storage priceRequest, VoteInstance storage voteInstance) private {
-        if (priceRequest.pendingRequestIndex == UINT_MAX) {
-            return;
-        }
-        (bool isResolved, int256 resolvedPrice) =
-            voteInstance.resultComputation.getResolvedPrice(_computeGat(priceRequest.lastVotingRound));
-        require(isResolved, "Can't resolve unresolved request");
+    function _resolvePriceRequest(
+        PriceRequest storage priceRequest,
+        VoteInstance storage voteInstance,
+        uint256 currentRoundId
+    ) private returns (bool) {
+        // We are currently either in the voting round for the request or voting is yet to begin.
+        if (currentRoundId <= priceRequest.lastVotingRound) return false;
 
-        // Delete the resolved price request from pendingPriceRequests.
+        // If the request has been previously resolved, return true.
+        if (priceRequest.pendingRequestIndex == UINT_MAX) return true;
+
+        // Else, check if the price can be resolved.
+        (bool isResolvable, int256 resolvedPrice) =
+            voteInstance.resultComputation.getResolvedPrice(_computeGat(priceRequest.lastVotingRound));
+
+        // If it's not resolvable return false.
+        if (!isResolvable) return false;
+
+        // Else, the request is resolvable. Remove the element from the pending request and update pendingRequestIndex
+        // within the price request struct to make the next entry into this method a no-op for this request.
         uint256 lastIndex = pendingPriceRequests.length - 1;
         PriceRequest storage lastPriceRequest = priceRequests[pendingPriceRequests[lastIndex]];
         lastPriceRequest.pendingRequestIndex = priceRequest.pendingRequestIndex;
@@ -1052,6 +1056,7 @@ contract VotingV2 is
             resolvedPrice,
             priceRequest.ancillaryData
         );
+        return true;
     }
 
     function _computeGat(uint256 roundId) internal view returns (uint256) {
@@ -1070,20 +1075,16 @@ contract VotingV2 is
         view
         returns (RequestStatus)
     {
-        if (priceRequest.lastVotingRound == 0) {
-            return RequestStatus.NotRequested;
-        } else if (priceRequest.lastVotingRound < currentRoundId) {
+        if (priceRequest.lastVotingRound == 0) return RequestStatus.NotRequested;
+        else if (priceRequest.lastVotingRound < currentRoundId) {
             VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
             (bool isResolved, ) =
                 voteInstance.resultComputation.getResolvedPrice(_computeGat(priceRequest.lastVotingRound));
 
             return isResolved ? RequestStatus.Resolved : RequestStatus.Active;
-        } else if (priceRequest.lastVotingRound == currentRoundId) {
-            return RequestStatus.Active;
-        } else {
-            // Means than priceRequest.lastVotingRound > currentRoundId
-            return RequestStatus.Future;
-        }
+        } else if (priceRequest.lastVotingRound == currentRoundId) return RequestStatus.Active;
+        // Means than priceRequest.lastVotingRound > currentRoundId
+        else return RequestStatus.Future;
     }
 
     function unsafe_inc(uint256 x) internal pure returns (uint256) {

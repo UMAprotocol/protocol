@@ -78,6 +78,7 @@ export function getHardhatConfig(
         "contracts/oracle/implementation/Voting.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
         "contracts/oracle/implementation/VotingV2.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
         "contracts/oracle/implementation/test/VotingTest.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
+        "contracts/oracle/implementation/test/VotingV2Test.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
         "contracts/insured-bridge/BridgePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       },
     },
