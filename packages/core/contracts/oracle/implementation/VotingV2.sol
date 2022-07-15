@@ -230,17 +230,17 @@ contract VotingV2 is
 
     /**
      * @notice Construct the VotingV2 contract.
-     * @param _emissionRate amount of voting tokens that are emitted per second.
-     * @param _unstakeCoolDown time in seconds that must pass before a voter can unstake their stake.
+     * @param _emissionRate amount of voting tokens that are emitted per second, split prorate to stakers.
+     * @param _unstakeCoolDown time that a voter must wait to unstake after requesting to unstake.
      * @param _phaseLength length of the voting phases in seconds.
      * @param _minRollToNextRoundLength time before the end of a round in which a request must be made for the request
      *  to be voted on in the next round. If after this, the request is rolled to a round after the next round.
      * @param _gatPercentage of the total token supply that must be used in a vote to create a valid price resolution.
      * @param _votingToken address of the UMA token contract used to commit votes.
-     * @param _finder  keeps track of all contracts within the system based on their interfaceName.
+     * @param _finder keeps track of all contracts within the system based on their interfaceName.
      * @param _timerAddress contract that stores the current time in a testing environment.
      * Must be set to 0x0 for production environments that use live time.
-     * @param _slashingLibrary contract used to calculate voting slashing penalties.
+     * @param _slashingLibrary contract used to calculate voting slashing penalties based on voter participation.
      */
     constructor(
         uint256 _emissionRate,
