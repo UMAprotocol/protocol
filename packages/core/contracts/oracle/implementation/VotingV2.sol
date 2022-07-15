@@ -28,11 +28,10 @@ import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
  * @title Voting system for Oracle.
  * @dev Handles receiving and resolving price requests via a commit-reveal voting scheme.
  */
-// TODO: right now there are multiple interfaces (OracleInterface & OracleAncillaryInterface). We should only have one
-// which should be done by removing the overloaded interfaces.
 
 contract VotingV2 is
     Staker,
+    OracleInterface,
     OracleAncillaryInterface, // Interface to support ancillary data with price requests.
     OracleGovernanceInterface, // Interface to support governance requests.
     VotingV2Interface,
@@ -183,7 +182,8 @@ contract VotingV2 is
 
     event VoteCommitted(
         address indexed voter,
-        uint256 indexed roundId,
+        address indexed caller,
+        uint256 roundId,
         bytes32 indexed identifier,
         uint256 time,
         bytes ancillaryData
@@ -200,7 +200,8 @@ contract VotingV2 is
 
     event VoteRevealed(
         address indexed voter,
-        uint256 indexed roundId,
+        address indexed caller,
+        uint256 roundId,
         bytes32 indexed identifier,
         uint256 time,
         int256 price,
@@ -238,6 +239,7 @@ contract VotingV2 is
     //  */
     constructor(
         uint256 _emissionRate,
+        uint256 _spamDeletionProposalBond,
         uint256 _unstakeCoolDown,
         uint256 _phaseLength,
         uint256 _minRollToNextRoundLength,
@@ -252,7 +254,7 @@ contract VotingV2 is
         gatPercentage = _gatPercentage;
         finder = FinderInterface(_finder);
         slashingLibrary = SlashingLibrary(_slashingLibrary);
-        setSpamDeletionProposalBond(10000e18); // Set the spam deletion proposal bond to 10,000 UMA. // TODO: make constructor param.
+        setSpamDeletionProposalBond(_spamDeletionProposalBond);
     }
 
     /***************************************
@@ -430,7 +432,6 @@ contract VotingV2 is
             require(spamRequestIndex[1] > runningValidationIndex, "Bad index continuity");
             runningValidationIndex = spamRequestIndex[1];
         }
-        // todo: consider if we want to check if the most recent price request has been settled?
 
         spamDeletionProposals.push(SpamDeletionRequest(spamRequestIndices, currentTime, false, msg.sender));
         uint256 proposalId = spamDeletionProposals.length - 1;
@@ -601,7 +602,6 @@ contract VotingV2 is
         return _hasPrice;
     }
 
-    // TODO: remove all overriden functions that miss ancillary data. DVM2.0 should only accept ancillary data requests.
     // Overloaded method to enable short term backwards compatibility. Will be deprecated in the next DVM version.
     function hasPrice(bytes32 identifier, uint256 time) public view override returns (bool) {
         return hasPrice(identifier, time, "");
@@ -711,7 +711,7 @@ contract VotingV2 is
         VoteInstance storage voteInstance = priceRequest.voteInstances[currentRoundId];
         voteInstance.voteSubmissions[voter].commit = hash;
 
-        emit VoteCommitted(voter, currentRoundId, identifier, time, ancillaryData);
+        emit VoteCommitted(voter, msg.sender, currentRoundId, identifier, time, ancillaryData);
     }
 
     // Overloaded method to enable short term backwards compatibility. Will be deprecated in the next DVM version.
@@ -777,8 +777,7 @@ contract VotingV2 is
         // Add vote to the results.
         voteInstance.resultComputation.addVote(price, balance);
 
-        // TODO: both this event and the commit event should indicate if there was vote delegation applied.
-        emit VoteRevealed(msg.sender, currentRoundId, identifier, time, price, ancillaryData, balance);
+        emit VoteRevealed(voter, msg.sender, currentRoundId, identifier, time, price, ancillaryData, balance);
     }
 
     // Overloaded method to enable short term backwards compatibility. Will be deprecated in the next DVM version.

@@ -14,8 +14,9 @@ const func = async function (hre) {
   // Set the GAT percentage to 5%
   const gatPercentage = hre.web3.utils.toWei("0.05", "ether");
 
-  // Set the inflation rate.
-  const emissionRate = "640000000000000000";
+  const emissionRate = "640000000000000000"; // 0.64 UMA per second.
+
+  const spamDeletionProposalBond = hre.web3.utils.toWei("10000", "ether"); // 10k UMA to propose to delete spam.
 
   const unstakeCooldown = 60 * 60 * 24 * 7; // 7 days
 
@@ -29,6 +30,7 @@ const func = async function (hre) {
     from: deployer,
     args: [
       emissionRate,
+      spamDeletionProposalBond,
       unstakeCooldown,
       phaseLength,
       minRollToNextRoundLength,
