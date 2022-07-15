@@ -47,7 +47,6 @@ contract VotingV2 is
 
     // Identifies a unique price request for which the Oracle will always return the same value.
     // Tracks ongoing votes as well as the result of the vote.
-
     struct PriceRequest {
         bytes32 identifier;
         uint256 time;
