@@ -253,10 +253,9 @@ describe("Relayer unit tests", function () {
     // Emit a MessageSent event and instruct relayer to relay the event.
     await oracleChild.methods.requestPrice(testIdentifier, testTimestamp, testAncillaryData).send({ from: owner });
 
-    // Bot should attempt to submit a transaction to the RootTunnelMock that will revert
+    // Bot should attempt to submit a transaction to the RootTunnelMock that will revert but not log anything.
     await relayer.fetchAndRelayMessages();
     const nonDebugEvents = spy.getCalls().filter((log: any) => log.lastArg.level !== "debug");
     assert.equal(nonDebugEvents.length, 0);
-    assert.isTrue(lastSpyLogIncludes(spy, "Failed to submit proof to root tunnel"));
   });
 });
