@@ -863,7 +863,8 @@ contract VotingV2 is
     }
 
     /**
-     * @notice Sets the delegator of a voter.
+     * @notice Sets the delegator of a voter. Acts to accept a delegation. The delegate can only vote for
+     * delegator if the delegator also selected the delegate to do so (two way relationship needed).
      * @param delegator the address of the delegate.
      */
     function setDelegator(address delegator) public {
