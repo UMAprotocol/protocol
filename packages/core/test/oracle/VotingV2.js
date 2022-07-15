@@ -38,7 +38,7 @@ describe("VotingV2", function () {
   let accounts, account1, account2, account3, account4, rand;
 
   const setNewGatPercentage = async (gatPercentage) => {
-    await voting.methods.setGatPercentage({ rawValue: gatPercentage.toString() }).send({ from: accounts[0] });
+    await voting.methods.setGatPercentage(gatPercentage.toString()).send({ from: accounts[0] });
   };
 
   beforeEach(async function () {
@@ -84,7 +84,7 @@ describe("VotingV2", function () {
 
   it("Constructor", async function () {
     // GAT must be <= 1.0 (100%)
-    const invalidGat = { rawValue: web3.utils.toWei("1.000001") };
+    const invalidGat = web3.utils.toWei("1.000001");
     assert(
       await didContractThrow(
         VotingV2.new(
@@ -719,9 +719,7 @@ describe("VotingV2", function () {
 
     // Setting GAT should revert if larger than 100%
     assert(
-      await didContractThrow(
-        voting.methods.setGatPercentage({ rawValue: toWei("1.1").toString() }).send({ from: accounts[0] })
-      )
+      await didContractThrow(voting.methods.setGatPercentage(toWei("1.1").toString()).send({ from: accounts[0] }))
     );
 
     // With a smaller GAT value of 3%, account4 can pass the vote on their own with 4% of all tokens.
@@ -1185,7 +1183,7 @@ describe("VotingV2", function () {
       60 * 60 * 24 * 30, // unstakeCooldown
       "86400", // phase length
       7200, // minRollToNextRoundLength
-      { rawValue: web3.utils.toWei("0.05") }, // 5% GAT
+      web3.utils.toWei("0.05"), // 5% GAT
       votingToken.options.address, // voting token
       (await Finder.deployed()).options.address, // finder
       (await Timer.deployed()).options.address, // timer
@@ -1255,7 +1253,7 @@ describe("VotingV2", function () {
           "420420", // UnstakeCooldown
           "86400", // 1 day phase length
           "7200", // 2 hours minRollToNextRoundLength
-          { rawValue: web3.utils.toWei("0.05") }, // 5% GAT
+          web3.utils.toWei("0.05"), // 5% GAT
           votingToken.options.address, // voting token
           (await Finder.deployed()).options.address, // finder
           (await Timer.deployed()).options.address // timer
@@ -2884,4 +2882,5 @@ describe("VotingV2", function () {
     assert.equal(slashingTracker4.totalSlashed, toWei("101909.004288"));
     assert.equal(slashingTracker4.totalCorrectVotes, toWei("36306872.32")); // Account1 + account4.
   });
+  // TODO: add a much more itterative rolling test to validate a many rolled round is correctly tracked.
 });

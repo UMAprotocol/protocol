@@ -12,7 +12,7 @@ const func = async function (hre) {
   const SlashingLibrary = await deployments.get("SlashingLibrary");
 
   // Set the GAT percentage to 5%
-  const gatPercentage = { rawValue: hre.web3.utils.toWei("0.05", "ether") };
+  const gatPercentage = hre.web3.utils.toWei("0.05", "ether");
 
   // Set the inflation rate.
   const emissionRate = "640000000000000000";

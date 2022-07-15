@@ -50,4 +50,26 @@ contract SlashingLibrary {
         // if 10 votes are cast each month for a year. 0.2/(10*12)= ~0.0016
         return 1600000000000000;
     }
+
+    /**
+     * @notice Calculates all slashing trackers in one go to decrease cross-chain calls needed.
+     * @param totalStaked The total amount of tokens staked.
+     * @param totalVotes The total amount of votes.
+     * @param totalCorrectVotes The total amount of correct votes.
+     * @return  wrongVoteSlashPerToken The amount of tokens to slash for voting wrong.
+     * @return noVoteSlashPerToken The amount of tokens to slash for not voting.
+     */
+    function calcSlashing(
+        uint256 totalStaked,
+        uint256 totalVotes,
+        uint256 totalCorrectVotes,
+        bool isGovernance
+    ) public pure returns (uint256 wrongVoteSlashPerToken, uint256 noVoteSlashPerToken) {
+        return (
+            isGovernance
+                ? calcWrongVoteSlashPerTokenGovernance(totalStaked, totalVotes, totalCorrectVotes)
+                : calcWrongVoteSlashPerToken(totalStaked, totalVotes, totalCorrectVotes),
+            calcNoVoteSlashPerToken(totalStaked, totalVotes, totalCorrectVotes)
+        );
+    }
 }
