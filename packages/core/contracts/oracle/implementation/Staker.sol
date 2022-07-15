@@ -8,8 +8,6 @@ import "../../common/implementation/Testable.sol";
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-import "hardhat/console.sol";
-
 contract Staker is StakerInterface, Ownable, Testable {
     /****************************************
      *           STAKING TRACKERS           *
@@ -53,7 +51,10 @@ contract Staker is StakerInterface, Ownable, Testable {
         votingToken = VotingToken(_votingToken);
     }
 
-    // Pulls tokens from users wallet and stakes them.
+    /**
+     * @notice  Pulls tokens from users wallet and stakes them.
+     * @param amount the amount of tokens to stake.
+     */
     function stake(uint256 amount) public override {
         // If the staker has a cumulative staked balance of 0 then we can shortcut their lastRequestIndexConsidered to
         // the most recent index. This means we don't need to traverse requests where the staker was not staked.
@@ -72,7 +73,11 @@ contract Staker is StakerInterface, Ownable, Testable {
         votingToken.transferFrom(msg.sender, address(this), amount);
     }
 
-    //You cant request to unstake during an active reveal phase.
+    /**
+     * @notice  Request an amount of tokens to be unstaked from the staker once the cool down period has passed.
+     * Cannot be called during an active reveal phase. Note there is no way to cancel your unstake; you must wait until after unstakeTime and re-stake.
+     * @param amount the amount of tokens to request to be unstaked.
+     */
     function requestUnstake(uint256 amount) public override {
         require(!inActiveReveal(), "In an active reveal phase");
         _updateTrackers(msg.sender);
@@ -88,10 +93,9 @@ contract Staker is StakerInterface, Ownable, Testable {
         voterStakes[msg.sender].unstakeRequestTime = getCurrentTime();
     }
 
-    // Note there is no way to cancel your unstake; you must wait until after unstakeRequestTime and re-stake.
-
-    // If: a staker requested an unstake and time > unstakeRequestTime then send funds to staker. Note that this method assumes
-    // that the `updateTrackers()
+    /**
+     * @notice  Execute a previously requested unstake. Requires the cool down period to have passed.
+     */
     function executeUnstake() public override {
         _updateTrackers(msg.sender);
         VoterStake storage voterStake = voterStakes[msg.sender];
@@ -108,8 +112,11 @@ contract Staker is StakerInterface, Ownable, Testable {
         }
     }
 
-    // Send accumulated rewards to the voter. If the voter has gained rewards from others slashing then this is included
-    // here. If the total slashing is larger than the outstanding rewards then this method does nothing.
+    /**
+     * @notice  Send accumulated rewards to the voter. If the voter has gained rewards from others slashing then this is included here.
+     * If the total slashing is larger than the outstanding rewards then this method does nothing.
+     * @return uint256 the amount of tokens sent to the voter.
+     */
     function withdrawRewards() public override returns (uint256) {
         _updateTrackers(msg.sender);
         VoterStake storage voterStake = voterStakes[msg.sender];
@@ -159,6 +166,11 @@ contract Staker is StakerInterface, Ownable, Testable {
         voterStakes[voterAddress].pendingStake = 0;
     }
 
+    /**
+     * @notice  Calculate the amount of reward tokens that can be withdrawn from the staker.
+     * @param voterAddress the address of the voter.
+     * @return uint256 the outstanding rewards.
+     */
     function outstandingRewards(address voterAddress) public view returns (uint256) {
         VoterStake storage voterStake = voterStakes[voterAddress];
 
@@ -167,26 +179,46 @@ contract Staker is StakerInterface, Ownable, Testable {
             voterStake.outstandingRewards;
     }
 
+    /**
+     * @notice  Calculate the reward per token based on the last time the reward was updated.
+     * @return uint256 the reward per token.
+     */
     function rewardPerToken() public view returns (uint256) {
         if (getCumulativeStake() == 0) return rewardPerTokenStored;
         return
             rewardPerTokenStored + ((getCurrentTime() - lastUpdateTime) * emissionRate * 1e18) / getCumulativeStake();
     }
 
+    /**
+     * @notice  Returns the total amount of tokens staked.
+     * @return uint256 the total stake.
+     */
     function getCumulativeStake() public view returns (uint256) {
         return cumulativeActiveStake + cumulativePendingStake;
     }
 
+    /**
+     * @notice  Returns the total amount of tokens staked by the voter.
+     * @param voterAddress the address of the voter.
+     * @return uint256 the total stake.
+     */
     function getVoterStake(address voterAddress) public view returns (uint256) {
         return voterStakes[voterAddress].activeStake + voterStakes[voterAddress].pendingStake;
     }
 
-    // Owner methods
+    /**
+     * @notice  Set the emission rate of the token.
+     * @param _emissionRate the new emission rate.
+     */
     function setEmissionRate(uint256 _emissionRate) public onlyOwner {
         _updateReward(address(0));
         emissionRate = _emissionRate;
     }
 
+    /**
+     * @notice  Set the unstake cool down period.
+     * @param _unstakeCoolDown the new unstake cool down period.
+     */
     function setUnstakeCoolDown(uint256 _unstakeCoolDown) public onlyOwner {
         unstakeCoolDown = _unstakeCoolDown;
     }
