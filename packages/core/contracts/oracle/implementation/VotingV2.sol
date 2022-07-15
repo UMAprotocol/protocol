@@ -898,7 +898,8 @@ contract VotingV2 is
         PriceRequest storage priceRequest = priceRequests[priceRequestIds[requestIndex]];
         VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
 
-        require(_getRequestStatus(priceRequest, currentRoundId) == RequestStatus.Resolved, "Must be resolved");
+        if (_getRequestStatus(priceRequest, currentRoundId) != RequestStatus.Resolved)
+            return SlashingTracker(0, 0, 0, 0);
 
         uint256 totalVotes = voteInstance.resultComputation.totalVotes;
         uint256 totalCorrectVotes = voteInstance.resultComputation.getTotalCorrectlyVotedTokens();
