@@ -427,6 +427,9 @@ contract VotingV2 is
 
     /**
      * @notice Declare a specific price requests range to be spam and request it's deletion.
+     * @dev note that this method should almost never be used. The bond to call this should be set to
+     * a very large number (say 10k UMA) as it could be abused if set too low. Function constructs a price
+     * request that, if passed, enables pending requests to be diregarded by the contract.
      * @param spamRequestIndices list of request indices to be declared as spam. Each element is a
      * pair of uint256s representing the start and end of the range.
      */
