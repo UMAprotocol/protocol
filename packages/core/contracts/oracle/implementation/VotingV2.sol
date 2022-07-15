@@ -326,13 +326,13 @@ contract VotingV2 is
             if (deletedRequests[requestIndex] != 0) requestIndex = deletedRequests[requestIndex] + 1;
             if (requestIndex > priceRequestIds.length - 1) break; // This happens if the last element was a rolled vote.
             PriceRequest storage priceRequest = priceRequests[priceRequestIds[requestIndex]];
+            VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
 
-            // If the request status is not resolved then we are currently in the voting round associated with this
-            // request and cant apply any slashing to this request. Note that we dont need to worry about rolled votes
-            // here as this is deal with in the _updateCumulativeSlashingTrackers function by adding the request index
-            // to the deletedRequests and so we'd have skipped it for free from this mapping.
-
-            if (_getRequestStatus(priceRequest, currentRoundId) != RequestStatus.Resolved) {
+            // If the request status is not resolved then: a) Either we are still in the current voting round, in which
+            // case break the loop and stop iterating (all subsequent requests will be in the same state by default) or
+            // b) we have gotten to a rolled vote in which case we need to update some internal trackers for this vote
+            // and set this within the deletedRequests mapping so the next time we hit this it is skipped.
+            if (!_resolvePriceRequest(priceRequest, voteInstance, currentRoundId)) {
                 // If the request is not resolved and the lastVotingRound less than the current round then the vote
                 // must have been rolled. In this case, update the internal trackers for this vote.
                 if (priceRequest.lastVotingRound < currentRoundId) {
@@ -346,8 +346,6 @@ contract VotingV2 is
                 // all subsequent requests within the array must be in the same state and cant have any slashing applied.
                 break;
             }
-
-            VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
 
             (uint256 wrongVoteSlash, uint256 noVoteSlash) =
                 slashingLibrary.calcSlashing(
@@ -1035,15 +1033,26 @@ contract VotingV2 is
         }
     }
 
-    function _resolvePriceRequest(PriceRequest storage priceRequest, VoteInstance storage voteInstance) private {
-        if (priceRequest.pendingRequestIndex == UINT_MAX) {
-            return;
-        }
-        (bool isResolved, int256 resolvedPrice) =
-            voteInstance.resultComputation.getResolvedPrice(_computeGat(priceRequest.lastVotingRound));
-        require(isResolved, "Can't resolve unresolved request");
+    function _resolvePriceRequest(
+        PriceRequest storage priceRequest,
+        VoteInstance storage voteInstance,
+        uint256 currentRoundId
+    ) private returns (bool) {
+        // We are currently either in the voting round for the request or voting is yet to begin.
+        if (currentRoundId <= priceRequest.lastVotingRound) return false;
 
-        // Delete the resolved price request from pendingPriceRequests.
+        // If the request has been previously resolved, return true.
+        if (priceRequest.pendingRequestIndex == UINT_MAX) return true;
+
+        // Else, check if the price can be resolved.
+        (bool isResolvable, int256 resolvedPrice) =
+            voteInstance.resultComputation.getResolvedPrice(_computeGat(priceRequest.lastVotingRound));
+
+        // If it's not resolvable return false.
+        if (!isResolvable) return false;
+
+        // Else, the request is resolvable. Remove the element from the pending request and update pendingRequestIndex
+        // within the price request struct to make the next entry into this method a no-op for this request.
         uint256 lastIndex = pendingPriceRequests.length - 1;
         PriceRequest storage lastPriceRequest = priceRequests[pendingPriceRequests[lastIndex]];
         lastPriceRequest.pendingRequestIndex = priceRequest.pendingRequestIndex;
@@ -1058,6 +1067,7 @@ contract VotingV2 is
             resolvedPrice,
             priceRequest.ancillaryData
         );
+        return true;
     }
 
     function _computeGat(uint256 roundId) internal view returns (uint256) {
@@ -1076,20 +1086,16 @@ contract VotingV2 is
         view
         returns (RequestStatus)
     {
-        if (priceRequest.lastVotingRound == 0) {
-            return RequestStatus.NotRequested;
-        } else if (priceRequest.lastVotingRound < currentRoundId) {
+        if (priceRequest.lastVotingRound == 0) return RequestStatus.NotRequested;
+        else if (priceRequest.lastVotingRound < currentRoundId) {
             VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
             (bool isResolved, ) =
                 voteInstance.resultComputation.getResolvedPrice(_computeGat(priceRequest.lastVotingRound));
 
             return isResolved ? RequestStatus.Resolved : RequestStatus.Active;
-        } else if (priceRequest.lastVotingRound == currentRoundId) {
-            return RequestStatus.Active;
-        } else {
-            // Means than priceRequest.lastVotingRound > currentRoundId
-            return RequestStatus.Future;
-        }
+        } else if (priceRequest.lastVotingRound == currentRoundId) return RequestStatus.Active;
+        // Means than priceRequest.lastVotingRound > currentRoundId
+        else return RequestStatus.Future;
     }
 
     function unsafe_inc(uint256 x) internal pure returns (uint256) {

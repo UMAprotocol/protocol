@@ -25,7 +25,7 @@ const VotingInterfaceTesting = getContract("VotingInterfaceTesting");
 const VotingAncillaryInterfaceTesting = getContract("VotingAncillaryInterfaceTesting");
 const IdentifierWhitelist = getContract("IdentifierWhitelist");
 const VotingToken = getContract("VotingToken");
-const VotingTest = getContract("VotingTest");
+const VotingV2Test = getContract("VotingV2Test");
 const Timer = getContract("Timer");
 const SlashingLibrary = getContract("SlashingLibrary");
 
@@ -1192,7 +1192,6 @@ describe("VotingV2", function () {
       (await SlashingLibrary.deployed()).options.address // slashing library
     ).send({ from: accounts[0] });
 
-    // todo: the below logic will be changed when we add migration suport to staked balances.
     // unstake and restake in the new voting contract
     await voting.methods.setUnstakeCoolDown(0).send({ from: account1 });
     await voting.methods.requestUnstake(toWei("32000000")).send({ from: account1 });
@@ -1245,23 +1244,30 @@ describe("VotingV2", function () {
     assert(await didContractThrow(newVoting.methods.commitVote(identifier, time2, hash).send({ from: account1 })));
   });
 
-  // TODO: this test is not very useful now that we've removed reward retrival. it should be updated.
-  it.skip("pendingPriceRequests array length", async function () {
+  it("pendingPriceRequests array length", async function () {
     // Use a test derived contract to expose the internal array (and its length).
     const votingTest = await VotingInterfaceTesting.at(
       (
-        await VotingTest.new(
-          "696969", // emission rate
-          "420420", // UnstakeCooldown
-          "86400", // 1 day phase length
-          "7200", // 2 hours minRollToNextRoundLength
-          web3.utils.toWei("0.05"), // 5% GAT
+        await VotingV2Test.new(
+          "42069", // emissionRate
+          toWei("10000"), // spamDeletionProposalBond
+          60 * 60 * 24 * 7, // Unstake cooldown
+          86400, // PhaseLength
+          7200, // minRollToNextRoundLength
+          toWei("0.05"), // GatPct
           votingToken.options.address, // voting token
           (await Finder.deployed()).options.address, // finder
-          (await Timer.deployed()).options.address // timer
+          (await Timer.deployed()).options.address, // timer
+          (await SlashingLibrary.deployed()).options.address // slashing library
         ).send({ from: accounts[0] })
       ).options.address
     );
+
+    await voting.methods.setUnstakeCoolDown(0).send({ from: account1 });
+    await voting.methods.requestUnstake(toWei("32000000")).send({ from: account1 });
+    await voting.methods.executeUnstake().send({ from: account1 });
+    await votingToken.methods.approve(votingTest.options.address, toWei("32000000")).send({ from: account1 });
+    await VotingV2.at(votingTest.options.address).methods.stake(toWei("32000000")).send({ from: account1 });
 
     await moveToNextRound(votingTest, accounts[0]);
 
@@ -1273,7 +1279,7 @@ describe("VotingV2", function () {
     assert.equal(startingLength, 0);
 
     // Make the Oracle support the identifier.
-    await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
+    await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: account1 });
 
     // Request a price.
     await votingTest.methods.requestPrice(identifier, time).send({ from: registeredContract });
@@ -1289,17 +1295,22 @@ describe("VotingV2", function () {
     const price = getRandomSignedInt();
     const salt = getRandomSignedInt();
     const hash = computeVoteHash({ price, salt, account: account1, time, roundId: votingRound.toString(), identifier });
-    await votingTest.methods.commitVote(identifier, time, hash).send({ from: accounts[0] });
+    await votingTest.methods.commitVote(identifier, time, hash).send({ from: account1 });
 
     // Reveal phase.
     await moveToNextPhase(votingTest, accounts[0]);
 
-    // await votingTest.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
     // Reveal vote.
-    await votingTest.methods.revealVote(identifier, time, price, salt).send({ from: accounts[0] });
+    await votingTest.methods.revealVote(identifier, time, price, salt).send({ from: account1 });
 
     // Pending requests should be empty after the voting round ends and the price is resolved.
     await moveToNextRound(votingTest, accounts[0]);
+
+    // Updating the account tracker should remove the request from the pending array as it is now resolved.
+    await VotingV2.at(votingTest.options.address).methods.updateTrackers(account1).send({ from: account1 });
+
+    // After updating the account trackers, the length should be decreased back to 0 since the element added in this test is now deleted.
+    assert.equal((await votingTest.methods.getPendingPriceRequestsArray().call()).length, 0);
   });
   it("Votes can correctly handle arbitrary ancillary data", async function () {
     const identifier1 = padRight(utf8ToHex("request-retrieval"), 64);
