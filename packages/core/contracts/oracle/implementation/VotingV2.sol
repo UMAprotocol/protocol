@@ -284,36 +284,27 @@ contract VotingV2 is
         _updateTrackers(voterAddress);
     }
 
-    function updateTrackersRange(
-        address voterAddress,
-        uint256 indexFrom,
-        uint256 indexTo
-    ) public {
-        require(indexFrom < indexTo, "indexFrom must be < indexTo");
-        require(indexFrom >= voterStakes[voterAddress].lastRequestIndexConsidered, "Bad indexFrom");
+    function updateTrackersRange(address voterAddress, uint256 indexTo) public {
+        require(voterStakes[voterAddress].lastRequestIndexConsidered < indexTo, "IndexTo not after last request");
         require(indexTo <= priceRequestIds.length, "Bad indexTo");
 
-        _updateAccountSlashingTrackers(voterAddress, indexFrom, indexTo);
+        _updateAccountSlashingTrackers(voterAddress, indexTo);
     }
 
     function _updateTrackers(address voterAddress) internal override {
-        _updateAccountSlashingTrackers(
-            voterAddress,
-            voterStakes[voterAddress].lastRequestIndexConsidered,
-            priceRequestIds.length
-        );
+        _updateAccountSlashingTrackers(voterAddress, priceRequestIds.length);
         super._updateTrackers(voterAddress);
     }
 
-    function inActiveReveal() internal override returns (bool) {
+    function getStartingIndexForStaker() internal view override returns (uint256) {
+        return priceRequestIds.length - (inActiveReveal() ? 0 : pendingPriceRequests.length);
+    }
+
+    function inActiveReveal() public view override returns (bool) {
         return (currentActiveRequests() && getVotePhase() == Phase.Reveal);
     }
 
-    function _updateAccountSlashingTrackers(
-        address voterAddress,
-        uint256 indexFrom,
-        uint256 indexTo
-    ) internal {
+    function _updateAccountSlashingTrackers(address voterAddress, uint256 indexTo) internal {
         uint256 currentRoundId = voteTiming.computeCurrentRoundId(getCurrentTime());
         VoterStake storage voterStake = voterStakes[voterAddress];
         // Note the method below can hit a gas limit of there are a LOT of requests from the last time this was run.
@@ -322,7 +313,11 @@ contract VotingV2 is
         // Traverse all requests from the last considered request. For each request see if the voter voted correctly or
         // not. Based on the outcome, attribute the associated slash to the voter.
         int256 slash = 0;
-        for (uint256 requestIndex = indexFrom; requestIndex < indexTo; requestIndex = unsafe_inc(requestIndex)) {
+        for (
+            uint256 requestIndex = voterStake.lastRequestIndexConsidered;
+            requestIndex < indexTo;
+            requestIndex = unsafe_inc(requestIndex)
+        ) {
             if (deletedRequests[requestIndex] != 0) requestIndex = deletedRequests[requestIndex] + 1;
             if (requestIndex > indexTo - 1) break; // This happens if the last element was a rolled vote.
             PriceRequest storage priceRequest = priceRequests[priceRequestIds[requestIndex]];
@@ -340,7 +335,7 @@ contract VotingV2 is
                     deletedRequests[requestIndex] = requestIndex;
                     priceRequest.priceRequestIndex = priceRequestIds.length;
                     priceRequestIds.push(priceRequestIds[requestIndex]);
-                    _updateAccountSlashingTrackers(voterAddress, requestIndex + 1, priceRequestIds.length);
+                    _updateAccountSlashingTrackers(voterAddress, priceRequestIds.length);
                 }
                 // Else, we are simply evaluating a request that is still actively being voted on. In this case, break as
                 // all subsequent requests within the array must be in the same state and cant have any slashing applied.

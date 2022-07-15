@@ -2939,8 +2939,8 @@ describe("VotingV2", function () {
     assert.equal((await voting.methods.voterStakes(account1).call()).lastRequestIndexConsidered, 0);
     assert.equal((await voting.methods.voterStakes(account2).call()).lastRequestIndexConsidered, 5);
 
-    // Now, check we can partially sync their trackers.
-    await voting.methods.updateTrackersRange(account1, 0, 3).send({ from: account1 });
+    // Now, check we can partially sync their trackers by updating to request3.
+    await voting.methods.updateTrackersRange(account1, 3).send({ from: account1 });
     assert.equal((await voting.methods.voterStakes(account1).call()).lastRequestIndexConsidered, 3);
 
     // We can consider the account1 activeStake by looking at the partial update to their slashing trackers. They were
@@ -2949,30 +2949,30 @@ describe("VotingV2", function () {
     // (32mm + 68mm * 0.0016) * (1 - 0.0016) * (1 - 0.0016) = 32006134.038528
     assert.equal((await voting.methods.voterStakes(account1).call()).activeStake, toWei("32006134.038528"));
 
-    // Now, try sync an invalid index. We should not be able to sync below the current fromIndex. try 2 (2<3)
-    assert(await didContractThrow(voting.methods.updateTrackersRange(account1, 2, 5).send({ from: accounts[0] })));
-    // You should not be able to make the start index smaller (or even equal to) the end index.
-    assert(await didContractThrow(voting.methods.updateTrackersRange(account1, 5, 3).send({ from: accounts[0] })));
-    assert(await didContractThrow(voting.methods.updateTrackersRange(account1, 3, 3).send({ from: accounts[0] })));
-    // Equally, should revert on an invalid toIndex.
-    assert(await didContractThrow(voting.methods.updateTrackersRange(account1, 3, 8).send({ from: accounts[0] })));
+    // Now, try sync an invalid index. We should not be able to sync below or at the last updated tracker for this
+    // account (i.e <=3 should error).
+    assert(await didContractThrow(voting.methods.updateTrackersRange(account1, 2).send({ from: accounts[0] })));
+    assert(await didContractThrow(voting.methods.updateTrackersRange(account1, 3).send({ from: accounts[0] })));
+
+    // Equally, should revert on an invalid toIndex that is above the maximum number of requests.
+    assert(await didContractThrow(voting.methods.updateTrackersRange(account1, 8).send({ from: accounts[0] })));
 
     // However, we can update just one index.
-    await voting.methods.updateTrackersRange(account1, 3, 4).send({ from: account1 });
+    await voting.methods.updateTrackersRange(account1, 4).send({ from: account1 });
     assert.equal((await voting.methods.voterStakes(account1).call()).lastRequestIndexConsidered, 4);
 
     // Slashing should now be 32006134.0385 slashed again at 0.0016 = 32006134.0385 * (1 - 0.0016) = 31954924.2240663552
     assert.equal((await voting.methods.voterStakes(account1).call()).activeStake, toWei("31954924.2240663552"));
 
     // Finally, can update the entire remaining range.
-    await voting.methods.updateTrackersRange(account1, 4, 6).send({ from: account1 });
+    await voting.methods.updateTrackersRange(account1, 6).send({ from: account1 });
 
     // Slashing should now be 31954924.2240663552 (1 - 0.0016) * (1 - 0.0016)= 31852750.2712.
     assert.equal((await voting.methods.voterStakes(account1).call()).activeStake, toBN("31852750271155356473229312"));
 
     // Finally, test updating the other voter who is short exactly one tracker.
     const activeStakeBefore = (await voting.methods.voterStakes(account2).call()).activeStake;
-    await voting.methods.updateTrackersRange(account2, 5, 6).send({ from: account2 });
+    await voting.methods.updateTrackersRange(account2, 6).send({ from: account2 });
     assert.equal(
       (await voting.methods.voterStakes(account2).call()).activeStake,
       toBN(activeStakeBefore)
@@ -2980,5 +2980,85 @@ describe("VotingV2", function () {
         .toString()
     );
   });
+  it("Staking after some number of price requests correctly shortcuts how many requests the voter needs to traverse", async function () {
+    // If a voter stakes after some number of requests their lastRequestIndexConsidered should skip the active unsettled
+    // requests. If you stake during an active reveal period then you skip all requests as it was not possible
+    // for you to commit and reveal in this period. Unstake from all accounts to start this test.
+    await voting.methods.setUnstakeCoolDown(0).send({ from: accounts[0] });
+    await voting.methods.requestUnstake(toWei("32000000")).send({ from: account1 });
+    await voting.methods.requestUnstake(toWei("32000000")).send({ from: account2 });
+    await voting.methods.requestUnstake(toWei("32000000")).send({ from: account3 });
+    await voting.methods.requestUnstake(toWei("4000000")).send({ from: account4 });
+    await voting.methods.executeUnstake().send({ from: account1 });
+    await voting.methods.executeUnstake().send({ from: account2 });
+    await voting.methods.executeUnstake().send({ from: account3 });
+    await voting.methods.executeUnstake().send({ from: account4 });
+
+    console.log("getVoterStake", await voting.methods.getVoterStake(account4).call());
+    console.log("voterStake", await voting.methods.voterStakes(account4).call());
+
+    // If account 4 stakes now they should start at slashing request index0.
+
+    await voting.methods.stake(toWei("32000000")).send({ from: account1 });
+    assert.equal((await voting.methods.voterStakes(account1).call()).lastRequestIndexConsidered, 0);
+
+    // Execute a full voting cycle
+    const identifier = padRight(utf8ToHex("slash-test"), 64);
+    const time = "420";
+    await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
+    const salt = getRandomSignedInt();
+    const price = "69696969";
+    await voting.methods.requestPrice(identifier, time).send({ from: registeredContract });
+    await moveToNextRound(voting, accounts[0]); // Move into the commit phase.
+
+    let baseRequest = { salt, roundId: (await voting.methods.getCurrentRoundId().call()).toString(), identifier };
+    const hash1 = computeVoteHash({ ...baseRequest, price, account: account1, time });
+    await voting.methods.commitVote(identifier, time, hash1).send({ from: account1 });
+    await moveToNextPhase(voting, accounts[0]);
+    await voting.methods.revealVote(identifier, time, price, salt).send({ from: account1 });
+    await moveToNextRound(voting, accounts[0]);
+
+    // Now, the number of requests should be 1.
+    assert.equal(await voting.methods.getNumberOfPriceRequests().call(), "1");
+
+    // Now, stake from another account. we are in the reveal phase of an active request and so the starting index should
+    // be 1 as this voter should not be susceptible to slashing for this request.
+    await voting.methods.stake(toWei("32000000")).send({ from: account2 });
+    assert.equal((await voting.methods.voterStakes(account2).call()).lastRequestIndexConsidered, 1);
+
+    // Now, construct another price request and move into the commit phase.
+    await voting.methods.requestPrice(identifier, time + 1).send({ from: registeredContract });
+    await moveToNextRound(voting, accounts[0]);
+    baseRequest.roundId = (await voting.methods.getCurrentRoundId().call()).toString();
+    const hash2 = computeVoteHash({ ...baseRequest, price, account: account1, time: time + 1 });
+    await voting.methods.commitVote(identifier, time + 1, hash2).send({ from: account1 });
+
+    // We are in an active commit phase right now (with one vote having been voted on!). the total number of price requests
+    // is now 2. However, if someone was to stake now they can still vote on this request and so their lastRequestIndexConsidered
+    // should still be set to 1.
+    assert.equal(await voting.methods.getNumberOfPriceRequests().call(), "2");
+    await voting.methods.stake(toWei("32000000")).send({ from: account3 });
+    assert.equal((await voting.methods.voterStakes(account3).call()).lastRequestIndexConsidered, 1);
+
+    // Account3 can now vote on the second request.
+    const hash4 = computeVoteHash({ ...baseRequest, price, account: account3, time: time + 1 });
+    await voting.methods.commitVote(identifier, time + 1, hash4).send({ from: account3 });
+
+    // Now, move into the reveal phase. If a voter stakes at this point they should automatically skip the previous
+    // requests slashing them as it was not posable for them to be staked at that point in time.
+    await moveToNextPhase(voting, accounts[0]);
+    await voting.methods.stake(toWei("4000000")).send({ from: account4 });
+    assert.equal((await voting.methods.voterStakes(account4).call()).lastRequestIndexConsidered, 2);
+
+    // reveal votes
+    await voting.methods.revealVote(identifier, time + 1, price, salt).send({ from: account1 });
+    await voting.methods.revealVote(identifier, time + 1, price, salt).send({ from: account3 });
+
+    // move to the next round.
+    await moveToNextRound(voting, accounts[0]);
+
+    // now
+  });
+
   // TODO: add a much more itterative rolling test to validate a many rolled round is correctly tracked.
 });
