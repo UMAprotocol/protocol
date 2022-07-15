@@ -159,7 +159,7 @@ describe("SpamGuard", function () {
 
     // There should be a mapping between the first deleted element and the last deleted element. i.e mapping from input of
     // 1 to 2, the two elements that have been deleted.
-    assert.equal(await voting.methods.deletedRequestJumpMapping(1).call(), 2);
+    assert.equal(await voting.methods.deletedRequests(1).call(), 2);
 
     // We are now in the next voting round. (commit phase). you should not be able to commit on either request.
     assert(await didContractThrow(voting.methods.commitVote(spamIdentifier, time + 1, hash2).send({ from: account2 })));
@@ -186,7 +186,7 @@ describe("SpamGuard", function () {
     assert.equal((await voting.methods.requestSlashingTrackers(2).call()).totalCorrectVotes, toWei("0")); // 0 voted on this.
     assert.equal((await voting.methods.requestSlashingTrackers(3).call()).totalCorrectVotes, toWei("30000000")); // 30mm staked that voted correctly
 
-    // We should see cumulatively that account 1 lost two independent rounds of slashing at 0.0016 of their 60mm staked.
+    // We should see cumulatively that account1 lost two independent rounds of slashing at 0.0016 of their 60mm staked.
     // This should be assigned to the second voter. 0.0016 * 60mm = 192000
     assert.equal(
       (await voting.methods.voterStakes(account2).call()).activeStake,
@@ -276,8 +276,8 @@ describe("SpamGuard", function () {
     assert.equal(statuses[4].status, "2"); // valid request 3. resolved.
     assert.equal(statuses[5].status, "2"); // spam deletion request. resolved.
 
-    assert.equal(await voting.methods.deletedRequestJumpMapping(1).call(), 1);
-    assert.equal(await voting.methods.deletedRequestJumpMapping(3).call(), 3);
+    assert.equal(await voting.methods.deletedRequests(1).call(), 1);
+    assert.equal(await voting.methods.deletedRequests(3).call(), 3);
 
     // Finally, validate that the slashing correctly traversed the two gaps added into the set of requests. In this case,
     // account1 should be slashed for the 4 votes they did not participate on (and no more). This is the 3 valid requests
