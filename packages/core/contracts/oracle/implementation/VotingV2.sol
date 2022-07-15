@@ -855,7 +855,10 @@ contract VotingV2 is
     }
 
     /**
-     * @notice Sets the delegate of a voter.
+     * @notice Sets the delegate of a voter. This delegate can vote on behalf of the staker.
+     * The staker will still own all staked balances, receive rewards and be slashed based on
+     * the actors of the delegate. Intended use case is using a low-security available wallet for
+     * voting while keeping access to staked amounts secure by a more secure wallet.
      * @param delegate the address of the delegate.
      */
     function setDelegate(address delegate) public {
