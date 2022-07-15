@@ -766,7 +766,7 @@ describe("GovernorV2", function () {
       60 * 60 * 24 * 30, // unstakeCooldown
       "86400", // phase length
       "7200", // minRollToNextRoundLength
-      { rawValue: web3.utils.toWei("0.05") }, // 5% GAT
+      web3.utils.toWei("0.05"), // 5% GAT
       votingToken.options.address, // voting token
       (await Finder.deployed()).options.address, // finder
       (await Timer.deployed()).options.address, // timer
