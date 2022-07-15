@@ -228,15 +228,20 @@ contract VotingV2 is
         bytes ancillaryData
     );
 
-    // /**
-    //  * @notice Construct the Voting contract.
-    //  * @param _phaseLength length of the commit and reveal phases in seconds.
-    //  * @param _gatPercentage of the total token supply that must be used in a vote to create a valid price resolution.
-    //  * @param _votingToken address of the UMA token contract used to commit votes.
-    //  * @param _finder keeps track of all contracts within the system based on their interfaceName.
-    //  * @param _timerAddress Contract that stores the current time in a testing environment.
-    //  * Must be set to 0x0 for production environments that use live time.
-    //  */
+    /**
+     * @notice Construct the VotingV2 contract.
+     * @param _emissionRate amount of voting tokens that are emitted per second.
+     * @param _unstakeCoolDown time in seconds that must pass before a voter can unstake their stake.
+     * @param _phaseLength length of the voting phases in seconds.
+     * @param _minRollToNextRoundLength time before the end of a round in which a request must be made for the request
+     *  to be voted on in the next round. If after this, the request is rolled to a round after the next round.
+     * @param _gatPercentage of the total token supply that must be used in a vote to create a valid price resolution.
+     * @param _votingToken address of the UMA token contract used to commit votes.
+     * @param _finder  keeps track of all contracts within the system based on their interfaceName.
+     * @param _timerAddress contract that stores the current time in a testing environment.
+     * Must be set to 0x0 for production environments that use live time.
+     * @param _slashingLibrary contract used to calculate voting slashing penalties.
+     */
     constructor(
         uint256 _emissionRate,
         uint256 _spamDeletionProposalBond,
@@ -280,6 +285,12 @@ contract VotingV2 is
      *          STAKING FUNCTIONS           *
      ****************************************/
 
+    /**
+     * @notice Updates the global and selected wallet's trackers for staking and voting.
+     * @dev This function can be called by anyone, but it is not necessary for the contract to work because
+     * it is automatically run in the other functions.
+     * @param voterAddress address of the voter to update the trackers for.
+     */
     function updateTrackers(address voterAddress) public {
         _updateTrackers(voterAddress);
     }
@@ -291,6 +302,7 @@ contract VotingV2 is
         _updateAccountSlashingTrackers(voterAddress, indexTo);
     }
 
+    // Updates the global and selected wallet's trackers for staking and voting.
     function _updateTrackers(address voterAddress) internal override {
         _updateAccountSlashingTrackers(voterAddress, priceRequestIds.length);
         super._updateTrackers(voterAddress);
@@ -300,6 +312,7 @@ contract VotingV2 is
         return priceRequestIds.length - (inActiveReveal() ? 0 : pendingPriceRequests.length);
     }
 
+    // Checks if we are in a voting reveal phase.
     function inActiveReveal() public view override returns (bool) {
         return (currentActiveRequests() && getVotePhase() == Phase.Reveal);
     }
