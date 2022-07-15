@@ -116,40 +116,41 @@ Total for all voters: ${sum}
     const winningPrice = 456;
     const salt = getRandomSignedInt();
 
-    const commitVoteCosts = (
-      await Promise.all(
-        voters.map((voter) =>
-          Promise.all(
-            requests.map(async ({ identifier, time }) => {
-              const hash = computeVoteHash({ price: winningPrice, salt, account: voter, time, roundId, identifier });
-              const { gasUsed } = await voting.methods.commitVote(identifier, time, hash).send({ from: voter });
-              return gasUsed;
-            })
-          )
-        )
-      )
-    ).flat();
+    const commitVoteCosts = await Promise.all(
+      voters.map(async (voter) => {
+        const multicallData = requests.map(({ identifier, time }) => {
+          const hash = computeVoteHash({ price: winningPrice, salt, account: voter, time, roundId, identifier });
+          return voting.methods.commitAndEmitEncryptedVote(identifier, time, hash, "0x").encodeABI();
+        });
+
+        const { gasUsed } = await voting.methods.multicall(multicallData).send({ from: voter });
+        return gasUsed;
+      })
+    );
 
     // Reveal the votes.
     await moveToNextPhase(voting, accounts[0]);
 
-    const revealVoteCosts = (
-      await Promise.all(
-        voters.map((voter) =>
-          Promise.all(
-            requests.map(async ({ identifier, time }) => {
-              const { gasUsed } = await voting.methods
-                .revealVote(identifier, time, winningPrice, salt)
-                .send({ from: voter });
-              return gasUsed;
-            })
-          )
-        )
-      )
-    ).flat();
+    const revealVoteCosts = await Promise.all(
+      voters.map(async (voter) => {
+        const multicallData = requests.map(({ identifier, time }) =>
+          voting.methods.revealVote(identifier, time, winningPrice, salt).encodeABI()
+        );
+
+        const { gasUsed } = await voting.methods.multicall(multicallData).send({ from: voter });
+        return gasUsed;
+      })
+    );
 
     // Price should resolve to the one that 2 and 3 voted for.
     await moveToNextRound(voting, accounts[0]);
+
+    const claimRewardsCosts = await Promise.all(
+      voters.map(async (voter) => {
+        const { gasUsed } = await voting.methods.withdrawRewards().send({ from: voter });
+        return gasUsed;
+      })
+    );
 
     const getPriceCosts = await Promise.all(
       requests.map(async ({ identifier, time }) => {
@@ -162,10 +163,11 @@ Total for all voters: ${sum}
     printAggregates("Request Price", requestPriceCosts, voters, requests);
     printAggregates("Commit", commitVoteCosts, voters, requests);
     printAggregates("Reveal", revealVoteCosts, voters, requests);
+    printAggregates("Claim Rewards", claimRewardsCosts, voters, requests);
     printAggregates("Get Price", getPriceCosts, voters, requests);
     printAggregates(
       "Total lifecycle (only voting methods)",
-      [...commitVoteCosts, ...revealVoteCosts],
+      [...commitVoteCosts, ...revealVoteCosts, ...claimRewardsCosts],
       voters,
       requests
     );
