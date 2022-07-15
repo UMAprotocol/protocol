@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import "../../common/implementation/Stakeable.sol";
-import "../interfaces/VotingV2Interface.sol";
-import "../interfaces/FinderInterface.sol";
 import "../../common/implementation/MultiCaller.sol";
+import "../../common/implementation/Stakeable.sol";
+import "../interfaces/FinderInterface.sol";
+import "../interfaces/VotingV2Interface.sol";
 import "./Constants.sol";
 
 /**
