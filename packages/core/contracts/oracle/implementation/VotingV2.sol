@@ -190,7 +190,7 @@ contract VotingV2 is
     );
 
     event EncryptedVote(
-        address indexed voter,
+        address indexed caller,
         uint256 indexed roundId,
         bytes32 indexed identifier,
         uint256 time,
@@ -209,16 +209,8 @@ contract VotingV2 is
         uint256 numTokens
     );
 
-    event RewardsRetrieved(
-        address indexed voter,
-        uint256 indexed roundId,
-        bytes32 indexed identifier,
-        uint256 time,
-        bytes ancillaryData,
-        uint256 numTokens
-    );
-
     event PriceRequestAdded(
+        address requester,
         uint256 indexed roundId,
         bytes32 indexed identifier,
         uint256 indexed time,
@@ -244,8 +236,6 @@ contract VotingV2 is
     event SpamDeletionProposalBondChanged(uint256 newBond);
 
     event VoterSlashed(address indexed voter, int256 numTokens);
-
-    event CumulativeSlashingTrackersUpdated(uint256 lastRequestIndexConsidered, uint256 priceRequestIdsLength);
 
     event SignaledRequestsAsSpamForDeletion(
         uint256 indexed proposalId,
@@ -599,6 +589,7 @@ contract VotingV2 is
             pendingPriceRequests.push(priceRequestId);
             priceRequestIds.push(priceRequestId);
             emit PriceRequestAdded(
+                msg.sender,
                 roundIdToVoteOnPriceRequest,
                 identifier,
                 time,
@@ -796,17 +787,15 @@ contract VotingV2 is
 
         delete voteSubmission.commit;
 
-        // Get the voter's snapshotted balance. Since balances are returned pre-scaled by 10**18, we can directly
-        // initialize the Unsigned value with the returned uint.
-        uint256 balance = voterStakes[voter].activeStake;
+        uint256 activeStake = voterStakes[voter].activeStake;
 
         // Set the voter's submission.
         voteSubmission.revealHash = keccak256(abi.encode(price));
 
         // Add vote to the results.
-        voteInstance.resultComputation.addVote(price, balance);
+        voteInstance.resultComputation.addVote(price, activeStake);
 
-        emit VoteRevealed(voter, msg.sender, currentRoundId, identifier, time, price, ancillaryData, balance);
+        emit VoteRevealed(voter, msg.sender, currentRoundId, identifier, time, price, ancillaryData, activeStake);
     }
 
     // Overloaded method to enable short term backwards compatibility. Will be deprecated in the next DVM version.

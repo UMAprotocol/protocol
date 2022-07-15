@@ -49,8 +49,9 @@ contract Staker is StakerInterface, Ownable, Testable {
     event Staked(
         address indexed voter,
         uint256 amount,
-        uint256 voterCumulativeActiveStaked,
-        uint256 voterCumulativePendingStaked,
+        uint256 voterActiveStake,
+        uint256 voterPendingStake,
+        uint256 voterPendingUnStake,
         uint256 cumulativeActiveStake,
         uint256 cumulativePendingStake
     );
@@ -59,25 +60,25 @@ contract Staker is StakerInterface, Ownable, Testable {
         address indexed voter,
         uint256 amount,
         uint256 unstakeTime,
-        uint256 voterCumulativeActiveStaked,
-        uint256 voterCumulativePendingStaked
+        uint256 voterActiveStake,
+        uint256 voterPendingStake
     );
 
     event ExecutedUnstake(
         address indexed voter,
         uint256 tokensSent,
-        uint256 voterCumulativeActiveStaked,
-        uint256 voterCumulativePendingStaked
+        uint256 voterActiveStake,
+        uint256 voterPendingStake
     );
 
     event WithdrawnRewards(address indexed voter, uint256 tokensWithdrawn);
 
-    event UpdatedReward(address indexed voter, uint256 newReward);
+    event UpdatedReward(address indexed voter, uint256 newReward, uint256 lastUpdateTime);
 
     event UpdatedActiveStake(
         address indexed voter,
-        uint256 voterCumulativeActiveStaked,
-        uint256 voterCumulativePendingStaked,
+        uint256 voterActiveStake,
+        uint256 voterPendingStake,
         uint256 cumulativeActiveStake,
         uint256 cumulativePendingStake
     );
@@ -99,17 +100,18 @@ contract Staker is StakerInterface, Ownable, Testable {
 
     // Pulls tokens from users wallet and stakes them.
     function stake(uint256 amount) public override {
+        VoterStake storage voterStake = voterStakes[msg.sender];
         // If the staker has a cumulative staked balance of 0 then we can shortcut their lastRequestIndexConsidered to
         // the most recent index. This means we don't need to traverse requests where the staker was not staked.
-        if (getVoterStake(msg.sender) + voterStakes[msg.sender].pendingStake == 0)
-            voterStakes[msg.sender].lastRequestIndexConsidered = getStartingIndexForStaker();
+        if (getVoterStake(msg.sender) + voterStake.pendingStake == 0)
+            voterStake.lastRequestIndexConsidered = getStartingIndexForStaker();
 
         _updateTrackers(msg.sender);
         if (inActiveReveal()) {
-            voterStakes[msg.sender].pendingStake += amount;
+            voterStake.pendingStake += amount;
             cumulativePendingStake += amount;
         } else {
-            voterStakes[msg.sender].activeStake += amount;
+            voterStake.activeStake += amount;
             cumulativeActiveStake += amount;
         }
 
@@ -117,8 +119,9 @@ contract Staker is StakerInterface, Ownable, Testable {
         emit Staked(
             msg.sender,
             amount,
-            voterStakes[msg.sender].activeStake,
-            voterStakes[msg.sender].pendingStake,
+            voterStake.activeStake,
+            voterStake.pendingStake,
+            voterStake.pendingUnstake,
             cumulativeActiveStake,
             cumulativePendingStake
         );
@@ -128,23 +131,24 @@ contract Staker is StakerInterface, Ownable, Testable {
     function requestUnstake(uint256 amount) public override {
         require(!inActiveReveal(), "In an active reveal phase");
         _updateTrackers(msg.sender);
+        VoterStake storage voterStake = voterStakes[msg.sender];
 
         // Staker signals that they want to unstake. After signalling, their total voting balance is decreased by the
         // signaled amount. This amount is not vulnerable to being slashed but also does not accumulate rewards.
-        require(voterStakes[msg.sender].activeStake >= amount, "Bad request amount");
-        require(voterStakes[msg.sender].pendingUnstake == 0, "Have previous request unstake");
+        require(voterStake.activeStake >= amount, "Bad request amount");
+        require(voterStake.pendingUnstake == 0, "Have previous request unstake");
 
         cumulativeActiveStake -= amount;
-        voterStakes[msg.sender].pendingUnstake = amount;
-        voterStakes[msg.sender].activeStake -= amount;
-        voterStakes[msg.sender].unstakeRequestTime = getCurrentTime();
+        voterStake.pendingUnstake = amount;
+        voterStake.activeStake -= amount;
+        voterStake.unstakeRequestTime = getCurrentTime();
 
         emit RequestedUnstake(
             msg.sender,
             amount,
-            voterStakes[msg.sender].unstakeRequestTime,
-            voterStakes[msg.sender].activeStake,
-            voterStakes[msg.sender].pendingStake
+            voterStake.unstakeRequestTime,
+            voterStake.activeStake,
+            voterStake.pendingStake
         );
     }
 
@@ -215,7 +219,7 @@ contract Staker is StakerInterface, Ownable, Testable {
             voterStake.outstandingRewards = outstandingRewards(voterAddress);
             voterStake.rewardsPaidPerToken = newRewardPerToken;
         }
-        emit UpdatedReward(voterAddress, newRewardPerToken);
+        emit UpdatedReward(voterAddress, newRewardPerToken, lastUpdateTime);
     }
 
     function _updateActiveStake(address voterAddress) internal {
