@@ -322,7 +322,7 @@ contract VotingV2 is
         int256 slash = 0;
         for (uint256 requestIndex = indexFrom; requestIndex < indexTo; requestIndex = unsafe_inc(requestIndex)) {
             if (deletedRequests[requestIndex] != 0) requestIndex = deletedRequests[requestIndex] + 1;
-            if (requestIndex > priceRequestIds.length - 1) break; // This happens if the last element was a rolled vote.
+            if (requestIndex > indexTo - 1) break; // This happens if the last element was a rolled vote.
             PriceRequest storage priceRequest = priceRequests[priceRequestIds[requestIndex]];
 
             // If the request status is not resolved then we are currently in the voting round associated with this
@@ -346,12 +346,13 @@ contract VotingV2 is
             }
 
             VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
+            uint256 totalCorrectVotes = voteInstance.resultComputation.getTotalCorrectlyVotedTokens();
 
             (uint256 wrongVoteSlash, uint256 noVoteSlash) =
                 slashingLibrary.calcSlashing(
                     rounds[priceRequest.lastVotingRound].cumulativeActiveStakeAtRound,
                     voteInstance.resultComputation.totalVotes,
-                    voteInstance.resultComputation.getTotalCorrectlyVotedTokens(),
+                    totalCorrectVotes,
                     priceRequest.isGovernance
                 );
 
@@ -359,9 +360,7 @@ contract VotingV2 is
                 ((noVoteSlash *
                     (rounds[priceRequest.lastVotingRound].cumulativeActiveStakeAtRound -
                         voteInstance.resultComputation.totalVotes)) / 1e18) +
-                    ((wrongVoteSlash *
-                        (voteInstance.resultComputation.totalVotes -
-                            voteInstance.resultComputation.getTotalCorrectlyVotedTokens())) / 1e18);
+                    ((wrongVoteSlash * (voteInstance.resultComputation.totalVotes - totalCorrectVotes)) / 1e18);
 
             // The voter did not reveal or did not commit. Slash at noVote rate.
             if (voteInstance.voteSubmissions[voterAddress].revealHash == 0)
@@ -374,11 +373,7 @@ contract VotingV2 is
                 slash -= int256((voterStake.activeStake * wrongVoteSlash) / 1e18);
 
                 // The voter voted correctly. Receive a pro-rate share of the other voters slashed amounts as a reward.
-            else
-                slash += int256(
-                    (((voterStake.activeStake * totalSlashed)) /
-                        voteInstance.resultComputation.getTotalCorrectlyVotedTokens())
-                );
+            else slash += int256((((voterStake.activeStake * totalSlashed)) / totalCorrectVotes));
 
             // If this is not the last price request to apply and the next request in the batch is from a subsequent
             // round then apply the slashing now. Else, do nothing and apply the slashing after the loop concludes.
@@ -390,7 +385,7 @@ contract VotingV2 is
                 deletedRequests[requestIndex + 1] != 0 ? deletedRequests[requestIndex + 1] + 1 : requestIndex + 1;
             if (
                 slash != 0 &&
-                priceRequestIds.length > nextRequestIndex &&
+                indexTo > nextRequestIndex &&
                 priceRequest.lastVotingRound != priceRequests[priceRequestIds[nextRequestIndex]].lastVotingRound
             ) {
                 applySlashToVoter(slash, voterStake);
