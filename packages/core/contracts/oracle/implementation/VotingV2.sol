@@ -282,8 +282,24 @@ contract VotingV2 is
         _updateTrackers(voterAddress);
     }
 
+    function updateTrackersRange(
+        address voterAddress,
+        uint256 indexFrom,
+        uint256 indexTo
+    ) public {
+        require(indexFrom < indexTo, "indexFrom must be < indexTo");
+        require(indexFrom >= voterStakes[voterAddress].lastRequestIndexConsidered, "Bad indexFrom");
+        require(indexTo <= priceRequestIds.length, "Bad indexTo");
+
+        _updateAccountSlashingTrackers(voterAddress, indexFrom, indexTo);
+    }
+
     function _updateTrackers(address voterAddress) internal override {
-        _updateAccountSlashingTrackers(voterAddress);
+        _updateAccountSlashingTrackers(
+            voterAddress,
+            voterStakes[voterAddress].lastRequestIndexConsidered,
+            priceRequestIds.length
+        );
         super._updateTrackers(voterAddress);
     }
 
@@ -291,7 +307,11 @@ contract VotingV2 is
         return (currentActiveRequests() && getVotePhase() == Phase.Reveal);
     }
 
-    function _updateAccountSlashingTrackers(address voterAddress) internal {
+    function _updateAccountSlashingTrackers(
+        address voterAddress,
+        uint256 indexFrom,
+        uint256 indexTo
+    ) internal {
         uint256 currentRoundId = voteTiming.computeCurrentRoundId(getCurrentTime());
         VoterStake storage voterStake = voterStakes[voterAddress];
         // Note the method below can hit a gas limit of there are a LOT of requests from the last time this was run.
@@ -300,14 +320,9 @@ contract VotingV2 is
         // Traverse all requests from the last considered request. For each request see if the voter voted correctly or
         // not. Based on the outcome, attribute the associated slash to the voter.
         int256 slash = 0;
-        for (
-            uint256 requestIndex = voterStake.lastRequestIndexConsidered;
-            requestIndex < priceRequestIds.length;
-            requestIndex = unsafe_inc(requestIndex)
-        ) {
+        for (uint256 requestIndex = indexFrom; requestIndex < indexTo; requestIndex = unsafe_inc(requestIndex)) {
             if (deletedRequests[requestIndex] != 0) requestIndex = deletedRequests[requestIndex] + 1;
-            if (requestIndex > priceRequestIds.length - 1) break; // This happens if the last element was a rolled vote.
-            uint256 priceRequestIdsLength = priceRequestIds.length;
+            if (requestIndex > indexTo - 1) break; // This happens if the last element was a rolled vote.
             PriceRequest storage priceRequest = priceRequests[priceRequestIds[requestIndex]];
 
             // If the request status is not resolved then we are currently in the voting round associated with this
@@ -323,7 +338,7 @@ contract VotingV2 is
                     deletedRequests[requestIndex] = requestIndex;
                     priceRequest.priceRequestIndex = priceRequestIds.length;
                     priceRequestIds.push(priceRequestIds[requestIndex]);
-                    _updateAccountSlashingTrackers(voterAddress);
+                    _updateAccountSlashingTrackers(voterAddress, requestIndex + 1, priceRequestIds.length);
                 }
                 // Else, we are simply evaluating a request that is still actively being voted on. In this case, break as
                 // all subsequent requests within the array must be in the same state and cant have any slashing applied.
@@ -331,21 +346,21 @@ contract VotingV2 is
             }
 
             VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
-
-            uint256 totalVotes = voteInstance.resultComputation.totalVotes;
             uint256 totalCorrectVotes = voteInstance.resultComputation.getTotalCorrectlyVotedTokens();
 
             (uint256 wrongVoteSlash, uint256 noVoteSlash) =
                 slashingLibrary.calcSlashing(
                     rounds[priceRequest.lastVotingRound].cumulativeActiveStakeAtRound,
-                    totalVotes,
+                    voteInstance.resultComputation.totalVotes,
                     totalCorrectVotes,
                     priceRequest.isGovernance
                 );
 
             uint256 totalSlashed =
-                ((noVoteSlash * (rounds[priceRequest.lastVotingRound].cumulativeActiveStakeAtRound - totalVotes)) /
-                    1e18) + ((wrongVoteSlash * (totalVotes - totalCorrectVotes)) / 1e18);
+                ((noVoteSlash *
+                    (rounds[priceRequest.lastVotingRound].cumulativeActiveStakeAtRound -
+                        voteInstance.resultComputation.totalVotes)) / 1e18) +
+                    ((wrongVoteSlash * (voteInstance.resultComputation.totalVotes - totalCorrectVotes)) / 1e18);
 
             // The voter did not reveal or did not commit. Slash at noVote rate.
             if (voteInstance.voteSubmissions[voterAddress].revealHash == 0)
@@ -370,7 +385,7 @@ contract VotingV2 is
                 deletedRequests[requestIndex + 1] != 0 ? deletedRequests[requestIndex + 1] + 1 : requestIndex + 1;
             if (
                 slash != 0 &&
-                priceRequestIds.length > nextRequestIndex &&
+                indexTo > nextRequestIndex &&
                 priceRequest.lastVotingRound != priceRequests[priceRequestIds[nextRequestIndex]].lastVotingRound
             ) {
                 applySlashToVoter(slash, voterStake);
@@ -896,10 +911,11 @@ contract VotingV2 is
     function requestSlashingTrackers(uint256 requestIndex) public view returns (SlashingTracker memory) {
         uint256 currentRoundId = voteTiming.computeCurrentRoundId(getCurrentTime());
         PriceRequest storage priceRequest = priceRequests[priceRequestIds[requestIndex]];
-        VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
 
         if (_getRequestStatus(priceRequest, currentRoundId) != RequestStatus.Resolved)
             return SlashingTracker(0, 0, 0, 0);
+
+        VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
 
         uint256 totalVotes = voteInstance.resultComputation.totalVotes;
         uint256 totalCorrectVotes = voteInstance.resultComputation.getTotalCorrectlyVotedTokens();
