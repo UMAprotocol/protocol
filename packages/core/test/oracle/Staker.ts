@@ -1,5 +1,5 @@
 const hre = require("hardhat");
-const { web3 } = hre;
+const { web3, assertEventEmitted } = hre;
 const { runDefaultFixture, didContractThrow } = require("@uma/common");
 const { getContract } = hre;
 
@@ -198,6 +198,31 @@ describe("Staker", function () {
       await advanceTime(1000);
       assert.equal(await staker.methods.outstandingRewards(account1).call(), toWei("240")); // 240 + 0 = 240
       assert.equal(await staker.methods.outstandingRewards(account2).call(), toWei("1680")); // 1040 + 640 = 1680
+    });
+
+    it("Events", async function () {
+      let result;
+      result = await staker.methods.stake(amountToStake).send({ from: account1 }); // stake 1/4th
+      await advanceTime(1000);
+
+      await assertEventEmitted(result, staker, "Staked");
+      await assertEventEmitted(result, staker, "UpdatedActiveStake");
+      await assertEventEmitted(result, staker, "UpdatedReward");
+
+      result = await staker.methods.setEmissionRate(toWei("0.1")).send({ from: accounts[0] });
+      await assertEventEmitted(result, staker, "SetNewEmissionRate", (ev) => ev.newEmissionRate == toWei("0.1"));
+
+      result = await staker.methods.setUnstakeCoolDown(0).send({ from: account1 });
+      await assertEventEmitted(result, staker, "SetNewUnstakeCooldown");
+
+      result = await staker.methods.withdrawRewards().send({ from: account1 });
+      await assertEventEmitted(result, staker, "WithdrawnRewards");
+
+      result = await staker.methods.requestUnstake(amountToStake).send({ from: account1 });
+      await assertEventEmitted(result, staker, "RequestedUnstake");
+
+      result = await staker.methods.executeUnstake().send({ from: account1 });
+      await assertEventEmitted(result, staker, "ExecutedUnstake");
     });
   });
 });

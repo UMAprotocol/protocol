@@ -27,6 +27,13 @@ describe("DesignatedVotingV2Factory", function () {
     const designatedVotingAddress = await factory.methods.newDesignatedVoting(owner).call({ from: voter });
     await factory.methods.newDesignatedVoting(owner).send({ from: voter });
 
+    let events = await factory.getPastEvents("NewDesignatedVoting", {
+      fromBlock: 0,
+      filter: { designatedVoter: voter },
+    });
+    assert.equal(events.length, 1);
+    assert.equal(events[0].returnValues.designatedVoting, designatedVotingAddress);
+
     assert.equal(
       designatedVotingAddress.toString(),
       (await factory.methods.designatedVotingContracts(voter).call()).toString()
@@ -46,6 +53,9 @@ describe("DesignatedVotingV2Factory", function () {
       (await factory.methods.designatedVotingContracts(voter2).call()).toString()
     );
     assert.equal(ZERO_ADDRESS, (await factory.methods.designatedVotingContracts(voter).call()).toString());
+
+    events = await factory.getPastEvents("NewDesignatedVoting", { fromBlock: 0, filter: { designatedVoter: voter2 } });
+    assert.equal(events[events.length - 1].returnValues.designatedVoting, designatedVotingAddress);
   });
 
   it("Multiple Deployments", async function () {

@@ -190,7 +190,7 @@ contract VotingV2 is
     );
 
     event EncryptedVote(
-        address indexed voter,
+        address indexed caller,
         uint256 indexed roundId,
         bytes32 indexed identifier,
         uint256 time,
@@ -209,16 +209,15 @@ contract VotingV2 is
         uint256 numTokens
     );
 
-    event RewardsRetrieved(
-        address indexed voter,
+    event PriceRequestAdded(
+        address requester,
         uint256 indexed roundId,
         bytes32 indexed identifier,
-        uint256 time,
+        uint256 indexed time,
+        uint256 requestIndex,
         bytes ancillaryData,
-        uint256 numTokens
+        bool isGovernance
     );
-
-    event PriceRequestAdded(uint256 indexed roundId, bytes32 indexed identifier, uint256 time, bytes ancillaryData);
 
     event PriceResolved(
         uint256 indexed roundId,
@@ -227,6 +226,24 @@ contract VotingV2 is
         int256 price,
         bytes ancillaryData
     );
+
+    event VotingContractMigrated(address newAddress);
+
+    event GatPercentageChanged(uint256 newGatPercentage);
+
+    event SlashingLibraryChanged(address newAddress);
+
+    event SpamDeletionProposalBondChanged(uint256 newBond);
+
+    event VoterSlashed(address indexed voter, int256 slashedTokens, uint256 postActiveStake);
+
+    event SignaledRequestsAsSpamForDeletion(
+        uint256 indexed proposalId,
+        address indexed sender,
+        uint256[2][] spamRequestIndices
+    );
+
+    event ExecutedSpamDeletion(uint256 indexed proposalId, bool indexed executed);
 
     // /**
     //  * @notice Construct the Voting contract.
@@ -327,7 +344,7 @@ contract VotingV2 is
             // case break the loop and stop iterating (all subsequent requests will be in the same state by default) or
             // b) we have gotten to a rolled vote in which case we need to update some internal trackers for this vote
             // and set this within the deletedRequests mapping so the next time we hit this it is skipped.
-            if (!_resolvePriceRequest(priceRequest, voteInstance, currentRoundId)) {
+            if (!_priceRequestResolved(priceRequest, voteInstance, currentRoundId)) {
                 // If the request is not resolved and the lastVotingRound less than the current round then the vote
                 // must have been rolled. In this case, update the internal trackers for this vote.
                 if (priceRequest.lastVotingRound < currentRoundId) {
@@ -384,19 +401,24 @@ contract VotingV2 is
                 indexTo > nextRequestIndex &&
                 priceRequest.lastVotingRound != priceRequests[priceRequestIds[nextRequestIndex]].lastVotingRound
             ) {
-                applySlashToVoter(slash, voterStake);
+                applySlashToVoter(slash, voterStake, voterAddress);
                 slash = 0;
             }
             voterStake.lastRequestIndexConsidered = requestIndex + 1;
         }
 
-        if (slash != 0) applySlashToVoter(slash, voterStake);
+        if (slash != 0) applySlashToVoter(slash, voterStake, voterAddress);
     }
 
-    function applySlashToVoter(int256 slash, VoterStake storage voterStake) internal {
+    function applySlashToVoter(
+        int256 slash,
+        VoterStake storage voterStake,
+        address voterAddress
+    ) internal {
         if (slash + int256(voterStake.activeStake) > 0)
             voterStake.activeStake = uint256(int256(voterStake.activeStake) + slash);
         else voterStake.activeStake = 0;
+        emit VoterSlashed(voterAddress, slash, voterStake.activeStake);
     }
 
     /****************************************
@@ -428,6 +450,8 @@ contract VotingV2 is
         bytes32 identifier = SpamGuardIdentifierLib._constructIdentifier(proposalId);
 
         _requestPrice(identifier, currentTime, "", true);
+
+        emit SignaledRequestsAsSpamForDeletion(proposalId, msg.sender, spamRequestIndices);
     }
 
     function executeSpamDeletion(uint256 proposalId) public {
@@ -467,15 +491,18 @@ contract VotingV2 is
 
             // Return the spamDeletionProposalBond.
             votingToken.transfer(spamDeletionProposals[proposalId].proposer, spamDeletionProposalBond);
+            emit ExecutedSpamDeletion(proposalId, true);
         }
         // Else, the spam deletion request was voted down. In this case we send the spamDeletionProposalBond to the store.
         else {
             votingToken.transfer(finder.getImplementationAddress(OracleInterfaces.Store), spamDeletionProposalBond);
+            emit ExecutedSpamDeletion(proposalId, false);
         }
     }
 
     function setSpamDeletionProposalBond(uint256 _spamDeletionProposalBond) public onlyOwner() {
         spamDeletionProposalBond = _spamDeletionProposalBond;
+        emit SpamDeletionProposalBondChanged(_spamDeletionProposalBond);
     }
 
     function getSpamDeletionRequest(uint256 spamDeletionRequestId) public view returns (SpamDeletionRequest memory) {
@@ -565,7 +592,15 @@ contract VotingV2 is
 
             pendingPriceRequests.push(priceRequestId);
             priceRequestIds.push(priceRequestId);
-            emit PriceRequestAdded(roundIdToVoteOnPriceRequest, identifier, time, ancillaryData);
+            emit PriceRequestAdded(
+                msg.sender,
+                roundIdToVoteOnPriceRequest,
+                identifier,
+                time,
+                newPriceRequest.priceRequestIndex,
+                ancillaryData,
+                isGovernance
+            );
         }
     }
 
@@ -756,17 +791,15 @@ contract VotingV2 is
 
         delete voteSubmission.commit;
 
-        // Get the voter's snapshotted balance. Since balances are returned pre-scaled by 10**18, we can directly
-        // initialize the Unsigned value with the returned uint.
-        uint256 balance = voterStakes[voter].activeStake;
+        uint256 activeStake = voterStakes[voter].activeStake;
 
         // Set the voter's submission.
         voteSubmission.revealHash = keccak256(abi.encode(price));
 
         // Add vote to the results.
-        voteInstance.resultComputation.addVote(price, balance);
+        voteInstance.resultComputation.addVote(price, activeStake);
 
-        emit VoteRevealed(voter, msg.sender, currentRoundId, identifier, time, price, ancillaryData, balance);
+        emit VoteRevealed(voter, msg.sender, currentRoundId, identifier, time, price, ancillaryData, activeStake);
     }
 
     // Overloaded method to enable short term backwards compatibility. Will be deprecated in the next DVM version.
@@ -935,6 +968,7 @@ contract VotingV2 is
      */
     function setMigrated(address newVotingAddress) external override onlyOwner {
         migratedAddress = newVotingAddress;
+        emit VotingContractMigrated(newVotingAddress);
     }
 
     /**
@@ -945,6 +979,7 @@ contract VotingV2 is
     function setGatPercentage(uint256 newGatPercentage) public override onlyOwner {
         require(newGatPercentage < 1e18, "GAT percentage must be < 100%");
         gatPercentage = newGatPercentage;
+        emit GatPercentageChanged(newGatPercentage);
     }
 
     // Here for abi compatibility. to be removed.
@@ -956,6 +991,7 @@ contract VotingV2 is
      */
     function setSlashingLibrary(address _newSlashingLibrary) public override onlyOwner {
         slashingLibrary = SlashingLibrary(_newSlashingLibrary);
+        emit SlashingLibraryChanged(_newSlashingLibrary);
     }
 
     /****************************************
@@ -1022,7 +1058,7 @@ contract VotingV2 is
         }
     }
 
-    function _resolvePriceRequest(
+    function _priceRequestResolved(
         PriceRequest storage priceRequest,
         VoteInstance storage voteInstance,
         uint256 currentRoundId
