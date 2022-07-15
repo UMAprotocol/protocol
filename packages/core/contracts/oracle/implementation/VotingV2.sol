@@ -286,7 +286,7 @@ contract VotingV2 is
      ****************************************/
 
     /**
-     * @notice Updates the global and selected wallet's trackers for staking and voting.
+     * @notice Updates the voter's trackers for staking and voting.
      * @dev This function can be called by anyone, but it is not necessary for the contract to work because
      * it is automatically run in the other functions.
      * @param voterAddress address of the voter to update the trackers for.
@@ -295,6 +295,13 @@ contract VotingV2 is
         _updateTrackers(voterAddress);
     }
 
+    /**
+     * @notice Updates the voter's trackers for staking and voting in a specific range of priceRequest indexes.
+     * @dev this function can be used in place of updateTrackers to process the trackers in batches, hence avoiding
+     * potential issues if the number of elements to be processed is big.
+     * @param voterAddress address of the voter to update the trackers for.
+     * @param indexTo last price request index to update the trackers for.
+     */
     function updateTrackersRange(address voterAddress, uint256 indexTo) public {
         require(voterStakes[voterAddress].lastRequestIndexConsidered < indexTo, "IndexTo not after last request");
         require(indexTo <= priceRequestIds.length, "Bad indexTo");
@@ -847,10 +854,18 @@ contract VotingV2 is
         commitAndEmitEncryptedVote(identifier, time, "", hash, encryptedVote);
     }
 
+    /**
+     * @notice Sets the delegate of a voter.
+     * @param delegate the address of the delegate.
+     */
     function setDelegate(address delegate) public {
         voterStakes[msg.sender].delegate = delegate;
     }
 
+    /**
+     * @notice Sets the delegator of a voter.
+     * @param delegator the address of the delegate.
+     */
     function setDelegator(address delegator) public {
         delegateToStaker[msg.sender] = delegator;
     }
@@ -859,6 +874,10 @@ contract VotingV2 is
      *        VOTING GETTER FUNCTIONS       *
      ****************************************/
 
+    /**
+     * @notice Gets the voter from the delegate.
+     * @return address voter that corresponds to the delegate.
+     */
     function getVoterFromDelegate(address caller) public view returns (address) {
         if (
             delegateToStaker[caller] != address(0) && // The delegate chose to be a delegate for the staker.
@@ -870,7 +889,6 @@ contract VotingV2 is
     /**
      * @notice Gets the queries that are being voted on this round.
      * @return pendingRequests array containing identifiers of type `PendingRequest`.
-     * and timestamps for all pending requests.
      */
     function getPendingRequests() public view override returns (PendingRequestAncillary[] memory) {
         uint256 blockTime = getCurrentTime();
@@ -900,6 +918,10 @@ contract VotingV2 is
         return pendingRequests;
     }
 
+    /**
+     * @notice Checks if there are current active requests.
+     * @return bool true if there are active requests, false otherwise.
+     */
     function currentActiveRequests() public view returns (bool) {
         uint256 blockTime = getCurrentTime();
         uint256 currentRoundId = voteTiming.computeCurrentRoundId(blockTime);
@@ -926,6 +948,10 @@ contract VotingV2 is
         return voteTiming.computeCurrentRoundId(getCurrentTime());
     }
 
+    /**
+     * @notice Returns the current round ID, as a function of the current time.
+     * @return uint256 representing the unique round ID.
+     */
     function getRoundEndTime(uint256 roundId) public view returns (uint256) {
         return voteTiming.computeRoundEndTime(roundId);
     }
