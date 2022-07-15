@@ -317,6 +317,7 @@ contract VotingV2 is
         return (currentActiveRequests() && getVotePhase() == Phase.Reveal);
     }
 
+    // Updates the slashing trackers of a given account based on previous voting activity.
     function _updateAccountSlashingTrackers(address voterAddress, uint256 indexTo) internal {
         uint256 currentRoundId = voteTiming.computeCurrentRoundId(getCurrentTime());
         VoterStake storage voterStake = voterStakes[voterAddress];
@@ -406,6 +407,7 @@ contract VotingV2 is
         if (slash != 0) applySlashToVoter(slash, voterStake);
     }
 
+    // Applys a given slash to a given voter's stake.
     function applySlashToVoter(int256 slash, VoterStake storage voterStake) internal {
         if (slash + int256(voterStake.activeStake) > 0)
             voterStake.activeStake = uint256(int256(voterStake.activeStake) + slash);
@@ -416,6 +418,11 @@ contract VotingV2 is
      *       SPAM DELETION FUNCTIONS        *
      ****************************************/
 
+    /**
+     * @notice Declare a specific price requests range to be spam and request it's deletion.
+     * @param spamRequestIndices list of request indices to be declared as spam. Each element is a
+     * pair of uint256s representing the start and end of the range.
+     */
     function signalRequestsAsSpamForDeletion(uint256[2][] calldata spamRequestIndices) public {
         votingToken.transferFrom(msg.sender, address(this), spamDeletionProposalBond);
         uint256 currentTime = getCurrentTime();
@@ -443,6 +450,10 @@ contract VotingV2 is
         _requestPrice(identifier, currentTime, "", true);
     }
 
+    /**
+     * @notice Execute the spam deletion proposal if it has been approved by voting.
+     * @param proposalId spam deletion proposal id.
+     */
     function executeSpamDeletion(uint256 proposalId) public {
         require(spamDeletionProposals[proposalId].executed == false, "Already executed");
         spamDeletionProposals[proposalId].executed = true;
@@ -487,10 +498,19 @@ contract VotingV2 is
         }
     }
 
+    /**
+     * @notice Set the spam deletion proposal bond.
+     * @param _spamDeletionProposalBond new spam deletion proposal bond.
+     */
     function setSpamDeletionProposalBond(uint256 _spamDeletionProposalBond) public onlyOwner() {
         spamDeletionProposalBond = _spamDeletionProposalBond;
     }
 
+    /**
+     * @notice Get the spam deletion request by the proposal id.
+     * @param spamDeletionRequestId spam deletion request id.
+     * @return SpamDeletionRequest the spam deletion request.
+     */
     function getSpamDeletionRequest(uint256 spamDeletionRequestId) public view returns (SpamDeletionRequest memory) {
         return spamDeletionProposals[spamDeletionRequestId];
     }
