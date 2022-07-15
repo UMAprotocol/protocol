@@ -414,7 +414,7 @@ contract VotingV2 is
         if (slash != 0) applySlashToVoter(slash, voterStake);
     }
 
-    // Applys a given slash to a given voter's stake.
+    // Applies a given slash to a given voter's stake.
     function applySlashToVoter(int256 slash, VoterStake storage voterStake) internal {
         if (slash + int256(voterStake.activeStake) > 0)
             voterStake.activeStake = uint256(int256(voterStake.activeStake) + slash);
