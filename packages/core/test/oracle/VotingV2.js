@@ -79,6 +79,7 @@ describe("VotingV2", function () {
     await registry.methods.registerContract([], registeredContract).send({ from: account1 });
 
     // Reset the rounds.
+    await voting.methods.setCurrentTime("1657879200").send({ from: accounts[0] });
     await moveToNextRound(voting, accounts[0]);
   });
 
@@ -90,8 +91,8 @@ describe("VotingV2", function () {
         VotingV2.new(
           "42069", // emissionRate
           toWei("10000"), // spamDeletionProposalBond
-          "420420", // Unstake cooldown
-          69696969, // PhaseLength
+          60 * 60 * 24 * 7, // Unstake cooldown
+          86400, // PhaseLength
           7200, // minRollToNextRoundLength
           invalidGat, // GatPct
           votingToken.options.address, // voting token
@@ -2045,7 +2046,6 @@ describe("VotingV2", function () {
       (await voting.methods.voterStakes(account2).call()).activeStake,
       toWei("32000000").sub(toWei("102318.08")) // Their original stake amount of 32mm minus the slashing of 102318.08.
     );
-    // // -102400
     // Account3 did not vote the first time and voted correctly the second time. They should get slashed at 32mm*0.0016
     // = 51200 for the first vote and then on the second vote they should get (32mm-51200)/(64039822.22)*57536.284=28704.2525
     // Overall they should have a resulting slash of -22495.7474
@@ -2892,9 +2892,6 @@ describe("VotingV2", function () {
     await voting.methods.executeUnstake().send({ from: account3 });
     await voting.methods.executeUnstake().send({ from: account4 });
 
-    console.log("getVoterStake", await voting.methods.getVoterStake(account4).call());
-    console.log("voterStake", await voting.methods.voterStakes(account4).call());
-
     // If account 4 stakes now they should start at slashing request index0.
 
     await voting.methods.stake(toWei("32000000")).send({ from: account1 });
@@ -2954,8 +2951,6 @@ describe("VotingV2", function () {
 
     // move to the next round.
     await moveToNextRound(voting, accounts[0]);
-
-    // now
   });
 
   // TODO: add a much more itterative rolling test to validate a many rolled round is correctly tracked.

@@ -378,6 +378,7 @@ contract VotingV2 is
 
             pendingPriceRequests.push(priceRequestId);
             priceRequestIds.push(priceRequestId);
+
             emit PriceRequestAdded(
                 msg.sender,
                 roundIdToVoteOnPriceRequest,
@@ -873,12 +874,13 @@ contract VotingV2 is
             if (!_priceRequestResolved(priceRequest, voteInstance, currentRoundId)) {
                 // If the request is not resolved and the lastVotingRound less than the current round then the vote
                 // must have been rolled. In this case, update the internal trackers for this vote.
+
                 if (priceRequest.lastVotingRound < currentRoundId) {
                     priceRequest.lastVotingRound = currentRoundId;
                     deletedRequests[requestIndex] = requestIndex;
                     priceRequest.priceRequestIndex = priceRequestIds.length;
                     priceRequestIds.push(priceRequestIds[requestIndex]);
-                    _updateAccountSlashingTrackers(voterAddress, priceRequestIds.length);
+                    continue;
                 }
                 // Else, we are simply evaluating a request that is still actively being voted on. In this case, break as
                 // all subsequent requests within the array must be in the same state and cant have any slashing applied.

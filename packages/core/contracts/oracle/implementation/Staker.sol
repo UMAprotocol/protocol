@@ -139,7 +139,8 @@ contract Staker is StakerInterface, Ownable, Testable {
     }
 
     /**
-     * @notice Request a certain number of tokens to be unstaked. After the unstake time expires, the user may execute the unstake.
+     * @notice Request a certain number of tokens to be unstaked. After the unstake time expires, the user may execute
+     * the unstake. Tokens requested to unstake are not slashable nor subject to earning rewards.
      * This function cannot be called during an active reveal phase.
      * Note that there is no way to cancel an unstake request.
      * @param amount the amount of tokens to request to be unstaked.
@@ -148,6 +149,7 @@ contract Staker is StakerInterface, Ownable, Testable {
         require(!inActiveReveal(), "In an active reveal phase");
         _updateTrackers(msg.sender);
         VoterStake storage voterStake = voterStakes[msg.sender];
+
         require(voterStake.activeStake >= amount, "Bad request amount");
         require(voterStake.pendingUnstake == 0, "Have previous request unstake");
 
