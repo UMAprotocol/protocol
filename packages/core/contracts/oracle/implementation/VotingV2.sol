@@ -4,7 +4,6 @@
 pragma solidity ^0.8.0;
 
 import "../../common/implementation/AncillaryData.sol";
-import "../../common/implementation/FixedPoint.sol"; // TODO: remove this from this contract.
 import "../../common/implementation/MultiCaller.sol";
 
 import "../interfaces/FinderInterface.sol";
@@ -14,7 +13,7 @@ import "../interfaces/OracleGovernanceInterface.sol";
 import "../interfaces/VotingV2Interface.sol";
 import "../interfaces/IdentifierWhitelistInterface.sol";
 import "./Registry.sol";
-import "./ResultComputation.sol";
+import "./ResultComputationV2.sol";
 import "./VoteTimingV2.sol";
 import "./Staker.sol";
 import "./Constants.sol";
@@ -29,20 +28,18 @@ import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
  * @title Voting system for Oracle.
  * @dev Handles receiving and resolving price requests via a commit-reveal voting scheme.
  */
-// TODO: right now there are multiple interfaces (OracleInterface & OracleAncillaryInterface). We should only have one
-// which should be done by removing the overloaded interfaces.
 
 contract VotingV2 is
     Staker,
+    OracleInterface,
     OracleAncillaryInterface, // Interface to support ancillary data with price requests.
     OracleGovernanceInterface, // Interface to support governance requests.
     VotingV2Interface,
     MultiCaller
 {
-    using FixedPoint for FixedPoint.Unsigned;
     using SafeMath for uint256;
     using VoteTimingV2 for VoteTimingV2.Data;
-    using ResultComputation for ResultComputation.Data;
+    using ResultComputationV2 for ResultComputationV2.Data;
 
     /****************************************
      *        VOTING DATA STRUCTURES        *
@@ -59,9 +56,12 @@ contract VotingV2 is
         // If in the past, this was the voting round where this price was resolved. If current or the upcoming round,
         // this is the voting round where this price will be voted on, but not necessarily resolved.
         uint256 lastVotingRound;
-        // The index in the `pendingPriceRequests` that references this PriceRequest. A value of UINT_MAX means that
-        // this PriceRequest is resolved and has been cleaned up from `pendingPriceRequests`.
-        uint256 index;
+        // The pendingRequestIndex in the `pendingPriceRequests` that references this PriceRequest. A value of UINT_MAX
+        // means that this PriceRequest is resolved and has been cleaned up from `pendingPriceRequests`.
+        uint256 pendingRequestIndex;
+        // Each request has a unique requestIndex number that is used to order all requests. This is the index within
+        // the priceRequestIds array and is incremented on each request.
+        uint256 priceRequestIndex;
         bool isGovernance;
         bytes ancillaryData;
     }
@@ -70,7 +70,7 @@ contract VotingV2 is
         // Maps (voterAddress) to their submission.
         mapping(address => VoteSubmission) voteSubmissions;
         // The data structure containing the computed voting results.
-        ResultComputation.Data resultComputation;
+        ResultComputationV2.Data resultComputation;
     }
 
     struct VoteSubmission {
@@ -82,7 +82,7 @@ contract VotingV2 is
     }
 
     struct Round {
-        FixedPoint.Unsigned gatPercentage; // Gat rate set for this round.
+        uint256 gatPercentage; // Gat rate set for this round.
         uint256 cumulativeActiveStakeAtRound; // Total staked tokens at the start of the round.
     }
 
@@ -110,15 +110,9 @@ contract VotingV2 is
     // Maps price request IDs to the PriceRequest struct.
     mapping(bytes32 => PriceRequest) internal priceRequests;
 
-    struct Request {
-        bytes32 requestId;
-        uint256 roundId;
-    }
+    bytes32[] public priceRequestIds;
 
-    // TODO: consider replacing this structure with a linked list.
-    Request[] public priceRequestIds;
-
-    mapping(uint256 => uint256) public deletedRequestJumpMapping;
+    mapping(uint256 => uint256) public deletedRequests;
 
     // Price request ids for price requests that haven't yet been marked as resolved.
     // These requests may be for future rounds.
@@ -128,7 +122,7 @@ contract VotingV2 is
 
     // Percentage of the total token supply that must be used in a vote to
     // create a valid price resolution. 1 == 100%.
-    FixedPoint.Unsigned public gatPercentage;
+    uint256 public gatPercentage;
 
     // Reference to the Finder.
     FinderInterface private immutable finder;
@@ -158,14 +152,13 @@ contract VotingV2 is
 
     uint256 public lastRequestIndexConsidered;
 
+    // Only used as a return value in view methods -- never stored in the contract.
     struct SlashingTracker {
         uint256 wrongVoteSlashPerToken;
         uint256 noVoteSlashPerToken;
         uint256 totalSlashed;
         uint256 totalCorrectVotes;
     }
-
-    mapping(uint256 => SlashingTracker) public requestSlashingTrackers;
 
     /****************************************
      *        SPAM DELETION TRACKERS        *
@@ -189,7 +182,8 @@ contract VotingV2 is
 
     event VoteCommitted(
         address indexed voter,
-        uint256 indexed roundId,
+        address indexed caller,
+        uint256 roundId,
         bytes32 indexed identifier,
         uint256 time,
         bytes ancillaryData
@@ -206,7 +200,8 @@ contract VotingV2 is
 
     event VoteRevealed(
         address indexed voter,
-        uint256 indexed roundId,
+        address indexed caller,
+        uint256 roundId,
         bytes32 indexed identifier,
         uint256 time,
         int256 price,
@@ -227,6 +222,7 @@ contract VotingV2 is
         uint256 indexed roundId,
         bytes32 indexed identifier,
         uint256 indexed time,
+        uint256 requestIndex,
         bytes ancillaryData,
         bool isGovernance
     );
@@ -270,21 +266,22 @@ contract VotingV2 is
     //  */
     constructor(
         uint256 _emissionRate,
+        uint256 _spamDeletionProposalBond,
         uint256 _unstakeCoolDown,
         uint256 _phaseLength,
         uint256 _minRollToNextRoundLength,
-        FixedPoint.Unsigned memory _gatPercentage,
+        uint256 _gatPercentage,
         address _votingToken,
         address _finder,
         address _timerAddress,
         address _slashingLibrary
     ) Staker(_emissionRate, _unstakeCoolDown, _votingToken, _timerAddress) {
         voteTiming.init(_phaseLength, _minRollToNextRoundLength);
-        require(_gatPercentage.isLessThanOrEqual(1), "GAT percentage must be <= 100%");
+        require(_gatPercentage <= 1e18, "GAT percentage must be <= 100%");
         gatPercentage = _gatPercentage;
         finder = FinderInterface(_finder);
         slashingLibrary = SlashingLibrary(_slashingLibrary);
-        setSpamDeletionProposalBond(10000e18); // Set the spam deletion proposal bond to 10,000 UMA. // TODO: make constructor param.
+        setSpamDeletionProposalBond(_spamDeletionProposalBond);
     }
 
     /***************************************
@@ -314,119 +311,120 @@ contract VotingV2 is
         _updateTrackers(voterAddress);
     }
 
+    function updateTrackersRange(address voterAddress, uint256 indexTo) public {
+        require(voterStakes[voterAddress].lastRequestIndexConsidered < indexTo, "IndexTo not after last request");
+        require(indexTo <= priceRequestIds.length, "Bad indexTo");
+
+        _updateAccountSlashingTrackers(voterAddress, indexTo);
+    }
+
     function _updateTrackers(address voterAddress) internal override {
-        // todo: the ordering of these functions is critical and should be though about more deeply + comments.
-        _updateCumulativeSlashingTrackers();
-        _updateAccountSlashingTrackers(voterAddress);
+        _updateAccountSlashingTrackers(voterAddress, priceRequestIds.length);
         super._updateTrackers(voterAddress);
     }
 
-    function inActiveReveal() internal override returns (bool) {
-        return (getPendingRequests().length > 0 && getVotePhase() == Phase.Reveal);
+    function getStartingIndexForStaker() internal view override returns (uint256) {
+        return priceRequestIds.length - (inActiveReveal() ? 0 : pendingPriceRequests.length);
     }
 
-    function _updateAccountSlashingTrackers(address voterAddress) internal {
+    function inActiveReveal() public view override returns (bool) {
+        return (currentActiveRequests() && getVotePhase() == Phase.Reveal);
+    }
+
+    function _updateAccountSlashingTrackers(address voterAddress, uint256 indexTo) internal {
         uint256 currentRoundId = voteTiming.computeCurrentRoundId(getCurrentTime());
         VoterStake storage voterStake = voterStakes[voterAddress];
         // Note the method below can hit a gas limit of there are a LOT of requests from the last time this was run.
         // A future version of this should bound how many requests to look at per call to avoid gas limit issues.
-        int256 slash = 0;
 
         // Traverse all requests from the last considered request. For each request see if the voter voted correctly or
         // not. Based on the outcome, attribute the associated slash to the voter.
-        uint256 priceRequestIdsLength = priceRequestIds.length;
-        for (uint256 i = voterStake.lastRequestIndexConsidered; i < priceRequestIdsLength; i = unsafe_inc(i)) {
-            if (deletedRequestJumpMapping[i] != 0) i = deletedRequestJumpMapping[i] + 1;
-            PriceRequest storage priceRequest = priceRequests[priceRequestIds[i].requestId];
+        int256 slash = 0;
+        for (
+            uint256 requestIndex = voterStake.lastRequestIndexConsidered;
+            requestIndex < indexTo;
+            requestIndex = unsafe_inc(requestIndex)
+        ) {
+            if (deletedRequests[requestIndex] != 0) requestIndex = deletedRequests[requestIndex] + 1;
+            if (requestIndex > indexTo - 1) break; // This happens if the last element was a rolled vote.
+            PriceRequest storage priceRequest = priceRequests[priceRequestIds[requestIndex]];
             VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
-            uint256 roundId = priceRequestIds[i].roundId;
 
-            // Cant slash this or any subsequent requests if the request is not settled. TODO: this has implications for
-            // rolled votes and should be considered closely.
-            if (_getRequestStatus(priceRequest, currentRoundId) != RequestStatus.Resolved) break;
+            // If the request status is not resolved then: a) Either we are still in the current voting round, in which
+            // case break the loop and stop iterating (all subsequent requests will be in the same state by default) or
+            // b) we have gotten to a rolled vote in which case we need to update some internal trackers for this vote
+            // and set this within the deletedRequests mapping so the next time we hit this it is skipped.
+            if (!_resolvePriceRequest(priceRequest, voteInstance, currentRoundId)) {
+                // If the request is not resolved and the lastVotingRound less than the current round then the vote
+                // must have been rolled. In this case, update the internal trackers for this vote.
+                if (priceRequest.lastVotingRound < currentRoundId) {
+                    priceRequest.lastVotingRound = currentRoundId;
+                    deletedRequests[requestIndex] = requestIndex;
+                    priceRequest.priceRequestIndex = priceRequestIds.length;
+                    priceRequestIds.push(priceRequestIds[requestIndex]);
+                    _updateAccountSlashingTrackers(voterAddress, priceRequestIds.length);
+                }
+                // Else, we are simply evaluating a request that is still actively being voted on. In this case, break as
+                // all subsequent requests within the array must be in the same state and cant have any slashing applied.
+                break;
+            }
 
-            bytes32 revealHash = voteInstance.voteSubmissions[voterAddress].revealHash;
+            uint256 totalCorrectVotes = voteInstance.resultComputation.getTotalCorrectlyVotedTokens();
+
+            (uint256 wrongVoteSlash, uint256 noVoteSlash) =
+                slashingLibrary.calcSlashing(
+                    rounds[priceRequest.lastVotingRound].cumulativeActiveStakeAtRound,
+                    voteInstance.resultComputation.totalVotes,
+                    totalCorrectVotes,
+                    priceRequest.isGovernance
+                );
+
+            uint256 totalSlashed =
+                ((noVoteSlash *
+                    (rounds[priceRequest.lastVotingRound].cumulativeActiveStakeAtRound -
+                        voteInstance.resultComputation.totalVotes)) / 1e18) +
+                    ((wrongVoteSlash * (voteInstance.resultComputation.totalVotes - totalCorrectVotes)) / 1e18);
+
             // The voter did not reveal or did not commit. Slash at noVote rate.
-            if (revealHash == 0)
-                slash -= int256((voterStake.activeStake * requestSlashingTrackers[i].noVoteSlashPerToken) / 1e18);
+            if (voteInstance.voteSubmissions[voterAddress].revealHash == 0)
+                slash -= int256((voterStake.activeStake * noVoteSlash) / 1e18);
 
                 // The voter did not vote with the majority. Slash at wrongVote rate.
-            else if (!voteInstance.resultComputation.wasVoteCorrect(revealHash))
-                slash -= int256((voterStake.activeStake * requestSlashingTrackers[i].wrongVoteSlashPerToken) / 1e18);
+            else if (
+                !voteInstance.resultComputation.wasVoteCorrect(voteInstance.voteSubmissions[voterAddress].revealHash)
+            )
+                slash -= int256((voterStake.activeStake * wrongVoteSlash) / 1e18);
 
                 // The voter voted correctly. Receive a pro-rate share of the other voters slashed amounts as a reward.
-            else
-                slash += int256(
-                    (((voterStake.activeStake * requestSlashingTrackers[i].totalSlashed)) /
-                        requestSlashingTrackers[i].totalCorrectVotes)
-                );
+            else slash += int256((((voterStake.activeStake * totalSlashed)) / totalCorrectVotes));
 
             // If this is not the last price request to apply and the next request in the batch is from a subsequent
             // round then apply the slashing now. Else, do nothing and apply the slashing after the loop concludes.
             // This acts to apply slashing within a round as independent actions: multiple votes within the same round
-            // should not impact each other but subsequent rounds should impact each other.
-            if (priceRequestIdsLength - i > 1 && roundId != priceRequestIds[i + 1].roundId) {
-                applySlashToVoter(slash, voterAddress);
+
+            // should not impact each other but subsequent rounds should impact each other. We need to consider the
+            // deletedRequests mapping when finding the next index as the next request may have been deleted or rolled.
+            uint256 nextRequestIndex =
+                deletedRequests[requestIndex + 1] != 0 ? deletedRequests[requestIndex + 1] + 1 : requestIndex + 1;
+            if (
+                slash != 0 &&
+                indexTo > nextRequestIndex &&
+                priceRequest.lastVotingRound != priceRequests[priceRequestIds[nextRequestIndex]].lastVotingRound
+            ) {
+                applySlashToVoter(slash, voterStake);
                 slash = 0;
             }
-            voterStake.lastRequestIndexConsidered = i + 1;
+            voterStake.lastRequestIndexConsidered = requestIndex + 1;
         }
 
-        if (slash != 0) applySlashToVoter(slash, voterAddress);
+        if (slash != 0) applySlashToVoter(slash, voterStake);
     }
 
-    function applySlashToVoter(int256 slash, address voterAddress) internal {
-        VoterStake storage voterStake = voterStakes[voterAddress];
+    function applySlashToVoter(int256 slash, VoterStake storage voterStake) internal {
         if (slash + int256(voterStake.activeStake) > 0)
             voterStake.activeStake = uint256(int256(voterStake.activeStake) + slash);
         else voterStake.activeStake = 0;
         emit VoterSlashed(voterAddress, slash);
-    }
-
-    function _updateCumulativeSlashingTrackers() internal {
-        uint256 currentRoundId = voteTiming.computeCurrentRoundId(getCurrentTime());
-        // Note the method below can hit a gas limit of there are a LOT of requests from the last time this was run.
-        // A future version of this should bound how many requests to look at per call to avoid gas limit issues.
-
-        // Traverse all price requests from the last time this method was called and for each request compute and store
-        // the associated slashing rates as a function of the total staked, total votes and total correct votes. Note
-        // that this method in almost all cases will only need to traverse one request as slashing trackers are updated
-        // on every commit and so it is not too computationally inefficient.
-        uint256 priceRequestIdsLength = priceRequestIds.length;
-        for (uint256 i = lastRequestIndexConsidered; i < priceRequestIdsLength; i = unsafe_inc(i)) {
-            if (deletedRequestJumpMapping[i] != 0) i = deletedRequestJumpMapping[i] + 1;
-            Request memory request = priceRequestIds[i];
-            PriceRequest storage priceRequest = priceRequests[request.requestId];
-            VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
-
-            // Cant slash this or any subsequent requests if the request is not settled. TODO: this has implications for
-            // rolled votes and should be considered closely.
-            if (_getRequestStatus(priceRequest, currentRoundId) != RequestStatus.Resolved) break;
-            uint256 stakedAtRound = rounds[request.roundId].cumulativeActiveStakeAtRound;
-            uint256 totalVotes = voteInstance.resultComputation.totalVotes.rawValue;
-            uint256 totalCorrectVotes = voteInstance.resultComputation.getTotalCorrectlyVotedTokens().rawValue;
-            uint256 wrongVoteSlashPerToken =
-                priceRequest.isGovernance
-                    ? slashingLibrary.calcWrongVoteSlashPerTokenGovernance(stakedAtRound, totalVotes, totalCorrectVotes)
-                    : slashingLibrary.calcWrongVoteSlashPerToken(stakedAtRound, totalVotes, totalCorrectVotes);
-            uint256 noVoteSlashPerToken =
-                slashingLibrary.calcNoVoteSlashPerToken(stakedAtRound, totalVotes, totalCorrectVotes);
-
-            uint256 totalSlashed =
-                ((noVoteSlashPerToken * (stakedAtRound - totalVotes)) / 1e18) +
-                    ((wrongVoteSlashPerToken * (totalVotes - totalCorrectVotes)) / 1e18);
-
-            requestSlashingTrackers[i] = SlashingTracker(
-                wrongVoteSlashPerToken,
-                noVoteSlashPerToken,
-                totalSlashed,
-                totalCorrectVotes
-            );
-
-            lastRequestIndexConsidered = i + 1;
-        }
-
-        emit CumulativeSlashingTrackersUpdated(lastRequestIndexConsidered, priceRequestIdsLength);
     }
 
     /****************************************
@@ -451,7 +449,6 @@ contract VotingV2 is
             require(spamRequestIndex[1] > runningValidationIndex, "Bad index continuity");
             runningValidationIndex = spamRequestIndex[1];
         }
-        // todo: consider if we want to check if the most recent price request has been settled?
 
         spamDeletionProposals.push(SpamDeletionRequest(spamRequestIndices, currentTime, false, msg.sender));
         uint256 proposalId = spamDeletionProposals.length - 1;
@@ -479,12 +476,14 @@ contract VotingV2 is
                 uint256 startIndex = spamDeletionProposals[proposalId].spamRequestIndices[uint256(i)][0];
                 uint256 endIndex = spamDeletionProposals[proposalId].spamRequestIndices[uint256(i)][1];
                 for (uint256 j = startIndex; j <= endIndex; j++) {
-                    bytes32 requestId = priceRequestIds[j].requestId;
+                    bytes32 requestId = priceRequestIds[j];
                     // Remove from pendingPriceRequests.
                     uint256 lastIndex = pendingPriceRequests.length - 1;
                     PriceRequest storage lastPriceRequest = priceRequests[pendingPriceRequests[lastIndex]];
-                    lastPriceRequest.index = priceRequests[requestId].index;
-                    pendingPriceRequests[priceRequests[requestId].index] = pendingPriceRequests[lastIndex];
+                    lastPriceRequest.pendingRequestIndex = priceRequests[requestId].pendingRequestIndex;
+                    pendingPriceRequests[priceRequests[requestId].pendingRequestIndex] = pendingPriceRequests[
+                        lastIndex
+                    ];
                     pendingPriceRequests.pop();
 
                     // Remove the request from the priceRequests mapping.
@@ -493,7 +492,7 @@ contract VotingV2 is
 
                 // Set the deletion request jump mapping. This enables the for loops that iterate over requests to skip
                 // the deleted requests via a "jump" over the removed elements from the array.
-                deletedRequestJumpMapping[startIndex] = endIndex;
+                deletedRequests[startIndex] = endIndex;
             }
 
             // Return the spamDeletionProposalBond.
@@ -588,19 +587,25 @@ contract VotingV2 is
             // the minRolllToNextRoundLength.
             uint256 roundIdToVoteOnPriceRequest =
                 isGovernance ? currentRoundId + 1 : voteTiming.computeRoundToVoteOnPriceRequest(blockTime);
-
-            priceRequestIds.push(Request(priceRequestId, roundIdToVoteOnPriceRequest));
-
             PriceRequest storage newPriceRequest = priceRequests[priceRequestId];
             newPriceRequest.identifier = identifier;
             newPriceRequest.time = time;
             newPriceRequest.lastVotingRound = roundIdToVoteOnPriceRequest;
-            newPriceRequest.index = pendingPriceRequests.length;
+            newPriceRequest.pendingRequestIndex = pendingPriceRequests.length;
+            newPriceRequest.priceRequestIndex = priceRequestIds.length;
             newPriceRequest.ancillaryData = ancillaryData;
             newPriceRequest.isGovernance = isGovernance;
 
             pendingPriceRequests.push(priceRequestId);
-            emit PriceRequestAdded(roundIdToVoteOnPriceRequest, identifier, time, ancillaryData, isGovernance);
+            priceRequestIds.push(priceRequestId);
+            emit PriceRequestAdded(
+                roundIdToVoteOnPriceRequest,
+                identifier,
+                time,
+                newPriceRequest.priceRequestIndex,
+                ancillaryData,
+                isGovernance
+            );
         }
     }
 
@@ -626,7 +631,6 @@ contract VotingV2 is
         return _hasPrice;
     }
 
-    // TODO: remove all overriden functions that miss ancillary data. DVM2.0 should only accept ancillary data requests.
     // Overloaded method to enable short term backwards compatibility. Will be deprecated in the next DVM version.
     function hasPrice(bytes32 identifier, uint256 time) public view override returns (bool) {
         return hasPrice(identifier, time, "");
@@ -677,11 +681,8 @@ contract VotingV2 is
             RequestStatus status = _getRequestStatus(priceRequest, currentRoundId);
 
             // If it's an active request, its true lastVotingRound is the current one, even if it hasn't been updated.
-            if (status == RequestStatus.Active) {
-                requestStates[i].lastVotingRound = currentRoundId;
-            } else {
-                requestStates[i].lastVotingRound = priceRequest.lastVotingRound;
-            }
+            if (status == RequestStatus.Active) requestStates[i].lastVotingRound = currentRoundId;
+            else requestStates[i].lastVotingRound = priceRequest.lastVotingRound;
             requestStates[i].status = status;
         }
         return requestStates;
@@ -736,11 +737,10 @@ contract VotingV2 is
             "Cannot commit inactive request"
         );
 
-        priceRequest.lastVotingRound = currentRoundId;
         VoteInstance storage voteInstance = priceRequest.voteInstances[currentRoundId];
         voteInstance.voteSubmissions[voter].commit = hash;
 
-        emit VoteCommitted(voter, currentRoundId, identifier, time, ancillaryData);
+        emit VoteCommitted(voter, msg.sender, currentRoundId, identifier, time, ancillaryData);
     }
 
     // Overloaded method to enable short term backwards compatibility. Will be deprecated in the next DVM version.
@@ -772,7 +772,6 @@ contract VotingV2 is
         // Note: computing the current round is required to disallow people from revealing an old commit after the round is over.
         uint256 currentRoundId = voteTiming.computeCurrentRoundId(getCurrentTime());
         _freezeRoundVariables(currentRoundId);
-
         VoteInstance storage voteInstance =
             _getPriceRequest(identifier, time, ancillaryData).voteInstances[currentRoundId];
         address voter = getVoterFromDelegate(msg.sender);
@@ -799,7 +798,7 @@ contract VotingV2 is
 
         // Get the voter's snapshotted balance. Since balances are returned pre-scaled by 10**18, we can directly
         // initialize the Unsigned value with the returned uint.
-        FixedPoint.Unsigned memory balance = FixedPoint.Unsigned(voterStakes[voter].activeStake);
+        uint256 balance = voterStakes[voter].activeStake;
 
         // Set the voter's submission.
         voteSubmission.revealHash = keccak256(abi.encode(price));
@@ -807,8 +806,7 @@ contract VotingV2 is
         // Add vote to the results.
         voteInstance.resultComputation.addVote(price, balance);
 
-        // TODO: both this event and the commit event should indicate if there was vote delegation applied.
-        emit VoteRevealed(msg.sender, currentRoundId, identifier, time, price, ancillaryData, balance.rawValue);
+        emit VoteRevealed(voter, msg.sender, currentRoundId, identifier, time, price, ancillaryData, balance);
     }
 
     // Overloaded method to enable short term backwards compatibility. Will be deprecated in the next DVM version.
@@ -909,6 +907,16 @@ contract VotingV2 is
         return pendingRequests;
     }
 
+    function currentActiveRequests() public view returns (bool) {
+        uint256 blockTime = getCurrentTime();
+        uint256 currentRoundId = voteTiming.computeCurrentRoundId(blockTime);
+        for (uint256 i = 0; i < pendingPriceRequests.length; i = unsafe_inc(i)) {
+            if (_getRequestStatus(priceRequests[pendingPriceRequests[i]], currentRoundId) == RequestStatus.Active)
+                return true;
+        }
+        return false;
+    }
+
     /**
      * @notice Returns the current voting phase, as a function of the current time.
      * @return Phase to indicate the current phase. Either { Commit, Reveal, NUM_PHASES_PLACEHOLDER }.
@@ -933,6 +941,29 @@ contract VotingV2 is
         return priceRequestIds.length;
     }
 
+    function requestSlashingTrackers(uint256 requestIndex) public view returns (SlashingTracker memory) {
+        uint256 currentRoundId = voteTiming.computeCurrentRoundId(getCurrentTime());
+        PriceRequest storage priceRequest = priceRequests[priceRequestIds[requestIndex]];
+
+        if (_getRequestStatus(priceRequest, currentRoundId) != RequestStatus.Resolved)
+            return SlashingTracker(0, 0, 0, 0);
+
+        VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
+
+        uint256 totalVotes = voteInstance.resultComputation.totalVotes;
+        uint256 totalCorrectVotes = voteInstance.resultComputation.getTotalCorrectlyVotedTokens();
+        uint256 stakedAtRound = rounds[priceRequest.lastVotingRound].cumulativeActiveStakeAtRound;
+
+        (uint256 wrongVoteSlash, uint256 noVoteSlash) =
+            slashingLibrary.calcSlashing(stakedAtRound, totalVotes, totalCorrectVotes, priceRequest.isGovernance);
+
+        uint256 totalSlashed =
+            ((noVoteSlash * (stakedAtRound - totalVotes)) / 1e18) +
+                ((wrongVoteSlash * (totalVotes - totalCorrectVotes)) / 1e18);
+
+        return SlashingTracker(wrongVoteSlash, noVoteSlash, totalSlashed, totalCorrectVotes);
+    }
+
     /****************************************
      *        OWNER ADMIN FUNCTIONS         *
      ****************************************/
@@ -947,16 +978,13 @@ contract VotingV2 is
         emit VotingContractMigrated(newVotingAddress);
     }
 
-    // here for abi compatibility. remove
-    function setInflationRate(FixedPoint.Unsigned memory newInflationRate) public override onlyOwner {}
-
     /**
      * @notice Resets the Gat percentage. Note: this change only applies to rounds that have not yet begun.
      * @dev This method is public because calldata structs are not currently supported by solidity.
      * @param newGatPercentage sets the next round's Gat percentage.
      */
-    function setGatPercentage(FixedPoint.Unsigned memory newGatPercentage) public override onlyOwner {
-        require(newGatPercentage.isLessThan(1), "GAT percentage must be < 100%");
+    function setGatPercentage(uint256 newGatPercentage) public override onlyOwner {
+        require(newGatPercentage < 1e18, "GAT percentage must be < 100%");
         gatPercentage = newGatPercentage;
         emit GatPercentageChanged(newGatPercentage);
     }
@@ -1028,7 +1056,7 @@ contract VotingV2 is
 
     function _freezeRoundVariables(uint256 roundId) private {
         // Only freeze the round if this is the first request in the round.
-        if (rounds[roundId].gatPercentage.rawValue == 0) {
+        if (rounds[roundId].gatPercentage == 0) {
             // Set the round gat percentage to the current global gat rate.
             rounds[roundId].gatPercentage = gatPercentage;
 
@@ -1037,22 +1065,33 @@ contract VotingV2 is
         }
     }
 
-    function _resolvePriceRequest(PriceRequest storage priceRequest, VoteInstance storage voteInstance) private {
-        if (priceRequest.index == UINT_MAX) {
-            return;
-        }
-        (bool isResolved, int256 resolvedPrice) =
-            voteInstance.resultComputation.getResolvedPrice(_computeGat(priceRequest.lastVotingRound));
-        require(isResolved, "Can't resolve unresolved request");
+    function _resolvePriceRequest(
+        PriceRequest storage priceRequest,
+        VoteInstance storage voteInstance,
+        uint256 currentRoundId
+    ) private returns (bool) {
+        // We are currently either in the voting round for the request or voting is yet to begin.
+        if (currentRoundId <= priceRequest.lastVotingRound) return false;
 
-        // Delete the resolved price request from pendingPriceRequests.
+        // If the request has been previously resolved, return true.
+        if (priceRequest.pendingRequestIndex == UINT_MAX) return true;
+
+        // Else, check if the price can be resolved.
+        (bool isResolvable, int256 resolvedPrice) =
+            voteInstance.resultComputation.getResolvedPrice(_computeGat(priceRequest.lastVotingRound));
+
+        // If it's not resolvable return false.
+        if (!isResolvable) return false;
+
+        // Else, the request is resolvable. Remove the element from the pending request and update pendingRequestIndex
+        // within the price request struct to make the next entry into this method a no-op for this request.
         uint256 lastIndex = pendingPriceRequests.length - 1;
         PriceRequest storage lastPriceRequest = priceRequests[pendingPriceRequests[lastIndex]];
-        lastPriceRequest.index = priceRequest.index;
-        pendingPriceRequests[priceRequest.index] = pendingPriceRequests[lastIndex];
+        lastPriceRequest.pendingRequestIndex = priceRequest.pendingRequestIndex;
+        pendingPriceRequests[priceRequest.pendingRequestIndex] = pendingPriceRequests[lastIndex];
         pendingPriceRequests.pop();
 
-        priceRequest.index = UINT_MAX;
+        priceRequest.pendingRequestIndex = UINT_MAX;
         emit PriceResolved(
             priceRequest.lastVotingRound,
             priceRequest.identifier,
@@ -1060,17 +1099,18 @@ contract VotingV2 is
             resolvedPrice,
             priceRequest.ancillaryData
         );
+        return true;
     }
 
-    function _computeGat(uint256 roundId) internal view returns (FixedPoint.Unsigned memory) {
+    function _computeGat(uint256 roundId) internal view returns (uint256) {
         // Nothing staked at the round  - return max value to err on the side of caution.
-        if (rounds[roundId].cumulativeActiveStakeAtRound == 0) return FixedPoint.Unsigned(UINT_MAX);
+        if (rounds[roundId].cumulativeActiveStakeAtRound == 0) return type(uint256).max;
 
         // Grab the cumulative staked at the voting round.
-        FixedPoint.Unsigned memory stakedAtRound = FixedPoint.Unsigned(rounds[roundId].cumulativeActiveStakeAtRound);
+        uint256 stakedAtRound = rounds[roundId].cumulativeActiveStakeAtRound;
 
         // Multiply the total supply at the cumulative staked by the gatPercentage to get the GAT in number of tokens.
-        return stakedAtRound.mul(rounds[roundId].gatPercentage);
+        return (stakedAtRound * rounds[roundId].gatPercentage) / 1e18;
     }
 
     function _getRequestStatus(PriceRequest storage priceRequest, uint256 currentRoundId)
@@ -1078,20 +1118,16 @@ contract VotingV2 is
         view
         returns (RequestStatus)
     {
-        if (priceRequest.lastVotingRound == 0) {
-            return RequestStatus.NotRequested;
-        } else if (priceRequest.lastVotingRound < currentRoundId) {
+        if (priceRequest.lastVotingRound == 0) return RequestStatus.NotRequested;
+        else if (priceRequest.lastVotingRound < currentRoundId) {
             VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
             (bool isResolved, ) =
                 voteInstance.resultComputation.getResolvedPrice(_computeGat(priceRequest.lastVotingRound));
 
             return isResolved ? RequestStatus.Resolved : RequestStatus.Active;
-        } else if (priceRequest.lastVotingRound == currentRoundId) {
-            return RequestStatus.Active;
-        } else {
-            // Means than priceRequest.lastVotingRound > currentRoundId
-            return RequestStatus.Future;
-        }
+        } else if (priceRequest.lastVotingRound == currentRoundId) return RequestStatus.Active;
+        // Means than priceRequest.lastVotingRound > currentRoundId
+        else return RequestStatus.Future;
     }
 
     function unsafe_inc(uint256 x) internal pure returns (uint256) {

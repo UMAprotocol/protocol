@@ -29,7 +29,7 @@ contract Staker is StakerInterface, Ownable, Testable {
         uint256 pendingStake;
         uint256 rewardsPaidPerToken;
         uint256 outstandingRewards;
-        uint256 unstakeTime;
+        uint256 unstakeRequestTime;
         uint256 lastRequestIndexConsidered;
         address delegate;
     }
@@ -99,6 +99,11 @@ contract Staker is StakerInterface, Ownable, Testable {
 
     // Pulls tokens from users wallet and stakes them.
     function stake(uint256 amount) public override {
+        // If the staker has a cumulative staked balance of 0 then we can shortcut their lastRequestIndexConsidered to
+        // the most recent index. This means we don't need to traverse requests where the staker was not staked.
+        if (getVoterStake(msg.sender) + voterStakes[msg.sender].pendingStake == 0)
+            voterStakes[msg.sender].lastRequestIndexConsidered = getStartingIndexForStaker();
+
         _updateTrackers(msg.sender);
         if (inActiveReveal()) {
             voterStakes[msg.sender].pendingStake += amount;
@@ -132,29 +137,33 @@ contract Staker is StakerInterface, Ownable, Testable {
         cumulativeActiveStake -= amount;
         voterStakes[msg.sender].pendingUnstake = amount;
         voterStakes[msg.sender].activeStake -= amount;
-        voterStakes[msg.sender].unstakeTime = getCurrentTime() + unstakeCoolDown;
+        voterStakes[msg.sender].unstakeRequestTime = getCurrentTime();
+
         emit RequestedUnstake(
             msg.sender,
             amount,
-            voterStakes[msg.sender].unstakeTime,
+            voterStakes[msg.sender].unstakeRequestTime,
             voterStakes[msg.sender].activeStake,
             voterStakes[msg.sender].pendingStake
         );
     }
 
-    // Note there is no way to cancel your unstake; you must wait until after unstakeTime and re-stake.
+    // Note there is no way to cancel your unstake; you must wait until after unstakeRequestTime and re-stake.
 
-    // If: a staker requested an unstake and time > unstakeTime then send funds to staker. Note that this method assumes
+    // If: a staker requested an unstake and time > unstakeRequestTime then send funds to staker. Note that this method assumes
     // that the `updateTrackers()
     function executeUnstake() public override {
         _updateTrackers(msg.sender);
         VoterStake storage voterStake = voterStakes[msg.sender];
-        require(voterStake.unstakeTime != 0 && getCurrentTime() >= voterStake.unstakeTime, "Unstake time not passed");
+        require(
+            voterStake.unstakeRequestTime != 0 && getCurrentTime() >= voterStake.unstakeRequestTime + unstakeCoolDown,
+            "Unstake time not passed"
+        );
         uint256 tokensToSend = voterStake.pendingUnstake;
 
         if (tokensToSend > 0) {
             voterStake.pendingUnstake = 0;
-            voterStake.unstakeTime = 0;
+            voterStake.unstakeRequestTime = 0;
             votingToken.transfer(msg.sender, tokensToSend);
         }
 
@@ -187,8 +196,12 @@ contract Staker is StakerInterface, Ownable, Testable {
         _updateActiveStake(voterAddress);
     }
 
-    function inActiveReveal() internal virtual returns (bool) {
+    function inActiveReveal() public virtual returns (bool) {
         return false;
+    }
+
+    function getStartingIndexForStaker() internal virtual returns (uint256) {
+        return 0;
     }
 
     // Calculate the reward per token based on last time the reward was updated.
@@ -207,9 +220,9 @@ contract Staker is StakerInterface, Ownable, Testable {
 
     function _updateActiveStake(address voterAddress) internal {
         if (inActiveReveal()) return;
-        voterStakes[voterAddress].activeStake += voterStakes[voterAddress].pendingStake;
         cumulativeActiveStake += voterStakes[voterAddress].pendingStake;
         cumulativePendingStake -= voterStakes[voterAddress].pendingStake;
+        voterStakes[voterAddress].activeStake += voterStakes[voterAddress].pendingStake;
         voterStakes[voterAddress].pendingStake = 0;
         emit UpdatedActiveStake(
             voterAddress,

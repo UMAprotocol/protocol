@@ -127,9 +127,9 @@ describe("Staker", function () {
     it("Can not re-request to unstake", async function () {
       await staker.methods.stake(amountToStake).send({ from: account1 });
 
-      const requestTime = Number(await staker.methods.getCurrentTime().call());
+      const unstakeRequestTime = Number(await staker.methods.getCurrentTime().call());
       await staker.methods.requestUnstake(amountToStake).send({ from: account1 });
-      assert((await staker.methods.voterStakes(account1).call()).unstakeTime, requestTime + unstakeCoolDown);
+      assert((await staker.methods.voterStakes(account1).call()).unstakeRequestTime, unstakeRequestTime);
       assert((await staker.methods.voterStakes(account1).call()).pendingUnstake, amountToStake);
       assert(await didContractThrow(staker.methods.requestUnstake(420).send({ from: account1 })));
     });

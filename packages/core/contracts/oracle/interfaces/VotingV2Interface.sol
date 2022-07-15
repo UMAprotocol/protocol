@@ -199,18 +199,11 @@ abstract contract VotingV2Interface {
     function setMigrated(address newVotingAddress) external virtual;
 
     /**
-     * @notice Resets the inflation rate. Note: this change only applies to rounds that have not yet begun.
-     * @dev This method is public because calldata structs are not currently supported by solidity.
-     * @param newInflationRate sets the next round's inflation rate.
-     */
-    function setInflationRate(FixedPoint.Unsigned memory newInflationRate) public virtual;
-
-    /**
      * @notice Resets the Gat percentage. Note: this change only applies to rounds that have not yet begun.
      * @dev This method is public because calldata structs are not currently supported by solidity.
      * @param newGatPercentage sets the next round's Gat percentage.
      */
-    function setGatPercentage(FixedPoint.Unsigned memory newGatPercentage) public virtual;
+    function setGatPercentage(uint256 newGatPercentage) public virtual;
 
     /**
      * @notice Resets the rewards expiration timeout.

@@ -762,11 +762,12 @@ describe("GovernorV2", function () {
     });
 
     const newVoting = await VotingV2.new(
-      "640000000000000000", // emission rate
+      toWei("0.64"), // emission rate
+      toWei("10000"), // spamDeletionProposalBond
       60 * 60 * 24 * 30, // unstakeCooldown
       "86400", // phase length
       "7200", // minRollToNextRoundLength
-      { rawValue: web3.utils.toWei("0.05") }, // 5% GAT
+      web3.utils.toWei("0.05"), // 5% GAT
       votingToken.options.address, // voting token
       (await Finder.deployed()).options.address, // finder
       (await Timer.deployed()).options.address, // timer
