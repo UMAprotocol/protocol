@@ -7,22 +7,22 @@ import "../../common/implementation/AncillaryData.sol";
 import "../../common/implementation/MultiCaller.sol";
 
 import "../interfaces/FinderInterface.sol";
-import "../interfaces/OracleInterface.sol";
+import "../interfaces/IdentifierWhitelistInterface.sol";
 import "../interfaces/OracleAncillaryInterface.sol";
 import "../interfaces/OracleGovernanceInterface.sol";
+import "../interfaces/OracleInterface.sol";
 import "../interfaces/VotingV2Interface.sol";
-import "../interfaces/IdentifierWhitelistInterface.sol";
+import "./Constants.sol";
 import "./Registry.sol";
 import "./ResultComputationV2.sol";
-import "./VoteTimingV2.sol";
-import "./Staker.sol";
-import "./Constants.sol";
 import "./SlashingLibrary.sol";
 import "./SpamGuardIdentifierLib.sol";
+import "./Staker.sol";
+import "./VoteTimingV2.sol";
 
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
 /**
  * @title Voting system for Oracle.

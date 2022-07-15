@@ -3,8 +3,8 @@ pragma solidity ^0.8.0;
 
 import "../interfaces/StakerInterface.sol";
 
-import "./VotingToken.sol";
 import "../../common/implementation/Testable.sol";
+import "./VotingToken.sol";
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 
