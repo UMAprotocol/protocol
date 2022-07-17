@@ -78,8 +78,13 @@ describe("VotingV2", function () {
     await registry.methods.addMember(RegistryRolesEnum.CONTRACT_CREATOR, account1).send({ from: accounts[0] });
     await registry.methods.registerContract([], registeredContract).send({ from: account1 });
 
-    // Reset the rounds.
-    await voting.methods.setCurrentTime("1657879200").send({ from: accounts[0] });
+    // Magic math to ensure we start at the very beginning of a round, and we aren't dependent on the time the tests
+    // are run.
+    const currentTime = Number((await voting.methods.getCurrentTime().call()).toString());
+    const newTime = (Math.floor(currentTime / 172800) + 1) * 172800;
+    await voting.methods.setCurrentTime(newTime).send({ from: accounts[0] });
+
+    // Start with a fresh round.
     await moveToNextRound(voting, accounts[0]);
   });
 
