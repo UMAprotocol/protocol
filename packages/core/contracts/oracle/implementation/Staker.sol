@@ -150,8 +150,8 @@ contract Staker is StakerInterface, Ownable, Testable {
         _updateTrackers(msg.sender);
         VoterStake storage voterStake = voterStakes[msg.sender];
 
-        require(voterStakes[msg.sender].activeStake >= amount, "Bad request amount");
-        require(voterStakes[msg.sender].pendingUnstake == 0, "Have previous request unstake");
+        require(voterStake.activeStake >= amount, "Bad request amount");
+        require(voterStake.pendingUnstake == 0, "Have previous request unstake");
 
         cumulativeActiveStake -= amount;
         voterStake.pendingUnstake = amount;
