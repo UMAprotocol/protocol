@@ -79,7 +79,7 @@ describe("VotingV2", function () {
     await registry.methods.registerContract([], registeredContract).send({ from: account1 });
 
     // Reset the rounds.
-    await voting.methods.setCurrentTime("1657879200").send({ from: accounts[0] });
+    // await voting.methods.setCurrentTime("1657879200").send({ from: accounts[0] });
     await moveToNextRound(voting, accounts[0]);
   });
 
@@ -2951,6 +2951,71 @@ describe("VotingV2", function () {
 
     // move to the next round.
     await moveToNextRound(voting, accounts[0]);
+  });
+
+  it("Emergency action can push a price to the contract if the contract breaks", async function () {
+    // Consider the case where the contract has broken such that: 1) users can no longer stake/unstake and 2) commit
+    // reveal is broken. The contract should still be saveable in this case! The governor is the super admin of the DVM
+    // system. It is the owner of all other UMA contracts (including the ability to mint/burn UMA tokens) and so what
+    // we need to do to recover from a fundamental system failure is the ability to send an emergency action to the
+    // governor and get this action through using the DVM, while bi-passing the schelling point. If the governor can
+    // still make price requests we simply need the DVM to have the "valid yes" price for this request to recover all
+    // failuremodes (including recovering tokens from the VotingV2.sol contract via a burnFrom and mint action).
+
+    // Use a test derived contract that has a special method that forces the `_updateTrackers` to revert. This lets us
+    // validate that the emergency recovery process works as expected, even if the contract is "bricked".
+    const voting2 = await VotingV2Test.new(
+      "42069", // emissionRate
+      toWei("10000"), // spamDeletionProposalBond
+      60 * 60 * 24 * 7, // Unstake cooldown
+      86400, // PhaseLength
+      7200, // minRollToNextRoundLength
+      toWei("0.05"), // GatPct
+      votingToken.options.address, // voting token
+      (await Finder.deployed()).options.address, // finder
+      (await Timer.deployed()).options.address, // timer
+      (await SlashingLibrary.deployed()).options.address // slashing library
+    ).send({ from: accounts[0] });
+
+    // Unstake in the old contract and re-stake in the new contract from one voter.
+    await voting.methods.setUnstakeCoolDown(0).send({ from: account1 });
+    await voting.methods.requestUnstake(toWei("32000000")).send({ from: account1 });
+    await voting.methods.executeUnstake().send({ from: account1 });
+    await votingToken.methods.approve(voting2.options.address, toWei("32000000")).send({ from: account1 });
+    await voting2.methods.stake(toWei("30000000")).send({ from: account1 });
+
+    // Now, set the setRevertOnUpdateTrackers as true. this mimics the internal logic having broken within the voting
+    // contract which will block all commit/reveal/stake and unstake actions thereby rendering the DVM briked.
+    await voting2.methods.setRevertOnUpdateTrackers(true).send({ from: accounts[0] });
+
+    const identifier = padRight(utf8ToHex("emergency-identifier"), 64);
+    const time = "420";
+
+    // This price request acts to mimic what the Governor would have done.
+    await voting2.methods.requestGovernanceAction(identifier, time, "0x123").send({ from: accounts[0] });
+    await moveToNextRound(voting2, accounts[0]);
+
+    // Now, trying to commit/reveal/stake/unstakes should fail as we've set these to be disabled/broken in the test contract.
+    assert(await didContractThrow(voting2.methods.updateTrackers(account1).send({ from: account1 })));
+    assert(await didContractThrow(voting2.methods.commitVote(identifier, time, "0x123").send({ from: account1 })));
+    assert(await didContractThrow(voting2.methods.requestUnstake("1234").send({ from: account1 })));
+    assert(await didContractThrow(voting2.methods.stake(toWei("1000000")).send({ from: account1 })));
+
+    // Now, signal on the emergency action from the only staker. They have enough on their own to reach the activation
+    // threshold and should be able to pass through the vote.
+    await voting2.methods.signalOnEmergencyAction(identifier, time, "0x123").send({ from: account1 });
+
+    await voting2.methods.executeEmergencyAction(identifier, time, "0x123").send({ from: account1 });
+
+    // As this is still treated as a "price request" we need to move to the next round before it can be resolved.
+    await moveToNextRound(voting2, accounts[0]);
+    await moveToNextRound(voting2, accounts[0]);
+
+    // Now, check the price is available to the DVM.
+    assert.equal(
+      await voting2.methods.getPrice(identifier, time, "0x123").call({ from: registeredContract }),
+      toWei("1")
+    );
   });
 
   // TODO: add a much more itterative rolling test to validate a many rolled round is correctly tracked.

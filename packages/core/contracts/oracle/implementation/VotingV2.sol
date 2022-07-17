@@ -843,7 +843,7 @@ contract VotingV2 is
     }
 
     // Updates the global and selected wallet's trackers for staking and voting.
-    function _updateTrackers(address voterAddress) internal override {
+    function _updateTrackers(address voterAddress) internal virtual override {
         _updateAccountSlashingTrackers(voterAddress, priceRequestIds.length);
         super._updateTrackers(voterAddress);
     }
@@ -1087,15 +1087,18 @@ contract VotingV2 is
         uint256 actionTime,
         bytes memory ancillaryData
     ) public {
-        bytes32 identifier = _encodePriceRequest(identifier, actionTime, ancillaryData);
-        EmergencyAction storage action = emergencyActions[identifier];
+        bytes32 requestIdentifier = _encodePriceRequest(identifier, actionTime, ancillaryData);
+        EmergencyAction storage action = emergencyActions[requestIdentifier];
         require(action.executed == false, "Already executed");
         require((action.cumulativeSignaled * 1e18) / getCumulativeStake() >= emergencyActionThreshold, "Not enough");
         action.executed = true;
-        priceRequests[identifier].voteInstances[getCurrentRoundId()].resultComputation.addVote(
-            1e18,
-            getCumulativeStake()
-        );
+        PriceRequest storage request = priceRequests[requestIdentifier];
+        request.voteInstances[request.lastVotingRound].resultComputation.addVote(1e18, getCumulativeStake());
+
+        // It is possible the round was not freezed because no one was able to reveal. In this case, freeze the round.
+        // This is needed to retrieve prices later.
+        if (rounds[request.lastVotingRound].cumulativeActiveStakeAtRound == 0)
+            _freezeRoundVariables(request.lastVotingRound);
     }
 
     /****************************************

@@ -5,6 +5,8 @@ import "../VotingV2.sol";
 
 // Test contract used to access internal variables in the Voting contract.
 contract VotingV2Test is VotingV2 {
+    bool shouldRevertOnUpdateTrackers = false;
+
     constructor(
         uint256 _emissionRate,
         uint256 _spamDeletionProposalBond,
@@ -33,5 +35,14 @@ contract VotingV2Test is VotingV2 {
 
     function getPendingPriceRequestsArray() external view returns (bytes32[] memory) {
         return pendingPriceRequests;
+    }
+
+    function setRevertOnUpdateTrackers(bool _shouldRevertOnUpdateTrackers) external {
+        shouldRevertOnUpdateTrackers = _shouldRevertOnUpdateTrackers;
+    }
+
+    function _updateTrackers(address voterAddress) internal override {
+        require(!shouldRevertOnUpdateTrackers, "Contract mocked bricked");
+        super._updateTrackers(voterAddress);
     }
 }
