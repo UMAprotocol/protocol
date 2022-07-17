@@ -22,7 +22,8 @@ import "./VoteTimingV2.sol";
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+// import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 /**
  * @title Voting system for Oracle.
@@ -37,7 +38,7 @@ contract VotingV2 is
     VotingV2Interface,
     MultiCaller
 {
-    using SafeMath for uint256;
+    // using SafeMath for uint256;
     using VoteTimingV2 for VoteTimingV2.Data;
     using ResultComputationV2 for ResultComputationV2.Data;
 
@@ -48,20 +49,26 @@ contract VotingV2 is
     // Identifies a unique price request for which the Oracle will always return the same value.
     // Tracks ongoing votes as well as the result of the vote.
     struct PriceRequest {
-        bytes32 identifier;
-        uint256 time;
-        // A map containing all votes for this price in various rounds.
-        mapping(uint256 => VoteInstance) voteInstances;
         // If in the past, this was the voting round where this price was resolved. If current or the upcoming round,
         // this is the voting round where this price will be voted on, but not necessarily resolved.
-        uint256 lastVotingRound;
+        uint32 lastVotingRound;
+        // Denotes whether this is a governance request or not.
+        bool isGovernance;
         // The pendingRequestIndex in the `pendingPriceRequests` that references this PriceRequest. A value of UINT_MAX
         // means that this PriceRequest is resolved and has been cleaned up from `pendingPriceRequests`.
-        uint256 pendingRequestIndex;
+        uint64 pendingRequestIndex;
         // Each request has a unique requestIndex number that is used to order all requests. This is the index within
         // the priceRequestIds array and is incremented on each request.
-        uint256 priceRequestIndex;
-        bool isGovernance;
+        uint64 priceRequestIndex;
+        // Timestamp that should be used when evaluating the request.
+        // Note: this is a uint56 to allow better variable packing while still leaving more than ample room for
+        // timestamps to stretch far into the future.
+        uint64 time;
+        // Identifier that defines how the voters should resolve the request.
+        bytes32 identifier;
+        // A map containing all votes for this price in various rounds.
+        mapping(uint256 => VoteInstance) voteInstances;
+        // Additional data used to resolve the request.
         bytes ancillaryData;
     }
 
@@ -134,7 +141,7 @@ contract VotingV2 is
     address public migratedAddress;
 
     // Max value of an unsigned integer.
-    uint256 private constant UINT_MAX = ~uint256(0);
+    uint64 private constant UINT64_MAX = type(uint64).max;
 
     // Max length in bytes of ancillary data that can be appended to a price request.
     // As of December 2020, the current Ethereum gas limit is 12.5 million. This requestPrice function's gas primarily
@@ -260,8 +267,8 @@ contract VotingV2 is
         uint256 _emissionRate,
         uint256 _spamDeletionProposalBond,
         uint256 _unstakeCoolDown,
-        uint256 _phaseLength,
-        uint256 _minRollToNextRoundLength,
+        uint64 _phaseLength,
+        uint64 _minRollToNextRoundLength,
         uint256 _gatPercentage,
         address _votingToken,
         address _finder,
@@ -369,10 +376,10 @@ contract VotingV2 is
                 isGovernance ? currentRoundId + 1 : voteTiming.computeRoundToVoteOnPriceRequest(blockTime);
             PriceRequest storage newPriceRequest = priceRequests[priceRequestId];
             newPriceRequest.identifier = identifier;
-            newPriceRequest.time = time;
-            newPriceRequest.lastVotingRound = roundIdToVoteOnPriceRequest;
-            newPriceRequest.pendingRequestIndex = pendingPriceRequests.length;
-            newPriceRequest.priceRequestIndex = priceRequestIds.length;
+            newPriceRequest.time = SafeCast.toUint64(time);
+            newPriceRequest.lastVotingRound = SafeCast.toUint32(roundIdToVoteOnPriceRequest);
+            newPriceRequest.pendingRequestIndex = SafeCast.toUint64(pendingPriceRequests.length);
+            newPriceRequest.priceRequestIndex = SafeCast.toUint64(priceRequestIds.length);
             newPriceRequest.ancillaryData = ancillaryData;
             newPriceRequest.isGovernance = isGovernance;
 
@@ -787,7 +794,7 @@ contract VotingV2 is
      * @param newGatPercentage sets the next round's Gat percentage.
      */
     function setGatPercentage(uint256 newGatPercentage) public override onlyOwner {
-        require(newGatPercentage < 1e18, "GAT percentage must be < 100%");
+        require(newGatPercentage < 1e18);
         gatPercentage = newGatPercentage;
         emit GatPercentageChanged(newGatPercentage);
     }
@@ -876,9 +883,9 @@ contract VotingV2 is
                 // must have been rolled. In this case, update the internal trackers for this vote.
 
                 if (priceRequest.lastVotingRound < currentRoundId) {
-                    priceRequest.lastVotingRound = currentRoundId;
+                    priceRequest.lastVotingRound = SafeCast.toUint32(currentRoundId);
                     deletedRequests[requestIndex] = requestIndex;
-                    priceRequest.priceRequestIndex = priceRequestIds.length;
+                    priceRequest.priceRequestIndex = SafeCast.toUint64(priceRequestIds.length);
                     priceRequestIds.push(priceRequestIds[requestIndex]);
                     continue;
                 }
@@ -1132,7 +1139,7 @@ contract VotingV2 is
         if (currentRoundId <= priceRequest.lastVotingRound) return false;
 
         // If the request has been previously resolved, return true.
-        if (priceRequest.pendingRequestIndex == UINT_MAX) return true;
+        if (priceRequest.pendingRequestIndex == UINT64_MAX) return true;
 
         // Else, check if the price can be resolved.
         (bool isResolvable, int256 resolvedPrice) =
@@ -1149,7 +1156,7 @@ contract VotingV2 is
         pendingPriceRequests[priceRequest.pendingRequestIndex] = pendingPriceRequests[lastIndex];
         pendingPriceRequests.pop();
 
-        priceRequest.pendingRequestIndex = UINT_MAX;
+        priceRequest.pendingRequestIndex = UINT64_MAX;
         emit PriceResolved(
             priceRequest.lastVotingRound,
             priceRequest.identifier,
