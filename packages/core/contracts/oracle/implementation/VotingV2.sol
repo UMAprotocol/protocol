@@ -21,8 +21,6 @@ import "./Staker.sol";
 import "./VoteTimingV2.sol";
 
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
 /**
  * @title Voting system for Oracle.
