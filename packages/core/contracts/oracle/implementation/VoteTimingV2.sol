@@ -4,8 +4,6 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "../interfaces/VotingV2Interface.sol";
 
-import "hardhat/console.sol";
-
 /**
  * @title Library to compute rounds and phases for an equal length commit-reveal voting cycle.
  */
