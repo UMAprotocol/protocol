@@ -173,6 +173,16 @@ contract VotingV2 is
     // Maps round numbers to the spam deletion request.
     SpamDeletionRequest[] internal spamDeletionProposals;
 
+    struct EmergencyAction {
+        bool executed;
+        uint256 cumulativeSignaled;
+        mapping(address => bool) accountSignaled;
+    }
+
+    mapping(bytes32 => EmergencyAction) internal emergencyActions;
+
+    uint256 emergencyActionThreshold = 0.5e18;
+
     /****************************************
      *                EVENTS                *
      ****************************************/
@@ -1057,6 +1067,35 @@ contract VotingV2 is
      */
     function getSpamDeletionRequest(uint256 spamDeletionRequestId) public view returns (SpamDeletionRequest memory) {
         return spamDeletionProposals[spamDeletionRequestId];
+    }
+
+    function signalOnEmergencyAction(
+        bytes32 identifier,
+        uint256 actionTime,
+        bytes memory ancillaryData
+    ) public {
+        EmergencyAction storage action = emergencyActions[_encodePriceRequest(identifier, actionTime, ancillaryData)];
+
+        if (!action.accountSignaled[msg.sender]) {
+            action.accountSignaled[msg.sender] = true;
+            action.cumulativeSignaled += getVoterStake(msg.sender);
+        }
+    }
+
+    function executeEmergencyAction(
+        bytes32 identifier,
+        uint256 actionTime,
+        bytes memory ancillaryData
+    ) public {
+        bytes32 identifier = _encodePriceRequest(identifier, actionTime, ancillaryData);
+        EmergencyAction storage action = emergencyActions[identifier];
+        require(action.executed == false, "Already executed");
+        require((action.cumulativeSignaled * 1e18) / getCumulativeStake() >= emergencyActionThreshold, "Not enough");
+        action.executed = true;
+        priceRequests[identifier].voteInstances[getCurrentRoundId()].resultComputation.addVote(
+            1e18,
+            getCumulativeStake()
+        );
     }
 
     /****************************************
