@@ -21,8 +21,6 @@ import "./Staker.sol";
 import "./VoteTimingV2.sol";
 
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-// import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 /**
@@ -38,7 +36,6 @@ contract VotingV2 is
     VotingV2Interface,
     MultiCaller
 {
-    // using SafeMath for uint256;
     using VoteTimingV2 for VoteTimingV2.Data;
     using ResultComputationV2 for ResultComputationV2.Data;
 
