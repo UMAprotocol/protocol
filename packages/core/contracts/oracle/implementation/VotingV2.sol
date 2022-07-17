@@ -289,7 +289,7 @@ contract VotingV2 is
 
     modifier onlyRegisteredContract() {
         if (migratedAddress != address(0)) {
-            require(msg.sender == migratedAddress, "Caller must be migrated address");
+            require(msg.sender == migratedAddress);
         } else {
             Registry registry = Registry(finder.getImplementationAddress(OracleInterfaces.Registry));
             require(registry.isContractRegistered(msg.sender), "Called must be registered");
@@ -298,7 +298,7 @@ contract VotingV2 is
     }
 
     modifier onlyIfNotMigrated() {
-        require(migratedAddress == address(0), "Only call this if not migrated");
+        require(migratedAddress == address(0));
         _;
     }
 
