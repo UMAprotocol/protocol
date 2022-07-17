@@ -2,7 +2,6 @@
 pragma solidity ^0.8.0;
 
 import "../../common/implementation/MultiRole.sol";
-import "../../common/implementation/FixedPoint.sol";
 import "../../common/implementation/Testable.sol";
 import "../interfaces/FinderInterface.sol";
 import "../interfaces/IdentifierWhitelistInterface.sol";
