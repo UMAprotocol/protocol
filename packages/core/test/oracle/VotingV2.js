@@ -2985,7 +2985,6 @@ describe("VotingV2", function () {
     await voting.methods.requestUnstake(toWei("32000000")).send({ from: account1 });
     await voting.methods.executeUnstake().send({ from: account1 });
     await votingToken.methods.approve(voting2.options.address, toWei("32000000")).send({ from: account1 });
-    console.log("Z");
     await voting2.methods.stake(toWei("30000000")).send({ from: account1 });
     console.log("A");
 
