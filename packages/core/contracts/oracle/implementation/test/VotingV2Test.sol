@@ -11,7 +11,7 @@ contract VotingV2ControllableTiming is VotingV2, Testable {
         uint256 _unstakeCoolDown,
         uint256 _phaseLength,
         uint256 _minRollToNextRoundLength,
-        uint256 _gatPercentage,
+        uint256 _gat,
         address _votingToken,
         address _finder,
         address _slashingLibrary,
@@ -23,7 +23,7 @@ contract VotingV2ControllableTiming is VotingV2, Testable {
             _unstakeCoolDown,
             _phaseLength,
             _minRollToNextRoundLength,
-            _gatPercentage,
+            _gat,
             _votingToken,
             _finder,
             _slashingLibrary

@@ -199,11 +199,10 @@ abstract contract VotingV2Interface {
     function setMigrated(address newVotingAddress) external virtual;
 
     /**
-     * @notice Resets the Gat percentage. Note: this change only applies to rounds that have not yet begun.
-     * @dev This method is public because calldata structs are not currently supported by solidity.
-     * @param newGatPercentage sets the next round's Gat percentage.
+     * @notice Resets the Gat. Note: this change only applies to rounds that have not yet begun.
+     * @param newGat sets the next round's Gat.
      */
-    function setGatPercentage(uint256 newGatPercentage) public virtual;
+    function setGat(uint256 newGat) public virtual;
 
     /**
      * @notice Resets the rewards expiration timeout.
