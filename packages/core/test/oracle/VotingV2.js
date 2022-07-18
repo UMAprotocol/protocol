@@ -2948,7 +2948,7 @@ describe("VotingV2", function () {
     // requests slashing them as it was not posable for them to be staked at that point in time.
     await moveToNextPhase(voting, accounts[0]);
     await voting.methods.stake(toWei("4000000")).send({ from: account4 });
-    assert.equal((await voting.methods.voterStakes(account4).call()).lastRequestIndexConsidered, 2);
+    assert.equal((await voting.methods.voterStakes(account4).call()).lastRequestIndexConsidered, 1);
 
     // reveal votes
     await voting.methods.revealVote(identifier, time + 1, price, salt).send({ from: account1 });

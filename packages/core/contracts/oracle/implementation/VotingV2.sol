@@ -584,9 +584,10 @@ contract VotingV2 is
         // Add vote to the results.
         voteInstance.resultComputation.addVote(price, activeStake);
 
-        _priceRequestResolved(_getPriceRequest(identifier, time, ancillaryData), voteInstance, currentRoundId);
-
         emit VoteRevealed(voter, msg.sender, currentRoundId, identifier, time, price, ancillaryData, activeStake);
+
+        // Resolve price request if possible.
+        _resolvePriceRequest(_getPriceRequest(identifier, time, ancillaryData), voteInstance);
     }
 
     // Overloaded method to enable short term backwards compatibility. Will be deprecated in the next DVM version.
@@ -707,14 +708,7 @@ contract VotingV2 is
      * @return bool true if there are active requests, false otherwise.
      */
     function currentActiveRequests() public view returns (bool) {
-        uint256 blockTime = getCurrentTime();
-        return blockTime <= activeUntil;
-        // uint256 currentRoundId = voteTiming.computeCurrentRoundId(blockTime);
-        // for (uint256 i = 0; i < pendingPriceRequests.length; i = unsafe_inc(i)) {
-        //     if (_getRequestStatus(priceRequests[pendingPriceRequests[i]], currentRoundId) == RequestStatus.Active)
-        //         return true;
-        // }
-        // return false;
+        return getCurrentTime() <= activeUntil;
     }
 
     /**
@@ -866,7 +860,6 @@ contract VotingV2 is
             if (deletedRequests[requestIndex] != 0) requestIndex = deletedRequests[requestIndex] + 1;
             if (requestIndex > indexTo - 1) break; // This happens if the last element was a rolled vote.
             PriceRequest storage priceRequest = priceRequests[priceRequestIds[requestIndex]];
-            VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
 
             // If the request status is not resolved then: a) Either we are still in the current voting round, in which
             // case break the loop and stop iterating (all subsequent requests will be in the same state by default) or
@@ -888,6 +881,7 @@ contract VotingV2 is
                 break;
             }
 
+            VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
             uint256 totalCorrectVotes = voteInstance.resultComputation.getTotalCorrectlyVotedTokens();
 
             (uint256 wrongVoteSlashPerToken, uint256 noVoteSlashPerToken) =
@@ -1136,23 +1130,16 @@ contract VotingV2 is
         }
     }
 
-    function _priceRequestResolved(
-        PriceRequest storage priceRequest,
-        VoteInstance storage voteInstance,
-        uint256 currentRoundId
-    ) private returns (bool) {
-        // We are currently either in the voting round for the request or voting is yet to begin.
-        // if (currentRoundId <= priceRequest.lastVotingRound) return false;
-
+    function _resolvePriceRequest(PriceRequest storage priceRequest, VoteInstance storage voteInstance) private {
         // If the request has been previously resolved, return true.
-        if (priceRequest.pendingRequestIndex == UINT_MAX) return true;
+        if (priceRequest.pendingRequestIndex == UINT_MAX) return;
 
         // Else, check if the price can be resolved.
         (bool isResolvable, int256 resolvedPrice) =
             voteInstance.resultComputation.getResolvedPrice(_computeGat(priceRequest.lastVotingRound));
 
         // If it's not resolvable return false.
-        if (!isResolvable) return false;
+        if (!isResolvable) return;
 
         // Else, the request is resolvable. Remove the element from the pending request and update pendingRequestIndex
         // within the price request struct to make the next entry into this method a no-op for this request.
@@ -1173,7 +1160,6 @@ contract VotingV2 is
             resolvedPrice,
             priceRequest.ancillaryData
         );
-        return true;
     }
 
     function _computeGat(uint256 roundId) internal view returns (uint256) {
