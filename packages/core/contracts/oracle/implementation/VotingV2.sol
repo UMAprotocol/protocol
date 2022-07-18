@@ -249,7 +249,6 @@ contract VotingV2 is
      * @param _gat number of tokens that must participate to resolve a vote.
      * @param _votingToken address of the UMA token contract used to commit votes.
      * @param _finder keeps track of all contracts within the system based on their interfaceName.
-     * @param _timerAddress contract that stores the current time in a testing environment.
      * Must be set to 0x0 for production environments that use live time.
      * @param _slashingLibrary contract used to calculate voting slashing penalties based on voter participation.
      */
@@ -262,9 +261,8 @@ contract VotingV2 is
         uint256 _gat,
         address _votingToken,
         address _finder,
-        address _timerAddress,
         address _slashingLibrary
-    ) Staker(_emissionRate, _unstakeCoolDown, _votingToken, _timerAddress) {
+    ) Staker(_emissionRate, _unstakeCoolDown, _votingToken) {
         voteTiming.init(_phaseLength, _minRollToNextRoundLength);
         require(_gat < IERC20(_votingToken).totalSupply() && _gat > 0, "0 < GAT < total supply");
         gat = _gat;

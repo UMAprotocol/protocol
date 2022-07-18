@@ -8,7 +8,7 @@ const { assert } = require("chai");
 
 const GovernorV2 = getContract("GovernorV2");
 const IdentifierWhitelist = getContract("IdentifierWhitelist");
-const VotingV2 = getContract("VotingV2");
+const VotingV2 = getContract("VotingV2ControllableTiming");
 const VotingToken = getContract("VotingToken");
 const TestnetERC20 = getContract("TestnetERC20");
 const ReentrancyChecker = getContract("ReentrancyChecker");
@@ -770,8 +770,8 @@ describe("GovernorV2", function () {
       web3.utils.toWei("5000000"), // 5% GAT
       votingToken.options.address, // voting token
       (await Finder.deployed()).options.address, // finder
-      (await Timer.deployed()).options.address, // timer
-      (await SlashingLibrary.deployed()).options.address // slashing library
+      (await SlashingLibrary.deployed()).options.address, // slashing library
+      (await Timer.deployed()).options.address // timer
     ).send({ from: accounts[0] });
 
     await newVoting.methods.transferOwnership(newGovernor.options.address).send({ from: accounts[0] });

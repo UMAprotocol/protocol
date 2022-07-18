@@ -97,6 +97,17 @@ describe("Staker", function () {
       assert.equal(await staker.methods.outstandingRewards(account2).call(), toWei("960"));
       assert.equal(await staker.methods.outstandingRewards(account3).call(), toWei("320"));
     });
+    it("Withdraw and restake", async function () {
+      await staker.methods.stake(amountToStake).send({ from: account1 });
+
+      // Advance time forward 1000 seconds. At an emission rate of 0.64 per second we should see the accumulation of
+      // all rewards equal to the amount staked * 1000 * 0.64 = 640.
+      await advanceTime(1000);
+
+      await staker.methods.withdrawAndRestake().send({ from: account1 });
+      const stakingBalance = await staker.methods.voterStakes(account1).call();
+      assert.equal(stakingBalance.activeStake, amountToStake.add(toWei("640")));
+    });
     it("Blocks bad unstake attempt", async function () {
       await staker.methods.stake(amountToStake).send({ from: account1 });
 

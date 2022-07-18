@@ -2,7 +2,7 @@ const { ZERO_ADDRESS } = require("@uma/common");
 
 const func = async function (hre) {
   const { deployments, getNamedAccounts, web3 } = hre;
-  const { deploy } = deployments;
+  const { deploy, save } = deployments;
 
   const { deployer } = await getNamedAccounts();
 
@@ -33,23 +33,45 @@ const func = async function (hre) {
   const mintAmount = gat.addn(1).toString();
   await votingToken.methods.mint(deployer, mintAmount).send({ from: deployer });
 
-  await deploy("VotingV2", {
-    from: deployer,
-    args: [
-      emissionRate,
-      spamDeletionProposalBond,
-      unstakeCooldown,
-      phaseLength,
-      minRollToNextRoundLength,
-      gat.toString(),
-      VotingToken.address,
-      Finder.address,
-      Timer.address,
-      SlashingLibrary.address,
-    ],
-    log: true,
-    skipIfAlreadyDeployed: true,
-  });
+  if (Timer.address === ZERO_ADDRESS) {
+    await deploy("VotingV2", {
+      from: deployer,
+      args: [
+        emissionRate,
+        spamDeletionProposalBond,
+        unstakeCooldown,
+        phaseLength,
+        minRollToNextRoundLength,
+        gat,
+        VotingToken.address,
+        Finder.address,
+        SlashingLibrary.address,
+      ],
+      log: true,
+      skipIfAlreadyDeployed: true,
+    });
+  } else {
+    const submission = await deploy("VotingV2ControllableTiming", {
+      from: deployer,
+      args: [
+        emissionRate,
+        spamDeletionProposalBond,
+        unstakeCooldown,
+        phaseLength,
+        minRollToNextRoundLength,
+        gat,
+        VotingToken.address,
+        Finder.address,
+        SlashingLibrary.address,
+        Timer.address,
+      ],
+      log: true,
+      skipIfAlreadyDeployed: true,
+    });
+
+    // Save this under VotingV2 as well.
+    await save("VotingV2", submission);
+  }
 
   // Destroy the tokens minted above.
   await votingToken.methods.burn(mintAmount).send({ from: deployer });
