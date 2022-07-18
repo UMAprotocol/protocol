@@ -868,8 +868,8 @@ contract VotingV2 is
      * @param indexTo last price request index to update the trackers for.
      */
     function updateTrackersRange(address voterAddress, uint256 indexTo) public {
-        require(voterStakes[voterAddress].lastRequestIndexConsidered < indexTo, "IndexTo not after last request");
-        require(indexTo <= priceRequestIds.length, "Bad indexTo");
+        require(voterStakes[voterAddress].lastRequestIndexConsidered < indexTo);
+        require(indexTo <= priceRequestIds.length);
 
         _updateAccountSlashingTrackers(voterAddress, indexTo);
     }
@@ -1016,14 +1016,14 @@ contract VotingV2 is
         for (uint256 i = 0; i < spamRequestIndicesLength; i = unsafe_inc(i)) {
             uint256[2] memory spamRequestIndex = spamRequestIndices[i];
             // Check request end index is greater than start index.
-            require(spamRequestIndex[0] <= spamRequestIndex[1], "Bad start index");
+            require(spamRequestIndex[0] <= spamRequestIndex[1]);
 
-            // check the endIndex is less than the total number of requests.
-            require(spamRequestIndex[1] < priceRequestIds.length, "Bad end index");
+            // Check the endIndex is less than the total number of requests.
+            require(spamRequestIndex[1] < priceRequestIds.length);
 
             // Validate index continuity. This checks that each sequential element within the spamRequestIndices
             // array is sequently and increasing in size.
-            require(spamRequestIndex[1] > runningValidationIndex, "Bad index continuity");
+            require(spamRequestIndex[1] > runningValidationIndex);
             runningValidationIndex = spamRequestIndex[1];
         }
 
@@ -1050,13 +1050,13 @@ contract VotingV2 is
      * @param proposalId spam deletion proposal id.
      */
     function executeSpamDeletion(uint256 proposalId) public {
-        require(spamDeletionProposals[proposalId].executed == false, "Already executed");
+        require(spamDeletionProposals[proposalId].executed == false);
         spamDeletionProposals[proposalId].executed = true;
         bytes32 identifier = SpamGuardIdentifierLib._constructIdentifier(proposalId);
 
         (bool hasPrice, int256 resolutionPrice, ) =
             _getPriceOrError(identifier, spamDeletionProposals[proposalId].requestTime, "");
-        require(hasPrice, "Price not yet resolved");
+        require(hasPrice);
 
         // If the price is 1e18 then the spam deletion request was correctly voted on to delete the requests.
         if (resolutionPrice == 1e18) {
@@ -1130,7 +1130,7 @@ contract VotingV2 is
         bytes memory ancillaryData
     ) public {
         EmergencyAction storage action = emergencyActions[_encodePriceRequest(identifier, time, ancillaryData)];
-        require(action.accountSignaled[msg.sender] == 0, "Already signaled");
+        require(action.accountSignaled[msg.sender] == 0);
 
         action.accountSignaled[msg.sender] = getVoterStake(msg.sender);
         action.cumulativeSignaled += action.accountSignaled[msg.sender];
@@ -1138,14 +1138,14 @@ contract VotingV2 is
         // ++ the num of emergency actions this staker has signaled to block unstaking unless all are canceled.
         stakerEmergencyActionSignalCount[msg.sender]++;
 
-        // Block the staker from callin requestUnstake or executeUnstake by setting their unstake trackers to values
+        // Block the staker from calling requestUnstake or executeUnstake by setting their unstake trackers to values
         // that will mature far in the future. Remember that this method is meant to be used only in an emergency
         // and we want to block callers from doing things like: 1) staking, 2) signaling 3) unstaking and
         // 4) re-staking from another wallet to multiply their voting power. If you signal you must be blocked. This is
         // only done on the first signal of emergency action to not unnecessarily increment these trackers.
         if (stakerEmergencyActionSignalCount[msg.sender] == 1) {
             voterStakes[msg.sender].pendingUnstake += 1; // prevents staker from calling requestUnstake.
-            voterStakes[msg.sender].unstakeRequestTime += 4813802983; // 100 years from now.
+            voterStakes[msg.sender].unstakeRequestTime += 4813800000; // 100 years from now.
         }
 
         emit SignaledOnEmergencyAction(
@@ -1172,7 +1172,7 @@ contract VotingV2 is
     ) public {
         EmergencyAction storage action = emergencyActions[_encodePriceRequest(identifier, time, ancillaryData)];
 
-        require(action.accountSignaled[msg.sender] > 0, "Not signaled");
+        require(action.accountSignaled[msg.sender] > 0);
 
         // Decrement the cumulative signaled amount by the amount the user signed with in the beginning. We use this
         // rather than using their activeStake as they may have changed this during the time they were signaled.
@@ -1185,7 +1185,7 @@ contract VotingV2 is
         // to revert to their original values(if the staker had a pendingUnstake this should be recovered).
         if (stakerEmergencyActionSignalCount[msg.sender] == 0) {
             voterStakes[msg.sender].pendingUnstake -= 1;
-            voterStakes[msg.sender].unstakeRequestTime -= 4813802983;
+            voterStakes[msg.sender].unstakeRequestTime -= 4813800000;
         }
 
         emit SignaledOnEmergencyAction(
@@ -1213,8 +1213,8 @@ contract VotingV2 is
     ) public {
         bytes32 requestIdentifier = _encodePriceRequest(identifier, time, ancillaryData);
         EmergencyAction storage action = emergencyActions[requestIdentifier];
-        require(action.executed == false, "Already executed");
-        require((action.cumulativeSignaled * 1e18) / getCumulativeStake() >= emergencyActionThreshold, "Not enough");
+        require(action.executed == false);
+        require((action.cumulativeSignaled * 1e18) / getCumulativeStake() >= emergencyActionThreshold);
         action.executed = true;
         PriceRequest storage request = priceRequests[requestIdentifier];
 

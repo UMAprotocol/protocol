@@ -38,9 +38,7 @@ describe("Staker", function () {
       unstakeCoolDown,
       votingToken.options.address,
       timer.options.address
-    ).send({
-      from: account1,
-    });
+    ).send({ from: account1 });
 
     // Allow account1 to mint tokens.
     const minterRole = 1;
