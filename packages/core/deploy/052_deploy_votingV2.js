@@ -1,7 +1,7 @@
 const { ZERO_ADDRESS } = require("@uma/common");
 
 const func = async function (hre) {
-  const { deployments, getNamedAccounts } = hre;
+  const { deployments, getNamedAccounts, web3 } = hre;
   const { deploy, save } = deployments;
 
   const { deployer } = await getNamedAccounts();
@@ -11,8 +11,8 @@ const func = async function (hre) {
   const Finder = await deployments.get("Finder");
   const SlashingLibrary = await deployments.get("SlashingLibrary");
 
-  // Set the GAT percentage to 5%
-  const gatPercentage = hre.web3.utils.toWei("0.05", "ether");
+  // Set the GAT to 5.5 million tokens.
+  const gat = web3.utils.toBN(web3.utils.toWei("5500000", "ether"));
 
   const emissionRate = "640000000000000000"; // 0.64 UMA per second.
 
@@ -26,6 +26,13 @@ const func = async function (hre) {
   // If a price request falls in the last 2 hours of the previous reveal phase then auto roll it to the next round.
   const minRollToNextRoundLength = "7200";
 
+  // Note: this is a bit hacky, but we must have _some_ tokens in existence to set a GAT.
+  const votingToken = new web3.eth.Contract(VotingToken.abi, VotingToken.address);
+  await votingToken.methods.addMember(1, deployer).send({ from: deployer });
+  await votingToken.methods.addMember(2, deployer).send({ from: deployer });
+  const mintAmount = gat.addn(1).toString();
+  await votingToken.methods.mint(deployer, mintAmount).send({ from: deployer });
+
   if (Timer.address === ZERO_ADDRESS) {
     await deploy("VotingV2", {
       from: deployer,
@@ -35,7 +42,7 @@ const func = async function (hre) {
         unstakeCooldown,
         phaseLength,
         minRollToNextRoundLength,
-        gatPercentage,
+        gat.toString(),
         VotingToken.address,
         Finder.address,
         SlashingLibrary.address,
@@ -52,7 +59,7 @@ const func = async function (hre) {
         unstakeCooldown,
         phaseLength,
         minRollToNextRoundLength,
-        gatPercentage,
+        gat.toString(),
         VotingToken.address,
         Finder.address,
         SlashingLibrary.address,
@@ -65,6 +72,11 @@ const func = async function (hre) {
     // Save this under VotingV2 as well.
     await save("VotingV2", submission);
   }
+
+  // Destroy the tokens minted above.
+  await votingToken.methods.burn(mintAmount).send({ from: deployer });
+  await votingToken.methods.removeMember(1, deployer).send({ from: deployer });
+  await votingToken.methods.removeMember(2, deployer).send({ from: deployer });
 };
 module.exports = func;
 func.tags = ["dvmv2"];
