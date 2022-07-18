@@ -41,9 +41,9 @@ contract VotingV2Test is VotingV2ControllableTiming {
     constructor(
         uint256 _emissionRate,
         uint256 _spamDeletionProposalBond,
-        uint256 _unstakeCoolDown,
-        uint256 _phaseLength,
-        uint256 _minRollToNextRoundLength,
+        uint64 _unstakeCoolDown,
+        uint64 _phaseLength,
+        uint64 _minRollToNextRoundLength,
         uint256 _gatPercentage,
         address _votingToken,
         address _finder,
