@@ -115,7 +115,7 @@ contract VotingV2 is
 
     bytes32[] public priceRequestIds;
 
-    mapping(uint256 => uint256) public deletedRequests;
+    mapping(uint64 => uint64) public deletedRequests;
 
     // Price request ids for price requests that haven't yet been marked as resolved.
     // These requests may be for future rounds.
@@ -285,17 +285,12 @@ contract VotingV2 is
     ****************************************/
 
     modifier onlyRegisteredContract() {
-        if (migratedAddress != address(0)) {
-            require(msg.sender == migratedAddress);
-        } else {
-            Registry registry = Registry(finder.getImplementationAddress(OracleInterfaces.Registry));
-            require(registry.isContractRegistered(msg.sender), "Called must be registered");
-        }
+        _requireRegisteredContract();
         _;
     }
 
     modifier onlyIfNotMigrated() {
-        require(migratedAddress == address(0));
+        _requireNotMigrated();
         _;
     }
 
@@ -830,8 +825,10 @@ contract VotingV2 is
      * @param indexTo last price request index to update the trackers for.
      */
     function updateTrackersRange(address voterAddress, uint256 indexTo) public {
-        require(voterStakes[voterAddress].lastRequestIndexConsidered < indexTo, "IndexTo not after last request");
-        require(indexTo <= priceRequestIds.length, "Bad indexTo");
+        require(
+            voterStakes[voterAddress].lastRequestIndexConsidered < indexTo && indexTo <= priceRequestIds.length,
+            "Bad indexTo"
+        );
 
         _updateAccountSlashingTrackers(voterAddress, indexTo);
     }
@@ -862,9 +859,9 @@ contract VotingV2 is
         // not. Based on the outcome, attribute the associated slash to the voter.
         int256 slash = 0;
         for (
-            uint256 requestIndex = voterStake.lastRequestIndexConsidered;
+            uint64 requestIndex = voterStake.lastRequestIndexConsidered;
             requestIndex < indexTo;
-            requestIndex = unsafe_inc(requestIndex)
+            requestIndex = unsafe_inc_64(requestIndex)
         ) {
             if (deletedRequests[requestIndex] != 0) requestIndex = deletedRequests[requestIndex] + 1;
             if (requestIndex > indexTo - 1) break; // This happens if the last element was a rolled vote.
@@ -1024,8 +1021,8 @@ contract VotingV2 is
         if (resolutionPrice == 1e18) {
             // Delete the price requests associated with the spam.
             for (uint256 i = 0; i < spamDeletionProposals[proposalId].spamRequestIndices.length; i = unsafe_inc(i)) {
-                uint256 startIndex = spamDeletionProposals[proposalId].spamRequestIndices[uint256(i)][0];
-                uint256 endIndex = spamDeletionProposals[proposalId].spamRequestIndices[uint256(i)][1];
+                uint64 startIndex = uint64(spamDeletionProposals[proposalId].spamRequestIndices[uint256(i)][0]);
+                uint64 endIndex = uint64(spamDeletionProposals[proposalId].spamRequestIndices[uint256(i)][1]);
                 for (uint256 j = startIndex; j <= endIndex; j++) {
                     bytes32 requestId = priceRequestIds[j];
                     // Remove from pendingPriceRequests.
@@ -1208,7 +1205,24 @@ contract VotingV2 is
         unchecked { return x + 1; }
     }
 
+    function unsafe_inc_64(uint64 x) internal pure returns (uint64) {
+        unchecked { return x + 1; }
+    }
+
     function _getIdentifierWhitelist() private view returns (IdentifierWhitelistInterface supportedIdentifiers) {
         return IdentifierWhitelistInterface(finder.getImplementationAddress(OracleInterfaces.IdentifierWhitelist));
+    }
+
+    function _requireNotMigrated() private view {
+        require(migratedAddress == address(0));
+    }
+
+    function _requireRegisteredContract() private view {
+        if (migratedAddress != address(0)) {
+            require(msg.sender == migratedAddress);
+        } else {
+            Registry registry = Registry(finder.getImplementationAddress(OracleInterfaces.Registry));
+            require(registry.isContractRegistered(msg.sender), "Caller must be registered");
+        }
     }
 }

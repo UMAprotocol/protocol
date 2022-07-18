@@ -7,6 +7,7 @@ import "../../common/implementation/Testable.sol";
 import "./VotingToken.sol";
 
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 contract Staker is StakerInterface, Ownable, Testable {
     /****************************************
@@ -26,9 +27,9 @@ contract Staker is StakerInterface, Ownable, Testable {
         uint256 pendingStake;
         uint256 rewardsPaidPerToken;
         uint256 outstandingRewards;
-        uint256 unstakeRequestTime;
-        uint256 lastRequestIndexConsidered;
         address delegate;
+        uint64 unstakeRequestTime;
+        uint64 lastRequestIndexConsidered;
     }
 
     mapping(address => VoterStake) public voterStakes;
@@ -115,7 +116,7 @@ contract Staker is StakerInterface, Ownable, Testable {
         // the most recent index. This means we don't need to traverse requests where the staker was not staked.
         // getStartingIndexForStaker returns the appropriate index to start at.
         if (getVoterStake(msg.sender) + voterStake.pendingUnstake == 0)
-            voterStake.lastRequestIndexConsidered = getStartingIndexForStaker();
+            voterStake.lastRequestIndexConsidered = SafeCast.toUint64(getStartingIndexForStaker());
         _updateTrackers(msg.sender);
 
         if (inActiveReveal()) {
@@ -156,7 +157,7 @@ contract Staker is StakerInterface, Ownable, Testable {
         cumulativeActiveStake -= amount;
         voterStake.pendingUnstake = amount;
         voterStake.activeStake -= amount;
-        voterStake.unstakeRequestTime = getCurrentTime();
+        voterStake.unstakeRequestTime = uint64(getCurrentTime());
 
         emit RequestedUnstake(
             msg.sender,
@@ -200,7 +201,7 @@ contract Staker is StakerInterface, Ownable, Testable {
         uint256 tokensToMint = voterStake.outstandingRewards;
         if (tokensToMint > 0) {
             voterStake.outstandingRewards = 0;
-            require(votingToken.mint(msg.sender, tokensToMint), "Voting token issuance failed");
+            require(votingToken.mint(msg.sender, tokensToMint));
         }
         emit WithdrawnRewards(msg.sender, tokensToMint);
         return (tokensToMint);
