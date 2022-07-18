@@ -781,7 +781,7 @@ contract VotingV2 is
     /**
      * @notice Resets the Gat percentage. Note: this change only applies to rounds that have not yet begun.
      * @dev This method is public because calldata structs are not currently supported by solidity.
-     * @param newGat sets the next round's Gat percentage.
+     * @param newGat sets the next round's Gat.
      */
     function setGat(uint256 newGat) public override onlyOwner {
         require(newGat < votingToken.totalSupply() && newGat > 0);
