@@ -259,6 +259,33 @@ contract VotingV2 is
 
     event ExecutedSpamDeletion(uint256 indexed proposalId, bool indexed executed);
 
+    event SignaledOnEmergencyAction(
+        bytes32 indexed identifier,
+        uint256 time,
+        bytes ancillaryData,
+        address indexed sender,
+        uint256 senderEmergencyActionSignalCount,
+        uint256 indexed numTokensSignaled,
+        uint256 cumulativeSignaled
+    );
+
+    event CanceledSignalOnEmergencyAction(
+        bytes32 indexed identifier,
+        uint256 time,
+        bytes ancillaryData,
+        address indexed sender,
+        uint256 senderEmergencyActionSignalCount,
+        uint256 indexed numTokensSignaled,
+        uint256 cumulativeSignaled
+    );
+
+    event ExecutedEmergencyAction(
+        bytes32 indexed identifier,
+        uint256 time,
+        bytes ancillaryData,
+        address indexed sender
+    );
+
     /**
      * @notice Construct the VotingV2 contract.
      * @param _emissionRate amount of voting tokens that are emitted per second, split prorate to stakers.
@@ -1094,46 +1121,56 @@ contract VotingV2 is
      * @dev by calling this, we modify the stakers pendingUnstake and unstakeRequestTime to prevent them from requesting
      * or executing unstakes while singled on emergency actions.
      * @param identifier the price identifier to signal on.
-     * @param actionTime the action time to signal on.
+     * @param time the action time to signal on.
      * @param ancillaryData the ancillary data to signal on.
      */
     function signalOnEmergencyAction(
         bytes32 identifier,
-        uint256 actionTime,
+        uint256 time,
         bytes memory ancillaryData
     ) public {
-        EmergencyAction storage action = emergencyActions[_encodePriceRequest(identifier, actionTime, ancillaryData)];
+        EmergencyAction storage action = emergencyActions[_encodePriceRequest(identifier, time, ancillaryData)];
         require(action.accountSignaled[msg.sender] == 0, "Already signaled");
 
         action.accountSignaled[msg.sender] = getVoterStake(msg.sender);
         action.cumulativeSignaled += action.accountSignaled[msg.sender];
+
+        // ++ the num of emergency actions this staker has signaled to block unstaking unless all are canceled.
+        stakerEmergencyActionSignalCount[msg.sender]++;
 
         // Block the staker from callin requestUnstake or executeUnstake by setting their unstake trackers to values
         // that will mature far in the future. Remember that this method is meant to be used only in an emergency
         // and we want to block callers from doing things like: 1) staking, 2) signaling 3) unstaking and
         // 4) re-staking from another wallet to multiply their voting power. If you signal you must be blocked. This is
         // only done on the first signal of emergency action to not unnecessarily increment these trackers.
-        if (stakerEmergencyActionSignalCount[msg.sender] == 0) {
+        if (stakerEmergencyActionSignalCount[msg.sender] == 1) {
             voterStakes[msg.sender].pendingUnstake += 1; // prevents staker from calling requestUnstake.
             voterStakes[msg.sender].unstakeRequestTime += 4813802983; // 100 years from now.
         }
 
-        // ++ the num of emergency actions this staker has signaled to block unstaking unless all are canceled.
-        stakerEmergencyActionSignalCount[msg.sender]++;
+        emit SignaledOnEmergencyAction(
+            identifier,
+            time,
+            ancillaryData,
+            msg.sender,
+            stakerEmergencyActionSignalCount[msg.sender],
+            action.accountSignaled[msg.sender],
+            action.cumulativeSignaled
+        );
     }
 
     /**
      * @notice Enables voters to cancel their signal to pass an emergency price request.
      * @param identifier the price identifier to cancel the signal on.
-     * @param actionTime the action time to cancel the signal on.
+     * @param time the action time to cancel the signal on.
      * @param ancillaryData the ancillary data to cancel the signal on.
      */
     function cancelSignalOnEmergencyAction(
         bytes32 identifier,
-        uint256 actionTime,
+        uint256 time,
         bytes memory ancillaryData
     ) public {
-        EmergencyAction storage action = emergencyActions[_encodePriceRequest(identifier, actionTime, ancillaryData)];
+        EmergencyAction storage action = emergencyActions[_encodePriceRequest(identifier, time, ancillaryData)];
 
         require(action.accountSignaled[msg.sender] > 0, "Not signaled");
 
@@ -1150,21 +1187,31 @@ contract VotingV2 is
             voterStakes[msg.sender].pendingUnstake -= 1;
             voterStakes[msg.sender].unstakeRequestTime -= 4813802983;
         }
+
+        emit SignaledOnEmergencyAction(
+            identifier,
+            time,
+            ancillaryData,
+            msg.sender,
+            stakerEmergencyActionSignalCount[msg.sender],
+            action.accountSignaled[msg.sender],
+            action.cumulativeSignaled
+        );
     }
 
     /**
      * @notice Execute an emergency action by pushing the price 1e18 into the DVM for the given identifier, time and
      * ancillary data. Note that emergencyActionThreshold needs to have singled on this action for it to be executed.
      * @param identifier the price identifier to be executed and pushed into the DVMs resolved prices.
-     * @param actionTime the action time to be executed and pushed into the DVMs resolved prices.
+     * @param time the action time to be executed and pushed into the DVMs resolved prices.
      * @param ancillaryData the ancillary data to be executed and pushed into the DVMs resolved prices.
      */
     function executeEmergencyAction(
         bytes32 identifier,
-        uint256 actionTime,
+        uint256 time,
         bytes memory ancillaryData
     ) public {
-        bytes32 requestIdentifier = _encodePriceRequest(identifier, actionTime, ancillaryData);
+        bytes32 requestIdentifier = _encodePriceRequest(identifier, time, ancillaryData);
         EmergencyAction storage action = emergencyActions[requestIdentifier];
         require(action.executed == false, "Already executed");
         require((action.cumulativeSignaled * 1e18) / getCumulativeStake() >= emergencyActionThreshold, "Not enough");
@@ -1178,6 +1225,8 @@ contract VotingV2 is
         // This is needed to retrieve prices later. This enables the price to be settled and captures the GAT.
         if (rounds[request.lastVotingRound].cumulativeActiveStakeAtRound == 0)
             _freezeRoundVariables(request.lastVotingRound);
+
+        emit ExecutedEmergencyAction(identifier, time, ancillaryData, msg.sender);
     }
 
     /****************************************
