@@ -21,8 +21,6 @@ import "./Staker.sol";
 import "./VoteTimingV2.sol";
 
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
 /**
  * @title Voting system for Oracle.
@@ -107,7 +105,7 @@ contract VotingV2 is
     mapping(uint256 => Round) public rounds;
 
     // Maps price request IDs to the PriceRequest struct.
-    mapping(bytes32 => PriceRequest) internal priceRequests;
+    mapping(bytes32 => PriceRequest) public priceRequests;
 
     bytes32[] public priceRequestIds;
 
@@ -115,7 +113,7 @@ contract VotingV2 is
 
     // Price request ids for price requests that haven't yet been marked as resolved.
     // These requests may be for future rounds.
-    bytes32[] internal pendingPriceRequests;
+    bytes32[] public pendingPriceRequests;
 
     VoteTimingV2.Data public voteTiming;
 
@@ -158,9 +156,11 @@ contract VotingV2 is
     }
 
     /****************************************
-     *        SPAM DELETION TRACKERS        *
+     * SPAM DELETION AND EMERGENCY TRACKERS *
      ****************************************/
 
+    // Voters have the ability to signal requests as spam and delete them from the DVM. This is done by proposing a
+    // range of requests to be deleted and then voting on whether to delete them as a standard price request.
     uint256 spamDeletionProposalBond;
 
     struct SpamDeletionRequest {
@@ -171,15 +171,20 @@ contract VotingV2 is
     }
 
     // Maps round numbers to the spam deletion request.
-    SpamDeletionRequest[] internal spamDeletionProposals;
+    SpamDeletionRequest[] public spamDeletionProposals;
 
+    // In the event of an emergency or breakage of the DVM, there is a recovery process wherein voters can signal the
+    // inclusion of a price request that bi-passes the schelling point. This enables the DVM from recovering from a
+    // core breakage of the commit reveal or staking mechanism.
     struct EmergencyAction {
         bool executed;
         uint256 cumulativeSignaled;
-        mapping(address => bool) accountSignaled;
+        mapping(address => uint256) accountSignaled;
     }
 
     mapping(bytes32 => EmergencyAction) internal emergencyActions;
+
+    mapping(address => uint256) stakerEmergencyActionSignalCount;
 
     uint256 emergencyActionThreshold = 0.5e18;
 
@@ -262,7 +267,6 @@ contract VotingV2 is
      * @param _gatPercentage of the total token supply that must be used in a vote to create a valid price resolution.
      * @param _votingToken address of the UMA token contract used to commit votes.
      * @param _finder keeps track of all contracts within the system based on their interfaceName.
-     * @param _timerAddress contract that stores the current time in a testing environment.
      * Must be set to 0x0 for production environments that use live time.
      * @param _slashingLibrary contract used to calculate voting slashing penalties based on voter participation.
      */
@@ -275,9 +279,8 @@ contract VotingV2 is
         uint256 _gatPercentage,
         address _votingToken,
         address _finder,
-        address _timerAddress,
         address _slashingLibrary
-    ) Staker(_emissionRate, _unstakeCoolDown, _votingToken, _timerAddress) {
+    ) Staker(_emissionRate, _unstakeCoolDown, _votingToken) {
         voteTiming.init(_phaseLength, _minRollToNextRoundLength);
         require(_gatPercentage <= 1e18, "GAT percentage must be <= 100%");
         gatPercentage = _gatPercentage;
@@ -292,7 +295,7 @@ contract VotingV2 is
 
     modifier onlyRegisteredContract() {
         if (migratedAddress != address(0)) {
-            require(msg.sender == migratedAddress, "Caller must be migrated address");
+            require(msg.sender == migratedAddress);
         } else {
             Registry registry = Registry(finder.getImplementationAddress(OracleInterfaces.Registry));
             require(registry.isContractRegistered(msg.sender), "Called must be registered");
@@ -301,7 +304,7 @@ contract VotingV2 is
     }
 
     modifier onlyIfNotMigrated() {
-        require(migratedAddress == address(0), "Only call this if not migrated");
+        require(migratedAddress == address(0));
         _;
     }
 
@@ -374,7 +377,7 @@ contract VotingV2 is
             // Price has never been requested.
             // If the price request is a governance action then always place it in the following round. If the price
             // request is a normal request then either place it in the next round or the following round based off
-            // the minRolllToNextRoundLength.
+            // the minRollToNextRoundLength.
             uint256 roundIdToVoteOnPriceRequest =
                 isGovernance ? currentRoundId + 1 : voteTiming.computeRoundToVoteOnPriceRequest(blockTime);
             PriceRequest storage newPriceRequest = priceRequests[priceRequestId];
@@ -384,7 +387,7 @@ contract VotingV2 is
             newPriceRequest.pendingRequestIndex = pendingPriceRequests.length;
             newPriceRequest.priceRequestIndex = priceRequestIds.length;
             newPriceRequest.ancillaryData = ancillaryData;
-            newPriceRequest.isGovernance = isGovernance;
+            if (isGovernance) newPriceRequest.isGovernance = isGovernance;
 
             pendingPriceRequests.push(priceRequestId);
             priceRequestIds.push(priceRequestId);
@@ -797,7 +800,7 @@ contract VotingV2 is
      * @param newGatPercentage sets the next round's Gat percentage.
      */
     function setGatPercentage(uint256 newGatPercentage) public override onlyOwner {
-        require(newGatPercentage < 1e18, "GAT percentage must be < 100%");
+        require(newGatPercentage < 1e18);
         gatPercentage = newGatPercentage;
         emit GatPercentageChanged(newGatPercentage);
     }
@@ -890,7 +893,7 @@ contract VotingV2 is
                     deletedRequests[requestIndex] = requestIndex;
                     priceRequest.priceRequestIndex = priceRequestIds.length;
                     priceRequestIds.push(priceRequestIds[requestIndex]);
-                    continue;
+                    continue; //todo: think through this bad boy one more time.
                 }
                 // Else, we are simply evaluating a request that is still actively being voted on. In this case, break as
                 // all subsequent requests within the array must be in the same state and cant have any slashing applied.
@@ -899,7 +902,7 @@ contract VotingV2 is
 
             uint256 totalCorrectVotes = voteInstance.resultComputation.getTotalCorrectlyVotedTokens();
 
-            (uint256 wrongVoteSlash, uint256 noVoteSlash) =
+            (uint256 wrongVoteSlashPerToken, uint256 noVoteSlashPerToken) =
                 slashingLibrary.calcSlashing(
                     rounds[priceRequest.lastVotingRound].cumulativeActiveStakeAtRound,
                     voteInstance.resultComputation.totalVotes,
@@ -907,24 +910,28 @@ contract VotingV2 is
                     priceRequest.isGovernance
                 );
 
-            uint256 totalSlashed =
-                ((noVoteSlash *
-                    (rounds[priceRequest.lastVotingRound].cumulativeActiveStakeAtRound -
-                        voteInstance.resultComputation.totalVotes)) / 1e18) +
-                    ((wrongVoteSlash * (voteInstance.resultComputation.totalVotes - totalCorrectVotes)) / 1e18);
-
             // The voter did not reveal or did not commit. Slash at noVote rate.
             if (voteInstance.voteSubmissions[voterAddress].revealHash == 0)
-                slash -= int256((voterStake.activeStake * noVoteSlash) / 1e18);
+                slash -= int256((voterStake.activeStake * noVoteSlashPerToken) / 1e18);
 
                 // The voter did not vote with the majority. Slash at wrongVote rate.
             else if (
                 !voteInstance.resultComputation.wasVoteCorrect(voteInstance.voteSubmissions[voterAddress].revealHash)
             )
-                slash -= int256((voterStake.activeStake * wrongVoteSlash) / 1e18);
+                slash -= int256((voterStake.activeStake * wrongVoteSlashPerToken) / 1e18);
 
                 // The voter voted correctly. Receive a pro-rate share of the other voters slashed amounts as a reward.
-            else slash += int256((((voterStake.activeStake * totalSlashed)) / totalCorrectVotes));
+            else {
+                //todo: comment for this and we can have only 1 / by 1e18.
+                uint256 totalSlashed =
+                    ((noVoteSlashPerToken *
+                        (rounds[priceRequest.lastVotingRound].cumulativeActiveStakeAtRound -
+                            voteInstance.resultComputation.totalVotes)) / 1e18) +
+                        ((wrongVoteSlashPerToken * (voteInstance.resultComputation.totalVotes - totalCorrectVotes)) /
+                            1e18);
+
+                slash += int256(((voterStake.activeStake * totalSlashed)) / totalCorrectVotes);
+            }
 
             // If this is not the last price request to apply and the next request in the batch is from a subsequent
             // round then apply the slashing now. Else, do nothing and apply the slashing after the loop concludes.
@@ -966,9 +973,9 @@ contract VotingV2 is
 
     /**
      * @notice Declare a specific price requests range to be spam and request it's deletion.
-     * @dev note that this method should almost never be used. The bond to call this should be set to
-     * a very large number (say 10k UMA) as it could be abused if set too low. Function constructs a price
-     * request that, if passed, enables pending requests to be diregarded by the contract.
+     * @dev This method should almost never be used. The bond to call this should be set to a very large number
+     * (say 10k UMA) as it could be abused if set too low. Function constructs a price request that, if passed, enables
+     * pending requests to be disregarded by the contract.
      * @param spamRequestIndices list of request indices to be declared as spam. Each element is a
      * pair of uint256s representing the start and end of the range.
      */
@@ -991,7 +998,15 @@ contract VotingV2 is
             runningValidationIndex = spamRequestIndex[1];
         }
 
-        spamDeletionProposals.push(SpamDeletionRequest(spamRequestIndices, currentTime, false, msg.sender));
+        spamDeletionProposals.push(
+            SpamDeletionRequest({
+                spamRequestIndices: spamRequestIndices,
+                requestTime: currentTime,
+                executed: false,
+                proposer: msg.sender
+            })
+        );
+
         uint256 proposalId = spamDeletionProposals.length - 1;
 
         bytes32 identifier = SpamGuardIdentifierLib._constructIdentifier(proposalId);
@@ -1069,6 +1084,17 @@ contract VotingV2 is
         return spamDeletionProposals[spamDeletionRequestId];
     }
 
+    /**
+     * @notice Enables voters to signal to pass a price request without using the standard commit/reveal schelling point
+     * mechanism. Intended to be used in the case that that the DVM irrecoverably broken (say the commit reveal
+     * mechanism is broken). By signaling on an emergency action, we can bi-pass this and still get a price set to allow
+     * the Governor to still execute governance actions to save the system.
+     * @dev by calling this, we modify the stakers pendingUnstake and unstakeRequestTime to prevent them from requesting
+     * or executing unstakes while singled on emergency actions.
+     * @param identifier the price identifier to signal on.
+     * @param actionTime the action time to signal on.
+     * @param ancillaryData the ancillary data to signal on.
+     */
     function signalOnEmergencyAction(
         bytes32 identifier,
         uint256 actionTime,
@@ -1076,12 +1102,57 @@ contract VotingV2 is
     ) public {
         EmergencyAction storage action = emergencyActions[_encodePriceRequest(identifier, actionTime, ancillaryData)];
 
-        if (!action.accountSignaled[msg.sender]) {
-            action.accountSignaled[msg.sender] = true;
-            action.cumulativeSignaled += getVoterStake(msg.sender);
+        if (action.accountSignaled[msg.sender] == 0) {
+            action.accountSignaled[msg.sender] = getVoterStake(msg.sender);
+            action.cumulativeSignaled += action.accountSignaled[msg.sender];
+
+            // ++ the num of emergency actions this staker has signaled to block unstaking unless all are canceled.
+            stakerEmergencyActionSignalCount[msg.sender]++;
+
+            // Block the staker from callin requestUnstake or executeUnstake by setting their unstake trackers to values
+            // that will mature far in the future. Remember that this method is meant to be used only in an emergency
+            // and we want to block callers from doing things like: 1) staking, 2) signaling 3) unstaking and
+            // 4) re-staking from another wallet to multiply their voting power. If you signal you must be blocked.
+            voterStakes[msg.sender].pendingUnstake += 1; // prevents staker from calling requestUnstake.
+            voterStakes[msg.sender].unstakeRequestTime += 4813802983; // 100 years from now.
         }
     }
 
+    /**
+     * @notice Enables voters to cancel their signal to pass an emergency price request.
+     * @param identifier the price identifier to cancel the signal on.
+     * @param actionTime the action time to cancel the signal on.
+     * @param ancillaryData the ancillary data to cancel the signal on.
+     */
+    function cancelSignalOnEmergencyAction(
+        bytes32 identifier,
+        uint256 actionTime,
+        bytes memory ancillaryData
+    ) public {
+        EmergencyAction storage action = emergencyActions[_encodePriceRequest(identifier, actionTime, ancillaryData)];
+
+        if (action.accountSignaled[msg.sender] > 0) {
+            action.cumulativeSignaled -= action.accountSignaled[msg.sender];
+            action.accountSignaled[msg.sender] = 0;
+            stakerEmergencyActionSignalCount[msg.sender]--;
+
+            // Reset the blocking trackers used to prevent the staker from unstaking iff they have canceled all their
+            // signaled requests. Note that we do the equal and opposite operators of stakerEmergencyActionSignalCount
+            // to revert to their original values(if the staker had a pendingUnstake this should be recovered).
+            if (stakerEmergencyActionSignalCount[msg.sender] == 0) {
+                voterStakes[msg.sender].pendingUnstake -= 1;
+                voterStakes[msg.sender].unstakeRequestTime -= 4813802983;
+            }
+        }
+    }
+
+    /**
+     * @notice Execute an emergency action by pushing the price 1e18 into the DVM for the given identifier, time and
+     * ancillary data. Note that emergencyActionThreshold needs to have singled on this action for it to be executed.
+     * @param identifier the price identifier to be executed and pushed into the DVMs resolved prices.
+     * @param actionTime the action time to be executed and pushed into the DVMs resolved prices.
+     * @param ancillaryData the ancillary data to be executed and pushed into the DVMs resolved prices.
+     */
     function executeEmergencyAction(
         bytes32 identifier,
         uint256 actionTime,
@@ -1093,6 +1164,8 @@ contract VotingV2 is
         require((action.cumulativeSignaled * 1e18) / getCumulativeStake() >= emergencyActionThreshold, "Not enough");
         action.executed = true;
         PriceRequest storage request = priceRequests[requestIdentifier];
+
+        // Add a vote for the price 1e18 (yes in a governance action) in size equal to the cumulative staked amount.
         request.voteInstances[request.lastVotingRound].resultComputation.addVote(1e18, getCumulativeStake());
 
         // It is possible the round was not frozen because no one was able to reveal. In this case, freeze the round.

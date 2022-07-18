@@ -20,7 +20,7 @@ const { toBN } = web3.utils;
 
 const Finder = getContract("Finder");
 const Registry = getContract("Registry");
-const VotingV2 = getContract("VotingV2");
+const VotingV2 = getContract("VotingV2ControllableTiming");
 const VotingInterfaceTesting = getContract("VotingInterfaceTesting");
 const VotingAncillaryInterfaceTesting = getContract("VotingAncillaryInterfaceTesting");
 const IdentifierWhitelist = getContract("IdentifierWhitelist");
@@ -78,8 +78,13 @@ describe("VotingV2", function () {
     await registry.methods.addMember(RegistryRolesEnum.CONTRACT_CREATOR, account1).send({ from: accounts[0] });
     await registry.methods.registerContract([], registeredContract).send({ from: account1 });
 
-    // Reset the rounds.
-    // await voting.methods.setCurrentTime("1657879200").send({ from: accounts[0] });
+    // Magic math to ensure we start at the very beginning of a round, and we aren't dependent on the time the tests
+    // are run.
+    const currentTime = Number((await voting.methods.getCurrentTime().call()).toString());
+    const newTime = (Math.floor(currentTime / 172800) + 1) * 172800;
+    await voting.methods.setCurrentTime(newTime).send({ from: accounts[0] });
+
+    // Start with a fresh round.
     await moveToNextRound(voting, accounts[0]);
   });
 
@@ -97,8 +102,8 @@ describe("VotingV2", function () {
           invalidGat, // GatPct
           votingToken.options.address, // voting token
           (await Finder.deployed()).options.address, // finder
-          (await Timer.deployed()).options.address, // timer
-          (await SlashingLibrary.deployed()).options.address // slashing library
+          (await SlashingLibrary.deployed()).options.address, // slashing library
+          (await Timer.deployed()).options.address // timer
         ).send({ from: accounts[0] })
       )
     );
@@ -1218,8 +1223,8 @@ describe("VotingV2", function () {
       web3.utils.toWei("0.05"), // 5% GAT
       votingToken.options.address, // voting token
       (await Finder.deployed()).options.address, // finder
-      (await Timer.deployed()).options.address, // timer
-      (await SlashingLibrary.deployed()).options.address // slashing library
+      (await SlashingLibrary.deployed()).options.address, // slashing library
+      (await Timer.deployed()).options.address // timer
     ).send({ from: accounts[0] });
 
     // unstake and restake in the new voting contract
@@ -1287,8 +1292,8 @@ describe("VotingV2", function () {
           toWei("0.05"), // GatPct
           votingToken.options.address, // voting token
           (await Finder.deployed()).options.address, // finder
-          (await Timer.deployed()).options.address, // timer
-          (await SlashingLibrary.deployed()).options.address // slashing library
+          (await SlashingLibrary.deployed()).options.address, // slashing library
+          (await Timer.deployed()).options.address // timer
         ).send({ from: accounts[0] })
       ).options.address
     );
@@ -3017,6 +3022,9 @@ describe("VotingV2", function () {
       toWei("1")
     );
   });
+  it("Cant double signal on emergency action", async function () {});
+
+  it("", async function () {});
 
   // TODO: add a much more itterative rolling test to validate a many rolled round is correctly tracked.
 });

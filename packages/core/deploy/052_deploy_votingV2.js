@@ -2,7 +2,7 @@ const { ZERO_ADDRESS } = require("@uma/common");
 
 const func = async function (hre) {
   const { deployments, getNamedAccounts } = hre;
-  const { deploy } = deployments;
+  const { deploy, save } = deployments;
 
   const { deployer } = await getNamedAccounts();
 
@@ -26,23 +26,45 @@ const func = async function (hre) {
   // If a price request falls in the last 2 hours of the previous reveal phase then auto roll it to the next round.
   const minRollToNextRoundLength = "7200";
 
-  await deploy("VotingV2", {
-    from: deployer,
-    args: [
-      emissionRate,
-      spamDeletionProposalBond,
-      unstakeCooldown,
-      phaseLength,
-      minRollToNextRoundLength,
-      gatPercentage,
-      VotingToken.address,
-      Finder.address,
-      Timer.address,
-      SlashingLibrary.address,
-    ],
-    log: true,
-    skipIfAlreadyDeployed: true,
-  });
+  if (Timer.address === ZERO_ADDRESS) {
+    await deploy("VotingV2", {
+      from: deployer,
+      args: [
+        emissionRate,
+        spamDeletionProposalBond,
+        unstakeCooldown,
+        phaseLength,
+        minRollToNextRoundLength,
+        gatPercentage,
+        VotingToken.address,
+        Finder.address,
+        SlashingLibrary.address,
+      ],
+      log: true,
+      skipIfAlreadyDeployed: true,
+    });
+  } else {
+    const submission = await deploy("VotingV2ControllableTiming", {
+      from: deployer,
+      args: [
+        emissionRate,
+        spamDeletionProposalBond,
+        unstakeCooldown,
+        phaseLength,
+        minRollToNextRoundLength,
+        gatPercentage,
+        VotingToken.address,
+        Finder.address,
+        SlashingLibrary.address,
+        Timer.address,
+      ],
+      log: true,
+      skipIfAlreadyDeployed: true,
+    });
+
+    // Save this under VotingV2 as well.
+    await save("VotingV2", submission);
+  }
 };
 module.exports = func;
 func.tags = ["dvmv2"];
