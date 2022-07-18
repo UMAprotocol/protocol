@@ -2978,8 +2978,8 @@ describe("VotingV2", function () {
       toWei("0.05"), // GatPct
       votingToken.options.address, // voting token
       (await Finder.deployed()).options.address, // finder
-      (await Timer.deployed()).options.address, // timer
-      (await SlashingLibrary.deployed()).options.address // slashing library
+      (await SlashingLibrary.deployed()).options.address, // slashing library
+      (await Timer.deployed()).options.address // timer
     ).send({ from: accounts[0] });
 
     // Unstake in the old contract and re-stake in the new contract from one voter.
@@ -2987,7 +2987,9 @@ describe("VotingV2", function () {
     await voting.methods.requestUnstake(toWei("32000000")).send({ from: account1 });
     await voting.methods.executeUnstake().send({ from: account1 });
     await votingToken.methods.approve(voting2.options.address, toWei("32000000")).send({ from: account1 });
+    console.log("Z");
     await voting2.methods.stake(toWei("30000000")).send({ from: account1 });
+    console.log("A");
 
     // Now, set the setRevertOnUpdateTrackers as true. this mimics the internal logic having broken within the voting
     // contract which will block all commit/reveal/stake and unstake actions thereby rendering the DVM briked.
@@ -3009,7 +3011,21 @@ describe("VotingV2", function () {
     // Now, signal on the emergency action from the only staker. They have enough on their own to reach the activation
     // threshold and should be able to pass through the vote.
     await voting2.methods.signalOnEmergencyAction(identifier, time, "0x123").send({ from: account1 });
+    console.log("await voting.methods.voterStakes(account1).call()", await voting.methods.voterStakes(account1).call());
+    assert.equal((await voting2.methods.voterStakes(account1).call()).unstakeRequestTime, "4813802983");
 
+    // Cant double signal on emergency action.
+    assert(
+      await didContractThrow(
+        voting2.methods.signalOnEmergencyAction(identifier, time, "0x123").send({ from: account1 })
+      )
+    );
+
+    // Cant request to unstake if signaled on an emergency action, even if the contract is not reverting on this action.
+    await voting2.methods.setRevertOnUpdateTrackers(false).send({ from: accounts[0] });
+    assert(await didContractThrow(voting2.methods.requestUnstake("1234").send({ from: account1 })));
+
+    // Now, execute the emergency action.
     await voting2.methods.executeEmergencyAction(identifier, time, "0x123").send({ from: account1 });
 
     // As this is still treated as a "price request" we need to move to the next round before it can be resolved.
@@ -3021,10 +3037,11 @@ describe("VotingV2", function () {
       await voting2.methods.getPrice(identifier, time, "0x123").call({ from: registeredContract }),
       toWei("1")
     );
+
+    // Finally, can cancel the emergency action from the voter. Note that this needs to be posable after the execution
+    // as this is how the voter would withdraw, if needed.
+
+    await voting2.methods.cancelSignalOnEmergencyAction(identifier, time, "0x123").send({ from: account1 });
+    assert.equal((await voting2.methods.voterStakes(account1).call()).unstakeRequestTime, "0");
   });
-  it("Cant double signal on emergency action", async function () {});
-
-  it("", async function () {});
-
-  // TODO: add a much more itterative rolling test to validate a many rolled round is correctly tracked.
 });

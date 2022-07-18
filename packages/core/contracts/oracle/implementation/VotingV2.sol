@@ -22,6 +22,8 @@ import "./VoteTimingV2.sol";
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 
+import "hardhat/console.sol";
+
 /**
  * @title Voting system for Oracle.
  * @dev Handles receiving and resolving price requests via a commit-reveal voting scheme.
@@ -1101,21 +1103,23 @@ contract VotingV2 is
         bytes memory ancillaryData
     ) public {
         EmergencyAction storage action = emergencyActions[_encodePriceRequest(identifier, actionTime, ancillaryData)];
+        require(action.accountSignaled[msg.sender] == 0, "Already signaled");
 
-        if (action.accountSignaled[msg.sender] == 0) {
-            action.accountSignaled[msg.sender] = getVoterStake(msg.sender);
-            action.cumulativeSignaled += action.accountSignaled[msg.sender];
+        action.accountSignaled[msg.sender] = getVoterStake(msg.sender);
+        action.cumulativeSignaled += action.accountSignaled[msg.sender];
 
-            // ++ the num of emergency actions this staker has signaled to block unstaking unless all are canceled.
-            stakerEmergencyActionSignalCount[msg.sender]++;
-
-            // Block the staker from callin requestUnstake or executeUnstake by setting their unstake trackers to values
-            // that will mature far in the future. Remember that this method is meant to be used only in an emergency
-            // and we want to block callers from doing things like: 1) staking, 2) signaling 3) unstaking and
-            // 4) re-staking from another wallet to multiply their voting power. If you signal you must be blocked.
+        // Block the staker from callin requestUnstake or executeUnstake by setting their unstake trackers to values
+        // that will mature far in the future. Remember that this method is meant to be used only in an emergency
+        // and we want to block callers from doing things like: 1) staking, 2) signaling 3) unstaking and
+        // 4) re-staking from another wallet to multiply their voting power. If you signal you must be blocked. This is
+        // only done on the first signal of emergency action to not unnecessarily increment these trackers.
+        if (stakerEmergencyActionSignalCount[msg.sender] == 0) {
             voterStakes[msg.sender].pendingUnstake += 1; // prevents staker from calling requestUnstake.
             voterStakes[msg.sender].unstakeRequestTime += 4813802983; // 100 years from now.
         }
+
+        // ++ the num of emergency actions this staker has signaled to block unstaking unless all are canceled.
+        stakerEmergencyActionSignalCount[msg.sender]++;
     }
 
     /**
@@ -1131,18 +1135,20 @@ contract VotingV2 is
     ) public {
         EmergencyAction storage action = emergencyActions[_encodePriceRequest(identifier, actionTime, ancillaryData)];
 
-        if (action.accountSignaled[msg.sender] > 0) {
-            action.cumulativeSignaled -= action.accountSignaled[msg.sender];
-            action.accountSignaled[msg.sender] = 0;
-            stakerEmergencyActionSignalCount[msg.sender]--;
+        require(action.accountSignaled[msg.sender] > 0, "Not signaled");
 
-            // Reset the blocking trackers used to prevent the staker from unstaking iff they have canceled all their
-            // signaled requests. Note that we do the equal and opposite operators of stakerEmergencyActionSignalCount
-            // to revert to their original values(if the staker had a pendingUnstake this should be recovered).
-            if (stakerEmergencyActionSignalCount[msg.sender] == 0) {
-                voterStakes[msg.sender].pendingUnstake -= 1;
-                voterStakes[msg.sender].unstakeRequestTime -= 4813802983;
-            }
+        // Decrement the cumulative signaled amount by the amount the user signed with in the beginning. We use this
+        // rather than using their activeStake as they may have changed this during the time they were signaled.
+        action.cumulativeSignaled -= action.accountSignaled[msg.sender];
+        action.accountSignaled[msg.sender] = 0; // Reset the signaled amount to 0.
+        stakerEmergencyActionSignalCount[msg.sender]--; // Decrement the num of actions this staker has signaled.
+
+        // Reset the blocking trackers used to prevent the staker from unstaking iff they have canceled all their
+        // signaled requests. Note that we do the equal and opposite operators of stakerEmergencyActionSignalCount
+        // to revert to their original values(if the staker had a pendingUnstake this should be recovered).
+        if (stakerEmergencyActionSignalCount[msg.sender] == 0) {
+            voterStakes[msg.sender].pendingUnstake -= 1;
+            voterStakes[msg.sender].unstakeRequestTime -= 4813802983;
         }
     }
 
@@ -1169,7 +1175,7 @@ contract VotingV2 is
         request.voteInstances[request.lastVotingRound].resultComputation.addVote(1e18, getCumulativeStake());
 
         // It is possible the round was not frozen because no one was able to reveal. In this case, freeze the round.
-        // This is needed to retrieve prices later.
+        // This is needed to retrieve prices later. This enables the price to be settled and captures the GAT.
         if (rounds[request.lastVotingRound].cumulativeActiveStakeAtRound == 0)
             _freezeRoundVariables(request.lastVotingRound);
     }
