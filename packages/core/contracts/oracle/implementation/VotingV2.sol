@@ -79,7 +79,7 @@ contract VotingV2 is
     }
 
     struct Round {
-        uint256 gatPercentage; // Gat rate set for this round.
+        uint256 gat; // GAT is the required number of tokens to vote to not roll the vote.
         uint256 cumulativeActiveStakeAtRound; // Total staked tokens at the start of the round.
     }
 
@@ -117,9 +117,8 @@ contract VotingV2 is
 
     VoteTimingV2.Data public voteTiming;
 
-    // Percentage of the total token supply that must be used in a vote to
-    // create a valid price resolution. 1 == 100%.
-    uint256 public gatPercentage;
+    // Number of tokens that must participate to resolve a vote.
+    uint256 public gat;
 
     // Reference to the Finder.
     FinderInterface private immutable finder;
@@ -224,7 +223,7 @@ contract VotingV2 is
 
     event VotingContractMigrated(address newAddress);
 
-    event GatPercentageChanged(uint256 newGatPercentage);
+    event GatChanged(uint256 newGat);
 
     event SlashingLibraryChanged(address newAddress);
 
@@ -247,7 +246,7 @@ contract VotingV2 is
      * @param _phaseLength length of the voting phases in seconds.
      * @param _minRollToNextRoundLength time before the end of a round in which a request must be made for the request
      *  to be voted on in the next round. If after this, the request is rolled to a round after the next round.
-     * @param _gatPercentage of the total token supply that must be used in a vote to create a valid price resolution.
+     * @param _gat number of tokens that must participate to resolve a vote.
      * @param _votingToken address of the UMA token contract used to commit votes.
      * @param _finder keeps track of all contracts within the system based on their interfaceName.
      * @param _timerAddress contract that stores the current time in a testing environment.
@@ -260,15 +259,15 @@ contract VotingV2 is
         uint256 _unstakeCoolDown,
         uint256 _phaseLength,
         uint256 _minRollToNextRoundLength,
-        uint256 _gatPercentage,
+        uint256 _gat,
         address _votingToken,
         address _finder,
         address _timerAddress,
         address _slashingLibrary
     ) Staker(_emissionRate, _unstakeCoolDown, _votingToken, _timerAddress) {
         voteTiming.init(_phaseLength, _minRollToNextRoundLength);
-        require(_gatPercentage <= 1e18, "GAT percentage must be <= 100%");
-        gatPercentage = _gatPercentage;
+        require(_gat < IERC20(_votingToken).totalSupply() && _gat > 0, "0 < GAT < total supply");
+        gat = _gat;
         finder = FinderInterface(_finder);
         slashingLibrary = SlashingLibrary(_slashingLibrary);
         setSpamDeletionProposalBond(_spamDeletionProposalBond);
@@ -782,12 +781,12 @@ contract VotingV2 is
     /**
      * @notice Resets the Gat percentage. Note: this change only applies to rounds that have not yet begun.
      * @dev This method is public because calldata structs are not currently supported by solidity.
-     * @param newGatPercentage sets the next round's Gat percentage.
+     * @param newGat sets the next round's Gat percentage.
      */
-    function setGatPercentage(uint256 newGatPercentage) public override onlyOwner {
-        require(newGatPercentage < 1e18);
-        gatPercentage = newGatPercentage;
-        emit GatPercentageChanged(newGatPercentage);
+    function setGat(uint256 newGat) public override onlyOwner {
+        require(newGat < votingToken.totalSupply() && newGat > 0);
+        gat = newGat;
+        emit GatChanged(newGat);
     }
 
     // Here for abi compatibility. to be removed.
@@ -1124,9 +1123,9 @@ contract VotingV2 is
 
     function _freezeRoundVariables(uint256 roundId) private {
         // Only freeze the round if this is the first request in the round.
-        if (rounds[roundId].gatPercentage == 0) {
+        if (rounds[roundId].gat == 0) {
             // Set the round gat percentage to the current global gat rate.
-            rounds[roundId].gatPercentage = gatPercentage;
+            rounds[roundId].gat = gat;
 
             // Store the cumulativeActiveStake at this roundId to work out slashing and voting trackers.
             rounds[roundId].cumulativeActiveStakeAtRound = cumulativeActiveStake;
@@ -1171,14 +1170,8 @@ contract VotingV2 is
     }
 
     function _computeGat(uint256 roundId) internal view returns (uint256) {
-        // Nothing staked at the round  - return max value to err on the side of caution.
-        if (rounds[roundId].cumulativeActiveStakeAtRound == 0) return type(uint256).max;
-
-        // Grab the cumulative staked at the voting round.
-        uint256 stakedAtRound = rounds[roundId].cumulativeActiveStakeAtRound;
-
-        // Multiply the total supply at the cumulative staked by the gatPercentage to get the GAT in number of tokens.
-        return (stakedAtRound * rounds[roundId].gatPercentage) / 1e18;
+        // Return the GAT.
+        return rounds[roundId].gat;
     }
 
     function _getRequestStatus(PriceRequest storage priceRequest, uint256 currentRoundId)

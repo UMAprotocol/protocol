@@ -37,8 +37,8 @@ describe("VotingV2", function () {
   let voting, votingToken, registry, supportedIdentifiers, registeredContract, unregisteredContract, migratedVoting;
   let accounts, account1, account2, account3, account4, rand;
 
-  const setNewGatPercentage = async (gatPercentage) => {
-    await voting.methods.setGatPercentage(gatPercentage.toString()).send({ from: accounts[0] });
+  const setNewGat = async (gat) => {
+    await voting.methods.setGat(gat).send({ from: accounts[0] });
   };
 
   beforeEach(async function () {
@@ -89,8 +89,8 @@ describe("VotingV2", function () {
   });
 
   it("Constructor", async function () {
-    // GAT must be <= 1.0 (100%)
-    const invalidGat = web3.utils.toWei("1.000001");
+    // GAT must be < total supply
+    const invalidGat = web3.utils.toWei("100000000");
     assert(
       await didContractThrow(
         VotingV2.new(
@@ -99,7 +99,7 @@ describe("VotingV2", function () {
           60 * 60 * 24 * 7, // Unstake cooldown
           86400, // PhaseLength
           7200, // minRollToNextRoundLength
-          invalidGat, // GatPct
+          invalidGat, // GAT
           votingToken.options.address, // voting token
           (await Finder.deployed()).options.address, // finder
           (await Timer.deployed()).options.address, // timer
@@ -724,13 +724,11 @@ describe("VotingV2", function () {
     await moveToNextRound(voting, accounts[0]);
     assert.isFalse(await voting.methods.hasPrice(identifier, time).call({ from: registeredContract }));
 
-    // Setting GAT should revert if larger than 100%
-    assert(
-      await didContractThrow(voting.methods.setGatPercentage(toWei("1.1").toString()).send({ from: accounts[0] }))
-    );
+    // Setting GAT should revert if larger than total supply.
+    assert(await didContractThrow(voting.methods.setGat(toWei("110000000").toString()).send({ from: accounts[0] })));
 
     // With a smaller GAT value of 3%, account4 can pass the vote on their own with 4% of all tokens.
-    await setNewGatPercentage(web3.utils.toWei("0.03", "ether"));
+    await setNewGat(web3.utils.toWei("3000000", "ether"));
 
     // Create new vote hashes with the new round ID and commit votes.
     roundId = (await voting.methods.getCurrentRoundId().call()).toString();
@@ -747,7 +745,7 @@ describe("VotingV2", function () {
     );
     // Set GAT back to 5% and test a larger vote. With more votes the GAT should be hit
     // and the price should resolve.
-    await setNewGatPercentage(web3.utils.toWei("0.05", "ether"));
+    await setNewGat(web3.utils.toWei("5000000", "ether"));
 
     // As the previous request has been filled, we need to progress time such that we
     // can vote on the same identifier and request a new price to vote on.
@@ -914,11 +912,11 @@ describe("VotingV2", function () {
     });
 
     await assertEventEmitted(
-      await voting.methods.setGatPercentage(web3.utils.toWei("0.06", "ether")).send({ from: accounts[0] }),
+      await voting.methods.setGat(web3.utils.toWei("6000000", "ether")).send({ from: accounts[0] }),
       voting,
-      "GatPercentageChanged",
+      "GatChanged",
       (ev) => {
-        return ev.newGatPercentage == web3.utils.toWei("0.06", "ether");
+        return ev.newGat == web3.utils.toWei("6000000", "ether");
       }
     );
 
@@ -1220,7 +1218,7 @@ describe("VotingV2", function () {
       60 * 60 * 24 * 30, // unstakeCooldown
       "86400", // phase length
       7200, // minRollToNextRoundLength
-      web3.utils.toWei("0.05"), // 5% GAT
+      web3.utils.toWei("5000000"), // GAT 5MM
       votingToken.options.address, // voting token
       (await Finder.deployed()).options.address, // finder
       (await Timer.deployed()).options.address, // timer
@@ -1289,7 +1287,7 @@ describe("VotingV2", function () {
           60 * 60 * 24 * 7, // Unstake cooldown
           86400, // PhaseLength
           7200, // minRollToNextRoundLength
-          toWei("0.05"), // GatPct
+          toWei("5000000"), // GAT 5MM
           votingToken.options.address, // voting token
           (await Finder.deployed()).options.address, // finder
           (await Timer.deployed()).options.address, // timer
