@@ -105,7 +105,7 @@ contract VotingV2 is
     mapping(uint256 => Round) public rounds;
 
     // Maps price request IDs to the PriceRequest struct.
-    mapping(bytes32 => PriceRequest) internal priceRequests;
+    mapping(bytes32 => PriceRequest) public priceRequests;
 
     bytes32[] public priceRequestIds;
 
@@ -113,7 +113,7 @@ contract VotingV2 is
 
     // Price request ids for price requests that haven't yet been marked as resolved.
     // These requests may be for future rounds.
-    bytes32[] internal pendingPriceRequests;
+    bytes32[] public pendingPriceRequests;
 
     VoteTimingV2.Data public voteTiming;
 
@@ -169,7 +169,7 @@ contract VotingV2 is
     }
 
     // Maps round numbers to the spam deletion request.
-    SpamDeletionRequest[] internal spamDeletionProposals;
+    SpamDeletionRequest[] public spamDeletionProposals;
 
     /****************************************
      *                EVENTS                *
@@ -280,7 +280,7 @@ contract VotingV2 is
 
     modifier onlyRegisteredContract() {
         if (migratedAddress != address(0)) {
-            require(msg.sender == migratedAddress, "Caller must be migrated address");
+            require(msg.sender == migratedAddress);
         } else {
             Registry registry = Registry(finder.getImplementationAddress(OracleInterfaces.Registry));
             require(registry.isContractRegistered(msg.sender), "Called must be registered");
@@ -289,7 +289,7 @@ contract VotingV2 is
     }
 
     modifier onlyIfNotMigrated() {
-        require(migratedAddress == address(0), "Only call this if not migrated");
+        require(migratedAddress == address(0));
         _;
     }
 
@@ -362,7 +362,7 @@ contract VotingV2 is
             // Price has never been requested.
             // If the price request is a governance action then always place it in the following round. If the price
             // request is a normal request then either place it in the next round or the following round based off
-            // the minRolllToNextRoundLength.
+            // the minRollToNextRoundLength.
             uint256 roundIdToVoteOnPriceRequest =
                 isGovernance ? currentRoundId + 1 : voteTiming.computeRoundToVoteOnPriceRequest(blockTime);
             PriceRequest storage newPriceRequest = priceRequests[priceRequestId];
@@ -372,7 +372,7 @@ contract VotingV2 is
             newPriceRequest.pendingRequestIndex = pendingPriceRequests.length;
             newPriceRequest.priceRequestIndex = priceRequestIds.length;
             newPriceRequest.ancillaryData = ancillaryData;
-            newPriceRequest.isGovernance = isGovernance;
+            if (isGovernance) newPriceRequest.isGovernance = isGovernance;
 
             pendingPriceRequests.push(priceRequestId);
             priceRequestIds.push(priceRequestId);
@@ -785,7 +785,7 @@ contract VotingV2 is
      * @param newGatPercentage sets the next round's Gat percentage.
      */
     function setGatPercentage(uint256 newGatPercentage) public override onlyOwner {
-        require(newGatPercentage < 1e18, "GAT percentage must be < 100%");
+        require(newGatPercentage < 1e18);
         gatPercentage = newGatPercentage;
         emit GatPercentageChanged(newGatPercentage);
     }
@@ -878,7 +878,7 @@ contract VotingV2 is
                     deletedRequests[requestIndex] = requestIndex;
                     priceRequest.priceRequestIndex = priceRequestIds.length;
                     priceRequestIds.push(priceRequestIds[requestIndex]);
-                    continue;
+                    continue; //todo: think through this bad boy one more time.
                 }
                 // Else, we are simply evaluating a request that is still actively being voted on. In this case, break as
                 // all subsequent requests within the array must be in the same state and cant have any slashing applied.
@@ -887,7 +887,7 @@ contract VotingV2 is
 
             uint256 totalCorrectVotes = voteInstance.resultComputation.getTotalCorrectlyVotedTokens();
 
-            (uint256 wrongVoteSlash, uint256 noVoteSlash) =
+            (uint256 wrongVoteSlashPerToken, uint256 noVoteSlashPerToken) =
                 slashingLibrary.calcSlashing(
                     rounds[priceRequest.lastVotingRound].cumulativeActiveStakeAtRound,
                     voteInstance.resultComputation.totalVotes,
@@ -895,24 +895,28 @@ contract VotingV2 is
                     priceRequest.isGovernance
                 );
 
-            uint256 totalSlashed =
-                ((noVoteSlash *
-                    (rounds[priceRequest.lastVotingRound].cumulativeActiveStakeAtRound -
-                        voteInstance.resultComputation.totalVotes)) / 1e18) +
-                    ((wrongVoteSlash * (voteInstance.resultComputation.totalVotes - totalCorrectVotes)) / 1e18);
-
             // The voter did not reveal or did not commit. Slash at noVote rate.
             if (voteInstance.voteSubmissions[voterAddress].revealHash == 0)
-                slash -= int256((voterStake.activeStake * noVoteSlash) / 1e18);
+                slash -= int256((voterStake.activeStake * noVoteSlashPerToken) / 1e18);
 
                 // The voter did not vote with the majority. Slash at wrongVote rate.
             else if (
                 !voteInstance.resultComputation.wasVoteCorrect(voteInstance.voteSubmissions[voterAddress].revealHash)
             )
-                slash -= int256((voterStake.activeStake * wrongVoteSlash) / 1e18);
+                slash -= int256((voterStake.activeStake * wrongVoteSlashPerToken) / 1e18);
 
                 // The voter voted correctly. Receive a pro-rate share of the other voters slashed amounts as a reward.
-            else slash += int256((((voterStake.activeStake * totalSlashed)) / totalCorrectVotes));
+            else {
+                //todo: comment for this and we can have only 1 / by 1e18.
+                uint256 totalSlashed =
+                    ((noVoteSlashPerToken *
+                        (rounds[priceRequest.lastVotingRound].cumulativeActiveStakeAtRound -
+                            voteInstance.resultComputation.totalVotes)) / 1e18) +
+                        ((wrongVoteSlashPerToken * (voteInstance.resultComputation.totalVotes - totalCorrectVotes)) /
+                            1e18);
+
+                slash += int256(((voterStake.activeStake * totalSlashed)) / totalCorrectVotes);
+            }
 
             // If this is not the last price request to apply and the next request in the batch is from a subsequent
             // round then apply the slashing now. Else, do nothing and apply the slashing after the loop concludes.
@@ -979,7 +983,15 @@ contract VotingV2 is
             runningValidationIndex = spamRequestIndex[1];
         }
 
-        spamDeletionProposals.push(SpamDeletionRequest(spamRequestIndices, currentTime, false, msg.sender));
+        spamDeletionProposals.push(
+            SpamDeletionRequest({
+                spamRequestIndices: spamRequestIndices,
+                requestTime: currentTime,
+                executed: false,
+                proposer: msg.sender
+            })
+        );
+
         uint256 proposalId = spamDeletionProposals.length - 1;
 
         bytes32 identifier = SpamGuardIdentifierLib._constructIdentifier(proposalId);
