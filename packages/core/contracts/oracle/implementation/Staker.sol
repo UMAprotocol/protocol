@@ -18,8 +18,10 @@ contract Staker is StakerInterface, Ownable, Testable {
     uint256 public cumulativeActiveStake;
     uint256 public cumulativePendingStake;
     uint256 public rewardPerTokenStored;
-    uint256 public lastUpdateTime;
-    uint256 public unstakeCoolDown;
+
+    VotingToken public override votingToken;
+    uint64 public lastUpdateTime;
+    uint64 public unstakeCoolDown;
 
     struct VoterStake {
         uint256 activeStake;
@@ -27,14 +29,13 @@ contract Staker is StakerInterface, Ownable, Testable {
         uint256 pendingStake;
         uint256 rewardsPaidPerToken;
         uint256 outstandingRewards;
-        address delegate;
-        uint64 unstakeRequestTime;
         uint64 lastRequestIndexConsidered;
+        uint64 unstakeRequestTime;
+        address delegate;
     }
 
     mapping(address => VoterStake) public voterStakes;
     mapping(address => address) public delegateToStaker;
-    VotingToken public override votingToken;
 
     /****************************************
      *                EVENTS                *
@@ -92,7 +93,7 @@ contract Staker is StakerInterface, Ownable, Testable {
      */
     constructor(
         uint256 _emissionRate,
-        uint256 _unstakeCoolDown,
+        uint64 _unstakeCoolDown,
         address _votingToken,
         address _timerAddress
     ) Testable(_timerAddress) {
@@ -116,7 +117,7 @@ contract Staker is StakerInterface, Ownable, Testable {
         // the most recent index. This means we don't need to traverse requests where the staker was not staked.
         // getStartingIndexForStaker returns the appropriate index to start at.
         if (getVoterStake(msg.sender) + voterStake.pendingUnstake == 0)
-            voterStake.lastRequestIndexConsidered = SafeCast.toUint64(getStartingIndexForStaker());
+            voterStake.lastRequestIndexConsidered = getStartingIndexForStaker();
         _updateTrackers(msg.sender);
 
         if (inActiveReveal()) {
@@ -157,7 +158,7 @@ contract Staker is StakerInterface, Ownable, Testable {
         cumulativeActiveStake -= amount;
         voterStake.pendingUnstake = amount;
         voterStake.activeStake -= amount;
-        voterStake.unstakeRequestTime = uint64(getCurrentTime());
+        voterStake.unstakeRequestTime = SafeCast.toUint64(getCurrentTime());
 
         emit RequestedUnstake(
             msg.sender,
@@ -201,7 +202,7 @@ contract Staker is StakerInterface, Ownable, Testable {
         uint256 tokensToMint = voterStake.outstandingRewards;
         if (tokensToMint > 0) {
             voterStake.outstandingRewards = 0;
-            require(votingToken.mint(msg.sender, tokensToMint));
+            require(votingToken.mint(msg.sender, tokensToMint), "Voting token issuance failed");
         }
         emit WithdrawnRewards(msg.sender, tokensToMint);
         return (tokensToMint);
@@ -226,7 +227,7 @@ contract Staker is StakerInterface, Ownable, Testable {
      * @notice  Set the amount of time a voter must wait to unstake after submitting a request to do so.
      * @param _unstakeCoolDown the new duration of the cool down period in seconds.
      */
-    function setUnstakeCoolDown(uint256 _unstakeCoolDown) public onlyOwner {
+    function setUnstakeCoolDown(uint64 _unstakeCoolDown) public onlyOwner {
         unstakeCoolDown = _unstakeCoolDown;
         emit SetNewUnstakeCooldown(unstakeCoolDown);
     }
@@ -289,16 +290,15 @@ contract Staker is StakerInterface, Ownable, Testable {
      *          INTERNAL FUNCTIONS          *
      ****************************************/
 
-    function getStartingIndexForStaker() internal virtual returns (uint256) {
+    function getStartingIndexForStaker() internal virtual returns (uint64) {
         return 0;
     }
 
     // Calculate the reward per token based on last time the reward was updated.
     function _updateReward(address voterAddress) internal {
-        uint256 currentTime = getCurrentTime();
         uint256 newRewardPerToken = rewardPerToken();
         rewardPerTokenStored = newRewardPerToken;
-        lastUpdateTime = currentTime;
+        lastUpdateTime = SafeCast.toUint64(getCurrentTime());
         if (voterAddress != address(0)) {
             VoterStake storage voterStake = voterStakes[voterAddress];
             voterStake.outstandingRewards = outstandingRewards(voterAddress);

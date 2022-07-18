@@ -263,7 +263,7 @@ contract VotingV2 is
     constructor(
         uint256 _emissionRate,
         uint256 _spamDeletionProposalBond,
-        uint256 _unstakeCoolDown,
+        uint64 _unstakeCoolDown,
         uint64 _phaseLength,
         uint64 _minRollToNextRoundLength,
         uint256 _gatPercentage,
@@ -561,7 +561,7 @@ contract VotingV2 is
         // Scoping to get rid of a stack too deep errors for require messages.
         {
             // Can only reveal in the reveal phase.
-            require(voteTiming.computeCurrentPhase(getCurrentTime()) == Phase.Reveal, "Cannot reveal in commit phase");
+            require(voteTiming.computeCurrentPhase(getCurrentTime()) == Phase.Reveal);
             // 0 hashes are disallowed in the commit phase, so they indicate a different error.
             // Cannot reveal an uncommitted or previously revealed hash
             require(voteSubmission.commit != bytes32(0), "Invalid hash reveal");
@@ -839,8 +839,8 @@ contract VotingV2 is
         super._updateTrackers(voterAddress);
     }
 
-    function getStartingIndexForStaker() internal view override returns (uint256) {
-        return priceRequestIds.length - (inActiveReveal() ? 0 : pendingPriceRequests.length);
+    function getStartingIndexForStaker() internal view override returns (uint64) {
+        return SafeCast.toUint64(priceRequestIds.length - (inActiveReveal() ? 0 : pendingPriceRequests.length));
     }
 
     // Checks if we are in an active voting reveal phase (currently revealing votes).
@@ -974,15 +974,17 @@ contract VotingV2 is
         uint256 spamRequestIndicesLength = spamRequestIndices.length;
         for (uint256 i = 0; i < spamRequestIndicesLength; i = unsafe_inc(i)) {
             uint256[2] memory spamRequestIndex = spamRequestIndices[i];
-            // Check request end index is greater than start index.
-            require(spamRequestIndex[0] <= spamRequestIndex[1], "Bad start index");
 
-            // check the endIndex is less than the total number of requests.
-            require(spamRequestIndex[1] < priceRequestIds.length, "Bad end index");
+            // Check request end index is greater than start index, endIndex is less than the total number of requests,
+            // and validate index continuity (each sequential element within the spamRequestIndices array is sequently
+            // and increasing in size).
+            require(
+                spamRequestIndex[0] <= spamRequestIndex[1] &&
+                    spamRequestIndex[1] < priceRequestIds.length &&
+                    spamRequestIndex[1] > runningValidationIndex,
+                "Bad indices"
+            );
 
-            // Validate index continuity. This checks that each sequential element within the spamRequestIndices
-            // array is sequently and increasing in size.
-            require(spamRequestIndex[1] > runningValidationIndex, "Bad index continuity");
             runningValidationIndex = spamRequestIndex[1];
         }
 

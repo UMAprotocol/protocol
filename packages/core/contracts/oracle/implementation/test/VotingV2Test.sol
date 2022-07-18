@@ -8,7 +8,7 @@ contract VotingV2Test is VotingV2 {
     constructor(
         uint256 _emissionRate,
         uint256 _spamDeletionProposalBond,
-        uint256 _unstakeCoolDown,
+        uint64 _unstakeCoolDown,
         uint64 _phaseLength,
         uint64 _minRollToNextRoundLength,
         uint256 _gatPercentage,

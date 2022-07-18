@@ -6,10 +6,10 @@ import "../Staker.sol";
 contract StakerTest is Staker {
     constructor(
         uint256 _emissionRate,
-        uint256 _unstakeCoolDown,
+        uint64 _unstakeCoolDown,
         address _votingToken,
         address _timer
-    ) public Staker(_emissionRate, _unstakeCoolDown, _votingToken, _timer) {}
+    ) Staker(_emissionRate, _unstakeCoolDown, _votingToken, _timer) {}
 
     function applySlashingToCumulativeStaked(address voter, int256 amount) public {
         _updateTrackers(voter); // apply any unaccumulated rewards before modifying the staked balances.
