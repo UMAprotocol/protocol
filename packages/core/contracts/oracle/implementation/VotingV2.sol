@@ -101,6 +101,8 @@ contract VotingV2 is
      *          INTERNAL TRACKING           *
      ****************************************/
 
+    uint256 public activeUntil = 0; // The block number at which the active period ends.
+
     // Maps round numbers to the rounds.
     mapping(uint256 => Round) public rounds;
 
@@ -582,6 +584,8 @@ contract VotingV2 is
         // Add vote to the results.
         voteInstance.resultComputation.addVote(price, activeStake);
 
+        _priceRequestResolved(_getPriceRequest(identifier, time, ancillaryData), voteInstance, currentRoundId);
+
         emit VoteRevealed(voter, msg.sender, currentRoundId, identifier, time, price, ancillaryData, activeStake);
     }
 
@@ -704,12 +708,13 @@ contract VotingV2 is
      */
     function currentActiveRequests() public view returns (bool) {
         uint256 blockTime = getCurrentTime();
-        uint256 currentRoundId = voteTiming.computeCurrentRoundId(blockTime);
-        for (uint256 i = 0; i < pendingPriceRequests.length; i = unsafe_inc(i)) {
-            if (_getRequestStatus(priceRequests[pendingPriceRequests[i]], currentRoundId) == RequestStatus.Active)
-                return true;
-        }
-        return false;
+        return blockTime <= activeUntil;
+        // uint256 currentRoundId = voteTiming.computeCurrentRoundId(blockTime);
+        // for (uint256 i = 0; i < pendingPriceRequests.length; i = unsafe_inc(i)) {
+        //     if (_getRequestStatus(priceRequests[pendingPriceRequests[i]], currentRoundId) == RequestStatus.Active)
+        //         return true;
+        // }
+        // return false;
     }
 
     /**
@@ -867,7 +872,7 @@ contract VotingV2 is
             // case break the loop and stop iterating (all subsequent requests will be in the same state by default) or
             // b) we have gotten to a rolled vote in which case we need to update some internal trackers for this vote
             // and set this within the deletedRequests mapping so the next time we hit this it is skipped.
-            if (!_priceRequestResolved(priceRequest, voteInstance, currentRoundId)) {
+            if (priceRequest.pendingRequestIndex != UINT_MAX) {
                 // If the request is not resolved and the lastVotingRound less than the current round then the vote
                 // must have been rolled. In this case, update the internal trackers for this vote.
 
@@ -1137,7 +1142,7 @@ contract VotingV2 is
         uint256 currentRoundId
     ) private returns (bool) {
         // We are currently either in the voting round for the request or voting is yet to begin.
-        if (currentRoundId <= priceRequest.lastVotingRound) return false;
+        // if (currentRoundId <= priceRequest.lastVotingRound) return false;
 
         // If the request has been previously resolved, return true.
         if (priceRequest.pendingRequestIndex == UINT_MAX) return true;
@@ -1158,6 +1163,9 @@ contract VotingV2 is
         pendingPriceRequests.pop();
 
         priceRequest.pendingRequestIndex = UINT_MAX;
+
+        activeUntil = getRoundEndTime(priceRequest.lastVotingRound);
+
         emit PriceResolved(
             priceRequest.lastVotingRound,
             priceRequest.identifier,
