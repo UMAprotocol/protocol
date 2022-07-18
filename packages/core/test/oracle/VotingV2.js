@@ -3008,7 +3008,6 @@ describe("VotingV2", function () {
     // Now, signal on the emergency action from the only staker. They have enough on their own to reach the activation
     // threshold and should be able to pass through the vote.
     await voting2.methods.signalOnEmergencyAction(identifier, time, "0x123").send({ from: account1 });
-    console.log("await voting.methods.voterStakes(account1).call()", await voting.methods.voterStakes(account1).call());
     assert.equal((await voting2.methods.voterStakes(account1).call()).unstakeRequestTime, "4813802983");
 
     // Cant double signal on emergency action.
