@@ -1095,7 +1095,7 @@ contract VotingV2 is
         PriceRequest storage request = priceRequests[requestIdentifier];
         request.voteInstances[request.lastVotingRound].resultComputation.addVote(1e18, getCumulativeStake());
 
-        // It is possible the round was not freezed because no one was able to reveal. In this case, freeze the round.
+        // It is possible the round was not frozen because no one was able to reveal. In this case, freeze the round.
         // This is needed to retrieve prices later.
         if (rounds[request.lastVotingRound].cumulativeActiveStakeAtRound == 0)
             _freezeRoundVariables(request.lastVotingRound);
