@@ -2986,7 +2986,6 @@ describe("VotingV2", function () {
     await voting.methods.executeUnstake().send({ from: account1 });
     await votingToken.methods.approve(voting2.options.address, toWei("32000000")).send({ from: account1 });
     await voting2.methods.stake(toWei("30000000")).send({ from: account1 });
-    console.log("A");
 
     // Now, set the setRevertOnUpdateTrackers as true. this mimics the internal logic having broken within the voting
     // contract which will block all commit/reveal/stake and unstake actions thereby rendering the DVM briked.
