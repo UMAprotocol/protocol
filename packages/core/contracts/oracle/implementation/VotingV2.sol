@@ -22,6 +22,7 @@ import "./VoteTimingV2.sol";
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 /**
  * @title Voting system for Oracle.
@@ -34,7 +35,8 @@ contract VotingV2 is
     OracleAncillaryInterface, // Interface to support ancillary data with price requests.
     OracleGovernanceInterface, // Interface to support governance requests.
     VotingV2Interface,
-    MultiCaller
+    MultiCaller,
+    ReentrancyGuard
 {
     using VoteTimingV2 for VoteTimingV2.Data;
     using ResultComputationV2 for ResultComputationV2.Data;
@@ -1125,7 +1127,7 @@ contract VotingV2 is
         bytes32 identifier,
         uint256 time,
         bytes memory ancillaryData
-    ) public {
+    ) public nonReentrant {
         EmergencyAction storage action = emergencyActions[_encodePriceRequest(identifier, time, ancillaryData)];
         require(action.accountSignaled[msg.sender] == 0);
 
@@ -1166,7 +1168,7 @@ contract VotingV2 is
         bytes32 identifier,
         uint256 time,
         bytes memory ancillaryData
-    ) public {
+    ) public nonReentrant {
         EmergencyAction storage action = emergencyActions[_encodePriceRequest(identifier, time, ancillaryData)];
 
         require(action.accountSignaled[msg.sender] > 0);
@@ -1207,7 +1209,7 @@ contract VotingV2 is
         bytes32 identifier,
         uint256 time,
         bytes memory ancillaryData
-    ) public {
+    ) public nonReentrant {
         bytes32 requestIdentifier = _encodePriceRequest(identifier, time, ancillaryData);
         EmergencyAction storage action = emergencyActions[requestIdentifier];
         require(action.executed == false);
