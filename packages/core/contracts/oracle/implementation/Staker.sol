@@ -206,6 +206,18 @@ contract Staker is StakerInterface, Ownable, Testable {
         return (tokensToMint);
     }
 
+    /**
+     * @notice Stake accumulated rewards. This is just a convenience method that combines withdraw with stake in the
+     * same transaction.
+     * @dev this method requires that the user has approved this contract.
+     * @return uint256 the amount of tokens that the user is staking.
+     */
+    function withdrawAndRestake() public returns (uint256) {
+        uint256 rewards = withdrawRewards();
+        stake(rewards);
+        return rewards;
+    }
+
     /****************************************
      *        OWNER ADMIN FUNCTIONS         *
      ****************************************/
