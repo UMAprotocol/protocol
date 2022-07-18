@@ -8,7 +8,7 @@ import "./VotingToken.sol";
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract Staker is StakerInterface, Ownable, Testable {
+contract Staker is StakerInterface, Ownable {
     /****************************************
      *           STAKING TRACKERS           *
      ****************************************/
@@ -86,15 +86,12 @@ contract Staker is StakerInterface, Ownable, Testable {
      * @param _unstakeCoolDown time that a voter must wait to unstake after requesting to unstake.
      *  to be voted on in the next round. If after this, the request is rolled to a round after the next round.
      * @param _votingToken address of the UMA token contract used to commit votes.
-     * @param _timerAddress contract that stores the current time in a testing environment.
-     * Must be set to 0x0 for production environments that use live time.
      */
     constructor(
         uint256 _emissionRate,
         uint256 _unstakeCoolDown,
-        address _votingToken,
-        address _timerAddress
-    ) Testable(_timerAddress) {
+        address _votingToken
+    ) {
         emissionRate = _emissionRate;
         unstakeCoolDown = _unstakeCoolDown;
         votingToken = VotingToken(_votingToken);
@@ -291,14 +288,22 @@ contract Staker is StakerInterface, Ownable, Testable {
         return voterStakes[voterAddress].activeStake + voterStakes[voterAddress].pendingStake;
     }
 
-    // Determine if we are in an active reveal phase. This function should be overridden by the child contract.
-    function inActiveReveal() internal virtual returns (bool) {
-        return false;
+    /**
+     * @notice Returns the current block timestamp.
+     * @dev Can be overridden to control contract time.
+     */
+    function getCurrentTime() public view virtual returns (uint256) {
+        return block.timestamp;
     }
 
     /****************************************
      *          INTERNAL FUNCTIONS          *
      ****************************************/
+
+    // Determine if we are in an active reveal phase. This function should be overridden by the child contract.
+    function inActiveReveal() internal virtual returns (bool) {
+        return false;
+    }
 
     function getStartingIndexForStaker() internal virtual returns (uint256) {
         return 0;

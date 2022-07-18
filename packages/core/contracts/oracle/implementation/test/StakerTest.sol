@@ -3,13 +3,27 @@ pragma solidity ^0.8.0;
 
 import "../Staker.sol";
 
-contract StakerTest is Staker {
+// Version of the Staker contract used in tests so time can be controlled.
+contract StakerControlledTiming is Staker, Testable {
+    constructor(
+        uint256 _emissionRate,
+        uint256 _unstakeCoolDown,
+        address _votingToken,
+        address _timerAddress
+    ) Staker(_emissionRate, _unstakeCoolDown, _votingToken) Testable(_timerAddress) {}
+
+    function getCurrentTime() public view virtual override(Staker, Testable) returns (uint256) {
+        return Testable.getCurrentTime();
+    }
+}
+
+contract StakerTest is StakerControlledTiming {
     constructor(
         uint256 _emissionRate,
         uint256 _unstakeCoolDown,
         address _votingToken,
         address _timer
-    ) public Staker(_emissionRate, _unstakeCoolDown, _votingToken, _timer) {}
+    ) StakerControlledTiming(_emissionRate, _unstakeCoolDown, _votingToken, _timer) {}
 
     function applySlashingToCumulativeStaked(address voter, int256 amount) public {
         _updateTrackers(voter); // apply any unaccumulated rewards before modifying the staked balances.

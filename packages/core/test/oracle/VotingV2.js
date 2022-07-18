@@ -20,7 +20,7 @@ const { toBN } = web3.utils;
 
 const Finder = getContract("Finder");
 const Registry = getContract("Registry");
-const VotingV2 = getContract("VotingV2");
+const VotingV2 = getContract("VotingV2ControllableTiming");
 const VotingInterfaceTesting = getContract("VotingInterfaceTesting");
 const VotingAncillaryInterfaceTesting = getContract("VotingAncillaryInterfaceTesting");
 const IdentifierWhitelist = getContract("IdentifierWhitelist");
@@ -102,8 +102,8 @@ describe("VotingV2", function () {
           invalidGat, // GatPct
           votingToken.options.address, // voting token
           (await Finder.deployed()).options.address, // finder
-          (await Timer.deployed()).options.address, // timer
-          (await SlashingLibrary.deployed()).options.address // slashing library
+          (await SlashingLibrary.deployed()).options.address, // slashing library
+          (await Timer.deployed()).options.address // timer
         ).send({ from: accounts[0] })
       )
     );
@@ -1223,8 +1223,8 @@ describe("VotingV2", function () {
       web3.utils.toWei("0.05"), // 5% GAT
       votingToken.options.address, // voting token
       (await Finder.deployed()).options.address, // finder
-      (await Timer.deployed()).options.address, // timer
-      (await SlashingLibrary.deployed()).options.address // slashing library
+      (await SlashingLibrary.deployed()).options.address, // slashing library
+      (await Timer.deployed()).options.address // timer
     ).send({ from: accounts[0] });
 
     // unstake and restake in the new voting contract
@@ -1292,8 +1292,8 @@ describe("VotingV2", function () {
           toWei("0.05"), // GatPct
           votingToken.options.address, // voting token
           (await Finder.deployed()).options.address, // finder
-          (await Timer.deployed()).options.address, // timer
-          (await SlashingLibrary.deployed()).options.address // slashing library
+          (await SlashingLibrary.deployed()).options.address, // slashing library
+          (await Timer.deployed()).options.address // timer
         ).send({ from: accounts[0] })
       ).options.address
     );
