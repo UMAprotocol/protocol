@@ -42,7 +42,7 @@ const func = async function (hre) {
         unstakeCooldown,
         phaseLength,
         minRollToNextRoundLength,
-        gat,
+        gat.toString(),
         VotingToken.address,
         Finder.address,
         SlashingLibrary.address,
