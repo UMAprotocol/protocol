@@ -1143,7 +1143,7 @@ contract VotingV2 is
         // only done on the first signal of emergency action to not unnecessarily increment these trackers.
         if (stakerEmergencyActionSignalCount[msg.sender] == 1) {
             voterStakes[msg.sender].pendingUnstake += 1; // prevents staker from calling requestUnstake.
-            voterStakes[msg.sender].unstakeRequestTime += 4813800000; // 100 years from now.
+            voterStakes[msg.sender].unstakeRequestTime += 10000000000; // A long time in the future.
         }
 
         emit SignaledOnEmergencyAction(
@@ -1183,7 +1183,7 @@ contract VotingV2 is
         // to revert to their original values(if the staker had a pendingUnstake this should be recovered).
         if (stakerEmergencyActionSignalCount[msg.sender] == 0) {
             voterStakes[msg.sender].pendingUnstake -= 1;
-            voterStakes[msg.sender].unstakeRequestTime -= 4813800000;
+            voterStakes[msg.sender].unstakeRequestTime -= 10000000000;
         }
 
         emit SignaledOnEmergencyAction(
