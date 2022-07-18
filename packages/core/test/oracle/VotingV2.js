@@ -2985,9 +2985,8 @@ describe("VotingV2", function () {
     await voting.methods.requestUnstake(toWei("32000000")).send({ from: account1 });
     await voting.methods.executeUnstake().send({ from: account1 });
     await votingToken.methods.approve(voting2.options.address, toWei("32000000")).send({ from: account1 });
-    console.log("Z");
+
     await voting2.methods.stake(toWei("30000000")).send({ from: account1 });
-    console.log("A");
 
     // Now, set the setRevertOnUpdateTrackers as true. this mimics the internal logic having broken within the voting
     // contract which will block all commit/reveal/stake and unstake actions thereby rendering the DVM briked.
@@ -3009,8 +3008,7 @@ describe("VotingV2", function () {
     // Now, signal on the emergency action from the only staker. They have enough on their own to reach the activation
     // threshold and should be able to pass through the vote.
     await voting2.methods.signalOnEmergencyAction(identifier, time, "0x123").send({ from: account1 });
-    console.log("await voting.methods.voterStakes(account1).call()", await voting.methods.voterStakes(account1).call());
-    assert.equal((await voting2.methods.voterStakes(account1).call()).unstakeRequestTime, "4813802983");
+    assert.equal((await voting2.methods.voterStakes(account1).call()).unstakeRequestTime, "10000000000");
 
     // Cant double signal on emergency action.
     assert(
@@ -3041,5 +3039,26 @@ describe("VotingV2", function () {
 
     await voting2.methods.cancelSignalOnEmergencyAction(identifier, time, "0x123").send({ from: account1 });
     assert.equal((await voting2.methods.voterStakes(account1).call()).unstakeRequestTime, "0");
+  });
+
+  it("Emergency actions cannot be signaled and executed atomically", async function () {
+    // This test simulates a flash loan attack, in which the attacker borrows enough voting tokens
+    //  to do a 51 percent attack and, in the same transaction, manages to force a governance action.
+
+    const identifier = padRight(utf8ToHex("emergency-identifier"), 64);
+    const time = "420";
+
+    // This price request acts to mimic what the attacker would have done trough the proposer.
+    await voting.methods.requestGovernanceAction(identifier, time, "0x123").send({ from: accounts[0] });
+    await moveToNextRound(voting, accounts[0]);
+
+    // The attacker would flashloan just before these two functions calls
+    const data = [
+      voting.methods.signalOnEmergencyAction(identifier, time, "0x123").encodeABI(),
+      voting.methods.executeEmergencyAction(identifier, time, "0x123").encodeABI(),
+    ];
+
+    // The attack cannot be carried out thanks to the reentrancy guard.
+    assert(await didContractThrow(voting.methods.multicall(data).send({ from: account2 })));
   });
 });
