@@ -1,5 +1,5 @@
 // TODO: this whole /oracle/implementation directory should be restructured to separate the DVM and the OO.
-
+import "hardhat/console.sol";
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
