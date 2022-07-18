@@ -7,6 +7,7 @@ import "../../common/implementation/Testable.sol";
 import "./VotingToken.sol";
 
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 contract Staker is StakerInterface, Ownable {
     /****************************************
@@ -17,8 +18,10 @@ contract Staker is StakerInterface, Ownable {
     uint256 public cumulativeActiveStake;
     uint256 public cumulativePendingStake;
     uint256 public rewardPerTokenStored;
-    uint256 public lastUpdateTime;
-    uint256 public unstakeCoolDown;
+
+    VotingToken public override votingToken;
+    uint64 public lastUpdateTime;
+    uint64 public unstakeCoolDown;
 
     struct VoterStake {
         uint256 activeStake;
@@ -26,14 +29,13 @@ contract Staker is StakerInterface, Ownable {
         uint256 pendingStake;
         uint256 rewardsPaidPerToken;
         uint256 outstandingRewards;
-        uint256 unstakeRequestTime;
-        uint256 lastRequestIndexConsidered;
+        uint64 lastRequestIndexConsidered;
+        uint64 unstakeRequestTime;
         address delegate;
     }
 
     mapping(address => VoterStake) public voterStakes;
     mapping(address => address) public delegateToStaker;
-    VotingToken public override votingToken;
 
     /****************************************
      *                EVENTS                *
@@ -89,7 +91,7 @@ contract Staker is StakerInterface, Ownable {
      */
     constructor(
         uint256 _emissionRate,
-        uint256 _unstakeCoolDown,
+        uint64 _unstakeCoolDown,
         address _votingToken
     ) {
         emissionRate = _emissionRate;
@@ -153,7 +155,7 @@ contract Staker is StakerInterface, Ownable {
         cumulativeActiveStake -= amount;
         voterStake.pendingUnstake = amount;
         voterStake.activeStake -= amount;
-        voterStake.unstakeRequestTime = getCurrentTime();
+        voterStake.unstakeRequestTime = SafeCast.toUint64(getCurrentTime());
 
         emit RequestedUnstake(
             msg.sender,
@@ -234,7 +236,7 @@ contract Staker is StakerInterface, Ownable {
      * @notice  Set the amount of time a voter must wait to unstake after submitting a request to do so.
      * @param _unstakeCoolDown the new duration of the cool down period in seconds.
      */
-    function setUnstakeCoolDown(uint256 _unstakeCoolDown) public onlyOwner {
+    function setUnstakeCoolDown(uint64 _unstakeCoolDown) public onlyOwner {
         unstakeCoolDown = _unstakeCoolDown;
         emit SetNewUnstakeCooldown(unstakeCoolDown);
     }
@@ -305,16 +307,15 @@ contract Staker is StakerInterface, Ownable {
         return false;
     }
 
-    function getStartingIndexForStaker() internal virtual returns (uint256) {
+    function getStartingIndexForStaker() internal virtual returns (uint64) {
         return 0;
     }
 
     // Calculate the reward per token based on last time the reward was updated.
     function _updateReward(address voterAddress) internal {
-        uint256 currentTime = getCurrentTime();
         uint256 newRewardPerToken = rewardPerToken();
         rewardPerTokenStored = newRewardPerToken;
-        lastUpdateTime = currentTime;
+        lastUpdateTime = SafeCast.toUint64(getCurrentTime());
         if (voterAddress != address(0)) {
             VoterStake storage voterStake = voterStakes[voterAddress];
             voterStake.outstandingRewards = outstandingRewards(voterAddress);

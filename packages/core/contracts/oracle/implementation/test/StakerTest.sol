@@ -7,7 +7,7 @@ import "../Staker.sol";
 contract StakerControlledTiming is Staker, Testable {
     constructor(
         uint256 _emissionRate,
-        uint256 _unstakeCoolDown,
+        uint64 _unstakeCoolDown,
         address _votingToken,
         address _timerAddress
     ) Staker(_emissionRate, _unstakeCoolDown, _votingToken) Testable(_timerAddress) {}
@@ -20,7 +20,7 @@ contract StakerControlledTiming is Staker, Testable {
 contract StakerTest is StakerControlledTiming {
     constructor(
         uint256 _emissionRate,
-        uint256 _unstakeCoolDown,
+        uint64 _unstakeCoolDown,
         address _votingToken,
         address _timer
     ) StakerControlledTiming(_emissionRate, _unstakeCoolDown, _votingToken, _timer) {}
