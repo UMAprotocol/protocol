@@ -1008,13 +1008,13 @@ contract VotingV2 is
      * @param proposalId spam deletion proposal id.
      */
     function executeSpamDeletion(uint256 proposalId) public {
-        require(spamDeletionProposals[proposalId].executed == false, "Already executed");
+        require(spamDeletionProposals[proposalId].executed == false);
         spamDeletionProposals[proposalId].executed = true;
         bytes32 identifier = SpamGuardIdentifierLib._constructIdentifier(proposalId);
 
         (bool hasPrice, int256 resolutionPrice, ) =
             _getPriceOrError(identifier, spamDeletionProposals[proposalId].requestTime, "");
-        require(hasPrice, "Price not yet resolved");
+        require(hasPrice);
 
         // If the price is 1e18 then the spam deletion request was correctly voted on to delete the requests.
         if (resolutionPrice == 1e18) {
