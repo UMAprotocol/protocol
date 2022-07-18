@@ -1089,7 +1089,7 @@ contract VotingV2 is
     /**
      * @notice Enables voters to signal to pass a price request without using the standard commit/reveal schelling point
      * mechanism. Intended to be used in the case that that the DVM irrecoverably broken (say the commit reveal
-     * mechanism is broken). By signaling on an emergency action, we can bi-pass this and still get a price set to allow
+     * mechanism is broken). By signaling on an emergency action, we can bypass this and still get a price set to allow
      * the Governor to still execute governance actions to save the system.
      * @dev by calling this, we modify the stakers pendingUnstake and unstakeRequestTime to prevent them from requesting
      * or executing unstakes while singled on emergency actions.
