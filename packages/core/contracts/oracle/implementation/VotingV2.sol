@@ -250,7 +250,7 @@ contract VotingV2 is
         uint64 _phaseLength,
         uint64 _minRollToNextRoundLength,
         uint256 _gat,
-        uint256 _startingRequestIndex,
+        uint64 _startingRequestIndex,
         address _votingToken,
         address _finder,
         address _slashingLibrary
@@ -261,6 +261,9 @@ contract VotingV2 is
         finder = FinderInterface(_finder);
         slashingLibrary = SlashingLibrary(_slashingLibrary);
         setSpamDeletionProposalBond(_spamDeletionProposalBond);
+
+        // We assume that the indices
+        require(_startingRequestIndex < type(uint64).max / 2, "startingRequestIndex too large");
 
         assembly {
             sstore(priceRequestIds.slot, _startingRequestIndex)
@@ -724,7 +727,6 @@ contract VotingV2 is
 
     function requestSlashingTrackers(uint256 requestIndex) public view returns (SlashingTracker memory) {
         uint256 currentRoundId = voteTiming.computeCurrentRoundId(getCurrentTime());
-        console.log("priceRequestIds", priceRequestIds.length);
         PriceRequest storage priceRequest = priceRequests[priceRequestIds[requestIndex]];
 
         if (_getRequestStatus(priceRequest, currentRoundId) != RequestStatus.Resolved)
@@ -805,9 +807,7 @@ contract VotingV2 is
      * @param indexTo last price request index to update the trackers for.
      */
     function updateTrackersRange(address voterAddress, uint256 indexTo) public {
-        require(
-            voterStakes[voterAddress].lastRequestIndexConsidered < indexTo && indexTo <= priceRequestIds.length
-        );
+        require(voterStakes[voterAddress].lastRequestIndexConsidered < indexTo && indexTo <= priceRequestIds.length);
 
         _updateAccountSlashingTrackers(voterAddress, indexTo);
     }
@@ -967,7 +967,14 @@ contract VotingV2 is
             runningValidationIndex = spamRequestIndex[1];
         }
 
-        spamDeletionProposals.push(SpamDeletionRequest(spamRequestIndices, currentTime, false, msg.sender));
+        spamDeletionProposals.push(
+            SpamDeletionRequest({
+                spamRequestIndices: spamRequestIndices,
+                requestTime: currentTime,
+                executed: false,
+                proposer: msg.sender
+            })
+        );
 
         uint256 proposalId = spamDeletionProposals.length - 1;
 
