@@ -262,7 +262,7 @@ contract VotingV2 is
         slashingLibrary = SlashingLibrary(_slashingLibrary);
         setSpamDeletionProposalBond(_spamDeletionProposalBond);
 
-        // We assume that the indices
+        // We assume indices never get above 2^64. So we should never start with an index above half that range.
         require(_startingRequestIndex < type(uint64).max / 2, "startingRequestIndex too large");
 
         assembly {
