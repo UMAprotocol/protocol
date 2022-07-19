@@ -38,9 +38,7 @@ describe("Staker", function () {
       unstakeCoolDown,
       votingToken.options.address,
       timer.options.address
-    ).send({
-      from: account1,
-    });
+    ).send({ from: account1 });
 
     // Allow account1 to mint tokens.
     const minterRole = 1;
@@ -217,7 +215,6 @@ describe("Staker", function () {
       await advanceTime(1000);
 
       await assertEventEmitted(result, staker, "Staked");
-      await assertEventEmitted(result, staker, "UpdatedActiveStake");
       await assertEventEmitted(result, staker, "UpdatedReward");
 
       result = await staker.methods.setEmissionRate(toWei("0.1")).send({ from: accounts[0] });

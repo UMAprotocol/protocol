@@ -20,19 +20,18 @@ import "./SpamGuardIdentifierLib.sol";
 import "./Staker.sol";
 import "./VoteTimingV2.sol";
 
-import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 /**
- * @title Voting system for Oracle.
- * @dev Handles receiving and resolving price requests via a commit-reveal voting scheme.
+ * @title VotingV2 contract for UMA's DVM mechanism.
+ * @dev Handles receiving and resolving price requests via a commit-reveal voting schelling scheme.
  */
 
 contract VotingV2 is
     Staker,
     OracleInterface,
-    OracleAncillaryInterface, // Interface to support ancillary data with price requests.
-    OracleGovernanceInterface, // Interface to support governance requests.
+    OracleAncillaryInterface,
+    OracleGovernanceInterface,
     VotingV2Interface,
     MultiCaller
 {
@@ -43,8 +42,7 @@ contract VotingV2 is
      *        VOTING DATA STRUCTURES        *
      ****************************************/
 
-    // Identifies a unique price request for which the Oracle will always return the same value.
-    // Tracks ongoing votes as well as the result of the vote.
+    // Identifies a unique price request. Tracks ongoing votes as well as the result of the vote.
     struct PriceRequest {
         // If in the past, this was the voting round where this price was resolved. If current or the upcoming round,
         // this is the voting round where this price will be voted on, but not necessarily resolved.
@@ -70,18 +68,13 @@ contract VotingV2 is
     }
 
     struct VoteInstance {
-        // Maps (voterAddress) to their submission.
-        mapping(address => VoteSubmission) voteSubmissions;
-        // The data structure containing the computed voting results.
-        ResultComputationV2.Data resultComputation;
+        mapping(address => VoteSubmission) voteSubmissions; // Maps (voterAddress) to their submission.
+        ResultComputationV2.Data resultComputation; // The data structure containing the computed voting results.
     }
 
     struct VoteSubmission {
-        // A bytes32 of `0` indicates no commit or a commit that was already revealed.
-        bytes32 commit;
-        // The hash of the value that was revealed.
-        // Note: this is only used for computation of rewards.
-        bytes32 revealHash;
+        bytes32 commit; // A bytes32 of `0` indicates no commit or a commit that was already revealed.
+        bytes32 revealHash; // The hash of the value that was revealed. This is only used for computation of rewards.
     }
 
     struct Round {
@@ -117,8 +110,7 @@ contract VotingV2 is
 
     mapping(uint64 => uint64) public deletedRequests;
 
-    // Price request ids for price requests that haven't yet been marked as resolved.
-    // These requests may be for future rounds.
+    // Price request ids for price requests that haven't yet been resolved. These requests may be for future rounds.
     bytes32[] public pendingPriceRequests;
 
     VoteTimingV2.Data public voteTiming;
@@ -132,20 +124,13 @@ contract VotingV2 is
     // Reference to Slashing Library.
     SlashingLibrary public slashingLibrary;
 
-    // If non-zero, this contract has been migrated to this address. All voters and
-    // financial contracts should query the new address only.
+    // If non-zero, this contract has been migrated to this address.
     address public migratedAddress;
 
     // Max value of an unsigned integer.
     uint64 private constant UINT64_MAX = type(uint64).max;
 
     // Max length in bytes of ancillary data that can be appended to a price request.
-    // As of December 2020, the current Ethereum gas limit is 12.5 million. This requestPrice function's gas primarily
-    // comes from computing a Keccak-256 hash in _encodePriceRequest and writing a new PriceRequest to
-    // storage. We have empirically determined an ancillary data limit of 8192 bytes that keeps this function
-    // well within the gas limit at ~8 million gas. To learn more about the gas limit and EVM opcode costs go here:
-    // - https://etherscan.io/chart/gaslimit
-    // - https://github.com/djrtwo/evm-opcode-gas-costs
     uint256 public constant ancillaryBytesLimit = 8192;
 
     /****************************************
@@ -247,7 +232,7 @@ contract VotingV2 is
 
     /**
      * @notice Construct the VotingV2 contract.
-     * @param _emissionRate amount of voting tokens that are emitted per second, split prorate to stakers.
+     * @param _emissionRate amount of voting tokens that are emitted per second, split prorate between stakers.
      * @param _unstakeCoolDown time that a voter must wait to unstake after requesting to unstake.
      * @param _phaseLength length of the voting phases in seconds.
      * @param _minRollToNextRoundLength time before the end of a round in which a request must be made for the request
@@ -265,6 +250,7 @@ contract VotingV2 is
         uint64 _phaseLength,
         uint64 _minRollToNextRoundLength,
         uint256 _gat,
+        uint64 _startingRequestIndex,
         address _votingToken,
         address _finder,
         address _slashingLibrary
@@ -275,6 +261,13 @@ contract VotingV2 is
         finder = FinderInterface(_finder);
         slashingLibrary = SlashingLibrary(_slashingLibrary);
         setSpamDeletionProposalBond(_spamDeletionProposalBond);
+
+        // We assume indices never get above 2^64. So we should never start with an index above half that range.
+        require(_startingRequestIndex < type(uint64).max / 2, "startingRequestIndex too large");
+
+        assembly {
+            sstore(priceRequestIds.slot, _startingRequestIndex)
+        }
     }
 
     /***************************************
@@ -296,7 +289,7 @@ contract VotingV2 is
      ****************************************/
 
     /**
-     * @notice Enqueues a request (if a request isn't already present) for the given `identifier`, `time` pair.
+     * @notice Enqueues a request (if a request isn't already present) for the `identifier`, `time` pair.
      * @dev Time must be in the past and the identifier must be supported. The length of the ancillary data
      * is limited such that this method abides by the EVM transaction gas limit.
      * @param identifier uniquely identifies the price requested. eg BTC/USD (encoded as bytes32) could be requested.
@@ -312,7 +305,7 @@ contract VotingV2 is
     }
 
     /**
-     * @notice Enqueues a governance action request (if a request isn't already present) for the given `identifier`, `time` pair.
+     * @notice Enqueues a governance action request (if a request isn't already present) for `identifier`, `time` pair.
      * @dev Time must be in the past and the identifier must be supported. The length of the ancillary data
      * is limited such that this method abides by the EVM transaction gas limit.
      * @param identifier uniquely identifies the price requested. eg BTC/USD (encoded as bytes32) could be requested.
@@ -329,8 +322,8 @@ contract VotingV2 is
 
     /**
      * @notice Enqueues a request (if a request isn't already present) for the given `identifier`, `time` pair.
-     * @dev Time must be in the past and the identifier must be supported. The length of the ancillary data
-     * is limited such that this method abides by the EVM transaction gas limit.
+     * @dev Time must be in the past and the identifier must be supported. The length of the ancillary data is limited
+     * such that this method abides by the EVM transaction gas limit.
      * @param identifier uniquely identifies the price requested. eg BTC/USD (encoded as bytes32) could be requested.
      * @param time unix timestamp for the price request.
      * @param ancillaryData arbitrary data appended to a price request to give the voters more info from the caller.
@@ -356,11 +349,11 @@ contract VotingV2 is
 
         RequestStatus requestStatus = _getRequestStatus(priceRequest, currentRoundId);
 
+        // Price has never been requested.
         if (requestStatus == RequestStatus.NotRequested) {
-            // Price has never been requested.
             // If the price request is a governance action then always place it in the following round. If the price
             // request is a normal request then either place it in the next round or the following round based off
-            // the minRollToNextRoundLength.
+            // the minRollToNextRoundLength. This limits when a request must be made for it to occur in the next round.
             uint256 roundIdToVoteOnPriceRequest =
                 isGovernance ? currentRoundId + 1 : voteTiming.computeRoundToVoteOnPriceRequest(blockTime);
             PriceRequest storage newPriceRequest = priceRequests[priceRequestId];
@@ -503,10 +496,8 @@ contract VotingV2 is
         uint256 currentRoundId = voteTiming.computeCurrentRoundId(getCurrentTime());
         address voter = getVoterFromDelegate(msg.sender);
         _updateTrackers(voter);
-        // At this point, the computed and last updated round ID should be equal.
         uint256 blockTime = getCurrentTime();
         require(hash != bytes32(0), "Invalid provided hash");
-        // Current time is required for all vote timing queries.
         require(voteTiming.computeCurrentPhase(blockTime) == Phase.Commit, "Cannot commit in reveal phase");
 
         PriceRequest storage priceRequest = _getPriceRequest(identifier, time, ancillaryData);
@@ -572,16 +563,11 @@ contract VotingV2 is
             );
         }
 
-        delete voteSubmission.commit;
+        delete voteSubmission.commit; // Small gas refund for clearing up storage.
 
+        voteSubmission.revealHash = keccak256(abi.encode(price)); // Set the voter's submission.
         uint256 activeStake = voterStakes[voter].activeStake;
-
-        // Set the voter's submission.
-        voteSubmission.revealHash = keccak256(abi.encode(price));
-
-        // Add vote to the results.
-        voteInstance.resultComputation.addVote(price, activeStake);
-
+        voteInstance.resultComputation.addVote(price, activeStake); // Add vote to the results.
         emit VoteRevealed(voter, msg.sender, currentRoundId, identifier, time, price, ancillaryData, activeStake);
     }
 
@@ -631,10 +617,9 @@ contract VotingV2 is
     }
 
     /**
-     * @notice Sets the delegate of a voter. This delegate can vote on behalf of the staker.
-     * The staker will still own all staked balances, receive rewards and be slashed based on
-     * the actors of the delegate. Intended use case is using a low-security available wallet for
-     * voting while keeping access to staked amounts secure by a more secure wallet.
+     * @notice Sets the delegate of a voter. This delegate can vote on behalf of the staker. The staker will still own
+     * all staked balances, receive rewards and be slashed based on the actors of the delegate. Intended use is using a
+     * low-security available wallet for voting while keeping access to staked amounts secure by a more secure wallet.
      * @param delegate the address of the delegate.
      */
     function setDelegate(address delegate) public {
@@ -642,8 +627,8 @@ contract VotingV2 is
     }
 
     /**
-     * @notice Sets the delegator of a voter. Acts to accept a delegation. The delegate can only vote for
-     * delegator if the delegator also selected the delegate to do so (two way relationship needed).
+     * @notice Sets the delegator of a voter. Acts to accept a delegation. The delegate can only vote for delegator if
+     * the delegator also selected the delegate to do so (two way relationship needed).
      * @param delegator the address of the delegate.
      */
     function setDelegator(address delegator) public {
@@ -822,10 +807,7 @@ contract VotingV2 is
      * @param indexTo last price request index to update the trackers for.
      */
     function updateTrackersRange(address voterAddress, uint256 indexTo) public {
-        require(
-            voterStakes[voterAddress].lastRequestIndexConsidered < indexTo && indexTo <= priceRequestIds.length,
-            "Bad indexTo"
-        );
+        require(voterStakes[voterAddress].lastRequestIndexConsidered < indexTo && indexTo <= priceRequestIds.length);
 
         _updateAccountSlashingTrackers(voterAddress, indexTo);
     }
@@ -878,7 +860,7 @@ contract VotingV2 is
                     deletedRequests[requestIndex] = requestIndex;
                     priceRequest.priceRequestIndex = SafeCast.toUint64(priceRequestIds.length);
                     priceRequestIds.push(priceRequestIds[requestIndex]);
-                    continue; //todo: think through this bad boy one more time.
+                    continue;
                 }
                 // Else, we are simply evaluating a request that is still actively being voted on. In this case, break as
                 // all subsequent requests within the array must be in the same state and cant have any slashing applied.
@@ -907,13 +889,14 @@ contract VotingV2 is
 
                 // The voter voted correctly. Receive a pro-rate share of the other voters slashed amounts as a reward.
             else {
-                //todo: comment for this and we can have only 1 / by 1e18.
+                // Compute the total amount slashed over all stakers. This is the sum of the total slashed for not voting
+                // and the total slashed for voting incorrectly. Use this to work out the stakers prorate share.
                 uint256 totalSlashed =
                     ((noVoteSlashPerToken *
                         (rounds[priceRequest.lastVotingRound].cumulativeActiveStakeAtRound -
-                            voteInstance.resultComputation.totalVotes)) / 1e18) +
-                        ((wrongVoteSlashPerToken * (voteInstance.resultComputation.totalVotes - totalCorrectVotes)) /
-                            1e18);
+                            voteInstance.resultComputation.totalVotes)) +
+                        ((wrongVoteSlashPerToken * (voteInstance.resultComputation.totalVotes - totalCorrectVotes)))) /
+                        1e18;
 
                 slash += int256(((voterStake.activeStake * totalSlashed)) / totalCorrectVotes);
             }
@@ -978,8 +961,7 @@ contract VotingV2 is
             require(
                 spamRequestIndex[0] <= spamRequestIndex[1] &&
                     spamRequestIndex[1] < priceRequestIds.length &&
-                    spamRequestIndex[1] > runningValidationIndex,
-                "Bad indices"
+                    spamRequestIndex[1] > runningValidationIndex
             );
 
             runningValidationIndex = spamRequestIndex[1];
@@ -1094,18 +1076,14 @@ contract VotingV2 is
         uint256 currentRoundId = voteTiming.computeCurrentRoundId(getCurrentTime());
 
         RequestStatus requestStatus = _getRequestStatus(priceRequest, currentRoundId);
-        if (requestStatus == RequestStatus.Active) {
-            return (false, 0, "Current voting round not ended");
-        } else if (requestStatus == RequestStatus.Resolved) {
+        if (requestStatus == RequestStatus.Active) return (false, 0, "Current voting round not ended");
+        else if (requestStatus == RequestStatus.Resolved) {
             VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
             (, int256 resolvedPrice) =
                 voteInstance.resultComputation.getResolvedPrice(_computeGat(priceRequest.lastVotingRound));
             return (true, resolvedPrice, "");
-        } else if (requestStatus == RequestStatus.Future) {
-            return (false, 0, "Price is still to be voted on");
-        } else {
-            return (false, 0, "Price was never requested");
-        }
+        } else if (requestStatus == RequestStatus.Future) return (false, 0, "Price is still to be voted on");
+        else return (false, 0, "Price was never requested");
     }
 
     function _getPriceRequest(
@@ -1211,9 +1189,8 @@ contract VotingV2 is
     }
 
     function _requireRegisteredContract() private view {
-        if (migratedAddress != address(0)) {
-            require(msg.sender == migratedAddress);
-        } else {
+        if (migratedAddress != address(0)) require(msg.sender == migratedAddress);
+        else {
             Registry registry = Registry(finder.getImplementationAddress(OracleInterfaces.Registry));
             require(registry.isContractRegistered(msg.sender), "Caller must be registered");
         }
