@@ -100,6 +100,7 @@ describe("VotingV2", function () {
           86400, // PhaseLength
           7200, // minRollToNextRoundLength
           invalidGat, // GAT
+          "0", // startingRequestIndex
           votingToken.options.address, // voting token
           (await Finder.deployed()).options.address, // finder
           (await SlashingLibrary.deployed()).options.address, // slashing library
@@ -1219,6 +1220,7 @@ describe("VotingV2", function () {
       "86400", // phase length
       7200, // minRollToNextRoundLength
       web3.utils.toWei("5000000"), // GAT 5MM
+      "0", // startingRequestIndex
       votingToken.options.address, // voting token
       (await Finder.deployed()).options.address, // finder
       (await SlashingLibrary.deployed()).options.address, // slashing library
@@ -1288,6 +1290,7 @@ describe("VotingV2", function () {
           86400, // PhaseLength
           7200, // minRollToNextRoundLength
           toWei("5000000"), // GAT 5MM
+          "0", // startingRequestIndex
           votingToken.options.address, // voting token
           (await Finder.deployed()).options.address, // finder
           (await SlashingLibrary.deployed()).options.address, // slashing library
@@ -2955,6 +2958,5 @@ describe("VotingV2", function () {
     // move to the next round.
     await moveToNextRound(voting, accounts[0]);
   });
-
   // TODO: add a much more itterative rolling test to validate a many rolled round is correctly tracked.
 });

@@ -1,14 +1,18 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import "../interfaces/StakerInterface.sol";
-
 import "../../common/implementation/Testable.sol";
+
 import "./VotingToken.sol";
+import "../interfaces/StakerInterface.sol";
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
+/**
+ * @title Staking contract enabling UMA to be locked up by stakers to earn a prorate share of a fixed emission rate.
+ * @dev Handles the staking, unstaking and reward retrieval logic.
+ */
 contract Staker is StakerInterface, Ownable {
     /****************************************
      *           STAKING TRACKERS           *
@@ -331,6 +335,7 @@ contract Staker is StakerInterface, Ownable {
         cumulativePendingStake -= voterStakes[voterAddress].pendingStake;
         voterStakes[voterAddress].activeStake += voterStakes[voterAddress].pendingStake;
         voterStakes[voterAddress].pendingStake = 0;
+
         emit UpdatedActiveStake(
             voterAddress,
             voterStakes[voterAddress].activeStake,

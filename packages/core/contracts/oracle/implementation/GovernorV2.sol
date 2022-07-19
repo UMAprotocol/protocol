@@ -47,10 +47,8 @@ contract GovernorV2 is MultiRole, Testable {
      *                EVENTS                *
      ****************************************/
 
-    // Emitted when a new proposal is created.
     event NewProposal(uint256 indexed id, Transaction[] transactions);
 
-    // Emitted when an existing proposal is executed.
     event ProposalExecuted(uint256 indexed id, uint256 transactionIndex);
 
     /**
@@ -74,8 +72,7 @@ contract GovernorV2 is MultiRole, Testable {
         uint256 maxStartingId = 10**18;
         require(_startingId <= maxStartingId, "Cannot set startingId larger than 10^18");
 
-        // This just sets the initial length of the array to the startingId since modifying length directly has been
-        // disallowed in solidity 0.6.
+        // Sets the initial length of the array to the startingId. Modifying length directly has been disallowed in solidity 0.6.
         assembly {
             sstore(proposals.slot, _startingId)
         }
@@ -89,13 +86,6 @@ contract GovernorV2 is MultiRole, Testable {
      * @notice Proposes a new governance action. Can only be called by the holder of the Proposer role.
      * @param transactions list of transactions that are being proposed.
      * @param ancillaryData arbitrary data appended to a price request to give the voters more info from the caller.
-     * @dev You can create the data portion of each transaction by doing the following:
-     * ```
-     * const truffleContractInstance = await TruffleContract.deployed()
-     * const data = truffleContractInstance.methods.methodToCall(arg1, arg2).encodeABI()
-     * ```
-     * Note: this method must be public because of a solidity limitation that
-     * disallows structs arrays to be passed to external functions.
      */
     function propose(Transaction[] memory transactions, bytes memory ancillaryData)
         public

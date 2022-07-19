@@ -768,6 +768,7 @@ describe("GovernorV2", function () {
       "86400", // phase length
       "7200", // minRollToNextRoundLength
       web3.utils.toWei("5000000"), // 5% GAT
+      "0", // startingRequestIndex
       votingToken.options.address, // voting token
       (await Finder.deployed()).options.address, // finder
       (await SlashingLibrary.deployed()).options.address, // slashing library
