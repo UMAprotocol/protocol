@@ -1,30 +1,26 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import "../interfaces/VotingV2Interface.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "../interfaces/VotingInterface.sol";
 
 /**
  * @title Library to compute rounds and phases for an equal length commit-reveal voting cycle.
  */
-library VoteTimingV2 {
+library VoteTiming {
+    using SafeMath for uint256;
+
     struct Data {
         uint256 phaseLength;
-        uint256 minRollToNextRoundLength;
     }
 
     /**
      * @notice Initializes the data object. Sets the phase length based on the input.
      */
-    function init(
-        Data storage data,
-        uint256 phaseLength,
-        uint256 minRollToNextRoundLength
-    ) internal {
+    function init(Data storage data, uint256 phaseLength) internal {
         // This should have a require message but this results in an internal Solidity error.
         require(phaseLength > 0);
-        require(minRollToNextRoundLength <= phaseLength);
         data.phaseLength = phaseLength;
-        data.minRollToNextRoundLength = minRollToNextRoundLength;
     }
 
     /**
@@ -36,8 +32,8 @@ library VoteTimingV2 {
      * @return roundId defined as a function of the currentTime and `phaseLength` from `data`.
      */
     function computeCurrentRoundId(Data storage data, uint256 currentTime) internal view returns (uint256) {
-        uint256 roundLength = data.phaseLength * uint256(VotingV2Interface.Phase.NUM_PHASES_PLACEHOLDER);
-        return currentTime / roundLength;
+        uint256 roundLength = data.phaseLength.mul(uint256(VotingAncillaryInterface.Phase.NUM_PHASES_PLACEHOLDER));
+        return currentTime.div(roundLength);
     }
 
     /**
@@ -47,8 +43,8 @@ library VoteTimingV2 {
      * @return timestamp unix time of when the current round will end.
      */
     function computeRoundEndTime(Data storage data, uint256 roundId) internal view returns (uint256) {
-        uint256 roundLength = data.phaseLength * uint256(VotingV2Interface.Phase.NUM_PHASES_PLACEHOLDER);
-        return roundLength * (roundId + 1);
+        uint256 roundLength = data.phaseLength.mul(uint256(VotingAncillaryInterface.Phase.NUM_PHASES_PLACEHOLDER));
+        return roundLength.mul(roundId.add(1));
     }
 
     /**
@@ -60,19 +56,12 @@ library VoteTimingV2 {
     function computeCurrentPhase(Data storage data, uint256 currentTime)
         internal
         view
-        returns (VotingV2Interface.Phase)
+        returns (VotingAncillaryInterface.Phase)
     {
         // This employs some hacky casting. We could make this an if-statement if we're worried about type safety.
         return
-            VotingV2Interface.Phase(
-                (currentTime / data.phaseLength) % uint256(VotingV2Interface.Phase.NUM_PHASES_PLACEHOLDER)
+            VotingAncillaryInterface.Phase(
+                currentTime.div(data.phaseLength).mod(uint256(VotingAncillaryInterface.Phase.NUM_PHASES_PLACEHOLDER))
             );
-    }
-
-    function computeRoundToVoteOnPriceRequest(Data storage data, uint256 currentTime) internal view returns (uint256) {
-        uint256 currentRoundId = computeCurrentRoundId(data, currentTime);
-        uint256 roundEndTime = computeRoundEndTime(data, currentRoundId);
-        if (currentTime >= roundEndTime - data.minRollToNextRoundLength) return currentRoundId + 2;
-        else return currentRoundId + 1;
     }
 }

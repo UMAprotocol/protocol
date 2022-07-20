@@ -2,17 +2,23 @@
 pragma solidity ^0.8.0;
 
 import "../../common/implementation/Withdrawable.sol";
-import "./DesignatedVotingV2.sol";
+import "./DesignatedVoting.sol";
 
 /**
- * @title Factory to deploy new instances of DesignatedVotingV2 and look up previously deployed instances.
+ * @title Factory to deploy new instances of DesignatedVoting and look up previously deployed instances.
  * @dev Allows off-chain infrastructure to look up a hot wallet's deployed DesignatedVoting contract.
  */
-contract DesignatedVotingV2Factory is Withdrawable {
-    address private finder;
-    mapping(address => DesignatedVotingV2) public designatedVotingContracts;
+contract DesignatedVotingFactory is Withdrawable {
+    /****************************************
+     *    INTERNAL VARIABLES AND STORAGE    *
+     ****************************************/
 
-    event NewDesignatedVoting(address indexed designatedVoter, address indexed designatedVoting);
+    enum Roles {
+        Withdrawer // Can withdraw any ETH or ERC20 sent accidentally to this contract.
+    }
+
+    address private finder;
+    mapping(address => DesignatedVoting) public designatedVotingContracts;
 
     /**
      * @notice Construct the DesignatedVotingFactory contract.
@@ -20,6 +26,8 @@ contract DesignatedVotingV2Factory is Withdrawable {
      */
     constructor(address finderAddress) {
         finder = finderAddress;
+
+        _createWithdrawRole(uint256(Roles.Withdrawer), uint256(Roles.Withdrawer), msg.sender);
     }
 
     /**
@@ -27,11 +35,9 @@ contract DesignatedVotingV2Factory is Withdrawable {
      * @param ownerAddress defines who will own the deployed instance of the designatedVoting contract.
      * @return designatedVoting a new DesignatedVoting contract.
      */
-    function newDesignatedVoting(address ownerAddress) external returns (DesignatedVotingV2) {
-        DesignatedVotingV2 designatedVoting = new DesignatedVotingV2(finder, ownerAddress, msg.sender);
+    function newDesignatedVoting(address ownerAddress) external returns (DesignatedVoting) {
+        DesignatedVoting designatedVoting = new DesignatedVoting(finder, ownerAddress, msg.sender);
         designatedVotingContracts[msg.sender] = designatedVoting;
-        emit NewDesignatedVoting(msg.sender, address(designatedVoting));
-
         return designatedVoting;
     }
 
@@ -42,7 +48,6 @@ contract DesignatedVotingV2Factory is Withdrawable {
      * address and wants that reflected here.
      */
     function setDesignatedVoting(address designatedVotingAddress) external {
-        designatedVotingContracts[msg.sender] = DesignatedVotingV2(designatedVotingAddress);
-        emit NewDesignatedVoting(msg.sender, designatedVotingAddress);
+        designatedVotingContracts[msg.sender] = DesignatedVoting(designatedVotingAddress);
     }
 }
