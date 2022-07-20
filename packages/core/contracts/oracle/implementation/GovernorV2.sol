@@ -2,10 +2,11 @@
 pragma solidity ^0.8.0;
 
 import "../../common/implementation/MultiRole.sol";
+import "../../common/implementation/FixedPoint.sol";
 import "../../common/implementation/Testable.sol";
 import "../interfaces/FinderInterface.sol";
 import "../interfaces/IdentifierWhitelistInterface.sol";
-import "../interfaces/OracleGovernanceInterface.sol";
+import "../interfaces/OracleInterface.sol";
 import "./Constants.sol";
 import "./AdminIdentifierLib.sol";
 
@@ -15,7 +16,7 @@ import "@openzeppelin/contracts/utils/Address.sol";
 /**
  * @title Takes proposals for certain governance actions and allows UMA token holders to vote on them.
  */
-contract GovernorV2 is MultiRole, Testable {
+contract Governor is MultiRole, Testable {
     using SafeMath for uint256;
     using Address for address;
 
@@ -37,7 +38,6 @@ contract GovernorV2 is MultiRole, Testable {
     struct Proposal {
         Transaction[] transactions;
         uint256 requestTime;
-        bytes ancillaryData;
     }
 
     FinderInterface private finder;
@@ -47,8 +47,10 @@ contract GovernorV2 is MultiRole, Testable {
      *                EVENTS                *
      ****************************************/
 
+    // Emitted when a new proposal is created.
     event NewProposal(uint256 indexed id, Transaction[] transactions);
 
+    // Emitted when an existing proposal is executed.
     event ProposalExecuted(uint256 indexed id, uint256 transactionIndex);
 
     /**
@@ -72,7 +74,8 @@ contract GovernorV2 is MultiRole, Testable {
         uint256 maxStartingId = 10**18;
         require(_startingId <= maxStartingId, "Cannot set startingId larger than 10^18");
 
-        // Sets the initial length of the array to the startingId. Modifying length directly has been disallowed in solidity 0.6.
+        // This just sets the initial length of the array to the startingId since modifying length directly has been
+        // disallowed in solidity 0.6.
         assembly {
             sstore(proposals.slot, _startingId)
         }
@@ -85,12 +88,15 @@ contract GovernorV2 is MultiRole, Testable {
     /**
      * @notice Proposes a new governance action. Can only be called by the holder of the Proposer role.
      * @param transactions list of transactions that are being proposed.
-     * @param ancillaryData arbitrary data appended to a price request to give the voters more info from the caller.
+     * @dev You can create the data portion of each transaction by doing the following:
+     * ```
+     * const truffleContractInstance = await TruffleContract.deployed()
+     * const data = truffleContractInstance.methods.methodToCall(arg1, arg2).encodeABI()
+     * ```
+     * Note: this method must be public because of a solidity limitation that
+     * disallows structs arrays to be passed to external functions.
      */
-    function propose(Transaction[] memory transactions, bytes memory ancillaryData)
-        public
-        onlyRoleHolder(uint256(Roles.Proposer))
-    {
+    function propose(Transaction[] memory transactions) public onlyRoleHolder(uint256(Roles.Proposer)) {
         uint256 id = proposals.length;
         uint256 time = getCurrentTime();
 
@@ -103,7 +109,6 @@ contract GovernorV2 is MultiRole, Testable {
         // Initialize the new proposal.
         Proposal storage proposal = proposals[id];
         proposal.requestTime = time;
-        proposal.ancillaryData = ancillaryData;
 
         // Initialize the transaction array.
         for (uint256 i = 0; i < transactions.length; i++) {
@@ -118,7 +123,12 @@ contract GovernorV2 is MultiRole, Testable {
         bytes32 identifier = AdminIdentifierLib._constructIdentifier(id);
 
         // Request a vote on this proposal in the DVM.
-        _getOracle().requestGovernanceAction(identifier, time, ancillaryData);
+        OracleInterface oracle = _getOracle();
+        IdentifierWhitelistInterface supportedIdentifiers = _getIdentifierWhitelist();
+        supportedIdentifiers.addSupportedIdentifier(identifier);
+
+        oracle.requestPrice(identifier, time);
+        supportedIdentifiers.removeSupportedIdentifier(identifier);
 
         emit NewProposal(id, transactions);
     }
@@ -131,12 +141,7 @@ contract GovernorV2 is MultiRole, Testable {
      */
     function executeProposal(uint256 id, uint256 transactionIndex) external payable {
         Proposal storage proposal = proposals[id];
-        int256 price =
-            _getOracle().getPrice(
-                AdminIdentifierLib._constructIdentifier(id),
-                proposal.requestTime,
-                proposal.ancillaryData
-            );
+        int256 price = _getOracle().getPrice(AdminIdentifierLib._constructIdentifier(id), proposal.requestTime);
 
         Transaction memory transaction = proposal.transactions[transactionIndex];
 
@@ -201,8 +206,8 @@ contract GovernorV2 is MultiRole, Testable {
         return success;
     }
 
-    function _getOracle() private view returns (OracleGovernanceInterface) {
-        return OracleGovernanceInterface(finder.getImplementationAddress(OracleInterfaces.Oracle));
+    function _getOracle() private view returns (OracleInterface) {
+        return OracleInterface(finder.getImplementationAddress(OracleInterfaces.Oracle));
     }
 
     function _getIdentifierWhitelist() private view returns (IdentifierWhitelistInterface supportedIdentifiers) {
