@@ -100,6 +100,7 @@ describe("VotingV2", function () {
           86400, // PhaseLength
           7200, // minRollToNextRoundLength
           invalidGat, // GAT
+          "0", // startingRequestIndex
           votingToken.options.address, // voting token
           (await Finder.deployed()).options.address, // finder
           (await SlashingLibrary.deployed()).options.address, // slashing library
@@ -1219,6 +1220,7 @@ describe("VotingV2", function () {
       "86400", // phase length
       7200, // minRollToNextRoundLength
       web3.utils.toWei("5000000"), // GAT 5MM
+      "0", // startingRequestIndex
       votingToken.options.address, // voting token
       (await Finder.deployed()).options.address, // finder
       (await SlashingLibrary.deployed()).options.address, // slashing library
@@ -1288,6 +1290,7 @@ describe("VotingV2", function () {
           86400, // PhaseLength
           7200, // minRollToNextRoundLength
           toWei("5000000"), // GAT 5MM
+          "0", // startingRequestIndex
           votingToken.options.address, // voting token
           (await Finder.deployed()).options.address, // finder
           (await SlashingLibrary.deployed()).options.address, // slashing library
@@ -2955,7 +2958,68 @@ describe("VotingV2", function () {
     // move to the next round.
     await moveToNextRound(voting, accounts[0]);
   });
+  it("Can offset the starting index for requests during a migration", async function () {
+    const voting2 = await VotingV2Test.new(
+      "42069", // emissionRate
+      toWei("10000"), // spamDeletionProposalBond
+      60 * 60 * 24 * 7, // Unstake cooldown
+      86400, // PhaseLength
+      7200, // minRollToNextRoundLength
+      toWei("0.05"), // GatPct
+      10, // offset starting index for requests.
+      votingToken.options.address, // voting token
+      (await Finder.deployed()).options.address, // finder
+      (await SlashingLibrary.deployed()).options.address, // slashing library
+      (await Timer.deployed()).options.address // timer
+    ).send({ from: accounts[0] });
 
+    await voting.methods.requestUnstake(toWei("4000000")).send({ from: account4 });
+    await voting.methods.executeUnstake().send({ from: account4 });
+    await votingToken.methods.approve(voting2.options.address, toWei("32000000")).send({ from: account1 });
+    await voting2.methods.stake(toWei("30000000")).send({ from: account1 });
+    await votingToken.methods.approve(voting2.options.address, toWei("4000000")).send({ from: account4 });
+    await voting2.methods.stake(toWei("4000000")).send({ from: account4 });
+
+    // The lastRequestIndexConsidered for the new staker should be 10 (they get to skip all previous indices).
+    assert.equal((await voting2.methods.voterStakes(account1).call()).lastRequestIndexConsidered, 10);
+
+    // If we do a request it should now start at index 11.  Execute a full voting cycle
+    const identifier = padRight(utf8ToHex("offset-test"), 64);
+    const time = "420";
+    const salt = getRandomSignedInt();
+    await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
+
+    await voting2.methods.requestPrice(identifier, time).send({ from: registeredContract });
+    assert.equal(await voting2.methods.getNumberOfPriceRequests().call(), 11);
+
+    // Voting cycle still works as expected.
+    const price = "69696969";
+    await moveToNextRound(voting2, accounts[0]); // Move into the commit phase.
+
+    let baseRequest = { salt, roundId: (await voting2.methods.getCurrentRoundId().call()).toString(), identifier };
+    const hash1 = computeVoteHash({ ...baseRequest, price, account: account1, time });
+    await voting2.methods.commitVote(identifier, time, hash1).send({ from: account1 });
+    await moveToNextPhase(voting2, accounts[0]);
+    await voting2.methods.revealVote(identifier, time, price, salt).send({ from: account1 });
+    await moveToNextRound(voting2, accounts[0]);
+
+    // Price should be accessible, as expected and indexed accordingly.
+    assert.equal(await voting2.methods.getPrice(identifier, time).call({ from: registeredContract }), price);
+
+    await voting2.methods.updateTrackers(account1).send({ from: account1 });
+    // The first 10 requests should be accessible but zero in slashing tracker size (they were offset.)
+    for (let i = 0; i < 10; i++) {
+      assert.equal((await voting2.methods.requestSlashingTrackers(0).call()).totalCorrectVotes, "0");
+    }
+    assert.equal((await voting2.methods.requestSlashingTrackers(10).call()).totalCorrectVotes, toWei("30000000"));
+
+    // Slashing should have been applied, as expected. Account 4 did not vote and so should have lost 4mm*0.0016 = 6400
+    // Which should be assigned to account1.
+    assert.equal(
+      (await voting2.methods.voterStakes(account1).call()).activeStake,
+      toWei("30000000").add(toWei("6400"))
+    );
+  });
   it("Emergency action can push a price to the contract if the contract breaks", async function () {
     // Consider the case where the contract has broken such that: 1) users can no longer stake/unstake and 2) commit
     // reveal is broken. The contract should still be saveable in this case! The governor is the super admin of the DVM
@@ -2974,6 +3038,7 @@ describe("VotingV2", function () {
       86400, // PhaseLength
       7200, // minRollToNextRoundLength
       toWei("0.05"), // GatPct
+      "0", // startingRequestIndex
       votingToken.options.address, // voting token
       (await Finder.deployed()).options.address, // finder
       (await SlashingLibrary.deployed()).options.address, // slashing library
@@ -2984,6 +3049,7 @@ describe("VotingV2", function () {
     await voting.methods.setUnstakeCoolDown(0).send({ from: account1 });
     await voting.methods.requestUnstake(toWei("32000000")).send({ from: account1 });
     await voting.methods.executeUnstake().send({ from: account1 });
+
     await votingToken.methods.approve(voting2.options.address, toWei("32000000")).send({ from: account1 });
     await voting2.methods.stake(toWei("30000000")).send({ from: account1 });
 

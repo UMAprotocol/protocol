@@ -11,12 +11,9 @@ library ResultComputationV2 {
      ****************************************/
 
     struct Data {
-        // Maps price to number of tokens that voted for that price.
-        mapping(int256 => uint256) voteFrequency;
-        // The total votes that have been added.
-        uint256 totalVotes;
-        // The price that is the current mode, i.e., the price with the highest frequency in `voteFrequency`.
-        int256 currentMode;
+        mapping(int256 => uint256) voteFrequency; // Maps price to number of tokens that voted for that price.
+        uint256 totalVotes; // The total votes that have been added.
+        int256 currentMode; // The price that is the current mode, i.e., the price with the highest frequency.
     }
 
     /****************************************

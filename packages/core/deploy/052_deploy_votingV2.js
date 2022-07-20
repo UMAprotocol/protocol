@@ -43,6 +43,7 @@ const func = async function (hre) {
         phaseLength,
         minRollToNextRoundLength,
         gat.toString(),
+        "0", // Starting request index of 0 (no offset).
         VotingToken.address,
         Finder.address,
         SlashingLibrary.address,
@@ -60,6 +61,7 @@ const func = async function (hre) {
         phaseLength,
         minRollToNextRoundLength,
         gat.toString(),
+        "0", // Starting request index of 0 (no offset).
         VotingToken.address,
         Finder.address,
         SlashingLibrary.address,
