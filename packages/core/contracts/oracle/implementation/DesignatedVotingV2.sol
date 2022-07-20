@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import "../../common/implementation/MultiRole.sol";
-import "../../common/implementation/Withdrawable.sol";
-import "../interfaces/VotingAncillaryInterface.sol";
+import "../../common/implementation/MultiCaller.sol";
+import "../../common/implementation/Stakeable.sol";
 import "../interfaces/FinderInterface.sol";
+import "../interfaces/VotingV2Interface.sol";
 import "./Constants.sol";
 
 /**
@@ -12,7 +12,7 @@ import "./Constants.sol";
  * @dev Allows a UMA token holder to designate another address to vote on their behalf.
  * Each voter must deploy their own instance of this contract.
  */
-contract DesignatedVoting is Withdrawable {
+contract DesignatedVotingV2 is Stakeable, MultiCaller {
     /****************************************
      *    INTERNAL VARIABLES AND STORAGE    *
      ****************************************/
@@ -40,6 +40,7 @@ contract DesignatedVoting is Withdrawable {
         _createExclusiveRole(uint256(Roles.Owner), uint256(Roles.Owner), ownerAddress);
         _createExclusiveRole(uint256(Roles.Voter), uint256(Roles.Owner), voterAddress);
         _setWithdrawRole(uint256(Roles.Owner));
+        _setStakeRole(uint256(Roles.Owner));
 
         finder = FinderInterface(finderAddress);
     }
@@ -60,18 +61,27 @@ contract DesignatedVoting is Withdrawable {
         bytes memory ancillaryData,
         bytes32 hash
     ) external onlyRoleHolder(uint256(Roles.Voter)) {
-        _getVotingAddress().commitVote(identifier, time, ancillaryData, hash);
+        _getVotingContract().commitVote(identifier, time, ancillaryData, hash);
     }
 
     /**
-     * @notice Forwards a batch commit to Voting.
-     * @param commits struct to encapsulate an `identifier`, `time`, `hash` and optional `encryptedVote`.
+     * @notice commits a vote and logs an event with a data blob, typically an encrypted version of the vote
+     * @dev An encrypted version of the vote is emitted in an event `EncryptedVote` to allow off-chain infrastructure to
+     * retrieve the commit. The contents of `encryptedVote` are never used on chain: it is purely for convenience.
+     * @param identifier unique price pair identifier. Eg: BTC/USD price pair.
+     * @param time unix timestamp of for the price request.
+     * @param ancillaryData arbitrary data appended to a price request to give the voters more info from the caller.
+     * @param hash keccak256 hash of the price you want to vote for and a `int256 salt`.
+     * @param encryptedVote offchain encrypted blob containing the voters amount, time and salt.
      */
-    function batchCommit(VotingAncillaryInterface.CommitmentAncillary[] calldata commits)
-        external
-        onlyRoleHolder(uint256(Roles.Voter))
-    {
-        _getVotingAddress().batchCommit(commits);
+    function commitAndEmitEncryptedVote(
+        bytes32 identifier,
+        uint256 time,
+        bytes memory ancillaryData,
+        bytes32 hash,
+        bytes memory encryptedVote
+    ) external onlyRoleHolder(uint256(Roles.Voter)) {
+        _getVotingContract().commitAndEmitEncryptedVote(identifier, time, ancillaryData, hash, encryptedVote);
     }
 
     /**
@@ -88,36 +98,22 @@ contract DesignatedVoting is Withdrawable {
         bytes memory ancillaryData,
         int256 salt
     ) external onlyRoleHolder(uint256(Roles.Voter)) {
-        _getVotingAddress().revealVote(identifier, time, price, ancillaryData, salt);
-    }
-
-    /**
-     * @notice Forwards a batch reveal to Voting.
-     * @param reveals is an array of the Reveal struct which contains an identifier, time, price and salt.
-     */
-    function batchReveal(VotingAncillaryInterface.RevealAncillary[] calldata reveals)
-        external
-        onlyRoleHolder(uint256(Roles.Voter))
-    {
-        _getVotingAddress().batchReveal(reveals);
+        _getVotingContract().revealVote(identifier, time, price, ancillaryData, salt);
     }
 
     /**
      * @notice Forwards a reward retrieval to Voting.
      * @dev Rewards are added to the tokens already held by this contract.
-     * @param roundId defines the round from which voting rewards will be retrieved from.
-     * @param toRetrieve an array of PendingRequests which rewards are retrieved from.
      * @return amount of rewards that the user should receive.
      */
-    function retrieveRewards(uint256 roundId, VotingAncillaryInterface.PendingRequestAncillary[] memory toRetrieve)
-        public
-        onlyRoleHolder(uint256(Roles.Voter))
-        returns (FixedPoint.Unsigned memory)
-    {
-        return _getVotingAddress().retrieveRewards(address(this), roundId, toRetrieve);
+    function retrieveRewards() public onlyRoleHolder(uint256(Roles.Voter)) returns (uint256) {
+        StakerInterface voting = StakerInterface(address(_getVotingContract()));
+        uint256 rewardsMinted = voting.withdrawRewards();
+        IERC20(address(voting.votingToken())).approve(address(voting), rewardsMinted);
+        voting.stake(rewardsMinted);
     }
 
-    function _getVotingAddress() private view returns (VotingAncillaryInterface) {
-        return VotingAncillaryInterface(finder.getImplementationAddress(OracleInterfaces.Oracle));
+    function _getVotingContract() private view returns (VotingV2Interface) {
+        return VotingV2Interface(finder.getImplementationAddress(OracleInterfaces.Oracle));
     }
 }

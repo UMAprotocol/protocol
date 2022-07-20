@@ -1,26 +1,19 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import "../../common/implementation/FixedPoint.sol";
-
 /**
  * @title Computes vote results.
  * @dev The result is the mode of the added votes. Otherwise, the vote is unresolved.
  */
-library ResultComputation {
-    using FixedPoint for FixedPoint.Unsigned;
-
+library ResultComputationV2 {
     /****************************************
      *   INTERNAL LIBRARY DATA STRUCTURE    *
      ****************************************/
 
     struct Data {
-        // Maps price to number of tokens that voted for that price.
-        mapping(int256 => FixedPoint.Unsigned) voteFrequency;
-        // The total votes that have been added.
-        FixedPoint.Unsigned totalVotes;
-        // The price that is the current mode, i.e., the price with the highest frequency in `voteFrequency`.
-        int256 currentMode;
+        mapping(int256 => uint256) voteFrequency; // Maps price to number of tokens that voted for that price.
+        uint256 totalVotes; // The total votes that have been added.
+        int256 currentMode; // The price that is the current mode, i.e., the price with the highest frequency.
     }
 
     /****************************************
@@ -36,14 +29,12 @@ library ResultComputation {
     function addVote(
         Data storage data,
         int256 votePrice,
-        FixedPoint.Unsigned memory numberTokens
+        uint256 numberTokens
     ) internal {
-        data.totalVotes = data.totalVotes.add(numberTokens);
-        data.voteFrequency[votePrice] = data.voteFrequency[votePrice].add(numberTokens);
-        if (
-            votePrice != data.currentMode &&
-            data.voteFrequency[votePrice].isGreaterThan(data.voteFrequency[data.currentMode])
-        ) data.currentMode = votePrice;
+        data.totalVotes += numberTokens;
+        data.voteFrequency[votePrice] += numberTokens;
+        if (votePrice != data.currentMode && data.voteFrequency[votePrice] > data.voteFrequency[data.currentMode])
+            data.currentMode = votePrice;
     }
 
     /****************************************
@@ -59,16 +50,16 @@ library ResultComputation {
      * @return isResolved indicates if the price has been resolved correctly.
      * @return price the price that the dvm resolved to.
      */
-    function getResolvedPrice(Data storage data, FixedPoint.Unsigned memory minVoteThreshold)
+    function getResolvedPrice(Data storage data, uint256 minVoteThreshold)
         internal
         view
         returns (bool isResolved, int256 price)
     {
-        FixedPoint.Unsigned memory modeThreshold = FixedPoint.fromUnscaledUint(50).div(100);
+        uint256 modeThreshold = 5e17 + 1;
 
         if (
-            data.totalVotes.isGreaterThan(minVoteThreshold) &&
-            data.voteFrequency[data.currentMode].div(data.totalVotes).isGreaterThan(modeThreshold)
+            data.totalVotes > minVoteThreshold &&
+            (data.voteFrequency[data.currentMode] * 1e18) / data.totalVotes > modeThreshold
         ) {
             // `modeThreshold` and `minVoteThreshold` are exceeded, so the current mode is the resolved price.
             isResolved = true;
@@ -93,7 +84,7 @@ library ResultComputation {
      * @param data contains all votes against which the correctly voted tokens are counted.
      * @return FixedPoint.Unsigned which indicates the frequency of the correctly voted tokens.
      */
-    function getTotalCorrectlyVotedTokens(Data storage data) internal view returns (FixedPoint.Unsigned memory) {
+    function getTotalCorrectlyVotedTokens(Data storage data) internal view returns (uint256) {
         return data.voteFrequency[data.currentMode];
     }
 }
