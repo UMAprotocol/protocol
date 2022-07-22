@@ -46,5 +46,13 @@
   {
     "contractName": "AddressWhitelist",
     "address": "0xb06C61fcc074Efb8cf7Fd707bC3bd8ab1Aa5A4E9"
+  },
+  {
+    "contractName": "OptimisticOracleV2",
+    "address": "0x3C8a21099C202003Ec6f050Eb24F8f24a3828Ad3"
+  },
+  {
+    "contractName": "Registry",
+    "address": "0x63200E25db9Af015d1e3240D30269d29D80830F6"
   }
 ]
