@@ -2,7 +2,7 @@ import dotenv from "dotenv";
 import assert from "assert";
 import { ethers } from "ethers";
 import { Provider } from "@ethersproject/providers";
-import { OptimisticOracle, getOptimisticOracleAddress } from "../skinnyOptimisticOracle";
+import { SkinnyOptimisticOracle, getOptimisticOracleAddress } from "../skinnyOptimisticOracle";
 
 dotenv.config();
 
@@ -18,10 +18,10 @@ const request = {
 
 describe("Skinny Oracle Service", function () {
   let provider: Provider;
-  let oo: OptimisticOracle;
+  let oo: SkinnyOptimisticOracle;
   beforeAll(async () => {
     provider = ethers.getDefaultProvider(process.env.CUSTOM_NODE_URL, 1);
-    oo = new OptimisticOracle(provider, ooAddress, 1);
+    oo = new SkinnyOptimisticOracle(provider, ooAddress, 1);
   });
   test("update", async function () {
     await oo.update();

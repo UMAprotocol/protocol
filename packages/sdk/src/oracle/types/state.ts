@@ -59,6 +59,7 @@ export type PartialChainConfig = PartialBy<
 export enum OracleType {
   Optimistic = "Optimistic",
   Skinny = "Skinny",
+  OptimisticV2 = "OptimisticV2",
 }
 // config definition
 export type Config = {

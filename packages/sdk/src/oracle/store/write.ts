@@ -6,7 +6,7 @@ import { requestId } from "../utils";
 import { factory as Erc20Factory } from "../services/erc20";
 import Multicall2 from "../../multicall2";
 import { SortedRequests } from "../services/sortedRequests";
-import type { OracleInterface, Request, Requests } from "../types/interfaces";
+import type { OracleInterface, Request } from "../types/interfaces";
 
 // This file contains composable and type safe state writers which mirror the state in types/state.
 // Each component takes in 1 parameters, state and you can include any number of functions to operate on the state.
@@ -164,8 +164,5 @@ export default class Write {
     if (this.state?.services?.sortedRequests) return;
     // only want to add this once
     this.state.services = { sortedRequests };
-  }
-  descendingRequests(sortedRequests: Requests): void {
-    this.state.descendingRequests = sortedRequests;
   }
 }
