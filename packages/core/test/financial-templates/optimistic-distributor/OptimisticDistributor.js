@@ -11,7 +11,7 @@ const OptimisticDistributor = getContract("OptimisticDistributor");
 const Finder = getContract("Finder");
 const IdentifierWhitelist = getContract("IdentifierWhitelist");
 const AddressWhitelist = getContract("AddressWhitelist");
-const OptimisticOracle = getContract("OptimisticOracle");
+const OptimisticOracleV2 = getContract("OptimisticOracleV2");
 const MockOracle = getContract("MockOracleAncillary");
 const Timer = getContract("Timer");
 const Store = getContract("Store");
@@ -99,7 +99,7 @@ describe("OptimisticDistributor", async function () {
     collateralWhitelist = await AddressWhitelist.deployed();
     store = await Store.deployed();
     identifierWhitelist = await IdentifierWhitelist.deployed();
-    optimisticOracle = await OptimisticOracle.deployed();
+    optimisticOracle = await OptimisticOracleV2.deployed();
 
     // Deploy new MockOracle so that OptimisticOracle disputes can make price requests to it:
     mockOracle = await MockOracle.new(finder.options.address, timer.options.address).send({ from: deployer });
@@ -194,14 +194,14 @@ describe("OptimisticDistributor", async function () {
     const newStore = await Store.new(zeroRawValue, zeroRawValue, timer.options.address).send({ from: deployer });
     const newFinalFee = toWei("200");
     await newStore.methods.setFinalFee(bondToken.options.address, { rawValue: newFinalFee }).send({ from: deployer });
-    const newOptimisticOracle = await OptimisticOracle.new(7200, finder.options.address, timer.options.address).send({
+    const newOptimisticOracle = await OptimisticOracleV2.new(7200, finder.options.address, timer.options.address).send({
       from: deployer,
     });
     await finder.methods
       .changeImplementationAddress(utf8ToHex(interfaceName.Store), newStore.options.address)
       .send({ from: deployer });
     await finder.methods
-      .changeImplementationAddress(utf8ToHex(interfaceName.OptimisticOracle), newOptimisticOracle.options.address)
+      .changeImplementationAddress(utf8ToHex(interfaceName.OptimisticOracleV2), newOptimisticOracle.options.address)
       .send({ from: deployer });
 
     // Check that OptimisticDistributor can fetch new parameters.
@@ -213,7 +213,7 @@ describe("OptimisticDistributor", async function () {
       .changeImplementationAddress(utf8ToHex(interfaceName.Store), store.options.address)
       .send({ from: deployer });
     await finder.methods
-      .changeImplementationAddress(utf8ToHex(interfaceName.OptimisticOracle), optimisticOracle.options.address)
+      .changeImplementationAddress(utf8ToHex(interfaceName.OptimisticOracleV2), optimisticOracle.options.address)
       .send({ from: deployer });
   });
   it("Creating initial rewards", async function () {
@@ -601,7 +601,7 @@ describe("OptimisticDistributor", async function () {
     const request = await optimisticOracle.methods
       .getRequest(optimisticDistributor.options.address, identifier, proposalTimestamp, ancillaryData)
       .call();
-    assert.equal(request.bond, bondAmount);
+    assert.equal(request.requestSettings.bond, bondAmount);
 
     // Fetch bond token balances after proposal.
     const proposerBalanceAfter = toBN(await bondToken.methods.balanceOf(proposer).call());
@@ -958,11 +958,11 @@ describe("OptimisticDistributor", async function () {
   });
   it("Optimistic Oracle upgrade unblocks proposal", async function () {
     // Deploy new Optimistic Oracle and update in Finder.
-    const newOptimisticOracle = await OptimisticOracle.new(7200, finder.options.address, timer.options.address).send({
+    const newOptimisticOracle = await OptimisticOracleV2.new(7200, finder.options.address, timer.options.address).send({
       from: deployer,
     });
     await finder.methods
-      .changeImplementationAddress(utf8ToHex(interfaceName.OptimisticOracle), newOptimisticOracle.options.address)
+      .changeImplementationAddress(utf8ToHex(interfaceName.OptimisticOracleV2), newOptimisticOracle.options.address)
       .send({ from: deployer });
 
     // Perform create-propose rewards cycle.
