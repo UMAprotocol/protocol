@@ -179,8 +179,7 @@ export default class Read {
     return Object.keys(this.state?.chains || {}).map(Number);
   };
   descendingRequests = (): Requests => {
-    const sortedRequestsService = this.sortedRequestsService();
-    return sortedRequestsService.descending();
+    return this.state.descendingRequests || [];
   };
   filterRequests = (query: Partial<Request>): Requests => {
     return filter(this.descendingRequests(), query);

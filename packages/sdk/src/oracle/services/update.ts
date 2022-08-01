@@ -95,6 +95,12 @@ export class Update {
       // collisions will cause overwrites, removing ability to list identical requests across chains.
       sortedRequestsService.setByRequest({ ...value, oracleType });
     });
+    // query all known requests and update our state with the entire list.
+    // this is expensive, consider optimizing after proven detrimental.
+    const descendingRequests = sortedRequestsService.descending();
+    this.write((w) => {
+      w.descendingRequests(descendingRequests);
+    });
   };
   // this updates the current active request object used in the details page, as new properties might come in from events
   // current request needs access to things like transation hash, only available through events.

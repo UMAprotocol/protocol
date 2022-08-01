@@ -36,8 +36,6 @@ export function Handlers(store: Store): GenericHandlers<Params, Memory> {
         if (latestBlock !== currentBlock) {
           // this pulls all events from current to latest block
           await update.oracleEvents(chainId, currentBlock, latestBlock);
-          // update our request table list with all known events
-          await update.sortedRequests(chainId);
 
           // we can just try to update the current active request, we dont care if it fails, active request might not be set
           await ignoreExistenceErrorAsync(update.activeRequestFromEvents);
@@ -54,6 +52,10 @@ export function Handlers(store: Store): GenericHandlers<Params, Memory> {
         // store an error for an iteration if we need to debug. we want to keep polling though.
         memory.error = (err as unknown) as Error;
       }
+
+      // update our request table list with all known events
+      // this needs to be done outside the block sorted requests holds requests across different clients
+      await update.sortedRequests(chainId);
 
       // we dont need to poll these events very fast, so just set to once a min
       return ctx.sleep(pollRateSec * 1000);
