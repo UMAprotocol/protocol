@@ -79,8 +79,8 @@ class PolymarketNotifier {
         if (
           !contract.timestamp ||
           !contract.proposedPrice ||
-          !contract.outcome1Price ||
-          !contract.outcome2Price ||
+          contract.outcome1Price === undefined ||
+          contract.outcome2Price === undefined ||
           contract.requester != polymarketContract
         ) {
           return null;
