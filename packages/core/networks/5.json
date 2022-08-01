@@ -68,6 +68,10 @@
     "address": "0xA5B9d8a0B0Fa04Ba71BDD68069661ED5C0848884"
   },
   {
+    "contractName": "OptimisticOracle",
+    "address": "0x6f26Bf09B1C792e3228e5467807a900A503c0281"
+  },
+  {
     "contractName": "ProposerV2",
     "address": "0x235fa7590749C0c7240926E4CD0bB8EaecdbD3F3"
   }
