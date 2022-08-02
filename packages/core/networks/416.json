@@ -36,6 +36,10 @@
     "address": "0x273CAC5468b7c50B9ab2ce598693c5f441750CC4"
   },
   {
+    "contractName": "OptimisticOracleV2",
+    "address": "0x28077B47Cd03326De7838926A63699849DD4fa87"
+  },
+  {
     "contractName": "TokenFactory",
     "address": "0x7de64fbc5eAbae2Cb5E9D110bA7D40933F9270b5"
   },

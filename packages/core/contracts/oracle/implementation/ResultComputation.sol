@@ -43,9 +43,7 @@ library ResultComputation {
         if (
             votePrice != data.currentMode &&
             data.voteFrequency[votePrice].isGreaterThan(data.voteFrequency[data.currentMode])
-        ) {
-            data.currentMode = votePrice;
-        }
+        ) data.currentMode = votePrice;
     }
 
     /****************************************
@@ -75,9 +73,7 @@ library ResultComputation {
             // `modeThreshold` and `minVoteThreshold` are exceeded, so the current mode is the resolved price.
             isResolved = true;
             price = data.currentMode;
-        } else {
-            isResolved = false;
-        }
+        } else isResolved = false;
     }
 
     /**

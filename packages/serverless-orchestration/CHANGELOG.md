@@ -3,6 +3,23 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.9.0](https://github.com/UMAprotocol/protocol/compare/@uma/serverless-orchestration@2.8.0...@uma/serverless-orchestration@2.9.0) (2022-07-13)
+
+### Features
+
+- add request-level override for spoke rejection timeout ([#4004](https://github.com/UMAprotocol/protocol/issues/4004)) ([2819fb7](https://github.com/UMAprotocol/protocol/commit/2819fb787ae64ed75dccb098d41bffde5a3be278))
+
+# [2.8.0](https://github.com/UMAprotocol/protocol/compare/@uma/serverless-orchestration@2.6.10...@uma/serverless-orchestration@2.8.0) (2022-06-27)
+
+### Bug Fixes
+
+- add additional serverless logic ([#3932](https://github.com/UMAprotocol/protocol/issues/3932)) ([8cc7b69](https://github.com/UMAprotocol/protocol/commit/8cc7b69a1af42d65a6b428bd32e8734e2bb3717f))
+- roll back previous serverless hub change ([#3934](https://github.com/UMAprotocol/protocol/issues/3934)) ([a4266a4](https://github.com/UMAprotocol/protocol/commit/a4266a48eb448f3c6e2638d53c302320c80ff22b))
+
+### Features
+
+- extend serverless to contain more configs for multi-chain ([#3931](https://github.com/UMAprotocol/protocol/issues/3931)) ([5606cca](https://github.com/UMAprotocol/protocol/commit/5606cca6716544429fe776e1796ea772f0f3e6d2))
+
 ## [2.7.1](https://github.com/UMAprotocol/protocol/compare/@uma/serverless-orchestration@2.7.0...@uma/serverless-orchestration@2.7.1) (2022-06-23)
 
 **Note:** Version bump only for package @uma/serverless-orchestration

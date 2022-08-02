@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.3.1](https://github.com/UMAprotocol/protocol/compare/@uma/polymarket-notifier@1.3.0...@uma/polymarket-notifier@1.3.1) (2022-07-13)
+
+### Bug Fixes
+
+- update datastore packages ([#4016](https://github.com/UMAprotocol/protocol/issues/4016)) ([a38ede9](https://github.com/UMAprotocol/protocol/commit/a38ede9c353e392bb8ca9ce33afb831ddfb3608e))
+
+# [1.3.0](https://github.com/UMAprotocol/protocol/compare/@uma/polymarket-notifier@1.1.0...@uma/polymarket-notifier@1.3.0) (2022-06-27)
+
+### Features
+
+- **polymarket-notifier:** use polymarket-notifier notificationPath ([#3958](https://github.com/UMAprotocol/protocol/issues/3958)) ([32da043](https://github.com/UMAprotocol/protocol/commit/32da0432517c85ff88eb90f095ed91f04fa1940e))
+
 # [1.2.0](https://github.com/UMAprotocol/protocol/compare/@uma/polymarket-notifier@1.1.1...@uma/polymarket-notifier@1.2.0) (2022-06-23)
 
 ### Features

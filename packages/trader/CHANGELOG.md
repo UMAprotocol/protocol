@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.11.1](https://github.com/UMAprotocol/protocol/compare/@uma/trader@1.11.0...@uma/trader@1.11.1) (2022-07-13)
+
+**Note:** Version bump only for package @uma/trader
+
+# [1.11.0](https://github.com/UMAprotocol/protocol/compare/@uma/trader@1.9.10...@uma/trader@1.11.0) (2022-06-27)
+
+### Features
+
+- **core:** add optional callbacks to skinny OO ([#3974](https://github.com/UMAprotocol/protocol/issues/3974)) ([9fabd6c](https://github.com/UMAprotocol/protocol/commit/9fabd6cd7d2f1d0508199f779f64957f950c5f42))
+- rename new OO contracts ([#3959](https://github.com/UMAprotocol/protocol/issues/3959)) ([f011a65](https://github.com/UMAprotocol/protocol/commit/f011a6531fbd7c09d22aa46ef04828cf98f7f854))
+
 # [1.10.0](https://github.com/UMAprotocol/protocol/compare/@uma/trader@1.9.11...@uma/trader@1.10.0) (2022-06-23)
 
 ### Features

@@ -3,6 +3,19 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.15.0](https://github.com/UMAprotocol/protocol/compare/@uma/affiliates@1.14.0...@uma/affiliates@1.15.0) (2022-07-13)
+
+### Features
+
+- DVM2.0 Add ability to delete spam requests from the DVM. ([#4010](https://github.com/UMAprotocol/protocol/issues/4010)) ([5703c4a](https://github.com/UMAprotocol/protocol/commit/5703c4abeb0093169bbcd047f9ef477e7063afb3))
+- Gas Rebate 22 + add fixes for missing ETHERSCAN_API_KEY ([#4008](https://github.com/UMAprotocol/protocol/issues/4008)) ([4a0ae6f](https://github.com/UMAprotocol/protocol/commit/4a0ae6fe5547657f26861c5d48cf784c4683c23e))
+
+# [1.14.0](https://github.com-uma/UMAprotocol/protocol/compare/@uma/affiliates@1.12.0...@uma/affiliates@1.14.0) (2022-06-27)
+
+### Features
+
+- Gas rebate 21 ([#3954](https://github.com-uma/UMAprotocol/protocol/issues/3954)) ([19f54ee](https://github.com-uma/UMAprotocol/protocol/commit/19f54ee63266fa7e80e406a6a7783cccc9e8dd78))
+
 # [1.13.0](https://github.com/UMAprotocol/protocol/compare/@uma/affiliates@1.12.1...@uma/affiliates@1.13.0) (2022-06-23)
 
 ### Features

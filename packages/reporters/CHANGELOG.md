@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.1.35](https://github.com/UMAprotocol/protocol/compare/@uma/reporters@1.1.34...@uma/reporters@1.1.35) (2022-07-13)
+
+**Note:** Version bump only for package @uma/reporters
+
+## [1.1.34](https://github.com-uma/UMAprotocol/protocol/compare/@uma/reporters@1.1.31...@uma/reporters@1.1.34) (2022-06-27)
+
+**Note:** Version bump only for package @uma/reporters
+
 ## [1.1.33](https://github.com/UMAprotocol/protocol/compare/@uma/reporters@1.1.32...@uma/reporters@1.1.33) (2022-06-23)
 
 **Note:** Version bump only for package @uma/reporters
