@@ -14,14 +14,17 @@ const { assert } = require("chai");
 const Main = require("../../../gas-rebate/VoterGasRebate");
 
 describe("Gas Rebate: index.js", function () {
-  // Oct-13-2020, early in the Commit period for Admin 16 vote
-  const TEST_START_BLOCK = 11045000;
-  // Oct-16-2020, 1 full day after reveal period ends for Admin 16, so it contains some claim-rewards events
-  const TEST_END_BLOCK = 11070000;
-
+  let testStartBlock;
+  before(async () => {
+    testStartBlock = await web3.eth.getBlockNumber();
+    // Mine 3 blocks so there are multiple blocks in history:
+    await web3.currentProvider.send({ jsonrpc: "2.0", method: "evm_mine", id: 12345 }, () => {});
+    await web3.currentProvider.send({ jsonrpc: "2.0", method: "evm_mine", id: 12345 }, () => {});
+    await web3.currentProvider.send({ jsonrpc: "2.0", method: "evm_mine", id: 12345 }, () => {});
+  });
   describe("getHistoricalGasPrice", function () {
     it("Returns an array: {timestamp, avgGwei}", async function () {
-      const prices = await Main.getHistoricalGasPrice(TEST_START_BLOCK, TEST_END_BLOCK);
+      const prices = await Main.getHistoricalGasPrice(testStartBlock, testStartBlock + 2);
       assert.isTrue(prices.length > 0);
       prices.forEach((px) => {
         assert.isTrue(px.timestamp >= 0, "timestamp is negative");
@@ -32,7 +35,7 @@ describe("Gas Rebate: index.js", function () {
 
   describe("getHistoricalUmaEthPrice", function () {
     it("Returns an array: {timestamp, avgPx}", async function () {
-      const gasPrices = await Main.getHistoricalGasPrice(TEST_START_BLOCK, TEST_END_BLOCK);
+      const gasPrices = await Main.getHistoricalGasPrice(testStartBlock, testStartBlock + 2);
       const umaPrices = await Main.getHistoricalUmaEthPrice(gasPrices);
       assert.isTrue(umaPrices.length > 0);
       umaPrices.forEach((px) => {

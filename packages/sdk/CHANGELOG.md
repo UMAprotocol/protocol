@@ -3,6 +3,47 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.26.0](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.25.0...@uma/sdk@0.26.0) (2022-07-13)
+
+- feat(sdk)!: add skinny oo client and separate factories (#4009) ([2bc8ad7](https://github.com/UMAprotocol/protocol/commit/2bc8ad7827b843ae4769d0800b93e29f4036ed1e)), closes [#4009](https://github.com/UMAprotocol/protocol/issues/4009)
+- chore(sdk)!: create oracle client interface for new oo contract integrations (#3989) ([72e6235](https://github.com/UMAprotocol/protocol/commit/72e623575c667f864dd7cefa2ad2059a2779c082)), closes [#3989](https://github.com/UMAprotocol/protocol/issues/3989)
+
+### BREAKING CHANGES
+
+- instanciating oracle client now requires selecting skinny or optimistic
+- improve(sdk): changed naming and improved readme
+- this slightly changes the request type which is used by the UI, app will need to be
+  adjusted to accomodate.
+- fix: update failing tests
+
+# [0.25.0](https://github.com-uma/UMAprotocol/protocol/compare/@uma/sdk@0.23.3...@uma/sdk@0.25.0) (2022-06-27)
+
+### Bug Fixes
+
+- fix BlockFinder concurrency issue ([#3948](https://github.com-uma/UMAprotocol/protocol/issues/3948)) ([e04ad54](https://github.com-uma/UMAprotocol/protocol/commit/e04ad54dc3e0f1f82ba0054b22229762132423ac))
+
+### Features
+
+- rename new OO contracts ([#3959](https://github.com-uma/UMAprotocol/protocol/issues/3959)) ([f011a65](https://github.com-uma/UMAprotocol/protocol/commit/f011a6531fbd7c09d22aa46ef04828cf98f7f854))
+- Round realized LP fee % to match UMIP ([#3898](https://github.com-uma/UMAprotocol/protocol/issues/3898)) ([675eaa7](https://github.com-uma/UMAprotocol/protocol/commit/675eaa73dab1389c6cdf649b1d3197aa22ad640a))
+- **sdk:** add basic skinny oo client ([#3952](https://github.com-uma/UMAprotocol/protocol/issues/3952)) ([42da906](https://github.com-uma/UMAprotocol/protocol/commit/42da9063831d732b2a857aeb8337697c3d41c624))
+
+### Reverts
+
+- Revert "feat: Round realized LP fee % to match UMIP (#3898)" (#3966) ([c6b6faf](https://github.com-uma/UMAprotocol/protocol/commit/c6b6faff84930a93076952413f08a124330b72e4)), closes [#3898](https://github.com-uma/UMAprotocol/protocol/issues/3898) [#3966](https://github.com-uma/UMAprotocol/protocol/issues/3966)
+
+# [0.24.0](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.23.4...@uma/sdk@0.24.0) (2022-06-23)
+
+### Features
+
+- rename new OO contracts ([#3959](https://github.com/UMAprotocol/protocol/issues/3959)) ([f011a65](https://github.com/UMAprotocol/protocol/commit/f011a6531fbd7c09d22aa46ef04828cf98f7f854))
+- Round realized LP fee % to match UMIP ([#3898](https://github.com/UMAprotocol/protocol/issues/3898)) ([675eaa7](https://github.com/UMAprotocol/protocol/commit/675eaa73dab1389c6cdf649b1d3197aa22ad640a))
+- **sdk:** add basic skinny oo client ([#3952](https://github.com/UMAprotocol/protocol/issues/3952)) ([42da906](https://github.com/UMAprotocol/protocol/commit/42da9063831d732b2a857aeb8337697c3d41c624))
+
+### Reverts
+
+- Revert "feat: Round realized LP fee % to match UMIP (#3898)" (#3966) ([c6b6faf](https://github.com/UMAprotocol/protocol/commit/c6b6faff84930a93076952413f08a124330b72e4)), closes [#3898](https://github.com/UMAprotocol/protocol/issues/3898) [#3966](https://github.com/UMAprotocol/protocol/issues/3966)
+
 ## [0.23.4](https://github.com/mrice32/protocol/compare/@uma/sdk@0.23.3...@uma/sdk@0.23.4) (2022-05-27)
 
 ### Bug Fixes

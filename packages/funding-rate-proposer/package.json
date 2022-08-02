@@ -1,11 +1,11 @@
 {
   "name": "@uma/funding-rate-proposer",
-  "version": "2.5.28",
+  "version": "2.5.31",
   "description": "UMA Perpetual Funding Rate Keeper",
   "dependencies": {
-    "@uma/common": "^2.20.0",
-    "@uma/contracts-node": "^0.3.7",
-    "@uma/financial-templates-lib": "^2.27.4",
+    "@uma/common": "^2.23.0",
+    "@uma/contracts-node": "^0.3.10",
+    "@uma/financial-templates-lib": "^2.30.0",
     "async-retry": "^1.3.1",
     "dotenv": "^6.2.0"
   },

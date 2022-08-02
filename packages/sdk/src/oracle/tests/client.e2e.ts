@@ -100,7 +100,7 @@ describe("Oracle Client", function () {
       if (result.done) {
         assert.ok(!result.error);
         assert.ok(store.read().request());
-        assert.equal(store.read().request().expirationTime, expectedExpiration);
+        assert.equal(store.read().request().expirationTimestamp, expectedExpiration);
         clearInterval(stop);
         done();
       }

@@ -118,7 +118,7 @@ describe("Relayer unit tests", function () {
     deployments.save("OracleRootTunnel", { address: oracleChild.options.address, abi: getAbi("OracleRootTunnel") });
 
     // Construct Relayer that should relay messages without fail.
-    relayer = new Relayer(spyLogger, owner, gasEstimator, maticPosClient, oracleChild, oracleRoot, web3, 0);
+    relayer = new Relayer(spyLogger, owner, gasEstimator, maticPosClient, oracleChild, oracleRoot, web3, 0, 100);
   });
 
   it("exits without error if no MessageSent events emitted", async function () {
@@ -143,10 +143,7 @@ describe("Relayer unit tests", function () {
     assert.isTrue(lastSpyLogIncludes(spy, "Submitted relay proof"));
   });
   it("ignores events older than earliest polygon block to query", async function () {
-    // Save block number for event so that we can configure Relayer to ignore it.
-    const txn = await oracleChild.methods
-      .requestPrice(testIdentifier, testTimestamp, testAncillaryData)
-      .send({ from: owner });
+    await oracleChild.methods.requestPrice(testIdentifier, testTimestamp, testAncillaryData).send({ from: owner });
     const messageBytes = web3.eth.abi.encodeParameters(
       ["bytes32", "uint256", "bytes"],
       [testIdentifier, testTimestamp, expectedStampedAncillaryData]
@@ -164,7 +161,8 @@ describe("Relayer unit tests", function () {
       oracleChild,
       oracleRoot,
       web3,
-      Number(txn.blockNumber + 1)
+      100,
+      101
     );
     // Relay message and check that it ignores events as expected.
     await _relayer.fetchAndRelayMessages();
@@ -191,7 +189,8 @@ describe("Relayer unit tests", function () {
       oracleChild,
       oracleRoot,
       web3,
-      0
+      0,
+      100
     );
 
     await oracleChild.methods.requestPrice(testIdentifier, testTimestamp, testAncillaryData).send({ from: owner });
@@ -220,7 +219,8 @@ describe("Relayer unit tests", function () {
       oracleChild,
       oracleRoot,
       web3,
-      0
+      0,
+      100
     );
 
     await oracleChild.methods.requestPrice(testIdentifier, testTimestamp, testAncillaryData).send({ from: owner });
@@ -253,10 +253,9 @@ describe("Relayer unit tests", function () {
     // Emit a MessageSent event and instruct relayer to relay the event.
     await oracleChild.methods.requestPrice(testIdentifier, testTimestamp, testAncillaryData).send({ from: owner });
 
-    // Bot should attempt to submit a transaction to the RootTunnelMock that will revert
+    // Bot should attempt to submit a transaction to the RootTunnelMock that will revert but not log anything.
     await relayer.fetchAndRelayMessages();
     const nonDebugEvents = spy.getCalls().filter((log: any) => log.lastArg.level !== "debug");
     assert.equal(nonDebugEvents.length, 0);
-    assert.isTrue(lastSpyLogIncludes(spy, "Failed to submit proof to root tunnel"));
   });
 });

@@ -76,7 +76,13 @@ class PolymarketNotifier {
       .map((contract) => {
         // excluding proposals without a proposed price and the requester is not Polymarket
         // the threshold for accepting a proposal is valid is currently set to 0.95 but can be adjusted
-        if (!contract.timestamp || !contract.proposedPrice || contract.requester != polymarketContract) {
+        if (
+          !contract.timestamp ||
+          !contract.proposedPrice ||
+          contract.outcome1Price === undefined ||
+          contract.outcome2Price === undefined ||
+          contract.requester != polymarketContract
+        ) {
           return null;
         }
         // ensures the API price is greater than 0.95 when a 1 is proposed

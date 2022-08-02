@@ -3,6 +3,22 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.19.1](https://github.com/UMAprotocol/protocol/compare/@uma/insured-bridge-relayer@1.19.0...@uma/insured-bridge-relayer@1.19.1) (2022-07-13)
+
+**Note:** Version bump only for package @uma/insured-bridge-relayer
+
+# [1.19.0](https://github.com/UMAprotocol/protocol/compare/@uma/insured-bridge-relayer@1.17.4...@uma/insured-bridge-relayer@1.19.0) (2022-06-27)
+
+### Features
+
+- **core:** add optional callbacks to skinny OO ([#3974](https://github.com/UMAprotocol/protocol/issues/3974)) ([9fabd6c](https://github.com/UMAprotocol/protocol/commit/9fabd6cd7d2f1d0508199f779f64957f950c5f42))
+
+# [1.18.0](https://github.com/UMAprotocol/protocol/compare/@uma/insured-bridge-relayer@1.17.5...@uma/insured-bridge-relayer@1.18.0) (2022-06-23)
+
+### Features
+
+- **core:** add optional callbacks to skinny OO ([#3974](https://github.com/UMAprotocol/protocol/issues/3974)) ([9fabd6c](https://github.com/UMAprotocol/protocol/commit/9fabd6cd7d2f1d0508199f779f64957f950c5f42))
+
 ## [1.17.5](https://github.com/UMAprotocol/protocol/compare/@uma/insured-bridge-relayer@1.17.4...@uma/insured-bridge-relayer@1.17.5) (2022-05-27)
 
 **Note:** Version bump only for package @uma/insured-bridge-relayer

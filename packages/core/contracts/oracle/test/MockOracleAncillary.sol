@@ -35,12 +35,12 @@ contract MockOracleAncillary is OracleAncillaryInterface, Testable {
     FinderInterface private finder;
 
     // Conceptually we want a (time, identifier) -> price map.
-    mapping(bytes32 => mapping(uint256 => mapping(bytes => Price))) private verifiedPrices;
+    mapping(bytes32 => mapping(uint256 => mapping(bytes => Price))) internal verifiedPrices;
 
     // The mapping and array allow retrieving all the elements in a mapping and finding/deleting elements.
     // Can we generalize this data structure?
-    mapping(bytes32 => mapping(uint256 => mapping(bytes => QueryIndex))) private queryIndices;
-    QueryPoint[] private requestedPrices;
+    mapping(bytes32 => mapping(uint256 => mapping(bytes => QueryIndex))) internal queryIndices;
+    QueryPoint[] internal requestedPrices;
 
     event PriceRequestAdded(address indexed requester, bytes32 indexed identifier, uint256 time, bytes ancillaryData);
     event PushedPrice(
@@ -123,7 +123,7 @@ contract MockOracleAncillary is OracleAncillaryInterface, Testable {
         return requestedPrices;
     }
 
-    function _getIdentifierWhitelist() private view returns (IdentifierWhitelistInterface supportedIdentifiers) {
+    function _getIdentifierWhitelist() internal view returns (IdentifierWhitelistInterface supportedIdentifiers) {
         return IdentifierWhitelistInterface(finder.getImplementationAddress(OracleInterfaces.IdentifierWhitelist));
     }
 }

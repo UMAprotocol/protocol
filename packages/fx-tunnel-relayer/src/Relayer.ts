@@ -1,5 +1,5 @@
 import { Contract, EventData } from "web3-eth-contract";
-import { runTransaction } from "@uma/common";
+import { runTransaction, getEventsWithPaginatedBlockSearch } from "@uma/common";
 import type Web3 from "web3";
 
 // Used by Matic/Polygon PoS client to construct proof for arbitrary message from Polygon that can be submitted to
@@ -16,7 +16,8 @@ export class Relayer {
     readonly oracleChildTunnel: Contract,
     readonly oracleRootTunnel: Contract,
     readonly web3: Web3,
-    readonly polygonEarliestBlockToQuery: number
+    readonly polygonEarliestBlockToQuery: number,
+    readonly polygonLatestBlockToQuery: number
   ) {}
 
   // In order to receive a message on Ethereum from Polygon, `receiveMessage` must be called on the Root Tunnel contract
@@ -33,16 +34,22 @@ export class Relayer {
     // First, query OracleChildTunnel on Polygon for any MessageSent events.
     // For some reason, the fromBlock filter doesn't work on local hardhat tests so I added this filter to explicitly
     // remove events with block numbers older than the window.
-    const messageSentEvents: EventData[] = (
-      await this.oracleChildTunnel.getPastEvents("MessageSent", {
-        fromBlock: this.polygonEarliestBlockToQuery,
-      })
-    ).filter((e: EventData) => e.blockNumber >= this.polygonEarliestBlockToQuery);
+    const { eventData, web3RequestCount } = await getEventsWithPaginatedBlockSearch(
+      this.oracleChildTunnel,
+      "MessageSent",
+      this.polygonEarliestBlockToQuery,
+      this.polygonLatestBlockToQuery,
+      3490 // Polygon Infura RPC limits you to 3500 blocks
+    );
+    // This .filter shouldn't be neccessary and it isn't in prod (empirically) but for some reason without this it
+    // fails the test "ignores events older than earliest polygon block to query"
+    const messageSentEvents = eventData.filter((e: EventData) => e.blockNumber >= this.polygonEarliestBlockToQuery);
     this.logger.debug({
       at: "Relayer#relayMessage",
       message: "Found MessageSent events",
       polygonEarliestBlockToQuery: this.polygonEarliestBlockToQuery,
       eventCount: messageSentEvents.length,
+      web3RequestCount,
     });
     // For any found events, grab its block number and check whether it has been checkpointed yet to the
     // CheckpointManager on Ethereum.
@@ -128,13 +135,10 @@ export class Relayer {
       });
     } catch (error) {
       // If the proof was already submitted, then don't emit an error level log.
-      let logLevel = "error";
-      const exitAlreadyProcessed = (error as Error)?.message.includes("EXIT_ALREADY_PROCESSED");
-      if (exitAlreadyProcessed) logLevel = "debug";
-      this.logger[logLevel]({
+      if ((error as Error)?.message.includes("EXIT_ALREADY_PROCESSED")) return;
+      this.logger.error({
         at: "Relayer#relayMessage",
         message: "Failed to submit proof to root tunnel🚨",
-        exitAlreadyProcessed,
         error,
       });
       return;

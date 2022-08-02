@@ -3,6 +3,102 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.31.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.30.0...@uma/core@2.31.0) (2022-07-13)
+
+### Features
+
+- add ancillary data to governance proposals ([#4027](https://github.com/UMAprotocol/protocol/issues/4027)) ([f427ff7](https://github.com/UMAprotocol/protocol/commit/f427ff7428926a05ba295868c0cbf71e4db6f6b1))
+- add evmos hardhat config and deployment addresses ([#3977](https://github.com/UMAprotocol/protocol/issues/3977)) ([28b17f5](https://github.com/UMAprotocol/protocol/commit/28b17f5d844c3ee8ca7f59a6e613ffc7101105db))
+- add gas tests for voting v1 and voting v2 ([#4029](https://github.com/UMAprotocol/protocol/issues/4029)) ([20fe41e](https://github.com/UMAprotocol/protocol/commit/20fe41e390bf94a2adb100a69427a7a3e236433c))
+- add meter network ([#4012](https://github.com/UMAprotocol/protocol/issues/4012)) ([cac209d](https://github.com/UMAprotocol/protocol/commit/cac209d288db5b852fb3e5148b200872471aaac0))
+- add missing ancilliary data to price events ([#3992](https://github.com/UMAprotocol/protocol/issues/3992)) ([650658d](https://github.com/UMAprotocol/protocol/commit/650658d8772b8e3e468392049e59e74358c3c52d))
+- add oov2 deployments in avalanche and sx ([#4011](https://github.com/UMAprotocol/protocol/issues/4011)) ([119d6ec](https://github.com/UMAprotocol/protocol/commit/119d6ec2ed8df311ea83a829ae31ae1696bbc065))
+- add slashing library ([#3993](https://github.com/UMAprotocol/protocol/issues/3993)) ([8c82e49](https://github.com/UMAprotocol/protocol/commit/8c82e49082e110843015093be997209eac745869))
+- DVM2.0 Add ability to delete spam requests from the DVM. ([#4010](https://github.com/UMAprotocol/protocol/issues/4010)) ([5703c4a](https://github.com/UMAprotocol/protocol/commit/5703c4abeb0093169bbcd047f9ef477e7063afb3))
+- DVM2.0 add special governance price request tx flow ([#4000](https://github.com/UMAprotocol/protocol/issues/4000)) ([99b0e66](https://github.com/UMAprotocol/protocol/commit/99b0e66418e405241adf9f59e752399c3712e951))
+- dvm2.0 votingv2 gas optimisations ([#4018](https://github.com/UMAprotocol/protocol/issues/4018)) ([fc48966](https://github.com/UMAprotocol/protocol/commit/fc4896675273763c435551db5d08c6d18e9b6b97))
+- replace batchCommit and batchReveal with multicall ([#4028](https://github.com/UMAprotocol/protocol/issues/4028)) ([d317ecc](https://github.com/UMAprotocol/protocol/commit/d317eccf6e5008f4b7cab65d7a5fd3b3ee07bce8))
+- simplify slash calculation ([#4006](https://github.com/UMAprotocol/protocol/issues/4006)) ([7958153](https://github.com/UMAprotocol/protocol/commit/79581535b75f89f30847de995d17a64d7acc98f0))
+- UMA2.0 Vote delegation mechanism ([#4019](https://github.com/UMAprotocol/protocol/issues/4019)) ([d5068ad](https://github.com/UMAprotocol/protocol/commit/d5068ad08a3c94620986ca6c1e68a5b0ebfb94f4))
+- UMA2.0: Add simple Designated votingV2 to support two key contracts for new DVM design. ([#3997](https://github.com/UMAprotocol/protocol/issues/3997)) ([440a1e8](https://github.com/UMAprotocol/protocol/commit/440a1e83ecacc3c3dec41782e08e26e26e3d717e))
+- **oo:** add optimistic oracle v2 deployments addresses ([#3965](https://github.com/UMAprotocol/protocol/issues/3965)) ([7365da4](https://github.com/UMAprotocol/protocol/commit/7365da41f9282cfa8deac1586ac0648fde27f0f8))
+
+# [2.30.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.28.2...@uma/core@2.30.0) (2022-06-27)
+
+### Bug Fixes
+
+- **merkle-distributor:** reduce remainingAmount by batchedAmount in claimMulti ([#3973](https://github.com/UMAprotocol/protocol/issues/3973)) ([ea52fb0](https://github.com/UMAprotocol/protocol/commit/ea52fb022fb8e8b345a8e965a406bd3461cd5e8f))
+- get older optimistic governor tests working ([#3968](https://github.com/UMAprotocol/protocol/issues/3968)) ([321b00f](https://github.com/UMAprotocol/protocol/commit/321b00f5de813c3e82931c983c2322fe4903315e))
+- **optimistic-distributor:** handle optimistic oracle upgrades ([#3960](https://github.com/UMAprotocol/protocol/issues/3960)) ([288157f](https://github.com/UMAprotocol/protocol/commit/288157fc113a704d8e894c96723cc0f3db0b9740))
+- consistent comments ([#3963](https://github.com/UMAprotocol/protocol/issues/3963)) ([db89c4e](https://github.com/UMAprotocol/protocol/commit/db89c4ec763afc63d0bee268f515a41ab8e3220f))
+- correct comment on max liveness ([#3962](https://github.com/UMAprotocol/protocol/issues/3962)) ([20611e6](https://github.com/UMAprotocol/protocol/commit/20611e61cc3860d337f301e6fcb254327a8282ea))
+- **merkle-distributor:** [H12] track claimed rewards per window ([#3933](https://github.com/UMAprotocol/protocol/issues/3933)) ([273e5ab](https://github.com/UMAprotocol/protocol/commit/273e5ab6f630d1113f287e8493b6ea413ba109d1))
+- **merkle-distributor:** [N16] add gas optimizations ([#3944](https://github.com/UMAprotocol/protocol/issues/3944)) ([31fafb1](https://github.com/UMAprotocol/protocol/commit/31fafb1acd047f1990efd7dbabad31b36a7acf0b))
+- **merkle-distributor:** [N17] remove SafeMath import ([#3942](https://github.com/UMAprotocol/protocol/issues/3942)) ([4274b40](https://github.com/UMAprotocol/protocol/commit/4274b40ad3480e75d84dc71b771c2408dd49daef))
+- **merkle-distributor:** [N18] fix typographical errors ([#3943](https://github.com/UMAprotocol/protocol/issues/3943)) ([c06a7e7](https://github.com/UMAprotocol/protocol/commit/c06a7e73599b266aee754eb81e0a441b29de9d19))
+- **optimistic-distributor:** [M03] do not use priceDisputed callback ([#3935](https://github.com/UMAprotocol/protocol/issues/3935)) ([dc5b886](https://github.com/UMAprotocol/protocol/commit/dc5b886a5de98896237060cf2d9187937bb0ebe1))
+- **optimistic-distributor:** [N06] remove unused import ([#3939](https://github.com/UMAprotocol/protocol/issues/3939)) ([ca64303](https://github.com/UMAprotocol/protocol/commit/ca64303cccd6094509ef79994d74eaaf02ce6a94))
+- **optimistic-distributor:** [N07] bondToken made immutable ([#3938](https://github.com/UMAprotocol/protocol/issues/3938)) ([40a351c](https://github.com/UMAprotocol/protocol/commit/40a351c60cb2bdef0795fa6c20b7cee93e112db6))
+- **optimistic-distributor:** [N08] validate input parameters in createReward ([#3940](https://github.com/UMAprotocol/protocol/issues/3940)) ([befa400](https://github.com/UMAprotocol/protocol/commit/befa4006c418c44301f142fb8cb223adf08abd62))
+- **optimistic-distributor:** [N09] deploy merkle distributor in constructor ([#3946](https://github.com/UMAprotocol/protocol/issues/3946)) ([a94c204](https://github.com/UMAprotocol/protocol/commit/a94c204100d1f44323e35d98092ea403a22c0ca0))
+- **optimistic-distributor:** [N11] use checks-effects-interactions pattern ([#3941](https://github.com/UMAprotocol/protocol/issues/3941)) ([1f4bfc4](https://github.com/UMAprotocol/protocol/commit/1f4bfc4de0b61daeefb96cf6594ec31d8c9c48c1))
+- [N09] Unexplained and unused constants ([#3909](https://github.com/UMAprotocol/protocol/issues/3909)) ([dae2e7f](https://github.com/UMAprotocol/protocol/commit/dae2e7f320048f93f201a0e546525bc27baf5766))
+- [N12] Unused "using for" directive ([#3910](https://github.com/UMAprotocol/protocol/issues/3910)) ([6650588](https://github.com/UMAprotocol/protocol/commit/66505888e5f913c0048edff05d22bb7b9683656a))
+- add ability to delete disputed proposals ([#3911](https://github.com/UMAprotocol/protocol/issues/3911)) ([8ceab93](https://github.com/UMAprotocol/protocol/commit/8ceab93ddde85ef0ce60e93b711985805c0e8302))
+- L-01, Events lacking information ([#3916](https://github.com/UMAprotocol/protocol/issues/3916)) ([9d6551c](https://github.com/UMAprotocol/protocol/commit/9d6551cd796373bcc14c6de3da35603dfaece55d))
+- L-02, Duplicated code ([#3914](https://github.com/UMAprotocol/protocol/issues/3914)) ([bd86f7b](https://github.com/UMAprotocol/protocol/commit/bd86f7b6221b76f6f656e7a9b6bdbfe695009bf6))
+- L-03, Misleading inline documentation ([#3917](https://github.com/UMAprotocol/protocol/issues/3917)) ([ebb4cab](https://github.com/UMAprotocol/protocol/commit/ebb4cab2347e1ff3d64b9c973aeeda6fc6e8f96e))
+- L-04, Proposals can be deleted repeatedly ([#3918](https://github.com/UMAprotocol/protocol/issues/3918)) ([e7ec38c](https://github.com/UMAprotocol/protocol/commit/e7ec38c27f9e597e7e03c6db2714f68a1cd336d1))
+- M-01 Change of collateral could result in unintended bond value ([#3912](https://github.com/UMAprotocol/protocol/issues/3912)) ([cbb5648](https://github.com/UMAprotocol/protocol/commit/cbb56486bb56fd1493e51849ba7fb934a927518d))
+- M-02, lack of event emission after sensitive actions ([#3913](https://github.com/UMAprotocol/protocol/issues/3913)) ([8ab340d](https://github.com/UMAprotocol/protocol/commit/8ab340d1557852e218567c548ca0f17234b98caa))
+- M-03, Lack of input validation ([#3915](https://github.com/UMAprotocol/protocol/issues/3915)) ([632859c](https://github.com/UMAprotocol/protocol/commit/632859c95c83adf72408c8b51042f3a03b2cbd72))
+- N-01, Commented out code ([#3919](https://github.com/UMAprotocol/protocol/issues/3919)) ([91941de](https://github.com/UMAprotocol/protocol/commit/91941dea4d18e8b8d9ce87d937fc5ce19480987c))
+- N-02, Coding style deviates from Solidity Style Guide ([#3920](https://github.com/UMAprotocol/protocol/issues/3920)) ([dfe0238](https://github.com/UMAprotocol/protocol/commit/dfe0238ab3c703b77326dbf1c8d2e1810ac3d5b7))
+- N-04, immutable value could be used ([#3921](https://github.com/UMAprotocol/protocol/issues/3921)) ([34343ca](https://github.com/UMAprotocol/protocol/commit/34343ca0bb425ce14ed62236c13eae1894644b14))
+- N-05, Some public functions could be external ([#3922](https://github.com/UMAprotocol/protocol/issues/3922)) ([73bc88a](https://github.com/UMAprotocol/protocol/commit/73bc88a8cfb86cd642673f02ab7f019ccc7146c2))
+- N-06, Suboptimal struct packing ([#3923](https://github.com/UMAprotocol/protocol/issues/3923)) ([527ebfb](https://github.com/UMAprotocol/protocol/commit/527ebfb4ce6e629291cdec40504c3a0879e90b11))
+- N-07, Typographical errors ([#3924](https://github.com/UMAprotocol/protocol/issues/3924)) ([5b21392](https://github.com/UMAprotocol/protocol/commit/5b213920835e850c3185d2537d66c190bd4f500d))
+- N-08, Undocumented implicit approval requirements ([#3925](https://github.com/UMAprotocol/protocol/issues/3925)) ([7250172](https://github.com/UMAprotocol/protocol/commit/7250172a3730b23fc80d418af53e6aa46e354305))
+- N-10, Unnecessary cast ([#3928](https://github.com/UMAprotocol/protocol/issues/3928)) ([b32bb25](https://github.com/UMAprotocol/protocol/commit/b32bb25699c5ebfb5ea3b7e1f1933af077e9566d))
+- N-11, Unnecessary imports ([#3927](https://github.com/UMAprotocol/protocol/issues/3927)) ([1782ecc](https://github.com/UMAprotocol/protocol/commit/1782ecc972ae7d177e1359e9e1f951c04b137504))
+- set max liveness to 5200 weeks ([#3950](https://github.com/UMAprotocol/protocol/issues/3950)) ([3cc673b](https://github.com/UMAprotocol/protocol/commit/3cc673bc891372b7cadad950ee1d26d09cbc9c47))
+
+### Features
+
+- UMA2.0 Slashing mechanism ([#3981](https://github.com/UMAprotocol/protocol/issues/3981)) ([f415d66](https://github.com/UMAprotocol/protocol/commit/f415d6646ab68e132dbe6e7d208b90f77679b050))
+- **core:** add optional callbacks to skinny OO ([#3974](https://github.com/UMAprotocol/protocol/issues/3974)) ([9fabd6c](https://github.com/UMAprotocol/protocol/commit/9fabd6cd7d2f1d0508199f779f64957f950c5f42))
+- rename new OO contracts ([#3959](https://github.com/UMAprotocol/protocol/issues/3959)) ([f011a65](https://github.com/UMAprotocol/protocol/commit/f011a6531fbd7c09d22aa46ef04828cf98f7f854))
+- **core:** control oo callbacks from request ([#3936](https://github.com/UMAprotocol/protocol/issues/3936)) ([1373a90](https://github.com/UMAprotocol/protocol/commit/1373a90a48ec0b3235b2ae9932b40f05df8e111c))
+- add avalanche and sx to networks ([#3945](https://github.com/UMAprotocol/protocol/issues/3945)) ([9e8e00e](https://github.com/UMAprotocol/protocol/commit/9e8e00e09520949bfe88a16315451c67f9343164))
+
+# [2.29.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.28.3...@uma/core@2.29.0) (2022-06-23)
+
+### Bug Fixes
+
+- **merkle-distributor:** reduce remainingAmount by batchedAmount in claimMulti ([#3973](https://github.com/UMAprotocol/protocol/issues/3973)) ([ea52fb0](https://github.com/UMAprotocol/protocol/commit/ea52fb022fb8e8b345a8e965a406bd3461cd5e8f))
+- get older optimistic governor tests working ([#3968](https://github.com/UMAprotocol/protocol/issues/3968)) ([321b00f](https://github.com/UMAprotocol/protocol/commit/321b00f5de813c3e82931c983c2322fe4903315e))
+- **optimistic-distributor:** handle optimistic oracle upgrades ([#3960](https://github.com/UMAprotocol/protocol/issues/3960)) ([288157f](https://github.com/UMAprotocol/protocol/commit/288157fc113a704d8e894c96723cc0f3db0b9740))
+- consistent comments ([#3963](https://github.com/UMAprotocol/protocol/issues/3963)) ([db89c4e](https://github.com/UMAprotocol/protocol/commit/db89c4ec763afc63d0bee268f515a41ab8e3220f))
+- correct comment on max liveness ([#3962](https://github.com/UMAprotocol/protocol/issues/3962)) ([20611e6](https://github.com/UMAprotocol/protocol/commit/20611e61cc3860d337f301e6fcb254327a8282ea))
+- **merkle-distributor:** [H12] track claimed rewards per window ([#3933](https://github.com/UMAprotocol/protocol/issues/3933)) ([273e5ab](https://github.com/UMAprotocol/protocol/commit/273e5ab6f630d1113f287e8493b6ea413ba109d1))
+- **merkle-distributor:** [N16] add gas optimizations ([#3944](https://github.com/UMAprotocol/protocol/issues/3944)) ([31fafb1](https://github.com/UMAprotocol/protocol/commit/31fafb1acd047f1990efd7dbabad31b36a7acf0b))
+- **merkle-distributor:** [N17] remove SafeMath import ([#3942](https://github.com/UMAprotocol/protocol/issues/3942)) ([4274b40](https://github.com/UMAprotocol/protocol/commit/4274b40ad3480e75d84dc71b771c2408dd49daef))
+- **merkle-distributor:** [N18] fix typographical errors ([#3943](https://github.com/UMAprotocol/protocol/issues/3943)) ([c06a7e7](https://github.com/UMAprotocol/protocol/commit/c06a7e73599b266aee754eb81e0a441b29de9d19))
+- **optimistic-distributor:** [M03] do not use priceDisputed callback ([#3935](https://github.com/UMAprotocol/protocol/issues/3935)) ([dc5b886](https://github.com/UMAprotocol/protocol/commit/dc5b886a5de98896237060cf2d9187937bb0ebe1))
+- **optimistic-distributor:** [N06] remove unused import ([#3939](https://github.com/UMAprotocol/protocol/issues/3939)) ([ca64303](https://github.com/UMAprotocol/protocol/commit/ca64303cccd6094509ef79994d74eaaf02ce6a94))
+- **optimistic-distributor:** [N07] bondToken made immutable ([#3938](https://github.com/UMAprotocol/protocol/issues/3938)) ([40a351c](https://github.com/UMAprotocol/protocol/commit/40a351c60cb2bdef0795fa6c20b7cee93e112db6))
+- **optimistic-distributor:** [N08] validate input parameters in createReward ([#3940](https://github.com/UMAprotocol/protocol/issues/3940)) ([befa400](https://github.com/UMAprotocol/protocol/commit/befa4006c418c44301f142fb8cb223adf08abd62))
+- **optimistic-distributor:** [N09] deploy merkle distributor in constructor ([#3946](https://github.com/UMAprotocol/protocol/issues/3946)) ([a94c204](https://github.com/UMAprotocol/protocol/commit/a94c204100d1f44323e35d98092ea403a22c0ca0))
+- **optimistic-distributor:** [N11] use checks-effects-interactions pattern ([#3941](https://github.com/UMAprotocol/protocol/issues/3941)) ([1f4bfc4](https://github.com/UMAprotocol/protocol/commit/1f4bfc4de0b61daeefb96cf6594ec31d8c9c48c1))
+- set max liveness to 5200 weeks ([#3950](https://github.com/UMAprotocol/protocol/issues/3950)) ([3cc673b](https://github.com/UMAprotocol/protocol/commit/3cc673bc891372b7cadad950ee1d26d09cbc9c47))
+
+### Features
+
+- **core:** add optional callbacks to skinny OO ([#3974](https://github.com/UMAprotocol/protocol/issues/3974)) ([9fabd6c](https://github.com/UMAprotocol/protocol/commit/9fabd6cd7d2f1d0508199f779f64957f950c5f42))
+- rename new OO contracts ([#3959](https://github.com/UMAprotocol/protocol/issues/3959)) ([f011a65](https://github.com/UMAprotocol/protocol/commit/f011a6531fbd7c09d22aa46ef04828cf98f7f854))
+- **core:** control oo callbacks from request ([#3936](https://github.com/UMAprotocol/protocol/issues/3936)) ([1373a90](https://github.com/UMAprotocol/protocol/commit/1373a90a48ec0b3235b2ae9932b40f05df8e111c))
+- add avalanche and sx to networks ([#3945](https://github.com/UMAprotocol/protocol/issues/3945)) ([9e8e00e](https://github.com/UMAprotocol/protocol/commit/9e8e00e09520949bfe88a16315451c67f9343164))
+
 ## [2.28.3](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.28.2...@uma/core@2.28.3) (2022-05-27)
 
 ### Bug Fixes

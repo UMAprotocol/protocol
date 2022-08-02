@@ -1,15 +1,15 @@
 {
   "name": "@uma/insured-bridge-relayer",
-  "version": "1.17.5",
+  "version": "1.19.1",
   "description": "Relayer bot to support UMA's insured token bridge",
   "dependencies": {
     "@eth-optimism/contracts": "^0.5.7",
     "@eth-optimism/message-relayer": "^0.2.10",
     "@google-cloud/datastore": "^6.0.0",
-    "@uma/common": "^2.20.0",
-    "@uma/contracts-node": "^0.3.7",
-    "@uma/financial-templates-lib": "^2.27.4",
-    "@uma/sdk": "^0.23.4",
+    "@uma/common": "^2.23.0",
+    "@uma/contracts-node": "^0.3.10",
+    "@uma/financial-templates-lib": "^2.30.0",
+    "@uma/sdk": "^0.26.0",
     "arb-ts": "^1.0.2",
     "async-retry": "^1.3.1",
     "dotenv": "^8.2.0",
@@ -43,7 +43,7 @@
   "main": "dist/src/index.js",
   "scripts": {
     "build": "tsc -b",
-    "test": "mocha 'test/**/*.ts'"
+    "test": "NODE_OPTIONS=--max_old_space_size=4096 mocha 'test/**/*.ts'"
   },
   "bugs": {
     "url": "https://github.com/UMAprotocol/protocol/issues"

@@ -3,7 +3,7 @@ import { Update } from "../update";
 import Store from "../../store";
 import { Signer, TransactionReceipt } from "../../types/ethers";
 import { Handlers as GenericHandlers } from "../../types/statemachine";
-import { InputRequest, OptimisticOracleEvent } from "../../types/state";
+import { InputRequest } from "../../types/state";
 import { ContextClient } from "./utils";
 
 export type Params = InputRequest & {
@@ -28,7 +28,7 @@ export function Handlers(store: Store): GenericHandlers<Params, Memory> {
       assert(chainId === (await signer.getChainId()), "Signer on wrong chainid");
 
       const oracle = store.read().oracleService(chainId);
-      const tx = await oracle.disputePrice(signer, requester, identifier, timestamp, ancillaryData);
+      const tx = await oracle.disputePrice(signer, { requester, identifier, timestamp, ancillaryData });
       memory.hash = tx.hash;
       return "confirm";
     },
@@ -45,26 +45,17 @@ export function Handlers(store: Store): GenericHandlers<Params, Memory> {
       return context.sleep(checkTxIntervalSec * 1000);
     },
     async update(params: Params, memory: Memory) {
-      const { chainId, currency, account, requester, identifier, timestamp, ancillaryData } = params;
-      const { hash, receipt } = memory;
+      const { chainId, currency, account } = params;
+      const { receipt } = memory;
       const oracle = store.read().oracleService(chainId);
       await update.balance(chainId, currency, account);
-      await update.request(params);
+      if (receipt) {
+        oracle.updateFromTransactionReceipt(receipt);
+      }
       store.write((w) => {
-        w.chains(chainId)
-          .optimisticOracle()
-          .request({ chainId, requester, identifier, timestamp, ancillaryData, disputeTx: hash });
-
-        if (receipt) {
-          const events = receipt.logs.map(oracle.makeEventFromLog);
-          events.forEach((event) => {
-            w.chains(chainId)
-              .optimisticOracle()
-              .event((event as unknown) as OptimisticOracleEvent);
-          });
-        }
+        w.chains(chainId).optimisticOracle().request(oracle.getRequest(params));
       });
-      await update.sortedRequests(chainId);
+      update.sortedRequests(chainId);
       return "done";
     },
   };
