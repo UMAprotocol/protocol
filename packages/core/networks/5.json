@@ -1,15 +1,11 @@
 [
   {
-    "contractName": "OracleRootTunnel",
-    "address": "0xc0a072E45751Bb8a814bF1A357311c6963F9019A"
-  },
-  {
     "contractName": "Finder",
-    "address": "0xDC6b80D38004F495861E081e249213836a2F3217"
+    "address": "0xE60dBa66B85E10E7Fd18a67a6859E241A243950e"
   },
   {
     "contractName": "IdentifierWhitelist",
-    "address": "0x622d59F3dbD28fcFE746E0d2f83ebdC286E89A3c"
+    "address": "0x488211B646b909C490d942f456481BeAE52fde27"
   },
   {
     "contractName": "GovernorRootTunnel",
@@ -37,10 +33,42 @@
   },
   {
     "contractName": "Store",
-    "address": "0xb1860c8C8B8d20FC2f84dF12B7905C6f11fe050D"
+    "address": "0x07417cA264170Fc5bD3568f93cFb956729752B61"
   },
   {
     "contractName": "AddressWhitelist",
-    "address": "0xb06C61fcc074Efb8cf7Fd707bC3bd8ab1Aa5A4E9"
+    "address": "0x63fDfF29EBBcf1a958032d1E64F7627c3C98A059"
+  },
+  {
+    "contractName": "VotingV2",
+    "address": "0xf21d2478F75D405b6D1e368D313D06B8AD20E088"
+  },
+  {
+    "contractName": "VotingToken",
+    "address": "0xBa950974AFdae520cEE596c98295150Cf8D9659c"
+  },
+  {
+    "contractName": "SlashingLibrary",
+    "address": "0xfEc116140B4BdC8a62858594aa430b95DF18d51f"
+  },
+  {
+    "contractName": "Registry",
+    "address": "0x9214454Ff30410a1558b8749Ab3FB0fD6F942539"
+  },
+  {
+    "contractName": "GovernorV2",
+    "address": "0xFf0E348389400d7D7510a230361Fc00904429e48"
+  },
+  {
+    "contractName": "OptimisticOracleV2",
+    "address": "0xA5B9d8a0B0Fa04Ba71BDD68069661ED5C0848884"
+  },
+  {
+    "contractName": "OptimisticOracle",
+    "address": "0x6f26Bf09B1C792e3228e5467807a900A503c0281"
+  },
+  {
+    "contractName": "ProposerV2",
+    "address": "0x235fa7590749C0c7240926E4CD0bB8EaecdbD3F3"
   }
 ]
