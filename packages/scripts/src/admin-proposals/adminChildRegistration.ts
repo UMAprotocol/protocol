@@ -81,9 +81,7 @@ async function main() {
     [adminProposalTransactions]
   );
 
-  const tx = await adminChildMessenger.processMessageFromCrossChainParent(calldata, governor.address, {
-    gasLimit: 1_000_000,
-  });
+  const tx = await adminChildMessenger.processMessageFromCrossChainParent(calldata, governor.address);
 
   await tx.wait();
 
