@@ -13,6 +13,7 @@ const { interfaceName, advanceBlockAndSetTime, MAX_UINT_VAL, ZERO_ADDRESS } = re
 
 const SkinnyOptimisticOracle = getContract("SkinnyOptimisticOracle");
 const OptimisticOracle = getContract("OptimisticOracle");
+const OptimisticOracleV2 = getContract("OptimisticOracleV2");
 const Finder = getContract("Finder");
 const IdentifierWhitelist = getContract("IdentifierWhitelist");
 const Token = getContract("ExpandedERC20");
@@ -33,6 +34,7 @@ describe("OptimisticOracleEventClient.js", function () {
 
   // Contracts
   let optimisticOracle;
+  let optimisticOracleV2;
   let skinnyOptimisticOracle;
   let mockOracle;
   let finder;
@@ -44,6 +46,7 @@ describe("OptimisticOracleEventClient.js", function () {
 
   // Bot helper modules
   let client;
+  let clientV2;
   let skinnyClient;
   let dummyLogger;
   let spy;
@@ -67,6 +70,7 @@ describe("OptimisticOracleEventClient.js", function () {
 
   const pushPrice = async (price) => {
     const [lastQuery] = (await mockOracle.methods.getPendingQueries().call()).slice(-1);
+    console.log("lastQuery", lastQuery);
     await mockOracle.methods
       .pushPrice(lastQuery.identifier, lastQuery.time, lastQuery.ancillaryData, price)
       .send({ from: accounts[0] });
@@ -98,6 +102,16 @@ describe("OptimisticOracleEventClient.js", function () {
   });
 
   let requestTxn1, requestTxn2, proposalTxn1, proposalTxn2, disputeTxn1, disputeTxn2, settlementTxn1, settlementTxn2;
+
+  let requestV2Txn1,
+    requestV2Txn2,
+    proposalV2Txn1,
+    proposalV2Txn2,
+    disputeV2Txn1,
+    disputeV2Txn2,
+    settlementV2Txn1,
+    settlementV2Txn2;
+
   let skinnyRequestTxn1,
     skinnyRequestTxn2,
     skinnyProposalTxn1,
@@ -129,6 +143,9 @@ describe("OptimisticOracleEventClient.js", function () {
     optimisticOracle = await OptimisticOracle.new(liveness, finder.options.address, timer.options.address).send({
       from: accounts[0],
     });
+    optimisticOracleV2 = await OptimisticOracleV2.new(liveness, finder.options.address, timer.options.address).send({
+      from: accounts[0],
+    });
     skinnyOptimisticOracle = await SkinnyOptimisticOracle.new(
       liveness,
       finder.options.address,
@@ -152,6 +169,17 @@ describe("OptimisticOracleEventClient.js", function () {
       0, // startingBlockNumber
       null // endingBlockNumber
     );
+
+    clientV2 = new OptimisticOracleEventClient(
+      winston.createLogger({ level: "debug", transports: [new SpyTransport({ level: "debug" }, { spy: spy })] }),
+      OptimisticOracle.abi,
+      web3,
+      optimisticOracleV2.options.address,
+      OptimisticOracleType.OptimisticOracleV2,
+      0, // startingBlockNumber
+      null // endingBlockNumber
+    );
+
     skinnyClient = new OptimisticOracleEventClient(
       winston.createLogger({ level: "debug", transports: [new SpyTransport({ level: "debug" }, { spy: spy })] }),
       SkinnyOptimisticOracle.abi,
@@ -169,6 +197,14 @@ describe("OptimisticOracleEventClient.js", function () {
     requestTxn2 = await optimisticOracle.methods
       .requestPrice(identifier, requestTime + 1, defaultAncillaryData, collateral.options.address, 0)
       .send({ from: requester });
+
+    requestV2Txn1 = await optimisticOracleV2.methods
+      .requestPrice(identifier, requestTime + 2, defaultAncillaryData, collateral.options.address, 0)
+      .send({ from: requester });
+    requestV2Txn2 = await optimisticOracleV2.methods
+      .requestPrice(identifier, requestTime + 3, defaultAncillaryData, collateral.options.address, 0)
+      .send({ from: requester });
+
     skinnyRequestTxn1 = await skinnyOptimisticOracle.methods
       .requestPrice(identifier, requestTime, defaultAncillaryData, collateral.options.address, 0, finalFee, 0)
       .send({ from: skinnyRequester });
@@ -178,15 +214,25 @@ describe("OptimisticOracleEventClient.js", function () {
 
     // Make proposals
     await collateral.methods.approve(optimisticOracle.options.address, MAX_UINT_VAL).send({ from: proposer });
+    await collateral.methods.approve(optimisticOracleV2.options.address, MAX_UINT_VAL).send({ from: proposer });
     await collateral.methods.approve(skinnyOptimisticOracle.options.address, MAX_UINT_VAL).send({ from: proposer });
     requestEvents = await skinnyOptimisticOracle.getPastEvents("RequestPrice", { fromBlock: 0 });
     proposalTime = await optimisticOracle.methods.getCurrentTime().call();
+
     proposalTxn1 = await optimisticOracle.methods
       .proposePrice(requester, identifier, requestTime, defaultAncillaryData, correctPrice)
       .send({ from: proposer });
     proposalTxn2 = await optimisticOracle.methods
       .proposePrice(requester, identifier, requestTime + 1, defaultAncillaryData, correctPrice)
       .send({ from: proposer });
+
+    proposalV2Txn1 = await optimisticOracleV2.methods
+      .proposePrice(requester, identifier, requestTime + 2, defaultAncillaryData, correctPrice)
+      .send({ from: proposer });
+    proposalV2Txn2 = await optimisticOracleV2.methods
+      .proposePrice(requester, identifier, requestTime + 3, defaultAncillaryData, correctPrice)
+      .send({ from: proposer });
+
     skinnyProposalTxn1 = await skinnyOptimisticOracle.methods
       .proposePrice(
         skinnyRequester,
@@ -210,6 +256,7 @@ describe("OptimisticOracleEventClient.js", function () {
 
     // Make disputes and resolve them
     await collateral.methods.approve(optimisticOracle.options.address, MAX_UINT_VAL).send({ from: disputer });
+    await collateral.methods.approve(optimisticOracleV2.options.address, MAX_UINT_VAL).send({ from: disputer });
     await collateral.methods.approve(skinnyOptimisticOracle.options.address, MAX_UINT_VAL).send({ from: disputer });
     proposeEvents = await skinnyOptimisticOracle.getPastEvents("ProposePrice", { fromBlock: 0 });
     disputeTxn1 = await optimisticOracle.methods
@@ -220,6 +267,21 @@ describe("OptimisticOracleEventClient.js", function () {
       .disputePrice(requester, identifier, requestTime + 1, defaultAncillaryData)
       .send({ from: disputer });
     await pushPrice(correctPrice);
+
+    console.log("A");
+    disputeV2Txn1 = await optimisticOracleV2.methods
+      .disputePrice(requester, identifier, requestTime + 2, defaultAncillaryData)
+      .send({ from: disputer });
+    console.log("B");
+    await pushPrice(correctPrice);
+    console.log("C");
+    disputeV2Txn2 = await optimisticOracleV2.methods
+      .disputePrice(requester, identifier, requestTime + 3, defaultAncillaryData)
+      .send({ from: disputer });
+    console.log("D");
+    await pushPrice(correctPrice);
+    console.log("E");
+
     skinnyDisputeTxn1 = await skinnyOptimisticOracle.methods
       .disputePrice(
         skinnyRequester,
@@ -249,6 +311,14 @@ describe("OptimisticOracleEventClient.js", function () {
     settlementTxn2 = await optimisticOracle.methods
       .settle(requester, identifier, requestTime + 1, defaultAncillaryData)
       .send({ from: accounts[0] });
+
+    settlementV2Txn1 = await optimisticOracleV2.methods
+      .settle(requester, identifier, requestTime + 2, defaultAncillaryData)
+      .send({ from: accounts[0] });
+    settlementV2Txn2 = await optimisticOracleV2.methods
+      .settle(requester, identifier, requestTime + 3, defaultAncillaryData)
+      .send({ from: accounts[0] });
+
     skinnySettlementTxn1 = await skinnyOptimisticOracle.methods
       .settle(skinnyRequester, identifier, requestTime, defaultAncillaryData, disputeEvents[0].returnValues.request)
       .send({ from: accounts[0] });
@@ -304,6 +374,66 @@ describe("OptimisticOracleEventClient.js", function () {
     await client.clearState();
     await client.update();
     objectsInArrayInclude(client.getAllRequestPriceEvents(), [
+      {
+        transactionHash: newTxn.transactionHash,
+        blockNumber: newTxn.blockNumber,
+        requester: requester,
+        identifier: hexToUtf8(identifier),
+        // Note: Convert contract address to lowercase to adjust for how Solidity casts addresses to bytes.
+        // This is important because `requestPrice` expects `ancillaryData` to be of type bytes,
+        ancillaryData: collateral.options.address.toLowerCase(),
+        timestamp: requestTime.toString(),
+        currency: collateral.options.address,
+        reward: "0",
+        finalFee,
+      },
+    ]);
+  });
+  it("Return OptimisticOracleV2 RequestPrice events", async function () {
+    await clientV2.clearState();
+    // State is empty before update().
+    objectsInArrayInclude([], clientV2.getAllRequestPriceEvents());
+    await clientV2.update();
+
+    objectsInArrayInclude(clientV2.getAllRequestPriceEvents(), [
+      {
+        transactionHash: requestV2Txn1.transactionHash,
+        blockNumber: requestV2Txn1.blockNumber,
+        requester: requester,
+        identifier: hexToUtf8(identifier),
+        ancillaryData: defaultAncillaryData,
+        timestamp: (requestTime + 2).toString(),
+        currency: collateral.options.address,
+        reward: "0",
+        finalFee,
+      },
+      {
+        transactionHash: requestV2Txn2.transactionHash,
+        blockNumber: requestV2Txn2.blockNumber,
+        requester: requester,
+        identifier: hexToUtf8(identifier),
+        ancillaryData: defaultAncillaryData,
+        timestamp: (requestTime + 3).toString(),
+        currency: collateral.options.address,
+        reward: "0",
+        finalFee,
+      },
+    ]);
+
+    // Correctly adds only new events after last query
+    const newTxn = await optimisticOracleV2.methods
+      .requestPrice(
+        identifier,
+        requestTime,
+        // Note: we're using collateral address as ancillary data here to test with more entropy.
+        collateral.options.address,
+        collateral.options.address,
+        0
+      )
+      .send({ from: requester });
+    await clientV2.clearState();
+    await clientV2.update();
+    objectsInArrayInclude(clientV2.getAllRequestPriceEvents(), [
       {
         transactionHash: newTxn.transactionHash,
         blockNumber: newTxn.blockNumber,
@@ -440,6 +570,71 @@ describe("OptimisticOracleEventClient.js", function () {
       },
     ]);
   });
+  it("Return OptimisticOracleV2 ProposePrice events", async function () {
+    await clientV2.clearState();
+    // State is empty before update().
+    objectsInArrayInclude([], clientV2.getAllProposePriceEvents());
+    await clientV2.update();
+    objectsInArrayInclude(clientV2.getAllProposePriceEvents(), [
+      {
+        transactionHash: proposalV2Txn1.transactionHash,
+        blockNumber: proposalV2Txn1.blockNumber,
+        requester: requester,
+        proposer,
+        identifier: hexToUtf8(identifier),
+        ancillaryData: defaultAncillaryData,
+        timestamp: (requestTime + 2).toString(),
+        currency: collateral.options.address,
+        proposedPrice: correctPrice,
+        expirationTimestamp: (Number(proposalTime) + liveness).toString(),
+      },
+      {
+        transactionHash: proposalV2Txn2.transactionHash,
+        blockNumber: proposalV2Txn2.blockNumber,
+        requester: requester,
+        proposer,
+        identifier: hexToUtf8(identifier),
+        ancillaryData: defaultAncillaryData,
+        timestamp: (requestTime + 3).toString(),
+        currency: collateral.options.address,
+        proposedPrice: correctPrice,
+        expirationTimestamp: (Number(proposalTime) + liveness).toString(),
+      },
+    ]);
+
+    // Correctly adds only new events after last query
+    await optimisticOracleV2.methods
+      .requestPrice(identifier, requestTime, collateral.options.address, collateral.options.address, 0)
+      .send({ from: requester });
+    const newProposalTime = await optimisticOracleV2.methods.getCurrentTime().call();
+    const newTxn = await optimisticOracleV2.methods
+      .proposePrice(
+        requester,
+        identifier,
+        requestTime,
+        // Note: Convert contract address to lowercase to adjust for how Solidity casts addresses to bytes.
+        // This is important because `requestPrice` expects `ancillaryData` to be of type bytes,
+        collateral.options.address.toLowerCase(),
+        correctPrice
+      )
+      .send({ from: proposer });
+    await clientV2.clearState();
+    await clientV2.update();
+    objectsInArrayInclude(clientV2.getAllProposePriceEvents(), [
+      {
+        transactionHash: newTxn.transactionHash,
+        blockNumber: newTxn.blockNumber,
+        requester: requester,
+        proposer,
+        identifier: hexToUtf8(identifier),
+        ancillaryData: collateral.options.address.toLowerCase(),
+        timestamp: requestTime.toString(),
+        currency: collateral.options.address,
+        proposedPrice: correctPrice,
+        expirationTimestamp: (Number(newProposalTime) + liveness).toString(),
+      },
+    ]);
+  });
   it("Return Skinny ProposePrice events", async function () {
     await skinnyClient.clearState();
     // State is empty before update().
@@ -543,6 +738,67 @@ describe("OptimisticOracleEventClient.js", function () {
     await client.clearState();
     await client.update();
     objectsInArrayInclude(client.getAllDisputePriceEvents(), [
+      {
+        transactionHash: newTxn.transactionHash,
+        blockNumber: newTxn.blockNumber,
+        requester: requester,
+        proposer,
+        disputer,
+        identifier: hexToUtf8(identifier),
+        // Note: Convert contract address to lowercase to adjust for how Solidity casts addresses to bytes.
+        // This is important because `requestPrice` expects `ancillaryData` to be of type bytes,
+        ancillaryData: collateral.options.address.toLowerCase(),
+        timestamp: requestTime.toString(),
+        proposedPrice: correctPrice,
+        currency: collateral.options.address,
+      },
+    ]);
+  });
+  it("Return OptimisticOracleV2 DisputePrice events", async function () {
+    await clientV2.clearState();
+    // State is empty before update().
+    objectsInArrayInclude([], clientV2.getAllDisputePriceEvents());
+    await clientV2.update();
+    objectsInArrayInclude(clientV2.getAllDisputePriceEvents(), [
+      {
+        transactionHash: disputeV2Txn1.transactionHash,
+        blockNumber: disputeV2Txn1.blockNumber,
+        requester: requester,
+        proposer,
+        disputer,
+        identifier: hexToUtf8(identifier),
+        ancillaryData: defaultAncillaryData,
+        timestamp: (requestTime + 2).toString(),
+        proposedPrice: correctPrice,
+        currency: collateral.options.address,
+      },
+      {
+        transactionHash: disputeV2Txn2.transactionHash,
+        blockNumber: disputeV2Txn2.blockNumber,
+        requester: requester,
+        proposer,
+        disputer,
+        identifier: hexToUtf8(identifier),
+        ancillaryData: defaultAncillaryData,
+        timestamp: (requestTime + 3).toString(),
+        proposedPrice: correctPrice,
+        currency: collateral.options.address,
+      },
+    ]);
+
+    // Correctly adds only new events after last query
+    await optimisticOracleV2.methods
+      .requestPrice(identifier, requestTime, collateral.options.address, collateral.options.address, 0)
+      .send({ from: requester });
+    await optimisticOracleV2.methods
+      .proposePrice(requester, identifier, requestTime, collateral.options.address.toLowerCase(), correctPrice)
+      .send({ from: proposer });
+    const newTxn = await optimisticOracleV2.methods
+      .disputePrice(requester, identifier, requestTime, collateral.options.address.toLowerCase())
+      .send({ from: disputer });
+    await clientV2.clearState();
+    await clientV2.update();
+    objectsInArrayInclude(clientV2.getAllDisputePriceEvents(), [
       {
         transactionHash: newTxn.transactionHash,
         blockNumber: newTxn.blockNumber,
@@ -678,6 +934,74 @@ describe("OptimisticOracleEventClient.js", function () {
     await client.clearState();
     await client.update();
     objectsInArrayInclude(client.getAllSettlementEvents(), [
+      {
+        transactionHash: newTxn.transactionHash,
+        blockNumber: newTxn.blockNumber,
+        requester: requester,
+        proposer,
+        disputer: ZERO_ADDRESS,
+        identifier: hexToUtf8(identifier),
+        // Note: Convert contract address to lowercase to adjust for how Solidity casts addresses to bytes.
+        // This is important because `requestPrice` expects `ancillaryData` to be of type bytes,
+        ancillaryData: collateral.options.address.toLowerCase(),
+        timestamp: requestTime.toString(),
+        price: correctPrice,
+        payout: totalDefaultBond,
+        currency: collateral.options.address,
+      },
+    ]);
+  });
+  it("Return OptimisticOracleV2 Settlement events", async function () {
+    await clientV2.clearState();
+    // State is empty before update().
+    objectsInArrayInclude([], clientV2.getAllSettlementEvents());
+    await clientV2.update();
+    objectsInArrayInclude(clientV2.getAllSettlementEvents(), [
+      {
+        transactionHash: settlementV2Txn1.transactionHash,
+        blockNumber: settlementV2Txn1.blockNumber,
+        requester: requester,
+        proposer,
+        disputer,
+        identifier: hexToUtf8(identifier),
+        ancillaryData: defaultAncillaryData,
+        timestamp: (requestTime + 2).toString(),
+        price: correctPrice,
+        payout: disputePayout,
+        currency: collateral.options.address,
+      },
+      {
+        transactionHash: settlementV2Txn2.transactionHash,
+        blockNumber: settlementV2Txn2.blockNumber,
+        requester: requester,
+        proposer,
+        disputer,
+        identifier: hexToUtf8(identifier),
+        ancillaryData: defaultAncillaryData,
+        timestamp: (requestTime + 3).toString(),
+        price: correctPrice,
+        payout: disputePayout,
+        currency: collateral.options.address,
+      },
+    ]);
+
+    // Correctly adds only new events after last query
+    await optimisticOracleV2.methods
+      .requestPrice(identifier, requestTime, collateral.options.address, collateral.options.address, 0)
+      .send({ from: requester });
+    const newProposalTime = await optimisticOracleV2.methods.getCurrentTime().call();
+    await optimisticOracleV2.methods
+      .proposePrice(requester, identifier, requestTime, collateral.options.address.toLowerCase(), correctPrice)
+      .send({ from: proposer });
+    await optimisticOracleV2.methods
+      .setCurrentTime((Number(newProposalTime) + liveness).toString())
+      .send({ from: accounts[0] });
+    const newTxn = await optimisticOracleV2.methods
+      .settle(requester, identifier, requestTime, collateral.options.address.toLowerCase())
+      .send({ from: accounts[0] });
+    await clientV2.clearState();
+    await clientV2.update();
+    objectsInArrayInclude(clientV2.getAllSettlementEvents(), [
       {
         transactionHash: newTxn.transactionHash,
         blockNumber: newTxn.blockNumber,
