@@ -29,7 +29,7 @@ export interface GckmsConfig {
   };
 }
 
-function arrayify(input: string[] | string | undefined): string[] {
+export function arrayify(input: string[] | string | undefined): string[] {
   if (!input) return [];
   if (!Array.isArray(input)) return [input];
   return input;
@@ -56,7 +56,7 @@ export function getGckmsConfig(keys = arrayify(argv.keys), network = argv.networ
     }
   }
 
-  const getNetworkName = () => {
+  function getNetworkName() {
     if (isPublicNetwork(network || "unknown")) {
       // Take everything before the underscore:
       // mainnet_gckms -> mainnet.
@@ -64,7 +64,7 @@ export function getGckmsConfig(keys = arrayify(argv.keys), network = argv.networ
     }
 
     return "mainnet";
-  };
+  }
 
   // Compose the exact config for this network.
   const networkConfig = configOverride[getNetworkName()];
