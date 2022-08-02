@@ -8,3 +8,4 @@ export * from "./HardhatConfig";
 export * from "./RetryProvider";
 export * from "./UniswapV3Helpers";
 export * from "./types";
+export * from "./EthersSignerUtils";
