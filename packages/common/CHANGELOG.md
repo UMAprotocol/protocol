@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.24.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.23.0...@uma/common@2.24.0) (2022-08-02)
+
+### Bug Fixes
+
+- **common:** upgrade google cloud kms and storage ([#3979](https://github.com/UMAprotocol/protocol/issues/3979)) ([2cfe5c5](https://github.com/UMAprotocol/protocol/commit/2cfe5c51fb4ebda2d68266f7bcacfa455f3fc7d4))
+
+### Features
+
+- add gckms get signer util ([#3990](https://github.com/UMAprotocol/protocol/issues/3990)) ([d95cca2](https://github.com/UMAprotocol/protocol/commit/d95cca21fffe0e512047722fb5aa3894a1fb091c))
+- **voting-v2:** add some variable packing to save gas ([#4046](https://github.com/UMAprotocol/protocol/issues/4046)) ([232bc20](https://github.com/UMAprotocol/protocol/commit/232bc2034d8a343fb66b4573298da2dd4cf381d2))
+- DVM2.0 add additional todo logic and update `_resolvePriceRequest`, offset the `lastRequestIndexConsidered` for a voter and remove `fromIndex` when evaluating slashing ([#4040](https://github.com/UMAprotocol/protocol/issues/4040)) ([aa4ebfb](https://github.com/UMAprotocol/protocol/commit/aa4ebfb8ac33cae17fa123fdbc9e185b4e5ae989))
+
 # [2.23.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.22.0...@uma/common@2.23.0) (2022-07-13)
 
 ### Bug Fixes

@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.15.0](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.14.0...@uma/scripts@1.15.0) (2022-08-02)
+
+### Features
+
+- add script to register oo in side chains with admin child ([#4014](https://github.com/UMAprotocol/protocol/issues/4014)) ([45f8099](https://github.com/UMAprotocol/protocol/commit/45f80991f766d19b2596a031af67be895a13a174))
+
 # [1.14.0](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.13.0...@uma/scripts@1.14.0) (2022-07-13)
 
 ### Features

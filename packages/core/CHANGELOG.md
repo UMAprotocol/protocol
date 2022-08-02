@@ -3,6 +3,32 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.32.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.31.0...@uma/core@2.32.0) (2022-08-02)
+
+### Bug Fixes
+
+- DVM2.0 additional clean up and commenting ([#4051](https://github.com/UMAprotocol/protocol/issues/4051)) ([7938617](https://github.com/UMAprotocol/protocol/commit/7938617bf79854811959eb605237edf6bdccbc90))
+- remove duplicate contract listing ([#4024](https://github.com/UMAprotocol/protocol/issues/4024)) ([e43dba9](https://github.com/UMAprotocol/protocol/commit/e43dba9eef70a2b6ac4ba6ed46d13fbeb5b4c155))
+
+### Features
+
+- add new goerli addresses ([#4058](https://github.com/UMAprotocol/protocol/issues/4058)) ([f65eb4a](https://github.com/UMAprotocol/protocol/commit/f65eb4a256cc36c170af940cafa6ac7d6cae8fb1))
+- deploy lsp contracts in avalanche ([#4057](https://github.com/UMAprotocol/protocol/issues/4057)) ([d9b5cef](https://github.com/UMAprotocol/protocol/commit/d9b5cef95a0e1e7675f7084e12782c3a8332d63b))
+- **voting-v2:** add method to withdraw and restake ([#4049](https://github.com/UMAprotocol/protocol/issues/4049)) ([b13c113](https://github.com/UMAprotocol/protocol/commit/b13c113f6c4e3d1c743808005d9e35a9d4b0825c))
+- **voting-v2:** add some variable packing to save gas ([#4046](https://github.com/UMAprotocol/protocol/issues/4046)) ([232bc20](https://github.com/UMAprotocol/protocol/commit/232bc2034d8a343fb66b4573298da2dd4cf381d2))
+- **voting-v2:** make GAT a number of tokens rather than a percentage ([#4048](https://github.com/UMAprotocol/protocol/issues/4048)) ([3834dbe](https://github.com/UMAprotocol/protocol/commit/3834dbe9b4a2e69fa20f1ab8168619f2eb51a7e7))
+- **voting-v2:** remove testable from production voting contract ([#4047](https://github.com/UMAprotocol/protocol/issues/4047)) ([d0d173f](https://github.com/UMAprotocol/protocol/commit/d0d173fcbd5813b06a569236a4d3d57ba65f80ec))
+- add events to voting v2 ([#4030](https://github.com/UMAprotocol/protocol/issues/4030)) ([db077e3](https://github.com/UMAprotocol/protocol/commit/db077e35181009335ba46207bdaf506887861bdc))
+- add missing natspecs ([#4041](https://github.com/UMAprotocol/protocol/issues/4041)) ([7e919c7](https://github.com/UMAprotocol/protocol/commit/7e919c7a81af3ffd9b52de8a36ed89bdf576f8bb))
+- batch transactions in gas scripts ([#4034](https://github.com/UMAprotocol/protocol/issues/4034)) ([de5cbcc](https://github.com/UMAprotocol/protocol/commit/de5cbcc29df145a1d04ca6b704a3188f844c7553))
+- DVM v2 remove fixedpoint ([#4036](https://github.com/UMAprotocol/protocol/issues/4036)) ([13b3a7d](https://github.com/UMAprotocol/protocol/commit/13b3a7d866c8273850c441b51f4982af372f2b66))
+- DVM2.0 add additional todo logic and update `_resolvePriceRequest`, offset the `lastRequestIndexConsidered` for a voter and remove `fromIndex` when evaluating slashing ([#4040](https://github.com/UMAprotocol/protocol/issues/4040)) ([aa4ebfb](https://github.com/UMAprotocol/protocol/commit/aa4ebfb8ac33cae17fa123fdbc9e185b4e5ae989))
+- DVM2.0 Add sync method for internal account slashing trackers ([#4038](https://github.com/UMAprotocol/protocol/issues/4038)) ([8ffa174](https://github.com/UMAprotocol/protocol/commit/8ffa174f35b1be4caa2ba68d08ec0ce0f8ba5a34))
+- DVM2.0 Collapse methods and optimize state ([#4037](https://github.com/UMAprotocol/protocol/issues/4037)) ([d4db627](https://github.com/UMAprotocol/protocol/commit/d4db6279c63f8d7e6e31f828beba6a1a9b55a9b7))
+- DVM2.0 simplified delegation system ([#4033](https://github.com/UMAprotocol/protocol/issues/4033)) ([023835d](https://github.com/UMAprotocol/protocol/commit/023835d0f737dbae819d85f3976622211c0d9bce))
+- DVM2.0 todo 2.0: Add additional last minute changes ([#4042](https://github.com/UMAprotocol/protocol/issues/4042)) ([48b8e84](https://github.com/UMAprotocol/protocol/commit/48b8e8488e50b495654daea3dab717cbadfb306b))
+- UMA2.0: deal will rolled votes ([#4026](https://github.com/UMAprotocol/protocol/issues/4026)) ([91da58e](https://github.com/UMAprotocol/protocol/commit/91da58ea8d31f512aeee96534ecd5235be5b65ad))
+
 # [2.31.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.30.0...@uma/core@2.31.0) (2022-07-13)
 
 ### Features

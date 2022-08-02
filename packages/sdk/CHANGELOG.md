@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.27.0](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.26.0...@uma/sdk@0.27.0) (2022-08-02)
+
+### Features
+
+- **sdk:** add oov2 client and service ([#4059](https://github.com/UMAprotocol/protocol/issues/4059)) ([f049324](https://github.com/UMAprotocol/protocol/commit/f049324e58d4bbe7d32f0f62aa984892517d44ec))
+
 # [0.26.0](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.25.0...@uma/sdk@0.26.0) (2022-07-13)
 
 - feat(sdk)!: add skinny oo client and separate factories (#4009) ([2bc8ad7](https://github.com/UMAprotocol/protocol/commit/2bc8ad7827b843ae4769d0800b93e29f4036ed1e)), closes [#4009](https://github.com/UMAprotocol/protocol/issues/4009)
