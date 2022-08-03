@@ -156,6 +156,7 @@ contract VotingV2 is
         uint256 requestTime;
         bool executed;
         address proposer;
+        uint256 bond;
     }
 
     // Maps round numbers to the spam deletion request.
@@ -972,7 +973,8 @@ contract VotingV2 is
                 spamRequestIndices: spamRequestIndices,
                 requestTime: currentTime,
                 executed: false,
-                proposer: msg.sender
+                proposer: msg.sender,
+                bond: spamDeletionProposalBond
             })
         );
 
@@ -1025,7 +1027,7 @@ contract VotingV2 is
             }
 
             // Return the spamDeletionProposalBond.
-            votingToken.transfer(spamDeletionProposals[proposalId].proposer, spamDeletionProposalBond);
+            votingToken.transfer(spamDeletionProposals[proposalId].proposer, spamDeletionProposals[proposalId].bond);
             emit ExecutedSpamDeletion(proposalId, true);
         }
         // Else, the spam deletion request was voted down. In this case we send the spamDeletionProposalBond to the store.
