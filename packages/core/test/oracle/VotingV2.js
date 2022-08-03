@@ -3040,13 +3040,12 @@ describe("VotingV2", function () {
     const identifier4 = padRight(utf8ToHex("request-retrieval4"), 64);
     const time4 = "4000";
 
-    // Make the Oracle support these two identifiers.
+    // Make the Oracle support these identifiers.
     await supportedIdentifiers.methods.addSupportedIdentifier(identifier1).send({ from: accounts[0] });
     await supportedIdentifiers.methods.addSupportedIdentifier(identifier2).send({ from: accounts[0] });
     await supportedIdentifiers.methods.addSupportedIdentifier(identifier3).send({ from: accounts[0] });
     await supportedIdentifiers.methods.addSupportedIdentifier(identifier4).send({ from: accounts[0] });
 
-    // Requests should not be added to the current voting round.
     await voting.methods.requestPrice(identifier1, time1).send({ from: registeredContract });
     await voting.methods.requestPrice(identifier2, time2).send({ from: registeredContract });
     await voting.methods.requestPrice(identifier3, time3).send({ from: registeredContract });
@@ -3105,6 +3104,7 @@ describe("VotingV2", function () {
     await voting.methods.updateTrackers(account1).send({ from: account1 });
     await voting.methods.updateTrackers(account2).send({ from: account1 });
 
+    // Both users should have the same lastRequestIndexConsidered.
     assert.equal((await voting.methods.voterStakes(account1).call()).lastRequestIndexConsidered, 4);
     assert.equal((await voting.methods.voterStakes(account2).call()).lastRequestIndexConsidered, 4);
   });
