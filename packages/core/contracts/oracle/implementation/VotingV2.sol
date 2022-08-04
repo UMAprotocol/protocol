@@ -611,8 +611,6 @@ contract VotingV2 is
         bytes32 hash,
         bytes memory encryptedVote
     ) public override {
-        commitVote(identifier, time, "", hash);
-
         commitAndEmitEncryptedVote(identifier, time, "", hash, encryptedVote);
     }
 
