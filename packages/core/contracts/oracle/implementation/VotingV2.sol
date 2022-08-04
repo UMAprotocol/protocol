@@ -911,9 +911,9 @@ contract VotingV2 is
                 deletedRequests[requestIndex + 1] != 0 ? deletedRequests[requestIndex + 1] + 1 : requestIndex + 1;
 
             if (
-                (slash != 0 &&
-                    indexTo > nextRequestIndex &&
-                    priceRequest.lastVotingRound != priceRequests[priceRequestIds[nextRequestIndex]].lastVotingRound)
+                slash != 0 &&
+                indexTo > nextRequestIndex &&
+                priceRequest.lastVotingRound != priceRequests[priceRequestIds[nextRequestIndex]].lastVotingRound
             ) {
                 applySlashToVoter(slash, voterStake, voterAddress);
                 slash = 0;
