@@ -21,8 +21,8 @@ library VoteTimingV2 {
         uint256 minRollToNextRoundLength
     ) internal {
         // This should have a require message but this results in an internal Solidity error.
-        require(phaseLength > 0);
-        require(minRollToNextRoundLength <= phaseLength);
+        require(phaseLength > 0, "Phase length must be greater than 0.");
+        require(minRollToNextRoundLength <= phaseLength, "Invalid minRollToNextRoundLength.");
         data.phaseLength = phaseLength;
         data.minRollToNextRoundLength = minRollToNextRoundLength;
     }
