@@ -256,14 +256,14 @@ contract VotingV2 is
         address _slashingLibrary
     ) Staker(_emissionRate, _unstakeCoolDown, _votingToken) {
         voteTiming.init(_phaseLength, _minRollToNextRoundLength);
-        require(_gat < IERC20(_votingToken).totalSupply() && _gat > 0, "0 < GAT < total supply");
+        require(_gat < IERC20(_votingToken).totalSupply() && _gat > 0);
         gat = _gat;
         finder = FinderInterface(_finder);
         slashingLibrary = SlashingLibrary(_slashingLibrary);
         setSpamDeletionProposalBond(_spamDeletionProposalBond);
 
         // We assume indices never get above 2^64. So we should never start with an index above half that range.
-        require(_startingRequestIndex < type(uint64).max / 2, "startingRequestIndex too large");
+        require(_startingRequestIndex < type(uint64).max / 2);
 
         assembly {
             sstore(priceRequestIds.slot, _startingRequestIndex)
@@ -497,7 +497,7 @@ contract VotingV2 is
         address voter = getVoterFromDelegate(msg.sender);
         _updateTrackers(voter);
         uint256 blockTime = getCurrentTime();
-        require(hash != bytes32(0), "Invalid provided hash");
+        require(hash != bytes32(0));
         require(voteTiming.computeCurrentPhase(blockTime) == Phase.Commit, "Cannot commit in reveal phase");
 
         PriceRequest storage priceRequest = _getPriceRequest(identifier, time, ancillaryData);
@@ -836,7 +836,8 @@ contract VotingV2 is
 
         // Traverse all requests from the last considered request. For each request see if the voter voted correctly or
         // not. Based on the outcome, attribute the associated slash to the voter.
-        int256 slash = 0;
+        int256 slash = voterStake.unappliedSlash;
+        uint64 requestIndex = voterStake.lastRequestIndexConsidered;
         for (
             uint64 requestIndex = voterStake.lastRequestIndexConsidered;
             requestIndex < indexTo;
@@ -854,12 +855,12 @@ contract VotingV2 is
             if (!_priceRequestResolved(priceRequest, voteInstance, currentRoundId)) {
                 // If the request is not resolved and the lastVotingRound less than the current round then the vote
                 // must have been rolled. In this case, update the internal trackers for this vote.
-
                 if (priceRequest.lastVotingRound < currentRoundId) {
                     priceRequest.lastVotingRound = SafeCast.toUint32(currentRoundId);
                     deletedRequests[requestIndex] = requestIndex;
                     priceRequest.priceRequestIndex = SafeCast.toUint64(priceRequestIds.length);
                     priceRequestIds.push(priceRequestIds[requestIndex]);
+                    indexTo++;
                     continue;
                 }
                 // Else, we are simply evaluating a request that is still actively being voted on. In this case, break as
@@ -904,15 +905,15 @@ contract VotingV2 is
             // If this is not the last price request to apply and the next request in the batch is from a subsequent
             // round then apply the slashing now. Else, do nothing and apply the slashing after the loop concludes.
             // This acts to apply slashing within a round as independent actions: multiple votes within the same round
-
             // should not impact each other but subsequent rounds should impact each other. We need to consider the
             // deletedRequests mapping when finding the next index as the next request may have been deleted or rolled.
             uint256 nextRequestIndex =
                 deletedRequests[requestIndex + 1] != 0 ? deletedRequests[requestIndex + 1] + 1 : requestIndex + 1;
+
             if (
-                slash != 0 &&
-                indexTo > nextRequestIndex &&
-                priceRequest.lastVotingRound != priceRequests[priceRequestIds[nextRequestIndex]].lastVotingRound
+                (slash != 0 &&
+                    indexTo > nextRequestIndex &&
+                    priceRequest.lastVotingRound != priceRequests[priceRequestIds[nextRequestIndex]].lastVotingRound)
             ) {
                 applySlashToVoter(slash, voterStake, voterAddress);
                 slash = 0;
@@ -920,7 +921,23 @@ contract VotingV2 is
             voterStake.lastRequestIndexConsidered = requestIndex + 1;
         }
 
-        if (slash != 0) applySlashToVoter(slash, voterStake, voterAddress);
+        // If there is any remaining slashing then apply it. This occurs when there is unapplied slashing in the loop
+        // due to the last unlashed elements all being all from the same round. i.e we only slash within the loop when
+        // transitioning between rounds and the last round is slashed here. Note that there is a special case that needs
+        // to be considered separately: if the indexTo is less than the priceRequestIndex.length then we know we
+        // are dealing with a partial index slashing via a call to updateTrackersRange. If this is the case, we need to
+        // be careful for ranges that bisect a voting round as all slashing must be applied linearly and independently
+        // within each round. If we are in this case and the element before the indexTo (last element executed in the
+        // loop) has the same voting round as the indexTo (element after the last element in the loop) then we know that
+        // we've bisected a round and should store the unapplied slashing which will seed this method on the next entry
+        // such that the slashing will be applied linearly, not compounding with other slashing within the same round.
+        if (slash != 0)
+            if (
+                indexTo < priceRequestIds.length &&
+                priceRequests[priceRequestIds[indexTo - 1]].lastVotingRound ==
+                priceRequests[priceRequestIds[indexTo]].lastVotingRound
+            ) voterStake.unappliedSlash += slash;
+            else applySlashToVoter(slash, voterStake, voterAddress);
     }
 
     // Applies a given slash to a given voter's stake.
@@ -932,6 +949,7 @@ contract VotingV2 is
         if (slash + int256(voterStake.activeStake) > 0)
             voterStake.activeStake = uint256(int256(voterStake.activeStake) + slash);
         else voterStake.activeStake = 0;
+        if (voterStake.unappliedSlash != 0) voterStake.unappliedSlash = 0;
         emit VoterSlashed(voterAddress, slash, voterStake.activeStake);
     }
 

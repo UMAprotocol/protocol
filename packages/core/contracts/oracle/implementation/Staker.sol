@@ -33,6 +33,7 @@ contract Staker is StakerInterface, Ownable {
         uint256 pendingStake;
         uint256 rewardsPaidPerToken;
         uint256 outstandingRewards;
+        int256 unappliedSlash;
         uint64 lastRequestIndexConsidered;
         uint64 unstakeRequestTime;
         address delegate;
@@ -203,7 +204,7 @@ contract Staker is StakerInterface, Ownable {
         uint256 tokensToMint = voterStake.outstandingRewards;
         if (tokensToMint > 0) {
             voterStake.outstandingRewards = 0;
-            require(votingToken.mint(msg.sender, tokensToMint), "Voting token issuance failed");
+            require(votingToken.mint(msg.sender, tokensToMint));
         }
         emit WithdrawnRewards(msg.sender, tokensToMint);
         return (tokensToMint);
