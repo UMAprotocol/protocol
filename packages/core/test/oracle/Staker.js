@@ -133,6 +133,52 @@ describe("Staker", function () {
       // The account should have 0 outstanding rewards as they requested to unstake right at the beginning of the test.
       assert.equal(await staker.methods.outstandingRewards(account1).call(), toWei("0"));
     });
+
+    it("Setting higher unstake cool down is not retroactive", async function () {
+      await staker.methods.stake(amountToStake).send({ from: account1 });
+
+      assert((await staker.methods.voterStakes(account1).call()).unstakeRequestTime, unstakeCoolDown);
+
+      // Voter requests unstake.
+      const tx = await staker.methods.requestUnstake(amountToStake).send({ from: account1 });
+      assert.equal(tx.events.RequestedUnstake.returnValues.unstakeCoolDown, unstakeCoolDown);
+
+      // Now set the unstake cooldown to a very high value
+      await staker.methods.setUnstakeCoolDown(60 * 60 * 24 * 1000).send({ from: account1 });
+
+      // Now advance the 1 month required unstake before setUnstakeCoolDown.
+      await advanceTime(60 * 60 * 24 * 30);
+      const balanceBefore = await votingToken.methods.balanceOf(account1).call();
+      await staker.methods.executeUnstake().send({ from: account1 });
+      const balanceAfter = await votingToken.methods.balanceOf(account1).call();
+      assert.equal(balanceAfter, amountToStake.add(toBN(balanceBefore))); // Should get back the original amount staked.
+
+      // The account should have 0 outstanding rewards as they requested to unstake right at the beginning of the test.
+      assert.equal(await staker.methods.outstandingRewards(account1).call(), toWei("0"));
+    });
+
+    it("Setting lower unstake cool down is retroactive", async function () {
+      await staker.methods.stake(amountToStake).send({ from: account1 });
+
+      assert((await staker.methods.voterStakes(account1).call()).unstakeRequestTime, unstakeCoolDown);
+
+      // Voter requests unstake.
+      const tx = await staker.methods.requestUnstake(amountToStake).send({ from: account1 });
+      assert.equal(tx.events.RequestedUnstake.returnValues.unstakeCoolDown, unstakeCoolDown);
+
+      // Now set the unstake cooldown to 0
+      await staker.methods.setUnstakeCoolDown(0).send({ from: account1 });
+
+      // Preexisting unstake request should be able to unstake now.
+      const balanceBefore = await votingToken.methods.balanceOf(account1).call();
+      await staker.methods.executeUnstake().send({ from: account1 });
+      const balanceAfter = await votingToken.methods.balanceOf(account1).call();
+      assert.equal(balanceAfter, amountToStake.add(toBN(balanceBefore))); // Should get back the original amount staked.
+
+      // The account should have 0 outstanding rewards as they requested to unstake right at the beginning of the test.
+      assert.equal(await staker.methods.outstandingRewards(account1).call(), toWei("0"));
+    });
+
     it("Can not re-request to unstake", async function () {
       await staker.methods.stake(amountToStake).send({ from: account1 });
 
