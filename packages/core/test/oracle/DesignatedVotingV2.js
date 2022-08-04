@@ -214,10 +214,10 @@ describe("DesignatedVotingV2", function () {
     );
 
     // Retrieve rewards and check that rewards accrued to the `designatedVoting` contract.
-    assert(await didContractThrow(designatedVoting.methods.withdrawAndRestakeRewards().send({ from: tokenOwner })));
-    assert(await didContractThrow(designatedVoting.methods.withdrawAndRestakeRewards().send({ from: umaAdmin })));
+    assert(await didContractThrow(designatedVoting.methods.retrieveRewards().send({ from: tokenOwner })));
+    assert(await didContractThrow(designatedVoting.methods.retrieveRewards().send({ from: umaAdmin })));
 
-    await designatedVoting.methods.withdrawAndRestakeRewards().send({ from: voter });
+    await designatedVoting.methods.retrieveRewards().send({ from: voter });
     // We should see the cumulative staked amount go up by the amount of the rewards. We had advanced time one phase and
     // one voting round. This should result in an expected reward of the emission rate times the delta in time as this
     // was the only staker they get the full reward amount.
