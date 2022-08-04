@@ -35,6 +35,7 @@ contract Staker is StakerInterface, Ownable {
         uint256 outstandingRewards;
         uint64 lastRequestIndexConsidered;
         uint64 unstakeRequestTime;
+        uint64 unstakeCoolDown;
         address delegate;
     }
 
@@ -60,7 +61,8 @@ contract Staker is StakerInterface, Ownable {
         uint256 amount,
         uint256 unstakeTime,
         uint256 voterActiveStake,
-        uint256 voterPendingStake
+        uint256 voterPendingStake,
+        uint64 unstakeCoolDown
     );
 
     event ExecutedUnstake(
@@ -160,13 +162,15 @@ contract Staker is StakerInterface, Ownable {
         voterStake.pendingUnstake = amount;
         voterStake.activeStake -= amount;
         voterStake.unstakeRequestTime = SafeCast.toUint64(getCurrentTime());
+        voterStake.unstakeCoolDown = unstakeCoolDown;
 
         emit RequestedUnstake(
             msg.sender,
             amount,
             voterStake.unstakeRequestTime,
             voterStake.activeStake,
-            voterStake.pendingStake
+            voterStake.pendingStake,
+            voterStake.unstakeCoolDown
         );
     }
 
@@ -177,8 +181,11 @@ contract Staker is StakerInterface, Ownable {
      */
     function executeUnstake() public override {
         VoterStake storage voterStake = voterStakes[msg.sender];
+        uint64 effectiveUnstakeCoolDown =
+            voterStake.unstakeCoolDown > unstakeCoolDown ? unstakeCoolDown : voterStake.unstakeCoolDown;
         require(
-            voterStake.unstakeRequestTime != 0 && getCurrentTime() >= voterStake.unstakeRequestTime + unstakeCoolDown,
+            voterStake.unstakeRequestTime != 0 &&
+                getCurrentTime() >= voterStake.unstakeRequestTime + effectiveUnstakeCoolDown,
             "Unstake time not passed"
         );
         uint256 tokensToSend = voterStake.pendingUnstake;
@@ -238,6 +245,7 @@ contract Staker is StakerInterface, Ownable {
 
     /**
      * @notice  Set the amount of time a voter must wait to unstake after submitting a request to do so.
+     * @dev Adjusting the unstake cool down will also affect pending unstake requests only if the cool down is lowered.
      * @param _unstakeCoolDown the new duration of the cool down period in seconds.
      */
     function setUnstakeCoolDown(uint64 _unstakeCoolDown) public onlyOwner {
