@@ -467,6 +467,7 @@ describe("SpamGuard", function () {
 
     // Even if the bond changed in the meantime the user get's the original bond paid back.
     assert.equal(await votingToken.methods.balanceOf(account1).call(), toWei("10000000")); // 10mm.
+    assert.equal(await votingToken.methods.balanceOf(account2).call(), toWei("0")); // 0mm.
   });
 
   it("Correctly sends bond to store if voted down", async function () {});
