@@ -2,7 +2,6 @@
 pragma solidity ^0.8.0;
 
 import "../../common/implementation/MultiRole.sol";
-import "../../common/implementation/Testable.sol";
 import "../interfaces/FinderInterface.sol";
 import "../interfaces/IdentifierWhitelistInterface.sol";
 import "../interfaces/OracleGovernanceInterface.sol";
@@ -15,7 +14,7 @@ import "@openzeppelin/contracts/utils/Address.sol";
 /**
  * @title Takes proposals for certain governance actions and allows UMA token holders to vote on them.
  */
-contract GovernorV2 is MultiRole, Testable {
+contract GovernorV2 is MultiRole {
     using SafeMath for uint256;
     using Address for address;
 
@@ -55,14 +54,9 @@ contract GovernorV2 is MultiRole, Testable {
      * @notice Construct the Governor contract.
      * @param _finderAddress keeps track of all contracts within the system based on their interfaceName.
      * @param _startingId the initial proposal id that the contract will begin incrementing from.
-     * @param _timerAddress Contract that stores the current time in a testing environment.
      * Must be set to 0x0 for production environments that use live time.
      */
-    constructor(
-        address _finderAddress,
-        uint256 _startingId,
-        address _timerAddress
-    ) Testable(_timerAddress) {
+    constructor(address _finderAddress, uint256 _startingId) {
         finder = FinderInterface(_finderAddress);
         _createExclusiveRole(uint256(Roles.Owner), uint256(Roles.Owner), msg.sender);
         _createExclusiveRole(uint256(Roles.Proposer), uint256(Roles.Owner), msg.sender);
@@ -154,6 +148,14 @@ contract GovernorV2 is MultiRole, Testable {
         require(_executeCall(transaction.to, transaction.value, transaction.data), "Tx execution failed");
 
         emit ProposalExecuted(id, transactionIndex);
+    }
+
+    /**
+     * @notice Returns the current block timestamp.
+     * @dev Can be overridden to control contract time.
+     */
+    function getCurrentTime() public view virtual returns (uint256) {
+        return block.timestamp;
     }
 
     /****************************************

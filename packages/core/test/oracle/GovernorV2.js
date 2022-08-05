@@ -6,7 +6,7 @@ const { moveToNextRound, moveToNextPhase } = require("../../utils/Voting.js");
 const { interfaceName } = require("@uma/common");
 const { assert } = require("chai");
 
-const GovernorV2 = getContract("GovernorV2");
+const GovernorV2 = getContract("GovernorV2Test");
 const IdentifierWhitelist = getContract("IdentifierWhitelist");
 const VotingV2 = getContract("VotingV2ControllableTiming");
 const VotingToken = getContract("VotingToken");
