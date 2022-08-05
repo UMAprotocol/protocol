@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import "../../common/implementation/MultiRole.sol";
 import "../../common/implementation/Testable.sol";
+import "../../common/implementation/Lockable.sol";
 import "../interfaces/FinderInterface.sol";
 import "../interfaces/IdentifierWhitelistInterface.sol";
 import "../interfaces/OracleGovernanceInterface.sol";
@@ -89,6 +90,7 @@ contract GovernorV2 is MultiRole, Testable {
      */
     function propose(Transaction[] memory transactions, bytes memory ancillaryData)
         public
+        nonReentrant()
         onlyRoleHolder(uint256(Roles.Proposer))
     {
         uint256 id = proposals.length;
@@ -129,7 +131,7 @@ contract GovernorV2 is MultiRole, Testable {
      * @param id unique id for the executed proposal.
      * @param transactionIndex unique transaction index for the executed proposal.
      */
-    function executeProposal(uint256 id, uint256 transactionIndex) external payable {
+    function executeProposal(uint256 id, uint256 transactionIndex) external payable nonReentrant() {
         Proposal storage proposal = proposals[id];
         int256 price =
             _getOracle().getPrice(
