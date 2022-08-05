@@ -70,7 +70,6 @@ describe("OptimisticOracleEventClient.js", function () {
 
   const pushPrice = async (price) => {
     const [lastQuery] = (await mockOracle.methods.getPendingQueries().call()).slice(-1);
-    console.log("lastQuery", lastQuery);
     await mockOracle.methods
       .pushPrice(lastQuery.identifier, lastQuery.time, lastQuery.ancillaryData, price)
       .send({ from: accounts[0] });
