@@ -23,7 +23,7 @@ contract Staker is StakerInterface, Ownable {
     uint256 public cumulativePendingStake;
     uint256 public rewardPerTokenStored;
 
-    VotingToken public override votingToken;
+    VotingToken public immutable override votingToken;
     uint64 public lastUpdateTime;
     uint64 public unstakeCoolDown;
 
