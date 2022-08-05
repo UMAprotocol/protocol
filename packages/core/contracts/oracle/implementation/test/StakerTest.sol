@@ -30,12 +30,4 @@ contract StakerTest is StakerControlledTiming {
         require(int256(cumulativeActiveStake) + amount >= 0, "Cumulative staked cannot be negative");
         voterStakes[voter].activeStake = uint256(int256(voterStakes[voter].activeStake) + amount);
     }
-
-    function inActiveReveal() internal view override returns (bool) {
-        return false;
-    }
-
-    function getStartingIndexForStaker() internal view override returns (uint64) {
-        return 0;
-    }
 }
