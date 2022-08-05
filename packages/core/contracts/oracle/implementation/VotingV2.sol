@@ -301,7 +301,7 @@ contract VotingV2 is
         bytes32 identifier,
         uint256 time,
         bytes memory ancillaryData
-    ) public override onlyRegisteredContract() {
+    ) public override nonReentrant() onlyRegisteredContract() {
         _requestPrice(identifier, time, ancillaryData, false);
     }
 
@@ -493,7 +493,7 @@ contract VotingV2 is
         uint256 time,
         bytes memory ancillaryData,
         bytes32 hash
-    ) public override onlyIfNotMigrated() {
+    ) public override nonReentrant() onlyIfNotMigrated() {
         uint256 currentRoundId = voteTiming.computeCurrentRoundId(getCurrentTime());
         address voter = getVoterFromDelegate(msg.sender);
         _updateTrackers(voter);
@@ -538,7 +538,7 @@ contract VotingV2 is
         int256 price,
         bytes memory ancillaryData,
         int256 salt
-    ) public override onlyIfNotMigrated() {
+    ) public override nonReentrant() onlyIfNotMigrated() {
         // Note: computing the current round is required to disallow people from revealing an old commit after the round is over.
         uint256 currentRoundId = voteTiming.computeCurrentRoundId(getCurrentTime());
         _freezeRoundVariables(currentRoundId);
@@ -623,7 +623,7 @@ contract VotingV2 is
      * low-security available wallet for voting while keeping access to staked amounts secure by a more secure wallet.
      * @param delegate the address of the delegate.
      */
-    function setDelegate(address delegate) public {
+    function setDelegate(address delegate) public nonReentrant() {
         voterStakes[msg.sender].delegate = delegate;
     }
 
@@ -632,7 +632,7 @@ contract VotingV2 is
      * the delegator also selected the delegate to do so (two way relationship needed).
      * @param delegator the address of the delegate.
      */
-    function setDelegator(address delegator) public {
+    function setDelegator(address delegator) public nonReentrant() {
         delegateToStaker[msg.sender] = delegator;
     }
 
@@ -644,7 +644,7 @@ contract VotingV2 is
      * @notice Gets the voter from the delegate.
      * @return address voter that corresponds to the delegate.
      */
-    function getVoterFromDelegate(address caller) public view returns (address) {
+    function getVoterFromDelegate(address caller) public view nonReentrant() returns (address) {
         if (
             delegateToStaker[caller] != address(0) && // The delegate chose to be a delegate for the staker.
             voterStakes[delegateToStaker[caller]].delegate == caller // The staker chose the delegate.
@@ -829,7 +829,7 @@ contract VotingV2 is
     }
 
     // Updates the slashing trackers of a given account based on previous voting activity.
-    function _updateAccountSlashingTrackers(address voterAddress, uint256 indexTo) internal {
+    function _updateAccountSlashingTrackers(address voterAddress, uint256 indexTo) internal nonReentrant {
         uint256 currentRoundId = voteTiming.computeCurrentRoundId(getCurrentTime());
         VoterStake storage voterStake = voterStakes[voterAddress];
         // Note the method below can hit a gas limit of there are a LOT of requests from the last time this was run.
@@ -952,7 +952,7 @@ contract VotingV2 is
      * @param spamRequestIndices list of request indices to be declared as spam. Each element is a
      * pair of uint256s representing the start and end of the range.
      */
-    function signalRequestsAsSpamForDeletion(uint256[2][] calldata spamRequestIndices) public {
+    function signalRequestsAsSpamForDeletion(uint256[2][] calldata spamRequestIndices) public nonReentrant() {
         votingToken.transferFrom(msg.sender, address(this), spamDeletionProposalBond);
         uint256 currentTime = getCurrentTime();
         uint256 runningValidationIndex;
@@ -995,7 +995,7 @@ contract VotingV2 is
      * @notice Execute the spam deletion proposal if it has been approved by voting.
      * @param proposalId spam deletion proposal id.
      */
-    function executeSpamDeletion(uint256 proposalId) public {
+    function executeSpamDeletion(uint256 proposalId) public nonReentrant() {
         require(spamDeletionProposals[proposalId].executed == false);
         spamDeletionProposals[proposalId].executed = true;
         bytes32 identifier = SpamGuardIdentifierLib._constructIdentifier(proposalId);
@@ -1063,7 +1063,7 @@ contract VotingV2 is
      *    PRIVATE AND INTERNAL FUNCTIONS    *
      ****************************************/
 
-    // Returns the price for a given identifer. Three params are returns: bool if there was an error, int to represent
+    // Returns the price for a given identifier. Three params are returns: bool if there was an error, int to represent
     // the resolved price and a string which is filled with an error message, if there was an error or "".
     function _getPriceOrError(
         bytes32 identifier,
