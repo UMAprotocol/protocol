@@ -308,9 +308,9 @@ abstract contract Staker is StakerInterface, Ownable {
      ****************************************/
 
     // Determine if we are in an active reveal phase. This function should be overridden by the child contract.
-    function inActiveReveal() internal view virtual returns (bool) {}
+    function inActiveReveal() internal view virtual returns (bool);
 
-    function getStartingIndexForStaker() internal view virtual returns (uint64) {}
+    function getStartingIndexForStaker() internal view virtual returns (uint64);
 
     // Calculate the reward per token based on last time the reward was updated.
     function _updateReward(address voterAddress) internal {
