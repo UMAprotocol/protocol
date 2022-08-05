@@ -13,7 +13,7 @@ import "@openzeppelin/contracts/utils/math/SafeCast.sol";
  * @title Staking contract enabling UMA to be locked up by stakers to earn a prorate share of a fixed emission rate.
  * @dev Handles the staking, unstaking and reward retrieval logic.
  */
-abstract contract Staker is StakerInterface, Ownable {
+contract Staker is StakerInterface, Ownable {
     /****************************************
      *           STAKING TRACKERS           *
      ****************************************/
@@ -33,7 +33,6 @@ abstract contract Staker is StakerInterface, Ownable {
         uint256 pendingStake;
         uint256 rewardsPaidPerToken;
         uint256 outstandingRewards;
-        int256 unappliedSlash;
         uint64 lastRequestIndexConsidered;
         uint64 unstakeRequestTime;
         address delegate;
@@ -204,7 +203,7 @@ abstract contract Staker is StakerInterface, Ownable {
         uint256 tokensToMint = voterStake.outstandingRewards;
         if (tokensToMint > 0) {
             voterStake.outstandingRewards = 0;
-            require(votingToken.mint(msg.sender, tokensToMint));
+            require(votingToken.mint(msg.sender, tokensToMint), "Voting token issuance failed");
         }
         emit WithdrawnRewards(msg.sender, tokensToMint);
         return (tokensToMint);
@@ -308,9 +307,13 @@ abstract contract Staker is StakerInterface, Ownable {
      ****************************************/
 
     // Determine if we are in an active reveal phase. This function should be overridden by the child contract.
-    function inActiveReveal() internal view virtual returns (bool) {}
+    function inActiveReveal() internal virtual returns (bool) {
+        return false;
+    }
 
-    function getStartingIndexForStaker() internal view virtual returns (uint64) {}
+    function getStartingIndexForStaker() internal virtual returns (uint64) {
+        return 0;
+    }
 
     // Calculate the reward per token based on last time the reward was updated.
     function _updateReward(address voterAddress) internal {
