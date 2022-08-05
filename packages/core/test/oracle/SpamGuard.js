@@ -1,7 +1,7 @@
 const hre = require("hardhat");
 const { web3 } = hre;
 const { runVotingV2Fixture } = require("@uma/common");
-const { getContract } = hre;
+const { getContract, assertEventEmitted } = hre;
 const { RegistryRolesEnum, didContractThrow, getRandomSignedInt, computeVoteHash } = require("@uma/common");
 const { moveToNextRound, moveToNextPhase } = require("../../utils/Voting.js");
 const { assert } = require("chai");
@@ -267,6 +267,19 @@ describe("SpamGuard", function () {
 
     // Move to next voting round to ratify the vote.
     await moveToNextRound(voting, accounts[0]);
+
+    // Check that pending request index 4 exists
+    await voting.methods.pendingPriceRequests(4).call();
+
+    // Next call updateTrackers which in turn will execute _resolvePriceRequest. This last function call
+    // will delete the resolved price requests from pending requests and emit PriceResolved events.
+    // We want to make sure that this doesn't affect the spam deletion that we will do next.
+    const result = await voting.methods.updateTrackers(account1).send({ from: account1 });
+
+    // Check that pending request index 4 doesn't exists anymore and emitted events
+    assert(await didContractThrow(voting.methods.pendingPriceRequests(4).call()));
+    await assertEventEmitted(result, voting, "PriceResolved");
+
     await voting.methods.executeSpamDeletion(0).send({ from: account1 });
     assert.equal((await voting.methods.getPendingRequests().call()).length, 0); // All requests either deleted or resolved.
     let statuses = await voting.methods
