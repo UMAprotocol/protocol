@@ -1004,8 +1004,8 @@ contract VotingV2 is
             _getPriceOrError(identifier, spamDeletionProposals[proposalId].requestTime, "");
         require(hasPrice);
 
-        // If the price is 1e18 then the spam deletion request was correctly voted on to delete the requests.
-        if (resolutionPrice == 1e18) {
+        // If the price is non zero then the spam deletion request was voted up to delete the requests. Execute delete.
+        if (resolutionPrice != 0) {
             // Delete the price requests associated with the spam.
             for (uint256 i = 0; i < spamDeletionProposals[proposalId].spamRequestIndices.length; i = unsafe_inc(i)) {
                 uint64 startIndex = uint64(spamDeletionProposals[proposalId].spamRequestIndices[uint256(i)][0]);
