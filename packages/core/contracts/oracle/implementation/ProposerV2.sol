@@ -86,21 +86,12 @@ contract ProposerV2 is Ownable, Testable, Lockable {
     function resolveProposal(uint256 id) external nonReentrant() {
         BondedProposal memory bondedProposal = bondedProposals[id];
         Voting voting = Voting(finder.getImplementationAddress(OracleInterfaces.Oracle));
+        bytes32 adminIdentifier = AdminIdentifierLib._constructIdentifier(id);
         require(
-            voting.hasPrice(
-                AdminIdentifierLib._constructIdentifier(id),
-                bondedProposal.time,
-                bondedProposal.ancillaryData
-            ),
+            voting.hasPrice(adminIdentifier, bondedProposal.time, bondedProposal.ancillaryData),
             "No price resolved"
         );
-        if (
-            voting.getPrice(
-                AdminIdentifierLib._constructIdentifier(id),
-                bondedProposal.time,
-                bondedProposal.ancillaryData
-            ) != 0
-        ) {
+        if (voting.getPrice(adminIdentifier, bondedProposal.time, bondedProposal.ancillaryData) != 0) {
             token.safeTransfer(bondedProposal.sender, bondedProposal.lockedBond);
             emit ProposalResolved(id, true);
         } else {
