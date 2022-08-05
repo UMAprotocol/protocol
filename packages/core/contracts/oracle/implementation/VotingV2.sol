@@ -119,7 +119,7 @@ contract VotingV2 is
     uint256 public gat;
 
     // Reference to the Finder.
-    FinderInterface private immutable finder;
+    FinderInterface public immutable finder;
 
     // Reference to Slashing Library.
     SlashingLibrary public slashingLibrary;

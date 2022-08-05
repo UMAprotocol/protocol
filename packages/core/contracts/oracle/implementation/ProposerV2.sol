@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import "./Finder.sol";
 import "./GovernorV2.sol";
 import "./Constants.sol";
 import "./Voting.sol";
 import "./AdminIdentifierLib.sol";
+import "../interfaces/FinderInterface.sol";
 import "../../common/implementation/Lockable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -19,7 +19,7 @@ contract ProposerV2 is Ownable, Testable, Lockable {
     IERC20 public token;
     uint256 public bond;
     GovernorV2 public governor;
-    Finder public finder;
+    FinderInterface public finder;
 
     struct BondedProposal {
         address sender;
@@ -45,7 +45,7 @@ contract ProposerV2 is Ownable, Testable, Lockable {
         IERC20 _token,
         uint256 _bond,
         GovernorV2 _governor,
-        Finder _finder,
+        FinderInterface _finder,
         address _timer
     ) Testable(_timer) {
         token = _token;
