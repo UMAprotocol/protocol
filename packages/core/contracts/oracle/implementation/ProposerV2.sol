@@ -18,7 +18,7 @@ contract ProposerV2 is Ownable, Testable, Lockable {
     using SafeERC20 for IERC20;
     IERC20 public immutable token;
     uint256 public bond;
-    GovernorV2 public governor;
+    GovernorV2 public immutable governor;
     Finder public immutable finder;
 
     struct BondedProposal {
