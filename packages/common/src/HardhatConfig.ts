@@ -67,10 +67,6 @@ export function getHardhatConfig(
     settings: { optimizer: { enabled: true, runs: 1 } },
   };
 
-  const ALLOW_ULIMITED_CONTRACT_SIZE = {
-    allowUnlimitedContractSize: true,
-  };
-
   // Some tests should not be tested using hardhat. Define all tests that end with *e2e.js to be ignored.
   const testBlacklist = [".e2e.js"];
 
@@ -100,9 +96,7 @@ export function getHardhatConfig(
         blockGasLimit: 15_000_000,
         timeout: 1800000,
         testBlacklist,
-        overrides: {
-          "contracts/oracle/implementation/test/VotingV2Test.sol": ALLOW_ULIMITED_CONTRACT_SIZE,
-        },
+        allowUnlimitedContractSize: true,
       },
       localhost: {
         url: "http://127.0.0.1:9545",
