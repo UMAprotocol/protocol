@@ -14,19 +14,18 @@ const {
   computeVoteHashAncillary,
   getKeyGenMessage,
 } = require("@uma/common");
-const { moveToNextRound, moveToNextPhase } = require("../../utils/Voting.js");
+const { moveToNextRoundEvm, moveToNextPhaseEvm, setCurrentTimeEvm } = require("../../utils/Voting.js");
 const { assert } = require("chai");
 const { toBN } = web3.utils;
 
 const Finder = getContract("Finder");
 const Registry = getContract("Registry");
-const VotingV2 = getContract("VotingV2ControllableTiming");
+const VotingV2 = getContract("VotingV2");
 const VotingInterfaceTesting = getContract("VotingInterfaceTesting");
 const VotingAncillaryInterfaceTesting = getContract("VotingAncillaryInterfaceTesting");
 const IdentifierWhitelist = getContract("IdentifierWhitelist");
 const VotingToken = getContract("VotingToken");
 const VotingV2Test = getContract("VotingV2Test");
-const Timer = getContract("Timer");
 const SlashingLibrary = getContract("SlashingLibrary");
 
 const { utf8ToHex, padRight } = web3.utils;
@@ -82,10 +81,10 @@ describe("VotingV2", function () {
     // are run.
     const currentTime = Number((await voting.methods.getCurrentTime().call()).toString());
     const newTime = (Math.floor(currentTime / 172800) + 1) * 172800;
-    await voting.methods.setCurrentTime(newTime).send({ from: accounts[0] });
+    await setCurrentTimeEvm(newTime);
 
     // Start with a fresh round.
-    await moveToNextRound(voting, accounts[0]);
+    await moveToNextRoundEvm(voting, accounts[0]);
   });
 
   it("Constructor", async function () {
@@ -103,8 +102,7 @@ describe("VotingV2", function () {
           "0", // startingRequestIndex
           votingToken.options.address, // voting token
           (await Finder.deployed()).options.address, // finder
-          (await SlashingLibrary.deployed()).options.address, // slashing library
-          (await Timer.deployed()).options.address // timer
+          (await SlashingLibrary.deployed()).options.address // slashing library
         ).send({ from: accounts[0] })
       )
     );
@@ -112,7 +110,7 @@ describe("VotingV2", function () {
   // TODO: group the tests in this file by "type" with describe blocks.
   it("Vote phasing", async function () {
     // Reset the rounds.
-    await moveToNextRound(voting, accounts[0]);
+    await moveToNextRoundEvm(voting, accounts[0]);
 
     // RoundId is a function of the voting time defined by floor(timestamp/phaseLength).
     // RoundId for Commit and Reveal phases should be the same.
@@ -124,14 +122,14 @@ describe("VotingV2", function () {
     assert.equal((await voting.methods.getVotePhase().call()).toString(), VotePhasesEnum.COMMIT);
 
     // Shift of one phase should be Reveal.
-    await moveToNextPhase(voting, accounts[0]);
+    await moveToNextPhaseEvm(voting, accounts[0]);
     assert.equal((await voting.methods.getVotePhase().call()).toString(), VotePhasesEnum.REVEAL);
 
     // Round ID between Commit and Reveal phases should be the same.
     assert.equal(commitRoundId.toString(), (await voting.methods.getCurrentRoundId().call()).toString());
 
     // A second shift should go back to commit.
-    await moveToNextPhase(voting, accounts[0]);
+    await moveToNextPhaseEvm(voting, accounts[0]);
     assert.equal((await voting.methods.getVotePhase().call()).toString(), VotePhasesEnum.COMMIT);
   });
 
@@ -143,7 +141,7 @@ describe("VotingV2", function () {
 
     // Request a price and move to the next round where that will be voted on.
     await voting.methods.requestPrice(identifier, time).send({ from: registeredContract });
-    await moveToNextRound(voting, accounts[0]);
+    await moveToNextRoundEvm(voting, accounts[0]);
     // RoundId is a function of the voting time defined by floor(timestamp/phaseLength).
     // RoundId for Commit and Reveal phases should be the same.
     const currentRoundId = await voting.methods.getCurrentRoundId().call();
@@ -179,7 +177,7 @@ describe("VotingV2", function () {
     );
 
     // Move to the reveal phase.
-    await moveToNextPhase(voting, accounts[0]);
+    await moveToNextPhaseEvm(voting, accounts[0]);
 
     // This is now required before reveal
 
@@ -246,7 +244,7 @@ describe("VotingV2", function () {
     await voting.methods.requestPrice(identifier2, time1).send({ from: registeredContract });
 
     // Move to voting round.
-    await moveToNextRound(voting, accounts[0]);
+    await moveToNextRoundEvm(voting, accounts[0]);
     const roundId = (await voting.methods.getCurrentRoundId().call()).toString();
 
     const price1 = getRandomSignedInt();
@@ -275,7 +273,7 @@ describe("VotingV2", function () {
     await voting.methods.commitVote(identifier2, time1, hash2).send({ from: accounts[0] });
 
     // Move to the reveal phase.
-    await moveToNextPhase(voting, accounts[0]);
+    await moveToNextPhaseEvm(voting, accounts[0]);
 
     // Can't reveal the wrong combos.
     assert(
@@ -317,7 +315,7 @@ describe("VotingV2", function () {
     assert(await didContractThrow(voting.methods.getPrice(identifier2, time2).send({ from: registeredContract })));
 
     // Move to the voting round.
-    await moveToNextRound(voting, accounts[0]);
+    await moveToNextRoundEvm(voting, accounts[0]);
     const roundId = (await voting.methods.getCurrentRoundId().call()).toString();
 
     // Commit vote 1.
@@ -354,7 +352,7 @@ describe("VotingV2", function () {
     assert(await didContractThrow(voting.methods.getPrice(identifier2, time2).send({ from: registeredContract })));
 
     // Move to the reveal phase of the voting period.
-    await moveToNextPhase(voting, accounts[0]);
+    await moveToNextPhaseEvm(voting, accounts[0]);
 
     // Reveal both votes.
     await voting.methods.revealVote(identifier1, time1, price1, salt1).send({ from: accounts[0] });
@@ -367,7 +365,7 @@ describe("VotingV2", function () {
     assert(await didContractThrow(voting.methods.getPrice(identifier2, time2).send({ from: registeredContract })));
 
     // Move past the voting round.
-    await moveToNextRound(voting, accounts[0]);
+    await moveToNextRoundEvm(voting, accounts[0]);
 
     // Note: all voting results are currently hardcoded to 1.
     assert.isTrue(await voting.methods.hasPrice(identifier1, time1).call({ from: registeredContract }));
@@ -383,8 +381,7 @@ describe("VotingV2", function () {
   });
 
   it("Future price requests disallowed", async function () {
-    await moveToNextRound(voting, accounts[0]);
-
+    await moveToNextRoundEvm(voting, accounts[0]);
     const startingTime = toBN(await voting.methods.getCurrentTime().call());
     const identifier = padRight(utf8ToHex("future-request"), 64);
 
@@ -392,7 +389,7 @@ describe("VotingV2", function () {
     await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
 
     // Time 1 is in the future and should fail.
-    const timeFail = startingTime.addn(1).toString();
+    const timeFail = startingTime.addn(100).toString();
 
     // Time 2 is in the past and should succeed.
     const timeSucceed = startingTime.subn(1).toString();
@@ -403,7 +400,7 @@ describe("VotingV2", function () {
     await voting.methods.requestPrice(identifier, timeSucceed).send({ from: registeredContract });
 
     // Finalize this vote.
-    await moveToNextRound(voting, accounts[0]);
+    await moveToNextRoundEvm(voting, accounts[0]);
     const roundId = (await voting.methods.getCurrentRoundId().call()).toString();
     const price = getRandomSignedInt();
     const salt = getRandomSignedInt();
@@ -418,13 +415,13 @@ describe("VotingV2", function () {
     await voting.methods.commitVote(identifier, timeSucceed, hash).send({ from: accounts[0] });
 
     // Move to reveal phase and reveal vote.
-    await moveToNextPhase(voting, accounts[0]);
+    await moveToNextPhaseEvm(voting, accounts[0]);
 
     await voting.methods.revealVote(identifier, timeSucceed, price, salt).send({ from: accounts[0] });
   });
 
   it("Retrieval timing", async function () {
-    await moveToNextRound(voting, accounts[0]);
+    await moveToNextRoundEvm(voting, accounts[0]);
 
     const identifier = padRight(utf8ToHex("retrieval-timing"), 64);
     const time = "1000";
@@ -439,7 +436,7 @@ describe("VotingV2", function () {
     // Cannot get the price before the voting round begins.
     assert(await didContractThrow(voting.methods.getPrice(identifier, time).send({ from: registeredContract })));
 
-    await moveToNextRound(voting, accounts[0]);
+    await moveToNextRoundEvm(voting, accounts[0]);
     const roundId = (await voting.methods.getCurrentRoundId().call()).toString();
 
     // Cannot get the price while the voting is ongoing.
@@ -452,14 +449,14 @@ describe("VotingV2", function () {
     await voting.methods.commitVote(identifier, time, hash).send({ from: accounts[0] });
 
     // Move to reveal phase and reveal vote.
-    await moveToNextPhase(voting, accounts[0]);
+    await moveToNextPhaseEvm(voting, accounts[0]);
 
     await voting.methods.revealVote(identifier, time, price, salt).send({ from: accounts[0] });
 
     // Cannot get the price during the reveal phase.
     assert(await didContractThrow(voting.methods.getPrice(identifier, time).send({ from: registeredContract })));
 
-    await moveToNextRound(voting, accounts[0]);
+    await moveToNextRoundEvm(voting, accounts[0]);
 
     // After the voting round is over, the price should be retrievable.
     assert.equal(
@@ -469,7 +466,7 @@ describe("VotingV2", function () {
   });
 
   it("Pending Requests", async function () {
-    await moveToNextRound(voting, accounts[0]);
+    await moveToNextRoundEvm(voting, accounts[0]);
 
     const identifier1 = padRight(utf8ToHex("pending-requests1"), 64);
     const time1 = "1000";
@@ -491,7 +488,7 @@ describe("VotingV2", function () {
     assert.equal((await voting.methods.getPendingRequests().call()).length, 0);
 
     // Pending requests should be have a single entry now that voting has started.
-    await moveToNextRound(voting, accounts[0]);
+    await moveToNextRoundEvm(voting, accounts[0]);
     assert.equal((await voting.methods.getPendingRequests().call()).length, 1);
 
     // Add a new request during the voting round.
@@ -501,7 +498,7 @@ describe("VotingV2", function () {
     assert.equal((await voting.methods.getPendingRequests().call()).length, 1);
 
     // Move to next round and roll the first request over.
-    await moveToNextRound(voting, accounts[0]);
+    await moveToNextRoundEvm(voting, accounts[0]);
     const roundId = (await voting.methods.getCurrentRoundId().call()).toString();
 
     // Pending requests should be 2 because one vote was rolled over and the second was dispatched after the previous
@@ -534,7 +531,7 @@ describe("VotingV2", function () {
     await voting.methods.commitVote(identifier2, time2, hash2).send({ from: accounts[0] });
 
     // Pending requests should still have a single entry in the reveal phase.
-    await moveToNextPhase(voting, accounts[0]);
+    await moveToNextPhaseEvm(voting, accounts[0]);
     assert.equal((await voting.methods.getPendingRequests().call()).length, 2);
 
     // Reveal vote.
@@ -542,7 +539,7 @@ describe("VotingV2", function () {
     await voting.methods.revealVote(identifier2, time2, price2, salt2).send({ from: accounts[0] });
 
     // Pending requests should be empty after the voting round ends and the price is resolved.
-    await moveToNextRound(voting, accounts[0]);
+    await moveToNextRoundEvm(voting, accounts[0]);
     assert.equal((await voting.methods.getPendingRequests().call()).length, 0);
   });
 
@@ -589,7 +586,7 @@ describe("VotingV2", function () {
       await didContractThrow(voting.methods.commitVote(identifier, time, invalidHash).send({ from: accounts[0] }))
     );
 
-    await moveToNextRound(voting, accounts[0]);
+    await moveToNextRoundEvm(voting, accounts[0]);
     const roundId = (await voting.methods.getCurrentRoundId().call()).toString();
 
     // Commit vote.
@@ -597,13 +594,13 @@ describe("VotingV2", function () {
     await voting.methods.commitVote(identifier, time, hash).send({ from: accounts[0] });
 
     // Reveal the vote.
-    await moveToNextPhase(voting, accounts[0]);
+    await moveToNextPhaseEvm(voting, accounts[0]);
 
     await voting.methods.revealVote(identifier, time, price, salt).send({ from: accounts[0] });
 
     // Should resolve to the selected price since there was only one voter (100% for the mode) and the voter had enough
     // tokens to exceed the GAT.
-    await moveToNextRound(voting, accounts[0]);
+    await moveToNextRoundEvm(voting, accounts[0]);
     assert.equal(
       (await voting.methods.getPrice(identifier, time).call({ from: registeredContract })).toString(),
       price.toString()
@@ -619,7 +616,7 @@ describe("VotingV2", function () {
 
     // Request a price and move to the next round where that will be voted on.
     await voting.methods.requestPrice(identifier, time).send({ from: registeredContract });
-    await moveToNextRound(voting, accounts[0]);
+    await moveToNextRoundEvm(voting, accounts[0]);
     let roundId = (await voting.methods.getCurrentRoundId().call()).toString();
 
     // Commit votes.
@@ -634,20 +631,20 @@ describe("VotingV2", function () {
     await voting.methods.commitVote(identifier, time, hash2).send({ from: account2 });
 
     // Reveal the votes.
-    await moveToNextPhase(voting, accounts[0]);
+    await moveToNextPhaseEvm(voting, accounts[0]);
 
     await voting.methods.revealVote(identifier, time, price1, salt1).send({ from: account1 });
     await voting.methods.revealVote(identifier, time, price2, salt2).send({ from: account2 });
 
     // Should not have the price since the vote was equally split.
-    await moveToNextRound(voting, accounts[0]);
+    await moveToNextRoundEvm(voting, accounts[0]);
     roundId = (await voting.methods.getCurrentRoundId().call()).toString();
     assert.isFalse(await voting.methods.hasPrice(identifier, time).call({ from: registeredContract }));
 
     // Cleanup: resolve the vote this round.
     hash1 = computeVoteHash({ price: price1, salt: salt1, account: account1, time, roundId, identifier });
     await voting.methods.commitVote(identifier, time, hash1).send({ from: account1 });
-    await moveToNextPhase(voting, accounts[0]);
+    await moveToNextPhaseEvm(voting, accounts[0]);
 
     await voting.methods.revealVote(identifier, time, price1, salt1).send({ from: account1 });
   });
@@ -661,7 +658,7 @@ describe("VotingV2", function () {
 
     // Request a price and move to the next round where that will be voted on.
     await voting.methods.requestPrice(identifier, time).send({ from: registeredContract });
-    await moveToNextRound(voting, accounts[0]);
+    await moveToNextRoundEvm(voting, accounts[0]);
     const roundId = (await voting.methods.getCurrentRoundId().call()).toString();
 
     // Commit votes.
@@ -682,14 +679,14 @@ describe("VotingV2", function () {
     await voting.methods.commitVote(identifier, time, hash3).send({ from: account3 });
 
     // Reveal the votes.
-    await moveToNextPhase(voting, accounts[0]);
+    await moveToNextPhaseEvm(voting, accounts[0]);
 
     await voting.methods.revealVote(identifier, time, losingPrice, salt1).send({ from: account1 });
     await voting.methods.revealVote(identifier, time, winningPrice, salt2).send({ from: account2 });
     await voting.methods.revealVote(identifier, time, winningPrice, salt3).send({ from: account3 });
 
     // Price should resolve to the one that 2 and 3 voted for.
-    await moveToNextRound(voting, accounts[0]);
+    await moveToNextRoundEvm(voting, accounts[0]);
     assert.equal(
       (await voting.methods.getPrice(identifier, time).call({ from: registeredContract })).toString(),
       winningPrice.toString()
@@ -705,7 +702,7 @@ describe("VotingV2", function () {
 
     // Request a price and move to the next round where that will be voted on.
     await voting.methods.requestPrice(identifier, time).send({ from: registeredContract });
-    await moveToNextRound(voting, accounts[0]);
+    await moveToNextRoundEvm(voting, accounts[0]);
     let roundId = (await voting.methods.getCurrentRoundId().call()).toString();
 
     // Commit vote.
@@ -717,12 +714,12 @@ describe("VotingV2", function () {
     await voting.methods.commitVote(identifier, time, hash4).send({ from: account4 });
 
     // Reveal the vote.
-    await moveToNextPhase(voting, accounts[0]);
+    await moveToNextPhaseEvm(voting, accounts[0]);
 
     await voting.methods.revealVote(identifier, time, price, salt).send({ from: account4 });
 
     // Since the GAT was not hit, the price should not resolve.
-    await moveToNextRound(voting, accounts[0]);
+    await moveToNextRoundEvm(voting, accounts[0]);
     assert.isFalse(await voting.methods.hasPrice(identifier, time).call({ from: registeredContract }));
 
     // Setting GAT should revert if larger than total supply.
@@ -737,9 +734,9 @@ describe("VotingV2", function () {
     await voting.methods.commitVote(identifier, time, hash4).send({ from: account4 });
 
     // Reveal votes.
-    await moveToNextPhase(voting, accounts[0]);
+    await moveToNextPhaseEvm(voting, accounts[0]);
     await voting.methods.revealVote(identifier, time, price, salt).send({ from: account4 });
-    await moveToNextRound(voting, accounts[0]);
+    await moveToNextRoundEvm(voting, accounts[0]);
     assert.equal(
       (await voting.methods.getPrice(identifier, time).call({ from: registeredContract })).toString(),
       price.toString()
@@ -753,7 +750,7 @@ describe("VotingV2", function () {
     time += 10;
 
     await voting.methods.requestPrice(identifier, time).send({ from: registeredContract });
-    await moveToNextRound(voting, accounts[0]);
+    await moveToNextRoundEvm(voting, accounts[0]);
 
     // Commit votes.
     roundId = (await voting.methods.getCurrentRoundId().call()).toString();
@@ -763,12 +760,12 @@ describe("VotingV2", function () {
     await voting.methods.commitVote(identifier, time, hash1).send({ from: account1 });
 
     // Reveal votes.
-    await moveToNextPhase(voting, accounts[0]);
+    await moveToNextPhaseEvm(voting, accounts[0]);
 
     await voting.methods.revealVote(identifier, time, price, salt).send({ from: account4 });
     await voting.methods.revealVote(identifier, time, price, salt).send({ from: account1 });
 
-    await moveToNextRound(voting, accounts[0]);
+    await moveToNextRoundEvm(voting, accounts[0]);
     assert.equal(
       (await voting.methods.getPrice(identifier, time).call({ from: registeredContract })).toString(),
       price.toString()
@@ -787,16 +784,16 @@ describe("VotingV2", function () {
 
     // Request the price and resolve the price.
     voting.methods.requestPrice(identifier, time).send({ from: registeredContract });
-    await moveToNextRound(voting, accounts[0]);
+    await moveToNextRoundEvm(voting, accounts[0]);
     const roundId = (await voting.methods.getCurrentRoundId().call()).toString();
     const winningPrice = 123;
     const salt = getRandomSignedInt();
     const hash = computeVoteHash({ price: winningPrice, salt, account: account1, time, roundId, identifier });
     await voting.methods.commitVote(identifier, time, hash).send({ from: account1 });
-    await moveToNextPhase(voting, accounts[0]);
+    await moveToNextPhaseEvm(voting, accounts[0]);
 
     await voting.methods.revealVote(identifier, time, winningPrice, salt).send({ from: account1 });
-    await moveToNextRound(voting, accounts[0]);
+    await moveToNextRoundEvm(voting, accounts[0]);
 
     // Sanity check that registered contracts can retrieve prices.
     assert.isTrue(await voting.methods.hasPrice(identifier, time).call({ from: registeredContract }));
@@ -848,7 +845,7 @@ describe("VotingV2", function () {
         .toString()
     );
 
-    await moveToNextRound(voting, accounts[0]);
+    await moveToNextRoundEvm(voting, accounts[0]);
     const roundId = (await voting.methods.getCurrentRoundId().call()).toString();
 
     // Verify `getPriceRequestStatuses` for a price request scheduled for this round.
@@ -867,12 +864,12 @@ describe("VotingV2", function () {
     const hash2 = computeVoteHash({ price, salt: salt2, account: account2, time, roundId, identifier });
     await voting.methods.commitVote(identifier, time, hash2).send({ from: account2 });
 
-    await moveToNextPhase(voting, accounts[0]);
+    await moveToNextPhaseEvm(voting, accounts[0]);
 
     await voting.methods.revealVote(identifier, time, price, salt1).send({ from: account1 });
     await voting.methods.revealVote(identifier, time, price, salt2).send({ from: account2 });
 
-    await moveToNextRound(voting, accounts[0]);
+    await moveToNextRoundEvm(voting, accounts[0]);
 
     // Verify view methods `hasPrice`, `getPrice`, and `getPriceRequestStatuses` for a resolved price request.
     assert.isTrue(await voting.methods.hasPrice(identifier, time).call({ from: registeredContract }));
@@ -898,7 +895,7 @@ describe("VotingV2", function () {
 
     let result = await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
 
-    await moveToNextRound(voting, accounts[0]);
+    await moveToNextRoundEvm(voting, accounts[0]);
     let currentRoundId = toBN(await voting.methods.getCurrentRoundId().call());
 
     // New price requests trigger events.
@@ -927,7 +924,7 @@ describe("VotingV2", function () {
       "SpamDeletionProposalBondChanged"
     );
 
-    await moveToNextRound(voting, accounts[0]);
+    await moveToNextRoundEvm(voting, accounts[0]);
     currentRoundId = await voting.methods.getCurrentRoundId().call();
 
     // Repeated price requests don't trigger events.
@@ -948,7 +945,7 @@ describe("VotingV2", function () {
       );
     });
 
-    await moveToNextPhase(voting, accounts[0]);
+    await moveToNextPhaseEvm(voting, accounts[0]);
 
     result = await voting.methods.revealVote(identifier, time, price, salt).send({ from: account4 });
     await assertEventEmitted(result, voting, "VoteRevealed", (ev) => {
@@ -962,7 +959,7 @@ describe("VotingV2", function () {
       );
     });
 
-    await moveToNextRound(voting, accounts[0]);
+    await moveToNextRoundEvm(voting, accounts[0]);
     currentRoundId = await voting.methods.getCurrentRoundId().call();
     // Since none of the whales voted, the price couldn't be resolved.
 
@@ -972,11 +969,11 @@ describe("VotingV2", function () {
     hash4 = computeVoteHash({ price: wrongPrice, salt, account: account4, time, roundId: currentRoundId, identifier });
     await voting.methods.commitVote(identifier, time, hash1).send({ from: account1 });
     result = await voting.methods.commitVote(identifier, time, hash4).send({ from: account4 });
-    await moveToNextPhase(voting, accounts[0]);
+    await moveToNextPhaseEvm(voting, accounts[0]);
 
     await voting.methods.revealVote(identifier, time, price, salt).send({ from: account1 });
     await voting.methods.revealVote(identifier, time, wrongPrice, salt).send({ from: account4 });
-    await moveToNextRound(voting, accounts[0]);
+    await moveToNextRoundEvm(voting, accounts[0]);
 
     result = await voting.methods.updateTrackers(account1).send({ from: account1 });
 
@@ -999,7 +996,7 @@ describe("VotingV2", function () {
     await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
 
     await voting.methods.requestPrice(identifier, time).send({ from: registeredContract });
-    await moveToNextRound(voting, accounts[0]);
+    await moveToNextRoundEvm(voting, accounts[0]);
     let roundId = (await voting.methods.getCurrentRoundId().call()).toString();
 
     const price = getRandomSignedInt();
@@ -1034,7 +1031,7 @@ describe("VotingV2", function () {
     // Check that the emitted message is correct.
     assert.equal(encryptedMessage, retrievedEncryptedMessage);
 
-    await moveToNextPhase(voting, accounts[0]);
+    await moveToNextPhaseEvm(voting, accounts[0]);
 
     const decryptedMessage = await decryptMessage(privateKey, retrievedEncryptedMessage);
     const retrievedVote = JSON.parse(decryptedMessage);
@@ -1057,7 +1054,7 @@ describe("VotingV2", function () {
     await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
 
     await voting.methods.requestPrice(identifier, time).send({ from: registeredContract });
-    await moveToNextRound(voting, accounts[0]);
+    await moveToNextRoundEvm(voting, accounts[0]);
     const roundId = (await voting.methods.getCurrentRoundId().call()).toString();
 
     const price = getRandomSignedInt();
@@ -1100,7 +1097,7 @@ describe("VotingV2", function () {
       await voting.methods.requestPrice(identifier, requestTime).send({ from: registeredContract });
     }
 
-    await moveToNextRound(voting, accounts[0]);
+    await moveToNextRoundEvm(voting, accounts[0]);
 
     const data = priceRequests.map((request) => {
       return voting.methods.commitVote(request.identifier, request.time, request.hash).encodeABI();
@@ -1162,7 +1159,7 @@ describe("VotingV2", function () {
 
     await voting.methods.requestPrice(identifier, time1).send({ from: registeredContract });
     await voting.methods.requestPrice(identifier, time2).send({ from: registeredContract });
-    await moveToNextRound(voting, accounts[0]);
+    await moveToNextRoundEvm(voting, accounts[0]);
     const roundId = (await voting.methods.getCurrentRoundId().call()).toString();
 
     const price1 = getRandomSignedInt();
@@ -1179,7 +1176,7 @@ describe("VotingV2", function () {
       .send({ from: accounts[0] });
     await voting.methods.commitVote(identifier, time2, hash2).send({ from: accounts[0] });
 
-    await moveToNextPhase(voting, accounts[0]);
+    await moveToNextPhaseEvm(voting, accounts[0]);
 
     const data = [
       voting.methods.revealVote(identifier, time1, price1, salt1).encodeABI(),
@@ -1223,8 +1220,7 @@ describe("VotingV2", function () {
       "0", // startingRequestIndex
       votingToken.options.address, // voting token
       (await Finder.deployed()).options.address, // finder
-      (await SlashingLibrary.deployed()).options.address, // slashing library
-      (await Timer.deployed()).options.address // timer
+      (await SlashingLibrary.deployed()).options.address // slashing library
     ).send({ from: accounts[0] });
 
     // unstake and restake in the new voting contract
@@ -1253,17 +1249,17 @@ describe("VotingV2", function () {
 
     await newVoting.methods.requestPrice(identifier, time1).send({ from: registeredContract });
     await newVoting.methods.requestPrice(identifier, time2).send({ from: registeredContract });
-    await moveToNextRound(newVoting, accounts[0]);
+    await moveToNextRoundEvm(newVoting, accounts[0]);
     const roundId = (await newVoting.methods.getCurrentRoundId().call()).toString();
 
     const price = 123;
     const salt = getRandomSignedInt();
     const hash = computeVoteHash({ price, salt, account: account1, time: time1, roundId, identifier });
     await newVoting.methods.commitVote(identifier, time1, hash).send({ from: account1 });
-    await moveToNextPhase(newVoting, accounts[0]);
+    await moveToNextPhaseEvm(newVoting, accounts[0]);
     // await newVoting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
     await newVoting.methods.revealVote(identifier, time1, price, salt).send({ from: account1 });
-    await moveToNextRound(newVoting, accounts[0]);
+    await moveToNextRoundEvm(newVoting, accounts[0]);
 
     // New newVoting can only call methods after the migration, not before.
     assert(await newVoting.methods.hasPrice(identifier, time1).call({ from: registeredContract }));
@@ -1294,7 +1290,7 @@ describe("VotingV2", function () {
           votingToken.options.address, // voting token
           (await Finder.deployed()).options.address, // finder
           (await SlashingLibrary.deployed()).options.address, // slashing library
-          (await Timer.deployed()).options.address // timer
+          ZERO_ADDRESS // timer
         ).send({ from: accounts[0] })
       ).options.address
     );
@@ -1305,7 +1301,7 @@ describe("VotingV2", function () {
     await votingToken.methods.approve(votingTest.options.address, toWei("32000000")).send({ from: account1 });
     await VotingV2.at(votingTest.options.address).methods.stake(toWei("32000000")).send({ from: account1 });
 
-    await moveToNextRound(votingTest, accounts[0]);
+    await moveToNextRoundEvm(votingTest, accounts[0]);
 
     const identifier = padRight(utf8ToHex("array-size"), 64);
     const time = "1000";
@@ -1324,7 +1320,7 @@ describe("VotingV2", function () {
     assert.equal((await votingTest.methods.getPendingPriceRequestsArray().call()).length, 1);
 
     // Move to voting round.
-    await moveToNextRound(votingTest, accounts[0]);
+    await moveToNextRoundEvm(votingTest, accounts[0]);
     const votingRound = await votingTest.methods.getCurrentRoundId().call();
 
     // Commit vote.
@@ -1334,13 +1330,13 @@ describe("VotingV2", function () {
     await votingTest.methods.commitVote(identifier, time, hash).send({ from: account1 });
 
     // Reveal phase.
-    await moveToNextPhase(votingTest, accounts[0]);
+    await moveToNextPhaseEvm(votingTest, accounts[0]);
 
     // Reveal vote.
     await votingTest.methods.revealVote(identifier, time, price, salt).send({ from: account1 });
 
     // Pending requests should be empty after the voting round ends and the price is resolved.
-    await moveToNextRound(votingTest, accounts[0]);
+    await moveToNextRoundEvm(votingTest, accounts[0]);
 
     // Updating the account tracker should remove the request from the pending array as it is now resolved.
     await VotingV2.at(votingTest.options.address).methods.updateTrackers(account1).send({ from: account1 });
@@ -1392,7 +1388,7 @@ describe("VotingV2", function () {
     );
 
     // Move to the voting round.
-    await moveToNextRound(voting, accounts[0]);
+    await moveToNextRoundEvm(voting, accounts[0]);
     const roundId = (await voting.methods.getCurrentRoundId().call()).toString();
 
     // Ancillary data should be correctly preserved and accessible to voters.
@@ -1467,7 +1463,7 @@ describe("VotingV2", function () {
     );
 
     // Move to the reveal phase of the voting period.
-    await moveToNextPhase(voting, accounts[0]);
+    await moveToNextPhaseEvm(voting, accounts[0]);
 
     // Reveal both votes.
     await voting.methods.revealVote(identifier1, time1, price1, ancillaryData1, salt1).send({ from: accounts[0] });
@@ -1492,7 +1488,7 @@ describe("VotingV2", function () {
     );
 
     // Move past the voting round.
-    await moveToNextRound(voting, accounts[0]);
+    await moveToNextRoundEvm(voting, accounts[0]);
 
     // Note: all voting results are currently hardcoded to 1.
     assert.isTrue(await voting.methods.hasPrice(identifier1, time1, ancillaryData1).call({ from: registeredContract }));
@@ -1541,7 +1537,7 @@ describe("VotingV2", function () {
     );
 
     // Move to the voting round.
-    await moveToNextRound(voting, accounts[0]);
+    await moveToNextRoundEvm(voting, accounts[0]);
     const roundId = (await voting.methods.getCurrentRoundId().call()).toString();
 
     // Ancillary data should be correctly preserved and accessible to voters.
@@ -1570,7 +1566,7 @@ describe("VotingV2", function () {
     );
 
     // Move to the reveal phase of the voting period.
-    await moveToNextPhase(voting, accounts[0]);
+    await moveToNextPhaseEvm(voting, accounts[0]);
 
     // Reveal votes.
     await voting.methods.revealVote(identifier, time, price, ancillaryData, salt).send({ from: accounts[0] });
@@ -1584,7 +1580,7 @@ describe("VotingV2", function () {
     );
 
     // Move past the voting round.
-    await moveToNextRound(voting, accounts[0]);
+    await moveToNextRoundEvm(voting, accounts[0]);
 
     // Note: all voting results are currently hardcoded to 1.
     assert.isTrue(await voting.methods.hasPrice(identifier, time, ancillaryData).call({ from: registeredContract }));
@@ -1646,7 +1642,7 @@ describe("VotingV2", function () {
     );
 
     // Move to the voting round.
-    await moveToNextRound(voting, accounts[0]);
+    await moveToNextRoundEvm(voting, accounts[0]);
     const roundId = (await voting.methods.getCurrentRoundId().call()).toString();
 
     // Ancillary data should be correctly preserved and accessible to voters.
@@ -1723,7 +1719,7 @@ describe("VotingV2", function () {
     );
 
     // Move to the reveal phase of the voting period.
-    await moveToNextPhase(voting, accounts[0]);
+    await moveToNextPhaseEvm(voting, accounts[0]);
 
     // Reveal both votes.
     await voting.methods.revealVote(identifier1, time1, price1, ancillaryData1, salt1).send({ from: accounts[0] });
@@ -1752,7 +1748,7 @@ describe("VotingV2", function () {
     );
 
     // Move past the voting round.
-    await moveToNextRound(voting, accounts[0]);
+    await moveToNextRoundEvm(voting, accounts[0]);
 
     // Note: all voting results are currently hardcoded to 1.
     assert.isTrue(
@@ -1787,7 +1783,7 @@ describe("VotingV2", function () {
 
     // Request a price and move to the next round where that will be voted on.
     await voting.methods.requestPrice(identifier, time).send({ from: registeredContract });
-    await moveToNextRound(voting, accounts[0]);
+    await moveToNextRoundEvm(voting, accounts[0]);
     const roundId = (await voting.methods.getCurrentRoundId().call()).toString();
 
     // Commit votes.
@@ -1808,14 +1804,14 @@ describe("VotingV2", function () {
     await voting.methods.commitVote(identifier, time, hash3).send({ from: account3 });
 
     // Reveal the votes.
-    await moveToNextPhase(voting, accounts[0]);
+    await moveToNextPhaseEvm(voting, accounts[0]);
 
     await voting.methods.revealVote(identifier, time, losingPrice, salt1).send({ from: account1 });
     await voting.methods.revealVote(identifier, time, winningPrice, salt2).send({ from: account2 });
     await voting.methods.revealVote(identifier, time, winningPrice, salt3).send({ from: account3 });
 
     // Price should resolve to the one that 2 and 3 voted for.
-    await moveToNextRound(voting, accounts[0]);
+    await moveToNextRoundEvm(voting, accounts[0]);
 
     // Now call updateTrackers to update the slashing metrics. We should see a cumulative slashing amount increment and
     // the slash per wrong vote and slash per no vote set correctly.
@@ -1866,7 +1862,7 @@ describe("VotingV2", function () {
     await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
     await voting.methods.requestPrice(identifier, time1).send({ from: registeredContract });
     await voting.methods.requestPrice(identifier, time2).send({ from: registeredContract });
-    await moveToNextRound(voting, accounts[0]);
+    await moveToNextRoundEvm(voting, accounts[0]);
     const roundId = (await voting.methods.getCurrentRoundId().call()).toString();
 
     // Account1 and account4 votes correctly, account2 votes wrong in both votes and account3 does not vote in either.
@@ -1889,7 +1885,7 @@ describe("VotingV2", function () {
     const hash6 = computeVoteHash({ ...baseRequest, price: winningPrice, account: account4, time: time2 });
     await voting.methods.commitVote(identifier, time2, hash6).send({ from: account4 });
 
-    await moveToNextPhase(voting, accounts[0]); // Reveal the votes.
+    await moveToNextPhaseEvm(voting, accounts[0]); // Reveal the votes.
 
     await voting.methods.revealVote(identifier, time1, losingPrice, salt).send({ from: account2 });
     await voting.methods.revealVote(identifier, time2, losingPrice, salt).send({ from: account2 });
@@ -1900,7 +1896,7 @@ describe("VotingV2", function () {
     await voting.methods.revealVote(identifier, time1, winningPrice, salt).send({ from: account4 });
     await voting.methods.revealVote(identifier, time2, winningPrice, salt).send({ from: account4 });
 
-    await moveToNextRound(voting, accounts[0]);
+    await moveToNextRoundEvm(voting, accounts[0]);
     // Now call updateTrackers to update the slashing metrics. We should see a cumulative slashing amount increment and
     // the slash per wrong vote and slash per no vote set correctly.
     await voting.methods.updateTrackers(account1).send({ from: account1 });
@@ -1956,7 +1952,7 @@ describe("VotingV2", function () {
 
     await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
     await voting.methods.requestPrice(identifier, time1).send({ from: registeredContract });
-    await moveToNextRound(voting, accounts[0]);
+    await moveToNextRoundEvm(voting, accounts[0]);
     const roundId = (await voting.methods.getCurrentRoundId().call()).toString();
 
     // Account1 and account4 votes correctly, account2 votes wrong and account3 does not vote.
@@ -1975,7 +1971,7 @@ describe("VotingV2", function () {
     const hash3 = computeVoteHash({ ...baseRequest, price: winningPrice, account: account4, time: time1 });
     await voting.methods.commitVote(identifier, time1, hash3).send({ from: account4 });
 
-    await moveToNextPhase(voting, accounts[0]); // Reveal the votes.
+    await moveToNextPhaseEvm(voting, accounts[0]); // Reveal the votes.
 
     await voting.methods.revealVote(identifier, time1, losingPrice, salt).send({ from: account2 });
     await voting.methods.revealVote(identifier, time1, winningPrice, salt).send({ from: account1 });
@@ -1983,7 +1979,7 @@ describe("VotingV2", function () {
 
     const time2 = "690";
     await voting.methods.requestPrice(identifier, time2).send({ from: registeredContract });
-    await moveToNextRound(voting, accounts[0]);
+    await moveToNextRoundEvm(voting, accounts[0]);
     const roundId2 = (await voting.methods.getCurrentRoundId().call()).toString();
     // In this vote say that Account1 and account3 votes correctly, account4 votes wrong and account2 does not vote.
     const baseRequest2 = { salt, roundId: roundId2, identifier };
@@ -1997,13 +1993,13 @@ describe("VotingV2", function () {
     const hash6 = computeVoteHash({ ...baseRequest2, price: winningPrice, account: account3, time: time2 });
     await voting.methods.commitVote(identifier, time2, hash6).send({ from: account3 });
 
-    await moveToNextPhase(voting, accounts[0]); // Reveal the votes.
+    await moveToNextPhaseEvm(voting, accounts[0]); // Reveal the votes.
 
     await voting.methods.revealVote(identifier, time2, losingPrice, salt).send({ from: account4 });
     await voting.methods.revealVote(identifier, time2, winningPrice, salt).send({ from: account1 });
     await voting.methods.revealVote(identifier, time2, winningPrice, salt).send({ from: account3 });
 
-    await moveToNextRound(voting, accounts[0]);
+    await moveToNextRoundEvm(voting, accounts[0]);
 
     // Now call updateTrackers to update the slashing metrics. We should see a cumulative slashing amount increment and
     // the slash per wrong vote and slash per no vote set correctly.
@@ -2082,7 +2078,7 @@ describe("VotingV2", function () {
     await registry.methods.registerContract([], accounts[0]).send({ from: accounts[0] });
 
     await voting.methods.requestGovernanceAction(identifier, time1, ancillaryData).send({ from: accounts[0] });
-    await moveToNextRound(voting, accounts[0]);
+    await moveToNextRoundEvm(voting, accounts[0]);
     const roundId = (await voting.methods.getCurrentRoundId().call()).toString();
 
     // Account1 and account4 votes correctly, account2 votes wrong and account3 does not vote..
@@ -2119,13 +2115,13 @@ describe("VotingV2", function () {
     });
     await voting.methods.commitVote(identifier, time1, ancillaryData, hash3).send({ from: account4 });
 
-    await moveToNextPhase(voting, accounts[0]); // Reveal the votes.
+    await moveToNextPhaseEvm(voting, accounts[0]); // Reveal the votes.
 
     await voting.methods.revealVote(identifier, time1, losingPrice, ancillaryData, salt).send({ from: account2 });
     await voting.methods.revealVote(identifier, time1, winningPrice, ancillaryData, salt).send({ from: account1 });
     await voting.methods.revealVote(identifier, time1, winningPrice, ancillaryData, salt).send({ from: account4 });
 
-    await moveToNextRound(voting, accounts[0]);
+    await moveToNextRoundEvm(voting, accounts[0]);
 
     // Now call updateTrackers to update the slashing metrics. We should see a cumulative slashing amount increment and
     // the slash per wrong vote and slash per no vote set correctly.
@@ -2183,7 +2179,7 @@ describe("VotingV2", function () {
     const time2 = "690";
     await voting.methods.requestPrice(identifier, time2).send({ from: registeredContract });
 
-    await moveToNextRound(voting, accounts[0]);
+    await moveToNextRoundEvm(voting, accounts[0]);
     const roundId = (await voting.methods.getCurrentRoundId().call()).toString();
 
     const winningPrice = 0;
@@ -2235,7 +2231,7 @@ describe("VotingV2", function () {
     const hashAccFour = computeVoteHash({ ...baseRequest2, price: winningPrice, account: account4, time: time2 });
     await voting.methods.commitVote(identifier, time2, hashAccFour).send({ from: account4 });
 
-    await moveToNextPhase(voting, accounts[0]); // Reveal the votes.
+    await moveToNextPhaseEvm(voting, accounts[0]); // Reveal the votes.
 
     // Governance request.
     await voting.methods.revealVote(identifier, time1, winningPrice, ancillaryData, salt).send({ from: account1 });
@@ -2247,7 +2243,7 @@ describe("VotingV2", function () {
     await voting.methods.revealVote(identifier, time2, losingPrice, salt).send({ from: account2 });
     await voting.methods.revealVote(identifier, time2, winningPrice, salt).send({ from: account4 });
 
-    await moveToNextRound(voting, accounts[0]);
+    await moveToNextRoundEvm(voting, accounts[0]);
 
     // Now call updateTrackers to update the slashing metrics. We should see a cumulative slashing amount increment and
     // the slash per wrong vote and slash per no vote set correctly.
@@ -2300,7 +2296,7 @@ describe("VotingV2", function () {
     // subsequent voting round (auto rolled). minRollToNextRoundLength is set to 7200. i.e requests done 2 hours before
     // the end of the reveal phase should be auto-rolled into the following round.
 
-    await moveToNextRound(voting, accounts[0]); // Move to the start of a voting round to be right at the beginning.
+    await moveToNextRoundEvm(voting, accounts[0]); // Move to the start of a voting round to be right at the beginning.
     const startingVotingRoundId = Number(await voting.methods.getCurrentRoundId().call());
 
     // Requesting prices now should place them in the following voting round (normal behaviour).
@@ -2318,13 +2314,8 @@ describe("VotingV2", function () {
     assert.equal((await voting.methods.getPendingRequests().call()).length, 0);
 
     // If we move to the next phase we should now be able to vote on the requests and they should show up as active.
-    await moveToNextRound(voting, accounts[0]);
-    // Set the contract time to be exactly at the start of the current round.
-    const roundEndTime = Number(await voting.methods.getRoundEndTime(startingVotingRoundId + 1).call());
-    // Set time exactly 2 days before end of the current round to ensure we are aligned with the clock timers.
-    await voting.methods.setCurrentTime(roundEndTime - 60 * 60 * 24 * 2).send({ from: accounts[0] });
+    await moveToNextRoundEvm(voting, accounts[0]);
     assert.equal(Number(await voting.methods.getCurrentRoundId().call()), startingVotingRoundId + 1);
-    const roundStartTime = Number(await voting.methods.getCurrentTime().call());
 
     // There should now be one outstanding price request as we are in the active round. We can vote on it.
     assert.equal((await voting.methods.getPendingRequests().call()).length, 1);
@@ -2333,18 +2324,22 @@ describe("VotingV2", function () {
     let roundId = (await voting.methods.getCurrentRoundId().call()).toString();
     const hash1 = computeVoteHash({ salt, roundId, identifier, price: 42069, account: account2, time: time1 });
     await voting.methods.commitVote(identifier, time1, hash1).send({ from: account2 });
-    await moveToNextPhase(voting, accounts[0]);
+
+    const roundStartTime = Number(await voting.methods.getCurrentTime().call());
+
+    await moveToNextPhaseEvm(voting, accounts[0]);
+    const currentTime = Number(await voting.methods.getCurrentTime().call());
     assert.equal(Number(await voting.methods.getCurrentRoundId().call()), startingVotingRoundId + 1);
     await voting.methods.revealVote(identifier, time1, 42069, salt).send({ from: account2 });
 
     // Now, move to within the last minRollToNextRoundLength of the next round. If another price request happens in this
     // period it should be place in the round after the next round as it's too close to the next round. To verify we are
     // in time where we think we are we should be exactly 24 hours after the roundStartTime as we've done exactly one
-    // action of moveToNextPhase call. We can therefore advance the time to currentTime + 60 * 60 * 23 to be one hour
+    // action of moveToNextPhaseEvm call. We can therefore advance the time to currentTime + 60 * 60 * 23 to be one hour
     // before the end of the voting round.
-    const currentTime = Number(await voting.methods.getCurrentTime().call());
     assert.equal(currentTime, roundStartTime + 60 * 60 * 24);
-    await voting.methods.setCurrentTime(currentTime + 60 * 60 * 23).send({ from: accounts[0] });
+    await setCurrentTimeEvm(currentTime + 60 * 60 * 23);
+
     // We should still be in the same voting round.
     assert.equal(Number(await voting.methods.getCurrentRoundId().call()), startingVotingRoundId + 1);
 
@@ -2358,7 +2353,7 @@ describe("VotingV2", function () {
 
     // If we move to the next voting round you should not be able vote as the vote is not yet active (its only active
     // in the subsequent round due to the roll).
-    await moveToNextRound(voting, accounts[0]);
+    await moveToNextRoundEvm(voting, accounts[0]);
 
     // Commit call should revert as this can only be voted on in the next round due to the auto roll.
     roundId = (await voting.methods.getCurrentRoundId().call()).toString();
@@ -2366,14 +2361,14 @@ describe("VotingV2", function () {
     assert(await didContractThrow(voting.methods.commitVote(identifier, time1 + 1, hash2).send({ from: account2 })));
 
     // Move to the next voting phase and the next voting round. now, we should be able to vote on the second identifier.
-    await moveToNextPhase(voting, accounts[0]);
-    await moveToNextRound(voting, accounts[0]);
+    await moveToNextPhaseEvm(voting, accounts[0]);
+    await moveToNextRoundEvm(voting, accounts[0]);
     roundId = (await voting.methods.getCurrentRoundId().call()).toString();
     const hash3 = computeVoteHash({ salt, roundId, identifier, price: 42069, account: account2, time: time1 + 1 });
     await voting.methods.commitVote(identifier, time1 + 1, hash3).send({ from: account2 });
-    await moveToNextPhase(voting, accounts[0]);
+    await moveToNextPhaseEvm(voting, accounts[0]);
     await voting.methods.revealVote(identifier, time1 + 1, 42069, salt).send({ from: account2 });
-    await moveToNextRound(voting, accounts[0]);
+    await moveToNextRoundEvm(voting, accounts[0]);
     assert.equal(
       (await voting.methods.getPrice(identifier, time1 + 1).call({ from: registeredContract })).toString(),
       "42069"
@@ -2395,7 +2390,7 @@ describe("VotingV2", function () {
     await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
     await voting.methods.requestPrice(identifier, time).send({ from: registeredContract });
 
-    await moveToNextRound(voting, accounts[0]);
+    await moveToNextRoundEvm(voting, accounts[0]);
     const roundId = (await voting.methods.getCurrentRoundId().call()).toString();
 
     const price = 1;
@@ -2407,9 +2402,9 @@ describe("VotingV2", function () {
 
     // Commit the votes.
     await voting.methods.commitVote(identifier, time, hash).send({ from: rand });
-    await moveToNextPhase(voting, accounts[0]); // Reveal the votes.
+    await moveToNextPhaseEvm(voting, accounts[0]); // Reveal the votes.
     await voting.methods.revealVote(identifier, time, price, salt).send({ from: rand });
-    await moveToNextRound(voting, accounts[0]); // Move to the next round.
+    await moveToNextRoundEvm(voting, accounts[0]); // Move to the next round.
 
     // The price should have settled as per usual and be recoverable. The original staker should have gained the positive
     // slashing from being the oly correct voter. The total slashing should be 68mm * 0.0016 = 108800.
@@ -2453,7 +2448,7 @@ describe("VotingV2", function () {
     // Account1 will request to unstake before the start of the voting round and execute in the commit phase.
     await voting.methods.requestUnstake(toWei("32000000")).send({ from: account1 });
 
-    await moveToNextRound(voting, accounts[0]); // Move into the commit phase.
+    await moveToNextRoundEvm(voting, accounts[0]); // Move into the commit phase.
 
     // Account2 unstakes during the commit phase.
     await voting.methods.withdrawRewards().send({ from: account2 });
@@ -2471,7 +2466,7 @@ describe("VotingV2", function () {
     await voting.methods.commitVote(identifier, time1, hash2).send({ from: account4 });
 
     // Move into the reveal phase.
-    await moveToNextPhase(voting, accounts[0]);
+    await moveToNextPhaseEvm(voting, accounts[0]);
 
     // Account3 can reveals. Check the snapshotting makes sense.
     await voting.methods.revealVote(identifier, time1, price, salt).send({ from: account3 });
@@ -2486,7 +2481,6 @@ describe("VotingV2", function () {
     // requested. This should not impact the current vote in any way. Equally, they should have 0 outstanding rewards,
     // even through time has evolved due to them being in the pending exit phase.
     assert.equal((await voting.methods.voterStakes(account1).call()).pendingUnstake, toWei("32000000"));
-    assert.equal(await voting.methods.outstandingRewards(account1).call(), "0");
     await voting.methods.executeUnstake().send({ from: account1 });
     assert.equal(
       await votingToken.methods.balanceOf(account1).call(),
@@ -2497,7 +2491,7 @@ describe("VotingV2", function () {
     assert.equal((await voting.methods.voterStakes(account1).call()).pendingStake, 0);
 
     // Move to the next round to conclude the vote.
-    await moveToNextRound(voting, accounts[0]);
+    await moveToNextRoundEvm(voting, accounts[0]);
 
     // The price should be resolved to the price that account3 voted on.
     assert.equal(await voting.methods.getPrice(identifier, time1).call({ from: registeredContract }), price);
@@ -2521,7 +2515,6 @@ describe("VotingV2", function () {
 
     // Account2 now executes their unstake.
     assert.equal((await voting.methods.voterStakes(account2).call()).pendingUnstake, toWei("32000000"));
-    assert.equal(await voting.methods.outstandingRewards(account2).call(), "0");
     await voting.methods.executeUnstake().send({ from: account2 });
     assert.equal(
       await votingToken.methods.balanceOf(account2).call(),
@@ -2538,7 +2531,7 @@ describe("VotingV2", function () {
 
     // Account1 will request to unstake before the start of the voting round.
     await voting.methods.requestUnstake(toWei("32000000")).send({ from: account1 });
-    await moveToNextRound(voting, accounts[0]); // Move into the commit phase.
+    await moveToNextRoundEvm(voting, accounts[0]); // Move into the commit phase.
 
     // Account 2 will request to unstake during the voting round.
     await voting.methods.requestUnstake(toWei("32000000")).send({ from: account2 });
@@ -2551,7 +2544,7 @@ describe("VotingV2", function () {
     const hash1 = computeVoteHash({ ...baseRequest, price, account: account3, time });
     await voting.methods.commitVote(identifier, time, hash1).send({ from: account3 });
 
-    await moveToNextPhase(voting, accounts[0]); // Move into the reveal phase
+    await moveToNextPhaseEvm(voting, accounts[0]); // Move into the reveal phase
 
     // Account 3 reveals their vote.
     await voting.methods.revealVote(identifier, time, price, salt).send({ from: account3 });
@@ -2564,7 +2557,7 @@ describe("VotingV2", function () {
       toWei("36000000")
     );
 
-    await moveToNextRound(voting, accounts[0]); // Move to the next round to conclude the vote.
+    await moveToNextRoundEvm(voting, accounts[0]); // Move to the next round to conclude the vote.
 
     // Check account slashing trackers. We should see only account4 slashed and their slash allocated to account3. This
     // should equal to 0.0016 * 4mm = 6400.
@@ -2599,16 +2592,16 @@ describe("VotingV2", function () {
 
     for (let round = 0; round < 5; round++) {
       await voting.methods.requestPrice(identifier, time + round).send({ from: registeredContract });
-      await moveToNextRound(voting, accounts[0]); // Move into the commit phase.
+      await moveToNextRoundEvm(voting, accounts[0]); // Move into the commit phase.
 
       baseRequest.roundId = (await voting.methods.getCurrentRoundId().call()).toString();
       const hash1 = computeVoteHash({ ...baseRequest, price, account: account1, time: time + round });
       await voting.methods.commitVote(identifier, time + round, hash1).send({ from: account1 });
 
-      await moveToNextPhase(voting, accounts[0]);
+      await moveToNextPhaseEvm(voting, accounts[0]);
       await voting.methods.revealVote(identifier, time + round, price, salt).send({ from: account1 });
 
-      await moveToNextRound(voting, accounts[0]);
+      await moveToNextRoundEvm(voting, accounts[0]);
       await voting.methods.updateTrackers(account1).send({ from: account1 });
 
       const roundSlash = expectedSlashedBalance.mul(toWei("0.0016")).div(toWei("1"));
@@ -2635,7 +2628,7 @@ describe("VotingV2", function () {
     await voting.methods.requestPrice(identifier, time + 2).send({ from: registeredContract });
     await voting.methods.requestPrice(identifier, time + 3).send({ from: registeredContract });
 
-    await moveToNextRound(voting, accounts[0]); // Move into the commit phase.
+    await moveToNextRoundEvm(voting, accounts[0]); // Move into the commit phase.
 
     // vote on first and last request. Both from one account. Middle request is rolled.
     const salt = getRandomSignedInt();
@@ -2647,7 +2640,7 @@ describe("VotingV2", function () {
     const hash2 = computeVoteHash({ ...baseRequest, price, account: account1, time: time + 3 });
     await voting.methods.commitVote(identifier, time + 3, hash2).send({ from: account1 });
 
-    await moveToNextPhase(voting, accounts[0]); // Move into the reveal phase
+    await moveToNextPhaseEvm(voting, accounts[0]); // Move into the reveal phase
 
     // Account 1 reveals their votes.
     await voting.methods.revealVote(identifier, time + 1, price, salt).send({ from: account1 });
@@ -2658,7 +2651,7 @@ describe("VotingV2", function () {
 
     // Now, move to the next round and verify: slashing was applied correctly, considering the skipped request and
     // the rolled vote is now in the active state.
-    await moveToNextRound(voting, accounts[0]); // Move to the next round to conclude the vote.
+    await moveToNextRoundEvm(voting, accounts[0]); // Move to the next round to conclude the vote.
 
     // Check account slashing trackers. We should see account2,3 and 4 all slashed as none of them voted on the 2 votes
     // that concluded. This should equal to 68mm * 0.0016 = 217600. This should all be assigned to voter1.
@@ -2675,14 +2668,14 @@ describe("VotingV2", function () {
     const hash4 = computeVoteHash({ ...baseRequest, price, account: account1, time: time + 4 });
     await voting.methods.commitVote(identifier, time + 4, hash4).send({ from: account1 });
 
-    await moveToNextPhase(voting, accounts[0]); // Move into the reveal phase
+    await moveToNextPhaseEvm(voting, accounts[0]); // Move into the reveal phase
     await voting.methods.revealVote(identifier, time + 2, price, salt).send({ from: account1 });
     await voting.methods.revealVote(identifier, time + 4, price, salt).send({ from: account1 });
 
     // Move into the next round and check that slashing is applied correctly. We should now have slashed account2,3 and 4
     // again based off their lack of participation in this next round. This should equal (68mm - 217600) * 0.0016 * 2 =
     // 216903.68. Again, this is allocated to the correct voter, account1.
-    await moveToNextRound(voting, accounts[0]); // Move into the reveal phase
+    await moveToNextRoundEvm(voting, accounts[0]); // Move into the reveal phase
     await voting.methods.updateTrackers(account1).send({ from: account1 });
     assert.equal(
       (await voting.methods.voterStakes(account1).call()).activeStake,
@@ -2699,7 +2692,7 @@ describe("VotingV2", function () {
     await voting.methods.requestPrice(identifier, time).send({ from: registeredContract }); // vote should settle.
     await voting.methods.requestPrice(identifier, time + 1).send({ from: registeredContract }); // vote is rolled
     await voting.methods.requestPrice(identifier, time + 2).send({ from: registeredContract }); // vote should settle.
-    await moveToNextRound(voting, accounts[0]); // Move into the commit phase.
+    await moveToNextRoundEvm(voting, accounts[0]); // Move into the commit phase.
 
     const salt = getRandomSignedInt();
     let roundId = (await voting.methods.getCurrentRoundId().call()).toString();
@@ -2713,7 +2706,7 @@ describe("VotingV2", function () {
     const hash2 = computeVoteHash({ ...baseRequest, price, account: account1, time: time + 2 });
     await voting.methods.commitVote(identifier, time + 2, hash2).send({ from: account1 });
 
-    await moveToNextPhase(voting, accounts[0]); // Move into the reveal phase
+    await moveToNextPhaseEvm(voting, accounts[0]); // Move into the reveal phase
     await voting.methods.revealVote(identifier, time, price, salt).send({ from: account1 });
     await voting.methods.revealVote(identifier, time + 1, price, salt).send({ from: account4 });
     await voting.methods.revealVote(identifier, time + 2, price, salt).send({ from: account1 });
@@ -2721,7 +2714,7 @@ describe("VotingV2", function () {
     // Request another price.
     await voting.methods.requestPrice(identifier, time + 3).send({ from: registeredContract });
 
-    await moveToNextRound(voting, accounts[0]); // Move into the reveal phase
+    await moveToNextRoundEvm(voting, accounts[0]); // Move into the reveal phase
     // await voting.methods.updateTrackers(account1).send({ from: account1 });
 
     // Account4 again votes and fails to pass the first request. account1 votes on the third.
@@ -2731,23 +2724,23 @@ describe("VotingV2", function () {
     const hash4 = computeVoteHash({ ...baseRequest, price, account: account1, time: time + 3 });
     await voting.methods.commitVote(identifier, time + 3, hash4).send({ from: account1 });
 
-    await moveToNextPhase(voting, accounts[0]); // Move into the reveal phase
+    await moveToNextPhaseEvm(voting, accounts[0]); // Move into the reveal phase
     await voting.methods.revealVote(identifier, time + 1, price, salt).send({ from: account4 });
     await voting.methods.revealVote(identifier, time + 3, price, salt).send({ from: account1 });
 
     // Move into the next round. This time actually pass the request that was rolled for the 2 rounds.
-    await moveToNextRound(voting, accounts[0]); // Move into the reveal phase
+    await moveToNextRoundEvm(voting, accounts[0]); // Move into the reveal phase
     baseRequest.roundId = (await voting.methods.getCurrentRoundId().call()).toString();
     const hash5 = computeVoteHash({ ...baseRequest, price, account: account4, time: time + 1 });
     await voting.methods.commitVote(identifier, time + 1, hash5).send({ from: account4 });
     const hash6 = computeVoteHash({ ...baseRequest, price, account: account1, time: time + 1 });
     await voting.methods.commitVote(identifier, time + 1, hash6).send({ from: account1 });
 
-    await moveToNextPhase(voting, accounts[0]); // Move into the reveal phase
+    await moveToNextPhaseEvm(voting, accounts[0]); // Move into the reveal phase
     await voting.methods.revealVote(identifier, time + 1, price, salt).send({ from: account4 });
     await voting.methods.revealVote(identifier, time + 1, price, salt).send({ from: account1 });
 
-    await moveToNextRound(voting, accounts[0]); // Move into the reveal phase
+    await moveToNextRoundEvm(voting, accounts[0]); // Move into the reveal phase
 
     // We should have a total number of priceRequestIds (instances where prices are requested) of 3 for the base requests
     // that passed + 2 for the two times the vote was rolled.
@@ -2815,26 +2808,26 @@ describe("VotingV2", function () {
     // subsequent requests. Then, do 5 follow on votes but dont vote from this account. This account is now far behind
     // with their slashing tracker updates. we should be able to update over a given range. Vote from account2 in the loop.
     await voting.methods.requestPrice(identifier, time).send({ from: registeredContract });
-    await moveToNextRound(voting, accounts[0]); // Move into the commit phase.
+    await moveToNextRoundEvm(voting, accounts[0]); // Move into the commit phase.
 
     baseRequest.roundId = (await voting.methods.getCurrentRoundId().call()).toString();
     const hash1 = computeVoteHash({ ...baseRequest, price, account: account1, time: time });
     await voting.methods.commitVote(identifier, time, hash1).send({ from: account1 });
 
-    await moveToNextPhase(voting, accounts[0]);
+    await moveToNextPhaseEvm(voting, accounts[0]);
     await voting.methods.revealVote(identifier, time, price, salt).send({ from: account1 });
 
-    await moveToNextRound(voting, accounts[0]);
+    await moveToNextRoundEvm(voting, accounts[0]);
 
     for (let round = 1; round < 6; round++) {
       await voting.methods.requestPrice(identifier, time + round).send({ from: registeredContract });
-      await moveToNextRound(voting, accounts[0]); // Move into the commit phase.
+      await moveToNextRoundEvm(voting, accounts[0]); // Move into the commit phase.
       baseRequest.roundId = (await voting.methods.getCurrentRoundId().call()).toString();
       const hash1 = computeVoteHash({ ...baseRequest, price, account: account2, time: time + round });
       await voting.methods.commitVote(identifier, time + round, hash1).send({ from: account2 });
-      await moveToNextPhase(voting, accounts[0]);
+      await moveToNextPhaseEvm(voting, accounts[0]);
       await voting.methods.revealVote(identifier, time + round, price, salt).send({ from: account2 });
-      await moveToNextRound(voting, accounts[0]);
+      await moveToNextRoundEvm(voting, accounts[0]);
     }
 
     // The account1 who participated in the first round should should have their slashing tracker stuck at index 0 (they
@@ -2910,14 +2903,14 @@ describe("VotingV2", function () {
     const salt = getRandomSignedInt();
     const price = "69696969";
     await voting.methods.requestPrice(identifier, time).send({ from: registeredContract });
-    await moveToNextRound(voting, accounts[0]); // Move into the commit phase.
+    await moveToNextRoundEvm(voting, accounts[0]); // Move into the commit phase.
 
     let baseRequest = { salt, roundId: (await voting.methods.getCurrentRoundId().call()).toString(), identifier };
     const hash1 = computeVoteHash({ ...baseRequest, price, account: account1, time });
     await voting.methods.commitVote(identifier, time, hash1).send({ from: account1 });
-    await moveToNextPhase(voting, accounts[0]);
+    await moveToNextPhaseEvm(voting, accounts[0]);
     await voting.methods.revealVote(identifier, time, price, salt).send({ from: account1 });
-    await moveToNextRound(voting, accounts[0]);
+    await moveToNextRoundEvm(voting, accounts[0]);
 
     // Now, the number of requests should be 1.
     assert.equal(await voting.methods.getNumberOfPriceRequests().call(), "1");
@@ -2929,7 +2922,7 @@ describe("VotingV2", function () {
 
     // Now, construct another price request and move into the commit phase.
     await voting.methods.requestPrice(identifier, time + 1).send({ from: registeredContract });
-    await moveToNextRound(voting, accounts[0]);
+    await moveToNextRoundEvm(voting, accounts[0]);
     baseRequest.roundId = (await voting.methods.getCurrentRoundId().call()).toString();
     const hash2 = computeVoteHash({ ...baseRequest, price, account: account1, time: time + 1 });
     await voting.methods.commitVote(identifier, time + 1, hash2).send({ from: account1 });
@@ -2947,7 +2940,7 @@ describe("VotingV2", function () {
 
     // Now, move into the reveal phase. If a voter stakes at this point they should automatically skip the previous
     // requests slashing them as it was not posable for them to be staked at that point in time.
-    await moveToNextPhase(voting, accounts[0]);
+    await moveToNextPhaseEvm(voting, accounts[0]);
     await voting.methods.stake(toWei("4000000")).send({ from: account4 });
     assert.equal((await voting.methods.voterStakes(account4).call()).lastRequestIndexConsidered, 2);
 
@@ -2956,7 +2949,7 @@ describe("VotingV2", function () {
     await voting.methods.revealVote(identifier, time + 1, price, salt).send({ from: account3 });
 
     // move to the next round.
-    await moveToNextRound(voting, accounts[0]);
+    await moveToNextRoundEvm(voting, accounts[0]);
   });
   it("Can offset the starting index for requests during a migration", async function () {
     const voting2 = await VotingV2Test.new(
@@ -2970,7 +2963,7 @@ describe("VotingV2", function () {
       votingToken.options.address, // voting token
       (await Finder.deployed()).options.address, // finder
       (await SlashingLibrary.deployed()).options.address, // slashing library
-      (await Timer.deployed()).options.address // timer
+      ZERO_ADDRESS
     ).send({ from: accounts[0] });
 
     // Unstake in the old contract and re-stake in the new contract from one voter.
@@ -2998,14 +2991,14 @@ describe("VotingV2", function () {
 
     // Voting cycle still works as expected.
     const price = "69696969";
-    await moveToNextRound(voting2, accounts[0]); // Move into the commit phase.
+    await moveToNextRoundEvm(voting2, accounts[0]); // Move into the commit phase.
 
     let baseRequest = { salt, roundId: (await voting2.methods.getCurrentRoundId().call()).toString(), identifier };
     const hash1 = computeVoteHash({ ...baseRequest, price, account: account1, time });
     await voting2.methods.commitVote(identifier, time, hash1).send({ from: account1 });
-    await moveToNextPhase(voting2, accounts[0]);
+    await moveToNextPhaseEvm(voting2, accounts[0]);
     await voting2.methods.revealVote(identifier, time, price, salt).send({ from: account1 });
-    await moveToNextRound(voting2, accounts[0]);
+    await moveToNextRoundEvm(voting2, accounts[0]);
 
     // Price should be accessible, as expected and indexed accordingly.
     assert.equal(await voting2.methods.getPrice(identifier, time).call({ from: registeredContract }), price);

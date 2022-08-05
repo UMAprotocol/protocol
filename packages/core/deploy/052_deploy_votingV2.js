@@ -6,7 +6,7 @@ const func = async function (hre) {
 
   const { deployer } = await getNamedAccounts();
 
-  const Timer = (await deployments.getOrNull("Timer")) || { address: ZERO_ADDRESS };
+  const Timer = { address: ZERO_ADDRESS };
   const VotingToken = await deployments.get("VotingToken");
   const Finder = await deployments.get("Finder");
   const SlashingLibrary = await deployments.get("SlashingLibrary");
