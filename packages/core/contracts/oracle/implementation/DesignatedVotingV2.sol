@@ -18,7 +18,7 @@ contract DesignatedVotingV2 is Stakeable, MultiCaller {
      ****************************************/
 
     enum Roles {
-        Owner, // Can set the Voter role. Is also permanently permissioned as the minter role.
+        Owner, // Can set the Voter role.
         Voter // Can vote through this contract.
     }
 
