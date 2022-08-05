@@ -819,12 +819,12 @@ contract VotingV2 is
         super._updateTrackers(voterAddress);
     }
 
-    function getStartingIndexForStaker() internal view override returns (uint64) {
-        return SafeCast.toUint64(priceRequestIds.length - (inActiveReveal() ? 0 : pendingPriceRequests.length));
+    function _getStartingIndexForStaker() internal view override returns (uint64) {
+        return SafeCast.toUint64(priceRequestIds.length - (_inActiveReveal() ? 0 : pendingPriceRequests.length));
     }
 
     // Checks if we are in an active voting reveal phase (currently revealing votes).
-    function inActiveReveal() internal view override returns (bool) {
+    function _inActiveReveal() internal view override returns (bool) {
         return (currentActiveRequests() && getVotePhase() == Phase.Reveal);
     }
 
@@ -919,17 +919,17 @@ contract VotingV2 is
                 indexTo > nextRequestIndex &&
                 priceRequest.lastVotingRound != priceRequests[priceRequestIds[nextRequestIndex]].lastVotingRound
             ) {
-                applySlashToVoter(slash, voterStake, voterAddress);
+                _applySlashToVoter(slash, voterStake, voterAddress);
                 slash = 0;
             }
             voterStake.lastRequestIndexConsidered = requestIndex + 1;
         }
 
-        if (slash != 0) applySlashToVoter(slash, voterStake, voterAddress);
+        if (slash != 0) _applySlashToVoter(slash, voterStake, voterAddress);
     }
 
     // Applies a given slash to a given voter's stake.
-    function applySlashToVoter(
+    function _applySlashToVoter(
         int256 slash,
         VoterStake storage voterStake,
         address voterAddress

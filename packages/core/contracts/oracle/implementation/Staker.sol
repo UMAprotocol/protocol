@@ -116,12 +116,12 @@ contract Staker is StakerInterface, Ownable {
         VoterStake storage voterStake = voterStakes[msg.sender];
         // If the staker has a cumulative staked balance of 0 then we can shortcut their lastRequestIndexConsidered to
         // the most recent index. This means we don't need to traverse requests where the staker was not staked.
-        // getStartingIndexForStaker returns the appropriate index to start at.
+        // _getStartingIndexForStaker returns the appropriate index to start at.
         if (getVoterStake(msg.sender) + voterStake.pendingUnstake == 0)
-            voterStake.lastRequestIndexConsidered = getStartingIndexForStaker();
+            voterStake.lastRequestIndexConsidered = _getStartingIndexForStaker();
         _updateTrackers(msg.sender);
 
-        if (inActiveReveal()) {
+        if (_inActiveReveal()) {
             voterStake.pendingStake += amount;
             cumulativePendingStake += amount;
         } else {
@@ -149,7 +149,7 @@ contract Staker is StakerInterface, Ownable {
      * @param amount the amount of tokens to request to be unstaked.
      */
     function requestUnstake(uint256 amount) public override {
-        require(!inActiveReveal(), "In an active reveal phase");
+        require(!_inActiveReveal(), "In an active reveal phase");
         _updateTrackers(msg.sender);
         VoterStake storage voterStake = voterStakes[msg.sender];
 
@@ -307,11 +307,11 @@ contract Staker is StakerInterface, Ownable {
      ****************************************/
 
     // Determine if we are in an active reveal phase. This function should be overridden by the child contract.
-    function inActiveReveal() internal virtual returns (bool) {
+    function _inActiveReveal() internal virtual returns (bool) {
         return false;
     }
 
-    function getStartingIndexForStaker() internal virtual returns (uint64) {
+    function _getStartingIndexForStaker() internal virtual returns (uint64) {
         return 0;
     }
 
@@ -330,7 +330,7 @@ contract Staker is StakerInterface, Ownable {
 
     // Updates the active stake of the voter if not in an active reveal phase.
     function _updateActiveStake(address voterAddress) internal {
-        if (voterStakes[voterAddress].pendingStake == 0 || inActiveReveal()) return;
+        if (voterStakes[voterAddress].pendingStake == 0 || _inActiveReveal()) return;
         cumulativeActiveStake += voterStakes[voterAddress].pendingStake;
         cumulativePendingStake -= voterStakes[voterAddress].pendingStake;
         voterStakes[voterAddress].activeStake += voterStakes[voterAddress].pendingStake;
