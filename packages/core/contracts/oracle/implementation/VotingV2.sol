@@ -1013,13 +1013,7 @@ contract VotingV2 is
                 for (uint256 j = startIndex; j <= endIndex; j++) {
                     bytes32 requestId = priceRequestIds[j];
                     // Remove from pendingPriceRequests.
-                    uint256 lastIndex = pendingPriceRequests.length - 1;
-                    PriceRequest storage lastPriceRequest = priceRequests[pendingPriceRequests[lastIndex]];
-                    lastPriceRequest.pendingRequestIndex = priceRequests[requestId].pendingRequestIndex;
-                    pendingPriceRequests[priceRequests[requestId].pendingRequestIndex] = pendingPriceRequests[
-                        lastIndex
-                    ];
-                    pendingPriceRequests.pop();
+                    _removeRequestFromPendingPriceRequests(priceRequests[requestId].pendingRequestIndex);
 
                     // Remove the request from the priceRequests mapping.
                     delete priceRequests[requestId];
@@ -1062,6 +1056,14 @@ contract VotingV2 is
     /****************************************
      *    PRIVATE AND INTERNAL FUNCTIONS    *
      ****************************************/
+
+    function _removeRequestFromPendingPriceRequests(uint64 pendingRequestIndex) internal {
+        uint256 lastIndex = pendingPriceRequests.length - 1;
+        PriceRequest storage lastPriceRequest = priceRequests[pendingPriceRequests[lastIndex]];
+        lastPriceRequest.pendingRequestIndex = pendingRequestIndex;
+        pendingPriceRequests[pendingRequestIndex] = pendingPriceRequests[lastIndex];
+        pendingPriceRequests.pop();
+    }
 
     // Returns the price for a given identifer. Three params are returns: bool if there was an error, int to represent
     // the resolved price and a string which is filled with an error message, if there was an error or "".
@@ -1139,11 +1141,7 @@ contract VotingV2 is
 
         // Else, the request is resolvable. Remove the element from the pending request and update pendingRequestIndex
         // within the price request struct to make the next entry into this method a no-op for this request.
-        uint256 lastIndex = pendingPriceRequests.length - 1;
-        PriceRequest storage lastPriceRequest = priceRequests[pendingPriceRequests[lastIndex]];
-        lastPriceRequest.pendingRequestIndex = priceRequest.pendingRequestIndex;
-        pendingPriceRequests[priceRequest.pendingRequestIndex] = pendingPriceRequests[lastIndex];
-        pendingPriceRequests.pop();
+        _removeRequestFromPendingPriceRequests(priceRequest.pendingRequestIndex);
 
         priceRequest.pendingRequestIndex = UINT64_MAX;
         emit PriceResolved(
