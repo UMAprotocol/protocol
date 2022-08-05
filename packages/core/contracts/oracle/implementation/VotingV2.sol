@@ -1196,8 +1196,7 @@ contract VotingV2 is
     }
 
     function _requireRegisteredContract() private view {
-        if (migratedAddress != address(0))
-            require(msg.sender == migratedAddress, "Only the migrated contract can call this function");
+        if (migratedAddress != address(0)) require(msg.sender == migratedAddress, "Caller != migratedAddress");
         else {
             Registry registry = Registry(finder.getImplementationAddress(OracleInterfaces.Registry));
             require(registry.isContractRegistered(msg.sender), "Caller must be registered");
