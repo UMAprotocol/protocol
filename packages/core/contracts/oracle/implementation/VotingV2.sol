@@ -551,7 +551,7 @@ contract VotingV2 is
             // Can only reveal in the reveal phase.
             require(
                 voteTiming.computeCurrentPhase(getCurrentTime()) == Phase.Reveal,
-                "Can only reveal in the reveal phase"
+                "Reveal phase has not started yet"
             );
             // 0 hashes are disallowed in the commit phase, so they indicate a different error.
             // Cannot reveal an uncommitted or previously revealed hash
@@ -1003,7 +1003,7 @@ contract VotingV2 is
 
         (bool hasPrice, int256 resolutionPrice, ) =
             _getPriceOrError(identifier, spamDeletionProposals[proposalId].requestTime, "");
-        require(hasPrice, "No price found for spam deletion proposal");
+        require(hasPrice, "No price found for spam deletion");
 
         // If the price is 1e18 then the spam deletion request was correctly voted on to delete the requests.
         if (resolutionPrice == 1e18) {
@@ -1192,7 +1192,7 @@ contract VotingV2 is
     }
 
     function _requireNotMigrated() private view {
-        require(migratedAddress == address(0), "This contract has been migrated to a new address");
+        require(migratedAddress == address(0), "Contract migrated");
     }
 
     function _requireRegisteredContract() private view {
