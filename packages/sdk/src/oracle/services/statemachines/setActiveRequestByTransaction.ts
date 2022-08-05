@@ -17,6 +17,7 @@ export function Handlers(store: Store): GenericHandlers<Params, Memory> {
       // have to do all of this to fetch the identifier, ancData, requester and timestamp from the request
       const provider = store.read().provider(chainId);
       const receipt = await provider.getTransactionReceipt(transactionHash);
+      assert(receipt, "Unable to find transaction receipt from hash: " + transactionHash);
       const oracleAddress = store.read().oracleAddress(chainId);
       // filter out logs that originate from oracle contract
       const oracleLogs = receipt.logs.filter((log) => log.address.toLowerCase() === oracleAddress.toLowerCase());
