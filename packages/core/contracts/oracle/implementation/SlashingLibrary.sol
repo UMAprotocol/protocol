@@ -1,13 +1,19 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
+/**
+ * @title Slashing Library contract. Returns the how much a voter should be slashed per staked token as a function of
+ * the total staked, total votes and total correct votes. Can be upgraded to a new implementation to enable more
+ elaborate slashing algorithms via UMA governance.
+ */
+
 contract SlashingLibrary {
     /**
      * @notice Calculates the wrong vote slash per token.
      * @param totalStaked The total amount of tokens staked.
      * @param totalVotes The total amount of votes.
      * @param totalCorrectVotes The total amount of correct votes.
-     * @return uint256 The amount of tokens to slash.
+     * @return uint256 The amount of tokens to slash per token staked.
      */
     function calcWrongVoteSlashPerToken(
         uint256 totalStaked,
@@ -24,7 +30,7 @@ contract SlashingLibrary {
      * @param totalStaked The total amount of tokens staked.
      * @param totalVotes The total amount of votes.
      * @param totalCorrectVotes The total amount of correct votes.
-     * @return uint256 The amount of tokens to slash.
+     * @return uint256 The amount of tokens to slash per token staked.
      */
     function calcWrongVoteSlashPerTokenGovernance(
         uint256 totalStaked,
@@ -39,7 +45,7 @@ contract SlashingLibrary {
      * @param totalStaked The total amount of tokens staked.
      * @param totalVotes The total amount of votes.
      * @param totalCorrectVotes The total amount of correct votes.
-     * @return uint256 The amount of tokens to slash.
+     * @return uint256 The amount of tokens to slash per token staked.
      */
     function calcNoVoteSlashPerToken(
         uint256 totalStaked,

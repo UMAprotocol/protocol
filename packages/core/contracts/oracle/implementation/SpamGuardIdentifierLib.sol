@@ -1,5 +1,9 @@
 import "./AdminIdentifierLib.sol";
 
+/**
+ * @title Library to construct SpamGuard identifiers.
+ */
+
 library SpamGuardIdentifierLib {
     // Returns a UTF-8 identifier representing a particular spam deletion proposal.
     // The identifier is of the form "SpamDeletionProposal n", where n is the proposal id provided.

@@ -14,6 +14,9 @@ library VoteTimingV2 {
 
     /**
      * @notice Initializes the data object. Sets the phase length based on the input.
+     * @param data input data object. When used as a library is left blank.
+     * @param phaseLength how long the commit/reveal duration should be, in seconds.
+     * @param minRollToNextRoundLength time, after which, a request is auto rolled to the subsequent round.
      */
     function init(
         Data storage data,
@@ -69,6 +72,13 @@ library VoteTimingV2 {
             );
     }
 
+    /**
+     * @notice computes the round that a price request should be voted on as a function of the current time. The round
+     * a vote is voted on is either the next round (default case) or the round after that if the time is in the last
+     * minRollToNextRoundLength before the end of the round.
+     * @param data input data object.
+     * @return currentTime unix time used to evaluate when the rolling should or should not occur.
+     */
     function computeRoundToVoteOnPriceRequest(Data storage data, uint256 currentTime) internal view returns (uint256) {
         uint256 currentRoundId = computeCurrentRoundId(data, currentTime);
         uint256 roundEndTime = computeRoundEndTime(data, currentRoundId);

@@ -113,6 +113,7 @@ contract DesignatedVotingV2 is Stakeable, MultiCaller {
         voting.stake(rewardsMinted);
     }
 
+    // Returns the Voting contract address, named "Oracle" in the finder.
     function _getVotingContract() private view returns (VotingV2Interface) {
         return VotingV2Interface(finder.getImplementationAddress(OracleInterfaces.Oracle));
     }
