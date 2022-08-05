@@ -1,14 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import "../../common/implementation/Withdrawable.sol";
 import "./DesignatedVotingV2.sol";
 
 /**
  * @title Factory to deploy new instances of DesignatedVotingV2 and look up previously deployed instances.
  * @dev Allows off-chain infrastructure to look up a hot wallet's deployed DesignatedVoting contract.
  */
-contract DesignatedVotingV2Factory is Withdrawable {
+contract DesignatedVotingV2Factory {
     address private finder;
     mapping(address => DesignatedVotingV2) public designatedVotingContracts;
 
