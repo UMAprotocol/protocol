@@ -842,7 +842,11 @@ contract VotingV2 is
             requestIndex < indexTo;
             requestIndex = unsafe_inc_64(requestIndex)
         ) {
-            if (deletedRequests[requestIndex] != 0) requestIndex = deletedRequests[requestIndex] + 1;
+            if (deletedRequests[requestIndex] != 0) {
+                requestIndex = deletedRequests[requestIndex];
+                continue;
+            }
+
             if (requestIndex > indexTo - 1) break; // This happens if the last element was a rolled vote.
             PriceRequest storage priceRequest = priceRequests[priceRequestIds[requestIndex]];
             VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
