@@ -81,7 +81,7 @@ contract GovernorV2 is MultiRole {
      * @param ancillaryData arbitrary data appended to a price request to give the voters more info from the caller.
      */
     function propose(Transaction[] memory transactions, bytes memory ancillaryData)
-        public
+        external
         onlyRoleHolder(uint256(Roles.Proposer))
     {
         uint256 id = proposals.length;

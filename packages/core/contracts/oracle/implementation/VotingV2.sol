@@ -317,7 +317,7 @@ contract VotingV2 is
         bytes32 identifier,
         uint256 time,
         bytes memory ancillaryData
-    ) public override onlyOwner() {
+    ) external override onlyOwner() {
         _requestPrice(identifier, time, ancillaryData, true);
     }
 
@@ -382,7 +382,7 @@ contract VotingV2 is
     }
 
     // Overloaded method to enable short term backwards compatibility. Will be deprecated in the next DVM version.
-    function requestPrice(bytes32 identifier, uint256 time) public override {
+    function requestPrice(bytes32 identifier, uint256 time) external override {
         requestPrice(identifier, time, "");
     }
 
@@ -429,7 +429,7 @@ contract VotingV2 is
     }
 
     // Overloaded method to enable short term backwards compatibility. Will be deprecated in the next DVM version.
-    function getPrice(bytes32 identifier, uint256 time) public view override returns (int256) {
+    function getPrice(bytes32 identifier, uint256 time) external view override returns (int256) {
         return getPrice(identifier, time, "");
     }
 
@@ -461,7 +461,7 @@ contract VotingV2 is
     }
 
     // Overloaded method to enable short term backwards compatibility. Will be deprecated in the next DVM version.
-    function getPriceRequestStatuses(PendingRequest[] memory requests) public view returns (RequestState[] memory) {
+    function getPriceRequestStatuses(PendingRequest[] memory requests) external view returns (RequestState[] memory) {
         PendingRequestAncillary[] memory requestsAncillary = new PendingRequestAncillary[](requests.length);
 
         for (uint256 i = 0; i < requests.length; i = unsafe_inc(i)) {
@@ -518,7 +518,7 @@ contract VotingV2 is
         bytes32 identifier,
         uint256 time,
         bytes32 hash
-    ) public override onlyIfNotMigrated() {
+    ) external override onlyIfNotMigrated() {
         commitVote(identifier, time, "", hash);
     }
 
@@ -578,7 +578,7 @@ contract VotingV2 is
         uint256 time,
         int256 price,
         int256 salt
-    ) public override {
+    ) external override {
         revealVote(identifier, time, price, "", salt);
     }
 
@@ -611,7 +611,7 @@ contract VotingV2 is
         uint256 time,
         bytes32 hash,
         bytes memory encryptedVote
-    ) public override {
+    ) external override {
         commitVote(identifier, time, "", hash);
 
         commitAndEmitEncryptedVote(identifier, time, "", hash, encryptedVote);
@@ -623,7 +623,7 @@ contract VotingV2 is
      * low-security available wallet for voting while keeping access to staked amounts secure by a more secure wallet.
      * @param delegate the address of the delegate.
      */
-    function setDelegate(address delegate) public {
+    function setDelegate(address delegate) external {
         voterStakes[msg.sender].delegate = delegate;
     }
 
@@ -632,7 +632,7 @@ contract VotingV2 is
      * the delegator also selected the delegate to do so (two way relationship needed).
      * @param delegator the address of the delegate.
      */
-    function setDelegator(address delegator) public {
+    function setDelegator(address delegator) external {
         delegateToStaker[msg.sender] = delegator;
     }
 
@@ -656,7 +656,7 @@ contract VotingV2 is
      * @notice Gets the queries that are being voted on this round.
      * @return pendingRequests array containing identifiers of type PendingRequest.
      */
-    function getPendingRequests() public view override returns (PendingRequestAncillary[] memory) {
+    function getPendingRequests() external view override returns (PendingRequestAncillary[] memory) {
         uint256 blockTime = getCurrentTime();
         uint256 currentRoundId = voteTiming.computeCurrentRoundId(blockTime);
 
@@ -710,7 +710,7 @@ contract VotingV2 is
      * @notice Returns the current round ID, as a function of the current time.
      * @return uint256 representing the unique round ID.
      */
-    function getCurrentRoundId() public view override returns (uint256) {
+    function getCurrentRoundId() external view override returns (uint256) {
         return voteTiming.computeCurrentRoundId(getCurrentTime());
     }
 
@@ -718,11 +718,11 @@ contract VotingV2 is
      * @notice Returns the current round ID, as a function of the current time.
      * @return uint256 representing the unique round ID.
      */
-    function getRoundEndTime(uint256 roundId) public view returns (uint256) {
+    function getRoundEndTime(uint256 roundId) external view returns (uint256) {
         return voteTiming.computeRoundEndTime(roundId);
     }
 
-    function getNumberOfPriceRequests() public view returns (uint256) {
+    function getNumberOfPriceRequests() external view returns (uint256) {
         return priceRequestIds.length;
     }
 
@@ -768,20 +768,20 @@ contract VotingV2 is
      * @dev This method is public because calldata structs are not currently supported by solidity.
      * @param newGat sets the next round's Gat.
      */
-    function setGat(uint256 newGat) public override onlyOwner {
+    function setGat(uint256 newGat) external override onlyOwner {
         require(newGat < votingToken.totalSupply() && newGat > 0);
         gat = newGat;
         emit GatChanged(newGat);
     }
 
     // Here for abi compatibility. to be removed.
-    function setRewardsExpirationTimeout(uint256 NewRewardsExpirationTimeout) public override onlyOwner {}
+    function setRewardsExpirationTimeout(uint256 NewRewardsExpirationTimeout) external override onlyOwner {}
 
     /**
      * @notice Changes the slashing library used by this contract.
      * @param _newSlashingLibrary new slashing library address.
      */
-    function setSlashingLibrary(address _newSlashingLibrary) public override onlyOwner {
+    function setSlashingLibrary(address _newSlashingLibrary) external override onlyOwner {
         slashingLibrary = SlashingLibrary(_newSlashingLibrary);
         emit SlashingLibraryChanged(_newSlashingLibrary);
     }
@@ -796,7 +796,7 @@ contract VotingV2 is
      * it is automatically run in the other functions.
      * @param voterAddress address of the voter to update the trackers for.
      */
-    function updateTrackers(address voterAddress) public {
+    function updateTrackers(address voterAddress) external {
         _updateTrackers(voterAddress);
     }
 
@@ -807,7 +807,7 @@ contract VotingV2 is
      * @param voterAddress address of the voter to update the trackers for.
      * @param indexTo last price request index to update the trackers for.
      */
-    function updateTrackersRange(address voterAddress, uint256 indexTo) public {
+    function updateTrackersRange(address voterAddress, uint256 indexTo) external {
         require(voterStakes[voterAddress].lastRequestIndexConsidered < indexTo && indexTo <= priceRequestIds.length);
 
         _updateAccountSlashingTrackers(voterAddress, indexTo);
@@ -952,7 +952,7 @@ contract VotingV2 is
      * @param spamRequestIndices list of request indices to be declared as spam. Each element is a
      * pair of uint256s representing the start and end of the range.
      */
-    function signalRequestsAsSpamForDeletion(uint256[2][] calldata spamRequestIndices) public {
+    function signalRequestsAsSpamForDeletion(uint256[2][] calldata spamRequestIndices) external {
         votingToken.transferFrom(msg.sender, address(this), spamDeletionProposalBond);
         uint256 currentTime = getCurrentTime();
         uint256 runningValidationIndex;
@@ -997,7 +997,7 @@ contract VotingV2 is
      * @notice Execute the spam deletion proposal if it has been approved by voting.
      * @param proposalId spam deletion proposal id.
      */
-    function executeSpamDeletion(uint256 proposalId) public {
+    function executeSpamDeletion(uint256 proposalId) external {
         require(spamDeletionProposals[proposalId].executed == false);
         spamDeletionProposals[proposalId].executed = true;
 
@@ -1058,7 +1058,7 @@ contract VotingV2 is
      * @param spamDeletionRequestId spam deletion request id.
      * @return SpamDeletionRequest the spam deletion request.
      */
-    function getSpamDeletionRequest(uint256 spamDeletionRequestId) public view returns (SpamDeletionRequest memory) {
+    function getSpamDeletionRequest(uint256 spamDeletionRequestId) external view returns (SpamDeletionRequest memory) {
         return spamDeletionProposals[spamDeletionRequestId];
     }
 
