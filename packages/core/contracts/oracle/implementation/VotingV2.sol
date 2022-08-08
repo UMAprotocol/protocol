@@ -984,7 +984,9 @@ contract VotingV2 is
 
         uint256 proposalId = spamDeletionProposals.length - 1;
 
-        bytes32 identifier = SpamGuardIdentifierLib._constructIdentifier(proposalId);
+        // Note that for proposalId>= 10^11 the generated identifier will no longer be unique but the manner
+        // in which the priceRequest id is encoded in _encodePriceRequest guarantees its uniqueness.
+        bytes32 identifier = SpamGuardIdentifierLib._constructIdentifier(SafeCast.toUint32(proposalId));
 
         _requestPrice(identifier, currentTime, "", true);
 
@@ -998,7 +1000,8 @@ contract VotingV2 is
     function executeSpamDeletion(uint256 proposalId) public {
         require(spamDeletionProposals[proposalId].executed == false);
         spamDeletionProposals[proposalId].executed = true;
-        bytes32 identifier = SpamGuardIdentifierLib._constructIdentifier(proposalId);
+
+        bytes32 identifier = SpamGuardIdentifierLib._constructIdentifier(SafeCast.toUint32(proposalId));
 
         (bool hasPrice, int256 resolutionPrice, ) =
             _getPriceOrError(identifier, spamDeletionProposals[proposalId].requestTime, "");
