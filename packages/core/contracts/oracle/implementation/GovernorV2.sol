@@ -54,7 +54,6 @@ contract GovernorV2 is MultiRole {
      * @notice Construct the Governor contract.
      * @param _finderAddress keeps track of all contracts within the system based on their interfaceName.
      * @param _startingId the initial proposal id that the contract will begin incrementing from.
-     * Must be set to 0x0 for production environments that use live time.
      */
     constructor(address _finderAddress, uint256 _startingId) {
         finder = FinderInterface(_finderAddress);
