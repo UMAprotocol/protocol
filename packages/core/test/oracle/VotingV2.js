@@ -3100,4 +3100,100 @@ describe("VotingV2", function () {
     );
     assert.equal((await voting.methods.voterStakes(account1).call()).unappliedSlash, "0");
   });
+  it.only("Rolling interplay with unapplied slashing", async function () {
+    // Validate When multiple rounds are rolled and slashing is applied over a range things are applied as expected.
+
+    const identifier = padRight(utf8ToHex("slash-test"), 64); // Use the same identifier for both.
+    const time = 420;
+
+    // Make 4 requests. Pass 1 and 4. Roll 2 and 3.
+    await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
+    await voting.methods.requestPrice(identifier, time).send({ from: registeredContract });
+    await voting.methods.requestPrice(identifier, time + 1).send({ from: registeredContract });
+    await voting.methods.requestPrice(identifier, time + 2).send({ from: registeredContract });
+    await voting.methods.requestPrice(identifier, time + 3).send({ from: registeredContract });
+    assert.equal(await voting.methods.getNumberOfPriceRequests().call(), 4);
+
+    await moveToNextRound(voting, accounts[0]);
+    const roundId = (await voting.methods.getCurrentRoundId().call()).toString();
+
+    // Roll all votes except for request1.
+    // Commit votes.
+    const price = 123;
+    const salt = getRandomSignedInt(); // use the same salt for all votes. bad practice but wont impact anything.
+    const baseRequest = { salt, roundId, identifier };
+    const hash1 = computeVoteHash({ ...baseRequest, price: price, account: account1, time: time });
+    await voting.methods.commitVote(identifier, time, hash1).send({ from: account1 });
+    const hash2 = computeVoteHash({ ...baseRequest, price: price, account: account4, time: time + 1 });
+    await voting.methods.commitVote(identifier, time + 1, hash2).send({ from: account4 });
+    const hash3 = computeVoteHash({ ...baseRequest, price: price, account: account4, time: time + 2 });
+    await voting.methods.commitVote(identifier, time + 2, hash3).send({ from: account4 });
+    const hash4 = computeVoteHash({ ...baseRequest, price: price, account: account4, time: time + 3 });
+    await voting.methods.commitVote(identifier, time + 3, hash4).send({ from: account4 });
+
+    await moveToNextPhase(voting, accounts[0]); // Reveal the votes.
+
+    console.log("A");
+    await voting.methods.revealVote(identifier, time, price, salt).send({ from: account1 });
+    await voting.methods.revealVote(identifier, time + 1, price, salt).send({ from: account4 });
+    await voting.methods.revealVote(identifier, time + 2, price, salt).send({ from: account4 });
+    await voting.methods.revealVote(identifier, time + 3, price, salt).send({ from: account4 });
+    console.log("B");
+
+    // There should be a total of 4 requests, still.
+    assert.equal(await voting.methods.getNumberOfPriceRequests().call(), 4);
+
+    await moveToNextRound(voting, accounts[0]); // Move to the next round.
+
+    await voting.methods.updateTrackers(account4).send({ from: account1 });
+
+    // Account4 should loose one slots of 4mm*0.0016 from not participating in the one vote that settled.
+    console.log("account4", account4);
+    assert.equal((await voting.methods.voterStakes(account4).call()).activeStake, toWei("4000000").sub(toWei("6400")));
+
+    // There should now show up as being 7 requests as the three rolled votes are counted as additional requests.
+    assert.equal(await voting.methods.getNumberOfPriceRequests().call(), 7);
+
+    // Now, re-commit and reveal on 2 of the rolled requests, this time from account1 so they dont roll.
+    baseRequest.roundId = (await voting.methods.getCurrentRoundId().call()).toString();
+    const hash5 = computeVoteHash({ ...baseRequest, price: price, account: account1, time: time + 1 });
+    await voting.methods.commitVote(identifier, time + 1, hash5).send({ from: account1 });
+    const hash6 = computeVoteHash({ ...baseRequest, price: price, account: account1, time: time + 2 });
+    await voting.methods.commitVote(identifier, time + 2, hash6).send({ from: account1 });
+
+    await moveToNextPhase(voting, accounts[0]); // Reveal the votes.`
+    console.log("C");
+    await voting.methods.revealVote(identifier, time + 1, price, salt).send({ from: account1 });
+    await voting.methods.revealVote(identifier, time + 2, price, salt).send({ from: account1 });
+    console.log("D");
+
+    await moveToNextRound(voting, accounts[0]); // Move to the next round.
+
+    await voting.methods.updateTrackers(account4).send({ from: account1 });
+
+    // There should now be 8 requests, the 7 plus another one that just re-rolled for the second time.
+    assert.equal(await voting.methods.getNumberOfPriceRequests().call(), 8);
+
+    // Account4 should loose two equal slots of (4mm-6400)*0.0016 as they were both within the same voting
+    // round and they did not vote on them after the roll.
+    assert.equal(
+      (await voting.methods.voterStakes(account4).call()).activeStake,
+      toWei("3993600").sub(toWei("6389.76")).sub(toWei("6389.76"))
+    );
+
+    //3974430.72
+
+    // // Now, apply the slashing trackers in range for account1. As both votes are in the same round and we are partially
+    // // traversing the round we should not slash the first request and store it within unapplied slashing until both
+    // // requests have been traversed, at which point both should be applied linearly, as if they were applied at the same time.
+    // await voting.methods.updateTrackersRange(account1, 1).send({ from: account1 });
+    // assert.equal((await voting.methods.voterStakes(account1).call()).activeStake, toWei("32000000"));
+    // assert.equal((await voting.methods.voterStakes(account1).call()).unappliedSlash, toWei("108800"));
+    // await voting.methods.updateTrackersRange(account1, 2).send({ from: account1 });
+    // assert.equal(
+    //   (await voting.methods.voterStakes(account1).call()).activeStake,
+    //   toWei("32000000").add(toWei("108800").add(toWei("108800")))
+    // );
+    // assert.equal((await voting.methods.voterStakes(account1).call()).unappliedSlash, "0");
+  });
 });
