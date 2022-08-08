@@ -149,7 +149,7 @@ contract VotingV2 is
      *        SPAM DELETION TRACKERS        *
      ****************************************/
 
-    uint256 spamDeletionProposalBond;
+    uint256 public spamDeletionProposalBond;
 
     struct SpamDeletionRequest {
         uint256[2][] spamRequestIndices;
