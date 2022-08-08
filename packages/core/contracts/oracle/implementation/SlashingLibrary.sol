@@ -64,7 +64,7 @@ contract SlashingLibrary {
         uint256 totalVotes,
         uint256 totalCorrectVotes,
         bool isGovernance
-    ) public pure returns (uint256 wrongVoteSlashPerToken, uint256 noVoteSlashPerToken) {
+    ) external pure returns (uint256 wrongVoteSlashPerToken, uint256 noVoteSlashPerToken) {
         return (
             isGovernance
                 ? calcWrongVoteSlashPerTokenGovernance(totalStaked, totalVotes, totalCorrectVotes)

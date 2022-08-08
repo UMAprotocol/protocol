@@ -106,7 +106,7 @@ contract DesignatedVotingV2 is Stakeable, MultiCaller {
      * @dev Rewards are added to the tokens already held by this contract.
      * @return amount of rewards that the user should receive.
      */
-    function withdrawAndRestakeRewards() public onlyRoleHolder(uint256(Roles.Voter)) returns (uint256) {
+    function withdrawAndRestakeRewards() external onlyRoleHolder(uint256(Roles.Voter)) returns (uint256) {
         StakerInterface voting = StakerInterface(address(_getVotingContract()));
         uint256 rewardsMinted = voting.withdrawRewards();
         IERC20(address(voting.votingToken())).approve(address(voting), rewardsMinted);
