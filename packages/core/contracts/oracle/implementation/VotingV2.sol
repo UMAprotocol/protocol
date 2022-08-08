@@ -49,14 +49,14 @@ contract VotingV2 is
         uint32 lastVotingRound;
         // Denotes whether this is a governance request or not.
         bool isGovernance;
-        // The pendingRequestIndex in the pendingPriceRequests that references this PriceRequest. A value of UINT_MAX
+        // The pendingRequestIndex in the pendingPriceRequests that references this PriceRequest. A value of UINT64_MAX
         // means that this PriceRequest is resolved and has been cleaned up from pendingPriceRequests.
         uint64 pendingRequestIndex;
         // Each request has a unique requestIndex number that is used to order all requests. This is the index within
         // the priceRequestIds array and is incremented on each request.
         uint64 priceRequestIndex;
         // Timestamp that should be used when evaluating the request.
-        // Note: this is a uint56 to allow better variable packing while still leaving more than ample room for
+        // Note: this is a uint64 to allow better variable packing while still leaving more than ample room for
         // timestamps to stretch far into the future.
         uint64 time;
         // Identifier that defines how the voters should resolve the request.
@@ -293,7 +293,7 @@ contract VotingV2 is
      * @notice Enqueues a request (if a request isn't already present) for the identifier, time pair.
      * @dev Time must be in the past and the identifier must be supported. The length of the ancillary data
      * is limited such that this method abides by the EVM transaction gas limit.
-     * @param identifier uniquely identifies the price requested. eg BTC/USD (encoded as bytes32) could be requested.
+     * @param identifier uniquely identifies the price requested. E.g. BTC/USD (encoded as bytes32) could be requested.
      * @param time unix timestamp for the price request.
      * @param ancillaryData arbitrary data appended to a price request to give the voters more info from the caller.
      */
@@ -309,7 +309,7 @@ contract VotingV2 is
      * @notice Enqueues a governance action request (if a request isn't already present) for identifier, time pair.
      * @dev Time must be in the past and the identifier must be supported. The length of the ancillary data
      * is limited such that this method abides by the EVM transaction gas limit.
-     * @param identifier uniquely identifies the price requested. eg BTC/USD (encoded as bytes32) could be requested.
+     * @param identifier uniquely identifies the price requested. E.g. BTC/USD (encoded as bytes32) could be requested.
      * @param time unix timestamp for the price request.
      * @param ancillaryData arbitrary data appended to a price request to give the voters more info from the caller.
      */
@@ -325,7 +325,7 @@ contract VotingV2 is
      * @notice Enqueues a request (if a request isn't already present) for the given identifier, time pair.
      * @dev Time must be in the past and the identifier must be supported. The length of the ancillary data is limited
      * such that this method abides by the EVM transaction gas limit.
-     * @param identifier uniquely identifies the price requested. eg BTC/USD (encoded as bytes32) could be requested.
+     * @param identifier uniquely identifies the price requested. E.g. BTC/USD (encoded as bytes32) could be requested.
      * @param time unix timestamp for the price request.
      * @param ancillaryData arbitrary data appended to a price request to give the voters more info from the caller.
      * @param isGovernance indicates whether the request is for a governance action.
@@ -389,8 +389,8 @@ contract VotingV2 is
     /**
      * @notice Whether the price for identifier and time is available.
      * @dev Time must be in the past and the identifier must be supported.
-     * @param identifier uniquely identifies the price requested. eg BTC/USD (encoded as bytes32) could be requested.
-     * @param time unix timestamp of for the price request.
+     * @param identifier uniquely identifies the price requested. E.g. BTC/USD (encoded as bytes32) could be requested.
+     * @param time unix timestamp of the price request.
      * @param ancillaryData arbitrary data appended to a price request to give the voters more info from the caller.
      * @return _hasPrice bool if the DVM has resolved to a price for the given identifier and timestamp.
      */
@@ -411,8 +411,8 @@ contract VotingV2 is
     /**
      * @notice Gets the price for identifier and time if it has already been requested and resolved.
      * @dev If the price is not available, the method reverts.
-     * @param identifier uniquely identifies the price requested. eg BTC/USD (encoded as bytes32) could be requested.
-     * @param time unix timestamp of for the price request.
+     * @param identifier uniquely identifies the price requested. E.g. BTC/USD (encoded as bytes32) could be requested.
+     * @param time unix timestamp of the price request.
      * @param ancillaryData arbitrary data appended to a price request to give the voters more info from the caller.
      * @return int256 representing the resolved price for the given identifier and timestamp.
      */
@@ -436,7 +436,7 @@ contract VotingV2 is
     /**
      * @notice Gets the status of a list of price requests, identified by their identifier and time.
      * @dev If the status for a particular request is NotRequested, the lastVotingRound will always be 0.
-     * @param requests array of type PendingRequest which includes an identifier and timestamp for each request.
+     * @param requests array of type PendingRequestAncillary which includes an identifier and timestamp for each request.
      * @return requestStates a list, in the same order as the input list, giving the status of each of the specified price requests.
      */
     function getPriceRequestStatuses(PendingRequestAncillary[] memory requests)
@@ -483,7 +483,7 @@ contract VotingV2 is
      * @dev Since transaction data is public, the salt will be revealed with the vote. While this is the system’s
      * expected behavior, voters should never reuse salts. If someone else is able to guess the voted price and knows
      * that a salt will be reused, then they can determine the vote pre-reveal.
-     * @param identifier uniquely identifies the committed vote. EG BTC/USD price pair.
+     * @param identifier uniquely identifies the committed vote. E.g. BTC/USD price pair.
      * @param time unix timestamp of the price being voted on.
      * @param ancillaryData arbitrary data appended to a price request to give the voters more info from the caller.
      * @param hash keccak256 hash of the price, salt, voter address, time, ancillaryData, current roundId, identifier.
@@ -526,7 +526,7 @@ contract VotingV2 is
      * @notice Reveal a previously committed vote for identifier at time.
      * @dev The revealed price, salt, voter address, time, ancillaryData, current roundId, identifier must hash to the
      * latest hash that commitVote() was called with. Only the committer can reveal their vote.
-     * @param identifier voted on in the commit phase. EG BTC/USD price pair.
+     * @param identifier voted on in the commit phase. E.g. BTC/USD price pair.
      * @param time specifies the unix timestamp of the price being voted on.
      * @param price voted on during the commit phase.
      * @param ancillaryData arbitrary data appended to a price request to give the voters more info from the caller.
@@ -583,14 +583,14 @@ contract VotingV2 is
     }
 
     /**
-     * @notice commits a vote and logs an event with a data blob, typically an encrypted version of the vote
+     * @notice Commits a vote and logs an event with a data blob, typically an encrypted version of the vote
      * @dev An encrypted version of the vote is emitted in an event EncryptedVote to allow off-chain infrastructure to
      * retrieve the commit. The contents of encryptedVote are never used on chain: it is purely for convenience.
-     * @param identifier unique price pair identifier. Eg: BTC/USD price pair.
-     * @param time unix timestamp of for the price request.
-     * @param ancillaryData arbitrary data appended to a price request to give the voters more info from the caller.
+     * @param identifier unique price pair identifier. E.g. BTC/USD price pair.
+     * @param time unix timestamp of the price request.
+     * @param ancillaryData arbitrary data appended to a price request to give the voter's more info from the caller.
      * @param hash keccak256 hash of the price you want to vote for and a int256 salt.
-     * @param encryptedVote offchain encrypted blob containing the voters amount, time and salt.
+     * @param encryptedVote offchain encrypted blob containing the voter's amount, time and salt.
      */
     function commitAndEmitEncryptedVote(
         bytes32 identifier,
@@ -628,9 +628,9 @@ contract VotingV2 is
     }
 
     /**
-     * @notice Sets the delegator of a voter. Acts to accept a delegation. The delegate can only vote for delegator if
-     * the delegator also selected the delegate to do so (two way relationship needed).
-     * @param delegator the address of the delegate.
+     * @notice Sets the delegator of a voter. Acts to accept a delegation. The delegate can only vote for the delegator
+     * if the delegator also selected the delegate to do so (two-way relationship needed).
+     * @param delegator the address of the delegator.
      */
     function setDelegator(address delegator) public {
         delegateToStaker[msg.sender] = delegator;
@@ -868,7 +868,7 @@ contract VotingV2 is
                     continue;
                 }
                 // Else, we are simply evaluating a request that is still actively being voted on. In this case, break as
-                // all subsequent requests within the array must be in the same state and cant have any slashing applied.
+                // all subsequent requests within the array must be in the same state and can't have any slashing applied.
                 break;
             }
 
@@ -902,14 +902,12 @@ contract VotingV2 is
                             voteInstance.resultComputation.totalVotes)) +
                         ((wrongVoteSlashPerToken * (voteInstance.resultComputation.totalVotes - totalCorrectVotes)))) /
                         1e18;
-
                 slash += int256(((voterStake.activeStake * totalSlashed)) / totalCorrectVotes);
             }
 
             // If this is not the last price request to apply and the next request in the batch is from a subsequent
             // round then apply the slashing now. Else, do nothing and apply the slashing after the loop concludes.
             // This acts to apply slashing within a round as independent actions: multiple votes within the same round
-
             // should not impact each other but subsequent rounds should impact each other. We need to consider the
             // deletedRequests mapping when finding the next index as the next request may have been deleted or rolled.
             uint256 nextRequestIndex =
@@ -945,10 +943,10 @@ contract VotingV2 is
      ****************************************/
 
     /**
-     * @notice Declare a specific price requests range to be spam and request it's deletion.
+     * @notice Declare a specific price requests range to be spam and request its deletion.
      * @dev note that this method should almost never be used. The bond to call this should be set to
      * a very large number (say 10k UMA) as it could be abused if set too low. Function constructs a price
-     * request that, if passed, enables pending requests to be diregarded by the contract.
+     * request that, if passed, enables pending requests to be disregarded by the contract.
      * @param spamRequestIndices list of request indices to be declared as spam. Each element is a
      * pair of uint256s representing the start and end of the range.
      */
@@ -961,7 +959,7 @@ contract VotingV2 is
             uint256[2] memory spamRequestIndex = spamRequestIndices[i];
 
             // Check request end index is greater than start index, endIndex is less than the total number of requests,
-            // and validate index continuity (each sequential element within the spamRequestIndices array is sequently
+            // and validate index continuity (each sequential element within the spamRequestIndices array is sequential
             // and increasing in size).
             require(
                 spamRequestIndex[0] <= spamRequestIndex[1] &&
@@ -1137,7 +1135,7 @@ contract VotingV2 is
         // If it's not resolvable return false.
         if (!isResolvable) return false;
 
-        // Else, the request is resolvable. Remove the element from the pending request and update pendingRequestIndex
+        // Else, the request is resolvable. Remove the element from the pending requests and update pendingRequestIndex
         // within the price request struct to make the next entry into this method a no-op for this request.
         uint256 lastIndex = pendingPriceRequests.length - 1;
         PriceRequest storage lastPriceRequest = priceRequests[pendingPriceRequests[lastIndex]];

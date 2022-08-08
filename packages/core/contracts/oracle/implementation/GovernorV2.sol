@@ -95,7 +95,7 @@ contract GovernorV2 is MultiRole, Testable {
         uint256 time = getCurrentTime();
 
         // Note: doing all of this array manipulation manually is necessary because directly setting an array of
-        // structs in storage to an an array of structs in memory is currently not implemented in solidity :/.
+        // structs in storage to an array of structs in memory is currently not implemented in solidity :/.
 
         // Add a zero-initialized element to the proposals array.
         proposals.push();

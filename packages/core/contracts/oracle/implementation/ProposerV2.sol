@@ -112,7 +112,7 @@ contract ProposerV2 is Ownable, Testable, Lockable {
 
     /**
      * @notice Admin method to set the bond amount.
-     * @dev Admin is intended to be the governance system, itself.
+     * @dev Admin is intended to be the governance system itself.
      * @param _bond the new bond.
      */
     function setBond(uint256 _bond) public nonReentrant() onlyOwner() {
