@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "../VotingV2.sol";
+import "../../../common/implementation/Testable.sol";
 
 // Test contract used to manage the time for the contract in tests.
 contract VotingV2ControllableTiming is VotingV2, Testable {
