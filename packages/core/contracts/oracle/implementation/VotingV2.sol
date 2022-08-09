@@ -1,7 +1,7 @@
 // TODO: this whole /oracle/implementation directory should be restructured to separate the DVM and the OO.
 
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity ^0.8.0;
+pragma solidity 0.8.15;
 
 import "../../common/implementation/AncillaryData.sol";
 import "../../common/implementation/MultiCaller.sol";
@@ -196,10 +196,10 @@ contract VotingV2 is
     );
 
     event PriceRequestAdded(
-        address requester,
+        address indexed requester,
         uint256 indexed roundId,
         bytes32 indexed identifier,
-        uint256 indexed time,
+        uint256 time,
         uint256 requestIndex,
         bytes ancillaryData,
         bool isGovernance
@@ -209,6 +209,7 @@ contract VotingV2 is
         uint256 indexed roundId,
         bytes32 indexed identifier,
         uint256 time,
+        uint256 requestIndex,
         int256 price,
         bytes ancillaryData
     );
@@ -1030,8 +1031,8 @@ contract VotingV2 is
             _getPriceOrError(identifier, spamDeletionProposals[proposalId].requestTime, "");
         require(hasPrice);
 
-        // If the price is 1e18 then the spam deletion request was correctly voted on to delete the requests.
-        if (resolutionPrice == 1e18) {
+        // If the price is non zero then the spam deletion request was voted up to delete the requests. Execute delete.
+        if (resolutionPrice != 0) {
             // Delete the price requests associated with the spam.
             for (uint256 i = 0; i < spamDeletionProposals[proposalId].spamRequestIndices.length; i = unsafe_inc(i)) {
                 uint64 startIndex = uint64(spamDeletionProposals[proposalId].spamRequestIndices[uint256(i)][0]);
@@ -1039,13 +1040,7 @@ contract VotingV2 is
                 for (uint256 j = startIndex; j <= endIndex; j++) {
                     bytes32 requestId = priceRequestIds[j];
                     // Remove from pendingPriceRequests.
-                    uint256 lastIndex = pendingPriceRequests.length - 1;
-                    PriceRequest storage lastPriceRequest = priceRequests[pendingPriceRequests[lastIndex]];
-                    lastPriceRequest.pendingRequestIndex = priceRequests[requestId].pendingRequestIndex;
-                    pendingPriceRequests[priceRequests[requestId].pendingRequestIndex] = pendingPriceRequests[
-                        lastIndex
-                    ];
-                    pendingPriceRequests.pop();
+                    _removeRequestFromPendingPriceRequests(priceRequests[requestId].pendingRequestIndex);
 
                     // Remove the request from the priceRequests mapping.
                     delete priceRequests[requestId];
@@ -1088,6 +1083,14 @@ contract VotingV2 is
     /****************************************
      *    PRIVATE AND INTERNAL FUNCTIONS    *
      ****************************************/
+
+    function _removeRequestFromPendingPriceRequests(uint64 pendingRequestIndex) internal {
+        uint256 lastIndex = pendingPriceRequests.length - 1;
+        PriceRequest storage lastPriceRequest = priceRequests[pendingPriceRequests[lastIndex]];
+        lastPriceRequest.pendingRequestIndex = pendingRequestIndex;
+        pendingPriceRequests[pendingRequestIndex] = pendingPriceRequests[lastIndex];
+        pendingPriceRequests.pop();
+    }
 
     // Returns the price for a given identifer. Three params are returns: bool if there was an error, int to represent
     // the resolved price and a string which is filled with an error message, if there was an error or "".
@@ -1165,17 +1168,14 @@ contract VotingV2 is
 
         // Else, the request is resolvable. Remove the element from the pending request and update pendingRequestIndex
         // within the price request struct to make the next entry into this method a no-op for this request.
-        uint256 lastIndex = pendingPriceRequests.length - 1;
-        PriceRequest storage lastPriceRequest = priceRequests[pendingPriceRequests[lastIndex]];
-        lastPriceRequest.pendingRequestIndex = priceRequest.pendingRequestIndex;
-        pendingPriceRequests[priceRequest.pendingRequestIndex] = pendingPriceRequests[lastIndex];
-        pendingPriceRequests.pop();
+        _removeRequestFromPendingPriceRequests(priceRequest.pendingRequestIndex);
 
         priceRequest.pendingRequestIndex = UINT64_MAX;
         emit PriceResolved(
             priceRequest.lastVotingRound,
             priceRequest.identifier,
             priceRequest.time,
+            priceRequest.priceRequestIndex,
             resolvedPrice,
             priceRequest.ancillaryData
         );

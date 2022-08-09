@@ -202,9 +202,9 @@ contract Staker is StakerInterface, Ownable {
         uint256 tokensToMint = voterStake.outstandingRewards;
         if (tokensToMint > 0) {
             voterStake.outstandingRewards = 0;
-            require(votingToken.mint(msg.sender, tokensToMint));
+            require(votingToken.mint(msg.sender, tokensToMint), "Voting token issuance failed");
+            emit WithdrawnRewards(msg.sender, tokensToMint);
         }
-        emit WithdrawnRewards(msg.sender, tokensToMint);
         return (tokensToMint);
     }
 

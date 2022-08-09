@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity ^0.8.0;
+pragma solidity 0.8.15;
 
 import "./Finder.sol";
 import "./GovernorV2.sol";
 import "./Constants.sol";
-import "./Voting.sol";
+import "../interfaces/OracleAncillaryInterface.sol";
 import "./AdminIdentifierLib.sol";
 import "../../common/implementation/Lockable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
@@ -83,7 +83,8 @@ contract ProposerV2 is Ownable, Lockable {
      */
     function resolveProposal(uint256 id) external nonReentrant() {
         BondedProposal memory bondedProposal = bondedProposals[id];
-        Voting voting = Voting(finder.getImplementationAddress(OracleInterfaces.Oracle));
+        OracleAncillaryInterface voting =
+            OracleAncillaryInterface(finder.getImplementationAddress(OracleInterfaces.Oracle));
         require(
             voting.hasPrice(
                 AdminIdentifierLib._constructIdentifier(id),
