@@ -181,6 +181,7 @@ contract GovernorV2 is MultiRole {
      *      PRIVATE GETTERS AND FUNCTIONS   *
      ****************************************/
 
+    // Runs a function call on to, with value eth sent and data payload.
     function _executeCall(
         address to,
         uint256 value,
@@ -200,6 +201,7 @@ contract GovernorV2 is MultiRole {
         return success;
     }
 
+    // Returns the Voting contract address, named "Oracle" in the finder.
     function _getOracle() private view returns (OracleGovernanceInterface) {
         return OracleGovernanceInterface(finder.getImplementationAddress(OracleInterfaces.Oracle));
     }
