@@ -784,7 +784,7 @@ contract VotingV2 is
      * @param newGat sets the next round's Gat.
      */
     function setGat(uint256 newGat) external override onlyOwner {
-        require(newGat < votingToken.totalSupply() && newGat > 0);
+        require(newGat < votingToken.totalSupply() && newGat > 0, "Invalid GAT");
         gat = newGat;
         emit GatChanged(newGat);
     }
@@ -823,7 +823,10 @@ contract VotingV2 is
      * @param indexTo last price request index to update the trackers for.
      */
     function updateTrackersRange(address voterAddress, uint256 indexTo) external {
-        require(voterStakes[voterAddress].lastRequestIndexConsidered < indexTo && indexTo <= priceRequestIds.length);
+        require(
+            voterStakes[voterAddress].lastRequestIndexConsidered < indexTo && indexTo <= priceRequestIds.length,
+            "Invalid indexTo"
+        );
 
         _updateAccountSlashingTrackers(voterAddress, indexTo);
     }
@@ -1015,7 +1018,7 @@ contract VotingV2 is
      */
 
     function executeSpamDeletion(uint256 proposalId) external nonReentrant() {
-        require(spamDeletionProposals[proposalId].executed == false);
+        require(spamDeletionProposals[proposalId].executed == false, "Proposal already executed");
         spamDeletionProposals[proposalId].executed = true;
 
         bytes32 identifier = SpamGuardIdentifierLib._constructIdentifier(SafeCast.toUint32(proposalId));
