@@ -2,7 +2,6 @@
 pragma solidity 0.8.15;
 
 import "../../common/implementation/MultiRole.sol";
-
 import "../interfaces/FinderInterface.sol";
 import "../interfaces/IdentifierWhitelistInterface.sol";
 import "../interfaces/OracleGovernanceInterface.sol";

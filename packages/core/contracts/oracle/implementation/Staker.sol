@@ -213,7 +213,7 @@ contract Staker is StakerInterface, Ownable {
      * @dev this method requires that the user has approved this contract.
      * @return uint256 the amount of tokens that the user is staking.
      */
-    function withdrawAndRestake() external override nonReentrant() returns (uint256) {
+    function withdrawAndRestake() external nonReentrant() returns (uint256) {
         uint256 rewards = withdrawRewards();
         stake(rewards);
         return rewards;
@@ -228,7 +228,7 @@ contract Staker is StakerInterface, Ownable {
      * split prorate to stakers.
      * @param _emissionRate the new amount of voting tokens that are emitted per second, split prorate to stakers.
      */
-    function setEmissionRate(uint256 _emissionRate) external override onlyOwner {
+    function setEmissionRate(uint256 _emissionRate) external onlyOwner {
         _updateReward(address(0));
         emissionRate = _emissionRate;
         emit SetNewEmissionRate(emissionRate);
