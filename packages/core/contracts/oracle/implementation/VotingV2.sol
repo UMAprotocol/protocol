@@ -1,7 +1,7 @@
 // TODO: this whole /oracle/implementation directory should be restructured to separate the DVM and the OO.
 
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity 0.8.15;
+pragma solidity 0.8.16;
 
 import "../../common/implementation/MultiCaller.sol";
 
@@ -302,7 +302,7 @@ contract VotingV2 is
         bytes32 identifier,
         uint256 time,
         bytes memory ancillaryData
-    ) public override onlyIfNotMigrated() onlyRegisteredContract() {
+    ) public override nonReentrant() onlyIfNotMigrated() onlyRegisteredContract() {
         _requestPrice(identifier, time, ancillaryData, false);
     }
 
@@ -494,7 +494,7 @@ contract VotingV2 is
         uint256 time,
         bytes memory ancillaryData,
         bytes32 hash
-    ) public override onlyIfNotMigrated() {
+    ) public override nonReentrant() onlyIfNotMigrated() {
         uint256 currentRoundId = voteTiming.computeCurrentRoundId(getCurrentTime());
         address voter = getVoterFromDelegate(msg.sender);
         _updateTrackers(voter);
@@ -539,7 +539,7 @@ contract VotingV2 is
         int256 price,
         bytes memory ancillaryData,
         int256 salt
-    ) public override onlyIfNotMigrated() {
+    ) public override nonReentrant() onlyIfNotMigrated() {
         // Note: computing the current round is required to disallow people from revealing an old commit after the round is over.
         uint256 currentRoundId = voteTiming.computeCurrentRoundId(getCurrentTime());
         _freezeRoundVariables(currentRoundId);
@@ -625,7 +625,7 @@ contract VotingV2 is
      * low-security available wallet for voting while keeping access to staked amounts secure by a more secure wallet.
      * @param delegate the address of the delegate.
      */
-    function setDelegate(address delegate) external {
+    function setDelegate(address delegate) external nonReentrant() {
         voterStakes[msg.sender].delegate = delegate;
     }
 
@@ -634,7 +634,7 @@ contract VotingV2 is
      * if the delegator also selected the delegate to do so (two-way relationship needed).
      * @param delegator the address of the delegator.
      */
-    function setDelegator(address delegator) external {
+    function setDelegator(address delegator) external nonReentrant() {
         delegateToStaker[msg.sender] = delegator;
     }
 
@@ -967,7 +967,7 @@ contract VotingV2 is
      * @param spamRequestIndices list of request indices to be declared as spam. Each element is a
      * pair of uint256s representing the start and end of the range.
      */
-    function signalRequestsAsSpamForDeletion(uint256[2][] calldata spamRequestIndices) external {
+    function signalRequestsAsSpamForDeletion(uint256[2][] calldata spamRequestIndices) external nonReentrant() {
         votingToken.transferFrom(msg.sender, address(this), spamDeletionProposalBond);
         uint256 currentTime = getCurrentTime();
         uint256 runningValidationIndex;
@@ -1013,7 +1013,8 @@ contract VotingV2 is
      * @notice Execute the spam deletion proposal if it has been approved by voting.
      * @param proposalId spam deletion proposal id.
      */
-    function executeSpamDeletion(uint256 proposalId) external {
+
+    function executeSpamDeletion(uint256 proposalId) external nonReentrant() {
         require(spamDeletionProposals[proposalId].executed == false);
         spamDeletionProposals[proposalId].executed = true;
 

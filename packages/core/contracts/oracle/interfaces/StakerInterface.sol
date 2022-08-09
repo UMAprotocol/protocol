@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity 0.8.15;
+pragma solidity 0.8.16;
 
 import "../implementation/VotingToken.sol";
 import "../../common/interfaces/ExpandedIERC20.sol";
@@ -14,4 +14,10 @@ interface StakerInterface {
     function executeUnstake() external;
 
     function withdrawRewards() external returns (uint256);
+
+    function withdrawAndRestake() external returns (uint256);
+
+    function setEmissionRate(uint256 emissionRate) external;
+
+    function setUnstakeCoolDown(uint64 unstakeCoolDown) external;
 }
