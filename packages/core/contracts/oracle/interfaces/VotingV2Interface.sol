@@ -1,7 +1,7 @@
 // TODO: add staking/snapshot interfaces to this interface file.
 
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity 0.8.15;
+pragma solidity 0.8.16;
 
 /**
  * @title Interface that voters must use to Vote on price request resolutions.
