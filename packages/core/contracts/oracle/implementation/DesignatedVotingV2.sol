@@ -51,7 +51,7 @@ contract DesignatedVotingV2 is Stakeable, MultiCaller {
 
     /**
      * @notice Forwards a commit to Voting.
-     * @param identifier uniquely identifies the feed for this vote. E.G BTC/USD price pair.
+     * @param identifier uniquely identifies the feed for this vote. E.G. BTC/USD price pair.
      * @param time specifies the unix timestamp of the price being voted on.
      * @param hash keccak256 hash of the price, salt, voter address, time, ancillaryData, current roundId, identifier.
      */
