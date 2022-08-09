@@ -8,14 +8,12 @@ import "../interfaces/OracleGovernanceInterface.sol";
 import "./Constants.sol";
 import "./AdminIdentifierLib.sol";
 
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 
 /**
  * @title Takes proposals for certain governance actions and allows UMA token holders to vote on them.
  */
 contract GovernorV2 is MultiRole {
-    using SafeMath for uint256;
     using Address for address;
 
     /****************************************
@@ -134,7 +132,7 @@ contract GovernorV2 is MultiRole {
         Transaction memory transaction = proposal.transactions[transactionIndex];
 
         require(
-            transactionIndex == 0 || proposal.transactions[transactionIndex.sub(1)].to == address(0),
+            transactionIndex == 0 || proposal.transactions[transactionIndex - 1].to == address(0),
             "Previous tx not yet executed"
         );
         require(transaction.to != address(0), "Tx already executed");
