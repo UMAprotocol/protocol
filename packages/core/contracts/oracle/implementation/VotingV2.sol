@@ -551,7 +551,10 @@ contract VotingV2 is
         // Scoping to get rid of a stack too deep errors for require messages.
         {
             // Can only reveal in the reveal phase.
-            require(voteTiming.computeCurrentPhase(getCurrentTime()) == Phase.Reveal);
+            require(
+                voteTiming.computeCurrentPhase(getCurrentTime()) == Phase.Reveal,
+                "Reveal phase has not started yet"
+            );
             // 0 hashes are disallowed in the commit phase, so they indicate a different error.
             // Cannot reveal an uncommitted or previously revealed hash
             require(voteSubmission.commit != bytes32(0), "Invalid hash reveal");
@@ -781,7 +784,7 @@ contract VotingV2 is
      * @param newGat sets the next round's Gat.
      */
     function setGat(uint256 newGat) external override onlyOwner {
-        require(newGat < votingToken.totalSupply() && newGat > 0);
+        require(newGat < votingToken.totalSupply() && newGat > 0, "Invalid GAT");
         gat = newGat;
         emit GatChanged(newGat);
     }
@@ -820,7 +823,10 @@ contract VotingV2 is
      * @param indexTo last price request index to update the trackers for.
      */
     function updateTrackersRange(address voterAddress, uint256 indexTo) external {
-        require(voterStakes[voterAddress].lastRequestIndexConsidered < indexTo && indexTo <= priceRequestIds.length);
+        require(
+            voterStakes[voterAddress].lastRequestIndexConsidered < indexTo && indexTo <= priceRequestIds.length,
+            "Invalid indexTo"
+        );
 
         _updateAccountSlashingTrackers(voterAddress, indexTo);
     }
@@ -978,7 +984,8 @@ contract VotingV2 is
             require(
                 spamRequestIndex[0] <= spamRequestIndex[1] &&
                     spamRequestIndex[1] < priceRequestIds.length &&
-                    spamRequestIndex[1] > runningValidationIndex
+                    spamRequestIndex[1] > runningValidationIndex,
+                "Invalid spam request index"
             );
 
             runningValidationIndex = spamRequestIndex[1];
@@ -1011,14 +1018,14 @@ contract VotingV2 is
      */
 
     function executeSpamDeletion(uint256 proposalId) external nonReentrant() {
-        require(spamDeletionProposals[proposalId].executed == false);
+        require(spamDeletionProposals[proposalId].executed == false, "Proposal already executed");
         spamDeletionProposals[proposalId].executed = true;
 
         bytes32 identifier = SpamGuardIdentifierLib._constructIdentifier(SafeCast.toUint32(proposalId));
 
         (bool hasPrice, int256 resolutionPrice, ) =
             _getPriceOrError(identifier, spamDeletionProposals[proposalId].requestTime, "");
-        require(hasPrice);
+        require(hasPrice, "No price found for spam deletion");
 
         // If the price is non zero then the spam deletion request was voted up to delete the requests. Execute delete.
         if (resolutionPrice != 0) {
@@ -1216,7 +1223,7 @@ contract VotingV2 is
 
     // Reverts if the contract has been migrated. Used in a modifier, defined as a private function for gas savings.
     function _requireNotMigrated() private view {
-        require(migratedAddress == address(0));
+        require(migratedAddress == address(0), "Contract migrated");
     }
 
     function _requireRegisteredContract() private view {
