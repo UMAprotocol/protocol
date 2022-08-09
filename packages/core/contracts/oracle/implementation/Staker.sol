@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import "./VotingToken.sol";
 import "../interfaces/StakerInterface.sol";
+import "../../common/interfaces/ExpandedIERC20.sol";
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
@@ -23,7 +23,7 @@ abstract contract Staker is StakerInterface, Ownable {
     uint64 public lastUpdateTime;
     uint64 public unstakeCoolDown;
 
-    VotingToken public votingToken;
+    ExpandedIERC20 public votingToken;
 
     struct VoterStake {
         uint256 activeStake;
@@ -98,7 +98,7 @@ abstract contract Staker is StakerInterface, Ownable {
     ) {
         emissionRate = _emissionRate;
         unstakeCoolDown = _unstakeCoolDown;
-        votingToken = VotingToken(_votingToken);
+        votingToken = ExpandedIERC20(_votingToken);
     }
 
     /****************************************
