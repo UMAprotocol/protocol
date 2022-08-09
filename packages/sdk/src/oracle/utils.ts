@@ -116,10 +116,9 @@ export function getMulticall2Address(chainId: number): string {
 type AddressGetter = (chainId: number) => string;
 interface AddressGetters {
   getMulticall2Address: AddressGetter;
-  getOptimisticOracleAddress: AddressGetter;
 }
 
-export const DefaultChainConfig = ({ getMulticall2Address, getOptimisticOracleAddress }: AddressGetters) => (
+export const DefaultChainConfig = ({ getMulticall2Address }: AddressGetters) => (
   chainId: number,
   chainConfig: PartialChainConfig
 ): ChainConfig => {
@@ -130,15 +129,12 @@ export const DefaultChainConfig = ({ getMulticall2Address, getOptimisticOracleAd
     // ignore, multicall optional
   }
 
-  // dont ignore error, oracle required
-  const optimisticOracleAddress = chainConfig.optimisticOracleAddress || getOptimisticOracleAddress(chainId);
   const checkTxIntervalSec = chainConfig.checkTxIntervalSec || 5;
 
   return {
     ...chainConfig,
     chainId,
     multicall2Address,
-    optimisticOracleAddress,
     checkTxIntervalSec,
   };
 };

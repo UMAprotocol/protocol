@@ -89,7 +89,7 @@ core's tests. Running these specific tests can be done as follows:
 
 ```bash
 cd ../.. # navigate to the root of the protocol repo
-yarn optimsim-up # start the optimism containers. note this will take a long time as a few containers need to be built
+yarn optimism-up # start the optimism containers. note this will take a long time as a few containers need to be built
 cd ./packages/core # move back to this package
 yarn test-e2e # run the end to end tests against the optimism containers.
 ```
