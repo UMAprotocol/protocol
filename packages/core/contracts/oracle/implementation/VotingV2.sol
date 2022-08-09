@@ -23,7 +23,7 @@ import "./VoteTimingV2.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 /**
- * @title VotingV2 contract for UMA's DVM mechanism.
+ * @title VotingV2 contract for the UMA DVM.
  * @dev Handles receiving and resolving price requests via a commit-reveal voting schelling scheme.
  */
 
@@ -619,7 +619,7 @@ contract VotingV2 is
 
     /**
      * @notice Sets the delegate of a voter. This delegate can vote on behalf of the staker. The staker will still own
-     * all staked balances, receive rewards and be slashed based on the actors of the delegate. Intended use is using a
+     * all staked balances, receive rewards and be slashed based on the actions of the delegate. Intended use is using a
      * low-security available wallet for voting while keeping access to staked amounts secure by a more secure wallet.
      * @param delegate the address of the delegate.
      */
@@ -654,7 +654,7 @@ contract VotingV2 is
 
     /**
      * @notice Gets the queries that are being voted on this round.
-     * @return pendingRequests array containing identifiers of type PendingRequest.
+     * @return pendingRequests array containing identifiers of type PendingRequestAncillary.
      */
     function getPendingRequests() public view override returns (PendingRequestAncillary[] memory) {
         uint256 blockTime = getCurrentTime();
