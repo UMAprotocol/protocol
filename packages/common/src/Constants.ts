@@ -8,6 +8,7 @@ export const interfaceName = {
   CollateralWhitelist: "CollateralWhitelist",
   AddressWhitelist: "CollateralWhitelist",
   OptimisticOracle: "OptimisticOracle",
+  OptimisticOracleV2: "OptimisticOracleV2",
   Bridge: "Bridge",
   GenericHandler: "GenericHandler",
   MockOracleAncillary: "Oracle",
