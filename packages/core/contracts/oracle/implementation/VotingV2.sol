@@ -107,7 +107,7 @@ contract VotingV2 is
 
     bytes32[] public priceRequestIds;
 
-    mapping(uint64 => uint64) public deletedRequests;
+    mapping(uint64 => uint64) public skippedRequestIndexes;
 
     // Price request ids for price requests that haven't yet been resolved. These requests may be for future rounds.
     bytes32[] public pendingPriceRequests;
@@ -130,7 +130,7 @@ contract VotingV2 is
     uint64 private constant UINT64_MAX = type(uint64).max;
 
     // Max length in bytes of ancillary data that can be appended to a price request.
-    uint256 public constant ancillaryBytesLimit = 8192;
+    uint256 public constant ANCILLARY_BYTES_LIMIT = 8192;
 
     /****************************************
      *          SLASHING TRACKERS           *
@@ -342,7 +342,7 @@ contract VotingV2 is
             isGovernance || _getIdentifierWhitelist().isIdentifierSupported(identifier),
             "Unsupported identifier request"
         );
-        require(ancillaryData.length <= ancillaryBytesLimit, "Invalid ancillary data");
+        require(ancillaryData.length <= ANCILLARY_BYTES_LIMIT, "Invalid ancillary data");
 
         bytes32 priceRequestId = _encodePriceRequest(identifier, time, ancillaryData);
         PriceRequest storage priceRequest = priceRequests[priceRequestId];
@@ -700,7 +700,7 @@ contract VotingV2 is
 
     /**
      * @notice Returns the current voting phase, as a function of the current time.
-     * @return Phase to indicate the current phase. Either { Commit, Reveal, NUM_PHASES_PLACEHOLDER }.
+     * @return Phase to indicate the current phase. Either { Commit, Reveal, NUM_PHASES }.
      */
     function getVotePhase() public view override returns (Phase) {
         return voteTiming.computeCurrentPhase(getCurrentTime());
@@ -843,8 +843,8 @@ contract VotingV2 is
             requestIndex < indexTo;
             requestIndex = unsafe_inc_64(requestIndex)
         ) {
-            if (deletedRequests[requestIndex] != 0) {
-                requestIndex = deletedRequests[requestIndex];
+            if (skippedRequestIndexes[requestIndex] != 0) {
+                requestIndex = skippedRequestIndexes[requestIndex];
                 continue;
             }
 
@@ -855,14 +855,14 @@ contract VotingV2 is
             // If the request status is not resolved then: a) Either we are still in the current voting round, in which
             // case break the loop and stop iterating (all subsequent requests will be in the same state by default) or
             // b) we have gotten to a rolled vote in which case we need to update some internal trackers for this vote
-            // and set this within the deletedRequests mapping so the next time we hit this it is skipped.
+            // and set this within the skippedRequestIndexes mapping so the next time we hit this it is skipped.
             if (!_priceRequestResolved(priceRequest, voteInstance, currentRoundId)) {
                 // If the request is not resolved and the lastVotingRound less than the current round then the vote
                 // must have been rolled. In this case, update the internal trackers for this vote.
 
                 if (priceRequest.lastVotingRound < currentRoundId) {
                     priceRequest.lastVotingRound = SafeCast.toUint32(currentRoundId);
-                    deletedRequests[requestIndex] = requestIndex;
+                    skippedRequestIndexes[requestIndex] = requestIndex;
                     priceRequest.priceRequestIndex = SafeCast.toUint64(priceRequestIds.length);
                     priceRequestIds.push(priceRequestIds[requestIndex]);
                     continue;
@@ -911,9 +911,11 @@ contract VotingV2 is
             // This acts to apply slashing within a round as independent actions: multiple votes within the same round
 
             // should not impact each other but subsequent rounds should impact each other. We need to consider the
-            // deletedRequests mapping when finding the next index as the next request may have been deleted or rolled.
+            // skippedRequestIndexes mapping when finding the next index as the next request may have been deleted or rolled.
             uint256 nextRequestIndex =
-                deletedRequests[requestIndex + 1] != 0 ? deletedRequests[requestIndex + 1] + 1 : requestIndex + 1;
+                skippedRequestIndexes[requestIndex + 1] != 0
+                    ? skippedRequestIndexes[requestIndex + 1] + 1
+                    : requestIndex + 1;
             if (
                 slash != 0 &&
                 indexTo > nextRequestIndex &&
@@ -1024,7 +1026,7 @@ contract VotingV2 is
 
                 // Set the deletion request jump mapping. This enables the for loops that iterate over requests to skip
                 // the deleted requests via a "jump" over the removed elements from the array.
-                deletedRequests[startIndex] = endIndex;
+                skippedRequestIndexes[startIndex] = endIndex;
             }
 
             // Return the spamDeletionProposalBond.
