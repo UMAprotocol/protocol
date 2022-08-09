@@ -3,6 +3,40 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.33.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.32.0...@uma/core@2.33.0) (2022-08-09)
+
+### Bug Fixes
+
+- [H01] fixes duplicate request rewards ([#4064](https://github.com/UMAprotocol/protocol/issues/4064)) ([566a82c](https://github.com/UMAprotocol/protocol/commit/566a82cd0cd830ed70e2b2218c3457f9340c7681))
+- [L03]: Imprecise function name ([#4071](https://github.com/UMAprotocol/protocol/issues/4071)) ([f9448bd](https://github.com/UMAprotocol/protocol/commit/f9448bd12c30e03a31fd40cbf1069aff671eff5f))
+- [L04]: Incorrect documentation for voting commit hash ([#4072](https://github.com/UMAprotocol/protocol/issues/4072)) ([52b5e39](https://github.com/UMAprotocol/protocol/commit/52b5e3977f75416433041d51ce23ce19f4398652))
+- [L05] Lack of input verification in library functions ([#4073](https://github.com/UMAprotocol/protocol/issues/4073)) ([a237529](https://github.com/UMAprotocol/protocol/commit/a23752936a6f3f23a4bc744d718a931ea2c8d404))
+- [L08] Testcode in production ([#4095](https://github.com/UMAprotocol/protocol/issues/4095)) ([7d0a254](https://github.com/UMAprotocol/protocol/commit/7d0a254cc3fb24e8b3efd88bc7e4f4329c91646d))
+- [L10]: Withdraw role is not configured ([#4078](https://github.com/UMAprotocol/protocol/issues/4078)) ([ed23ad5](https://github.com/UMAprotocol/protocol/commit/ed23ad583fa7a390f1e9e85d4f376012fe33cda1))
+- [M01] Incorrect refund of spamDeletionProposalBond ([#4065](https://github.com/UMAprotocol/protocol/issues/4065)) ([f2a802f](https://github.com/UMAprotocol/protocol/commit/f2a802f815b9d6b54b14f48bee93b2a1ca4051fc))
+- [M02] incorrect math in slashing library comments ([#4066](https://github.com/UMAprotocol/protocol/issues/4066)) ([4842431](https://github.com/UMAprotocol/protocol/commit/4842431b11484f0b88a8cd87ff87c574c574f6c0))
+- [M04] improve migration process ([#4105](https://github.com/UMAprotocol/protocol/issues/4105)) ([88ca7f4](https://github.com/UMAprotocol/protocol/commit/88ca7f40cf07be9090e7fea1f1db59e3837f66b9))
+- [N02]: Removal of redundant code ([#4081](https://github.com/UMAprotocol/protocol/issues/4081)) ([5301d92](https://github.com/UMAprotocol/protocol/commit/5301d92e2ff391b273617cc9464e16fb30fb1ce0))
+- [N04]: Correction of Erroneous imports ([#4083](https://github.com/UMAprotocol/protocol/issues/4083)) ([6c339c0](https://github.com/UMAprotocol/protocol/commit/6c339c0f82f3cb2b1f2e16869ef1da77dafd87ca))
+- [N05]: Remove redundant WithdrawnRewards event emission ([#4084](https://github.com/UMAprotocol/protocol/issues/4084)) ([7bdb045](https://github.com/UMAprotocol/protocol/commit/7bdb045c5bff081573051e2cfeb307bb92298ba6))
+- [N06]: Make additional contracts immutable ([#4085](https://github.com/UMAprotocol/protocol/issues/4085)) ([914069d](https://github.com/UMAprotocol/protocol/commit/914069ddc8a72be5059b2888556bb4c58a98b77a))
+- [N07]: Address inconsistent declarations for finder variable ([#4086](https://github.com/UMAprotocol/protocol/issues/4086)) ([acadd6a](https://github.com/UMAprotocol/protocol/commit/acadd6a2dfdd3addad6bac0ef18a343eb8b7b81b))
+- [N09]: Address inconsistent Events ([#4088](https://github.com/UMAprotocol/protocol/issues/4088)) ([ea466a0](https://github.com/UMAprotocol/protocol/commit/ea466a044976120777b2bf203a97cd6f6ab6259b))
+- [N11]: Remove magic numbers ([#4089](https://github.com/UMAprotocol/protocol/issues/4089)) ([9692e20](https://github.com/UMAprotocol/protocol/commit/9692e20261a80718d1b19fe0db37b63156f090c7))
+- [N12]: Address Misleading documentation ([#4090](https://github.com/UMAprotocol/protocol/issues/4090)) ([4875c67](https://github.com/UMAprotocol/protocol/commit/4875c67990ac7902174a437be0bfe700dab9ac9b))
+- [N13]: Address licencing issues ([#4091](https://github.com/UMAprotocol/protocol/issues/4091)) ([af9aba2](https://github.com/UMAprotocol/protocol/commit/af9aba20592a048174de6b9d25662730ba586da7))
+- [N17]: Address Naming issues ([#4094](https://github.com/UMAprotocol/protocol/issues/4094)) ([a832f9d](https://github.com/UMAprotocol/protocol/commit/a832f9d837395e31dd2cf5e755f0a6cf3aa64870))
+- [N21]: Too many digits in numeric literals ([#4097](https://github.com/UMAprotocol/protocol/issues/4097)) ([d88e986](https://github.com/UMAprotocol/protocol/commit/d88e98686d1439aaceb98b84d6c57abd4a32b234))
+- [N23]: Remove Unnecessary use of SafeMath library ([#4099](https://github.com/UMAprotocol/protocol/issues/4099)) ([b26648a](https://github.com/UMAprotocol/protocol/commit/b26648a29ddbb73b1bf82936defda45ce65ec2d1))
+- [N25]: Remove Unnecessary imports ([#4100](https://github.com/UMAprotocol/protocol/issues/4100)) ([c70e08b](https://github.com/UMAprotocol/protocol/commit/c70e08b97520db6180fbe8a023e441e4b4a4464a))
+- [N26]: State variable visibility not explicitly declared ([#4101](https://github.com/UMAprotocol/protocol/issues/4101)) ([f194833](https://github.com/UMAprotocol/protocol/commit/f194833874165f1b1e376727f93e8b633cd2a449))
+- public functions can be marked as external ([#4102](https://github.com/UMAprotocol/protocol/issues/4102)) ([65d225f](https://github.com/UMAprotocol/protocol/commit/65d225f0a1d0d7ce5315b2e160f73ea6ec3130d8))
+- Upgrade all dependent contracts to use the OOv2 and show they work in unit tests ([#4061](https://github.com/UMAprotocol/protocol/issues/4061)) ([63f1891](https://github.com/UMAprotocol/protocol/commit/63f18912921af3f35c3e92edfc5696318f9fbd74))
+
+### Features
+
+- [L09] Unlocked Solidity version pragma ([#4075](https://github.com/UMAprotocol/protocol/issues/4075)) ([ea641e0](https://github.com/UMAprotocol/protocol/commit/ea641e0cc2f5b6e1bd65df104467a5e66f7b6c65))
+
 # [2.32.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.31.0...@uma/core@2.32.0) (2022-08-02)
 
 ### Bug Fixes

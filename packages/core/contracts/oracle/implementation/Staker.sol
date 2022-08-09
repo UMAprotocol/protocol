@@ -20,10 +20,10 @@ abstract contract Staker is StakerInterface, Ownable {
     uint256 public cumulativeActiveStake;
     uint256 public cumulativePendingStake;
     uint256 public rewardPerTokenStored;
-
-    VotingToken public immutable override votingToken;
     uint64 public lastUpdateTime;
     uint64 public unstakeCoolDown;
+
+    VotingToken public votingToken;
 
     struct VoterStake {
         uint256 activeStake;
@@ -110,16 +110,16 @@ abstract contract Staker is StakerInterface, Ownable {
      * be added to the pending stake. If not, the stake amount will be added to the active stake.
      * @param amount the amount of tokens to stake.
      */
-    function stake(uint256 amount) public override {
+    function stake(uint256 amount) public {
         VoterStake storage voterStake = voterStakes[msg.sender];
         // If the staker has a cumulative staked balance of 0 then we can shortcut their lastRequestIndexConsidered to
         // the most recent index. This means we don't need to traverse requests where the staker was not staked.
-        // getStartingIndexForStaker returns the appropriate index to start at.
+        // _getStartingIndexForStaker returns the appropriate index to start at.
         if (getVoterStake(msg.sender) + voterStake.pendingUnstake == 0)
-            voterStake.lastRequestIndexConsidered = getStartingIndexForStaker();
+            voterStake.lastRequestIndexConsidered = _getStartingIndexForStaker();
         _updateTrackers(msg.sender);
 
-        if (inActiveReveal()) {
+        if (_inActiveReveal()) {
             voterStake.pendingStake += amount;
             cumulativePendingStake += amount;
         } else {
@@ -146,8 +146,8 @@ abstract contract Staker is StakerInterface, Ownable {
      * Note that there is no way to cancel an unstake request, you must wait until after unstakeRequestTime and re-stake.
      * @param amount the amount of tokens to request to be unstaked.
      */
-    function requestUnstake(uint256 amount) external override {
-        require(!inActiveReveal(), "In an active reveal phase");
+    function requestUnstake(uint256 amount) public {
+        require(!_inActiveReveal(), "In an active reveal phase");
         _updateTrackers(msg.sender);
         VoterStake storage voterStake = voterStakes[msg.sender];
 
@@ -172,7 +172,7 @@ abstract contract Staker is StakerInterface, Ownable {
      * @notice  Execute a previously requested unstake. Requires the unstake time to have passed.
      * @dev If a staker requested an unstake and time > unstakeRequestTime then send funds to staker.
      */
-    function executeUnstake() external override {
+    function executeUnstake() public {
         VoterStake storage voterStake = voterStakes[msg.sender];
         require(
             voterStake.unstakeRequestTime != 0 && getCurrentTime() >= voterStake.unstakeRequestTime + unstakeCoolDown,
@@ -193,7 +193,7 @@ abstract contract Staker is StakerInterface, Ownable {
      * @notice Send accumulated rewards to the voter. Note that these rewards do not include slashing balance changes.
      * @return uint256 the amount of tokens sent to the voter.
      */
-    function withdrawRewards() public override returns (uint256) {
+    function withdrawRewards() public returns (uint256) {
         _updateTrackers(msg.sender);
         VoterStake storage voterStake = voterStakes[msg.sender];
 
@@ -203,7 +203,7 @@ abstract contract Staker is StakerInterface, Ownable {
             require(votingToken.mint(msg.sender, tokensToMint), "Voting token issuance failed");
             emit WithdrawnRewards(msg.sender, tokensToMint);
         }
-        return (tokensToMint);
+        return tokensToMint;
     }
 
     /**
@@ -304,9 +304,13 @@ abstract contract Staker is StakerInterface, Ownable {
      ****************************************/
 
     // Determine if we are in an active reveal phase. This function should be overridden by the child contract.
-    function inActiveReveal() internal view virtual returns (bool);
+    function _inActiveReveal() internal view virtual returns (bool) {
+        return false;
+    }
 
-    function getStartingIndexForStaker() internal view virtual returns (uint64);
+    function _getStartingIndexForStaker() internal view virtual returns (uint64) {
+        return 0;
+    }
 
     // Calculate the reward per token based on last time the reward was updated.
     function _updateReward(address voterAddress) internal {
@@ -323,7 +327,7 @@ abstract contract Staker is StakerInterface, Ownable {
 
     // Updates the active stake of the voter if not in an active reveal phase.
     function _updateActiveStake(address voterAddress) internal {
-        if (voterStakes[voterAddress].pendingStake == 0 || inActiveReveal()) return;
+        if (voterStakes[voterAddress].pendingStake == 0 || _inActiveReveal()) return;
         cumulativeActiveStake += voterStakes[voterAddress].pendingStake;
         cumulativePendingStake -= voterStakes[voterAddress].pendingStake;
         voterStakes[voterAddress].activeStake += voterStakes[voterAddress].pendingStake;
