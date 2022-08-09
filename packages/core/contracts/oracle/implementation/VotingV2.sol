@@ -158,7 +158,6 @@ contract VotingV2 is
         uint256 bond;
     }
 
-    // Maps round numbers to the spam deletion request.
     SpamDeletionRequest[] public spamDeletionProposals;
 
     /****************************************
@@ -715,7 +714,8 @@ contract VotingV2 is
     }
 
     /**
-     * @notice Returns the current round ID, as a function of the current time.
+     * @notice Returns the round end time, as a function of the round number.
+     * @param roundId representing the unique round ID.
      * @return uint256 representing the unique round ID.
      */
     function getRoundEndTime(uint256 roundId) external view returns (uint256) {
@@ -765,7 +765,6 @@ contract VotingV2 is
 
     /**
      * @notice Resets the Gat percentage. Note: this change only applies to rounds that have not yet begun.
-     * @dev This method is public because calldata structs are not currently supported by solidity.
      * @param newGat sets the next round's Gat.
      */
     function setGat(uint256 newGat) external override onlyOwner {

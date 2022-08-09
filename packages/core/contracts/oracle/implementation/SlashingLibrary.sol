@@ -56,7 +56,7 @@ contract SlashingLibrary {
     }
 
     /**
-     * @notice Calculates all slashing trackers in one go to decrease cross-chain calls needed.
+     * @notice Calculates all slashing trackers in one go to decrease cross-contract calls needed.
      * @param totalStaked The total amount of tokens staked.
      * @param totalVotes The total amount of votes.
      * @param totalCorrectVotes The total amount of correct votes.
