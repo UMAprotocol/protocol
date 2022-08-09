@@ -196,10 +196,10 @@ contract VotingV2 is
     );
 
     event PriceRequestAdded(
-        address requester,
+        address indexed requester,
         uint256 indexed roundId,
         bytes32 indexed identifier,
-        uint256 indexed time,
+        uint256 time,
         uint256 requestIndex,
         bytes ancillaryData,
         bool isGovernance
@@ -209,6 +209,7 @@ contract VotingV2 is
         uint256 indexed roundId,
         bytes32 indexed identifier,
         uint256 time,
+        uint256 requestIndex,
         int256 price,
         bytes ancillaryData
     );
@@ -1151,6 +1152,7 @@ contract VotingV2 is
             priceRequest.lastVotingRound,
             priceRequest.identifier,
             priceRequest.time,
+            priceRequest.priceRequestIndex,
             resolvedPrice,
             priceRequest.ancillaryData
         );
