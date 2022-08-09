@@ -1011,8 +1011,8 @@ contract VotingV2 is
         if (resolutionPrice != 0) {
             // Delete the price requests associated with the spam.
             for (uint256 i = 0; i < spamDeletionProposals[proposalId].spamRequestIndices.length; i = unsafe_inc(i)) {
-                uint64 startIndex = spamDeletionProposals[proposalId].spamRequestIndices[uint256(i)][0];
-                uint64 endIndex = spamDeletionProposals[proposalId].spamRequestIndices[uint256(i)][1];
+                uint64 startIndex = uint64(spamDeletionProposals[proposalId].spamRequestIndices[uint256(i)][0]);
+                uint64 endIndex = uint64(spamDeletionProposals[proposalId].spamRequestIndices[uint256(i)][1]);
                 for (uint256 j = startIndex; j <= endIndex; j++) {
                     bytes32 requestId = priceRequestIds[j];
                     // Remove from pendingPriceRequests.
