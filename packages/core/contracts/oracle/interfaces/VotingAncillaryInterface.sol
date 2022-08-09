@@ -46,7 +46,7 @@ abstract contract VotingAncillaryInterface {
      * @dev Since transaction data is public, the salt will be revealed with the vote. While this is the system’s expected behavior,
      * voters should never reuse salts. If someone else is able to guess the voted price and knows that a salt will be reused, then
      * they can determine the vote pre-reveal.
-     * @param identifier uniquely identifies the committed vote. EG BTC/USD price pair.
+     * @param identifier uniquely identifies the committed vote. E.G. BTC/USD price pair.
      * @param time unix timestamp of the price being voted on.
      * @param hash keccak256 hash of the `price`, `salt`, voter `address`, `time`, current `roundId`, and `identifier`.
      */
@@ -70,7 +70,7 @@ abstract contract VotingAncillaryInterface {
      * @notice commits a vote and logs an event with a data blob, typically an encrypted version of the vote
      * @dev An encrypted version of the vote is emitted in an event `EncryptedVote` to allow off-chain infrastructure to
      * retrieve the commit. The contents of `encryptedVote` are never used on chain: it is purely for convenience.
-     * @param identifier unique price pair identifier. Eg: BTC/USD price pair.
+     * @param identifier unique price pair identifier. E.g. BTC/USD price pair.
      * @param time unix timestamp of for the price request.
      * @param hash keccak256 hash of the price you want to vote for and a `int256 salt`.
      * @param encryptedVote offchain encrypted blob containing the voters amount, time and salt.

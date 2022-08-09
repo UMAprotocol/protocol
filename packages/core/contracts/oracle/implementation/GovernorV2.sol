@@ -86,7 +86,7 @@ contract GovernorV2 is MultiRole {
         uint256 time = getCurrentTime();
 
         // Note: doing all of this array manipulation manually is necessary because directly setting an array of
-        // structs in storage to an an array of structs in memory is currently not implemented in solidity :/.
+        // structs in storage to an array of structs in memory is currently not implemented in solidity :/.
 
         // Add a zero-initialized element to the proposals array.
         proposals.push();
@@ -204,5 +204,9 @@ contract GovernorV2 is MultiRole {
     // Returns the Voting contract address, named "Oracle" in the finder.
     function _getOracle() private view returns (OracleGovernanceInterface) {
         return OracleGovernanceInterface(finder.getImplementationAddress(OracleInterfaces.Oracle));
+    }
+
+    function _getIdentifierWhitelist() private view returns (IdentifierWhitelistInterface) {
+        return IdentifierWhitelistInterface(finder.getImplementationAddress(OracleInterfaces.IdentifierWhitelist));
     }
 }
