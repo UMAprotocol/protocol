@@ -24,7 +24,7 @@ const IdentifierWhitelist = getContract("IdentifierWhitelist");
 const Finder = getContract("Finder");
 const Store = getContract("Store");
 const Timer = getContract("Timer");
-const OptimisticOracle = getContract("OptimisticOracle");
+const OptimisticOracleV2 = getContract("OptimisticOracleV2");
 const Token = getContract("ExpandedERC20");
 
 // Contracts
@@ -113,13 +113,13 @@ describe("LongShortPair", function () {
     longToken = await Token.new("Long Token", "lTKN", 18).send({ from: deployer });
     shortToken = await Token.new("Short Token", "sTKN", 18).send({ from: deployer });
 
-    optimisticOracle = await OptimisticOracle.new(
+    optimisticOracle = await OptimisticOracleV2.new(
       optimisticOracleLivenessTime,
       finder.options.address,
       timer.options.address
     ).send({ from: deployer });
     await finder.methods
-      .changeImplementationAddress(utf8ToHex(interfaceName.OptimisticOracle), optimisticOracle.options.address)
+      .changeImplementationAddress(utf8ToHex(interfaceName.OptimisticOracleV2), optimisticOracle.options.address)
       .send({ from: deployer });
 
     // Create LSP library and LSP contract.
@@ -646,8 +646,8 @@ describe("LongShortPair", function () {
       assert.equal(request.proposedPrice, "0");
       assert.equal(request.resolvedPrice, "0");
       assert.equal(request.reward, proposerReward);
-      assert.equal(request.bond, optimisticOracleProposerBond);
-      assert.equal(request.customLiveness, optimisticOracleLivenessTime);
+      assert.equal(request.requestSettings.bond, optimisticOracleProposerBond);
+      assert.equal(request.requestSettings.customLiveness, optimisticOracleLivenessTime);
 
       // Proposing a price without approving the proposal bond should revert.
       assert(
