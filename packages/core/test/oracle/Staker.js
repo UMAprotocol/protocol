@@ -221,7 +221,7 @@ describe("Staker", function () {
       await assertEventEmitted(result, staker, "SetNewEmissionRate", (ev) => ev.newEmissionRate == toWei("0.1"));
 
       result = await staker.methods.setUnstakeCoolDown(0).send({ from: account1 });
-      await assertEventEmitted(result, staker, "SetNewUnstakeCooldown");
+      await assertEventEmitted(result, staker, "SetNewUnstakeCoolDown");
 
       result = await staker.methods.withdrawRewards().send({ from: account1 });
       await assertEventEmitted(result, staker, "WithdrawnRewards");

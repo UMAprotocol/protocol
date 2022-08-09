@@ -215,7 +215,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable {
      * @dev this method requires that the user has approved this contract.
      * @return uint256 the amount of tokens that the user is staking.
      */
-    function withdrawAndRestake() external nonReentrant() returns (uint256) {
+    function withdrawAndRestake() external returns (uint256) {
         uint256 rewards = withdrawRewards();
         stake(rewards);
         return rewards;
