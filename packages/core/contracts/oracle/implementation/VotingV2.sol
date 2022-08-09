@@ -610,9 +610,7 @@ contract VotingV2 is
         uint256 time,
         bytes32 hash,
         bytes memory encryptedVote
-    ) external override {
-        commitVote(identifier, time, "", hash);
-
+    ) public override {
         commitAndEmitEncryptedVote(identifier, time, "", hash, encryptedVote);
     }
 
