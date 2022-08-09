@@ -3,7 +3,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.15;
 
-import "../../common/implementation/AncillaryData.sol";
 import "../../common/implementation/MultiCaller.sol";
 
 import "../interfaces/FinderInterface.sol";
@@ -119,7 +118,7 @@ contract VotingV2 is
     uint256 public gat;
 
     // Reference to the Finder.
-    FinderInterface private immutable finder;
+    FinderInterface public immutable finder;
 
     // Reference to Slashing Library.
     SlashingLibrary public slashingLibrary;
@@ -149,7 +148,7 @@ contract VotingV2 is
      *        SPAM DELETION TRACKERS        *
      ****************************************/
 
-    uint256 spamDeletionProposalBond;
+    uint256 public spamDeletionProposalBond;
 
     struct SpamDeletionRequest {
         uint256[2][] spamRequestIndices;

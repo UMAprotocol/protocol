@@ -3,8 +3,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.15;
 
-import "../../common/implementation/FixedPoint.sol";
-
 /**
  * @title Interface that voters must use to Vote on price request resolutions.
  */
