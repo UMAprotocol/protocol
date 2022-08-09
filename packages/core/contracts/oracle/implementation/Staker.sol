@@ -88,7 +88,7 @@ contract Staker is StakerInterface, Ownable {
 
     /**
      * @notice Construct the Staker contract
-     * @param _emissionRate amount of voting tokens that are emitted per second, split pro rate to stakers.
+     * @param _emissionRate amount of voting tokens that are emitted per second, split pro rata to stakers.
      * @param _unstakeCoolDown time that a voter must wait to unstake after requesting to unstake.
      * @param _votingToken address of the UMA token contract used to commit votes.
      */
@@ -225,8 +225,8 @@ contract Staker is StakerInterface, Ownable {
 
     /**
      * @notice  Set the token's emission rate, the number of voting tokens that are emitted per second per staked token,
-     * split pro rate to stakers.
-     * @param _emissionRate the new amount of voting tokens that are emitted per second, split pro rate to stakers.
+     * split pro rata to stakers.
+     * @param _emissionRate the new amount of voting tokens that are emitted per second, split pro rata to stakers.
      */
     function setEmissionRate(uint256 _emissionRate) public onlyOwner {
         _updateReward(address(0));

@@ -588,7 +588,7 @@ contract VotingV2 is
      * retrieve the commit. The contents of encryptedVote are never used on chain: it is purely for convenience.
      * @param identifier unique price pair identifier. E.g. BTC/USD price pair.
      * @param time unix timestamp of the price request.
-     * @param ancillaryData arbitrary data appended to a price request to give the voter's more info from the caller.
+     * @param ancillaryData arbitrary data appended to a price request to give the voters more info from the caller.
      * @param hash keccak256 hash of the price you want to vote for and a int256 salt.
      * @param encryptedVote offchain encrypted blob containing the voter's amount, time and salt.
      */
