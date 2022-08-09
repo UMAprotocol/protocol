@@ -338,7 +338,19 @@ class OptimisticOracleContractMonitor {
   }
 
   _generateUILink(transactionHash, chainId) {
-    return `<${this.optimisticOracleUIBaseUrl}/request?transactionHash=${transactionHash}&chainId=${chainId}|View in UI>`;
+    let oracleType;
+    switch (this.oracleType) {
+      case OptimisticOracleType.OptimisticOracle:
+        oracleType = "Optimistic";
+        break;
+      case OptimisticOracleType.OptimisticOracleV2:
+        oracleType = "OptimisticV2";
+        break;
+      case OptimisticOracleType.SkinnyOptimisticOracle:
+        oracleType = "Skinny";
+        break;
+    }
+    return `<${this.optimisticOracleUIBaseUrl}/request?transactionHash=${transactionHash}&chainId=${chainId}&oracleType=${oracleType}|View in UI>`;
   }
 }
 

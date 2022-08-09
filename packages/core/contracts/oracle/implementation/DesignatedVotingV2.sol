@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity ^0.8.0;
+pragma solidity 0.8.15;
 
 import "../../common/implementation/MultiCaller.sol";
 import "../../common/implementation/Stakeable.sol";
@@ -18,7 +18,7 @@ contract DesignatedVotingV2 is Stakeable, MultiCaller {
      ****************************************/
 
     enum Roles {
-        Owner, // Can set the Voter role. Is also permanently permissioned as the minter role.
+        Owner, // Can set the Voter role.
         Voter // Can vote through this contract.
     }
 
@@ -51,9 +51,9 @@ contract DesignatedVotingV2 is Stakeable, MultiCaller {
 
     /**
      * @notice Forwards a commit to Voting.
-     * @param identifier uniquely identifies the feed for this vote. EG BTC/USD price pair.
+     * @param identifier uniquely identifies the feed for this vote. E.G. BTC/USD price pair.
      * @param time specifies the unix timestamp of the price being voted on.
-     * @param hash the keccak256 hash of the price you want to vote for and a random integer salt value.
+     * @param hash keccak256 hash of the price, salt, voter address, time, ancillaryData, current roundId, identifier.
      */
     function commitVote(
         bytes32 identifier,
@@ -66,13 +66,13 @@ contract DesignatedVotingV2 is Stakeable, MultiCaller {
 
     /**
      * @notice commits a vote and logs an event with a data blob, typically an encrypted version of the vote
-     * @dev An encrypted version of the vote is emitted in an event `EncryptedVote` to allow off-chain infrastructure to
-     * retrieve the commit. The contents of `encryptedVote` are never used on chain: it is purely for convenience.
-     * @param identifier unique price pair identifier. Eg: BTC/USD price pair.
-     * @param time unix timestamp of for the price request.
+     * @dev An encrypted version of the vote is emitted in an event EncryptedVote to allow off-chain infrastructure to
+     * retrieve the commit. The contents of encryptedVote are never used on chain: it is purely for convenience.
+     * @param identifier unique price pair identifier. E.g.: BTC/USD price pair.
+     * @param time unix timestamp of the price request.
      * @param ancillaryData arbitrary data appended to a price request to give the voters more info from the caller.
-     * @param hash keccak256 hash of the price you want to vote for and a `int256 salt`.
-     * @param encryptedVote offchain encrypted blob containing the voters amount, time and salt.
+     * @param hash keccak256 hash of the price, salt, voter address, time, ancillaryData, current roundId, identifier.
+     * @param encryptedVote offchain encrypted blob containing the voter's amount, time and salt.
      */
     function commitAndEmitEncryptedVote(
         bytes32 identifier,
@@ -86,10 +86,10 @@ contract DesignatedVotingV2 is Stakeable, MultiCaller {
 
     /**
      * @notice Forwards a reveal to Voting.
-     * @param identifier voted on in the commit phase. EG BTC/USD price pair.
+     * @param identifier voted on in the commit phase. E.G. BTC/USD price pair.
      * @param time specifies the unix timestamp of the price being voted on.
-     * @param price used along with the `salt` to produce the `hash` during the commit phase.
-     * @param salt used along with the `price` to produce the `hash` during the commit phase.
+     * @param price voted on during the commit phase.
+     * @param salt value used to hide the commitment price during the commit phase.
      */
     function revealVote(
         bytes32 identifier,
@@ -106,13 +106,14 @@ contract DesignatedVotingV2 is Stakeable, MultiCaller {
      * @dev Rewards are added to the tokens already held by this contract.
      * @return amount of rewards that the user should receive.
      */
-    function retrieveRewards() public onlyRoleHolder(uint256(Roles.Voter)) returns (uint256) {
+    function withdrawAndRestakeRewards() external onlyRoleHolder(uint256(Roles.Voter)) returns (uint256) {
         StakerInterface voting = StakerInterface(address(_getVotingContract()));
         uint256 rewardsMinted = voting.withdrawRewards();
         IERC20(address(voting.votingToken())).approve(address(voting), rewardsMinted);
         voting.stake(rewardsMinted);
     }
 
+    // Returns the Voting contract address, named "Oracle" in the finder.
     function _getVotingContract() private view returns (VotingV2Interface) {
         return VotingV2Interface(finder.getImplementationAddress(OracleInterfaces.Oracle));
     }

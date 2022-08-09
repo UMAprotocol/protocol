@@ -1,19 +1,17 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import "../../common/implementation/Testable.sol";
-
-import "./VotingToken.sol";
 import "../interfaces/StakerInterface.sol";
+import "../../common/interfaces/ExpandedIERC20.sol";
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 /**
- * @title Staking contract enabling UMA to be locked up by stakers to earn a prorate share of a fixed emission rate.
+ * @title Staking contract enabling UMA to be locked up by stakers to earn a pro rata share of a fixed emission rate.
  * @dev Handles the staking, unstaking and reward retrieval logic.
  */
-contract Staker is StakerInterface, Ownable {
+abstract contract Staker is StakerInterface, Ownable {
     /****************************************
      *           STAKING TRACKERS           *
      ****************************************/
@@ -22,10 +20,10 @@ contract Staker is StakerInterface, Ownable {
     uint256 public cumulativeActiveStake;
     uint256 public cumulativePendingStake;
     uint256 public rewardPerTokenStored;
-
-    VotingToken public override votingToken;
     uint64 public lastUpdateTime;
     uint64 public unstakeCoolDown;
+
+    ExpandedIERC20 public votingToken;
 
     struct VoterStake {
         uint256 activeStake;
@@ -33,6 +31,7 @@ contract Staker is StakerInterface, Ownable {
         uint256 pendingStake;
         uint256 rewardsPaidPerToken;
         uint256 outstandingRewards;
+        int256 unappliedSlash;
         uint64 lastRequestIndexConsidered;
         uint64 unstakeRequestTime;
         address delegate;
@@ -50,7 +49,7 @@ contract Staker is StakerInterface, Ownable {
         uint256 amount,
         uint256 voterActiveStake,
         uint256 voterPendingStake,
-        uint256 voterPendingUnStake,
+        uint256 voterPendingUnstake,
         uint256 cumulativeActiveStake,
         uint256 cumulativePendingStake
     );
@@ -88,9 +87,8 @@ contract Staker is StakerInterface, Ownable {
 
     /**
      * @notice Construct the Staker contract
-     * @param _emissionRate amount of voting tokens that are emitted per second, split prorate to stakers.
+     * @param _emissionRate amount of voting tokens that are emitted per second, split pro rata to stakers.
      * @param _unstakeCoolDown time that a voter must wait to unstake after requesting to unstake.
-     *  to be voted on in the next round. If after this, the request is rolled to a round after the next round.
      * @param _votingToken address of the UMA token contract used to commit votes.
      */
     constructor(
@@ -100,7 +98,7 @@ contract Staker is StakerInterface, Ownable {
     ) {
         emissionRate = _emissionRate;
         unstakeCoolDown = _unstakeCoolDown;
-        votingToken = VotingToken(_votingToken);
+        votingToken = ExpandedIERC20(_votingToken);
     }
 
     /****************************************
@@ -108,20 +106,20 @@ contract Staker is StakerInterface, Ownable {
      ****************************************/
 
     /**
-     * @notice Pulls tokens from users wallet and stakes them. If we are in a active reveal phase the stake amount will
+     * @notice Pulls tokens from users wallet and stakes them. If we are in an active reveal phase the stake amount will
      * be added to the pending stake. If not, the stake amount will be added to the active stake.
      * @param amount the amount of tokens to stake.
      */
-    function stake(uint256 amount) public override {
+    function stake(uint256 amount) public {
         VoterStake storage voterStake = voterStakes[msg.sender];
         // If the staker has a cumulative staked balance of 0 then we can shortcut their lastRequestIndexConsidered to
         // the most recent index. This means we don't need to traverse requests where the staker was not staked.
-        // getStartingIndexForStaker returns the appropriate index to start at.
+        // _getStartingIndexForStaker returns the appropriate index to start at.
         if (getVoterStake(msg.sender) + voterStake.pendingUnstake == 0)
-            voterStake.lastRequestIndexConsidered = getStartingIndexForStaker();
+            voterStake.lastRequestIndexConsidered = _getStartingIndexForStaker();
         _updateTrackers(msg.sender);
 
-        if (inActiveReveal()) {
+        if (_inActiveReveal()) {
             voterStake.pendingStake += amount;
             cumulativePendingStake += amount;
         } else {
@@ -148,8 +146,8 @@ contract Staker is StakerInterface, Ownable {
      * Note that there is no way to cancel an unstake request, you must wait until after unstakeRequestTime and re-stake.
      * @param amount the amount of tokens to request to be unstaked.
      */
-    function requestUnstake(uint256 amount) public override {
-        require(!inActiveReveal(), "In an active reveal phase");
+    function requestUnstake(uint256 amount) public {
+        require(!_inActiveReveal(), "In an active reveal phase");
         _updateTrackers(msg.sender);
         VoterStake storage voterStake = voterStakes[msg.sender];
 
@@ -172,10 +170,9 @@ contract Staker is StakerInterface, Ownable {
 
     /**
      * @notice  Execute a previously requested unstake. Requires the unstake time to have passed.
-     * @dev If a staker requested an unstake and time > unstakeRequestTime then send funds to staker. Note that this
-     * method assumes that the `updateTrackers().
+     * @dev If a staker requested an unstake and time > unstakeRequestTime then send funds to staker.
      */
-    function executeUnstake() public override {
+    function executeUnstake() public {
         VoterStake storage voterStake = voterStakes[msg.sender];
         require(
             voterStake.unstakeRequestTime != 0 && getCurrentTime() >= voterStake.unstakeRequestTime + unstakeCoolDown,
@@ -196,7 +193,7 @@ contract Staker is StakerInterface, Ownable {
      * @notice Send accumulated rewards to the voter. Note that these rewards do not include slashing balance changes.
      * @return uint256 the amount of tokens sent to the voter.
      */
-    function withdrawRewards() public override returns (uint256) {
+    function withdrawRewards() public returns (uint256) {
         _updateTrackers(msg.sender);
         VoterStake storage voterStake = voterStakes[msg.sender];
 
@@ -204,9 +201,9 @@ contract Staker is StakerInterface, Ownable {
         if (tokensToMint > 0) {
             voterStake.outstandingRewards = 0;
             require(votingToken.mint(msg.sender, tokensToMint), "Voting token issuance failed");
+            emit WithdrawnRewards(msg.sender, tokensToMint);
         }
-        emit WithdrawnRewards(msg.sender, tokensToMint);
-        return (tokensToMint);
+        return tokensToMint;
     }
 
     /**
@@ -215,7 +212,7 @@ contract Staker is StakerInterface, Ownable {
      * @dev this method requires that the user has approved this contract.
      * @return uint256 the amount of tokens that the user is staking.
      */
-    function withdrawAndRestake() public returns (uint256) {
+    function withdrawAndRestake() external returns (uint256) {
         uint256 rewards = withdrawRewards();
         stake(rewards);
         return rewards;
@@ -227,10 +224,10 @@ contract Staker is StakerInterface, Ownable {
 
     /**
      * @notice  Set the token's emission rate, the number of voting tokens that are emitted per second per staked token,
-     * split prorate to stakers.
-     * @param _emissionRate the new amount of voting tokens that are emitted per second, split prorate to stakers.
+     * split pro rata to stakers.
+     * @param _emissionRate the new amount of voting tokens that are emitted per second, split pro rata to stakers.
      */
-    function setEmissionRate(uint256 _emissionRate) public onlyOwner {
+    function setEmissionRate(uint256 _emissionRate) external onlyOwner {
         _updateReward(address(0));
         emissionRate = _emissionRate;
         emit SetNewEmissionRate(emissionRate);
@@ -240,7 +237,7 @@ contract Staker is StakerInterface, Ownable {
      * @notice  Set the amount of time a voter must wait to unstake after submitting a request to do so.
      * @param _unstakeCoolDown the new duration of the cool down period in seconds.
      */
-    function setUnstakeCoolDown(uint64 _unstakeCoolDown) public onlyOwner {
+    function setUnstakeCoolDown(uint64 _unstakeCoolDown) external onlyOwner {
         unstakeCoolDown = _unstakeCoolDown;
         emit SetNewUnstakeCooldown(unstakeCoolDown);
     }
@@ -307,11 +304,11 @@ contract Staker is StakerInterface, Ownable {
      ****************************************/
 
     // Determine if we are in an active reveal phase. This function should be overridden by the child contract.
-    function inActiveReveal() internal virtual returns (bool) {
+    function _inActiveReveal() internal view virtual returns (bool) {
         return false;
     }
 
-    function getStartingIndexForStaker() internal virtual returns (uint64) {
+    function _getStartingIndexForStaker() internal view virtual returns (uint64) {
         return 0;
     }
 
@@ -330,7 +327,7 @@ contract Staker is StakerInterface, Ownable {
 
     // Updates the active stake of the voter if not in an active reveal phase.
     function _updateActiveStake(address voterAddress) internal {
-        if (voterStakes[voterAddress].pendingStake == 0 || inActiveReveal()) return;
+        if (voterStakes[voterAddress].pendingStake == 0 || _inActiveReveal()) return;
         cumulativeActiveStake += voterStakes[voterAddress].pendingStake;
         cumulativePendingStake -= voterStakes[voterAddress].pendingStake;
         voterStakes[voterAddress].activeStake += voterStakes[voterAddress].pendingStake;

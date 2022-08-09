@@ -3,6 +3,10 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.5.33](https://github.com/UMAprotocol/protocol/compare/@uma/funding-rate-proposer@2.5.32...@uma/funding-rate-proposer@2.5.33) (2022-08-09)
+
+**Note:** Version bump only for package @uma/funding-rate-proposer
+
 ## [2.5.32](https://github.com/UMAprotocol/protocol/compare/@uma/funding-rate-proposer@2.5.31...@uma/funding-rate-proposer@2.5.32) (2022-08-02)
 
 **Note:** Version bump only for package @uma/funding-rate-proposer

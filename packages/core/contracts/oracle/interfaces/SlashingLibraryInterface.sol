@@ -1,15 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.15;
 
-import "../interfaces/SlashingLibraryInterface.sol";
-
-/**
- * @title Slashing Library contract. Returns the how much a voter should be slashed per staked token as a function of
- * the total staked, total votes and total correct votes. Can be upgraded to a new implementation to enable more
- elaborate slashing algorithms via UMA governance.
- */
-
-contract SlashingLibrary is SlashingLibraryInterface {
+interface SlashingLibraryInterface {
     /**
      * @notice Calculates the wrong vote slash per token.
      * @param totalStaked The total amount of tokens staked.
@@ -21,13 +13,7 @@ contract SlashingLibrary is SlashingLibraryInterface {
         uint256 totalStaked,
         uint256 totalVotes,
         uint256 totalCorrectVotes
-    ) public pure returns (uint256) {
-        // This number is equal to the slash amount needed to cancel an APY of 20%
-        // if 10 votes are cast each month for a year.  1 - (1 / 1.2)**(1/120) = ~0.0016
-        // When changing this value, make sure that:
-        // (1 + APY) * ( 1 - calcWrongVoteSlashPerToken() )**expected_yearly_votes < 1
-        return 0.0016e18;
-    }
+    ) external pure returns (uint256);
 
     /**
      * @notice Calculates the wrong vote slash per token for governance requests.
@@ -40,9 +26,7 @@ contract SlashingLibrary is SlashingLibraryInterface {
         uint256 totalStaked,
         uint256 totalVotes,
         uint256 totalCorrectVotes
-    ) public pure returns (uint256) {
-        return 0;
-    }
+    ) external pure returns (uint256);
 
     /**
      * @notice Calculates the no vote slash per token.
@@ -55,13 +39,7 @@ contract SlashingLibrary is SlashingLibraryInterface {
         uint256 totalStaked,
         uint256 totalVotes,
         uint256 totalCorrectVotes
-    ) public pure returns (uint256) {
-        // This number is equal to the slash amount needed to cancel an APY of 20%
-        // if 10 votes are cast each month for a year. 1 - (1 / 1.2)**(1/120) = ~0.0016
-        // When changing this value, make sure that:
-        // (1 + APY) * ( 1 - calcNoVoteSlashPerToken() )**expected_yearly_votes < 1
-        return 0.0016e18;
-    }
+    ) external pure returns (uint256);
 
     /**
      * @notice Calculates all slashing trackers in one go to decrease cross-contract calls needed.
@@ -76,12 +54,5 @@ contract SlashingLibrary is SlashingLibraryInterface {
         uint256 totalVotes,
         uint256 totalCorrectVotes,
         bool isGovernance
-    ) external pure returns (uint256 wrongVoteSlashPerToken, uint256 noVoteSlashPerToken) {
-        return (
-            isGovernance
-                ? calcWrongVoteSlashPerTokenGovernance(totalStaked, totalVotes, totalCorrectVotes)
-                : calcWrongVoteSlashPerToken(totalStaked, totalVotes, totalCorrectVotes),
-            calcNoVoteSlashPerToken(totalStaked, totalVotes, totalCorrectVotes)
-        );
-    }
+    ) external pure returns (uint256 wrongVoteSlashPerToken, uint256 noVoteSlashPerToken);
 }

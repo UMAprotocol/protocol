@@ -52,6 +52,7 @@ export type OptimisticOracleContract = SkinnyOptimisticOracleWeb3 | OptimisticOr
 
 export enum OptimisticOracleType {
   OptimisticOracle = "OptimisticOracle",
+  OptimisticOracleV2 = "OptimisticOracleV2",
   SkinnyOptimisticOracle = "SkinnyOptimisticOracle",
 }
 export class OptimisticOracleClient {
@@ -208,7 +209,7 @@ export class OptimisticOracleClient {
       at: "OptimisticOracleClient",
       message: "Queried past event requests",
       eventRequestCount: eventResults.map((e) => e.web3RequestCount).reduce((x, y) => x + y),
-      earliestBlockToQuery,
+      earliestBlockToQuery: earliestBlockToQuery ?? 0,
       latestBlockToQuery: currentBlock.number,
       blocksPerEventSearch: this.blocksPerEventSearch,
     });
