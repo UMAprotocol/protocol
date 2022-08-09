@@ -22,10 +22,10 @@ abstract contract Staker is StakerInterface, Ownable, Lockable {
     uint256 public cumulativeActiveStake;
     uint256 public cumulativePendingStake;
     uint256 public rewardPerTokenStored;
-
-    VotingToken public immutable override votingToken;
     uint64 public lastUpdateTime;
     uint64 public unstakeCoolDown;
+
+    VotingToken public votingToken;
 
     struct VoterStake {
         uint256 activeStake;
@@ -205,7 +205,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable {
             require(votingToken.mint(msg.sender, tokensToMint), "Voting token issuance failed");
             emit WithdrawnRewards(msg.sender, tokensToMint);
         }
-        return (tokensToMint);
+        return tokensToMint;
     }
 
     /**
