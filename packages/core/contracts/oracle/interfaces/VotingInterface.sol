@@ -122,7 +122,7 @@ abstract contract VotingInterface {
 
     /**
      * @notice Returns the current voting phase, as a function of the current time.
-     * @return Phase to indicate the current phase. Either { Commit, Reveal, NUM_PHASES_PLACEHOLDER }.
+     * @return Phase to indicate the current phase. Either { Commit, Reveal, NUM_PHASES }.
      */
     function getVotePhase() external view virtual returns (VotingAncillaryInterface.Phase);
 
