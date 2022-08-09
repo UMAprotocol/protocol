@@ -10,7 +10,7 @@ import "../../merkle-distributor/implementation/MerkleDistributor.sol";
 import "../../oracle/implementation/Constants.sol";
 import "../../oracle/interfaces/FinderInterface.sol";
 import "../../oracle/interfaces/IdentifierWhitelistInterface.sol";
-import "../../oracle/interfaces/OptimisticOracleInterface.sol";
+import "../../oracle/interfaces/OptimisticOracleV2Interface.sol";
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -81,7 +81,7 @@ contract OptimisticDistributor is Lockable, MultiCaller, Testable {
     MerkleDistributor public immutable merkleDistributor;
 
     // Interface parameters that can be synced and stored in the contract.
-    OptimisticOracleInterface public optimisticOracle;
+    OptimisticOracleV2Interface public optimisticOracle;
 
     /********************************************
      *                  EVENTS                  *
@@ -381,8 +381,8 @@ contract OptimisticDistributor is Lockable, MultiCaller, Testable {
      *            INTERNAL FUNCTIONS            *
      ********************************************/
 
-    function _getOptimisticOracle() internal view returns (OptimisticOracleInterface) {
-        return OptimisticOracleInterface(finder.getImplementationAddress(OracleInterfaces.OptimisticOracle));
+    function _getOptimisticOracle() internal view returns (OptimisticOracleV2Interface) {
+        return OptimisticOracleV2Interface(finder.getImplementationAddress(OracleInterfaces.OptimisticOracleV2));
     }
 
     function _getIdentifierWhitelist() internal view returns (IdentifierWhitelistInterface) {
@@ -423,7 +423,7 @@ contract OptimisticDistributor is Lockable, MultiCaller, Testable {
         if (reward.previousProposalTimestamp == 0) return true;
 
         bytes memory ancillaryData = _appendRewardIndex(rewardIndex, reward.customAncillaryData);
-        OptimisticOracleInterface.Request memory blockingRequest =
+        OptimisticOracleV2Interface.Request memory blockingRequest =
             optimisticOracle.getRequest(
                 address(this),
                 reward.priceIdentifier,
