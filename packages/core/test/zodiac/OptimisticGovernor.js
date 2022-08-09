@@ -12,7 +12,7 @@ const OptimisticGovernor = getContract("OptimisticGovernorTest");
 const Finder = getContract("Finder");
 const IdentifierWhitelist = getContract("IdentifierWhitelist");
 const AddressWhitelist = getContract("AddressWhitelist");
-const OptimisticOracle = getContract("OptimisticOracle");
+const OptimisticOracleV2 = getContract("OptimisticOracleV2");
 const MockOracle = getContract("MockOracleAncillary");
 const Timer = getContract("Timer");
 const Store = getContract("Store");
@@ -69,7 +69,7 @@ describe("OptimisticGovernor", () => {
     collateralWhitelist = await AddressWhitelist.deployed();
     store = await Store.deployed();
     identifierWhitelist = await IdentifierWhitelist.deployed();
-    optimisticOracle = await OptimisticOracle.deployed();
+    optimisticOracle = await OptimisticOracleV2.deployed();
     testToken = await TestnetERC20.new("Test", "TEST", 18).send({ from: accounts[0] });
     testToken2 = await TestnetERC20.new("Test2", "TEST2", 18).send({ from: accounts[0] });
 
