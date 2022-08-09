@@ -10,7 +10,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 /**
- * @title Staking contract enabling UMA to be locked up by stakers to earn a pro rate share of a fixed emission rate.
+ * @title Staking contract enabling UMA to be locked up by stakers to earn a pro rata share of a fixed emission rate.
  * @dev Handles the staking, unstaking and reward retrieval logic.
  */
 contract Staker is StakerInterface, Ownable {
