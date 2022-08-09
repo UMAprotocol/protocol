@@ -1,5 +1,5 @@
 import { Client, factory } from "./client";
-import { OptimisticOracle, getOptimisticOracleAddress } from "./services/optimisticOracle";
+import { OptimisticOracle } from "./services/optimisticOracle";
 import { SortedRequests } from "./services/sortedRequests";
 import { DefaultConfig, getMulticall2Address } from "./utils";
 import { state } from "./types";
@@ -12,7 +12,6 @@ export default (
 ): Client => {
   const fullConfig = DefaultConfig({
     getMulticall2Address,
-    getOptimisticOracleAddress,
   })({ ...config }, state.OracleType.Optimistic);
   return factory(fullConfig, emit, OptimisticOracle, sortedRequests);
 };
