@@ -63,9 +63,9 @@ contract ProposerV2 is Ownable, Lockable {
     function propose(GovernorV2.Transaction[] memory transactions, bytes memory ancillaryData)
         external
         nonReentrant()
-        returns (uint256 id)
+        returns (uint256)
     {
-        id = governor.numProposals();
+        uint256 id = governor.numProposals();
         token.safeTransferFrom(msg.sender, address(this), bond);
         bondedProposals[id] = BondedProposal({
             sender: msg.sender,
@@ -74,6 +74,7 @@ contract ProposerV2 is Ownable, Lockable {
             ancillaryData: ancillaryData
         });
         governor.propose(transactions, ancillaryData);
+        return id;
     }
 
     /**

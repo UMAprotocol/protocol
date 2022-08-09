@@ -204,7 +204,7 @@ contract GovernorV2 is MultiRole {
         return OracleGovernanceInterface(finder.getImplementationAddress(OracleInterfaces.Oracle));
     }
 
-    function _getIdentifierWhitelist() private view returns (IdentifierWhitelistInterface supportedIdentifiers) {
+    function _getIdentifierWhitelist() private view returns (IdentifierWhitelistInterface) {
         return IdentifierWhitelistInterface(finder.getImplementationAddress(OracleInterfaces.IdentifierWhitelist));
     }
 }
