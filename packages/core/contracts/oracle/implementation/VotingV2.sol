@@ -945,8 +945,7 @@ contract VotingV2 is
             if (
                 indexTo < priceRequestIds.length &&
                 priceRequests[priceRequestIds[indexTo - 1]].lastVotingRound ==
-                priceRequests[priceRequestIds[indexTo]].lastVotingRound &&
-                deletedRequests[uint64(indexTo)] == 0
+                priceRequests[priceRequestIds[indexTo]].lastVotingRound
             ) voterStake.unappliedSlash += slash;
             else applySlashToVoter(slash, voterStake, voterAddress);
     }
