@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.25.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.24.0...@uma/common@2.25.0) (2022-08-09)
+
+### Bug Fixes
+
+- [N09]: Address inconsistent Events ([#4088](https://github.com/UMAprotocol/protocol/issues/4088)) ([ea466a0](https://github.com/UMAprotocol/protocol/commit/ea466a044976120777b2bf203a97cd6f6ab6259b))
+- Upgrade all dependent contracts to use the OOv2 and show they work in unit tests ([#4061](https://github.com/UMAprotocol/protocol/issues/4061)) ([63f1891](https://github.com/UMAprotocol/protocol/commit/63f18912921af3f35c3e92edfc5696318f9fbd74))
+
+### Features
+
+- [L09] Unlocked Solidity version pragma ([#4075](https://github.com/UMAprotocol/protocol/issues/4075)) ([ea641e0](https://github.com/UMAprotocol/protocol/commit/ea641e0cc2f5b6e1bd65df104467a5e66f7b6c65))
+
 # [2.24.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.23.0...@uma/common@2.24.0) (2022-08-02)
 
 ### Bug Fixes

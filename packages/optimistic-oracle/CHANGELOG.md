@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.14.3](https://github.com/UMAprotocol/protocol/compare/@uma/optimistic-oracle@2.14.2...@uma/optimistic-oracle@2.14.3) (2022-08-09)
+
+### Bug Fixes
+
+- Update the Monitor, proposer and disputer bots to work with OOv2 contracts ([#4062](https://github.com/UMAprotocol/protocol/issues/4062)) ([35267d8](https://github.com/UMAprotocol/protocol/commit/35267d87b44555acabae8c9e6457d75c3f650dcc))
+
 ## [2.14.2](https://github.com/UMAprotocol/protocol/compare/@uma/optimistic-oracle@2.14.1...@uma/optimistic-oracle@2.14.2) (2022-08-02)
 
 **Note:** Version bump only for package @uma/optimistic-oracle
