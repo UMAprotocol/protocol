@@ -1,10 +1,11 @@
-import "../implementation/VotingToken.sol";
-
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity ^0.8.0;
+pragma solidity 0.8.15;
+
+import "../implementation/VotingToken.sol";
+import "../../common/interfaces/ExpandedIERC20.sol";
 
 interface StakerInterface {
-    function votingToken() external returns (VotingToken);
+    function votingToken() external returns (ExpandedIERC20);
 
     function stake(uint256 amount) external;
 

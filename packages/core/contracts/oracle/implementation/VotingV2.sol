@@ -11,8 +11,8 @@ import "../interfaces/OracleAncillaryInterface.sol";
 import "../interfaces/OracleGovernanceInterface.sol";
 import "../interfaces/OracleInterface.sol";
 import "../interfaces/VotingV2Interface.sol";
+import "../interfaces/RegistryInterface.sol";
 import "./Constants.sol";
-import "./Registry.sol";
 import "./ResultComputationV2.sol";
 import "./SlashingLibrary.sol";
 import "./SpamGuardIdentifierLib.sol";
@@ -1219,7 +1219,7 @@ contract VotingV2 is
     }
 
     function _requireRegisteredContract() private view {
-        Registry registry = Registry(finder.getImplementationAddress(OracleInterfaces.Registry));
+        RegistryInterface registry = RegistryInterface(finder.getImplementationAddress(OracleInterfaces.Registry));
         require(
             registry.isContractRegistered(msg.sender) || msg.sender == migratedAddress,
             "Caller must be registered"
