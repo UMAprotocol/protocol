@@ -1212,6 +1212,7 @@ describe("VotingV2", function () {
     const identifier = padRight(utf8ToHex("migration"), 64);
     const time1 = "1000";
     const time2 = "2000";
+    const time3 = "3000";
     // Deploy our own voting because this test case will migrate it.
     const newVoting = await VotingV2.new(
       "640000000000000000", // emission rate
@@ -1273,10 +1274,21 @@ describe("VotingV2", function () {
     assert(await didContractThrow(newVoting.methods.setMigrated(migratedVoting).send({ from: migratedVoting })));
     await newVoting.methods.setMigrated(migratedVoting).send({ from: accounts[0] });
 
-    // Now only new newVoting can call methods.
-    assert(await newVoting.methods.hasPrice(identifier, time1).call({ from: migratedVoting }));
-    assert(await didContractThrow(newVoting.methods.hasPrice(identifier, time1).send({ from: registeredContract })));
+    // Now newVoting and registered contracts can call methods.
+    assert(await newVoting.methods.hasPrice(identifier, time1).send({ from: migratedVoting }));
+    assert(await newVoting.methods.hasPrice(identifier, time1).send({ from: registeredContract }));
+
+    // commit/reveal are completely disabled, regardless if called by newVoting.
+    assert(
+      await didContractThrow(newVoting.methods.commitVote(identifier, time2, hash).send({ from: migratedVoting }))
+    );
     assert(await didContractThrow(newVoting.methods.commitVote(identifier, time2, hash).send({ from: account1 })));
+
+    // Requesting prices is completely disabled after migration, regardless if called by newVoting.
+    assert(await didContractThrow(newVoting.methods.requestPrice(identifier, time3).send({ from: migratedVoting })));
+    assert(
+      await didContractThrow(newVoting.methods.requestPrice(identifier, time3).send({ from: registeredContract }))
+    );
   });
 
   it("pendingPriceRequests array length", async function () {
@@ -3023,5 +3035,89 @@ describe("VotingV2", function () {
       (await voting2.methods.voterStakes(account1).call()).activeStake,
       toWei("30000000").add(toWei("6400"))
     );
+  });
+
+  it("Duplicate Request Rewards", async function () {
+    // We want to test that the slashing mechanism works properly when two consecutive price requests are rolled.
+    // To accomplish this, we generate four price requests, the first and fourth of which are voted on and resolved,
+    // while p2 and p3 do not receive votes and are thus rolled. Given that all users calling updateTrackers, regardless of order,
+    // process the same price requests, the lastRequestIndexConsidered must be the same for all.
+
+    const identifier1 = padRight(utf8ToHex("request-retrieval1"), 64);
+    const time1 = "1000";
+    const identifier2 = padRight(utf8ToHex("request-retrieval2"), 64);
+    const time2 = "2000";
+    const identifier3 = padRight(utf8ToHex("request-retrieval3"), 64);
+    const time3 = "3000";
+    const identifier4 = padRight(utf8ToHex("request-retrieval4"), 64);
+    const time4 = "4000";
+
+    // Make the Oracle support these identifiers.
+    await supportedIdentifiers.methods.addSupportedIdentifier(identifier1).send({ from: accounts[0] });
+    await supportedIdentifiers.methods.addSupportedIdentifier(identifier2).send({ from: accounts[0] });
+    await supportedIdentifiers.methods.addSupportedIdentifier(identifier3).send({ from: accounts[0] });
+    await supportedIdentifiers.methods.addSupportedIdentifier(identifier4).send({ from: accounts[0] });
+
+    await voting.methods.requestPrice(identifier1, time1).send({ from: registeredContract });
+    await voting.methods.requestPrice(identifier2, time2).send({ from: registeredContract });
+    await voting.methods.requestPrice(identifier3, time3).send({ from: registeredContract });
+    await voting.methods.requestPrice(identifier4, time4).send({ from: registeredContract });
+
+    // Move to the voting round.
+    await moveToNextRound(voting, accounts[0]);
+    const roundId = (await voting.methods.getCurrentRoundId().call()).toString();
+
+    // Commit vote 1 and 4.
+    const price = getRandomSignedInt();
+    const salt = getRandomSignedInt();
+    const hash4 = computeVoteHash({
+      price: price,
+      salt: salt,
+      account: account1,
+      time: time4,
+      roundId,
+      identifier: identifier4,
+    });
+    const hash1 = computeVoteHash({
+      price: price,
+      salt: salt,
+      account: account1,
+      time: time1,
+      roundId,
+      identifier: identifier1,
+    });
+
+    await voting.methods.commitVote(identifier4, time4, hash4).send({ from: account1 });
+    await voting.methods.commitVote(identifier1, time1, hash1).send({ from: account1 });
+
+    // Move to the reveal phase of the voting period.
+    await moveToNextPhase(voting, account1);
+
+    // Reveal vote.
+    await voting.methods.revealVote(identifier4, time4, price, salt).send({ from: account1 });
+    await voting.methods.revealVote(identifier1, time1, price, salt).send({ from: account1 });
+
+    await moveToNextRound(voting, account1);
+
+    assert.isTrue(await voting.methods.hasPrice(identifier4, time4).call({ from: registeredContract }));
+    assert.isTrue(await voting.methods.hasPrice(identifier1, time1).call({ from: registeredContract }));
+    assert.isFalse(await voting.methods.hasPrice(identifier2, time2).call({ from: registeredContract }));
+    assert.isFalse(await voting.methods.hasPrice(identifier3, time3).call({ from: registeredContract }));
+
+    assert.equal(
+      (await voting.methods.getPrice(identifier4, time4).call({ from: registeredContract })).toString(),
+      price.toString()
+    );
+    assert.equal(
+      (await voting.methods.getPrice(identifier1, time1).call({ from: registeredContract })).toString(),
+      price.toString()
+    );
+
+    await voting.methods.updateTrackers(account1).send({ from: account1 });
+    await voting.methods.updateTrackers(account2).send({ from: account1 });
+
+    // Both users should have the same lastRequestIndexConsidered.
+    assert.equal((await voting.methods.voterStakes(account1).call()).lastRequestIndexConsidered, 4);
+    assert.equal((await voting.methods.voterStakes(account2).call()).lastRequestIndexConsidered, 4);
   });
 });

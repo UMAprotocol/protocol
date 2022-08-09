@@ -2,12 +2,12 @@ import dotenv from "dotenv";
 import assert from "assert";
 import { ethers } from "ethers";
 import { Provider } from "@ethersproject/providers";
-import { SkinnyOptimisticOracle, getOptimisticOracleAddress } from "../skinnyOptimisticOracle";
+import { SkinnyOptimisticOracle } from "../skinnyOptimisticOracle";
 
 dotenv.config();
 
 // mainnet test only
-const ooAddress = getOptimisticOracleAddress(1);
+const ooAddress = "0xeE3Afe347D5C74317041E2618C49534dAf887c24";
 const request = {
   requester: "0x7355Efc63Ae731f584380a9838292c7046c1e433",
   identifier: "0x49535f52454c41595f56414c4944000000000000000000000000000000000000",

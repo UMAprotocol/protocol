@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity ^0.8.0;
+pragma solidity 0.8.15;
 
 import "../interfaces/VotingV2Interface.sol";
 
@@ -39,7 +39,7 @@ library VoteTimingV2 {
      * @return roundId defined as a function of the currentTime and `phaseLength` from `data`.
      */
     function computeCurrentRoundId(Data storage data, uint256 currentTime) internal view returns (uint256) {
-        uint256 roundLength = data.phaseLength * uint256(VotingV2Interface.Phase.NUM_PHASES_PLACEHOLDER);
+        uint256 roundLength = data.phaseLength * uint256(VotingV2Interface.Phase.NUM_PHASES);
         return currentTime / roundLength;
     }
 
@@ -50,7 +50,7 @@ library VoteTimingV2 {
      * @return timestamp unix time of when the current round will end.
      */
     function computeRoundEndTime(Data storage data, uint256 roundId) internal view returns (uint256) {
-        uint256 roundLength = data.phaseLength * uint256(VotingV2Interface.Phase.NUM_PHASES_PLACEHOLDER);
+        uint256 roundLength = data.phaseLength * uint256(VotingV2Interface.Phase.NUM_PHASES);
         return roundLength * (roundId + 1);
     }
 
@@ -66,10 +66,7 @@ library VoteTimingV2 {
         returns (VotingV2Interface.Phase)
     {
         // This employs some hacky casting. We could make this an if-statement if we're worried about type safety.
-        return
-            VotingV2Interface.Phase(
-                (currentTime / data.phaseLength) % uint256(VotingV2Interface.Phase.NUM_PHASES_PLACEHOLDER)
-            );
+        return VotingV2Interface.Phase((currentTime / data.phaseLength) % uint256(VotingV2Interface.Phase.NUM_PHASES));
     }
 
     /**

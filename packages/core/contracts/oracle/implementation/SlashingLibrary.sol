@@ -21,8 +21,10 @@ contract SlashingLibrary {
         uint256 totalCorrectVotes
     ) public pure returns (uint256) {
         // This number is equal to the slash amount needed to cancel an APY of 20%
-        // if 10 votes are cast each month for a year. 0.2/(10*12)= ~0.0016
-        return 1600000000000000;
+        // if 10 votes are cast each month for a year.  1 - (1 / 1.2)**(1/120) = ~0.0016
+        // When changing this value, make sure that:
+        // (1 + APY) * ( 1 - calcWrongVoteSlashPerToken() )**expected_yearly_votes < 1
+        return 0.0016e18;
     }
 
     /**
@@ -53,12 +55,14 @@ contract SlashingLibrary {
         uint256 totalCorrectVotes
     ) public pure returns (uint256) {
         // This number is equal to the slash amount needed to cancel an APY of 20%
-        // if 10 votes are cast each month for a year. 0.2/(10*12)= ~0.0016
-        return 1600000000000000;
+        // if 10 votes are cast each month for a year. 1 - (1 / 1.2)**(1/120) = ~0.0016
+        // When changing this value, make sure that:
+        // (1 + APY) * ( 1 - calcNoVoteSlashPerToken() )**expected_yearly_votes < 1
+        return 0.0016e18;
     }
 
     /**
-     * @notice Calculates all slashing trackers in one go to decrease cross-chain calls needed.
+     * @notice Calculates all slashing trackers in one go to decrease cross-contract calls needed.
      * @param totalStaked The total amount of tokens staked.
      * @param totalVotes The total amount of votes.
      * @param totalCorrectVotes The total amount of correct votes.
@@ -70,7 +74,7 @@ contract SlashingLibrary {
         uint256 totalVotes,
         uint256 totalCorrectVotes,
         bool isGovernance
-    ) public pure returns (uint256 wrongVoteSlashPerToken, uint256 noVoteSlashPerToken) {
+    ) external pure returns (uint256 wrongVoteSlashPerToken, uint256 noVoteSlashPerToken) {
         return (
             isGovernance
                 ? calcWrongVoteSlashPerTokenGovernance(totalStaked, totalVotes, totalCorrectVotes)
