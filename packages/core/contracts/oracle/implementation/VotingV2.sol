@@ -3,7 +3,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.15;
 
-import "../../common/implementation/AncillaryData.sol";
 import "../../common/implementation/MultiCaller.sol";
 
 import "../interfaces/FinderInterface.sol";
