@@ -300,7 +300,7 @@ contract VotingV2 is
         bytes32 identifier,
         uint256 time,
         bytes memory ancillaryData
-    ) public override onlyRegisteredContract() {
+    ) public override onlyIfNotMigrated() onlyRegisteredContract() {
         _requestPrice(identifier, time, ancillaryData, false);
     }
 
@@ -1198,10 +1198,10 @@ contract VotingV2 is
     }
 
     function _requireRegisteredContract() private view {
-        if (migratedAddress != address(0)) require(msg.sender == migratedAddress);
-        else {
-            Registry registry = Registry(finder.getImplementationAddress(OracleInterfaces.Registry));
-            require(registry.isContractRegistered(msg.sender), "Caller must be registered");
-        }
+        Registry registry = Registry(finder.getImplementationAddress(OracleInterfaces.Registry));
+        require(
+            registry.isContractRegistered(msg.sender) || msg.sender == migratedAddress,
+            "Caller must be registered"
+        );
     }
 }
