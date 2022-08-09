@@ -1279,11 +1279,13 @@ describe("VotingV2", function () {
     assert(await newVoting.methods.hasPrice(identifier, time1).send({ from: registeredContract }));
 
     // commit/reveal are completely disabled, regardless if called by newVoting.
-    assert(await didContractThrow(newVoting.methods.commitVote(identifier, time2, hash).send({ from: newVoting })));
+    assert(
+      await didContractThrow(newVoting.methods.commitVote(identifier, time2, hash).send({ from: migratedVoting }))
+    );
     assert(await didContractThrow(newVoting.methods.commitVote(identifier, time2, hash).send({ from: account1 })));
 
     // Requesting prices is completely disabled after migration, regardless if called by newVoting.
-    assert(await didContractThrow(newVoting.methods.requestPrice(identifier, time3).send({ from: newVoting })));
+    assert(await didContractThrow(newVoting.methods.requestPrice(identifier, time3).send({ from: migratedVoting })));
     assert(
       await didContractThrow(newVoting.methods.requestPrice(identifier, time3).send({ from: registeredContract }))
     );
