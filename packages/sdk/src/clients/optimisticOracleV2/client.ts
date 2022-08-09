@@ -37,6 +37,15 @@ export type RequestKey = {
   timestamp: number;
   ancillaryData: string;
 };
+export type RequestSettings = {
+  eventBased: boolean; // True if the request is set to be event-based.
+  refundOnDispute: boolean; // True if the requester should be refunded their reward on dispute.
+  callbackOnPriceProposed: boolean; // True if callbackOnPriceProposed callback is required.
+  callbackOnPriceDisputed: boolean; // True if callbackOnPriceDisputed callback is required.
+  callbackOnPriceSettled: boolean; // True if callbackOnPriceSettled callback is required.
+  bond: BigNumber; // Bond that the proposer and disputer must pay on top of the final fee.
+  customLiveness: BigNumber; // Custom liveness value set by the requester.
+};
 export type Request = RequestKey &
   // this is partial since we dont know what events we have to populate parts of this
   Partial<{
@@ -64,6 +73,7 @@ export type Request = RequestKey &
     proposeBlockNumber: number;
     disputeBlockNumber: number;
     settleBlockNumber: number;
+    requestSettings: RequestSettings;
   }>;
 
 export interface EventState {
