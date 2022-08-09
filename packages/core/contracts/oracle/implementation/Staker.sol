@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 /**
- * @title Staking contract enabling UMA to be locked up by stakers to earn a prorate share of a fixed emission rate.
+ * @title Staking contract enabling UMA to be locked up by stakers to earn a pro rata share of a fixed emission rate.
  * @dev Handles the staking, unstaking and reward retrieval logic.
  */
 contract Staker is StakerInterface, Ownable {
@@ -48,7 +48,7 @@ contract Staker is StakerInterface, Ownable {
         uint256 amount,
         uint256 voterActiveStake,
         uint256 voterPendingStake,
-        uint256 voterPendingUnStake,
+        uint256 voterPendingUnstake,
         uint256 cumulativeActiveStake,
         uint256 cumulativePendingStake
     );
@@ -86,9 +86,8 @@ contract Staker is StakerInterface, Ownable {
 
     /**
      * @notice Construct the Staker contract
-     * @param _emissionRate amount of voting tokens that are emitted per second, split prorate to stakers.
+     * @param _emissionRate amount of voting tokens that are emitted per second, split pro rata to stakers.
      * @param _unstakeCoolDown time that a voter must wait to unstake after requesting to unstake.
-     *  to be voted on in the next round. If after this, the request is rolled to a round after the next round.
      * @param _votingToken address of the UMA token contract used to commit votes.
      */
     constructor(
@@ -106,7 +105,7 @@ contract Staker is StakerInterface, Ownable {
      ****************************************/
 
     /**
-     * @notice Pulls tokens from users wallet and stakes them. If we are in a active reveal phase the stake amount will
+     * @notice Pulls tokens from users wallet and stakes them. If we are in an active reveal phase the stake amount will
      * be added to the pending stake. If not, the stake amount will be added to the active stake.
      * @param amount the amount of tokens to stake.
      */
@@ -170,8 +169,7 @@ contract Staker is StakerInterface, Ownable {
 
     /**
      * @notice  Execute a previously requested unstake. Requires the unstake time to have passed.
-     * @dev If a staker requested an unstake and time > unstakeRequestTime then send funds to staker. Note that this
-     * method assumes that the `updateTrackers().
+     * @dev If a staker requested an unstake and time > unstakeRequestTime then send funds to staker.
      */
     function executeUnstake() external override {
         VoterStake storage voterStake = voterStakes[msg.sender];
@@ -225,8 +223,8 @@ contract Staker is StakerInterface, Ownable {
 
     /**
      * @notice  Set the token's emission rate, the number of voting tokens that are emitted per second per staked token,
-     * split prorate to stakers.
-     * @param _emissionRate the new amount of voting tokens that are emitted per second, split prorate to stakers.
+     * split pro rata to stakers.
+     * @param _emissionRate the new amount of voting tokens that are emitted per second, split pro rata to stakers.
      */
     function setEmissionRate(uint256 _emissionRate) external onlyOwner {
         _updateReward(address(0));

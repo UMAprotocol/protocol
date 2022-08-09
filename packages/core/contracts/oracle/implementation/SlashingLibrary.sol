@@ -60,7 +60,7 @@ contract SlashingLibrary {
      * @param totalStaked The total amount of tokens staked.
      * @param totalVotes The total amount of votes.
      * @param totalCorrectVotes The total amount of correct votes.
-     * @return  wrongVoteSlashPerToken The amount of tokens to slash for voting wrong.
+     * @return wrongVoteSlashPerToken The amount of tokens to slash for voting wrong.
      * @return noVoteSlashPerToken The amount of tokens to slash for not voting.
      */
     function calcSlashing(
