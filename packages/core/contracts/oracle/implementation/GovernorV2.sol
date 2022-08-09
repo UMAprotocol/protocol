@@ -14,7 +14,6 @@ import "@openzeppelin/contracts/utils/Address.sol";
  * @title Takes proposals for certain governance actions and allows UMA token holders to vote on them.
  */
 contract GovernorV2 is MultiRole {
-    using SafeMath for uint256;
     using Address for address;
 
     /****************************************
