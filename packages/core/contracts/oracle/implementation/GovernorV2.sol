@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.15;
 
+import "../../common/implementation/Lockable.sol";
 import "../../common/implementation/MultiRole.sol";
 import "../interfaces/FinderInterface.sol";
 import "../interfaces/IdentifierWhitelistInterface.sol";
@@ -13,7 +14,7 @@ import "@openzeppelin/contracts/utils/Address.sol";
 /**
  * @title Takes proposals for certain governance actions and allows UMA token holders to vote on them.
  */
-contract GovernorV2 is MultiRole {
+contract GovernorV2 is MultiRole, Lockable {
     using Address for address;
 
     /****************************************

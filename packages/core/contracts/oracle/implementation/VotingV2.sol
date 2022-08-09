@@ -641,7 +641,7 @@ contract VotingV2 is
      * @notice Gets the voter from the delegate.
      * @return address voter that corresponds to the delegate.
      */
-    function getVoterFromDelegate(address caller) public view nonReentrant() returns (address) {
+    function getVoterFromDelegate(address caller) public view returns (address) {
         if (
             delegateToStaker[caller] != address(0) && // The delegate chose to be a delegate for the staker.
             voterStakes[delegateToStaker[caller]].delegate == caller // The staker chose the delegate.
