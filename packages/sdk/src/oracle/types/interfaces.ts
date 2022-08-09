@@ -1,5 +1,5 @@
 import { BigNumberish, BigNumber, Signer, TransactionResponse, TransactionReceipt, Provider } from "../types/ethers";
-import { RequestState, RequestKey, Request as RequestFromEvent } from "../../clients/optimisticOracle";
+import { RequestState, RequestKey, Request as RequestFromEvent } from "../../clients/optimisticOracleV2";
 import { Client } from "../client";
 import { OracleType } from "../types/state";
 

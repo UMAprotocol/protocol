@@ -2,7 +2,7 @@ import assert from "assert";
 import { skinnyOptimisticOracle as optimisticOracle } from "../../clients";
 import { BigNumberish, Provider, Signer, TransactionResponse, Log, TransactionReceipt } from "../types/ethers";
 import type { OracleInterface, RequestKey, OracleProps, Request } from "../types/interfaces";
-import { requestId, insertOrderedAscending, eventKey, isUnique, getAddress } from "../utils";
+import { requestId, insertOrderedAscending, eventKey, isUnique } from "../utils";
 
 import {
   RequestPrice,
@@ -15,21 +15,6 @@ import {
 export type OptimisticOracleEvent = RequestPrice | ProposePrice | DisputePrice | Settle;
 
 export type { RequestPrice, ProposePrice, DisputePrice, Settle };
-
-export function getOptimisticOracleAddress(chainId: number): string {
-  switch (chainId.toString()) {
-    case "1":
-      return getAddress("0xeE3Afe347D5C74317041E2618C49534dAf887c24");
-    case "4":
-      return getAddress("0xAbE04Ace666294aefD65F991d78CE9F9218aFC67");
-    case "42":
-      return getAddress("0xB1d3A89333BBC3F5e98A991d6d4C1910802986BC");
-    case "100":
-      return getAddress("0xAa04b5D40574Fb8C001249B24d1c6B35a207F0bD");
-    default:
-      throw new Error(`No address found for deployment Skinny Optimistic Oracle on chainId ${chainId}`);
-  }
-}
 
 function validateSolidityRequest(request: Request): SolidityRequest {
   assert(request.proposer, "Missing proposer");
