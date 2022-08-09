@@ -20,5 +20,5 @@ abstract contract OracleGovernanceInterface is OracleInterface, OracleAncillaryI
         bytes32 identifier,
         uint256 time,
         bytes memory ancillaryData
-    ) public virtual;
+    ) external virtual;
 }

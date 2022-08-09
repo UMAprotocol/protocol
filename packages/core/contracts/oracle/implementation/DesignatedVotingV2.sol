@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity ^0.8.0;
+pragma solidity 0.8.15;
 
 import "../../common/implementation/MultiCaller.sol";
 import "../../common/implementation/Stakeable.sol";
@@ -18,7 +18,7 @@ contract DesignatedVotingV2 is Stakeable, MultiCaller {
      ****************************************/
 
     enum Roles {
-        Owner, // Can set the Voter role. Is also permanently permissioned as the minter role.
+        Owner, // Can set the Voter role.
         Voter // Can vote through this contract.
     }
 
@@ -106,7 +106,7 @@ contract DesignatedVotingV2 is Stakeable, MultiCaller {
      * @dev Rewards are added to the tokens already held by this contract.
      * @return amount of rewards that the user should receive.
      */
-    function withdrawAndRestakeRewards() public onlyRoleHolder(uint256(Roles.Voter)) returns (uint256) {
+    function withdrawAndRestakeRewards() external onlyRoleHolder(uint256(Roles.Voter)) returns (uint256) {
         StakerInterface voting = StakerInterface(address(_getVotingContract()));
         uint256 rewardsMinted = voting.withdrawRewards();
         IERC20(address(voting.votingToken())).approve(address(voting), rewardsMinted);

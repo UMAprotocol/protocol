@@ -1,9 +1,7 @@
 // TODO: add staking/snapshot interfaces to this interface file.
 
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity ^0.8.0;
-
-import "../../common/implementation/FixedPoint.sol";
+pragma solidity 0.8.15;
 
 /**
  * @title Interface that voters must use to Vote on price request resolutions.
@@ -63,8 +61,8 @@ abstract contract VotingV2Interface {
     }
 
     // Note: the phases must be in order. Meaning the first enum value must be the first phase, etc.
-    // `NUM_PHASES_PLACEHOLDER` is to get the number of phases. It isn't an actual phase, and it should always be last.
-    enum Phase { Commit, Reveal, NUM_PHASES_PLACEHOLDER }
+    // `NUM_PHASES` is to get the number of phases. It isn't an actual phase, and it should always be last.
+    enum Phase { Commit, Reveal, NUM_PHASES }
 
     /**
      * @notice Commit a vote for a price request for `identifier` at `time`.
@@ -116,7 +114,7 @@ abstract contract VotingV2Interface {
         uint256 time,
         bytes32 hash,
         bytes memory encryptedVote
-    ) public virtual;
+    ) external virtual;
 
     /**
      * @notice commits a vote and logs an event with a data blob, typically an encrypted version of the vote
@@ -150,7 +148,7 @@ abstract contract VotingV2Interface {
         uint256 time,
         int256 price,
         int256 salt
-    ) public virtual;
+    ) external virtual;
 
     /**
      * @notice Reveal a previously committed vote for `identifier` at `time`.
@@ -179,7 +177,7 @@ abstract contract VotingV2Interface {
 
     /**
      * @notice Returns the current voting phase, as a function of the current time.
-     * @return Phase to indicate the current phase. Either { Commit, Reveal, NUM_PHASES_PLACEHOLDER }.
+     * @return Phase to indicate the current phase. Either { Commit, Reveal, NUM_PHASES }.
      */
     function getVotePhase() external view virtual returns (Phase);
 
@@ -202,18 +200,18 @@ abstract contract VotingV2Interface {
      * @notice Resets the Gat. Note: this change only applies to rounds that have not yet begun.
      * @param newGat sets the next round's Gat.
      */
-    function setGat(uint256 newGat) public virtual;
+    function setGat(uint256 newGat) external virtual;
 
     /**
      * @notice Resets the rewards expiration timeout.
      * @dev This change only applies to rounds that have not yet begun.
      * @param NewRewardsExpirationTimeout how long a caller can wait before choosing to withdraw their rewards.
      */
-    function setRewardsExpirationTimeout(uint256 NewRewardsExpirationTimeout) public virtual;
+    function setRewardsExpirationTimeout(uint256 NewRewardsExpirationTimeout) external virtual;
 
     /**
      * @notice Changes the slashing library used by this contract.
      * @param _newSlashingLibrary new slashing library address.
      */
-    function setSlashingLibrary(address _newSlashingLibrary) public virtual;
+    function setSlashingLibrary(address _newSlashingLibrary) external virtual;
 }

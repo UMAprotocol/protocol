@@ -1,22 +1,19 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity ^0.8.0;
+pragma solidity 0.8.15;
 
 import "../../common/implementation/MultiRole.sol";
-import "../../common/implementation/Testable.sol";
 import "../interfaces/FinderInterface.sol";
 import "../interfaces/IdentifierWhitelistInterface.sol";
 import "../interfaces/OracleGovernanceInterface.sol";
 import "./Constants.sol";
 import "./AdminIdentifierLib.sol";
 
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 
 /**
  * @title Takes proposals for certain governance actions and allows UMA token holders to vote on them.
  */
-contract GovernorV2 is MultiRole, Testable {
-    using SafeMath for uint256;
+contract GovernorV2 is MultiRole {
     using Address for address;
 
     /****************************************
@@ -55,14 +52,8 @@ contract GovernorV2 is MultiRole, Testable {
      * @notice Construct the Governor contract.
      * @param _finderAddress keeps track of all contracts within the system based on their interfaceName.
      * @param _startingId the initial proposal id that the contract will begin incrementing from.
-     * @param _timerAddress Contract that stores the current time in a testing environment.
-     * Must be set to 0x0 for production environments that use live time.
      */
-    constructor(
-        address _finderAddress,
-        uint256 _startingId,
-        address _timerAddress
-    ) Testable(_timerAddress) {
+    constructor(address _finderAddress, uint256 _startingId) {
         finder = FinderInterface(_finderAddress);
         _createExclusiveRole(uint256(Roles.Owner), uint256(Roles.Owner), msg.sender);
         _createExclusiveRole(uint256(Roles.Proposer), uint256(Roles.Owner), msg.sender);
@@ -88,7 +79,7 @@ contract GovernorV2 is MultiRole, Testable {
      * @param ancillaryData arbitrary data appended to a price request to give the voters more info from the caller.
      */
     function propose(Transaction[] memory transactions, bytes memory ancillaryData)
-        public
+        external
         onlyRoleHolder(uint256(Roles.Proposer))
     {
         uint256 id = proposals.length;
@@ -141,7 +132,7 @@ contract GovernorV2 is MultiRole, Testable {
         Transaction memory transaction = proposal.transactions[transactionIndex];
 
         require(
-            transactionIndex == 0 || proposal.transactions[transactionIndex.sub(1)].to == address(0),
+            transactionIndex == 0 || proposal.transactions[transactionIndex - 1].to == address(0),
             "Previous tx not yet executed"
         );
         require(transaction.to != address(0), "Tx already executed");
@@ -154,6 +145,14 @@ contract GovernorV2 is MultiRole, Testable {
         require(_executeCall(transaction.to, transaction.value, transaction.data), "Tx execution failed");
 
         emit ProposalExecuted(id, transactionIndex);
+    }
+
+    /**
+     * @notice Returns the current block timestamp.
+     * @dev Can be overridden to control contract time.
+     */
+    function getCurrentTime() public view virtual returns (uint256) {
+        return block.timestamp;
     }
 
     /****************************************

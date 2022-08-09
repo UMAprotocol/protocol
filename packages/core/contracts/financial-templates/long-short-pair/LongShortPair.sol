@@ -17,7 +17,7 @@ import "../../common/interfaces/ExpandedIERC20.sol";
 import "../../oracle/interfaces/OracleInterface.sol";
 import "../../common/interfaces/AddressWhitelistInterface.sol";
 import "../../oracle/interfaces/FinderInterface.sol";
-import "../../oracle/interfaces/OptimisticOracleInterface.sol";
+import "../../oracle/interfaces/OptimisticOracleV2Interface.sol";
 import "../../oracle/interfaces/IdentifierWhitelistInterface.sol";
 
 import "../../oracle/implementation/Constants.sol";
@@ -152,7 +152,7 @@ contract LongShortPair is Testable, Lockable {
         collateralToken = params.collateralToken;
 
         financialProductLibrary = params.financialProductLibrary;
-        OptimisticOracleInterface optimisticOracle = _getOptimisticOracle();
+        OptimisticOracleV2Interface optimisticOracle = _getOptimisticOracle();
 
         // Ancillary data + additional stamped information should be less than ancillary data limit. Consider early
         // expiration ancillary data, if enableEarlyExpiration is set.
@@ -373,7 +373,7 @@ contract LongShortPair is Testable, Lockable {
     // Request a price in the optimistic oracle for a given request timestamp and ancillary data combo. Set the bonds
     // accordingly to the deployer's parameters. Will revert if re-requesting for a previously requested combo.
     function _requestOraclePrice(uint64 requestTimestamp, bytes memory requestAncillaryData) internal {
-        OptimisticOracleInterface optimisticOracle = _getOptimisticOracle();
+        OptimisticOracleV2Interface optimisticOracle = _getOptimisticOracle();
 
         // If the proposer reward was set then pull it from the caller of the function.
         if (proposerReward > 0) {
@@ -434,7 +434,7 @@ contract LongShortPair is Testable, Lockable {
         return AddressWhitelistInterface(finder.getImplementationAddress(OracleInterfaces.CollateralWhitelist));
     }
 
-    function _getOptimisticOracle() internal view returns (OptimisticOracleInterface) {
-        return OptimisticOracleInterface(finder.getImplementationAddress(OracleInterfaces.OptimisticOracle));
+    function _getOptimisticOracle() internal view returns (OptimisticOracleV2Interface) {
+        return OptimisticOracleV2Interface(finder.getImplementationAddress(OracleInterfaces.OptimisticOracleV2));
     }
 }

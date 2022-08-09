@@ -47,6 +47,7 @@ the process works smoothly and your contributions can be merged as quickly and e
   comments are completely resolved before merging.
 - PRs can only be merged by maintainers. If a maintainer opened the PR, it's preferred (although, not required) to
   allow them to merge it, themselves.
+- Reviewer comments should be resolved by the reviewer, not the person who opened the PR.
 - PR titles should be in [conventional commit](https://www.conventionalcommits.org/en/v1.0.0/) format. This helps
   inform versioning and changelogs. Please include a breaking change footer in your PR description if the change will
   break consumers of any package. If you don't know how to correctly title your PR, this can be addressed in the review
