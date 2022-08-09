@@ -841,7 +841,7 @@ contract VotingV2 is
     }
 
     // Updates the slashing trackers of a given account based on previous voting activity.
-    function _updateAccountSlashingTrackers(address voterAddress, uint256 indexTo) internal nonReentrant {
+    function _updateAccountSlashingTrackers(address voterAddress, uint256 indexTo) internal {
         uint256 currentRoundId = voteTiming.computeCurrentRoundId(getCurrentTime());
         VoterStake storage voterStake = voterStakes[voterAddress];
         // Note the method below can hit a gas limit of there are a LOT of requests from the last time this was run.
