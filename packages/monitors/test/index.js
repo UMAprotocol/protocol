@@ -450,6 +450,6 @@ describe("index.js", function () {
         assert.equal(reTryCounts.executionLoopErrors, 3); // Each re-try create a log. These only occur on re-try and so expect 3 logs.
         assert.isTrue(errorThrown); // An error should have been thrown after the 3 execution re-tries.
       });
-    });
+    }).timeout(10000);
   });
 });
