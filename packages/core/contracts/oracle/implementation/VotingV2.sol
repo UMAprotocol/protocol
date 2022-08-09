@@ -1015,7 +1015,6 @@ contract VotingV2 is
      */
     function executeSpamDeletion(uint256 proposalId) external {
         require(spamDeletionProposals[proposalId].executed == false);
-
         spamDeletionProposals[proposalId].executed = true;
 
         bytes32 identifier = SpamGuardIdentifierLib._constructIdentifier(SafeCast.toUint32(proposalId));
