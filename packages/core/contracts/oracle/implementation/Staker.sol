@@ -11,7 +11,7 @@ import "@openzeppelin/contracts/utils/math/SafeCast.sol";
  * @title Staking contract enabling UMA to be locked up by stakers to earn a pro rata share of a fixed emission rate.
  * @dev Handles the staking, unstaking and reward retrieval logic.
  */
-contract Staker is StakerInterface, Ownable {
+abstract contract Staker is StakerInterface, Ownable {
     /****************************************
      *           STAKING TRACKERS           *
      ****************************************/
@@ -31,6 +31,7 @@ contract Staker is StakerInterface, Ownable {
         uint256 pendingStake;
         uint256 rewardsPaidPerToken;
         uint256 outstandingRewards;
+        int256 unappliedSlash;
         uint64 lastRequestIndexConsidered;
         uint64 unstakeRequestTime;
         address delegate;
@@ -303,13 +304,9 @@ contract Staker is StakerInterface, Ownable {
      ****************************************/
 
     // Determine if we are in an active reveal phase. This function should be overridden by the child contract.
-    function inActiveReveal() internal virtual returns (bool) {
-        return false;
-    }
+    function inActiveReveal() internal view virtual returns (bool);
 
-    function getStartingIndexForStaker() internal virtual returns (uint64) {
-        return 0;
-    }
+    function getStartingIndexForStaker() internal view virtual returns (uint64);
 
     // Calculate the reward per token based on last time the reward was updated.
     function _updateReward(address voterAddress) internal {
