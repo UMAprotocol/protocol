@@ -238,7 +238,7 @@ contract Staker is StakerInterface, Ownable {
      * @notice  Set the amount of time a voter must wait to unstake after submitting a request to do so.
      * @param _unstakeCoolDown the new duration of the cool down period in seconds.
      */
-    function setUnstakeCoolDown(uint64 _unstakeCoolDown) external override onlyOwner {
+    function setUnstakeCoolDown(uint64 _unstakeCoolDown) external onlyOwner {
         unstakeCoolDown = _unstakeCoolDown;
         emit SetNewUnstakeCooldown(unstakeCoolDown);
     }
