@@ -51,7 +51,7 @@ contract DesignatedVotingV2 is Stakeable, MultiCaller {
 
     /**
      * @notice Forwards a commit to Voting.
-     * @param identifier uniquely identifies the feed for this vote. E.G BTC/USD price pair.
+     * @param identifier uniquely identifies the feed for this vote. E.G. BTC/USD price pair.
      * @param time specifies the unix timestamp of the price being voted on.
      * @param hash keccak256 hash of the price, salt, voter address, time, ancillaryData, current roundId, identifier.
      */
@@ -68,9 +68,9 @@ contract DesignatedVotingV2 is Stakeable, MultiCaller {
      * @notice commits a vote and logs an event with a data blob, typically an encrypted version of the vote
      * @dev An encrypted version of the vote is emitted in an event EncryptedVote to allow off-chain infrastructure to
      * retrieve the commit. The contents of encryptedVote are never used on chain: it is purely for convenience.
-     * @param identifier unique price pair identifier. E.g: BTC/USD price pair.
-     * @param time unix timestamp the price request.
-     * @param ancillaryData arbitrary data appended to a price request to give the voter's more info from the caller.
+     * @param identifier unique price pair identifier. E.g.: BTC/USD price pair.
+     * @param time unix timestamp of the price request.
+     * @param ancillaryData arbitrary data appended to a price request to give the voters more info from the caller.
      * @param hash keccak256 hash of the price, salt, voter address, time, ancillaryData, current roundId, identifier.
      * @param encryptedVote offchain encrypted blob containing the voter's amount, time and salt.
      */
@@ -86,7 +86,7 @@ contract DesignatedVotingV2 is Stakeable, MultiCaller {
 
     /**
      * @notice Forwards a reveal to Voting.
-     * @param identifier voted on in the commit phase. E.G BTC/USD price pair.
+     * @param identifier voted on in the commit phase. E.G. BTC/USD price pair.
      * @param time specifies the unix timestamp of the price being voted on.
      * @param price voted on during the commit phase.
      * @param salt value used to hide the commitment price during the commit phase.
