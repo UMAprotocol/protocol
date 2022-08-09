@@ -32,11 +32,11 @@ contract StakerTest is StakerControlledTiming {
         voterStakes[voter].activeStake = uint256(int256(voterStakes[voter].activeStake) + amount);
     }
 
-    function inActiveReveal() internal view override returns (bool) {
+    function _inActiveReveal() internal view override returns (bool) {
         return false;
     }
 
-    function getStartingIndexForStaker() internal view override returns (uint64) {
+    function _getStartingIndexForStaker() internal view override returns (uint64) {
         return 0;
     }
 }
