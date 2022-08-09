@@ -18,7 +18,7 @@ contract SlashingLibrary {
         // if 10 votes are cast each month for a year.  1 - (1 / 1.2)**(1/120) = ~0.0016
         // When changing this value, make sure that:
         // (1 + APY) * ( 1 - calcWrongVoteSlashPerToken() )**expected_yearly_votes < 1
-        return 1600000000000000;
+        return 0.0016e18;
     }
 
     /**
@@ -52,7 +52,7 @@ contract SlashingLibrary {
         // if 10 votes are cast each month for a year. 1 - (1 / 1.2)**(1/120) = ~0.0016
         // When changing this value, make sure that:
         // (1 + APY) * ( 1 - calcNoVoteSlashPerToken() )**expected_yearly_votes < 1
-        return 1600000000000000;
+        return 0.0016e18;
     }
 
     /**
@@ -68,7 +68,7 @@ contract SlashingLibrary {
         uint256 totalVotes,
         uint256 totalCorrectVotes,
         bool isGovernance
-    ) public pure returns (uint256 wrongVoteSlashPerToken, uint256 noVoteSlashPerToken) {
+    ) external pure returns (uint256 wrongVoteSlashPerToken, uint256 noVoteSlashPerToken) {
         return (
             isGovernance
                 ? calcWrongVoteSlashPerTokenGovernance(totalStaked, totalVotes, totalCorrectVotes)
