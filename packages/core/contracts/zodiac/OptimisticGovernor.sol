@@ -9,7 +9,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import "../oracle/implementation/Constants.sol";
 import "../oracle/interfaces/FinderInterface.sol";
-import "../oracle/interfaces/OptimisticOracleInterface.sol";
+import "../oracle/interfaces/OptimisticOracleV2Interface.sol";
 import "../common/implementation/Lockable.sol";
 import "../common/interfaces/AddressWhitelistInterface.sol";
 import "../oracle/interfaces/IdentifierWhitelistInterface.sol";
@@ -54,7 +54,7 @@ contract OptimisticGovernor is Module, Lockable {
     string public rules;
     // This will usually be "ZODIAC" but a deployer may want to create a more specific identifier.
     bytes32 public identifier;
-    OptimisticOracleInterface public optimisticOracle;
+    OptimisticOracleV2Interface public optimisticOracle;
 
     int256 public constant PROPOSAL_VALID_RESPONSE = int256(1e18);
 
@@ -222,7 +222,7 @@ contract OptimisticGovernor is Module, Lockable {
         proposalHashes[proposalHash] = time;
 
         // Propose a set of transactions to the OO. If not disputed, they can be executed with executeProposal().
-        // docs: https://github.com/UMAprotocol/protocol/blob/master/packages/core/contracts/oracle/interfaces/OptimisticOracleInterface.sol
+        // docs: https://github.com/UMAprotocol/protocol/blob/master/packages/core/contracts/oracle/interfaces/OptimisticOracleV2Interface.sol
         optimisticOracle.requestPrice(identifier, time, ancillaryData, collateral, 0);
         uint256 totalBond = optimisticOracle.setBond(identifier, time, ancillaryData, bondAmount);
         optimisticOracle.setCustomLiveness(identifier, time, ancillaryData, liveness);
@@ -340,7 +340,7 @@ contract OptimisticGovernor is Module, Lockable {
         uint256 _originalTime = proposalHashes[_proposalHash];
 
         // Get the state of the proposal.
-        OptimisticOracleInterface.Request memory request =
+        OptimisticOracleV2Interface.Request memory request =
             optimisticOracle.getRequest(address(this), identifier, _originalTime, ancillaryData);
 
         // Check that proposal was disputed.
@@ -375,8 +375,8 @@ contract OptimisticGovernor is Module, Lockable {
         optimisticOracle = _getOptimisticOracle();
     }
 
-    function _getOptimisticOracle() private view returns (OptimisticOracleInterface) {
-        return OptimisticOracleInterface(finder.getImplementationAddress(OracleInterfaces.OptimisticOracle));
+    function _getOptimisticOracle() private view returns (OptimisticOracleV2Interface) {
+        return OptimisticOracleV2Interface(finder.getImplementationAddress(OracleInterfaces.OptimisticOracleV2));
     }
 
     function _isContract(address addr) private view returns (bool) {
