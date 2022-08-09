@@ -5,7 +5,7 @@ import "../Staker.sol";
 import "../../../common/implementation/Testable.sol";
 
 // Version of the Staker contract used in tests so time can be controlled.
-contract StakerControlledTiming is Staker, Testable {
+abstract contract StakerControlledTiming is Staker, Testable {
     constructor(
         uint256 _emissionRate,
         uint64 _unstakeCoolDown,
