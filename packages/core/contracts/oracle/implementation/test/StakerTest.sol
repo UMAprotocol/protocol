@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "../Staker.sol";
+import "../../../common/implementation/Testable.sol";
 
 // Version of the Staker contract used in tests so time can be controlled.
 contract StakerControlledTiming is Staker, Testable {
