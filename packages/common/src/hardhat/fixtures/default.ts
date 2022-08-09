@@ -54,6 +54,7 @@ export async function runDefaultFixture(
     await addToFinder("IdentifierWhitelist", interfaceName.IdentifierWhitelist);
     await addToFinder("AddressWhitelist", interfaceName.CollateralWhitelist);
     await addToFinder("OptimisticOracle", interfaceName.OptimisticOracle);
+    await addToFinder("OptimisticOracleV2", interfaceName.OptimisticOracleV2);
     await addToFinder("SkinnyOptimisticOracle", interfaceName.SkinnyOptimisticOracle);
     await addToFinder("Bridge", interfaceName.Bridge);
     await addToFinder("GenericHandler", interfaceName.GenericHandler);
@@ -81,9 +82,11 @@ export async function runDefaultFixture(
     // Add pre-registered contracts.
     const { address: governorAddress } = await deployments.get("Governor");
     const { address: optimisticOracleAddress } = await deployments.get("OptimisticOracle");
+    const { address: optimisticOracleV2Address } = await deployments.get("OptimisticOracleV2");
     await registry.methods.addMember(RegistryRolesEnum.CONTRACT_CREATOR, deployer).send({ from: deployer });
     await registry.methods.registerContract([], governorAddress).send({ from: deployer });
     await registry.methods.registerContract([], optimisticOracleAddress).send({ from: deployer });
+    await registry.methods.registerContract([], optimisticOracleV2Address).send({ from: deployer });
     await registry.methods.removeMember(RegistryRolesEnum.CONTRACT_CREATOR, deployer).send({ from: deployer });
   });
   await setup();

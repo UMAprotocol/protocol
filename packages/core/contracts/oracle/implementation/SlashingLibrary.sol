@@ -16,7 +16,7 @@ contract SlashingLibrary {
     ) public pure returns (uint256) {
         // This number is equal to the slash amount needed to cancel an APY of 20%
         // if 10 votes are cast each month for a year. 0.2/(10*12)= ~0.0016
-        return 1600000000000000;
+        return 0.0016e18;
     }
 
     /**
@@ -48,7 +48,7 @@ contract SlashingLibrary {
     ) public pure returns (uint256) {
         // This number is equal to the slash amount needed to cancel an APY of 20%
         // if 10 votes are cast each month for a year. 0.2/(10*12)= ~0.0016
-        return 1600000000000000;
+        return 0.0016e18;
     }
 
     /**
@@ -64,7 +64,7 @@ contract SlashingLibrary {
         uint256 totalVotes,
         uint256 totalCorrectVotes,
         bool isGovernance
-    ) public pure returns (uint256 wrongVoteSlashPerToken, uint256 noVoteSlashPerToken) {
+    ) external pure returns (uint256 wrongVoteSlashPerToken, uint256 noVoteSlashPerToken) {
         return (
             isGovernance
                 ? calcWrongVoteSlashPerTokenGovernance(totalStaked, totalVotes, totalCorrectVotes)
