@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity ^0.8.0;
+pragma solidity 0.8.15;
 
 import "./Finder.sol";
 import "./GovernorV2.sol";
 import "./Constants.sol";
-import "./Voting.sol";
+import "../interfaces/OracleAncillaryInterface.sol";
 import "./AdminIdentifierLib.sol";
 import "../../common/implementation/Lockable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
@@ -14,7 +14,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 /**
  * @title Proposer contract that allows anyone to make governance proposals with a bond.
  */
-contract ProposerV2 is Ownable, Testable, Lockable {
+contract ProposerV2 is Ownable, Lockable {
     using SafeERC20 for IERC20;
     IERC20 public token;
     uint256 public bond;
@@ -39,15 +39,13 @@ contract ProposerV2 is Ownable, Testable, Lockable {
      * @param _bond the bond amount.
      * @param _governor the governor contract that this contract makes proposals to.
      * @param _finder the finder contract used to look up addresses.
-     * @param _timer the timer contract to control the output of getCurrentTime(). Set to 0x0 if in production.
      */
     constructor(
         IERC20 _token,
         uint256 _bond,
         GovernorV2 _governor,
-        Finder _finder,
-        address _timer
-    ) Testable(_timer) {
+        Finder _finder
+    ) {
         token = _token;
         governor = _governor;
         finder = _finder;
@@ -85,7 +83,8 @@ contract ProposerV2 is Ownable, Testable, Lockable {
      */
     function resolveProposal(uint256 id) external nonReentrant() {
         BondedProposal memory bondedProposal = bondedProposals[id];
-        Voting voting = Voting(finder.getImplementationAddress(OracleInterfaces.Oracle));
+        OracleAncillaryInterface voting =
+            OracleAncillaryInterface(finder.getImplementationAddress(OracleInterfaces.Oracle));
         require(
             voting.hasPrice(
                 AdminIdentifierLib._constructIdentifier(id),
@@ -118,5 +117,13 @@ contract ProposerV2 is Ownable, Testable, Lockable {
     function setBond(uint256 _bond) public nonReentrant() onlyOwner() {
         bond = _bond;
         emit BondSet(_bond);
+    }
+
+    /**
+     * @notice Returns the current block timestamp.
+     * @dev Can be overridden to control contract time.
+     */
+    function getCurrentTime() public view virtual returns (uint256) {
+        return block.timestamp;
     }
 }
