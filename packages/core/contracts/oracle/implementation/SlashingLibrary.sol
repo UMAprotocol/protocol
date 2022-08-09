@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity ^0.8.0;
+pragma solidity 0.8.16;
 
 /**
  * @title Slashing Library contract. Returns the how much a voter should be slashed per staked token as a function of
