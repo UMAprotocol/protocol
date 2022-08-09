@@ -51,10 +51,7 @@ export type InputRequestWithOracleType = InputRequest & { oracleType: OracleType
 export type RequestWithOracleType = Request & { oracleType: OracleType };
 export type RequestsWithOracleType = RequestWithOracleType[];
 // partial config lets user omit some fields which we can infer internally using contracts-frontend
-export type PartialChainConfig = PartialBy<
-  ChainConfig,
-  "optimisticOracleAddress" | "chainId" | "checkTxIntervalSec" | "earliestBlockNumber"
->;
+export type PartialChainConfig = PartialBy<ChainConfig, "chainId" | "checkTxIntervalSec" | "earliestBlockNumber">;
 
 export enum OracleType {
   Optimistic = "Optimistic",

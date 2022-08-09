@@ -3,8 +3,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.15;
 
-import "../../common/implementation/FixedPoint.sol";
-
 /**
  * @title Interface that voters must use to Vote on price request resolutions.
  */
@@ -63,8 +61,8 @@ abstract contract VotingV2Interface {
     }
 
     // Note: the phases must be in order. Meaning the first enum value must be the first phase, etc.
-    // `NUM_PHASES_PLACEHOLDER` is to get the number of phases. It isn't an actual phase, and it should always be last.
-    enum Phase { Commit, Reveal, NUM_PHASES_PLACEHOLDER }
+    // `NUM_PHASES` is to get the number of phases. It isn't an actual phase, and it should always be last.
+    enum Phase { Commit, Reveal, NUM_PHASES }
 
     /**
      * @notice Commit a vote for a price request for `identifier` at `time`.
@@ -179,7 +177,7 @@ abstract contract VotingV2Interface {
 
     /**
      * @notice Returns the current voting phase, as a function of the current time.
-     * @return Phase to indicate the current phase. Either { Commit, Reveal, NUM_PHASES_PLACEHOLDER }.
+     * @return Phase to indicate the current phase. Either { Commit, Reveal, NUM_PHASES }.
      */
     function getVotePhase() external view virtual returns (Phase);
 

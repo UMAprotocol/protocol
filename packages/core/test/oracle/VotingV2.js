@@ -1212,6 +1212,7 @@ describe("VotingV2", function () {
     const identifier = padRight(utf8ToHex("migration"), 64);
     const time1 = "1000";
     const time2 = "2000";
+    const time3 = "3000";
     // Deploy our own voting because this test case will migrate it.
     const newVoting = await VotingV2.new(
       "640000000000000000", // emission rate
@@ -1273,10 +1274,21 @@ describe("VotingV2", function () {
     assert(await didContractThrow(newVoting.methods.setMigrated(migratedVoting).send({ from: migratedVoting })));
     await newVoting.methods.setMigrated(migratedVoting).send({ from: accounts[0] });
 
-    // Now only new newVoting can call methods.
-    assert(await newVoting.methods.hasPrice(identifier, time1).call({ from: migratedVoting }));
-    assert(await didContractThrow(newVoting.methods.hasPrice(identifier, time1).send({ from: registeredContract })));
+    // Now newVoting and registered contracts can call methods.
+    assert(await newVoting.methods.hasPrice(identifier, time1).send({ from: migratedVoting }));
+    assert(await newVoting.methods.hasPrice(identifier, time1).send({ from: registeredContract }));
+
+    // commit/reveal are completely disabled, regardless if called by newVoting.
+    assert(
+      await didContractThrow(newVoting.methods.commitVote(identifier, time2, hash).send({ from: migratedVoting }))
+    );
     assert(await didContractThrow(newVoting.methods.commitVote(identifier, time2, hash).send({ from: account1 })));
+
+    // Requesting prices is completely disabled after migration, regardless if called by newVoting.
+    assert(await didContractThrow(newVoting.methods.requestPrice(identifier, time3).send({ from: migratedVoting })));
+    assert(
+      await didContractThrow(newVoting.methods.requestPrice(identifier, time3).send({ from: registeredContract }))
+    );
   });
 
   it("pendingPriceRequests array length", async function () {

@@ -1,4 +1,4 @@
-// This contract is taken from Uniswaps's multi call implementation (https://github.com/Uniswap/uniswap-v3-periphery/blob/main/contracts/base/Multicall.sol)
+// This contract is taken from Uniswap's multi call implementation (https://github.com/Uniswap/uniswap-v3-periphery/blob/main/contracts/base/Multicall.sol)
 // and was modified to be solidity 0.8 compatible. Additionally, the method was restricted to only work with msg.value
 // set to 0 to avoid any nasty attack vectors on function calls that use value sent with deposits.
 pragma solidity ^0.8.0;

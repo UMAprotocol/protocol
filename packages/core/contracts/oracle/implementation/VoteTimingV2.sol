@@ -28,7 +28,7 @@ library VoteTimingV2 {
     }
 
     /**
-     * @notice Computes the roundID based off the current time as floor(timestamp/roundLength).
+     * @notice Computes the round ID based off the current time as floor(timestamp/roundLength).
      * @dev The round ID depends on the global timestamp but not on the lifetime of the system.
      * The consequence is that the initial round ID starts at an arbitrary number (that increments, as expected, for subsequent rounds) instead of zero or one.
      * @param data input data object.
@@ -36,18 +36,18 @@ library VoteTimingV2 {
      * @return roundId defined as a function of the currentTime and `phaseLength` from `data`.
      */
     function computeCurrentRoundId(Data storage data, uint256 currentTime) internal view returns (uint256) {
-        uint256 roundLength = data.phaseLength * uint256(VotingV2Interface.Phase.NUM_PHASES_PLACEHOLDER);
+        uint256 roundLength = data.phaseLength * uint256(VotingV2Interface.Phase.NUM_PHASES);
         return currentTime / roundLength;
     }
 
     /**
-     * @notice compute the round end time as a function of the round Id.
+     * @notice compute the round end time as a function of the round ID.
      * @param data input data object.
      * @param roundId uniquely identifies the current round.
      * @return timestamp unix time of when the current round will end.
      */
     function computeRoundEndTime(Data storage data, uint256 roundId) internal view returns (uint256) {
-        uint256 roundLength = data.phaseLength * uint256(VotingV2Interface.Phase.NUM_PHASES_PLACEHOLDER);
+        uint256 roundLength = data.phaseLength * uint256(VotingV2Interface.Phase.NUM_PHASES);
         return roundLength * (roundId + 1);
     }
 
@@ -63,10 +63,7 @@ library VoteTimingV2 {
         returns (VotingV2Interface.Phase)
     {
         // This employs some hacky casting. We could make this an if-statement if we're worried about type safety.
-        return
-            VotingV2Interface.Phase(
-                (currentTime / data.phaseLength) % uint256(VotingV2Interface.Phase.NUM_PHASES_PLACEHOLDER)
-            );
+        return VotingV2Interface.Phase((currentTime / data.phaseLength) % uint256(VotingV2Interface.Phase.NUM_PHASES));
     }
 
     function computeRoundToVoteOnPriceRequest(Data storage data, uint256 currentTime) internal view returns (uint256) {

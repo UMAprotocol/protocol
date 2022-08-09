@@ -16,10 +16,10 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
  */
 contract ProposerV2 is Ownable, Lockable {
     using SafeERC20 for IERC20;
-    IERC20 public token;
+    IERC20 public immutable token;
     uint256 public bond;
-    GovernorV2 public governor;
-    Finder public finder;
+    GovernorV2 public immutable governor;
+    Finder public immutable finder;
 
     struct BondedProposal {
         address sender;
@@ -63,9 +63,9 @@ contract ProposerV2 is Ownable, Lockable {
     function propose(GovernorV2.Transaction[] memory transactions, bytes memory ancillaryData)
         external
         nonReentrant()
-        returns (uint256 id)
+        returns (uint256)
     {
-        id = governor.numProposals();
+        uint256 id = governor.numProposals();
         token.safeTransferFrom(msg.sender, address(this), bond);
         bondedProposals[id] = BondedProposal({
             sender: msg.sender,
@@ -74,6 +74,7 @@ contract ProposerV2 is Ownable, Lockable {
             ancillaryData: ancillaryData
         });
         governor.propose(transactions, ancillaryData);
+        return id;
     }
 
     /**
@@ -111,7 +112,7 @@ contract ProposerV2 is Ownable, Lockable {
 
     /**
      * @notice Admin method to set the bond amount.
-     * @dev Admin is intended to be the governance system, itself.
+     * @dev Admin is intended to be the governance system itself.
      * @param _bond the new bond.
      */
     function setBond(uint256 _bond) public nonReentrant() onlyOwner() {

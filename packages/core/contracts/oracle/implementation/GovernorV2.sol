@@ -8,14 +8,12 @@ import "../interfaces/OracleGovernanceInterface.sol";
 import "./Constants.sol";
 import "./AdminIdentifierLib.sol";
 
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 
 /**
  * @title Takes proposals for certain governance actions and allows UMA token holders to vote on them.
  */
 contract GovernorV2 is MultiRole {
-    using SafeMath for uint256;
     using Address for address;
 
     /****************************************
@@ -88,7 +86,7 @@ contract GovernorV2 is MultiRole {
         uint256 time = getCurrentTime();
 
         // Note: doing all of this array manipulation manually is necessary because directly setting an array of
-        // structs in storage to an an array of structs in memory is currently not implemented in solidity :/.
+        // structs in storage to an array of structs in memory is currently not implemented in solidity :/.
 
         // Add a zero-initialized element to the proposals array.
         proposals.push();
@@ -134,7 +132,7 @@ contract GovernorV2 is MultiRole {
         Transaction memory transaction = proposal.transactions[transactionIndex];
 
         require(
-            transactionIndex == 0 || proposal.transactions[transactionIndex.sub(1)].to == address(0),
+            transactionIndex == 0 || proposal.transactions[transactionIndex - 1].to == address(0),
             "Previous tx not yet executed"
         );
         require(transaction.to != address(0), "Tx already executed");
@@ -206,7 +204,7 @@ contract GovernorV2 is MultiRole {
         return OracleGovernanceInterface(finder.getImplementationAddress(OracleInterfaces.Oracle));
     }
 
-    function _getIdentifierWhitelist() private view returns (IdentifierWhitelistInterface supportedIdentifiers) {
+    function _getIdentifierWhitelist() private view returns (IdentifierWhitelistInterface) {
         return IdentifierWhitelistInterface(finder.getImplementationAddress(OracleInterfaces.IdentifierWhitelist));
     }
 }
