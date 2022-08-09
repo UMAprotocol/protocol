@@ -20,8 +20,6 @@ import "./SpamGuardIdentifierLib.sol";
 import "./Staker.sol";
 import "./VoteTimingV2.sol";
 
-import "hardhat/console.sol";
-
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 /**
@@ -840,7 +838,6 @@ contract VotingV2 is
         // Traverse all requests from the last considered request. For each request see if the voter voted correctly or
         // not. Based on the outcome, attribute the associated slash to the voter.
         int256 slash = voterStake.unappliedSlash;
-        if (voterAddress == 0x90F79bf6EB2c4f870365E785982E1f101E93b906) console.log("slash", uint256(slash));
         for (
             uint64 requestIndex = voterStake.lastRequestIndexConsidered;
             requestIndex < indexTo;
@@ -866,6 +863,11 @@ contract VotingV2 is
                     priceRequest.lastVotingRound = SafeCast.toUint32(currentRoundId);
                     deletedRequests[requestIndex] = requestIndex;
                     priceRequest.priceRequestIndex = SafeCast.toUint64(priceRequestIds.length);
+                    // If the indexTo is equal to the length of the priceRequestIds array then this method was entered
+                    // via the normal updateTrackers call which is meant to apply slashing to the most recent request.
+                    // As we've appended a new request, we must extend how far the loop will traverse such that we mimic
+                    // the standard update behavior of traversing all requests. If these values are not equal then this
+                    // method was entered via the updateTrackersRange call and we only traverse the range requested.
                     if (indexTo == priceRequestIds.length) indexTo++;
                     priceRequestIds.push(priceRequestIds[requestIndex]);
                     continue;
@@ -875,8 +877,6 @@ contract VotingV2 is
                 break;
             }
 
-            if (voterAddress == 0x90F79bf6EB2c4f870365E785982E1f101E93b906)
-                console.log("SLASHING ON REQUEST", requestIndex);
             uint256 totalCorrectVotes = voteInstance.resultComputation.getTotalCorrectlyVotedTokens();
 
             (uint256 wrongVoteSlashPerToken, uint256 noVoteSlashPerToken) =
@@ -924,8 +924,6 @@ contract VotingV2 is
                 indexTo > nextRequestIndex &&
                 priceRequest.lastVotingRound != priceRequests[priceRequestIds[nextRequestIndex]].lastVotingRound
             ) {
-                if (voterAddress == 0x90F79bf6EB2c4f870365E785982E1f101E93b906)
-                    console.log("internal slash", uint256(-1 * slash));
                 applySlashToVoter(slash, voterStake, voterAddress);
                 slash = 0;
             }
@@ -942,7 +940,6 @@ contract VotingV2 is
         // loop) has the same voting round as the indexTo (element after the last element in the loop) then we know that
         // we've bisected a round and should store the unapplied slashing which will seed this method on the next entry
         // such that the slashing will be applied linearly, not compounding with other slashing within the same round.
-        if (voterAddress == 0x90F79bf6EB2c4f870365E785982E1f101E93b906) console.log("Exit slash", uint256(-1 * slash));
         if (slash != 0)
             if (
                 indexTo < priceRequestIds.length &&
