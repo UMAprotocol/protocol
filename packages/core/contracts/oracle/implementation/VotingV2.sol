@@ -1,7 +1,7 @@
 // TODO: this whole /oracle/implementation directory should be restructured to separate the DVM and the OO.
 
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity ^0.8.0;
+pragma solidity 0.8.15;
 
 import "../../common/implementation/AncillaryData.sol";
 import "../../common/implementation/MultiCaller.sol";
@@ -49,8 +49,8 @@ contract VotingV2 is
         uint32 lastVotingRound;
         // Denotes whether this is a governance request or not.
         bool isGovernance;
-        // The pendingRequestIndex in the `pendingPriceRequests` that references this PriceRequest. A value of UINT_MAX
-        // means that this PriceRequest is resolved and has been cleaned up from `pendingPriceRequests`.
+        // The pendingRequestIndex in the pendingPriceRequests that references this PriceRequest. A value of UINT_MAX
+        // means that this PriceRequest is resolved and has been cleaned up from pendingPriceRequests.
         uint64 pendingRequestIndex;
         // Each request has a unique requestIndex number that is used to order all requests. This is the index within
         // the priceRequestIds array and is incremented on each request.
@@ -73,7 +73,7 @@ contract VotingV2 is
     }
 
     struct VoteSubmission {
-        bytes32 commit; // A bytes32 of `0` indicates no commit or a commit that was already revealed.
+        bytes32 commit; // A bytes32 of 0 indicates no commit or a commit that was already revealed.
         bytes32 revealHash; // The hash of the value that was revealed. This is only used for computation of rewards.
     }
 
@@ -156,6 +156,7 @@ contract VotingV2 is
         uint256 requestTime;
         bool executed;
         address proposer;
+        uint256 bond;
     }
 
     // Maps round numbers to the spam deletion request.
@@ -195,10 +196,10 @@ contract VotingV2 is
     );
 
     event PriceRequestAdded(
-        address requester,
+        address indexed requester,
         uint256 indexed roundId,
         bytes32 indexed identifier,
-        uint256 indexed time,
+        uint256 time,
         uint256 requestIndex,
         bytes ancillaryData,
         bool isGovernance
@@ -208,6 +209,7 @@ contract VotingV2 is
         uint256 indexed roundId,
         bytes32 indexed identifier,
         uint256 time,
+        uint256 requestIndex,
         int256 price,
         bytes ancillaryData
     );
@@ -289,7 +291,7 @@ contract VotingV2 is
      ****************************************/
 
     /**
-     * @notice Enqueues a request (if a request isn't already present) for the `identifier`, `time` pair.
+     * @notice Enqueues a request (if a request isn't already present) for the identifier, time pair.
      * @dev Time must be in the past and the identifier must be supported. The length of the ancillary data
      * is limited such that this method abides by the EVM transaction gas limit.
      * @param identifier uniquely identifies the price requested. eg BTC/USD (encoded as bytes32) could be requested.
@@ -305,7 +307,7 @@ contract VotingV2 is
     }
 
     /**
-     * @notice Enqueues a governance action request (if a request isn't already present) for `identifier`, `time` pair.
+     * @notice Enqueues a governance action request (if a request isn't already present) for identifier, time pair.
      * @dev Time must be in the past and the identifier must be supported. The length of the ancillary data
      * is limited such that this method abides by the EVM transaction gas limit.
      * @param identifier uniquely identifies the price requested. eg BTC/USD (encoded as bytes32) could be requested.
@@ -316,12 +318,12 @@ contract VotingV2 is
         bytes32 identifier,
         uint256 time,
         bytes memory ancillaryData
-    ) public override onlyOwner() {
+    ) external override onlyOwner() {
         _requestPrice(identifier, time, ancillaryData, true);
     }
 
     /**
-     * @notice Enqueues a request (if a request isn't already present) for the given `identifier`, `time` pair.
+     * @notice Enqueues a request (if a request isn't already present) for the given identifier, time pair.
      * @dev Time must be in the past and the identifier must be supported. The length of the ancillary data is limited
      * such that this method abides by the EVM transaction gas limit.
      * @param identifier uniquely identifies the price requested. eg BTC/USD (encoded as bytes32) could be requested.
@@ -381,12 +383,12 @@ contract VotingV2 is
     }
 
     // Overloaded method to enable short term backwards compatibility. Will be deprecated in the next DVM version.
-    function requestPrice(bytes32 identifier, uint256 time) public override {
+    function requestPrice(bytes32 identifier, uint256 time) external override {
         requestPrice(identifier, time, "");
     }
 
     /**
-     * @notice Whether the price for `identifier` and `time` is available.
+     * @notice Whether the price for identifier and time is available.
      * @dev Time must be in the past and the identifier must be supported.
      * @param identifier uniquely identifies the price requested. eg BTC/USD (encoded as bytes32) could be requested.
      * @param time unix timestamp of for the price request.
@@ -408,7 +410,7 @@ contract VotingV2 is
     }
 
     /**
-     * @notice Gets the price for `identifier` and `time` if it has already been requested and resolved.
+     * @notice Gets the price for identifier and time if it has already been requested and resolved.
      * @dev If the price is not available, the method reverts.
      * @param identifier uniquely identifies the price requested. eg BTC/USD (encoded as bytes32) could be requested.
      * @param time unix timestamp of for the price request.
@@ -428,7 +430,7 @@ contract VotingV2 is
     }
 
     // Overloaded method to enable short term backwards compatibility. Will be deprecated in the next DVM version.
-    function getPrice(bytes32 identifier, uint256 time) public view override returns (int256) {
+    function getPrice(bytes32 identifier, uint256 time) external view override returns (int256) {
         return getPrice(identifier, time, "");
     }
 
@@ -460,7 +462,7 @@ contract VotingV2 is
     }
 
     // Overloaded method to enable short term backwards compatibility. Will be deprecated in the next DVM version.
-    function getPriceRequestStatuses(PendingRequest[] memory requests) public view returns (RequestState[] memory) {
+    function getPriceRequestStatuses(PendingRequest[] memory requests) external view returns (RequestState[] memory) {
         PendingRequestAncillary[] memory requestsAncillary = new PendingRequestAncillary[](requests.length);
 
         for (uint256 i = 0; i < requests.length; i = unsafe_inc(i)) {
@@ -476,8 +478,8 @@ contract VotingV2 is
      ****************************************/
 
     /**
-     * @notice Commit a vote for a price request for `identifier` at `time`.
-     * @dev `identifier`, `time` must correspond to a price request that's currently in the commit phase.
+     * @notice Commit a vote for a price request for identifier at time.
+     * @dev identifier, time must correspond to a price request that's currently in the commit phase.
      * Commits can be changed.
      * @dev Since transaction data is public, the salt will be revealed with the vote. While this is the system’s
      * expected behavior, voters should never reuse salts. If someone else is able to guess the voted price and knows
@@ -485,7 +487,7 @@ contract VotingV2 is
      * @param identifier uniquely identifies the committed vote. EG BTC/USD price pair.
      * @param time unix timestamp of the price being voted on.
      * @param ancillaryData arbitrary data appended to a price request to give the voters more info from the caller.
-     * @param hash keccak256 hash of the `price`, `salt`, voter `address`, `time`, current `roundId`, and `identifier`.
+     * @param hash keccak256 hash of the price, salt, voter address, time, ancillaryData, current roundId, identifier.
      */
     function commitVote(
         bytes32 identifier,
@@ -517,14 +519,14 @@ contract VotingV2 is
         bytes32 identifier,
         uint256 time,
         bytes32 hash
-    ) public override onlyIfNotMigrated() {
+    ) external override onlyIfNotMigrated() {
         commitVote(identifier, time, "", hash);
     }
 
     /**
-     * @notice Reveal a previously committed vote for `identifier` at `time`.
-     * @dev The revealed `price`, `salt`, `address`, `time`, `roundId`, and `identifier`, must hash to the latest `hash`
-     * that `commitVote()` was called with. Only the committer can reveal their vote.
+     * @notice Reveal a previously committed vote for identifier at time.
+     * @dev The revealed price, salt, voter address, time, ancillaryData, current roundId, identifier must hash to the
+     * latest hash that commitVote() was called with. Only the committer can reveal their vote.
      * @param identifier voted on in the commit phase. EG BTC/USD price pair.
      * @param time specifies the unix timestamp of the price being voted on.
      * @param price voted on during the commit phase.
@@ -577,18 +579,18 @@ contract VotingV2 is
         uint256 time,
         int256 price,
         int256 salt
-    ) public override {
+    ) external override {
         revealVote(identifier, time, price, "", salt);
     }
 
     /**
      * @notice commits a vote and logs an event with a data blob, typically an encrypted version of the vote
-     * @dev An encrypted version of the vote is emitted in an event `EncryptedVote` to allow off-chain infrastructure to
-     * retrieve the commit. The contents of `encryptedVote` are never used on chain: it is purely for convenience.
+     * @dev An encrypted version of the vote is emitted in an event EncryptedVote to allow off-chain infrastructure to
+     * retrieve the commit. The contents of encryptedVote are never used on chain: it is purely for convenience.
      * @param identifier unique price pair identifier. Eg: BTC/USD price pair.
      * @param time unix timestamp of for the price request.
      * @param ancillaryData arbitrary data appended to a price request to give the voters more info from the caller.
-     * @param hash keccak256 hash of the price you want to vote for and a `int256 salt`.
+     * @param hash keccak256 hash of the price you want to vote for and a int256 salt.
      * @param encryptedVote offchain encrypted blob containing the voters amount, time and salt.
      */
     function commitAndEmitEncryptedVote(
@@ -610,7 +612,7 @@ contract VotingV2 is
         uint256 time,
         bytes32 hash,
         bytes memory encryptedVote
-    ) public override {
+    ) external override {
         commitVote(identifier, time, "", hash);
 
         commitAndEmitEncryptedVote(identifier, time, "", hash, encryptedVote);
@@ -622,7 +624,7 @@ contract VotingV2 is
      * low-security available wallet for voting while keeping access to staked amounts secure by a more secure wallet.
      * @param delegate the address of the delegate.
      */
-    function setDelegate(address delegate) public {
+    function setDelegate(address delegate) external {
         voterStakes[msg.sender].delegate = delegate;
     }
 
@@ -631,7 +633,7 @@ contract VotingV2 is
      * the delegator also selected the delegate to do so (two way relationship needed).
      * @param delegator the address of the delegate.
      */
-    function setDelegator(address delegator) public {
+    function setDelegator(address delegator) external {
         delegateToStaker[msg.sender] = delegator;
     }
 
@@ -653,14 +655,14 @@ contract VotingV2 is
 
     /**
      * @notice Gets the queries that are being voted on this round.
-     * @return pendingRequests array containing identifiers of type `PendingRequest`.
+     * @return pendingRequests array containing identifiers of type PendingRequest.
      */
-    function getPendingRequests() public view override returns (PendingRequestAncillary[] memory) {
+    function getPendingRequests() external view override returns (PendingRequestAncillary[] memory) {
         uint256 blockTime = getCurrentTime();
         uint256 currentRoundId = voteTiming.computeCurrentRoundId(blockTime);
 
         // Solidity memory arrays aren't resizable (and reading storage is expensive). Hence this hackery to filter
-        // `pendingPriceRequests` only to those requests that have an Active RequestStatus.
+        // pendingPriceRequests only to those requests that have an Active RequestStatus.
         PendingRequestAncillary[] memory unresolved = new PendingRequestAncillary[](pendingPriceRequests.length);
         uint256 numUnresolved = 0;
 
@@ -709,7 +711,7 @@ contract VotingV2 is
      * @notice Returns the current round ID, as a function of the current time.
      * @return uint256 representing the unique round ID.
      */
-    function getCurrentRoundId() public view override returns (uint256) {
+    function getCurrentRoundId() external view override returns (uint256) {
         return voteTiming.computeCurrentRoundId(getCurrentTime());
     }
 
@@ -717,11 +719,11 @@ contract VotingV2 is
      * @notice Returns the current round ID, as a function of the current time.
      * @return uint256 representing the unique round ID.
      */
-    function getRoundEndTime(uint256 roundId) public view returns (uint256) {
+    function getRoundEndTime(uint256 roundId) external view returns (uint256) {
         return voteTiming.computeRoundEndTime(roundId);
     }
 
-    function getNumberOfPriceRequests() public view returns (uint256) {
+    function getNumberOfPriceRequests() external view returns (uint256) {
         return priceRequestIds.length;
     }
 
@@ -767,20 +769,20 @@ contract VotingV2 is
      * @dev This method is public because calldata structs are not currently supported by solidity.
      * @param newGat sets the next round's Gat.
      */
-    function setGat(uint256 newGat) public override onlyOwner {
+    function setGat(uint256 newGat) external override onlyOwner {
         require(newGat < votingToken.totalSupply() && newGat > 0);
         gat = newGat;
         emit GatChanged(newGat);
     }
 
     // Here for abi compatibility. to be removed.
-    function setRewardsExpirationTimeout(uint256 NewRewardsExpirationTimeout) public override onlyOwner {}
+    function setRewardsExpirationTimeout(uint256 NewRewardsExpirationTimeout) external override onlyOwner {}
 
     /**
      * @notice Changes the slashing library used by this contract.
      * @param _newSlashingLibrary new slashing library address.
      */
-    function setSlashingLibrary(address _newSlashingLibrary) public override onlyOwner {
+    function setSlashingLibrary(address _newSlashingLibrary) external override onlyOwner {
         slashingLibrary = SlashingLibrary(_newSlashingLibrary);
         emit SlashingLibraryChanged(_newSlashingLibrary);
     }
@@ -795,7 +797,7 @@ contract VotingV2 is
      * it is automatically run in the other functions.
      * @param voterAddress address of the voter to update the trackers for.
      */
-    function updateTrackers(address voterAddress) public {
+    function updateTrackers(address voterAddress) external {
         _updateTrackers(voterAddress);
     }
 
@@ -806,7 +808,7 @@ contract VotingV2 is
      * @param voterAddress address of the voter to update the trackers for.
      * @param indexTo last price request index to update the trackers for.
      */
-    function updateTrackersRange(address voterAddress, uint256 indexTo) public {
+    function updateTrackersRange(address voterAddress, uint256 indexTo) external {
         require(voterStakes[voterAddress].lastRequestIndexConsidered < indexTo && indexTo <= priceRequestIds.length);
 
         _updateAccountSlashingTrackers(voterAddress, indexTo);
@@ -842,7 +844,11 @@ contract VotingV2 is
             requestIndex < indexTo;
             requestIndex = unsafe_inc_64(requestIndex)
         ) {
-            if (deletedRequests[requestIndex] != 0) requestIndex = deletedRequests[requestIndex] + 1;
+            if (deletedRequests[requestIndex] != 0) {
+                requestIndex = deletedRequests[requestIndex];
+                continue;
+            }
+
             if (requestIndex > indexTo - 1) break; // This happens if the last element was a rolled vote.
             PriceRequest storage priceRequest = priceRequests[priceRequestIds[requestIndex]];
             VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
@@ -947,7 +953,7 @@ contract VotingV2 is
      * @param spamRequestIndices list of request indices to be declared as spam. Each element is a
      * pair of uint256s representing the start and end of the range.
      */
-    function signalRequestsAsSpamForDeletion(uint256[2][] calldata spamRequestIndices) public {
+    function signalRequestsAsSpamForDeletion(uint256[2][] calldata spamRequestIndices) external {
         votingToken.transferFrom(msg.sender, address(this), spamDeletionProposalBond);
         uint256 currentTime = getCurrentTime();
         uint256 runningValidationIndex;
@@ -972,13 +978,16 @@ contract VotingV2 is
                 spamRequestIndices: spamRequestIndices,
                 requestTime: currentTime,
                 executed: false,
-                proposer: msg.sender
+                proposer: msg.sender,
+                bond: spamDeletionProposalBond
             })
         );
 
         uint256 proposalId = spamDeletionProposals.length - 1;
 
-        bytes32 identifier = SpamGuardIdentifierLib._constructIdentifier(proposalId);
+        // Note that for proposalId>= 10^11 the generated identifier will no longer be unique but the manner
+        // in which the priceRequest id is encoded in _encodePriceRequest guarantees its uniqueness.
+        bytes32 identifier = SpamGuardIdentifierLib._constructIdentifier(SafeCast.toUint32(proposalId));
 
         _requestPrice(identifier, currentTime, "", true);
 
@@ -989,17 +998,18 @@ contract VotingV2 is
      * @notice Execute the spam deletion proposal if it has been approved by voting.
      * @param proposalId spam deletion proposal id.
      */
-    function executeSpamDeletion(uint256 proposalId) public {
+    function executeSpamDeletion(uint256 proposalId) external {
         require(spamDeletionProposals[proposalId].executed == false);
         spamDeletionProposals[proposalId].executed = true;
-        bytes32 identifier = SpamGuardIdentifierLib._constructIdentifier(proposalId);
+
+        bytes32 identifier = SpamGuardIdentifierLib._constructIdentifier(SafeCast.toUint32(proposalId));
 
         (bool hasPrice, int256 resolutionPrice, ) =
             _getPriceOrError(identifier, spamDeletionProposals[proposalId].requestTime, "");
         require(hasPrice);
 
-        // If the price is 1e18 then the spam deletion request was correctly voted on to delete the requests.
-        if (resolutionPrice == 1e18) {
+        // If the price is non zero then the spam deletion request was voted up to delete the requests. Execute delete.
+        if (resolutionPrice != 0) {
             // Delete the price requests associated with the spam.
             for (uint256 i = 0; i < spamDeletionProposals[proposalId].spamRequestIndices.length; i = unsafe_inc(i)) {
                 uint64 startIndex = uint64(spamDeletionProposals[proposalId].spamRequestIndices[uint256(i)][0]);
@@ -1007,13 +1017,7 @@ contract VotingV2 is
                 for (uint256 j = startIndex; j <= endIndex; j++) {
                     bytes32 requestId = priceRequestIds[j];
                     // Remove from pendingPriceRequests.
-                    uint256 lastIndex = pendingPriceRequests.length - 1;
-                    PriceRequest storage lastPriceRequest = priceRequests[pendingPriceRequests[lastIndex]];
-                    lastPriceRequest.pendingRequestIndex = priceRequests[requestId].pendingRequestIndex;
-                    pendingPriceRequests[priceRequests[requestId].pendingRequestIndex] = pendingPriceRequests[
-                        lastIndex
-                    ];
-                    pendingPriceRequests.pop();
+                    _removeRequestFromPendingPriceRequests(priceRequests[requestId].pendingRequestIndex);
 
                     // Remove the request from the priceRequests mapping.
                     delete priceRequests[requestId];
@@ -1025,7 +1029,7 @@ contract VotingV2 is
             }
 
             // Return the spamDeletionProposalBond.
-            votingToken.transfer(spamDeletionProposals[proposalId].proposer, spamDeletionProposalBond);
+            votingToken.transfer(spamDeletionProposals[proposalId].proposer, spamDeletionProposals[proposalId].bond);
             emit ExecutedSpamDeletion(proposalId, true);
         }
         // Else, the spam deletion request was voted down. In this case we send the spamDeletionProposalBond to the store.
@@ -1049,13 +1053,21 @@ contract VotingV2 is
      * @param spamDeletionRequestId spam deletion request id.
      * @return SpamDeletionRequest the spam deletion request.
      */
-    function getSpamDeletionRequest(uint256 spamDeletionRequestId) public view returns (SpamDeletionRequest memory) {
+    function getSpamDeletionRequest(uint256 spamDeletionRequestId) external view returns (SpamDeletionRequest memory) {
         return spamDeletionProposals[spamDeletionRequestId];
     }
 
     /****************************************
      *    PRIVATE AND INTERNAL FUNCTIONS    *
      ****************************************/
+
+    function _removeRequestFromPendingPriceRequests(uint64 pendingRequestIndex) internal {
+        uint256 lastIndex = pendingPriceRequests.length - 1;
+        PriceRequest storage lastPriceRequest = priceRequests[pendingPriceRequests[lastIndex]];
+        lastPriceRequest.pendingRequestIndex = pendingRequestIndex;
+        pendingPriceRequests[pendingRequestIndex] = pendingPriceRequests[lastIndex];
+        pendingPriceRequests.pop();
+    }
 
     // Returns the price for a given identifer. Three params are returns: bool if there was an error, int to represent
     // the resolved price and a string which is filled with an error message, if there was an error or "".
@@ -1133,17 +1145,14 @@ contract VotingV2 is
 
         // Else, the request is resolvable. Remove the element from the pending request and update pendingRequestIndex
         // within the price request struct to make the next entry into this method a no-op for this request.
-        uint256 lastIndex = pendingPriceRequests.length - 1;
-        PriceRequest storage lastPriceRequest = priceRequests[pendingPriceRequests[lastIndex]];
-        lastPriceRequest.pendingRequestIndex = priceRequest.pendingRequestIndex;
-        pendingPriceRequests[priceRequest.pendingRequestIndex] = pendingPriceRequests[lastIndex];
-        pendingPriceRequests.pop();
+        _removeRequestFromPendingPriceRequests(priceRequest.pendingRequestIndex);
 
         priceRequest.pendingRequestIndex = UINT64_MAX;
         emit PriceResolved(
             priceRequest.lastVotingRound,
             priceRequest.identifier,
             priceRequest.time,
+            priceRequest.priceRequestIndex,
             resolvedPrice,
             priceRequest.ancillaryData
         );

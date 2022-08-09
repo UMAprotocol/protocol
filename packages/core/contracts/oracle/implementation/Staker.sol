@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import "../../common/implementation/Testable.sol";
-
 import "./VotingToken.sol";
 import "../interfaces/StakerInterface.sol";
 
@@ -150,7 +148,7 @@ contract Staker is StakerInterface, Ownable {
      * Note that there is no way to cancel an unstake request, you must wait until after unstakeRequestTime and re-stake.
      * @param amount the amount of tokens to request to be unstaked.
      */
-    function requestUnstake(uint256 amount) public override {
+    function requestUnstake(uint256 amount) external override {
         require(!inActiveReveal(), "In an active reveal phase");
         _updateTrackers(msg.sender);
         VoterStake storage voterStake = voterStakes[msg.sender];
@@ -179,7 +177,7 @@ contract Staker is StakerInterface, Ownable {
      * @dev If a staker requested an unstake and time > unstakeRequestTime then send funds to staker. Note that this
      * method assumes that the `updateTrackers().
      */
-    function executeUnstake() public override {
+    function executeUnstake() external override {
         VoterStake storage voterStake = voterStakes[msg.sender];
         uint64 effectiveUnstakeCoolDown =
             voterStake.unstakeCoolDown > unstakeCoolDown ? unstakeCoolDown : voterStake.unstakeCoolDown;
@@ -211,8 +209,8 @@ contract Staker is StakerInterface, Ownable {
         if (tokensToMint > 0) {
             voterStake.outstandingRewards = 0;
             require(votingToken.mint(msg.sender, tokensToMint), "Voting token issuance failed");
+            emit WithdrawnRewards(msg.sender, tokensToMint);
         }
-        emit WithdrawnRewards(msg.sender, tokensToMint);
         return (tokensToMint);
     }
 
@@ -222,7 +220,7 @@ contract Staker is StakerInterface, Ownable {
      * @dev this method requires that the user has approved this contract.
      * @return uint256 the amount of tokens that the user is staking.
      */
-    function withdrawAndRestake() public returns (uint256) {
+    function withdrawAndRestake() external returns (uint256) {
         uint256 rewards = withdrawRewards();
         stake(rewards);
         return rewards;
@@ -237,7 +235,7 @@ contract Staker is StakerInterface, Ownable {
      * split prorate to stakers.
      * @param _emissionRate the new amount of voting tokens that are emitted per second, split prorate to stakers.
      */
-    function setEmissionRate(uint256 _emissionRate) public onlyOwner {
+    function setEmissionRate(uint256 _emissionRate) external onlyOwner {
         _updateReward(address(0));
         emissionRate = _emissionRate;
         emit SetNewEmissionRate(emissionRate);
@@ -248,7 +246,7 @@ contract Staker is StakerInterface, Ownable {
      * @dev Adjusting the unstake cool down will also affect pending unstake requests only if the cool down is lowered.
      * @param _unstakeCoolDown the new duration of the cool down period in seconds.
      */
-    function setUnstakeCoolDown(uint64 _unstakeCoolDown) public onlyOwner {
+    function setUnstakeCoolDown(uint64 _unstakeCoolDown) external onlyOwner {
         unstakeCoolDown = _unstakeCoolDown;
         emit SetNewUnstakeCooldown(unstakeCoolDown);
     }
