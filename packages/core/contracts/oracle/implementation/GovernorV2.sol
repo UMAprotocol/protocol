@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.15;
 
+import "../../common/implementation/Lockable.sol";
 import "../../common/implementation/MultiRole.sol";
 import "../interfaces/FinderInterface.sol";
 import "../interfaces/IdentifierWhitelistInterface.sol";
@@ -13,7 +14,7 @@ import "@openzeppelin/contracts/utils/Address.sol";
 /**
  * @title Takes proposals for certain governance actions and allows UMA token holders to vote on them.
  */
-contract GovernorV2 is MultiRole {
+contract GovernorV2 is MultiRole, Lockable {
     using Address for address;
 
     /****************************************
@@ -80,6 +81,7 @@ contract GovernorV2 is MultiRole {
      */
     function propose(Transaction[] memory transactions, bytes memory ancillaryData)
         external
+        nonReentrant()
         onlyRoleHolder(uint256(Roles.Proposer))
     {
         uint256 id = proposals.length;
@@ -120,7 +122,7 @@ contract GovernorV2 is MultiRole {
      * @param id unique id for the executed proposal.
      * @param transactionIndex unique transaction index for the executed proposal.
      */
-    function executeProposal(uint256 id, uint256 transactionIndex) external payable {
+    function executeProposal(uint256 id, uint256 transactionIndex) external payable nonReentrant() {
         Proposal storage proposal = proposals[id];
         int256 price =
             _getOracle().getPrice(

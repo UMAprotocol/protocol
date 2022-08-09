@@ -14,4 +14,10 @@ interface StakerInterface {
     function executeUnstake() external;
 
     function withdrawRewards() external returns (uint256);
+
+    function withdrawAndRestake() external returns (uint256);
+
+    function setEmissionRate(uint256 emissionRate) external;
+
+    function setUnstakeCoolDown(uint64 unstakeCoolDown) external;
 }
