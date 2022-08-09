@@ -233,10 +233,12 @@ contract VotingV2 is
     /**
      * @notice Construct the VotingV2 contract.
      * @param _emissionRate amount of voting tokens that are emitted per second, split prorate between stakers.
+     * @param _spamDeletionProposalBond amount of voting tokens that are required to propose a spam deletion.
      * @param _unstakeCoolDown time that a voter must wait to unstake after requesting to unstake.
      * @param _phaseLength length of the voting phases in seconds.
      * @param _minRollToNextRoundLength time before the end of a round in which a request must be made for the request
      *  to be voted on in the next round. If after this, the request is rolled to a round after the next round.
+     * @param _startingRequestIndex offset index to increment the first index in the priceRequestIds array.
      * @param _gat number of tokens that must participate to resolve a vote.
      * @param _votingToken address of the UMA token contract used to commit votes.
      * @param _finder keeps track of all contracts within the system based on their interfaceName.
@@ -639,6 +641,7 @@ contract VotingV2 is
 
     /**
      * @notice Gets the voter from the delegate.
+     * @param caller caller of the function or the address to check in the mapping between a voter and their delegate.
      * @return address voter that corresponds to the delegate.
      */
     function getVoterFromDelegate(address caller) public view returns (address) {
@@ -705,7 +708,7 @@ contract VotingV2 is
 
     /**
      * @notice Returns the current round ID, as a function of the current time.
-     * @return uint256 representing the unique round ID.
+     * @return uint256 the unique round ID.
      */
     function getCurrentRoundId() external view override returns (uint256) {
         return voteTiming.computeCurrentRoundId(getCurrentTime());
@@ -720,14 +723,26 @@ contract VotingV2 is
         return voteTiming.computeRoundEndTime(roundId);
     }
 
+    /**
+     * @notice Returns the total number of price requests enqueued into the oracle over all time.
+     * Note that a rolled vote is re-enqueued and as such will increment the number of requests, when rolled.
+     * @return uint256 the total number of prices requested.
+     */
     function getNumberOfPriceRequests() external view returns (uint256) {
         return priceRequestIds.length;
     }
 
+    /**
+     * @notice Returns aggregate slashing trackers for a given request index.
+     * @param requestIndex requestIndex the index of the request to fetch slashing trackers for.
+     * @return SlashingTracker Tracker object contains the slashed UMA per staked UMA per wrong vote and no vote, the
+     * total UMA slashed in the round and the total number of correct votes in the round.
+     */
     function requestSlashingTrackers(uint256 requestIndex) public view returns (SlashingTracker memory) {
         uint256 currentRoundId = voteTiming.computeCurrentRoundId(getCurrentTime());
         PriceRequest storage priceRequest = priceRequests[priceRequestIds[requestIndex]];
 
+        // If the request is not resolved return zeros for everything.
         if (_getRequestStatus(priceRequest, currentRoundId) != RequestStatus.Resolved)
             return SlashingTracker(0, 0, 0, 0);
 
@@ -1094,6 +1109,7 @@ contract VotingV2 is
         else return (false, 0, "Price was never requested");
     }
 
+    // Returns a price request object for a given identifier, time and ancillary data.
     function _getPriceRequest(
         bytes32 identifier,
         uint256 time,
@@ -1102,6 +1118,7 @@ contract VotingV2 is
         return priceRequests[_encodePriceRequest(identifier, time, ancillaryData)];
     }
 
+    // Returns an encoded bytes32 representing a price request. Used when storing/referencing price requests.
     function _encodePriceRequest(
         bytes32 identifier,
         uint256 time,
@@ -1110,6 +1127,8 @@ contract VotingV2 is
         return keccak256(abi.encode(identifier, time, ancillaryData));
     }
 
+    // Stores ("freezes") variables that should not shift within an active voting round. Called on reveal but only makes
+    // a state change if and only if the this is the first reveal.
     function _freezeRoundVariables(uint256 roundId) private {
         // Only freeze the round if this is the first request in the round.
         if (rounds[roundId].gat == 0) {
@@ -1121,6 +1140,7 @@ contract VotingV2 is
         }
     }
 
+    // Returns if a given price request, with known votingInstance and currentRoundId is resolved.
     function _priceRequestResolved(
         PriceRequest storage priceRequest,
         VoteInstance storage voteInstance,
@@ -1155,11 +1175,12 @@ contract VotingV2 is
         return true;
     }
 
+    // Return the GAT.
     function _computeGat(uint256 roundId) internal view returns (uint256) {
-        // Return the GAT.
         return rounds[roundId].gat;
     }
 
+    // Returns a price request status. A request is either: NotRequested, Active, Resolved or Future.
     function _getRequestStatus(PriceRequest storage priceRequest, uint256 currentRoundId)
         private
         view
@@ -1177,18 +1198,22 @@ contract VotingV2 is
         else return RequestStatus.Future;
     }
 
+    // Gas optimized uint256 increment.
     function unsafe_inc(uint256 x) internal pure returns (uint256) {
         unchecked { return x + 1; }
     }
 
+    // Gas optimized uint256 decrement.
     function unsafe_inc_64(uint64 x) internal pure returns (uint64) {
         unchecked { return x + 1; }
     }
 
+    // Returns the registered identifier whitelist, stored in the finder
     function _getIdentifierWhitelist() private view returns (IdentifierWhitelistInterface) {
         return IdentifierWhitelistInterface(finder.getImplementationAddress(OracleInterfaces.IdentifierWhitelist));
     }
 
+    // Reverts if the contract has been migrated. Used in a modifier, defined as a private function for gas savings.
     function _requireNotMigrated() private view {
         require(migratedAddress == address(0));
     }
