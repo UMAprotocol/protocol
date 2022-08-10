@@ -3289,6 +3289,64 @@ describe("VotingV2", function () {
     );
   });
 
+  it("Discontinuous rolling interplay with unapplied slashing.", async function () {
+    // Validate When multiple rounds are rolled and slashing is applied over a range things are applied as expected.
+
+    const identifier = padRight(utf8ToHex("slash-test"), 64); // Use the same identifier for both.
+    const time = 420;
+
+    // Make 4 requests. Pass 1 and 4. Roll 2 and 3.
+    await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
+    await voting.methods.requestPrice(identifier, time).send({ from: registeredContract });
+    await voting.methods.requestPrice(identifier, time + 1).send({ from: registeredContract });
+    await voting.methods.requestPrice(identifier, time + 2).send({ from: registeredContract });
+    await voting.methods.requestPrice(identifier, time + 3).send({ from: registeredContract });
+    assert.equal(await voting.methods.getNumberOfPriceRequests().call(), 4);
+
+    await moveToNextRound(voting, accounts[0]);
+    const roundId = (await voting.methods.getCurrentRoundId().call()).toString();
+
+    // Roll all votes except for request1.
+    // Commit votes.
+    const price = 123;
+    const salt = getRandomSignedInt(); // use the same salt for all votes. bad practice but wont impact anything.
+    const baseRequest = { salt, roundId, identifier };
+    const hash1 = computeVoteHash({ ...baseRequest, price: price, account: account1, time: time });
+    await voting.methods.commitVote(identifier, time, hash1).send({ from: account1 });
+    const hash2 = computeVoteHash({ ...baseRequest, price: price, account: account4, time: time + 1 });
+    await voting.methods.commitVote(identifier, time + 1, hash2).send({ from: account4 });
+    const hash3 = computeVoteHash({ ...baseRequest, price: price, account: account4, time: time + 2 });
+    await voting.methods.commitVote(identifier, time + 2, hash3).send({ from: account4 });
+    const hash4 = computeVoteHash({ ...baseRequest, price: price, account: account1, time: time + 3 });
+    await voting.methods.commitVote(identifier, time + 3, hash4).send({ from: account1 });
+
+    await moveToNextPhase(voting, accounts[0]); // Reveal the votes.
+
+    await voting.methods.revealVote(identifier, time, price, salt).send({ from: account1 });
+    await voting.methods.revealVote(identifier, time + 1, price, salt).send({ from: account4 });
+    await voting.methods.revealVote(identifier, time + 2, price, salt).send({ from: account4 });
+    await voting.methods.revealVote(identifier, time + 3, price, salt).send({ from: account1 });
+
+    // There should be a total of 4 requests, still.
+    assert.equal(await voting.methods.getNumberOfPriceRequests().call(), 4);
+
+    await moveToNextRound(voting, accounts[0]); // Move to the next round.
+
+    // Increment range one-by-one to ensure no compounding of slashing occurs.
+    await voting.methods.updateTrackersRange(account4, 1).send({ from: account1 });
+    await voting.methods.updateTrackersRange(account4, 2).send({ from: account1 });
+    await voting.methods.updateTrackersRange(account4, 3).send({ from: account1 });
+    await voting.methods.updateTrackersRange(account4, 4).send({ from: account1 });
+    await voting.methods.updateTrackersRange(account4, 5).send({ from: account1 });
+
+    // Account4 should lose two slots of 4mm*0.0016 from not participating in the two votes that settled.
+    // 2 * 4mm * 0.0016 = 12800.
+    assert.equal(
+      (await voting.methods.voterStakes(account4).call()).activeStake.toString(),
+      toWei("4000000").sub(toWei("12800")).toString()
+    );
+  });
+
   it("Duplicate Request Rewards", async function () {
     // We want to test that the slashing mechanism works properly when two consecutive price requests are rolled.
     // To accomplish this, we generate four price requests, the first and fourth of which are voted on and resolved,
