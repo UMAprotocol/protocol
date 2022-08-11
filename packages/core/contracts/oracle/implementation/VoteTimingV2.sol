@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity 0.8.15;
+pragma solidity 0.8.16;
 
 import "../interfaces/VotingV2Interface.sol";
 
@@ -24,8 +24,8 @@ library VoteTimingV2 {
         uint256 minRollToNextRoundLength
     ) internal {
         // This should have a require message but this results in an internal Solidity error.
-        require(phaseLength > 0);
-        require(minRollToNextRoundLength <= phaseLength);
+        require(phaseLength > 0, "Invalid phaseLength");
+        require(minRollToNextRoundLength <= phaseLength, "Invalid minRollToNextRoundLength");
         data.phaseLength = phaseLength;
         data.minRollToNextRoundLength = minRollToNextRoundLength;
     }

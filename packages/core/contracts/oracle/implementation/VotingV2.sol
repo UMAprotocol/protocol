@@ -1,7 +1,7 @@
 // TODO: this whole /oracle/implementation directory should be restructured to separate the DVM and the OO.
 
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity 0.8.15;
+pragma solidity 0.8.16;
 
 import "../../common/implementation/MultiCaller.sol";
 
@@ -11,8 +11,8 @@ import "../interfaces/OracleAncillaryInterface.sol";
 import "../interfaces/OracleGovernanceInterface.sol";
 import "../interfaces/OracleInterface.sol";
 import "../interfaces/VotingV2Interface.sol";
+import "../interfaces/RegistryInterface.sol";
 import "./Constants.sol";
-import "./Registry.sol";
 import "./ResultComputationV2.sol";
 import "./SlashingLibrary.sol";
 import "./SpamGuardIdentifierLib.sol";
@@ -302,7 +302,7 @@ contract VotingV2 is
         bytes32 identifier,
         uint256 time,
         bytes memory ancillaryData
-    ) public override onlyIfNotMigrated() onlyRegisteredContract() {
+    ) public override nonReentrant() onlyIfNotMigrated() onlyRegisteredContract() {
         _requestPrice(identifier, time, ancillaryData, false);
     }
 
@@ -494,7 +494,7 @@ contract VotingV2 is
         uint256 time,
         bytes memory ancillaryData,
         bytes32 hash
-    ) public override onlyIfNotMigrated() {
+    ) public override nonReentrant() onlyIfNotMigrated() {
         uint256 currentRoundId = voteTiming.computeCurrentRoundId(getCurrentTime());
         address voter = getVoterFromDelegate(msg.sender);
         _updateTrackers(voter);
@@ -539,7 +539,7 @@ contract VotingV2 is
         int256 price,
         bytes memory ancillaryData,
         int256 salt
-    ) public override onlyIfNotMigrated() {
+    ) public override nonReentrant() onlyIfNotMigrated() {
         // Note: computing the current round is required to disallow people from revealing an old commit after the round is over.
         uint256 currentRoundId = voteTiming.computeCurrentRoundId(getCurrentTime());
         _freezeRoundVariables(currentRoundId);
@@ -551,7 +551,10 @@ contract VotingV2 is
         // Scoping to get rid of a stack too deep errors for require messages.
         {
             // Can only reveal in the reveal phase.
-            require(voteTiming.computeCurrentPhase(getCurrentTime()) == Phase.Reveal);
+            require(
+                voteTiming.computeCurrentPhase(getCurrentTime()) == Phase.Reveal,
+                "Reveal phase has not started yet"
+            );
             // 0 hashes are disallowed in the commit phase, so they indicate a different error.
             // Cannot reveal an uncommitted or previously revealed hash
             require(voteSubmission.commit != bytes32(0), "Invalid hash reveal");
@@ -622,7 +625,7 @@ contract VotingV2 is
      * low-security available wallet for voting while keeping access to staked amounts secure by a more secure wallet.
      * @param delegate the address of the delegate.
      */
-    function setDelegate(address delegate) external {
+    function setDelegate(address delegate) external nonReentrant() {
         voterStakes[msg.sender].delegate = delegate;
     }
 
@@ -631,7 +634,7 @@ contract VotingV2 is
      * if the delegator also selected the delegate to do so (two-way relationship needed).
      * @param delegator the address of the delegator.
      */
-    function setDelegator(address delegator) external {
+    function setDelegator(address delegator) external nonReentrant() {
         delegateToStaker[msg.sender] = delegator;
     }
 
@@ -781,7 +784,7 @@ contract VotingV2 is
      * @param newGat sets the next round's Gat.
      */
     function setGat(uint256 newGat) external override onlyOwner {
-        require(newGat < votingToken.totalSupply() && newGat > 0);
+        require(newGat < votingToken.totalSupply() && newGat > 0, "Invalid GAT");
         gat = newGat;
         emit GatChanged(newGat);
     }
@@ -820,7 +823,10 @@ contract VotingV2 is
      * @param indexTo last price request index to update the trackers for.
      */
     function updateTrackersRange(address voterAddress, uint256 indexTo) external {
-        require(voterStakes[voterAddress].lastRequestIndexConsidered < indexTo && indexTo <= priceRequestIds.length);
+        require(
+            voterStakes[voterAddress].lastRequestIndexConsidered < indexTo && indexTo <= priceRequestIds.length,
+            "Invalid indexTo"
+        );
 
         _updateAccountSlashingTrackers(voterAddress, indexTo);
     }
@@ -986,7 +992,7 @@ contract VotingV2 is
      * @param spamRequestIndices list of request indices to be declared as spam. Each element is a
      * pair of uint256s representing the start and end of the range.
      */
-    function signalRequestsAsSpamForDeletion(uint256[2][] calldata spamRequestIndices) external {
+    function signalRequestsAsSpamForDeletion(uint256[2][] calldata spamRequestIndices) external nonReentrant() {
         votingToken.transferFrom(msg.sender, address(this), spamDeletionProposalBond);
         uint256 currentTime = getCurrentTime();
         uint256 runningValidationIndex;
@@ -1000,7 +1006,8 @@ contract VotingV2 is
             require(
                 spamRequestIndex[0] <= spamRequestIndex[1] &&
                     spamRequestIndex[1] < priceRequestIds.length &&
-                    spamRequestIndex[1] > runningValidationIndex
+                    spamRequestIndex[1] > runningValidationIndex,
+                "Invalid spam request index"
             );
 
             runningValidationIndex = spamRequestIndex[1];
@@ -1031,15 +1038,16 @@ contract VotingV2 is
      * @notice Execute the spam deletion proposal if it has been approved by voting.
      * @param proposalId spam deletion proposal id.
      */
-    function executeSpamDeletion(uint256 proposalId) external {
-        require(spamDeletionProposals[proposalId].executed == false);
+
+    function executeSpamDeletion(uint256 proposalId) external nonReentrant() {
+        require(spamDeletionProposals[proposalId].executed == false, "Proposal already executed");
         spamDeletionProposals[proposalId].executed = true;
 
         bytes32 identifier = SpamGuardIdentifierLib._constructIdentifier(SafeCast.toUint32(proposalId));
 
         (bool hasPrice, int256 resolutionPrice, ) =
             _getPriceOrError(identifier, spamDeletionProposals[proposalId].requestTime, "");
-        require(hasPrice);
+        require(hasPrice, "No price found for spam deletion");
 
         // If the price is non zero then the spam deletion request was voted up to delete the requests. Execute delete.
         if (resolutionPrice != 0) {
@@ -1237,11 +1245,11 @@ contract VotingV2 is
 
     // Reverts if the contract has been migrated. Used in a modifier, defined as a private function for gas savings.
     function _requireNotMigrated() private view {
-        require(migratedAddress == address(0));
+        require(migratedAddress == address(0), "Contract migrated");
     }
 
     function _requireRegisteredContract() private view {
-        Registry registry = Registry(finder.getImplementationAddress(OracleInterfaces.Registry));
+        RegistryInterface registry = RegistryInterface(finder.getImplementationAddress(OracleInterfaces.Registry));
         require(
             registry.isContractRegistered(msg.sender) || msg.sender == migratedAddress,
             "Caller must be registered"
