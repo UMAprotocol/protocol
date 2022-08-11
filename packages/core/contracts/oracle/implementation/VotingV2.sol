@@ -514,11 +514,6 @@ contract VotingV2 is
         emit VoteCommitted(voter, msg.sender, currentRoundId, identifier, time, ancillaryData);
     }
 
-    function withdrawAndRestake() external override returns (uint256) {
-        address voter = getVoterFromDelegate(msg.sender);
-        return _withdrawAndRestake(voter);
-    }
-
     // Overloaded method to enable short term backwards compatibility. Will be deprecated in the next DVM version.
     function commitVote(
         bytes32 identifier,
@@ -641,6 +636,17 @@ contract VotingV2 is
      */
     function setDelegator(address delegator) external nonReentrant() {
         delegateToStaker[msg.sender] = delegator;
+    }
+
+    /**
+     * @notice Stake accumulated rewards. This is merely a convenience mechanism that combines the voter's withdrawal and stake
+     *  in the same transaction if requested by a delegate or the voter himself.
+     * @dev this method requires that the msg.sender(voter or delegate) has approved this contract.
+     * @return uint256 the amount of tokens that the voter is staking.
+     */
+    function withdrawAndRestake() external override returns (uint256) {
+        address voter = getVoterFromDelegate(msg.sender);
+        return _withdrawAndRestake(voter);
     }
 
     /****************************************

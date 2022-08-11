@@ -205,10 +205,6 @@ abstract contract Staker is StakerInterface, Ownable, Lockable {
         return _withdrawRewards(msg.sender);
     }
 
-    /**
-     * @notice Send accumulated rewards to the voter. Note that these rewards do not include slashing balance changes.
-     * @return uint256 the amount of tokens sent to the voter.
-     */
     function _withdrawRewards(address wallet) internal returns (uint256) {
         _updateTrackers(wallet);
         VoterStake storage voterStake = voterStakes[wallet];
@@ -225,19 +221,13 @@ abstract contract Staker is StakerInterface, Ownable, Lockable {
     /**
      * @notice Stake accumulated rewards. This is just a convenience method that combines withdraw with stake in the
      * same transaction.
-     * @dev this method requires that the user has approved this contract.
+     * @dev this method requires that the msg.sender has approved this contract.
      * @return uint256 the amount of tokens that the user is staking.
      */
     function withdrawAndRestake() external virtual returns (uint256) {
         return _withdrawAndRestake(msg.sender);
     }
 
-    /**
-     * @notice Stake accumulated rewards. This is just a convenience method that combines withdraw with stake in the
-     * same transaction.
-     * @dev this method requires that the user has approved this contract.
-     * @return uint256 the amount of tokens that the user is staking.
-     */
     function _withdrawAndRestake(address wallet) internal returns (uint256) {
         uint256 rewards = _withdrawRewards(wallet);
         _stake(wallet, rewards);
