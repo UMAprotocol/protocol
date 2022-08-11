@@ -3490,7 +3490,11 @@ describe("VotingV2", function () {
 
     // Delegate needs to approve voting
     await votingToken.methods.approve(voting.options.address, outstandingRewards).send({ from: rand });
-    await voting.methods.withdrawAndRestake().send({ from: rand });
+    const tx = await voting.methods.withdrawAndRestake().send({ from: rand });
+
+    assert.equal(tx.events.WithdrawnRewards.returnValues.voter, accounts[0]);
+    assert.equal(tx.events.WithdrawnRewards.returnValues.delegate, rand);
+    assert.equal(tx.events.WithdrawnRewards.returnValues.tokensWithdrawn, outstandingRewards);
 
     const stakingBalance = await voting.methods.voterStakes(account1).call();
 

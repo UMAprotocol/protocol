@@ -72,7 +72,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable {
         uint256 voterPendingStake
     );
 
-    event WithdrawnRewards(address indexed voter, uint256 tokensWithdrawn);
+    event WithdrawnRewards(address indexed voter, address indexed delegate, uint256 tokensWithdrawn);
 
     event UpdatedReward(address indexed voter, uint256 newReward, uint256 lastUpdateTime);
 
@@ -213,7 +213,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable {
         if (tokensToMint > 0) {
             voterStake.outstandingRewards = 0;
             require(votingToken.mint(msg.sender, tokensToMint), "Voting token issuance failed");
-            emit WithdrawnRewards(wallet, tokensToMint);
+            emit WithdrawnRewards(wallet, msg.sender, tokensToMint);
         }
         return tokensToMint;
     }
