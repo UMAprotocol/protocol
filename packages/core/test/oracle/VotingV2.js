@@ -3338,6 +3338,7 @@ describe("VotingV2", function () {
     await voting.methods.updateTrackersRange(account4, 3).send({ from: account1 });
     await voting.methods.updateTrackersRange(account4, 4).send({ from: account1 });
     await voting.methods.updateTrackersRange(account4, 5).send({ from: account1 });
+    await voting.methods.updateTrackers(account4).send({ from: account1 });
 
     // Account4 should lose two slots of 4mm*0.0016 from not participating in the two votes that settled.
     // 2 * 4mm * 0.0016 = 12800.
@@ -3345,6 +3346,9 @@ describe("VotingV2", function () {
       (await voting.methods.voterStakes(account4).call()).activeStake.toString(),
       toWei("4000000").sub(toWei("12800")).toString()
     );
+    // expected 3987200
+    // actual   3987210.24
+    //          3987210.24
   });
 
   it("Duplicate Request Rewards", async function () {

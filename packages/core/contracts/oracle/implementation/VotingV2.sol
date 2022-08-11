@@ -19,6 +19,8 @@ import "./SpamGuardIdentifierLib.sol";
 import "./Staker.sol";
 import "./VoteTimingV2.sol";
 
+import "hardhat/console.sol";
+
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 /**
@@ -128,6 +130,8 @@ contract VotingV2 is
 
     // Max value of an unsigned integer.
     uint64 private constant UINT64_MAX = type(uint64).max;
+
+    uint64 private lastRolledIndex;
 
     // Max length in bytes of ancillary data that can be appended to a price request.
     uint256 public constant ANCILLARY_BYTES_LIMIT = 8192;
@@ -879,7 +883,11 @@ contract VotingV2 is
                 // must have been rolled. In this case, update the internal trackers for this vote.
                 if (priceRequest.lastVotingRound < currentRoundId) {
                     priceRequest.lastVotingRound = SafeCast.toUint32(currentRoundId);
-                    skippedRequestIndexes[requestIndex] = requestIndex;
+                    if (
+                        lastRolledIndex == 0 ||
+                        (lastRolledIndex != 0 && skippedRequestIndexes[lastRolledIndex] != requestIndex - 1)
+                    ) lastRolledIndex = requestIndex;
+                    skippedRequestIndexes[lastRolledIndex] = requestIndex;
                     priceRequest.priceRequestIndex = SafeCast.toUint64(priceRequestIds.length);
                     // If the indexTo is equal to the length of the priceRequestIds array then this method was entered
                     // via the normal updateTrackers call which is meant to apply slashing to the most recent request.
@@ -958,6 +966,7 @@ contract VotingV2 is
         // loop) has the same voting round as the indexTo (element after the last element in the loop) then we know that
         // we've bisected a round and should store the unapplied slashing which will seed this method on the next entry
         // such that the slashing will be applied linearly, not compounding with other slashing within the same round.
+
         if (slash != 0)
             if (
                 indexTo < priceRequestIds.length &&
