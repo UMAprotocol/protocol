@@ -642,6 +642,8 @@ contract VotingV2 is
      * @notice Stake accumulated rewards. This is merely a convenience mechanism that combines the voter's withdrawal and stake
      *  in the same transaction if requested by a delegate or the voter himself.
      * @dev this method requires that the msg.sender(voter or delegate) has approved this contract.
+     * @dev The rewarded tokens simply pass through the delegate's wallet before being staked on the voter's behalf.
+     *  The balance of the delegate remains unchanged.
      * @return uint256 the amount of tokens that the voter is staking.
      */
     function withdrawAndRestake() external override returns (uint256) {
