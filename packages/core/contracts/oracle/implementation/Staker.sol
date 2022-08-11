@@ -113,14 +113,19 @@ abstract contract Staker is StakerInterface, Ownable, Lockable {
      * be added to the pending stake. If not, the stake amount will be added to the active stake.
      * @param amount the amount of tokens to stake.
      */
-    function stake(uint256 amount) public override nonReentrant() {
-        VoterStake storage voterStake = voterStakes[msg.sender];
+    function stake(uint256 amount) public {
+        _stake(msg.sender, amount);
+    }
+
+    function _stake(address wallet, uint256 amount) internal {
+        VoterStake storage voterStake = voterStakes[wallet];
+
         // If the staker has a cumulative staked balance of 0 then we can shortcut their lastRequestIndexConsidered to
         // the most recent index. This means we don't need to traverse requests where the staker was not staked.
         // _getStartingIndexForStaker returns the appropriate index to start at.
-        if (getVoterStake(msg.sender) + voterStake.pendingUnstake == 0)
+        if (getVoterStake(wallet) + voterStake.pendingUnstake == 0)
             voterStake.nextIndexToProcess = _getStartingIndexForStaker();
-        _updateTrackers(msg.sender);
+        _updateTrackers(wallet);
 
         if (_inActiveReveal()) {
             voterStake.pendingStake += amount;
@@ -132,7 +137,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable {
 
         votingToken.transferFrom(msg.sender, address(this), amount);
         emit Staked(
-            msg.sender,
+            wallet,
             amount,
             voterStake.activeStake,
             voterStake.pendingStake,
@@ -196,15 +201,23 @@ abstract contract Staker is StakerInterface, Ownable, Lockable {
      * @notice Send accumulated rewards to the voter. Note that these rewards do not include slashing balance changes.
      * @return uint256 the amount of tokens sent to the voter.
      */
-    function withdrawRewards() public override nonReentrant() returns (uint256) {
-        _updateTrackers(msg.sender);
-        VoterStake storage voterStake = voterStakes[msg.sender];
+    function withdrawRewards() public returns (uint256) {
+        return _withdrawRewards(msg.sender);
+    }
+
+    /**
+     * @notice Send accumulated rewards to the voter. Note that these rewards do not include slashing balance changes.
+     * @return uint256 the amount of tokens sent to the voter.
+     */
+    function _withdrawRewards(address wallet) internal returns (uint256) {
+        _updateTrackers(wallet);
+        VoterStake storage voterStake = voterStakes[wallet];
 
         uint256 tokensToMint = voterStake.outstandingRewards;
         if (tokensToMint > 0) {
             voterStake.outstandingRewards = 0;
             require(votingToken.mint(msg.sender, tokensToMint), "Voting token issuance failed");
-            emit WithdrawnRewards(msg.sender, tokensToMint);
+            emit WithdrawnRewards(wallet, tokensToMint);
         }
         return tokensToMint;
     }
@@ -215,9 +228,19 @@ abstract contract Staker is StakerInterface, Ownable, Lockable {
      * @dev this method requires that the user has approved this contract.
      * @return uint256 the amount of tokens that the user is staking.
      */
-    function withdrawAndRestake() external returns (uint256) {
-        uint256 rewards = withdrawRewards();
-        stake(rewards);
+    function withdrawAndRestake() external virtual returns (uint256) {
+        return _withdrawAndRestake(msg.sender);
+    }
+
+    /**
+     * @notice Stake accumulated rewards. This is just a convenience method that combines withdraw with stake in the
+     * same transaction.
+     * @dev this method requires that the user has approved this contract.
+     * @return uint256 the amount of tokens that the user is staking.
+     */
+    function _withdrawAndRestake(address wallet) internal returns (uint256) {
+        uint256 rewards = _withdrawRewards(wallet);
+        _stake(wallet, rewards);
         return rewards;
     }
 

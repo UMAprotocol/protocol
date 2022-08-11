@@ -514,6 +514,11 @@ contract VotingV2 is
         emit VoteCommitted(voter, msg.sender, currentRoundId, identifier, time, ancillaryData);
     }
 
+    function withdrawAndRestake() external override returns (uint256) {
+        address voter = getVoterFromDelegate(msg.sender);
+        return _withdrawAndRestake(voter);
+    }
+
     // Overloaded method to enable short term backwards compatibility. Will be deprecated in the next DVM version.
     function commitVote(
         bytes32 identifier,
