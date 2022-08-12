@@ -3290,7 +3290,7 @@ describe("VotingV2", function () {
     );
   });
 
-  it("Discontinuous rolling interplay with unapplied slashing.", async function () {
+  it("Discontinuous rolling interplay with unapplied slashing", async function () {
     // Validate When multiple rounds are rolled and slashing is applied over a range things are applied as expected.
 
     const identifier = padRight(utf8ToHex("slash-test"), 64); // Use the same identifier for both.
@@ -3334,21 +3334,55 @@ describe("VotingV2", function () {
     await moveToNextRound(voting, accounts[0]); // Move to the next round.
 
     // Increment range one-by-one to ensure no compounding of slashing occurs.
+    await voting.methods.updateTrackersRange(account4, 1).send({ from: account1 });
     await voting.methods.updateTrackersRange(account4, 2).send({ from: account1 });
     await voting.methods.updateTrackersRange(account4, 3).send({ from: account1 });
     await voting.methods.updateTrackersRange(account4, 4).send({ from: account1 });
     await voting.methods.updateTrackersRange(account4, 5).send({ from: account1 });
-    await voting.methods.updateTrackers(account4).send({ from: account1 });
+    await voting.methods.updateTrackersRange(account4, 6).send({ from: account1 });
+    // await voting.methods.updateTrackers(account4).send({ from: account1 });
 
     // Account4 should lose two slots of 4mm*0.0016 from not participating in the two votes that settled.
     // 2 * 4mm * 0.0016 = 12800.
+    assert.equal((await voting.methods.voterStakes(account4).call()).activeStake, toWei("4000000").sub(toWei("12800")));
+
+    // Equally, we should be able to update account2 in one call and their balance should update as expected traversing
+    // all requests in one go. They should loose two slots of 32mm*0.0016. 2 * 32mm * 0.0016 = 102400.
+    await voting.methods.updateTrackers(account2).send({ from: account1 });
     assert.equal(
-      (await voting.methods.voterStakes(account4).call()).activeStake.toString(),
-      toWei("4000000").sub(toWei("12800")).toString()
+      (await voting.methods.voterStakes(account2).call()).activeStake,
+      toWei("32000000").sub(toWei("102400"))
     );
-    // expected 3987200
-    // actual   3987210.24
-    //          3987210.24
+
+    // Finally, try partial updates on account3 with interspersed balance checks. Updating request 1 should apply
+    await voting.methods.updateTrackersRange(account3, 1).send({ from: account1 });
+    assert.equal((await voting.methods.voterStakes(account3).call()).activeStake, toWei("32000000"));
+    assert.equal((await voting.methods.voterStakes(account3).call()).unappliedSlash, toWei("-51200"));
+    await voting.methods.updateTrackersRange(account3, 2).send({ from: account1 });
+    assert.equal((await voting.methods.voterStakes(account3).call()).activeStake, toWei("32000000"));
+    assert.equal((await voting.methods.voterStakes(account3).call()).unappliedSlash, toWei("-51200"));
+    await voting.methods.updateTrackersRange(account3, 3).send({ from: account1 });
+    assert.equal((await voting.methods.voterStakes(account3).call()).activeStake, toWei("32000000"));
+    assert.equal((await voting.methods.voterStakes(account3).call()).unappliedSlash, toWei("-51200"));
+    await voting.methods.updateTrackersRange(account3, 4).send({ from: account1 });
+    assert.equal(
+      (await voting.methods.voterStakes(account3).call()).activeStake,
+      toWei("32000000").sub(toWei("102400"))
+    );
+    assert.equal((await voting.methods.voterStakes(account3).call()).unappliedSlash, toWei("0"));
+    await voting.methods.updateTrackersRange(account3, 5).send({ from: account1 });
+    assert.equal(
+      (await voting.methods.voterStakes(account3).call()).activeStake,
+      toWei("32000000").sub(toWei("102400"))
+    );
+    assert.equal((await voting.methods.voterStakes(account3).call()).unappliedSlash, toWei("0"));
+
+    await voting.methods.updateTrackersRange(account3, 6).send({ from: account1 });
+    assert.equal((await voting.methods.voterStakes(account3).call()).unappliedSlash, toWei("0"));
+    assert.equal(
+      (await voting.methods.voterStakes(account3).call()).activeStake,
+      toWei("32000000").sub(toWei("102400"))
+    );
   });
 
   it("Duplicate Request Rewards", async function () {
