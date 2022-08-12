@@ -19,8 +19,6 @@ import "./SpamGuardIdentifierLib.sol";
 import "./Staker.sol";
 import "./VoteTimingV2.sol";
 
-import "hardhat/console.sol";
-
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 /**
@@ -50,7 +48,6 @@ contract VotingV2 is
         uint32 lastVotingRound;
         // Denotes whether this is a governance request or not.
         bool isGovernance;
-        bool isRolled;
         // The pendingRequestIndex in the pendingPriceRequests that references this PriceRequest. A value of UINT64_MAX
         // means that this PriceRequest is resolved and has been cleaned up from pendingPriceRequests.
         uint64 pendingRequestIndex;
@@ -131,9 +128,6 @@ contract VotingV2 is
 
     // Max value of an unsigned integer.
     uint64 private constant UINT64_MAX = type(uint64).max;
-
-    // Internal tracker that stores the last rolled index updated within the slashing trackers.
-    uint64 private lastRolledIndex;
 
     // Max length in bytes of ancillary data that can be appended to a price request.
     uint256 public constant ANCILLARY_BYTES_LIMIT = 8192;
@@ -505,7 +499,7 @@ contract VotingV2 is
         address voter = getVoterFromDelegate(msg.sender);
         _updateTrackers(voter);
         uint256 blockTime = getCurrentTime();
-        require(hash != bytes32(0), "Invalid provided hash");
+        require(hash != bytes32(0));
         require(voteTiming.computeCurrentPhase(blockTime) == Phase.Commit, "Cannot commit in reveal phase");
 
         PriceRequest storage priceRequest = _getPriceRequest(identifier, time, ancillaryData);
@@ -828,9 +822,9 @@ contract VotingV2 is
      * @param voterAddress address of the voter to update the trackers for.
      * @param indexTo last price request index to update the trackers for.
      */
-    function updateTrackersRange(address voterAddress, uint64 indexTo) external {
+    function updateTrackersRange(address voterAddress, uint256 indexTo) external {
         require(
-            voterStakes[voterAddress].nextRequestIndexToConsider < indexTo && indexTo <= priceRequestIds.length,
+            voterStakes[voterAddress].nextIndexToProcess < indexTo && indexTo <= priceRequestIds.length,
             "Invalid indexTo"
         );
 
@@ -839,7 +833,7 @@ contract VotingV2 is
 
     // Updates the global and selected wallet's trackers for staking and voting.
     function _updateTrackers(address voterAddress) internal override {
-        _updateAccountSlashingTrackers(voterAddress, uint64(priceRequestIds.length));
+        _updateAccountSlashingTrackers(voterAddress, priceRequestIds.length);
         super._updateTrackers(voterAddress);
     }
 
@@ -853,8 +847,7 @@ contract VotingV2 is
     }
 
     // Updates the slashing trackers of a given account based on previous voting activity.
-    function _updateAccountSlashingTrackers(address voterAddress, uint64 indexTo) internal {
-        if (indexTo == 0) return;
+    function _updateAccountSlashingTrackers(address voterAddress, uint256 indexTo) internal {
         uint256 currentRoundId = voteTiming.computeCurrentRoundId(getCurrentTime());
         VoterStake storage voterStake = voterStakes[voterAddress];
         // Note the method below can hit a gas limit of there are a LOT of requests from the last time this was run.
@@ -863,8 +856,9 @@ contract VotingV2 is
         // Traverse all requests from the last considered request. For each request see if the voter voted correctly or
         // not. Based on the outcome, attribute the associated slash to the voter.
         int256 slash = voterStake.unappliedSlash;
+        uint64 nextIndexToProcess = voterStake.nextIndexToProcess;
         for (
-            uint64 requestIndex = voterStake.nextRequestIndexToConsider;
+            uint64 requestIndex = voterStake.nextIndexToProcess;
             requestIndex < indexTo;
             requestIndex = unsafe_inc_64(requestIndex)
         ) {
@@ -873,7 +867,6 @@ contract VotingV2 is
                 continue;
             }
 
-            if (requestIndex > indexTo - 1) break; // This happens if the last element was a rolled vote.
             PriceRequest storage priceRequest = priceRequests[priceRequestIds[requestIndex]];
             VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
 
@@ -886,35 +879,30 @@ contract VotingV2 is
                 // must have been rolled. In this case, update the internal trackers for this vote.
                 if (priceRequest.lastVotingRound < currentRoundId) {
                     priceRequest.lastVotingRound = SafeCast.toUint32(currentRoundId);
-                    // If the lastRolledIndex is not set or the last rolled index is not equal to the previous index
-                    // then set it to the current index. This acts to only update hte lastRolledIndex when we transition
-                    // over ranges of continuous rolled votes.
-                    if (
-                        lastRolledIndex == 0 ||
-                        (lastRolledIndex != 0 && skippedRequestIndexes[lastRolledIndex] != requestIndex - 1)
-                    ) lastRolledIndex = requestIndex;
-                    // Set the skippedRequestIndexes mapping at the last rolled index to the current index. This acts
-                    // to create a jump from the first rolled index (last rollIndex was no updated if sequential) to the
-                    // current request index, thereby making a continuous jump over all rolled votes.
-                    skippedRequestIndexes[lastRolledIndex] = requestIndex;
-                    // If the lastRolled index is not the current index (multi-round roll) then set the requestIndex equal
-                    // to its self to indicate that this index was jumped. This will never normally be hit within round
-                    // traversal (due to jumping over a range of rolled votes) but it is useful to have to see that a
-                    // vote was skipped. This is also levered in the logic outside of the forloop for other slashing.
-                    if (lastRolledIndex != requestIndex) skippedRequestIndexes[requestIndex] = requestIndex;
+
+                    // This is a subtle operation. This is not setting the skip value for the _current request_ to this
+                    // value. It is setting the skip value for the element after the last processed index to the skip
+                    // value. This causes this skip interval to extend on each subsequent rolled request because no
+                    // new elements are processed on a skip, thereby leaving nextIndexToProcess the same.
+                    skippedRequestIndexes[nextIndexToProcess] = requestIndex;
                     priceRequest.priceRequestIndex = SafeCast.toUint64(priceRequestIds.length);
-                    // If the indexTo is equal to the length of the priceRequestIds array then this method was entered
-                    // via the normal updateTrackers call which is meant to apply slashing to the most recent request.
-                    // As we've appended a new request, we must extend how far the loop will traverse such that we mimic
-                    // the standard update behavior of traversing all requests. If these values are not equal then this
-                    // method was entered via the updateTrackersRange call and we only traverse the range requested.
-                    if (indexTo == priceRequestIds.length) indexTo++;
                     priceRequestIds.push(priceRequestIds[requestIndex]);
                     continue;
                 }
                 // Else, we are simply evaluating a request that is still actively being voted on. In this case, break as
                 // all subsequent requests within the array must be in the same state and can't have any slashing applied.
                 break;
+            }
+
+            // If the request we're processing now is not the same round as the last index we processed successfully (not
+            // rolled), then we need to apply slashing because there's been a round change.
+            if (
+                slash != 0 &&
+                nextIndexToProcess != 0 &&
+                priceRequests[priceRequestIds[nextIndexToProcess - 1]].lastVotingRound != priceRequest.lastVotingRound
+            ) {
+                _applySlashToVoter(slash, voterStake, voterAddress);
+                slash = 0;
             }
 
             uint256 totalCorrectVotes = voteInstance.resultComputation.getTotalCorrectlyVotedTokens();
@@ -950,53 +938,38 @@ contract VotingV2 is
                 slash += int256(((voterStake.activeStake * totalSlashed)) / totalCorrectVotes);
             }
 
-            // If this is not the last price request to apply and the next request in the batch is from a subsequent
-            // round then apply the slashing now. Else, do nothing and apply the slashing after the loop concludes.
-            // This acts to apply slashing within a round as independent actions: multiple votes within the same round
-            // should not impact each other but subsequent rounds should impact each other. We need to consider the
-            // skippedRequestIndexes mapping when finding the next index as the next request may have been deleted or rolled.
-            uint256 nextRequestIndex = _getSubsequentRequestIndex(requestIndex);
-            if (
-                slash != 0 && // There is some slashing to apply.
-                indexTo > nextRequestIndex && // The next request index wont exceed the max traversal range (prevent out of bounds.)
-                // The round of the next request is not the same as the current round; Hence we are traversing rounds.
-                priceRequest.lastVotingRound != priceRequests[priceRequestIds[nextRequestIndex]].lastVotingRound
-            ) {
-                _applySlashToVoter(slash, voterStake, voterAddress);
-                slash = 0;
-            }
-            voterStake.nextRequestIndexToConsider = requestIndex + 1;
+            nextIndexToProcess = requestIndex + 1;
         }
 
         // If there is any remaining slashing then apply it. This occurs when there is unapplied slashing in the loop
         // due to the last unlashed elements all being all from the same round. i.e we only slash within the loop when
         // transitioning between rounds and the last round is slashed here. Note that there is a special case that needs
-        // to be considered separately: if the indexTo is less than the priceRequestIndex.length then we know we
-        // are dealing with a partial index slashing via a call to updateTrackersRange. If this is the case, we need to
-        // be careful for ranges that bisect a voting round as all slashing must be applied linearly and independently
-        // within each round. If we are in this case and the element before the indexTo (last element executed in the
-        // loop) has the same voting round as the indexTo (element after the last element in the loop) then we know that
+        // to be considered separately: if the nextIndex that we're going to process is >= priceRequestIds, then we
+        // know that there's going to be a round change because new requests never get added to a past round.
+        // If we are not in this case and the next element to be processed has the same round, then we know that
         // we've bisected a round and should store the unapplied slashing which will seed this method on the next entry
         // such that the slashing will be applied linearly, not compounding with other slashing within the same round.
-
-        uint64 lastIndexProcessed = indexTo - 1;
-        if (slash != 0)
+        if (slash != 0) {
+            // The next index could be either a the result of the skip for the next value if it's nonzero or just the
+            // next unprocessed index if there is no skip value for it. This ensures that the price request we read has
+            // not been modified by round-changing when rolling.
+            uint256 nextIndex =
+                skippedRequestIndexes[nextIndexToProcess] != 0
+                    ? skippedRequestIndexes[nextIndexToProcess] + 1
+                    : nextIndexToProcess;
             if (
-                indexTo < priceRequestIds.length && // We entered via the updateTrackersRange call.
-                // The next request and this request are in the same round.
-                priceRequests[priceRequestIds[lastIndexProcessed]].lastVotingRound ==
-                priceRequests[priceRequestIds[_getSubsequentRequestIndex(lastIndexProcessed)]].lastVotingRound
-            ) voterStake.unappliedSlash = slash;
-            else if (skippedRequestIndexes[lastIndexProcessed] == 0)
+                nextIndexToProcess < priceRequestIds.length &&
+                nextIndexToProcess != 0 &&
+                priceRequests[priceRequestIds[nextIndexToProcess - 1]].lastVotingRound ==
+                priceRequests[priceRequestIds[nextIndex]].lastVotingRound
+            ) {
+                voterStake.unappliedSlash = slash;
+            } else {
                 _applySlashToVoter(slash, voterStake, voterAddress);
-    }
+            }
+        }
 
-    // Returns the subsequent request index for a given request index, considering the skippedRequestIndexes mapping.
-    function _getSubsequentRequestIndex(uint64 requestIndex) internal view returns (uint64) {
-        return
-            skippedRequestIndexes[requestIndex + 1] != 0
-                ? skippedRequestIndexes[requestIndex + 1] + 1
-                : requestIndex + 1;
+        voterStake.nextIndexToProcess = nextIndexToProcess;
     }
 
     // Applies a given slash to a given voter's stake.
