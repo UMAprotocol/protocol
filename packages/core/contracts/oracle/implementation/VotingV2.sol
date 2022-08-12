@@ -867,7 +867,6 @@ contract VotingV2 is
                 continue;
             }
 
-            if (requestIndex > indexTo - 1) break; // This happens if the last element was a rolled vote.
             PriceRequest storage priceRequest = priceRequests[priceRequestIds[requestIndex]];
             VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
 
@@ -880,14 +879,13 @@ contract VotingV2 is
                 // must have been rolled. In this case, update the internal trackers for this vote.
                 if (priceRequest.lastVotingRound < currentRoundId) {
                     priceRequest.lastVotingRound = SafeCast.toUint32(currentRoundId);
+
+                    // This is a subtle operation. This is not setting the skip value for the _current request_ to this
+                    // value. It is setting the skip value for the element after the last processed index to the skip
+                    // value. This causes this skip interval to extend on each subsequent rolled request because no
+                    // new elements are processed on a skip, thereby leaving nextIndexToProcess the same.
                     skippedRequestIndexes[nextIndexToProcess] = requestIndex;
                     priceRequest.priceRequestIndex = SafeCast.toUint64(priceRequestIds.length);
-                    // If the indexTo is equal to the length of the priceRequestIds array then this method was entered
-                    // via the normal updateTrackers call which is meant to apply slashing to the most recent request.
-                    // As we've appended a new request, we must extend how far the loop will traverse such that we mimic
-                    // the standard update behavior of traversing all requests. If these values are not equal then this
-                    // method was entered via the updateTrackersRange call and we only traverse the range requested.
-                    if (indexTo == priceRequestIds.length) indexTo++;
                     priceRequestIds.push(priceRequestIds[requestIndex]);
                     continue;
                 }
@@ -946,14 +944,15 @@ contract VotingV2 is
         // If there is any remaining slashing then apply it. This occurs when there is unapplied slashing in the loop
         // due to the last unlashed elements all being all from the same round. i.e we only slash within the loop when
         // transitioning between rounds and the last round is slashed here. Note that there is a special case that needs
-        // to be considered separately: if the indexTo is less than the priceRequestIndex.length then we know we
-        // are dealing with a partial index slashing via a call to updateTrackersRange. If this is the case, we need to
-        // be careful for ranges that bisect a voting round as all slashing must be applied linearly and independently
-        // within each round. If we are in this case and the element before the indexTo (last element executed in the
-        // loop) has the same voting round as the indexTo (element after the last element in the loop) then we know that
+        // to be considered separately: if the nextIndex that we're going to process is >= priceRequestIds, then we
+        // know that there's going to be a round change because new requests never get added to a past round.
+        // If we are not in this case and the next element to be processed has the same round, then we know that
         // we've bisected a round and should store the unapplied slashing which will seed this method on the next entry
         // such that the slashing will be applied linearly, not compounding with other slashing within the same round.
         if (slash != 0) {
+            // The next index could be either a the result of the skip for the next value if it's nonzero or just the
+            // next unprocessed index if there is no skip value for it. This ensures that the price request we read has
+            // not been modified by round-changing when rolling.
             uint256 nextIndex =
                 skippedRequestIndexes[nextIndexToProcess] != 0
                     ? skippedRequestIndexes[nextIndexToProcess] + 1
