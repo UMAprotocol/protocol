@@ -505,7 +505,7 @@ contract VotingV2 is
         address voter = getVoterFromDelegate(msg.sender);
         _updateTrackers(voter);
         uint256 blockTime = getCurrentTime();
-        require(hash != bytes32(0));
+        require(hash != bytes32(0), "Invalid provided hash");
         require(voteTiming.computeCurrentPhase(blockTime) == Phase.Commit, "Cannot commit in reveal phase");
 
         PriceRequest storage priceRequest = _getPriceRequest(identifier, time, ancillaryData);
