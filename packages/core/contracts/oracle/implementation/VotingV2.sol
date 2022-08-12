@@ -50,6 +50,7 @@ contract VotingV2 is
         uint32 lastVotingRound;
         // Denotes whether this is a governance request or not.
         bool isGovernance;
+        bool isRolled;
         // The pendingRequestIndex in the pendingPriceRequests that references this PriceRequest. A value of UINT64_MAX
         // means that this PriceRequest is resolved and has been cleaned up from pendingPriceRequests.
         uint64 pendingRequestIndex;
@@ -826,9 +827,9 @@ contract VotingV2 is
      * @param voterAddress address of the voter to update the trackers for.
      * @param indexTo last price request index to update the trackers for.
      */
-    function updateTrackersRange(address voterAddress, uint256 indexTo) external {
+    function updateTrackersRange(address voterAddress, uint64 indexTo) external {
         require(
-            voterStakes[voterAddress].lastRequestIndexConsidered < indexTo && indexTo <= priceRequestIds.length,
+            voterStakes[voterAddress].nextRequestIndexToConsider < indexTo && indexTo <= priceRequestIds.length,
             "Invalid indexTo"
         );
 
@@ -837,7 +838,7 @@ contract VotingV2 is
 
     // Updates the global and selected wallet's trackers for staking and voting.
     function _updateTrackers(address voterAddress) internal override {
-        _updateAccountSlashingTrackers(voterAddress, priceRequestIds.length);
+        _updateAccountSlashingTrackers(voterAddress, uint64(priceRequestIds.length));
         super._updateTrackers(voterAddress);
     }
 
@@ -851,7 +852,8 @@ contract VotingV2 is
     }
 
     // Updates the slashing trackers of a given account based on previous voting activity.
-    function _updateAccountSlashingTrackers(address voterAddress, uint256 indexTo) internal {
+    function _updateAccountSlashingTrackers(address voterAddress, uint64 indexTo) internal {
+        if (indexTo == 0) return;
         uint256 currentRoundId = voteTiming.computeCurrentRoundId(getCurrentTime());
         VoterStake storage voterStake = voterStakes[voterAddress];
         // Note the method below can hit a gas limit of there are a LOT of requests from the last time this was run.
@@ -861,7 +863,7 @@ contract VotingV2 is
         // not. Based on the outcome, attribute the associated slash to the voter.
         int256 slash = voterStake.unappliedSlash;
         for (
-            uint64 requestIndex = voterStake.lastRequestIndexConsidered;
+            uint64 requestIndex = voterStake.nextRequestIndexToConsider;
             requestIndex < indexTo;
             requestIndex = unsafe_inc_64(requestIndex)
         ) {
@@ -888,6 +890,7 @@ contract VotingV2 is
                         (lastRolledIndex != 0 && skippedRequestIndexes[lastRolledIndex] != requestIndex - 1)
                     ) lastRolledIndex = requestIndex;
                     skippedRequestIndexes[lastRolledIndex] = requestIndex;
+                    if (lastRolledIndex != requestIndex) skippedRequestIndexes[requestIndex] = requestIndex;
                     priceRequest.priceRequestIndex = SafeCast.toUint64(priceRequestIds.length);
                     // If the indexTo is equal to the length of the priceRequestIds array then this method was entered
                     // via the normal updateTrackers call which is meant to apply slashing to the most recent request.
@@ -941,19 +944,18 @@ contract VotingV2 is
             // This acts to apply slashing within a round as independent actions: multiple votes within the same round
             // should not impact each other but subsequent rounds should impact each other. We need to consider the
             // skippedRequestIndexes mapping when finding the next index as the next request may have been deleted or rolled.
-            uint256 nextRequestIndex =
-                skippedRequestIndexes[requestIndex + 1] != 0
-                    ? skippedRequestIndexes[requestIndex + 1] + 1
-                    : requestIndex + 1;
+
+            uint256 nextRequestIndex = _getSubsequentRequestIndex(requestIndex);
             if (
                 slash != 0 &&
                 indexTo > nextRequestIndex &&
-                priceRequest.lastVotingRound != priceRequests[priceRequestIds[nextRequestIndex]].lastVotingRound
+                priceRequest.lastVotingRound != priceRequests[priceRequestIds[nextRequestIndex]].lastVotingRound &&
+                skippedRequestIndexes[requestIndex] == 0
             ) {
                 _applySlashToVoter(slash, voterStake, voterAddress);
                 slash = 0;
             }
-            voterStake.lastRequestIndexConsidered = requestIndex + 1;
+            voterStake.nextRequestIndexToConsider = requestIndex + 1;
         }
 
         // If there is any remaining slashing then apply it. This occurs when there is unapplied slashing in the loop
@@ -967,13 +969,24 @@ contract VotingV2 is
         // we've bisected a round and should store the unapplied slashing which will seed this method on the next entry
         // such that the slashing will be applied linearly, not compounding with other slashing within the same round.
 
+        uint64 lastIndexProcessed = indexTo - 1;
         if (slash != 0)
             if (
-                indexTo < priceRequestIds.length &&
-                priceRequests[priceRequestIds[indexTo - 1]].lastVotingRound ==
-                priceRequests[priceRequestIds[indexTo]].lastVotingRound
+                indexTo < priceRequestIds.length && // We entered via the updateTrackersRange call.
+                skippedRequestIndexes[lastIndexProcessed] == 0 && // The last request index considered was not rolled.
+                // The next request and this request are in the same round.
+                priceRequests[priceRequestIds[lastIndexProcessed]].lastVotingRound ==
+                priceRequests[priceRequestIds[_getSubsequentRequestIndex(lastIndexProcessed)]].lastVotingRound
             ) voterStake.unappliedSlash += slash;
-            else _applySlashToVoter(slash, voterStake, voterAddress);
+            else if (skippedRequestIndexes[lastIndexProcessed] == 0)
+                _applySlashToVoter(slash, voterStake, voterAddress);
+    }
+
+    function _getSubsequentRequestIndex(uint64 requestIndex) internal view returns (uint64) {
+        return
+            skippedRequestIndexes[requestIndex + 1] != 0
+                ? skippedRequestIndexes[requestIndex + 1] + 1
+                : requestIndex + 1;
     }
 
     // Applies a given slash to a given voter's stake.

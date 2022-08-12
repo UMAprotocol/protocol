@@ -2854,13 +2854,13 @@ describe("VotingV2", function () {
     // The account1 who participated in the first round should should have their slashing tracker stuck at index 0 (they
     // committed and revealed but never did anything again so have not updated) and account2 should be at 5 (missing)
     // the last request number as they've not updated their trackers.
-    assert.equal((await voting.methods.voterStakes(account1).call()).lastRequestIndexConsidered, 0);
-    assert.equal((await voting.methods.voterStakes(account2).call()).lastRequestIndexConsidered, 5);
+    assert.equal((await voting.methods.voterStakes(account1).call()).nextRequestIndexToConsider, 0);
+    assert.equal((await voting.methods.voterStakes(account2).call()).nextRequestIndexToConsider, 5);
 
     // Now, check we can partially sync their trackers by updating to request1 (only the first request that was before
     // the forloop block of requests).
     await voting.methods.updateTrackersRange(account1, 1).send({ from: account1 });
-    assert.equal((await voting.methods.voterStakes(account1).call()).lastRequestIndexConsidered, 1);
+    assert.equal((await voting.methods.voterStakes(account1).call()).nextRequestIndexToConsider, 1);
 
     assert.equal(
       (await voting.methods.voterStakes(account1).call()).activeStake,
@@ -2868,7 +2868,7 @@ describe("VotingV2", function () {
     );
 
     await voting.methods.updateTrackersRange(account1, 3).send({ from: account1 });
-    assert.equal((await voting.methods.voterStakes(account1).call()).lastRequestIndexConsidered, 3);
+    assert.equal((await voting.methods.voterStakes(account1).call()).nextRequestIndexToConsider, 3);
 
     // We can consider the account1 activeStake by looking at the partial update to their slashing trackers. They were
     // the only account to vote correctly the first time and we've updated to request index 3. They should have received
@@ -2886,7 +2886,7 @@ describe("VotingV2", function () {
 
     // However, we can update just one index.
     await voting.methods.updateTrackersRange(account1, 4).send({ from: account1 });
-    assert.equal((await voting.methods.voterStakes(account1).call()).lastRequestIndexConsidered, 4);
+    assert.equal((await voting.methods.voterStakes(account1).call()).nextRequestIndexToConsider, 4);
 
     // Slashing should now be 32006134.0385 slashed again at 0.0016 = 32006134.0385 * (1 - 0.0016) = 31954924.2240663552
     assert.equal((await voting.methods.voterStakes(account1).call()).activeStake, toWei("31954924.2240663552"));
@@ -2909,7 +2909,7 @@ describe("VotingV2", function () {
     );
   });
   it("Staking after some number of price requests correctly shortcuts how many requests the voter needs to traverse", async function () {
-    // If a voter stakes after some number of requests their lastRequestIndexConsidered should skip the active unsettled
+    // If a voter stakes after some number of requests their nextRequestIndexToConsider should skip the active unsettled
     // requests. If you stake during an active reveal period then you skip all requests as it was not possible
     // for you to commit and reveal in this period. Unstake from all accounts to start this test.
     await voting.methods.setUnstakeCoolDown(0).send({ from: accounts[0] });
@@ -2925,7 +2925,7 @@ describe("VotingV2", function () {
     // If account 4 stakes now they should start at slashing request index0.
 
     await voting.methods.stake(toWei("32000000")).send({ from: account1 });
-    assert.equal((await voting.methods.voterStakes(account1).call()).lastRequestIndexConsidered, 0);
+    assert.equal((await voting.methods.voterStakes(account1).call()).nextRequestIndexToConsider, 0);
 
     // Execute a full voting cycle
     const identifier = padRight(utf8ToHex("slash-test"), 64);
@@ -2949,7 +2949,7 @@ describe("VotingV2", function () {
     // Now, stake from another account. we are in the reveal phase of an active request and so the starting index should
     // be 1 as this voter should not be susceptible to slashing for this request.
     await voting.methods.stake(toWei("32000000")).send({ from: account2 });
-    assert.equal((await voting.methods.voterStakes(account2).call()).lastRequestIndexConsidered, 1);
+    assert.equal((await voting.methods.voterStakes(account2).call()).nextRequestIndexToConsider, 1);
 
     // Now, construct another price request and move into the commit phase.
     await voting.methods.requestPrice(identifier, time + 1).send({ from: registeredContract });
@@ -2959,11 +2959,11 @@ describe("VotingV2", function () {
     await voting.methods.commitVote(identifier, time + 1, hash2).send({ from: account1 });
 
     // We are in an active commit phase right now (with one vote having been voted on!). the total number of price requests
-    // is now 2. However, if someone was to stake now they can still vote on this request and so their lastRequestIndexConsidered
+    // is now 2. However, if someone was to stake now they can still vote on this request and so their nextRequestIndexToConsider
     // should still be set to 1.
     assert.equal(await voting.methods.getNumberOfPriceRequests().call(), "2");
     await voting.methods.stake(toWei("32000000")).send({ from: account3 });
-    assert.equal((await voting.methods.voterStakes(account3).call()).lastRequestIndexConsidered, 1);
+    assert.equal((await voting.methods.voterStakes(account3).call()).nextRequestIndexToConsider, 1);
 
     // Account3 can now vote on the second request.
     const hash4 = computeVoteHash({ ...baseRequest, price, account: account3, time: time + 1 });
@@ -2973,7 +2973,7 @@ describe("VotingV2", function () {
     // requests slashing them as it was not posable for them to be staked at that point in time.
     await moveToNextPhase(voting, accounts[0]);
     await voting.methods.stake(toWei("4000000")).send({ from: account4 });
-    assert.equal((await voting.methods.voterStakes(account4).call()).lastRequestIndexConsidered, 2);
+    assert.equal((await voting.methods.voterStakes(account4).call()).nextRequestIndexToConsider, 2);
 
     // reveal votes
     await voting.methods.revealVote(identifier, time + 1, price, salt).send({ from: account1 });
@@ -3008,8 +3008,8 @@ describe("VotingV2", function () {
     await votingToken.methods.approve(voting2.options.address, toWei("4000000")).send({ from: account4 });
     await voting2.methods.stake(toWei("4000000")).send({ from: account4 });
 
-    // The lastRequestIndexConsidered for the new staker should be 10 (they get to skip all previous indices).
-    assert.equal((await voting2.methods.voterStakes(account1).call()).lastRequestIndexConsidered, 10);
+    // The nextRequestIndexToConsider for the new staker should be 10 (they get to skip all previous indices).
+    assert.equal((await voting2.methods.voterStakes(account1).call()).nextRequestIndexToConsider, 10);
 
     // If we do a request it should now start at index 11.  Execute a full voting cycle
     const identifier = padRight(utf8ToHex("offset-test"), 64);
@@ -3194,14 +3194,14 @@ describe("VotingV2", function () {
       toWei("3993600").sub(toWei("6389.76")).sub(toWei("6389.76"))
     );
 
-    // The lastRequestIndexConsidered for account4 should be 6. we've settled 3 of the requests, over which slashing
+    // The nextRequestIndexToConsider for account4 should be 6. we've settled 3 of the requests, over which slashing
     // has been applied, one request was rolled once (+1) and the other two requests were rolled the first time (+2).
 
-    assert.equal((await voting.methods.voterStakes(account4).call()).lastRequestIndexConsidered, 6);
+    assert.equal((await voting.methods.voterStakes(account4).call()).nextRequestIndexToConsider, 6);
 
     // Now, apply the slashing trackers in range for account1. Account1 should be at the last request index of 1 as it
     // the last call to the update trackers happened after the settlement of the first vote the account participated in.
-    assert.equal((await voting.methods.voterStakes(account1).call()).lastRequestIndexConsidered, 1);
+    assert.equal((await voting.methods.voterStakes(account1).call()).nextRequestIndexToConsider, 1);
 
     // Before applying any further round updates the activeStakedAmount of account1 their original balance grown by
     // slashing over all other participants as 32mm + 68mm * 0.0016 = 32010880
@@ -3217,21 +3217,21 @@ describe("VotingV2", function () {
     // so this should be stored within the unapplied slash for the account and only be applied to the active stake
     // once we've traversed index6 as well.
     await voting.methods.updateTrackersRange(account1, 2).send({ from: account1 });
-    assert.equal((await voting.methods.voterStakes(account1).call()).lastRequestIndexConsidered, 1);
+    assert.equal((await voting.methods.voterStakes(account1).call()).nextRequestIndexToConsider, 1);
     assert.equal(
       (await voting.methods.voterStakes(account1).call()).activeStake,
       toWei("32000000").add(toWei("108800"))
     );
     assert.equal((await voting.methods.voterStakes(account1).call()).unappliedSlash, toWei("0"));
     await voting.methods.updateTrackersRange(account1, 3).send({ from: account1 });
-    assert.equal((await voting.methods.voterStakes(account1).call()).lastRequestIndexConsidered, 1);
+    assert.equal((await voting.methods.voterStakes(account1).call()).nextRequestIndexToConsider, 1);
     assert.equal(
       (await voting.methods.voterStakes(account1).call()).activeStake,
       toWei("32000000").add(toWei("108800"))
     );
     assert.equal((await voting.methods.voterStakes(account1).call()).unappliedSlash, toWei("0"));
     await voting.methods.updateTrackersRange(account1, 4).send({ from: account1 });
-    assert.equal((await voting.methods.voterStakes(account1).call()).lastRequestIndexConsidered, 1);
+    assert.equal((await voting.methods.voterStakes(account1).call()).nextRequestIndexToConsider, 1);
     assert.equal(
       (await voting.methods.voterStakes(account1).call()).activeStake,
       toWei("32000000").add(toWei("108800"))
@@ -3242,7 +3242,7 @@ describe("VotingV2", function () {
     // should see it set within the unappliedSlash tracker. Expected unapplied slashing is (68e6-108800)*0.0016 = 108625.92
     // which is the total amount of all tokens other than account1, minus the first slashing, slashed at 0.0016.
     await voting.methods.updateTrackersRange(account1, 5).send({ from: account1 });
-    assert.equal((await voting.methods.voterStakes(account1).call()).lastRequestIndexConsidered, 5);
+    assert.equal((await voting.methods.voterStakes(account1).call()).nextRequestIndexToConsider, 5);
     assert.equal(
       (await voting.methods.voterStakes(account1).call()).activeStake,
       toWei("32000000").add(toWei("108800"))
@@ -3253,7 +3253,7 @@ describe("VotingV2", function () {
     // / the active balance.
     await voting.methods.updateTrackersRange(account1, 6).send({ from: account1 });
     await voting.methods.updateTrackers(account1).send({ from: account1 });
-    assert.equal((await voting.methods.voterStakes(account1).call()).lastRequestIndexConsidered, 6);
+    assert.equal((await voting.methods.voterStakes(account1).call()).nextRequestIndexToConsider, 6);
     assert.equal(
       (await voting.methods.voterStakes(account1).call()).activeStake,
       toWei("32000000").add(toWei("108800")).add(toWei("108625.92")).add(toWei("108625.92"))
@@ -3263,7 +3263,7 @@ describe("VotingV2", function () {
     // should not move at all as index7 and 8 are both rolled.
     await voting.methods.updateTrackersRange(account1, 8).send({ from: account1 });
     await voting.methods.updateTrackers(account1).send({ from: account1 });
-    assert.equal((await voting.methods.voterStakes(account1).call()).lastRequestIndexConsidered, 6);
+    assert.equal((await voting.methods.voterStakes(account1).call()).nextRequestIndexToConsider, 6);
     assert.equal(
       (await voting.methods.voterStakes(account1).call()).activeStake,
       toWei("32000000").add(toWei("108800")).add(toWei("108625.92")).add(toWei("108625.92"))
@@ -3282,14 +3282,14 @@ describe("VotingV2", function () {
     // active stake of account1.
     await voting.methods.updateTrackersRange(account1, 8).send({ from: account1 });
     await voting.methods.updateTrackers(account1).send({ from: account1 });
-    assert.equal((await voting.methods.voterStakes(account1).call()).lastRequestIndexConsidered, 8);
+    assert.equal((await voting.methods.voterStakes(account1).call()).nextRequestIndexToConsider, 8);
     assert.equal(
       (await voting.methods.voterStakes(account1).call()).activeStake,
       toWei("32000000").add(toWei("108800")).add(toWei("108625.92")).add(toWei("108625.92")).add(toWei("108278.317056"))
     );
   });
 
-  it("Discontinuous rolling interplay with unapplied slashing.", async function () {
+  it("Discontinuous rolling interplay with unapplied slashing", async function () {
     // Validate When multiple rounds are rolled and slashing is applied over a range things are applied as expected.
 
     const identifier = padRight(utf8ToHex("slash-test"), 64); // Use the same identifier for both.
@@ -3338,24 +3338,57 @@ describe("VotingV2", function () {
     await voting.methods.updateTrackersRange(account4, 3).send({ from: account1 });
     await voting.methods.updateTrackersRange(account4, 4).send({ from: account1 });
     await voting.methods.updateTrackersRange(account4, 5).send({ from: account1 });
-    await voting.methods.updateTrackers(account4).send({ from: account1 });
+    await voting.methods.updateTrackersRange(account4, 6).send({ from: account1 });
+    // await voting.methods.updateTrackers(account4).send({ from: account1 });
 
     // Account4 should lose two slots of 4mm*0.0016 from not participating in the two votes that settled.
     // 2 * 4mm * 0.0016 = 12800.
+    assert.equal((await voting.methods.voterStakes(account4).call()).activeStake, toWei("4000000").sub(toWei("12800")));
+
+    // Equally, we should be able to update account2 in one call and their balance should update as expected traversing
+    // all requests in one go. They should loose two slots of 32mm*0.0016. 2 * 32mm * 0.0016 = 102400.
+    await voting.methods.updateTrackers(account2).send({ from: account1 });
     assert.equal(
-      (await voting.methods.voterStakes(account4).call()).activeStake.toString(),
-      toWei("4000000").sub(toWei("12800")).toString()
+      (await voting.methods.voterStakes(account2).call()).activeStake,
+      toWei("32000000").sub(toWei("102400"))
     );
-    // expected 3987200
-    // actual   3987210.24
-    //          3987210.24
+
+    // Finally, try partial updates on account3 with interspersed balance checks. Updating request 1 should apply
+    await voting.methods.updateTrackersRange(account3, 1).send({ from: account1 });
+    assert.equal((await voting.methods.voterStakes(account3).call()).activeStake, toWei("32000000"));
+    assert.equal((await voting.methods.voterStakes(account3).call()).unappliedSlash, toWei("-51200"));
+    await voting.methods.updateTrackersRange(account3, 2).send({ from: account1 });
+    assert.equal((await voting.methods.voterStakes(account3).call()).activeStake, toWei("32000000"));
+    assert.equal((await voting.methods.voterStakes(account3).call()).unappliedSlash, toWei("-51200"));
+    await voting.methods.updateTrackersRange(account3, 3).send({ from: account1 });
+    assert.equal((await voting.methods.voterStakes(account3).call()).activeStake, toWei("32000000"));
+    assert.equal((await voting.methods.voterStakes(account3).call()).unappliedSlash, toWei("-51200"));
+    await voting.methods.updateTrackersRange(account3, 4).send({ from: account1 });
+    assert.equal(
+      (await voting.methods.voterStakes(account3).call()).activeStake,
+      toWei("32000000").sub(toWei("102400"))
+    );
+    assert.equal((await voting.methods.voterStakes(account3).call()).unappliedSlash, toWei("0"));
+    await voting.methods.updateTrackersRange(account3, 5).send({ from: account1 });
+    assert.equal(
+      (await voting.methods.voterStakes(account3).call()).activeStake,
+      toWei("32000000").sub(toWei("102400"))
+    );
+    assert.equal((await voting.methods.voterStakes(account3).call()).unappliedSlash, toWei("0"));
+
+    await voting.methods.updateTrackersRange(account3, 6).send({ from: account1 });
+    assert.equal((await voting.methods.voterStakes(account3).call()).unappliedSlash, toWei("0"));
+    assert.equal(
+      (await voting.methods.voterStakes(account3).call()).activeStake,
+      toWei("32000000").sub(toWei("102400"))
+    );
   });
 
   it("Duplicate Request Rewards", async function () {
     // We want to test that the slashing mechanism works properly when two consecutive price requests are rolled.
     // To accomplish this, we generate four price requests, the first and fourth of which are voted on and resolved,
     // while p2 and p3 do not receive votes and are thus rolled. Given that all users calling updateTrackers, regardless of order,
-    // process the same price requests, the lastRequestIndexConsidered must be the same for all.
+    // process the same price requests, the nextRequestIndexToConsider must be the same for all.
 
     const identifier1 = padRight(utf8ToHex("request-retrieval1"), 64);
     const time1 = "1000";
@@ -3430,8 +3463,8 @@ describe("VotingV2", function () {
     await voting.methods.updateTrackers(account1).send({ from: account1 });
     await voting.methods.updateTrackers(account2).send({ from: account1 });
 
-    // Both users should have the same lastRequestIndexConsidered.
-    assert.equal((await voting.methods.voterStakes(account1).call()).lastRequestIndexConsidered, 4);
-    assert.equal((await voting.methods.voterStakes(account2).call()).lastRequestIndexConsidered, 4);
+    // Both users should have the same nextRequestIndexToConsider.
+    assert.equal((await voting.methods.voterStakes(account1).call()).nextRequestIndexToConsider, 4);
+    assert.equal((await voting.methods.voterStakes(account2).call()).nextRequestIndexToConsider, 4);
   });
 });

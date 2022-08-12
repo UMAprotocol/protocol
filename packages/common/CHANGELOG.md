@@ -24,7 +24,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 - add gckms get signer util ([#3990](https://github.com/UMAprotocol/protocol/issues/3990)) ([d95cca2](https://github.com/UMAprotocol/protocol/commit/d95cca21fffe0e512047722fb5aa3894a1fb091c))
 - **voting-v2:** add some variable packing to save gas ([#4046](https://github.com/UMAprotocol/protocol/issues/4046)) ([232bc20](https://github.com/UMAprotocol/protocol/commit/232bc2034d8a343fb66b4573298da2dd4cf381d2))
-- DVM2.0 add additional todo logic and update `_resolvePriceRequest`, offset the `lastRequestIndexConsidered` for a voter and remove `fromIndex` when evaluating slashing ([#4040](https://github.com/UMAprotocol/protocol/issues/4040)) ([aa4ebfb](https://github.com/UMAprotocol/protocol/commit/aa4ebfb8ac33cae17fa123fdbc9e185b4e5ae989))
+- DVM2.0 add additional todo logic and update `_resolvePriceRequest`, offset the `nextRequestIndexToConsider` for a voter and remove `fromIndex` when evaluating slashing ([#4040](https://github.com/UMAprotocol/protocol/issues/4040)) ([aa4ebfb](https://github.com/UMAprotocol/protocol/commit/aa4ebfb8ac33cae17fa123fdbc9e185b4e5ae989))
 
 # [2.23.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.22.0...@uma/common@2.23.0) (2022-07-13)
 
