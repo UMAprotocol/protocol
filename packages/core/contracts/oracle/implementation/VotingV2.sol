@@ -132,6 +132,7 @@ contract VotingV2 is
     // Max value of an unsigned integer.
     uint64 private constant UINT64_MAX = type(uint64).max;
 
+    // Internal tracker that stores the last rolled index updated within the slashing trackers.
     uint64 private lastRolledIndex;
 
     // Max length in bytes of ancillary data that can be appended to a price request.
