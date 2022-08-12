@@ -990,6 +990,7 @@ contract VotingV2 is
                 _applySlashToVoter(slash, voterStake, voterAddress);
     }
 
+    // Returns the subsequent request index for a given request index, considering the skippedRequestIndexes mapping.
     function _getSubsequentRequestIndex(uint64 requestIndex) internal view returns (uint64) {
         return
             skippedRequestIndexes[requestIndex + 1] != 0
