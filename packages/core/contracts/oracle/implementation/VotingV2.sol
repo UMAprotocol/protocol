@@ -885,11 +885,21 @@ contract VotingV2 is
                 // must have been rolled. In this case, update the internal trackers for this vote.
                 if (priceRequest.lastVotingRound < currentRoundId) {
                     priceRequest.lastVotingRound = SafeCast.toUint32(currentRoundId);
+                    // If the lastRolledIndex is not set or the last rolled index is not equal to the previous index
+                    // then set it to the current index. This acts to only update hte lastRolledIndex when we transition
+                    // over ranges of continuous rolled votes.
                     if (
                         lastRolledIndex == 0 ||
                         (lastRolledIndex != 0 && skippedRequestIndexes[lastRolledIndex] != requestIndex - 1)
                     ) lastRolledIndex = requestIndex;
+                    // Set the skippedRequestIndexes mapping at the last rolled index to the current index. This acts
+                    // to create a jump from the first rolled index (last rollIndex was no updated if sequential) to the
+                    // current request index, thereby making a continuous jump over all rolled votes.
                     skippedRequestIndexes[lastRolledIndex] = requestIndex;
+                    // If the lastRolled index is not the current index (multi-round roll) then set the requestIndex equal
+                    // to its self to indicate that this index was jumped. This will never normally be hit within round
+                    // traversal (due to jumping over a range of rolled votes) but it is useful to have to see that a
+                    // vote was skipped. This is also levered in the logic outside of the forloop for other slashing.
                     if (lastRolledIndex != requestIndex) skippedRequestIndexes[requestIndex] = requestIndex;
                     priceRequest.priceRequestIndex = SafeCast.toUint64(priceRequestIds.length);
                     // If the indexTo is equal to the length of the priceRequestIds array then this method was entered
@@ -944,7 +954,6 @@ contract VotingV2 is
             // This acts to apply slashing within a round as independent actions: multiple votes within the same round
             // should not impact each other but subsequent rounds should impact each other. We need to consider the
             // skippedRequestIndexes mapping when finding the next index as the next request may have been deleted or rolled.
-
             uint256 nextRequestIndex = _getSubsequentRequestIndex(requestIndex);
             if (
                 slash != 0 &&
