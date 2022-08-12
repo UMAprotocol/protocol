@@ -898,7 +898,7 @@ contract VotingV2 is
                 break;
             }
 
-            // If the request we're processing now is not the same as the last index we processed successfully (not
+            // If the request we're processing now is not the same round as the last index we processed successfully (not
             // rolled), then we need to apply slashing because there's been a round change.
             if (
                 slash != 0 &&
@@ -956,15 +956,20 @@ contract VotingV2 is
         // we've bisected a round and should store the unapplied slashing which will seed this method on the next entry
         // such that the slashing will be applied linearly, not compounding with other slashing within the same round.
         if (slash != 0) {
-            uint256 nextIndex = indexTo;
-            if (skippedRequestIndexes[nextIndexToProcess] != 0) nextIndex = skippedRequestIndexes[nextIndexToProcess];
+            uint256 nextIndex =
+                skippedRequestIndexes[nextIndexToProcess] != 0
+                    ? skippedRequestIndexes[nextIndexToProcess] + 1
+                    : nextIndexToProcess;
             if (
-                indexTo < priceRequestIds.length &&
+                nextIndexToProcess < priceRequestIds.length &&
                 nextIndexToProcess != 0 &&
                 priceRequests[priceRequestIds[nextIndexToProcess - 1]].lastVotingRound ==
                 priceRequests[priceRequestIds[nextIndex]].lastVotingRound
-            ) voterStake.unappliedSlash = slash;
-            else _applySlashToVoter(slash, voterStake, voterAddress);
+            ) {
+                voterStake.unappliedSlash = slash;
+            } else {
+                _applySlashToVoter(slash, voterStake, voterAddress);
+            }
         }
 
         voterStake.nextIndexToProcess = nextIndexToProcess;
