@@ -956,10 +956,10 @@ contract VotingV2 is
             // skippedRequestIndexes mapping when finding the next index as the next request may have been deleted or rolled.
             uint256 nextRequestIndex = _getSubsequentRequestIndex(requestIndex);
             if (
-                slash != 0 &&
-                indexTo > nextRequestIndex &&
-                priceRequest.lastVotingRound != priceRequests[priceRequestIds[nextRequestIndex]].lastVotingRound &&
-                skippedRequestIndexes[requestIndex] == 0
+                slash != 0 && // There is some slashing to apply.
+                indexTo > nextRequestIndex && // The next request index wont exceed the max traversal range (prevent out of bounds.)
+                // The round of the next request is not the same as the current round; Hence we are traversing rounds.
+                priceRequest.lastVotingRound != priceRequests[priceRequestIds[nextRequestIndex]].lastVotingRound
             ) {
                 _applySlashToVoter(slash, voterStake, voterAddress);
                 slash = 0;
@@ -982,11 +982,10 @@ contract VotingV2 is
         if (slash != 0)
             if (
                 indexTo < priceRequestIds.length && // We entered via the updateTrackersRange call.
-                skippedRequestIndexes[lastIndexProcessed] == 0 && // The last request index considered was not rolled.
                 // The next request and this request are in the same round.
                 priceRequests[priceRequestIds[lastIndexProcessed]].lastVotingRound ==
                 priceRequests[priceRequestIds[_getSubsequentRequestIndex(lastIndexProcessed)]].lastVotingRound
-            ) voterStake.unappliedSlash += slash;
+            ) voterStake.unappliedSlash = slash;
             else if (skippedRequestIndexes[lastIndexProcessed] == 0)
                 _applySlashToVoter(slash, voterStake, voterAddress);
     }
