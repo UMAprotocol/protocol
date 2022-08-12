@@ -19,8 +19,6 @@ import "./SpamGuardIdentifierLib.sol";
 import "./Staker.sol";
 import "./VoteTimingV2.sol";
 
-import "hardhat/console.sol";
-
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 /**
