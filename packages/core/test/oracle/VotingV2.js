@@ -3354,7 +3354,8 @@ describe("VotingV2", function () {
       toWei("32000000").sub(toWei("102400"))
     );
 
-    // Finally, try partial updates on account3 with interspersed balance checks. Updating request 1 should apply
+    // Finally, try partial updates on account3 with interspersed balance checks. Updating request 1 should apply a
+    // 51200 negative unapplied slash.
     await voting.methods.updateTrackersRange(account3, 1).send({ from: account1 });
     assert.equal((await voting.methods.voterStakes(account3).call()).activeStake, toWei("32000000"));
     assert.equal((await voting.methods.voterStakes(account3).call()).unappliedSlash, toWei("-51200"));
@@ -3364,6 +3365,8 @@ describe("VotingV2", function () {
     await voting.methods.updateTrackersRange(account3, 3).send({ from: account1 });
     assert.equal((await voting.methods.voterStakes(account3).call()).activeStake, toWei("32000000"));
     assert.equal((await voting.methods.voterStakes(account3).call()).unappliedSlash, toWei("-51200"));
+    // Round 4 should apply the unapplied slash + the next settled round of 51200. After this, the unapplied slash
+    // should go to zero and for all subsequent rounds the slash should be set to 102400 for the two settled rounds.
     await voting.methods.updateTrackersRange(account3, 4).send({ from: account1 });
     assert.equal(
       (await voting.methods.voterStakes(account3).call()).activeStake,
