@@ -137,7 +137,6 @@ describe("Staker", function () {
       assert(toBN(outstandingRewards) > 0);
 
       // Delegate needs to approve staker
-      await votingToken.methods.approve(staker.options.address, outstandingRewards).send({ from: account2 });
       const tx = await staker.methods.withdrawAndRestake().send({ from: account2 });
 
       assert.equal(tx.events.WithdrawnRewards.returnValues.voter, accounts[0]);

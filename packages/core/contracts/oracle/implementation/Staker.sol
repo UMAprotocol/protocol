@@ -115,7 +115,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable {
      * @param amount the amount of tokens to stake.
      */
     function stake(uint256 amount) public {
-        _stakeTo(msg.sender, amount);
+        _stakeTo(msg.sender, msg.sender, amount);
     }
 
     /**
@@ -125,10 +125,14 @@ abstract contract Staker is StakerInterface, Ownable, Lockable {
      * @param amount the amount of tokens to stake.
      */
     function stakeTo(address recipient, uint256 amount) public {
-        _stakeTo(recipient, amount);
+        _stakeTo(msg.sender, recipient, amount);
     }
 
-    function _stakeTo(address recipient, uint256 amount) internal {
+    function _stakeTo(
+        address from,
+        address recipient,
+        uint256 amount
+    ) internal {
         VoterStake storage voterStake = voterStakes[recipient];
 
         // If the staker has a cumulative staked balance of 0 then we can shortcut their lastRequestIndexConsidered to
@@ -145,11 +149,10 @@ abstract contract Staker is StakerInterface, Ownable, Lockable {
             voterStake.activeStake += amount;
             cumulativeActiveStake += amount;
         }
-
-        votingToken.transferFrom(msg.sender, address(this), amount);
+        if (from != address(this)) votingToken.transferFrom(from, address(this), amount);
         emit Staked(
             recipient,
-            msg.sender,
+            from,
             amount,
             voterStake.activeStake,
             voterStake.pendingStake,
@@ -214,15 +217,19 @@ abstract contract Staker is StakerInterface, Ownable, Lockable {
      * @return uint256 the amount of tokens sent to the voter.
      */
     function withdrawRewards() public returns (uint256) {
-        address voter = getVoterFromDelegate(msg.sender);
-        _updateTrackers(voter);
-        VoterStake storage voterStake = voterStakes[voter];
+        return _withdrawRewards(msg.sender);
+    }
+
+    function _withdrawRewards(address from) internal returns (uint256) {
+        _updateTrackers(from);
+        VoterStake storage voterStake = voterStakes[from];
 
         uint256 tokensToMint = voterStake.outstandingRewards;
         if (tokensToMint > 0) {
             voterStake.outstandingRewards = 0;
-            require(votingToken.mint(msg.sender, tokensToMint), "Voting token issuance failed");
-            emit WithdrawnRewards(voter, msg.sender, tokensToMint);
+            address recipient = from != msg.sender ? address(this) : from;
+            require(votingToken.mint(recipient, tokensToMint), "Voting token issuance failed");
+            emit WithdrawnRewards(from, msg.sender, tokensToMint);
         }
         return tokensToMint;
     }
@@ -237,8 +244,8 @@ abstract contract Staker is StakerInterface, Ownable, Lockable {
      */
     function withdrawAndRestake() external override returns (uint256) {
         address voter = getVoterFromDelegate(msg.sender);
-        uint256 rewards = withdrawRewards();
-        stakeTo(voter, rewards);
+        uint256 rewards = _withdrawRewards(voter);
+        _stakeTo(address(this), voter, rewards);
         return rewards;
     }
 
