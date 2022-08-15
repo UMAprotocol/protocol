@@ -643,19 +643,6 @@ contract VotingV2 is
      ****************************************/
 
     /**
-     * @notice Gets the voter from the delegate.
-     * @param caller caller of the function or the address to check in the mapping between a voter and their delegate.
-     * @return address voter that corresponds to the delegate.
-     */
-    function getVoterFromDelegate(address caller) public view override returns (address) {
-        if (
-            delegateToStaker[caller] != address(0) && // The delegate chose to be a delegate for the staker.
-            voterStakes[delegateToStaker[caller]].delegate == caller // The staker chose the delegate.
-        ) return delegateToStaker[caller];
-        else return caller;
-    }
-
-    /**
      * @notice Gets the queries that are being voted on this round.
      * @return pendingRequests array containing identifiers of type PendingRequestAncillary.
      */

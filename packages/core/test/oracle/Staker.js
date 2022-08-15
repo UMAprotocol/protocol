@@ -123,6 +123,7 @@ describe("Staker", function () {
     it("Withdraw and restake delegate", async function () {
       await staker.methods.stake(amountToStake).send({ from: account1 });
       await staker.methods.setDelegate(account2).send({ from: account1 });
+      await staker.methods.setDelegator(account1).send({ from: account2 });
 
       const stakingBalanceInitial = await staker.methods.voterStakes(account1).call();
 

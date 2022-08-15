@@ -42,13 +42,9 @@ contract StakerTest is StakerControlledTiming {
 
     function setDelegate(address delegate) external nonReentrant() {
         voterStakes[msg.sender].delegate = delegate;
-        delegateToStaker[delegate] = msg.sender;
     }
 
-    function getVoterFromDelegate(address caller) public view override returns (address) {
-        if (delegateToStaker[caller] != address(0)) {
-            return delegateToStaker[caller];
-        }
-        return caller;
+    function setDelegator(address delegator) external nonReentrant() {
+        delegateToStaker[msg.sender] = delegator;
     }
 }
