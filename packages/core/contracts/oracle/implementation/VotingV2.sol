@@ -638,19 +638,6 @@ contract VotingV2 is
         delegateToStaker[msg.sender] = delegator;
     }
 
-    /**
-     * @notice Stake accumulated rewards. This is merely a convenience mechanism that combines the voter's withdrawal and stake
-     *  in the same transaction if requested by a delegate or the voter himself.
-     * @dev this method requires that the msg.sender(voter or delegate) has approved this contract.
-     * @dev The rewarded tokens simply pass through the delegate's wallet before being staked on the voter's behalf.
-     *  The balance of the delegate remains unchanged.
-     * @return uint256 the amount of tokens that the voter is staking.
-     */
-    function withdrawAndRestake() external override returns (uint256) {
-        address voter = getVoterFromDelegate(msg.sender);
-        return _withdrawAndRestake(voter);
-    }
-
     /****************************************
      *        VOTING GETTER FUNCTIONS       *
      ****************************************/
@@ -660,7 +647,7 @@ contract VotingV2 is
      * @param caller caller of the function or the address to check in the mapping between a voter and their delegate.
      * @return address voter that corresponds to the delegate.
      */
-    function getVoterFromDelegate(address caller) public view returns (address) {
+    function getVoterFromDelegate(address caller) public view override returns (address) {
         if (
             delegateToStaker[caller] != address(0) && // The delegate chose to be a delegate for the staker.
             voterStakes[delegateToStaker[caller]].delegate == caller // The staker chose the delegate.

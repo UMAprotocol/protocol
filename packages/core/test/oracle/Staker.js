@@ -209,6 +209,36 @@ describe("Staker", function () {
       assert.equal(await staker.methods.outstandingRewards(account2).call(), toWei("1680")); // 1040 + 640 = 1680
     });
 
+    it("Withdraw and restake delegate", async function () {
+      await staker.methods.stake(amountToStake).send({ from: account1 });
+      await staker.methods.setDelegate(account2).send({ from: account1 });
+
+      const stakingBalanceInitial = await staker.methods.voterStakes(account1).call();
+
+      // Advance time forward 1000 seconds.
+      await advanceTime(1000);
+
+      const delegateVotingTokenBalance = await votingToken.methods.balanceOf(account2).call();
+      const outstandingRewards = await staker.methods.outstandingRewards(account1).call();
+
+      // Check the outstanding rewards are more than 0.
+      assert(toBN(outstandingRewards) > 0);
+
+      // Delegate needs to approve staker
+      await votingToken.methods.approve(staker.options.address, outstandingRewards).send({ from: account2 });
+      const tx = await staker.methods.withdrawAndRestake().send({ from: account2 });
+
+      assert.equal(tx.events.WithdrawnRewards.returnValues.voter, accounts[0]);
+      assert.equal(tx.events.WithdrawnRewards.returnValues.delegate, account2);
+      assert.equal(tx.events.WithdrawnRewards.returnValues.tokensWithdrawn, outstandingRewards);
+
+      const stakingBalance = await staker.methods.voterStakes(account1).call();
+
+      // Voter active stake should have increased by the outstanding rewards and the delegate votingToken balance should be the same.
+      assert.equal(stakingBalance.activeStake, toBN(stakingBalanceInitial.activeStake).add(toBN(outstandingRewards)));
+      assert.equal(delegateVotingTokenBalance, await votingToken.methods.balanceOf(account2).call());
+    });
+
     it("Events", async function () {
       let result;
       result = await staker.methods.stake(amountToStake).send({ from: account1 }); // stake 1/4th

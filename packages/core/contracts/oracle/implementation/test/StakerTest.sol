@@ -39,4 +39,13 @@ contract StakerTest is StakerControlledTiming {
     function _getStartingIndexForStaker() internal view override returns (uint64) {
         return 0;
     }
+
+    function setDelegate(address delegate) external nonReentrant() {
+        voterStakes[msg.sender].delegate = delegate;
+        delegateToStaker[delegate] = msg.sender;
+    }
+
+    function getVoterFromDelegate(address caller) public view override returns (address) {
+        return delegateToStaker[caller];
+    }
 }

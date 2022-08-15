@@ -3471,35 +3471,4 @@ describe("VotingV2", function () {
     assert.equal((await voting.methods.voterStakes(account1).call()).nextIndexToProcess, 4);
     assert.equal((await voting.methods.voterStakes(account2).call()).nextIndexToProcess, 4);
   });
-
-  it("Withdraw and restake delegate", async function () {
-    await voting.methods.setDelegate(rand).send({ from: account1 });
-    await voting.methods.setDelegator(account1).send({ from: rand });
-
-    const stakingBalanceInitial = await voting.methods.voterStakes(account1).call();
-
-    // Advance time forward 1000 seconds.
-    const currentTime = Number(await voting.methods.getCurrentTime().call());
-    await voting.methods.setCurrentTime(currentTime + 1000).send({ from: accounts[0] });
-
-    const delegateVotingTokenBalance = await votingToken.methods.balanceOf(rand).call();
-    const outstandingRewards = await voting.methods.outstandingRewards(account1).call();
-
-    // Check the outstanding rewards are more than 0.
-    assert(toBN(outstandingRewards).gt(0));
-
-    // Delegate needs to approve voting
-    await votingToken.methods.approve(voting.options.address, outstandingRewards).send({ from: rand });
-    const tx = await voting.methods.withdrawAndRestake().send({ from: rand });
-
-    assert.equal(tx.events.WithdrawnRewards.returnValues.voter, accounts[0]);
-    assert.equal(tx.events.WithdrawnRewards.returnValues.delegate, rand);
-    assert.equal(tx.events.WithdrawnRewards.returnValues.tokensWithdrawn, outstandingRewards);
-
-    const stakingBalance = await voting.methods.voterStakes(account1).call();
-
-    // Voter active stake should have increased by the outstanding rewards and the delegate votingToken balance should be the same.
-    assert.equal(stakingBalance.activeStake, toBN(stakingBalanceInitial.activeStake).add(toBN(outstandingRewards)));
-    assert.equal(delegateVotingTokenBalance, await votingToken.methods.balanceOf(rand).call());
-  });
 });
