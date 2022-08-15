@@ -20,7 +20,6 @@ contract SafteyModule is Ownable, Lockable {
 
     struct EmergencyProposal {
         address proposer;
-        // 64 bits to save a storage slot.
         uint64 time;
         uint256 lockedBond;
         uint256 cumulativeSignaled;
