@@ -136,7 +136,11 @@ describe("Staker", function () {
       // Check the outstanding rewards are more than 0.
       assert(toBN(outstandingRewards) > 0);
 
-      // Delegate needs to approve staker
+      // Check that delegate cannot withdraw rewards.
+      await staker.methods.withdrawRewards().send({ from: account2 });
+      assert.equal(await votingToken.methods.balanceOf(account2).call(), delegateVotingTokenBalance);
+
+      // But delegate can withdraw rewards and restake.
       const tx = await staker.methods.withdrawAndRestake().send({ from: account2 });
 
       assert.equal(tx.events.WithdrawnRewards.returnValues.voter, accounts[0]);
