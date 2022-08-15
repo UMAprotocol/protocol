@@ -46,6 +46,9 @@ contract StakerTest is StakerControlledTiming {
     }
 
     function getVoterFromDelegate(address caller) public view override returns (address) {
-        return delegateToStaker[caller];
+        if (delegateToStaker[caller] != address(0)) {
+            return delegateToStaker[caller];
+        }
+        return caller;
     }
 }
