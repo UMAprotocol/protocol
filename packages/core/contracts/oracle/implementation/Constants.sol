@@ -6,6 +6,7 @@ pragma solidity ^0.8.0;
  */
 library OracleInterfaces {
     bytes32 public constant Oracle = "Oracle";
+    bytes32 public constant SafetyModule = "SafetyModule";
     bytes32 public constant IdentifierWhitelist = "IdentifierWhitelist";
     bytes32 public constant Store = "Store";
     bytes32 public constant FinancialContractsAdmin = "FinancialContractsAdmin";

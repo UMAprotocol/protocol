@@ -2,7 +2,7 @@
 pragma solidity 0.8.16;
 
 import "./Finder.sol";
-import "./GovernorV2.sol";
+import "./GovernorV2.sol"; //todo: swap this to using an interface.
 import "./Constants.sol";
 import "../interfaces/OracleAncillaryInterface.sol";
 import "./AdminIdentifierLib.sol";

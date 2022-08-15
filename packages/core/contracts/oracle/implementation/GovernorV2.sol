@@ -1,3 +1,4 @@
+//todo :Add multicall to this to make the execution of proposals easier.
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.16;
 
@@ -6,6 +7,7 @@ import "../../common/implementation/MultiRole.sol";
 import "../interfaces/FinderInterface.sol";
 import "../interfaces/IdentifierWhitelistInterface.sol";
 import "../interfaces/OracleGovernanceInterface.sol";
+import "../interfaces/SafetyModuleInterface.sol";
 import "./Constants.sol";
 import "./AdminIdentifierLib.sol";
 
@@ -23,7 +25,8 @@ contract GovernorV2 is MultiRole, Lockable {
 
     enum Roles {
         Owner, // Can set the proposer.
-        Proposer // Address that can make proposals.
+        Proposer, // Address that can make proposals.
+        EmergencyProposer // Address that can make emergency admin action proposals.
     }
 
     struct Transaction {
@@ -40,12 +43,15 @@ contract GovernorV2 is MultiRole, Lockable {
 
     FinderInterface private finder;
     Proposal[] public proposals;
+    Proposal[] public emergencyProposals;
 
     /****************************************
      *                EVENTS                *
      ****************************************/
 
-    event NewProposal(uint256 indexed id, Transaction[] transactions);
+    event NewProposal(uint256 indexed id, Transaction[] transactions, bytes ancillaryData);
+
+    event NewEmergencyProposal(uint256 indexed id, Transaction[] transactions);
 
     event ProposalExecuted(uint256 indexed id, uint256 transactionIndex);
 
@@ -58,6 +64,7 @@ contract GovernorV2 is MultiRole, Lockable {
         finder = FinderInterface(_finderAddress);
         _createExclusiveRole(uint256(Roles.Owner), uint256(Roles.Owner), msg.sender);
         _createExclusiveRole(uint256(Roles.Proposer), uint256(Roles.Owner), msg.sender);
+        _createExclusiveRole(uint256(Roles.EmergencyProposer), uint256(Roles.Owner), msg.sender);
 
         // Ensure the startingId is not set unreasonably high to avoid it being set such that new proposals overwrite
         // other storage slots in the contract.
@@ -84,13 +91,10 @@ contract GovernorV2 is MultiRole, Lockable {
         nonReentrant()
         onlyRoleHolder(uint256(Roles.Proposer))
     {
-        uint256 id = proposals.length;
         uint256 time = getCurrentTime();
 
-        // Note: doing all of this array manipulation manually is necessary because directly setting an array of
-        // structs in storage to an array of structs in memory is currently not implemented in solidity :/.
-
         // Add a zero-initialized element to the proposals array.
+        uint256 id = proposals.length;
         proposals.push();
 
         // Initialize the new proposal.
@@ -98,22 +102,14 @@ contract GovernorV2 is MultiRole, Lockable {
         proposal.requestTime = time;
         proposal.ancillaryData = ancillaryData;
 
-        // Initialize the transaction array.
-        for (uint256 i = 0; i < transactions.length; i++) {
-            require(transactions[i].to != address(0), "The `to` address cannot be 0x0");
-            // If the transaction has any data with it the recipient must be a contract, not an EOA.
-            if (transactions[i].data.length > 0) {
-                require(transactions[i].to.isContract(), "EOA can't accept tx with data");
-            }
-            proposal.transactions.push(transactions[i]);
-        }
+        _appendTransactionsToProposal(transactions, proposal);
 
         bytes32 identifier = AdminIdentifierLib._constructIdentifier(id);
 
         // Request a vote on this proposal in the DVM.
         _getOracle().requestGovernanceAction(identifier, time, ancillaryData);
 
-        emit NewProposal(id, transactions);
+        emit NewProposal(id, transactions, ancillaryData);
     }
 
     /**
@@ -124,27 +120,16 @@ contract GovernorV2 is MultiRole, Lockable {
      */
     function executeProposal(uint256 id, uint256 transactionIndex) external payable nonReentrant() {
         Proposal storage proposal = proposals[id];
-        int256 price =
+        require(
             _getOracle().getPrice(
                 AdminIdentifierLib._constructIdentifier(id),
                 proposal.requestTime,
                 proposal.ancillaryData
-            );
-
-        Transaction memory transaction = proposal.transactions[transactionIndex];
-
-        require(
-            transactionIndex == 0 || proposal.transactions[transactionIndex - 1].to == address(0),
-            "Previous tx not yet executed"
+            ) != 0,
+            "Proposal was rejected"
         );
-        require(transaction.to != address(0), "Tx already executed");
-        require(price != 0, "Proposal was rejected");
-        require(msg.value == transaction.value, "Must send exact amount of ETH");
 
-        // Delete the transaction before execution to avoid any potential re-entrancy issues.
-        delete proposal.transactions[transactionIndex];
-
-        require(_executeCall(transaction.to, transaction.value, transaction.data), "Tx execution failed");
+        _executeProposalTransaction(transactionIndex, proposal);
 
         emit ProposalExecuted(id, transactionIndex);
     }
@@ -169,6 +154,10 @@ contract GovernorV2 is MultiRole, Lockable {
         return proposals.length;
     }
 
+    function numEmergencyProposals() external view returns (uint256) {
+        return emergencyProposals.length;
+    }
+
     /**
      * @notice Gets the proposal data for a particular id.
      * @dev after a proposal is executed, its data will be zeroed out, except for the request time.
@@ -177,6 +166,39 @@ contract GovernorV2 is MultiRole, Lockable {
      */
     function getProposal(uint256 id) external view returns (Proposal memory) {
         return proposals[id];
+    }
+
+    /****************************************
+     *       EMERGENCY ADMIN FUNCTIONS      *
+     ****************************************/
+
+    function proposeEmergencyAction(Transaction[] memory transactions)
+        external
+        nonReentrant()
+        onlyRoleHolder(uint256(Roles.EmergencyProposer))
+        returns (uint256 id)
+    {
+        uint256 id = emergencyProposals.length;
+
+        // Add a zero-initialized element to the emergencyProposals array.
+        emergencyProposals.push();
+
+        // Initialize the new proposal.
+        Proposal storage emergencyProposal = emergencyProposals[id];
+        emergencyProposal.requestTime = getCurrentTime();
+
+        _appendTransactionsToProposal(transactions, emergencyProposal);
+
+        emit NewEmergencyProposal(id, transactions);
+    }
+
+    function executeEmergencyProposal(uint256 id, uint256 transactionIndex) external payable nonReentrant() {
+        Proposal storage emergencyProposal = emergencyProposals[id];
+        require(_getSafetyModule().isProposalRatified(id), "Proposal not approved");
+
+        _executeProposalTransaction(transactionIndex, emergencyProposal);
+
+        emit ProposalExecuted(id, transactionIndex);
     }
 
     /****************************************
@@ -208,7 +230,42 @@ contract GovernorV2 is MultiRole, Lockable {
         return OracleGovernanceInterface(finder.getImplementationAddress(OracleInterfaces.Oracle));
     }
 
+    function _getSafetyModule() private view returns (SafetyModuleInterface) {
+        return SafetyModuleInterface(getMember(uint256(Roles.EmergencyProposer)));
+    }
+
     function _getIdentifierWhitelist() private view returns (IdentifierWhitelistInterface) {
         return IdentifierWhitelistInterface(finder.getImplementationAddress(OracleInterfaces.IdentifierWhitelist));
+    }
+
+    function _appendTransactionsToProposal(Transaction[] memory transactions, Proposal storage proposal) internal {
+        // Note: doing all of this array manipulation manually is necessary because directly setting an array of
+        // structs in storage to an array of structs in memory is currently not implemented in solidity :/.
+
+        // Initialize the transaction array.
+        for (uint256 i = 0; i < transactions.length; i++) {
+            require(transactions[i].to != address(0), "The `to` address cannot be 0x0");
+            // If the transaction has any data with it the recipient must be a contract, not an EOA.
+            if (transactions[i].data.length > 0) {
+                require(transactions[i].to.isContract(), "EOA can't accept tx with data");
+            }
+            proposal.transactions.push(transactions[i]);
+        }
+    }
+
+    function _executeProposalTransaction(uint256 transactionIndex, Proposal storage proposal) internal {
+        Transaction memory transaction = proposal.transactions[transactionIndex];
+
+        require(
+            transactionIndex == 0 || proposal.transactions[transactionIndex - 1].to == address(0),
+            "Previous tx not yet executed"
+        );
+        require(transaction.to != address(0), "Tx already executed");
+        require(msg.value == transaction.value, "Must send exact amount of ETH");
+
+        // Delete the transaction before execution to avoid any potential re-entrancy issues.
+        delete proposal.transactions[transactionIndex];
+
+        require(_executeCall(transaction.to, transaction.value, transaction.data), "Tx execution failed");
     }
 }
