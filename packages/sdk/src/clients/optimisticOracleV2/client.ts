@@ -59,8 +59,6 @@ export type Request = RequestKey &
     expirationTime: BigNumber;
     reward: BigNumber;
     finalFee: BigNumber;
-    bond: BigNumber;
-    customLiveness: BigNumber;
     price: BigNumber;
     payout: BigNumber;
     state: RequestState;

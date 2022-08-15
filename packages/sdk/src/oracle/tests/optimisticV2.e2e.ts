@@ -89,6 +89,6 @@ describe("Oracle V2 Client", function () {
     assert.ok(!result[types.state.Flag.CanDispute]);
     assert.ok(!result[types.state.Flag.CanSettle]);
     assert.ok(!result[types.state.Flag.RequestSettled]);
-    assert.ok(!result[types.state.Flag.InsufficientApproval]);
+    assert.ok(result[types.state.Flag.InsufficientApproval]);
   });
 });

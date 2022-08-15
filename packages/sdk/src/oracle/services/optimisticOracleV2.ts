@@ -11,6 +11,7 @@ import {
   connect,
   Instance,
   getEventState,
+  Request as RawRequest,
 } from "../../clients/optimisticOracleV2";
 
 export type OptimisticOracleEvent = RequestPrice | ProposePrice | DisputePrice | Settle;
@@ -24,10 +25,10 @@ export class OptimisticOracleV2 implements OracleInterface {
   constructor(protected provider: Provider, protected address: string, public readonly chainId: number) {
     this.contract = connect(address, provider);
   }
-  private upsertRequest = (request: Omit<Request, "chainId">): Request => {
+  private upsertRequest = (request: RawRequest): Request => {
     const id = requestId(request);
     const cachedRequest = this.requests[id] || {};
-    const update = { ...cachedRequest, ...request, chainId: this.chainId };
+    const update = { ...cachedRequest, ...request, ...(request.requestSettings || {}), chainId: this.chainId };
     this.requests[id] = update;
     return update;
   };
