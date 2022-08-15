@@ -40,11 +40,11 @@ contract StakerTest is StakerControlledTiming {
         return 0;
     }
 
-    function setDelegate(address delegate) external nonReentrant() {
-        voterStakes[msg.sender].delegate = delegate;
-    }
+    // function setDelegate(address delegate) external nonReentrant() {
+    //     voterStakes[msg.sender].delegate = delegate;
+    // }
 
-    function setDelegator(address delegator) external nonReentrant() {
-        delegateToStaker[msg.sender] = delegator;
-    }
+    // function setDelegator(address delegator) external nonReentrant() {
+    //     delegateToStaker[msg.sender] = delegator;
+    // }
 }

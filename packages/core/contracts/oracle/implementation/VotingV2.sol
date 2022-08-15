@@ -619,25 +619,6 @@ contract VotingV2 is
         commitAndEmitEncryptedVote(identifier, time, "", hash, encryptedVote);
     }
 
-    /**
-     * @notice Sets the delegate of a voter. This delegate can vote on behalf of the staker. The staker will still own
-     * all staked balances, receive rewards and be slashed based on the actions of the delegate. Intended use is using a
-     * low-security available wallet for voting while keeping access to staked amounts secure by a more secure wallet.
-     * @param delegate the address of the delegate.
-     */
-    function setDelegate(address delegate) external nonReentrant() {
-        voterStakes[msg.sender].delegate = delegate;
-    }
-
-    /**
-     * @notice Sets the delegator of a voter. Acts to accept a delegation. The delegate can only vote for the delegator
-     * if the delegator also selected the delegate to do so (two-way relationship needed).
-     * @param delegator the address of the delegator.
-     */
-    function setDelegator(address delegator) external nonReentrant() {
-        delegateToStaker[msg.sender] = delegator;
-    }
-
     /****************************************
      *        VOTING GETTER FUNCTIONS       *
      ****************************************/
