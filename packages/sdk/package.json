@@ -1,5 +1,5 @@
 {
-  "version": "0.27.1",
+  "version": "0.28.0",
   "license": "MIT",
   "name": "@uma/sdk",
   "author": "David Adams",
@@ -37,8 +37,8 @@
   "dependencies": {
     "@google-cloud/datastore": "^6.6.0",
     "@types/lodash-es": "^4.17.5",
-    "@uma/contracts-frontend": "^0.3.12",
-    "@uma/contracts-node": "^0.3.12",
+    "@uma/contracts-frontend": "^0.3.13",
+    "@uma/contracts-node": "^0.3.13",
     "axios": "^0.24.0",
     "bn.js": "^4.11.9",
     "decimal.js": "^10.3.1",

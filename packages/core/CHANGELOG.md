@@ -3,6 +3,21 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.34.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.33.0...@uma/core@2.34.0) (2022-08-16)
+
+### Bug Fixes
+
+- [C01] Address issue with intra voting round slashing tracker updates ([#4067](https://github.com/UMAprotocol/protocol/issues/4067)) ([855e3c7](https://github.com/UMAprotocol/protocol/commit/855e3c740938f8c6a5675387225d3e059b6c1d70))
+- [L07] Missing error messages in require statements ([#4074](https://github.com/UMAprotocol/protocol/issues/4074)) ([71f45af](https://github.com/UMAprotocol/protocol/commit/71f45af1ed4684983022bd0cd94471ba7061368c))
+- [N01]: Inconsistent usage of reentrancy protection ([#4080](https://github.com/UMAprotocol/protocol/issues/4080)) ([ba64095](https://github.com/UMAprotocol/protocol/commit/ba64095d6a0dde093097df7fbd50e478c0f6cd60))
+- [N08]: Address inconsistent function naming ([#4087](https://github.com/UMAprotocol/protocol/issues/4087)) ([6ed0488](https://github.com/UMAprotocol/protocol/commit/6ed04885e8d4294497fc76ce67f79a29ba10e625))
+- DVM2.0 address issue with merging without CI and fix staker tests ([#4109](https://github.com/UMAprotocol/protocol/issues/4109)) ([8ca1cfc](https://github.com/UMAprotocol/protocol/commit/8ca1cfc4a8d797ed667785ad0c71ccd4019b71cf))
+
+### Features
+
+- bump solidity to 0.8.16 ([#4108](https://github.com/UMAprotocol/protocol/issues/4108)) ([efdf885](https://github.com/UMAprotocol/protocol/commit/efdf885512fb2eead3d51492efaa93912420791a))
+- dvm2.0 imports optimisations ([#4107](https://github.com/UMAprotocol/protocol/issues/4107)) ([dbdbe2f](https://github.com/UMAprotocol/protocol/commit/dbdbe2f5ed6c5452ae4298b1b58f6d6498d40840))
+
 # [2.33.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.32.0...@uma/core@2.33.0) (2022-08-09)
 
 ### Bug Fixes
