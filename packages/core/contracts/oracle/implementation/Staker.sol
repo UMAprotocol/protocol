@@ -2,10 +2,14 @@
 pragma solidity ^0.8.0;
 
 import "../interfaces/StakerInterface.sol";
+import "../interfaces/FinderInterface.sol";
+import "../interfaces/SafetyModuleInterface.sol";
+
+import "../../common/implementation/Lockable.sol";
 import "../../common/interfaces/ExpandedIERC20.sol";
 
+import "./Constants.sol";
 import "./VotingToken.sol";
-import "../../common/implementation/Lockable.sol";
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
@@ -181,6 +185,9 @@ abstract contract Staker is StakerInterface, Ownable, Lockable {
             voterStake.unstakeRequestTime != 0 && getCurrentTime() >= voterStake.unstakeRequestTime + unstakeCoolDown,
             "Unstake time not passed"
         );
+
+        require(!isVoterActivelySignaledOnEmergencyAction(msg.sender), "Voter signaled emergency action");
+
         uint256 tokensToSend = voterStake.pendingUnstake;
 
         if (tokensToSend > 0) {
@@ -300,6 +307,12 @@ abstract contract Staker is StakerInterface, Ownable, Lockable {
      */
     function getCurrentTime() public view virtual returns (uint256) {
         return block.timestamp;
+    }
+
+    function isVoterActivelySignaledOnEmergencyAction(address voterAddress) public view returns (bool) {
+        return
+            SafetyModuleInterface(finder.getImplementationAddress(OracleInterfaces.SafetyModule))
+                .isVoterActivelySignaledOnEmergencyAction(voterAddress);
     }
 
     /****************************************

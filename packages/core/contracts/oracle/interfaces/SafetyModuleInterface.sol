@@ -6,4 +6,6 @@ import "../../common/interfaces/ExpandedIERC20.sol";
 
 interface SafetyModuleInterface {
     function isProposalRatified(uint256 id) external returns (bool);
+
+    function isVoterActivelySignaledOnEmergencyAction(address account) external returns (bool);
 }

@@ -10,8 +10,9 @@ import "../../common/implementation/Lockable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "../../common/implementation/MultiCaller.sol";
 
-contract SafteyModule is Ownable, Lockable {
+contract SafteyModule is Ownable, Lockable, MultiCaller {
     using SafeERC20 for IERC20;
     IERC20 public immutable token;
     uint256 public bond;
@@ -27,6 +28,8 @@ contract SafteyModule is Ownable, Lockable {
         bool ratified;
     }
     EmergencyProposal[] public emergencyProposals;
+
+    mapping(address => uint256) public emergencyProposalsStakedOnCount;
 
     uint256 emergencyActionThreshold = 0.5e18;
 
@@ -71,6 +74,7 @@ contract SafteyModule is Ownable, Lockable {
 
         emergencyProposal.accountSignaled[msg.sender] = getVoterStake(msg.sender);
         emergencyProposal.cumulativeSignaled += emergencyProposal.accountSignaled[msg.sender];
+        emergencyProposalsStakedOnCount[msg.sender]++;
     }
 
     function cancelSignalOnEmergencyProposal(uint256 id) public {
@@ -82,6 +86,7 @@ contract SafteyModule is Ownable, Lockable {
         // rather than using their activeStake as they may have changed this during the time they were signaled.
         emergencyProposal.cumulativeSignaled -= emergencyProposal.accountSignaled[msg.sender];
         emergencyProposal.accountSignaled[msg.sender] = 0; // Reset the signaled amount to 0.
+        emergencyProposalsStakedOnCount[msg.sender]--;
     }
 
     function ratifyEmergencyProposal(uint256 id) public {
@@ -90,6 +95,10 @@ contract SafteyModule is Ownable, Lockable {
         require(emergencyProposal.ratified == false);
         require((emergencyProposal.cumulativeSignaled * 1e18) / getCumulativeStake() >= emergencyActionThreshold);
         emergencyProposal.ratified = true;
+    }
+
+    function isVoterActivelySignaledOnEmergencyAction(address account) public view {
+        return emergencyProposalsStakedOnCount[account] > 0;
     }
 
     function setBond(uint256 _bond) public nonReentrant() onlyOwner() {

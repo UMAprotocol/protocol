@@ -3,16 +3,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.16;
 
-import "../../common/implementation/MultiCaller.sol";
-
-import "../interfaces/FinderInterface.sol";
 import "../interfaces/IdentifierWhitelistInterface.sol";
 import "../interfaces/OracleAncillaryInterface.sol";
 import "../interfaces/OracleGovernanceInterface.sol";
 import "../interfaces/OracleInterface.sol";
 import "../interfaces/VotingV2Interface.sol";
 import "../interfaces/RegistryInterface.sol";
-import "./Constants.sol";
 import "./ResultComputationV2.sol";
 import "./SlashingLibrary.sol";
 import "./SpamGuardIdentifierLib.sol";
