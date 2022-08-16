@@ -102,6 +102,7 @@ contract OptimisticGovernor is Module, Lockable {
     }
 
     function setUp(bytes memory initializeParams) public override initializer {
+        _startReentrantGuardDisabled();
         __Ownable_init();
         (
             address _owner,
