@@ -20,6 +20,24 @@ async function _seedProposerWithUma(proposer, amountToSend = toWei("50000")) {
     .transfer(proposer, amountToSend)
     .send({ from: REQUIRED_SIGNER_ADDRESSES["foundation"] });
   console.log(`Transaction: ${txn?.transactionHash}`);
+
+  await web3.eth.sendTransaction({
+    from: accounts[0],
+    to: REQUIRED_SIGNER_ADDRESSES["account_with_uma"],
+    value: toWei("1"),
+  });
+
+  await uma.methods
+    .transfer(
+      REQUIRED_SIGNER_ADDRESSES["foundation"],
+      await uma.methods.balanceOf(REQUIRED_SIGNER_ADDRESSES["account_with_uma"]).call()
+    )
+    .send({ from: REQUIRED_SIGNER_ADDRESSES["account_with_uma"] });
+
+  console.log(
+    "Balance UMA foundation wallet:",
+    await uma.methods.balanceOf(REQUIRED_SIGNER_ADDRESSES["foundation"]).call()
+  );
 }
 
 async function run() {
