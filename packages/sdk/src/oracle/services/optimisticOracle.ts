@@ -3,7 +3,13 @@ import { BigNumberish, Provider, Signer, TransactionResponse, Log, TransactionRe
 import type { OracleInterface, RequestKey, OracleProps, Request } from "../types/interfaces";
 import { requestId, insertOrderedAscending, eventKey, isUnique } from "../utils";
 
-import { RequestPrice, ProposePrice, DisputePrice, Settle } from "../../clients/optimisticOracle";
+import {
+  RequestPrice,
+  ProposePrice,
+  DisputePrice,
+  Settle,
+  Request as RawRequest,
+} from "../../clients/optimisticOracle";
 
 export type OptimisticOracleEvent = RequestPrice | ProposePrice | DisputePrice | Settle;
 
@@ -16,7 +22,7 @@ export class OptimisticOracle implements OracleInterface {
   constructor(protected provider: Provider, protected address: string, public readonly chainId: number) {
     this.contract = optimisticOracle.connect(address, provider);
   }
-  private upsertRequest = (request: Omit<Request, "chainId">): Request => {
+  private upsertRequest = (request: RawRequest): Request => {
     const id = requestId(request);
     const cachedRequest = this.requests[id] || {};
     const update = { ...cachedRequest, ...request, chainId: this.chainId };
