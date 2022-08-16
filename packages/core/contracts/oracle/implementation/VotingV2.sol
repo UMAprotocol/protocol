@@ -5,6 +5,7 @@ pragma solidity 0.8.16;
 
 import "../../common/implementation/MultiCaller.sol";
 
+import "../interfaces/VotingInterface.sol";
 import "../interfaces/FinderInterface.sol";
 import "../interfaces/IdentifierWhitelistInterface.sol";
 import "../interfaces/OracleAncillaryInterface.sol";
@@ -1101,6 +1102,26 @@ contract VotingV2 is
      */
     function getSpamDeletionRequest(uint256 spamDeletionRequestId) external view returns (SpamDeletionRequest memory) {
         return spamDeletionProposals[spamDeletionRequestId];
+    }
+
+    /****************************************
+     *      MIGRATION SUPPORT FUNCTIONS     *
+     ****************************************/
+
+    /**
+     * @notice Function to enable retrieval of rewards on a previously migrated away from voting contract.
+     * @param votingContract the previous version of the voting contract.
+     * @param voterAddress voter for which rewards will be retrieved. Does not have to be the caller.
+     * @param roundId the round from which voting rewards will be retrieved from.
+     * @param toRetrieve array of PendingRequests which rewards are retrieved from.
+     */
+    function retrieveRewardsOnMigratedVotingContract(
+        address votingContract,
+        address voterAddress,
+        uint256 roundId,
+        PendingRequestAncillary[] memory toRetrieve
+    ) public {
+        VotingInterface(votingContract).retrieveRewards(voterAddress, roundId, toRetrieve);
     }
 
     /****************************************
