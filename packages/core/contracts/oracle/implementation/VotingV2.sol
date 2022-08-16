@@ -260,14 +260,14 @@ contract VotingV2 is
         address _votingToken,
         address _finder,
         address _slashingLibrary,
-        address previousVotingToken
+        address _previousVotingContract
     ) Staker(_emissionRate, _unstakeCoolDown, _votingToken) {
         voteTiming.init(_phaseLength, _minRollToNextRoundLength);
         require(_gat < IERC20(_votingToken).totalSupply() && _gat > 0);
         gat = _gat;
         finder = FinderInterface(_finder);
         slashingLibrary = SlashingLibrary(_slashingLibrary);
-        previousVotingContract = OracleAncillaryInterface(previousVotingContract);
+        previousVotingContract = OracleAncillaryInterface(_previousVotingContract);
         setSpamDeletionProposalBond(_spamDeletionProposalBond);
 
         // We assume indices never get above 2^64. So we should never start with an index above half that range.
@@ -1150,7 +1150,7 @@ contract VotingV2 is
         else {
             (bool previouslyResolved, int256 previousPrice) =
                 _getPriceFromPreviousVotingContract(identifier, time, ancillaryData);
-            if (previouslyResolved) return (true, previousPrice);
+            if (previouslyResolved) return (true, previousPrice, "Returned from previous contract");
             else (false, 0, "Price was never requested");
         }
     }
@@ -1159,9 +1159,9 @@ contract VotingV2 is
         bytes32 identifier,
         uint256 time,
         bytes memory ancillaryData
-    ) returns (bool, int256) {
+    ) public view returns (bool, int256) {
         if (address(previousVotingContract) == address(0)) return (false, 0);
-        try previousVotingContract.getPrice(identifier, timestamp, ancillaryData) returns (int256 price) {
+        try previousVotingContract.getPrice(identifier, time, ancillaryData) returns (int256 price) {
             return (true, price);
         } catch {
             return (false, 0);
