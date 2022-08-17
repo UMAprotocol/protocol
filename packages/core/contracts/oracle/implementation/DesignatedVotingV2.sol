@@ -43,74 +43,17 @@ contract DesignatedVotingV2 is Stakeable, MultiCaller {
         _setStakeRole(uint256(Roles.Owner));
 
         finder = FinderInterface(finderAddress);
-    }
 
-    /****************************************
-     *   VOTING AND REWARD FUNCTIONALITY    *
-     ****************************************/
-
-    /**
-     * @notice Forwards a commit to Voting.
-     * @param identifier uniquely identifies the feed for this vote. E.G. BTC/USD price pair.
-     * @param time specifies the unix timestamp of the price being voted on.
-     * @param hash keccak256 hash of the price, salt, voter address, time, ancillaryData, current roundId, identifier.
-     */
-    function commitVote(
-        bytes32 identifier,
-        uint256 time,
-        bytes memory ancillaryData,
-        bytes32 hash
-    ) external onlyRoleHolder(uint256(Roles.Voter)) {
-        _getVotingContract().commitVote(identifier, time, ancillaryData, hash);
+        delegateToVoter();
     }
 
     /**
-     * @notice commits a vote and logs an event with a data blob, typically an encrypted version of the vote
-     * @dev An encrypted version of the vote is emitted in an event EncryptedVote to allow off-chain infrastructure to
-     * retrieve the commit. The contents of encryptedVote are never used on chain: it is purely for convenience.
-     * @param identifier unique price pair identifier. E.g.: BTC/USD price pair.
-     * @param time unix timestamp of the price request.
-     * @param ancillaryData arbitrary data appended to a price request to give the voters more info from the caller.
-     * @param hash keccak256 hash of the price, salt, voter address, time, ancillaryData, current roundId, identifier.
-     * @param encryptedVote offchain encrypted blob containing the voter's amount, time and salt.
+     * @notice This method essentially syncs the voter role with the current voting delegate.
+     * @dev Because this is essentially a state sync method, there is no reason to restrict its permissioning.
      */
-    function commitAndEmitEncryptedVote(
-        bytes32 identifier,
-        uint256 time,
-        bytes memory ancillaryData,
-        bytes32 hash,
-        bytes memory encryptedVote
-    ) external onlyRoleHolder(uint256(Roles.Voter)) {
-        _getVotingContract().commitAndEmitEncryptedVote(identifier, time, ancillaryData, hash, encryptedVote);
-    }
-
-    /**
-     * @notice Forwards a reveal to Voting.
-     * @param identifier voted on in the commit phase. E.G. BTC/USD price pair.
-     * @param time specifies the unix timestamp of the price being voted on.
-     * @param price voted on during the commit phase.
-     * @param salt value used to hide the commitment price during the commit phase.
-     */
-    function revealVote(
-        bytes32 identifier,
-        uint256 time,
-        int256 price,
-        bytes memory ancillaryData,
-        int256 salt
-    ) external onlyRoleHolder(uint256(Roles.Voter)) {
-        _getVotingContract().revealVote(identifier, time, price, ancillaryData, salt);
-    }
-
-    /**
-     * @notice Forwards a reward retrieval to Voting.
-     * @dev Rewards are added to the tokens already held by this contract.
-     * @return amount of rewards that the user should receive.
-     */
-    function withdrawAndRestakeRewards() external onlyRoleHolder(uint256(Roles.Voter)) returns (uint256) {
-        StakerInterface voting = StakerInterface(address(_getVotingContract()));
-        uint256 rewardsMinted = voting.withdrawRewards();
-        IERC20(address(voting.votingToken())).approve(address(voting), rewardsMinted);
-        voting.stake(rewardsMinted);
+    function delegateToVoter() public {
+        address voter = getMember(uint256(Roles.Voter));
+        _getVotingContract().setDelegate(voter);
     }
 
     // Returns the Voting contract address, named "Oracle" in the finder.

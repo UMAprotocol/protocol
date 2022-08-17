@@ -625,7 +625,7 @@ contract VotingV2 is
      * low-security available wallet for voting while keeping access to staked amounts secure by a more secure wallet.
      * @param delegate the address of the delegate.
      */
-    function setDelegate(address delegate) external nonReentrant() {
+    function setDelegate(address delegate) external override nonReentrant() {
         voterStakes[msg.sender].delegate = delegate;
     }
 
@@ -634,7 +634,7 @@ contract VotingV2 is
      * if the delegator also selected the delegate to do so (two-way relationship needed).
      * @param delegator the address of the delegator.
      */
-    function setDelegator(address delegator) external nonReentrant() {
+    function setDelegator(address delegator) external override nonReentrant() {
         delegateToStaker[msg.sender] = delegator;
     }
 
