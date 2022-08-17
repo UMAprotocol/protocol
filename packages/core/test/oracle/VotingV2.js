@@ -1290,7 +1290,6 @@ describe("VotingV2", function () {
     await newVoting.methods.requestPrice(identifier, time2).send({ from: registeredContract });
     await moveToNextRound(newVoting, accounts[0]);
     roundId = (await newVoting.methods.getCurrentRoundId().call()).toString();
-    console.log("A");
 
     const hash = computeVoteHash({ price, salt, account: account1, time: time1, roundId, identifier });
     await newVoting.methods.commitVote(identifier, time1, hash).send({ from: account1 });
