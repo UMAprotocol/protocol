@@ -1161,11 +1161,10 @@ contract VotingV2 is
         bytes memory ancillaryData
     ) public view returns (bool, int256) {
         if (address(previousVotingContract) == address(0)) return (false, 0);
-        try previousVotingContract.getPrice(identifier, time, ancillaryData) returns (int256 price) {
-            return (true, price);
-        } catch {
-            return (false, 0);
-        }
+
+        if (previousVotingContract.hasPrice(identifier, time, ancillaryData))
+            return (true, previousVotingContract.getPrice(identifier, time, ancillaryData));
+        else return (false, 0);
     }
 
     // Returns a price request object for a given identifier, time and ancillary data.
