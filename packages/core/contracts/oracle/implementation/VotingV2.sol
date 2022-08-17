@@ -5,7 +5,7 @@ pragma solidity 0.8.16;
 
 import "../../common/implementation/MultiCaller.sol";
 
-import "../interfaces/VotingInterface.sol";
+import "../interfaces/VotingAncillaryInterface.sol";
 import "../interfaces/FinderInterface.sol";
 import "../interfaces/IdentifierWhitelistInterface.sol";
 import "../interfaces/OracleAncillaryInterface.sol";
@@ -1109,19 +1109,24 @@ contract VotingV2 is
      ****************************************/
 
     /**
-     * @notice Function to enable retrieval of rewards on a previously migrated away from voting contract.
-     * @param votingContract the previous version of the voting contract.
+     * @notice Function to enable retrieval of rewards on a previously migrated away from voting contract. This function
+     * is intended on being removed  from a future version of the Voting contract and aims to solve a short term migration
+     * pain point
      * @param voterAddress voter for which rewards will be retrieved. Does not have to be the caller.
      * @param roundId the round from which voting rewards will be retrieved from.
      * @param toRetrieve array of PendingRequests which rewards are retrieved from.
      */
     function retrieveRewardsOnMigratedVotingContract(
-        address votingContract,
         address voterAddress,
         uint256 roundId,
-        PendingRequestAncillary[] memory toRetrieve
+        VotingAncillaryInterface.PendingRequestAncillary[] memory toRetrieve
     ) public {
-        VotingInterface(votingContract).retrieveRewards(voterAddress, roundId, toRetrieve);
+        // Hard coded address of previous voting contract.
+        VotingAncillaryInterface(0x8B1631ab830d11531aE83725fDa4D86012eCCd77).retrieveRewards(
+            voterAddress,
+            roundId,
+            toRetrieve
+        );
     }
 
     /****************************************
