@@ -217,19 +217,18 @@ abstract contract Staker is StakerInterface, Ownable, Lockable {
      * @return uint256 the amount of tokens sent to the voter.
      */
     function withdrawRewards() public returns (uint256) {
-        return _withdrawRewards(msg.sender);
+        return _withdrawRewards(msg.sender, msg.sender);
     }
 
-    function _withdrawRewards(address from) internal returns (uint256) {
-        _updateTrackers(from);
-        VoterStake storage voterStake = voterStakes[from];
+    function _withdrawRewards(address voter, address recipient) internal returns (uint256) {
+        _updateTrackers(voter);
+        VoterStake storage voterStake = voterStakes[voter];
 
         uint256 tokensToMint = voterStake.outstandingRewards;
         if (tokensToMint > 0) {
             voterStake.outstandingRewards = 0;
-            address recipient = from != msg.sender ? address(this) : from;
             require(votingToken.mint(recipient, tokensToMint), "Voting token issuance failed");
-            emit WithdrawnRewards(from, msg.sender, tokensToMint);
+            emit WithdrawnRewards(voter, msg.sender, tokensToMint);
         }
         return tokensToMint;
     }
@@ -244,7 +243,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable {
      */
     function withdrawAndRestake() external override returns (uint256) {
         address voter = getVoterFromDelegate(msg.sender);
-        uint256 rewards = _withdrawRewards(voter);
+        uint256 rewards = _withdrawRewards(voter, address(this));
         _stakeTo(address(this), voter, rewards);
         return rewards;
     }
