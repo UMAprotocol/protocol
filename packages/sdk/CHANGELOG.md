@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.28.0](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.27.1...@uma/sdk@0.28.0) (2022-08-16)
+
+- fix(sdk)!: fix missing bond on oo v2 request (#4113) ([56c66b9](https://github.com/UMAprotocol/protocol/commit/56c66b982fce5bd12b799a3ca26bd89c1b213dbb)), closes [#4113](https://github.com/UMAprotocol/protocol/issues/4113)
+
+### BREAKING CHANGES
+
+- Request object shape has been modified to normalize v1 and v2 request data
+
 ## [0.27.1](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.27.0...@uma/sdk@0.27.1) (2022-08-09)
 
 **Note:** Version bump only for package @uma/sdk

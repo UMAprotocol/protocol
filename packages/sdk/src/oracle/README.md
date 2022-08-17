@@ -34,6 +34,7 @@ const config:PartialConfig = {
       earliestBlockNumber?: number;  // ignore blocks before this block number if specified
       maxEventRangeQuery?: number;  // optimize how quickly the first batch of requests are fetched by restricting the max number of events queried.
     },
+    // other chains follow the same configuration schema
   },
 };
 
