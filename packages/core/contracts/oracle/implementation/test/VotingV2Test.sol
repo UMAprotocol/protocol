@@ -14,7 +14,6 @@ contract VotingV2ControllableTiming is VotingV2, Testable {
         uint64 _minRollToNextRoundLength,
         uint256 _gat,
         uint64 _startingRequestIndex,
-        address _votingToken,
         address _finder,
         address _slashingLibrary,
         address _timerAddress
@@ -27,7 +26,6 @@ contract VotingV2ControllableTiming is VotingV2, Testable {
             _minRollToNextRoundLength,
             _gat,
             _startingRequestIndex,
-            _votingToken,
             _finder,
             _slashingLibrary
         )
@@ -49,7 +47,6 @@ contract VotingV2Test is VotingV2ControllableTiming {
         uint64 _minRollToNextRoundLength,
         uint256 _gat,
         uint64 _startingRequestIndex,
-        address _votingToken,
         address _finder,
         address _slashingLibrary,
         address _timerAddress
@@ -62,7 +59,6 @@ contract VotingV2Test is VotingV2ControllableTiming {
             _minRollToNextRoundLength,
             _gat,
             _startingRequestIndex,
-            _votingToken,
             _finder,
             _slashingLibrary,
             _timerAddress

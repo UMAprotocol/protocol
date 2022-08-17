@@ -5,14 +5,13 @@ pragma solidity 0.8.16;
 
 import "../../common/implementation/MultiCaller.sol";
 
-import "../interfaces/FinderInterface.sol";
 import "../interfaces/IdentifierWhitelistInterface.sol";
 import "../interfaces/OracleAncillaryInterface.sol";
 import "../interfaces/OracleGovernanceInterface.sol";
 import "../interfaces/OracleInterface.sol";
 import "../interfaces/VotingV2Interface.sol";
 import "../interfaces/RegistryInterface.sol";
-import "./Constants.sol";
+
 import "./ResultComputationV2.sol";
 import "./SlashingLibrary.sol";
 import "./SpamGuardIdentifierLib.sol";
@@ -116,9 +115,6 @@ contract VotingV2 is
 
     // Number of tokens that must participate to resolve a vote.
     uint256 public gat;
-
-    // Reference to the Finder.
-    FinderInterface public immutable finder;
 
     // Reference to Slashing Library.
     SlashingLibrary public slashingLibrary;
@@ -240,7 +236,6 @@ contract VotingV2 is
      *  to be voted on in the next round. If after this, the request is rolled to a round after the next round.
      * @param _startingRequestIndex offset index to increment the first index in the priceRequestIds array.
      * @param _gat number of tokens that must participate to resolve a vote.
-     * @param _votingToken address of the UMA token contract used to commit votes.
      * @param _finder keeps track of all contracts within the system based on their interfaceName.
      * Must be set to 0x0 for production environments that use live time.
      * @param _slashingLibrary contract used to calculate voting slashing penalties based on voter participation.
@@ -253,12 +248,11 @@ contract VotingV2 is
         uint64 _minRollToNextRoundLength,
         uint256 _gat,
         uint64 _startingRequestIndex,
-        address _votingToken,
         address _finder,
         address _slashingLibrary
-    ) Staker(_emissionRate, _unstakeCoolDown, _votingToken) {
+    ) Staker(_emissionRate, _unstakeCoolDown, _finder) {
         voteTiming.init(_phaseLength, _minRollToNextRoundLength);
-        require(_gat < IERC20(_votingToken).totalSupply() && _gat > 0);
+        require(_gat < votingToken.totalSupply() && _gat > 0);
         gat = _gat;
         finder = FinderInterface(_finder);
         slashingLibrary = SlashingLibrary(_slashingLibrary);

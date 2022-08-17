@@ -4,6 +4,8 @@ export const interfaceName = {
   Oracle: "Oracle",
   Registry: "Registry",
   Store: "Store",
+  Governor: "Governor",
+  VotingToken: "VotingToken",
   IdentifierWhitelist: "IdentifierWhitelist",
   CollateralWhitelist: "CollateralWhitelist",
   AddressWhitelist: "CollateralWhitelist",

@@ -41,13 +41,7 @@ describe("ProposerV2", function () {
       await MockOracleGovernance.new(finder.options.address, timer.options.address).send({ from: owner })
     ).options.address;
     mockOracle = await MockOracleAncillary.at(mockOracleAddress);
-    proposer = await ProposerV2.new(
-      votingToken.options.address,
-      bond,
-      governor.options.address,
-      finder.options.address,
-      timer.options.address
-    ).send({ from: owner });
+    proposer = await ProposerV2.new(bond, finder.options.address, timer.options.address).send({ from: owner });
     await finder.methods
       .changeImplementationAddress(utf8ToHex(interfaceName.Oracle, 64), mockOracle.options.address)
       .send({ from: owner });

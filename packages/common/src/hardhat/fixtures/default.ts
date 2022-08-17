@@ -51,6 +51,8 @@ export async function runDefaultFixture(
     await addToFinder("Voting", interfaceName.Oracle);
     await addToFinder("Registry", interfaceName.Registry);
     await addToFinder("Store", interfaceName.Store);
+    await addToFinder("Governor", interfaceName.Governor);
+    await addToFinder("VotingToken", interfaceName.VotingToken);
     await addToFinder("IdentifierWhitelist", interfaceName.IdentifierWhitelist);
     await addToFinder("AddressWhitelist", interfaceName.CollateralWhitelist);
     await addToFinder("OptimisticOracle", interfaceName.OptimisticOracle);

@@ -101,7 +101,6 @@ describe("VotingV2", function () {
           7200, // minRollToNextRoundLength
           invalidGat, // GAT
           "0", // startingRequestIndex
-          votingToken.options.address, // voting token
           (await Finder.deployed()).options.address, // finder
           (await SlashingLibrary.deployed()).options.address, // slashing library
           (await Timer.deployed()).options.address // timer
@@ -1223,7 +1222,6 @@ describe("VotingV2", function () {
       7200, // minRollToNextRoundLength
       web3.utils.toWei("5000000"), // GAT 5MM
       "0", // startingRequestIndex
-      votingToken.options.address, // voting token
       (await Finder.deployed()).options.address, // finder
       (await SlashingLibrary.deployed()).options.address, // slashing library
       (await Timer.deployed()).options.address // timer
@@ -1304,7 +1302,7 @@ describe("VotingV2", function () {
           7200, // minRollToNextRoundLength
           toWei("5000000"), // GAT 5MM
           "0", // startingRequestIndex
-          votingToken.options.address, // voting token
+
           (await Finder.deployed()).options.address, // finder
           (await SlashingLibrary.deployed()).options.address, // slashing library
           (await Timer.deployed()).options.address // timer
@@ -2992,7 +2990,6 @@ describe("VotingV2", function () {
       7200, // minRollToNextRoundLength
       toWei("0.05"), // GatPct
       10, // offset starting index for requests.
-      votingToken.options.address, // voting token
       (await Finder.deployed()).options.address, // finder
       (await SlashingLibrary.deployed()).options.address, // slashing library
       (await Timer.deployed()).options.address // timer

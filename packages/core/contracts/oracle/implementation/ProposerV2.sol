@@ -18,7 +18,6 @@ contract ProposerV2 is Ownable, Lockable {
     using SafeERC20 for IERC20;
     IERC20 public immutable token;
     uint256 public bond;
-    GovernorV2 public immutable governor;
     Finder public immutable finder;
 
     struct BondedProposal {
@@ -35,22 +34,14 @@ contract ProposerV2 is Ownable, Lockable {
 
     /**
      * @notice Construct the Proposer contract.
-     * @param _token the ERC20 token that the bond is paid in.
      * @param _bond the bond amount.
-     * @param _governor the governor contract that this contract makes proposals to.
      * @param _finder the finder contract used to look up addresses.
      */
-    constructor(
-        IERC20 _token,
-        uint256 _bond,
-        GovernorV2 _governor,
-        Finder _finder
-    ) {
-        token = _token;
-        governor = _governor;
+    constructor(uint256 _bond, Finder _finder) {
         finder = _finder;
+        token = IERC20(finder.getImplementationAddress(OracleInterfaces.VotingToken));
         setBond(_bond);
-        transferOwnership(address(_governor));
+        transferOwnership(finder.getImplementationAddress(OracleInterfaces.Governor));
     }
 
     /**
@@ -65,6 +56,7 @@ contract ProposerV2 is Ownable, Lockable {
         nonReentrant()
         returns (uint256)
     {
+        GovernorV2 governor = GovernorV2(finder.getImplementationAddress(OracleInterfaces.Governor));
         uint256 id = governor.numProposals();
         token.safeTransferFrom(msg.sender, address(this), bond);
         bondedProposals[id] = BondedProposal({

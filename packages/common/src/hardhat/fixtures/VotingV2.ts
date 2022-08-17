@@ -43,6 +43,8 @@ export async function runVotingV2Fixture(
     await addToFinder("VotingV2", interfaceName.Oracle);
     await addToFinder("Registry", interfaceName.Registry);
     await addToFinder("Store", interfaceName.Store);
+    await addToFinder("GovernorV2", interfaceName.Governor);
+    await addToFinder("VotingToken", interfaceName.VotingToken);
     await addToFinder("IdentifierWhitelist", interfaceName.IdentifierWhitelist);
     await addToFinder("AddressWhitelist", interfaceName.CollateralWhitelist);
 

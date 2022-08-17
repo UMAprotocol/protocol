@@ -1,10 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
+import "../interfaces/FinderInterface.sol";
 import "../interfaces/StakerInterface.sol";
-import "../../common/interfaces/ExpandedIERC20.sol";
 
 import "./VotingToken.sol";
+import "./Constants.sol";
+
+import "../../common/interfaces/ExpandedIERC20.sol";
 import "../../common/implementation/Lockable.sol";
 
 import "@openzeppelin/contracts/access/Ownable.sol";
@@ -25,6 +28,8 @@ abstract contract Staker is StakerInterface, Ownable, Lockable {
     uint256 public rewardPerTokenStored;
     uint64 public lastUpdateTime;
     uint64 public unstakeCoolDown;
+
+    FinderInterface public finder;
 
     ExpandedIERC20 public votingToken;
 
@@ -92,16 +97,17 @@ abstract contract Staker is StakerInterface, Ownable, Lockable {
      * @notice Construct the Staker contract
      * @param _emissionRate amount of voting tokens that are emitted per second, split pro rata to stakers.
      * @param _unstakeCoolDown time that a voter must wait to unstake after requesting to unstake.
-     * @param _votingToken address of the UMA token contract used to commit votes.
+     * @param _finder keeps track of all contracts within the system based on their interfaceName.
      */
     constructor(
         uint256 _emissionRate,
         uint64 _unstakeCoolDown,
-        address _votingToken
+        address _finder
     ) {
         emissionRate = _emissionRate;
         unstakeCoolDown = _unstakeCoolDown;
-        votingToken = ExpandedIERC20(_votingToken);
+        finder = FinderInterface(_finder);
+        votingToken = ExpandedIERC20(finder.getImplementationAddress(OracleInterfaces.VotingToken));
     }
 
     /****************************************
