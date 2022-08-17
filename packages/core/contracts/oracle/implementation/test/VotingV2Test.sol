@@ -17,8 +17,8 @@ contract VotingV2ControllableTiming is VotingV2, Testable {
         address _votingToken,
         address _finder,
         address _slashingLibrary,
-        address _timerAddress,
-        address _previousVotingContract
+        address _previousVotingContract,
+        address _timerAddress
     )
         VotingV2(
             _emissionRate,
@@ -54,8 +54,8 @@ contract VotingV2Test is VotingV2ControllableTiming {
         address _votingToken,
         address _finder,
         address _slashingLibrary,
-        address _timerAddress,
-        address _previousVotingContract
+        address _previousVotingContract,
+        address _timerAddress
     )
         VotingV2ControllableTiming(
             _emissionRate,
@@ -68,8 +68,8 @@ contract VotingV2Test is VotingV2ControllableTiming {
             _votingToken,
             _finder,
             _slashingLibrary,
-            _timerAddress,
-            _previousVotingContract
+            _previousVotingContract,
+            _timerAddress
         )
     {}
 
