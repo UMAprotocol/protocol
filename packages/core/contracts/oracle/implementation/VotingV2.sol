@@ -5,6 +5,7 @@ pragma solidity 0.8.16;
 
 import "../../common/implementation/MultiCaller.sol";
 
+import "../interfaces/VotingAncillaryInterface.sol";
 import "../interfaces/FinderInterface.sol";
 import "../interfaces/IdentifierWhitelistInterface.sol";
 import "../interfaces/OracleAncillaryInterface.sol";
@@ -125,6 +126,10 @@ contract VotingV2 is
 
     // If non-zero, this contract has been migrated to this address.
     address public migratedAddress;
+
+    // If non-zero, this is the previous voting contract, deployed before this one. Used to facilitate retrieval of
+    // previous price requests from DVM deployments before this one and claiming of rewards.
+    OracleAncillaryInterface public immutable previousVotingContract;
 
     // Max value of an unsigned integer.
     uint64 private constant UINT64_MAX = type(uint64).max;
@@ -255,13 +260,15 @@ contract VotingV2 is
         uint64 _startingRequestIndex,
         address _votingToken,
         address _finder,
-        address _slashingLibrary
+        address _slashingLibrary,
+        address _previousVotingContract
     ) Staker(_emissionRate, _unstakeCoolDown, _votingToken) {
         voteTiming.init(_phaseLength, _minRollToNextRoundLength);
         require(_gat < IERC20(_votingToken).totalSupply() && _gat > 0);
         gat = _gat;
         finder = FinderInterface(_finder);
         slashingLibrary = SlashingLibrary(_slashingLibrary);
+        previousVotingContract = OracleAncillaryInterface(_previousVotingContract);
         setSpamDeletionProposalBond(_spamDeletionProposalBond);
 
         // We assume indices never get above 2^64. So we should never start with an index above half that range.
@@ -619,41 +626,9 @@ contract VotingV2 is
         commitAndEmitEncryptedVote(identifier, time, "", hash, encryptedVote);
     }
 
-    /**
-     * @notice Sets the delegate of a voter. This delegate can vote on behalf of the staker. The staker will still own
-     * all staked balances, receive rewards and be slashed based on the actions of the delegate. Intended use is using a
-     * low-security available wallet for voting while keeping access to staked amounts secure by a more secure wallet.
-     * @param delegate the address of the delegate.
-     */
-    function setDelegate(address delegate) external nonReentrant() {
-        voterStakes[msg.sender].delegate = delegate;
-    }
-
-    /**
-     * @notice Sets the delegator of a voter. Acts to accept a delegation. The delegate can only vote for the delegator
-     * if the delegator also selected the delegate to do so (two-way relationship needed).
-     * @param delegator the address of the delegator.
-     */
-    function setDelegator(address delegator) external nonReentrant() {
-        delegateToStaker[msg.sender] = delegator;
-    }
-
     /****************************************
      *        VOTING GETTER FUNCTIONS       *
      ****************************************/
-
-    /**
-     * @notice Gets the voter from the delegate.
-     * @param caller caller of the function or the address to check in the mapping between a voter and their delegate.
-     * @return address voter that corresponds to the delegate.
-     */
-    function getVoterFromDelegate(address caller) public view returns (address) {
-        if (
-            delegateToStaker[caller] != address(0) && // The delegate chose to be a delegate for the staker.
-            voterStakes[delegateToStaker[caller]].delegate == caller // The staker chose the delegate.
-        ) return delegateToStaker[caller];
-        else return caller;
-    }
 
     /**
      * @notice Gets the queries that are being voted on this round.
@@ -1104,6 +1079,26 @@ contract VotingV2 is
     }
 
     /****************************************
+     *      MIGRATION SUPPORT FUNCTIONS     *
+     ****************************************/
+
+    /**
+     * @notice Function to enable retrieval of rewards on a previously migrated away from voting contract. This function
+     * is intended on being removed  from a future version of the Voting contract and aims to solve a short term migration
+     * pain point
+     * @param voterAddress voter for which rewards will be retrieved. Does not have to be the caller.
+     * @param roundId the round from which voting rewards will be retrieved from.
+     * @param toRetrieve array of PendingRequests which rewards are retrieved from.
+     */
+    function retrieveRewardsOnMigratedVotingContract(
+        address voterAddress,
+        uint256 roundId,
+        VotingAncillaryInterface.PendingRequestAncillary[] memory toRetrieve
+    ) public {
+        VotingAncillaryInterface(address(previousVotingContract)).retrieveRewards(voterAddress, roundId, toRetrieve);
+    }
+
+    /****************************************
      *    PRIVATE AND INTERNAL FUNCTIONS    *
      ****************************************/
 
@@ -1132,16 +1127,33 @@ contract VotingV2 is
     {
         PriceRequest storage priceRequest = _getPriceRequest(identifier, time, ancillaryData);
         uint256 currentRoundId = voteTiming.computeCurrentRoundId(getCurrentTime());
-
         RequestStatus requestStatus = _getRequestStatus(priceRequest, currentRoundId);
+
         if (requestStatus == RequestStatus.Active) return (false, 0, "Current voting round not ended");
-        else if (requestStatus == RequestStatus.Resolved) {
+        if (requestStatus == RequestStatus.Resolved) {
             VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
             (, int256 resolvedPrice) =
                 voteInstance.resultComputation.getResolvedPrice(_computeGat(priceRequest.lastVotingRound));
             return (true, resolvedPrice, "");
-        } else if (requestStatus == RequestStatus.Future) return (false, 0, "Price is still to be voted on");
-        else return (false, 0, "Price was never requested");
+        }
+
+        if (requestStatus == RequestStatus.Future) return (false, 0, "Price is still to be voted on");
+        (bool previouslyResolved, int256 previousPrice) =
+            _getPriceFromPreviousVotingContract(identifier, time, ancillaryData);
+        if (previouslyResolved) return (true, previousPrice, "Returned from previous contract");
+        return (false, 0, "Price was never requested");
+    }
+
+    function _getPriceFromPreviousVotingContract(
+        bytes32 identifier,
+        uint256 time,
+        bytes memory ancillaryData
+    ) public view returns (bool, int256) {
+        if (address(previousVotingContract) == address(0)) return (false, 0);
+
+        if (previousVotingContract.hasPrice(identifier, time, ancillaryData))
+            return (true, previousVotingContract.getPrice(identifier, time, ancillaryData));
+        return (false, 0);
     }
 
     // Returns a price request object for a given identifier, time and ancillary data.
