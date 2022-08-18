@@ -40,6 +40,7 @@ contract GovernorV2 is MultiRole, Lockable {
 
     FinderInterface private finder;
     Proposal[] public proposals;
+    address public immutable emergencyProposer;
 
     /****************************************
      *                EVENTS                *
@@ -48,14 +49,20 @@ contract GovernorV2 is MultiRole, Lockable {
     event NewProposal(uint256 indexed id, Transaction[] transactions);
 
     event ProposalExecuted(uint256 indexed id, uint256 transactionIndex);
+    event EmergencyExecution(address indexed to, uint256 value, bytes data);
 
     /**
      * @notice Construct the Governor contract.
      * @param _finderAddress keeps track of all contracts within the system based on their interfaceName.
      * @param _startingId the initial proposal id that the contract will begin incrementing from.
      */
-    constructor(address _finderAddress, uint256 _startingId) {
+    constructor(
+        address _finderAddress,
+        uint256 _startingId,
+        address _emergencyProposer
+    ) {
         finder = FinderInterface(_finderAddress);
+        emergencyProposer = _emergencyProposer;
         _createExclusiveRole(uint256(Roles.Owner), uint256(Roles.Owner), msg.sender);
         _createExclusiveRole(uint256(Roles.Proposer), uint256(Roles.Owner), msg.sender);
 
@@ -147,6 +154,14 @@ contract GovernorV2 is MultiRole, Lockable {
         require(_executeCall(transaction.to, transaction.value, transaction.data), "Tx execution failed");
 
         emit ProposalExecuted(id, transactionIndex);
+    }
+
+    function emergencyExecute(Transaction memory transaction) external payable nonReentrant() {
+        require(msg.sender == emergencyProposer, "Emergency proposer only");
+
+        require(_executeCall(transaction.to, transaction.value, transaction.data), "Tx execution failed");
+
+        emit EmergencyExecution(transaction.to, transaction.value, transaction.data);
     }
 
     /**
