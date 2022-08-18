@@ -23,7 +23,8 @@ contract GovernorV2 is MultiRole, Lockable {
 
     enum Roles {
         Owner, // Can set the proposer.
-        Proposer // Address that can make proposals.
+        Proposer, // Address that can make proposals.
+        EmergencyProposer // Address that can make emergency proposals.
     }
 
     struct Transaction {
@@ -56,15 +57,11 @@ contract GovernorV2 is MultiRole, Lockable {
      * @param _finderAddress keeps track of all contracts within the system based on their interfaceName.
      * @param _startingId the initial proposal id that the contract will begin incrementing from.
      */
-    constructor(
-        address _finderAddress,
-        uint256 _startingId,
-        address _emergencyProposer
-    ) {
+    constructor(address _finderAddress, uint256 _startingId) {
         finder = FinderInterface(_finderAddress);
-        emergencyProposer = _emergencyProposer;
         _createExclusiveRole(uint256(Roles.Owner), uint256(Roles.Owner), msg.sender);
         _createExclusiveRole(uint256(Roles.Proposer), uint256(Roles.Owner), msg.sender);
+        _createExclusiveRole(uint256(Roles.EmergencyProposer), uint256(Roles.Owner), msg.sender);
 
         // Ensure the startingId is not set unreasonably high to avoid it being set such that new proposals overwrite
         // other storage slots in the contract.
@@ -156,9 +153,12 @@ contract GovernorV2 is MultiRole, Lockable {
         emit ProposalExecuted(id, transactionIndex);
     }
 
-    function emergencyExecute(Transaction memory transaction) external payable nonReentrant() {
-        require(msg.sender == emergencyProposer, "Emergency proposer only");
-
+    function emergencyExecute(Transaction memory transaction)
+        external
+        payable
+        nonReentrant()
+        onlyRoleHolder(uint256(Roles.EmergencyProposer))
+    {
         require(_executeCall(transaction.to, transaction.value, transaction.data), "Tx execution failed");
 
         emit EmergencyExecution(transaction.to, transaction.value, transaction.data);
