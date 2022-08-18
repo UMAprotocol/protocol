@@ -126,6 +126,10 @@ contract VotingV2 is
     // If non-zero, this contract has been migrated to this address.
     address public migratedAddress;
 
+    // If non-zero, this is the previous voting contract, deployed before this one. Used to facilitate retrieval of
+    // previous price requests from DVM deployments before this one.
+    OracleAncillaryInterface public immutable previousVotingContract;
+
     // Max value of an unsigned integer.
     uint64 private constant UINT64_MAX = type(uint64).max;
 
@@ -255,13 +259,15 @@ contract VotingV2 is
         uint64 _startingRequestIndex,
         address _votingToken,
         address _finder,
-        address _slashingLibrary
+        address _slashingLibrary,
+        address _previousVotingContract
     ) Staker(_emissionRate, _unstakeCoolDown, _votingToken) {
         voteTiming.init(_phaseLength, _minRollToNextRoundLength);
         require(_gat < IERC20(_votingToken).totalSupply() && _gat > 0);
         gat = _gat;
         finder = FinderInterface(_finder);
         slashingLibrary = SlashingLibrary(_slashingLibrary);
+        previousVotingContract = OracleAncillaryInterface(_previousVotingContract);
         setSpamDeletionProposalBond(_spamDeletionProposalBond);
 
         // We assume indices never get above 2^64. So we should never start with an index above half that range.
@@ -1132,16 +1138,33 @@ contract VotingV2 is
     {
         PriceRequest storage priceRequest = _getPriceRequest(identifier, time, ancillaryData);
         uint256 currentRoundId = voteTiming.computeCurrentRoundId(getCurrentTime());
-
         RequestStatus requestStatus = _getRequestStatus(priceRequest, currentRoundId);
+
         if (requestStatus == RequestStatus.Active) return (false, 0, "Current voting round not ended");
-        else if (requestStatus == RequestStatus.Resolved) {
+        if (requestStatus == RequestStatus.Resolved) {
             VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
             (, int256 resolvedPrice) =
                 voteInstance.resultComputation.getResolvedPrice(_computeGat(priceRequest.lastVotingRound));
             return (true, resolvedPrice, "");
-        } else if (requestStatus == RequestStatus.Future) return (false, 0, "Price is still to be voted on");
-        else return (false, 0, "Price was never requested");
+        }
+
+        if (requestStatus == RequestStatus.Future) return (false, 0, "Price is still to be voted on");
+        (bool previouslyResolved, int256 previousPrice) =
+            _getPriceFromPreviousVotingContract(identifier, time, ancillaryData);
+        if (previouslyResolved) return (true, previousPrice, "Returned from previous contract");
+        return (false, 0, "Price was never requested");
+    }
+
+    function _getPriceFromPreviousVotingContract(
+        bytes32 identifier,
+        uint256 time,
+        bytes memory ancillaryData
+    ) public view returns (bool, int256) {
+        if (address(previousVotingContract) == address(0)) return (false, 0);
+
+        if (previousVotingContract.hasPrice(identifier, time, ancillaryData))
+            return (true, previousVotingContract.getPrice(identifier, time, ancillaryData));
+        return (false, 0);
     }
 
     // Returns a price request object for a given identifier, time and ancillary data.

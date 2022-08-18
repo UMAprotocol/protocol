@@ -1,5 +1,5 @@
 const hre = require("hardhat");
-const { runVotingV2Fixture } = require("@uma/common");
+const { runVotingV2Fixture, ZERO_ADDRESS } = require("@uma/common");
 const { getContract, assertEventEmitted } = hre;
 const { RegistryRolesEnum, didContractThrow, getRandomSignedInt, computeVoteHashAncillary } = require("@uma/common");
 const { moveToNextRound, moveToNextPhase } = require("../../utils/Voting.js");
@@ -772,6 +772,7 @@ describe("GovernorV2", function () {
       votingToken.options.address, // voting token
       (await Finder.deployed()).options.address, // finder
       (await SlashingLibrary.deployed()).options.address, // slashing library
+      ZERO_ADDRESS, // Previous voting contract
       (await Timer.deployed()).options.address // timer
     ).send({ from: accounts[0] });
 
