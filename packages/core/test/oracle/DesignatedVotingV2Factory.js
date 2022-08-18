@@ -1,11 +1,12 @@
 const hre = require("hardhat");
-const { runDefaultFixture } = require("@uma/common");
+const { runVotingV2Fixture } = require("@uma/common");
 const { getContract } = hre;
 const { ZERO_ADDRESS } = require("@uma/common");
 const { assert } = require("chai");
 
 const DesignatedVoting = getContract("DesignatedVotingV2");
 const DesignatedVotingV2Factory = getContract("DesignatedVotingV2Factory");
+const Finder = getContract("Finder");
 
 describe("DesignatedVotingV2Factory", function () {
   let accounts;
@@ -19,8 +20,8 @@ describe("DesignatedVotingV2Factory", function () {
   before(async function () {
     accounts = await web3.eth.getAccounts();
     [owner, voter, voter2, voter3] = accounts;
-    await runDefaultFixture(hre);
-    factory = await DesignatedVotingV2Factory.deployed();
+    await runVotingV2Fixture(hre);
+    factory = await DesignatedVotingV2Factory.new((await Finder.deployed()).options.address).send({ from: owner });
   });
 
   it("Deploy new", async function () {
