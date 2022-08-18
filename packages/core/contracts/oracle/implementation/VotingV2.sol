@@ -133,6 +133,10 @@ contract VotingV2 is
     // Max length in bytes of ancillary data that can be appended to a price request.
     uint256 public constant ANCILLARY_BYTES_LIMIT = 8192;
 
+    // Hard coded address of previous voting contract. Used to claim rewards from previous contract, if unclaimed.
+    VotingAncillaryInterface public constant v1Voting =
+        VotingAncillaryInterface(0x8B1631ab830d11531aE83725fDa4D86012eCCd77);
+
     /****************************************
      *          SLASHING TRACKERS           *
      ****************************************/
@@ -1121,12 +1125,7 @@ contract VotingV2 is
         uint256 roundId,
         VotingAncillaryInterface.PendingRequestAncillary[] memory toRetrieve
     ) public {
-        // Hard coded address of previous voting contract.
-        VotingAncillaryInterface(0x8B1631ab830d11531aE83725fDa4D86012eCCd77).retrieveRewards(
-            voterAddress,
-            roundId,
-            toRetrieve
-        );
+        v1Voting.retrieveRewards(voterAddress, roundId, toRetrieve);
     }
 
     /****************************************
