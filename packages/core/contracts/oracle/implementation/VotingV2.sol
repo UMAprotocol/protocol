@@ -1127,7 +1127,7 @@ contract VotingV2 is
         uint256 roundId,
         VotingAncillaryInterface.PendingRequestAncillary[] memory toRetrieve
     ) public {
-        previousVotingContract.retrieveRewards(voterAddress, roundId, toRetrieve);
+        VotingAncillaryInterface(address(previousVotingContract)).retrieveRewards(voterAddress, roundId, toRetrieve);
     }
 
     /****************************************
