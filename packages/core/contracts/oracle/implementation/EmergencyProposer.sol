@@ -33,6 +33,7 @@ contract EmergencyProposer is Ownable, Lockable {
     address public executor;
 
     event QuorumSet(uint256 quorum);
+    event ExecutorSet(address executor);
     event EmergencyTransactionsProposed(uint256 indexed id, GovernorV2.Transaction[] transactions);
     event EmergencyTransactionsRemoved(uint256 indexed id, GovernorV2.Transaction[] transactions);
     event EmergencyTransactionsSlashed(uint256 indexed id, GovernorV2.Transaction[] transactions);
@@ -55,7 +56,7 @@ contract EmergencyProposer is Ownable, Lockable {
         token = _token;
         governor = _governor;
         finder = _finder;
-        executor = _executor;
+        setExecutor(_executor);
         setQuorum(_quorum);
         transferOwnership(address(_governor));
     }
@@ -114,6 +115,11 @@ contract EmergencyProposer is Ownable, Lockable {
     function setQuorum(uint256 _quorum) public nonReentrant() onlyOwner() {
         quorum = _quorum;
         emit QuorumSet(_quorum);
+    }
+
+    function setExecutor(address _executor) public nonReentrant() onlyOwner() {
+        executor = _executor;
+        emit ExecutorSet(_executor);
     }
 
     /**
