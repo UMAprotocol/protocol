@@ -104,6 +104,7 @@ describe("VotingV2", function () {
           votingToken.options.address, // voting token
           (await Finder.deployed()).options.address, // finder
           (await SlashingLibrary.deployed()).options.address, // slashing library
+          ZERO_ADDRESS,
           (await Timer.deployed()).options.address // timer
         ).send({ from: accounts[0] })
       )
@@ -1210,7 +1211,27 @@ describe("VotingV2", function () {
   });
 
   it("Migration", async function () {
+    // Request a price in the old(current) voting contract and verify we can fetch it from the next one once migrated.
     const identifier = padRight(utf8ToHex("migration"), 64);
+    await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
+    const time0 = "420";
+
+    await voting.methods.requestPrice(identifier, time0).send({ from: registeredContract });
+    await moveToNextRound(voting, accounts[0]);
+
+    const price = 123;
+    const salt = getRandomSignedInt(); // use the same salt for all votes. bad practice but wont impact anything.
+    let roundId = (await voting.methods.getCurrentRoundId().call()).toString();
+    const baseRequest = { salt, roundId, identifier };
+    const hash1 = computeVoteHash({ ...baseRequest, price, account: account1, time: time0 });
+    await voting.methods.commitVote(identifier, time0, hash1).send({ from: account1 });
+    await moveToNextPhase(voting, accounts[0]);
+    await voting.methods.revealVote(identifier, time0, price, salt).send({ from: account1 });
+    await moveToNextRound(voting, accounts[0]);
+
+    // Check we can fetch the price (as expected).
+    assert.equal(await voting.methods.getPrice(identifier, time0).call({ from: registeredContract }), price);
+
     const time1 = "1000";
     const time2 = "2000";
     const time3 = "3000";
@@ -1226,15 +1247,29 @@ describe("VotingV2", function () {
       votingToken.options.address, // voting token
       (await Finder.deployed()).options.address, // finder
       (await SlashingLibrary.deployed()).options.address, // slashing library
+      voting.options.address, // pass in the old voting contract to the new voting contract.
       (await Timer.deployed()).options.address // timer
     ).send({ from: accounts[0] });
 
+    // As part of the migration we need to set two things: 1) the new voting contract as "registered" in the registry
+    // and 2) set the previous contract as migrated.
+    await voting.methods.setMigrated(newVoting.options.address).send({ from: account1 });
+    await registry.methods.registerContract([], newVoting.options.address).send({ from: accounts[0] });
+
+    // Check we can fetch the price but this time on the new voting contract. The request should be forwarded to the
+    // old voting contract as the new one does not have this request stored!
+    assert.equal(await newVoting.methods.getPrice(identifier, time0).call({ from: registeredContract }), price);
+
     // unstake and restake in the new voting contract
     await voting.methods.setUnstakeCoolDown(0).send({ from: account1 });
-    await voting.methods.requestUnstake(toWei("32000000")).send({ from: account1 });
-    await voting.methods.requestUnstake(toWei("32000000")).send({ from: account2 });
-    await voting.methods.requestUnstake(toWei("32000000")).send({ from: account3 });
-    await voting.methods.requestUnstake(toWei("4000000")).send({ from: account4 });
+    await voting.methods.updateTrackers(account1).send({ from: account1 });
+    await voting.methods.requestUnstake(await voting.methods.getVoterStake(account1).call()).send({ from: account1 });
+    await voting.methods.updateTrackers(account2).send({ from: account1 });
+    await voting.methods.requestUnstake(await voting.methods.getVoterStake(account2).call()).send({ from: account2 });
+    await voting.methods.updateTrackers(account3).send({ from: account1 });
+    await voting.methods.requestUnstake(await voting.methods.getVoterStake(account3).call()).send({ from: account3 });
+    await voting.methods.updateTrackers(account4).send({ from: account1 });
+    await voting.methods.requestUnstake(await voting.methods.getVoterStake(account4).call()).send({ from: account4 });
 
     await voting.methods.executeUnstake().send({ from: account1 });
     await voting.methods.executeUnstake().send({ from: account2 });
@@ -1242,24 +1277,20 @@ describe("VotingV2", function () {
     await voting.methods.executeUnstake().send({ from: account4 });
 
     // Restake in the new voting contract.
-    await votingToken.methods.approve(newVoting.options.address, toWei("32000000")).send({ from: account1 });
-    await newVoting.methods.stake(toWei("32000000")).send({ from: account1 });
-    await votingToken.methods.approve(newVoting.options.address, toWei("32000000")).send({ from: account2 });
-    await newVoting.methods.stake(toWei("32000000")).send({ from: account2 });
-    await votingToken.methods.approve(newVoting.options.address, toWei("32000000")).send({ from: account3 });
-    await newVoting.methods.stake(toWei("32000000")).send({ from: account3 });
-    await votingToken.methods.approve(newVoting.options.address, toWei("4000000")).send({ from: account4 });
-    await newVoting.methods.stake(toWei("4000000")).send({ from: account4 });
-
-    await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
+    await votingToken.methods.approve(newVoting.options.address, toWei("1000000000")).send({ from: account1 });
+    await newVoting.methods.stake(await votingToken.methods.balanceOf(account1).call()).send({ from: account1 });
+    await votingToken.methods.approve(newVoting.options.address, toWei("1000000000")).send({ from: account2 });
+    await newVoting.methods.stake(await votingToken.methods.balanceOf(account2).call()).send({ from: account2 });
+    await votingToken.methods.approve(newVoting.options.address, toWei("1000000000")).send({ from: account3 });
+    await newVoting.methods.stake(await votingToken.methods.balanceOf(account3).call()).send({ from: account3 });
+    await votingToken.methods.approve(newVoting.options.address, toWei("1000000000")).send({ from: account4 });
+    await newVoting.methods.stake(await votingToken.methods.balanceOf(account4).call()).send({ from: account4 });
 
     await newVoting.methods.requestPrice(identifier, time1).send({ from: registeredContract });
     await newVoting.methods.requestPrice(identifier, time2).send({ from: registeredContract });
     await moveToNextRound(newVoting, accounts[0]);
-    const roundId = (await newVoting.methods.getCurrentRoundId().call()).toString();
+    roundId = (await newVoting.methods.getCurrentRoundId().call()).toString();
 
-    const price = 123;
-    const salt = getRandomSignedInt();
     const hash = computeVoteHash({ price, salt, account: account1, time: time1, roundId, identifier });
     await newVoting.methods.commitVote(identifier, time1, hash).send({ from: account1 });
     await moveToNextPhase(newVoting, accounts[0]);
@@ -1307,6 +1338,7 @@ describe("VotingV2", function () {
           votingToken.options.address, // voting token
           (await Finder.deployed()).options.address, // finder
           (await SlashingLibrary.deployed()).options.address, // slashing library
+          ZERO_ADDRESS,
           (await Timer.deployed()).options.address // timer
         ).send({ from: accounts[0] })
       ).options.address
@@ -2995,6 +3027,7 @@ describe("VotingV2", function () {
       votingToken.options.address, // voting token
       (await Finder.deployed()).options.address, // finder
       (await SlashingLibrary.deployed()).options.address, // slashing library
+      ZERO_ADDRESS,
       (await Timer.deployed()).options.address // timer
     ).send({ from: accounts[0] });
 
