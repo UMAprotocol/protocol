@@ -109,7 +109,18 @@ describe("Staker", function () {
     });
 
     it("Stake to", async function () {
+      const initialBalanceAccount1 = await staker.methods.voterStakes(account1).call();
+      const initialBalanceAccount2 = await staker.methods.voterStakes(account2).call();
+
       await staker.methods.stakeTo(account2, amountToStake).send({ from: account1 });
+
+      const stakingBalanceAccount1 = await staker.methods.voterStakes(account1).call();
+      const stakingBalanceAccount2 = await staker.methods.voterStakes(account2).call();
+
+      assert.equal(stakingBalanceAccount1.activeStake, initialBalanceAccount1.activeStake);
+      assert.equal(stakingBalanceAccount1.pendingStake, initialBalanceAccount1.pendingStake);
+      assert.equal(stakingBalanceAccount2.activeStake, amountToStake.add(toBN(initialBalanceAccount2.activeStake)));
+      assert.equal(stakingBalanceAccount2.pendingStake, initialBalanceAccount2.pendingStake);
 
       // Advance time forward 1000 seconds. At an emission rate of 0.64 per second we should see the accumulation of
       // all rewards equal to the amount staked * 1000 * 0.64 = 640.

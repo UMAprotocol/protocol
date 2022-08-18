@@ -149,6 +149,8 @@ abstract contract Staker is StakerInterface, Ownable, Lockable {
             voterStake.activeStake += amount;
             cumulativeActiveStake += amount;
         }
+        // Pull tokens from "from" address and transfer them to this contract.
+        // During withdrawAndRestake, "from" is the same as the address of this contract, so there is no need to transfer.
         if (from != address(this)) votingToken.transferFrom(from, address(this), amount);
         emit Staked(
             recipient,
@@ -237,7 +239,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable {
      * @notice Stake accumulated rewards. This is merely a convenience mechanism that combines the voter's withdrawal and stake
      *  in the same transaction if requested by a delegate or the voter.
      * @dev This method requires that the msg.sender(voter or delegate) has approved this contract.
-     * @dev The rewarded tokens simply pass through the delegate's wallet before being staked on the voter's behalf.
+     * @dev The rewarded tokens simply pass through this contract before being staked on the voter's behalf.
      *  The balance of the delegate remains unchanged.
      * @return uint256 the amount of tokens that the voter is staking.
      */
