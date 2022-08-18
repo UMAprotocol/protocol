@@ -128,7 +128,7 @@ contract VotingV2 is
 
     // If non-zero, this is the previous voting contract, deployed before this one. Used to facilitate retrieval of
     // previous price requests from DVM deployments before this one.
-    OracleAncillaryInterface public previousVotingContract;
+    OracleAncillaryInterface public immutable previousVotingContract;
 
     // Max value of an unsigned integer.
     uint64 private constant UINT64_MAX = type(uint64).max;
