@@ -1138,21 +1138,21 @@ contract VotingV2 is
     {
         PriceRequest storage priceRequest = _getPriceRequest(identifier, time, ancillaryData);
         uint256 currentRoundId = voteTiming.computeCurrentRoundId(getCurrentTime());
-
         RequestStatus requestStatus = _getRequestStatus(priceRequest, currentRoundId);
+
         if (requestStatus == RequestStatus.Active) return (false, 0, "Current voting round not ended");
-        else if (requestStatus == RequestStatus.Resolved) {
+        if (requestStatus == RequestStatus.Resolved) {
             VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
             (, int256 resolvedPrice) =
                 voteInstance.resultComputation.getResolvedPrice(_computeGat(priceRequest.lastVotingRound));
             return (true, resolvedPrice, "");
-        } else if (requestStatus == RequestStatus.Future) return (false, 0, "Price is still to be voted on");
-        else {
-            (bool previouslyResolved, int256 previousPrice) =
-                _getPriceFromPreviousVotingContract(identifier, time, ancillaryData);
-            if (previouslyResolved) return (true, previousPrice, "Returned from previous contract");
-            else (false, 0, "Price was never requested");
         }
+
+        if (requestStatus == RequestStatus.Future) return (false, 0, "Price is still to be voted on");
+        (bool previouslyResolved, int256 previousPrice) =
+            _getPriceFromPreviousVotingContract(identifier, time, ancillaryData);
+        if (previouslyResolved) return (true, previousPrice, "Returned from previous contract");
+        return (false, 0, "Price was never requested");
     }
 
     function _getPriceFromPreviousVotingContract(
@@ -1164,7 +1164,7 @@ contract VotingV2 is
 
         if (previousVotingContract.hasPrice(identifier, time, ancillaryData))
             return (true, previousVotingContract.getPrice(identifier, time, ancillaryData));
-        else return (false, 0);
+        return (false, 0);
     }
 
     // Returns a price request object for a given identifier, time and ancillary data.
