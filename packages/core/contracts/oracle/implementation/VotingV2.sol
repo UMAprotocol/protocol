@@ -619,41 +619,9 @@ contract VotingV2 is
         commitAndEmitEncryptedVote(identifier, time, "", hash, encryptedVote);
     }
 
-    /**
-     * @notice Sets the delegate of a voter. This delegate can vote on behalf of the staker. The staker will still own
-     * all staked balances, receive rewards and be slashed based on the actions of the delegate. Intended use is using a
-     * low-security available wallet for voting while keeping access to staked amounts secure by a more secure wallet.
-     * @param delegate the address of the delegate.
-     */
-    function setDelegate(address delegate) external override nonReentrant() {
-        voterStakes[msg.sender].delegate = delegate;
-    }
-
-    /**
-     * @notice Sets the delegator of a voter. Acts to accept a delegation. The delegate can only vote for the delegator
-     * if the delegator also selected the delegate to do so (two-way relationship needed).
-     * @param delegator the address of the delegator.
-     */
-    function setDelegator(address delegator) external override nonReentrant() {
-        delegateToStaker[msg.sender] = delegator;
-    }
-
     /****************************************
      *        VOTING GETTER FUNCTIONS       *
      ****************************************/
-
-    /**
-     * @notice Gets the voter from the delegate.
-     * @param caller caller of the function or the address to check in the mapping between a voter and their delegate.
-     * @return address voter that corresponds to the delegate.
-     */
-    function getVoterFromDelegate(address caller) public view returns (address) {
-        if (
-            delegateToStaker[caller] != address(0) && // The delegate chose to be a delegate for the staker.
-            voterStakes[delegateToStaker[caller]].delegate == caller // The staker chose the delegate.
-        ) return delegateToStaker[caller];
-        else return caller;
-    }
 
     /**
      * @notice Gets the queries that are being voted on this round.

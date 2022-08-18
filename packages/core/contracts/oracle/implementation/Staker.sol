@@ -49,6 +49,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable {
 
     event Staked(
         address indexed voter,
+        address indexed from,
         uint256 amount,
         uint256 voterActiveStake,
         uint256 voterPendingStake,
@@ -72,7 +73,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable {
         uint256 voterPendingStake
     );
 
-    event WithdrawnRewards(address indexed voter, uint256 tokensWithdrawn);
+    event WithdrawnRewards(address indexed voter, address indexed delegate, uint256 tokensWithdrawn);
 
     event UpdatedReward(address indexed voter, uint256 newReward, uint256 lastUpdateTime);
 
@@ -113,14 +114,33 @@ abstract contract Staker is StakerInterface, Ownable, Lockable {
      * be added to the pending stake. If not, the stake amount will be added to the active stake.
      * @param amount the amount of tokens to stake.
      */
-    function stake(uint256 amount) public override nonReentrant() {
-        VoterStake storage voterStake = voterStakes[msg.sender];
+    function stake(uint256 amount) public {
+        _stakeTo(msg.sender, msg.sender, amount);
+    }
+
+    /**
+     * @notice Pulls tokens from sender wallet and stakes them for the recipient. If we are in an active reveal phase the
+     * stake amount will be added to the pending stake. If not, the stake amount will be added to the active stake.
+     * @param recipient the recipient address.
+     * @param amount the amount of tokens to stake.
+     */
+    function stakeTo(address recipient, uint256 amount) public {
+        _stakeTo(msg.sender, recipient, amount);
+    }
+
+    function _stakeTo(
+        address from,
+        address recipient,
+        uint256 amount
+    ) internal {
+        VoterStake storage voterStake = voterStakes[recipient];
+
         // If the staker has a cumulative staked balance of 0 then we can shortcut their lastRequestIndexConsidered to
         // the most recent index. This means we don't need to traverse requests where the staker was not staked.
         // _getStartingIndexForStaker returns the appropriate index to start at.
-        if (getVoterStake(msg.sender) + voterStake.pendingUnstake == 0)
+        if (getVoterStake(recipient) + voterStake.pendingUnstake == 0)
             voterStake.nextIndexToProcess = _getStartingIndexForStaker();
-        _updateTrackers(msg.sender);
+        _updateTrackers(recipient);
 
         if (_inActiveReveal()) {
             voterStake.pendingStake += amount;
@@ -129,10 +149,10 @@ abstract contract Staker is StakerInterface, Ownable, Lockable {
             voterStake.activeStake += amount;
             cumulativeActiveStake += amount;
         }
-
-        votingToken.transferFrom(msg.sender, address(this), amount);
+        if (from != address(this)) votingToken.transferFrom(from, address(this), amount);
         emit Staked(
-            msg.sender,
+            recipient,
+            from,
             amount,
             voterStake.activeStake,
             voterStake.pendingStake,
@@ -196,29 +216,55 @@ abstract contract Staker is StakerInterface, Ownable, Lockable {
      * @notice Send accumulated rewards to the voter. Note that these rewards do not include slashing balance changes.
      * @return uint256 the amount of tokens sent to the voter.
      */
-    function withdrawRewards() public override nonReentrant() returns (uint256) {
-        _updateTrackers(msg.sender);
-        VoterStake storage voterStake = voterStakes[msg.sender];
+    function withdrawRewards() public returns (uint256) {
+        return _withdrawRewards(msg.sender, msg.sender);
+    }
+
+    function _withdrawRewards(address voter, address recipient) internal returns (uint256) {
+        _updateTrackers(voter);
+        VoterStake storage voterStake = voterStakes[voter];
 
         uint256 tokensToMint = voterStake.outstandingRewards;
         if (tokensToMint > 0) {
             voterStake.outstandingRewards = 0;
-            require(votingToken.mint(msg.sender, tokensToMint), "Voting token issuance failed");
-            emit WithdrawnRewards(msg.sender, tokensToMint);
+            require(votingToken.mint(recipient, tokensToMint), "Voting token issuance failed");
+            emit WithdrawnRewards(voter, msg.sender, tokensToMint);
         }
         return tokensToMint;
     }
 
     /**
-     * @notice Stake accumulated rewards. This is just a convenience method that combines withdraw with stake in the
-     * same transaction.
-     * @dev this method requires that the user has approved this contract.
-     * @return uint256 the amount of tokens that the user is staking.
+     * @notice Stake accumulated rewards. This is merely a convenience mechanism that combines the voter's withdrawal and stake
+     *  in the same transaction if requested by a delegate or the voter himself.
+     * @dev this method requires that the msg.sender(voter or delegate) has approved this contract.
+     * @dev The rewarded tokens simply pass through the delegate's wallet before being staked on the voter's behalf.
+     *  The balance of the delegate remains unchanged.
+     * @return uint256 the amount of tokens that the voter is staking.
      */
-    function withdrawAndRestake() external returns (uint256) {
-        uint256 rewards = withdrawRewards();
-        stake(rewards);
+    function withdrawAndRestake() external override returns (uint256) {
+        address voter = getVoterFromDelegate(msg.sender);
+        uint256 rewards = _withdrawRewards(voter, address(this));
+        _stakeTo(address(this), voter, rewards);
         return rewards;
+    }
+
+    /**
+     * @notice Sets the delegate of a voter. This delegate can vote on behalf of the staker. The staker will still own
+     * all staked balances, receive rewards and be slashed based on the actions of the delegate. Intended use is using a
+     * low-security available wallet for voting while keeping access to staked amounts secure by a more secure wallet.
+     * @param delegate the address of the delegate.
+     */
+    function setDelegate(address delegate) external nonReentrant() {
+        voterStakes[msg.sender].delegate = delegate;
+    }
+
+    /**
+     * @notice Sets the delegator of a voter. Acts to accept a delegation. The delegate can only vote for the delegator
+     * if the delegator also selected the delegate to do so (two-way relationship needed).
+     * @param delegator the address of the delegator.
+     */
+    function setDelegator(address delegator) external nonReentrant() {
+        delegateToStaker[msg.sender] = delegator;
     }
 
     /****************************************
@@ -253,6 +299,19 @@ abstract contract Staker is StakerInterface, Ownable, Lockable {
     /****************************************
      *            VIEW FUNCTIONS            *
      ****************************************/
+
+    /**
+     * @notice Gets the voter from the delegate.
+     * @param caller caller of the function or the address to check in the mapping between a voter and their delegate.
+     * @return address voter that corresponds to the delegate.
+     */
+    function getVoterFromDelegate(address caller) public view returns (address) {
+        if (
+            delegateToStaker[caller] != address(0) && // The delegate chose to be a delegate for the staker.
+            voterStakes[delegateToStaker[caller]].delegate == caller // The staker chose the delegate.
+        ) return delegateToStaker[caller];
+        else return caller;
+    }
 
     /**
      * @notice  Determine the number of outstanding token rewards that can be withdrawn by a voter.
