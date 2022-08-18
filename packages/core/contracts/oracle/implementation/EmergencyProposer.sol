@@ -12,12 +12,17 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 /**
- * @title Proposer contract that allows anyone to make governance proposals with a bond.
+ * @title Emergency Proposer contract that allows anyone to construct an emergency recovery transaction to bypass the
+ * standard voting process. If a proposal is considered invalid, UMA token holders can vote to remove this proposal
+ * through the standard governance flow. If valid, a proposal must wait minimumWaitTime before it can be executed and
+ * it can only be executed by a privileged account, executor.
  */
 contract EmergencyProposer is Ownable, Lockable {
     using SafeERC20 for IERC20;
     IERC20 public immutable token;
     uint256 public quorum;
+    uint256 public minimumWaitTime = 1 weeks;
+
     GovernorV2 public immutable governor;
     Finder public immutable finder;
 
@@ -34,6 +39,7 @@ contract EmergencyProposer is Ownable, Lockable {
 
     event QuorumSet(uint256 quorum);
     event ExecutorSet(address executor);
+    event minimumWaitTimeSet(address executor);
     event EmergencyTransactionsProposed(uint256 indexed id, GovernorV2.Transaction[] transactions);
     event EmergencyTransactionsRemoved(uint256 indexed id, GovernorV2.Transaction[] transactions);
     event EmergencyTransactionsSlashed(uint256 indexed id, GovernorV2.Transaction[] transactions);
@@ -61,13 +67,19 @@ contract EmergencyProposer is Ownable, Lockable {
         transferOwnership(address(_governor));
     }
 
+    /**
+     * @notice Propose an emergency admin action to execute on the DVM as a set of proposed transactions.
+     * @dev Caller of this method must approve (and have) quorum amount of token to be pulled from their wallet.
+     * @param transactions array of transactions to be executed in the emergency action. When executed, will be sent
+     * via the governor contract.
+     */
     function emergencyPropose(GovernorV2.Transaction[] memory transactions) external nonReentrant() returns (uint256) {
         token.safeTransferFrom(msg.sender, address(this), quorum);
         uint256 id = currentId++;
         emergencyProposals[id] = EmergencyProposal({
             sender: msg.sender,
             lockedTokens: quorum,
-            expiryTime: uint64(getCurrentTime()) + 1 weeks,
+            expiryTime: uint64(getCurrentTime()) + minimumWaitTime,
             transactions: transactions
         });
 
@@ -87,8 +99,7 @@ contract EmergencyProposer is Ownable, Lockable {
     function slashProposal(uint256 id) external nonReentrant() onlyOwner() {
         EmergencyProposal storage proposal = emergencyProposals[id];
         require(proposal.lockedTokens != 0, "invalid proposal");
-        token.safeTransfer(proposal.sender, (proposal.lockedTokens * 9) / 10);
-        token.safeTransfer(address(governor), proposal.lockedTokens / 10);
+        token.safeTransfer(address(governor), proposal.lockedTokens);
         delete emergencyProposals[id];
     }
 
@@ -120,6 +131,11 @@ contract EmergencyProposer is Ownable, Lockable {
     function setExecutor(address _executor) public nonReentrant() onlyOwner() {
         executor = _executor;
         emit ExecutorSet(_executor);
+    }
+
+    function setMinimumWaitTime(address newMinimumWaitTime) public nonReentrant() onlyOwner() {
+        minimumWaitTime = newMinimumWaitTime;
+        emit minimumWaitTimeSet(_executor);
     }
 
     /**
