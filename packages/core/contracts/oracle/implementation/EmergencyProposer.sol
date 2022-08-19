@@ -124,7 +124,7 @@ contract EmergencyProposer is Ownable, Lockable {
     /**
      * @notice After the proposal is executable, the executor or proposer can use this function to remove the proposal
      * without slashing.
-     * @dev this means that the DVM didn't explicitly reject the proposal. Allowing the executor to slash the quorum
+     * @dev This means that the DVM didn't explicitly reject the proposal. Allowing the executor to slash the quorum
      * would give the executor too much power. So the only control either party has is to remove the proposal,
      * releasing the bond. The proposal should not be removable before its liveness/expiry to ensure the regular Voting
      * system's slash cannot be frontrun.
@@ -150,7 +150,7 @@ contract EmergencyProposer is Ownable, Lockable {
     /**
      * @notice Before a proposal expires (or after), this method can be used by the owner, which should generally be
      * the GovernorV2 contract, to slash the proposer.
-     * @dev the slash results in the proposer's tokens being sent to the Governor contract.
+     * @dev The slash results in the proposer's tokens being sent to the Governor contract.
      * @param id id of the proposal.
      */
     function slashProposal(uint256 id) external nonReentrant() onlyOwner() {
@@ -170,7 +170,7 @@ contract EmergencyProposer is Ownable, Lockable {
 
     /**
      * @notice After a proposal expires, this method can be used by the executor to execute the proposal.
-     * @dev this method effectively gives the executor veto power over any proposal.
+     * @dev This method effectively gives the executor veto power over any proposal.
      * @param id id of the proposal.
      */
     function executeEmergencyProposal(uint256 id) public payable nonReentrant() {
@@ -198,21 +198,21 @@ contract EmergencyProposer is Ownable, Lockable {
     /**
      * @notice Admin method to set the quorum (bond) size.
      * @dev Admin is intended to be the governance system.
-     * @param _quorum the new quorum.
+     * @param newQuorum the new quorum.
      */
-    function setQuorum(uint256 _quorum) public nonReentrant() onlyOwner() {
-        quorum = _quorum;
-        emit QuorumSet(_quorum);
+    function setQuorum(uint256 newQuorum) public nonReentrant() onlyOwner() {
+        quorum = newQuorum;
+        emit QuorumSet(newQuorum);
     }
 
     /**
      * @notice Admin method to set the executor address.
      * @dev Admin is intended to be the governance system.
-     * @param _executor the new executor address.
+     * @param newExecutor the new executor address.
      */
-    function setExecutor(address _executor) public nonReentrant() onlyOwner() {
-        executor = _executor;
-        emit ExecutorSet(_executor);
+    function setExecutor(address newExecutor) public nonReentrant() onlyOwner() {
+        executor = newExecutor;
+        emit ExecutorSet(newExecutor);
     }
 
     /**
@@ -220,12 +220,12 @@ contract EmergencyProposer is Ownable, Lockable {
      * @dev Admin is intended to be the governance system. The minumum wait time is added to the current time at the
      * time of the proposal to determine when the proposal will be executable. Any changes to this value after that
      * point will have no impact on the proposal.
-     * @param _minimumWaitTime the new minimum wait time.
+     * @param newMinimumWaitTime the new minimum wait time.
      */
-    function setMinimumWaitTime(uint64 _minimumWaitTime) public nonReentrant() onlyOwner() {
-        require(_minimumWaitTime != 0, "minimumWaitTime == 0");
-        minimumWaitTime = _minimumWaitTime;
-        emit MinimumWaitTimeSet(_minimumWaitTime);
+    function setMinimumWaitTime(uint64 newMinimumWaitTime) public nonReentrant() onlyOwner() {
+        require(newMinimumWaitTime != 0, "minimumWaitTime == 0");
+        minimumWaitTime = newMinimumWaitTime;
+        emit MinimumWaitTimeSet(newMinimumWaitTime);
     }
 
     /**
