@@ -93,22 +93,22 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     mapping(uint256 => Round) public rounds;
 
     // Maps price request IDs to the PriceRequest struct.
-    mapping(bytes32 => PriceRequest) private priceRequests;
+    mapping(bytes32 => PriceRequest) public priceRequests;
 
     bytes32[] public priceRequestIds;
 
     mapping(uint64 => uint64) public skippedRequestIndexes;
 
     // Price request ids for price requests that haven't yet been resolved. These requests may be for future rounds.
-    bytes32[] internal pendingPriceRequests;
+    bytes32[] public pendingPriceRequests;
 
-    VoteTimingV2.Data private voteTiming;
+    VoteTimingV2.Data public voteTiming;
 
     // Number of tokens that must participate to resolve a vote.
     uint256 public gat;
 
     // Reference to the Finder.
-    FinderInterface public immutable finder;
+    FinderInterface private immutable finder;
 
     // Reference to Slashing Library.
     SlashingLibraryInterface public slashingLibrary;
@@ -152,7 +152,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         uint256 bond;
     }
 
-    SpamDeletionRequest[] public spamDeletionProposals;
+    SpamDeletionRequest[] internal spamDeletionProposals;
 
     /****************************************
      *                EVENTS                *
@@ -442,7 +442,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         returns (RequestState[] memory)
     {
         RequestState[] memory requestStates = new RequestState[](requests.length);
-        uint256 currentRoundId = voteTiming.computeCurrentRoundId(getCurrentTime());
+        uint256 currentRoundId = getCurrentRoundId();
         for (uint256 i = 0; i < requests.length; i = unsafe_inc(i)) {
             PriceRequest storage priceRequest =
                 _getPriceRequest(requests[i].identifier, requests[i].time, requests[i].ancillaryData);
@@ -479,12 +479,11 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         bytes memory ancillaryData,
         bytes32 hash
     ) public override nonReentrant() onlyIfNotMigrated() {
-        uint256 currentRoundId = voteTiming.computeCurrentRoundId(getCurrentTime());
+        uint256 currentRoundId = getCurrentRoundId();
         address voter = getVoterFromDelegate(msg.sender);
         _updateTrackers(voter);
-        uint256 blockTime = getCurrentTime();
         require(hash != bytes32(0));
-        require(voteTiming.computeCurrentPhase(blockTime) == Phase.Commit, "Cannot commit in reveal phase");
+        require(getVotePhase() == Phase.Commit, "Cannot commit in reveal phase");
 
         PriceRequest storage priceRequest = _getPriceRequest(identifier, time, ancillaryData);
         require(
@@ -516,7 +515,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         int256 salt
     ) public override nonReentrant() onlyIfNotMigrated() {
         // Note: computing the current round is required to disallow people from revealing an old commit after the round is over.
-        uint256 currentRoundId = voteTiming.computeCurrentRoundId(getCurrentTime());
+        uint256 currentRoundId = getCurrentRoundId();
         _freezeRoundVariables(currentRoundId);
         VoteInstance storage voteInstance =
             _getPriceRequest(identifier, time, ancillaryData).voteInstances[currentRoundId];
@@ -526,10 +525,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         // Scoping to get rid of a stack too deep errors for require messages.
         {
             // Can only reveal in the reveal phase.
-            require(
-                voteTiming.computeCurrentPhase(getCurrentTime()) == Phase.Reveal,
-                "Reveal phase has not started yet"
-            );
+            require(getVotePhase() == Phase.Reveal, "Reveal phase has not started yet");
             // 0 hashes are disallowed in the commit phase, so they indicate a different error.
             // Cannot reveal an uncommitted or previously revealed hash
             require(voteSubmission.commit != bytes32(0), "Invalid hash reveal");
@@ -569,9 +565,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         bytes memory encryptedVote
     ) public override {
         commitVote(identifier, time, ancillaryData, hash);
-
-        uint256 roundId = voteTiming.computeCurrentRoundId(getCurrentTime());
-        emit EncryptedVote(msg.sender, roundId, identifier, time, ancillaryData, encryptedVote);
+        emit EncryptedVote(msg.sender, getCurrentRoundId(), identifier, time, ancillaryData, encryptedVote);
     }
 
     /****************************************
@@ -583,9 +577,6 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
      * @return pendingRequests array containing identifiers of type PendingRequestAncillary.
      */
     function getPendingRequests() external view override returns (PendingRequestAncillaryAugmented[] memory) {
-        uint256 blockTime = getCurrentTime();
-        uint256 currentRoundId = voteTiming.computeCurrentRoundId(blockTime);
-
         // Solidity memory arrays aren't resizable (and reading storage is expensive). Hence this hackery to filter
         // pendingPriceRequests only to those requests that have an Active RequestStatus.
         PendingRequestAncillaryAugmented[] memory unresolved =
@@ -594,7 +585,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
         for (uint256 i = 0; i < pendingPriceRequests.length; i = unsafe_inc(i)) {
             PriceRequest storage priceRequest = priceRequests[pendingPriceRequests[i]];
-            if (_getRequestStatus(priceRequest, currentRoundId) == RequestStatus.Active) {
+            if (_getRequestStatus(priceRequest, getCurrentRoundId()) == RequestStatus.Active) {
                 unresolved[numUnresolved] = PendingRequestAncillaryAugmented({
                     identifier: priceRequest.identifier,
                     time: priceRequest.time,
@@ -618,8 +609,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
      * @return bool true if there are active requests, false otherwise.
      */
     function currentActiveRequests() public view returns (bool) {
-        uint256 blockTime = getCurrentTime();
-        uint256 currentRoundId = voteTiming.computeCurrentRoundId(blockTime);
+        uint256 currentRoundId = getCurrentRoundId();
         for (uint256 i = 0; i < pendingPriceRequests.length; i = unsafe_inc(i)) {
             if (_getRequestStatus(priceRequests[pendingPriceRequests[i]], currentRoundId) == RequestStatus.Active)
                 return true;
@@ -647,7 +637,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
      * @notice Returns the current round ID, as a function of the current time.
      * @return uint256 the unique round ID.
      */
-    function getCurrentRoundId() external view override returns (uint256) {
+    function getCurrentRoundId() public view override returns (uint256) {
         return voteTiming.computeCurrentRoundId(getCurrentTime());
     }
 
@@ -676,7 +666,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
      * total UMA slashed in the round and the total number of correct votes in the round.
      */
     function requestSlashingTrackers(uint256 requestIndex) public view returns (SlashingTracker memory) {
-        uint256 currentRoundId = voteTiming.computeCurrentRoundId(getCurrentTime());
+        uint256 currentRoundId = getCurrentRoundId();
         PriceRequest storage priceRequest = priceRequests[priceRequestIds[requestIndex]];
 
         // If the request is not resolved return zeros for everything.
@@ -782,7 +772,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
     // Updates the slashing trackers of a given account based on previous voting activity.
     function _updateAccountSlashingTrackers(address voterAddress, uint256 indexTo) internal {
-        uint256 currentRoundId = voteTiming.computeCurrentRoundId(getCurrentTime());
+        uint256 currentRoundId = getCurrentRoundId();
         VoterStake storage voterStake = voterStakes[voterAddress];
         // Note the method below can hit a gas limit of there are a LOT of requests from the last time this was run.
         // A future version of this should bound how many requests to look at per call to avoid gas limit issues.
@@ -1090,7 +1080,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         )
     {
         PriceRequest storage priceRequest = _getPriceRequest(identifier, time, ancillaryData);
-        uint256 currentRoundId = voteTiming.computeCurrentRoundId(getCurrentTime());
+        uint256 currentRoundId = getCurrentRoundId();
         RequestStatus requestStatus = _getRequestStatus(priceRequest, currentRoundId);
 
         if (requestStatus == RequestStatus.Active) return (false, 0, "Current voting round not ended");

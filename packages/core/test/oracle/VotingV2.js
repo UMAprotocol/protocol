@@ -21,11 +21,11 @@ const { toBN } = web3.utils;
 const Finder = getContract("Finder");
 const Registry = getContract("Registry");
 const VotingV2 = getContract("VotingV2ControllableTiming");
+const VotingV2Test = getContract("VotingV2Test");
 const VotingInterfaceTesting = getContract("VotingInterfaceTesting");
 const VotingAncillaryInterfaceTesting = getContract("VotingAncillaryInterfaceTesting");
 const IdentifierWhitelist = getContract("IdentifierWhitelist");
 const VotingToken = getContract("VotingToken");
-const VotingV2Test = getContract("VotingV2Test");
 const Timer = getContract("Timer");
 const SlashingLibrary = getContract("SlashingLibrary");
 
