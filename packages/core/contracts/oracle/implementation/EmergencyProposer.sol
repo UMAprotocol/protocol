@@ -36,7 +36,7 @@ contract EmergencyProposer is Ownable, Lockable {
         uint256 lockedTokens;
         GovernorV2.Transaction[] transactions;
     }
-    mapping(uint256 => EmergencyProposal) public emergencyProposals;
+    EmergencyProposal[] public emergencyProposals;
     uint256 public currentId;
     address public executor;
 
@@ -109,8 +109,8 @@ contract EmergencyProposer is Ownable, Lockable {
      */
     function emergencyPropose(GovernorV2.Transaction[] memory transactions) external nonReentrant() returns (uint256) {
         token.safeTransferFrom(msg.sender, address(this), quorum);
-        uint256 id = currentId++;
-        EmergencyProposal storage proposal = emergencyProposals[id];
+        uint256 id = emergencyProposals.length;
+        EmergencyProposal storage proposal = emergencyProposals.push();
         proposal.sender = msg.sender;
         proposal.lockedTokens = quorum;
         proposal.expiryTime = uint64(getCurrentTime()) + minimumWaitTime;
