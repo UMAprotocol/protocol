@@ -897,7 +897,8 @@ describe("VotingV2", function () {
         .toString()
     );
 
-    assert.equal(await voting.methods.getPhaseLength().call(), "86400");
+    assert.equal((await voting.methods.voteTiming().call()).phaseLength().call(), "86400");
+    assert.equal((await voting.methods.voteTiming().call()).minRollToNextRoundLength().call(), "7200");
   });
 
   it("Events", async function () {
