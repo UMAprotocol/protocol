@@ -142,10 +142,10 @@ contract EmergencyProposer is Ownable, Lockable {
         require(proposal.expiryTime <= getCurrentTime(), "must be expired to remove");
         require(msg.sender == proposal.sender || msg.sender == executor, "proposer or executor");
         require(proposal.lockedTokens != 0, "invalid proposal");
-        token.safeTransfer(proposal.proposer, proposal.lockedTokens);
+        token.safeTransfer(proposal.sender, proposal.lockedTokens);
         emit EmergencyTransactionsRemoved(
             id,
-            proposal.proposer,
+            proposal.sender,
             msg.sender,
             proposal.expiryTime,
             proposal.lockedTokens,
