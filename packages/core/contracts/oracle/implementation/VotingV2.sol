@@ -689,6 +689,7 @@ contract VotingV2 is
 
     /**
      * @notice Returns the phase length set in vote timing.
+     * @return uint256 the phase length.
      */
     function getPhaseLength() public view returns (uint256) {
         return voteTiming.phaseLength;
