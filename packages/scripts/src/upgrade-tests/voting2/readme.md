@@ -1,6 +1,6 @@
-## VotingV2 upgrade
+## Governor V2 and VotingV2 upgrade
 
-These scripts deploy the SlashingLibrary, VotingV2, and VotingUpgrader contracts and execute the Proposer operations for the migration from Voting to VotingV2. The last script checks that the migration has been correctly executed. They can be deployed on a mainnet fork to imitate their operation.
+These scripts deploy the GovernorV2, SlashingLibrary, VotingV2, and VotingUpgrader contracts and execute the Proposer operations for the migration from Governor to GovernorV2 and Voting to VotingV2. The last script checks that the migration has been correctly executed. They can be deployed on a mainnet fork to imitate their operation.
 
 1.Run a local forked node:
 
