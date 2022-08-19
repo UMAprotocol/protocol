@@ -3,7 +3,22 @@ import type { SortedStore } from "..";
 import { Datastore, Key } from "@google-cloud/datastore";
 import highland from "highland";
 
-export default function <I extends string | number, D>(kind: string, store: Datastore): SortedStore<I, D> {
+//-
+// Use an array, `excludeFromIndexes`, to exclude properties from indexing.
+// This will allow storing string values larger than 1500 bytes.
+// Example:
+// [
+//   'description',
+//   'embeddedEntity.description',
+//   'arrayValue[]',
+//   'arrayValue[].description'
+// ]
+//-
+export default function <I extends string | number, D>(
+  kind: string,
+  store: Datastore,
+  excludeFromIndexes: string[] = []
+): SortedStore<I, D> {
   function makeKey(id: I): Key {
     return store.key([kind, id]);
   }
@@ -20,6 +35,7 @@ export default function <I extends string | number, D>(kind: string, store: Data
     await store.save({
       key: makeKey(id),
       data,
+      excludeFromIndexes,
     });
   }
   async function has(id: I) {
