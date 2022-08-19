@@ -201,6 +201,7 @@ contract EmergencyProposer is Ownable, Lockable {
      * @param newQuorum the new quorum.
      */
     function setQuorum(uint256 newQuorum) public nonReentrant() onlyOwner() {
+        require(newQuorum != 0, "quorum must be > 0");
         quorum = newQuorum;
         emit QuorumSet(newQuorum);
     }
