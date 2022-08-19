@@ -31,7 +31,7 @@ contract EmergencyProposer is Ownable, Lockable {
     Finder public immutable finder;
 
     struct EmergencyProposal {
-        address proposer;
+        address sender;
         uint64 expiryTime;
         uint256 lockedTokens;
         GovernorV2.Transaction[] transactions;
@@ -45,7 +45,7 @@ contract EmergencyProposer is Ownable, Lockable {
     event MinimumWaitTimeSet(uint256 waitTime);
     event EmergencyTransactionsProposed(
         uint256 indexed id,
-        address indexed proposer,
+        address indexed sender,
         address indexed caller,
         uint64 expiryTime,
         uint256 lockedTokens,
@@ -53,7 +53,7 @@ contract EmergencyProposer is Ownable, Lockable {
     );
     event EmergencyTransactionsRemoved(
         uint256 indexed id,
-        address indexed proposer,
+        address indexed sender,
         address indexed caller,
         uint64 expiryTime,
         uint256 lockedTokens,
@@ -61,7 +61,7 @@ contract EmergencyProposer is Ownable, Lockable {
     );
     event EmergencyTransactionsSlashed(
         uint256 indexed id,
-        address indexed proposer,
+        address indexed sender,
         address indexed caller,
         uint64 expiryTime,
         uint256 lockedTokens,
@@ -69,7 +69,7 @@ contract EmergencyProposer is Ownable, Lockable {
     );
     event EmergencyTransactionsExecuted(
         uint256 indexed id,
-        address indexed proposer,
+        address indexed sender,
         address indexed caller,
         uint64 expiryTime,
         uint256 lockedTokens,
@@ -111,7 +111,7 @@ contract EmergencyProposer is Ownable, Lockable {
         token.safeTransferFrom(msg.sender, address(this), quorum);
         uint256 id = currentId++;
         emergencyProposals[id] = EmergencyProposal({
-            proposer: msg.sender,
+            sender: msg.sender,
             lockedTokens: quorum,
             expiryTime: uint64(getCurrentTime()) + minimumWaitTime,
             transactions: transactions
@@ -140,7 +140,7 @@ contract EmergencyProposer is Ownable, Lockable {
     function removeProposal(uint256 id) external nonReentrant() {
         EmergencyProposal storage proposal = emergencyProposals[id];
         require(proposal.expiryTime <= getCurrentTime(), "must be expired to remove");
-        require(msg.sender == proposal.proposer || msg.sender == executor, "proposer or executor");
+        require(msg.sender == proposal.sender || msg.sender == executor, "proposer or executor");
         require(proposal.lockedTokens != 0, "invalid proposal");
         token.safeTransfer(proposal.proposer, proposal.lockedTokens);
         emit EmergencyTransactionsRemoved(
@@ -166,7 +166,7 @@ contract EmergencyProposer is Ownable, Lockable {
         token.safeTransfer(address(governor), proposal.lockedTokens);
         emit EmergencyTransactionsSlashed(
             id,
-            proposal.proposer,
+            proposal.sender,
             msg.sender,
             proposal.expiryTime,
             proposal.lockedTokens,
@@ -191,10 +191,10 @@ contract EmergencyProposer is Ownable, Lockable {
             governor.emergencyExecute{ value: address(this).balance }(proposal.transactions[i]);
         }
 
-        token.safeTransfer(proposal.proposer, proposal.lockedTokens);
+        token.safeTransfer(proposal.sender, proposal.lockedTokens);
         emit EmergencyTransactionsExecuted(
             id,
-            proposal.proposer,
+            proposal.sender,
             msg.sender,
             proposal.expiryTime,
             proposal.lockedTokens,
