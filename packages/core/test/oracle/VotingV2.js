@@ -508,7 +508,6 @@ describe("VotingV2", function () {
     // Pending requests should be 2 because one vote was rolled over and the second was dispatched after the previous
     // voting round started.
     const pendingPriceRequests = await voting.methods.getPendingRequests().call();
-    console.log("pendingPriceRequests", pendingPriceRequests);
     assert.equal(pendingPriceRequests.length, 2);
 
     // check that the price request index is correct within each of these.
