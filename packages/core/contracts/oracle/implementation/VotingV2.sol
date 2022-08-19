@@ -357,7 +357,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
             PriceRequest storage newPriceRequest = priceRequests[priceRequestId];
             newPriceRequest.identifier = identifier;
             newPriceRequest.time = SafeCast.toUint64(time);
-            newPriceRequest.lastVotingRound = uint32(roundIdToVoteOnPriceRequest);
+            newPriceRequest.lastVotingRound = SafeCast.toUint32(roundIdToVoteOnPriceRequest);
             newPriceRequest.pendingRequestIndex = SafeCast.toUint64(pendingPriceRequests.length);
             newPriceRequest.priceRequestIndex = SafeCast.toUint64(priceRequestIds.length);
             newPriceRequest.ancillaryData = ancillaryData;
@@ -812,7 +812,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
                 // If the request is not resolved and the lastVotingRound less than the current round then the vote
                 // must have been rolled. In this case, update the internal trackers for this vote.
                 if (priceRequest.lastVotingRound < currentRoundId) {
-                    priceRequest.lastVotingRound = uint32(currentRoundId);
+                    priceRequest.lastVotingRound = SafeCast.toUint32(currentRoundId);
                     priceRequest.priceRequestIndex = SafeCast.toUint64(priceRequestIds.length);
 
                     // This is a subtle operation. This is not setting the skip value for the _current request_ to this
@@ -965,7 +965,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
         // Note that for proposalId>= 10^11 the generated identifier will no longer be unique but the manner
         // in which the priceRequest id is encoded in _encodePriceRequest guarantees its uniqueness.
-        bytes32 identifier = SpamGuardIdentifierLib._constructIdentifier(uint32(proposalId));
+        bytes32 identifier = SpamGuardIdentifierLib._constructIdentifier(SafeCast.toUint32(proposalId));
 
         _requestPrice(identifier, currentTime, "", true);
 
@@ -981,7 +981,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         require(spamDeletionProposals[proposalId].executed == false);
         spamDeletionProposals[proposalId].executed = true;
 
-        bytes32 identifier = SpamGuardIdentifierLib._constructIdentifier(uint32(proposalId));
+        bytes32 identifier = SpamGuardIdentifierLib._constructIdentifier(SafeCast.toUint32(proposalId));
 
         (bool hasPrice, int256 resolutionPrice, ) =
             _getPriceOrError(identifier, spamDeletionProposals[proposalId].requestTime, "");
