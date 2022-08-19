@@ -41,7 +41,6 @@ contract GovernorV2 is MultiRole, Lockable {
 
     FinderInterface private finder;
     Proposal[] public proposals;
-    address public immutable emergencyProposer;
 
     /****************************************
      *                EVENTS                *
@@ -153,6 +152,11 @@ contract GovernorV2 is MultiRole, Lockable {
         emit ProposalExecuted(id, transactionIndex);
     }
 
+    /**
+     * @notice Emergency execution method that bypasses the voting system to execute a transaction.
+     * @dev This can only be called by the EmergencyProposer.
+     * @param transaction a single transaction to execute.
+     */
     function emergencyExecute(Transaction memory transaction)
         external
         payable
