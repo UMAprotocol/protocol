@@ -507,7 +507,13 @@ describe("VotingV2", function () {
 
     // Pending requests should be 2 because one vote was rolled over and the second was dispatched after the previous
     // voting round started.
-    assert.equal((await voting.methods.getPendingRequests().call()).length, 2);
+    const pendingPriceRequests = await voting.methods.getPendingRequests().call();
+    console.log("pendingPriceRequests", pendingPriceRequests);
+    assert.equal(pendingPriceRequests.length, 2);
+
+    // check that the price request index is correct within each of these.
+    assert.equal(pendingPriceRequests[0].priceRequestIndex, 0);
+    assert.equal(pendingPriceRequests[1].priceRequestIndex, 1);
 
     // Commit votes.
     const price1 = getRandomSignedInt();
@@ -890,6 +896,8 @@ describe("VotingV2", function () {
         .subn(1)
         .toString()
     );
+
+    assert.equal(await voting.methods.getPhaseLength().call(), "86400");
   });
 
   it("Events", async function () {

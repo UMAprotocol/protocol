@@ -634,28 +634,31 @@ contract VotingV2 is
      * @notice Gets the queries that are being voted on this round.
      * @return pendingRequests array containing identifiers of type PendingRequestAncillary.
      */
-    function getPendingRequests() external view override returns (PendingRequestAncillary[] memory) {
+    function getPendingRequests() external view override returns (PendingRequestAncillaryAugmented[] memory) {
         uint256 blockTime = getCurrentTime();
         uint256 currentRoundId = voteTiming.computeCurrentRoundId(blockTime);
 
         // Solidity memory arrays aren't resizable (and reading storage is expensive). Hence this hackery to filter
         // pendingPriceRequests only to those requests that have an Active RequestStatus.
-        PendingRequestAncillary[] memory unresolved = new PendingRequestAncillary[](pendingPriceRequests.length);
+        PendingRequestAncillaryAugmented[] memory unresolved =
+            new PendingRequestAncillaryAugmented[](pendingPriceRequests.length);
         uint256 numUnresolved = 0;
 
         for (uint256 i = 0; i < pendingPriceRequests.length; i = unsafe_inc(i)) {
             PriceRequest storage priceRequest = priceRequests[pendingPriceRequests[i]];
             if (_getRequestStatus(priceRequest, currentRoundId) == RequestStatus.Active) {
-                unresolved[numUnresolved] = PendingRequestAncillary({
+                unresolved[numUnresolved] = PendingRequestAncillaryAugmented({
                     identifier: priceRequest.identifier,
                     time: priceRequest.time,
+                    priceRequestIndex: priceRequest.priceRequestIndex,
                     ancillaryData: priceRequest.ancillaryData
                 });
                 numUnresolved++;
             }
         }
 
-        PendingRequestAncillary[] memory pendingRequests = new PendingRequestAncillary[](numUnresolved);
+        PendingRequestAncillaryAugmented[] memory pendingRequests =
+            new PendingRequestAncillaryAugmented[](numUnresolved);
         for (uint256 i = 0; i < numUnresolved; i = unsafe_inc(i)) {
             pendingRequests[i] = unresolved[i];
         }
@@ -682,6 +685,13 @@ contract VotingV2 is
      */
     function getVotePhase() public view override returns (Phase) {
         return voteTiming.computeCurrentPhase(getCurrentTime());
+    }
+
+    /**
+     * @notice Returns the phase length set in vote timing.
+     */
+    function getPhaseLength() public view returns (uint256) {
+        return voteTiming.phaseLength;
     }
 
     /**

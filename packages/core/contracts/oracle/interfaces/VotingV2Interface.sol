@@ -18,6 +18,13 @@ abstract contract VotingV2Interface {
         bytes ancillaryData;
     }
 
+    struct PendingRequestAncillaryAugmented {
+        bytes32 identifier;
+        uint256 time;
+        uint256 priceRequestIndex;
+        bytes ancillaryData;
+    }
+
     // Captures the necessary data for making a commitment.
     // Used as a parameter when making batch commitments.
     // Not used as a data structure for storage.
@@ -173,7 +180,7 @@ abstract contract VotingV2Interface {
      * @return pendingRequests `PendingRequest` array containing identifiers
      * and timestamps for all pending requests.
      */
-    function getPendingRequests() external view virtual returns (PendingRequestAncillary[] memory);
+    function getPendingRequests() external view virtual returns (PendingRequestAncillaryAugmented[] memory);
 
     /**
      * @notice Returns the current voting phase, as a function of the current time.
