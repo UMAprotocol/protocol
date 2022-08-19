@@ -2,7 +2,6 @@
 // It can be run against a mainnet fork by spinning a node in a separate terminal with:
 // HARDHAT_CHAIN_ID=1 yarn hardhat node --fork https://mainnet.infura.io/v3/<YOUR-INFURA-KEY> --port 9545 --no-deploy
 // and then running this script with:
-// VOTING_UPGRADER_ADDRESS= <VOTING-UPGRADER-ADDRESS> \
 // VOTING_V2_ADDRESS= <VOTING-V2-ADDRESS> \
 // GOVERNOR_V2_ADDRESS= <GOVERNOR-V2-ADDRESS> \
 // yarn hardhat run ./src/upgrade-tests/voting2/2_Verify.ts --network localhost

@@ -48,5 +48,6 @@ NODE_URL_1=http://127.0.0.1:9545/ node ./src/admin-proposals/simulateVote.js --n
 
 ```
 VOTING_V2_ADDRESS=<VOTING-V2-ADDRESS> \
+GOVERNOR_V2_ADDRESS=<GOVERNOR-V2-ADDRESS> \
 yarn hardhat run ./src/upgrade-tests/voting2/2_Verify.ts --network localhost
 ```
