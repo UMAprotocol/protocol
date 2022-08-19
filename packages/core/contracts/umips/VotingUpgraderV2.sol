@@ -117,6 +117,9 @@ contract VotingUpgraderV2 {
         Ownable(ownableContracts.optimismParentMessenger).transferOwnership(newGovernor);
         Ownable(ownableContracts.proposer).transferOwnership(newGovernor);
 
+        // Set the new governor as the owner of the old governor
+        MultiRole(existingGovernor).resetMember(0, newGovernor);
+
         // Additional multirole contracts
         MultiRole(multiroleContracts.registry).resetMember(0, newGovernor);
         MultiRole(multiroleContracts.store).resetMember(0, newGovernor);

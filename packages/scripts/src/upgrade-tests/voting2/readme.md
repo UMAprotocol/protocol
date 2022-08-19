@@ -34,6 +34,7 @@ yarn hardhat run ./src/upgrade-tests/voting2/0_Deploy.ts --network localhost
 ```
 VOTING_UPGRADER_ADDRESS=<VOTING-UPGRADER-ADDRESS> \
 VOTING_V2_ADDRESS=<VOTING-V2-ADDRESS> \
+GOVERNOR_V2_ADDRESS=<GOVERNOR-V2-ADDRESS> \
 yarn hardhat run ./src/upgrade-tests/voting2/1_Propose.ts --network localhost
 ```
 

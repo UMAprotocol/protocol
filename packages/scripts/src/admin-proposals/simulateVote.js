@@ -167,7 +167,10 @@ async function simulateVote() {
       `Request with identifier ${requestsToVoteOn[i].identifier} and time ${requestsToVoteOn[i].time} has no price`
     );
   }
-
+  // sleep fnction
+  function sleep(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
   if (!argv.skipExecute) {
     // Execute the most recent admin votes that we just passed through.
     console.group("\n📢 Executing Governor Proposals");
@@ -183,6 +186,7 @@ async function simulateVote() {
           let txn = await mainnetContracts.governor.methods
             .executeProposal(proposalId.toString(), j.toString())
             .send({ from: accounts[0], ...gasEstimator.getCurrentFastPrice() });
+          sleep(2000);
           console.log(`    - Success, receipt: ${txn.transactionHash}`);
         } catch (err) {
           console.error("    - Failure: Txn was likely executed previously, skipping to next one");
