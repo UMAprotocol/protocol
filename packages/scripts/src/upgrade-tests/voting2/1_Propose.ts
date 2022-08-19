@@ -13,14 +13,15 @@ const hre = require("hardhat");
 import { BigNumberish } from "@ethersproject/bignumber";
 import { BytesLike } from "@ethersproject/bytes";
 import {
-  Finder,
-  Governor,
-  Proposer,
-  Voting,
-  VotingToken,
-  VotingUpgraderV2__factory,
-  VotingV2__factory,
-} from "@uma/contracts-node/typechain/core/ethers";
+  FinderEthers,
+  GovernorEthers,
+  ProposerEthers,
+  VotingEthers,
+  VotingTokenEthers,
+  VotingUpgraderV2Ethers__factory,
+  VotingV2Ethers__factory,
+} from "@uma/contracts-node";
+
 import { getContractInstance } from "../../utils/contracts";
 const { getAbi } = require("@uma/contracts-node");
 
@@ -42,16 +43,16 @@ async function main() {
   console.log("Running Voting Upgrade🔥");
   console.log("1. LOADING DEPLOYED CONTRACT STATE");
 
-  const finder = await getContractInstance<Finder>("Finder");
-  const governor = await getContractInstance<Governor>("Governor");
-  const proposer = await getContractInstance<Proposer>("Proposer");
-  const existingVoting = await getContractInstance<Voting>("Voting");
-  const votingToken = await getContractInstance<VotingToken>("VotingToken");
+  const finder = await getContractInstance<FinderEthers>("Finder");
+  const governor = await getContractInstance<GovernorEthers>("Governor");
+  const proposer = await getContractInstance<ProposerEthers>("Proposer");
+  const existingVoting = await getContractInstance<VotingEthers>("Voting");
+  const votingToken = await getContractInstance<VotingTokenEthers>("VotingToken");
 
-  const votingV2Factory: VotingV2__factory = await getContractFactory("VotingV2");
+  const votingV2Factory: VotingV2Ethers__factory = await getContractFactory("VotingV2");
   const votingV2 = await votingV2Factory.attach(votingV2Address);
 
-  const votingUpgraderFactory: VotingUpgraderV2__factory = await getContractFactory("VotingUpgraderV2");
+  const votingUpgraderFactory: VotingUpgraderV2Ethers__factory = await getContractFactory("VotingUpgraderV2");
   const votingUpgrader = await votingUpgraderFactory.attach(votingUpgraderAddress);
 
   const ownableContractsToMigrate = await votingUpgrader.ownableContracts();

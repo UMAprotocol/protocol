@@ -10,23 +10,23 @@
 const hre = require("hardhat");
 const assert = require("assert").strict;
 
-import { FinancialContractsAdmin } from "@uma/contracts-frontend/dist/typechain/core/ethers";
-import { ProposerEthers } from "@uma/contracts-node";
-import { OracleHub } from "@uma/contracts-node/dist/packages/contracts-node/typechain/core/ethers";
 import {
-  AddressWhitelist,
-  ArbitrumParentMessenger,
-  Finder,
-  Governor,
-  GovernorHub,
-  GovernorRootTunnel,
-  IdentifierWhitelist,
-  OptimismParentMessenger,
-  Registry,
-  Store,
-  Voting,
-  VotingV2__factory,
-} from "@uma/contracts-node/typechain/core/ethers";
+  AddressWhitelistEthers,
+  FinancialContractsAdminEthers,
+  FinderEthers,
+  GovernorEthers,
+  GovernorHubEthers,
+  GovernorRootTunnelEthers,
+  IdentifierWhitelistEthers,
+  OracleHubEthers,
+  ParentMessengerBaseEthers,
+  ProposerEthers,
+  RegistryEthers,
+  StoreEthers,
+  VotingEthers,
+  VotingV2Ethers__factory,
+} from "@uma/contracts-node";
+
 import { getContractInstance } from "../../utils/contracts";
 const { interfaceName } = require("@uma/common");
 
@@ -39,27 +39,27 @@ async function main() {
   if (!votingV2Address) throw new Error("VOTING_V2_ADDRESS not set");
   if (!governorV2Address) throw new Error("GOVERNOR_V2_ADDRESS not set");
 
-  const finder = await getContractInstance<Finder>("Finder");
-  const governor = await getContractInstance<Governor>("Governor");
-  const oldVoting = await getContractInstance<Voting>("Voting");
+  const finder = await getContractInstance<FinderEthers>("Finder");
+  const governor = await getContractInstance<GovernorEthers>("Governor");
+  const oldVoting = await getContractInstance<VotingEthers>("Voting");
 
   // Ownable contracts
-  const identifierWhitelist = await getContractInstance<IdentifierWhitelist>("IdentifierWhitelist");
-  const financialContractsAdmin = await getContractInstance<FinancialContractsAdmin>("FinancialContractsAdmin");
-  const addressWhitelist = await getContractInstance<AddressWhitelist>("AddressWhitelist");
-  const governorRootTunnel = await getContractInstance<GovernorRootTunnel>("GovernorRootTunnel");
-  const arbitrumParentMessenger = await getContractInstance<ArbitrumParentMessenger>("Arbitrum_ParentMessenger");
-  const oracleHub = await getContractInstance<OracleHub>("OracleHub");
-  const governorHub = await getContractInstance<GovernorHub>("GovernorHub");
-  const bobaParentMessenger = await getContractInstance<OptimismParentMessenger>("Optimism_ParentMessenger");
-  const optimismParentMessenger = await getContractInstance<OptimismParentMessenger>("Optimism_ParentMessenger");
+  const identifierWhitelist = await getContractInstance<IdentifierWhitelistEthers>("IdentifierWhitelist");
+  const financialContractsAdmin = await getContractInstance<FinancialContractsAdminEthers>("FinancialContractsAdmin");
+  const addressWhitelist = await getContractInstance<AddressWhitelistEthers>("AddressWhitelist");
+  const governorRootTunnel = await getContractInstance<GovernorRootTunnelEthers>("GovernorRootTunnel");
+  const arbitrumParentMessenger = await getContractInstance<ParentMessengerBaseEthers>("Arbitrum_ParentMessenger");
+  const oracleHub = await getContractInstance<OracleHubEthers>("OracleHub");
+  const governorHub = await getContractInstance<GovernorHubEthers>("GovernorHub");
+  const bobaParentMessenger = await getContractInstance<ParentMessengerBaseEthers>("Optimism_ParentMessenger");
+  const optimismParentMessenger = await getContractInstance<ParentMessengerBaseEthers>("Optimism_ParentMessenger");
   const proposer = await getContractInstance<ProposerEthers>("Proposer");
 
   // MultiRole contracts
-  const registry = await getContractInstance<Registry>("Registry");
-  const store = await getContractInstance<Store>("Store");
+  const registry = await getContractInstance<RegistryEthers>("Registry");
+  const store = await getContractInstance<StoreEthers>("Store");
 
-  const votingV2Factory: VotingV2__factory = await getContractFactory("VotingV2");
+  const votingV2Factory: VotingV2Ethers__factory = await getContractFactory("VotingV2");
   const votingV2 = await votingV2Factory.attach(votingV2Address);
 
   console.log(" 1. Validating finder registration of new voting contract addresses...");

@@ -6,17 +6,17 @@
 
 const hre = require("hardhat");
 
-import { getAddress } from "@uma/contracts-node";
 import {
-  Finder,
-  Governor,
-  GovernorV2__factory,
-  SlashingLibrary__factory,
-  Voting,
-  VotingToken,
-  VotingUpgraderV2__factory,
-  VotingV2__factory,
-} from "@uma/contracts-node/typechain/core/ethers";
+  FinderEthers,
+  getAddress,
+  GovernorEthers,
+  GovernorV2Ethers__factory,
+  SlashingLibraryEthers__factory,
+  VotingEthers,
+  VotingTokenEthers,
+  VotingUpgraderV2Ethers__factory,
+  VotingV2Ethers__factory,
+} from "@uma/contracts-node";
 import { getContractInstance } from "../../utils/contracts";
 
 const { getContractFactory } = hre.ethers;
@@ -26,19 +26,19 @@ async function main() {
 
   const networkId = Number(await hre.getChainId());
 
-  const finder = await getContractInstance<Finder>("Finder");
-  const governor = await getContractInstance<Governor>("Governor");
-  const existingVoting = await getContractInstance<Voting>("Voting");
-  const votingToken = await getContractInstance<VotingToken>("VotingToken");
+  const finder = await getContractInstance<FinderEthers>("Finder");
+  const governor = await getContractInstance<GovernorEthers>("Governor");
+  const existingVoting = await getContractInstance<VotingEthers>("Voting");
+  const votingToken = await getContractInstance<VotingTokenEthers>("VotingToken");
 
   console.log("1. DEPLOYING SLASHING LIBRARY");
-  const slashingLibraryFactory: SlashingLibrary__factory = await getContractFactory("SlashingLibrary");
+  const slashingLibraryFactory: SlashingLibraryEthers__factory = await getContractFactory("SlashingLibrary");
   const slashingLibrary = await slashingLibraryFactory.deploy();
 
   console.log("Deployed SlashingLibrary: ", slashingLibrary.address);
 
   console.log("2. DEPLOYING VOTING V2");
-  const votingV2Factory: VotingV2__factory = await getContractFactory("VotingV2");
+  const votingV2Factory: VotingV2Ethers__factory = await getContractFactory("VotingV2");
   const emissionRate = "640000000000000000"; // 0.64 UMA per second.
   const spamDeletionProposalBond = hre.web3.utils.toWei("10000", "ether");
   const unstakeCooldown = 60 * 60 * 24 * 7; // 7 days
@@ -63,7 +63,7 @@ async function main() {
 
   console.log("3. DEPLOYING GOVERNOR V2");
 
-  const governorV2Factory: GovernorV2__factory = await getContractFactory("GovernorV2");
+  const governorV2Factory: GovernorV2Ethers__factory = await getContractFactory("GovernorV2");
 
   const governorV2 = await governorV2Factory.deploy(finder.address, 0);
 
@@ -89,7 +89,7 @@ async function main() {
     store: await getAddress("Store", networkId),
   };
 
-  const votingUpgraderFactoryV2: VotingUpgraderV2__factory = await getContractFactory("VotingUpgraderV2");
+  const votingUpgraderFactoryV2: VotingUpgraderV2Ethers__factory = await getContractFactory("VotingUpgraderV2");
   const votingUpgrader = await votingUpgraderFactoryV2.deploy(
     governor.address,
     governorV2.address,
