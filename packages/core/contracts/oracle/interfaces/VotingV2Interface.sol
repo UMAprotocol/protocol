@@ -21,8 +21,8 @@ abstract contract VotingV2Interface {
     struct PendingRequestAncillaryAugmented {
         bytes32 identifier;
         uint256 time;
-        uint256 priceRequestIndex;
         bytes ancillaryData;
+        uint256 priceRequestIndex;
     }
 
     // Captures the necessary data for making a commitment.

@@ -650,8 +650,8 @@ contract VotingV2 is
                 unresolved[numUnresolved] = PendingRequestAncillaryAugmented({
                     identifier: priceRequest.identifier,
                     time: priceRequest.time,
-                    priceRequestIndex: priceRequest.priceRequestIndex,
-                    ancillaryData: priceRequest.ancillaryData
+                    ancillaryData: priceRequest.ancillaryData,
+                    priceRequestIndex: priceRequest.priceRequestIndex
                 });
                 numUnresolved++;
             }
