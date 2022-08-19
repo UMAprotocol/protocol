@@ -80,7 +80,7 @@ describe("ProposerV2", function () {
     assert.equal(await proposer.methods.bond().call(), bond);
 
     // Owner is the only one who can set bond.
-    await didContractThrow(proposer.methods.setBond(toWei("10")).send({ from: submitter }));
+    assert(await didContractThrow(proposer.methods.setBond(toWei("10")).send({ from: submitter })));
 
     // Set the bond to 10.
     const tx = await changeBond(toWei("10"));
@@ -95,11 +95,11 @@ describe("ProposerV2", function () {
     const txn = proposer.methods.propose([], defaultAncillaryData);
 
     // No balance and bond isn't approved.
-    await didContractThrow(txn.send({ from: submitter }));
+    assert(await didContractThrow(txn.send({ from: submitter })));
 
     // No approval
     await votingToken.methods.transfer(submitter, bond).send({ from: owner });
-    await didContractThrow(txn.send({ from: submitter }));
+    assert(await didContractThrow(txn.send({ from: submitter })));
 
     // Should succeed
     await votingToken.methods.approve(proposer.options.address, bond).send({ from: submitter });
@@ -170,7 +170,7 @@ describe("ProposerV2", function () {
     const pendingQueries = await mockOracle.methods.getPendingQueries().call();
     const { identifier, time, ancillaryData } = pendingQueries[pendingQueries.length - 1];
     await mockOracle.methods.pushPrice(identifier, time, ancillaryData, toWei("0")).send({ from: owner });
-    await didContractThrow(governor.methods.executeProposal(id, 0).send({ from: rando }));
+    assert(await didContractThrow(governor.methods.executeProposal(id, 0).send({ from: rando })));
 
     // Resolve the proposal in the proposer.
     const receipt = await proposer.methods.resolveProposal(id).send({ from: owner });

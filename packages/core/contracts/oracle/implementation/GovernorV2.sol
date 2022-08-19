@@ -23,7 +23,8 @@ contract GovernorV2 is MultiRole, Lockable {
 
     enum Roles {
         Owner, // Can set the proposer.
-        Proposer // Address that can make proposals.
+        Proposer, // Address that can make proposals.
+        EmergencyProposer // Address that can make emergency proposals.
     }
 
     struct Transaction {
@@ -48,6 +49,7 @@ contract GovernorV2 is MultiRole, Lockable {
     event NewProposal(uint256 indexed id, Transaction[] transactions);
 
     event ProposalExecuted(uint256 indexed id, uint256 transactionIndex);
+    event EmergencyExecution(address indexed to, uint256 value, bytes data);
 
     /**
      * @notice Construct the Governor contract.
@@ -58,6 +60,7 @@ contract GovernorV2 is MultiRole, Lockable {
         finder = FinderInterface(_finderAddress);
         _createExclusiveRole(uint256(Roles.Owner), uint256(Roles.Owner), msg.sender);
         _createExclusiveRole(uint256(Roles.Proposer), uint256(Roles.Owner), msg.sender);
+        _createExclusiveRole(uint256(Roles.EmergencyProposer), uint256(Roles.Owner), msg.sender);
 
         // Ensure the startingId is not set unreasonably high to avoid it being set such that new proposals overwrite
         // other storage slots in the contract.
@@ -147,6 +150,22 @@ contract GovernorV2 is MultiRole, Lockable {
         require(_executeCall(transaction.to, transaction.value, transaction.data), "Tx execution failed");
 
         emit ProposalExecuted(id, transactionIndex);
+    }
+
+    /**
+     * @notice Emergency execution method that bypasses the voting system to execute a transaction.
+     * @dev This can only be called by the EmergencyProposer.
+     * @param transaction a single transaction to execute.
+     */
+    function emergencyExecute(Transaction memory transaction)
+        external
+        payable
+        nonReentrant()
+        onlyRoleHolder(uint256(Roles.EmergencyProposer))
+    {
+        require(_executeCall(transaction.to, transaction.value, transaction.data), "Tx execution failed");
+
+        emit EmergencyExecution(transaction.to, transaction.value, transaction.data);
     }
 
     /**
