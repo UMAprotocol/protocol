@@ -42,7 +42,7 @@ contract EmergencyProposer is Ownable, Lockable {
 
     event QuorumSet(uint256 quorum);
     event ExecutorSet(address executor);
-    event MinimumWaitTimeSet(uint256 waitTime);
+    event MinimumWaitTimeSet(uint256 minimumWaitTime);
     event EmergencyTransactionsProposed(
         uint256 indexed id,
         address indexed sender,
@@ -51,7 +51,7 @@ contract EmergencyProposer is Ownable, Lockable {
         uint256 lockedTokens,
         GovernorV2.Transaction[] transactions
     );
-    event EmergencyTransactionsRemoved(
+    event EmergencyProposalRemoved(
         uint256 indexed id,
         address indexed sender,
         address indexed caller,
@@ -59,7 +59,7 @@ contract EmergencyProposer is Ownable, Lockable {
         uint256 lockedTokens,
         GovernorV2.Transaction[] transactions
     );
-    event EmergencyTransactionsSlashed(
+    event EmergencyProposalSlashed(
         uint256 indexed id,
         address indexed sender,
         address indexed caller,
@@ -67,7 +67,7 @@ contract EmergencyProposer is Ownable, Lockable {
         uint256 lockedTokens,
         GovernorV2.Transaction[] transactions
     );
-    event EmergencyTransactionsExecuted(
+    event EmergencyProposalExecuted(
         uint256 indexed id,
         address indexed sender,
         address indexed caller,
@@ -110,21 +110,14 @@ contract EmergencyProposer is Ownable, Lockable {
     function emergencyPropose(GovernorV2.Transaction[] memory transactions) external nonReentrant() returns (uint256) {
         token.safeTransferFrom(msg.sender, address(this), quorum);
         uint256 id = currentId++;
-        emergencyProposals[id] = EmergencyProposal({
-            sender: msg.sender,
-            lockedTokens: quorum,
-            expiryTime: uint64(getCurrentTime()) + minimumWaitTime,
-            transactions: transactions
-        });
+        EmergencyProposal storage proposal = emergencyProposals[id];
+        proposal.sender = msg.sender;
+        proposal.lockedTokens = quorum;
+        proposal.expiryTime = uint64(getCurrentTime()) + minimumWaitTime;
 
-        emit EmergencyTransactionsProposed(
-            id,
-            msg.sender,
-            msg.sender,
-            emergencyProposals[id].expiryTime,
-            quorum,
-            transactions
-        );
+        for (uint256 i = 0; i < transactions.length; i++) proposal.transactions.push(transactions[i]);
+
+        emit EmergencyTransactionsProposed(id, msg.sender, msg.sender, proposal.expiryTime, quorum, transactions);
         return id;
     }
 
@@ -143,7 +136,7 @@ contract EmergencyProposer is Ownable, Lockable {
         require(msg.sender == proposal.sender || msg.sender == executor, "proposer or executor");
         require(proposal.lockedTokens != 0, "invalid proposal");
         token.safeTransfer(proposal.sender, proposal.lockedTokens);
-        emit EmergencyTransactionsRemoved(
+        emit EmergencyProposalRemoved(
             id,
             proposal.sender,
             msg.sender,
@@ -164,7 +157,7 @@ contract EmergencyProposer is Ownable, Lockable {
         EmergencyProposal storage proposal = emergencyProposals[id];
         require(proposal.lockedTokens != 0, "invalid proposal");
         token.safeTransfer(address(governor), proposal.lockedTokens);
-        emit EmergencyTransactionsSlashed(
+        emit EmergencyProposalSlashed(
             id,
             proposal.sender,
             msg.sender,
@@ -180,19 +173,18 @@ contract EmergencyProposer is Ownable, Lockable {
      * @dev this method effectively gives the executor veto power over any proposal.
      * @param id id of the proposal.
      */
-    function executeEmergencyProposal(uint256 id) public payable {
+    function executeEmergencyProposal(uint256 id) public payable nonReentrant() {
         require(msg.sender == executor, "must be called by executor");
 
         EmergencyProposal storage proposal = emergencyProposals[id];
         require(proposal.lockedTokens != 0, "invalid proposal");
-        require(proposal.expiryTime < getCurrentTime(), "invalid proposal");
+        require(proposal.expiryTime <= getCurrentTime(), "must be expired to execute");
 
-        for (uint256 i = 0; i < proposal.transactions.length; i++) {
+        for (uint256 i = 0; i < proposal.transactions.length; i++)
             governor.emergencyExecute{ value: address(this).balance }(proposal.transactions[i]);
-        }
 
         token.safeTransfer(proposal.sender, proposal.lockedTokens);
-        emit EmergencyTransactionsExecuted(
+        emit EmergencyProposalExecuted(
             id,
             proposal.sender,
             msg.sender,
@@ -231,6 +223,7 @@ contract EmergencyProposer is Ownable, Lockable {
      * @param _minimumWaitTime the new minimum wait time.
      */
     function setMinimumWaitTime(uint64 _minimumWaitTime) public nonReentrant() onlyOwner() {
+        require(_minimumWaitTime != 0, "minimumWaitTime == 0");
         minimumWaitTime = _minimumWaitTime;
         emit MinimumWaitTimeSet(_minimumWaitTime);
     }
