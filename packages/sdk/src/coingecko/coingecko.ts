@@ -68,7 +68,7 @@ class Coingecko {
     // annoying, but have to type this to iterate over entries
     type Result = {
       [address: string]: {
-        [currency: string]: number;  // usd, eth, ...
+        [currency: string]: number; // usd, eth, ...
         last_updated_at: number;
       };
     };
