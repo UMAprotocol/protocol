@@ -1,6 +1,6 @@
-## VotingV2 upgrade
+## Governor V2 and VotingV2 upgrade
 
-These scripts deploy the SlashingLibrary, VotingV2, and VotingUpgrader contracts and execute the Proposer operations for the migration from Voting to VotingV2. The last script checks that the migration has been correctly executed. They can be deployed on a mainnet fork to imitate their operation.
+These scripts deploy the GovernorV2, SlashingLibrary, VotingV2, and VotingUpgrader contracts and execute the Proposer operations for the migration from Governor to GovernorV2 and Voting to VotingV2. The last script checks that the migration has been correctly executed. They can be deployed on a mainnet fork to imitate their operation.
 
 1.Run a local forked node:
 
@@ -34,6 +34,7 @@ yarn hardhat run ./src/upgrade-tests/voting2/0_Deploy.ts --network localhost
 ```
 VOTING_UPGRADER_ADDRESS=<VOTING-UPGRADER-ADDRESS> \
 VOTING_V2_ADDRESS=<VOTING-V2-ADDRESS> \
+GOVERNOR_V2_ADDRESS=<GOVERNOR-V2-ADDRESS> \
 yarn hardhat run ./src/upgrade-tests/voting2/1_Propose.ts --network localhost
 ```
 
@@ -47,5 +48,6 @@ NODE_URL_1=http://127.0.0.1:9545/ node ./src/admin-proposals/simulateVote.js --n
 
 ```
 VOTING_V2_ADDRESS=<VOTING-V2-ADDRESS> \
+GOVERNOR_V2_ADDRESS=<GOVERNOR-V2-ADDRESS> \
 yarn hardhat run ./src/upgrade-tests/voting2/2_Verify.ts --network localhost
 ```
