@@ -3,6 +3,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.16;
 
+import "./ResultComputationV2.sol";
+import "./SpamGuardIdentifierLib.sol";
+import "./Staker.sol";
+import "./VoteTimingV2.sol";
+import "./Constants.sol";
+
 import "../interfaces/MinimumVotingAncillaryInterface.sol";
 import "../interfaces/FinderInterface.sol";
 import "../interfaces/IdentifierWhitelistInterface.sol";
@@ -12,11 +18,6 @@ import "../interfaces/OracleInterface.sol";
 import "../interfaces/VotingV2Interface.sol";
 import "../interfaces/RegistryInterface.sol";
 import "../interfaces/SlashingLibraryInterface.sol";
-import "./Constants.sol";
-import "./ResultComputationV2.sol";
-import "./SpamGuardIdentifierLib.sol";
-import "./Staker.sol";
-import "./VoteTimingV2.sol";
 
 /**
  * @title VotingV2 contract for the UMA DVM.
@@ -434,7 +435,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
      * @notice Gets the status of a list of price requests, identified by their identifier and time.
      * @dev If the status for a particular request is NotRequested, the lastVotingRound will always be 0.
      * @param requests array of type PendingRequestAncillary which includes an identifier and timestamp for each request.
-     * @return requestStates a list, in the same order as the input list, giving the status of each of the specified price requests.
+     * @return requestStates a list, in the same order as the input list, giving the status of the specified requests.
      */
     function getPriceRequestStatuses(PendingRequestAncillary[] memory requests)
         public
@@ -623,14 +624,6 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
      */
     function getVotePhase() public view override returns (Phase) {
         return voteTiming.computeCurrentPhase(getCurrentTime());
-    }
-
-    /**
-     * @notice Returns the phase length set in vote timing.
-     * @return uint256 the phase length.
-     */
-    function getPhaseLength() public view returns (uint256) {
-        return voteTiming.phaseLength;
     }
 
     /**
@@ -1044,12 +1037,12 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         address voterAddress,
         uint256 roundId,
         MinimumVotingAncillaryInterface.PendingRequestAncillary[] memory toRetrieve
-    ) public {
-        MinimumVotingAncillaryInterface(address(previousVotingContract)).retrieveRewards(
-            voterAddress,
-            roundId,
-            toRetrieve
-        );
+    ) public returns (uint256) {
+        uint256 rewards =
+            MinimumVotingAncillaryInterface(address(previousVotingContract))
+                .retrieveRewards(voterAddress, roundId, toRetrieve)
+                .rawValue;
+        return (rewards);
     }
 
     /****************************************
@@ -1209,7 +1202,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         unchecked { return x + 1; }
     }
 
-    // Returns the registered identifier whitelist, stored in the finder
+    // Returns the registered identifier whitelist, stored in the finder.
     function _getIdentifierWhitelist() private view returns (IdentifierWhitelistInterface) {
         return IdentifierWhitelistInterface(finder.getImplementationAddress(OracleInterfaces.IdentifierWhitelist));
     }

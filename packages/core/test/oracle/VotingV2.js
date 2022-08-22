@@ -13,6 +13,7 @@ const {
   computeVoteHash,
   computeVoteHashAncillary,
   getKeyGenMessage,
+  signMessage,
 } = require("@uma/common");
 const { moveToNextRound, moveToNextPhase } = require("../../utils/Voting.js");
 const { assert } = require("chai");
@@ -76,7 +77,7 @@ describe("VotingV2", function () {
 
     // Register contract with Registry.
     await registry.methods.addMember(RegistryRolesEnum.CONTRACT_CREATOR, account1).send({ from: accounts[0] });
-    await registry.methods.registerContract([], registeredContract).send({ from: account1 });
+    await registry.methods.registerContract([], registeredContract).send({ from: accounts[0] });
 
     // Magic math to ensure we start at the very beginning of a round, and we aren't dependent on the time the tests
     // are run.
@@ -1327,6 +1328,114 @@ describe("VotingV2", function () {
     assert(await didContractThrow(newVoting.methods.requestPrice(identifier, time3).send({ from: migratedVoting })));
     assert(
       await didContractThrow(newVoting.methods.requestPrice(identifier, time3).send({ from: registeredContract }))
+    );
+  });
+
+  it("Intra-version reward claiming", async function () {
+    // When migrating from V1->LV2, we need to ensure that rewards are correctly claimed on the previous contract via
+    // the new voting contract. To do this we will: a) deploy an old voting contract, b) generate some rewards via a
+    // vote c) upgrade to the new contract and d) check the voter can claim rewards on the old contract.
+    const Voting = getContract("Voting");
+
+    const oldVoting = await Voting.new(
+      "86400",
+      { rawValue: "0" },
+      { rawValue: toWei("0.0005").toString() },
+      "86400",
+      votingToken.options.address,
+      (await Finder.deployed()).options.address,
+      (await Timer.deployed()).options.address
+    ).send({ from: accounts[0] });
+    await votingToken.methods.addMember("1", oldVoting.options.address).send({ from: accounts[0] });
+
+    // Request to unstake such that this account has some token balance to actually get rewards in the old contract.
+    await voting.methods.setUnstakeCoolDown(0).send({ from: account1 });
+    await voting.methods.requestUnstake(await voting.methods.getVoterStake(account1).call()).send({ from: account1 });
+    await voting.methods.executeUnstake().send({ from: account1 });
+
+    // Request a price and move to the next round where that will be voted on.
+
+    const identifier = padRight(utf8ToHex("historic-vote-claim"), 64);
+    const time = "1000";
+    // Make the Oracle support this identifier.
+    await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
+
+    const ancillaryData = utf8ToHex("some-random-extra-data");
+    await oldVoting.methods.requestPrice(identifier, time, ancillaryData).send({ from: registeredContract });
+
+    await moveToNextRound(oldVoting, accounts[0]);
+
+    const salt = getRandomSignedInt(); // use the same salt for all votes. bad practice but wont impact anything.
+    const price = 420;
+    const baseRequest = { salt, roundId: (await oldVoting.methods.getCurrentRoundId().call()).toString(), identifier };
+    const hash = computeVoteHashAncillary({ ...baseRequest, price, account: account1, time, ancillaryData });
+
+    await oldVoting.methods.commitVote(identifier, time, ancillaryData, hash).send({ from: account1 });
+
+    await moveToNextPhase(oldVoting, account1);
+    const signature = await signMessage(web3, "Sign For Snapshot", account1);
+    await oldVoting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
+    await oldVoting.methods.revealVote(identifier, time, price, ancillaryData, salt).send({ from: account1 });
+    await moveToNextRound(oldVoting, accounts[0]);
+
+    assert.equal(
+      (await oldVoting.methods.getPrice(identifier, time, ancillaryData).call({ from: registeredContract })).toString(),
+      price.toString()
+    );
+
+    // There should be rewards that the old account can retrieve, if they were to do it now. Note we need to use the
+    // overloaded interface as we are using ancillary data and web3.js can be dumb about correctly choosing the type.
+    // Expected increase is 0.0005*100mm=50k.
+    assert.equal(
+      (
+        await oldVoting.methods["retrieveRewards(address,uint256,(bytes32,uint256,bytes)[])"](
+          account1,
+          baseRequest.roundId,
+          [{ identifier, time, ancillaryData }]
+        ).call()
+      ).toString(),
+      toWei("50000").toString()
+    );
+
+    // Now, deploy a "new" VotingV2 contract that can have the old one set in the constructor.
+    voting = await VotingV2Test.new(
+      "42069", // emissionRate
+      toWei("10000"), // spamDeletionProposalBond
+      60 * 60 * 24 * 7, // Unstake cooldown
+      86400, // PhaseLength
+      7200, // minRollToNextRoundLength
+      toWei("5000000"), // GAT 5MM
+      "0", // startingRequestIndex
+      votingToken.options.address, // voting token
+      (await Finder.deployed()).options.address, // finder
+      (await SlashingLibrary.deployed()).options.address, // slashing library
+      oldVoting.options.address, // Set the previous voting contract to the old contract deployed in this test.
+      (await Timer.deployed()).options.address // timer
+    ).send({ from: accounts[0] });
+
+    // Now, set the old voting contract as migrated and check that the voter can claim rewards on the old contract.
+    await oldVoting.methods.setMigrated(voting.options.address).send({ from: accounts[0] });
+
+    // Check that the voter can claim rewards on the old contract.
+    const oldBalance = await votingToken.methods.balanceOf(account1).call();
+
+    // Calling directly on the old voting contract should revert as the contract is migrated!
+    assert(
+      await didContractThrow(
+        oldVoting.methods
+          .retrieveRewards(account1, baseRequest.roundId, [{ identifier, ancillaryData, time }])
+          .send({ from: accounts[0] })
+      )
+    );
+    await voting.methods
+      .retrieveRewardsOnMigratedVotingContract(account1, baseRequest.roundId, [{ identifier, time, ancillaryData }])
+      .send({ from: accounts[0] });
+
+    // Check that the voter's balance has increased.
+
+    assert.equal(
+      toBN(oldBalance).add(toBN(toWei("50000"))),
+      (await votingToken.methods.balanceOf(account1).call()).toString()
     );
   });
 

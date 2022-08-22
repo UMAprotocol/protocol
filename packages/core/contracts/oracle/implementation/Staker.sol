@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import "../interfaces/StakerInterface.sol";
-import "../../common/interfaces/ExpandedIERC20.sol";
-
 import "../../common/implementation/Lockable.sol";
 import "../../common/implementation/MultiCaller.sol";
+
+import "../../common/interfaces/ExpandedIERC20.sol";
+import "../interfaces/StakerInterface.sol";
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";

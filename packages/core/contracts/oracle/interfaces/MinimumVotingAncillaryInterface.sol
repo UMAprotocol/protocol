@@ -2,6 +2,10 @@
 pragma solidity 0.8.16;
 
 interface MinimumVotingAncillaryInterface {
+    struct Unsigned {
+        uint256 rawValue;
+    }
+
     struct PendingRequestAncillary {
         bytes32 identifier;
         uint256 time;
@@ -12,5 +16,5 @@ interface MinimumVotingAncillaryInterface {
         address voterAddress,
         uint256 roundId,
         PendingRequestAncillary[] memory toRetrieve
-    ) external;
+    ) external returns (Unsigned memory);
 }
