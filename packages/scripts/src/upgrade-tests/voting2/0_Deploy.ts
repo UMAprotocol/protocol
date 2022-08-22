@@ -8,7 +8,6 @@ const hre = require("hardhat");
 
 import {
   FinderEthers,
-  getAddress,
   GovernorEthers,
   GovernorV2Ethers__factory,
   SlashingLibraryEthers__factory,
@@ -18,6 +17,7 @@ import {
   VotingV2Ethers__factory,
 } from "@uma/contracts-node";
 import { getContractInstance } from "../../utils/contracts";
+import { getMultiRoleContracts, getOwnableContracts } from "./migrationUtils";
 
 const { getContractFactory } = hre.ethers;
 
@@ -71,23 +71,9 @@ async function main() {
 
   console.log("4. DEPLOYING VOTING UPGRADER");
 
-  const ownableContractsToMigrate = {
-    identifierWhitelist: await getAddress("IdentifierWhitelist", networkId),
-    financialContractsAdmin: await getAddress("FinancialContractsAdmin", networkId),
-    addressWhitelist: await getAddress("AddressWhitelist", networkId),
-    governorRootTunnel: await getAddress("GovernorRootTunnel", networkId),
-    arbitrumParentMessenger: await getAddress("Arbitrum_ParentMessenger", networkId),
-    oracleHub: await getAddress("OracleHub", networkId),
-    governorHub: await getAddress("GovernorHub", networkId),
-    bobaParentMessenger: await getAddress("Boba_ParentMessenger", networkId),
-    optimismParentMessenger: await getAddress("Optimism_ParentMessenger", networkId),
-    proposer: await getAddress("Proposer", networkId),
-  };
+  const ownableContractsToMigrate = await getOwnableContracts(networkId);
 
-  const multicallContractsToMigrate = {
-    registry: await getAddress("Registry", networkId),
-    store: await getAddress("Store", networkId),
-  };
+  const multicallContractsToMigrate = await getMultiRoleContracts(networkId);
 
   const votingUpgraderFactoryV2: VotingUpgraderV2Ethers__factory = await getContractFactory("VotingUpgraderV2");
   const votingUpgrader = await votingUpgraderFactoryV2.deploy(

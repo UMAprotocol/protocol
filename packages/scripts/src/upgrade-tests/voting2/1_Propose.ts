@@ -23,6 +23,7 @@ import {
 } from "@uma/contracts-node";
 
 import { getContractInstance } from "../../utils/contracts";
+import { getMultiRoleContracts, getOwnableContracts } from "./migrationUtils";
 const { getAbi } = require("@uma/contracts-node");
 
 const { getContractFactory } = hre.ethers;
@@ -31,6 +32,8 @@ const proposerWallet = "0x2bAaA41d155ad8a4126184950B31F50A1513cE25";
 
 async function main() {
   const proposerSigner = await hre.ethers.getSigner(proposerWallet);
+
+  const networkId = Number(await hre.getChainId());
 
   const votingUpgraderAddress = process.env["VOTING_UPGRADER_ADDRESS"];
   const votingV2Address = process.env["VOTING_V2_ADDRESS"];
@@ -55,9 +58,9 @@ async function main() {
   const votingUpgraderFactory: VotingUpgraderV2Ethers__factory = await getContractFactory("VotingUpgraderV2");
   const votingUpgrader = await votingUpgraderFactory.attach(votingUpgraderAddress);
 
-  const ownableContractsToMigrate = await votingUpgrader.ownableContracts();
+  const ownableContractsToMigrate = await getOwnableContracts(networkId);
 
-  const multicallContractsToMigrate = await votingUpgrader.multiroleContracts();
+  const multicallContractsToMigrate = await getMultiRoleContracts(networkId);
 
   const adminProposalTransactions: {
     to: string;
@@ -96,25 +99,23 @@ async function main() {
   console.log("3.c. Transfer ownership of existing voting to voting upgrader:", transferExistingVotingOwnershipTx.data);
 
   // Transfer Ownable contracts to VotingUpgraderV2
-  for (const ownableToMigrate of Object.entries(ownableContractsToMigrate).slice(ownableContractsToMigrate.length)) {
+  for (const ownableToMigrate of Object.entries(ownableContractsToMigrate)) {
+    const contractAddress = ownableToMigrate[1];
+    const contractName = ownableToMigrate[0];
     const iface = new hre.ethers.utils.Interface(getAbi("Ownable"));
     const data = iface.encodeFunctionData("transferOwnership", [votingUpgraderAddress]);
-    adminProposalTransactions.push({
-      to: ownableToMigrate[1],
-      value: 0,
-      data,
-    });
-    console.log(`3.d.  Ownable: transfer ownership of ${ownableToMigrate[0]} to voting upgrader`, data);
+    adminProposalTransactions.push({ to: contractAddress, value: 0, data });
+    console.log(`3.d.  Ownable: transfer ownership of ${contractName} to voting upgrader`, data);
   }
 
   // Transfer Multirole contracts to new VotingUpgraderV2
-  for (const multiRoleToMigrate of Object.entries(multicallContractsToMigrate).slice(
-    multicallContractsToMigrate.length
-  )) {
+  for (const multiRoleToMigrate of Object.entries(multicallContractsToMigrate)) {
+    const contractAddress = multiRoleToMigrate[1];
+    const contractName = multiRoleToMigrate[0];
     const iface = new hre.ethers.utils.Interface(getAbi("MultiRole"));
     const data = iface.encodeFunctionData("resetMember", [0, votingUpgraderAddress]);
-    adminProposalTransactions.push({ to: multiRoleToMigrate[1], value: 0, data });
-    console.log(`3.e.  Multirole: transfer owner role of ${multiRoleToMigrate[0]} to voting upgrader`, data);
+    adminProposalTransactions.push({ to: contractAddress, value: 0, data });
+    console.log(`3.e.  Multirole: transfer owner role of ${contractName} to voting upgrader`, data);
   }
 
   const resetMemberGovernorTx = await governor.populateTransaction.resetMember(0, votingUpgraderAddress);

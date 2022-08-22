@@ -9,29 +9,24 @@
 const hre = require("hardhat");
 const assert = require("assert").strict;
 
-import {
-  AddressWhitelistEthers,
-  FinancialContractsAdminEthers,
-  FinderEthers,
-  GovernorEthers,
-  GovernorHubEthers,
-  GovernorRootTunnelEthers,
-  IdentifierWhitelistEthers,
-  OracleHubEthers,
-  ParentMessengerBaseEthers,
-  ProposerEthers,
-  RegistryEthers,
-  StoreEthers,
-  VotingEthers,
-  VotingV2Ethers__factory,
-} from "@uma/contracts-node";
+import { FinderEthers, getAbi, GovernorEthers, VotingEthers, VotingV2Ethers__factory } from "@uma/contracts-node";
 
 import { getContractInstance } from "../../utils/contracts";
+import { getMultiRoleContracts, getOwnableContracts } from "./migrationUtils";
 const { interfaceName } = require("@uma/common");
 
 const { getContractFactory } = hre.ethers;
 
+const multiRoleABI = getAbi("MultiRole");
+const ownableABI = getAbi("Ownable");
+
 async function main() {
+  const networkId = Number(await hre.getChainId());
+  const provider = hre.ethers.provider;
+
+  const ownableContractsToMigrate = await getOwnableContracts(networkId);
+  const multiRoleContractsToMigrate = await getMultiRoleContracts(networkId);
+
   const votingV2Address = process.env["VOTING_V2_ADDRESS"];
   const governorV2Address = process.env["GOVERNOR_V2_ADDRESS"];
 
@@ -41,22 +36,6 @@ async function main() {
   const finder = await getContractInstance<FinderEthers>("Finder");
   const governor = await getContractInstance<GovernorEthers>("Governor");
   const oldVoting = await getContractInstance<VotingEthers>("Voting");
-
-  // Ownable contracts
-  const identifierWhitelist = await getContractInstance<IdentifierWhitelistEthers>("IdentifierWhitelist");
-  const financialContractsAdmin = await getContractInstance<FinancialContractsAdminEthers>("FinancialContractsAdmin");
-  const addressWhitelist = await getContractInstance<AddressWhitelistEthers>("AddressWhitelist");
-  const governorRootTunnel = await getContractInstance<GovernorRootTunnelEthers>("GovernorRootTunnel");
-  const arbitrumParentMessenger = await getContractInstance<ParentMessengerBaseEthers>("Arbitrum_ParentMessenger");
-  const oracleHub = await getContractInstance<OracleHubEthers>("OracleHub");
-  const governorHub = await getContractInstance<GovernorHubEthers>("GovernorHub");
-  const bobaParentMessenger = await getContractInstance<ParentMessengerBaseEthers>("Optimism_ParentMessenger");
-  const optimismParentMessenger = await getContractInstance<ParentMessengerBaseEthers>("Optimism_ParentMessenger");
-  const proposer = await getContractInstance<ProposerEthers>("Proposer");
-
-  // MultiRole contracts
-  const registry = await getContractInstance<RegistryEthers>("Registry");
-  const store = await getContractInstance<StoreEthers>("Store");
 
   const votingV2Factory: VotingV2Ethers__factory = await getContractFactory("VotingV2");
   const votingV2 = await votingV2Factory.attach(votingV2Address);
@@ -71,34 +50,28 @@ async function main() {
   console.log(" 2. Validating deployed contracts are owned by governor...");
   assert.equal((await votingV2.owner()).toLowerCase(), governorV2Address.toLowerCase());
   console.log("✅ New Voting correctly transferred ownership!");
-  assert.equal((await identifierWhitelist.owner()).toLowerCase(), governorV2Address.toLowerCase());
-  console.log("✅ IdentifierWhitelist correctly transferred ownership!");
-  assert.equal((await financialContractsAdmin.owner()).toLowerCase(), governorV2Address.toLowerCase());
-  console.log("✅ FinancialContractsAdmin correctly transferred ownership!");
-  assert.equal((await addressWhitelist.owner()).toLowerCase(), governorV2Address.toLowerCase());
-  console.log("✅ AddressWhitelist correctly transferred ownership!");
-  assert.equal((await governorRootTunnel.owner()).toLowerCase(), governorV2Address.toLowerCase());
-  console.log("✅ GovernorRootTunnel correctly transferred ownership!");
-  assert.equal((await arbitrumParentMessenger.owner()).toLowerCase(), governorV2Address.toLowerCase());
-  console.log("✅ ArbitrumParentMessenger correctly transferred ownership!");
-  assert.equal((await oracleHub.owner()).toLowerCase(), governorV2Address.toLowerCase());
-  console.log("✅ OracleHub correctly transferred ownership!");
-  assert.equal((await governorHub.owner()).toLowerCase(), governorV2Address.toLowerCase());
-  console.log("✅ GovernorHub correctly transferred ownership!");
-  assert.equal((await bobaParentMessenger.owner()).toLowerCase(), governorV2Address.toLowerCase());
-  console.log("✅ BobaParentMessenger correctly transferred ownership!");
-  assert.equal((await optimismParentMessenger.owner()).toLowerCase(), governorV2Address.toLowerCase());
-  console.log("✅ OptimismParentMessenger correctly transferred ownership!");
-  assert.equal((await proposer.owner()).toLowerCase(), governorV2Address.toLowerCase());
-  console.log("✅ Proposer correctly transferred ownership!");
+
+  // Verify Ownable contracts
+  for (const ownableContract of Object.entries(ownableContractsToMigrate)) {
+    const contractAddress = ownableContract[1];
+    const contractName = ownableContract[0];
+    const ownable = new hre.ethers.Contract(contractAddress, ownableABI, provider);
+    assert.equal((await ownable.owner()).toLowerCase(), governorV2Address.toLowerCase());
+    console.log(`✅ ${contractName} correctly transferred ownership!`);
+  }
 
   console.log(" 3. Validating deployed contracts multirole owner is set to governor v2...");
-  assert.equal((await registry.getMember(0)).toLowerCase(), governorV2Address.toLowerCase());
-  console.log("✅ Registry owner role correctly set!");
-  assert.equal((await store.getMember(0)).toLowerCase(), governorV2Address.toLowerCase());
-  console.log("✅ Store owner role correctly set!");
   assert.equal((await governor.getMember(0)).toLowerCase(), governorV2Address.toLowerCase());
   console.log("✅ Old governor owner role correctly set!");
+
+  // Verify MultiRole contracts
+  for (const multiRoleContract of Object.entries(multiRoleContractsToMigrate)) {
+    const contractAddress = multiRoleContract[1];
+    const contractName = multiRoleContract[0];
+    const multirole = new hre.ethers.Contract(contractAddress, multiRoleABI, provider);
+    assert.equal((await multirole.getMember(0)).toLowerCase(), governorV2Address.toLowerCase());
+    console.log(`✅ ${contractName} owner role correctly set!`);
+  }
 
   console.log(" 3. Old voting is validated and migrated to the correct address.");
   assert.equal((await oldVoting.migratedAddress()).toLowerCase(), votingV2.address.toLowerCase());

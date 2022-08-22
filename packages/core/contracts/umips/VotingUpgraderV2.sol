@@ -10,22 +10,22 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 
 // Ownable contracts to transfer ownership of
 struct OwnableContracts {
-    address identifierWhitelist;
-    address financialContractsAdmin;
-    address addressWhitelist;
-    address governorRootTunnel;
-    address arbitrumParentMessenger;
-    address oracleHub;
-    address governorHub;
-    address bobaParentMessenger;
-    address optimismParentMessenger;
-    address proposer;
+    Ownable identifierWhitelist;
+    Ownable financialContractsAdmin;
+    Ownable addressWhitelist;
+    Ownable governorRootTunnel;
+    Ownable arbitrumParentMessenger;
+    Ownable oracleHub;
+    Ownable governorHub;
+    Ownable bobaParentMessenger;
+    Ownable optimismParentMessenger;
+    Ownable proposer;
 }
 
 // Multirole contracts to transfer ownership of
 struct MultiroleContracts {
-    address registry;
-    address store;
+    MultiRole registry;
+    MultiRole store;
 }
 
 /**
@@ -36,7 +36,7 @@ struct MultiroleContracts {
  */
 contract VotingUpgraderV2 {
     // Existing governor is the only one who can initiate the upgrade.
-    address public existingGovernor;
+    MultiRole public existingGovernor;
 
     // Existing governor is the only one who can initiate the upgrade.
     address public newGovernor;
@@ -77,7 +77,7 @@ contract VotingUpgraderV2 {
         OwnableContracts memory _ownableContracts,
         MultiroleContracts memory _multiroleContracts
     ) {
-        existingGovernor = _existingGovernor;
+        existingGovernor = MultiRole(_existingGovernor);
         newGovernor = _newGovernor;
         existingVoting = Voting(_existingVoting);
         newVoting = _newVoting;
@@ -92,7 +92,7 @@ contract VotingUpgraderV2 {
      * returns ownership of the existing Voting contract and Finder back to the Governor.
      */
     function upgrade() external {
-        require(msg.sender == existingGovernor, "Upgrade can only be initiated by the existing governor.");
+        require(msg.sender == address(existingGovernor), "Upgrade can only be initiated by the existing governor.");
 
         // Change the addresses in the Finder.
         finder.changeImplementationAddress(OracleInterfaces.Oracle, newVoting);
@@ -106,22 +106,22 @@ contract VotingUpgraderV2 {
         finder.transferOwnership(newGovernor);
 
         // Additional ownable contracts
-        Ownable(ownableContracts.identifierWhitelist).transferOwnership(newGovernor);
-        Ownable(ownableContracts.financialContractsAdmin).transferOwnership(newGovernor);
-        Ownable(ownableContracts.addressWhitelist).transferOwnership(newGovernor);
-        Ownable(ownableContracts.governorRootTunnel).transferOwnership(newGovernor);
-        Ownable(ownableContracts.arbitrumParentMessenger).transferOwnership(newGovernor);
-        Ownable(ownableContracts.oracleHub).transferOwnership(newGovernor);
-        Ownable(ownableContracts.governorHub).transferOwnership(newGovernor);
-        Ownable(ownableContracts.bobaParentMessenger).transferOwnership(newGovernor);
-        Ownable(ownableContracts.optimismParentMessenger).transferOwnership(newGovernor);
-        Ownable(ownableContracts.proposer).transferOwnership(newGovernor);
+        ownableContracts.identifierWhitelist.transferOwnership(newGovernor);
+        ownableContracts.financialContractsAdmin.transferOwnership(newGovernor);
+        ownableContracts.addressWhitelist.transferOwnership(newGovernor);
+        ownableContracts.governorRootTunnel.transferOwnership(newGovernor);
+        ownableContracts.arbitrumParentMessenger.transferOwnership(newGovernor);
+        ownableContracts.oracleHub.transferOwnership(newGovernor);
+        ownableContracts.governorHub.transferOwnership(newGovernor);
+        ownableContracts.bobaParentMessenger.transferOwnership(newGovernor);
+        ownableContracts.optimismParentMessenger.transferOwnership(newGovernor);
+        ownableContracts.proposer.transferOwnership(newGovernor);
 
         // Set the new governor as the owner of the old governor
-        MultiRole(existingGovernor).resetMember(0, newGovernor);
+        existingGovernor.resetMember(0, newGovernor);
 
         // Additional multirole contracts
-        MultiRole(multiroleContracts.registry).resetMember(0, newGovernor);
-        MultiRole(multiroleContracts.store).resetMember(0, newGovernor);
+        multiroleContracts.registry.resetMember(0, newGovernor);
+        multiroleContracts.store.resetMember(0, newGovernor);
     }
 }
