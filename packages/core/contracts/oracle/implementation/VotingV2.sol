@@ -3,9 +3,13 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.16;
 
-import "../../common/implementation/MultiCaller.sol";
+import "./ResultComputationV2.sol";
+import "./SpamGuardIdentifierLib.sol";
+import "./Staker.sol";
+import "./VoteTimingV2.sol";
+import "./Constants.sol";
 
-import "../interfaces/VotingAncillaryInterface.sol";
+import "../interfaces/MinimumVotingAncillaryInterface.sol";
 import "../interfaces/FinderInterface.sol";
 import "../interfaces/IdentifierWhitelistInterface.sol";
 import "../interfaces/OracleAncillaryInterface.sol";
@@ -13,28 +17,14 @@ import "../interfaces/OracleGovernanceInterface.sol";
 import "../interfaces/OracleInterface.sol";
 import "../interfaces/VotingV2Interface.sol";
 import "../interfaces/RegistryInterface.sol";
-import "./Constants.sol";
-import "./ResultComputationV2.sol";
-import "./SlashingLibrary.sol";
-import "./SpamGuardIdentifierLib.sol";
-import "./Staker.sol";
-import "./VoteTimingV2.sol";
-
-import "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import "../interfaces/SlashingLibraryInterface.sol";
 
 /**
  * @title VotingV2 contract for the UMA DVM.
  * @dev Handles receiving and resolving price requests via a commit-reveal voting schelling scheme.
  */
 
-contract VotingV2 is
-    Staker,
-    OracleInterface,
-    OracleAncillaryInterface,
-    OracleGovernanceInterface,
-    VotingV2Interface,
-    MultiCaller
-{
+contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGovernanceInterface, VotingV2Interface {
     using VoteTimingV2 for VoteTimingV2.Data;
     using ResultComputationV2 for ResultComputationV2.Data;
 
@@ -119,10 +109,10 @@ contract VotingV2 is
     uint256 public gat;
 
     // Reference to the Finder.
-    FinderInterface public immutable finder;
+    FinderInterface private immutable finder;
 
     // Reference to Slashing Library.
-    SlashingLibrary public slashingLibrary;
+    SlashingLibraryInterface public slashingLibrary;
 
     // If non-zero, this contract has been migrated to this address.
     address public migratedAddress;
@@ -163,7 +153,7 @@ contract VotingV2 is
         uint256 bond;
     }
 
-    SpamDeletionRequest[] public spamDeletionProposals;
+    SpamDeletionRequest[] internal spamDeletionProposals;
 
     /****************************************
      *                EVENTS                *
@@ -267,7 +257,7 @@ contract VotingV2 is
         require(_gat < IERC20(_votingToken).totalSupply() && _gat > 0);
         gat = _gat;
         finder = FinderInterface(_finder);
-        slashingLibrary = SlashingLibrary(_slashingLibrary);
+        slashingLibrary = SlashingLibraryInterface(_slashingLibrary);
         previousVotingContract = OracleAncillaryInterface(_previousVotingContract);
         setSpamDeletionProposalBond(_spamDeletionProposalBond);
 
@@ -445,7 +435,7 @@ contract VotingV2 is
      * @notice Gets the status of a list of price requests, identified by their identifier and time.
      * @dev If the status for a particular request is NotRequested, the lastVotingRound will always be 0.
      * @param requests array of type PendingRequestAncillary which includes an identifier and timestamp for each request.
-     * @return requestStates a list, in the same order as the input list, giving the status of each of the specified price requests.
+     * @return requestStates a list, in the same order as the input list, giving the status of the specified requests.
      */
     function getPriceRequestStatuses(PendingRequestAncillary[] memory requests)
         public
@@ -453,7 +443,7 @@ contract VotingV2 is
         returns (RequestState[] memory)
     {
         RequestState[] memory requestStates = new RequestState[](requests.length);
-        uint256 currentRoundId = voteTiming.computeCurrentRoundId(getCurrentTime());
+        uint256 currentRoundId = getCurrentRoundId();
         for (uint256 i = 0; i < requests.length; i = unsafe_inc(i)) {
             PriceRequest storage priceRequest =
                 _getPriceRequest(requests[i].identifier, requests[i].time, requests[i].ancillaryData);
@@ -466,18 +456,6 @@ contract VotingV2 is
             requestStates[i].status = status;
         }
         return requestStates;
-    }
-
-    // Overloaded method to enable short term backwards compatibility. Will be deprecated in the next DVM version.
-    function getPriceRequestStatuses(PendingRequest[] memory requests) external view returns (RequestState[] memory) {
-        PendingRequestAncillary[] memory requestsAncillary = new PendingRequestAncillary[](requests.length);
-
-        for (uint256 i = 0; i < requests.length; i = unsafe_inc(i)) {
-            requestsAncillary[i].identifier = requests[i].identifier;
-            requestsAncillary[i].time = requests[i].time;
-            requestsAncillary[i].ancillaryData = "";
-        }
-        return getPriceRequestStatuses(requestsAncillary);
     }
 
     /****************************************
@@ -502,12 +480,11 @@ contract VotingV2 is
         bytes memory ancillaryData,
         bytes32 hash
     ) public override nonReentrant() onlyIfNotMigrated() {
-        uint256 currentRoundId = voteTiming.computeCurrentRoundId(getCurrentTime());
+        uint256 currentRoundId = getCurrentRoundId();
         address voter = getVoterFromDelegate(msg.sender);
         _updateTrackers(voter);
-        uint256 blockTime = getCurrentTime();
         require(hash != bytes32(0));
-        require(voteTiming.computeCurrentPhase(blockTime) == Phase.Commit, "Cannot commit in reveal phase");
+        require(getVotePhase() == Phase.Commit, "Cannot commit in reveal phase");
 
         PriceRequest storage priceRequest = _getPriceRequest(identifier, time, ancillaryData);
         require(
@@ -519,15 +496,6 @@ contract VotingV2 is
         voteInstance.voteSubmissions[voter].commit = hash;
 
         emit VoteCommitted(voter, msg.sender, currentRoundId, identifier, time, ancillaryData);
-    }
-
-    // Overloaded method to enable short term backwards compatibility. Will be deprecated in the next DVM version.
-    function commitVote(
-        bytes32 identifier,
-        uint256 time,
-        bytes32 hash
-    ) external override onlyIfNotMigrated() {
-        commitVote(identifier, time, "", hash);
     }
 
     /**
@@ -548,7 +516,7 @@ contract VotingV2 is
         int256 salt
     ) public override nonReentrant() onlyIfNotMigrated() {
         // Note: computing the current round is required to disallow people from revealing an old commit after the round is over.
-        uint256 currentRoundId = voteTiming.computeCurrentRoundId(getCurrentTime());
+        uint256 currentRoundId = getCurrentRoundId();
         _freezeRoundVariables(currentRoundId);
         VoteInstance storage voteInstance =
             _getPriceRequest(identifier, time, ancillaryData).voteInstances[currentRoundId];
@@ -558,10 +526,7 @@ contract VotingV2 is
         // Scoping to get rid of a stack too deep errors for require messages.
         {
             // Can only reveal in the reveal phase.
-            require(
-                voteTiming.computeCurrentPhase(getCurrentTime()) == Phase.Reveal,
-                "Reveal phase has not started yet"
-            );
+            require(getVotePhase() == Phase.Reveal, "Reveal phase has not started yet");
             // 0 hashes are disallowed in the commit phase, so they indicate a different error.
             // Cannot reveal an uncommitted or previously revealed hash
             require(voteSubmission.commit != bytes32(0), "Invalid hash reveal");
@@ -583,16 +548,6 @@ contract VotingV2 is
         emit VoteRevealed(voter, msg.sender, currentRoundId, identifier, time, price, ancillaryData, activeStake);
     }
 
-    // Overloaded method to enable short term backwards compatibility. Will be deprecated in the next DVM version.
-    function revealVote(
-        bytes32 identifier,
-        uint256 time,
-        int256 price,
-        int256 salt
-    ) external override {
-        revealVote(identifier, time, price, "", salt);
-    }
-
     /**
      * @notice Commits a vote and logs an event with a data blob, typically an encrypted version of the vote
      * @dev An encrypted version of the vote is emitted in an event EncryptedVote to allow off-chain infrastructure to
@@ -611,19 +566,7 @@ contract VotingV2 is
         bytes memory encryptedVote
     ) public override {
         commitVote(identifier, time, ancillaryData, hash);
-
-        uint256 roundId = voteTiming.computeCurrentRoundId(getCurrentTime());
-        emit EncryptedVote(msg.sender, roundId, identifier, time, ancillaryData, encryptedVote);
-    }
-
-    // Overloaded method to enable short term backwards compatibility. Will be deprecated in the next DVM version.
-    function commitAndEmitEncryptedVote(
-        bytes32 identifier,
-        uint256 time,
-        bytes32 hash,
-        bytes memory encryptedVote
-    ) public override {
-        commitAndEmitEncryptedVote(identifier, time, "", hash, encryptedVote);
+        emit EncryptedVote(msg.sender, getCurrentRoundId(), identifier, time, ancillaryData, encryptedVote);
     }
 
     /****************************************
@@ -634,28 +577,28 @@ contract VotingV2 is
      * @notice Gets the queries that are being voted on this round.
      * @return pendingRequests array containing identifiers of type PendingRequestAncillary.
      */
-    function getPendingRequests() external view override returns (PendingRequestAncillary[] memory) {
-        uint256 blockTime = getCurrentTime();
-        uint256 currentRoundId = voteTiming.computeCurrentRoundId(blockTime);
-
+    function getPendingRequests() external view override returns (PendingRequestAncillaryAugmented[] memory) {
         // Solidity memory arrays aren't resizable (and reading storage is expensive). Hence this hackery to filter
         // pendingPriceRequests only to those requests that have an Active RequestStatus.
-        PendingRequestAncillary[] memory unresolved = new PendingRequestAncillary[](pendingPriceRequests.length);
+        PendingRequestAncillaryAugmented[] memory unresolved =
+            new PendingRequestAncillaryAugmented[](pendingPriceRequests.length);
         uint256 numUnresolved = 0;
 
         for (uint256 i = 0; i < pendingPriceRequests.length; i = unsafe_inc(i)) {
             PriceRequest storage priceRequest = priceRequests[pendingPriceRequests[i]];
-            if (_getRequestStatus(priceRequest, currentRoundId) == RequestStatus.Active) {
-                unresolved[numUnresolved] = PendingRequestAncillary({
+            if (_getRequestStatus(priceRequest, getCurrentRoundId()) == RequestStatus.Active) {
+                unresolved[numUnresolved] = PendingRequestAncillaryAugmented({
                     identifier: priceRequest.identifier,
                     time: priceRequest.time,
-                    ancillaryData: priceRequest.ancillaryData
+                    ancillaryData: priceRequest.ancillaryData,
+                    priceRequestIndex: priceRequest.priceRequestIndex
                 });
                 numUnresolved++;
             }
         }
 
-        PendingRequestAncillary[] memory pendingRequests = new PendingRequestAncillary[](numUnresolved);
+        PendingRequestAncillaryAugmented[] memory pendingRequests =
+            new PendingRequestAncillaryAugmented[](numUnresolved);
         for (uint256 i = 0; i < numUnresolved; i = unsafe_inc(i)) {
             pendingRequests[i] = unresolved[i];
         }
@@ -667,8 +610,7 @@ contract VotingV2 is
      * @return bool true if there are active requests, false otherwise.
      */
     function currentActiveRequests() public view returns (bool) {
-        uint256 blockTime = getCurrentTime();
-        uint256 currentRoundId = voteTiming.computeCurrentRoundId(blockTime);
+        uint256 currentRoundId = getCurrentRoundId();
         for (uint256 i = 0; i < pendingPriceRequests.length; i = unsafe_inc(i)) {
             if (_getRequestStatus(priceRequests[pendingPriceRequests[i]], currentRoundId) == RequestStatus.Active)
                 return true;
@@ -688,7 +630,7 @@ contract VotingV2 is
      * @notice Returns the current round ID, as a function of the current time.
      * @return uint256 the unique round ID.
      */
-    function getCurrentRoundId() external view override returns (uint256) {
+    function getCurrentRoundId() public view override returns (uint256) {
         return voteTiming.computeCurrentRoundId(getCurrentTime());
     }
 
@@ -717,7 +659,7 @@ contract VotingV2 is
      * total UMA slashed in the round and the total number of correct votes in the round.
      */
     function requestSlashingTrackers(uint256 requestIndex) public view returns (SlashingTracker memory) {
-        uint256 currentRoundId = voteTiming.computeCurrentRoundId(getCurrentTime());
+        uint256 currentRoundId = getCurrentRoundId();
         PriceRequest storage priceRequest = priceRequests[priceRequestIds[requestIndex]];
 
         // If the request is not resolved return zeros for everything.
@@ -759,7 +701,7 @@ contract VotingV2 is
      * @param newGat sets the next round's Gat.
      */
     function setGat(uint256 newGat) external override onlyOwner {
-        require(newGat < votingToken.totalSupply() && newGat > 0, "Invalid GAT");
+        require(newGat < votingToken.totalSupply() && newGat > 0);
         gat = newGat;
         emit GatChanged(newGat);
     }
@@ -772,7 +714,7 @@ contract VotingV2 is
      * @param _newSlashingLibrary new slashing library address.
      */
     function setSlashingLibrary(address _newSlashingLibrary) external override onlyOwner {
-        slashingLibrary = SlashingLibrary(_newSlashingLibrary);
+        slashingLibrary = SlashingLibraryInterface(_newSlashingLibrary);
         emit SlashingLibraryChanged(_newSlashingLibrary);
     }
 
@@ -823,7 +765,7 @@ contract VotingV2 is
 
     // Updates the slashing trackers of a given account based on previous voting activity.
     function _updateAccountSlashingTrackers(address voterAddress, uint256 indexTo) internal {
-        uint256 currentRoundId = voteTiming.computeCurrentRoundId(getCurrentTime());
+        uint256 currentRoundId = getCurrentRoundId();
         VoterStake storage voterStake = voterStakes[voterAddress];
         // Note the method below can hit a gas limit of there are a LOT of requests from the last time this was run.
         // A future version of this should bound how many requests to look at per call to avoid gas limit issues.
@@ -986,8 +928,7 @@ contract VotingV2 is
             require(
                 spamRequestIndex[0] <= spamRequestIndex[1] &&
                     spamRequestIndex[1] < priceRequestIds.length &&
-                    spamRequestIndex[1] > runningValidationIndex,
-                "Invalid spam request index"
+                    spamRequestIndex[1] > runningValidationIndex
             );
 
             runningValidationIndex = spamRequestIndex[1];
@@ -1020,21 +961,23 @@ contract VotingV2 is
      */
 
     function executeSpamDeletion(uint256 proposalId) external nonReentrant() {
-        require(spamDeletionProposals[proposalId].executed == false, "Proposal already executed");
+        require(spamDeletionProposals[proposalId].executed == false);
         spamDeletionProposals[proposalId].executed = true;
 
         bytes32 identifier = SpamGuardIdentifierLib._constructIdentifier(SafeCast.toUint32(proposalId));
 
         (bool hasPrice, int256 resolutionPrice, ) =
             _getPriceOrError(identifier, spamDeletionProposals[proposalId].requestTime, "");
-        require(hasPrice, "No price found for spam deletion");
+        require(hasPrice);
 
         // If the price is non zero then the spam deletion request was voted up to delete the requests. Execute delete.
         if (resolutionPrice != 0) {
             // Delete the price requests associated with the spam.
             for (uint256 i = 0; i < spamDeletionProposals[proposalId].spamRequestIndices.length; i = unsafe_inc(i)) {
-                uint64 startIndex = uint64(spamDeletionProposals[proposalId].spamRequestIndices[uint256(i)][0]);
-                uint64 endIndex = uint64(spamDeletionProposals[proposalId].spamRequestIndices[uint256(i)][1]);
+                uint64 startIndex =
+                    SafeCast.toUint64(spamDeletionProposals[proposalId].spamRequestIndices[uint256(i)][0]);
+                uint64 endIndex =
+                    SafeCast.toUint64(spamDeletionProposals[proposalId].spamRequestIndices[uint256(i)][1]);
                 for (uint256 j = startIndex; j <= endIndex; j++) {
                     bytes32 requestId = priceRequestIds[j];
                     // Remove from pendingPriceRequests.
@@ -1093,9 +1036,13 @@ contract VotingV2 is
     function retrieveRewardsOnMigratedVotingContract(
         address voterAddress,
         uint256 roundId,
-        VotingAncillaryInterface.PendingRequestAncillary[] memory toRetrieve
-    ) public {
-        VotingAncillaryInterface(address(previousVotingContract)).retrieveRewards(voterAddress, roundId, toRetrieve);
+        MinimumVotingAncillaryInterface.PendingRequestAncillary[] memory toRetrieve
+    ) public returns (uint256) {
+        uint256 rewards =
+            MinimumVotingAncillaryInterface(address(previousVotingContract))
+                .retrieveRewards(voterAddress, roundId, toRetrieve)
+                .rawValue;
+        return (rewards);
     }
 
     /****************************************
@@ -1126,7 +1073,7 @@ contract VotingV2 is
         )
     {
         PriceRequest storage priceRequest = _getPriceRequest(identifier, time, ancillaryData);
-        uint256 currentRoundId = voteTiming.computeCurrentRoundId(getCurrentTime());
+        uint256 currentRoundId = getCurrentRoundId();
         RequestStatus requestStatus = _getRequestStatus(priceRequest, currentRoundId);
 
         if (requestStatus == RequestStatus.Active) return (false, 0, "Current voting round not ended");
@@ -1255,7 +1202,7 @@ contract VotingV2 is
         unchecked { return x + 1; }
     }
 
-    // Returns the registered identifier whitelist, stored in the finder
+    // Returns the registered identifier whitelist, stored in the finder.
     function _getIdentifierWhitelist() private view returns (IdentifierWhitelistInterface) {
         return IdentifierWhitelistInterface(finder.getImplementationAddress(OracleInterfaces.IdentifierWhitelist));
     }

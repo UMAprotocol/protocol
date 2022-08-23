@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import "../interfaces/StakerInterface.sol";
-import "../../common/interfaces/ExpandedIERC20.sol";
-
-import "./VotingToken.sol";
 import "../../common/implementation/Lockable.sol";
+import "../../common/implementation/MultiCaller.sol";
+
+import "../../common/interfaces/ExpandedIERC20.sol";
+import "../interfaces/StakerInterface.sol";
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
@@ -14,7 +14,7 @@ import "@openzeppelin/contracts/utils/math/SafeCast.sol";
  * @title Staking contract enabling UMA to be locked up by stakers to earn a pro rata share of a fixed emission rate.
  * @dev Handles the staking, unstaking and reward retrieval logic.
  */
-abstract contract Staker is StakerInterface, Ownable, Lockable {
+abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
     /****************************************
      *           STAKING TRACKERS           *
      ****************************************/
@@ -176,8 +176,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable {
         _updateTrackers(msg.sender);
         VoterStake storage voterStake = voterStakes[msg.sender];
 
-        require(voterStake.activeStake >= amount, "Bad request amount");
-        require(voterStake.pendingUnstake == 0, "Have previous request unstake");
+        require(voterStake.activeStake >= amount && voterStake.pendingUnstake == 0, "Bad amount or pending unstake");
 
         cumulativeActiveStake -= amount;
         voterStake.pendingUnstake = amount;
@@ -380,7 +379,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable {
     function _updateReward(address voterAddress) internal {
         uint256 newRewardPerToken = rewardPerToken();
         rewardPerTokenStored = newRewardPerToken;
-        lastUpdateTime = SafeCast.toUint64(getCurrentTime());
+        lastUpdateTime = uint64(getCurrentTime());
         if (voterAddress != address(0)) {
             VoterStake storage voterStake = voterStakes[voterAddress];
             voterStake.outstandingRewards = outstandingRewards(voterAddress);
