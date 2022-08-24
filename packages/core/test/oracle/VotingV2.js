@@ -901,6 +901,56 @@ describe("VotingV2", function () {
     assert.equal((await voting.methods.voteTiming().call()).minRollToNextRoundLength, "7200");
   });
 
+  it("Staking after a price request should work", async function () {
+    const identifier = padRight(utf8ToHex("governance-price-request"), 64); // Use the same identifier for both.
+    const time1 = "420";
+    const DATA_LIMIT_BYTES = 8192;
+    const ancillaryData = web3.utils.randomHex(DATA_LIMIT_BYTES);
+
+    await votingToken.methods.mint(rand, toWei("3200000000")).send({ from: accounts[0] });
+
+    // Register accounts[0] as a registered contract.
+    await registry.methods.registerContract([], accounts[0]).send({ from: accounts[0] });
+
+    await voting.methods.requestGovernanceAction(identifier, time1, ancillaryData).send({ from: accounts[0] });
+
+    await moveToNextRound(voting, accounts[0]); // This two actions
+    await moveToNextPhase(voting, accounts[0]); // Break the test
+
+    await votingToken.methods.approve(voting.options.address, toWei("3200000000")).send({ from: rand });
+    await voting.methods.stake(toWei("32000000")).send({ from: rand });
+    await voting.methods.updateTrackers(rand).send({ from: rand });
+
+    await moveToNextRound(voting, accounts[0]);
+    await moveToNextRound(voting, accounts[0]);
+    const roundId = (await voting.methods.getCurrentRoundId().call()).toString();
+
+    // Account1 and account4 votes correctly, account2 votes wrong and rand does not vote..
+    // Commit votes.
+    const salt = getRandomSignedInt(); // use the same salt for all votes. bad practice but wont impact anything.
+    const baseRequest = { salt, roundId, identifier };
+
+    const winningPrice = 1;
+    const hash2 = computeVoteHashAncillary({
+      ...baseRequest,
+      price: winningPrice,
+      account: rand,
+      time: time1,
+      ancillaryData,
+    });
+    await voting.methods.commitVote(identifier, time1, ancillaryData, hash2).send({ from: rand });
+    await moveToNextPhase(voting, accounts[0]); // Reveal the votes.
+    await voting.methods.revealVote(identifier, time1, winningPrice, ancillaryData, salt).send({ from: rand });
+
+    await moveToNextRound(voting, accounts[0]);
+
+    // Verify view methods `hasPrice`, `getPrice`, and `getPriceRequestStatuses` for a resolved price request.
+    assert.equal(
+      (await voting.methods.getPrice(identifier, time1, ancillaryData).call({ from: registeredContract })).toString(),
+      winningPrice.toString()
+    );
+  });
+
   it("Events", async function () {
     // Set the inflation rate to 100% (for ease of computation).
 
