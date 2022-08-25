@@ -45,7 +45,6 @@ export function getHardhatConfig(
   require("hardhat-gas-reporter");
   require("@eth-optimism/hardhat-ovm");
   require("./gckms/KeyInjectorPlugin");
-  require("hardhat-tracer");
 
   // Custom tasks.
   require("./hardhat");
