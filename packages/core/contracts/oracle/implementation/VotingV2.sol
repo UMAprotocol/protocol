@@ -495,6 +495,11 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
         VoteInstance storage voteInstance = priceRequest.voteInstances[currentRoundId];
         voteInstance.voteSubmissions[voter].commit = hash;
+
+        // There is a very specific edge case that can occur if the only participates in a vote stakes after the request
+        // is created and the request is rolled. If this happens, a request becomes unresolvable due to lastVotingRound
+        // not being correctly updated. To combat this, we can check this assignment here. This is a no-op in all
+        // cases except the edge case specified as this should be assigned correctly elsewhere.
         if (priceRequest.lastVotingRound != currentRoundId) priceRequest.lastVotingRound = currentRoundId;
 
         emit VoteCommitted(voter, msg.sender, currentRoundId, identifier, time, ancillaryData);
