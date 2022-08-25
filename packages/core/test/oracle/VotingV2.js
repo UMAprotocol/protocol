@@ -2249,7 +2249,7 @@ describe("VotingV2", function () {
 
     // Account1 and account4 votes correctly, account2 votes wrong and account3 does not vote.
     // Commit votes.
-    const losingPrice = 0;
+    const losingPrice = 1;
     const salt = getRandomSignedInt(); // use the same salt for all votes. bad practice but wont impact anything.
     const baseRequest = { salt, roundId, identifier };
     const hash1 = computeVoteHashAncillary({
@@ -2262,7 +2262,7 @@ describe("VotingV2", function () {
 
     await voting.methods.commitVote(identifier, time1, ancillaryData, hash1).send({ from: account2 });
 
-    const winningPrice = 1;
+    const winningPrice = 0;
     const hash2 = computeVoteHashAncillary({
       ...baseRequest,
       price: winningPrice,
@@ -2348,8 +2348,8 @@ describe("VotingV2", function () {
     await moveToNextRound(voting, accounts[0]);
     const roundId = (await voting.methods.getCurrentRoundId().call()).toString();
 
-    const winningPrice = 1;
-    const losingPrice = 0;
+    const winningPrice = 0;
+    const losingPrice = 1;
 
     // Account1 and account4 votes correctly, account2 votes wrong and account3 does not vote.
     // Commit votes.
