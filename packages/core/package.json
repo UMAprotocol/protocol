@@ -41,7 +41,6 @@
     "ethereumjs-wallet": "^1.0.0",
     "ethers": "^5.4.2",
     "express": "^4.17.1",
-    "hardhat-tracer": "^1.1.0-rc.8",
     "lodash": "^4.17.20",
     "minimist": "^1.2.0",
     "mocha": "^8.1.2",
