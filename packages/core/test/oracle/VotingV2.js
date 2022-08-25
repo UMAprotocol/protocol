@@ -2247,7 +2247,7 @@ describe("VotingV2", function () {
     await moveToNextRound(voting, accounts[0]);
     const roundId = (await voting.methods.getCurrentRoundId().call()).toString();
 
-    // Account1 and account4 votes correctly, account2 votes wrong and account3 does not vote.
+    // Account1 and account4 votes correctly, account2 votes wrong and account3 does not vote..
     // Commit votes.
     const losingPrice = 1;
     const salt = getRandomSignedInt(); // use the same salt for all votes. bad practice but wont impact anything.
@@ -2351,7 +2351,7 @@ describe("VotingV2", function () {
     const winningPrice = 0;
     const losingPrice = 1;
 
-    // Account1 and account4 votes correctly, account2 votes wrong and account3 does not vote.
+    // Account1 and account4 votes correctly, account2 votes wrong and account3 does not vote..
     // Commit votes.
     // Governance request.
 
