@@ -2247,9 +2247,9 @@ describe("VotingV2", function () {
     await moveToNextRound(voting, accounts[0]);
     const roundId = (await voting.methods.getCurrentRoundId().call()).toString();
 
-    // Account1 and account4 votes correctly, account2 votes wrong and account3 does not vote..
+    // Account1 and account4 votes correctly, account2 votes wrong and account3 does not vote.
     // Commit votes.
-    const losingPrice = 1;
+    const losingPrice = 0;
     const salt = getRandomSignedInt(); // use the same salt for all votes. bad practice but wont impact anything.
     const baseRequest = { salt, roundId, identifier };
     const hash1 = computeVoteHashAncillary({
@@ -2262,7 +2262,7 @@ describe("VotingV2", function () {
 
     await voting.methods.commitVote(identifier, time1, ancillaryData, hash1).send({ from: account2 });
 
-    const winningPrice = 0;
+    const winningPrice = 1;
     const hash2 = computeVoteHashAncillary({
       ...baseRequest,
       price: winningPrice,
@@ -2348,10 +2348,10 @@ describe("VotingV2", function () {
     await moveToNextRound(voting, accounts[0]);
     const roundId = (await voting.methods.getCurrentRoundId().call()).toString();
 
-    const winningPrice = 0;
-    const losingPrice = 1;
+    const winningPrice = 1;
+    const losingPrice = 0;
 
-    // Account1 and account4 votes correctly, account2 votes wrong and account3 does not vote..
+    // Account1 and account4 votes correctly, account2 votes wrong and account3 does not vote.
     // Commit votes.
     // Governance request.
 
@@ -3620,5 +3620,46 @@ describe("VotingV2", function () {
     // Both users should have the same nextIndexToProcess.
     assert.equal((await voting.methods.voterStakes(account1).call()).nextIndexToProcess, 4);
     assert.equal((await voting.methods.voterStakes(account2).call()).nextIndexToProcess, 4);
+  });
+  it("Staking after a price request should work", async function () {
+    // While testing the voting contract on Goerli, we found a very specific situation that cases price requests to
+    // become unresolvable. If: a) a price request is made, b) the request rolls c) the only participant who votes on
+    // the request was not staked before the request AND they staked during the reveal phase post roll then the request
+    //  becomes unresolvable. If the request rolls again and someone who was staked before the request participates in
+    // the vote then it again becomes resolvable. This test would fail if the fix was not implemented in the contract.
+    const identifier = padRight(utf8ToHex("governance-price-request"), 64); // Use the same identifier for both.
+    const time = "420";
+    const ancillaryData = web3.utils.randomHex(420);
+
+    await voting.methods.requestGovernanceAction(identifier, time, ancillaryData).send({ from: accounts[0] });
+
+    await votingToken.methods.mint(rand, toWei("3200000000")).send({ from: accounts[0] });
+    await votingToken.methods.approve(voting.options.address, toWei("3200000000")).send({ from: rand });
+
+    // The next two lines are critical: the vote needs to both be rolled and the only participate in the vote must
+    // stake in the reveal phase (which is now "active").
+    await moveToNextRound(voting, accounts[0]);
+    await moveToNextPhase(voting, accounts[0]);
+
+    await voting.methods.stake(toWei("32000000")).send({ from: rand });
+
+    await moveToNextRound(voting, accounts[0]);
+
+    let roundId = (await voting.methods.getCurrentRoundId().call()).toString();
+    let salt = getRandomSignedInt();
+    let price = 1;
+    let hash = computeVoteHashAncillary({ salt, roundId, identifier, price, account: rand, time, ancillaryData });
+    await voting.methods.commitVote(identifier, time, ancillaryData, hash).send({ from: rand });
+    await moveToNextPhase(voting, accounts[0]); // Reveal the votes.
+    await voting.methods.revealVote(identifier, time, price, ancillaryData, salt).send({ from: rand });
+
+    await moveToNextRound(voting, accounts[0]);
+
+    // If the fix is not implemented then this call will revert as the request, even though voted on correctly, is
+    // unsealable. If the fix works then this should pass.
+    assert.equal(
+      (await voting.methods.getPrice(identifier, time, ancillaryData).call({ from: registeredContract })).toString(),
+      price.toString()
+    );
   });
 });
