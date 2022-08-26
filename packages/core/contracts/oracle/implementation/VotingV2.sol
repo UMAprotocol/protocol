@@ -480,7 +480,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         bytes memory ancillaryData,
         bytes32 hash
     ) public override nonReentrant() onlyIfNotMigrated() {
-        uint32 currentRoundId = SafeCast.toUint32(getCurrentRoundId());
+        uint256 currentRoundId = getCurrentRoundId();
         (getCurrentRoundId());
         address voter = getVoterFromDelegate(msg.sender);
         _updateTrackers(voter);
@@ -500,7 +500,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         // is created and the request is rolled. If this happens, a request becomes unresolvable due to lastVotingRound
         // not being correctly updated. To combat this, we can check this assignment here. This is a no-op in all
         // cases except the edge case specified as this should be assigned correctly elsewhere.
-        if (priceRequest.lastVotingRound != currentRoundId) priceRequest.lastVotingRound = currentRoundId;
+        if (priceRequest.lastVotingRound != currentRoundId) priceRequest.lastVotingRound = uint32(currentRoundId);
 
         emit VoteCommitted(voter, msg.sender, currentRoundId, identifier, time, ancillaryData);
     }
