@@ -31,10 +31,13 @@ const lodash = require("lodash");
 const { GoogleAuth } = require("google-auth-library"); // Used to get authentication headers to execute cloud run & cloud functions.
 const auth = new GoogleAuth();
 const { Storage } = require("@google-cloud/storage"); // Used to get global config objects to parameterize bots.
+
+// Enabling retry in case of transient timeout issues.
+const DEFAULT_RETRIES = 1;
+
 const storage = new Storage({
-  // Enabling retry in case of transient timeout issues.
   autoRetry: true,
-  maxRetries: 1,
+  maxRetries: DEFAULT_RETRIES,
 });
 const { Datastore } = require("@google-cloud/datastore"); // Used to read/write the last block number the monitor used.
 const datastore = new Datastore();
@@ -329,7 +332,7 @@ const _fetchConfig = async (bucket, file) => {
           Accept: "application/vnd.github.v3.raw",
           "Accept-Charset": "utf-8",
         },
-        retries: 1,
+        retries: DEFAULT_RETRIES,
       },
     );
     config = await response.json(); // extract JSON from the http response
