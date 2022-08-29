@@ -23,6 +23,7 @@ const hub = express();
 hub.use(express.json()); // Enables json to be parsed by the express process.
 require("dotenv").config();
 const fetch = require("node-fetch");
+const fetchWithRetry = require("fetch-retry")(fetch);
 const { URL } = require("url");
 const lodash = require("lodash");
 
@@ -56,9 +57,6 @@ const defaultHubConfig = {
 };
 
 const waitForLoggerDelay = process.env.WAIT_FOR_LOGGER_DELAY || 5;
-
-// Default timeout for fetching Github or GCP configs.
-const DEFAULT_CONFIG_TIMEOUT_SECS = 60;
 
 hub.post("/", async (req, res) => {
   // Use a custom logger if provided. Otherwise, initialize a local logger.
@@ -321,7 +319,7 @@ const _executeServerlessSpoke = async (url, body) => {
 const _fetchConfig = async (bucket, file) => {
   let config;
   if (hubConfig.configRetrieval == "git") {
-    const response = await fetch(
+    const response = await fetchWithRetry(
       `https://api.github.com/repos/${hubConfig.gitSettings.organization}/${hubConfig.gitSettings.repoName}/contents/${bucket}/${file}`,
       {
         method: "GET",
@@ -331,8 +329,8 @@ const _fetchConfig = async (bucket, file) => {
           Accept: "application/vnd.github.v3.raw",
           "Accept-Charset": "utf-8",
         },
+        retries: 1,
       },
-      DEFAULT_CONFIG_TIMEOUT_SECS
     );
     config = await response.json(); // extract JSON from the http response
     // If there is a message in the config response then something went wrong in fetching from github api.
