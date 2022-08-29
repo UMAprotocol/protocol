@@ -30,7 +30,11 @@ const lodash = require("lodash");
 const { GoogleAuth } = require("google-auth-library"); // Used to get authentication headers to execute cloud run & cloud functions.
 const auth = new GoogleAuth();
 const { Storage } = require("@google-cloud/storage"); // Used to get global config objects to parameterize bots.
-const storage = new Storage();
+const storage = new Storage({
+  // Enabling retry in case of transient timeout issues.
+  autoRetry: true,
+  maxRetries: 1,
+});
 const { Datastore } = require("@google-cloud/datastore"); // Used to read/write the last block number the monitor used.
 const datastore = new Datastore();
 const { createBasicProvider } = require("@uma/common");
@@ -52,6 +56,9 @@ const defaultHubConfig = {
 };
 
 const waitForLoggerDelay = process.env.WAIT_FOR_LOGGER_DELAY || 5;
+
+// Default timeout for fetching Github or GCP configs.
+const DEFAULT_CONFIG_TIMEOUT_SECS = 60;
 
 hub.post("/", async (req, res) => {
   // Use a custom logger if provided. Otherwise, initialize a local logger.
@@ -324,7 +331,8 @@ const _fetchConfig = async (bucket, file) => {
           Accept: "application/vnd.github.v3.raw",
           "Accept-Charset": "utf-8",
         },
-      }
+      },
+      DEFAULT_CONFIG_TIMEOUT_SECS
     );
     config = await response.json(); // extract JSON from the http response
     // If there is a message in the config response then something went wrong in fetching from github api.
