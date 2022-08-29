@@ -35,10 +35,7 @@ const { Storage } = require("@google-cloud/storage"); // Used to get global conf
 // Enabling retry in case of transient timeout issues.
 const DEFAULT_RETRIES = 1;
 
-const storage = new Storage({
-  autoRetry: true,
-  maxRetries: DEFAULT_RETRIES,
-});
+const storage = new Storage({ autoRetry: true, maxRetries: DEFAULT_RETRIES });
 const { Datastore } = require("@google-cloud/datastore"); // Used to read/write the last block number the monitor used.
 const datastore = new Datastore();
 const { createBasicProvider } = require("@uma/common");
@@ -333,7 +330,7 @@ const _fetchConfig = async (bucket, file) => {
           "Accept-Charset": "utf-8",
         },
         retries: DEFAULT_RETRIES,
-      },
+      }
     );
     config = await response.json(); // extract JSON from the http response
     // If there is a message in the config response then something went wrong in fetching from github api.
