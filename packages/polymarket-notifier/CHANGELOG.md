@@ -3,6 +3,10 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.3.5](https://github.com/UMAprotocol/protocol/compare/@uma/polymarket-notifier@1.3.4...@uma/polymarket-notifier@1.3.5) (2022-08-24)
+
+**Note:** Version bump only for package @uma/polymarket-notifier
+
 ## [1.3.4](https://github.com/UMAprotocol/protocol/compare/@uma/polymarket-notifier@1.3.3...@uma/polymarket-notifier@1.3.4) (2022-08-16)
 
 **Note:** Version bump only for package @uma/polymarket-notifier

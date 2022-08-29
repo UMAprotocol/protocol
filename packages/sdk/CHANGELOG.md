@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.28.1](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.28.0...@uma/sdk@0.28.1) (2022-08-24)
+
+### Bug Fixes
+
+- **coingecko:** Remove getContractPrices usd constraint ([#4134](https://github.com/UMAprotocol/protocol/issues/4134)) ([297f2b4](https://github.com/UMAprotocol/protocol/commit/297f2b400370a9814f18fd0f51f1e5a46903b63f))
+- **sdk:** properly convert config to be used as chain data in MM ([#4124](https://github.com/UMAprotocol/protocol/issues/4124)) ([36532ae](https://github.com/UMAprotocol/protocol/commit/36532ae911c377a816d5704084055bf8a944fd04))
+- **sdk,api:** configure datastore to accept longer strings on props ([#4136](https://github.com/UMAprotocol/protocol/issues/4136)) ([4fbcff7](https://github.com/UMAprotocol/protocol/commit/4fbcff734edf12c74e8496720a0ef837cd436eb1))
+
 # [0.28.0](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.27.1...@uma/sdk@0.28.0) (2022-08-16)
 
 - fix(sdk)!: fix missing bond on oo v2 request (#4113) ([56c66b9](https://github.com/UMAprotocol/protocol/commit/56c66b982fce5bd12b799a3ca26bd89c1b213dbb)), closes [#4113](https://github.com/UMAprotocol/protocol/issues/4113)
