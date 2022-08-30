@@ -598,4 +598,113 @@ describe("OptimisticGovernor", () => {
   it("Owner can update stored contract parameters", async function () {});
 
   it("Non-owners can not update stored contract parameters", async function () {});
+
+  it("Proposals can be executed with minimal proxy optimistic governor", async function () {
+    // Deploy proxy factory.
+    const ModuleProxyFactory = getContract("ModuleProxyFactory");
+    const moduleProxyFactory = await ModuleProxyFactory.new().send({ from: owner });
+
+    // Deploy and initialize module through proxy factory.
+    const initializeParams = web3.eth.abi.encodeParameters(
+      ["address", "address", "uint256", "string", "bytes32", "uint64"],
+      [avatar.options.address, bondToken.options.address, bond, rules, identifier, liveness]
+    );
+    const moduleSetupData = optimisticOracleModule.methods.setUp(initializeParams).encodeABI();
+    const saltNonce = 0;
+    let receipt = await moduleProxyFactory.methods
+      .deployModule(optimisticOracleModule.options.address, moduleSetupData, saltNonce)
+      .send({ from: owner });
+
+    // Get deployed proxy module.
+    const proxyAddress = (await findEvent(receipt, moduleProxyFactory, "ModuleProxyCreation")).match.returnValues.proxy;
+    const proxyOptimisticOracleModule = await getContract("OptimisticGovernorTest").at(proxyAddress);
+
+    // Set timer for proxy module.
+    await proxyOptimisticOracleModule.methods.setTimer(timer.options.address).send({ from: owner });
+
+    // Point avatar to proxy module.
+    await avatar.methods.setModule(proxyAddress).send({ from: owner });
+
+    // Approve proposal bond for proxy module.
+    await bondToken.methods.approve(proxyAddress, doubleTotalBond).send({ from: proposer });
+
+    // Issue some test tokens to the avatar address.
+    await testToken.methods.allocateTo(avatar.options.address, toWei("3")).send({ from: accounts[0] });
+    await testToken2.methods.allocateTo(avatar.options.address, toWei("2")).send({ from: accounts[0] });
+
+    // Construct the transaction data to send the newly minted tokens to proposer and another address.
+    const txnData1 = constructTransferTransaction(proposer, toWei("1"));
+    const txnData2 = constructTransferTransaction(rando, toWei("2"));
+    const txnData3 = constructTransferTransaction(proposer, toWei("2"));
+    const operation = 0; // 0 for call, 1 for delegatecall
+
+    // Send the proposal with multiple transactions.
+    const transactions = [
+      { to: testToken.options.address, operation, value: 0, data: txnData1 },
+      { to: testToken.options.address, operation, value: 0, data: txnData2 },
+      { to: testToken2.options.address, operation, value: 0, data: txnData3 },
+    ];
+
+    const explanation = utf8ToHex("These transactions were approved by majority vote on Snapshot.");
+
+    // Propose transactions on proxy module.
+    receipt = await proxyOptimisticOracleModule.methods
+      .proposeTransactions(transactions, explanation)
+      .send({ from: proposer });
+
+    const { proposalHash } = (
+      await findEvent(receipt, proxyOptimisticOracleModule, "TransactionsProposed")
+    ).match.returnValues;
+
+    const proposalTime = parseInt(await proxyOptimisticOracleModule.methods.getCurrentTime().call());
+    const endingTime = proposalTime + liveness;
+
+    await assertEventEmitted(
+      receipt,
+      proxyOptimisticOracleModule,
+      "TransactionsProposed",
+      (event) =>
+        event.proposer == proposer &&
+        event.proposalTime == proposalTime &&
+        event.proposalHash == proposalHash &&
+        event.explanation == explanation &&
+        event.challengeWindowEnds == endingTime &&
+        event.proposal.requestTime == proposalTime &&
+        event.proposal.transactions[0].to == testToken.options.address &&
+        event.proposal.transactions[0].value == 0 &&
+        event.proposal.transactions[0].data == txnData1 &&
+        event.proposal.transactions[0].operation == 0 &&
+        event.proposal.transactions[1].to == testToken.options.address &&
+        event.proposal.transactions[1].value == 0 &&
+        event.proposal.transactions[1].data == txnData2 &&
+        event.proposal.transactions[1].operation == 0 &&
+        event.proposal.transactions[2].to == testToken2.options.address &&
+        event.proposal.transactions[2].value == 0 &&
+        event.proposal.transactions[2].data == txnData3 &&
+        event.proposal.transactions[2].operation == 0
+    );
+
+    // Wait until the end of the dispute period.
+    await advanceTime(liveness);
+
+    // Set starting balances of tokens to be transferred.
+    const startingBalance1 = toBN(await testToken.methods.balanceOf(proposer).call());
+    const startingBalance2 = toBN(await testToken.methods.balanceOf(rando).call());
+    const startingBalance3 = toBN(await testToken2.methods.balanceOf(proposer).call());
+
+    // Execute transactions on proxy module.
+    await proxyOptimisticOracleModule.methods.executeProposal(transactions).send({ from: executor });
+    assert.equal(
+      (await testToken.methods.balanceOf(proposer).call()).toString(),
+      startingBalance1.add(toBN(toWei("1"))).toString()
+    );
+    assert.equal(
+      (await testToken.methods.balanceOf(rando).call()).toString(),
+      startingBalance2.add(toBN(toWei("2"))).toString()
+    );
+    assert.equal(
+      (await testToken2.methods.balanceOf(proposer).call()).toString(),
+      startingBalance3.add(toBN(toWei("2"))).toString()
+    );
+  });
 });
