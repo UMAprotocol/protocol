@@ -56,7 +56,8 @@ async function main() {
     "0", // Starting request index of 0 (no offset).
     votingToken.address,
     finder.address,
-    slashingLibrary.address
+    slashingLibrary.address,
+    existingVoting.address
   );
 
   console.log("Deployed VotingV2: ", votingV2.address);
