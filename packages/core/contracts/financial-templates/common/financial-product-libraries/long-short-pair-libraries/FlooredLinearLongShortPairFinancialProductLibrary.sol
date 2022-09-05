@@ -10,7 +10,7 @@ import "../../../../common/implementation/Lockable.sol";
  * @title Floored Linear Long Short Pair Financial Product Library.
  * @notice Adds settlement logic to create floored linear LSPs. The contract will payout a scaled amount of collateral
  * depending on where the settlement price lands within a price range between a lowerBound and an upperBound with
- * configured minimum floorPercentage payout for all prices up to lowerBound. If settlement price is within the price
+ * configured minimum floorPercentage payout for all prices below lowerBound. If settlement price is within the price
  * range then the expiryPercentLong is defined by (expiryPrice - lowerBound) / (upperBound - lowerBound) *
  * (1 - floorPercentage) + floorPercentage. This number represents the amount of collateral from the collateralPerPair
  * that will be sent to the long side. If the price is at or higher than the upperBound then expiryPercentLong = 1.
