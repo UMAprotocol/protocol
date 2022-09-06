@@ -355,6 +355,17 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
     }
 
     /**
+     * @notice  Returns the total amount of tokens staked by the voter, after applying updateTrackers. Specifically used
+     * to view cumulative stake + any unapplied slashing as view methods without needing to update the contract.
+     * @param voterAddress the address of the voter.
+     * @return uint256 the total stake.
+     */
+    function getVoterStakePostUpdate(address voterAddress) external returns (uint256) {
+        _updateTrackers(voterAddress);
+        return voterStakes[voterAddress].activeStake + voterStakes[voterAddress].pendingStake;
+    }
+
+    /**
      * @notice Returns the current block timestamp.
      * @dev Can be overridden to control contract time.
      */

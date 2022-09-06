@@ -89,27 +89,6 @@ describe("VotingV2", function () {
     await moveToNextRound(voting, accounts[0]);
   });
 
-  afterEach(async function () {
-    let sum;
-    try {
-      await voting.methods.updateTrackers(account1).send({ from: account1 });
-      await voting.methods.updateTrackers(account2).send({ from: account1 });
-      await voting.methods.updateTrackers(account3).send({ from: account1 });
-      await voting.methods.updateTrackers(account4).send({ from: account1 });
-
-      await voting.methods.updateTrackers(rand).send({ from: account1 });
-
-      const events = await voting.getPastEvents("VoterSlashed", { fromBlock: 0, toBlock: "latest" });
-
-      sum = events.map((e) => Number(web3.utils.fromWei(e.returnValues.slashedTokens))).reduce((a, b) => a + b, 0);
-
-      console.log("SUM ", sum);
-    } catch {
-      sum = 0;
-    }
-    // assert(sum === 0, "Sum is not 0");
-  });
-
   it("Constructor", async function () {
     // GAT must be < total supply
     const invalidGat = web3.utils.toWei("100000000");
@@ -3663,8 +3642,11 @@ describe("VotingV2", function () {
     await moveToNextPhase(voting, accounts[0]);
 
     await voting.methods.stake(toWei("32000000")).send({ from: rand });
+    await voting.methods.updateTrackers(rand).send({ from: rand });
 
     await moveToNextRound(voting, accounts[0]);
+
+    await voting.methods.updateTrackers(rand).send({ from: rand });
 
     let roundId = (await voting.methods.getCurrentRoundId().call()).toString();
     let salt = getRandomSignedInt();
@@ -3673,6 +3655,9 @@ describe("VotingV2", function () {
     await voting.methods.commitVote(identifier, time, ancillaryData, hash).send({ from: rand });
     await moveToNextPhase(voting, accounts[0]); // Reveal the votes.
     await voting.methods.revealVote(identifier, time, price, ancillaryData, salt).send({ from: rand });
+
+    // Verify the round's cumulativeActiveStakeAtRound contains the new staker's now active liquidity.
+    assert.equal((await voting.methods.rounds(roundId).call()).cumulativeActiveStakeAtRound, toWei("132000000"));
 
     await moveToNextRound(voting, accounts[0]);
 
@@ -3683,26 +3668,46 @@ describe("VotingV2", function () {
       price.toString()
     );
 
+    // Similarly there is a follow on edge case we should verify: if you stake during an active
+    // reveal, the vote is rolled and then you vote your nextIndexToProcess will be higher than the request index
+    // you are voting on! This means that the slashing trackers will incorrectly skip you, resulting in misallocation
+    // of slashing. The assertions below will fail if the fix was not implemented correctly in the contract.
     await voting.methods.setUnstakeCoolDown(0).send({ from: account1 });
-    await voting.methods.updateTrackers(account1).send({ from: account1 });
-    await voting.methods.requestUnstake(await voting.methods.getVoterStake(account1).call()).send({ from: account1 });
-    await voting.methods.updateTrackers(account2).send({ from: account1 });
-    await voting.methods.requestUnstake(await voting.methods.getVoterStake(account2).call()).send({ from: account2 });
-    await voting.methods.updateTrackers(account3).send({ from: account1 });
-    await voting.methods.requestUnstake(await voting.methods.getVoterStake(account3).call()).send({ from: account3 });
-    await voting.methods.updateTrackers(account4).send({ from: account1 });
-    await voting.methods.requestUnstake(await voting.methods.getVoterStake(account4).call()).send({ from: account4 });
-    await voting.methods.updateTrackers(rand).send({ from: account1 });
-    await voting.methods.requestUnstake(await voting.methods.getVoterStake(rand).call()).send({ from: rand });
 
+    await voting.methods
+      .requestUnstake(await voting.methods.getVoterStakePostUpdate(account1).call())
+      .send({ from: account1 });
+
+    await voting.methods
+      .requestUnstake(await voting.methods.getVoterStakePostUpdate(account2).call())
+      .send({ from: account2 });
+
+    await voting.methods
+      .requestUnstake(await voting.methods.getVoterStakePostUpdate(account3).call())
+      .send({ from: account3 });
+
+    await voting.methods
+      .requestUnstake(await voting.methods.getVoterStakePostUpdate(account4).call())
+      .send({ from: account4 });
+
+    // Unstake from all accounts. Accounts 1,2,3,4 should all loose 0.0016 of their balance due to the one round of
+    // slashing and rand should gain the sum of the other four, as 100mm*0.0016.
+    await voting.methods.requestUnstake(await voting.methods.getVoterStakePostUpdate(rand).call()).send({ from: rand });
     await voting.methods.executeUnstake().send({ from: account1 });
+    assert.equal(await votingToken.methods.balanceOf(account1).call(), toWei("31948800")); // 32mm*(1-0.0016)=31948800
     await voting.methods.executeUnstake().send({ from: account2 });
+    assert.equal(await votingToken.methods.balanceOf(account2).call(), toWei("31948800")); // 32mm*(1-0.0016)=31948800
     await voting.methods.executeUnstake().send({ from: account3 });
+    assert.equal(await votingToken.methods.balanceOf(account3).call(), toWei("31948800")); // 32mm*(1-0.0016)=31948800
     await voting.methods.executeUnstake().send({ from: account4 });
+    assert.equal(await votingToken.methods.balanceOf(account4).call(), toWei("3993600")); // 4mm*(1-0.0016)=3993600
+
+    // If the contract does not correctly update the rand (deposit after request but before rolled) nextIndexToProcess
+    // the below two assertions will fail.
     await voting.methods.executeUnstake().send({ from: rand });
+    assert.equal(await votingToken.methods.balanceOf(rand).call(), toWei("3200160000")); // 32mm+100mm*0.0016=3200160000
 
-    const finalContractBalance = await votingToken.methods.balanceOf(voting.options.address).call();
-
-    assert.equal(finalContractBalance, "0");
+    // After unstaking all positions the total balance left in the voting contract should be 0.
+    assert.equal(await votingToken.methods.balanceOf(voting.options.address).call(), "0");
   });
 });

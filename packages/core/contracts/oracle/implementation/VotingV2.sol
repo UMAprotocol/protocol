@@ -498,9 +498,15 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
         // There is a very specific edge case that can occur if the only participates in a vote stakes after the request
         // is created and the request is rolled. If this happens, a request becomes unresolvable due to lastVotingRound
-        // not being correctly updated. To combat this, we can check this assignment here. This is a no-op in all
-        // cases except the edge case specified as this should be assigned correctly elsewhere.
+        // not being correctly updated. To combat this, we can check this assignment here and update the lastVotingRound
+        // accordingly. Additionally, this situation will result in the voter's nextIndexToProcess being larger than the
+        // price request index, As such, this voter will immune to slashing for this round, even though they were able
+        // to vote due to their funds becoming active in the rolling process. If this is the case, we can update the
+        // voters nextIndexToProcess to be the same as the price request index to ensure that this voter is correctly
+        // slashed for participation in this request. This is a no-op in all cases except the edge case specified.
         if (priceRequest.lastVotingRound != currentRoundId) priceRequest.lastVotingRound = uint32(currentRoundId);
+        if (voterStakes[voter].nextIndexToProcess > priceRequest.priceRequestIndex)
+            voterStakes[voter].nextIndexToProcess = priceRequest.priceRequestIndex;
 
         emit VoteCommitted(voter, msg.sender, currentRoundId, identifier, time, ancillaryData);
     }
