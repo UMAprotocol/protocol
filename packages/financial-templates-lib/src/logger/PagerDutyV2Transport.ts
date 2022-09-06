@@ -10,7 +10,7 @@ interface Config {
   customServices?: { [key: string]: string };
 }
 
-export class PagerDutyTransportV2 extends Transport {
+export class PagerDutyV2Transport extends Transport {
   private readonly integrationKey: string;
   private readonly customServices: { [key: string]: string };
   constructor(winstonOpts: TransportOptions, { integrationKey, customServices = {} }: Config) {
@@ -28,14 +28,17 @@ export class PagerDutyTransportV2 extends Transport {
   // Note: info must be any because that's what the base class uses.
   async log(info: any, callback: () => void): Promise<void> {
     try {
+      // we route to different pd services using the integration key (routing_key), or multiple services with the custom services object
+      const routing_key = this.customServices[info.notificationPath] ?? this.integrationKey;
       await event({
         data: {
-          routing_key: this.integrationKey,
+          routing_key,
           event_action: "trigger",
           payload: {
             summary: `${info.level}: ${info.at} ⭢ ${info.message}`,
-            severity: PagerDutyTransportV2.convertLevelToSeverity(this.level),
+            severity: PagerDutyV2Transport.convertLevelToSeverity(this.level),
             source: info["bot-identifier"] ? info["bot-identifier"] : undefined,
+            // we can put any structured data in here as long as it is can be repped as json
             custom_details: info,
           },
         },
