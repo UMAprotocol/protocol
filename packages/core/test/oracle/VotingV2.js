@@ -89,6 +89,27 @@ describe("VotingV2", function () {
     await moveToNextRound(voting, accounts[0]);
   });
 
+  afterEach(async function () {
+    let sum;
+    try {
+      await voting.methods.updateTrackers(account1).send({ from: account1 });
+      await voting.methods.updateTrackers(account2).send({ from: account1 });
+      await voting.methods.updateTrackers(account3).send({ from: account1 });
+      await voting.methods.updateTrackers(account4).send({ from: account1 });
+
+      await voting.methods.updateTrackers(rand).send({ from: account1 });
+
+      const events = await voting.getPastEvents("VoterSlashed", { fromBlock: 0, toBlock: "latest" });
+
+      sum = events.map((e) => Number(web3.utils.fromWei(e.returnValues.slashedTokens))).reduce((a, b) => a + b, 0);
+
+      console.log("SUM ", sum);
+    } catch {
+      sum = 0;
+    }
+    // assert(sum === 0, "Sum is not 0");
+  });
+
   it("Constructor", async function () {
     // GAT must be < total supply
     const invalidGat = web3.utils.toWei("100000000");
@@ -3661,5 +3682,27 @@ describe("VotingV2", function () {
       (await voting.methods.getPrice(identifier, time, ancillaryData).call({ from: registeredContract })).toString(),
       price.toString()
     );
+
+    await voting.methods.setUnstakeCoolDown(0).send({ from: account1 });
+    await voting.methods.updateTrackers(account1).send({ from: account1 });
+    await voting.methods.requestUnstake(await voting.methods.getVoterStake(account1).call()).send({ from: account1 });
+    await voting.methods.updateTrackers(account2).send({ from: account1 });
+    await voting.methods.requestUnstake(await voting.methods.getVoterStake(account2).call()).send({ from: account2 });
+    await voting.methods.updateTrackers(account3).send({ from: account1 });
+    await voting.methods.requestUnstake(await voting.methods.getVoterStake(account3).call()).send({ from: account3 });
+    await voting.methods.updateTrackers(account4).send({ from: account1 });
+    await voting.methods.requestUnstake(await voting.methods.getVoterStake(account4).call()).send({ from: account4 });
+    await voting.methods.updateTrackers(rand).send({ from: account1 });
+    await voting.methods.requestUnstake(await voting.methods.getVoterStake(rand).call()).send({ from: rand });
+
+    await voting.methods.executeUnstake().send({ from: account1 });
+    await voting.methods.executeUnstake().send({ from: account2 });
+    await voting.methods.executeUnstake().send({ from: account3 });
+    await voting.methods.executeUnstake().send({ from: account4 });
+    await voting.methods.executeUnstake().send({ from: rand });
+
+    const finalContractBalance = await votingToken.methods.balanceOf(voting.options.address).call();
+
+    assert.equal(finalContractBalance, "0");
   });
 });
