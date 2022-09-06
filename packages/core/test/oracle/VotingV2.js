@@ -3642,11 +3642,8 @@ describe("VotingV2", function () {
     await moveToNextPhase(voting, accounts[0]);
 
     await voting.methods.stake(toWei("32000000")).send({ from: rand });
-    await voting.methods.updateTrackers(rand).send({ from: rand });
 
     await moveToNextRound(voting, accounts[0]);
-
-    await voting.methods.updateTrackers(rand).send({ from: rand });
 
     let roundId = (await voting.methods.getCurrentRoundId().call()).toString();
     let salt = getRandomSignedInt();
