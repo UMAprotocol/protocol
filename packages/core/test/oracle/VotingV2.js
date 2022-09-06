@@ -3706,5 +3706,10 @@ describe("VotingV2", function () {
 
     // After unstaking all positions the total balance left in the voting contract should be 0.
     assert.equal(await votingToken.methods.balanceOf(voting.options.address).call(), "0");
+
+    // Lastly, sum of all slashing events should add to zero (positive slashing summed should equal negative slash).
+    const events = await voting.getPastEvents("VoterSlashed", { fromBlock: 0, toBlock: "latest" });
+    const sum = events.map((e) => Number(web3.utils.fromWei(e.returnValues.slashedTokens))).reduce((a, b) => a + b, 0);
+    assert.equal(sum, 0);
   });
 });
