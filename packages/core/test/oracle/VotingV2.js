@@ -3739,7 +3739,6 @@ describe("VotingV2", function () {
     await moveToNextRound(voting, accounts[0]);
 
     // Now, the staker liquidity has become activated (we are no longer in an active reveal phase) due to the roll.
-
     // nextIndexToProcess == 1, so rand won't be slashed for price request 0
     assert.equal((await voting.methods.voterStakes(rand).call()).nextIndexToProcess, "1");
 
