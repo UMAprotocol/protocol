@@ -539,7 +539,7 @@ async function getUmaPriceAtTimestamp(timestamp) {
     return ethExchangeRate;
   } catch (err) {
     console.error("Failed to fetch UMA historical price from Coingecko, falling back to default");
-    return 0.1;
+    return 0.0016;
   }
 }
 
@@ -561,7 +561,7 @@ async function getHistoricalGasPrice(startBlock, endBlock) {
   if (!etherscanApiKey) {
     console.error("Missing ETHERSCAN_API_KEY in your environment, falling back to default gas price");
     return days.map((day) => {
-      return { timestamp: day.unix().toString(), avgGwei: "100" };
+      return { timestamp: day.unix().toString(), avgGwei: "20" };
     });
   } else {
     const query = `https://api.etherscan.io/api?module=stats&action=dailyavggasprice&startdate=${startTimeString}&enddate=${endTimeString}&sort=asc&apikey=${etherscanApiKey}`;
