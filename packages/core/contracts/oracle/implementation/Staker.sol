@@ -89,6 +89,10 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
 
     event SetNewUnstakeCoolDown(uint256 newUnstakeCoolDown);
 
+    event DelegateSet(address indexed delegator, address indexed delegate);
+
+    event DelegatorSet(address indexed delegate, address indexed delegator);
+
     /**
      * @notice Construct the Staker contract
      * @param _emissionRate amount of voting tokens that are emitted per second, split pro rata to stakers.
@@ -257,6 +261,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
      */
     function setDelegate(address delegate) external nonReentrant() {
         voterStakes[msg.sender].delegate = delegate;
+        emit DelegateSet(msg.sender, delegate);
     }
 
     /**
@@ -266,6 +271,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
      */
     function setDelegator(address delegator) external nonReentrant() {
         delegateToStaker[msg.sender] = delegator;
+        emit DelegatorSet(msg.sender, delegator);
     }
 
     /****************************************
