@@ -11,8 +11,8 @@
   },
   "devDependencies": {
     "@awaitjs/express": "^0.3.0",
-    "@google-cloud/datastore": "^6.0.0",
-    "@google-cloud/storage": "^2.4.2",
+    "@google-cloud/datastore": "^7.0.0",
+    "@google-cloud/storage": "^6.4.2",
     "@uma/core": "^2.35.0",
     "chai": "^4.2.0",
     "coveralls": "^3.1.0",

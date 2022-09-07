@@ -35,7 +35,7 @@
     }
   ],
   "dependencies": {
-    "@google-cloud/datastore": "^6.6.0",
+    "@google-cloud/datastore": "^7.0.0",
     "@types/lodash-es": "^4.17.5",
     "@uma/contracts-frontend": "^0.3.14",
     "@uma/contracts-node": "^0.3.14",
