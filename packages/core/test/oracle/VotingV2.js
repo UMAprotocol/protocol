@@ -3712,4 +3712,91 @@ describe("VotingV2", function () {
     const sum = events.map((e) => Number(web3.utils.fromWei(e.returnValues.slashedTokens))).reduce((a, b) => a + b, 0);
     assert.equal(sum, 0);
   });
+
+  it("Staking after a price request and voting should work", async function () {
+    const identifier = padRight(utf8ToHex("test"), 64);
+    const time = "1000";
+    const ancillaryData = web3.utils.randomHex(420);
+
+    await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
+
+    await voting.methods.requestPrice(identifier, time, ancillaryData).send({ from: registeredContract });
+
+    await votingToken.methods.mint(rand, toWei("3200000000")).send({ from: accounts[0] });
+    await votingToken.methods.approve(voting.options.address, toWei("3200000000")).send({ from: rand });
+
+    await moveToNextRound(voting, accounts[0]);
+    await moveToNextPhase(voting, accounts[0]);
+
+    // Stake during an active reveal phase
+    assert.equal(await voting.methods.getVotePhase().call(), 1);
+    assert.equal(await voting.methods.currentActiveRequests().call(), true);
+
+    await voting.methods.stake(toWei("4000000")).send({ from: rand });
+
+    await moveToNextRound(voting, accounts[0]);
+
+    // nextIndexToProcess == 1, so rand won't be slashed for price request 0
+    assert.equal((await voting.methods.voterStakes(rand).call()).nextIndexToProcess, "1");
+
+    const roundId = (await voting.methods.getCurrentRoundId().call()).toString();
+    const salt = getRandomSignedInt();
+    const price = 1;
+    const hash = computeVoteHashAncillary({ salt, roundId, identifier, price, account: rand, time, ancillaryData });
+    await voting.methods.commitVote(identifier, time, ancillaryData, hash).send({ from: rand });
+
+    const price2 = 0;
+    const hash2 = computeVoteHashAncillary({
+      salt,
+      roundId,
+      identifier,
+      price: price2,
+      account: account1,
+      time,
+      ancillaryData,
+    });
+    await voting.methods.commitVote(identifier, time, ancillaryData, hash2).send({ from: account1 });
+
+    await moveToNextPhase(voting, accounts[0]); // Reveal the votes.
+    await voting.methods.revealVote(identifier, time, price, ancillaryData, salt).send({ from: rand });
+    await voting.methods.revealVote(identifier, time, price2, ancillaryData, salt).send({ from: account1 });
+
+    await moveToNextRound(voting, accounts[0]);
+
+    // Price2 is resolved, meaning that rand voted so he should be slashed
+    assert.equal(
+      (await voting.methods.getPrice(identifier, time, ancillaryData).call({ from: registeredContract })).toString(),
+      price2.toString()
+    );
+
+    await voting.methods.setUnstakeCoolDown(0).send({ from: account1 });
+
+    await voting.methods.updateTrackers(account1).send({ from: account1 });
+    await voting.methods.updateTrackers(account2).send({ from: account1 });
+    await voting.methods.updateTrackers(account3).send({ from: account1 });
+    await voting.methods.updateTrackers(account4).send({ from: account1 });
+    await voting.methods.updateTrackers(rand).send({ from: account1 });
+
+    const events = await voting.getPastEvents("VoterSlashed", { fromBlock: 0, toBlock: "latest" });
+
+    const sum = events.map((e) => Number(web3.utils.fromWei(e.returnValues.slashedTokens))).reduce((a, b) => a + b, 0);
+
+    assert(sum === 0, "Slashing calculation problem");
+
+    await voting.methods.requestUnstake(await voting.methods.getVoterStake(account1).call()).send({ from: account1 });
+    await voting.methods.requestUnstake(await voting.methods.getVoterStake(account2).call()).send({ from: account2 });
+    await voting.methods.requestUnstake(await voting.methods.getVoterStake(account3).call()).send({ from: account3 });
+    await voting.methods.requestUnstake(await voting.methods.getVoterStake(account4).call()).send({ from: account4 });
+    await voting.methods.requestUnstake(await voting.methods.getVoterStake(rand).call()).send({ from: rand });
+
+    await voting.methods.executeUnstake().send({ from: account1 });
+    await voting.methods.executeUnstake().send({ from: account2 });
+    await voting.methods.executeUnstake().send({ from: account3 });
+    await voting.methods.executeUnstake().send({ from: account4 });
+    await voting.methods.executeUnstake().send({ from: rand });
+
+    const finalContractBalance = await votingToken.methods.balanceOf(voting.options.address).call();
+
+    assert.equal(finalContractBalance, "0");
+  });
 });
