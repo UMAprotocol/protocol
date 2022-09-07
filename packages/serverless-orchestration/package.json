@@ -1,23 +1,24 @@
 {
   "name": "@uma/serverless-orchestration",
-  "version": "2.9.3",
+  "version": "2.9.4",
   "description": "Serverless orchestration scripts to run a parallel instances of scripts or bots",
   "dependencies": {
     "@openzeppelin/contracts": "4.4.2",
     "@truffle/contract": "^4.2.20",
     "@uma/common": "^2.26.0",
-    "@uma/financial-templates-lib": "^2.30.3",
+    "@uma/financial-templates-lib": "^2.30.4",
     "web3": "^1.6.0"
   },
   "devDependencies": {
     "@awaitjs/express": "^0.3.0",
     "@google-cloud/datastore": "^6.0.0",
     "@google-cloud/storage": "^2.4.2",
-    "@uma/core": "^2.34.0",
+    "@uma/core": "^2.35.0",
     "chai": "^4.2.0",
     "coveralls": "^3.1.0",
     "ethereumjs-wallet": "^1.0.0",
     "express": "^4.17.1",
+    "fetch-retry": "^5.0.3",
     "ganache-core": "^2.13.2",
     "google-auth-library": "^6.0.2",
     "minimist": "^1.2.0",

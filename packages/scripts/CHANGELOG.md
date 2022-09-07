@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.16.0](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.15.2...@uma/scripts@1.16.0) (2022-08-24)
+
+### Features
+
+- add migration scripts to voting v2 ([#4121](https://github.com/UMAprotocol/protocol/issues/4121)) ([3075a63](https://github.com/UMAprotocol/protocol/commit/3075a6323da94f8f47c20b4a57c01bd25b8300a6)), closes [#4132](https://github.com/UMAprotocol/protocol/issues/4132)
+
 ## [1.15.2](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.15.1...@uma/scripts@1.15.2) (2022-08-16)
 
 **Note:** Version bump only for package @uma/scripts

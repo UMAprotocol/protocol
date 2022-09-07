@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.35.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.34.0...@uma/core@2.35.0) (2022-08-24)
+
+### Features
+
+- add claim and stake for delegates ([#4110](https://github.com/UMAprotocol/protocol/issues/4110)) ([ddbca75](https://github.com/UMAprotocol/protocol/commit/ddbca75932f5e9f2dd73462f30ed163be7862b11))
+- add emergency proposer ([#4128](https://github.com/UMAprotocol/protocol/issues/4128)) ([8c47a3b](https://github.com/UMAprotocol/protocol/commit/8c47a3bccb302d46ad22ee31ccc93090dcc79164))
+- add migration scripts to voting v2 ([#4121](https://github.com/UMAprotocol/protocol/issues/4121)) ([3075a63](https://github.com/UMAprotocol/protocol/commit/3075a6323da94f8f47c20b4a57c01bd25b8300a6)), closes [#4132](https://github.com/UMAprotocol/protocol/issues/4132)
+- modify DesignatedVotingV2 to delegate to the voter directly ([#4129](https://github.com/UMAprotocol/protocol/issues/4129)) ([0afae60](https://github.com/UMAprotocol/protocol/commit/0afae60aca04b3c110627ec4ee74ae219704af60))
+- **core:** copy linear fpl ([#4130](https://github.com/UMAprotocol/protocol/issues/4130)) ([0870423](https://github.com/UMAprotocol/protocol/commit/08704232a4bf744042b2b98c024f2f5f79857976))
+
 # [2.34.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.33.0...@uma/core@2.34.0) (2022-08-16)
 
 ### Bug Fixes

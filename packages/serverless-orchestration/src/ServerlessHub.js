@@ -23,6 +23,7 @@ const hub = express();
 hub.use(express.json()); // Enables json to be parsed by the express process.
 require("dotenv").config();
 const fetch = require("node-fetch");
+const fetchWithRetry = require("fetch-retry")(fetch);
 const { URL } = require("url");
 const lodash = require("lodash");
 
@@ -30,7 +31,11 @@ const lodash = require("lodash");
 const { GoogleAuth } = require("google-auth-library"); // Used to get authentication headers to execute cloud run & cloud functions.
 const auth = new GoogleAuth();
 const { Storage } = require("@google-cloud/storage"); // Used to get global config objects to parameterize bots.
-const storage = new Storage();
+
+// Enabling retry in case of transient timeout issues.
+const DEFAULT_RETRIES = 1;
+
+const storage = new Storage({ autoRetry: true, maxRetries: DEFAULT_RETRIES });
 const { Datastore } = require("@google-cloud/datastore"); // Used to read/write the last block number the monitor used.
 const datastore = new Datastore();
 const { createBasicProvider } = require("@uma/common");
@@ -314,7 +319,7 @@ const _executeServerlessSpoke = async (url, body) => {
 const _fetchConfig = async (bucket, file) => {
   let config;
   if (hubConfig.configRetrieval == "git") {
-    const response = await fetch(
+    const response = await fetchWithRetry(
       `https://api.github.com/repos/${hubConfig.gitSettings.organization}/${hubConfig.gitSettings.repoName}/contents/${bucket}/${file}`,
       {
         method: "GET",
@@ -324,6 +329,7 @@ const _fetchConfig = async (bucket, file) => {
           Accept: "application/vnd.github.v3.raw",
           "Accept-Charset": "utf-8",
         },
+        retries: DEFAULT_RETRIES,
       }
     );
     config = await response.json(); // extract JSON from the http response
