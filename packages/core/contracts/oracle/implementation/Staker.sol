@@ -292,6 +292,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
         emit SetNewUnstakeCoolDown(newUnstakeCoolDown);
     }
 
+    // Updates an account internal trackers.
     function _updateTrackers(address voterAddress) internal virtual {
         _updateReward(voterAddress);
         _updateActiveStake(voterAddress);
