@@ -756,6 +756,11 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         super._updateTrackers(voterAddress);
     }
 
+    // Starting index for a staker is the first value that nextIndexToProcess is set to and defines the first index that
+    // a staker is suspectable to receiving slashing on. Note that we offset the length of the pendingPriceRequests
+    // array as you are still suspectable to slashing if you stake for the first time in the commit phase of an active
+    //vote. If you stake during an active reveal then your liquidity will be marked as inactive within Staker.sol until
+    // the its activated in the next round and as such you'll miss out on being slashed for that round.
     function _getStartingIndexForStaker() internal view override returns (uint64) {
         return SafeCast.toUint64(priceRequestIds.length - pendingPriceRequests.length);
     }
