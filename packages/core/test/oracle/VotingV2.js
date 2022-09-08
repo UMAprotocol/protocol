@@ -3621,4 +3621,143 @@ describe("VotingV2", function () {
     assert.equal((await voting.methods.voterStakes(account1).call()).nextIndexToProcess, 4);
     assert.equal((await voting.methods.voterStakes(account2).call()).nextIndexToProcess, 4);
   });
+
+  it("Inactive staked amounts should not earn rewards", async function () {
+    // In this test, a user stakes during an activeReveal phase, does not vote in several priceRequests
+    // in successive rounds, and his stake remains inactive throughout, preventing him from being slashed.
+    // The user receives the initial staked sum as well as the rewards for the constant emission rate at the end.
+
+    const identifier = padRight(utf8ToHex("test"), 64);
+    const time = "1000";
+    const time2 = "1001";
+    const ancillaryData = web3.utils.randomHex(420);
+
+    const randStakingAmount = toWei("4000000");
+
+    await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
+
+    await voting.methods.requestPrice(identifier, time, ancillaryData).send({ from: registeredContract });
+
+    await votingToken.methods.mint(rand, toWei("3200000000")).send({ from: accounts[0] });
+    await votingToken.methods.approve(voting.options.address, toWei("3200000000")).send({ from: rand });
+
+    await moveToNextRound(voting, accounts[0]);
+    await moveToNextPhase(voting, accounts[0]);
+
+    assert.equal(await voting.methods.getVotePhase().call(), 1);
+    assert.equal(await voting.methods.currentActiveRequests().call(), true);
+
+    // User stakes during active reveal so his staked amount is "inactive"
+    await voting.methods.stake(randStakingAmount).send({ from: rand });
+
+    await moveToNextRound(voting, accounts[0]);
+
+    // Check that activeStake is 0 and pendingStake equals the initial staked amount
+    assert.equal((await voting.methods.voterStakes(rand).call()).activeStake, toWei("0"));
+    assert.equal((await voting.methods.voterStakes(rand).call()).pendingStake, randStakingAmount);
+
+    const roundId = (await voting.methods.getCurrentRoundId().call()).toString();
+    const salt = getRandomSignedInt();
+
+    const price2 = 0;
+    const hash2 = computeVoteHashAncillary({
+      salt,
+      roundId,
+      identifier,
+      price: price2,
+      account: account1,
+      time,
+      ancillaryData,
+    });
+    await voting.methods.commitVote(identifier, time, ancillaryData, hash2).send({ from: account1 });
+
+    await moveToNextPhase(voting, accounts[0]); // Reveal the votes.
+    await voting.methods.revealVote(identifier, time, price2, ancillaryData, salt).send({ from: account1 });
+
+    // Create a second price request
+    await voting.methods.requestPrice(identifier, time2, ancillaryData).send({ from: registeredContract });
+
+    await moveToNextRound(voting, accounts[0]);
+    await moveToNextPhase(voting, accounts[0]);
+
+    // First price request is resolved. User rand didn't vote.
+    assert.equal(
+      (await voting.methods.getPrice(identifier, time, ancillaryData).call({ from: registeredContract })).toString(),
+      price2.toString()
+    );
+
+    assert.equal(await voting.methods.getVotePhase().call(), 1);
+    assert.equal(await voting.methods.currentActiveRequests().call(), true);
+
+    await voting.methods.updateTrackers(account1).send({ from: account1 });
+    await voting.methods.updateTrackers(account2).send({ from: account1 });
+    await voting.methods.updateTrackers(account3).send({ from: account1 });
+    await voting.methods.updateTrackers(account4).send({ from: account1 });
+    await voting.methods.updateTrackers(rand).send({ from: account1 });
+
+    await moveToNextPhase(voting, accounts[0]);
+    const roundId2 = (await voting.methods.getCurrentRoundId().call()).toString();
+    const price3 = 0;
+    const hash3 = computeVoteHashAncillary({
+      salt,
+      roundId: roundId2,
+      identifier,
+      price: price3,
+      account: account1,
+      time: time2,
+      ancillaryData,
+    });
+
+    await voting.methods.commitVote(identifier, time2, ancillaryData, hash3).send({ from: account1 });
+
+    await moveToNextPhase(voting, accounts[0]); // Reveal the votes.
+    await voting.methods.revealVote(identifier, time2, price3, ancillaryData, salt).send({ from: account1 });
+
+    await moveToNextRound(voting, accounts[0]);
+    // await moveToNextPhase(voting, accounts[0]);
+
+    // New price request is resolved. User rand has not voted in this one either
+    assert.equal(
+      (await voting.methods.getPrice(identifier, time2, ancillaryData).call({ from: registeredContract })).toString(),
+      price3.toString()
+    );
+
+    const events = await voting.getPastEvents("VoterSlashed", { fromBlock: 0, toBlock: "latest" });
+
+    const sum = events.map((e) => Number(web3.utils.fromWei(e.returnValues.slashedTokens))).reduce((a, b) => a + b, 0);
+
+    assert(sum === 0, "Slashing calculation problem");
+
+    assert.equal((await voting.methods.voterStakes(rand).call()).activeStake, toWei("0"));
+    assert.equal((await voting.methods.voterStakes(rand).call()).pendingStake, randStakingAmount);
+
+    await moveToNextRound(voting, accounts[0]);
+    assert.equal(await voting.methods.getVotePhase().call(), 0);
+
+    // User rand updates his trackers during a commit phase so his activeStake is now the initial staked amount and pendingStake is 0
+    await voting.methods.updateTrackers(rand).send({ from: account1 });
+
+    assert.equal((await voting.methods.voterStakes(rand).call()).activeStake, randStakingAmount);
+    assert.equal((await voting.methods.voterStakes(rand).call()).pendingStake, toWei("0"));
+
+    await voting.methods.setUnstakeCoolDown(0).send({ from: account1 });
+    await voting.methods.requestUnstake(await voting.methods.getVoterStake(rand).call()).send({ from: rand });
+
+    const balanceBefore = await votingToken.methods.balanceOf(rand).call();
+    await voting.methods.executeUnstake().send({ from: rand });
+    const balanceAfter = await votingToken.methods.balanceOf(rand).call();
+
+    // Rand receives his initial staked amount. He is not slashed
+    assert(toBN(balanceAfter).sub(toBN(balanceBefore)).eq(toBN(randStakingAmount)));
+
+    const outstandingRewards = await voting.methods.outstandingRewards(rand).call();
+
+    assert(toBN(outstandingRewards).gt(toBN("0")));
+    const balanceBefore2 = await votingToken.methods.balanceOf(rand).call();
+    await voting.methods.withdrawRewards().send({ from: rand });
+    const balanceAfter2 = await votingToken.methods.balanceOf(rand).call();
+
+    // Rand receives the rewards
+    assert(toBN(balanceAfter2).eq(toBN(balanceBefore2).add(toBN(outstandingRewards))));
+  });
 });
