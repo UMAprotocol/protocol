@@ -9,6 +9,7 @@
     "@uma/common": "^2.26.0",
     "@uma/contracts-node": "^0.3.14",
     "@uma/sdk": "^0.28.1",
+    "@pagerduty/pdjs": "^2.2.4",
     "@uniswap/sdk": "^2.0.5",
     "bluebird": "^3.7.2",
     "bn.js": "^4.11.9",
