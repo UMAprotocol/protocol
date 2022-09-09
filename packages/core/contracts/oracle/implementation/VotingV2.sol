@@ -481,7 +481,6 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         bytes32 hash
     ) public override nonReentrant() onlyIfNotMigrated() {
         uint256 currentRoundId = getCurrentRoundId();
-        (getCurrentRoundId());
         address voter = getVoterFromDelegate(msg.sender);
         _updateTrackers(voter);
         require(hash != bytes32(0));
