@@ -2,6 +2,15 @@ import kms from "@google-cloud/kms";
 import { Storage } from "@google-cloud/storage";
 import type { KeyConfig } from "./GckmsConfig";
 
+const { GCP_STORAGE_CONFIG } = process.env;
+
+// Allows the environment to customize the config that's used to interact with google cloud storage.
+// Relevant options can be found here: https://googleapis.dev/nodejs/storage/latest/global.html#StorageOptions.
+// Specific fields of interest:
+// - timeout: allows the env to set the timeout for all http requests.
+// - retryOptions: object that allows the caller to specify how the library retries.
+const storageConfig = GCP_STORAGE_CONFIG ? JSON.parse(GCP_STORAGE_CONFIG) : undefined;
+
 // This function takes an array of GCKMS configs that are shaped as follows:
 // {
 //   projectId: "project-name",
@@ -16,7 +25,7 @@ import type { KeyConfig } from "./GckmsConfig";
 export async function retrieveGckmsKeys(gckmsConfigs: KeyConfig[]): Promise<string[]> {
   return await Promise.all(
     gckmsConfigs.map(async (config) => {
-      const storage = new Storage();
+      const storage = new Storage(storageConfig);
       const keyMaterialBucket = storage.bucket(config.ciphertextBucket);
       const ciphertextFile = keyMaterialBucket.file(config.ciphertextFilename);
 

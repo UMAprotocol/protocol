@@ -32,10 +32,21 @@ const { GoogleAuth } = require("google-auth-library"); // Used to get authentica
 const auth = new GoogleAuth();
 const { Storage } = require("@google-cloud/storage"); // Used to get global config objects to parameterize bots.
 
+const { WAIT_FOR_LOGGER_DELAY, GCP_STORAGE_CONFIG } = process.env;
+
 // Enabling retry in case of transient timeout issues.
 const DEFAULT_RETRIES = 1;
 
-const storage = new Storage({ autoRetry: true, maxRetries: DEFAULT_RETRIES });
+// Allows the environment to customize the config that's used to interact with google cloud storage.
+// Relevant options can be found here: https://googleapis.dev/nodejs/storage/latest/global.html#StorageOptions.
+// Specific fields of interest:
+// - timeout: allows the env to set the timeout for all http requests.
+// - retryOptions: object that allows the caller to specify how the library retries.
+const storageConfig = GCP_STORAGE_CONFIG
+  ? JSON.parse(GCP_STORAGE_CONFIG)
+  : { autoRetry: true, maxRetries: DEFAULT_RETRIES };
+const storage = new Storage(storageConfig);
+
 const { Datastore } = require("@google-cloud/datastore"); // Used to read/write the last block number the monitor used.
 const datastore = new Datastore();
 const { createBasicProvider } = require("@uma/common");
@@ -56,7 +67,7 @@ const defaultHubConfig = {
   rejectSpokeDelay: 120, // 2 min.
 };
 
-const waitForLoggerDelay = process.env.WAIT_FOR_LOGGER_DELAY || 5;
+const waitForLoggerDelay = WAIT_FOR_LOGGER_DELAY || 5;
 
 hub.post("/", async (req, res) => {
   // Use a custom logger if provided. Otherwise, initialize a local logger.
