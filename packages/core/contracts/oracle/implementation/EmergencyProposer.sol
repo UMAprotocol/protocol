@@ -104,6 +104,9 @@ contract EmergencyProposer is Ownable, Lockable {
     /**
      * @notice Propose an emergency admin action to execute on the DVM as a set of proposed transactions.
      * @dev Caller of this method must approve (and have) quorum amount of token to be pulled from their wallet.
+     * @dev If necessary, the first proposal transaction can run an execution of a payable function, but only the first one
+     * can do this. In order to do this, this contract's entire ETH balance will be sent in the first transaction execution.
+     * Details can be found in the executeEmergencyProposal function.
      * @param transactions array of transactions to be executed in the emergency action. When executed, will be sent
      * via the governor contract.
      */
@@ -171,6 +174,8 @@ contract EmergencyProposer is Ownable, Lockable {
     /**
      * @notice After a proposal expires, this method can be used by the executor to execute the proposal.
      * @dev This method effectively gives the executor veto power over any proposal.
+     * @dev Since the entire ETH balance of the contract is sent in the first transaction, only the first proposal
+     * transaction would be able to run a payble transaction.
      * @param id id of the proposal.
      */
     function executeEmergencyProposal(uint256 id) public payable nonReentrant() {
