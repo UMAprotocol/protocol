@@ -239,6 +239,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
      * @param _finder keeps track of all contracts within the system based on their interfaceName.
      * Must be set to 0x0 for production environments that use live time.
      * @param _slashingLibrary contract used to calculate voting slashing penalties based on voter participation.
+     * @param _previousVotingContract previous voting contract address.
      */
     constructor(
         uint256 _emissionRate,
@@ -1032,6 +1033,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
      * @param voterAddress voter for which rewards will be retrieved. Does not have to be the caller.
      * @param roundId the round from which voting rewards will be retrieved from.
      * @param toRetrieve array of PendingRequests which rewards are retrieved from.
+     * @return uint256 the amount of rewards.
      */
     function retrieveRewardsOnMigratedVotingContract(
         address voterAddress,
@@ -1091,6 +1093,8 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         return (false, 0, "Price was never requested");
     }
 
+    // Check the previousVotingContract to see if a given price request was resolved.
+    // Returns true or false, and the resolved price or zero, depending on whether it was found or not.
     function _getPriceFromPreviousVotingContract(
         bytes32 identifier,
         uint256 time,

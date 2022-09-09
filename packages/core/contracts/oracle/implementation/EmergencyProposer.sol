@@ -106,6 +106,7 @@ contract EmergencyProposer is Ownable, Lockable {
      * @dev Caller of this method must approve (and have) quorum amount of token to be pulled from their wallet.
      * @param transactions array of transactions to be executed in the emergency action. When executed, will be sent
      * via the governor contract.
+     * @return uint256 the emergency proposal id.
      */
     function emergencyPropose(GovernorV2.Transaction[] memory transactions) external nonReentrant() returns (uint256) {
         token.safeTransferFrom(msg.sender, address(this), quorum);
