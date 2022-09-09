@@ -357,7 +357,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
 
     /**
      * @notice  Returns the total amount of tokens staked by the voter, after applying updateTrackers. Specifically used
-     * to view cumulative stake + any unapplied slashing as view methods without needing to update the contract.
+     * by offchain applications to simulate the cumulative stake + unapplied slashing updates without sending a transaction.
      * @param voterAddress the address of the voter.
      * @return uint256 the total stake.
      */
