@@ -3630,13 +3630,12 @@ describe("VotingV2", function () {
     const identifier = padRight(utf8ToHex("test"), 64);
     const time = "1000";
     const time2 = "1001";
-    const ancillaryData = web3.utils.randomHex(420);
 
     const randStakingAmount = toWei("4000000");
 
     await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
 
-    await voting.methods.requestPrice(identifier, time, ancillaryData).send({ from: registeredContract });
+    await voting.methods.requestPrice(identifier, time).send({ from: registeredContract });
 
     await votingToken.methods.mint(rand, toWei("3200000000")).send({ from: accounts[0] });
     await votingToken.methods.approve(voting.options.address, toWei("3200000000")).send({ from: rand });
@@ -3656,34 +3655,26 @@ describe("VotingV2", function () {
     assert.equal((await voting.methods.voterStakes(rand).call()).activeStake, toWei("0"));
     assert.equal((await voting.methods.voterStakes(rand).call()).pendingStake, randStakingAmount);
 
-    const roundId = (await voting.methods.getCurrentRoundId().call()).toString();
+    let roundId = (await voting.methods.getCurrentRoundId().call()).toString();
     const salt = getRandomSignedInt();
 
-    const price2 = 0;
-    const hash2 = computeVoteHashAncillary({
-      salt,
-      roundId,
-      identifier,
-      price: price2,
-      account: account1,
-      time,
-      ancillaryData,
-    });
-    await voting.methods.commitVote(identifier, time, ancillaryData, hash2).send({ from: account1 });
+    const price = 0;
+    const hash2 = computeVoteHash({ salt, roundId, identifier, price, account: account1, time });
+    await voting.methods.commitVote(identifier, time, hash2).send({ from: account1 });
 
     await moveToNextPhase(voting, accounts[0]); // Reveal the votes.
-    await voting.methods.revealVote(identifier, time, price2, ancillaryData, salt).send({ from: account1 });
+    await voting.methods.revealVote(identifier, time, price, salt).send({ from: account1 });
 
     // Create a second price request
-    await voting.methods.requestPrice(identifier, time2, ancillaryData).send({ from: registeredContract });
+    await voting.methods.requestPrice(identifier, time2).send({ from: registeredContract });
 
     await moveToNextRound(voting, accounts[0]);
     await moveToNextPhase(voting, accounts[0]);
 
     // First price request is resolved. User rand didn't vote.
     assert.equal(
-      (await voting.methods.getPrice(identifier, time, ancillaryData).call({ from: registeredContract })).toString(),
-      price2.toString()
+      (await voting.methods.getPrice(identifier, time).call({ from: registeredContract })).toString(),
+      price.toString()
     );
 
     assert.equal(await voting.methods.getVotePhase().call(), 1);
@@ -3696,30 +3687,21 @@ describe("VotingV2", function () {
     await voting.methods.updateTrackers(rand).send({ from: account1 });
 
     await moveToNextPhase(voting, accounts[0]);
-    const roundId2 = (await voting.methods.getCurrentRoundId().call()).toString();
-    const price3 = 0;
-    const hash3 = computeVoteHashAncillary({
-      salt,
-      roundId: roundId2,
-      identifier,
-      price: price3,
-      account: account1,
-      time: time2,
-      ancillaryData,
-    });
+    roundId = (await voting.methods.getCurrentRoundId().call()).toString();
+    const hash3 = computeVoteHash({ salt, roundId, identifier, price, account: account1, time: time2 });
 
-    await voting.methods.commitVote(identifier, time2, ancillaryData, hash3).send({ from: account1 });
+    await voting.methods.commitVote(identifier, time2, hash3).send({ from: account1 });
 
     await moveToNextPhase(voting, accounts[0]); // Reveal the votes.
-    await voting.methods.revealVote(identifier, time2, price3, ancillaryData, salt).send({ from: account1 });
+    await voting.methods.revealVote(identifier, time2, price, salt).send({ from: account1 });
 
     await moveToNextRound(voting, accounts[0]);
     // await moveToNextPhase(voting, accounts[0]);
 
     // New price request is resolved. User rand has not voted in this one either
     assert.equal(
-      (await voting.methods.getPrice(identifier, time2, ancillaryData).call({ from: registeredContract })).toString(),
-      price3.toString()
+      (await voting.methods.getPrice(identifier, time2).call({ from: registeredContract })).toString(),
+      price.toString()
     );
 
     const events = await voting.getPastEvents("VoterSlashed", { fromBlock: 0, toBlock: "latest" });
