@@ -202,6 +202,7 @@ contract EmergencyProposer is Ownable, Lockable {
      */
     function setQuorum(uint256 newQuorum) public nonReentrant() onlyOwner() {
         require(newQuorum != 0, "quorum must be > 0");
+        require(newQuorum < token.totalSupply(), "quorum must be < totalSupply");
         quorum = newQuorum;
         emit QuorumSet(newQuorum);
     }
@@ -225,6 +226,7 @@ contract EmergencyProposer is Ownable, Lockable {
      */
     function setMinimumWaitTime(uint64 newMinimumWaitTime) public nonReentrant() onlyOwner() {
         require(newMinimumWaitTime != 0, "minimumWaitTime == 0");
+        require(newMinimumWaitTime <= 4 weeks, "minimumWaitTime > 1 month");
         minimumWaitTime = newMinimumWaitTime;
         emit MinimumWaitTimeSet(newMinimumWaitTime);
     }
