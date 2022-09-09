@@ -1095,7 +1095,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         bytes32 identifier,
         uint256 time,
         bytes memory ancillaryData
-    ) public view returns (bool, int256) {
+    ) private view returns (bool, int256) {
         if (address(previousVotingContract) == address(0)) return (false, 0);
 
         if (previousVotingContract.hasPrice(identifier, time, ancillaryData))
