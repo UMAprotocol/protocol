@@ -495,12 +495,6 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         VoteInstance storage voteInstance = priceRequest.voteInstances[currentRoundId];
         voteInstance.voteSubmissions[voter].commit = hash;
 
-        // There is a very specific edge case that can occur if the only participates in a vote stakes after the request
-        // is created and the request is rolled. If this happens, a request becomes unresolvable due to lastVotingRound
-        // not being correctly updated. To combat this, we can check this assignment here. This is a no-op in all
-        // cases except the edge case specified as this should be assigned correctly elsewhere.
-        if (priceRequest.lastVotingRound != currentRoundId) priceRequest.lastVotingRound = uint32(currentRoundId);
-
         emit VoteCommitted(voter, msg.sender, currentRoundId, identifier, time, ancillaryData);
     }
 
@@ -754,14 +748,20 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         _updateAccountSlashingTrackers(voterAddress, indexTo);
     }
 
-    // Updates the global and selected wallet's trackers for staking and voting.
+    // Updates the global and selected wallet's trackers for staking and voting. Note that the order of these calls is
+    // very important due to the interplay between slashing and inactive/active liquidity.
     function _updateTrackers(address voterAddress) internal override {
         _updateAccountSlashingTrackers(voterAddress, priceRequestIds.length);
         super._updateTrackers(voterAddress);
     }
 
+    // Starting index for a staker is the first value that nextIndexToProcess is set to and defines the first index that
+    // a staker is suspectable to receiving slashing on. Note that we offset the length of the pendingPriceRequests
+    // array as you are still suspectable to slashing if you stake for the first time in the commit phase of an active
+    //vote. If you stake during an active reveal then your liquidity will be marked as inactive within Staker.sol until
+    // the its activated in the next round and as such you'll miss out on being slashed for that round.
     function _getStartingIndexForStaker() internal view override returns (uint64) {
-        return SafeCast.toUint64(priceRequestIds.length - (_inActiveReveal() ? 0 : pendingPriceRequests.length));
+        return SafeCast.toUint64(priceRequestIds.length - pendingPriceRequests.length);
     }
 
     // Checks if we are in an active voting reveal phase (currently revealing votes).
