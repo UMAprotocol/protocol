@@ -315,7 +315,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         bytes32 identifier,
         uint256 time,
         bytes memory ancillaryData
-    ) external override onlyOwner() {
+    ) external override onlyOwner() onlyIfNotMigrated() {
         _requestPrice(identifier, time, ancillaryData, true);
     }
 
@@ -914,7 +914,11 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
      * @param spamRequestIndices list of request indices to be declared as spam. Each element is a
      * pair of uint256s representing the start and end of the range.
      */
-    function signalRequestsAsSpamForDeletion(uint256[2][] calldata spamRequestIndices) external nonReentrant() {
+    function signalRequestsAsSpamForDeletion(uint256[2][] calldata spamRequestIndices)
+        external
+        nonReentrant()
+        onlyIfNotMigrated()
+    {
         votingToken.transferFrom(msg.sender, address(this), spamDeletionProposalBond);
         uint256 currentTime = getCurrentTime();
         uint256 runningValidationIndex;
