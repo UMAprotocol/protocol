@@ -974,10 +974,8 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         if (resolutionPrice != 0) {
             // Delete the price requests associated with the spam.
             for (uint256 i = 0; i < spamDeletionProposals[proposalId].spamRequestIndices.length; i = unsafe_inc(i)) {
-                uint64 startIndex =
-                    SafeCast.toUint64(spamDeletionProposals[proposalId].spamRequestIndices[uint256(i)][0]);
-                uint64 endIndex =
-                    SafeCast.toUint64(spamDeletionProposals[proposalId].spamRequestIndices[uint256(i)][1]);
+                uint64 startIndex = SafeCast.toUint64(spamDeletionProposals[proposalId].spamRequestIndices[i][0]);
+                uint64 endIndex = SafeCast.toUint64(spamDeletionProposals[proposalId].spamRequestIndices[i][1]);
                 for (uint256 j = startIndex; j <= endIndex; j++) {
                     bytes32 requestId = priceRequestIds[j];
                     // Remove from pendingPriceRequests.
@@ -1042,7 +1040,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
             MinimumVotingAncillaryInterface(address(previousVotingContract))
                 .retrieveRewards(voterAddress, roundId, toRetrieve)
                 .rawValue;
-        return (rewards);
+        return rewards;
     }
 
     /****************************************

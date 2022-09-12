@@ -242,7 +242,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
      *  The balance of the delegate remains unchanged.
      * @return uint256 the amount of tokens that the voter is staking.
      */
-    function withdrawAndRestake() external override returns (uint256) {
+    function withdrawAndRestake() external returns (uint256) {
         address voter = getVoterFromDelegate(msg.sender);
         uint256 rewards = _withdrawRewards(voter, address(this));
         _stakeTo(address(this), voter, rewards);
