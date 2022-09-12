@@ -3120,7 +3120,7 @@ describe("VotingV2", function () {
     await voting.methods.commitVote(identifier, time + 1, hash4).send({ from: account3 });
 
     // Now, move into the reveal phase. If a voter stakes at this point they should automatically skip the previous
-    // requests slashing them as it was not posable for them to be staked at that point in time.
+    // requests slashing them as it was not possible for them to be staked at that point in time.
     await moveToNextPhase(voting, accounts[0]);
     await voting.methods.stake(toWei("4000000")).send({ from: account4 });
     assert.equal((await voting.methods.voterStakes(account4).call()).nextIndexToProcess, 2);

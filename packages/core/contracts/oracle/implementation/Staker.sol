@@ -110,7 +110,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
      ****************************************/
 
     /**
-     * @notice Pulls tokens from users wallet and stakes them. If we are in an active reveal phase the stake amount will
+     * @notice Pulls tokens from user's wallet and stakes them. If we are in an active reveal phase the stake amount will
      * be added to the pending stake. If not, the stake amount will be added to the active stake.
      * @param amount the amount of tokens to stake.
      */
@@ -237,7 +237,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
     /**
      * @notice Stake accumulated rewards. This is merely a convenience mechanism that combines the voter's withdrawal and stake
      *  in the same transaction if requested by a delegate or the voter.
-     * @dev This method requires that the msg.sender(voter or delegate) has approved this contract.
+     * @dev This method requires that the msg.sender (voter or delegate) has approved this contract.
      * @dev The rewarded tokens simply pass through this contract before being staked on the voter's behalf.
      *  The balance of the delegate remains unchanged.
      * @return uint256 the amount of tokens that the voter is staking.
