@@ -221,7 +221,7 @@ describe("EmergencyProposer", function () {
       receipt,
       proposer,
       "EmergencyProposalExecuted",
-      (event) => event.id === id && event.sender === submitter
+      (event) => event.id === id && event.sender === submitter && event.lockedTokens == quorum
     );
 
     // Clean up votingToken balance.
@@ -253,7 +253,7 @@ describe("EmergencyProposer", function () {
       receipt,
       proposer,
       "EmergencyProposalSlashed",
-      (event) => event.id === id && event.sender === submitter
+      (event) => event.id === id && event.sender === submitter && event.lockedTokens == quorum
     );
 
     // Verify balanes.
@@ -302,7 +302,8 @@ describe("EmergencyProposer", function () {
       receipt,
       proposer,
       "EmergencyProposalRemoved",
-      (event) => event.id === id && event.caller === submitter && event.sender === submitter
+      (event) =>
+        event.id === id && event.caller === submitter && event.sender === submitter && event.lockedTokens == quorum
     );
 
     // Clean up votingToken balance.
