@@ -128,14 +128,6 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
         _stakeTo(msg.sender, recipient, amount);
     }
 
-    function setPendingStake(
-        address wallet,
-        uint64 index,
-        uint256 amount
-    ) internal {
-        voterStakes[wallet].pendingStakes[index] += amount;
-    }
-
     function _stakeTo(
         address from,
         address recipient,
@@ -367,6 +359,14 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
      ****************************************/
 
     function _computePendingStakes(address wallet, uint256 amount) internal virtual {}
+
+    function _setPendingStake(
+        address wallet,
+        uint64 index,
+        uint256 amount
+    ) internal {
+        voterStakes[wallet].pendingStakes[index] += amount;
+    }
 
     // Determine if we are in an active reveal phase. This function should be overridden by the child contract.
     function _inActiveReveal() internal view virtual returns (bool) {

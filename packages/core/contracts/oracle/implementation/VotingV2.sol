@@ -618,14 +618,6 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         return false;
     }
 
-    function _computePendingStakes(address wallet, uint256 amount) internal override {
-        uint256 currentRoundId = getCurrentRoundId();
-        for (uint256 i = 0; i < pendingPriceRequests.length; i = unsafe_inc(i)) {
-            if (_getRequestStatus(priceRequests[pendingPriceRequests[i]], currentRoundId) == RequestStatus.Active)
-                setPendingStake(wallet, priceRequests[pendingPriceRequests[i]].priceRequestIndex, amount);
-        }
-    }
-
     /**
      * @notice Returns the current voting phase, as a function of the current time.
      * @return Phase to indicate the current phase. Either { Commit, Reveal, NUM_PHASES }.
@@ -769,6 +761,14 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     // Checks if we are in an active voting reveal phase (currently revealing votes).
     function _inActiveReveal() internal view override returns (bool) {
         return (currentActiveRequests() && getVotePhase() == Phase.Reveal);
+    }
+
+    function _computePendingStakes(address wallet, uint256 amount) internal override {
+        uint256 currentRoundId = getCurrentRoundId();
+        for (uint256 i = 0; i < pendingPriceRequests.length; i = unsafe_inc(i)) {
+            if (_getRequestStatus(priceRequests[pendingPriceRequests[i]], currentRoundId) == RequestStatus.Active)
+                _setPendingStake(wallet, priceRequests[pendingPriceRequests[i]].priceRequestIndex, amount);
+        }
     }
 
     // Updates the slashing trackers of a given account based on previous voting activity.
