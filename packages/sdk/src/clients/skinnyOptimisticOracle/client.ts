@@ -84,6 +84,8 @@ export function reduceEvents(state: EventState, event: Event): EventState {
       const id = requestId(typedEvent.args);
       if (!state.requests) state.requests = {};
       state.requests[id] = {
+        // need to maintain previous state in case it exists
+        ...(state.requests[id] || {}),
         ...request,
         requester,
         identifier,
@@ -101,6 +103,7 @@ export function reduceEvents(state: EventState, event: Event): EventState {
       const id = requestId(typedEvent.args);
       if (!state.requests) state.requests = {};
       state.requests[id] = {
+        ...(state.requests[id] || {}),
         ...request,
         requester,
         identifier,
@@ -118,6 +121,7 @@ export function reduceEvents(state: EventState, event: Event): EventState {
       const id = requestId(typedEvent.args);
       if (!state.requests) state.requests = {};
       state.requests[id] = {
+        ...(state.requests[id] || {}),
         ...request,
         requester,
         identifier,
@@ -135,6 +139,7 @@ export function reduceEvents(state: EventState, event: Event): EventState {
       const id = requestId(typedEvent.args);
       if (!state.requests) state.requests = {};
       state.requests[id] = {
+        ...(state.requests[id] || {}),
         ...request,
         requester,
         identifier,
