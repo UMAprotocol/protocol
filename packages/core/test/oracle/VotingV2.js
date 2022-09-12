@@ -92,11 +92,7 @@ describe("VotingV2", function () {
 
   afterEach(async function () {
     for (const ac of [account1, account2, account3, account4, rand]) {
-      try {
-        if (voting.methods.updateTrackers) await voting.methods.updateTrackers(ac).send({ from: account1 });
-      } catch (err) {
-        console.log(err);
-      }
+      if (voting.methods.updateTrackers) await voting.methods.updateTrackers(ac).send({ from: account1 });
     }
 
     if (!voting.events["VoterSlashed"]) return;
