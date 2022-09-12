@@ -771,6 +771,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
     function _computePendingStakes(address wallet, uint256 amount) internal override {
         uint256 currentRoundId = getCurrentRoundId();
+        _freezeRoundVariables(currentRoundId);
         for (uint256 i = 0; i < pendingPriceRequests.length; i = unsafe_inc(i)) {
             if (_getRequestStatus(priceRequests[pendingPriceRequests[i]], currentRoundId) == RequestStatus.Active)
                 _setPendingStake(wallet, priceRequests[pendingPriceRequests[i]].priceRequestIndex, amount);

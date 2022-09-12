@@ -105,10 +105,7 @@ describe("VotingV2", function () {
 
     const sum = events.map((e) => Number(web3.utils.fromWei(e.returnValues.slashedTokens))).reduce((a, b) => a + b, 0);
 
-    const condition = Math.abs(sum) < 10e-10;
-    if (!condition) {
-      console.log(Math.abs(sum));
-    }
+    assert(Math.abs(sum) < 10e-10, `VoterSlashed events should sum to 0, but sum is ${sum}`);
   });
 
   it("Constructor", async function () {
