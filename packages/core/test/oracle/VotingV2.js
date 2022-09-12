@@ -89,6 +89,27 @@ describe("VotingV2", function () {
     await moveToNextRound(voting, accounts[0]);
   });
 
+  afterEach(async function () {
+    for (const ac of [account1, account2, account3, account4, rand]) {
+      try {
+        if (voting.methods.updateTrackers) await voting.methods.updateTrackers(ac).send({ from: account1 });
+      } catch (err) {
+        console.log(err);
+      }
+    }
+
+    if (!voting.events["VoterSlashed"]) return;
+
+    const events = await voting.getPastEvents("VoterSlashed", { fromBlock: 0, toBlock: "latest" });
+
+    const sum = events.map((e) => Number(web3.utils.fromWei(e.returnValues.slashedTokens))).reduce((a, b) => a + b, 0);
+
+    const condition = Math.abs(sum) < 10e-10;
+    if (!condition) {
+      console.log(Math.abs(sum));
+    }
+  });
+
   it("Constructor", async function () {
     // GAT must be < total supply
     const invalidGat = web3.utils.toWei("100000000");
@@ -1000,7 +1021,8 @@ describe("VotingV2", function () {
       return ev.newAddress == migratedVoting;
     });
 
-    result = await voting.methods.setSlashingLibrary(ZERO_ADDRESS).send({ from: accounts[0] });
+    const oldSlashingLibrary = await voting.methods.slashingLibrary().call();
+    result = await voting.methods.setSlashingLibrary(oldSlashingLibrary).send({ from: accounts[0] });
     await assertEventEmitted(result, voting, "SlashingLibraryChanged");
   });
 
