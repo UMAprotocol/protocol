@@ -275,6 +275,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
         emit SetNewUnstakeCoolDown(newUnstakeCoolDown);
     }
 
+    // Updates an account internal trackers.
     function _updateTrackers(address voterAddress) internal virtual {
         _updateReward(voterAddress);
     }
@@ -333,6 +334,17 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
      * @return uint256 the total stake.
      */
     function getVoterStake(address voterAddress) public view returns (uint256) {
+        return voterStakes[voterAddress].stake;
+    }
+
+    /**
+     * @notice  Returns the total amount of tokens staked by the voter, after applying updateTrackers. Specifically used
+     * by offchain applications to simulate the cumulative stake + unapplied slashing updates without sending a transaction.
+     * @param voterAddress the address of the voter.
+     * @return uint256 the total stake.
+     */
+    function getVoterStakePostUpdate(address voterAddress) external returns (uint256) {
+        _updateTrackers(voterAddress);
         return voterStakes[voterAddress].stake;
     }
 
