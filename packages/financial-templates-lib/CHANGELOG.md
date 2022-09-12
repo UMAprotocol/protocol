@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.31.0](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.30.4...@uma/financial-templates-lib@2.31.0) (2022-09-12)
+
+### Features
+
+- **financial-templates-lib:** pagerduty v2 logger ([#3975](https://github.com/UMAprotocol/protocol/issues/3975)) ([e869586](https://github.com/UMAprotocol/protocol/commit/e86958673292411a801396eb91c09dbc417c7f71))
+
 ## [2.30.4](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.30.3...@uma/financial-templates-lib@2.30.4) (2022-08-24)
 
 **Note:** Version bump only for package @uma/financial-templates-lib

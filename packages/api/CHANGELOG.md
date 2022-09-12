@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.11.0](https://github.com/UMAprotocol/protocol/compare/@uma/api@0.10.18...@uma/api@0.11.0) (2022-09-12)
+
+### Features
+
+- add env for GCP storage configuration and update GCP libraries ([#4148](https://github.com/UMAprotocol/protocol/issues/4148)) ([250c412](https://github.com/UMAprotocol/protocol/commit/250c4125af5302cc6bef4d304dc37ee107ff7c8f))
+
 ## [0.10.18](https://github.com/UMAprotocol/protocol/compare/@uma/api@0.10.17...@uma/api@0.10.18) (2022-08-24)
 
 ### Bug Fixes

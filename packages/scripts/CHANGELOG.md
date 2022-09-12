@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.17.0](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.16.0...@uma/scripts@1.17.0) (2022-09-12)
+
+### Features
+
+- update votingv2 deployment arguments ([#4145](https://github.com/UMAprotocol/protocol/issues/4145)) ([eb68e22](https://github.com/UMAprotocol/protocol/commit/eb68e22f34f69fa0a6b6df0e53792444566b8a6c))
+
 # [1.16.0](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.15.2...@uma/scripts@1.16.0) (2022-08-24)
 
 ### Features
