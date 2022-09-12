@@ -1,7 +1,7 @@
 version: 2.1
 setup: true
 orbs:
-  continuation: cmig/continuation@0.3.1
+  continuation: circleci/continuation@0.3.1
 jobs:
   checkout_and_install:
     docker:
