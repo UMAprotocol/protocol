@@ -618,6 +618,14 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         return false;
     }
 
+    function _computePendingStakes(address wallet, uint256 amount) internal override {
+        uint256 currentRoundId = getCurrentRoundId();
+        for (uint256 i = 0; i < pendingPriceRequests.length; i = unsafe_inc(i)) {
+            if (_getRequestStatus(priceRequests[pendingPriceRequests[i]], currentRoundId) == RequestStatus.Active)
+                setPendingStake(wallet, priceRequests[pendingPriceRequests[i]].priceRequestIndex, amount);
+        }
+    }
+
     /**
      * @notice Returns the current voting phase, as a function of the current time.
      * @return Phase to indicate the current phase. Either { Commit, Reveal, NUM_PHASES }.
@@ -835,14 +843,15 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
                 );
 
             // The voter did not reveal or did not commit. Slash at noVote rate.
+            uint256 effectiveStake = voterStake.activeStake - voterStake.pendingStakes[priceRequest.priceRequestIndex];
             if (voteInstance.voteSubmissions[voterAddress].revealHash == 0)
-                slash -= int256((voterStake.activeStake * noVoteSlashPerToken) / 1e18);
+                slash -= int256((effectiveStake * noVoteSlashPerToken) / 1e18);
 
                 // The voter did not vote with the majority. Slash at wrongVote rate.
             else if (
                 !voteInstance.resultComputation.wasVoteCorrect(voteInstance.voteSubmissions[voterAddress].revealHash)
             )
-                slash -= int256((voterStake.activeStake * wrongVoteSlashPerToken) / 1e18);
+                slash -= int256((effectiveStake * wrongVoteSlashPerToken) / 1e18);
 
                 // The voter voted correctly. Receive a pro-rate share of the other voters slashed amounts as a reward.
             else {
@@ -854,7 +863,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
                             voteInstance.resultComputation.totalVotes)) +
                         ((wrongVoteSlashPerToken * (voteInstance.resultComputation.totalVotes - totalCorrectVotes)))) /
                         1e18;
-                slash += int256(((voterStake.activeStake * totalSlashed)) / totalCorrectVotes);
+                slash += int256(((effectiveStake * totalSlashed)) / totalCorrectVotes);
             }
 
             nextIndexToProcess = requestIndex + 1;

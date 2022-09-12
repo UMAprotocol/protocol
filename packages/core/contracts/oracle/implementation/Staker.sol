@@ -32,6 +32,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
         uint256 activeStake;
         uint256 pendingUnstake;
         uint256 pendingStake;
+        mapping(uint64 => uint256) pendingStakes;
         uint256 rewardsPaidPerToken;
         uint256 outstandingRewards;
         int256 unappliedSlash;
@@ -128,6 +129,14 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
         _stakeTo(msg.sender, recipient, amount);
     }
 
+    function setPendingStake(
+        address wallet,
+        uint64 index,
+        uint256 amount
+    ) internal {
+        voterStakes[wallet].pendingStakes[index] += amount;
+    }
+
     function _stakeTo(
         address from,
         address recipient,
@@ -143,12 +152,12 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
         _updateTrackers(recipient);
 
         if (_inActiveReveal()) {
-            voterStake.pendingStake += amount;
-            cumulativePendingStake += amount;
-        } else {
-            voterStake.activeStake += amount;
-            cumulativeActiveStake += amount;
+            _computePendingStakes(recipient, amount);
         }
+
+        voterStake.activeStake += amount;
+        cumulativeActiveStake += amount;
+
         // Tokens are pulled from the "from" address and sent to this contract.
         // During withdrawAndRestake, "from" is the same as the address of this contract, so there is no need to transfer.
         if (from != address(this)) votingToken.transferFrom(from, address(this), amount);
@@ -365,6 +374,8 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
     /****************************************
      *          INTERNAL FUNCTIONS          *
      ****************************************/
+
+    function _computePendingStakes(address wallet, uint256 amount) internal virtual {}
 
     // Determine if we are in an active reveal phase. This function should be overridden by the child contract.
     function _inActiveReveal() internal view virtual returns (bool) {
