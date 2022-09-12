@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.16;
 
-import "./Finder.sol";
 import "./GovernorV2.sol";
 import "./Constants.sol";
 import "../interfaces/OracleAncillaryInterface.sol";
@@ -28,7 +27,6 @@ contract EmergencyProposer is Ownable, Lockable {
     uint64 public minimumWaitTime;
 
     GovernorV2 public immutable governor;
-    Finder public immutable finder;
 
     struct EmergencyProposal {
         address sender;
@@ -81,18 +79,15 @@ contract EmergencyProposer is Ownable, Lockable {
      * @param _token the ERC20 token that the quorum is in.
      * @param _quorum the tokens needed to propose an emergency action..
      * @param _governor the governor contract that this contract makes proposals to.
-     * @param _finder the finder contract used to look up addresses.
      */
     constructor(
         IERC20 _token,
         uint256 _quorum,
         GovernorV2 _governor,
-        Finder _finder,
         address _executor
     ) {
         token = _token;
         governor = _governor;
-        finder = _finder;
         setExecutor(_executor);
         setQuorum(_quorum);
 
