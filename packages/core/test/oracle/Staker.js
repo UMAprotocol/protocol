@@ -56,7 +56,7 @@ describe("Staker", function () {
     it("Staking accumulates prorata rewards over time", async function () {
       await staker.methods.stake(amountToStake).send({ from: account1 });
       const stakingBalance = await staker.methods.voterStakes(account1).call();
-      assert.equal(stakingBalance.amount, amountToStake);
+      assert.equal(stakingBalance.stake, amountToStake);
 
       // Advance time forward 1000 seconds. At an emission rate of 0.64 per second we should see the accumulation of
       // all rewards equal to the amount staked * 1000 * 0.64 = 640.
@@ -105,7 +105,7 @@ describe("Staker", function () {
 
       await staker.methods.withdrawAndRestake().send({ from: account1 });
       const stakingBalance = await staker.methods.voterStakes(account1).call();
-      assert.equal(stakingBalance.amount, amountToStake.add(toWei("640")));
+      assert.equal(stakingBalance.stake, amountToStake.add(toWei("640")));
     });
 
     it("Stake to", async function () {
@@ -117,9 +117,9 @@ describe("Staker", function () {
       const stakingBalanceAccount1 = await staker.methods.voterStakes(account1).call();
       const stakingBalanceAccount2 = await staker.methods.voterStakes(account2).call();
 
-      assert.equal(stakingBalanceAccount1.amount, initialBalanceAccount1.amount);
+      assert.equal(stakingBalanceAccount1.stake, initialBalanceAccount1.stake);
       // assert.equal(stakingBalanceAccount1.pendingStake, initialBalanceAccount1.pendingStake);
-      assert.equal(stakingBalanceAccount2.amount, amountToStake.add(toBN(initialBalanceAccount2.amount)));
+      assert.equal(stakingBalanceAccount2.stake, amountToStake.add(toBN(initialBalanceAccount2.stake)));
       // assert.equal(stakingBalanceAccount2.pendingStake, initialBalanceAccount2.pendingStake);
 
       // Advance time forward 1000 seconds. At an emission rate of 0.64 per second we should see the accumulation of
@@ -128,7 +128,7 @@ describe("Staker", function () {
 
       await staker.methods.withdrawAndRestake().send({ from: account2 });
       const stakingBalance = await staker.methods.voterStakes(account2).call();
-      assert.equal(stakingBalance.amount, amountToStake.add(toWei("640")));
+      assert.equal(stakingBalance.stake, amountToStake.add(toWei("640")));
     });
 
     it("Withdraw and restake delegate", async function () {
@@ -161,7 +161,7 @@ describe("Staker", function () {
       const stakingBalance = await staker.methods.voterStakes(account1).call();
 
       // Voter active stake should have increased by the outstanding rewards and the delegate votingToken balance should be the same.
-      assert.equal(stakingBalance.amount, toBN(stakingBalanceInitial.amount).add(toBN(outstandingRewards)));
+      assert.equal(stakingBalance.stake, toBN(stakingBalanceInitial.stake).add(toBN(outstandingRewards)));
       assert.equal(delegateVotingTokenBalance, await votingToken.methods.balanceOf(account2).call());
     });
 
@@ -218,8 +218,8 @@ describe("Staker", function () {
       await staker.methods.applySlashingToCumulativeStaked(account1, toWei("200")).send({ from: account1 });
       await staker.methods.applySlashingToCumulativeStaked(account2, toWei("-200")).send({ from: account1 });
       // Cumulative staked should have been shifted accordingly.
-      assert.equal((await staker.methods.voterStakes(account1).call()).amount, toWei("1200"));
-      assert.equal((await staker.methods.voterStakes(account2).call()).amount, toWei("2800"));
+      assert.equal((await staker.methods.voterStakes(account1).call()).stake, toWei("1200"));
+      assert.equal((await staker.methods.voterStakes(account2).call()).stake, toWei("2800"));
 
       // Outstanding rewards should be the same as before (not effected by slashing)
       assert.equal(await staker.methods.outstandingRewards(account1).call(), toWei("160")); // 160

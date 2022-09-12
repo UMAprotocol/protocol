@@ -28,7 +28,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
     ExpandedIERC20 public votingToken;
 
     struct VoterStake {
-        uint256 amount;
+        uint256 stake;
         uint256 pendingUnstake;
         mapping(uint64 => uint256) pendingStakes;
         uint256 rewardsPaidPerToken;
@@ -137,20 +137,20 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
         // If the staker has a cumulative staked balance of 0 then we can shortcut their lastRequestIndexConsidered to
         // the most recent index. This means we don't need to traverse requests where the staker was not staked.
         // _getStartingIndexForStaker returns the appropriate index to start at.
-        if (voterStake.amount == 0) voterStake.nextIndexToProcess = _getStartingIndexForStaker();
+        if (voterStake.stake == 0) voterStake.nextIndexToProcess = _getStartingIndexForStaker();
         _updateTrackers(recipient);
 
         if (_inActiveReveal()) {
             _computePendingStakes(recipient, amount);
         }
 
-        voterStake.amount += amount;
+        voterStake.stake += amount;
         cumulativeStake += amount;
 
         // Tokens are pulled from the "from" address and sent to this contract.
         // During withdrawAndRestake, "from" is the same as the address of this contract, so there is no need to transfer.
         if (from != address(this)) votingToken.transferFrom(from, address(this), amount);
-        emit Staked(recipient, from, amount, voterStake.amount, 0, voterStake.pendingUnstake, cumulativeStake, 0);
+        emit Staked(recipient, from, amount, voterStake.stake, 0, voterStake.pendingUnstake, cumulativeStake, 0);
     }
 
     /**
@@ -165,14 +165,14 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
         _updateTrackers(msg.sender);
         VoterStake storage voterStake = voterStakes[msg.sender];
 
-        require(voterStake.amount >= amount && voterStake.pendingUnstake == 0, "Bad amount or pending unstake");
+        require(voterStake.stake >= amount && voterStake.pendingUnstake == 0, "Bad amount or pending unstake");
 
         cumulativeStake -= amount;
         voterStake.pendingUnstake = amount;
-        voterStake.amount -= amount;
+        voterStake.stake -= amount;
         voterStake.unstakeRequestTime = SafeCast.toUint64(getCurrentTime());
 
-        emit RequestedUnstake(msg.sender, amount, voterStake.unstakeRequestTime, voterStake.amount, 0);
+        emit RequestedUnstake(msg.sender, amount, voterStake.unstakeRequestTime, voterStake.stake, 0);
     }
 
     /**
@@ -193,7 +193,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
             votingToken.transfer(msg.sender, tokensToSend);
         }
 
-        emit ExecutedUnstake(msg.sender, tokensToSend, voterStake.amount, 0);
+        emit ExecutedUnstake(msg.sender, tokensToSend, voterStake.stake, 0);
     }
 
     /**
@@ -305,7 +305,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
         VoterStake storage voterStake = voterStakes[voterAddress];
 
         return
-            ((voterStake.amount * (rewardPerToken() - voterStake.rewardsPaidPerToken)) / 1e18) +
+            ((voterStake.stake * (rewardPerToken() - voterStake.rewardsPaidPerToken)) / 1e18) +
             voterStake.outstandingRewards;
     }
 
@@ -333,7 +333,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
      * @return uint256 the total stake.
      */
     function getVoterStake(address voterAddress) public view returns (uint256) {
-        return voterStakes[voterAddress].amount;
+        return voterStakes[voterAddress].stake;
     }
 
     /**
