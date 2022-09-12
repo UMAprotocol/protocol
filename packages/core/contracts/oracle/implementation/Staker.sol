@@ -21,7 +21,6 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
 
     uint256 public emissionRate;
     uint256 public cumulativeActiveStake;
-    uint256 public cumulativePendingStake;
     uint256 public rewardPerTokenStored;
     uint64 public lastUpdateTime;
     uint64 public unstakeCoolDown;
@@ -151,16 +150,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
         // Tokens are pulled from the "from" address and sent to this contract.
         // During withdrawAndRestake, "from" is the same as the address of this contract, so there is no need to transfer.
         if (from != address(this)) votingToken.transferFrom(from, address(this), amount);
-        emit Staked(
-            recipient,
-            from,
-            amount,
-            voterStake.amount,
-            0,
-            voterStake.pendingUnstake,
-            cumulativeActiveStake,
-            cumulativePendingStake
-        );
+        emit Staked(recipient, from, amount, voterStake.amount, 0, voterStake.pendingUnstake, cumulativeActiveStake, 0);
     }
 
     /**
@@ -334,7 +324,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
      * @return uint256 the cumulative stake.
      */
     function getCumulativeStake() public view returns (uint256) {
-        return cumulativeActiveStake + cumulativePendingStake;
+        return cumulativeActiveStake;
     }
 
     /**
