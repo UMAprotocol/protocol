@@ -543,9 +543,9 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         delete voteSubmission.commit; // Small gas refund for clearing up storage.
 
         voteSubmission.revealHash = keccak256(abi.encode(price)); // Set the voter's submission.
-        uint256 activeStake = voterStakes[voter].activeStake;
-        voteInstance.resultComputation.addVote(price, activeStake); // Add vote to the results.
-        emit VoteRevealed(voter, msg.sender, currentRoundId, identifier, time, price, ancillaryData, activeStake);
+        uint256 amount = voterStakes[voter].amount;
+        voteInstance.resultComputation.addVote(price, amount); // Add vote to the results.
+        emit VoteRevealed(voter, msg.sender, currentRoundId, identifier, time, price, ancillaryData, amount);
     }
 
     /**
@@ -843,7 +843,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
                 );
 
             // The voter did not reveal or did not commit. Slash at noVote rate.
-            uint256 effectiveStake = voterStake.activeStake - voterStake.pendingStakes[priceRequest.priceRequestIndex];
+            uint256 effectiveStake = voterStake.amount - voterStake.pendingStakes[priceRequest.priceRequestIndex];
             if (voteInstance.voteSubmissions[voterAddress].revealHash == 0)
                 slash -= int256((effectiveStake * noVoteSlashPerToken) / 1e18);
 
@@ -904,11 +904,10 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         VoterStake storage voterStake,
         address voterAddress
     ) internal {
-        if (slash + int256(voterStake.activeStake) > 0)
-            voterStake.activeStake = uint256(int256(voterStake.activeStake) + slash);
-        else voterStake.activeStake = 0;
+        if (slash + int256(voterStake.amount) > 0) voterStake.amount = uint256(int256(voterStake.amount) + slash);
+        else voterStake.amount = 0;
         voterStake.unappliedSlash = 0;
-        emit VoterSlashed(voterAddress, slash, voterStake.activeStake);
+        emit VoterSlashed(voterAddress, slash, voterStake.amount);
     }
 
     /****************************************
