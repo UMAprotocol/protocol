@@ -1087,7 +1087,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         if (requestStatus == RequestStatus.Future) return (false, 0, "Price is still to be voted on");
         (bool previouslyResolved, int256 previousPrice) =
             _getPriceFromPreviousVotingContract(identifier, time, ancillaryData);
-        if (previouslyResolved) return (true, previousPrice, "Returned from previous contract");
+        if (previouslyResolved) return (true, previousPrice, "");
         return (false, 0, "Price was never requested");
     }
 
