@@ -14,3 +14,4 @@ export type SerializableEvent = Omit<
 
 // taken from ethers code https://github.com/ethers-io/ethers.js/blob/master/packages/abi/src.ts/interface.ts#L654
 export type Log = Parameters<Interface["parseLog"]>[0];
+export type ParsedLog = ReturnType<Interface["parseLog"]>;
