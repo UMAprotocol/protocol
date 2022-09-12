@@ -28,7 +28,7 @@ contract StakerTest is StakerControlledTiming {
 
     function applySlashingToCumulativeStaked(address voter, int256 amount) public {
         _updateTrackers(voter); // apply any unaccumulated rewards before modifying the staked balances.
-        require(int256(cumulativeActiveStake) + amount >= 0, "Cumulative staked cannot be negative");
+        require(int256(cumulativeStake) + amount >= 0, "Cumulative staked cannot be negative");
         voterStakes[voter].amount = uint256(int256(voterStakes[voter].amount) + amount);
     }
 

@@ -20,7 +20,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
      ****************************************/
 
     uint256 public emissionRate;
-    uint256 public cumulativeActiveStake;
+    uint256 public cumulativeStake;
     uint256 public rewardPerTokenStored;
     uint64 public lastUpdateTime;
     uint64 public unstakeCoolDown;
@@ -53,7 +53,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
         uint256 voterActiveStake,
         uint256 voterPendingStake,
         uint256 voterPendingUnstake,
-        uint256 cumulativeActiveStake,
+        uint256 cumulativeStake,
         uint256 cumulativePendingStake
     );
 
@@ -80,7 +80,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
         address indexed voter,
         uint256 voterActiveStake,
         uint256 voterPendingStake,
-        uint256 cumulativeActiveStake,
+        uint256 cumulativeStake,
         uint256 cumulativePendingStake
     );
 
@@ -145,12 +145,12 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
         }
 
         voterStake.amount += amount;
-        cumulativeActiveStake += amount;
+        cumulativeStake += amount;
 
         // Tokens are pulled from the "from" address and sent to this contract.
         // During withdrawAndRestake, "from" is the same as the address of this contract, so there is no need to transfer.
         if (from != address(this)) votingToken.transferFrom(from, address(this), amount);
-        emit Staked(recipient, from, amount, voterStake.amount, 0, voterStake.pendingUnstake, cumulativeActiveStake, 0);
+        emit Staked(recipient, from, amount, voterStake.amount, 0, voterStake.pendingUnstake, cumulativeStake, 0);
     }
 
     /**
@@ -167,7 +167,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
 
         require(voterStake.amount >= amount && voterStake.pendingUnstake == 0, "Bad amount or pending unstake");
 
-        cumulativeActiveStake -= amount;
+        cumulativeStake -= amount;
         voterStake.pendingUnstake = amount;
         voterStake.amount -= amount;
         voterStake.unstakeRequestTime = SafeCast.toUint64(getCurrentTime());
@@ -324,7 +324,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
      * @return uint256 the cumulative stake.
      */
     function getCumulativeStake() public view returns (uint256) {
-        return cumulativeActiveStake;
+        return cumulativeStake;
     }
 
     /**

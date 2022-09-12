@@ -1137,8 +1137,8 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
             // Set the round gat percentage to the current global gat rate.
             rounds[roundId].gat = gat;
 
-            // Store the cumulativeActiveStake at this roundId to work out slashing and voting trackers.
-            rounds[roundId].cumulativeActiveStakeAtRound = cumulativeActiveStake;
+            // Store the cumulativeStake at this roundId to work out slashing and voting trackers.
+            rounds[roundId].cumulativeActiveStakeAtRound = cumulativeStake;
         }
     }
 
