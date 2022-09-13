@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.36.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.35.0...@uma/core@2.36.0) (2022-09-12)
+
+### Features
+
+- **core:** implement floored linear fpl ([#4119](https://github.com/UMAprotocol/protocol/issues/4119)) ([e4eb721](https://github.com/UMAprotocol/protocol/commit/e4eb7213f1954afb2fc4d8d4e498562efedfcc1e))
+- add hardhat tracer ([#4140](https://github.com/UMAprotocol/protocol/issues/4140)) ([42b79ae](https://github.com/UMAprotocol/protocol/commit/42b79ae06f3913bfbc4cfe1c3ac980e84dadedc4))
+
 # [2.35.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.34.0...@uma/core@2.35.0) (2022-08-24)
 
 ### Features

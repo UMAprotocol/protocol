@@ -121,6 +121,9 @@ describe("EmergencyProposer", function () {
     assert(await didContractThrow(proposer.methods.setQuorum(toWei("10")).send({ from: submitter })));
     assert(await didContractThrow(proposer.methods.setQuorum(toWei("10")).send({ from: executor })));
 
+    // Quorum has to be less than total supply
+    assert(await didContractThrow(setQuorum(await votingToken.methods.totalSupply().call())));
+
     // Set the quorum to 10.
     const tx = await setQuorum(toWei("10"));
     await assertEventEmitted(tx, proposer, "QuorumSet", (event) => event.quorum === toWei("10"));
@@ -137,6 +140,10 @@ describe("EmergencyProposer", function () {
     // Owner is the only one who can set the minimumWaitTime.
     assert(await didContractThrow(proposer.methods.setMinimumWaitTime(toWei("10")).send({ from: submitter })));
     assert(await didContractThrow(proposer.methods.setMinimumWaitTime(toWei("10")).send({ from: executor })));
+
+    // Max minimum wait time is 1 month
+    const oneMonthInSeconds = 60 * 60 * 24 * 30;
+    assert(await didContractThrow(setMinimumWaitTime(oneMonthInSeconds + 1)));
 
     // Set the quorum to 10.
     const tx = await setMinimumWaitTime("100");
@@ -221,7 +228,7 @@ describe("EmergencyProposer", function () {
       receipt,
       proposer,
       "EmergencyProposalExecuted",
-      (event) => event.id === id && event.sender === submitter
+      (event) => event.id === id && event.sender === submitter && event.lockedTokens == quorum
     );
 
     // Clean up votingToken balance.
@@ -253,10 +260,10 @@ describe("EmergencyProposer", function () {
       receipt,
       proposer,
       "EmergencyProposalSlashed",
-      (event) => event.id === id && event.sender === submitter
+      (event) => event.id === id && event.sender === submitter && event.lockedTokens == quorum
     );
 
-    // Verify balanes.
+    // Verify balances.
     assert.equal(await votingToken.methods.balanceOf(submitter).call(), "0");
     assert.equal(await votingToken.methods.balanceOf(governor.options.address).call(), quorum);
   });
@@ -302,7 +309,8 @@ describe("EmergencyProposer", function () {
       receipt,
       proposer,
       "EmergencyProposalRemoved",
-      (event) => event.id === id && event.caller === submitter && event.sender === submitter
+      (event) =>
+        event.id === id && event.caller === submitter && event.sender === submitter && event.lockedTokens == quorum
     );
 
     // Clean up votingToken balance.

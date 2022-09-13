@@ -3,9 +3,6 @@ pragma solidity 0.8.16;
 
 import "./Finder.sol";
 import "./GovernorV2.sol";
-import "./Constants.sol";
-import "../interfaces/OracleAncillaryInterface.sol";
-import "./AdminIdentifierLib.sol";
 import "../../common/implementation/Lockable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -108,6 +105,7 @@ contract EmergencyProposer is Ownable, Lockable {
      * via the governor contract.
      */
     function emergencyPropose(GovernorV2.Transaction[] memory transactions) external nonReentrant() returns (uint256) {
+        require(msg.sender != address(governor), "Governor cant propose"); // The governor should never be the proposer.
         token.safeTransferFrom(msg.sender, address(this), quorum);
         uint256 id = emergencyProposals.length;
         EmergencyProposal storage proposal = emergencyProposals.push();
@@ -171,9 +169,12 @@ contract EmergencyProposer is Ownable, Lockable {
     /**
      * @notice After a proposal expires, this method can be used by the executor to execute the proposal.
      * @dev This method effectively gives the executor veto power over any proposal.
+     * @dev The first transaction execution sends the total amount of ETH required to complete all payable
+     * transactions in the Governor. The EmergencyProposer must receive this amount of ETH in advance.
+     * The executed transactions are then able to use this ETH by including a nonzero value.
      * @param id id of the proposal.
      */
-    function executeEmergencyProposal(uint256 id) public payable nonReentrant() {
+    function executeEmergencyProposal(uint256 id) external payable nonReentrant() {
         require(msg.sender == executor, "must be called by executor");
 
         EmergencyProposal storage proposal = emergencyProposals[id];
@@ -202,6 +203,7 @@ contract EmergencyProposer is Ownable, Lockable {
      */
     function setQuorum(uint256 newQuorum) public nonReentrant() onlyOwner() {
         require(newQuorum != 0, "quorum must be > 0");
+        require(newQuorum < token.totalSupply(), "quorum must be < totalSupply");
         quorum = newQuorum;
         emit QuorumSet(newQuorum);
     }
@@ -225,6 +227,7 @@ contract EmergencyProposer is Ownable, Lockable {
      */
     function setMinimumWaitTime(uint64 newMinimumWaitTime) public nonReentrant() onlyOwner() {
         require(newMinimumWaitTime != 0, "minimumWaitTime == 0");
+        require(newMinimumWaitTime <= 4 weeks, "minimumWaitTime > 1 month");
         minimumWaitTime = newMinimumWaitTime;
         emit MinimumWaitTimeSet(newMinimumWaitTime);
     }

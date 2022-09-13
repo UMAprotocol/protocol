@@ -315,7 +315,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         bytes32 identifier,
         uint256 time,
         bytes memory ancillaryData
-    ) external override onlyOwner() {
+    ) external override onlyOwner() onlyIfNotMigrated() {
         _requestPrice(identifier, time, ancillaryData, true);
     }
 
@@ -937,7 +937,11 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
      * @param spamRequestIndices list of request indices to be declared as spam. Each element is a
      * pair of uint256s representing the start and end of the range.
      */
-    function signalRequestsAsSpamForDeletion(uint256[2][] calldata spamRequestIndices) external nonReentrant() {
+    function signalRequestsAsSpamForDeletion(uint256[2][] calldata spamRequestIndices)
+        external
+        nonReentrant()
+        onlyIfNotMigrated()
+    {
         votingToken.transferFrom(msg.sender, address(this), spamDeletionProposalBond);
         uint256 currentTime = getCurrentTime();
         uint256 runningValidationIndex;
@@ -997,10 +1001,8 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         if (resolutionPrice != 0) {
             // Delete the price requests associated with the spam.
             for (uint256 i = 0; i < spamDeletionProposals[proposalId].spamRequestIndices.length; i = unsafe_inc(i)) {
-                uint64 startIndex =
-                    SafeCast.toUint64(spamDeletionProposals[proposalId].spamRequestIndices[uint256(i)][0]);
-                uint64 endIndex =
-                    SafeCast.toUint64(spamDeletionProposals[proposalId].spamRequestIndices[uint256(i)][1]);
+                uint64 startIndex = SafeCast.toUint64(spamDeletionProposals[proposalId].spamRequestIndices[i][0]);
+                uint64 endIndex = SafeCast.toUint64(spamDeletionProposals[proposalId].spamRequestIndices[i][1]);
                 for (uint256 j = startIndex; j <= endIndex; j++) {
                     bytes32 requestId = priceRequestIds[j];
                     // Remove from pendingPriceRequests.
@@ -1065,7 +1067,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
             MinimumVotingAncillaryInterface(address(previousVotingContract))
                 .retrieveRewards(voterAddress, roundId, toRetrieve)
                 .rawValue;
-        return (rewards);
+        return rewards;
     }
 
     /****************************************
@@ -1110,7 +1112,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         if (requestStatus == RequestStatus.Future) return (false, 0, "Price is still to be voted on");
         (bool previouslyResolved, int256 previousPrice) =
             _getPriceFromPreviousVotingContract(identifier, time, ancillaryData);
-        if (previouslyResolved) return (true, previousPrice, "Returned from previous contract");
+        if (previouslyResolved) return (true, previousPrice, "");
         return (false, 0, "Price was never requested");
     }
 
@@ -1118,7 +1120,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         bytes32 identifier,
         uint256 time,
         bytes memory ancillaryData
-    ) public view returns (bool, int256) {
+    ) private view returns (bool, int256) {
         if (address(previousVotingContract) == address(0)) return (false, 0);
 
         if (previousVotingContract.hasPrice(identifier, time, ancillaryData))

@@ -202,7 +202,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
      *  The balance of the delegate remains unchanged.
      * @return uint256 the amount of tokens that the voter is staking.
      */
-    function withdrawAndRestake() external override returns (uint256) {
+    function withdrawAndRestake() external returns (uint256) {
         address voter = getVoterFromDelegate(msg.sender);
         uint256 rewards = _withdrawRewards(voter, address(this));
         _stakeTo(address(this), voter, rewards);
@@ -215,7 +215,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
      * low-security available wallet for voting while keeping access to staked amounts secure by a more secure wallet.
      * @param delegate the address of the delegate.
      */
-    function setDelegate(address delegate) external nonReentrant() {
+    function setDelegate(address delegate) external {
         voterStakes[msg.sender].delegate = delegate;
     }
 
@@ -224,7 +224,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
      * if the delegator also selected the delegate to do so (two-way relationship needed).
      * @param delegator the address of the delegator.
      */
-    function setDelegator(address delegator) external nonReentrant() {
+    function setDelegator(address delegator) external {
         delegateToStaker[msg.sender] = delegator;
     }
 

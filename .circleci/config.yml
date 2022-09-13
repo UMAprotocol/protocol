@@ -1,11 +1,11 @@
 version: 2.1
 setup: true
 orbs:
-  continuation: circleci/continuation@0.1.2
+  continuation: circleci/continuation@0.3.1
 jobs:
   checkout_and_install:
     docker:
-      - image: circleci/node:lts
+      - image: cimg/node:lts
     working_directory: ~/protocol
     steps:
       - checkout
@@ -22,7 +22,7 @@ jobs:
             - ~/.ssh
   build:
     docker:
-      - image: circleci/node:lts
+      - image: cimg/node:lts
     working_directory: ~/protocol
     resource_class: large
     steps:
@@ -30,7 +30,7 @@ jobs:
           key: protocol-{{ .Environment.CIRCLE_SHA1 }}
       - run:
           name: Install Prereqs
-          command: sudo apt-get install -y rsync
+          command: sudo apt-get update && sudo apt-get install -y rsync
       - run:
           name: Run build
           command: yarn qbuild
@@ -44,7 +44,7 @@ jobs:
             - ~/.ssh
   lint:
     docker:
-      - image: circleci/node:lts
+      - image: cimg/node:lts
     working_directory: ~/protocol
     steps:
       - restore_cache:
@@ -66,7 +66,7 @@ jobs:
           configuration_path: /home/circleci/protocol/.circleci/lerna_config.yml
   coverage:
     docker:
-      - image: circleci/node:lts
+      - image: cimg/node:lts
     working_directory: ~/protocol
     steps:
       - checkout
@@ -79,7 +79,7 @@ jobs:
           path: packages/core/coverage
   publish:
     docker:
-      - image: circleci/node:lts
+      - image: cimg/node:lts
     working_directory: ~/protocol
     steps:
       - add_ssh_keys:

@@ -29,7 +29,7 @@ export class OptimisticOracle implements OracleInterface {
     this.requests[id] = update;
     return update;
   };
-  private makeEventFromLog = (log: Log) => {
+  parseLog = (log: Log) => {
     const description = this.contract.interface.parseLog(log);
     return {
       ...log,
@@ -105,7 +105,7 @@ export class OptimisticOracle implements OracleInterface {
     };
   }
   updateFromTransactionReceipt(receipt: TransactionReceipt): void {
-    const events = receipt.logs.map((log) => this.makeEventFromLog(log));
+    const events = receipt.logs.map((log) => this.parseLog(log));
     this.updateFromEvents((events as unknown[]) as OptimisticOracleEvent[]);
   }
   listRequests(): Request[] {
