@@ -1,4 +1,13 @@
-import { BigNumberish, BigNumber, Signer, TransactionResponse, TransactionReceipt, Provider } from "../types/ethers";
+import {
+  BigNumberish,
+  BigNumber,
+  Signer,
+  TransactionResponse,
+  TransactionReceipt,
+  Provider,
+  Log,
+  ParsedLog,
+} from "../types/ethers";
 import { RequestState, RequestKey } from "../../clients/optimisticOracle";
 import { Client } from "../client";
 import { OracleType } from "../types/state";
@@ -65,6 +74,7 @@ export interface OracleInterface {
   updateFromTransactionReceipt: (receipt: TransactionReceipt) => void;
   getProps: () => Promise<OracleProps>;
   listRequests: () => Requests;
+  parseLog: (log: Log) => ParsedLog;
 }
 
 export type ClientTable = {
