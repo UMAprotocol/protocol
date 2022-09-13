@@ -35,7 +35,6 @@ contract EmergencyProposer is Ownable, Lockable {
         GovernorV2.Transaction[] transactions;
     }
     EmergencyProposal[] public emergencyProposals;
-    uint256 public currentId;
     address public executor;
 
     event QuorumSet(uint256 quorum);
