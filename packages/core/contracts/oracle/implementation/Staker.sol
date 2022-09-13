@@ -89,8 +89,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
      ****************************************/
 
     /**
-     * @notice Pulls tokens from users wallet and stakes them. If we are in an active reveal phase the stake amount will
-     * be added to the pending stake. If not, the stake amount will be added to the active stake.
+     * @notice Pulls tokens from the senders's wallet and stakes them on his behalf.
      * @param amount the amount of tokens to stake.
      */
     function stake(uint256 amount) public {
@@ -98,8 +97,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
     }
 
     /**
-     * @notice Pulls tokens from sender wallet and stakes them for the recipient. If we are in an active reveal phase the
-     * stake amount will be added to the pending stake. If not, the stake amount will be added to the active stake.
+     * @notice Pulls tokens from the senders's wallet and stakes them for the recipient.
      * @param recipient the recipient address.
      * @param amount the amount of tokens to stake.
      */
