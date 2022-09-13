@@ -52,8 +52,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
         uint256 amount,
         uint256 voterStake,
         uint256 voterPendingUnstake,
-        uint256 cumulativeStake,
-        uint256 cumulativePendingStake
+        uint256 cumulativeStake
     );
 
     event RequestedUnstake(address indexed voter, uint256 amount, uint256 unstakeTime, uint256 voterStake);
@@ -127,7 +126,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
         // Tokens are pulled from the "from" address and sent to this contract.
         // During withdrawAndRestake, "from" is the same as the address of this contract, so there is no need to transfer.
         if (from != address(this)) votingToken.transferFrom(from, address(this), amount);
-        emit Staked(recipient, from, amount, voterStake.stake, voterStake.pendingUnstake, cumulativeStake, 0);
+        emit Staked(recipient, from, amount, voterStake.stake, voterStake.pendingUnstake, cumulativeStake);
     }
 
     /**
