@@ -140,9 +140,8 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
         if (voterStake.stake == 0) voterStake.nextIndexToProcess = _getStartingIndexForStaker();
         _updateTrackers(recipient);
 
-        if (_inActiveReveal()) {
-            _computePendingStakes(recipient, amount);
-        }
+        // If during an active reveal phase, we update the pendingStakes
+        _computePendingStakes(recipient, amount);
 
         voterStake.stake += amount;
         cumulativeStake += amount;
