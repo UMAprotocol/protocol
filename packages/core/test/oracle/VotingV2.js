@@ -2676,7 +2676,6 @@ describe("VotingV2", function () {
     );
     assert.equal((await voting.methods.voterStakes(account1).call()).stake, 0);
     assert.equal((await voting.methods.voterStakes(account1).call()).pendingUnstake, 0);
-    // assert.equal((await voting.methods.voterStakes(account1).call()).pendingStake, 0);
 
     // Move to the next round to conclude the vote.
     await moveToNextRound(voting, accounts[0]);
@@ -3608,7 +3607,7 @@ describe("VotingV2", function () {
     assert.equal((await voting.methods.voterStakes(account2).call()).nextIndexToProcess, 4);
   });
 
-  xit("Inactive staked amounts should not earn rewards", async function () {
+  it("Inactive user's should must slashed", async function () {
     // In this test, a user stakes during an activeReveal phase, does not vote in several priceRequests
     // in successive rounds, and his stake remains inactive throughout, preventing him from being slashed.
     // The user receives the initial staked sum as well as the rewards for the constant emission rate at the end.
@@ -3638,8 +3637,7 @@ describe("VotingV2", function () {
     await moveToNextRound(voting, accounts[0]);
 
     // Check that amount is 0 and pendingStake equals the initial staked amount
-    assert.equal((await voting.methods.voterStakes(rand).call()).stake, toWei("0"));
-    // assert.equal((await voting.methods.voterStakes(rand).call()).pendingStake, randStakingAmount);
+    assert.equal((await voting.methods.voterStakes(rand).call()).stake, randStakingAmount);
 
     let roundId = (await voting.methods.getCurrentRoundId().call()).toString();
     const salt = getRandomSignedInt();
@@ -3696,17 +3694,16 @@ describe("VotingV2", function () {
 
     assert(sum === 0, "Slashing calculation problem");
 
-    assert.equal((await voting.methods.voterStakes(rand).call()).stake, toWei("0"));
-    // assert.equal((await voting.methods.voterStakes(rand).call()).pendingStake, randStakingAmount);
+    // Rand user has been slashed
+    assert(toBN((await voting.methods.voterStakes(rand).call()).stake).lt(toBN(randStakingAmount)));
 
     await moveToNextRound(voting, accounts[0]);
     assert.equal(await voting.methods.getVotePhase().call(), 0);
 
-    // User rand updates his trackers during a commit phase so his amount is now the initial staked amount and pendingStake is 0
     await voting.methods.updateTrackers(rand).send({ from: account1 });
 
-    assert.equal((await voting.methods.voterStakes(rand).call()).stake, randStakingAmount);
-    // assert.equal((await voting.methods.voterStakes(rand).call()).pendingStake, toWei("0"));
+    // Rand user has been slashed
+    assert(toBN((await voting.methods.voterStakes(rand).call()).stake).lt(toBN(randStakingAmount)));
 
     await voting.methods.setUnstakeCoolDown(0).send({ from: account1 });
     await voting.methods.requestUnstake((await voting.methods.voterStakes(rand).call()).stake).send({ from: rand });
@@ -3715,8 +3712,8 @@ describe("VotingV2", function () {
     await voting.methods.executeUnstake().send({ from: rand });
     const balanceAfter = await votingToken.methods.balanceOf(rand).call();
 
-    // Rand receives his initial staked amount. He is not slashed
-    assert(toBN(balanceAfter).sub(toBN(balanceBefore)).eq(toBN(randStakingAmount)));
+    // Rand has been slashed
+    assert(toBN(balanceAfter).sub(toBN(balanceBefore)).lt(toBN(randStakingAmount)));
 
     const outstandingRewards = await voting.methods.outstandingRewards(rand).call();
 
