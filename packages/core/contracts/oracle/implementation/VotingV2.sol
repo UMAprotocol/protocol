@@ -773,6 +773,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         if (getVotePhase() != Phase.Reveal) return;
         uint256 currentRoundId = getCurrentRoundId();
         bool inActiveReveal = false;
+        // If we are during an active reveal phase then we store the pending stake for each price request.
         for (uint256 i = 0; i < pendingPriceRequests.length; i = unsafe_inc(i)) {
             if (_getRequestStatus(priceRequests[pendingPriceRequests[i]], currentRoundId) == RequestStatus.Active) {
                 if (!inActiveReveal) {

@@ -50,39 +50,19 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
         address indexed voter,
         address indexed from,
         uint256 amount,
-        uint256 voterActiveStake,
-        uint256 voterPendingStake,
+        uint256 voterStake,
         uint256 voterPendingUnstake,
         uint256 cumulativeStake,
         uint256 cumulativePendingStake
     );
 
-    event RequestedUnstake(
-        address indexed voter,
-        uint256 amount,
-        uint256 unstakeTime,
-        uint256 voterActiveStake,
-        uint256 voterPendingStake
-    );
+    event RequestedUnstake(address indexed voter, uint256 amount, uint256 unstakeTime, uint256 voterStake);
 
-    event ExecutedUnstake(
-        address indexed voter,
-        uint256 tokensSent,
-        uint256 voterActiveStake,
-        uint256 voterPendingStake
-    );
+    event ExecutedUnstake(address indexed voter, uint256 tokensSent, uint256 voterStake);
 
     event WithdrawnRewards(address indexed voter, address indexed delegate, uint256 tokensWithdrawn);
 
     event UpdatedReward(address indexed voter, uint256 newReward, uint256 lastUpdateTime);
-
-    event UpdatedActiveStake(
-        address indexed voter,
-        uint256 voterActiveStake,
-        uint256 voterPendingStake,
-        uint256 cumulativeStake,
-        uint256 cumulativePendingStake
-    );
 
     event SetNewEmissionRate(uint256 newEmissionRate);
 
@@ -140,7 +120,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
         if (voterStake.stake == 0) voterStake.nextIndexToProcess = _getStartingIndexForStaker();
         _updateTrackers(recipient);
 
-        // If during an active reveal phase, we update the pendingStakes
+        // Compute pending stakes when needed.
         _computePendingStakes(recipient, amount);
 
         voterStake.stake += amount;
@@ -149,7 +129,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
         // Tokens are pulled from the "from" address and sent to this contract.
         // During withdrawAndRestake, "from" is the same as the address of this contract, so there is no need to transfer.
         if (from != address(this)) votingToken.transferFrom(from, address(this), amount);
-        emit Staked(recipient, from, amount, voterStake.stake, 0, voterStake.pendingUnstake, cumulativeStake, 0);
+        emit Staked(recipient, from, amount, voterStake.stake, voterStake.pendingUnstake, cumulativeStake, 0);
     }
 
     /**
@@ -171,7 +151,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
         voterStake.stake -= amount;
         voterStake.unstakeRequestTime = SafeCast.toUint64(getCurrentTime());
 
-        emit RequestedUnstake(msg.sender, amount, voterStake.unstakeRequestTime, voterStake.stake, 0);
+        emit RequestedUnstake(msg.sender, amount, voterStake.unstakeRequestTime, voterStake.stake);
     }
 
     /**
@@ -192,7 +172,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
             votingToken.transfer(msg.sender, tokensToSend);
         }
 
-        emit ExecutedUnstake(msg.sender, tokensToSend, voterStake.stake, 0);
+        emit ExecutedUnstake(msg.sender, tokensToSend, voterStake.stake);
     }
 
     /**
