@@ -169,6 +169,9 @@ contract EmergencyProposer is Ownable, Lockable {
     /**
      * @notice After a proposal expires, this method can be used by the executor to execute the proposal.
      * @dev This method effectively gives the executor veto power over any proposal.
+     * @dev The first transaction execution sends the total amount of ETH required to complete all payable
+     * transactions in the Governor. The EmergencyProposer must receive this amount of ETH in advance.
+     * The executed transactions are then able to use this ETH by including a nonzero value.
      * @param id id of the proposal.
      */
     function executeEmergencyProposal(uint256 id) external payable nonReentrant() {
