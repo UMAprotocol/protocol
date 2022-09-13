@@ -228,7 +228,7 @@ describe("EmergencyProposer", function () {
       receipt,
       proposer,
       "EmergencyProposalExecuted",
-      (event) => event.id === id && event.sender === submitter
+      (event) => event.id === id && event.sender === submitter && event.lockedTokens == quorum
     );
 
     // Clean up votingToken balance.
@@ -260,10 +260,10 @@ describe("EmergencyProposer", function () {
       receipt,
       proposer,
       "EmergencyProposalSlashed",
-      (event) => event.id === id && event.sender === submitter
+      (event) => event.id === id && event.sender === submitter && event.lockedTokens == quorum
     );
 
-    // Verify balanes.
+    // Verify balances.
     assert.equal(await votingToken.methods.balanceOf(submitter).call(), "0");
     assert.equal(await votingToken.methods.balanceOf(governor.options.address).call(), quorum);
   });
@@ -309,7 +309,8 @@ describe("EmergencyProposer", function () {
       receipt,
       proposer,
       "EmergencyProposalRemoved",
-      (event) => event.id === id && event.caller === submitter && event.sender === submitter
+      (event) =>
+        event.id === id && event.caller === submitter && event.sender === submitter && event.lockedTokens == quorum
     );
 
     // Clean up votingToken balance.
