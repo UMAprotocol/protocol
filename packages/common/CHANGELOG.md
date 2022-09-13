@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.27.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.26.0...@uma/common@2.27.0) (2022-09-12)
+
+### Features
+
+- add env for GCP storage configuration and update GCP libraries ([#4148](https://github.com/UMAprotocol/protocol/issues/4148)) ([250c412](https://github.com/UMAprotocol/protocol/commit/250c4125af5302cc6bef4d304dc37ee107ff7c8f))
+- add hardhat tracer ([#4140](https://github.com/UMAprotocol/protocol/issues/4140)) ([42b79ae](https://github.com/UMAprotocol/protocol/commit/42b79ae06f3913bfbc4cfe1c3ac980e84dadedc4))
+
 # [2.26.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.25.0...@uma/common@2.26.0) (2022-08-16)
 
 ### Bug Fixes

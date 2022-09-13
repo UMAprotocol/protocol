@@ -38,7 +38,7 @@ contract VotingUpgraderV2 {
     // Existing governor is the only one who can initiate the upgrade.
     MultiRole public existingGovernor;
 
-    // Existing governor is the only one who can initiate the upgrade.
+    // New governor contract, set to be the UMA DVM owner post upgrade.
     address public newGovernor;
 
     // Existing Voting contract needs to be informed of the address of the new Voting contract.
@@ -49,7 +49,7 @@ contract VotingUpgraderV2 {
     // Finder contract to push upgrades to.
     Finder public finder;
 
-    // Addresses to upgrade.
+    // Addresses to upgrade the Voting.sol contract to for the new voting contract.
     address public newVoting;
 
     // Additional ownable contracts to transfer ownership of.
@@ -59,7 +59,7 @@ contract VotingUpgraderV2 {
     MultiroleContracts public multiroleContracts;
 
     /**
-     * @notice Removes an address from the whitelist.
+     * @notice Constructs the voting upgrader to upgrade to the DVM V2. This upgrades the Voting & governor contracts.
      * @param _existingGovernor the existing Governor contract address.
      * @param _newGovernor the new Governor contract address.
      * @param _existingVoting the current/existing Voting contract address.

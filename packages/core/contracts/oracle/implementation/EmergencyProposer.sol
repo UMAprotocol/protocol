@@ -103,6 +103,7 @@ contract EmergencyProposer is Ownable, Lockable {
      * via the governor contract.
      */
     function emergencyPropose(GovernorV2.Transaction[] memory transactions) external nonReentrant() returns (uint256) {
+        require(msg.sender != address(governor), "Governor cant propose"); // The governor should never be the proposer.
         token.safeTransferFrom(msg.sender, address(this), quorum);
         uint256 id = emergencyProposals.length;
         EmergencyProposal storage proposal = emergencyProposals.push();
@@ -168,7 +169,7 @@ contract EmergencyProposer is Ownable, Lockable {
      * @dev This method effectively gives the executor veto power over any proposal.
      * @param id id of the proposal.
      */
-    function executeEmergencyProposal(uint256 id) public payable nonReentrant() {
+    function executeEmergencyProposal(uint256 id) external payable nonReentrant() {
         require(msg.sender == executor, "must be called by executor");
 
         EmergencyProposal storage proposal = emergencyProposals[id];

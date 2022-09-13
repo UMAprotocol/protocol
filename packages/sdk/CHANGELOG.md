@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.29.0](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.28.1...@uma/sdk@0.29.0) (2022-09-12)
+
+### Bug Fixes
+
+- **sdk:** fix failing lookup for skinny oo by tx hash ([#4169](https://github.com/UMAprotocol/protocol/issues/4169)) ([b4c7cb7](https://github.com/UMAprotocol/protocol/commit/b4c7cb76f587b5b005b46158876476864a5cd712))
+
+### Features
+
+- add env for GCP storage configuration and update GCP libraries ([#4148](https://github.com/UMAprotocol/protocol/issues/4148)) ([250c412](https://github.com/UMAprotocol/protocol/commit/250c4125af5302cc6bef4d304dc37ee107ff7c8f))
+
 ## [0.28.1](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.28.0...@uma/sdk@0.28.1) (2022-08-24)
 
 ### Bug Fixes

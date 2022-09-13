@@ -32,15 +32,6 @@ export class OptimisticOracleV2 implements OracleInterface {
     this.requests[id] = update;
     return update;
   };
-  private makeEventFromLog = (log: Log) => {
-    const description = this.contract.interface.parseLog(log);
-    return {
-      ...log,
-      ...description,
-      event: description.name,
-      eventSignature: description.signature,
-    };
-  };
   private setDisputeHash({ requester, identifier, timestamp, ancillaryData }: RequestKey, hash: string): Request {
     return this.upsertRequest({ requester, identifier, timestamp, ancillaryData, disputeTx: hash });
   }
@@ -65,6 +56,15 @@ export class OptimisticOracleV2 implements OracleInterface {
     return this.upsertRequest({ ...request, state, requester, identifier, timestamp, ancillaryData });
   }
 
+  parseLog = (log: Log) => {
+    const description = this.contract.interface.parseLog(log);
+    return {
+      ...log,
+      ...description,
+      event: description.name,
+      eventSignature: description.signature,
+    };
+  };
   getRequest(key: RequestKey): Request {
     const id = requestId(key);
     const request = this.requests[id] || key;
@@ -108,7 +108,7 @@ export class OptimisticOracleV2 implements OracleInterface {
     };
   }
   updateFromTransactionReceipt(receipt: TransactionReceipt): void {
-    const events = receipt.logs.map((log) => this.makeEventFromLog(log));
+    const events = receipt.logs.map((log) => this.parseLog(log));
     this.updateFromEvents((events as unknown[]) as OptimisticOracleEvent[]);
   }
   listRequests(): Request[] {

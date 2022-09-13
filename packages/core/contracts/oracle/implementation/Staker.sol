@@ -255,7 +255,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
      * low-security available wallet for voting while keeping access to staked amounts secure by a more secure wallet.
      * @param delegate the address of the delegate.
      */
-    function setDelegate(address delegate) external nonReentrant() {
+    function setDelegate(address delegate) external {
         voterStakes[msg.sender].delegate = delegate;
     }
 
@@ -264,7 +264,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
      * if the delegator also selected the delegate to do so (two-way relationship needed).
      * @param delegator the address of the delegator.
      */
-    function setDelegator(address delegator) external nonReentrant() {
+    function setDelegator(address delegator) external {
         delegateToStaker[msg.sender] = delegator;
     }
 
@@ -292,6 +292,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
         emit SetNewUnstakeCoolDown(newUnstakeCoolDown);
     }
 
+    // Updates an account internal trackers.
     function _updateTrackers(address voterAddress) internal virtual {
         _updateReward(voterAddress);
         _updateActiveStake(voterAddress);
@@ -351,6 +352,17 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
      * @return uint256 the total stake.
      */
     function getVoterStake(address voterAddress) public view returns (uint256) {
+        return voterStakes[voterAddress].activeStake + voterStakes[voterAddress].pendingStake;
+    }
+
+    /**
+     * @notice  Returns the total amount of tokens staked by the voter, after applying updateTrackers. Specifically used
+     * by offchain applications to simulate the cumulative stake + unapplied slashing updates without sending a transaction.
+     * @param voterAddress the address of the voter.
+     * @return uint256 the total stake.
+     */
+    function getVoterStakePostUpdate(address voterAddress) external returns (uint256) {
+        _updateTrackers(voterAddress);
         return voterStakes[voterAddress].activeStake + voterStakes[voterAddress].pendingStake;
     }
 
