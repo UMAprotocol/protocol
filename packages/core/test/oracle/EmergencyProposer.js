@@ -256,7 +256,7 @@ describe("EmergencyProposer", function () {
       (event) => event.id === id && event.sender === submitter && event.lockedTokens == quorum
     );
 
-    // Verify balanes.
+    // Verify balances.
     assert.equal(await votingToken.methods.balanceOf(submitter).call(), "0");
     assert.equal(await votingToken.methods.balanceOf(governor.options.address).call(), quorum);
   });
