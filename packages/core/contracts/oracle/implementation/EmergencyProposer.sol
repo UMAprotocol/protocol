@@ -174,7 +174,7 @@ contract EmergencyProposer is Ownable, Lockable {
      * @dev This method effectively gives the executor veto power over any proposal.
      * @param id id of the proposal.
      */
-    function executeEmergencyProposal(uint256 id) public payable nonReentrant() {
+    function executeEmergencyProposal(uint256 id) external payable nonReentrant() {
         require(msg.sender == executor, "must be called by executor");
 
         EmergencyProposal storage proposal = emergencyProposals[id];
