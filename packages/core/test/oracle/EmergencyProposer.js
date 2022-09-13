@@ -49,7 +49,6 @@ describe("EmergencyProposer", function () {
       votingToken.options.address,
       quorum,
       governor.options.address,
-      finder.options.address,
       executor,
       timer.options.address
     ).send({ from: owner });
