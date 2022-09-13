@@ -284,6 +284,16 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
      ****************************************/
 
     /**
+     * @notice Gets the pending stake for a voter.
+     * @param voterAddress the voter address.
+     * @param index pending stake index.
+     * @return uint256 amount of the pending stake.
+     */
+    function getVoterPendingStake(address voterAddress, uint64 index) external view returns (uint256) {
+        return voterStakes[voterAddress].pendingStakes[index];
+    }
+
+    /**
      * @notice Gets the voter from the delegate.
      * @param caller caller of the function or the address to check in the mapping between a voter and their delegate.
      * @return address voter that corresponds to the delegate.
@@ -314,26 +324,8 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
      * @return uint256 the reward per token.
      */
     function rewardPerToken() public view returns (uint256) {
-        if (getCumulativeStake() == 0) return rewardPerTokenStored;
-        return
-            rewardPerTokenStored + ((getCurrentTime() - lastUpdateTime) * emissionRate * 1e18) / getCumulativeStake();
-    }
-
-    /**
-     * @notice  Returns the total amount of tokens staked. This is the sum of the active stake and the pending stake.
-     * @return uint256 the cumulative stake.
-     */
-    function getCumulativeStake() public view returns (uint256) {
-        return cumulativeStake;
-    }
-
-    /**
-     * @notice  Returns the total amount of tokens staked by the voter.
-     * @param voterAddress the address of the voter.
-     * @return uint256 the total stake.
-     */
-    function getVoterStake(address voterAddress) public view returns (uint256) {
-        return voterStakes[voterAddress].stake;
+        if (cumulativeStake == 0) return rewardPerTokenStored;
+        return rewardPerTokenStored + ((getCurrentTime() - lastUpdateTime) * emissionRate * 1e18) / cumulativeStake;
     }
 
     /**

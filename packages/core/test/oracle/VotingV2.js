@@ -1288,13 +1288,21 @@ describe("VotingV2", function () {
     // unstake and restake in the new voting contract
     await voting.methods.setUnstakeCoolDown(0).send({ from: account1 });
     await voting.methods.updateTrackers(account1).send({ from: account1 });
-    await voting.methods.requestUnstake(await voting.methods.getVoterStake(account1).call()).send({ from: account1 });
+    await voting.methods
+      .requestUnstake((await voting.methods.voterStakes(account1).call()).stake)
+      .send({ from: account1 });
     await voting.methods.updateTrackers(account2).send({ from: account1 });
-    await voting.methods.requestUnstake(await voting.methods.getVoterStake(account2).call()).send({ from: account2 });
+    await voting.methods
+      .requestUnstake((await voting.methods.voterStakes(account2).call()).stake)
+      .send({ from: account2 });
     await voting.methods.updateTrackers(account3).send({ from: account1 });
-    await voting.methods.requestUnstake(await voting.methods.getVoterStake(account3).call()).send({ from: account3 });
+    await voting.methods
+      .requestUnstake((await voting.methods.voterStakes(account3).call()).stake)
+      .send({ from: account3 });
     await voting.methods.updateTrackers(account4).send({ from: account1 });
-    await voting.methods.requestUnstake(await voting.methods.getVoterStake(account4).call()).send({ from: account4 });
+    await voting.methods
+      .requestUnstake((await voting.methods.voterStakes(account4).call()).stake)
+      .send({ from: account4 });
 
     await voting.methods.executeUnstake().send({ from: account1 });
     await voting.methods.executeUnstake().send({ from: account2 });
@@ -1367,7 +1375,9 @@ describe("VotingV2", function () {
 
     // Request to unstake such that this account has some token balance to actually get rewards in the old contract.
     await voting.methods.setUnstakeCoolDown(0).send({ from: account1 });
-    await voting.methods.requestUnstake(await voting.methods.getVoterStake(account1).call()).send({ from: account1 });
+    await voting.methods
+      .requestUnstake((await voting.methods.voterStakes(account1).call()).stake)
+      .send({ from: account1 });
     await voting.methods.executeUnstake().send({ from: account1 });
 
     // Request a price and move to the next round where that will be voted on.
@@ -3699,7 +3709,7 @@ describe("VotingV2", function () {
     // assert.equal((await voting.methods.voterStakes(rand).call()).pendingStake, toWei("0"));
 
     await voting.methods.setUnstakeCoolDown(0).send({ from: account1 });
-    await voting.methods.requestUnstake(await voting.methods.getVoterStake(rand).call()).send({ from: rand });
+    await voting.methods.requestUnstake((await voting.methods.voterStakes(rand).call()).stake).send({ from: rand });
 
     const balanceBefore = await votingToken.methods.balanceOf(rand).call();
     await voting.methods.executeUnstake().send({ from: rand });
@@ -3885,11 +3895,19 @@ describe("VotingV2", function () {
     assert.equal(sum, 0);
 
     await voting.methods.setUnstakeCoolDown(0).send({ from: account1 });
-    await voting.methods.requestUnstake(await voting.methods.getVoterStake(account1).call()).send({ from: account1 });
-    await voting.methods.requestUnstake(await voting.methods.getVoterStake(account2).call()).send({ from: account2 });
-    await voting.methods.requestUnstake(await voting.methods.getVoterStake(account3).call()).send({ from: account3 });
-    await voting.methods.requestUnstake(await voting.methods.getVoterStake(account4).call()).send({ from: account4 });
-    await voting.methods.requestUnstake(await voting.methods.getVoterStake(rand).call()).send({ from: rand });
+    await voting.methods
+      .requestUnstake((await voting.methods.voterStakes(account1).call()).stake)
+      .send({ from: account1 });
+    await voting.methods
+      .requestUnstake((await voting.methods.voterStakes(account2).call()).stake)
+      .send({ from: account2 });
+    await voting.methods
+      .requestUnstake((await voting.methods.voterStakes(account3).call()).stake)
+      .send({ from: account3 });
+    await voting.methods
+      .requestUnstake((await voting.methods.voterStakes(account4).call()).stake)
+      .send({ from: account4 });
+    await voting.methods.requestUnstake((await voting.methods.voterStakes(rand).call()).stake).send({ from: rand });
 
     await voting.methods.executeUnstake().send({ from: account1 });
     await voting.methods.executeUnstake().send({ from: account2 });
@@ -3942,11 +3960,19 @@ describe("VotingV2", function () {
     assert.equal(sum, 0);
 
     await voting.methods.setUnstakeCoolDown(0).send({ from: account1 });
-    await voting.methods.requestUnstake(await voting.methods.getVoterStake(account1).call()).send({ from: account1 });
-    await voting.methods.requestUnstake(await voting.methods.getVoterStake(account2).call()).send({ from: account2 });
-    await voting.methods.requestUnstake(await voting.methods.getVoterStake(account3).call()).send({ from: account3 });
-    await voting.methods.requestUnstake(await voting.methods.getVoterStake(account4).call()).send({ from: account4 });
-    await voting.methods.requestUnstake(await voting.methods.getVoterStake(rand).call()).send({ from: rand });
+    await voting.methods
+      .requestUnstake((await voting.methods.voterStakes(account1).call()).stake)
+      .send({ from: account1 });
+    await voting.methods
+      .requestUnstake((await voting.methods.voterStakes(account2).call()).stake)
+      .send({ from: account2 });
+    await voting.methods
+      .requestUnstake((await voting.methods.voterStakes(account3).call()).stake)
+      .send({ from: account3 });
+    await voting.methods
+      .requestUnstake((await voting.methods.voterStakes(account4).call()).stake)
+      .send({ from: account4 });
+    await voting.methods.requestUnstake((await voting.methods.voterStakes(rand).call()).stake).send({ from: rand });
 
     await voting.methods.executeUnstake().send({ from: account1 });
     await voting.methods.executeUnstake().send({ from: account2 });
