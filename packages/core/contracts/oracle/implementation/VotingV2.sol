@@ -254,7 +254,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         address _previousVotingContract
     ) Staker(_emissionRate, _unstakeCoolDown, _votingToken) {
         voteTiming.init(_phaseLength, _minRollToNextRoundLength);
-        require(_gat < IERC20(_votingToken).totalSupply() && _gat > 0);
+        require(_gat < IERC20(_votingToken).totalSupply() && _gat > 0, "Invalid GAT");
         gat = _gat;
         finder = FinderInterface(_finder);
         slashingLibrary = SlashingLibraryInterface(_slashingLibrary);
@@ -262,7 +262,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         setSpamDeletionProposalBond(_spamDeletionProposalBond);
 
         // We assume indices never get above 2^64. So we should never start with an index above half that range.
-        require(_startingRequestIndex < type(uint64).max / 2);
+        require(_startingRequestIndex < type(uint64).max / 2, "Invalid starting request index");
 
         assembly {
             sstore(priceRequestIds.slot, _startingRequestIndex)
@@ -483,7 +483,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         uint256 currentRoundId = getCurrentRoundId();
         address voter = getVoterFromDelegate(msg.sender);
         _updateTrackers(voter);
-        require(hash != bytes32(0));
+        require(hash != bytes32(0), "Invalid commit hash");
         require(getVotePhase() == Phase.Commit, "Cannot commit in reveal phase");
 
         PriceRequest storage priceRequest = _getPriceRequest(identifier, time, ancillaryData);
@@ -701,7 +701,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
      * @param newGat sets the next round's Gat.
      */
     function setGat(uint256 newGat) external override onlyOwner {
-        require(newGat < votingToken.totalSupply() && newGat > 0);
+        require(newGat < votingToken.totalSupply() && newGat > 0, "Invalid GAT");
         gat = newGat;
         emit GatChanged(newGat);
     }
@@ -952,7 +952,8 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
             require(
                 spamRequestIndex[0] <= spamRequestIndex[1] &&
                     spamRequestIndex[1] < priceRequestIds.length &&
-                    spamRequestIndex[1] > runningValidationIndex
+                    spamRequestIndex[1] > runningValidationIndex,
+                "Invalid spam request index"
             );
 
             runningValidationIndex = spamRequestIndex[1];
@@ -985,14 +986,14 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
      */
 
     function executeSpamDeletion(uint256 proposalId) external nonReentrant() {
-        require(spamDeletionProposals[proposalId].executed == false);
+        require(spamDeletionProposals[proposalId].executed == false, "Proposal already executed");
         spamDeletionProposals[proposalId].executed = true;
 
         bytes32 identifier = SpamGuardIdentifierLib._constructIdentifier(SafeCast.toUint32(proposalId));
 
         (bool hasPrice, int256 resolutionPrice, ) =
             _getPriceOrError(identifier, spamDeletionProposals[proposalId].requestTime, "");
-        require(hasPrice);
+        require(hasPrice, "Spam proposal has not resolved");
 
         // If the price is non zero then the spam deletion request was voted up to delete the requests. Execute delete.
         if (resolutionPrice != 0) {
