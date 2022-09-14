@@ -30,7 +30,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
     struct VoterStake {
         uint256 stake;
         uint256 pendingUnstake;
-        mapping(uint64 => uint256) pendingStakes;
+        mapping(uint256 => uint256) pendingStakes;
         uint256 rewardsPaidPerToken;
         uint256 outstandingRewards;
         int256 unappliedSlash;
@@ -261,13 +261,13 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
      ****************************************/
 
     /**
-     * @notice Gets the pending stake for a voter.
+     * @notice Gets the pending stake for a voter for a given round.
      * @param voterAddress the voter address.
-     * @param index pending stake index.
+     * @param roundId round id.
      * @return uint256 amount of the pending stake.
      */
-    function getVoterPendingStake(address voterAddress, uint64 index) external view returns (uint256) {
-        return voterStakes[voterAddress].pendingStakes[index];
+    function getVoterPendingStake(address voterAddress, uint256 roundId) external view returns (uint256) {
+        return voterStakes[voterAddress].pendingStakes[roundId];
     }
 
     /**
@@ -328,14 +328,14 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
      *          INTERNAL FUNCTIONS          *
      ****************************************/
 
-    function _computePendingStakes(address wallet, uint256 amount) internal virtual {}
+    function _computePendingStakes(address wallet, uint256 amount) internal virtual;
 
     function _setPendingStake(
         address wallet,
-        uint64 index,
+        uint256 roundId,
         uint256 amount
     ) internal {
-        voterStakes[wallet].pendingStakes[index] += amount;
+        voterStakes[wallet].pendingStakes[roundId] += amount;
     }
 
     // Determine if we are in an active reveal phase. This function should be overridden by the child contract.

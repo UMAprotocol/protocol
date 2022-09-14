@@ -39,4 +39,6 @@ contract StakerTest is StakerControlledTiming {
     function _getStartingIndexForStaker() internal view override returns (uint64) {
         return 0;
     }
+
+    function _computePendingStakes(address wallet, uint256 amount) internal override {}
 }

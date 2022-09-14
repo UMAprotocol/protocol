@@ -772,15 +772,12 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     function _computePendingStakes(address wallet, uint256 amount) internal override {
         if (getVotePhase() != Phase.Reveal) return;
         uint256 currentRoundId = getCurrentRoundId();
-        bool inActiveReveal = false;
-        // If we are during an active reveal phase then we store the pending stake for each price request.
+        // If we are during an active reveal phase then we store the pending stake for the roundId
         for (uint256 i = 0; i < pendingPriceRequests.length; i = unsafe_inc(i)) {
             if (_getRequestStatus(priceRequests[pendingPriceRequests[i]], currentRoundId) == RequestStatus.Active) {
-                if (!inActiveReveal) {
-                    inActiveReveal = true;
-                    _freezeRoundVariables(currentRoundId);
-                }
-                _setPendingStake(wallet, priceRequests[pendingPriceRequests[i]].priceRequestIndex, amount);
+                _freezeRoundVariables(currentRoundId);
+                _setPendingStake(wallet, currentRoundId, amount);
+                break;
             }
         }
     }
@@ -856,7 +853,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
                     priceRequest.isGovernance
                 );
 
-            uint256 effectiveStake = voterStake.stake - voterStake.pendingStakes[priceRequest.priceRequestIndex];
+            uint256 effectiveStake = voterStake.stake - voterStake.pendingStakes[priceRequest.lastVotingRound];
 
             // The voter did not reveal or did not commit. Slash at noVote rate.
             if (voteInstance.voteSubmissions[voterAddress].revealHash == 0)
