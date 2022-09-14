@@ -740,10 +740,8 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
      * @param indexTo last price request index to update the trackers for.
      */
     function updateTrackersRange(address voterAddress, uint256 indexTo) external {
-        require(
-            voterStakes[voterAddress].nextIndexToProcess < indexTo && indexTo <= priceRequestIds.length,
-            "Invalid indexTo"
-        );
+        require(voterStakes[voterAddress].nextIndexToProcess < indexTo, "IndexTo <= nextIndexToProcess");
+        require(indexTo <= priceRequestIds.length, "IndexTo > priceRequestIds.length");
 
         _updateAccountSlashingTrackers(voterAddress, indexTo);
     }
@@ -949,11 +947,10 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
             // Check request end index is greater than start index, endIndex is less than the total number of requests,
             // and validate index continuity (each sequential element within the spamRequestIndices array is sequential
             // and increasing in size).
-            require(
-                spamRequestIndex[0] <= spamRequestIndex[1] &&
-                    spamRequestIndex[1] < priceRequestIds.length &&
-                    spamRequestIndex[1] > runningValidationIndex
-            );
+
+            require(spamRequestIndex[0] <= spamRequestIndex[1], "Invalid spam request range");
+            require(spamRequestIndex[1] < priceRequestIds.length, "Invalid spam request index");
+            require(spamRequestIndex[1] > runningValidationIndex, "Invalid spam indices order");
 
             runningValidationIndex = spamRequestIndex[1];
         }
