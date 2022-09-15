@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.16;
 
-import "./Finder.sol";
 import "./GovernorV2.sol";
 import "../../common/implementation/Lockable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
@@ -25,7 +24,6 @@ contract EmergencyProposer is Ownable, Lockable {
     uint64 public minimumWaitTime;
 
     GovernorV2 public immutable governor;
-    Finder public immutable finder;
 
     struct EmergencyProposal {
         address sender;
@@ -34,7 +32,6 @@ contract EmergencyProposer is Ownable, Lockable {
         GovernorV2.Transaction[] transactions;
     }
     EmergencyProposal[] public emergencyProposals;
-    uint256 public currentId;
     address public executor;
 
     event QuorumSet(uint256 quorum);
@@ -76,20 +73,17 @@ contract EmergencyProposer is Ownable, Lockable {
     /**
      * @notice Construct the EmergencyProposer contract.
      * @param _token the ERC20 token that the quorum is in.
-     * @param _quorum the tokens needed to propose an emergency action..
+     * @param _quorum the tokens needed to propose an emergency action.
      * @param _governor the governor contract that this contract makes proposals to.
-     * @param _finder the finder contract used to look up addresses.
      */
     constructor(
         IERC20 _token,
         uint256 _quorum,
         GovernorV2 _governor,
-        Finder _finder,
         address _executor
     ) {
         token = _token;
         governor = _governor;
-        finder = _finder;
         setExecutor(_executor);
         setQuorum(_quorum);
 
@@ -103,6 +97,7 @@ contract EmergencyProposer is Ownable, Lockable {
      * @dev Caller of this method must approve (and have) quorum amount of token to be pulled from their wallet.
      * @param transactions array of transactions to be executed in the emergency action. When executed, will be sent
      * via the governor contract.
+     * @return uint256 the emergency proposal id.
      */
     function emergencyPropose(GovernorV2.Transaction[] memory transactions) external nonReentrant() returns (uint256) {
         require(msg.sender != address(governor), "Governor cant propose"); // The governor should never be the proposer.

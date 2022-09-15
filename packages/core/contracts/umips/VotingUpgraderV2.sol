@@ -36,21 +36,21 @@ struct MultiroleContracts {
  */
 contract VotingUpgraderV2 {
     // Existing governor is the only one who can initiate the upgrade.
-    MultiRole public existingGovernor;
+    MultiRole public immutable existingGovernor;
 
     // New governor contract, set to be the UMA DVM owner post upgrade.
-    address public newGovernor;
+    address public immutable newGovernor;
 
     // Existing Voting contract needs to be informed of the address of the new Voting contract.
-    Voting public existingVoting;
+    Voting public immutable existingVoting;
 
     // New governor will be the new owner of the finder.
 
     // Finder contract to push upgrades to.
-    Finder public finder;
+    Finder public immutable finder;
 
-    // Addresses to upgrade the Voting.sol contract to for the new voting contract.
-    address public newVoting;
+    // Addresses to upgrade.
+    address public immutable newVoting;
 
     // Additional ownable contracts to transfer ownership of.
     OwnableContracts public ownableContracts;

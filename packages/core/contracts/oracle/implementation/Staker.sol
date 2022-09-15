@@ -104,6 +104,9 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
         _stakeTo(msg.sender, recipient, amount);
     }
 
+    // Pull an amount of votingToken from the from address and stakes them for the recipient address.
+    // If we are in an active reveal phase the stake amount will be added to the pending stake.
+    // If not, the stake amount will be added to the active stake.
     function _stakeTo(
         address from,
         address recipient,
@@ -196,7 +199,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
     /**
      * @notice Stake accumulated rewards. This is merely a convenience mechanism that combines the voter's withdrawal and stake
      *  in the same transaction if requested by a delegate or the voter.
-     * @dev This method requires that the msg.sender(voter or delegate) has approved this contract.
+     * @dev This method requires that the msg.sender (voter or delegate) has approved this contract.
      * @dev The rewarded tokens simply pass through this contract before being staked on the voter's behalf.
      *  The balance of the delegate remains unchanged.
      * @return uint256 the amount of tokens that the voter is staking.

@@ -237,8 +237,8 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
      * @param _gat number of tokens that must participate to resolve a vote.
      * @param _votingToken address of the UMA token contract used to commit votes.
      * @param _finder keeps track of all contracts within the system based on their interfaceName.
-     * Must be set to 0x0 for production environments that use live time.
      * @param _slashingLibrary contract used to calculate voting slashing penalties based on voter participation.
+     * @param _previousVotingContract previous voting contract address.
      */
     constructor(
         uint256 _emissionRate,
@@ -896,7 +896,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         // we've bisected a round and should store the unapplied slashing which will seed this method on the next entry
         // such that the slashing will be applied linearly, not compounding with other slashing within the same round.
         if (slash != 0) {
-            // The next index could be either a the result of the skip for the next value if it's nonzero or just the
+            // The next index could be either the result of the skip for the next value if it's nonzero or just the
             // next unprocessed index if there is no skip value for it. This ensures that the price request we read has
             // not been modified by round-changing when rolling.
             uint256 nextIndex =
@@ -1055,11 +1055,12 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
     /**
      * @notice Function to enable retrieval of rewards on a previously migrated away from voting contract. This function
-     * is intended on being removed  from a future version of the Voting contract and aims to solve a short term migration
+     * is intended on being removed from a future version of the Voting contract and aims to solve a short term migration
      * pain point
      * @param voterAddress voter for which rewards will be retrieved. Does not have to be the caller.
      * @param roundId the round from which voting rewards will be retrieved from.
      * @param toRetrieve array of PendingRequests which rewards are retrieved from.
+     * @return uint256 the amount of rewards.
      */
     function retrieveRewardsOnMigratedVotingContract(
         address voterAddress,
@@ -1119,6 +1120,8 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         return (false, 0, "Price was never requested");
     }
 
+    // Check the previousVotingContract to see if a given price request was resolved.
+    // Returns true or false, and the resolved price or zero, depending on whether it was found or not.
     function _getPriceFromPreviousVotingContract(
         bytes32 identifier,
         uint256 time,
