@@ -857,9 +857,10 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
                     priceRequest.isGovernance
                 );
 
-            // During this round's tracker calculation, we deduct the pending stake from the voter's total stake because this
-            // amount was not included in the cumulativeActiveStakeAtRound when we froze the round's variables.
-            // In this manner, the voter's stakes during the active reveal phase of this round will not be slashed.
+            // During this round's tracker calculation, we deduct the pending stake from the voter's total stake.
+            // Also, the pending stakes of voters in a given round are excluded from the cumulativeActiveStakeAtRound;
+            // _computePendingStakes handles this. Thus, the voter's stakes during the active reveal phase of this round
+            // won't be included in the slashes calculations.
             uint256 effectiveStake = voterStake.stake - voterStake.pendingStakes[priceRequest.lastVotingRound];
 
             // The voter did not reveal or did not commit. Slash at noVote rate.
