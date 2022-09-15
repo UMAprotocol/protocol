@@ -772,7 +772,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     // This function must be called before any tokens are staked. It updates the voter's pending stakes to reflect the new amount
     // to stake. These updates are only made if we are in a reveal phase with active price requests. This is required in
     // order to appropriately calculate a voter's trackers and avoid slashing them for amounts staked during an active reveal phase.
-    function _computePendingStakes(address voter, uint256 amount) internal override {
+    function _computePendingStakes(address voterAddress, uint256 amount) internal override {
         if (_inActiveReveal()) {
             uint256 currentRoundId = getCurrentRoundId();
             // We now can freeze the round variables as we do not want the cumulativeActiveStakeAtRound to change based on the stakes
@@ -781,7 +781,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
             // Finally increment the pending stake for the voter by the amount to stake. Together with the omission
             // of the new stakes from the cumulativeActiveStakeAtRound for this round, this ensures that the
             // pending stakes of any voter are not included in the slashing calculation for this round.
-            _setPendingStake(voter, currentRoundId, amount);
+            _setPendingStake(voterAddress, currentRoundId, amount);
         }
     }
 

@@ -333,15 +333,15 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
 
     // This function must be called before any tokens are staked. Update the voter's pending stakes when necessary.
     // The inheriting contract from Staker must implement this logic by overriding this function.
-    function _computePendingStakes(address wallet, uint256 amount) internal virtual;
+    function _computePendingStakes(address voterAddress, uint256 amount) internal virtual;
 
     // Add a new stake amount to the voter's pending stake for a specific round id.
     function _setPendingStake(
-        address voter,
+        address voterAddress,
         uint256 roundId,
         uint256 amount
     ) internal {
-        voterStakes[voter].pendingStakes[roundId] += amount;
+        voterStakes[voterAddress].pendingStakes[roundId] += amount;
     }
 
     // Determine if we are in an active reveal phase. This function should be overridden by the child contract.
