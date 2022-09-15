@@ -163,6 +163,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         address indexed voter,
         address indexed caller,
         uint256 roundId,
+        uint256 priceRequestIndex,
         bytes32 indexed identifier,
         uint256 time,
         bytes ancillaryData
@@ -181,30 +182,31 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         address indexed voter,
         address indexed caller,
         uint256 roundId,
+        uint256 priceRequestIndex,
         bytes32 indexed identifier,
         uint256 time,
-        int256 price,
         bytes ancillaryData,
+        int256 price,
         uint256 numTokens
     );
 
     event PriceRequestAdded(
         address indexed requester,
         uint256 indexed roundId,
+        uint256 priceRequestIndex,
         bytes32 indexed identifier,
         uint256 time,
-        uint256 requestIndex,
         bytes ancillaryData,
         bool isGovernance
     );
 
     event PriceResolved(
         uint256 indexed roundId,
+        uint256 priceRequestIndex,
         bytes32 indexed identifier,
         uint256 time,
-        uint256 requestIndex,
-        int256 price,
-        bytes ancillaryData
+        bytes ancillaryData,
+        int256 price
     );
 
     event VotingContractMigrated(address newAddress);
@@ -370,9 +372,9 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
             emit PriceRequestAdded(
                 msg.sender,
                 roundIdToVoteOnPriceRequest,
+                newPriceRequest.priceRequestIndex,
                 identifier,
                 time,
-                newPriceRequest.priceRequestIndex,
                 ancillaryData,
                 isGovernance
             );
@@ -495,7 +497,15 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         VoteInstance storage voteInstance = priceRequest.voteInstances[currentRoundId];
         voteInstance.voteSubmissions[voter].commit = hash;
 
-        emit VoteCommitted(voter, msg.sender, currentRoundId, identifier, time, ancillaryData);
+        emit VoteCommitted(
+            voter,
+            msg.sender,
+            currentRoundId,
+            priceRequest.priceRequestIndex,
+            identifier,
+            time,
+            ancillaryData
+        );
     }
 
     /**
@@ -545,7 +555,17 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         voteSubmission.revealHash = keccak256(abi.encode(price)); // Set the voter's submission.
         uint256 activeStake = voterStakes[voter].activeStake;
         voteInstance.resultComputation.addVote(price, activeStake); // Add vote to the results.
-        emit VoteRevealed(voter, msg.sender, currentRoundId, identifier, time, price, ancillaryData, activeStake);
+        emit VoteRevealed(
+            voter,
+            msg.sender,
+            currentRoundId,
+            _getPriceRequest(identifier, time, ancillaryData).pendingRequestIndex,
+            identifier,
+            time,
+            ancillaryData,
+            price,
+            activeStake
+        );
     }
 
     /**
@@ -1171,11 +1191,11 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         priceRequest.pendingRequestIndex = UINT64_MAX;
         emit PriceResolved(
             priceRequest.lastVotingRound,
+            priceRequest.priceRequestIndex,
             priceRequest.identifier,
             priceRequest.time,
-            priceRequest.priceRequestIndex,
-            resolvedPrice,
-            priceRequest.ancillaryData
+            priceRequest.ancillaryData,
+            resolvedPrice
         );
         return true;
     }
