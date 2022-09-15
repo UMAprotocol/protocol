@@ -23,6 +23,7 @@ const hub = express();
 hub.use(express.json()); // Enables json to be parsed by the express process.
 require("dotenv").config();
 const fetch = require("node-fetch");
+const fetchWithRetry = require("fetch-retry")(fetch);
 const { URL } = require("url");
 const lodash = require("lodash");
 
@@ -30,7 +31,22 @@ const lodash = require("lodash");
 const { GoogleAuth } = require("google-auth-library"); // Used to get authentication headers to execute cloud run & cloud functions.
 const auth = new GoogleAuth();
 const { Storage } = require("@google-cloud/storage"); // Used to get global config objects to parameterize bots.
-const storage = new Storage();
+
+const { WAIT_FOR_LOGGER_DELAY, GCP_STORAGE_CONFIG } = process.env;
+
+// Enabling retry in case of transient timeout issues.
+const DEFAULT_RETRIES = 1;
+
+// Allows the environment to customize the config that's used to interact with google cloud storage.
+// Relevant options can be found here: https://googleapis.dev/nodejs/storage/latest/global.html#StorageOptions.
+// Specific fields of interest:
+// - timeout: allows the env to set the timeout for all http requests.
+// - retryOptions: object that allows the caller to specify how the library retries.
+const storageConfig = GCP_STORAGE_CONFIG
+  ? JSON.parse(GCP_STORAGE_CONFIG)
+  : { autoRetry: true, maxRetries: DEFAULT_RETRIES };
+const storage = new Storage(storageConfig);
+
 const { Datastore } = require("@google-cloud/datastore"); // Used to read/write the last block number the monitor used.
 const datastore = new Datastore();
 const { createBasicProvider } = require("@uma/common");
@@ -51,7 +67,7 @@ const defaultHubConfig = {
   rejectSpokeDelay: 120, // 2 min.
 };
 
-const waitForLoggerDelay = process.env.WAIT_FOR_LOGGER_DELAY || 5;
+const waitForLoggerDelay = WAIT_FOR_LOGGER_DELAY || 5;
 
 hub.post("/", async (req, res) => {
   // Use a custom logger if provided. Otherwise, initialize a local logger.
@@ -314,7 +330,7 @@ const _executeServerlessSpoke = async (url, body) => {
 const _fetchConfig = async (bucket, file) => {
   let config;
   if (hubConfig.configRetrieval == "git") {
-    const response = await fetch(
+    const response = await fetchWithRetry(
       `https://api.github.com/repos/${hubConfig.gitSettings.organization}/${hubConfig.gitSettings.repoName}/contents/${bucket}/${file}`,
       {
         method: "GET",
@@ -324,6 +340,7 @@ const _fetchConfig = async (bucket, file) => {
           Accept: "application/vnd.github.v3.raw",
           "Accept-Charset": "utf-8",
         },
+        retries: DEFAULT_RETRIES,
       }
     );
     config = await response.json(); // extract JSON from the http response

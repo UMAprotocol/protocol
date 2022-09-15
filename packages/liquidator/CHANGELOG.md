@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.6.36](https://github.com/UMAprotocol/protocol/compare/@uma/liquidator@2.6.35...@uma/liquidator@2.6.36) (2022-09-12)
+
+**Note:** Version bump only for package @uma/liquidator
+
+## [2.6.35](https://github.com/UMAprotocol/protocol/compare/@uma/liquidator@2.6.34...@uma/liquidator@2.6.35) (2022-08-24)
+
+**Note:** Version bump only for package @uma/liquidator
+
+## [2.6.34](https://github.com/UMAprotocol/protocol/compare/@uma/liquidator@2.6.33...@uma/liquidator@2.6.34) (2022-08-16)
+
+**Note:** Version bump only for package @uma/liquidator
+
 ## [2.6.33](https://github.com/UMAprotocol/protocol/compare/@uma/liquidator@2.6.32...@uma/liquidator@2.6.33) (2022-08-09)
 
 **Note:** Version bump only for package @uma/liquidator

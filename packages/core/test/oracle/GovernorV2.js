@@ -1,5 +1,5 @@
 const hre = require("hardhat");
-const { runVotingV2Fixture } = require("@uma/common");
+const { runVotingV2Fixture, ZERO_ADDRESS } = require("@uma/common");
 const { getContract, assertEventEmitted } = hre;
 const { RegistryRolesEnum, didContractThrow, getRandomSignedInt, computeVoteHashAncillary } = require("@uma/common");
 const { moveToNextRound, moveToNextPhase } = require("../../utils/Voting.js");
@@ -35,6 +35,7 @@ describe("GovernorV2", function () {
   let proposer;
   let account2;
   let account3;
+  let emergencyProposer;
 
   const constructTransferTransaction = (destination, amount) => {
     return testToken.methods.transfer(destination, amount).encodeABI();
@@ -42,7 +43,7 @@ describe("GovernorV2", function () {
 
   before(async function () {
     accounts = await web3.eth.getAccounts();
-    [proposer, account2, account3] = accounts;
+    [proposer, account2, account3, emergencyProposer] = accounts;
     await runVotingV2Fixture(hre);
     voting = await VotingV2.deployed();
     supportedIdentifiers = await IdentifierWhitelist.deployed();
@@ -69,6 +70,9 @@ describe("GovernorV2", function () {
     // environment, so ownership must be transferred.
 
     await voting.methods.transferOwnership(governorV2.options.address).send({ from: accounts[0] });
+
+    // Set the emergency proposer address.
+    await governorV2.methods.resetMember(2, emergencyProposer).send({ from: proposer });
   });
 
   beforeEach(async () => {
@@ -87,6 +91,31 @@ describe("GovernorV2", function () {
         governorV2.methods
           .propose([{ to: testToken.options.address, value: 0, data: txnData }], defaultAncillaryData)
           .send({ from: account2 })
+      )
+    );
+  });
+
+  it("Emergency execution permissions", async function () {
+    const txnData = constructTransferTransaction(proposer, "0");
+    assert(
+      await didContractThrow(
+        governorV2.methods
+          .emergencyExecute({ to: testToken.options.address, value: 0, data: txnData })
+          .send({ from: proposer })
+      )
+    );
+    assert(
+      await didContractThrow(
+        governorV2.methods
+          .emergencyExecute({ to: testToken.options.address, value: 0, data: txnData })
+          .send({ from: account2 })
+      )
+    );
+    assert(
+      await didContractThrow(
+        governorV2.methods
+          .emergencyExecute({ to: testToken.options.address, value: 0, data: txnData })
+          .send({ from: account3 })
       )
     );
   });
@@ -648,6 +677,26 @@ describe("GovernorV2", function () {
     assert.equal((await testToken.methods.balanceOf(proposer).call()).toString(), startingBalance.toString());
   });
 
+  it("Emergency Execution", async function () {
+    // Issue some test tokens to the governorV2 address.
+    await testToken.methods.allocateTo(governorV2.options.address, toWei("1")).send({ from: accounts[0] });
+
+    // Construct the transaction data to send the newly minted tokens to proposer.
+    const txnData = constructTransferTransaction(proposer, toWei("1"));
+
+    // Check to make sure that the tokens get transferred at the time of execution.
+    const startingBalance = toBN(await testToken.methods.balanceOf(proposer).call());
+
+    await governorV2.methods
+      .emergencyExecute({ to: testToken.options.address, value: 0, data: txnData })
+      .send({ from: emergencyProposer });
+
+    assert.equal(
+      (await testToken.methods.balanceOf(proposer).call()).toString(),
+      startingBalance.add(toBN(toWei("1"))).toString()
+    );
+  });
+
   it("Events", async function () {
     // Construct the transaction data to send the newly minted tokens to proposer.
     const txnData = constructTransferTransaction(proposer, toWei("0"));
@@ -772,6 +821,7 @@ describe("GovernorV2", function () {
       votingToken.options.address, // voting token
       (await Finder.deployed()).options.address, // finder
       (await SlashingLibrary.deployed()).options.address, // slashing library
+      ZERO_ADDRESS, // Previous voting contract
       (await Timer.deployed()).options.address // timer
     ).send({ from: accounts[0] });
 

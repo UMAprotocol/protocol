@@ -3,6 +3,22 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.11.0](https://github.com/UMAprotocol/protocol/compare/@uma/api@0.10.18...@uma/api@0.11.0) (2022-09-12)
+
+### Features
+
+- add env for GCP storage configuration and update GCP libraries ([#4148](https://github.com/UMAprotocol/protocol/issues/4148)) ([250c412](https://github.com/UMAprotocol/protocol/commit/250c4125af5302cc6bef4d304dc37ee107ff7c8f))
+
+## [0.10.18](https://github.com/UMAprotocol/protocol/compare/@uma/api@0.10.17...@uma/api@0.10.18) (2022-08-24)
+
+### Bug Fixes
+
+- **sdk,api:** configure datastore to accept longer strings on props ([#4136](https://github.com/UMAprotocol/protocol/issues/4136)) ([4fbcff7](https://github.com/UMAprotocol/protocol/commit/4fbcff734edf12c74e8496720a0ef837cd436eb1))
+
+## [0.10.17](https://github.com/UMAprotocol/protocol/compare/@uma/api@0.10.16...@uma/api@0.10.17) (2022-08-16)
+
+**Note:** Version bump only for package @uma/api
+
 ## [0.10.16](https://github.com/UMAprotocol/protocol/compare/@uma/api@0.10.15...@uma/api@0.10.16) (2022-08-09)
 
 **Note:** Version bump only for package @uma/api

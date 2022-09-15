@@ -3,6 +3,38 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.36.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.35.0...@uma/core@2.36.0) (2022-09-12)
+
+### Features
+
+- **core:** implement floored linear fpl ([#4119](https://github.com/UMAprotocol/protocol/issues/4119)) ([e4eb721](https://github.com/UMAprotocol/protocol/commit/e4eb7213f1954afb2fc4d8d4e498562efedfcc1e))
+- add hardhat tracer ([#4140](https://github.com/UMAprotocol/protocol/issues/4140)) ([42b79ae](https://github.com/UMAprotocol/protocol/commit/42b79ae06f3913bfbc4cfe1c3ac980e84dadedc4))
+
+# [2.35.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.34.0...@uma/core@2.35.0) (2022-08-24)
+
+### Features
+
+- add claim and stake for delegates ([#4110](https://github.com/UMAprotocol/protocol/issues/4110)) ([ddbca75](https://github.com/UMAprotocol/protocol/commit/ddbca75932f5e9f2dd73462f30ed163be7862b11))
+- add emergency proposer ([#4128](https://github.com/UMAprotocol/protocol/issues/4128)) ([8c47a3b](https://github.com/UMAprotocol/protocol/commit/8c47a3bccb302d46ad22ee31ccc93090dcc79164))
+- add migration scripts to voting v2 ([#4121](https://github.com/UMAprotocol/protocol/issues/4121)) ([3075a63](https://github.com/UMAprotocol/protocol/commit/3075a6323da94f8f47c20b4a57c01bd25b8300a6)), closes [#4132](https://github.com/UMAprotocol/protocol/issues/4132)
+- modify DesignatedVotingV2 to delegate to the voter directly ([#4129](https://github.com/UMAprotocol/protocol/issues/4129)) ([0afae60](https://github.com/UMAprotocol/protocol/commit/0afae60aca04b3c110627ec4ee74ae219704af60))
+- **core:** copy linear fpl ([#4130](https://github.com/UMAprotocol/protocol/issues/4130)) ([0870423](https://github.com/UMAprotocol/protocol/commit/08704232a4bf744042b2b98c024f2f5f79857976))
+
+# [2.34.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.33.0...@uma/core@2.34.0) (2022-08-16)
+
+### Bug Fixes
+
+- [C01] Address issue with intra voting round slashing tracker updates ([#4067](https://github.com/UMAprotocol/protocol/issues/4067)) ([855e3c7](https://github.com/UMAprotocol/protocol/commit/855e3c740938f8c6a5675387225d3e059b6c1d70))
+- [L07] Missing error messages in require statements ([#4074](https://github.com/UMAprotocol/protocol/issues/4074)) ([71f45af](https://github.com/UMAprotocol/protocol/commit/71f45af1ed4684983022bd0cd94471ba7061368c))
+- [N01]: Inconsistent usage of reentrancy protection ([#4080](https://github.com/UMAprotocol/protocol/issues/4080)) ([ba64095](https://github.com/UMAprotocol/protocol/commit/ba64095d6a0dde093097df7fbd50e478c0f6cd60))
+- [N08]: Address inconsistent function naming ([#4087](https://github.com/UMAprotocol/protocol/issues/4087)) ([6ed0488](https://github.com/UMAprotocol/protocol/commit/6ed04885e8d4294497fc76ce67f79a29ba10e625))
+- DVM2.0 address issue with merging without CI and fix staker tests ([#4109](https://github.com/UMAprotocol/protocol/issues/4109)) ([8ca1cfc](https://github.com/UMAprotocol/protocol/commit/8ca1cfc4a8d797ed667785ad0c71ccd4019b71cf))
+
+### Features
+
+- bump solidity to 0.8.16 ([#4108](https://github.com/UMAprotocol/protocol/issues/4108)) ([efdf885](https://github.com/UMAprotocol/protocol/commit/efdf885512fb2eead3d51492efaa93912420791a))
+- dvm2.0 imports optimisations ([#4107](https://github.com/UMAprotocol/protocol/issues/4107)) ([dbdbe2f](https://github.com/UMAprotocol/protocol/commit/dbdbe2f5ed6c5452ae4298b1b58f6d6498d40840))
+
 # [2.33.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.32.0...@uma/core@2.33.0) (2022-08-09)
 
 ### Bug Fixes

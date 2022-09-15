@@ -3,6 +3,23 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.27.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.26.0...@uma/common@2.27.0) (2022-09-12)
+
+### Features
+
+- add env for GCP storage configuration and update GCP libraries ([#4148](https://github.com/UMAprotocol/protocol/issues/4148)) ([250c412](https://github.com/UMAprotocol/protocol/commit/250c4125af5302cc6bef4d304dc37ee107ff7c8f))
+- add hardhat tracer ([#4140](https://github.com/UMAprotocol/protocol/issues/4140)) ([42b79ae](https://github.com/UMAprotocol/protocol/commit/42b79ae06f3913bfbc4cfe1c3ac980e84dadedc4))
+
+# [2.26.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.25.0...@uma/common@2.26.0) (2022-08-16)
+
+### Bug Fixes
+
+- [C01] Address issue with intra voting round slashing tracker updates ([#4067](https://github.com/UMAprotocol/protocol/issues/4067)) ([855e3c7](https://github.com/UMAprotocol/protocol/commit/855e3c740938f8c6a5675387225d3e059b6c1d70))
+
+### Features
+
+- bump solidity to 0.8.16 ([#4108](https://github.com/UMAprotocol/protocol/issues/4108)) ([efdf885](https://github.com/UMAprotocol/protocol/commit/efdf885512fb2eead3d51492efaa93912420791a))
+
 # [2.25.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.24.0...@uma/common@2.25.0) (2022-08-09)
 
 ### Bug Fixes

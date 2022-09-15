@@ -166,7 +166,15 @@ export class TransactionConfirmer {
 }
 
 export function chainConfigToChainMetadata(config: ChainConfig): ChainMetadata {
-  const { checkTxIntervalSec, multicall2Address, optimisticOracleAddress, ...chainMetadata } = config;
+  const {
+    // remove extra fields
+    checkTxIntervalSec,
+    multicall2Address,
+    optimisticOracleAddress,
+    earliestBlockNumber,
+    maxEventRangeQuery,
+    ...chainMetadata
+  } = config;
   return chainMetadata;
 }
 

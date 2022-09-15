@@ -36,9 +36,15 @@ describe("DesignatedVotingV2", function () {
     supportedIdentifiers = await IdentifierWhitelist.deployed();
     votingToken = await VotingToken.deployed();
     const finder = await Finder.deployed();
+
+    // Deploy a new DesignatedVoting contract, set the voter as the voter address.
     designatedVoting = await DesignatedVotingV2.new(finder.options.address, tokenOwner, voter).send({
       from: accounts[0],
     });
+
+    // Set the delegator. This acts to "accept" the delegation and enables the voter to vote on behalf of the
+    // delegator (token owner).
+    voting.methods.setDelegator(designatedVoting.options.address).send({ from: voter });
 
     tokenBalance = web3.utils.toWei("10000000"); // 10mm tokens to gve to the designated voting contract.
     // The admin can burn tokens for the purposes of this test.
@@ -127,25 +133,9 @@ describe("DesignatedVotingV2", function () {
     assert.equal(await votingToken.methods.balanceOf(voting.options.address).call(), 0);
   });
 
-  it("Reverts passed through", async function () {
-    // Verify that there are no silent failures, and reverts get bubbled up.
-    assert(
-      await didContractThrow(
-        designatedVoting.methods
-          .commitVote(padRight(utf8ToHex("bad"), 64), "100", "0x0", "0x123456")
-          .send({ from: voter })
-      )
-    );
-    assert(
-      await didContractThrow(
-        designatedVoting.methods
-          .revealVote(padRight(utf8ToHex("bad"), 64), "100", "200", "0x123456", "300")
-          .send({ from: voter })
-      )
-    );
-  });
-
   it("Commit, reveal and retrieve", async function () {
+    // As the token owner has designated voting to the voter we should be able to call commit/reveal directly on the
+    // voting contract from the designator. Nice and easy.
     await votingToken.methods.transfer(designatedVoting.options.address, tokenBalance).send({ from: tokenOwner });
     await designatedVoting.methods.stake(tokenBalance, voting.options.address).send({ from: tokenOwner });
     const stakeTime = await voting.methods.getCurrentTime().call();
@@ -159,32 +149,21 @@ describe("DesignatedVotingV2", function () {
     await moveToNextRound(voting, accounts[0]);
     let roundId = await voting.methods.getCurrentRoundId().call();
 
-    const price = getRandomSignedInt();
+    const price = 420;
     const salt = getRandomSignedInt();
     // Note: the "voter" address for this vote must be the designated voting contract since its the one that will ultimately
     // "reveal" the vote. Only the voter can call reveal through the designated voting contract.
     const hash = computeVoteHashAncillary({
       price,
       salt,
-      account: designatedVoting.options.address,
+      account: voter,
       time,
       ancillaryData: ancillaryData,
       roundId,
       identifier,
     });
 
-    // Only the voter can commit a vote.
-    assert(
-      await didContractThrow(
-        designatedVoting.methods.commitVote(identifier, time, ancillaryData, hash).send({ from: tokenOwner })
-      )
-    );
-    assert(
-      await didContractThrow(
-        designatedVoting.methods.commitVote(identifier, time, ancillaryData, hash).send({ from: umaAdmin })
-      )
-    );
-    await designatedVoting.methods.commitVote(identifier, time, ancillaryData, hash).send({ from: voter });
+    await voting.methods.commitVote(identifier, time, ancillaryData, hash).send({ from: voter });
 
     // The UMA admin can't add new voters.
     assert(await didContractThrow(designatedVoting.methods.resetMember(voterRole, umaAdmin).send({ from: umaAdmin })));
@@ -192,32 +171,17 @@ describe("DesignatedVotingV2", function () {
     // Move to the reveal phase.
     await moveToNextPhase(voting, accounts[0]);
 
-    // Only the voter can reveal a vote.
-    assert(
-      await didContractThrow(
-        designatedVoting.methods.revealVote(identifier, time, price, ancillaryData, salt).send({ from: tokenOwner })
-      )
-    );
-    assert(
-      await didContractThrow(
-        designatedVoting.methods.revealVote(identifier, time, price, ancillaryData, salt).send({ from: umaAdmin })
-      )
-    );
-    await designatedVoting.methods.revealVote(identifier, time, price, ancillaryData, salt).send({ from: voter });
+    await voting.methods.revealVote(identifier, time, price, ancillaryData, salt).send({ from: voter });
 
     // Check the resolved price.
-    roundId = await voting.methods.getCurrentRoundId().call();
     await moveToNextRound(voting, accounts[0]);
+
     assert.equal(
       (await voting.methods.getPrice(identifier, time, ancillaryData).call({ from: registeredContract })).toString(),
       price
     );
 
-    // Retrieve rewards and check that rewards accrued to the `designatedVoting` contract.
-    assert(await didContractThrow(designatedVoting.methods.withdrawAndRestakeRewards().send({ from: tokenOwner })));
-    assert(await didContractThrow(designatedVoting.methods.withdrawAndRestakeRewards().send({ from: umaAdmin })));
-
-    await designatedVoting.methods.withdrawAndRestakeRewards().send({ from: voter });
+    await voting.methods.withdrawAndRestake().send({ from: voter });
     // We should see the cumulative staked amount go up by the amount of the rewards. We had advanced time one phase and
     // one voting round. This should result in an expected reward of the emission rate times the delta in time as this
     // was the only staker they get the full reward amount.
@@ -253,7 +217,7 @@ describe("DesignatedVotingV2", function () {
     const hash1 = computeVoteHashAncillary({
       price: price1,
       salt: salt1,
-      account: designatedVoting.options.address,
+      account: voter,
       time: time1,
       ancillaryData: ancillaryData1,
       roundId,
@@ -266,7 +230,7 @@ describe("DesignatedVotingV2", function () {
     const hash2 = computeVoteHashAncillary({
       price: price2,
       salt: salt2,
-      account: designatedVoting.options.address,
+      account: voter,
       time: time2,
       ancillaryData: ancillaryData2,
       roundId,
@@ -276,15 +240,10 @@ describe("DesignatedVotingV2", function () {
 
     // Batch commit.
     const commitData = [
-      designatedVoting.methods
-        .commitAndEmitEncryptedVote(identifier, time1, ancillaryData1, hash1, message1)
-        .encodeABI(),
-      designatedVoting.methods
-        .commitAndEmitEncryptedVote(identifier, time2, ancillaryData2, hash2, message2)
-        .encodeABI(),
+      voting.methods.commitAndEmitEncryptedVote(identifier, time1, ancillaryData1, hash1, message1).encodeABI(),
+      voting.methods.commitAndEmitEncryptedVote(identifier, time2, ancillaryData2, hash2, message2).encodeABI(),
     ];
-    assert(await didContractThrow(designatedVoting.methods.multicall(commitData).send({ from: tokenOwner })));
-    await designatedVoting.methods.multicall(commitData).send({ from: voter });
+    await voting.methods.multicall(commitData).send({ from: voter });
 
     // Move to the reveal phase.
     await moveToNextPhase(voting, accounts[0]);
@@ -296,12 +255,12 @@ describe("DesignatedVotingV2", function () {
 
     // Batch reveal.
     const revealData = [
-      designatedVoting.methods.revealVote(identifier, time1, price1, ancillaryData1, salt1).encodeABI(),
-      designatedVoting.methods.revealVote(identifier, time2, price2, ancillaryData2, salt2).encodeABI(),
+      voting.methods.revealVote(identifier, time1, price1, ancillaryData1, salt1).encodeABI(),
+      voting.methods.revealVote(identifier, time2, price2, ancillaryData2, salt2).encodeABI(),
     ];
 
-    assert(await didContractThrow(designatedVoting.methods.multicall(revealData).send({ from: tokenOwner })));
-    await designatedVoting.methods.multicall(revealData).send({ from: voter });
+    assert(await didContractThrow(voting.methods.multicall(revealData).send({ from: tokenOwner })));
+    await voting.methods.multicall(revealData).send({ from: voter });
 
     // Check the resolved price.
     await moveToNextRound(voting, accounts[0]);

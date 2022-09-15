@@ -3,8 +3,13 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.16;
 
-import "../../common/implementation/MultiCaller.sol";
+import "./ResultComputationV2.sol";
+import "./SpamGuardIdentifierLib.sol";
+import "./Staker.sol";
+import "./VoteTimingV2.sol";
+import "./Constants.sol";
 
+import "../interfaces/MinimumVotingAncillaryInterface.sol";
 import "../interfaces/FinderInterface.sol";
 import "../interfaces/IdentifierWhitelistInterface.sol";
 import "../interfaces/OracleAncillaryInterface.sol";
@@ -12,28 +17,14 @@ import "../interfaces/OracleGovernanceInterface.sol";
 import "../interfaces/OracleInterface.sol";
 import "../interfaces/VotingV2Interface.sol";
 import "../interfaces/RegistryInterface.sol";
-import "./Constants.sol";
-import "./ResultComputationV2.sol";
-import "./SlashingLibrary.sol";
-import "./SpamGuardIdentifierLib.sol";
-import "./Staker.sol";
-import "./VoteTimingV2.sol";
-
-import "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import "../interfaces/SlashingLibraryInterface.sol";
 
 /**
  * @title VotingV2 contract for the UMA DVM.
  * @dev Handles receiving and resolving price requests via a commit-reveal voting schelling scheme.
  */
 
-contract VotingV2 is
-    Staker,
-    OracleInterface,
-    OracleAncillaryInterface,
-    OracleGovernanceInterface,
-    VotingV2Interface,
-    MultiCaller
-{
+contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGovernanceInterface, VotingV2Interface {
     using VoteTimingV2 for VoteTimingV2.Data;
     using ResultComputationV2 for ResultComputationV2.Data;
 
@@ -118,13 +109,17 @@ contract VotingV2 is
     uint256 public gat;
 
     // Reference to the Finder.
-    FinderInterface public immutable finder;
+    FinderInterface private immutable finder;
 
     // Reference to Slashing Library.
-    SlashingLibrary public slashingLibrary;
+    SlashingLibraryInterface public slashingLibrary;
 
     // If non-zero, this contract has been migrated to this address.
     address public migratedAddress;
+
+    // If non-zero, this is the previous voting contract, deployed before this one. Used to facilitate retrieval of
+    // previous price requests from DVM deployments before this one and claiming of rewards.
+    OracleAncillaryInterface public immutable previousVotingContract;
 
     // Max value of an unsigned integer.
     uint64 private constant UINT64_MAX = type(uint64).max;
@@ -158,7 +153,7 @@ contract VotingV2 is
         uint256 bond;
     }
 
-    SpamDeletionRequest[] public spamDeletionProposals;
+    SpamDeletionRequest[] internal spamDeletionProposals;
 
     /****************************************
      *                EVENTS                *
@@ -168,6 +163,7 @@ contract VotingV2 is
         address indexed voter,
         address indexed caller,
         uint256 roundId,
+        uint256 priceRequestIndex,
         bytes32 indexed identifier,
         uint256 time,
         bytes ancillaryData
@@ -186,30 +182,31 @@ contract VotingV2 is
         address indexed voter,
         address indexed caller,
         uint256 roundId,
+        uint256 priceRequestIndex,
         bytes32 indexed identifier,
         uint256 time,
-        int256 price,
         bytes ancillaryData,
+        int256 price,
         uint256 numTokens
     );
 
     event PriceRequestAdded(
         address indexed requester,
         uint256 indexed roundId,
+        uint256 priceRequestIndex,
         bytes32 indexed identifier,
         uint256 time,
-        uint256 requestIndex,
         bytes ancillaryData,
         bool isGovernance
     );
 
     event PriceResolved(
         uint256 indexed roundId,
+        uint256 priceRequestIndex,
         bytes32 indexed identifier,
         uint256 time,
-        uint256 requestIndex,
-        int256 price,
-        bytes ancillaryData
+        bytes ancillaryData,
+        int256 price
     );
 
     event VotingContractMigrated(address newAddress);
@@ -242,8 +239,8 @@ contract VotingV2 is
      * @param _gat number of tokens that must participate to resolve a vote.
      * @param _votingToken address of the UMA token contract used to commit votes.
      * @param _finder keeps track of all contracts within the system based on their interfaceName.
-     * Must be set to 0x0 for production environments that use live time.
      * @param _slashingLibrary contract used to calculate voting slashing penalties based on voter participation.
+     * @param _previousVotingContract previous voting contract address.
      */
     constructor(
         uint256 _emissionRate,
@@ -255,13 +252,15 @@ contract VotingV2 is
         uint64 _startingRequestIndex,
         address _votingToken,
         address _finder,
-        address _slashingLibrary
+        address _slashingLibrary,
+        address _previousVotingContract
     ) Staker(_emissionRate, _unstakeCoolDown, _votingToken) {
         voteTiming.init(_phaseLength, _minRollToNextRoundLength);
         require(_gat < IERC20(_votingToken).totalSupply() && _gat > 0);
         gat = _gat;
         finder = FinderInterface(_finder);
-        slashingLibrary = SlashingLibrary(_slashingLibrary);
+        slashingLibrary = SlashingLibraryInterface(_slashingLibrary);
+        previousVotingContract = OracleAncillaryInterface(_previousVotingContract);
         setSpamDeletionProposalBond(_spamDeletionProposalBond);
 
         // We assume indices never get above 2^64. So we should never start with an index above half that range.
@@ -318,7 +317,7 @@ contract VotingV2 is
         bytes32 identifier,
         uint256 time,
         bytes memory ancillaryData
-    ) external override onlyOwner() {
+    ) external override onlyOwner() onlyIfNotMigrated() {
         _requestPrice(identifier, time, ancillaryData, true);
     }
 
@@ -373,9 +372,9 @@ contract VotingV2 is
             emit PriceRequestAdded(
                 msg.sender,
                 roundIdToVoteOnPriceRequest,
+                newPriceRequest.priceRequestIndex,
                 identifier,
                 time,
-                newPriceRequest.priceRequestIndex,
                 ancillaryData,
                 isGovernance
             );
@@ -438,7 +437,7 @@ contract VotingV2 is
      * @notice Gets the status of a list of price requests, identified by their identifier and time.
      * @dev If the status for a particular request is NotRequested, the lastVotingRound will always be 0.
      * @param requests array of type PendingRequestAncillary which includes an identifier and timestamp for each request.
-     * @return requestStates a list, in the same order as the input list, giving the status of each of the specified price requests.
+     * @return requestStates a list, in the same order as the input list, giving the status of the specified requests.
      */
     function getPriceRequestStatuses(PendingRequestAncillary[] memory requests)
         public
@@ -446,7 +445,7 @@ contract VotingV2 is
         returns (RequestState[] memory)
     {
         RequestState[] memory requestStates = new RequestState[](requests.length);
-        uint256 currentRoundId = voteTiming.computeCurrentRoundId(getCurrentTime());
+        uint256 currentRoundId = getCurrentRoundId();
         for (uint256 i = 0; i < requests.length; i = unsafe_inc(i)) {
             PriceRequest storage priceRequest =
                 _getPriceRequest(requests[i].identifier, requests[i].time, requests[i].ancillaryData);
@@ -459,18 +458,6 @@ contract VotingV2 is
             requestStates[i].status = status;
         }
         return requestStates;
-    }
-
-    // Overloaded method to enable short term backwards compatibility. Will be deprecated in the next DVM version.
-    function getPriceRequestStatuses(PendingRequest[] memory requests) external view returns (RequestState[] memory) {
-        PendingRequestAncillary[] memory requestsAncillary = new PendingRequestAncillary[](requests.length);
-
-        for (uint256 i = 0; i < requests.length; i = unsafe_inc(i)) {
-            requestsAncillary[i].identifier = requests[i].identifier;
-            requestsAncillary[i].time = requests[i].time;
-            requestsAncillary[i].ancillaryData = "";
-        }
-        return getPriceRequestStatuses(requestsAncillary);
     }
 
     /****************************************
@@ -495,12 +482,11 @@ contract VotingV2 is
         bytes memory ancillaryData,
         bytes32 hash
     ) public override nonReentrant() onlyIfNotMigrated() {
-        uint256 currentRoundId = voteTiming.computeCurrentRoundId(getCurrentTime());
+        uint256 currentRoundId = getCurrentRoundId();
         address voter = getVoterFromDelegate(msg.sender);
         _updateTrackers(voter);
-        uint256 blockTime = getCurrentTime();
         require(hash != bytes32(0));
-        require(voteTiming.computeCurrentPhase(blockTime) == Phase.Commit, "Cannot commit in reveal phase");
+        require(getVotePhase() == Phase.Commit, "Cannot commit in reveal phase");
 
         PriceRequest storage priceRequest = _getPriceRequest(identifier, time, ancillaryData);
         require(
@@ -511,16 +497,15 @@ contract VotingV2 is
         VoteInstance storage voteInstance = priceRequest.voteInstances[currentRoundId];
         voteInstance.voteSubmissions[voter].commit = hash;
 
-        emit VoteCommitted(voter, msg.sender, currentRoundId, identifier, time, ancillaryData);
-    }
-
-    // Overloaded method to enable short term backwards compatibility. Will be deprecated in the next DVM version.
-    function commitVote(
-        bytes32 identifier,
-        uint256 time,
-        bytes32 hash
-    ) external override onlyIfNotMigrated() {
-        commitVote(identifier, time, "", hash);
+        emit VoteCommitted(
+            voter,
+            msg.sender,
+            currentRoundId,
+            priceRequest.priceRequestIndex,
+            identifier,
+            time,
+            ancillaryData
+        );
     }
 
     /**
@@ -541,7 +526,7 @@ contract VotingV2 is
         int256 salt
     ) public override nonReentrant() onlyIfNotMigrated() {
         // Note: computing the current round is required to disallow people from revealing an old commit after the round is over.
-        uint256 currentRoundId = voteTiming.computeCurrentRoundId(getCurrentTime());
+        uint256 currentRoundId = getCurrentRoundId();
         _freezeRoundVariables(currentRoundId);
         VoteInstance storage voteInstance =
             _getPriceRequest(identifier, time, ancillaryData).voteInstances[currentRoundId];
@@ -551,10 +536,7 @@ contract VotingV2 is
         // Scoping to get rid of a stack too deep errors for require messages.
         {
             // Can only reveal in the reveal phase.
-            require(
-                voteTiming.computeCurrentPhase(getCurrentTime()) == Phase.Reveal,
-                "Reveal phase has not started yet"
-            );
+            require(getVotePhase() == Phase.Reveal, "Reveal phase has not started yet");
             // 0 hashes are disallowed in the commit phase, so they indicate a different error.
             // Cannot reveal an uncommitted or previously revealed hash
             require(voteSubmission.commit != bytes32(0), "Invalid hash reveal");
@@ -573,17 +555,17 @@ contract VotingV2 is
         voteSubmission.revealHash = keccak256(abi.encode(price)); // Set the voter's submission.
         uint256 activeStake = voterStakes[voter].activeStake;
         voteInstance.resultComputation.addVote(price, activeStake); // Add vote to the results.
-        emit VoteRevealed(voter, msg.sender, currentRoundId, identifier, time, price, ancillaryData, activeStake);
-    }
-
-    // Overloaded method to enable short term backwards compatibility. Will be deprecated in the next DVM version.
-    function revealVote(
-        bytes32 identifier,
-        uint256 time,
-        int256 price,
-        int256 salt
-    ) external override {
-        revealVote(identifier, time, price, "", salt);
+        emit VoteRevealed(
+            voter,
+            msg.sender,
+            currentRoundId,
+            _getPriceRequest(identifier, time, ancillaryData).pendingRequestIndex,
+            identifier,
+            time,
+            ancillaryData,
+            price,
+            activeStake
+        );
     }
 
     /**
@@ -604,38 +586,7 @@ contract VotingV2 is
         bytes memory encryptedVote
     ) public override {
         commitVote(identifier, time, ancillaryData, hash);
-
-        uint256 roundId = voteTiming.computeCurrentRoundId(getCurrentTime());
-        emit EncryptedVote(msg.sender, roundId, identifier, time, ancillaryData, encryptedVote);
-    }
-
-    // Overloaded method to enable short term backwards compatibility. Will be deprecated in the next DVM version.
-    function commitAndEmitEncryptedVote(
-        bytes32 identifier,
-        uint256 time,
-        bytes32 hash,
-        bytes memory encryptedVote
-    ) public override {
-        commitAndEmitEncryptedVote(identifier, time, "", hash, encryptedVote);
-    }
-
-    /**
-     * @notice Sets the delegate of a voter. This delegate can vote on behalf of the staker. The staker will still own
-     * all staked balances, receive rewards and be slashed based on the actions of the delegate. Intended use is using a
-     * low-security available wallet for voting while keeping access to staked amounts secure by a more secure wallet.
-     * @param delegate the address of the delegate.
-     */
-    function setDelegate(address delegate) external nonReentrant() {
-        voterStakes[msg.sender].delegate = delegate;
-    }
-
-    /**
-     * @notice Sets the delegator of a voter. Acts to accept a delegation. The delegate can only vote for the delegator
-     * if the delegator also selected the delegate to do so (two-way relationship needed).
-     * @param delegator the address of the delegator.
-     */
-    function setDelegator(address delegator) external nonReentrant() {
-        delegateToStaker[msg.sender] = delegator;
+        emit EncryptedVote(msg.sender, getCurrentRoundId(), identifier, time, ancillaryData, encryptedVote);
     }
 
     /****************************************
@@ -643,44 +594,31 @@ contract VotingV2 is
      ****************************************/
 
     /**
-     * @notice Gets the voter from the delegate.
-     * @param caller caller of the function or the address to check in the mapping between a voter and their delegate.
-     * @return address voter that corresponds to the delegate.
-     */
-    function getVoterFromDelegate(address caller) public view returns (address) {
-        if (
-            delegateToStaker[caller] != address(0) && // The delegate chose to be a delegate for the staker.
-            voterStakes[delegateToStaker[caller]].delegate == caller // The staker chose the delegate.
-        ) return delegateToStaker[caller];
-        else return caller;
-    }
-
-    /**
      * @notice Gets the queries that are being voted on this round.
      * @return pendingRequests array containing identifiers of type PendingRequestAncillary.
      */
-    function getPendingRequests() external view override returns (PendingRequestAncillary[] memory) {
-        uint256 blockTime = getCurrentTime();
-        uint256 currentRoundId = voteTiming.computeCurrentRoundId(blockTime);
-
+    function getPendingRequests() external view override returns (PendingRequestAncillaryAugmented[] memory) {
         // Solidity memory arrays aren't resizable (and reading storage is expensive). Hence this hackery to filter
         // pendingPriceRequests only to those requests that have an Active RequestStatus.
-        PendingRequestAncillary[] memory unresolved = new PendingRequestAncillary[](pendingPriceRequests.length);
+        PendingRequestAncillaryAugmented[] memory unresolved =
+            new PendingRequestAncillaryAugmented[](pendingPriceRequests.length);
         uint256 numUnresolved = 0;
 
         for (uint256 i = 0; i < pendingPriceRequests.length; i = unsafe_inc(i)) {
             PriceRequest storage priceRequest = priceRequests[pendingPriceRequests[i]];
-            if (_getRequestStatus(priceRequest, currentRoundId) == RequestStatus.Active) {
-                unresolved[numUnresolved] = PendingRequestAncillary({
+            if (_getRequestStatus(priceRequest, getCurrentRoundId()) == RequestStatus.Active) {
+                unresolved[numUnresolved] = PendingRequestAncillaryAugmented({
                     identifier: priceRequest.identifier,
                     time: priceRequest.time,
-                    ancillaryData: priceRequest.ancillaryData
+                    ancillaryData: priceRequest.ancillaryData,
+                    priceRequestIndex: priceRequest.priceRequestIndex
                 });
                 numUnresolved++;
             }
         }
 
-        PendingRequestAncillary[] memory pendingRequests = new PendingRequestAncillary[](numUnresolved);
+        PendingRequestAncillaryAugmented[] memory pendingRequests =
+            new PendingRequestAncillaryAugmented[](numUnresolved);
         for (uint256 i = 0; i < numUnresolved; i = unsafe_inc(i)) {
             pendingRequests[i] = unresolved[i];
         }
@@ -692,8 +630,7 @@ contract VotingV2 is
      * @return bool true if there are active requests, false otherwise.
      */
     function currentActiveRequests() public view returns (bool) {
-        uint256 blockTime = getCurrentTime();
-        uint256 currentRoundId = voteTiming.computeCurrentRoundId(blockTime);
+        uint256 currentRoundId = getCurrentRoundId();
         for (uint256 i = 0; i < pendingPriceRequests.length; i = unsafe_inc(i)) {
             if (_getRequestStatus(priceRequests[pendingPriceRequests[i]], currentRoundId) == RequestStatus.Active)
                 return true;
@@ -713,7 +650,7 @@ contract VotingV2 is
      * @notice Returns the current round ID, as a function of the current time.
      * @return uint256 the unique round ID.
      */
-    function getCurrentRoundId() external view override returns (uint256) {
+    function getCurrentRoundId() public view override returns (uint256) {
         return voteTiming.computeCurrentRoundId(getCurrentTime());
     }
 
@@ -742,7 +679,7 @@ contract VotingV2 is
      * total UMA slashed in the round and the total number of correct votes in the round.
      */
     function requestSlashingTrackers(uint256 requestIndex) public view returns (SlashingTracker memory) {
-        uint256 currentRoundId = voteTiming.computeCurrentRoundId(getCurrentTime());
+        uint256 currentRoundId = getCurrentRoundId();
         PriceRequest storage priceRequest = priceRequests[priceRequestIds[requestIndex]];
 
         // If the request is not resolved return zeros for everything.
@@ -784,7 +721,7 @@ contract VotingV2 is
      * @param newGat sets the next round's Gat.
      */
     function setGat(uint256 newGat) external override onlyOwner {
-        require(newGat < votingToken.totalSupply() && newGat > 0, "Invalid GAT");
+        require(newGat < votingToken.totalSupply() && newGat > 0);
         gat = newGat;
         emit GatChanged(newGat);
     }
@@ -797,7 +734,7 @@ contract VotingV2 is
      * @param _newSlashingLibrary new slashing library address.
      */
     function setSlashingLibrary(address _newSlashingLibrary) external override onlyOwner {
-        slashingLibrary = SlashingLibrary(_newSlashingLibrary);
+        slashingLibrary = SlashingLibraryInterface(_newSlashingLibrary);
         emit SlashingLibraryChanged(_newSlashingLibrary);
     }
 
@@ -831,14 +768,20 @@ contract VotingV2 is
         _updateAccountSlashingTrackers(voterAddress, indexTo);
     }
 
-    // Updates the global and selected wallet's trackers for staking and voting.
+    // Updates the global and selected wallet's trackers for staking and voting. Note that the order of these calls is
+    // very important due to the interplay between slashing and inactive/active liquidity.
     function _updateTrackers(address voterAddress) internal override {
         _updateAccountSlashingTrackers(voterAddress, priceRequestIds.length);
         super._updateTrackers(voterAddress);
     }
 
+    // Starting index for a staker is the first value that nextIndexToProcess is set to and defines the first index that
+    // a staker is suspectable to receiving slashing on. Note that we offset the length of the pendingPriceRequests
+    // array as you are still suspectable to slashing if you stake for the first time in the commit phase of an active
+    //vote. If you stake during an active reveal then your liquidity will be marked as inactive within Staker.sol until
+    // the its activated in the next round and as such you'll miss out on being slashed for that round.
     function _getStartingIndexForStaker() internal view override returns (uint64) {
-        return SafeCast.toUint64(priceRequestIds.length - (_inActiveReveal() ? 0 : pendingPriceRequests.length));
+        return SafeCast.toUint64(priceRequestIds.length - pendingPriceRequests.length);
     }
 
     // Checks if we are in an active voting reveal phase (currently revealing votes).
@@ -848,7 +791,7 @@ contract VotingV2 is
 
     // Updates the slashing trackers of a given account based on previous voting activity.
     function _updateAccountSlashingTrackers(address voterAddress, uint256 indexTo) internal {
-        uint256 currentRoundId = voteTiming.computeCurrentRoundId(getCurrentTime());
+        uint256 currentRoundId = getCurrentRoundId();
         VoterStake storage voterStake = voterStakes[voterAddress];
         // Note the method below can hit a gas limit of there are a LOT of requests from the last time this was run.
         // A future version of this should bound how many requests to look at per call to avoid gas limit issues.
@@ -952,7 +895,7 @@ contract VotingV2 is
         // we've bisected a round and should store the unapplied slashing which will seed this method on the next entry
         // such that the slashing will be applied linearly, not compounding with other slashing within the same round.
         if (slash != 0) {
-            // The next index could be either a the result of the skip for the next value if it's nonzero or just the
+            // The next index could be either the result of the skip for the next value if it's nonzero or just the
             // next unprocessed index if there is no skip value for it. This ensures that the price request we read has
             // not been modified by round-changing when rolling.
             uint256 nextIndex =
@@ -997,7 +940,11 @@ contract VotingV2 is
      * @param spamRequestIndices list of request indices to be declared as spam. Each element is a
      * pair of uint256s representing the start and end of the range.
      */
-    function signalRequestsAsSpamForDeletion(uint256[2][] calldata spamRequestIndices) external nonReentrant() {
+    function signalRequestsAsSpamForDeletion(uint256[2][] calldata spamRequestIndices)
+        external
+        nonReentrant()
+        onlyIfNotMigrated()
+    {
         votingToken.transferFrom(msg.sender, address(this), spamDeletionProposalBond);
         uint256 currentTime = getCurrentTime();
         uint256 runningValidationIndex;
@@ -1011,8 +958,7 @@ contract VotingV2 is
             require(
                 spamRequestIndex[0] <= spamRequestIndex[1] &&
                     spamRequestIndex[1] < priceRequestIds.length &&
-                    spamRequestIndex[1] > runningValidationIndex,
-                "Invalid spam request index"
+                    spamRequestIndex[1] > runningValidationIndex
             );
 
             runningValidationIndex = spamRequestIndex[1];
@@ -1045,21 +991,21 @@ contract VotingV2 is
      */
 
     function executeSpamDeletion(uint256 proposalId) external nonReentrant() {
-        require(spamDeletionProposals[proposalId].executed == false, "Proposal already executed");
+        require(spamDeletionProposals[proposalId].executed == false);
         spamDeletionProposals[proposalId].executed = true;
 
         bytes32 identifier = SpamGuardIdentifierLib._constructIdentifier(SafeCast.toUint32(proposalId));
 
         (bool hasPrice, int256 resolutionPrice, ) =
             _getPriceOrError(identifier, spamDeletionProposals[proposalId].requestTime, "");
-        require(hasPrice, "No price found for spam deletion");
+        require(hasPrice);
 
         // If the price is non zero then the spam deletion request was voted up to delete the requests. Execute delete.
         if (resolutionPrice != 0) {
             // Delete the price requests associated with the spam.
             for (uint256 i = 0; i < spamDeletionProposals[proposalId].spamRequestIndices.length; i = unsafe_inc(i)) {
-                uint64 startIndex = uint64(spamDeletionProposals[proposalId].spamRequestIndices[uint256(i)][0]);
-                uint64 endIndex = uint64(spamDeletionProposals[proposalId].spamRequestIndices[uint256(i)][1]);
+                uint64 startIndex = SafeCast.toUint64(spamDeletionProposals[proposalId].spamRequestIndices[i][0]);
+                uint64 endIndex = SafeCast.toUint64(spamDeletionProposals[proposalId].spamRequestIndices[i][1]);
                 for (uint256 j = startIndex; j <= endIndex; j++) {
                     bytes32 requestId = priceRequestIds[j];
                     // Remove from pendingPriceRequests.
@@ -1104,6 +1050,31 @@ contract VotingV2 is
     }
 
     /****************************************
+     *      MIGRATION SUPPORT FUNCTIONS     *
+     ****************************************/
+
+    /**
+     * @notice Function to enable retrieval of rewards on a previously migrated away from voting contract. This function
+     * is intended on being removed from a future version of the Voting contract and aims to solve a short term migration
+     * pain point
+     * @param voterAddress voter for which rewards will be retrieved. Does not have to be the caller.
+     * @param roundId the round from which voting rewards will be retrieved from.
+     * @param toRetrieve array of PendingRequests which rewards are retrieved from.
+     * @return uint256 the amount of rewards.
+     */
+    function retrieveRewardsOnMigratedVotingContract(
+        address voterAddress,
+        uint256 roundId,
+        MinimumVotingAncillaryInterface.PendingRequestAncillary[] memory toRetrieve
+    ) public returns (uint256) {
+        uint256 rewards =
+            MinimumVotingAncillaryInterface(address(previousVotingContract))
+                .retrieveRewards(voterAddress, roundId, toRetrieve)
+                .rawValue;
+        return rewards;
+    }
+
+    /****************************************
      *    PRIVATE AND INTERNAL FUNCTIONS    *
      ****************************************/
 
@@ -1131,17 +1102,36 @@ contract VotingV2 is
         )
     {
         PriceRequest storage priceRequest = _getPriceRequest(identifier, time, ancillaryData);
-        uint256 currentRoundId = voteTiming.computeCurrentRoundId(getCurrentTime());
-
+        uint256 currentRoundId = getCurrentRoundId();
         RequestStatus requestStatus = _getRequestStatus(priceRequest, currentRoundId);
+
         if (requestStatus == RequestStatus.Active) return (false, 0, "Current voting round not ended");
-        else if (requestStatus == RequestStatus.Resolved) {
+        if (requestStatus == RequestStatus.Resolved) {
             VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
             (, int256 resolvedPrice) =
                 voteInstance.resultComputation.getResolvedPrice(_computeGat(priceRequest.lastVotingRound));
             return (true, resolvedPrice, "");
-        } else if (requestStatus == RequestStatus.Future) return (false, 0, "Price is still to be voted on");
-        else return (false, 0, "Price was never requested");
+        }
+
+        if (requestStatus == RequestStatus.Future) return (false, 0, "Price is still to be voted on");
+        (bool previouslyResolved, int256 previousPrice) =
+            _getPriceFromPreviousVotingContract(identifier, time, ancillaryData);
+        if (previouslyResolved) return (true, previousPrice, "");
+        return (false, 0, "Price was never requested");
+    }
+
+    // Check the previousVotingContract to see if a given price request was resolved.
+    // Returns true or false, and the resolved price or zero, depending on whether it was found or not.
+    function _getPriceFromPreviousVotingContract(
+        bytes32 identifier,
+        uint256 time,
+        bytes memory ancillaryData
+    ) private view returns (bool, int256) {
+        if (address(previousVotingContract) == address(0)) return (false, 0);
+
+        if (previousVotingContract.hasPrice(identifier, time, ancillaryData))
+            return (true, previousVotingContract.getPrice(identifier, time, ancillaryData));
+        return (false, 0);
     }
 
     // Returns a price request object for a given identifier, time and ancillary data.
@@ -1201,11 +1191,11 @@ contract VotingV2 is
         priceRequest.pendingRequestIndex = UINT64_MAX;
         emit PriceResolved(
             priceRequest.lastVotingRound,
+            priceRequest.priceRequestIndex,
             priceRequest.identifier,
             priceRequest.time,
-            priceRequest.priceRequestIndex,
-            resolvedPrice,
-            priceRequest.ancillaryData
+            priceRequest.ancillaryData,
+            resolvedPrice
         );
         return true;
     }
@@ -1243,7 +1233,7 @@ contract VotingV2 is
         unchecked { return x + 1; }
     }
 
-    // Returns the registered identifier whitelist, stored in the finder
+    // Returns the registered identifier whitelist, stored in the finder.
     function _getIdentifierWhitelist() private view returns (IdentifierWhitelistInterface) {
         return IdentifierWhitelistInterface(finder.getImplementationAddress(OracleInterfaces.IdentifierWhitelist));
     }

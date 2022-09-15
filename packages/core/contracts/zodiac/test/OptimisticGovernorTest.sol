@@ -20,4 +20,9 @@ contract OptimisticGovernorTest is OptimisticGovernor, Testable {
     function getCurrentTime() public view override(OptimisticGovernor, Testable) returns (uint256) {
         return Testable.getCurrentTime();
     }
+
+    // When deployed as minimal proxy timer address is not initialized.
+    function setTimer(address _timerAddress) public {
+        timerAddress = _timerAddress;
+    }
 }

@@ -3,6 +3,20 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.20.0](https://github.com/UMAprotocol/protocol/compare/@uma/insured-bridge-relayer@1.19.5...@uma/insured-bridge-relayer@1.20.0) (2022-09-12)
+
+### Features
+
+- add env for GCP storage configuration and update GCP libraries ([#4148](https://github.com/UMAprotocol/protocol/issues/4148)) ([250c412](https://github.com/UMAprotocol/protocol/commit/250c4125af5302cc6bef4d304dc37ee107ff7c8f))
+
+## [1.19.5](https://github.com/UMAprotocol/protocol/compare/@uma/insured-bridge-relayer@1.19.4...@uma/insured-bridge-relayer@1.19.5) (2022-08-24)
+
+**Note:** Version bump only for package @uma/insured-bridge-relayer
+
+## [1.19.4](https://github.com/UMAprotocol/protocol/compare/@uma/insured-bridge-relayer@1.19.3...@uma/insured-bridge-relayer@1.19.4) (2022-08-16)
+
+**Note:** Version bump only for package @uma/insured-bridge-relayer
+
 ## [1.19.3](https://github.com/UMAprotocol/protocol/compare/@uma/insured-bridge-relayer@1.19.2...@uma/insured-bridge-relayer@1.19.3) (2022-08-09)
 
 **Note:** Version bump only for package @uma/insured-bridge-relayer
