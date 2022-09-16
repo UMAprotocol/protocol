@@ -200,13 +200,13 @@ describe("SpamGuard", function () {
     // We should see cumulatively that account1 lost two independent rounds of slashing at 0.0016 of their 60mm staked.
     // This should be assigned to the second voter. 0.0016 * 60mm = 192000
     assert.equal(
-      (await voting.methods.voterStakes(account2).call()).activeStake,
+      (await voting.methods.voterStakes(account2).call()).stake,
       toWei("30000000").add(toWei("192000")) // Their original stake amount of 30mm plus the positive slash of 192k.
     );
 
     await voting.methods.updateTrackers(account1).send({ from: account1 });
     assert.equal(
-      (await voting.methods.voterStakes(account1).call()).activeStake,
+      (await voting.methods.voterStakes(account1).call()).stake,
       toWei("60000000").sub(toWei("192000")) // Their original stake amount of 90mm sub the negative slash of 192k.
     );
   });
@@ -321,11 +321,11 @@ describe("SpamGuard", function () {
     assert.equal(slashingTracker.totalSlashed, toWei("96000")); // 60mm * 0.0016
     assert.equal(slashingTracker.totalCorrectVotes, toWei("30000000"));
     assert.equal(
-      (await voting.methods.voterStakes(account1).call()).activeStake,
+      (await voting.methods.voterStakes(account1).call()).stake,
       toWei("60000000").sub(toWei("384000")) // Their original stake amount of 30mm plus the slashing of 384k.
     );
     assert.equal(
-      (await voting.methods.voterStakes(account2).call()).activeStake,
+      (await voting.methods.voterStakes(account2).call()).stake,
       toWei("30000000").add(toWei("384000")) // Their original stake amount of 60mm minus the slashing of 384k.
     );
   });

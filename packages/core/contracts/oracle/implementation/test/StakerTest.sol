@@ -28,8 +28,8 @@ contract StakerTest is StakerControlledTiming {
 
     function applySlashingToCumulativeStaked(address voter, int256 amount) public {
         _updateTrackers(voter); // apply any unaccumulated rewards before modifying the staked balances.
-        require(int256(cumulativeActiveStake) + amount >= 0, "Cumulative staked cannot be negative");
-        voterStakes[voter].activeStake = uint256(int256(voterStakes[voter].activeStake) + amount);
+        require(int256(cumulativeStake) + amount >= 0, "Cumulative staked cannot be negative");
+        voterStakes[voter].stake = uint256(int256(voterStakes[voter].stake) + amount);
     }
 
     function _inActiveReveal() internal view override returns (bool) {
@@ -39,4 +39,6 @@ contract StakerTest is StakerControlledTiming {
     function _getStartingIndexForStaker() internal view override returns (uint64) {
         return 0;
     }
+
+    function _computePendingStakes(address wallet, uint256 amount) internal override {}
 }

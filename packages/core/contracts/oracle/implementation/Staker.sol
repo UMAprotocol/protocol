@@ -20,8 +20,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
      ****************************************/
 
     uint256 public emissionRate;
-    uint256 public cumulativeActiveStake;
-    uint256 public cumulativePendingStake;
+    uint256 public cumulativeStake;
     uint256 public rewardPerTokenStored;
     uint64 public lastUpdateTime;
     uint64 public unstakeCoolDown;
@@ -29,9 +28,9 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
     ExpandedIERC20 public votingToken;
 
     struct VoterStake {
-        uint256 activeStake;
+        uint256 stake;
         uint256 pendingUnstake;
-        uint256 pendingStake;
+        mapping(uint256 => uint256) pendingStakes;
         uint256 rewardsPaidPerToken;
         uint256 outstandingRewards;
         int256 unappliedSlash;
@@ -51,39 +50,18 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
         address indexed voter,
         address indexed from,
         uint256 amount,
-        uint256 voterActiveStake,
-        uint256 voterPendingStake,
+        uint256 voterStake,
         uint256 voterPendingUnstake,
-        uint256 cumulativeActiveStake,
-        uint256 cumulativePendingStake
+        uint256 cumulativeStake
     );
 
-    event RequestedUnstake(
-        address indexed voter,
-        uint256 amount,
-        uint256 unstakeTime,
-        uint256 voterActiveStake,
-        uint256 voterPendingStake
-    );
+    event RequestedUnstake(address indexed voter, uint256 amount, uint256 unstakeTime, uint256 voterStake);
 
-    event ExecutedUnstake(
-        address indexed voter,
-        uint256 tokensSent,
-        uint256 voterActiveStake,
-        uint256 voterPendingStake
-    );
+    event ExecutedUnstake(address indexed voter, uint256 tokensSent, uint256 voterStake);
 
     event WithdrawnRewards(address indexed voter, address indexed delegate, uint256 tokensWithdrawn);
 
     event UpdatedReward(address indexed voter, uint256 newReward, uint256 lastUpdateTime);
-
-    event UpdatedActiveStake(
-        address indexed voter,
-        uint256 voterActiveStake,
-        uint256 voterPendingStake,
-        uint256 cumulativeActiveStake,
-        uint256 cumulativePendingStake
-    );
 
     event SetNewEmissionRate(uint256 newEmissionRate);
 
@@ -114,8 +92,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
      ****************************************/
 
     /**
-     * @notice Pulls tokens from user's wallet and stakes them. If we are in an active reveal phase the stake amount will
-     * be added to the pending stake. If not, the stake amount will be added to the active stake.
+     * @notice Pulls tokens from the senders's wallet and stakes them on his behalf.
      * @param amount the amount of tokens to stake.
      */
     function stake(uint256 amount) public {
@@ -123,8 +100,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
     }
 
     /**
-     * @notice Pulls tokens from sender wallet and stakes them for the recipient. If we are in an active reveal phase the
-     * stake amount will be added to the pending stake. If not, the stake amount will be added to the active stake.
+     * @notice Pulls tokens from the senders's wallet and stakes them for the recipient.
      * @param recipient the recipient address.
      * @param amount the amount of tokens to stake.
      */
@@ -145,30 +121,19 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
         // If the staker has a cumulative staked balance of 0 then we can shortcut their lastRequestIndexConsidered to
         // the most recent index. This means we don't need to traverse requests where the staker was not staked.
         // _getStartingIndexForStaker returns the appropriate index to start at.
-        if (getVoterStake(recipient) + voterStake.pendingUnstake == 0)
-            voterStake.nextIndexToProcess = _getStartingIndexForStaker();
+        if (voterStake.stake == 0) voterStake.nextIndexToProcess = _getStartingIndexForStaker();
         _updateTrackers(recipient);
 
-        if (_inActiveReveal()) {
-            voterStake.pendingStake += amount;
-            cumulativePendingStake += amount;
-        } else {
-            voterStake.activeStake += amount;
-            cumulativeActiveStake += amount;
-        }
+        // Compute pending stakes when needed.
+        _computePendingStakes(recipient, amount);
+
+        voterStake.stake += amount;
+        cumulativeStake += amount;
+
         // Tokens are pulled from the "from" address and sent to this contract.
         // During withdrawAndRestake, "from" is the same as the address of this contract, so there is no need to transfer.
         if (from != address(this)) votingToken.transferFrom(from, address(this), amount);
-        emit Staked(
-            recipient,
-            from,
-            amount,
-            voterStake.activeStake,
-            voterStake.pendingStake,
-            voterStake.pendingUnstake,
-            cumulativeActiveStake,
-            cumulativePendingStake
-        );
+        emit Staked(recipient, from, amount, voterStake.stake, voterStake.pendingUnstake, cumulativeStake);
     }
 
     /**
@@ -183,20 +148,14 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
         _updateTrackers(msg.sender);
         VoterStake storage voterStake = voterStakes[msg.sender];
 
-        require(voterStake.activeStake >= amount && voterStake.pendingUnstake == 0, "Bad amount or pending unstake");
+        require(voterStake.stake >= amount && voterStake.pendingUnstake == 0, "Bad amount or pending unstake");
 
-        cumulativeActiveStake -= amount;
+        cumulativeStake -= amount;
         voterStake.pendingUnstake = amount;
-        voterStake.activeStake -= amount;
+        voterStake.stake -= amount;
         voterStake.unstakeRequestTime = SafeCast.toUint64(getCurrentTime());
 
-        emit RequestedUnstake(
-            msg.sender,
-            amount,
-            voterStake.unstakeRequestTime,
-            voterStake.activeStake,
-            voterStake.pendingStake
-        );
+        emit RequestedUnstake(msg.sender, amount, voterStake.unstakeRequestTime, voterStake.stake);
     }
 
     /**
@@ -217,7 +176,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
             votingToken.transfer(msg.sender, tokensToSend);
         }
 
-        emit ExecutedUnstake(msg.sender, tokensToSend, voterStake.activeStake, voterStake.pendingStake);
+        emit ExecutedUnstake(msg.sender, tokensToSend, voterStake.stake);
     }
 
     /**
@@ -304,12 +263,21 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
     // Updates an account internal trackers.
     function _updateTrackers(address voterAddress) internal virtual {
         _updateReward(voterAddress);
-        _updateActiveStake(voterAddress);
     }
 
     /****************************************
      *            VIEW FUNCTIONS            *
      ****************************************/
+
+    /**
+     * @notice Gets the pending stake for a voter for a given round.
+     * @param voterAddress the voter address.
+     * @param roundId round id.
+     * @return uint256 amount of the pending stake.
+     */
+    function getVoterPendingStake(address voterAddress, uint256 roundId) external view returns (uint256) {
+        return voterStakes[voterAddress].pendingStakes[roundId];
+    }
 
     /**
      * @notice Gets the voter from the delegate.
@@ -333,7 +301,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
         VoterStake storage voterStake = voterStakes[voterAddress];
 
         return
-            ((getVoterStake(voterAddress) * (rewardPerToken() - voterStake.rewardsPaidPerToken)) / 1e18) +
+            ((voterStake.stake * (rewardPerToken() - voterStake.rewardsPaidPerToken)) / 1e18) +
             voterStake.outstandingRewards;
     }
 
@@ -342,26 +310,8 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
      * @return uint256 the reward per token.
      */
     function rewardPerToken() public view returns (uint256) {
-        if (getCumulativeStake() == 0) return rewardPerTokenStored;
-        return
-            rewardPerTokenStored + ((getCurrentTime() - lastUpdateTime) * emissionRate * 1e18) / getCumulativeStake();
-    }
-
-    /**
-     * @notice  Returns the total amount of tokens staked. This is the sum of the active stake and the pending stake.
-     * @return uint256 the cumulative stake.
-     */
-    function getCumulativeStake() public view returns (uint256) {
-        return cumulativeActiveStake + cumulativePendingStake;
-    }
-
-    /**
-     * @notice  Returns the total amount of tokens staked by the voter.
-     * @param voterAddress the address of the voter.
-     * @return uint256 the total stake.
-     */
-    function getVoterStake(address voterAddress) public view returns (uint256) {
-        return voterStakes[voterAddress].activeStake + voterStakes[voterAddress].pendingStake;
+        if (cumulativeStake == 0) return rewardPerTokenStored;
+        return rewardPerTokenStored + ((getCurrentTime() - lastUpdateTime) * emissionRate * 1e18) / cumulativeStake;
     }
 
     /**
@@ -372,7 +322,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
      */
     function getVoterStakePostUpdate(address voterAddress) external returns (uint256) {
         _updateTrackers(voterAddress);
-        return voterStakes[voterAddress].activeStake + voterStakes[voterAddress].pendingStake;
+        return voterStakes[voterAddress].stake;
     }
 
     /**
@@ -386,6 +336,19 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
     /****************************************
      *          INTERNAL FUNCTIONS          *
      ****************************************/
+
+    // This function must be called before any tokens are staked. Update the voter's pending stakes when necessary.
+    // The contract that inherits from Staker (eg VotingV2 contract) must implement this logic by overriding this function.
+    function _computePendingStakes(address voterAddress, uint256 amount) internal virtual;
+
+    // Add a new stake amount to the voter's pending stake for a specific round id.
+    function _setPendingStake(
+        address voterAddress,
+        uint256 roundId,
+        uint256 amount
+    ) internal {
+        voterStakes[voterAddress].pendingStakes[roundId] += amount;
+    }
 
     // Determine if we are in an active reveal phase. This function should be overridden by the child contract.
     function _inActiveReveal() internal view virtual returns (bool) {
@@ -407,22 +370,5 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
             voterStake.rewardsPaidPerToken = newRewardPerToken;
         }
         emit UpdatedReward(voterAddress, newRewardPerToken, lastUpdateTime);
-    }
-
-    // Updates the active stake of the voter if not in an active reveal phase.
-    function _updateActiveStake(address voterAddress) internal {
-        if (voterStakes[voterAddress].pendingStake == 0 || _inActiveReveal()) return;
-        cumulativeActiveStake += voterStakes[voterAddress].pendingStake;
-        cumulativePendingStake -= voterStakes[voterAddress].pendingStake;
-        voterStakes[voterAddress].activeStake += voterStakes[voterAddress].pendingStake;
-        voterStakes[voterAddress].pendingStake = 0;
-
-        emit UpdatedActiveStake(
-            voterAddress,
-            voterStakes[voterAddress].activeStake,
-            voterStakes[voterAddress].pendingStake,
-            cumulativeActiveStake,
-            cumulativePendingStake
-        );
     }
 }
