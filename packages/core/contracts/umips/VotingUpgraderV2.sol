@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity ^0.8.0;
+pragma solidity 0.8.16;
 
 import "../oracle/implementation/Finder.sol";
 import "../oracle/implementation/Constants.sol";
@@ -49,7 +49,7 @@ contract VotingUpgraderV2 {
     // Finder contract to push upgrades to.
     Finder public immutable finder;
 
-    // Addresses to upgrade.
+    // Address to upgrade to.
     address public immutable newVoting;
 
     // Additional ownable contracts to transfer ownership of.
