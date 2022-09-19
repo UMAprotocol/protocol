@@ -70,5 +70,41 @@
   {
     "contractName": "ProposerV2",
     "address": "0x235fa7590749C0c7240926E4CD0bB8EaecdbD3F3"
+  },
+  {
+    "contractName": "TokenFactory",
+    "address": "0x96deacEA7A33F76EFf3549458cAfDE5427D64A12"
+  },
+  {
+    "contractName": "LongShortPairCreator",
+    "address": "0x5EcA3e8CA5B69279b3D075C52Bceff225570b4Ef"
+  },
+  {
+    "contractName": "CoveredCallLongShortPairFinancialProductLibrary",
+    "address": "0xE08ede7eC8520F43973ab287688De5Fa1416F661"
+  },
+  {
+    "contractName": "RangeBondLongShortPairFinancialProductLibrary",
+    "address": "0x03050b0c154E0C22A8153a1Fe83AD40747B4Ff87"
+  },
+  {
+    "contractName": "BinaryOptionLongShortPairFinancialProductLibrary",
+    "address": "0x765c9526CBaB89eBfB6328e7188502299Bf8eBdb"
+  },
+  {
+    "contractName": "LinearLongShortPairFinancialProductLibrary",
+    "address": "0xA123aBaf76F5f4FB67f094e53e545474Ce597404"
+  },
+  {
+    "contractName": "SimpleSuccessTokenLongShortPairFinancialProductLibrary",
+    "address": "0x855afAa41c9393cc9D46C571fE22537E740CA027"
+  },
+  {
+    "contractName": "SuccessTokenLongShortPairFinancialProductLibrary",
+    "address": "0xF7116b89854880F8C5c9BEfC063D454dfb3f0B39"
+  },
+  {
+    "contractName": "CappedYieldDollarLongShortPairFinancialProductLibrary",
+    "address": "0x56e68853Bc173534F30a23E9De64B2BC4b64D61e"
   }
 ]
