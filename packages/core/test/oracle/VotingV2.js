@@ -198,7 +198,7 @@ describe("VotingV2", function () {
     // Move to the reveal phase.
     await moveToNextPhase(voting, accounts[0]);
 
-    // This is now required before reveal
+    // This is now required before reveal.
 
     // Can't commit during the reveal phase.
     assert(await didContractThrow(voting.methods.commitVote(identifier, time, newHash).send({ from: accounts[0] })));
