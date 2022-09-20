@@ -11,9 +11,12 @@
  * 1) PORT: local port to run the hub on. if not specified will default to 8080
  * 2) SPOKE_URL: http url to a serverless spoke instance. This could be local host (if running locally) or a GCP
  * cloud run/cloud function URL which will spin up new instances for each parallel bot execution.
- * 3) CUSTOM_NODE_URL: an ethereum node used to fetch the latest block number when the script runs.
- 4 ) HUB_CONFIG: JSON object configuring configRetrieval to define where to pull configs from, saveQueriedBlock to 
- * define where to save last queried block numbers and spokeRunner to define the execution environment for the spoke process. 
+ * 3) SPOKE_URLS: An optional argument in the form of a stringified JSON Object in the form of Record<string,string>
+ * Keys are a name for the spoke, and values are the spoke urls. This is only needed when we want to specificy
+ * different spoke urls for each configuration. Select by using the parameter "spokeUrlName" on the config file for each bot.
+ * 4) CUSTOM_NODE_URL: an ethereum node used to fetch the latest block number when the script runs.
+ * 5) HUB_CONFIG: JSON object configuring configRetrieval to define where to pull configs from, saveQueriedBlock to
+ * define where to save last queried block numbers and spokeRunner to define the execution environment for the spoke process.
  * This script assumes the caller is providing a HTTP POST with a body formatted as:
  * {"bucket":"<config-bucket>","configFile":"<config-file-name>"}
  */
@@ -57,8 +60,33 @@ const Web3 = require("web3");
 const { delay, createNewLogger } = require("@uma/financial-templates-lib");
 let customLogger;
 let spokeUrl;
+// spokeUrlTable is an optional table populated through the env var SPOKE_URLS. SPOKE_URLS is expected to be a
+// stringified JSON object in the form Record<string:string>. Where keys are a name for the spoke url
+// and the values are the spoke urls. The env gets parsed into spokeUrlTable.  Bots can select a size with
+// the spokeUrlName="large" on the configuration object.
+// For Example:
+// {
+//   large:"https://large-spoke-url",
+//   small:"https://small-spoke-url",
+// }
+let spokeUrlTable = {};
 let customNodeUrl;
 let hubConfig = {};
+
+// Lets us specify spoke url by a name or fallback to default spoke pool url.
+// this should allow us to create multiple levels of spoke pool hardware (small,medium,large)
+// and switch between urls based on the bot config.
+function getSpokeUrl(name) {
+  if (name) {
+    // this will check if you have specified a name, and do a lookup. If a name is specified but does not exist this
+    // will be an error
+    const url = spokeUrlTable?.[name];
+    if (!url) throw new Error("No valid spoke url available for name: " + name);
+    return url;
+    // if no name specified just return spokeUrl. This may possibly be undefined, but this is compatible with past
+    // behavior.
+  } else return spokeUrl;
+}
 
 const defaultHubConfig = {
   configRetrieval: "localStorage",
@@ -95,6 +123,7 @@ hub.post("/", async (req, res) => {
       at: "ServerlessHub",
       message: "Executing Serverless query from config file",
       spokeUrl,
+      spokeUrlTable,
       botsExecuted: Object.keys(configObject),
       configObject: hubConfig.printHubConfig ? configObject : "REDACTED",
     });
@@ -198,6 +227,13 @@ hub.post("/", async (req, res) => {
         configObject[botName]?.environmentVariables?.STORE_MULTI_CHAIN_BLOCK_NUMBERS
       );
       botConfigs[botName] = botConfig;
+      // Gets a spoke url based on execution size or fallback to default spoke url if non specified
+      if (botConfig.spokeUrlName)
+        logger.debug({
+          at: "ServerlessHub",
+          message: `Attempting to execute serverless spoke using named spoke ${botConfig.spokeUrlName}`,
+        });
+      const spokeUrl = getSpokeUrl(botConfig.spokeUrlName);
       promiseArray.push(
         Promise.race([_executeServerlessSpoke(spokeUrl, botConfig), _rejectAfterDelay(spokeRejectionTimeout, botName)])
       );
@@ -551,7 +587,7 @@ const _rejectAfterDelay = (seconds, childProcessIdentifier) =>
   });
 
 // Start the hub's async listening process. Enables injection of a logging instance & port for testing.
-async function Poll(_customLogger, port = 8080, _spokeURL, _CustomNodeUrl, _hubConfig) {
+async function Poll(_customLogger, port = 8080, _spokeURL, _CustomNodeUrl, _hubConfig, spokeURLS) {
   customLogger = _customLogger;
   // The Serverless hub should have a configured URL to define the remote instance & a local node URL to boot.
   if (!_spokeURL || !_CustomNodeUrl) {
@@ -565,6 +601,8 @@ async function Poll(_customLogger, port = 8080, _spokeURL, _CustomNodeUrl, _hubC
 
   // Set configs to be used in the sererless execution.
   spokeUrl = _spokeURL;
+  // This should be specified as an object Record<size:string,url:string>
+  spokeUrlTable = spokeURLS;
   customNodeUrl = _CustomNodeUrl;
   if (_hubConfig) hubConfig = { ...defaultHubConfig, ..._hubConfig };
   else hubConfig = defaultHubConfig;
@@ -574,6 +612,7 @@ async function Poll(_customLogger, port = 8080, _spokeURL, _CustomNodeUrl, _hubC
       at: "ServerlessHub",
       message: "Serverless hub initialized",
       spokeUrl,
+      spokeUrlTable,
       customNodeUrl,
       hubConfig,
       port,
@@ -584,15 +623,22 @@ async function Poll(_customLogger, port = 8080, _spokeURL, _CustomNodeUrl, _hubC
 // If called directly by node, start the Poll process. If imported as a module then do nothing.
 if (require.main === module) {
   // add the logger, port, protocol runnerURL and custom node URL as params.
-  hubConfig;
+  let hubConfig;
   try {
     hubConfig = process.env.HUB_CONFIG ? JSON.parse(process.env.HUB_CONFIG) : null;
   } catch (error) {
     console.error("Malformed hub config!", hubConfig);
     process.exit(1);
   }
+  let spokeURLS;
+  try {
+    spokeURLS = process.env.SPOKE_URLS ? JSON.parse(process.env.SPOKE_URLS) : {};
+  } catch (error) {
+    console.error("Malformed SPOKE_URLS env!");
+    process.exit(1);
+  }
 
-  Poll(null, process.env.PORT, process.env.SPOKE_URL, process.env.CUSTOM_NODE_URL, hubConfig).then(() => {});
+  Poll(null, process.env.PORT, process.env.SPOKE_URL, process.env.CUSTOM_NODE_URL, hubConfig, spokeURLS).then(() => {});
 }
 
 hub.Poll = Poll;
