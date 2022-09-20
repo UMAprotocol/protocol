@@ -11,9 +11,12 @@
  * 1) PORT: local port to run the hub on. if not specified will default to 8080
  * 2) SPOKE_URL: http url to a serverless spoke instance. This could be local host (if running locally) or a GCP
  * cloud run/cloud function URL which will spin up new instances for each parallel bot execution.
- * 3) CUSTOM_NODE_URL: an ethereum node used to fetch the latest block number when the script runs.
- 4 ) HUB_CONFIG: JSON object configuring configRetrieval to define where to pull configs from, saveQueriedBlock to 
- * define where to save last queried block numbers and spokeRunner to define the execution environment for the spoke process. 
+ * 3) SPOKE_URLS: An optional argument in the form of a stringified JSON Object in the form of Record<string,string>
+ * Keys are a name for the spoke, and values are the spoke urls. This is only needed when we want to specificy
+ * different spoke urls for each configuration. Select by using the parameter "spokeName" on the config file for each bot.
+ * 4) CUSTOM_NODE_URL: an ethereum node used to fetch the latest block number when the script runs.
+ * 5) HUB_CONFIG: JSON object configuring configRetrieval to define where to pull configs from, saveQueriedBlock to
+ * define where to save last queried block numbers and spokeRunner to define the execution environment for the spoke process.
  * This script assumes the caller is providing a HTTP POST with a body formatted as:
  * {"bucket":"<config-bucket>","configFile":"<config-file-name>"}
  */
@@ -57,23 +60,32 @@ const Web3 = require("web3");
 const { delay, createNewLogger } = require("@uma/financial-templates-lib");
 let customLogger;
 let spokeUrl;
+// spokeUrlTable is an optional table populated through the env var SPOKE_URLS. SPOKE_URLS is expected to be a
+// stringified JSON object in the form Record<string:string>. Where keys are a name for the spoke url
+// and the values are the spoke urls. The env gets parsed into spokeUrlTable.  Bots can select a size with
+// the spokeName="large" on the configuration object.
+// For Example:
+// {
+//   large:"https://large-spoke-url",
+//   small:"https://small-spoke-url",
+// }
 let spokeUrlTable = {};
 let customNodeUrl;
 let hubConfig = {};
 
-// Lets us specify spoke url by a label or fallback to default spoke pool url.
+// Lets us specify spoke url by a name or fallback to default spoke pool url.
 // this should allow us to create multiple levels of spoke pool hardware (small,medium,large)
 // and switch between urls based on the bot config.
-function getSpokeUrl(label) {
-  if (label) {
-    // this will check if you have specified a label, and do a lookup. If a label is specified but does not exist this will be an error
-    const url = spokeUrlTable ? spokeUrlTable[label] : undefined;
-    if (!url) throw new Error("No valid spoke url available for label: " + label);
+function getSpokeUrl(name) {
+  if (name) {
+    // this will check if you have specified a name, and do a lookup. If a name is specified but does not exist this
+    // will be an error
+    const url = spokeUrlTable?.[name];
+    if (!url) throw new Error("No valid spoke url available for name: " + name);
     return url;
-  } else {
-    // if no label specified just return spokeUrl. This may possibly be undefined, but this is compatible with past behavior.
-    return spokeUrl;
-  }
+    // if no name specified just return spokeUrl. This may possibly be undefined, but this is compatible with past
+    // behavior.
+  } else return spokeUrl;
 }
 
 const defaultHubConfig = {
@@ -215,8 +227,8 @@ hub.post("/", async (req, res) => {
         configObject[botName]?.environmentVariables?.STORE_MULTI_CHAIN_BLOCK_NUMBERS
       );
       botConfigs[botName] = botConfig;
-      // gets a spoke url based on execution size or fallback to default spoke url if non specified
-      const spokeUrl = getSpokeUrl(botConfig.spokeExecutionSize);
+      // Gets a spoke url based on execution size or fallback to default spoke url if non specified
+      const spokeUrl = getSpokeUrl(botConfig.spokeName);
       promiseArray.push(
         Promise.race([_executeServerlessSpoke(spokeUrl, botConfig), _rejectAfterDelay(spokeRejectionTimeout, botName)])
       );
