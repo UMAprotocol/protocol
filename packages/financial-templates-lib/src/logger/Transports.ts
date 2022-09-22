@@ -7,7 +7,11 @@ import { createConsoleTransport } from "./ConsoleTransport";
 import { createJsonTransport } from "./JsonTransport";
 import { createSlackTransport } from "./SlackTransport";
 import { PagerDutyTransport } from "./PagerDutyTransport";
-import { PagerDutyV2Transport } from "./PagerDutyV2Transport";
+import {
+  PagerDutyV2Transport,
+  Config as PagerDutyV2Config,
+  createConfig as pagerDutyV2CreateConfig,
+} from "./PagerDutyV2Transport";
 import { DiscordTransport } from "./DiscordTransport";
 import type Transport from "winston-transport";
 import dotenv from "dotenv";
@@ -19,7 +23,6 @@ const argv = minimist(process.argv.slice(), {});
 type SlackConfig = Parameters<typeof createSlackTransport>[0];
 type DiscordConfig = ConstructorParameters<typeof DiscordTransport>[1];
 type PagerDutyConfig = ConstructorParameters<typeof PagerDutyTransport>[1];
-type PagerDutyV2Config = ConstructorParameters<typeof PagerDutyV2Transport>[1];
 
 interface TransportsConfig {
   environment?: string;
@@ -80,12 +83,17 @@ export function createTransports(transportsConfig: TransportsConfig = {}): Trans
         )
       );
     }
-    const pagerDutyV2Config =
-      transportsConfig.pagerDutyV2Config ?? JSON.parse(process.env.PAGER_DUTY_V2_CONFIG || "null");
+
+    // to disable pdv2, pass in a "disabled=true" in configs or env. Configs get merged rather than replaced as was the
+    // convention in previous transports.
+    const { disabled: pagerDutyV2Disabled = false, ...pagerDutyV2Config } = {
+      ...JSON.parse(process.env.PAGER_DUTY_V2_CONFIG || "null"),
+      ...transportsConfig.pagerDutyV2Config,
+    };
     // If there is a Pagerduty V2 API key then add the pagerduty winston transport.
-    if (pagerDutyV2Config) {
+    if (Object.keys(pagerDutyV2Config).length > 0 && !pagerDutyV2Disabled) {
       // this will throw an error if an invalid configuration is present
-      transports.push(new PagerDutyV2Transport({ level: "warn" }, pagerDutyV2Config));
+      transports.push(new PagerDutyV2Transport({ level: "warn" }, pagerDutyV2CreateConfig(pagerDutyV2Config)));
     }
   }
   return transports;

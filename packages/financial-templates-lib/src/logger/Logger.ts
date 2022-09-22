@@ -47,10 +47,6 @@ export interface AugmentedLogger extends _Logger {
   isFlushed: boolean;
 }
 
-export interface AugmentedLogger extends _Logger {
-  isFlushed: boolean;
-}
-
 export function createNewLogger(
   injectedTransports: Transport[] = [],
   transportsConfig = {},
