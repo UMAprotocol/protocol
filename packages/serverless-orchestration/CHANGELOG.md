@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.11.0](https://github.com/UMAprotocol/protocol/compare/@uma/serverless-orchestration@2.10.0...@uma/serverless-orchestration@2.11.0) (2022-09-22)
+
+### Features
+
+- **serverless-orchestration:** add ability to specify labeled spoke urls ([#4177](https://github.com/UMAprotocol/protocol/issues/4177)) ([0aab1e6](https://github.com/UMAprotocol/protocol/commit/0aab1e632f0994d15bc9bf7f04b398f4f05e48ee))
+
 # [2.10.0](https://github.com/UMAprotocol/protocol/compare/@uma/serverless-orchestration@2.9.4...@uma/serverless-orchestration@2.10.0) (2022-09-12)
 
 ### Features

@@ -3,6 +3,37 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.37.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.36.0...@uma/core@2.37.0) (2022-09-22)
+
+### Bug Fixes
+
+- \_getPriceFromPreviousVotingContract function visibility ([#4154](https://github.com/UMAprotocol/protocol/issues/4154)) ([d9eb75b](https://github.com/UMAprotocol/protocol/commit/d9eb75b8a7c1a4b1a46d719a783d9b2e6010f2e9))
+- [L01]: Prevent the governor from proposing emergency actions ([#4151](https://github.com/UMAprotocol/protocol/issues/4151)) ([9828588](https://github.com/UMAprotocol/protocol/commit/9828588899e2df3b3093f6ce19aa5db71e0282c2))
+- [L04]: add missing docstrings ([#4155](https://github.com/UMAprotocol/protocol/issues/4155)) ([421ca85](https://github.com/UMAprotocol/protocol/commit/421ca85cf05dba24b42537acd07ed22ae1930bf6))
+- [L08]: improve executeEmergencyProposal docstring ([#4158](https://github.com/UMAprotocol/protocol/issues/4158)) ([ff500a7](https://github.com/UMAprotocol/protocol/commit/ff500a750cafc9a9dc28b68031c7bd80a1a99f0a))
+- [N02]: Misleading documentation ([#4152](https://github.com/UMAprotocol/protocol/issues/4152)) ([4dcae7e](https://github.com/UMAprotocol/protocol/commit/4dcae7ef72441b54b34f3f459f8443f9ac9dffe1))
+- [N04]: Unnecessary modifier in setDelegate and setDelegator ([#4156](https://github.com/UMAprotocol/protocol/issues/4156)) ([1ff3b68](https://github.com/UMAprotocol/protocol/commit/1ff3b68cbbce61e1fbb7b8bf55479b27a192ee0b))
+- [N06]: Redundant event parameters ([#4161](https://github.com/UMAprotocol/protocol/issues/4161)) ([d71523b](https://github.com/UMAprotocol/protocol/commit/d71523b540864be4d23065016454e792749b280f))
+- [N08]: Typographical errors fix ([#4165](https://github.com/UMAprotocol/protocol/issues/4165)) ([202a6d2](https://github.com/UMAprotocol/protocol/commit/202a6d21d4d354dabc375a2fc5ba400fc36db92b))
+- [N10]: Unnecessary public visability in executeEmergencyProposal ([#4166](https://github.com/UMAprotocol/protocol/issues/4166)) ([1d915db](https://github.com/UMAprotocol/protocol/commit/1d915dba48fe08d6b554819b537d2e4cfa9911ae))
+- [N12]: Remove Unused variables ([#4167](https://github.com/UMAprotocol/protocol/issues/4167)) ([53d3502](https://github.com/UMAprotocol/protocol/commit/53d3502256393a7b1fbd06d6094325f771746bb7))
+- [post-audit-feedback]: Address typos and small issues identified before getting full audit feedback ([#4178](https://github.com/UMAprotocol/protocol/issues/4178)) ([408ec25](https://github.com/UMAprotocol/protocol/commit/408ec2526d9bfb1b375e75e6ffa10f111740fa6f))
+- add missing onlyIfNotMigrated modifiers ([#4157](https://github.com/UMAprotocol/protocol/issues/4157)) ([ac86f25](https://github.com/UMAprotocol/protocol/commit/ac86f25440b0c6dce1b8173705ba11a95f5ea969))
+- add new voting v2 address goerli ([#4180](https://github.com/UMAprotocol/protocol/issues/4180)) ([5e87d65](https://github.com/UMAprotocol/protocol/commit/5e87d654aac5468d5b070a8d9061a0617d71a6e1))
+- DVM2.0 Address bug in rolling votes + having no active stakers participate ([#4139](https://github.com/UMAprotocol/protocol/issues/4139)) ([1169f78](https://github.com/UMAprotocol/protocol/commit/1169f78ec8dd58968b8e301b26cc39f00cadd316))
+- remove non-empty return value ([#4163](https://github.com/UMAprotocol/protocol/issues/4163)) ([5cd9ef1](https://github.com/UMAprotocol/protocol/commit/5cd9ef1514ccd5c0735be8e4b857eafd7bf62764))
+- remove redundant code ([#4162](https://github.com/UMAprotocol/protocol/issues/4162)) ([f3f91fb](https://github.com/UMAprotocol/protocol/commit/f3f91fbfacd2715a009a0133923b0e52e09b4afb))
+- remove unused imports ([#4164](https://github.com/UMAprotocol/protocol/issues/4164)) ([5a56f2b](https://github.com/UMAprotocol/protocol/commit/5a56f2b5f6e11be4d8e85061e4bd704cafe7b9f2))
+- staking parasitic usage ([#4168](https://github.com/UMAprotocol/protocol/issues/4168)) ([f61eed4](https://github.com/UMAprotocol/protocol/commit/f61eed4a6de71c03b6a5a6b913f21efcc78b1392)), closes [#4146](https://github.com/UMAprotocol/protocol/issues/4146) [#4173](https://github.com/UMAprotocol/protocol/issues/4173)
+- votingv2 contract size ([#4175](https://github.com/UMAprotocol/protocol/issues/4175)) ([ff903a4](https://github.com/UMAprotocol/protocol/commit/ff903a4d71975acd4c953795668b943b5fd6fec2))
+
+### Features
+
+- add quorum and wait time validation in setters ([#4153](https://github.com/UMAprotocol/protocol/issues/4153)) ([7d51046](https://github.com/UMAprotocol/protocol/commit/7d510462ed365ffc7e9283f67ce3675cf737caec))
+- deploy votingv2 in goerli after fixes ([#4176](https://github.com/UMAprotocol/protocol/issues/4176)) ([fa250ea](https://github.com/UMAprotocol/protocol/commit/fa250ea34d144128d7550bef39fe853cd151ce3d))
+- immutable variables in voting upgrader v2 ([#4160](https://github.com/UMAprotocol/protocol/issues/4160)) ([74c23b2](https://github.com/UMAprotocol/protocol/commit/74c23b2e64cea570fb8ec2cc150ed3a61aeda033))
+- pragma update ([#4159](https://github.com/UMAprotocol/protocol/issues/4159)) ([7c049a1](https://github.com/UMAprotocol/protocol/commit/7c049a108793e200665fa3650c245efd424353da))
+
 # [2.36.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.35.0...@uma/core@2.36.0) (2022-09-12)
 
 ### Features
