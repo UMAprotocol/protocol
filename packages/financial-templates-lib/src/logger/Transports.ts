@@ -80,20 +80,12 @@ export function createTransports(transportsConfig: TransportsConfig = {}): Trans
         )
       );
     }
-    // typescript is not properly typing this as a parsed json string should be "unknown",
-    // but we are relying on this quirk throughout this file. The PD v2 transport class will check
-    // that the config is valid or throw an error to prevent errors while running.
     const pagerDutyV2Config =
       transportsConfig.pagerDutyV2Config ?? JSON.parse(process.env.PAGER_DUTY_V2_CONFIG || "null");
     // If there is a Pagerduty V2 API key then add the pagerduty winston transport.
     if (pagerDutyV2Config) {
-      try {
-        transports.push(new PagerDutyV2Transport({ level: "warn" }, pagerDutyV2Config));
-      } catch (err) {
-        if (err instanceof Error) {
-          console.warn("Pagerduty V2 Config not added due to error: ", err.message);
-        }
-      }
+      // this will throw an error if an invalid configuration is present
+      transports.push(new PagerDutyV2Transport({ level: "warn" }, pagerDutyV2Config));
     }
   }
   return transports;

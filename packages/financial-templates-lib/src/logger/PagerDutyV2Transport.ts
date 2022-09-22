@@ -1,23 +1,24 @@
 // This transport enables winston logging to send messages to pager duty v2 api.
-import assert from "assert";
 import Transport from "winston-transport";
 import { event } from "@pagerduty/pdjs";
+import * as ss from 'superstruct'
 
 type TransportOptions = ConstructorParameters<typeof Transport>[0];
 export type Severity = "critical" | "error" | "warning" | "info";
 
-interface Config {
-  integrationKey: string;
-  customServices?: { [key: string]: string };
-}
+const Config = ss.object({
+  integrationKey: ss.string(),
+  customServices: ss.optional(ss.record(ss.string(),ss.string()))
+})
+export type Config = ss.Infer<typeof Config>
 
 export class PagerDutyV2Transport extends Transport {
   private readonly integrationKey: string;
   private readonly customServices: { [key: string]: string };
-  constructor(winstonOpts: TransportOptions, { integrationKey, customServices = {} }: Config) {
+  constructor(winstonOpts: TransportOptions, unknownConfig:unknown) {
     // we check this even though its strongly typed because typescript is incorrectly allowing json parsed env.
-    assert(integrationKey, "Pagerduty V2 Transport requires integrationKey");
     super(winstonOpts);
+    const {integrationKey,customServices={}} = ss.create(unknownConfig,Config)
     this.integrationKey = integrationKey;
     this.customServices = customServices;
   }
