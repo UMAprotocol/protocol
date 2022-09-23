@@ -3,6 +3,10 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.17.2](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.17.1...@uma/scripts@1.17.2) (2022-09-23)
+
+**Note:** Version bump only for package @uma/scripts
+
 ## [1.17.1](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.17.0...@uma/scripts@1.17.1) (2022-09-22)
 
 **Note:** Version bump only for package @uma/scripts

@@ -3,6 +3,10 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.11.8](https://github.com/UMAprotocol/protocol/compare/@uma/trader@1.11.7...@uma/trader@1.11.8) (2022-09-23)
+
+**Note:** Version bump only for package @uma/trader
+
 ## [1.11.7](https://github.com/UMAprotocol/protocol/compare/@uma/trader@1.11.6...@uma/trader@1.11.7) (2022-09-22)
 
 **Note:** Version bump only for package @uma/trader
