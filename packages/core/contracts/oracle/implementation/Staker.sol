@@ -16,31 +16,45 @@ import "@openzeppelin/contracts/utils/math/SafeCast.sol";
  */
 abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
     /****************************************
-     *           STAKING TRACKERS           *
+     *             STAKING STATE            *
      ****************************************/
 
-    uint256 public emissionRate;
-    uint256 public cumulativeStake;
-    uint256 public rewardPerTokenStored;
-    uint64 public lastUpdateTime;
-    uint64 public unstakeCoolDown;
-
-    ExpandedIERC20 public votingToken;
-
+    // Identifies a "stake" for a given voter. Each staker has an instance of this struct.
     struct VoterStake {
-        uint256 stake;
-        uint256 pendingUnstake;
-        mapping(uint256 => uint256) pendingStakes;
-        uint256 rewardsPaidPerToken;
-        uint256 outstandingRewards;
-        int256 unappliedSlash;
-        uint64 nextIndexToProcess;
-        uint64 unstakeRequestTime;
-        address delegate;
+        uint256 stake; // UMA staked by the staker.
+        uint256 pendingUnstake; // UMA in unstake cooldown period, waiting to be unstaked.
+        mapping(uint256 => uint256) pendingStakes; // If a voter stakes during an active reveal, stake is pending.
+        uint256 rewardsPaidPerToken; // Internal tracker used in the calculation of pro-rate share of rewards.
+        uint256 outstandingRewards; // Accumulated rewards that have not yet been claimed.
+        int256 unappliedSlash; // Used to track unapplied slashing in the case of bisected rounds.
+        uint64 nextIndexToProcess; // The next request index that a staker is suspectable to be slashed on.
+        uint64 unstakeRequestTime; // Time that a staker requested to unstake. Used to determine if cooldown has passed.
+        address delegate; // Address a staker has delegated to. The delegate can commit/reveal/claimRestake rewards.
     }
 
+    // Each voter address is mapped to one staker struct representing their position in the stake contract.
     mapping(address => VoterStake) public voterStakes;
+
+    // Mapping of delegates to their delegators (staker). Reverse mapping from voterStakes.delegate.
     mapping(address => address) public delegateToStaker;
+
+    // Number of UMA emitted per second top incentivize stakers.
+    uint256 public emissionRate;
+
+    // Total number of UMA staked within the system.
+    uint256 public cumulativeStake;
+
+    // Tracker used to allocate pro-rata share of rewards to stakers.
+    uint256 public rewardPerTokenStored;
+
+    // Delay, in seconds, a staker must wait when trying to unstake their UMA.
+    uint64 public unstakeCoolDown;
+
+    // Tracks the last time the reward rate was updated, used in pro-rate allocation of rewards to stakers.
+    uint64 public lastUpdateTime;
+
+    // An instance of the UMA voting token. This contract needs mint permissions on the token to allocate rewards.
+    ExpandedIERC20 public votingToken;
 
     /****************************************
      *                EVENTS                *
@@ -140,7 +154,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
      * @notice Request a certain number of tokens to be unstaked. After the unstake time expires, the user may execute
      * the unstake. Tokens requested to unstake are not slashable nor subject to earning rewards.
      * This function cannot be called during an active reveal phase.
-     * Note that there is no way to cancel an unstake request, you must wait until after unstakeRequestTime and re-stake.
+     * Note there is no way to cancel an unstake request, you must wait until after unstakeRequestTime and re-stake.
      * @param amount the amount of tokens to request to be unstaked.
      */
     function requestUnstake(uint256 amount) external override nonReentrant() {
@@ -187,6 +201,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
         return _withdrawRewards(msg.sender, msg.sender);
     }
 
+    // Withdraws rewards for a given voter and sends them to the recipient.
     function _withdrawRewards(address voter, address recipient) internal returns (uint256) {
         _updateTrackers(voter);
         VoterStake storage voterStake = voterStakes[voter];
@@ -201,8 +216,8 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
     }
 
     /**
-     * @notice Stake accumulated rewards. This is merely a convenience mechanism that combines the voter's withdrawal and stake
-     *  in the same transaction if requested by a delegate or the voter.
+     * @notice Stake accumulated rewards. This is merely a convenience mechanism that combines the voter's withdrawal
+     * and stake in the same transaction if requested by a delegate or the voter.
      * @dev This method requires that the msg.sender (voter or delegate) has approved this contract.
      * @dev The rewarded tokens simply pass through this contract before being staked on the voter's behalf.
      *  The balance of the delegate remains unchanged.
@@ -315,8 +330,8 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
     }
 
     /**
-     * @notice  Returns the total amount of tokens staked by the voter, after applying updateTrackers. Specifically used
-     * by offchain applications to simulate the cumulative stake + unapplied slashing updates without sending a transaction.
+     * @notice Returns the total amount of tokens staked by the voter, after applying updateTrackers. Specifically used
+     * by offchain apps to simulate the cumulative stake + unapplied slashing updates without sending a transaction.
      * @param voterAddress the address of the voter.
      * @return uint256 the total stake.
      */
@@ -338,7 +353,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
      ****************************************/
 
     // This function must be called before any tokens are staked. Update the voter's pending stakes when necessary.
-    // The contract that inherits from Staker (eg VotingV2 contract) must implement this logic by overriding this function.
+    // The contract that inherits from Staker (eg VotingV2) must implement this logic by overriding this function.
     function _computePendingStakes(address voterAddress, uint256 amount) internal virtual;
 
     // Add a new stake amount to the voter's pending stake for a specific round id.
@@ -355,6 +370,7 @@ abstract contract Staker is StakerInterface, Ownable, Lockable, MultiCaller {
         return false;
     }
 
+    // Returns the starting index for a staker. This function should be overridden by the implementing contract.
     function _getStartingIndexForStaker() internal view virtual returns (uint64) {
         return 0;
     }

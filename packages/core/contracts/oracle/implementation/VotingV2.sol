@@ -80,56 +80,20 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         Future // Is scheduled to be voted on in a future round.
     }
 
+    // Represents a deletion request of pending votes that are still to be voted on. Used to remove DVM spam.
+    struct SpamDeletionRequest {
+        uint256[2][] spamRequestIndices;
+        uint256 requestTime;
+        bool executed;
+        address proposer;
+        uint256 bond;
+    }
+
     // Only used as a return value in view methods -- never stored in the contract.
     struct RequestState {
         RequestStatus status;
         uint256 lastVotingRound;
     }
-
-    /****************************************
-     *          INTERNAL TRACKING           *
-     ****************************************/
-
-    // Maps round numbers to the rounds.
-    mapping(uint256 => Round) public rounds;
-
-    // Maps price request IDs to the PriceRequest struct.
-    mapping(bytes32 => PriceRequest) public priceRequests;
-
-    bytes32[] public priceRequestIds;
-
-    mapping(uint64 => uint64) public skippedRequestIndexes;
-
-    // Price request ids for price requests that haven't yet been resolved. These requests may be for future rounds.
-    bytes32[] public pendingPriceRequests;
-
-    VoteTimingV2.Data public voteTiming;
-
-    // Number of tokens that must participate to resolve a vote.
-    uint256 public gat;
-
-    // Reference to the Finder.
-    FinderInterface private immutable finder;
-
-    // Reference to Slashing Library.
-    SlashingLibraryInterface public slashingLibrary;
-
-    // If non-zero, this contract has been migrated to this address.
-    address public migratedAddress;
-
-    // If non-zero, this is the previous voting contract, deployed before this one. Used to facilitate retrieval of
-    // previous price requests from DVM deployments before this one and claiming of rewards.
-    OracleAncillaryInterface public immutable previousVotingContract;
-
-    // Max value of an unsigned integer.
-    uint64 private constant UINT64_MAX = type(uint64).max;
-
-    // Max length in bytes of ancillary data that can be appended to a price request.
-    uint256 public constant ANCILLARY_BYTES_LIMIT = 8192;
-
-    /****************************************
-     *          SLASHING TRACKERS           *
-     ****************************************/
 
     // Only used as a return value in view methods -- never stored in the contract.
     struct SlashingTracker {
@@ -140,20 +104,53 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     }
 
     /****************************************
-     *        SPAM DELETION TRACKERS        *
+     *            VOTING STATE              *
      ****************************************/
 
+    // Maps round numbers to the rounds.
+    mapping(uint256 => Round) public rounds;
+
+    // Maps price request IDs to the PriceRequest struct.
+    mapping(bytes32 => PriceRequest) public priceRequests;
+
+    // Maps skipped request indexes to the next request index.
+    mapping(uint64 => uint64) public skippedRequestIndexes;
+
+    // Array of all price request IDs. Used to iterate over all price requests.
+    bytes32[] public priceRequestIds;
+
+    // RequestIds for requests that are not resolved. May be for future rounds.
+    bytes32[] public pendingPriceRequests;
+
+    // Spam deletion requests. These are requests to delete pending price requests that are still to be voted on.
+    SpamDeletionRequest[] internal spamDeletionProposals;
+
+    // Vote timing library used to compute round timing related logic.
+    VoteTimingV2.Data public voteTiming;
+
+    // Reference to the UMA Finder contract, used to find other UMA contracts.
+    FinderInterface private immutable finder;
+
+    // Reference to Slashing Library, used to compute slashing amounts.
+    SlashingLibraryInterface public slashingLibrary;
+
+    // Address of the previous voting contract.
+    OracleAncillaryInterface public immutable previousVotingContract;
+
+    // If non-zero, this contract has been migrated to this address.
+    address public migratedAddress;
+
+    // Number of tokens that must participate to resolve a vote.
+    uint256 public gat;
+
+    // Bond, in voting token, required to propose a spam deletion request.
     uint256 public spamDeletionProposalBond;
 
-    struct SpamDeletionRequest {
-        uint256[2][] spamRequestIndices;
-        uint256 requestTime;
-        bool executed;
-        address proposer;
-        uint256 bond;
-    }
+    // Max value of an unsigned integer.
+    uint64 private constant UINT64_MAX = type(uint64).max;
 
-    SpamDeletionRequest[] internal spamDeletionProposals;
+    // Max length in bytes of ancillary data.
+    uint256 public constant ANCILLARY_BYTES_LIMIT = 8192;
 
     /****************************************
      *                EVENTS                *
@@ -202,7 +199,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
     event PriceResolved(
         uint256 indexed roundId,
-        uint256 priceRequestIndex,
+        uint256 indexed priceRequestIndex,
         bytes32 indexed identifier,
         uint256 time,
         bytes ancillaryData,
@@ -321,15 +318,10 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         _requestPrice(identifier, time, ancillaryData, true);
     }
 
-    /**
-     * @notice Enqueues a request (if a request isn't already present) for the given identifier, time pair.
-     * @dev Time must be in the past and the identifier must be supported. The length of the ancillary data is limited
-     * such that this method abides by the EVM transaction gas limit.
-     * @param identifier uniquely identifies the price requested. E.g. BTC/USD (encoded as bytes32) could be requested.
-     * @param time unix timestamp for the price request.
-     * @param ancillaryData arbitrary data appended to a price request to give the voters more info from the caller.
-     * @param isGovernance indicates whether the request is for a governance action.
-     */
+    //Enqueues a request (if a request isn't already present) for the given identifier, time and ancillary data. Time
+    // must be in the  past and the identifier must be supported. The length of the ancillary data is limited such that this method abides by the EVM transaction gas limit. Identifier uniquely identifies the requested (E.g. BTC/USD)
+    // as encoded as bytes32 & time unix timestamp for the request. ancillaryData arbitrary data appended to a request
+    // to give the voters more information. isGovernance indicates whether the request is for a governance action.
     function _requestPrice(
         bytes32 identifier,
         uint256 time,
@@ -436,7 +428,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     /**
      * @notice Gets the status of a list of price requests, identified by their identifier and time.
      * @dev If the status for a particular request is NotRequested, the lastVotingRound will always be 0.
-     * @param requests array of type PendingRequestAncillary which includes an identifier and timestamp for each request.
+     * @param requests array of pending requests which includes identifier, timestamp & ancillary data for the requests.
      * @return requestStates a list, in the same order as the input list, giving the status of the specified requests.
      */
     function getPriceRequestStatuses(PendingRequestAncillary[] memory requests)
@@ -559,7 +551,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
             voter,
             msg.sender,
             currentRoundId,
-            _getPriceRequest(identifier, time, ancillaryData).pendingRequestIndex,
+            _getPriceRequest(identifier, time, ancillaryData).priceRequestIndex,
             identifier,
             time,
             ancillaryData,
@@ -789,19 +781,19 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         return (currentActiveRequests() && getVotePhase() == Phase.Reveal);
     }
 
-    // This function must be called before any tokens are staked. It updates the voter's pending stakes to reflect the new amount
-    // to stake. These updates are only made if we are in a reveal phase with active price requests. This is required in
-    // order to appropriately calculate a voter's trackers and avoid slashing them for amounts staked during an active reveal phase.
+    // This function must be called before any tokens are staked. It updates the voter's pending stakes to reflect the
+    // new amount to stake. These updates are only made if we are in an active reveal. This is required to appropriately
+    // calculate a voter's trackers and avoid slashing them for amounts staked during an active reveal phase.
     function _computePendingStakes(address voterAddress, uint256 amount) internal override {
         if (_inActiveReveal()) {
             uint256 currentRoundId = getCurrentRoundId();
-            // We now can freeze the round variables as we do not want the cumulativeActiveStakeAtRound to change based on the stakes
-            // during the active reveal phase. This only happens if the first action within the active reveal is someone staking, rather
-            // than someone revealing their vote.
+            // Now freeze, the round variables as we do not want the cumulativeActiveStakeAtRound to change based on the
+            // stakes during the active reveal phase. This only happens if the first action within the active reveal is
+            // someone staking, rather than someone revealing their vote.`
             _freezeRoundVariables(currentRoundId);
-            // Finally increment the pending stake for the voter by the amount to stake. Together with the omission
-            // of the new stakes from the cumulativeActiveStakeAtRound for this round, this ensures that the
-            // pending stakes of any voter are not included in the slashing calculation for this round.
+            // Finally increment the pending stake for the voter by the amount to stake. Together with the omission of
+            // the new stakes from the cumulativeActiveStakeAtRound for this round, this ensures that the pending stakes
+            // of any voter are not included in the slashing calculation for this round.
             _setPendingStake(voterAddress, currentRoundId, amount);
         }
     }
@@ -1077,9 +1069,8 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
      ****************************************/
 
     /**
-     * @notice Function to enable retrieval of rewards on a previously migrated away from voting contract. This function
-     * is intended on being removed from a future version of the Voting contract and aims to solve a short term migration
-     * pain point
+     * @notice Enable retrieval of rewards on a previously migrated away from voting contract. This function is intended
+     * on being removed from future versions of the Voting contract and aims to solve a short term migration pain point.
      * @param voterAddress voter for which rewards will be retrieved. Does not have to be the caller.
      * @param roundId the round from which voting rewards will be retrieved from.
      * @param toRetrieve array of PendingRequests which rewards are retrieved from.
@@ -1101,6 +1092,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
      *    PRIVATE AND INTERNAL FUNCTIONS    *
      ****************************************/
 
+    // Deletes a request from the pending requests array, based on index.
     function _removeRequestFromPendingPriceRequests(uint64 pendingRequestIndex) internal {
         uint256 lastIndex = pendingPriceRequests.length - 1;
         PriceRequest storage lastPriceRequest = priceRequests[pendingPriceRequests[lastIndex]];
@@ -1109,7 +1101,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         pendingPriceRequests.pop();
     }
 
-    // Returns the price for a given identifer. Three params are returns: bool if there was an error, int to represent
+    // Returns the price for a given identifier. Three params are returns: bool if there was an error, int to represent
     // the resolved price and a string which is filled with an error message, if there was an error or "".
     function _getPriceOrError(
         bytes32 identifier,
@@ -1223,7 +1215,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         return true;
     }
 
-    // Return the GAT.
+    // Return the GAT: the minimum number of tokens needed to participate to resolve a vote.
     function _computeGat(uint256 roundId) internal view returns (uint256) {
         return rounds[roundId].gat;
     }
@@ -1266,6 +1258,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         require(migratedAddress == address(0), "Contract migrated");
     }
 
+    // Enforces that a calling contract is registered.
     function _requireRegisteredContract() private view {
         RegistryInterface registry = RegistryInterface(finder.getImplementationAddress(OracleInterfaces.Registry));
         require(
