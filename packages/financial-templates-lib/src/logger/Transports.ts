@@ -84,16 +84,14 @@ export function createTransports(transportsConfig: TransportsConfig = {}): Trans
       );
     }
 
-    // to disable pdv2, pass in a "disabled=true" in configs or env. Configs get merged rather than replaced as was the
-    // convention in previous transports.
-    const { disabled: pagerDutyV2Disabled = false, ...pagerDutyV2Config } = {
-      ...JSON.parse(process.env.PAGER_DUTY_V2_CONFIG || "null"),
-      ...transportsConfig.pagerDutyV2Config,
-    };
-    // If there is a Pagerduty V2 API key then add the pagerduty winston transport.
-    if (Object.keys(pagerDutyV2Config).length > 0 && !pagerDutyV2Disabled) {
+    if (transportsConfig.pagerDutyV2Config || process.env.PAGER_DUTY_V2_CONFIG) {
+      // to disable pdv2, pass in a "disabled=true" in configs or env.
+      const { disabled = false, ...pagerDutyV2Config } =
+        transportsConfig.pagerDutyV2Config ?? JSON.parse(process.env.PAGER_DUTY_V2_CONFIG || "null");
       // this will throw an error if an invalid configuration is present
-      transports.push(new PagerDutyV2Transport({ level: "warn" }, pagerDutyV2CreateConfig(pagerDutyV2Config)));
+      if (!disabled) {
+        transports.push(new PagerDutyV2Transport({ level: "warn" }, pagerDutyV2CreateConfig(pagerDutyV2Config)));
+      }
     }
   }
   return transports;

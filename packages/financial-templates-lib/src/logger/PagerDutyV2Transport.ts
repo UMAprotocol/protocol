@@ -10,6 +10,11 @@ const Config = ss.object({
   integrationKey: ss.string(),
   customServices: ss.optional(ss.record(ss.string(), ss.string())),
 });
+// Config object becomes a type
+// {
+//   integrationKey: string;
+//   customServices?: Record<string,string>;
+// }
 export type Config = ss.Infer<typeof Config>;
 
 // this turns an unknown ( like json parsed data) into a config, or throws an error
