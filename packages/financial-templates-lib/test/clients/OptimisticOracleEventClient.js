@@ -267,19 +267,14 @@ describe("OptimisticOracleEventClient.js", function () {
       .send({ from: disputer });
     await pushPrice(correctPrice);
 
-    console.log("A");
     disputeV2Txn1 = await optimisticOracleV2.methods
       .disputePrice(requester, identifier, requestTime + 2, defaultAncillaryData)
       .send({ from: disputer });
-    console.log("B");
     await pushPrice(correctPrice);
-    console.log("C");
     disputeV2Txn2 = await optimisticOracleV2.methods
       .disputePrice(requester, identifier, requestTime + 3, defaultAncillaryData)
       .send({ from: disputer });
-    console.log("D");
     await pushPrice(correctPrice);
-    console.log("E");
 
     skinnyDisputeTxn1 = await skinnyOptimisticOracle.methods
       .disputePrice(
