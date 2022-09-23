@@ -278,7 +278,7 @@ export type { ${normalizeClassName(contractName)}Web3Events };\n`
     // Creates get[name]Address(chainId) using switch statements.
     // Note: don't export these functions as they are only used internally.
     for (const [name, addressesByChain] of Object.entries(addresses)) {
-      const declaration = `function get${name}StaticAddress(chainId: number): string {\n  switch (chainId.toString()) {\n`;
+      const declaration = `export function get${name}StaticAddress(chainId: number): string {\n  switch (chainId.toString()) {\n`;
       const cases = Object.entries(addressesByChain).map(([chainId, address]) => {
         return `    case "${chainId}":\n      return "${address}";\n`;
       });
