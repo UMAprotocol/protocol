@@ -217,7 +217,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
     event SpamDeletionProposalBondChanged(uint256 newBond);
 
-    event VoterSlashed(address indexed voter, int256 slashedTokens, uint256 postActiveStake);
+    event VoterSlashed(address indexed voter, int256 slashedTokens, uint256 postStake);
 
     event SignaledRequestsAsSpamForDeletion(
         uint256 indexed proposalId,
