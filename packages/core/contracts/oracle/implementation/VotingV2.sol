@@ -318,7 +318,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         _requestPrice(identifier, time, ancillaryData, true);
     }
 
-    //Enqueues a request (if a request isn't already present) for the given identifier, time and ancillary data. Time
+    // Enqueues a request (if a request isn't already present) for the given identifier, time and ancillary data. Time
     // must be in the  past and the identifier must be supported. The length of the ancillary data is limited such that this method abides by the EVM transaction gas limit. Identifier uniquely identifies the requested (E.g. BTC/USD)
     // as encoded as bytes32 & time unix timestamp for the request. ancillaryData arbitrary data appended to a request
     // to give the voters more information. isGovernance indicates whether the request is for a governance action.
