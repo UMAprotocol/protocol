@@ -31,7 +31,7 @@ const argv = require("minimist")(process.argv.slice(), {
 });
 
 async function simulateVote() {
-  const web3 = getWeb3ByChainId(1);
+  const web3 = getWeb3ByChainId(5);
   const accounts = await web3.eth.getAccounts();
 
   // Initialize Eth contracts by grabbing deployed addresses from networks/1.json file.

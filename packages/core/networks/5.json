@@ -1,15 +1,15 @@
 [
   {
     "contractName": "Finder",
-    "address": "0xE60dBa66B85E10E7Fd18a67a6859E241A243950e"
+    "address": "0xA7B6842bBF0AFF26f637d679c3EF9dA82371D506"
   },
   {
     "contractName": "IdentifierWhitelist",
-    "address": "0x488211B646b909C490d942f456481BeAE52fde27"
+    "address": "0x53dcC21887d54f41B049724b73a2195CE7343873"
   },
   {
     "contractName": "GovernorRootTunnel",
-    "address": "0x6883feb1c131f58c1cd629289da3de0051d2aa0d"
+    "address": "0x7A03Fb6ae6Ee869BA078D3c45715764A3Cca393b"
   },
   {
     "contractName": "MockOracleAncillary",
@@ -17,11 +17,11 @@
   },
   {
     "contractName": "OracleHub",
-    "address": "0xd2Aa779253c0Ab194d8c3e6708e5EB4697F13941"
+    "address": "0xD3ddAcAe5aFb00F9B9cD36EF0Ed7115d7f0b584c"
   },
   {
     "contractName": "GovernorHub",
-    "address": "0x85F46e5aCf6309345D0d6cfe22fbBAF7c349fF84"
+    "address": "0x39Aa7e07beED7542459A5497f0cED654f3d60CD4"
   },
   {
     "contractName": "Polygon_ParentMessenger",
@@ -33,19 +33,23 @@
   },
   {
     "contractName": "Store",
-    "address": "0x07417cA264170Fc5bD3568f93cFb956729752B61"
+    "address": "0x3ECd7424C835Cc2cc6896bD09bF6dEc8F3c63D12"
   },
   {
     "contractName": "AddressWhitelist",
-    "address": "0x63fDfF29EBBcf1a958032d1E64F7627c3C98A059"
+    "address": "0x9f16C9B51cAf121aaba6818D4F87FA5F4fBBDde1"
   },
   {
     "contractName": "VotingV2",
     "address": "0xb3282F95baA909D4CB99568ADA45aE5D632b96DC"
   },
   {
+    "contractName": "Voting",
+    "address": "0xDF9371D9d8fa6ac9C164e22694b830d0e53298e1"
+  },
+  {
     "contractName": "VotingToken",
-    "address": "0xBa950974AFdae520cEE596c98295150Cf8D9659c"
+    "address": "0x6e571732E69dc9d343701Cb4F3a959F34c898E08"
   },
   {
     "contractName": "SlashingLibrary",
@@ -53,11 +57,19 @@
   },
   {
     "contractName": "Registry",
-    "address": "0x9214454Ff30410a1558b8749Ab3FB0fD6F942539"
+    "address": "0x4B5d93d45B722cfAF9DD602b31b23c1080e491f8"
   },
   {
     "contractName": "GovernorV2",
     "address": "0xFf0E348389400d7D7510a230361Fc00904429e48"
+  },
+  {
+    "contractName": "Governor",
+    "address": "0x888Bd78F53951b8A7Fb187DBDb70c69e064d727c"
+  },
+  {
+    "contractName": "FinancialContractsAdmin",
+    "address": "0x1e512B1A7E85958Bf8047b2bcbF7c1b27D451177"
   },
   {
     "contractName": "OptimisticOracleV2",
@@ -78,6 +90,10 @@
   {
     "contractName": "ProposerV2",
     "address": "0x235fa7590749C0c7240926E4CD0bB8EaecdbD3F3"
+  },
+  {
+    "contractName": "Proposer",
+    "address": "0xBEd4c1FC0FD95A2020EC351379b22d8582B904e3"
   },
   {
     "contractName": "TokenFactory",
@@ -114,5 +130,17 @@
   {
     "contractName": "CappedYieldDollarLongShortPairFinancialProductLibrary",
     "address": "0x56e68853Bc173534F30a23E9De64B2BC4b64D61e"
+  },
+  {
+    "contractName": "Arbitrum_ParentMessenger",
+    "address": "0x6B0e5F3065CDE179f1e8132A3D84f8EF4C36861e"
+  },
+  {
+    "contractName": "Boba_ParentMessenger",
+    "address": "0x75a29a66452C80702952bbcEDd284C8c4CF5Ab17"
+  },
+  {
+    "contractName": "Optimism_ParentMessenger",
+    "address": "0x40B5dC39B0b89FdfC1e6d0A6cd649b97E8bc6989"
   }
 ]

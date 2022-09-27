@@ -51,7 +51,7 @@ import {
 } from "./migrationUtils";
 const { getAbi } = require("@uma/contracts-node");
 
-const proposerWallet = "0x2bAaA41d155ad8a4126184950B31F50A1513cE25";
+const proposerWallet = "0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D";
 
 async function main() {
   const adminProposalTransactions: AdminProposalTransaction[] = [];
@@ -224,6 +224,7 @@ async function main() {
 
   const isGovernorV2 = await isGovernorV2Instance(governor.address);
 
+<<<<<<< HEAD
   const verificationCommand = formatIndentation(`
     ✅ VERIFICATION: Verify the proposal execution with the following command:
   
@@ -253,10 +254,17 @@ async function main() {
   const allowance = await votingToken.allowance(proposerWallet, proposer.address);
   if (allowance.lt(defaultBond)) {
     console.log("3.a. Approving proposer bond");
+=======
+  const defaultBond = await proposer.bond();
+  const allowance = await votingToken.allowance(proposerWallet, proposer.address);
+  if (allowance.lt(defaultBond)) {
+    console.log("4.a. Approving proposer bond");
+>>>>>>> bd03d1453 (feat: goerli tests)
     const approveTx = await votingToken.connect(proposerSigner).approve(proposer.address, defaultBond);
     await approveTx.wait();
   }
 
+<<<<<<< HEAD
   const isProposerV1 = await isProposerV1Instance(proposer.address);
   let tx;
   if (isProposerV1) {
@@ -268,6 +276,9 @@ async function main() {
       .connect(proposerSigner)
       .propose(adminProposalTransactions, hre.web3.utils.utf8ToHex("Admin Proposal"));
   }
+=======
+  const tx = await proposer.connect(proposerSigner).propose(adminProposalTransactions);
+>>>>>>> bd03d1453 (feat: goerli tests)
 
   console.log("Proposal done!🎉");
   console.log("\nProposal data:\n", tx.data);

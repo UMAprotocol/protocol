@@ -125,7 +125,7 @@ const setupNetwork = async (netId) => {
 };
 
 const setupMainnet = async (web3) => {
-  const finder = new web3.eth.Contract(Finder.abi, await _getContractAddressByName("Finder", 1));
+  const finder = new web3.eth.Contract(Finder.abi, await _getContractAddressByName("Finder", 5));
   const oracleAddress = await finder.methods
     .getImplementationAddress(web3.utils.utf8ToHex(interfaceName.Oracle))
     .call();
@@ -133,22 +133,22 @@ const setupMainnet = async (web3) => {
   const votingInterface = new web3.eth.Contract(VotingInterface.abi, oracleAddress);
   const governorRootTunnel = new web3.eth.Contract(
     GovernorRootTunnel.abi,
-    await _getContractAddressByName("GovernorRootTunnel", 1)
+    await _getContractAddressByName("GovernorRootTunnel", 5)
   );
-  const governorHub = new web3.eth.Contract(GovernorHub.abi, await _getContractAddressByName("GovernorHub", 1));
-  const registry = new web3.eth.Contract(Registry.abi, await _getContractAddressByName("Registry", 1));
-  const governor = new web3.eth.Contract(Governor.abi, await _getContractAddressByName("Governor", 1));
-  const proposer = new web3.eth.Contract(Proposer.abi, await _getContractAddressByName("Proposer", 1));
+  const governorHub = new web3.eth.Contract(GovernorHub.abi, await _getContractAddressByName("GovernorHub", 5));
+  const registry = new web3.eth.Contract(Registry.abi, await _getContractAddressByName("Registry", 5));
+  const governor = new web3.eth.Contract(Governor.abi, await _getContractAddressByName("Governor", 5));
+  const proposer = new web3.eth.Contract(Proposer.abi, await _getContractAddressByName("Proposer", 5));
   const addressWhitelist = new web3.eth.Contract(
     AddressWhitelist.abi,
-    await _getContractAddressByName("AddressWhitelist", 1)
+    await _getContractAddressByName("AddressWhitelist", 5)
   );
   const identifierWhitelist = new web3.eth.Contract(
     IdentifierWhitelist.abi,
-    await _getContractAddressByName("IdentifierWhitelist", 1)
+    await _getContractAddressByName("IdentifierWhitelist", 5)
   );
 
-  const store = new web3.eth.Contract(Store.abi, await _getContractAddressByName("Store", 1));
+  const store = new web3.eth.Contract(Store.abi, await _getContractAddressByName("Store", 5));
   console.group("\nℹ️  DVM infrastructure on L1:");
   console.log(`- Finder @ ${finder.options.address}`);
   console.log(`- Voting @ ${oracle.options.address}`);
