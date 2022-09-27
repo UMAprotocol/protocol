@@ -69,7 +69,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
     struct Round {
         uint256 gat; // GAT is the required number of tokens to vote to not roll the vote.
-        uint256 cumulativeActiveStakeAtRound; // Total staked tokens at the start of the round.
+        uint256 cumulativeStakeAtRound; // Total staked tokens at the start of the round.
     }
 
     // Represents the status a price request has.
@@ -217,7 +217,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
     event SpamDeletionProposalBondChanged(uint256 newBond);
 
-    event VoterSlashed(address indexed voter, int256 slashedTokens, uint256 postActiveStake);
+    event VoterSlashed(address indexed voter, int256 slashedTokens, uint256 postStake);
 
     event SignaledRequestsAsSpamForDeletion(
         uint256 indexed proposalId,
@@ -690,7 +690,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
         uint256 totalVotes = voteInstance.resultComputation.totalVotes;
         uint256 totalCorrectVotes = voteInstance.resultComputation.getTotalCorrectlyVotedTokens();
-        uint256 stakedAtRound = rounds[priceRequest.lastVotingRound].cumulativeActiveStakeAtRound;
+        uint256 stakedAtRound = rounds[priceRequest.lastVotingRound].cumulativeStakeAtRound;
 
         (uint256 wrongVoteSlash, uint256 noVoteSlash) =
             slashingLibrary.calcSlashing(stakedAtRound, totalVotes, totalCorrectVotes, priceRequest.isGovernance);
@@ -795,12 +795,12 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     function _computePendingStakes(address voterAddress, uint256 amount) internal override {
         if (_inActiveReveal()) {
             uint256 currentRoundId = getCurrentRoundId();
-            // We now can freeze the round variables as we do not want the cumulativeActiveStakeAtRound to change based on the stakes
+            // We now can freeze the round variables as we do not want the cumulativeStakeAtRound to change based on the stakes
             // during the active reveal phase. This only happens if the first action within the active reveal is someone staking, rather
             // than someone revealing their vote.
             _freezeRoundVariables(currentRoundId);
             // Finally increment the pending stake for the voter by the amount to stake. Together with the omission
-            // of the new stakes from the cumulativeActiveStakeAtRound for this round, this ensures that the
+            // of the new stakes from the cumulativeStakeAtRound for this round, this ensures that the
             // pending stakes of any voter are not included in the slashing calculation for this round.
             _setPendingStake(voterAddress, currentRoundId, amount);
         }
@@ -871,14 +871,14 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
 
             (uint256 wrongVoteSlashPerToken, uint256 noVoteSlashPerToken) =
                 slashingLibrary.calcSlashing(
-                    rounds[priceRequest.lastVotingRound].cumulativeActiveStakeAtRound,
+                    rounds[priceRequest.lastVotingRound].cumulativeStakeAtRound,
                     voteInstance.resultComputation.totalVotes,
                     totalCorrectVotes,
                     priceRequest.isGovernance
                 );
 
             // During this round's tracker calculation, we deduct the pending stake from the voter's total stake.
-            // Also, the pending stakes of voters in a given round are excluded from the cumulativeActiveStakeAtRound;
+            // Also, the pending stakes of voters in a given round are excluded from the cumulativeStakeAtRound;
             // _computePendingStakes handles this. Thus, the voter's stakes during the active reveal phase of this round
             // won't be included in the slashes calculations.
             uint256 effectiveStake = voterStake.stake - voterStake.pendingStakes[priceRequest.lastVotingRound];
@@ -899,7 +899,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
                 // and the total slashed for voting incorrectly. Use this to work out the stakers prorate share.
                 uint256 totalSlashed =
                     ((noVoteSlashPerToken *
-                        (rounds[priceRequest.lastVotingRound].cumulativeActiveStakeAtRound -
+                        (rounds[priceRequest.lastVotingRound].cumulativeStakeAtRound -
                             voteInstance.resultComputation.totalVotes)) +
                         ((wrongVoteSlashPerToken * (voteInstance.resultComputation.totalVotes - totalCorrectVotes)))) /
                         1e18;
@@ -1184,7 +1184,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
             rounds[roundId].gat = gat;
 
             // Store the cumulativeStake at this roundId to work out slashing and voting trackers.
-            rounds[roundId].cumulativeActiveStakeAtRound = cumulativeStake;
+            rounds[roundId].cumulativeStakeAtRound = cumulativeStake;
         }
     }
 

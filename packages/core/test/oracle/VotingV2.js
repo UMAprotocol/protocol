@@ -126,6 +126,13 @@ describe("VotingV2", function () {
       )
     );
   });
+
+  it("Bytecode size", async function () {
+    const byteCodeSize = (getContract("VotingV2").deployedBytecode.length - 2) / 2;
+    const remainingSize = 2 ** 14 + 2 ** 13 - byteCodeSize;
+    assert(remainingSize >= 0, "Contract is too large to deploy");
+  });
+
   // TODO: group the tests in this file by "type" with describe blocks.
   it("Vote phasing", async function () {
     // Reset the rounds.
@@ -1007,7 +1014,7 @@ describe("VotingV2", function () {
     result = await voting.methods.updateTrackers(account1).send({ from: account1 });
 
     await assertEventEmitted(result, voting, "VoterSlashed", (ev) => {
-      return ev.slashedTokens != "0" && ev.postActiveStake != "0" && ev.voter != "";
+      return ev.slashedTokens != "0" && ev.postStake != "0" && ev.voter != "";
     });
 
     result = await voting.methods.setMigrated(migratedVoting).send({ from: accounts[0] });
@@ -2657,8 +2664,8 @@ describe("VotingV2", function () {
 
     // Account3 can reveals. Check the snapshotting makes sense.
     await voting.methods.revealVote(identifier, time1, price, salt).send({ from: account3 });
-    // cumulativeActiveStakeAtRound should be 36mm. two accounts of 32mm unstaked before the start of the round.
-    assert.equal((await voting.methods.rounds(roundId).call()).cumulativeActiveStakeAtRound, toWei("36000000"));
+    // cumulativeStakeAtRound should be 36mm. two accounts of 32mm unstaked before the start of the round.
+    assert.equal((await voting.methods.rounds(roundId).call()).cumulativeStakeAtRound, toWei("36000000"));
 
     // Now, say account4 tries to request an unstake. They cant do this as it is during the current active reveal phase.
     // As this user cant stake they end up doing nothing and just sit. They shall be slashed for non-participation.
@@ -2740,8 +2747,7 @@ describe("VotingV2", function () {
     // We should see that the total number of active stakers for this round is 36mm (account3 and account4). Account1
     // and account2 are in pending exit.
     assert.equal(
-      (await voting.methods.rounds(await voting.methods.getCurrentRoundId().call()).call())
-        .cumulativeActiveStakeAtRound,
+      (await voting.methods.rounds(await voting.methods.getCurrentRoundId().call()).call()).cumulativeStakeAtRound,
       toWei("36000000")
     );
 
@@ -3065,12 +3071,12 @@ describe("VotingV2", function () {
     assert.equal((await voting.methods.voterStakes(account1).call()).stake, toBN("31852750271155356473229312"));
 
     // Finally, test updating the other voter who is short exactly one tracker.
-    const activeStakeBefore = (await voting.methods.voterStakes(account2).call()).stake;
+    const stakeBefore = (await voting.methods.voterStakes(account2).call()).stake;
     await voting.methods.updateTrackersRange(account2, 6).send({ from: account2 });
     assert.equal(
       (await voting.methods.voterStakes(account2).call()).stake,
-      toBN(activeStakeBefore)
-        .add(toWei("100000000").sub(toBN(activeStakeBefore)).mul(toWei("0.0016")).div(toWei("1")))
+      toBN(stakeBefore)
+        .add(toWei("100000000").sub(toBN(stakeBefore)).mul(toWei("0.0016")).div(toWei("1")))
         .toString()
     );
   });
@@ -3367,7 +3373,7 @@ describe("VotingV2", function () {
     // the last call to the update trackers happened after the settlement of the first vote the account participated in.
     assert.equal((await voting.methods.voterStakes(account1).call()).nextIndexToProcess, 1);
 
-    // Before applying any further round updates the activeStakedAmount of account1 their original balance grown by
+    // Before applying any further round updates the stakedAmount of account1 their original balance grown by
     // slashing over all other participants as 32mm + 68mm * 0.0016 = 32010880
     assert.equal((await voting.methods.voterStakes(account1).call()).stake, toWei("32000000").add(toWei("108800")));
 
@@ -3375,7 +3381,7 @@ describe("VotingV2", function () {
     // index4 should not make any balance changes: index 0 has been applied and was slashed already, index 1 through 3
     // was rolled into index 4. The first index that should actually apply slashing is 5; this request was rolled and
     // settled. However, it is part of a multi-round slash (index 6 is also rolled and settled at the same time) and
-    // so this should be stored within the unapplied slash for the account and only be applied to the active stake
+    // so this should be stored within the unapplied slash for the account and only be applied to the stake
     // once we've traversed index6 as well.
     await voting.methods.updateTrackersRange(account1, 2).send({ from: account1 });
     assert.equal((await voting.methods.voterStakes(account1).call()).nextIndexToProcess, 1);
@@ -3759,8 +3765,8 @@ describe("VotingV2", function () {
     await moveToNextPhase(voting, accounts[0]); // Reveal the votes.
     await voting.methods.revealVote(identifier, time, price, ancillaryData, salt).send({ from: rand });
 
-    // Verify the round's cumulativeActiveStakeAtRound contains the new staker's now active liquidity.
-    assert.equal((await voting.methods.rounds(roundId).call()).cumulativeActiveStakeAtRound, toWei("132000000"));
+    // Verify the round's cumulativeStakeAtRound contains the new staker's now active liquidity.
+    assert.equal((await voting.methods.rounds(roundId).call()).cumulativeStakeAtRound, toWei("132000000"));
 
     await moveToNextRound(voting, accounts[0]);
 
