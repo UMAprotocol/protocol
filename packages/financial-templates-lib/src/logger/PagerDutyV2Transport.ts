@@ -1,13 +1,25 @@
 // This transport enables winston logging to send messages to pager duty v2 api.
 import Transport from "winston-transport";
 import { event } from "@pagerduty/pdjs";
+import * as ss from "superstruct";
 
 type TransportOptions = ConstructorParameters<typeof Transport>[0];
 export type Severity = "critical" | "error" | "warning" | "info";
 
-interface Config {
-  integrationKey: string;
-  customServices?: { [key: string]: string };
+const Config = ss.object({
+  integrationKey: ss.string(),
+  customServices: ss.optional(ss.record(ss.string(), ss.string())),
+});
+// Config object becomes a type
+// {
+//   integrationKey: string;
+//   customServices?: Record<string,string>;
+// }
+export type Config = ss.Infer<typeof Config>;
+
+// this turns an unknown ( like json parsed data) into a config, or throws an error
+export function createConfig(config: unknown): Config {
+  return ss.create(config, Config);
 }
 
 export class PagerDutyV2Transport extends Transport {

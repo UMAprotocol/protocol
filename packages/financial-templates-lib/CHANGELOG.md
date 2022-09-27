@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.31.2](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.31.1...@uma/financial-templates-lib@2.31.2) (2022-09-23)
+
+### Bug Fixes
+
+- **financial-templates-lib:** prevent disabled config for pdv2 transp… ([#4179](https://github.com/UMAprotocol/protocol/issues/4179)) ([55f2c72](https://github.com/UMAprotocol/protocol/commit/55f2c7254538ec62ad954684aad7c262cd5b9819))
+
 ## [2.31.1](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.31.0...@uma/financial-templates-lib@2.31.1) (2022-09-22)
 
 **Note:** Version bump only for package @uma/financial-templates-lib
