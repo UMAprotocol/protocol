@@ -8,7 +8,7 @@
 //   to simulate what would happen if the proposal were to pass and to verify that contract state changes as expected.
 // - Vote Simulate: NODE_URL_1=http://localhost:9545 node ./packages/scripts/src/admin-proposals/simulateVote.js --network mainnet-fork
 
-const Web3 = require("Web3");
+const Web3 = require("web3");
 const { toWei } = Web3.utils;
 require("dotenv").config();
 const assert = require("assert");

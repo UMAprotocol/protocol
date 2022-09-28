@@ -1,5 +1,5 @@
 const hre = require("hardhat");
-const Web3 = require("Web3");
+const Web3 = require("web3");
 const { toWei } = Web3.utils;
 const { getContract, web3 } = hre;
 const { _getContractAddressByName } = require("./index.js");

@@ -4,7 +4,7 @@ const { getWeb3ByChainId, interfaceName, MAX_UINT_VAL } = require("@uma/common")
 const { _getContractAddressByName } = require("../utils");
 const { GasEstimator } = require("@uma/financial-templates-lib");
 const winston = require("winston");
-const Web3 = require("Web3");
+const Web3 = require("web3");
 const { fromWei, toBN } = Web3.utils;
 const assert = require("assert");
 

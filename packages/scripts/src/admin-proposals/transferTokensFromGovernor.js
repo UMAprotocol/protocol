@@ -11,7 +11,7 @@
 
 const hre = require("hardhat");
 require("dotenv").config();
-const Web3 = require("Web3");
+const Web3 = require("web3");
 const { toWei } = Web3.utils;
 const { getContract } = hre;
 const { _getContractAddressByName } = require("../utils/index.js");

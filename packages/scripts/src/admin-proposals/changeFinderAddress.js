@@ -9,7 +9,7 @@
 
 const assert = require("assert");
 require("dotenv").config();
-const Web3 = require("Web3");
+const Web3 = require("web3");
 const { utf8ToHex, toChecksumAddress } = Web3.utils;
 const { getWeb3ByChainId } = require("@uma/common");
 const {
