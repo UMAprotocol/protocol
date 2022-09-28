@@ -53,7 +53,7 @@ async function main() {
     phaseLength,
     minRollToNextRoundLength,
     gat.toString(),
-    "0", // Starting request index of 0 (no offset).
+    "0", // Starting request index of 0 (no offset). TODO change this to the correct number
     votingToken.address,
     finder.address,
     slashingLibrary.address,
