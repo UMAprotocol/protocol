@@ -128,6 +128,12 @@ async function main() {
   adminProposalTransactions.push({ to: votingToken.address, value: 0, data: transferVotingTokensTx.data });
   console.log("2.c. Transfer voting tokens to new governor contract:", transferVotingTokensTx.data);
 
+  // Add new governor as the owner of the VotingToken contract.
+  const addGovernorAsTokenOwnerTx = await votingToken.populateTransaction.resetMember("0", governorV2Address);
+  if (!addGovernorAsTokenOwnerTx.data) throw "addGovernorAsTokenOwnerTx.data is null";
+  adminProposalTransactions.push({ to: votingToken.address, value: 0, data: addGovernorAsTokenOwnerTx.data });
+  console.log("3.b. Add owner roll to new governor contract:", addGovernorAsTokenOwnerTx.data);
+
   const transferFinderOwnershipTx = await finder.populateTransaction.transferOwnership(votingUpgrader.address);
   if (!transferFinderOwnershipTx.data) throw "transferFinderOwnershipTx.data is null";
   adminProposalTransactions.push({ to: finder.address, value: 0, data: transferFinderOwnershipTx.data });
@@ -224,7 +230,6 @@ async function main() {
 
   const isGovernorV2 = await isGovernorV2Instance(governor.address);
 
-<<<<<<< HEAD
   const verificationCommand = formatIndentation(`
     ✅ VERIFICATION: Verify the proposal execution with the following command:
   
@@ -254,17 +259,10 @@ async function main() {
   const allowance = await votingToken.allowance(proposerWallet, proposer.address);
   if (allowance.lt(defaultBond)) {
     console.log("3.a. Approving proposer bond");
-=======
-  const defaultBond = await proposer.bond();
-  const allowance = await votingToken.allowance(proposerWallet, proposer.address);
-  if (allowance.lt(defaultBond)) {
-    console.log("4.a. Approving proposer bond");
->>>>>>> bd03d1453 (feat: goerli tests)
     const approveTx = await votingToken.connect(proposerSigner).approve(proposer.address, defaultBond);
     await approveTx.wait();
   }
 
-<<<<<<< HEAD
   const isProposerV1 = await isProposerV1Instance(proposer.address);
   let tx;
   if (isProposerV1) {
@@ -276,9 +274,6 @@ async function main() {
       .connect(proposerSigner)
       .propose(adminProposalTransactions, hre.web3.utils.utf8ToHex("Admin Proposal"));
   }
-=======
-  const tx = await proposer.connect(proposerSigner).propose(adminProposalTransactions);
->>>>>>> bd03d1453 (feat: goerli tests)
 
   console.log("Proposal done!🎉");
   console.log("\nProposal data:\n", tx.data);

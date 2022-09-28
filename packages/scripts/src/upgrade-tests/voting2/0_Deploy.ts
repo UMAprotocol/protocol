@@ -64,9 +64,9 @@ async function main() {
   const votingV2Factory: VotingV2Ethers__factory = await getContractFactory("VotingV2");
   const emissionRate = "640000000000000000"; // 0.64 UMA per second.
   const spamDeletionProposalBond = hre.web3.utils.toWei("10000", "ether");
-  const unstakeCooldown = 60 * 60 * 24 * 7; // 7 days
-  const phaseLength = "86400";
-  const minRollToNextRoundLength = "7200";
+  const unstakeCooldown = 1; // 7 days
+  const phaseLength = "180";
+  const minRollToNextRoundLength = "30";
   const gat = hre.web3.utils.toBN(hre.web3.utils.toWei("5500000", "ether")); // Set the GAT to 5.5 million tokens.
 
   const votingV2 = await votingV2Factory.deploy(
