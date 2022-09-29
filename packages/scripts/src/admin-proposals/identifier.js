@@ -8,7 +8,7 @@
 // - Verify: Add --verify flag to Propose command.
 
 require("dotenv").config();
-const Web3 = require("Web3");
+const Web3 = require("web3");
 const { utf8ToHex, hexToUtf8 } = Web3.utils;
 const assert = require("assert");
 const { getWeb3ByChainId } = require("@uma/common");
