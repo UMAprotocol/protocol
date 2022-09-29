@@ -10,6 +10,7 @@ import {
   FinderEthers,
   GovernorEthers,
   GovernorV2Ethers__factory,
+  ProposerV2Ethers__factory,
   SlashingLibraryEthers__factory,
   VotingEthers,
   VotingTokenEthers,
@@ -88,6 +89,14 @@ async function main() {
   );
 
   console.log("Deployed VotingUpgrader: ", votingUpgrader.address);
+
+  console.log("5. Deploying ProposerV2");
+
+  const defaultBond = hre.web3.utils.toWei("5000", "ether");
+
+  const proposerFactory: ProposerV2Ethers__factory = await getContractFactory("ProposerV2");
+  const proposer = await proposerFactory.deploy(votingToken.address, defaultBond, governorV2.address, finder.address);
+  console.log("Deployed ProposerV2: ", proposer.address);
 
   console.log("Deployment done!🎉");
 }

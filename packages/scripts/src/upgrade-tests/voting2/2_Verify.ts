@@ -13,6 +13,7 @@ import {
   FinderEthers,
   getAbi,
   GovernorEthers,
+  RegistryEthers,
   VotingEthers,
   VotingTokenEthers,
   VotingV2Ethers__factory,
@@ -36,12 +37,15 @@ async function main() {
 
   const votingV2Address = process.env["VOTING_V2_ADDRESS"];
   const governorV2Address = process.env["GOVERNOR_V2_ADDRESS"];
+  const proposerV2Address = process.env["PROPOSER_V2_ADDRESS"];
 
   if (!votingV2Address) throw new Error("VOTING_V2_ADDRESS not set");
   if (!governorV2Address) throw new Error("GOVERNOR_V2_ADDRESS not set");
+  if (!proposerV2Address) throw new Error("PROPOSER_V2_ADDRESS not set");
 
   const finder = await getContractInstance<FinderEthers>("Finder");
   const governor = await getContractInstance<GovernorEthers>("Governor");
+  const registry = await getContractInstance<RegistryEthers>("Registry");
   const oldVoting = await getContractInstance<VotingEthers>("Voting");
   const votingToken = await getContractInstance<VotingTokenEthers>("VotingToken");
 
@@ -93,6 +97,19 @@ async function main() {
   console.log(" 5. Governor v2 is the owner of the voting token...");
   assert.equal((await votingToken.getMember(0)).toLowerCase(), governorV2Address.toLowerCase());
   console.log("✅ Voting token owner role correctly set!");
+
+  console.log(" 6. Governor v2 is registered in the registry...");
+  assert(await registry.isContractRegistered(governorV2Address));
+  console.log("✅ Governor v2 registered in registry!");
+
+  console.log(" 7. Proposer v2 is registered in the regstry...");
+  assert(await registry.isContractRegistered(proposerV2Address));
+  console.log("✅ Proposer v2 registered in registry!");
+
+  console.log(" 8. Governor v2 received all the voting tokens from Governor...");
+  assert((await votingToken.balanceOf(governorV2Address)).gt(hre.web3.utils.toWei("30000000", "ether")));
+  assert((await votingToken.balanceOf(governor.address)).eq(0));
+  console.log("✅ Governor v2 received all the voting tokens from Governor!");
 
   console.log("Verified!");
 }

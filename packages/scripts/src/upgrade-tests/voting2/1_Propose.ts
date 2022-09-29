@@ -12,10 +12,12 @@ const hre = require("hardhat");
 
 import { BigNumberish } from "@ethersproject/bignumber";
 import { BytesLike } from "@ethersproject/bytes";
+import { RegistryRolesEnum } from "@uma/common";
 import {
   FinderEthers,
   GovernorEthers,
   ProposerEthers,
+  RegistryEthers,
   VotingEthers,
   VotingTokenEthers,
   VotingUpgraderV2Ethers__factory,
@@ -38,15 +40,18 @@ async function main() {
   const votingUpgraderAddress = process.env["VOTING_UPGRADER_ADDRESS"];
   const votingV2Address = process.env["VOTING_V2_ADDRESS"];
   const governorV2Address = process.env["GOVERNOR_V2_ADDRESS"];
+  const proposerV2Address = process.env["PROPOSER_V2_ADDRESS"];
 
   if (!votingV2Address) throw new Error("VOTING_V2_ADDRESS not set");
   if (!votingUpgraderAddress) throw new Error("VOTING_UPGRADER_ADDRESS not set");
   if (!governorV2Address) throw new Error("GOVERNOR_V2_ADDRESS not set");
+  if (!proposerV2Address) throw new Error("PROPOSER_V2_ADDRESS not set");
 
   console.log("Running Voting Upgrade🔥");
   console.log("1. LOADING DEPLOYED CONTRACT STATE");
 
   const finder = await getContractInstance<FinderEthers>("Finder");
+  const registry = await getContractInstance<RegistryEthers>("Registry");
   const governor = await getContractInstance<GovernorEthers>("Governor");
   const proposer = await getContractInstance<ProposerEthers>("Proposer");
   const existingVoting = await getContractInstance<VotingEthers>("Voting");
@@ -68,9 +73,14 @@ async function main() {
     data: BytesLike;
   }[] = [];
 
-  console.log("2. TRANSFERRING OWNERSHIP OF NEW VOTING TO GOVERNORV2");
+  console.log("2. TRANSFERRING OWNERSHIP OF NEW VOTING TO GOVERNORV2 IF NEEDED");
 
-  await votingV2.transferOwnership(governorV2Address);
+  const votingV2Owner = await votingV2.owner();
+  if (votingV2Owner !== governorV2Address) {
+    if ((await votingV2.signer.getAddress()) !== votingV2Owner)
+      throw "You must be the owner of the new VotingV2 contract";
+    await votingV2.transferOwnership(governorV2Address);
+  }
 
   console.log("3. CRAFTING GOVERNOR TRANSACTIONS");
 
@@ -88,10 +98,19 @@ async function main() {
   adminProposalTransactions.push({ to: votingToken.address, value: 0, data: addGovernorAsTokenOwnerTx.data });
   console.log("3.b. Add owner roll to new governor contract:", addGovernorAsTokenOwnerTx.data);
 
+  // transfer old governor voting tokens to new governor.
+  const transferVotingTokensTx = await votingToken.populateTransaction.transfer(
+    governorV2Address,
+    await votingToken.balanceOf(governor.address)
+  );
+  if (!transferVotingTokensTx.data) throw "transferVotingTokensTx.data is null";
+  adminProposalTransactions.push({ to: votingToken.address, value: 0, data: transferVotingTokensTx.data });
+  console.log("3.c. Transfer voting tokens to new governor contract:", transferVotingTokensTx.data);
+
   const transferFinderOwnershipTx = await finder.populateTransaction.transferOwnership(votingUpgrader.address);
   if (!transferFinderOwnershipTx.data) throw "transferFinderOwnershipTx.data is null";
   adminProposalTransactions.push({ to: finder.address, value: 0, data: transferFinderOwnershipTx.data });
-  console.log("3.c. Transfer ownership of finder to voting upgrader:", transferFinderOwnershipTx.data);
+  console.log("3.d. Transfer ownership of finder to voting upgrader:", transferFinderOwnershipTx.data);
 
   const transferExistingVotingOwnershipTx = await existingVoting.populateTransaction.transferOwnership(
     votingUpgrader.address
@@ -102,7 +121,44 @@ async function main() {
     value: 0,
     data: transferExistingVotingOwnershipTx.data,
   });
-  console.log("3.d. Transfer ownership of existing voting to voting upgrader:", transferExistingVotingOwnershipTx.data);
+  console.log("3.e. Transfer ownership of existing voting to voting upgrader:", transferExistingVotingOwnershipTx.data);
+
+  // Register GovernorV2 and ProposerV2 contracts in the registry if necessary
+  const proposerV2Registered = await registry.isContractRegistered(proposerV2Address);
+  const governorV2Registered = await registry.isContractRegistered(governorV2Address);
+  if (!proposerV2Registered || !governorV2Registered) {
+    const addGovernorAsCreatorTx = await registry.populateTransaction.addMember(
+      RegistryRolesEnum.CONTRACT_CREATOR,
+      governor.address
+    );
+    if (!addGovernorAsCreatorTx.data) throw new Error("addGovernorAsCreatorTx.data is empty");
+    adminProposalTransactions.push({ to: registry.address, value: 0, data: addGovernorAsCreatorTx.data });
+    console.log("3.f.1 Temporarily add the Governor as a contract creator", addGovernorAsCreatorTx.data);
+
+    if (!proposerV2Registered) {
+      const registerProposerV2Tx = await registry.populateTransaction.registerContract([], proposerV2Address);
+      if (!registerProposerV2Tx.data) throw new Error("registerProposerV2Tx.data is empty");
+      adminProposalTransactions.push({ to: registry.address, value: 0, data: registerProposerV2Tx.data });
+      console.log("3.f.2 Register the ProposerV2 as a verified contract", registerProposerV2Tx.data);
+    }
+
+    if (!governorV2Registered) {
+      const registerGovernorV2Tx = await registry.populateTransaction.registerContract([], governorV2Address);
+      if (!registerGovernorV2Tx.data) throw new Error("registerGovernorV2Tx.data is empty");
+      adminProposalTransactions.push({ to: registry.address, value: 0, data: registerGovernorV2Tx.data });
+      console.log("3.f.3 Register the ProposerV2 as a verified contract", registerGovernorV2Tx.data);
+    }
+
+    const removeGovernorAsCreatorTx = await registry.populateTransaction.removeMember(
+      RegistryRolesEnum.CONTRACT_CREATOR,
+      governor.address
+    );
+    if (!removeGovernorAsCreatorTx.data) throw new Error("removeGovernorAsCreatorTx.data is empty");
+    adminProposalTransactions.push({ to: registry.address, value: 0, data: removeGovernorAsCreatorTx.data });
+    console.log("3.f.4 Remove the Governor from being a contract creator", removeGovernorAsCreatorTx.data);
+  } else {
+    console.log("3.f ProposerV2 contract already registered in registry");
+  }
 
   // Transfer Ownable contracts to VotingUpgraderV2
   for (const ownableToMigrate of Object.entries(ownableContractsToMigrate)) {
@@ -111,7 +167,7 @@ async function main() {
     const iface = new hre.ethers.utils.Interface(getAbi("Ownable"));
     const data = iface.encodeFunctionData("transferOwnership", [votingUpgraderAddress]);
     adminProposalTransactions.push({ to: contractAddress, value: 0, data });
-    console.log(`3.e.  Ownable: transfer ownership of ${contractName} to voting upgrader`, data);
+    console.log(`3.g.  Ownable: transfer ownership of ${contractName} to voting upgrader`, data);
   }
 
   // Transfer Multirole contracts to new VotingUpgraderV2
@@ -121,18 +177,18 @@ async function main() {
     const iface = new hre.ethers.utils.Interface(getAbi("MultiRole"));
     const data = iface.encodeFunctionData("resetMember", [0, votingUpgraderAddress]);
     adminProposalTransactions.push({ to: contractAddress, value: 0, data });
-    console.log(`3.f.  Multirole: transfer owner role of ${contractName} to voting upgrader`, data);
+    console.log(`3.h.  Multirole: transfer owner role of ${contractName} to voting upgrader`, data);
   }
 
   const resetMemberGovernorTx = await governor.populateTransaction.resetMember(0, votingUpgraderAddress);
   if (!resetMemberGovernorTx.data) throw "resetMemberGovernorTx.data is null";
   adminProposalTransactions.push({ to: governor.address, value: 0, data: resetMemberGovernorTx.data });
-  console.log("3.g.  Reset governor member to voting upgrader:", resetMemberGovernorTx.data);
+  console.log("3.i.  Reset governor member to voting upgrader:", resetMemberGovernorTx.data);
 
   const upgraderExecuteUpgradeTx = await votingUpgrader.populateTransaction.upgrade();
   if (!upgraderExecuteUpgradeTx.data) throw "upgraderExecuteUpgradeTx.data is null";
   adminProposalTransactions.push({ to: votingUpgrader.address, value: 0, data: upgraderExecuteUpgradeTx.data });
-  console.log("3.h. Execute upgrade of voting:", upgraderExecuteUpgradeTx.data);
+  console.log("3.j. Execute upgrade of voting:", upgraderExecuteUpgradeTx.data);
 
   console.log("4. SENDING PROPOSAL TXS TO GOVERNOR");
 
