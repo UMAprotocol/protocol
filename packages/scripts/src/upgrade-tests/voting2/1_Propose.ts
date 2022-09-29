@@ -82,10 +82,16 @@ async function main() {
   adminProposalTransactions.push({ to: votingToken.address, value: 0, data: addVotingV2AsTokenMinterTx.data });
   console.log("3.a. Add minting roll to new voting contract:", addVotingV2AsTokenMinterTx.data);
 
+  // Add new governor as the owner of the VotingToken contract.
+  const addGovernorAsTokenOwnerTx = await votingToken.populateTransaction.resetMember("0", governorV2Address);
+  if (!addGovernorAsTokenOwnerTx.data) throw "addGovernorAsTokenOwnerTx.data is null";
+  adminProposalTransactions.push({ to: votingToken.address, value: 0, data: addGovernorAsTokenOwnerTx.data });
+  console.log("3.b. Add owner roll to new governor contract:", addGovernorAsTokenOwnerTx.data);
+
   const transferFinderOwnershipTx = await finder.populateTransaction.transferOwnership(votingUpgrader.address);
   if (!transferFinderOwnershipTx.data) throw "transferFinderOwnershipTx.data is null";
   adminProposalTransactions.push({ to: finder.address, value: 0, data: transferFinderOwnershipTx.data });
-  console.log("3.b. Transfer ownership of finder to voting upgrader:", transferFinderOwnershipTx.data);
+  console.log("3.c. Transfer ownership of finder to voting upgrader:", transferFinderOwnershipTx.data);
 
   const transferExistingVotingOwnershipTx = await existingVoting.populateTransaction.transferOwnership(
     votingUpgrader.address
@@ -96,7 +102,7 @@ async function main() {
     value: 0,
     data: transferExistingVotingOwnershipTx.data,
   });
-  console.log("3.c. Transfer ownership of existing voting to voting upgrader:", transferExistingVotingOwnershipTx.data);
+  console.log("3.d. Transfer ownership of existing voting to voting upgrader:", transferExistingVotingOwnershipTx.data);
 
   // Transfer Ownable contracts to VotingUpgraderV2
   for (const ownableToMigrate of Object.entries(ownableContractsToMigrate)) {
@@ -105,7 +111,7 @@ async function main() {
     const iface = new hre.ethers.utils.Interface(getAbi("Ownable"));
     const data = iface.encodeFunctionData("transferOwnership", [votingUpgraderAddress]);
     adminProposalTransactions.push({ to: contractAddress, value: 0, data });
-    console.log(`3.d.  Ownable: transfer ownership of ${contractName} to voting upgrader`, data);
+    console.log(`3.e.  Ownable: transfer ownership of ${contractName} to voting upgrader`, data);
   }
 
   // Transfer Multirole contracts to new VotingUpgraderV2
@@ -115,20 +121,28 @@ async function main() {
     const iface = new hre.ethers.utils.Interface(getAbi("MultiRole"));
     const data = iface.encodeFunctionData("resetMember", [0, votingUpgraderAddress]);
     adminProposalTransactions.push({ to: contractAddress, value: 0, data });
-    console.log(`3.e.  Multirole: transfer owner role of ${contractName} to voting upgrader`, data);
+    console.log(`3.f.  Multirole: transfer owner role of ${contractName} to voting upgrader`, data);
   }
 
   const resetMemberGovernorTx = await governor.populateTransaction.resetMember(0, votingUpgraderAddress);
   if (!resetMemberGovernorTx.data) throw "resetMemberGovernorTx.data is null";
   adminProposalTransactions.push({ to: governor.address, value: 0, data: resetMemberGovernorTx.data });
-  console.log("3.f.  Reset governor member to voting upgrader:", resetMemberGovernorTx.data);
+  console.log("3.g.  Reset governor member to voting upgrader:", resetMemberGovernorTx.data);
 
   const upgraderExecuteUpgradeTx = await votingUpgrader.populateTransaction.upgrade();
   if (!upgraderExecuteUpgradeTx.data) throw "upgraderExecuteUpgradeTx.data is null";
   adminProposalTransactions.push({ to: votingUpgrader.address, value: 0, data: upgraderExecuteUpgradeTx.data });
-  console.log("3.g. Execute upgrade of voting:", upgraderExecuteUpgradeTx.data);
+  console.log("3.h. Execute upgrade of voting:", upgraderExecuteUpgradeTx.data);
 
   console.log("4. SENDING PROPOSAL TXS TO GOVERNOR");
+
+  const defaultBond = await proposer.bond();
+  const allowance = await votingToken.allowance(proposerWallet, proposer.address);
+  if (allowance.lt(defaultBond)) {
+    console.log("4.a. Approving proposer bond");
+    const approveTx = await votingToken.connect(proposerSigner).approve(proposer.address, defaultBond);
+    await approveTx.wait();
+  }
 
   const tx = await proposer.connect(proposerSigner).propose(adminProposalTransactions);
 
