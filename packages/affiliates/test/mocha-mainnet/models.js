@@ -80,7 +80,7 @@ describe("History", function () {
   });
 });
 
-describe("Contract Prices", function () {
+describe.skip("Contract Prices", function () {
   let prices, seed;
   // Sample data from known contract.
   const token = "0xD16c79c8A39D44B2F3eB45D2019cd6A42B03E2A9";
