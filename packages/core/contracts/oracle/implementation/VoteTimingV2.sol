@@ -33,8 +33,9 @@ library VoteTimingV2 {
     /**
      * @notice Computes the round ID based off the current time as floor(timestamp/roundLength).
      * @dev The round ID depends on the global timestamp but not on the lifetime of the system.
-     * The consequence is that the initial round ID starts at an arbitrary number (that increments, as expected, for subsequent rounds) instead of zero or one.
-     * @param data input data object.
+     * The consequence is that the initial round ID starts at an arbitrary number (that increments, as expected, for 
+     * subsequent rounds) instead of zero or one.
+     p* @param data input data object.
      * @param currentTime input unix timestamp used to compute the current roundId.
      * @return roundId defined as a function of the currentTime and `phaseLength` from `data`.
      */

@@ -19,20 +19,43 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
  */
 contract EmergencyProposer is Ownable, Lockable {
     using SafeERC20 for IERC20;
-    IERC20 public immutable token;
-    uint256 public quorum;
-    uint64 public minimumWaitTime;
 
+    /****************************************
+     *      EMERGENCY PROPOSAL STATE        *
+     ****************************************/
+
+    // Identifies a unique emergency proposal.
+    struct EmergencyProposal {
+        address sender; // Sender of the proposal. Address that receives the bond refund in the case of execution.
+        uint64 expiryTime; // Time at which the proposal expires and can be executed.
+        uint256 lockedTokens; // Tokens locked for the proposal. Tokens are returned when proposal is executed.
+        GovernorV2.Transaction[] transactions; // Array of transactions to be executed in the emergency action.
+    }
+
+    // Array of all proposed emergency proposals.
+    EmergencyProposal[] public emergencyProposals;
+
+    // UMA Governor, used to execute transactions. The Governor is the owner of all other UMA ecosystem contracts.
     GovernorV2 public immutable governor;
 
-    struct EmergencyProposal {
-        address sender;
-        uint64 expiryTime;
-        uint256 lockedTokens;
-        GovernorV2.Transaction[] transactions;
-    }
-    EmergencyProposal[] public emergencyProposals;
+    // Voting token, used to bond proposes.
+    IERC20 public immutable token;
+
+    // The number of tokens needed to propose an emergency action.
+    uint256 public quorum;
+
+    // The minimum time that must elapsed between from when a proposal is created to when it can be executed.
+    uint64 public minimumWaitTime;
+
+    // The only address that can execute an emergency proposal. Will be set to a multisig. Acts to guardrail the
+    // emergency recovery mechanism and ensure that only valid proposals can be executed. Note that while this address
+    // is somewhat privileged, it cant unilaterally push through proposals as a proposal must pass the minimum wait
+    // time without the DVM voters voting to slash the proposal.
     address public executor;
+
+    /****************************************
+     *                EVENTS                *
+     ****************************************/
 
     event QuorumSet(uint256 quorum);
     event ExecutorSet(address executor);
