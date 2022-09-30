@@ -63,4 +63,5 @@ export const OPTIMISTIC_ORACLE_IGNORE = [
   "uSPAC10",
   "ZODIAC",
   "NUMERICAL",
+  "DXY",
 ];
