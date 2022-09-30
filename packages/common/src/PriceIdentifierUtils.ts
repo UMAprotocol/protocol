@@ -62,4 +62,5 @@ export const OPTIMISTIC_ORACLE_IGNORE = [
   "DPI/ETH",
   "uSPAC10",
   "ZODIAC",
+  "NUMERICAL",
 ];
