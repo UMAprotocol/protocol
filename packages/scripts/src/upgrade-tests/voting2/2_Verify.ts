@@ -9,7 +9,14 @@
 const hre = require("hardhat");
 const assert = require("assert").strict;
 
-import { FinderEthers, getAbi, GovernorEthers, VotingEthers, VotingV2Ethers__factory } from "@uma/contracts-node";
+import {
+  FinderEthers,
+  getAbi,
+  GovernorEthers,
+  VotingEthers,
+  VotingTokenEthers,
+  VotingV2Ethers__factory,
+} from "@uma/contracts-node";
 
 import { getContractInstance } from "../../utils/contracts";
 import { getMultiRoleContracts, getOwnableContracts } from "./migrationUtils";
@@ -36,6 +43,7 @@ async function main() {
   const finder = await getContractInstance<FinderEthers>("Finder");
   const governor = await getContractInstance<GovernorEthers>("Governor");
   const oldVoting = await getContractInstance<VotingEthers>("Voting");
+  const votingToken = await getContractInstance<VotingTokenEthers>("VotingToken");
 
   const votingV2Factory: VotingV2Ethers__factory = await getContractFactory("VotingV2");
   const votingV2 = await votingV2Factory.attach(votingV2Address);
@@ -81,6 +89,10 @@ async function main() {
   assert.equal(await oldVoting.owner(), governorV2Address);
   assert.equal(await finder.owner(), governorV2Address);
   console.log("✅ Old Voting & finder correctly transferred ownership back to governor v2!");
+
+  console.log(" 5. Governor v2 is the owner of the voting token...");
+  assert.equal((await votingToken.getMember(0)).toLowerCase(), governorV2Address.toLowerCase());
+  console.log("✅ Voting token owner role correctly set!");
 
   console.log("Verified!");
 }
