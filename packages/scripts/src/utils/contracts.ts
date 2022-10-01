@@ -3,9 +3,10 @@ const hre = require("hardhat");
 import { Contract, ContractFactory } from "ethers";
 import { Provider } from "@ethersproject/abstract-provider";
 
-export const getContractInstance = async <T>(contractName: string): Promise<T> => {
+export const getContractInstance = async <T>(contractName: string, address?: string): Promise<T> => {
   const networkId = await hre.getChainId();
   const factory = await hre.ethers.getContractFactory(contractName);
+  if (address) return (await factory.attach(address)) as T;
   const contractAddress = await getAddress(contractName, Number(networkId));
   return (await factory.attach(contractAddress)) as T;
 };

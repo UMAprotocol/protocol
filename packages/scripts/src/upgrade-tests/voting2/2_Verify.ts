@@ -17,6 +17,7 @@ import {
   VotingEthers,
   VotingTokenEthers,
   VotingV2Ethers__factory,
+  ProposerEthers,
 } from "@uma/contracts-node";
 
 import { getContractInstance } from "../../utils/contracts";
@@ -48,6 +49,8 @@ async function main() {
   const registry = await getContractInstance<RegistryEthers>("Registry");
   const oldVoting = await getContractInstance<VotingEthers>("Voting");
   const votingToken = await getContractInstance<VotingTokenEthers>("VotingToken");
+  const proposer = await getContractInstance<ProposerEthers>("Proposer");
+  const proposerV2 = await getContractInstance<ProposerEthers>("Proposer", proposerV2Address);
 
   const votingV2Factory: VotingV2Ethers__factory = await getContractFactory("VotingV2");
   const votingV2 = await votingV2Factory.attach(votingV2Address);
@@ -98,20 +101,35 @@ async function main() {
   assert.equal((await votingToken.getMember(0)).toLowerCase(), governorV2Address.toLowerCase());
   console.log("✅ Voting token owner role correctly set!");
 
-  console.log(" 6. Governor v2 is registered in the registry...");
+  console.log(" 6. Governor v2 is the owner of proposer v2...");
+  assert.equal((await proposerV2.owner()).toLowerCase(), governorV2Address.toLowerCase());
+  console.log("✅ Proposer owner role correctly set!");
+
+  console.log(" 7. Governor v2 is registered in the registry...");
   assert(await registry.isContractRegistered(governorV2Address));
   console.log("✅ Governor v2 registered in registry!");
 
-  console.log(" 7. Proposer v2 is registered in the regstry...");
+  console.log(" 8. Proposer v2 is registered in the regstry...");
   assert(await registry.isContractRegistered(proposerV2Address));
   console.log("✅ Proposer v2 registered in registry!");
 
-  console.log(" 8. Governor v2 received all the voting tokens from Governor...");
+  console.log(" 9. Governor v2 received all the voting tokens from Governor...");
   assert((await votingToken.balanceOf(governorV2Address)).gt(hre.web3.utils.toWei("30000000", "ether")));
   assert((await votingToken.balanceOf(governor.address)).eq(0));
   console.log("✅ Governor v2 received all the voting tokens from Governor!");
 
   console.log("Verified!");
+
+  console.log("OPTIONAL NEXT STEP, DOWNGRADE:");
+  const nextCommand = `
+  VOTING_V1_ADDRESS=${votingV2Address} \\
+  VOTING_V2_ADDRESS=${oldVoting.address} \\
+  GOVERNOR_V1_ADDRESS=${governorV2Address} \\
+  GOVERNOR_V2_ADDRESS=${governor.address} \\
+  PROPOSER_V1_ADDRESS=${proposerV2Address} \\
+  PROPOSER_V2_ADDRESS=${proposer.address} \\
+  yarn hardhat run ./src/upgrade-tests/voting2/1_Propose.ts --network localhost`.replace(/  +/g, "");
+  console.log(nextCommand);
 }
 
 main().then(

@@ -98,7 +98,20 @@ async function main() {
   const proposer = await proposerFactory.deploy(votingToken.address, defaultBond, governorV2.address, finder.address);
   console.log("Deployed ProposerV2: ", proposer.address);
 
+  await governorV2.resetMember(1, proposer.address);
+  await governorV2.resetMember(0, governorV2.address);
+
   console.log("Deployment done!🎉");
+
+  console.log("Next step, Propose migration: ");
+  console.log(
+    `
+  VOTING_UPGRADER_ADDRESS=${votingUpgrader.address} \\
+  VOTING_V2_ADDRESS=${votingV2.address} \\
+  GOVERNOR_V2_ADDRESS=${governorV2.address} \\
+  PROPOSER_V2_ADDRESS=${proposer.address} \\
+  yarn hardhat run ./src/upgrade-tests/voting2/1_Propose.ts --network localhost`.replace(/  +/g, "")
+  );
 }
 
 main().then(
