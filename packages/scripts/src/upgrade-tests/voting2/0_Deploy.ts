@@ -18,7 +18,7 @@ import {
   VotingV2Ethers__factory,
 } from "@uma/contracts-node";
 import { getContractInstance } from "../../utils/contracts";
-import { getMultiRoleContracts, getOwnableContracts } from "./migrationUtils";
+import { getMultiRoleContracts, getOwnableContracts, NEW_CONTRACTS, VOTING_UPGRADER_ADDRESS } from "./migrationUtils";
 
 const { getContractFactory } = hre.ethers;
 
@@ -99,17 +99,17 @@ async function main() {
   console.log("Deployed ProposerV2: ", proposer.address);
 
   await governorV2.resetMember(1, proposer.address);
-  await governorV2.resetMember(0, governorV2.address);
+  await governorV2.resetMember(0, governor.address);
 
   console.log("Deployment done!🎉");
 
   console.log("Next step, Propose migration: ");
   console.log(
     `
-  VOTING_UPGRADER_ADDRESS=${votingUpgrader.address} \\
-  VOTING_V2_ADDRESS=${votingV2.address} \\
-  GOVERNOR_V2_ADDRESS=${governorV2.address} \\
-  PROPOSER_V2_ADDRESS=${proposer.address} \\
+  ${VOTING_UPGRADER_ADDRESS}=${votingUpgrader.address} \\
+  ${NEW_CONTRACTS.voting}=${votingV2.address} \\
+  ${NEW_CONTRACTS.governor}=${governorV2.address} \\
+  ${NEW_CONTRACTS.proposer}=${proposer.address} \\
   yarn hardhat run ./src/upgrade-tests/voting2/1_Propose.ts --network localhost`.replace(/  +/g, "")
   );
 }

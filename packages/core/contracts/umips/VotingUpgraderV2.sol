@@ -120,6 +120,9 @@ contract VotingUpgraderV2 {
         // Set the new governor as the owner of the old governor
         existingGovernor.resetMember(0, newGovernor);
 
+        // Set governor as the owner of governor
+        MultiRole(newGovernor).resetMember(0, newGovernor);
+
         // Additional multirole contracts
         multiroleContracts.registry.resetMember(0, newGovernor);
         multiroleContracts.store.resetMember(0, newGovernor);

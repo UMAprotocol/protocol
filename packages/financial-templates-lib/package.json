@@ -21,7 +21,7 @@
     "moment-timezone": "^0.5.33",
     "node-fetch": "^2.6.0",
     "node-pagerduty": "^1.2.0",
-    "superstruct": "^0.16.4",
+    "superstruct": "^0.16.5",
     "web3": "^1.6.0",
     "winston": "^3.2.1",
     "winston-transport": "^4.3.0"

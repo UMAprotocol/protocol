@@ -12,7 +12,7 @@ const hre = require("hardhat");
 
 import { BigNumberish } from "@ethersproject/bignumber";
 import { BytesLike } from "@ethersproject/bytes";
-import { RegistryRolesEnum } from "@uma/common";
+import { RegistryRolesEnum, ZERO_ADDRESS } from "@uma/common";
 import {
   FinderEthers,
   GovernorEthers,
@@ -21,12 +21,19 @@ import {
   RegistryEthers,
   VotingEthers,
   VotingTokenEthers,
+  VotingUpgraderV2Ethers,
   VotingUpgraderV2Ethers__factory,
-  VotingV2Ethers__factory,
 } from "@uma/contracts-node";
 
 import { getContractInstance } from "../../utils/contracts";
-import { getMultiRoleContracts, getOwnableContracts } from "./migrationUtils";
+import {
+  checkEnvVariables,
+  getMultiRoleContracts,
+  getOwnableContracts,
+  NEW_CONTRACTS,
+  OLD_CONTRACTS,
+  VOTING_UPGRADER_ADDRESS,
+} from "./migrationUtils";
 const { getAbi } = require("@uma/contracts-node");
 
 const { getContractFactory } = hre.ethers;
@@ -38,29 +45,7 @@ async function main() {
 
   const networkId = Number(await hre.getChainId());
 
-  let votingUpgraderAddress = process.env["VOTING_UPGRADER_ADDRESS"];
-  const proposerV2Address = process.env["PROPOSER_V2_ADDRESS"];
-  const governorV2Address = process.env["GOVERNOR_V2_ADDRESS"];
-  const votingV2Address = process.env["VOTING_V2_ADDRESS"];
-
-  // Optional if we want to migrate from arbitrary addresses to new addresses.
-  const governorV1Address = process.env["GOVERNOR_V1_ADDRESS"];
-  const proposerV1Address = process.env["PROPOSER_V1_ADDRESS"];
-  const votingV1Address = process.env["VOTING_V1_ADDRESS"];
-
-  if (!votingV2Address) throw new Error("VOTING_V2_ADDRESS not set");
-  if (!governorV2Address) throw new Error("GOVERNOR_V2_ADDRESS not set");
-  if (!proposerV2Address) throw new Error("PROPOSER_V2_ADDRESS not set");
-
-  if (!votingUpgraderAddress) {
-    if (!governorV1Address) throw new Error("GOVERNOR_V1_ADDRESS not set");
-    if (!proposerV1Address) throw new Error("PROPOSER_V1_ADDRESS not set");
-    if (!votingV1Address) throw new Error("VOTING_V1_ADDRESS not set");
-  } else {
-    if (governorV1Address) throw new Error("GOVERNOR_V1_ADDRESS should not be set");
-    if (proposerV1Address) throw new Error("PROPOSER_V1_ADDRESS should not be set");
-    if (votingV1Address) throw new Error("VOTING_V1_ADDRESS should not be set");
-  }
+  checkEnvVariables();
 
   console.log("Running Voting Upgrade🔥");
   console.log("1. LOADING DEPLOYED CONTRACT STATE");
@@ -68,34 +53,20 @@ async function main() {
   const finder = await getContractInstance<FinderEthers>("Finder");
   const registry = await getContractInstance<RegistryEthers>("Registry");
   const votingToken = await getContractInstance<VotingTokenEthers>("VotingToken");
-  const proposerV2 = await getContractInstance<ProposerV2Ethers>("ProposerV2", proposerV2Address);
 
   let ownableContractsToMigrate = await getOwnableContracts(networkId);
 
   const multicallContractsToMigrate = await getMultiRoleContracts(networkId);
 
-  let governor, proposer, existingVoting;
+  const governor = await getContractInstance<GovernorEthers>("Governor", process.env[OLD_CONTRACTS.governor]);
+  const oldVoting = await getContractInstance<VotingEthers>("Voting", process.env[OLD_CONTRACTS.voting]);
+  const proposer = await getContractInstance<ProposerEthers>("Proposer", process.env[OLD_CONTRACTS.proposer]);
 
-  if (governorV1Address) {
-    const factory = await hre.ethers.getContractFactory("Governor");
-    governor = (await factory.attach(governorV1Address)) as GovernorEthers;
-  } else {
-    governor = await getContractInstance<GovernorEthers>("Governor");
-  }
+  const votingV2 = await getContractInstance<VotingEthers>("Voting", process.env[NEW_CONTRACTS.voting]);
+  const proposerV2 = await getContractInstance<ProposerEthers>("Proposer", process.env[NEW_CONTRACTS.proposer]);
+  const governorV2 = await getContractInstance<GovernorEthers>("Governor", process.env[NEW_CONTRACTS.governor]);
 
-  if (proposerV1Address) {
-    const factory = await hre.ethers.getContractFactory("Proposer");
-    proposer = (await factory.attach(proposerV1Address)) as ProposerEthers;
-  } else {
-    proposer = await getContractInstance<ProposerEthers>("Proposer");
-  }
-
-  if (votingV1Address) {
-    const factory = await hre.ethers.getContractFactory("Voting");
-    existingVoting = (await factory.attach(votingV1Address)) as VotingEthers;
-  } else {
-    existingVoting = await getContractInstance<VotingEthers>("Voting");
-  }
+  let votingUpgraderAddress = process.env[VOTING_UPGRADER_ADDRESS];
 
   if (!votingUpgraderAddress) {
     console.log("1.1 OPTIONAL: DEPLOYING VOTING UPGRADER");
@@ -107,9 +78,9 @@ async function main() {
     const votingUpgraderFactoryV2: VotingUpgraderV2Ethers__factory = await getContractFactory("VotingUpgraderV2");
     const votingUpgrader = await votingUpgraderFactoryV2.deploy(
       governor.address,
-      governorV2Address,
-      existingVoting.address,
-      votingV2Address,
+      governorV2.address,
+      oldVoting.address,
+      votingV2.address,
       finder.address,
       ownableContractsToMigrate,
       multicallContractsToMigrate
@@ -118,11 +89,7 @@ async function main() {
     console.log("Voting Upgrader deployed to:", votingUpgraderAddress);
   }
 
-  const votingV2Factory: VotingV2Ethers__factory = await getContractFactory("VotingV2");
-  const votingV2 = await votingV2Factory.attach(votingV2Address);
-
-  const votingUpgraderFactory: VotingUpgraderV2Ethers__factory = await getContractFactory("VotingUpgraderV2");
-  const votingUpgrader = await votingUpgraderFactory.attach(votingUpgraderAddress);
+  const votingUpgrader = await getContractInstance<VotingUpgraderV2Ethers>("VotingUpgraderV2", votingUpgraderAddress);
 
   const adminProposalTransactions: {
     to: string;
@@ -130,32 +97,41 @@ async function main() {
     data: BytesLike;
   }[] = [];
 
+  // If votingV2 is already migrated, remove it
+  const migratedAddress = await votingV2.migratedAddress();
+  if (migratedAddress != ZERO_ADDRESS) {
+    const migrateTx = await votingV2.populateTransaction.setMigrated(ZERO_ADDRESS);
+    if (!migrateTx.data) throw "migrateTx.data is null";
+    adminProposalTransactions.push({ to: votingV2.address, value: 0, data: migrateTx.data });
+    console.log("4.k. Migrate voting contract:", migrateTx.data);
+  }
+
   console.log("2. TRANSFERRING OWNERSHIP OF NEW VOTING TO GOVERNORV2 IF NEEDED");
 
   const votingV2Owner = await votingV2.owner();
 
-  if (votingV2Owner !== governorV2Address) {
-    if ((await votingV2.signer.getAddress()) == votingV2Owner) await votingV2.transferOwnership(governorV2Address);
+  if (votingV2Owner !== governorV2.address) {
+    if ((await votingV2.signer.getAddress()) == votingV2Owner) await votingV2.transferOwnership(governorV2.address);
     if (governor.address == votingV2Owner) {
       adminProposalTransactions.push({
         to: votingV2.address,
         value: 0,
-        data: votingV2.interface.encodeFunctionData("transferOwnership", [governorV2Address]),
+        data: votingV2.interface.encodeFunctionData("transferOwnership", [governorV2.address]),
       });
     }
   }
 
   console.log("3. TRANSFERRING OWNERSHIP OF NEW PROPOSER TO NEW GOVERNOR IF NEEDED");
   const proposerV2Owner = await proposerV2.owner();
-  if (proposerV2Owner !== governorV2Address) {
+  if (proposerV2Owner !== governorV2.address) {
     if ((await proposerV2.signer.getAddress()) == proposerV2Owner)
-      await proposerV2.transferOwnership(governorV2Address);
+      await proposerV2.transferOwnership(governorV2.address);
 
     if (governor.address == proposerV2Owner) {
       adminProposalTransactions.push({
         to: proposerV2.address,
         value: 0,
-        data: proposerV2.interface.encodeFunctionData("transferOwnership", [governorV2Address]),
+        data: proposerV2.interface.encodeFunctionData("transferOwnership", [governorV2.address]),
       });
     }
   }
@@ -171,14 +147,14 @@ async function main() {
   console.log("4.a. Add minting roll to new voting contract:", addVotingV2AsTokenMinterTx.data);
 
   // Add new governor as the owner of the VotingToken contract.
-  const addGovernorAsTokenOwnerTx = await votingToken.populateTransaction.resetMember("0", governorV2Address);
+  const addGovernorAsTokenOwnerTx = await votingToken.populateTransaction.resetMember("0", governorV2.address);
   if (!addGovernorAsTokenOwnerTx.data) throw "addGovernorAsTokenOwnerTx.data is null";
   adminProposalTransactions.push({ to: votingToken.address, value: 0, data: addGovernorAsTokenOwnerTx.data });
   console.log("4.b. Add owner roll to new governor contract:", addGovernorAsTokenOwnerTx.data);
 
   // transfer old governor voting tokens to new governor.
   const transferVotingTokensTx = await votingToken.populateTransaction.transfer(
-    governorV2Address,
+    governorV2.address,
     await votingToken.balanceOf(governor.address)
   );
   if (!transferVotingTokensTx.data) throw "transferVotingTokensTx.data is null";
@@ -190,20 +166,20 @@ async function main() {
   adminProposalTransactions.push({ to: finder.address, value: 0, data: transferFinderOwnershipTx.data });
   console.log("4.d. Transfer ownership of finder to voting upgrader:", transferFinderOwnershipTx.data);
 
-  const transferExistingVotingOwnershipTx = await existingVoting.populateTransaction.transferOwnership(
+  const transferExistingVotingOwnershipTx = await oldVoting.populateTransaction.transferOwnership(
     votingUpgrader.address
   );
   if (!transferExistingVotingOwnershipTx.data) throw "transferExistingVotingOwnershipTx.data is null";
   adminProposalTransactions.push({
-    to: existingVoting.address,
+    to: oldVoting.address,
     value: 0,
     data: transferExistingVotingOwnershipTx.data,
   });
   console.log("4.e. Transfer ownership of existing voting to voting upgrader:", transferExistingVotingOwnershipTx.data);
 
   // Register GovernorV2 and ProposerV2 contracts in the registry if necessary
-  const proposerV2Registered = await registry.isContractRegistered(proposerV2Address);
-  const governorV2Registered = await registry.isContractRegistered(governorV2Address);
+  const proposerV2Registered = await registry.isContractRegistered(proposerV2.address);
+  const governorV2Registered = await registry.isContractRegistered(governorV2.address);
   if (!proposerV2Registered || !governorV2Registered) {
     const addGovernorAsCreatorTx = await registry.populateTransaction.addMember(
       RegistryRolesEnum.CONTRACT_CREATOR,
@@ -214,14 +190,14 @@ async function main() {
     console.log("4.f.1 Temporarily add the Governor as a contract creator", addGovernorAsCreatorTx.data);
 
     if (!proposerV2Registered) {
-      const registerProposerV2Tx = await registry.populateTransaction.registerContract([], proposerV2Address);
+      const registerProposerV2Tx = await registry.populateTransaction.registerContract([], proposerV2.address);
       if (!registerProposerV2Tx.data) throw new Error("registerProposerV2Tx.data is empty");
       adminProposalTransactions.push({ to: registry.address, value: 0, data: registerProposerV2Tx.data });
       console.log("4.f.2 Register the ProposerV2 as a verified contract", registerProposerV2Tx.data);
     }
 
     if (!governorV2Registered) {
-      const registerGovernorV2Tx = await registry.populateTransaction.registerContract([], governorV2Address);
+      const registerGovernorV2Tx = await registry.populateTransaction.registerContract([], governorV2.address);
       if (!registerGovernorV2Tx.data) throw new Error("registerGovernorV2Tx.data is empty");
       adminProposalTransactions.push({ to: registry.address, value: 0, data: registerGovernorV2Tx.data });
       console.log("4.f.3 Register the ProposerV2 as a verified contract", registerGovernorV2Tx.data);
@@ -263,6 +239,10 @@ async function main() {
   adminProposalTransactions.push({ to: governor.address, value: 0, data: resetMemberGovernorTx.data });
   console.log("4.i.  Reset governor member to voting upgrader:", resetMemberGovernorTx.data);
 
+  const resetMemberNewGovernorTx = await governorV2.populateTransaction.resetMember(0, votingUpgraderAddress);
+  if (!resetMemberNewGovernorTx.data) throw "resetMemberNewGovernorTx.data is null";
+  adminProposalTransactions.push({ to: governorV2.address, value: 0, data: resetMemberNewGovernorTx.data });
+
   const upgraderExecuteUpgradeTx = await votingUpgrader.populateTransaction.upgrade();
   if (!upgraderExecuteUpgradeTx.data) throw "upgraderExecuteUpgradeTx.data is null";
   adminProposalTransactions.push({ to: votingUpgrader.address, value: 0, data: upgraderExecuteUpgradeTx.data });
@@ -281,7 +261,7 @@ async function main() {
   let tx;
   try {
     tx = await proposer.connect(proposerSigner).propose(adminProposalTransactions);
-  } catch {
+  } catch (err) {
     const p = await getContractInstance<ProposerV2Ethers>("ProposerV2", proposer.address);
     tx = await p.connect(proposerSigner).propose(adminProposalTransactions, hre.web3.utils.utf8ToHex("Admin Proposal"));
   }
@@ -290,11 +270,11 @@ async function main() {
   console.log("\nProposal data:\n", tx.data);
 
   console.log("\nNext step: Verify: ");
-  if (proposerV1Address) {
+  if (process.env[OLD_CONTRACTS.proposer]) {
     const vCommand = `
-    VOTING_V2_ADDRESS=${votingV1Address} \\
-    GOVERNOR_V2_ADDRESS=${governorV1Address} \\
-    PROPOSER_V2_ADDRESS=${proposerV1Address} \\
+    ${NEW_CONTRACTS.voting}=${oldVoting.address} \\
+    ${NEW_CONTRACTS.governor}=${governor.address} \\
+    ${NEW_CONTRACTS.proposer}=${proposer.address} \\
     NODE_URL_1=http://127.0.0.1:9545/ \\
     yarn hardhat run ./src/admin-proposals/simulateVoteV2.ts --network localhost`.replace(/  +/g, "");
     console.log(vCommand);
@@ -305,11 +285,13 @@ async function main() {
   }
 
   const nextCommand = `
-  VOTING_UPGRADER_ADDRESS=${votingUpgraderAddress} \\
-  VOTING_V2_ADDRESS=${votingV2Address} \\
-  GOVERNOR_V2_ADDRESS=${governorV2Address} \\
-  PROPOSER_V2_ADDRESS=${proposerV2Address} \\
-  yarn hardhat run ./src/upgrade-tests/voting2/2_Verify.ts --network localhost`.replace(/  +/g, "");
+  ${NEW_CONTRACTS.voting}=${votingV2.address} \\
+  ${NEW_CONTRACTS.governor}=${governorV2.address} \\
+  ${NEW_CONTRACTS.proposer}=${proposerV2.address} \\
+  ${OLD_CONTRACTS.voting}=${oldVoting.address} \\
+  ${OLD_CONTRACTS.governor}=${governor.address} \\
+  ${OLD_CONTRACTS.proposer}=${proposer.address} \\
+  yarn hardhat run ./src/upgrade-tests/voting2/2_VerifyNew.ts --network localhost`.replace(/  +/g, "");
 
   console.log(nextCommand);
 }

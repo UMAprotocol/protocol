@@ -218,7 +218,10 @@ async function simulateVoteV2() {
 
   await advanceBlockAndSetTime(web3, (await votingV2.getCurrentTime()).add(stakeCooldown).toNumber());
 
-  await votingV2.executeUnstake(foundationSigner);
+  await votingV2.connect(foundationSigner).executeUnstake();
+
+  console.log(`Successfully unstaked ${foundationStakes.stake} tokens from foundation wallet`);
+  console.groupEnd();
 
   console.log("\n😇 Success!");
   console.groupEnd();

@@ -34,3 +34,32 @@ export const getMultiRoleContracts = async (networkId: number): Promise<{ regist
     store: await getAddress("Store", networkId),
   };
 };
+
+export const NEW_CONTRACTS = {
+  governor: "GOVERNOR_V2_ADDRESS",
+  proposer: "PROPOSER_V2_ADDRESS",
+  voting: "VOTING_V2_ADDRESS",
+};
+
+export const OLD_CONTRACTS = {
+  governor: "GOVERNOR_ADDRESS",
+  proposer: "PROPOSER_ADDRESS",
+  voting: "VOTING_ADDRESS",
+};
+
+export const VOTING_UPGRADER_ADDRESS = "VOTING_UPGRADER_ADDRESS";
+
+export const checkEnvVariables = (): void => {
+  // mandatory variables
+  Object.values(NEW_CONTRACTS).forEach((element) => {
+    if (!process.env[element]) throw new Error(`${element} not set`);
+  });
+
+  // optional variables
+  // if any of these are set, then all of them must be set
+  if (Object.values(OLD_CONTRACTS).find((element) => process.env[element])) {
+    Object.values(OLD_CONTRACTS).forEach((element) => {
+      if (!process.env[element]) throw new Error(`${element} not set`);
+    });
+  }
+};
