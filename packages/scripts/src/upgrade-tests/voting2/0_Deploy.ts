@@ -98,7 +98,11 @@ async function main() {
   const proposer = await proposerFactory.deploy(votingToken.address, defaultBond, governorV2.address, finder.address);
   console.log("Deployed ProposerV2: ", proposer.address);
 
+  console.log("6. Set ProposerV2 as the proposer of GovernorV2");
   await governorV2.resetMember(1, proposer.address);
+
+  console.log("7. Set the old governor as the owner of the new governor");
+  // The new governor owner will be updated in the VotingUpgraderV2 contract.
   await governorV2.resetMember(0, governor.address);
 
   console.log("Deployment done!🎉");
@@ -106,6 +110,7 @@ async function main() {
   console.log("Next step, Propose migration: ");
   console.log(
     `
+  ☝️ PROPOSAL: Run the following command to propose the migration to VotingV2, GovernorV2 and ProposerV2:
   ${VOTING_UPGRADER_ADDRESS}=${votingUpgrader.address} \\
   ${NEW_CONTRACTS.voting}=${votingV2.address} \\
   ${NEW_CONTRACTS.governor}=${governorV2.address} \\

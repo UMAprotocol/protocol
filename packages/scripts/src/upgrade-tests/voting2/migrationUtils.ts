@@ -1,3 +1,4 @@
+const hre = require("hardhat");
 import { getAddress } from "@uma/contracts-node";
 
 export const getOwnableContracts = async (
@@ -62,4 +63,10 @@ export const checkEnvVariables = (): void => {
       if (!process.env[element]) throw new Error(`${element} not set`);
     });
   }
+};
+
+export const isContractInstance = async (address: string, functionSignature: string): Promise<boolean> => {
+  const code = await hre.ethers.provider.getCode(address);
+  const encodedSignature = hre.web3.eth.abi.encodeFunctionSignature(functionSignature).slice(2);
+  return code.includes(encodedSignature);
 };

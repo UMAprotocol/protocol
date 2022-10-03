@@ -30,6 +30,7 @@ import {
   checkEnvVariables,
   getMultiRoleContracts,
   getOwnableContracts,
+  isContractInstance,
   NEW_CONTRACTS,
   OLD_CONTRACTS,
   VOTING_UPGRADER_ADDRESS,
@@ -258,42 +259,47 @@ async function main() {
     await approveTx.wait();
   }
 
+  const isProposerV1 = await isContractInstance(proposer.address, "propose((address,uint256,bytes)[])");
   let tx;
-  try {
+  if (isProposerV1) {
     tx = await proposer.connect(proposerSigner).propose(adminProposalTransactions);
-  } catch (err) {
-    const p = await getContractInstance<ProposerV2Ethers>("ProposerV2", proposer.address);
-    tx = await p.connect(proposerSigner).propose(adminProposalTransactions, hre.web3.utils.utf8ToHex("Admin Proposal"));
+  } else {
+    tx = await (await getContractInstance<ProposerV2Ethers>("ProposerV2", proposer.address))
+      .connect(proposerSigner)
+      .propose(adminProposalTransactions, hre.web3.utils.utf8ToHex("Admin Proposal"));
   }
 
   console.log("Proposal done!🎉");
   console.log("\nProposal data:\n", tx.data);
 
-  console.log("\nNext step: Verify: ");
-  if (process.env[OLD_CONTRACTS.proposer]) {
-    const vCommand = `
+  const isVotingV2 = await isContractInstance(oldVoting.address, "stake(uint256)");
+  console.log("\n❓ OPTIONAL: Simulate the approval and execute the proposal with the following command: ");
+  if (isVotingV2) {
+    console.log(
+      `
     ${NEW_CONTRACTS.voting}=${oldVoting.address} \\
     ${NEW_CONTRACTS.governor}=${governor.address} \\
     ${NEW_CONTRACTS.proposer}=${proposer.address} \\
     NODE_URL_1=http://127.0.0.1:9545/ \\
-    yarn hardhat run ./src/admin-proposals/simulateVoteV2.ts --network localhost`.replace(/  +/g, "");
-    console.log(vCommand);
+    yarn hardhat run ./src/admin-proposals/simulateVoteV2.ts --network localhost`.replace(/  +/g, "")
+    );
   } else {
     console.log(
       "\nNODE_URL_1=http://127.0.0.1:9545/ node ./src/admin-proposals/simulateVote.js --network mainnet-fork \n"
     );
   }
 
-  const nextCommand = `
+  console.log(
+    `
+  ✅ VERIFICATION: Verify the proposal execution with the following command:
   ${NEW_CONTRACTS.voting}=${votingV2.address} \\
   ${NEW_CONTRACTS.governor}=${governorV2.address} \\
   ${NEW_CONTRACTS.proposer}=${proposerV2.address} \\
   ${OLD_CONTRACTS.voting}=${oldVoting.address} \\
   ${OLD_CONTRACTS.governor}=${governor.address} \\
   ${OLD_CONTRACTS.proposer}=${proposer.address} \\
-  yarn hardhat run ./src/upgrade-tests/voting2/2_VerifyNew.ts --network localhost`.replace(/  +/g, "");
-
-  console.log(nextCommand);
+  yarn hardhat run ./src/upgrade-tests/voting2/2_Verify.ts --network localhost`.replace(/  +/g, "")
+  );
 }
 
 main().then(
