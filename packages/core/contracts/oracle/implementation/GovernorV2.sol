@@ -18,28 +18,34 @@ contract GovernorV2 is MultiRole, Lockable {
     using Address for address;
 
     /****************************************
-     *     INTERNAL VARIABLES AND STORAGE   *
+     *             GOVERNOR STATE           *
      ****************************************/
 
+    // Permissioned governor rolls.
     enum Roles {
         Owner, // Can set the proposer.
         Proposer, // Address that can make proposals.
         EmergencyProposer // Address that can make emergency proposals.
     }
 
+    // Structure to represent a transaction.
     struct Transaction {
-        address to;
-        uint256 value;
-        bytes data;
+        address to; // Target.
+        uint256 value; // value, in eth, to be sent as the msg.value.
+        bytes data; // payload data to be sent to the target. Would include encoded function call data usually.
     }
 
+    // Structure to represent a governance proposal.
     struct Proposal {
-        Transaction[] transactions;
-        uint256 requestTime;
-        bytes ancillaryData;
+        Transaction[] transactions; // Set of transactions to be sent, if the proposal is executed.
+        uint256 requestTime; // Time at which the proposal was proposed.
+        bytes ancillaryData; // Extra data appended to a proposal to enhance the voters information.
     }
 
+    // Reference to UMA finder, used to find addresses of other UMA ecosystem contracts.
     FinderInterface private finder;
+
+    // Array of all proposals.
     Proposal[] public proposals;
 
     /****************************************
