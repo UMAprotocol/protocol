@@ -19,7 +19,6 @@ struct OwnableContracts {
     Ownable governorHub;
     Ownable bobaParentMessenger;
     Ownable optimismParentMessenger;
-    Ownable proposer;
 }
 
 // Multirole contracts to transfer ownership of
@@ -52,6 +51,9 @@ contract VotingUpgraderV2 {
     // Address to upgrade to.
     address public immutable newVoting;
 
+    // Proposer contract.
+    Ownable public immutable existingProposer;
+
     // Additional ownable contracts to transfer ownership of.
     OwnableContracts public ownableContracts;
 
@@ -73,6 +75,7 @@ contract VotingUpgraderV2 {
         address _newGovernor,
         address _existingVoting,
         address _newVoting,
+        address _existingProposer,
         address _finder,
         OwnableContracts memory _ownableContracts,
         MultiroleContracts memory _multiroleContracts
@@ -81,6 +84,7 @@ contract VotingUpgraderV2 {
         newGovernor = _newGovernor;
         existingVoting = Voting(_existingVoting);
         newVoting = _newVoting;
+        existingProposer = Ownable(_existingProposer);
         finder = Finder(_finder);
         ownableContracts = _ownableContracts;
         multiroleContracts = _multiroleContracts;
@@ -105,6 +109,9 @@ contract VotingUpgraderV2 {
         existingVoting.transferOwnership(newGovernor);
         finder.transferOwnership(newGovernor);
 
+        // Transfer ownership of existingProposer contract to the new governor.
+        existingProposer.transferOwnership(newGovernor);
+
         // Additional ownable contracts
         ownableContracts.identifierWhitelist.transferOwnership(newGovernor);
         ownableContracts.financialContractsAdmin.transferOwnership(newGovernor);
@@ -115,7 +122,6 @@ contract VotingUpgraderV2 {
         ownableContracts.governorHub.transferOwnership(newGovernor);
         ownableContracts.bobaParentMessenger.transferOwnership(newGovernor);
         ownableContracts.optimismParentMessenger.transferOwnership(newGovernor);
-        ownableContracts.proposer.transferOwnership(newGovernor);
 
         // Set the new governor as the owner of the old governor
         existingGovernor.resetMember(0, newGovernor);

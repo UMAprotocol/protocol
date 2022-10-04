@@ -55,7 +55,7 @@ async function main() {
   const registry = await getContractInstance<RegistryEthers>("Registry");
   const votingToken = await getContractInstance<VotingTokenEthers>("VotingToken");
 
-  let ownableContractsToMigrate = await getOwnableContracts(networkId);
+  const ownableContractsToMigrate = await getOwnableContracts(networkId);
 
   const multicallContractsToMigrate = await getMultiRoleContracts(networkId);
 
@@ -71,17 +71,13 @@ async function main() {
 
   if (!votingUpgraderAddress) {
     console.log("1.1 OPTIONAL: DEPLOYING VOTING UPGRADER");
-    ownableContractsToMigrate = { ...(await getOwnableContracts(networkId)) };
-    ownableContractsToMigrate.proposer = proposer.address;
-
-    const multicallContractsToMigrate = await getMultiRoleContracts(networkId);
-
     const votingUpgraderFactoryV2: VotingUpgraderV2Ethers__factory = await getContractFactory("VotingUpgraderV2");
     const votingUpgrader = await votingUpgraderFactoryV2.deploy(
       governor.address,
       governorV2.address,
       oldVoting.address,
       votingV2.address,
+      proposer.address,
       finder.address,
       ownableContractsToMigrate,
       multicallContractsToMigrate
@@ -112,7 +108,6 @@ async function main() {
   const votingV2Owner = await votingV2.owner();
 
   if (votingV2Owner !== governorV2.address) {
-    if ((await votingV2.signer.getAddress()) == votingV2Owner) await votingV2.transferOwnership(governorV2.address);
     if (governor.address == votingV2Owner) {
       adminProposalTransactions.push({
         to: votingV2.address,
@@ -125,9 +120,6 @@ async function main() {
   console.log("3. TRANSFERRING OWNERSHIP OF NEW PROPOSER TO NEW GOVERNOR IF NEEDED");
   const proposerV2Owner = await proposerV2.owner();
   if (proposerV2Owner !== governorV2.address) {
-    if ((await proposerV2.signer.getAddress()) == proposerV2Owner)
-      await proposerV2.transferOwnership(governorV2.address);
-
     if (governor.address == proposerV2Owner) {
       adminProposalTransactions.push({
         to: proposerV2.address,
@@ -225,6 +217,12 @@ async function main() {
     console.log(`4.g.  Ownable: transfer ownership of ${contractName} to voting upgrader`, data);
   }
 
+  // Transfer proposer to VotingUpgrader
+  const transferProposerOwnershipTx = await proposer.populateTransaction.transferOwnership(votingUpgrader.address);
+  if (!transferProposerOwnershipTx.data) throw "transferProposerOwnershipTx.data is null";
+  adminProposalTransactions.push({ to: proposer.address, value: 0, data: transferProposerOwnershipTx.data });
+  console.log("4.h. Transfer ownership of proposer to voting upgrader:", transferProposerOwnershipTx.data);
+
   // Transfer Multirole contracts to new VotingUpgraderV2
   for (const multiRoleToMigrate of Object.entries(multicallContractsToMigrate)) {
     const contractAddress = multiRoleToMigrate[1];
@@ -285,7 +283,7 @@ async function main() {
     );
   } else {
     console.log(
-      "\nNODE_URL_1=http://127.0.0.1:9545/ node ./src/admin-proposals/simulateVote.js --network mainnet-fork \n"
+      "\nNODE_URL_1=http://127.0.0.1:9545/ node ./src/admin-proposals/simulateVote.js --network localhost \n"
     );
   }
 

@@ -74,8 +74,11 @@ async function main() {
   }
 
   console.log(" 3. Validating deployed contracts multirole owner is set to governor v2...");
-  // assert.equal((await governor.getMember(0)).toLowerCase(), governorV2.address.toLowerCase());
+  assert.equal((await governor.getMember(0)).toLowerCase(), governorV2.address.toLowerCase());
   console.log("✅ Old governor owner role correctly set!");
+
+  assert.equal((await governorV2.getMember(0)).toLowerCase(), governorV2.address.toLowerCase());
+  console.log("✅ New governor owner role correctly set!");
 
   // Verify MultiRole contracts
   for (const multiRoleContract of Object.entries(multiRoleContractsToMigrate)) {
@@ -99,19 +102,23 @@ async function main() {
   assert.equal((await votingToken.getMember(0)).toLowerCase(), governorV2.address.toLowerCase());
   console.log("✅ Voting token owner role correctly set!");
 
-  console.log(" 6. Governor v2 is the owner of proposer v2...");
-  assert.equal((await proposerV2.owner()).toLowerCase(), governorV2.address.toLowerCase());
+  console.log(" 6. Governor v2 is the owner of proposer...");
+  assert.equal((await proposer.owner()).toLowerCase(), governorV2.address.toLowerCase());
   console.log("✅ Proposer owner role correctly set!");
 
-  console.log(" 7. Governor v2 is registered in the registry...");
+  console.log(" 7. Governor v2 is the owner of proposer v2...");
+  assert.equal((await proposerV2.owner()).toLowerCase(), governorV2.address.toLowerCase());
+  console.log("✅ Proposer v2 owner role correctly set!");
+
+  console.log(" 8. Governor v2 is registered in the registry...");
   assert(await registry.isContractRegistered(governorV2.address));
   console.log("✅ Governor v2 registered in registry!");
 
-  console.log(" 8. Proposer v2 is registered in the regstry...");
+  console.log(" 9. Proposer v2 is registered in the regstry...");
   assert(await registry.isContractRegistered(proposerV2.address));
   console.log("✅ Proposer v2 registered in registry!");
 
-  console.log(" 9. Governor v2 received all the voting tokens from Governor...");
+  console.log(" 10. Governor v2 received all the voting tokens from Governor...");
   assert((await votingToken.balanceOf(governorV2.address)).gt(hre.web3.utils.toWei("30000000", "ether")));
   assert((await votingToken.balanceOf(governor.address)).eq(0));
   console.log("✅ Governor v2 received all the voting tokens from Governor!");

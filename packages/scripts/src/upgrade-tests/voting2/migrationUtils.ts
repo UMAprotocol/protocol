@@ -13,7 +13,6 @@ export const getOwnableContracts = async (
   governorHub: string;
   bobaParentMessenger: string;
   optimismParentMessenger: string;
-  proposer: string;
 }> => {
   return {
     identifierWhitelist: await getAddress("IdentifierWhitelist", networkId),
@@ -25,7 +24,6 @@ export const getOwnableContracts = async (
     governorHub: await getAddress("GovernorHub", networkId),
     bobaParentMessenger: await getAddress("Boba_ParentMessenger", networkId),
     optimismParentMessenger: await getAddress("Optimism_ParentMessenger", networkId),
-    proposer: await getAddress("Proposer", networkId),
   };
 };
 

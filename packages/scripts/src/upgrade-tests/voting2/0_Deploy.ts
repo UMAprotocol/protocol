@@ -10,6 +10,7 @@ import {
   FinderEthers,
   GovernorEthers,
   GovernorV2Ethers__factory,
+  ProposerEthers,
   ProposerV2Ethers__factory,
   SlashingLibraryEthers__factory,
   VotingEthers,
@@ -29,6 +30,7 @@ async function main() {
 
   const finder = await getContractInstance<FinderEthers>("Finder");
   const governor = await getContractInstance<GovernorEthers>("Governor");
+  const proposer = await getContractInstance<ProposerEthers>("Proposer");
   const existingVoting = await getContractInstance<VotingEthers>("Voting");
   const votingToken = await getContractInstance<VotingTokenEthers>("VotingToken");
 
@@ -83,6 +85,7 @@ async function main() {
     governorV2.address,
     existingVoting.address,
     votingV2.address,
+    proposer.address,
     finder.address,
     ownableContractsToMigrate,
     multicallContractsToMigrate
@@ -95,15 +98,18 @@ async function main() {
   const defaultBond = hre.web3.utils.toWei("5000", "ether");
 
   const proposerFactory: ProposerV2Ethers__factory = await getContractFactory("ProposerV2");
-  const proposer = await proposerFactory.deploy(votingToken.address, defaultBond, governorV2.address, finder.address);
-  console.log("Deployed ProposerV2: ", proposer.address);
+  const proposerV2 = await proposerFactory.deploy(votingToken.address, defaultBond, governorV2.address, finder.address);
+  console.log("Deployed ProposerV2: ", proposerV2.address);
 
   console.log("6. Set ProposerV2 as the proposer of GovernorV2");
-  await governorV2.resetMember(1, proposer.address);
+  await governorV2.resetMember(1, proposerV2.address);
 
   console.log("7. Set the old governor as the owner of the new governor");
   // The new governor owner will be updated in the VotingUpgraderV2 contract.
   await governorV2.resetMember(0, governor.address);
+
+  console.log("8. Set the new governor as the owner of the new voting v2");
+  await votingV2.transferOwnership(governorV2.address);
 
   console.log("Deployment done!🎉");
 
@@ -114,7 +120,7 @@ async function main() {
   ${VOTING_UPGRADER_ADDRESS}=${votingUpgrader.address} \\
   ${NEW_CONTRACTS.voting}=${votingV2.address} \\
   ${NEW_CONTRACTS.governor}=${governorV2.address} \\
-  ${NEW_CONTRACTS.proposer}=${proposer.address} \\
+  ${NEW_CONTRACTS.proposer}=${proposerV2.address} \\
   yarn hardhat run ./src/upgrade-tests/voting2/1_Propose.ts --network localhost`.replace(/  +/g, "")
   );
 }
