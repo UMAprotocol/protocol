@@ -29,7 +29,7 @@ struct MultiroleContracts {
 
 /**
  * @title A contract that executes a short series of upgrade calls that must be performed atomically as a part of the
- * upgrade process for Voting.sol.
+ * upgrade process for VotingV2.sol, GovernorV2.sol and ProposerV2.sol.
  * @dev Note: the complete upgrade process requires more than just the transactions in this contract. These are only
  * the ones that need to be performed atomically.
  */
@@ -61,7 +61,8 @@ contract VotingUpgraderV2 {
     MultiroleContracts public multiroleContracts;
 
     /**
-     * @notice Constructs the voting upgrader to upgrade to the DVM V2. This upgrades the Voting & governor contracts.
+     * @notice Constructs the voting upgrader to upgrade to the DVM V2. This upgrades the voting, governor and proposer
+     *  contracts.
      * @param _existingGovernor the existing Governor contract address.
      * @param _newGovernor the new Governor contract address.
      * @param _existingVoting the current/existing Voting contract address.
@@ -93,7 +94,7 @@ contract VotingUpgraderV2 {
     /**
      * @notice Performs the atomic portion of the upgrade process.
      * @dev This method updates the Voting address in the finder, sets the old voting contract to migrated state, and
-     * returns ownership of the existing Voting contract and Finder back to the Governor.
+     * transfers the required ownership of the contracts to GovernorV2.
      */
     function upgrade() external {
         require(msg.sender == address(existingGovernor), "Upgrade can only be initiated by the existing governor.");
