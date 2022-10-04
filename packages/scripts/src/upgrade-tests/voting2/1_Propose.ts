@@ -9,6 +9,7 @@
 // yarn hardhat run ./src/upgrade-tests/voting2/1_Propose.ts --network localhost
 
 const hre = require("hardhat");
+const assert = require("assert").strict;
 
 import { BigNumberish } from "@ethersproject/bignumber";
 import { BytesLike } from "@ethersproject/bytes";
@@ -33,6 +34,7 @@ import {
   isContractInstance,
   NEW_CONTRACTS,
   OLD_CONTRACTS,
+  TEST_MODE,
   VOTING_UPGRADER_ADDRESS,
 } from "./migrationUtils";
 const { getAbi } = require("@uma/contracts-node");
@@ -70,7 +72,10 @@ async function main() {
   let votingUpgraderAddress = process.env[VOTING_UPGRADER_ADDRESS];
 
   if (!votingUpgraderAddress) {
-    console.log("1.1 OPTIONAL: DEPLOYING VOTING UPGRADER");
+    // This shouldn't be executed if not in test mode
+    assert(process.env[TEST_MODE], "Voting Upgrader address not found");
+
+    console.log("1.1 TEST MODE: DEPLOYING VOTING UPGRADER");
     const votingUpgraderFactoryV2: VotingUpgraderV2Ethers__factory = await getContractFactory("VotingUpgraderV2");
     const votingUpgrader = await votingUpgraderFactoryV2.deploy(
       governor.address,
@@ -97,18 +102,24 @@ async function main() {
   // If votingV2 is already migrated, remove it
   const migratedAddress = await votingV2.migratedAddress();
   if (migratedAddress != ZERO_ADDRESS) {
+    // This shouldn't be executed if not in test mode
+    assert(process.env[TEST_MODE], "VotingV2 is already migrated");
+
+    console.log("1.2 TEST MODE: UNSETTING MIGRATED ADDRESS IN VOTING V2");
     const migrateTx = await votingV2.populateTransaction.setMigrated(ZERO_ADDRESS);
     if (!migrateTx.data) throw "migrateTx.data is null";
     adminProposalTransactions.push({ to: votingV2.address, value: 0, data: migrateTx.data });
-    console.log("4.k. Migrate voting contract:", migrateTx.data);
+    console.log("1.2 TEST MODE: Unsetting migrated address:", migrateTx.data);
   }
-
-  console.log("2. TRANSFERRING OWNERSHIP OF NEW VOTING TO GOVERNORV2 IF NEEDED");
 
   const votingV2Owner = await votingV2.owner();
 
   if (votingV2Owner !== governorV2.address) {
+    // This shouldn't be executed if not in test mode
+    assert(process.env[TEST_MODE], "VotingV2 owner should be GovernorV2");
+
     if (governor.address == votingV2Owner) {
+      console.log("1.3 TEST MODE: TRANSFERRING OWNERSHIP OF NEW VOTING TO GOVERNORV2 IF NEEDED");
       adminProposalTransactions.push({
         to: votingV2.address,
         value: 0,
@@ -117,10 +128,14 @@ async function main() {
     }
   }
 
-  console.log("3. TRANSFERRING OWNERSHIP OF NEW PROPOSER TO NEW GOVERNOR IF NEEDED");
   const proposerV2Owner = await proposerV2.owner();
   if (proposerV2Owner !== governorV2.address) {
+    // This shouldn't be executed if not in test mode
+    assert(process.env[TEST_MODE], "ProposerV2 owner should be GovernorV2");
+
+    if (!process.env[TEST_MODE]) throw new Error();
     if (governor.address == proposerV2Owner) {
+      console.log("1.4 TEST MODE: TRANSFERRING OWNERSHIP OF NEW PROPOSER TO NEW GOVERNOR IF NEEDED");
       adminProposalTransactions.push({
         to: proposerV2.address,
         value: 0,
@@ -129,7 +144,7 @@ async function main() {
     }
   }
 
-  console.log("4. CRAFTING GOVERNOR TRANSACTIONS");
+  console.log("2. CRAFTING GOVERNOR TRANSACTIONS");
 
   // Add VotingV2 contract as a minter, so rewards can be minted in the existing token.
   // Note: this transaction must come before the owner is moved to the new Governor.
@@ -137,13 +152,13 @@ async function main() {
   const addVotingV2AsTokenMinterTx = await votingToken.populateTransaction.addMember(minter, votingV2.address);
   if (!addVotingV2AsTokenMinterTx.data) throw "addVotingV2AsTokenMinterTx.data is null";
   adminProposalTransactions.push({ to: votingToken.address, value: 0, data: addVotingV2AsTokenMinterTx.data });
-  console.log("4.a. Add minting roll to new voting contract:", addVotingV2AsTokenMinterTx.data);
+  console.log("2.a. Add minting roll to new voting contract:", addVotingV2AsTokenMinterTx.data);
 
   // Add new governor as the owner of the VotingToken contract.
   const addGovernorAsTokenOwnerTx = await votingToken.populateTransaction.resetMember("0", governorV2.address);
   if (!addGovernorAsTokenOwnerTx.data) throw "addGovernorAsTokenOwnerTx.data is null";
   adminProposalTransactions.push({ to: votingToken.address, value: 0, data: addGovernorAsTokenOwnerTx.data });
-  console.log("4.b. Add owner roll to new governor contract:", addGovernorAsTokenOwnerTx.data);
+  console.log("2.b. Add owner roll to new governor contract:", addGovernorAsTokenOwnerTx.data);
 
   // transfer old governor voting tokens to new governor.
   const transferVotingTokensTx = await votingToken.populateTransaction.transfer(
@@ -152,12 +167,12 @@ async function main() {
   );
   if (!transferVotingTokensTx.data) throw "transferVotingTokensTx.data is null";
   adminProposalTransactions.push({ to: votingToken.address, value: 0, data: transferVotingTokensTx.data });
-  console.log("4.c. Transfer voting tokens to new governor contract:", transferVotingTokensTx.data);
+  console.log("2.c. Transfer voting tokens to new governor contract:", transferVotingTokensTx.data);
 
   const transferFinderOwnershipTx = await finder.populateTransaction.transferOwnership(votingUpgrader.address);
   if (!transferFinderOwnershipTx.data) throw "transferFinderOwnershipTx.data is null";
   adminProposalTransactions.push({ to: finder.address, value: 0, data: transferFinderOwnershipTx.data });
-  console.log("4.d. Transfer ownership of finder to voting upgrader:", transferFinderOwnershipTx.data);
+  console.log("2.d. Transfer ownership of finder to voting upgrader:", transferFinderOwnershipTx.data);
 
   const transferExistingVotingOwnershipTx = await oldVoting.populateTransaction.transferOwnership(
     votingUpgrader.address
@@ -168,7 +183,7 @@ async function main() {
     value: 0,
     data: transferExistingVotingOwnershipTx.data,
   });
-  console.log("4.e. Transfer ownership of existing voting to voting upgrader:", transferExistingVotingOwnershipTx.data);
+  console.log("2.e. Transfer ownership of existing voting to voting upgrader:", transferExistingVotingOwnershipTx.data);
 
   // Register GovernorV2 and ProposerV2 contracts in the registry if necessary
   const proposerV2Registered = await registry.isContractRegistered(proposerV2.address);
@@ -204,7 +219,7 @@ async function main() {
     adminProposalTransactions.push({ to: registry.address, value: 0, data: removeGovernorAsCreatorTx.data });
     console.log("4.f.4 Remove the Governor from being a contract creator", removeGovernorAsCreatorTx.data);
   } else {
-    console.log("4.f ProposerV2 contract already registered in registry");
+    console.log("2.f ProposerV2 contract already registered in registry");
   }
 
   // Transfer Ownable contracts to VotingUpgraderV2
@@ -214,14 +229,14 @@ async function main() {
     const iface = new hre.ethers.utils.Interface(getAbi("Ownable"));
     const data = iface.encodeFunctionData("transferOwnership", [votingUpgraderAddress]);
     adminProposalTransactions.push({ to: contractAddress, value: 0, data });
-    console.log(`4.g.  Ownable: transfer ownership of ${contractName} to voting upgrader`, data);
+    console.log(`2.g.  Ownable: transfer ownership of ${contractName} to voting upgrader`, data);
   }
 
   // Transfer proposer to VotingUpgrader
   const transferProposerOwnershipTx = await proposer.populateTransaction.transferOwnership(votingUpgrader.address);
   if (!transferProposerOwnershipTx.data) throw "transferProposerOwnershipTx.data is null";
   adminProposalTransactions.push({ to: proposer.address, value: 0, data: transferProposerOwnershipTx.data });
-  console.log("4.h. Transfer ownership of proposer to voting upgrader:", transferProposerOwnershipTx.data);
+  console.log("2.h. Transfer ownership of proposer to voting upgrader:", transferProposerOwnershipTx.data);
 
   // Transfer Multirole contracts to new VotingUpgraderV2
   for (const multiRoleToMigrate of Object.entries(multicallContractsToMigrate)) {
@@ -230,29 +245,30 @@ async function main() {
     const iface = new hre.ethers.utils.Interface(getAbi("MultiRole"));
     const data = iface.encodeFunctionData("resetMember", [0, votingUpgraderAddress]);
     adminProposalTransactions.push({ to: contractAddress, value: 0, data });
-    console.log(`4.h.  Multirole: transfer owner role of ${contractName} to voting upgrader`, data);
+    console.log(`2.i.  Multirole: transfer owner role of ${contractName} to voting upgrader`, data);
   }
 
   const resetMemberGovernorTx = await governor.populateTransaction.resetMember(0, votingUpgraderAddress);
   if (!resetMemberGovernorTx.data) throw "resetMemberGovernorTx.data is null";
   adminProposalTransactions.push({ to: governor.address, value: 0, data: resetMemberGovernorTx.data });
-  console.log("4.i.  Reset governor member to voting upgrader:", resetMemberGovernorTx.data);
+  console.log("2.j.  Reset governor owner to voting upgrader:", resetMemberGovernorTx.data);
 
   const resetMemberNewGovernorTx = await governorV2.populateTransaction.resetMember(0, votingUpgraderAddress);
   if (!resetMemberNewGovernorTx.data) throw "resetMemberNewGovernorTx.data is null";
   adminProposalTransactions.push({ to: governorV2.address, value: 0, data: resetMemberNewGovernorTx.data });
+  console.log("2.k.  Reset new governor owner to voting upgrader:", resetMemberNewGovernorTx.data);
 
   const upgraderExecuteUpgradeTx = await votingUpgrader.populateTransaction.upgrade();
   if (!upgraderExecuteUpgradeTx.data) throw "upgraderExecuteUpgradeTx.data is null";
   adminProposalTransactions.push({ to: votingUpgrader.address, value: 0, data: upgraderExecuteUpgradeTx.data });
-  console.log("4.j. Execute upgrade of voting:", upgraderExecuteUpgradeTx.data);
+  console.log("2.l. Execute upgrade of voting:", upgraderExecuteUpgradeTx.data);
 
-  console.log("5. SENDING PROPOSAL TXS TO GOVERNOR");
+  console.log("3. SENDING PROPOSAL TXS TO GOVERNOR");
 
   const defaultBond = await proposer.bond();
   const allowance = await votingToken.allowance(proposerWallet, proposer.address);
   if (allowance.lt(defaultBond)) {
-    console.log("5.a. Approving proposer bond");
+    console.log("3.a. Approving proposer bond");
     const approveTx = await votingToken.connect(proposerSigner).approve(proposer.address, defaultBond);
     await approveTx.wait();
   }
@@ -290,13 +306,14 @@ async function main() {
   console.log(
     `
   ✅ VERIFICATION: Verify the proposal execution with the following command:
+  ${process.env[TEST_MODE] ? "TEST_MODE=1 \\" : "\\"} 
   ${NEW_CONTRACTS.voting}=${votingV2.address} \\
   ${NEW_CONTRACTS.governor}=${governorV2.address} \\
   ${NEW_CONTRACTS.proposer}=${proposerV2.address} \\
   ${OLD_CONTRACTS.voting}=${oldVoting.address} \\
   ${OLD_CONTRACTS.governor}=${governor.address} \\
   ${OLD_CONTRACTS.proposer}=${proposer.address} \\
-  yarn hardhat run ./src/upgrade-tests/voting2/2_Verify.ts --network localhost`.replace(/  +/g, "")
+  yarn hardhat run ./src/upgrade-tests/voting2/2_Verify.ts --network ${hre.network.name}`.replace(/  +/g, "")
   );
 }
 

@@ -121,7 +121,7 @@ async function main() {
   ${NEW_CONTRACTS.voting}=${votingV2.address} \\
   ${NEW_CONTRACTS.governor}=${governorV2.address} \\
   ${NEW_CONTRACTS.proposer}=${proposerV2.address} \\
-  yarn hardhat run ./src/upgrade-tests/voting2/1_Propose.ts --network localhost`.replace(/  +/g, "")
+  yarn hardhat run ./src/upgrade-tests/voting2/1_Propose.ts --network ${hre.network.name}`.replace(/  +/g, "")
   );
 }
 

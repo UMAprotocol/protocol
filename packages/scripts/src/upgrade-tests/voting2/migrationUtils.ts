@@ -1,6 +1,22 @@
 const hre = require("hardhat");
 import { getAddress } from "@uma/contracts-node";
 
+export const NEW_CONTRACTS = {
+  governor: "GOVERNOR_V2_ADDRESS",
+  proposer: "PROPOSER_V2_ADDRESS",
+  voting: "VOTING_V2_ADDRESS",
+};
+
+export const OLD_CONTRACTS = {
+  governor: "GOVERNOR_ADDRESS",
+  proposer: "PROPOSER_ADDRESS",
+  voting: "VOTING_ADDRESS",
+};
+
+export const VOTING_UPGRADER_ADDRESS = "VOTING_UPGRADER_ADDRESS";
+
+export const TEST_MODE = "TEST_MODE";
+
 export const getOwnableContracts = async (
   networkId: number
 ): Promise<{
@@ -33,20 +49,6 @@ export const getMultiRoleContracts = async (networkId: number): Promise<{ regist
     store: await getAddress("Store", networkId),
   };
 };
-
-export const NEW_CONTRACTS = {
-  governor: "GOVERNOR_V2_ADDRESS",
-  proposer: "PROPOSER_V2_ADDRESS",
-  voting: "VOTING_V2_ADDRESS",
-};
-
-export const OLD_CONTRACTS = {
-  governor: "GOVERNOR_ADDRESS",
-  proposer: "PROPOSER_ADDRESS",
-  voting: "VOTING_ADDRESS",
-};
-
-export const VOTING_UPGRADER_ADDRESS = "VOTING_UPGRADER_ADDRESS";
 
 export const checkEnvVariables = (): void => {
   // mandatory variables

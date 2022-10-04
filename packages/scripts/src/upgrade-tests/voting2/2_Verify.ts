@@ -132,13 +132,14 @@ async function main() {
     "⚠️  This downgrade command is intended for testing purposes and should only be used against a fork or testnet. ⚠️"
   );
   const nextCommand = `
+  TEST_MODE=1 \\
   ${OLD_CONTRACTS.voting}=${votingV2.address} \\
   ${NEW_CONTRACTS.voting}=${oldVoting.address} \\
   ${OLD_CONTRACTS.governor}=${governorV2.address} \\
   ${NEW_CONTRACTS.governor}=${governor.address} \\
   ${OLD_CONTRACTS.proposer}=${proposerV2.address} \\
   ${NEW_CONTRACTS.proposer}=${proposer.address} \\
-  yarn hardhat run ./src/upgrade-tests/voting2/1_Propose.ts --network localhost`.replace(/  +/g, "");
+  yarn hardhat run ./src/upgrade-tests/voting2/1_Propose.ts --network ${hre.network.name}`.replace(/  +/g, "");
   console.log(nextCommand);
 }
 
