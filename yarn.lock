@@ -23609,9 +23609,9 @@ superagent@^3.8.3:
     readable-stream "^2.3.5"
 
 superstruct@^0.16.4:
-  version "0.16.5"
-  resolved "https://registry.yarnpkg.com/superstruct/-/superstruct-0.16.5.tgz#7b7e1f1f8bf6ab141c660e501ac57026e42c09c0"
-  integrity sha512-GBa1VPdCUDAIrsoMVy2lzE/hKQnieUlc1JVoVzJ2YLx47SoPY4AqF85Ht1bPg5r+8I0v54GbaRdNTnYQ0p+T+Q==
+  version "0.16.4"
+  resolved "https://registry.yarnpkg.com/superstruct/-/superstruct-0.16.4.tgz#84c80753a3376e16ef5a4f8dafa1e06767ba8e81"
+  integrity sha512-PGf1ZSWwbOb33efMX5Jq/JUM5UpCOk1p3/6jPS6o8mcPy9vd2XXOiEXDKwWOETpnzAvjkXcryL+l+jhvkDaizQ==
 
 supertest@^4.0.2:
   version "4.0.2"
