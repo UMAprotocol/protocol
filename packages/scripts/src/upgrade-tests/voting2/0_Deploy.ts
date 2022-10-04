@@ -1,4 +1,4 @@
-// This script deploys SlashingLibrary, VotingV2 and VotingUpgrader.
+// This script deploys SlashingLibrary, VotingV2, GovernorV2, ProposerV2 and VotingUpgrader.
 // This script can be run against a mainnet fork by spinning a node in a separate terminal with:
 // HARDHAT_CHAIN_ID=1 yarn hardhat node --fork https://mainnet.infura.io/v3/<YOUR-INFURA-KEY> --port 9545 --no-deploy
 // and then running this script with:

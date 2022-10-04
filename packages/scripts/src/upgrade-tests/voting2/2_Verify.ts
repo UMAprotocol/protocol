@@ -2,8 +2,12 @@
 // It can be run against a mainnet fork by spinning a node in a separate terminal with:
 // HARDHAT_CHAIN_ID=1 yarn hardhat node --fork https://mainnet.infura.io/v3/<YOUR-INFURA-KEY> --port 9545 --no-deploy
 // and then running this script with:
-// VOTING_V2_ADDRESS= <VOTING-V2-ADDRESS> \
-// GOVERNOR_V2_ADDRESS= <GOVERNOR-V2-ADDRESS> \
+// VOTING_V2_ADDRESS=<VOTING-V2-ADDRESS> \
+// GOVERNOR_V2_ADDRESS=<GOVERNOR-V2-ADDRESS> \
+// PROPOSER_V2_ADDRESS=<PROPOSER-V2-ADDRESS> \
+// PROPOSER_ADDRESS=<OPTIONAL-PROPOSER-ADDRESS> \
+// GOVERNOR_ADDRESS=<OPTIONAL-GOVERNOR-ADDRESS> \
+// VOTING_ADDRESS=<OPTONAL-VOTING-ADDRESS>\
 // yarn hardhat run ./src/upgrade-tests/voting2/2_Verify.ts --network localhost
 
 const hre = require("hardhat");
@@ -123,7 +127,7 @@ async function main() {
   assert((await votingToken.balanceOf(governor.address)).eq(0));
   console.log("✅ Governor v2 received all the voting tokens from Governor!");
 
-  console.log("Verified!");
+  console.log("\n✅ Verified! The upgrade process ends here.");
 
   console.log(
     "\n❓ OPTIONAL: Propose the downgrade to the previous governor, voting and proposer contracts by running the following command:"
@@ -131,16 +135,17 @@ async function main() {
   console.log(
     "⚠️  This downgrade command is intended for testing purposes and should only be used against a fork or testnet. ⚠️"
   );
-  const nextCommand = `
-  TEST_MODE=1 \\
+  console.log(
+    `
+  TEST_DOWNGRADE=1 \\
   ${OLD_CONTRACTS.voting}=${votingV2.address} \\
   ${NEW_CONTRACTS.voting}=${oldVoting.address} \\
   ${OLD_CONTRACTS.governor}=${governorV2.address} \\
   ${NEW_CONTRACTS.governor}=${governor.address} \\
   ${OLD_CONTRACTS.proposer}=${proposerV2.address} \\
   ${NEW_CONTRACTS.proposer}=${proposer.address} \\
-  yarn hardhat run ./src/upgrade-tests/voting2/1_Propose.ts --network ${hre.network.name}`.replace(/  +/g, "");
-  console.log(nextCommand);
+  yarn hardhat run ./src/upgrade-tests/voting2/1_Propose.ts --network ${hre.network.name}`.replace(/  +/g, "")
+  );
 }
 
 main().then(

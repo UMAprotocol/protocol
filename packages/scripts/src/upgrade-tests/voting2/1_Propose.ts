@@ -1,12 +1,17 @@
-// This script generates and submits the upgrade transactions from Voting to VotingV2.
-// It is intended to be run after 0_Deploy.ts where the VotingV2 and VotingUpgrader contracts are deployed.
+// This script generates and submits the upgrade transactions from Voting, Governor and Proposer to VotingV2, GovernorV2
+// and ProposerV2. It is intended to be run after 0_Deploy.ts where the VotingV2, VotingUpgrader, ProposerV2 and GovernorV2
+// contracts are deployed.
 // This script can be run against a mainnet fork by spinning a node in a separate terminal with:
 // HARDHAT_CHAIN_ID=1 yarn hardhat node --fork https://mainnet.infura.io/v3/<YOUR-INFURA-KEY> --port 9545 --no-deploy
 // and then running this script with:
-// VOTING_UPGRADER_ADDRESS= <VOTING-UPGRADER-ADDRESS> \
-// VOTING_V2_ADDRESS= <VOTING-V2-ADDRESS> \
-// GOVERNOR_V2_ADDRESS= <GOVERNOR-V2-ADDRESS> \
-// yarn hardhat run ./src/upgrade-tests/voting2/1_Propose.ts --network localhost
+// TEST_DOWNGRADE=<OPTIONAL-RUN-TEST-DOWNGRADE-TRANSACTIONS> \
+// VOTING_ADDRESS=<OPTONAL-VOTING-ADDRESS>\
+// VOTING_V2_ADDRESS=<VOTING-V2-ADDRESS> \
+// GOVERNOR_ADDRESS=<OPTIONAL-GOVERNOR-ADDRESS> \
+// GOVERNOR_V2_ADDRESS=<GOVERNOR-V2-ADDRESS> \
+// PROPOSER_ADDRESS=<OPTIONAL-PROPOSER-ADDRESS> \
+// PROPOSER_V2_ADDRESS=<PROPOSER-V2-ADDRESS> \
+// yarn hardhat run ./src/upgrade-tests/voting2/1_Propose.ts --network <network>
 
 const hre = require("hardhat");
 const assert = require("assert").strict;
@@ -32,9 +37,11 @@ import {
   getMultiRoleContracts,
   getOwnableContracts,
   isContractInstance,
+  MultiRoleContracts,
   NEW_CONTRACTS,
   OLD_CONTRACTS,
-  TEST_MODE,
+  OwnableContracts,
+  TEST_DOWNGRADE,
   VOTING_UPGRADER_ADDRESS,
 } from "./migrationUtils";
 const { getAbi } = require("@uma/contracts-node");
@@ -43,11 +50,87 @@ const { getContractFactory } = hre.ethers;
 
 const proposerWallet = "0x2bAaA41d155ad8a4126184950B31F50A1513cE25";
 
+interface AdminProposalTransaction {
+  to: string;
+  value: BigNumberish;
+  data: BytesLike;
+}
+
+const deployVotingUpgraderAndRunDowngradeOptionalTx = async (
+  adminProposalTransactions: AdminProposalTransaction[],
+  governor: GovernorEthers,
+  governorV2: GovernorEthers,
+  proposer: ProposerEthers,
+  proposerV2: ProposerEthers,
+  votingV2: VotingEthers,
+  oldVoting: VotingEthers,
+  finder: FinderEthers,
+  ownableContractsToMigrate: OwnableContracts,
+  multicallContractsToMigrate: MultiRoleContracts
+) => {
+  // This shouldn't be executed if not in test mode
+  assert(process.env[TEST_DOWNGRADE], "Not in test mode");
+
+  console.log("1.1 TEST MODE: DEPLOYING VOTING UPGRADER");
+  const votingUpgraderFactoryV2: VotingUpgraderV2Ethers__factory = await getContractFactory("VotingUpgraderV2");
+  const votingUpgrader = await votingUpgraderFactoryV2.deploy(
+    governor.address,
+    governorV2.address,
+    oldVoting.address,
+    votingV2.address,
+    proposer.address,
+    finder.address,
+    ownableContractsToMigrate,
+    multicallContractsToMigrate
+  );
+  const votingUpgraderAddress = votingUpgrader.address;
+  console.log("Voting Upgrader deployed to:", votingUpgraderAddress);
+
+  // If votingV2 is already migrated, remove it
+  const migratedAddress = await votingV2.migratedAddress();
+  if (migratedAddress != ZERO_ADDRESS) {
+    console.log("1.2 TEST MODE: UNSETTING MIGRATED ADDRESS IN VOTING V2");
+    const migrateTx = await votingV2.populateTransaction.setMigrated(ZERO_ADDRESS);
+    if (!migrateTx.data) throw "migrateTx.data is null";
+    adminProposalTransactions.push({ to: votingV2.address, value: 0, data: migrateTx.data });
+    console.log("Unsetting migrated address:", migrateTx.data);
+  }
+
+  const votingV2Owner = await votingV2.owner();
+
+  if (votingV2Owner !== governorV2.address) {
+    if (governor.address == votingV2Owner) {
+      console.log("1.3 TEST MODE: TRANSFERRING OWNERSHIP OF NEW VOTING TO GOVERNORV2");
+      const transferOwnershipTx = await votingV2.populateTransaction.transferOwnership(governorV2.address);
+      if (!transferOwnershipTx.data) throw "transferOwnershipTx.data is null";
+      adminProposalTransactions.push({ to: votingV2.address, value: 0, data: transferOwnershipTx.data });
+      console.log("Transfer VotingV2 ownership to GovernorV2:", transferOwnershipTx.data);
+    }
+  }
+
+  const proposerV2Owner = await proposerV2.owner();
+  if (proposerV2Owner !== governorV2.address) {
+    if (!process.env[TEST_DOWNGRADE]) throw new Error();
+    if (governor.address == proposerV2Owner) {
+      console.log("1.4 TEST MODE: TRANSFERRING OWNERSHIP OF NEW PROPOSER TO NEW GOVERNOR");
+      const transferOwnershipTx = await proposerV2.populateTransaction.transferOwnership(governorV2.address);
+      if (!transferOwnershipTx.data) throw "transferOwnershipTx.data is null";
+      adminProposalTransactions.push({ to: proposerV2.address, value: 0, data: transferOwnershipTx.data });
+      console.log("Transfering proposer v2 ownership to governorV2:", transferOwnershipTx.data);
+    }
+  }
+
+  return votingUpgrader;
+};
+
 async function main() {
+  const adminProposalTransactions: AdminProposalTransaction[] = [];
+
   const proposerSigner = await hre.ethers.getSigner(proposerWallet);
 
   const networkId = Number(await hre.getChainId());
 
+  // Check that the required environment variables are set.
   checkEnvVariables();
 
   console.log("Running Voting Upgrade🔥");
@@ -69,79 +152,25 @@ async function main() {
   const proposerV2 = await getContractInstance<ProposerEthers>("Proposer", process.env[NEW_CONTRACTS.proposer]);
   const governorV2 = await getContractInstance<GovernorEthers>("Governor", process.env[NEW_CONTRACTS.governor]);
 
-  let votingUpgraderAddress = process.env[VOTING_UPGRADER_ADDRESS];
+  let votingUpgrader;
 
-  if (!votingUpgraderAddress) {
-    // This shouldn't be executed if not in test mode
-    assert(process.env[TEST_MODE], "Voting Upgrader address not found");
-
-    console.log("1.1 TEST MODE: DEPLOYING VOTING UPGRADER");
-    const votingUpgraderFactoryV2: VotingUpgraderV2Ethers__factory = await getContractFactory("VotingUpgraderV2");
-    const votingUpgrader = await votingUpgraderFactoryV2.deploy(
-      governor.address,
-      governorV2.address,
-      oldVoting.address,
-      votingV2.address,
-      proposer.address,
-      finder.address,
+  if (process.env[TEST_DOWNGRADE])
+    votingUpgrader = await deployVotingUpgraderAndRunDowngradeOptionalTx(
+      adminProposalTransactions,
+      governor,
+      governorV2,
+      proposer,
+      proposerV2,
+      votingV2,
+      oldVoting,
+      finder,
       ownableContractsToMigrate,
       multicallContractsToMigrate
     );
-    votingUpgraderAddress = votingUpgrader.address;
-    console.log("Voting Upgrader deployed to:", votingUpgraderAddress);
-  }
-
-  const votingUpgrader = await getContractInstance<VotingUpgraderV2Ethers>("VotingUpgraderV2", votingUpgraderAddress);
-
-  const adminProposalTransactions: {
-    to: string;
-    value: BigNumberish;
-    data: BytesLike;
-  }[] = [];
-
-  // If votingV2 is already migrated, remove it
-  const migratedAddress = await votingV2.migratedAddress();
-  if (migratedAddress != ZERO_ADDRESS) {
-    // This shouldn't be executed if not in test mode
-    assert(process.env[TEST_MODE], "VotingV2 is already migrated");
-
-    console.log("1.2 TEST MODE: UNSETTING MIGRATED ADDRESS IN VOTING V2");
-    const migrateTx = await votingV2.populateTransaction.setMigrated(ZERO_ADDRESS);
-    if (!migrateTx.data) throw "migrateTx.data is null";
-    adminProposalTransactions.push({ to: votingV2.address, value: 0, data: migrateTx.data });
-    console.log("1.2 TEST MODE: Unsetting migrated address:", migrateTx.data);
-  }
-
-  const votingV2Owner = await votingV2.owner();
-
-  if (votingV2Owner !== governorV2.address) {
-    // This shouldn't be executed if not in test mode
-    assert(process.env[TEST_MODE], "VotingV2 owner should be GovernorV2");
-
-    if (governor.address == votingV2Owner) {
-      console.log("1.3 TEST MODE: TRANSFERRING OWNERSHIP OF NEW VOTING TO GOVERNORV2 IF NEEDED");
-      adminProposalTransactions.push({
-        to: votingV2.address,
-        value: 0,
-        data: votingV2.interface.encodeFunctionData("transferOwnership", [governorV2.address]),
-      });
-    }
-  }
-
-  const proposerV2Owner = await proposerV2.owner();
-  if (proposerV2Owner !== governorV2.address) {
-    // This shouldn't be executed if not in test mode
-    assert(process.env[TEST_MODE], "ProposerV2 owner should be GovernorV2");
-
-    if (!process.env[TEST_MODE]) throw new Error();
-    if (governor.address == proposerV2Owner) {
-      console.log("1.4 TEST MODE: TRANSFERRING OWNERSHIP OF NEW PROPOSER TO NEW GOVERNOR IF NEEDED");
-      adminProposalTransactions.push({
-        to: proposerV2.address,
-        value: 0,
-        data: proposerV2.interface.encodeFunctionData("transferOwnership", [governorV2.address]),
-      });
-    }
+  else {
+    const votingUpgraderAddress = process.env[VOTING_UPGRADER_ADDRESS];
+    if (!votingUpgraderAddress) throw new Error("Must provide VOTING_UPGRADER_ADDRESS");
+    votingUpgrader = await getContractInstance<VotingUpgraderV2Ethers>("VotingUpgraderV2", votingUpgraderAddress);
   }
 
   console.log("2. CRAFTING GOVERNOR TRANSACTIONS");
@@ -227,7 +256,7 @@ async function main() {
     const contractAddress = ownableToMigrate[1];
     const contractName = ownableToMigrate[0];
     const iface = new hre.ethers.utils.Interface(getAbi("Ownable"));
-    const data = iface.encodeFunctionData("transferOwnership", [votingUpgraderAddress]);
+    const data = iface.encodeFunctionData("transferOwnership", [votingUpgrader.address]);
     adminProposalTransactions.push({ to: contractAddress, value: 0, data });
     console.log(`2.g.  Ownable: transfer ownership of ${contractName} to voting upgrader`, data);
   }
@@ -243,17 +272,17 @@ async function main() {
     const contractAddress = multiRoleToMigrate[1];
     const contractName = multiRoleToMigrate[0];
     const iface = new hre.ethers.utils.Interface(getAbi("MultiRole"));
-    const data = iface.encodeFunctionData("resetMember", [0, votingUpgraderAddress]);
+    const data = iface.encodeFunctionData("resetMember", [0, votingUpgrader.address]);
     adminProposalTransactions.push({ to: contractAddress, value: 0, data });
     console.log(`2.i.  Multirole: transfer owner role of ${contractName} to voting upgrader`, data);
   }
 
-  const resetMemberGovernorTx = await governor.populateTransaction.resetMember(0, votingUpgraderAddress);
+  const resetMemberGovernorTx = await governor.populateTransaction.resetMember(0, votingUpgrader.address);
   if (!resetMemberGovernorTx.data) throw "resetMemberGovernorTx.data is null";
   adminProposalTransactions.push({ to: governor.address, value: 0, data: resetMemberGovernorTx.data });
   console.log("2.j.  Reset governor owner to voting upgrader:", resetMemberGovernorTx.data);
 
-  const resetMemberNewGovernorTx = await governorV2.populateTransaction.resetMember(0, votingUpgraderAddress);
+  const resetMemberNewGovernorTx = await governorV2.populateTransaction.resetMember(0, votingUpgrader.address);
   if (!resetMemberNewGovernorTx.data) throw "resetMemberNewGovernorTx.data is null";
   adminProposalTransactions.push({ to: governorV2.address, value: 0, data: resetMemberNewGovernorTx.data });
   console.log("2.k.  Reset new governor owner to voting upgrader:", resetMemberNewGovernorTx.data);
@@ -306,7 +335,7 @@ async function main() {
   console.log(
     `
   ✅ VERIFICATION: Verify the proposal execution with the following command:
-  ${process.env[TEST_MODE] ? "TEST_MODE=1 \\" : "\\"} 
+
   ${NEW_CONTRACTS.voting}=${votingV2.address} \\
   ${NEW_CONTRACTS.governor}=${governorV2.address} \\
   ${NEW_CONTRACTS.proposer}=${proposerV2.address} \\

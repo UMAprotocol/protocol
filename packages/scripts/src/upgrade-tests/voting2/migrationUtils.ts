@@ -15,11 +15,9 @@ export const OLD_CONTRACTS = {
 
 export const VOTING_UPGRADER_ADDRESS = "VOTING_UPGRADER_ADDRESS";
 
-export const TEST_MODE = "TEST_MODE";
+export const TEST_DOWNGRADE = "TEST_DOWNGRADE";
 
-export const getOwnableContracts = async (
-  networkId: number
-): Promise<{
+export interface OwnableContracts {
   identifierWhitelist: string;
   financialContractsAdmin: string;
   addressWhitelist: string;
@@ -29,7 +27,9 @@ export const getOwnableContracts = async (
   governorHub: string;
   bobaParentMessenger: string;
   optimismParentMessenger: string;
-}> => {
+}
+
+export const getOwnableContracts = async (networkId: number): Promise<OwnableContracts> => {
   return {
     identifierWhitelist: await getAddress("IdentifierWhitelist", networkId),
     financialContractsAdmin: await getAddress("FinancialContractsAdmin", networkId),
@@ -43,7 +43,12 @@ export const getOwnableContracts = async (
   };
 };
 
-export const getMultiRoleContracts = async (networkId: number): Promise<{ registry: string; store: string }> => {
+export interface MultiRoleContracts {
+  registry: string;
+  store: string;
+}
+
+export const getMultiRoleContracts = async (networkId: number): Promise<MultiRoleContracts> => {
   return {
     registry: await getAddress("Registry", networkId),
     store: await getAddress("Store", networkId),
@@ -63,6 +68,10 @@ export const checkEnvVariables = (): void => {
       if (!process.env[element]) throw new Error(`${element} not set`);
     });
   }
+
+  // Downgrade related logic
+  if (process.env[TEST_DOWNGRADE] && process.env[VOTING_UPGRADER_ADDRESS])
+    throw new Error("VOTING_UPGRADER_ADDRESS should not be set during a test downgrade");
 };
 
 export const isContractInstance = async (address: string, functionSignature: string): Promise<boolean> => {
