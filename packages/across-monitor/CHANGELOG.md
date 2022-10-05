@@ -3,6 +3,10 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.1.22](https://github.com/UMAprotocol/protocol/compare/@uma/across-monitor@1.1.21...@uma/across-monitor@1.1.22) (2022-10-05)
+
+**Note:** Version bump only for package @uma/across-monitor
+
 ## [1.1.21](https://github.com/UMAprotocol/protocol/compare/@uma/across-monitor@1.1.20...@uma/across-monitor@1.1.21) (2022-09-23)
 
 **Note:** Version bump only for package @uma/across-monitor

@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.31.3](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.31.2...@uma/financial-templates-lib@2.31.3) (2022-10-05)
+
+### Bug Fixes
+
+- **financial-templates-lib:** fix incorrect severity setting on pdv2 events ([#4195](https://github.com/UMAprotocol/protocol/issues/4195)) ([8d18544](https://github.com/UMAprotocol/protocol/commit/8d18544a08fe2c5912da23baffa1459b64870075))
+- bump docker node ver, remove bad script ([#4184](https://github.com/UMAprotocol/protocol/issues/4184)) ([d55e3dd](https://github.com/UMAprotocol/protocol/commit/d55e3ddcade682f759b9b58dc0f31f404bf2ab09))
+
 ## [2.31.2](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.31.1...@uma/financial-templates-lib@2.31.2) (2022-09-23)
 
 ### Bug Fixes

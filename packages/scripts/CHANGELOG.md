@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.17.3](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.17.2...@uma/scripts@1.17.3) (2022-10-05)
+
+### Bug Fixes
+
+- add missing transfer of voting token ([#4189](https://github.com/UMAprotocol/protocol/issues/4189)) ([771f480](https://github.com/UMAprotocol/protocol/commit/771f4805ea6f1c047466589a53c1f99eff63a669))
+- **scripts:** support case sensitive file systems ([#4188](https://github.com/UMAprotocol/protocol/issues/4188)) ([fceee50](https://github.com/UMAprotocol/protocol/commit/fceee5020c54544ce41ccb4aed77ba9100ac600a))
+
 ## [1.17.2](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.17.1...@uma/scripts@1.17.2) (2022-09-23)
 
 **Note:** Version bump only for package @uma/scripts
