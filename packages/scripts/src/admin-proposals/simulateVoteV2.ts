@@ -1,18 +1,24 @@
 // Description:
 // - Simulate voting affirmatively on any pending Admin Proposals
-
-import { advanceBlockAndSetTime, computeVoteHashAncillary, getRandomSignedInt, getWeb3ByChainId } from "@uma/common";
+const hre = require("hardhat");
+import { computeVoteHashAncillary, getRandomSignedInt } from "@uma/common";
 import { GovernorV2Ethers, VotingTokenEthers, VotingV2Ethers } from "@uma/contracts-node";
-import { BigNumberish, BytesLike } from "ethers";
-// import { REQUIRED_SIGNER_ADDRESSES, SECONDS_PER_DAY, YES_VOTE } from "../utils/constants";
+import { BigNumberish, BytesLike, Signer } from "ethers";
 import { getContractInstance } from "../utils/contracts";
+
+const { ethers } = hre;
+
+require("dotenv").config();
+const assert = require("assert").strict;
 
 const SECONDS_PER_DAY = 86400;
 const YES_VOTE = "1";
-const REQUIRED_SIGNER_ADDRESSES = {
-  deployer: "0x2bAaA41d155ad8a4126184950B31F50A1513cE25",
-  foundation: "0x7a3A1c2De64f20EB5e916F40D11B01C441b2A8Dc",
-  account_with_uma: "0xcb287f69707d84cbd56ab2e7a4f32390fa98120b",
+
+const FOUNDATION_WALLET = "0x7a3A1c2De64f20EB5e916F40D11B01C441b2A8Dc";
+
+const increaseEvmTime = async (time: number) => {
+  await ethers.provider.send("evm_increaseTime", [time]);
+  await ethers.provider.send("evm_mine", []);
 };
 
 // Run:
@@ -20,15 +26,10 @@ const REQUIRED_SIGNER_ADDRESSES = {
 //   steps.
 // - This script should be run after any Admin proposal UMIP script against a local Mainnet fork. It allows the tester
 //   to simulate what would happen if the proposal were to pass and to verify that contract state changes as expected.
-// - Vote Simulate: NODE_URL_1=http://localhost:9545 node ./packages/scripts/src/admin-proposals/simulateVoteV2.js --network mainnet-fork
-
-const hre = require("hardhat");
-const { toWei } = hre.web3.utils;
-require("dotenv").config();
-const assert = require("assert").strict;
+// - Vote Simulate: NODE_URL_1=http://localhost:9545 node ./packages/scripts/src/admin-proposals/simulateVoteV2.ts --network localhost
 
 async function simulateVoteV2() {
-  const foundationSigner = await hre.ethers.getSigner(REQUIRED_SIGNER_ADDRESSES["foundation"]);
+  const foundationSigner = await ethers.getSigner(FOUNDATION_WALLET);
 
   const governorV2Address = process.env["GOVERNOR_V2_ADDRESS"];
   const votingV2Address = process.env["VOTING_V2_ADDRESS"];
@@ -37,17 +38,14 @@ async function simulateVoteV2() {
   const votingV2 = await getContractInstance<VotingV2Ethers>("VotingV2", votingV2Address);
   const votingToken = await getContractInstance<VotingTokenEthers>("VotingToken");
 
-  const web3 = getWeb3ByChainId(1);
-  const accounts = await web3.eth.getAccounts();
+  const signers: Signer[] = await ethers.getSigners();
 
   // Stake foundation balance
-  const foundationBalance = await votingToken.balanceOf(REQUIRED_SIGNER_ADDRESSES["foundation"]);
+  const foundationBalance = await votingToken.balanceOf(FOUNDATION_WALLET);
   if (foundationBalance.gt(0)) {
     await votingToken.connect(foundationSigner).approve(votingV2.address, foundationBalance);
     await votingV2.connect(foundationSigner).stake(foundationBalance);
   }
-  // Initialize Eth contracts by grabbing deployed addresses from networks/1.json file.
-  // const mainnetContracts = await setupMainnet(web3);
 
   console.group("\n🗳 Simulating Admin Proposal Vote");
   const numProposals = Number(await governorV2.numProposals());
@@ -78,9 +76,9 @@ async function simulateVoteV2() {
   // forward by 2 days. Else if we are in the reveal phase (1) then we need to advance into the next round by
   // advancing by one day to take us into the next round.
   if (votingStats.votingPhase === 0) {
-    await advanceBlockAndSetTime(web3, votingStats.currentTime + SECONDS_PER_DAY * 2);
+    await increaseEvmTime(SECONDS_PER_DAY * 2);
   } else {
-    await advanceBlockAndSetTime(web3, votingStats.currentTime + SECONDS_PER_DAY);
+    await increaseEvmTime(SECONDS_PER_DAY);
   }
   votingStats = await _getAndDisplayVotingRoundStats();
   console.groupEnd();
@@ -100,13 +98,14 @@ async function simulateVoteV2() {
     const request = votingStats.pendingRequests[i];
     const identifier = request.identifier.toString();
     const time = request.time.toString();
-    const price = toWei(YES_VOTE);
+    const price = ethers.utils.parseEther(YES_VOTE);
+
     const salt = getRandomSignedInt();
     // Main net DVM uses the commit reveal scheme of hashed concatenation of price and salt
     const voteHashData = {
       price,
       salt: salt.toString(),
-      account: REQUIRED_SIGNER_ADDRESSES["foundation"],
+      account: FOUNDATION_WALLET,
       time,
       roundId: votingStats.roundId,
       identifier,
@@ -116,7 +115,7 @@ async function simulateVoteV2() {
     const voteHash = computeVoteHashAncillary({
       price,
       salt,
-      account: REQUIRED_SIGNER_ADDRESSES["foundation"],
+      account: FOUNDATION_WALLET,
       time,
       roundId: votingStats.roundId,
       identifier,
@@ -132,13 +131,11 @@ async function simulateVoteV2() {
     });
   }
   console.groupEnd();
-
   console.group(`\n📝  Commit ${requestsToVoteOn.length} Admin requests`);
   // send the foundation wallet some eth to submit the Tx
-  await web3.eth.sendTransaction({
-    from: accounts[0],
-    to: REQUIRED_SIGNER_ADDRESSES["foundation"],
-    value: web3.utils.toWei("10"),
+  await signers[0].sendTransaction({
+    to: FOUNDATION_WALLET,
+    value: ethers.utils.parseEther("10"),
   });
   for (let i = 0; i < requestsToVoteOn.length; i++) {
     const request = requestsToVoteOn[i];
@@ -150,7 +147,7 @@ async function simulateVoteV2() {
   console.groupEnd();
 
   console.group("\n⏱ Advancing voting phase to reveal phase (i.e. advancing to next voting round)");
-  await advanceBlockAndSetTime(web3, votingStats.currentTime + SECONDS_PER_DAY);
+  await increaseEvmTime(SECONDS_PER_DAY);
   votingStats = await _getAndDisplayVotingRoundStats();
   console.groupEnd();
 
@@ -165,7 +162,7 @@ async function simulateVoteV2() {
   console.groupEnd();
 
   console.group("\n⏱ Advancing voting phase to conclude vote");
-  await advanceBlockAndSetTime(web3, votingStats.currentTime + SECONDS_PER_DAY);
+  await increaseEvmTime(SECONDS_PER_DAY);
   votingStats = await _getAndDisplayVotingRoundStats();
   console.groupEnd();
   assert.strictEqual(votingStats.pendingRequests.length, 0, "Should be 0 remaining admin price requests");
@@ -196,9 +193,7 @@ async function simulateVoteV2() {
     for (let j = 0; j < proposal.transactions.length; j++) {
       console.log(`- Submitting transaction #${j + 1} from proposal #${proposalId}`);
       try {
-        const txn = await governorV2.executeProposal(proposalId.toString(), j.toString(), {
-          from: accounts[0],
-        });
+        const txn = await governorV2.executeProposal(proposalId.toString(), j.toString());
         console.log(`    - Success, receipt: ${txn.hash}`);
       } catch (err) {
         console.error("    - Failure: Txn was likely executed previously, skipping to next one");
@@ -212,11 +207,11 @@ async function simulateVoteV2() {
 
   // Unstake all tokens from the foundation wallet.
   console.group("\n📢 Unstaking all tokens from foundation wallet");
-  const foundationStakes = await votingV2.voterStakes(REQUIRED_SIGNER_ADDRESSES["foundation"]);
+  const foundationStakes = await votingV2.voterStakes(FOUNDATION_WALLET);
   await votingV2.connect(foundationSigner).requestUnstake(foundationStakes.stake);
   const stakeCooldown = await votingV2.unstakeCoolDown();
 
-  await advanceBlockAndSetTime(web3, (await votingV2.getCurrentTime()).add(stakeCooldown).toNumber());
+  await increaseEvmTime(stakeCooldown.toNumber());
 
   await votingV2.connect(foundationSigner).executeUnstake();
 
