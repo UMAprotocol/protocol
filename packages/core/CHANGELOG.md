@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.37.1](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.37.0...@uma/core@2.37.1) (2022-10-05)
+
+### Bug Fixes
+
+- [contracts] improve DVM 2.0 comments ([#4182](https://github.com/UMAprotocol/protocol/issues/4182)) ([5114f45](https://github.com/UMAprotocol/protocol/commit/5114f45bb4f2c59dc18edb50e7c69e2e94bf853c))
+- residual active stake naming ([#4186](https://github.com/UMAprotocol/protocol/issues/4186)) ([4564549](https://github.com/UMAprotocol/protocol/commit/45645492ea5b8320679866fa306d4f9a2c98d2de))
+
 # [2.37.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.36.0...@uma/core@2.37.0) (2022-09-22)
 
 ### Bug Fixes

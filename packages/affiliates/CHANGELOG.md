@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.15.8](https://github.com/UMAprotocol/protocol/compare/@uma/affiliates@1.15.7...@uma/affiliates@1.15.8) (2022-10-05)
+
+### Bug Fixes
+
+- ignore NUMERICAL identifier ([#4191](https://github.com/UMAprotocol/protocol/issues/4191)) ([f3027d3](https://github.com/UMAprotocol/protocol/commit/f3027d34ab2a7fe4883e150733effab8690c9094))
+
 ## [1.15.7](https://github.com/UMAprotocol/protocol/compare/@uma/affiliates@1.15.6...@uma/affiliates@1.15.7) (2022-09-23)
 
 **Note:** Version bump only for package @uma/affiliates

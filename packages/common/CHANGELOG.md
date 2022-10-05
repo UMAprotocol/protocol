@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.28.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.27.0...@uma/common@2.28.0) (2022-10-05)
+
+### Bug Fixes
+
+- ignore NUMERICAL identifier ([#4191](https://github.com/UMAprotocol/protocol/issues/4191)) ([f3027d3](https://github.com/UMAprotocol/protocol/commit/f3027d34ab2a7fe4883e150733effab8690c9094))
+
+### Features
+
+- export get[name]StaticAddress() from contracts-node ([#4185](https://github.com/UMAprotocol/protocol/issues/4185)) ([60a17bd](https://github.com/UMAprotocol/protocol/commit/60a17bd2593b6918570f3a241db701e40c9d9c98))
+
 # [2.27.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.26.0...@uma/common@2.27.0) (2022-09-12)
 
 ### Features
