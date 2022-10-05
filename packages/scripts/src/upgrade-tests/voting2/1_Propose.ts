@@ -14,11 +14,8 @@
 // yarn hardhat run ./src/upgrade-tests/voting2/1_Propose.ts --network <network>
 
 const hre = require("hardhat");
-const assert = require("assert").strict;
 
-import { BigNumberish } from "@ethersproject/bignumber";
-import { BytesLike } from "@ethersproject/bytes";
-import { RegistryRolesEnum, ZERO_ADDRESS } from "@uma/common";
+import { RegistryRolesEnum } from "@uma/common";
 import {
   FinderEthers,
   GovernorEthers,
@@ -28,100 +25,24 @@ import {
   VotingEthers,
   VotingTokenEthers,
   VotingUpgraderV2Ethers,
-  VotingUpgraderV2Ethers__factory,
 } from "@uma/contracts-node";
 
 import { getContractInstance } from "../../utils/contracts";
 import {
+  AdminProposalTransaction,
   checkEnvVariables,
+  deployVotingUpgraderAndRunDowngradeOptionalTx,
   getMultiRoleContracts,
   getOwnableContracts,
   isContractInstance,
-  MultiRoleContracts,
   NEW_CONTRACTS,
   OLD_CONTRACTS,
-  OwnableContracts,
   TEST_DOWNGRADE,
   VOTING_UPGRADER_ADDRESS,
 } from "./migrationUtils";
 const { getAbi } = require("@uma/contracts-node");
 
-const { getContractFactory } = hre.ethers;
-
 const proposerWallet = "0x2bAaA41d155ad8a4126184950B31F50A1513cE25";
-
-interface AdminProposalTransaction {
-  to: string;
-  value: BigNumberish;
-  data: BytesLike;
-}
-
-const deployVotingUpgraderAndRunDowngradeOptionalTx = async (
-  adminProposalTransactions: AdminProposalTransaction[],
-  governor: GovernorEthers,
-  governorV2: GovernorEthers,
-  proposer: ProposerEthers,
-  proposerV2: ProposerEthers,
-  votingV2: VotingEthers,
-  oldVoting: VotingEthers,
-  finder: FinderEthers,
-  ownableContractsToMigrate: OwnableContracts,
-  multicallContractsToMigrate: MultiRoleContracts
-) => {
-  // This shouldn't be executed if not in test mode
-  assert(process.env[TEST_DOWNGRADE], "Not in test mode");
-
-  console.log("1.1 TEST MODE: DEPLOYING VOTING UPGRADER");
-  const votingUpgraderFactoryV2: VotingUpgraderV2Ethers__factory = await getContractFactory("VotingUpgraderV2");
-  const votingUpgrader = await votingUpgraderFactoryV2.deploy(
-    governor.address,
-    governorV2.address,
-    oldVoting.address,
-    votingV2.address,
-    proposer.address,
-    finder.address,
-    ownableContractsToMigrate,
-    multicallContractsToMigrate
-  );
-  const votingUpgraderAddress = votingUpgrader.address;
-  console.log("Voting Upgrader deployed to:", votingUpgraderAddress);
-
-  // If votingV2 is already migrated, remove it
-  const migratedAddress = await votingV2.migratedAddress();
-  if (migratedAddress != ZERO_ADDRESS) {
-    console.log("1.2 TEST MODE: UNSETTING MIGRATED ADDRESS IN VOTING V2");
-    const migrateTx = await votingV2.populateTransaction.setMigrated(ZERO_ADDRESS);
-    if (!migrateTx.data) throw "migrateTx.data is null";
-    adminProposalTransactions.push({ to: votingV2.address, value: 0, data: migrateTx.data });
-    console.log("Unsetting migrated address:", migrateTx.data);
-  }
-
-  const votingV2Owner = await votingV2.owner();
-
-  if (votingV2Owner !== governorV2.address) {
-    if (governor.address == votingV2Owner) {
-      console.log("1.3 TEST MODE: TRANSFERRING OWNERSHIP OF NEW VOTING TO GOVERNORV2");
-      const transferOwnershipTx = await votingV2.populateTransaction.transferOwnership(governorV2.address);
-      if (!transferOwnershipTx.data) throw "transferOwnershipTx.data is null";
-      adminProposalTransactions.push({ to: votingV2.address, value: 0, data: transferOwnershipTx.data });
-      console.log("Transfer VotingV2 ownership to GovernorV2:", transferOwnershipTx.data);
-    }
-  }
-
-  const proposerV2Owner = await proposerV2.owner();
-  if (proposerV2Owner !== governorV2.address) {
-    if (!process.env[TEST_DOWNGRADE]) throw new Error();
-    if (governor.address == proposerV2Owner) {
-      console.log("1.4 TEST MODE: TRANSFERRING OWNERSHIP OF NEW PROPOSER TO NEW GOVERNOR");
-      const transferOwnershipTx = await proposerV2.populateTransaction.transferOwnership(governorV2.address);
-      if (!transferOwnershipTx.data) throw "transferOwnershipTx.data is null";
-      adminProposalTransactions.push({ to: proposerV2.address, value: 0, data: transferOwnershipTx.data });
-      console.log("Transfering proposer v2 ownership to governorV2:", transferOwnershipTx.data);
-    }
-  }
-
-  return votingUpgrader;
-};
 
 async function main() {
   const adminProposalTransactions: AdminProposalTransaction[] = [];
