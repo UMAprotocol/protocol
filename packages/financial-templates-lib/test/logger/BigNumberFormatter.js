@@ -5,8 +5,8 @@ const Web3 = require("web3");
 const { toBN } = Web3.utils;
 const { cloneDeep } = require("lodash");
 
-describe("BigNumberFormatter", async function () {
-  it("Should replace all BigNumbers", async function () {
+describe("BigNumberFormatter", function () {
+  it("Should replace all BigNumbers", function () {
     const sample = {
       bn1: BigNumber.from(10),
       nested: { bn2: BigNumber.from(100), doubleNested: { bn3: toBN("1000") } },
@@ -15,17 +15,21 @@ describe("BigNumberFormatter", async function () {
     assert.deepEqual(bigNumberFormatter(sample), { bn1: "10", nested: { bn2: "100", doubleNested: { bn3: "1000" } } });
   });
 
-  it("Non BNs are not modified and the original object is not changed", async function () {
+  it("Non BNs are not modified and the original object is not changed", function () {
     const sample = { val: null, nested: { val: 100, doubleNested: { val: undefined }, val2: "1000" } };
 
     const shallowCopy = sample;
+    const deepCopy = cloneDeep(sample);
 
-    assert.deepEqual(bigNumberFormatter(sample), sample);
-    assert.equal(bigNumberFormatter(sample), shallowCopy);
+    const output = bigNumberFormatter(sample);
+
+    // All references and values should be unchanged.
+    assert.deepEqual(output, deepCopy);
+    assert.equal(output, shallowCopy);
     assert.equal(shallowCopy, sample);
   });
 
-  it("Only parts of the object that involve BNs are deep copied", async function () {
+  it("Only parts of the object that involve BNs are deep copied", function () {
     const sample = {
       val: null,
       nested: { val: 100, doubleNested: { val: undefined }, val2: "1000" },
