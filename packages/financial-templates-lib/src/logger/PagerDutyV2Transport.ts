@@ -5,6 +5,7 @@ import * as ss from "superstruct";
 
 type TransportOptions = ConstructorParameters<typeof Transport>[0];
 export type Severity = "critical" | "error" | "warning" | "info";
+export type Action = "trigger" | "acknowledge" | "resolve";
 
 const Config = ss.object({
   integrationKey: ss.string(),
@@ -45,10 +46,10 @@ export class PagerDutyV2Transport extends Transport {
       await event({
         data: {
           routing_key,
-          event_action: "trigger",
+          event_action: "trigger" as Action,
           payload: {
             summary: `${info.level}: ${info.at} ⭢ ${info.message}`,
-            severity: PagerDutyV2Transport.convertLevelToSeverity(this.level),
+            severity: PagerDutyV2Transport.convertLevelToSeverity(info.level),
             source: info["bot-identifier"] ? info["bot-identifier"] : undefined,
             // we can put any structured data in here as long as it is can be repped as json
             custom_details: info,
