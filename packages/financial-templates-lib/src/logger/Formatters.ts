@@ -15,11 +15,10 @@ export function errorStackTracerFormatter(logEntry: LogEntry) {
 // return the original log entry without modifying it.
 export function bigNumberFormatter(logEntry: LogEntry) {
   try {
-    iterativelyReplaceBigNumbers(logEntry);
+    return iterativelyReplaceBigNumbers(logEntry) as LogEntry;
   } catch (_) {
     return logEntry;
   }
-  return logEntry;
 }
 
 // Handle case where `error` is an array of errors and we want to display all of the error stacks recursively.
@@ -41,9 +40,16 @@ export function botIdentifyFormatter(botIdentifier: string) {
 
 // Traverse a potentially nested object and replace any element that is either a Ethers BigNumber or web3 BigNumber
 // with the string version of it for easy logging. Note does pass by reference by modifying the original object.
-const iterativelyReplaceBigNumbers = (obj: any) => {
-  Object.keys(obj).forEach((key) => {
-    if (BigNumber.isBigNumber(obj[key]) || web3.utils.isBN(obj[key])) obj[key] = obj[key].toString();
-    else if (typeof obj[key] === "object" && obj[key] !== null) iterativelyReplaceBigNumbers(obj[key]);
+const iterativelyReplaceBigNumbers = (obj: { [key: string]: any }) => {
+  const replacements = Object.entries(obj).map(([key, value]): [string, any] => {
+    if (BigNumber.isBigNumber(value) || web3.utils.isBN(value)) return [key, value.toString()];
+    else if (typeof value === "object" && value !== null) return [key, iterativelyReplaceBigNumbers(value)];
+    else return [key, value];
   });
+
+  // This will catch any values that were changed by value _or_ by reference.
+  const copyNeeded = replacements.some(([key, value]) => obj[key] !== value);
+
+  // Only copy if something changed. Otherwise, return the original object.
+  return copyNeeded ? Object.fromEntries(replacements) : obj;
 };
