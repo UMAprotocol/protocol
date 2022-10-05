@@ -158,7 +158,7 @@ async function main() {
       const registerGovernorV2Tx = await registry.populateTransaction.registerContract([], governorV2.address);
       if (!registerGovernorV2Tx.data) throw new Error("registerGovernorV2Tx.data is empty");
       adminProposalTransactions.push({ to: registry.address, value: 0, data: registerGovernorV2Tx.data });
-      console.log("4.f.3 Register the ProposerV2 as a verified contract", registerGovernorV2Tx.data);
+      console.log("4.f.3 Register the GovernorV2 as a verified contract", registerGovernorV2Tx.data);
     }
 
     const removeGovernorAsCreatorTx = await registry.populateTransaction.removeMember(
