@@ -133,9 +133,13 @@ async function main() {
   assert.equal((await governorV2.getMember(1)).toLowerCase(), proposerV2.address.toLowerCase());
   console.log("✅ New governor proposer role correctly set!");
 
+  console.log(" 12. New voting holds minter role on the voting token contract...");
+  assert(await votingToken.holdsRole(1, votingV2.address));
+  console.log("✅ New voting holds minter role on the voting token contract!");
+
   const isVotingV2 = await isContractInstance(votingV2.address, "stake(uint256)");
   if (isVotingV2) {
-    console.log(" 12. New voting keeps track of old voting contract...");
+    console.log(" 13. New voting keeps track of old voting contract...");
     assert.equal((await votingV2.previousVotingContract()).toLowerCase(), oldVoting.address.toLowerCase());
     console.log("✅ New voting keeps track of old voting contract!");
   }
