@@ -19,7 +19,6 @@ struct OwnableContracts {
     Ownable governorHub;
     Ownable bobaParentMessenger;
     Ownable optimismParentMessenger;
-    Ownable proposer;
 }
 
 // Multirole contracts to transfer ownership of
@@ -30,7 +29,7 @@ struct MultiroleContracts {
 
 /**
  * @title A contract that executes a short series of upgrade calls that must be performed atomically as a part of the
- * upgrade process for Voting.sol.
+ * upgrade process for VotingV2.sol, GovernorV2.sol and ProposerV2.sol.
  * @dev Note: the complete upgrade process requires more than just the transactions in this contract. These are only
  * the ones that need to be performed atomically.
  */
@@ -52,6 +51,9 @@ contract VotingUpgraderV2 {
     // Address to upgrade to.
     address public immutable newVoting;
 
+    // Proposer contract.
+    Ownable public immutable existingProposer;
+
     // Additional ownable contracts to transfer ownership of.
     OwnableContracts public ownableContracts;
 
@@ -59,7 +61,8 @@ contract VotingUpgraderV2 {
     MultiroleContracts public multiroleContracts;
 
     /**
-     * @notice Constructs the voting upgrader to upgrade to the DVM V2. This upgrades the Voting & governor contracts.
+     * @notice Constructs the voting upgrader to upgrade to the DVM V2. This upgrades the voting, governor and proposer
+     *  contracts.
      * @param _existingGovernor the existing Governor contract address.
      * @param _newGovernor the new Governor contract address.
      * @param _existingVoting the current/existing Voting contract address.
@@ -73,6 +76,7 @@ contract VotingUpgraderV2 {
         address _newGovernor,
         address _existingVoting,
         address _newVoting,
+        address _existingProposer,
         address _finder,
         OwnableContracts memory _ownableContracts,
         MultiroleContracts memory _multiroleContracts
@@ -81,6 +85,7 @@ contract VotingUpgraderV2 {
         newGovernor = _newGovernor;
         existingVoting = Voting(_existingVoting);
         newVoting = _newVoting;
+        existingProposer = Ownable(_existingProposer);
         finder = Finder(_finder);
         ownableContracts = _ownableContracts;
         multiroleContracts = _multiroleContracts;
@@ -89,7 +94,7 @@ contract VotingUpgraderV2 {
     /**
      * @notice Performs the atomic portion of the upgrade process.
      * @dev This method updates the Voting address in the finder, sets the old voting contract to migrated state, and
-     * returns ownership of the existing Voting contract and Finder back to the Governor.
+     * transfers the required ownership of the contracts to GovernorV2.
      */
     function upgrade() external {
         require(msg.sender == address(existingGovernor), "Upgrade can only be initiated by the existing governor.");
@@ -105,6 +110,9 @@ contract VotingUpgraderV2 {
         existingVoting.transferOwnership(newGovernor);
         finder.transferOwnership(newGovernor);
 
+        // Transfer ownership of existingProposer contract to the new governor.
+        existingProposer.transferOwnership(newGovernor);
+
         // Additional ownable contracts
         ownableContracts.identifierWhitelist.transferOwnership(newGovernor);
         ownableContracts.financialContractsAdmin.transferOwnership(newGovernor);
@@ -115,10 +123,12 @@ contract VotingUpgraderV2 {
         ownableContracts.governorHub.transferOwnership(newGovernor);
         ownableContracts.bobaParentMessenger.transferOwnership(newGovernor);
         ownableContracts.optimismParentMessenger.transferOwnership(newGovernor);
-        ownableContracts.proposer.transferOwnership(newGovernor);
 
         // Set the new governor as the owner of the old governor
         existingGovernor.resetMember(0, newGovernor);
+
+        // Set governor as the owner of governor
+        MultiRole(newGovernor).resetMember(0, newGovernor);
 
         // Additional multirole contracts
         multiroleContracts.registry.resetMember(0, newGovernor);
