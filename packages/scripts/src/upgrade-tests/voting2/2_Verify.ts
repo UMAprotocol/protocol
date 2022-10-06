@@ -19,6 +19,7 @@ import {
   GovernorEthers,
   RegistryEthers,
   VotingEthers,
+  VotingV2Ethers,
   VotingTokenEthers,
   ProposerEthers,
 } from "@uma/contracts-node";
@@ -28,6 +29,7 @@ import {
   checkEnvVariables,
   getMultiRoleContracts,
   getOwnableContracts,
+  isContractInstance,
   NEW_CONTRACTS,
   OLD_CONTRACTS,
 } from "./migrationUtils";
@@ -53,7 +55,7 @@ async function main() {
   const oldVoting = await getContractInstance<VotingEthers>("Voting", process.env[OLD_CONTRACTS.voting]);
   const proposer = await getContractInstance<ProposerEthers>("Proposer", process.env[OLD_CONTRACTS.proposer]);
 
-  const votingV2 = await getContractInstance<VotingEthers>("Voting", process.env[NEW_CONTRACTS.voting]);
+  const votingV2 = await getContractInstance<VotingV2Ethers>("VotingV2", process.env[NEW_CONTRACTS.voting]);
   const proposerV2 = await getContractInstance<ProposerEthers>("Proposer", process.env[NEW_CONTRACTS.proposer]);
   const governorV2 = await getContractInstance<GovernorEthers>("Governor", process.env[NEW_CONTRACTS.governor]);
 
@@ -130,6 +132,13 @@ async function main() {
   console.log(" 11. Proposer v2 holds proposer role at Governor v2...");
   assert.equal((await governorV2.getMember(1)).toLowerCase(), proposerV2.address.toLowerCase());
   console.log("✅ New governor proposer role correctly set!");
+
+  const isVotingV2 = await isContractInstance(votingV2.address, "stake(uint256)");
+  if (isVotingV2) {
+    console.log(" 12. New voting keeps track of old voting contract...");
+    assert.equal((await votingV2.previousVotingContract()).toLowerCase(), oldVoting.address.toLowerCase());
+    console.log("✅ New voting keeps track of old voting contract!");
+  }
 
   console.log("\n✅ Verified! The upgrade process ends here.");
 
