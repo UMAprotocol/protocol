@@ -95,51 +95,51 @@ async function main() {
     console.log(`✅ ${contractName} owner role correctly set!`);
   }
 
-  console.log(" 3. Old voting is validated and migrated to the correct address.");
+  console.log(" 4. Old voting is validated and migrated to the correct address.");
   assert.equal((await oldVoting.migratedAddress()).toLowerCase(), votingV2.address.toLowerCase());
   console.log("✅ Voting has been successfully migrated!");
 
-  console.log(" 4. Validating old voting contract and finder is owned by governor v2...");
+  console.log(" 5. Validating old voting contract and finder is owned by governor v2...");
   assert.equal(await oldVoting.owner(), governorV2.address);
   assert.equal(await finder.owner(), governorV2.address);
   console.log("✅ Old Voting & finder correctly transferred ownership back to governor v2!");
 
-  console.log(" 5. Governor v2 is the owner of the voting token...");
+  console.log(" 6. Governor v2 is the owner of the voting token...");
   assert.equal((await votingToken.getMember(0)).toLowerCase(), governorV2.address.toLowerCase());
   console.log("✅ Voting token owner role correctly set!");
 
-  console.log(" 6. Governor v2 is the owner of proposer...");
+  console.log(" 7. Governor v2 is the owner of proposer...");
   assert.equal((await proposer.owner()).toLowerCase(), governorV2.address.toLowerCase());
   console.log("✅ Proposer owner role correctly set!");
 
-  console.log(" 7. Governor v2 is the owner of proposer v2...");
+  console.log(" 8. Governor v2 is the owner of proposer v2...");
   assert.equal((await proposerV2.owner()).toLowerCase(), governorV2.address.toLowerCase());
   console.log("✅ Proposer v2 owner role correctly set!");
 
-  console.log(" 8. Governor v2 is registered in the registry...");
+  console.log(" 9. Governor v2 is registered in the registry...");
   assert(await registry.isContractRegistered(governorV2.address));
   console.log("✅ Governor v2 registered in registry!");
 
-  console.log(" 9. Proposer v2 is registered in the regstry...");
+  console.log(" 10. Proposer v2 is registered in the regstry...");
   assert(await registry.isContractRegistered(proposerV2.address));
   console.log("✅ Proposer v2 registered in registry!");
 
-  console.log(" 10. Governor v2 received all the voting tokens from Governor...");
+  console.log(" 11. Governor v2 received all the voting tokens from Governor...");
   assert((await votingToken.balanceOf(governorV2.address)).gt(hre.web3.utils.toWei("30000000", "ether")));
   assert((await votingToken.balanceOf(governor.address)).eq(0));
   console.log("✅ Governor v2 received all the voting tokens from Governor!");
 
-  console.log(" 11. Proposer v2 holds proposer role at Governor v2...");
+  console.log(" 12. Proposer v2 holds proposer role at Governor v2...");
   assert.equal((await governorV2.getMember(1)).toLowerCase(), proposerV2.address.toLowerCase());
   console.log("✅ New governor proposer role correctly set!");
 
-  console.log(" 12. New voting holds minter role on the voting token contract...");
+  console.log(" 13. New voting holds minter role on the voting token contract...");
   assert(await votingToken.holdsRole(1, votingV2.address));
   console.log("✅ New voting holds minter role on the voting token contract!");
 
   const isVotingV2 = await isContractInstance(votingV2.address, "stake(uint256)");
   if (isVotingV2) {
-    console.log(" 13. New voting keeps track of old voting contract...");
+    console.log(" 14. New voting keeps track of old voting contract...");
     assert.equal((await votingV2.previousVotingContract()).toLowerCase(), oldVoting.address.toLowerCase());
     console.log("✅ New voting keeps track of old voting contract!");
   }
