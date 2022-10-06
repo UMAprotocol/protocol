@@ -3,6 +3,10 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.3.18](https://github.com/UMAprotocol/protocol/compare/@uma/contracts-frontend@0.3.17...@uma/contracts-frontend@0.3.18) (2022-10-06)
+
+**Note:** Version bump only for package @uma/contracts-frontend
+
 ## [0.3.17](https://github.com/UMAprotocol/protocol/compare/@uma/contracts-frontend@0.3.16...@uma/contracts-frontend@0.3.17) (2022-10-05)
 
 **Note:** Version bump only for package @uma/contracts-frontend

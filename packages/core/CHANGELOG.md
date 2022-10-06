@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.38.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.37.1...@uma/core@2.38.0) (2022-10-06)
+
+### Features
+
+- dvm 2.0 upgrade improvement ([#4190](https://github.com/UMAprotocol/protocol/issues/4190)) ([e65ca52](https://github.com/UMAprotocol/protocol/commit/e65ca524cc67583e30763f823f5fed4a78be2866))
+
 ## [2.37.1](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.37.0...@uma/core@2.37.1) (2022-10-05)
 
 ### Bug Fixes
