@@ -5,6 +5,7 @@
 // VOTING_V2_ADDRESS=<VOTING-V2-ADDRESS> \
 // GOVERNOR_V2_ADDRESS=<GOVERNOR-V2-ADDRESS> \
 // PROPOSER_V2_ADDRESS=<PROPOSER-V2-ADDRESS> \
+// EMERGENCY_PROPOSER_ADDRESS=<EMERGENCY-PROPOSER-ADDRESS> \
 // PROPOSER_ADDRESS=<OPTIONAL-PROPOSER-ADDRESS> \
 // GOVERNOR_ADDRESS=<OPTIONAL-GOVERNOR-ADDRESS> \
 // VOTING_ADDRESS=<OPTONAL-VOTING-ADDRESS>\
@@ -21,6 +22,7 @@ import {
   VotingEthers,
   VotingTokenEthers,
   ProposerEthers,
+  EmergencyProposerEthers,
 } from "@uma/contracts-node";
 
 import { getContractInstance } from "../../utils/contracts";
@@ -30,6 +32,10 @@ import {
   getOwnableContracts,
   NEW_CONTRACTS,
   OLD_CONTRACTS,
+  EMERGENCY_PROPOSAL,
+  TEST_DOWNGRADE,
+  formatIndentation,
+  isGovernorV2Instance,
 } from "./migrationUtils";
 const { interfaceName } = require("@uma/common");
 
@@ -127,6 +133,22 @@ async function main() {
   assert((await votingToken.balanceOf(governor.address)).eq(0));
   console.log("✅ Governor v2 received all the voting tokens from Governor!");
 
+  if (await isGovernorV2Instance(governorV2.address)) {
+    const emergencyProposerAddress = process.env["EMERGENCY_PROPOSER_ADDRESS"];
+    const emergencyProposer = await getContractInstance<EmergencyProposerEthers>(
+      "EmergencyProposer",
+      emergencyProposerAddress
+    );
+    if (!emergencyProposerAddress) throw new Error("Missing EMERGENCY_PROPOSER_ADDRESS env variable");
+    console.log(" 11. Governor v2 is the owner of the EmergencyProposer...");
+    assert.equal((await emergencyProposer.owner()).toLowerCase(), governorV2.address.toLowerCase());
+    console.log("✅ EmergencyProposer owner role correctly set!");
+
+    console.log(" 12. EmergencyProposer has the emergency proposer role in GovernorV2 ...");
+    assert.equal((await governorV2.getMember(2)).toLowerCase(), emergencyProposer.address.toLowerCase());
+    console.log("✅ EmergencyProposer has the emergency proposer role in GovernorV2!");
+  }
+
   console.log("\n✅ Verified! The upgrade process ends here.");
 
   console.log(
@@ -136,15 +158,22 @@ async function main() {
     "⚠️  This downgrade command is intended for testing purposes and should only be used against a fork or testnet. ⚠️"
   );
   console.log(
-    `
-  TEST_DOWNGRADE=1 \\
+    formatIndentation(
+      `
+  ${TEST_DOWNGRADE}=1 \\
+  ${EMERGENCY_PROPOSAL}=1 \\
   ${OLD_CONTRACTS.voting}=${votingV2.address} \\
   ${NEW_CONTRACTS.voting}=${oldVoting.address} \\
   ${OLD_CONTRACTS.governor}=${governorV2.address} \\
   ${NEW_CONTRACTS.governor}=${governor.address} \\
   ${OLD_CONTRACTS.proposer}=${proposerV2.address} \\
   ${NEW_CONTRACTS.proposer}=${proposer.address} \\
-  yarn hardhat run ./src/upgrade-tests/voting2/1_Propose.ts --network ${hre.network.name}`.replace(/  +/g, "")
+  ${NEW_CONTRACTS.emergencyProposer}=${process.env[NEW_CONTRACTS.emergencyProposer]} \\
+  yarn hardhat run ./src/upgrade-tests/voting2/1_Propose.ts --network ${hre.network.name}
+  
+  Note: Remove ${EMERGENCY_PROPOSAL}=1 if you want to propose the downgrade from the normal proposer contract.
+  `
+    )
   );
 }
 

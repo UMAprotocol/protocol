@@ -5,8 +5,10 @@
 // HARDHAT_CHAIN_ID=1 yarn hardhat node --fork https://mainnet.infura.io/v3/<YOUR-INFURA-KEY> --port 9545 --no-deploy
 // and then running this script with:
 // TEST_DOWNGRADE=<OPTIONAL-RUN-TEST-DOWNGRADE-TRANSACTIONS> \
+// EMERGENCY_PROPOSAL=<OPTIONAL-RUN-EMERGENCY-PROPOSAL> \
 // VOTING_ADDRESS=<OPTONAL-VOTING-ADDRESS>\
 // VOTING_V2_ADDRESS=<VOTING-V2-ADDRESS> \
+// EMERGENCY_PROPOSER_ADDRESS=<EMERGENCY-PROPOSER-ADDRESS> \
 // GOVERNOR_ADDRESS=<OPTIONAL-GOVERNOR-ADDRESS> \
 // GOVERNOR_V2_ADDRESS=<GOVERNOR-V2-ADDRESS> \
 // PROPOSER_ADDRESS=<OPTIONAL-PROPOSER-ADDRESS> \
@@ -32,11 +34,16 @@ import {
   AdminProposalTransaction,
   checkEnvVariables,
   deployVotingUpgraderAndRunDowngradeOptionalTx,
+  EMERGENCY_PROPOSAL,
+  formatIndentation,
   getMultiRoleContracts,
   getOwnableContracts,
-  isContractInstance,
+  isGovernorV2Instance,
+  isProposerV1Instance,
+  isVotingV2Instance,
   NEW_CONTRACTS,
   OLD_CONTRACTS,
+  proposeEmergency,
   TEST_DOWNGRADE,
   VOTING_UPGRADER_ADDRESS,
 } from "./migrationUtils";
@@ -213,7 +220,32 @@ async function main() {
   adminProposalTransactions.push({ to: votingUpgrader.address, value: 0, data: upgraderExecuteUpgradeTx.data });
   console.log("2.l. Execute upgrade of voting:", upgraderExecuteUpgradeTx.data);
 
-  console.log("3. SENDING PROPOSAL TXS TO GOVERNOR");
+  const isGovernorV2 = await isGovernorV2Instance(governor.address);
+
+  const verificationCommand = formatIndentation(`
+    ✅ VERIFICATION: Verify the proposal execution with the following command:
+  
+    ${NEW_CONTRACTS.voting}=${votingV2.address} \\
+    ${NEW_CONTRACTS.governor}=${governorV2.address} \\
+    ${NEW_CONTRACTS.proposer}=${proposerV2.address} \\
+    ${NEW_CONTRACTS.emergencyProposer}=${process.env[NEW_CONTRACTS.emergencyProposer]} \\
+    ${OLD_CONTRACTS.voting}=${oldVoting.address} \\
+    ${OLD_CONTRACTS.governor}=${governor.address} \\
+    ${OLD_CONTRACTS.proposer}=${proposer.address} \\
+    yarn hardhat run ./src/upgrade-tests/voting2/2_Verify.ts --network ${hre.network.name}`);
+
+  if (
+    isGovernorV2 &&
+    process.env[TEST_DOWNGRADE] &&
+    process.env[EMERGENCY_PROPOSAL] &&
+    process.env[NEW_CONTRACTS.emergencyProposer]
+  )
+    return proposeEmergency(
+      process.env[NEW_CONTRACTS.emergencyProposer] || "",
+      votingToken,
+      adminProposalTransactions,
+      () => console.log(verificationCommand)
+    );
 
   const defaultBond = await proposer.bond();
   const allowance = await votingToken.allowance(proposerWallet, proposer.address);
@@ -223,11 +255,13 @@ async function main() {
     await approveTx.wait();
   }
 
-  const isProposerV1 = await isContractInstance(proposer.address, "propose((address,uint256,bytes)[])");
+  const isProposerV1 = await isProposerV1Instance(proposer.address);
   let tx;
   if (isProposerV1) {
+    console.log("3. SENDING PROPOSAL TXS TO GOVERNOR");
     tx = await proposer.connect(proposerSigner).propose(adminProposalTransactions);
   } else {
+    console.log("3. SENDING PROPOSAL TXS TO GOVERNOR V2");
     tx = await (await getContractInstance<ProposerV2Ethers>("ProposerV2", proposer.address))
       .connect(proposerSigner)
       .propose(adminProposalTransactions, hre.web3.utils.utf8ToHex("Admin Proposal"));
@@ -236,16 +270,16 @@ async function main() {
   console.log("Proposal done!🎉");
   console.log("\nProposal data:\n", tx.data);
 
-  const isVotingV2 = await isContractInstance(oldVoting.address, "stake(uint256)");
+  const isVotingV2 = await isVotingV2Instance(oldVoting.address);
   console.log("\n❓ OPTIONAL: Simulate the approval and execute the proposal with the following command: ");
   if (isVotingV2) {
     console.log(
-      `
+      formatIndentation(`
     ${NEW_CONTRACTS.voting}=${oldVoting.address} \\
     ${NEW_CONTRACTS.governor}=${governor.address} \\
     ${NEW_CONTRACTS.proposer}=${proposer.address} \\
     NODE_URL_1=http://127.0.0.1:9545/ \\
-    yarn hardhat run ./src/admin-proposals/simulateVoteV2.ts --network localhost`.replace(/  +/g, "")
+    yarn hardhat run ./src/admin-proposals/simulateVoteV2.ts --network localhost`)
     );
   } else {
     console.log(
@@ -253,18 +287,7 @@ async function main() {
     );
   }
 
-  console.log(
-    `
-  ✅ VERIFICATION: Verify the proposal execution with the following command:
-
-  ${NEW_CONTRACTS.voting}=${votingV2.address} \\
-  ${NEW_CONTRACTS.governor}=${governorV2.address} \\
-  ${NEW_CONTRACTS.proposer}=${proposerV2.address} \\
-  ${OLD_CONTRACTS.voting}=${oldVoting.address} \\
-  ${OLD_CONTRACTS.governor}=${governor.address} \\
-  ${OLD_CONTRACTS.proposer}=${proposer.address} \\
-  yarn hardhat run ./src/upgrade-tests/voting2/2_Verify.ts --network ${hre.network.name}`.replace(/  +/g, "")
-  );
+  console.log(verificationCommand);
 }
 
 main().then(

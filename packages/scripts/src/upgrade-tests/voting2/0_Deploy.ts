@@ -1,4 +1,4 @@
-// This script deploys SlashingLibrary, VotingV2, GovernorV2, ProposerV2 and VotingUpgrader.
+// This script deploys SlashingLibrary, VotingV2, GovernorV2, ProposerV2, EmergencyProposer and VotingUpgrader.
 // This script can be run against a mainnet fork by spinning a node in a separate terminal with:
 // HARDHAT_CHAIN_ID=1 yarn hardhat node --fork https://mainnet.infura.io/v3/<YOUR-INFURA-KEY> --port 9545 --no-deploy
 // and then running this script with:
@@ -7,6 +7,7 @@
 const hre = require("hardhat");
 
 import {
+  EmergencyProposerEthers__factory,
   FinderEthers,
   GovernorEthers,
   GovernorV2Ethers__factory,
@@ -19,7 +20,13 @@ import {
   VotingV2Ethers__factory,
 } from "@uma/contracts-node";
 import { getContractInstance } from "../../utils/contracts";
-import { getMultiRoleContracts, getOwnableContracts, NEW_CONTRACTS, VOTING_UPGRADER_ADDRESS } from "./migrationUtils";
+import {
+  formatIndentation,
+  getMultiRoleContracts,
+  getOwnableContracts,
+  NEW_CONTRACTS,
+  VOTING_UPGRADER_ADDRESS,
+} from "./migrationUtils";
 
 const { getContractFactory } = hre.ethers;
 
@@ -101,27 +108,45 @@ async function main() {
   const proposerV2 = await proposerFactory.deploy(votingToken.address, defaultBond, governorV2.address, finder.address);
   console.log("Deployed ProposerV2: ", proposerV2.address);
 
-  console.log("6. Set ProposerV2 as the proposer of GovernorV2");
+  console.log("6. Deploying EmergencyProposer");
+  const quorum = hre.web3.utils.toWei("10000000", "ether");
+  const multisig = (await hre.ethers.getSigners())[0].address; // TODO: change this to the correct multisig address.
+  const emergencyProposerFactory: EmergencyProposerEthers__factory = await getContractFactory("EmergencyProposer");
+  const emergencyProposer = await emergencyProposerFactory.deploy(
+    votingToken.address,
+    quorum,
+    governorV2.address,
+    multisig
+  );
+  console.log("Deployed EmergencyProposer: ", emergencyProposer.address);
+
+  console.log("7. Set ProposerV2 as the proposer of GovernorV2");
   await governorV2.resetMember(1, proposerV2.address);
 
-  console.log("7. Set the old governor as the owner of the new governor");
+  console.log("8. Set the EmergencyProposer as the emergency proposer of the new governor");
+  await governorV2.resetMember(2, emergencyProposer.address);
+
+  console.log("9. Set the old governor as the owner of the new governor");
   // The new governor owner will be updated in the VotingUpgraderV2 contract.
   await governorV2.resetMember(0, governor.address);
 
-  console.log("8. Set the new governor as the owner of the new voting v2");
+  console.log("10. Set the new governor as the owner of the new voting v2");
   await votingV2.transferOwnership(governorV2.address);
 
   console.log("Deployment done!🎉");
 
   console.log("Next step, Propose migration: ");
   console.log(
-    `
+    formatIndentation(
+      `
   ☝️ PROPOSAL: Run the following command to propose the migration to VotingV2, GovernorV2 and ProposerV2:
   ${VOTING_UPGRADER_ADDRESS}=${votingUpgrader.address} \\
   ${NEW_CONTRACTS.voting}=${votingV2.address} \\
   ${NEW_CONTRACTS.governor}=${governorV2.address} \\
   ${NEW_CONTRACTS.proposer}=${proposerV2.address} \\
-  yarn hardhat run ./src/upgrade-tests/voting2/1_Propose.ts --network ${hre.network.name}`.replace(/  +/g, "")
+  ${NEW_CONTRACTS.emergencyProposer}=${emergencyProposer.address} \\
+  yarn hardhat run ./src/upgrade-tests/voting2/1_Propose.ts --network ${hre.network.name}`
+    )
   );
 }
 
