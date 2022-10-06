@@ -127,6 +127,10 @@ async function main() {
   assert((await votingToken.balanceOf(governor.address)).eq(0));
   console.log("✅ Governor v2 received all the voting tokens from Governor!");
 
+  console.log(" 11. Proposer v2 holds proposer role at Governor v2...");
+  assert.equal((await governorV2.getMember(1)).toLowerCase(), proposerV2.address.toLowerCase());
+  console.log("✅ New governor proposer role correctly set!");
+
   console.log("\n✅ Verified! The upgrade process ends here.");
 
   console.log(
