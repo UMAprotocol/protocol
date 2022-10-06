@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.31.4](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.31.3...@uma/financial-templates-lib@2.31.4) (2022-10-06)
+
+### Bug Fixes
+
+- copy logs when changing BNs to strings ([#4197](https://github.com/UMAprotocol/protocol/issues/4197)) ([e7cd6c5](https://github.com/UMAprotocol/protocol/commit/e7cd6c52e4cb8a18041dac1046bb0c78649fc945))
+
 ## [2.31.3](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.31.2...@uma/financial-templates-lib@2.31.3) (2022-10-05)
 
 ### Bug Fixes

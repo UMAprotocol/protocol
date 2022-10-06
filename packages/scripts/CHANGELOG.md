@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.18.0](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.17.3...@uma/scripts@1.18.0) (2022-10-06)
+
+### Features
+
+- dvm 2.0 upgrade improvement ([#4190](https://github.com/UMAprotocol/protocol/issues/4190)) ([e65ca52](https://github.com/UMAprotocol/protocol/commit/e65ca524cc67583e30763f823f5fed4a78be2866))
+
 ## [1.17.3](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.17.2...@uma/scripts@1.17.3) (2022-10-05)
 
 ### Bug Fixes
