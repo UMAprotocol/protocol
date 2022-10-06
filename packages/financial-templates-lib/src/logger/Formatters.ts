@@ -58,7 +58,7 @@ const iterativelyReplaceBigNumbers = (obj: Record<string | symbol, any>) => {
   });
 
   // This will catch any values that were changed by value _or_ by reference.
-  // If not changes were detected, no copy is needed and it is fine to discard the copy and return the original object.
+  // If no changes were detected, no copy is needed and it is fine to discard the copy and return the original object.
   const copyNeeded = replacements.some(([key, value]) => obj[key] !== value);
 
   // Only copy if something changed. Otherwise, return the original object.
