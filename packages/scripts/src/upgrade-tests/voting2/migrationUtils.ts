@@ -206,7 +206,7 @@ export const proposeEmergency = async (
   const emergencyProposeBond = await emergencyProposer.quorum();
   const allowance = await votingToken.allowance(await signer.getAddress(), emergencyProposer.address);
   if (allowance.lt(emergencyProposeBond)) {
-    console.log("3.a Approving emergency proposer bond");
+    console.log("Approving emergency proposer bond");
     const approveTx = await votingToken.connect(signer).approve(emergencyProposer.address, emergencyProposeBond);
     await approveTx.wait();
   }
