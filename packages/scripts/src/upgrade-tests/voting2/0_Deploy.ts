@@ -115,13 +115,12 @@ async function main() {
   // In localhost network we allow to not set the emergency executor address and default to the first account.
   if (!process.env[EMERGENCY_EXECUTOR] && hre.network.name != "localhost") throw new Error("No emergency executor set");
   const emergencyExecutor = process.env[EMERGENCY_EXECUTOR] || (await hre.ethers.getSigners())[0].address;
-  const multisig = (await hre.ethers.getSigners())[0].address;
   const emergencyProposerFactory: EmergencyProposerEthers__factory = await getContractFactory("EmergencyProposer");
   const emergencyProposer = await emergencyProposerFactory.deploy(
     votingToken.address,
     quorum,
     governorV2.address,
-    multisig
+    emergencyExecutor
   );
   console.log("Deployed EmergencyProposer: ", emergencyProposer.address);
 
