@@ -6,6 +6,7 @@
 // GOVERNOR_V2_ADDRESS=<GOVERNOR-V2-ADDRESS> \
 // PROPOSER_V2_ADDRESS=<PROPOSER-V2-ADDRESS> \
 // EMERGENCY_PROPOSER_ADDRESS=<EMERGENCY-PROPOSER-ADDRESS> \
+// EMERGENCY_EXECUTOR=<EMERGENCY-EXECUTOR-ADDRESS> \
 // PROPOSER_ADDRESS=<OPTIONAL-PROPOSER-ADDRESS> \
 // GOVERNOR_ADDRESS=<OPTIONAL-GOVERNOR-ADDRESS> \
 // VOTING_ADDRESS=<OPTONAL-VOTING-ADDRESS>\
@@ -15,27 +16,28 @@ const hre = require("hardhat");
 const assert = require("assert").strict;
 
 import {
+  EmergencyProposerEthers,
   FinderEthers,
   getAbi,
   GovernorEthers,
+  ProposerEthers,
   RegistryEthers,
   VotingEthers,
   VotingTokenEthers,
-  ProposerEthers,
-  EmergencyProposerEthers,
 } from "@uma/contracts-node";
 
 import { getContractInstance } from "../../utils/contracts";
 import {
   checkEnvVariables,
+  EMERGENCY_EXECUTOR,
+  EMERGENCY_PROPOSAL,
+  formatIndentation,
   getMultiRoleContracts,
   getOwnableContracts,
+  isGovernorV2Instance,
   NEW_CONTRACTS,
   OLD_CONTRACTS,
-  EMERGENCY_PROPOSAL,
   TEST_DOWNGRADE,
-  formatIndentation,
-  isGovernorV2Instance,
 } from "./migrationUtils";
 const { interfaceName } = require("@uma/common");
 
@@ -144,7 +146,11 @@ async function main() {
     assert.equal((await emergencyProposer.owner()).toLowerCase(), governorV2.address.toLowerCase());
     console.log("✅ EmergencyProposer owner role correctly set!");
 
-    console.log(" 12. EmergencyProposer has the emergency proposer role in GovernorV2 ...");
+    console.log(" 12. EmergencyProposer executor is set correctly...");
+    assert.equal((await emergencyProposer.executor()).toLowerCase(), process.env[EMERGENCY_EXECUTOR]?.toLowerCase());
+    console.log("✅ EmergencyProposer executor role correctly set!");
+
+    console.log(" 13. EmergencyProposer has the emergency proposer role in GovernorV2 ...");
     assert.equal((await governorV2.getMember(2)).toLowerCase(), emergencyProposer.address.toLowerCase());
     console.log("✅ EmergencyProposer has the emergency proposer role in GovernorV2!");
   }
@@ -169,6 +175,7 @@ async function main() {
   ${OLD_CONTRACTS.proposer}=${proposerV2.address} \\
   ${NEW_CONTRACTS.proposer}=${proposer.address} \\
   ${NEW_CONTRACTS.emergencyProposer}=${process.env[NEW_CONTRACTS.emergencyProposer]} \\
+  ${EMERGENCY_EXECUTOR}=${process.env[EMERGENCY_EXECUTOR]} \\
   yarn hardhat run ./src/upgrade-tests/voting2/1_Propose.ts --network ${hre.network.name}
   
   Note: Remove ${EMERGENCY_PROPOSAL}=1 if you want to propose the downgrade from the normal proposer contract.

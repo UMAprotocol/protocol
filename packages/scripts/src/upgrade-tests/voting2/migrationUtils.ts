@@ -37,6 +37,8 @@ export const TEST_DOWNGRADE = "TEST_DOWNGRADE";
 
 export const EMERGENCY_PROPOSAL = "EMERGENCY_PROPOSAL";
 
+export const EMERGENCY_EXECUTOR = "EMERGENCY_EXECUTOR";
+
 export interface AdminProposalTransaction {
   to: string;
   value: BigNumberish;
@@ -95,6 +97,9 @@ export const checkEnvVariables = (): void => {
       if (!process.env[element]) throw new Error(`${element} not set`);
     });
   }
+
+  // emergency executor
+  if (!process.env[EMERGENCY_EXECUTOR]) throw new Error(`${EMERGENCY_EXECUTOR} not set`);
 
   // Downgrade related logic
   if (process.env[TEST_DOWNGRADE] && process.env[VOTING_UPGRADER_ADDRESS])
@@ -212,6 +217,7 @@ export const proposeEmergency = async (
   console.log(
     `
   ${NEW_CONTRACTS.emergencyProposer}=${process.env[NEW_CONTRACTS.emergencyProposer]} \\
+  ${EMERGENCY_EXECUTOR}=${process.env[EMERGENCY_EXECUTOR]} \\
   yarn hardhat run ./src/admin-proposals/simulateEmergencyProposal.ts --network ${hre.network.name}`.replace(/  +/g, "")
   );
   if (afterProposeCallback) afterProposeCallback();

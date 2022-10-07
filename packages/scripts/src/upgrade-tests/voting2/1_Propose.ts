@@ -9,6 +9,7 @@
 // VOTING_ADDRESS=<OPTONAL-VOTING-ADDRESS>\
 // VOTING_V2_ADDRESS=<VOTING-V2-ADDRESS> \
 // EMERGENCY_PROPOSER_ADDRESS=<EMERGENCY-PROPOSER-ADDRESS> \
+// EMERGENCY_EXECUTOR=<EMERGENCY-EXECUTOR-ADDRESS> \
 // GOVERNOR_ADDRESS=<OPTIONAL-GOVERNOR-ADDRESS> \
 // GOVERNOR_V2_ADDRESS=<GOVERNOR-V2-ADDRESS> \
 // PROPOSER_ADDRESS=<OPTIONAL-PROPOSER-ADDRESS> \
@@ -34,6 +35,7 @@ import {
   AdminProposalTransaction,
   checkEnvVariables,
   deployVotingUpgraderAndRunDowngradeOptionalTx,
+  EMERGENCY_EXECUTOR,
   EMERGENCY_PROPOSAL,
   formatIndentation,
   getMultiRoleContracts,
@@ -229,6 +231,7 @@ async function main() {
     ${NEW_CONTRACTS.governor}=${governorV2.address} \\
     ${NEW_CONTRACTS.proposer}=${proposerV2.address} \\
     ${NEW_CONTRACTS.emergencyProposer}=${process.env[NEW_CONTRACTS.emergencyProposer]} \\
+    ${EMERGENCY_EXECUTOR}=${process.env[EMERGENCY_EXECUTOR]} \\
     ${OLD_CONTRACTS.voting}=${oldVoting.address} \\
     ${OLD_CONTRACTS.governor}=${governor.address} \\
     ${OLD_CONTRACTS.proposer}=${proposer.address} \\

@@ -2,6 +2,7 @@
 // This script can be run against a mainnet fork by spinning a node in a separate terminal with:
 // HARDHAT_CHAIN_ID=1 yarn hardhat node --fork https://mainnet.infura.io/v3/<YOUR-INFURA-KEY> --port 9545 --no-deploy
 // and then running this script with:
+// EMERGENCY_EXECUTOR=<EMERGENCY-EXECUTOR-ADDRESS> \
 // yarn hardhat run ./src/upgrade-tests/voting2/0_Deploy.ts --network localhost
 
 const hre = require("hardhat");
@@ -21,6 +22,7 @@ import {
 } from "@uma/contracts-node";
 import { getContractInstance } from "../../utils/contracts";
 import {
+  EMERGENCY_EXECUTOR,
   formatIndentation,
   getMultiRoleContracts,
   getOwnableContracts,
@@ -110,7 +112,10 @@ async function main() {
 
   console.log("6. Deploying EmergencyProposer");
   const quorum = hre.web3.utils.toWei("10000000", "ether");
-  const multisig = (await hre.ethers.getSigners())[0].address; // TODO: change this to the correct multisig address.
+  // In localhost network we allow to not set the emergency executor address and default to the first account.
+  if (!process.env[EMERGENCY_EXECUTOR] && hre.network.name != "localhost") throw new Error("No emergency executor set");
+  const emergencyExecutor = process.env[EMERGENCY_EXECUTOR] || (await hre.ethers.getSigners())[0].address;
+  const multisig = (await hre.ethers.getSigners())[0].address;
   const emergencyProposerFactory: EmergencyProposerEthers__factory = await getContractFactory("EmergencyProposer");
   const emergencyProposer = await emergencyProposerFactory.deploy(
     votingToken.address,
@@ -145,6 +150,7 @@ async function main() {
   ${NEW_CONTRACTS.governor}=${governorV2.address} \\
   ${NEW_CONTRACTS.proposer}=${proposerV2.address} \\
   ${NEW_CONTRACTS.emergencyProposer}=${emergencyProposer.address} \\
+  ${EMERGENCY_EXECUTOR}=${emergencyExecutor} \\
   yarn hardhat run ./src/upgrade-tests/voting2/1_Propose.ts --network ${hre.network.name}`
     )
   );

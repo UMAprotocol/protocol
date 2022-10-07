@@ -5,9 +5,12 @@ import { getContractInstance } from "../utils/contracts";
 import { increaseEvmTime } from "../utils/utils";
 
 require("dotenv").config();
+const hre = require("hardhat");
 
 async function simulateEmergencyProposal() {
   const emergencyProposerAddress = process.env["EMERGENCY_PROPOSER_ADDRESS"];
+  const emergencyExecutorAddress = process.env["EMERGENCY_EXECUTOR"];
+  if (!emergencyExecutorAddress) throw new Error("Missing EMERGENCY_EXECUTOR env variable");
   if (!emergencyProposerAddress) throw new Error("Missing EMERGENCY_PROPOSER_ADDRESS env variable");
 
   console.log("\n🚨 Simulating Emergency Proposals");
@@ -23,6 +26,8 @@ async function simulateEmergencyProposal() {
 
   if (proposalsToProcess.length === 0) console.log("No proposals to process");
 
+  const executorSigner = await hre.ethers.getSigner(emergencyExecutorAddress);
+
   for (const emergencyProposal of proposalsToProcess) {
     const proposalId = emergencyProposal.args.id;
     const expiryTime = emergencyProposal.args.expiryTime;
@@ -31,7 +36,7 @@ async function simulateEmergencyProposal() {
       await increaseEvmTime(expiryTime.sub(currentTime).toNumber());
     }
     console.log(`Executing proposal ${proposalId}`);
-    await emergencyProposer.executeEmergencyProposal(proposalId);
+    await emergencyProposer.connect(executorSigner).executeEmergencyProposal(proposalId);
   }
 }
 
