@@ -23,6 +23,7 @@ import {
   ProposerEthers,
   RegistryEthers,
   VotingEthers,
+  VotingV2Ethers,
   VotingTokenEthers,
 } from "@uma/contracts-node";
 
@@ -35,6 +36,7 @@ import {
   getMultiRoleContracts,
   getOwnableContracts,
   isGovernorV2Instance,
+  isVotingV2Instance,
   NEW_CONTRACTS,
   OLD_CONTRACTS,
   TEST_DOWNGRADE,
@@ -61,7 +63,7 @@ async function main() {
   const oldVoting = await getContractInstance<VotingEthers>("Voting", process.env[OLD_CONTRACTS.voting]);
   const proposer = await getContractInstance<ProposerEthers>("Proposer", process.env[OLD_CONTRACTS.proposer]);
 
-  const votingV2 = await getContractInstance<VotingEthers>("Voting", process.env[NEW_CONTRACTS.voting]);
+  const votingV2 = await getContractInstance<VotingV2Ethers>("VotingV2", process.env[NEW_CONTRACTS.voting]);
   const proposerV2 = await getContractInstance<ProposerEthers>("Proposer", process.env[NEW_CONTRACTS.proposer]);
   const governorV2 = await getContractInstance<GovernorEthers>("Governor", process.env[NEW_CONTRACTS.governor]);
 
@@ -101,39 +103,47 @@ async function main() {
     console.log(`✅ ${contractName} owner role correctly set!`);
   }
 
-  console.log(" 3. Old voting is validated and migrated to the correct address.");
+  console.log(" 4. Old voting is validated and migrated to the correct address.");
   assert.equal((await oldVoting.migratedAddress()).toLowerCase(), votingV2.address.toLowerCase());
   console.log("✅ Voting has been successfully migrated!");
 
-  console.log(" 4. Validating old voting contract and finder is owned by governor v2...");
+  console.log(" 5. Validating old voting contract and finder is owned by governor v2...");
   assert.equal(await oldVoting.owner(), governorV2.address);
   assert.equal(await finder.owner(), governorV2.address);
   console.log("✅ Old Voting & finder correctly transferred ownership back to governor v2!");
 
-  console.log(" 5. Governor v2 is the owner of the voting token...");
+  console.log(" 6. Governor v2 is the owner of the voting token...");
   assert.equal((await votingToken.getMember(0)).toLowerCase(), governorV2.address.toLowerCase());
   console.log("✅ Voting token owner role correctly set!");
 
-  console.log(" 6. Governor v2 is the owner of proposer...");
+  console.log(" 7. Governor v2 is the owner of proposer...");
   assert.equal((await proposer.owner()).toLowerCase(), governorV2.address.toLowerCase());
   console.log("✅ Proposer owner role correctly set!");
 
-  console.log(" 7. Governor v2 is the owner of proposer v2...");
+  console.log(" 8. Governor v2 is the owner of proposer v2...");
   assert.equal((await proposerV2.owner()).toLowerCase(), governorV2.address.toLowerCase());
   console.log("✅ Proposer v2 owner role correctly set!");
 
-  console.log(" 8. Governor v2 is registered in the registry...");
+  console.log(" 9. Governor v2 is registered in the registry...");
   assert(await registry.isContractRegistered(governorV2.address));
   console.log("✅ Governor v2 registered in registry!");
 
-  console.log(" 9. Proposer v2 is registered in the regstry...");
+  console.log(" 10. Proposer v2 is registered in the regstry...");
   assert(await registry.isContractRegistered(proposerV2.address));
   console.log("✅ Proposer v2 registered in registry!");
 
-  console.log(" 10. Governor v2 received all the voting tokens from Governor...");
+  console.log(" 11. Governor v2 received all the voting tokens from Governor...");
   assert((await votingToken.balanceOf(governorV2.address)).gt(hre.web3.utils.toWei("30000000", "ether")));
   assert((await votingToken.balanceOf(governor.address)).eq(0));
   console.log("✅ Governor v2 received all the voting tokens from Governor!");
+
+  console.log(" 12. Proposer v2 holds proposer role at Governor v2...");
+  assert.equal((await governorV2.getMember(1)).toLowerCase(), proposerV2.address.toLowerCase());
+  console.log("✅ New governor proposer role correctly set!");
+
+  console.log(" 13. New voting holds minter role on the voting token contract...");
+  assert(await votingToken.holdsRole(1, votingV2.address));
+  console.log("✅ New voting holds minter role on the voting token contract!");
 
   if (await isGovernorV2Instance(governorV2.address)) {
     const emergencyProposerAddress = process.env["EMERGENCY_PROPOSER_ADDRESS"];
@@ -142,17 +152,22 @@ async function main() {
       emergencyProposerAddress
     );
     if (!emergencyProposerAddress) throw new Error("Missing EMERGENCY_PROPOSER_ADDRESS env variable");
-    console.log(" 11. Governor v2 is the owner of the EmergencyProposer...");
+    assert(await isVotingV2Instance(votingV2.address), "New voting should be V2 if Governor is V2 instance");
+    console.log(" 14. Governor v2 is the owner of the EmergencyProposer...");
     assert.equal((await emergencyProposer.owner()).toLowerCase(), governorV2.address.toLowerCase());
     console.log("✅ EmergencyProposer owner role correctly set!");
 
-    console.log(" 12. EmergencyProposer executor is set correctly...");
+    console.log(" 15. EmergencyProposer executor is set correctly...");
     assert.equal((await emergencyProposer.executor()).toLowerCase(), process.env[EMERGENCY_EXECUTOR]?.toLowerCase());
     console.log("✅ EmergencyProposer executor role correctly set!");
 
-    console.log(" 13. EmergencyProposer has the emergency proposer role in GovernorV2 ...");
+    console.log(" 16. EmergencyProposer has the emergency proposer role in GovernorV2 ...");
     assert.equal((await governorV2.getMember(2)).toLowerCase(), emergencyProposer.address.toLowerCase());
     console.log("✅ EmergencyProposer has the emergency proposer role in GovernorV2!");
+
+    console.log(" 17. New voting keeps track of old voting contract...");
+    assert.equal((await votingV2.previousVotingContract()).toLowerCase(), oldVoting.address.toLowerCase());
+    console.log("✅ New voting keeps track of old voting contract!");
   }
 
   console.log("\n✅ Verified! The upgrade process ends here.");
