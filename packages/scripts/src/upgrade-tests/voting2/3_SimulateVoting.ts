@@ -6,17 +6,13 @@ import { interfaceName } from "@uma/common";
 import { FinderEthers, StoreEthers, VotingTokenEthers, VotingV2Ethers } from "@uma/contracts-node";
 
 import { FOUNDATION_WALLET, getContractInstance } from "../../utils/contracts";
+import { increaseEvmTime } from "../../utils/utils";
 import { isVotingV2Instance } from "./migrationUtils";
 
 // Initial voter balances relative to GAT.
 const voter1RelativeGatFunding = parseEther("0.6");
 const voter2RelativeGatFunding = parseEther("0.55");
 const voter3RelativeGatFunding = parseEther("0.5");
-
-const increaseEvmTime = async (time: number) => {
-  await hre.ethers.provider.send("evm_increaseTime", [time]);
-  await hre.ethers.provider.send("evm_mine", []);
-};
 
 async function main() {
   console.log("🎭 Running Voting Simulation after V2 upgrade");
