@@ -56,24 +56,34 @@ async function main() {
   const foundationSigner = await hre.ethers.getSigner(FOUNDATION_WALLET);
   const [requesterSigner, voter1Signer, voter2Signer, voter3Signer] = await hre.ethers.getSigners();
 
-  await (await votingToken.connect(foundationSigner).transfer(requesterSigner.address, finalFee.mul(4))).wait();
+  let [requesterBalance, voter1Balance, voter2Balance, voter3Balance] = await Promise.all(
+    [requesterSigner, voter1Signer, voter2Signer, voter3Signer].map((signer) => {
+      return votingToken.balanceOf(signer.address);
+    })
+  );
+
+  // Transfering required balances. This assumes recipient accounts did not have more than target amounts before
+  // simulation.
   await (
-    await votingToken
-      .connect(foundationSigner)
-      .transfer(voter1Signer.address, gat.mul(voter1RelativeGatFunding).div(parseEther("1")))
+    await votingToken.connect(foundationSigner).transfer(requesterSigner.address, finalFee.mul(4).sub(requesterBalance))
   ).wait();
   await (
     await votingToken
       .connect(foundationSigner)
-      .transfer(voter2Signer.address, gat.mul(voter2RelativeGatFunding).div(parseEther("1")))
+      .transfer(voter1Signer.address, gat.mul(voter1RelativeGatFunding).div(parseEther("1").sub(voter1Balance)))
   ).wait();
   await (
     await votingToken
       .connect(foundationSigner)
-      .transfer(voter3Signer.address, gat.mul(voter3RelativeGatFunding).div(parseEther("1")))
+      .transfer(voter2Signer.address, gat.mul(voter2RelativeGatFunding).div(parseEther("1").sub(voter2Balance)))
+  ).wait();
+  await (
+    await votingToken
+      .connect(foundationSigner)
+      .transfer(voter3Signer.address, gat.mul(voter3RelativeGatFunding).div(parseEther("1").sub(voter3Balance)))
   ).wait();
 
-  const [requesterBalance, voter1Balance, voter2Balance, voter3Balance] = await Promise.all(
+  [requesterBalance, voter1Balance, voter2Balance, voter3Balance] = await Promise.all(
     [requesterSigner, voter1Signer, voter2Signer, voter3Signer].map((signer) => {
       return votingToken.balanceOf(signer.address);
     })
