@@ -4,22 +4,13 @@ const hre = require("hardhat");
 import { computeVoteHashAncillary, getRandomSignedInt } from "@uma/common";
 import { GovernorV2Ethers, VotingTokenEthers, VotingV2Ethers } from "@uma/contracts-node";
 import { BigNumberish, BytesLike, Signer } from "ethers";
-import { getContractInstance } from "../utils/contracts";
+import { FOUNDATION_WALLET, getContractInstance, SECONDS_PER_DAY, YES_VOTE } from "../utils/contracts";
+import { increaseEvmTime } from "../utils/utils";
 
 const { ethers } = hre;
 
 require("dotenv").config();
 const assert = require("assert").strict;
-
-const SECONDS_PER_DAY = 86400;
-const YES_VOTE = "1";
-
-const FOUNDATION_WALLET = "0x7a3A1c2De64f20EB5e916F40D11B01C441b2A8Dc";
-
-const increaseEvmTime = async (time: number) => {
-  await ethers.provider.send("evm_increaseTime", [time]);
-  await ethers.provider.send("evm_mine", []);
-};
 
 // Run:
 // - Check out README.md in this folder for setup instructions and simulating votes between the Propose and Verify

@@ -6,19 +6,23 @@ const { getContractFactory } = hre.ethers;
 const assert = require("assert").strict;
 
 import {
+  EmergencyProposerEthers,
   FinderEthers,
   getAddress,
   GovernorEthers,
   ProposerEthers,
   VotingEthers,
+  VotingTokenEthers,
   VotingUpgraderV2Ethers,
   VotingUpgraderV2Ethers__factory,
 } from "@uma/contracts-node";
+import { FOUNDATION_WALLET, getContractInstance } from "../../utils/contracts";
 
 export const NEW_CONTRACTS = {
   governor: "GOVERNOR_V2_ADDRESS",
   proposer: "PROPOSER_V2_ADDRESS",
   voting: "VOTING_V2_ADDRESS",
+  emergencyProposer: "EMERGENCY_PROPOSER_ADDRESS",
 };
 
 export const OLD_CONTRACTS = {
@@ -30,6 +34,12 @@ export const OLD_CONTRACTS = {
 export const VOTING_UPGRADER_ADDRESS = "VOTING_UPGRADER_ADDRESS";
 
 export const TEST_DOWNGRADE = "TEST_DOWNGRADE";
+
+export const EMERGENCY_PROPOSAL = "EMERGENCY_PROPOSAL";
+
+export const EMERGENCY_EXECUTOR = "EMERGENCY_EXECUTOR";
+
+export const EMERGENCY_QUORUM = "EMERGENCY_QUORUM";
 
 export interface AdminProposalTransaction {
   to: string;
@@ -47,6 +57,8 @@ export interface OwnableContracts {
   bobaParentMessenger: string;
   optimismParentMessenger: string;
 }
+
+export const formatIndentation = (str: string): string => str.replace(/  +/g, "");
 
 export const getOwnableContracts = async (networkId: number): Promise<OwnableContracts> => {
   return {
@@ -87,6 +99,9 @@ export const checkEnvVariables = (): void => {
       if (!process.env[element]) throw new Error(`${element} not set`);
     });
   }
+
+  // emergency executor
+  if (!process.env[EMERGENCY_EXECUTOR]) throw new Error(`${EMERGENCY_EXECUTOR} not set`);
 
   // Downgrade related logic
   if (process.env[TEST_DOWNGRADE] && process.env[VOTING_UPGRADER_ADDRESS])
@@ -164,4 +179,48 @@ export const isContractInstance = async (address: string, functionSignature: str
   const code = await hre.ethers.provider.getCode(address);
   const encodedSignature = hre.web3.eth.abi.encodeFunctionSignature(functionSignature).slice(2);
   return code.includes(encodedSignature);
+};
+
+export const isGovernorV2Instance = async (address: string): Promise<boolean> => {
+  return isContractInstance(address, "propose((address,uint256,bytes)[],bytes)");
+};
+
+export const isProposerV1Instance = async (address: string): Promise<boolean> => {
+  return isContractInstance(address, "propose((address,uint256,bytes)[])");
+};
+
+export const isVotingV2Instance = async (address: string): Promise<boolean> => {
+  return await isContractInstance(address, "stake(uint256)");
+};
+
+export const proposeEmergency = async (
+  emergencyProposerAddress: string,
+  votingToken: VotingTokenEthers,
+  adminProposalTransactions: AdminProposalTransaction[]
+): Promise<void> => {
+  const signer = await hre.ethers.getSigner(FOUNDATION_WALLET);
+
+  const emergencyProposer = await getContractInstance<EmergencyProposerEthers>(
+    "EmergencyProposer",
+    emergencyProposerAddress
+  );
+  const emergencyProposeBond = await emergencyProposer.quorum();
+  const allowance = await votingToken.allowance(await signer.getAddress(), emergencyProposer.address);
+  if (allowance.lt(emergencyProposeBond)) {
+    console.log("Approving emergency proposer bond");
+    const approveTx = await votingToken.connect(signer).approve(emergencyProposer.address, emergencyProposeBond);
+    await approveTx.wait();
+  }
+  console.log("SENDING PROPOSAL TXS TO EMERGENCY PROPOSER");
+  await emergencyProposer.connect(signer).emergencyPropose(adminProposalTransactions);
+  console.log("Proposal done!🎉");
+  console.log("\n❓ OPTIONAL: Simulate and execute the emergency proposal with the following command: ");
+  console.log(
+    formatIndentation(
+      `
+  ${NEW_CONTRACTS.emergencyProposer}=${process.env[NEW_CONTRACTS.emergencyProposer]} \\
+  ${EMERGENCY_EXECUTOR}=${process.env[EMERGENCY_EXECUTOR]} \\
+  yarn hardhat run ./src/admin-proposals/simulateEmergencyProposal.ts --network ${hre.network.name}`
+    )
+  );
 };
