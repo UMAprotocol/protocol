@@ -39,6 +39,8 @@ export const EMERGENCY_PROPOSAL = "EMERGENCY_PROPOSAL";
 
 export const EMERGENCY_EXECUTOR = "EMERGENCY_EXECUTOR";
 
+export const EMERGENCY_QUORUM = "EMERGENCY_QUORUM";
+
 export interface AdminProposalTransaction {
   to: string;
   value: BigNumberish;
@@ -194,8 +196,7 @@ export const isVotingV2Instance = async (address: string): Promise<boolean> => {
 export const proposeEmergency = async (
   emergencyProposerAddress: string,
   votingToken: VotingTokenEthers,
-  adminProposalTransactions: AdminProposalTransaction[],
-  afterProposeCallback?: () => void
+  adminProposalTransactions: AdminProposalTransaction[]
 ): Promise<void> => {
   const signer = await hre.ethers.getSigner(FOUNDATION_WALLET);
 
@@ -215,10 +216,11 @@ export const proposeEmergency = async (
   console.log("Proposal done!🎉");
   console.log("\n❓ OPTIONAL: Simulate and execute the emergency proposal with the following command: ");
   console.log(
-    `
+    formatIndentation(
+      `
   ${NEW_CONTRACTS.emergencyProposer}=${process.env[NEW_CONTRACTS.emergencyProposer]} \\
   ${EMERGENCY_EXECUTOR}=${process.env[EMERGENCY_EXECUTOR]} \\
-  yarn hardhat run ./src/admin-proposals/simulateEmergencyProposal.ts --network ${hre.network.name}`.replace(/  +/g, "")
+  yarn hardhat run ./src/admin-proposals/simulateEmergencyProposal.ts --network ${hre.network.name}`
+    )
   );
-  if (afterProposeCallback) afterProposeCallback();
 };

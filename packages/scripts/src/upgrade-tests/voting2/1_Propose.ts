@@ -246,9 +246,8 @@ async function main() {
     return proposeEmergency(
       process.env[NEW_CONTRACTS.emergencyProposer] || "",
       votingToken,
-      adminProposalTransactions,
-      () => console.log(verificationCommand)
-    );
+      adminProposalTransactions
+    ).then(() => console.log(verificationCommand));
 
   const defaultBond = await proposer.bond();
   const allowance = await votingToken.allowance(proposerWallet, proposer.address);

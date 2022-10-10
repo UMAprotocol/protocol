@@ -26,6 +26,7 @@ cd packages/scripts/
 Then run:
 
 ```
+EMERGENCY_QUORUM=<EMERGENCY-QUORUM> \ # Decimal value between 5M and 10M
 EMERGENCY_EXECUTOR=<EMERGENCY-EXECUTOR-ADDRESS> \
 yarn hardhat run ./src/upgrade-tests/voting2/0_Deploy.ts --network localhost
 ```

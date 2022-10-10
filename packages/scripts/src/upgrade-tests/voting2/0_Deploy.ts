@@ -3,6 +3,7 @@
 // HARDHAT_CHAIN_ID=1 yarn hardhat node --fork https://mainnet.infura.io/v3/<YOUR-INFURA-KEY> --port 9545 --no-deploy
 // and then running this script with:
 // EMERGENCY_EXECUTOR=<EMERGENCY-EXECUTOR-ADDRESS> \
+// EMERGENCY_QUORUM=<EMERGENCY-QUORUM> \ # Decimal value between 5M and 10M
 // yarn hardhat run ./src/upgrade-tests/voting2/0_Deploy.ts --network localhost
 
 const hre = require("hardhat");
@@ -23,6 +24,7 @@ import {
 import { getContractInstance } from "../../utils/contracts";
 import {
   EMERGENCY_EXECUTOR,
+  EMERGENCY_QUORUM,
   formatIndentation,
   getMultiRoleContracts,
   getOwnableContracts,
@@ -42,6 +44,15 @@ async function main() {
   const proposer = await getContractInstance<ProposerEthers>("Proposer");
   const existingVoting = await getContractInstance<VotingEthers>("Voting");
   const votingToken = await getContractInstance<VotingTokenEthers>("VotingToken");
+
+  // In localhost network we allow to not set the emergency executor address and default to the first account.
+  if (!process.env[EMERGENCY_EXECUTOR] && hre.network.name != "localhost") throw new Error("No emergency executor set");
+
+  if (!process.env[EMERGENCY_QUORUM]) throw new Error("No emergency quorum set");
+  const tenMillion = hre.ethers.utils.parseUnits("10000000", "ether");
+  const fiveMillion = hre.ethers.utils.parseUnits("5000000", "ether");
+  const emergencyQuorum = hre.ethers.utils.parseUnits(process.env[EMERGENCY_QUORUM], "ether");
+  if (emergencyQuorum.gt(tenMillion) || emergencyQuorum.lt(fiveMillion)) throw new Error("Invalid emergency quorum");
 
   console.log("1. DEPLOYING SLASHING LIBRARY");
   const slashingLibraryFactory: SlashingLibraryEthers__factory = await getContractFactory("SlashingLibrary");
@@ -111,14 +122,11 @@ async function main() {
   console.log("Deployed ProposerV2: ", proposerV2.address);
 
   console.log("6. Deploying EmergencyProposer");
-  const quorum = hre.web3.utils.toWei("10000000", "ether");
-  // In localhost network we allow to not set the emergency executor address and default to the first account.
-  if (!process.env[EMERGENCY_EXECUTOR] && hre.network.name != "localhost") throw new Error("No emergency executor set");
   const emergencyExecutor = process.env[EMERGENCY_EXECUTOR] || (await hre.ethers.getSigners())[0].address;
   const emergencyProposerFactory: EmergencyProposerEthers__factory = await getContractFactory("EmergencyProposer");
   const emergencyProposer = await emergencyProposerFactory.deploy(
     votingToken.address,
-    quorum,
+    emergencyQuorum,
     governorV2.address,
     emergencyExecutor
   );
