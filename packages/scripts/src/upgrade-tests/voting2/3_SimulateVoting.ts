@@ -5,16 +5,8 @@ const { formatEther, parseEther } = hre.ethers.utils;
 import { interfaceName } from "@uma/common";
 import { FinderEthers, StoreEthers, VotingTokenEthers, VotingV2Ethers } from "@uma/contracts-node";
 
-import { getContractInstance } from "../../utils/contracts";
-import { isContractInstance } from "./migrationUtils";
-
-// TODO: import from packages/scripts/src/utils/contracts.ts after PR merged.
-const FOUNDATION_WALLET = "0x7a3A1c2De64f20EB5e916F40D11B01C441b2A8Dc";
-
-// TODO: import from packages/scripts/src/upgrade-tests/voting2/migrationUtils.ts after PR merged.
-const isVotingV2Instance = async (address: string): Promise<boolean> => {
-  return await isContractInstance(address, "stake(uint256)");
-};
+import { FOUNDATION_WALLET, getContractInstance } from "../../utils/contracts";
+import { isVotingV2Instance } from "./migrationUtils";
 
 async function main() {
   console.log("Running Voting Simulation🎭");
