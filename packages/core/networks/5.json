@@ -68,6 +68,14 @@
     "address": "0x6f26Bf09B1C792e3228e5467807a900A503c0281"
   },
   {
+    "contractName": "SkinnyOptimisticOracleV2",
+    "address": "0x5a9Ed5DaC741e20cA6587d0c5C39C0992Db305C1"
+  },
+  {
+    "contractName": "SkinnyOptimisticOracle",
+    "address": "0xeDc52A961B5Ca2AC7B2e0bc36714dB60E5a115Ab"
+  },
+  {
     "contractName": "ProposerV2",
     "address": "0x235fa7590749C0c7240926E4CD0bB8EaecdbD3F3"
   },

@@ -3,6 +3,10 @@ const hre = require("hardhat");
 import { Contract, ContractFactory } from "ethers";
 import { Provider } from "@ethersproject/abstract-provider";
 
+export const FOUNDATION_WALLET = "0x7a3A1c2De64f20EB5e916F40D11B01C441b2A8Dc";
+export const SECONDS_PER_DAY = 86400;
+export const YES_VOTE = "1";
+
 export const getContractInstance = async <T>(contractName: string, address?: string): Promise<T> => {
   const networkId = await hre.getChainId();
   const factory = await hre.ethers.getContractFactory(contractName);
