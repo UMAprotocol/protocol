@@ -488,8 +488,18 @@ function _getWeb3AndUrlForBot(botConfig) {
   }
 }
 
-async function _getBlockNumberOnChainIdMultiChain(botConfig, chainId) {
-  return await new Web3(botConfig?.environmentVariables[`NODE_URL_${chainId}`]).eth.getBlockNumber();
+function _getBlockNumberOnChainIdMultiChain(botConfig, chainId) {
+  const urls = botConfig?.environmentVariables?.[`NODE_URLS_${chainId}`]
+    ? JSON.parse(botConfig.environmentVariables[`NODE_URLS_${chainId}`])
+    : botConfig?.environmentVariables?.[`NODE_URL_${chainId}`];
+  if (!urls)
+    throw new Error(
+      `ServerlessHub::_getBlockNumberOnChainIdMultiChain NODE_URLS_${chainId} or NODE_URL_${chainId} in botConfig: ${botConfig}`
+    );
+
+  const retryConfig = lodash.castArray(urls).map((url) => ({ url }));
+  const retryWeb3 = new Web3(createBasicProvider(retryConfig));
+  return retryWeb3.eth.getBlockNumber();
 }
 
 // Get the latest block number from either `overrideNodeUrl` or `CUSTOM_NODE_URL`. Used to update the `
