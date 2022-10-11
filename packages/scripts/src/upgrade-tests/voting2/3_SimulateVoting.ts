@@ -31,6 +31,7 @@ interface VotingPriceRequest {
 }
 
 interface PriceRequestData {
+  requesterAddress: string;
   originalAncillaryData: BytesLike;
   proposedPrice: BigNumberish;
   priceRequest: VotingPriceRequest;
@@ -57,7 +58,6 @@ async function main() {
     requesterSigner: Signer,
     priceRequestData: PriceRequestData
   ): Promise<BytesLike> {
-    const requesterAddress = await requesterSigner.getAddress();
     await (
       await optimisticOracleV2
         .connect(requesterSigner)
@@ -74,7 +74,7 @@ async function main() {
       await optimisticOracleV2
         .connect(requesterSigner)
         .proposePrice(
-          requesterAddress,
+          priceRequestData.requesterAddress,
           priceRequestData.priceRequest.identifier,
           priceRequestData.priceRequest.time,
           priceRequestData.originalAncillaryData,
@@ -85,15 +85,19 @@ async function main() {
       await optimisticOracleV2
         .connect(requesterSigner)
         .disputePrice(
-          requesterAddress,
+          priceRequestData.requesterAddress,
           priceRequestData.priceRequest.identifier,
           priceRequestData.priceRequest.time,
           priceRequestData.originalAncillaryData
         )
     ).wait();
-    return await optimisticOracleV2.stampAncillaryData(priceRequestData.originalAncillaryData, requesterAddress);
+    return await optimisticOracleV2.stampAncillaryData(
+      priceRequestData.originalAncillaryData,
+      priceRequestData.requesterAddress
+    );
   }
 
+  // Construct voting structure for commit and reveal.
   async function _createVote(priceRequest: VotingPriceRequest, voter: string, price: string): Promise<CommittedVote> {
     const salt = getRandomSignedInt().toString();
     const roundId = Number(await votingV2.getCurrentRoundId());
@@ -134,6 +138,15 @@ async function main() {
           vote.salt
         )
     ).wait();
+  }
+
+  async function _getOptimisticOracleState(priceRequestData: PriceRequestData): Promise<number> {
+    return optimisticOracleV2.getState(
+      priceRequestData.requesterAddress,
+      priceRequestData.priceRequest.identifier,
+      priceRequestData.priceRequest.time,
+      priceRequestData.originalAncillaryData
+    );
   }
 
   console.log("🎭 Running Voting Simulation after V2 upgrade");
@@ -241,6 +254,7 @@ async function main() {
 
   console.log(" 4. Adding the first data request...");
   const firstRequestData: PriceRequestData = {
+    requesterAddress: await requesterSigner.getAddress(),
     originalAncillaryData: toUtf8Bytes("Really hard question."),
     proposedPrice: "100",
     priceRequest: { identifier: priceIdentifier, time: currentTime } as VotingPriceRequest,
@@ -281,14 +295,7 @@ async function main() {
   currentTime = await votingV2.getCurrentTime();
   console.log(`✅ Time traveled to ${new Date(Number(currentTime.mul(1000))).toUTCString()}.`);
   assert.equal(
-    (
-      await optimisticOracleV2.getState(
-        await requesterSigner.getAddress(),
-        priceIdentifier,
-        firstRequestData.priceRequest.time,
-        firstRequestData.originalAncillaryData
-      )
-    ).toString(),
+    (await _getOptimisticOracleState(firstRequestData)).toString(),
     OptimisticOracleRequestStatesEnum.DISPUTED
   );
   console.log("✅ Verified the first data request is not yet resolved.");
