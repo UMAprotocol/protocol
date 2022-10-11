@@ -287,23 +287,48 @@ async function main() {
   );
   console.log("✅ Verified the first data request is not yet resolved.");
 
-  console.log(" 5. Requesting unstake...");
+  console.log(" 7. Requesting unstake...");
+  assert.equal(
+    (await votingV2.callStatic.getVoterStakePostUpdate(voter1Signer.address)).toString(),
+    voter1Balance.toString()
+  );
+  assert.equal(
+    (await votingV2.callStatic.getVoterStakePostUpdate(voter2Signer.address)).toString(),
+    voter2Balance.toString()
+  );
+  assert.equal(
+    (await votingV2.callStatic.getVoterStakePostUpdate(voter3Signer.address)).toString(),
+    voter3Balance.toString()
+  );
+  console.log("✅ Verified that no slashing has been applied to staked balances.");
   await (await votingV2.connect(voter1Signer).requestUnstake(voter1Balance)).wait();
   await (await votingV2.connect(voter2Signer).requestUnstake(voter2Balance)).wait();
   await (await votingV2.connect(voter3Signer).requestUnstake(voter3Balance)).wait();
   console.log("✅ Voters requested unstake of all UMA!");
 
-  console.log(" 6. Waiting for unstake cooldown...");
+  console.log(" 8. Waiting for unstake cooldown...");
   await increaseEvmTime(Number(unstakeCoolDown));
   console.log(`✅ Unstake colldown of ${Number(unstakeCoolDown)} seconds has passed!`);
 
-  console.log(" 7. Executing unstake");
+  console.log(" 9. Executing unstake");
   await (await votingV2.connect(voter1Signer).executeUnstake()).wait();
   await (await votingV2.connect(voter2Signer).executeUnstake()).wait();
   await (await votingV2.connect(voter3Signer).executeUnstake()).wait();
   console.log("✅ Voters have unstaked all UMA!");
 
-  console.log(" 8. Returning all UMA to the foundation...");
+  console.log(" 10. Claiming staking rewards...");
+  await (await votingV2.connect(voter1Signer).withdrawRewards()).wait();
+  await (await votingV2.connect(voter2Signer).withdrawRewards()).wait();
+  await (await votingV2.connect(voter3Signer).withdrawRewards()).wait();
+  const voter1Rewards = (await votingToken.balanceOf(voter1Signer.address)).sub(voter1Balance);
+  const voter2Rewards = (await votingToken.balanceOf(voter2Signer.address)).sub(voter2Balance);
+  const voter3Rewards = (await votingToken.balanceOf(voter3Signer.address)).sub(voter3Balance);
+  console.log(`✅ Voter 1 has claimed ${formatEther(voter1Rewards)} UMA.`);
+  console.log(`✅ Voter 2 has claimed ${formatEther(voter2Rewards)} UMA.`);
+  console.log(`✅ Voter 3 has claimed ${formatEther(voter3Rewards)} UMA.`);
+  // TODO: verify claimed reward amounts.
+
+  console.log(" 11. Returning all UMA to the foundation...");
   await votingToken
     .connect(requesterSigner)
     .transfer(foundationSigner.address, await votingToken.balanceOf(requesterSigner.address));
