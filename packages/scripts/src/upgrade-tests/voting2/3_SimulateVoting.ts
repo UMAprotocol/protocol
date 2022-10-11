@@ -1,10 +1,17 @@
 const hre = require("hardhat");
 const assert = require("assert").strict;
 
-const { formatBytes32String, formatEther, keccak256, parseEther, toUtf8Bytes } = hre.ethers.utils;
-const abiCoder = new hre.ethers.utils.AbiCoder();
+const { formatBytes32String, formatEther, parseEther, toUtf8Bytes } = hre.ethers.utils;
 
-import { interfaceName } from "@uma/common";
+import { BigNumberish, BytesLike, Signer } from "ethers";
+
+import {
+  computeVoteHashAncillary,
+  getRandomSignedInt,
+  interfaceName,
+  OptimisticOracleRequestStatesEnum,
+  PriceRequestStatusEnum,
+} from "@uma/common";
 import {
   FinderEthers,
   OptimisticOracleV2Ethers,
@@ -13,9 +20,22 @@ import {
   VotingV2Ethers,
 } from "@uma/contracts-node";
 
-import { FOUNDATION_WALLET, getContractInstance } from "../../utils/contracts";
+import { FOUNDATION_WALLET, getContractInstance, SECONDS_PER_DAY } from "../../utils/contracts";
 import { increaseEvmTime } from "../../utils/utils";
 import { isVotingV2Instance } from "./migrationUtils";
+
+interface PriceRequest {
+  identifier: BytesLike;
+  time: BigNumberish;
+  ancillaryData: BytesLike;
+}
+
+interface CommittedVote {
+  priceRequest: PriceRequest;
+  salt: BigNumberish;
+  price: BigNumberish;
+  voteHash: BytesLike;
+}
 
 // Initial voter balances relative to GAT.
 const voter1RelativeGatFunding = parseEther("0.6");
@@ -26,6 +46,48 @@ const voter3RelativeGatFunding = parseEther("0.5");
 const priceIdentifier = formatBytes32String("YES_OR_NO_QUERY");
 
 async function main() {
+  async function _createVote(priceRequest: PriceRequest, voter: string, price: string): Promise<CommittedVote> {
+    const salt = getRandomSignedInt().toString();
+    const roundId = Number(await votingV2.getCurrentRoundId());
+    const voteHash = computeVoteHashAncillary({
+      price,
+      salt,
+      account: voter,
+      time: Number(priceRequest.time),
+      roundId,
+      identifier: priceRequest.identifier.toString(),
+      ancillaryData: priceRequest.ancillaryData.toString(),
+    });
+    return <CommittedVote>{ priceRequest, salt, price, voteHash };
+  }
+
+  async function _commitVote(signer: Signer, vote: CommittedVote): Promise<void> {
+    (
+      await votingV2
+        .connect(signer)
+        .commitVote(
+          vote.priceRequest.identifier,
+          vote.priceRequest.time,
+          vote.priceRequest.ancillaryData,
+          vote.voteHash
+        )
+    ).wait();
+  }
+
+  async function _revealVote(signer: Signer, vote: CommittedVote): Promise<void> {
+    (
+      await votingV2
+        .connect(signer)
+        .revealVote(
+          vote.priceRequest.identifier,
+          vote.priceRequest.time,
+          vote.price,
+          vote.priceRequest.ancillaryData,
+          vote.salt
+        )
+    ).wait();
+  }
+
   console.log("🎭 Running Voting Simulation after V2 upgrade");
 
   if (hre.network.name != "localhost") throw new Error("Voting should be only tested in simulation!");
@@ -59,39 +121,50 @@ async function main() {
   )
     throw new Error("Foundation balance too low for simulation!");
 
-  const foundationSigner = await hre.ethers.getSigner(FOUNDATION_WALLET);
-  const [requesterSigner, voter1Signer, voter2Signer, voter3Signer] = await hre.ethers.getSigners();
+  const foundationSigner: Signer = await hre.ethers.getSigner(FOUNDATION_WALLET);
+  const [requesterSigner, voter1Signer, voter2Signer, voter3Signer]: Signer[] = await hre.ethers.getSigners();
 
   let [requesterBalance, voter1Balance, voter2Balance, voter3Balance] = await Promise.all(
-    [requesterSigner, voter1Signer, voter2Signer, voter3Signer].map((signer) => {
-      return votingToken.balanceOf(signer.address);
+    [requesterSigner, voter1Signer, voter2Signer, voter3Signer].map(async (signer) => {
+      return votingToken.balanceOf(await signer.getAddress());
     })
   );
 
   // Transfering required balances. This assumes recipient accounts did not have more than target amounts before
   // simulation.
   await (
-    await votingToken.connect(foundationSigner).transfer(requesterSigner.address, finalFee.mul(8).sub(requesterBalance))
+    await votingToken
+      .connect(foundationSigner)
+      .transfer(await requesterSigner.getAddress(), finalFee.mul(8).sub(requesterBalance))
   ).wait();
   await (
     await votingToken
       .connect(foundationSigner)
-      .transfer(voter1Signer.address, gat.mul(voter1RelativeGatFunding).div(parseEther("1").sub(voter1Balance)))
+      .transfer(
+        await voter1Signer.getAddress(),
+        gat.mul(voter1RelativeGatFunding).div(parseEther("1").sub(voter1Balance))
+      )
   ).wait();
   await (
     await votingToken
       .connect(foundationSigner)
-      .transfer(voter2Signer.address, gat.mul(voter2RelativeGatFunding).div(parseEther("1").sub(voter2Balance)))
+      .transfer(
+        await voter2Signer.getAddress(),
+        gat.mul(voter2RelativeGatFunding).div(parseEther("1").sub(voter2Balance))
+      )
   ).wait();
   await (
     await votingToken
       .connect(foundationSigner)
-      .transfer(voter3Signer.address, gat.mul(voter3RelativeGatFunding).div(parseEther("1").sub(voter3Balance)))
+      .transfer(
+        await voter3Signer.getAddress(),
+        gat.mul(voter3RelativeGatFunding).div(parseEther("1").sub(voter3Balance))
+      )
   ).wait();
 
   [requesterBalance, voter1Balance, voter2Balance, voter3Balance] = await Promise.all(
-    [requesterSigner, voter1Signer, voter2Signer, voter3Signer].map((signer) => {
-      return votingToken.balanceOf(signer.address);
+    [requesterSigner, voter1Signer, voter2Signer, voter3Signer].map(async (signer) => {
+      return votingToken.balanceOf(await signer.getAddress());
     })
   );
 
@@ -119,39 +192,79 @@ async function main() {
   console.log(`✅ Time traveled to ${new Date(Number(firstRequestTimestamp.mul(1000))).toUTCString()}.`);
 
   console.log(" 4. Adding the first data request...");
-  const firstOOAncillaryData = toUtf8Bytes("Really hard question.");
+  const firstAncillaryData = toUtf8Bytes("Really hard question.");
   await (
     await optimisticOracleV2
       .connect(requesterSigner)
-      .requestPrice(priceIdentifier, firstRequestTimestamp, firstOOAncillaryData, votingToken.address, 0)
+      .requestPrice(priceIdentifier, firstRequestTimestamp, firstAncillaryData, votingToken.address, 0)
   ).wait();
   console.log("✅ Submitted data request to Optimistic Oracle.");
   await (await votingToken.connect(requesterSigner).approve(optimisticOracleV2.address, finalFee.mul(4))).wait();
   console.log("✅ Approved proposal & dispute bonds.");
+  const firstProposedPrice = "100";
   await (
     await optimisticOracleV2
       .connect(requesterSigner)
-      .proposePrice(requesterSigner.address, priceIdentifier, firstRequestTimestamp, firstOOAncillaryData, 100)
+      .proposePrice(
+        await requesterSigner.getAddress(),
+        priceIdentifier,
+        firstRequestTimestamp,
+        firstAncillaryData,
+        firstProposedPrice
+      )
   ).wait();
-  console.log("✅ Proposed price to Optimistic Oracle.");
+  console.log(`✅ Proposed ${firstProposedPrice} to Optimistic Oracle.`);
   await (
     await optimisticOracleV2
       .connect(requesterSigner)
-      .disputePrice(requesterSigner.address, priceIdentifier, firstRequestTimestamp, firstOOAncillaryData)
+      .disputePrice(await requesterSigner.getAddress(), priceIdentifier, firstRequestTimestamp, firstAncillaryData)
   ).wait();
-  console.log("✅ Disputed price to Optimistic Oracle.");
-  const firstVotingAncillaryData = await optimisticOracleV2.stampAncillaryData(
-    firstOOAncillaryData,
-    requesterSigner.address
+  console.log("✅ Disputed proposal on Optimistic Oracle.");
+  const firstPriceRequest = <PriceRequest>{
+    identifier: priceIdentifier,
+    time: firstRequestTimestamp,
+    ancillaryData: await optimisticOracleV2.stampAncillaryData(firstAncillaryData, await requesterSigner.getAddress()),
+  };
+  assert.equal(
+    (await votingV2.getPriceRequestStatuses([firstPriceRequest]))[0].status.toString(),
+    PriceRequestStatusEnum.FUTURE
   );
-  const firstRequestId = keccak256(
-    abiCoder.encode(["bytes32", "uint256", "bytes"], [priceIdentifier, firstRequestTimestamp, firstVotingAncillaryData])
+  console.log("✅ Verified the first data request enqueued for future voting round.");
+
+  console.log(" 5. Waiting till the start of next voting cycle...");
+  await increaseEvmTime(
+    Number((await votingV2.getRoundEndTime(await votingV2.getCurrentRoundId())).sub(await votingV2.getCurrentTime()))
   );
-  const firstPriceRequest = await votingV2.priceRequests(firstRequestId);
-  assert.equal(firstPriceRequest.identifier, priceIdentifier);
-  assert.equal(firstPriceRequest.time.toString(), firstRequestTimestamp.toString());
-  assert.equal(firstPriceRequest.ancillaryData, firstVotingAncillaryData);
-  console.log(`✅ Verified the first data request submitted for voting, id ${firstRequestId}`);
+  const currentTime = await votingV2.getCurrentTime();
+  console.log(`✅ Time traveled to ${new Date(Number(currentTime.mul(1000))).toUTCString()}.`);
+  assert.equal(
+    (await votingV2.getPriceRequestStatuses([firstPriceRequest]))[0].status.toString(),
+    PriceRequestStatusEnum.ACTIVE
+  );
+  console.log("✅ Verified the first data request can be voted in current round.");
+
+  console.log(" 6. Not reaching quorum on first data request...");
+  const voter1FirstVote = await _createVote(firstPriceRequest, await voter1Signer.getAddress(), firstProposedPrice);
+  await _commitVote(voter1Signer, voter1FirstVote);
+  console.log("✅ First voter committed.");
+  await increaseEvmTime(SECONDS_PER_DAY);
+  console.log(`✅ Time traveled to ${new Date(Number(currentTime.mul(1000))).toUTCString()}.`);
+  await _revealVote(voter1Signer, voter1FirstVote);
+  console.log("✅ First voter revealed.");
+  await increaseEvmTime(SECONDS_PER_DAY);
+  console.log(`✅ Time traveled to ${new Date(Number(currentTime.mul(1000))).toUTCString()}.`);
+  assert.equal(
+    (
+      await optimisticOracleV2.getState(
+        await requesterSigner.getAddress(),
+        priceIdentifier,
+        firstRequestTimestamp,
+        firstAncillaryData
+      )
+    ).toString(),
+    OptimisticOracleRequestStatesEnum.DISPUTED
+  );
+  console.log("✅ Verified the first data request is not yet resolved.");
 
   console.log(" 5. Requesting unstake...");
   await (await votingV2.connect(voter1Signer).requestUnstake(voter1Balance)).wait();
@@ -172,16 +285,16 @@ async function main() {
   console.log(" 8. Returning all UMA to the foundation...");
   await votingToken
     .connect(requesterSigner)
-    .transfer(foundationSigner.address, await votingToken.balanceOf(requesterSigner.address));
+    .transfer(await foundationSigner.getAddress(), await votingToken.balanceOf(await requesterSigner.getAddress()));
   await votingToken
     .connect(voter1Signer)
-    .transfer(foundationSigner.address, await votingToken.balanceOf(voter1Signer.address));
+    .transfer(await foundationSigner.getAddress(), await votingToken.balanceOf(await voter1Signer.getAddress()));
   await votingToken
     .connect(voter2Signer)
-    .transfer(foundationSigner.address, await votingToken.balanceOf(voter2Signer.address));
+    .transfer(await foundationSigner.getAddress(), await votingToken.balanceOf(await voter2Signer.getAddress()));
   await votingToken
     .connect(voter3Signer)
-    .transfer(foundationSigner.address, await votingToken.balanceOf(voter3Signer.address));
+    .transfer(await foundationSigner.getAddress(), await votingToken.balanceOf(await voter3Signer.getAddress()));
 
   foundationBalance = await votingToken.balanceOf(FOUNDATION_WALLET);
   console.log(`✅ Foundation has ${formatEther(foundationBalance)} UMA.`);
