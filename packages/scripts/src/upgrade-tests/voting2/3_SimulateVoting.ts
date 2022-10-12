@@ -335,7 +335,8 @@ async function main() {
 
   console.log(" 8. Waiting for unstake cooldown...");
   await increaseEvmTime(Number(unstakeCoolDown));
-  console.log(`✅ Unstake colldown of ${Number(unstakeCoolDown)} seconds has passed!`);
+  currentTime = await votingV2.getCurrentTime();
+  console.log(`✅ Time traveled to ${new Date(Number(currentTime.mul(1000))).toUTCString()}.`);
 
   console.log(" 9. Executing unstake");
   await (await votingV2.connect(voter1Signer).executeUnstake()).wait();
@@ -479,7 +480,8 @@ async function main() {
 
   console.log(" 18. Waiting for unstake cooldown...");
   await increaseEvmTime(Number(unstakeCoolDown));
-  console.log(`✅ Unstake colldown of ${Number(unstakeCoolDown)} seconds has passed!`);
+  currentTime = await votingV2.getCurrentTime();
+  console.log(`✅ Time traveled to ${new Date(Number(currentTime.mul(1000))).toUTCString()}.`);
 
   console.log(" 19. Executing unstake");
   await (await votingV2.connect(voter1Signer).executeUnstake()).wait();
