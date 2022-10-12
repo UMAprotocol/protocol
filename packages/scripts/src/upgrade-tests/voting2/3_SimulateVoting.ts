@@ -49,7 +49,7 @@ const voter2RelativeGatFunding = parseEther("0.55");
 const voter3RelativeGatFunding = parseEther("0.5");
 
 // Tested price identifier should be whitelisted.
-const priceIdentifier = formatBytes32String("YES_OR_NO_QUERY");
+const priceIdentifier = formatBytes32String("NUMERICAL");
 
 async function main() {
   // Initiates data request through Optimistic Oracle by requesting, proposing and diputing.
@@ -273,7 +273,7 @@ async function main() {
 
   console.log(" 4. Adding the first data request...");
   const firstRequestData: PriceRequestData = {
-    originalAncillaryData: toUtf8Bytes("Really hard question."),
+    originalAncillaryData: toUtf8Bytes(`q:"Really hard question, maybe 100, maybe 90?"`),
     proposedPrice: "100",
     priceRequest: { identifier: priceIdentifier, time: currentTime } as VotingPriceRequest,
   };
@@ -383,7 +383,7 @@ async function main() {
 
   console.log(" 13. Adding the second data request...");
   const secondRequestData: PriceRequestData = {
-    originalAncillaryData: toUtf8Bytes("Easy question."),
+    originalAncillaryData: toUtf8Bytes(`q:"How much is 60 times two?"`),
     proposedPrice: "120",
     priceRequest: { identifier: priceIdentifier, time: currentTime } as VotingPriceRequest,
   };
