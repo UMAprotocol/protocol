@@ -43,6 +43,10 @@ interface CommittedVote {
   voteHash: BytesLike;
 }
 
+// Constants hardcoded in the SlashingLibrary, needs to be updated here upon change.
+const wrongVoteSlashPerToken = parseEther("0.0016");
+const noVoteSlashPerToken = parseEther("0.0016");
+
 // Initial voter balances relative to GAT.
 const voter1RelativeGatFunding = parseEther("0.6");
 const voter2RelativeGatFunding = parseEther("0.55");
@@ -467,15 +471,33 @@ async function main() {
   assert.equal((await _settleAndGetPrice(secondRequestData)).toString(), correctSecondPrice);
   console.log(" ✅ Verified that correct prices are available to the requester.");
 
-  console.log(" 17. Requesting unstake...");
+  console.log(" 17. Verifying slashing...");
+  // Voter 2 voted wrong and Voter 3 missed the first request.
+  const expectedVoter2FirstSlash = voter2Balance.mul(wrongVoteSlashPerToken).div(parseEther("1"));
+  const expectedVoter3FirstSlash = voter3Balance.mul(noVoteSlashPerToken).div(parseEther("1"));
+  // Voter 2 missed the second request.
+  const expectedVoter2SecondSlash = voter2Balance.mul(noVoteSlashPerToken).div(parseEther("1"));
+  // Voter 1 gets all the slashing from other stakers in the first request.
+  const expectedVoter1FirstSlash = expectedVoter2FirstSlash.add(expectedVoter3FirstSlash).mul("-1");
+  // Voter 1 and 3 shares slashing from Voter 2 in the second request.
+  const expectedVoter1SecondSlash = expectedVoter2SecondSlash
+    .mul(voter1Balance)
+    .div(voter1Balance.add(voter3Balance))
+    .mul("-1");
+  const expectedVoter3SecondSlash = expectedVoter2SecondSlash.add(expectedVoter1SecondSlash).mul("-1");
+
   const voter1Slash = voter1Balance.sub(await votingV2.callStatic.getVoterStakePostUpdate(voter1Signer.address));
   const voter2Slash = voter2Balance.sub(await votingV2.callStatic.getVoterStakePostUpdate(voter2Signer.address));
   const voter3Slash = voter3Balance.sub(await votingV2.callStatic.getVoterStakePostUpdate(voter3Signer.address));
+  assert.equal(voter1Slash.toString(), expectedVoter1FirstSlash.add(expectedVoter1SecondSlash).toString());
+  assert.equal(voter2Slash.toString(), expectedVoter2FirstSlash.add(expectedVoter2SecondSlash).toString());
+  assert.equal(voter3Slash.toString(), expectedVoter3FirstSlash.add(expectedVoter3SecondSlash).toString());
+  console.log(` ✅ Verified the slashing amounts are correct.`);
   console.log(` ✅ Voter 1 was slashed by ${formatEther(voter1Slash)} UMA.`);
   console.log(` ✅ Voter 2 was slashed by ${formatEther(voter2Slash)} UMA.`);
   console.log(` ✅ Voter 3 was slashed by ${formatEther(voter3Slash)} UMA.`);
-  // TODO: verify slashing amounts.
 
+  console.log(" 18. Requesting unstake...");
   await (
     await votingV2
       .connect(voter1Signer)
@@ -493,18 +515,18 @@ async function main() {
   ).wait();
   console.log(" ✅ Voters requested unstake of all UMA.");
 
-  console.log(" 18. Waiting for unstake cooldown...");
+  console.log(" 19. Waiting for unstake cooldown...");
   await increaseEvmTime(Number(unstakeCoolDown));
   currentTime = await votingV2.getCurrentTime();
   console.log(` ✅ Time traveled to ${new Date(Number(currentTime.mul(1000))).toUTCString()}.`);
 
-  console.log(" 19. Executing unstake...");
+  console.log(" 20. Executing unstake...");
   await (await votingV2.connect(voter1Signer).executeUnstake()).wait();
   await (await votingV2.connect(voter2Signer).executeUnstake()).wait();
   await (await votingV2.connect(voter3Signer).executeUnstake()).wait();
   console.log(" ✅ Voters have unstaked all UMA.");
 
-  console.log(" 20. Returning all UMA to the foundation...");
+  console.log(" 21. Returning all UMA to the foundation...");
   await votingToken
     .connect(requesterSigner)
     .transfer(foundationSigner.address, await votingToken.balanceOf(requesterSigner.address));
