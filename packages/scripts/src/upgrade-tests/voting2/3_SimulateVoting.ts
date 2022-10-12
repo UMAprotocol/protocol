@@ -143,6 +143,37 @@ async function main() {
     );
   }
 
+  // Replicates Optimistic Oracle settleAndGetPrice, but returns price when called from EOA.
+  async function _settleAndGetPrice(priceRequestData: PriceRequestData): Promise<BigNumberish> {
+    if (
+      (
+        await optimisticOracleV2.getState(
+          requesterSigner.address,
+          priceRequestData.priceRequest.identifier,
+          priceRequestData.priceRequest.time,
+          priceRequestData.originalAncillaryData
+        )
+      ).toString() !== OptimisticOracleRequestStatesEnum.SETTLED
+    ) {
+      await optimisticOracleV2
+        .connect(requesterSigner)
+        .settle(
+          requesterSigner.address,
+          priceRequestData.priceRequest.identifier,
+          priceRequestData.priceRequest.time,
+          priceRequestData.originalAncillaryData
+        );
+    }
+    return (
+      await optimisticOracleV2.getRequest(
+        requesterSigner.address,
+        priceRequestData.priceRequest.identifier,
+        priceRequestData.priceRequest.time,
+        priceRequestData.originalAncillaryData
+      )
+    ).resolvedPrice;
+  }
+
   console.log("🎭 Running Voting Simulation after V2 upgrade");
 
   if (hre.network.name != "localhost") throw new Error("Voting should be only tested in simulation!");
@@ -266,11 +297,7 @@ async function main() {
   console.log("✅ Verified the first data request can be voted in current round.");
 
   console.log(" 6. Not reaching quorum on first data request...");
-  let voter1FirstRequestVote = await _createVote(
-    firstRequestData.priceRequest,
-    voter1Signer.address,
-    firstRequestData.proposedPrice.toString()
-  );
+  let voter1FirstRequestVote = await _createVote(firstRequestData.priceRequest, voter1Signer.address, "90");
   await _commitVote(voter1Signer, voter1FirstRequestVote);
   console.log("✅ Voter 1 committed.");
   await increaseEvmTime(SECONDS_PER_DAY);
@@ -372,12 +399,12 @@ async function main() {
   console.log("✅ Verified the second data request can be voted in current round.");
 
   console.log(" 15. Resolving both data requests...");
-  voter1FirstRequestVote = await _createVote(
+  voter1FirstRequestVote = await _createVote(firstRequestData.priceRequest, voter1Signer.address, "90");
+  const voter2FirstRequestVote = await _createVote(
     firstRequestData.priceRequest,
-    voter1Signer.address,
+    voter2Signer.address,
     firstRequestData.proposedPrice.toString()
   );
-  const voter2FirstRequestVote = await _createVote(firstRequestData.priceRequest, voter2Signer.address, "90");
   const voter1SecondRequestVote = await _createVote(
     secondRequestData.priceRequest,
     voter1Signer.address,
@@ -416,7 +443,16 @@ async function main() {
   );
   console.log("✅ Verified both data requests are now resolved.");
 
-  console.log(" 16. Requesting unstake...");
+  console.log(" 16. Settling request...");
+  // Voter 1 voted on both requests and since it has the largest stake its voted price should be the right one as only
+  // two voters participated in each vote.
+  const correctFirstPrice = voter1FirstRequestVote.price.toString();
+  const correctSecondPrice = voter1SecondRequestVote.price.toString();
+  assert.equal((await _settleAndGetPrice(firstRequestData)).toString(), correctFirstPrice);
+  assert.equal((await _settleAndGetPrice(secondRequestData)).toString(), correctSecondPrice);
+  console.log("✅ Verified that correct price available to requester!");
+
+  console.log(" 17. Requesting unstake...");
   const voter1Slash = voter1Balance.sub(await votingV2.callStatic.getVoterStakePostUpdate(voter1Signer.address));
   const voter2Slash = voter2Balance.sub(await votingV2.callStatic.getVoterStakePostUpdate(voter2Signer.address));
   const voter3Slash = voter3Balance.sub(await votingV2.callStatic.getVoterStakePostUpdate(voter3Signer.address));
@@ -441,17 +477,17 @@ async function main() {
   ).wait();
   console.log("✅ Voters requested unstake of all UMA!");
 
-  console.log(" 17. Waiting for unstake cooldown...");
+  console.log(" 18. Waiting for unstake cooldown...");
   await increaseEvmTime(Number(unstakeCoolDown));
   console.log(`✅ Unstake colldown of ${Number(unstakeCoolDown)} seconds has passed!`);
 
-  console.log(" 18. Executing unstake");
+  console.log(" 19. Executing unstake");
   await (await votingV2.connect(voter1Signer).executeUnstake()).wait();
   await (await votingV2.connect(voter2Signer).executeUnstake()).wait();
   await (await votingV2.connect(voter3Signer).executeUnstake()).wait();
   console.log("✅ Voters have unstaked all UMA!");
 
-  console.log(" 19. Returning all UMA to the foundation...");
+  console.log(" 20. Returning all UMA to the foundation...");
   await votingToken
     .connect(requesterSigner)
     .transfer(foundationSigner.address, await votingToken.balanceOf(requesterSigner.address));
