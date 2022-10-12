@@ -490,7 +490,7 @@ function _getWeb3AndUrlForBot(botConfig) {
 
 function _getBlockNumberOnChainIdMultiChain(botConfig, chainId) {
   const urls = botConfig?.environmentVariables?.[`NODE_URLS_${chainId}`]
-    ? JSON.parse(botConfig.environmentVariables[`NODE_URLS_${chainId}`])
+    ? botConfig.environmentVariables[`NODE_URLS_${chainId}`]
     : botConfig?.environmentVariables?.[`NODE_URL_${chainId}`];
   if (!urls)
     throw new Error(
