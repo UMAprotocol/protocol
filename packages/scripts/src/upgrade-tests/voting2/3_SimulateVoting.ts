@@ -1,9 +1,9 @@
 const hre = require("hardhat");
 const assert = require("assert").strict;
 
-const { formatBytes32String, formatEther, parseEther, toUtf8Bytes } = hre.ethers.utils;
+const { formatBytes32String, formatEther, parseEther, parseUnits, toUtf8Bytes } = hre.ethers.utils;
 
-import { BigNumberish, BytesLike } from "ethers";
+import { BigNumber, BigNumberish, BytesLike } from "ethers";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 
 import {
@@ -43,6 +43,14 @@ interface CommittedVote {
   voteHash: BytesLike;
 }
 
+interface RewardTrackers {
+  lastUpdateTimestamp: BigNumber;
+  staked: [BigNumber, BigNumber, BigNumber];
+  unclaimedRewards: [BigNumber, BigNumber, BigNumber];
+}
+
+const zeroBigNumber: BigNumber = hre.ethers.BigNumber.from(0);
+
 // Constants hardcoded in the SlashingLibrary, needs to be updated here upon change.
 const wrongVoteSlashPerToken = parseEther("0.0016");
 const noVoteSlashPerToken = parseEther("0.0016");
@@ -56,6 +64,12 @@ const voter3RelativeGatFunding = parseEther("0.5");
 const priceIdentifier = formatBytes32String("NUMERICAL");
 
 async function main() {
+  const rewardTrackers: RewardTrackers = {
+    lastUpdateTimestamp: zeroBigNumber,
+    staked: [zeroBigNumber, zeroBigNumber, zeroBigNumber],
+    unclaimedRewards: [zeroBigNumber, zeroBigNumber, zeroBigNumber],
+  };
+
   // Initiates data request through Optimistic Oracle by requesting, proposing and diputing.
   // Returns stamped ancillary data to be used in voting.
   async function _requestProposeDispute(priceRequestData: PriceRequestData): Promise<BytesLike> {
@@ -178,6 +192,35 @@ async function main() {
     ).resolvedPrice;
   }
 
+  // Updates accrued rewards for all stakers whenever anyone stakes/unstakes. This is slightly different form actual
+  // contract implementation where only relevant staker's rewards get updated and could cause difference at higher
+  // precision. Thus, _reducePrecision function is used in assertions.
+  async function _updateRewardTrackers(stakingVoterIndex: number, netStakedAmount: BigNumber): Promise<void> {
+    const currentTime = await votingV2.getCurrentTime();
+    const totalStaked = rewardTrackers.staked.reduce<BigNumber>(
+      (currentTotal, currentVoterAmount) => currentTotal.add(currentVoterAmount),
+      zeroBigNumber
+    );
+    const totalPeriodRewards =
+      !totalStaked.isZero() && !rewardTrackers.lastUpdateTimestamp.isZero()
+        ? currentTime.sub(rewardTrackers.lastUpdateTimestamp).mul(emissionRate)
+        : zeroBigNumber;
+    if (!totalPeriodRewards.isZero()) {
+      rewardTrackers.staked.forEach((voterStake, voterIndex) => {
+        const voterPeriodRewards = totalPeriodRewards.mul(voterStake).div(totalStaked);
+        rewardTrackers.unclaimedRewards[voterIndex] = rewardTrackers.unclaimedRewards[voterIndex].add(
+          voterPeriodRewards
+        );
+      });
+    }
+    rewardTrackers.lastUpdateTimestamp = currentTime;
+    rewardTrackers.staked[stakingVoterIndex] = rewardTrackers.staked[stakingVoterIndex].add(netStakedAmount);
+  }
+
+  function _reducePrecision(rawValue: BigNumber, precisionLost: number): BigNumber {
+    return rawValue.div(parseUnits("1", precisionLost)).mul(parseUnits("1", precisionLost));
+  }
+
   console.log("🎭 Running Voting Simulation after V2 upgrade...");
 
   if (hre.network.name != "localhost") throw new Error("Voting should be only tested in simulation!");
@@ -192,6 +235,7 @@ async function main() {
 
   const votingV2 = await getContractInstance<VotingV2Ethers>("VotingV2", votingV2Address);
 
+  const emissionRate = await votingV2.emissionRate();
   const gat = await votingV2.gat();
   const unstakeCoolDown = await votingV2.unstakeCoolDown();
   const finalFee = (await store.computeFinalFee(votingToken.address)).rawValue;
@@ -264,8 +308,11 @@ async function main() {
   console.log(" ✅ Approvals on the voting contract done.");
 
   await (await votingV2.connect(voter1Signer).stake(voter1Balance)).wait();
+  await _updateRewardTrackers(0, voter1Balance);
   await (await votingV2.connect(voter2Signer).stake(voter2Balance)).wait();
+  await _updateRewardTrackers(1, voter2Balance);
   await (await votingV2.connect(voter3Signer).stake(voter3Balance)).wait();
+  await _updateRewardTrackers(2, voter3Balance);
   console.log(" ✅ Voters have staked all their UMA.");
 
   console.log(" 3. Waiting till the start of the next voting cycle...");
@@ -340,8 +387,11 @@ async function main() {
   console.log(" ✅ Verified that no slashing has been applied to staked balances.");
 
   await (await votingV2.connect(voter1Signer).requestUnstake(voter1Balance)).wait();
+  await _updateRewardTrackers(0, voter1Balance.mul("-1"));
   await (await votingV2.connect(voter2Signer).requestUnstake(voter2Balance)).wait();
+  await _updateRewardTrackers(1, voter2Balance.mul("-1"));
   await (await votingV2.connect(voter3Signer).requestUnstake(voter3Balance)).wait();
+  await _updateRewardTrackers(2, voter3Balance.mul("-1"));
   console.log(" ✅ Voters requested unstake of all UMA.");
 
   console.log(" 8. Waiting for unstake cooldown...");
@@ -365,7 +415,23 @@ async function main() {
   console.log(` ✅ Voter 1 has claimed ${formatEther(voter1Rewards)} UMA.`);
   console.log(` ✅ Voter 2 has claimed ${formatEther(voter2Rewards)} UMA.`);
   console.log(` ✅ Voter 3 has claimed ${formatEther(voter3Rewards)} UMA.`);
-  // TODO: verify claimed reward amounts.
+
+  assert.equal(
+    _reducePrecision(voter1Rewards, 10).toString(),
+    _reducePrecision(rewardTrackers.unclaimedRewards[0], 10).toString()
+  );
+  assert.equal(
+    _reducePrecision(voter2Rewards, 10).toString(),
+    _reducePrecision(rewardTrackers.unclaimedRewards[1], 10).toString()
+  );
+  assert.equal(
+    _reducePrecision(voter3Rewards, 10).toString(),
+    _reducePrecision(rewardTrackers.unclaimedRewards[2], 10).toString()
+  );
+  rewardTrackers.unclaimedRewards[0] = zeroBigNumber;
+  rewardTrackers.unclaimedRewards[1] = zeroBigNumber;
+  rewardTrackers.unclaimedRewards[2] = zeroBigNumber;
+  console.log(` ✅ Verified that all reward amounts are correct.`);
 
   console.log(" 11. Voters are restaking original balances...");
   await (await votingToken.connect(voter1Signer).approve(votingV2.address, voter1Balance)).wait();
@@ -526,7 +592,13 @@ async function main() {
   await (await votingV2.connect(voter3Signer).executeUnstake()).wait();
   console.log(" ✅ Voters have unstaked all UMA.");
 
-  console.log(" 21. Returning all UMA to the foundation...");
+  console.log(" 21. Claiming staking rewards...");
+  await (await votingV2.connect(voter1Signer).withdrawRewards()).wait();
+  await (await votingV2.connect(voter2Signer).withdrawRewards()).wait();
+  await (await votingV2.connect(voter3Signer).withdrawRewards()).wait();
+  // TODO: verify claimed reward amounts.
+
+  console.log(" 22. Returning all UMA to the foundation...");
   await votingToken
     .connect(requesterSigner)
     .transfer(foundationSigner.address, await votingToken.balanceOf(requesterSigner.address));
