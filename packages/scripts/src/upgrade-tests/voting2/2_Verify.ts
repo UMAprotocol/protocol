@@ -170,7 +170,18 @@ async function main() {
     console.log("✅ New voting keeps track of old voting contract!");
   }
 
-  console.log("\n✅ Verified! The upgrade process ends here.");
+  if (!(await isVotingV2Instance(votingV2.address))) {
+    console.log("\n✅ Verified! The downgrade process ends here.");
+  } else {
+    console.log("\n✅ Verified the upgraded contract state!");
+    console.log("\n❓ OPTIONAL: Simulate basic voting functionality in upgraded state with the following command:");
+    console.log(
+      formatIndentation(
+        `
+      yarn hardhat run ./src/upgrade-tests/voting2/3_SimulateVoting.ts --network localhost`
+      )
+    );
+  }
 
   console.log(
     "\n❓ OPTIONAL: Propose the downgrade to the previous governor, voting and proposer contracts by running the following command:"
