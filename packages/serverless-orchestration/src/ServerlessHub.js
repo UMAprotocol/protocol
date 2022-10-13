@@ -231,7 +231,7 @@ hub.post("/", async (req, res) => {
       if (botConfig.spokeUrlName)
         logger.debug({
           at: "ServerlessHub",
-          message: `Attempting to execute serverless spoke using named spoke ${botConfig.spokeUrlName}`,
+          message: `Attempting to execute ${botName} serverless spoke using named spoke ${botConfig.spokeUrlName}`,
         });
       const spokeUrl = getSpokeUrl(botConfig.spokeUrlName);
       promiseArray.push(
@@ -268,6 +268,7 @@ hub.post("/", async (req, res) => {
       });
       let rejectedRetryPromiseArray = [];
       retriedOutputs.forEach((botName) => {
+        const spokeUrl = getSpokeUrl(botConfigs[botName].spokeUrlName);
         rejectedRetryPromiseArray.push(
           Promise.race([
             _executeServerlessSpoke(spokeUrl, botConfigs[botName]),
