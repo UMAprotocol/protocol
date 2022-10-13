@@ -181,33 +181,32 @@ async function main() {
       yarn hardhat run ./src/upgrade-tests/voting2/3_SimulateVoting.ts --network localhost`
       )
     );
+    console.log(
+      "\n❓ OPTIONAL: Propose the downgrade to the previous governor, voting and proposer contracts by running the following command:"
+    );
+    console.log(
+      "⚠️  This downgrade command is intended for testing purposes and should only be used against a fork or testnet. ⚠️"
+    );
+    console.log(
+      formatIndentation(
+        `
+    ${TEST_DOWNGRADE}=1 \\
+    ${EMERGENCY_PROPOSAL}=1 \\
+    ${OLD_CONTRACTS.voting}=${votingV2.address} \\
+    ${NEW_CONTRACTS.voting}=${oldVoting.address} \\
+    ${OLD_CONTRACTS.governor}=${governorV2.address} \\
+    ${NEW_CONTRACTS.governor}=${governor.address} \\
+    ${OLD_CONTRACTS.proposer}=${proposerV2.address} \\
+    ${NEW_CONTRACTS.proposer}=${proposer.address} \\
+    ${NEW_CONTRACTS.emergencyProposer}=${process.env[NEW_CONTRACTS.emergencyProposer]} \\
+    ${EMERGENCY_EXECUTOR}=${process.env[EMERGENCY_EXECUTOR]} \\
+    yarn hardhat run ./src/upgrade-tests/voting2/1_Propose.ts --network ${hre.network.name}
+    
+    Note: Remove ${EMERGENCY_PROPOSAL}=1 if you want to propose the downgrade from the normal proposer contract.
+    `
+      )
+    );
   }
-
-  console.log(
-    "\n❓ OPTIONAL: Propose the downgrade to the previous governor, voting and proposer contracts by running the following command:"
-  );
-  console.log(
-    "⚠️  This downgrade command is intended for testing purposes and should only be used against a fork or testnet. ⚠️"
-  );
-  console.log(
-    formatIndentation(
-      `
-  ${TEST_DOWNGRADE}=1 \\
-  ${EMERGENCY_PROPOSAL}=1 \\
-  ${OLD_CONTRACTS.voting}=${votingV2.address} \\
-  ${NEW_CONTRACTS.voting}=${oldVoting.address} \\
-  ${OLD_CONTRACTS.governor}=${governorV2.address} \\
-  ${NEW_CONTRACTS.governor}=${governor.address} \\
-  ${OLD_CONTRACTS.proposer}=${proposerV2.address} \\
-  ${NEW_CONTRACTS.proposer}=${proposer.address} \\
-  ${NEW_CONTRACTS.emergencyProposer}=${process.env[NEW_CONTRACTS.emergencyProposer]} \\
-  ${EMERGENCY_EXECUTOR}=${process.env[EMERGENCY_EXECUTOR]} \\
-  yarn hardhat run ./src/upgrade-tests/voting2/1_Propose.ts --network ${hre.network.name}
-  
-  Note: Remove ${EMERGENCY_PROPOSAL}=1 if you want to propose the downgrade from the normal proposer contract.
-  `
-    )
-  );
 }
 
 main().then(
