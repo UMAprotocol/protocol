@@ -91,3 +91,9 @@ GOVERNOR_ADDRESS=<OPTIONAL-GOVERNOR-ADDRESS> \
 VOTING_ADDRESS=<OPTONAL-VOTING-ADDRESS>\
 yarn hardhat run ./src/upgrade-tests/voting2/2_Verify.ts --network localhost
 ```
+
+2.5 Simulate basic voting functionality if in the upgraded state:
+
+```
+yarn hardhat run ./src/upgrade-tests/voting2/3_SimulateVoting.ts --network localhost
+```
