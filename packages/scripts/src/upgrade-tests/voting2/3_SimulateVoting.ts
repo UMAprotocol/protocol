@@ -9,7 +9,7 @@ const assert = require("assert").strict;
 
 const { formatBytes32String, formatEther, parseEther, parseUnits, toUtf8Bytes } = hre.ethers.utils;
 
-import { BigNumber, BigNumberish, BytesLike } from "ethers";
+import { BigNumber, BigNumberish, BytesLike, EventFilter } from "ethers";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 
 import {
@@ -20,7 +20,10 @@ import {
   PriceRequestStatusEnum,
 } from "@uma/common";
 import {
+  EmergencyProposerEthers,
   FinderEthers,
+  GovernorEthers,
+  GovernorV2Ethers,
   OptimisticOracleV2Ethers,
   StoreEthers,
   VotingTokenEthers,
@@ -29,7 +32,15 @@ import {
 
 import { FOUNDATION_WALLET, getContractInstance, SECONDS_PER_DAY } from "../../utils/contracts";
 import { increaseEvmTime } from "../../utils/utils";
-import { isVotingV2Instance } from "./migrationUtils";
+import {
+  EMERGENCY_EXECUTOR,
+  EMERGENCY_PROPOSAL,
+  formatIndentation,
+  NEW_CONTRACTS,
+  OLD_CONTRACTS,
+  isVotingV2Instance,
+  TEST_DOWNGRADE,
+} from "./migrationUtils";
 
 interface VotingPriceRequest {
   identifier: BytesLike;
@@ -622,6 +633,47 @@ async function main() {
   console.log(` ✅ Foundation has ${formatEther(foundationBalance)} UMA.`);
 
   console.log("\n💪 Verified! The upgraded DVM is functional.");
+
+  console.log(
+    "\n❓ OPTIONAL: Propose the downgrade to the previous governor, voting and proposer contracts by running the following command:"
+  );
+  console.log(
+    "⚠️  This downgrade command is intended for testing purposes and should only be used against a fork or testnet. ⚠️"
+  );
+
+  const oldVotingAddress = await votingV2.previousVotingContract();
+  const governorV2Address = await votingV2.owner();
+  const governorV2 = await getContractInstance<GovernorV2Ethers>("GovernorV2", governorV2Address);
+  const proposerV2Address = await governorV2.getMember(1);
+  const emergencyProposerAddress = await governorV2.getMember(2);
+  const emergencyProposer = await getContractInstance<EmergencyProposerEthers>(
+    "EmergencyProposer",
+    emergencyProposerAddress
+  );
+  const emerencyExecutor = await emergencyProposer.executor();
+  // It is assumed no other governance actions have been performed that would have changed Finder ownership in between.
+  const oldGovernorAddress = (await finder.queryFilter(<EventFilter>"OwnershipTransferred")).reverse()[1].args[0];
+  const oldGovernor = await getContractInstance<GovernorEthers>("Governor", oldGovernorAddress);
+  const oldProposerAddress = await oldGovernor.getMember(1);
+  console.log(
+    formatIndentation(
+      `
+  ${TEST_DOWNGRADE}=1 \\
+  ${EMERGENCY_PROPOSAL}=1 \\
+  ${OLD_CONTRACTS.voting}=${votingV2.address} \\
+  ${NEW_CONTRACTS.voting}=${oldVotingAddress} \\
+  ${OLD_CONTRACTS.governor}=${governorV2Address} \\
+  ${NEW_CONTRACTS.governor}=${oldGovernorAddress} \\
+  ${OLD_CONTRACTS.proposer}=${proposerV2Address} \\
+  ${NEW_CONTRACTS.proposer}=${oldProposerAddress} \\
+  ${NEW_CONTRACTS.emergencyProposer}=${emergencyProposerAddress} \\
+  ${EMERGENCY_EXECUTOR}=${emerencyExecutor} \\
+  yarn hardhat run ./src/upgrade-tests/voting2/1_Propose.ts --network ${hre.network.name}
+  
+  Note: Remove ${EMERGENCY_PROPOSAL}=1 if you want to propose the downgrade from the normal proposer contract.
+  `
+    )
+  );
 }
 
 main().then(
