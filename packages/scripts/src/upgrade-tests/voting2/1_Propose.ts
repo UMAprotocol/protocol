@@ -128,12 +128,6 @@ async function main() {
   adminProposalTransactions.push({ to: votingToken.address, value: 0, data: transferVotingTokensTx.data });
   console.log("2.c. Transfer voting tokens to new governor contract:", transferVotingTokensTx.data);
 
-  // Add new governor as the owner of the VotingToken contract.
-  const addGovernorAsTokenOwnerTx = await votingToken.populateTransaction.resetMember("0", governorV2Address);
-  if (!addGovernorAsTokenOwnerTx.data) throw "addGovernorAsTokenOwnerTx.data is null";
-  adminProposalTransactions.push({ to: votingToken.address, value: 0, data: addGovernorAsTokenOwnerTx.data });
-  console.log("3.b. Add owner roll to new governor contract:", addGovernorAsTokenOwnerTx.data);
-
   const transferFinderOwnershipTx = await finder.populateTransaction.transferOwnership(votingUpgrader.address);
   if (!transferFinderOwnershipTx.data) throw "transferFinderOwnershipTx.data is null";
   adminProposalTransactions.push({ to: finder.address, value: 0, data: transferFinderOwnershipTx.data });
