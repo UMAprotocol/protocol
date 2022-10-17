@@ -6,6 +6,7 @@ const abi = require("./abi/abi");
 const { getAddress, getAbi } = require("@uma/contracts-node");
 const { TransactionDataDecoder, aggregateTransactionsAndCall } = require("@uma/financial-templates-lib");
 const { MIN_INT_VALUE } = require("@uma/common");
+const assert = require("assert");
 
 const polymarketContract = "0xCB1822859cEF82Cd2Eb4E6276C7916e692995130";
 const multicallAddress = "0x11ce4B23bD875D7F5C6a31084f55fDe1e9A87507";
@@ -155,6 +156,7 @@ class PolymarketNotifier {
     // Polymarket API
     const apiUrl = this.apiEndpoint + "?_limit=-1&active=true&closed=false&_sort=created_at:desc";
     const polymarketContracts = await this.networker.getJson(apiUrl, { method: "get" });
+    assert(polymarketContracts && polymarketContracts.length, "Requires polymarket api data");
 
     const transactions = polymarketContracts.map((polymarketContract) => ({
       target: polymarketConditionalContract.options.address,
