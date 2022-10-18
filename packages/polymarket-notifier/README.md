@@ -8,6 +8,7 @@ The Polymarket notifier looks for ProposePrice events related to the Polymarket 
 
 The Polymarket notifier uses the following environment variables:
 
+- `CUSTOM_NODE_URL` is a Polygon (chain id 137) network node endpoint.
 - `NOTIFIER_CONFIG` is a JSON object containing-application specific parameters:
   - `maxTimeAfterProposal` is the maximum time in seconds after the proposal timestamp for the contract to be included in the notification. The default is set to 7200 seconds (2 hours) based on the liveness period for Polymarket contracts.
   - `minAcceptedPrice` determines if an alert should be sent at the time of a proposal based on the price value returned from the Polymarket API. The default is set to 0.99, meaning when a price is proposed it requires the API price to be greater than 0.99 or an alert will be sent.
