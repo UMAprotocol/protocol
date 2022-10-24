@@ -5,7 +5,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import "../../oracle/interfaces/StakerInterface.sol";
+import "../../data-verification-mechanism/interfaces/StakerInterface.sol";
 import "./Withdrawable.sol";
 
 /**

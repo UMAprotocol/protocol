@@ -8,10 +8,10 @@ import "../../common/implementation/Lockable.sol";
 import "../../common/implementation/FixedPoint.sol";
 import "../../common/implementation/Testable.sol";
 
-import "../../oracle/interfaces/StoreInterface.sol";
-import "../../oracle/interfaces/FinderInterface.sol";
-import "../../oracle/interfaces/AdministrateeInterface.sol";
-import "../../oracle/implementation/Constants.sol";
+import "../../data-verification-mechanism/interfaces/StoreInterface.sol";
+import "../../data-verification-mechanism/interfaces/FinderInterface.sol";
+import "../../data-verification-mechanism/interfaces/AdministrateeInterface.sol";
+import "../../data-verification-mechanism/implementation/Constants.sol";
 
 /**
  * @title FeePayer contract.

@@ -8,9 +8,9 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../../common/implementation/FixedPoint.sol";
 import "../../common/interfaces/ExpandedIERC20.sol";
 
-import "../../oracle/interfaces/OracleInterface.sol";
-import "../../oracle/interfaces/IdentifierWhitelistInterface.sol";
-import "../../oracle/implementation/Constants.sol";
+import "../../data-verification-mechanism/interfaces/OracleInterface.sol";
+import "../../data-verification-mechanism/interfaces/IdentifierWhitelistInterface.sol";
+import "../../data-verification-mechanism/implementation/Constants.sol";
 
 import "../common/FundingRateApplier.sol";
 

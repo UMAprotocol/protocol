@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import "../../insured-bridge/avm/Arbitrum_CrossDomainEnabled.sol";
+import "../../external/avm/AVM_CrossDomainEnabledExtended.sol";
 import "../interfaces/ParentMessengerInterface.sol";
 import "../interfaces/ParentMessengerConsumerInterface.sol";
 import "./ParentMessengerBase.sol";
@@ -12,7 +12,7 @@ import "../../common/implementation/Lockable.sol";
  * @dev This contract is ownable and should be owned by the DVM governor.
  */
 contract Arbitrum_ParentMessenger is
-    Arbitrum_CrossDomainEnabled,
+    AVM_CrossDomainEnabledExtended,
     ParentMessengerInterface,
     ParentMessengerBase,
     Lockable
@@ -57,7 +57,7 @@ contract Arbitrum_ParentMessenger is
      * @param _childChainId The chain id of the Optimism L2 network this messenger should connect to.
      **/
     constructor(address _inbox, uint256 _childChainId)
-        Arbitrum_CrossDomainEnabled(_inbox)
+        AVM_CrossDomainEnabledExtended(_inbox)
         ParentMessengerBase(_childChainId)
     {
         refundL2Address = owner();

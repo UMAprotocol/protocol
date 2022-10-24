@@ -1,7 +1,7 @@
 pragma solidity ^0.8.9;
 
 // SPDX-License-Identifier: UNLICENSED
-import "../../oracle/interfaces/FinderInterface.sol";
+import "../../data-verification-mechanism/interfaces/FinderInterface.sol";
 
 // Contract stores a reference to the DVM Finder contract which can be used to locate other important DVM contracts.
 contract HasFinder {
