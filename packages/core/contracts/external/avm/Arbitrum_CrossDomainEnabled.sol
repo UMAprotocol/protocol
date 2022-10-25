@@ -2,10 +2,10 @@
 // with a change to the solidity version.
 pragma solidity ^0.8.0;
 
-import "./interfaces/iArbitrum_Inbox.sol";
-import "./interfaces/iArbitrum_Outbox.sol";
+import "../../external/avm/interfaces/iArbitrum_Inbox.sol";
+import "../../external/avm/interfaces/iArbitrum_Outbox.sol";
 
-abstract contract AVM_CrossDomainEnabledExtended {
+abstract contract Arbitrum_CrossDomainEnabled {
     iArbitrum_Inbox public immutable inbox;
 
     /**
