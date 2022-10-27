@@ -130,6 +130,7 @@ describe("VotingV2", function () {
   it("Bytecode size", async function () {
     const byteCodeSize = (getContract("VotingV2").deployedBytecode.length - 2) / 2;
     const remainingSize = 2 ** 14 + 2 ** 13 - byteCodeSize;
+    console.log("remainingSize", remainingSize);
     assert(remainingSize >= 0, "Contract is too large to deploy");
   });
 
