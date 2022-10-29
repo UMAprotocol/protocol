@@ -156,7 +156,6 @@ contract MerkleDistributor is Ownable {
                 merkleWindows[claims[nextI].windowIndex].rewardToken != currentRewardToken
                 // Next claim reward token is different than current one.
             ) {
-                merkleWindows[_claim.windowIndex].remainingAmount -= batchedAmount;
                 currentRewardToken.safeTransfer(_claim.account, batchedAmount);
                 batchedAmount = 0;
             }
@@ -172,7 +171,6 @@ contract MerkleDistributor is Ownable {
      */
     function claim(Claim memory _claim) external {
         _verifyAndMarkClaimed(_claim);
-        merkleWindows[_claim.windowIndex].remainingAmount -= _claim.amount;
         merkleWindows[_claim.windowIndex].rewardToken.safeTransfer(_claim.account, _claim.amount);
     }
 
@@ -191,6 +189,15 @@ contract MerkleDistributor is Ownable {
         uint256 claimedWord = claimedBitMap[windowIndex][claimedWordIndex];
         uint256 mask = (1 << claimedBitIndex);
         return claimedWord & mask == mask;
+    }
+
+    /**
+     * @notice Returns rewardToken set by admin for windowIndex.
+     * @param windowIndex merkle root to check.
+     * @return address Reward token address
+     */
+    function getRewardTokenForWindow(uint256 windowIndex) public view returns (address) {
+        return address(merkleWindows[windowIndex].rewardToken);
     }
 
     /**
@@ -245,6 +252,7 @@ contract MerkleDistributor is Ownable {
 
         // Proof is correct and claim has not occurred yet, mark claimed complete.
         _setClaimed(_claim.windowIndex, _claim.accountIndex);
+        merkleWindows[_claim.windowIndex].remainingAmount -= _claim.amount;
         emit Claimed(
             msg.sender,
             _claim.windowIndex,
