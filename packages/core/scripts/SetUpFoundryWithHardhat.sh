@@ -9,12 +9,19 @@ if ! command -v forge &>/dev/null; then
     foundryup
 fi
 
-echo "Configuring UMA core to work with foundry std-lib"
-mv .gitignore .gitignore.tmp
-mkdir temp
-cd temp
-forge init --force --no-commit
-mv ./lib ../
-cd ..
-rm -rf temp
-mv .gitignore.tmp .gitignore
+# Then, configure the core package to work with foundry. To do this we need to pull out the foundry standard library and
+# place it in a way that it can be accessed within the core directory. This amounts the the manual steps listed here
+# https://book.getfoundry.sh/config/hardhat#use-foundry-in-an-existing-hardhat-project without wanting to commit the
+# foundry lib & standard lib to the repo.
+
+if [ ! -d "./lib" ]; then
+    echo "Configuring UMA core to work with foundry std-lib"
+    mv .gitignore .gitignore.tmp
+    mkdir temp
+    cd temp
+    forge init --force --no-commit # Init the foundry project
+    mv ./lib ../                   # Move the required foundry components to root of core
+    cd ..
+    rm -rf temp # Clean up
+    mv .gitignore.tmp .gitignore
+fi
