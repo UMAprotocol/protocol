@@ -19,9 +19,9 @@ if [ ! -d "./lib" ]; then
     mv .gitignore .gitignore.tmp
     mkdir temp
     cd temp
-    forge init --force --no-commit # Init the foundry project
-    mv ./lib ../                   # Move the required foundry components to root of core
+    forge init --force --no-commit # Init the forge project to get the required libraries.
+    mv ./lib ../                   # Move the required foundry components to root of core.
     cd ..
-    rm -rf temp # Clean up
+    rm -rf temp                    # Clean up.
     mv .gitignore.tmp .gitignore
 fi
