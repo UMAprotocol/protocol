@@ -5,7 +5,7 @@ version: 2.1
 jobs:
   tests-required:
     docker:
-      - image: circleci/node:lts
+      - image: circleci/node:16.17.0
     steps:
       - run:
           name: Test dependencies
