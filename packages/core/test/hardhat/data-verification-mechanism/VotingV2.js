@@ -3988,7 +3988,10 @@ describe("VotingV2", function () {
     const finalContractBalance = await votingToken.methods.balanceOf(voting.options.address).call();
     assert.equal(finalContractBalance, "0");
   });
-  it("Index problem", async function () {
+  it.only("Can correctly handel non-zero starting request index plus account tracking update", async function () {
+    // A bug was found in the voting contract where a non-staked account is updated results in an empty request being
+    // added to the requests set IF the startingRequestIndex is set to a non-zero value. This causes subsequent requests
+    // to not settle correctly due to the empty request being unsealable.
     const newVoting = await VotingV2.new(
       "640000000000000000", // emission rate
       toWei("10000"), // spamDeletionProposalBond
@@ -3996,7 +3999,7 @@ describe("VotingV2", function () {
       "86400", // phase length
       7200, // minRollToNextRoundLength
       web3.utils.toWei("5000000"), // GAT 5MM
-      "1", // startingRequestIndex
+      10, // startingRequestIndex Set this to 10. This needs to be set to a non-zero value to break the DVM.
       votingToken.options.address, // voting token
       (await Finder.deployed()).options.address, // finder
       (await SlashingLibrary.deployed()).options.address, // slashing library
@@ -4004,6 +4007,16 @@ describe("VotingV2", function () {
       (await Timer.deployed()).options.address // timer
     ).send({ from: accounts[0] });
 
+    // Before any requests are sent this should equal the startingRequestIndex of 10.
+    assert.equal(await newVoting.methods.getNumberOfPriceRequests().call(), 10);
+
+    // With the bug present, simply updating a non-staking accounts trackers will break the contract. This is evedent
+    // by the increment of the number of price requests. Note that if this bug is fixed then there should be no increment.
+    await newVoting.methods.updateTrackers(account1).send({ from: account1 });
+
+    assert.equal(await newVoting.methods.getNumberOfPriceRequests().call(), 11);
+
+    // Now, requesting a price should increment the total again.
     const identifier = padRight(utf8ToHex("test"), 64);
     const time = "1000";
     await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
@@ -4015,20 +4028,13 @@ describe("VotingV2", function () {
     // Move to next round and roll the first request over.
     await moveToNextRound(newVoting, accounts[0]);
 
-    assert((await newVoting.methods.getNumberOfPriceRequests().call()) == 2);
-    assert.equal((await newVoting.methods.getPendingRequests().call()).length, 1);
+    // Now that a request is sent the number of requests should be 11.
+    assert.equal(await newVoting.methods.getNumberOfPriceRequests().call(), 12);
 
-    // Update trackers with an account that has no stake.
-    await newVoting.methods.updateTrackers(account1).send({ from: account1 });
+    // Updating the account tracker of a non-staking account, if broken, will increment this yet again.
+    await newVoting.methods.updateTrackers(account2).send({ from: account1 });
 
-    assert((await newVoting.methods.getNumberOfPriceRequests().call()) == 3);
-
-    // Buggy price request introduced because the voterStake.nextIndexToProcess of a voter with no stake is 0
-    // and here the priceRequest with index 0 is a non initialised price request given that we deployed with startingRequestIndex = 1
-    assert(
-      (await newVoting.methods.priceRequestIds(2).call()) !=
-        "0x0000000000000000000000000000000000000000000000000000000000000000"
-    );
+    assert.equal(await newVoting.methods.getNumberOfPriceRequests().call(), 13);
   });
   const addNonSlashingVote = async () => {
     // There is a known issue with the contract wherein you roll the first request multiple times which results in this
