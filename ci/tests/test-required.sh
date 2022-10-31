@@ -3,7 +3,7 @@
 cat << EOF
   tests-required:
     docker:
-      - image: circleci/node:16.17.0
+      - image: cimg/node:16.17.0
     steps:
       - run:
           name: Test dependencies
