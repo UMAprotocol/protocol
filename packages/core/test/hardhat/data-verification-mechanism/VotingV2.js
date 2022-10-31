@@ -3988,6 +3988,48 @@ describe("VotingV2", function () {
     const finalContractBalance = await votingToken.methods.balanceOf(voting.options.address).call();
     assert.equal(finalContractBalance, "0");
   });
+  it("Index problem", async function () {
+    const newVoting = await VotingV2.new(
+      "640000000000000000", // emission rate
+      toWei("10000"), // spamDeletionProposalBond
+      60 * 60 * 24 * 30, // unstakeCooldown
+      "86400", // phase length
+      7200, // minRollToNextRoundLength
+      web3.utils.toWei("5000000"), // GAT 5MM
+      "1", // startingRequestIndex
+      votingToken.options.address, // voting token
+      (await Finder.deployed()).options.address, // finder
+      (await SlashingLibrary.deployed()).options.address, // slashing library
+      voting.options.address, // pass in the old voting contract to the new voting contract.
+      (await Timer.deployed()).options.address // timer
+    ).send({ from: accounts[0] });
+
+    const identifier = padRight(utf8ToHex("test"), 64);
+    const time = "1000";
+    await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
+
+    await newVoting.methods.requestPrice(identifier, time).send({ from: registeredContract });
+
+    await moveToNextPhase(newVoting, accounts[0]);
+
+    // Move to next round and roll the first request over.
+    await moveToNextRound(newVoting, accounts[0]);
+
+    assert((await newVoting.methods.getNumberOfPriceRequests().call()) == 2);
+    assert.equal((await newVoting.methods.getPendingRequests().call()).length, 1);
+
+    // Update trackers with an account that has no stake.
+    await newVoting.methods.updateTrackers(account1).send({ from: account1 });
+
+    assert((await newVoting.methods.getNumberOfPriceRequests().call()) == 3);
+
+    // Buggy price request introduced because the voterStake.nextIndexToProcess of a voter with no stake is 0
+    // and here the priceRequest with index 0 is a non initialised price request given that we deployed with startingRequestIndex = 1
+    assert(
+      (await newVoting.methods.priceRequestIds(2).call()) !=
+        "0x0000000000000000000000000000000000000000000000000000000000000000"
+    );
+  });
   const addNonSlashingVote = async () => {
     // There is a known issue with the contract wherein you roll the first request multiple times which results in this
     // request being double slashed. We can avoid this by creating one request that is fully settled before the following
