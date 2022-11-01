@@ -35,7 +35,5 @@ interface MerkleDistributorInterface {
 
     function claim(Claim memory _claim) external;
     function claimMulti(Claim[] memory claims) external;
-    function isClaimed(uint256 windowIndex, uint256 accountIndex) public view returns (bool);
     function getRewardTokenForWindow(uint256 windowIndex) external view returns (address);
-    function verifyClaim(Claim memory _claim) public view returns (bool valid);
 }
