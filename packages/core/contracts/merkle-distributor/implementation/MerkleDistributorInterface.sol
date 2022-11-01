@@ -33,9 +33,9 @@ interface MerkleDistributorInterface {
         bytes32[] merkleProof;
     }
 
-    function claim(Claim memory _claim) public;
+    function claim(Claim memory _claim) external;
 
-    function claimMulti(Claim[] memory claims) public;
+    function claimMulti(Claim[] memory claims) external;
 
     function getRewardTokenForWindow(uint256 windowIndex) external view returns (address);
 }
