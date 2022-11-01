@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "./MerkleDistributorInterface.sol";
 
 /**
  * Inspired by:
@@ -17,33 +18,8 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
  *         multiple Merkle roots distributions with customized reward currencies.
  * @dev    The Merkle trees are not validated in any way, so the system assumes the contract owner behaves honestly.
  */
-contract MerkleDistributor is Ownable {
+contract MerkleDistributor is MerkleDistributorInterface, Ownable {
     using SafeERC20 for IERC20;
-
-    // A Window maps a Merkle root to a reward token address.
-    struct Window {
-        // Merkle root describing the distribution.
-        bytes32 merkleRoot;
-        // Remaining amount of deposited rewards that have not yet been claimed.
-        uint256 remainingAmount;
-        // Currency in which reward is processed.
-        IERC20 rewardToken;
-        // IPFS hash of the merkle tree. Can be used to independently fetch recipient proofs and tree. Note that the canonical
-        // data type for storing an IPFS hash is a multihash which is the concatenation of  <varint hash function code>
-        // <varint digest size in bytes><hash function output>. We opted to store this in a string type to make it easier
-        // for users to query the ipfs data without needing to reconstruct the multihash. to view the IPFS data simply
-        // go to https://cloudflare-ipfs.com/ipfs/<IPFS-HASH>.
-        string ipfsHash;
-    }
-
-    // Represents an account's claim for `amount` within the Merkle root located at the `windowIndex`.
-    struct Claim {
-        uint256 windowIndex;
-        uint256 amount;
-        uint256 accountIndex; // Used only for bitmap. Assumed to be unique for each claim.
-        address account;
-        bytes32[] merkleProof;
-    }
 
     // Windows are mapped to arbitrary indices.
     mapping(uint256 => Window) public merkleWindows;
@@ -136,7 +112,7 @@ contract MerkleDistributor is Ownable {
      *         when any of individual `_claim`'s `amount` exceeds `remainingAmount` for its window.
      * @param claims array of claims to claim.
      */
-    function claimMulti(Claim[] memory claims) external {
+    function claimMulti(Claim[] memory claims) external virtual override {
         uint256 batchedAmount;
         uint256 claimCount = claims.length;
         for (uint256 i = 0; i < claimCount; i++) {
@@ -156,7 +132,6 @@ contract MerkleDistributor is Ownable {
                 merkleWindows[claims[nextI].windowIndex].rewardToken != currentRewardToken
                 // Next claim reward token is different than current one.
             ) {
-                merkleWindows[_claim.windowIndex].remainingAmount -= batchedAmount;
                 currentRewardToken.safeTransfer(_claim.account, batchedAmount);
                 batchedAmount = 0;
             }
@@ -170,9 +145,8 @@ contract MerkleDistributor is Ownable {
      *         will revert. It also reverts when `_claim`'s `amount` exceeds `remainingAmount` for the window.
      * @param _claim claim object describing amount, accountIndex, account, window index, and merkle proof.
      */
-    function claim(Claim memory _claim) external {
+    function claim(Claim memory _claim) external virtual override {
         _verifyAndMarkClaimed(_claim);
-        merkleWindows[_claim.windowIndex].remainingAmount -= _claim.amount;
         merkleWindows[_claim.windowIndex].rewardToken.safeTransfer(_claim.account, _claim.amount);
     }
 
@@ -191,6 +165,15 @@ contract MerkleDistributor is Ownable {
         uint256 claimedWord = claimedBitMap[windowIndex][claimedWordIndex];
         uint256 mask = (1 << claimedBitIndex);
         return claimedWord & mask == mask;
+    }
+
+    /**
+     * @notice Returns rewardToken set by admin for windowIndex.
+     * @param windowIndex merkle root to check.
+     * @return address Reward token address
+     */
+    function getRewardTokenForWindow(uint256 windowIndex) public view override returns (address) {
+        return address(merkleWindows[windowIndex].rewardToken);
     }
 
     /**
@@ -245,6 +228,7 @@ contract MerkleDistributor is Ownable {
 
         // Proof is correct and claim has not occurred yet, mark claimed complete.
         _setClaimed(_claim.windowIndex, _claim.accountIndex);
+        merkleWindows[_claim.windowIndex].remainingAmount -= _claim.amount;
         emit Claimed(
             msg.sender,
             _claim.windowIndex,
