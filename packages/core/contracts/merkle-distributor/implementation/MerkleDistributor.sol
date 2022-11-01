@@ -136,7 +136,7 @@ contract MerkleDistributor is Ownable {
      *         when any of individual `_claim`'s `amount` exceeds `remainingAmount` for its window.
      * @param claims array of claims to claim.
      */
-    function claimMulti(Claim[] memory claims) external {
+    function claimMulti(Claim[] memory claims) external virtual {
         uint256 batchedAmount;
         uint256 claimCount = claims.length;
         for (uint256 i = 0; i < claimCount; i++) {
@@ -169,9 +169,8 @@ contract MerkleDistributor is Ownable {
      *         will revert. It also reverts when `_claim`'s `amount` exceeds `remainingAmount` for the window.
      * @param _claim claim object describing amount, accountIndex, account, window index, and merkle proof.
      */
-    function claim(Claim memory _claim) external {
-        _verifyAndMarkClaimed(_claim);
-        merkleWindows[_claim.windowIndex].rewardToken.safeTransfer(_claim.account, _claim.amount);
+    function claim(Claim memory _claim) external virtual {
+        _executeClaim(_claim);
     }
 
     /**
@@ -215,6 +214,11 @@ contract MerkleDistributor is Ownable {
      *     PRIVATE FUNCTIONS
      ****************************/
 
+    function _executeClaim(Claim memory _claim) private {
+        _verifyAndMarkClaimed(_claim);
+        merkleWindows[_claim.windowIndex].rewardToken.safeTransfer(_claim.account, _claim.amount);
+    }
+    
     // Mark claim as completed for `accountIndex` for Merkle root at `windowIndex`.
     function _setClaimed(uint256 windowIndex, uint256 accountIndex) private {
         uint256 claimedWordIndex = accountIndex / 256;
