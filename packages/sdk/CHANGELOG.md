@@ -7,10 +7,6 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 **Note:** Version bump only for package @uma/sdk
 
-
-
-
-
 ## [0.29.3](https://github.com/mrice32/protocol/compare/@uma/sdk@0.29.2...@uma/sdk@0.29.3) (2022-10-06)
 
 **Note:** Version bump only for package @uma/sdk

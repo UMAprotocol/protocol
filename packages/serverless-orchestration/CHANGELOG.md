@@ -5,20 +5,14 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 # [2.12.0](https://github.com/UMAprotocol/protocol/compare/@uma/serverless-orchestration@2.11.3...@uma/serverless-orchestration@2.12.0) (2022-11-01)
 
-
 ### Bug Fixes
 
-* **serverless-orchestration:** properly respect spoke url when retrying ([#4204](https://github.com/UMAprotocol/protocol/issues/4204)) ([0cd9082](https://github.com/UMAprotocol/protocol/commit/0cd908247362ec6e28760f44652272a8591219e5))
-* fix JSON assumption in [#4201](https://github.com/UMAprotocol/protocol/issues/4201) ([#4202](https://github.com/UMAprotocol/protocol/issues/4202)) ([6caef4d](https://github.com/UMAprotocol/protocol/commit/6caef4d9c313bd73e71a194521439a7e8fcd5536))
-
+- **serverless-orchestration:** properly respect spoke url when retrying ([#4204](https://github.com/UMAprotocol/protocol/issues/4204)) ([0cd9082](https://github.com/UMAprotocol/protocol/commit/0cd908247362ec6e28760f44652272a8591219e5))
+- fix JSON assumption in [#4201](https://github.com/UMAprotocol/protocol/issues/4201) ([#4202](https://github.com/UMAprotocol/protocol/issues/4202)) ([6caef4d](https://github.com/UMAprotocol/protocol/commit/6caef4d9c313bd73e71a194521439a7e8fcd5536))
 
 ### Features
 
-* **serverless-hub:** hub should respect NODE_URLS_ env vars ([#4201](https://github.com/UMAprotocol/protocol/issues/4201)) ([e18a3dd](https://github.com/UMAprotocol/protocol/commit/e18a3dda9f4a536c8502e513995e15f7feec1459))
-
-
-
-
+- **serverless-hub:** hub should respect NODE*URLS* env vars ([#4201](https://github.com/UMAprotocol/protocol/issues/4201)) ([e18a3dd](https://github.com/UMAprotocol/protocol/commit/e18a3dda9f4a536c8502e513995e15f7feec1459))
 
 ## [2.11.3](https://github.com/UMAprotocol/protocol/compare/@uma/serverless-orchestration@2.11.2...@uma/serverless-orchestration@2.11.3) (2022-10-06)
 

@@ -7,10 +7,6 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 **Note:** Version bump only for package @uma/disputer
 
-
-
-
-
 ## [2.6.40](https://github.com/UMAprotocol/protocol/compare/@uma/disputer@2.6.39...@uma/disputer@2.6.40) (2022-10-06)
 
 **Note:** Version bump only for package @uma/disputer

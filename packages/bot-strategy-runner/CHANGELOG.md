@@ -7,10 +7,6 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 **Note:** Version bump only for package @uma/bot-strategy-runner
 
-
-
-
-
 ## [1.3.23](https://github.com/UMAprotocol/protocol/compare/@uma/bot-strategy-runner@1.3.22...@uma/bot-strategy-runner@1.3.23) (2022-10-06)
 
 **Note:** Version bump only for package @uma/bot-strategy-runner

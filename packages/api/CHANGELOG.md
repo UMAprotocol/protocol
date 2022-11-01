@@ -7,10 +7,6 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 **Note:** Version bump only for package @uma/api
 
-
-
-
-
 ## [0.11.4](https://github.com/mrice32/protocol/compare/@uma/api@0.11.3...@uma/api@0.11.4) (2022-10-06)
 
 **Note:** Version bump only for package @uma/api
