@@ -613,18 +613,10 @@ describe("MerkleDistributor.js", function () {
 
         // Set two windows with trivial one leaf trees.
         const reward1Recipients = [
-          {
-            account: accounts[3].address,
-            amount: window1RewardAmount.toString(),
-            accountIndex: 1,
-          },
+          { account: accounts[3].address, amount: window1RewardAmount.toString(), accountIndex: 1 },
         ];
         const reward2Recipients = [
-          {
-            account: accounts[3].address,
-            amount: window2RewardAmount.toString(),
-            accountIndex: 1,
-          },
+          { account: accounts[3].address, amount: window2RewardAmount.toString(), accountIndex: 1 },
         ];
         const merkleTree1 = new MerkleTree(reward1Recipients.map((item) => createLeaf(item)));
         const nextWindowIndex = (await merkleDistributor.nextCreatedIndex()).toNumber();
