@@ -3,11 +3,20 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+
 # [2.40.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.39.0...@uma/core@2.40.0) (2022-11-01)
 
 ### Features
 
 - **merkle-distributor:** Make overridable functions public ([#4217](https://github.com/UMAprotocol/protocol/issues/4217)) ([3addc8c](https://github.com/UMAprotocol/protocol/commit/3addc8c650658833af97f1d24b1b1413ceb94fd7))
+
+# [2.39.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.38.0...@uma/core@2.39.0) (2022-11-01)
+
+### Features
+
+- add oov2 to mumbai ([#4208](https://github.com/UMAprotocol/protocol/issues/4208)) ([38c481d](https://github.com/UMAprotocol/protocol/commit/38c481da4602da3e1bf94c53c02cbeaf21d741de))
+- first oa implementation ([#4211](https://github.com/UMAprotocol/protocol/issues/4211)) ([ac893cc](https://github.com/UMAprotocol/protocol/commit/ac893cc2d06e79795a7b83f888df9651c40f54b9))
+
 
 # [2.38.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.37.1...@uma/core@2.38.0) (2022-10-06)
 
