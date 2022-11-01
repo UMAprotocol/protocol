@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /**
  * @notice Concise list of functions in MerkleDistributor implementation that would be called by
- * another contract, like the AcceleratingDistributor.
+ * a consuming external contract (such as the Across Protocol's AcceleratingDistributor).
  */
 interface MerkleDistributorInterface {
     // A Window maps a Merkle root to a reward token address.
