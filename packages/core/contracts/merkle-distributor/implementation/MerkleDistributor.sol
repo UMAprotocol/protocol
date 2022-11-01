@@ -146,7 +146,8 @@ contract MerkleDistributor is MerkleDistributorInterface, Ownable {
      * @param _claim claim object describing amount, accountIndex, account, window index, and merkle proof.
      */
     function claim(Claim memory _claim) external virtual override {
-        _executeClaim(_claim);
+        _verifyAndMarkClaimed(_claim);
+        merkleWindows[_claim.windowIndex].rewardToken.safeTransfer(_claim.account, _claim.amount);
     }
 
     /**
@@ -189,11 +190,6 @@ contract MerkleDistributor is MerkleDistributorInterface, Ownable {
     /****************************
      *     PRIVATE FUNCTIONS
      ****************************/
-
-    function _executeClaim(Claim memory _claim) private {
-        _verifyAndMarkClaimed(_claim);
-        merkleWindows[_claim.windowIndex].rewardToken.safeTransfer(_claim.account, _claim.amount);
-    }
     
     // Mark claim as completed for `accountIndex` for Merkle root at `windowIndex`.
     function _setClaimed(uint256 windowIndex, uint256 accountIndex) private {
