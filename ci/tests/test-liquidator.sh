@@ -3,7 +3,7 @@
 cat << EOF
   test-liquidator-package:
     docker:
-      - image: circleci/node:lts
+      - image: cimg/node:16.17.0
       - image: trufflesuite/ganache-cli
         command: ganache-cli -i 1234 -l 9000000 -p 9545
     working_directory: ~/protocol
