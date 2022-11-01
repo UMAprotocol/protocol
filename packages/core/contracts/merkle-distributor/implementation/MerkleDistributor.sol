@@ -172,7 +172,7 @@ contract MerkleDistributor is MerkleDistributorInterface, Ownable {
      * @param windowIndex merkle root to check.
      * @return address Reward token address
      */
-    function getRewardTokenForWindow(uint256 windowIndex) override public view returns (address) {
+    function getRewardTokenForWindow(uint256 windowIndex) public view override returns (address) {
         return address(merkleWindows[windowIndex].rewardToken);
     }
 
@@ -190,7 +190,7 @@ contract MerkleDistributor is MerkleDistributorInterface, Ownable {
     /****************************
      *     PRIVATE FUNCTIONS
      ****************************/
-    
+
     // Mark claim as completed for `accountIndex` for Merkle root at `windowIndex`.
     function _setClaimed(uint256 windowIndex, uint256 accountIndex) private {
         uint256 claimedWordIndex = accountIndex / 256;

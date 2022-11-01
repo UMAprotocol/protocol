@@ -34,6 +34,8 @@ interface MerkleDistributorInterface {
     }
 
     function claim(Claim memory _claim) external;
+
     function claimMulti(Claim[] memory claims) external;
+
     function getRewardTokenForWindow(uint256 windowIndex) external view returns (address);
 }
