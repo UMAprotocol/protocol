@@ -612,23 +612,17 @@ describe("MerkleDistributor.js", function () {
         const window2RewardAmount = toBN(toWei("300"));
 
         // Set two windows with trivial one leaf trees.
-        const reward1Recipients = [
-          { account: accounts[3], amount: window1RewardAmount.toString(), accountIndex: 1 },
-        ];
-        const reward2Recipients = [
-          { account: accounts[3], amount: window2RewardAmount.toString(), accountIndex: 1 },
-        ];
+        const reward1Recipients = [{ account: accounts[3], amount: window1RewardAmount.toString(), accountIndex: 1 }];
+        const reward2Recipients = [{ account: accounts[3], amount: window2RewardAmount.toString(), accountIndex: 1 }];
         const merkleTree1 = new MerkleTree(reward1Recipients.map((item) => createLeaf(item)));
         const nextWindowIndex = (await merkleDistributor.methods.nextCreatedIndex().call()).toString();
-        await merkleDistributor
-          .methods
+        await merkleDistributor.methods
           .setWindow(window1RewardAmount, rewardToken.options.address, merkleTree1.getRoot(), "")
           .send({ from: accounts[0] });
         const merkleTree2 = new MerkleTree(reward2Recipients.map((item) => createLeaf(item)));
-        await merkleDistributor
-        .methods
-        .setWindow(window2RewardAmount, rewardToken.options.address, merkleTree2.getRoot(), "")
-        .send({ from: accounts[0]  });
+        await merkleDistributor.methods
+          .setWindow(window2RewardAmount, rewardToken.options.address, merkleTree2.getRoot(), "")
+          .send({ from: accounts[0] });
 
         batchedClaims = [
           {
@@ -650,9 +644,16 @@ describe("MerkleDistributor.js", function () {
         await merkleDistributor.methods.claimMulti(batchedClaims).send({ from: accounts[0] });
         const claimedEvents = await merkleDistributor.getPastEvents("Claimed");
         assert.equal(claimedEvents.length, batchedClaims.length);
-        assert.equal((await merkleDistributor.methods.merkleWindows(nextWindowIndex).call()).remainingAmount.toString(), "0")
-        assert.equal((await merkleDistributor.methods.merkleWindows(Number(nextWindowIndex)+1).call()).remainingAmount.toString(), "0")
-
+        assert.equal(
+          (await merkleDistributor.methods.merkleWindows(nextWindowIndex).call()).remainingAmount.toString(),
+          "0"
+        );
+        assert.equal(
+          (
+            await merkleDistributor.methods.merkleWindows(Number(nextWindowIndex) + 1).call()
+          ).remainingAmount.toString(),
+          "0"
+        );
       });
       it("gas", async function () {
         const txn = await merkleDistributor.methods.claimMulti(batchedClaims).send({ from: accounts[0] });
