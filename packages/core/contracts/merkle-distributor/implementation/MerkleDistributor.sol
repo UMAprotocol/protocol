@@ -112,7 +112,7 @@ contract MerkleDistributor is MerkleDistributorInterface, Ownable {
      *         when any of individual `_claim`'s `amount` exceeds `remainingAmount` for its window.
      * @param claims array of claims to claim.
      */
-    function claimMulti(Claim[] memory claims) external virtual override {
+    function claimMulti(Claim[] memory claims) public virtual override {
         uint256 batchedAmount;
         uint256 claimCount = claims.length;
         for (uint256 i = 0; i < claimCount; i++) {
@@ -145,7 +145,7 @@ contract MerkleDistributor is MerkleDistributorInterface, Ownable {
      *         will revert. It also reverts when `_claim`'s `amount` exceeds `remainingAmount` for the window.
      * @param _claim claim object describing amount, accountIndex, account, window index, and merkle proof.
      */
-    function claim(Claim memory _claim) external virtual override {
+    function claim(Claim memory _claim) public virtual override {
         _verifyAndMarkClaimed(_claim);
         merkleWindows[_claim.windowIndex].rewardToken.safeTransfer(_claim.account, _claim.amount);
     }
