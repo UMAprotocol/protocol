@@ -810,7 +810,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         int256 slash = voterStake.unappliedSlash; // Load in any unapplied slashing from the previous iteration.
 
         // If the voter has not yet staked, we must get the starting index to avoid utilising the default 0 index, which
-        // would lead to unitialized price requests in the following loop.
+        // would lead to unitialized price requests being processed in the following loop.
         uint64 nextIndexToProcess =
             voterStake.nextIndexToProcess == 0 ? _getStartingIndexForStaker() : voterStake.nextIndexToProcess;
         for (
