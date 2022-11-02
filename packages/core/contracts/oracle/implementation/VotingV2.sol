@@ -808,9 +808,13 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         // Traverse all requests from the last considered request. For each request see if the voter voted correctly or
         // not. Based on the outcome, attribute the associated slash to the voter.
         int256 slash = voterStake.unappliedSlash; // Load in any unapplied slashing from the previous iteration.
-        uint64 nextIndexToProcess = voterStake.nextIndexToProcess;
+
+        // If the voter has not yet staked, we must get the starting index to avoid utilising the default 0 index, which
+        // would lead to unitialized price requests in the following loop.
+        uint64 nextIndexToProcess =
+            voterStake.nextIndexToProcess == 0 ? _getStartingIndexForStaker() : voterStake.nextIndexToProcess;
         for (
-            uint64 requestIndex = voterStake.nextIndexToProcess;
+            uint64 requestIndex = nextIndexToProcess;
             requestIndex < indexTo;
             requestIndex = unsafe_inc_64(requestIndex)
         ) {
@@ -818,7 +822,6 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
                 requestIndex = skippedRequestIndexes[requestIndex];
                 continue;
             }
-
             PriceRequest storage priceRequest = priceRequests[priceRequestIds[requestIndex]];
             VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
 
