@@ -606,10 +606,59 @@ describe("MerkleDistributor.js", function () {
         const claimedEvents = await merkleDistributor.getPastEvents("Claimed");
         assert.equal(claimedEvents.length, allRecipients.length * 3);
       });
+      it("Can make multiple claims for one token across multiple windows with single leaf trees", async function () {
+        // This tests that claimMulti correctly decrements `remainingAmount` for each merkle window.
+        const window1RewardAmount = toBN(toWei("100"));
+        const window2RewardAmount = toBN(toWei("300"));
+
+        // Set two windows with trivial one leaf trees.
+        const reward1Recipients = [{ account: accounts[3], amount: window1RewardAmount.toString(), accountIndex: 1 }];
+        const reward2Recipients = [{ account: accounts[3], amount: window2RewardAmount.toString(), accountIndex: 1 }];
+        const merkleTree1 = new MerkleTree(reward1Recipients.map((item) => createLeaf(item)));
+        const nextWindowIndex = (await merkleDistributor.methods.nextCreatedIndex().call()).toString();
+        await merkleDistributor.methods
+          .setWindow(window1RewardAmount, rewardToken.options.address, merkleTree1.getRoot(), "")
+          .send({ from: accounts[0] });
+        const merkleTree2 = new MerkleTree(reward2Recipients.map((item) => createLeaf(item)));
+        await merkleDistributor.methods
+          .setWindow(window2RewardAmount, rewardToken.options.address, merkleTree2.getRoot(), "")
+          .send({ from: accounts[0] });
+
+        batchedClaims = [
+          {
+            windowIndex: nextWindowIndex,
+            account: reward1Recipients[0].account,
+            accountIndex: reward1Recipients[0].accountIndex,
+            amount: reward1Recipients[0].amount,
+            merkleProof: merkleTree1.getProof(createLeaf(reward1Recipients[0])),
+          },
+          {
+            windowIndex: Number(nextWindowIndex) + 1,
+            account: reward2Recipients[0].account,
+            accountIndex: reward2Recipients[0].accountIndex,
+            amount: reward2Recipients[0].amount,
+            merkleProof: merkleTree2.getProof(createLeaf(reward2Recipients[0])),
+          },
+        ];
+
+        await merkleDistributor.methods.claimMulti(batchedClaims).send({ from: accounts[0] });
+        const claimedEvents = await merkleDistributor.getPastEvents("Claimed");
+        assert.equal(claimedEvents.length, batchedClaims.length);
+        assert.equal(
+          (await merkleDistributor.methods.merkleWindows(nextWindowIndex).call()).remainingAmount.toString(),
+          "0"
+        );
+        assert.equal(
+          (
+            await merkleDistributor.methods.merkleWindows(Number(nextWindowIndex) + 1).call()
+          ).remainingAmount.toString(),
+          "0"
+        );
+      });
       it("gas", async function () {
         const txn = await merkleDistributor.methods.claimMulti(batchedClaims).send({ from: accounts[0] });
         assertApproximate(
-          32860,
+          32802,
           Math.floor(txn.gasUsed / (rewardLeafs.length * Object.keys(SamplePayouts.exampleRecipients).length))
         );
       });
@@ -951,7 +1000,7 @@ describe("MerkleDistributor.js", function () {
         // Sort the claims such that windows with the same reward currency end up next to each other.
         const sortedClaims = await sortClaimsByAccountAndToken(batchedClaims);
         const tx = await merkleDistributor.methods.claimMulti(sortedClaims).send({ from: accounts[0] });
-        assertApproximate(52293, Math.floor(tx.gasUsed / sortedClaims.length));
+        assertApproximate(53000, Math.floor(tx.gasUsed / sortedClaims.length));
       });
       it("batch cannot include double claims", async function () {
         for (let i = 0; i < NUM_LEAVES; i += NUM_LEAVES / SAMPLE_SIZE) {

@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.19.0](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.18.0...@uma/scripts@1.19.0) (2022-11-01)
+
+### Features
+
+- **scripts:** Add vote simulation in upgraded DVMv2 ([#4203](https://github.com/UMAprotocol/protocol/issues/4203)) ([c21e43c](https://github.com/UMAprotocol/protocol/commit/c21e43c6b0cdc981330d0f3c27c83d21bb468bd4))
+- **scripts:** additional assertions on the validate script ([#4200](https://github.com/UMAprotocol/protocol/issues/4200)) ([0e1b320](https://github.com/UMAprotocol/protocol/commit/0e1b320b2846dce38cf07aaca9a76d986d5c8748))
+- add emergency proposer to the dvm upgrade ([#4198](https://github.com/UMAprotocol/protocol/issues/4198)) ([2178eed](https://github.com/UMAprotocol/protocol/commit/2178eedb11f36566dd5b4232916414f6ec50592a))
+
 # [1.18.0](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.17.3...@uma/scripts@1.18.0) (2022-10-06)
 
 ### Features
