@@ -1,12 +1,12 @@
 {
   "name": "@uma/scripts",
-  "version": "1.19.0",
+  "version": "1.19.1",
   "description": "UMA Core Peripheral Scripts",
   "dependencies": {
     "@ethersproject/units": "^5.0.3",
     "@google-cloud/bigquery": "^5.3.0",
     "@uma/common": "^2.28.0",
-    "@uma/financial-templates-lib": "^2.31.5",
+    "@uma/financial-templates-lib": "^2.31.6",
     "dotenv": "^6.2.0",
     "hardhat": "^2.9.0",
     "minimist": "^1.2.0",
