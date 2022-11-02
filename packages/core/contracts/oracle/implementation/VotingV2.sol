@@ -812,7 +812,9 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         // If the voter has not yet staked, we must get the starting index to avoid utilising the default 0 index, which
         // would lead to unitialized price requests being processed in the following loop.
         uint64 nextIndexToProcess =
-            voterStake.nextIndexToProcess == 0 ? _getStartingIndexForStaker() : voterStake.nextIndexToProcess;
+            voterStake.nextIndexToProcess == 0 && voterStake.stake == 0
+                ? _getStartingIndexForStaker()
+                : voterStake.nextIndexToProcess;
         for (
             uint64 requestIndex = nextIndexToProcess;
             requestIndex < indexTo;
