@@ -3987,7 +3987,7 @@ describe("VotingV2", function () {
     const finalContractBalance = await votingToken.methods.balanceOf(voting.options.address).call();
     assert.equal(finalContractBalance, "0");
   });
-  it.only("Can correctly handel non-zero starting request index plus account tracking update", async function () {
+  it("Can correctly handel non-zero starting request index plus account tracking update", async function () {
     // A bug was found in the voting contract where a non-staked account is updated results in an empty request being
     // added to the requests set IF the startingRequestIndex is set to a non-zero value. This causes subsequent requests
     // to not settle correctly due to the empty request being unsealable.
@@ -4013,7 +4013,7 @@ describe("VotingV2", function () {
     // by the increment of the number of price requests. Note that if this bug is fixed then there should be no increment.
     await newVoting.methods.updateTrackers(account1).send({ from: account1 });
 
-    assert.equal(await newVoting.methods.getNumberOfPriceRequests().call(), 11);
+    assert.equal(await newVoting.methods.getNumberOfPriceRequests().call(), 10); // Check that bug is fixed.
 
     // Now, requesting a price should increment the total again.
     const identifier = padRight(utf8ToHex("test"), 64);
@@ -4028,12 +4028,25 @@ describe("VotingV2", function () {
     await moveToNextRound(newVoting, accounts[0]);
 
     // Now that a request is sent the number of requests should be 11.
-    assert.equal(await newVoting.methods.getNumberOfPriceRequests().call(), 12);
+    assert.equal(await newVoting.methods.getNumberOfPriceRequests().call(), 11);
 
     // Updating the account tracker of a non-staking account, if broken, will increment this yet again.
     await newVoting.methods.updateTrackers(account2).send({ from: account1 });
 
-    assert.equal(await newVoting.methods.getNumberOfPriceRequests().call(), 13);
+    assert.equal(await newVoting.methods.getNumberOfPriceRequests().call(), 11); // Check that bug is fixed.
+
+    // Verify that all price requests are correct
+    // Before the bug was fixed we introduced new price requests with bytes32(0) as the identifier in the request array.
+    for (
+      let priceRequestIndex = 10;
+      priceRequestIndex < Number(await newVoting.methods.getNumberOfPriceRequests().call());
+      priceRequestIndex++
+    ) {
+      assert(
+        (await newVoting.methods.priceRequestIds(priceRequestIndex).call()) !=
+          "0x0000000000000000000000000000000000000000000000000000000000000000"
+      );
+    }
   });
   const addNonSlashingVote = async () => {
     // There is a known issue with the contract wherein you roll the first request multiple times which results in this
