@@ -220,7 +220,7 @@ contract MerkleDistributor is MerkleDistributorInterface, Ownable {
     }
 
     // Verify claim is valid and mark it as completed in this contract.
-    function _verifyAndMarkClaimed(Claim memory _claim) private {
+    function _verifyAndMarkClaimed(Claim memory _claim) internal {
         // Check claimed proof against merkle window at given index.
         require(verifyClaim(_claim), "Incorrect merkle proof");
         // Check the account has not yet claimed for this window.
