@@ -15,7 +15,7 @@ const {
   getKeyGenMessage,
   signMessage,
 } = require("@uma/common");
-const { moveToNextRound, moveToNextPhase } = require("../../utils/Voting.js");
+const { moveToNextRound, moveToNextPhase } = require("../utils/Voting.js");
 const { assert } = require("chai");
 const { toBN } = web3.utils;
 

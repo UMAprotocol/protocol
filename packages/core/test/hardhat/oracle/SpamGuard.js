@@ -3,7 +3,7 @@ const { web3 } = hre;
 const { runVotingV2Fixture } = require("@uma/common");
 const { getContract, assertEventEmitted } = hre;
 const { RegistryRolesEnum, didContractThrow, getRandomSignedInt, computeVoteHash } = require("@uma/common");
-const { moveToNextRound, moveToNextPhase } = require("../../utils/Voting.js");
+const { moveToNextRound, moveToNextPhase } = require("../utils/Voting.js");
 const { assert } = require("chai");
 const { toBN } = web3.utils;
 
