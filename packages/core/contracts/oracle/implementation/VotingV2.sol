@@ -123,7 +123,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     bytes32[] public pendingPriceRequests;
 
     // Spam deletion requests. These are requests to delete pending price requests that are still to be voted on.
-    SpamDeletionRequest[] internal spamDeletionProposals;
+    SpamDeletionRequest[] public spamDeletionProposals;
 
     // Vote timing library used to compute round timing related logic.
     VoteTimingV2.Data public voteTiming;
@@ -671,11 +671,10 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
      * total UMA slashed in the round and the total number of correct votes in the round.
      */
     function requestSlashingTrackers(uint256 requestIndex) public view returns (SlashingTracker memory) {
-        uint256 currentRoundId = getCurrentRoundId();
         PriceRequest storage priceRequest = priceRequests[priceRequestIds[requestIndex]];
 
         // If the request is not resolved return zeros for everything.
-        if (_getRequestStatus(priceRequest, currentRoundId) != RequestStatus.Resolved)
+        if (_getRequestStatus(priceRequest, getCurrentRoundId()) != RequestStatus.Resolved)
             return SlashingTracker(0, 0, 0, 0);
 
         VoteInstance storage voteInstance = priceRequest.voteInstances[priceRequest.lastVotingRound];
@@ -685,7 +684,13 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         uint256 stakedAtRound = rounds[priceRequest.lastVotingRound].cumulativeStakeAtRound;
 
         (uint256 wrongVoteSlash, uint256 noVoteSlash) =
-            slashingLibrary.calcSlashing(stakedAtRound, totalVotes, totalCorrectVotes, priceRequest.isGovernance);
+            slashingLibrary.calcSlashing(
+                stakedAtRound,
+                totalVotes,
+                totalCorrectVotes,
+                priceRequest.isGovernance,
+                priceRequestIds[requestIndex]
+            );
 
         uint256 totalSlashed =
             ((noVoteSlash * (stakedAtRound - totalVotes)) / 1e18) +
@@ -866,7 +871,8 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
                     rounds[priceRequest.lastVotingRound].cumulativeStakeAtRound,
                     voteInstance.resultComputation.totalVotes,
                     totalCorrectVotes,
-                    priceRequest.isGovernance
+                    priceRequest.isGovernance,
+                    priceRequestIds[requestIndex]
                 );
 
             // During this round's tracker calculation, we deduct the pending stake from the voter's total stake.
@@ -1053,15 +1059,6 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
     function setSpamDeletionProposalBond(uint256 _spamDeletionProposalBond) public onlyOwner() {
         spamDeletionProposalBond = _spamDeletionProposalBond;
         emit SpamDeletionProposalBondChanged(_spamDeletionProposalBond);
-    }
-
-    /**
-     * @notice Get the spam deletion request by the proposal id.
-     * @param spamDeletionRequestId spam deletion request id.
-     * @return SpamDeletionRequest the spam deletion request.
-     */
-    function getSpamDeletionRequest(uint256 spamDeletionRequestId) external view returns (SpamDeletionRequest memory) {
-        return spamDeletionProposals[spamDeletionRequestId];
     }
 
     /****************************************
