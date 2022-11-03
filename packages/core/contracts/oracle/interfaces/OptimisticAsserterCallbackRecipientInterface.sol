@@ -2,5 +2,5 @@
 pragma solidity 0.8.16;
 
 interface OptimisticAsserterCallbackRecipientInterface {
-    function assertionResolved(bytes32 assertionId, bool assertedThruthfully) external;
+    function assertionResolved(bytes32 assertionId, bool assertedTruthfully) external;
 }
