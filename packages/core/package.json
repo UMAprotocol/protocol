@@ -80,7 +80,7 @@
     "load-addresses": "yarn hardhat load-addresses",
     "clean": "rm -rf contract-types && rm -rf artifacts && rm -rf deployments && rm -rf dist",
     "build-contracts": "yarn hardhat compile",
-    "build": "yarn build-contracts && yarn load-addresses && yarn generate-contract-types && yarn compile-ts && yarn buildLatestHardhatVersionHashes",
+    "build": "yarn build-contracts && yarn load-addresses && yarn generate-contract-types && yarn compile-ts && yarn buildLatestHardhatVersionHashes && ./scripts/SetUpFoundryWithHardhat.sh",
     "buildLatestHardhatVersionHashes": "mkdir -p build && yarn hardhat run ./scripts/BuildContractVersionHashes.js",
     "compile-ts": "rm -rf types dist && mkdir -p types/contract-types && rsync -R contract-types/**/*.d.ts ./types && tsc",
     "generate-contract-types": "rm -rf contract-types && TYPECHAIN=web3 yarn hardhat typechain && TYPECHAIN=ethers yarn hardhat typechain",

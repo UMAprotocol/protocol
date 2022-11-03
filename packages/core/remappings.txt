@@ -1,0 +1,7 @@
+@openzeppelin/=../../node_modules/@openzeppelin/
+@uniswap/=../../node_modules/@uniswap/
+@gnosis.pm/=../../node_modules/@gnosis.pm/
+@maticnetwork/=../../node_modules/@maticnetwork/
+@eth-optimism/=../../node_modules/@eth-optimism/
+ds-test/=lib/forge-std/lib/ds-test/src/
+forge-std/=lib/forge-std/src/
