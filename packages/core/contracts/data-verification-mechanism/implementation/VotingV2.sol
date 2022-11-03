@@ -587,7 +587,13 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         uint256 stakedAtRound = rounds[priceRequest.lastVotingRound].cumulativeStakeAtRound;
 
         (uint256 wrongVoteSlash, uint256 noVoteSlash) =
-            slashingLibrary.calcSlashing(stakedAtRound, totalVotes, totalCorrectVotes, priceRequest.isGovernance);
+            slashingLibrary.calcSlashing(
+                stakedAtRound,
+                totalVotes,
+                totalCorrectVotes,
+                priceRequest.isGovernance,
+                priceRequestIds[requestIndex]
+            );
 
         uint256 totalSlashed =
             ((noVoteSlash * (stakedAtRound - totalVotes)) + (wrongVoteSlash * (totalVotes - totalCorrectVotes))) / 1e18;

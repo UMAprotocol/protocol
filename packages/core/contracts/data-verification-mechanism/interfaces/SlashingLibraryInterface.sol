@@ -46,6 +46,8 @@ interface SlashingLibraryInterface {
      * @param totalStaked The total amount of tokens staked.
      * @param totalVotes The total amount of votes.
      * @param totalCorrectVotes The total amount of correct votes.
+     * @param isGovernance Whether the request is a governance request.
+     * @param priceRequestId The price request ID.
      * @return wrongVoteSlashPerToken The amount of tokens to slash for voting wrong.
      * @return noVoteSlashPerToken The amount of tokens to slash for not voting.
      */
@@ -53,6 +55,7 @@ interface SlashingLibraryInterface {
         uint256 totalStaked,
         uint256 totalVotes,
         uint256 totalCorrectVotes,
-        bool isGovernance
+        bool isGovernance,
+        bytes32 priceRequestId
     ) external pure returns (uint256 wrongVoteSlashPerToken, uint256 noVoteSlashPerToken);
 }
