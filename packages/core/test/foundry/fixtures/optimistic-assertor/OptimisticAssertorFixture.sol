@@ -7,6 +7,7 @@ import "../dvm/MockDvmFixture.sol";
 import "../../../../contracts/optimistic-assertor/implementation/OptimisticAssertor.sol";
 import "../../../../contracts/common/implementation/TestnetERC20.sol";
 
+// Fixture to deploy a configured OptimisticAssertor with reasonable default values.
 contract OptimisticAssertorFixture is Test {
     struct OptimisticAsserterContracts {
         Timer timer;

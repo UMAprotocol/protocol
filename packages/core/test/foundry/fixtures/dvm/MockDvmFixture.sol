@@ -4,6 +4,7 @@ import "./BaseDvmFixture.sol";
 
 import "../../../../contracts/oracle/test/MockOracleAncillary.sol";
 
+// Fixture to extend the base DVM fixture with a mock oracle. Used when not directly testing the DVM.
 contract MockDvmFixture {
     struct BaseMockDvmContracts {
         Timer timer;

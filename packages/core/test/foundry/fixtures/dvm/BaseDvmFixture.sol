@@ -1,7 +1,6 @@
 pragma solidity 0.8.16;
 
-// Import forge std test and TestAddresses. All downstream contracts that use this fixture will not need to re-import.
-import "forge-std/Test.sol";
+import "forge-std/Test.sol"; // Import forge std test and TestAddresses. No downstream contracts need to re-import.
 import "../common/TestAddress.sol";
 import "../common/TimerFixture.sol";
 
@@ -11,6 +10,7 @@ import "../../../../contracts/oracle/implementation/Store.sol";
 import "../../../../contracts/oracle/implementation/identifierWhitelist.sol";
 import "../../../../contracts/oracle/implementation/Constants.sol";
 
+// Fixture to setup base DVM contracts: Finder, Store, Address whitelist and Identifier whitelist.
 contract BaseDvmFixture is Test {
     struct BaseDvmContracts {
         Timer timer;
