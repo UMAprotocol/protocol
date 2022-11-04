@@ -25,7 +25,7 @@ contract OptimisticAssertorFixture is Test {
         TestnetERC20 defaultCurrency = new TestnetERC20("Default Bond Token", "DBT", 18);
 
         vm.startPrank(TestAddress.owner);
-        
+
         baseMockDvmContracts.addressWhitelist.addToWhitelist(address(defaultCurrency));
         baseMockDvmContracts.identifierWhitelist.addSupportedIdentifier("ASSERT_TRUTH");
         uint256 defaultBond = 100e18;
@@ -35,7 +35,7 @@ contract OptimisticAssertorFixture is Test {
 
         vm.stopPrank();
 
-        return (
+        return
             OptimisticAsserterContracts(
                 baseMockDvmContracts.timer,
                 baseMockDvmContracts.finder,
@@ -45,14 +45,14 @@ contract OptimisticAssertorFixture is Test {
                 baseMockDvmContracts.mockOracle,
                 defaultCurrency,
                 optimisticAssertor
-            )
-        );
+            );
     }
 }
 
 contract OptimisticAssertorFixtureTest is Test {
     function testDefaultConfiguration() public {
-        OptimisticAssertorFixture.OptimisticAsserterContracts memory oaContracts = new OptimisticAssertorFixture().setUp();
+        OptimisticAssertorFixture.OptimisticAsserterContracts memory oaContracts =
+            new OptimisticAssertorFixture().setUp();
 
         oaContracts.addressWhitelist.isOnWhitelist(address(oaContracts.defaultCurrency));
         oaContracts.identifierWhitelist.isIdentifierSupported("ASSERT_TRUTH");

@@ -19,7 +19,7 @@ contract MockDvmFixture {
 
         MockOracleAncillary mockOracle =
             new MockOracleAncillary(address(baseDvmContracts.finder), address(baseDvmContracts.timer));
-        return (
+        return
             BaseMockDvmContracts(
                 baseDvmContracts.timer,
                 baseDvmContracts.finder,
@@ -27,8 +27,7 @@ contract MockDvmFixture {
                 baseDvmContracts.addressWhitelist,
                 baseDvmContracts.identifierWhitelist,
                 mockOracle
-            )
-        );
+            );
     }
 }
 

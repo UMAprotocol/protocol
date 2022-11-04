@@ -34,7 +34,7 @@ contract BaseDvmFixture is Test {
 
         vm.stopPrank(); // Return caller address to standard.
 
-        return (BaseDvmContracts(timer, finder, store, addressWhitelist, identifierWhitelist));
+        return BaseDvmContracts(timer, finder, store, addressWhitelist, identifierWhitelist);
     }
 }
 
