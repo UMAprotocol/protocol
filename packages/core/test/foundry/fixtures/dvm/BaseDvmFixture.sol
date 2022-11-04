@@ -3,7 +3,7 @@ pragma solidity 0.8.16;
 // Import forge std test and TestAddresses. All downstream contracts that use this fixture will not need to re-import.
 import "forge-std/Test.sol";
 import "../common/TestAddress.sol";
-import "../common/SetUpTimer.sol";
+import "../common/TimerFixture.sol";
 
 import "../../../../contracts/common/implementation/AddressWhitelist.sol";
 import "../../../../contracts/oracle/implementation/Finder.sol";
@@ -11,7 +11,7 @@ import "../../../../contracts/oracle/implementation/Store.sol";
 import "../../../../contracts/oracle/implementation/identifierWhitelist.sol";
 import "../../../../contracts/oracle/implementation/Constants.sol";
 
-contract SetUpBaseDvm is Test {
+contract BaseDvmFixture is Test {
     struct BaseDvmContracts {
         Timer timer;
         Finder finder;
@@ -22,7 +22,7 @@ contract SetUpBaseDvm is Test {
 
     function setUp() public returns (BaseDvmContracts memory) {
         vm.startPrank(TestAddress.owner); // Use the owner as the deployment address for all base DVM contracts.
-        Timer timer = new SetUpTimer().setUp();
+        Timer timer = new TimerFixture().setUp();
         Finder finder = new Finder();
         Store store = new Store(FixedPoint.fromUnscaledUint(0), FixedPoint.fromUnscaledUint(0), address(timer));
         AddressWhitelist addressWhitelist = new AddressWhitelist();
@@ -38,9 +38,9 @@ contract SetUpBaseDvm is Test {
     }
 }
 
-contract SetUpBaseDvmTest is Test {
+contract BaseDvmFixtureTest is Test {
     function testRegistration() public {
-        SetUpBaseDvm.BaseDvmContracts memory baseDvmContracts = new SetUpBaseDvm().setUp();
+        BaseDvmFixture.BaseDvmContracts memory baseDvmContracts = new BaseDvmFixture().setUp();
         // Check all addresses are correctly placed in the finder.
         assertEq(
             baseDvmContracts.finder.getImplementationAddress(OracleInterfaces.Store),

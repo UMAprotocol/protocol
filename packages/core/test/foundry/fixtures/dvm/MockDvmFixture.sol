@@ -1,10 +1,10 @@
 pragma solidity 0.8.16;
 
-import "./SetUpBaseDvm.sol";
+import "./BaseDvmFixture.sol";
 
 import "../../../../contracts/oracle/test/MockOracleAncillary.sol";
 
-contract SetUpMockDvm {
+contract MockDvmFixture {
     struct BaseMockDvmContracts {
         Timer timer;
         Finder finder;
@@ -15,7 +15,7 @@ contract SetUpMockDvm {
     }
 
     function setUp() public returns (BaseMockDvmContracts memory) {
-        SetUpBaseDvm.BaseDvmContracts memory baseDvmContracts = new SetUpBaseDvm().setUp();
+        BaseDvmFixture.BaseDvmContracts memory baseDvmContracts = new BaseDvmFixture().setUp();
 
         MockOracleAncillary mockOracle =
             new MockOracleAncillary(address(baseDvmContracts.finder), address(baseDvmContracts.timer));
@@ -32,9 +32,9 @@ contract SetUpMockDvm {
     }
 }
 
-contract SetUpMockDvmTest is Test {
+contract MockDvmFixtureTest is Test {
     function testMockOracle() public {
-        SetUpMockDvm.BaseMockDvmContracts memory baseDvmMockContracts = new SetUpMockDvm().setUp();
+        MockDvmFixture.BaseMockDvmContracts memory baseDvmMockContracts = new MockDvmFixture().setUp();
         vm.expectRevert(); // Reverts when there is no price yet.
         baseDvmMockContracts.mockOracle.getPrice("TEST", 420, "0x");
         vm.expectRevert("Can't push prices that haven't been requested"); // Reverts when there is no price yet.

@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import "../fixtures/optimistic-assertor/SetUpOptimisticAssertor.sol";
+import "../fixtures/optimistic-assertor/OptimisticAssertorFixture.sol";
 
 contract ContractTest is Test {
-    SetUpOptimisticAssertor.OptimisticAsserterContracts umaContracts;
+    OptimisticAssertorFixture.OptimisticAsserterContracts umaContracts;
     OptimisticAssertor optimisticAssertor;
 
     function setUp() public {
-        umaContracts = new SetUpOptimisticAssertor().setUp();
+        umaContracts = new OptimisticAssertorFixture().setUp();
         optimisticAssertor = umaContracts.optimisticAssertor;
     }
 

@@ -2,12 +2,12 @@ pragma solidity 0.8.16;
 
 import "forge-std/Test.sol";
 
-import "../dvm/SetUpMockDvm.sol";
+import "../dvm/MockDvmFixture.sol";
 
 import "../../../../contracts/optimistic-assertor/implementation/OptimisticAssertor.sol";
 import "../../../../contracts/common/implementation/TestnetERC20.sol";
 
-contract SetUpOptimisticAssertor is Test {
+contract OptimisticAssertorFixture is Test {
     struct OptimisticAsserterContracts {
         Timer timer;
         Finder finder;
@@ -20,7 +20,7 @@ contract SetUpOptimisticAssertor is Test {
     }
 
     function setUp() public returns (OptimisticAsserterContracts memory) {
-        SetUpMockDvm.BaseMockDvmContracts memory baseMockDvmContracts = new SetUpMockDvm().setUp();
+        MockDvmFixture.BaseMockDvmContracts memory baseMockDvmContracts = new MockDvmFixture().setUp();
 
         TestnetERC20 defaultCurrency = new TestnetERC20("Default Bond Token", "DBT", 18);
 
@@ -49,9 +49,9 @@ contract SetUpOptimisticAssertor is Test {
     }
 }
 
-contract SetUpOptimisticAssertorTest is Test {
+contract OptimisticAssertorFixtureTest is Test {
     function testDefaultConfiguration() public {
-        SetUpOptimisticAssertor.OptimisticAsserterContracts memory oaContracts = new SetUpOptimisticAssertor().setUp();
+        OptimisticAssertorFixture.OptimisticAsserterContracts memory oaContracts = new OptimisticAssertorFixture().setUp();
 
         oaContracts.addressWhitelist.isOnWhitelist(address(oaContracts.defaultCurrency));
         oaContracts.identifierWhitelist.isIdentifierSupported("ASSERT_TRUTH");
