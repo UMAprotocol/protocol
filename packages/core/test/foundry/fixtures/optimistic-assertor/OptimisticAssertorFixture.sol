@@ -25,6 +25,7 @@ contract OptimisticAssertorFixture is Test {
         TestnetERC20 defaultCurrency = new TestnetERC20("Default Bond Token", "DBT", 18);
 
         vm.startPrank(TestAddress.owner);
+        
         baseMockDvmContracts.addressWhitelist.addToWhitelist(address(defaultCurrency));
         baseMockDvmContracts.identifierWhitelist.addSupportedIdentifier("ASSERT_TRUTH");
         uint256 defaultBond = 100e18;
