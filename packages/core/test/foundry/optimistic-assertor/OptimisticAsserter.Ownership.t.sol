@@ -4,12 +4,10 @@ pragma solidity ^0.8.0;
 import "../fixtures/optimistic-assertor/OptimisticAssertorFixture.sol";
 
 contract ContractTest is Test {
-    OptimisticAssertorFixture.OptimisticAsserterContracts umaContracts;
     OptimisticAssertor optimisticAssertor;
 
     function setUp() public {
-        umaContracts = new OptimisticAssertorFixture().setUp();
-        optimisticAssertor = umaContracts.optimisticAssertor;
+        optimisticAssertor = new OptimisticAssertorFixture().setUp().optimisticAssertor;
     }
 
     function testOwnershipPermissions() public {
