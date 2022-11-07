@@ -2,20 +2,21 @@
 pragma solidity 0.8.16;
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
-import "../interfaces/StoreInterface.sol";
-import "../interfaces/FinderInterface.sol";
-import "./Constants.sol";
+import "../../oracle/interfaces/StoreInterface.sol";
+import "../../oracle/interfaces/FinderInterface.sol";
+import "../../oracle/implementation/Constants.sol";
 
 import "../../common/implementation/Lockable.sol";
 import "../../common/implementation/AddressWhitelist.sol";
-import "../interfaces/OracleAncillaryInterface.sol";
+import "../../oracle/interfaces/OracleAncillaryInterface.sol";
 import "../../common/implementation/AncillaryData.sol";
 import "../interfaces/OptimisticAsserterCallbackRecipientInterface.sol";
 import "../interfaces/OptimisticAssertorInterface.sol";
 import "../interfaces/SovereignSecurityManagerInterface.sol";
 
-contract OptimisticAssertor is Lockable, OptimisticAssertorInterface {
+contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
     using SafeERC20 for IERC20;
 
     FinderInterface public immutable finder;
@@ -26,8 +27,28 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface {
 
     bytes32 identifier = "ASSERT_TRUTH";
 
-    constructor(address _finderAddress) {
-        finder = FinderInterface(_finderAddress);
+    IERC20 public defaultCurrency;
+    uint256 public defaultBond;
+    uint256 public defaultLiveness;
+
+    constructor(
+        FinderInterface _finder,
+        IERC20 _defaultCurrency,
+        uint256 _defaultBond,
+        uint256 _defaultLiveness
+    ) {
+        finder = _finder;
+        setAssertionDefaults(_defaultCurrency, _defaultBond, _defaultLiveness);
+    }
+
+    function setAssertionDefaults(
+        IERC20 _defaultCurrency,
+        uint256 _defaultBond,
+        uint256 _defaultLiveness
+    ) public onlyOwner {
+        defaultCurrency = _defaultCurrency;
+        defaultBond = _defaultBond;
+        defaultLiveness = _defaultLiveness;
     }
 
     function assertTruth(bytes memory claim) public returns (bytes32) {
@@ -35,7 +56,7 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface {
         // If there is a pending assertion with the same configuration (timestamp, claim and default bond prop) then
         // reverts. Internally calls assertTruth(...) with all the associated props.
         // returns the value that assertTruth(...) returns.
-        return assertTruthFor(claim, address(0), address(0), address(0), address(0), 0, 0);
+        return assertTruthFor(claim, address(0), address(0), address(0), defaultCurrency, defaultBond, defaultLiveness);
     }
 
     function assertTruthFor(
@@ -43,19 +64,20 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface {
         address proposer,
         address callbackRecipient,
         address sovereignSecurityManager,
-        address currency,
-        uint256 bondAmount,
+        IERC20 currency,
+        uint256 bond,
         uint256 liveness
     ) public returns (bytes32) {
         bytes32 assertionId =
-            _getId(claim, bondAmount, liveness, currency, proposer, callbackRecipient, sovereignSecurityManager);
+            _getId(claim, bond, liveness, currency, proposer, callbackRecipient, sovereignSecurityManager);
+
         require(assertions[assertionId].proposer == address(0)); // Revert if assertion already exists.
         require(_getCollateralWhitelist().isOnWhitelist(address(currency)), "Unsupported currency");
         uint256 finalFee = _getStore().computeFinalFee(address(currency)).rawValue;
-        require((bondAmount * burnedBondPercentage) / 1e18 >= finalFee, "Bond amount too low");
+        require((bond * burnedBondPercentage) / 1e18 >= finalFee, "Bond amount too low");
 
         // Pull the bond
-        IERC20(currency).safeTransferFrom(msg.sender, address(this), bondAmount);
+        currency.safeTransferFrom(msg.sender, address(this), bond);
 
         assertions[assertionId] = Assertion({
             proposer: proposer == address(0) ? msg.sender : proposer,
@@ -63,11 +85,11 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface {
             disputer: address(0),
             callbackRecipient: callbackRecipient,
             sovereignSecurityManager: sovereignSecurityManager,
-            currency: IERC20(currency),
+            currency: currency,
             respectDvmOnArbitration: true, // this is the default behavior: if not specified by the Sovereign security manager the assertion will respect the DVM result.
             settled: false,
             settlementResolution: false,
-            bondAmount: bondAmount,
+            bond: bond,
             assertionTime: block.timestamp,
             expirationTime: block.timestamp + liveness
         });
@@ -100,7 +122,7 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface {
         require(assertion.expirationTime > block.timestamp, "Assertion is expired"); // Revert if assertion expired.
 
         // Pull the bond
-        assertion.currency.safeTransferFrom(msg.sender, address(this), assertion.bondAmount);
+        assertion.currency.safeTransferFrom(msg.sender, address(this), assertion.bond);
 
         assertion.disputer = disputer;
 
@@ -119,7 +141,7 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface {
         if (assertion.disputer == address(0)) {
             // No dispute, settle with the proposer
             require(assertion.expirationTime <= block.timestamp, "Assertion not expired"); // Revert if assertion not expired.
-            assertion.currency.safeTransfer(assertion.proposer, assertion.bondAmount);
+            assertion.currency.safeTransfer(assertion.proposer, assertion.bond);
             assertion.settlementResolution = true;
             _sendCallback(assertionId, true);
             // emit event
@@ -127,11 +149,14 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface {
             // Dispute, settle with the disputer
             int256 dvmResolvedPrice =
                 _getOracle(assertionId).getPrice(identifier, assertion.assertionTime, _stampAssertion(assertionId)); // Revert if price not resolved.
+
             assertion.settlementResolution = dvmResolvedPrice == 1e18;
+            // todo: if (assertion.respectDvmOnArbitration)
             address bondRecipient = assertion.settlementResolution ? assertion.proposer : assertion.disputer;
 
-            uint256 amountToBurn = burnedBondPercentage * assertion.bondAmount;
-            uint256 amountToSend = assertion.bondAmount * 2 - amountToBurn; // 50% of the bond is burned. The other 50% is sent to the bond recipient.
+            // todo: should you only play the final fee in the case of a DVM arbitrated dispute?
+            uint256 amountToBurn = burnedBondPercentage * assertion.bond;
+            uint256 amountToSend = assertion.bond * 2 - amountToBurn; // 50% of the bond is burned. The other 50% is sent to the bond recipient.
 
             assertion.currency.safeTransfer(bondRecipient, amountToSend);
             assertion.currency.safeTransfer(address(_getStore()), amountToBurn);
@@ -139,15 +164,13 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface {
             if (assertion.respectDvmOnArbitration) _sendCallback(assertionId, assertion.settlementResolution);
             // emit event
         }
-
-        // TODO: assertionResolvedCallback
     }
 
     function _getId(
         bytes memory claim,
-        uint256 bondAmount,
+        uint256 bond,
         uint256 liveness,
-        address currency,
+        IERC20 currency,
         address proposer,
         address callbackRecipient,
         address sovereignSecurityManager
@@ -155,7 +178,7 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface {
         // Returns the unique ID for this assertion. This ID is used to identify the assertion in the Oracle.
         return
             keccak256(
-                abi.encode(claim, bondAmount, liveness, currency, proposer, callbackRecipient, sovereignSecurityManager)
+                abi.encode(claim, bond, liveness, currency, proposer, callbackRecipient, sovereignSecurityManager)
             );
     }
 

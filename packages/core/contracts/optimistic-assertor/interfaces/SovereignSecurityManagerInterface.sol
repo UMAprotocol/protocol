@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.16;
 
-import "../interfaces/OptimisticAssertorInterface.sol";
+import "./OptimisticAssertorInterface.sol";
 
 interface SovereignSecurityManagerInterface {
     function shouldArbitrateViaDvm(bytes32 assertionId) external view returns (bool);

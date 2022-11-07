@@ -1,6 +1,6 @@
 pragma solidity 0.8.16;
 
-import "../interfaces/SovereignSecurityManagerInterface.sol";
+import "../../interfaces/SovereignSecurityManagerInterface.sol";
 
 contract BaseSovereignSecurityManager is SovereignSecurityManagerInterface {
     event PriceRequested(bytes32 indexed identifier, uint256 time, bytes ancillaryData);
@@ -17,6 +17,7 @@ contract BaseSovereignSecurityManager is SovereignSecurityManagerInterface {
         override
         returns (bool)
     {
+        // return 2 bools then revert in the OA.
         return true;
     }
 
