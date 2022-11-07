@@ -49,6 +49,8 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
         defaultCurrency = _defaultCurrency;
         defaultBond = _defaultBond;
         defaultLiveness = _defaultLiveness;
+
+        emit AssertionDefaultsSet(_defaultCurrency, _defaultBond, _defaultLiveness);
     }
 
     function assertTruth(bytes memory claim) public returns (bytes32) {
@@ -105,7 +107,16 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
         // settings in one call.
         assertions[assertionId].dvmAsOracle = _checkIfShouldArbitrateViaDvm(assertionId);
 
-        // emit event
+        emit AssertionMade(
+            assertionId,
+            claim,
+            proposer,
+            callbackRecipient,
+            sovereignSecurityManager,
+            currency,
+            bond,
+            assertions[assertionId].expirationTime
+        );
 
         return assertionId;
     }
@@ -136,7 +147,7 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
 
         if (!assertion.respectDvmOnArbitration) _sendCallback(assertionId, false);
 
-        // emit event
+        emit AssertionDisputed(assertionId, disputer);
     }
 
     function settleAssertion(bytes32 assertionId) public {
@@ -150,7 +161,8 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
             assertion.currency.safeTransfer(assertion.proposer, assertion.bond);
             assertion.settlementResolution = true;
             _sendCallback(assertionId, true);
-            // emit event
+
+            emit AssertionSettled(assertionId, assertion.proposer, false, true);
         } else {
             // Dispute, settle with the disputer
             int256 dvmResolvedPrice =
@@ -168,7 +180,8 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
             assertion.currency.safeTransfer(address(_getStore()), amountToBurn);
 
             if (assertion.respectDvmOnArbitration) _sendCallback(assertionId, assertion.settlementResolution);
-            // emit event
+
+            emit AssertionSettled(assertionId, bondRecipient, true, assertion.settlementResolution);
         }
     }
 
