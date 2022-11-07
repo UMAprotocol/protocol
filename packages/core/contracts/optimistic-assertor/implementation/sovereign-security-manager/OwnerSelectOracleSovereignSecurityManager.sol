@@ -3,7 +3,7 @@ pragma solidity 0.8.16;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "./BaseSovereignSecurityManager.sol";
 
-contract OwnerUnplugSovereignSecurityManager is BaseSovereignSecurityManager, Ownable {
+contract OwnerSelectOracleSovereignSecurityManager is BaseSovereignSecurityManager, Ownable {
     struct ArbitrationResolution {
         bool valueSet;
         bool resolution;
