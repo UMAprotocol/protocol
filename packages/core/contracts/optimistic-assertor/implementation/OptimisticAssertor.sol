@@ -31,28 +31,6 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
     uint256 public defaultBond;
     uint256 public defaultLiveness;
 
-    event AssertionMade(
-        bytes32 assertionId,
-        bytes claim,
-        address indexed proposer,
-        address indexed callbackRecipient,
-        address indexed sovereignSecurityManager,
-        IERC20 currency,
-        uint256 bond,
-        uint256 liveness
-    );
-
-    event AssertionDisputed(bytes32 indexed assertionId, address indexed disputer);
-
-    event AssertionSettled(
-        bytes32 indexed assertionId,
-        address indexed bondRecipient,
-        bool disputed,
-        bool settlementResolution
-    );
-
-    event AssertionDefaultsSet(IERC20 defaultCurrency, uint256 defaultBond, uint256 defaultLiveness);
-
     constructor(
         FinderInterface _finder,
         IERC20 _defaultCurrency,
