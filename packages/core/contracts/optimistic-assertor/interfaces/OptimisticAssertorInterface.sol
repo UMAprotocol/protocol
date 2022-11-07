@@ -29,7 +29,7 @@ interface OptimisticAssertorInterface {
         address indexed sovereignSecurityManager,
         IERC20 currency,
         uint256 bond,
-        uint256 liveness
+        uint256 expirationTime
     );
 
     event AssertionDisputed(bytes32 indexed assertionId, address indexed disputer);

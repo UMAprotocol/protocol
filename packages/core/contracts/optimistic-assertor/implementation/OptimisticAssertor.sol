@@ -115,7 +115,7 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
             sovereignSecurityManager,
             currency,
             bond,
-            liveness
+            assertions[assertionId].expirationTime
         );
 
         return assertionId;
