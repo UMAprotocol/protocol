@@ -23,7 +23,7 @@ contract OwnerUnplugSovereignSecurityManager is BaseSovereignSecurityManager, Ow
         arbitrationResolutions[requestId] = ArbitrationResolution(true, arbitrationResolution);
     }
 
-    function setArbitrateViaSmm(bool value) public onlyOwner {
+    function setArbitrateViaSsm(bool value) public onlyOwner {
         arbitrateViaSsm = value;
     }
 
