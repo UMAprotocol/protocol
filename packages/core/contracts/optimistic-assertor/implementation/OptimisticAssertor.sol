@@ -97,15 +97,17 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
             expirationTime: block.timestamp + liveness
         });
 
-        // Check if the Sovereign Security Manager is configured to arbitrate via DVM. Note that this call will revert
-        // if the Sovereign Security Manager is configured to not allow this assertion, such as if the manager has a
-        // configured whitelist and the asserter is not on it.
-        assertions[assertionId].respectDvmOnArbitration = _checkIfShouldRespectDvmOnArbitrate(assertionId);
+        SovereignSecurityManagerInterface.AssertionPolicies memory assertionPolicies =
+            _getSovereignSecurityManager(assertionId).getAssertionPolicies(assertionId);
+
+        // Check if the assertion is allowed by the sovereign security manager.
+        require(assertionPolicies.allowAssertion, "Assertion not allowed");
+
+        // Check if the Sovereign Security Manager is configured to arbitrate via DVM
+        assertions[assertionId].respectDvmOnArbitration = assertionPolicies.useDisputeResolution;
 
         // Check if the Sovereign Security Manager is configured to use the DVM as an oracle.
-        // TODO: As we are checking this only at assertion time, we can refactor to get all Sovereign Security Manager
-        // settings in one call.
-        assertions[assertionId].dvmAsOracle = _checkIfShouldArbitrateViaDvm(assertionId);
+        assertions[assertionId].dvmAsOracle = assertionPolicies.useDvmAsOracle;
 
         emit AssertionMade(
             assertionId,
@@ -239,16 +241,5 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
                 assertionId,
                 assertedTruthfully
             );
-    }
-
-    function _checkIfShouldRespectDvmOnArbitrate(bytes32 assertionId) internal returns (bool) {
-        // True is now the default behavior: if the SSM is not configured, then the assertion will respect the DVM.
-        if (assertions[assertionId].sovereignSecurityManager == address(0)) return true;
-        return _getSovereignSecurityManager(assertionId).shouldAllowAssertionAndRespectDvmOnArbitrate(assertionId);
-    }
-
-    function _checkIfShouldArbitrateViaDvm(bytes32 assertionId) internal view returns (bool) {
-        if (assertions[assertionId].sovereignSecurityManager == address(0)) return true;
-        return _getSovereignSecurityManager(assertionId).shouldArbitrateViaDvm(assertionId);
     }
 }
