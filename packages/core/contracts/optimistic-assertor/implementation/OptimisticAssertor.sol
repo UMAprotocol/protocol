@@ -215,10 +215,11 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
     }
 
     function _sendCallback(bytes32 assertionId, bool assertedTruthfully) internal {
-        OptimisticAsserterCallbackRecipientInterface(assertions[assertionId].callbackRecipient).assertionResolved(
-            assertionId,
-            assertedTruthfully
-        );
+        if (assertions[assertionId].callbackRecipient != address(0))
+            OptimisticAsserterCallbackRecipientInterface(assertions[assertionId].callbackRecipient).assertionResolved(
+                assertionId,
+                assertedTruthfully
+            );
     }
 
     function _checkIfShouldRespectDvmOnArbitrate(bytes32 assertionId) internal returns (bool) {
