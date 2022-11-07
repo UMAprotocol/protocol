@@ -13,6 +13,7 @@ interface OptimisticAssertorInterface {
         address sovereignSecurityManager;
         IERC20 currency; // ERC20 token used to pay rewards and fees.
         bool respectDvmOnArbitration; // TODO: might be moved to SovereignSecurityManager.
+        bool dvmAsOracle; // True if the DVM is used as an oracle (SovereignSecurityManager on False)
         bool settled; // True if the request is settled.
         bool settlementResolution;
         uint256 bond;
