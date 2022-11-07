@@ -123,12 +123,14 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
 
     function getAssertion(bytes32 assertionId) public view returns (bool) {
         Assertion memory assertion = assertions[assertionId];
+        // Return early if disputed assertion ignores Oracle.
+        if (assertion.disputer != address(0) && !assertion.respectDvmOnArbitration) return false;
         require(assertion.settled, "Assertion not settled"); // Revert if assertion not settled.
         return assertion.settlementResolution;
     }
 
     function settleAndGetAssertion(bytes32 assertionId) public returns (bool) {
-        settleAssertion(assertionId);
+        if (!assertions[assertionId].settled) settleAssertion(assertionId);
         return getAssertion(assertionId);
     }
 
@@ -165,11 +167,10 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
             emit AssertionSettled(assertionId, assertion.proposer, false, true);
         } else {
             // Dispute, settle with the disputer
-            int256 dvmResolvedPrice =
+            int256 resolvedPrice =
                 _getOracle(assertionId).getPrice(identifier, assertion.assertionTime, _stampAssertion(assertionId)); // Revert if price not resolved.
 
-            assertion.settlementResolution = dvmResolvedPrice == 1e18;
-            // todo: if (assertion.respectDvmOnArbitration)
+            assertion.settlementResolution = resolvedPrice == 1e18;
             address bondRecipient = assertion.settlementResolution ? assertion.proposer : assertion.disputer;
 
             // todo: should you only play the final fee in the case of a DVM arbitrated dispute?
