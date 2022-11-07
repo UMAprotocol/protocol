@@ -87,6 +87,7 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
             sovereignSecurityManager: sovereignSecurityManager,
             currency: currency,
             respectDvmOnArbitration: true, // this is the default behavior: if not specified by the Sovereign security manager the assertion will respect the DVM result.
+            dvmAsOracle: true, // this is the default behavior: if not specified by the Sovereign security manager the assertion will use the DVM as an oracle.
             settled: false,
             settlementResolution: false,
             bond: bond,
@@ -98,6 +99,11 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
         // if the Sovereign Security Manager is configured to not allow this assertion, such as if the manager has a
         // configured whitelist and the asserter is not on it.
         assertions[assertionId].respectDvmOnArbitration = _checkIfShouldRespectDvmOnArbitrate(assertionId);
+
+        // Check if the Sovereign Security Manager is configured to use the DVM as an oracle.
+        // TODO: As we are checking this only at assertion time, we can refactor to get all Sovereign Security Manager
+        // settings in one call.
+        assertions[assertionId].dvmAsOracle = _checkIfShouldArbitrateViaDvm(assertionId);
 
         // emit event
 
@@ -201,7 +207,7 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
     }
 
     function _getOracle(bytes32 assertionId) internal view returns (OracleAncillaryInterface) {
-        if (_checkIfShouldArbitrateViaDvm(assertionId))
+        if (assertions[assertionId].dvmAsOracle)
             return OracleAncillaryInterface(finder.getImplementationAddress(OracleInterfaces.Oracle));
         return OracleAncillaryInterface(address(_getSovereignSecurityManager(assertionId)));
     }
