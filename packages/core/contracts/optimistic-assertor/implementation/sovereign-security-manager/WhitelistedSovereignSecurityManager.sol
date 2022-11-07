@@ -10,8 +10,12 @@ contract WhitelistedSovereignSecurityManager is BaseSovereignSecurityManager, Ow
         whitelistedOriginatingProposers[proposer] = value;
     }
 
-    function shouldAllowAssertionAndRespectDvmOnArbitrate(bytes32 assertionId) public view override returns (bool) {
-        require(whitelistedOriginatingProposers[tx.origin], "Proposer not whitelisted");
-        return true;
+    function getAssertionPolicies(bytes32 assertionId) public view override returns (AssertionPolicies memory) {
+        return
+            AssertionPolicies({
+                allowAssertion: whitelistedOriginatingProposers[tx.origin],
+                useDvmAsOracle: true,
+                useDisputeResolution: true
+            });
     }
 }

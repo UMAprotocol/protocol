@@ -4,10 +4,13 @@ pragma solidity 0.8.16;
 import "./OptimisticAssertorInterface.sol";
 
 interface SovereignSecurityManagerInterface {
-    function shouldArbitrateViaDvm(bytes32 assertionId) external view returns (bool);
+    struct AssertionPolicies {
+        bool allowAssertion;
+        bool useDvmAsOracle;
+        bool useDisputeResolution;
+    }
 
-    // This should revert if asserter not whitelisted.
-    function shouldAllowAssertionAndRespectDvmOnArbitrate(bytes32 assertionId) external returns (bool);
+    function getAssertionPolicies(bytes32 assertionId) external view returns (AssertionPolicies memory);
 
     function getPrice(
         bytes32 identifier,
