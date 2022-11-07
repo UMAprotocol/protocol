@@ -4,8 +4,6 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "./BaseSovereignSecurityManager.sol";
 
 contract OwnerUnplugSovereignSecurityManager is BaseSovereignSecurityManager, Ownable {
-    mapping(bytes32 => bool) shouldUnplugOnAssertionIds;
-
     struct ArbitrationResolution {
         bool valueSet;
         bool resolution;
@@ -14,10 +12,6 @@ contract OwnerUnplugSovereignSecurityManager is BaseSovereignSecurityManager, Ow
     mapping(bytes32 => ArbitrationResolution) arbitrationResolutions;
 
     bool unplugFromDvm;
-
-    function setUnplugOnAssertionId(bytes32 assertionId, bool value) public onlyOwner {
-        shouldUnplugOnAssertionIds[assertionId] = value;
-    }
 
     function setArbitrationResolution(
         bytes32 identifier,
@@ -34,8 +28,7 @@ contract OwnerUnplugSovereignSecurityManager is BaseSovereignSecurityManager, Ow
     }
 
     function shouldArbitrateViaDvm(bytes32 assertionId) public view override returns (bool) {
-        if (unplugFromDvm) return false;
-        return !shouldUnplugOnAssertionIds[assertionId];
+        return !unplugFromDvm;
     }
 
     function getPrice(
