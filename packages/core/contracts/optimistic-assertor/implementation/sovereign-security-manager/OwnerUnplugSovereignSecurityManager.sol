@@ -11,7 +11,7 @@ contract OwnerUnplugSovereignSecurityManager is BaseSovereignSecurityManager, Ow
 
     mapping(bytes32 => ArbitrationResolution) arbitrationResolutions;
 
-    bool disregardDvm;
+    bool arbitrateViaSsm;
 
     function setArbitrationResolution(
         bytes32 identifier,
@@ -23,12 +23,12 @@ contract OwnerUnplugSovereignSecurityManager is BaseSovereignSecurityManager, Ow
         arbitrationResolutions[requestId] = ArbitrationResolution(true, arbitrationResolution);
     }
 
-    function setDvmAsOracle(bool value) public onlyOwner {
-        disregardDvm = value;
+    function setArbitrateViaSmm(bool value) public onlyOwner {
+        arbitrateViaSsm = value;
     }
 
     function shouldArbitrateViaDvm(bytes32 assertionId) public view override returns (bool) {
-        return !disregardDvm;
+        return !arbitrateViaSsm;
     }
 
     function getPrice(
