@@ -5,20 +5,8 @@ import "../../interfaces/SovereignSecurityManagerInterface.sol";
 contract BaseSovereignSecurityManager is SovereignSecurityManagerInterface {
     event PriceRequested(bytes32 indexed identifier, uint256 time, bytes ancillaryData);
 
-    function shouldArbitrateViaDvm(bytes32 assertionId) public view virtual override returns (bool) {
-        return true;
-    }
-
-    // This should revert if asserter not whitelisted.
-    function shouldAllowAssertionAndRespectDvmOnArbitrate(bytes32 assertionId)
-        public
-        view
-        virtual
-        override
-        returns (bool)
-    {
-        // return 2 bools then revert in the OA.
-        return true;
+    function getAssertionPolicies(bytes32 assertionId) public view virtual override returns (AssertionPolicies memory) {
+        return AssertionPolicies({ allowAssertion: true, useDvmAsOracle: true, useDisputeResolution: true });
     }
 
     function getPrice(

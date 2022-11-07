@@ -88,8 +88,8 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
             callbackRecipient: callbackRecipient,
             sovereignSecurityManager: sovereignSecurityManager,
             currency: currency,
-            respectDvmOnArbitration: true, // this is the default behavior: if not specified by the Sovereign security manager the assertion will respect the DVM result.
-            dvmAsOracle: true, // this is the default behavior: if not specified by the Sovereign security manager the assertion will use the DVM as an oracle.
+            useDisputeResolution: true, // this is the default behavior: if not specified by the Sovereign security manager the assertion will respect the DVM result.
+            useDvmAsOracle: true, // this is the default behavior: if not specified by the Sovereign security manager the assertion will use the DVM as an oracle.
             settled: false,
             settlementResolution: false,
             bond: bond,
@@ -97,15 +97,17 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
             expirationTime: block.timestamp + liveness
         });
 
-        // Check if the Sovereign Security Manager is configured to arbitrate via DVM. Note that this call will revert
-        // if the Sovereign Security Manager is configured to not allow this assertion, such as if the manager has a
-        // configured whitelist and the asserter is not on it.
-        assertions[assertionId].respectDvmOnArbitration = _checkIfShouldRespectDvmOnArbitrate(assertionId);
+        SovereignSecurityManagerInterface.AssertionPolicies memory assertionPolicies =
+            _getAssertionPolicies(assertionId);
+
+        // Check if the assertion is allowed by the sovereign security manager.
+        require(assertionPolicies.allowAssertion, "Assertion not allowed");
+
+        // Check if the Sovereign Security Manager is configured to arbitrate via DVM
+        assertions[assertionId].useDisputeResolution = assertionPolicies.useDisputeResolution;
 
         // Check if the Sovereign Security Manager is configured to use the DVM as an oracle.
-        // TODO: As we are checking this only at assertion time, we can refactor to get all Sovereign Security Manager
-        // settings in one call.
-        assertions[assertionId].dvmAsOracle = _checkIfShouldArbitrateViaDvm(assertionId);
+        assertions[assertionId].useDvmAsOracle = assertionPolicies.useDvmAsOracle;
 
         emit AssertionMade(
             assertionId,
@@ -123,8 +125,8 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
 
     function getAssertion(bytes32 assertionId) public view returns (bool) {
         Assertion memory assertion = assertions[assertionId];
-        // Return early if disputed assertion ignores Oracle.
-        if (assertion.disputer != address(0) && !assertion.respectDvmOnArbitration) return false;
+        // Return early if not using answer from resolved dispute.
+        if (assertion.disputer != address(0) && !assertion.useDisputeResolution) return false;
         require(assertion.settled, "Assertion not settled"); // Revert if assertion not settled.
         return assertion.settlementResolution;
     }
@@ -147,7 +149,7 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
 
         _getOracle(assertionId).requestPrice(identifier, assertion.assertionTime, _stampAssertion(assertionId));
 
-        if (!assertion.respectDvmOnArbitration) _sendCallback(assertionId, false);
+        if (!assertion.useDisputeResolution) _sendCallback(assertionId, false);
 
         emit AssertionDisputed(assertionId, disputer);
     }
@@ -180,7 +182,7 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
             assertion.currency.safeTransfer(bondRecipient, amountToSend);
             assertion.currency.safeTransfer(address(_getStore()), amountToBurn);
 
-            if (assertion.respectDvmOnArbitration) _sendCallback(assertionId, assertion.settlementResolution);
+            if (assertion.useDisputeResolution) _sendCallback(assertionId, assertion.settlementResolution);
 
             emit AssertionSettled(assertionId, bondRecipient, true, assertion.settlementResolution);
         }
@@ -221,7 +223,7 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
     }
 
     function _getOracle(bytes32 assertionId) internal view returns (OracleAncillaryInterface) {
-        if (assertions[assertionId].dvmAsOracle)
+        if (assertions[assertionId].useDvmAsOracle)
             return OracleAncillaryInterface(finder.getImplementationAddress(OracleInterfaces.Oracle));
         return OracleAncillaryInterface(address(_getSovereignSecurityManager(assertionId)));
     }
@@ -234,22 +236,21 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
         return SovereignSecurityManagerInterface(assertions[assertionId].sovereignSecurityManager);
     }
 
+    function _getAssertionPolicies(bytes32 assertionId)
+        internal
+        view
+        returns (SovereignSecurityManagerInterface.AssertionPolicies memory)
+    {
+        address ssm = assertions[assertionId].sovereignSecurityManager;
+        if (ssm == address(0)) return SovereignSecurityManagerInterface.AssertionPolicies(true, true, true);
+        return SovereignSecurityManagerInterface(ssm).getAssertionPolicies(assertionId);
+    }
+
     function _sendCallback(bytes32 assertionId, bool assertedTruthfully) internal {
         if (assertions[assertionId].callbackRecipient != address(0))
             OptimisticAsserterCallbackRecipientInterface(assertions[assertionId].callbackRecipient).assertionResolved(
                 assertionId,
                 assertedTruthfully
             );
-    }
-
-    function _checkIfShouldRespectDvmOnArbitrate(bytes32 assertionId) internal returns (bool) {
-        // True is now the default behavior: if the SSM is not configured, then the assertion will respect the DVM.
-        if (assertions[assertionId].sovereignSecurityManager == address(0)) return true;
-        return _getSovereignSecurityManager(assertionId).shouldAllowAssertionAndRespectDvmOnArbitrate(assertionId);
-    }
-
-    function _checkIfShouldArbitrateViaDvm(bytes32 assertionId) internal view returns (bool) {
-        if (assertions[assertionId].sovereignSecurityManager == address(0)) return true;
-        return _getSovereignSecurityManager(assertionId).shouldArbitrateViaDvm(assertionId);
     }
 }
