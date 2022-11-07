@@ -7,7 +7,7 @@ import "../common/TimerFixture.sol";
 import "../../../../contracts/common/implementation/AddressWhitelist.sol";
 import "../../../../contracts/oracle/implementation/Finder.sol";
 import "../../../../contracts/oracle/implementation/Store.sol";
-import "../../../../contracts/oracle/implementation/identifierWhitelist.sol";
+import "../../../../contracts/oracle/implementation/IdentifierWhitelist.sol";
 import "../../../../contracts/oracle/implementation/Constants.sol";
 
 // Fixture to setup base DVM contracts: Finder, Store, Address whitelist and Identifier whitelist.
