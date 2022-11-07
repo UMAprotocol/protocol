@@ -31,6 +31,28 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
     uint256 public defaultBond;
     uint256 public defaultLiveness;
 
+    event AssertionMade(
+        bytes32 assertionId,
+        bytes claim,
+        address indexed proposer,
+        address indexed callbackRecipient,
+        address indexed sovereignSecurityManager,
+        IERC20 currency,
+        uint256 bond,
+        uint256 liveness
+    );
+
+    event AssertionDisputed(bytes32 indexed assertionId, address indexed disputer);
+
+    event AssertionSettled(
+        bytes32 indexed assertionId,
+        address indexed bondRecipient,
+        bool disputed,
+        bool settlementResolution
+    );
+
+    event AssertionDefaultsSet(IERC20 defaultCurrency, uint256 defaultBond, uint256 defaultLiveness);
+
     constructor(
         FinderInterface _finder,
         IERC20 _defaultCurrency,
@@ -49,6 +71,8 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
         defaultCurrency = _defaultCurrency;
         defaultBond = _defaultBond;
         defaultLiveness = _defaultLiveness;
+
+        emit AssertionDefaultsSet(_defaultCurrency, _defaultBond, _defaultLiveness);
     }
 
     function assertTruth(bytes memory claim) public returns (bytes32) {
@@ -105,7 +129,16 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
         // settings in one call.
         assertions[assertionId].dvmAsOracle = _checkIfShouldArbitrateViaDvm(assertionId);
 
-        // emit event
+        emit AssertionMade(
+            assertionId,
+            claim,
+            proposer,
+            callbackRecipient,
+            sovereignSecurityManager,
+            currency,
+            bond,
+            liveness
+        );
 
         return assertionId;
     }
@@ -136,7 +169,7 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
 
         if (!assertion.respectDvmOnArbitration) _sendCallback(assertionId, false);
 
-        // emit event
+        emit AssertionDisputed(assertionId, disputer);
     }
 
     function settleAssertion(bytes32 assertionId) public {
@@ -150,7 +183,8 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
             assertion.currency.safeTransfer(assertion.proposer, assertion.bond);
             assertion.settlementResolution = true;
             _sendCallback(assertionId, true);
-            // emit event
+
+            emit AssertionSettled(assertionId, assertion.proposer, false, true);
         } else {
             // Dispute, settle with the disputer
             int256 dvmResolvedPrice =
@@ -168,7 +202,8 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
             assertion.currency.safeTransfer(address(_getStore()), amountToBurn);
 
             if (assertion.respectDvmOnArbitration) _sendCallback(assertionId, assertion.settlementResolution);
-            // emit event
+
+            emit AssertionSettled(assertionId, bondRecipient, true, assertion.settlementResolution);
         }
     }
 
