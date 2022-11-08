@@ -37,6 +37,7 @@ contract OptimisticAssertorFixture is Test {
                 defaultLiveness,
                 address(baseMockDvmContracts.timer)
             );
+        baseMockDvmContracts.store.setFinalFee(address(defaultCurrency), FixedPoint.Unsigned(50e18)); // Half of the default bond.
 
         vm.stopPrank();
 
