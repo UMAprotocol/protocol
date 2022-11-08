@@ -2,10 +2,10 @@ pragma solidity 0.8.16;
 
 import "../dvm/MockDvmFixture.sol";
 
-import "../../../../contracts/optimistic-assertor/implementation/OptimisticAssertor.sol";
+import "../../../../contracts/optimistic-assertor/implementation/test/OptimisticAssertorTest.sol";
 import "../../../../contracts/common/implementation/TestnetERC20.sol";
 
-// Fixture to deploy a configured OptimisticAssertor with reasonable default values.
+// Fixture to deploy a configured OptimisticAssertorTest with reasonable default values.
 contract OptimisticAssertorFixture is Test {
     struct OptimisticAsserterContracts {
         Timer timer;
@@ -15,7 +15,7 @@ contract OptimisticAssertorFixture is Test {
         IdentifierWhitelist identifierWhitelist;
         MockOracleAncillary mockOracle;
         TestnetERC20 defaultCurrency;
-        OptimisticAssertor optimisticAssertor;
+        OptimisticAssertorTest optimisticAssertor;
     }
 
     function setUp() public returns (OptimisticAsserterContracts memory) {
@@ -29,8 +29,14 @@ contract OptimisticAssertorFixture is Test {
         baseMockDvmContracts.identifierWhitelist.addSupportedIdentifier("ASSERT_TRUTH");
         uint256 defaultBond = 100e18;
         uint256 defaultLiveness = 7200; // 2 hours
-        OptimisticAssertor optimisticAssertor =
-            new OptimisticAssertor(baseMockDvmContracts.finder, defaultCurrency, defaultBond, defaultLiveness);
+        OptimisticAssertorTest optimisticAssertor =
+            new OptimisticAssertorTest(
+                baseMockDvmContracts.finder,
+                defaultCurrency,
+                defaultBond,
+                defaultLiveness,
+                address(baseMockDvmContracts.timer)
+            );
 
         vm.stopPrank();
 

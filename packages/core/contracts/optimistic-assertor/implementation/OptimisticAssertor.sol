@@ -93,8 +93,8 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
             settled: false,
             settlementResolution: false,
             bond: bond,
-            assertionTime: block.timestamp,
-            expirationTime: block.timestamp + liveness
+            assertionTime: getCurrentTime(),
+            expirationTime: getCurrentTime() + liveness
         });
 
         SovereignSecurityManagerInterface.AssertionPolicies memory assertionPolicies =
@@ -140,7 +140,7 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
         Assertion memory assertion = assertions[assertionId];
         require(assertion.proposer != address(0), "Assertion does not exist"); // Revert if assertion does not exist.
         require(assertion.disputer == address(0), "Assertion already disputed"); // Revert if assertion already disputed.
-        require(assertion.expirationTime > block.timestamp, "Assertion is expired"); // Revert if assertion expired.
+        require(assertion.expirationTime > getCurrentTime(), "Assertion is expired"); // Revert if assertion expired.
 
         // Pull the bond
         assertion.currency.safeTransferFrom(msg.sender, address(this), assertion.bond);
@@ -155,13 +155,13 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
     }
 
     function settleAssertion(bytes32 assertionId) public {
-        Assertion memory assertion = assertions[assertionId];
+        Assertion storage assertion = assertions[assertionId];
         require(assertion.proposer != address(0), "Assertion does not exist"); // Revert if assertion does not exist.
         require(!assertion.settled, "Assertion already settled"); // Revert if assertion already settled.
         assertion.settled = true;
         if (assertion.disputer == address(0)) {
             // No dispute, settle with the proposer
-            require(assertion.expirationTime <= block.timestamp, "Assertion not expired"); // Revert if assertion not expired.
+            require(assertion.expirationTime <= getCurrentTime(), "Assertion not expired"); // Revert if assertion not expired.
             assertion.currency.safeTransfer(assertion.proposer, assertion.bond);
             assertion.settlementResolution = true;
             _sendCallback(assertionId, true);
@@ -169,11 +169,11 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
             emit AssertionSettled(assertionId, assertion.proposer, false, true);
         } else {
             // Dispute, settle with the disputer
-            int256 resolvedPrice =
+            int256 dvmResolvedPrice =
                 _getOracle(assertionId).getPrice(identifier, assertion.assertionTime, _stampAssertion(assertionId)); // Revert if price not resolved.
 
-            assertion.settlementResolution = assertion.useDisputeResolution ? resolvedPrice == 1e18 : false;
-            address bondRecipient = resolvedPrice == 1e18 ? assertion.proposer : assertion.disputer;
+            assertion.settlementResolution = assertion.useDisputeResolution ? dvmResolvedPrice == 1e18 : false;
+            address bondRecipient = dvmResolvedPrice == 1e18 ? assertion.proposer : assertion.disputer;
 
             // todo: should you only play the final fee in the case of a DVM arbitrated dispute?
             uint256 amountToBurn = burnedBondPercentage * assertion.bond;
@@ -186,6 +186,14 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
 
             emit AssertionSettled(assertionId, bondRecipient, true, assertion.settlementResolution);
         }
+    }
+
+    /**
+     * @notice Returns the current block timestamp.
+     * @dev Can be overridden to control contract time.
+     */
+    function getCurrentTime() public view virtual returns (uint256) {
+        return block.timestamp;
     }
 
     function _getId(
