@@ -24,13 +24,32 @@ contract OptimisticAsserterLifecycle is Test {
         assert(defaultCurrency.balanceOf(TestAddress.account1) >= optimisticAssertor.defaultBond());
         defaultCurrency.approve(address(optimisticAssertor), optimisticAssertor.defaultBond());
 
-        bytes32 assertionId = optimisticAssertor.assertTruth(bytes(claimAssertion));
+        bytes32 assertionId =
+            optimisticAssertor.assertTruthFor(
+                bytes(claimAssertion),
+                TestAddress.account1,
+                address(0),
+                address(0),
+                defaultCurrency,
+                optimisticAssertor.defaultBond(),
+                optimisticAssertor.defaultLiveness()
+            );
+
+        // Settle before the liveness period shoul revert.
+        vm.expectRevert("Assertion not expired");
+        optimisticAssertor.settleAndGetAssertion(assertionId);
 
         // Move time forward to the end of the liveness period.
         timer.setCurrentTime(timer.getCurrentTime() + optimisticAssertor.defaultLiveness());
 
+        // proposer balance before settlement
+        uint256 proposerBalanceBefore = defaultCurrency.balanceOf(TestAddress.account1);
         // The assertion should be true.
-        assert(optimisticAssertor.settleAndGetAssertion(assertionId));
+        assertEq(optimisticAssertor.settleAndGetAssertion(assertionId), true);
+        assertEq(
+            defaultCurrency.balanceOf(TestAddress.account1) - proposerBalanceBefore,
+            optimisticAssertor.defaultBond()
+        );
 
         vm.stopPrank();
     }
