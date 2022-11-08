@@ -35,7 +35,7 @@ contract OptimisticAsserterLifecycle is Test {
                 optimisticAssertor.defaultLiveness()
             );
 
-        // Settle before the liveness period shoul revert.
+        // Settle before the liveness period should revert.
         vm.expectRevert("Assertion not expired");
         optimisticAssertor.settleAndGetAssertion(assertionId);
 
