@@ -125,12 +125,14 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
 
     function getAssertion(bytes32 assertionId) public view returns (bool) {
         Assertion memory assertion = assertions[assertionId];
+        // Return early if not using answer from resolved dispute.
+        if (assertion.disputer != address(0) && !assertion.useDisputeResolution) return false;
         require(assertion.settled, "Assertion not settled"); // Revert if assertion not settled.
         return assertion.settlementResolution;
     }
 
     function settleAndGetAssertion(bytes32 assertionId) public returns (bool) {
-        settleAssertion(assertionId);
+        if (!assertions[assertionId].settled) settleAssertion(assertionId);
         return getAssertion(assertionId);
     }
 
@@ -167,12 +169,11 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
             emit AssertionSettled(assertionId, assertion.proposer, false, true);
         } else {
             // Dispute, settle with the disputer
-            int256 dvmResolvedPrice =
+            int256 resolvedPrice =
                 _getOracle(assertionId).getPrice(identifier, assertion.assertionTime, _stampAssertion(assertionId)); // Revert if price not resolved.
 
-            assertion.settlementResolution = dvmResolvedPrice == 1e18;
-            // todo: if (assertion.useDisputeResolution)
-            address bondRecipient = assertion.settlementResolution ? assertion.proposer : assertion.disputer;
+            assertion.settlementResolution = assertion.useDisputeResolution ? resolvedPrice == 1e18 : false;
+            address bondRecipient = resolvedPrice == 1e18 ? assertion.proposer : assertion.disputer;
 
             // todo: should you only play the final fee in the case of a DVM arbitrated dispute?
             uint256 amountToBurn = burnedBondPercentage * assertion.bond;
