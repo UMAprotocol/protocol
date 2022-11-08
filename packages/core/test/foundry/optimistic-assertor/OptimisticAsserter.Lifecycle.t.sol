@@ -53,4 +53,24 @@ contract OptimisticAsserterLifecycle is Test {
 
         vm.stopPrank();
     }
+
+    function testFailBondBelowMinimum() public {
+        vm.startPrank(TestAddress.account1);
+        defaultCurrency.allocateTo(TestAddress.account1, optimisticAssertor.defaultBond());
+        assert(defaultCurrency.balanceOf(TestAddress.account1) >= optimisticAssertor.defaultBond());
+        defaultCurrency.approve(address(optimisticAssertor), optimisticAssertor.defaultBond());
+
+        vm.expectRevert("Bond amount too low");
+        optimisticAssertor.assertTruthFor(
+            bytes(claimAssertion),
+            address(0),
+            address(0),
+            address(0),
+            defaultCurrency,
+            0,
+            optimisticAssertor.defaultLiveness()
+        );
+
+        vm.stopPrank();
+    }
 }
