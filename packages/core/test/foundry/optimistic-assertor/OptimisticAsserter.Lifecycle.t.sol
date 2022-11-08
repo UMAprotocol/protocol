@@ -18,7 +18,7 @@ contract OptimisticAsserterLifecycle is Test {
         timer = oaContracts.timer;
     }
 
-    function testAssertWithNoDispute() public {
+    function testAssertionWithNoDispute() public {
         vm.startPrank(TestAddress.account1);
         defaultCurrency.allocateTo(TestAddress.account1, optimisticAssertor.defaultBond());
         assert(defaultCurrency.balanceOf(TestAddress.account1) >= optimisticAssertor.defaultBond());
@@ -30,10 +30,7 @@ contract OptimisticAsserterLifecycle is Test {
         timer.setCurrentTime(timer.getCurrentTime() + optimisticAssertor.defaultLiveness());
 
         // The assertion should be true.
-        optimisticAssertor.settleAssertion(assertionId);
-
-        // The assertion should be true.
-        assert(optimisticAssertor.getAssertion(assertionId));
+        assert(optimisticAssertor.settleAndGetAssertion(assertionId));
 
         vm.stopPrank();
     }
