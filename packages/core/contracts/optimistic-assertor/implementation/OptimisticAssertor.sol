@@ -172,8 +172,8 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
             int256 resolvedPrice =
                 _getOracle(assertionId).getPrice(identifier, assertion.assertionTime, _stampAssertion(assertionId)); // Revert if price not resolved.
 
-            assertion.settlementResolution = resolvedPrice == 1e18;
-            address bondRecipient = assertion.settlementResolution ? assertion.proposer : assertion.disputer;
+            assertion.settlementResolution = assertion.useDisputeResolution ? resolvedPrice == 1e18 : false;
+            address bondRecipient = resolvedPrice == 1e18 ? assertion.proposer : assertion.disputer;
 
             // todo: should you only play the final fee in the case of a DVM arbitrated dispute?
             uint256 amountToBurn = burnedBondPercentage * assertion.bond;
