@@ -13,6 +13,8 @@ contract SimpleAssertionsWithClaimOnly is Test {
     string trueClaimAssertion = 'q:"The sky is blue"';
     string falseClaimAssertion = 'q:"The sky is red"';
 
+    event PriceRequestAdded(address indexed requester, bytes32 indexed identifier, uint256 time, bytes ancillaryData);
+
     function setUp() public {
         OptimisticAssertorFixture.OptimisticAsserterContracts memory oaContracts =
             new OptimisticAssertorFixture().setUp();
@@ -65,6 +67,13 @@ contract SimpleAssertionsWithClaimOnly is Test {
         assert(defaultCurrency.balanceOf(TestAddress.account2) >= optimisticAssertor.defaultBond());
         defaultCurrency.approve(address(optimisticAssertor), optimisticAssertor.defaultBond());
 
+        vm.expectEmit(true, true, true, true);
+        emit PriceRequestAdded(
+            address(optimisticAssertor),
+            optimisticAssertor.identifier(),
+            optimisticAssertor.readAssertion(assertionId).assertionTime,
+            optimisticAssertor.stampAssertion(assertionId)
+        );
         optimisticAssertor.disputeAssertionFor(assertionId, TestAddress.account2);
         vm.stopPrank();
 
