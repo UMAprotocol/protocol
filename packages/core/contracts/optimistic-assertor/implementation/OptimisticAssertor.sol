@@ -53,6 +53,10 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
         emit AssertionDefaultsSet(_defaultCurrency, _defaultBond, _defaultLiveness);
     }
 
+    function readAssertion(bytes32 assertionId) external view returns (Assertion memory) {
+        return assertions[assertionId];
+    }
+
     function assertTruth(bytes memory claim) public returns (bytes32) {
         // The simplest form of assertion. Bond currency and bond amount default to WETH and WETH final fee.
         // If there is a pending assertion with the same configuration (timestamp, claim and default bond prop) then
@@ -82,7 +86,7 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
 
         assertions[assertionId] = Assertion({
             proposer: proposer == address(0) ? msg.sender : proposer,
-            msgSender: msg.sender,
+            assertingCaller: msg.sender,
             disputer: address(0),
             callbackRecipient: callbackRecipient,
             sovereignSecurityManager: sovereignSecurityManager,

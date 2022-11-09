@@ -8,7 +8,7 @@ interface OptimisticAssertorInterface {
         address proposer; // Address of the proposer.
         // TODO: consider naming proposer->asserter.
         address disputer; // Address of the disputer.
-        address msgSender; // Address that called into the OA contract.
+        address assertingCaller; // Address that called into the OA contract.
         address callbackRecipient; // Address that receives the callback.
         address sovereignSecurityManager;
         IERC20 currency; // ERC20 token used to pay rewards and fees.
@@ -20,6 +20,8 @@ interface OptimisticAssertorInterface {
         uint256 assertionTime; // Time of the assertion.
         uint256 expirationTime;
     }
+
+    function readAssertion(bytes32 assertionId) external view returns (Assertion memory);
 
     event AssertionMade(
         bytes32 assertionId,
