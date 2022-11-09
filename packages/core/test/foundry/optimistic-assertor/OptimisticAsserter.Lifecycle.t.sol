@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import "../fixtures/optimistic-assertor/OptimisticAssertorFixture.sol";
 import "../fixtures/common/TestAddress.sol";
 
-contract Assertions is Test {
+contract SimpleAssertionsWithClaimOnly is Test {
     OptimisticAssertor optimisticAssertor;
     TestnetERC20 defaultCurrency;
     Timer timer;
@@ -76,6 +76,15 @@ contract Assertions is Test {
 
         // The query should be for the disputed assertion.
         assertEq(queries[0].identifier, optimisticAssertor.identifier());
+        assertEq(queries[0].time, optimisticAssertor.readAssertion(assertionId).assertionTime);
+        assertEq(
+            queries[0].ancillaryData,
+            AncillaryData.appendKeyValueAddress(
+                AncillaryData.appendKeyValueBytes32("", "assertionId", assertionId),
+                "aoRequester",
+                address(optimisticAssertor)
+            )
+        );
 
         // Push the resolution price into the mock oracle, a no vote meaning that the assertion is resolved as false.
         mockOracle.pushPrice(queries[0].identifier, queries[0].time, queries[0].ancillaryData, 0);
