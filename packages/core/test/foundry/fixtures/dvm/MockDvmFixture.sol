@@ -19,9 +19,8 @@ contract MockDvmFixture is Test {
 
         MockOracleAncillary mockOracle =
             new MockOracleAncillary(address(baseDvmContracts.finder), address(baseDvmContracts.timer));
-        vm.startPrank(TestAddress.owner);
+        vm.prank(TestAddress.owner);
         baseDvmContracts.finder.changeImplementationAddress(OracleInterfaces.Oracle, address(mockOracle));
-        vm.stopPrank();
 
         return
             BaseMockDvmContracts(

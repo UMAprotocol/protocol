@@ -104,11 +104,17 @@ contract Assertions is Test {
         // The proposer should have lost their bond.
         assertEq(defaultCurrency.balanceOf(TestAddress.account1), 0);
 
-        // The disputer should have kept their bond and earned half of the proposer's bond.
-        assertEq(defaultCurrency.balanceOf(TestAddress.account2), (optimisticAssertor.defaultBond() * 3) / 2);
+        // The disputer should have kept their bond and earned 1 - burnedBondPercentage of the proposer's bond.
+        assertEq(
+            defaultCurrency.balanceOf(TestAddress.account2),
+            ((optimisticAssertor.defaultBond() * (2e18 - optimisticAssertor.burnedBondPercentage())) / 1e18)
+        );
 
-        // The store should have kept the other half of the proposer's bond.
-        assertEq(defaultCurrency.balanceOf(address(store)), optimisticAssertor.defaultBond() / 2);
+        // The store should have kept the burnedBondPercentage part of the proposer's bond.
+        assertEq(
+            defaultCurrency.balanceOf(address(store)),
+            (optimisticAssertor.defaultBond() * optimisticAssertor.burnedBondPercentage()) / 1e18
+        );
 
         // The balance of the optimistic assertor should be zero.
         assertEq(defaultCurrency.balanceOf(address(optimisticAssertor)), 0);

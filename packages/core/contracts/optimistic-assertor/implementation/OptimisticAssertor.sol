@@ -23,7 +23,7 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
 
     mapping(bytes32 => Assertion) public assertions;
 
-    uint256 burnedBondPercentage = 0.5e18; //50% of bond is burned.
+    uint256 public burnedBondPercentage = 0.5e18; //50% of bond is burned.
 
     bytes32 public identifier = "ASSERT_TRUTH";
 
