@@ -29,16 +29,8 @@ contract Assertions is Test {
         assert(defaultCurrency.balanceOf(TestAddress.account1) >= optimisticAssertor.defaultBond());
         defaultCurrency.approve(address(optimisticAssertor), optimisticAssertor.defaultBond());
 
-        bytes32 assertionId =
-            optimisticAssertor.assertTruthFor(
-                bytes(trueClaimAssertion),
-                TestAddress.account1,
-                address(0),
-                address(0),
-                defaultCurrency,
-                optimisticAssertor.defaultBond(),
-                optimisticAssertor.defaultLiveness()
-            );
+        bytes32 assertionId = optimisticAssertor.assertTruth(bytes(trueClaimAssertion));
+        vm.stopPrank();
 
         // Settle before the liveness period should revert.
         vm.expectRevert("Assertion not expired");
@@ -55,8 +47,6 @@ contract Assertions is Test {
             defaultCurrency.balanceOf(TestAddress.account1) - proposerBalanceBefore,
             optimisticAssertor.defaultBond()
         );
-
-        vm.stopPrank();
     }
 
     function test_AssertionWithDispute() public {
@@ -66,16 +56,7 @@ contract Assertions is Test {
         defaultCurrency.approve(address(optimisticAssertor), optimisticAssertor.defaultBond());
 
         // Account1 asserts a false claim.
-        bytes32 assertionId =
-            optimisticAssertor.assertTruthFor(
-                bytes(falseClaimAssertion),
-                TestAddress.account1,
-                address(0),
-                address(0),
-                defaultCurrency,
-                optimisticAssertor.defaultBond(),
-                optimisticAssertor.defaultLiveness()
-            );
+        bytes32 assertionId = optimisticAssertor.assertTruth(bytes(falseClaimAssertion));
         vm.stopPrank();
 
         // The assertion gets disputed by the disputer, account2.
