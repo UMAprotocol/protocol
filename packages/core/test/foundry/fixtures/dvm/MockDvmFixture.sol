@@ -1,11 +1,10 @@
 pragma solidity 0.8.16;
 
 import "./BaseDvmFixture.sol";
-
 import "../../../../contracts/oracle/test/MockOracleAncillary.sol";
 
 // Fixture to extend the base DVM fixture with a mock oracle. Used when not directly testing the DVM.
-contract MockDvmFixture {
+contract MockDvmFixture is Test {
     struct BaseMockDvmContracts {
         Timer timer;
         Finder finder;
@@ -20,6 +19,10 @@ contract MockDvmFixture {
 
         MockOracleAncillary mockOracle =
             new MockOracleAncillary(address(baseDvmContracts.finder), address(baseDvmContracts.timer));
+        vm.startPrank(TestAddress.owner);
+        baseDvmContracts.finder.changeImplementationAddress(OracleInterfaces.Oracle, address(mockOracle));
+        vm.stopPrank();
+
         return
             BaseMockDvmContracts(
                 baseDvmContracts.timer,

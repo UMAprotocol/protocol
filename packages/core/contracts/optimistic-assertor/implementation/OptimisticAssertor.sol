@@ -25,7 +25,7 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
 
     uint256 burnedBondPercentage = 0.5e18; //50% of bond is burned.
 
-    bytes32 identifier = "ASSERT_TRUTH";
+    bytes32 public identifier = "ASSERT_TRUTH";
 
     IERC20 public defaultCurrency;
     uint256 public defaultBond;
@@ -140,7 +140,7 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
     }
 
     function disputeAssertionFor(bytes32 assertionId, address disputer) public {
-        Assertion memory assertion = assertions[assertionId];
+        Assertion storage assertion = assertions[assertionId];
         require(assertion.proposer != address(0), "Assertion does not exist"); // Revert if assertion does not exist.
         require(assertion.disputer == address(0), "Assertion already disputed"); // Revert if assertion already disputed.
         require(assertion.expirationTime > getCurrentTime(), "Assertion is expired"); // Revert if assertion expired.
@@ -179,7 +179,7 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
             address bondRecipient = resolvedPrice == 1e18 ? assertion.proposer : assertion.disputer;
 
             // todo: should you only play the final fee in the case of a DVM arbitrated dispute?
-            uint256 amountToBurn = burnedBondPercentage * assertion.bond;
+            uint256 amountToBurn = (burnedBondPercentage * assertion.bond) / 1e18;
             uint256 amountToSend = assertion.bond * 2 - amountToBurn; // 50% of the bond is burned. The other 50% is sent to the bond recipient.
 
             assertion.currency.safeTransfer(bondRecipient, amountToSend);
