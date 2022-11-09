@@ -23,7 +23,6 @@ contract SimpleAssertionsWithClaimOnly is Test {
         uint256 bond,
         uint256 expirationTime
     );
-    event PriceRequestAdded(address indexed requester, bytes32 indexed identifier, uint256 time, bytes ancillaryData);
     event AssertionDisputed(bytes32 indexed assertionId, address indexed disputer);
     event AssertionSettled(
         bytes32 indexed assertionId,
@@ -31,6 +30,7 @@ contract SimpleAssertionsWithClaimOnly is Test {
         bool disputed,
         bool settlementResolution
     );
+    event PriceRequestAdded(address indexed requester, bytes32 indexed identifier, uint256 time, bytes ancillaryData);
 
     function setUp() public {
         OptimisticAssertorFixture.OptimisticAsserterContracts memory oaContracts =
