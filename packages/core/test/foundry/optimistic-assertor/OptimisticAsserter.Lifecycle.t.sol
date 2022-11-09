@@ -77,14 +77,7 @@ contract SimpleAssertionsWithClaimOnly is Test {
         // The query should be for the disputed assertion.
         assertEq(queries[0].identifier, optimisticAssertor.identifier());
         assertEq(queries[0].time, optimisticAssertor.readAssertion(assertionId).assertionTime);
-        assertEq(
-            queries[0].ancillaryData,
-            AncillaryData.appendKeyValueAddress(
-                AncillaryData.appendKeyValueBytes32("", "assertionId", assertionId),
-                "aoRequester",
-                address(optimisticAssertor)
-            )
-        );
+        assertEq(queries[0].ancillaryData, optimisticAssertor.stampAssertion(assertionId));
 
         // Push the resolution price into the mock oracle, a no vote meaning that the assertion is resolved as false.
         mockOracle.pushPrice(queries[0].identifier, queries[0].time, queries[0].ancillaryData, 0);

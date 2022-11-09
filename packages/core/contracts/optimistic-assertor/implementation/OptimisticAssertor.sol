@@ -199,6 +199,10 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
         return block.timestamp;
     }
 
+    function stampAssertion(bytes32 assertionId) public view returns (bytes memory) {
+        return _stampAssertion(assertionId);
+    }
+
     function _getId(
         bytes memory claim,
         uint256 bond,
