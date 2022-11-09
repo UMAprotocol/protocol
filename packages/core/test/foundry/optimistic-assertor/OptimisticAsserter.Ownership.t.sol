@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import "../fixtures/optimistic-assertor/OptimisticAssertorFixture.sol";
 
-contract ContractTest is Test {
+contract OwnershipTest is Test {
     OptimisticAssertor optimisticAssertor;
 
     function setUp() public {
