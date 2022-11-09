@@ -13,7 +13,24 @@ contract SimpleAssertionsWithClaimOnly is Test {
     string trueClaimAssertion = 'q:"The sky is blue"';
     string falseClaimAssertion = 'q:"The sky is red"';
 
+    event AssertionMade(
+        bytes32 assertionId,
+        bytes claim,
+        address indexed proposer,
+        address callbackRecipient,
+        address indexed sovereignSecurityManager,
+        IERC20 currency,
+        uint256 bond,
+        uint256 expirationTime
+    );
     event PriceRequestAdded(address indexed requester, bytes32 indexed identifier, uint256 time, bytes ancillaryData);
+    event AssertionDisputed(bytes32 indexed assertionId, address indexed disputer);
+    event AssertionSettled(
+        bytes32 indexed assertionId,
+        address indexed bondRecipient,
+        bool disputed,
+        bool settlementResolution
+    );
 
     function setUp() public {
         OptimisticAssertorFixture.OptimisticAsserterContracts memory oaContracts =
@@ -31,7 +48,31 @@ contract SimpleAssertionsWithClaimOnly is Test {
         assert(defaultCurrency.balanceOf(TestAddress.account1) >= optimisticAssertor.defaultBond());
         defaultCurrency.approve(address(optimisticAssertor), optimisticAssertor.defaultBond());
 
+        bytes32 expectedAssertionId =
+            keccak256(
+                abi.encode(
+                    bytes(trueClaimAssertion),
+                    optimisticAssertor.defaultBond(),
+                    optimisticAssertor.defaultLiveness(),
+                    address(defaultCurrency),
+                    TestAddress.account1,
+                    address(0),
+                    address(0)
+                )
+            );
+        vm.expectEmit(true, true, true, true);
+        emit AssertionMade(
+            expectedAssertionId,
+            bytes(trueClaimAssertion),
+            TestAddress.account1,
+            address(0),
+            address(0),
+            defaultCurrency,
+            optimisticAssertor.defaultBond(),
+            timer.getCurrentTime() + optimisticAssertor.defaultLiveness()
+        );
         bytes32 assertionId = optimisticAssertor.assertTruth(bytes(trueClaimAssertion));
+        assertEq(assertionId, expectedAssertionId);
         vm.stopPrank();
 
         // Settle before the liveness period should revert.
@@ -43,6 +84,8 @@ contract SimpleAssertionsWithClaimOnly is Test {
 
         // proposer balance before settlement
         uint256 proposerBalanceBefore = defaultCurrency.balanceOf(TestAddress.account1);
+        vm.expectEmit(true, true, true, true);
+        emit AssertionSettled(assertionId, TestAddress.account1, false, true);
         // The assertion should be true.
         assertEq(optimisticAssertor.settleAndGetAssertion(assertionId), true);
         assertEq(
@@ -74,6 +117,8 @@ contract SimpleAssertionsWithClaimOnly is Test {
             optimisticAssertor.readAssertion(assertionId).assertionTime,
             optimisticAssertor.stampAssertion(assertionId)
         );
+        vm.expectEmit(true, true, true, true);
+        emit AssertionDisputed(assertionId, TestAddress.account2);
         optimisticAssertor.disputeAssertionFor(assertionId, TestAddress.account2);
         vm.stopPrank();
 
@@ -91,6 +136,8 @@ contract SimpleAssertionsWithClaimOnly is Test {
         // Push the resolution price into the mock oracle, a no vote meaning that the assertion is resolved as false.
         mockOracle.pushPrice(queries[0].identifier, queries[0].time, queries[0].ancillaryData, 0);
 
+        vm.expectEmit(true, true, true, true);
+        emit AssertionSettled(assertionId, TestAddress.account2, true, false);
         assertEq(optimisticAssertor.settleAndGetAssertion(assertionId), false);
 
         // The proposer should have lost their bond.
