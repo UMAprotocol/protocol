@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import "../fixtures/optimistic-assertor/OptimisticAssertorFixture.sol";
 import "../fixtures/common/TestAddress.sol";
 
-contract Boundaries is Test {
+contract InvalidParameters is Test {
     OptimisticAssertor optimisticAssertor;
     TestnetERC20 defaultCurrency;
     Timer timer;
@@ -18,6 +18,36 @@ contract Boundaries is Test {
         timer = oaContracts.timer;
     }
 
+    function test_RevertIf_DuplicateAssertion() public {
+        vm.startPrank(TestAddress.account1);
+        defaultCurrency.allocateTo(TestAddress.account1, optimisticAssertor.defaultBond() * 2);
+        assert(defaultCurrency.balanceOf(TestAddress.account1) >= optimisticAssertor.defaultBond() * 2);
+        defaultCurrency.approve(address(optimisticAssertor), optimisticAssertor.defaultBond() * 2);
+
+        // Account1 asserts a claim.
+        bytes32 assertionId = optimisticAssertor.assertTruth(bytes(claimAssertion));
+
+        // Account1 asserts the same claim again.
+        vm.expectRevert("Assertion already exists");
+        optimisticAssertor.assertTruth(bytes(claimAssertion));
+        vm.stopPrank();
+    }
+
+    function test_RevertIf_UnsupportedCurrency() public {
+        // Change the default currency to unsupported token.
+        vm.startPrank(TestAddress.owner);
+        TestnetERC20 unsupportedCurrency = new TestnetERC20("Unsupported", "UNS", 18);
+        optimisticAssertor.setAssertionDefaults(
+            unsupportedCurrency,
+            optimisticAssertor.defaultBond(),
+            optimisticAssertor.defaultLiveness()
+        );
+        vm.stopPrank();
+
+        vm.expectRevert("Unsupported currency");
+        optimisticAssertor.assertTruth(bytes(claimAssertion));
+    }
+
     function test_RevertIf_BondBelowMinimum() public {
         vm.expectRevert("Bond amount too low");
         optimisticAssertor.assertTruthFor(
@@ -29,5 +59,16 @@ contract Boundaries is Test {
             0,
             0
         );
+    }
+
+    function test_RevertWhen_InvalidAssertionId() public {
+        vm.expectRevert("Assertion does not exist");
+        optimisticAssertor.disputeAssertionFor(bytes32(0), TestAddress.account2);
+
+        vm.expectRevert("Assertion does not exist");
+        optimisticAssertor.settleAndGetAssertion(bytes32(0));
+
+        vm.expectRevert("Assertion does not exist");
+        optimisticAssertor.settleAssertion(bytes32(0));
     }
 }
