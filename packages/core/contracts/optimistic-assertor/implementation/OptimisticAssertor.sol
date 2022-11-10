@@ -74,8 +74,9 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
         uint256 bond,
         uint256 liveness
     ) public returns (bytes32) {
+        address _proposer = proposer == address(0) ? msg.sender : proposer;
         bytes32 assertionId =
-            _getId(claim, bond, liveness, currency, proposer, callbackRecipient, sovereignSecurityManager);
+            _getId(claim, bond, liveness, currency, _proposer, callbackRecipient, sovereignSecurityManager);
         require(assertions[assertionId].proposer == address(0), "Assertion already exists");
         require(_getCollateralWhitelist().isOnWhitelist(address(currency)), "Unsupported currency");
         uint256 finalFee = _getStore().computeFinalFee(address(currency)).rawValue;
@@ -85,7 +86,7 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
         currency.safeTransferFrom(msg.sender, address(this), bond);
 
         assertions[assertionId] = Assertion({
-            proposer: proposer == address(0) ? msg.sender : proposer,
+            proposer: _proposer,
             assertingCaller: msg.sender,
             disputer: address(0),
             callbackRecipient: callbackRecipient,
@@ -115,7 +116,7 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
         emit AssertionMade(
             assertionId,
             claim,
-            proposer,
+            _proposer,
             callbackRecipient,
             sovereignSecurityManager,
             currency,
