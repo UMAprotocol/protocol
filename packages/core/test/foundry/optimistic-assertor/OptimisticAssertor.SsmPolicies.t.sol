@@ -39,18 +39,8 @@ contract SovereignSecurityManagerPoliciesEnforced is Test {
     }
 
     function test_RevertIf_AssertionBlocked() public {
-        // Mock getAssertionPolicies call to block assertion. No need to pass assertionId as mockCall uses loose matching.
-        vm.mockCall(
-            address(mockedSovereignSecurityManager),
-            abi.encodePacked(SovereignSecurityManagerInterface.getAssertionPolicies.selector),
-            abi.encode(
-                SovereignSecurityManagerInterface.AssertionPolicies({
-                    allowAssertion: false,
-                    useDvmAsOracle: true,
-                    useDisputeResolution: true
-                })
-            )
-        );
+        // Block any assertion.
+        _mockSsmPolicies(false, true, true);
 
         vm.prank(TestAddress.account1);
         vm.expectRevert("Assertion not allowed");
@@ -64,5 +54,24 @@ contract SovereignSecurityManagerPoliciesEnforced is Test {
             defaultLiveness
         );
         vm.clearMockedCalls();
+    }
+
+    function _mockSsmPolicies(
+        bool allowAssertion,
+        bool useDvmAsOracle,
+        bool useDisputeResolution
+    ) internal {
+        // Mock getAssertionPolicies call to block assertion. No need to pass assertionId as mockCall uses loose matching.
+        vm.mockCall(
+            address(mockedSovereignSecurityManager),
+            abi.encodePacked(SovereignSecurityManagerInterface.getAssertionPolicies.selector),
+            abi.encode(
+                SovereignSecurityManagerInterface.AssertionPolicies({
+                    allowAssertion: allowAssertion,
+                    useDvmAsOracle: useDvmAsOracle,
+                    useDisputeResolution: useDisputeResolution
+                })
+            )
+        );
     }
 }
