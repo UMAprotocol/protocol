@@ -77,7 +77,7 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
         address _proposer = proposer == address(0) ? msg.sender : proposer;
         bytes32 assertionId =
             _getId(claim, bond, liveness, currency, _proposer, callbackRecipient, sovereignSecurityManager);
-        require(assertions[assertionId].proposer == address(0)); // Revert if assertion already exists.
+        require(assertions[assertionId].proposer == address(0), "Assertion already exists");
         require(_getCollateralWhitelist().isOnWhitelist(address(currency)), "Unsupported currency");
         uint256 finalFee = _getStore().computeFinalFee(address(currency)).rawValue;
         require((bond * burnedBondPercentage) / 1e18 >= finalFee, "Bond amount too low");
