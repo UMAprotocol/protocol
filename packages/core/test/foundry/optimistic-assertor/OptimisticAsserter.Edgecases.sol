@@ -71,4 +71,30 @@ contract InvalidParameters is Test {
         vm.expectRevert("Assertion does not exist");
         optimisticAssertor.settleAssertion(bytes32(0));
     }
+
+    function test_RevertIf_DuplicateDispute() public {
+        // Fund Account1 with enough currency to make an assertion.
+        vm.startPrank(TestAddress.account1);
+        defaultCurrency.allocateTo(TestAddress.account1, optimisticAssertor.defaultBond());
+        assert(defaultCurrency.balanceOf(TestAddress.account1) >= optimisticAssertor.defaultBond());
+        defaultCurrency.approve(address(optimisticAssertor), optimisticAssertor.defaultBond());
+
+        // Account1 asserts a claim.
+        bytes32 assertionId = optimisticAssertor.assertTruth(bytes(claimAssertion));
+        vm.stopPrank();
+
+        // Fund Account2 with enough currency to dispute the assertion twice.
+        vm.startPrank(TestAddress.account2);
+        defaultCurrency.allocateTo(TestAddress.account2, optimisticAssertor.defaultBond() * 2);
+        assert(defaultCurrency.balanceOf(TestAddress.account2) >= optimisticAssertor.defaultBond() * 2);
+        defaultCurrency.approve(address(optimisticAssertor), optimisticAssertor.defaultBond() * 2);
+
+        // Account2 disputes the assertion.
+        optimisticAssertor.disputeAssertionFor(assertionId, address(0));
+
+        // Account2 should not be able to dispute the assertion again.
+        vm.expectRevert("Assertion already disputed");
+        optimisticAssertor.disputeAssertionFor(assertionId, address(0));
+        vm.stopPrank();
+    }
 }
