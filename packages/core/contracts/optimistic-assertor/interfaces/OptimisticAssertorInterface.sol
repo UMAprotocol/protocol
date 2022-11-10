@@ -27,7 +27,7 @@ interface OptimisticAssertorInterface {
         bytes32 assertionId,
         bytes claim,
         address indexed proposer,
-        address indexed callbackRecipient,
+        address callbackRecipient,
         address indexed sovereignSecurityManager,
         IERC20 currency,
         uint256 bond,
