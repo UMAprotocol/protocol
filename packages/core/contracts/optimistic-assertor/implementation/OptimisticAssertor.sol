@@ -141,6 +141,7 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
     }
 
     function disputeAssertionFor(bytes32 assertionId, address disputer) public {
+        address _disputer = disputer == address(0) ? msg.sender : disputer;
         Assertion storage assertion = assertions[assertionId];
         require(assertion.proposer != address(0), "Assertion does not exist"); // Revert if assertion does not exist.
         require(assertion.disputer == address(0), "Assertion already disputed"); // Revert if assertion already disputed.
@@ -149,13 +150,13 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
         // Pull the bond
         assertion.currency.safeTransferFrom(msg.sender, address(this), assertion.bond);
 
-        assertion.disputer = disputer;
+        assertion.disputer = _disputer;
 
         _getOracle(assertionId).requestPrice(identifier, assertion.assertionTime, _stampAssertion(assertionId));
 
         if (!assertion.useDisputeResolution) _sendCallback(assertionId, false);
 
-        emit AssertionDisputed(assertionId, disputer);
+        emit AssertionDisputed(assertionId, _disputer);
     }
 
     function settleAssertion(bytes32 assertionId) public {
