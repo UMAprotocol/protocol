@@ -20,6 +20,13 @@ contract SovereignSecurityManagerPoliciesEnforced is Test {
     uint256 defaultLiveness;
     string claimAssertion = 'q:"The sky is blue"';
 
+    event AssertionSettled(
+        bytes32 indexed assertionId,
+        address indexed bondRecipient,
+        bool disputed,
+        bool settlementResolution
+    );
+
     function setUp() public {
         OptimisticAssertorFixture.OptimisticAsserterContracts memory oaContracts =
             new OptimisticAssertorFixture().setUp();
@@ -68,6 +75,27 @@ contract SovereignSecurityManagerPoliciesEnforced is Test {
         vm.clearMockedCalls();
     }
 
+    function test_DisregardOracle() public {
+        // Do not respect Oracle on dispute.
+        _mockSsmPolicies(true, true, false);
+
+        bytes32 assertionId = _assertWithSsm();
+        OptimisticAssertorInterface.Assertion memory assertion = optimisticAssertor.readAssertion(assertionId);
+        assertFalse(assertion.useDisputeResolution);
+
+        // Dispute should make assertion false available immediately.
+        OracleRequest memory oracleRequest = _disputeAndGetOracleRequest(assertionId);
+        assertFalse(optimisticAssertor.getAssertion(assertionId));
+
+        // Mock resolve assertion truethful through Oracle and verify it is settled false on Optimistic Asserter
+        // while proposer should still receive the bond.
+        _mockOracleResolved(address(mockOracle), oracleRequest, true);
+        vm.expectEmit(true, true, true, true);
+        emit AssertionSettled(assertionId, TestAddress.account1, true, false);
+        assertFalse(optimisticAssertor.settleAndGetAssertion(assertionId));
+        vm.clearMockedCalls();
+    }
+
     function _mockSsmPolicies(
         bool allowAssertion,
         bool useDvmAsOracle,
@@ -92,6 +120,7 @@ contract SovereignSecurityManagerPoliciesEnforced is Test {
         OracleRequest memory oracleRequest,
         bool assertionTruthful
     ) internal {
+        // Mock getPrice call based on desired response. Also works on Sovereign Security Manager.
         vm.mockCall(
             oracle,
             abi.encodeWithSelector(
