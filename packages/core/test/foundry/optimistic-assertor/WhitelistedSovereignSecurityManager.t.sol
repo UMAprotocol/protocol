@@ -31,7 +31,7 @@ contract WhitelistedSovereignSecurityManagerTest is Test {
         vm.prank(mockOptimisticAssertorAddress);
         SovereignSecurityManagerInterface.AssertionPolicies memory policyWhitelisted =
             ssm.getAssertionPolicies(assertionId);
-        assertEq(policyWhitelisted.allowAssertion, true);
+        assertTrue(policyWhitelisted.allowAssertion);
     }
 
     function test_RevertIf_NotOwner() public {
