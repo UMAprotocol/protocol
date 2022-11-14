@@ -22,6 +22,9 @@ contract OwnerSelectOracleSovereignSecurityManagerTest is Test {
 
         ssm.setArbitrationResolution(identifier, time, ancillaryData, true);
         assertTrue(ssm.getPrice(identifier, time, ancillaryData) == 1e18);
+
+        ssm.setArbitrationResolution(identifier, time, ancillaryData, false);
+        assertTrue(ssm.getPrice(identifier, time, ancillaryData) == 0);
     }
 
     function test_SetArbitrateViaSsm() public {
