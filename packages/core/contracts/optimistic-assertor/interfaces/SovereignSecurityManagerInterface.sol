@@ -10,7 +10,7 @@ interface SovereignSecurityManagerInterface {
         bool useDisputeResolution;
     }
 
-    function getAssertionPolicies(bytes32 assertionId) external returns (AssertionPolicies memory);
+    function processAssertionPolicies(bytes32 assertionId) external returns (AssertionPolicies memory);
 
     function getPrice(
         bytes32 identifier,

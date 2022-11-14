@@ -27,7 +27,7 @@ contract OwnerSelectOracleSovereignSecurityManager is BaseSovereignSecurityManag
         arbitrateViaSsm = value;
     }
 
-    function getAssertionPolicies(bytes32 assertionId) public view override returns (AssertionPolicies memory) {
+    function processAssertionPolicies(bytes32 assertionId) public view override returns (AssertionPolicies memory) {
         return
             AssertionPolicies({ allowAssertion: true, useDvmAsOracle: !arbitrateViaSsm, useDisputeResolution: true });
     }

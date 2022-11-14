@@ -102,7 +102,7 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
         });
 
         SovereignSecurityManagerInterface.AssertionPolicies memory assertionPolicies =
-            _getAssertionPolicies(assertionId);
+            _processAssertionPolicies(assertionId);
 
         // Check if the assertion is allowed by the sovereign security manager.
         require(assertionPolicies.allowAssertion, "Assertion not allowed");
@@ -253,13 +253,13 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
         return SovereignSecurityManagerInterface(assertions[assertionId].sovereignSecurityManager);
     }
 
-    function _getAssertionPolicies(bytes32 assertionId)
+    function _processAssertionPolicies(bytes32 assertionId)
         internal
         returns (SovereignSecurityManagerInterface.AssertionPolicies memory)
     {
         address ssm = assertions[assertionId].sovereignSecurityManager;
         if (ssm == address(0)) return SovereignSecurityManagerInterface.AssertionPolicies(true, true, true);
-        return SovereignSecurityManagerInterface(ssm).getAssertionPolicies(assertionId);
+        return SovereignSecurityManagerInterface(ssm).processAssertionPolicies(assertionId);
     }
 
     function _sendCallback(bytes32 assertionId, bool assertedTruthfully) internal {

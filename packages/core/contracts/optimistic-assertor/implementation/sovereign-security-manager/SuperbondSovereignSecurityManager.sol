@@ -50,7 +50,7 @@ contract SuperbondSovereignSecurityManager is BaseSovereignSecurityManager, Owna
         arbitrationResolutions[requestId] = ArbitrationResolution(true, arbitrationResolution);
     }
 
-    function getAssertionPolicies(bytes32 assertionId) public override returns (AssertionPolicies memory) {
+    function processAssertionPolicies(bytes32 assertionId) public override returns (AssertionPolicies memory) {
         OptimisticAssertorInterface optimisticAssertor = OptimisticAssertorInterface(msg.sender);
         OptimisticAssertorInterface.Assertion memory assertion = optimisticAssertor.readAssertion(assertionId);
         bool allow = assertion.assertingCaller == assertingCaller && superBonds[assertion.currency].superBondAmount > 0;

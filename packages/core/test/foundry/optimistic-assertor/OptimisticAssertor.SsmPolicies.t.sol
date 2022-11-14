@@ -101,10 +101,10 @@ contract SovereignSecurityManagerPoliciesEnforced is Test {
         bool useDvmAsOracle,
         bool useDisputeResolution
     ) internal {
-        // Mock getAssertionPolicies call to block assertion. No need to pass assertionId as mockCall uses loose matching.
+        // Mock processAssertionPolicies call to block assertion. No need to pass assertionId as mockCall uses loose matching.
         vm.mockCall(
             mockedSovereignSecurityManager,
-            abi.encodePacked(SovereignSecurityManagerInterface.getAssertionPolicies.selector),
+            abi.encodePacked(SovereignSecurityManagerInterface.processAssertionPolicies.selector),
             abi.encode(
                 SovereignSecurityManagerInterface.AssertionPolicies({
                     allowAssertion: allowAssertion,
