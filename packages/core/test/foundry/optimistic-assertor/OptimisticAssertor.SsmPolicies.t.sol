@@ -15,7 +15,9 @@ contract SovereignSecurityManagerPoliciesEnforced is Test {
     OptimisticAssertor optimisticAssertor;
     MockOracleAncillary mockOracle;
     address mockedSovereignSecurityManager = address(0xff);
+    address mockedCallbackRecipient = address(0xfe);
     TestnetERC20 defaultCurrency;
+    Timer timer;
     uint256 defaultBond;
     uint256 defaultLiveness;
     string claimAssertion = 'q:"The sky is blue"';
@@ -33,14 +35,18 @@ contract SovereignSecurityManagerPoliciesEnforced is Test {
         optimisticAssertor = oaContracts.optimisticAssertor;
         mockOracle = oaContracts.mockOracle;
         defaultCurrency = oaContracts.defaultCurrency;
+        timer = oaContracts.timer;
         defaultBond = optimisticAssertor.defaultBond();
         defaultLiveness = optimisticAssertor.defaultLiveness();
 
         // Fund Account1 for making assertion.
         vm.startPrank(TestAddress.account1);
-        defaultCurrency.allocateTo(TestAddress.account1, optimisticAssertor.defaultBond());
-        defaultCurrency.approve(address(optimisticAssertor), optimisticAssertor.defaultBond());
+        defaultCurrency.allocateTo(TestAddress.account1, defaultBond);
+        defaultCurrency.approve(address(optimisticAssertor), defaultBond);
         vm.stopPrank();
+
+        // Mocked callback recipiend code size should be > 0.
+        vm.etch(mockedCallbackRecipient, new bytes(1));
     }
 
     function testDefaultPolicies() public {
@@ -56,7 +62,7 @@ contract SovereignSecurityManagerPoliciesEnforced is Test {
         _mockSsmPolicies(false, true, true);
 
         vm.expectRevert("Assertion not allowed");
-        _assertWithSsm();
+        _assertWithCallbackRecipientAndSsm(address(0), mockedSovereignSecurityManager);
         vm.clearMockedCalls();
     }
 
@@ -64,7 +70,7 @@ contract SovereignSecurityManagerPoliciesEnforced is Test {
         // Use SSM as oracle.
         _mockSsmPolicies(true, false, true);
 
-        bytes32 assertionId = _assertWithSsm();
+        bytes32 assertionId = _assertWithCallbackRecipientAndSsm(address(0), mockedSovereignSecurityManager);
         OptimisticAssertorInterface.Assertion memory assertion = optimisticAssertor.readAssertion(assertionId);
         assertFalse(assertion.useDvmAsOracle);
 
@@ -79,7 +85,7 @@ contract SovereignSecurityManagerPoliciesEnforced is Test {
         // Do not respect Oracle on dispute.
         _mockSsmPolicies(true, true, false);
 
-        bytes32 assertionId = _assertWithSsm();
+        bytes32 assertionId = _assertWithCallbackRecipientAndSsm(address(0), mockedSovereignSecurityManager);
         OptimisticAssertorInterface.Assertion memory assertion = optimisticAssertor.readAssertion(assertionId);
         assertFalse(assertion.useDisputeResolution);
 
@@ -93,6 +99,54 @@ contract SovereignSecurityManagerPoliciesEnforced is Test {
         vm.expectEmit(true, true, true, true);
         emit AssertionSettled(assertionId, TestAddress.account1, true, false);
         assertFalse(optimisticAssertor.settleAndGetAssertion(assertionId));
+        vm.clearMockedCalls();
+    }
+
+    function test_CallbackOnExpired() public {
+        // Assert with callback recipient.
+        bytes32 assertionId = _assertWithCallbackRecipientAndSsm(mockedCallbackRecipient, address(0));
+
+        // Move time forward to the end of the liveness period.
+        timer.setCurrentTime(timer.getCurrentTime() + defaultLiveness);
+
+        // Settlement should trigger callback with asserted truthfully.
+        _expectCallback(assertionId, true);
+        optimisticAssertor.settleAndGetAssertion(assertionId);
+    }
+
+    function test_CallbackOnResolvedTruth() public {
+        // Assert with callback recipient.
+        bytes32 assertionId = _assertWithCallbackRecipientAndSsm(mockedCallbackRecipient, address(0));
+
+        // Dispute, mock resolve assertion truethful through Oracle and verify on Callback Recipient.
+        OracleRequest memory oracleRequest = _disputeAndGetOracleRequest(assertionId);
+        _mockOracleResolved(address(mockOracle), oracleRequest, true);
+        _expectCallback(assertionId, true);
+        optimisticAssertor.settleAndGetAssertion(assertionId);
+        vm.clearMockedCalls();
+    }
+
+    function test_CallbackOnResolvedFalse() public {
+        // Assert with callback recipient.
+        bytes32 assertionId = _assertWithCallbackRecipientAndSsm(mockedCallbackRecipient, address(0));
+
+        // Dispute, mock resolve assertion false through Oracle and verify on Callback Recipient.
+        OracleRequest memory oracleRequest = _disputeAndGetOracleRequest(assertionId);
+        _mockOracleResolved(address(mockOracle), oracleRequest, false);
+        _expectCallback(assertionId, false);
+        optimisticAssertor.settleAndGetAssertion(assertionId);
+        vm.clearMockedCalls();
+    }
+
+    function test_CallbackOnDispute() public {
+        // Assert with callback recipient and not respecting Oracle.
+        _mockSsmPolicies(true, true, false);
+        bytes32 assertionId =
+            _assertWithCallbackRecipientAndSsm(mockedCallbackRecipient, mockedSovereignSecurityManager);
+
+        // Callback should be made on dispute without settlement.
+        _expectCallback(assertionId, false);
+        _disputeAndGetOracleRequest(assertionId);
         vm.clearMockedCalls();
     }
 
@@ -133,14 +187,17 @@ contract SovereignSecurityManagerPoliciesEnforced is Test {
         );
     }
 
-    function _assertWithSsm() internal returns (bytes32) {
+    function _assertWithCallbackRecipientAndSsm(address callbackRecipient, address sovereignSecurityManager)
+        internal
+        returns (bytes32)
+    {
         vm.prank(TestAddress.account1);
         return
             optimisticAssertor.assertTruthFor(
                 bytes(claimAssertion),
                 address(0),
-                address(0),
-                mockedSovereignSecurityManager,
+                callbackRecipient,
+                sovereignSecurityManager,
                 defaultCurrency,
                 defaultBond,
                 defaultLiveness
@@ -164,5 +221,16 @@ contract SovereignSecurityManagerPoliciesEnforced is Test {
         optimisticAssertor.disputeAssertionFor(assertionId, TestAddress.account2);
         vm.stopPrank();
         return oracleRequest;
+    }
+
+    function _expectCallback(bytes32 assertionId, bool assertedTruthfully) internal {
+        vm.expectCall(
+            mockedCallbackRecipient,
+            abi.encodeWithSelector(
+                OptimisticAsserterCallbackRecipientInterface.assertionResolved.selector,
+                assertionId,
+                assertedTruthfully
+            )
+        );
     }
 }
