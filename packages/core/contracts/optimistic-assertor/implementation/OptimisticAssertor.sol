@@ -255,7 +255,6 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
 
     function _getAssertionPolicies(bytes32 assertionId)
         internal
-        view
         returns (SovereignSecurityManagerInterface.AssertionPolicies memory)
     {
         address ssm = assertions[assertionId].sovereignSecurityManager;
