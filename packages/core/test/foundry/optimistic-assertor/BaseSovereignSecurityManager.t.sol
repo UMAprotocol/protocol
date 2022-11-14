@@ -12,7 +12,7 @@ contract BaseSovereignSecurityManagerTest is Test {
     uint256 time = 123;
     bytes ancillaryData = "ancillary";
 
-    event PriceRequested(bytes32 indexed identifier, uint256 time, bytes ancillaryData);
+    event PriceRequestAdded(bytes32 indexed identifier, uint256 time, bytes ancillaryData);
 
     function setUp() public {
         ssm = new BaseSovereignSecurityManager();
@@ -27,7 +27,7 @@ contract BaseSovereignSecurityManagerTest is Test {
 
     function test_RequestPrice() public {
         vm.expectEmit(true, true, true, true);
-        emit PriceRequested(identifier, time, ancillaryData);
+        emit PriceRequestAdded(identifier, time, ancillaryData);
         ssm.requestPrice(identifier, time, ancillaryData);
     }
 

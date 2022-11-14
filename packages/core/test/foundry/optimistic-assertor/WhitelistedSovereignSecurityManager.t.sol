@@ -27,11 +27,12 @@ contract WhitelistedSovereignSecurityManagerTest is Test {
 
         // If the asserting caller is whitelisted, then the assertion should be allowed.
         ssm.setAssertingCallerInWhitelist(mockAssertingCallerAddress, true);
-        _mockReadAssertionAssertingCaller(mockAssertingCallerAddress);
         vm.prank(mockOptimisticAssertorAddress);
         SovereignSecurityManagerInterface.AssertionPolicies memory policyWhitelisted =
             ssm.getAssertionPolicies(assertionId);
         assertTrue(policyWhitelisted.allowAssertion);
+
+        vm.clearMockedCalls();
     }
 
     function test_RevertIf_NotOwner() public {
