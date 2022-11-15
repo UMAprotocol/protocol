@@ -61,8 +61,7 @@ contract SovereignSecurityManagerPoliciesEnforced is Common {
         OracleRequest memory oracleRequest = _disputeAndGetOracleRequest(assertionId);
         assertFalse(optimisticAssertor.getAssertion(assertionId));
 
-        // Mock resolve assertion truethful through Oracle and verify it is settled false on Optimistic Assertor
-        // while proposer should still receive the bond.
+        // Mock resolve assertion truethful through Oracle and verify it is settled false on Optimistic Assertor.
         _mockOracleResolved(address(mockOracle), oracleRequest, true);
         assertFalse(optimisticAssertor.settleAndGetAssertion(assertionId));
         vm.clearMockedCalls();
