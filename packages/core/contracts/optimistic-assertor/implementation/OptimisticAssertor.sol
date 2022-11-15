@@ -154,7 +154,11 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
 
         _getOracle(assertionId).requestPrice(identifier, assertion.assertionTime, _stampAssertion(assertionId));
 
-        if (!assertion.useDisputeResolution) _sendCallback(assertionId, false);
+        // Send dispute callback
+        _callbackOnAssertionDispute(assertionId);
+
+        // Send resolve callback if dispute resolution is discarded
+        if (!assertion.useDisputeResolution) _callbackOnAssertionResolve(assertionId, false);
 
         emit AssertionDisputed(assertionId, _disputer);
     }
@@ -169,7 +173,7 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
             require(assertion.expirationTime <= getCurrentTime(), "Assertion not expired"); // Revert if assertion not expired.
             assertion.currency.safeTransfer(assertion.proposer, assertion.bond);
             assertion.settlementResolution = true;
-            _sendCallback(assertionId, true);
+            _callbackOnAssertionResolve(assertionId, true);
 
             emit AssertionSettled(assertionId, assertion.proposer, false, true);
         } else {
@@ -187,7 +191,8 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
             assertion.currency.safeTransfer(bondRecipient, amountToSend);
             assertion.currency.safeTransfer(address(_getStore()), amountToBurn);
 
-            if (assertion.useDisputeResolution) _sendCallback(assertionId, assertion.settlementResolution);
+            if (assertion.useDisputeResolution)
+                _callbackOnAssertionResolve(assertionId, assertion.settlementResolution);
 
             emit AssertionSettled(assertionId, bondRecipient, true, assertion.settlementResolution);
         }
@@ -263,11 +268,18 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
         return SovereignSecurityManagerInterface(ssm).getAssertionPolicies(assertionId);
     }
 
-    function _sendCallback(bytes32 assertionId, bool assertedTruthfully) internal {
+    function _callbackOnAssertionResolve(bytes32 assertionId, bool assertedTruthfully) internal {
         if (assertions[assertionId].callbackRecipient != address(0))
             OptimisticAsserterCallbackRecipientInterface(assertions[assertionId].callbackRecipient).assertionResolved(
                 assertionId,
                 assertedTruthfully
+            );
+    }
+
+    function _callbackOnAssertionDispute(bytes32 assertionId) internal {
+        if (assertions[assertionId].callbackRecipient != address(0))
+            OptimisticAsserterCallbackRecipientInterface(assertions[assertionId].callbackRecipient).assertionDisputed(
+                assertionId
             );
     }
 }

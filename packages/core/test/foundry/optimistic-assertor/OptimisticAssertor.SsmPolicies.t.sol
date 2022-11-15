@@ -76,7 +76,7 @@ contract SovereignSecurityManagerPoliciesEnforced is Common {
         timer.setCurrentTime(timer.getCurrentTime() + defaultLiveness);
 
         // Settlement should trigger callback with asserted truthfully.
-        _expectCallback(assertionId, true);
+        _expectAssertionResolvedCallback(assertionId, true);
         optimisticAssertor.settleAndGetAssertion(assertionId);
     }
 
@@ -84,10 +84,13 @@ contract SovereignSecurityManagerPoliciesEnforced is Common {
         // Assert with callback recipient.
         bytes32 assertionId = _assertWithCallbackRecipientAndSsm(mockedCallbackRecipient, address(0));
 
-        // Dispute, mock resolve assertion truethful through Oracle and verify on Callback Recipient.
+        // Dispute and verify on dispute callback.
+        _expectAssertionDisputedCallback(assertionId);
         OracleRequest memory oracleRequest = _disputeAndGetOracleRequest(assertionId);
+
+        // Mock resolve assertion truethful through Oracle and verify on resolve callback to Recipient.
         _mockOracleResolved(address(mockOracle), oracleRequest, true);
-        _expectCallback(assertionId, true);
+        _expectAssertionResolvedCallback(assertionId, true);
         optimisticAssertor.settleAndGetAssertion(assertionId);
         vm.clearMockedCalls();
     }
@@ -96,10 +99,13 @@ contract SovereignSecurityManagerPoliciesEnforced is Common {
         // Assert with callback recipient.
         bytes32 assertionId = _assertWithCallbackRecipientAndSsm(mockedCallbackRecipient, address(0));
 
-        // Dispute, mock resolve assertion false through Oracle and verify on Callback Recipient.
+        // Dispute and verify on dispute callback.
+        _expectAssertionDisputedCallback(assertionId);
         OracleRequest memory oracleRequest = _disputeAndGetOracleRequest(assertionId);
+
+        // Mock resolve assertion false through Oracle and verify on resolve callback to Recipient.
         _mockOracleResolved(address(mockOracle), oracleRequest, false);
-        _expectCallback(assertionId, false);
+        _expectAssertionResolvedCallback(assertionId, false);
         optimisticAssertor.settleAndGetAssertion(assertionId);
         vm.clearMockedCalls();
     }
@@ -110,8 +116,10 @@ contract SovereignSecurityManagerPoliciesEnforced is Common {
         bytes32 assertionId =
             _assertWithCallbackRecipientAndSsm(mockedCallbackRecipient, mockedSovereignSecurityManager);
 
-        // Callback should be made on dispute without settlement.
-        _expectCallback(assertionId, false);
+        // Dispute callback should be triggered.
+        _expectAssertionDisputedCallback(assertionId);
+        // Resolve callback should be made on dispute without settlement.
+        _expectAssertionResolvedCallback(assertionId, false);
         _disputeAndGetOracleRequest(assertionId);
         vm.clearMockedCalls();
     }
