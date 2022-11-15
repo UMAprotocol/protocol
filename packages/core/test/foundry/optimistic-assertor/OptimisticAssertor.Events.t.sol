@@ -5,12 +5,7 @@ import "./Common.sol";
 
 contract OptimisticAssertorEvents is Common {
     function setUp() public {
-        OptimisticAssertorFixture.OptimisticAssertorContracts memory oaContracts =
-            new OptimisticAssertorFixture().setUp();
-        optimisticAssertor = oaContracts.optimisticAssertor;
-        defaultCurrency = oaContracts.defaultCurrency;
-        mockOracle = oaContracts.mockOracle;
-        timer = oaContracts.timer;
+        _commonSetup();
     }
 
     function test_LifecycleEventsEmitted() public {
