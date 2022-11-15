@@ -1,21 +1,11 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import "../fixtures/optimistic-assertor/OptimisticAssertorFixture.sol";
-import "../fixtures/common/TestAddress.sol";
+import "./Common.sol";
 
-contract InvalidParameters is Test {
-    OptimisticAssertor optimisticAssertor;
-    TestnetERC20 defaultCurrency;
-    Timer timer;
-    string claimAssertion = 'q:"The sky is blue"';
-
+contract InvalidParameters is Common {
     function setUp() public {
-        OptimisticAssertorFixture.OptimisticAsserterContracts memory oaContracts =
-            new OptimisticAssertorFixture().setUp();
-        optimisticAssertor = oaContracts.optimisticAssertor;
-        defaultCurrency = oaContracts.defaultCurrency;
-        timer = oaContracts.timer;
+        _commonSetup();
     }
 
     function test_RevertIf_DuplicateAssertion() public {
@@ -25,11 +15,11 @@ contract InvalidParameters is Test {
         defaultCurrency.approve(address(optimisticAssertor), optimisticAssertor.defaultBond() * 2);
 
         // Account1 asserts a claim.
-        bytes32 assertionId = optimisticAssertor.assertTruth(bytes(claimAssertion));
+        bytes32 assertionId = optimisticAssertor.assertTruth(trueClaimAssertion);
 
         // Account1 asserts the same claim again.
         vm.expectRevert("Assertion already exists");
-        optimisticAssertor.assertTruth(bytes(claimAssertion));
+        optimisticAssertor.assertTruth(trueClaimAssertion);
         vm.stopPrank();
     }
 
@@ -45,13 +35,13 @@ contract InvalidParameters is Test {
         vm.stopPrank();
 
         vm.expectRevert("Unsupported currency");
-        optimisticAssertor.assertTruth(bytes(claimAssertion));
+        optimisticAssertor.assertTruth(trueClaimAssertion);
     }
 
     function test_RevertIf_BondBelowMinimum() public {
         vm.expectRevert("Bond amount too low");
         optimisticAssertor.assertTruthFor(
-            bytes(claimAssertion),
+            trueClaimAssertion,
             address(0),
             address(0),
             address(0),
@@ -80,7 +70,7 @@ contract InvalidParameters is Test {
         defaultCurrency.approve(address(optimisticAssertor), optimisticAssertor.defaultBond());
 
         // Account1 asserts a claim.
-        bytes32 assertionId = optimisticAssertor.assertTruth(bytes(claimAssertion));
+        bytes32 assertionId = optimisticAssertor.assertTruth(trueClaimAssertion);
         vm.stopPrank();
 
         // Fund Account2 with enough currency to dispute the assertion twice.

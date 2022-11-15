@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import "forge-std/Test.sol";
-import "../fixtures/common/TestAddress.sol";
-import "../../../contracts/optimistic-assertor/implementation/sovereign-security-manager/BaseSovereignSecurityManager.sol";
+import "../Common.sol";
+import "../../../../contracts/optimistic-assertor/implementation/sovereign-security-manager/BaseSovereignSecurityManager.sol";
 
-contract BaseSovereignSecurityManagerTest is Test {
+contract BaseSovereignSecurityManagerTest is Common {
     BaseSovereignSecurityManager ssm;
 
     bytes32 identifier = "test";

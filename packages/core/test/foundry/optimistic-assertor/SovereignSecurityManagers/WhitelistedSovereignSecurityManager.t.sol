@@ -1,15 +1,11 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import "forge-std/Test.sol";
-import "../fixtures/common/TestAddress.sol";
-import "../../../contracts/optimistic-assertor/implementation/sovereign-security-manager/WhitelistedSovereignSecurityManager.sol";
-import "../../../contracts/optimistic-assertor/interfaces/OptimisticAssertorInterface.sol";
+import "../Common.sol";
+import "../../../../contracts/optimistic-assertor/implementation/sovereign-security-manager/WhitelistedSovereignSecurityManager.sol";
 
-contract WhitelistedSovereignSecurityManagerTest is Test {
+contract WhitelistedSovereignSecurityManagerTest is Common {
     WhitelistedSovereignSecurityManager ssm;
-    address mockOptimisticAssertorAddress = address(0xff);
-    address mockAssertingCallerAddress = address(0xffa);
 
     function setUp() public {
         ssm = new WhitelistedSovereignSecurityManager();
