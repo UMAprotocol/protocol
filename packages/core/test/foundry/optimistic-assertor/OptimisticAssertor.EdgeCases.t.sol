@@ -66,7 +66,7 @@ contract InvalidParameters is Common {
         defaultCurrency.approve(address(optimisticAssertor), defaultBond);
 
         // Account1 asserts a claim.
-        bytes32 assertionId = optimisticAssertor.assertTruth(trueClaimAssertion);
+        bytes32 assertionId = optimisticAssertor.assertTruth(falseClaimAssertion);
         vm.stopPrank();
 
         // Fund Account2 with enough currency to dispute the assertion twice.
