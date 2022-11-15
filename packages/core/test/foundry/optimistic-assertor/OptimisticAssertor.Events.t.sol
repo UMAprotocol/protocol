@@ -10,16 +10,16 @@ contract OptimisticAssertorEvents is Common {
 
     function test_LifecycleEventsEmitted() public {
         vm.startPrank(TestAddress.account1);
-        defaultCurrency.allocateTo(TestAddress.account1, optimisticAssertor.defaultBond());
-        assert(defaultCurrency.balanceOf(TestAddress.account1) >= optimisticAssertor.defaultBond());
-        defaultCurrency.approve(address(optimisticAssertor), optimisticAssertor.defaultBond());
+        defaultCurrency.allocateTo(TestAddress.account1, defaultBond);
+        assert(defaultCurrency.balanceOf(TestAddress.account1) >= defaultBond);
+        defaultCurrency.approve(address(optimisticAssertor), defaultBond);
 
         bytes32 expectedAssertionId =
             keccak256(
                 abi.encode(
                     falseClaimAssertion,
-                    optimisticAssertor.defaultBond(),
-                    optimisticAssertor.defaultLiveness(),
+                    defaultBond,
+                    defaultLiveness,
                     address(defaultCurrency),
                     TestAddress.account1,
                     address(0),
@@ -35,8 +35,8 @@ contract OptimisticAssertorEvents is Common {
             address(0),
             address(0),
             defaultCurrency,
-            optimisticAssertor.defaultBond(),
-            timer.getCurrentTime() + optimisticAssertor.defaultLiveness()
+            defaultBond,
+            timer.getCurrentTime() + defaultLiveness
         );
 
         // Account1 asserts a false claim.

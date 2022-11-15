@@ -10,16 +10,16 @@ contract SimpleAssertionsWithClaimOnly is Common {
 
     function test_AssertionWithNoDispute() public {
         vm.startPrank(TestAddress.account1);
-        defaultCurrency.allocateTo(TestAddress.account1, optimisticAssertor.defaultBond());
-        assert(defaultCurrency.balanceOf(TestAddress.account1) >= optimisticAssertor.defaultBond());
-        defaultCurrency.approve(address(optimisticAssertor), optimisticAssertor.defaultBond());
+        defaultCurrency.allocateTo(TestAddress.account1, defaultBond);
+        assert(defaultCurrency.balanceOf(TestAddress.account1) >= defaultBond);
+        defaultCurrency.approve(address(optimisticAssertor), defaultBond);
 
         bytes32 expectedAssertionId =
             keccak256(
                 abi.encode(
                     trueClaimAssertion,
-                    optimisticAssertor.defaultBond(),
-                    optimisticAssertor.defaultLiveness(),
+                    defaultBond,
+                    defaultLiveness,
                     address(defaultCurrency),
                     TestAddress.account1,
                     address(0),
@@ -36,24 +36,21 @@ contract SimpleAssertionsWithClaimOnly is Common {
         optimisticAssertor.settleAndGetAssertion(assertionId);
 
         // Move time forward to the end of the liveness period.
-        timer.setCurrentTime(timer.getCurrentTime() + optimisticAssertor.defaultLiveness());
+        timer.setCurrentTime(timer.getCurrentTime() + defaultLiveness);
 
         // proposer balance before settlement
         uint256 proposerBalanceBefore = defaultCurrency.balanceOf(TestAddress.account1);
 
         // The assertion should be true.
         assertTrue(optimisticAssertor.settleAndGetAssertion(assertionId));
-        assertEq(
-            defaultCurrency.balanceOf(TestAddress.account1) - proposerBalanceBefore,
-            optimisticAssertor.defaultBond()
-        );
+        assertEq(defaultCurrency.balanceOf(TestAddress.account1) - proposerBalanceBefore, defaultBond);
     }
 
     function test_AssertionWithDispute() public {
         vm.startPrank(TestAddress.account1);
-        defaultCurrency.allocateTo(TestAddress.account1, optimisticAssertor.defaultBond());
-        assert(defaultCurrency.balanceOf(TestAddress.account1) >= optimisticAssertor.defaultBond());
-        defaultCurrency.approve(address(optimisticAssertor), optimisticAssertor.defaultBond());
+        defaultCurrency.allocateTo(TestAddress.account1, defaultBond);
+        assert(defaultCurrency.balanceOf(TestAddress.account1) >= defaultBond);
+        defaultCurrency.approve(address(optimisticAssertor), defaultBond);
 
         // Account1 asserts a false claim.
         bytes32 assertionId = optimisticAssertor.assertTruth(bytes(falseClaimAssertion));
@@ -61,9 +58,9 @@ contract SimpleAssertionsWithClaimOnly is Common {
 
         // The assertion gets disputed by the disputer, account2.
         vm.startPrank(TestAddress.account2);
-        defaultCurrency.allocateTo(TestAddress.account2, optimisticAssertor.defaultBond());
-        assert(defaultCurrency.balanceOf(TestAddress.account2) >= optimisticAssertor.defaultBond());
-        defaultCurrency.approve(address(optimisticAssertor), optimisticAssertor.defaultBond());
+        defaultCurrency.allocateTo(TestAddress.account2, defaultBond);
+        assert(defaultCurrency.balanceOf(TestAddress.account2) >= defaultBond);
+        defaultCurrency.approve(address(optimisticAssertor), defaultBond);
 
         optimisticAssertor.disputeAssertionFor(assertionId, TestAddress.account2);
         vm.stopPrank();
@@ -90,13 +87,13 @@ contract SimpleAssertionsWithClaimOnly is Common {
         // The disputer should have kept their bond and earned 1 - burnedBondPercentage of the proposer's bond.
         assertEq(
             defaultCurrency.balanceOf(TestAddress.account2),
-            ((optimisticAssertor.defaultBond() * (2e18 - optimisticAssertor.burnedBondPercentage())) / 1e18)
+            ((defaultBond * (2e18 - optimisticAssertor.burnedBondPercentage())) / 1e18)
         );
 
         // The store should have kept the burnedBondPercentage part of the proposer's bond.
         assertEq(
             defaultCurrency.balanceOf(address(store)),
-            (optimisticAssertor.defaultBond() * optimisticAssertor.burnedBondPercentage()) / 1e18
+            (defaultBond * optimisticAssertor.burnedBondPercentage()) / 1e18
         );
 
         // The balance of the optimistic assertor should be zero.
