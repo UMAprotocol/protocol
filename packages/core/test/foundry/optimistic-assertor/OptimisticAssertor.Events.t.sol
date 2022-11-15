@@ -22,7 +22,7 @@ contract OptimisticAssertorEvents is Common {
         bytes32 expectedAssertionId =
             keccak256(
                 abi.encode(
-                    trueClaimAssertion,
+                    falseClaimAssertion,
                     optimisticAssertor.defaultBond(),
                     optimisticAssertor.defaultLiveness(),
                     address(defaultCurrency),
@@ -35,7 +35,7 @@ contract OptimisticAssertorEvents is Common {
         vm.expectEmit(true, true, true, true);
         emit AssertionMade(
             expectedAssertionId,
-            trueClaimAssertion,
+            falseClaimAssertion,
             TestAddress.account1,
             address(0),
             address(0),
@@ -45,7 +45,7 @@ contract OptimisticAssertorEvents is Common {
         );
 
         // Account1 asserts a false claim.
-        bytes32 assertionId = optimisticAssertor.assertTruth(trueClaimAssertion);
+        bytes32 assertionId = optimisticAssertor.assertTruth(falseClaimAssertion);
         vm.stopPrank();
 
         // The assertion gets disputed by the disputer, account2.
