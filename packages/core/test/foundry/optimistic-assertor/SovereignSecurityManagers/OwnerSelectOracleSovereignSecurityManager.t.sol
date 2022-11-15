@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import "forge-std/Test.sol";
-import "../fixtures/common/TestAddress.sol";
-import "../../../contracts/optimistic-assertor/implementation/sovereign-security-manager/OwnerSelectOracleSovereignSecurityManager.sol";
+import "../Common.sol";
+import "../../../../contracts/optimistic-assertor/implementation/sovereign-security-manager/OwnerSelectOracleSovereignSecurityManager.sol";
 
-contract OwnerSelectOracleSovereignSecurityManagerTest is Test {
+contract OwnerSelectOracleSovereignSecurityManagerTest is Common {
     OwnerSelectOracleSovereignSecurityManager ssm;
 
     function setUp() public {

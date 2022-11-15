@@ -1,43 +1,11 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import "../fixtures/optimistic-assertor/OptimisticAssertorFixture.sol";
-import "../fixtures/common/TestAddress.sol";
-import "../../../contracts/oracle/test/MockOracleAncillary.sol";
+import "./Common.sol";
 
-contract SovereignSecurityManagerPoliciesEnforced is Test {
-    struct OracleRequest {
-        bytes32 identifier;
-        uint256 time;
-        bytes ancillaryData;
-    }
-
-    OptimisticAssertor optimisticAssertor;
-    MockOracleAncillary mockOracle;
-    address mockedSovereignSecurityManager = address(0xff);
-    address mockedCallbackRecipient = address(0xfe);
-    TestnetERC20 defaultCurrency;
-    Timer timer;
-    uint256 defaultBond;
-    uint256 defaultLiveness;
-    string claimAssertion = 'q:"The sky is blue"';
-
-    event AssertionSettled(
-        bytes32 indexed assertionId,
-        address indexed bondRecipient,
-        bool disputed,
-        bool settlementResolution
-    );
-
+contract SovereignSecurityManagerPoliciesEnforced is Common {
     function setUp() public {
-        OptimisticAssertorFixture.OptimisticAsserterContracts memory oaContracts =
-            new OptimisticAssertorFixture().setUp();
-        optimisticAssertor = oaContracts.optimisticAssertor;
-        mockOracle = oaContracts.mockOracle;
-        defaultCurrency = oaContracts.defaultCurrency;
-        timer = oaContracts.timer;
-        defaultBond = optimisticAssertor.defaultBond();
-        defaultLiveness = optimisticAssertor.defaultLiveness();
+        _commonSetup();
 
         // Fund Account1 for making assertion.
         vm.startPrank(TestAddress.account1);
@@ -51,7 +19,7 @@ contract SovereignSecurityManagerPoliciesEnforced is Test {
 
     function testDefaultPolicies() public {
         vm.prank(TestAddress.account1);
-        bytes32 assertionId = optimisticAssertor.assertTruth(bytes(claimAssertion));
+        bytes32 assertionId = optimisticAssertor.assertTruth(trueClaimAssertion);
         OptimisticAssertorInterface.Assertion memory assertion = optimisticAssertor.readAssertion(assertionId);
         assertTrue(assertion.useDisputeResolution);
         assertTrue(assertion.useDvmAsOracle);
@@ -96,8 +64,6 @@ contract SovereignSecurityManagerPoliciesEnforced is Test {
         // Mock resolve assertion truethful through Oracle and verify it is settled false on Optimistic Asserter
         // while proposer should still receive the bond.
         _mockOracleResolved(address(mockOracle), oracleRequest, true);
-        vm.expectEmit(true, true, true, true);
-        emit AssertionSettled(assertionId, TestAddress.account1, true, false);
         assertFalse(optimisticAssertor.settleAndGetAssertion(assertionId));
         vm.clearMockedCalls();
     }
@@ -156,96 +122,5 @@ contract SovereignSecurityManagerPoliciesEnforced is Test {
         _expectAssertionResolvedCallback(assertionId, false);
         _disputeAndGetOracleRequest(assertionId);
         vm.clearMockedCalls();
-    }
-
-    function _mockSsmPolicies(
-        bool allowAssertion,
-        bool useDvmAsOracle,
-        bool useDisputeResolution
-    ) internal {
-        // Mock getAssertionPolicies call to block assertion. No need to pass assertionId as mockCall uses loose matching.
-        vm.mockCall(
-            mockedSovereignSecurityManager,
-            abi.encodePacked(SovereignSecurityManagerInterface.getAssertionPolicies.selector),
-            abi.encode(
-                SovereignSecurityManagerInterface.AssertionPolicies({
-                    allowAssertion: allowAssertion,
-                    useDvmAsOracle: useDvmAsOracle,
-                    useDisputeResolution: useDisputeResolution
-                })
-            )
-        );
-    }
-
-    function _mockOracleResolved(
-        address oracle,
-        OracleRequest memory oracleRequest,
-        bool assertionTruthful
-    ) internal {
-        // Mock getPrice call based on desired response. Also works on Sovereign Security Manager.
-        vm.mockCall(
-            oracle,
-            abi.encodeWithSelector(
-                MockOracleAncillary.getPrice.selector,
-                oracleRequest.identifier,
-                oracleRequest.time,
-                oracleRequest.ancillaryData
-            ),
-            abi.encode(assertionTruthful ? int256(1e18) : int256(0))
-        );
-    }
-
-    function _assertWithCallbackRecipientAndSsm(address callbackRecipient, address sovereignSecurityManager)
-        internal
-        returns (bytes32)
-    {
-        vm.prank(TestAddress.account1);
-        return
-            optimisticAssertor.assertTruthFor(
-                bytes(claimAssertion),
-                address(0),
-                callbackRecipient,
-                sovereignSecurityManager,
-                defaultCurrency,
-                defaultBond,
-                defaultLiveness
-            );
-    }
-
-    function _disputeAndGetOracleRequest(bytes32 assertionId) internal returns (OracleRequest memory) {
-        // Get expected oracle request on dispute.
-        OptimisticAssertorInterface.Assertion memory assertion = optimisticAssertor.readAssertion(assertionId);
-        OracleRequest memory oracleRequest =
-            OracleRequest({
-                identifier: optimisticAssertor.identifier(),
-                time: assertion.assertionTime,
-                ancillaryData: optimisticAssertor.stampAssertion(assertionId)
-            });
-
-        // Fund Account2 and make dispute.
-        vm.startPrank(TestAddress.account2);
-        defaultCurrency.allocateTo(TestAddress.account2, optimisticAssertor.defaultBond());
-        defaultCurrency.approve(address(optimisticAssertor), optimisticAssertor.defaultBond());
-        optimisticAssertor.disputeAssertionFor(assertionId, TestAddress.account2);
-        vm.stopPrank();
-        return oracleRequest;
-    }
-
-    function _expectAssertionResolvedCallback(bytes32 assertionId, bool assertedTruthfully) internal {
-        vm.expectCall(
-            mockedCallbackRecipient,
-            abi.encodeWithSelector(
-                OptimisticAsserterCallbackRecipientInterface.assertionResolved.selector,
-                assertionId,
-                assertedTruthfully
-            )
-        );
-    }
-
-    function _expectAssertionDisputedCallback(bytes32 assertionId) internal {
-        vm.expectCall(
-            mockedCallbackRecipient,
-            abi.encodeWithSelector(OptimisticAsserterCallbackRecipientInterface.assertionDisputed.selector, assertionId)
-        );
     }
 }
