@@ -42,7 +42,7 @@ contract SimpleAssertionsWithClaimOnly is Common {
         uint256 proposerBalanceBefore = defaultCurrency.balanceOf(TestAddress.account1);
 
         // The assertion should be true.
-        assertEq(optimisticAssertor.settleAndGetAssertion(assertionId), true);
+        assertTrue(optimisticAssertor.settleAndGetAssertion(assertionId));
         assertEq(
             defaultCurrency.balanceOf(TestAddress.account1) - proposerBalanceBefore,
             optimisticAssertor.defaultBond()
@@ -82,7 +82,7 @@ contract SimpleAssertionsWithClaimOnly is Common {
         // Push the resolution price into the mock oracle, a no vote meaning that the assertion is resolved as false.
         mockOracle.pushPrice(queries[0].identifier, queries[0].time, queries[0].ancillaryData, 0);
 
-        assertEq(optimisticAssertor.settleAndGetAssertion(assertionId), false);
+        assertFalse(optimisticAssertor.settleAndGetAssertion(assertionId));
 
         // The proposer should have lost their bond.
         assertEq(defaultCurrency.balanceOf(TestAddress.account1), 0);

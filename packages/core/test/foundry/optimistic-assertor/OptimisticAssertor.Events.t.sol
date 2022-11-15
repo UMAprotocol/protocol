@@ -73,6 +73,6 @@ contract OptimisticAssertorEvents is Common {
 
         vm.expectEmit(true, true, true, true);
         emit AssertionSettled(assertionId, TestAddress.account2, true, false);
-        assertEq(optimisticAssertor.settleAndGetAssertion(assertionId), false);
+        assertFalse(optimisticAssertor.settleAndGetAssertion(assertionId));
     }
 }
