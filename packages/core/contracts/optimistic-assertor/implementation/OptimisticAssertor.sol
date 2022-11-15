@@ -12,7 +12,7 @@ import "../../common/implementation/Lockable.sol";
 import "../../common/implementation/AddressWhitelist.sol";
 import "../../oracle/interfaces/OracleAncillaryInterface.sol";
 import "../../common/implementation/AncillaryData.sol";
-import "../interfaces/OptimisticAsserterCallbackRecipientInterface.sol";
+import "../interfaces/OptimisticAssertorCallbackRecipientInterface.sol";
 import "../interfaces/OptimisticAssertorInterface.sol";
 import "../interfaces/SovereignSecurityManagerInterface.sol";
 
@@ -270,7 +270,7 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
 
     function _callbackOnAssertionResolve(bytes32 assertionId, bool assertedTruthfully) internal {
         if (assertions[assertionId].callbackRecipient != address(0))
-            OptimisticAsserterCallbackRecipientInterface(assertions[assertionId].callbackRecipient).assertionResolved(
+            OptimisticAssertorCallbackRecipientInterface(assertions[assertionId].callbackRecipient).assertionResolved(
                 assertionId,
                 assertedTruthfully
             );
@@ -278,7 +278,7 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
 
     function _callbackOnAssertionDispute(bytes32 assertionId) internal {
         if (assertions[assertionId].callbackRecipient != address(0))
-            OptimisticAsserterCallbackRecipientInterface(assertions[assertionId].callbackRecipient).assertionDisputed(
+            OptimisticAssertorCallbackRecipientInterface(assertions[assertionId].callbackRecipient).assertionDisputed(
                 assertionId
             );
     }

@@ -57,7 +57,7 @@ contract Common is Test {
 
     // Common setup function, re-used in most tests.
     function _commonSetup() public {
-        OptimisticAssertorFixture.OptimisticAsserterContracts memory oaContracts =
+        OptimisticAssertorFixture.OptimisticAssertorContracts memory oaContracts =
             new OptimisticAssertorFixture().setUp();
         optimisticAssertor = oaContracts.optimisticAssertor;
         defaultCurrency = oaContracts.defaultCurrency;
@@ -146,7 +146,7 @@ contract Common is Test {
         vm.expectCall(
             mockedCallbackRecipient,
             abi.encodeWithSelector(
-                OptimisticAsserterCallbackRecipientInterface.assertionResolved.selector,
+                OptimisticAssertorCallbackRecipientInterface.assertionResolved.selector,
                 assertionId,
                 assertedTruthfully
             )
@@ -156,7 +156,7 @@ contract Common is Test {
     function _expectAssertionDisputedCallback(bytes32 assertionId) internal {
         vm.expectCall(
             mockedCallbackRecipient,
-            abi.encodeWithSelector(OptimisticAsserterCallbackRecipientInterface.assertionDisputed.selector, assertionId)
+            abi.encodeWithSelector(OptimisticAssertorCallbackRecipientInterface.assertionDisputed.selector, assertionId)
         );
     }
 }

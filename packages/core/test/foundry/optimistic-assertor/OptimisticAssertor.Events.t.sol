@@ -3,9 +3,9 @@ pragma solidity ^0.8.0;
 
 import "./Common.sol";
 
-contract OptimisticAsserterEvents is Common {
+contract OptimisticAssertorEvents is Common {
     function setUp() public {
-        OptimisticAssertorFixture.OptimisticAsserterContracts memory oaContracts =
+        OptimisticAssertorFixture.OptimisticAssertorContracts memory oaContracts =
             new OptimisticAssertorFixture().setUp();
         optimisticAssertor = oaContracts.optimisticAssertor;
         defaultCurrency = oaContracts.defaultCurrency;
