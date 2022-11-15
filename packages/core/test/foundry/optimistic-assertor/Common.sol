@@ -142,7 +142,7 @@ contract Common is Test {
         return oracleRequest;
     }
 
-    function _expectCallback(bytes32 assertionId, bool assertedTruthfully) internal {
+    function _expectAssertionResolvedCallback(bytes32 assertionId, bool assertedTruthfully) internal {
         vm.expectCall(
             mockedCallbackRecipient,
             abi.encodeWithSelector(
@@ -150,6 +150,13 @@ contract Common is Test {
                 assertionId,
                 assertedTruthfully
             )
+        );
+    }
+
+    function _expectAssertionDisputedCallback(bytes32 assertionId) internal {
+        vm.expectCall(
+            mockedCallbackRecipient,
+            abi.encodeWithSelector(OptimisticAsserterCallbackRecipientInterface.assertionDisputed.selector, assertionId)
         );
     }
 }
