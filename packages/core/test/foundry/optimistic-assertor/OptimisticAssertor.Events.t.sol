@@ -48,11 +48,7 @@ contract OptimisticAssertorEvents is Common {
         bytes32 assertionId = optimisticAssertor.assertTruth(falseClaimAssertion);
         vm.stopPrank();
 
-        // The assertion gets disputed by the disputer, account2.
-        vm.startPrank(TestAddress.account2);
-        defaultCurrency.allocateTo(TestAddress.account2, optimisticAssertor.defaultBond());
-        defaultCurrency.approve(address(optimisticAssertor), optimisticAssertor.defaultBond());
-
+        // Dispute should emit logs on Optimistic Asserter and Oracle.
         vm.expectEmit(true, true, true, true);
         emit PriceRequestAdded(
             address(optimisticAssertor),
@@ -62,14 +58,10 @@ contract OptimisticAssertorEvents is Common {
         );
         vm.expectEmit(true, true, true, true);
         emit AssertionDisputed(assertionId, TestAddress.account2);
-        optimisticAssertor.disputeAssertionFor(assertionId, TestAddress.account2);
-        vm.stopPrank();
 
-        // In the meantime simulate a vote in the DVM in which the originally disputed price is accepted
-        MockOracleAncillary.QueryPoint[] memory queries = mockOracle.getPendingQueries();
-
-        // Push the resolution price into the mock oracle, a no vote meaning that the assertion is resolved as false.
-        mockOracle.pushPrice(queries[0].identifier, queries[0].time, queries[0].ancillaryData, 0);
+        // Perform dispute and mock oracle response where the assertion is resolved as false.
+        OracleRequest memory oracleRequest = _disputeAndGetOracleRequest(assertionId);
+        _mockOracleResolved(address(mockOracle), oracleRequest, false);
 
         vm.expectEmit(true, true, true, true);
         emit AssertionSettled(assertionId, TestAddress.account2, true, false);
