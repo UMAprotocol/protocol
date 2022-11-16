@@ -55,6 +55,10 @@ contract Common is Test {
         bool settlementResolution
     );
 
+    event AssertingCallerSet(address indexed assertingCaller);
+    event SuperBondAmountSet(IERC20 indexed currency, uint256 superBondAmount);
+    event SuperBondReached(bytes32 indexed claimId, IERC20 indexed currency);
+
     // Common setup function, re-used in most tests.
     function _commonSetup() public {
         OptimisticAssertorFixture.OptimisticAssertorContracts memory oaContracts =

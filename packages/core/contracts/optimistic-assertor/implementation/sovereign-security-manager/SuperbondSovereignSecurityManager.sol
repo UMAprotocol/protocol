@@ -18,9 +18,9 @@ contract SuperbondSovereignSecurityManager is BaseSovereignSecurityManager, Owna
     }
 
     // Address of linked requesting contract. Before this is set via setAssertingCaller all assertions will be blocked.
-    address assertingCaller;
+    address public assertingCaller;
 
-    mapping(bytes32 => ArbitrationResolution) arbitrationResolutions;
+    mapping(bytes32 => ArbitrationResolution) public arbitrationResolutions;
 
     mapping(IERC20 => uint256) public superBonds; //Superbond amounts for each currency.
 
