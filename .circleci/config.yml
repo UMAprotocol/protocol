@@ -30,7 +30,7 @@ jobs:
           key: protocol-{{ .Environment.CIRCLE_SHA1 }}
       - run:
           name: Install Prereqs
-          command: sudo apt-get update && sudo apt-get install -y rsync && export PATH="$PATH:/home/circleci/.foundry/bin"
+          command: sudo apt-get update && sudo apt-get install -y rsync
       - run:
           name: Run build
           command: yarn qbuild

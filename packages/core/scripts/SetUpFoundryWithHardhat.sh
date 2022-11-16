@@ -7,6 +7,7 @@ if ! command -v forge &>/dev/null; then
     echo "Foundry not installed. Installing foundry for you..."
     curl -L https://foundry.paradigm.xyz | bash
     foundryup
+    export PATH="$PATH:/home/circleci/.foundry/bin"
 fi
 
 # Then, configure the core package to work with foundry. To do this we need to pull out the foundry standard library and
@@ -22,6 +23,6 @@ if [ ! -d "./lib" ]; then
     forge init --force --no-commit # Init the forge project to get the required libraries.
     mv ./lib ../                   # Move the required foundry components to root of core.
     cd ..
-    rm -rf temp                    # Clean up.
+    rm -rf temp # Clean up.
     mv .gitignore.tmp .gitignore
 fi
