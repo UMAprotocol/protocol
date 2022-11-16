@@ -47,8 +47,8 @@ contract SovereignSecurityManagerPoliciesEnforced is Test {
         vm.prank(TestAddress.account1);
         bytes32 assertionId = optimisticAssertor.assertTruth(bytes(claimAssertion));
         OptimisticAssertorInterface.Assertion memory assertion = optimisticAssertor.readAssertion(assertionId);
-        assertTrue(assertion.useDisputeResolution);
-        assertTrue(assertion.useDvmAsOracle);
+        assertTrue(assertion.ssmSettings.useDisputeResolution);
+        assertTrue(assertion.ssmSettings.useDvmAsOracle);
     }
 
     function test_RevertIf_AssertionBlocked() public {
@@ -66,7 +66,7 @@ contract SovereignSecurityManagerPoliciesEnforced is Test {
 
         bytes32 assertionId = _assertWithSsm();
         OptimisticAssertorInterface.Assertion memory assertion = optimisticAssertor.readAssertion(assertionId);
-        assertFalse(assertion.useDvmAsOracle);
+        assertFalse(assertion.ssmSettings.useDvmAsOracle);
 
         // Dispute, mock resolve assertion truethful through SSM as Oracle and verify on Optimistic Asserter.
         OracleRequest memory oracleRequest = _disputeAndGetOracleRequest(assertionId);
@@ -81,7 +81,7 @@ contract SovereignSecurityManagerPoliciesEnforced is Test {
 
         bytes32 assertionId = _assertWithSsm();
         OptimisticAssertorInterface.Assertion memory assertion = optimisticAssertor.readAssertion(assertionId);
-        assertFalse(assertion.useDisputeResolution);
+        assertFalse(assertion.ssmSettings.useDisputeResolution);
 
         // Dispute should make assertion false available immediately.
         OracleRequest memory oracleRequest = _disputeAndGetOracleRequest(assertionId);
