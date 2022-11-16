@@ -2,19 +2,20 @@
 pragma solidity ^0.8.0;
 
 import "../../interfaces/OptimisticAssertorInterface.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 contract Insurance {
     using SafeERC20 for IERC20;
     IERC20 public immutable defaultCurrency;
     OptimisticAssertorInterface public immutable oa;
+    uint256 public constant assertionLiveness = 7200;
 
     struct Policy {
         uint256 insuranceAmount;
         address payoutAddress;
         address insurer;
         bytes insuredEvent;
+        bool settled;
     }
 
     mapping(bytes32 => bytes32) public oaIdentifiers;
@@ -42,51 +43,55 @@ contract Insurance {
         uint256 insuranceAmount,
         address payoutAddress,
         bytes memory insuredEvent
-    ) public {
-        bytes32 policyId = keccak256(abi.encode(insuredEvent, payoutAddress));
+    ) public returns (bytes32 policyId) {
+        policyId = keccak256(abi.encode(insuredEvent, payoutAddress));
         require(policies[policyId].insurer == address(0), "Policy already exists");
         policies[policyId] = Policy({
             insuranceAmount: insuranceAmount,
             payoutAddress: payoutAddress,
             insurer: msg.sender,
-            insuredEvent: insuredEvent
+            insuredEvent: insuredEvent,
+            settled: false
         });
+        defaultCurrency.safeTransferFrom(msg.sender, address(this), insuranceAmount);
         emit InsuranceIssued(policyId, insuredEvent, insuranceAmount, payoutAddress, msg.sender);
     }
 
-    function requestPayout(bytes32 policyId) public {
+    function requestPayout(bytes32 policyId) public returns (bytes32 assertionId) {
         uint256 bond = oa.getMinimumBond(address(defaultCurrency));
         defaultCurrency.safeTransferFrom(msg.sender, address(this), bond);
-        bytes32 assertionId =
-            oa.assertTruthFor(
-                policies[policyId].insuredEvent,
-                msg.sender,
-                address(this),
-                address(0),
-                defaultCurrency,
-                bond,
-                7200
-            );
+        defaultCurrency.safeApprove(address(oa), bond);
+        assertionId = oa.assertTruthFor(
+            policies[policyId].insuredEvent,
+            msg.sender,
+            address(this),
+            address(0), // No sovereign security manager.
+            defaultCurrency,
+            bond,
+            assertionLiveness
+        );
         oaIdentifiers[assertionId] = policyId;
         emit InsurancePayoutRequested(policyId, assertionId);
     }
 
-    function settlePayout(bytes32 assertionId) public {
-        require(oa.getAssertion(assertionId));
-        bytes32 policyId = oaIdentifiers[assertionId];
-        delete oaIdentifiers[assertionId];
-        Policy memory policy = policies[policyId];
-        delete policies[policyId];
-        defaultCurrency.safeTransfer(policy.payoutAddress, policy.insuranceAmount);
-        emit InsurancePayoutSettled(policyId, assertionId);
-    }
-
     function assertionResolved(bytes32 assertionId, bool assertedTruthfully) public {
         require(msg.sender == address(oa));
+        // If the assertion was true, then the policy is settled.
         if (assertedTruthfully) {
-            settlePayout(assertionId);
+            _settlePayout(assertionId);
         }
     }
 
     function assertionDisputed(bytes32 assertionId) public {}
+
+    function _settlePayout(bytes32 assertionId) internal {
+        // If already settled, do nothing. We don't revert because this function is called by the
+        // OptimisticAssertor, which may block the assertion resolution.
+        bytes32 policyId = oaIdentifiers[assertionId];
+        Policy storage policy = policies[policyId];
+        if (policy.settled) return;
+        policy.settled = true;
+        defaultCurrency.safeTransfer(policy.payoutAddress, policy.insuranceAmount);
+        emit InsurancePayoutSettled(policyId, assertionId);
+    }
 }
