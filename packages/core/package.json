@@ -74,7 +74,7 @@
   ],
   "sideEffects": false,
   "scripts": {
-    "test": "yarn hardhat-test && foundry test",
+    "test": "yarn hardhat-test && forge test",
     "hardhat-test": "hardhat test --network hardhat",
     "mocha-test": "mocha ./mocha-test --recursive",
     "load-addresses": "yarn hardhat load-addresses",
