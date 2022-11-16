@@ -18,7 +18,7 @@ jobs:
       - run:
           name: Install Foundry
           command: |
-            curl -L https://foundry.paradigm.xyz | bash
+            curl -L https://foundry.paradigm.xyz
             export PATH="$PATH:/home/circleci/.foundry/bin"
             foundryup
       - save_cache:
