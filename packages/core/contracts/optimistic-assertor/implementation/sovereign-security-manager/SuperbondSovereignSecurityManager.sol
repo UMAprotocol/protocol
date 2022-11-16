@@ -11,9 +11,10 @@ contract SuperbondSovereignSecurityManager is BaseSovereignSecurityManager, Owna
         bool resolution;
     }
 
-    struct SuperBond {
+    struct ClaimBonding {
         bool superBondReached;
-        uint256 superBondAmount;
+        IERC20 currency;
+        uint256 currentBondAmount;
     }
 
     // Address of linked requesting contract. Before this is set via setAssertingCaller all assertions will be blocked.
@@ -21,23 +22,28 @@ contract SuperbondSovereignSecurityManager is BaseSovereignSecurityManager, Owna
 
     mapping(bytes32 => ArbitrationResolution) arbitrationResolutions;
 
-    mapping(IERC20 => SuperBond) public superBonds;
+    mapping(IERC20 => uint256) public superBonds; //Superbond amounts for each currency.
 
-    event AssertingCallerUpdated(address indexed assertingCaller);
+    mapping(bytes32 => ClaimBonding) public claimBondings; // Track the bondings for each claim.
+
+    event AssertingCallerSet(address indexed assertingCaller);
     event SuperBondAmountSet(IERC20 indexed currency, uint256 superBondAmount);
-    event SuperBondReached(IERC20 indexed currency);
+    event SuperBondReached(bytes32 indexed claimId, IERC20 indexed currency);
 
     // Setting superBondAmount to 0 will block all assertions for that currency.
-    // This also resets the superBondReached flag.
     function setSuperBondAmount(IERC20 currency, uint256 superBondAmount) public onlyOwner {
-        superBonds[currency] = SuperBond({ superBondReached: false, superBondAmount: superBondAmount });
+        superBonds[currency] = superBondAmount;
         emit SuperBondAmountSet(currency, superBondAmount);
     }
 
+    // Set the address of the contract that will be allowed to use Optimistic Assertor.
+    // This can only be set once. We do not set this at constructor just to allow for some flexibility in the ordering
+    // of how contracts are deployed.
     function setAssertingCaller(address _assertingCaller) public onlyOwner {
         require(_assertingCaller != address(0), "Invalid asserting caller");
+        require(assertingCaller == address(0), "Asserting caller already set");
         assertingCaller = _assertingCaller;
-        emit AssertingCallerUpdated(_assertingCaller);
+        emit AssertingCallerSet(_assertingCaller);
     }
 
     function setArbitrationResolution(
@@ -53,8 +59,8 @@ contract SuperbondSovereignSecurityManager is BaseSovereignSecurityManager, Owna
     function processAssertionPolicies(bytes32 assertionId) public override returns (AssertionPolicies memory) {
         OptimisticAssertorInterface optimisticAssertor = OptimisticAssertorInterface(msg.sender);
         OptimisticAssertorInterface.Assertion memory assertion = optimisticAssertor.readAssertion(assertionId);
-        bool allow = assertion.assertingCaller == assertingCaller && superBonds[assertion.currency].superBondAmount > 0;
-        bool arbitrateViaSsm = _checkAndUpdateIfSuperBondReached(assertion.currency, assertion.bond);
+        bool allow = _checkAndUpdateIfAssertionAllowed(assertion);
+        bool arbitrateViaSsm = _checkAndUpdateIfSuperBondReached(assertion);
         return
             AssertionPolicies({ allowAssertion: allow, useDvmAsOracle: !arbitrateViaSsm, useDisputeResolution: true });
     }
@@ -70,12 +76,36 @@ contract SuperbondSovereignSecurityManager is BaseSovereignSecurityManager, Owna
         return 0;
     }
 
-    function _checkAndUpdateIfSuperBondReached(IERC20 currency, uint256 bond) internal returns (bool) {
-        SuperBond storage superBond = superBonds[currency];
-        if (superBond.superBondReached) return true;
-        if (bond >= superBond.superBondAmount) {
-            superBond.superBondReached = true;
-            emit SuperBondReached(currency);
+    function _checkAndUpdateIfAssertionAllowed(OptimisticAssertorInterface.Assertion memory assertion)
+        internal
+        returns (bool)
+    {
+        if (assertion.assertingCaller != assertingCaller) return false; // Only allow assertions through linked client contract.
+        if (superBonds[assertion.currency] == 0) return false; // Only allow assertions for currencies with a super bond set.
+
+        ClaimBonding storage claimBonding = claimBondings[assertion.claimId];
+        if (address(claimBonding.currency) == address(0)) {
+            // If this is the first assertion for this claim, set the currency and bond amount and allow it.
+            claimBonding.currency = assertion.currency;
+            claimBonding.currentBondAmount = assertion.bond;
+            return true;
+        }
+        if (claimBonding.currency != assertion.currency) return false; // Only allow assertions for the same currency as the first assertion.
+        if (assertion.bond <= claimBonding.currentBondAmount) return false; // Only allow assertions with a bond greater than the current bond.
+
+        claimBonding.currentBondAmount = assertion.bond; // Update the current bond amount for the claim.
+        return true;
+    }
+
+    function _checkAndUpdateIfSuperBondReached(OptimisticAssertorInterface.Assertion memory assertion)
+        internal
+        returns (bool)
+    {
+        ClaimBonding storage claimBonding = claimBondings[assertion.claimId];
+        if (claimBonding.superBondReached) return true;
+        if (assertion.bond >= superBonds[assertion.currency]) {
+            claimBonding.superBondReached = true;
+            emit SuperBondReached(assertion.claimId, assertion.currency);
             return true;
         }
         return false;
