@@ -10,9 +10,9 @@ contract InvalidParameters is Common {
 
     function test_RevertIf_DuplicateAssertion() public {
         vm.startPrank(TestAddress.account1);
-        defaultCurrency.allocateTo(TestAddress.account1, optimisticAssertor.defaultBond() * 2);
-        assert(defaultCurrency.balanceOf(TestAddress.account1) >= optimisticAssertor.defaultBond() * 2);
-        defaultCurrency.approve(address(optimisticAssertor), optimisticAssertor.defaultBond() * 2);
+        defaultCurrency.allocateTo(TestAddress.account1, defaultBond * 2);
+        assert(defaultCurrency.balanceOf(TestAddress.account1) >= defaultBond * 2);
+        defaultCurrency.approve(address(optimisticAssertor), defaultBond * 2);
 
         // Account1 asserts a claim.
         bytes32 assertionId = optimisticAssertor.assertTruth(trueClaimAssertion);
@@ -27,11 +27,7 @@ contract InvalidParameters is Common {
         // Change the default currency to unsupported token.
         vm.startPrank(TestAddress.owner);
         TestnetERC20 unsupportedCurrency = new TestnetERC20("Unsupported", "UNS", 18);
-        optimisticAssertor.setAssertionDefaults(
-            unsupportedCurrency,
-            optimisticAssertor.defaultBond(),
-            optimisticAssertor.defaultLiveness()
-        );
+        optimisticAssertor.setAssertionDefaults(unsupportedCurrency, defaultBond, defaultLiveness);
         vm.stopPrank();
 
         vm.expectRevert("Unsupported currency");
@@ -65,19 +61,19 @@ contract InvalidParameters is Common {
     function test_RevertIf_DuplicateDispute() public {
         // Fund Account1 with enough currency to make an assertion.
         vm.startPrank(TestAddress.account1);
-        defaultCurrency.allocateTo(TestAddress.account1, optimisticAssertor.defaultBond());
-        assert(defaultCurrency.balanceOf(TestAddress.account1) >= optimisticAssertor.defaultBond());
-        defaultCurrency.approve(address(optimisticAssertor), optimisticAssertor.defaultBond());
+        defaultCurrency.allocateTo(TestAddress.account1, defaultBond);
+        assert(defaultCurrency.balanceOf(TestAddress.account1) >= defaultBond);
+        defaultCurrency.approve(address(optimisticAssertor), defaultBond);
 
         // Account1 asserts a claim.
-        bytes32 assertionId = optimisticAssertor.assertTruth(trueClaimAssertion);
+        bytes32 assertionId = optimisticAssertor.assertTruth(falseClaimAssertion);
         vm.stopPrank();
 
         // Fund Account2 with enough currency to dispute the assertion twice.
         vm.startPrank(TestAddress.account2);
-        defaultCurrency.allocateTo(TestAddress.account2, optimisticAssertor.defaultBond() * 2);
-        assert(defaultCurrency.balanceOf(TestAddress.account2) >= optimisticAssertor.defaultBond() * 2);
-        defaultCurrency.approve(address(optimisticAssertor), optimisticAssertor.defaultBond() * 2);
+        defaultCurrency.allocateTo(TestAddress.account2, defaultBond * 2);
+        assert(defaultCurrency.balanceOf(TestAddress.account2) >= defaultBond * 2);
+        defaultCurrency.approve(address(optimisticAssertor), defaultBond * 2);
 
         // Account2 disputes the assertion.
         optimisticAssertor.disputeAssertionFor(assertionId, address(0));

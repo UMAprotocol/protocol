@@ -7,7 +7,7 @@ import "../../../../contracts/common/implementation/TestnetERC20.sol";
 
 // Fixture to deploy a configured OptimisticAssertorTest with reasonable default values.
 contract OptimisticAssertorFixture is Test {
-    struct OptimisticAsserterContracts {
+    struct OptimisticAssertorContracts {
         Timer timer;
         Finder finder;
         Store store;
@@ -18,7 +18,7 @@ contract OptimisticAssertorFixture is Test {
         OptimisticAssertorTest optimisticAssertor;
     }
 
-    function setUp() public returns (OptimisticAsserterContracts memory) {
+    function setUp() public returns (OptimisticAssertorContracts memory) {
         MockDvmFixture.BaseMockDvmContracts memory baseMockDvmContracts = new MockDvmFixture().setUp();
 
         TestnetERC20 defaultCurrency = new TestnetERC20("Default Bond Token", "DBT", 18);
@@ -42,7 +42,7 @@ contract OptimisticAssertorFixture is Test {
         vm.stopPrank();
 
         return
-            OptimisticAsserterContracts(
+            OptimisticAssertorContracts(
                 baseMockDvmContracts.timer,
                 baseMockDvmContracts.finder,
                 baseMockDvmContracts.store,
@@ -57,7 +57,7 @@ contract OptimisticAssertorFixture is Test {
 
 contract OptimisticAssertorFixtureTest is Test {
     function testDefaultConfiguration() public {
-        OptimisticAssertorFixture.OptimisticAsserterContracts memory oaContracts =
+        OptimisticAssertorFixture.OptimisticAssertorContracts memory oaContracts =
             new OptimisticAssertorFixture().setUp();
 
         oaContracts.addressWhitelist.isOnWhitelist(address(oaContracts.defaultCurrency));
