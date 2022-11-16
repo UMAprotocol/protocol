@@ -36,7 +36,9 @@ jobs:
           command: yarn qbuild
       - run:
           name: Modified packages
-          command: ./ci/check_lerna_packages.sh
+          command: |
+            ./ci/check_lerna_packages.sh
+            echo '/home/circleci/.foundry/bin' >> $BASH_ENV
       - save_cache:
           key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
           paths:
