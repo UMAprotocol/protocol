@@ -30,15 +30,13 @@ jobs:
           key: protocol-{{ .Environment.CIRCLE_SHA1 }}
       - run:
           name: Install Prereqs
-          command: sudo apt-get update && sudo apt-get install -y rsync
+          command: sudo apt-get update && sudo apt-get install -y rsync && export PATH="$PATH:/home/circleci/.foundry/bin"
       - run:
           name: Run build
           command: yarn qbuild
       - run:
           name: Modified packages
-          command: |
-            ./ci/check_lerna_packages.sh
-            echo '/home/circleci/.foundry/bin' >> $PATH
+          command: ./ci/check_lerna_packages.sh
       - save_cache:
           key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
           paths:
@@ -64,7 +62,6 @@ jobs:
           command: |
             cd /home/circleci/protocol
             ./ci/generate_lerna_config.sh
-            echo '/home/circleci/.foundry/bin' >> $PATH
       - continuation/continue:
           configuration_path: /home/circleci/protocol/.circleci/lerna_config.yml
   coverage:
