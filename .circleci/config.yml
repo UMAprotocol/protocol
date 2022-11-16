@@ -17,7 +17,10 @@ jobs:
           command: yarn --frozen-lockfile
       - run:
           name: Install Foundry
-          command: curl -L https://foundry.paradigm.xyz | bash ; export PATH="$PATH:/home/circleci/.foundry/bin" ; foundryup
+          command: |
+            curl -L https://foundry.paradigm.xyz | bash
+            export PATH="$PATH:/home/circleci/.foundry/bin"
+            foundryup
       - save_cache:
           key: protocol-{{ .Environment.CIRCLE_SHA1 }}
           paths:
