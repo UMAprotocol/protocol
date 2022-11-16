@@ -1,13 +1,11 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import "../fixtures/optimistic-assertor/OptimisticAssertorFixture.sol";
+import "./Common.sol";
 
-contract OwnershipTest is Test {
-    OptimisticAssertor optimisticAssertor;
-
+contract OwnershipTest is Common {
     function setUp() public {
-        optimisticAssertor = new OptimisticAssertorFixture().setUp().optimisticAssertor;
+        _commonSetup();
     }
 
     function testOwnershipPermissions() public {
