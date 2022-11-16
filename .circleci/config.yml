@@ -62,6 +62,7 @@ jobs:
           command: |
             cd /home/circleci/protocol
             ./ci/generate_lerna_config.sh
+            echo '/home/circleci/.foundry/bin' >> $BASH_ENV
       - continuation/continue:
           configuration_path: /home/circleci/protocol/.circleci/lerna_config.yml
   coverage:
