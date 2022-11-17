@@ -9,7 +9,7 @@ contract WhitelistProposerSovereignSecurityManager is BaseSovereignSecurityManag
     // Security of returning correct policy depends on requesting contract passing msg.sender as proposer.
     address public assertingCaller;
 
-    mapping(address => bool) whitelistedProposers;
+    mapping(address => bool) public whitelistedProposers;
 
     event AssertingCallerSet(address indexed assertingCaller);
 
