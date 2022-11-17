@@ -66,6 +66,7 @@ jobs:
       - run:
           name: Generate Tests
           command: |
+            export PATH="$PATH:/home/circleci/.foundry/bin"
             cd /home/circleci/protocol
             ./ci/generate_lerna_config.sh
       - continuation/continue:
