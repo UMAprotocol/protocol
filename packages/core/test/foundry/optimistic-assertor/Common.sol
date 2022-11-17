@@ -88,6 +88,15 @@ contract Common is Test {
         );
     }
 
+    function _mockSsmDisputerCheck(bool isDisputeAllowed) internal {
+        // Mock isDisputeAllowed call with desired response. No need to pass parameters as mockCall uses loose matching.
+        vm.mockCall(
+            mockedSovereignSecurityManager,
+            abi.encodePacked(SovereignSecurityManagerInterface.isDisputeAllowed.selector),
+            abi.encode(isDisputeAllowed)
+        );
+    }
+
     function _mockOracleResolved(
         address oracle,
         OracleRequest memory oracleRequest,

@@ -12,6 +12,8 @@ interface SovereignSecurityManagerInterface {
 
     function getAssertionPolicies(bytes32 assertionId) external view returns (AssertionPolicies memory);
 
+    function isDisputeAllowed(bytes32 assertionId, address disputeCaller) external view returns (bool);
+
     function getPrice(
         bytes32 identifier,
         uint256 time,

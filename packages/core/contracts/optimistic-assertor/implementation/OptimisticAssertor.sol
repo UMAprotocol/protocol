@@ -146,6 +146,7 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
         require(assertion.proposer != address(0), "Assertion does not exist"); // Revert if assertion does not exist.
         require(assertion.disputer == address(0), "Assertion already disputed"); // Revert if assertion already disputed.
         require(assertion.expirationTime > getCurrentTime(), "Assertion is expired"); // Revert if assertion expired.
+        require(_isDisputeAllowed(assertionId), "Dispute not allowed"); // Revert if dispute not allowed.
 
         // Pull the bond
         assertion.currency.safeTransferFrom(msg.sender, address(this), assertion.bond);
@@ -266,6 +267,12 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
         address ssm = assertions[assertionId].sovereignSecurityManager;
         if (ssm == address(0)) return SovereignSecurityManagerInterface.AssertionPolicies(true, true, true);
         return SovereignSecurityManagerInterface(ssm).getAssertionPolicies(assertionId);
+    }
+
+    function _isDisputeAllowed(bytes32 assertionId) internal view returns (bool) {
+        address ssm = assertions[assertionId].sovereignSecurityManager;
+        if (ssm == address(0)) return true;
+        return SovereignSecurityManagerInterface(ssm).isDisputeAllowed(assertionId, msg.sender);
     }
 
     function _callbackOnAssertionResolve(bytes32 assertionId, bool assertedTruthfully) internal {
