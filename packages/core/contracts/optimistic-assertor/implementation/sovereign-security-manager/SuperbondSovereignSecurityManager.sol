@@ -17,6 +17,7 @@ contract SuperbondSovereignSecurityManager is BaseSovereignSecurityManager, Owna
         uint256 currentBondAmount;
     }
 
+    // Before this Optimistic Assertor is set via setOptimisticAssertor all assertions will revert.
     OptimisticAssertorInterface public optimisticAssertor;
 
     // Address of linked requesting contract. Before this is set via setAssertingCaller all assertions will be blocked.
