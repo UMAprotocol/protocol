@@ -30,6 +30,7 @@ import { UniswapV2PriceFeed, UniswapV3PriceFeed } from "./UniswapPriceFeed";
 import { VaultPriceFeed, HarvestVaultPriceFeed } from "./VaultPriceFeed";
 import { InsuredBridgePriceFeed } from "./InsuredBridgePriceFeed";
 import { USPACPriceFeed } from "./USPACPriceFeed";
+import { USPAC10GPriceFeed } from "./USPAC10GPriceFeed";
 
 import type { Logger } from "winston";
 import { NetworkerInterface } from "./Networker";
@@ -512,6 +513,26 @@ export async function createPriceFeed(
       web3,
       config.symbols,
       config.correctionFactor,
+      config.rapidApiKey,
+      config.interval,
+      config.lookback,
+      networker,
+      getTime,
+      config.priceFeedDecimals,
+      config.minTimeBetweenUpdates
+    );
+  } else if (config.type === "uSPAC10g") {
+    const requiredFields = ["lookback", "rapidApiKey"];
+
+    if (isMissingField(config, requiredFields, logger)) {
+      return null;
+    }
+
+    logger.debug({ at: "createPriceFeed", message: "Creating USPAC10GPriceFeed", config });
+
+    return new USPAC10GPriceFeed(
+      logger,
+      web3,
       config.rapidApiKey,
       config.interval,
       config.lookback,
