@@ -43,7 +43,20 @@ contract SuperbondOracleSovereignSecurityManagerTest is Common {
 
         vm.expectRevert("Ownable: caller is not the owner");
         ssm.setArbitrationResolution(bytes32(""), 0, bytes(""), false);
+
+        vm.expectRevert("Ownable: caller is not the owner");
+        ssm.setOptimisticAssertor(mockOptimisticAssertorAddress);
         vm.stopPrank();
+    }
+
+    function test_RevertIf_InvalidOptimisticAssertor() public {
+        vm.expectRevert("Invalid address");
+        ssm.setOptimisticAssertor(address(0));
+    }
+
+    function test_SetOptimisticAssertor() public {
+        ssm.setOptimisticAssertor(mockOptimisticAssertorAddress);
+        assertTrue(address(ssm.optimisticAssertor()) == mockOptimisticAssertorAddress);
     }
 
     function test_SetSuperbondAmount() public {
@@ -72,9 +85,13 @@ contract SuperbondOracleSovereignSecurityManagerTest is Common {
         ssm.setAssertingCaller(TestAddress.account2);
     }
 
+    function test_RevertIf_NotFromOptimisitcAssertor() public {
+        vm.expectRevert("Only Optimistic Assertor allowed");
+        ssm.processAssertionPolicies(assertionId1);
+    }
+
     function test_FirstAssertionAllowed() public {
-        ssm.setAssertingCaller(TestAddress.account1);
-        ssm.setSuperBondAmount(defaultCurrency, superbondAmount);
+        _initializeSsmDefaults();
 
         _mockReadAssertion(assertionId1, TestAddress.account1, defaultCurrency, defaultBond, trueClaimAssertion);
 
@@ -91,6 +108,7 @@ contract SuperbondOracleSovereignSecurityManagerTest is Common {
     }
 
     function test_BlockAssertingCallerNotSet() public {
+        ssm.setOptimisticAssertor(mockOptimisticAssertorAddress);
         ssm.setSuperBondAmount(defaultCurrency, superbondAmount);
 
         _mockReadAssertion(assertionId1, TestAddress.account1, defaultCurrency, defaultBond, trueClaimAssertion);
@@ -101,6 +119,7 @@ contract SuperbondOracleSovereignSecurityManagerTest is Common {
     }
 
     function test_BlockSuperbondNotSet() public {
+        ssm.setOptimisticAssertor(mockOptimisticAssertorAddress);
         ssm.setAssertingCaller(TestAddress.account1);
 
         _mockReadAssertion(assertionId1, TestAddress.account1, defaultCurrency, defaultBond, trueClaimAssertion);
@@ -111,8 +130,7 @@ contract SuperbondOracleSovereignSecurityManagerTest is Common {
     }
 
     function test_BlockDifferentCurrency() public {
-        ssm.setAssertingCaller(TestAddress.account1);
-        ssm.setSuperBondAmount(defaultCurrency, superbondAmount);
+        _initializeSsmDefaults();
         ssm.setSuperBondAmount(anotherCurrency, superbondAmount);
 
         _mockReadAssertion(assertionId1, TestAddress.account1, defaultCurrency, defaultBond, trueClaimAssertion);
@@ -129,8 +147,7 @@ contract SuperbondOracleSovereignSecurityManagerTest is Common {
     }
 
     function test_BlockSameBond() public {
-        ssm.setAssertingCaller(TestAddress.account1);
-        ssm.setSuperBondAmount(defaultCurrency, superbondAmount);
+        _initializeSsmDefaults();
 
         _mockReadAssertion(assertionId1, TestAddress.account1, defaultCurrency, defaultBond, trueClaimAssertion);
         _mockReadAssertion(assertionId2, TestAddress.account1, defaultCurrency, defaultBond, trueClaimAssertion);
@@ -148,8 +165,7 @@ contract SuperbondOracleSovereignSecurityManagerTest is Common {
     function test_CurrentBondAmount() public {
         uint256 bond2 = defaultBond + 1;
 
-        ssm.setAssertingCaller(TestAddress.account1);
-        ssm.setSuperBondAmount(defaultCurrency, superbondAmount);
+        _initializeSsmDefaults();
 
         _mockReadAssertion(assertionId1, TestAddress.account1, defaultCurrency, defaultBond, trueClaimAssertion);
         _mockReadAssertion(assertionId2, TestAddress.account1, defaultCurrency, bond2, trueClaimAssertion);
@@ -173,8 +189,8 @@ contract SuperbondOracleSovereignSecurityManagerTest is Common {
 
     function test_BelowSuperbond() public {
         uint256 bond = superbondAmount - 1;
-        ssm.setAssertingCaller(TestAddress.account1);
-        ssm.setSuperBondAmount(defaultCurrency, superbondAmount);
+
+        _initializeSsmDefaults();
 
         _mockReadAssertion(assertionId1, TestAddress.account1, defaultCurrency, bond, trueClaimAssertion);
 
@@ -185,8 +201,7 @@ contract SuperbondOracleSovereignSecurityManagerTest is Common {
     }
 
     function test_SuperbondReachedOnce() public {
-        ssm.setAssertingCaller(TestAddress.account1);
-        ssm.setSuperBondAmount(defaultCurrency, superbondAmount);
+        _initializeSsmDefaults();
 
         _mockReadAssertion(assertionId1, TestAddress.account1, defaultCurrency, superbondAmount, trueClaimAssertion);
 
@@ -207,8 +222,8 @@ contract SuperbondOracleSovereignSecurityManagerTest is Common {
 
     function test_NextAssertionAboveSuperbond() public {
         uint256 bond2 = superbondAmount + 1;
-        ssm.setAssertingCaller(TestAddress.account1);
-        ssm.setSuperBondAmount(defaultCurrency, superbondAmount);
+
+        _initializeSsmDefaults();
 
         _mockReadAssertion(assertionId1, TestAddress.account1, defaultCurrency, superbondAmount, trueClaimAssertion);
         _mockReadAssertion(assertionId2, TestAddress.account1, defaultCurrency, bond2, trueClaimAssertion);
@@ -248,5 +263,11 @@ contract SuperbondOracleSovereignSecurityManagerTest is Common {
             abi.encodeWithSelector(OptimisticAssertorInterface.readAssertion.selector, assertionId),
             abi.encode(assertion)
         );
+    }
+
+    function _initializeSsmDefaults() internal {
+        ssm.setOptimisticAssertor(mockOptimisticAssertorAddress);
+        ssm.setAssertingCaller(TestAddress.account1);
+        ssm.setSuperBondAmount(defaultCurrency, superbondAmount);
     }
 }

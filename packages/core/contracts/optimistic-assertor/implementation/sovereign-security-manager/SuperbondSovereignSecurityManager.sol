@@ -17,6 +17,8 @@ contract SuperbondSovereignSecurityManager is BaseSovereignSecurityManager, Owna
         uint256 currentBondAmount;
     }
 
+    OptimisticAssertorInterface public optimisticAssertor;
+
     // Address of linked requesting contract. Before this is set via setAssertingCaller all assertions will be blocked.
     address public assertingCaller;
 
@@ -29,6 +31,11 @@ contract SuperbondSovereignSecurityManager is BaseSovereignSecurityManager, Owna
     event AssertingCallerSet(address indexed assertingCaller);
     event SuperBondAmountSet(IERC20 indexed currency, uint256 superBondAmount);
     event SuperBondReached(bytes32 indexed claimId, IERC20 indexed currency);
+
+    function setOptimisticAssertor(address optimisticAssertorAddress) public onlyOwner {
+        require(optimisticAssertorAddress != address(0), "Invalid address");
+        optimisticAssertor = OptimisticAssertorInterface(optimisticAssertorAddress);
+    }
 
     // Setting superBondAmount to 0 will block all assertions for that currency.
     function setSuperBondAmount(IERC20 currency, uint256 superBondAmount) public onlyOwner {
@@ -57,7 +64,7 @@ contract SuperbondSovereignSecurityManager is BaseSovereignSecurityManager, Owna
     }
 
     function processAssertionPolicies(bytes32 assertionId) public override returns (AssertionPolicies memory) {
-        OptimisticAssertorInterface optimisticAssertor = OptimisticAssertorInterface(msg.sender);
+        require(msg.sender == address(optimisticAssertor), "Only Optimistic Assertor allowed");
         OptimisticAssertorInterface.Assertion memory assertion = optimisticAssertor.readAssertion(assertionId);
         bool allow = _checkAndUpdateIfAssertionAllowed(assertion);
         bool arbitrateViaSsm = _checkAndUpdateIfSuperBondReached(assertion);
