@@ -5,7 +5,6 @@
 
 if ! command -v forge &>/dev/null; then
     echo "Foundry not installed. Installing foundry for you..."
-    export PATH="$PATH:/home/circleci/.foundry/bin"
     curl -L https://foundry.paradigm.xyz | bash
     foundryup
 fi
