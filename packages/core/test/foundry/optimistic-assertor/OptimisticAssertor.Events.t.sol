@@ -47,7 +47,7 @@ contract OptimisticAssertorEvents is Common {
         vm.expectEmit(true, true, true, true);
         emit PriceRequestAdded(
             address(optimisticAssertor),
-            optimisticAssertor.identifier(),
+            optimisticAssertor.defaultIdentifier(),
             optimisticAssertor.readAssertion(assertionId).assertionTime,
             optimisticAssertor.stampAssertion(assertionId)
         );

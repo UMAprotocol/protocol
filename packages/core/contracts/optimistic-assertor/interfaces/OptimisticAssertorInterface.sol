@@ -24,6 +24,7 @@ interface OptimisticAssertorInterface {
         uint256 expirationTime;
         bytes32 claimId;
         SsmSettings ssmSettings;
+        bytes32 identifier;
     }
 
     function readAssertion(bytes32 assertionId) external view returns (Assertion memory);

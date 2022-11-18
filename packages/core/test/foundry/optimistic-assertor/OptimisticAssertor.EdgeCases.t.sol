@@ -43,7 +43,8 @@ contract InvalidParameters is Common {
             address(0),
             defaultCurrency,
             0,
-            0
+            0,
+            defaultIdentifier
         );
     }
 
