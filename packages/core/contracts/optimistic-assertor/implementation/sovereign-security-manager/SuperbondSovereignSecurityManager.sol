@@ -88,9 +88,11 @@ contract SuperbondSovereignSecurityManager is BaseSovereignSecurityManager, Owna
         internal
         returns (bool)
     {
-        if (assertion.assertingCaller != assertingCaller) return false; // Only allow assertions through linked client contract.
-        if (superBonds[assertion.currency] == 0) return false; // Only allow assertions for currencies with a super bond set.
+        // Only allow assertions through linked client contract since it is responsible for correctly passing the
+        // proposer address to assertTruthFor in Optimistic Assertor that is used for whitelisting in this SSM.
+        if (assertion.assertingCaller != assertingCaller) return false;
 
+        if (superBonds[assertion.currency] == 0) return false; // Only allow assertions for currencies with a super bond set.
         ClaimBonding storage claimBonding = claimBondings[assertion.claimId];
         if (address(claimBonding.currency) == address(0)) {
             // If this is the first assertion for this claim, set the currency and bond amount and allow it.
