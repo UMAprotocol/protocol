@@ -92,8 +92,10 @@ contract SuperbondSovereignSecurityManager is BaseSovereignSecurityManager, Owna
         internal
         returns (bool)
     {
-        // Only allow assertions through linked client contract since it is responsible for correctly passing the
-        // proposer address to assertTruthFor in Optimistic Assertor that is used for whitelisting in this SSM.
+        // Only allow assertions through linked client contract since it is responsible for performing any other
+        // application specific checks before making the assertion. Since assertions are changing claim bonding trackers
+        // in this SSM that might affect other assertions, restricting assertingCaller allows avoiding interference
+        // with client application.
         if (assertion.assertingCaller != assertingCaller) return false;
 
         if (superBonds[assertion.currency] == 0) return false; // Only allow assertions for currencies with a super bond set.
