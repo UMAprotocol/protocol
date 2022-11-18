@@ -5,6 +5,10 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "./BaseSovereignSecurityManager.sol";
 import "../../interfaces/OptimisticAssertorInterface.sol";
 
+// This Sovereign Security Manager allows only assertions initiated through pre-configured requesting contracts that
+// makes calls to Optimistic Assertor. This SSM contract implements simple bond escalation so that all assertions on the
+// same claim should always have increasing bond amounts. Once a preconfigured superbond amount is reached, this SSM
+// automatically takes over the arbitration of assertions for all matching claims.
 contract SuperbondSovereignSecurityManager is BaseSovereignSecurityManager, Ownable {
     struct ArbitrationResolution {
         bool valueSet;
