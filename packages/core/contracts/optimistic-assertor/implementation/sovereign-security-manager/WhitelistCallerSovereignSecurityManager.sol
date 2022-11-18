@@ -4,7 +4,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "./BaseSovereignSecurityManager.sol";
 import "../../interfaces/OptimisticAssertorInterface.sol";
 
-contract WhitelistedSovereignSecurityManager is BaseSovereignSecurityManager, Ownable {
+contract WhitelistCallerSovereignSecurityManager is BaseSovereignSecurityManager, Ownable {
     mapping(address => bool) whitelistedAssertingCallers;
 
     function setAssertingCallerInWhitelist(address assertingCaller, bool value) public onlyOwner {
