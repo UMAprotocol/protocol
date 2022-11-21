@@ -45,24 +45,16 @@ contract Insurance {
         address payoutAddress,
         bytes memory insuredEvent
     ) public returns (bytes32 policyId) {
-        bytes memory timestampedEvent =
-            abi.encodePacked(
-                "Insurance contract is claiming that insurance event ",
-                insuredEvent,
-                " occured after timestamp ",
-                block.timestamp,
-                "."
-            );
-        policyId = keccak256(abi.encode(timestampedEvent, payoutAddress));
+        policyId = keccak256(abi.encode(insuredEvent, payoutAddress));
         require(policies[policyId].payoutAddress == address(0), "Policy already exists");
         policies[policyId] = Policy({
             insuranceAmount: insuranceAmount,
             payoutAddress: payoutAddress,
-            insuredEvent: timestampedEvent,
+            insuredEvent: insuredEvent,
             settled: false
         });
         defaultCurrency.safeTransferFrom(msg.sender, address(this), insuranceAmount);
-        emit InsuranceIssued(policyId, timestampedEvent, insuranceAmount, payoutAddress);
+        emit InsuranceIssued(policyId, insuredEvent, insuranceAmount, payoutAddress);
     }
 
     function requestPayout(bytes32 policyId) public returns (bytes32 assertionId) {
@@ -71,7 +63,13 @@ contract Insurance {
         defaultCurrency.safeTransferFrom(msg.sender, address(this), bond);
         defaultCurrency.safeApprove(address(oa), bond);
         assertionId = oa.assertTruthFor(
-            policies[policyId].insuredEvent,
+            abi.encodePacked(
+                "Insurance contract is claiming that insurance event ",
+                policies[policyId].insuredEvent,
+                " event had occurred as of ",
+                block.timestamp,
+                "."
+            ),
             msg.sender,
             address(this),
             address(0), // No sovereign security manager.
