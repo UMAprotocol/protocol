@@ -4,6 +4,9 @@ pragma solidity ^0.8.0;
 import "../../interfaces/OptimisticAssertorInterface.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
+// This Isurance contract enables for the issuance of a single unlimited time policy per event/payout recipient There is
+// no limit to the number of payout requests that can be made of the same policy; however, only the first asserted
+// request will settle the insurance payment, whereas OA will settle bonds for all requestors.
 contract Insurance {
     using SafeERC20 for IERC20;
     IERC20 public immutable defaultCurrency;
@@ -13,12 +16,11 @@ contract Insurance {
     struct Policy {
         uint256 insuranceAmount;
         address payoutAddress;
-        address insurer;
         bytes insuredEvent;
         bool settled;
     }
 
-    mapping(bytes32 => bytes32) public oaIdentifiers;
+    mapping(bytes32 => bytes32) public assertedPolicies;
 
     mapping(bytes32 => Policy) public policies;
 
@@ -26,8 +28,7 @@ contract Insurance {
         bytes32 indexed policyId,
         bytes insuredEvent,
         uint256 insuranceAmount,
-        address indexed payoutAddress,
-        address indexed insurer
+        address indexed payoutAddress
     );
 
     event InsurancePayoutRequested(bytes32 indexed policyId, bytes32 indexed assertionId);
@@ -44,20 +45,28 @@ contract Insurance {
         address payoutAddress,
         bytes memory insuredEvent
     ) public returns (bytes32 policyId) {
-        policyId = keccak256(abi.encode(insuredEvent, payoutAddress));
-        require(policies[policyId].insurer == address(0), "Policy already exists");
+        bytes memory timestampedEvent =
+            abi.encodePacked(
+                "Insurance contract is claiming that insurance event ",
+                insuredEvent,
+                " occured after timestamp ",
+                block.timestamp,
+                "."
+            );
+        policyId = keccak256(abi.encode(timestampedEvent, payoutAddress));
+        require(policies[policyId].payoutAddress == address(0), "Policy already exists");
         policies[policyId] = Policy({
             insuranceAmount: insuranceAmount,
             payoutAddress: payoutAddress,
-            insurer: msg.sender,
-            insuredEvent: insuredEvent,
+            insuredEvent: timestampedEvent,
             settled: false
         });
         defaultCurrency.safeTransferFrom(msg.sender, address(this), insuranceAmount);
-        emit InsuranceIssued(policyId, insuredEvent, insuranceAmount, payoutAddress, msg.sender);
+        emit InsuranceIssued(policyId, timestampedEvent, insuranceAmount, payoutAddress);
     }
 
     function requestPayout(bytes32 policyId) public returns (bytes32 assertionId) {
+        require(policies[policyId].payoutAddress != address(0), "Policy does not exist");
         uint256 bond = oa.getMinimumBond(address(defaultCurrency));
         defaultCurrency.safeTransferFrom(msg.sender, address(this), bond);
         defaultCurrency.safeApprove(address(oa), bond);
@@ -70,7 +79,7 @@ contract Insurance {
             bond,
             assertionLiveness
         );
-        oaIdentifiers[assertionId] = policyId;
+        assertedPolicies[assertionId] = policyId;
         emit InsurancePayoutRequested(policyId, assertionId);
     }
 
@@ -87,7 +96,7 @@ contract Insurance {
     function _settlePayout(bytes32 assertionId) internal {
         // If already settled, do nothing. We don't revert because this function is called by the
         // OptimisticAssertor, which may block the assertion resolution.
-        bytes32 policyId = oaIdentifiers[assertionId];
+        bytes32 policyId = assertedPolicies[assertionId];
         Policy storage policy = policies[policyId];
         if (policy.settled) return;
         policy.settled = true;
