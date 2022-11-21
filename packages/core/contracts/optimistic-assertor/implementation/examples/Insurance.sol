@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "../../interfaces/OptimisticAssertorInterface.sol";
+import "../../../common/implementation/AncillaryData.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 // This Isurance contract enables for the issuance of a single unlimited time policy per event/payout recipient There is
@@ -66,8 +67,8 @@ contract Insurance {
             abi.encodePacked(
                 "Insurance contract is claiming that insurance event ",
                 policies[policyId].insuredEvent,
-                " event had occurred as of ",
-                block.timestamp,
+                " had occurred as of ",
+                AncillaryData.toUtf8BytesUint(block.timestamp),
                 "."
             ),
             msg.sender,
