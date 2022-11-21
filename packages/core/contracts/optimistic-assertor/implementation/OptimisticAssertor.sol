@@ -79,8 +79,7 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
             _getId(claim, bond, liveness, currency, _proposer, callbackRecipient, sovereignSecurityManager);
         require(assertions[assertionId].proposer == address(0), "Assertion already exists");
         require(_getCollateralWhitelist().isOnWhitelist(address(currency)), "Unsupported currency");
-        uint256 finalFee = _getStore().computeFinalFee(address(currency)).rawValue;
-        require((bond * burnedBondPercentage) / 1e18 >= finalFee, "Bond amount too low");
+        require(bond >= getMinimumBond(address(currency)), "Bond amount too low");
 
         // Pull the bond
         currency.safeTransferFrom(msg.sender, address(this), bond);
@@ -208,6 +207,11 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
 
     function stampAssertion(bytes32 assertionId) public view returns (bytes memory) {
         return _stampAssertion(assertionId);
+    }
+
+    function getMinimumBond(address currencyAddress) public view returns (uint256) {
+        uint256 finalFee = _getStore().computeFinalFee(currencyAddress).rawValue;
+        return (finalFee * 1e18) / burnedBondPercentage;
     }
 
     function _getId(
