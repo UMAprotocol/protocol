@@ -11,6 +11,7 @@ import "../../oracle/implementation/Constants.sol";
 import "../../common/implementation/Lockable.sol";
 import "../../common/implementation/AddressWhitelist.sol";
 import "../../oracle/interfaces/OracleAncillaryInterface.sol";
+import "../../oracle/interfaces/IdentifierWhitelistInterface.sol";
 import "../../common/implementation/AncillaryData.sol";
 import "../interfaces/OptimisticAssertorCallbackRecipientInterface.sol";
 import "../interfaces/OptimisticAssertorInterface.sol";
@@ -90,6 +91,7 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
             _getId(claim, bond, liveness, currency, _proposer, callbackRecipient, sovereignSecurityManager, identifier);
 
         require(assertions[assertionId].proposer == address(0), "Assertion already exists");
+        require(_getIdentifierWhitelist().isIdentifierSupported(identifier), "Unsupported identifier");
         require(_getCollateralWhitelist().isOnWhitelist(address(currency)), "Unsupported currency");
         require(
             (bond * burnedBondPercentage) / 1e18 >= _getStore().computeFinalFee(address(currency)).rawValue,
@@ -274,6 +276,10 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
 
     function _getCollateralWhitelist() internal view returns (AddressWhitelist) {
         return AddressWhitelist(finder.getImplementationAddress(OracleInterfaces.CollateralWhitelist));
+    }
+
+    function _getIdentifierWhitelist() internal view returns (IdentifierWhitelistInterface) {
+        return IdentifierWhitelistInterface(finder.getImplementationAddress(OracleInterfaces.IdentifierWhitelist));
     }
 
     function _getStore() internal view returns (StoreInterface) {
