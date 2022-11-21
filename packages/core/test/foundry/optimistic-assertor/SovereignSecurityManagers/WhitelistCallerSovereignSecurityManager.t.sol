@@ -39,7 +39,7 @@ contract WhitelistCallerSovereignSecurityManagerTest is Common {
 
     function _mockReadAssertionAssertingCaller(address mockAssertingCaller, bytes32 assertionId) public {
         OptimisticAssertorInterface.Assertion memory assertion;
-        assertion.assertingCaller = mockAssertingCaller;
+        assertion.ssmSettings.assertingCaller = mockAssertingCaller;
         vm.mockCall(
             mockOptimisticAssertorAddress,
             abi.encodeWithSelector(OptimisticAssertorInterface.readAssertion.selector, assertionId),

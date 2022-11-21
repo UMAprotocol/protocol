@@ -96,7 +96,7 @@ contract SuperbondSovereignSecurityManager is BaseSovereignSecurityManager, Owna
         // application specific checks before making the assertion. Since assertions are changing claim bonding trackers
         // in this SSM that might affect other assertions, restricting assertingCaller allows avoiding interference
         // with client application.
-        if (assertion.assertingCaller != assertingCaller) return false;
+        if (assertion.ssmSettings.assertingCaller != assertingCaller) return false;
 
         if (superBonds[assertion.currency] == 0) return false; // Only allow assertions for currencies with a super bond set.
         ClaimBonding storage claimBonding = claimBondings[assertion.claimId];
