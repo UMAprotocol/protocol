@@ -23,7 +23,8 @@ contract SimpleAssertionsWithClaimOnly is Common {
                     address(defaultCurrency),
                     TestAddress.account1,
                     address(0),
-                    address(0)
+                    address(0),
+                    defaultIdentifier
                 )
             );
 

@@ -87,7 +87,7 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
     ) public returns (bytes32) {
         address _proposer = proposer == address(0) ? msg.sender : proposer;
         bytes32 assertionId =
-            _getId(claim, bond, liveness, currency, _proposer, callbackRecipient, sovereignSecurityManager);
+            _getId(claim, bond, liveness, currency, _proposer, callbackRecipient, sovereignSecurityManager, identifier);
 
         require(assertions[assertionId].proposer == address(0), "Assertion already exists");
         require(_getCollateralWhitelist().isOnWhitelist(address(currency)), "Unsupported currency");
@@ -243,12 +243,22 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
         IERC20 currency,
         address proposer,
         address callbackRecipient,
-        address sovereignSecurityManager
+        address sovereignSecurityManager,
+        bytes32 identifier
     ) internal pure returns (bytes32) {
         // Returns the unique ID for this assertion. This ID is used to identify the assertion in the Oracle.
         return
             keccak256(
-                abi.encode(claim, bond, liveness, currency, proposer, callbackRecipient, sovereignSecurityManager)
+                abi.encode(
+                    claim,
+                    bond,
+                    liveness,
+                    currency,
+                    proposer,
+                    callbackRecipient,
+                    sovereignSecurityManager,
+                    identifier
+                )
             );
     }
 
