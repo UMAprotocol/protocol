@@ -102,6 +102,7 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
         assertions[assertionId] = Assertion({
             proposer: _proposer,
             disputer: address(0),
+            callbackRecipient: callbackRecipient,
             currency: currency,
             settled: false,
             settlementResolution: false,
@@ -114,7 +115,6 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
                 useDisputeResolution: true, // this is the default behavior: if not specified by the Sovereign security manager the assertion will respect the DVM result.
                 useDvmAsOracle: true, // this is the default behavior: if not specified by the Sovereign security manager the assertion will use the DVM as an oracle.
                 sovereignSecurityManager: sovereignSecurityManager,
-                callbackRecipient: callbackRecipient,
                 assertingCaller: msg.sender
             })
         });
@@ -294,14 +294,17 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
     }
 
     function _callbackOnAssertionResolve(bytes32 assertionId, bool assertedTruthfully) internal {
-        if (assertions[assertionId].ssmSettings.callbackRecipient != address(0))
-            OptimisticAssertorCallbackRecipientInterface(assertions[assertionId].ssmSettings.callbackRecipient)
-                .assertionResolved(assertionId, assertedTruthfully);
+        if (assertions[assertionId].callbackRecipient != address(0))
+            OptimisticAssertorCallbackRecipientInterface(assertions[assertionId].callbackRecipient).assertionResolved(
+                assertionId,
+                assertedTruthfully
+            );
     }
 
     function _callbackOnAssertionDispute(bytes32 assertionId) internal {
-        if (assertions[assertionId].ssmSettings.callbackRecipient != address(0))
-            OptimisticAssertorCallbackRecipientInterface(assertions[assertionId].ssmSettings.callbackRecipient)
-                .assertionDisputed(assertionId);
+        if (assertions[assertionId].callbackRecipient != address(0))
+            OptimisticAssertorCallbackRecipientInterface(assertions[assertionId].callbackRecipient).assertionDisputed(
+                assertionId
+            );
     }
 }

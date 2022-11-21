@@ -9,13 +9,13 @@ interface OptimisticAssertorInterface {
         bool useDvmAsOracle; // True if the DVM is used as an oracle (SovereignSecurityManager on False)
         address sovereignSecurityManager;
         address assertingCaller;
-        address callbackRecipient;
     }
 
     struct Assertion {
         address proposer; // Address of the proposer.
         // TODO: consider naming proposer->asserter.
         address disputer; // Address of the disputer.
+        address callbackRecipient; // Address that receives the callback.
         IERC20 currency; // ERC20 token used to pay rewards and fees.
         bool settled; // True if the request is settled.
         bool settlementResolution;
