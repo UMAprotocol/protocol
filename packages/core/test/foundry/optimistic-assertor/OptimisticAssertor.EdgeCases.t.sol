@@ -23,6 +23,23 @@ contract InvalidParameters is Common {
         vm.stopPrank();
     }
 
+    function test_RevertIf_UnsupportedIdentifier() public {
+        bytes32 unsupportedIdentifier = "UNSUPPORTED";
+
+        vm.expectRevert("Unsupported identifier");
+        vm.prank(TestAddress.account1);
+        optimisticAssertor.assertTruthFor(
+            trueClaimAssertion,
+            address(0),
+            address(0),
+            address(0),
+            defaultCurrency,
+            defaultBond,
+            defaultLiveness,
+            unsupportedIdentifier
+        );
+    }
+
     function test_RevertIf_UnsupportedCurrency() public {
         // Change the default currency to unsupported token.
         vm.startPrank(TestAddress.owner);
