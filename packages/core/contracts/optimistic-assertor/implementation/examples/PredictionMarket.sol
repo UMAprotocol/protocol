@@ -5,8 +5,9 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@uma/core/contracts/common/implementation/AncillaryData.sol";
 import "@uma/core/contracts/common/implementation/ExpandedERC20.sol";
 import "../../interfaces/OptimisticAssertorInterface.sol";
+import "../../interfaces/OptimisticAssertorCallbackRecipientInterface.sol";
 
-contract PredictionMarket {
+contract PredictionMarket is OptimisticAssertorCallbackRecipientInterface {
     //using SafeERC20 for ExpandedERC20;
     using SafeERC20 for IERC20;
 
@@ -130,6 +131,8 @@ contract PredictionMarket {
         } else market.assertedOutcomeId = bytes32(0);
         delete assertedMarkets[assertionId];
     }
+
+    function assertionDisputed(bytes32 assertionId) public {}
 
     function create(bytes32 marketId, uint256 tokensToCreate) public {
         Market storage market = markets[marketId];
