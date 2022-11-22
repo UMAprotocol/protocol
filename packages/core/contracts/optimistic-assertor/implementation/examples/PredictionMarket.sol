@@ -134,7 +134,9 @@ contract PredictionMarket is OptimisticAssertorCallbackRecipientInterface {
     // Dispute callback does nothing.
     function assertionDisputed(bytes32 assertionId) public {}
 
-    function create(bytes32 marketId, uint256 tokensToCreate) public {
+    // Mints pair of tokens representing the value of outcome1 and outcome2. Trading of outcome tokens is outside of the
+    // scope of this contract. The caller must approve this contract to spend the currency tokens.
+    function createOutcomeTokens(bytes32 marketId, uint256 tokensToCreate) public {
         Market storage market = markets[marketId];
         require(market.outcome1Token != ExpandedIERC20(address(0)), "Market does not exist");
 
@@ -144,7 +146,8 @@ contract PredictionMarket is OptimisticAssertorCallbackRecipientInterface {
         market.outcome2Token.mint(msg.sender, tokensToCreate);
     }
 
-    function redeem(bytes32 marketId, uint256 tokensToRedeem) public {
+    // Burns equal amount of outcome1 and outcome2 tokens returning settlement currency tokens.
+    function redeemOutcomeTokens(bytes32 marketId, uint256 tokensToRedeem) public {
         Market storage market = markets[marketId];
         require(market.outcome1Token != ExpandedIERC20(address(0)), "Market does not exist");
 
@@ -154,19 +157,25 @@ contract PredictionMarket is OptimisticAssertorCallbackRecipientInterface {
         currency.safeTransfer(msg.sender, tokensToRedeem);
     }
 
-    function settle(bytes32 marketId) public returns (uint256 payout) {
+    // If the market is resolved, then all of caller's outcome tokens are burned and currency payout is made depending
+    // on the resolved market outcome and the amount of outcome tokens burned. If the market was resolved to the first
+    // outcome, then the payout equals balance of outcome1Token while outcome2Token provides nothing. If the market was
+    // resolved to the second outcome, then the payout equals balance of outcome2Token while outcome1Token provides
+    // nothing. If the market was resolved to the split outcome, then both outcome tokens provides half of their balance
+    // as currency payout.
+    function settleOutcomeTokens(bytes32 marketId) public returns (uint256 payout) {
         Market storage market = markets[marketId];
         require(market.resolved, "Market not resolved");
 
-        uint256 p1Balance = market.outcome1Token.balanceOf(msg.sender);
-        uint256 p2Balance = market.outcome2Token.balanceOf(msg.sender);
+        uint256 outcome1Balance = market.outcome1Token.balanceOf(msg.sender);
+        uint256 outcome2Balance = market.outcome2Token.balanceOf(msg.sender);
 
-        if (market.assertedOutcomeId == keccak256(market.outcome1)) payout = p1Balance;
-        else if (market.assertedOutcomeId == keccak256(market.outcome2)) payout = p2Balance;
-        else payout = (p1Balance + p2Balance) / 2;
+        if (market.assertedOutcomeId == keccak256(market.outcome1)) payout = outcome1Balance;
+        else if (market.assertedOutcomeId == keccak256(market.outcome2)) payout = outcome2Balance;
+        else payout = (outcome1Balance + outcome2Balance) / 2;
 
-        market.outcome1Token.burnFrom(msg.sender, p1Balance);
-        market.outcome2Token.burnFrom(msg.sender, p2Balance);
+        market.outcome1Token.burnFrom(msg.sender, outcome1Balance);
+        market.outcome2Token.burnFrom(msg.sender, outcome2Balance);
         currency.safeTransfer(msg.sender, payout);
     }
 
