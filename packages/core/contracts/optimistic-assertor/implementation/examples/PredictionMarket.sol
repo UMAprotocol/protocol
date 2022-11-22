@@ -34,11 +34,13 @@ contract PredictionMarket is OptimisticAssertorCallbackRecipientInterface {
     IERC20 public immutable currency; // Currency used for all prediction markets.
     OptimisticAssertorInterface public immutable oa;
     uint256 public constant assertionLiveness = 7200; // 2 hours.
+    bytes32 public immutable defaultIdentifier; // Identifier used for all prediction markets.
     bytes public constant p3Name = "Unknown"; // Name of the split outcome.
 
     constructor(address _currency, address _optimisticAssertor) {
         currency = IERC20(_currency);
         oa = OptimisticAssertorInterface(_optimisticAssertor);
+        defaultIdentifier = oa.defaultIdentifier();
     }
 
     function initializeMarket(
@@ -113,7 +115,8 @@ contract PredictionMarket is OptimisticAssertorCallbackRecipientInterface {
             address(0), // No sovereign security manager.
             currency,
             bond,
-            assertionLiveness
+            assertionLiveness,
+            defaultIdentifier
         );
         assertedMarkets[assertionId].marketId = marketId;
         assertedMarkets[assertionId].asserter = msg.sender;
