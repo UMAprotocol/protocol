@@ -10,6 +10,11 @@ import "../../../oracle/interfaces/FinderInterface.sol";
 import "../../interfaces/OptimisticAssertorInterface.sol";
 import "../../interfaces/OptimisticAssertorCallbackRecipientInterface.sol";
 
+// This contract allows to initialize prediction markets each having a pair of binary outcome tokens. Anyone can mint
+// and burn the same amount of paired outcome tokens for the default payout currency. Trading of outcome tokens is
+// outside the scope of this contract. Anyone can assert 3 possible outcomes (outcome 1, outcome 2 or split) that is
+// verified through Optimistic Asserter. If the assertion is resolved true then holders of outcome tokens can settle
+// them for the payout currency based on resolved market outcome.
 contract PredictionMarket is OptimisticAssertorCallbackRecipientInterface {
     using SafeERC20 for IERC20;
 
