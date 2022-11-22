@@ -111,16 +111,7 @@ contract PredictionMarket is OptimisticAssertorCallbackRecipientInterface {
         // Pull bond and make the assertion.
         currency.safeTransferFrom(msg.sender, address(this), bond);
         currency.safeApprove(address(oa), bond);
-        assertionId = oa.assertTruthFor(
-            claim,
-            msg.sender,
-            address(this),
-            address(0), // No sovereign security manager.
-            currency,
-            bond,
-            assertionLiveness,
-            defaultIdentifier
-        );
+        assertionId = _assertTruth(claim, bond);
         assertedMarkets[assertionId].marketId = marketId;
         assertedMarkets[assertionId].asserter = msg.sender;
     }
@@ -189,5 +180,18 @@ contract PredictionMarket is OptimisticAssertorCallbackRecipientInterface {
                 ". The market description is: ",
                 description
             );
+    }
+
+    function _assertTruth(bytes memory claim, uint256 bond) internal returns (bytes32 assertionId) {
+        assertionId = oa.assertTruthFor(
+            claim,
+            msg.sender, // Asserter
+            address(this), // Receive callback in this contract.
+            address(0), // No sovereign security manager.
+            currency,
+            bond,
+            assertionLiveness,
+            defaultIdentifier
+        );
     }
 }
