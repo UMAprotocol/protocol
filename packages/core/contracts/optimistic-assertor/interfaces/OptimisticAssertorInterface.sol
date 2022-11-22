@@ -27,7 +27,26 @@ interface OptimisticAssertorInterface {
         SsmSettings ssmSettings;
     }
 
+    function defaultIdentifier() external view returns (bytes32);
+
     function readAssertion(bytes32 assertionId) external view returns (Assertion memory);
+
+    function assertTruth(bytes memory claim) external returns (bytes32);
+
+    function assertTruthFor(
+        bytes memory claim,
+        address proposer,
+        address callbackRecipient,
+        address sovereignSecurityManager,
+        IERC20 currency,
+        uint256 bond,
+        uint256 liveness,
+        bytes32 identifier
+    ) external returns (bytes32);
+
+    function getAssertion(bytes32 assertionId) external view returns (bool);
+
+    function getMinimumBond(address currencyAddress) external view returns (uint256);
 
     event AssertionMade(
         bytes32 assertionId,
