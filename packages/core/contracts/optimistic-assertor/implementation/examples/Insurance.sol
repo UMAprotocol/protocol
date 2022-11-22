@@ -13,6 +13,7 @@ contract Insurance {
     IERC20 public immutable defaultCurrency;
     OptimisticAssertorInterface public immutable oa;
     uint256 public constant assertionLiveness = 7200;
+    bytes32 public immutable defaultIdentifier;
 
     struct Policy {
         uint256 insuranceAmount;
@@ -39,6 +40,7 @@ contract Insurance {
     constructor(address _defaultCurrency, address _optimisticAssertor) {
         defaultCurrency = IERC20(_defaultCurrency);
         oa = OptimisticAssertorInterface(_optimisticAssertor);
+        defaultIdentifier = oa.defaultIdentifier();
     }
 
     function issueInsurance(
@@ -76,7 +78,8 @@ contract Insurance {
             address(0), // No sovereign security manager.
             defaultCurrency,
             bond,
-            assertionLiveness
+            assertionLiveness,
+            defaultIdentifier
         );
         assertedPolicies[assertionId] = policyId;
         emit InsurancePayoutRequested(policyId, assertionId);
