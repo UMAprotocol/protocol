@@ -1,3 +1,4 @@
+@uma/=../../node_modules/@uma/
 @openzeppelin/=../../node_modules/@openzeppelin/
 @uniswap/=../../node_modules/@uniswap/
 @gnosis.pm/=../../node_modules/@gnosis.pm/
