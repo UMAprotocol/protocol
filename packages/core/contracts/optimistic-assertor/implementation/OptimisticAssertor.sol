@@ -11,6 +11,7 @@ import "../../oracle/implementation/Constants.sol";
 import "../../common/implementation/Lockable.sol";
 import "../../common/implementation/AddressWhitelist.sol";
 import "../../oracle/interfaces/OracleAncillaryInterface.sol";
+import "../../oracle/interfaces/IdentifierWhitelistInterface.sol";
 import "../../common/implementation/AncillaryData.sol";
 import "../interfaces/OptimisticAssertorCallbackRecipientInterface.sol";
 import "../interfaces/OptimisticAssertorInterface.sol";
@@ -25,7 +26,7 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
 
     uint256 public burnedBondPercentage = 0.5e18; //50% of bond is burned.
 
-    bytes32 public identifier = "ASSERT_TRUTH";
+    bytes32 public defaultIdentifier = "ASSERT_TRUTH";
 
     IERC20 public defaultCurrency;
     uint256 public defaultBond;
@@ -62,7 +63,17 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
         // If there is a pending assertion with the same configuration (timestamp, claim and default bond prop) then
         // reverts. Internally calls assertTruth(...) with all the associated props.
         // returns the value that assertTruth(...) returns.
-        return assertTruthFor(claim, address(0), address(0), address(0), defaultCurrency, defaultBond, defaultLiveness);
+        return
+            assertTruthFor(
+                claim,
+                address(0),
+                address(0),
+                address(0),
+                defaultCurrency,
+                defaultBond,
+                defaultLiveness,
+                defaultIdentifier
+            );
     }
 
     function assertTruthFor(
@@ -72,25 +83,28 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
         address sovereignSecurityManager,
         IERC20 currency,
         uint256 bond,
-        uint256 liveness
+        uint256 liveness,
+        bytes32 identifier
     ) public returns (bytes32) {
         address _proposer = proposer == address(0) ? msg.sender : proposer;
         bytes32 assertionId =
-            _getId(claim, bond, liveness, currency, _proposer, callbackRecipient, sovereignSecurityManager);
+            _getId(claim, bond, liveness, currency, _proposer, callbackRecipient, sovereignSecurityManager, identifier);
+
         require(assertions[assertionId].proposer == address(0), "Assertion already exists");
+        require(_getIdentifierWhitelist().isIdentifierSupported(identifier), "Unsupported identifier");
         require(_getCollateralWhitelist().isOnWhitelist(address(currency)), "Unsupported currency");
-        uint256 finalFee = _getStore().computeFinalFee(address(currency)).rawValue;
-        require((bond * burnedBondPercentage) / 1e18 >= finalFee, "Bond amount too low");
+        require(
+            (bond * burnedBondPercentage) / 1e18 >= _getStore().computeFinalFee(address(currency)).rawValue,
+            "Bond amount too low"
+        );
 
         // Pull the bond
         currency.safeTransferFrom(msg.sender, address(this), bond);
 
         assertions[assertionId] = Assertion({
             proposer: _proposer,
-            assertingCaller: msg.sender,
             disputer: address(0),
             callbackRecipient: callbackRecipient,
-            sovereignSecurityManager: sovereignSecurityManager,
             currency: currency,
             settled: false,
             settlementResolution: false,
@@ -98,9 +112,12 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
             assertionTime: getCurrentTime(),
             expirationTime: getCurrentTime() + liveness,
             claimId: keccak256(claim),
+            identifier: identifier,
             ssmSettings: SsmSettings({
                 useDisputeResolution: true, // this is the default behavior: if not specified by the Sovereign security manager the assertion will respect the DVM result.
-                useDvmAsOracle: true // this is the default behavior: if not specified by the Sovereign security manager the assertion will use the DVM as an oracle.
+                useDvmAsOracle: true, // this is the default behavior: if not specified by the Sovereign security manager the assertion will use the DVM as an oracle.
+                sovereignSecurityManager: sovereignSecurityManager,
+                assertingCaller: msg.sender
             })
         });
 
@@ -155,7 +172,11 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
 
         assertion.disputer = _disputer;
 
-        _getOracle(assertionId).requestPrice(identifier, assertion.assertionTime, _stampAssertion(assertionId));
+        _getOracle(assertionId).requestPrice(
+            assertion.identifier,
+            assertion.assertionTime,
+            _stampAssertion(assertionId)
+        );
 
         // Send dispute callback
         _callbackOnAssertionDispute(assertionId);
@@ -182,7 +203,11 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
         } else {
             // Dispute, settle with the disputer
             int256 resolvedPrice =
-                _getOracle(assertionId).getPrice(identifier, assertion.assertionTime, _stampAssertion(assertionId)); // Revert if price not resolved.
+                _getOracle(assertionId).getPrice(
+                    assertion.identifier,
+                    assertion.assertionTime,
+                    _stampAssertion(assertionId)
+                ); // Revert if price not resolved.
 
             assertion.settlementResolution = assertion.ssmSettings.useDisputeResolution ? resolvedPrice == 1e18 : false;
             address bondRecipient = resolvedPrice == 1e18 ? assertion.proposer : assertion.disputer;
@@ -220,12 +245,22 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
         IERC20 currency,
         address proposer,
         address callbackRecipient,
-        address sovereignSecurityManager
+        address sovereignSecurityManager,
+        bytes32 identifier
     ) internal pure returns (bytes32) {
         // Returns the unique ID for this assertion. This ID is used to identify the assertion in the Oracle.
         return
             keccak256(
-                abi.encode(claim, bond, liveness, currency, proposer, callbackRecipient, sovereignSecurityManager)
+                abi.encode(
+                    claim,
+                    bond,
+                    liveness,
+                    currency,
+                    proposer,
+                    callbackRecipient,
+                    sovereignSecurityManager,
+                    identifier
+                )
             );
     }
 
@@ -243,6 +278,10 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
         return AddressWhitelist(finder.getImplementationAddress(OracleInterfaces.CollateralWhitelist));
     }
 
+    function _getIdentifierWhitelist() internal view returns (IdentifierWhitelistInterface) {
+        return IdentifierWhitelistInterface(finder.getImplementationAddress(OracleInterfaces.IdentifierWhitelist));
+    }
+
     function _getStore() internal view returns (StoreInterface) {
         return StoreInterface(finder.getImplementationAddress(OracleInterfaces.Store));
     }
@@ -258,14 +297,14 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
         view
         returns (SovereignSecurityManagerInterface)
     {
-        return SovereignSecurityManagerInterface(assertions[assertionId].sovereignSecurityManager);
+        return SovereignSecurityManagerInterface(assertions[assertionId].ssmSettings.sovereignSecurityManager);
     }
 
     function _processAssertionPolicies(bytes32 assertionId)
         internal
         returns (SovereignSecurityManagerInterface.AssertionPolicies memory)
     {
-        address ssm = assertions[assertionId].sovereignSecurityManager;
+        address ssm = assertions[assertionId].ssmSettings.sovereignSecurityManager;
         if (ssm == address(0)) return SovereignSecurityManagerInterface.AssertionPolicies(true, true, true);
         return SovereignSecurityManagerInterface(ssm).processAssertionPolicies(assertionId);
     }

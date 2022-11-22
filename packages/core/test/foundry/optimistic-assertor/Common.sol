@@ -26,6 +26,7 @@ contract Common is Test {
     bytes falseClaimAssertion = bytes("q:'The sky is red'");
     uint256 defaultBond;
     uint256 defaultLiveness;
+    bytes32 defaultIdentifier;
 
     // Mock addresses, used to prank calls.
     address mockOptimisticAssertorAddress = address(0xfa);
@@ -70,6 +71,7 @@ contract Common is Test {
         store = oaContracts.store;
         defaultBond = optimisticAssertor.defaultBond();
         defaultLiveness = optimisticAssertor.defaultLiveness();
+        defaultIdentifier = optimisticAssertor.defaultIdentifier();
     }
 
     // Helper functions, re-used in some tests.
@@ -123,7 +125,8 @@ contract Common is Test {
                 sovereignSecurityManager,
                 defaultCurrency,
                 defaultBond,
-                defaultLiveness
+                defaultLiveness,
+                defaultIdentifier
             );
     }
 
@@ -132,7 +135,7 @@ contract Common is Test {
         OptimisticAssertorInterface.Assertion memory assertion = optimisticAssertor.readAssertion(assertionId);
         OracleRequest memory oracleRequest =
             OracleRequest({
-                identifier: optimisticAssertor.identifier(),
+                identifier: optimisticAssertor.defaultIdentifier(),
                 time: assertion.assertionTime,
                 ancillaryData: optimisticAssertor.stampAssertion(assertionId)
             });

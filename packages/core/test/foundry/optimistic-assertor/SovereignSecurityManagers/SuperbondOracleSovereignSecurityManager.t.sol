@@ -254,7 +254,7 @@ contract SuperbondOracleSovereignSecurityManagerTest is Common {
         bytes memory claim
     ) internal {
         OptimisticAssertorInterface.Assertion memory assertion;
-        assertion.assertingCaller = assertingCaller;
+        assertion.ssmSettings.assertingCaller = assertingCaller;
         assertion.currency = currency;
         assertion.bond = bond;
         assertion.claimId = keccak256(claim);
