@@ -8,34 +8,33 @@ import "../../interfaces/OptimisticAssertorInterface.sol";
 import "../../interfaces/OptimisticAssertorCallbackRecipientInterface.sol";
 
 contract PredictionMarket is OptimisticAssertorCallbackRecipientInterface {
-    //using SafeERC20 for ExpandedERC20;
     using SafeERC20 for IERC20;
 
     struct Market {
-        bool resolved;
-        bytes32 assertedOutcomeId; // hash of either p1, p2 or p3 string.
-        ExpandedIERC20 p1Token;
-        ExpandedIERC20 p2Token;
-        uint256 reward;
-        uint256 requiredBond;
-        bytes p1Name;
-        bytes p2Name;
-        bytes description;
+        bool resolved; // True if the market has been resolved and payouts can be settled.
+        bytes32 assertedOutcomeId; // Hash of asserted outcome (p1Name, p2Name or p3Name).
+        ExpandedIERC20 p1Token; // ERC20 token representing the value of the first outcome.
+        ExpandedIERC20 p2Token; // ERC20 token representing the value of the second outcome.
+        uint256 reward; // Reward available for asserting true market outcome.
+        uint256 requiredBond; // Expected bond to assert market outcome (OA can require higher bond).
+        bytes p1Name; // Short name of the first outcome.
+        bytes p2Name; // Short name of the second outcome.
+        bytes description; // Description of the market.
     }
 
     struct AssertedMarket {
-        address asserter;
-        bytes32 marketId;
+        address asserter; // Address of the asserter used for reward payout.
+        bytes32 marketId; // Identifier for markets mapping.
     }
 
-    mapping(bytes32 => Market) public markets;
+    mapping(bytes32 => Market) public markets; // Maps marketId to Market struct.
 
-    mapping(bytes32 => AssertedMarket) public assertedMarkets;
+    mapping(bytes32 => AssertedMarket) public assertedMarkets; // Maps assertionId to AssertedMarket.
 
-    IERC20 public immutable currency;
+    IERC20 public immutable currency; // Currency used for all prediction markets.
     OptimisticAssertorInterface public immutable oa;
-    uint256 public constant assertionLiveness = 7200;
-    bytes public constant p3Name = "Unknown";
+    uint256 public constant assertionLiveness = 7200; // 2 hours.
+    bytes public constant p3Name = "Unknown"; // Name of the split outcome.
 
     constructor(address _currency, address _optimisticAssertor) {
         currency = IERC20(_currency);
