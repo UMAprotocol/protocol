@@ -39,7 +39,7 @@ contract WhitelistProposerSovereignSecurityManager is BaseSovereignSecurityManag
         view
         returns (bool)
     {
-        if (assertion.assertingCaller != assertingCaller) return false; // Only allow assertions through linked client contract.
+        if (assertion.ssmSettings.assertingCaller != assertingCaller) return false; // Only allow assertions through linked client contract.
         return whitelistedProposers[assertion.proposer]; // Return if proposer is whitelisted.
     }
 }
