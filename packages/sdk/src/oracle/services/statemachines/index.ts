@@ -10,6 +10,7 @@ export * as fetchPastEvents from "./fetchPastEvents";
 export * as pollNewEvents from "./pollNewEvents";
 export * as setActiveRequestByTransaction from "./setActiveRequestByTransaction";
 export * as settle from "./settle";
+export * as fetchEventBased from "./fetchEventBased";
 
 export * from "./statemachine";
 export * from "./utils";
