@@ -2,8 +2,11 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@uma/core/contracts/common/implementation/AncillaryData.sol";
-import "@uma/core/contracts/common/implementation/ExpandedERC20.sol";
+import "../../../common/implementation/AddressWhitelist.sol";
+import "../../../common/implementation/AncillaryData.sol";
+import "../../../common/implementation/ExpandedERC20.sol";
+import "../../../oracle/implementation/Constants.sol";
+import "../../../oracle/interfaces/FinderInterface.sol";
 import "../../interfaces/OptimisticAssertorInterface.sol";
 import "../../interfaces/OptimisticAssertorCallbackRecipientInterface.sol";
 
@@ -31,13 +34,20 @@ contract PredictionMarket is OptimisticAssertorCallbackRecipientInterface {
 
     mapping(bytes32 => AssertedMarket) public assertedMarkets; // Maps assertionId to AssertedMarket.
 
+    FinderInterface public immutable finder; // UMA protocol Finder used to discover other protocol contracts.
     IERC20 public immutable currency; // Currency used for all prediction markets.
     OptimisticAssertorInterface public immutable oa;
     uint256 public constant assertionLiveness = 7200; // 2 hours.
     bytes32 public immutable defaultIdentifier; // Identifier used for all prediction markets.
     bytes public constant p3Name = "Unknown"; // Name of the split outcome.
 
-    constructor(address _currency, address _optimisticAssertor) {
+    constructor(
+        address _finder,
+        address _currency,
+        address _optimisticAssertor
+    ) {
+        finder = FinderInterface(_finder);
+        require(_getCollateralWhitelist().isOnWhitelist(_currency), "Unsupported currency");
         currency = IERC20(_currency);
         oa = OptimisticAssertorInterface(_optimisticAssertor);
         defaultIdentifier = oa.defaultIdentifier();
@@ -170,5 +180,9 @@ contract PredictionMarket is OptimisticAssertorCallbackRecipientInterface {
         market.p1Token.burnFrom(msg.sender, p1Balance);
         market.p2Token.burnFrom(msg.sender, p2Balance);
         currency.safeTransfer(msg.sender, payout);
+    }
+
+    function _getCollateralWhitelist() internal view returns (AddressWhitelist) {
+        return AddressWhitelist(finder.getImplementationAddress(OracleInterfaces.CollateralWhitelist));
     }
 }
