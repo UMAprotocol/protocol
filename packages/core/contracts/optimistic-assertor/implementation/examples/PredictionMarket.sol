@@ -106,15 +106,7 @@ contract PredictionMarket is OptimisticAssertorCallbackRecipientInterface {
         market.assertedOutcomeId = assertedOutcomeId;
         uint256 minimumBond = oa.getMinimumBond(address(currency)); // OA might require higher bond.
         uint256 bond = market.requiredBond > minimumBond ? market.requiredBond : minimumBond;
-        bytes memory claim =
-            abi.encodePacked(
-                "As of assertion timestamp ",
-                AncillaryData.toUtf8BytesUint(block.timestamp),
-                ", the described prediction market outcome is: ",
-                assertedOutcome,
-                ". The market description is: ",
-                market.description
-            );
+        bytes memory claim = _composeClaim(assertedOutcome, market.description);
 
         // Pull bond and make the assertion.
         currency.safeTransferFrom(msg.sender, address(this), bond);
@@ -185,5 +177,17 @@ contract PredictionMarket is OptimisticAssertorCallbackRecipientInterface {
 
     function _getCollateralWhitelist() internal view returns (AddressWhitelist) {
         return AddressWhitelist(finder.getImplementationAddress(OracleInterfaces.CollateralWhitelist));
+    }
+
+    function _composeClaim(string memory outcome, bytes memory description) internal view returns (bytes memory) {
+        return
+            abi.encodePacked(
+                "As of assertion timestamp ",
+                AncillaryData.toUtf8BytesUint(block.timestamp),
+                ", the described prediction market outcome is: ",
+                outcome,
+                ". The market description is: ",
+                description
+            );
     }
 }
