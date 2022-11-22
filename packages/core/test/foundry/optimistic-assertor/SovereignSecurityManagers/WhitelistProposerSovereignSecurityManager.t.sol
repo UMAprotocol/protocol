@@ -88,7 +88,7 @@ contract WhitelistProposerSovereignSecurityManagerTest is Common {
         address proposer
     ) internal {
         OptimisticAssertorInterface.Assertion memory assertion;
-        assertion.assertingCaller = assertingCaller;
+        assertion.ssmSettings.assertingCaller = assertingCaller;
         assertion.proposer = proposer;
         vm.mockCall(
             mockOptimisticAssertorAddress,
