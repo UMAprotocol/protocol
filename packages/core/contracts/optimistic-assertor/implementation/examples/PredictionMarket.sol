@@ -80,6 +80,7 @@ contract PredictionMarket {
 
     function assertMarket(bytes32 marketId, string memory assertedOutcome) public returns (bytes32 assertionId) {
         Market storage market = markets[marketId];
+        require(market.p1Token != ExpandedIERC20(address(0)), "Market does not exist");
         bytes32 assertedOutcomeId = keccak256(bytes(assertedOutcome));
         require(market.assertedOutcomeId == bytes32(0), "Assertion active or resolved");
         require(
