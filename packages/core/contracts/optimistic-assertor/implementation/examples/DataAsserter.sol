@@ -17,7 +17,9 @@ contract DataAsserter {
     bytes32 public immutable defaultIdentifier;
 
     struct DataAssertion {
-        uint256 data; // This could be any data type.
+        bytes32 dataId; // This could be an arbitrary data type.
+        uint256 data; // This could be an arbitrary data type.
+        address asserter; // The address that made the assertion.
         bytes32 oaAssertionId; // The optimistic assertor assertion ID.
     }
 
@@ -27,9 +29,9 @@ contract DataAsserter {
 
     mapping(bytes32 => DataAssertion) public assertionsData;
 
-    event DataAsserted(bytes32 indexed dataId, uint256 data, bytes32 oaAssertionId);
+    event DataAsserted(bytes32 indexed dataId, uint256 data, address indexed asserter, bytes32 oaAssertionId);
 
-    event DataAssertionResolved(bytes32 indexed dataAssertionId);
+    event DataAssertionResolved(bytes32 indexed dataId, uint256 data, address indexed asserter, bytes32 oaAssertionId);
 
     constructor(address _defaultCurrency, address _optimisticAssertor) {
         defaultCurrency = IERC20(_defaultCurrency);
@@ -39,13 +41,15 @@ contract DataAsserter {
 
     // Returns a bool of whether the data is available and the data.
     function getData(bytes32 dataId, address asserter) public view returns (bool, uint256) {
-        return _getData(getAssertionId(dataId, asserter));
+        bytes32 dataAssertionId = getAssertionId(dataId, asserter);
+        if (!assertionsResolved[dataAssertionId]) return (false, 0);
+        return (true, assertionsData[dataAssertionId].data);
     }
 
     // Asserts data for a specific dataId on behalf of an asserter address.
     function assertDataFor(
-        bytes32 dataId, // This could be any data type.
-        uint256 data, // This could be any data type.
+        bytes32 dataId,
+        uint256 data,
         address asserter
     ) public {
         bytes32 dataAssertionId = getAssertionId(dataId, asserter);
@@ -74,9 +78,14 @@ contract DataAsserter {
                 assertionLiveness,
                 defaultIdentifier
             );
-        assertionsData[dataAssertionId] = DataAssertion({ data: data, oaAssertionId: oaAssertionId });
+        assertionsData[dataAssertionId] = DataAssertion({
+            dataId: dataId,
+            data: data,
+            asserter: asserter,
+            oaAssertionId: oaAssertionId
+        });
         oaIdsToInternalIds[oaAssertionId] = dataAssertionId;
-        emit DataAsserted(dataId, data, oaAssertionId);
+        emit DataAsserted(dataId, data, asserter, oaAssertionId);
     }
 
     // OptimisticAssertor callback.
@@ -85,7 +94,8 @@ contract DataAsserter {
         // If the assertion was true, then the data assertion is resolved.
         if (assertedTruthfully) {
             assertionsResolved[oaIdsToInternalIds[assertionId]] = true;
-            emit DataAssertionResolved(oaIdsToInternalIds[assertionId]);
+            DataAssertion memory dataAssertion = assertionsData[oaIdsToInternalIds[assertionId]];
+            emit DataAssertionResolved(dataAssertion.dataId, dataAssertion.data, dataAssertion.asserter, assertionId);
         } else {
             // Delete the data assertion if it was false so the same asserter can assert it again.
             delete assertionsData[oaIdsToInternalIds[assertionId]];
@@ -96,12 +106,8 @@ contract DataAsserter {
     // This OptimisticAssertor callback function needs to be defined so the OA doesn't revert when it tries to call it.
     function assertionDisputed(bytes32 assertionId) public {}
 
+    // Returns the internal ID for a data assertion.
     function getAssertionId(bytes32 dataId, address asserter) public pure returns (bytes32) {
         return keccak256(abi.encode(dataId, asserter));
-    }
-
-    function _getData(bytes32 dataAssertionId) internal view returns (bool, uint256) {
-        if (!assertionsResolved[dataAssertionId]) return (false, 0);
-        return (true, assertionsData[dataAssertionId].data);
     }
 }
