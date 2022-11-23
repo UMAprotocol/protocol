@@ -46,6 +46,28 @@ contract PredictionMarket is OptimisticAssertorCallbackRecipientInterface {
     bytes32 public immutable defaultIdentifier; // Identifier used for all prediction markets.
     bytes public constant splitOutcome = "Unknown"; // Name of the split outcome.
 
+    event MarketInitialized(
+        bytes32 indexed marketId,
+        string outcome1,
+        string outcome2,
+        string description,
+        address outcome1Token,
+        address outcome2Token,
+        uint256 reward,
+        uint256 requiredBond
+    );
+    event MarketAsserted(bytes32 indexed marketId, string assertedOutcome, bytes32 indexed assertionId);
+    event MarketResolved(bytes32 indexed marketId);
+    event TokensCreated(bytes32 indexed marketId, address indexed account, uint256 tokensCreated);
+    event TokensRedeemed(bytes32 indexed marketId, address indexed account, uint256 tokensRedeemed);
+    event TokensSettled(
+        bytes32 indexed marketId,
+        address indexed account,
+        uint256 payout,
+        uint256 outcome1Tokens,
+        uint256 outcome2Tokens
+    );
+
     constructor(
         address _finder,
         address _currency,
@@ -96,6 +118,17 @@ contract PredictionMarket is OptimisticAssertorCallbackRecipientInterface {
             description: bytes(description)
         });
         if (reward > 0) currency.safeTransferFrom(msg.sender, address(this), reward); // Pull reward.
+
+        emit MarketInitialized(
+            marketId,
+            outcome1,
+            outcome2,
+            description,
+            address(outcome1Token),
+            address(outcome2Token),
+            reward,
+            requiredBond
+        );
     }
 
     // Assert the market with any of 3 possible outcomes: names of outcome1, outcome2 or splitOutcome.
@@ -124,6 +157,8 @@ contract PredictionMarket is OptimisticAssertorCallbackRecipientInterface {
 
         // Store the asserter and marketId for the assertionResolved callback.
         assertedMarkets[assertionId] = AssertedMarket({ asserter: msg.sender, marketId: marketId });
+
+        emit MarketAsserted(marketId, assertedOutcome, assertionId);
     }
 
     // Callback from settled assertion.
@@ -136,6 +171,7 @@ contract PredictionMarket is OptimisticAssertorCallbackRecipientInterface {
         if (assertedTruthfully) {
             market.resolved = true;
             if (market.reward > 0) currency.safeTransfer(assertedMarkets[assertionId].asserter, market.reward);
+            emit MarketResolved(assertedMarkets[assertionId].marketId);
         } else market.assertedOutcomeId = bytes32(0);
         delete assertedMarkets[assertionId];
     }
@@ -153,6 +189,8 @@ contract PredictionMarket is OptimisticAssertorCallbackRecipientInterface {
 
         market.outcome1Token.mint(msg.sender, tokensToCreate);
         market.outcome2Token.mint(msg.sender, tokensToCreate);
+
+        emit TokensCreated(marketId, msg.sender, tokensToCreate);
     }
 
     // Burns equal amount of outcome1 and outcome2 tokens returning settlement currency tokens.
@@ -164,6 +202,8 @@ contract PredictionMarket is OptimisticAssertorCallbackRecipientInterface {
         market.outcome2Token.burnFrom(msg.sender, tokensToRedeem);
 
         currency.safeTransfer(msg.sender, tokensToRedeem);
+
+        emit TokensRedeemed(marketId, msg.sender, tokensToRedeem);
     }
 
     // If the market is resolved, then all of caller's outcome tokens are burned and currency payout is made depending
@@ -186,6 +226,8 @@ contract PredictionMarket is OptimisticAssertorCallbackRecipientInterface {
         market.outcome1Token.burnFrom(msg.sender, outcome1Balance);
         market.outcome2Token.burnFrom(msg.sender, outcome2Balance);
         currency.safeTransfer(msg.sender, payout);
+
+        emit TokensSettled(marketId, msg.sender, payout, outcome1Balance, outcome2Balance);
     }
 
     function _getCollateralWhitelist() internal view returns (AddressWhitelist) {
