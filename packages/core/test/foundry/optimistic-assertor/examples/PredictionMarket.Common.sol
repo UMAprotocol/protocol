@@ -70,4 +70,25 @@ contract PredictionMarketTestCommon is Common {
         assertEq(IERC20(market.outcome1Token).balanceOf(TestAddress.account3), 0);
         assertEq(IERC20(market.outcome2Token).balanceOf(TestAddress.account3), outcomeTokens * 2);
     }
+
+    function _settleAssertionAndTokens(bytes32 assertionId) internal {
+        (, bytes32 marketId) = predictionMarket.assertedMarkets(assertionId);
+        PredictionMarket.Market memory market = predictionMarket.getMarket(marketId);
+
+        // Settle the assertion after liveness.
+        timer.setCurrentTime(timer.getCurrentTime() + defaultLiveness);
+        assertTrue(optimisticAssertor.settleAndGetAssertion(assertionId));
+
+        // Settle the outcome tokens.
+        vm.prank(TestAddress.account2);
+        predictionMarket.settleOutcomeTokens(marketId);
+        vm.prank(TestAddress.account3);
+        predictionMarket.settleOutcomeTokens(marketId);
+
+        // Verify the outcome tokens were burned.
+        assertEq(IERC20(market.outcome1Token).balanceOf(TestAddress.account2), 0);
+        assertEq(IERC20(market.outcome2Token).balanceOf(TestAddress.account2), 0);
+        assertEq(IERC20(market.outcome1Token).balanceOf(TestAddress.account3), 0);
+        assertEq(IERC20(market.outcome2Token).balanceOf(TestAddress.account3), 0);
+    }
 }

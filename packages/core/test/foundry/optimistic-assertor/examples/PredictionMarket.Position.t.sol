@@ -54,21 +54,7 @@ contract PredictionMarketPositionTest is PredictionMarketTestCommon {
         uint256 account2BalanceBefore = defaultCurrency.balanceOf(TestAddress.account2);
         uint256 account3BalanceBefore = defaultCurrency.balanceOf(TestAddress.account3);
 
-        // Settle the assertion after liveness.
-        timer.setCurrentTime(timer.getCurrentTime() + defaultLiveness);
-        assertTrue(optimisticAssertor.settleAndGetAssertion(assertionId));
-
-        // Settle the outcome tokens.
-        vm.prank(TestAddress.account2);
-        predictionMarket.settleOutcomeTokens(marketId);
-        vm.prank(TestAddress.account3);
-        predictionMarket.settleOutcomeTokens(marketId);
-
-        // Verify the outcome tokens were burned.
-        assertEq(IERC20(market.outcome1Token).balanceOf(TestAddress.account2), 0);
-        assertEq(IERC20(market.outcome2Token).balanceOf(TestAddress.account2), 0);
-        assertEq(IERC20(market.outcome1Token).balanceOf(TestAddress.account3), 0);
-        assertEq(IERC20(market.outcome2Token).balanceOf(TestAddress.account3), 0);
+        _settleAssertionAndTokens(assertionId);
 
         // Verify the holder of first outcome tokens got all the payout.
         assertEq(defaultCurrency.balanceOf(TestAddress.account2), account2BalanceBefore + outcomeTokens * 2);
@@ -83,21 +69,7 @@ contract PredictionMarketPositionTest is PredictionMarketTestCommon {
         uint256 account2BalanceBefore = defaultCurrency.balanceOf(TestAddress.account2);
         uint256 account3BalanceBefore = defaultCurrency.balanceOf(TestAddress.account3);
 
-        // Settle the assertion after liveness.
-        timer.setCurrentTime(timer.getCurrentTime() + defaultLiveness);
-        assertTrue(optimisticAssertor.settleAndGetAssertion(assertionId));
-
-        // Settle the outcome tokens.
-        vm.prank(TestAddress.account2);
-        predictionMarket.settleOutcomeTokens(marketId);
-        vm.prank(TestAddress.account3);
-        predictionMarket.settleOutcomeTokens(marketId);
-
-        // Verify the outcome tokens were burned.
-        assertEq(IERC20(market.outcome1Token).balanceOf(TestAddress.account2), 0);
-        assertEq(IERC20(market.outcome2Token).balanceOf(TestAddress.account2), 0);
-        assertEq(IERC20(market.outcome1Token).balanceOf(TestAddress.account3), 0);
-        assertEq(IERC20(market.outcome2Token).balanceOf(TestAddress.account3), 0);
+        _settleAssertionAndTokens(assertionId);
 
         // Verify the holder of second outcome tokens got all the payout.
         assertEq(defaultCurrency.balanceOf(TestAddress.account2), account2BalanceBefore);
@@ -112,21 +84,7 @@ contract PredictionMarketPositionTest is PredictionMarketTestCommon {
         uint256 account2BalanceBefore = defaultCurrency.balanceOf(TestAddress.account2);
         uint256 account3BalanceBefore = defaultCurrency.balanceOf(TestAddress.account3);
 
-        // Settle the assertion after liveness.
-        timer.setCurrentTime(timer.getCurrentTime() + defaultLiveness);
-        assertTrue(optimisticAssertor.settleAndGetAssertion(assertionId));
-
-        // Settle the outcome tokens.
-        vm.prank(TestAddress.account2);
-        predictionMarket.settleOutcomeTokens(marketId);
-        vm.prank(TestAddress.account3);
-        predictionMarket.settleOutcomeTokens(marketId);
-
-        // Verify the outcome tokens were burned.
-        assertEq(IERC20(market.outcome1Token).balanceOf(TestAddress.account2), 0);
-        assertEq(IERC20(market.outcome2Token).balanceOf(TestAddress.account2), 0);
-        assertEq(IERC20(market.outcome1Token).balanceOf(TestAddress.account3), 0);
-        assertEq(IERC20(market.outcome2Token).balanceOf(TestAddress.account3), 0);
+        _settleAssertionAndTokens(assertionId);
 
         // Verify the holders of outcome tokens got the same amount of the payout.
         assertEq(defaultCurrency.balanceOf(TestAddress.account2), account2BalanceBefore + outcomeTokens);
