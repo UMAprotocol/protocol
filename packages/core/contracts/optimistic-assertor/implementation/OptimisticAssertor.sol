@@ -2,33 +2,60 @@
 pragma solidity 0.8.16;
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
-import "../../data-verification-mechanism/interfaces/StoreInterface.sol";
-import "../../data-verification-mechanism/interfaces/FinderInterface.sol";
-import "../../data-verification-mechanism/interfaces/OracleAncillaryInterface.sol";
-
-import "../../data-verification-mechanism/implementation/Constants.sol";
+import "../../oracle/interfaces/StoreInterface.sol";
+import "../../oracle/interfaces/FinderInterface.sol";
+import "../../oracle/implementation/Constants.sol";
 
 import "../../common/implementation/Lockable.sol";
 import "../../common/implementation/AddressWhitelist.sol";
+import "../../oracle/interfaces/OracleAncillaryInterface.sol";
+import "../../oracle/interfaces/IdentifierWhitelistInterface.sol";
 import "../../common/implementation/AncillaryData.sol";
-
-import "../interfaces/OptimisticAsserterCallbackRecipientInterface.sol";
+import "../interfaces/OptimisticAssertorCallbackRecipientInterface.sol";
 import "../interfaces/OptimisticAssertorInterface.sol";
+import "../interfaces/SovereignSecurityManagerInterface.sol";
 
-contract OptimisticAssertor is Lockable, OptimisticAssertorInterface {
+contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
     using SafeERC20 for IERC20;
 
     FinderInterface public immutable finder;
 
     mapping(bytes32 => Assertion) public assertions;
 
-    uint256 burnedBondPercentage = 0.5e18; //50% of bond is burned.
+    uint256 public burnedBondPercentage = 0.5e18; //50% of bond is burned.
 
-    bytes32 identifier = "ASSERT_TRUTH";
+    bytes32 public defaultIdentifier = "ASSERT_TRUTH";
 
-    constructor(address _finderAddress) {
-        finder = FinderInterface(_finderAddress);
+    IERC20 public defaultCurrency;
+    uint256 public defaultBond;
+    uint256 public defaultLiveness;
+
+    constructor(
+        FinderInterface _finder,
+        IERC20 _defaultCurrency,
+        uint256 _defaultBond,
+        uint256 _defaultLiveness
+    ) {
+        finder = _finder;
+        setAssertionDefaults(_defaultCurrency, _defaultBond, _defaultLiveness);
+    }
+
+    function setAssertionDefaults(
+        IERC20 _defaultCurrency,
+        uint256 _defaultBond,
+        uint256 _defaultLiveness
+    ) public onlyOwner {
+        defaultCurrency = _defaultCurrency;
+        defaultBond = _defaultBond;
+        defaultLiveness = _defaultLiveness;
+
+        emit AssertionDefaultsSet(_defaultCurrency, _defaultBond, _defaultLiveness);
+    }
+
+    function readAssertion(bytes32 assertionId) external view returns (Assertion memory) {
+        return assertions[assertionId];
     }
 
     function assertTruth(bytes memory claim) public returns (bytes32) {
@@ -36,7 +63,17 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface {
         // If there is a pending assertion with the same configuration (timestamp, claim and default bond prop) then
         // reverts. Internally calls assertTruth(...) with all the associated props.
         // returns the value that assertTruth(...) returns.
-        return assertTruthFor(claim, address(0), address(0), address(0), address(0), 0, 0);
+        return
+            assertTruthFor(
+                claim,
+                address(0),
+                address(0),
+                address(0),
+                defaultCurrency,
+                defaultBond,
+                defaultLiveness,
+                defaultIdentifier
+            );
     }
 
     function assertTruthFor(
@@ -44,115 +81,187 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface {
         address proposer,
         address callbackRecipient,
         address sovereignSecurityManager,
-        address currency,
-        uint256 bondAmount,
-        uint256 liveness
+        IERC20 currency,
+        uint256 bond,
+        uint256 liveness,
+        bytes32 identifier
     ) public returns (bytes32) {
+        address _proposer = proposer == address(0) ? msg.sender : proposer;
         bytes32 assertionId =
-            _getId(claim, bondAmount, liveness, currency, proposer, callbackRecipient, sovereignSecurityManager);
-        require(assertions[assertionId].proposer == address(0)); // Revert if assertion already exists.
+            _getId(claim, bond, liveness, currency, _proposer, callbackRecipient, sovereignSecurityManager, identifier);
+
+        require(assertions[assertionId].proposer == address(0), "Assertion already exists");
+        require(_getIdentifierWhitelist().isIdentifierSupported(identifier), "Unsupported identifier");
         require(_getCollateralWhitelist().isOnWhitelist(address(currency)), "Unsupported currency");
-        uint256 finalFee = _getStore().computeFinalFee(address(currency)).rawValue;
-        require((bondAmount * burnedBondPercentage) / 1e18 >= finalFee, "Bond amount too low");
+        require(bond >= getMinimumBond(address(currency)), "Bond amount too low");
 
         // Pull the bond
-        IERC20(currency).safeTransferFrom(msg.sender, address(this), bondAmount);
+        currency.safeTransferFrom(msg.sender, address(this), bond);
 
         assertions[assertionId] = Assertion({
-            proposer: proposer == address(0) ? msg.sender : proposer,
+            proposer: _proposer,
             disputer: address(0),
             callbackRecipient: callbackRecipient,
-            sovereignSecurityManager: sovereignSecurityManager,
-            currency: IERC20(currency),
-            respectDvmArbitration: true, // TODO: might be moved to SovereignSecurityManager.
+            currency: currency,
             settled: false,
-            bondAmount: bondAmount,
-            assertionTime: block.timestamp,
-            expirationTime: block.timestamp + liveness
+            settlementResolution: false,
+            bond: bond,
+            assertionTime: getCurrentTime(),
+            expirationTime: getCurrentTime() + liveness,
+            identifier: identifier,
+            ssmSettings: SsmSettings({
+                useDisputeResolution: true, // this is the default behavior: if not specified by the Sovereign security manager the assertion will respect the DVM result.
+                useDvmAsOracle: true, // this is the default behavior: if not specified by the Sovereign security manager the assertion will use the DVM as an oracle.
+                sovereignSecurityManager: sovereignSecurityManager,
+                assertingCaller: msg.sender
+            })
         });
 
-        // emit event
+        SovereignSecurityManagerInterface.AssertionPolicies memory assertionPolicies =
+            _getAssertionPolicies(assertionId);
+
+        // Check if the assertion is allowed by the sovereign security manager.
+        require(assertionPolicies.allowAssertion, "Assertion not allowed");
+
+        // Check if the Sovereign Security Manager is configured to arbitrate via DVM
+        assertions[assertionId].ssmSettings.useDisputeResolution = assertionPolicies.useDisputeResolution;
+
+        // Check if the Sovereign Security Manager is configured to use the DVM as an oracle.
+        assertions[assertionId].ssmSettings.useDvmAsOracle = assertionPolicies.useDvmAsOracle;
+
+        emit AssertionMade(
+            assertionId,
+            claim,
+            _proposer,
+            callbackRecipient,
+            sovereignSecurityManager,
+            currency,
+            bond,
+            assertions[assertionId].expirationTime
+        );
 
         return assertionId;
     }
 
     function getAssertion(bytes32 assertionId) public view returns (bool) {
         Assertion memory assertion = assertions[assertionId];
+        // Return early if not using answer from resolved dispute.
+        if (assertion.disputer != address(0) && !assertion.ssmSettings.useDisputeResolution) return false;
         require(assertion.settled, "Assertion not settled"); // Revert if assertion not settled.
-        if (assertion.settled && assertion.disputer == address(0)) return true;
-        if (!assertion.respectDvmArbitration) return false;
-        int256 dvmResolvedPrice =
-            _getOracle().getPrice(identifier, assertion.assertionTime, _stampAssertion(assertionId)); // Revert if price not resolved.
-        return dvmResolvedPrice == 1e18;
+        return assertion.settlementResolution;
     }
 
     function settleAndGetAssertion(bytes32 assertionId) public returns (bool) {
-        settleAssertion(assertionId);
+        if (!assertions[assertionId].settled) settleAssertion(assertionId);
         return getAssertion(assertionId);
     }
 
     function disputeAssertionFor(bytes32 assertionId, address disputer) public {
-        Assertion memory assertion = assertions[assertionId];
+        address _disputer = disputer == address(0) ? msg.sender : disputer;
+        Assertion storage assertion = assertions[assertionId];
         require(assertion.proposer != address(0), "Assertion does not exist"); // Revert if assertion does not exist.
         require(assertion.disputer == address(0), "Assertion already disputed"); // Revert if assertion already disputed.
-        require(assertion.expirationTime > block.timestamp, "Assertion is expired"); // Revert if assertion expired.
+        require(assertion.expirationTime > getCurrentTime(), "Assertion is expired"); // Revert if assertion expired.
 
         // Pull the bond
-        assertion.currency.safeTransferFrom(msg.sender, address(this), assertion.bondAmount);
+        assertion.currency.safeTransferFrom(msg.sender, address(this), assertion.bond);
 
-        assertion.disputer = disputer;
+        assertion.disputer = _disputer;
 
-        _getOracle().requestPrice(identifier, assertion.assertionTime, _stampAssertion(assertionId));
+        _getOracle(assertionId).requestPrice(
+            assertion.identifier,
+            assertion.assertionTime,
+            _stampAssertion(assertionId)
+        );
 
-        if (!assertion.respectDvmArbitration) _sendCallback(assertionId, false);
+        // Send dispute callback
+        _callbackOnAssertionDispute(assertionId);
 
-        // emit event
+        // Send resolve callback if dispute resolution is discarded
+        if (!assertion.ssmSettings.useDisputeResolution) _callbackOnAssertionResolve(assertionId, false);
+
+        emit AssertionDisputed(assertionId, _disputer);
     }
 
     function settleAssertion(bytes32 assertionId) public {
-        Assertion memory assertion = assertions[assertionId];
+        Assertion storage assertion = assertions[assertionId];
         require(assertion.proposer != address(0), "Assertion does not exist"); // Revert if assertion does not exist.
         require(!assertion.settled, "Assertion already settled"); // Revert if assertion already settled.
         assertion.settled = true;
         if (assertion.disputer == address(0)) {
             // No dispute, settle with the proposer
-            require(assertion.expirationTime <= block.timestamp, "Assertion not expired"); // Revert if assertion not expired.
-            assertion.currency.safeTransfer(assertion.proposer, assertion.bondAmount);
-            _sendCallback(assertionId, true);
-            // emit event
+            require(assertion.expirationTime <= getCurrentTime(), "Assertion not expired"); // Revert if assertion not expired.
+            assertion.currency.safeTransfer(assertion.proposer, assertion.bond);
+            assertion.settlementResolution = true;
+            _callbackOnAssertionResolve(assertionId, true);
+
+            emit AssertionSettled(assertionId, assertion.proposer, false, true);
         } else {
             // Dispute, settle with the disputer
-            int256 dvmResolvedPrice =
-                _getOracle().getPrice(identifier, assertion.assertionTime, _stampAssertion(assertionId)); // Revert if price not resolved.
-            bool dvmAssertedTruth = dvmResolvedPrice == 1e18;
-            address bondRecipient = dvmAssertedTruth ? assertion.proposer : assertion.disputer;
+            int256 resolvedPrice =
+                _getOracle(assertionId).getPrice(
+                    assertion.identifier,
+                    assertion.assertionTime,
+                    _stampAssertion(assertionId)
+                ); // Revert if price not resolved.
 
-            uint256 amountToBurn = burnedBondPercentage * assertion.bondAmount;
-            uint256 amountToSend = assertion.bondAmount * 2 - amountToBurn; // 50% of the bond is burned. The other 50% is sent to the bond recipient.
+            assertion.settlementResolution = assertion.ssmSettings.useDisputeResolution ? resolvedPrice == 1e18 : false;
+            address bondRecipient = resolvedPrice == 1e18 ? assertion.proposer : assertion.disputer;
+
+            // todo: should you only play the final fee in the case of a DVM arbitrated dispute?
+            uint256 amountToBurn = (burnedBondPercentage * assertion.bond) / 1e18;
+            uint256 amountToSend = assertion.bond * 2 - amountToBurn; // 50% of the bond is burned. The other 50% is sent to the bond recipient.
 
             assertion.currency.safeTransfer(bondRecipient, amountToSend);
             assertion.currency.safeTransfer(address(_getStore()), amountToBurn);
 
-            if (assertion.respectDvmArbitration) _sendCallback(assertionId, dvmAssertedTruth);
-            // emit event
-        }
+            if (assertion.ssmSettings.useDisputeResolution)
+                _callbackOnAssertionResolve(assertionId, assertion.settlementResolution);
 
-        // TODO: assertionResolvedCallback
+            emit AssertionSettled(assertionId, bondRecipient, true, assertion.settlementResolution);
+        }
+    }
+
+    /**
+     * @notice Returns the current block timestamp.
+     * @dev Can be overridden to control contract time.
+     */
+    function getCurrentTime() public view virtual returns (uint256) {
+        return block.timestamp;
+    }
+
+    function stampAssertion(bytes32 assertionId) public view returns (bytes memory) {
+        return _stampAssertion(assertionId);
+    }
+
+    function getMinimumBond(address currencyAddress) public view returns (uint256) {
+        uint256 finalFee = _getStore().computeFinalFee(currencyAddress).rawValue;
+        return (finalFee * 1e18) / burnedBondPercentage;
     }
 
     function _getId(
         bytes memory claim,
-        uint256 bondAmount,
+        uint256 bond,
         uint256 liveness,
-        address currency,
+        IERC20 currency,
         address proposer,
         address callbackRecipient,
-        address sovereignSecurityManager
+        address sovereignSecurityManager,
+        bytes32 identifier
     ) internal pure returns (bytes32) {
         // Returns the unique ID for this assertion. This ID is used to identify the assertion in the Oracle.
         return
             keccak256(
-                abi.encode(claim, bondAmount, liveness, currency, proposer, callbackRecipient, sovereignSecurityManager)
+                abi.encode(
+                    claim,
+                    bond,
+                    liveness,
+                    currency,
+                    proposer,
+                    callbackRecipient,
+                    sovereignSecurityManager,
+                    identifier
+                )
             );
     }
 
@@ -170,18 +279,50 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface {
         return AddressWhitelist(finder.getImplementationAddress(OracleInterfaces.CollateralWhitelist));
     }
 
+    function _getIdentifierWhitelist() internal view returns (IdentifierWhitelistInterface) {
+        return IdentifierWhitelistInterface(finder.getImplementationAddress(OracleInterfaces.IdentifierWhitelist));
+    }
+
     function _getStore() internal view returns (StoreInterface) {
         return StoreInterface(finder.getImplementationAddress(OracleInterfaces.Store));
     }
 
-    function _getOracle() internal view returns (OracleAncillaryInterface) {
-        return OracleAncillaryInterface(finder.getImplementationAddress(OracleInterfaces.Oracle));
+    function _getOracle(bytes32 assertionId) internal view returns (OracleAncillaryInterface) {
+        if (assertions[assertionId].ssmSettings.useDvmAsOracle)
+            return OracleAncillaryInterface(finder.getImplementationAddress(OracleInterfaces.Oracle));
+        return OracleAncillaryInterface(address(_getSovereignSecurityManager(assertionId)));
     }
 
-    function _sendCallback(bytes32 assertionId, bool assertedThruthfully) internal {
-        OptimisticAsserterCallbackRecipientInterface(assertions[assertionId].callbackRecipient).assertionResolved(
-            assertionId,
-            assertedThruthfully
-        );
+    function _getSovereignSecurityManager(bytes32 assertionId)
+        internal
+        view
+        returns (SovereignSecurityManagerInterface)
+    {
+        return SovereignSecurityManagerInterface(assertions[assertionId].ssmSettings.sovereignSecurityManager);
+    }
+
+    function _getAssertionPolicies(bytes32 assertionId)
+        internal
+        view
+        returns (SovereignSecurityManagerInterface.AssertionPolicies memory)
+    {
+        address ssm = assertions[assertionId].ssmSettings.sovereignSecurityManager;
+        if (ssm == address(0)) return SovereignSecurityManagerInterface.AssertionPolicies(true, true, true);
+        return SovereignSecurityManagerInterface(ssm).getAssertionPolicies(assertionId);
+    }
+
+    function _callbackOnAssertionResolve(bytes32 assertionId, bool assertedTruthfully) internal {
+        if (assertions[assertionId].callbackRecipient != address(0))
+            OptimisticAssertorCallbackRecipientInterface(assertions[assertionId].callbackRecipient).assertionResolved(
+                assertionId,
+                assertedTruthfully
+            );
+    }
+
+    function _callbackOnAssertionDispute(bytes32 assertionId) internal {
+        if (assertions[assertionId].callbackRecipient != address(0))
+            OptimisticAssertorCallbackRecipientInterface(assertions[assertionId].callbackRecipient).assertionDisputed(
+                assertionId
+            );
     }
 }
