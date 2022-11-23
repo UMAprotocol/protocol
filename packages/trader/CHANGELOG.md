@@ -7,10 +7,6 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 **Note:** Version bump only for package @uma/trader
 
-
-
-
-
 ## [1.11.14](https://github.com/UMAprotocol/protocol/compare/@uma/trader@1.11.12...@uma/trader@1.11.14) (2022-11-23)
 
 **Note:** Version bump only for package @uma/trader

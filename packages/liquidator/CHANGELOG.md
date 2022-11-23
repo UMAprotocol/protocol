@@ -7,10 +7,6 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 **Note:** Version bump only for package @uma/liquidator
 
-
-
-
-
 ## [2.7.2](https://github.com/UMAprotocol/protocol/compare/@uma/liquidator@2.7.0...@uma/liquidator@2.7.2) (2022-11-23)
 
 **Note:** Version bump only for package @uma/liquidator
