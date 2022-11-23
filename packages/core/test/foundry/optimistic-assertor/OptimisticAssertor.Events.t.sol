@@ -56,7 +56,7 @@ contract OptimisticAssertorEvents is Common {
         emit AssertionDisputed(assertionId, TestAddress.account2);
 
         // Perform dispute and mock oracle response where the assertion is resolved as false.
-        OracleRequest memory oracleRequest = _disputeAndGetOracleRequest(assertionId);
+        OracleRequest memory oracleRequest = _disputeAndGetOracleRequest(assertionId, defaultBond);
         _mockOracleResolved(address(mockOracle), oracleRequest, false);
 
         vm.expectEmit(true, true, true, true);
