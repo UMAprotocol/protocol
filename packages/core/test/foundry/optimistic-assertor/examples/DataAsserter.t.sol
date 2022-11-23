@@ -77,8 +77,15 @@ contract DataAsserterTest is Common {
         _mockOracleResolved(address(mockOracle), oracleRequest, false);
         assertFalse(optimisticAssertor.settleAndGetAssertion(oaAssertionId));
 
+        // Check that the data assertion has been deleted
+        (, address asserter) = dataAsserter.assertionsData(dataAssertionId);
+        assertEq(asserter, address(0));
+
         (bool dataAvailable, uint256 data) = dataAsserter.getData(dataAssertionId);
         assertFalse(dataAvailable);
+
+        // Increase time in the evm
+        vm.warp(block.timestamp + 1);
 
         // Same asserter should be able to re-assert the correct data.
         vm.startPrank(TestAddress.account1);

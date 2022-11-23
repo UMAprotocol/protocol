@@ -60,12 +60,15 @@ contract DataAsserter {
         defaultCurrency.safeApprove(address(oa), bond);
         oaAssertionId = oa.assertTruthFor(
             abi.encodePacked(
-                "Data : ",
-                AncillaryData.toUtf8BytesUint(data),
-                " is valid for request 0x",
+                "Data asserted for dataAssertionId: 0x",
                 AncillaryData.toUtf8Bytes(dataAssertionId),
+                " and asserter: 0x",
+                AncillaryData.toUtf8BytesAddress(asserter),
+                " at timestamp: ",
+                AncillaryData.toUtf8BytesUint(block.timestamp),
                 "in the DataAsserter contract at 0x",
-                AncillaryData.toUtf8BytesAddress(address(this))
+                AncillaryData.toUtf8BytesAddress(address(this)),
+                " is valid."
             ),
             asserter,
             address(this),
