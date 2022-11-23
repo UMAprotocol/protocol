@@ -58,6 +58,10 @@ contract PredictionMarket is OptimisticAssertorCallbackRecipientInterface {
         defaultIdentifier = oa.defaultIdentifier();
     }
 
+    function getMarket(bytes32 marketId) public view returns (Market memory) {
+        return markets[marketId];
+    }
+
     function initializeMarket(
         string memory outcome1, // Short name of the first outcome.
         string memory outcome2, // Short name of the second outcome.
