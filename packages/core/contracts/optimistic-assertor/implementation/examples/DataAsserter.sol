@@ -18,7 +18,7 @@ contract DataAsserter {
 
     struct DataAssertion {
         uint256 data; // This could be any data type.
-        address asserter; // The asserter address, both with the data, they uniquely identify the assertion.
+        bytes32 oaAssertionId; // The optimistic assertor assertion ID.
     }
 
     mapping(bytes32 => bytes32) public oaIdsToInternalIds;
@@ -27,7 +27,7 @@ contract DataAsserter {
 
     mapping(bytes32 => DataAssertion) public assertionsData;
 
-    event DataAsserted(bytes32 indexed dataAssertionId, uint256 data, address indexed asserter);
+    event DataAsserted(bytes32 indexed dataId, uint256 data, bytes32 oaAssertionId);
 
     event DataAssertionResolved(bytes32 indexed dataAssertionId);
 
@@ -39,12 +39,7 @@ contract DataAsserter {
 
     // Returns a bool of whether the data is available and the data.
     function getData(bytes32 dataId, address asserter) public view returns (bool, uint256) {
-        return _getData(_getAssertionId(dataId, asserter));
-    }
-
-    // Returns a bool of whether the data is available and the data.
-    function getData(bytes32 internalDataId) public view returns (bool, uint256) {
-        return _getData(internalDataId);
+        return _getData(getAssertionId(dataId, asserter));
     }
 
     // Asserts data for a specific dataId on behalf of an asserter address.
@@ -52,35 +47,36 @@ contract DataAsserter {
         bytes32 dataId, // This could be any data type.
         uint256 data, // This could be any data type.
         address asserter
-    ) public returns (bytes32 dataAssertionId, bytes32 oaAssertionId) {
-        dataAssertionId = _getAssertionId(dataId, asserter);
-        require(assertionsData[dataAssertionId].asserter == address(0), "Data already asserted");
+    ) public {
+        bytes32 dataAssertionId = getAssertionId(dataId, asserter);
+        require(assertionsData[dataAssertionId].oaAssertionId == bytes32(0), "Data already asserted");
         uint256 bond = oa.getMinimumBond(address(defaultCurrency));
         defaultCurrency.safeTransferFrom(msg.sender, address(this), bond);
         defaultCurrency.safeApprove(address(oa), bond);
-        oaAssertionId = oa.assertTruthFor(
-            abi.encodePacked(
-                "Data asserted for dataAssertionId: 0x",
-                AncillaryData.toUtf8Bytes(dataAssertionId),
-                " and asserter: 0x",
-                AncillaryData.toUtf8BytesAddress(asserter),
-                " at timestamp: ",
-                AncillaryData.toUtf8BytesUint(block.timestamp),
-                "in the DataAsserter contract at 0x",
-                AncillaryData.toUtf8BytesAddress(address(this)),
-                " is valid."
-            ),
-            asserter,
-            address(this),
-            address(0), // No sovereign security manager.
-            defaultCurrency,
-            bond,
-            assertionLiveness,
-            defaultIdentifier
-        );
-        assertionsData[dataAssertionId] = DataAssertion({ data: data, asserter: asserter });
+        bytes32 oaAssertionId =
+            oa.assertTruthFor(
+                abi.encodePacked(
+                    "Data asserted for dataId: 0x",
+                    AncillaryData.toUtf8Bytes(dataId),
+                    " and asserter: 0x",
+                    AncillaryData.toUtf8BytesAddress(asserter),
+                    " at timestamp: ",
+                    AncillaryData.toUtf8BytesUint(block.timestamp),
+                    "in the DataAsserter contract at 0x",
+                    AncillaryData.toUtf8BytesAddress(address(this)),
+                    " is valid."
+                ),
+                asserter,
+                address(this),
+                address(0), // No sovereign security manager.
+                defaultCurrency,
+                bond,
+                assertionLiveness,
+                defaultIdentifier
+            );
+        assertionsData[dataAssertionId] = DataAssertion({ data: data, oaAssertionId: oaAssertionId });
         oaIdsToInternalIds[oaAssertionId] = dataAssertionId;
-        emit DataAsserted(dataAssertionId, data, asserter);
+        emit DataAsserted(dataId, data, oaAssertionId);
     }
 
     // OptimisticAssertor callback.
@@ -100,12 +96,12 @@ contract DataAsserter {
     // This OptimisticAssertor callback function needs to be defined so the OA doesn't revert when it tries to call it.
     function assertionDisputed(bytes32 assertionId) public {}
 
-    function _getData(bytes32 internalDataId) internal view returns (bool, uint256) {
-        if (!assertionsResolved[internalDataId]) return (false, 0);
-        return (true, assertionsData[internalDataId].data);
+    function getAssertionId(bytes32 dataId, address asserter) public pure returns (bytes32) {
+        return keccak256(abi.encode(dataId, asserter));
     }
 
-    function _getAssertionId(bytes32 dataId, address asserter) internal pure returns (bytes32) {
-        return keccak256(abi.encode(dataId, asserter));
+    function _getData(bytes32 dataAssertionId) internal view returns (bool, uint256) {
+        if (!assertionsResolved[dataAssertionId]) return (false, 0);
+        return (true, assertionsData[dataAssertionId].data);
     }
 }
