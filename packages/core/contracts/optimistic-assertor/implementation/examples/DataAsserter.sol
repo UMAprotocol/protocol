@@ -64,7 +64,7 @@ contract DataAsserter {
                 AncillaryData.toUtf8BytesUint(data),
                 " is valid for request 0x",
                 AncillaryData.toUtf8Bytes(dataAssertionId),
-                "in the InternalAssertor contract at 0x",
+                "in the DataAsserter contract at 0x",
                 AncillaryData.toUtf8BytesAddress(address(this))
             ),
             asserter,
