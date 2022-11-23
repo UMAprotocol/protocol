@@ -23,7 +23,8 @@ contract SimpleAssertionsWithClaimOnly is Common {
                     address(defaultCurrency),
                     TestAddress.account1,
                     address(0),
-                    address(0)
+                    address(0),
+                    defaultIdentifier
                 )
             );
 
@@ -72,7 +73,7 @@ contract SimpleAssertionsWithClaimOnly is Common {
         assertEq(queries.length, 1);
 
         // The query should be for the disputed assertion.
-        assertEq(queries[0].identifier, optimisticAssertor.identifier());
+        assertEq(queries[0].identifier, optimisticAssertor.defaultIdentifier());
         assertEq(queries[0].time, optimisticAssertor.readAssertion(assertionId).assertionTime);
         assertEq(queries[0].ancillaryData, optimisticAssertor.stampAssertion(assertionId));
 
