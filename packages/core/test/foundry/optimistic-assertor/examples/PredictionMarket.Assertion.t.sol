@@ -58,6 +58,20 @@ contract PredictionMarketAssertionTest is PredictionMarketTestCommon {
         assertEq(assertion.ssmSettings.assertingCaller, address(predictionMarket));
     }
 
+    function test_AssertMinimumBond() public {
+        // Initialize second market with 0 required bond.
+        _fundInitializationReward();
+        vm.roll(block.number + 1);
+        vm.prank(TestAddress.owner);
+        bytes32 secondMarketId = predictionMarket.initializeMarket(outcome1, outcome2, description, reward, 0);
+        uint256 oaBalanceBefore = defaultCurrency.balanceOf(address(optimisticAssertor));
+        uint256 minimumBond = optimisticAssertor.getMinimumBond(address(defaultCurrency));
+
+        // Make assertion and verify minimum bond posted to Optimistic Asseror.
+        _assertMarket(secondMarketId, outcome1);
+        assertEq(defaultCurrency.balanceOf(address(optimisticAssertor)), oaBalanceBefore + minimumBond);
+    }
+
     function test_DisputeCallbackReceived() public {
         bytes32 assertionId = _assertMarket(marketId, outcome1);
 
