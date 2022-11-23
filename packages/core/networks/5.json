@@ -40,6 +40,10 @@
     "address": "0x63fDfF29EBBcf1a958032d1E64F7627c3C98A059"
   },
   {
+    "contractName": "Voting",
+    "address": "0x9f444346FD853084158ce9cfa7e062BaBd51a577"
+  },
+  {
     "contractName": "VotingV2",
     "address": "0xF71cdF8A34c56933A8871354A2570a301364e95F"
   },
