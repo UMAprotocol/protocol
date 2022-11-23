@@ -7,10 +7,6 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 **Note:** Version bump only for package @uma/insured-bridge-relayer
 
-
-
-
-
 ## [1.20.9](https://github.com/UMAprotocol/protocol/compare/@uma/insured-bridge-relayer@1.20.8...@uma/insured-bridge-relayer@1.20.9) (2022-11-23)
 
 **Note:** Version bump only for package @uma/insured-bridge-relayer
