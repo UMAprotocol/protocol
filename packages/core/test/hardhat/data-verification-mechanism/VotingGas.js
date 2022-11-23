@@ -2,7 +2,7 @@ const hre = require("hardhat");
 const { runDefaultFixture } = require("@uma/common");
 const { getContract } = hre;
 const { RegistryRolesEnum, getRandomSignedInt, computeVoteHash, signMessage } = require("@uma/common");
-const { moveToNextRound, moveToNextPhase } = require("../../utils/Voting.js");
+const { moveToNextRound, moveToNextPhase } = require("../utils/Voting.js");
 
 const Registry = getContract("Registry");
 const Voting = getContract("Voting");

@@ -6,3 +6,6 @@ flattened/
 types/
 contract-types/
 deployments/
+lib/
+forge-cache/
+out/

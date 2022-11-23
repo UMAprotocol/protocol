@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.41.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.40.0...@uma/core@2.41.0) (2022-11-02)
+
+### Features
+
+- **merkle-distributor:** Make \_verifyAndMarkClaimed internal ([#4220](https://github.com/UMAprotocol/protocol/issues/4220)) ([b1a4301](https://github.com/UMAprotocol/protocol/commit/b1a43018f3fe15d7c3b378095b01ce722a1d8e18))
+- second optimistic assertor implementation ([#4215](https://github.com/UMAprotocol/protocol/issues/4215)) ([d15eb3b](https://github.com/UMAprotocol/protocol/commit/d15eb3b9ab28b3b95cdf50b4e46779c1b4dfb2e4))
+
 # [2.40.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.39.0...@uma/core@2.40.0) (2022-11-01)
 
 ### Features
