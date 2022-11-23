@@ -7,10 +7,6 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 **Note:** Version bump only for package @uma/across-monitor
 
-
-
-
-
 ## [1.1.27](https://github.com/UMAprotocol/protocol/compare/@uma/across-monitor@1.1.25...@uma/across-monitor@1.1.27) (2022-11-23)
 
 **Note:** Version bump only for package @uma/across-monitor
