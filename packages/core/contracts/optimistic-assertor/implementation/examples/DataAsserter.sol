@@ -39,7 +39,7 @@ contract DataAsserter {
         defaultIdentifier = oa.defaultIdentifier();
     }
 
-    // Returns a bool of whether the data is available and the data.
+    // For a given dataId and asserter, returns a boolean indicating whether the data is accessible and the data itself.
     function getData(bytes32 dataId, address asserter) public view returns (bool, uint256) {
         bytes32 dataAssertionId = getAssertionId(dataId, asserter);
         if (!assertionsResolved[dataAssertionId]) return (false, 0);
