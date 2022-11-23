@@ -19,6 +19,7 @@ export enum ContextType {
   setActiveRequestByTransaction = "setActiveRequestByTransaction",
   settle = "settle",
   updateActiveRequest = "updateActiveRequest",
+  fetchEventBased = "fetchEventBased",
 }
 
 export type ContextProps = {

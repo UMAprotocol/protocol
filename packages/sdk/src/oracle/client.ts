@@ -219,6 +219,9 @@ export function factory(
       { chainId: Number(chainId), pollRateSec: chainConfig.checkTxIntervalSec },
       "poller"
     );
+    // updates event based data on all requests
+    if (!chainConfig.disableFetchEventBased)
+      poller.types.fetchEventBased.create({ chainId: Number(chainId) }, "poller");
   }
   // create active request poller for all chains. Should only have one of these
   poller.types.pollActiveRequest.create(undefined, "poller");
