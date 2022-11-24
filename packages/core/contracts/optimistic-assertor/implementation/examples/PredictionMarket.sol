@@ -20,7 +20,7 @@ contract PredictionMarket is OptimisticAssertorCallbackRecipientInterface {
 
     struct Market {
         bool resolved; // True if the market has been resolved and payouts can be settled.
-        bytes32 assertedOutcomeId; // Hash of asserted outcome (outcome1, outcome2 or splitOutcome).
+        bytes32 assertedOutcomeId; // Hash of asserted outcome (outcome1, outcome2 or unresolvable).
         ExpandedIERC20 outcome1Token; // ERC20 token representing the value of the first outcome.
         ExpandedIERC20 outcome2Token; // ERC20 token representing the value of the second outcome.
         uint256 reward; // Reward available for asserting true market outcome.
@@ -44,7 +44,7 @@ contract PredictionMarket is OptimisticAssertorCallbackRecipientInterface {
     OptimisticAssertorInterface public immutable oa;
     uint256 public constant assertionLiveness = 7200; // 2 hours.
     bytes32 public immutable defaultIdentifier; // Identifier used for all prediction markets.
-    bytes public constant splitOutcome = "Unknown"; // Name of the split outcome.
+    bytes public constant unresolvable = "Unresolvable"; // Name of the unresolvable outcome where payouts are split.
 
     event MarketInitialized(
         bytes32 indexed marketId,
@@ -131,7 +131,7 @@ contract PredictionMarket is OptimisticAssertorCallbackRecipientInterface {
         );
     }
 
-    // Assert the market with any of 3 possible outcomes: names of outcome1, outcome2 or splitOutcome.
+    // Assert the market with any of 3 possible outcomes: names of outcome1, outcome2 or unresolvable.
     // Only one concurrent assertion per market is allowed.
     function assertMarket(bytes32 marketId, string memory assertedOutcome) public returns (bytes32 assertionId) {
         Market storage market = markets[marketId];
@@ -141,7 +141,7 @@ contract PredictionMarket is OptimisticAssertorCallbackRecipientInterface {
         require(
             assertedOutcomeId == keccak256(market.outcome1) ||
                 assertedOutcomeId == keccak256(market.outcome2) ||
-                assertedOutcomeId == keccak256(splitOutcome),
+                assertedOutcomeId == keccak256(unresolvable),
             "Invalid asserted outcome"
         );
 

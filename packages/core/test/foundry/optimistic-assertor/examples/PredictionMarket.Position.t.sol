@@ -76,8 +76,8 @@ contract PredictionMarketPositionTest is PredictionMarketTestCommon {
         assertEq(defaultCurrency.balanceOf(TestAddress.account3), account3BalanceBefore + outcomeTokens * 2);
     }
 
-    function test_SettleSplitOutcome() public {
-        bytes32 assertionId = _assertMarket(marketId, string(predictionMarket.splitOutcome()));
+    function test_SettleUnresolvableOutcome() public {
+        bytes32 assertionId = _assertMarket(marketId, string(predictionMarket.unresolvable()));
 
         // Two parties (Accounts 2 and 3 not to mix balance with asserting Account 1) mint and swap outcome tokens.
         _mintAndSwapOutcomeTokens(marketId);
