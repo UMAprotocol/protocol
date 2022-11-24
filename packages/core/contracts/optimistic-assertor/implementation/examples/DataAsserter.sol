@@ -66,7 +66,7 @@ contract DataAsserter {
                     AncillaryData.toUtf8BytesAddress(asserter),
                     " at timestamp: ",
                     AncillaryData.toUtf8BytesUint(block.timestamp),
-                    "in the DataAsserter contract at 0x",
+                    " in the DataAsserter contract at 0x",
                     AncillaryData.toUtf8BytesAddress(address(this)),
                     " is valid."
                 ),
