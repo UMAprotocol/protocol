@@ -3,6 +3,26 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.31.2](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.31.1...@uma/sdk@0.31.2) (2022-11-23)
+
+**Note:** Version bump only for package @uma/sdk
+
+## [0.31.1](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.31.0...@uma/sdk@0.31.1) (2022-11-23)
+
+**Note:** Version bump only for package @uma/sdk
+
+# [0.31.0](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.29.5...@uma/sdk@0.31.0) (2022-11-23)
+
+### Features
+
+- add event based fetching for all requests ([#4259](https://github.com/UMAprotocol/protocol/issues/4259)) ([33f0020](https://github.com/UMAprotocol/protocol/commit/33f0020c305867c4b8b36eb1cd3061c364b5bc92))
+
+# [0.30.0](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.29.5...@uma/sdk@0.30.0) (2022-11-23)
+
+### Features
+
+- add event based fetching for all requests ([#4259](https://github.com/UMAprotocol/protocol/issues/4259)) ([33f0020](https://github.com/UMAprotocol/protocol/commit/33f0020c305867c4b8b36eb1cd3061c364b5bc92))
+
 ## [0.29.5](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.29.4...@uma/sdk@0.29.5) (2022-11-02)
 
 **Note:** Version bump only for package @uma/sdk

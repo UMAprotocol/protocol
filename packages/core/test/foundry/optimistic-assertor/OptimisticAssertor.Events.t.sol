@@ -23,7 +23,8 @@ contract OptimisticAssertorEvents is Common {
                     address(defaultCurrency),
                     TestAddress.account1,
                     address(0),
-                    address(0)
+                    address(0),
+                    defaultIdentifier
                 )
             );
 
@@ -47,7 +48,7 @@ contract OptimisticAssertorEvents is Common {
         vm.expectEmit(true, true, true, true);
         emit PriceRequestAdded(
             address(optimisticAssertor),
-            optimisticAssertor.identifier(),
+            optimisticAssertor.defaultIdentifier(),
             optimisticAssertor.readAssertion(assertionId).assertionTime,
             optimisticAssertor.stampAssertion(assertionId)
         );

@@ -2,13 +2,13 @@
 pragma solidity ^0.8.0;
 
 import "../Common.sol";
-import "../../../../contracts/optimistic-assertor/implementation/sovereign-security-manager/WhitelistedSovereignSecurityManager.sol";
+import "../../../../contracts/optimistic-assertor/implementation/sovereign-security-manager/WhitelistCallerSovereignSecurityManager.sol";
 
-contract WhitelistedSovereignSecurityManagerTest is Common {
-    WhitelistedSovereignSecurityManager ssm;
+contract WhitelistCallerSovereignSecurityManagerTest is Common {
+    WhitelistCallerSovereignSecurityManager ssm;
 
     function setUp() public {
-        ssm = new WhitelistedSovereignSecurityManager();
+        ssm = new WhitelistCallerSovereignSecurityManager();
     }
 
     function test_AssertingCallerWhitelist() public {
@@ -39,7 +39,7 @@ contract WhitelistedSovereignSecurityManagerTest is Common {
 
     function _mockReadAssertionAssertingCaller(address mockAssertingCaller, bytes32 assertionId) public {
         OptimisticAssertorInterface.Assertion memory assertion;
-        assertion.assertingCaller = mockAssertingCaller;
+        assertion.ssmSettings.assertingCaller = mockAssertingCaller;
         vm.mockCall(
             mockOptimisticAssertorAddress,
             abi.encodeWithSelector(OptimisticAssertorInterface.readAssertion.selector, assertionId),

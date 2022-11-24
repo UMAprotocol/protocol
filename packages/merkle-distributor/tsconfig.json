@@ -1,8 +1,0 @@
-{
-  "extends": "@tsconfig/node14/tsconfig.json",
-  "include": ["integration-test/**/*.ts", "hardhat.config.ts", "scripts/**/*.ts"],
-  "compilerOptions": {
-    "outDir": "build"
-  },
-  "references": [{ "path": "./src/" }]
-}
