@@ -18,7 +18,7 @@ contract DataAsserter {
 
     struct DataAssertion {
         bytes32 dataId; // The dataId that was asserted.
-        uint256 data; // This could be an arbitrary data type.
+        bytes32 data; // This could be an arbitrary data type.
         address asserter; // The address that made the assertion.
         bytes32 oaAssertionId; // The optimistic assertor assertion ID.
         bool resolved; // Whether the assertion has been resolved.
@@ -28,9 +28,9 @@ contract DataAsserter {
 
     mapping(bytes32 => DataAssertion) public assertionsData;
 
-    event DataAsserted(bytes32 indexed dataId, uint256 data, address indexed asserter, bytes32 oaAssertionId);
+    event DataAsserted(bytes32 indexed dataId, bytes32 data, address indexed asserter, bytes32 oaAssertionId);
 
-    event DataAssertionResolved(bytes32 indexed dataId, uint256 data, address indexed asserter, bytes32 oaAssertionId);
+    event DataAssertionResolved(bytes32 indexed dataId, bytes32 data, address indexed asserter, bytes32 oaAssertionId);
 
     constructor(address _defaultCurrency, address _optimisticAssertor) {
         defaultCurrency = IERC20(_defaultCurrency);
@@ -39,7 +39,7 @@ contract DataAsserter {
     }
 
     // For a given dataId and asserter, returns a boolean indicating whether the data is accessible and the data itself.
-    function getData(bytes32 dataId, address asserter) public view returns (bool, uint256) {
+    function getData(bytes32 dataId, address asserter) public view returns (bool, bytes32) {
         bytes32 dataAssertionId = getAssertionId(dataId, asserter);
         if (!assertionsData[dataAssertionId].resolved) return (false, 0);
         return (true, assertionsData[dataAssertionId].data);
@@ -48,7 +48,7 @@ contract DataAsserter {
     // Asserts data for a specific dataId on behalf of an asserter address.
     function assertDataFor(
         bytes32 dataId,
-        uint256 data,
+        bytes32 data,
         address asserter
     ) public {
         bytes32 dataAssertionId = getAssertionId(dataId, asserter);

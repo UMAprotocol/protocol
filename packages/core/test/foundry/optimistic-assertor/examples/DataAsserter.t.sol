@@ -6,8 +6,8 @@ import "../../../../contracts/optimistic-assertor/implementation/examples/DataAs
 contract DataAsserterTest is Common {
     DataAsserter public dataAsserter;
     bytes32 dataId = bytes32("dataId");
-    uint256 correctData = 1000;
-    uint256 incorrectData = 2000;
+    bytes32 correctData = bytes32("correctData");
+    bytes32 incorrectData = bytes32("incorrectData");
 
     function setUp() public {
         _commonSetup();
@@ -23,7 +23,7 @@ contract DataAsserterTest is Common {
         vm.stopPrank(); // Return caller address to standard.
 
         // Assertion data should not be available before the liveness period.
-        (bool dataAvailable, uint256 data) = dataAsserter.getData(dataId, TestAddress.account1);
+        (bool dataAvailable, bytes32 data) = dataAsserter.getData(dataId, TestAddress.account1);
         assertFalse(dataAvailable);
 
         // Move time forward to allow for the assertion to expire.
@@ -55,7 +55,7 @@ contract DataAsserterTest is Common {
         _mockOracleResolved(address(mockOracle), oracleRequest, true);
         assertTrue(optimisticAssertor.settleAndGetAssertion(oaAssertionId));
 
-        (bool dataAvailable, uint256 data) = dataAsserter.getData(dataId, TestAddress.account1);
+        (bool dataAvailable, bytes32 data) = dataAsserter.getData(dataId, TestAddress.account1);
         assertTrue(dataAvailable);
         assertEq(data, correctData);
     }
@@ -81,7 +81,7 @@ contract DataAsserterTest is Common {
         (, , , oaAssertionId, ) = dataAsserter.assertionsData(dataAssertionId);
         assertEq(oaAssertionId, bytes32(0));
 
-        (bool dataAvailable, uint256 data) = dataAsserter.getData(dataId, TestAddress.account1);
+        (bool dataAvailable, bytes32 data) = dataAsserter.getData(dataId, TestAddress.account1);
         assertFalse(dataAvailable);
 
         // Increase time in the evm
