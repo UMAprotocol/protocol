@@ -20,7 +20,6 @@ contract DataAsserter {
         bytes32 dataId; // The dataId that was asserted.
         bytes32 data; // This could be an arbitrary data type.
         address asserter; // The address that made the assertion.
-        bytes32 oaAssertionId; // The optimistic assertor assertion ID.
         bool resolved; // Whether the assertion has been resolved.
     }
 
@@ -50,35 +49,34 @@ contract DataAsserter {
         bytes32 dataId,
         bytes32 data,
         address asserter
-    ) public {
+    ) public returns (bytes32 oaAssertionId) {
         bytes32 dataAssertionId = getAssertionId(dataId, asserter);
         asserter = asserter == address(0) ? msg.sender : asserter;
-        require(assertionsData[dataAssertionId].oaAssertionId == bytes32(0), "Data already asserted");
+        require(assertionsData[dataAssertionId].asserter == address(0), "Data already asserted");
         uint256 bond = oa.getMinimumBond(address(defaultCurrency));
         defaultCurrency.safeTransferFrom(msg.sender, address(this), bond);
         defaultCurrency.safeApprove(address(oa), bond);
-        bytes32 oaAssertionId =
-            oa.assertTruthFor(
-                abi.encodePacked(
-                    "Data asserted for dataId: 0x",
-                    AncillaryData.toUtf8Bytes(dataId),
-                    " and asserter: 0x",
-                    AncillaryData.toUtf8BytesAddress(asserter),
-                    " at timestamp: ",
-                    AncillaryData.toUtf8BytesUint(block.timestamp),
-                    " in the DataAsserter contract at 0x",
-                    AncillaryData.toUtf8BytesAddress(address(this)),
-                    " is valid."
-                ),
-                asserter,
-                address(this),
-                address(0), // No sovereign security manager.
-                defaultCurrency,
-                bond,
-                assertionLiveness,
-                defaultIdentifier
-            );
-        assertionsData[dataAssertionId] = DataAssertion(dataId, data, asserter, oaAssertionId, false);
+        oaAssertionId = oa.assertTruthFor(
+            abi.encodePacked(
+                "Data asserted for dataId: 0x",
+                AncillaryData.toUtf8Bytes(dataId),
+                " and asserter: 0x",
+                AncillaryData.toUtf8BytesAddress(asserter),
+                " at timestamp: ",
+                AncillaryData.toUtf8BytesUint(block.timestamp),
+                " in the DataAsserter contract at 0x",
+                AncillaryData.toUtf8BytesAddress(address(this)),
+                " is valid."
+            ),
+            asserter,
+            address(this),
+            address(0), // No sovereign security manager.
+            defaultCurrency,
+            bond,
+            assertionLiveness,
+            defaultIdentifier
+        );
+        assertionsData[dataAssertionId] = DataAssertion(dataId, data, asserter, false);
         oaIdsToInternalIds[oaAssertionId] = dataAssertionId;
         emit DataAsserted(dataId, data, asserter, oaAssertionId);
     }
