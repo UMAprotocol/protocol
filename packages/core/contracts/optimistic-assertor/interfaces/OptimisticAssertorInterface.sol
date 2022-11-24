@@ -23,6 +23,7 @@ interface OptimisticAssertorInterface {
         uint256 bond;
         uint256 assertionTime; // Time of the assertion.
         uint256 expirationTime;
+        bytes32 claimId;
         bytes32 identifier;
         SsmSettings ssmSettings;
     }

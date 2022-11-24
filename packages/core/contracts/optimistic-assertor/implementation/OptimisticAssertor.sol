@@ -108,6 +108,7 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
             bond: bond,
             assertionTime: getCurrentTime(),
             expirationTime: getCurrentTime() + liveness,
+            claimId: keccak256(claim),
             identifier: identifier,
             ssmSettings: SsmSettings({
                 useDisputeResolution: true, // this is the default behavior: if not specified by the Sovereign security manager the assertion will respect the DVM result.
