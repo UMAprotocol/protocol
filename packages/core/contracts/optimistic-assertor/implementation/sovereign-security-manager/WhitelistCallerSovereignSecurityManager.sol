@@ -19,7 +19,8 @@ contract WhitelistCallerSovereignSecurityManager is BaseSovereignSecurityManager
                     optimisticAssertor.readAssertion(assertionId).ssmSettings.assertingCaller
                 ],
                 useDvmAsOracle: true,
-                useDisputeResolution: true
+                useDisputeResolution: true,
+                validateDisputers: false
             });
     }
 }

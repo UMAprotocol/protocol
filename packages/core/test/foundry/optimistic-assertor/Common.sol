@@ -76,7 +76,8 @@ contract Common is Test {
     function _mockSsmPolicies(
         bool allowAssertion,
         bool useDvmAsOracle,
-        bool useDisputeResolution
+        bool useDisputeResolution,
+        bool validateDisputers
     ) internal {
         // Mock getAssertionPolicies call to block assertion. No need to pass assertionId as mockCall uses loose matching.
         vm.mockCall(
@@ -86,7 +87,8 @@ contract Common is Test {
                 SovereignSecurityManagerInterface.AssertionPolicies({
                     allowAssertion: allowAssertion,
                     useDvmAsOracle: useDvmAsOracle,
-                    useDisputeResolution: useDisputeResolution
+                    useDisputeResolution: useDisputeResolution,
+                    validateDisputers: validateDisputers
                 })
             )
         );

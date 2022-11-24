@@ -11,6 +11,12 @@ contract OwnerDiscardOracleSovereignSecurityManager is BaseSovereignSecurityMana
     }
 
     function getAssertionPolicies(bytes32 assertionId) public view override returns (AssertionPolicies memory) {
-        return AssertionPolicies({ allowAssertion: true, useDvmAsOracle: true, useDisputeResolution: !discardOracle });
+        return
+            AssertionPolicies({
+                allowAssertion: true,
+                useDvmAsOracle: true,
+                useDisputeResolution: !discardOracle,
+                validateDisputers: false
+            });
     }
 }

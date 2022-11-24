@@ -8,6 +8,7 @@ interface SovereignSecurityManagerInterface {
         bool allowAssertion;
         bool useDvmAsOracle;
         bool useDisputeResolution;
+        bool validateDisputers;
     }
 
     function getAssertionPolicies(bytes32 assertionId) external view returns (AssertionPolicies memory);

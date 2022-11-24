@@ -27,7 +27,7 @@ contract SovereignSecurityManagerPoliciesEnforced is Common {
 
     function test_RevertIf_AssertionBlocked() public {
         // Block any assertion.
-        _mockSsmPolicies(false, true, true);
+        _mockSsmPolicies(false, true, true, false);
 
         vm.expectRevert("Assertion not allowed");
         _assertWithCallbackRecipientAndSsm(address(0), mockedSovereignSecurityManager);
@@ -36,7 +36,7 @@ contract SovereignSecurityManagerPoliciesEnforced is Common {
 
     function test_DisableDvmAsOracle() public {
         // Use SSM as oracle.
-        _mockSsmPolicies(true, false, true);
+        _mockSsmPolicies(true, false, true, false);
         _mockSsmDisputerCheck(true);
 
         bytes32 assertionId = _assertWithCallbackRecipientAndSsm(address(0), mockedSovereignSecurityManager);
@@ -52,7 +52,7 @@ contract SovereignSecurityManagerPoliciesEnforced is Common {
 
     function test_DisregardOracle() public {
         // Do not respect Oracle on dispute.
-        _mockSsmPolicies(true, true, false);
+        _mockSsmPolicies(true, true, false, false);
         _mockSsmDisputerCheck(true);
 
         bytes32 assertionId = _assertWithCallbackRecipientAndSsm(address(0), mockedSovereignSecurityManager);
@@ -113,7 +113,7 @@ contract SovereignSecurityManagerPoliciesEnforced is Common {
 
     function test_CallbackOnDispute() public {
         // Assert with callback recipient and not respecting Oracle.
-        _mockSsmPolicies(true, true, false);
+        _mockSsmPolicies(true, true, false, false);
         _mockSsmDisputerCheck(true);
 
         bytes32 assertionId =
@@ -128,8 +128,8 @@ contract SovereignSecurityManagerPoliciesEnforced is Common {
     }
 
     function test_DisputeAllowed() public {
-        // Default SSM policies and allow disputes.
-        _mockSsmPolicies(true, true, true);
+        // Validate disputers in SSM policies and allow disputes.
+        _mockSsmPolicies(true, true, true, true);
         _mockSsmDisputerCheck(true);
 
         bytes32 assertionId = _assertWithCallbackRecipientAndSsm(address(0), mockedSovereignSecurityManager);
@@ -139,8 +139,8 @@ contract SovereignSecurityManagerPoliciesEnforced is Common {
     }
 
     function test_RevertIf_DisputeNotAllowed() public {
-        // Default SSM policies and disallow disputes.
-        _mockSsmPolicies(true, true, true);
+        // Validate disputers in SSM policies and disallow disputes.
+        _mockSsmPolicies(true, true, true, true);
         _mockSsmDisputerCheck(false);
 
         bytes32 assertionId = _assertWithCallbackRecipientAndSsm(address(0), mockedSovereignSecurityManager);

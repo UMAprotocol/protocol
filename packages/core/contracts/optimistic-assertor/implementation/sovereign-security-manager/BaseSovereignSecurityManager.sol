@@ -6,7 +6,13 @@ contract BaseSovereignSecurityManager is SovereignSecurityManagerInterface {
     event PriceRequestAdded(bytes32 indexed identifier, uint256 time, bytes ancillaryData);
 
     function getAssertionPolicies(bytes32 assertionId) public view virtual override returns (AssertionPolicies memory) {
-        return AssertionPolicies({ allowAssertion: true, useDvmAsOracle: true, useDisputeResolution: true });
+        return
+            AssertionPolicies({
+                allowAssertion: true,
+                useDvmAsOracle: true,
+                useDisputeResolution: true,
+                validateDisputers: false
+            });
     }
 
     function isDisputeAllowed(bytes32 assertionId, address disputeCaller) public view virtual override returns (bool) {

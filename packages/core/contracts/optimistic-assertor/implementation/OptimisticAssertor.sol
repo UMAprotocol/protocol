@@ -112,6 +112,7 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
             ssmSettings: SsmSettings({
                 useDisputeResolution: true, // this is the default behavior: if not specified by the Sovereign security manager the assertion will respect the DVM result.
                 useDvmAsOracle: true, // this is the default behavior: if not specified by the Sovereign security manager the assertion will use the DVM as an oracle.
+                validateDisputers: false, // this is the default behavior: if not specified by the Sovereign security manager the disputer will not be validated.
                 sovereignSecurityManager: sovereignSecurityManager,
                 assertingCaller: msg.sender
             })
@@ -128,6 +129,9 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
 
         // Check if the Sovereign Security Manager is configured to use the DVM as an oracle.
         assertions[assertionId].ssmSettings.useDvmAsOracle = assertionPolicies.useDvmAsOracle;
+
+        // Check if the Sovereign Security Manager is configured to validate the disputers.
+        assertions[assertionId].ssmSettings.validateDisputers = assertionPolicies.validateDisputers;
 
         emit AssertionMade(
             assertionId,
@@ -308,13 +312,13 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
         returns (SovereignSecurityManagerInterface.AssertionPolicies memory)
     {
         address ssm = assertions[assertionId].ssmSettings.sovereignSecurityManager;
-        if (ssm == address(0)) return SovereignSecurityManagerInterface.AssertionPolicies(true, true, true);
+        if (ssm == address(0)) return SovereignSecurityManagerInterface.AssertionPolicies(true, true, true, false);
         return SovereignSecurityManagerInterface(ssm).getAssertionPolicies(assertionId);
     }
 
     function _isDisputeAllowed(bytes32 assertionId) internal view returns (bool) {
         address ssm = assertions[assertionId].ssmSettings.sovereignSecurityManager;
-        if (ssm == address(0)) return true;
+        if (!assertions[assertionId].ssmSettings.validateDisputers) return true;
         return SovereignSecurityManagerInterface(ssm).isDisputeAllowed(assertionId, msg.sender);
     }
 

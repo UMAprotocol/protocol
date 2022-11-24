@@ -7,6 +7,16 @@ import "../../interfaces/OptimisticAssertorInterface.sol";
 contract WhitelistDisputerSovereignSecurityManager is BaseSovereignSecurityManager, Ownable {
     mapping(address => bool) whitelistedDisputeCallers;
 
+    function getAssertionPolicies(bytes32 assertionId) public view override returns (AssertionPolicies memory) {
+        return
+            AssertionPolicies({
+                allowAssertion: true,
+                useDvmAsOracle: true,
+                useDisputeResolution: true,
+                validateDisputers: true
+            });
+    }
+
     function setDisputeCallerInWhitelist(address disputeCaller, bool value) public onlyOwner {
         whitelistedDisputeCallers[disputeCaller] = value;
     }

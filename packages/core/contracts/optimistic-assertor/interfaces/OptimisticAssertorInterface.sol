@@ -6,7 +6,8 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 interface OptimisticAssertorInterface {
     struct SsmSettings {
         bool useDisputeResolution; // TODO: might be moved to SovereignSecurityManager.
-        bool useDvmAsOracle; // True if the DVM is used as an oracle (SovereignSecurityManager on False)
+        bool useDvmAsOracle; // True if the DVM is used as an oracle (SovereignSecurityManager on False).
+        bool validateDisputers; // True if the SSM isDisputeAllowed should be checked on disputes.
         address sovereignSecurityManager;
         address assertingCaller;
     }
