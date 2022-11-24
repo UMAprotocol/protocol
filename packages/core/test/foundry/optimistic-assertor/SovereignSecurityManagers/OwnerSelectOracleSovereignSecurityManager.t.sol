@@ -32,6 +32,7 @@ contract OwnerSelectOracleSovereignSecurityManagerTest is Common {
         assertTrue(policies.allowAssertion);
         assertTrue(policies.useDvmAsOracle);
         assertTrue(policies.useDisputeResolution);
+        assertFalse(policies.validateDisputers);
 
         ssm.setArbitrateViaSsm(true);
         policies = ssm.getAssertionPolicies(bytes32(0));
@@ -39,6 +40,7 @@ contract OwnerSelectOracleSovereignSecurityManagerTest is Common {
         assertTrue(policies.allowAssertion);
         assertFalse(policies.useDvmAsOracle);
         assertTrue(policies.useDisputeResolution);
+        assertFalse(policies.validateDisputers);
     }
 
     function test_RevertIf_NotOwner() public {

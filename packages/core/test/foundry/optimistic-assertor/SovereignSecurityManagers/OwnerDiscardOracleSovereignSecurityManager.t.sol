@@ -17,6 +17,7 @@ contract OwnerDiscardOracleSovereignSecurityManagerTest is Common {
         assertTrue(policies.allowAssertion);
         assertTrue(policies.useDvmAsOracle);
         assertTrue(policies.useDisputeResolution);
+        assertFalse(policies.validateDisputers);
 
         ssm.setDiscardOracle(true);
         policies = ssm.getAssertionPolicies(bytes32(0));
@@ -24,6 +25,7 @@ contract OwnerDiscardOracleSovereignSecurityManagerTest is Common {
         assertTrue(policies.allowAssertion);
         assertTrue(policies.useDvmAsOracle);
         assertFalse(policies.useDisputeResolution);
+        assertFalse(policies.validateDisputers);
     }
 
     function test_RevertIf_NotOwner() public {

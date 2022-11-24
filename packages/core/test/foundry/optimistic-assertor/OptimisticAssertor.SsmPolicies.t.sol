@@ -23,11 +23,12 @@ contract SovereignSecurityManagerPoliciesEnforced is Common {
         OptimisticAssertorInterface.Assertion memory assertion = optimisticAssertor.readAssertion(assertionId);
         assertTrue(assertion.ssmSettings.useDisputeResolution);
         assertTrue(assertion.ssmSettings.useDvmAsOracle);
+        assertFalse(assertion.ssmSettings.validateDisputers);
     }
 
     function test_RevertIf_AssertionBlocked() public {
         // Block any assertion.
-        _mockSsmPolicies(false, true, true);
+        _mockSsmPolicies(false, true, true, false);
 
         vm.expectRevert("Assertion not allowed");
         _assertWithCallbackRecipientAndSsm(address(0), mockedSovereignSecurityManager);
@@ -36,7 +37,8 @@ contract SovereignSecurityManagerPoliciesEnforced is Common {
 
     function test_DisableDvmAsOracle() public {
         // Use SSM as oracle.
-        _mockSsmPolicies(true, false, true);
+        _mockSsmPolicies(true, false, true, false);
+        _mockSsmDisputerCheck(true);
 
         bytes32 assertionId = _assertWithCallbackRecipientAndSsm(address(0), mockedSovereignSecurityManager);
         OptimisticAssertorInterface.Assertion memory assertion = optimisticAssertor.readAssertion(assertionId);
@@ -51,7 +53,8 @@ contract SovereignSecurityManagerPoliciesEnforced is Common {
 
     function test_DisregardOracle() public {
         // Do not respect Oracle on dispute.
-        _mockSsmPolicies(true, true, false);
+        _mockSsmPolicies(true, true, false, false);
+        _mockSsmDisputerCheck(true);
 
         bytes32 assertionId = _assertWithCallbackRecipientAndSsm(address(0), mockedSovereignSecurityManager);
         OptimisticAssertorInterface.Assertion memory assertion = optimisticAssertor.readAssertion(assertionId);
@@ -111,7 +114,9 @@ contract SovereignSecurityManagerPoliciesEnforced is Common {
 
     function test_CallbackOnDispute() public {
         // Assert with callback recipient and not respecting Oracle.
-        _mockSsmPolicies(true, true, false);
+        _mockSsmPolicies(true, true, false, false);
+        _mockSsmDisputerCheck(true);
+
         bytes32 assertionId =
             _assertWithCallbackRecipientAndSsm(mockedCallbackRecipient, mockedSovereignSecurityManager);
 
@@ -120,6 +125,45 @@ contract SovereignSecurityManagerPoliciesEnforced is Common {
         // Resolve callback should be made on dispute without settlement.
         _expectAssertionResolvedCallback(assertionId, false);
         _disputeAndGetOracleRequest(assertionId);
+        vm.clearMockedCalls();
+    }
+
+    function test_DoNotValidateDisputers() public {
+        // Deafault SSM policies do not validate disputers.
+        _mockSsmPolicies(true, true, true, false);
+
+        bytes32 assertionId = _assertWithCallbackRecipientAndSsm(address(0), mockedSovereignSecurityManager);
+
+        _disputeAndGetOracleRequest(assertionId);
+        vm.clearMockedCalls();
+    }
+
+    function test_ValidateAndAllowDispute() public {
+        // Validate disputers in SSM policies and allow disputes.
+        _mockSsmPolicies(true, true, true, true);
+        _mockSsmDisputerCheck(true);
+
+        bytes32 assertionId = _assertWithCallbackRecipientAndSsm(address(0), mockedSovereignSecurityManager);
+
+        _disputeAndGetOracleRequest(assertionId);
+        vm.clearMockedCalls();
+    }
+
+    function test_RevertIf_DisputeNotAllowed() public {
+        // Validate disputers in SSM policies and disallow disputes.
+        _mockSsmPolicies(true, true, true, true);
+        _mockSsmDisputerCheck(false);
+
+        bytes32 assertionId = _assertWithCallbackRecipientAndSsm(address(0), mockedSovereignSecurityManager);
+
+        // Fund Account2 for making dispute.
+        vm.startPrank(TestAddress.account2);
+        defaultCurrency.allocateTo(TestAddress.account2, defaultBond);
+        defaultCurrency.approve(address(optimisticAssertor), defaultBond);
+
+        vm.expectRevert("Dispute not allowed");
+        optimisticAssertor.disputeAssertionFor(assertionId, TestAddress.account2);
+        vm.stopPrank();
         vm.clearMockedCalls();
     }
 }

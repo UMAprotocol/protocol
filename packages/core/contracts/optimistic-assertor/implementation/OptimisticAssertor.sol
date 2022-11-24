@@ -112,6 +112,7 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
             ssmSettings: SsmSettings({
                 useDisputeResolution: true, // this is the default behavior: if not specified by the Sovereign security manager the assertion will respect the DVM result.
                 useDvmAsOracle: true, // this is the default behavior: if not specified by the Sovereign security manager the assertion will use the DVM as an oracle.
+                validateDisputers: false, // this is the default behavior: if not specified by the Sovereign security manager the disputer will not be validated.
                 sovereignSecurityManager: sovereignSecurityManager,
                 assertingCaller: msg.sender
             })
@@ -128,6 +129,9 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
 
         // Check if the Sovereign Security Manager is configured to use the DVM as an oracle.
         assertions[assertionId].ssmSettings.useDvmAsOracle = assertionPolicies.useDvmAsOracle;
+
+        // Check if the Sovereign Security Manager is configured to validate the disputers.
+        assertions[assertionId].ssmSettings.validateDisputers = assertionPolicies.validateDisputers;
 
         emit AssertionMade(
             assertionId,
@@ -162,6 +166,7 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
         require(assertion.proposer != address(0), "Assertion does not exist"); // Revert if assertion does not exist.
         require(assertion.disputer == address(0), "Assertion already disputed"); // Revert if assertion already disputed.
         require(assertion.expirationTime > getCurrentTime(), "Assertion is expired"); // Revert if assertion expired.
+        require(_isDisputeAllowed(assertionId), "Dispute not allowed"); // Revert if dispute not allowed.
 
         // Pull the bond
         assertion.currency.safeTransferFrom(msg.sender, address(this), assertion.bond);
@@ -307,8 +312,14 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
         returns (SovereignSecurityManagerInterface.AssertionPolicies memory)
     {
         address ssm = assertions[assertionId].ssmSettings.sovereignSecurityManager;
-        if (ssm == address(0)) return SovereignSecurityManagerInterface.AssertionPolicies(true, true, true);
+        if (ssm == address(0)) return SovereignSecurityManagerInterface.AssertionPolicies(true, true, true, false);
         return SovereignSecurityManagerInterface(ssm).getAssertionPolicies(assertionId);
+    }
+
+    function _isDisputeAllowed(bytes32 assertionId) internal view returns (bool) {
+        address ssm = assertions[assertionId].ssmSettings.sovereignSecurityManager;
+        if (!assertions[assertionId].ssmSettings.validateDisputers) return true;
+        return SovereignSecurityManagerInterface(ssm).isDisputeAllowed(assertionId, msg.sender);
     }
 
     function _callbackOnAssertionResolve(bytes32 assertionId, bool assertedTruthfully) internal {

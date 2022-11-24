@@ -22,6 +22,11 @@ contract BaseSovereignSecurityManagerTest is Common {
         assertTrue(policies.allowAssertion);
         assertTrue(policies.useDvmAsOracle);
         assertTrue(policies.useDisputeResolution);
+        assertFalse(policies.validateDisputers);
+    }
+
+    function test_IsDisputeAllowed() public {
+        assertTrue(ssm.isDisputeAllowed(bytes32(0), address(0)));
     }
 
     function test_RequestPrice() public {
