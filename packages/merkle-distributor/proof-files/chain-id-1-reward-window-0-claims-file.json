@@ -1,0 +1,125 @@
+{
+  "chainId": 1,
+  "rewardToken": "0x6b175474e89094c44da98b954eedeac495271d0f",
+  "windowIndex": 0,
+  "totalRewardsDistributed": "10000000000000000000",
+  "merkleRoot": "0xa5f6b42c7c2aae3fcadf068757ff94e519ef2ff9df95a7a6a982b52cc2394a00",
+  "claims": {
+    "0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D": {
+      "accountIndex": 0,
+      "amount": "1000000000000000000",
+      "metaData": ["KPI Options drop 0: test drop"],
+      "windowIndex": 0,
+      "proof": [
+        "0x5f509711291685405b72fc99c31656fa2d5f24b10025f6d144042352896e229d",
+        "0xe06c84176e22919632455ad2e74738964ec6153c0eb8a11edf7d3175ea892f03",
+        "0xf63f59c72420cd29347921e52f61c434b322d4be581703bb44b8b44d5cd41865",
+        "0x2a4384534e9b8f00fb945a3112e67dcb3a16ba7d252ca40b1e34c6d13ba15cdf"
+      ]
+    },
+    "0x718648C8c531F91b528A7757dD2bE813c3940608": {
+      "accountIndex": 1,
+      "amount": "1000000000000000000",
+      "metaData": ["KPI Options drop 0: test drop"],
+      "windowIndex": 0,
+      "proof": [
+        "0xec5bbe421263795a3fa1ba51c54f5af25c1dfb1f20c146a133a6bcc8c5b1109a",
+        "0x5695c7bee14837bc96a60402ba642ac8787063b6eeec6c827db12271a0ba025c"
+      ]
+    },
+    "0x86b3c05f9e2B5cA3AeC65e9DC611Bd7584316DE4": {
+      "accountIndex": 2,
+      "amount": "1000000000000000000",
+      "metaData": ["KPI Options drop 0: test drop"],
+      "windowIndex": 0,
+      "proof": [
+        "0x6e69365621ec41edf4c524d55fe624fbc72965cb142ecc97ed8804372c8fefa4",
+        "0x2ee8554c3b5e774a5dd309ac8d409e4a939bd40a23809f044de13207df6420d2",
+        "0xf63f59c72420cd29347921e52f61c434b322d4be581703bb44b8b44d5cd41865",
+        "0x2a4384534e9b8f00fb945a3112e67dcb3a16ba7d252ca40b1e34c6d13ba15cdf"
+      ]
+    },
+    "0xe26Bf638DB5B707DB38b1892e5fD9A455464a64D": {
+      "accountIndex": 3,
+      "amount": "1000000000000000000",
+      "metaData": ["KPI Options drop 0: test drop"],
+      "windowIndex": 0,
+      "proof": [
+        "0x0e6e0e846131c63a26ddcebc5ce15ab627128e5e648d62ec817578893ebd8242",
+        "0xe06c84176e22919632455ad2e74738964ec6153c0eb8a11edf7d3175ea892f03",
+        "0xf63f59c72420cd29347921e52f61c434b322d4be581703bb44b8b44d5cd41865",
+        "0x2a4384534e9b8f00fb945a3112e67dcb3a16ba7d252ca40b1e34c6d13ba15cdf"
+      ]
+    },
+    "0x2210087BF0fD1C787e87d3a254F56a33D428312D": {
+      "accountIndex": 4,
+      "amount": "1000000000000000000",
+      "metaData": ["KPI Options drop 0: test drop"],
+      "windowIndex": 0,
+      "proof": [
+        "0x6bb09bb62e9e75550eed2d88dac37f5211e204a55cba397a4fa368046060c14e",
+        "0x2ee8554c3b5e774a5dd309ac8d409e4a939bd40a23809f044de13207df6420d2",
+        "0xf63f59c72420cd29347921e52f61c434b322d4be581703bb44b8b44d5cd41865",
+        "0x2a4384534e9b8f00fb945a3112e67dcb3a16ba7d252ca40b1e34c6d13ba15cdf"
+      ]
+    },
+    "0x12Cf5393a53c18ff6957523ec36B4322056177f9": {
+      "accountIndex": 5,
+      "amount": "1000000000000000000",
+      "metaData": ["KPI Options drop 0: test drop"],
+      "windowIndex": 0,
+      "proof": [
+        "0x87a5e456b42207f2ca187d1881038dd1b5a627d6d8287bc98f514e9ac848e92e",
+        "0xb7f40a0f863dced33abe486cf894e16b5fd2edd6b3070be54693b33c8bc0874b",
+        "0xf67ea1aff91207e2ead609e341ed9d78df4cbc7a68ace0288de7228ca9847303",
+        "0x2a4384534e9b8f00fb945a3112e67dcb3a16ba7d252ca40b1e34c6d13ba15cdf"
+      ]
+    },
+    "0x1140dC04E685ceb51d552259dfD5575F5fB84407": {
+      "accountIndex": 6,
+      "amount": "1000000000000000000",
+      "metaData": ["KPI Options drop 0: test drop"],
+      "windowIndex": 0,
+      "proof": [
+        "0xd755003c79a9c4eb869c996f5c84aa7712dc038ec69e3ff5167c9baf59c9a0f3",
+        "0x5695c7bee14837bc96a60402ba642ac8787063b6eeec6c827db12271a0ba025c"
+      ]
+    },
+    "0xb8ecd15c43172c0285bEA20e4D3c185980ca610A": {
+      "accountIndex": 7,
+      "amount": "1000000000000000000",
+      "metaData": ["KPI Options drop 0: test drop"],
+      "windowIndex": 0,
+      "proof": [
+        "0x9c188e042dc2c3654e52cdf9714745c13f98a412f39b55f29c6846ba9b4669e6",
+        "0x432393790c2030eb8327b37411a0cd6c511f05824e7d96e844fb3d51dface254",
+        "0xf67ea1aff91207e2ead609e341ed9d78df4cbc7a68ace0288de7228ca9847303",
+        "0x2a4384534e9b8f00fb945a3112e67dcb3a16ba7d252ca40b1e34c6d13ba15cdf"
+      ]
+    },
+    "0x67C6Cf5288E5D8Bc474126949B3A50Cfe5512AF9": {
+      "accountIndex": 8,
+      "amount": "1000000000000000000",
+      "metaData": ["KPI Options drop 0: test drop"],
+      "windowIndex": 0,
+      "proof": [
+        "0x86f95cf3511f94bfcec94e1f4187ef8fc435f4a6574b17ea32a6cfb389fea632",
+        "0xb7f40a0f863dced33abe486cf894e16b5fd2edd6b3070be54693b33c8bc0874b",
+        "0xf67ea1aff91207e2ead609e341ed9d78df4cbc7a68ace0288de7228ca9847303",
+        "0x2a4384534e9b8f00fb945a3112e67dcb3a16ba7d252ca40b1e34c6d13ba15cdf"
+      ]
+    },
+    "0x72adB07A487f38321b6665c02D289C413610B081": {
+      "accountIndex": 9,
+      "amount": "1000000000000000000",
+      "metaData": ["KPI Options drop 0: test drop"],
+      "windowIndex": 0,
+      "proof": [
+        "0xa5da32bf1a65d56c4d510c08a402d4f8c956f211c80d44e0e3c4bd6518f66f36",
+        "0x432393790c2030eb8327b37411a0cd6c511f05824e7d96e844fb3d51dface254",
+        "0xf67ea1aff91207e2ead609e341ed9d78df4cbc7a68ace0288de7228ca9847303",
+        "0x2a4384534e9b8f00fb945a3112e67dcb3a16ba7d252ca40b1e34c6d13ba15cdf"
+      ]
+    }
+  }
+}

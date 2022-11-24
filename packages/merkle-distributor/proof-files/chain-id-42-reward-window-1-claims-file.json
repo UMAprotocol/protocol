@@ -1,0 +1,163 @@
+{
+  "chainId": 42,
+  "rewardToken": "0x47B1EE6d02af0AA5082C90Ea1c2c14c70399186c",
+  "windowIndex": 1,
+  "totalRewardsDistributed": "1170000000000000000000",
+  "merkleRoot": "0x0479b6893a277030ae5c199f08fee5c6715975d3a66272d2635296dc35efa0b1",
+  "claims": {
+    "0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D": {
+      "accountIndex": 0,
+      "amount": "90000000000000000000",
+      "metaData": ["KPI Options drop 1: Governance Recipient"],
+      "windowIndex": 1,
+      "proof": [
+        "0xd7d9ad00bcf03a7912c6a27ed5e167ea05c5f7a54e4d1277d2e68c5dfbc3a98c",
+        "0x5402042377cc045e68fffce1cb4b0017ad9b13bcda1a66575dac755b3d4b9dea",
+        "0xec2110f7dc25a81553c746439e0ed0b9619f23eec8ee27e0206c025e1fe9adad",
+        "0xe9d48fb4468c2e2af0e434f10fb767218d5e0aa0dceacc8c53514ef1a3f852ad"
+      ]
+    },
+    "0x718648C8c531F91b528A7757dD2bE813c3940608": {
+      "accountIndex": 1,
+      "amount": "90000000000000000000",
+      "metaData": ["KPI Options drop 1: Governance Recipient"],
+      "windowIndex": 1,
+      "proof": [
+        "0x5937190ea201dd6cc2268d789ca3fc66d67bf2c13fa08ec49c85cde8b8fccb59",
+        "0xd5eb52bd178c383624110a8029011c8184c7e322088d7106f96dd8825540fe31",
+        "0x6d689ffd383eebbe0f576492cd375773fca0884bc642d3f44f46082e9c805f00",
+        "0xc38a65173c4b44322e35d65403366ce64345751bcb0dcf52c5916c784ed71d3c"
+      ]
+    },
+    "0x86b3c05f9e2B5cA3AeC65e9DC611Bd7584316DE4": {
+      "accountIndex": 2,
+      "amount": "90000000000000000000",
+      "metaData": ["KPI Options drop 1: Governance Recipient"],
+      "windowIndex": 1,
+      "proof": [
+        "0xb1af45581ea090bfd3738dd82cbaf4e5f3a7579b2bb108652f3be73dd6f34380",
+        "0xefdd2d78f68812198d2a1250b171f6fdb6c0fd2af41315a5ba5605aac6877866",
+        "0xec2110f7dc25a81553c746439e0ed0b9619f23eec8ee27e0206c025e1fe9adad",
+        "0xe9d48fb4468c2e2af0e434f10fb767218d5e0aa0dceacc8c53514ef1a3f852ad"
+      ]
+    },
+    "0xe26Bf638DB5B707DB38b1892e5fD9A455464a64D": {
+      "accountIndex": 3,
+      "amount": "90000000000000000000",
+      "metaData": ["KPI Options drop 1: Governance Recipient"],
+      "windowIndex": 1,
+      "proof": [
+        "0xe6aa3b4873b78ecbf19a3f4a976167067700158e0364e76ede58b33865d6e165",
+        "0x5402042377cc045e68fffce1cb4b0017ad9b13bcda1a66575dac755b3d4b9dea",
+        "0xec2110f7dc25a81553c746439e0ed0b9619f23eec8ee27e0206c025e1fe9adad",
+        "0xe9d48fb4468c2e2af0e434f10fb767218d5e0aa0dceacc8c53514ef1a3f852ad"
+      ]
+    },
+    "0x2210087BF0fD1C787e87d3a254F56a33D428312D": {
+      "accountIndex": 4,
+      "amount": "90000000000000000000",
+      "metaData": ["KPI Options drop 1: Governance Recipient"],
+      "windowIndex": 1,
+      "proof": [
+        "0x4eb77ac29ed2db2d53af81576cf358e1d273edfd2cd5f3a699b51e98f6c66dcd",
+        "0xb3cd3df52da19fd37fb8a9060c68b0181164d232d8160355d9cb87997eecad99",
+        "0x8408263035611b59b33d96f7bb86a5569d080d4c9fcba77a30d53aca25eb77e6",
+        "0xc38a65173c4b44322e35d65403366ce64345751bcb0dcf52c5916c784ed71d3c"
+      ]
+    },
+    "0x12Cf5393a53c18ff6957523ec36B4322056177f9": {
+      "accountIndex": 5,
+      "amount": "90000000000000000000",
+      "metaData": ["KPI Options drop 1: Governance Recipient"],
+      "windowIndex": 1,
+      "proof": [
+        "0x11f940ff2159211bd3d14f3c0af7e770800c9e6a042cd0b6178f5ead8d64107d",
+        "0x36d4c3b404287c52e6100ea259f408045cf4f232aa146eb469d37c5029c70d30",
+        "0x8408263035611b59b33d96f7bb86a5569d080d4c9fcba77a30d53aca25eb77e6",
+        "0xc38a65173c4b44322e35d65403366ce64345751bcb0dcf52c5916c784ed71d3c"
+      ]
+    },
+    "0x1140dC04E685ceb51d552259dfD5575F5fB84407": {
+      "accountIndex": 6,
+      "amount": "90000000000000000000",
+      "metaData": ["KPI Options drop 1: Governance Recipient"],
+      "windowIndex": 1,
+      "proof": [
+        "0x74bf623ed4986edc063483a1e36d70fd3cd13755a5d0738de4c2a0de036b3561",
+        "0xb63a9c9c72946231c695e7ef9fd1a297dc7a62106edfbc3f2960b1710faece56",
+        "0x6d689ffd383eebbe0f576492cd375773fca0884bc642d3f44f46082e9c805f00",
+        "0xc38a65173c4b44322e35d65403366ce64345751bcb0dcf52c5916c784ed71d3c"
+      ]
+    },
+    "0xb8ecd15c43172c0285bEA20e4D3c185980ca610A": {
+      "accountIndex": 7,
+      "amount": "90000000000000000000",
+      "metaData": ["KPI Options drop 1: Governance Recipient"],
+      "windowIndex": 1,
+      "proof": [
+        "0xd64df3c9744ed106500a20eb6f5a314a7fb6364f9ce423c35f5734f877f2a5d6",
+        "0xe9d48fb4468c2e2af0e434f10fb767218d5e0aa0dceacc8c53514ef1a3f852ad"
+      ]
+    },
+    "0x67C6Cf5288E5D8Bc474126949B3A50Cfe5512AF9": {
+      "accountIndex": 8,
+      "amount": "90000000000000000000",
+      "metaData": ["KPI Options drop 1: Governance Recipient"],
+      "windowIndex": 1,
+      "proof": [
+        "0xa0e4615bc4eea374d3a886794205364e71d3447bb03dfcec930feb0a8b851ca5",
+        "0xb63a9c9c72946231c695e7ef9fd1a297dc7a62106edfbc3f2960b1710faece56",
+        "0x6d689ffd383eebbe0f576492cd375773fca0884bc642d3f44f46082e9c805f00",
+        "0xc38a65173c4b44322e35d65403366ce64345751bcb0dcf52c5916c784ed71d3c"
+      ]
+    },
+    "0x72adB07A487f38321b6665c02D289C413610B081": {
+      "accountIndex": 9,
+      "amount": "90000000000000000000",
+      "metaData": ["KPI Options drop 1: Governance Recipient"],
+      "windowIndex": 1,
+      "proof": [
+        "0x08752fffb5ddd2f172dc55a67fa65490f12c185d98f2345405e6d4498e9002fc",
+        "0x36d4c3b404287c52e6100ea259f408045cf4f232aa146eb469d37c5029c70d30",
+        "0x8408263035611b59b33d96f7bb86a5569d080d4c9fcba77a30d53aca25eb77e6",
+        "0xc38a65173c4b44322e35d65403366ce64345751bcb0dcf52c5916c784ed71d3c"
+      ]
+    },
+    "0x5d95018527aDc0F9cd8a2C3Be1090e0B1c72d523": {
+      "accountIndex": 10,
+      "amount": "90000000000000000000",
+      "metaData": ["KPI Options drop 1: Governance Recipient"],
+      "windowIndex": 1,
+      "proof": [
+        "0x59d7daeb58d4e8c4cd3997ffc0eb1448384b2cb8f64e7e1dcdcb60ac4bf78be7",
+        "0xd5eb52bd178c383624110a8029011c8184c7e322088d7106f96dd8825540fe31",
+        "0x6d689ffd383eebbe0f576492cd375773fca0884bc642d3f44f46082e9c805f00",
+        "0xc38a65173c4b44322e35d65403366ce64345751bcb0dcf52c5916c784ed71d3c"
+      ]
+    },
+    "0xAE4d6f087d74d7BDFA452a375D98Bca602d2BBc8": {
+      "accountIndex": 11,
+      "amount": "90000000000000000000",
+      "metaData": ["KPI Options drop 1: Governance Recipient"],
+      "windowIndex": 1,
+      "proof": [
+        "0xcb1983a89c7551427126a13b9eb90f2c6860a1bbabd3bee5f6c7064d084571d7",
+        "0xefdd2d78f68812198d2a1250b171f6fdb6c0fd2af41315a5ba5605aac6877866",
+        "0xec2110f7dc25a81553c746439e0ed0b9619f23eec8ee27e0206c025e1fe9adad",
+        "0xe9d48fb4468c2e2af0e434f10fb767218d5e0aa0dceacc8c53514ef1a3f852ad"
+      ]
+    },
+    "0x8753702777a3Bd1BAa25ccCce7BF3A656247B8B7": {
+      "accountIndex": 12,
+      "amount": "90000000000000000000",
+      "metaData": ["KPI Options drop 1: Governance Recipient"],
+      "windowIndex": 1,
+      "proof": [
+        "0x4c4b225d3e85d1d8f500a45c79846e416bf2a258ffb81149d0cb9557a639cf41",
+        "0xb3cd3df52da19fd37fb8a9060c68b0181164d232d8160355d9cb87997eecad99",
+        "0x8408263035611b59b33d96f7bb86a5569d080d4c9fcba77a30d53aca25eb77e6",
+        "0xc38a65173c4b44322e35d65403366ce64345751bcb0dcf52c5916c784ed71d3c"
+      ]
+    }
+  }
+}

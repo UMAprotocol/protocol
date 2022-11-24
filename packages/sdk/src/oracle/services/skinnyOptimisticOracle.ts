@@ -53,7 +53,7 @@ export class SkinnyOptimisticOracle implements OracleInterface {
   private upsertRequest = (request: Omit<Request, "chainId">): Request => {
     const id = requestId(request);
     const cachedRequest = this.requests[id] || {};
-    const update = { ...cachedRequest, ...request, chainId: this.chainId };
+    const update = { ...cachedRequest, ...request, chainId: this.chainId, eventBased: false };
     this.requests[id] = update;
     return update;
   };

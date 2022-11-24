@@ -1,0 +1,73 @@
+{
+  "chainId": 42,
+  "rewardToken": "0x47B1EE6d02af0AA5082C90Ea1c2c14c70399186c",
+  "windowIndex": 1,
+  "totalRewardsDistributed": "1170000000000000000000",
+  "recipients": {
+    "0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D": {
+      "amount": "90000000000000000000",
+      "metaData": ["KPI Options drop 1: Governance Recipient"],
+      "accountIndex": 0
+    },
+    "0x718648C8c531F91b528A7757dD2bE813c3940608": {
+      "amount": "90000000000000000000",
+      "metaData": ["KPI Options drop 1: Governance Recipient"],
+      "accountIndex": 1
+    },
+    "0x86b3c05f9e2B5cA3AeC65e9DC611Bd7584316DE4": {
+      "amount": "90000000000000000000",
+      "metaData": ["KPI Options drop 1: Governance Recipient"],
+      "accountIndex": 2
+    },
+    "0xe26Bf638DB5B707DB38b1892e5fD9A455464a64D": {
+      "amount": "90000000000000000000",
+      "metaData": ["KPI Options drop 1: Governance Recipient"],
+      "accountIndex": 3
+    },
+    "0x2210087BF0fD1C787e87d3a254F56a33D428312D": {
+      "amount": "90000000000000000000",
+      "metaData": ["KPI Options drop 1: Governance Recipient"],
+      "accountIndex": 4
+    },
+    "0x12Cf5393a53c18ff6957523ec36B4322056177f9": {
+      "amount": "90000000000000000000",
+      "metaData": ["KPI Options drop 1: Governance Recipient"],
+      "accountIndex": 5
+    },
+    "0x1140dC04E685ceb51d552259dfD5575F5fB84407": {
+      "amount": "90000000000000000000",
+      "metaData": ["KPI Options drop 1: Governance Recipient"],
+      "accountIndex": 6
+    },
+    "0xb8ecd15c43172c0285bEA20e4D3c185980ca610A": {
+      "amount": "90000000000000000000",
+      "metaData": ["KPI Options drop 1: Governance Recipient"],
+      "accountIndex": 7
+    },
+    "0x67C6Cf5288E5D8Bc474126949B3A50Cfe5512AF9": {
+      "amount": "90000000000000000000",
+      "metaData": ["KPI Options drop 1: Governance Recipient"],
+      "accountIndex": 8
+    },
+    "0x72adB07A487f38321b6665c02D289C413610B081": {
+      "amount": "90000000000000000000",
+      "metaData": ["KPI Options drop 1: Governance Recipient"],
+      "accountIndex": 9
+    },
+    "0x5d95018527aDc0F9cd8a2C3Be1090e0B1c72d523": {
+      "amount": "90000000000000000000",
+      "metaData": ["KPI Options drop 1: Governance Recipient"],
+      "accountIndex": 10
+    },
+    "0xAE4d6f087d74d7BDFA452a375D98Bca602d2BBc8": {
+      "amount": "90000000000000000000",
+      "metaData": ["KPI Options drop 1: Governance Recipient"],
+      "accountIndex": 11
+    },
+    "0x8753702777a3Bd1BAa25ccCce7BF3A656247B8B7": {
+      "amount": "90000000000000000000",
+      "metaData": ["KPI Options drop 1: Governance Recipient"],
+      "accountIndex": 12
+    }
+  }
+}
