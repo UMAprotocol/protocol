@@ -23,6 +23,7 @@ contract SovereignSecurityManagerPoliciesEnforced is Common {
         OptimisticAssertorInterface.Assertion memory assertion = optimisticAssertor.readAssertion(assertionId);
         assertTrue(assertion.ssmSettings.useDisputeResolution);
         assertTrue(assertion.ssmSettings.useDvmAsOracle);
+        assertFalse(assertion.ssmSettings.validateDisputers);
     }
 
     function test_RevertIf_AssertionBlocked() public {
@@ -127,7 +128,17 @@ contract SovereignSecurityManagerPoliciesEnforced is Common {
         vm.clearMockedCalls();
     }
 
-    function test_DisputeAllowed() public {
+    function test_DoNotValidateDisputers() public {
+        // Deafault SSM policies do not validate disputers.
+        _mockSsmPolicies(true, true, true, false);
+
+        bytes32 assertionId = _assertWithCallbackRecipientAndSsm(address(0), mockedSovereignSecurityManager);
+
+        _disputeAndGetOracleRequest(assertionId);
+        vm.clearMockedCalls();
+    }
+
+    function test_ValidateAndAllowDispute() public {
         // Validate disputers in SSM policies and allow disputes.
         _mockSsmPolicies(true, true, true, true);
         _mockSsmDisputerCheck(true);
