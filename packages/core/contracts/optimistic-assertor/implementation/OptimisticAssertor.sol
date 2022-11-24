@@ -112,9 +112,8 @@ contract OptimisticAssertor is OptimisticAssertorInterface, Lockable, Ownable {
             assertionTime: getCurrentTime(),
             expirationTime: getCurrentTime() + liveness,
             identifier: identifier,
-            ssmSettings: SsmSettings({
-                useDisputeResolution: // TODO [GAS] rename these variables to default to false
-                true, // this is the default behavior: if not specified by the Sovereign security manager the assertion will respect the DVM result.
+            ssmSettings: SsmSettings({ // TODO [GAS] rename these variables to default to false
+                useDisputeResolution: true, // this is the default behavior: if not specified by the Sovereign security manager the assertion will respect the DVM result.
                 useDvmAsOracle: true, // this is the default behavior: if not specified by the Sovereign security manager the assertion will use the DVM as an oracle.
                 validateDisputers: false, // this is the default behavior: if not specified by the Sovereign security manager the disputer will not be validated.
                 sovereignSecurityManager: sovereignSecurityManager,
@@ -334,6 +333,7 @@ contract OptimisticAssertor is OptimisticAssertorInterface, Lockable, Ownable {
     }
 
     function _callbackOnAssertionResolve(bytes32 assertionId, bool assertedTruthfully) internal {
+        // TODO send to the SSM if is set
         if (assertions[assertionId].callbackRecipient != address(0))
             OptimisticAssertorCallbackRecipientInterface(assertions[assertionId].callbackRecipient).assertionResolved(
                 assertionId,
@@ -342,6 +342,7 @@ contract OptimisticAssertor is OptimisticAssertorInterface, Lockable, Ownable {
     }
 
     function _callbackOnAssertionDispute(bytes32 assertionId) internal {
+        // TODO send to the SSM if is set
         if (assertions[assertionId].callbackRecipient != address(0))
             OptimisticAssertorCallbackRecipientInterface(assertions[assertionId].callbackRecipient).assertionDisputed(
                 assertionId
