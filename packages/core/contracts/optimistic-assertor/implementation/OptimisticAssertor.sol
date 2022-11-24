@@ -313,7 +313,7 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
     }
 
     function _isDisputeAllowed(bytes32 assertionId) internal view returns (bool) {
-        address ssm = assertions[assertionId].sovereignSecurityManager;
+        address ssm = assertions[assertionId].ssmSettings.sovereignSecurityManager;
         if (ssm == address(0)) return true;
         return SovereignSecurityManagerInterface(ssm).isDisputeAllowed(assertionId, msg.sender);
     }
