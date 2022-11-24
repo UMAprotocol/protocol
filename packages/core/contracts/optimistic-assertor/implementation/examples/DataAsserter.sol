@@ -17,15 +17,14 @@ contract DataAsserter {
     bytes32 public immutable defaultIdentifier;
 
     struct DataAssertion {
-        bytes32 dataId; // This could be an arbitrary data type.
+        bytes32 dataId; // The dataId that was asserted.
         uint256 data; // This could be an arbitrary data type.
         address asserter; // The address that made the assertion.
         bytes32 oaAssertionId; // The optimistic assertor assertion ID.
+        bool resolved; // Whether the assertion has been resolved.
     }
 
     mapping(bytes32 => bytes32) public oaIdsToInternalIds;
-
-    mapping(bytes32 => bool) public assertionsResolved;
 
     mapping(bytes32 => DataAssertion) public assertionsData;
 
@@ -42,7 +41,7 @@ contract DataAsserter {
     // For a given dataId and asserter, returns a boolean indicating whether the data is accessible and the data itself.
     function getData(bytes32 dataId, address asserter) public view returns (bool, uint256) {
         bytes32 dataAssertionId = getAssertionId(dataId, asserter);
-        if (!assertionsResolved[dataAssertionId]) return (false, 0);
+        if (!assertionsData[dataAssertionId].resolved) return (false, 0);
         return (true, assertionsData[dataAssertionId].data);
     }
 
@@ -53,6 +52,7 @@ contract DataAsserter {
         address asserter
     ) public {
         bytes32 dataAssertionId = getAssertionId(dataId, asserter);
+        asserter = asserter == address(0) ? msg.sender : asserter;
         require(assertionsData[dataAssertionId].oaAssertionId == bytes32(0), "Data already asserted");
         uint256 bond = oa.getMinimumBond(address(defaultCurrency));
         defaultCurrency.safeTransferFrom(msg.sender, address(this), bond);
@@ -78,12 +78,7 @@ contract DataAsserter {
                 assertionLiveness,
                 defaultIdentifier
             );
-        assertionsData[dataAssertionId] = DataAssertion({
-            dataId: dataId,
-            data: data,
-            asserter: asserter,
-            oaAssertionId: oaAssertionId
-        });
+        assertionsData[dataAssertionId] = DataAssertion(dataId, data, asserter, oaAssertionId, false);
         oaIdsToInternalIds[oaAssertionId] = dataAssertionId;
         emit DataAsserted(dataId, data, asserter, oaAssertionId);
     }
@@ -93,13 +88,11 @@ contract DataAsserter {
         require(msg.sender == address(oa));
         // If the assertion was true, then the data assertion is resolved.
         if (assertedTruthfully) {
-            assertionsResolved[oaIdsToInternalIds[assertionId]] = true;
+            assertionsData[oaIdsToInternalIds[assertionId]].resolved = true;
             DataAssertion memory dataAssertion = assertionsData[oaIdsToInternalIds[assertionId]];
             emit DataAssertionResolved(dataAssertion.dataId, dataAssertion.data, dataAssertion.asserter, assertionId);
-        } else {
-            // Delete the data assertion if it was false so the same asserter can assert it again.
-            delete assertionsData[oaIdsToInternalIds[assertionId]];
-        }
+            // Else delete the data assertion if it was false so the same asserter can assert it again.
+        } else delete assertionsData[oaIdsToInternalIds[assertionId]];
     }
 
     // If assertion is disputed, do nothing and wait for resolution.
