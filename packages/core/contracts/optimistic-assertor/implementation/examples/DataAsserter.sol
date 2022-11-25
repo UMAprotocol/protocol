@@ -23,13 +23,11 @@ contract DataAsserter {
         bool resolved; // Whether the assertion has been resolved.
     }
 
-    mapping(bytes32 => bytes32) public oaIdsToInternalIds;
-
     mapping(bytes32 => DataAssertion) public assertionsData;
 
-    event DataAsserted(bytes32 indexed dataId, bytes32 data, address indexed asserter, bytes32 oaAssertionId);
+    event DataAsserted(bytes32 indexed dataId, bytes32 data, address indexed asserter, bytes32 assertionId);
 
-    event DataAssertionResolved(bytes32 indexed dataId, bytes32 data, address indexed asserter, bytes32 oaAssertionId);
+    event DataAssertionResolved(bytes32 indexed dataId, bytes32 data, address indexed asserter, bytes32 assertionId);
 
     constructor(address _defaultCurrency, address _optimisticAssertor) {
         defaultCurrency = IERC20(_defaultCurrency);
@@ -37,11 +35,10 @@ contract DataAsserter {
         defaultIdentifier = oa.defaultIdentifier();
     }
 
-    // For a given dataId and asserter, returns a boolean indicating whether the data is accessible and the data itself.
-    function getData(bytes32 dataId, address asserter) public view returns (bool, bytes32) {
-        bytes32 dataAssertionId = getAssertionId(dataId, asserter);
-        if (!assertionsData[dataAssertionId].resolved) return (false, 0);
-        return (true, assertionsData[dataAssertionId].data);
+    // For a given assertionId, returns a boolean indicating whether the data is accessible and the data itself.
+    function getData(bytes32 assertionId) public view returns (bool, bytes32) {
+        if (!assertionsData[assertionId].resolved) return (false, 0);
+        return (true, assertionsData[assertionId].data);
     }
 
     // Asserts data for a specific dataId on behalf of an asserter address.
@@ -49,14 +46,12 @@ contract DataAsserter {
         bytes32 dataId,
         bytes32 data,
         address asserter
-    ) public returns (bytes32 oaAssertionId) {
-        bytes32 dataAssertionId = getAssertionId(dataId, asserter);
+    ) public returns (bytes32 assertionId) {
         asserter = asserter == address(0) ? msg.sender : asserter;
-        require(assertionsData[dataAssertionId].asserter == address(0), "Data already asserted");
         uint256 bond = oa.getMinimumBond(address(defaultCurrency));
         defaultCurrency.safeTransferFrom(msg.sender, address(this), bond);
         defaultCurrency.safeApprove(address(oa), bond);
-        oaAssertionId = oa.assertTruthFor(
+        assertionId = oa.assertTruthFor(
             abi.encodePacked(
                 "Data asserted for dataId: 0x",
                 AncillaryData.toUtf8Bytes(dataId),
@@ -76,9 +71,8 @@ contract DataAsserter {
             assertionLiveness,
             defaultIdentifier
         );
-        assertionsData[dataAssertionId] = DataAssertion(dataId, data, asserter, false);
-        oaIdsToInternalIds[oaAssertionId] = dataAssertionId;
-        emit DataAsserted(dataId, data, asserter, oaAssertionId);
+        assertionsData[assertionId] = DataAssertion(dataId, data, asserter, false);
+        emit DataAsserted(dataId, data, asserter, assertionId);
     }
 
     // OptimisticAssertor callback.
@@ -86,19 +80,14 @@ contract DataAsserter {
         require(msg.sender == address(oa));
         // If the assertion was true, then the data assertion is resolved.
         if (assertedTruthfully) {
-            assertionsData[oaIdsToInternalIds[assertionId]].resolved = true;
-            DataAssertion memory dataAssertion = assertionsData[oaIdsToInternalIds[assertionId]];
+            assertionsData[assertionId].resolved = true;
+            DataAssertion memory dataAssertion = assertionsData[assertionId];
             emit DataAssertionResolved(dataAssertion.dataId, dataAssertion.data, dataAssertion.asserter, assertionId);
             // Else delete the data assertion if it was false so the same asserter can assert it again.
-        } else delete assertionsData[oaIdsToInternalIds[assertionId]];
+        } else delete assertionsData[assertionId];
     }
 
     // If assertion is disputed, do nothing and wait for resolution.
     // This OptimisticAssertor callback function needs to be defined so the OA doesn't revert when it tries to call it.
     function assertionDisputed(bytes32 assertionId) public {}
-
-    // Returns the internal ID for a data assertion.
-    function getAssertionId(bytes32 dataId, address asserter) public pure returns (bytes32) {
-        return keccak256(abi.encode(dataId, asserter));
-    }
 }
