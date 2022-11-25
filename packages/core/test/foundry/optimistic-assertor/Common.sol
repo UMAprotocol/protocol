@@ -18,6 +18,7 @@ contract Common is Test {
     OptimisticAssertor optimisticAssertor;
     TestnetERC20 defaultCurrency;
     Timer timer;
+    Finder finder;
     MockOracleAncillary mockOracle;
     Store store;
 
@@ -67,6 +68,7 @@ contract Common is Test {
         defaultCurrency = oaContracts.defaultCurrency;
         mockOracle = oaContracts.mockOracle;
         timer = oaContracts.timer;
+        finder = oaContracts.finder;
         store = oaContracts.store;
         defaultBond = optimisticAssertor.defaultBond();
         defaultLiveness = optimisticAssertor.defaultLiveness();
@@ -140,7 +142,7 @@ contract Common is Test {
             );
     }
 
-    function _disputeAndGetOracleRequest(bytes32 assertionId) internal returns (OracleRequest memory) {
+    function _disputeAndGetOracleRequest(bytes32 assertionId, uint256 bond) internal returns (OracleRequest memory) {
         // Get expected oracle request on dispute.
         OptimisticAssertorInterface.Assertion memory assertion = optimisticAssertor.readAssertion(assertionId);
         OracleRequest memory oracleRequest =
@@ -152,8 +154,8 @@ contract Common is Test {
 
         // Fund Account2 and make dispute.
         vm.startPrank(TestAddress.account2);
-        defaultCurrency.allocateTo(TestAddress.account2, optimisticAssertor.defaultBond());
-        defaultCurrency.approve(address(optimisticAssertor), optimisticAssertor.defaultBond());
+        defaultCurrency.allocateTo(TestAddress.account2, bond);
+        defaultCurrency.approve(address(optimisticAssertor), bond);
         optimisticAssertor.disputeAssertionFor(assertionId, TestAddress.account2);
         vm.stopPrank();
         return oracleRequest;

@@ -50,7 +50,7 @@ contract InsuranceTest is Common {
         vm.stopPrank(); // Return caller address to standard.
 
         // Dispute assertion with Account2.
-        OracleRequest memory oracleRequest = _disputeAndGetOracleRequest(assertionId);
+        OracleRequest memory oracleRequest = _disputeAndGetOracleRequest(assertionId, defaultBond);
         uint256 insuredBalanceBefore = defaultCurrency.balanceOf(TestAddress.account3);
         _mockOracleResolved(address(mockOracle), oracleRequest, true);
         assertTrue(optimisticAssertor.settleAndGetAssertion(assertionId));
@@ -72,7 +72,7 @@ contract InsuranceTest is Common {
         vm.stopPrank(); // Return caller address to standard.
 
         // Dispute assertion with Account2.
-        OracleRequest memory oracleRequest = _disputeAndGetOracleRequest(assertionId);
+        OracleRequest memory oracleRequest = _disputeAndGetOracleRequest(assertionId, defaultBond);
         uint256 insuredBalanceBefore = defaultCurrency.balanceOf(TestAddress.account3);
         _mockOracleResolved(address(mockOracle), oracleRequest, false);
         assertFalse(optimisticAssertor.settleAndGetAssertion(assertionId));
