@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import "../../common/interfaces/ExpandedIERC20.sol";
 import "../../common/interfaces/IERC20Standard.sol";
-import "../../oracle/interfaces/FinderInterface.sol";
+import "../../data-verification-mechanism/interfaces/FinderInterface.sol";
 import "../../common/implementation/Testable.sol";
 import "../../common/implementation/Lockable.sol";
 import "../common/TokenFactory.sol";

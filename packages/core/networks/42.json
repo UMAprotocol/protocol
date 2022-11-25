@@ -100,10 +100,6 @@
     "address": "0xAa04b5D40574Fb8C001249B24d1c6B35a207F0bD"
   },
   {
-    "contractName": "Optimism_Messenger",
-    "address": "0xA210F08e8c691dB9FB7734C114D13627D4413CAa"
-  },
-  {
     "contractName": "SimpleSuccessTokenLongShortPairFinancialProductLibrary",
     "address": "0x906Bf04a36822299293e0ee8dE0dA557e183319B"
   },

@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
+import "../../data-verification-mechanism/implementation/ContractCreator.sol";
 import "../../common/interfaces/ExpandedIERC20.sol";
 import "../../common/interfaces/IERC20Standard.sol";
-import "../../oracle/implementation/ContractCreator.sol";
 import "../../common/implementation/Testable.sol";
 import "../../common/implementation/AddressWhitelist.sol";
 import "../../common/implementation/Lockable.sol";

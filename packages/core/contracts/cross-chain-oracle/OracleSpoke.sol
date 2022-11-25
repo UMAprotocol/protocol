@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import "../oracle/interfaces/OracleAncillaryInterface.sol";
-import "../oracle/interfaces/OracleInterface.sol";
-import "../oracle/interfaces/RegistryInterface.sol";
+import "../data-verification-mechanism/interfaces/OracleAncillaryInterface.sol";
+import "../data-verification-mechanism/interfaces/OracleInterface.sol";
+import "../data-verification-mechanism/interfaces/RegistryInterface.sol";
 import "./OracleBase.sol";
 import "../common/implementation/AncillaryData.sol";
 import "../common/implementation/Lockable.sol";

@@ -5,15 +5,16 @@ pragma solidity 0.8.16;
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-import "../../oracle/interfaces/StoreInterface.sol";
-import "../../oracle/interfaces/FinderInterface.sol";
-import "../../oracle/implementation/Constants.sol";
+import "../../data-verification-mechanism/interfaces/StoreInterface.sol";
+import "../../data-verification-mechanism/interfaces/FinderInterface.sol";
+import "../../data-verification-mechanism/implementation/Constants.sol";
 
 import "../../common/implementation/Lockable.sol";
 import "../../common/implementation/AddressWhitelist.sol";
-import "../../oracle/interfaces/OracleAncillaryInterface.sol";
-import "../../oracle/interfaces/IdentifierWhitelistInterface.sol";
 import "../../common/implementation/AncillaryData.sol";
+
+import "../../data-verification-mechanism/interfaces/OracleAncillaryInterface.sol";
+import "../../data-verification-mechanism/interfaces/IdentifierWhitelistInterface.sol";
 import "../interfaces/OptimisticAsserterCallbackRecipientInterface.sol";
 import "../interfaces/OptimisticAsserterInterface.sol";
 import "../interfaces/SovereignSecurityInterface.sol";
