@@ -1,23 +1,22 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.16;
 
-// TODO Organize imports
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import "../../data-verification-mechanism/interfaces/StoreInterface.sol";
-import "../../data-verification-mechanism/interfaces/FinderInterface.sol";
+import "../interfaces/OptimisticAssertorCallbackRecipientInterface.sol";
+import "../interfaces/OptimisticAssertorInterface.sol";
+import "../interfaces/SovereignSecurityManagerInterface.sol";
+
 import "../../data-verification-mechanism/implementation/Constants.sol";
+import "../../data-verification-mechanism/interfaces/FinderInterface.sol";
+import "../../data-verification-mechanism/interfaces/IdentifierWhitelistInterface.sol";
+import "../../data-verification-mechanism/interfaces/OracleAncillaryInterface.sol";
+import "../../data-verification-mechanism/interfaces/StoreInterface.sol";
 
-import "../../common/implementation/Lockable.sol";
 import "../../common/implementation/AddressWhitelist.sol";
 import "../../common/implementation/AncillaryData.sol";
-
-import "../../data-verification-mechanism/interfaces/OracleAncillaryInterface.sol";
-import "../../data-verification-mechanism/interfaces/IdentifierWhitelistInterface.sol";
-import "../interfaces/OptimisticAsserterCallbackRecipientInterface.sol";
-import "../interfaces/OptimisticAsserterInterface.sol";
-import "../interfaces/SovereignSecurityInterface.sol";
+import "../../common/implementation/Lockable.sol";
 
 // TODO use reentrancy guard
 contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
