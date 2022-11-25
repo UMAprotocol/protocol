@@ -14,8 +14,7 @@ interface OptimisticAsserterInterface {
 
     // TODO variable packing to save gas.
     struct Assertion {
-        address proposer; // Address of the proposer.
-        // TODO: consider naming proposer->asserter.
+        address asserter; // Address of the asserter.
         address disputer; // Address of the disputer.
         address callbackRecipient; // Address that receives the callback.
         IERC20 currency; // ERC20 token used to pay rewards and fees.
@@ -37,7 +36,7 @@ interface OptimisticAsserterInterface {
 
     function assertTruthFor(
         bytes memory claim,
-        address proposer,
+        address asserter,
         address callbackRecipient,
         address sovereignSecurity,
         IERC20 currency,
@@ -53,7 +52,7 @@ interface OptimisticAsserterInterface {
     event AssertionMade(
         bytes32 indexed assertionId,
         bytes claim,
-        address indexed proposer,
+        address indexed asserter,
         address callbackRecipient,
         address indexed sovereignSecurity,
         IERC20 currency,

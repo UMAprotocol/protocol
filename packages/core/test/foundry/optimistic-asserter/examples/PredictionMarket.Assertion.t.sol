@@ -48,7 +48,7 @@ contract PredictionMarketAssertionTest is PredictionMarketTestCommon {
 
         // Verify OptimisticAsserter storage.
         OptimisticAsserterInterface.Assertion memory assertion = optimisticAsserter.getAssertion(assertionId);
-        assertEq(assertion.proposer, TestAddress.account1);
+        assertEq(assertion.asserter, TestAddress.account1);
         assertEq(assertion.callbackRecipient, address(predictionMarket));
         assertEq(address(assertion.currency), address(defaultCurrency));
         assertEq(assertion.bond, requiredBond);

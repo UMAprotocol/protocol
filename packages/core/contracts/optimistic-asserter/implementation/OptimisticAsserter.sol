@@ -80,7 +80,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
 
     function assertTruthFor(
         bytes memory claim,
-        address proposer,
+        address asserter,
         address callbackRecipient,
         address sovereignSecurity,
         IERC20 currency,
@@ -88,11 +88,11 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
         uint256 liveness,
         bytes32 identifier
     ) public returns (bytes32) {
-        proposer = proposer == address(0) ? msg.sender : proposer;
+        asserter = asserter == address(0) ? msg.sender : asserter;
         bytes32 assertionId =
-            _getId(claim, bond, liveness, currency, proposer, callbackRecipient, sovereignSecurity, identifier);
+            _getId(claim, bond, liveness, currency, asserter, callbackRecipient, sovereignSecurity, identifier);
 
-        require(assertions[assertionId].proposer == address(0), "Assertion already exists");
+        require(assertions[assertionId].asserter == address(0), "Assertion already exists");
         // TODO [GAS] caching identifier whitelist and collateral currency whitelist
         require(_getIdentifierWhitelist().isIdentifierSupported(identifier), "Unsupported identifier");
         require(_getCollateralWhitelist().isOnWhitelist(address(currency)), "Unsupported currency");
@@ -102,7 +102,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
         currency.safeTransferFrom(msg.sender, address(this), bond);
 
         assertions[assertionId] = Assertion({
-            proposer: proposer,
+            asserter: asserter,
             disputer: address(0),
             callbackRecipient: callbackRecipient,
             currency: currency,
@@ -137,7 +137,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
         emit AssertionMade(
             assertionId,
             claim,
-            proposer,
+            asserter,
             callbackRecipient,
             sovereignSecurity,
             currency,
@@ -165,7 +165,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
     function disputeAssertionFor(bytes32 assertionId, address disputer) public {
         disputer = disputer == address(0) ? msg.sender : disputer;
         Assertion storage assertion = assertions[assertionId];
-        require(assertion.proposer != address(0), "Assertion does not exist"); // Revert if assertion does not exist.
+        require(assertion.asserter != address(0), "Assertion does not exist"); // Revert if assertion does not exist.
         require(assertion.disputer == address(0), "Assertion already disputed"); // Revert if assertion already disputed.
         require(assertion.expirationTime > getCurrentTime(), "Assertion is expired"); // Revert if assertion expired.
         require(_isDisputeAllowed(assertionId), "Dispute not allowed"); // Revert if dispute not allowed.
@@ -175,12 +175,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
 
         assertion.disputer = disputer;
 
-        // TODO shorten this lines (e.g. using internal function)
-        _getOracle(assertionId).requestPrice(
-            assertion.identifier,
-            assertion.assertionTime,
-            _stampAssertion(assertionId)
-        );
+        _oracleRequestPrice(assertionId, assertion.identifier, assertion.assertionTime);
 
         // Send dispute callback
         _callbackOnAssertionDispute(assertionId);
@@ -193,28 +188,23 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
 
     function settleAssertion(bytes32 assertionId) public {
         Assertion storage assertion = assertions[assertionId];
-        require(assertion.proposer != address(0), "Assertion does not exist"); // Revert if assertion does not exist.
+        require(assertion.asserter != address(0), "Assertion does not exist"); // Revert if assertion does not exist.
         require(!assertion.settled, "Assertion already settled"); // Revert if assertion already settled.
         assertion.settled = true;
         if (assertion.disputer == address(0)) {
-            // No dispute, settle with the proposer
+            // No dispute, settle with the asserter
             require(assertion.expirationTime <= getCurrentTime(), "Assertion not expired"); // Revert if assertion not expired.
-            assertion.currency.safeTransfer(assertion.proposer, assertion.bond);
+            assertion.currency.safeTransfer(assertion.asserter, assertion.bond);
             assertion.settlementResolution = true;
             _callbackOnAssertionResolve(assertionId, true);
 
-            emit AssertionSettled(assertionId, assertion.proposer, false, true);
+            emit AssertionSettled(assertionId, assertion.asserter, false, true);
         } else {
             // Dispute, settle with the disputer
-            int256 resolvedPrice =
-                _getOracle(assertionId).getPrice(
-                    assertion.identifier,
-                    assertion.assertionTime,
-                    _stampAssertion(assertionId)
-                ); // Revert if price not resolved.
+            int256 resolvedPrice = _oracleGetPrice(assertionId, assertion.identifier, assertion.assertionTime); // Revert if price not resolved.
 
             assertion.settlementResolution = assertion.ssSettings.useDisputeResolution ? resolvedPrice == 1e18 : false;
-            address bondRecipient = resolvedPrice == 1e18 ? assertion.proposer : assertion.disputer;
+            address bondRecipient = resolvedPrice == 1e18 ? assertion.asserter : assertion.disputer;
 
             // todo: should you only play the final fee in the case of a DVM arbitrated dispute?
             // TODO not force the final fee to be paid to the DVM if we unplugged
@@ -253,7 +243,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
         uint256 bond,
         uint256 liveness,
         IERC20 currency,
-        address proposer,
+        address asserter,
         address callbackRecipient,
         address sovereignSecurity,
         bytes32 identifier
@@ -267,7 +257,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
                     bond,
                     liveness,
                     currency,
-                    proposer, // TODO get rid of this prop
+                    asserter, // TODO get rid of this prop
                     callbackRecipient,
                     sovereignSecurity,
                     identifier
@@ -302,6 +292,22 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
         if (assertions[assertionId].ssSettings.useDvmAsOracle)
             return OracleAncillaryInterface(finder.getImplementationAddress(OracleInterfaces.Oracle));
         return OracleAncillaryInterface(address(_getSovereignSecurity(assertionId)));
+    }
+
+    function _oracleRequestPrice(
+        bytes32 assertionId,
+        bytes32 identifier,
+        uint256 time
+    ) internal {
+        _getOracle(assertionId).requestPrice(identifier, time, _stampAssertion(assertionId));
+    }
+
+    function _oracleGetPrice(
+        bytes32 assertionId,
+        bytes32 identifier,
+        uint256 time
+    ) internal view returns (int256) {
+        return _getOracle(assertionId).getPrice(identifier, time, _stampAssertion(assertionId));
     }
 
     function _getSovereignSecurity(bytes32 assertionId) internal view returns (SovereignSecurityInterface) {

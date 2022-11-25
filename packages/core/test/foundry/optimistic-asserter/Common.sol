@@ -39,7 +39,7 @@ contract Common is Test {
     event AssertionMade(
         bytes32 indexed assertionId,
         bytes claim,
-        address indexed proposer,
+        address indexed asserter,
         address callbackRecipient,
         address indexed sovereignSecurity,
         IERC20 currency,

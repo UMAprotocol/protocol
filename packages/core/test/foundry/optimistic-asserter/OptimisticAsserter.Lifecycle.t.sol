@@ -39,12 +39,12 @@ contract SimpleAssertionsWithClaimOnly is Common {
         // Move time forward to the end of the liveness period.
         timer.setCurrentTime(timer.getCurrentTime() + defaultLiveness);
 
-        // proposer balance before settlement
-        uint256 proposerBalanceBefore = defaultCurrency.balanceOf(TestAddress.account1);
+        // asserter balance before settlement
+        uint256 asserterBalanceBefore = defaultCurrency.balanceOf(TestAddress.account1);
 
         // The assertion should be true.
         assertTrue(optimisticAsserter.settleAndGetAssertionResult(assertionId));
-        assertEq(defaultCurrency.balanceOf(TestAddress.account1) - proposerBalanceBefore, defaultBond);
+        assertEq(defaultCurrency.balanceOf(TestAddress.account1) - asserterBalanceBefore, defaultBond);
     }
 
     function test_AssertionWithDispute() public {
@@ -82,16 +82,16 @@ contract SimpleAssertionsWithClaimOnly is Common {
 
         assertFalse(optimisticAsserter.settleAndGetAssertionResult(assertionId));
 
-        // The proposer should have lost their bond.
+        // The asserter should have lost their bond.
         assertEq(defaultCurrency.balanceOf(TestAddress.account1), 0);
 
-        // The disputer should have kept their bond and earned 1 - burnedBondPercentage of the proposer's bond.
+        // The disputer should have kept their bond and earned 1 - burnedBondPercentage of the asserter's bond.
         assertEq(
             defaultCurrency.balanceOf(TestAddress.account2),
             ((defaultBond * (2e18 - optimisticAsserter.burnedBondPercentage())) / 1e18)
         );
 
-        // The store should have kept the burnedBondPercentage part of the proposer's bond.
+        // The store should have kept the burnedBondPercentage part of the asserter's bond.
         assertEq(
             defaultCurrency.balanceOf(address(store)),
             (defaultBond * optimisticAsserter.burnedBondPercentage()) / 1e18

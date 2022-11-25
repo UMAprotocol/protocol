@@ -88,11 +88,11 @@ contract WhitelistProposerSovereignSecurityTest is Common {
     function _mockReadAssertion(
         bytes32 assertionId,
         address assertingCaller,
-        address proposer
+        address asserter
     ) internal {
         OptimisticAsserterInterface.Assertion memory assertion;
         assertion.ssSettings.assertingCaller = assertingCaller;
-        assertion.proposer = proposer;
+        assertion.asserter = asserter;
         vm.mockCall(
             mockOptimisticAsserterAddress,
             abi.encodeWithSelector(OptimisticAsserterInterface.getAssertion.selector, assertionId),
