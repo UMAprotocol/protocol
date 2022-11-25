@@ -19,7 +19,6 @@ import "../interfaces/OptimisticAssertorCallbackRecipientInterface.sol";
 import "../interfaces/OptimisticAssertorInterface.sol";
 import "../interfaces/SovereignSecurityManagerInterface.sol";
 
-// TODO use reentrancy guard
 contract OptimisticAssertor is OptimisticAssertorInterface, Lockable, Ownable {
     using SafeERC20 for IERC20;
 
@@ -53,7 +52,7 @@ contract OptimisticAssertor is OptimisticAssertorInterface, Lockable, Ownable {
         IERC20 _defaultCurrency,
         uint256 _defaultBond,
         uint256 _defaultLiveness
-    ) public onlyOwner {
+    ) public onlyOwner nonReentrant() {
         defaultCurrency = _defaultCurrency;
         defaultBond = _defaultBond;
         defaultLiveness = _defaultLiveness;
@@ -66,6 +65,7 @@ contract OptimisticAssertor is OptimisticAssertorInterface, Lockable, Ownable {
     }
 
     function assertTruth(bytes memory claim) public returns (bytes32) {
+        // Note: re-entrancy guard is done in the inner call.
         return
             assertTruthFor(
                 claim,
@@ -88,7 +88,7 @@ contract OptimisticAssertor is OptimisticAssertorInterface, Lockable, Ownable {
         uint256 bond,
         uint256 liveness,
         bytes32 identifier
-    ) public returns (bytes32) {
+    ) public nonReentrant() returns (bytes32) {
         proposer = proposer == address(0) ? msg.sender : proposer;
         bytes32 assertionId =
             _getId(claim, bond, liveness, currency, proposer, callbackRecipient, sovereignSecurityManager, identifier);
@@ -97,7 +97,7 @@ contract OptimisticAssertor is OptimisticAssertorInterface, Lockable, Ownable {
         // TODO [GAS] caching identifier whitelist and collateral currency whitelist
         require(_getIdentifierWhitelist().isIdentifierSupported(identifier), "Unsupported identifier");
         require(_getCollateralWhitelist().isOnWhitelist(address(currency)), "Unsupported currency");
-        require(bond >= getMinimumBond(address(currency)), "Bond amount too low");
+        require(bond >= _getMinimumBond(address(currency)), "Bond amount too low");
 
         // Pull the bond
         currency.safeTransferFrom(msg.sender, address(this), bond);
@@ -155,20 +155,16 @@ contract OptimisticAssertor is OptimisticAssertorInterface, Lockable, Ownable {
     }
 
     // TODO think about the naming of this function and readAssertion
-    function getAssertion(bytes32 assertionId) public view returns (bool) {
-        Assertion memory assertion = assertions[assertionId];
-        // Return early if not using answer from resolved dispute.
-        if (assertion.disputer != address(0) && !assertion.ssmSettings.useDisputeResolution) return false;
-        require(assertion.settled, "Assertion not settled"); // Revert if assertion not settled.
-        return assertion.settlementResolution;
+    function getAssertion(bytes32 assertionId) external view nonReentrantView() returns (bool) {
+        return _getAssertion(assertionId);
     }
 
-    function settleAndGetAssertion(bytes32 assertionId) public returns (bool) {
-        if (!assertions[assertionId].settled) settleAssertion(assertionId);
-        return getAssertion(assertionId);
+    function settleAndGetAssertion(bytes32 assertionId) external nonReentrant() returns (bool) {
+        if (!assertions[assertionId].settled) _settleAssertion(assertionId);
+        return _getAssertion(assertionId);
     }
 
-    function disputeAssertionFor(bytes32 assertionId, address disputer) public {
+    function disputeAssertionFor(bytes32 assertionId, address disputer) public nonReentrant() {
         disputer = disputer == address(0) ? msg.sender : disputer;
         Assertion storage assertion = assertions[assertionId];
         require(assertion.proposer != address(0), "Assertion does not exist"); // Revert if assertion does not exist.
@@ -197,44 +193,8 @@ contract OptimisticAssertor is OptimisticAssertorInterface, Lockable, Ownable {
         emit AssertionDisputed(assertionId, disputer);
     }
 
-    function settleAssertion(bytes32 assertionId) public {
-        Assertion storage assertion = assertions[assertionId];
-        require(assertion.proposer != address(0), "Assertion does not exist"); // Revert if assertion does not exist.
-        require(!assertion.settled, "Assertion already settled"); // Revert if assertion already settled.
-        assertion.settled = true;
-        if (assertion.disputer == address(0)) {
-            // No dispute, settle with the proposer
-            require(assertion.expirationTime <= getCurrentTime(), "Assertion not expired"); // Revert if assertion not expired.
-            assertion.currency.safeTransfer(assertion.proposer, assertion.bond);
-            assertion.settlementResolution = true;
-            _callbackOnAssertionResolve(assertionId, true);
-
-            emit AssertionSettled(assertionId, assertion.proposer, false, true);
-        } else {
-            // Dispute, settle with the disputer
-            int256 resolvedPrice =
-                _getOracle(assertionId).getPrice(
-                    assertion.identifier,
-                    assertion.assertionTime,
-                    _stampAssertion(assertionId)
-                ); // Revert if price not resolved.
-
-            assertion.settlementResolution = assertion.ssmSettings.useDisputeResolution ? resolvedPrice == 1e18 : false;
-            address bondRecipient = resolvedPrice == 1e18 ? assertion.proposer : assertion.disputer;
-
-            // todo: should you only play the final fee in the case of a DVM arbitrated dispute?
-            // TODO not force the final fee to be paid to the DVM if we unplugged
-            uint256 amountToBurn = (burnedBondPercentage * assertion.bond) / 1e18; // TODO multiply this by 1 or 0 if unplugged
-            uint256 amountToSend = assertion.bond * 2 - amountToBurn; // 50% of the bond is burned. The other 50% is sent to the bond recipient.
-
-            assertion.currency.safeTransfer(bondRecipient, amountToSend);
-            assertion.currency.safeTransfer(address(_getStore()), amountToBurn);
-
-            if (assertion.ssmSettings.useDisputeResolution)
-                _callbackOnAssertionResolve(assertionId, assertion.settlementResolution);
-
-            emit AssertionSettled(assertionId, bondRecipient, true, assertion.settlementResolution);
-        }
+    function settleAssertion(bytes32 assertionId) public nonReentrant() {
+        _settleAssertion(assertionId);
     }
 
     /**
@@ -249,7 +209,19 @@ contract OptimisticAssertor is OptimisticAssertorInterface, Lockable, Ownable {
         return _stampAssertion(assertionId);
     }
 
-    function getMinimumBond(address currencyAddress) public view returns (uint256) {
+    function getMinimumBond(address currencyAddress) external view nonReentrantView() returns (uint256) {
+        return _getMinimumBond(currencyAddress);
+    }
+
+    function _getAssertion(bytes32 assertionId) internal view returns (bool) {
+        Assertion memory assertion = assertions[assertionId];
+        // Return early if not using answer from resolved dispute.
+        if (assertion.disputer != address(0) && !assertion.ssmSettings.useDisputeResolution) return false;
+        require(assertion.settled, "Assertion not settled"); // Revert if assertion not settled.
+        return assertion.settlementResolution;
+    }
+
+    function _getMinimumBond(address currencyAddress) internal view returns (uint256) {
         uint256 finalFee = _getStore().computeFinalFee(currencyAddress).rawValue;
         return (finalFee * 1e18) / burnedBondPercentage;
     }
@@ -289,6 +261,46 @@ contract OptimisticAssertor is OptimisticAssertorInterface, Lockable, Ownable {
                 "aoRequester", // TODO change this oaAsserter
                 address(this) // TODO change to asserter
             );
+    }
+
+    function _settleAssertion(bytes32 assertionId) internal {
+        Assertion storage assertion = assertions[assertionId];
+        require(assertion.proposer != address(0), "Assertion does not exist"); // Revert if assertion does not exist.
+        require(!assertion.settled, "Assertion already settled"); // Revert if assertion already settled.
+        assertion.settled = true;
+        if (assertion.disputer == address(0)) {
+            // No dispute, settle with the proposer
+            require(assertion.expirationTime <= getCurrentTime(), "Assertion not expired"); // Revert if assertion not expired.
+            assertion.currency.safeTransfer(assertion.proposer, assertion.bond);
+            assertion.settlementResolution = true;
+            _callbackOnAssertionResolve(assertionId, true);
+
+            emit AssertionSettled(assertionId, assertion.proposer, false, true);
+        } else {
+            // Dispute, settle with the disputer
+            int256 resolvedPrice =
+                _getOracle(assertionId).getPrice(
+                    assertion.identifier,
+                    assertion.assertionTime,
+                    _stampAssertion(assertionId)
+                ); // Revert if price not resolved.
+
+            assertion.settlementResolution = assertion.ssmSettings.useDisputeResolution ? resolvedPrice == 1e18 : false;
+            address bondRecipient = resolvedPrice == 1e18 ? assertion.proposer : assertion.disputer;
+
+            // todo: should you only play the final fee in the case of a DVM arbitrated dispute?
+            // TODO not force the final fee to be paid to the DVM if we unplugged
+            uint256 amountToBurn = (burnedBondPercentage * assertion.bond) / 1e18; // TODO multiply this by 1 or 0 if unplugged
+            uint256 amountToSend = assertion.bond * 2 - amountToBurn; // 50% of the bond is burned. The other 50% is sent to the bond recipient.
+
+            assertion.currency.safeTransfer(bondRecipient, amountToSend);
+            assertion.currency.safeTransfer(address(_getStore()), amountToBurn);
+
+            if (assertion.ssmSettings.useDisputeResolution)
+                _callbackOnAssertionResolve(assertionId, assertion.settlementResolution);
+
+            emit AssertionSettled(assertionId, bondRecipient, true, assertion.settlementResolution);
+        }
     }
 
     function _getCollateralWhitelist() internal view returns (AddressWhitelist) {
