@@ -18,6 +18,7 @@ contract Common is Test {
     OptimisticAssertor optimisticAssertor;
     TestnetERC20 defaultCurrency;
     Timer timer;
+    Finder finder;
     MockOracleAncillary mockOracle;
     Store store;
 
@@ -36,7 +37,7 @@ contract Common is Test {
 
     // Event structures, that might be used in tests.
     event AssertionMade(
-        bytes32 assertionId,
+        bytes32 indexed assertionId,
         bytes claim,
         address indexed proposer,
         address callbackRecipient,
@@ -54,6 +55,7 @@ contract Common is Test {
         address indexed bondRecipient,
         bool disputed,
         bool settlementResolution
+        // TODO add caller address(msg.sender) to the event.
     );
 
     event AssertingCallerSet(address indexed assertingCaller);
@@ -66,6 +68,7 @@ contract Common is Test {
         defaultCurrency = oaContracts.defaultCurrency;
         mockOracle = oaContracts.mockOracle;
         timer = oaContracts.timer;
+        finder = oaContracts.finder;
         store = oaContracts.store;
         defaultBond = optimisticAssertor.defaultBond();
         defaultLiveness = optimisticAssertor.defaultLiveness();
@@ -76,7 +79,8 @@ contract Common is Test {
     function _mockSsmPolicies(
         bool allowAssertion,
         bool useDvmAsOracle,
-        bool useDisputeResolution
+        bool useDisputeResolution,
+        bool validateDisputers
     ) internal {
         // Mock getAssertionPolicies call to block assertion. No need to pass assertionId as mockCall uses loose matching.
         vm.mockCall(
@@ -86,9 +90,19 @@ contract Common is Test {
                 SovereignSecurityManagerInterface.AssertionPolicies({
                     allowAssertion: allowAssertion,
                     useDvmAsOracle: useDvmAsOracle,
-                    useDisputeResolution: useDisputeResolution
+                    useDisputeResolution: useDisputeResolution,
+                    validateDisputers: validateDisputers
                 })
             )
+        );
+    }
+
+    function _mockSsmDisputerCheck(bool isDisputeAllowed) internal {
+        // Mock isDisputeAllowed call with desired response. No need to pass parameters as mockCall uses loose matching.
+        vm.mockCall(
+            mockedSovereignSecurityManager,
+            abi.encodePacked(SovereignSecurityManagerInterface.isDisputeAllowed.selector),
+            abi.encode(isDisputeAllowed)
         );
     }
 
@@ -128,7 +142,7 @@ contract Common is Test {
             );
     }
 
-    function _disputeAndGetOracleRequest(bytes32 assertionId) internal returns (OracleRequest memory) {
+    function _disputeAndGetOracleRequest(bytes32 assertionId, uint256 bond) internal returns (OracleRequest memory) {
         // Get expected oracle request on dispute.
         OptimisticAssertorInterface.Assertion memory assertion = optimisticAssertor.readAssertion(assertionId);
         OracleRequest memory oracleRequest =
@@ -140,8 +154,8 @@ contract Common is Test {
 
         // Fund Account2 and make dispute.
         vm.startPrank(TestAddress.account2);
-        defaultCurrency.allocateTo(TestAddress.account2, optimisticAssertor.defaultBond());
-        defaultCurrency.approve(address(optimisticAssertor), optimisticAssertor.defaultBond());
+        defaultCurrency.allocateTo(TestAddress.account2, bond);
+        defaultCurrency.approve(address(optimisticAssertor), bond);
         optimisticAssertor.disputeAssertionFor(assertionId, TestAddress.account2);
         vm.stopPrank();
         return oracleRequest;

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.16;
 
+// TODO Organize imports
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
@@ -18,16 +19,19 @@ import "../interfaces/OptimisticAssertorCallbackRecipientInterface.sol";
 import "../interfaces/OptimisticAssertorInterface.sol";
 import "../interfaces/SovereignSecurityManagerInterface.sol";
 
-contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
+// TODO use reentrancy guard
+contract OptimisticAssertor is OptimisticAssertorInterface, Lockable, Ownable {
     using SafeERC20 for IERC20;
 
     FinderInterface public immutable finder;
 
     mapping(bytes32 => Assertion) public assertions;
 
+    // TODO add setters to change burnedBondPercentage
+    // TODO dynamic unit tests for burnedBondPercentage
     uint256 public burnedBondPercentage = 0.5e18; //50% of bond is burned.
 
-    bytes32 public defaultIdentifier = "ASSERT_TRUTH";
+    bytes32 public constant defaultIdentifier = "ASSERT_TRUTH";
 
     IERC20 public defaultCurrency;
     uint256 public defaultBond;
@@ -43,6 +47,8 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
         setAssertionDefaults(_defaultCurrency, _defaultBond, _defaultLiveness);
     }
 
+    // TODO set a sync function to update the defaultBond in the store reading from the Store
+    // TODO consider renaming this
     function setAssertionDefaults(
         IERC20 _defaultCurrency,
         uint256 _defaultBond,
@@ -60,10 +66,6 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
     }
 
     function assertTruth(bytes memory claim) public returns (bytes32) {
-        // The simplest form of assertion. Bond currency and bond amount default to WETH and WETH final fee.
-        // If there is a pending assertion with the same configuration (timestamp, claim and default bond prop) then
-        // reverts. Internally calls assertTruth(...) with all the associated props.
-        // returns the value that assertTruth(...) returns.
         return
             assertTruthFor(
                 claim,
@@ -71,7 +73,7 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
                 address(0),
                 address(0),
                 defaultCurrency,
-                defaultBond,
+                defaultBond, // TODO update this when the caching is implemented
                 defaultLiveness,
                 defaultIdentifier
             );
@@ -87,11 +89,12 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
         uint256 liveness,
         bytes32 identifier
     ) public returns (bytes32) {
-        address _proposer = proposer == address(0) ? msg.sender : proposer;
+        proposer = proposer == address(0) ? msg.sender : proposer;
         bytes32 assertionId =
-            _getId(claim, bond, liveness, currency, _proposer, callbackRecipient, sovereignSecurityManager, identifier);
+            _getId(claim, bond, liveness, currency, proposer, callbackRecipient, sovereignSecurityManager, identifier);
 
         require(assertions[assertionId].proposer == address(0), "Assertion already exists");
+        // TODO [GAS] caching identifier whitelist and collateral currency whitelist
         require(_getIdentifierWhitelist().isIdentifierSupported(identifier), "Unsupported identifier");
         require(_getCollateralWhitelist().isOnWhitelist(address(currency)), "Unsupported currency");
         require(bond >= getMinimumBond(address(currency)), "Bond amount too low");
@@ -100,7 +103,7 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
         currency.safeTransferFrom(msg.sender, address(this), bond);
 
         assertions[assertionId] = Assertion({
-            proposer: _proposer,
+            proposer: proposer,
             disputer: address(0),
             callbackRecipient: callbackRecipient,
             currency: currency,
@@ -109,41 +112,49 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
             bond: bond,
             assertionTime: getCurrentTime(),
             expirationTime: getCurrentTime() + liveness,
+            claimId: keccak256(claim),
             identifier: identifier,
-            ssmSettings: SsmSettings({
+            ssmSettings: SsmSettings({ // TODO [GAS] rename these variables to default to false
                 useDisputeResolution: true, // this is the default behavior: if not specified by the Sovereign security manager the assertion will respect the DVM result.
                 useDvmAsOracle: true, // this is the default behavior: if not specified by the Sovereign security manager the assertion will use the DVM as an oracle.
+                validateDisputers: false, // this is the default behavior: if not specified by the Sovereign security manager the disputer will not be validated.
                 sovereignSecurityManager: sovereignSecurityManager,
                 assertingCaller: msg.sender
             })
         });
 
+        // TODO shorten this lines
         SovereignSecurityManagerInterface.AssertionPolicies memory assertionPolicies =
             _getAssertionPolicies(assertionId);
 
         // Check if the assertion is allowed by the sovereign security manager.
         require(assertionPolicies.allowAssertion, "Assertion not allowed");
 
+        // TODO reconsider this triple assignment with a spread operator without using a memory variable
         // Check if the Sovereign Security Manager is configured to arbitrate via DVM
         assertions[assertionId].ssmSettings.useDisputeResolution = assertionPolicies.useDisputeResolution;
 
         // Check if the Sovereign Security Manager is configured to use the DVM as an oracle.
         assertions[assertionId].ssmSettings.useDvmAsOracle = assertionPolicies.useDvmAsOracle;
 
+        // Check if the Sovereign Security Manager is configured to validate the disputers.
+        assertions[assertionId].ssmSettings.validateDisputers = assertionPolicies.validateDisputers;
+
         emit AssertionMade(
             assertionId,
             claim,
-            _proposer,
+            proposer,
             callbackRecipient,
             sovereignSecurityManager,
             currency,
             bond,
-            assertions[assertionId].expirationTime
+            assertions[assertionId].expirationTime // TODO [GAS] consider using a memory variable to avoid multiple reads
         );
 
         return assertionId;
     }
 
+    // TODO think about the naming of this function and readAssertion
     function getAssertion(bytes32 assertionId) public view returns (bool) {
         Assertion memory assertion = assertions[assertionId];
         // Return early if not using answer from resolved dispute.
@@ -158,17 +169,19 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
     }
 
     function disputeAssertionFor(bytes32 assertionId, address disputer) public {
-        address _disputer = disputer == address(0) ? msg.sender : disputer;
+        disputer = disputer == address(0) ? msg.sender : disputer;
         Assertion storage assertion = assertions[assertionId];
         require(assertion.proposer != address(0), "Assertion does not exist"); // Revert if assertion does not exist.
         require(assertion.disputer == address(0), "Assertion already disputed"); // Revert if assertion already disputed.
         require(assertion.expirationTime > getCurrentTime(), "Assertion is expired"); // Revert if assertion expired.
+        require(_isDisputeAllowed(assertionId), "Dispute not allowed"); // Revert if dispute not allowed.
 
         // Pull the bond
         assertion.currency.safeTransferFrom(msg.sender, address(this), assertion.bond);
 
-        assertion.disputer = _disputer;
+        assertion.disputer = disputer;
 
+        // TODO shorten this lines (e.g. using internal function)
         _getOracle(assertionId).requestPrice(
             assertion.identifier,
             assertion.assertionTime,
@@ -181,7 +194,7 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
         // Send resolve callback if dispute resolution is discarded
         if (!assertion.ssmSettings.useDisputeResolution) _callbackOnAssertionResolve(assertionId, false);
 
-        emit AssertionDisputed(assertionId, _disputer);
+        emit AssertionDisputed(assertionId, disputer);
     }
 
     function settleAssertion(bytes32 assertionId) public {
@@ -210,7 +223,8 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
             address bondRecipient = resolvedPrice == 1e18 ? assertion.proposer : assertion.disputer;
 
             // todo: should you only play the final fee in the case of a DVM arbitrated dispute?
-            uint256 amountToBurn = (burnedBondPercentage * assertion.bond) / 1e18;
+            // TODO not force the final fee to be paid to the DVM if we unplugged
+            uint256 amountToBurn = (burnedBondPercentage * assertion.bond) / 1e18; // TODO multiply this by 1 or 0 if unplugged
             uint256 amountToSend = assertion.bond * 2 - amountToBurn; // 50% of the bond is burned. The other 50% is sent to the bond recipient.
 
             assertion.currency.safeTransfer(bondRecipient, amountToSend);
@@ -253,12 +267,13 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
         // Returns the unique ID for this assertion. This ID is used to identify the assertion in the Oracle.
         return
             keccak256(
+                // TODO change order of abi.encode arguments to do potential gas savings
                 abi.encode(
                     claim,
                     bond,
                     liveness,
                     currency,
-                    proposer,
+                    proposer, // TODO get rid of this prop
                     callbackRecipient,
                     sovereignSecurityManager,
                     identifier
@@ -271,8 +286,8 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
         return
             AncillaryData.appendKeyValueAddress(
                 AncillaryData.appendKeyValueBytes32("", "assertionId", assertionId),
-                "aoRequester",
-                address(this)
+                "aoRequester", // TODO change this oaAsserter
+                address(this) // TODO change to asserter
             );
     }
 
@@ -288,6 +303,7 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
         return StoreInterface(finder.getImplementationAddress(OracleInterfaces.Store));
     }
 
+    // TODO: caching oracle
     function _getOracle(bytes32 assertionId) internal view returns (OracleAncillaryInterface) {
         if (assertions[assertionId].ssmSettings.useDvmAsOracle)
             return OracleAncillaryInterface(finder.getImplementationAddress(OracleInterfaces.Oracle));
@@ -308,11 +324,18 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
         returns (SovereignSecurityManagerInterface.AssertionPolicies memory)
     {
         address ssm = assertions[assertionId].ssmSettings.sovereignSecurityManager;
-        if (ssm == address(0)) return SovereignSecurityManagerInterface.AssertionPolicies(true, true, true);
+        if (ssm == address(0)) return SovereignSecurityManagerInterface.AssertionPolicies(true, true, true, false); // TODO update with default values
         return SovereignSecurityManagerInterface(ssm).getAssertionPolicies(assertionId);
     }
 
+    function _isDisputeAllowed(bytes32 assertionId) internal view returns (bool) {
+        address ssm = assertions[assertionId].ssmSettings.sovereignSecurityManager;
+        if (!assertions[assertionId].ssmSettings.validateDisputers) return true;
+        return SovereignSecurityManagerInterface(ssm).isDisputeAllowed(assertionId, msg.sender);
+    }
+
     function _callbackOnAssertionResolve(bytes32 assertionId, bool assertedTruthfully) internal {
+        // TODO send to the SSM if is set
         if (assertions[assertionId].callbackRecipient != address(0))
             OptimisticAssertorCallbackRecipientInterface(assertions[assertionId].callbackRecipient).assertionResolved(
                 assertionId,
@@ -321,6 +344,7 @@ contract OptimisticAssertor is Lockable, OptimisticAssertorInterface, Ownable {
     }
 
     function _callbackOnAssertionDispute(bytes32 assertionId) internal {
+        // TODO send to the SSM if is set
         if (assertions[assertionId].callbackRecipient != address(0))
             OptimisticAssertorCallbackRecipientInterface(assertions[assertionId].callbackRecipient).assertionDisputed(
                 assertionId

@@ -31,7 +31,13 @@ contract WhitelistProposerSovereignSecurityManager is BaseSovereignSecurityManag
         OptimisticAssertorInterface optimisticAssertor = OptimisticAssertorInterface(msg.sender);
         OptimisticAssertorInterface.Assertion memory assertion = optimisticAssertor.readAssertion(assertionId);
         bool allow = _checkIfAssertionAllowed(assertion);
-        return AssertionPolicies({ allowAssertion: allow, useDvmAsOracle: true, useDisputeResolution: true });
+        return
+            AssertionPolicies({
+                allowAssertion: allow,
+                useDvmAsOracle: true,
+                useDisputeResolution: true,
+                validateDisputers: false
+            });
     }
 
     function _checkIfAssertionAllowed(OptimisticAssertorInterface.Assertion memory assertion)
