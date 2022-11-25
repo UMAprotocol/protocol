@@ -82,10 +82,10 @@ contract Common is Test {
         bool useDisputeResolution,
         bool validateDisputers
     ) internal {
-        // Mock getAssertionPolicies call to block assertion. No need to pass assertionId as mockCall uses loose matching.
+        // Mock getAssertionPolicy call to block assertion. No need to pass assertionId as mockCall uses loose matching.
         vm.mockCall(
             mockedSovereignSecurity,
-            abi.encodePacked(SovereignSecurityInterface.getAssertionPolicies.selector),
+            abi.encodePacked(SovereignSecurityInterface.getAssertionPolicy.selector),
             abi.encode(
                 SovereignSecurityInterface.AssertionPolicies({
                     allowAssertion: allowAssertion,

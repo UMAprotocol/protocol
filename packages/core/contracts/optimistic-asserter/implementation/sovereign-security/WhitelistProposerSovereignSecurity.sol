@@ -27,7 +27,7 @@ contract WhitelistProposerSovereignSecurity is BaseSovereignSecurity, Ownable {
         whitelistedProposers[proposer] = value;
     }
 
-    function getAssertionPolicies(bytes32 assertionId) public view override returns (AssertionPolicies memory) {
+    function getAssertionPolicy(bytes32 assertionId) public view override returns (AssertionPolicies memory) {
         OptimisticAsserterInterface optimisticAsserter = OptimisticAsserterInterface(msg.sender);
         OptimisticAsserterInterface.Assertion memory assertion = optimisticAsserter.getAssertion(assertionId);
         bool allow = _checkIfAssertionAllowed(assertion);

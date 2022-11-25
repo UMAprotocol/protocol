@@ -5,7 +5,7 @@ import "../../interfaces/SovereignSecurityInterface.sol";
 contract BaseSovereignSecurity is SovereignSecurityInterface {
     event PriceRequestAdded(bytes32 indexed identifier, uint256 time, bytes ancillaryData);
 
-    function getAssertionPolicies(bytes32 assertionId) public view virtual override returns (AssertionPolicies memory) {
+    function getAssertionPolicy(bytes32 assertionId) public view virtual override returns (AssertionPolicies memory) {
         return
             AssertionPolicies({
                 allowAssertion: true,

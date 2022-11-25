@@ -315,7 +315,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
     {
         address ss = assertions[assertionId].ssSettings.sovereignSecurity;
         if (ss == address(0)) return SovereignSecurityInterface.AssertionPolicies(true, true, true, false); // TODO update with default values
-        return SovereignSecurityInterface(ss).getAssertionPolicies(assertionId);
+        return SovereignSecurityInterface(ss).getAssertionPolicy(assertionId);
     }
 
     function _isDisputeAllowed(bytes32 assertionId) internal view returns (bool) {

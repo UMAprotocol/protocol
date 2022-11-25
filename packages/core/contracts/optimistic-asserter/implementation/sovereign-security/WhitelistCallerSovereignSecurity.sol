@@ -11,7 +11,7 @@ contract WhitelistCallerSovereignSecurity is BaseSovereignSecurity, Ownable {
         whitelistedAssertingCallers[assertingCaller] = value;
     }
 
-    function getAssertionPolicies(bytes32 assertionId) public view override returns (AssertionPolicies memory) {
+    function getAssertionPolicy(bytes32 assertionId) public view override returns (AssertionPolicies memory) {
         OptimisticAsserterInterface optimisticAsserter = OptimisticAsserterInterface(msg.sender);
         return
             AssertionPolicies({
