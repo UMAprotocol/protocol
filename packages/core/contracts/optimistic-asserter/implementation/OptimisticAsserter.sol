@@ -127,15 +127,12 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
         // Check if the assertion is allowed by the sovereign security.
         require(assertionPolicies.allowAssertion, "Assertion not allowed");
 
-        // TODO reconsider this triple assignment with a spread operator without using a memory variable
-        // Check if the Sovereign Security is configured to arbitrate via DVM
-        assertions[assertionId].ssSettings.useDisputeResolution = assertionPolicies.useDisputeResolution;
-
-        // Check if the Sovereign Security is configured to use the DVM as an oracle.
-        assertions[assertionId].ssSettings.useDvmAsOracle = assertionPolicies.useDvmAsOracle;
-
-        // Check if the Sovereign Security is configured to validate the disputers.
-        assertions[assertionId].ssSettings.validateDisputers = assertionPolicies.validateDisputers;
+        SsmSettings storage settings = assertions[assertionId].ssmSettings;
+        (settings.useDisputeResolution, settings.useDvmAsOracle, settings.validateDisputers) = (
+            assertionPolicies.useDisputeResolution, // Arbitrate via DVM if specified by the SSM.
+            assertionPolicies.useDvmAsOracle, // Use DVM as an oracle if specified by the SSM.
+            assertionPolicies.validateDisputers // Validate the disputers if specified by the SSM.
+        );
 
         emit AssertionMade(
             assertionId,
