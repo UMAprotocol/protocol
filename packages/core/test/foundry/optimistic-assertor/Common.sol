@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import "forge-std/Test.sol";
 import "../fixtures/optimistic-assertor/OptimisticAssertorFixture.sol";
 import "../fixtures/common/TestAddress.sol";
-import "../../../contracts/oracle/test/MockOracleAncillary.sol";
+import "../../../contracts/data-verification-mechanism/test/MockOracleAncillary.sol";
 
 contract Common is Test {
     // Data structures, that might be used in tests.
@@ -18,6 +18,7 @@ contract Common is Test {
     OptimisticAssertor optimisticAssertor;
     TestnetERC20 defaultCurrency;
     Timer timer;
+    Finder finder;
     MockOracleAncillary mockOracle;
     Store store;
 
@@ -26,6 +27,7 @@ contract Common is Test {
     bytes falseClaimAssertion = bytes("q:'The sky is red'");
     uint256 defaultBond;
     uint256 defaultLiveness;
+    bytes32 defaultIdentifier;
 
     // Mock addresses, used to prank calls.
     address mockOptimisticAssertorAddress = address(0xfa);
@@ -35,7 +37,7 @@ contract Common is Test {
 
     // Event structures, that might be used in tests.
     event AssertionMade(
-        bytes32 assertionId,
+        bytes32 indexed assertionId,
         bytes claim,
         address indexed proposer,
         address callbackRecipient,
@@ -53,26 +55,32 @@ contract Common is Test {
         address indexed bondRecipient,
         bool disputed,
         bool settlementResolution
+        // TODO add caller address(msg.sender) to the event.
     );
+
+    event AssertingCallerSet(address indexed assertingCaller);
 
     // Common setup function, re-used in most tests.
     function _commonSetup() public {
-        OptimisticAssertorFixture.OptimisticAsserterContracts memory oaContracts =
+        OptimisticAssertorFixture.OptimisticAssertorContracts memory oaContracts =
             new OptimisticAssertorFixture().setUp();
         optimisticAssertor = oaContracts.optimisticAssertor;
         defaultCurrency = oaContracts.defaultCurrency;
         mockOracle = oaContracts.mockOracle;
         timer = oaContracts.timer;
+        finder = oaContracts.finder;
         store = oaContracts.store;
         defaultBond = optimisticAssertor.defaultBond();
         defaultLiveness = optimisticAssertor.defaultLiveness();
+        defaultIdentifier = optimisticAssertor.defaultIdentifier();
     }
 
     // Helper functions, re-used in some tests.
     function _mockSsmPolicies(
         bool allowAssertion,
         bool useDvmAsOracle,
-        bool useDisputeResolution
+        bool useDisputeResolution,
+        bool validateDisputers
     ) internal {
         // Mock getAssertionPolicies call to block assertion. No need to pass assertionId as mockCall uses loose matching.
         vm.mockCall(
@@ -82,9 +90,19 @@ contract Common is Test {
                 SovereignSecurityManagerInterface.AssertionPolicies({
                     allowAssertion: allowAssertion,
                     useDvmAsOracle: useDvmAsOracle,
-                    useDisputeResolution: useDisputeResolution
+                    useDisputeResolution: useDisputeResolution,
+                    validateDisputers: validateDisputers
                 })
             )
+        );
+    }
+
+    function _mockSsmDisputerCheck(bool isDisputeAllowed) internal {
+        // Mock isDisputeAllowed call with desired response. No need to pass parameters as mockCall uses loose matching.
+        vm.mockCall(
+            mockedSovereignSecurityManager,
+            abi.encodePacked(SovereignSecurityManagerInterface.isDisputeAllowed.selector),
+            abi.encode(isDisputeAllowed)
         );
     }
 
@@ -119,24 +137,25 @@ contract Common is Test {
                 sovereignSecurityManager,
                 defaultCurrency,
                 defaultBond,
-                defaultLiveness
+                defaultLiveness,
+                defaultIdentifier
             );
     }
 
-    function _disputeAndGetOracleRequest(bytes32 assertionId) internal returns (OracleRequest memory) {
+    function _disputeAndGetOracleRequest(bytes32 assertionId, uint256 bond) internal returns (OracleRequest memory) {
         // Get expected oracle request on dispute.
         OptimisticAssertorInterface.Assertion memory assertion = optimisticAssertor.readAssertion(assertionId);
         OracleRequest memory oracleRequest =
             OracleRequest({
-                identifier: optimisticAssertor.identifier(),
+                identifier: optimisticAssertor.defaultIdentifier(),
                 time: assertion.assertionTime,
                 ancillaryData: optimisticAssertor.stampAssertion(assertionId)
             });
 
         // Fund Account2 and make dispute.
         vm.startPrank(TestAddress.account2);
-        defaultCurrency.allocateTo(TestAddress.account2, optimisticAssertor.defaultBond());
-        defaultCurrency.approve(address(optimisticAssertor), optimisticAssertor.defaultBond());
+        defaultCurrency.allocateTo(TestAddress.account2, bond);
+        defaultCurrency.approve(address(optimisticAssertor), bond);
         optimisticAssertor.disputeAssertionFor(assertionId, TestAddress.account2);
         vm.stopPrank();
         return oracleRequest;
@@ -146,7 +165,7 @@ contract Common is Test {
         vm.expectCall(
             mockedCallbackRecipient,
             abi.encodeWithSelector(
-                OptimisticAsserterCallbackRecipientInterface.assertionResolved.selector,
+                OptimisticAssertorCallbackRecipientInterface.assertionResolved.selector,
                 assertionId,
                 assertedTruthfully
             )
@@ -156,7 +175,7 @@ contract Common is Test {
     function _expectAssertionDisputedCallback(bytes32 assertionId) internal {
         vm.expectCall(
             mockedCallbackRecipient,
-            abi.encodeWithSelector(OptimisticAsserterCallbackRecipientInterface.assertionDisputed.selector, assertionId)
+            abi.encodeWithSelector(OptimisticAssertorCallbackRecipientInterface.assertionDisputed.selector, assertionId)
         );
     }
 }

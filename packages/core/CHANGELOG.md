@@ -3,6 +3,74 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.43.2](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.43.1...@uma/core@2.43.2) (2022-11-23)
+
+**Note:** Version bump only for package @uma/core
+
+## [2.43.1](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.43.0...@uma/core@2.43.1) (2022-11-23)
+
+**Note:** Version bump only for package @uma/core
+
+# [2.43.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.41.0...@uma/core@2.43.0) (2022-11-23)
+
+### Bug Fixes
+
+- **core:** avoid duplicate oa disputes ([#4240](https://github.com/UMAprotocol/protocol/issues/4240)) ([9a76db8](https://github.com/UMAprotocol/protocol/commit/9a76db88bb071a471e51d66044b14c623018dbd2))
+- **core:** send oa callbacks only if recipient set ([#4225](https://github.com/UMAprotocol/protocol/issues/4225)) ([6b336fc](https://github.com/UMAprotocol/protocol/commit/6b336fca0072a6419c67072fffdb3fc745652968))
+
+### Features
+
+- add new voting v2 goerli address ([#4260](https://github.com/UMAprotocol/protocol/issues/4260)) ([a6634de](https://github.com/UMAprotocol/protocol/commit/a6634de825dd52b2263c7add4b06ec8d42c353d6))
+- **core:** add custom price identifier to oa (master) ([#4256](https://github.com/UMAprotocol/protocol/issues/4256)) ([32e4823](https://github.com/UMAprotocol/protocol/commit/32e48236bbea1ea100d6b0e4fc279adaf22da62c)), closes [#4254](https://github.com/UMAprotocol/protocol/issues/4254)
+- **core:** implement ssm able to discard disputed assertions ([#4253](https://github.com/UMAprotocol/protocol/issues/4253)) ([9f2a474](https://github.com/UMAprotocol/protocol/commit/9f2a474fc8f3a436c4b365c93499fe0c4d73222e))
+- add assertion dispute test and fix issues ([#4236](https://github.com/UMAprotocol/protocol/issues/4236)) ([b1aa698](https://github.com/UMAprotocol/protocol/commit/b1aa69881ffaeb45c84876c43028368e8c05d33b))
+- add dispute callbacks ([#4245](https://github.com/UMAprotocol/protocol/issues/4245)) ([50a7851](https://github.com/UMAprotocol/protocol/commit/50a7851a659b4333abcb3fe379da2d793f62db9b))
+- insurance implementation with optimistic assertor ([#4249](https://github.com/UMAprotocol/protocol/issues/4249)) ([c5b8ab9](https://github.com/UMAprotocol/protocol/commit/c5b8ab9590542f7273dd2147db4f9dd66f4b1dec))
+- **core:** add whitelist proposer ssm ([#4251](https://github.com/UMAprotocol/protocol/issues/4251)) ([dcb38dd](https://github.com/UMAprotocol/protocol/commit/dcb38ddc79b7307ed0a9f80d72a1aa2532f795a1))
+- **core:** further improve optimistic assertor tests ([#4248](https://github.com/UMAprotocol/protocol/issues/4248)) ([d39a9c6](https://github.com/UMAprotocol/protocol/commit/d39a9c611b9f180bf679cfd6f11a46b3727e7d16))
+- add optimistic assertor events ([#4228](https://github.com/UMAprotocol/protocol/issues/4228)) ([74d55c0](https://github.com/UMAprotocol/protocol/commit/74d55c023e8818f72586b5cf5f8989dd96344512))
+- Add OptimisticAssertor Sovereign security manager ([#4222](https://github.com/UMAprotocol/protocol/issues/4222)) ([1433376](https://github.com/UMAprotocol/protocol/commit/1433376751715769a53268f57daa157163dce800))
+- oa sovereign security policies ([#4230](https://github.com/UMAprotocol/protocol/issues/4230)) ([4de231e](https://github.com/UMAprotocol/protocol/commit/4de231e853fd93c60f54f475d5783fbea158c7b6))
+- optimsitic assertor happy path test and timer integration ([#4234](https://github.com/UMAprotocol/protocol/issues/4234)) ([5a6463b](https://github.com/UMAprotocol/protocol/commit/5a6463b9a9b0adc1f46d8527e4d24c70fdd65b1c))
+- refactor tests to use common implementation and general clean ([#4246](https://github.com/UMAprotocol/protocol/issues/4246)) ([1004001](https://github.com/UMAprotocol/protocol/commit/10040018e0384ecc11e463d0b266ee8781da5395))
+- sovereign security manager unit tests ([#4243](https://github.com/UMAprotocol/protocol/issues/4243)) ([3fd6818](https://github.com/UMAprotocol/protocol/commit/3fd68184d3c14b65011a4e6078356725a4d07cc3))
+- **core:** oa check dvm as oracle at assertion ([#4227](https://github.com/UMAprotocol/protocol/issues/4227)) ([9694252](https://github.com/UMAprotocol/protocol/commit/96942524a21a72a945428b4bbd9a1c516fd8e63f))
+- **core:** oa return false when ignoring oracle ([#4231](https://github.com/UMAprotocol/protocol/issues/4231)) ([ae24d0b](https://github.com/UMAprotocol/protocol/commit/ae24d0bbb9f56c2c4f4efe5bb7bfe7eaf6dea8fe))
+- **core:** whitelist assertors by msg.sender ([#4233](https://github.com/UMAprotocol/protocol/issues/4233)) ([6dcbe7a](https://github.com/UMAprotocol/protocol/commit/6dcbe7a4f5e8facdcedcd03368de1eff2df5659e))
+- Add UMA foundry fixtures ([#4224](https://github.com/UMAprotocol/protocol/issues/4224)) ([17e5cb9](https://github.com/UMAprotocol/protocol/commit/17e5cb905daf9ce613ff517927ef97bd37588c51))
+- minimal viable foundry ([#4212](https://github.com/UMAprotocol/protocol/issues/4212)) ([82b2f0c](https://github.com/UMAprotocol/protocol/commit/82b2f0c28287853df3a224c0f9c491709acbfb1b))
+- rename oa sovereign security variables ([#4226](https://github.com/UMAprotocol/protocol/issues/4226)) ([d8b618d](https://github.com/UMAprotocol/protocol/commit/d8b618dc19b34ba9989b97f10c02b3b0c1f60f7a))
+
+# [2.42.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.41.0...@uma/core@2.42.0) (2022-11-23)
+
+### Bug Fixes
+
+- **core:** avoid duplicate oa disputes ([#4240](https://github.com/UMAprotocol/protocol/issues/4240)) ([9a76db8](https://github.com/UMAprotocol/protocol/commit/9a76db88bb071a471e51d66044b14c623018dbd2))
+- **core:** send oa callbacks only if recipient set ([#4225](https://github.com/UMAprotocol/protocol/issues/4225)) ([6b336fc](https://github.com/UMAprotocol/protocol/commit/6b336fca0072a6419c67072fffdb3fc745652968))
+
+### Features
+
+- add new voting v2 goerli address ([#4260](https://github.com/UMAprotocol/protocol/issues/4260)) ([a6634de](https://github.com/UMAprotocol/protocol/commit/a6634de825dd52b2263c7add4b06ec8d42c353d6))
+- **core:** add custom price identifier to oa (master) ([#4256](https://github.com/UMAprotocol/protocol/issues/4256)) ([32e4823](https://github.com/UMAprotocol/protocol/commit/32e48236bbea1ea100d6b0e4fc279adaf22da62c)), closes [#4254](https://github.com/UMAprotocol/protocol/issues/4254)
+- **core:** implement ssm able to discard disputed assertions ([#4253](https://github.com/UMAprotocol/protocol/issues/4253)) ([9f2a474](https://github.com/UMAprotocol/protocol/commit/9f2a474fc8f3a436c4b365c93499fe0c4d73222e))
+- add assertion dispute test and fix issues ([#4236](https://github.com/UMAprotocol/protocol/issues/4236)) ([b1aa698](https://github.com/UMAprotocol/protocol/commit/b1aa69881ffaeb45c84876c43028368e8c05d33b))
+- add dispute callbacks ([#4245](https://github.com/UMAprotocol/protocol/issues/4245)) ([50a7851](https://github.com/UMAprotocol/protocol/commit/50a7851a659b4333abcb3fe379da2d793f62db9b))
+- insurance implementation with optimistic assertor ([#4249](https://github.com/UMAprotocol/protocol/issues/4249)) ([c5b8ab9](https://github.com/UMAprotocol/protocol/commit/c5b8ab9590542f7273dd2147db4f9dd66f4b1dec))
+- **core:** add whitelist proposer ssm ([#4251](https://github.com/UMAprotocol/protocol/issues/4251)) ([dcb38dd](https://github.com/UMAprotocol/protocol/commit/dcb38ddc79b7307ed0a9f80d72a1aa2532f795a1))
+- **core:** further improve optimistic assertor tests ([#4248](https://github.com/UMAprotocol/protocol/issues/4248)) ([d39a9c6](https://github.com/UMAprotocol/protocol/commit/d39a9c611b9f180bf679cfd6f11a46b3727e7d16))
+- add optimistic assertor events ([#4228](https://github.com/UMAprotocol/protocol/issues/4228)) ([74d55c0](https://github.com/UMAprotocol/protocol/commit/74d55c023e8818f72586b5cf5f8989dd96344512))
+- Add OptimisticAssertor Sovereign security manager ([#4222](https://github.com/UMAprotocol/protocol/issues/4222)) ([1433376](https://github.com/UMAprotocol/protocol/commit/1433376751715769a53268f57daa157163dce800))
+- oa sovereign security policies ([#4230](https://github.com/UMAprotocol/protocol/issues/4230)) ([4de231e](https://github.com/UMAprotocol/protocol/commit/4de231e853fd93c60f54f475d5783fbea158c7b6))
+- optimsitic assertor happy path test and timer integration ([#4234](https://github.com/UMAprotocol/protocol/issues/4234)) ([5a6463b](https://github.com/UMAprotocol/protocol/commit/5a6463b9a9b0adc1f46d8527e4d24c70fdd65b1c))
+- refactor tests to use common implementation and general clean ([#4246](https://github.com/UMAprotocol/protocol/issues/4246)) ([1004001](https://github.com/UMAprotocol/protocol/commit/10040018e0384ecc11e463d0b266ee8781da5395))
+- sovereign security manager unit tests ([#4243](https://github.com/UMAprotocol/protocol/issues/4243)) ([3fd6818](https://github.com/UMAprotocol/protocol/commit/3fd68184d3c14b65011a4e6078356725a4d07cc3))
+- **core:** oa check dvm as oracle at assertion ([#4227](https://github.com/UMAprotocol/protocol/issues/4227)) ([9694252](https://github.com/UMAprotocol/protocol/commit/96942524a21a72a945428b4bbd9a1c516fd8e63f))
+- **core:** oa return false when ignoring oracle ([#4231](https://github.com/UMAprotocol/protocol/issues/4231)) ([ae24d0b](https://github.com/UMAprotocol/protocol/commit/ae24d0bbb9f56c2c4f4efe5bb7bfe7eaf6dea8fe))
+- **core:** whitelist assertors by msg.sender ([#4233](https://github.com/UMAprotocol/protocol/issues/4233)) ([6dcbe7a](https://github.com/UMAprotocol/protocol/commit/6dcbe7a4f5e8facdcedcd03368de1eff2df5659e))
+- Add UMA foundry fixtures ([#4224](https://github.com/UMAprotocol/protocol/issues/4224)) ([17e5cb9](https://github.com/UMAprotocol/protocol/commit/17e5cb905daf9ce613ff517927ef97bd37588c51))
+- minimal viable foundry ([#4212](https://github.com/UMAprotocol/protocol/issues/4212)) ([82b2f0c](https://github.com/UMAprotocol/protocol/commit/82b2f0c28287853df3a224c0f9c491709acbfb1b))
+- rename oa sovereign security variables ([#4226](https://github.com/UMAprotocol/protocol/issues/4226)) ([d8b618d](https://github.com/UMAprotocol/protocol/commit/d8b618dc19b34ba9989b97f10c02b3b0c1f60f7a))
+
 # [2.41.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.40.0...@uma/core@2.41.0) (2022-11-02)
 
 ### Features

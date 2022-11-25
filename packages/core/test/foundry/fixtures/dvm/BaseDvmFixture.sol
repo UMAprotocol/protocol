@@ -5,10 +5,10 @@ import "../common/TestAddress.sol";
 import "../common/TimerFixture.sol";
 
 import "../../../../contracts/common/implementation/AddressWhitelist.sol";
-import "../../../../contracts/oracle/implementation/Finder.sol";
-import "../../../../contracts/oracle/implementation/Store.sol";
-import "../../../../contracts/oracle/implementation/IdentifierWhitelist.sol";
-import "../../../../contracts/oracle/implementation/Constants.sol";
+import "../../../../contracts/data-verification-mechanism/implementation/Finder.sol";
+import "../../../../contracts/data-verification-mechanism/implementation/Store.sol";
+import "../../../../contracts/data-verification-mechanism/implementation/IdentifierWhitelist.sol";
+import "../../../../contracts/data-verification-mechanism/implementation/Constants.sol";
 
 // Fixture to setup base DVM contracts: Finder, Store, Address whitelist and Identifier whitelist.
 contract BaseDvmFixture is Test {

@@ -1,6 +1,6 @@
 {
   "name": "@uma/common",
-  "version": "2.28.0",
+  "version": "2.28.4",
   "description": "Common js utilities used by other UMA packages",
   "homepage": "http://umaproject.org",
   "license": "AGPL-3.0-or-later",
@@ -65,6 +65,7 @@
     "@tsconfig/node14": "^1.0.0",
     "@types/lodash.uniqby": "^4.7.6",
     "@types/mocha": "^5.2.7",
+    "ethereumjs-util": "^7.1.5",
     "ethers": "^5.4.2",
     "web3-core": "^1.6.0",
     "web3-eth-contract": "^1.6.0"

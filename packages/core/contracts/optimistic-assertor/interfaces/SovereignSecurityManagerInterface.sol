@@ -3,14 +3,19 @@ pragma solidity 0.8.16;
 
 import "./OptimisticAssertorInterface.sol";
 
+// TODO think about renaming this
 interface SovereignSecurityManagerInterface {
     struct AssertionPolicies {
         bool allowAssertion;
         bool useDvmAsOracle;
         bool useDisputeResolution;
+        bool validateDisputers;
     }
 
+    // TODO rename getAssertionPolicy
     function getAssertionPolicies(bytes32 assertionId) external view returns (AssertionPolicies memory);
+
+    function isDisputeAllowed(bytes32 assertionId, address disputeCaller) external view returns (bool);
 
     function getPrice(
         bytes32 identifier,

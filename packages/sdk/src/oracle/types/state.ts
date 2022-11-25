@@ -45,6 +45,7 @@ export type ChainConfig = ChainMetadata & {
   // requests older than this. If not specified, we will lookback to block 0 when considering request history.
   earliestBlockNumber?: number;
   maxEventRangeQuery?: number;
+  disableFetchEventBased?: boolean;
 };
 
 export type InputRequestWithOracleType = InputRequest & { oracleType: OracleType };

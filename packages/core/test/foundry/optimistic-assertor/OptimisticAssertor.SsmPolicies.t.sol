@@ -21,13 +21,14 @@ contract SovereignSecurityManagerPoliciesEnforced is Common {
         vm.prank(TestAddress.account1);
         bytes32 assertionId = optimisticAssertor.assertTruth(trueClaimAssertion);
         OptimisticAssertorInterface.Assertion memory assertion = optimisticAssertor.readAssertion(assertionId);
-        assertTrue(assertion.useDisputeResolution);
-        assertTrue(assertion.useDvmAsOracle);
+        assertTrue(assertion.ssmSettings.useDisputeResolution);
+        assertTrue(assertion.ssmSettings.useDvmAsOracle);
+        assertFalse(assertion.ssmSettings.validateDisputers);
     }
 
     function test_RevertIf_AssertionBlocked() public {
         // Block any assertion.
-        _mockSsmPolicies(false, true, true);
+        _mockSsmPolicies(false, true, true, false);
 
         vm.expectRevert("Assertion not allowed");
         _assertWithCallbackRecipientAndSsm(address(0), mockedSovereignSecurityManager);
@@ -36,14 +37,15 @@ contract SovereignSecurityManagerPoliciesEnforced is Common {
 
     function test_DisableDvmAsOracle() public {
         // Use SSM as oracle.
-        _mockSsmPolicies(true, false, true);
+        _mockSsmPolicies(true, false, true, false);
+        _mockSsmDisputerCheck(true);
 
         bytes32 assertionId = _assertWithCallbackRecipientAndSsm(address(0), mockedSovereignSecurityManager);
         OptimisticAssertorInterface.Assertion memory assertion = optimisticAssertor.readAssertion(assertionId);
-        assertFalse(assertion.useDvmAsOracle);
+        assertFalse(assertion.ssmSettings.useDvmAsOracle);
 
-        // Dispute, mock resolve assertion truethful through SSM as Oracle and verify on Optimistic Asserter.
-        OracleRequest memory oracleRequest = _disputeAndGetOracleRequest(assertionId);
+        // Dispute, mock resolve assertion truethful through SSM as Oracle and verify on Optimistic Assertor.
+        OracleRequest memory oracleRequest = _disputeAndGetOracleRequest(assertionId, defaultBond);
         _mockOracleResolved(mockedSovereignSecurityManager, oracleRequest, true);
         assertTrue(optimisticAssertor.settleAndGetAssertion(assertionId));
         vm.clearMockedCalls();
@@ -51,18 +53,18 @@ contract SovereignSecurityManagerPoliciesEnforced is Common {
 
     function test_DisregardOracle() public {
         // Do not respect Oracle on dispute.
-        _mockSsmPolicies(true, true, false);
+        _mockSsmPolicies(true, true, false, false);
+        _mockSsmDisputerCheck(true);
 
         bytes32 assertionId = _assertWithCallbackRecipientAndSsm(address(0), mockedSovereignSecurityManager);
         OptimisticAssertorInterface.Assertion memory assertion = optimisticAssertor.readAssertion(assertionId);
-        assertFalse(assertion.useDisputeResolution);
+        assertFalse(assertion.ssmSettings.useDisputeResolution);
 
         // Dispute should make assertion false available immediately.
-        OracleRequest memory oracleRequest = _disputeAndGetOracleRequest(assertionId);
+        OracleRequest memory oracleRequest = _disputeAndGetOracleRequest(assertionId, defaultBond);
         assertFalse(optimisticAssertor.getAssertion(assertionId));
 
-        // Mock resolve assertion truethful through Oracle and verify it is settled false on Optimistic Asserter
-        // while proposer should still receive the bond.
+        // Mock resolve assertion truethful through Oracle and verify it is settled false on Optimistic Assertor.
         _mockOracleResolved(address(mockOracle), oracleRequest, true);
         assertFalse(optimisticAssertor.settleAndGetAssertion(assertionId));
         vm.clearMockedCalls();
@@ -86,7 +88,7 @@ contract SovereignSecurityManagerPoliciesEnforced is Common {
 
         // Dispute and verify on dispute callback.
         _expectAssertionDisputedCallback(assertionId);
-        OracleRequest memory oracleRequest = _disputeAndGetOracleRequest(assertionId);
+        OracleRequest memory oracleRequest = _disputeAndGetOracleRequest(assertionId, defaultBond);
 
         // Mock resolve assertion truethful through Oracle and verify on resolve callback to Recipient.
         _mockOracleResolved(address(mockOracle), oracleRequest, true);
@@ -101,7 +103,7 @@ contract SovereignSecurityManagerPoliciesEnforced is Common {
 
         // Dispute and verify on dispute callback.
         _expectAssertionDisputedCallback(assertionId);
-        OracleRequest memory oracleRequest = _disputeAndGetOracleRequest(assertionId);
+        OracleRequest memory oracleRequest = _disputeAndGetOracleRequest(assertionId, defaultBond);
 
         // Mock resolve assertion false through Oracle and verify on resolve callback to Recipient.
         _mockOracleResolved(address(mockOracle), oracleRequest, false);
@@ -112,7 +114,9 @@ contract SovereignSecurityManagerPoliciesEnforced is Common {
 
     function test_CallbackOnDispute() public {
         // Assert with callback recipient and not respecting Oracle.
-        _mockSsmPolicies(true, true, false);
+        _mockSsmPolicies(true, true, false, false);
+        _mockSsmDisputerCheck(true);
+
         bytes32 assertionId =
             _assertWithCallbackRecipientAndSsm(mockedCallbackRecipient, mockedSovereignSecurityManager);
 
@@ -120,7 +124,46 @@ contract SovereignSecurityManagerPoliciesEnforced is Common {
         _expectAssertionDisputedCallback(assertionId);
         // Resolve callback should be made on dispute without settlement.
         _expectAssertionResolvedCallback(assertionId, false);
-        _disputeAndGetOracleRequest(assertionId);
+        _disputeAndGetOracleRequest(assertionId, defaultBond);
+        vm.clearMockedCalls();
+    }
+
+    function test_DoNotValidateDisputers() public {
+        // Deafault SSM policies do not validate disputers.
+        _mockSsmPolicies(true, true, true, false);
+
+        bytes32 assertionId = _assertWithCallbackRecipientAndSsm(address(0), mockedSovereignSecurityManager);
+
+        _disputeAndGetOracleRequest(assertionId, defaultBond);
+        vm.clearMockedCalls();
+    }
+
+    function test_ValidateAndAllowDispute() public {
+        // Validate disputers in SSM policies and allow disputes.
+        _mockSsmPolicies(true, true, true, true);
+        _mockSsmDisputerCheck(true);
+
+        bytes32 assertionId = _assertWithCallbackRecipientAndSsm(address(0), mockedSovereignSecurityManager);
+
+        _disputeAndGetOracleRequest(assertionId, defaultBond);
+        vm.clearMockedCalls();
+    }
+
+    function test_RevertIf_DisputeNotAllowed() public {
+        // Validate disputers in SSM policies and disallow disputes.
+        _mockSsmPolicies(true, true, true, true);
+        _mockSsmDisputerCheck(false);
+
+        bytes32 assertionId = _assertWithCallbackRecipientAndSsm(address(0), mockedSovereignSecurityManager);
+
+        // Fund Account2 for making dispute.
+        vm.startPrank(TestAddress.account2);
+        defaultCurrency.allocateTo(TestAddress.account2, defaultBond);
+        defaultCurrency.approve(address(optimisticAssertor), defaultBond);
+
+        vm.expectRevert("Dispute not allowed");
+        optimisticAssertor.disputeAssertionFor(assertionId, TestAddress.account2);
+        vm.stopPrank();
         vm.clearMockedCalls();
     }
 }
