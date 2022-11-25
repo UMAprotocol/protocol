@@ -134,7 +134,7 @@ contract SovereignSecurityManagerPoliciesEnforced is Common {
 
         bytes32 assertionId = _assertWithCallbackRecipientAndSsm(address(0), mockedSovereignSecurityManager);
 
-        _disputeAndGetOracleRequest(assertionId);
+        _disputeAndGetOracleRequest(assertionId, defaultBond);
         vm.clearMockedCalls();
     }
 
@@ -145,7 +145,7 @@ contract SovereignSecurityManagerPoliciesEnforced is Common {
 
         bytes32 assertionId = _assertWithCallbackRecipientAndSsm(address(0), mockedSovereignSecurityManager);
 
-        _disputeAndGetOracleRequest(assertionId);
+        _disputeAndGetOracleRequest(assertionId, defaultBond);
         vm.clearMockedCalls();
     }
 
