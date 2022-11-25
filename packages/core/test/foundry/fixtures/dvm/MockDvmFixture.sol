@@ -1,7 +1,7 @@
 pragma solidity 0.8.16;
 
 import "./BaseDvmFixture.sol";
-import "../../../../contracts/oracle/test/MockOracleAncillary.sol";
+import "../../../../contracts/data-verification-mechanism/test/MockOracleAncillary.sol";
 
 // Fixture to extend the base DVM fixture with a mock oracle. Used when not directly testing the DVM.
 contract MockDvmFixture is Test {

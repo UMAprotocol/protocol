@@ -124,19 +124,6 @@
     "address": "0x67DE29D1A34FF2ea2b8C390B326456F4CBBE628F"
   },
   {
-    "contractName": "Arbitrum_Messenger",
-    "address": "0x0d8563d3b8b3fec542aae50a530c606dac4d1c4f"
-  },
-  {
-    "contractName": "Optimism_Messenger",
-    "address": "0xe59283f44c29c43c0c23e71c906077e49df714b5 "
-  },
-  {
-    "contractName": "Optimism_Messenger",
-    "deploymentName": "Boba_Messenger",
-    "address": "0x0cd4998978F6cd06f8DbD227A802018A3c227ACC"
-  },
-  {
     "contractName": "SkinnyOptimisticOracle",
     "address": "0xeE3Afe347D5C74317041E2618C49534dAf887c24"
   },

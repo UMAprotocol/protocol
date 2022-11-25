@@ -2,8 +2,8 @@
 pragma solidity ^0.8.0;
 
 import "./OracleBase.sol";
-import "../oracle/interfaces/OracleAncillaryInterface.sol";
-import "../oracle/interfaces/StoreInterface.sol";
+import "../data-verification-mechanism/interfaces/OracleAncillaryInterface.sol";
+import "../data-verification-mechanism/interfaces/StoreInterface.sol";
 import "../common/implementation/Lockable.sol";
 import "../common/implementation/MultiCaller.sol";
 import "./interfaces/ParentMessengerInterface.sol";
