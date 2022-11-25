@@ -5,7 +5,7 @@ import "../Common.sol";
 import "../../../../contracts/optimistic-asserter/implementation/sovereign-security/BaseSovereignSecurity.sol";
 
 contract BaseSovereignSecurityTest is Common {
-    BaseSovereignSecurity ss;
+    BaseSovereignSecurity sovereignSecurity;
 
     bytes32 identifier = "test";
     uint256 time = 123;
@@ -14,11 +14,11 @@ contract BaseSovereignSecurityTest is Common {
     event PriceRequestAdded(bytes32 indexed identifier, uint256 time, bytes ancillaryData);
 
     function setUp() public {
-        ss = new BaseSovereignSecurity();
+        sovereignSecurity = new BaseSovereignSecurity();
     }
 
     function test_GetAssertionPolicies() public {
-        BaseSovereignSecurity.AssertionPolicies memory policies = ss.getAssertionPolicies(bytes32(0));
+        BaseSovereignSecurity.AssertionPolicies memory policies = sovereignSecurity.getAssertionPolicies(bytes32(0));
         assertTrue(policies.allowAssertion);
         assertTrue(policies.useDvmAsOracle);
         assertTrue(policies.useDisputeResolution);
@@ -26,17 +26,17 @@ contract BaseSovereignSecurityTest is Common {
     }
 
     function test_IsDisputeAllowed() public {
-        assertTrue(ss.isDisputeAllowed(bytes32(0), address(0)));
+        assertTrue(sovereignSecurity.isDisputeAllowed(bytes32(0), address(0)));
     }
 
     function test_RequestPrice() public {
         vm.expectEmit(true, true, true, true);
         emit PriceRequestAdded(identifier, time, ancillaryData);
-        ss.requestPrice(identifier, time, ancillaryData);
+        sovereignSecurity.requestPrice(identifier, time, ancillaryData);
     }
 
     function test_GetPrice() public {
-        int256 price = ss.getPrice(identifier, time, ancillaryData);
+        int256 price = sovereignSecurity.getPrice(identifier, time, ancillaryData);
         assertTrue(price == 0);
     }
 }
