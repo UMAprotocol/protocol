@@ -47,7 +47,7 @@ contract DataAsserterTest is Common {
         vm.stopPrank(); // Return caller address to standard.
 
         // Dispute assertion with Account2 and DVM votes that the original assertion was true.
-        OracleRequest memory oracleRequest = _disputeAndGetOracleRequest(assertionId);
+        OracleRequest memory oracleRequest = _disputeAndGetOracleRequest(assertionId, defaultBond);
         _mockOracleResolved(address(mockOracle), oracleRequest, true);
         assertTrue(optimisticAssertor.settleAndGetAssertion(assertionId));
 
@@ -65,7 +65,7 @@ contract DataAsserterTest is Common {
         vm.stopPrank(); // Return caller address to standard.
 
         // Dispute assertion with Account2 and DVM votes that the original assertion was wrong.
-        OracleRequest memory oracleRequest = _disputeAndGetOracleRequest(assertionId);
+        OracleRequest memory oracleRequest = _disputeAndGetOracleRequest(assertionId, defaultBond);
         _mockOracleResolved(address(mockOracle), oracleRequest, false);
         assertFalse(optimisticAssertor.settleAndGetAssertion(assertionId));
 
