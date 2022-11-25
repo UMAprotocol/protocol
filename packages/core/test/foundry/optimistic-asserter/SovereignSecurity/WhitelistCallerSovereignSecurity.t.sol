@@ -42,7 +42,7 @@ contract WhitelistCallerSovereignSecurityTest is Common {
         assertion.ssSettings.assertingCaller = mockAssertingCaller;
         vm.mockCall(
             mockOptimisticAsserterAddress,
-            abi.encodeWithSelector(OptimisticAsserterInterface.readAssertion.selector, assertionId),
+            abi.encodeWithSelector(OptimisticAsserterInterface.getAssertion.selector, assertionId),
             abi.encode(assertion)
         );
     }

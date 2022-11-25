@@ -95,7 +95,7 @@ contract WhitelistProposerSovereignSecurityTest is Common {
         assertion.proposer = proposer;
         vm.mockCall(
             mockOptimisticAsserterAddress,
-            abi.encodeWithSelector(OptimisticAsserterInterface.readAssertion.selector, assertionId),
+            abi.encodeWithSelector(OptimisticAsserterInterface.getAssertion.selector, assertionId),
             abi.encode(assertion)
         );
     }

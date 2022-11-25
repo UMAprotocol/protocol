@@ -20,7 +20,7 @@ contract SovereignSecurityPoliciesEnforced is Common {
     function testDefaultPolicies() public {
         vm.prank(TestAddress.account1);
         bytes32 assertionId = optimisticAsserter.assertTruth(trueClaimAssertion);
-        OptimisticAsserterInterface.Assertion memory assertion = optimisticAsserter.readAssertion(assertionId);
+        OptimisticAsserterInterface.Assertion memory assertion = optimisticAsserter.getAssertion(assertionId);
         assertTrue(assertion.ssSettings.useDisputeResolution);
         assertTrue(assertion.ssSettings.useDvmAsOracle);
         assertFalse(assertion.ssSettings.validateDisputers);
@@ -41,13 +41,13 @@ contract SovereignSecurityPoliciesEnforced is Common {
         _mockSsDisputerCheck(true);
 
         bytes32 assertionId = _assertWithCallbackRecipientAndSs(address(0), mockedSovereignSecurity);
-        OptimisticAsserterInterface.Assertion memory assertion = optimisticAsserter.readAssertion(assertionId);
+        OptimisticAsserterInterface.Assertion memory assertion = optimisticAsserter.getAssertion(assertionId);
         assertFalse(assertion.ssSettings.useDvmAsOracle);
 
         // Dispute, mock resolve assertion truethful through SS as Oracle and verify on Optimistic Asserter.
         OracleRequest memory oracleRequest = _disputeAndGetOracleRequest(assertionId, defaultBond);
         _mockOracleResolved(mockedSovereignSecurity, oracleRequest, true);
-        assertTrue(optimisticAsserter.settleAndGetAssertion(assertionId));
+        assertTrue(optimisticAsserter.settleAndGetAssertionResult(assertionId));
         vm.clearMockedCalls();
     }
 
@@ -57,16 +57,16 @@ contract SovereignSecurityPoliciesEnforced is Common {
         _mockSsDisputerCheck(true);
 
         bytes32 assertionId = _assertWithCallbackRecipientAndSs(address(0), mockedSovereignSecurity);
-        OptimisticAsserterInterface.Assertion memory assertion = optimisticAsserter.readAssertion(assertionId);
+        OptimisticAsserterInterface.Assertion memory assertion = optimisticAsserter.getAssertion(assertionId);
         assertFalse(assertion.ssSettings.useDisputeResolution);
 
         // Dispute should make assertion false available immediately.
         OracleRequest memory oracleRequest = _disputeAndGetOracleRequest(assertionId, defaultBond);
-        assertFalse(optimisticAsserter.getAssertion(assertionId));
+        assertFalse(optimisticAsserter.getAssertionResult(assertionId));
 
         // Mock resolve assertion truethful through Oracle and verify it is settled false on Optimistic Asserter.
         _mockOracleResolved(address(mockOracle), oracleRequest, true);
-        assertFalse(optimisticAsserter.settleAndGetAssertion(assertionId));
+        assertFalse(optimisticAsserter.settleAndGetAssertionResult(assertionId));
         vm.clearMockedCalls();
     }
 
@@ -79,7 +79,7 @@ contract SovereignSecurityPoliciesEnforced is Common {
 
         // Settlement should trigger callback with asserted truthfully.
         _expectAssertionResolvedCallback(assertionId, true);
-        optimisticAsserter.settleAndGetAssertion(assertionId);
+        optimisticAsserter.settleAndGetAssertionResult(assertionId);
     }
 
     function test_CallbackOnResolvedTruth() public {
@@ -93,7 +93,7 @@ contract SovereignSecurityPoliciesEnforced is Common {
         // Mock resolve assertion truethful through Oracle and verify on resolve callback to Recipient.
         _mockOracleResolved(address(mockOracle), oracleRequest, true);
         _expectAssertionResolvedCallback(assertionId, true);
-        optimisticAsserter.settleAndGetAssertion(assertionId);
+        optimisticAsserter.settleAndGetAssertionResult(assertionId);
         vm.clearMockedCalls();
     }
 
@@ -108,7 +108,7 @@ contract SovereignSecurityPoliciesEnforced is Common {
         // Mock resolve assertion false through Oracle and verify on resolve callback to Recipient.
         _mockOracleResolved(address(mockOracle), oracleRequest, false);
         _expectAssertionResolvedCallback(assertionId, false);
-        optimisticAsserter.settleAndGetAssertion(assertionId);
+        optimisticAsserter.settleAndGetAssertionResult(assertionId);
         vm.clearMockedCalls();
     }
 

@@ -4,9 +4,9 @@ pragma solidity 0.8.16;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import "../interfaces/OptimisticAssertorCallbackRecipientInterface.sol";
-import "../interfaces/OptimisticAssertorInterface.sol";
-import "../interfaces/SovereignSecurityManagerInterface.sol";
+import "../interfaces/OptimisticAsserterCallbackRecipientInterface.sol";
+import "../interfaces/OptimisticAsserterInterface.sol";
+import "../interfaces/SovereignSecurityInterface.sol";
 
 import "../../data-verification-mechanism/implementation/Constants.sol";
 import "../../data-verification-mechanism/interfaces/FinderInterface.sol";
@@ -60,7 +60,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
         emit AssertionDefaultsSet(_defaultCurrency, _defaultBond, _defaultLiveness);
     }
 
-    function readAssertion(bytes32 assertionId) external view returns (Assertion memory) {
+    function getAssertion(bytes32 assertionId) external view returns (Assertion memory) {
         return assertions[assertionId];
     }
 
@@ -127,7 +127,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
         // Check if the assertion is allowed by the sovereign security.
         require(assertionPolicies.allowAssertion, "Assertion not allowed");
 
-        SsmSettings storage settings = assertions[assertionId].ssmSettings;
+        SsSettings storage settings = assertions[assertionId].ssSettings;
         (settings.useDisputeResolution, settings.useDvmAsOracle, settings.validateDisputers) = (
             assertionPolicies.useDisputeResolution, // Arbitrate via DVM if specified by the SSM.
             assertionPolicies.useDvmAsOracle, // Use DVM as an oracle if specified by the SSM.
@@ -148,8 +148,8 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
         return assertionId;
     }
 
-    // TODO think about the naming of this function and readAssertion
-    function getAssertion(bytes32 assertionId) public view returns (bool) {
+    // TODO think about the naming of this function and getAssertion
+    function getAssertionResult(bytes32 assertionId) public view returns (bool) {
         Assertion memory assertion = assertions[assertionId];
         // Return early if not using answer from resolved dispute.
         if (assertion.disputer != address(0) && !assertion.ssSettings.useDisputeResolution) return false;
@@ -157,9 +157,9 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
         return assertion.settlementResolution;
     }
 
-    function settleAndGetAssertion(bytes32 assertionId) public returns (bool) {
+    function settleAndGetAssertionResult(bytes32 assertionId) public returns (bool) {
         if (!assertions[assertionId].settled) settleAssertion(assertionId);
-        return getAssertion(assertionId);
+        return getAssertionResult(assertionId);
     }
 
     function disputeAssertionFor(bytes32 assertionId, address disputer) public {

@@ -34,7 +34,7 @@ contract SimpleAssertionsWithClaimOnly is Common {
 
         // Settle before the liveness period should revert.
         vm.expectRevert("Assertion not expired");
-        optimisticAsserter.settleAndGetAssertion(assertionId);
+        optimisticAsserter.settleAndGetAssertionResult(assertionId);
 
         // Move time forward to the end of the liveness period.
         timer.setCurrentTime(timer.getCurrentTime() + defaultLiveness);
@@ -43,7 +43,7 @@ contract SimpleAssertionsWithClaimOnly is Common {
         uint256 proposerBalanceBefore = defaultCurrency.balanceOf(TestAddress.account1);
 
         // The assertion should be true.
-        assertTrue(optimisticAsserter.settleAndGetAssertion(assertionId));
+        assertTrue(optimisticAsserter.settleAndGetAssertionResult(assertionId));
         assertEq(defaultCurrency.balanceOf(TestAddress.account1) - proposerBalanceBefore, defaultBond);
     }
 
@@ -74,13 +74,13 @@ contract SimpleAssertionsWithClaimOnly is Common {
 
         // The query should be for the disputed assertion.
         assertEq(queries[0].identifier, optimisticAsserter.defaultIdentifier());
-        assertEq(queries[0].time, optimisticAsserter.readAssertion(assertionId).assertionTime);
+        assertEq(queries[0].time, optimisticAsserter.getAssertion(assertionId).assertionTime);
         assertEq(queries[0].ancillaryData, optimisticAsserter.stampAssertion(assertionId));
 
         // Push the resolution price into the mock oracle, a no vote meaning that the assertion is resolved as false.
         mockOracle.pushPrice(queries[0].identifier, queries[0].time, queries[0].ancillaryData, 0);
 
-        assertFalse(optimisticAsserter.settleAndGetAssertion(assertionId));
+        assertFalse(optimisticAsserter.settleAndGetAssertionResult(assertionId));
 
         // The proposer should have lost their bond.
         assertEq(defaultCurrency.balanceOf(TestAddress.account1), 0);

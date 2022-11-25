@@ -77,7 +77,7 @@ contract PredictionMarketTestCommon is Common {
 
         // Settle the assertion after liveness.
         timer.setCurrentTime(timer.getCurrentTime() + defaultLiveness);
-        assertTrue(optimisticAsserter.settleAndGetAssertion(assertionId));
+        assertTrue(optimisticAsserter.settleAndGetAssertionResult(assertionId));
 
         // Settle the outcome tokens.
         vm.prank(TestAddress.account2);

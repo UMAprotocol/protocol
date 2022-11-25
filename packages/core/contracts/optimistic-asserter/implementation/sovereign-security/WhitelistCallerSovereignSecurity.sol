@@ -16,7 +16,7 @@ contract WhitelistCallerSovereignSecurity is BaseSovereignSecurity, Ownable {
         return
             AssertionPolicies({
                 allowAssertion: whitelistedAssertingCallers[
-                    optimisticAsserter.readAssertion(assertionId).ssSettings.assertingCaller
+                    optimisticAsserter.getAssertion(assertionId).ssSettings.assertingCaller
                 ],
                 useDvmAsOracle: true,
                 useDisputeResolution: true,

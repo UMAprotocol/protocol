@@ -144,7 +144,7 @@ contract Common is Test {
 
     function _disputeAndGetOracleRequest(bytes32 assertionId, uint256 bond) internal returns (OracleRequest memory) {
         // Get expected oracle request on dispute.
-        OptimisticAsserterInterface.Assertion memory assertion = optimisticAsserter.readAssertion(assertionId);
+        OptimisticAsserterInterface.Assertion memory assertion = optimisticAsserter.getAssertion(assertionId);
         OracleRequest memory oracleRequest =
             OracleRequest({
                 identifier: optimisticAsserter.defaultIdentifier(),

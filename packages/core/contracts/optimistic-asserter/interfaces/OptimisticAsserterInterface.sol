@@ -31,7 +31,7 @@ interface OptimisticAsserterInterface {
 
     function defaultIdentifier() external view returns (bytes32);
 
-    function readAssertion(bytes32 assertionId) external view returns (Assertion memory);
+    function getAssertion(bytes32 assertionId) external view returns (Assertion memory);
 
     function assertTruth(bytes memory claim) external returns (bytes32);
 
@@ -46,7 +46,7 @@ interface OptimisticAsserterInterface {
         bytes32 identifier
     ) external returns (bytes32);
 
-    function getAssertion(bytes32 assertionId) external view returns (bool);
+    function getAssertionResult(bytes32 assertionId) external view returns (bool);
 
     function getMinimumBond(address currencyAddress) external view returns (uint256);
 

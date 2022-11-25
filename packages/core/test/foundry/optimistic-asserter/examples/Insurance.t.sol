@@ -53,7 +53,7 @@ contract InsuranceTest is Common {
         OracleRequest memory oracleRequest = _disputeAndGetOracleRequest(assertionId, defaultBond);
         uint256 insuredBalanceBefore = defaultCurrency.balanceOf(TestAddress.account3);
         _mockOracleResolved(address(mockOracle), oracleRequest, true);
-        assertTrue(optimisticAsserter.settleAndGetAssertion(assertionId));
+        assertTrue(optimisticAsserter.settleAndGetAssertionResult(assertionId));
 
         // Insured balance should have increased by the payout amount.
         assertEq(defaultCurrency.balanceOf(TestAddress.account3) - insuredBalanceBefore, insuranceAmount);
@@ -75,7 +75,7 @@ contract InsuranceTest is Common {
         OracleRequest memory oracleRequest = _disputeAndGetOracleRequest(assertionId, defaultBond);
         uint256 insuredBalanceBefore = defaultCurrency.balanceOf(TestAddress.account3);
         _mockOracleResolved(address(mockOracle), oracleRequest, false);
-        assertFalse(optimisticAsserter.settleAndGetAssertion(assertionId));
+        assertFalse(optimisticAsserter.settleAndGetAssertionResult(assertionId));
 
         // Insured balance should have not increased.
         assertEq(defaultCurrency.balanceOf(TestAddress.account3), insuredBalanceBefore);
