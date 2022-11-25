@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import "forge-std/Test.sol";
 import "../fixtures/optimistic-assertor/OptimisticAssertorFixture.sol";
 import "../fixtures/common/TestAddress.sol";
-import "../../../contracts/oracle/test/MockOracleAncillary.sol";
+import "../../../contracts/data-verification-mechanism/test/MockOracleAncillary.sol";
 
 contract Common is Test {
     // Data structures, that might be used in tests.

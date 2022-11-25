@@ -5,8 +5,8 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../../../common/implementation/AddressWhitelist.sol";
 import "../../../common/implementation/AncillaryData.sol";
 import "../../../common/implementation/ExpandedERC20.sol";
-import "../../../oracle/implementation/Constants.sol";
-import "../../../oracle/interfaces/FinderInterface.sol";
+import "../../../data-verification-mechanism/implementation/Constants.sol";
+import "../../../data-verification-mechanism/interfaces/FinderInterface.sol";
 import "../../interfaces/OptimisticAssertorInterface.sol";
 import "../../interfaces/OptimisticAssertorCallbackRecipientInterface.sol";
 
