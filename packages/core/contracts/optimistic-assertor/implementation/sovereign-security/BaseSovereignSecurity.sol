@@ -1,8 +1,8 @@
 pragma solidity 0.8.16;
 
-import "../../interfaces/SovereignSecurityManagerInterface.sol";
+import "../../interfaces/SovereignSecurityInterface.sol";
 
-contract BaseSovereignSecurityManager is SovereignSecurityManagerInterface {
+contract BaseSovereignSecurity is SovereignSecurityInterface {
     event PriceRequestAdded(bytes32 indexed identifier, uint256 time, bytes ancillaryData);
 
     function getAssertionPolicies(bytes32 assertionId) public view virtual override returns (AssertionPolicies memory) {

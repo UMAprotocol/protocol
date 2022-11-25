@@ -75,7 +75,7 @@ contract Insurance {
             ),
             msg.sender,
             address(this),
-            address(0), // No sovereign security manager.
+            address(0), // No sovereign security.
             defaultCurrency,
             bond,
             assertionLiveness,

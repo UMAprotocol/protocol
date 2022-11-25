@@ -251,7 +251,7 @@ contract PredictionMarket is OptimisticAssertorCallbackRecipientInterface {
             claim,
             msg.sender, // Asserter
             address(this), // Receive callback in this contract.
-            address(0), // No sovereign security manager.
+            address(0), // No sovereign security.
             currency,
             bond,
             assertionLiveness,

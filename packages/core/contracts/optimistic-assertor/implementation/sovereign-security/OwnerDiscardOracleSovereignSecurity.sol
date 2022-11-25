@@ -1,9 +1,9 @@
 pragma solidity 0.8.16;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "./BaseSovereignSecurityManager.sol";
+import "./BaseSovereignSecurity.sol";
 
-contract OwnerDiscardOracleSovereignSecurityManager is BaseSovereignSecurityManager, Ownable {
+contract OwnerDiscardOracleSovereignSecurity is BaseSovereignSecurity, Ownable {
     bool public discardOracle;
 
     function setDiscardOracle(bool value) public onlyOwner {

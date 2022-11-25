@@ -31,7 +31,7 @@ contract Common is Test {
 
     // Mock addresses, used to prank calls.
     address mockOptimisticAssertorAddress = address(0xfa);
-    address mockedSovereignSecurityManager = address(0xfb);
+    address mockedSovereignSecurity = address(0xfb);
     address mockedCallbackRecipient = address(0xfc);
     address mockAssertingCallerAddress = address(0xfd);
 
@@ -41,7 +41,7 @@ contract Common is Test {
         bytes claim,
         address indexed proposer,
         address callbackRecipient,
-        address indexed sovereignSecurityManager,
+        address indexed sovereignSecurity,
         IERC20 currency,
         uint256 bond,
         uint256 expirationTime
@@ -76,7 +76,7 @@ contract Common is Test {
     }
 
     // Helper functions, re-used in some tests.
-    function _mockSsmPolicies(
+    function _mockSsPolicies(
         bool allowAssertion,
         bool useDvmAsOracle,
         bool useDisputeResolution,
@@ -84,10 +84,10 @@ contract Common is Test {
     ) internal {
         // Mock getAssertionPolicies call to block assertion. No need to pass assertionId as mockCall uses loose matching.
         vm.mockCall(
-            mockedSovereignSecurityManager,
-            abi.encodePacked(SovereignSecurityManagerInterface.getAssertionPolicies.selector),
+            mockedSovereignSecurity,
+            abi.encodePacked(SovereignSecurityInterface.getAssertionPolicies.selector),
             abi.encode(
-                SovereignSecurityManagerInterface.AssertionPolicies({
+                SovereignSecurityInterface.AssertionPolicies({
                     allowAssertion: allowAssertion,
                     useDvmAsOracle: useDvmAsOracle,
                     useDisputeResolution: useDisputeResolution,
@@ -97,11 +97,11 @@ contract Common is Test {
         );
     }
 
-    function _mockSsmDisputerCheck(bool isDisputeAllowed) internal {
+    function _mockSsDisputerCheck(bool isDisputeAllowed) internal {
         // Mock isDisputeAllowed call with desired response. No need to pass parameters as mockCall uses loose matching.
         vm.mockCall(
-            mockedSovereignSecurityManager,
-            abi.encodePacked(SovereignSecurityManagerInterface.isDisputeAllowed.selector),
+            mockedSovereignSecurity,
+            abi.encodePacked(SovereignSecurityInterface.isDisputeAllowed.selector),
             abi.encode(isDisputeAllowed)
         );
     }
@@ -111,7 +111,7 @@ contract Common is Test {
         OracleRequest memory oracleRequest,
         bool assertionTruthful
     ) internal {
-        // Mock getPrice call based on desired response. Also works on Sovereign Security Manager.
+        // Mock getPrice call based on desired response. Also works on Sovereign Security.
         vm.mockCall(
             oracle,
             abi.encodeWithSelector(
@@ -124,7 +124,7 @@ contract Common is Test {
         );
     }
 
-    function _assertWithCallbackRecipientAndSsm(address callbackRecipient, address sovereignSecurityManager)
+    function _assertWithCallbackRecipientAndSs(address callbackRecipient, address sovereignSecurity)
         internal
         returns (bytes32)
     {
@@ -134,7 +134,7 @@ contract Common is Test {
                 trueClaimAssertion,
                 address(0),
                 callbackRecipient,
-                sovereignSecurityManager,
+                sovereignSecurity,
                 defaultCurrency,
                 defaultBond,
                 defaultLiveness,

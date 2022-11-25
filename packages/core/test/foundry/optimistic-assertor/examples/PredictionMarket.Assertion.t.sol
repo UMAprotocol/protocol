@@ -55,7 +55,7 @@ contract PredictionMarketAssertionTest is PredictionMarketTestCommon {
         assertEq(assertion.assertionTime, block.timestamp);
         assertEq(assertion.expirationTime, block.timestamp + defaultLiveness);
         assertEq(assertion.identifier, defaultIdentifier);
-        assertEq(assertion.ssmSettings.assertingCaller, address(predictionMarket));
+        assertEq(assertion.ssSettings.assertingCaller, address(predictionMarket));
     }
 
     function test_AssertMinimumBond() public {

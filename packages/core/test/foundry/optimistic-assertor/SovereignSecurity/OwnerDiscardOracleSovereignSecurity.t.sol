@@ -2,25 +2,24 @@
 pragma solidity ^0.8.0;
 
 import "../Common.sol";
-import "../../../../contracts/optimistic-assertor/implementation/sovereign-security-manager/OwnerDiscardOracleSovereignSecurityManager.sol";
+import "../../../../contracts/optimistic-assertor/implementation/sovereign-security/OwnerDiscardOracleSovereignSecurity.sol";
 
-contract OwnerDiscardOracleSovereignSecurityManagerTest is Common {
-    OwnerDiscardOracleSovereignSecurityManager ssm;
+contract OwnerDiscardOracleSovereignSecurityTest is Common {
+    OwnerDiscardOracleSovereignSecurity ss;
 
     function setUp() public {
-        ssm = new OwnerDiscardOracleSovereignSecurityManager();
+        ss = new OwnerDiscardOracleSovereignSecurity();
     }
 
     function test_SetDiscardOracle() public {
-        OwnerDiscardOracleSovereignSecurityManager.AssertionPolicies memory policies =
-            ssm.getAssertionPolicies(bytes32(0));
+        OwnerDiscardOracleSovereignSecurity.AssertionPolicies memory policies = ss.getAssertionPolicies(bytes32(0));
         assertTrue(policies.allowAssertion);
         assertTrue(policies.useDvmAsOracle);
         assertTrue(policies.useDisputeResolution);
         assertFalse(policies.validateDisputers);
 
-        ssm.setDiscardOracle(true);
-        policies = ssm.getAssertionPolicies(bytes32(0));
+        ss.setDiscardOracle(true);
+        policies = ss.getAssertionPolicies(bytes32(0));
 
         assertTrue(policies.allowAssertion);
         assertTrue(policies.useDvmAsOracle);
@@ -31,6 +30,6 @@ contract OwnerDiscardOracleSovereignSecurityManagerTest is Common {
     function test_RevertIf_NotOwner() public {
         vm.expectRevert("Ownable: caller is not the owner");
         vm.prank(TestAddress.account1);
-        ssm.setDiscardOracle(true);
+        ss.setDiscardOracle(true);
     }
 }

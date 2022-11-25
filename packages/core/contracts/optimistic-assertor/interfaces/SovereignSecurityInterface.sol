@@ -3,8 +3,7 @@ pragma solidity 0.8.16;
 
 import "./OptimisticAssertorInterface.sol";
 
-// TODO think about renaming this
-interface SovereignSecurityManagerInterface {
+interface SovereignSecurityInterface {
     struct AssertionPolicies {
         bool allowAssertion;
         bool useDvmAsOracle;

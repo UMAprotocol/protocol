@@ -4,11 +4,11 @@ pragma solidity 0.8.16;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 interface OptimisticAssertorInterface {
-    struct SsmSettings {
-        bool useDisputeResolution; // TODO: might be moved to SovereignSecurityManager.
-        bool useDvmAsOracle; // True if the DVM is used as an oracle (SovereignSecurityManager on False).
-        bool validateDisputers; // True if the SSM isDisputeAllowed should be checked on disputes.
-        address sovereignSecurityManager;
+    struct SsSettings {
+        bool useDisputeResolution; // True if Oracle result is used for resolving assertion after dispute.
+        bool useDvmAsOracle; // True if the DVM is used as an oracle (SovereignSecurity on False).
+        bool validateDisputers; // True if the SS isDisputeAllowed should be checked on disputes.
+        address sovereignSecurity;
         address assertingCaller;
     }
 
@@ -26,7 +26,7 @@ interface OptimisticAssertorInterface {
         uint256 expirationTime; // TODO uint64 could be enough.
         bytes32 claimId;
         bytes32 identifier;
-        SsmSettings ssmSettings;
+        SsSettings ssSettings;
     }
 
     function defaultIdentifier() external view returns (bytes32);
@@ -39,7 +39,7 @@ interface OptimisticAssertorInterface {
         bytes memory claim,
         address proposer,
         address callbackRecipient,
-        address sovereignSecurityManager,
+        address sovereignSecurity,
         IERC20 currency,
         uint256 bond,
         uint256 liveness,
@@ -55,7 +55,7 @@ interface OptimisticAssertorInterface {
         bytes claim,
         address indexed proposer,
         address callbackRecipient,
-        address indexed sovereignSecurityManager,
+        address indexed sovereignSecurity,
         IERC20 currency,
         uint256 bond,
         uint256 expirationTime

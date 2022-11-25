@@ -2,13 +2,13 @@
 pragma solidity ^0.8.0;
 
 import "../Common.sol";
-import "../../../../contracts/optimistic-assertor/implementation/sovereign-security-manager/WhitelistCallerSovereignSecurityManager.sol";
+import "../../../../contracts/optimistic-assertor/implementation/sovereign-security/WhitelistCallerSovereignSecurity.sol";
 
-contract WhitelistCallerSovereignSecurityManagerTest is Common {
-    WhitelistCallerSovereignSecurityManager ssm;
+contract WhitelistCallerSovereignSecurityTest is Common {
+    WhitelistCallerSovereignSecurity ss;
 
     function setUp() public {
-        ssm = new WhitelistCallerSovereignSecurityManager();
+        ss = new WhitelistCallerSovereignSecurity();
     }
 
     function test_AssertingCallerWhitelist() public {
@@ -17,15 +17,13 @@ contract WhitelistCallerSovereignSecurityManagerTest is Common {
         // If the asserting caller is not whitelisted, then the assertion should not be allowed.
         _mockReadAssertionAssertingCaller(mockAssertingCallerAddress, assertionId);
         vm.prank(mockOptimisticAssertorAddress);
-        SovereignSecurityManagerInterface.AssertionPolicies memory policyNotWhitelisted =
-            ssm.getAssertionPolicies(assertionId);
+        SovereignSecurityInterface.AssertionPolicies memory policyNotWhitelisted = ss.getAssertionPolicies(assertionId);
         assertFalse(policyNotWhitelisted.allowAssertion);
 
         // If the asserting caller is whitelisted, then the assertion should be allowed.
-        ssm.setAssertingCallerInWhitelist(mockAssertingCallerAddress, true);
+        ss.setAssertingCallerInWhitelist(mockAssertingCallerAddress, true);
         vm.prank(mockOptimisticAssertorAddress);
-        SovereignSecurityManagerInterface.AssertionPolicies memory policyWhitelisted =
-            ssm.getAssertionPolicies(assertionId);
+        SovereignSecurityInterface.AssertionPolicies memory policyWhitelisted = ss.getAssertionPolicies(assertionId);
         assertTrue(policyWhitelisted.allowAssertion);
 
         vm.clearMockedCalls();
@@ -34,12 +32,12 @@ contract WhitelistCallerSovereignSecurityManagerTest is Common {
     function test_RevertIf_NotOwner() public {
         vm.expectRevert("Ownable: caller is not the owner");
         vm.prank(TestAddress.account1);
-        ssm.setAssertingCallerInWhitelist(TestAddress.account1, true);
+        ss.setAssertingCallerInWhitelist(TestAddress.account1, true);
     }
 
     function _mockReadAssertionAssertingCaller(address mockAssertingCaller, bytes32 assertionId) public {
         OptimisticAssertorInterface.Assertion memory assertion;
-        assertion.ssmSettings.assertingCaller = mockAssertingCaller;
+        assertion.ssSettings.assertingCaller = mockAssertingCaller;
         vm.mockCall(
             mockOptimisticAssertorAddress,
             abi.encodeWithSelector(OptimisticAssertorInterface.readAssertion.selector, assertionId),
