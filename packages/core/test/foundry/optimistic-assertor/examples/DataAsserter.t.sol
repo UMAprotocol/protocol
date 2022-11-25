@@ -97,21 +97,4 @@ contract DataAsserterTest is Common {
         assertTrue(dataAvailable);
         assertEq(data, correctData);
     }
-
-    function test_RevertIf_AssertionAlreadyExists() public {
-        // Assert data.
-        vm.startPrank(TestAddress.account1);
-        defaultCurrency.allocateTo(TestAddress.account1, optimisticAssertor.getMinimumBond(address(defaultCurrency)));
-        defaultCurrency.approve(address(dataAsserter), optimisticAssertor.getMinimumBond(address(defaultCurrency)));
-        dataAsserter.assertDataFor(dataId, correctData, TestAddress.account1);
-        vm.stopPrank();
-
-        // Assert data again with a different value.
-        vm.startPrank(TestAddress.account1);
-        defaultCurrency.allocateTo(TestAddress.account1, optimisticAssertor.getMinimumBond(address(defaultCurrency)));
-        defaultCurrency.approve(address(dataAsserter), optimisticAssertor.getMinimumBond(address(defaultCurrency)));
-        vm.expectRevert("Assertion already exists");
-        dataAsserter.assertDataFor(dataId, incorrectData, TestAddress.account1);
-        vm.stopPrank();
-    }
 }
