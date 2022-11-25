@@ -37,7 +37,7 @@ contract Common is Test {
 
     // Event structures, that might be used in tests.
     event AssertionMade(
-        bytes32 assertionId,
+        bytes32 indexed assertionId,
         bytes claim,
         address indexed proposer,
         address callbackRecipient,
@@ -55,6 +55,7 @@ contract Common is Test {
         address indexed bondRecipient,
         bool disputed,
         bool settlementResolution
+        // TODO add caller address(msg.sender) to the event.
     );
 
     event AssertingCallerSet(address indexed assertingCaller);

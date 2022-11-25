@@ -12,6 +12,7 @@ interface OptimisticAssertorInterface {
         address assertingCaller;
     }
 
+    // TODO variable packing to save gas.
     struct Assertion {
         address proposer; // Address of the proposer.
         // TODO: consider naming proposer->asserter.
@@ -21,8 +22,8 @@ interface OptimisticAssertorInterface {
         bool settled; // True if the request is settled.
         bool settlementResolution;
         uint256 bond;
-        uint256 assertionTime; // Time of the assertion.
-        uint256 expirationTime;
+        uint256 assertionTime; // Time of the assertion. TODO uint64 could be enough.
+        uint256 expirationTime; // TODO uint64 could be enough.
         bytes32 claimId;
         bytes32 identifier;
         SsmSettings ssmSettings;
@@ -50,7 +51,7 @@ interface OptimisticAssertorInterface {
     function getMinimumBond(address currencyAddress) external view returns (uint256);
 
     event AssertionMade(
-        bytes32 assertionId,
+        bytes32 indexed assertionId,
         bytes claim,
         address indexed proposer,
         address callbackRecipient,
