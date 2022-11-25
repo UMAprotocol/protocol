@@ -45,7 +45,7 @@ contract SovereignSecurityManagerPoliciesEnforced is Common {
         assertFalse(assertion.ssmSettings.useDvmAsOracle);
 
         // Dispute, mock resolve assertion truethful through SSM as Oracle and verify on Optimistic Assertor.
-        OracleRequest memory oracleRequest = _disputeAndGetOracleRequest(assertionId);
+        OracleRequest memory oracleRequest = _disputeAndGetOracleRequest(assertionId, defaultBond);
         _mockOracleResolved(mockedSovereignSecurityManager, oracleRequest, true);
         assertTrue(optimisticAssertor.settleAndGetAssertion(assertionId));
         vm.clearMockedCalls();
@@ -61,7 +61,7 @@ contract SovereignSecurityManagerPoliciesEnforced is Common {
         assertFalse(assertion.ssmSettings.useDisputeResolution);
 
         // Dispute should make assertion false available immediately.
-        OracleRequest memory oracleRequest = _disputeAndGetOracleRequest(assertionId);
+        OracleRequest memory oracleRequest = _disputeAndGetOracleRequest(assertionId, defaultBond);
         assertFalse(optimisticAssertor.getAssertion(assertionId));
 
         // Mock resolve assertion truethful through Oracle and verify it is settled false on Optimistic Assertor.
@@ -88,7 +88,7 @@ contract SovereignSecurityManagerPoliciesEnforced is Common {
 
         // Dispute and verify on dispute callback.
         _expectAssertionDisputedCallback(assertionId);
-        OracleRequest memory oracleRequest = _disputeAndGetOracleRequest(assertionId);
+        OracleRequest memory oracleRequest = _disputeAndGetOracleRequest(assertionId, defaultBond);
 
         // Mock resolve assertion truethful through Oracle and verify on resolve callback to Recipient.
         _mockOracleResolved(address(mockOracle), oracleRequest, true);
@@ -103,7 +103,7 @@ contract SovereignSecurityManagerPoliciesEnforced is Common {
 
         // Dispute and verify on dispute callback.
         _expectAssertionDisputedCallback(assertionId);
-        OracleRequest memory oracleRequest = _disputeAndGetOracleRequest(assertionId);
+        OracleRequest memory oracleRequest = _disputeAndGetOracleRequest(assertionId, defaultBond);
 
         // Mock resolve assertion false through Oracle and verify on resolve callback to Recipient.
         _mockOracleResolved(address(mockOracle), oracleRequest, false);
@@ -124,7 +124,7 @@ contract SovereignSecurityManagerPoliciesEnforced is Common {
         _expectAssertionDisputedCallback(assertionId);
         // Resolve callback should be made on dispute without settlement.
         _expectAssertionResolvedCallback(assertionId, false);
-        _disputeAndGetOracleRequest(assertionId);
+        _disputeAndGetOracleRequest(assertionId, defaultBond);
         vm.clearMockedCalls();
     }
 
