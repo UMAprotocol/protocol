@@ -148,7 +148,6 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
         return assertionId;
     }
 
-    // TODO think about the naming of this function and getAssertion
     function getAssertionResult(bytes32 assertionId) public view returns (bool) {
         Assertion memory assertion = assertions[assertionId];
         // Return early if not using answer from resolved dispute.
