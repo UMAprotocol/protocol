@@ -15,17 +15,17 @@ contract WhitelistCallerSovereignSecurityTest is Common {
         bytes32 assertionId = "test";
 
         // If the asserting caller is not whitelisted, then the assertion should not be allowed.
-        _mockReadAssertionAssertingCaller(mockAssertingCallerAddress, assertionId);
+        _mockGetAssertionAssertingCaller(mockAssertingCallerAddress, assertionId);
         vm.prank(mockOptimisticAsserterAddress);
-        SovereignSecurityInterface.AssertionPolicies memory policyNotWhitelisted =
-            sovereignSecurity.getAssertionPolicies(assertionId);
+        SovereignSecurityInterface.AssertionPolicy memory policyNotWhitelisted =
+            sovereignSecurity.getAssertionPolicy(assertionId);
         assertFalse(policyNotWhitelisted.allowAssertion);
 
         // If the asserting caller is whitelisted, then the assertion should be allowed.
         sovereignSecurity.setAssertingCallerInWhitelist(mockAssertingCallerAddress, true);
         vm.prank(mockOptimisticAsserterAddress);
-        SovereignSecurityInterface.AssertionPolicies memory policyWhitelisted =
-            sovereignSecurity.getAssertionPolicies(assertionId);
+        SovereignSecurityInterface.AssertionPolicy memory policyWhitelisted =
+            sovereignSecurity.getAssertionPolicy(assertionId);
         assertTrue(policyWhitelisted.allowAssertion);
 
         vm.clearMockedCalls();
@@ -37,12 +37,12 @@ contract WhitelistCallerSovereignSecurityTest is Common {
         sovereignSecurity.setAssertingCallerInWhitelist(TestAddress.account1, true);
     }
 
-    function _mockReadAssertionAssertingCaller(address mockAssertingCaller, bytes32 assertionId) public {
+    function _mockGetAssertionAssertingCaller(address mockAssertingCaller, bytes32 assertionId) public {
         OptimisticAsserterInterface.Assertion memory assertion;
         assertion.ssSettings.assertingCaller = mockAssertingCaller;
         vm.mockCall(
             mockOptimisticAsserterAddress,
-            abi.encodeWithSelector(OptimisticAsserterInterface.readAssertion.selector, assertionId),
+            abi.encodeWithSelector(OptimisticAsserterInterface.getAssertion.selector, assertionId),
             abi.encode(assertion)
         );
     }

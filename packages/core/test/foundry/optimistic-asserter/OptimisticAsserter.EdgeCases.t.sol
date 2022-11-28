@@ -70,7 +70,7 @@ contract InvalidParameters is Common {
         optimisticAsserter.disputeAssertionFor(bytes32(0), TestAddress.account2);
 
         vm.expectRevert("Assertion does not exist");
-        optimisticAsserter.settleAndGetAssertion(bytes32(0));
+        optimisticAsserter.settleAndGetAssertionResult(bytes32(0));
 
         vm.expectRevert("Assertion does not exist");
         optimisticAsserter.settleAssertion(bytes32(0));
