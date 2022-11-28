@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import "../Common.sol";
 import "../../../../contracts/optimistic-asserter/implementation/sovereign-security/WhitelistAsserterSovereignSecurity.sol";
 
-contract WhitelistProposerSovereignSecurityTest is Common {
+contract WhitelistAsserterSovereignSecurityTest is Common {
     WhitelistAsserterSovereignSecurity sovereignSecurity;
 
     bytes32 assertionId = "test";
@@ -42,12 +42,12 @@ contract WhitelistProposerSovereignSecurityTest is Common {
         sovereignSecurity.setAssertingCaller(mockAssertingCallerAddress);
     }
 
-    function test_ProposerNotOnWhitelist() public {
+    function test_AsserterNotOnWhitelist() public {
         sovereignSecurity.setAssertingCaller(mockAssertingCallerAddress);
 
         _mockGetAssertion(assertionId, mockAssertingCallerAddress, TestAddress.account1);
 
-        // If the proposer is not whitelisted, then the assertion should not be allowed.
+        // If the asserter is not whitelisted, then the assertion should not be allowed.
         assertFalse(sovereignSecurity.whitelistedAsserters(TestAddress.account1));
         vm.prank(mockOptimisticAsserterAddress);
         SovereignSecurityInterface.AssertionPolicy memory policy = sovereignSecurity.getAssertionPolicy(assertionId);
@@ -56,12 +56,12 @@ contract WhitelistProposerSovereignSecurityTest is Common {
         vm.clearMockedCalls();
     }
 
-    function test_ProposerOnWhitelist() public {
+    function test_AsserterOnWhitelist() public {
         sovereignSecurity.setAssertingCaller(mockAssertingCallerAddress);
 
         _mockGetAssertion(assertionId, mockAssertingCallerAddress, TestAddress.account1);
 
-        // If the proposer is whitelisted, then the assertion should be allowed.
+        // If the asserter is whitelisted, then the assertion should be allowed.
         sovereignSecurity.setAsserterInWhitelist(TestAddress.account1, true);
         assertTrue(sovereignSecurity.whitelistedAsserters(TestAddress.account1));
         vm.prank(mockOptimisticAsserterAddress);
