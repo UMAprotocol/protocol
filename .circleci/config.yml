@@ -15,6 +15,12 @@ jobs:
       - run:
           name: Install Dependencies
           command: yarn --frozen-lockfile
+      - run:
+          name: Install Foundry
+          command: |
+            curl -L https://foundry.paradigm.xyz | bash || true
+            export PATH="$PATH:/home/circleci/.foundry/bin"
+            foundryup
       - save_cache:
           key: protocol-{{ .Environment.CIRCLE_SHA1 }}
           paths:
@@ -60,6 +66,7 @@ jobs:
       - run:
           name: Generate Tests
           command: |
+            export PATH="$PATH:/home/circleci/.foundry/bin"
             cd /home/circleci/protocol
             ./ci/generate_lerna_config.sh
       - continuation/continue:

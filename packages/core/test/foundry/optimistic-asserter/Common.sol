@@ -39,7 +39,7 @@ contract Common is Test {
     event AssertionMade(
         bytes32 indexed assertionId,
         bytes claim,
-        address indexed proposer,
+        address indexed asserter,
         address callbackRecipient,
         address indexed sovereignSecurity,
         IERC20 currency,
@@ -76,18 +76,18 @@ contract Common is Test {
     }
 
     // Helper functions, re-used in some tests.
-    function _mockSsPolicies(
+    function _mockSsPolicy(
         bool allowAssertion,
         bool useDvmAsOracle,
         bool useDisputeResolution,
         bool validateDisputers
     ) internal {
-        // Mock getAssertionPolicies call to block assertion. No need to pass assertionId as mockCall uses loose matching.
+        // Mock getAssertionPolicy call to block assertion. No need to pass assertionId as mockCall uses loose matching.
         vm.mockCall(
             mockedSovereignSecurity,
-            abi.encodePacked(SovereignSecurityInterface.getAssertionPolicies.selector),
+            abi.encodePacked(SovereignSecurityInterface.getAssertionPolicy.selector),
             abi.encode(
-                SovereignSecurityInterface.AssertionPolicies({
+                SovereignSecurityInterface.AssertionPolicy({
                     allowAssertion: allowAssertion,
                     useDvmAsOracle: useDvmAsOracle,
                     useDisputeResolution: useDisputeResolution,
@@ -144,7 +144,7 @@ contract Common is Test {
 
     function _disputeAndGetOracleRequest(bytes32 assertionId, uint256 bond) internal returns (OracleRequest memory) {
         // Get expected oracle request on dispute.
-        OptimisticAsserterInterface.Assertion memory assertion = optimisticAsserter.readAssertion(assertionId);
+        OptimisticAsserterInterface.Assertion memory assertion = optimisticAsserter.getAssertion(assertionId);
         OracleRequest memory oracleRequest =
             OracleRequest({
                 identifier: optimisticAsserter.defaultIdentifier(),

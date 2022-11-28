@@ -49,7 +49,7 @@ contract DataAsserterTest is Common {
         // Dispute assertion with Account2 and DVM votes that the original assertion was true.
         OracleRequest memory oracleRequest = _disputeAndGetOracleRequest(assertionId, defaultBond);
         _mockOracleResolved(address(mockOracle), oracleRequest, true);
-        assertTrue(optimisticAsserter.settleAndGetAssertion(assertionId));
+        assertTrue(optimisticAsserter.settleAndGetAssertionResult(assertionId));
 
         (bool dataAvailable, bytes32 data) = dataAsserter.getData(assertionId);
         assertTrue(dataAvailable);
@@ -67,7 +67,7 @@ contract DataAsserterTest is Common {
         // Dispute assertion with Account2 and DVM votes that the original assertion was wrong.
         OracleRequest memory oracleRequest = _disputeAndGetOracleRequest(assertionId, defaultBond);
         _mockOracleResolved(address(mockOracle), oracleRequest, false);
-        assertFalse(optimisticAsserter.settleAndGetAssertion(assertionId));
+        assertFalse(optimisticAsserter.settleAndGetAssertionResult(assertionId));
 
         // Check that the data assertion has been deleted
         (, , address asserter, ) = dataAsserter.assertionsData(assertionId);

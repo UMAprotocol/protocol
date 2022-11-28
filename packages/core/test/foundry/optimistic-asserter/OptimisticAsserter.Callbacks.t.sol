@@ -26,12 +26,12 @@ contract OptimisticAsserterCallbacks is Common {
 
         // Settlement should trigger callback with asserted truthfully.
         _expectAssertionResolvedCallback(mockedCallbackRecipient, assertionId, true);
-        optimisticAsserter.settleAndGetAssertion(assertionId);
+        optimisticAsserter.settleAndGetAssertionResult(assertionId);
     }
 
     function test_CallbackSovereignSecurityOnExpired() public {
         // Deafault SS policies.
-        _mockSsPolicies(true, true, true, false);
+        _mockSsPolicy(true, true, true, false);
 
         // Assert with Sovereign Security without a dedicated callback recipient.
         bytes32 assertionId = _assertWithCallbackRecipientAndSs(address(0), mockedSovereignSecurity);
@@ -41,7 +41,7 @@ contract OptimisticAsserterCallbacks is Common {
 
         // Settlement should trigger callback with asserted truthfully.
         _expectAssertionResolvedCallback(mockedSovereignSecurity, assertionId, true);
-        optimisticAsserter.settleAndGetAssertion(assertionId);
+        optimisticAsserter.settleAndGetAssertionResult(assertionId);
     }
 
     function test_CallbackRecipientOnResolvedTruth() public {
@@ -55,13 +55,13 @@ contract OptimisticAsserterCallbacks is Common {
         // Mock resolve assertion truethful through Oracle and verify on resolve callback to Recipient.
         _mockOracleResolved(address(mockOracle), oracleRequest, true);
         _expectAssertionResolvedCallback(mockedCallbackRecipient, assertionId, true);
-        optimisticAsserter.settleAndGetAssertion(assertionId);
+        optimisticAsserter.settleAndGetAssertionResult(assertionId);
         vm.clearMockedCalls();
     }
 
     function test_CallbackSovereignSecurityOnResolvedTruth() public {
         // Deafault SS policies.
-        _mockSsPolicies(true, true, true, false);
+        _mockSsPolicy(true, true, true, false);
 
         // Assert with Sovereign Security without a dedicated callback recipient.
         bytes32 assertionId = _assertWithCallbackRecipientAndSs(address(0), mockedSovereignSecurity);
@@ -73,7 +73,7 @@ contract OptimisticAsserterCallbacks is Common {
         // Mock resolve assertion truethful through Oracle and verify on resolve callback to SS.
         _mockOracleResolved(address(mockOracle), oracleRequest, true);
         _expectAssertionResolvedCallback(mockedSovereignSecurity, assertionId, true);
-        optimisticAsserter.settleAndGetAssertion(assertionId);
+        optimisticAsserter.settleAndGetAssertionResult(assertionId);
         vm.clearMockedCalls();
     }
 
@@ -88,13 +88,13 @@ contract OptimisticAsserterCallbacks is Common {
         // Mock resolve assertion false through Oracle and verify on resolve callback to Recipient.
         _mockOracleResolved(address(mockOracle), oracleRequest, false);
         _expectAssertionResolvedCallback(mockedCallbackRecipient, assertionId, false);
-        optimisticAsserter.settleAndGetAssertion(assertionId);
+        optimisticAsserter.settleAndGetAssertionResult(assertionId);
         vm.clearMockedCalls();
     }
 
     function test_CallbackSovereignSecurityOnResolvedFalse() public {
         // Deafault SS policies.
-        _mockSsPolicies(true, true, true, false);
+        _mockSsPolicy(true, true, true, false);
 
         // Assert with callback recipient.
         bytes32 assertionId = _assertWithCallbackRecipientAndSs(address(0), mockedSovereignSecurity);
@@ -106,13 +106,13 @@ contract OptimisticAsserterCallbacks is Common {
         // Mock resolve assertion false through Oracle and verify on resolve callback to SS.
         _mockOracleResolved(address(mockOracle), oracleRequest, false);
         _expectAssertionResolvedCallback(mockedSovereignSecurity, assertionId, false);
-        optimisticAsserter.settleAndGetAssertion(assertionId);
+        optimisticAsserter.settleAndGetAssertionResult(assertionId);
         vm.clearMockedCalls();
     }
 
     function test_CallbacksOnDispute() public {
         // Assert with callback recipient and not respecting Oracle.
-        _mockSsPolicies(true, true, false, false);
+        _mockSsPolicy(true, true, false, false);
         _mockSsDisputerCheck(true);
 
         bytes32 assertionId = _assertWithCallbackRecipientAndSs(mockedCallbackRecipient, mockedSovereignSecurity);

@@ -74,7 +74,8 @@
   ],
   "sideEffects": false,
   "scripts": {
-    "test": "yarn hardhat-test",
+    "test": "yarn hardhat-test && yarn forge-test",
+    "forge-test": "./scripts/SetUpFoundryWithHardhat.sh && forge test",
     "hardhat-test": "hardhat test --network hardhat",
     "mocha-test": "mocha ./mocha-test --recursive",
     "load-addresses": "yarn hardhat load-addresses",

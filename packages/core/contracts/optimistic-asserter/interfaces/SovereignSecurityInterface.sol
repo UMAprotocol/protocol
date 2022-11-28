@@ -5,15 +5,14 @@ import "./OptimisticAsserterCallbackRecipientInterface.sol";
 import "./OptimisticAsserterInterface.sol";
 
 interface SovereignSecurityInterface is OptimisticAsserterCallbackRecipientInterface {
-    struct AssertionPolicies {
+    struct AssertionPolicy {
         bool allowAssertion;
         bool useDvmAsOracle;
         bool useDisputeResolution;
         bool validateDisputers;
     }
 
-    // TODO rename getAssertionPolicy
-    function getAssertionPolicies(bytes32 assertionId) external view returns (AssertionPolicies memory);
+    function getAssertionPolicy(bytes32 assertionId) external view returns (AssertionPolicy memory);
 
     function isDisputeAllowed(bytes32 assertionId, address disputeCaller) external view returns (bool);
 

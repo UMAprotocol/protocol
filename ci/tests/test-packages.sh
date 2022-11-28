@@ -16,5 +16,6 @@ cat << EOF
       - run:
           name: Run tests
           command: |
+            export PATH="$PATH:/home/circleci/.foundry/bin"
             yarn test --scope ${PACKAGE};
 EOF
