@@ -49,7 +49,7 @@ contract OptimisticAsserterEvents is Common {
         emit PriceRequestAdded(
             address(optimisticAsserter),
             optimisticAsserter.defaultIdentifier(),
-            optimisticAsserter.readAssertion(assertionId).assertionTime,
+            optimisticAsserter.getAssertion(assertionId).assertionTime,
             optimisticAsserter.stampAssertion(assertionId)
         );
         vm.expectEmit(true, true, true, true);
@@ -61,6 +61,6 @@ contract OptimisticAsserterEvents is Common {
 
         vm.expectEmit(true, true, true, true);
         emit AssertionSettled(assertionId, TestAddress.account2, true, false);
-        assertFalse(optimisticAsserter.settleAndGetAssertion(assertionId));
+        assertFalse(optimisticAsserter.settleAndGetAssertionResult(assertionId));
     }
 }
