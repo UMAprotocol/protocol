@@ -11,12 +11,12 @@ contract WhitelistCallerSovereignSecurity is BaseSovereignSecurity, Ownable {
         whitelistedAssertingCallers[assertingCaller] = value;
     }
 
-    function getAssertionPolicies(bytes32 assertionId) public view override returns (AssertionPolicies memory) {
+    function getAssertionPolicy(bytes32 assertionId) public view override returns (AssertionPolicy memory) {
         OptimisticAsserterInterface optimisticAsserter = OptimisticAsserterInterface(msg.sender);
         return
-            AssertionPolicies({
+            AssertionPolicy({
                 allowAssertion: whitelistedAssertingCallers[
-                    optimisticAsserter.readAssertion(assertionId).ssSettings.assertingCaller
+                    optimisticAsserter.getAssertion(assertionId).ssSettings.assertingCaller
                 ],
                 useDvmAsOracle: true,
                 useDisputeResolution: true,
