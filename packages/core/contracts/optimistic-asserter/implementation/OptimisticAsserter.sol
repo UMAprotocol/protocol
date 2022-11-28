@@ -65,8 +65,8 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
     }
 
     function setBurnedBondPercentage(uint256 _burnedBondPercentage) public onlyOwner {
-        require(_burnedBondPercentage <= 1e18, "Burned bond > 1");
-        require(_burnedBondPercentage > 0, "Burned is 0");
+        require(_burnedBondPercentage <= 1e18, "Burned bond percentage > 100");
+        require(_burnedBondPercentage > 0, "Burned bond percentage is 0");
         burnedBondPercentage = _burnedBondPercentage;
         emit BurnedBondPercentageSet(_burnedBondPercentage);
     }
@@ -96,16 +96,8 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
         bytes32 identifier
     ) public returns (bytes32) {
         asserter = asserter == address(0) ? msg.sender : asserter;
-        bytes32 assertionId = _getId(
-            claim,
-            bond,
-            liveness,
-            currency,
-            asserter,
-            callbackRecipient,
-            sovereignSecurity,
-            identifier
-        );
+        bytes32 assertionId =
+            _getId(claim, bond, liveness, currency, asserter, callbackRecipient, sovereignSecurity, identifier);
 
         require(assertions[assertionId].asserter == address(0), "Assertion already exists");
         // TODO [GAS] caching identifier whitelist and collateral currency whitelist

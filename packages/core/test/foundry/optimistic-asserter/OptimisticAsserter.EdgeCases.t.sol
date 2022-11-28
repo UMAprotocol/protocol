@@ -103,11 +103,11 @@ contract InvalidParameters is Common {
     }
 
     function test_RevertIf_BurnedBondPercentageSetOutOfBounds() public {
-        vm.expectRevert("Burned is 0");
+        vm.expectRevert("Burned bond percentage is 0");
         vm.prank(TestAddress.owner);
         optimisticAsserter.setBurnedBondPercentage(0);
 
-        vm.expectRevert("Burned bond > 1");
+        vm.expectRevert("Burned bond percentage > 100");
         vm.prank(TestAddress.owner);
         optimisticAsserter.setBurnedBondPercentage(2e18);
     }
