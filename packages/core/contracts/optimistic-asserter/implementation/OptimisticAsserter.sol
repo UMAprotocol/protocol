@@ -114,7 +114,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
             claimId: keccak256(claim),
             identifier: identifier,
             ssSettings: SsSettings({ // TODO [GAS] rename these variables to default to false
-                useDisputeResolution: true, // this is the default behavior: if not specified by the Sovereign security the assertion will respect the DVM result.
+                discardOracle: false, // this is the default behavior: if not specified by the Sovereign security the assertion will respect the Oracle result.
                 arbitrateViaSs: false, // this is the default behavior: if not specified by the Sovereign security the assertion will use the DVM as an oracle.
                 validateDisputers: false, // this is the default behavior: if not specified by the Sovereign security the disputer will not be validated.
                 sovereignSecurity: sovereignSecurity,
@@ -128,8 +128,8 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
         require(!assertionPolicy.blockAssertion, "Assertion not allowed");
 
         SsSettings storage ssSettings = assertions[assertionId].ssSettings;
-        (ssSettings.useDisputeResolution, ssSettings.arbitrateViaSs, ssSettings.validateDisputers) = (
-            assertionPolicy.useDisputeResolution, // Arbitrate via DVM if specified by the SS.
+        (ssSettings.discardOracle, ssSettings.arbitrateViaSs, ssSettings.validateDisputers) = (
+            assertionPolicy.discardOracle, // Discard Oracle result if specified by the SS.
             assertionPolicy.arbitrateViaSs, // Use SS as an oracle if specified by the SS.
             assertionPolicy.validateDisputers // Validate the disputers if specified by the SS.
         );
@@ -151,7 +151,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
     function getAssertionResult(bytes32 assertionId) public view returns (bool) {
         Assertion memory assertion = assertions[assertionId];
         // Return early if not using answer from resolved dispute.
-        if (assertion.disputer != address(0) && !assertion.ssSettings.useDisputeResolution) return false;
+        if (assertion.disputer != address(0) && assertion.ssSettings.discardOracle) return false;
         require(assertion.settled, "Assertion not settled"); // Revert if assertion not settled.
         return assertion.settlementResolution;
     }
@@ -180,7 +180,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
         _callbackOnAssertionDispute(assertionId);
 
         // Send resolve callback if dispute resolution is discarded
-        if (!assertion.ssSettings.useDisputeResolution) _callbackOnAssertionResolve(assertionId, false);
+        if (assertion.ssSettings.discardOracle) _callbackOnAssertionResolve(assertionId, false);
 
         emit AssertionDisputed(assertionId, disputer);
     }
@@ -202,7 +202,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
             // Dispute, settle with the disputer
             int256 resolvedPrice = _oracleGetPrice(assertionId, assertion.identifier, assertion.assertionTime); // Revert if price not resolved.
 
-            assertion.settlementResolution = assertion.ssSettings.useDisputeResolution ? resolvedPrice == 1e18 : false;
+            assertion.settlementResolution = assertion.ssSettings.discardOracle ? false : resolvedPrice == 1e18;
             address bondRecipient = resolvedPrice == 1e18 ? assertion.asserter : assertion.disputer;
 
             // todo: should you only play the final fee in the case of a DVM arbitrated dispute?
@@ -213,7 +213,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
             assertion.currency.safeTransfer(bondRecipient, amountToSend);
             assertion.currency.safeTransfer(address(_getStore()), amountToBurn);
 
-            if (assertion.ssSettings.useDisputeResolution)
+            if (!assertion.ssSettings.discardOracle)
                 _callbackOnAssertionResolve(assertionId, assertion.settlementResolution);
 
             emit AssertionSettled(assertionId, bondRecipient, true, assertion.settlementResolution);
@@ -319,7 +319,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
         returns (SovereignSecurityInterface.AssertionPolicy memory)
     {
         address ss = assertions[assertionId].ssSettings.sovereignSecurity;
-        if (ss == address(0)) return SovereignSecurityInterface.AssertionPolicy(false, false, true, false); // TODO update with default values
+        if (ss == address(0)) return SovereignSecurityInterface.AssertionPolicy(false, false, false, false);
         return SovereignSecurityInterface(ss).getAssertionPolicy(assertionId);
     }
 

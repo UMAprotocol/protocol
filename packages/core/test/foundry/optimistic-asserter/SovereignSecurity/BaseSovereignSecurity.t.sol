@@ -21,7 +21,7 @@ contract BaseSovereignSecurityTest is Common {
         BaseSovereignSecurity.AssertionPolicy memory policy = sovereignSecurity.getAssertionPolicy(bytes32(0));
         assertFalse(policy.blockAssertion);
         assertFalse(policy.arbitrateViaSs);
-        assertTrue(policy.useDisputeResolution);
+        assertFalse(policy.discardOracle);
         assertFalse(policy.validateDisputers);
     }
 

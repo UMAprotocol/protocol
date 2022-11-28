@@ -16,7 +16,7 @@ contract OwnerDiscardOracleSovereignSecurityTest is Common {
             sovereignSecurity.getAssertionPolicy(bytes32(0));
         assertFalse(policy.blockAssertion);
         assertFalse(policy.arbitrateViaSs);
-        assertTrue(policy.useDisputeResolution);
+        assertFalse(policy.discardOracle);
         assertFalse(policy.validateDisputers);
 
         sovereignSecurity.setDiscardOracle(true);
@@ -24,7 +24,7 @@ contract OwnerDiscardOracleSovereignSecurityTest is Common {
 
         assertFalse(policy.blockAssertion);
         assertFalse(policy.arbitrateViaSs);
-        assertFalse(policy.useDisputeResolution);
+        assertTrue(policy.discardOracle);
         assertFalse(policy.validateDisputers);
     }
 

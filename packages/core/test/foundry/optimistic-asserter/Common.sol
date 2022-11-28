@@ -79,7 +79,7 @@ contract Common is Test {
     function _mockSsPolicy(
         bool blockAssertion,
         bool arbitrateViaSs,
-        bool useDisputeResolution,
+        bool discardOracle,
         bool validateDisputers
     ) internal {
         // Mock getAssertionPolicy call to block assertion. No need to pass assertionId as mockCall uses loose matching.
@@ -90,7 +90,7 @@ contract Common is Test {
                 SovereignSecurityInterface.AssertionPolicy({
                     blockAssertion: blockAssertion,
                     arbitrateViaSs: arbitrateViaSs,
-                    useDisputeResolution: useDisputeResolution,
+                    discardOracle: discardOracle,
                     validateDisputers: validateDisputers
                 })
             )

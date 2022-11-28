@@ -7,7 +7,7 @@ interface SovereignSecurityInterface {
     struct AssertionPolicy {
         bool blockAssertion;
         bool arbitrateViaSs;
-        bool useDisputeResolution;
+        bool discardOracle;
         bool validateDisputers;
     }
 

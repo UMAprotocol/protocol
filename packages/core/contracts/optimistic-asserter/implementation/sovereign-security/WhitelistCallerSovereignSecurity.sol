@@ -19,7 +19,7 @@ contract WhitelistCallerSovereignSecurity is BaseSovereignSecurity, Ownable {
                     optimisticAsserter.getAssertion(assertionId).ssSettings.assertingCaller
                 ],
                 arbitrateViaSs: false,
-                useDisputeResolution: true,
+                discardOracle: false,
                 validateDisputers: false
             });
     }

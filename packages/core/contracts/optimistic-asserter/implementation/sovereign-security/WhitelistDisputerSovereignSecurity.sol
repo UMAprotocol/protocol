@@ -12,7 +12,7 @@ contract WhitelistDisputerSovereignSecurity is BaseSovereignSecurity, Ownable {
             AssertionPolicy({
                 blockAssertion: false,
                 arbitrateViaSs: false,
-                useDisputeResolution: true,
+                discardOracle: false,
                 validateDisputers: true
             });
     }
