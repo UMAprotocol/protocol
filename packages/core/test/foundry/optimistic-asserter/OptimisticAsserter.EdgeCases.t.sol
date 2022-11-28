@@ -101,4 +101,14 @@ contract InvalidParameters is Common {
         optimisticAsserter.disputeAssertionFor(assertionId, address(0));
         vm.stopPrank();
     }
+
+    function test_RevertIf_BurnedBondPercentageSetOutOfBounds() public {
+        vm.expectRevert("Burned is 0");
+        vm.prank(TestAddress.owner);
+        optimisticAsserter.setBurnedBondPercentage(0);
+
+        vm.expectRevert("Burned bond > 1");
+        vm.prank(TestAddress.owner);
+        optimisticAsserter.setBurnedBondPercentage(2e18);
+    }
 }

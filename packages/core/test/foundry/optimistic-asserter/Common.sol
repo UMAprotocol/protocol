@@ -161,6 +161,14 @@ contract Common is Test {
         return oracleRequest;
     }
 
+    function _allocateBondAndAssertTruth(address asserter, bytes memory claim) public returns (bytes32 assertionId) {
+        vm.startPrank(asserter);
+        defaultCurrency.allocateTo(asserter, optimisticAsserter.defaultBond());
+        defaultCurrency.approve(address(optimisticAsserter), optimisticAsserter.defaultBond());
+        assertionId = optimisticAsserter.assertTruth(claim);
+        vm.stopPrank();
+    }
+
     function _expectAssertionResolvedCallback(bytes32 assertionId, bool assertedTruthfully) internal {
         vm.expectCall(
             mockedCallbackRecipient,

@@ -4,6 +4,8 @@ pragma solidity ^0.8.0;
 import "./Common.sol";
 
 contract OptimisticAsserterEvents is Common {
+    event BurnedBondPercentageSet(uint256 burnedBondPercentage);
+
     function setUp() public {
         _commonSetup();
     }
@@ -62,5 +64,12 @@ contract OptimisticAsserterEvents is Common {
         vm.expectEmit(true, true, true, true);
         emit AssertionSettled(assertionId, TestAddress.account2, true, false);
         assertFalse(optimisticAsserter.settleAndGetAssertionResult(assertionId));
+    }
+
+    function test_BurnedBondPercentageSetEmitted() public {
+        vm.expectEmit(true, true, true, true);
+        emit BurnedBondPercentageSet(0.3e18);
+        vm.prank(TestAddress.owner);
+        optimisticAsserter.setBurnedBondPercentage(0.3e18);
     }
 }
