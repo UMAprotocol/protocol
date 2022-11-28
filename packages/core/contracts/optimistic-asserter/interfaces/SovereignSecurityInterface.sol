@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.16;
 
+import "./OptimisticAsserterCallbackRecipientInterface.sol";
 import "./OptimisticAsserterInterface.sol";
 
-interface SovereignSecurityInterface {
+interface SovereignSecurityInterface is OptimisticAsserterCallbackRecipientInterface {
     struct AssertionPolicies {
         bool allowAssertion;
         bool useDvmAsOracle;

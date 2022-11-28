@@ -32,4 +32,8 @@ contract BaseSovereignSecurity is SovereignSecurityInterface {
     ) public virtual override {
         emit PriceRequestAdded(identifier, time, ancillaryData);
     }
+
+    function assertionResolved(bytes32 assertionId, bool assertedTruthfully) public {}
+
+    function assertionDisputed(bytes32 assertionId) public {}
 }
