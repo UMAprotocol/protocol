@@ -113,9 +113,9 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
             expirationTime: getCurrentTime() + liveness,
             claimId: keccak256(claim),
             identifier: identifier,
-            ssSettings: SsSettings({ // TODO [GAS] rename these variables to default to false
-                discardOracle: false, // this is the default behavior: if not specified by the Sovereign security the assertion will respect the Oracle result.
+            ssSettings: SsSettings({
                 arbitrateViaSs: false, // this is the default behavior: if not specified by the Sovereign security the assertion will use the DVM as an oracle.
+                discardOracle: false, // this is the default behavior: if not specified by the Sovereign security the assertion will respect the Oracle result.
                 validateDisputers: false, // this is the default behavior: if not specified by the Sovereign security the disputer will not be validated.
                 sovereignSecurity: sovereignSecurity,
                 assertingCaller: msg.sender
@@ -128,9 +128,9 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
         require(!assertionPolicy.blockAssertion, "Assertion not allowed");
 
         SsSettings storage ssSettings = assertions[assertionId].ssSettings;
-        (ssSettings.discardOracle, ssSettings.arbitrateViaSs, ssSettings.validateDisputers) = (
-            assertionPolicy.discardOracle, // Discard Oracle result if specified by the SS.
+        (ssSettings.arbitrateViaSs, ssSettings.discardOracle, ssSettings.validateDisputers) = (
             assertionPolicy.arbitrateViaSs, // Use SS as an oracle if specified by the SS.
+            assertionPolicy.discardOracle, // Discard Oracle result if specified by the SS.
             assertionPolicy.validateDisputers // Validate the disputers if specified by the SS.
         );
 

@@ -5,8 +5,8 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 interface OptimisticAsserterInterface {
     struct SsSettings {
-        bool discardOracle; // False if Oracle result is used for resolving assertion after dispute.
         bool arbitrateViaSs; // False if the DVM is used as an oracle (SovereignSecurity on True).
+        bool discardOracle; // False if Oracle result is used for resolving assertion after dispute.
         bool validateDisputers; // True if the SS isDisputeAllowed should be checked on disputes.
         address sovereignSecurity;
         address assertingCaller;
