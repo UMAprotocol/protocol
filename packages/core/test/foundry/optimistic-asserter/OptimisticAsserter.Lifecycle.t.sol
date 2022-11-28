@@ -124,7 +124,7 @@ contract SimpleAssertionsWithClaimOnly is Common {
             uint256 storeBalanceBefore = defaultCurrency.balanceOf(address(store));
             OracleRequest memory oracleRequest = _disputeAndGetOracleRequest(assertionId, minimumBond);
             _mockOracleResolved(address(mockOracle), oracleRequest, false);
-            assertFalse(optimisticAsserter.settleAndGetAssertion(assertionId));
+            assertFalse(optimisticAsserter.settleAndGetAssertionResult(assertionId));
 
             // The asserter should have lost their bond.
             assertEq(defaultCurrency.balanceOf(TestAddress.account1), 0);
