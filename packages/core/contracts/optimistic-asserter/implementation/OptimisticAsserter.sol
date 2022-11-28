@@ -156,7 +156,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
         return assertion.settlementResolution;
     }
 
-    function settleAndGetAssertionResult(bytes32 assertionId) external nonReentrant() returns (bool) {
+    function settleAndGetAssertionResult(bytes32 assertionId) public nonReentrant() returns (bool) {
         if (!assertions[assertionId].settled) _settleAssertion(assertionId);
         return getAssertionResult(assertionId);
     }
