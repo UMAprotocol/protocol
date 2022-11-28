@@ -130,16 +130,16 @@ contract SimpleAssertionsWithClaimOnly is Common {
             assertEq(defaultCurrency.balanceOf(TestAddress.account1), 0);
 
             // The disputer should have kept their bond and earned 1 - burnedBondPercentage of the asserter's bond.
-            uint256 expectAmount = minimumBond * 2 - (optimisticAsserter.burnedBondPercentage() * minimumBond) / 1e18;
-            assertEq(defaultCurrency.balanceOf(TestAddress.account2) - asserterBalanceBefore, expectAmount);
+            uint256 expectedAmount = minimumBond * 2 - (optimisticAsserter.burnedBondPercentage() * minimumBond) / 1e18;
+            assertEq(defaultCurrency.balanceOf(TestAddress.account2) - asserterBalanceBefore, expectedAmount);
 
-            // // The store should have kept the burnedBondPercentage part of the asserter's bond.
+            // The store should have kept the burnedBondPercentage part of the asserter's bond.
             assertEq(
                 defaultCurrency.balanceOf(address(store)) - storeBalanceBefore,
                 (minimumBond * optimisticAsserter.burnedBondPercentage()) / 1e18
             );
 
-            // // The balance of the optimistic asserter should be zero.
+            // The balance of the optimistic asserter should be zero.
             assertEq(defaultCurrency.balanceOf(address(optimisticAsserter)), 0);
         }
     }
