@@ -42,6 +42,7 @@ contract Common is Test {
         address indexed proposer,
         address callbackRecipient,
         address indexed sovereignSecurity,
+        address caller,
         IERC20 currency,
         uint256 bond,
         uint256 expirationTime
