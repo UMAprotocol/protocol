@@ -7,9 +7,9 @@ import "../../interfaces/OptimisticAsserterInterface.sol";
 contract WhitelistDisputerSovereignSecurity is BaseSovereignSecurity, Ownable {
     mapping(address => bool) whitelistedDisputeCallers;
 
-    function getAssertionPolicies(bytes32 assertionId) public view override returns (AssertionPolicies memory) {
+    function getAssertionPolicy(bytes32 assertionId) public view override returns (AssertionPolicy memory) {
         return
-            AssertionPolicies({
+            AssertionPolicy({
                 allowAssertion: true,
                 useDvmAsOracle: true,
                 useDisputeResolution: true,

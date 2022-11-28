@@ -5,31 +5,32 @@ import "../Common.sol";
 import "../../../../contracts/optimistic-asserter/implementation/sovereign-security/OwnerDiscardOracleSovereignSecurity.sol";
 
 contract OwnerDiscardOracleSovereignSecurityTest is Common {
-    OwnerDiscardOracleSovereignSecurity ss;
+    OwnerDiscardOracleSovereignSecurity sovereignSecurity;
 
     function setUp() public {
-        ss = new OwnerDiscardOracleSovereignSecurity();
+        sovereignSecurity = new OwnerDiscardOracleSovereignSecurity();
     }
 
     function test_SetDiscardOracle() public {
-        OwnerDiscardOracleSovereignSecurity.AssertionPolicies memory policies = ss.getAssertionPolicies(bytes32(0));
-        assertTrue(policies.allowAssertion);
-        assertTrue(policies.useDvmAsOracle);
-        assertTrue(policies.useDisputeResolution);
-        assertFalse(policies.validateDisputers);
+        OwnerDiscardOracleSovereignSecurity.AssertionPolicy memory policy =
+            sovereignSecurity.getAssertionPolicy(bytes32(0));
+        assertTrue(policy.allowAssertion);
+        assertTrue(policy.useDvmAsOracle);
+        assertTrue(policy.useDisputeResolution);
+        assertFalse(policy.validateDisputers);
 
-        ss.setDiscardOracle(true);
-        policies = ss.getAssertionPolicies(bytes32(0));
+        sovereignSecurity.setDiscardOracle(true);
+        policy = sovereignSecurity.getAssertionPolicy(bytes32(0));
 
-        assertTrue(policies.allowAssertion);
-        assertTrue(policies.useDvmAsOracle);
-        assertFalse(policies.useDisputeResolution);
-        assertFalse(policies.validateDisputers);
+        assertTrue(policy.allowAssertion);
+        assertTrue(policy.useDvmAsOracle);
+        assertFalse(policy.useDisputeResolution);
+        assertFalse(policy.validateDisputers);
     }
 
     function test_RevertIf_NotOwner() public {
         vm.expectRevert("Ownable: caller is not the owner");
         vm.prank(TestAddress.account1);
-        ss.setDiscardOracle(true);
+        sovereignSecurity.setDiscardOracle(true);
     }
 }
