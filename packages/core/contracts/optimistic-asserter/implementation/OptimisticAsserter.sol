@@ -97,7 +97,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
         // TODO [GAS] caching identifier whitelist and collateral currency whitelist
         require(_getIdentifierWhitelist().isIdentifierSupported(identifier), "Unsupported identifier");
         require(_getCollateralWhitelist().isOnWhitelist(address(currency)), "Unsupported currency");
-        require(bond >= _getMinimumBond(address(currency)), "Bond amount too low");
+        require(bond >= getMinimumBond(address(currency)), "Bond amount too low");
 
         // Pull the bond
         currency.safeTransferFrom(msg.sender, address(this), bond);
@@ -153,13 +153,17 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
     }
 
     // TODO think about the naming of this function and readAssertion
-    function getAssertion(bytes32 assertionId) external view nonReentrantView() returns (bool) {
-        return _getAssertion(assertionId);
+    function getAssertion(bytes32 assertionId) public view returns (bool) {
+        Assertion memory assertion = assertions[assertionId];
+        // Return early if not using answer from resolved dispute.
+        if (assertion.disputer != address(0) && !assertion.ssSettings.useDisputeResolution) return false;
+        require(assertion.settled, "Assertion not settled"); // Revert if assertion not settled.
+        return assertion.settlementResolution;
     }
 
     function settleAndGetAssertion(bytes32 assertionId) external nonReentrant() returns (bool) {
         if (!assertions[assertionId].settled) _settleAssertion(assertionId);
-        return _getAssertion(assertionId);
+        return getAssertion(assertionId);
     }
 
     function disputeAssertionFor(bytes32 assertionId, address disputer) public nonReentrant() {
@@ -207,19 +211,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
         return _stampAssertion(assertionId);
     }
 
-    function getMinimumBond(address currencyAddress) external view nonReentrantView() returns (uint256) {
-        return _getMinimumBond(currencyAddress);
-    }
-
-    function _getAssertion(bytes32 assertionId) internal view returns (bool) {
-        Assertion memory assertion = assertions[assertionId];
-        // Return early if not using answer from resolved dispute.
-        if (assertion.disputer != address(0) && !assertion.ssSettings.useDisputeResolution) return false;
-        require(assertion.settled, "Assertion not settled"); // Revert if assertion not settled.
-        return assertion.settlementResolution;
-    }
-
-    function _getMinimumBond(address currencyAddress) internal view returns (uint256) {
+    function getMinimumBond(address currencyAddress) public view returns (uint256) {
         uint256 finalFee = _getStore().computeFinalFee(currencyAddress).rawValue;
         return (finalFee * 1e18) / burnedBondPercentage;
     }
