@@ -17,7 +17,7 @@ contract OptimisticAsserterCallbacks is Common {
         vm.etch(mockedCallbackRecipient, new bytes(1));
     }
 
-    function test_CallbackOnExpired() public {
+    function test_CallbackRecipientOnExpired() public {
         // Assert with callback recipient.
         bytes32 assertionId = _assertWithCallbackRecipientAndSs(mockedCallbackRecipient, address(0));
 
@@ -25,51 +25,106 @@ contract OptimisticAsserterCallbacks is Common {
         timer.setCurrentTime(timer.getCurrentTime() + defaultLiveness);
 
         // Settlement should trigger callback with asserted truthfully.
-        _expectAssertionResolvedCallback(assertionId, true);
+        _expectAssertionResolvedCallback(mockedCallbackRecipient, assertionId, true);
         optimisticAsserter.settleAndGetAssertion(assertionId);
     }
 
-    function test_CallbackOnResolvedTruth() public {
+    function test_CallbackSovereignSecurityOnExpired() public {
+        // Deafault SS policies.
+        _mockSsPolicies(true, true, true, false);
+
+        // Assert with Sovereign Security without a dedicated callback recipient.
+        bytes32 assertionId = _assertWithCallbackRecipientAndSs(address(0), mockedSovereignSecurity);
+
+        // Move time forward to the end of the liveness period.
+        timer.setCurrentTime(timer.getCurrentTime() + defaultLiveness);
+
+        // Settlement should trigger callback with asserted truthfully.
+        _expectAssertionResolvedCallback(mockedSovereignSecurity, assertionId, true);
+        optimisticAsserter.settleAndGetAssertion(assertionId);
+    }
+
+    function test_CallbackRecipientOnResolvedTruth() public {
         // Assert with callback recipient.
         bytes32 assertionId = _assertWithCallbackRecipientAndSs(mockedCallbackRecipient, address(0));
 
         // Dispute and verify on dispute callback.
-        _expectAssertionDisputedCallback(assertionId);
+        _expectAssertionDisputedCallback(mockedCallbackRecipient, assertionId);
         OracleRequest memory oracleRequest = _disputeAndGetOracleRequest(assertionId, defaultBond);
 
         // Mock resolve assertion truethful through Oracle and verify on resolve callback to Recipient.
         _mockOracleResolved(address(mockOracle), oracleRequest, true);
-        _expectAssertionResolvedCallback(assertionId, true);
+        _expectAssertionResolvedCallback(mockedCallbackRecipient, assertionId, true);
         optimisticAsserter.settleAndGetAssertion(assertionId);
         vm.clearMockedCalls();
     }
 
-    function test_CallbackOnResolvedFalse() public {
+    function test_CallbackSovereignSecurityOnResolvedTruth() public {
+        // Deafault SS policies.
+        _mockSsPolicies(true, true, true, false);
+
+        // Assert with Sovereign Security without a dedicated callback recipient.
+        bytes32 assertionId = _assertWithCallbackRecipientAndSs(address(0), mockedSovereignSecurity);
+
+        // Dispute and verify on dispute callback.
+        _expectAssertionDisputedCallback(mockedSovereignSecurity, assertionId);
+        OracleRequest memory oracleRequest = _disputeAndGetOracleRequest(assertionId, defaultBond);
+
+        // Mock resolve assertion truethful through Oracle and verify on resolve callback to SS.
+        _mockOracleResolved(address(mockOracle), oracleRequest, true);
+        _expectAssertionResolvedCallback(mockedSovereignSecurity, assertionId, true);
+        optimisticAsserter.settleAndGetAssertion(assertionId);
+        vm.clearMockedCalls();
+    }
+
+    function test_CallbackRecipientOnResolvedFalse() public {
         // Assert with callback recipient.
         bytes32 assertionId = _assertWithCallbackRecipientAndSs(mockedCallbackRecipient, address(0));
 
         // Dispute and verify on dispute callback.
-        _expectAssertionDisputedCallback(assertionId);
+        _expectAssertionDisputedCallback(mockedCallbackRecipient, assertionId);
         OracleRequest memory oracleRequest = _disputeAndGetOracleRequest(assertionId, defaultBond);
 
         // Mock resolve assertion false through Oracle and verify on resolve callback to Recipient.
         _mockOracleResolved(address(mockOracle), oracleRequest, false);
-        _expectAssertionResolvedCallback(assertionId, false);
+        _expectAssertionResolvedCallback(mockedCallbackRecipient, assertionId, false);
         optimisticAsserter.settleAndGetAssertion(assertionId);
         vm.clearMockedCalls();
     }
 
-    function test_CallbackOnDispute() public {
+    function test_CallbackSovereignSecurityOnResolvedFalse() public {
+        // Deafault SS policies.
+        _mockSsPolicies(true, true, true, false);
+
+        // Assert with callback recipient.
+        bytes32 assertionId = _assertWithCallbackRecipientAndSs(address(0), mockedSovereignSecurity);
+
+        // Dispute and verify on dispute callback.
+        _expectAssertionDisputedCallback(mockedSovereignSecurity, assertionId);
+        OracleRequest memory oracleRequest = _disputeAndGetOracleRequest(assertionId, defaultBond);
+
+        // Mock resolve assertion false through Oracle and verify on resolve callback to SS.
+        _mockOracleResolved(address(mockOracle), oracleRequest, false);
+        _expectAssertionResolvedCallback(mockedSovereignSecurity, assertionId, false);
+        optimisticAsserter.settleAndGetAssertion(assertionId);
+        vm.clearMockedCalls();
+    }
+
+    function test_CallbacksOnDispute() public {
         // Assert with callback recipient and not respecting Oracle.
         _mockSsPolicies(true, true, false, false);
         _mockSsDisputerCheck(true);
 
         bytes32 assertionId = _assertWithCallbackRecipientAndSs(mockedCallbackRecipient, mockedSovereignSecurity);
 
-        // Dispute callback should be triggered.
-        _expectAssertionDisputedCallback(assertionId);
-        // Resolve callback should be made on dispute without settlement.
-        _expectAssertionResolvedCallback(assertionId, false);
+        // Dispute callback should be triggered both on callback recipient and SS.
+        _expectAssertionDisputedCallback(mockedCallbackRecipient, assertionId);
+        _expectAssertionDisputedCallback(mockedSovereignSecurity, assertionId);
+
+        // Resolve callback should be made on dispute without settlement both on callback recipient and SS.
+        _expectAssertionResolvedCallback(mockedCallbackRecipient, assertionId, false);
+        _expectAssertionResolvedCallback(mockedSovereignSecurity, assertionId, false);
+
         _disputeAndGetOracleRequest(assertionId, defaultBond);
         vm.clearMockedCalls();
     }
