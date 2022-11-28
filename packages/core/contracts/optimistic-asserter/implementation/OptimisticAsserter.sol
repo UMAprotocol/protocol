@@ -259,8 +259,8 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
         return
             AncillaryData.appendKeyValueAddress(
                 AncillaryData.appendKeyValueBytes32("", "assertionId", assertionId),
-                "oaRequester",
-                assertions[assertionId].proposer
+                "oaAsserter",
+                assertions[assertionId].asserter
             );
     }
 
