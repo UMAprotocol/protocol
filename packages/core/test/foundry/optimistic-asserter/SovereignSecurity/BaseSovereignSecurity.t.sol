@@ -17,7 +17,7 @@ contract BaseSovereignSecurityTest is Common {
         sovereignSecurity = new BaseSovereignSecurity();
     }
 
-    function test_GetAssertionPolicies() public {
+    function test_GetAssertionPolicy() public {
         BaseSovereignSecurity.AssertionPolicy memory policy = sovereignSecurity.getAssertionPolicy(bytes32(0));
         assertTrue(policy.allowAssertion);
         assertTrue(policy.useDvmAsOracle);
