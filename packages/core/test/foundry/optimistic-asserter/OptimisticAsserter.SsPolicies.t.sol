@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "./Common.sol";
+import "forge-std/console.sol";
 
 contract SovereignSecurityPoliciesEnforced is Common {
     function setUp() public {
@@ -47,7 +48,16 @@ contract SovereignSecurityPoliciesEnforced is Common {
         // Dispute, mock resolve assertion truethful through SS as Oracle and verify on Optimistic Asserter.
         OracleRequest memory oracleRequest = _disputeAndGetOracleRequest(assertionId, defaultBond);
         _mockOracleResolved(mockedSovereignSecurity, oracleRequest, true);
+
+        // As we are not using the DVM as the arbitration oracle the "winner" of the dispute should get back 2x the bond
+        // and nothing should be burnt.
+        uint256 proposerBalanceBeforeSettle = defaultCurrency.balanceOf(TestAddress.account1);
+        uint256 storeBalanceBeforeSettle = defaultCurrency.balanceOf(address(store));
+
         assertTrue(optimisticAsserter.settleAndGetAssertion(assertionId));
+
+        assertTrue(defaultCurrency.balanceOf(TestAddress.account1) - proposerBalanceBeforeSettle == defaultBond * 2);
+        assertTrue(defaultCurrency.balanceOf(address(store)) == storeBalanceBeforeSettle);
         vm.clearMockedCalls();
     }
 
