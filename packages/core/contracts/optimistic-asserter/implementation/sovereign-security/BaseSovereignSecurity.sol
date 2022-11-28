@@ -9,7 +9,7 @@ contract BaseSovereignSecurity is SovereignSecurityInterface {
         return
             AssertionPolicy({
                 blockAssertion: false,
-                useDvmAsOracle: true,
+                arbitrateViaSs: false,
                 useDisputeResolution: true,
                 validateDisputers: false
             });

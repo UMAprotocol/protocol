@@ -20,7 +20,7 @@ contract BaseSovereignSecurityTest is Common {
     function test_GetAssertionPolicy() public {
         BaseSovereignSecurity.AssertionPolicy memory policy = sovereignSecurity.getAssertionPolicy(bytes32(0));
         assertFalse(policy.blockAssertion);
-        assertTrue(policy.useDvmAsOracle);
+        assertFalse(policy.arbitrateViaSs);
         assertTrue(policy.useDisputeResolution);
         assertFalse(policy.validateDisputers);
     }

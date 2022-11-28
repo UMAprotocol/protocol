@@ -18,7 +18,7 @@ contract WhitelistCallerSovereignSecurity is BaseSovereignSecurity, Ownable {
                 blockAssertion: !whitelistedAssertingCallers[
                     optimisticAsserter.getAssertion(assertionId).ssSettings.assertingCaller
                 ],
-                useDvmAsOracle: true,
+                arbitrateViaSs: false,
                 useDisputeResolution: true,
                 validateDisputers: false
             });

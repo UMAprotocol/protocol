@@ -30,7 +30,7 @@ contract OwnerSelectOracleSovereignSecurityTest is Common {
         OwnerSelectOracleSovereignSecurity.AssertionPolicy memory policy =
             sovereignSecurity.getAssertionPolicy(bytes32(0));
         assertFalse(policy.blockAssertion);
-        assertTrue(policy.useDvmAsOracle);
+        assertFalse(policy.arbitrateViaSs);
         assertTrue(policy.useDisputeResolution);
         assertFalse(policy.validateDisputers);
 
@@ -38,7 +38,7 @@ contract OwnerSelectOracleSovereignSecurityTest is Common {
         policy = sovereignSecurity.getAssertionPolicy(bytes32(0));
 
         assertFalse(policy.blockAssertion);
-        assertFalse(policy.useDvmAsOracle);
+        assertTrue(policy.arbitrateViaSs);
         assertTrue(policy.useDisputeResolution);
         assertFalse(policy.validateDisputers);
     }

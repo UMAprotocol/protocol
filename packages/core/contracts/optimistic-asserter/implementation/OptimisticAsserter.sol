@@ -115,7 +115,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
             identifier: identifier,
             ssSettings: SsSettings({ // TODO [GAS] rename these variables to default to false
                 useDisputeResolution: true, // this is the default behavior: if not specified by the Sovereign security the assertion will respect the DVM result.
-                useDvmAsOracle: true, // this is the default behavior: if not specified by the Sovereign security the assertion will use the DVM as an oracle.
+                arbitrateViaSs: false, // this is the default behavior: if not specified by the Sovereign security the assertion will use the DVM as an oracle.
                 validateDisputers: false, // this is the default behavior: if not specified by the Sovereign security the disputer will not be validated.
                 sovereignSecurity: sovereignSecurity,
                 assertingCaller: msg.sender
@@ -128,9 +128,9 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
         require(!assertionPolicy.blockAssertion, "Assertion not allowed");
 
         SsSettings storage ssSettings = assertions[assertionId].ssSettings;
-        (ssSettings.useDisputeResolution, ssSettings.useDvmAsOracle, ssSettings.validateDisputers) = (
+        (ssSettings.useDisputeResolution, ssSettings.arbitrateViaSs, ssSettings.validateDisputers) = (
             assertionPolicy.useDisputeResolution, // Arbitrate via DVM if specified by the SS.
-            assertionPolicy.useDvmAsOracle, // Use DVM as an oracle if specified by the SS.
+            assertionPolicy.arbitrateViaSs, // Use SS as an oracle if specified by the SS.
             assertionPolicy.validateDisputers // Validate the disputers if specified by the SS.
         );
 
@@ -288,9 +288,9 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
 
     // TODO: caching oracle
     function _getOracle(bytes32 assertionId) internal view returns (OracleAncillaryInterface) {
-        if (assertions[assertionId].ssSettings.useDvmAsOracle)
-            return OracleAncillaryInterface(finder.getImplementationAddress(OracleInterfaces.Oracle));
-        return OracleAncillaryInterface(address(_getSovereignSecurity(assertionId)));
+        if (assertions[assertionId].ssSettings.arbitrateViaSs)
+            return OracleAncillaryInterface(address(_getSovereignSecurity(assertionId)));
+        return OracleAncillaryInterface(finder.getImplementationAddress(OracleInterfaces.Oracle));
     }
 
     function _oracleRequestPrice(
@@ -319,7 +319,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
         returns (SovereignSecurityInterface.AssertionPolicy memory)
     {
         address ss = assertions[assertionId].ssSettings.sovereignSecurity;
-        if (ss == address(0)) return SovereignSecurityInterface.AssertionPolicy(false, true, true, false); // TODO update with default values
+        if (ss == address(0)) return SovereignSecurityInterface.AssertionPolicy(false, false, true, false); // TODO update with default values
         return SovereignSecurityInterface(ss).getAssertionPolicy(assertionId);
     }
 

@@ -31,7 +31,7 @@ contract OwnerSelectOracleSovereignSecurity is BaseSovereignSecurity, Ownable {
         return
             AssertionPolicy({
                 blockAssertion: false,
-                useDvmAsOracle: !arbitrateViaSs,
+                arbitrateViaSs: arbitrateViaSs,
                 useDisputeResolution: true,
                 validateDisputers: false
             });

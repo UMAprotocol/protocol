@@ -34,7 +34,7 @@ contract WhitelistAsserterSovereignSecurity is BaseSovereignSecurity, Ownable {
         return
             AssertionPolicy({
                 blockAssertion: blocked,
-                useDvmAsOracle: true,
+                arbitrateViaSs: false,
                 useDisputeResolution: true,
                 validateDisputers: false
             });
