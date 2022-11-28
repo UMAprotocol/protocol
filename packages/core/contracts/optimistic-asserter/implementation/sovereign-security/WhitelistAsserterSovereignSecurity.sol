@@ -30,22 +30,22 @@ contract WhitelistAsserterSovereignSecurity is BaseSovereignSecurity, Ownable {
     function getAssertionPolicy(bytes32 assertionId) public view override returns (AssertionPolicy memory) {
         OptimisticAsserterInterface optimisticAsserter = OptimisticAsserterInterface(msg.sender);
         OptimisticAsserterInterface.Assertion memory assertion = optimisticAsserter.getAssertion(assertionId);
-        bool allow = _checkIfAssertionAllowed(assertion);
+        bool blocked = _checkIfAssertionBlocked(assertion);
         return
             AssertionPolicy({
-                allowAssertion: allow,
+                blockAssertion: blocked,
                 useDvmAsOracle: true,
                 useDisputeResolution: true,
                 validateDisputers: false
             });
     }
 
-    function _checkIfAssertionAllowed(OptimisticAsserterInterface.Assertion memory assertion)
+    function _checkIfAssertionBlocked(OptimisticAsserterInterface.Assertion memory assertion)
         internal
         view
         returns (bool)
     {
-        if (assertion.ssSettings.assertingCaller != assertingCaller) return false; // Only allow assertions through linked client contract.
-        return whitelistedAsserters[assertion.asserter]; // Return if asserter is whitelisted.
+        if (assertion.ssSettings.assertingCaller != assertingCaller) return true; // Only allow assertions through linked client contract.
+        return !whitelistedAsserters[assertion.asserter]; // Return if asserter is not whitelisted.
     }
 }

@@ -30,7 +30,7 @@ contract OwnerSelectOracleSovereignSecurity is BaseSovereignSecurity, Ownable {
     function getAssertionPolicy(bytes32 assertionId) public view override returns (AssertionPolicy memory) {
         return
             AssertionPolicy({
-                allowAssertion: true,
+                blockAssertion: false,
                 useDvmAsOracle: !arbitrateViaSs,
                 useDisputeResolution: true,
                 validateDisputers: false

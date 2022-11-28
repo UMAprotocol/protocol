@@ -125,7 +125,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
         SovereignSecurityInterface.AssertionPolicy memory assertionPolicy = _getAssertionPolicy(assertionId);
 
         // Check if the assertion is allowed by the sovereign security.
-        require(assertionPolicy.allowAssertion, "Assertion not allowed");
+        require(!assertionPolicy.blockAssertion, "Assertion not allowed");
 
         SsSettings storage ssSettings = assertions[assertionId].ssSettings;
         (ssSettings.useDisputeResolution, ssSettings.useDvmAsOracle, ssSettings.validateDisputers) = (
@@ -319,7 +319,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
         returns (SovereignSecurityInterface.AssertionPolicy memory)
     {
         address ss = assertions[assertionId].ssSettings.sovereignSecurity;
-        if (ss == address(0)) return SovereignSecurityInterface.AssertionPolicy(true, true, true, false); // TODO update with default values
+        if (ss == address(0)) return SovereignSecurityInterface.AssertionPolicy(false, true, true, false); // TODO update with default values
         return SovereignSecurityInterface(ss).getAssertionPolicy(assertionId);
     }
 

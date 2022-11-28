@@ -77,7 +77,7 @@ contract Common is Test {
 
     // Helper functions, re-used in some tests.
     function _mockSsPolicy(
-        bool allowAssertion,
+        bool blockAssertion,
         bool useDvmAsOracle,
         bool useDisputeResolution,
         bool validateDisputers
@@ -88,7 +88,7 @@ contract Common is Test {
             abi.encodePacked(SovereignSecurityInterface.getAssertionPolicy.selector),
             abi.encode(
                 SovereignSecurityInterface.AssertionPolicy({
-                    allowAssertion: allowAssertion,
+                    blockAssertion: blockAssertion,
                     useDvmAsOracle: useDvmAsOracle,
                     useDisputeResolution: useDisputeResolution,
                     validateDisputers: validateDisputers

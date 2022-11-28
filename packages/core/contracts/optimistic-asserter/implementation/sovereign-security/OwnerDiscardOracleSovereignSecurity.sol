@@ -13,7 +13,7 @@ contract OwnerDiscardOracleSovereignSecurity is BaseSovereignSecurity, Ownable {
     function getAssertionPolicy(bytes32 assertionId) public view override returns (AssertionPolicy memory) {
         return
             AssertionPolicy({
-                allowAssertion: true,
+                blockAssertion: false,
                 useDvmAsOracle: true,
                 useDisputeResolution: !discardOracle,
                 validateDisputers: false

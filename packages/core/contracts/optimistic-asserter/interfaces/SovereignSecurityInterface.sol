@@ -5,7 +5,7 @@ import "./OptimisticAsserterInterface.sol";
 
 interface SovereignSecurityInterface {
     struct AssertionPolicy {
-        bool allowAssertion;
+        bool blockAssertion;
         bool useDvmAsOracle;
         bool useDisputeResolution;
         bool validateDisputers;

@@ -47,11 +47,11 @@ contract WhitelistAsserterSovereignSecurityTest is Common {
 
         _mockGetAssertion(assertionId, mockAssertingCallerAddress, TestAddress.account1);
 
-        // If the asserter is not whitelisted, then the assertion should not be allowed.
+        // If the asserter is not whitelisted, then the assertion should be blocked.
         assertFalse(sovereignSecurity.whitelistedAsserters(TestAddress.account1));
         vm.prank(mockOptimisticAsserterAddress);
         SovereignSecurityInterface.AssertionPolicy memory policy = sovereignSecurity.getAssertionPolicy(assertionId);
-        assertFalse(policy.allowAssertion);
+        assertTrue(policy.blockAssertion);
 
         vm.clearMockedCalls();
     }
@@ -61,12 +61,12 @@ contract WhitelistAsserterSovereignSecurityTest is Common {
 
         _mockGetAssertion(assertionId, mockAssertingCallerAddress, TestAddress.account1);
 
-        // If the asserter is whitelisted, then the assertion should be allowed.
+        // If the asserter is whitelisted, then the assertion should not be blocked.
         sovereignSecurity.setAsserterInWhitelist(TestAddress.account1, true);
         assertTrue(sovereignSecurity.whitelistedAsserters(TestAddress.account1));
         vm.prank(mockOptimisticAsserterAddress);
         SovereignSecurityInterface.AssertionPolicy memory policy = sovereignSecurity.getAssertionPolicy(assertionId);
-        assertTrue(policy.allowAssertion);
+        assertFalse(policy.blockAssertion);
 
         vm.clearMockedCalls();
     }
@@ -79,7 +79,7 @@ contract WhitelistAsserterSovereignSecurityTest is Common {
 
         vm.prank(mockOptimisticAsserterAddress);
         SovereignSecurityInterface.AssertionPolicy memory policy = sovereignSecurity.getAssertionPolicy(assertionId);
-        assertFalse(policy.allowAssertion);
+        assertTrue(policy.blockAssertion);
     }
 
     function _mockGetAssertion(
