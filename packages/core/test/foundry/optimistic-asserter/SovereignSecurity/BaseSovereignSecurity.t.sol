@@ -18,11 +18,11 @@ contract BaseSovereignSecurityTest is Common {
     }
 
     function test_GetAssertionPolicies() public {
-        BaseSovereignSecurity.AssertionPolicies memory policies = sovereignSecurity.getAssertionPolicies(bytes32(0));
-        assertTrue(policies.allowAssertion);
-        assertTrue(policies.useDvmAsOracle);
-        assertTrue(policies.useDisputeResolution);
-        assertFalse(policies.validateDisputers);
+        BaseSovereignSecurity.AssertionPolicies memory policy = sovereignSecurity.getAssertionPolicies(bytes32(0));
+        assertTrue(policy.allowAssertion);
+        assertTrue(policy.useDvmAsOracle);
+        assertTrue(policy.useDisputeResolution);
+        assertFalse(policy.validateDisputers);
     }
 
     function test_IsDisputeAllowed() public {

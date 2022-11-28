@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "../Common.sol";
-import "../../../../contracts/optimistic-asserter/implementation/sovereign-security/WhitelistProposerSovereignSecurity.sol";
+import "../../../../contracts/optimistic-asserter/implementation/sovereign-security/WhitelistAsserterSovereignSecurity.sol";
 
 contract WhitelistProposerSovereignSecurityTest is Common {
     WhitelistProposerSovereignSecurity sovereignSecurity;
@@ -45,7 +45,7 @@ contract WhitelistProposerSovereignSecurityTest is Common {
     function test_ProposerNotOnWhitelist() public {
         sovereignSecurity.setAssertingCaller(mockAssertingCallerAddress);
 
-        _mockReadAssertion(assertionId, mockAssertingCallerAddress, TestAddress.account1);
+        _mockGetAssertion(assertionId, mockAssertingCallerAddress, TestAddress.account1);
 
         // If the proposer is not whitelisted, then the assertion should not be allowed.
         assertFalse(sovereignSecurity.whitelistedProposers(TestAddress.account1));
@@ -60,7 +60,7 @@ contract WhitelistProposerSovereignSecurityTest is Common {
     function test_ProposerOnWhitelist() public {
         sovereignSecurity.setAssertingCaller(mockAssertingCallerAddress);
 
-        _mockReadAssertion(assertionId, mockAssertingCallerAddress, TestAddress.account1);
+        _mockGetAssertion(assertionId, mockAssertingCallerAddress, TestAddress.account1);
 
         // If the proposer is whitelisted, then the assertion should be allowed.
         sovereignSecurity.setProposerInWhitelist(TestAddress.account1, true);
@@ -77,7 +77,7 @@ contract WhitelistProposerSovereignSecurityTest is Common {
         sovereignSecurity.setProposerInWhitelist(TestAddress.account1, true);
         assertTrue(sovereignSecurity.whitelistedProposers(TestAddress.account1));
 
-        _mockReadAssertion(assertionId, TestAddress.account1, TestAddress.account1);
+        _mockGetAssertion(assertionId, TestAddress.account1, TestAddress.account1);
 
         vm.prank(mockOptimisticAsserterAddress);
         SovereignSecurityInterface.AssertionPolicies memory policy =
@@ -85,7 +85,7 @@ contract WhitelistProposerSovereignSecurityTest is Common {
         assertFalse(policy.allowAssertion);
     }
 
-    function _mockReadAssertion(
+    function _mockGetAssertion(
         bytes32 assertionId,
         address assertingCaller,
         address asserter

@@ -27,20 +27,20 @@ contract OwnerSelectOracleSovereignSecurityTest is Common {
     }
 
     function test_SetArbitrateViaSs() public {
-        OwnerSelectOracleSovereignSecurity.AssertionPolicies memory policies =
+        OwnerSelectOracleSovereignSecurity.AssertionPolicies memory policy =
             sovereignSecurity.getAssertionPolicies(bytes32(0));
-        assertTrue(policies.allowAssertion);
-        assertTrue(policies.useDvmAsOracle);
-        assertTrue(policies.useDisputeResolution);
-        assertFalse(policies.validateDisputers);
+        assertTrue(policy.allowAssertion);
+        assertTrue(policy.useDvmAsOracle);
+        assertTrue(policy.useDisputeResolution);
+        assertFalse(policy.validateDisputers);
 
         sovereignSecurity.setArbitrateViaSs(true);
-        policies = sovereignSecurity.getAssertionPolicies(bytes32(0));
+        policy = sovereignSecurity.getAssertionPolicies(bytes32(0));
 
-        assertTrue(policies.allowAssertion);
-        assertFalse(policies.useDvmAsOracle);
-        assertTrue(policies.useDisputeResolution);
-        assertFalse(policies.validateDisputers);
+        assertTrue(policy.allowAssertion);
+        assertFalse(policy.useDvmAsOracle);
+        assertTrue(policy.useDisputeResolution);
+        assertFalse(policy.validateDisputers);
     }
 
     function test_RevertIf_NotOwner() public {

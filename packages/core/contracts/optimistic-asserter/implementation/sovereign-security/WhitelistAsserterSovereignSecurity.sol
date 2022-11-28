@@ -4,7 +4,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "./BaseSovereignSecurity.sol";
 import "../../interfaces/OptimisticAsserterInterface.sol";
 
-contract WhitelistProposerSovereignSecurity is BaseSovereignSecurity, Ownable {
+contract WhitelistAsserterSovereignSecurity is BaseSovereignSecurity, Ownable {
     // Address of linked requesting contract. Before this is set via setAssertingCaller all assertions will be blocked.
     // Security of returning correct policy depends on requesting contract passing msg.sender as asserter.
     address public assertingCaller;
@@ -27,12 +27,12 @@ contract WhitelistProposerSovereignSecurity is BaseSovereignSecurity, Ownable {
         whitelistedProposers[asserter] = value;
     }
 
-    function getAssertionPolicy(bytes32 assertionId) public view override returns (AssertionPolicies memory) {
+    function getAssertionPolicy(bytes32 assertionId) public view override returns (AssertionPolicy memory) {
         OptimisticAsserterInterface optimisticAsserter = OptimisticAsserterInterface(msg.sender);
         OptimisticAsserterInterface.Assertion memory assertion = optimisticAsserter.getAssertion(assertionId);
         bool allow = _checkIfAssertionAllowed(assertion);
         return
-            AssertionPolicies({
+            AssertionPolicy({
                 allowAssertion: allow,
                 useDvmAsOracle: true,
                 useDisputeResolution: true,

@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import "./Common.sol";
 
-contract SovereignSecurityPoliciesEnforced is Common {
+contract SovereignSecurityPolicyEnforced is Common {
     function setUp() public {
         _commonSetup();
 
@@ -17,7 +17,7 @@ contract SovereignSecurityPoliciesEnforced is Common {
         vm.etch(mockedCallbackRecipient, new bytes(1));
     }
 
-    function testDefaultPolicies() public {
+    function testDefaultPolicy() public {
         vm.prank(TestAddress.account1);
         bytes32 assertionId = optimisticAsserter.assertTruth(trueClaimAssertion);
         OptimisticAsserterInterface.Assertion memory assertion = optimisticAsserter.getAssertion(assertionId);
@@ -28,7 +28,7 @@ contract SovereignSecurityPoliciesEnforced is Common {
 
     function test_RevertIf_AssertionBlocked() public {
         // Block any assertion.
-        _mockSsPolicies(false, true, true, false);
+        _mockSsPolicy(false, true, true, false);
 
         vm.expectRevert("Assertion not allowed");
         _assertWithCallbackRecipientAndSs(address(0), mockedSovereignSecurity);
@@ -37,7 +37,7 @@ contract SovereignSecurityPoliciesEnforced is Common {
 
     function test_DisableDvmAsOracle() public {
         // Use SS as oracle.
-        _mockSsPolicies(true, false, true, false);
+        _mockSsPolicy(true, false, true, false);
         _mockSsDisputerCheck(true);
 
         bytes32 assertionId = _assertWithCallbackRecipientAndSs(address(0), mockedSovereignSecurity);
@@ -53,7 +53,7 @@ contract SovereignSecurityPoliciesEnforced is Common {
 
     function test_DisregardOracle() public {
         // Do not respect Oracle on dispute.
-        _mockSsPolicies(true, true, false, false);
+        _mockSsPolicy(true, true, false, false);
         _mockSsDisputerCheck(true);
 
         bytes32 assertionId = _assertWithCallbackRecipientAndSs(address(0), mockedSovereignSecurity);
@@ -114,7 +114,7 @@ contract SovereignSecurityPoliciesEnforced is Common {
 
     function test_CallbackOnDispute() public {
         // Assert with callback recipient and not respecting Oracle.
-        _mockSsPolicies(true, true, false, false);
+        _mockSsPolicy(true, true, false, false);
         _mockSsDisputerCheck(true);
 
         bytes32 assertionId = _assertWithCallbackRecipientAndSs(mockedCallbackRecipient, mockedSovereignSecurity);
@@ -128,8 +128,8 @@ contract SovereignSecurityPoliciesEnforced is Common {
     }
 
     function test_DoNotValidateDisputers() public {
-        // Deafault SS policies do not validate disputers.
-        _mockSsPolicies(true, true, true, false);
+        // Deafault SS policy do not validate disputers.
+        _mockSsPolicy(true, true, true, false);
 
         bytes32 assertionId = _assertWithCallbackRecipientAndSs(address(0), mockedSovereignSecurity);
 
@@ -138,8 +138,8 @@ contract SovereignSecurityPoliciesEnforced is Common {
     }
 
     function test_ValidateAndAllowDispute() public {
-        // Validate disputers in SS policies and allow disputes.
-        _mockSsPolicies(true, true, true, true);
+        // Validate disputers in SS policy and allow disputes.
+        _mockSsPolicy(true, true, true, true);
         _mockSsDisputerCheck(true);
 
         bytes32 assertionId = _assertWithCallbackRecipientAndSs(address(0), mockedSovereignSecurity);
@@ -149,8 +149,8 @@ contract SovereignSecurityPoliciesEnforced is Common {
     }
 
     function test_RevertIf_DisputeNotAllowed() public {
-        // Validate disputers in SS policies and disallow disputes.
-        _mockSsPolicies(true, true, true, true);
+        // Validate disputers in SS policy and disallow disputes.
+        _mockSsPolicy(true, true, true, true);
         _mockSsDisputerCheck(false);
 
         bytes32 assertionId = _assertWithCallbackRecipientAndSs(address(0), mockedSovereignSecurity);

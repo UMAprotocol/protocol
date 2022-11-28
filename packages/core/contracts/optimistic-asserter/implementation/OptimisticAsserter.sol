@@ -122,16 +122,16 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
             })
         });
 
-        SovereignSecurityInterface.AssertionPolicies memory assertionPolicies = _getAssertionPolicies(assertionId);
+        SovereignSecurityInterface.AssertionPolicy memory assertionPolicy = _getAssertionPolicy(assertionId);
 
         // Check if the assertion is allowed by the sovereign security.
-        require(assertionPolicies.allowAssertion, "Assertion not allowed");
+        require(assertionPolicy.allowAssertion, "Assertion not allowed");
 
-        SsSettings storage settings = assertions[assertionId].ssSettings;
-        (settings.useDisputeResolution, settings.useDvmAsOracle, settings.validateDisputers) = (
-            assertionPolicies.useDisputeResolution, // Arbitrate via DVM if specified by the SSM.
-            assertionPolicies.useDvmAsOracle, // Use DVM as an oracle if specified by the SSM.
-            assertionPolicies.validateDisputers // Validate the disputers if specified by the SSM.
+        SsSettings storage ssSettings = assertions[assertionId].ssSettings;
+        (ssSettings.useDisputeResolution, ssSettings.useDvmAsOracle, ssSettings.validateDisputers) = (
+            assertionPolicy.useDisputeResolution, // Arbitrate via DVM if specified by the SS.
+            assertionPolicy.useDvmAsOracle, // Use DVM as an oracle if specified by the SS.
+            assertionPolicy.validateDisputers // Validate the disputers if specified by the SS.
         );
 
         emit AssertionMade(
@@ -313,13 +313,13 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
         return SovereignSecurityInterface(assertions[assertionId].ssSettings.sovereignSecurity);
     }
 
-    function _getAssertionPolicies(bytes32 assertionId)
+    function _getAssertionPolicy(bytes32 assertionId)
         internal
         view
-        returns (SovereignSecurityInterface.AssertionPolicies memory)
+        returns (SovereignSecurityInterface.AssertionPolicy memory)
     {
         address ss = assertions[assertionId].ssSettings.sovereignSecurity;
-        if (ss == address(0)) return SovereignSecurityInterface.AssertionPolicies(true, true, true, false); // TODO update with default values
+        if (ss == address(0)) return SovereignSecurityInterface.AssertionPolicy(true, true, true, false); // TODO update with default values
         return SovereignSecurityInterface(ss).getAssertionPolicy(assertionId);
     }
 
