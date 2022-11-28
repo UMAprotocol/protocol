@@ -9,7 +9,7 @@ contract WhitelistAsserterSovereignSecurity is BaseSovereignSecurity, Ownable {
     // Security of returning correct policy depends on requesting contract passing msg.sender as asserter.
     address public assertingCaller;
 
-    mapping(address => bool) public whitelistedProposers;
+    mapping(address => bool) public whitelistedAsserters;
 
     event AssertingCallerSet(address indexed assertingCaller);
 
@@ -24,7 +24,7 @@ contract WhitelistAsserterSovereignSecurity is BaseSovereignSecurity, Ownable {
     }
 
     function setAsserterInWhitelist(address asserter, bool value) public onlyOwner {
-        whitelistedProposers[asserter] = value;
+        whitelistedAsserters[asserter] = value;
     }
 
     function getAssertionPolicy(bytes32 assertionId) public view override returns (AssertionPolicy memory) {
@@ -46,6 +46,6 @@ contract WhitelistAsserterSovereignSecurity is BaseSovereignSecurity, Ownable {
         returns (bool)
     {
         if (assertion.ssSettings.assertingCaller != assertingCaller) return false; // Only allow assertions through linked client contract.
-        return whitelistedProposers[assertion.asserter]; // Return if asserter is whitelisted.
+        return whitelistedAsserters[assertion.asserter]; // Return if asserter is whitelisted.
     }
 }

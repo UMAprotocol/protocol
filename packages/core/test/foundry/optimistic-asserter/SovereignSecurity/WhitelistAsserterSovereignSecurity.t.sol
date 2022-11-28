@@ -48,7 +48,7 @@ contract WhitelistProposerSovereignSecurityTest is Common {
         _mockGetAssertion(assertionId, mockAssertingCallerAddress, TestAddress.account1);
 
         // If the proposer is not whitelisted, then the assertion should not be allowed.
-        assertFalse(sovereignSecurity.whitelistedProposers(TestAddress.account1));
+        assertFalse(sovereignSecurity.whitelistedAsserters(TestAddress.account1));
         vm.prank(mockOptimisticAsserterAddress);
         SovereignSecurityInterface.AssertionPolicy memory policy = sovereignSecurity.getAssertionPolicy(assertionId);
         assertFalse(policy.allowAssertion);
@@ -63,7 +63,7 @@ contract WhitelistProposerSovereignSecurityTest is Common {
 
         // If the proposer is whitelisted, then the assertion should be allowed.
         sovereignSecurity.setAsserterInWhitelist(TestAddress.account1, true);
-        assertTrue(sovereignSecurity.whitelistedProposers(TestAddress.account1));
+        assertTrue(sovereignSecurity.whitelistedAsserters(TestAddress.account1));
         vm.prank(mockOptimisticAsserterAddress);
         SovereignSecurityInterface.AssertionPolicy memory policy = sovereignSecurity.getAssertionPolicy(assertionId);
         assertTrue(policy.allowAssertion);
@@ -73,7 +73,7 @@ contract WhitelistProposerSovereignSecurityTest is Common {
 
     function test_BlockAssertingCallerNotSet() public {
         sovereignSecurity.setAsserterInWhitelist(TestAddress.account1, true);
-        assertTrue(sovereignSecurity.whitelistedProposers(TestAddress.account1));
+        assertTrue(sovereignSecurity.whitelistedAsserters(TestAddress.account1));
 
         _mockGetAssertion(assertionId, TestAddress.account1, TestAddress.account1);
 
