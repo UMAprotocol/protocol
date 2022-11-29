@@ -64,6 +64,13 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
         return assertions[assertionId];
     }
 
+    function setBurnedBondPercentage(uint256 _burnedBondPercentage) public onlyOwner {
+        require(_burnedBondPercentage <= 1e18, "Burned bond percentage > 100");
+        require(_burnedBondPercentage > 0, "Burned bond percentage is 0");
+        burnedBondPercentage = _burnedBondPercentage;
+        emit BurnedBondPercentageSet(_burnedBondPercentage);
+    }
+
     function assertTruth(bytes memory claim) public returns (bytes32) {
         return
             assertTruthFor(
@@ -89,8 +96,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
         bytes32 identifier
     ) public returns (bytes32) {
         asserter = asserter == address(0) ? msg.sender : asserter;
-        bytes32 assertionId =
-            _getId(claim, bond, liveness, currency, asserter, callbackRecipient, sovereignSecurity, identifier);
+        bytes32 assertionId = _getId(claim, bond, liveness, currency, callbackRecipient, sovereignSecurity, identifier);
 
         require(assertions[assertionId].asserter == address(0), "Assertion already exists");
         // TODO [GAS] caching identifier whitelist and collateral currency whitelist
@@ -140,6 +146,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
             asserter,
             callbackRecipient,
             sovereignSecurity,
+            msg.sender,
             currency,
             bond,
             assertions[assertionId].expirationTime // TODO [GAS] consider using a memory variable to avoid multiple reads
@@ -202,16 +209,19 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
             // Dispute, settle with the disputer
             int256 resolvedPrice = _oracleGetPrice(assertionId, assertion.identifier, assertion.assertionTime); // Revert if price not resolved.
 
+            // If set to use settlement resolution then set to true if resolved price is 1, false otherwise.
+            // If set to not use settlement resolution then the value remains false.
             assertion.settlementResolution = assertion.ssSettings.useDisputeResolution ? resolvedPrice == 1e18 : false;
             address bondRecipient = resolvedPrice == 1e18 ? assertion.asserter : assertion.disputer;
 
-            // todo: should you only play the final fee in the case of a DVM arbitrated dispute?
-            // TODO not force the final fee to be paid to the DVM if we unplugged
-            uint256 amountToBurn = (burnedBondPercentage * assertion.bond) / 1e18; // TODO multiply this by 1 or 0 if unplugged
-            uint256 amountToSend = assertion.bond * 2 - amountToBurn; // 50% of the bond is burned. The other 50% is sent to the bond recipient.
+            // If set to use the DVM as oracle then must burn half the bond amount. Else, if not using the DVM as oracle
+            // then the bond is returned to the correct party (asserter or disputer).
+            uint256 burn = assertion.ssSettings.useDvmAsOracle ? (burnedBondPercentage * assertion.bond) / 1e18 : 0;
+            uint256 send = assertion.bond * 2 - burn;
 
-            assertion.currency.safeTransfer(bondRecipient, amountToSend);
-            assertion.currency.safeTransfer(address(_getStore()), amountToBurn);
+            // Send tokens. If the DVM is used as an oracle then burn the burn amount. Send the bond recipient the send amount.
+            if (burn > 0) assertion.currency.safeTransfer(address(_getStore()), burn);
+            assertion.currency.safeTransfer(bondRecipient, send);
 
             if (assertion.ssSettings.useDisputeResolution)
                 _callbackOnAssertionResolve(assertionId, assertion.settlementResolution);
@@ -242,7 +252,6 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
         uint256 bond,
         uint256 liveness,
         IERC20 currency,
-        address asserter,
         address callbackRecipient,
         address sovereignSecurity,
         bytes32 identifier
@@ -251,16 +260,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
         return
             keccak256(
                 // TODO change order of abi.encode arguments to do potential gas savings
-                abi.encode(
-                    claim,
-                    bond,
-                    liveness,
-                    currency,
-                    asserter, // TODO get rid of this prop
-                    callbackRecipient,
-                    sovereignSecurity,
-                    identifier
-                )
+                abi.encode(claim, bond, liveness, currency, callbackRecipient, sovereignSecurity, identifier)
             );
     }
 
@@ -269,8 +269,8 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
         return
             AncillaryData.appendKeyValueAddress(
                 AncillaryData.appendKeyValueBytes32("", "assertionId", assertionId),
-                "aoRequester", // TODO change this oaAsserter
-                address(this) // TODO change to asserter
+                "oaAsserter",
+                assertions[assertionId].asserter
             );
     }
 

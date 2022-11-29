@@ -42,6 +42,7 @@ contract Common is Test {
         address indexed asserter,
         address callbackRecipient,
         address indexed sovereignSecurity,
+        address caller,
         IERC20 currency,
         uint256 bond,
         uint256 expirationTime
@@ -159,6 +160,14 @@ contract Common is Test {
         optimisticAsserter.disputeAssertionFor(assertionId, TestAddress.account2);
         vm.stopPrank();
         return oracleRequest;
+    }
+
+    function _allocateBondAndAssertTruth(address asserter, bytes memory claim) public returns (bytes32 assertionId) {
+        vm.startPrank(asserter);
+        defaultCurrency.allocateTo(asserter, optimisticAsserter.defaultBond());
+        defaultCurrency.approve(address(optimisticAsserter), optimisticAsserter.defaultBond());
+        assertionId = optimisticAsserter.assertTruth(claim);
+        vm.stopPrank();
     }
 
     function _expectAssertionResolvedCallback(
