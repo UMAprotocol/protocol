@@ -96,8 +96,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
         bytes32 identifier
     ) public returns (bytes32) {
         asserter = asserter == address(0) ? msg.sender : asserter;
-        bytes32 assertionId =
-            _getId(claim, bond, liveness, currency, asserter, callbackRecipient, sovereignSecurity, identifier);
+        bytes32 assertionId = _getId(claim, bond, liveness, currency, callbackRecipient, sovereignSecurity, identifier);
 
         require(assertions[assertionId].asserter == address(0), "Assertion already exists");
         // TODO [GAS] caching identifier whitelist and collateral currency whitelist
@@ -147,6 +146,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
             asserter,
             callbackRecipient,
             sovereignSecurity,
+            msg.sender,
             currency,
             bond,
             assertions[assertionId].expirationTime // TODO [GAS] consider using a memory variable to avoid multiple reads
@@ -249,7 +249,6 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
         uint256 bond,
         uint256 liveness,
         IERC20 currency,
-        address asserter,
         address callbackRecipient,
         address sovereignSecurity,
         bytes32 identifier
@@ -258,16 +257,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
         return
             keccak256(
                 // TODO change order of abi.encode arguments to do potential gas savings
-                abi.encode(
-                    claim,
-                    bond,
-                    liveness,
-                    currency,
-                    asserter, // TODO get rid of this prop
-                    callbackRecipient,
-                    sovereignSecurity,
-                    identifier
-                )
+                abi.encode(claim, bond, liveness, currency, callbackRecipient, sovereignSecurity, identifier)
             );
     }
 
@@ -276,8 +266,8 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
         return
             AncillaryData.appendKeyValueAddress(
                 AncillaryData.appendKeyValueBytes32("", "assertionId", assertionId),
-                "aoRequester", // TODO change this oaAsserter
-                address(this) // TODO change to asserter
+                "oaAsserter",
+                assertions[assertionId].asserter
             );
     }
 

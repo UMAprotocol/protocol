@@ -23,7 +23,6 @@ contract OptimisticAsserterEvents is Common {
                     defaultBond,
                     defaultLiveness,
                     address(defaultCurrency),
-                    TestAddress.account1,
                     address(0),
                     address(0),
                     defaultIdentifier
@@ -37,6 +36,7 @@ contract OptimisticAsserterEvents is Common {
             TestAddress.account1,
             address(0),
             address(0),
+            TestAddress.account1,
             defaultCurrency,
             defaultBond,
             timer.getCurrentTime() + defaultLiveness
