@@ -156,8 +156,9 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
         return assertion.settlementResolution;
     }
 
-    function settleAndGetAssertionResult(bytes32 assertionId) public nonReentrant() returns (bool) {
-        if (!assertions[assertionId].settled) _settleAssertion(assertionId);
+    function settleAndGetAssertionResult(bytes32 assertionId) public returns (bool) {
+        // Note: re-entrancy guard is done in the inner settleAssertion call.
+        if (!assertions[assertionId].settled) settleAssertion(assertionId);
         return getAssertionResult(assertionId);
     }
 
@@ -186,7 +187,38 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
     }
 
     function settleAssertion(bytes32 assertionId) public nonReentrant() {
-        _settleAssertion(assertionId);
+        Assertion storage assertion = assertions[assertionId];
+        require(assertion.asserter != address(0), "Assertion does not exist"); // Revert if assertion does not exist.
+        require(!assertion.settled, "Assertion already settled"); // Revert if assertion already settled.
+        assertion.settled = true;
+        if (assertion.disputer == address(0)) {
+            // No dispute, settle with the asserter
+            require(assertion.expirationTime <= getCurrentTime(), "Assertion not expired"); // Revert if assertion not expired.
+            assertion.currency.safeTransfer(assertion.asserter, assertion.bond);
+            assertion.settlementResolution = true;
+            _callbackOnAssertionResolve(assertionId, true);
+
+            emit AssertionSettled(assertionId, assertion.asserter, false, true);
+        } else {
+            // Dispute, settle with the disputer
+            int256 resolvedPrice = _oracleGetPrice(assertionId, assertion.identifier, assertion.assertionTime); // Revert if price not resolved.
+
+            assertion.settlementResolution = assertion.ssSettings.useDisputeResolution ? resolvedPrice == 1e18 : false;
+            address bondRecipient = resolvedPrice == 1e18 ? assertion.asserter : assertion.disputer;
+
+            // todo: should you only play the final fee in the case of a DVM arbitrated dispute?
+            // TODO not force the final fee to be paid to the DVM if we unplugged
+            uint256 amountToBurn = (burnedBondPercentage * assertion.bond) / 1e18; // TODO multiply this by 1 or 0 if unplugged
+            uint256 amountToSend = assertion.bond * 2 - amountToBurn; // 50% of the bond is burned. The other 50% is sent to the bond recipient.
+
+            assertion.currency.safeTransfer(bondRecipient, amountToSend);
+            assertion.currency.safeTransfer(address(_getStore()), amountToBurn);
+
+            if (assertion.ssSettings.useDisputeResolution)
+                _callbackOnAssertionResolve(assertionId, assertion.settlementResolution);
+
+            emit AssertionSettled(assertionId, bondRecipient, true, assertion.settlementResolution);
+        }
     }
 
     /**
@@ -241,41 +273,6 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
                 "aoRequester", // TODO change this oaAsserter
                 address(this) // TODO change to asserter
             );
-    }
-
-    function _settleAssertion(bytes32 assertionId) internal {
-        Assertion storage assertion = assertions[assertionId];
-        require(assertion.asserter != address(0), "Assertion does not exist"); // Revert if assertion does not exist.
-        require(!assertion.settled, "Assertion already settled"); // Revert if assertion already settled.
-        assertion.settled = true;
-        if (assertion.disputer == address(0)) {
-            // No dispute, settle with the asserter
-            require(assertion.expirationTime <= getCurrentTime(), "Assertion not expired"); // Revert if assertion not expired.
-            assertion.currency.safeTransfer(assertion.asserter, assertion.bond);
-            assertion.settlementResolution = true;
-            _callbackOnAssertionResolve(assertionId, true);
-
-            emit AssertionSettled(assertionId, assertion.asserter, false, true);
-        } else {
-            // Dispute, settle with the disputer
-            int256 resolvedPrice = _oracleGetPrice(assertionId, assertion.identifier, assertion.assertionTime); // Revert if price not resolved.
-
-            assertion.settlementResolution = assertion.ssSettings.useDisputeResolution ? resolvedPrice == 1e18 : false;
-            address bondRecipient = resolvedPrice == 1e18 ? assertion.asserter : assertion.disputer;
-
-            // todo: should you only play the final fee in the case of a DVM arbitrated dispute?
-            // TODO not force the final fee to be paid to the DVM if we unplugged
-            uint256 amountToBurn = (burnedBondPercentage * assertion.bond) / 1e18; // TODO multiply this by 1 or 0 if unplugged
-            uint256 amountToSend = assertion.bond * 2 - amountToBurn; // 50% of the bond is burned. The other 50% is sent to the bond recipient.
-
-            assertion.currency.safeTransfer(bondRecipient, amountToSend);
-            assertion.currency.safeTransfer(address(_getStore()), amountToBurn);
-
-            if (assertion.ssSettings.useDisputeResolution)
-                _callbackOnAssertionResolve(assertionId, assertion.settlementResolution);
-
-            emit AssertionSettled(assertionId, bondRecipient, true, assertion.settlementResolution);
-        }
     }
 
     function _getCollateralWhitelist() internal view returns (AddressWhitelist) {
