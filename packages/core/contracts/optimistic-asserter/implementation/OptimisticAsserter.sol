@@ -44,16 +44,13 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
     ) {
         finder = _finder;
         setAssertionDefaults(_defaultCurrency, _defaultLiveness);
-        syncCurrency(address(_defaultCurrency));
-        syncIdentifier(defaultIdentifier);
-        syncOracle();
     }
 
     // TODO consider renaming this
     function setAssertionDefaults(IERC20 _defaultCurrency, uint256 _defaultLiveness) public onlyOwner {
         defaultCurrency = _defaultCurrency;
         defaultLiveness = _defaultLiveness;
-        syncCurrency(address(_defaultCurrency));
+        syncUmaParams(defaultIdentifier, address(_defaultCurrency));
 
         emit AssertionDefaultsSet(_defaultCurrency, _defaultLiveness);
     }
@@ -218,19 +215,13 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
         }
     }
 
-    function syncCurrency(address currency) public {
+    function syncUmaParams(bytes32 identifier, address currency) public {
+        cachedUmaParams.oracle = finder.getImplementationAddress(OracleInterfaces.Oracle);
+        cachedUmaParams.supportedIdentifiers[identifier] = _getIdentifierWhitelist().isIdentifierSupported(identifier);
         cachedUmaParams.whitelistedCurrencies[currency].isWhitelisted = _getCollateralWhitelist().isOnWhitelist(
             currency
         );
         cachedUmaParams.whitelistedCurrencies[currency].finalFee = _getStore().computeFinalFee(currency).rawValue;
-    }
-
-    function syncIdentifier(bytes32 identifier) public {
-        cachedUmaParams.supportedIdentifiers[identifier] = _getIdentifierWhitelist().isIdentifierSupported(identifier);
-    }
-
-    function syncOracle() public {
-        cachedUmaParams.oracle = finder.getImplementationAddress(OracleInterfaces.Oracle);
     }
 
     /**
