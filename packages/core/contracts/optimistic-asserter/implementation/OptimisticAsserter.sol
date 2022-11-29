@@ -51,7 +51,6 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
         syncOracle();
     }
 
-    // TODO set a sync function to update the defaultBond in the store reading from the Store
     // TODO consider renaming this
     function setAssertionDefaults(
         IERC20 _defaultCurrency,
@@ -77,7 +76,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
                 address(0),
                 address(0),
                 defaultCurrency,
-                defaultBond, // TODO update this when the caching is implemented
+                getMinimumBond(address(defaultCurrency)),
                 defaultLiveness,
                 defaultIdentifier
             );
@@ -253,7 +252,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
     }
 
     function getMinimumBond(address currencyAddress) public view returns (uint256) {
-        uint256 finalFee = _getStore().computeFinalFee(currencyAddress).rawValue;
+        uint256 finalFee = cachedUmaParams.whitelistedCurrencies[currencyAddress].finalFee;
         return (finalFee * 1e18) / burnedBondPercentage;
     }
 
