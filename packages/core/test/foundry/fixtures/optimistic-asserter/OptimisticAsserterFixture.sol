@@ -29,6 +29,7 @@ contract OptimisticAsserterFixture is Test {
         baseMockDvmContracts.identifierWhitelist.addSupportedIdentifier("ASSERT_TRUTH");
         uint256 defaultBond = 100e18;
         uint256 defaultLiveness = 7200; // 2 hours
+        baseMockDvmContracts.store.setFinalFee(address(defaultCurrency), FixedPoint.Unsigned(50e18)); // Half of the default bond.
         OptimisticAsserterTest optimisticAsserter =
             new OptimisticAsserterTest(
                 baseMockDvmContracts.finder,
@@ -37,7 +38,6 @@ contract OptimisticAsserterFixture is Test {
                 defaultLiveness,
                 address(baseMockDvmContracts.timer)
             );
-        baseMockDvmContracts.store.setFinalFee(address(defaultCurrency), FixedPoint.Unsigned(50e18)); // Half of the default bond.
 
         vm.stopPrank();
 
