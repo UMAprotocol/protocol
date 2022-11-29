@@ -70,4 +70,6 @@ interface OptimisticAsserterInterface {
     );
 
     event AssertionDefaultsSet(IERC20 defaultCurrency, uint256 defaultBond, uint256 defaultLiveness);
+
+    event BurnedBondPercentageSet(uint256 burnedBondPercentage);
 }

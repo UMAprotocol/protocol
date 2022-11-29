@@ -64,6 +64,13 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
         return assertions[assertionId];
     }
 
+    function setBurnedBondPercentage(uint256 _burnedBondPercentage) public onlyOwner {
+        require(_burnedBondPercentage <= 1e18, "Burned bond percentage > 100");
+        require(_burnedBondPercentage > 0, "Burned bond percentage is 0");
+        burnedBondPercentage = _burnedBondPercentage;
+        emit BurnedBondPercentageSet(_burnedBondPercentage);
+    }
+
     function assertTruth(bytes memory claim) public returns (bytes32) {
         return
             assertTruthFor(
