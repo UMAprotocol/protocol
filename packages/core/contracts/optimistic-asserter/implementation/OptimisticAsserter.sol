@@ -48,6 +48,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
         setAssertionDefaults(_defaultCurrency, _defaultBond, _defaultLiveness);
         syncCurrency(address(_defaultCurrency));
         syncIdentifier(defaultIdentifier);
+        syncOracle();
     }
 
     // TODO set a sync function to update the defaultBond in the store reading from the Store
@@ -235,6 +236,10 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
         cachedUmaParams.supportedIdentifiers[identifier] = _getIdentifierWhitelist().isIdentifierSupported(identifier);
     }
 
+    function syncOracle() public {
+        cachedUmaParams.oracle = finder.getImplementationAddress(OracleInterfaces.Oracle);
+    }
+
     /**
      * @notice Returns the current block timestamp.
      * @dev Can be overridden to control contract time.
@@ -301,10 +306,8 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
         return StoreInterface(finder.getImplementationAddress(OracleInterfaces.Store));
     }
 
-    // TODO: caching oracle
     function _getOracle(bytes32 assertionId) internal view returns (OracleAncillaryInterface) {
-        if (assertions[assertionId].ssSettings.useDvmAsOracle)
-            return OracleAncillaryInterface(finder.getImplementationAddress(OracleInterfaces.Oracle));
+        if (assertions[assertionId].ssSettings.useDvmAsOracle) return OracleAncillaryInterface(cachedUmaParams.oracle);
         return OracleAncillaryInterface(address(_getSovereignSecurity(assertionId)));
     }
 
