@@ -36,6 +36,7 @@ interface OptimisticAsserterInterface {
     struct CachedUmaParams {
         address oracle; // TODO: not yet used. Need to have it for generating default getters.
         mapping(address => WhitelistedCurrency) whitelistedCurrencies;
+        mapping(bytes32 => bool) supportedIdentifiers;
     }
 
     function defaultIdentifier() external view returns (bytes32);

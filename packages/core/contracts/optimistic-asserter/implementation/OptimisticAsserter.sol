@@ -47,6 +47,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
         finder = _finder;
         setAssertionDefaults(_defaultCurrency, _defaultBond, _defaultLiveness);
         syncCurrency(address(_defaultCurrency));
+        syncIdentifier(defaultIdentifier);
     }
 
     // TODO set a sync function to update the defaultBond in the store reading from the Store
@@ -97,7 +98,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
 
         require(assertions[assertionId].asserter == address(0), "Assertion already exists");
         // TODO [GAS] caching identifier whitelist and collateral currency whitelist
-        require(_getIdentifierWhitelist().isIdentifierSupported(identifier), "Unsupported identifier");
+        require(cachedUmaParams.supportedIdentifiers[identifier], "Unsupported identifier");
         require(cachedUmaParams.whitelistedCurrencies[address(currency)].isWhitelisted, "Unsupported currency");
         require(bond >= getMinimumBond(address(currency)), "Bond amount too low");
 
@@ -228,6 +229,10 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
             currency
         );
         cachedUmaParams.whitelistedCurrencies[currency].finalFee = _getStore().computeFinalFee(currency).rawValue;
+    }
+
+    function syncIdentifier(bytes32 identifier) public {
+        cachedUmaParams.supportedIdentifiers[identifier] = _getIdentifierWhitelist().isIdentifierSupported(identifier);
     }
 
     /**
