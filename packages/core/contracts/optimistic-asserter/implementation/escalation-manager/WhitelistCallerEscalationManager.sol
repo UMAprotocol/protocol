@@ -1,10 +1,10 @@
 pragma solidity 0.8.16;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "./BaseSovereignSecurity.sol";
+import "./BaseEscalationManager.sol";
 import "../../interfaces/OptimisticAsserterInterface.sol";
 
-contract WhitelistCallerSovereignSecurity is BaseSovereignSecurity, Ownable {
+contract WhitelistCallerEscalationManager is BaseEscalationManager, Ownable {
     mapping(address => bool) whitelistedAssertingCallers;
 
     function setAssertingCallerInWhitelist(address assertingCaller, bool value) public onlyOwner {
@@ -16,9 +16,9 @@ contract WhitelistCallerSovereignSecurity is BaseSovereignSecurity, Ownable {
         return
             AssertionPolicy({
                 blockAssertion: !whitelistedAssertingCallers[
-                    optimisticAsserter.getAssertion(assertionId).ssSettings.assertingCaller
+                    optimisticAsserter.getAssertion(assertionId).escalationManagerSettings.assertingCaller
                 ],
-                arbitrateViaSs: false,
+                arbitrateViaEscalationManager: false,
                 discardOracle: false,
                 validateDisputers: false
             });

@@ -55,13 +55,13 @@ contract DataAsserter {
         defaultCurrency.safeTransferFrom(msg.sender, address(this), bond);
         defaultCurrency.safeApprove(address(oa), bond);
 
-        // The claim we want to assert is the first argument of assertTruthFor. It must contain all of the relevant
+        // The claim we want to assert is the first argument of assertTruth. It must contain all of the relevant
         // details so that anyone may verify the claim without having to read any further information on chain. As a
         // result, the claim must include both the data id and data, as well as a set of instructions that allow anyone
         // to verify the information in publicly available sources.
         // See the UMIP corresponding to the defaultIdentifier used in the OptimisticAsserter "ASSERT_TRUTH" for more
         // information on how to construct the claim.
-        assertionId = oa.assertTruthFor(
+        assertionId = oa.assertTruth(
             abi.encodePacked(
                 "Data asserted: 0x", // in the example data is type bytes32 so we add the hex prefix 0x.
                 AncillaryData.toUtf8Bytes(data),

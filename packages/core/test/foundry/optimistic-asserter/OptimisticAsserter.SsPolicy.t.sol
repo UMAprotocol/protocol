@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import "./Common.sol";
 
-contract SovereignSecurityPolicyEnforced is Common {
+contract EscalationManagerPolicyEnforced is Common {
     function setUp() public {
         _commonSetup();
 
@@ -16,11 +16,11 @@ contract SovereignSecurityPolicyEnforced is Common {
 
     function testDefaultPolicy() public {
         vm.prank(TestAddress.account1);
-        bytes32 assertionId = optimisticAsserter.assertTruth(trueClaimAssertion);
+        bytes32 assertionId = optimisticAsserter.assertTruthWithDefaults(trueClaimAssertion);
         OptimisticAsserterInterface.Assertion memory assertion = optimisticAsserter.getAssertion(assertionId);
-        assertFalse(assertion.ssSettings.discardOracle);
-        assertFalse(assertion.ssSettings.arbitrateViaSs);
-        assertFalse(assertion.ssSettings.validateDisputers);
+        assertFalse(assertion.escalationManagerSettings.discardOracle);
+        assertFalse(assertion.escalationManagerSettings.arbitrateViaEscalationManager);
+        assertFalse(assertion.escalationManagerSettings.validateDisputers);
     }
 
     function test_RevertIf_AssertionBlocked() public {
@@ -28,7 +28,7 @@ contract SovereignSecurityPolicyEnforced is Common {
         _mockSsPolicy(true, false, false, false);
 
         vm.expectRevert("Assertion not allowed");
-        _assertWithCallbackRecipientAndSs(address(0), mockedSovereignSecurity);
+        _assertWithCallbackRecipientAndSs(address(0), mockedEscalationManager);
         vm.clearMockedCalls();
     }
 
@@ -37,13 +37,13 @@ contract SovereignSecurityPolicyEnforced is Common {
         _mockSsPolicy(false, true, false, false);
         _mockSsDisputerCheck(true);
 
-        bytes32 assertionId = _assertWithCallbackRecipientAndSs(address(0), mockedSovereignSecurity);
+        bytes32 assertionId = _assertWithCallbackRecipientAndSs(address(0), mockedEscalationManager);
         OptimisticAsserterInterface.Assertion memory assertion = optimisticAsserter.getAssertion(assertionId);
-        assertTrue(assertion.ssSettings.arbitrateViaSs);
+        assertTrue(assertion.escalationManagerSettings.arbitrateViaEscalationManager);
 
         // Dispute, mock resolve assertion truethful through SS as Oracle and verify on Optimistic Asserter.
         OracleRequest memory oracleRequest = _disputeAndGetOracleRequest(assertionId, defaultBond);
-        _mockOracleResolved(mockedSovereignSecurity, oracleRequest, true);
+        _mockOracleResolved(mockedEscalationManager, oracleRequest, true);
 
         // As we are not using the DVM as the arbitration oracle the "winner" of the dispute should get back 2x the bond
         // and nothing should be burnt.
@@ -62,9 +62,9 @@ contract SovereignSecurityPolicyEnforced is Common {
         _mockSsPolicy(false, false, true, false);
         _mockSsDisputerCheck(true);
 
-        bytes32 assertionId = _assertWithCallbackRecipientAndSs(address(0), mockedSovereignSecurity);
+        bytes32 assertionId = _assertWithCallbackRecipientAndSs(address(0), mockedEscalationManager);
         OptimisticAsserterInterface.Assertion memory assertion = optimisticAsserter.getAssertion(assertionId);
-        assertTrue(assertion.ssSettings.discardOracle);
+        assertTrue(assertion.escalationManagerSettings.discardOracle);
 
         // Dispute should make assertion false available immediately.
         OracleRequest memory oracleRequest = _disputeAndGetOracleRequest(assertionId, defaultBond);
@@ -80,7 +80,7 @@ contract SovereignSecurityPolicyEnforced is Common {
         // Deafault SS policy do not validate disputers.
         _mockSsPolicy(false, false, false, false);
 
-        bytes32 assertionId = _assertWithCallbackRecipientAndSs(address(0), mockedSovereignSecurity);
+        bytes32 assertionId = _assertWithCallbackRecipientAndSs(address(0), mockedEscalationManager);
 
         _disputeAndGetOracleRequest(assertionId, defaultBond);
         vm.clearMockedCalls();
@@ -91,7 +91,7 @@ contract SovereignSecurityPolicyEnforced is Common {
         _mockSsPolicy(false, false, false, true);
         _mockSsDisputerCheck(true);
 
-        bytes32 assertionId = _assertWithCallbackRecipientAndSs(address(0), mockedSovereignSecurity);
+        bytes32 assertionId = _assertWithCallbackRecipientAndSs(address(0), mockedEscalationManager);
 
         _disputeAndGetOracleRequest(assertionId, defaultBond);
         vm.clearMockedCalls();
@@ -102,7 +102,7 @@ contract SovereignSecurityPolicyEnforced is Common {
         _mockSsPolicy(false, false, false, true);
         _mockSsDisputerCheck(false);
 
-        bytes32 assertionId = _assertWithCallbackRecipientAndSs(address(0), mockedSovereignSecurity);
+        bytes32 assertionId = _assertWithCallbackRecipientAndSs(address(0), mockedEscalationManager);
 
         // Fund Account2 for making dispute.
         vm.startPrank(TestAddress.account2);

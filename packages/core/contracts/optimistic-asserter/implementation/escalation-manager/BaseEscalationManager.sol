@@ -1,15 +1,15 @@
 pragma solidity 0.8.16;
 
-import "../../interfaces/SovereignSecurityInterface.sol";
+import "../../interfaces/EscalationManagerInterface.sol";
 
-contract BaseSovereignSecurity is SovereignSecurityInterface {
+contract BaseEscalationManager is EscalationManagerInterface {
     event PriceRequestAdded(bytes32 indexed identifier, uint256 time, bytes ancillaryData);
 
     function getAssertionPolicy(bytes32 assertionId) public view virtual override returns (AssertionPolicy memory) {
         return
             AssertionPolicy({
                 blockAssertion: false,
-                arbitrateViaSs: false,
+                arbitrateViaEscalationManager: false,
                 discardOracle: false,
                 validateDisputers: false
             });

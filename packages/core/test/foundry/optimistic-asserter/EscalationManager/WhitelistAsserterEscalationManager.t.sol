@@ -2,83 +2,83 @@
 pragma solidity ^0.8.0;
 
 import "../Common.sol";
-import "../../../../contracts/optimistic-asserter/implementation/sovereign-security/WhitelistAsserterSovereignSecurity.sol";
+import "../../../../contracts/optimistic-asserter/implementation/escalation-manager/WhitelistAsserterEscalationManager.sol";
 
-contract WhitelistAsserterSovereignSecurityTest is Common {
-    WhitelistAsserterSovereignSecurity sovereignSecurity;
+contract WhitelistAsserterEscalationManagerTest is Common {
+    WhitelistAsserterEscalationManager escalationManager;
 
     bytes32 assertionId = "test";
 
     function setUp() public {
-        sovereignSecurity = new WhitelistAsserterSovereignSecurity();
+        escalationManager = new WhitelistAsserterEscalationManager();
     }
 
     function test_RevertIf_NotOwner() public {
         vm.startPrank(TestAddress.account1);
         vm.expectRevert("Ownable: caller is not the owner");
-        sovereignSecurity.setAsserterInWhitelist(TestAddress.account1, true);
+        escalationManager.setAsserterInWhitelist(TestAddress.account1, true);
 
         vm.expectRevert("Ownable: caller is not the owner");
-        sovereignSecurity.setAssertingCaller(mockAssertingCallerAddress);
+        escalationManager.setAssertingCaller(mockAssertingCallerAddress);
         vm.stopPrank();
     }
 
     function test_RevertIf_InvalidAssertingCaller() public {
         vm.expectRevert("Invalid asserting caller");
-        sovereignSecurity.setAssertingCaller(address(0));
+        escalationManager.setAssertingCaller(address(0));
     }
 
     function test_SetAssertingCaller() public {
         vm.expectEmit(true, true, true, true);
         emit AssertingCallerSet(mockAssertingCallerAddress);
-        sovereignSecurity.setAssertingCaller(mockAssertingCallerAddress);
-        assertEq(sovereignSecurity.assertingCaller(), mockAssertingCallerAddress);
+        escalationManager.setAssertingCaller(mockAssertingCallerAddress);
+        assertEq(escalationManager.assertingCaller(), mockAssertingCallerAddress);
     }
 
     function test_RevertIf_RepeatSetAssertingCaller() public {
-        sovereignSecurity.setAssertingCaller(mockAssertingCallerAddress);
+        escalationManager.setAssertingCaller(mockAssertingCallerAddress);
 
         vm.expectRevert("Asserting caller already set");
-        sovereignSecurity.setAssertingCaller(mockAssertingCallerAddress);
+        escalationManager.setAssertingCaller(mockAssertingCallerAddress);
     }
 
     function test_AsserterNotOnWhitelist() public {
-        sovereignSecurity.setAssertingCaller(mockAssertingCallerAddress);
+        escalationManager.setAssertingCaller(mockAssertingCallerAddress);
 
         _mockGetAssertion(assertionId, mockAssertingCallerAddress, TestAddress.account1);
 
         // If the asserter is not whitelisted, then the assertion should be blocked.
-        assertFalse(sovereignSecurity.whitelistedAsserters(TestAddress.account1));
+        assertFalse(escalationManager.whitelistedAsserters(TestAddress.account1));
         vm.prank(mockOptimisticAsserterAddress);
-        SovereignSecurityInterface.AssertionPolicy memory policy = sovereignSecurity.getAssertionPolicy(assertionId);
+        EscalationManagerInterface.AssertionPolicy memory policy = escalationManager.getAssertionPolicy(assertionId);
         assertTrue(policy.blockAssertion);
 
         vm.clearMockedCalls();
     }
 
     function test_AsserterOnWhitelist() public {
-        sovereignSecurity.setAssertingCaller(mockAssertingCallerAddress);
+        escalationManager.setAssertingCaller(mockAssertingCallerAddress);
 
         _mockGetAssertion(assertionId, mockAssertingCallerAddress, TestAddress.account1);
 
         // If the asserter is whitelisted, then the assertion should not be blocked.
-        sovereignSecurity.setAsserterInWhitelist(TestAddress.account1, true);
-        assertTrue(sovereignSecurity.whitelistedAsserters(TestAddress.account1));
+        escalationManager.setAsserterInWhitelist(TestAddress.account1, true);
+        assertTrue(escalationManager.whitelistedAsserters(TestAddress.account1));
         vm.prank(mockOptimisticAsserterAddress);
-        SovereignSecurityInterface.AssertionPolicy memory policy = sovereignSecurity.getAssertionPolicy(assertionId);
+        EscalationManagerInterface.AssertionPolicy memory policy = escalationManager.getAssertionPolicy(assertionId);
         assertFalse(policy.blockAssertion);
 
         vm.clearMockedCalls();
     }
 
     function test_BlockAssertingCallerNotSet() public {
-        sovereignSecurity.setAsserterInWhitelist(TestAddress.account1, true);
-        assertTrue(sovereignSecurity.whitelistedAsserters(TestAddress.account1));
+        escalationManager.setAsserterInWhitelist(TestAddress.account1, true);
+        assertTrue(escalationManager.whitelistedAsserters(TestAddress.account1));
 
         _mockGetAssertion(assertionId, TestAddress.account1, TestAddress.account1);
 
         vm.prank(mockOptimisticAsserterAddress);
-        SovereignSecurityInterface.AssertionPolicy memory policy = sovereignSecurity.getAssertionPolicy(assertionId);
+        EscalationManagerInterface.AssertionPolicy memory policy = escalationManager.getAssertionPolicy(assertionId);
         assertTrue(policy.blockAssertion);
     }
 
@@ -88,7 +88,7 @@ contract WhitelistAsserterSovereignSecurityTest is Common {
         address asserter
     ) internal {
         OptimisticAsserterInterface.Assertion memory assertion;
-        assertion.ssSettings.assertingCaller = assertingCaller;
+        assertion.escalationManagerSettings.assertingCaller = assertingCaller;
         assertion.asserter = asserter;
         vm.mockCall(
             mockOptimisticAsserterAddress,

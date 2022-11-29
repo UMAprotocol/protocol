@@ -1,10 +1,10 @@
 pragma solidity 0.8.16;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "./BaseSovereignSecurity.sol";
+import "./BaseEscalationManager.sol";
 import "../../interfaces/OptimisticAsserterInterface.sol";
 
-contract WhitelistAsserterSovereignSecurity is BaseSovereignSecurity, Ownable {
+contract WhitelistAsserterEscalationManager is BaseEscalationManager, Ownable {
     // Address of linked requesting contract. Before this is set via setAssertingCaller all assertions will be blocked.
     // Security of returning correct policy depends on requesting contract passing msg.sender as asserter.
     address public assertingCaller;
@@ -34,7 +34,7 @@ contract WhitelistAsserterSovereignSecurity is BaseSovereignSecurity, Ownable {
         return
             AssertionPolicy({
                 blockAssertion: blocked,
-                arbitrateViaSs: false,
+                arbitrateViaEscalationManager: false,
                 discardOracle: false,
                 validateDisputers: false
             });
@@ -45,7 +45,7 @@ contract WhitelistAsserterSovereignSecurity is BaseSovereignSecurity, Ownable {
         view
         returns (bool)
     {
-        if (assertion.ssSettings.assertingCaller != assertingCaller) return true; // Only allow assertions through linked client contract.
+        if (assertion.escalationManagerSettings.assertingCaller != assertingCaller) return true; // Only allow assertions through linked client contract.
         return !whitelistedAsserters[assertion.asserter]; // Return if asserter is not whitelisted.
     }
 }

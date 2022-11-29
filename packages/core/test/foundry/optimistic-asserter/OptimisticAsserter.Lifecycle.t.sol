@@ -27,7 +27,7 @@ contract SimpleAssertionsWithClaimOnly is Common {
                 )
             );
 
-        bytes32 assertionId = optimisticAsserter.assertTruth(trueClaimAssertion);
+        bytes32 assertionId = optimisticAsserter.assertTruthWithDefaults(trueClaimAssertion);
         assertEq(assertionId, expectedAssertionId);
         vm.stopPrank();
 
@@ -53,7 +53,7 @@ contract SimpleAssertionsWithClaimOnly is Common {
         defaultCurrency.approve(address(optimisticAsserter), defaultBond);
 
         // Account1 asserts a false claim.
-        bytes32 assertionId = optimisticAsserter.assertTruth(bytes(falseClaimAssertion));
+        bytes32 assertionId = optimisticAsserter.assertTruthWithDefaults(bytes(falseClaimAssertion));
         vm.stopPrank();
 
         // The assertion gets disputed by the disputer, account2.
