@@ -14,17 +14,17 @@ contract OwnerDiscardOracleSovereignSecurityTest is Common {
     function test_SetDiscardOracle() public {
         OwnerDiscardOracleSovereignSecurity.AssertionPolicy memory policy =
             sovereignSecurity.getAssertionPolicy(bytes32(0));
-        assertTrue(policy.allowAssertion);
-        assertTrue(policy.useDvmAsOracle);
-        assertTrue(policy.useDisputeResolution);
+        assertFalse(policy.blockAssertion);
+        assertFalse(policy.arbitrateViaSs);
+        assertFalse(policy.discardOracle);
         assertFalse(policy.validateDisputers);
 
         sovereignSecurity.setDiscardOracle(true);
         policy = sovereignSecurity.getAssertionPolicy(bytes32(0));
 
-        assertTrue(policy.allowAssertion);
-        assertTrue(policy.useDvmAsOracle);
-        assertFalse(policy.useDisputeResolution);
+        assertFalse(policy.blockAssertion);
+        assertFalse(policy.arbitrateViaSs);
+        assertTrue(policy.discardOracle);
         assertFalse(policy.validateDisputers);
     }
 

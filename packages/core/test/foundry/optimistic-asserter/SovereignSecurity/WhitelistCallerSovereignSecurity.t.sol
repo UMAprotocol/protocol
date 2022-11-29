@@ -14,19 +14,19 @@ contract WhitelistCallerSovereignSecurityTest is Common {
     function test_AssertingCallerWhitelist() public {
         bytes32 assertionId = "test";
 
-        // If the asserting caller is not whitelisted, then the assertion should not be allowed.
+        // If the asserting caller is not whitelisted, then the assertion should be blocked.
         _mockGetAssertionAssertingCaller(mockAssertingCallerAddress, assertionId);
         vm.prank(mockOptimisticAsserterAddress);
         SovereignSecurityInterface.AssertionPolicy memory policyNotWhitelisted =
             sovereignSecurity.getAssertionPolicy(assertionId);
-        assertFalse(policyNotWhitelisted.allowAssertion);
+        assertTrue(policyNotWhitelisted.blockAssertion);
 
-        // If the asserting caller is whitelisted, then the assertion should be allowed.
+        // If the asserting caller is whitelisted, then the assertion should not be blocked.
         sovereignSecurity.setAssertingCallerInWhitelist(mockAssertingCallerAddress, true);
         vm.prank(mockOptimisticAsserterAddress);
         SovereignSecurityInterface.AssertionPolicy memory policyWhitelisted =
             sovereignSecurity.getAssertionPolicy(assertionId);
-        assertTrue(policyWhitelisted.allowAssertion);
+        assertFalse(policyWhitelisted.blockAssertion);
 
         vm.clearMockedCalls();
     }

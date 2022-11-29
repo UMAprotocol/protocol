@@ -18,28 +18,28 @@ contract SovereignSecurityPolicyEnforced is Common {
         vm.prank(TestAddress.account1);
         bytes32 assertionId = optimisticAsserter.assertTruth(trueClaimAssertion);
         OptimisticAsserterInterface.Assertion memory assertion = optimisticAsserter.getAssertion(assertionId);
-        assertTrue(assertion.ssSettings.useDisputeResolution);
-        assertTrue(assertion.ssSettings.useDvmAsOracle);
+        assertFalse(assertion.ssSettings.discardOracle);
+        assertFalse(assertion.ssSettings.arbitrateViaSs);
         assertFalse(assertion.ssSettings.validateDisputers);
     }
 
     function test_RevertIf_AssertionBlocked() public {
         // Block any assertion.
-        _mockSsPolicy(false, true, true, false);
+        _mockSsPolicy(true, false, false, false);
 
         vm.expectRevert("Assertion not allowed");
         _assertWithCallbackRecipientAndSs(address(0), mockedSovereignSecurity);
         vm.clearMockedCalls();
     }
 
-    function test_DisableDvmAsOracle() public {
+    function test_ArbitrateViaSs() public {
         // Use SS as oracle.
-        _mockSsPolicy(true, false, true, false);
+        _mockSsPolicy(false, true, false, false);
         _mockSsDisputerCheck(true);
 
         bytes32 assertionId = _assertWithCallbackRecipientAndSs(address(0), mockedSovereignSecurity);
         OptimisticAsserterInterface.Assertion memory assertion = optimisticAsserter.getAssertion(assertionId);
-        assertFalse(assertion.ssSettings.useDvmAsOracle);
+        assertTrue(assertion.ssSettings.arbitrateViaSs);
 
         // Dispute, mock resolve assertion truethful through SS as Oracle and verify on Optimistic Asserter.
         OracleRequest memory oracleRequest = _disputeAndGetOracleRequest(assertionId, defaultBond);
@@ -59,12 +59,12 @@ contract SovereignSecurityPolicyEnforced is Common {
 
     function test_DisregardOracle() public {
         // Do not respect Oracle on dispute.
-        _mockSsPolicy(true, true, false, false);
+        _mockSsPolicy(false, false, true, false);
         _mockSsDisputerCheck(true);
 
         bytes32 assertionId = _assertWithCallbackRecipientAndSs(address(0), mockedSovereignSecurity);
         OptimisticAsserterInterface.Assertion memory assertion = optimisticAsserter.getAssertion(assertionId);
-        assertFalse(assertion.ssSettings.useDisputeResolution);
+        assertTrue(assertion.ssSettings.discardOracle);
 
         // Dispute should make assertion false available immediately.
         OracleRequest memory oracleRequest = _disputeAndGetOracleRequest(assertionId, defaultBond);
@@ -78,7 +78,7 @@ contract SovereignSecurityPolicyEnforced is Common {
 
     function test_DoNotValidateDisputers() public {
         // Deafault SS policy do not validate disputers.
-        _mockSsPolicy(true, true, true, false);
+        _mockSsPolicy(false, false, false, false);
 
         bytes32 assertionId = _assertWithCallbackRecipientAndSs(address(0), mockedSovereignSecurity);
 
@@ -88,7 +88,7 @@ contract SovereignSecurityPolicyEnforced is Common {
 
     function test_ValidateAndAllowDispute() public {
         // Validate disputers in SS policy and allow disputes.
-        _mockSsPolicy(true, true, true, true);
+        _mockSsPolicy(false, false, false, true);
         _mockSsDisputerCheck(true);
 
         bytes32 assertionId = _assertWithCallbackRecipientAndSs(address(0), mockedSovereignSecurity);
@@ -99,7 +99,7 @@ contract SovereignSecurityPolicyEnforced is Common {
 
     function test_RevertIf_DisputeNotAllowed() public {
         // Validate disputers in SS policy and disallow disputes.
-        _mockSsPolicy(true, true, true, true);
+        _mockSsPolicy(false, false, false, true);
         _mockSsDisputerCheck(false);
 
         bytes32 assertionId = _assertWithCallbackRecipientAndSs(address(0), mockedSovereignSecurity);
