@@ -31,7 +31,7 @@ contract OptimisticAsserterCallbacks is Common {
 
     function test_CallbackSovereignSecurityOnExpired() public {
         // Deafault SS policies.
-        _mockSsPolicy(true, true, true, false);
+        _mockSsPolicy(false, false, false, false);
 
         // Assert with Sovereign Security without a dedicated callback recipient.
         bytes32 assertionId = _assertWithCallbackRecipientAndSs(address(0), mockedSovereignSecurity);
@@ -61,7 +61,7 @@ contract OptimisticAsserterCallbacks is Common {
 
     function test_CallbackSovereignSecurityOnResolvedTruth() public {
         // Deafault SS policies.
-        _mockSsPolicy(true, true, true, false);
+        _mockSsPolicy(false, false, false, false);
 
         // Assert with Sovereign Security without a dedicated callback recipient.
         bytes32 assertionId = _assertWithCallbackRecipientAndSs(address(0), mockedSovereignSecurity);
@@ -94,7 +94,7 @@ contract OptimisticAsserterCallbacks is Common {
 
     function test_CallbackSovereignSecurityOnResolvedFalse() public {
         // Deafault SS policies.
-        _mockSsPolicy(true, true, true, false);
+        _mockSsPolicy(false, false, false, false);
 
         // Assert with callback recipient.
         bytes32 assertionId = _assertWithCallbackRecipientAndSs(address(0), mockedSovereignSecurity);
@@ -112,7 +112,7 @@ contract OptimisticAsserterCallbacks is Common {
 
     function test_CallbacksOnDispute() public {
         // Assert with callback recipient and not respecting Oracle.
-        _mockSsPolicy(true, true, false, false);
+        _mockSsPolicy(false, false, true, false);
         _mockSsDisputerCheck(true);
 
         bytes32 assertionId = _assertWithCallbackRecipientAndSs(mockedCallbackRecipient, mockedSovereignSecurity);
