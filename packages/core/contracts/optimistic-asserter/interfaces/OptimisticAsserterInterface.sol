@@ -38,8 +38,8 @@ interface OptimisticAsserterInterface {
 
     struct CachedUmaParams {
         address oracle; // Address of the UMA Oracle.
-        mapping(address => WhitelistedCurrency) whitelistedCurrencies;
-        mapping(bytes32 => bool) supportedIdentifiers;
+        mapping(address => WhitelistedCurrency) currencies;
+        mapping(bytes32 => bool) identifiers;
     }
 
     function defaultIdentifier() external view returns (bytes32);

@@ -234,11 +234,9 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
 
     function syncUmaParams(bytes32 identifier, address currency) public {
         cachedUmaParams.oracle = finder.getImplementationAddress(OracleInterfaces.Oracle);
-        cachedUmaParams.supportedIdentifiers[identifier] = _getIdentifierWhitelist().isIdentifierSupported(identifier);
-        cachedUmaParams.whitelistedCurrencies[currency].isWhitelisted = _getCollateralWhitelist().isOnWhitelist(
-            currency
-        );
-        cachedUmaParams.whitelistedCurrencies[currency].finalFee = _getStore().computeFinalFee(currency).rawValue;
+        cachedUmaParams.identifiers[identifier] = _getIdentifierWhitelist().isIdentifierSupported(identifier);
+        cachedUmaParams.currencies[currency].isWhitelisted = _getCollateralWhitelist().isOnWhitelist(currency);
+        cachedUmaParams.currencies[currency].finalFee = _getStore().computeFinalFee(currency).rawValue;
     }
 
     /**
@@ -254,7 +252,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
     }
 
     function getMinimumBond(address currencyAddress) public view returns (uint256) {
-        uint256 finalFee = cachedUmaParams.whitelistedCurrencies[currencyAddress].finalFee;
+        uint256 finalFee = cachedUmaParams.currencies[currencyAddress].finalFee;
         return (finalFee * 1e18) / burnedBondPercentage;
     }
 
@@ -340,18 +338,16 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
     }
 
     function _isIdentifierSupported(bytes32 identifier) internal returns (bool) {
-        if (cachedUmaParams.supportedIdentifiers[identifier]) return true;
-        cachedUmaParams.supportedIdentifiers[identifier] = _getIdentifierWhitelist().isIdentifierSupported(identifier);
-        return cachedUmaParams.supportedIdentifiers[identifier];
+        if (cachedUmaParams.identifiers[identifier]) return true;
+        cachedUmaParams.identifiers[identifier] = _getIdentifierWhitelist().isIdentifierSupported(identifier);
+        return cachedUmaParams.identifiers[identifier];
     }
 
     function _isCurrencyWhitelisted(address currency) internal returns (bool) {
-        if (cachedUmaParams.whitelistedCurrencies[currency].isWhitelisted) return true;
-        cachedUmaParams.whitelistedCurrencies[currency].isWhitelisted = _getCollateralWhitelist().isOnWhitelist(
-            currency
-        );
-        cachedUmaParams.whitelistedCurrencies[currency].finalFee = _getStore().computeFinalFee(currency).rawValue;
-        return cachedUmaParams.whitelistedCurrencies[currency].isWhitelisted;
+        if (cachedUmaParams.currencies[currency].isWhitelisted) return true;
+        cachedUmaParams.currencies[currency].isWhitelisted = _getCollateralWhitelist().isOnWhitelist(currency);
+        cachedUmaParams.currencies[currency].finalFee = _getStore().computeFinalFee(currency).rawValue;
+        return cachedUmaParams.currencies[currency].isWhitelisted;
     }
 
     function _callbackOnAssertionResolve(bytes32 assertionId, bool assertedTruthfully) internal {
