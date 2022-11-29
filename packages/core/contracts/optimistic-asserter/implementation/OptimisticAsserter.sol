@@ -209,16 +209,19 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
             // Dispute, settle with the disputer
             int256 resolvedPrice = _oracleGetPrice(assertionId, assertion.identifier, assertion.assertionTime); // Revert if price not resolved.
 
+            // If set to use settlement resolution then set to true if resolved price is 1, false otherwise.
+            // If set to not use settlement resolution then the value remains false.
             assertion.settlementResolution = assertion.ssSettings.useDisputeResolution ? resolvedPrice == 1e18 : false;
             address bondRecipient = resolvedPrice == 1e18 ? assertion.asserter : assertion.disputer;
 
-            // todo: should you only play the final fee in the case of a DVM arbitrated dispute?
-            // TODO not force the final fee to be paid to the DVM if we unplugged
-            uint256 amountToBurn = (burnedBondPercentage * assertion.bond) / 1e18; // TODO multiply this by 1 or 0 if unplugged
-            uint256 amountToSend = assertion.bond * 2 - amountToBurn; // 50% of the bond is burned. The other 50% is sent to the bond recipient.
+            // If set to use the DVM as oracle then must burn half the bond amount. Else, if not using the DVM as oracle
+            // then the bond is returned to the correct party (asserter or disputer).
+            uint256 burn = assertion.ssSettings.useDvmAsOracle ? (burnedBondPercentage * assertion.bond) / 1e18 : 0;
+            uint256 send = assertion.bond * 2 - burn;
 
-            assertion.currency.safeTransfer(bondRecipient, amountToSend);
-            assertion.currency.safeTransfer(address(_getStore()), amountToBurn);
+            // Send tokens. If the DVM is used as an oracle then burn the burn amount. Send the bond recipient the send amount.
+            if (burn > 0) assertion.currency.safeTransfer(address(_getStore()), burn);
+            assertion.currency.safeTransfer(bondRecipient, send);
 
             if (assertion.ssSettings.useDisputeResolution)
                 _callbackOnAssertionResolve(assertionId, assertion.settlementResolution);
