@@ -133,7 +133,7 @@ contract Common is Test {
         return
             optimisticAsserter.assertTruth(
                 trueClaimAssertion,
-                address(0),
+                TestAddress.account1,
                 callbackRecipient,
                 escalationManager,
                 defaultCurrency,

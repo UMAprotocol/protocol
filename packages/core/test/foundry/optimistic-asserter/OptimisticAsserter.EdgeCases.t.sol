@@ -30,7 +30,7 @@ contract InvalidParameters is Common {
         vm.prank(TestAddress.account1);
         optimisticAsserter.assertTruth(
             trueClaimAssertion,
-            address(0),
+            TestAddress.account1,
             address(0),
             address(0),
             defaultCurrency,
@@ -55,7 +55,7 @@ contract InvalidParameters is Common {
         vm.expectRevert("Bond amount too low");
         optimisticAsserter.assertTruth(
             trueClaimAssertion,
-            address(0),
+            TestAddress.account1,
             address(0),
             address(0),
             defaultCurrency,

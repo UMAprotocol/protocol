@@ -19,7 +19,6 @@ import "../../common/implementation/AncillaryData.sol";
 import "../../common/implementation/Lockable.sol";
 
 // TODO use reentrancy guard
-// TODO: do we actually want to rename the OptimisticAsserter to something else? @smb2796 will help up ;)
 contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
     using SafeERC20 for IERC20;
 
@@ -98,12 +97,11 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
         uint256 liveness, // TODO: think about changing this to challenge window?
         bytes32 identifier
     ) public returns (bytes32) {
-        // TODO: if you want to assert for yourself set this to your own address NOT address(0).
-        asserter = asserter == address(0) ? msg.sender : asserter;
         // TODO: think about placing either msg.sender or block.timestamp into the claim ID to block an advasery
         // creating a claim that collides with a known assertion that will be created into the future.
         bytes32 assertionId = _getId(claim, bond, liveness, currency, callbackRecipient, escalationManager, identifier);
 
+        require(asserter != address(0), "Asserter cant be 0");
         require(assertions[assertionId].asserter == address(0), "Assertion already exists");
         // TODO [GAS] caching identifier whitelist and collateral currency whitelist
         require(_getIdentifierWhitelist().isIdentifierSupported(identifier), "Unsupported identifier");

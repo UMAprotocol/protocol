@@ -28,7 +28,7 @@ contract EscalationManagerPolicyEnforced is Common {
         _mockSsPolicy(true, false, false, false);
 
         vm.expectRevert("Assertion not allowed");
-        _assertWithCallbackRecipientAndSs(address(0), mockedEscalationManager);
+        _assertWithCallbackRecipientAndSs(TestAddress.account1, mockedEscalationManager);
         vm.clearMockedCalls();
     }
 
