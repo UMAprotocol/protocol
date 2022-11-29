@@ -4,6 +4,9 @@ pragma solidity 0.8.16;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 interface OptimisticAsserterInterface {
+    // TODO: SecurityManager!!!. rename SovereignSecurityManager->EscalationManager
+    // TODO: Em->EscalationManager...check this is not too long.
+    // Options: AssertionManager, EscalationManager, SecurityManager, SovereignManager.
     struct SsSettings {
         bool arbitrateViaSs; // False if the DVM is used as an oracle (SovereignSecurity on True).
         bool discardOracle; // False if Oracle result is used for resolving assertion after dispute.

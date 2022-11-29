@@ -19,6 +19,7 @@ import "../../common/implementation/AncillaryData.sol";
 import "../../common/implementation/Lockable.sol";
 
 // TODO use reentrancy guard
+// TODO: do we actually want to rename the OptimisticAsserter to something else? @smb2796 will help up ;)
 contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
     using SafeERC20 for IERC20;
 
@@ -47,6 +48,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
     }
 
     // TODO consider renaming this
+    // TODO change to "setAdmin props" by joining with setBurnedBondPercentage
     function setAssertionDefaults(IERC20 _defaultCurrency, uint256 _defaultLiveness) public onlyOwner {
         defaultCurrency = _defaultCurrency;
         defaultLiveness = _defaultLiveness;
@@ -66,13 +68,14 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
         emit BurnedBondPercentageSet(_burnedBondPercentage);
     }
 
+    // TODO: rename to "assertSimpleTruth". This is the simplest assertion possible with strong defaulting.
     function assertTruth(bytes memory claim) public returns (bytes32) {
         return
             assertTruthFor(
                 claim,
-                address(0),
-                address(0),
-                address(0),
+                msg.sender, // asserter
+                address(0), // callbackRecipient
+                address(0), // sovereignSecurity
                 defaultCurrency,
                 getMinimumBond(address(defaultCurrency)),
                 defaultLiveness,
@@ -87,10 +90,13 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
         address sovereignSecurity,
         IERC20 currency,
         uint256 bond,
-        uint256 liveness,
+        uint256 liveness, // TODO: think about changing this to challenge window?
         bytes32 identifier
     ) public returns (bytes32) {
+        // TODO: if you want to assert for yourself set this to your own address NOT address(0).
         asserter = asserter == address(0) ? msg.sender : asserter;
+        // TODO: think about placing either msg.sender or block.timestamp into the claim ID to block an advasery
+        // creating a claim that collides with a known assertion that will be created into the future.
         bytes32 assertionId = _getId(claim, bond, liveness, currency, callbackRecipient, sovereignSecurity, identifier);
 
         require(assertions[assertionId].asserter == address(0), "Assertion already exists");
@@ -178,6 +184,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
         _oracleRequestPrice(assertionId, assertion.identifier, assertion.assertionTime);
 
         // Send dispute callback
+        // TODO: consider mergeing the isDisputeAlloowed into toe SSM callback (revert within callback to block).
         _callbackOnAssertionDispute(assertionId);
 
         // Send resolve callback if dispute resolution is discarded
@@ -210,6 +217,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
 
             // If set to use the DVM as oracle then must burn half the bond amount. Else, if not using the DVM as oracle
             // then the bond is returned to the correct party (asserter or disputer).
+            // TODO:  think of better variable name than "burn". "oracle fee" might be better.
             uint256 burn = !assertion.ssSettings.arbitrateViaSs ? (burnedBondPercentage * assertion.bond) / 1e18 : 0;
             uint256 send = assertion.bond * 2 - burn;
 
