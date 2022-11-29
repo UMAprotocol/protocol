@@ -70,7 +70,7 @@ contract Common is Test {
         timer = oaContracts.timer;
         finder = oaContracts.finder;
         store = oaContracts.store;
-        defaultBond = optimisticAsserter.defaultBond();
+        defaultBond = optimisticAsserter.getMinimumBond(address(defaultCurrency));
         defaultLiveness = optimisticAsserter.defaultLiveness();
         defaultIdentifier = optimisticAsserter.defaultIdentifier();
     }

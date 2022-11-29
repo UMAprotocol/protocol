@@ -21,12 +21,11 @@ contract OwnershipTest is Common {
 
     function testOwnershipFunctionality() public {
         vm.expectRevert("Ownable: caller is not the owner");
-        optimisticAsserter.setAssertionDefaults(IERC20(TestAddress.random), 420, 69);
+        optimisticAsserter.setAssertionDefaults(IERC20(TestAddress.random), 69);
 
         vm.prank(TestAddress.owner);
-        optimisticAsserter.setAssertionDefaults(IERC20(TestAddress.random), 420, 69);
+        optimisticAsserter.setAssertionDefaults(IERC20(TestAddress.random), 69);
         assertEq(address(optimisticAsserter.defaultCurrency()), TestAddress.random);
-        assertEq(optimisticAsserter.defaultBond(), 420);
         assertEq(optimisticAsserter.defaultLiveness(), 69);
     }
 }

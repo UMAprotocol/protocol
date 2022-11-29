@@ -80,5 +80,5 @@ interface OptimisticAsserterInterface {
         bool settlementResolution
     );
 
-    event AssertionDefaultsSet(IERC20 defaultCurrency, uint256 defaultBond, uint256 defaultLiveness);
+    event AssertionDefaultsSet(IERC20 defaultCurrency, uint256 defaultLiveness);
 }

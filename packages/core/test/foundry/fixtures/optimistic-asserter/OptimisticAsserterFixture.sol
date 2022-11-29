@@ -27,14 +27,13 @@ contract OptimisticAsserterFixture is Test {
 
         baseMockDvmContracts.addressWhitelist.addToWhitelist(address(defaultCurrency));
         baseMockDvmContracts.identifierWhitelist.addSupportedIdentifier("ASSERT_TRUTH");
-        uint256 defaultBond = 100e18;
+        uint256 defaultCurrencyFinalFee = 50e18; // Half of expected minimum bond.
         uint256 defaultLiveness = 7200; // 2 hours
-        baseMockDvmContracts.store.setFinalFee(address(defaultCurrency), FixedPoint.Unsigned(50e18)); // Half of the default bond.
+        baseMockDvmContracts.store.setFinalFee(address(defaultCurrency), FixedPoint.Unsigned(defaultCurrencyFinalFee));
         OptimisticAsserterTest optimisticAsserter =
             new OptimisticAsserterTest(
                 baseMockDvmContracts.finder,
                 defaultCurrency,
-                defaultBond,
                 defaultLiveness,
                 address(baseMockDvmContracts.timer)
             );
@@ -63,7 +62,7 @@ contract OptimisticAsserterFixtureTest is Test {
         oaContracts.addressWhitelist.isOnWhitelist(address(oaContracts.defaultCurrency));
         oaContracts.identifierWhitelist.isIdentifierSupported("ASSERT_TRUTH");
         assertEq(address(oaContracts.optimisticAsserter.defaultCurrency()), address(oaContracts.defaultCurrency));
-        assertEq(oaContracts.optimisticAsserter.defaultBond(), 100e18);
+        assertEq(oaContracts.optimisticAsserter.getMinimumBond(address(oaContracts.defaultCurrency)), 100e18);
         assertEq(oaContracts.optimisticAsserter.defaultLiveness(), 7200);
     }
 }

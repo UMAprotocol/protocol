@@ -33,7 +33,6 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
     bytes32 public constant defaultIdentifier = "ASSERT_TRUTH";
 
     IERC20 public defaultCurrency;
-    uint256 public defaultBond;
     uint256 public defaultLiveness;
 
     CachedUmaParams public cachedUmaParams;
@@ -41,27 +40,22 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
     constructor(
         FinderInterface _finder,
         IERC20 _defaultCurrency,
-        uint256 _defaultBond,
         uint256 _defaultLiveness
     ) {
         finder = _finder;
-        setAssertionDefaults(_defaultCurrency, _defaultBond, _defaultLiveness);
+        setAssertionDefaults(_defaultCurrency, _defaultLiveness);
         syncCurrency(address(_defaultCurrency));
         syncIdentifier(defaultIdentifier);
         syncOracle();
     }
 
     // TODO consider renaming this
-    function setAssertionDefaults(
-        IERC20 _defaultCurrency,
-        uint256 _defaultBond,
-        uint256 _defaultLiveness
-    ) public onlyOwner {
+    function setAssertionDefaults(IERC20 _defaultCurrency, uint256 _defaultLiveness) public onlyOwner {
         defaultCurrency = _defaultCurrency;
-        defaultBond = _defaultBond;
         defaultLiveness = _defaultLiveness;
+        syncCurrency(address(_defaultCurrency));
 
-        emit AssertionDefaultsSet(_defaultCurrency, _defaultBond, _defaultLiveness);
+        emit AssertionDefaultsSet(_defaultCurrency, _defaultLiveness);
     }
 
     function getAssertion(bytes32 assertionId) external view returns (Assertion memory) {
