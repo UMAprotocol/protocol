@@ -94,7 +94,6 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
         bytes32 assertionId = _getId(claim, bond, liveness, currency, callbackRecipient, sovereignSecurity, identifier);
 
         require(assertions[assertionId].asserter == address(0), "Assertion already exists");
-        // TODO [GAS] caching identifier whitelist and collateral currency whitelist
         require(_isIdentifierSupported(identifier), "Unsupported identifier");
         require(_isCurrencyWhitelisted(address(currency)), "Unsupported currency");
         require(bond >= getMinimumBond(address(currency)), "Bond amount too low");
