@@ -36,6 +36,8 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
     uint256 public defaultBond;
     uint256 public defaultLiveness;
 
+    CachedUmaParams public cachedUmaParams;
+
     constructor(
         FinderInterface _finder,
         IERC20 _defaultCurrency,
@@ -44,6 +46,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
     ) {
         finder = _finder;
         setAssertionDefaults(_defaultCurrency, _defaultBond, _defaultLiveness);
+        syncCurrency(address(_defaultCurrency));
     }
 
     // TODO set a sync function to update the defaultBond in the store reading from the Store
@@ -95,7 +98,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
         require(assertions[assertionId].asserter == address(0), "Assertion already exists");
         // TODO [GAS] caching identifier whitelist and collateral currency whitelist
         require(_getIdentifierWhitelist().isIdentifierSupported(identifier), "Unsupported identifier");
-        require(_getCollateralWhitelist().isOnWhitelist(address(currency)), "Unsupported currency");
+        require(cachedUmaParams.whitelistedCurrencies[address(currency)].isWhitelisted, "Unsupported currency");
         require(bond >= getMinimumBond(address(currency)), "Bond amount too low");
 
         // Pull the bond
@@ -218,6 +221,13 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
 
             emit AssertionSettled(assertionId, bondRecipient, true, assertion.settlementResolution);
         }
+    }
+
+    function syncCurrency(address currency) public {
+        cachedUmaParams.whitelistedCurrencies[currency].isWhitelisted = _getCollateralWhitelist().isOnWhitelist(
+            currency
+        );
+        cachedUmaParams.whitelistedCurrencies[currency].finalFee = _getStore().computeFinalFee(currency).rawValue;
     }
 
     /**

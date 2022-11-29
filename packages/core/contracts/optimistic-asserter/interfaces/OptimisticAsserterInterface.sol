@@ -28,6 +28,16 @@ interface OptimisticAsserterInterface {
         SsSettings ssSettings;
     }
 
+    struct WhitelistedCurrency {
+        bool isWhitelisted;
+        uint256 finalFee;
+    }
+
+    struct CachedUmaParams {
+        address oracle; // TODO: not yet used. Need to have it for generating default getters.
+        mapping(address => WhitelistedCurrency) whitelistedCurrencies;
+    }
+
     function defaultIdentifier() external view returns (bytes32);
 
     function getAssertion(bytes32 assertionId) external view returns (Assertion memory);
