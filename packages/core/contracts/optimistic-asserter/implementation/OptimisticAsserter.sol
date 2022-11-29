@@ -51,7 +51,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
         IERC20 _defaultCurrency,
         uint256 _defaultBond,
         uint256 _defaultLiveness
-    ) public onlyOwner nonReentrant() {
+    ) public onlyOwner {
         defaultCurrency = _defaultCurrency;
         defaultBond = _defaultBond;
         defaultLiveness = _defaultLiveness;
