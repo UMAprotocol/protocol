@@ -25,7 +25,6 @@ contract InvalidParameters is Common {
 
     function test_RevertIf_UnsupportedIdentifier() public {
         bytes32 unsupportedIdentifier = "UNSUPPORTED";
-        optimisticAsserter.syncUmaParams(unsupportedIdentifier, address(0));
 
         vm.expectRevert("Unsupported identifier");
         vm.prank(TestAddress.account1);

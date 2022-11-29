@@ -95,8 +95,8 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
 
         require(assertions[assertionId].asserter == address(0), "Assertion already exists");
         // TODO [GAS] caching identifier whitelist and collateral currency whitelist
-        require(cachedUmaParams.supportedIdentifiers[identifier], "Unsupported identifier");
-        require(cachedUmaParams.whitelistedCurrencies[address(currency)].isWhitelisted, "Unsupported currency");
+        require(_isIdentifierSupported(identifier), "Unsupported identifier");
+        require(_isCurrencyWhitelisted(address(currency)), "Unsupported currency");
         require(bond >= getMinimumBond(address(currency)), "Bond amount too low");
 
         // Pull the bond
@@ -330,6 +330,21 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
         address ss = assertions[assertionId].ssSettings.sovereignSecurity;
         if (!assertions[assertionId].ssSettings.validateDisputers) return true;
         return SovereignSecurityInterface(ss).isDisputeAllowed(assertionId, msg.sender);
+    }
+
+    function _isIdentifierSupported(bytes32 identifier) internal returns (bool) {
+        if (cachedUmaParams.supportedIdentifiers[identifier]) return true;
+        cachedUmaParams.supportedIdentifiers[identifier] = _getIdentifierWhitelist().isIdentifierSupported(identifier);
+        return cachedUmaParams.supportedIdentifiers[identifier];
+    }
+
+    function _isCurrencyWhitelisted(address currency) internal returns (bool) {
+        if (cachedUmaParams.whitelistedCurrencies[currency].isWhitelisted) return true;
+        cachedUmaParams.whitelistedCurrencies[currency].isWhitelisted = _getCollateralWhitelist().isOnWhitelist(
+            currency
+        );
+        cachedUmaParams.whitelistedCurrencies[currency].finalFee = _getStore().computeFinalFee(currency).rawValue;
+        return cachedUmaParams.whitelistedCurrencies[currency].isWhitelisted;
     }
 
     function _callbackOnAssertionResolve(bytes32 assertionId, bool assertedTruthfully) internal {
