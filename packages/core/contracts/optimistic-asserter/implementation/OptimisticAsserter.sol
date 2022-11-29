@@ -332,18 +332,25 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
     }
 
     function _callbackOnAssertionResolve(bytes32 assertionId, bool assertedTruthfully) internal {
-        // TODO send to the SS if is set
         if (assertions[assertionId].callbackRecipient != address(0))
             OptimisticAsserterCallbackRecipientInterface(assertions[assertionId].callbackRecipient).assertionResolved(
+                assertionId,
+                assertedTruthfully
+            );
+        if (assertions[assertionId].ssSettings.sovereignSecurity != address(0))
+            SovereignSecurityInterface(assertions[assertionId].ssSettings.sovereignSecurity).assertionResolved(
                 assertionId,
                 assertedTruthfully
             );
     }
 
     function _callbackOnAssertionDispute(bytes32 assertionId) internal {
-        // TODO send to the SS if is set
         if (assertions[assertionId].callbackRecipient != address(0))
             OptimisticAsserterCallbackRecipientInterface(assertions[assertionId].callbackRecipient).assertionDisputed(
+                assertionId
+            );
+        if (assertions[assertionId].ssSettings.sovereignSecurity != address(0))
+            SovereignSecurityInterface(assertions[assertionId].ssSettings.sovereignSecurity).assertionDisputed(
                 assertionId
             );
     }

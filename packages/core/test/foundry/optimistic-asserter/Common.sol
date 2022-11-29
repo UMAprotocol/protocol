@@ -173,9 +173,13 @@ contract Common is Test {
         vm.stopPrank();
     }
 
-    function _expectAssertionResolvedCallback(bytes32 assertionId, bool assertedTruthfully) internal {
+    function _expectAssertionResolvedCallback(
+        address callbackRecipient,
+        bytes32 assertionId,
+        bool assertedTruthfully
+    ) internal {
         vm.expectCall(
-            mockedCallbackRecipient,
+            callbackRecipient,
             abi.encodeWithSelector(
                 OptimisticAsserterCallbackRecipientInterface.assertionResolved.selector,
                 assertionId,
@@ -184,9 +188,9 @@ contract Common is Test {
         );
     }
 
-    function _expectAssertionDisputedCallback(bytes32 assertionId) internal {
+    function _expectAssertionDisputedCallback(address callbackRecipient, bytes32 assertionId) internal {
         vm.expectCall(
-            mockedCallbackRecipient,
+            callbackRecipient,
             abi.encodeWithSelector(OptimisticAsserterCallbackRecipientInterface.assertionDisputed.selector, assertionId)
         );
     }
