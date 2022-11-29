@@ -28,5 +28,12 @@ contract OwnershipTest is Common {
         assertEq(address(optimisticAsserter.defaultCurrency()), TestAddress.random);
         assertEq(optimisticAsserter.defaultBond(), 420);
         assertEq(optimisticAsserter.defaultLiveness(), 69);
+
+        vm.expectRevert("Ownable: caller is not the owner");
+        optimisticAsserter.setBurnedBondPercentage(0.3e18);
+
+        vm.prank(TestAddress.owner);
+        optimisticAsserter.setBurnedBondPercentage(0.3e18);
+        assertEq(optimisticAsserter.burnedBondPercentage(), 0.3e18);
     }
 }

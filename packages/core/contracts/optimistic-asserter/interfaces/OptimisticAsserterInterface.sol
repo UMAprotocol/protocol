@@ -55,6 +55,7 @@ interface OptimisticAsserterInterface {
         address indexed asserter,
         address callbackRecipient,
         address indexed sovereignSecurity,
+        address caller,
         IERC20 currency,
         uint256 bond,
         uint256 expirationTime
@@ -70,4 +71,6 @@ interface OptimisticAsserterInterface {
     );
 
     event AssertionDefaultsSet(IERC20 defaultCurrency, uint256 defaultBond, uint256 defaultLiveness);
+
+    event BurnedBondPercentageSet(uint256 burnedBondPercentage);
 }
