@@ -71,6 +71,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
 
     // TODO: rename to "assertSimpleTruth". This is the simplest assertion possible with strong defaulting.
     function assertTruthWithDefaults(bytes memory claim) public returns (bytes32) {
+        // Note: re-entrancy guard is done in the inner call.
         return
             assertTruth(
                 claim,
