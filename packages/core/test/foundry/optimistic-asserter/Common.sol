@@ -71,7 +71,7 @@ contract Common is Test {
         timer = oaContracts.timer;
         finder = oaContracts.finder;
         store = oaContracts.store;
-        defaultBond = optimisticAsserter.defaultBond();
+        defaultBond = optimisticAsserter.getMinimumBond(address(defaultCurrency));
         defaultLiveness = optimisticAsserter.defaultLiveness();
         defaultIdentifier = optimisticAsserter.defaultIdentifier();
     }
@@ -164,8 +164,11 @@ contract Common is Test {
 
     function _allocateBondAndAssertTruth(address asserter, bytes memory claim) public returns (bytes32 assertionId) {
         vm.startPrank(asserter);
-        defaultCurrency.allocateTo(asserter, optimisticAsserter.defaultBond());
-        defaultCurrency.approve(address(optimisticAsserter), optimisticAsserter.defaultBond());
+        defaultCurrency.allocateTo(asserter, optimisticAsserter.getMinimumBond(address(defaultCurrency)));
+        defaultCurrency.approve(
+            address(optimisticAsserter),
+            optimisticAsserter.getMinimumBond(address(defaultCurrency))
+        );
         assertionId = optimisticAsserter.assertTruthWithDefaults(claim);
         vm.stopPrank();
     }
