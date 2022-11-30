@@ -18,7 +18,6 @@ import "../../common/implementation/AddressWhitelist.sol";
 import "../../common/implementation/AncillaryData.sol";
 import "../../common/implementation/Lockable.sol";
 
-// TODO use reentrancy guard
 // TODO: do we actually want to rename the OptimisticAsserter to something else? @smb2796 will help up ;)
 contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
     using SafeERC20 for IERC20;
@@ -73,6 +72,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
 
     // TODO: rename to "assertSimpleTruth". This is the simplest assertion possible with strong defaulting.
     function assertTruthWithDefaults(bytes memory claim) public returns (bytes32) {
+        // Note: re-entrancy guard is done in the inner call.
         return
             assertTruth(
                 claim,
@@ -95,7 +95,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
         uint256 bond,
         uint256 liveness, // TODO: think about changing this to challenge window?
         bytes32 identifier
-    ) public returns (bytes32) {
+    ) public nonReentrant() returns (bytes32) {
         // TODO: if you want to assert for yourself set this to your own address NOT address(0).
         asserter = asserter == address(0) ? msg.sender : asserter;
         // TODO: think about placing either msg.sender or block.timestamp into the claim ID to block an advasery
@@ -106,9 +106,6 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
         require(_validateAndCacheIdentifier(identifier), "Unsupported identifier");
         require(_validateAndCacheCurrency(address(currency)), "Unsupported currency");
         require(bond >= getMinimumBond(address(currency)), "Bond amount too low");
-
-        // Pull the bond
-        currency.safeTransferFrom(msg.sender, address(this), bond);
 
         assertions[assertionId] = Assertion({
             asserter: asserter,
@@ -143,6 +140,9 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
             assertionPolicy.validateDisputers // Validate the disputers if specified by the SS.
         );
 
+        // Pull the bond
+        currency.safeTransferFrom(msg.sender, address(this), bond);
+
         emit AssertionMade(
             assertionId,
             claim,
@@ -167,11 +167,12 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
     }
 
     function settleAndGetAssertionResult(bytes32 assertionId) public returns (bool) {
+        // Note: re-entrancy guard is done in the inner settleAssertion call.
         if (!assertions[assertionId].settled) settleAssertion(assertionId);
         return getAssertionResult(assertionId);
     }
 
-    function disputeAssertionFor(bytes32 assertionId, address disputer) public {
+    function disputeAssertionFor(bytes32 assertionId, address disputer) public nonReentrant() {
         disputer = disputer == address(0) ? msg.sender : disputer;
         Assertion storage assertion = assertions[assertionId];
         require(assertion.asserter != address(0), "Assertion does not exist"); // Revert if assertion does not exist.
@@ -179,10 +180,10 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
         require(assertion.expirationTime > getCurrentTime(), "Assertion is expired"); // Revert if assertion expired.
         require(_isDisputeAllowed(assertionId), "Dispute not allowed"); // Revert if dispute not allowed.
 
+        assertion.disputer = disputer;
+
         // Pull the bond
         assertion.currency.safeTransferFrom(msg.sender, address(this), assertion.bond);
-
-        assertion.disputer = disputer;
 
         _oracleRequestPrice(assertionId, assertion.identifier, assertion.assertionTime);
 
@@ -196,7 +197,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
         emit AssertionDisputed(assertionId, disputer);
     }
 
-    function settleAssertion(bytes32 assertionId) public {
+    function settleAssertion(bytes32 assertionId) public nonReentrant() {
         Assertion storage assertion = assertions[assertionId];
         require(assertion.asserter != address(0), "Assertion does not exist"); // Revert if assertion does not exist.
         require(!assertion.settled, "Assertion already settled"); // Revert if assertion already settled.
@@ -204,8 +205,8 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
         if (assertion.disputer == address(0)) {
             // No dispute, settle with the asserter
             require(assertion.expirationTime <= getCurrentTime(), "Assertion not expired"); // Revert if assertion not expired.
-            assertion.currency.safeTransfer(assertion.asserter, assertion.bond);
             assertion.settlementResolution = true;
+            assertion.currency.safeTransfer(assertion.asserter, assertion.bond);
             _callbackOnAssertionResolve(assertionId, true);
 
             emit AssertionSettled(assertionId, assertion.asserter, false, true);
