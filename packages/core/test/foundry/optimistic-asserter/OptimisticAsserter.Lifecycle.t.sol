@@ -62,7 +62,7 @@ contract SimpleAssertionsWithClaimOnly is Common {
         assert(defaultCurrency.balanceOf(TestAddress.account2) >= defaultBond);
         defaultCurrency.approve(address(optimisticAsserter), defaultBond);
 
-        optimisticAsserter.disputeAssertionFor(assertionId, TestAddress.account2);
+        optimisticAsserter.disputeAssertion(assertionId, TestAddress.account2);
         vm.stopPrank();
 
         // In the meantime simulate a vote in the DVM in which the originally disputed price is accepted

@@ -91,12 +91,11 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
         uint256 liveness,
         bytes32 identifier
     ) public nonReentrant() returns (bytes32) {
-        // TODO: if you want to assert for yourself set this to your own address NOT address(0).
-        asserter = asserter == address(0) ? msg.sender : asserter;
         // TODO: think about placing either msg.sender or block.timestamp into the claim ID to block an advasery
         // creating a claim that collides with a known assertion that will be created into the future.
         bytes32 assertionId = _getId(claim, bond, liveness, currency, callbackRecipient, escalationManager, identifier);
 
+        require(asserter != address(0), "Asserter cant be 0");
         require(assertions[assertionId].asserter == address(0), "Assertion already exists");
         require(_validateAndCacheIdentifier(identifier), "Unsupported identifier");
         require(_validateAndCacheCurrency(address(currency)), "Unsupported currency");
@@ -167,8 +166,8 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
         return getAssertionResult(assertionId);
     }
 
-    function disputeAssertionFor(bytes32 assertionId, address disputer) public nonReentrant() {
-        disputer = disputer == address(0) ? msg.sender : disputer;
+    function disputeAssertion(bytes32 assertionId, address disputer) public nonReentrant() {
+        require(disputer != address(0), "Disputer cant be 0");
         Assertion storage assertion = assertions[assertionId];
         require(assertion.asserter != address(0), "Assertion does not exist"); // Revert if assertion does not exist.
         require(assertion.disputer == address(0), "Assertion already disputed"); // Revert if assertion already disputed.

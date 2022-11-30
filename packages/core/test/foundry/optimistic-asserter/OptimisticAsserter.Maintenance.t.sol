@@ -66,7 +66,7 @@ contract MaintenanceTest is Common {
         newCurrency.approve(address(optimisticAsserter), newCurrencyBond);
         optimisticAsserter.assertTruth(
             trueClaimAssertion,
-            address(0),
+            TestAddress.account1,
             address(0),
             address(0),
             newCurrency,
@@ -94,7 +94,7 @@ contract MaintenanceTest is Common {
         defaultCurrency.approve(address(optimisticAsserter), defaultBond);
         optimisticAsserter.assertTruth(
             trueClaimAssertion,
-            address(0),
+            TestAddress.account1,
             address(0),
             address(0),
             defaultCurrency,
