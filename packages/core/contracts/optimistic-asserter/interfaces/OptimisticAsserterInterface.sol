@@ -31,6 +31,11 @@ interface OptimisticAsserterInterface {
         SsSettings ssSettings;
     }
 
+    struct WhitelistedCurrency {
+        bool isWhitelisted;
+        uint256 finalFee;
+    }
+
     function defaultIdentifier() external view returns (bytes32);
 
     function getAssertion(bytes32 assertionId) external view returns (Assertion memory);
@@ -73,7 +78,7 @@ interface OptimisticAsserterInterface {
         bool settlementResolution
     );
 
-    event AssertionDefaultsSet(IERC20 defaultCurrency, uint256 defaultBond, uint256 defaultLiveness);
+    event AssertionDefaultsSet(IERC20 defaultCurrency, uint256 defaultLiveness);
 
     event BurnedBondPercentageSet(uint256 burnedBondPercentage);
 }

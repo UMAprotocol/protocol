@@ -109,7 +109,6 @@ contract SimpleAssertionsWithClaimOnly is Common {
             uint256 minimumBond = optimisticAsserter.getMinimumBond(address(defaultCurrency));
             optimisticAsserter.setAssertionDefaults(
                 optimisticAsserter.defaultCurrency(),
-                minimumBond,
                 optimisticAsserter.defaultLiveness()
             );
             vm.stopPrank();
