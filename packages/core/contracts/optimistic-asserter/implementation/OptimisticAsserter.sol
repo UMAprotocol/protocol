@@ -71,7 +71,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
     }
 
     // TODO: rename to "assertSimpleTruth". This is the simplest assertion possible with strong defaulting.
-    function assertTruthWithDefaults(bytes memory claim) public returns (bytes32) {
+    function assertTruthWithDefaults(bytes calldata claim) public returns (bytes32) {
         // Note: re-entrancy guard is done in the inner call.
         return
             assertTruth(
@@ -87,7 +87,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
     }
 
     function assertTruth(
-        bytes memory claim,
+        bytes calldata claim,
         address asserter,
         address callbackRecipient,
         address escalationManager,
@@ -95,7 +95,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
         uint256 bond,
         uint256 liveness, // TODO: think about changing this to challenge window?
         bytes32 identifier
-    ) public nonReentrant() returns (bytes32) {
+    ) public nonReentrant returns (bytes32) {
         // TODO: if you want to assert for yourself set this to your own address NOT address(0).
         asserter = asserter == address(0) ? msg.sender : asserter;
         // TODO: think about placing either msg.sender or block.timestamp into the claim ID to block an advasery
@@ -128,17 +128,18 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
             })
         });
 
-        EscalationManagerInterface.AssertionPolicy memory assertionPolicy = _getAssertionPolicy(assertionId);
-
-        // Check if the assertion is allowed by the sovereign security.
-        require(!assertionPolicy.blockAssertion, "Assertion not allowed");
-
-        EscalationManagerSettings storage emSettings = assertions[assertionId].escalationManagerSettings;
-        (emSettings.arbitrateViaEscalationManager, emSettings.discardOracle, emSettings.validateDisputers) = (
-            assertionPolicy.arbitrateViaEscalationManager, // Use SS as an oracle if specified by the SS.
-            assertionPolicy.discardOracle, // Discard Oracle result if specified by the SS.
-            assertionPolicy.validateDisputers // Validate the disputers if specified by the SS.
-        );
+        {
+            // Scope for Escalation Manager Settings update, avoids stack too deep errors
+            EscalationManagerInterface.AssertionPolicy memory assertionPolicy = _getAssertionPolicy(assertionId);
+            // Check if the assertion is allowed by the sovereign security.
+            require(!assertionPolicy.blockAssertion, "Assertion not allowed");
+            EscalationManagerSettings storage emSettings = assertions[assertionId].escalationManagerSettings;
+            (emSettings.arbitrateViaEscalationManager, emSettings.discardOracle, emSettings.validateDisputers) = (
+                assertionPolicy.arbitrateViaEscalationManager, // Use SS as an oracle if specified by the SS.
+                assertionPolicy.discardOracle, // Discard Oracle result if specified by the SS.
+                assertionPolicy.validateDisputers // Validate the disputers if specified by the SS.
+            );
+        }
 
         // Pull the bond
         currency.safeTransferFrom(msg.sender, address(this), bond);
@@ -172,7 +173,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
         return getAssertionResult(assertionId);
     }
 
-    function disputeAssertionFor(bytes32 assertionId, address disputer) public nonReentrant() {
+    function disputeAssertionFor(bytes32 assertionId, address disputer) public nonReentrant {
         disputer = disputer == address(0) ? msg.sender : disputer;
         Assertion storage assertion = assertions[assertionId];
         require(assertion.asserter != address(0), "Assertion does not exist"); // Revert if assertion does not exist.
@@ -197,7 +198,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
         emit AssertionDisputed(assertionId, disputer);
     }
 
-    function settleAssertion(bytes32 assertionId) public nonReentrant() {
+    function settleAssertion(bytes32 assertionId) public nonReentrant {
         Assertion storage assertion = assertions[assertionId];
         require(assertion.asserter != address(0), "Assertion does not exist"); // Revert if assertion does not exist.
         require(!assertion.settled, "Assertion already settled"); // Revert if assertion already settled.
@@ -262,7 +263,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
     }
 
     function _getId(
-        bytes memory claim,
+        bytes calldata claim,
         uint256 bond,
         uint256 liveness,
         IERC20 currency,
