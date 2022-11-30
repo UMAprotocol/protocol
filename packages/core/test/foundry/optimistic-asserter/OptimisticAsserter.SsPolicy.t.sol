@@ -110,7 +110,7 @@ contract EscalationManagerPolicyEnforced is Common {
         defaultCurrency.approve(address(optimisticAsserter), defaultBond);
 
         vm.expectRevert("Dispute not allowed");
-        optimisticAsserter.disputeAssertionFor(assertionId, TestAddress.account2);
+        optimisticAsserter.disputeAssertion(assertionId, TestAddress.account2);
         vm.stopPrank();
         vm.clearMockedCalls();
     }

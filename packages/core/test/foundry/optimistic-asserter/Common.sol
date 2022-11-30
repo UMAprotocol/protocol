@@ -157,7 +157,7 @@ contract Common is Test {
         vm.startPrank(TestAddress.account2);
         defaultCurrency.allocateTo(TestAddress.account2, bond);
         defaultCurrency.approve(address(optimisticAsserter), bond);
-        optimisticAsserter.disputeAssertionFor(assertionId, TestAddress.account2);
+        optimisticAsserter.disputeAssertion(assertionId, TestAddress.account2);
         vm.stopPrank();
         return oracleRequest;
     }
