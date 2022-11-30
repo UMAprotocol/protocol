@@ -18,7 +18,6 @@ import "../../common/implementation/AddressWhitelist.sol";
 import "../../common/implementation/AncillaryData.sol";
 import "../../common/implementation/Lockable.sol";
 
-// TODO use reentrancy guard
 contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
     using SafeERC20 for IERC20;
 
