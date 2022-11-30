@@ -107,11 +107,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
         require(_validateAndCacheCurrency(address(currency)), "Unsupported currency");
         require(bond >= getMinimumBond(address(currency)), "Bond amount too low");
 
-        // Pull the bond
-        currency.safeTransferFrom(msg.sender, address(this), bond);
-
         uint256 currentTime = getCurrentTime();
-
         assertions[assertionId] = Assertion({
             asserter: asserter,
             disputer: address(0),
