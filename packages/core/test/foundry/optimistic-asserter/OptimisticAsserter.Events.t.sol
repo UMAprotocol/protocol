@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import "./Common.sol";
 
 contract OptimisticAsserterEvents is Common {
-    event BurnedBondPercentageSet(uint256 burnedBondPercentage);
+    event AdminPropertiesSet(IERC20 defaultCurrency, uint256 defaultLiveness, uint256 burnedBondPercentage);
 
     function setUp() public {
         _commonSetup();
@@ -66,10 +66,10 @@ contract OptimisticAsserterEvents is Common {
         assertFalse(optimisticAsserter.settleAndGetAssertionResult(assertionId));
     }
 
-    function test_BurnedBondPercentageSetEmitted() public {
+    function test_AdminPropertiesSetEmitted() public {
         vm.expectEmit(true, true, true, true);
-        emit BurnedBondPercentageSet(0.3e18);
+        emit AdminPropertiesSet(IERC20(TestAddress.random), 69, 0.3e18);
         vm.prank(TestAddress.owner);
-        optimisticAsserter.setBurnedBondPercentage(0.3e18);
+        optimisticAsserter.setAdminProperties(IERC20(TestAddress.random), 69, 0.3e18);
     }
 }

@@ -44,7 +44,7 @@ contract InvalidParameters is Common {
         // Change the default currency to unsupported token.
         vm.startPrank(TestAddress.owner);
         TestnetERC20 unsupportedCurrency = new TestnetERC20("Unsupported", "UNS", 18);
-        optimisticAsserter.setAssertionDefaults(unsupportedCurrency, defaultLiveness);
+        optimisticAsserter.setAdminProperties(unsupportedCurrency, defaultLiveness, burnedBondPercentage);
         vm.stopPrank();
 
         vm.expectRevert("Unsupported currency");
@@ -105,10 +105,10 @@ contract InvalidParameters is Common {
     function test_RevertIf_BurnedBondPercentageSetOutOfBounds() public {
         vm.expectRevert("Burned bond percentage is 0");
         vm.prank(TestAddress.owner);
-        optimisticAsserter.setBurnedBondPercentage(0);
+        optimisticAsserter.setAdminProperties(defaultCurrency, defaultLiveness, 0);
 
         vm.expectRevert("Burned bond percentage > 100");
         vm.prank(TestAddress.owner);
-        optimisticAsserter.setBurnedBondPercentage(2e18);
+        optimisticAsserter.setAdminProperties(defaultCurrency, defaultLiveness, 2e18);
     }
 }
