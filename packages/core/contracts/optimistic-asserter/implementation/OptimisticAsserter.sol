@@ -107,6 +107,11 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
         require(_validateAndCacheCurrency(address(currency)), "Unsupported currency");
         require(bond >= getMinimumBond(address(currency)), "Bond amount too low");
 
+        // Pull the bond
+        currency.safeTransferFrom(msg.sender, address(this), bond);
+
+        uint256 currentTime = getCurrentTime();
+
         assertions[assertionId] = Assertion({
             asserter: asserter,
             disputer: address(0),
@@ -115,8 +120,8 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
             settled: false,
             settlementResolution: false,
             bond: bond,
-            assertionTime: getCurrentTime(),
-            expirationTime: getCurrentTime() + liveness,
+            assertionTime: currentTime,
+            expirationTime: currentTime + liveness,
             claimId: keccak256(claim),
             identifier: identifier,
             escalationManagerSettings: EscalationManagerSettings({
@@ -153,7 +158,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
             msg.sender,
             currency,
             bond,
-            assertions[assertionId].expirationTime // TODO [GAS] consider using a memory variable to avoid multiple reads
+            currentTime + liveness
         );
 
         return assertionId;
