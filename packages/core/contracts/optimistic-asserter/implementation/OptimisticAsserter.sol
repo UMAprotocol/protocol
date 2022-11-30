@@ -100,8 +100,8 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
         bytes32 assertionId = _getId(claim, bond, liveness, currency, callbackRecipient, sovereignSecurity, identifier);
 
         require(assertions[assertionId].asserter == address(0), "Assertion already exists");
-        require(_isIdentifierSupported(identifier), "Unsupported identifier");
-        require(_isCurrencyWhitelisted(address(currency)), "Unsupported currency");
+        require(_validateAndCacheIdentifier(identifier), "Unsupported identifier");
+        require(_validateAndCacheCurrency(address(currency)), "Unsupported currency");
         require(bond >= getMinimumBond(address(currency)), "Bond amount too low");
 
         // Pull the bond
@@ -337,13 +337,13 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
         return SovereignSecurityInterface(ss).isDisputeAllowed(assertionId, msg.sender);
     }
 
-    function _isIdentifierSupported(bytes32 identifier) internal returns (bool) {
+    function _validateAndCacheIdentifier(bytes32 identifier) internal returns (bool) {
         if (cachedUmaParams.identifiers[identifier]) return true;
         cachedUmaParams.identifiers[identifier] = _getIdentifierWhitelist().isIdentifierSupported(identifier);
         return cachedUmaParams.identifiers[identifier];
     }
 
-    function _isCurrencyWhitelisted(address currency) internal returns (bool) {
+    function _validateAndCacheCurrency(address currency) internal returns (bool) {
         if (cachedUmaParams.currencies[currency].isWhitelisted) return true;
         cachedUmaParams.currencies[currency].isWhitelisted = _getCollateralWhitelist().isOnWhitelist(currency);
         cachedUmaParams.currencies[currency].finalFee = _getStore().computeFinalFee(currency).rawValue;
