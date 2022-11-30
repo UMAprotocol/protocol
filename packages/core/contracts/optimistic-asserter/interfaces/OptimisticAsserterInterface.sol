@@ -36,12 +36,6 @@ interface OptimisticAsserterInterface {
         uint256 finalFee;
     }
 
-    struct CachedUmaParams {
-        address oracle; // Address of the UMA Oracle.
-        mapping(address => WhitelistedCurrency) currencies;
-        mapping(bytes32 => bool) identifiers;
-    }
-
     function defaultIdentifier() external view returns (bytes32);
 
     function getAssertion(bytes32 assertionId) external view returns (Assertion memory);

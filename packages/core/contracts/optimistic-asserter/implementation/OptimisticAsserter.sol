@@ -25,6 +25,11 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
 
     FinderInterface public immutable finder;
 
+    // Cached UMA parameters.
+    address public cachedOracle;
+    mapping(address => WhitelistedCurrency) public cachedCurrencies;
+    mapping(bytes32 => bool) public cachedIdentifiers;
+
     mapping(bytes32 => Assertion) public assertions;
 
     // TODO add setters to change burnedBondPercentage
@@ -35,8 +40,6 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
 
     IERC20 public defaultCurrency;
     uint256 public defaultLiveness;
-
-    CachedUmaParams public cachedUmaParams;
 
     constructor(
         FinderInterface _finder,
@@ -233,10 +236,10 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
     }
 
     function syncUmaParams(bytes32 identifier, address currency) public {
-        cachedUmaParams.oracle = finder.getImplementationAddress(OracleInterfaces.Oracle);
-        cachedUmaParams.identifiers[identifier] = _getIdentifierWhitelist().isIdentifierSupported(identifier);
-        cachedUmaParams.currencies[currency].isWhitelisted = _getCollateralWhitelist().isOnWhitelist(currency);
-        cachedUmaParams.currencies[currency].finalFee = _getStore().computeFinalFee(currency).rawValue;
+        cachedOracle = finder.getImplementationAddress(OracleInterfaces.Oracle);
+        cachedIdentifiers[identifier] = _getIdentifierWhitelist().isIdentifierSupported(identifier);
+        cachedCurrencies[currency].isWhitelisted = _getCollateralWhitelist().isOnWhitelist(currency);
+        cachedCurrencies[currency].finalFee = _getStore().computeFinalFee(currency).rawValue;
     }
 
     /**
@@ -252,7 +255,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
     }
 
     function getMinimumBond(address currencyAddress) public view returns (uint256) {
-        uint256 finalFee = cachedUmaParams.currencies[currencyAddress].finalFee;
+        uint256 finalFee = cachedCurrencies[currencyAddress].finalFee;
         return (finalFee * 1e18) / burnedBondPercentage;
     }
 
@@ -298,7 +301,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
     function _getOracle(bytes32 assertionId) internal view returns (OracleAncillaryInterface) {
         if (assertions[assertionId].ssSettings.arbitrateViaSs)
             return OracleAncillaryInterface(address(_getSovereignSecurity(assertionId)));
-        return OracleAncillaryInterface(cachedUmaParams.oracle);
+        return OracleAncillaryInterface(cachedOracle);
     }
 
     function _oracleRequestPrice(
@@ -338,16 +341,16 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
     }
 
     function _validateAndCacheIdentifier(bytes32 identifier) internal returns (bool) {
-        if (cachedUmaParams.identifiers[identifier]) return true;
-        cachedUmaParams.identifiers[identifier] = _getIdentifierWhitelist().isIdentifierSupported(identifier);
-        return cachedUmaParams.identifiers[identifier];
+        if (cachedIdentifiers[identifier]) return true;
+        cachedIdentifiers[identifier] = _getIdentifierWhitelist().isIdentifierSupported(identifier);
+        return cachedIdentifiers[identifier];
     }
 
     function _validateAndCacheCurrency(address currency) internal returns (bool) {
-        if (cachedUmaParams.currencies[currency].isWhitelisted) return true;
-        cachedUmaParams.currencies[currency].isWhitelisted = _getCollateralWhitelist().isOnWhitelist(currency);
-        cachedUmaParams.currencies[currency].finalFee = _getStore().computeFinalFee(currency).rawValue;
-        return cachedUmaParams.currencies[currency].isWhitelisted;
+        if (cachedCurrencies[currency].isWhitelisted) return true;
+        cachedCurrencies[currency].isWhitelisted = _getCollateralWhitelist().isOnWhitelist(currency);
+        cachedCurrencies[currency].finalFee = _getStore().computeFinalFee(currency).rawValue;
+        return cachedCurrencies[currency].isWhitelisted;
     }
 
     function _callbackOnAssertionResolve(bytes32 assertionId, bool assertedTruthfully) internal {

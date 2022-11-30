@@ -44,8 +44,7 @@ contract MaintenanceTest is Common {
 
         // Sync only Oracle address through the Finder.
         optimisticAsserter.syncUmaParams(bytes32(0), address(0));
-        // Oracle address is the only CachedUmaParams struct element exposed in the getter function.
-        assertEq(optimisticAsserter.cachedUmaParams(), address(newOracle));
+        assertEq(optimisticAsserter.cachedOracle(), address(newOracle));
     }
 
     function test_NewCurrency() public {
@@ -76,6 +75,9 @@ contract MaintenanceTest is Common {
             defaultIdentifier
         );
         vm.stopPrank();
+        (bool cachedWhitelist, uint256 cachedFinalFee) = optimisticAsserter.cachedCurrencies(address(newCurrency));
+        assertTrue(cachedWhitelist);
+        assertEq(cachedFinalFee, newCurrencyFinalFee);
     }
 
     function test_NewIdentifier() public {
@@ -101,5 +103,6 @@ contract MaintenanceTest is Common {
             newIdentifier
         );
         vm.stopPrank();
+        assertTrue(optimisticAsserter.cachedIdentifiers(newIdentifier));
     }
 }
