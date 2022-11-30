@@ -66,7 +66,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
         emit BurnedBondPercentageSet(_burnedBondPercentage);
     }
 
-    function assertTruthWithDefaults(bytes memory claim) public returns (bytes32) {
+    function assertTruthWithDefaults(bytes calldata claim) public returns (bytes32) {
         // Note: re-entrancy guard is done in the inner call.
         return
             assertTruth(
@@ -82,7 +82,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
     }
 
     function assertTruth(
-        bytes memory claim,
+        bytes calldata claim,
         address asserter,
         address callbackRecipient,
         address escalationManager,
@@ -90,7 +90,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
         uint256 bond,
         uint256 liveness,
         bytes32 identifier
-    ) public nonReentrant() returns (bytes32) {
+    ) public nonReentrant returns (bytes32) {
         // TODO: think about placing either msg.sender or block.timestamp into the claim ID to block an advasery
         // creating a claim that collides with a known assertion that will be created into the future.
         bytes32 assertionId = _getId(claim, bond, liveness, currency, callbackRecipient, escalationManager, identifier);
@@ -101,6 +101,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
         require(_validateAndCacheCurrency(address(currency)), "Unsupported currency");
         require(bond >= getMinimumBond(address(currency)), "Bond amount too low");
 
+        uint256 currentTime = getCurrentTime();
         assertions[assertionId] = Assertion({
             asserter: asserter,
             disputer: address(0),
@@ -109,8 +110,8 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
             settled: false,
             settlementResolution: false,
             bond: bond,
-            assertionTime: getCurrentTime(),
-            expirationTime: getCurrentTime() + liveness,
+            assertionTime: currentTime,
+            expirationTime: currentTime + liveness,
             claimId: keccak256(claim),
             identifier: identifier,
             escalationManagerSettings: EscalationManagerSettings({
@@ -122,17 +123,18 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
             })
         });
 
-        EscalationManagerInterface.AssertionPolicy memory assertionPolicy = _getAssertionPolicy(assertionId);
-
-        // Check if the assertion is allowed by the sovereign security.
-        require(!assertionPolicy.blockAssertion, "Assertion not allowed");
-
-        EscalationManagerSettings storage emSettings = assertions[assertionId].escalationManagerSettings;
-        (emSettings.arbitrateViaEscalationManager, emSettings.discardOracle, emSettings.validateDisputers) = (
-            assertionPolicy.arbitrateViaEscalationManager, // Use SS as an oracle if specified by the SS.
-            assertionPolicy.discardOracle, // Discard Oracle result if specified by the SS.
-            assertionPolicy.validateDisputers // Validate the disputers if specified by the SS.
-        );
+        {
+            // Scope for Escalation Manager Settings update, avoids stack too deep errors
+            EscalationManagerInterface.AssertionPolicy memory assertionPolicy = _getAssertionPolicy(assertionId);
+            // Check if the assertion is allowed by the sovereign security.
+            require(!assertionPolicy.blockAssertion, "Assertion not allowed");
+            EscalationManagerSettings storage emSettings = assertions[assertionId].escalationManagerSettings;
+            (emSettings.arbitrateViaEscalationManager, emSettings.discardOracle, emSettings.validateDisputers) = (
+                assertionPolicy.arbitrateViaEscalationManager, // Use SS as an oracle if specified by the SS.
+                assertionPolicy.discardOracle, // Discard Oracle result if specified by the SS.
+                assertionPolicy.validateDisputers // Validate the disputers if specified by the SS.
+            );
+        }
 
         // Pull the bond
         currency.safeTransferFrom(msg.sender, address(this), bond);
@@ -146,7 +148,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
             msg.sender,
             currency,
             bond,
-            assertions[assertionId].expirationTime // TODO [GAS] consider using a memory variable to avoid multiple reads
+            currentTime + liveness
         );
 
         return assertionId;
@@ -166,7 +168,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
         return getAssertionResult(assertionId);
     }
 
-    function disputeAssertion(bytes32 assertionId, address disputer) public nonReentrant() {
+    function disputeAssertion(bytes32 assertionId, address disputer) public nonReentrant {
         require(disputer != address(0), "Disputer cant be 0");
         Assertion storage assertion = assertions[assertionId];
         require(assertion.asserter != address(0), "Assertion does not exist"); // Revert if assertion does not exist.
@@ -191,7 +193,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
         emit AssertionDisputed(assertionId, disputer);
     }
 
-    function settleAssertion(bytes32 assertionId) public nonReentrant() {
+    function settleAssertion(bytes32 assertionId) public nonReentrant {
         Assertion storage assertion = assertions[assertionId];
         require(assertion.asserter != address(0), "Assertion does not exist"); // Revert if assertion does not exist.
         require(!assertion.settled, "Assertion already settled"); // Revert if assertion already settled.
@@ -256,7 +258,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
     }
 
     function _getId(
-        bytes memory claim,
+        bytes calldata claim,
         uint256 bond,
         uint256 liveness,
         IERC20 currency,
