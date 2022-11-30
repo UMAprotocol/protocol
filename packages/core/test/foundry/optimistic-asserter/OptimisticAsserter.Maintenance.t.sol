@@ -64,7 +64,7 @@ contract MaintenanceTest is Common {
         vm.startPrank(TestAddress.account1);
         newCurrency.allocateTo(TestAddress.account1, newCurrencyBond);
         newCurrency.approve(address(optimisticAsserter), newCurrencyBond);
-        optimisticAsserter.assertTruthFor(
+        optimisticAsserter.assertTruth(
             trueClaimAssertion,
             address(0),
             address(0),
@@ -92,7 +92,7 @@ contract MaintenanceTest is Common {
         vm.startPrank(TestAddress.account1);
         defaultCurrency.allocateTo(TestAddress.account1, defaultBond);
         defaultCurrency.approve(address(optimisticAsserter), defaultBond);
-        optimisticAsserter.assertTruthFor(
+        optimisticAsserter.assertTruth(
             trueClaimAssertion,
             address(0),
             address(0),

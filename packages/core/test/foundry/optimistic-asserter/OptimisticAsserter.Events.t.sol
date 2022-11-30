@@ -43,7 +43,7 @@ contract OptimisticAsserterEvents is Common {
         );
 
         // Account1 asserts a false claim.
-        bytes32 assertionId = optimisticAsserter.assertTruth(falseClaimAssertion);
+        bytes32 assertionId = optimisticAsserter.assertTruthWithDefaults(falseClaimAssertion);
         vm.stopPrank();
 
         // Dispute should emit logs on Optimistic Asserter and Oracle.
