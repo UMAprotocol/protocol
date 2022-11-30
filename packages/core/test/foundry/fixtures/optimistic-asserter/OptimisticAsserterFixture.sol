@@ -28,7 +28,7 @@ contract OptimisticAsserterFixture is Test {
         baseMockDvmContracts.addressWhitelist.addToWhitelist(address(defaultCurrency));
         baseMockDvmContracts.identifierWhitelist.addSupportedIdentifier("ASSERT_TRUTH");
         uint256 defaultCurrencyFinalFee = 50e18; // Half of expected minimum bond.
-        uint256 defaultLiveness = 7200; // 2 hours
+        uint64 defaultLiveness = 7200; // 2 hours
         baseMockDvmContracts.store.setFinalFee(address(defaultCurrency), FixedPoint.Unsigned(defaultCurrencyFinalFee));
         OptimisticAsserterTest optimisticAsserter =
             new OptimisticAsserterTest(

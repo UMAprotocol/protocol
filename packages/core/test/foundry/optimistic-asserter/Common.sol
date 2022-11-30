@@ -26,7 +26,7 @@ contract Common is Test {
     bytes trueClaimAssertion = bytes("q:'The sky is blue'");
     bytes falseClaimAssertion = bytes("q:'The sky is red'");
     uint256 defaultBond;
-    uint256 defaultLiveness;
+    uint64 defaultLiveness;
     bytes32 defaultIdentifier;
 
     // Mock addresses, used to prank calls.
@@ -45,7 +45,7 @@ contract Common is Test {
         address caller,
         IERC20 currency,
         uint256 bond,
-        uint256 expirationTime
+        uint64 expirationTime
     );
     event AssertionDisputed(bytes32 indexed assertionId, address indexed disputer);
 

@@ -17,18 +17,18 @@ interface OptimisticAsserterInterface {
 
     // TODO variable packing to save gas.
     struct Assertion {
+        EscalationManagerSettings escalationManagerSettings;
         address asserter; // Address of the asserter.
         address disputer; // Address of the disputer.
         address callbackRecipient; // Address that receives the callback.
         IERC20 currency; // ERC20 token used to pay rewards and fees.
-        bool settled; // True if the request is settled.
-        bool settlementResolution;
-        uint256 bond;
-        uint256 assertionTime; // Time of the assertion. TODO uint64 could be enough.
-        uint256 expirationTime; // TODO uint64 could be enough.
         bytes32 claimId;
         bytes32 identifier;
-        EscalationManagerSettings escalationManagerSettings;
+        uint256 bond;
+        bool settled; // True if the request is settled.
+        bool settlementResolution;
+        uint64 assertionTime; // Time of the assertion. TODO uint64 could be enough.
+        uint64 expirationTime; // TODO uint64 could be enough.
     }
 
     struct WhitelistedCurrency {
@@ -49,7 +49,7 @@ interface OptimisticAsserterInterface {
         address escalationManager,
         IERC20 currency,
         uint256 bond,
-        uint256 liveness,
+        uint64 liveness,
         bytes32 identifier
     ) external returns (bytes32);
 
@@ -66,7 +66,7 @@ interface OptimisticAsserterInterface {
         address caller,
         IERC20 currency,
         uint256 bond,
-        uint256 expirationTime
+        uint64 expirationTime
     );
 
     event AssertionDisputed(bytes32 indexed assertionId, address indexed disputer);
@@ -78,7 +78,7 @@ interface OptimisticAsserterInterface {
         bool settlementResolution
     );
 
-    event AssertionDefaultsSet(IERC20 defaultCurrency, uint256 defaultLiveness);
+    event AssertionDefaultsSet(IERC20 defaultCurrency, uint64 defaultLiveness);
 
     event BurnedBondPercentageSet(uint256 burnedBondPercentage);
 }

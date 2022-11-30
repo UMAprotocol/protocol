@@ -36,18 +36,18 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
     bytes32 public constant defaultIdentifier = "ASSERT_TRUTH";
 
     IERC20 public defaultCurrency;
-    uint256 public defaultLiveness;
+    uint64 public defaultLiveness;
 
     constructor(
         FinderInterface _finder,
         IERC20 _defaultCurrency,
-        uint256 _defaultLiveness
+        uint64 _defaultLiveness
     ) {
         finder = _finder;
         setAssertionDefaults(_defaultCurrency, _defaultLiveness);
     }
 
-    function setAssertionDefaults(IERC20 _defaultCurrency, uint256 _defaultLiveness) public onlyOwner {
+    function setAssertionDefaults(IERC20 _defaultCurrency, uint64 _defaultLiveness) public onlyOwner {
         defaultCurrency = _defaultCurrency;
         defaultLiveness = _defaultLiveness;
         syncUmaParams(defaultIdentifier, address(_defaultCurrency));
@@ -88,7 +88,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
         address escalationManager,
         IERC20 currency,
         uint256 bond,
-        uint256 liveness,
+        uint64 liveness,
         bytes32 identifier
     ) public nonReentrant returns (bytes32) {
         // TODO: if you want to assert for yourself set this to your own address NOT address(0).
@@ -102,7 +102,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
         require(_validateAndCacheCurrency(address(currency)), "Unsupported currency");
         require(bond >= getMinimumBond(address(currency)), "Bond amount too low");
 
-        uint256 currentTime = getCurrentTime();
+        uint64 currentTime = uint64(getCurrentTime());
         assertions[assertionId] = Assertion({
             asserter: asserter,
             disputer: address(0),
@@ -261,7 +261,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
     function _getId(
         bytes calldata claim,
         uint256 bond,
-        uint256 liveness,
+        uint64 liveness,
         IERC20 currency,
         address callbackRecipient,
         address escalationManager,
