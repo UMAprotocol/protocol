@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import "../interfaces/OptimisticAsserterCallbackRecipientInterface.sol";
 import "../interfaces/OptimisticAsserterInterface.sol";
-import "../interfaces/SovereignSecurityInterface.sol";
+import "../interfaces/EscalationManagerInterface.sol";
 
 import "../../data-verification-mechanism/implementation/Constants.sol";
 import "../../data-verification-mechanism/interfaces/FinderInterface.sol";
@@ -67,14 +67,14 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
     }
 
     // TODO: rename to "assertSimpleTruth". This is the simplest assertion possible with strong defaulting.
-    function assertTruth(bytes memory claim) public returns (bytes32) {
+    function assertTruthWithDefaults(bytes memory claim) public returns (bytes32) {
         // Note: re-entrancy guard is done in the inner call.
         return
-            assertTruthFor(
+            assertTruth(
                 claim,
                 msg.sender, // asserter
                 address(0), // callbackRecipient
-                address(0), // sovereignSecurity
+                address(0), // escalationManager
                 defaultCurrency,
                 getMinimumBond(address(defaultCurrency)),
                 defaultLiveness,
@@ -82,11 +82,11 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
             );
     }
 
-    function assertTruthFor(
+    function assertTruth(
         bytes memory claim,
         address asserter,
         address callbackRecipient,
-        address sovereignSecurity,
+        address escalationManager,
         IERC20 currency,
         uint256 bond,
         uint256 liveness, // TODO: think about changing this to challenge window?
@@ -96,7 +96,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
         asserter = asserter == address(0) ? msg.sender : asserter;
         // TODO: think about placing either msg.sender or block.timestamp into the claim ID to block an advasery
         // creating a claim that collides with a known assertion that will be created into the future.
-        bytes32 assertionId = _getId(claim, bond, liveness, currency, callbackRecipient, sovereignSecurity, identifier);
+        bytes32 assertionId = _getId(claim, bond, liveness, currency, callbackRecipient, escalationManager, identifier);
 
         require(assertions[assertionId].asserter == address(0), "Assertion already exists");
         require(_validateAndCacheIdentifier(identifier), "Unsupported identifier");
@@ -115,23 +115,23 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
             expirationTime: getCurrentTime() + liveness,
             claimId: keccak256(claim),
             identifier: identifier,
-            ssSettings: SsSettings({
-                arbitrateViaSs: false, // this is the default behavior: if not specified by the Sovereign security the assertion will use the DVM as an oracle.
+            escalationManagerSettings: EscalationManagerSettings({
+                arbitrateViaEscalationManager: false, // this is the default behavior: if not specified by the Sovereign security the assertion will use the DVM as an oracle.
                 discardOracle: false, // this is the default behavior: if not specified by the Sovereign security the assertion will respect the Oracle result.
                 validateDisputers: false, // this is the default behavior: if not specified by the Sovereign security the disputer will not be validated.
-                sovereignSecurity: sovereignSecurity,
+                escalationManager: escalationManager,
                 assertingCaller: msg.sender
             })
         });
 
-        SovereignSecurityInterface.AssertionPolicy memory assertionPolicy = _getAssertionPolicy(assertionId);
+        EscalationManagerInterface.AssertionPolicy memory assertionPolicy = _getAssertionPolicy(assertionId);
 
         // Check if the assertion is allowed by the sovereign security.
         require(!assertionPolicy.blockAssertion, "Assertion not allowed");
 
-        SsSettings storage ssSettings = assertions[assertionId].ssSettings;
-        (ssSettings.arbitrateViaSs, ssSettings.discardOracle, ssSettings.validateDisputers) = (
-            assertionPolicy.arbitrateViaSs, // Use SS as an oracle if specified by the SS.
+        EscalationManagerSettings storage emSettings = assertions[assertionId].escalationManagerSettings;
+        (emSettings.arbitrateViaEscalationManager, emSettings.discardOracle, emSettings.validateDisputers) = (
+            assertionPolicy.arbitrateViaEscalationManager, // Use SS as an oracle if specified by the SS.
             assertionPolicy.discardOracle, // Discard Oracle result if specified by the SS.
             assertionPolicy.validateDisputers // Validate the disputers if specified by the SS.
         );
@@ -144,7 +144,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
             claim,
             asserter,
             callbackRecipient,
-            sovereignSecurity,
+            escalationManager,
             msg.sender,
             currency,
             bond,
@@ -157,7 +157,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
     function getAssertionResult(bytes32 assertionId) public view returns (bool) {
         Assertion memory assertion = assertions[assertionId];
         // Return early if not using answer from resolved dispute.
-        if (assertion.disputer != address(0) && assertion.ssSettings.discardOracle) return false;
+        if (assertion.disputer != address(0) && assertion.escalationManagerSettings.discardOracle) return false;
         require(assertion.settled, "Assertion not settled"); // Revert if assertion not settled.
         return assertion.settlementResolution;
     }
@@ -188,7 +188,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
         _callbackOnAssertionDispute(assertionId);
 
         // Send resolve callback if dispute resolution is discarded
-        if (assertion.ssSettings.discardOracle) _callbackOnAssertionResolve(assertionId, false);
+        if (assertion.escalationManagerSettings.discardOracle) _callbackOnAssertionResolve(assertionId, false);
 
         emit AssertionDisputed(assertionId, disputer);
     }
@@ -210,22 +210,23 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
             // Dispute, settle with the disputer
             int256 resolvedPrice = _oracleGetPrice(assertionId, assertion.identifier, assertion.assertionTime); // Revert if price not resolved.
 
-            // If set to not use settlement resolution then the value remains false.
-            // If set to use settlement resolution then set to true if resolved price is 1, false otherwise.
-            assertion.settlementResolution = assertion.ssSettings.discardOracle ? false : resolvedPrice == 1e18;
+            // If set to discard settlement resolution then false. Else, use oracle value to find resolution.
+            if (assertion.escalationManagerSettings.discardOracle) assertion.settlementResolution = false;
+            else assertion.settlementResolution = resolvedPrice == 1e18;
+
             address bondRecipient = resolvedPrice == 1e18 ? assertion.asserter : assertion.disputer;
 
-            // If set to use the DVM as oracle then must burn half the bond amount. Else, if not using the DVM as oracle
-            // then the bond is returned to the correct party (asserter or disputer).
-            // TODO:  think of better variable name than "burn". "oracle fee" might be better.
-            uint256 burn = !assertion.ssSettings.arbitrateViaSs ? (burnedBondPercentage * assertion.bond) / 1e18 : 0;
-            uint256 send = assertion.bond * 2 - burn;
+            // If set to use UMA DVM as oracle then oracleFee must be sent to UMA Store contract. Else, if not using UMA
+            // DVM then the bond is returned to the correct party (asserter or disputer).
+            uint256 oracleFee = (burnedBondPercentage * assertion.bond) / 1e18;
+            if (assertion.escalationManagerSettings.arbitrateViaEscalationManager) oracleFee = 0;
+            uint256 bondRecipientAmount = assertion.bond * 2 - oracleFee;
 
-            // Send tokens. If the DVM is used as an oracle then burn the burn amount. Send the bond recipient the send amount.
-            if (burn > 0) assertion.currency.safeTransfer(address(_getStore()), burn);
-            assertion.currency.safeTransfer(bondRecipient, send);
+            // Send tokens. If the DVM is used as an oracle then send the oracleFee to the Store.
+            if (oracleFee > 0) assertion.currency.safeTransfer(address(_getStore()), oracleFee);
+            assertion.currency.safeTransfer(bondRecipient, bondRecipientAmount);
 
-            if (!assertion.ssSettings.discardOracle)
+            if (!assertion.escalationManagerSettings.discardOracle)
                 _callbackOnAssertionResolve(assertionId, assertion.settlementResolution);
 
             emit AssertionSettled(assertionId, bondRecipient, true, assertion.settlementResolution);
@@ -262,14 +263,14 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
         uint256 liveness,
         IERC20 currency,
         address callbackRecipient,
-        address sovereignSecurity,
+        address escalationManager,
         bytes32 identifier
     ) internal pure returns (bytes32) {
         // Returns the unique ID for this assertion. This ID is used to identify the assertion in the Oracle.
         return
             keccak256(
                 // TODO change order of abi.encode arguments to do potential gas savings
-                abi.encode(claim, bond, liveness, currency, callbackRecipient, sovereignSecurity, identifier)
+                abi.encode(claim, bond, liveness, currency, callbackRecipient, escalationManager, identifier)
             );
     }
 
@@ -296,8 +297,8 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
     }
 
     function _getOracle(bytes32 assertionId) internal view returns (OracleAncillaryInterface) {
-        if (assertions[assertionId].ssSettings.arbitrateViaSs)
-            return OracleAncillaryInterface(address(_getSovereignSecurity(assertionId)));
+        if (assertions[assertionId].escalationManagerSettings.arbitrateViaEscalationManager)
+            return OracleAncillaryInterface(address(_getEscalationManager(assertionId)));
         return OracleAncillaryInterface(cachedOracle);
     }
 
@@ -317,24 +318,24 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
         return _getOracle(assertionId).getPrice(identifier, time, _stampAssertion(assertionId));
     }
 
-    function _getSovereignSecurity(bytes32 assertionId) internal view returns (SovereignSecurityInterface) {
-        return SovereignSecurityInterface(assertions[assertionId].ssSettings.sovereignSecurity);
+    function _getEscalationManager(bytes32 assertionId) internal view returns (EscalationManagerInterface) {
+        return EscalationManagerInterface(assertions[assertionId].escalationManagerSettings.escalationManager);
     }
 
     function _getAssertionPolicy(bytes32 assertionId)
         internal
         view
-        returns (SovereignSecurityInterface.AssertionPolicy memory)
+        returns (EscalationManagerInterface.AssertionPolicy memory)
     {
-        address ss = assertions[assertionId].ssSettings.sovereignSecurity;
-        if (ss == address(0)) return SovereignSecurityInterface.AssertionPolicy(false, false, false, false);
-        return SovereignSecurityInterface(ss).getAssertionPolicy(assertionId);
+        address em = assertions[assertionId].escalationManagerSettings.escalationManager;
+        if (em == address(0)) return EscalationManagerInterface.AssertionPolicy(false, false, false, false);
+        return EscalationManagerInterface(em).getAssertionPolicy(assertionId);
     }
 
     function _isDisputeAllowed(bytes32 assertionId) internal view returns (bool) {
-        address ss = assertions[assertionId].ssSettings.sovereignSecurity;
-        if (!assertions[assertionId].ssSettings.validateDisputers) return true;
-        return SovereignSecurityInterface(ss).isDisputeAllowed(assertionId, msg.sender);
+        address em = assertions[assertionId].escalationManagerSettings.escalationManager;
+        if (!assertions[assertionId].escalationManagerSettings.validateDisputers) return true;
+        return EscalationManagerInterface(em).isDisputeAllowed(assertionId, msg.sender);
     }
 
     function _validateAndCacheIdentifier(bytes32 identifier) internal returns (bool) {
@@ -356,11 +357,9 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
                 assertionId,
                 assertedTruthfully
             );
-        if (assertions[assertionId].ssSettings.sovereignSecurity != address(0))
-            SovereignSecurityInterface(assertions[assertionId].ssSettings.sovereignSecurity).assertionResolved(
-                assertionId,
-                assertedTruthfully
-            );
+        if (assertions[assertionId].escalationManagerSettings.escalationManager != address(0))
+            EscalationManagerInterface(assertions[assertionId].escalationManagerSettings.escalationManager)
+                .assertionResolved(assertionId, assertedTruthfully);
     }
 
     function _callbackOnAssertionDispute(bytes32 assertionId) internal {
@@ -368,9 +367,8 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
             OptimisticAsserterCallbackRecipientInterface(assertions[assertionId].callbackRecipient).assertionDisputed(
                 assertionId
             );
-        if (assertions[assertionId].ssSettings.sovereignSecurity != address(0))
-            SovereignSecurityInterface(assertions[assertionId].ssSettings.sovereignSecurity).assertionDisputed(
-                assertionId
-            );
+        if (assertions[assertionId].escalationManagerSettings.escalationManager != address(0))
+            EscalationManagerInterface(assertions[assertionId].escalationManagerSettings.escalationManager)
+                .assertionDisputed(assertionId);
     }
 }

@@ -4,11 +4,11 @@ pragma solidity 0.8.16;
 import "./OptimisticAsserterCallbackRecipientInterface.sol";
 import "./OptimisticAsserterInterface.sol";
 
-// TODO: sovereignSecurity does not sound like a "thing"...it should be a noun
-interface SovereignSecurityInterface is OptimisticAsserterCallbackRecipientInterface {
+// TODO: escalationManager does not sound like a "thing"...it should be a noun
+interface EscalationManagerInterface is OptimisticAsserterCallbackRecipientInterface {
     struct AssertionPolicy {
         bool blockAssertion;
-        bool arbitrateViaSs;
+        bool arbitrateViaEscalationManager;
         bool discardOracle;
         bool validateDisputers;
     }

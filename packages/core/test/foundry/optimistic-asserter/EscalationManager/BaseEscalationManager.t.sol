@@ -2,10 +2,10 @@
 pragma solidity ^0.8.0;
 
 import "../Common.sol";
-import "../../../../contracts/optimistic-asserter/implementation/sovereign-security/BaseSovereignSecurity.sol";
+import "../../../../contracts/optimistic-asserter/implementation/escalation-manager/BaseEscalationManager.sol";
 
-contract BaseSovereignSecurityTest is Common {
-    BaseSovereignSecurity sovereignSecurity;
+contract BaseEscalationManagerTest is Common {
+    BaseEscalationManager escalationManager;
 
     bytes32 identifier = "test";
     uint256 time = 123;
@@ -14,29 +14,29 @@ contract BaseSovereignSecurityTest is Common {
     event PriceRequestAdded(bytes32 indexed identifier, uint256 time, bytes ancillaryData);
 
     function setUp() public {
-        sovereignSecurity = new BaseSovereignSecurity();
+        escalationManager = new BaseEscalationManager();
     }
 
     function test_GetAssertionPolicy() public {
-        BaseSovereignSecurity.AssertionPolicy memory policy = sovereignSecurity.getAssertionPolicy(bytes32(0));
+        BaseEscalationManager.AssertionPolicy memory policy = escalationManager.getAssertionPolicy(bytes32(0));
         assertFalse(policy.blockAssertion);
-        assertFalse(policy.arbitrateViaSs);
+        assertFalse(policy.arbitrateViaEscalationManager);
         assertFalse(policy.discardOracle);
         assertFalse(policy.validateDisputers);
     }
 
     function test_IsDisputeAllowed() public {
-        assertTrue(sovereignSecurity.isDisputeAllowed(bytes32(0), address(0)));
+        assertTrue(escalationManager.isDisputeAllowed(bytes32(0), address(0)));
     }
 
     function test_RequestPrice() public {
         vm.expectEmit(true, true, true, true);
         emit PriceRequestAdded(identifier, time, ancillaryData);
-        sovereignSecurity.requestPrice(identifier, time, ancillaryData);
+        escalationManager.requestPrice(identifier, time, ancillaryData);
     }
 
     function test_GetPrice() public {
-        int256 price = sovereignSecurity.getPrice(identifier, time, ancillaryData);
+        int256 price = escalationManager.getPrice(identifier, time, ancillaryData);
         assertTrue(price == 0);
     }
 }

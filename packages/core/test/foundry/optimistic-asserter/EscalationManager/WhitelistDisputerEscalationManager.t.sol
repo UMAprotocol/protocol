@@ -2,31 +2,31 @@
 pragma solidity ^0.8.0;
 
 import "../Common.sol";
-import "../../../../contracts/optimistic-asserter/implementation/sovereign-security/WhitelistDisputerSovereignSecurity.sol";
+import "../../../../contracts/optimistic-asserter/implementation/escalation-manager/WhitelistDisputerEscalationManager.sol";
 
-contract WhitelistDisputerSovereignSecurityTest is Common {
-    WhitelistDisputerSovereignSecurity sovereignSecurity;
+contract WhitelistDisputerEscalationManagerTest is Common {
+    WhitelistDisputerEscalationManager escalationManager;
 
     function setUp() public {
-        sovereignSecurity = new WhitelistDisputerSovereignSecurity();
+        escalationManager = new WhitelistDisputerEscalationManager();
     }
 
     function test_RevertIf_NotOwner() public {
         vm.expectRevert("Ownable: caller is not the owner");
         vm.prank(TestAddress.account2);
-        sovereignSecurity.setDisputeCallerInWhitelist(TestAddress.account2, true);
+        escalationManager.setDisputeCallerInWhitelist(TestAddress.account2, true);
     }
 
     function test_DisputeCallerNotOnWhitelist() public {
         // If the dispute caller is not whitelisted, then the dispute should not be allowed.
         vm.prank(mockOptimisticAsserterAddress);
-        assertFalse(sovereignSecurity.isDisputeAllowed(bytes32(0), TestAddress.account2));
+        assertFalse(escalationManager.isDisputeAllowed(bytes32(0), TestAddress.account2));
     }
 
     function test_DisputeCallerOnWhitelist() public {
         // If the dispute caller is whitelisted, then the dispute should be allowed.
-        sovereignSecurity.setDisputeCallerInWhitelist(TestAddress.account2, true);
+        escalationManager.setDisputeCallerInWhitelist(TestAddress.account2, true);
         vm.prank(mockOptimisticAsserterAddress);
-        assertTrue(sovereignSecurity.isDisputeAllowed(bytes32(0), TestAddress.account2));
+        assertTrue(escalationManager.isDisputeAllowed(bytes32(0), TestAddress.account2));
     }
 }

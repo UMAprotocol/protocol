@@ -1,17 +1,17 @@
 pragma solidity 0.8.16;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "./BaseSovereignSecurity.sol";
+import "./BaseEscalationManager.sol";
 import "../../interfaces/OptimisticAsserterInterface.sol";
 
-contract WhitelistDisputerSovereignSecurity is BaseSovereignSecurity, Ownable {
+contract WhitelistDisputerEscalationManager is BaseEscalationManager, Ownable {
     mapping(address => bool) whitelistedDisputeCallers;
 
     function getAssertionPolicy(bytes32 assertionId) public view override returns (AssertionPolicy memory) {
         return
             AssertionPolicy({
                 blockAssertion: false,
-                arbitrateViaSs: false,
+                arbitrateViaEscalationManager: false,
                 discardOracle: false,
                 validateDisputers: true
             });

@@ -1,9 +1,9 @@
 pragma solidity 0.8.16;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "./BaseSovereignSecurity.sol";
+import "./BaseEscalationManager.sol";
 
-contract OwnerSelectOracleSovereignSecurity is BaseSovereignSecurity, Ownable {
+contract OwnerSelectOracleEscalationManager is BaseEscalationManager, Ownable {
     struct ArbitrationResolution {
         bool valueSet;
         bool resolution;
@@ -11,7 +11,7 @@ contract OwnerSelectOracleSovereignSecurity is BaseSovereignSecurity, Ownable {
 
     mapping(bytes32 => ArbitrationResolution) arbitrationResolutions;
 
-    bool arbitrateViaSs;
+    bool arbitrateViaEscalationManager;
 
     function setArbitrationResolution(
         bytes32 identifier,
@@ -24,14 +24,14 @@ contract OwnerSelectOracleSovereignSecurity is BaseSovereignSecurity, Ownable {
     }
 
     function setArbitrateViaSs(bool value) public onlyOwner {
-        arbitrateViaSs = value;
+        arbitrateViaEscalationManager = value;
     }
 
     function getAssertionPolicy(bytes32 assertionId) public view override returns (AssertionPolicy memory) {
         return
             AssertionPolicy({
                 blockAssertion: false,
-                arbitrateViaSs: arbitrateViaSs,
+                arbitrateViaEscalationManager: arbitrateViaEscalationManager,
                 discardOracle: false,
                 validateDisputers: false
             });

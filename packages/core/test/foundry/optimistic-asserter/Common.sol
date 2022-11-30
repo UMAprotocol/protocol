@@ -32,7 +32,7 @@ contract Common is Test {
 
     // Mock addresses, used to prank calls.
     address mockOptimisticAsserterAddress = address(0xfa);
-    address mockedSovereignSecurity = address(0xfb);
+    address mockedEscalationManager = address(0xfb);
     address mockedCallbackRecipient = address(0xfc);
     address mockAssertingCallerAddress = address(0xfd);
 
@@ -42,7 +42,7 @@ contract Common is Test {
         bytes claim,
         address indexed asserter,
         address callbackRecipient,
-        address indexed sovereignSecurity,
+        address indexed escalationManager,
         address caller,
         IERC20 currency,
         uint256 bond,
@@ -81,18 +81,18 @@ contract Common is Test {
     // Helper functions, re-used in some tests.
     function _mockSsPolicy(
         bool blockAssertion,
-        bool arbitrateViaSs,
+        bool arbitrateViaEscalationManager,
         bool discardOracle,
         bool validateDisputers
     ) internal {
         // Mock getAssertionPolicy call to block assertion. No need to pass assertionId as mockCall uses loose matching.
         vm.mockCall(
-            mockedSovereignSecurity,
-            abi.encodePacked(SovereignSecurityInterface.getAssertionPolicy.selector),
+            mockedEscalationManager,
+            abi.encodePacked(EscalationManagerInterface.getAssertionPolicy.selector),
             abi.encode(
-                SovereignSecurityInterface.AssertionPolicy({
+                EscalationManagerInterface.AssertionPolicy({
                     blockAssertion: blockAssertion,
-                    arbitrateViaSs: arbitrateViaSs,
+                    arbitrateViaEscalationManager: arbitrateViaEscalationManager,
                     discardOracle: discardOracle,
                     validateDisputers: validateDisputers
                 })
@@ -103,8 +103,8 @@ contract Common is Test {
     function _mockSsDisputerCheck(bool isDisputeAllowed) internal {
         // Mock isDisputeAllowed call with desired response. No need to pass parameters as mockCall uses loose matching.
         vm.mockCall(
-            mockedSovereignSecurity,
-            abi.encodePacked(SovereignSecurityInterface.isDisputeAllowed.selector),
+            mockedEscalationManager,
+            abi.encodePacked(EscalationManagerInterface.isDisputeAllowed.selector),
             abi.encode(isDisputeAllowed)
         );
     }
@@ -127,17 +127,17 @@ contract Common is Test {
         );
     }
 
-    function _assertWithCallbackRecipientAndSs(address callbackRecipient, address sovereignSecurity)
+    function _assertWithCallbackRecipientAndSs(address callbackRecipient, address escalationManager)
         internal
         returns (bytes32)
     {
         vm.prank(TestAddress.account1);
         return
-            optimisticAsserter.assertTruthFor(
+            optimisticAsserter.assertTruth(
                 trueClaimAssertion,
                 address(0),
                 callbackRecipient,
-                sovereignSecurity,
+                escalationManager,
                 defaultCurrency,
                 defaultBond,
                 defaultLiveness,
@@ -171,7 +171,7 @@ contract Common is Test {
             address(optimisticAsserter),
             optimisticAsserter.getMinimumBond(address(defaultCurrency))
         );
-        assertionId = optimisticAsserter.assertTruth(claim);
+        assertionId = optimisticAsserter.assertTruthWithDefaults(claim);
         vm.stopPrank();
     }
 

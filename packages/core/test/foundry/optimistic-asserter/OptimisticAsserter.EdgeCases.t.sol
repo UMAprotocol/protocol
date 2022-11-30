@@ -15,11 +15,11 @@ contract InvalidParameters is Common {
         defaultCurrency.approve(address(optimisticAsserter), defaultBond * 2);
 
         // Account1 asserts a claim.
-        bytes32 assertionId = optimisticAsserter.assertTruth(trueClaimAssertion);
+        bytes32 assertionId = optimisticAsserter.assertTruthWithDefaults(trueClaimAssertion);
 
         // Account1 asserts the same claim again.
         vm.expectRevert("Assertion already exists");
-        optimisticAsserter.assertTruth(trueClaimAssertion);
+        optimisticAsserter.assertTruthWithDefaults(trueClaimAssertion);
         vm.stopPrank();
     }
 
@@ -28,7 +28,7 @@ contract InvalidParameters is Common {
 
         vm.expectRevert("Unsupported identifier");
         vm.prank(TestAddress.account1);
-        optimisticAsserter.assertTruthFor(
+        optimisticAsserter.assertTruth(
             trueClaimAssertion,
             address(0),
             address(0),
@@ -48,12 +48,12 @@ contract InvalidParameters is Common {
         vm.stopPrank();
 
         vm.expectRevert("Unsupported currency");
-        optimisticAsserter.assertTruth(trueClaimAssertion);
+        optimisticAsserter.assertTruthWithDefaults(trueClaimAssertion);
     }
 
     function test_RevertIf_BondBelowMinimum() public {
         vm.expectRevert("Bond amount too low");
-        optimisticAsserter.assertTruthFor(
+        optimisticAsserter.assertTruth(
             trueClaimAssertion,
             address(0),
             address(0),
@@ -84,7 +84,7 @@ contract InvalidParameters is Common {
         defaultCurrency.approve(address(optimisticAsserter), defaultBond);
 
         // Account1 asserts a claim.
-        bytes32 assertionId = optimisticAsserter.assertTruth(falseClaimAssertion);
+        bytes32 assertionId = optimisticAsserter.assertTruthWithDefaults(falseClaimAssertion);
         vm.stopPrank();
 
         // Fund Account2 with enough currency to dispute the assertion twice.

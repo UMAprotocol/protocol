@@ -4,14 +4,14 @@ pragma solidity 0.8.16;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 interface OptimisticAsserterInterface {
-    // TODO: SecurityManager!!!. rename SovereignSecurityManager->EscalationManager
+    // TODO: SecurityManager!!!. rename EscalationManagerManager->EscalationManager
     // TODO: Em->EscalationManager...check this is not too long.
     // Options: AssertionManager, EscalationManager, SecurityManager, SovereignManager.
-    struct SsSettings {
-        bool arbitrateViaSs; // False if the DVM is used as an oracle (SovereignSecurity on True).
+    struct EscalationManagerSettings {
+        bool arbitrateViaEscalationManager; // False if the DVM is used as an oracle (EscalationManager on True).
         bool discardOracle; // False if Oracle result is used for resolving assertion after dispute.
         bool validateDisputers; // True if the SS isDisputeAllowed should be checked on disputes.
-        address sovereignSecurity;
+        address escalationManager;
         address assertingCaller;
     }
 
@@ -28,7 +28,7 @@ interface OptimisticAsserterInterface {
         uint256 expirationTime; // TODO uint64 could be enough.
         bytes32 claimId;
         bytes32 identifier;
-        SsSettings ssSettings;
+        EscalationManagerSettings escalationManagerSettings;
     }
 
     struct WhitelistedCurrency {
@@ -40,13 +40,13 @@ interface OptimisticAsserterInterface {
 
     function getAssertion(bytes32 assertionId) external view returns (Assertion memory);
 
-    function assertTruth(bytes memory claim) external returns (bytes32);
+    function assertTruthWithDefaults(bytes memory claim) external returns (bytes32);
 
-    function assertTruthFor(
+    function assertTruth(
         bytes memory claim,
         address asserter,
         address callbackRecipient,
-        address sovereignSecurity,
+        address escalationManager,
         IERC20 currency,
         uint256 bond,
         uint256 liveness,
@@ -62,7 +62,7 @@ interface OptimisticAsserterInterface {
         bytes claim,
         address indexed asserter,
         address callbackRecipient,
-        address indexed sovereignSecurity,
+        address indexed escalationManager,
         address caller,
         IERC20 currency,
         uint256 bond,

@@ -65,7 +65,7 @@ contract Insurance {
         uint256 bond = oa.getMinimumBond(address(defaultCurrency));
         defaultCurrency.safeTransferFrom(msg.sender, address(this), bond);
         defaultCurrency.safeApprove(address(oa), bond);
-        assertionId = oa.assertTruthFor(
+        assertionId = oa.assertTruth(
             abi.encodePacked(
                 "Insurance contract is claiming that insurance event ",
                 policies[policyId].insuredEvent,

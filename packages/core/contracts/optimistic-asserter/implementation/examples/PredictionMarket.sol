@@ -153,7 +153,7 @@ contract PredictionMarket is OptimisticAsserterCallbackRecipientInterface {
         // Pull bond and make the assertion.
         currency.safeTransferFrom(msg.sender, address(this), bond);
         currency.safeApprove(address(oa), bond);
-        assertionId = _assertTruth(claim, bond);
+        assertionId = _assertTruthWithDefaults(claim, bond);
 
         // Store the asserter and marketId for the assertionResolved callback.
         assertedMarkets[assertionId] = AssertedMarket({ asserter: msg.sender, marketId: marketId });
@@ -246,8 +246,8 @@ contract PredictionMarket is OptimisticAsserterCallbackRecipientInterface {
             );
     }
 
-    function _assertTruth(bytes memory claim, uint256 bond) internal returns (bytes32 assertionId) {
-        assertionId = oa.assertTruthFor(
+    function _assertTruthWithDefaults(bytes memory claim, uint256 bond) internal returns (bytes32 assertionId) {
+        assertionId = oa.assertTruth(
             claim,
             msg.sender, // Asserter
             address(this), // Receive callback in this contract.

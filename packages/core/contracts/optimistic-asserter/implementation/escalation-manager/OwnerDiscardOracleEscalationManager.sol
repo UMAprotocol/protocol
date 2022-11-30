@@ -1,9 +1,9 @@
 pragma solidity 0.8.16;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "./BaseSovereignSecurity.sol";
+import "./BaseEscalationManager.sol";
 
-contract OwnerDiscardOracleSovereignSecurity is BaseSovereignSecurity, Ownable {
+contract OwnerDiscardOracleEscalationManager is BaseEscalationManager, Ownable {
     bool public discardOracle;
 
     function setDiscardOracle(bool value) public onlyOwner {
@@ -14,7 +14,7 @@ contract OwnerDiscardOracleSovereignSecurity is BaseSovereignSecurity, Ownable {
         return
             AssertionPolicy({
                 blockAssertion: false,
-                arbitrateViaSs: false,
+                arbitrateViaEscalationManager: false,
                 discardOracle: discardOracle,
                 validateDisputers: false
             });
