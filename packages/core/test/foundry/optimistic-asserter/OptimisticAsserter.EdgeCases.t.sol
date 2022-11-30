@@ -30,7 +30,7 @@ contract InvalidParameters is Common {
         vm.prank(TestAddress.account1);
         optimisticAsserter.assertTruth(
             trueClaimAssertion,
-            address(0),
+            TestAddress.account1,
             address(0),
             address(0),
             defaultCurrency,
@@ -55,7 +55,7 @@ contract InvalidParameters is Common {
         vm.expectRevert("Bond amount too low");
         optimisticAsserter.assertTruth(
             trueClaimAssertion,
-            address(0),
+            TestAddress.account1,
             address(0),
             address(0),
             defaultCurrency,
@@ -67,7 +67,7 @@ contract InvalidParameters is Common {
 
     function test_RevertWhen_InvalidAssertionId() public {
         vm.expectRevert("Assertion does not exist");
-        optimisticAsserter.disputeAssertionFor(bytes32(0), TestAddress.account2);
+        optimisticAsserter.disputeAssertion(bytes32(0), TestAddress.account2);
 
         vm.expectRevert("Assertion does not exist");
         optimisticAsserter.settleAndGetAssertionResult(bytes32(0));
@@ -94,11 +94,11 @@ contract InvalidParameters is Common {
         defaultCurrency.approve(address(optimisticAsserter), defaultBond * 2);
 
         // Account2 disputes the assertion.
-        optimisticAsserter.disputeAssertionFor(assertionId, address(0));
+        optimisticAsserter.disputeAssertion(assertionId, TestAddress.account2);
 
         // Account2 should not be able to dispute the assertion again.
         vm.expectRevert("Assertion already disputed");
-        optimisticAsserter.disputeAssertionFor(assertionId, address(0));
+        optimisticAsserter.disputeAssertion(assertionId, TestAddress.account2);
         vm.stopPrank();
     }
 

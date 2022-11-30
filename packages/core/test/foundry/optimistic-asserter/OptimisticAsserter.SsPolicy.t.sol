@@ -28,7 +28,7 @@ contract EscalationManagerPolicyEnforced is Common {
         _mockSsPolicy(true, false, false, false);
 
         vm.expectRevert("Assertion not allowed");
-        _assertWithCallbackRecipientAndSs(address(0), mockedEscalationManager);
+        _assertWithCallbackRecipientAndSs(TestAddress.account1, mockedEscalationManager);
         vm.clearMockedCalls();
     }
 
@@ -110,7 +110,7 @@ contract EscalationManagerPolicyEnforced is Common {
         defaultCurrency.approve(address(optimisticAsserter), defaultBond);
 
         vm.expectRevert("Dispute not allowed");
-        optimisticAsserter.disputeAssertionFor(assertionId, TestAddress.account2);
+        optimisticAsserter.disputeAssertion(assertionId, TestAddress.account2);
         vm.stopPrank();
         vm.clearMockedCalls();
     }
