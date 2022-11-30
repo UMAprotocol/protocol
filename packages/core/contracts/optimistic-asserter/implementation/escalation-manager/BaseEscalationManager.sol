@@ -33,7 +33,7 @@ contract BaseEscalationManager is EscalationManagerInterface {
         emit PriceRequestAdded(identifier, time, ancillaryData);
     }
 
-    function assertionResolved(bytes32 assertionId, bool assertedTruthfully) public {}
+    function assertionResolved(bytes32 assertionId, bool assertedTruthfully) public virtual override {}
 
-    function assertionDisputed(bytes32 assertionId) public {}
+    function assertionDisputed(bytes32 assertionId) public virtual override {}
 }
