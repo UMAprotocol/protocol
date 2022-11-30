@@ -107,9 +107,6 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
         require(_validateAndCacheCurrency(address(currency)), "Unsupported currency");
         require(bond >= getMinimumBond(address(currency)), "Bond amount too low");
 
-        // Pull the bond
-        currency.safeTransferFrom(msg.sender, address(this), bond);
-
         assertions[assertionId] = Assertion({
             asserter: asserter,
             disputer: address(0),
@@ -142,6 +139,9 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
             assertionPolicy.discardOracle, // Discard Oracle result if specified by the SS.
             assertionPolicy.validateDisputers // Validate the disputers if specified by the SS.
         );
+
+        // Pull the bond
+        currency.safeTransferFrom(msg.sender, address(this), bond);
 
         emit AssertionMade(
             assertionId,
@@ -180,10 +180,10 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
         require(assertion.expirationTime > getCurrentTime(), "Assertion is expired"); // Revert if assertion expired.
         require(_isDisputeAllowed(assertionId), "Dispute not allowed"); // Revert if dispute not allowed.
 
+        assertion.disputer = disputer;
+
         // Pull the bond
         assertion.currency.safeTransferFrom(msg.sender, address(this), assertion.bond);
-
-        assertion.disputer = disputer;
 
         _oracleRequestPrice(assertionId, assertion.identifier, assertion.assertionTime);
 
@@ -205,8 +205,8 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
         if (assertion.disputer == address(0)) {
             // No dispute, settle with the asserter
             require(assertion.expirationTime <= getCurrentTime(), "Assertion not expired"); // Revert if assertion not expired.
-            assertion.currency.safeTransfer(assertion.asserter, assertion.bond);
             assertion.settlementResolution = true;
+            assertion.currency.safeTransfer(assertion.asserter, assertion.bond);
             _callbackOnAssertionResolve(assertionId, true);
 
             emit AssertionSettled(assertionId, assertion.asserter, false, true);
