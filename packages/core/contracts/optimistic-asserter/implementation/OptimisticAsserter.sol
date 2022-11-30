@@ -219,8 +219,8 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
 
             address bondRecipient = resolvedPrice == 1e18 ? assertion.asserter : assertion.disputer;
 
-            // If set to use the DVM as oracle then oracleFee must sent to the oracle. Else, if not using the DVM then
-            // the bond is returned to the correct party (asserter or disputer).
+            // If set to use UMA DVM as oracle then oracleFee must be sent to UMA Store contract. Else, if not using UMA
+            // DVM then the bond is returned to the correct party (asserter or disputer).
             uint256 oracleFee = (burnedBondPercentage * assertion.bond) / 1e18;
             if (assertion.escalationManagerSettings.arbitrateViaEscalationManager) oracleFee = 0;
             uint256 bondRecipientAmount = assertion.bond * 2 - oracleFee;
