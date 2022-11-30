@@ -171,7 +171,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
     }
 
     function disputeAssertionFor(bytes32 assertionId, address disputer) public nonReentrant() {
-        disputer = disputer == address(0) ? msg.sender : disputer;
+        require(disputer != address(0), "Disputer cant be 0");
         Assertion storage assertion = assertions[assertionId];
         require(assertion.asserter != address(0), "Assertion does not exist"); // Revert if assertion does not exist.
         require(assertion.disputer == address(0), "Assertion already disputed"); // Revert if assertion already disputed.

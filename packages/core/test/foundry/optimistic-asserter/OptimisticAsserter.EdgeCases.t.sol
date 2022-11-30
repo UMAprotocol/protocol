@@ -94,11 +94,11 @@ contract InvalidParameters is Common {
         defaultCurrency.approve(address(optimisticAsserter), defaultBond * 2);
 
         // Account2 disputes the assertion.
-        optimisticAsserter.disputeAssertionFor(assertionId, address(0));
+        optimisticAsserter.disputeAssertionFor(assertionId, TestAddress.account1);
 
         // Account2 should not be able to dispute the assertion again.
         vm.expectRevert("Assertion already disputed");
-        optimisticAsserter.disputeAssertionFor(assertionId, address(0));
+        optimisticAsserter.disputeAssertionFor(assertionId, TestAddress.account1);
         vm.stopPrank();
     }
 
