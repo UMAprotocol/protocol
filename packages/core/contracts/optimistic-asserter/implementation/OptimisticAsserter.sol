@@ -17,9 +17,9 @@ import "../../data-verification-mechanism/interfaces/StoreInterface.sol";
 import "../../common/implementation/AddressWhitelist.sol";
 import "../../common/implementation/AncillaryData.sol";
 import "../../common/implementation/Lockable.sol";
+import "../../common/implementation/MultiCaller.sol";
 
-// TODO: do we actually want to rename the OptimisticAsserter to something else? @smb2796 will help up ;)
-contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
+contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, MultiCaller {
     using SafeERC20 for IERC20;
 
     FinderInterface public immutable finder;
@@ -31,8 +31,6 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
 
     mapping(bytes32 => Assertion) public assertions;
 
-    // TODO add setters to change burnedBondPercentage
-    // TODO dynamic unit tests for burnedBondPercentage
     uint256 public burnedBondPercentage = 0.5e18; //50% of bond is burned.
 
     bytes32 public constant defaultIdentifier = "ASSERT_TRUTH";
@@ -49,8 +47,6 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
         setAssertionDefaults(_defaultCurrency, _defaultLiveness);
     }
 
-    // TODO consider renaming this
-    // TODO change to "setAdmin props" by joining with setBurnedBondPercentage
     function setAssertionDefaults(IERC20 _defaultCurrency, uint256 _defaultLiveness) public onlyOwner {
         defaultCurrency = _defaultCurrency;
         defaultLiveness = _defaultLiveness;
@@ -70,7 +66,6 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
         emit BurnedBondPercentageSet(_burnedBondPercentage);
     }
 
-    // TODO: rename to "assertSimpleTruth". This is the simplest assertion possible with strong defaulting.
     function assertTruthWithDefaults(bytes memory claim) public returns (bytes32) {
         // Note: re-entrancy guard is done in the inner call.
         return
@@ -93,7 +88,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
         address escalationManager,
         IERC20 currency,
         uint256 bond,
-        uint256 liveness, // TODO: think about changing this to challenge window?
+        uint256 liveness,
         bytes32 identifier
     ) public nonReentrant() returns (bytes32) {
         // TODO: if you want to assert for yourself set this to your own address NOT address(0).
