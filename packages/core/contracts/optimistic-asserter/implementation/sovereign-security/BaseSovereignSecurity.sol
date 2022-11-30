@@ -8,9 +8,9 @@ contract BaseSovereignSecurity is SovereignSecurityInterface {
     function getAssertionPolicy(bytes32 assertionId) public view virtual override returns (AssertionPolicy memory) {
         return
             AssertionPolicy({
-                allowAssertion: true,
-                useDvmAsOracle: true,
-                useDisputeResolution: true,
+                blockAssertion: false,
+                arbitrateViaSs: false,
+                discardOracle: false,
                 validateDisputers: false
             });
     }

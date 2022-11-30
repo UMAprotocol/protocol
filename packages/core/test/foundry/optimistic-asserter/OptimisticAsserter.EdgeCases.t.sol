@@ -44,7 +44,7 @@ contract InvalidParameters is Common {
         // Change the default currency to unsupported token.
         vm.startPrank(TestAddress.owner);
         TestnetERC20 unsupportedCurrency = new TestnetERC20("Unsupported", "UNS", 18);
-        optimisticAsserter.setAssertionDefaults(unsupportedCurrency, defaultBond, defaultLiveness);
+        optimisticAsserter.setAssertionDefaults(unsupportedCurrency, defaultLiveness);
         vm.stopPrank();
 
         vm.expectRevert("Unsupported currency");

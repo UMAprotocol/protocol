@@ -10,9 +10,9 @@ contract WhitelistDisputerSovereignSecurity is BaseSovereignSecurity, Ownable {
     function getAssertionPolicy(bytes32 assertionId) public view override returns (AssertionPolicy memory) {
         return
             AssertionPolicy({
-                allowAssertion: true,
-                useDvmAsOracle: true,
-                useDisputeResolution: true,
+                blockAssertion: false,
+                arbitrateViaSs: false,
+                discardOracle: false,
                 validateDisputers: true
             });
     }

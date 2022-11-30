@@ -29,17 +29,17 @@ contract OwnerSelectOracleSovereignSecurityTest is Common {
     function test_SetArbitrateViaSs() public {
         OwnerSelectOracleSovereignSecurity.AssertionPolicy memory policy =
             sovereignSecurity.getAssertionPolicy(bytes32(0));
-        assertTrue(policy.allowAssertion);
-        assertTrue(policy.useDvmAsOracle);
-        assertTrue(policy.useDisputeResolution);
+        assertFalse(policy.blockAssertion);
+        assertFalse(policy.arbitrateViaSs);
+        assertFalse(policy.discardOracle);
         assertFalse(policy.validateDisputers);
 
         sovereignSecurity.setArbitrateViaSs(true);
         policy = sovereignSecurity.getAssertionPolicy(bytes32(0));
 
-        assertTrue(policy.allowAssertion);
-        assertFalse(policy.useDvmAsOracle);
-        assertTrue(policy.useDisputeResolution);
+        assertFalse(policy.blockAssertion);
+        assertTrue(policy.arbitrateViaSs);
+        assertFalse(policy.discardOracle);
         assertFalse(policy.validateDisputers);
     }
 

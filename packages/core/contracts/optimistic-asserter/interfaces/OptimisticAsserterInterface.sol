@@ -4,9 +4,12 @@ pragma solidity 0.8.16;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 interface OptimisticAsserterInterface {
+    // TODO: SecurityManager!!!. rename SovereignSecurityManager->EscalationManager
+    // TODO: Em->EscalationManager...check this is not too long.
+    // Options: AssertionManager, EscalationManager, SecurityManager, SovereignManager.
     struct SsSettings {
-        bool useDisputeResolution; // True if Oracle result is used for resolving assertion after dispute.
-        bool useDvmAsOracle; // True if the DVM is used as an oracle (SovereignSecurity on False).
+        bool arbitrateViaSs; // False if the DVM is used as an oracle (SovereignSecurity on True).
+        bool discardOracle; // False if Oracle result is used for resolving assertion after dispute.
         bool validateDisputers; // True if the SS isDisputeAllowed should be checked on disputes.
         address sovereignSecurity;
         address assertingCaller;
@@ -26,6 +29,11 @@ interface OptimisticAsserterInterface {
         bytes32 claimId;
         bytes32 identifier;
         SsSettings ssSettings;
+    }
+
+    struct WhitelistedCurrency {
+        bool isWhitelisted;
+        uint256 finalFee;
     }
 
     function defaultIdentifier() external view returns (bytes32);
@@ -70,7 +78,7 @@ interface OptimisticAsserterInterface {
         bool settlementResolution
     );
 
-    event AssertionDefaultsSet(IERC20 defaultCurrency, uint256 defaultBond, uint256 defaultLiveness);
+    event AssertionDefaultsSet(IERC20 defaultCurrency, uint256 defaultLiveness);
 
     event BurnedBondPercentageSet(uint256 burnedBondPercentage);
 }

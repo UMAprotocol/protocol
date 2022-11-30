@@ -71,16 +71,16 @@ contract Common is Test {
         timer = oaContracts.timer;
         finder = oaContracts.finder;
         store = oaContracts.store;
-        defaultBond = optimisticAsserter.defaultBond();
+        defaultBond = optimisticAsserter.getMinimumBond(address(defaultCurrency));
         defaultLiveness = optimisticAsserter.defaultLiveness();
         defaultIdentifier = optimisticAsserter.defaultIdentifier();
     }
 
     // Helper functions, re-used in some tests.
     function _mockSsPolicy(
-        bool allowAssertion,
-        bool useDvmAsOracle,
-        bool useDisputeResolution,
+        bool blockAssertion,
+        bool arbitrateViaSs,
+        bool discardOracle,
         bool validateDisputers
     ) internal {
         // Mock getAssertionPolicy call to block assertion. No need to pass assertionId as mockCall uses loose matching.
@@ -89,9 +89,9 @@ contract Common is Test {
             abi.encodePacked(SovereignSecurityInterface.getAssertionPolicy.selector),
             abi.encode(
                 SovereignSecurityInterface.AssertionPolicy({
-                    allowAssertion: allowAssertion,
-                    useDvmAsOracle: useDvmAsOracle,
-                    useDisputeResolution: useDisputeResolution,
+                    blockAssertion: blockAssertion,
+                    arbitrateViaSs: arbitrateViaSs,
+                    discardOracle: discardOracle,
                     validateDisputers: validateDisputers
                 })
             )
@@ -164,8 +164,11 @@ contract Common is Test {
 
     function _allocateBondAndAssertTruth(address asserter, bytes memory claim) public returns (bytes32 assertionId) {
         vm.startPrank(asserter);
-        defaultCurrency.allocateTo(asserter, optimisticAsserter.defaultBond());
-        defaultCurrency.approve(address(optimisticAsserter), optimisticAsserter.defaultBond());
+        defaultCurrency.allocateTo(asserter, optimisticAsserter.getMinimumBond(address(defaultCurrency)));
+        defaultCurrency.approve(
+            address(optimisticAsserter),
+            optimisticAsserter.getMinimumBond(address(defaultCurrency))
+        );
         assertionId = optimisticAsserter.assertTruth(claim);
         vm.stopPrank();
     }

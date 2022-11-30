@@ -4,11 +4,12 @@ pragma solidity 0.8.16;
 import "./OptimisticAsserterCallbackRecipientInterface.sol";
 import "./OptimisticAsserterInterface.sol";
 
+// TODO: sovereignSecurity does not sound like a "thing"...it should be a noun
 interface SovereignSecurityInterface is OptimisticAsserterCallbackRecipientInterface {
     struct AssertionPolicy {
-        bool allowAssertion;
-        bool useDvmAsOracle;
-        bool useDisputeResolution;
+        bool blockAssertion;
+        bool arbitrateViaSs;
+        bool discardOracle;
         bool validateDisputers;
     }
 
