@@ -28,7 +28,7 @@ interface OptimisticAsserterInterface {
         bool settled; // True if the request is settled.
         bool settlementResolution;
         uint64 assertionTime; // Time of the assertion. TODO uint64 could be enough.
-        uint64 expirationTime; // TODO uint64 could be enough.
+        uint64 expirationTime;
     }
 
     struct WhitelistedCurrency {

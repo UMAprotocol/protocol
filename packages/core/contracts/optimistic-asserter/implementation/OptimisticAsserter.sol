@@ -103,24 +103,24 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
 
         uint64 currentTime = uint64(getCurrentTime());
         assertions[assertionId] = Assertion({
-            asserter: asserter,
-            disputer: address(0),
-            callbackRecipient: callbackRecipient,
-            currency: currency,
-            settled: false,
-            settlementResolution: false,
-            bond: bond,
-            assertionTime: currentTime,
-            expirationTime: currentTime + liveness,
-            claimId: keccak256(claim),
-            identifier: identifier,
             escalationManagerSettings: EscalationManagerSettings({
                 arbitrateViaEscalationManager: false, // this is the default behavior: if not specified by the Sovereign security the assertion will use the DVM as an oracle.
                 discardOracle: false, // this is the default behavior: if not specified by the Sovereign security the assertion will respect the Oracle result.
                 validateDisputers: false, // this is the default behavior: if not specified by the Sovereign security the disputer will not be validated.
                 escalationManager: escalationManager,
                 assertingCaller: msg.sender
-            })
+            }),
+            asserter: asserter,
+            disputer: address(0),
+            callbackRecipient: callbackRecipient,
+            currency: currency,
+            claimId: keccak256(claim),
+            identifier: identifier,
+            bond: bond,
+            settled: false,
+            settlementResolution: false,
+            assertionTime: currentTime,
+            expirationTime: currentTime + liveness
         });
 
         {
