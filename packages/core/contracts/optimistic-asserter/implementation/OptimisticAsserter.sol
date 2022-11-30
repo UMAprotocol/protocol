@@ -31,7 +31,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
 
     mapping(bytes32 => Assertion) public assertions;
 
-    uint256 public burnedBondPercentage = 0.5e18; //50% of bond is burned.
+    uint256 public burnedBondPercentage;
 
     bytes32 public constant defaultIdentifier = "ASSERT_TRUTH";
 
@@ -44,26 +44,26 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
         uint256 _defaultLiveness
     ) {
         finder = _finder;
-        setAssertionDefaults(_defaultCurrency, _defaultLiveness);
+        setAdminProperties(_defaultCurrency, _defaultLiveness, 0.5e18);
     }
 
-    function setAssertionDefaults(IERC20 _defaultCurrency, uint256 _defaultLiveness) public onlyOwner {
+    function setAdminProperties(
+        IERC20 _defaultCurrency,
+        uint256 _defaultLiveness,
+        uint256 _burnedBondPercentage
+    ) public onlyOwner {
+        require(_burnedBondPercentage <= 1e18, "Burned bond percentage > 100");
+        require(_burnedBondPercentage > 0, "Burned bond percentage is 0");
+        burnedBondPercentage = _burnedBondPercentage;
         defaultCurrency = _defaultCurrency;
         defaultLiveness = _defaultLiveness;
         syncUmaParams(defaultIdentifier, address(_defaultCurrency));
 
-        emit AssertionDefaultsSet(_defaultCurrency, _defaultLiveness);
+        emit AdminPropertiesSet(_defaultCurrency, _defaultLiveness, _burnedBondPercentage);
     }
 
     function getAssertion(bytes32 assertionId) external view returns (Assertion memory) {
         return assertions[assertionId];
-    }
-
-    function setBurnedBondPercentage(uint256 _burnedBondPercentage) public onlyOwner {
-        require(_burnedBondPercentage <= 1e18, "Burned bond percentage > 100");
-        require(_burnedBondPercentage > 0, "Burned bond percentage is 0");
-        burnedBondPercentage = _burnedBondPercentage;
-        emit BurnedBondPercentageSet(_burnedBondPercentage);
     }
 
     function assertTruthWithDefaults(bytes calldata claim) public returns (bytes32) {
