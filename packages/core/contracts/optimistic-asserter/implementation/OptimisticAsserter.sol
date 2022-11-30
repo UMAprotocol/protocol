@@ -25,6 +25,11 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
 
     FinderInterface public immutable finder;
 
+    // Cached UMA parameters.
+    address public cachedOracle;
+    mapping(address => WhitelistedCurrency) public cachedCurrencies;
+    mapping(bytes32 => bool) public cachedIdentifiers;
+
     mapping(bytes32 => Assertion) public assertions;
 
     // TODO add setters to change burnedBondPercentage
@@ -34,32 +39,25 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
     bytes32 public constant defaultIdentifier = "ASSERT_TRUTH";
 
     IERC20 public defaultCurrency;
-    uint256 public defaultBond;
     uint256 public defaultLiveness;
 
     constructor(
         FinderInterface _finder,
         IERC20 _defaultCurrency,
-        uint256 _defaultBond,
         uint256 _defaultLiveness
     ) {
         finder = _finder;
-        setAssertionDefaults(_defaultCurrency, _defaultBond, _defaultLiveness);
+        setAssertionDefaults(_defaultCurrency, _defaultLiveness);
     }
 
-    // TODO set a sync function to update the defaultBond in the store reading from the Store
-    // TODO consider renaming this.
+    // TODO consider renaming this
     // TODO change to "setAdmin props" by joining with setBurnedBondPercentage
-    function setAssertionDefaults(
-        IERC20 _defaultCurrency,
-        uint256 _defaultBond,
-        uint256 _defaultLiveness
-    ) public onlyOwner {
+    function setAssertionDefaults(IERC20 _defaultCurrency, uint256 _defaultLiveness) public onlyOwner {
         defaultCurrency = _defaultCurrency;
-        defaultBond = _defaultBond;
         defaultLiveness = _defaultLiveness;
+        syncUmaParams(defaultIdentifier, address(_defaultCurrency));
 
-        emit AssertionDefaultsSet(_defaultCurrency, _defaultBond, _defaultLiveness);
+        emit AssertionDefaultsSet(_defaultCurrency, _defaultLiveness);
     }
 
     function getAssertion(bytes32 assertionId) external view returns (Assertion memory) {
@@ -82,7 +80,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
                 address(0), // callbackRecipient
                 address(0), // escalationManager
                 defaultCurrency,
-                defaultBond, // TODO update this when the caching is implemented
+                getMinimumBond(address(defaultCurrency)),
                 defaultLiveness,
                 defaultIdentifier
             );
@@ -105,9 +103,8 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
         bytes32 assertionId = _getId(claim, bond, liveness, currency, callbackRecipient, escalationManager, identifier);
 
         require(assertions[assertionId].asserter == address(0), "Assertion already exists");
-        // TODO [GAS] caching identifier whitelist and collateral currency whitelist
-        require(_getIdentifierWhitelist().isIdentifierSupported(identifier), "Unsupported identifier");
-        require(_getCollateralWhitelist().isOnWhitelist(address(currency)), "Unsupported currency");
+        require(_validateAndCacheIdentifier(identifier), "Unsupported identifier");
+        require(_validateAndCacheCurrency(address(currency)), "Unsupported currency");
         require(bond >= getMinimumBond(address(currency)), "Bond amount too low");
 
         // Pull the bond
@@ -239,6 +236,13 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
         }
     }
 
+    function syncUmaParams(bytes32 identifier, address currency) public {
+        cachedOracle = finder.getImplementationAddress(OracleInterfaces.Oracle);
+        cachedIdentifiers[identifier] = _getIdentifierWhitelist().isIdentifierSupported(identifier);
+        cachedCurrencies[currency].isWhitelisted = _getCollateralWhitelist().isOnWhitelist(currency);
+        cachedCurrencies[currency].finalFee = _getStore().computeFinalFee(currency).rawValue;
+    }
+
     /**
      * @notice Returns the current block timestamp.
      * @dev Can be overridden to control contract time.
@@ -252,7 +256,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
     }
 
     function getMinimumBond(address currencyAddress) public view returns (uint256) {
-        uint256 finalFee = _getStore().computeFinalFee(currencyAddress).rawValue;
+        uint256 finalFee = cachedCurrencies[currencyAddress].finalFee;
         return (finalFee * 1e18) / burnedBondPercentage;
     }
 
@@ -295,11 +299,10 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
         return StoreInterface(finder.getImplementationAddress(OracleInterfaces.Store));
     }
 
-    // TODO: caching oracle
     function _getOracle(bytes32 assertionId) internal view returns (OracleAncillaryInterface) {
         if (assertions[assertionId].escalationManagerSettings.arbitrateViaEscalationManager)
             return OracleAncillaryInterface(address(_getEscalationManager(assertionId)));
-        return OracleAncillaryInterface(finder.getImplementationAddress(OracleInterfaces.Oracle));
+        return OracleAncillaryInterface(cachedOracle);
     }
 
     function _oracleRequestPrice(
@@ -336,6 +339,19 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable {
         address em = assertions[assertionId].escalationManagerSettings.escalationManager;
         if (!assertions[assertionId].escalationManagerSettings.validateDisputers) return true;
         return EscalationManagerInterface(em).isDisputeAllowed(assertionId, msg.sender);
+    }
+
+    function _validateAndCacheIdentifier(bytes32 identifier) internal returns (bool) {
+        if (cachedIdentifiers[identifier]) return true;
+        cachedIdentifiers[identifier] = _getIdentifierWhitelist().isIdentifierSupported(identifier);
+        return cachedIdentifiers[identifier];
+    }
+
+    function _validateAndCacheCurrency(address currency) internal returns (bool) {
+        if (cachedCurrencies[currency].isWhitelisted) return true;
+        cachedCurrencies[currency].isWhitelisted = _getCollateralWhitelist().isOnWhitelist(currency);
+        cachedCurrencies[currency].finalFee = _getStore().computeFinalFee(currency).rawValue;
+        return cachedCurrencies[currency].isWhitelisted;
     }
 
     function _callbackOnAssertionResolve(bytes32 assertionId, bool assertedTruthfully) internal {
