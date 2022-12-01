@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
+import "../../implementation/ClaimData.sol";
 import "../../interfaces/OptimisticAsserterInterface.sol";
-import "../../../common/implementation/AncillaryData.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 // This Isurance contract enables for the issuance of a single unlimited time policy per event/payout recipient There is
@@ -70,7 +70,7 @@ contract Insurance {
                 "Insurance contract is claiming that insurance event ",
                 policies[policyId].insuredEvent,
                 " had occurred as of ",
-                AncillaryData.toUtf8BytesUint(block.timestamp),
+                ClaimData.toUtf8BytesUint(block.timestamp),
                 "."
             ),
             msg.sender,
