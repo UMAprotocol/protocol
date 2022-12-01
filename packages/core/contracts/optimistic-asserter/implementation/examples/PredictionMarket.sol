@@ -3,10 +3,10 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../../../common/implementation/AddressWhitelist.sol";
-import "../../../common/implementation/AncillaryData.sol";
 import "../../../common/implementation/ExpandedERC20.sol";
 import "../../../data-verification-mechanism/implementation/Constants.sol";
 import "../../../data-verification-mechanism/interfaces/FinderInterface.sol";
+import "../../implementation/ClaimData.sol";
 import "../../interfaces/OptimisticAsserterInterface.sol";
 import "../../interfaces/OptimisticAsserterCallbackRecipientInterface.sol";
 
@@ -238,7 +238,7 @@ contract PredictionMarket is OptimisticAsserterCallbackRecipientInterface {
         return
             abi.encodePacked(
                 "As of assertion timestamp ",
-                AncillaryData.toUtf8BytesUint(block.timestamp),
+                ClaimData.toUtf8BytesUint(block.timestamp),
                 ", the described prediction market outcome is: ",
                 outcome,
                 ". The market description is: ",
