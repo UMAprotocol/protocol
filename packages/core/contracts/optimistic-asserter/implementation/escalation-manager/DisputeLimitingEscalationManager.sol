@@ -32,10 +32,9 @@ contract DisputeLimitingEscalationManager is BaseEscalationManager, Ownable {
     }
 
     function getAssertionPolicy(bytes32 assertionId) public view override returns (AssertionPolicy memory) {
-        OptimisticAsserterInterface.Assertion memory assertion = optimisticAsserter.getAssertion(assertionId);
         return
             AssertionPolicy({
-                blockAssertion: _checkIfShouldBlockAssertion(assertion),
+                blockAssertion: _checkIfShouldBlockAssertion(assertionId),
                 arbitrateViaEscalationManager: false,
                 discardOracle: false,
                 validateDisputers: false
@@ -60,11 +59,8 @@ contract DisputeLimitingEscalationManager is BaseEscalationManager, Ownable {
         if (assertionId == disputedAssertionId) disputedAssertionId = bytes32(0);
     }
 
-    function _checkIfShouldBlockAssertion(OptimisticAsserterInterface.Assertion memory assertion)
-        internal
-        view
-        returns (bool)
-    {
+    function _checkIfShouldBlockAssertion(bytes32 assertionId) internal view returns (bool) {
+        OptimisticAsserterInterface.Assertion memory assertion = optimisticAsserter.getAssertion(assertionId);
         if (assertion.escalationManagerSettings.assertingCaller != assertingCaller) return true; // Only allow assertions through linked client contract.
         return disputedAssertionId != bytes32(0); // Block if there is outstanding dispute.
     }
