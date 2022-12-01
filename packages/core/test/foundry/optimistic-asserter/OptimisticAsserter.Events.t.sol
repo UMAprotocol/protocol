@@ -21,11 +21,13 @@ contract OptimisticAsserterEvents is Common {
                 abi.encode(
                     falseClaimAssertion,
                     defaultBond,
+                    uint64(timer.getCurrentTime()),
                     defaultLiveness,
                     address(defaultCurrency),
                     address(0),
                     address(0),
-                    defaultIdentifier
+                    defaultIdentifier,
+                    TestAddress.account1
                 )
             );
 
