@@ -265,12 +265,21 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
         address callbackRecipient,
         address escalationManager,
         bytes32 identifier
-    ) internal pure returns (bytes32) {
+    ) internal view returns (bytes32) {
         // Returns the unique ID for this assertion. This ID is used to identify the assertion in the Oracle.
         return
             keccak256(
-                // TODO change order of abi.encode arguments to do potential gas savings
-                abi.encode(claim, bond, liveness, currency, callbackRecipient, escalationManager, identifier)
+                abi.encode(
+                    claim,
+                    bond,
+                    liveness,
+                    currency,
+                    callbackRecipient,
+                    escalationManager,
+                    identifier,
+                    getCurrentTime(),
+                    msg.sender
+                )
             );
     }
 

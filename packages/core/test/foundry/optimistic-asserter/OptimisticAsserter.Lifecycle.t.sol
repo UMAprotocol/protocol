@@ -23,7 +23,9 @@ contract SimpleAssertionsWithClaimOnly is Common {
                     address(defaultCurrency),
                     address(0),
                     address(0),
-                    defaultIdentifier
+                    defaultIdentifier,
+                    timer.getCurrentTime(),
+                    TestAddress.account1
                 )
             );
 
