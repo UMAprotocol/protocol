@@ -104,14 +104,9 @@ contract SimpleAssertionsWithClaimOnly is Common {
         uint64[10] memory burnedBondPercentages =
             [0.1e18, 0.2e18, 0.3e18, 0.4e18, 0.5e18, 0.6e18, 0.7e18, 0.8e18, 0.9e18, 1e18];
         for (uint256 i = 0; i < burnedBondPercentages.length; i++) {
-            vm.startPrank(TestAddress.owner);
-            optimisticAsserter.setBurnedBondPercentage(burnedBondPercentages[i]);
+            vm.prank(TestAddress.owner);
+            optimisticAsserter.setAdminProperties(defaultCurrency, defaultLiveness, burnedBondPercentages[i]);
             uint256 minimumBond = optimisticAsserter.getMinimumBond(address(defaultCurrency));
-            optimisticAsserter.setAssertionDefaults(
-                optimisticAsserter.defaultCurrency(),
-                optimisticAsserter.defaultLiveness()
-            );
-            vm.stopPrank();
             assertEq(optimisticAsserter.burnedBondPercentage(), burnedBondPercentages[i]);
 
             // Account1 asserts a false claim.
