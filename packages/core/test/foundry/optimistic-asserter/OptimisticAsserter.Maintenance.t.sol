@@ -41,64 +41,64 @@ contract MaintenanceTest is Common {
         assertEq(optimisticAsserter.cachedOracle(), address(newOracle));
     }
 
-    function test_NewCurrency() public {
-        TestnetERC20 newCurrency = new TestnetERC20("New Currency", "NEW", 18);
-        uint256 newCurrencyBond = 100e18;
-        uint256 newCurrencyFinalFee = (newCurrencyBond * optimisticAsserter.burnedBondPercentage()) / 1e18;
-        AddressWhitelist addressWhitelist =
-            AddressWhitelist(finder.getImplementationAddress(OracleInterfaces.CollateralWhitelist));
-        Store store = Store(finder.getImplementationAddress(OracleInterfaces.Store));
+    // function test_NewCurrency() public {
+    //     TestnetERC20 newCurrency = new TestnetERC20("New Currency", "NEW", 18);
+    //     uint256 newCurrencyBond = 100e18;
+    //     uint256 newCurrencyFinalFee = (newCurrencyBond * optimisticAsserter.burnedBondPercentage()) / 1e18;
+    //     AddressWhitelist addressWhitelist =
+    //         AddressWhitelist(finder.getImplementationAddress(OracleInterfaces.CollateralWhitelist));
+    //     Store store = Store(finder.getImplementationAddress(OracleInterfaces.Store));
 
-        vm.startPrank(TestAddress.owner);
-        addressWhitelist.addToWhitelist(address(newCurrency));
-        store.setFinalFee(address(newCurrency), FixedPoint.Unsigned(newCurrencyFinalFee));
-        vm.stopPrank();
+    //     vm.startPrank(TestAddress.owner);
+    //     addressWhitelist.addToWhitelist(address(newCurrency));
+    //     store.setFinalFee(address(newCurrency), FixedPoint.Unsigned(newCurrencyFinalFee));
+    //     vm.stopPrank();
 
-        // New currency should be automatically added to cache when creating new assertion.
-        vm.startPrank(TestAddress.account1);
-        newCurrency.allocateTo(TestAddress.account1, newCurrencyBond);
-        newCurrency.approve(address(optimisticAsserter), newCurrencyBond);
-        optimisticAsserter.assertTruth(
-            trueClaimAssertion,
-            TestAddress.account1,
-            address(0),
-            address(0),
-            newCurrency,
-            newCurrencyBond,
-            defaultLiveness,
-            defaultIdentifier,
-            bytes32(0) // No domain.
-        );
-        vm.stopPrank();
-        (bool cachedWhitelist, uint256 cachedFinalFee) = optimisticAsserter.cachedCurrencies(address(newCurrency));
-        assertTrue(cachedWhitelist);
-        assertEq(cachedFinalFee, newCurrencyFinalFee);
-    }
+    //     // New currency should be automatically added to cache when creating new assertion.
+    //     vm.startPrank(TestAddress.account1);
+    //     newCurrency.allocateTo(TestAddress.account1, newCurrencyBond);
+    //     newCurrency.approve(address(optimisticAsserter), newCurrencyBond);
+    //     optimisticAsserter.assertTruth(
+    //         trueClaimAssertion,
+    //         TestAddress.account1,
+    //         address(0),
+    //         address(0),
+    //         newCurrency,
+    //         newCurrencyBond,
+    //         defaultLiveness,
+    //         defaultIdentifier,
+    //         bytes32(0) // No domain.
+    //     );
+    //     vm.stopPrank();
+    //     (bool cachedWhitelist, uint256 cachedFinalFee) = optimisticAsserter.cachedCurrencies(address(newCurrency));
+    //     assertTrue(cachedWhitelist);
+    //     assertEq(cachedFinalFee, newCurrencyFinalFee);
+    // }
 
-    function test_NewIdentifier() public {
-        bytes32 newIdentifier = "New Identifier";
-        IdentifierWhitelistInterface identifierWhitelist =
-            IdentifierWhitelistInterface(finder.getImplementationAddress(OracleInterfaces.IdentifierWhitelist));
+    // function test_NewIdentifier() public {
+    //     bytes32 newIdentifier = "New Identifier";
+    //     IdentifierWhitelistInterface identifierWhitelist =
+    //         IdentifierWhitelistInterface(finder.getImplementationAddress(OracleInterfaces.IdentifierWhitelist));
 
-        vm.prank(TestAddress.owner);
-        identifierWhitelist.addSupportedIdentifier(newIdentifier);
+    //     vm.prank(TestAddress.owner);
+    //     identifierWhitelist.addSupportedIdentifier(newIdentifier);
 
-        // New identifier should be automatically added to cache when creating new assertion.
-        vm.startPrank(TestAddress.account1);
-        defaultCurrency.allocateTo(TestAddress.account1, defaultBond);
-        defaultCurrency.approve(address(optimisticAsserter), defaultBond);
-        optimisticAsserter.assertTruth(
-            trueClaimAssertion,
-            TestAddress.account1,
-            address(0),
-            address(0),
-            defaultCurrency,
-            defaultBond,
-            defaultLiveness,
-            newIdentifier,
-            bytes32(0) // No domain.
-        );
-        vm.stopPrank();
-        assertTrue(optimisticAsserter.cachedIdentifiers(newIdentifier));
-    }
+    //     // New identifier should be automatically added to cache when creating new assertion.
+    //     vm.startPrank(TestAddress.account1);
+    //     defaultCurrency.allocateTo(TestAddress.account1, defaultBond);
+    //     defaultCurrency.approve(address(optimisticAsserter), defaultBond);
+    //     optimisticAsserter.assertTruth(
+    //         trueClaimAssertion,
+    //         TestAddress.account1,
+    //         address(0),
+    //         address(0),
+    //         defaultCurrency,
+    //         defaultBond,
+    //         defaultLiveness,
+    //         newIdentifier,
+    //         bytes32(0) // No domain.
+    //     );
+    //     vm.stopPrank();
+    //     assertTrue(optimisticAsserter.cachedIdentifiers(newIdentifier));
+    // }
 }
