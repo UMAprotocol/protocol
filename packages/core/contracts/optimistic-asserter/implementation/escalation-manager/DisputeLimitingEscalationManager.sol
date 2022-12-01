@@ -6,6 +6,7 @@ import "../../interfaces/OptimisticAsserterInterface.sol";
 
 // This Escalation Manager blocks all assertions till the blocking dispute is resolved by Oracle. In order to avoid
 // interference among different applications this Escalation Manager allows assertions only from one requesting contract.
+// This is useful to create a system where only one assertion dispute can occur at a time.
 contract DisputeLimitingEscalationManager is BaseEscalationManager, Ownable {
     OptimisticAsserterInterface public immutable optimisticAsserter;
 
