@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import "./Common.sol";
 
 contract OptimisticAsserterEvents is Common {
-    event AdminPropertiesSet(IERC20 defaultCurrency, uint256 defaultLiveness, uint256 burnedBondPercentage);
+    event AdminPropertiesSet(IERC20 defaultCurrency, uint64 defaultLiveness, uint256 burnedBondPercentage);
 
     function setUp() public {
         _commonSetup();
@@ -39,7 +39,7 @@ contract OptimisticAsserterEvents is Common {
             TestAddress.account1,
             defaultCurrency,
             defaultBond,
-            timer.getCurrentTime() + defaultLiveness
+            uint64(timer.getCurrentTime()) + defaultLiveness
         );
 
         // Account1 asserts a false claim.

@@ -42,7 +42,7 @@ contract PredictionMarket is OptimisticAsserterCallbackRecipientInterface {
     FinderInterface public immutable finder; // UMA protocol Finder used to discover other protocol contracts.
     IERC20 public immutable currency; // Currency used for all prediction markets.
     OptimisticAsserterInterface public immutable oa;
-    uint256 public constant assertionLiveness = 7200; // 2 hours.
+    uint64 public constant assertionLiveness = 7200; // 2 hours.
     bytes32 public immutable defaultIdentifier; // Identifier used for all prediction markets.
     bytes public constant unresolvable = "Unresolvable"; // Name of the unresolvable outcome where payouts are split.
 

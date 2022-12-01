@@ -36,12 +36,12 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
     bytes32 public constant defaultIdentifier = "ASSERT_TRUTH";
 
     IERC20 public defaultCurrency;
-    uint256 public defaultLiveness;
+    uint64 public defaultLiveness;
 
     constructor(
         FinderInterface _finder,
         IERC20 _defaultCurrency,
-        uint256 _defaultLiveness
+        uint64 _defaultLiveness
     ) {
         finder = _finder;
         setAdminProperties(_defaultCurrency, _defaultLiveness, 0.5e18);
@@ -49,7 +49,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
 
     function setAdminProperties(
         IERC20 _defaultCurrency,
-        uint256 _defaultLiveness,
+        uint64 _defaultLiveness,
         uint256 _burnedBondPercentage
     ) public onlyOwner {
         require(_burnedBondPercentage <= 1e18, "Burned bond percentage > 100");
@@ -88,7 +88,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
         address escalationManager,
         IERC20 currency,
         uint256 bond,
-        uint256 liveness,
+        uint64 liveness,
         bytes32 identifier
     ) public nonReentrant returns (bytes32) {
         // TODO: think about placing either msg.sender or block.timestamp into the claim ID to block an advasery
@@ -101,26 +101,26 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
         require(_validateAndCacheCurrency(address(currency)), "Unsupported currency");
         require(bond >= getMinimumBond(address(currency)), "Bond amount too low");
 
-        uint256 currentTime = getCurrentTime();
+        uint64 currentTime = uint64(getCurrentTime());
         assertions[assertionId] = Assertion({
-            asserter: asserter,
-            disputer: address(0),
-            callbackRecipient: callbackRecipient,
-            currency: currency,
-            settled: false,
-            settlementResolution: false,
-            bond: bond,
-            assertionTime: currentTime,
-            expirationTime: currentTime + liveness,
-            claimId: keccak256(claim),
-            identifier: identifier,
             escalationManagerSettings: EscalationManagerSettings({
                 arbitrateViaEscalationManager: false, // this is the default behavior: if not specified by the Sovereign security the assertion will use the DVM as an oracle.
                 discardOracle: false, // this is the default behavior: if not specified by the Sovereign security the assertion will respect the Oracle result.
                 validateDisputers: false, // this is the default behavior: if not specified by the Sovereign security the disputer will not be validated.
                 escalationManager: escalationManager,
                 assertingCaller: msg.sender
-            })
+            }),
+            asserter: asserter,
+            disputer: address(0),
+            callbackRecipient: callbackRecipient,
+            currency: currency,
+            claimId: keccak256(claim),
+            identifier: identifier,
+            bond: bond,
+            settled: false,
+            settlementResolution: false,
+            assertionTime: currentTime,
+            expirationTime: currentTime + liveness
         });
 
         {
@@ -260,7 +260,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
     function _getId(
         bytes calldata claim,
         uint256 bond,
-        uint256 liveness,
+        uint64 liveness,
         IERC20 currency,
         address callbackRecipient,
         address escalationManager,

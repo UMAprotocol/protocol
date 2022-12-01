@@ -12,7 +12,7 @@ contract Insurance {
     using SafeERC20 for IERC20;
     IERC20 public immutable defaultCurrency;
     OptimisticAsserterInterface public immutable oa;
-    uint256 public constant assertionLiveness = 7200;
+    uint64 public constant assertionLiveness = 7200;
     bytes32 public immutable defaultIdentifier;
 
     struct Policy {
