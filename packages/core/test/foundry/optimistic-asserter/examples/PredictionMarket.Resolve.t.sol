@@ -14,11 +14,11 @@ contract PredictionMarketResolveTest is PredictionMarketTestCommon {
         bytes32 assertionId = _assertMarket(marketId, outcome1);
         uint256 asserterBalanceBefore = defaultCurrency.balanceOf(TestAddress.account1);
 
-        // Advance time past liveness and settle the assertion. This should trigger truthful assertionResolved callback.
+        // Advance time past liveness and settle the assertion. This should trigger truthful assertionResolvedCallback.
         timer.setCurrentTime(timer.getCurrentTime() + defaultLiveness);
         vm.expectCall(
             address(predictionMarket),
-            abi.encodeCall(predictionMarket.assertionResolved, (assertionId, true))
+            abi.encodeCall(predictionMarket.assertionResolvedCallback, (assertionId, true))
         );
         assertTrue(optimisticAsserter.settleAndGetAssertionResult(assertionId));
 
@@ -35,12 +35,12 @@ contract PredictionMarketResolveTest is PredictionMarketTestCommon {
         bytes32 assertionId = _assertMarket(marketId, outcome1);
         uint256 asserterBalanceBefore = defaultCurrency.balanceOf(TestAddress.account1);
 
-        // Dispute the assertion, but resolve it true at the Oracle. This should trigger truthful assertionResolved callback.
+        // Dispute the assertion, but resolve it true at the Oracle. This should trigger truthful assertionResolvedCallback.
         OracleRequest memory oracleRequest = _disputeAndGetOracleRequest(assertionId, requiredBond);
         _mockOracleResolved(address(mockOracle), oracleRequest, true);
         vm.expectCall(
             address(predictionMarket),
-            abi.encodeCall(predictionMarket.assertionResolved, (assertionId, true))
+            abi.encodeCall(predictionMarket.assertionResolvedCallback, (assertionId, true))
         );
         assertTrue(optimisticAsserter.settleAndGetAssertionResult(assertionId));
 
@@ -60,12 +60,12 @@ contract PredictionMarketResolveTest is PredictionMarketTestCommon {
         bytes32 assertionId = _assertMarket(marketId, outcome1);
         uint256 pmBalanceBefore = defaultCurrency.balanceOf(address(predictionMarket));
 
-        // Dispute the assertion, but resolve it false at the Oracle. This should trigger false assertionResolved callback.
+        // Dispute the assertion, but resolve it false at the Oracle. This should trigger false assertionResolvedCallback.
         OracleRequest memory oracleRequest = _disputeAndGetOracleRequest(assertionId, requiredBond);
         _mockOracleResolved(address(mockOracle), oracleRequest, false);
         vm.expectCall(
             address(predictionMarket),
-            abi.encodeCall(predictionMarket.assertionResolved, (assertionId, false))
+            abi.encodeCall(predictionMarket.assertionResolvedCallback, (assertionId, false))
         );
         assertFalse(optimisticAsserter.settleAndGetAssertionResult(assertionId));
 

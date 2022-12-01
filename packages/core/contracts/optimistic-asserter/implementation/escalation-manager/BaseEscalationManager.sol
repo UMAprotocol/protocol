@@ -33,7 +33,9 @@ contract BaseEscalationManager is EscalationManagerInterface {
         emit PriceRequestAdded(identifier, time, ancillaryData);
     }
 
-    function assertionResolved(bytes32 assertionId, bool assertedTruthfully) public {}
+    // Callback function that is called by Optimistic Asserter when an assertion is resolved.
+    function assertionResolvedCallback(bytes32 assertionId, bool assertedTruthfully) public virtual override {}
 
-    function assertionDisputed(bytes32 assertionId) public {}
+    // Callback function that is called by Optimistic Asserter when an assertion is disputed.
+    function assertionDisputedCallback(bytes32 assertionId) public virtual override {}
 }

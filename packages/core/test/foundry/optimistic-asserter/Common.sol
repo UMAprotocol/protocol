@@ -183,7 +183,7 @@ contract Common is Test {
         vm.expectCall(
             callbackRecipient,
             abi.encodeWithSelector(
-                OptimisticAsserterCallbackRecipientInterface.assertionResolved.selector,
+                OptimisticAsserterCallbackRecipientInterface.assertionResolvedCallback.selector,
                 assertionId,
                 assertedTruthfully
             )
@@ -193,7 +193,20 @@ contract Common is Test {
     function _expectAssertionDisputedCallback(address callbackRecipient, bytes32 assertionId) internal {
         vm.expectCall(
             callbackRecipient,
-            abi.encodeWithSelector(OptimisticAsserterCallbackRecipientInterface.assertionDisputed.selector, assertionId)
+            abi.encodeWithSelector(
+                OptimisticAsserterCallbackRecipientInterface.assertionDisputedCallback.selector,
+                assertionId
+            )
+        );
+    }
+
+    function _mockGetAssertionAssertingCaller(address mockAssertingCaller, bytes32 assertionId) public {
+        OptimisticAsserterInterface.Assertion memory assertion;
+        assertion.escalationManagerSettings.assertingCaller = mockAssertingCaller;
+        vm.mockCall(
+            mockOptimisticAsserterAddress,
+            abi.encodeWithSelector(OptimisticAsserterInterface.getAssertion.selector, assertionId),
+            abi.encode(assertion)
         );
     }
 }

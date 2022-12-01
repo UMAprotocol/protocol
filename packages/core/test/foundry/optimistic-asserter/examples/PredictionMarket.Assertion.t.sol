@@ -75,7 +75,10 @@ contract PredictionMarketAssertionTest is PredictionMarketTestCommon {
     function test_DisputeCallbackReceived() public {
         bytes32 assertionId = _assertMarket(marketId, outcome1);
 
-        vm.expectCall(address(predictionMarket), abi.encodeCall(predictionMarket.assertionDisputed, (assertionId)));
+        vm.expectCall(
+            address(predictionMarket),
+            abi.encodeCall(predictionMarket.assertionDisputedCallback, (assertionId))
+        );
         _disputeAndGetOracleRequest(assertionId, requiredBond);
     }
 }
