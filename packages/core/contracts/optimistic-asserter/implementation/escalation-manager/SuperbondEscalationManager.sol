@@ -9,18 +9,24 @@ import "../../interfaces/OptimisticAsserterInterface.sol";
 // it is arbitrated through the DVM.
 contract SuperbondEscalationManager is BaseEscalationManager, Ownable {
     uint256 public superbond;
+    address public superbondCurrency;
 
     function setSuperbond(uint256 newSuperbond) public onlyOwner {
         superbond = newSuperbond;
     }
 
+    function setSuperbondCurrency(address newSuperbondCurrency) public onlyOwner {
+        superbondCurrency = newSuperbondCurrency;
+    }
+
     function getAssertionPolicy(bytes32 assertionId) public view override returns (AssertionPolicy memory) {
         OptimisticAsserterInterface optimisticAsserter = OptimisticAsserterInterface(msg.sender);
         OptimisticAsserterInterface.Assertion memory assertion = optimisticAsserter.getAssertion(assertionId);
+        bool isSuperbondCurrency = address(assertion.currency) == superbondCurrency;
         return
             AssertionPolicy({
                 blockAssertion: false,
-                arbitrateViaEscalationManager: assertion.bond > superbond,
+                arbitrateViaEscalationManager: isSuperbondCurrency ? assertion.bond > superbond : false,
                 discardOracle: false,
                 validateDisputers: false
             });
