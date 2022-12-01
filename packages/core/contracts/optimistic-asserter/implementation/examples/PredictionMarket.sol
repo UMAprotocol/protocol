@@ -2,12 +2,11 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "../../implementation/OptimisticAsserter.sol";
 import "../../../common/implementation/AddressWhitelist.sol";
-import "../../../common/implementation/AncillaryData.sol";
 import "../../../common/implementation/ExpandedERC20.sol";
 import "../../../data-verification-mechanism/implementation/Constants.sol";
 import "../../../data-verification-mechanism/interfaces/FinderInterface.sol";
-import "../../interfaces/OptimisticAsserterInterface.sol";
 import "../../interfaces/OptimisticAsserterCallbackRecipientInterface.sol";
 
 // This contract allows to initialize prediction markets each having a pair of binary outcome tokens. Anyone can mint

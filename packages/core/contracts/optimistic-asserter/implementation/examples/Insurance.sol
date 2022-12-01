@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import "../../interfaces/OptimisticAsserterInterface.sol";
-import "../../../common/implementation/AncillaryData.sol";
+import "../../implementation/OptimisticAsserter.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 // This Isurance contract enables for the issuance of a single unlimited time policy per event/payout recipient There is
