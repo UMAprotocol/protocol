@@ -155,7 +155,7 @@ contract PredictionMarket is OptimisticAsserterCallbackRecipientInterface {
         currency.safeApprove(address(oa), bond);
         assertionId = _assertTruthWithDefaults(claim, bond);
 
-        // Store the asserter and marketId for the assertionResolved callback.
+        // Store the asserter and marketId for the assertionResolvedCallback.
         assertedMarkets[assertionId] = AssertedMarket({ asserter: msg.sender, marketId: marketId });
 
         emit MarketAsserted(marketId, assertedOutcome, assertionId);
@@ -164,7 +164,7 @@ contract PredictionMarket is OptimisticAsserterCallbackRecipientInterface {
     // Callback from settled assertion.
     // If the assertion was resolved true, then the asserter gets the reward and the market is marked as resolved.
     // Otherwise, assertedOutcomeId is reset and the market can be asserted again.
-    function assertionResolved(bytes32 assertionId, bool assertedTruthfully) public {
+    function assertionResolvedCallback(bytes32 assertionId, bool assertedTruthfully) public {
         require(msg.sender == address(oa), "Not authorized");
         Market storage market = markets[assertedMarkets[assertionId].marketId];
 
@@ -177,7 +177,7 @@ contract PredictionMarket is OptimisticAsserterCallbackRecipientInterface {
     }
 
     // Dispute callback does nothing.
-    function assertionDisputed(bytes32 assertionId) public {}
+    function assertionDisputedCallback(bytes32 assertionId) public {}
 
     // Mints pair of tokens representing the value of outcome1 and outcome2. Trading of outcome tokens is outside of the
     // scope of this contract. The caller must approve this contract to spend the currency tokens.

@@ -88,7 +88,7 @@ contract DataAsserter {
     }
 
     // OptimisticAsserter resolve callback.
-    function assertionResolved(bytes32 assertionId, bool assertedTruthfully) public {
+    function assertionResolvedCallback(bytes32 assertionId, bool assertedTruthfully) public {
         require(msg.sender == address(oa));
         // If the assertion was true, then the data assertion is resolved.
         if (assertedTruthfully) {
@@ -101,5 +101,5 @@ contract DataAsserter {
 
     // If assertion is disputed, do nothing and wait for resolution.
     // This OptimisticAsserter callback function needs to be defined so the OA doesn't revert when it tries to call it.
-    function assertionDisputed(bytes32 assertionId) public {}
+    function assertionDisputedCallback(bytes32 assertionId) public {}
 }

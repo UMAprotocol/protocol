@@ -85,7 +85,7 @@ contract Insurance {
         emit InsurancePayoutRequested(policyId, assertionId);
     }
 
-    function assertionResolved(bytes32 assertionId, bool assertedTruthfully) public {
+    function assertionResolvedCallback(bytes32 assertionId, bool assertedTruthfully) public {
         require(msg.sender == address(oa));
         // If the assertion was true, then the policy is settled.
         if (assertedTruthfully) {
@@ -93,7 +93,7 @@ contract Insurance {
         }
     }
 
-    function assertionDisputed(bytes32 assertionId) public {}
+    function assertionDisputedCallback(bytes32 assertionId) public {}
 
     function _settlePayout(bytes32 assertionId) internal {
         // If already settled, do nothing. We don't revert because this function is called by the

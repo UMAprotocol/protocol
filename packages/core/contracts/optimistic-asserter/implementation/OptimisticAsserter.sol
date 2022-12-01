@@ -353,22 +353,19 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
 
     function _callbackOnAssertionResolve(bytes32 assertionId, bool assertedTruthfully) internal {
         if (assertions[assertionId].callbackRecipient != address(0))
-            OptimisticAsserterCallbackRecipientInterface(assertions[assertionId].callbackRecipient).assertionResolved(
-                assertionId,
-                assertedTruthfully
-            );
+            OptimisticAsserterCallbackRecipientInterface(assertions[assertionId].callbackRecipient)
+                .assertionResolvedCallback(assertionId, assertedTruthfully);
         if (assertions[assertionId].escalationManagerSettings.escalationManager != address(0))
             EscalationManagerInterface(assertions[assertionId].escalationManagerSettings.escalationManager)
-                .assertionResolved(assertionId, assertedTruthfully);
+                .assertionResolvedCallback(assertionId, assertedTruthfully);
     }
 
     function _callbackOnAssertionDispute(bytes32 assertionId) internal {
         if (assertions[assertionId].callbackRecipient != address(0))
-            OptimisticAsserterCallbackRecipientInterface(assertions[assertionId].callbackRecipient).assertionDisputed(
-                assertionId
-            );
+            OptimisticAsserterCallbackRecipientInterface(assertions[assertionId].callbackRecipient)
+                .assertionDisputedCallback(assertionId);
         if (assertions[assertionId].escalationManagerSettings.escalationManager != address(0))
             EscalationManagerInterface(assertions[assertionId].escalationManagerSettings.escalationManager)
-                .assertionDisputed(assertionId);
+                .assertionDisputedCallback(assertionId);
     }
 }

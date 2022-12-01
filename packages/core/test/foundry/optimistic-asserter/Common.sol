@@ -183,7 +183,7 @@ contract Common is Test {
         vm.expectCall(
             callbackRecipient,
             abi.encodeWithSelector(
-                OptimisticAsserterCallbackRecipientInterface.assertionResolved.selector,
+                OptimisticAsserterCallbackRecipientInterface.assertionResolvedCallback.selector,
                 assertionId,
                 assertedTruthfully
             )
@@ -193,7 +193,10 @@ contract Common is Test {
     function _expectAssertionDisputedCallback(address callbackRecipient, bytes32 assertionId) internal {
         vm.expectCall(
             callbackRecipient,
-            abi.encodeWithSelector(OptimisticAsserterCallbackRecipientInterface.assertionDisputed.selector, assertionId)
+            abi.encodeWithSelector(
+                OptimisticAsserterCallbackRecipientInterface.assertionDisputedCallback.selector,
+                assertionId
+            )
         );
     }
 }

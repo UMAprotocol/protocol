@@ -41,7 +41,8 @@ contract DisputeLimitingEscalationManager is BaseEscalationManager, Ownable {
             });
     }
 
-    function assertionDisputed(bytes32 assertionId) public override {
+    // Callback function that is called by Optimistic Asserter when an assertion is disputed.
+    function assertionDisputedCallback(bytes32 assertionId) public override {
         require(msg.sender == address(optimisticAsserter), "Not authorized");
 
         // Only apply new assertion block if the dispute is related to the linked client contract.
@@ -50,7 +51,8 @@ contract DisputeLimitingEscalationManager is BaseEscalationManager, Ownable {
         }
     }
 
-    function assertionResolved(bytes32 assertionId, bool) public override {
+    // Callback function that is called by Optimistic Asserter when an assertion is resolved.
+    function assertionResolvedCallback(bytes32 assertionId, bool) public override {
         require(msg.sender == address(optimisticAsserter), "Not authorized");
 
         // Remove assertion block if the disputed assertion was resolved.
