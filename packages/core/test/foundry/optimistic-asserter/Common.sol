@@ -199,4 +199,14 @@ contract Common is Test {
             )
         );
     }
+
+    function _mockGetAssertionAssertingCaller(address mockAssertingCaller, bytes32 assertionId) public {
+        OptimisticAsserterInterface.Assertion memory assertion;
+        assertion.escalationManagerSettings.assertingCaller = mockAssertingCaller;
+        vm.mockCall(
+            mockOptimisticAsserterAddress,
+            abi.encodeWithSelector(OptimisticAsserterInterface.getAssertion.selector, assertionId),
+            abi.encode(assertion)
+        );
+    }
 }
