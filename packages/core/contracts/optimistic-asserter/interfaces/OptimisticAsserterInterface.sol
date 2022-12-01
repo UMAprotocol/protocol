@@ -78,7 +78,5 @@ interface OptimisticAsserterInterface {
         bool settlementResolution
     );
 
-    event AssertionDefaultsSet(IERC20 defaultCurrency, uint64 defaultLiveness);
-
-    event BurnedBondPercentageSet(uint256 burnedBondPercentage);
+    event AdminPropertiesSet(IERC20 defaultCurrency, uint64 defaultLiveness, uint256 burnedBondPercentage);
 }

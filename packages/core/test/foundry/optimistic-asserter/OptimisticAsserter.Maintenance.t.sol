@@ -22,18 +22,12 @@ contract MaintenanceTest is Common {
 
     function test_OwnershipFunctionality() public {
         vm.expectRevert("Ownable: caller is not the owner");
-        optimisticAsserter.setAssertionDefaults(IERC20(TestAddress.random), 69);
+        optimisticAsserter.setAdminProperties(IERC20(TestAddress.random), 69, 0.3e18);
 
         vm.prank(TestAddress.owner);
-        optimisticAsserter.setAssertionDefaults(IERC20(TestAddress.random), 69);
+        optimisticAsserter.setAdminProperties(IERC20(TestAddress.random), 69, 0.3e18);
         assertEq(address(optimisticAsserter.defaultCurrency()), TestAddress.random);
         assertEq(optimisticAsserter.defaultLiveness(), 69);
-
-        vm.expectRevert("Ownable: caller is not the owner");
-        optimisticAsserter.setBurnedBondPercentage(0.3e18);
-
-        vm.prank(TestAddress.owner);
-        optimisticAsserter.setBurnedBondPercentage(0.3e18);
         assertEq(optimisticAsserter.burnedBondPercentage(), 0.3e18);
     }
 

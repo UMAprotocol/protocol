@@ -25,6 +25,7 @@ contract Common is Test {
     // Constants, that might be used in tests.
     bytes trueClaimAssertion = bytes("q:'The sky is blue'");
     bytes falseClaimAssertion = bytes("q:'The sky is red'");
+    uint256 burnedBondPercentage;
     uint256 defaultBond;
     uint64 defaultLiveness;
     bytes32 defaultIdentifier;
@@ -71,6 +72,7 @@ contract Common is Test {
         timer = oaContracts.timer;
         finder = oaContracts.finder;
         store = oaContracts.store;
+        burnedBondPercentage = optimisticAsserter.burnedBondPercentage();
         defaultBond = optimisticAsserter.getMinimumBond(address(defaultCurrency));
         defaultLiveness = optimisticAsserter.defaultLiveness();
         defaultIdentifier = optimisticAsserter.defaultIdentifier();
