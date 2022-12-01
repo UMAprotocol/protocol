@@ -62,10 +62,6 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
         emit AdminPropertiesSet(_defaultCurrency, _defaultLiveness, _burnedBondPercentage);
     }
 
-    function getAssertion(bytes32 assertionId) external view returns (Assertion memory) {
-        return assertions[assertionId];
-    }
-
     function assertTruthWithDefaults(bytes calldata claim) public returns (bytes32) {
         // Note: re-entrancy guard is done in the inner call.
         return
@@ -91,8 +87,6 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
         uint64 liveness,
         bytes32 identifier
     ) public nonReentrant returns (bytes32) {
-        // TODO: think about placing either msg.sender or block.timestamp into the claim ID to block an advasery
-        // creating a claim that collides with a known assertion that will be created into the future.
         uint64 currentTime = uint64(getCurrentTime());
         bytes32 assertionId =
             _getId(claim, bond, currentTime, liveness, currency, callbackRecipient, escalationManager, identifier);
@@ -105,9 +99,9 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
 
         assertions[assertionId] = Assertion({
             escalationManagerSettings: EscalationManagerSettings({
-                arbitrateViaEscalationManager: false, // this is the default behavior: if not specified by the Sovereign security the assertion will use the DVM as an oracle.
-                discardOracle: false, // this is the default behavior: if not specified by the Sovereign security the assertion will respect the Oracle result.
-                validateDisputers: false, // this is the default behavior: if not specified by the Sovereign security the disputer will not be validated.
+                arbitrateViaEscalationManager: false, // Default behavior: use the DVM as an oracle.
+                discardOracle: false, // Default behavior: respect the Oracle result.
+                validateDisputers: false, // Default behavior: disputer will not be validated.
                 escalationManager: escalationManager,
                 assertingCaller: msg.sender
             }),
@@ -125,20 +119,23 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
         });
 
         {
-            // Scope for Escalation Manager Settings update, avoids stack too deep errors
             EscalationManagerInterface.AssertionPolicy memory assertionPolicy = _getAssertionPolicy(assertionId);
-            // Check if the assertion is allowed by the sovereign security.
-            require(!assertionPolicy.blockAssertion, "Assertion not allowed");
+            require(!assertionPolicy.blockAssertion, "Assertion not allowed"); // Check if the assertion is permitted.
             EscalationManagerSettings storage emSettings = assertions[assertionId].escalationManagerSettings;
             (emSettings.arbitrateViaEscalationManager, emSettings.discardOracle, emSettings.validateDisputers) = (
-                assertionPolicy.arbitrateViaEscalationManager, // Use SS as an oracle if specified by the SS.
-                assertionPolicy.discardOracle, // Discard Oracle result if specified by the SS.
-                assertionPolicy.validateDisputers // Validate the disputers if specified by the SS.
+                // Choose which oracle to arbitrate disputes via. If Set to true then the escalation manager will
+                // arbitrate disputes. Else, the DVM arbitrates disputes. This lets integrations "unplug" the DVM.
+                assertionPolicy.arbitrateViaEscalationManager,
+                // Choose whether to discard the Oracle result. If true then "throw away" the assertion. To get an
+                // assertion to be true it must be re-asserted and not disputed.
+                assertionPolicy.discardOracle,
+                // Configures if the escalation manager should validate the disputer on assertions. This enables you
+                // to construct setups such as whitelisted disputers.
+                assertionPolicy.validateDisputers
             );
         }
 
-        // Pull the bond
-        currency.safeTransferFrom(msg.sender, address(this), bond);
+        currency.safeTransferFrom(msg.sender, address(this), bond); // Pull the bond from the caller.
 
         emit AssertionMade(
             assertionId,
@@ -155,14 +152,6 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
         return assertionId;
     }
 
-    function getAssertionResult(bytes32 assertionId) public view returns (bool) {
-        Assertion memory assertion = assertions[assertionId];
-        // Return early if not using answer from resolved dispute.
-        if (assertion.disputer != address(0) && assertion.escalationManagerSettings.discardOracle) return false;
-        require(assertion.settled, "Assertion not settled"); // Revert if assertion not settled.
-        return assertion.settlementResolution;
-    }
-
     function settleAndGetAssertionResult(bytes32 assertionId) public returns (bool) {
         // Note: re-entrancy guard is done in the inner settleAssertion call.
         if (!assertions[assertionId].settled) settleAssertion(assertionId);
@@ -172,20 +161,17 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
     function disputeAssertion(bytes32 assertionId, address disputer) public nonReentrant {
         require(disputer != address(0), "Disputer cant be 0");
         Assertion storage assertion = assertions[assertionId];
-        require(assertion.asserter != address(0), "Assertion does not exist"); // Revert if assertion does not exist.
-        require(assertion.disputer == address(0), "Assertion already disputed"); // Revert if assertion already disputed.
-        require(assertion.expirationTime > getCurrentTime(), "Assertion is expired"); // Revert if assertion expired.
-        require(_isDisputeAllowed(assertionId), "Dispute not allowed"); // Revert if dispute not allowed.
+        require(assertion.asserter != address(0), "Assertion does not exist");
+        require(assertion.disputer == address(0), "Assertion already disputed");
+        require(assertion.expirationTime > getCurrentTime(), "Assertion is expired");
+        require(_isDisputeAllowed(assertionId), "Dispute not allowed");
 
         assertion.disputer = disputer;
 
-        // Pull the bond
         assertion.currency.safeTransferFrom(msg.sender, address(this), assertion.bond);
 
         _oracleRequestPrice(assertionId, assertion.identifier, assertion.assertionTime);
 
-        // Send dispute callback
-        // TODO: consider mergeing the isDisputeAlloowed into toe SSM callback (revert within callback to block).
         _callbackOnAssertionDispute(assertionId);
 
         // Send resolve callback if dispute resolution is discarded
@@ -239,6 +225,18 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
         cachedIdentifiers[identifier] = _getIdentifierWhitelist().isIdentifierSupported(identifier);
         cachedCurrencies[currency].isWhitelisted = _getCollateralWhitelist().isOnWhitelist(currency);
         cachedCurrencies[currency].finalFee = _getStore().computeFinalFee(currency).rawValue;
+    }
+
+    function getAssertion(bytes32 assertionId) external view returns (Assertion memory) {
+        return assertions[assertionId];
+    }
+
+    function getAssertionResult(bytes32 assertionId) public view returns (bool) {
+        Assertion memory assertion = assertions[assertionId];
+        // Return early if not using answer from resolved dispute.
+        if (assertion.disputer != address(0) && assertion.escalationManagerSettings.discardOracle) return false;
+        require(assertion.settled, "Assertion not settled"); // Revert if assertion not settled.
+        return assertion.settlementResolution;
     }
 
     /**
