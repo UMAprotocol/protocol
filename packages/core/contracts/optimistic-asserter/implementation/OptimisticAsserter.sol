@@ -93,7 +93,9 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
     ) public nonReentrant returns (bytes32) {
         // TODO: think about placing either msg.sender or block.timestamp into the claim ID to block an advasery
         // creating a claim that collides with a known assertion that will be created into the future.
-        bytes32 assertionId = _getId(claim, bond, liveness, currency, callbackRecipient, escalationManager, identifier);
+        uint64 currentTime = uint64(getCurrentTime());
+        bytes32 assertionId =
+            _getId(claim, bond, currentTime, liveness, currency, callbackRecipient, escalationManager, identifier);
 
         require(asserter != address(0), "Asserter cant be 0");
         require(assertions[assertionId].asserter == address(0), "Assertion already exists");
@@ -101,7 +103,6 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
         require(_validateAndCacheCurrency(address(currency)), "Unsupported currency");
         require(bond >= getMinimumBond(address(currency)), "Bond amount too low");
 
-        uint64 currentTime = uint64(getCurrentTime());
         assertions[assertionId] = Assertion({
             escalationManagerSettings: EscalationManagerSettings({
                 arbitrateViaEscalationManager: false, // this is the default behavior: if not specified by the Sovereign security the assertion will use the DVM as an oracle.
@@ -260,6 +261,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
     function _getId(
         bytes calldata claim,
         uint256 bond,
+        uint256 currentTime,
         uint64 liveness,
         IERC20 currency,
         address callbackRecipient,
@@ -272,12 +274,12 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
                 abi.encode(
                     claim,
                     bond,
+                    currentTime,
                     liveness,
                     currency,
                     callbackRecipient,
                     escalationManager,
                     identifier,
-                    getCurrentTime(),
                     msg.sender
                 )
             );

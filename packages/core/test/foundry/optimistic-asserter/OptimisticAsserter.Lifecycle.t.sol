@@ -19,12 +19,12 @@ contract SimpleAssertionsWithClaimOnly is Common {
                 abi.encode(
                     trueClaimAssertion,
                     defaultBond,
+                    uint64(timer.getCurrentTime()),
                     defaultLiveness,
                     address(defaultCurrency),
                     address(0),
                     address(0),
                     defaultIdentifier,
-                    timer.getCurrentTime(),
                     TestAddress.account1
                 )
             );
