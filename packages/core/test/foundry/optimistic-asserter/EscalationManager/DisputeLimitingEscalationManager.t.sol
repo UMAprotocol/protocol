@@ -54,6 +54,9 @@ contract DisputeLimitingEscalationManagerTest is Common {
         vm.prank(mockOptimisticAsserterAddress);
         EscalationManagerInterface.AssertionPolicy memory policy = escalationManager.getAssertionPolicy(assertionId);
         assertTrue(policy.blockAssertion);
+        assertFalse(policy.arbitrateViaEscalationManager);
+        assertFalse(policy.discardOracle);
+        assertFalse(policy.validateDisputers);
     }
 
     function test_AllowWithAssertingCallerSet() public {
@@ -63,6 +66,9 @@ contract DisputeLimitingEscalationManagerTest is Common {
         vm.prank(mockOptimisticAsserterAddress);
         EscalationManagerInterface.AssertionPolicy memory policy = escalationManager.getAssertionPolicy(assertionId);
         assertFalse(policy.blockAssertion);
+        assertFalse(policy.arbitrateViaEscalationManager);
+        assertFalse(policy.discardOracle);
+        assertFalse(policy.validateDisputers);
     }
 
     function test_DisputeBlocksAssertions() public {
