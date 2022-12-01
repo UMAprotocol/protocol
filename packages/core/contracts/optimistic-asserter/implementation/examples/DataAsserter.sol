@@ -81,7 +81,8 @@ contract DataAsserter {
             defaultCurrency,
             bond,
             assertionLiveness,
-            defaultIdentifier
+            defaultIdentifier,
+            bytes32(0) // No domain.
         );
         assertionsData[assertionId] = DataAssertion(dataId, data, asserter, false);
         emit DataAsserted(dataId, data, asserter, assertionId);

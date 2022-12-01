@@ -32,6 +32,7 @@ contract OptimisticAsserterEvents is Common {
         vm.expectEmit(true, true, true, true);
         emit AssertionMade(
             expectedAssertionId,
+            bytes32(0),
             falseClaimAssertion,
             TestAddress.account1,
             address(0),

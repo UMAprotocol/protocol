@@ -66,7 +66,8 @@ contract MaintenanceTest is Common {
             newCurrency,
             newCurrencyBond,
             defaultLiveness,
-            defaultIdentifier
+            defaultIdentifier,
+            bytes32(0) // No domain.
         );
         vm.stopPrank();
         (bool cachedWhitelist, uint256 cachedFinalFee) = optimisticAsserter.cachedCurrencies(address(newCurrency));
@@ -94,7 +95,8 @@ contract MaintenanceTest is Common {
             defaultCurrency,
             defaultBond,
             defaultLiveness,
-            newIdentifier
+            newIdentifier,
+            bytes32(0) // No domain.
         );
         vm.stopPrank();
         assertTrue(optimisticAsserter.cachedIdentifiers(newIdentifier));

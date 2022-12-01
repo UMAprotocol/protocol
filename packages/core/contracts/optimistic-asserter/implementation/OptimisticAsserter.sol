@@ -77,7 +77,8 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
                 defaultCurrency,
                 getMinimumBond(address(defaultCurrency)),
                 defaultLiveness,
-                defaultIdentifier
+                defaultIdentifier,
+                bytes32(0)
             );
     }
 
@@ -89,7 +90,8 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
         IERC20 currency,
         uint256 bond,
         uint64 liveness,
-        bytes32 identifier
+        bytes32 identifier,
+        bytes32 domainId
     ) public nonReentrant returns (bytes32) {
         // TODO: think about placing either msg.sender or block.timestamp into the claim ID to block an advasery
         // creating a claim that collides with a known assertion that will be created into the future.
@@ -114,7 +116,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
             disputer: address(0),
             callbackRecipient: callbackRecipient,
             currency: currency,
-            claimId: keccak256(claim),
+            domainId: domainId,
             identifier: identifier,
             bond: bond,
             settled: false,
@@ -141,6 +143,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
 
         emit AssertionMade(
             assertionId,
+            domainId,
             claim,
             asserter,
             callbackRecipient,

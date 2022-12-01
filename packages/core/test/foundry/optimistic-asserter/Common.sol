@@ -39,6 +39,7 @@ contract Common is Test {
     // Event structures, that might be used in tests.
     event AssertionMade(
         bytes32 indexed assertionId,
+        bytes32 domainId,
         bytes claim,
         address indexed asserter,
         address callbackRecipient,
@@ -141,7 +142,8 @@ contract Common is Test {
                 defaultCurrency,
                 defaultBond,
                 defaultLiveness,
-                defaultIdentifier
+                defaultIdentifier,
+                bytes32(0) // No domain.
             );
     }
 

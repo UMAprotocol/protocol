@@ -79,7 +79,8 @@ contract Insurance {
             defaultCurrency,
             bond,
             assertionLiveness,
-            defaultIdentifier
+            defaultIdentifier,
+            bytes32(0) // No domain.
         );
         assertedPolicies[assertionId] = policyId;
         emit InsurancePayoutRequested(policyId, assertionId);

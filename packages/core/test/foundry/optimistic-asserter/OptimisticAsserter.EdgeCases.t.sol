@@ -36,7 +36,8 @@ contract InvalidParameters is Common {
             defaultCurrency,
             defaultBond,
             defaultLiveness,
-            unsupportedIdentifier
+            unsupportedIdentifier,
+            bytes32(0) // No domain.
         );
     }
 
@@ -61,7 +62,8 @@ contract InvalidParameters is Common {
             defaultCurrency,
             0,
             0,
-            defaultIdentifier
+            defaultIdentifier,
+            bytes32(0) // No domain.
         );
     }
 
