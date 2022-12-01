@@ -4,6 +4,9 @@ import "./BaseEscalationManager.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "../../interfaces/OptimisticAsserterInterface.sol";
 
+// This EscalationManager allows to arbitrate for each assertion based on its bond via the DVM or the EscalationManager.
+// If the bond is greater than the superbond, it is arbitrated automatically through the EscalationManager; otherwise,
+// it is arbitrated through the DVM.
 contract SuperbondEscalationManager is BaseEscalationManager, Ownable {
     uint256 public superbond;
 
