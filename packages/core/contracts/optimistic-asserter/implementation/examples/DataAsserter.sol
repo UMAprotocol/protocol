@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
+import "../../implementation/ClaimData.sol";
 import "../../interfaces/OptimisticAsserterInterface.sol";
-import "../../../common/implementation/AncillaryData.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 // This contract allows assertions on any form of data to be made using the UMA Optimistic Asserter and stores the
@@ -64,15 +64,15 @@ contract DataAsserter {
         assertionId = oa.assertTruth(
             abi.encodePacked(
                 "Data asserted: 0x", // in the example data is type bytes32 so we add the hex prefix 0x.
-                AncillaryData.toUtf8Bytes(data),
+                ClaimData.toUtf8Bytes(data),
                 " for dataId: 0x",
-                AncillaryData.toUtf8Bytes(dataId),
+                ClaimData.toUtf8Bytes(dataId),
                 " and asserter: 0x",
-                AncillaryData.toUtf8BytesAddress(asserter),
+                ClaimData.toUtf8BytesAddress(asserter),
                 " at timestamp: ",
-                AncillaryData.toUtf8BytesUint(block.timestamp),
+                ClaimData.toUtf8BytesUint(block.timestamp),
                 " in the DataAsserter contract at 0x",
-                AncillaryData.toUtf8BytesAddress(address(this)),
+                ClaimData.toUtf8BytesAddress(address(this)),
                 " is valid."
             ),
             asserter,
