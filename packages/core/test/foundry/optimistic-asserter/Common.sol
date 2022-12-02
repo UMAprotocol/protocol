@@ -44,9 +44,9 @@ contract Common is Test {
         address callbackRecipient,
         address indexed escalationManager,
         address caller,
+        uint64 expirationTime,
         IERC20 currency,
-        uint256 bond,
-        uint64 expirationTime
+        uint256 bond
     );
     event AssertionDisputed(bytes32 indexed assertionId, address indexed disputer);
 
@@ -138,9 +138,9 @@ contract Common is Test {
                 TestAddress.account1,
                 callbackRecipient,
                 escalationManager,
+                defaultLiveness,
                 defaultCurrency,
                 defaultBond,
-                defaultLiveness,
                 defaultIdentifier
             );
     }
