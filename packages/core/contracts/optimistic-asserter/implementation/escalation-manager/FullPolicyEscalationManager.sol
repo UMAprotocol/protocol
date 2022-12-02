@@ -10,15 +10,13 @@ contract FullPolicyEscalationManager is BaseEscalationManager, Ownable {
         bool resolution;
     }
 
-    enum AssertionBlockOption { None, BlockByAsserter, BlockByAssertingCaller }
+    enum AssertionBlockMode { None, BlockByAssertingCallerAndAsserter, BlockByAssertingCaller }
 
-    AssertionBlockOption public assertionBlockOption;
+    AssertionBlockMode public assertionBlockMode;
 
     bool public arbitrateViaEscalationManager;
 
     bool public discardOracle;
-
-    address public allowedAssertingCaller;
 
     bool public validateDisputers;
 
@@ -28,7 +26,7 @@ contract FullPolicyEscalationManager is BaseEscalationManager, Ownable {
 
     mapping(address => bool) public whitelistedAssertingCallers;
 
-    mapping(address => mapping(address => bool)) public whitelistedAssertersByAssertingCaller;
+    mapping(address => bool) public whitelistedAsserters;
 
     function getPrice(
         bytes32 identifier,
@@ -59,17 +57,15 @@ contract FullPolicyEscalationManager is BaseEscalationManager, Ownable {
     }
 
     function configureEscalationManager(
-        address _assertingCaller,
         bool _validateDisputers,
         bool _arbitrateViaEscalationManager,
         bool _discardOracle,
-        AssertionBlockOption _assertionBlockOption
+        AssertionBlockMode _assertionBlockMode
     ) public onlyOwner {
-        allowedAssertingCaller = _assertingCaller;
         validateDisputers = _validateDisputers;
         arbitrateViaEscalationManager = _arbitrateViaEscalationManager;
         discardOracle = _discardOracle;
-        assertionBlockOption = _assertionBlockOption;
+        assertionBlockMode = _assertionBlockMode;
     }
 
     function setArbitrationResolution(
@@ -90,12 +86,8 @@ contract FullPolicyEscalationManager is BaseEscalationManager, Ownable {
         whitelistedAssertingCallers[assertingCaller] = value;
     }
 
-    function setWhitelistedAssertersByAssertingCaller(
-        address assertingCaller,
-        address asserter,
-        bool value
-    ) public onlyOwner {
-        whitelistedAssertersByAssertingCaller[assertingCaller][asserter] = value;
+    function setWhitelistedAsserters(address asserter, bool value) public onlyOwner {
+        whitelistedAsserters[asserter] = value;
     }
 
     function _checkIfAssertionBlocked(OptimisticAsserterInterface.Assertion memory assertion)
@@ -103,12 +95,12 @@ contract FullPolicyEscalationManager is BaseEscalationManager, Ownable {
         view
         returns (bool)
     {
-        if (assertionBlockOption == AssertionBlockOption.BlockByAsserter) {
-            if (assertion.escalationManagerSettings.assertingCaller == allowedAssertingCaller)
-                return !whitelistedAssertersByAssertingCaller[allowedAssertingCaller][assertion.asserter];
+        if (assertionBlockMode == AssertionBlockMode.BlockByAssertingCallerAndAsserter) {
+            if (whitelistedAssertingCallers[assertion.escalationManagerSettings.assertingCaller])
+                return !whitelistedAsserters[assertion.asserter];
             return true;
         }
-        if (assertionBlockOption == AssertionBlockOption.BlockByAssertingCaller) {
+        if (assertionBlockMode == AssertionBlockMode.BlockByAssertingCaller) {
             return !whitelistedAssertingCallers[assertion.escalationManagerSettings.assertingCaller];
         }
         return false;
