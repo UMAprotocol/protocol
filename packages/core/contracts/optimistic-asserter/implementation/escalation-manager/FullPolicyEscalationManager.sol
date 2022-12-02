@@ -12,7 +12,7 @@ contract FullPolicyEscalationManager is BaseEscalationManager, Ownable {
 
     enum AssertionBlockOption { None, BlockByAsserter, BlockByAssertingCaller }
 
-    uint16 public assertionBlockOption;
+    AssertionBlockOption public assertionBlockOption;
 
     bool public arbitrateViaEscalationManager;
 
@@ -63,9 +63,9 @@ contract FullPolicyEscalationManager is BaseEscalationManager, Ownable {
         bool _validateDisputers,
         bool _arbitrateViaEscalationManager,
         bool _discardOracle,
-        uint16 _assertionBlockOption
+        AssertionBlockOption _assertionBlockOption
     ) public onlyOwner {
-        assertingCaller = _assertingCaller;
+        allowedAssertingCaller = _assertingCaller;
         validateDisputers = _validateDisputers;
         arbitrateViaEscalationManager = _arbitrateViaEscalationManager;
         discardOracle = _discardOracle;
@@ -103,12 +103,12 @@ contract FullPolicyEscalationManager is BaseEscalationManager, Ownable {
         view
         returns (bool)
     {
-        if (assertionBlockOption == uint16(AssertionBlockOption.BlockByAsserter)) {
+        if (assertionBlockOption == AssertionBlockOption.BlockByAsserter) {
             if (assertion.escalationManagerSettings.assertingCaller == allowedAssertingCaller)
                 return !whitelistedAssertersByAssertingCaller[allowedAssertingCaller][assertion.asserter];
             return true;
         }
-        if (assertionBlockOption == uint16(AssertionBlockOption.BlockByAssertingCaller)) {
+        if (assertionBlockOption == AssertionBlockOption.BlockByAssertingCaller) {
             return !whitelistedAssertingCallers[assertion.escalationManagerSettings.assertingCaller];
         }
         return false;
