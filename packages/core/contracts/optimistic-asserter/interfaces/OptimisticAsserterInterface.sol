@@ -43,9 +43,9 @@ interface OptimisticAsserterInterface {
         address asserter,
         address callbackRecipient,
         address escalationManager,
+        uint64 liveness,
         IERC20 currency,
         uint256 bond,
-        uint64 liveness,
         bytes32 identifier
     ) external returns (bytes32);
 
@@ -60,9 +60,9 @@ interface OptimisticAsserterInterface {
         address callbackRecipient,
         address indexed escalationManager,
         address caller,
+        uint64 expirationTime,
         IERC20 currency,
-        uint256 bond,
-        uint64 expirationTime
+        uint256 bond
     );
 
     event AssertionDisputed(bytes32 indexed assertionId, address indexed disputer);

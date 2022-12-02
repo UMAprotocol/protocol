@@ -252,9 +252,9 @@ contract PredictionMarket is OptimisticAsserterCallbackRecipientInterface {
             msg.sender, // Asserter
             address(this), // Receive callback in this contract.
             address(0), // No sovereign security.
+            assertionLiveness,
             currency,
             bond,
-            assertionLiveness,
             defaultIdentifier
         );
     }

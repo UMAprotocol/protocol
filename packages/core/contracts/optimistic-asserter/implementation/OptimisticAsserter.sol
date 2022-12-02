@@ -74,9 +74,9 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
                 msg.sender, // asserter
                 address(0), // callbackRecipient
                 address(0), // escalationManager
+                defaultLiveness,
                 defaultCurrency,
                 getMinimumBond(address(defaultCurrency)),
-                defaultLiveness,
                 defaultIdentifier
             );
     }
@@ -86,9 +86,9 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
         address asserter,
         address callbackRecipient,
         address escalationManager,
+        uint64 liveness,
         IERC20 currency,
         uint256 bond,
-        uint64 liveness,
         bytes32 identifier
     ) public nonReentrant returns (bytes32) {
         uint64 currentTime = uint64(getCurrentTime());
@@ -145,9 +145,9 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
             callbackRecipient,
             escalationManager,
             msg.sender,
+            currentTime + liveness,
             currency,
-            bond,
-            currentTime + liveness
+            bond
         );
 
         return assertionId;

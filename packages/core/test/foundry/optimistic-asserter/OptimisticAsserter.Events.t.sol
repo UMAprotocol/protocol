@@ -39,9 +39,9 @@ contract OptimisticAsserterEvents is Common {
             address(0),
             address(0),
             TestAddress.account1,
+            uint64(timer.getCurrentTime()) + defaultLiveness,
             defaultCurrency,
-            defaultBond,
-            uint64(timer.getCurrentTime()) + defaultLiveness
+            defaultBond
         );
 
         // Account1 asserts a false claim.
