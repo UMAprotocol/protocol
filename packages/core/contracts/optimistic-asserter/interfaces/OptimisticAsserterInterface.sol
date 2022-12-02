@@ -4,9 +4,6 @@ pragma solidity 0.8.16;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 interface OptimisticAsserterInterface {
-    // TODO: SecurityManager!!!. rename EscalationManagerManager->EscalationManager
-    // TODO: Em->EscalationManager...check this is not too long.
-    // Options: AssertionManager, EscalationManager, SecurityManager, SovereignManager.
     struct EscalationManagerSettings {
         bool arbitrateViaEscalationManager; // False if the DVM is used as an oracle (EscalationManager on True).
         bool discardOracle; // False if Oracle result is used for resolving assertion after dispute.
@@ -15,7 +12,6 @@ interface OptimisticAsserterInterface {
         address assertingCaller;
     }
 
-    // TODO variable packing to save gas.
     struct Assertion {
         EscalationManagerSettings escalationManagerSettings;
         address asserter; // Address of the asserter.
@@ -27,7 +23,7 @@ interface OptimisticAsserterInterface {
         uint256 bond;
         bool settled; // True if the request is settled.
         bool settlementResolution;
-        uint64 assertionTime; // Time of the assertion. TODO uint64 could be enough.
+        uint64 assertionTime; // Time of the assertion.
         uint64 expirationTime;
     }
 
@@ -75,7 +71,8 @@ interface OptimisticAsserterInterface {
         bytes32 indexed assertionId,
         address indexed bondRecipient,
         bool disputed,
-        bool settlementResolution
+        bool settlementResolution,
+        address settleCaller
     );
 
     event AdminPropertiesSet(IERC20 defaultCurrency, uint64 defaultLiveness, uint256 burnedBondPercentage);
