@@ -57,6 +57,23 @@ contract FullPolicyEscalationManager is BaseEscalationManager, Ownable {
     mapping(address => bool) public whitelistedAsserters; // Whitelisted asserters that can assert prices.
 
     /**
+     * @notice Returns the Assertion Policy defined by this contract's parameters and functions.
+     * @param assertionId the ID of the assertion to get the policy for.
+     * @return the Assertion Policy defined by this contract's parameters and functions.
+     * @dev If no configuration is done after deployment, this function returns an all false default policy.
+     */
+    function getAssertionPolicy(bytes32 assertionId) public view override returns (AssertionPolicy memory) {
+        bool blocked = _checkIfAssertionBlocked(assertionId);
+        return
+            AssertionPolicy({
+                blockAssertion: blocked, // Block assertion if it is blocked.
+                arbitrateViaEscalationManager: arbitrateViaEscalationManager, // Arbitrate via escalation manager if configured.
+                discardOracle: discardOracle, // Ignore Oracle (DVM or EM) resolution if configured.
+                validateDisputers: validateDisputers // Validate disputers if configured.
+            });
+    }
+
+    /**
      * @notice Gets the price for identifier and time if it has already been requested and resolved.
      * @dev If the price is not available, the method reverts.
      * @param identifier uniquely identifies the price requested.
@@ -76,23 +93,6 @@ contract FullPolicyEscalationManager is BaseEscalationManager, Ownable {
         require(arbitrationResolutions[requestId].valueSet, "Arbitration resolution not set");
         if (arbitrationResolutions[requestId].resolution) return 1e18;
         return 0;
-    }
-
-    /**
-     * @notice Returns the Assertion Policy defined by this contract's parameters and functions.
-     * @param assertionId the ID of the assertion to get the policy for.
-     * @return the Assertion Policy defined by this contract's parameters and functions.
-     * @dev If no configuration is done after deployment, this function returns an all false default policy.
-     */
-    function getAssertionPolicy(bytes32 assertionId) public view override returns (AssertionPolicy memory) {
-        bool blocked = _checkIfAssertionBlocked(assertionId);
-        return
-            AssertionPolicy({
-                blockAssertion: blocked, // Block assertion if it is blocked.
-                arbitrateViaEscalationManager: arbitrateViaEscalationManager, // Arbitrate via escalation manager if configured.
-                discardOracle: discardOracle, // Ignore Oracle (DVM or EM) resolution if configured.
-                validateDisputers: validateDisputers // Validate disputers if configured.
-            });
     }
 
     /**
