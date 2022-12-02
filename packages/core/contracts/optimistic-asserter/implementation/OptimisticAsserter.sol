@@ -83,7 +83,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
     }
 
     function assertTruth(
-        bytes calldata claim,
+        bytes memory claim,
         address asserter,
         address callbackRecipient,
         address escalationManager,
@@ -92,10 +92,10 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
         uint64 liveness,
         bytes32 identifier,
         bytes32 domainId
-    ) public nonReentrant returns (bytes32) {
+    ) public returns (bytes32 assertionId) {
         // TODO: think about placing either msg.sender or block.timestamp into the claim ID to block an advasery
         // creating a claim that collides with a known assertion that will be created into the future.
-        bytes32 assertionId = _getId(claim, bond, liveness, currency, callbackRecipient, escalationManager, identifier);
+        assertionId = _getId(claim, bond, liveness, currency, callbackRecipient, escalationManager, identifier);
 
         require(asserter != address(0), "Asserter cant be 0");
         require(assertions[assertionId].asserter == address(0), "Assertion already exists");
@@ -103,7 +103,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
         require(_validateAndCacheCurrency(address(currency)), "Unsupported currency");
         require(bond >= getMinimumBond(address(currency)), "Bond amount too low");
 
-        uint64 currentTime = uint64(getCurrentTime());
+        // uint64 currentTime = uint64(getCurrentTime());
         assertions[assertionId] = Assertion({
             escalationManagerSettings: EscalationManagerSettings({
                 arbitrateViaEscalationManager: false, // this is the default behavior: if not specified by the Sovereign security the assertion will use the DVM as an oracle.
@@ -121,8 +121,8 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
             bond: bond,
             settled: false,
             settlementResolution: false,
-            assertionTime: currentTime,
-            expirationTime: currentTime + liveness
+            assertionTime: uint64(getCurrentTime()),
+            expirationTime: uint64(getCurrentTime()) + liveness
         });
 
         {
@@ -151,7 +151,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
             msg.sender,
             currency,
             bond,
-            currentTime + liveness
+            uint64(getCurrentTime()) + liveness
         );
 
         return assertionId;
@@ -261,7 +261,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
     }
 
     function _getId(
-        bytes calldata claim,
+        bytes memory claim,
         uint256 bond,
         uint64 liveness,
         IERC20 currency,
