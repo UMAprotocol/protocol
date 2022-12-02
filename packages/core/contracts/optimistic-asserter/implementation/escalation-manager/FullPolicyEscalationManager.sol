@@ -35,7 +35,7 @@ contract FullPolicyEscalationManager is BaseEscalationManager, Ownable {
 
     mapping(bytes32 => ArbitrationResolution) public arbitrationResolutions; // Arbitration resolutions for a given identifier, time, and ancillary data.
 
-    mapping(address => bool) public whitelistedDisputeCallers; // Whitelisted assertingCallers that can file disputes.
+    mapping(address => bool) public whitelistedDisputeCallers; // Whitelisted disputer that can file disputes.
 
     mapping(address => bool) public whitelistedAssertingCallers; // Whitelisted assertingCallers that can assert prices.
 
@@ -137,7 +137,7 @@ contract FullPolicyEscalationManager is BaseEscalationManager, Ownable {
     }
 
     /**
-     * @notice Adds a disputerCaller to the whitelist of assertingCallers that can file disputes.
+     * @notice Adds a disputerCaller to the whitelist of disputers that can file disputes.
      * @param disputerCaller the address of the disputerCaller to add.
      * @dev This function is only used if validateDisputers is set to true.
      */
