@@ -33,9 +33,9 @@ contract InvalidParameters is Common {
             TestAddress.account1,
             address(0),
             address(0),
+            defaultLiveness,
             defaultCurrency,
             defaultBond,
-            defaultLiveness,
             unsupportedIdentifier
         );
     }
@@ -58,8 +58,8 @@ contract InvalidParameters is Common {
             TestAddress.account1,
             address(0),
             address(0),
-            defaultCurrency,
             0,
+            defaultCurrency,
             0,
             defaultIdentifier
         );
