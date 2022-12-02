@@ -36,7 +36,12 @@ contract FullPolicyEscalationManagerTest is Common {
         assertFalse(policy.discardOracle);
         assertFalse(policy.validateDisputers);
 
-        escalationManager.configureEscalationManager(true, true, true, AssertionBlockMode.BlockByAssertingCaller);
+        escalationManager.configureEscalationManager(
+            true,
+            true,
+            true,
+            FullPolicyEscalationManager.AssertionBlockMode.BlockByAssertingCaller
+        );
         _mockGetAssertion(assertionId, TestAddress.account1, TestAddress.account1);
         vm.prank(mockOptimisticAsserterAddress);
         policy = escalationManager.getAssertionPolicy(assertionId);
@@ -48,7 +53,12 @@ contract FullPolicyEscalationManagerTest is Common {
     }
 
     function test_BlockByAssertingCaller() public {
-        escalationManager.configureEscalationManager(true, true, true, AssertionBlockMode.BlockByAssertingCaller);
+        escalationManager.configureEscalationManager(
+            true,
+            true,
+            true,
+            FullPolicyEscalationManager.AssertionBlockMode.BlockByAssertingCaller
+        );
         _mockGetAssertion(assertionId, TestAddress.account1, TestAddress.account1);
         vm.prank(mockOptimisticAsserterAddress);
         FullPolicyEscalationManager.AssertionPolicy memory policy = escalationManager.getAssertionPolicy(assertionId);
@@ -68,7 +78,7 @@ contract FullPolicyEscalationManagerTest is Common {
             true,
             true,
             true,
-            AssertionBlockMode.BlockByAssertingCallerAndAsserter
+            FullPolicyEscalationManager.AssertionBlockMode.BlockByAssertingCallerAndAsserter
         );
         _mockGetAssertion(assertionId, TestAddress.account1, TestAddress.account1);
         vm.prank(mockOptimisticAsserterAddress);
@@ -107,7 +117,12 @@ contract FullPolicyEscalationManagerTest is Common {
     function test_RevertIf_NotOwner() public {
         vm.expectRevert("Ownable: caller is not the owner");
         vm.prank(TestAddress.account1);
-        escalationManager.configureEscalationManager(true, true, true, AssertionBlockMode.BlockByAssertingCaller);
+        escalationManager.configureEscalationManager(
+            true,
+            true,
+            true,
+            FullPolicyEscalationManager.AssertionBlockMode.BlockByAssertingCaller
+        );
 
         vm.expectRevert("Ownable: caller is not the owner");
         vm.prank(TestAddress.account1);

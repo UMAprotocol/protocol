@@ -4,29 +4,29 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "./BaseEscalationManager.sol";
 import "../../interfaces/OptimisticAsserterInterface.sol";
 
-enum AssertionBlockMode {
-    None, // No assertions are blocked
-    BlockByAssertingCallerAndAsserter, // Assertion are block by asserting caller and asserter pair
-    BlockByAssertingCaller // Assertions are blocked by asserting caller
-}
-
 /**
- * @title The FullPolicyEscalationManager allows the owner to configure all Escalation Manager policy parameters and store
- * arbitration resolutions. Optionally, we can enable assertion blocking via a whitelist of assertingCallers or a
- * combination of a whitelist of assertingCallers and asserters. On the other hand, it allows us to determine if we want
- * to arbitrate via the escalation manager instead of the DVM, if we want to ignore the resolution of a potential dispute
- * arbitrated by the Oracle, and if we want to restrict who can file disputes via a whitelistedDisputeCallers list.
+ * @title The FullPolicyEscalationManager enables the owner to configure all policy parameters and store the arbitration
+ * resolutions for the Escalation Manager. Optionally, assertion blocking can be enabled using a whitelist of
+ * assertingCallers or assertingCallers and asserters. On the other hand, it enables the determination of whether to
+ * arbitrate via the escalation manager as opposed to the DVM, whether to disregard the resolution of a potential
+ * dispute arbitrated by the Oracle, and whether to restrict who can register disputes via a whitelistedDisputeCallers list.
  * @dev If nothing is configured using the setters and configureEscalationManager method upon deployment, the
  * FullPolicyEscalationManager will return a default policy with all values set to false.
  */
 contract FullPolicyEscalationManager is BaseEscalationManager, Ownable {
+    enum AssertionBlockMode {
+        None, // No assertions are blocked
+        BlockByAssertingCallerAndAsserter, // Assertion are block by asserting caller and asserter pair
+        BlockByAssertingCaller // Assertions are blocked by asserting caller
+    }
+
     struct ArbitrationResolution {
         bool valueSet; // True if the resolution has been set.
         bool resolution; // True or false depending on the resolution.
     }
 
     event EscalationManagerConfigured(
-        bool blockAssertion,
+        bool validateDisputers,
         bool arbitrateViaEscalationManager,
         bool discardOracle,
         AssertionBlockMode assertionBlockMode
@@ -42,11 +42,11 @@ contract FullPolicyEscalationManager is BaseEscalationManager, Ownable {
 
     AssertionBlockMode public assertionBlockMode; // The mode for blocking assertions.
 
-    bool public arbitrateViaEscalationManager; // True if we should arbitrate via the escalation manager instead of the DVM.
+    bool public arbitrateViaEscalationManager; // True if it is determined that the escalation manager should arbitrate instead of the DVM.
 
-    bool public discardOracle; // True if we should ignore the resolution of a potential dispute arbitrated by the Oracle (DVM or EM).
+    bool public discardOracle; // True if the escalation manager should disregard the Oracle's resolution.
 
-    bool public validateDisputers; // True if we should restrict who can file disputes via a whitelistedDisputeCallers list.
+    bool public validateDisputers; // True if the escalation manager should validate the disputers via the whitelistedDisputeCallers.
 
     mapping(bytes32 => ArbitrationResolution) public arbitrationResolutions; // Arbitration resolutions for a given identifier, time, and ancillary data.
 
@@ -111,10 +111,9 @@ contract FullPolicyEscalationManager is BaseEscalationManager, Ownable {
 
     /**
      * @notice Defines how the assertion policy for each configuration's rules is to be defined.
-     * @param _validateDisputers true if we should restrict who can file disputes via a whitelistedDisputeCallers list.
-     * @param _arbitrateViaEscalationManager true if we should arbitrate via the escalation manager instead of the DVM.
-     * @param _discardOracle true if we should ignore the resolution of a potential dispute arbitrated by the Oracle
-     * (DVM or EM).
+     * @param _validateDisputers true if the escalation manager should validate the disputers via the whitelistedDisputeCallers.
+     * @param _arbitrateViaEscalationManager true if it is determined that the escalation manager should arbitrate instead of the DVM.
+     * @param _discardOracle true if the escalation manager should disregard the Oracle's (DVM or EM) resolution.
      * @param _assertionBlockMode the mode for blocking assertions.
      * @dev This setting just activates the rules that will be executed; each rule must additionally be defined using
      * the other functions.
