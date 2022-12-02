@@ -4,13 +4,13 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "./BaseEscalationManager.sol";
 import "../../interfaces/OptimisticAsserterInterface.sol";
 
+enum AssertionBlockMode { None, BlockByAssertingCallerAndAsserter, BlockByAssertingCaller }
+
 contract FullPolicyEscalationManager is BaseEscalationManager, Ownable {
     struct ArbitrationResolution {
         bool valueSet;
         bool resolution;
     }
-
-    enum AssertionBlockMode { None, BlockByAssertingCallerAndAsserter, BlockByAssertingCaller }
 
     AssertionBlockMode public assertionBlockMode;
 
@@ -82,7 +82,7 @@ contract FullPolicyEscalationManager is BaseEscalationManager, Ownable {
         whitelistedDisputeCallers[disputeCaller] = value;
     }
 
-    function setAssertingCallerInWhitelist(address assertingCaller, bool value) public onlyOwner {
+    function setWhitelistedAssertingCallers(address assertingCaller, bool value) public onlyOwner {
         whitelistedAssertingCallers[assertingCaller] = value;
     }
 
