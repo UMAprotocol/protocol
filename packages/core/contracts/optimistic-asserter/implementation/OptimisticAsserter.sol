@@ -91,8 +91,6 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
         uint64 liveness,
         bytes32 identifier
     ) public nonReentrant returns (bytes32) {
-        // TODO: think about placing either msg.sender or block.timestamp into the claim ID to block an advasery
-        // creating a claim that collides with a known assertion that will be created into the future.
         uint64 currentTime = uint64(getCurrentTime());
         bytes32 assertionId =
             _getId(claim, bond, currentTime, liveness, currency, callbackRecipient, escalationManager, identifier);
@@ -185,7 +183,6 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
         _oracleRequestPrice(assertionId, assertion.identifier, assertion.assertionTime);
 
         // Send dispute callback
-        // TODO: consider mergeing the isDisputeAlloowed into toe SSM callback (revert within callback to block).
         _callbackOnAssertionDispute(assertionId);
 
         // Send resolve callback if dispute resolution is discarded
@@ -206,7 +203,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
             assertion.currency.safeTransfer(assertion.asserter, assertion.bond);
             _callbackOnAssertionResolve(assertionId, true);
 
-            emit AssertionSettled(assertionId, assertion.asserter, false, true);
+            emit AssertionSettled(assertionId, assertion.asserter, false, true, msg.sender);
         } else {
             // Dispute, settle with the disputer
             int256 resolvedPrice = _oracleGetPrice(assertionId, assertion.identifier, assertion.assertionTime); // Revert if price not resolved.
@@ -230,7 +227,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
             if (!assertion.escalationManagerSettings.discardOracle)
                 _callbackOnAssertionResolve(assertionId, assertion.settlementResolution);
 
-            emit AssertionSettled(assertionId, bondRecipient, true, assertion.settlementResolution);
+            emit AssertionSettled(assertionId, bondRecipient, true, assertion.settlementResolution, msg.sender);
         }
     }
 
@@ -286,7 +283,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
     }
 
     function _stampAssertion(bytes32 assertionId) internal view returns (bytes memory) {
-        // Returns the unique ID for this assertion. This ID is used to identify the assertion in the Oracle.
+        // Returns ancillary data for the Oracle request containing assertionId and asserter.
         return
             AncillaryData.appendKeyValueAddress(
                 AncillaryData.appendKeyValueBytes32("", "assertionId", assertionId),

@@ -56,8 +56,8 @@ contract Common is Test {
         bytes32 indexed assertionId,
         address indexed bondRecipient,
         bool disputed,
-        bool settlementResolution
-        // TODO add caller address(msg.sender) to the event.
+        bool settlementResolution,
+        address settleCaller
     );
 
     event AssertingCallerSet(address indexed assertingCaller);

@@ -64,7 +64,7 @@ contract OptimisticAsserterEvents is Common {
         _mockOracleResolved(address(mockOracle), oracleRequest, false);
 
         vm.expectEmit(true, true, true, true);
-        emit AssertionSettled(assertionId, TestAddress.account2, true, false);
+        emit AssertionSettled(assertionId, TestAddress.account2, true, false, address(this));
         assertFalse(optimisticAsserter.settleAndGetAssertionResult(assertionId));
     }
 
