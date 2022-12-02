@@ -86,7 +86,7 @@ contract FullPolicyEscalationManager is BaseEscalationManager, Ownable {
      * @notice Returns, given an assertionId and a disputerCaller address, if the disputerCaller is authorised to
      * dispute the assertion.
      * @param assertionId the ID of the assertion to check the disputerCaller for.
-     * @param disputerCaller the address of the disputerCaller to check.
+     * @param disputeCaller the address of the disputeCaller to check.
      * @return true if the disputerCaller is authorised to dispute the assertion.
      * @dev In order for this function to be used by the Optimistic Assertor, validateDisputers must be set to true.
      */
@@ -121,7 +121,7 @@ contract FullPolicyEscalationManager is BaseEscalationManager, Ownable {
      * @param identifier uniquely identifies the price requested.
      * @param time unix timestamp of the price request.
      * @param ancillaryData arbitrary data appended to a price request to give the voters more info from the caller.
-     * @param arbitratioResolution true if the assertion should be resolved as true, false otherwise.
+     * @param arbitrationResolution true if the assertion should be resolved as true, false otherwise.
      * @dev The owner should use this function whenever a dispute arises and it should be arbitrated by the Escalation
      * Manager; it is up to the owner to determine how to resolve the dispute. See the requestPrice implementation in
      * BaseEscalationManager, which escalates a dispute to the Escalation Manager for resolution.
@@ -138,7 +138,7 @@ contract FullPolicyEscalationManager is BaseEscalationManager, Ownable {
 
     /**
      * @notice Adds a disputerCaller to the whitelist of disputers that can file disputes.
-     * @param disputerCaller the address of the disputerCaller to add.
+     * @param disputeCaller the address of the disputeCaller to add.
      * @dev This function is only used if validateDisputers is set to true.
      */
     function setDisputeCallerInWhitelist(address disputeCaller, bool value) public onlyOwner {
@@ -147,7 +147,7 @@ contract FullPolicyEscalationManager is BaseEscalationManager, Ownable {
 
     /**
      * @notice Adds an asserter to the whitelist of assertingCallers that can make assertions.
-     * @param asserter the address of the asserter to add.
+     * @param assertingCaller the address of the assertingCaller to add.
      */
     function setWhitelistedAssertingCallers(address assertingCaller, bool value) public onlyOwner {
         whitelistedAssertingCallers[assertingCaller] = value;
