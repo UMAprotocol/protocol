@@ -35,9 +35,9 @@ contract FullPolicyEscalationManager is BaseEscalationManager, Ownable {
 
     mapping(bytes32 => ArbitrationResolution) public arbitrationResolutions; // Arbitration resolutions for a given identifier, time, and ancillary data.
 
-    mapping(address => bool) public whitelistedDisputeCallers; // Whitelisted callers that can file disputes.
+    mapping(address => bool) public whitelistedDisputeCallers; // Whitelisted assertingCallers that can file disputes.
 
-    mapping(address => bool) public whitelistedAssertingCallers; // Whitelisted callers that can assert prices.
+    mapping(address => bool) public whitelistedAssertingCallers; // Whitelisted assertingCallers that can assert prices.
 
     mapping(address => bool) public whitelistedAsserters; // Whitelisted asserters that can assert prices.
 
@@ -137,7 +137,7 @@ contract FullPolicyEscalationManager is BaseEscalationManager, Ownable {
     }
 
     /**
-     * @notice Adds a disputerCaller to the whitelist of callers that can file disputes.
+     * @notice Adds a disputerCaller to the whitelist of assertingCallers that can file disputes.
      * @param disputerCaller the address of the disputerCaller to add.
      * @dev This function is only used if validateDisputers is set to true.
      */
@@ -146,7 +146,7 @@ contract FullPolicyEscalationManager is BaseEscalationManager, Ownable {
     }
 
     /**
-     * @notice Adds an asserter to the whitelist of callers that can make assertions.
+     * @notice Adds an asserter to the whitelist of assertingCallers that can make assertions.
      * @param asserter the address of the asserter to add.
      */
     function setWhitelistedAssertingCallers(address assertingCaller, bool value) public onlyOwner {
@@ -154,7 +154,7 @@ contract FullPolicyEscalationManager is BaseEscalationManager, Ownable {
     }
 
     /**
-     * @notice Adds an asserter to the whitelist of callers that can make assertions.
+     * @notice Adds an asserter to the whitelist of asserters that can make assertions.
      * @param asserter the address of the asserter to add.
      * @dev This function must be used in conjunction with setWhitelistedAssertingCallers in order to have an effect.
      */
