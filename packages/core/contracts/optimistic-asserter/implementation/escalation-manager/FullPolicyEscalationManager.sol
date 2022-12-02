@@ -85,9 +85,7 @@ contract FullPolicyEscalationManager is BaseEscalationManager, Ownable {
      * @dev If no configuration is done after deployment, this function returns an all false default policy.
      */
     function getAssertionPolicy(bytes32 assertionId) public view override returns (AssertionPolicy memory) {
-        OptimisticAsserterInterface optimisticAsserter = OptimisticAsserterInterface(msg.sender);
-        OptimisticAsserterInterface.Assertion memory assertion = optimisticAsserter.getAssertion(assertionId);
-        bool blocked = _checkIfAssertionBlocked(assertion);
+        bool blocked = _checkIfAssertionBlocked(assertionId);
         return
             AssertionPolicy({
                 blockAssertion: blocked, // Block assertion if it is blocked.
@@ -187,11 +185,9 @@ contract FullPolicyEscalationManager is BaseEscalationManager, Ownable {
     }
 
     // Checks if an assertion is blocked depending on the assertionBlockMode and the assertion's properties.
-    function _checkIfAssertionBlocked(OptimisticAsserterInterface.Assertion memory assertion)
-        internal
-        view
-        returns (bool)
-    {
+    function _checkIfAssertionBlocked(bytes32 assertionId) internal view returns (bool) {
+        OptimisticAsserterInterface optimisticAsserter = OptimisticAsserterInterface(msg.sender);
+        OptimisticAsserterInterface.Assertion memory assertion = optimisticAsserter.getAssertion(assertionId);
         if (assertionBlockMode == AssertionBlockMode.BlockByAssertingCallerAndAsserter) {
             if (whitelistedAssertingCallers[assertion.escalationManagerSettings.assertingCaller])
                 return !whitelistedAsserters[assertion.asserter];
