@@ -25,6 +25,21 @@ contract FullPolicyEscalationManager is BaseEscalationManager, Ownable {
         bool resolution; // True or false depending on the resolution.
     }
 
+    event EscalationManagerConfigured(
+        bool blockAssertion,
+        bool arbitrateViaEscalationManager,
+        bool discardOracle,
+        AssertionBlockMode assertionBlockMode
+    );
+
+    event ArbitrationResolutionSet(bytes32 indexed identifier, uint256 time, bytes ancillaryData, bool resolution);
+
+    event DisputeCallerWhitelistSet(address disputeCaller, bool whitelisted);
+
+    event AssertingCallerWhitelistSet(address assertingCaller, bool whitelisted);
+
+    event AsserterWhitelistSet(address asserter, bool whitelisted);
+
     AssertionBlockMode public assertionBlockMode; // The mode for blocking assertions.
 
     bool public arbitrateViaEscalationManager; // True if we should arbitrate via the escalation manager instead of the DVM.
@@ -114,6 +129,12 @@ contract FullPolicyEscalationManager is BaseEscalationManager, Ownable {
         arbitrateViaEscalationManager = _arbitrateViaEscalationManager;
         discardOracle = _discardOracle;
         assertionBlockMode = _assertionBlockMode;
+        emit EscalationManagerConfigured(
+            validateDisputers,
+            arbitrateViaEscalationManager,
+            discardOracle,
+            assertionBlockMode
+        );
     }
 
     /**
@@ -134,6 +155,7 @@ contract FullPolicyEscalationManager is BaseEscalationManager, Ownable {
     ) public onlyOwner {
         bytes32 requestId = keccak256(abi.encode(identifier, time, ancillaryData));
         arbitrationResolutions[requestId] = ArbitrationResolution(true, arbitrationResolution);
+        emit ArbitrationResolutionSet(identifier, time, ancillaryData, arbitrationResolution);
     }
 
     /**
@@ -143,6 +165,7 @@ contract FullPolicyEscalationManager is BaseEscalationManager, Ownable {
      */
     function setDisputeCallerInWhitelist(address disputeCaller, bool value) public onlyOwner {
         whitelistedDisputeCallers[disputeCaller] = value;
+        emit DisputeCallerWhitelistSet(disputeCaller, value);
     }
 
     /**
@@ -151,6 +174,7 @@ contract FullPolicyEscalationManager is BaseEscalationManager, Ownable {
      */
     function setWhitelistedAssertingCallers(address assertingCaller, bool value) public onlyOwner {
         whitelistedAssertingCallers[assertingCaller] = value;
+        emit AssertingCallerWhitelistSet(assertingCaller, value);
     }
 
     /**
@@ -160,6 +184,7 @@ contract FullPolicyEscalationManager is BaseEscalationManager, Ownable {
      */
     function setWhitelistedAsserters(address asserter, bool value) public onlyOwner {
         whitelistedAsserters[asserter] = value;
+        emit AsserterWhitelistSet(asserter, value);
     }
 
     // Checks if an assertion is blocked depending on the assertionBlockMode and the assertion's properties.
