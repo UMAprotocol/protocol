@@ -4,7 +4,6 @@ pragma solidity 0.8.16;
 import "./OptimisticAsserterCallbackRecipientInterface.sol";
 import "./OptimisticAsserterInterface.sol";
 
-// TODO: escalationManager does not sound like a "thing"...it should be a noun
 interface EscalationManagerInterface is OptimisticAsserterCallbackRecipientInterface {
     struct AssertionPolicy {
         bool blockAssertion;
