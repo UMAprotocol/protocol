@@ -28,7 +28,7 @@ contract FullPolicyEscalationManagerTest is Common {
     }
 
     function test_RevertIf_InvalidConfiguration() public {
-        vm.expectRevert("Cannot block by asserter only");
+        vm.expectRevert("Cannot block only by asserter");
         escalationManager.configureEscalationManager(false, true, true, true, true);
     }
 
