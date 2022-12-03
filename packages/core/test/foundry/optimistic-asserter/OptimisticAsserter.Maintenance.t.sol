@@ -63,9 +63,9 @@ contract MaintenanceTest is Common {
             TestAddress.account1,
             address(0),
             address(0),
+            defaultLiveness,
             newCurrency,
             newCurrencyBond,
-            defaultLiveness,
             defaultIdentifier
         );
         vm.stopPrank();
@@ -91,9 +91,9 @@ contract MaintenanceTest is Common {
             TestAddress.account1,
             address(0),
             address(0),
+            defaultLiveness,
             defaultCurrency,
             defaultBond,
-            defaultLiveness,
             newIdentifier
         );
         vm.stopPrank();

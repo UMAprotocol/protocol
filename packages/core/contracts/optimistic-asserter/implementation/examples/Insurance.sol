@@ -76,9 +76,9 @@ contract Insurance {
             msg.sender,
             address(this),
             address(0), // No sovereign security.
+            assertionLiveness,
             defaultCurrency,
             bond,
-            assertionLiveness,
             defaultIdentifier
         );
         assertedPolicies[assertionId] = policyId;
