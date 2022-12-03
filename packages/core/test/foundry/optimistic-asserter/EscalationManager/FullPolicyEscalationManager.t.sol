@@ -27,6 +27,11 @@ contract FullPolicyEscalationManagerTest is Common {
         assertTrue(escalationManager.getPrice(identifier, time, ancillaryData) == 0);
     }
 
+    function test_RevertIf_InvalidConfiguration() public {
+        vm.expectRevert("Cannot block by asserter only");
+        escalationManager.configureEscalationManager(false, true, true, true, true);
+    }
+
     function test_ConfigureEscalationManager() public {
         _mockGetAssertion(assertionId, TestAddress.account1, TestAddress.account1);
         vm.prank(mockOptimisticAsserterAddress);
