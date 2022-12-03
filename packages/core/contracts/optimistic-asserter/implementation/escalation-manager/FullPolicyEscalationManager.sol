@@ -14,22 +14,17 @@ import "../../interfaces/OptimisticAsserterInterface.sol";
  * FullPolicyEscalationManager will return a default policy with all values set to false.
  */
 contract FullPolicyEscalationManager is BaseEscalationManager, Ownable {
-    enum AssertionBlockMode {
-        None, // No assertions are blocked
-        BlockByAssertingCallerAndAsserter, // Assertion are block by asserting caller and asserter pair
-        BlockByAssertingCaller // Assertions are blocked by asserting caller
-    }
-
     struct ArbitrationResolution {
         bool valueSet; // True if the resolution has been set.
         bool resolution; // True or false depending on the resolution.
     }
 
     event EscalationManagerConfigured(
+        bool blockByAssertingCaller,
+        bool blockByAsserter,
         bool validateDisputers,
         bool arbitrateViaEscalationManager,
-        bool discardOracle,
-        AssertionBlockMode assertionBlockMode
+        bool discardOracle
     );
 
     event ArbitrationResolutionSet(bytes32 indexed identifier, uint256 time, bytes ancillaryData, bool resolution);
@@ -40,7 +35,9 @@ contract FullPolicyEscalationManager is BaseEscalationManager, Ownable {
 
     event AsserterWhitelistSet(address asserter, bool whitelisted);
 
-    AssertionBlockMode public assertionBlockMode; // The mode for blocking assertions.
+    bool public blockByAssertingCaller; // True if assertions are allowed only by whitelisted asserting callers.
+
+    bool public blockByAsserter; // True if assertions are allowed only by whitelisted asserters.
 
     bool public arbitrateViaEscalationManager; // True if it is determined that the escalation manager should arbitrate instead of the DVM.
 
@@ -109,28 +106,33 @@ contract FullPolicyEscalationManager is BaseEscalationManager, Ownable {
 
     /**
      * @notice Defines how the assertion policy for each configuration's rules is to be defined.
+     * @param _blockByAssertingCaller true if assertions are allowed only by whitelisted asserting callers.
+     * @param _blockByAsserter true if assertions are allowed only by whitelisted asserters.
      * @param _validateDisputers true if the escalation manager should validate the disputers via the whitelistedDisputeCallers.
      * @param _arbitrateViaEscalationManager true if it is determined that the escalation manager should arbitrate instead of the DVM.
      * @param _discardOracle true if the escalation manager should disregard the Oracle's (DVM or EM) resolution.
-     * @param _assertionBlockMode the mode for blocking assertions.
      * @dev This setting just activates the rules that will be executed; each rule must additionally be defined using
      * the other functions.
      */
     function configureEscalationManager(
+        bool _blockByAssertingCaller,
+        bool _blockByAsserter,
         bool _validateDisputers,
         bool _arbitrateViaEscalationManager,
-        bool _discardOracle,
-        AssertionBlockMode _assertionBlockMode
+        bool _discardOracle
     ) public onlyOwner {
+        require(!_blockByAsserter || (_blockByAsserter && _blockByAssertingCaller), "Cannot block by asserter only");
+        blockByAssertingCaller = _blockByAssertingCaller;
+        blockByAsserter = _blockByAsserter;
         validateDisputers = _validateDisputers;
         arbitrateViaEscalationManager = _arbitrateViaEscalationManager;
         discardOracle = _discardOracle;
-        assertionBlockMode = _assertionBlockMode;
         emit EscalationManagerConfigured(
-            validateDisputers,
-            arbitrateViaEscalationManager,
-            discardOracle,
-            assertionBlockMode
+            _blockByAssertingCaller,
+            _blockByAsserter,
+            _validateDisputers,
+            _arbitrateViaEscalationManager,
+            _discardOracle
         );
     }
 
@@ -184,18 +186,14 @@ contract FullPolicyEscalationManager is BaseEscalationManager, Ownable {
         emit AsserterWhitelistSet(asserter, value);
     }
 
-    // Checks if an assertion is blocked depending on the assertionBlockMode and the assertion's properties.
+    // Checks if an assertion is blocked depending on the blockByAssertingCaller / blockByAsserter settings and the
+    // assertion's properties.
     function _checkIfAssertionBlocked(bytes32 assertionId) internal view returns (bool) {
         OptimisticAsserterInterface optimisticAsserter = OptimisticAsserterInterface(msg.sender);
         OptimisticAsserterInterface.Assertion memory assertion = optimisticAsserter.getAssertion(assertionId);
-        if (assertionBlockMode == AssertionBlockMode.BlockByAssertingCallerAndAsserter) {
-            if (whitelistedAssertingCallers[assertion.escalationManagerSettings.assertingCaller])
-                return !whitelistedAsserters[assertion.asserter];
-            return true;
-        }
-        if (assertionBlockMode == AssertionBlockMode.BlockByAssertingCaller) {
-            return !whitelistedAssertingCallers[assertion.escalationManagerSettings.assertingCaller];
-        }
-        return false;
+        return
+            (blockByAssertingCaller &&
+                !whitelistedAssertingCallers[assertion.escalationManagerSettings.assertingCaller]) ||
+            (blockByAsserter && !whitelistedAsserters[assertion.asserter]);
     }
 }
