@@ -83,7 +83,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
     }
 
     function assertTruth(
-        bytes calldata claim,
+        bytes memory claim,
         address asserter,
         address callbackRecipient,
         address escalationManager,
@@ -92,10 +92,10 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
         uint64 liveness,
         bytes32 identifier,
         bytes32 domainId
-    ) public nonReentrant returns (bytes32) {
+    ) public nonReentrant returns (bytes32 assertionId) {
         // TODO: think about placing either msg.sender or block.timestamp into the claim ID to block an advasery
         // creating a claim that collides with a known assertion that will be created into the future.
-        bytes32 assertionId = _getId(claim, bond, liveness, currency, callbackRecipient, escalationManager, identifier);
+        assertionId = _getId(claim, bond, liveness, currency, callbackRecipient, escalationManager, identifier);
 
         require(asserter != address(0), "Asserter cant be 0");
         require(assertions[assertionId].asserter == address(0), "Assertion already exists");
@@ -261,7 +261,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
     }
 
     function _getId(
-        bytes calldata claim,
+        bytes memory claim,
         uint256 bond,
         uint64 liveness,
         IERC20 currency,
