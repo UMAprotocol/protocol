@@ -60,7 +60,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
      * @dev Only callable by the contract owner (UMA governor).
      * @param _defaultCurrency the default currency to bond asserters in assertTruthWithDefaults.
      * @param _defaultLiveness the default liveness for assertions in assertTruthWithDefaults.
-     * @param _burnedBondPercentage the percentage of the bond that is burned if the assertion is disputed.
+     * @param _burnedBondPercentage the percentage of the bond that is sent as fee to UMA Store contract on disputes.
      */
     function setAdminProperties(
         IERC20 _defaultCurrency,
@@ -109,13 +109,15 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
      * @param asserter receives bonds back at settlement. This could be msg.sender or
      * any other account that the caller wants to receive the bond at settlement time.
      * @param callbackRecipient if configured, this address will receive a function call assertionResolvedCallback and
-     * assertionDisputedCallback at resolution or dispute respectively. Enables dynamic responses to these events. The recipient _must_ implement these callbacks and not revert
-     * or the assertion resolution will be blocked.
+     * assertionDisputedCallback at resolution or dispute respectively. Enables dynamic responses to these events. The
+     * recipient _must_ implement these callbacks and not revert or the assertion resolution will be blocked.
      * @param escalationManager if configured, this address will control escalation properties of the assertion. This
-     * this means a) choosing to arbitrate via the UMA DVM, b) choosing to discard assertions on dispute, or choosing to
+     * means a) choosing to arbitrate via the UMA DVM, b) choosing to discard assertions on dispute, or choosing to
      * validate disputes. Combining these, the asserter can define their own security properties the assertion.
+     * escalationManager also _must_ implement the same callbacks as callbackRecipient.
      * @param currency bond currency pulled from the caller and held in escrow until the assertion is resolved.
-     * @param bond amount of currency to pull from the caller and hold in escrow until the assertion is resolved. This must be >= getMinimumBond(address(currency)).
+     * @param bond amount of currency to pull from the caller and hold in escrow until the assertion is resolved. This
+     * must be >= getMinimumBond(address(currency)).
      * @param liveness time to wait before the assertion can be resolved. Assertion can be disputed in this time.
      * @param identifier UMA DVM identifier to use for price requests in the event of a dispute. Must be a pre-approved identifier in the UMA DVM.
      * @param domainId optional domain that can be used to relate this assertion to other assertions in the escalationManager.
@@ -251,7 +253,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
 
             emit AssertionSettled(assertionId, assertion.asserter, false, true, msg.sender);
         } else {
-            // Dispute, settle with the disputer. // Revert if price not resolved.
+            // Dispute, settle with the disputer. Reverts if price not resolved.
             int256 resolvedPrice = _oracleGetPrice(assertionId, assertion.identifier, assertion.assertionTime);
 
             // If set to discard settlement resolution then false. Else, use oracle value to find resolution.

@@ -5,7 +5,8 @@ import "../../interfaces/EscalationManagerInterface.sol";
 /**
  * @title BaseEscalationManager
  * @notice Base contract for escalation managers. This contract is responsible for managing the escalation policy for
- * assertions. This base implementation simply exposes the required interface and provides a default implementation (returning default values or doing nothing).
+ * assertions. This base implementation simply exposes the required interface and provides a default implementation
+ * (returning default values or doing nothing).
  */
 contract BaseEscalationManager is EscalationManagerInterface {
     event PriceRequestAdded(bytes32 indexed identifier, uint256 time, bytes ancillaryData);
@@ -27,7 +28,7 @@ contract BaseEscalationManager is EscalationManagerInterface {
 
     /**
      * @notice Callback function that is called by Optimistic Asserter when an assertion is disputed. Used to validate
-     * if the dispute is should be allowed based on the escalation policy.
+     * if the dispute should be allowed based on the escalation policy.
      * @param assertionId the assertionId to validate the dispute for.
      * @param disputeCaller the caller of the dispute function.
      * @return bool if the dispute is allowed, false otherwise.
