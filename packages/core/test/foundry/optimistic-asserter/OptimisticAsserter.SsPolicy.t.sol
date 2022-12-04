@@ -16,7 +16,7 @@ contract EscalationManagerPolicyEnforced is Common {
 
     function testDefaultPolicy() public {
         vm.prank(TestAddress.account1);
-        bytes32 assertionId = optimisticAsserter.assertTruthWithDefaults(trueClaimAssertion);
+        bytes32 assertionId = optimisticAsserter.assertTruthWithDefaults(trueClaimAssertion, TestAddress.account1);
         OptimisticAsserterInterface.Assertion memory assertion = optimisticAsserter.getAssertion(assertionId);
         assertFalse(assertion.escalationManagerSettings.discardOracle);
         assertFalse(assertion.escalationManagerSettings.arbitrateViaEscalationManager);
