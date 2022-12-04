@@ -115,10 +115,10 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
      * means a) choosing to arbitrate via the UMA DVM, b) choosing to discard assertions on dispute, or choosing to
      * validate disputes. Combining these, the asserter can define their own security properties the assertion.
      * escalationManager also _must_ implement the same callbacks as callbackRecipient.
+     * @param liveness time to wait before the assertion can be resolved. Assertion can be disputed in this time.
      * @param currency bond currency pulled from the caller and held in escrow until the assertion is resolved.
      * @param bond amount of currency to pull from the caller and hold in escrow until the assertion is resolved. This
      * must be >= getMinimumBond(address(currency)).
-     * @param liveness time to wait before the assertion can be resolved. Assertion can be disputed in this time.
      * @param identifier UMA DVM identifier to use for price requests in the event of a dispute. Must be a pre-approved identifier in the UMA DVM.
      * @param domainId optional domain that can be used to relate this assertion to other assertions in the escalationManager.
      * This can be used by the configured escalationManager to define custom behavior for groups of assertions.
