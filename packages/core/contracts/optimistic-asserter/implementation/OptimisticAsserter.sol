@@ -46,6 +46,12 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
     IERC20 public defaultCurrency;
     uint64 public defaultLiveness;
 
+    /**
+     * @notice Construct the OptimisticAsserter contract.
+     * @param _finder keeps track of all contracts within the system based on their interfaceName.
+     * @param _defaultCurrency the default currency to bond asserters in assertTruthWithDefaults.
+     * @param _defaultLiveness the default liveness for assertions in assertTruthWithDefaults.
+     */
     constructor(
         FinderInterface _finder,
         IERC20 _defaultCurrency,
