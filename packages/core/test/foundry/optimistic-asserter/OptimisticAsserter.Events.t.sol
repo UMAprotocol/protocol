@@ -21,11 +21,13 @@ contract OptimisticAsserterEvents is Common {
                 abi.encode(
                     falseClaimAssertion,
                     defaultBond,
+                    uint64(timer.getCurrentTime()),
                     defaultLiveness,
                     address(defaultCurrency),
                     address(0),
                     address(0),
-                    defaultIdentifier
+                    defaultIdentifier,
+                    TestAddress.account1
                 )
             );
 
@@ -38,9 +40,9 @@ contract OptimisticAsserterEvents is Common {
             address(0),
             address(0),
             TestAddress.account1,
+            uint64(timer.getCurrentTime()) + defaultLiveness,
             defaultCurrency,
-            defaultBond,
-            uint64(timer.getCurrentTime()) + defaultLiveness
+            defaultBond
         );
 
         // Account1 asserts a false claim.
@@ -63,7 +65,7 @@ contract OptimisticAsserterEvents is Common {
         _mockOracleResolved(address(mockOracle), oracleRequest, false);
 
         vm.expectEmit(true, true, true, true);
-        emit AssertionSettled(assertionId, TestAddress.account2, true, false);
+        emit AssertionSettled(assertionId, TestAddress.account2, true, false, address(this));
         assertFalse(optimisticAsserter.settleAndGetAssertionResult(assertionId));
     }
 

@@ -74,9 +74,9 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
                 msg.sender, // asserter
                 address(0), // callbackRecipient
                 address(0), // escalationManager
+                defaultLiveness,
                 defaultCurrency,
                 getMinimumBond(address(defaultCurrency)),
-                defaultLiveness,
                 defaultIdentifier,
                 bytes32(0)
             );
@@ -87,15 +87,14 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
         address asserter,
         address callbackRecipient,
         address escalationManager,
+        uint64 liveness,
         IERC20 currency,
         uint256 bond,
-        uint64 liveness,
         bytes32 identifier,
         bytes32 domainId
     ) public nonReentrant returns (bytes32 assertionId) {
-        // TODO: think about placing either msg.sender or block.timestamp into the claim ID to block an advasery
-        // creating a claim that collides with a known assertion that will be created into the future.
-        assertionId = _getId(claim, bond, liveness, currency, callbackRecipient, escalationManager, identifier);
+        uint64 time = uint64(getCurrentTime());
+        assertionId = _getId(claim, bond, time, liveness, currency, callbackRecipient, escalationManager, identifier);
 
         require(asserter != address(0), "Asserter cant be 0");
         require(assertions[assertionId].asserter == address(0), "Assertion already exists");
@@ -103,7 +102,6 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
         require(_validateAndCacheCurrency(address(currency)), "Unsupported currency");
         require(bond >= getMinimumBond(address(currency)), "Bond amount too low");
 
-        uint64 currentTime = uint64(getCurrentTime());
         assertions[assertionId] = Assertion({
             escalationManagerSettings: EscalationManagerSettings({
                 arbitrateViaEscalationManager: false, // this is the default behavior: if not specified by the Sovereign security the assertion will use the DVM as an oracle.
@@ -121,8 +119,8 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
             bond: bond,
             settled: false,
             settlementResolution: false,
-            assertionTime: currentTime,
-            expirationTime: currentTime + liveness
+            assertionTime: time,
+            expirationTime: time + liveness
         });
 
         {
@@ -149,9 +147,9 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
             callbackRecipient,
             escalationManager,
             msg.sender,
+            time + liveness,
             currency,
-            bond,
-            currentTime + liveness
+            bond
         );
 
         return assertionId;
@@ -187,7 +185,6 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
         _oracleRequestPrice(assertionId, assertion.identifier, assertion.assertionTime);
 
         // Send dispute callback
-        // TODO: consider mergeing the isDisputeAlloowed into toe SSM callback (revert within callback to block).
         _callbackOnAssertionDispute(assertionId);
 
         // Send resolve callback if dispute resolution is discarded
@@ -208,7 +205,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
             assertion.currency.safeTransfer(assertion.asserter, assertion.bond);
             _callbackOnAssertionResolve(assertionId, true);
 
-            emit AssertionSettled(assertionId, assertion.asserter, false, true);
+            emit AssertionSettled(assertionId, assertion.asserter, false, true, msg.sender);
         } else {
             // Dispute, settle with the disputer
             int256 resolvedPrice = _oracleGetPrice(assertionId, assertion.identifier, assertion.assertionTime); // Revert if price not resolved.
@@ -232,7 +229,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
             if (!assertion.escalationManagerSettings.discardOracle)
                 _callbackOnAssertionResolve(assertionId, assertion.settlementResolution);
 
-            emit AssertionSettled(assertionId, bondRecipient, true, assertion.settlementResolution);
+            emit AssertionSettled(assertionId, bondRecipient, true, assertion.settlementResolution, msg.sender);
         }
     }
 
@@ -263,22 +260,32 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
     function _getId(
         bytes memory claim,
         uint256 bond,
+        uint256 currentTime,
         uint64 liveness,
         IERC20 currency,
         address callbackRecipient,
         address escalationManager,
         bytes32 identifier
-    ) internal pure returns (bytes32) {
+    ) internal view returns (bytes32) {
         // Returns the unique ID for this assertion. This ID is used to identify the assertion in the Oracle.
         return
             keccak256(
-                // TODO change order of abi.encode arguments to do potential gas savings
-                abi.encode(claim, bond, liveness, currency, callbackRecipient, escalationManager, identifier)
+                abi.encode(
+                    claim,
+                    bond,
+                    currentTime,
+                    liveness,
+                    currency,
+                    callbackRecipient,
+                    escalationManager,
+                    identifier,
+                    msg.sender
+                )
             );
     }
 
     function _stampAssertion(bytes32 assertionId) internal view returns (bytes memory) {
-        // Returns the unique ID for this assertion. This ID is used to identify the assertion in the Oracle.
+        // Returns ancillary data for the Oracle request containing assertionId and asserter.
         return
             AncillaryData.appendKeyValueAddress(
                 AncillaryData.appendKeyValueBytes32("", "assertionId", assertionId),

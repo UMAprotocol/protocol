@@ -63,11 +63,11 @@
 //             TestAddress.account1,
 //             address(0),
 //             address(0),
+//             defaultLiveness,
 //             newCurrency,
 //             newCurrencyBond,
-//             defaultLiveness,
 //             defaultIdentifier,
-//             bytes32(0) // No domain.
+//             bytes32(0) // No domain
 //         );
 //         vm.stopPrank();
 //         (bool cachedWhitelist, uint256 cachedFinalFee) = optimisticAsserter.cachedCurrencies(address(newCurrency));
@@ -92,11 +92,11 @@
 //             TestAddress.account1,
 //             address(0),
 //             address(0),
+//             defaultLiveness,
 //             defaultCurrency,
 //             defaultBond,
-//             defaultLiveness,
 //             newIdentifier,
-//             bytes32(0) // No domain.
+//             bytes32(0) // No domain
 //         );
 //         vm.stopPrank();
 //         assertTrue(optimisticAsserter.cachedIdentifiers(newIdentifier));

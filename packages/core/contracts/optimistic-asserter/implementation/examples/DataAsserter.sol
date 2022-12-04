@@ -78,9 +78,9 @@ contract DataAsserter {
             asserter,
             address(this),
             address(0), // No sovereign security.
+            assertionLiveness,
             defaultCurrency,
             bond,
-            assertionLiveness,
             defaultIdentifier,
             bytes32(0) // No domain.
         );
