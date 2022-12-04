@@ -235,8 +235,8 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
      * @notice Resolves an assertion. If the assertion has not been disputed, the assertion is resolved as true and the
      * asserter receives the bond. If the assertion has been disputed, the assertion is resolved depending on the oracle
      * result. Based on the result, the asserter or disputer receives the bond. If the assertion was disputed then an
-     * amount of the bond is burned to the UMA Store based on the burnedBondPercentage. The remainder of the bond is
-     * returned to the asserter or disputer.
+     * amount of the bond is sent to the UMA Store as an oracle fee based on the burnedBondPercentage. The remainder of the
+     * bond is returned to the asserter or disputer.
      * @param assertionId unique identifier for the assertion to resolve.
      */
     function settleAssertion(bytes32 assertionId) public nonReentrant {
