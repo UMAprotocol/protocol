@@ -103,7 +103,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
         require(_validateAndCacheCurrency(address(currency)), "Unsupported currency");
         require(bond >= getMinimumBond(address(currency)), "Bond amount too low");
 
-        // uint64 currentTime = uint64(getCurrentTime());
+        uint64 currentTime = uint64(getCurrentTime());
         assertions[assertionId] = Assertion({
             escalationManagerSettings: EscalationManagerSettings({
                 arbitrateViaEscalationManager: false, // this is the default behavior: if not specified by the Sovereign security the assertion will use the DVM as an oracle.
@@ -121,8 +121,8 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
             bond: bond,
             settled: false,
             settlementResolution: false,
-            assertionTime: uint64(getCurrentTime()),
-            expirationTime: uint64(getCurrentTime()) + liveness
+            assertionTime: currentTime,
+            expirationTime: currentTime + liveness
         });
 
         {
@@ -151,7 +151,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
             msg.sender,
             currency,
             bond,
-            uint64(getCurrentTime()) + liveness
+            currentTime + liveness
         );
 
         return assertionId;
