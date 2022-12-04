@@ -255,7 +255,8 @@ contract PredictionMarket is OptimisticAsserterCallbackRecipientInterface {
             assertionLiveness,
             currency,
             bond,
-            defaultIdentifier
+            defaultIdentifier,
+            bytes32(0) // No domain.
         );
     }
 }

@@ -97,7 +97,8 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
                 defaultLiveness,
                 defaultCurrency,
                 getMinimumBond(address(defaultCurrency)),
-                defaultIdentifier
+                defaultIdentifier,
+                bytes32(0)
             );
     }
 
@@ -116,16 +117,19 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
      * @param bond amount of currency to pull from the caller and hold in escrow until the assertion is resolved.
      * @param liveness time to wait before the assertion can be resolved. Assertion can be disputed in this time.
      * @param identifier UMA DVM identifier to use for price requests in the event of a dispute.
+     * @param domainId identifier provided by the asserter to enable additional grouping between assertions within a
+     * known "domain". Not used in this contract but can be used by escalationManager to associate sets of assertions.
      */
     function assertTruth(
-        bytes calldata claim,
+        bytes memory claim,
         address asserter,
         address callbackRecipient,
         address escalationManager,
         uint64 liveness,
         IERC20 currency,
         uint256 bond,
-        bytes32 identifier
+        bytes32 identifier,
+        bytes32 domainId
     ) public nonReentrant returns (bytes32 assertionId) {
         uint64 time = uint64(getCurrentTime());
         assertionId = _getId(claim, bond, time, liveness, currency, callbackRecipient, escalationManager, identifier);
@@ -148,7 +152,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
             disputer: address(0),
             callbackRecipient: callbackRecipient,
             currency: currency,
-            claimId: keccak256(claim),
+            domainId: domainId,
             identifier: identifier,
             bond: bond,
             settled: false,
@@ -178,6 +182,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
 
         emit AssertionMade(
             assertionId,
+            domainId,
             claim,
             asserter,
             callbackRecipient,
@@ -345,7 +350,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
     }
 
     function _getId(
-        bytes calldata claim,
+        bytes memory claim,
         uint256 bond,
         uint256 time,
         uint64 liveness,
