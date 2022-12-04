@@ -20,7 +20,7 @@ interface OptimisticAsserterInterface {
         IERC20 currency; // ERC20 token used to pay rewards and fees.
         uint64 expirationTime;
         bool settlementResolution;
-        bytes32 claimId;
+        bytes32 domainId;
         bytes32 identifier;
         uint256 bond;
         address callbackRecipient; // Address that receives the callback.
@@ -46,7 +46,8 @@ interface OptimisticAsserterInterface {
         uint64 liveness,
         IERC20 currency,
         uint256 bond,
-        bytes32 identifier
+        bytes32 identifier,
+        bytes32 domainId
     ) external returns (bytes32);
 
     function getAssertionResult(bytes32 assertionId) external view returns (bool);
@@ -55,6 +56,7 @@ interface OptimisticAsserterInterface {
 
     event AssertionMade(
         bytes32 indexed assertionId,
+        bytes32 domainId,
         bytes claim,
         address indexed asserter,
         address callbackRecipient,
