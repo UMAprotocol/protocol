@@ -22,9 +22,9 @@ import "../../common/implementation/MultiCaller.sol";
 /**
  * @title Optimistic Asserter.
  * @notice The OA is used to assert truths about the world which are verified using an optimistic escalation game.
- * @dev Core idea: an asserter makes a statement about a truth, claiming "assertTruth". If this statement is not
+ * @dev Core idea: an asserter makes a statement about a truth, calling "assertTruth". If this statement is not
  * challenged, it is taken as the state of the world. If challenged, it is arbitrated using the UMA DVM, or if
- * configured,an escalation manager. Escalation managers enable integrations to define their own security properties and
+ * configured, an escalation manager. Escalation managers enable integrations to define their own security properties and
  * tradeoffs, enabling the notion of "sovereign security".
  */
 
@@ -40,7 +40,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
 
     mapping(bytes32 => Assertion) public assertions; // All assertions made by the optimistic asserter.
 
-    uint256 public burnedBondPercentage; // Percentage of the bond that is burned if the assertion is disputed.
+    uint256 public burnedBondPercentage; // Percentage of the bond that is paid to the UMA store if the assertion is disputed.
 
     bytes32 public constant defaultIdentifier = "ASSERT_TRUTH";
     IERC20 public defaultCurrency;
@@ -78,10 +78,10 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
     }
 
     /**
-     * @notice Asserts a truth about the world, using the default currency and liveness. No callback recipient is used
-     * and the escalation manager is disabled. The caller is the asserter and is expected to provide a bond of the
-     * currencies finalFee/burnedBondPercentage (with burnedBondPercentage set to 50% the bond is 2x final fee).
-     * @dev The caller must approve this contract to spend at least the bond amount of the default currency.
+     * @notice Asserts a truth about the world, using the default currency and liveness. No callback recipient
+     * or escalation manager is enabled. The caller is the asserter and is expected to provide a bond of the
+     * currencies finalFee/burnedBondPercentage (with burnedBondPercentage set to 50%, the bond is 2x final fee).
+     * @dev The caller must approve this contract to spend at least the result of getMinimumBond(defaultCurrency).
      * @param claim the truth claim being asserted. This is an assertion about the world, and is verified by disputers.
      * @return assertionId unique identifier for this assertion.
      */
@@ -106,19 +106,23 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
      * @notice Asserts a truth about the world, using a fully custom configuration.
      * @dev The caller must approve this contract to spend at least bond amount of currency.
      * @param claim the truth claim being asserted. This is an assertion about the world, and is verified by disputers.
-     * @param asserter receives bonds back at settlement. This could be msg.sender (if sent from an EOA) or a contract
-     * address or any other account that the caller wants to receive the bond at settlement time.
+     * @param asserter receives bonds back at settlement. This could be msg.sender or
+     * any other account that the caller wants to receive the bond at settlement time.
      * @param callbackRecipient if configured, this address will receive a function call assertionResolvedCallback and
-     * assertionDisputedCallback at resolution or dispute respectively. Enables dynamic responses to these events.
+     * assertionDisputedCallback at resolution or dispute respectively. Enables dynamic responses to these events. The recipient _must_ implement these callbacks and not revert
+     * or the assertion resolution will be blocked.
      * @param escalationManager if configured, this address will control escalation properties of the assertion. This
      * this means a) choosing to arbitrate via the UMA DVM, b) choosing to discard assertions on dispute, or choosing to
      * validate disputes. Combining these, the asserter can define their own security properties the assertion.
      * @param currency bond currency pulled from the caller and held in escrow until the assertion is resolved.
-     * @param bond amount of currency to pull from the caller and hold in escrow until the assertion is resolved.
+     * @param bond amount of currency to pull from the caller and hold in escrow until the assertion is resolved. This must be >= getMinimumBond(address(currency)).
      * @param liveness time to wait before the assertion can be resolved. Assertion can be disputed in this time.
-     * @param identifier UMA DVM identifier to use for price requests in the event of a dispute.
-     * @param domainId identifier provided by the asserter to enable additional grouping between assertions within a
-     * known "domain". Not used in this contract but can be used by escalationManager to associate sets of assertions.
+     * @param identifier UMA DVM identifier to use for price requests in the event of a dispute. Must be a pre-approved identifier in the UMA DVM.
+     * @param domainId optional domain that can be used to relate this assertion to other assertions in the escalationManager.
+     * This can be used by the configured escalationManager to define custom behavior for groups of assertions.
+     * This is typically used for "escalation games" by changing bonds or other assertion properties
+     * based on the other assertions that have come before. If no escalationManager is configured or a domain is not needed,
+     * this value should be set to bytes32(0) to reduce gas costs.
      */
     function assertTruth(
         bytes memory claim,

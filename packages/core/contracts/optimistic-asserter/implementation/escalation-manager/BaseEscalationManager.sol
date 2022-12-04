@@ -5,15 +5,15 @@ import "../../interfaces/EscalationManagerInterface.sol";
 /**
  * @title BaseEscalationManager
  * @notice Base contract for escalation managers. This contract is responsible for managing the escalation policy for
- * assertions. This base implementation simply exposes the required interface, but does not implement any logic.
+ * assertions. This base implementation simply exposes the required interface and provides a default implementation (returning default values or doing nothing).
  */
 contract BaseEscalationManager is EscalationManagerInterface {
     event PriceRequestAdded(bytes32 indexed identifier, uint256 time, bytes ancillaryData);
 
     /**
-     * @notice Returns the escalation policy for the given assertionId.
-     * @param assertionId the assertionId to get the escalation policy for.
-     * @return the escalation policy for the given assertionId.
+     * @notice Returns the assertion policy for the given assertionId.
+     * @param assertionId the assertionId to get the assertion policy for.
+     * @return the assertion policy for the given assertionId.
      */
     function getAssertionPolicy(bytes32 assertionId) public view virtual override returns (AssertionPolicy memory) {
         return
@@ -38,7 +38,7 @@ contract BaseEscalationManager is EscalationManagerInterface {
 
     /**
      * @notice Implements price getting logic. This method is called by Optimistic Asserter settling an assertion that is
-     * configured to use the escalation manager as the oracle.. The interface is constructed to mimic the UMA DVM.
+     * configured to use the escalation manager as the oracle. The interface is constructed to mimic the UMA DVM.
      * @param identifier price identifier being requested.
      * @param time timestamp of the price being requested.
      * @param ancillaryData ancillary data of the price being requested.
