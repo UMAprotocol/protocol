@@ -48,7 +48,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
 
     /**
      * @notice Construct the OptimisticAsserter contract.
-     * @param _finder keeps track of all contracts within the system based on their interfaceName.
+     * @param _finder keeps track of all contracts within the UMA system based on their interfaceName. Managed by the UMA Governor contract.
      * @param _defaultCurrency the default currency to bond asserters in assertTruthWithDefaults.
      * @param _defaultLiveness the default liveness for assertions in assertTruthWithDefaults.
      */
