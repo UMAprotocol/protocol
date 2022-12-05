@@ -19,25 +19,39 @@ import "../../common/implementation/AncillaryData.sol";
 import "../../common/implementation/Lockable.sol";
 import "../../common/implementation/MultiCaller.sol";
 
+/**
+ * @title Optimistic Asserter.
+ * @notice The OA is used to assert truths about the world which are verified using an optimistic escalation game.
+ * @dev Core idea: an asserter makes a statement about a truth, calling "assertTruth". If this statement is not
+ * challenged, it is taken as the state of the world. If challenged, it is arbitrated using the UMA DVM, or if
+ * configured, an escalation manager. Escalation managers enable integrations to define their own security properties and
+ * tradeoffs, enabling the notion of "sovereign security".
+ */
+
 contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, MultiCaller {
     using SafeERC20 for IERC20;
 
-    FinderInterface public immutable finder;
+    FinderInterface public immutable finder; // Finder used to discover other UMA ecosystem contracts.
 
     // Cached UMA parameters.
     address public cachedOracle;
     mapping(address => WhitelistedCurrency) public cachedCurrencies;
     mapping(bytes32 => bool) public cachedIdentifiers;
 
-    mapping(bytes32 => Assertion) public assertions;
+    mapping(bytes32 => Assertion) public assertions; // All assertions made by the optimistic asserter.
 
-    uint256 public burnedBondPercentage;
+    uint256 public burnedBondPercentage; // Percentage of the bond that is paid to the UMA store if the assertion is disputed.
 
     bytes32 public constant defaultIdentifier = "ASSERT_TRUTH";
-
     IERC20 public defaultCurrency;
     uint64 public defaultLiveness;
 
+    /**
+     * @notice Construct the OptimisticAsserter contract.
+     * @param _finder keeps track of all contracts within the UMA system based on their interfaceName. Managed by the UMA Governor contract.
+     * @param _defaultCurrency the default currency to bond asserters in assertTruthWithDefaults.
+     * @param _defaultLiveness the default liveness for assertions in assertTruthWithDefaults.
+     */
     constructor(
         FinderInterface _finder,
         IERC20 _defaultCurrency,
@@ -47,6 +61,13 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
         setAdminProperties(_defaultCurrency, _defaultLiveness, 0.5e18);
     }
 
+    /**
+     * @notice Sets the default currency, liveness, and burned bond percentage.
+     * @dev Only callable by the contract owner (UMA governor).
+     * @param _defaultCurrency the default currency to bond asserters in assertTruthWithDefaults.
+     * @param _defaultLiveness the default liveness for assertions in assertTruthWithDefaults.
+     * @param _burnedBondPercentage the percentage of the bond that is sent as fee to UMA Store contract on disputes.
+     */
     function setAdminProperties(
         IERC20 _defaultCurrency,
         uint64 _defaultLiveness,
@@ -62,11 +83,16 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
         emit AdminPropertiesSet(_defaultCurrency, _defaultLiveness, _burnedBondPercentage);
     }
 
-    function getAssertion(bytes32 assertionId) external view returns (Assertion memory) {
-        return assertions[assertionId];
-    }
+    /**
+     * @notice Asserts a truth about the world, using the default currency and liveness. No callback recipient
+     * or escalation manager is enabled. The caller is the asserter and is expected to provide a bond of the
+     * currencies finalFee/burnedBondPercentage (with burnedBondPercentage set to 50%, the bond is 2x final fee).
+     * @dev The caller must approve this contract to spend at least the result of getMinimumBond(defaultCurrency).
+     * @param claim the truth claim being asserted. This is an assertion about the world, and is verified by disputers.
+     * @return assertionId unique identifier for this assertion.
+     */
 
-    function assertTruthWithDefaults(bytes calldata claim, address asserter) public returns (bytes32) {
+    function assertTruthWithDefaults(bytes calldata claim, address asserter) public returns (bytes32 assertionId) {
         // Note: re-entrancy guard is done in the inner call.
         return
             assertTruth(
@@ -82,6 +108,30 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
             );
     }
 
+    /**
+     * @notice Asserts a truth about the world, using a fully custom configuration.
+     * @dev The caller must approve this contract to spend at least bond amount of currency.
+     * @param claim the truth claim being asserted. This is an assertion about the world, and is verified by disputers.
+     * @param asserter receives bonds back at settlement. This could be msg.sender or
+     * any other account that the caller wants to receive the bond at settlement time.
+     * @param callbackRecipient if configured, this address will receive a function call assertionResolvedCallback and
+     * assertionDisputedCallback at resolution or dispute respectively. Enables dynamic responses to these events. The
+     * recipient _must_ implement these callbacks and not revert or the assertion resolution will be blocked.
+     * @param escalationManager if configured, this address will control escalation properties of the assertion. This
+     * means a) choosing to arbitrate via the UMA DVM, b) choosing to discard assertions on dispute, or choosing to
+     * validate disputes. Combining these, the asserter can define their own security properties the assertion.
+     * escalationManager also _must_ implement the same callbacks as callbackRecipient.
+     * @param liveness time to wait before the assertion can be resolved. Assertion can be disputed in this time.
+     * @param currency bond currency pulled from the caller and held in escrow until the assertion is resolved.
+     * @param bond amount of currency to pull from the caller and hold in escrow until the assertion is resolved. This
+     * must be >= getMinimumBond(address(currency)).
+     * @param identifier UMA DVM identifier to use for price requests in the event of a dispute. Must be a pre-approved identifier in the UMA DVM.
+     * @param domainId optional domain that can be used to relate this assertion to other assertions in the escalationManager.
+     * This can be used by the configured escalationManager to define custom behavior for groups of assertions.
+     * This is typically used for "escalation games" by changing bonds or other assertion properties
+     * based on the other assertions that have come before. If no escalationManager is configured or a domain is not needed,
+     * this value should be set to bytes32(0) to reduce gas costs.
+     */
     function assertTruth(
         bytes memory claim,
         address asserter,
@@ -104,9 +154,9 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
 
         assertions[assertionId] = Assertion({
             escalationManagerSettings: EscalationManagerSettings({
-                arbitrateViaEscalationManager: false, // this is the default behavior: if not specified by the Sovereign security the assertion will use the DVM as an oracle.
-                discardOracle: false, // this is the default behavior: if not specified by the Sovereign security the assertion will respect the Oracle result.
-                validateDisputers: false, // this is the default behavior: if not specified by the Sovereign security the disputer will not be validated.
+                arbitrateViaEscalationManager: false, // Default behavior: use the DVM as an oracle.
+                discardOracle: false, // Default behavior: respect the Oracle result.
+                validateDisputers: false, // Default behavior: disputer will not be validated.
                 escalationManager: escalationManager,
                 assertingCaller: msg.sender
             }),
@@ -124,20 +174,23 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
         });
 
         {
-            // Scope for Escalation Manager Settings update, avoids stack too deep errors
             EscalationManagerInterface.AssertionPolicy memory assertionPolicy = _getAssertionPolicy(assertionId);
-            // Check if the assertion is allowed by the sovereign security.
-            require(!assertionPolicy.blockAssertion, "Assertion not allowed");
+            require(!assertionPolicy.blockAssertion, "Assertion not allowed"); // Check if the assertion is permitted.
             EscalationManagerSettings storage emSettings = assertions[assertionId].escalationManagerSettings;
             (emSettings.arbitrateViaEscalationManager, emSettings.discardOracle, emSettings.validateDisputers) = (
-                assertionPolicy.arbitrateViaEscalationManager, // Use SS as an oracle if specified by the SS.
-                assertionPolicy.discardOracle, // Discard Oracle result if specified by the SS.
-                assertionPolicy.validateDisputers // Validate the disputers if specified by the SS.
+                // Choose which oracle to arbitrate disputes via. If Set to true then the escalation manager will
+                // arbitrate disputes. Else, the DVM arbitrates disputes. This lets integrations "unplug" the DVM.
+                assertionPolicy.arbitrateViaEscalationManager,
+                // Choose whether to discard the Oracle result. If true then "throw away" the assertion. To get an
+                // assertion to be true it must be re-asserted and not disputed.
+                assertionPolicy.discardOracle,
+                // Configures if the escalation manager should validate the disputer on assertions. This enables you
+                // to construct setups such as whitelisted disputers.
+                assertionPolicy.validateDisputers
             );
         }
 
-        // Pull the bond
-        currency.safeTransferFrom(msg.sender, address(this), bond);
+        currency.safeTransferFrom(msg.sender, address(this), bond); // Pull the bond from the caller.
 
         emit AssertionMade(
             assertionId,
@@ -155,36 +208,27 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
         return assertionId;
     }
 
-    function getAssertionResult(bytes32 assertionId) public view returns (bool) {
-        Assertion memory assertion = assertions[assertionId];
-        // Return early if not using answer from resolved dispute.
-        if (assertion.disputer != address(0) && assertion.escalationManagerSettings.discardOracle) return false;
-        require(assertion.settled, "Assertion not settled"); // Revert if assertion not settled.
-        return assertion.settlementResolution;
-    }
-
-    function settleAndGetAssertionResult(bytes32 assertionId) public returns (bool) {
-        // Note: re-entrancy guard is done in the inner settleAssertion call.
-        if (!assertions[assertionId].settled) settleAssertion(assertionId);
-        return getAssertionResult(assertionId);
-    }
-
+    /**
+     * @notice Disputes an assertion. Depending on how the assertion was configured, this may either escalate to the UMA
+     * DVM or the configured escalation manager for arbitration.
+     * @dev The caller must approve this contract to spend at least bond amount of currency for the associated assertion.
+     * @param assertionId unique identifier for the assertion to dispute.
+     * @param disputer receives bonds back at settlement.
+     */
     function disputeAssertion(bytes32 assertionId, address disputer) public nonReentrant {
         require(disputer != address(0), "Disputer cant be 0");
         Assertion storage assertion = assertions[assertionId];
-        require(assertion.asserter != address(0), "Assertion does not exist"); // Revert if assertion does not exist.
-        require(assertion.disputer == address(0), "Assertion already disputed"); // Revert if assertion already disputed.
-        require(assertion.expirationTime > getCurrentTime(), "Assertion is expired"); // Revert if assertion expired.
-        require(_isDisputeAllowed(assertionId), "Dispute not allowed"); // Revert if dispute not allowed.
+        require(assertion.asserter != address(0), "Assertion does not exist");
+        require(assertion.disputer == address(0), "Assertion already disputed");
+        require(assertion.expirationTime > getCurrentTime(), "Assertion is expired");
+        require(_isDisputeAllowed(assertionId), "Dispute not allowed");
 
         assertion.disputer = disputer;
 
-        // Pull the bond
         assertion.currency.safeTransferFrom(msg.sender, address(this), assertion.bond);
 
         _oracleRequestPrice(assertionId, assertion.identifier, assertion.assertionTime);
 
-        // Send dispute callback
         _callbackOnAssertionDispute(assertionId);
 
         // Send resolve callback if dispute resolution is discarded
@@ -193,6 +237,14 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
         emit AssertionDisputed(assertionId, disputer);
     }
 
+    /**
+     * @notice Resolves an assertion. If the assertion has not been disputed, the assertion is resolved as true and the
+     * asserter receives the bond. If the assertion has been disputed, the assertion is resolved depending on the oracle
+     * result. Based on the result, the asserter or disputer receives the bond. If the assertion was disputed then an
+     * amount of the bond is sent to the UMA Store as an oracle fee based on the burnedBondPercentage. The remainder of the
+     * bond is returned to the asserter or disputer.
+     * @param assertionId unique identifier for the assertion to resolve.
+     */
     function settleAssertion(bytes32 assertionId) public nonReentrant {
         Assertion storage assertion = assertions[assertionId];
         require(assertion.asserter != address(0), "Assertion does not exist"); // Revert if assertion does not exist.
@@ -207,8 +259,8 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
 
             emit AssertionSettled(assertionId, assertion.asserter, false, true, msg.sender);
         } else {
-            // Dispute, settle with the disputer
-            int256 resolvedPrice = _oracleGetPrice(assertionId, assertion.identifier, assertion.assertionTime); // Revert if price not resolved.
+            // Dispute, settle with the disputer. Reverts if price not resolved.
+            int256 resolvedPrice = _oracleGetPrice(assertionId, assertion.identifier, assertion.assertionTime);
 
             // If set to discard settlement resolution then false. Else, use oracle value to find resolution.
             if (assertion.escalationManagerSettings.discardOracle) assertion.settlementResolution = false;
@@ -233,11 +285,52 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
         }
     }
 
+    /**
+     * @notice Settles an assertion and returns the resolution.
+     * @param assertionId unique identifier for the assertion to resolve and return the resolution for.
+     * @return resolution of the assertion.
+     */
+    function settleAndGetAssertionResult(bytes32 assertionId) public returns (bool resolution) {
+        // Note: re-entrancy guard is done in the inner settleAssertion call.
+        if (!assertions[assertionId].settled) settleAssertion(assertionId);
+        return getAssertionResult(assertionId);
+    }
+
+    /**
+     * @notice Fetches information about a specific identifier & currency from the UMA contracts and stores a local copy
+     * of the information within this contract. This is used to save gas when making assertions as we can avoid an
+     * external call to the UMA contracts to fetch this.
+     * @param identifier identifier to fetch information for and store locally.
+     * @param currency currency to fetch information for and store locally.
+     */
     function syncUmaParams(bytes32 identifier, address currency) public {
         cachedOracle = finder.getImplementationAddress(OracleInterfaces.Oracle);
         cachedIdentifiers[identifier] = _getIdentifierWhitelist().isIdentifierSupported(identifier);
         cachedCurrencies[currency].isWhitelisted = _getCollateralWhitelist().isOnWhitelist(currency);
         cachedCurrencies[currency].finalFee = _getStore().computeFinalFee(currency).rawValue;
+    }
+
+    /**
+     * @notice Fetches information about a specific assertion and returns it.
+     * @param assertionId unique identifier for the assertion to fetch information for.
+     * @return assertion information about the assertion.
+     */
+    function getAssertion(bytes32 assertionId) external view returns (Assertion memory assertion) {
+        return assertions[assertionId];
+    }
+
+    /**
+     * @notice Fetches the resolution of a specific assertion and returns it. If the assertion has not been settled then
+     * this will revert. If the assertion was disputed and configured to discard the oracle resolution return false.
+     * @param assertionId unique identifier for the assertion to fetch the resolution for.
+     * @return resolution of the assertion.
+     */
+    function getAssertionResult(bytes32 assertionId) public view returns (bool resolution) {
+        Assertion memory assertion = assertions[assertionId];
+        // Return early if not using answer from resolved dispute.
+        if (assertion.disputer != address(0) && assertion.escalationManagerSettings.discardOracle) return false;
+        require(assertion.settled, "Assertion not settled"); // Revert if assertion not settled.
+        return assertion.settlementResolution;
     }
 
     /**
@@ -248,19 +341,30 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
         return block.timestamp;
     }
 
+    /**
+     * @notice Appends information onto an assertionId to construct ancillary data used for dispute resolution.
+     * @param assertionId unique identifier for the assertion to construct ancillary data for.
+     * @return ancillaryData stamped assertion information.
+     */
     function stampAssertion(bytes32 assertionId) public view returns (bytes memory) {
         return _stampAssertion(assertionId);
     }
 
-    function getMinimumBond(address currencyAddress) public view returns (uint256) {
-        uint256 finalFee = cachedCurrencies[currencyAddress].finalFee;
+    /**
+     * @notice Returns the minimum bond amount required to make an assertion. This is calculated as the final fee of the
+     * currency divided by the burnedBondPercentage. If the burn percentage is 50% then the min bond is 2x the final fee.
+     * @param currency currency to calculate the minimum bond for.
+     * @return minimum bond amount.
+     */
+    function getMinimumBond(address currency) public view returns (uint256) {
+        uint256 finalFee = cachedCurrencies[currency].finalFee;
         return (finalFee * 1e18) / burnedBondPercentage;
     }
 
     function _getId(
         bytes memory claim,
         uint256 bond,
-        uint256 currentTime,
+        uint256 time,
         uint64 liveness,
         IERC20 currency,
         address callbackRecipient,
@@ -273,7 +377,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
                 abi.encode(
                     claim,
                     bond,
-                    currentTime,
+                    time,
                     liveness,
                     currency,
                     callbackRecipient,
