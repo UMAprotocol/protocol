@@ -66,12 +66,12 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
         return assertions[assertionId];
     }
 
-    function assertTruthWithDefaults(bytes calldata claim) public returns (bytes32) {
+    function assertTruthWithDefaults(bytes calldata claim, address asserter) public returns (bytes32) {
         // Note: re-entrancy guard is done in the inner call.
         return
             assertTruth(
                 claim,
-                msg.sender, // asserter
+                asserter, // asserter
                 address(0), // callbackRecipient
                 address(0), // escalationManager
                 defaultLiveness,
