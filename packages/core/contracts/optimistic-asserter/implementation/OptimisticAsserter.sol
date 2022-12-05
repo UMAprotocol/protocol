@@ -48,7 +48,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
 
     /**
      * @notice Construct the OptimisticAsserter contract.
-     * @param _finder keeps track of all contracts within the UMA system based on their interfaceName. Managed by the UMA Governor contract.
+     * @param _finder keeps track of all contracts within the UMA system based on their interfaceName.
      * @param _defaultCurrency the default currency to bond asserters in assertTruthWithDefaults.
      * @param _defaultLiveness the default liveness for assertions in assertTruthWithDefaults.
      */
@@ -125,12 +125,11 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
      * @param currency bond currency pulled from the caller and held in escrow until the assertion is resolved.
      * @param bond amount of currency to pull from the caller and hold in escrow until the assertion is resolved. This
      * must be >= getMinimumBond(address(currency)).
-     * @param identifier UMA DVM identifier to use for price requests in the event of a dispute. Must be a pre-approved identifier in the UMA DVM.
-     * @param domainId optional domain that can be used to relate this assertion to other assertions in the escalationManager.
-     * This can be used by the configured escalationManager to define custom behavior for groups of assertions.
-     * This is typically used for "escalation games" by changing bonds or other assertion properties
-     * based on the other assertions that have come before. If no escalationManager is configured or a domain is not needed,
-     * this value should be set to bytes32(0) to reduce gas costs.
+     * @param identifier UMA DVM identifier to use for price requests in the event of a dispute. Must be a pre-approved.
+     * @param domainId optional domain that can be used to relate this assertion to others in the escalationManager and
+     * can be used by the configured escalationManager to define custom behavior for groups of assertions. This is
+     * typically used for "escalation games" by changing bonds or other assertion properties based on the other
+     * assertions that have come before. If not needed this value should be bytes32 to save gas.
      */
     function assertTruth(
         bytes memory claim,
@@ -241,8 +240,8 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
      * @notice Resolves an assertion. If the assertion has not been disputed, the assertion is resolved as true and the
      * asserter receives the bond. If the assertion has been disputed, the assertion is resolved depending on the oracle
      * result. Based on the result, the asserter or disputer receives the bond. If the assertion was disputed then an
-     * amount of the bond is sent to the UMA Store as an oracle fee based on the burnedBondPercentage. The remainder of the
-     * bond is returned to the asserter or disputer.
+     * amount of the bond is sent to the UMA Store as an oracle fee based on the burnedBondPercentage. The remainder of
+     * the bond is returned to the asserter or disputer.
      * @param assertionId unique identifier for the assertion to resolve.
      */
     function settleAssertion(bytes32 assertionId) public nonReentrant {
@@ -252,7 +251,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
         assertion.settled = true;
         if (assertion.disputer == address(0)) {
             // No dispute, settle with the asserter
-            require(assertion.expirationTime <= getCurrentTime(), "Assertion not expired"); // Revert if assertion not expired.
+            require(assertion.expirationTime <= getCurrentTime(), "Assertion not expired"); // Revert if not expired.
             assertion.settlementResolution = true;
             assertion.currency.safeTransfer(assertion.asserter, assertion.bond);
             _callbackOnAssertionResolve(assertionId, true);
@@ -352,7 +351,7 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
 
     /**
      * @notice Returns the minimum bond amount required to make an assertion. This is calculated as the final fee of the
-     * currency divided by the burnedBondPercentage. If the burn percentage is 50% then the min bond is 2x the final fee.
+     * currency divided by the burnedBondPercentage. If burn percentage is 50% then the min bond is 2x the final fee.
      * @param currency currency to calculate the minimum bond for.
      * @return minimum bond amount.
      */

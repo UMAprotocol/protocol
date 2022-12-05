@@ -9,7 +9,7 @@ import "../../interfaces/OptimisticAsserterInterface.sol";
  * resolutions for the Escalation Manager. Optionally, assertion blocking can be enabled using a whitelist of
  * assertingCallers or assertingCallers and asserters. On the other hand, it enables the determination of whether to
  * arbitrate via the escalation manager as opposed to the DVM, whether to disregard the resolution of a potential
- * dispute arbitrated by the Oracle, and whether to restrict who can register disputes via a whitelistedDisputeCallers list.
+ * dispute arbitrated by the Oracle, and whether to restrict who can register disputes via a whitelistedDisputeCallers.
  * @dev If nothing is configured using the setters and configureEscalationManager method upon deployment, the
  * FullPolicyEscalationManager will return a default policy with all values set to false.
  */
@@ -39,11 +39,11 @@ contract FullPolicyEscalationManager is BaseEscalationManager, Ownable {
 
     bool public blockByAsserter; // True if assertions are allowed only by whitelisted asserters.
 
-    bool public arbitrateViaEscalationManager; // True if it is determined that the escalation manager should arbitrate instead of the DVM.
+    bool public arbitrateViaEscalationManager; // True if it is determined that the escalation manager should arbitrate.
 
-    bool public discardOracle; // True if the escalation manager should disregard the Oracle's resolution.
+    bool public discardOracle; // True if escalation manager should disregard the Oracle's resolution.
 
-    bool public validateDisputers; // True if the escalation manager should validate the disputers via the whitelistedDisputeCallers.
+    bool public validateDisputers; // True if escalation manager should validate disputers via whitelistedDisputeCallers.
 
     mapping(bytes32 => ArbitrationResolution) public arbitrationResolutions; // Arbitration resolutions for a given identifier, time, and ancillary data.
 
@@ -108,8 +108,8 @@ contract FullPolicyEscalationManager is BaseEscalationManager, Ownable {
      * @notice Defines how the assertion policy for each configuration's rules is to be defined.
      * @param _blockByAssertingCaller true if assertions are allowed only by whitelisted asserting callers.
      * @param _blockByAsserter true if assertions are allowed only by whitelisted asserters.
-     * @param _validateDisputers true if the escalation manager should validate the disputers via the whitelistedDisputeCallers.
-     * @param _arbitrateViaEscalationManager true if it is determined that the escalation manager should arbitrate instead of the DVM.
+     * @param _validateDisputers true if the escalation manager should validate disputers via whitelistedDisputeCallers.
+     * @param _arbitrateViaEscalationManager true if the escalation manager should arbitrate instead of the DVM.
      * @param _discardOracle true if the escalation manager should disregard the Oracle's (DVM or EM) resolution.
      * @dev This setting just activates the rules that will be executed; each rule must additionally be defined using
      * the other functions.

@@ -38,8 +38,8 @@ contract BaseEscalationManager is EscalationManagerInterface {
     }
 
     /**
-     * @notice Implements price getting logic. This method is called by Optimistic Asserter settling an assertion that is
-     * configured to use the escalation manager as the oracle. The interface is constructed to mimic the UMA DVM.
+     * @notice Implements price getting logic. This method is called by Optimistic Asserter settling an assertion that
+     * is configured to use the escalation manager as the oracle. The interface is constructed to mimic the UMA DVM.
      * @param identifier price identifier being requested.
      * @param time timestamp of the price being requested.
      * @param ancillaryData ancillary data of the price being requested.
