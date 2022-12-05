@@ -46,6 +46,12 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
     IERC20 public defaultCurrency;
     uint64 public defaultLiveness;
 
+    /**
+     * @notice Construct the OptimisticAsserter contract.
+     * @param _finder keeps track of all contracts within the UMA system based on their interfaceName. Managed by the UMA Governor contract.
+     * @param _defaultCurrency the default currency to bond asserters in assertTruthWithDefaults.
+     * @param _defaultLiveness the default liveness for assertions in assertTruthWithDefaults.
+     */
     constructor(
         FinderInterface _finder,
         IERC20 _defaultCurrency,
@@ -86,12 +92,12 @@ contract OptimisticAsserter is OptimisticAsserterInterface, Lockable, Ownable, M
      * @return assertionId unique identifier for this assertion.
      */
 
-    function assertTruthWithDefaults(bytes calldata claim) public returns (bytes32 assertionId) {
+    function assertTruthWithDefaults(bytes calldata claim, address asserter) public returns (bytes32 assertionId) {
         // Note: re-entrancy guard is done in the inner call.
         return
             assertTruth(
                 claim,
-                msg.sender, // asserter
+                asserter, // asserter
                 address(0), // callbackRecipient
                 address(0), // escalationManager
                 defaultLiveness,

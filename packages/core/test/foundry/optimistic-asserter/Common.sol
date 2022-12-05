@@ -173,7 +173,7 @@ contract Common is Test {
             address(optimisticAsserter),
             optimisticAsserter.getMinimumBond(address(defaultCurrency))
         );
-        assertionId = optimisticAsserter.assertTruthWithDefaults(claim);
+        assertionId = optimisticAsserter.assertTruthWithDefaults(claim, asserter);
         vm.stopPrank();
     }
 

@@ -36,7 +36,7 @@ interface OptimisticAsserterInterface {
 
     function getAssertion(bytes32 assertionId) external view returns (Assertion memory);
 
-    function assertTruthWithDefaults(bytes memory claim) external returns (bytes32);
+    function assertTruthWithDefaults(bytes memory claim, address asserter) external returns (bytes32);
 
     function assertTruth(
         bytes memory claim,
