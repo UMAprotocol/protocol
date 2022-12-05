@@ -25,6 +25,8 @@ methods {
 
     // Optimistic Asserter Harness getters
     getAssertionSettlementResolution(bytes32) returns (bool) envfree
+    getAssertionSettled(bytes32) returns (bool) envfree
+    getAssertionBond(bytes32) returns (uint256) envfree
 
     // Finder methods
     finder.getImplementationAddress(bytes32) returns (address) envfree

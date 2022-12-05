@@ -24,4 +24,12 @@ contract OptimisticAsserterHarness is OptimisticAsserter {
     function getAssertionSettlementResolution(bytes32 assertionID) external view returns (bool) {
         return assertions[assertionID].settlementResolution;
     }
+
+    function getAssertionSettled(bytes32 assertionID) external view returns (bool) {
+        return assertions[assertionID].settled;
+    }
+
+    function getAssertionBond(bytes32 assertionID) external view returns (uint256) {
+        return assertions[assertionID].bond;
+    }
 }

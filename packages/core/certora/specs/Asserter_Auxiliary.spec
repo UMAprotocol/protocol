@@ -70,3 +70,36 @@ filtered{f -> !f.isView} {
 
     assert res1 == res2;
 }
+
+rule whoChanged_assertionBond(method f, bytes32 ID)
+filtered{f -> !f.isView && !select_MultiC(f)} {
+    env e;
+    calldataarg args;
+    uint256 bond1 = getAssertionBond(ID);
+        f(e, args);
+    uint256 bond2 = getAssertionBond(ID);
+
+    assert bond1 == bond2;
+}
+
+// Verified
+rule onlyOneAssertionAtATime(method f, bytes32 assertion, bytes32 other) 
+filtered{f -> !f.isView && !select_MultiC(f)} {
+    env e;
+    calldataarg args;
+    require other != assertion;
+
+    bool settled_before = getAssertionSettled(assertion);
+    bool settledOther_before = getAssertionSettled(other);
+    bool resolution_before = getAssertionSettlementResolution(assertion);
+    bool resolutionOther_before = getAssertionSettlementResolution(other);
+        f(e, args);
+    bool settled_after = getAssertionSettled(assertion);
+    bool settledOther_after = getAssertionSettled(other);
+    bool resolution_after = getAssertionSettlementResolution(assertion);
+    bool resolutionOther_after = getAssertionSettlementResolution(other);
+
+    assert (settled_before != settled_after || resolution_before != resolution_after)
+        =>
+        (settledOther_before == settledOther_after && resolutionOther_before == resolutionOther_after);
+}

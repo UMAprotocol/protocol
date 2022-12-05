@@ -19,7 +19,8 @@ certoraRun ./certora/harness/OptimisticAsserter.sol:OptimisticAsserterHarness \
 --solc solc8.16 \
 --send_only \
 --staging \
+--rule whoChanged_assertionBond \
 --settings -mediumTimeout=50 \
 --loop_iter 2 \
 --optimistic_loop \
---msg "UMA Asserter"
+--msg "UMA Asserter : whoChanged_assertionBond"
