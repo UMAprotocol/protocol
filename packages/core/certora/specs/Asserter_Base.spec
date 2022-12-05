@@ -43,6 +43,22 @@ methods {
 
     // Store methods
     computeFinalFee(address) returns(uint256) => DISPATCHER(true)
+
+    // Oracle pricing:
+    getPrice(bytes32, uint256, bytes) => NONDET
+
+    // EscalationManager methods
+    requestPrice(bytes32, uint256, bytes) => DISPATCHER(true)
+    getAssertionPolicy(bytes32) => DISPATCHER(true)
+    assertionDisputedCallback(bytes32) => DISPATCHER(true)
+    assertionResolvedCallback(bytes32, bool) => DISPATCHER(true)
+
+    // Ghost summaries for escalation manager
+    isDisputeAllowed(bytes32 ID, address caller) => isDisputeAllowed_G(ID, caller)
+    _blockAssertion(bytes32 ID) returns (bool) => blockAssertion_G(ID)
+    _arbitrateViaEscalationManager(bytes32 ID) returns (bool) => arbitrateViaEscalationManager_G(ID)
+    _discardOracle(bytes32 ID) returns (bool) => discardOracle_G(ID)
+    _validateDisputers(bytes32 ID) returns (bool) => validateDisputers_G(ID)
 }
 
 /**************************************************
@@ -82,67 +98,15 @@ definition select_MultiC(method f) returns bool = (f.selector == multicall(bytes
 /**************************************************
  *                 Ghosts & Hooks                 *
  **************************************************/
-
-
-/**************************************************
- *                  Misc. rules                   *
- **************************************************/
-
-// A simple rule that checks which of the main contract methods
-// are reachable (reach the assert false statement after function call).
- rule sanity(method f) {
-    env e;
-    calldataarg args;
-    f(e, args);
-    assert false;
-}
-
-rule whoChanged_cachedOracle(method f) 
-filtered{f -> !f.isView} {
-    env e;
-    calldataarg args;
-    uint256 cachedOracle1 = cachedOracle();
-        f(e,args);
-    uint256 cachedOracle2 = cachedOracle();
-
-    assert cachedOracle1 == cachedOracle2;
-}
-
-rule whoChanged_burnedBondPercentage(method f)
-filtered{f -> !f.isView} {
-    env e;
-    calldataarg args;
-    uint256 burnPer1 = burnedBondPercentage();
-        f(e,args);
-    uint256 burnPer2 = burnedBondPercentage();
-
-    assert burnPer1 == burnPer2;
-}
-
-rule whoChanged_defaultCurrency(method f)
-filtered{f -> !f.isView} {
-    env e;
-    calldataarg args;
-    uint256 defaultCurrency1 = defaultCurrency();
-        f(e,args);
-    uint256 defaultCurrency2 = defaultCurrency();
-
-    assert defaultCurrency1 == defaultCurrency2;
-}
-
-rule whoChanged_settlementResolution(method f, bytes32 ID)
-filtered{f -> !f.isView} {
-    env e;
-    calldataarg args;
-    bool res1 = getAssertionSettlementResolution(ID);
-        f(e, args);
-    bool res2 = getAssertionSettlementResolution(ID);
-
-    assert res1 == res2;
-}
-
-
+ghost blockAssertion_G(bytes32) returns bool;
+ghost arbitrateViaEscalationManager_G(bytes32) returns bool;
+ghost discardOracle_G(bytes32) returns bool;
+ghost validateDisputers_G(bytes32) returns bool;
+ghost mapping(bytes32 => mapping(address => bool)) isDisputeAllowedMapping;
+ 
 /**************************************************
  *           CVL Helper functions                 *
  **************************************************/
- 
+ function isDisputeAllowed_G(bytes32 ID, address caller) returns bool {
+    return isDisputeAllowedMapping[ID][caller];
+ }

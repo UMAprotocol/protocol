@@ -1,4 +1,5 @@
 certoraRun ./certora/harness/OptimisticAsserter.sol:OptimisticAsserterHarness \
+            ./certora/harness/MockEscalationManager.sol \
            ./contracts/data-verification-mechanism/implementation/Finder.sol \
            ./contracts/data-verification-mechanism/implementation/IdentifierWhitelist.sol \
            ./contracts/data-verification-mechanism/implementation/Store.sol \
@@ -7,7 +8,7 @@ certoraRun ./certora/harness/OptimisticAsserter.sol:OptimisticAsserterHarness \
            ./contracts/common/test/BasicERC20.sol \
 \
 \
---verify OptimisticAsserterHarness:certora/specs/Asserter.spec \
+--verify OptimisticAsserterHarness:certora/specs/Asserter_Auxiliary.spec \
 \
 \
 --link OptimisticAsserterHarness:finder=Finder \
