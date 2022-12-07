@@ -32,4 +32,8 @@ contract OptimisticAsserterHarness is OptimisticAsserter {
     function getAssertionBond(bytes32 assertionID) external view returns (uint256) {
         return assertions[assertionID].bond;
     }
+
+    function getAssertionCurrency(bytes32 assertionID) external view returns (IERC20) {
+        return assertions[assertionID].currency;
+    }
 }

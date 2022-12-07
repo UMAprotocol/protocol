@@ -23,10 +23,14 @@ methods {
     defaultLiveness() returns (uint64) envfree
     owner() returns (address) envfree
 
+    // A summary for the getId function, to avoid the hashing in the code.
+    //_getId(bytes,uint256,uint256,uint64,address,address,address,bytes32) => NONDET
+
     // Optimistic Asserter Harness getters
     getAssertionSettlementResolution(bytes32) returns (bool) envfree
     getAssertionSettled(bytes32) returns (bool) envfree
     getAssertionBond(bytes32) returns (uint256) envfree
+    getAssertionCurrency(bytes32) returns (address) envfree
 
     // Finder methods
     finder.getImplementationAddress(bytes32) returns (address) envfree
@@ -95,7 +99,8 @@ methods {
  *                 CVL Definitions                *
  **************************************************/
 
-definition select_MultiC(method f) returns bool = (f.selector == multicall(bytes[]).selector);
+definition isMultiCall(method f) returns bool = (f.selector == multicall(bytes[]).selector);
+definition isAssertTruth(method f) returns bool = (f.selector == 0xac9650d8 || f.selector == 0x715018a6);
 
 /**************************************************
  *                 Ghosts & Hooks                 *
