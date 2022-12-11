@@ -1,4 +1,5 @@
 import "./Asserter_Base.spec"
+using TestnetERC20 as testERC20
 /**************************************************
  *      Top Level Properties / Rule Ideas         *
  **************************************************/
@@ -12,6 +13,7 @@ definition maxAddress() returns address = 0xffffffffffffffffffffffffffffffffffff
     init_state axiom forall address token.
         sumOfBonds[token] == 0;
  }
+ 
 
 // Ghost: tracks the currency token of each assertion by its ID.
 ghost mapping(bytes32 => address) assertionToken {
@@ -19,35 +21,86 @@ ghost mapping(bytes32 => address) assertionToken {
         assertionToken[assertionID] == 0;
 }
 
-// Hook: reachable
-hook Sstore assertions[KEY bytes32 assertionID].currency address value STORAGE 
-{
-    require value <= maxAddress(); 
-    assertionToken[assertionID] = value;
-}
+// Ghost address: assertion currency for invariants
+//ghost address invariantCurrency;
 
-/*
-// Hook: unreachable
+// Hook : copy assertion currency to assertionToken
 hook Sload address value assertions[KEY bytes32 assertionID].currency STORAGE 
 {
-    require value <= maxAddress(); 
-    assertionToken[assertionID] = value;
-} */
+    assertionToken[assertionID] = value & maxAddress();
+} 
 
- // Hooks
+ // Hook : update some of bonds per token
 hook Sstore assertions[KEY bytes32 assertionID].bond uint256 value (uint256 old_value) STORAGE 
 {
     address token = assertionToken[assertionID];
+    require invariantCurrency == token;
     sumOfBonds[token] = sumOfBonds[token] + value - old_value; 
 }
 
 invariant ghostTracksAssertionCurrency(bytes32 assertionID)
     assertionToken[assertionID] == getAssertionCurrency(assertionID)
-    
+
 // Verified
-invariant nonZeroBondPercentage()
-    burnedBondPercentage() > 0
-    filtered{f -> !isMultiCall(f)}
+invariant validBondPercentage()
+    burnedBondPercentage() <= 10^18 && burnedBondPercentage() > 0
+    //filtered{f -> !isMultiCall(f)}
+    filtered{f -> isAssertTruth(f)}
+
+rule assertionDisputerIntegrity(address disputer, bytes32 assertionID) {
+    env e;
+    disputeAssertion(e, assertionID, disputer);
+    assert disputer == getAssertionDisputer(assertionID);
+}
+
+rule onlyDisputerOrAsserterGetBond(bytes32 assertionID) {
+    env e;
+    address asserter = getAssertionAsserter(assertionID);
+    address disputer = getAssertionDisputer(assertionID);
+    address currency = getAssertionCurrency(assertionID);
+    uint256 bond =  getAssertionBond(assertionID);
+    address other;
+
+    require currency == testERC20;
+    require asserter != other;
+    require disputer != other;
+    require store != other;
+    require asserter != currentContract;
+    require other != currentContract;
+    require assertionFee(bond) == 0;
+
+    uint256 asserterBalance1 = tokenBalanceOf(currency, asserter);
+    uint256 disputerBalance1 = tokenBalanceOf(currency, disputer);
+    uint256 otherBalance1 = tokenBalanceOf(currency, other);
+
+        settleAssertion(e, assertionID);
+
+    uint256 asserterBalance2 = tokenBalanceOf(currency, asserter);
+    uint256 disputerBalance2 = tokenBalanceOf(currency, disputer);
+    uint256 otherBalance2 = tokenBalanceOf(currency, other);
+
+    if(disputer == 0) {
+        bool asserterWins = (asserterBalance2 == asserterBalance1 + bond);
+        bool asserterLoses = false;
+        bool disputerWins = false;
+        bool disputerLoses = true;
+        assert (asserterWins && disputerLoses) || (disputerWins && asserterLoses);
+    }
+    else if(disputer == asserter) {
+        bool asserterWins = (asserterBalance2 == asserterBalance1 + 2*bond);
+        assert asserterWins;
+    }
+    else {
+        bool asserterWins = (asserterBalance2 == asserterBalance1 + 2*bond);
+        bool asserterLoses = (asserterBalance2 == asserterBalance1);
+        bool disputerWins = (disputerBalance2 == disputerBalance1 + 2*bond);
+        bool disputerLoses = (disputerBalance1 == disputerBalance2);
+        assert (asserterWins && disputerLoses) || (disputerWins && asserterLoses);
+    }
+    
+    assert otherBalance1 == otherBalance2;
+}
+
 
 rule testGhosts(bytes32 ID) {
     env e;
@@ -67,4 +120,8 @@ rule testGhosts(bytes32 ID) {
     assert sum1 != sum2 => sum1 + bond2 - bond1 == to_mathint(sum2);
     assert assertionToken[ID] == currency2;
     assert token == currency2;
-} 
+}
+
+function assertionFee(uint256 bond) returns uint256 {
+    return to_uint256((burnedBondPercentage()*bond)/(10^18));
+}

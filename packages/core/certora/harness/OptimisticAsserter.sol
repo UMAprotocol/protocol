@@ -21,6 +21,10 @@ contract OptimisticAsserterHarness is OptimisticAsserter {
         uint64 _defaultLiveness
     ) OptimisticAsserter(_finder, _defaultCurrency, _defaultLiveness) {}
 
+    function tokenBalanceOf(IERC20 token, address account) external view returns (uint256) {
+        return token.balanceOf(account);
+    }
+
     function getAssertionSettlementResolution(bytes32 assertionID) external view returns (bool) {
         return assertions[assertionID].settlementResolution;
     }
@@ -35,5 +39,17 @@ contract OptimisticAsserterHarness is OptimisticAsserter {
 
     function getAssertionCurrency(bytes32 assertionID) external view returns (IERC20) {
         return assertions[assertionID].currency;
+    }
+
+    function getAssertionExpirationTime(bytes32 assertionID) external view returns (uint64) {
+        return assertions[assertionID].expirationTime;
+    }
+
+    function getAssertionAsserter(bytes32 assertionID) external view returns (address) {
+        return assertions[assertionID].asserter;
+    }
+
+    function getAssertionDisputer(bytes32 assertionID) external view returns (address) {
+        return assertions[assertionID].disputer;
     }
 }

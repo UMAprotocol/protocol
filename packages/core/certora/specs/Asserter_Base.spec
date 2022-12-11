@@ -7,6 +7,7 @@ import "./erc20.spec"
  *                LINKED CONTRACTS                *
  **************************************************/
 using Finder as finder
+using Store as store
 
 /**************************************************
  *              METHODS DECLARATIONS              *
@@ -31,6 +32,10 @@ methods {
     getAssertionSettled(bytes32) returns (bool) envfree
     getAssertionBond(bytes32) returns (uint256) envfree
     getAssertionCurrency(bytes32) returns (address) envfree
+    getAssertionExpirationTime(bytes32) returns (uint64) envfree
+    getAssertionAsserter(bytes32) returns (address) envfree
+    getAssertionDisputer(bytes32) returns (address) envfree
+    tokenBalanceOf(address, address) returns (uint256) envfree
 
     // Finder methods
     finder.getImplementationAddress(bytes32) returns (address) envfree
@@ -50,11 +55,12 @@ methods {
     // Store methods
     computeFinalFee(address) returns(uint256) => DISPATCHER(true)
 
-    // Oracle pricing:
-    getPrice(bytes32, uint256, bytes) => NONDET
+    // Oracle Ancillary Interface
+    getPrice(bytes32, uint256, bytes) => DISPATCHER(true)
+    hasPrice(bytes32, uint256, bytes) => DISPATCHER(true)
+    requestPrice(bytes32, uint256, bytes) => DISPATCHER(true)
 
     // EscalationManager methods
-    requestPrice(bytes32, uint256, bytes) => DISPATCHER(true)
     getAssertionPolicy(bytes32) => DISPATCHER(true)
     assertionDisputedCallback(bytes32) => DISPATCHER(true)
     assertionResolvedCallback(bytes32, bool) => DISPATCHER(true)
@@ -100,7 +106,7 @@ methods {
  **************************************************/
 
 definition isMultiCall(method f) returns bool = (f.selector == multicall(bytes[]).selector);
-definition isAssertTruth(method f) returns bool = (f.selector == 0xac9650d8 || f.selector == 0x715018a6);
+definition isAssertTruth(method f) returns bool = (f.selector == 0x6457c979 || f.selector == 0x36b13af4);
 
 /**************************************************
  *                 Ghosts & Hooks                 *
