@@ -62,12 +62,20 @@ async function main() {
 
   console.log("2. DEPLOYING VOTING V2");
   const votingV2Factory: VotingV2Ethers__factory = await getContractFactory("VotingV2");
-  const emissionRate = "640000000000000000"; // 0.64 UMA per second.
+  const emissionRate = "0"; // Initially set the emission rate to 0.
   const spamDeletionProposalBond = hre.web3.utils.toWei("10000", "ether");
   const unstakeCooldown = 60 * 60 * 24 * 7; // 7 days
   const phaseLength = "86400";
   const minRollToNextRoundLength = "7200";
   const gat = hre.web3.utils.toBN(hre.web3.utils.toWei("5500000", "ether")); // Set the GAT to 5.5 million tokens.
+
+  // count RequestPrice events in existing Voting contract to get starting index for new Voting contract.
+  const requestPriceEvents = await existingVoting.queryFilter(
+    existingVoting.filters.PriceRequestAdded(null, null, null)
+  );
+  const startingIndex = requestPriceEvents.length;
+
+  console.log("Starting index for new Voting contract: ", startingIndex);
 
   const votingV2 = await votingV2Factory.deploy(
     emissionRate,
@@ -76,7 +84,7 @@ async function main() {
     phaseLength,
     minRollToNextRoundLength,
     gat.toString(),
-    "0", // Starting request index of 0 (no offset). TODO change this to the correct number
+    startingIndex, // Starting request index of 0 (no offset). TODO change this to the correct number
     votingToken.address,
     finder.address,
     slashingLibrary.address,
