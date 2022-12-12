@@ -69,7 +69,6 @@ async function main() {
   const minRollToNextRoundLength = "7200";
   const gat = hre.web3.utils.toBN(hre.web3.utils.toWei("5500000", "ether")); // Set the GAT to 5.5 million tokens.
 
-  // count RequestPrice events in existing Voting contract to get starting index for new Voting contract.
   const requestPriceEvents = await existingVoting.queryFilter(
     existingVoting.filters.PriceRequestAdded(null, null, null)
   );
@@ -84,7 +83,7 @@ async function main() {
     phaseLength,
     minRollToNextRoundLength,
     gat.toString(),
-    startingIndex, // Starting request index of 0 (no offset). TODO change this to the correct number
+    startingIndex, // Starting index for new Voting contract set to the number of existing PriceRequestAdded events.
     votingToken.address,
     finder.address,
     slashingLibrary.address,
