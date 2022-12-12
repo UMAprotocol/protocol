@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.16;
 
-import "../../contracts/optimistic-asserter/implementation/OptimisticAsserter.sol";
+//import "../../contracts/optimistic-asserter/implementation/OptimisticAsserter.sol";
+import "../munged/OptimisticAsserter.sol";
 
 /**
  * @title Optimistic Asserter.
@@ -23,6 +24,10 @@ contract OptimisticAsserterHarness is OptimisticAsserter {
 
     function tokenBalanceOf(IERC20 token, address account) external view returns (uint256) {
         return token.balanceOf(account);
+    }
+
+    function getOracleFeeByAssertion(bytes32 assertionID) external view returns (uint256) {
+        return _calcOracleFee(assertions[assertionID].bond);
     }
 
     function getAssertionSettlementResolution(bytes32 assertionID) external view returns (bool) {

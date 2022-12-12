@@ -82,9 +82,8 @@ filtered{f -> !f.isView && !isMultiCall(f)} {
     assert bond1 == bond2;
 }
 
-// https://vaas-stg.certora.com/output/41958/9099791d156b626ea38e/?anonymousKey=c5fea6951d475b457f652447681442c914946db5
 rule whoChanged_assertionCurrency(method f, bytes32 ID)
-filtered{f -> isAssertTruth(f)}{
+filtered{f -> !f.isView && !isMultiCall(f)} {
     env e;
     calldataarg args;
     address currency1 = getAssertionCurrency(ID);

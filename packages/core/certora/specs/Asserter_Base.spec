@@ -107,6 +107,7 @@ methods {
 
 definition isMultiCall(method f) returns bool = (f.selector == multicall(bytes[]).selector);
 definition isAssertTruth(method f) returns bool = (f.selector == 0x6457c979 || f.selector == 0x36b13af4);
+definition isSettle(method f) returns bool = (f.selector == 0x8ea2f2ab || f.selector == 0x4124beef);
 
 /**************************************************
  *                 Ghosts & Hooks                 *

@@ -8,7 +8,7 @@ certoraRun ./certora/harness/OptimisticAsserter.sol:OptimisticAsserterHarness \
            ./contracts/common/test/BasicERC20.sol \
 \
 \
---verify OptimisticAsserterHarness:certora/specs/Asserter_Auxiliary.spec \
+--verify OptimisticAsserterHarness:certora/specs/Asserter_Bonds.spec \
 \
 \
 --link OptimisticAsserterHarness:finder=Finder \
@@ -19,10 +19,9 @@ certoraRun ./certora/harness/OptimisticAsserter.sol:OptimisticAsserterHarness \
 --solc solc8.16 \
 --send_only \
 --staging \
---rule_sanity \
---rule whoChanged_assertionCurrency \
---settings -mediumTimeout=90 \
+--rule onlyDisputerOrAsserterGetBond \
+--settings -mediumTimeout=180 \
 --loop_iter 2 \
 --optimistic_loop \
---msg "UMA Asserter whoChanged_assertionCurrency only assertTruth"
-#./contracts/data-verification-mechanism/implementation/Store.sol \
+--msg "UMA Asserter: onlyDisputerOrAsserterGetBond" 
+# ./contracts/data-verification-mechanism/implementation/Store.sol \

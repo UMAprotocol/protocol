@@ -15,7 +15,7 @@ contract MockEscalationManager is OracleAncillaryInterface, EscalationManagerInt
 
      // Conceptually we want a (time, identifier) -> price map.
     mapping(bytes32 => mapping(uint256 => mapping(bytes => Price))) internal verifiedPrices;
-
+    
     function isDisputeAllowed(bytes32, address) external pure returns (bool) {
         return true;
     }
