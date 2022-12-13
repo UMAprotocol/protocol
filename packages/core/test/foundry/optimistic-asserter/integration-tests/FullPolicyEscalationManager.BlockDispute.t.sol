@@ -2,7 +2,6 @@
 pragma solidity ^0.8.0;
 
 import "./FullPolicyEscalationManager.Common.t.sol";
-import "../../../../contracts/optimistic-asserter/implementation/escalation-manager/FullPolicyEscalationManager.sol";
 
 contract FullPolicyEscalationManagerBlockDisputeTest is FullPolicyEscalationManagerCommon {
     function test_ValidateDisputersEnabled() public {
