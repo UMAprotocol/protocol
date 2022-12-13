@@ -936,8 +936,7 @@ contract VotingV2 is Staker, OracleInterface, OracleAncillaryInterface, OracleGo
         VoterStake storage voterStake,
         address voterAddress
     ) internal {
-        if (slash + int256(voterStake.stake) > 0) voterStake.stake = uint256(int256(voterStake.stake) + slash);
-        else voterStake.stake = 0;
+        voterStake.stake = uint256(int256(voterStake.stake) + slash);
         voterStake.unappliedSlash = 0;
         emit VoterSlashed(voterAddress, slash, voterStake.stake);
     }
