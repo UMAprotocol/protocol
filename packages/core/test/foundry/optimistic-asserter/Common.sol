@@ -223,6 +223,18 @@ contract Common is Test {
         );
     }
 
+    function _expectOraclePriceRequest(address oracleAddress, OracleRequest memory oracleRequest) internal {
+        vm.expectCall(
+            oracleAddress,
+            abi.encodeWithSelector(
+                MockOracleAncillary.requestPrice.selector,
+                oracleRequest.identifier,
+                oracleRequest.time,
+                oracleRequest.ancillaryData
+            )
+        );
+    }
+
     function _mockGetAssertionAssertingCaller(address mockAssertingCaller, bytes32 assertionId) public {
         OptimisticAsserterInterface.Assertion memory assertion;
         assertion.escalationManagerSettings.assertingCaller = mockAssertingCaller;
