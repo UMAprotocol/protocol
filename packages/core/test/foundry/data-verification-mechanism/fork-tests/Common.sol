@@ -48,6 +48,6 @@ contract Common is CommonBase {
     }
 
     function moveToNextRound() public {
-        vm.warp(voting.getRoundEndTime(voting.getCurrentRoundId()) + 1);
+        vm.warp(voting.getRoundEndTime(voting.getCurrentRoundId()));
     }
 }

@@ -31,7 +31,6 @@ contract FakeLifeCycle is Common {
 
         // Move to next round and vote from the newly staked account.
         moveToNextRound();
-
         int256 price = 1e18;
         int256 salt = 42069;
         uint256 roundId = voting.getCurrentRoundId();
