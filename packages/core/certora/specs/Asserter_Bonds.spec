@@ -1,4 +1,9 @@
+// For every new spec you create, import this basic spec file:
 import "./Asserter_Base.spec"
+import "./dispatchedMethods.spec"
+
+// An ERC20 contract in our scope. One can access its methods or address by
+// its alias (testERC20)
 using TestnetERC20 as testERC20
 /**************************************************
  *      Top Level Properties / Rule Ideas         *
@@ -7,26 +12,28 @@ using TestnetERC20 as testERC20
  // main contract ERC20 balance. 
 
 methods {
+    // Added by Certora: a method to calculate the settlement fee for everty assertion.
     getOracleFeeByAssertion(bytes32) returns (uint256) envfree
 }
+
+/**************************************************
+ *     Utilities for tracking the sum of bonds    *
+ **************************************************/
 
 definition maxAddress() returns address = 0xffffffffffffffffffffffffffffffffffffffff;
 
  // Ghost: the sum of bonds of all assertions for every ERC20 token.
- ghost mapping(address => mathint) sumOfBonds {
+ghost mapping(address => mathint) sumOfBonds {
+    // An initial axiom for post-constructor state only.
     init_state axiom forall address token.
         sumOfBonds[token] == 0;
- }
+}
  
-
 // Ghost: tracks the currency token of each assertion by its ID.
 ghost mapping(bytes32 => address) assertionToken {
     init_state axiom forall bytes32 assertionID.
         assertionToken[assertionID] == 0;
 }
-
-// Ghost address: assertion currency for invariants
-//ghost address invariantCurrency;
 
 // Hook : copy assertion currency to assertionToken
 hook Sload address value assertions[KEY bytes32 assertionID].currency STORAGE 
@@ -34,28 +41,32 @@ hook Sload address value assertions[KEY bytes32 assertionID].currency STORAGE
     assertionToken[assertionID] = value & maxAddress();
 } 
 
- // Hook : update some of bonds per token
+ // Hook : update sum of bonds per token
 hook Sstore assertions[KEY bytes32 assertionID].bond uint256 value (uint256 old_value) STORAGE 
 {
     address token = assertionToken[assertionID];
-    //require invariantCurrency == token;
     sumOfBonds[token] = sumOfBonds[token] + value - old_value; 
 }
 
 invariant ghostTracksAssertionCurrency(bytes32 assertionID)
     assertionToken[assertionID] == getAssertionCurrency(assertionID)
 
+/**************************************************/
+
 // Verified
 invariant validBondPercentage()
     burnedBondPercentage() <= 10^18 && burnedBondPercentage() > 0
     filtered{f -> !isMultiCall(f)}
 
+// Simple integrity rule
 rule assertionDisputerIntegrity(address disputer, bytes32 assertionID) {
     env e;
     disputeAssertion(e, assertionID, disputer);
     assert disputer == getAssertionDisputer(assertionID);
 }
 
+// When we call settleAssertion, we expect that either the asserter
+// or the disputer get the correct amount of bonds.
 rule onlyDisputerOrAsserterGetBond(bytes32 assertionID) {
     env e;
     address asserter = getAssertionAsserter(assertionID);
@@ -64,12 +75,18 @@ rule onlyDisputerOrAsserterGetBond(bytes32 assertionID) {
     uint256 bond =  getAssertionBond(assertionID);
     address other;
 
-    require currency == testERC20;
-    require asserter != other;
+    require currency == testERC20;  // A specific instance of the currency
+
+    // 'Other' is none of the addresses involved in the bonds transfer.
+    require asserter != other; 
     require disputer != other;
     require store != other;
+    require currentContract != other;
+
+    // Assuming the asserter is not the optimistic asserter contract.
     require asserter != currentContract;
-    require other != currentContract;
+    
+    // Require zero fees (simplifcation)
     require getOracleFeeByAssertion(assertionID) == 0;
 
     uint256 asserterBalance1 = tokenBalanceOf(currency, asserter);
@@ -82,8 +99,10 @@ rule onlyDisputerOrAsserterGetBond(bytes32 assertionID) {
     uint256 disputerBalance2 = tokenBalanceOf(currency, disputer);
     uint256 otherBalance2 = tokenBalanceOf(currency, other);
 
+    // We first verify that no other address gets bonds
     assert otherBalance1 == otherBalance2;
     
+    // Now we treat every possible case separately:
     if(disputer == 0) {
         bool asserterWins = (asserterBalance2 == asserterBalance1 + bond);
         bool asserterLoses = false;
@@ -111,6 +130,7 @@ rule onlyDisputerOrAsserterGetBond(bytes32 assertionID) {
     }
 }
 
+// Verified
 rule asserterBalanceDecreaseOnlyForSettle(address token, method f) 
 filtered{f -> !f.isView && !isMultiCall(f)} {
     env e;
@@ -121,6 +141,7 @@ filtered{f -> !f.isView && !isMultiCall(f)} {
     assert asserterBalanceBefore > asserterBalanceAfter => isSettle(f);
 }
 
+// Verified
 rule asserterBalanceDecreaseLimitedByBond(bytes32 assertionId) {
     env e;
     address currency = getAssertionCurrency(assertionId);
@@ -138,6 +159,7 @@ rule asserterBalanceDecreaseLimitedByBond(bytes32 assertionId) {
     assert asserterCurBalanceBefore <= 2*bond + asserterCurBalanceAfter;
 }
 
+// Tests our own ghosts : can ignore for now
 rule testGhosts(bytes32 ID) {
     env e;
     calldataarg args;
@@ -155,9 +177,10 @@ rule testGhosts(bytes32 ID) {
 
     assert sum1 != sum2 => sum1 + bond2 - bond1 == to_mathint(sum2);
     assert assertionToken[ID] == currency2;
-    assert token == currency2;
+    assert sum1 != sum2 => token == currency2;
 }
 
+// A CVL copy implementation of the assertion fee calculation.
 function assertionFee(uint256 bond) returns uint256 {
     return to_uint256((burnedBondPercentage()*bond)/(10^18));
 }

@@ -24,9 +24,6 @@ methods {
     defaultLiveness() returns (uint64) envfree
     owner() returns (address) envfree
 
-    // A summary for the getId function, to avoid the hashing in the code.
-    //_getId(bytes,uint256,uint256,uint64,address,address,address,bytes32) => NONDET
-
     // Optimistic Asserter Harness getters
     getAssertionSettlementResolution(bytes32) returns (bool) envfree
     getAssertionSettled(bytes32) returns (bool) envfree
@@ -35,35 +32,12 @@ methods {
     getAssertionExpirationTime(bytes32) returns (uint64) envfree
     getAssertionAsserter(bytes32) returns (address) envfree
     getAssertionDisputer(bytes32) returns (address) envfree
+    getId(bytes,address,address,uint64,address,uint256,bytes32) returns (bytes32)
     tokenBalanceOf(address, address) returns (uint256) envfree
 
     // Finder methods
     finder.getImplementationAddress(bytes32) returns (address) envfree
-    finder.changeImplementationAddress(bytes32,address) 
-
-    // AddressWhitelist methods
-    addToWhitelist(address) => DISPATCHER(true)
-    removeFromWhitelist(address) => DISPATCHER(true)
-    isOnWhitelist(address) returns (bool) => DISPATCHER(true)
-    getWhitelist() returns (address[]) => DISPATCHER(true)
-
-    // IdentifierWhitelist methods
-    addSupportedIdentifier(bytes32) => DISPATCHER(true)
-    removeSupportedIdentifier(bytes32) => DISPATCHER(true)
-    isIdentifierSupported(bytes32) returns(bool) => DISPATCHER(true)
-
-    // Store methods
-    computeFinalFee(address) returns(uint256) => DISPATCHER(true)
-
-    // Oracle Ancillary Interface
-    getPrice(bytes32, uint256, bytes) => DISPATCHER(true)
-    hasPrice(bytes32, uint256, bytes) => DISPATCHER(true)
-    requestPrice(bytes32, uint256, bytes) => DISPATCHER(true)
-
-    // EscalationManager methods
-    getAssertionPolicy(bytes32) => DISPATCHER(true)
-    assertionDisputedCallback(bytes32) => DISPATCHER(true)
-    assertionResolvedCallback(bytes32, bool) => DISPATCHER(true)
+    finder.changeImplementationAddress(bytes32, address) 
 
     // Ghost summaries for escalation manager
     isDisputeAllowed(bytes32 ID, address caller) => isDisputeAllowed_G(ID, caller)
@@ -105,13 +79,19 @@ methods {
  *                 CVL Definitions                *
  **************************************************/
 
+// Selector of the 'multiCall' method
 definition isMultiCall(method f) returns bool = (f.selector == multicall(bytes[]).selector);
+// Selector of the 'assert truth' methods
 definition isAssertTruth(method f) returns bool = (f.selector == 0x6457c979 || f.selector == 0x36b13af4);
+// Selector of the 'settleAssertion' methods
 definition isSettle(method f) returns bool = (f.selector == 0x8ea2f2ab || f.selector == 0x4124beef);
 
 /**************************************************
  *                 Ghosts & Hooks                 *
  **************************************************/
+ // Uninterpreted ghost functions
+ // See the methods block for replacement of contract methods with these functions. 
+ // e.g. isDisputeAllowed(bytes32 ID, address caller) => isDisputeAllowed_G(ID, caller)
 ghost blockAssertion_G(bytes32) returns bool;
 ghost arbitrateViaEscalationManager_G(bytes32) returns bool;
 ghost discardOracle_G(bytes32) returns bool;

@@ -1,4 +1,5 @@
-// erc20 methods
+// Dispatcher of erc20 methods.
+// Shouldn't me modified.
 methods {
     name()                                returns (string)  => DISPATCHER(true)
     symbol()                              returns (string)  => DISPATCHER(true)

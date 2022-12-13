@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.16;
 
-//import "../../contracts/optimistic-asserter/implementation/OptimisticAsserter.sol";
-import "../munged/OptimisticAsserter.sol";
+import "../../contracts/optimistic-asserter/implementation/OptimisticAsserter.sol";
 
 /**
  * @title Optimistic Asserter.
@@ -14,7 +13,6 @@ import "../munged/OptimisticAsserter.sol";
  */
 
 contract OptimisticAsserterHarness is OptimisticAsserter {
-    using SafeERC20 for IERC20;
 
     constructor(
         FinderInterface _finder,
@@ -27,7 +25,19 @@ contract OptimisticAsserterHarness is OptimisticAsserter {
     }
 
     function getOracleFeeByAssertion(bytes32 assertionID) external view returns (uint256) {
-        return _calcOracleFee(assertions[assertionID].bond);
+        return (assertions[assertionID].bond * burnedBondPercentage)/1e18;
+    }
+
+    function getId(
+        bytes memory claim,
+        address callbackRecipient,
+        address escalationManager,
+        uint64 liveness,
+        IERC20 currency,
+        uint256 bond,
+        bytes32 identifier) external view returns (bytes32) {
+            return _getId(claim, bond, uint64(getCurrentTime()), liveness,
+            currency, callbackRecipient, escalationManager, identifier);
     }
 
     function getAssertionSettlementResolution(bytes32 assertionID) external view returns (bool) {

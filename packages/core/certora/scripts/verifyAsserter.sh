@@ -19,9 +19,8 @@ certoraRun ./certora/harness/OptimisticAsserter.sol:OptimisticAsserterHarness \
 --solc solc8.16 \
 --send_only \
 --staging \
---rule onlyDisputerOrAsserterGetBond \
---settings -mediumTimeout=180 \
+--settings -mediumTimeout=200,-byteMapHashingPrecision=10 \
 --loop_iter 2 \
 --optimistic_loop \
---msg "UMA Asserter: onlyDisputerOrAsserterGetBond" 
+--msg "UMA Asserter Bonds " 
 # ./contracts/data-verification-mechanism/implementation/Store.sol \
