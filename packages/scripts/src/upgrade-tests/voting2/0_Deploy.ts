@@ -72,7 +72,7 @@ async function main() {
   const requestPriceEvents = await existingVoting.queryFilter(
     existingVoting.filters.PriceRequestAdded(null, null, null)
   );
-  const startingIndex = requestPriceEvents.length;
+  const startingIndex = requestPriceEvents.length + 1; // Existing PriceRequestAdded events plus the new one.
 
   console.log("Starting index for new Voting contract: ", startingIndex);
 
@@ -83,7 +83,7 @@ async function main() {
     phaseLength,
     minRollToNextRoundLength,
     gat.toString(),
-    startingIndex, // Starting index for new Voting contract set to the number of existing PriceRequestAdded events.
+    startingIndex,
     votingToken.address,
     finder.address,
     slashingLibrary.address,
@@ -96,7 +96,13 @@ async function main() {
 
   const governorV2Factory: GovernorV2Ethers__factory = await getContractFactory("GovernorV2");
 
-  const governorV2 = await governorV2Factory.deploy(finder.address, 0);
+  const governorProposals = await governor.queryFilter(governor.filters.NewProposal(null, null));
+
+  const governorStartingId = governorProposals.length; // Existing NewProposal
+
+  console.log("Starting id for new Governor contract: ", governorStartingId);
+
+  const governorV2 = await governorV2Factory.deploy(finder.address, governorStartingId);
 
   console.log("Deployed GovernorV2: ", governorV2.address);
 
