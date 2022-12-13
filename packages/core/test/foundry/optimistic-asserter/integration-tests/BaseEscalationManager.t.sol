@@ -43,6 +43,7 @@ contract BaseEscalationManagerTest is Common {
 
     function test_SettleWithoutDispute() public {
         bytes32 assertionId = _wrappedAssertWithCallbackRecipientAndSs(address(0), escalationManager);
+        _defaultSaveBalancesBeforeSettle();
 
         // Move time forward to the end of the liveness period.
         timer.setCurrentTime(timer.getCurrentTime() + defaultLiveness);
@@ -50,27 +51,38 @@ contract BaseEscalationManagerTest is Common {
         // Settlement should trigger callback with asserted truthfully.
         _expectAssertionResolvedCallback(escalationManager, assertionId, true);
         assertTrue(optimisticAsserter.settleAndGetAssertionResult(assertionId));
+
+        // Asserter should get its bond back.
+        _defaultCheckBalancesAfterSettle(false, true, false);
     }
 
     function test_SettleWithRightDispute() public {
         bytes32 assertionId = _wrappedAssertWithCallbackRecipientAndSs(address(0), escalationManager);
         OracleRequest memory oracleRequest = _disputeAndGetOracleRequest(assertionId, defaultBond);
+        _defaultSaveBalancesBeforeSettle();
 
         // Mock resolve assertion not truethful through Oracle and verify on resolve callback to Escalation Manager.
         _mockOracleResolved(address(mockOracle), oracleRequest, false);
         _expectAssertionResolvedCallback(escalationManager, assertionId, false);
         assertFalse(optimisticAsserter.settleAndGetAssertionResult(assertionId));
         vm.clearMockedCalls();
+
+        // Disputer should get double the bond less Oracle fees.
+        _defaultCheckBalancesAfterSettle(true, false, true);
     }
 
     function test_SettleWithWrongDispute() public {
         bytes32 assertionId = _wrappedAssertWithCallbackRecipientAndSs(address(0), escalationManager);
         OracleRequest memory oracleRequest = _disputeAndGetOracleRequest(assertionId, defaultBond);
+        _defaultSaveBalancesBeforeSettle();
 
         // Mock resolve assertion truethful through Oracle and verify on resolve callback to Escalation Manager.
         _mockOracleResolved(address(mockOracle), oracleRequest, true);
         _expectAssertionResolvedCallback(escalationManager, assertionId, true);
         assertTrue(optimisticAsserter.settleAndGetAssertionResult(assertionId));
         vm.clearMockedCalls();
+
+        // Asserter should get double the bond less Oracle fees.
+        _defaultCheckBalancesAfterSettle(true, true, true);
     }
 }

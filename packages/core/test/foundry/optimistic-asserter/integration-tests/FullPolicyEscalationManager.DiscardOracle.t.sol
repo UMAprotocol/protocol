@@ -40,6 +40,10 @@ contract FullPolicyEscalationManagerDiscardOracleTest is FullPolicyEscalationMan
         // Dispute and resolve truthful on Oracle should still settle the assertion as not truthful.
         OracleRequest memory oracleRequest = _disputeAndGetOracleRequest(assertionId, defaultBond);
         _mockOracleResolved(address(mockOracle), oracleRequest, true);
+        _defaultSaveBalancesBeforeSettle();
         assertFalse(optimisticAsserter.settleAndGetAssertionResult(assertionId));
+
+        // Asserter should still get double the bond less Oracle fees.
+        _defaultCheckBalancesAfterSettle(true, true, true);
     }
 }

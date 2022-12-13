@@ -15,6 +15,14 @@ contract Common is Test {
         bytes ancillaryData;
     }
 
+    struct BalancesBeforeSettle {
+        uint256 asserter;
+        uint256 disputer;
+        uint256 store;
+    }
+
+    BalancesBeforeSettle balancesBeforeSettle;
+
     // Contract instances, that might be used in tests.
     OptimisticAsserter optimisticAsserter;
     TestnetERC20 defaultCurrency;
@@ -243,5 +251,40 @@ contract Common is Test {
             abi.encodeWithSelector(OptimisticAsserterInterface.getAssertion.selector, assertionId),
             abi.encode(assertion)
         );
+    }
+
+    function _defaultSaveBalancesBeforeSettle() internal {
+        balancesBeforeSettle = BalancesBeforeSettle({
+            asserter: defaultCurrency.balanceOf(TestAddress.account1),
+            disputer: defaultCurrency.balanceOf(TestAddress.account2),
+            store: defaultCurrency.balanceOf(address(store))
+        });
+    }
+
+    function _defaultCheckBalancesAfterSettle(
+        bool disputed,
+        bool resolvedTruethful,
+        bool payOracleFee
+    ) internal {
+        // Checks below depend on non zero bond and burnedBondPercentage.
+        assertGt(defaultBond, 0);
+        assertGt(burnedBondPercentage, 0);
+
+        // Calculate expected payouts.
+        uint256 multiplier = disputed ? 2 : 1;
+        uint256 expectedOracleFee = payOracleFee ? (defaultBond * burnedBondPercentage) / 1e18 : 0;
+        uint256 expectedBondRecipientAmount = defaultBond * multiplier - expectedOracleFee;
+        uint256 expectedAsserterPayout = resolvedTruethful ? expectedBondRecipientAmount : 0;
+        uint256 expectedDisputerPayout = resolvedTruethful ? 0 : expectedBondRecipientAmount;
+
+        assertEq(
+            defaultCurrency.balanceOf(TestAddress.account1),
+            balancesBeforeSettle.asserter + expectedAsserterPayout
+        );
+        assertEq(
+            defaultCurrency.balanceOf(TestAddress.account2),
+            balancesBeforeSettle.disputer + expectedDisputerPayout
+        );
+        assertEq(defaultCurrency.balanceOf(address(store)), balancesBeforeSettle.store + expectedOracleFee);
     }
 }

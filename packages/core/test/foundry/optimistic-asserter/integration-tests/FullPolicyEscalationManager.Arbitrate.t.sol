@@ -54,7 +54,11 @@ contract FullPolicyEscalationManagerArbitrateTest is FullPolicyEscalationManager
 
         // Escalation Manager should receive the callback and the assertion should be settled truthfully.
         _expectAssertionResolvedCallback(escalationManager, assertionId, true);
+        _defaultSaveBalancesBeforeSettle();
         assertTrue(optimisticAsserter.settleAndGetAssertionResult(assertionId));
+
+        // Asserter should get double the bond without paying Oracle fees.
+        _defaultCheckBalancesAfterSettle(true, true, false);
     }
 
     function test_ResolveAssertionNotTruthfulViaEscalationManager() public {
@@ -73,6 +77,10 @@ contract FullPolicyEscalationManagerArbitrateTest is FullPolicyEscalationManager
 
         // Escalation Manager should receive the callback and the assertion should be settled not being truthful.
         _expectAssertionResolvedCallback(escalationManager, assertionId, false);
+        _defaultSaveBalancesBeforeSettle();
         assertFalse(optimisticAsserter.settleAndGetAssertionResult(assertionId));
+
+        // Disputer should get double the bond without paying Oracle fees.
+        _defaultCheckBalancesAfterSettle(true, false, false);
     }
 }
