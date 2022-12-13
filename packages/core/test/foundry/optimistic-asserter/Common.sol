@@ -5,6 +5,7 @@ import "forge-std/Test.sol";
 import "../fixtures/optimistic-asserter/OptimisticAsserterFixture.sol";
 import "../fixtures/common/TestAddress.sol";
 import "../../../contracts/data-verification-mechanism/test/MockOracleAncillary.sol";
+import "../../../contracts/optimistic-asserter/implementation/test/AssertingCallerTest.sol";
 
 contract Common is Test {
     // Data structures, that might be used in tests.
@@ -21,6 +22,7 @@ contract Common is Test {
     Finder finder;
     MockOracleAncillary mockOracle;
     Store store;
+    AssertingCallerTest assertingCaller;
 
     // Constants, that might be used in tests.
     bytes constant trueClaimAssertion = bytes("q:'The sky is blue'");
@@ -73,6 +75,7 @@ contract Common is Test {
         timer = oaContracts.timer;
         finder = oaContracts.finder;
         store = oaContracts.store;
+        assertingCaller = new AssertingCallerTest(optimisticAsserter);
         burnedBondPercentage = optimisticAsserter.burnedBondPercentage();
         defaultBond = optimisticAsserter.getMinimumBond(address(defaultCurrency));
         defaultLiveness = optimisticAsserter.defaultLiveness();
@@ -137,6 +140,24 @@ contract Common is Test {
             optimisticAsserter.assertTruth(
                 trueClaimAssertion,
                 TestAddress.account1,
+                callbackRecipient,
+                escalationManager,
+                defaultLiveness,
+                defaultCurrency,
+                defaultBond,
+                defaultIdentifier,
+                bytes32(0) // No domain.
+            );
+    }
+
+    function _wrappedAssertWithCallbackRecipientAndSs(address callbackRecipient, address escalationManager)
+        internal
+        returns (bytes32)
+    {
+        vm.prank(TestAddress.account1);
+        return
+            assertingCaller.assertTruth(
+                trueClaimAssertion,
                 callbackRecipient,
                 escalationManager,
                 defaultLiveness,
