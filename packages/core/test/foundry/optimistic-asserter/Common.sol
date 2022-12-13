@@ -22,18 +22,18 @@ contract Common is CommonBase {
     Store store;
 
     // Constants, that might be used in tests.
-    bytes trueClaimAssertion = bytes("q:'The sky is blue'");
-    bytes falseClaimAssertion = bytes("q:'The sky is red'");
+    bytes constant trueClaimAssertion = bytes("q:'The sky is blue'");
+    bytes constant falseClaimAssertion = bytes("q:'The sky is red'");
     uint256 burnedBondPercentage;
     uint256 defaultBond;
     uint64 defaultLiveness;
     bytes32 defaultIdentifier;
 
     // Mock addresses, used to prank calls.
-    address mockOptimisticAsserterAddress = address(0xfa);
-    address mockedEscalationManager = address(0xfb);
-    address mockedCallbackRecipient = address(0xfc);
-    address mockAssertingCallerAddress = address(0xfd);
+    address constant mockOptimisticAsserterAddress = address(0xfa);
+    address constant mockedEscalationManager = address(0xfb);
+    address constant mockedCallbackRecipient = address(0xfc);
+    address constant mockAssertingCallerAddress = address(0xfd);
 
     // Event structures, that might be used in tests.
     event AssertionMade(
