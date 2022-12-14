@@ -24,9 +24,9 @@ async function main() {
   );
 
   const getSumSlashedEvents = async () => {
-    const voterSlashedEventsBefore = await votingV2.queryFilter(votingV2.filters.VoterSlashed(), 0, "latest");
+    const voterSlashedEvents = await votingV2.queryFilter(votingV2.filters.VoterSlashed(), 0, "latest");
 
-    return voterSlashedEventsBefore
+    return voterSlashedEvents
       .map((voterSlashedEvent) => voterSlashedEvent.args.slashedTokens)
       .reduce((a, b) => a.add(b), hre.ethers.BigNumber.from(0));
   };
