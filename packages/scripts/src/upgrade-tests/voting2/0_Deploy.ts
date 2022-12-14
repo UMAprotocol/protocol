@@ -74,6 +74,7 @@ async function main() {
   const oldVoting2 = await getContractInstance<VotingEthers>("Voting", "0x9921810C710E7c3f7A7C6831e30929f19537a545");
   const oldVoting3 = await getContractInstance<VotingEthers>("Voting", "0x1d847fB6e04437151736a53F09b6E49713A52aad");
 
+  // Get all PriceRequestAdded events from the old voting contracts.
   const oldVoting1Events = await oldVoting1.queryFilter(oldVoting1.filters.PriceRequestAdded(null, null, null));
   const oldVoting2Events = await oldVoting2.queryFilter(oldVoting2.filters.PriceRequestAdded(null, null, null));
   const oldVoting3Events = await oldVoting3.queryFilter(oldVoting3.filters.PriceRequestAdded(null, null, null));
