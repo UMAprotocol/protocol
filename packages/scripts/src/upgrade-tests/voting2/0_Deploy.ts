@@ -96,9 +96,7 @@ async function main() {
 
   const governorV2Factory: GovernorV2Ethers__factory = await getContractFactory("GovernorV2");
 
-  const governorProposals = await governor.queryFilter(governor.filters.NewProposal(null, null));
-
-  const governorStartingId = governorProposals.length; // Existing NewProposal
+  const governorStartingId = (await (await governor.numProposals()).add(1)).toNumber(); // Existing proposals plus the new one.
 
   console.log("Starting id for new Governor contract: ", governorStartingId);
 
