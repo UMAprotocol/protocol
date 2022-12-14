@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import "../../contracts/common/implementation/FixedPoint.sol";
-import "../../contracts/data-verification-mechanism/interfaces/StoreInterface.sol";
+import "../../../contracts/common/implementation/FixedPoint.sol";
+import "../../../contracts/data-verification-mechanism/interfaces/StoreInterface.sol";
 
 /**
  * @title An implementation of Store that can accept Oracle fees in ETH or any arbitrary ERC20 token.

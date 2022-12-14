@@ -13,7 +13,7 @@ for every main spec wished to be verified.
 to one of the other specs, it is crucial that there exists at least one implementation of each function in the list of contracts provided in the script.
 - `nonDetMethods.spec` - contains a methods block for all the function which are not a part of the main contract, that summarizes these functions as non-state changing and returning a non deterministic value for each call.  
 
-2. scripts - Contains the necessary run scripts to execute the spec files on the Certora Prover. These scripts composed of a run command of Certora Prover, contracts to take into account in the verification context, declaration of the compiler and a set of additional settings. 
+2. scripts - Contains the necessary run scripts to execute the spec files on the Certora Prover. These scripts are composed of a run-command of the Certora Prover contracts to take into account in the verification context, declaration of the compiler and a set of additional settings. 
 - `verifyAsserter.sh` is a script for running of the main specs `Asserter_Auxiliary` or `Asserter_Bonds`. One can choose the desired spec to be verified by changing the argument in the `verify` command in the script. e.g. `--verify OptimisticAsserterHarness:certora/specs/exampleSpec.spec`
 
 3. harness - Contains all the inheriting contracts that add/simplify functionalities to the original contract, together with our own Mock contracts
@@ -23,8 +23,8 @@ We use one harnessed file:
 
 You may add any additional mock contracts to this folder, and import them to the running script. Simply add their relative path to the first part of script file, where you would see the list of all Solidity files used by the tool.
 If the mock file's name is different than the name of the contract it holds,
-simply add a semi-colon after the name of the file and then the name of the contract. e.g.
-`.certora/harness/myFile.sol:myContract`.
+simply add a ':' after the name of the file and then the name of the contract. e.g.
+`.certora/optimistic-asserter/harness/myFile.sol:myContract`.
 
 </br>
 

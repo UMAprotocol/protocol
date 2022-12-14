@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.16;
 
-import "../../contracts/data-verification-mechanism/interfaces/OracleAncillaryInterface.sol";
-import "../../contracts/optimistic-asserter/interfaces/EscalationManagerInterface.sol";
+import "../../../contracts/data-verification-mechanism/interfaces/OracleAncillaryInterface.sol";
+import "../../../contracts/optimistic-asserter/interfaces/EscalationManagerInterface.sol";
 
 contract MockEscalationManager is OracleAncillaryInterface, EscalationManagerInterface {
     
