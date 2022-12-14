@@ -135,7 +135,6 @@ rule assertTruthSucceedsForEveryLiveness(uint64 liveness1, uint64 liveness2)
     address asserter;
     address callbackRecipient;
     address escalationManager;
-    uint64 liveness;
     address currency = testERC20;
     uint256 bond;
     bytes32 identifier;
@@ -148,6 +147,7 @@ rule assertTruthSucceedsForEveryLiveness(uint64 liveness1, uint64 liveness2)
     // Assuming no previous call to assertTruth was made:
     bytes32 ID2 = getId(e,claim,callbackRecipient,escalationManager,liveness2,currency,bond,identifier);
     require getAssertionAsserter(ID2) == 0;
+    storage initState = lastStorage;
     
     // Here we "force" the combination of parameters to succeed.
     assertTruth(e,claim,asserter,callbackRecipient,escalationManager,
@@ -155,7 +155,7 @@ rule assertTruthSucceedsForEveryLiveness(uint64 liveness1, uint64 liveness2)
 
     // Call again, with a different liveness parameter.
     assertTruth@withrevert(e,claim,asserter,callbackRecipient,escalationManager,
-        liveness2,currency,bond,identifier,domainId);
+        liveness2,currency,bond,identifier,domainId) at initState;
 
     assert !lastReverted;
 }
