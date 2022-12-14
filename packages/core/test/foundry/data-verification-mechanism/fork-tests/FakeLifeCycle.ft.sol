@@ -47,11 +47,15 @@ contract FakeLifeCycle is CommonDataVerificationMechanismTest {
         vm.prank(registeredRequester);
         assertEq(voting.getPrice(identifier, requestTime, ancillaryData), price);
 
-        // Can unstake and has more than started with due to rewards and positive slashing.
+        // Can get rewards (time elapsed) and should be able to unstake with more than started with due to + slashing.
         vm.startPrank(TestAddress.account1);
+        uint256 stakerBalanceBeforeRewardWithdrawal = votingToken.balanceOf(TestAddress.account1);
+        voting.withdrawRewards();
+        uint256 stakerBalanceAfterRewardWithdrawal = votingToken.balanceOf(TestAddress.account1);
+        assert(stakerBalanceAfterRewardWithdrawal > stakerBalanceBeforeRewardWithdrawal);
         voting.requestUnstake(voting.getVoterStakePostUpdate(TestAddress.account1));
         vm.warp(voting.getCurrentTime() + voting.unstakeCoolDown());
         voting.executeUnstake();
-        assert(votingToken.balanceOf(TestAddress.account1) > gatMeetingAmountOfTokens);
+        assert(votingToken.balanceOf(TestAddress.account1) > stakerBalanceAfterRewardWithdrawal);
     }
 }
