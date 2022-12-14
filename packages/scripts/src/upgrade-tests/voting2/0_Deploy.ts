@@ -69,10 +69,21 @@ async function main() {
   const minRollToNextRoundLength = "7200";
   const gat = hre.web3.utils.toBN(hre.web3.utils.toWei("5500000", "ether")); // Set the GAT to 5.5 million tokens.
 
-  const requestPriceEvents = await existingVoting.queryFilter(
+  // Get old voting contract events to set the starting index for the new voting contract.
+  const oldVoting1 = await getContractInstance<VotingEthers>("Voting", "0xFe3C4F1ec9f5df918D42Ef7Ed3fBA81CC0086c5F");
+  const oldVoting2 = await getContractInstance<VotingEthers>("Voting", "0x9921810C710E7c3f7A7C6831e30929f19537a545");
+  const oldVoting3 = await getContractInstance<VotingEthers>("Voting", "0x1d847fB6e04437151736a53F09b6E49713A52aad");
+
+  const oldVoting1Events = await oldVoting1.queryFilter(oldVoting1.filters.PriceRequestAdded(null, null, null));
+  const oldVoting2Events = await oldVoting2.queryFilter(oldVoting2.filters.PriceRequestAdded(null, null, null));
+  const oldVoting3Events = await oldVoting3.queryFilter(oldVoting3.filters.PriceRequestAdded(null, null, null));
+
+  const totalEventsLength = oldVoting1Events.length + oldVoting2Events.length + oldVoting3Events.length;
+
+  const existingVotingEvents = await existingVoting.queryFilter(
     existingVoting.filters.PriceRequestAdded(null, null, null)
   );
-  const startingIndex = requestPriceEvents.length + 1; // Existing PriceRequestAdded events plus the new one.
+  const startingIndex = totalEventsLength + existingVotingEvents.length + 1; // Existing PriceRequestAdded events plus the new one.
 
   console.log("Starting index for new Voting contract: ", startingIndex);
 
