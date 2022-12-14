@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import "./CommonDataVerificationMechanismTestSetup.sol";
+import "./CommonDataVerificationMechanismTest.sol";
 
-contract FakeLifeCycle is CommonDataVerificationMechanismTestSetup {
+contract FakeLifeCycle is CommonDataVerificationMechanismTest {
     function setUp() public {
         _commonSetup();
     }

@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import "./CommonOptimisticAsserterTestSetup.sol";
+import "./CommonOptimisticAsserterTest.sol";
 
-contract OptimisticAsserterCallbacks is CommonOptimisticAsserterTestSetup {
+contract OptimisticAsserterCallbacks is CommonOptimisticAsserterTest {
     function setUp() public {
         _commonSetup();
 

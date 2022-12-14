@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
-import "../CommonOptimisticAsserterTestSetup.sol";
+import "../CommonOptimisticAsserterTest.sol";
 import "../../../../contracts/optimistic-asserter/implementation/examples/Insurance.sol";
 
-contract InsuranceTest is CommonOptimisticAsserterTestSetup {
+contract InsuranceTest is CommonOptimisticAsserterTest {
     Insurance public insurance;
     bytes insuredEvent = bytes("insuredEvent");
     uint256 insuranceAmount = 100;
