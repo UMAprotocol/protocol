@@ -269,6 +269,7 @@ describe("Staker", function () {
     });
 
     it("Update emission rate works as expected", async function () {
+      // Start with a 0 emission rate.
       staker = await StakerTest.new("0", unstakeCoolDown, votingToken.options.address, timer.options.address).send({
         from: account1,
       });
@@ -278,44 +279,51 @@ describe("Staker", function () {
       await votingToken.methods.addMember(minterRole, account1).send({ from: account1 });
       await votingToken.methods.addMember(minterRole, staker.options.address).send({ from: account1 });
 
-      // Account1 starts with 100MM tokens. Send 32mm to the other three accounts.
-      await votingToken.methods.mint(account1, toWei("60000000")).send({ from: accounts[0] });
-      await votingToken.methods.approve(staker.options.address, toWei("50000000")).send({ from: account1 });
-      await votingToken.methods.transfer(account2, toWei("10000000")).send({ from: account1 });
-      await votingToken.methods.approve(staker.options.address, toWei("10000000")).send({ from: account2 });
+      // Mint and send tokens to account1 and account2.
+      await votingToken.methods.mint(account1, amountToStake.muln(4)).send({ from: accounts[0] });
+      await votingToken.methods.approve(staker.options.address, amountToStake).send({ from: account1 });
+      await votingToken.methods.transfer(account2, amountToStake.muln(3)).send({ from: account1 });
+      await votingToken.methods.approve(staker.options.address, amountToStake.muln(3)).send({ from: account2 });
 
+      // Stake 1/4th of the tokens in account1 and 3/4ths in account2.
       await staker.methods.stake(amountToStake).send({ from: account1 }); // stake 1/4th
       await staker.methods.stake(amountToStake.muln(3)).send({ from: account2 }); // stake 3/4ths
       await advanceTime(1000);
 
+      // Check that the rewards are correctly allocated.
       assert.equal(await staker.methods.outstandingRewards(account1).call(), 0);
       assert.equal(await staker.methods.outstandingRewards(account2).call(), 0);
 
+      // Set the emission rate to 0.1 and check that the rewards are correctly allocated.
       await staker.methods.setEmissionRate(toWei("0.1")).send({ from: accounts[0] });
 
+      // Rewards should be 0 because no time has passed.
       assert.equal(await staker.methods.outstandingRewards(account1).call(), 0);
       assert.equal(await staker.methods.outstandingRewards(account2).call(), 0);
 
-      // assert.equal(await staker.methods.outstandingRewards(account1).call(), toWei("160")); // 1000 * 0.64 * 1/4 = 160
-      // assert.equal(await staker.methods.outstandingRewards(account2).call(), toWei("480")); // 1000 * 0.64 * 3/4 = 480
+      await advanceTime(1000);
 
-      // // Now slash half the balance of account1.
-      // await staker.methods.applySlashingToCumulativeStaked(account1, amountToStake.divn(-2)).send({ from: account1 });
-      // await staker.methods.applySlashingToCumulativeStaked(account2, amountToStake.divn(2)).send({ from: account1 });
+      // Check that the rewards are correctly allocated.
+      assert.equal(await staker.methods.outstandingRewards(account1).call(), toWei("25")); // 1000 * 0.1 * 1/4 = 25
+      assert.equal(await staker.methods.outstandingRewards(account2).call(), toWei("75")); // 1000 * 0.1 * 3/4 = 75
 
-      // // Now advance another 1000 seconds. This will accrue another 640 rewards. Now, though, the allocation will be
-      // // 500/4000 * 640 = 80 to account1 and 3500/4000 * 640 = 560 to account2.
-      // await advanceTime(1000);
-      // assert.equal(await staker.methods.outstandingRewards(account1).call(), toWei("240")); // 160 + 80 = 240
-      // assert.equal(await staker.methods.outstandingRewards(account2).call(), toWei("1040")); // 480 + 560 = 1040
+      // Set the emission rate to 0 and check that the rewards are correctly allocated.
+      await staker.methods.setEmissionRate(toWei("0")).send({ from: accounts[0] });
 
-      // // Slash the remaining account1's balance. They should accumulate no more rewards and everything goes to account2.
-      // await staker.methods.applySlashingToCumulativeStaked(account1, amountToStake.divn(-2)).send({ from: account1 });
-      // await staker.methods.applySlashingToCumulativeStaked(account2, amountToStake.divn(2)).send({ from: account1 });
+      await advanceTime(1000);
 
-      // await advanceTime(1000);
-      // assert.equal(await staker.methods.outstandingRewards(account1).call(), toWei("240")); // 240 + 0 = 240
-      // assert.equal(await staker.methods.outstandingRewards(account2).call(), toWei("1680")); // 1040 + 640 = 1680
+      // The rewards should not have changed.
+      assert.equal(await staker.methods.outstandingRewards(account1).call(), toWei("25"));
+      assert.equal(await staker.methods.outstandingRewards(account2).call(), toWei("75"));
+
+      // Set the emission rate to 0.2 and check that the rewards are correctly allocated.
+      await staker.methods.setEmissionRate(toWei("0.2")).send({ from: accounts[0] });
+
+      await advanceTime(1000);
+
+      // Check that emission rate updates are not retroactive.
+      assert.equal(await staker.methods.outstandingRewards(account1).call(), toWei("75")); // 25 + 1000 * 0.2 * 1/4 = 75
+      assert.equal(await staker.methods.outstandingRewards(account2).call(), toWei("225")); // 75 + 1000 * 0.2 * 3/4 = 225
     });
 
     it("Events", async function () {
