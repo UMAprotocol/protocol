@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import "./Common.sol";
 import "../../../contracts/data-verification-mechanism/implementation/Store.sol";
 
-contract MaintenanceTest is CommonOa {
+contract MaintenanceTest is CommonOptimisticAsserterTestSetup {
     function setUp() public {
         _commonSetup();
     }

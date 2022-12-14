@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import "../Common.sol";
 import "../../../../contracts/optimistic-asserter/implementation/escalation-manager/DisputeLimitingEscalationManager.sol";
 
-contract DisputeLimitingEscalationManagerTest is CommonOa {
+contract DisputeLimitingEscalationManagerTest is CommonOptimisticAsserterTestSetup {
     DisputeLimitingEscalationManager escalationManager;
 
     bytes32 assertionId = "test";

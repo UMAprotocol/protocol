@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import "./Common.sol";
 
-contract InvalidParameters is CommonOa {
+contract InvalidParameters is CommonOptimisticAsserterTestSetup {
     function setUp() public {
         _commonSetup();
     }

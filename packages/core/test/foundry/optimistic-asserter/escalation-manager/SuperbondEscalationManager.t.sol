@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import "../Common.sol";
 import "../../../../contracts/optimistic-asserter/implementation/escalation-manager/SuperbondEscalationManager.sol";
 
-contract SuperbondEscalationManagerTest is CommonOa {
+contract SuperbondEscalationManagerTest is CommonOptimisticAsserterTestSetup {
     SuperbondEscalationManager escalationManager;
     uint256 superbond = 100e18;
     uint256 bond = 50e18;

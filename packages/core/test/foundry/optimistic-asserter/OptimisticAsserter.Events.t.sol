@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import "./Common.sol";
 
-contract OptimisticAsserterEvents is CommonOa {
+contract OptimisticAsserterEvents is CommonOptimisticAsserterTestSetup {
     event AdminPropertiesSet(IERC20 defaultCurrency, uint64 defaultLiveness, uint256 burnedBondPercentage);
 
     function setUp() public {

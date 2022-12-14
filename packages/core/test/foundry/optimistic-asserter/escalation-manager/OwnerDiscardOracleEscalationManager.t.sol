@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import "../Common.sol";
 import "../../../../contracts/optimistic-asserter/implementation/escalation-manager/OwnerDiscardOracleEscalationManager.sol";
 
-contract OwnerDiscardOracleEscalationManagerTest is CommonOa {
+contract OwnerDiscardOracleEscalationManagerTest is CommonOptimisticAsserterTestSetup {
     OwnerDiscardOracleEscalationManager escalationManager;
 
     function setUp() public {

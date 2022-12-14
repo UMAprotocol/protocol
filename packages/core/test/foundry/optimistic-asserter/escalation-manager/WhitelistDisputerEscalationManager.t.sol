@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import "../Common.sol";
 import "../../../../contracts/optimistic-asserter/implementation/escalation-manager/WhitelistDisputerEscalationManager.sol";
 
-contract WhitelistDisputerEscalationManagerTest is CommonOa {
+contract WhitelistDisputerEscalationManagerTest is CommonOptimisticAsserterTestSetup {
     WhitelistDisputerEscalationManager escalationManager;
 
     function setUp() public {

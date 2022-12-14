@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import "../Common.sol";
 import "../../../../contracts/optimistic-asserter/implementation/escalation-manager/WhitelistAsserterEscalationManager.sol";
 
-contract WhitelistAsserterEscalationManagerTest is CommonOa {
+contract WhitelistAsserterEscalationManagerTest is CommonOptimisticAsserterTestSetup {
     WhitelistAsserterEscalationManager escalationManager;
 
     bytes32 assertionId = "test";

@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 import "../Common.sol";
 import "../../../../contracts/optimistic-asserter/implementation/examples/DataAsserter.sol";
 
-contract DataAsserterTest is CommonOa {
+contract DataAsserterTest is CommonOptimisticAsserterTestSetup {
     DataAsserter public dataAsserter;
     bytes32 dataId = bytes32("dataId");
     bytes32 correctData = bytes32("correctData");
