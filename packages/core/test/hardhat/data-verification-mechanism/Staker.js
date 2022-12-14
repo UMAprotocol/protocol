@@ -268,6 +268,64 @@ describe("Staker", function () {
       assert.equal(await staker.methods.outstandingRewards(account2).call(), toWei("1680")); // 1040 + 640 = 1680
     });
 
+    it("Update emission rate works as expected", async function () {
+      // Start with a 0 emission rate.
+      staker = await StakerTest.new("0", unstakeCoolDown, votingToken.options.address, timer.options.address).send({
+        from: account1,
+      });
+
+      // Allow account1 to mint tokens.
+      const minterRole = 1;
+      await votingToken.methods.addMember(minterRole, account1).send({ from: account1 });
+      await votingToken.methods.addMember(minterRole, staker.options.address).send({ from: account1 });
+
+      // Mint and send tokens to account1 and account2.
+      await votingToken.methods.mint(account1, amountToStake.muln(4)).send({ from: accounts[0] });
+      await votingToken.methods.approve(staker.options.address, amountToStake).send({ from: account1 });
+      await votingToken.methods.transfer(account2, amountToStake.muln(3)).send({ from: account1 });
+      await votingToken.methods.approve(staker.options.address, amountToStake.muln(3)).send({ from: account2 });
+
+      // Stake 1/4th of the tokens in account1 and 3/4ths in account2.
+      await staker.methods.stake(amountToStake).send({ from: account1 }); // stake 1/4th
+      await staker.methods.stake(amountToStake.muln(3)).send({ from: account2 }); // stake 3/4ths
+      await advanceTime(1000);
+
+      // Check that the rewards are correctly allocated.
+      assert.equal(await staker.methods.outstandingRewards(account1).call(), 0);
+      assert.equal(await staker.methods.outstandingRewards(account2).call(), 0);
+
+      // Set the emission rate to 0.1 and check that the rewards are correctly allocated.
+      await staker.methods.setEmissionRate(toWei("0.1")).send({ from: accounts[0] });
+
+      // Rewards should be 0 because no time has passed.
+      assert.equal(await staker.methods.outstandingRewards(account1).call(), 0);
+      assert.equal(await staker.methods.outstandingRewards(account2).call(), 0);
+
+      await advanceTime(1000);
+
+      // Check that the rewards are correctly allocated.
+      assert.equal(await staker.methods.outstandingRewards(account1).call(), toWei("25")); // 1000 * 0.1 * 1/4 = 25
+      assert.equal(await staker.methods.outstandingRewards(account2).call(), toWei("75")); // 1000 * 0.1 * 3/4 = 75
+
+      // Set the emission rate to 0 and check that the rewards are correctly allocated.
+      await staker.methods.setEmissionRate(toWei("0")).send({ from: accounts[0] });
+
+      await advanceTime(1000);
+
+      // The rewards should not have changed.
+      assert.equal(await staker.methods.outstandingRewards(account1).call(), toWei("25"));
+      assert.equal(await staker.methods.outstandingRewards(account2).call(), toWei("75"));
+
+      // Set the emission rate to 0.2 and check that the rewards are correctly allocated.
+      await staker.methods.setEmissionRate(toWei("0.2")).send({ from: accounts[0] });
+
+      await advanceTime(1000);
+
+      // Check that emission rate updates are not retroactive.
+      assert.equal(await staker.methods.outstandingRewards(account1).call(), toWei("75")); // 25 + 1000 * 0.2 * 1/4 = 75
+      assert.equal(await staker.methods.outstandingRewards(account2).call(), toWei("225")); // 75 + 1000 * 0.2 * 3/4 = 225
+    });
+
     it("Events", async function () {
       let result;
       result = await staker.methods.stake(amountToStake).send({ from: account1 }); // stake 1/4th
