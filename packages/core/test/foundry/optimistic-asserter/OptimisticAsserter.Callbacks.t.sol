@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import "./Common.sol";
 
-contract OptimisticAsserterCallbacks is Common {
+contract OptimisticAsserterCallbacks is CommonOa {
     function setUp() public {
         _commonSetup();
 

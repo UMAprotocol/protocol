@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import "../Common.sol";
 import "../../../../contracts/optimistic-asserter/implementation/escalation-manager/BaseEscalationManager.sol";
 
-contract BaseEscalationManagerTest is Common {
+contract BaseEscalationManagerTest is CommonOa {
     BaseEscalationManager escalationManager;
 
     bytes32 identifier = "test";

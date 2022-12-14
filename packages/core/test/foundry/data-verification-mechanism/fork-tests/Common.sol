@@ -7,7 +7,7 @@ import "../../../../contracts/data-verification-mechanism/implementation/VotingV
 import "../../../../contracts/data-verification-mechanism/interfaces/VotingAncillaryInterface.sol";
 import "../../../../contracts/common/interfaces/ExpandedIERC20.sol";
 
-contract Common is CommonBase {
+contract CommonDvm is CommonBase {
     VotingV2 voting;
     ExpandedIERC20 votingToken;
 

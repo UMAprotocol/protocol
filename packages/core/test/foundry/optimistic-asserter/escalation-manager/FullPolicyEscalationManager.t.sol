@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import "../Common.sol";
 import "../../../../contracts/optimistic-asserter/implementation/escalation-manager/FullPolicyEscalationManager.sol";
 
-contract FullPolicyEscalationManagerTest is Common {
+contract FullPolicyEscalationManagerTest is CommonOa {
     FullPolicyEscalationManager escalationManager;
     bytes32 assertionId = bytes32(0);
 

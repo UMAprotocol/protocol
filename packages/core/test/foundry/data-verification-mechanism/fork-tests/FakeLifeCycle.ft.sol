@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import "./Common.sol";
 
-contract FakeLifeCycle is Common {
+contract FakeLifeCycle is CommonDvm {
     function setUp() public {
         _commonSetup();
     }

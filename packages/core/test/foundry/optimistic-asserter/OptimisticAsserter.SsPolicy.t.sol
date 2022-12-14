@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import "./Common.sol";
 
-contract EscalationManagerPolicyEnforced is Common {
+contract EscalationManagerPolicyEnforced is CommonOa {
     function setUp() public {
         _commonSetup();
 

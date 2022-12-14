@@ -5,7 +5,7 @@ import "../fixtures/common/CommonBase.sol";
 import "../fixtures/optimistic-asserter/OptimisticAsserterFixture.sol";
 import "../../../contracts/data-verification-mechanism/test/MockOracleAncillary.sol";
 
-contract Common is CommonBase {
+contract CommonOa is CommonBase {
     // Data structures, that might be used in tests.
     struct OracleRequest {
         bytes32 identifier;

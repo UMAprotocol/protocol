@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 import "../Common.sol";
 import "../../../../contracts/optimistic-asserter/implementation/examples/PredictionMarket.sol";
 
-contract PredictionMarketTestCommon is Common {
+contract PredictionMarketTestCommon is CommonOa {
     PredictionMarket public predictionMarket;
     string outcome1 = "Red";
     string outcome2 = "Blue";
